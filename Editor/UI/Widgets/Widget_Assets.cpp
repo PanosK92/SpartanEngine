@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
-#include "AssetViewer.h"
+#include "Widget_Assets.h"
 #include "../../ImGui/imgui.h"
 #include "FileSystem/FileSystem.h"
 #include "../EditorHelper.h"
@@ -37,12 +37,12 @@ static bool g_showFileDialogLoad = false;
 static string g_fileDialogSelection_View;
 static string g_fileDialogSelection_Load;
 
-AssetViewer::AssetViewer()
+Widget_Assets::Widget_Assets()
 {
 	m_title = "Assets";
 }
 
-void AssetViewer::Initialize(Context* context)
+void Widget_Assets::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 	m_fileDialogView	= make_unique<FileDialog>(m_context, false, FileDialog_All);
@@ -50,7 +50,7 @@ void AssetViewer::Initialize(Context* context)
 	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
 }
 
-void AssetViewer::Update()
+void Widget_Assets::Update()
 {	
 	if (ImGui::Button("Import"))
 	{

@@ -20,9 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================================
-#include "Properties.h"
+#include "Widget_Properties.h"
 #include "../../ImGui/imgui.h"
-#include "Hierarchy.h"
+#include "Widget_Scene.h"
 #include "Scene/GameObject.h"
 #include "Graphics/Material.h"
 #include "Graphics/Mesh.h"
@@ -50,7 +50,7 @@ using namespace Directus;
 using namespace Math;
 //=======================
 
-weak_ptr<GameObject> Properties::m_gameObject;
+weak_ptr<GameObject> Widget_Properties::m_gameObject;
 static ResourceManager* g_resourceManager = nullptr;
 static const char* g_contexMenuID;
 static const float g_maxWidth = 100.0f;
@@ -101,7 +101,7 @@ static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
 }																											\
 //=======================================================================
 
-Properties::Properties()
+Widget_Properties::Widget_Properties()
 {
 	m_title = "Properties";
 	g_lightButtonColorPicker	= make_unique<ButtonColorPicker>("Light Color Picker");
@@ -109,13 +109,13 @@ Properties::Properties()
 	g_cameraButtonColorPicker	= make_unique<ButtonColorPicker>("Camera Color Picker");
 }
 
-void Properties::Initialize(Context* context)
+void Widget_Properties::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 	g_resourceManager = context->GetSubsystem<ResourceManager>();
 }
 
-void Properties::Update()
+void Widget_Properties::Update()
 {
 	if (m_gameObject.expired())
 		return;
@@ -158,12 +158,12 @@ void Properties::Update()
 	ImGui::PopItemWidth();
 }
 
-void Properties::Inspect(weak_ptr<GameObject> gameObject)
+void Widget_Properties::Inspect(weak_ptr<GameObject> gameObject)
 {
 	m_gameObject = gameObject;
 }
 
-void Properties::ShowTransform(Transform* transform)
+void Widget_Properties::ShowTransform(Transform* transform)
 {
 	//= REFLECT ==================================================
 	Vector3 position	= transform->GetPosition();
@@ -250,7 +250,7 @@ void Properties::ShowTransform(Transform* transform)
 	//===============================================================================
 }
 
-void Properties::ShowLight(Light* light)
+void Widget_Properties::ShowLight(Light* light)
 {
 	if (!light)
 		return;
@@ -333,7 +333,7 @@ void Properties::ShowLight(Light* light)
 	//===================================================================================================================
 }
 
-void Properties::ShowMeshFilter(MeshFilter* meshFilter)
+void Widget_Properties::ShowMeshFilter(MeshFilter* meshFilter)
 {
 	if (!meshFilter)
 		return;
@@ -350,7 +350,7 @@ void Properties::ShowMeshFilter(MeshFilter* meshFilter)
 	COMPONENT_END;
 }
 
-void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
+void Widget_Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 {
 	if (!meshRenderer)
 		return;
@@ -387,7 +387,7 @@ void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 	//==========================================================================================================
 }
 
-void Properties::ShowRigidBody(RigidBody* rigidBody)
+void Widget_Properties::ShowRigidBody(RigidBody* rigidBody)
 {
 	if (!rigidBody)
 		return;
@@ -497,7 +497,7 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 	//===========================================================================================================================================================
 }
 
-void Properties::ShowCollider(Collider* collider)
+void Widget_Properties::ShowCollider(Collider* collider)
 {
 	if (!collider)
 		return;
@@ -600,7 +600,7 @@ void Properties::ShowCollider(Collider* collider)
 	//==========================================================================================================
 }
 
-void Properties::ShowConstraint(Constraint* collider)
+void Widget_Properties::ShowConstraint(Constraint* collider)
 {
 	if (!collider)
 		return;
@@ -612,7 +612,7 @@ void Properties::ShowConstraint(Constraint* collider)
 	COMPONENT_END;
 }
 
-void Properties::ShowMaterial(Material* material)
+void Widget_Properties::ShowMaterial(Material* material)
 {
 	if (!material)
 		return;
@@ -731,7 +731,7 @@ void Properties::ShowMaterial(Material* material)
 	//===========================================================================================================================================
 }
 
-void Properties::ShowCamera(Camera* camera)
+void Widget_Properties::ShowCamera(Camera* camera)
 {
 	if (!camera)
 		return;
@@ -804,7 +804,7 @@ void Properties::ShowCamera(Camera* camera)
 	//===========================================================================================================================================
 }
 
-void Properties::ShowAudioSource(AudioSource* audioSource)
+void Widget_Properties::ShowAudioSource(AudioSource* audioSource)
 {
 	if (!audioSource)
 		return;
@@ -877,7 +877,7 @@ void Properties::ShowAudioSource(AudioSource* audioSource)
 	//===========================================================================================
 }
 
-void Properties::ShowAudioListener(AudioListener* audioListener)
+void Widget_Properties::ShowAudioListener(AudioListener* audioListener)
 {
 	if (!audioListener)
 		return;
@@ -889,7 +889,7 @@ void Properties::ShowAudioListener(AudioListener* audioListener)
 	COMPONENT_END;
 }
 
-void Properties::ShowScript(Script* script)
+void Widget_Properties::ShowScript(Script* script)
 {
 	if (!script)
 		return;
@@ -919,13 +919,13 @@ void Properties::ShowScript(Script* script)
 	}*/
 }
 
-void Properties::ComponentContextMenu_Options(const char* id, IComponent* component)
+void Widget_Properties::ComponentContextMenu_Options(const char* id, IComponent* component)
 {
 	if (ImGui::BeginPopup(id))
 	{
 		if (ImGui::MenuItem("Remove"))
 		{
-			if (auto gameObject = Hierarchy::GetSelectedGameObject().lock())
+			if (auto gameObject = Widget_Scene::GetSelectedGameObject().lock())
 			{
 				if (component)
 				{
@@ -938,7 +938,7 @@ void Properties::ComponentContextMenu_Options(const char* id, IComponent* compon
 	}
 }
 
-void Properties::ShowAddComponentButton()
+void Widget_Properties::ShowAddComponentButton()
 {
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
 	ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 50);
@@ -949,11 +949,11 @@ void Properties::ShowAddComponentButton()
 	ComponentContextMenu_Add();
 }
 
-void Properties::ComponentContextMenu_Add()
+void Widget_Properties::ComponentContextMenu_Add()
 {
 	if (ImGui::BeginPopup("##ComponentContextMenu_Add"))
 	{
-		if (auto gameObject = Hierarchy::GetSelectedGameObject().lock())
+		if (auto gameObject = Widget_Scene::GetSelectedGameObject().lock())
 		{
 			// CAMERA
 			if (ImGui::MenuItem("Camera"))

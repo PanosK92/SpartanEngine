@@ -44,10 +44,10 @@ namespace Directus
 	class IComponent;
 }
 
-class Properties : public Widget
+class Widget_Properties : public Widget
 {
 public:
-	Properties();
+	Widget_Properties();
 	void Initialize(Directus::Context* context) override;
 	void Update() override;
 	static void Inspect(std::weak_ptr<Directus::GameObject> gameObject);

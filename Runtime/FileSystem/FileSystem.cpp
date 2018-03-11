@@ -573,111 +573,46 @@ namespace Directus
 	//= STRING PARSING =====================================================================
 	// Returns a file path which is relative to the engine
 	string FileSystem::GetRelativeFilePath(const string& absoluteFilePath)
-	{
-		string currentDir = GetWorkingDirectory();
-		string absoluteDir = absoluteFilePath;
+	{		
+		// create absolute paths
+		path p = absolute(absoluteFilePath);
+		path r = absolute(GetWorkingDirectory());
 
-		currentDir = ReplaceExpression(currentDir, "\"", "\\");
-		absoluteDir = ReplaceExpression(absoluteDir, "\"", "\\");
+		// if root paths are different, return absolute path
+		if( p.root_path() != r.root_path())
+		    return p.generic_string();
 
-		currentDir = ReplaceExpression(currentDir, "/", "\\");
-		absoluteDir = ReplaceExpression(absoluteDir, "/", "\\");
+		// initialize relative path
+		path result;
 
-		const int MAX_FILENAME_LEN = 512;
-		const int ABSOLUTE_NAME_START = 3;
-		const char SLASH = '\\';
-
-		int afMarker = 0, rfMarker = 0;
-		int i = 0;
-		int levels = 0;
-		static char relativeFilename[MAX_FILENAME_LEN + 1];
-		size_t cdLen = strlen(currentDir.c_str());
-		size_t afLen = strlen(absoluteDir.c_str());
-
-		// Make sure the paths are not too long or too short
-		if (cdLen > MAX_FILENAME_LEN || cdLen < ABSOLUTE_NAME_START + 1 ||
-			afLen > MAX_FILENAME_LEN || afLen < ABSOLUTE_NAME_START + 1)
+		// find out where the two paths diverge
+		path::const_iterator itr_path = p.begin();
+		path::const_iterator itr_relative_to = r.begin();
+		while( *itr_path == *itr_relative_to && itr_path != p.end() && itr_relative_to != r.end() ) 
 		{
-			return absoluteDir;
+		    ++itr_path;
+		    ++itr_relative_to;
 		}
 
-		// Make sure the paths are not on different drives
-		if (currentDir[0] != absoluteDir[0])
+		// add "../" for each remaining token in relative_to
+		if( itr_relative_to != r.end() ) 
 		{
-			return absoluteDir;
-		}
-
-		// Find out how much of the current directory is in the absolute filename
-		i = ABSOLUTE_NAME_START;
-		while (i < afLen && i < cdLen && currentDir[i] == absoluteDir[i])
-		{
-			i++;
-		}
-
-		if (i == cdLen && (absoluteDir[i] == SLASH || absoluteDir[i - 1] == SLASH))
-		{
-			// the whole current directory name is in the file name,
-			// so we just trim off the current directory name to get the
-			// current file name.
-			if (absoluteDir[i] == SLASH)
+		    ++itr_relative_to;
+		    while( itr_relative_to != r.end() ) 
 			{
-				// a directory name might have a trailing slash but a relative
-				// file name should not have a leading one...
-				i++;
-			}
-
-			strcpy_s(relativeFilename, &absoluteDir[i]);
-			return relativeFilename;
+		        result /= "..";
+		        ++itr_relative_to;
+		    }
 		}
 
-		// The file is not in a child directory of the current directory, so we
-		// need to step back the appropriate number of parent directories by
-		// using "..\"s.  First find out how many levels deeper we are than the
-		// common directory
-		afMarker = i;
-		levels = 1;
-		// count the number of directory levels we have to go up to get to the
-		// common directory
-		while (i < cdLen)
+		// add remaining path
+		while( itr_path != p.end() ) 
 		{
-			i++;
-			if (currentDir[i] == SLASH)
-			{
-				// make sure it's not a trailing slash
-				i++;
-				if (currentDir[i] != '\0')
-				{
-					levels++;
-				}
-			}
+		    result /= *itr_path;
+		    ++itr_path;
 		}
 
-		// Move the absolute filename marker back to the 
-		// start of the directory name that it has stopped in.
-		while (afMarker > 0 && absoluteDir[afMarker - 1] != SLASH)
-		{
-			afMarker--;
-		}
-
-		// Check that the result will not be too long
-		if (levels * 3 + afLen - afMarker > MAX_FILENAME_LEN)
-		{
-			return absoluteDir;
-		}
-
-		// Add the appropriate number of "..\"s.
-		rfMarker = 0;
-		for (i = 0; i < levels; i++)
-		{
-			relativeFilename[rfMarker++] = '.';
-			relativeFilename[rfMarker++] = '.';
-			relativeFilename[rfMarker++] = SLASH;
-		}
-
-		// Copy the rest of the filename into the result string
-		strcpy_s(&relativeFilename[rfMarker], absoluteDir.size() - afMarker, &absoluteDir[afMarker]);
-
-		return relativeFilename;
+		return result.generic_string();
 	}
 
 	string FileSystem::GetWorkingDirectory()

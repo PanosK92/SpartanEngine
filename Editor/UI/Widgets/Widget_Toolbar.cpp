@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===========================
-#include "Toolbar.h"
+#include "Widget_Toolbar.h"
 #include "../../ImGui/imgui.h"
 #include "../../ImGui/imgui_internal.h"
 #include "../ThumbnailProvider.h"
@@ -35,12 +35,12 @@ static float g_buttonSize			= 15.0f;
 static ImVec4 g_colorButtonReleased = ImVec4(0, 1, 0, 1);
 static ImVec4 g_colorButtonPressed	= ImVec4(0, 0.5f, 0.5f, 1);
 
-Toolbar::Toolbar()
+Widget_Toolbar::Widget_Toolbar()
 {
 	
 }
 
-void Toolbar::Initialize(Context* context)
+void Widget_Toolbar::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 	m_title = "Toolbar";
@@ -54,7 +54,7 @@ void Toolbar::Initialize(Context* context)
 	Engine::EngineMode_Disable(Engine_Game);
 }
 
-void Toolbar::Begin()
+void Widget_Toolbar::Begin()
 {
 	ImGuiContext& g = *GImGui;
 	float width		= g.IO.DisplaySize.x;
@@ -64,7 +64,7 @@ void Toolbar::Begin()
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 }
 
-void Toolbar::Update()
+void Widget_Toolbar::Update()
 {
 	bool editorMode = !Engine::EngineMode_IsSet(Engine_Game);
 	if (ImGui::ImageButton(SHADER_RESOURCE_BY_TYPE(Icon_Button_Play), ImVec2(g_buttonSize, g_buttonSize), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), editorMode ? g_colorButtonReleased : g_colorButtonPressed))

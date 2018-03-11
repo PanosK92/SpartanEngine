@@ -28,14 +28,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class FileDialog;
 
-class AssetViewer : public Widget
+class Widget_MenuBar : public Widget
 {
 public:
-	AssetViewer();
+	Widget_MenuBar();
 	void Initialize(Directus::Context* context) override;
 	void Update() override;
 
 private:
-	std::unique_ptr<FileDialog> m_fileDialogView;
-	std::unique_ptr<FileDialog> m_fileDialogLoad;
+	void ShowFileDialog();
+	void ShowProgressDialog();
+	void OnSceneLoaded();
+	void OnSceneSaved();
+	void ShowAboutWindow();
+
+	// DEBUG
+	void ShowResourceCache();
+	void ShowProfiler();
+
+	std::unique_ptr<FileDialog> m_fileDialog;
 };

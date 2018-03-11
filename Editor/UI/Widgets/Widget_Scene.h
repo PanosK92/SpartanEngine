@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus { class GameObject; }
 
-class Hierarchy : public Widget
+class Widget_Scene : public Widget
 {
 public:
-	Hierarchy();
+	Widget_Scene();
 	void Initialize(Directus::Context* context) override;
 	void Update() override;
 

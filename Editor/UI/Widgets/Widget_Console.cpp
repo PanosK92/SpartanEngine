@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ====================
-#include "Console.h"
+#include "Widget_Console.h"
 #include "../../ImGui/imgui.h"
 #include "Logging/Log.h"
 #include "../ThumbnailProvider.h"
@@ -41,7 +41,7 @@ static ImVec4 g_logColor[3] =
 };
 static ImGuiTextFilter g_logFilter;
 
-Console::Console()
+Widget_Console::Widget_Console()
 {
 	m_title = "Console";
 
@@ -57,7 +57,7 @@ Console::Console()
 	m_showErrors	= true;
 }
 
-void Console::Update()
+void Widget_Console::Update()
 {
 	if (ImGui::Button("Clear"))									{ Clear(); }														ImGui::SameLine();
 	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Console_Info,		15.0f))	{ m_showInfo		= !m_showInfo;		g_scrollToBottom = true; }	ImGui::SameLine();
@@ -90,7 +90,7 @@ void Console::Update()
 	ImGui::EndChild();
 }
 
-void Console::AddLogPackage(LogPackage package)
+void Widget_Console::AddLogPackage(LogPackage package)
 {
 	m_logs.push_back(package);
 	if ((int)m_logs.size() > m_maxLogEntries)
@@ -101,7 +101,7 @@ void Console::AddLogPackage(LogPackage package)
 	g_scrollToBottom = true;
 }
 
-void Console::Clear()
+void Widget_Console::Clear()
 {
 	m_logs.clear();
 	m_logs.shrink_to_fit();
