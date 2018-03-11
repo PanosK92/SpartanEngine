@@ -50,7 +50,9 @@ public:
 	Widget_Properties();
 	void Initialize(Directus::Context* context) override;
 	void Update() override;
+
 	static void Inspect(std::weak_ptr<Directus::GameObject> gameObject);
+	static void Inspect(std::weak_ptr<Directus::Material> material);
 
 private:
 	void ShowTransform(Directus::Transform* transform);
@@ -69,6 +71,4 @@ private:
 	void ComponentContextMenu_Options(const char* id, Directus::IComponent* component);
 	void ShowAddComponentButton();
 	void ComponentContextMenu_Add();
-
-	static std::weak_ptr<Directus::GameObject> m_gameObject;
 };

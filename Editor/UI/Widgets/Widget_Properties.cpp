@@ -50,7 +50,8 @@ using namespace Directus;
 using namespace Math;
 //=======================
 
-weak_ptr<GameObject> Widget_Properties::m_gameObject;
+static weak_ptr<GameObject> g_inspectedGameObject;
+static weak_ptr<Material> g_inspectedMaterial;
 static ResourceManager* g_resourceManager = nullptr;
 static const char* g_contexMenuID;
 static const float g_maxWidth = 100.0f;
@@ -117,50 +118,59 @@ void Widget_Properties::Initialize(Context* context)
 
 void Widget_Properties::Update()
 {
-	if (m_gameObject.expired())
-		return;
-
-	auto gameObjectPtr = m_gameObject.lock().get();
-
-	auto transform		= gameObjectPtr->GetTransformRef();
-	auto light			= gameObjectPtr->GetComponent<Light>().lock().get();
-	auto camera			= gameObjectPtr->GetComponent<Camera>().lock().get();
-	auto audioSource	= gameObjectPtr->GetComponent<AudioSource>().lock().get();
-	auto audioListener	= gameObjectPtr->GetComponent<AudioListener>().lock().get();
-	auto meshFilter		= gameObjectPtr->GetComponent<MeshFilter>().lock().get();
-	auto meshRenderer	= gameObjectPtr->GetComponent<MeshRenderer>().lock().get();
-	auto material		= meshRenderer ? meshRenderer->GetMaterial_RefWeak().lock().get() : nullptr;
-	auto rigidBody		= gameObjectPtr->GetComponent<RigidBody>().lock().get();
-	auto collider		= gameObjectPtr->GetComponent<Collider>().lock().get();
-	auto constraint		= gameObjectPtr->GetComponent<Constraint>().lock().get();
-	auto scripts		= gameObjectPtr->GetComponents<Script>();
-
 	ImGui::PushItemWidth(g_maxWidth);
 
-	ShowTransform(transform);
-	ShowLight(light);
-	ShowCamera(camera);
-	ShowAudioSource(audioSource);
-	ShowAudioListener(audioListener);
-	ShowMeshFilter(meshFilter);
-	ShowMeshRenderer(meshRenderer);
-	ShowMaterial(material);
-	ShowRigidBody(rigidBody);
-	ShowCollider(collider);
-	ShowConstraint(constraint);
-	for (const auto& script : scripts)
+	if (!g_inspectedGameObject.expired())
 	{
-		ShowScript(script.lock().get());
-	}
+		auto gameObjectPtr = g_inspectedGameObject.lock().get();
 
-	ShowAddComponentButton();
+		auto transform		= gameObjectPtr->GetTransformRef();
+		auto light			= gameObjectPtr->GetComponent<Light>().lock().get();
+		auto camera			= gameObjectPtr->GetComponent<Camera>().lock().get();
+		auto audioSource	= gameObjectPtr->GetComponent<AudioSource>().lock().get();
+		auto audioListener	= gameObjectPtr->GetComponent<AudioListener>().lock().get();
+		auto meshFilter		= gameObjectPtr->GetComponent<MeshFilter>().lock().get();
+		auto meshRenderer	= gameObjectPtr->GetComponent<MeshRenderer>().lock().get();
+		auto material		= meshRenderer ? meshRenderer->GetMaterial_RefWeak().lock().get() : nullptr;
+		auto rigidBody		= gameObjectPtr->GetComponent<RigidBody>().lock().get();
+		auto collider		= gameObjectPtr->GetComponent<Collider>().lock().get();
+		auto constraint		= gameObjectPtr->GetComponent<Constraint>().lock().get();
+		auto scripts		= gameObjectPtr->GetComponents<Script>();
+
+		ShowTransform(transform);
+		ShowLight(light);
+		ShowCamera(camera);
+		ShowAudioSource(audioSource);
+		ShowAudioListener(audioListener);
+		ShowMeshFilter(meshFilter);
+		ShowMeshRenderer(meshRenderer);
+		ShowMaterial(material);
+		ShowRigidBody(rigidBody);
+		ShowCollider(collider);
+		ShowConstraint(constraint);
+		for (const auto& script : scripts)
+		{
+			ShowScript(script.lock().get());
+		}
+
+		ShowAddComponentButton();
+	}
+	else if (!g_inspectedMaterial.expired())
+	{
+		ShowMaterial(g_inspectedMaterial.lock().get());
+	}
 
 	ImGui::PopItemWidth();
 }
 
 void Widget_Properties::Inspect(weak_ptr<GameObject> gameObject)
 {
-	m_gameObject = gameObject;
+	g_inspectedGameObject = gameObject;
+}
+
+void Widget_Properties::Inspect(weak_ptr<Material> material)
+{
+	g_inspectedMaterial = material;
 }
 
 void Widget_Properties::ShowTransform(Transform* transform)
@@ -620,8 +630,8 @@ void Widget_Properties::ShowMaterial(Material* material)
 	//= REFLECT ======================================================
 	float roughness	= material->GetRoughnessMultiplier();
 	float metallic	= material->GetMetallicMultiplier();
-	float normal		= material->GetNormalMultiplier();
-	float height		= material->GetHeightMultiplier();
+	float normal	= material->GetNormalMultiplier();
+	float height	= material->GetHeightMultiplier();
 	Vector2 tiling	=  material->GetTiling();
 	Vector2 offset	=  material->GetOffset();
 	g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());

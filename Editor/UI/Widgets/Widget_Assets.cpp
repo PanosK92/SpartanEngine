@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "../EditorHelper.h"
 #include "../FileDialog.h"
+#include "Widget_Properties.h"
 //================================
 
 //= NAMESPACES ==========
@@ -32,10 +33,12 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static bool g_showFileDialogView = true;
-static bool g_showFileDialogLoad = false;
-static string g_fileDialogSelection_View;
-static string g_fileDialogSelection_Load;
+namespace Widget_Assets_Statics
+{
+	static bool g_showFileDialogView = true;
+	static bool g_showFileDialogLoad = false;
+	static string g_doubleClickedPath_ImportDialog;
+}
 
 Widget_Assets::Widget_Assets()
 {
@@ -47,32 +50,41 @@ void Widget_Assets::Initialize(Context* context)
 	Widget::Initialize(context);
 	m_fileDialogView	= make_unique<FileDialog>(m_context, false, FileDialog_All);
 	m_fileDialogLoad	= make_unique<FileDialog>(m_context, true, FileDialog_Model, FileDialog_Load);
-	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
+	m_windowFlags		|= ImGuiWindowFlags_NoScrollbar;
+
+	// Just clicked, not selected (double clicked, end of dialog)
+	m_fileDialogView->SetCallback_OnPathClicked([this](const string& str) { OnPathClicked(str); });
 }
 
 void Widget_Assets::Update()
 {	
 	if (ImGui::Button("Import"))
 	{
-		g_showFileDialogLoad = true;
+		Widget_Assets_Statics::g_showFileDialogLoad = true;
 	}
 
 	ImGui::SameLine();
 	
 	// VIEW
-	if (m_fileDialogView->Show(&g_showFileDialogView, &g_fileDialogSelection_View))
-	{
-		
-	}
+	m_fileDialogView->Show(&Widget_Assets_Statics::g_showFileDialogView);
 
 	// IMPORT
-	if (m_fileDialogLoad->Show(&g_showFileDialogLoad, &g_fileDialogSelection_Load))
+	if (m_fileDialogLoad->Show(&Widget_Assets_Statics::g_showFileDialogLoad, &Widget_Assets_Statics::g_doubleClickedPath_ImportDialog))
 	{
 		// Model
-		if (FileSystem::IsSupportedModelFile(g_fileDialogSelection_Load))
+		if (FileSystem::IsSupportedModelFile(Widget_Assets_Statics::g_doubleClickedPath_ImportDialog))
 		{
-			EditorHelper::Get().LoadModel(g_fileDialogSelection_Load);
-			g_showFileDialogLoad = false;
+			EditorHelper::Get().LoadModel(Widget_Assets_Statics::g_doubleClickedPath_ImportDialog);
+			Widget_Assets_Statics::g_showFileDialogLoad = false;
 		}
+	}
+}
+
+void Widget_Assets::OnPathClicked(const std::string& path)
+{
+	if (FileSystem::IsEngineMaterialFile(path))
+	{
+		auto material = m_context->GetSubsystem<ResourceManager>()->Load<Material>(path);
+		Widget_Properties::Inspect(material);
 	}
 }

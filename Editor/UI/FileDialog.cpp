@@ -42,6 +42,7 @@ namespace FileDialogStatics
 	static const char* g_hoveredItemPath;
 	static bool g_isMouseHoveringWindow;
 	static DragDropPayload g_dragDropPayload;
+	static bool g_wasVisible;
 }
 
 #define GET_WINDOW_NAME (type == FileDialog_Open)		? "Open"		: (type == FileDialog_Load)			? "Load"		: (type == FileDialog_Save) ? "Save" : "View"
@@ -50,17 +51,19 @@ namespace FileDialogStatics
 
 FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filter filter, FileDialog_Mode type)
 {
-	m_context         = context;
-	m_filter          = filter;
-	m_style           = type;
-	m_title           = GET_WINDOW_NAME;
-	m_isWindow        = standaloneWindow;
-	m_currentPath     = FileSystem::GetWorkingDirectory();
-	m_currentFullPath = m_currentPath;
-	m_itemSize        = FileDialogStatics::g_itemSizeMin;
-	m_stopwatch       = make_unique<Stopwatch>();
-	m_isDirty         = true;
-	m_selectionMade   = false;
+	m_context						= context;
+	m_filter						= filter;
+	m_style							= type;
+	m_title							= GET_WINDOW_NAME;
+	m_isWindow						= standaloneWindow;
+	m_currentPath					= FileSystem::GetWorkingDirectory();
+	m_currentFullPath				= m_currentPath;
+	m_itemSize						= FileDialogStatics::g_itemSizeMin;
+	m_stopwatch						= make_unique<Stopwatch>();
+	m_isDirty						= true;
+	m_selectionMade					= false;
+	m_callback_OnPathClicked		= nullptr;
+	m_callback_OnPathDoubleClicked	= nullptr;
 }
 
 void FileDialog::SetFilter(FileDialog_Filter filter)
@@ -74,15 +77,25 @@ void FileDialog::SetStyle(FileDialog_Mode type)
 	m_title = GET_WINDOW_NAME;
 }
 
-bool FileDialog::Show(bool* isVisible, string* path)
+bool FileDialog::Show(bool* isVisible, string* pathDoubleClicked)
 {
 	if (!(*isVisible))
+	{
+		FileDialogStatics::g_wasVisible	= false;
 		return false;
+	}
+
+	// Force an update as file may have changed since last time
+	if (!FileDialogStatics::g_wasVisible)
+	{
+		m_isDirty = true;
+	}
 
 	m_selectionMade								= false;
 	FileDialogStatics::g_isHoveringItem			= false;
 	FileDialogStatics::g_hoveredItemPath		= "";
-	FileDialogStatics::g_isMouseHoveringWindow = false;
+	FileDialogStatics::g_isMouseHoveringWindow	= false;
+	FileDialogStatics::g_wasVisible				= true;
 
 	// Top menu
 	Dialog_Top(isVisible);
@@ -102,9 +115,9 @@ bool FileDialog::Show(bool* isVisible, string* path)
 		m_isDirty = false;
 	}
 
-	if (m_selectionMade)
+	if (pathDoubleClicked && m_selectionMade)
 	{
-		(*path) = m_currentPath + "/" + string(m_fileNameText);
+		(*pathDoubleClicked) = m_currentPath + "/" + string(m_fileNameText);
 	}
 
 	return m_selectionMade;
@@ -164,6 +177,7 @@ void FileDialog::Dialog_Middle()
 				m_currentFullPath = entry.first;
 				EditorHelper::SetCharArray(&m_fileNameText[0], FileSystem::GetFileNameFromFilePath(entry.first));
 				m_stopwatch->Start();
+				if (m_callback_OnPathClicked) m_callback_OnPathClicked(m_currentFullPath);
 			}
 			else if (m_stopwatch->GetElapsedTimeMs() <= 500) // Double click
 			{
@@ -174,6 +188,7 @@ void FileDialog::Dialog_Middle()
 					m_isDirty     = true;
 				}
 				m_selectionMade = !isDirectory;
+				if (m_callback_OnPathDoubleClicked) m_callback_OnPathDoubleClicked(m_currentPath + "/" + string(m_fileNameText));
 			}
 		}
 		ImGui::PopID();
