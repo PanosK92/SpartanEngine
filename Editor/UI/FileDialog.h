@@ -56,8 +56,11 @@ public:
 	FileDialog_Mode GetStyle() { return m_style; }
 	void SetStyle(FileDialog_Mode type);
 
-	// Show
-	bool Show(bool* isVisible, std::string* path);
+	// Shows the dialog and returns true if a a selection was made
+	bool Show(bool* isVisible, std::string* pathDoubleClicked = nullptr);
+
+	void SetCallback_OnPathClicked(const std::function<void(const std::string&)>& callback)			{ m_callback_OnPathClicked = callback; }
+	void SetCallback_OnPathDoubleClicked(const std::function<void(const std::string&)>& callback)	{ m_callback_OnPathDoubleClicked = callback; }
 
 private:
 	void Dialog_Top(bool* isVisible);
@@ -88,4 +91,8 @@ private:
 	bool m_isDirty;
 	std::unique_ptr<Directus::Stopwatch> m_stopwatch;
 	Directus::Context* m_context;
+
+	// Callbacks
+	std::function<void(const std::string&)> m_callback_OnPathClicked;
+	std::function<void(const std::string&)> m_callback_OnPathDoubleClicked;
 };

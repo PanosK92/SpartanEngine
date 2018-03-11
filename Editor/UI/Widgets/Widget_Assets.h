@@ -36,6 +36,8 @@ public:
 	void Update() override;
 
 private:
+	void OnPathClicked(const std::string& path);
+
 	std::unique_ptr<FileDialog> m_fileDialogView;
 	std::unique_ptr<FileDialog> m_fileDialogLoad;
 };

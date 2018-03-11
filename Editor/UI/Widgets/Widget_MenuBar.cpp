@@ -256,7 +256,7 @@ void Widget_MenuBar::ShowProfiler()
 
 	ImGui::Columns(2, "##MenuBar::ShowProfilerColumns");
 	ImGui::Text("Function"); ImGui::NextColumn();
-	ImGui::Text("Duration (ms)"); ImGui::NextColumn();
+	ImGui::Text("Duration"); ImGui::NextColumn();
 	ImGui::Separator();
 
 	for (const auto& block : Profiler::Get().GetAllBlocks())
