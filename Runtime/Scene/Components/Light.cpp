@@ -57,21 +57,17 @@ namespace Directus
 
 	Light::~Light()
 	{
-		m_shadowMaps.clear();
+		EnableShadowMaps(false);
+	}
+
+	void Light::OnInitialize()
+	{
+		EnableShadowMaps(m_castShadows);
 	}
 
 	void Light::OnStart()
 	{
-		if (!m_shadowMaps.empty())
-			return;
-
-		m_shadowMaps.clear();
-		Camera* camera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
-		for (int i = 0; i < m_cascades; i++)
-		{
-			auto cascade = make_shared<Cascade>(SHADOWMAP_RESOLUTION, camera, GetContext());
-			m_shadowMaps.push_back(cascade);
-		}
+		
 	}
 
 	void Light::OnUpdate()
@@ -130,6 +126,12 @@ namespace Directus
 	{
 		m_lightType = type;
 		m_isDirty = true;
+	}
+
+	void Light::SetCastShadows(bool castShadows)
+	{
+		m_castShadows = castShadows;
+		EnableShadowMaps(m_castShadows);
 	}
 
 	void Light::SetRange(float range)
@@ -228,5 +230,26 @@ namespace Directus
 		Vector3 extents = box.GetExtents();
 
 		return m_frustrum->CheckCube(center, extents) != Outside;
+	}
+
+	void Light::EnableShadowMaps(bool enable)
+	{
+		if (enable)
+		{
+			if (!m_shadowMaps.empty())
+				return;
+
+			m_shadowMaps.clear();
+			Camera* camera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
+			for (int i = 0; i < m_cascades; i++)
+			{
+				auto cascade = make_shared<Cascade>(SHADOWMAP_RESOLUTION, camera, GetContext());
+				m_shadowMaps.push_back(cascade);
+			}
+		}
+		else
+		{
+			m_shadowMaps.clear();
+		}
 	}
 }

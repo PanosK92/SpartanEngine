@@ -179,11 +179,11 @@ namespace Directus
 		Camera* m_camera;
 		Skybox* m_skybox;
 		LineRenderer* m_lineRenderer;
-		Math::Matrix mView;
-		Math::Matrix mProjection;
-		Math::Matrix mViewProjection;
-		Math::Matrix mOrthographicProjection;
-		Math::Matrix mBaseView;
+		Math::Matrix m_mView;
+		Math::Matrix m_mProjectionPersp;
+		Math::Matrix m_mVP;
+		Math::Matrix m_mProjectionOrtho;
+		Math::Matrix m_mViewBase;
 		float m_nearPlane;
 		float m_farPlane;
 		std::vector<ID3D11ShaderResourceView*> m_textures;

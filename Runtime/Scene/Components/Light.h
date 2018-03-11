@@ -57,6 +57,7 @@ namespace Directus
 		~Light();
 
 		//= COMPONENT ================================
+		void OnInitialize() override;
 		void OnStart() override;
 		void OnUpdate() override;
 		void Serialize(FileStream* stream) override;
@@ -74,7 +75,7 @@ namespace Directus
 		float GetIntensity() { return m_intensity; }
 
 		bool GetCastShadows() { return m_castShadows; }
-		void SetCastShadows(bool castShadows) { m_castShadows = castShadows; }
+		void SetCastShadows(bool castShadows);
 
 		void SetRange(float range);
 		float GetRange() { return m_range; }
@@ -101,6 +102,8 @@ namespace Directus
 		bool IsInViewFrustrum(MeshFilter* meshFilter);
 
 	private:
+		void EnableShadowMaps(bool enable);
+
 		LightType m_lightType;
 		bool m_castShadows;
 		Math::Vector4 m_color;

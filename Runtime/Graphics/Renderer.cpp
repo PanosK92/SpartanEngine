@@ -265,6 +265,14 @@ namespace Directus
 		// If there is a camera, render the scene
 		if (m_camera)
 		{
+			m_mView				= m_camera->GetViewMatrix();
+			m_mProjectionPersp	= m_camera->GetProjectionMatrix();
+			m_mVP				= m_mView * m_mProjectionPersp;
+			m_mProjectionOrtho	= Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
+			m_mViewBase			= m_camera->GetBaseViewMatrix();
+			m_nearPlane			= m_camera->GetNearPlane();
+			m_farPlane			= m_camera->GetFarPlane();
+
 			// If there is nothing to render clear to camera's color and present
 			if (m_renderables.empty())
 			{
@@ -365,10 +373,10 @@ namespace Directus
 		m_lights.clear();
 		m_lights.shrink_to_fit();
 
-		m_directionalLight = nullptr;
-		m_skybox = nullptr;
-		m_lineRenderer = nullptr;
-		m_camera = nullptr;
+		m_directionalLight	= nullptr;
+		m_skybox			= nullptr;
+		m_lineRenderer		= nullptr;
+		m_camera			= nullptr;
 	}
 
 	//= PASSES =================================================================================================
@@ -401,21 +409,14 @@ namespace Directus
 			// Get skybox
 			if (auto skybox = gameObject->GetComponent<Skybox>().lock())
 			{
-				m_skybox = skybox.get();
-				m_lineRenderer = gameObject->GetComponent<LineRenderer>().lock().get(); // Hush hush...
+				m_skybox		= skybox.get();
+				m_lineRenderer	= gameObject->GetComponent<LineRenderer>().lock().get(); // Hush hush...
 			}
 
 			// Get camera
 			if (auto camera = gameObject->GetComponent<Camera>().lock())
 			{
-				m_camera		= camera.get();
-				mView			= m_camera->GetViewMatrix();
-				mProjection		= m_camera->GetProjectionMatrix();
-				mViewProjection = mView * mProjection;
-				mOrthographicProjection = Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
-				mBaseView		= m_camera->GetBaseViewMatrix();
-				m_nearPlane		= m_camera->GetNearPlane();
-				m_farPlane		= m_camera->GetFarPlane();
+				m_camera = camera.get();
 			}
 		}
 
@@ -553,7 +554,7 @@ namespace Directus
 						continue;
 
 					// UPDATE PER OBJECT BUFFER
-					shader->UpdatePerObjectBuffer(mWorld, mView, mProjection);
+					shader->UpdatePerObjectBuffer(mWorld, m_mView, m_mProjectionPersp);
 
 					// Set mesh buffer
 					if (meshFilter->HasMesh() && meshFilter->SetBuffers())
@@ -602,10 +603,10 @@ namespace Directus
 		m_shaderDeferred->Set();
 
 		// Set render target
-		SetRenderTarget(outRenderTexture);
+		SetRenderTarget(outRenderTexture, false);
 
 		// Update buffers
-		m_shaderDeferred->UpdateMatrixBuffer(Matrix::Identity, mView, mBaseView, mProjection, mOrthographicProjection);
+		m_shaderDeferred->UpdateMatrixBuffer(Matrix::Identity, m_mView, m_mViewBase, m_mProjectionPersp, m_mProjectionOrtho);
 		m_shaderDeferred->UpdateMiscBuffer(m_lights, m_camera);
 
 		//= Update textures ===========================================================
@@ -680,7 +681,7 @@ namespace Directus
 
 		// TEXTURE
 		m_shaderTexture->Set();
-		m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
+		m_shaderTexture->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, 0);
 		m_shaderTexture->SetTexture(m_gbuffer->GetShaderResource(texType), 0);
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
@@ -801,7 +802,7 @@ namespace Directus
 
 				m_gizmoRectLight->SetBuffer();
 				m_shaderTexture->Set();
-				m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
+				m_shaderTexture->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, 0);
 				m_shaderTexture->SetTexture((ID3D11ShaderResourceView*)lightTex->GetShaderResource(), 0);
 				m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
 			}
@@ -814,7 +815,7 @@ namespace Directus
 			m_font->SetBuffer();
 
 			m_shaderFont->Set();
-			m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, m_font->GetColor(), 0);
+			m_shaderFont->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, m_font->GetColor(), 0);
 			m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource(), 0);
 			m_shaderFont->DrawIndexed(m_font->GetIndexCount());
 		}
@@ -828,7 +829,7 @@ namespace Directus
 	{
 		SetRenderTarget(renderTarget, false);
 		m_shaderFXAA->Set();
-		m_shaderFXAA->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
+		m_shaderFXAA->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, GET_RESOLUTION, 0);
 		m_shaderFXAA->SetTexture(texture, 0);
 		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
 	}
@@ -837,7 +838,7 @@ namespace Directus
 	{
 		SetRenderTarget(renderTarget, false);
 		m_shaderSharpening->Set();
-		m_shaderSharpening->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
+		m_shaderSharpening->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, GET_RESOLUTION, 0);
 		m_shaderSharpening->SetTexture(texture, 0);
 		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
 	}
@@ -846,7 +847,7 @@ namespace Directus
 	{
 		SetRenderTarget(renderTarget, false);
 		m_shaderBlur->Set();
-		m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, blurScale, 0);
+		m_shaderBlur->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, blurScale, 0);
 		m_shaderBlur->SetTexture(texture, 0); // Shadows are alpha
 		m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
 	}
@@ -859,7 +860,7 @@ namespace Directus
 		PROFILE_FUNCTION_BEGIN();
 
 		// SHADOWING (Shadow mapping + SSAO)
-		SetRenderTarget(outRenderTexture);
+		SetRenderTarget(outRenderTexture, false);
 
 		// TEXTURES
 		vector<void*> textures;
@@ -876,15 +877,15 @@ namespace Directus
 		}
 
 		// BUFFER
-		Matrix mvp_ortho		= Matrix::Identity * mBaseView * mOrthographicProjection;
-		Matrix mvp_persp_inv	= (Matrix::Identity * mView * mProjection).Inverted();
+		Matrix mvp_ortho		= Matrix::Identity * m_mViewBase * m_mProjectionOrtho;
+		Matrix mvp_persp_inv	= (Matrix::Identity * m_mView * m_mProjectionPersp).Inverted();
 
 		m_shaderShadowing->Set();
 		m_shaderShadowing->SetBuffer(
 			mvp_ortho, 
 			mvp_persp_inv, 
-			mView, 
-			mProjection,		
+			m_mView, 
+			m_mProjectionPersp,		
 			GET_RESOLUTION, 
 			inDirectionalLight,
 			m_camera,
