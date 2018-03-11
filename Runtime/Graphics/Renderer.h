@@ -82,7 +82,7 @@ namespace Directus
 		//========================
 
 		// Rendering
-		void SetRenderTarget(void* renderTarget);
+		void SetRenderTarget(void* renderTarget, bool clear = true);
 		void SetRenderTarget(const std::shared_ptr<D3D11RenderTexture>& renderTexture);
 		void* GetFrame();
 		void Present();
@@ -116,32 +116,21 @@ namespace Directus
 		int GetRendereredMeshes() { return m_renderedMeshesCount; }
 
 	private:	
-		void AcquireRenderables(const Variant& renderables);
-		void DirectionalLightDepthPass(Light* directionalLight);
-		//= RENDER PATHS =============================================
-		void GBufferPass();
-		void PreDeferredPass(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing);
-		void DeferredPass(void* inTextureShadowing, void* outRenderTexture);	
-		void PostDeferredPass(std::shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, std::shared_ptr<D3D11RenderTexture>& outRenderTexture
-		);
-		bool RenderGBuffer();
-		void DebugDraw();
-		const Math::Vector4& GetClearColor();
-		//============================================================
-	
-		//= PASSES ===========================================================================================
+		void Pass_RenderableAcquisition(const Variant& renderables);
+		void Pass_DepthDirectionalLight(Light* directionalLight);
+		void Pass_GBuffer();
+		void Pass_PreDeferred(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing);
+		void Pass_Deferred(void* inTextureShadowing, void* outRenderTexture);	
+		void Pass_PostDeferred(std::shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, std::shared_ptr<D3D11RenderTexture>& outRenderTexture);
+		bool Pass_DebugGBuffer();
+		void Pass_Debug();
 		void Pass_FXAA(void* texture, void* renderTarget);
 		void Pass_Sharpening(void* texture, void* renderTarget);
 		void Pass_Blur(void* texture, void* renderTarget, const Math::Vector2& blurScale);
-		void Pass_Shadowing(
-			void* inTextureNormal,
-			void* inTextureDepth,
-			void* inTextureNormalNoise,
-			Light* inDirectionalLight,
-			void* outRenderTexture
-		);
-		//====================================================================================================
-		
+		void Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture);
+
+		const Math::Vector4& GetClearColor();
+
 		std::unique_ptr<GBuffer> m_gbuffer;
 
 		// GAMEOBJECTS ========================

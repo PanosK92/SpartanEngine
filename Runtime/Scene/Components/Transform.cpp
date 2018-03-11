@@ -62,7 +62,7 @@ namespace Directus
 		stream->Write(m_rotationLocal);
 		stream->Write(m_scaleLocal);
 		stream->Write(m_lookAt);
-		stream->Write(m_parent ? m_parent->GetGameObject()->GetID() : NOT_ASSIGNED_HASH);
+		stream->Write(m_parent ? m_parent->GetGameObject_Ref()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
 	void Transform::Deserialize(FileStream* stream)

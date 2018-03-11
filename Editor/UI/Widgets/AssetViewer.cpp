@@ -40,7 +40,6 @@ static string g_fileDialogSelection_Load;
 AssetViewer::AssetViewer()
 {
 	m_title = "Assets";
-	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
 }
 
 void AssetViewer::Initialize(Context* context)
@@ -48,6 +47,7 @@ void AssetViewer::Initialize(Context* context)
 	Widget::Initialize(context);
 	m_fileDialogView	= make_unique<FileDialog>(m_context, false, FileDialog_All);
 	m_fileDialogLoad	= make_unique<FileDialog>(m_context, true, FileDialog_Model, FileDialog_Load);
+	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
 }
 
 void AssetViewer::Update()

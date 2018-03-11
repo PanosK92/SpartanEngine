@@ -64,7 +64,7 @@ namespace Directus
 		m_lastKnownScale = GetTransform()->GetScale();
 
 		// If there is a mesh, use it's bounding box
-		if (auto meshFilter = GetGameObject()->GetMeshFilterRef())
+		if (auto meshFilter = GetGameObject_Ref()->GetMeshFilterRef())
 		{
 			m_center = GetTransform()->GetPosition();
 			m_size = meshFilter->GetBoundingBoxTransformed().GetSize();
@@ -188,7 +188,7 @@ namespace Directus
 
 		case ColliderShape_Mesh:
 			// Get mesh filter
-			MeshFilter* meshFilter = GetGameObject()->GetComponent<MeshFilter>().lock().get();
+			MeshFilter* meshFilter = GetGameObject_Ref()->GetComponent<MeshFilter>().lock().get();
 			if (!meshFilter)
 			{
 				LOG_WARNING("Collider: Can't construct mesh shape, there is no MeshFilter component attached.");
@@ -250,7 +250,7 @@ namespace Directus
 
 	void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape)
 	{
-		RigidBody* rigidBody = GetGameObject()->GetComponent<RigidBody>().lock().get();
+		RigidBody* rigidBody = GetGameObject_Ref()->GetComponent<RigidBody>().lock().get();
 		if (rigidBody)
 		{
 			rigidBody->SetCollisionShape(shape);

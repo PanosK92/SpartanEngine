@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene.h"
 #include "Components/IComponent.h"
 #include "../Core/Context.h"
+#include "../Core/EventSystem.h"
 //================================
 
 namespace Directus
@@ -34,7 +35,7 @@ namespace Directus
 	class MeshFilter;
 	class MeshRenderer;
 
-	class ENGINE_CLASS GameObject
+	class ENGINE_CLASS GameObject : public std::enable_shared_from_this<GameObject>
 	{
 	public:
 		GameObject(Context* context);
@@ -101,6 +102,9 @@ namespace Directus
 				m_meshRenderer = (MeshRenderer*)newComponent.get();
 			}
 
+			// Make the scene resolve
+			FIRE_EVENT(EVENT_SCENE_RESOLVE);
+
 			// Return it as a component of the requested type
 			return newComponent;
 		}
@@ -131,7 +135,7 @@ namespace Directus
 				if (type != component.second->GetType())
 					continue;
 
-				components.push_back(std::static_pointer_cast<T>(component.second));
+				components.emplace_back(std::static_pointer_cast<T>(component.second));
 			}
 
 			return components;
@@ -166,15 +170,19 @@ namespace Directus
 					++it;
 				}
 			}
+
+			// Make the scene resolve
+			FIRE_EVENT(EVENT_SCENE_RESOLVE);
 		}
 
 		void RemoveComponentByID(unsigned int id);
 		//======================================================================================================
 
-		// Direct access to performance critical components (not safe)
+		// Direct access for performance critical usage (not safe)
 		Transform* GetTransformRef() { return m_transform; }
 		MeshFilter* GetMeshFilterRef() { return m_meshFilter; }
 		MeshRenderer* GetMeshRendererRef() { return m_meshRenderer; }
+		std::shared_ptr<GameObject> GetSharedPtr() { return shared_from_this(); }
 
 	private:
 		unsigned int m_ID;
@@ -186,8 +194,8 @@ namespace Directus
 		Context* m_context;
 
 		// Caching of performance critical components
-		Transform* m_transform; // Updating performance - never null
-		MeshFilter* m_meshFilter; // Rendering performance - can be null
-		MeshRenderer* m_meshRenderer; // Rendering performance - can be null
+		Transform* m_transform;			// Updating performance - never null
+		MeshFilter* m_meshFilter;		// Rendering performance - can be null
+		MeshRenderer* m_meshRenderer;	// Rendering performance - can be null
 	};
 }

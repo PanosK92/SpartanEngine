@@ -141,7 +141,7 @@ void Hierarchy::Tree_AddGameObject(GameObject* gameObject)
 	auto children = gameObject->GetTransformRef()->GetChildren();
 	for (const auto& child : children)
 	{
-		if (child->GetGameObject()->IsVisibleInHierarchy())
+		if (child->GetGameObject_Ref()->IsVisibleInHierarchy())
 		{
 			hasVisibleChildren = true;
 			break;
@@ -171,10 +171,10 @@ void Hierarchy::Tree_AddGameObject(GameObject* gameObject)
 		{
 			for (const auto& child : children)
 			{
-				if (!child->GetGameObject()->IsVisibleInHierarchy())
+				if (!child->GetGameObject_Ref()->IsVisibleInHierarchy())
 					continue;
 
-				Tree_AddGameObject(child->GetGameObjectRef().lock().get());
+				Tree_AddGameObject(child->GetGameObject_Ref());
 			}
 		}
 
@@ -192,7 +192,7 @@ void Hierarchy::HandleClicking()
 	// Left click on item - Select
 	if (ImGui::IsMouseClicked(0) && HierarchyStatics::g_hoveredGameObject)
 	{
-		SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetTransformRef()->GetGameObjectRef());
+		SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetSharedPtr());
 	}
 
 	// Right click on item - Select and show context menu
@@ -200,7 +200,7 @@ void Hierarchy::HandleClicking()
 	{
 		if (HierarchyStatics::g_hoveredGameObject)
 		{			
-			SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetTransformRef()->GetGameObjectRef());
+			SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetSharedPtr());
 		}
 
 		ImGui::OpenPopup("##HierarchyContextMenu");		
@@ -358,12 +358,12 @@ void Hierarchy::HandleKeyShortcuts()
 
 void Hierarchy::Action_GameObject_Delete(weak_ptr<GameObject> gameObject)
 {
-	HierarchyStatics::g_scene->RemoveGameObject(gameObject);
+	HierarchyStatics::g_scene->GameObject_Remove(gameObject);
 }
 
 GameObject* Hierarchy::Action_GameObject_CreateEmpty()
 {
-	auto gameObject = HierarchyStatics::g_scene->CreateGameObject().lock().get();
+	auto gameObject = HierarchyStatics::g_scene->GameObject_CreateAdd().lock().get();
 	if (auto selected = m_gameObjectSelected.lock())
 	{
 		gameObject->GetTransformRef()->SetParent(selected->GetTransformRef());

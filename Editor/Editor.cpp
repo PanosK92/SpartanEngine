@@ -123,23 +123,25 @@ void Editor::ApplyStyle()
 	float roundness				= 2.0f;
 	ImVec4 white				= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 	ImVec4 text					= ImVec4(0.76f, 0.77f, 0.8f, 1.0f);
-	ImVec4 backgroundDark		= ImVec4(0.16f, 0.16f, 0.17f, 1.00f);
+	ImVec4 black				= ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+	ImVec4 backgroundVeryDark	= ImVec4(0.08f, 0.086f, 0.094f, 1.00f);
+	ImVec4 backgroundDark		= ImVec4(0.117f, 0.121f, 0.145f, 1.00f);
 	ImVec4 backgroundMedium		= ImVec4(0.26f, 0.26f, 0.27f, 1.0f);
 	ImVec4 backgroundLight		= ImVec4(0.37f, 0.38f, 0.39f, 1.0f);
-	ImVec4 highlightBlue		= ImVec4(0.22f, 0.38f, 0.50f, 0.5f);
-	ImVec4 highlightBlueHovered	= ImVec4(0.22f, 0.5f, 0.64f, 0.6f);
-	ImVec4 highlightBlueActive	= ImVec4(0.22f, 0.5f, 0.8f, 0.7f);
-	ImVec4 barBackground		= backgroundMedium;
-	ImVec4 bar					= backgroundLight;
+	ImVec4 highlightBlue		= ImVec4(0.172f, 0.239f, 0.341f, 1.0f);	
+	ImVec4 highlightBlueActive	= ImVec4(0.182f, 0.249f, 0.361f, 1.0f);
+	ImVec4 highlightBlueHovered	= ImVec4(0.202f, 0.269f, 0.391f, 1.0f); 
+	ImVec4 barBackground		= ImVec4(0.078f, 0.082f, 0.09f, 1.0f);
+	ImVec4 bar					= ImVec4(0.164f, 0.180f, 0.231f, 1.0f);
 	ImVec4 barHovered			= ImVec4(0.411f, 0.411f, 0.411f, 1.0f);
-	ImVec4 barActive			= ImVec4(0.509f, 0.509f, 0.509f, 1.0f);
+	ImVec4 barActive			= ImVec4(0.337f, 0.337f, 0.368f, 1.0f);
 
 	// Spatial
 	style.WindowBorderSize		= 1.0f;
 	style.FrameBorderSize		= 1.0f;
 	//style.WindowMinSize		= ImVec2(160, 20);
-	//style.FramePadding		= ImVec2(4, 2);
-	//style.ItemSpacing			= ImVec2(6, 2);
+	style.FramePadding			= ImVec2(5, 5);
+	style.ItemSpacing			= ImVec2(6, 5);
 	//style.ItemInnerSpacing	= ImVec2(6, 4);
 	style.Alpha					= 1.0f;
 	style.WindowRounding		= roundness;
@@ -158,15 +160,15 @@ void Editor::ApplyStyle()
 	//style.Colors[ImGuiCol_TextDisabled]			= ImVec4(0.86f, 0.93f, 0.89f, 0.28f);
 	style.Colors[ImGuiCol_WindowBg]					= backgroundDark;
 	//style.Colors[ImGuiCol_ChildBg]				= ImVec4(0.20f, 0.22f, 0.27f, 0.58f);
-	style.Colors[ImGuiCol_Border]					= backgroundLight;
+	style.Colors[ImGuiCol_Border]					= black;
 	//style.Colors[ImGuiCol_BorderShadow]			= ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-	style.Colors[ImGuiCol_FrameBg]					= backgroundMedium;
+	style.Colors[ImGuiCol_FrameBg]					= bar;
 	style.Colors[ImGuiCol_FrameBgHovered]			= highlightBlue;
 	style.Colors[ImGuiCol_FrameBgActive]			= highlightBlueHovered;
-	style.Colors[ImGuiCol_TitleBg]					= backgroundMedium;
+	style.Colors[ImGuiCol_TitleBg]					= backgroundVeryDark;
 	//style.Colors[ImGuiCol_TitleBgCollapsed]		= ImVec4(0.20f, 0.22f, 0.27f, 0.75f);
-	style.Colors[ImGuiCol_TitleBgActive]			= backgroundLight;
-	style.Colors[ImGuiCol_MenuBarBg]				= backgroundMedium;
+	style.Colors[ImGuiCol_TitleBgActive]			= bar;
+	style.Colors[ImGuiCol_MenuBarBg]				= backgroundVeryDark;
 	style.Colors[ImGuiCol_ScrollbarBg]				= barBackground;
 	style.Colors[ImGuiCol_ScrollbarGrab]			= bar;
 	style.Colors[ImGuiCol_ScrollbarGrabHovered]		= barHovered;
@@ -174,7 +176,7 @@ void Editor::ApplyStyle()
 	style.Colors[ImGuiCol_CheckMark]				= white;
 	style.Colors[ImGuiCol_SliderGrab]				= bar;
 	style.Colors[ImGuiCol_SliderGrabActive]			= barActive;
-	style.Colors[ImGuiCol_Button]					= backgroundLight;
+	style.Colors[ImGuiCol_Button]					= barActive;
 	style.Colors[ImGuiCol_ButtonHovered]			= highlightBlue;
 	style.Colors[ImGuiCol_ButtonActive]				= highlightBlueHovered;
 	style.Colors[ImGuiCol_Header]					= highlightBlue; // selected items (tree, menu bar etc.)
@@ -194,10 +196,10 @@ void Editor::ApplyStyle()
 	style.Colors[ImGuiCol_PlotHistogram]			= highlightBlue; // Also used for progress bar
 	style.Colors[ImGuiCol_PlotHistogramHovered]		= highlightBlueHovered;
 	style.Colors[ImGuiCol_TextSelectedBg]			= highlightBlue;
-	style.Colors[ImGuiCol_PopupBg]					= backgroundMedium;
+	style.Colors[ImGuiCol_PopupBg]					= backgroundVeryDark;
 	style.Colors[ImGuiCol_DragDropTarget]			= backgroundLight;
 	//style.Colors[ImGuiCol_ModalWindowDarkening]	= ImVec4(0.20f, 0.22f, 0.27f, 0.73f);
 
 	ImGuiIO& io = ImGui::GetIO();
-	io.Fonts->AddFontFromFileTTF("Standard Assets\\Editor\\CalibriLight.ttf", fontSize);
+	io.Fonts->AddFontFromFileTTF("Standard Assets\\Editor\\CalibriBold.ttf", fontSize);
 }
