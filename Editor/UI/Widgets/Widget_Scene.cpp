@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==============================
-#include "Hierarchy.h"
+#include "Widget_Scene.h"
 #include "../../ImGui/imgui.h"
 #include "../DragDrop.h"
 #include "../EditorHelper.h"
@@ -38,7 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/Constraint.h"
 #include "Scene/Components/MeshFilter.h"
 #include "Scene/Components/MeshRenderer.h"
-#include "Properties.h"
+#include "Widget_Properties.h"
 //=========================================
 
 //= NAMESPACES ==========
@@ -46,7 +46,7 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-weak_ptr<GameObject> Hierarchy::m_gameObjectSelected;
+weak_ptr<GameObject> Widget_Scene::m_gameObjectSelected;
 weak_ptr<GameObject> g_gameObjectEmpty;
 
 namespace HierarchyStatics
@@ -57,14 +57,15 @@ namespace HierarchyStatics
 	static Input* g_input					= nullptr;
 	static DragDropPayload g_payload;
 }
-Hierarchy::Hierarchy()
+
+Widget_Scene::Widget_Scene()
 {
-	m_title						= "Hierarchy";
+	m_title						= "Scene";
 	m_context					= nullptr;
 	HierarchyStatics::g_scene	= nullptr;
 }
 
-void Hierarchy::Initialize(Context* context)
+void Widget_Scene::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 
@@ -75,7 +76,7 @@ void Hierarchy::Initialize(Context* context)
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 }
 
-void Hierarchy::Update()
+void Widget_Scene::Update()
 {
 	// If something is being loaded, don't parse the hierarchy
 	if (EditorHelper::Get().GetEngineLoading())
@@ -84,17 +85,17 @@ void Hierarchy::Update()
 	Tree_Show();
 }
 
-void Hierarchy::SetSelectedGameObject(weak_ptr<GameObject> gameObject)
+void Widget_Scene::SetSelectedGameObject(weak_ptr<GameObject> gameObject)
 {
 	m_gameObjectSelected = gameObject;
-	Properties::Inspect(m_gameObjectSelected);
+	Widget_Properties::Inspect(m_gameObjectSelected);
 }
 
-void Hierarchy::Tree_Show()
+void Widget_Scene::Tree_Show()
 {
 	OnTreeBegin();
 
-	if (ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		// Dropping on the scene node should unparent the GameObject
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_GameObject))
@@ -118,19 +119,19 @@ void Hierarchy::Tree_Show()
 	OnTreeEnd();
 }
 
-void Hierarchy::OnTreeBegin()
+void Widget_Scene::OnTreeBegin()
 {
 	HierarchyStatics::g_hoveredGameObject = nullptr;
 }
 
-void Hierarchy::OnTreeEnd()
+void Widget_Scene::OnTreeEnd()
 {
 	HandleKeyShortcuts();
 	HandleClicking();
 	ContextMenu();
 }
 
-void Hierarchy::Tree_AddGameObject(GameObject* gameObject)
+void Widget_Scene::Tree_AddGameObject(GameObject* gameObject)
 {
 	// Node self visibility
 	if (!gameObject->IsVisibleInHierarchy())
@@ -183,7 +184,7 @@ void Hierarchy::Tree_AddGameObject(GameObject* gameObject)
 	}
 }
 
-void Hierarchy::HandleClicking()
+void Widget_Scene::HandleClicking()
 {
 	// Since we are handling clicking manually, we must ensure we are inside the window
 	if (!ImGui::IsMouseHoveringWindow())
@@ -213,7 +214,7 @@ void Hierarchy::HandleClicking()
 	}
 }
 
-void Hierarchy::HandleDragDrop(GameObject* gameObjPtr)
+void Widget_Scene::HandleDragDrop(GameObject* gameObjPtr)
 {
 	// Drag
 	if (DragDrop::Get().DragBegin())
@@ -237,7 +238,7 @@ void Hierarchy::HandleDragDrop(GameObject* gameObjPtr)
 	}
 }
 
-void Hierarchy::ContextMenu()
+void Widget_Scene::ContextMenu()
 {
 	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
 		return;
@@ -348,7 +349,7 @@ void Hierarchy::ContextMenu()
 	ImGui::EndPopup();
 }
 
-void Hierarchy::HandleKeyShortcuts()
+void Widget_Scene::HandleKeyShortcuts()
 {
 	if (HierarchyStatics::g_input->GetButtonKeyboard(Delete))
 	{
@@ -356,12 +357,12 @@ void Hierarchy::HandleKeyShortcuts()
 	}
 }
 
-void Hierarchy::Action_GameObject_Delete(weak_ptr<GameObject> gameObject)
+void Widget_Scene::Action_GameObject_Delete(weak_ptr<GameObject> gameObject)
 {
 	HierarchyStatics::g_scene->GameObject_Remove(gameObject);
 }
 
-GameObject* Hierarchy::Action_GameObject_CreateEmpty()
+GameObject* Widget_Scene::Action_GameObject_CreateEmpty()
 {
 	auto gameObject = HierarchyStatics::g_scene->GameObject_CreateAdd().lock().get();
 	if (auto selected = m_gameObjectSelected.lock())
@@ -372,7 +373,7 @@ GameObject* Hierarchy::Action_GameObject_CreateEmpty()
 	return gameObject;
 }
 
-void Hierarchy::Action_GameObject_CreateCube()
+void Widget_Scene::Action_GameObject_CreateCube()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cube);
@@ -380,7 +381,7 @@ void Hierarchy::Action_GameObject_CreateCube()
 	gameObject->SetName("Cube");
 }
 
-void Hierarchy::Action_GameObject_CreateQuad()
+void Widget_Scene::Action_GameObject_CreateQuad()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Quad);
@@ -388,7 +389,7 @@ void Hierarchy::Action_GameObject_CreateQuad()
 	gameObject->SetName("Quad");
 }
 
-void Hierarchy::Action_GameObject_CreateSphere()
+void Widget_Scene::Action_GameObject_CreateSphere()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Sphere);
@@ -396,7 +397,7 @@ void Hierarchy::Action_GameObject_CreateSphere()
 	gameObject->SetName("Sphere");
 }
 
-void Hierarchy::Action_GameObject_CreateCylinder()
+void Widget_Scene::Action_GameObject_CreateCylinder()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cylinder);
@@ -404,7 +405,7 @@ void Hierarchy::Action_GameObject_CreateCylinder()
 	gameObject->SetName("Cylinder");
 }
 
-void Hierarchy::Action_GameObject_CreateCone()
+void Widget_Scene::Action_GameObject_CreateCone()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cone);
@@ -412,63 +413,63 @@ void Hierarchy::Action_GameObject_CreateCone()
 	gameObject->SetName("Cone");
 }
 
-void Hierarchy::Action_GameObject_CreateCamera()
+void Widget_Scene::Action_GameObject_CreateCamera()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Camera>();
 	gameObject->SetName("Camera");
 }
 
-void Hierarchy::Action_GameObject_CreateLightDirectional()
+void Widget_Scene::Action_GameObject_CreateLightDirectional()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
 	gameObject->SetName("Directional");
 }
 
-void Hierarchy::Action_GameObject_CreateLightPoint()
+void Widget_Scene::Action_GameObject_CreateLightPoint()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Point);
 	gameObject->SetName("Point");
 }
 
-void Hierarchy::Action_GameObject_CreateLightSpot()
+void Widget_Scene::Action_GameObject_CreateLightSpot()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
 	gameObject->SetName("Spot");
 }
 
-void Hierarchy::Action_GameObject_CreateRigidBody()
+void Widget_Scene::Action_GameObject_CreateRigidBody()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<RigidBody>();
 	gameObject->SetName("RigidBody");
 }
 
-void Hierarchy::Action_GameObject_CreateCollider()
+void Widget_Scene::Action_GameObject_CreateCollider()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Collider>();
 	gameObject->SetName("Collider");
 }
 
-void Hierarchy::Action_GameObject_CreateConstraint()
+void Widget_Scene::Action_GameObject_CreateConstraint()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Constraint>();
 	gameObject->SetName("Constraint");
 }
 
-void Hierarchy::Action_GameObject_CreateAudioSource()
+void Widget_Scene::Action_GameObject_CreateAudioSource()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<AudioSource>();
 	gameObject->SetName("AudioSource");
 }
 
-void Hierarchy::Action_GameObject_CreateAudioListener()
+void Widget_Scene::Action_GameObject_CreateAudioListener()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<AudioListener>();

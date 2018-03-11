@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =================
-#include "MenuBar.h"
+#include "Widget_MenuBar.h"
 #include "../../ImGui/imgui.h"
 #include "../FileDialog.h"
 #include "Core/Engine.h"
@@ -43,12 +43,12 @@ static string g_fileDialogSelection;
 ResourceManager* g_resourceManager	= nullptr;
 Scene* g_scene						= nullptr;
 
-MenuBar::MenuBar()
+Widget_MenuBar::Widget_MenuBar()
 {
 	m_isWindow = false;
 }
 
-void MenuBar::Initialize(Context* context)
+void Widget_MenuBar::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 	g_resourceManager = m_context->GetSubsystem<ResourceManager>();
@@ -56,7 +56,7 @@ void MenuBar::Initialize(Context* context)
 	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Scene);
 }
 
-void MenuBar::Update()
+void Widget_MenuBar::Update()
 {
 	if (ImGui::BeginMainMenuBar())
 	{
@@ -125,7 +125,7 @@ void MenuBar::Update()
 	if (g_showProfiler)			ShowProfiler();
 }
 
-void MenuBar::ShowFileDialog()
+void Widget_MenuBar::ShowFileDialog()
 {
 	if (!m_fileDialog->Show(&g_fileDialogVisible, &g_fileDialogSelection))
 		return;
@@ -152,7 +152,7 @@ void MenuBar::ShowFileDialog()
 	}
 }
 
-void MenuBar::ShowAboutWindow()
+void Widget_MenuBar::ShowAboutWindow()
 {
 	ImGui::Begin("About", &g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
 
@@ -198,7 +198,7 @@ void MenuBar::ShowAboutWindow()
 	ImGui::End();
 }
 
-void MenuBar::ShowResourceCache()
+void Widget_MenuBar::ShowResourceCache()
 {
 	auto resources = m_context->GetSubsystem<ResourceManager>()->GetResourceAll();
 	auto totalMemoryUsage =  m_context->GetSubsystem<ResourceManager>()->GetMemoryUsage() / 1000.0f / 1000.0f;
@@ -249,7 +249,7 @@ void MenuBar::ShowResourceCache()
 	ImGui::End();
 }
 
-void MenuBar::ShowProfiler()
+void Widget_MenuBar::ShowProfiler()
 {
 	ImGui::SetNextWindowSize(ImVec2(600, 600), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Profiler", &g_showProfiler, ImGuiWindowFlags_HorizontalScrollbar);

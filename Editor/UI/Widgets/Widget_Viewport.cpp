@@ -20,14 +20,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =======================
-#include "Viewport.h"
+#include "Widget_Viewport.h"
 #include "../../ImGui/imgui.h"
 #include "Graphics/Renderer.h"
 #include "Scene/Scene.h"
 #include "Scene/GameObject.h"
 #include "Scene/Components/Camera.h"
 #include "../EditorHelper.h"
-#include "Hierarchy.h"
+#include "Widget_Scene.h"
 #include "../DragDrop.h"
 //==================================
 
@@ -59,12 +59,12 @@ const char* g_rendererViews[] =
 static int g_rendererViewInt		= 0;
 static const char* g_rendererView	= g_rendererViews[g_rendererViewInt];
 
-Viewport::Viewport()
+Widget_Viewport::Widget_Viewport()
 {
 	m_title = "Viewport";
 }
 
-void Viewport::Initialize(Context* context)
+void Widget_Viewport::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 	m_windowFlags	|= ImGuiWindowFlags_NoScrollbar;
@@ -72,7 +72,7 @@ void Viewport::Initialize(Context* context)
 	g_scene			= m_context->GetSubsystem<Scene>();
 }
 
-void Viewport::Update()
+void Widget_Viewport::Update()
 {
 	if (!g_renderer)
 		return;
@@ -82,7 +82,7 @@ void Viewport::Update()
 	ShowFrame();
 }
 
-void Viewport::ShowTopToolbar()
+void Widget_Viewport::ShowTopToolbar()
 {
 	// Render options
 	ImGui::SetCursorPosX(ImGui::GetStyle().WindowPadding.x); ImGui::Checkbox("Physics", &g_physics);
@@ -117,7 +117,7 @@ void Viewport::ShowTopToolbar()
 	SetRenderFlags();
 }
 
-void Viewport::ShowFrame()
+void Widget_Viewport::ShowFrame()
 {
 	float width		= ImGui::GetWindowContentRegionWidth();
 	float height	= ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y - 30;
@@ -142,7 +142,7 @@ void Viewport::ShowFrame()
 	MousePicking();
 }
 
-void Viewport::MousePicking()
+void Widget_Viewport::MousePicking()
 {
 	if (!ImGui::IsMouseHoveringWindow() || !ImGui::IsMouseClicked(0))
 		return;
@@ -154,14 +154,14 @@ void Viewport::MousePicking()
 		auto picked = camera.lock()->GetComponent<Camera>().lock()->Pick(mousePosRelative);
 		if (!picked.expired())
 		{
-			Hierarchy::SetSelectedGameObject(picked);
+			Widget_Scene::SetSelectedGameObject(picked);
 			return;
 		}
 	}
 
-	Hierarchy::SetSelectedGameObject(weak_ptr<GameObject>());
+	Widget_Scene::SetSelectedGameObject(weak_ptr<GameObject>());
 }
-void Viewport::SetRenderFlags()
+void Widget_Viewport::SetRenderFlags()
 {
 	g_physics				? Renderer::RenderMode_Enable(Render_Physics)				: Renderer::RenderMode_Disable(Render_Physics);		
 	g_aabb					? Renderer::RenderMode_Enable(Render_AABB)					: Renderer::RenderMode_Disable(Render_AABB);	

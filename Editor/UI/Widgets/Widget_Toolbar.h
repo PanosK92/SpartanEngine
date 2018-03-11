@@ -23,28 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======
 #include "Widget.h"
-#include <memory>
 //=================
 
-class FileDialog;
-
-class MenuBar : public Widget
+class Widget_Toolbar : public Widget
 {
 public:
-	MenuBar();
+	Widget_Toolbar();
 	void Initialize(Directus::Context* context) override;
+	void Begin() override;
 	void Update() override;
-
-private:
-	void ShowFileDialog();
-	void ShowProgressDialog();
-	void OnSceneLoaded();
-	void OnSceneSaved();
-	void ShowAboutWindow();
-
-	// DEBUG
-	void ShowResourceCache();
-	void ShowProfiler();
-
-	std::unique_ptr<FileDialog> m_fileDialog;
 };

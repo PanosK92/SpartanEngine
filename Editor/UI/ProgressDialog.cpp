@@ -55,7 +55,7 @@ void ProgressDialog::Update()
 void ProgressDialog::ShowProgressBar()
 {
 	// Window begin
-	ImGui::SetNextWindowSize(ImVec2(width, 73), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(width, 83), ImGuiCond_Always);
 	ImGui::Begin(m_title.c_str(), &m_isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
 	ImGui::SetWindowFocus();
 

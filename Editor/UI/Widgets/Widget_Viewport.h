@@ -25,10 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 //=================
 
-class Viewport : public Widget
+class Widget_Viewport : public Widget
 {
 public:
-	Viewport();
+	Widget_Viewport();
 
 	void Initialize(Directus::Context* context) override;	
 	void Update() override;

@@ -21,55 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ======
 #include "Widget.h"
 #include <memory>
-#include <functional>
-#include <deque>
-#include "Logging/ILogger.h"
-//==========================
+//=================
 
-struct LogPackage
-{
-	std::string text;
-	int errorLevel;
-};
+class FileDialog;
 
-// Implementation of Directus::ILogger so the engine can log into the editor
-class EngineLogger : public Directus::ILogger
+class Widget_Assets : public Widget
 {
 public:
-	typedef std::function<void(LogPackage)> logFunc;
-	void SetCallback(logFunc&& func)
-	{
-		m_logFunc = std::forward<logFunc>(func);
-	}
-
-	void Log(const std::string& text, int errorLevel) override
-	{
-		LogPackage package;
-		package.text = text;
-		package.errorLevel = errorLevel;
-		m_logFunc(package);
-	}
-
-private:
-	logFunc m_logFunc;
-};
-
-class Console : public Widget
-{
-public:
-	Console();
+	Widget_Assets();
+	void Initialize(Directus::Context* context) override;
 	void Update() override;
-	void AddLogPackage(LogPackage package);
-	void Clear();
 
 private:
-	std::shared_ptr<EngineLogger> m_logger;
-	std::deque<LogPackage> m_logs;
-	int m_maxLogEntries = 500;
-	bool m_showInfo;
-	bool m_showWarnings;
-	bool m_showErrors;
+	std::unique_ptr<FileDialog> m_fileDialogView;
+	std::unique_ptr<FileDialog> m_fileDialogLoad;
 };

@@ -19,22 +19,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ============================
 #include "Editor.h"
 #include <memory>
+#include "Core/Context.h"
 #include "UI/ImGui_Implementation.h"
 #include "UI/Widgets/Widget.h"
-#include "Core/Context.h"
-#include "UI/Widgets/MenuBar.h"
-#include "UI/Widgets/Properties.h"
-#include "UI/Widgets/Console.h"
-#include "UI/Widgets/Hierarchy.h"
-#include "UI/Widgets/AssetViewer.h"
-#include "UI/Widgets/Viewport.h"
+#include "UI/Widgets/Widget_MenuBar.h"
+#include "UI/Widgets/Widget_Properties.h"
+#include "UI/Widgets/Widget_Console.h"
+#include "UI/Widgets/Widget_Scene.h"
+#include "UI/Widgets/Widget_Assets.h"
+#include "UI/Widgets/Widget_Viewport.h"
+#include "UI/Widgets/Widget_Toolbar.h"
 #include "UI/ThumbnailProvider.h"
 #include "UI/EditorHelper.h"
-#include "UI/Widgets/Toolbar.h"
-//==================================
+//=======================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -46,13 +46,13 @@ static SDL_Window* g_window = nullptr;
 Editor::Editor()
 {
 	m_context = nullptr;
-	m_widgets.emplace_back(make_unique<MenuBar>());
-	m_widgets.emplace_back(make_unique<Toolbar>());
-	m_widgets.emplace_back(make_unique<Properties>());
-	m_widgets.emplace_back(make_unique<Console>());
-	m_widgets.emplace_back(make_unique<Hierarchy>());
-	m_widgets.emplace_back(make_unique<AssetViewer>());
-	m_widgets.emplace_back(make_unique<Viewport>());
+	m_widgets.emplace_back(make_unique<Widget_MenuBar>());
+	m_widgets.emplace_back(make_unique<Widget_Toolbar>());
+	m_widgets.emplace_back(make_unique<Widget_Properties>());
+	m_widgets.emplace_back(make_unique<Widget_Console>());
+	m_widgets.emplace_back(make_unique<Widget_Scene>());
+	m_widgets.emplace_back(make_unique<Widget_Assets>());
+	m_widgets.emplace_back(make_unique<Widget_Viewport>());
 }
 
 Editor::~Editor()
