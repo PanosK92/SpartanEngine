@@ -58,25 +58,26 @@ namespace Directus
 {
 	static Physics* g_physics				= nullptr;
 	static ResourceManager* g_resourceMng	= nullptr;
-	static Vector4 g_clearColorDefault		= Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 	unsigned long Renderer::m_flags;
 
 	Renderer::Renderer(Context* context) : Subsystem(context)
 	{
-		m_skybox			= nullptr;
-		m_camera			= nullptr;
-		m_texEnvironment	= nullptr;
-		m_lineRenderer		= nullptr;
-		m_nearPlane			= 0.0f;
-		m_farPlane			= 0.0f;
-		m_graphics			= nullptr;
-		m_flags				= 0;
-		m_flags				|= Render_SceneGrid;
-		m_flags				|= Render_Light;
+		m_skybox					= nullptr;
+		m_camera					= nullptr;
+		m_texEnvironment			= nullptr;
+		m_lineRenderer				= nullptr;
+		m_nearPlane					= 0.0f;
+		m_farPlane					= 0.0f;
+		m_graphics					= nullptr;
+		m_renderedMeshesCount		= 0;
+		m_renderedMeshesPerFrame	= 0;
+		m_flags						= 0;
+		m_flags						|= Render_SceneGrid;
+		m_flags						|= Render_Light;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_UPDATED, EVENT_HANDLER_VARIANT(AcquireRenderables));
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVED, EVENT_HANDLER_VARIANT(Pass_RenderableAcquisition));
 	}
 
 	Renderer::~Renderer()
@@ -218,19 +219,19 @@ namespace Directus
 		return true;
 	}
 
-	void Renderer::SetRenderTarget(void* renderTarget)
+	void Renderer::SetRenderTarget(void* renderTarget, bool clear /*= true*/)
 	{
 		D3D11RenderTexture* renderTexture = (D3D11RenderTexture*)renderTarget;
 		if (renderTexture)
 		{
 			renderTexture->SetAsRenderTarget();
-			renderTexture->Clear(GetClearColor());
+			if (clear) renderTexture->Clear(GetClearColor());
 			return;
 		}
 
 		m_graphics->SetBackBufferAsRenderTarget();
 		m_graphics->SetViewport();
-		m_graphics->Clear(GetClearColor());
+		if (clear) m_graphics->Clear(GetClearColor());
 	}
 
 	void Renderer::SetRenderTarget(const shared_ptr<D3D11RenderTexture>& renderTexture)
@@ -272,11 +273,11 @@ namespace Directus
 				return;
 			}
 
-			DirectionalLightDepthPass(m_directionalLight);
+			Pass_DepthDirectionalLight(m_directionalLight);
 
-			GBufferPass();
+			Pass_GBuffer();
 
-			PreDeferredPass(
+			Pass_PreDeferred(
 				m_gbuffer->GetShaderResource(GBuffer_Target_Normal),	// IN:	Texture			- Normal
 				m_gbuffer->GetShaderResource(GBuffer_Target_Depth),		// IN:	Texture			- Depth
 				m_texNoiseMap->GetShaderResource(),						// IN:	Texture			- Normal noise
@@ -284,12 +285,12 @@ namespace Directus
 				m_renderTexShadowing.get()								// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
 			);
 
-			DeferredPass(
+			Pass_Deferred(
 				m_renderTexShadowing->GetShaderResourceView(),	// IN:	Texture			- Shadowing (Shadow mapping + SSAO)
 				m_renderTexSpare.get()							// OUT: Render texture	- Result
 			);
 
-			PostDeferredPass(
+			Pass_PostDeferred(
 				m_renderTexSpare,		// IN:	Render texture - Deferred pass result
 				m_renderTexFinalFrame	// OUT: Render texture - Result
 			);
@@ -370,8 +371,8 @@ namespace Directus
 		m_camera = nullptr;
 	}
 
-	//= RENDER PATHS =================================================================================================
-	void Renderer::AcquireRenderables(const Variant& renderables)
+	//= PASSES =================================================================================================
+	void Renderer::Pass_RenderableAcquisition(const Variant& renderables)
 	{
 		PROFILE_FUNCTION_BEGIN();
 
@@ -421,12 +422,12 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::DirectionalLightDepthPass(Light* directionalLight)
+	void Renderer::Pass_DepthDirectionalLight(Light* directionalLight)
 	{
-		PROFILE_FUNCTION_BEGIN();
-
 		if (!directionalLight || !directionalLight->GetCastShadows())
 			return;
+
+		PROFILE_FUNCTION_BEGIN();
 
 		m_graphics->EnableDepth(true);
 		m_shaderDepth->Set();
@@ -475,12 +476,12 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::GBufferPass()
+	void Renderer::Pass_GBuffer()
 	{
-		PROFILE_FUNCTION_BEGIN();
-
 		if (!m_graphics)
 			return;
+
+		PROFILE_FUNCTION_BEGIN();
 
 		m_gbuffer->SetAsRenderTarget();
 		m_gbuffer->Clear();
@@ -575,7 +576,7 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::PreDeferredPass(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing)
+	void Renderer::Pass_PreDeferred(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing)
 	{
 		PROFILE_FUNCTION_BEGIN();
 
@@ -590,12 +591,12 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::DeferredPass(void* inTextureShadowing, void* outRenderTexture)
+	void Renderer::Pass_Deferred(void* inTextureShadowing, void* outRenderTexture)
 	{
-		PROFILE_FUNCTION_BEGIN();
-
 		if (!m_shaderDeferred->IsCompiled())
 			return;
+
+		PROFILE_FUNCTION_BEGIN();
 
 		// Set the deferred shader
 		m_shaderDeferred->Set();
@@ -625,7 +626,7 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::PostDeferredPass(shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, shared_ptr<D3D11RenderTexture>& outRenderTexture)
+	void Renderer::Pass_PostDeferred(shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, shared_ptr<D3D11RenderTexture>& outRenderTexture)
 	{
 		PROFILE_FUNCTION_BEGIN();
 
@@ -634,18 +635,20 @@ namespace Directus
 
 		// FXAA
 		Pass_FXAA(inRenderTextureFrame->GetShaderResourceView(), outRenderTexture.get());
-		// SHARPENING
-		Pass_Sharpening(outRenderTexture->GetShaderResourceView(), inRenderTextureFrame.get());
 
+		// Swap the render textures instead of swapping render targets (cheaper)
 		outRenderTexture.swap(inRenderTextureFrame);	
 
-		RenderGBuffer();
-		DebugDraw();
+		// SHARPENING
+		Pass_Sharpening(inRenderTextureFrame->GetShaderResourceView(), outRenderTexture.get());
+	
+		Pass_DebugGBuffer();
+		Pass_Debug();
 
 		PROFILE_FUNCTION_END();
 	}
 
-	bool Renderer::RenderGBuffer()
+	bool Renderer::Pass_DebugGBuffer()
 	{
 		PROFILE_FUNCTION_BEGIN();
 
@@ -686,7 +689,7 @@ namespace Directus
 		return true;
 	}
 
-	void Renderer::DebugDraw()
+	void Renderer::Pass_Debug()
 	{
 		PROFILE_FUNCTION_BEGIN();
 
@@ -718,8 +721,10 @@ namespace Directus
 			{
 				for (const auto& gameObject : m_renderables)
 				{
-					auto meshFilter = gameObject->GetMeshFilterRef();
-					m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+					if (auto meshFilter = gameObject->GetMeshFilterRef())
+					{
+						m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+					}
 				}
 			}
 
@@ -770,7 +775,7 @@ namespace Directus
 					continue;
 
 				Texture* lightTex = nullptr;
-				LightType type = light->GetGameObject()->GetComponent<Light>().lock()->GetLightType();
+				LightType type = light->GetGameObject_Ref()->GetComponent<Light>().lock()->GetLightType();
 				if (type == LightType_Directional)
 				{
 					lightTex = m_gizmoTexLightDirectional.get();
@@ -819,16 +824,9 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	const Vector4& Renderer::GetClearColor()
-	{
-		return m_camera ? m_camera->GetClearColor() : g_clearColorDefault;
-	}
-	//===============================================================================================================
-
-	//= PASSES ====================================================================================================
 	void Renderer::Pass_FXAA(void* texture, void* renderTarget)
 	{
-		SetRenderTarget(renderTarget);
+		SetRenderTarget(renderTarget, false);
 		m_shaderFXAA->Set();
 		m_shaderFXAA->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
 		m_shaderFXAA->SetTexture(texture, 0);
@@ -837,7 +835,7 @@ namespace Directus
 
 	void Renderer::Pass_Sharpening(void* texture, void* renderTarget)
 	{
-		SetRenderTarget(renderTarget);
+		SetRenderTarget(renderTarget, false);
 		m_shaderSharpening->Set();
 		m_shaderSharpening->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
 		m_shaderSharpening->SetTexture(texture, 0);
@@ -846,7 +844,7 @@ namespace Directus
 
 	void Renderer::Pass_Blur(void* texture, void* renderTarget, const Vector2& blurScale)
 	{
-		SetRenderTarget(renderTarget);
+		SetRenderTarget(renderTarget, false);
 		m_shaderBlur->Set();
 		m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, blurScale, 0);
 		m_shaderBlur->SetTexture(texture, 0); // Shadows are alpha
@@ -855,8 +853,12 @@ namespace Directus
 
 	void Renderer::Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture)
 	{
-		// SHADOWING (Shadow mapping + SSAO)
+		if (!inDirectionalLight)
+			return;
 
+		PROFILE_FUNCTION_BEGIN();
+
+		// SHADOWING (Shadow mapping + SSAO)
 		SetRenderTarget(outRenderTexture);
 
 		// TEXTURES
@@ -891,6 +893,13 @@ namespace Directus
 		m_shaderShadowing->SetTextures(textures);
 
 		m_shaderShadowing->DrawIndexed(m_quad->GetIndexCount());
+
+		PROFILE_FUNCTION_END();
 	}
 	//=============================================================================================================
+
+	const Vector4& Renderer::GetClearColor()
+	{
+		return m_camera ? m_camera->GetClearColor() : Vector4::Zero;
+	}
 }

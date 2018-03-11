@@ -38,9 +38,9 @@ namespace Directus
 		Scene(Context* context);
 		~Scene();
 
-		//= Subsystem ============
+		//= Subsystem =============
 		bool Initialize() override;
-		//========================
+		//=========================
 
 		//= GameObject events ==========================
 		// Runs every time the simulation starts
@@ -58,21 +58,18 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= GAMEOBJECT HELPER FUNCTIONS ===============================================
-		// Creates a GameObject and adds it to the scene
-		std::weak_ptr<GameObject> CreateGameObject();
-		// Adds a GameObject to the scene
-		void AddGameObject(std::shared_ptr<GameObject> gameObject);
-		int GetGameObjectCount() { return (int)m_gameObjects.size(); }
+		//= GAMEOBJECT HELPER FUNCTIONS =============================================================
+		std::weak_ptr<GameObject> GameObject_CreateAdd();
+		void GameObject_Add(std::shared_ptr<GameObject> gameObject);
+		bool GameObject_Exists(std::weak_ptr<GameObject> gameObject);
+		void GameObject_Remove(std::weak_ptr<GameObject> gameObject);
 		const std::vector<std::shared_ptr<GameObject>>& GetAllGameObjects() { return m_gameObjects; }
 		std::vector<std::weak_ptr<GameObject>> GetRootGameObjects();
 		std::weak_ptr<GameObject> GetGameObjectRoot(std::weak_ptr<GameObject> gameObject);
 		std::weak_ptr<GameObject> GetGameObjectByName(const std::string& name);
-		std::weak_ptr<GameObject> GetGameObjectByID(unsigned int ID);
-		bool GameObjectExists(std::weak_ptr<GameObject> gameObject);
-		void RemoveGameObject(std::weak_ptr<GameObject> gameObject);
-		void RemoveSingleGameObject(std::weak_ptr<GameObject> gameObject);
-		std::weak_ptr<GameObject> GetWeakReferenceToGameObject(GameObject* gameObject);
+		std::weak_ptr<GameObject> GetGameObjectByID(unsigned int ID);	
+		int GetGameObjectCount() { return (int)m_gameObjects.size(); }
+		//===========================================================================================
 
 		//= SCENE RESOLUTION  ==============================
 		void Resolve();
@@ -96,10 +93,10 @@ namespace Directus
 		std::weak_ptr<GameObject> CreateDirectionalLight();
 		//=================================================
 
-		//= HELPER FUNCTIONS ====
+		//= HELPER FUNCTIONS ======
 		void ClearProgressStatus();
-		void CalculateFPS();
-		//=======================
+		void ComputeFPS();
+		//========================
 
 		std::vector<std::shared_ptr<GameObject>> m_gameObjects;
 		std::vector<std::weak_ptr<GameObject>> m_renderables;

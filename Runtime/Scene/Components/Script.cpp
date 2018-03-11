@@ -86,7 +86,7 @@ namespace Directus
 	{
 		// Instantiate the script
 		m_scriptInstance = make_shared<ScriptInstance>();
-		m_scriptInstance->Instantiate(filePath, GetGameObjectRef(), GetContext()->GetSubsystem<Scripting>());
+		m_scriptInstance->Instantiate(filePath, GetGameObject_RefWeak(), GetContext()->GetSubsystem<Scripting>());
 
 		// Check if the script has been instantiated successfully.
 		if (!m_scriptInstance->IsInstantiated())

@@ -181,9 +181,9 @@ namespace Directus
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			if (child->GetGameObject())
+			if (child->GetGameObject_Ref())
 			{
-				child->GetGameObject()->Serialize(stream);
+				child->GetGameObject_Ref()->Serialize(stream);
 			}
 			else
 			{
@@ -241,7 +241,7 @@ namespace Directus
 		vector<std::weak_ptr<GameObject>> children;
 		for (int i = 0; i < childrenCount; i++)
 		{
-			std::weak_ptr<GameObject> child = scene->CreateGameObject();
+			std::weak_ptr<GameObject> child = scene->GameObject_CreateAdd();
 			child.lock()->SetID(stream->ReadUInt());
 			children.push_back(child);
 		}
@@ -257,6 +257,9 @@ namespace Directus
 		{
 			m_transform->ResolveChildrenRecursively();
 		}
+
+		// Make the scene resolve
+		FIRE_EVENT(EVENT_SCENE_RESOLVE);
 	}
 
 	weak_ptr<IComponent> GameObject::AddComponent(ComponentType type)
@@ -266,22 +269,25 @@ namespace Directus
 		weak_ptr<IComponent> component;
 		switch (type)
 		{
-		case ComponentType_AudioListener:	component = AddComponent<AudioListener>();	break;
-		case ComponentType_AudioSource:		component = AddComponent<AudioSource>();	break;
-		case ComponentType_Camera:			component = AddComponent<Camera>();			break;
-		case ComponentType_Collider:		component = AddComponent<Collider>();		break;
-		case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
-		case ComponentType_Light:			component = AddComponent<Light>();			break;
-		case ComponentType_LineRenderer:	component = AddComponent<LineRenderer>();	break;
-		case ComponentType_MeshFilter:		component = AddComponent<MeshFilter>();		break;
-		case ComponentType_MeshRenderer:	component = AddComponent<MeshRenderer>();	break;
-		case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
-		case ComponentType_Script:			component = AddComponent<Script>();			break;
-		case ComponentType_Skybox:			component = AddComponent<Skybox>();			break;
-		case ComponentType_Transform:		component = AddComponent<Transform>();		break;
-		case ComponentType_Unknown:														break;
-		default:																		break;
+			case ComponentType_AudioListener:	component = AddComponent<AudioListener>();	break;
+			case ComponentType_AudioSource:		component = AddComponent<AudioSource>();	break;
+			case ComponentType_Camera:			component = AddComponent<Camera>();			break;
+			case ComponentType_Collider:		component = AddComponent<Collider>();		break;
+			case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
+			case ComponentType_Light:			component = AddComponent<Light>();			break;
+			case ComponentType_LineRenderer:	component = AddComponent<LineRenderer>();	break;
+			case ComponentType_MeshFilter:		component = AddComponent<MeshFilter>();		break;
+			case ComponentType_MeshRenderer:	component = AddComponent<MeshRenderer>();	break;
+			case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
+			case ComponentType_Script:			component = AddComponent<Script>();			break;
+			case ComponentType_Skybox:			component = AddComponent<Skybox>();			break;
+			case ComponentType_Transform:		component = AddComponent<Transform>();		break;
+			case ComponentType_Unknown:														break;
+			default:																		break;
 		}
+
+		// Make the scene resolve
+		FIRE_EVENT(EVENT_SCENE_RESOLVE);
 
 		return component;
 	}
@@ -302,5 +308,8 @@ namespace Directus
 				++it;
 			}
 		}
+
+		// Make the scene resolve
+		FIRE_EVENT(EVENT_SCENE_RESOLVE);
 	}
 }

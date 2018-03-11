@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include "../Core/Settings.h"
 #include "../Scene/Components/Transform.h"
+#include "../Profiling/Profiler.h"
 //========================================
 
 //= NAMESPACES ======
@@ -139,6 +140,8 @@ namespace Directus
 		if (!m_initialized)
 			return false;
 
+		PROFILE_FUNCTION_BEGIN();
+
 		// Update FMOD
 		m_resultFMOD = m_systemFMOD->update();
 		if (m_resultFMOD != FMOD_OK)
@@ -170,6 +173,8 @@ namespace Directus
 			}
 		}
 		//=============================================================
+
+		PROFILE_FUNCTION_END();
 
 		return true;
 	}

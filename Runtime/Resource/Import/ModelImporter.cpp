@@ -148,7 +148,7 @@ namespace Directus
 		// Is this the root node?
 		if (!assimpNode->mParent || newNode.expired())
 		{
-			newNode = scene->CreateGameObject();
+			newNode = scene->GameObject_CreateAdd();
 			model->SetRootGameObject(newNode.lock());
 
 			CalculateNodeCount(assimpNode, m_jobsDone);
@@ -192,7 +192,7 @@ namespace Directus
 			// if this node has many meshes, then assign a new gameobject for each one of them
 			if (assimpNode->mNumMeshes > 1)
 			{
-				gameobject = scene->CreateGameObject(); // create
+				gameobject = scene->GameObject_CreateAdd(); // create
 				gameobject.lock()->GetTransformRef()->SetParent(newNode.lock()->GetTransformRef()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
@@ -207,7 +207,7 @@ namespace Directus
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			weak_ptr<GameObject> child = scene->CreateGameObject();
+			weak_ptr<GameObject> child = scene->GameObject_CreateAdd();
 			ReadNodeHierarchy(model, assimpScene, assimpNode->mChildren[i], newNode, child);
 		}
 	}

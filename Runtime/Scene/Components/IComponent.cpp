@@ -55,12 +55,9 @@ namespace Directus
 		m_ID			= GENERATE_GUID;
 	}
 
-	weak_ptr<GameObject> IComponent::GetGameObjectRef()
+	std::shared_ptr<GameObject> IComponent::GetGameObject_RefStrong()
 	{
-		if (!m_context)
-			return weak_ptr<GameObject>();
-
-		return m_context->GetSubsystem<Scene>()->GetWeakReferenceToGameObject(m_gameObject);
+		return m_gameObject->GetSharedPtr();
 	}
 
 	const string& IComponent::GetGameObjectName()

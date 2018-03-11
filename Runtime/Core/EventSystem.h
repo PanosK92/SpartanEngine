@@ -37,15 +37,16 @@ To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 =============================================================================
 */
 
-//= EVENTS =====================================================================
-#define EVENT_UPDATE			0	// Fired when the engine should update
-#define EVENT_RENDER			1	// Fired when it's time to do rendering
-#define EVENT_SCENE_SAVED		2
-#define EVENT_SCENE_LOADED		3
-#define EVENT_SCENE_UPDATED		4	// Fired when the scene resolves renderables
-#define EVENT_SCENE_CLEARED		5	// Fired when the scene resolves renderables
-#define EVENT_MODEL_LOADED		6
-//==============================================================================
+//= EVENTS ===============================================================================
+#define EVENT_UPDATE			0	// Fired when the most engine subsystems should update
+#define EVENT_RENDER			1	// Fired when the Renderer should start rendering
+#define EVENT_SCENE_SAVED		2	// Fired when the Scene finished saving to file
+#define EVENT_SCENE_LOADED		3	// Fired when the Scene finished loading from file
+#define EVENT_SCENE_CLEARED		5	// Fired when the Scene should clear everything
+#define EVENT_SCENE_RESOLVE		6	// Fired when the Scene should be resolved
+#define EVENT_SCENE_RESOLVED	7	// Fired when the Scene has been resolved
+#define EVENT_MODEL_LOADED		8	// Fired when the ModelImporter finished loading
+//========================================================================================
 
 //= MACROS ===============================================================================================
 #define EVENT_HANDLER_STATIC(function)			[](Directus::Variant var)		{ function(); }

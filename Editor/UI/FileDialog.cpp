@@ -57,7 +57,7 @@ FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filte
 	m_isWindow        = standaloneWindow;
 	m_currentPath     = FileSystem::GetWorkingDirectory();
 	m_currentFullPath = m_currentPath;
-	m_itemSize        = (type != FileDialog_Basic) ? FileDialogStatics::g_itemSizeMin * 2.0f : FileDialogStatics::g_itemSizeMin;
+	m_itemSize        = FileDialogStatics::g_itemSizeMin;
 	m_stopwatch       = make_unique<Stopwatch>();
 	m_isDirty         = true;
 	m_selectionMade   = false;
@@ -115,6 +115,7 @@ void FileDialog::Dialog_Top(bool* isVisible)
 	if (m_isWindow)
 	{
 		ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSizeConstraints(ImVec2(350, 250), ImVec2(FLT_MAX, FLT_MAX));
 		ImGui::Begin(m_title.c_str(), isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_ResizeFromAnySide | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoFocusOnAppearing);
 		ImGui::SetWindowFocus();
 	}
@@ -137,7 +138,7 @@ void FileDialog::Dialog_Middle()
 	// CONTENT WINDOW START
 	ImGuiWindow* window = ImGui::GetCurrentWindowRead();
 	float contentWidth  = window->ContentsRegionRect.Max.x - window->ContentsRegionRect.Min.x;
-	float contentHeight = window->ContentsRegionRect.Max.y - window->ContentsRegionRect.Min.y - (m_style != FileDialog_Basic ? 55.0f : 25.0f);
+	float contentHeight = window->ContentsRegionRect.Max.y - window->ContentsRegionRect.Min.y - (m_style != FileDialog_Basic ? 58.0f : 28.0f);
 	ImGui::BeginChild("##ContentRegion", ImVec2(contentWidth, contentHeight), true);
 
 	FileDialogStatics::g_isMouseHoveringWindow = ImGui::IsMouseHoveringWindow() ? true : FileDialogStatics::g_isMouseHoveringWindow;
@@ -149,7 +150,8 @@ void FileDialog::Dialog_Middle()
 	ImGui::Columns(columns, nullptr, false);
 	for (const auto& entry : m_directoryEntries)
 	{
-		// ITEM WINDOW START
+		// ITEM WINDOW START	
+		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);
 		ImGui::BeginChild(entry.first.c_str(), ImVec2(m_itemSize + 25, m_itemSize + 15), true, ImGuiWindowFlags_NoScrollbar);
 
@@ -175,6 +177,7 @@ void FileDialog::Dialog_Middle()
 			}
 		}
 		ImGui::PopID();
+		
 
 		// Manually detect some useful states
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
@@ -191,7 +194,7 @@ void FileDialog::Dialog_Middle()
 
 		// ITEM WINDOW END		
 		ImGui::EndChild();
-		ImGui::PopStyleVar();
+		ImGui::PopStyleVar(2);
 
 		// LABEL
 		ImGui::SameLine();

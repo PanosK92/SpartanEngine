@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
 #include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
 #include "../Core/Settings.h"
+#include "../Profiling/Profiler.h"
 //==============================================================================
 
 //= NAMESPACES ================
@@ -110,6 +111,8 @@ namespace Directus
 		if (!Engine::EngineMode_IsSet(Engine_Game))
 			return;
 
+		PROFILE_FUNCTION_BEGIN();
+
 		float timeStep = VARIANT_GET_FROM(float, deltaTime);
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
@@ -131,6 +134,8 @@ namespace Directus
 		m_world->stepSimulation(timeStep, maxSubsteps, internalTimeStep);
 
 		m_simulating = false;
+
+		PROFILE_FUNCTION_END();
 	}
 
 	void Physics::Clear()
