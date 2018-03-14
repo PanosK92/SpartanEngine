@@ -22,10 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include <string>
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include "../../Core/EngineDefs.h"
 #include <memory>
-//============================
+//================================
 
 struct aiNode;
 struct aiScene;
@@ -50,10 +50,6 @@ namespace Directus
 
 		bool Load(Model* model, const std::string& filePath);
 
-		const std::string& GetProgressStatus() { return m_progressStatus; }
-		float GetProgress() { return (float)m_jobsTotal / (float)m_jobsDone; }
-		bool IsLoading() { return m_isLoading; }
-
 	private:
 		// PROCESSING
 		void ReadNodeHierarchy(
@@ -72,18 +68,11 @@ namespace Directus
 		// HELPER FUNCTIONS
 		std::string ValidateTexturePath(const std::string& texturePath);
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
-		void CalculateNodeCount(aiNode* node, int& count);
-		void ClearProgressStatus();
+		void ComputeNodeCount(aiNode* node, int* count);
 	
 		Model* m_model;
 		std::string m_modelPath;
 
-		// Statistics	
-		std::string m_progressStatus;
-		int m_jobsDone;
-		int m_jobsTotal;
-		bool m_isLoading;
-		
 		Context* m_context;
 	};
 }

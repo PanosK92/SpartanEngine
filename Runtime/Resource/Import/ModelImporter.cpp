@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Scene/Scene.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/GameObject.h"
+#include "../ProgressReporter.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -75,9 +76,7 @@ namespace Directus
 	ModelImporter::ModelImporter(Context* context)
 	{
 		m_context = context;
-		m_isLoading = false;
 		m_model = nullptr;
-		ClearProgressStatus();
 
 		// Log version
 		int major = aiGetVersionMajor();
@@ -102,7 +101,6 @@ namespace Directus
 
 		m_model = model;
 		m_modelPath = filePath;
-		m_isLoading = true;
 
 		// Set up an Assimp importer
 		Assimp::Importer importer;
@@ -112,12 +110,13 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, normalSmoothAngle); // Default is 45, max is 175
 
 		// Read the 3D model file from disk
-		m_progressStatus = "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" from disk...";
+		ProgressReporter::Get().Reset(g_progress_ModelImporter);
+		ProgressReporter::Get().SetStatus(g_progress_ModelImporter, "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" from disk...");
 		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
 		{
 			LOG_ERROR("ModelImporter: Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
-			m_isLoading = false;
+			ProgressReporter::Get().SetIsLoading(g_progress_ModelImporter, false);
 			return false;
 		}
 
@@ -132,8 +131,7 @@ namespace Directus
 		importer.FreeScene();
 
 		// Stats
-		m_isLoading = false;
-		ClearProgressStatus();
+		ProgressReporter::Get().SetIsLoading(g_progress_ModelImporter, false);
 
 		FIRE_EVENT(EVENT_MODEL_LOADED);
 
@@ -151,10 +149,10 @@ namespace Directus
 			newNode = scene->GameObject_CreateAdd();
 			model->SetRootGameObject(newNode.lock());
 
-			CalculateNodeCount(assimpNode, m_jobsDone);
+			int jobCount;
+			ComputeNodeCount(assimpNode, &jobCount);
+			ProgressReporter::Get().SetJobCount(g_progress_ModelImporter, jobCount);
 		}
-
-		m_jobsTotal++;
 
 		//= GET NODE NAME ============================================================
 		// Note: In case this is the root node, aiNode.mName will be "RootNode". 
@@ -164,14 +162,14 @@ namespace Directus
 			string name = assimpNode->mName.C_Str();
 			newNode.lock()->SetName(name);
 
-			m_progressStatus = "Processing: " + name;
+			ProgressReporter::Get().SetStatus(g_progress_ModelImporter, "Processing: " + name);
 		}
 		else
 		{
 			string name = FileSystem::GetFileNameNoExtensionFromFilePath(m_modelPath);
 			newNode.lock()->SetName(name);
 
-			m_progressStatus = "Processing: " + name;
+			ProgressReporter::Get().SetStatus(g_progress_ModelImporter, "Processing: " + name);
 		}
 		//============================================================================
 
@@ -210,6 +208,8 @@ namespace Directus
 			weak_ptr<GameObject> child = scene->GameObject_CreateAdd();
 			ReadNodeHierarchy(model, assimpScene, assimpNode->mChildren[i], newNode, child);
 		}
+
+		ProgressReporter::Get().JobDone(g_progress_ModelImporter);
 	}
 
 	void ModelImporter::ReadAnimations(Model* model, const aiScene* scene)
@@ -505,24 +505,17 @@ namespace Directus
 		return filePath;
 	}
 
-	void ModelImporter::CalculateNodeCount(aiNode* node, int& count)
+	void ModelImporter::ComputeNodeCount(aiNode* node, int* count)
 	{
 		if (!node)
 			return;
 
-		count++;
+		(*count)++;
 
 		// Process children
 		for (unsigned int i = 0; i < node->mNumChildren; i++)
 		{
-			CalculateNodeCount(node->mChildren[i], count);
+			ComputeNodeCount(node->mChildren[i], count);
 		}
-	}
-
-	void ModelImporter::ClearProgressStatus()
-	{
-		m_progressStatus	= NOT_ASSIGNED;
-		m_jobsDone			= 0;
-		m_jobsTotal			= 0;
 	}
 }

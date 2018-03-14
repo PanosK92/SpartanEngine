@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Threading/Threading.h"
 #include "ProgressDialog.h"
 #include "Scene/Scene.h"
+#include "Resource/ProgressReporter.h"
 //===================================
 
 static const int BUFFER_TEXT_DEFAULT = 255;
@@ -242,14 +243,13 @@ private:
 		// Show progress
 		if (m_isLoadingModel)
 		{
-			auto importer = m_resourceManager->GetModelImporter().lock();
-			ProgressDialog::Get().SetProgress(importer->GetProgress());
-			ProgressDialog::Get().SetProgressStatus(importer->GetProgressStatus());
+			ProgressDialog::Get().SetProgress(Directus::ProgressReporter::Get().GetPercentage(Directus::g_progress_ModelImporter));
+			ProgressDialog::Get().SetProgressStatus(Directus::ProgressReporter::Get().GetStatus(Directus::g_progress_ModelImporter));
 		}
 		else
 		{
-			ProgressDialog::Get().SetProgress(m_scene->GetProgress());
-			ProgressDialog::Get().SetProgressStatus(m_scene->GetProgressStatus());
+			ProgressDialog::Get().SetProgress(Directus::ProgressReporter::Get().GetPercentage(Directus::g_progress_Scene));
+			ProgressDialog::Get().SetProgressStatus(Directus::ProgressReporter::Get().GetStatus(Directus::g_progress_Scene));
 		}
 	}
 
