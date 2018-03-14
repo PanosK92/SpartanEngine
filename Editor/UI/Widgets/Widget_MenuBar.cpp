@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "Profiling/Profiler.h"
+#include "Core/Timer.h"
 //============================
 
 //= NAMESPACES ==========

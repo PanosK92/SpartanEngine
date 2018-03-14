@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Engine.h"
 #include "Components/AudioListener.h"
 #include "../Profiling/Profiler.h"
+#include "../Resource/ProgressReporter.h"
 //======================================
 
 //= NAMESPACES ================
@@ -57,10 +58,6 @@ namespace Directus
 		m_fps = 0.0f;
 		m_timePassed = 0.0f;
 		m_frameCount = 0;
-		m_progressStatus = NOT_ASSIGNED;
-		m_jobsDone = 0.0f;
-		m_jobsTotal = 0.0f;
-		m_isLoading = false;
 
 		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE, EVENT_HANDLER(Resolve));
 		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
@@ -140,10 +137,10 @@ namespace Directus
 	//= I/O ===================================================================================================
 	bool Scene::SaveToFile(const string& filePathIn)
 	{
-		m_progressStatus = "Saving scene...";
+		ProgressReporter::Get().Reset(g_progress_Scene);
+		ProgressReporter::Get().SetStatus(g_progress_Scene, "Saving scene...");
 		Stopwatch timer;
-		m_isLoading = true;
-
+	
 		// Add scene file extension to the filepath if it's missing
 		string filePath = filePathIn;
 		if (FileSystem::GetExtensionFromFilePath(filePath) != SCENE_EXTENSION)
@@ -185,9 +182,10 @@ namespace Directus
 		}
 		//==============================================
 
-		ClearProgressStatus();
 		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
 		FIRE_EVENT(EVENT_SCENE_SAVED);
+
+		ProgressReporter::Get().SetIsLoading(g_progress_Scene, false);
 
 		return true;
 	}
@@ -201,8 +199,8 @@ namespace Directus
 		}
 
 		Clear(); 
-		m_progressStatus = "Loading scene...";
-		m_isLoading = true;
+		ProgressReporter::Get().Reset(g_progress_Scene);
+		ProgressReporter::Get().SetStatus(g_progress_Scene, "Loading scene...");
 
 		// Read all the resource file paths
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
@@ -214,7 +212,7 @@ namespace Directus
 		vector<string> resourcePaths;
 		file->Read(&resourcePaths);
 
-		m_jobsTotal = (float)resourcePaths.size();
+		ProgressReporter::Get().SetJobCount(g_progress_Scene, (float)resourcePaths.size());
 
 		// Load all the resources
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
@@ -240,7 +238,7 @@ namespace Directus
 				resourceMng->Load<Texture>(resourcePath);
 			}
 
-			m_jobsDone++;
+			ProgressReporter::Get().JobDone(g_progress_Scene);
 		}
 
 		//= Load GameObjects ============================	
@@ -266,7 +264,7 @@ namespace Directus
 		//==============================================
 
 		Resolve();
-		ClearProgressStatus();
+		ProgressReporter::Get().SetIsLoading(g_progress_Scene, false);
 		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
 		FIRE_EVENT(EVENT_SCENE_LOADED);
 
@@ -490,14 +488,6 @@ namespace Directus
 	//======================================================================================================
 
 	//= HELPER FUNCTIONS ===================================================================================
-	void Scene::ClearProgressStatus()
-	{
-		m_progressStatus = NOT_ASSIGNED;
-		m_jobsDone = 0.0f;
-		m_jobsTotal = 0.0f;
-		m_isLoading = false;
-	}
-
 	void Scene::ComputeFPS()
 	{
 		// update counters

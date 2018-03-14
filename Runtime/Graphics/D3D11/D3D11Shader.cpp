@@ -345,7 +345,7 @@ namespace Directus
 			// fill out input element desc
 			D3D11_INPUT_ELEMENT_DESC elementDesc;
 
-			inputLayoutDesc.second.push_back(std::string{ paramDesc.SemanticName });
+			inputLayoutDesc.second.emplace_back(paramDesc.SemanticName);
 			elementDesc.SemanticName = nullptr;
 
 			elementDesc.SemanticIndex = paramDesc.SemanticIndex;

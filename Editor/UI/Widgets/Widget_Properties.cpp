@@ -166,10 +166,18 @@ void Widget_Properties::Update()
 void Widget_Properties::Inspect(weak_ptr<GameObject> gameObject)
 {
 	g_inspectedGameObject = gameObject;
+
+	// If we were previously inspecting a material, save the changes
+	if (!g_inspectedMaterial.expired())
+	{
+		g_inspectedMaterial.lock()->SaveToFile(g_inspectedMaterial.lock()->GetResourceFilePath());
+	}
+	g_inspectedMaterial.reset();
 }
 
 void Widget_Properties::Inspect(weak_ptr<Material> material)
 {
+	g_inspectedGameObject.reset();
 	g_inspectedMaterial = material;
 }
 

@@ -80,11 +80,9 @@ namespace Directus
 		void SetAmbientLight(float x, float y, float z);
 		Math::Vector3 GetAmbientLight();
 
-		//= STATS ==============================================
+		//= STATS ======================
 		float GetFPS() { return m_fps; }
-		const std::string& GetProgressStatus() { return m_progressStatus; }
-		float GetProgress() { return m_jobsDone / m_jobsTotal; }
-		bool IsLoading() { return m_isLoading; }
+		//==============================
 
 	private:
 		//= COMMON GAMEOBJECT CREATION ====================
@@ -93,10 +91,9 @@ namespace Directus
 		std::weak_ptr<GameObject> CreateDirectionalLight();
 		//=================================================
 
-		//= HELPER FUNCTIONS ======
-		void ClearProgressStatus();
+		//= HELPER FUNCTIONS =
 		void ComputeFPS();
-		//========================
+		//====================
 
 		std::vector<std::shared_ptr<GameObject>> m_gameObjects;
 		std::vector<std::weak_ptr<GameObject>> m_renderables;
@@ -105,15 +102,11 @@ namespace Directus
 		std::weak_ptr<GameObject> m_skybox;
 		Math::Vector3 m_ambientLight;
 
-		//= STATS ===================
+		//= STATS ============
 		float m_fps;
 		float m_timePassed;
 		int m_frameCount;
-		std::string m_progressStatus;
-		float m_jobsDone;
-		float m_jobsTotal;
-		bool m_isLoading;
 		bool m_isInEditorMode;
-		//===========================
+		//====================
 	};
 }
