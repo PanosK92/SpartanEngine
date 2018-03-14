@@ -57,7 +57,8 @@ namespace Directus
 		void LogD3DCompilerError(ID3D10Blob* errorMessage);
 
 		//= REFLECTION ============================
-		std::vector<D3D11_INPUT_ELEMENT_DESC> Reflect(ID3D10Blob* shaderBlob) const;
+		using InputLayoutDesc = std::pair<std::vector<D3D11_INPUT_ELEMENT_DESC>, std::vector<std::string>>;
+		InputLayoutDesc Reflect(ID3D10Blob* shaderBlob) const;
 
 		//= MISC ===========
 		std::string m_name;
