@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "../Core/EngineDefs.h"
 #include <string>
+#include <map>
 //=============================
 
 namespace Directus
@@ -31,9 +32,9 @@ namespace Directus
 static int g_progress_ModelImporter = 0;
 static int g_progress_Scene			= 1;
 
-	struct Report
+	struct Progress
 	{
-		Report(){ Clear(); }
+		Progress(){ Clear(); }
 
 		void Clear()
 		{
@@ -49,16 +50,16 @@ static int g_progress_Scene			= 1;
 		bool isLoading;
 	};
 
-	class ENGINE_CLASS ProgressReporter
+	class ENGINE_CLASS ProgressReport
 	{
 	public:
-		static ProgressReporter& Get()
+		static ProgressReport& Get()
 		{
-			static ProgressReporter instance;
+			static ProgressReport instance;
 			return instance;
 		}
 
-		ProgressReporter(){}
+		ProgressReport(){}
 
 		void Reset(int progressID)
 		{
@@ -74,6 +75,6 @@ static int g_progress_Scene			= 1;
 		void SetIsLoading(int progressID, bool isLoading)			{ m_reports[progressID].isLoading = isLoading; }
 
 	private:	
-		std::map<int, Report> m_reports;
+		std::map<int, Progress> m_reports;
 	};
 }

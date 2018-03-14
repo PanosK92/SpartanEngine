@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Threading/Threading.h"
 #include "ProgressDialog.h"
 #include "Scene/Scene.h"
-#include "Resource/ProgressReporter.h"
+#include "Resource/ProgressReport.h"
 //===================================
 
 static const int BUFFER_TEXT_DEFAULT = 255;
@@ -243,13 +243,13 @@ private:
 		// Show progress
 		if (m_isLoadingModel)
 		{
-			ProgressDialog::Get().SetProgress(Directus::ProgressReporter::Get().GetPercentage(Directus::g_progress_ModelImporter));
-			ProgressDialog::Get().SetProgressStatus(Directus::ProgressReporter::Get().GetStatus(Directus::g_progress_ModelImporter));
+			ProgressDialog::Get().SetProgress(Directus::ProgressReport::Get().GetPercentage(Directus::g_progress_ModelImporter));
+			ProgressDialog::Get().SetProgressStatus(Directus::ProgressReport::Get().GetStatus(Directus::g_progress_ModelImporter));
 		}
 		else
 		{
-			ProgressDialog::Get().SetProgress(Directus::ProgressReporter::Get().GetPercentage(Directus::g_progress_Scene));
-			ProgressDialog::Get().SetProgressStatus(Directus::ProgressReporter::Get().GetStatus(Directus::g_progress_Scene));
+			ProgressDialog::Get().SetProgress(Directus::ProgressReport::Get().GetPercentage(Directus::g_progress_Scene));
+			ProgressDialog::Get().SetProgressStatus(Directus::ProgressReport::Get().GetStatus(Directus::g_progress_Scene));
 		}
 	}
 
