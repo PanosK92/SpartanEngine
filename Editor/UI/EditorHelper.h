@@ -224,7 +224,19 @@ public:
 		std::is_same<T, bool>::value	||
 		std::is_same<T, double>::value
 	>::type>
-	static void SetCharArray(char* array, T value) { SetCharArray(array, std::to_string(value)); }
+	static void SetCharArray(char* array, T value)
+	{
+		// Remove trailing zeros
+		std::string str = std::to_string(value);
+		str.erase(str.find_last_not_of('0') + 1, std::string::npos);
+
+		if (str[str.length() -1] == '.')
+		{
+			str += '0';
+		}
+
+		SetCharArray(array, str);
+	}
 
 	//= CONVERSIONS ===================================================================================================
 	static ImVec4 ToImVec4(const Directus::Math::Vector4& v)	{ return ImVec4(v.x, v.y, v.z, v.w); }

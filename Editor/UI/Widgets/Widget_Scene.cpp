@@ -149,6 +149,8 @@ void Widget_Scene::Tree_AddGameObject(GameObject* gameObject)
 		}
 	}
 
+	//ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, !hasVisibleChildren ? 0 : 40);
+
 	ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowItemOverlap;
 	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; // Expandable?	
 	if (!m_gameObjectSelected.expired()) // Selected?
@@ -156,6 +158,8 @@ void Widget_Scene::Tree_AddGameObject(GameObject* gameObject)
 		node_flags |= (m_gameObjectSelected.lock()->GetID() == gameObject->GetID()) ? ImGuiTreeNodeFlags_Selected : 0;
 	}
 	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObject->GetID(), node_flags, gameObject->GetName().c_str());
+
+	//ImGui::PopStyleVar();
 
 	// Manully detect some useful states
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
