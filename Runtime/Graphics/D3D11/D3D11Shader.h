@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include <vector>
+#include <set>
+#include <memory>
 #include "D3D11InputLayout.h"
 #include "D3D11Sampler.h"
-#include <set>
 #include "D3D11GraphicsDevice.h"
-#include <memory>
 //==============================
 
 namespace Directus
@@ -58,7 +58,7 @@ namespace Directus
 
 		//= REFLECTION ============================
 		using InputLayoutDesc = std::pair<std::vector<D3D11_INPUT_ELEMENT_DESC>, std::vector<std::string>>;
-		InputLayoutDesc Reflect(ID3D10Blob* shaderBlob) const;
+		InputLayoutDesc Reflect(ID3D10Blob* vsBlob) const;
 
 		//= MISC ===========
 		std::string m_name;

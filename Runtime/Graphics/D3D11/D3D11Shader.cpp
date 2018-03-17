@@ -48,13 +48,13 @@ namespace Directus
 
 	D3D11Shader::D3D11Shader(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 	{
-		m_vertexShader = nullptr;
-		m_pixelShader = nullptr;
-		m_VSBlob = nullptr;
-		m_compiled = false;
-		m_entrypoint = NOT_ASSIGNED.c_str();
-		m_profile = NOT_ASSIGNED.c_str();
-		m_layoutHasBeenSet = false;
+		m_vertexShader		= nullptr;
+		m_pixelShader		= nullptr;
+		m_VSBlob			= nullptr;
+		m_compiled			= false;
+		m_entrypoint		= NOT_ASSIGNED.c_str();
+		m_profile			= NOT_ASSIGNED.c_str();
+		m_layoutHasBeenSet	= false;
 
 		// Create input layout
 		m_D3D11InputLayout = make_shared<D3D11InputLayout>(m_graphics);
@@ -135,7 +135,7 @@ namespace Directus
 		{
 			auto descPair = Reflect(m_VSBlob);
 			vector<D3D11_INPUT_ELEMENT_DESC> inputLayoutDesc = descPair.first;
-			for (int i{ 0 }; i < inputLayoutDesc.size(); ++i)
+			for (unsigned int i = 0; i < inputLayoutDesc.size(); ++i)
 			{
 				inputLayoutDesc[i].SemanticName = descPair.second[i].c_str();
 			}
@@ -187,7 +187,7 @@ namespace Directus
 		m_graphics->GetDeviceContext()->PSSetShader(m_pixelShader, nullptr, 0);
 
 		// set the samplers
-		for (int i = 0; i < m_samplers.size(); i++)
+		for (unsigned int i = 0; i < m_samplers.size(); i++)
 		{
 			m_samplers[i]->Set(i);
 		}
@@ -323,7 +323,6 @@ namespace Directus
 	D3D11Shader::InputLayoutDesc D3D11Shader::Reflect(ID3D10Blob* vsBlob) const
 	{
 		InputLayoutDesc inputLayoutDesc;
-		int offset{ 0 };
 
 		ID3D11ShaderReflection* reflector = nullptr;
 		if (FAILED(D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), IID_ID3D11ShaderReflection, (void**)&reflector)))
@@ -346,13 +345,12 @@ namespace Directus
 			D3D11_INPUT_ELEMENT_DESC elementDesc;
 
 			inputLayoutDesc.second.emplace_back(paramDesc.SemanticName);
-			elementDesc.SemanticName = nullptr;
-
-			elementDesc.SemanticIndex = paramDesc.SemanticIndex;
-			elementDesc.InputSlot = 0;
-			elementDesc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-			elementDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			elementDesc.InstanceDataStepRate = 0;
+			elementDesc.SemanticName			= nullptr;
+			elementDesc.SemanticIndex			= paramDesc.SemanticIndex;
+			elementDesc.InputSlot				= 0;
+			elementDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
+			elementDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			elementDesc.InstanceDataStepRate	= 0;
 
 			// determine DXGI format
 			if (paramDesc.Mask == 1)
@@ -360,28 +358,28 @@ namespace Directus
 				if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32_UINT;
 				else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32_SINT;
 				else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32_FLOAT;
-				offset += 4;
+				elementDesc.AlignedByteOffset = 4;
 			}
 			else if (paramDesc.Mask <= 3)
 			{
 				if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32G32_UINT;
 				else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32G32_SINT;
 				else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
-				offset += 8;
+				elementDesc.AlignedByteOffset = 8;
 			}
 			else if (paramDesc.Mask <= 7)
 			{
 				if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32_UINT;
 				else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32_SINT;
 				else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-				offset += 12;
+				elementDesc.AlignedByteOffset = 12;
 			}
 			else if (paramDesc.Mask <= 15)
 			{
 				if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32A32_UINT;
 				else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32A32_SINT;
 				else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-				offset += 16;
+				elementDesc.AlignedByteOffset = 16;
 			}
 
 			inputLayoutDesc.first.push_back(elementDesc);

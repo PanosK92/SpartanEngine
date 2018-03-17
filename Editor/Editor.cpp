@@ -188,9 +188,6 @@ void Editor::ApplyStyle()
 	style.Colors[ImGuiCol_ResizeGrip]				= backgroundMedium;
 	style.Colors[ImGuiCol_ResizeGripHovered]		= highlightBlue;
 	style.Colors[ImGuiCol_ResizeGripActive]			= highlightBlueHovered;
-	style.Colors[ImGuiCol_CloseButton]				= backgroundLight;
-	style.Colors[ImGuiCol_CloseButtonHovered]		= backgroundLight;
-	style.Colors[ImGuiCol_CloseButtonActive]		= backgroundLight;
 	//style.Colors[ImGuiCol_PlotLines]				= ImVec4(0.86f, 0.93f, 0.89f, 0.63f);
 	//style.Colors[ImGuiCol_PlotLinesHovered]		= ImVec4(0.92f, 0.18f, 0.29f, 1.00f);
 	style.Colors[ImGuiCol_PlotHistogram]			= highlightBlue; // Also used for progress bar
