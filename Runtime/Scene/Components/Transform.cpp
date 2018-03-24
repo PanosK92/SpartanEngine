@@ -50,7 +50,7 @@ namespace Directus
 
 	}
 
-	//= ICOMPONENT ====================================================================
+	//= ICOMPONENT ==================================================================================
 	void Transform::OnInitialize()
 	{
 		UpdateTransform();
@@ -86,19 +86,23 @@ namespace Directus
 
 		UpdateTransform();
 	}
-
-	//=====================
-	// Update World Transform
-	//=====================
+	//===============================================================================================
 	void Transform::UpdateTransform()
 	{
-		// Calculate transform
+		// Compute local transform
 		m_localTransform = Matrix(m_positionLocal, m_rotationLocal, m_scaleLocal);
 
-		// Calculate global transformation
-		m_worldTransform = HasParent() ? m_localTransform * GetParentTransformMatrix() : m_localTransform;
-
-		// update children
+		// Compute world transform
+		if (!HasParent())
+		{
+			m_worldTransform = m_localTransform;
+		}
+		else
+		{
+			m_worldTransform = m_localTransform * GetParentTransformMatrix();
+		}
+		
+		// Update children
 		for (const auto& child : m_children)
 		{
 			child->UpdateTransform();
@@ -111,7 +115,7 @@ namespace Directus
 		if (GetPosition() == position)
 			return;
 
-		SetPositionLocal(!HasParent() ? position : GetParent()->GetWorldTransform().Inverted() * position);
+		SetPositionLocal(!HasParent() ? position : position * GetParent()->GetWorldTransform().Inverted());
 	}
 
 	void Transform::SetPositionLocal(const Vector3& position)
@@ -197,17 +201,17 @@ namespace Directus
 
 	Vector3 Transform::GetUp()
 	{
-		return GetRotation() * Vector3::Up;
+		return GetRotationLocal() * Vector3::Up;
 	}
 
 	Vector3 Transform::GetForward()
 	{
-		return GetRotation() * Vector3::Forward;
+		return GetRotationLocal() * Vector3::Forward;
 	}
 
 	Vector3 Transform::GetRight()
 	{
-		return GetRotation() * Vector3::Right;
+		return GetRotationLocal() * Vector3::Right;
 	}
 	//================================================================================================
 

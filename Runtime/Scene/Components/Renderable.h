@@ -27,14 +27,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class Mesh;
 	class Light;
 	class Material;
+	namespace Math
+	{
+		class Vector3;
+		class BoundingBox;
+	}
 
-	class ENGINE_CLASS MeshRenderer : public IComponent
+	enum MeshType
+	{
+		MeshType_Imported,
+		MeshType_Cube,
+		MeshType_Quad,
+		MeshType_Sphere,
+		MeshType_Cylinder,
+		MeshType_Cone
+	};
+
+	class ENGINE_CLASS Renderable : public IComponent
 	{
 	public:
-		MeshRenderer(Context* context, GameObject* gameObject, Transform* transform);
-		~MeshRenderer();
+		Renderable(Context* context, GameObject* gameObject, Transform* transform);
+		~Renderable();
 
 		//= ICOMPONENT ===============================
 		void Serialize(FileStream* stream) override;
@@ -45,12 +61,22 @@ namespace Directus
 		void Render(unsigned int indexCount);
 		//===================================
 
-		//= PROPERTIES ===================================================================
-		void SetCastShadows(bool castShadows) { m_castShadows = castShadows; }
-		bool GetCastShadows() { return m_castShadows; }
-		void SetReceiveShadows(bool receiveShadows) { m_receiveShadows = receiveShadows; }
-		bool GetReceiveShadows() { return m_receiveShadows; }
-		//================================================================================
+		//= MESH =============================================================
+		// Sets a mesh from memory
+		void SetMesh(const std::weak_ptr<Mesh>& mesh, bool autoCache = true);
+
+		// Sets a default mesh (cube, quad)
+		void UseStandardMesh(MeshType type);
+
+		// Set vertex and index buffers (must be called before rendering)
+		bool SetBuffers();
+
+		MeshType GetMeshType() { return m_meshType; }
+		std::string GetMeshName();
+		const std::weak_ptr<Mesh>& GetMesh_RefWeak() { return m_meshRefWeak; }
+		Mesh* GetMesh_Ref() { return m_meshRef; }
+		bool HasMesh() { return !m_meshRefWeak.expired(); }
+		//====================================================================
 
 		//= MATERIAL ==================================================================================
 		// Sets a material from memory (adds it to the resource cache by default)
@@ -67,9 +93,30 @@ namespace Directus
 		std::string GetMaterialName();
 		//=============================================================================================
 
+		//= BOUNDING BOX ===============================
+		const Math::BoundingBox& GetBoundingBox() const;
+		Math::BoundingBox GetBoundingBoxTransformed();
+		//==============================================
+
+		//= PROPERTIES ===================================================================
+		void SetCastShadows(bool castShadows) { m_castShadows = castShadows; }
+		bool GetCastShadows() { return m_castShadows; }
+		void SetReceiveShadows(bool receiveShadows) { m_receiveShadows = receiveShadows; }
+		bool GetReceiveShadows() { return m_receiveShadows; }
+		//================================================================================
+
 	private:
+		//= MATERIAL =============================
 		std::weak_ptr<Material> m_materialRefWeak;
 		Material* m_materialRef;
+		//========================================
+
+		//= MESH =========================
+		std::weak_ptr<Mesh> m_meshRefWeak;
+		Mesh* m_meshRef;
+		MeshType m_meshType;
+		//================================
+
 		bool m_castShadows;
 		bool m_receiveShadows;
 		bool m_usingStandardMaterial;

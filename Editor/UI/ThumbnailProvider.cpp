@@ -57,8 +57,7 @@ void ThumbnailProvider::Initialize(Context* context)
 	Thumbnail_Load("Standard Assets\\Editor\\component_Light.png",				Icon_Component_Light);
 	Thumbnail_Load("Standard Assets\\Editor\\component_Material.png",			Icon_Component_Material);	
 	Thumbnail_Load("Standard Assets\\Editor\\component_MeshCollider.png",		Icon_Component_MeshCollider);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_MeshFilter.png",			Icon_Component_MeshFilter);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_MeshRenderer.png",		Icon_Component_MeshRenderer);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_renderable.png",			Icon_Component_Renderable);	
 	Thumbnail_Load("Standard Assets\\Editor\\component_RigidBody.png",			Icon_Component_RigidBody);
 	Thumbnail_Load("Standard Assets\\Editor\\component_Script.png",				Icon_Component_Script);	
 	Thumbnail_Load("Standard Assets\\Editor\\component_Transform.png",			Icon_Component_Transform);

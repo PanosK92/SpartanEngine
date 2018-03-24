@@ -25,10 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_Scene.h"
 #include "Scene/GameObject.h"
 #include "Graphics/Material.h"
-#include "Graphics/Mesh.h"
 #include "Scene/Components/Transform.h"
-#include "Scene/Components/MeshFilter.h"
-#include "Scene/Components/MeshRenderer.h"
+#include "Scene/Components/Renderable.h"
 #include "Scene/Components/RigidBody.h"
 #include "Scene/Components/Collider.h"
 #include "Scene/Components/Constraint.h"
@@ -42,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
 #include "Graphics/DeferredShaders/ShaderVariation.h"
+#include "Graphics/Mesh.h"
 //===================================================
 
 //= NAMESPACES ==========
@@ -129,9 +128,8 @@ void Widget_Properties::Update()
 		auto camera			= gameObjectPtr->GetComponent<Camera>().lock().get();
 		auto audioSource	= gameObjectPtr->GetComponent<AudioSource>().lock().get();
 		auto audioListener	= gameObjectPtr->GetComponent<AudioListener>().lock().get();
-		auto meshFilter		= gameObjectPtr->GetComponent<MeshFilter>().lock().get();
-		auto meshRenderer	= gameObjectPtr->GetComponent<MeshRenderer>().lock().get();
-		auto material		= meshRenderer ? meshRenderer->GetMaterial_RefWeak().lock().get() : nullptr;
+		auto renderable		= gameObjectPtr->GetComponent<Renderable>().lock().get();
+		auto material		= renderable ? renderable->GetMaterial_RefWeak().lock().get() : nullptr;
 		auto rigidBody		= gameObjectPtr->GetComponent<RigidBody>().lock().get();
 		auto collider		= gameObjectPtr->GetComponent<Collider>().lock().get();
 		auto constraint		= gameObjectPtr->GetComponent<Constraint>().lock().get();
@@ -142,8 +140,7 @@ void Widget_Properties::Update()
 		ShowCamera(camera);
 		ShowAudioSource(audioSource);
 		ShowAudioListener(audioListener);
-		ShowMeshFilter(meshFilter);
-		ShowMeshRenderer(meshRenderer);
+		ShowRenderable(renderable);
 		ShowMaterial(material);
 		ShowRigidBody(rigidBody);
 		ShowCollider(collider);
@@ -184,9 +181,10 @@ void Widget_Properties::Inspect(weak_ptr<Material> material)
 void Widget_Properties::ShowTransform(Transform* transform)
 {
 	//= REFLECT ==================================================
-	Vector3 position	= transform->GetPosition();
-	Quaternion rotation	= transform->GetRotation();
-	Vector3 scale		= transform->GetScale();
+	Vector3 position		= transform->GetPositionLocal();
+	Quaternion rotation		= transform->GetRotationLocal();
+	Vector3 rotationEuler	= rotation.ToEulerAngles();
+	Vector3 scale			= transform->GetScaleLocal();
 
 	char g_transPosX[BUFFER_TEXT_DEFAULT];
 	char g_transPosY[BUFFER_TEXT_DEFAULT];
@@ -201,9 +199,9 @@ void Widget_Properties::ShowTransform(Transform* transform)
 	EditorHelper::SetCharArray(&g_transPosX[0], position.x);
 	EditorHelper::SetCharArray(&g_transPosY[0], position.y);
 	EditorHelper::SetCharArray(&g_transPosZ[0], position.z);
-	EditorHelper::SetCharArray(&g_transRotX[0], rotation.Pitch());
-	EditorHelper::SetCharArray(&g_transRotY[0], rotation.Yaw());
-	EditorHelper::SetCharArray(&g_transRotZ[0], rotation.Roll());
+	EditorHelper::SetCharArray(&g_transRotX[0], rotationEuler.x);
+	EditorHelper::SetCharArray(&g_transRotY[0], rotationEuler.y);
+	EditorHelper::SetCharArray(&g_transRotZ[0], rotationEuler.z);
 	EditorHelper::SetCharArray(&g_transScaX[0], scale.x);
 	EditorHelper::SetCharArray(&g_transScaY[0], scale.y);
 	EditorHelper::SetCharArray(&g_transScaZ[0], scale.z);
@@ -243,7 +241,7 @@ void Widget_Properties::ShowTransform(Transform* transform)
 	}
 	COMPONENT_END;
 
-	//= MAP =========================================================================
+	//= MAP ==================================================================================
 	position = Vector3(
 		(float)atof(&g_transPosX[0]),
 		(float)atof(&g_transPosY[0]),
@@ -262,10 +260,10 @@ void Widget_Properties::ShowTransform(Transform* transform)
 		(float)atof(&g_transScaZ[0])
 	);
 
-	if (position	!= transform->GetPosition())	transform->SetPosition(position);
-	if (rotation	!= transform->GetRotation())	transform->SetRotation(rotation);
-	if (scale		!= transform->GetScale())		transform->SetScale(scale);
-	//===============================================================================
+	if (position	!= transform->GetPositionLocal())	transform->SetPositionLocal(position);
+	if (rotation	!= transform->GetRotationLocal())	transform->SetRotationLocal(rotation);
+	if (scale		!= transform->GetScaleLocal())		transform->SetScaleLocal(scale);
+	//========================================================================================
 }
 
 void Widget_Properties::ShowLight(Light* light)
@@ -351,57 +349,44 @@ void Widget_Properties::ShowLight(Light* light)
 	//===================================================================================================================
 }
 
-void Widget_Properties::ShowMeshFilter(MeshFilter* meshFilter)
+void Widget_Properties::ShowRenderable(Renderable* renderable)
 {
-	if (!meshFilter)
+	if (!renderable)
 		return;
 
-	auto mesh = meshFilter->GetMesh_RefWeak().lock();
-	string meshName = mesh ? mesh->GetResourceName() : NOT_ASSIGNED;
-
-	COMPONENT_BEGIN("Mesh Filter", Icon_Component_MeshFilter, meshFilter);
-	{
-		// Mesh
-		ImGui::Text("Mesh");
-		ImGui::SameLine(); ImGui::Text(meshName.c_str());
-	}
-	COMPONENT_END;
-}
-
-void Widget_Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
-{
-	if (!meshRenderer)
-		return;
-
-	auto material = meshRenderer->GetMaterial_RefWeak().lock();
+	//= REFLECT ================================================================
+	auto mesh			= renderable->GetMesh_RefWeak().lock();
+	string meshName		= mesh ? mesh->GetResourceName() : NOT_ASSIGNED;
+	auto material		= renderable->GetMaterial_RefWeak().lock();
 	string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
-
-	//= REFLECT ============================================
-	bool castShadows	= meshRenderer->GetCastShadows();
-	bool receiveShadows = meshRenderer->GetReceiveShadows();
-	//======================================================
+	bool castShadows	= renderable->GetCastShadows();
+	bool receiveShadows = renderable->GetReceiveShadows();
+	//==========================================================================
 	
-	COMPONENT_BEGIN("Mesh Renderer", Icon_Component_MeshRenderer, meshRenderer);
+	COMPONENT_BEGIN("Renderable", Icon_Component_Renderable, renderable);
 	{
 		static float posX = 150.0f;
 
-		// Cast shadows
-		ImGui::Text("Cast Shadows");
-		ImGui::SameLine(posX); ImGui::Checkbox("##MeshRendererCast", &castShadows);
-
-		// Receive shadows
-		ImGui::Text("Receive Shadows");
-		ImGui::SameLine(posX); ImGui::Checkbox("##MeshRendererReceived", &receiveShadows);
+		ImGui::Text("Mesh");
+		ImGui::SameLine(posX); ImGui::Text(meshName.c_str());
 
 		// Material
 		ImGui::Text("Material");
 		ImGui::SameLine(posX); ImGui::Text(materialName.c_str());
+
+		// Cast shadows
+		ImGui::Text("Cast Shadows");
+		ImGui::SameLine(posX); ImGui::Checkbox("##RenderableCastShadows", &castShadows);
+
+		// Receive shadows
+		ImGui::Text("Receive Shadows");
+		ImGui::SameLine(posX); ImGui::Checkbox("##RenderableReceiveShadows", &receiveShadows);
 	}
 	COMPONENT_END;
 
 	//= MAP ====================================================================================================
-	if (castShadows		!= meshRenderer->GetCastShadows())		meshRenderer->SetCastShadows(castShadows);
-	if (receiveShadows	!= meshRenderer->GetReceiveShadows())	meshRenderer->SetReceiveShadows(receiveShadows);
+	if (castShadows		!= renderable->GetCastShadows())		renderable->SetCastShadows(castShadows);
+	if (receiveShadows	!= renderable->GetReceiveShadows())	renderable->SetReceiveShadows(receiveShadows);
 	//==========================================================================================================
 }
 

@@ -33,9 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DeferredShaders/ShaderVariation.h"
 #include "DeferredShaders/DeferredShader.h"
 #include "../Scene/GameObject.h"
-#include "../Scene/Components/MeshFilter.h"
 #include "../Scene/Components/Transform.h"
-#include "../Scene/Components/MeshRenderer.h"
+#include "../Scene/Components/Renderable.h"
 #include "../Scene/Components/Skybox.h"
 #include "../Scene/Components/LineRenderer.h"
 #include "../Physics/Physics.h"
@@ -443,17 +442,16 @@ namespace Directus
 
 			for (const auto& gameObj : m_renderables)
 			{
-				MeshFilter* meshFilter		= gameObj->GetMeshFilterRef();
-				MeshRenderer* meshRenderer	= gameObj->GetMeshRendererRef();
-				Material* material			= meshRenderer	? meshRenderer->GetMaterial_Ref()	: nullptr;
-				Mesh* mesh					= meshFilter	? meshFilter->GetMesh_Ref()			: nullptr;
+				Renderable* renderable	= gameObj->GetRenderableRef();
+				Material* material		= renderable	? renderable->GetMaterial_Ref()	: nullptr;
+				Mesh* mesh				= renderable	? renderable->GetMesh_Ref()		: nullptr;
 
 				// Make sure we have everything
-				if (!mesh || !meshFilter || !meshRenderer || !material)
+				if (!mesh || !renderable || !material)
 					continue;
 
 				// Skip meshes that don't cast shadows
-				if (!meshRenderer->GetCastShadows())
+				if (!renderable->GetCastShadows())
 					continue;
 
 				// Skip transparent meshes (for now)
@@ -464,7 +462,7 @@ namespace Directus
 				//if (!m_directionalLight->IsInViewFrustrum(meshFilter))
 					//continue;
 
-				if (meshFilter->SetBuffers())
+				if (renderable->SetBuffers())
 				{
 					m_shaderDepth->SetBuffer(gameObj->GetTransformRef()->GetWorldTransform(), mViewLight, mProjectionLight, 0);
 					m_shaderDepth->DrawIndexed(mesh->GetIndexCount());
@@ -514,14 +512,14 @@ namespace Directus
 				shader->UpdatePerMaterialBuffer(material);
 
 				// Order the textures they way the shader expects them
-				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Albedo));
-				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Roughness));
-				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Metallic));
-				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Normal));
-				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Height));
-				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Occlusion));
-				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Emission));
-				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Mask));
+				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Albedo));
+				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Roughness));
+				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Metallic));
+				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Normal));
+				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Height));
+				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Occlusion));
+				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Emission));
+				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Mask));
 
 				// UPDATE TEXTURE BUFFER
 				shader->UpdateTextures(m_textures);
@@ -529,16 +527,15 @@ namespace Directus
 
 				for (const auto& gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
 				{
-					//= Get all that we need =================================================================
-					MeshFilter* meshFilter		= gameObj->GetMeshFilterRef();
-					MeshRenderer* meshRenderer	= gameObj->GetMeshRendererRef();
-					Mesh* objMesh				= meshFilter	? meshFilter->GetMesh_Ref()			: nullptr;
-					Material* objMaterial		= meshRenderer	? meshRenderer->GetMaterial_Ref()	: nullptr;
-					auto mWorld					= gameObj->GetTransformRef()->GetWorldTransform();
-					//========================================================================================
+					//= Get all that we need =========================================================
+					Renderable* renderable	= gameObj->GetRenderableRef();
+					Mesh* objMesh			= renderable	? renderable->GetMesh_Ref()		: nullptr;
+					Material* objMaterial	= renderable	? renderable->GetMaterial_Ref()	: nullptr;
+					auto mWorld				= gameObj->GetTransformRef()->GetWorldTransform();
+					//================================================================================
 
 					// skip objects that are missing required components
-					if (!meshFilter || !objMesh || !meshRenderer || !objMaterial)
+					if (!objMesh || !renderable || !objMaterial)
 						continue;
 
 					// skip objects that use a different material
@@ -550,20 +547,20 @@ namespace Directus
 						continue;
 
 					// skip objects outside of the view frustrum
-					if (!m_camera->IsInViewFrustrum(meshFilter))
+					if (!m_camera->IsInViewFrustrum(renderable))
 						continue;
 
 					// UPDATE PER OBJECT BUFFER
 					shader->UpdatePerObjectBuffer(mWorld, m_mView, m_mProjectionPersp);
 
 					// Set mesh buffer
-					if (meshFilter->HasMesh() && meshFilter->SetBuffers())
+					if (renderable->HasMesh() && renderable->SetBuffers())
 					{
 						// Set face culling (changes only if required)
 						m_graphics->SetCullMode(objMaterial->GetCullMode());
 
 						// Render the mesh, finally!				
-						meshRenderer->Render(objMesh->GetIndexCount());
+						renderable->Render(objMesh->GetIndexCount());
 
 						m_renderedMeshesCount++;
 					}
@@ -722,9 +719,9 @@ namespace Directus
 			{
 				for (const auto& gameObject : m_renderables)
 				{
-					if (auto meshFilter = gameObject->GetMeshFilterRef())
+					if (auto renderable = gameObject->GetRenderableRef())
 					{
-						m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						m_lineRenderer->AddBoundigBox(renderable->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 			}

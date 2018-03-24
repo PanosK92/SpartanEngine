@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class Camera;
-	class MeshFilter;
+	class Renderable;
 
 	namespace Math
 	{
@@ -99,7 +99,7 @@ namespace Directus
 		int GetShadowCascadeCount() { return m_cascades; }
 		float GetShadowCascadeSplit(int cascadeIndex);
 
-		bool IsInViewFrustrum(MeshFilter* meshFilter);
+		bool IsInViewFrustrum(Renderable* renderable);
 
 	private:
 		void EnableShadowMaps(bool enable);

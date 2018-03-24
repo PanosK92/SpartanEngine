@@ -33,8 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class GameObject;
-	class MeshFilter;
 	class Model;
+	class Renderable;
 
 	namespace Math
 	{
@@ -99,7 +99,7 @@ namespace Directus
 		//====================================
 
 		//= MISC ========================================================================
-		bool IsInViewFrustrum(MeshFilter* meshFilter);
+		bool IsInViewFrustrum(Renderable* renderable);
 		bool IsInViewFrustrum(const Math::Vector3& center, const Math::Vector3& extents);
 		const Math::Vector4& GetClearColor() { return m_clearColor; }
 		void SetClearColor(const Math::Vector4& color) { m_clearColor = color; }

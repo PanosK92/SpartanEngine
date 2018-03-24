@@ -22,8 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "Skybox.h"
 #include "Transform.h"
-#include "MeshRenderer.h"
-#include "MeshFilter.h"
+#include "Renderable.h"
 #include "../GameObject.h"
 #include "../../Graphics/Texture.h"
 #include "../../Math/Vector3.h"
@@ -44,8 +43,7 @@ namespace Directus
 
 	Skybox::~Skybox()
 	{
-		 GetGameObject_Ref()->RemoveComponent<MeshFilter>();
-		 GetGameObject_Ref()->RemoveComponent<MeshRenderer>();
+		 GetGameObject_Ref()->RemoveComponent<Renderable>();
 	}
 
 	void Skybox::OnInitialize()
@@ -69,14 +67,12 @@ namespace Directus
 		m_matSkybox->SetIsEditable(false);
 		m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
 
-		// Add a cube mesh
-		GetGameObject_Ref()->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cube);
-
-		// Add a mesh renderer and assign the skybox material to it
-		auto meshRenderer = GetGameObject_Ref()->AddComponent<MeshRenderer>().lock();
-		meshRenderer->SetCastShadows(false);
-		meshRenderer->SetReceiveShadows(false);
-		meshRenderer->SetMaterialFromMemory(m_matSkybox, true);
+		// Add a Renderable and assign the skybox material to it
+		auto renderable = GetGameObject_Ref()->AddComponent<Renderable>().lock();
+		renderable->UseStandardMesh(MeshType_Cube);
+		renderable->SetCastShadows(false);
+		renderable->SetReceiveShadows(false);
+		renderable->SetMaterialFromMemory(m_matSkybox, true);
 
 		// Make the skybox big enough
 		GetTransform()->SetScale(Vector3(1000, 1000, 1000));

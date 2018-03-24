@@ -36,8 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/Collider.h"
 #include "Scene/Components/Camera.h"
 #include "Scene/Components/Constraint.h"
-#include "Scene/Components/MeshFilter.h"
-#include "Scene/Components/MeshRenderer.h"
+#include "Scene/Components/Renderable.h"
 #include "Widget_Properties.h"
 //=========================================
 
@@ -149,8 +148,6 @@ void Widget_Scene::Tree_AddGameObject(GameObject* gameObject)
 		}
 	}
 
-	//ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, !hasVisibleChildren ? 0 : 40);
-
 	ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowItemOverlap;
 	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; // Expandable?	
 	if (!m_gameObjectSelected.expired()) // Selected?
@@ -158,8 +155,6 @@ void Widget_Scene::Tree_AddGameObject(GameObject* gameObject)
 		node_flags |= (m_gameObjectSelected.lock()->GetID() == gameObject->GetID()) ? ImGuiTreeNodeFlags_Selected : 0;
 	}
 	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObject->GetID(), node_flags, gameObject->GetName().c_str());
-
-	//ImGui::PopStyleVar();
 
 	// Manully detect some useful states
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
@@ -380,40 +375,45 @@ GameObject* Widget_Scene::Action_GameObject_CreateEmpty()
 void Widget_Scene::Action_GameObject_CreateCube()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
-	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cube);
-	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
+	auto renderable = gameObject->AddComponent<Renderable>().lock();
+	renderable->UseStandardMesh(MeshType_Cube);
+	renderable->UseStandardMaterial();
 	gameObject->SetName("Cube");
 }
 
 void Widget_Scene::Action_GameObject_CreateQuad()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
-	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Quad);
-	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
+	auto renderable = gameObject->AddComponent<Renderable>().lock();
+	renderable->UseStandardMesh(MeshType_Quad);
+	renderable->UseStandardMaterial();
 	gameObject->SetName("Quad");
 }
 
 void Widget_Scene::Action_GameObject_CreateSphere()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
-	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Sphere);
-	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
+	auto renderable = gameObject->AddComponent<Renderable>().lock();
+	renderable->UseStandardMesh(MeshType_Sphere);
+	renderable->UseStandardMaterial();
 	gameObject->SetName("Sphere");
 }
 
 void Widget_Scene::Action_GameObject_CreateCylinder()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
-	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cylinder);
-	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
+	auto renderable = gameObject->AddComponent<Renderable>().lock();
+	renderable->UseStandardMesh(MeshType_Cylinder);
+	renderable->UseStandardMaterial();
 	gameObject->SetName("Cylinder");
 }
 
 void Widget_Scene::Action_GameObject_CreateCone()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
-	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cone);
-	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
+	auto renderable = gameObject->AddComponent<Renderable>().lock();
+	renderable->UseStandardMesh(MeshType_Cone);
+	renderable->UseStandardMaterial();
 	gameObject->SetName("Cone");
 }
 

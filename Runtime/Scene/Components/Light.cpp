@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
-#include "MeshFilter.h"
 #include "../Scene.h"
 #include "../../IO/FileStream.h"
 #include "../../Core/Settings.h"
@@ -32,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Math/BoundingBox.h"
 #include "../../Math/Frustrum.h"
+#include "Renderable.h"
 //=================================
 
 //= NAMESPACES ================
@@ -223,10 +223,10 @@ namespace Directus
 		return m_shadowMaps[cascadeIndex]->GetSplit(cascadeIndex);
 	}
 
-	bool Light::IsInViewFrustrum(MeshFilter* meshFilter)
+	bool Light::IsInViewFrustrum(Renderable* renderable)
 	{
-		BoundingBox box = meshFilter->GetBoundingBoxTransformed();
-		Vector3 center = box.GetCenter();
+		BoundingBox box = renderable->GetBoundingBoxTransformed();
+		Vector3 center	= box.GetCenter();
 		Vector3 extents = box.GetExtents();
 
 		return m_frustrum->CheckCube(center, extents) != Outside;

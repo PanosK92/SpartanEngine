@@ -51,19 +51,13 @@ namespace Directus
 			if (gameObject.expired())
 				return;
 
-			aiMatrix4x4 mAssimp = node->mTransformation;
-			Math::Vector3 position;
-			Math::Quaternion rotation;
-			Math::Vector3 scale;
-
-			// Decompose the transformation matrix
-			Math::Matrix mEngine = aiMatrix4x4ToMatrix(mAssimp);
-			mEngine.Decompose(scale, rotation, position);
+			// Convert to engine matrix
+			Math::Matrix mEngine = aiMatrix4x4ToMatrix(node->mTransformation);
 
 			// Apply position, rotation and scale
-			gameObject.lock()->GetTransformRef()->SetPositionLocal(position);
-			gameObject.lock()->GetTransformRef()->SetRotationLocal(rotation);
-			gameObject.lock()->GetTransformRef()->SetScaleLocal(scale);
+			gameObject.lock()->GetTransformRef()->SetPositionLocal(mEngine.GetTranslation());
+			gameObject.lock()->GetTransformRef()->SetRotationLocal(mEngine.GetRotation());
+			gameObject.lock()->GetTransformRef()->SetScaleLocal(mEngine.GetScale());
 		}
 
 		static Math::Vector4 ToVector4(const aiColor4D& aiColor)

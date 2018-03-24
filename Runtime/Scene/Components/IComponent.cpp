@@ -24,8 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Skybox.h"
 #include "Script.h"
 #include "RigidBody.h"
-#include "MeshRenderer.h"
-#include "MeshFilter.h"
+#include "Renderable.h"
 #include "LineRenderer.h"
 #include "Constraint.h"
 #include "Collider.h"
@@ -92,11 +91,8 @@ namespace Directus
 		if (typeid(T) == typeid(LineRenderer))
 			return ComponentType_LineRenderer;
 
-		if (typeid(T) == typeid(MeshFilter))
-			return ComponentType_MeshFilter;
-
-		if (typeid(T) == typeid(MeshRenderer))
-			return ComponentType_MeshRenderer;
+		if (typeid(T) == typeid(Renderable))
+			return ComponentType_Renderable;
 
 		if (typeid(T) == typeid(RigidBody))
 			return ComponentType_RigidBody;
@@ -122,8 +118,7 @@ namespace Directus
 	INSTANTIATE(Constraint);
 	INSTANTIATE(Light);
 	INSTANTIATE(LineRenderer);
-	INSTANTIATE(MeshFilter);
-	INSTANTIATE(MeshRenderer);
+	INSTANTIATE(Renderable);
 	INSTANTIATE(RigidBody);
 	INSTANTIATE(Script);
 	INSTANTIATE(Skybox);

@@ -25,10 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Scene/GameObject.h"
 #include "../Scene/Components/Transform.h"
-#include "../Scene/Components/MeshFilter.h"
-#include "../Scene/Components/MeshRenderer.h"
-#include "../Scene/Components/RigidBody.h"
-#include "../Scene/Components/Collider.h"
+#include "../Scene/Components/Renderable.h"
 #include "../Graphics/Vertex.h"
 #include "../Graphics/Material.h"
 #include "../Graphics/Animation.h"
@@ -202,11 +199,11 @@ namespace Directus
 		// Keep a reference to it
 		m_materials.push_back(matRef);
 
-		// Create a MeshRenderer and pass the material to it
+		// Create a Renderable and pass the material to it
 		if (!gameObject.expired())
 		{
-			auto meshRenderer = gameObject.lock()->AddComponent<MeshRenderer>().lock();
-			meshRenderer->SetMaterialFromMemory(matRef, false);
+			auto renderable = gameObject.lock()->AddComponent<Renderable>().lock();
+			renderable->SetMaterialFromMemory(matRef, false);
 		}
 	}
 
@@ -361,9 +358,8 @@ namespace Directus
 		if (gameObject.expired())
 			return;
 
-		// Add a MeshFilter
-		MeshFilter* meshFilter = gameObject.lock()->AddComponent<MeshFilter>().lock().get();
-		meshFilter->SetMesh(mesh);
+		Renderable* renderable = gameObject.lock()->AddComponent<Renderable>().lock().get();
+		renderable->SetMesh(mesh);
 	}
 
 	float Model::ComputeNormalizeScale()

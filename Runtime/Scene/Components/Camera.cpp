@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Camera.h"
 #include "Transform.h"
-#include "../Components/MeshFilter.h"
 #include "../Components/Skybox.h"
 #include "../../IO/FileStream.h"
 #include "../../Core/Settings.h"
@@ -33,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Frustrum.h"
 #include "../../Graphics/Renderer.h"
 #include "../GameObject.h"
+#include "Renderable.h"
 //===================================
 
 //= NAMESPACES ================
@@ -146,9 +146,9 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	bool Camera::IsInViewFrustrum(MeshFilter* meshFilter)
+	bool Camera::IsInViewFrustrum(Renderable* renderable)
 	{
-		BoundingBox box = meshFilter->GetBoundingBoxTransformed();
+		BoundingBox box = renderable->GetBoundingBoxTransformed();
 		Vector3 center = box.GetCenter();
 		Vector3 extents = box.GetExtents();
 
@@ -192,11 +192,11 @@ namespace Directus
 		for (const auto& gameObj : gameObjects)
 		{
 			// Make sure there GameObject has a mesh and exclude the SkyBox
-			if (!gameObj.lock()->HasComponent<MeshFilter>() || gameObj.lock()->HasComponent<Skybox>())
+			if (!gameObj.lock()->HasComponent<Renderable>() || gameObj.lock()->HasComponent<Skybox>())
 				continue;
 
 			// Get bounding box
-			BoundingBox box = gameObj.lock()->GetComponent<MeshFilter>().lock()->GetBoundingBoxTransformed();
+			BoundingBox box = gameObj.lock()->GetComponent<Renderable>().lock()->GetBoundingBoxTransformed();
 
 			// Compute hit distance
 			float hitDistance = m_ray.HitDistance(box);

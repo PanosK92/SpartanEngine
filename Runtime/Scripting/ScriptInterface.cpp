@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Components/Camera.h"
 #include "../Scene/GameObject.h"
 #include "../Scene/Components/Transform.h"
-#include "../Scene/Components/MeshRenderer.h"
+#include "../Scene/Components/Renderable.h"
 #include "../Input/DInput/DInput.h"
 //===========================================
 
@@ -57,7 +57,7 @@ namespace Directus
 		RegisterQuaternion();
 		RegisterTransform();
 		RegisterMaterial();
-		RegisterMeshRenderer();
+		RegisterRenderable();
 		RegisterCamera();
 		RegisterRigidBody();
 		RegisterGameObject();
@@ -81,8 +81,7 @@ namespace Directus
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Constraint",	int(ComponentType_Constraint));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Light",			int(ComponentType_Light));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "LineRenderer",	int(ComponentType_LineRenderer));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "MeshFilter",	int(ComponentType_MeshFilter));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "MeshRenderer",	int(ComponentType_MeshRenderer));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Renderable",	int(ComponentType_Renderable));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "RigidBody",		int(ComponentType_RigidBody));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Script",		int(ComponentType_Script));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Skybox",		int(ComponentType_Skybox));
@@ -133,7 +132,7 @@ namespace Directus
 		m_scriptEngine->RegisterObjectType("Time", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("GameObject", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Transform", 0, asOBJ_REF | asOBJ_NOCOUNT);
-		m_scriptEngine->RegisterObjectType("MeshRenderer", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		m_scriptEngine->RegisterObjectType("Renderable", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Material", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Camera", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("RigidBody", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -186,7 +185,7 @@ namespace Directus
 		m_scriptEngine->RegisterObjectMethod("GameObject", "Transform &GetTransform()", asMETHOD(GameObject, GetTransformRef), asCALL_THISCALL);	
 		m_scriptEngine->RegisterObjectMethod("GameObject", "Camera &GetCamera()", asMETHOD(GameObject, GetComponent<Camera>), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "RigidBody &GetRigidBody()", asMETHOD(GameObject, GetComponent<RigidBody>), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "MeshRenderer &GetMeshRenderer()", asMETHOD(GameObject, GetComponent<MeshRenderer>), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("GameObject", "Renderable &GetRenderable()", asMETHOD(GameObject, GetComponent<Renderable>), asCALL_THISCALL);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -228,10 +227,10 @@ namespace Directus
 	//===============================================================================
 
 
-	//= MESH RENDERER ===============================================================
-	void ScriptInterface::RegisterMeshRenderer()
+	//= RENDERABLE ==================================================================
+	void ScriptInterface::RegisterRenderable()
 	{
-		m_scriptEngine->RegisterObjectMethod("MeshRenderer", "Material &GetMaterial()", asMETHOD(MeshRenderer, GetMaterial_RefWeak), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Renderable", "Material &GetMaterial()", asMETHOD(Renderable, GetMaterial_RefWeak), asCALL_THISCALL);
 	}
 	//===============================================================================
 
