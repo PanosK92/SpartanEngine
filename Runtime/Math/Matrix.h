@@ -61,7 +61,7 @@ namespace Directus::Math
 
 		~Matrix() {}
 
-		//= TRANSLATION ==================================================================================
+		//= TRANSLATION ===========================================
 		Vector3 GetTranslation() { return Vector3(m30, m31, m32); }
 
 		static Matrix CreateTranslation(const Vector3& position)
@@ -73,7 +73,7 @@ namespace Directus::Math
 				position.x, position.y, position.z, 1
 			);
 		}
-		//================================================================================================
+		//=========================================================
 
 		//= ROTATION =====================================================================================
 		static Matrix CreateRotation(const Quaternion& rotation)
@@ -316,8 +316,8 @@ namespace Directus::Math
 		void Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation)
 		{
 			translation = GetTranslation();
-			scale = GetScale();
-			rotation = GetRotation();
+			scale		= GetScale();
+			rotation	= GetRotation();
 		}
 
 		void SetIdentity()
@@ -364,62 +364,23 @@ namespace Directus::Math
 		}
 		//=================================================================================================================================
 
-		//= COMPARISON ====================================================================================================================
+		//= COMPARISON =================================================
 		bool operator==(const Matrix& rhs) const
 		{
-			if (m00 != rhs.m00)
-				return false;
+			const float* leftData	= Data();
+			const float* rightData	= rhs.Data();
 
-			if (m01 != rhs.m01)
-				return false;
-
-			if (m01 != rhs.m01)
-				return false;
-
-			if (m01 != rhs.m01)
-				return false;
-
-			if (m10 != rhs.m00)
-				return false;
-
-			if (m11 != rhs.m11)
-				return false;
-
-			if (m11 != rhs.m11)
-				return false;
-
-			if (m11 != rhs.m11)
-				return false;
-
-			if (m20 != rhs.m20)
-				return false;
-
-			if (m21 != rhs.m21)
-				return false;
-
-			if (m21 != rhs.m21)
-				return false;
-
-			if (m21 != rhs.m21)
-				return false;
-
-			if (m30 != rhs.m30)
-				return false;
-
-			if (m31 != rhs.m31)
-				return false;
-
-			if (m31 != rhs.m31)
-				return false;
-
-			if (m31 != rhs.m31)
-				return false;
+			for (unsigned i = 0; i < 16; ++i)
+			{
+				if (!Equals(leftData[i], rightData[i]))
+					return false;
+			}
 
 			return true;
 		}
 
 		bool operator!=(const Matrix& b) const { return !(*this == b); }
-		//===========================================================================================================================
+		//==============================================================
 
 		const float* Data() const { return &m00; }
 		std::string ToString() const;

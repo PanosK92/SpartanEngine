@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================================================
 #include "Collider.h"
 #include "Transform.h"
-#include "MeshFilter.h"
 #include "RigidBody.h"
 #include "../GameObject.h"
 #include "../../IO/FileStream.h"
@@ -37,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
 #include <BulletCollision/CollisionShapes/btConeShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
+#include "Renderable.h"
 //=============================================================
 
 //= NAMESPACES ================
@@ -64,10 +64,10 @@ namespace Directus
 		m_lastKnownScale = GetTransform()->GetScale();
 
 		// If there is a mesh, use it's bounding box
-		if (auto meshFilter = GetGameObject_Ref()->GetMeshFilterRef())
+		if (auto renderable = GetGameObject_Ref()->GetRenderableRef())
 		{
 			m_center = GetTransform()->GetPosition();
-			m_size = meshFilter->GetBoundingBoxTransformed().GetSize();
+			m_size = renderable->GetBoundingBoxTransformed().GetSize();
 		}
 
 		UpdateShape();
@@ -187,19 +187,19 @@ namespace Directus
 			break;
 
 		case ColliderShape_Mesh:
-			// Get mesh filter
-			MeshFilter* meshFilter = GetGameObject_Ref()->GetComponent<MeshFilter>().lock().get();
-			if (!meshFilter)
+			// Get Renderable
+			Renderable* renderable = GetGameObject_Ref()->GetComponent<Renderable>().lock().get();
+			if (!renderable)
 			{
-				LOG_WARNING("Collider: Can't construct mesh shape, there is no MeshFilter component attached.");
+				LOG_WARNING("Collider: Can't construct mesh shape, there is no Renderable component attached.");
 				return;
 			}
 
 			// Get mesh
-			Mesh* mesh = meshFilter->GetMesh_RefWeak().lock().get();
+			Mesh* mesh = renderable->GetMesh_RefWeak().lock().get();
 			if (!mesh)
 			{
-				LOG_WARNING("Collider: Can't construct mesh shape, MeshFilter component doesn't have a mesh.");
+				LOG_WARNING("Collider: Can't construct mesh shape, Renderable component doesn't have a mesh.");
 				return;
 			}
 

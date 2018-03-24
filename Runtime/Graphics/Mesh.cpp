@@ -218,7 +218,7 @@ namespace Directus
 			m_indexBuffer = make_shared<D3D11IndexBuffer>(graphics);
 			if (!m_indexBuffer->Create(m_indices))
 			{
-				LOG_ERROR("MeshFilter: Failed to create index buffer for \"" + m_resourceName + "\".");
+				LOG_ERROR("Mesh: Failed to create index buffer for \"" + m_resourceName + "\".");
 				success = false;
 			}
 		}

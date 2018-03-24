@@ -31,8 +31,7 @@ namespace Directus
 	class GameObject;
 	class Transform;
 	class Light;
-	class MeshFilter;
-	class MeshRenderer;
+	class Renderable;
 	class RigidBody;
 	class Collider;
 	class Constraint;
@@ -57,8 +56,7 @@ public:
 private:
 	void ShowTransform(Directus::Transform* transform);
 	void ShowLight(Directus::Light* light);
-	void ShowMeshFilter(Directus::MeshFilter* meshFilter);
-	void ShowMeshRenderer(Directus::MeshRenderer* meshRenderer);
+	void ShowRenderable(Directus::Renderable* renderable);
 	void ShowRigidBody(Directus::RigidBody* rigidBody);
 	void ShowCollider(Directus::Collider* collider);
 	void ShowConstraint(Directus::Constraint* collider);

@@ -40,7 +40,7 @@ namespace Directus
 		void RegisterTime();
 		void RegisterGameObject();
 		void RegisterTransform();
-		void RegisterMeshRenderer();
+		void RegisterRenderable();
 		void RegisterMaterial();
 		void RegisterCamera();
 		void RegisterRigidBody();

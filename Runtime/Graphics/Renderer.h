@@ -34,12 +34,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class GameObject;
-	class MeshFilter;
 	class Camera;
 	class Skybox;
 	class LineRenderer;
 	class Light;
-	class MeshFilter;	
 	class GBuffer;
 	class Rectangle;
 	class DeferredShader;

@@ -28,8 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Script.h"
 #include "Components/LineRenderer.h"
 #include "Components/Skybox.h"
-#include "Components/MeshFilter.h"
-#include "Components/MeshRenderer.h"
+#include "Components/Renderable.h"
 #include "../Core/Timer.h"
 #include "../Core/Context.h"
 #include "../Core/Stopwatch.h"
@@ -417,10 +416,7 @@ namespace Directus
 			}
 
 			// Find renderables
-			if ((gameObject->HasComponent<MeshRenderer>() && gameObject->HasComponent<MeshFilter>()) ||
-				hasCamera ||
-				hasSkybox ||
-				gameObject->HasComponent<Light>())
+			if (gameObject->HasComponent<Renderable>() || hasCamera || hasSkybox || gameObject->HasComponent<Light>())
 			{
 				m_renderables.push_back(gameObject);
 			}

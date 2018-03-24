@@ -32,8 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Components/Constraint.h"
 #include "../Scene/Components/Light.h"
 #include "../Scene/Components/LineRenderer.h"
-#include "../Scene/Components/MeshFilter.h"
-#include "../Scene/Components/MeshRenderer.h"
+#include "../Scene/Components/Renderable.h"
 #include "../Scene/Components/RigidBody.h"
 #include "../Scene/Components/Skybox.h"
 #include "../Scene/Components/Script.h"
@@ -56,8 +55,7 @@ namespace Directus
 		m_isPrefab				= false;
 		m_hierarchyVisibility	= true;
 		m_transform				= nullptr;
-		m_meshFilter			= nullptr;
-		m_meshRenderer			= nullptr;
+		m_renderable			= nullptr;
 	}
 
 	GameObject::~GameObject()
@@ -276,8 +274,7 @@ namespace Directus
 			case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
 			case ComponentType_Light:			component = AddComponent<Light>();			break;
 			case ComponentType_LineRenderer:	component = AddComponent<LineRenderer>();	break;
-			case ComponentType_MeshFilter:		component = AddComponent<MeshFilter>();		break;
-			case ComponentType_MeshRenderer:	component = AddComponent<MeshRenderer>();	break;
+			case ComponentType_Renderable:	component = AddComponent<Renderable>();	break;
 			case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
 			case ComponentType_Script:			component = AddComponent<Script>();			break;
 			case ComponentType_Skybox:			component = AddComponent<Skybox>();			break;

@@ -32,8 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class Transform;
-	class MeshFilter;
-	class MeshRenderer;
+	class Renderable;
 
 	class ENGINE_CLASS GameObject : public std::enable_shared_from_this<GameObject>
 	{
@@ -93,13 +92,9 @@ namespace Directus
 			newComponent->OnInitialize();
 
 			// Caching of rendering performance critical components
-			if (newComponent->GetType() == ComponentType_MeshFilter)
+			if (newComponent->GetType() == ComponentType_Renderable)
 			{
-				m_meshFilter = (MeshFilter*)newComponent.get();
-			}
-			else if (newComponent->GetType() == ComponentType_MeshRenderer)
-			{
-				m_meshRenderer = (MeshRenderer*)newComponent.get();
+				m_renderable = (Renderable*)newComponent.get();
 			}
 
 			// Make the scene resolve
@@ -180,8 +175,7 @@ namespace Directus
 
 		// Direct access for performance critical usage (not safe)
 		Transform* GetTransformRef() { return m_transform; }
-		MeshFilter* GetMeshFilterRef() { return m_meshFilter; }
-		MeshRenderer* GetMeshRendererRef() { return m_meshRenderer; }
+		Renderable* GetRenderableRef() { return m_renderable; }
 		std::shared_ptr<GameObject> GetSharedPtr() { return shared_from_this(); }
 
 	private:
@@ -194,8 +188,7 @@ namespace Directus
 		Context* m_context;
 
 		// Caching of performance critical components
-		Transform* m_transform;			// Updating performance - never null
-		MeshFilter* m_meshFilter;		// Rendering performance - can be null
-		MeshRenderer* m_meshRenderer;	// Rendering performance - can be null
+		Transform* m_transform;
+		Renderable* m_renderable;
 	};
 }

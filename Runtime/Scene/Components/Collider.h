@@ -32,7 +32,6 @@ class btCollisionShape;
 namespace Directus
 {
 	class Mesh;
-	class MeshFilter;
 
 	enum ColliderShape
 	{

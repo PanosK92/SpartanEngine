@@ -82,7 +82,7 @@ private:
 	FileDialog_Mode m_style;
 	FileDialog_Filter m_filter;
 
-	char m_fileNameText[BUFFER_TEXT_DEFAULT]{};
+	char m_selectedFileName[BUFFER_TEXT_DEFAULT]{};
 	char m_itemLabel[BUFFER_TEXT_DEFAULT]{};
 
 	bool m_isWindow;

@@ -117,7 +117,7 @@ bool FileDialog::Show(bool* isVisible, string* pathDoubleClicked)
 
 	if (pathDoubleClicked && m_selectionMade)
 	{
-		(*pathDoubleClicked) = m_currentPath + "/" + string(m_fileNameText);
+		(*pathDoubleClicked) = m_currentPath + "/" + string(m_selectedFileName);
 	}
 
 	return m_selectionMade;
@@ -175,9 +175,12 @@ void FileDialog::Dialog_Middle()
 			if (m_currentFullPath != entry.first) // Single click
 			{
 				m_currentFullPath = entry.first;
-				EditorHelper::SetCharArray(&m_fileNameText[0], FileSystem::GetFileNameFromFilePath(entry.first));
+				EditorHelper::SetCharArray(&m_selectedFileName[0], FileSystem::GetFileNameFromFilePath(entry.first));
 				m_stopwatch->Start();
-				if (m_callback_OnPathClicked) m_callback_OnPathClicked(m_currentFullPath);
+				if (m_callback_OnPathClicked) 
+				{
+					m_callback_OnPathClicked(m_currentFullPath);
+				}
 			}
 			else if (m_stopwatch->GetElapsedTimeMs() <= 500) // Double click
 			{
@@ -188,7 +191,7 @@ void FileDialog::Dialog_Middle()
 					m_isDirty     = true;
 				}
 				m_selectionMade = !isDirectory;
-				if (m_callback_OnPathDoubleClicked) m_callback_OnPathDoubleClicked(m_currentPath + "/" + string(m_fileNameText));
+				if (m_callback_OnPathDoubleClicked) m_callback_OnPathDoubleClicked(m_currentPath + "/" + string(m_selectedFileName));
 			}
 		}
 		ImGui::PopID();
@@ -243,7 +246,7 @@ void FileDialog::Dialog_Bottom(bool* isVisible)
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 3.0f); // move to the bottom of the window
 
 		ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235);
-		ImGui::InputText("##FileName", m_fileNameText, BUFFER_TEXT_DEFAULT);
+		ImGui::InputText("##FileName", m_selectedFileName, BUFFER_TEXT_DEFAULT);
 		ImGui::PopItemWidth();
 
 		ImGui::SameLine();
@@ -307,8 +310,6 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 			AddThumbnail(childFile, Thumbnail_File_Model);
 		}
 	}
-
-	EditorHelper::SetCharArray(&m_fileNameText[0], "");
 
 	return true;
 }
