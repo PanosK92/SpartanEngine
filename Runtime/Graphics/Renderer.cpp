@@ -313,23 +313,20 @@ namespace Directus
 		//===============================================
 	}
 
-	void Renderer::SetResolutionBackBuffer(int width, int height)
+	void Renderer::SetBackBufferSize(int width, int height)
 	{
+		SET_DISPLAY_SIZE(width, height);
 		m_graphics->SetResolution(width, height);
+		m_graphics->SetViewport((float)width, (float)height);
 	}
 
-	void Renderer::SetViewportBackBuffer(float width, float height)
-	{
-		m_graphics->SetViewport(width, height);
-	}
-
-	Vector4 Renderer::GetViewportBackBuffer()
+	const Vector4& Renderer::GetViewportBackBuffer()
 	{
 		D3D11_VIEWPORT* viewport = (D3D11_VIEWPORT*)m_graphics->GetViewport();
 		return Vector4(viewport->TopLeftX, viewport->TopLeftY, viewport->Width, viewport->Height);
 	}
 
-	void Renderer::SetResolution(int width, int height)
+	void Renderer::SetResolutionInternal(int width, int height)
 	{
 		// Return if resolution already set
 		if (GET_RESOLUTION.x == width && GET_RESOLUTION.y == height)
@@ -359,9 +356,10 @@ namespace Directus
 		m_renderTexFinalFrame = make_unique<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 	}
 
-	void Renderer::SetViewport(int width, int height)
+	const Vector2& Renderer::GetViewportInternal()
 	{
-		SET_VIEWPORT(Vector4(GET_VIEWPORT.x, GET_VIEWPORT.y, (float)width, (float)height));
+		// The internal (frame) viewport equals the resolution
+		return Settings::Get().GetResolution();
 	}
 
 	void Renderer::Clear()

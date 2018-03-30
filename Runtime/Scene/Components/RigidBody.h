@@ -33,6 +33,7 @@ class btCollisionShape;
 namespace Directus
 {
 	class GameObject;
+	class Constraint;
 	namespace Math { class Quaternion; }
 
 	enum ForceMode
@@ -113,6 +114,10 @@ namespace Directus
 		void Activate() const;
 		void Deactivate() const;
 		//============================================================
+
+		void AddConstraint(Constraint* constraint);
+		void RemoveConstraint(Constraint* constraint);
+
 	private:
 		//= HELPER FUNCTIONS ======
 		void AddBodyToWorld();

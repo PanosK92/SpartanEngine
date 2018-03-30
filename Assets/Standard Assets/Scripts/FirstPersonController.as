@@ -24,6 +24,14 @@ class FirstPersonController
 	// Update is called once per frame
 	void Update()
 	{
+		if (input.GetButtonMouse(Right))
+		{
+			FPSMovement();
+		}	
+	}
+	
+	void FPSMovement()
+	{
 		// Move forward
 		if (input.GetButtonKeyboard(W))
 		{

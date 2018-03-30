@@ -22,7 +22,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 		location (RUNTIME_DIR)
 		kind "SharedLib"	
 		language "C++"
-		files { "../Runtime/**.h", "../Runtime/**.cpp", "../Runtime/**.hpp" }
+		files { "../Runtime/**.h", "../Runtime/**.cpp", "../Runtime/**.hpp", "../Runtime/**.inl" }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect "C++17"
 	
@@ -81,9 +81,9 @@ OBJ_DIR 			= "../Binaries/Obj"
  -- Editor --------------------------------------------------------------------------------------------------
 	project (EDITOR_NAME)
 		location (EDITOR_DIR)
-		kind "ConsoleApp"	
+		kind "WindowedApp"	
 		language "C++"
-		files { "../Editor/**.h", "../Editor/**.cpp", "../Editor/**.hpp" }
+		files { "../Editor/**.h", "../Editor/**.cpp", "../Editor/**.hpp", "../Editor/**.inl" }
 		links { RUNTIME_NAME }
 		dependson { RUNTIME_NAME }
 		systemversion(WIN_SDK_VERSION)
@@ -91,7 +91,6 @@ OBJ_DIR 			= "../Binaries/Obj"
 
 -- Includes
 	includedirs { "../Runtime" }
-	includedirs { "../ThirdParty/SDL_2.0.8" }
 
 -- Library directory
 	libdirs { "../ThirdParty/mvsc141_x64" }
@@ -113,16 +112,8 @@ OBJ_DIR 			= "../Binaries/Obj"
 		targetdir (TARGET_DIR_DEBUG)
 		objdir (OBJ_DIR)
 		debugdir (TARGET_DIR_DEBUG)
-		links { "SDL2-static_debug" }
-		links { "version" }
-		links { "imm32" }
-		links { "winmm" }
 
 	configuration "Release"
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (OBJ_DIR)
 		debugdir (TARGET_DIR_RELEASE)
-		links { "SDL2-static" }
-		links { "version" }
-		links { "imm32" }
-		links { "winmm" }

@@ -56,8 +56,13 @@ namespace Directus
 		Space,
 		CapsLock,
 		Backspace,
-		Return,
-		Delete
+		Enter,
+		Delete,
+		Arrow_Left, Arrow_Right, Arrow_Up, Arrow_Down,
+		Page_Up, Page_Down,
+		Home,
+		End,
+		Insert
 	};
 
 	class ENGINE_CLASS IInput : public Subsystem
@@ -83,7 +88,7 @@ namespace Directus
 		virtual bool Input_Initialize() = 0;
 
 		bool m_mouseState[3];
-		bool m_keyboardState[73];
+		bool m_keyboardState[84];
 		Math::Vector2 m_mousePos;
 		Math::Vector2 m_mouseDelta;
 		float m_mouseWheel;

@@ -409,6 +409,17 @@ namespace Directus
 
 		m_rigidBody->setActivationState(WANTS_DEACTIVATION);
 	}
+
+	void RigidBody::AddConstraint(Constraint* constraint)
+	{
+		//constraints_.Push(constraint);
+	}
+
+	void RigidBody::RemoveConstraint(Constraint* constraint)
+	{
+
+	}
+
 	//===========================================================================
 
 	//= HELPER FUNCTIONS ========================================================

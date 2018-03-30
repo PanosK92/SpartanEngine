@@ -21,10 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES =====================
 #include "IComponent.h"
 #include "../../Math/Vector3.h"
-//=============================
+#include "../../Math/Vector2.h"
+#include "../../Math/Quaternion.h"
+//================================
 
 class btTypedConstraint;
 
@@ -35,7 +37,7 @@ namespace Directus
 
 	enum ConstraintType
 	{
-		ConstraintType_Point2Point,
+		ConstraintType_Point,
 		ConstraintType_Hinge,
 		ConstraintType_Slider,
 		ConstraintType_ConeTwist
@@ -47,7 +49,7 @@ namespace Directus
 		Constraint(Context* context, GameObject* gameObject, Transform* transform);
 		~Constraint();
 
-		//= COMPONENT =============================
+		//= COMPONENT ================================
 		void OnInitialize() override;
 		void OnStart() override;
 		void OnStop() override;
@@ -55,15 +57,44 @@ namespace Directus
 		void OnUpdate() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
-		//=========================================
+		//============================================
 
+		void SetConstraintType(ConstraintType type);
+
+		const Math::Vector2& GetHighLimit() { return m_highLimit; }
+		// Set high limit. Interpretation is constraint type specific.
+		void SetHighLimit(const Math::Vector2& limit);
+
+		const Math::Vector2& GetLowLimit() { return m_lowLimit; }
+		// Set low limit. Interpretation is constraint type specific.
+		void SetLowLimit(const Math::Vector2& limit);
+
+		const Math::Vector3& GetPosition() { return m_position; }
+		// Set constraint position relative to own body.
+    	void SetPosition(const Math::Vector3& position);
+
+		const Math::Quaternion& GetRotation() { return m_rotation; }
+		// Set constraint rotation relative to own body.
+		void SetRotation(const Math::Quaternion& rotation);
 
 	private:
 		void ConstructConstraint();
+		void ApplyLimits();
+		void ApplyFrames();
 		void ReleaseConstraint();
+
 		std::unique_ptr<btTypedConstraint> m_constraint;
 		std::weak_ptr<RigidBody> m_bodyOwn;
 		std::weak_ptr<RigidBody> m_bodyOther;
+		Math::Vector3 m_position;
+		Math::Quaternion m_rotation;
+		Math::Vector2 m_highLimit;
+		Math::Vector2 m_lowLimit;
+		float m_errorReduction;
+		float m_constraintForceMixing;
 		bool m_isDirty;
+		bool m_enabledEffective;
+		bool m_collisionWithLinkedBody;
+		ConstraintType m_type;
 	};
 }

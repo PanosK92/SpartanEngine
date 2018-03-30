@@ -3,14 +3,13 @@ class MouseLook
 	GameObject @gameobject;
 	Transform @transform;
 	
+	// misc
+	bool initialized = false;
+	
 	// mouse look settings
 	float sensitivity = 30.0f;
 	Vector3 currentRotation;
 	
-	// misc
-	bool control = false;
-	bool allowToggle = false;
-	bool initialized = false;
 	
 	// Constructor
 	MouseLook(GameObject @obj)
@@ -32,20 +31,10 @@ class MouseLook
 	// Update is called once per frame
 	void Update()
 	{	
-		if (input.GetButtonKeyboard(E) && allowToggle)
-		{
-			control = !control;
-			allowToggle = false;
-		}
-		else if (!input.GetButtonKeyboard(E))
-		{
-			allowToggle = true;
-		}
-		
-		if (control)
+		if (input.GetButtonMouse(Right))
 		{
 			FreeLook();
-		}			
+		}	
 	}
 	
 	void FreeLook()

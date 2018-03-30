@@ -69,7 +69,6 @@ namespace Directus
 		m_vsync					= (int)Off;
 		m_isMouseVisible		= true;
 		m_resolution			= Vector2(1920, 1080);
-		m_viewport				= Vector4(0.0f, 0.0f, m_resolution.x, m_resolution.y);
 		m_shadowMapResolution	= 2048;
 		m_anisotropy			= 16;
 		SettingsIO::fileName	= "Directus3D.ini";

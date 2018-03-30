@@ -121,8 +121,8 @@ void Widget_Viewport::ShowFrame()
 {
 	float width		= ImGui::GetWindowContentRegionWidth();
 	float height	= ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y - 30;
-	g_renderer->SetResolution((int)width, (int)height);
-	g_renderer->SetViewport((int)width, (int)height);
+
+	g_renderer->SetResolutionInternal((int)width, (int)height);
 
 	g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
 	ImGui::Image(

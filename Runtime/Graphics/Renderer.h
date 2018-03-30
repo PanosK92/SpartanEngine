@@ -86,16 +86,14 @@ namespace Directus
 		void Present();
 		void Render();
 
-		// Back-buffer rendering
-		void SetResolutionBackBuffer(int width, int height);
-		void SetViewportBackBuffer(float width, float height);
-		Math::Vector4 GetViewportBackBuffer();
+		// The back-buffer is the final output (should match the display size)
+		void SetBackBufferSize(int width, int height);
+		const Math::Vector4& GetViewportBackBuffer();
 
-		// Internal rendering
-		void SetResolution(int width, int height);
-		void SetViewport(int width, int height);
-		static const Math::Vector4& GetViewport() { return GET_VIEWPORT; }
-		
+		// The actual frame that all rendering takes palce (or the viewport window in the editor)
+		void SetResolutionInternal(int width, int height);
+		const Math::Vector2& GetViewportInternal();
+
 		//= RENDER MODE ======================================================================
 		// Returns all render mode flags
 		static unsigned long RenderMode_GetAll()					{ return m_flags; }

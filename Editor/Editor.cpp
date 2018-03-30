@@ -41,8 +41,6 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static SDL_Window* g_window = nullptr;
-
 Editor::Editor()
 {
 	m_context = nullptr;
@@ -60,14 +58,14 @@ Editor::~Editor()
 	Shutdown();
 }
 
-void Editor::Initialize(SDL_Window* window, Context* context)
+void Editor::Initialize(Context* context)
 {
 	m_context = context;
 	ThumbnailProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);
 
-	g_window = window;
-	ImGui_Impl_Initialize(g_window, context);
+	ImGui_ImplDX11_Init(context);
+
 	ApplyStyle();
 
 	for (auto& widget : m_widgets)
@@ -76,24 +74,32 @@ void Editor::Initialize(SDL_Window* window, Context* context)
 	}
 }
 
-void Editor::HandleEvent(SDL_Event* event)
+void Editor::Resize()
 {
-	ImGui_Impl_ProcessEvent(event);
+	ImGui_ImplDX11_InvalidateDeviceObjects();
+	ImGui_ImplDX11_CreateDeviceObjects();
 }
 
 void Editor::Update()
 {	
-	ImGui_Impl_NewFrame(g_window);
+	// [ImGui] Start new frame
+	ImGui_ImplDX11_NewFrame();
+
+	// Do editor stuff
 	DrawEditor();
 	EditorHelper::Get().Update();
+
+	// [ImGui] End frame
 	ImGui::Render();
+	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
 void Editor::Shutdown()
 {
 	m_widgets.clear();
 	m_widgets.shrink_to_fit();
-	ImGui_Impl_Shutdown();
+
+	ImGui_ImplDX11_Shutdown();
 }
 
 void Editor::DrawEditor()

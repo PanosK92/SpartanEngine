@@ -117,6 +117,12 @@ namespace Directus
 		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "N",		int(N));
 		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "M",		int(M));
 
+		// Button_Mouse
+		m_scriptEngine->RegisterEnum("Button_Mouse");
+		m_scriptEngine->RegisterEnumValue("Button_Mouse", "Left",	int(Click_Left));
+		m_scriptEngine->RegisterEnumValue("Button_Mouse", "Middle",	int(Click_Middle));
+		m_scriptEngine->RegisterEnumValue("Button_Mouse", "Right",	int(Click_Right));
+
 		// ForceMode
 		m_scriptEngine->RegisterEnum("ForceMode");
 		m_scriptEngine->RegisterEnumValue("ForceMode", "Force",		int(Force));
@@ -159,6 +165,7 @@ namespace Directus
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMousePosition()", asMETHOD(Input, GetMousePosition), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMouseDelta()", asMETHOD(Input, GetMouseDelta), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "bool GetButtonKeyboard(Button_Keyboard key)", asMETHOD(Input, GetButtonKeyboard), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Input", "bool GetButtonMouse(Button_Mouse key)", asMETHOD(Input, GetButtonMouse), asCALL_THISCALL);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -480,6 +487,7 @@ namespace Directus
 	{
 		m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)", asFUNCTIONPR(Log::Write, (const string&, Log::LogType), void), asCALL_CDECL);
 		m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)", asFUNCTIONPR(Log::Write, (int, Log::LogType), void), asCALL_CDECL);
+		m_scriptEngine->RegisterGlobalFunction("void Log(bool, LogType)", asFUNCTIONPR(Log::Write, (bool, Log::LogType), void), asCALL_CDECL);
 		m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)", asFUNCTIONPR(Log::Write, (float, Log::LogType), void), asCALL_CDECL);
 		m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)", asFUNCTIONPR(Log::Write, (const Vector3&, Log::LogType), void), asCALL_CDECL);
 		m_scriptEngine->RegisterGlobalFunction("void Log(const Quaternion& in, LogType)", asFUNCTIONPR(Log::Write, (const Quaternion&, Log::LogType), void), asCALL_CDECL);
