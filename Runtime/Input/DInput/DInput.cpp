@@ -162,7 +162,7 @@ namespace Directus
 		}
 		else
 		{
-			LOG_ERROR("DInput: Failed to set DirectInput keyboard's cooperative level.");
+			LOG_ERROR("DInput: Failed to initialize a DirectInput mouse.");
 			success = false;
 		}
 
@@ -188,8 +188,8 @@ namespace Directus
 			m_mouseWheelDelta	= (float)g_mouseState.lZ; // lZ = wheel
 
 			// COMPUTE POSITION
-			m_mousePos.x += Clamp(m_mouseDelta.x, 0.0f, (float)RESOLUTION_WIDTH);
-			m_mousePos.y += Clamp(m_mouseDelta.y, 0.0f, (float)RESOLUTION_HEIGHT);
+			m_mousePos.x = Clamp(m_mousePos.x + m_mouseDelta.x, 0.0f, (float)DISPLAY_WIDTH);
+			m_mousePos.y = Clamp(m_mousePos.y + m_mouseDelta.y, 0.0f, (float)DISPLAY_HEIGHT);
 			m_mouseWheel += m_mouseWheelDelta;
 
 			// COMPUTE BUTTON STATE
@@ -198,7 +198,17 @@ namespace Directus
 			m_mouseState[2] = g_mouseState.rgbButtons[1] & 0x80; // Right Button
 			// DInput: [4,7] -> Side buttons
 		}
+		else
+		{
+			m_mouseDelta.x		= 0;
+			m_mouseDelta.y		= 0;
+			m_mouseWheelDelta	= 0;
 
+			m_mouseState[0] = false;
+			m_mouseState[1] = false;
+			m_mouseState[2] = false;
+		}	
+			
 		if(ReadKeyboard())
 		{
 			// FUNCTION
@@ -280,6 +290,22 @@ namespace Directus
 			m_keyboardState[71] = g_keyboardState[DIK_BACKSPACE] & 0x80;
 			m_keyboardState[72] = g_keyboardState[DIK_RETURN] & 0x80;
 			m_keyboardState[73] = g_keyboardState[DIK_DELETE] & 0x80;
+			m_keyboardState[74] = g_keyboardState[DIK_LEFTARROW] & 0x80;
+			m_keyboardState[75] = g_keyboardState[DIK_RIGHTARROW] & 0x80;
+			m_keyboardState[76] = g_keyboardState[DIK_UPARROW] & 0x80;
+			m_keyboardState[77] = g_keyboardState[DIK_DOWNARROW] & 0x80;
+			m_keyboardState[78] = g_keyboardState[DIK_PGUP] & 0x80;
+			m_keyboardState[79] = g_keyboardState[DIK_PGDN] & 0x80;
+			m_keyboardState[80] = g_keyboardState[DIK_HOME] & 0x80;
+			m_keyboardState[81] = g_keyboardState[DIK_END] & 0x80;
+			m_keyboardState[82] = g_keyboardState[DIK_INSERT] & 0x80;
+		}
+		else
+		{
+			for (bool& i : m_keyboardState)
+			{
+				i = false;
+			}
 		}
 	}
 

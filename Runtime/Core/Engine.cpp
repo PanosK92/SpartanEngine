@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================================
+//= INCLUDES ===========================
 #include "Engine.h"
 #include "Timer.h"
 #include "Settings.h"
@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Scene.h"
 #include "Stopwatch.h"
 #include "../Profiling/Profiler.h"
-//===========================================
+//======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -165,15 +165,15 @@ namespace Directus
 
 	void Engine::Tick()
 	{
-		//= MAX FPS =============================================================
-		if (g_stopwatch->GetElapsedTimeSec() < 1.0 / Settings::Get().GetMaxFPS())
+		//= MAX FPS =======================================================================
+		float maxFPS = EngineMode_IsSet(Engine_Game) ? Settings::Get().GetMaxFPS() : 60.0f;
+		if (g_stopwatch->GetElapsedTimeSec() < 1.0 / maxFPS)
 		{
 			return;
 		}
 		g_stopwatch->Start();
-		//=======================================================================
-
-		// Timer always ticks
+		//=================================================================================
+		
 		m_timer->Tick();
 
 		if (EngineMode_IsSet(Engine_Update))

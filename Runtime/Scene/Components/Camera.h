@@ -89,7 +89,7 @@ namespace Directus
 		void SetNearPlane(float nearPlane);
 		float GetFarPlane() { return m_farPlane; }
 		void SetFarPlane(float farPlane);
-		ProjectionType GetProjection() { CalculateProjection();  return m_projection; }
+		ProjectionType GetProjection() { ComputeProjection();  return m_projection; }
 		void SetProjection(ProjectionType projection);
 		//=========================================================================
 
@@ -106,9 +106,9 @@ namespace Directus
 		//===============================================================================
 
 	private:
-		void CalculateViewMatrix();
-		void CalculateBaseView();
-		void CalculateProjection();
+		void ComputeViewMatrix();
+		void ComputeBaseView();
+		void ComputeProjection();
 
 		float m_fovHorizontalRad;
 		float m_nearPlane;

@@ -193,7 +193,6 @@ void Widget_MenuBar::ShowAboutWindow()
 	ImGui::BulletText("FreeType");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionFreeType).c_str());
 	ImGui::BulletText("ImGui");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionImGui).c_str());
 	ImGui::BulletText("PugiXML");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionPugiXML).c_str());
-	ImGui::BulletText("SDL");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionSDL).c_str());
 
 	ImGui::End();
 }

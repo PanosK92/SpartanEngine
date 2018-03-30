@@ -61,9 +61,9 @@ namespace Directus
 	//= ICOMPONENT ============
 	void Camera::OnInitialize()
 	{
-		CalculateBaseView();
-		CalculateViewMatrix();
-		CalculateProjection();
+		ComputeBaseView();
+		ComputeViewMatrix();
+		ComputeProjection();
 	}
 
 	void Camera::OnUpdate()
@@ -85,9 +85,9 @@ namespace Directus
 		if (!m_isDirty)
 			return;
 
-		CalculateBaseView();
-		CalculateViewMatrix();
-		CalculateProjection();
+		ComputeBaseView();
+		ComputeViewMatrix();
+		ComputeProjection();
 
 		m_frustrum->Construct(GetViewMatrix(), GetProjectionMatrix(), GetFarPlane());
 
@@ -111,15 +111,15 @@ namespace Directus
 		stream->Read(&m_nearPlane);
 		stream->Read(&m_farPlane);
 
-		CalculateBaseView();
-		CalculateViewMatrix();
-		CalculateProjection();
+		ComputeBaseView();
+		ComputeViewMatrix();
+		ComputeProjection();
 	}
 
 	//= PLANES/PROJECTION =====================================================
 	void Camera::SetNearPlane(float nearPlane)
 	{
-		m_nearPlane = nearPlane;
+		m_nearPlane = Max(0.01f, nearPlane);
 		m_isDirty = true;
 	}
 
@@ -214,23 +214,23 @@ namespace Directus
 
 	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
 	{
-		Vector4 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewport();
+		Vector2 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewportInternal();
 
 		Vector3 localSpace = worldPoint * m_mView * m_mProjection;
 
-		float screenX = localSpace.x	/ localSpace.z	* (viewport.z * 0.5f)	+ viewport.z * 0.5f;
-		float screenY = -(localSpace.y	/ localSpace.z	* (viewport.w * 0.5f))	+ viewport.w * 0.5f;
+		float screenX = localSpace.x	/ localSpace.z	* (viewport.x * 0.5f)	+ viewport.x * 0.5f;
+		float screenY = -(localSpace.y	/ localSpace.z	* (viewport.y * 0.5f))	+ viewport.y * 0.5f;
 
 		return Vector2(screenX, screenY);
 	}
 
 	Vector3 Camera::ScreenToWorldPoint(const Vector2& point)
 	{
-		Vector4 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewport();
+		Vector2 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewportInternal();
 
 		// Convert screen pixel to view space
-		float pointX = 2.0f		* point.x / viewport.z - 1.0f;
-		float pointY = -2.0f	* point.y / viewport.w + 1.0f;
+		float pointX = 2.0f		* point.x / viewport.x - 1.0f;
+		float pointY = -2.0f	* point.y / viewport.y + 1.0f;
 
 		// Unproject point
 		Matrix unprojectMatrix = (m_mView * m_mProjection).Inverted();
@@ -240,7 +240,7 @@ namespace Directus
 	}
 
 	//= PRIVATE =======================================================================
-	void Camera::CalculateViewMatrix()
+	void Camera::ComputeViewMatrix()
 	{
 		Vector3 position	= GetTransform()->GetPosition();
 		Vector3 lookAt		= GetTransform()->GetRotation() * Vector3::Forward;
@@ -253,18 +253,19 @@ namespace Directus
 		m_mView = Matrix::CreateLookAtLH(position, lookAt, up);
 	}
 
-	void Camera::CalculateBaseView()
+	void Camera::ComputeBaseView()
 	{
 		Vector3 cameraPos = Vector3(0, 0, -0.3f);
 		Vector3 lookAt = (Vector3::Forward * Matrix::Identity).Normalized();
 		m_mBaseView = Matrix::CreateLookAtLH(cameraPos, lookAt, Vector3::Up);
 	}
 
-	void Camera::CalculateProjection()
+	void Camera::ComputeProjection()
 	{
 		if (m_projection == Projection_Perspective)
 		{
-			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (VIEWPORT_HEIGHT/ VIEWPORT_WIDTH)); 
+			Vector2 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewportInternal();
+			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.y / viewport.x)); 
 			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, ASPECT_RATIO, m_nearPlane, m_farPlane);
 		}
 		else if (m_projection == Projection_Orthographic)

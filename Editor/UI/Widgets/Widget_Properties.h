@@ -59,7 +59,7 @@ private:
 	void ShowRenderable(Directus::Renderable* renderable);
 	void ShowRigidBody(Directus::RigidBody* rigidBody);
 	void ShowCollider(Directus::Collider* collider);
-	void ShowConstraint(Directus::Constraint* collider);
+	void ShowConstraint(Directus::Constraint* constraint);
 	void ShowMaterial(Directus::Material* material);
 	void ShowCamera(Directus::Camera* camera);
 	void ShowAudioSource(Directus::AudioSource* audioSource);

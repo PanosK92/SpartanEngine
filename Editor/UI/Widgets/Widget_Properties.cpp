@@ -186,25 +186,25 @@ void Widget_Properties::ShowTransform(Transform* transform)
 	Vector3 rotationEuler	= rotation.ToEulerAngles();
 	Vector3 scale			= transform->GetScaleLocal();
 
-	char g_transPosX[BUFFER_TEXT_DEFAULT];
-	char g_transPosY[BUFFER_TEXT_DEFAULT];
-	char g_transPosZ[BUFFER_TEXT_DEFAULT];
-	char g_transRotX[BUFFER_TEXT_DEFAULT];
-	char g_transRotY[BUFFER_TEXT_DEFAULT];
-	char g_transRotZ[BUFFER_TEXT_DEFAULT];
-	char g_transScaX[BUFFER_TEXT_DEFAULT];
-	char g_transScaY[BUFFER_TEXT_DEFAULT];
-	char g_transScaZ[BUFFER_TEXT_DEFAULT];
+	char transPosX[BUFFER_TEXT_DEFAULT];
+	char transPosY[BUFFER_TEXT_DEFAULT];
+	char transPosZ[BUFFER_TEXT_DEFAULT];
+	char transRotX[BUFFER_TEXT_DEFAULT];
+	char transRotY[BUFFER_TEXT_DEFAULT];
+	char transRotZ[BUFFER_TEXT_DEFAULT];
+	char transScaX[BUFFER_TEXT_DEFAULT];
+	char transScaY[BUFFER_TEXT_DEFAULT];
+	char transScaZ[BUFFER_TEXT_DEFAULT];
 		
-	EditorHelper::SetCharArray(&g_transPosX[0], position.x);
-	EditorHelper::SetCharArray(&g_transPosY[0], position.y);
-	EditorHelper::SetCharArray(&g_transPosZ[0], position.z);
-	EditorHelper::SetCharArray(&g_transRotX[0], rotationEuler.x);
-	EditorHelper::SetCharArray(&g_transRotY[0], rotationEuler.y);
-	EditorHelper::SetCharArray(&g_transRotZ[0], rotationEuler.z);
-	EditorHelper::SetCharArray(&g_transScaX[0], scale.x);
-	EditorHelper::SetCharArray(&g_transScaY[0], scale.y);
-	EditorHelper::SetCharArray(&g_transScaZ[0], scale.z);
+	EditorHelper::SetCharArray(&transPosX[0], position.x);
+	EditorHelper::SetCharArray(&transPosY[0], position.y);
+	EditorHelper::SetCharArray(&transPosZ[0], position.z);
+	EditorHelper::SetCharArray(&transRotX[0], rotationEuler.x);
+	EditorHelper::SetCharArray(&transRotY[0], rotationEuler.y);
+	EditorHelper::SetCharArray(&transRotZ[0], rotationEuler.z);
+	EditorHelper::SetCharArray(&transScaX[0], scale.x);
+	EditorHelper::SetCharArray(&transScaY[0], scale.y);
+	EditorHelper::SetCharArray(&transScaZ[0], scale.z);
 	//============================================================
 			
 	COMPONENT_BEGIN_NO_OPTIONS("Transform", Icon_Component_Transform);
@@ -215,49 +215,49 @@ void Widget_Properties::ShowTransform(Transform* transform)
 		// Position
 		ImGui::Text("Position");
 		ImGui::SameLine(posX); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##TransPosX", g_transPosX, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransPosX", transPosX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##TransPosY", g_transPosY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransPosY", transPosY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##TransPosZ", g_transPosZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransPosZ", transPosZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Rotation
 		ImGui::Text("Rotation");
 		ImGui::SameLine(posX); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##TransRotX", g_transRotX, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransRotX", transRotX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##TransRotY", g_transRotY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransRotY", transRotY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##TransRotZ", g_transRotZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransRotZ", transRotZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Scale
 		ImGui::Text("Scale");
 		ImGui::SameLine(posX); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##TransScaX", g_transScaX, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransScaX", transScaX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##TransScaY", g_transScaY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransScaY", transScaY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##TransScaZ", g_transScaZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransScaZ", transScaZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
 	}
 	COMPONENT_END;
 
 	//= MAP ==================================================================================
 	position = Vector3(
-		(float)atof(&g_transPosX[0]),
-		(float)atof(&g_transPosY[0]),
-		(float)atof(&g_transPosZ[0])
+		(float)atof(&transPosX[0]),
+		(float)atof(&transPosY[0]),
+		(float)atof(&transPosZ[0])
 	);
 
 	rotation = Quaternion::FromEulerAngles(
-		(float)atof(&g_transRotX[0]),
-		(float)atof(&g_transRotY[0]),
-		(float)atof(&g_transRotZ[0])
+		(float)atof(&transRotX[0]),
+		(float)atof(&transRotY[0]),
+		(float)atof(&transRotZ[0])
 	);
 
 	scale = Vector3(
-		(float)atof(&g_transScaX[0]),
-		(float)atof(&g_transScaY[0]),
-		(float)atof(&g_transScaZ[0])
+		(float)atof(&transScaX[0]),
+		(float)atof(&transScaY[0]),
+		(float)atof(&transScaZ[0])
 	);
 
 	if (position	!= transform->GetPositionLocal())	transform->SetPositionLocal(position);
@@ -603,16 +603,86 @@ void Widget_Properties::ShowCollider(Collider* collider)
 	//==========================================================================================================
 }
 
-void Widget_Properties::ShowConstraint(Constraint* collider)
+void Widget_Properties::ShowConstraint(Constraint* constraint)
 {
-	if (!collider)
+	if (!constraint)
 		return;
 
-	COMPONENT_BEGIN("Constraint", Icon_Component_AudioSource, collider);
-	{
+	//= REFLECT ==============================================
+	Vector3 position 		= constraint->GetPosition();
+	Quaternion rotation		= constraint->GetRotation();
+	Vector3 rotationEuler	= rotation.ToEulerAngles();
+	Vector2 highLimit 		= constraint->GetHighLimit();
+	Vector2 lowLimit 		= constraint->GetLowLimit();
 
+	char consPosX[BUFFER_TEXT_DEFAULT];
+	char consPosY[BUFFER_TEXT_DEFAULT];
+	char consPosZ[BUFFER_TEXT_DEFAULT];
+	char consRotX[BUFFER_TEXT_DEFAULT];
+	char consRotY[BUFFER_TEXT_DEFAULT];
+	char consRotZ[BUFFER_TEXT_DEFAULT];
+	char consHighX[BUFFER_TEXT_DEFAULT];
+	char consHighY[BUFFER_TEXT_DEFAULT];
+	char consLowX[BUFFER_TEXT_DEFAULT];
+	char consLowY[BUFFER_TEXT_DEFAULT];
+
+	EditorHelper::SetCharArray(&consPosX[0], position.x);
+	EditorHelper::SetCharArray(&consPosY[0], position.y);
+	EditorHelper::SetCharArray(&consPosZ[0], position.z);
+	EditorHelper::SetCharArray(&consRotX[0], rotationEuler.x);
+	EditorHelper::SetCharArray(&consRotY[0], rotationEuler.y);
+	EditorHelper::SetCharArray(&consRotZ[0], rotationEuler.z);
+	EditorHelper::SetCharArray(&consHighX[0], highLimit.x);
+	EditorHelper::SetCharArray(&consHighY[0], highLimit.y);
+	EditorHelper::SetCharArray(&consLowX[0], lowLimit.x);
+	EditorHelper::SetCharArray(&consLowY[0], lowLimit.y);
+	//========================================================
+
+	COMPONENT_BEGIN("Constraint", Icon_Component_AudioSource, constraint);
+	{
+		float posX = 100.0f;
+		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
+
+		// Position
+		ImGui::Text("Position");
+		ImGui::SameLine(posX); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##ConsPosX", consPosX, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::Text("Y");
+		ImGui::SameLine(); ImGui::InputText("##ConsPosY", consPosY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::Text("Z");
+		ImGui::SameLine(); ImGui::InputText("##ConsPosZ", consPosZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
+
+		// Rotation
+		ImGui::Text("Rotation");
+		ImGui::SameLine(posX); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##ConsRotX", consRotX, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::Text("Y");
+		ImGui::SameLine(); ImGui::InputText("##ConsRotY", consRotY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::Text("Z");
+		ImGui::SameLine(); ImGui::InputText("##ConsRotZ", consRotZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
+
+		// High Limit
+		ImGui::Text("High Limit");
+		ImGui::SameLine(posX); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##ConsHighLimX", consHighX, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::Text("Y");
+		ImGui::SameLine(); ImGui::InputText("##ConsHighLimY", consHighY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+
+		// Low Limit
+		ImGui::Text("Low Limit");
+		ImGui::SameLine(posX); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##ConsLowLimX", consLowX, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SameLine(); ImGui::Text("Y");
+		ImGui::SameLine(); ImGui::InputText("##ConsLowLimY", consLowY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 	}
 	COMPONENT_END;
+
+	//= MAP ====================================================================================
+	if (position		!= constraint->GetPosition())		constraint->SetPosition(position);
+	if (rotation		!= constraint->GetRotation())		constraint->SetRotation(rotation);
+	if (highLimit		!= constraint->GetHighLimit())		constraint->SetHighLimit(highLimit);
+	if (lowLimit		!= constraint->GetLowLimit())		constraint->SetLowLimit(lowLimit);
+	//==========================================================================================
 }
 
 void Widget_Properties::ShowMaterial(Material* material)

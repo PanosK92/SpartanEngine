@@ -1,39 +1,31 @@
-/*
-Copyright(c) 2016-2018 Panos Karabelas
+// ImGui Win32 + DirectX11 binding
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
-copies of the Software, and to permit persons to whom the Software is furnished
-to do so, subject to the following conditions :
+// Implemented features:
+//  [X] User texture binding. Use 'ID3D11ShaderResourceView*' as ImTextureID. Read the FAQ about ImTextureID in imgui.cpp.
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+// You can copy and use unmodified imgui_impl_* files in your project. See main.cpp for an example of using this.
+// If you use this binding you'll need to call 4 functions: ImGui_ImplXXXX_Init(), ImGui_ImplXXXX_NewFrame(), ImGui::Render() and ImGui_ImplXXXX_Shutdown().
+// If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
+// https://github.com/ocornut/imgui
 
 #pragma once
 
-//= INCLUDES ==================================
+//= INCLUDES ==============
 #include "../ImGui/imgui.h"
-#include "Graphics/D3D11/D3D11GraphicsDevice.h"
-//=============================================
+#include <Windows.h>
+//=========================
 
-struct SDL_Window;
-union SDL_Event;
+namespace Directus
+{
+	class Context;	
+}
 
-IMGUI_API bool	ImGui_Impl_Initialize(SDL_Window* window, Directus::Context* context);
-IMGUI_API bool	ImGui_Impl_ProcessEvent(SDL_Event* event);
-IMGUI_API void	ImGui_Impl_Shutdown();
-IMGUI_API void	ImGui_Impl_NewFrame(SDL_Window* window);
+IMGUI_API bool ImGui_ImplDX11_Init(Directus::Context* context);
+IMGUI_API void ImGui_ImplDX11_Shutdown();
+IMGUI_API void ImGui_ImplDX11_NewFrame();
+IMGUI_API void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data);
 
 // Use if you want to reset your rendering device without losing ImGui state.
-IMGUI_API void	ImGui_Impl_InvalidateDeviceObjects();
-IMGUI_API bool	ImGui_Impl_CreateDeviceObjects();
+IMGUI_API void ImGui_ImplDX11_InvalidateDeviceObjects();
+IMGUI_API bool ImGui_ImplDX11_CreateDeviceObjects();
+IMGUI_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
