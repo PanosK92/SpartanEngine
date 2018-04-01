@@ -466,10 +466,10 @@ namespace Directus
 		m_scriptEngine->RegisterGlobalFunction("Quaternion FromLookRotation(const Vector3& in, const Vector3& in)", asFUNCTIONPR(Quaternion::FromLookRotation, (const Vector3&, const Vector3&), Quaternion), asCALL_CDECL);
 		//========================================================================================================================================================================================
 
-		//= STATIC FUNCTIONS =====================================================================================================================================================================
-		m_scriptEngine->RegisterGlobalFunction("Quaternion QuaternionFromEuler(float, float, float)", asFUNCTIONPR(Quaternion::FromEulerAngles, (float, float, float), Quaternion), asCALL_CDECL);
+		//= STATIC FUNCTIONS =============================================================================================================================================================================
+		m_scriptEngine->RegisterGlobalFunction("Quaternion QuaternionFromYawPitchRoll(float, float, float)", asFUNCTIONPR(Quaternion::FromYawPitchRoll, (float, float, float), Quaternion), asCALL_CDECL);
 		m_scriptEngine->RegisterGlobalFunction("Quaternion QuaternionFromEuler(const Vector3& in)", asFUNCTIONPR(Quaternion::FromEulerAngles, (const Vector3&), Quaternion), asCALL_CDECL);
-		//========================================================================================================================================================================================
+		//================================================================================================================================================================================================
 	}
 
 	/*------------------------------------------------------------------------------

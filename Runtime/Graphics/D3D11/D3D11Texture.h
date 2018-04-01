@@ -38,7 +38,7 @@ namespace Directus
 		bool Create(int width, int height, int channels, const std::vector<std::byte>& data, DXGI_FORMAT format);
 
 		// Creates from data with mimaps
-		bool Create(int width, int height, int channels, const std::vector<std::vector<std::byte>>& mimaps, DXGI_FORMAT format);
+		bool Create(int width, int height, int channels, const std::vector<std::vector<std::byte>>& mipmaps, DXGI_FORMAT format);
 
 		// Creates a texture and generates mimaps (easy way to get mimaps 
 		// but not as high quality as the mimaps you can generate manually)

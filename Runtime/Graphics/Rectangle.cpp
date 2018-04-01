@@ -118,7 +118,7 @@ namespace Directus
 		vertices.push_back(vertex);
 
 		// Load the index array with data.
-		for (int i = 0; i < vertices.size(); i++)
+		for (unsigned int i = 0; i < vertices.size(); i++)
 		{
 			indices.push_back(i);
 		}

@@ -78,21 +78,33 @@ namespace Directus::Math
 		//= ROTATION =====================================================================================
 		static Matrix CreateRotation(const Quaternion& rotation)
 		{
-			float a = 1.0f - 2.0f * rotation.y * rotation.y - 2.0f * rotation.z * rotation.z;
-			float b = 2.0f * rotation.x * rotation.y + 2.0f * rotation.w * rotation.z;
-			float c = 2.0f * rotation.x * rotation.z - 2.0f * rotation.w * rotation.y;
-			float d = 2.0f * rotation.x * rotation.y - 2.0f * rotation.w * rotation.z;
-			float e = 1.0f - 2.0f * rotation.x * rotation.x - 2.0f * rotation.z * rotation.z;
-			float f = 2.0f * rotation.y * rotation.z + 2.0f * rotation.w * rotation.x;
-			float g = 2.0f * rotation.x * rotation.z + 2.0f * rotation.w * rotation.y;
-			float h = 2.0f * rotation.y * rotation.z - 2.0f * rotation.w * rotation.x;
-			float i = 1.0f - 2.0f * rotation.x * rotation.x - 2.0f *rotation.y * rotation.y;
+			float num9	= rotation.x * rotation.x;
+		    float num8	= rotation.y * rotation.y;
+		    float num7	= rotation.z * rotation.z;
+		    float num6	= rotation.x * rotation.y;
+		    float num5	= rotation.z * rotation.w;
+		    float num4	= rotation.z * rotation.x;
+		    float num3	= rotation.y * rotation.w;
+		    float num2	= rotation.y * rotation.z;
+		    float num	= rotation.x * rotation.w;
 
 			return Matrix(
-				a, d, g, 0.0f,
-				b, e, h, 0.0f,
-				c, f, i, 0.0f,
-				0.0f, 0.0f, 0.0f, 1.0f
+				1.0f - (2.0f * (num8 + num7)),
+				2.0f * (num6 + num5),
+				2.0f * (num4 - num3),
+				0.0f,
+				2.0f * (num6 - num5),
+				1.0f - (2.0f * (num7 + num9)),
+				2.0f * (num2 + num),
+				0.0f,
+				2.0f * (num4 + num3),
+				2.0f * (num2 - num),
+				1.0f - (2.0f * (num8 + num9)),
+				0.0f,
+				0.0f,
+				0.0f,
+				0.0f,
+				1.0f
 			);
 		}
 
@@ -113,52 +125,58 @@ namespace Directus::Math
 			return RotationMatrixToQuaternion(normalized);
 		}
 
-		static Quaternion RotationMatrixToQuaternion(Matrix& mRotation)
+		static Quaternion RotationMatrixToQuaternion(const Matrix& mRot)
 		{
-			Quaternion q;
-			float t = mRotation.m00 + mRotation.m11 + mRotation.m22;
+			Quaternion quaternion;
+            float sqrt;
+            float half;
+            float scale = mRot.m00 + mRot.m11 + mRot.m22;
 
-			if (t > 0.0f)
-			{
-				float invS = 0.5f / sqrtf(1.0f + t);
+		    if (scale > 0.0f)
+		    {
+                sqrt = Sqrt(scale + 1.0f);
+		        quaternion.w = sqrt * 0.5f;
+                sqrt = 0.5f / sqrt;
 
-				q.x = (mRotation.m21 - mRotation.m12) * invS;
-				q.y = (mRotation.m02 - mRotation.m20) * invS;
-				q.z = (mRotation.m10 - mRotation.m01) * invS;
-				q.w = 0.25f / invS;
-			}
-			else
-			{
-				if (mRotation.m00 > mRotation.m11 && mRotation.m00 > mRotation.m22)
-				{
-					float invS = 0.5f / sqrtf(1.0f + mRotation.m00 - mRotation.m11 - mRotation.m22);
+		        quaternion.x = (mRot.m12 - mRot.m21) * sqrt;
+		        quaternion.y = (mRot.m20 - mRot.m02) * sqrt;
+		        quaternion.z = (mRot.m01 - mRot.m10) * sqrt;
 
-					q.x = 0.25f / invS;
-					q.y = (mRotation.m01 + mRotation.m10) * invS;
-					q.z = (mRotation.m20 + mRotation.m02) * invS;
-					q.w = (mRotation.m21 - mRotation.m12) * invS;
-				}
-				else if (mRotation.m11 > mRotation.m22)
-				{
-					float invS = 0.5f / sqrtf(1.0f + mRotation.m11 - mRotation.m00 - mRotation.m22);
+		        return quaternion;
+		    }
+		    if ((mRot.m00 >= mRot.m11) && (mRot.m00 >= mRot.m22))
+		    {
+                sqrt = Sqrt(1.0f + mRot.m00 - mRot.m11 - mRot.m22);
+                half = 0.5f / sqrt;
 
-					q.x = (mRotation.m01 + mRotation.m10) * invS;
-					q.y = 0.25f / invS;
-					q.z = (mRotation.m12 + mRotation.m21) * invS;
-					q.w = (mRotation.m02 - mRotation.m20) * invS;
-				}
-				else
-				{
-					float invS = 0.5f / sqrtf(1.0f + mRotation.m22 - mRotation.m00 - mRotation.m11);
+		        quaternion.x = 0.5f * sqrt;
+		        quaternion.y = (mRot.m01 + mRot.m10) * half;
+		        quaternion.z = (mRot.m02 + mRot.m20) * half;
+		        quaternion.w = (mRot.m12 - mRot.m21) * half;
 
-					q.x = (mRotation.m02 + mRotation.m20) * invS;
-					q.y = (mRotation.m12 + mRotation.m21) * invS;
-					q.z = 0.25f / invS;
-					q.w = (mRotation.m10 - mRotation.m01) * invS;
-				}
-			}
+		        return quaternion;
+		    }
+		    if (mRot.m11 > mRot.m22)
+		    {
+                sqrt = Sqrt(1.0f + mRot.m11 - mRot.m00 - mRot.m22);
+                half = 0.5f / sqrt;
 
-			return q;
+		        quaternion.x = (mRot.m10 + mRot.m01) * half;
+		        quaternion.y = 0.5f * sqrt;
+		        quaternion.z = (mRot.m21 + mRot.m12) * half;
+		        quaternion.w = (mRot.m20 - mRot.m02) * half;
+
+		        return quaternion;
+		    }
+            sqrt = Sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
+		    half = 0.5f / sqrt;
+
+		    quaternion.x = (mRot.m20 + mRot.m02) * half;
+		    quaternion.y = (mRot.m21 + mRot.m12) * half;
+		    quaternion.z = 0.5f * sqrt;
+		    quaternion.w = (mRot.m01 - mRot.m10) * half;
+
+			return quaternion;
 		}
 		//================================================================================================
 
@@ -386,10 +404,10 @@ namespace Directus::Math
 		std::string ToString() const;
 
 		// Column-major memory representation 
-		float m00, m10, m20, m30;
-		float m01, m11, m21, m31;
-		float m02, m12, m22, m32;
-		float m03, m13, m23, m33;
+		float m00{}, m10{}, m20{}, m30{};
+		float m01{}, m11{}, m21{}, m31{};
+		float m02{}, m12{}, m22{}, m32{};
+		float m03{}, m13{}, m23{}, m33{};
 		// Note: HLSL expects column-major by default
 
 		static const Matrix Identity;

@@ -25,11 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../D3D11/D3D11ConstantBuffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Logging/Log.h"
-#include "../../IO/FileStream.h"
 #include "../../Core/Settings.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Camera.h"
-#include "../../Scene/Components/Light.h"
 //===========================================
 
 //= NAMESPACES ================

@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 #include <string>
 #include <memory>
-#include <iomanip>
 #include <mutex>
 //=============================
 
@@ -58,7 +57,7 @@ namespace Directus
 
 		static void Initialize();
 		static void Release();
-		static void SetLogger(std::weak_ptr<ILogger> logger);
+		static void SetLogger(const std::weak_ptr<ILogger>& logger);
 
 		// STRING
 		static void Write(const std::string& text, LogType type);
@@ -67,7 +66,7 @@ namespace Directus
 		static void Write(const char* text, LogType type);
 
 		// GAMEOBJECT
-		static void Write(std::weak_ptr<GameObject> gameObject, LogType type);
+		static void Write(const std::weak_ptr<GameObject>& gameObject, LogType type);
 
 		// VECTORS
 		static void Write(const Math::Vector2& vector, LogType type);

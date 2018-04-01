@@ -89,6 +89,7 @@ private:
 	float m_itemSize;
 	bool m_selectionMade;
 	bool m_isDirty;
+	bool m_wasVisible;
 	std::unique_ptr<Directus::Stopwatch> m_stopwatch;
 	Directus::Context* m_context;
 

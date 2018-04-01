@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
+#include <utility>
 #include <vector>
 #include <memory>
 #include <map>
@@ -128,7 +129,7 @@ namespace Directus
 
 		struct TexInfo
 		{
-			TexInfo(std::weak_ptr<Texture> texture, std::string name, std::string path)
+			TexInfo(const std::weak_ptr<Texture>& texture, const std::string& name, const std::string& path)
 			{
 				this->texture = texture;
 				this->name	= name;

@@ -293,7 +293,7 @@ namespace Directus
 		m_gameObjects.emplace_back(gameObject);
 	}
 
-	bool Scene::GameObject_Exists(weak_ptr<GameObject> gameObject)
+	bool Scene::GameObject_Exists(const weak_ptr<GameObject>& gameObject)
 	{
 		if (gameObject.expired())
 			return false;
@@ -302,7 +302,7 @@ namespace Directus
 	}
 
 	// Removes a GameObject and all of it's children
-	void Scene::GameObject_Remove(weak_ptr<GameObject> gameObject)
+	void Scene::GameObject_Remove(const weak_ptr<GameObject>& gameObject)
 	{
 		GameObject* gameObjPtr = gameObject.lock().get();
 		if (!gameObjPtr)

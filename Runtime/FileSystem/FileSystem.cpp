@@ -266,7 +266,7 @@ namespace Directus
 	{
 		string fileName = GetFileNameFromFilePath(filepath);
 
-		size_t lastindex = fileName.find_last_of(".");
+		size_t lastindex = fileName.find_last_of('.');
 		string fileNameNoExt = fileName.substr(0, lastindex);
 
 		return fileNameNoExt;
@@ -295,7 +295,7 @@ namespace Directus
 			return NOT_ASSIGNED;
 		}
 
-		size_t lastindex = filePath.find_last_of(".");
+		size_t lastindex = filePath.find_last_of('.');
 		if (string::npos != lastindex)
 		{
 			// extension with dot included

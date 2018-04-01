@@ -83,6 +83,7 @@ namespace Directus
 		m_drawHandle				= nullptr;
 		m_initialized				= false;
 		m_maxDepth					= 1.0f;
+		m_viewport					= D3D11_VIEWPORT{};
 	}
 
 	D3D11GraphicsDevice::~D3D11GraphicsDevice()

@@ -52,7 +52,7 @@ namespace Directus
 
 		bool IsDirty();
 		const std::vector<VertexPosCol>& GetLines();
-		void ClearLines();
+		void Clear();
 	private:
 		std::vector<VertexPosCol> m_lines;
 		bool m_isDirty;

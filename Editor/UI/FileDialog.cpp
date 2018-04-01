@@ -42,7 +42,6 @@ namespace FileDialogStatics
 	static const char* g_hoveredItemPath;
 	static bool g_isMouseHoveringWindow;
 	static DragDropPayload g_dragDropPayload;
-	static bool g_wasVisible;
 }
 
 #define GET_WINDOW_NAME (type == FileDialog_Open)		? "Open"		: (type == FileDialog_Load)			? "Load"		: (type == FileDialog_Save) ? "Save" : "View"
@@ -81,21 +80,21 @@ bool FileDialog::Show(bool* isVisible, string* pathDoubleClicked)
 {
 	if (!(*isVisible))
 	{
-		FileDialogStatics::g_wasVisible	= false;
+		m_wasVisible = false;
 		return false;
 	}
 
 	// Force an update as file may have changed since last time
-	if (!FileDialogStatics::g_wasVisible)
+	if (!m_wasVisible)
 	{
 		m_isDirty = true;
 	}
 
 	m_selectionMade								= false;
+	m_wasVisible								= true;
 	FileDialogStatics::g_isHoveringItem			= false;
 	FileDialogStatics::g_hoveredItemPath		= "";
 	FileDialogStatics::g_isMouseHoveringWindow	= false;
-	FileDialogStatics::g_wasVisible				= true;
 
 	// Top menu
 	Dialog_Top(isVisible);

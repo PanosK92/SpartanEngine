@@ -19,8 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES ========================
 #include "../Graphics/Mesh.h"
 #include "../Logging/Log.h"
@@ -44,7 +42,7 @@ namespace Directus
 		RegisterResource<Mesh>();
 		//=======================
 
-		m_modelName		= NOT_ASSIGNED_HASH;
+		m_modelName		= NOT_ASSIGNED;
 		m_vertexCount	= 0;
 		m_indexCount	= 0;
 		m_triangleCount = 0;
@@ -67,7 +65,7 @@ namespace Directus
 	void Mesh::Clear()
 	{
 		ClearGeometry();
-		m_modelName		= NOT_ASSIGNED_HASH;
+		m_modelName		= NOT_ASSIGNED;
 		m_vertexCount	= 0;
 		m_indexCount	= 0;
 		m_triangleCount = 0;

@@ -320,7 +320,7 @@ namespace Directus
 		m_graphics->SetViewport((float)width, (float)height);
 	}
 
-	const Vector4& Renderer::GetViewportBackBuffer()
+	Vector4 Renderer::GetViewportBackBuffer()
 	{
 		D3D11_VIEWPORT* viewport = (D3D11_VIEWPORT*)m_graphics->GetViewport();
 		return Vector4(viewport->TopLeftX, viewport->TopLeftY, viewport->Width, viewport->Height);

@@ -167,7 +167,7 @@ namespace Directus
 
 	void Physics::DebugDraw()
 	{
-		m_debugDraw->ClearLines();
+		m_debugDraw->Clear();
 		m_world->debugDrawWorld();
 	}
 

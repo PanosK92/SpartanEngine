@@ -69,32 +69,36 @@ namespace Directus::Math
 		}
 
 		void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
-		static Quaternion FromEulerAngles(const Vector3& eulerAngles) { return FromEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z); }
 
-		static Quaternion FromEulerAngles(float x, float y, float z)
+		// Euler angles to quaternion (input in degrees)
+		static Quaternion FromEulerAngles(const Vector3& axes)						{ return FromYawPitchRoll(axes.y * DEG_TO_RAD, axes.x * DEG_TO_RAD, axes.z * DEG_TO_RAD); }
+		static Quaternion FromEulerAngles(float xAxis, float yAxis, float zAxis)	{ return FromYawPitchRoll(yAxis * DEG_TO_RAD, xAxis * DEG_TO_RAD, zAxis * DEG_TO_RAD); }
+
+		// Yaw - Y, Pitch - X, Roll - Z, Radians
+		static Quaternion FromYawPitchRoll(float yaw, float pitch, float roll)
 		{
-			x *= DEG_TO_RAD_2;
-			y *= DEG_TO_RAD_2;
-			z *= DEG_TO_RAD_2;
+			float halfRoll	= roll * 0.5f;
+            float halfPitch = pitch * 0.5f;
+            float halfYaw	= yaw * 0.5f;
 
-			float sinX = sinf(x);
-			float cosX = cosf(x);
-			float sinY = sinf(y);
-			float cosY = cosf(y);
-			float sinZ = sinf(z);
-			float cosZ = cosf(z);
+            float sinRoll	= sin(halfRoll);
+            float cosRoll	= cos(halfRoll);
+            float sinPitch	= sin(halfPitch);
+            float cosPitch	= cos(halfPitch);
+            float sinYaw	= sin(halfYaw);
+            float cosYaw	= cos(halfYaw);
 
-			Quaternion q;
-			q.w = cosY * cosX * cosZ + sinY * sinX * sinZ;
-			q.x = cosY * sinX * cosZ + sinY * cosX * sinZ;
-			q.y = sinY * cosX * cosZ - cosY * sinX * sinZ;
-			q.z = cosY * cosX * sinZ - sinY * sinX * cosZ;
-
-			return q;
+			return Quaternion(
+				cosYaw * sinPitch * cosRoll + sinYaw * cosPitch * sinRoll,
+				sinYaw * cosPitch * cosRoll - cosYaw * sinPitch * sinRoll,
+				cosYaw * cosPitch * sinRoll - sinYaw * sinPitch * cosRoll,
+				cosYaw * cosPitch * cosRoll + sinYaw * sinPitch * sinRoll
+			);
 		}
 		//===========================================================================
 
 		//= TO ================================================================================
+		// Returns euler angles in degrees
 		Vector3 ToEulerAngles() const
 		{
 			// Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
@@ -279,7 +283,7 @@ namespace Directus::Math
 			// Test for a quality while allowing for some error
 			return Equals(w, rhs.w) && Equals(x, rhs.x) && Equals(y, rhs.y) && Equals(z, rhs.z);
 		}
-		bool operator !=(const Quaternion& rhs) const { return !((*this) == rhs); }
+		bool operator !=(const Quaternion& rhs) const { return !(*this == rhs); }
 		//======================================================================================
 
 		std::string ToString() const;

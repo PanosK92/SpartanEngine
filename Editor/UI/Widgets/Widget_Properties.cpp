@@ -474,16 +474,6 @@ void Widget_Properties::ShowRigidBody(RigidBody* rigidBody)
 	friction		= (float)atof(&frictionCharArray[0]);
 	frictionRolling = (float)atof(&frictionRollingCharArray[0]);
 	restitution		= (float)atof(&restitutionCharArray[0]);
-	rigidBody->SetPositionLock(Vector3(
-			(float)freezePosX,
-			(float)freezePosY,
-			(float)freezePosZ
-		));
-		rigidBody->SetRotationLock(Vector3(
-			(float)freezeRotX,
-			(float)freezeRotY,
-			(float)freezeRotZ
-		));
 
 	if (mass			!= rigidBody->GetMass())					rigidBody->SetMass(mass);
 	if (friction		!= rigidBody->GetFriction())				rigidBody->SetFriction(friction);
