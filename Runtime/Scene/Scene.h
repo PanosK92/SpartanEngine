@@ -61,8 +61,8 @@ namespace Directus
 		//= GAMEOBJECT HELPER FUNCTIONS =============================================================
 		std::weak_ptr<GameObject> GameObject_CreateAdd();
 		void GameObject_Add(std::shared_ptr<GameObject> gameObject);
-		bool GameObject_Exists(std::weak_ptr<GameObject> gameObject);
-		void GameObject_Remove(std::weak_ptr<GameObject> gameObject);
+		bool GameObject_Exists(const std::weak_ptr<GameObject>& gameObject);
+		void GameObject_Remove(const std::weak_ptr<GameObject>& gameObject);
 		const std::vector<std::shared_ptr<GameObject>>& GetAllGameObjects() { return m_gameObjects; }
 		std::vector<std::weak_ptr<GameObject>> GetRootGameObjects();
 		std::weak_ptr<GameObject> GetGameObjectRoot(std::weak_ptr<GameObject> gameObject);

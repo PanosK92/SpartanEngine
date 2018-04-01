@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Matrix.h"
 #include "D3D11GraphicsDevice.h"
 #include "../../Core/Settings.h"
-
 //==============================
 
 namespace Directus

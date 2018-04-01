@@ -56,7 +56,7 @@ namespace Directus
 
 	}
 
-	void Log::SetLogger(weak_ptr<ILogger> logger)
+	void Log::SetLogger(const weak_ptr<ILogger>& logger)
 	{
 		m_logger = logger;
 	}
@@ -79,7 +79,7 @@ namespace Directus
 		Write(string(text), type);
 	}
 
-	void Log::Write(weak_ptr<GameObject> gameObject, LogType type)
+	void Log::Write(const weak_ptr<GameObject>& gameObject, LogType type)
 	{
 		gameObject.expired() ? Write("Null", type) : Write(gameObject.lock()->GetName(), type);
 	}

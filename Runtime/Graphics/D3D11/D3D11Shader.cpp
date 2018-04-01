@@ -210,7 +210,7 @@ namespace Directus
 	}
 
 	//= COMPILATION ================================================================================================================================================================================
-	bool D3D11Shader::CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
+	bool D3D11Shader::CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, const string& path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
@@ -230,7 +230,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11Shader::CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
+	bool D3D11Shader::CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, const string& path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
@@ -251,7 +251,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut)
+	bool D3D11Shader::CompileShader(const string& filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut)
 	{
 		unsigned compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #ifdef DEBUG

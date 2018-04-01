@@ -133,7 +133,7 @@ namespace Directus
 		return m_lines;
 	}
 
-	void PhysicsDebugDraw::ClearLines()
+	void PhysicsDebugDraw::Clear()
 	{
 		m_lines.clear();
 		m_lines.shrink_to_fit();

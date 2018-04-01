@@ -27,7 +27,7 @@ namespace Directus::Math
 {
 	Plane::Plane()
 	{
-
+		d = 0;
 	}
 
 	Plane::Plane(const Vector3& normal, float d)

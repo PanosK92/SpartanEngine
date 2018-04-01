@@ -82,7 +82,7 @@ namespace Directus
 		//= HIERARCHY ==============================================================
 		bool IsRoot() { return !HasParent(); }
 		bool HasParent() { return m_parent; }
-		void SetParent(Transform* parent);
+		void SetParent(Transform* newParent);
 		void BecomeOrphan();
 		bool HasChildren() { return GetChildrenCount() > 0 ? true : false; }
 		void AddChild(Transform* child);

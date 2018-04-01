@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include <vector>
-#include "../Core/Subsystem.h"
+#include "../Core/SubSystem.h"
 //============================
 
 class asIScriptObject;

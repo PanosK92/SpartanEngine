@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <cmath>
-#include <math.h>
 #include <limits>
 #include "../Core/EngineDefs.h"
 //=============================

@@ -281,7 +281,7 @@ namespace Directus
 		Threading* threading = m_context->GetSubsystem<Threading>();
 		for (auto& job : rescaleJobs)
 		{
-			threading->AddTask([this, &job, &texture, &bitmap]()
+			threading->AddTask([this, &job, &bitmap]()
 			{
 				if (!GetRescaledBitsFromBitmap(&job.rgba, job.width, job.height, bitmap))
 				{

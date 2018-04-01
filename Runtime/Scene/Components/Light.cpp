@@ -156,11 +156,11 @@ namespace Directus
 		Vector3 rotation = GetTransform()->GetRotation().ToEulerAngles();
 		if (rotation.x <= 0.0f)
 		{
-			GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(179.0f, rotation.y, rotation.z)));
+			GetTransform()->SetRotation(Quaternion::FromEulerAngles(179.0f, rotation.y, rotation.z));
 		}
 		if (rotation.x >= 180.0f)
 		{
-			GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(1.0f, rotation.y, rotation.z)));
+			GetTransform()->SetRotation(Quaternion::FromEulerAngles(1.0f, rotation.y, rotation.z));
 		}
 	}
 

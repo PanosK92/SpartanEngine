@@ -19,8 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES =====================================
 #include "Font.h"
 #include "../Resource/ResourceManager.h"
@@ -136,9 +134,8 @@ namespace Directus
 		m_vertices.shrink_to_fit();
 
 		// Draw each letter onto a quad.
-		for (int i = 0; i < m_currentText.size(); i++)
+		for (char textChar : m_currentText)
 		{
-			char textChar = m_currentText[i];
 			auto glyph = m_glyphs[textChar];
 
 			if (textChar == ASCII_TAB)
@@ -183,7 +180,7 @@ namespace Directus
 			m_indices.clear();
 			m_indices.shrink_to_fit();
 			m_indices.reserve(m_vertices.size());
-			for (int i = 0; i < m_vertices.size(); i++)
+			for (unsigned int i = 0; i < m_vertices.size(); i++)
 			{
 				m_indices.emplace_back(i);
 			}

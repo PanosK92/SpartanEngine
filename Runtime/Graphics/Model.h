@@ -56,7 +56,7 @@ namespace Directus
 		//=========================================================
 
 		// Sets the GameObject that represents this model in the scene
-		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
+		void SetRootGameObject(const std::weak_ptr<GameObject>& gameObj) { m_rootGameObj = gameObj; }
 
 		// Adds a mesh by creating it from scratch
 		void AddMesh(const std::string& name, std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices, const std::weak_ptr<GameObject>& gameObject);

@@ -68,10 +68,7 @@ namespace Directus
 			&m_ID3D11InputLayout
 		);
 
-		if (FAILED(result))
-			return false;
-
-		return true;
+		return SUCCEEDED(result);
 	}
 
 	bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, InputLayout layout)

@@ -19,8 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES =============================
 #include "Grid.h"
 #include "../Core/Context.h"
@@ -125,11 +123,11 @@ namespace Directus
 		}
 
 		vector<unsigned int> indices;
-		for (int i = 0; i < vertices.size(); i++)
+		for (unsigned int i = 0; i < vertices.size(); i++)
 		{
 			indices.push_back(i);
 		}
-		m_indexCount = (int)indices.size();
+		m_indexCount = indices.size();
 
 		CreateBuffers(vertices, indices);
 	}

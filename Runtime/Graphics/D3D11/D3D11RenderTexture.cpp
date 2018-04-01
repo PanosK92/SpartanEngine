@@ -47,6 +47,7 @@ namespace Directus
 		m_farPlane				= 0.0f;
 		m_format				= format;
 		m_maxDepth				= m_graphics->GetMaxDepth();
+		m_viewport				= D3D11_VIEWPORT{};
 
 		Construct();
 	}

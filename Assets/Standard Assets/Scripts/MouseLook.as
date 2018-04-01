@@ -24,7 +24,9 @@ class MouseLook
 		if (initialized)
 			return;
 			
-		currentRotation = transform.GetRotation().ToEulerAngles();
+		currentRotation.x = transform.GetRotation().ToEulerAngles().y;
+		currentRotation.y = transform.GetRotation().ToEulerAngles().x;
+		
 		initialized = true;
 	}
 
@@ -43,14 +45,14 @@ class MouseLook
 		float mouseDeltaX = input.GetMouseDelta().x;
 		float mouseDeltaY = input.GetMouseDelta().y;
 	
-		currentRotation.x += mouseDeltaX * sensitivity * time.GetDeltaTime();
-		currentRotation.y += mouseDeltaY * sensitivity * time.GetDeltaTime();
+		currentRotation.y += mouseDeltaX * sensitivity * time.GetDeltaTime();
+		currentRotation.x += mouseDeltaY * sensitivity * time.GetDeltaTime();
 		
 		// Limit top-bottom rotation freedom
-		currentRotation.y = ClampRotation(currentRotation.y, -90.0f, 90.0f);
+		currentRotation.x = ClampRotation(currentRotation.x, -90.0f, 90.0f);
 		
 		// Set new rotation
-		Quaternion newRot = QuaternionFromEuler(currentRotation.y, currentRotation.x, 0.0f);	
+		Quaternion newRot = QuaternionFromEuler(currentRotation);	
 		transform.SetRotationLocal(newRot);
 	}
 

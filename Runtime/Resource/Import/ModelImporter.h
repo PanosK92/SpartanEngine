@@ -55,8 +55,8 @@ namespace Directus
 		void ReadNodeHierarchy(
 			Model* model, 
 			const aiScene* assimpScene, 
-			aiNode* assimpNode, 
-			const std::weak_ptr<GameObject> parentNode = std::weak_ptr<GameObject>(), 
+			aiNode* assimpNode,
+			std::weak_ptr<GameObject> parentNode = std::weak_ptr<GameObject>(), 
 			std::weak_ptr<GameObject> newNode = std::weak_ptr<GameObject>()
 		);
 		void ReadAnimations(Model* model, const aiScene* scene);

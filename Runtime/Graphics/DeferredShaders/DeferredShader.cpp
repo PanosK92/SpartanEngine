@@ -112,17 +112,17 @@ namespace Directus
 		buffer->cameraPosition = Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
 
 		// Reset any light buffer values because the shader will still use them
+		buffer->dirLightColor = Vector4::Zero;
+		buffer->dirLightDirection = Vector4::Zero;
+		buffer->dirLightIntensity = Vector4::Zero;
 		for (int i = 0; i < maxLights; i++)
 		{
-			buffer->dirLightColor = Vector4::Zero;
-			buffer->dirLightDirection = Vector4::Zero;
-			buffer->dirLightIntensity = Vector4::Zero;
-			buffer->pointLightPosition[maxLights] = Vector4::Zero;
-			buffer->pointLightColor[maxLights] = Vector4::Zero;
-			buffer->pointLightIntenRange[maxLights] = Vector4::Zero;
-			buffer->spotLightPosition[maxLights] = Vector4::Zero;
-			buffer->spotLightColor[maxLights] = Vector4::Zero;
-			buffer->spotLightIntenRangeAngle[maxLights] = Vector4::Zero;
+			buffer->pointLightPosition[i] = Vector4::Zero;
+			buffer->pointLightColor[i] = Vector4::Zero;
+			buffer->pointLightIntenRange[i] = Vector4::Zero;
+			buffer->spotLightPosition[i] = Vector4::Zero;
+			buffer->spotLightColor[i] = Vector4::Zero;
+			buffer->spotLightIntenRangeAngle[i] = Vector4::Zero;
 		}
 
 		// Fill with directional lights

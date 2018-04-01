@@ -43,7 +43,7 @@ namespace Directus
 		bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
 		void Set();
 
-		void SetName(std::string name) { m_name = name; }
+		void SetName(const std::string& name) { m_name = name; }
 		void AddDefine(LPCSTR, LPCSTR definition);
 		void AddDefine(LPCSTR, bool definition);
 
@@ -51,9 +51,9 @@ namespace Directus
 
 	private:
 		//= COMPILATION ================================================================================================================================================================================
-		bool CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, std::string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
-		bool CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, std::string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
-		bool CompileShader(std::string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut);
+		bool CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, const std::string& path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
+		bool CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, const std::string& path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
+		bool CompileShader(const std::string& filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut);
 		void LogD3DCompilerError(ID3D10Blob* errorMessage);
 
 		//= REFLECTION ============================

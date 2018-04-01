@@ -88,7 +88,7 @@ namespace Directus
 
 		// The back-buffer is the final output (should match the display size)
 		void SetBackBufferSize(int width, int height);
-		const Math::Vector4& GetViewportBackBuffer();
+		Math::Vector4 GetViewportBackBuffer();
 
 		// The actual frame that all rendering takes palce (or the viewport window in the editor)
 		void SetResolutionInternal(int width, int height);

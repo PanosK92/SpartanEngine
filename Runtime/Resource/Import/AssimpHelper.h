@@ -46,7 +46,7 @@ namespace Directus
 			);
 		}
 
-		static void SetGameObjectTransform(std::weak_ptr<GameObject> gameObject, aiNode* node)
+		static void SetGameObjectTransform(const std::weak_ptr<GameObject>& gameObject, aiNode* node)
 		{
 			if (gameObject.expired())
 				return;
