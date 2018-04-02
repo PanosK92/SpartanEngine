@@ -43,7 +43,6 @@ namespace Directus::Math
 	static const float PI_DIV_4 = 0.785398163f;
 	static const float PI_INV = 0.318309886f;
 	static const float DEG_TO_RAD = PI / 180.0f;
-	static const float DEG_TO_RAD_2 = PI / 360.0f;
 	static const float RAD_TO_DEG = 180.0f / PI;
 
 	inline ENGINE_CLASS double Cot(float x) { return cos(x) / sin(x); }
@@ -83,4 +82,7 @@ namespace Directus::Math
 
 	template <class T>
 	T Round(T x) { return round(x); }
+
+	template <typename T> 
+	int Sign(T x) { return (T(0) < x) - (x < T(0)); }
 }

@@ -7,7 +7,7 @@ class MouseLook
 	bool initialized = false;
 	
 	// mouse look settings
-	float sensitivity = 30.0f;
+	float sensitivity = 0.1f;
 	Vector3 currentRotation;
 	
 	
@@ -45,8 +45,8 @@ class MouseLook
 		float mouseDeltaX = input.GetMouseDelta().x;
 		float mouseDeltaY = input.GetMouseDelta().y;
 	
-		currentRotation.y += mouseDeltaX * sensitivity * time.GetDeltaTime();
-		currentRotation.x += mouseDeltaY * sensitivity * time.GetDeltaTime();
+		currentRotation.y += mouseDeltaX * sensitivity;
+		currentRotation.x += mouseDeltaY * sensitivity;
 		
 		// Limit top-bottom rotation freedom
 		currentRotation.x = ClampRotation(currentRotation.x, -90.0f, 90.0f);

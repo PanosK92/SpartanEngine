@@ -61,8 +61,6 @@ namespace Directus
 	//= ICOMPONENT ==================================================================
 	void Collider::OnInitialize()
 	{
-		m_lastKnownScale = GetTransform()->GetScale();
-
 		// If there is a mesh, use it's bounding box
 		if (auto renderable = GetGameObject_Ref()->GetRenderableRef())
 		{
@@ -80,12 +78,7 @@ namespace Directus
 
 	void Collider::OnUpdate()
 	{
-		// Scale the collider if the transform scale has changed
-		if (m_collisionShape && (m_lastKnownScale != GetTransform()->GetScale()))
-		{
-			m_lastKnownScale = GetTransform()->GetScale();
-			UpdateShape();
-		}
+
 	}
 
 	void Collider::Serialize(FileStream* stream)

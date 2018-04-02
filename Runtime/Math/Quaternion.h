@@ -51,23 +51,14 @@ namespace Directus::Math
 		~Quaternion() {}
 
 		//= FROM ====================================================================
-		/// Define from an angle (in degrees) and axis.
+		// Define from an angle (in degrees) and axis.
 		static Quaternion FromAngleAxis(float angle, const Vector3& axis)
 		{
-			Vector3 normAxis = axis.Normalized();
-			angle *= DEG_TO_RAD_2;
-			float sinAngle = sinf(angle);
-			float cosAngle = cosf(angle);
-
-			Quaternion q;
-			q.w = cosAngle;
-			q.x = normAxis.x * sinAngle;
-			q.y = normAxis.y * sinAngle;
-			q.z = normAxis.z * sinAngle;
-
-			return q;
+			float half = angle * 0.5f;
+		    float sin = sinf(half);
+		    float cos = cosf(half);
+			return Quaternion(axis.x * sin, axis.y * sin, axis.z * sin, cos);
 		}
-
 		void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
 
 		// Euler angles to quaternion (input in degrees)
@@ -133,9 +124,9 @@ namespace Directus::Math
 			);
 		}
 
-		float Yaw() const { return ToEulerAngles().y; }
+		float Yaw() const	{ return ToEulerAngles().y; }
 		float Pitch() const { return ToEulerAngles().x; }
-		float Roll() const { return ToEulerAngles().z; }
+		float Roll() const	{ return ToEulerAngles().z; }
 		//=====================================================================================
 
 		void FromRotationTo(const Vector3& start, const Vector3& end)

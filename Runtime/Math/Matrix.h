@@ -183,10 +183,14 @@ namespace Directus::Math
 		//= SCALE ========================================================================================
 		Vector3 GetScale()
 		{
+			int xs = (Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
+            int ys = (Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
+            int zs = (Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
+
 			return Vector3(
-				Vector3(m00, m01, m02).Length(),
-				Vector3(m10, m11, m12).Length(),
-				Vector3(m20, m21, m22).Length()
+				(float)xs * Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
+				(float)ys * Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
+				(float)zs * Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
 			);
 		}
 
