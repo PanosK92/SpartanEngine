@@ -120,7 +120,7 @@ namespace Directus
 		m_audioClip = m_context->GetSubsystem<ResourceManager>()->Load<AudioClip>(m_filePath);
 	}
 
-	bool AudioSource::SetAudioClip(weak_ptr<AudioClip> audioClip, bool autoCache)
+	bool AudioSource::SetAudioClip(const weak_ptr<AudioClip>& audioClip, bool autoCache)
 	{
 		if (audioClip.expired())
 		{

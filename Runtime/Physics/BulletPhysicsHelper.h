@@ -45,12 +45,10 @@ inline btVector3 ToBtVector3(Directus::Math::Vector3 vector)
 
 inline btQuaternion ToBtQuaternion(Directus::Math::Quaternion quaternion)
 {
-	// Bullet assumes a right handed system, while the engine is left, so the axes need to be negated.
-	return btQuaternion(-quaternion.x, -quaternion.y, -quaternion.z, quaternion.w);
+	return btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
 }
 
 inline Directus::Math::Quaternion ToQuaternion(const btQuaternion& quaternion)
 {
-	// Bullet assumes a right handed system, while the engine is left, so the axes need to be negated.
-	return Directus::Math::Quaternion(-quaternion.getX(), -quaternion.getY(), -quaternion.getZ(), quaternion.getW());
+	return Directus::Math::Quaternion(quaternion.getX(), quaternion.getY(), quaternion.getZ(), quaternion.getW());
 }

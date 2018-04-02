@@ -48,7 +48,7 @@ namespace Directus
 		//============================================
 
 		//= PROPERTIES ==============================================================
-		bool SetAudioClip(std::weak_ptr<AudioClip> audioClip, bool autoCache = true);
+		bool SetAudioClip(const std::weak_ptr<AudioClip>& audioClip, bool autoCache = true);
 		const std::string& GetAudioClipName();
 
 		bool Play();

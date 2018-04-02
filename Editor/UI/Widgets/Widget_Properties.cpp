@@ -872,8 +872,10 @@ void Widget_Properties::ShowAudioSource(AudioSource* audioSource)
 	if (!audioSource)
 		return;
 
-	//= REFLECT ========================================
+	//= REFLECT ========================================================================
 	char audioClipCharArray[BUFFER_TEXT_DEFAULT];
+	EditorHelper::SetCharArray(&audioClipCharArray[0], audioSource->GetAudioClipName());
+
 	bool mute			= audioSource->GetMute();
 	bool playOnStart	= audioSource->GetPlayOnStart();
 	bool loop			= audioSource->GetLoop();
@@ -881,7 +883,7 @@ void Widget_Properties::ShowAudioSource(AudioSource* audioSource)
 	float volume		= audioSource->GetVolume();
 	float pitch			= audioSource->GetPitch();
 	float pan			= audioSource->GetPan();
-	//==================================================
+	//==================================================================================
 
 	COMPONENT_BEGIN("Audio Source", Icon_Component_AudioSource, audioSource);
 	{

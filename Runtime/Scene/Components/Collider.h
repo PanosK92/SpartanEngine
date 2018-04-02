@@ -90,7 +90,6 @@ namespace Directus
 		std::shared_ptr<btCollisionShape> m_collisionShape;
 		Math::Vector3 m_size;
 		Math::Vector3 m_center;
-		Math::Vector3 m_lastKnownScale;
 		unsigned int m_vertexLimit = 100000;
 		bool m_optimize = true;
 	};
