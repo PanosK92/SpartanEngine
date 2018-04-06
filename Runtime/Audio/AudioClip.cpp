@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Scene/Components/Transform.h"
 #include "Audio.h"
+#include <map>
 //========================================
 
 //= NAMESPACES ================
@@ -44,7 +45,7 @@ namespace Directus
 
 		// AudioClip
 		m_transform		= nullptr;
-		m_systemFMOD	= (FMOD::System*)context->GetSubsystem<Audio>()->GetSystemFMOD();
+		m_systemFMOD	= (System*)context->GetSubsystem<Audio>()->GetSystemFMOD();
 		m_result		= FMOD_OK;
 		m_soundFMOD		= nullptr;
 		m_channelFMOD	= nullptr;
@@ -83,7 +84,7 @@ namespace Directus
 	bool AudioClip::Play()
 	{
 		// Check if the sound is playing
-		if (m_channelFMOD)
+		if (IsChannelValid())
 		{
 			bool isPlaying = false;
 			m_result = m_channelFMOD->isPlaying(&isPlaying);
@@ -92,7 +93,7 @@ namespace Directus
 				LogErrorFMOD(m_result);
 				return false;
 			}
-
+	
 			// If it's already playing, don't bother
 			if (isPlaying)
 				return true;
@@ -111,23 +112,23 @@ namespace Directus
 
 	bool AudioClip::Pause()
 	{
-		// Check if the sound is playing
-		if (m_channelFMOD)
-		{
-			bool isPaused = false;
-			m_result = m_channelFMOD->getPaused(&isPaused);
-			if (m_result != FMOD_OK)
-			{
-				LogErrorFMOD(m_result);
-				return false;
-			}
+		if (!IsChannelValid())
+			return true;
 
-			// If it's already stopped, don't bother
-			if (!isPaused)
-				return true;
+		// Get sound paused state
+		bool isPaused = false;
+		m_result = m_channelFMOD->getPaused(&isPaused);
+		if (m_result != FMOD_OK)
+		{
+			LogErrorFMOD(m_result);
+			return false;
 		}
 
-		// Stop the sound
+		// If it's already paused, don't bother
+		if (!isPaused)
+			return true;
+
+		// Pause the sound
 		m_result = m_channelFMOD->setPaused(true);
 		if (m_result != FMOD_OK)
 		{
@@ -140,7 +141,7 @@ namespace Directus
 
 	bool AudioClip::Stop()
 	{
-		if (!m_channelFMOD)
+		if (!IsChannelValid())
 			return true;
 
 		// If it's already stopped, don't bother
@@ -187,7 +188,7 @@ namespace Directus
 
 	bool AudioClip::SetVolume(float volume)
 	{
-		if (!m_channelFMOD)
+		if (!IsChannelValid())
 			return false;
 
 		m_result = m_channelFMOD->setVolume(volume);
@@ -202,7 +203,7 @@ namespace Directus
 
 	bool AudioClip::SetMute(bool mute)
 	{
-		if (!m_channelFMOD)
+		if (!IsChannelValid())
 			return false;
 
 		m_result = m_channelFMOD->setMute(mute);
@@ -217,7 +218,7 @@ namespace Directus
 
 	bool AudioClip::SetPriority(int priority)
 	{
-		if (!m_channelFMOD)
+		if (!IsChannelValid())
 			return false;
 
 		m_result = m_channelFMOD->setPriority(priority);
@@ -232,7 +233,7 @@ namespace Directus
 
 	bool AudioClip::SetPitch(float pitch)
 	{
-		if (!m_channelFMOD)
+		if (!IsChannelValid())
 			return false;
 
 		m_result = m_channelFMOD->setPitch(pitch);
@@ -247,7 +248,7 @@ namespace Directus
 
 	bool AudioClip::SetPan(float pan)
 	{
-		if (!m_channelFMOD)
+		if (!IsChannelValid())
 			return false;
 
 		m_result = m_channelFMOD->setPan(pan);
@@ -262,6 +263,9 @@ namespace Directus
 
 	bool AudioClip::SetRolloff(vector<Vector3> curvePoints)
 	{
+		if (!IsChannelValid())
+			return false;
+
 		SetRolloff(Custom);
 
 		// Convert Vector3 to FMOD_VECTOR
@@ -300,8 +304,8 @@ namespace Directus
 
 	bool AudioClip::Update()
 	{
-		if (!m_transform || !m_channelFMOD)
-			return false;
+		if (!IsChannelValid() || !m_transform)
+			return true;
 
 		Vector3 pos = m_transform->GetPosition();
 
@@ -313,7 +317,7 @@ namespace Directus
 		if (m_result != FMOD_OK)
 		{
 			m_channelFMOD = nullptr;
-			LogErrorFMOD(m_result); // spams a lot	
+			LogErrorFMOD(m_result);
 			return false;
 		}
 
@@ -322,6 +326,9 @@ namespace Directus
 
 	bool AudioClip::IsPlaying()
 	{
+		if (!IsChannelValid())
+			return false;
+
 		bool isPlaying = false;
 		m_result = m_channelFMOD->isPlaying(&isPlaying);
 		if (m_result != FMOD_OK)
@@ -333,7 +340,7 @@ namespace Directus
 		return isPlaying;
 	}
 
-	//= CREATION =====================================================================================
+	//= CREATION ================================================
 	bool AudioClip::CreateSound(const string& filePath)
 	{
 		// Create sound
@@ -385,5 +392,15 @@ namespace Directus
 	{
 		LOG_ERROR("AudioClip::FMOD: " + string(FMOD_ErrorString((FMOD_RESULT)error)));
 	}
-	//=========================================================================================
+
+	bool AudioClip::IsChannelValid()
+	{
+		if (!m_channelFMOD)
+			return false;
+
+		// Do a query and see if it fails or not
+		bool value;
+		return m_channelFMOD->isPlaying(&value) == FMOD_OK;
+	}
+	//===========================================================
 }

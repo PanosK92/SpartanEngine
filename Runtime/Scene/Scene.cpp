@@ -211,7 +211,7 @@ namespace Directus
 		vector<string> resourcePaths;
 		file->Read(&resourcePaths);
 
-		ProgressReport::Get().SetJobCount(g_progress_Scene, (float)resourcePaths.size());
+		ProgressReport::Get().SetJobCount(g_progress_Scene, (int)resourcePaths.size());
 
 		// Load all the resources
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();

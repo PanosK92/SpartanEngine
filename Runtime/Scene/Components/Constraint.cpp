@@ -22,17 +22,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================================================
 #include "Constraint.h"
 #include "RigidBody.h"
+#include "Transform.h"
 #include "../GameObject.h"
 #include "../Scene.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
+#pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btSliderConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btConeTwistConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
-#include "Transform.h"
+#pragma warning(pop)
 //==================================================================
 
 //= NAMESPACES ================
