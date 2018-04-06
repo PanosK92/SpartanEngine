@@ -196,7 +196,7 @@ namespace Directus
 			return m_projectionMatrix;
 
 		auto mainCamera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock();
-		Vector3 centerPos = mainCamera ? mainCamera->GetTransformRef()->GetPosition() : Vector3::Zero;
+		Vector3 centerPos = mainCamera ? mainCamera->GetTransform_PtrRaw()->GetPosition() : Vector3::Zero;
 		m_projectionMatrix = m_shadowMaps[cascadeIndex]->ComputeProjectionMatrix(cascadeIndex, centerPos, GetViewMatrix());
 		return m_projectionMatrix;
 	}

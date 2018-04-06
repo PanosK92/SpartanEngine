@@ -73,7 +73,7 @@ namespace Directus
 		template <class T>
 		std::weak_ptr<T> AddComponent()
 		{
-			ComponentType type = IComponent::ToComponentType<T>();
+			ComponentType type = IComponent::Type_To_Enum<T>();
 
 			// Return component in case it already exists while ignoring Script components (they can exist multiple times)
 			if (HasComponent(type) && type != ComponentType_Script)
@@ -83,10 +83,10 @@ namespace Directus
 			auto newComponent = std::make_shared<T>(
 				m_context, 
 				m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID()).lock().get(),
-				GetTransformRef()
+				GetTransform_PtrRaw()
 				);
 			m_components.insert(make_pair(type, newComponent));
-			newComponent->SetType(IComponent::ToComponentType<T>());
+			newComponent->SetType(IComponent::Type_To_Enum<T>());
 
 			// Register component
 			newComponent->OnInitialize();
@@ -110,7 +110,7 @@ namespace Directus
 		template <class T>
 		std::weak_ptr<T> GetComponent()
 		{
-			ComponentType type = IComponent::ToComponentType<T>();
+			ComponentType type = IComponent::Type_To_Enum<T>();
 
 			if (m_components.find(type) == m_components.end())
 				return std::weak_ptr<T>();
@@ -122,7 +122,7 @@ namespace Directus
 		template <class T>
 		std::vector<std::weak_ptr<T>> GetComponents()
 		{
-			ComponentType type = IComponent::ToComponentType<T>();
+			ComponentType type = IComponent::Type_To_Enum<T>();
 
 			std::vector<std::weak_ptr<T>> components;
 			for (const auto& component : m_components)
@@ -140,13 +140,13 @@ namespace Directus
 		bool HasComponent(ComponentType type) { return m_components.find(type) != m_components.end(); }
 		// Checks if a component of type T exists
 		template <class T>
-		bool HasComponent() { return HasComponent(IComponent::ToComponentType<T>()); }
+		bool HasComponent() { return HasComponent(IComponent::Type_To_Enum<T>()); }
 
 		// Removes a component of type T (if it exists)
 		template <class T>
 		void RemoveComponent()
 		{
-			ComponentType type = IComponent::ToComponentType<T>();
+			ComponentType type = IComponent::Type_To_Enum<T>();
 
 			if (m_components.find(type) == m_components.end())
 				return;
@@ -174,9 +174,9 @@ namespace Directus
 		//======================================================================================================
 
 		// Direct access for performance critical usage (not safe)
-		Transform* GetTransformRef() { return m_transform; }
-		Renderable* GetRenderableRef() { return m_renderable; }
-		std::shared_ptr<GameObject> GetSharedPtr() { return shared_from_this(); }
+		Transform* GetTransform_PtrRaw() { return m_transform; }
+		Renderable* GetRenderable_PtrRaw() { return m_renderable; }
+		std::shared_ptr<GameObject> GetPtrShared() { return shared_from_this(); }
 
 	private:
 		unsigned int m_ID;

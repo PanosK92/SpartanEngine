@@ -90,7 +90,7 @@ namespace Directus
 
 	void Constraint::Serialize(FileStream* stream)
 	{
-		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetGameObject_Ref()->GetID() : (unsigned int)0);
+		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetGameObject_PtrRaw()->GetID() : (unsigned int)0);
 	}
 
 	void Constraint::Deserialize(FileStream* stream)

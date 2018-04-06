@@ -123,7 +123,7 @@ void Widget_Properties::Update()
 	{
 		auto gameObjectPtr = g_inspectedGameObject.lock().get();
 
-		auto transform		= gameObjectPtr->GetTransformRef();
+		auto transform		= gameObjectPtr->GetTransform_PtrRaw();
 		auto light			= gameObjectPtr->GetComponent<Light>().lock().get();
 		auto camera			= gameObjectPtr->GetComponent<Camera>().lock().get();
 		auto audioSource	= gameObjectPtr->GetComponent<AudioSource>().lock().get();

@@ -189,7 +189,7 @@ namespace Directus
 		m_scriptEngine->RegisterObjectMethod("GameObject", "void SetName(string)", asMETHOD(GameObject, SetName), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "bool IsActive()", asMETHOD(GameObject, IsActive), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "void SetActive(bool)", asMETHOD(GameObject, SetActive), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "Transform &GetTransform()", asMETHOD(GameObject, GetTransformRef), asCALL_THISCALL);	
+		m_scriptEngine->RegisterObjectMethod("GameObject", "Transform &GetTransform()", asMETHOD(GameObject, GetTransform_PtrRaw), asCALL_THISCALL);	
 		m_scriptEngine->RegisterObjectMethod("GameObject", "Camera &GetCamera()", asMETHOD(GameObject, GetComponent<Camera>), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "RigidBody &GetRigidBody()", asMETHOD(GameObject, GetComponent<RigidBody>), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "Renderable &GetRenderable()", asMETHOD(GameObject, GetComponent<Renderable>), asCALL_THISCALL);
@@ -220,7 +220,7 @@ namespace Directus
 		m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetParent()", asMETHOD(Transform, GetParent), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByIndex(int)", asMETHOD(Transform, GetChildByIndex), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByName(string)", asMETHOD(Transform, GetChildByName), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Transform", "GameObject &GetGameObject()", asMETHOD(Transform, GetGameObject_Ref), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Transform", "GameObject &GetGameObject()", asMETHOD(Transform, GetGameObject_PtrRaw), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void Translate(const Vector3& in)", asMETHOD(Transform, Translate), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in)", asMETHOD(Transform, Rotate), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void RotateLocal(const Quaternion& in)", asMETHOD(Transform, RotateLocal), asCALL_THISCALL);

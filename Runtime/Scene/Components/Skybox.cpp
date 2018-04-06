@@ -43,7 +43,7 @@ namespace Directus
 
 	Skybox::~Skybox()
 	{
-		 GetGameObject_Ref()->RemoveComponent<Renderable>();
+		 GetGameObject_PtrRaw()->RemoveComponent<Renderable>();
 	}
 
 	void Skybox::OnInitialize()
@@ -68,7 +68,7 @@ namespace Directus
 		m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
 
 		// Add a Renderable and assign the skybox material to it
-		auto renderable = GetGameObject_Ref()->AddComponent<Renderable>().lock();
+		auto renderable = GetGameObject_PtrRaw()->AddComponent<Renderable>().lock();
 		renderable->UseStandardMesh(MeshType_Cube);
 		renderable->SetCastShadows(false);
 		renderable->SetReceiveShadows(false);
