@@ -165,7 +165,7 @@ namespace Directus
 		//=============================================
 
 		//= CHILDREN ==================================
-		vector<Transform*> children = GetTransformRef()->GetChildren();
+		vector<Transform*> children = GetTransform_PtrRaw()->GetChildren();
 
 		// 1st - children count
 		stream->Write((int)children.size());
@@ -179,9 +179,9 @@ namespace Directus
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			if (child->GetGameObject_Ref())
+			if (child->GetGameObject_PtrRaw())
 			{
-				child->GetGameObject_Ref()->Serialize(stream);
+				child->GetGameObject_PtrRaw()->Serialize(stream);
 			}
 			else
 			{
@@ -247,7 +247,7 @@ namespace Directus
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			child.lock()->Deserialize(stream, GetTransformRef());
+			child.lock()->Deserialize(stream, GetTransform_PtrRaw());
 		}
 		//=============================================
 

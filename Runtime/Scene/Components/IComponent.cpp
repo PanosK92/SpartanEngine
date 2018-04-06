@@ -54,9 +54,9 @@ namespace Directus
 		m_ID			= GENERATE_GUID;
 	}
 
-	std::shared_ptr<GameObject> IComponent::GetGameObject_RefStrong()
+	shared_ptr<Directus::GameObject> IComponent::GetGameObject_PtrShared()
 	{
-		return m_gameObject->GetSharedPtr();
+		return m_gameObject->GetPtrShared();
 	}
 
 	const string& IComponent::GetGameObjectName()
@@ -68,59 +68,20 @@ namespace Directus
 	}
 
 	template <typename T>
-	ComponentType IComponent::ToComponentType()
-	{
-		if (typeid(T) == typeid(AudioListener))
-			return ComponentType_AudioListener;
+	ComponentType IComponent::Type_To_Enum() { return ComponentType_Unknown; }
 
-		if (typeid(T) == typeid(AudioSource))
-			return ComponentType_AudioSource;
-
-		if (typeid(T) == typeid(Camera))
-			return ComponentType_Camera;
-
-		if (typeid(T) == typeid(Collider))
-			return ComponentType_Collider;
-
-		if (typeid(T) == typeid(Constraint))
-			return ComponentType_Constraint;
-
-		if (typeid(T) == typeid(Light))
-			return ComponentType_Light;
-
-		if (typeid(T) == typeid(LineRenderer))
-			return ComponentType_LineRenderer;
-
-		if (typeid(T) == typeid(Renderable))
-			return ComponentType_Renderable;
-
-		if (typeid(T) == typeid(RigidBody))
-			return ComponentType_RigidBody;
-
-		if (typeid(T) == typeid(Script))
-			return ComponentType_Script;
-
-		if (typeid(T) == typeid(Skybox))
-			return ComponentType_Skybox;
-
-		if (typeid(T) == typeid(Transform))
-			return ComponentType_Transform;
-
-		return ComponentType_Unknown;
-	}
-
-#define INSTANTIATE(T) template ENGINE_CLASS ComponentType IComponent::ToComponentType<T>()
+	#define REGISTER_COMPONENT(T, enumT) template<> ENGINE_CLASS ComponentType IComponent::Type_To_Enum<T>() { return enumT; }
 	// Explicit template instantiation
-	INSTANTIATE(AudioListener);
-	INSTANTIATE(AudioSource);
-	INSTANTIATE(Camera);
-	INSTANTIATE(Collider);
-	INSTANTIATE(Constraint);
-	INSTANTIATE(Light);
-	INSTANTIATE(LineRenderer);
-	INSTANTIATE(Renderable);
-	INSTANTIATE(RigidBody);
-	INSTANTIATE(Script);
-	INSTANTIATE(Skybox);
-	INSTANTIATE(Transform);
+	REGISTER_COMPONENT(AudioListener,	ComponentType_AudioListener);
+	REGISTER_COMPONENT(AudioSource,		ComponentType_AudioSource);
+	REGISTER_COMPONENT(Camera,			ComponentType_Camera);
+	REGISTER_COMPONENT(Collider,		ComponentType_Collider);
+	REGISTER_COMPONENT(Constraint,		ComponentType_Constraint);
+	REGISTER_COMPONENT(Light,			ComponentType_Light);
+	REGISTER_COMPONENT(LineRenderer,	ComponentType_LineRenderer);
+	REGISTER_COMPONENT(Renderable,		ComponentType_Renderable);
+	REGISTER_COMPONENT(RigidBody,		ComponentType_RigidBody);
+	REGISTER_COMPONENT(Script,			ComponentType_Script);
+	REGISTER_COMPONENT(Skybox,			ComponentType_Skybox);
+	REGISTER_COMPONENT(Transform,		ComponentType_Transform);
 }

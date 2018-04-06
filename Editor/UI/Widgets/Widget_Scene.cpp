@@ -102,7 +102,7 @@ void Widget_Scene::Tree_Show()
 			auto gameObjectID = get<unsigned int>(payload->data);
 			if (auto droppedGameObj = HierarchyStatics::g_scene->GetGameObjectByID(gameObjectID).lock())
 			{
-				droppedGameObj->GetTransformRef()->SetParent(nullptr);
+				droppedGameObj->GetTransform_PtrRaw()->SetParent(nullptr);
 			}
 		}
 
@@ -138,10 +138,10 @@ void Widget_Scene::Tree_AddGameObject(GameObject* gameObject)
 
 	// Node children visibility
 	bool hasVisibleChildren = false;
-	auto children = gameObject->GetTransformRef()->GetChildren();
+	auto children = gameObject->GetTransform_PtrRaw()->GetChildren();
 	for (const auto& child : children)
 	{
-		if (child->GetGameObject_Ref()->IsVisibleInHierarchy())
+		if (child->GetGameObject_PtrRaw()->IsVisibleInHierarchy())
 		{
 			hasVisibleChildren = true;
 			break;
@@ -156,7 +156,7 @@ void Widget_Scene::Tree_AddGameObject(GameObject* gameObject)
 	}
 	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObject->GetID(), node_flags, gameObject->GetName().c_str());
 
-	// Manully detect some useful states
+	// Manually detect some useful states
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
 	{
 		HierarchyStatics::g_hoveredGameObject = gameObject;
@@ -171,10 +171,10 @@ void Widget_Scene::Tree_AddGameObject(GameObject* gameObject)
 		{
 			for (const auto& child : children)
 			{
-				if (!child->GetGameObject_Ref()->IsVisibleInHierarchy())
+				if (!child->GetGameObject_PtrRaw()->IsVisibleInHierarchy())
 					continue;
 
-				Tree_AddGameObject(child->GetGameObject_Ref());
+				Tree_AddGameObject(child->GetGameObject_PtrRaw());
 			}
 		}
 
@@ -192,7 +192,7 @@ void Widget_Scene::HandleClicking()
 	// Left click on item - Select
 	if (ImGui::IsMouseClicked(0) && HierarchyStatics::g_hoveredGameObject)
 	{
-		SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetSharedPtr());
+		SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetPtrShared());
 	}
 
 	// Right click on item - Select and show context menu
@@ -200,7 +200,7 @@ void Widget_Scene::HandleClicking()
 	{
 		if (HierarchyStatics::g_hoveredGameObject)
 		{			
-			SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetSharedPtr());
+			SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetPtrShared());
 		}
 
 		ImGui::OpenPopup("##HierarchyContextMenu");		
@@ -231,7 +231,7 @@ void Widget_Scene::HandleDragDrop(GameObject* gameObjPtr)
 		{
 			if (droppedGameObj->GetID() != gameObjPtr->GetID())
 			{
-				droppedGameObj->GetTransformRef()->SetParent(gameObjPtr->GetTransformRef());
+				droppedGameObj->GetTransform_PtrRaw()->SetParent(gameObjPtr->GetTransform_PtrRaw());
 			}
 		}
 	}
@@ -366,7 +366,7 @@ GameObject* Widget_Scene::Action_GameObject_CreateEmpty()
 	auto gameObject = HierarchyStatics::g_scene->GameObject_CreateAdd().lock().get();
 	if (auto selected = m_gameObjectSelected.lock())
 	{
-		gameObject->GetTransformRef()->SetParent(selected->GetTransformRef());
+		gameObject->GetTransform_PtrRaw()->SetParent(selected->GetTransform_PtrRaw());
 	}
 
 	return gameObject;

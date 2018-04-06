@@ -62,7 +62,7 @@ namespace Directus
 	void Collider::OnInitialize()
 	{
 		// If there is a mesh, use it's bounding box
-		if (auto renderable = GetGameObject_Ref()->GetRenderableRef())
+		if (auto renderable = GetGameObject_PtrRaw()->GetRenderable_PtrRaw())
 		{
 			m_center = GetTransform()->GetPosition();
 			m_size = renderable->GetBoundingBoxTransformed().GetSize();
@@ -181,7 +181,7 @@ namespace Directus
 
 		case ColliderShape_Mesh:
 			// Get Renderable
-			Renderable* renderable = GetGameObject_Ref()->GetComponent<Renderable>().lock().get();
+			Renderable* renderable = GetGameObject_PtrRaw()->GetComponent<Renderable>().lock().get();
 			if (!renderable)
 			{
 				LOG_WARNING("Collider: Can't construct mesh shape, there is no Renderable component attached.");
@@ -243,7 +243,7 @@ namespace Directus
 
 	void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape)
 	{
-		RigidBody* rigidBody = GetGameObject_Ref()->GetComponent<RigidBody>().lock().get();
+		RigidBody* rigidBody = GetGameObject_PtrRaw()->GetComponent<RigidBody>().lock().get();
 		if (rigidBody)
 		{
 			rigidBody->SetCollisionShape(shape);

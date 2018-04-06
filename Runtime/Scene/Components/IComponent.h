@@ -78,24 +78,23 @@ namespace Directus
 		// Runs when the GameObject is being loaded
 		virtual void Deserialize(FileStream* stream) {}
 		
-		//= PROPERTIES ========================================================================
-		GameObject* GetGameObject_Ref() { return m_gameObject; }
-		std::shared_ptr<GameObject> GetGameObject_RefStrong();
-		std::weak_ptr<GameObject> GetGameObject_RefWeak() { return GetGameObject_RefStrong(); }
-		Transform* GetTransform() { return m_transform; }
-		Context* GetContext() { return m_context; }
-		unsigned int GetID() { return m_ID; }
-		void SetID(unsigned int id) { m_ID = id; }
-		ComponentType GetType() { return m_type; }
-		void SetType(ComponentType type) { m_type = type; }
-		//=====================================================================================
+		//= PROPERTIES ==============================================================================
+		GameObject*					GetGameObject_PtrRaw()		{ return m_gameObject; }	
+		std::weak_ptr<GameObject>	GetGameObject_PtrWeak()		{ return GetGameObject_PtrShared(); }
+		std::shared_ptr<GameObject> GetGameObject_PtrShared();
 
-		//= HELPER FUNCTIONS ==================
+		Transform* GetTransform()			{ return m_transform; }
+		Context* GetContext()				{ return m_context; }
+		unsigned int GetID()				{ return m_ID; }
+		void SetID(unsigned int id)			{ m_ID = id; }
+		ComponentType GetType()				{ return m_type; }
+		void SetType(ComponentType type)	{ m_type = type; }
+
 		const std::string& GetGameObjectName();
 
 		template <typename T>
-		static ComponentType ToComponentType();
-		//=====================================
+		static ComponentType Type_To_Enum();
+		//===========================================================================================
 
 	protected:
 		// The type of the component

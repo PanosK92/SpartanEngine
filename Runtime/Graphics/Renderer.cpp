@@ -440,7 +440,7 @@ namespace Directus
 
 			for (const auto& gameObj : m_renderables)
 			{
-				Renderable* renderable	= gameObj->GetRenderableRef();
+				Renderable* renderable	= gameObj->GetRenderable_PtrRaw();
 				Material* material		= renderable	? renderable->GetMaterial_Ref()	: nullptr;
 				Mesh* mesh				= renderable	? renderable->GetMesh_Ref()		: nullptr;
 
@@ -462,7 +462,7 @@ namespace Directus
 
 				if (renderable->SetBuffers())
 				{
-					m_shaderDepth->SetBuffer(gameObj->GetTransformRef()->GetWorldTransform(), mViewLight, mProjectionLight, 0);
+					m_shaderDepth->SetBuffer(gameObj->GetTransform_PtrRaw()->GetWorldTransform(), mViewLight, mProjectionLight, 0);
 					m_shaderDepth->DrawIndexed(mesh->GetIndexCount());
 				}
 			}
@@ -526,10 +526,10 @@ namespace Directus
 				for (const auto& gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
 				{
 					//= Get all that we need =========================================================
-					Renderable* renderable	= gameObj->GetRenderableRef();
+					Renderable* renderable	= gameObj->GetRenderable_PtrRaw();
 					Mesh* objMesh			= renderable	? renderable->GetMesh_Ref()		: nullptr;
 					Material* objMaterial	= renderable	? renderable->GetMaterial_Ref()	: nullptr;
-					auto mWorld				= gameObj->GetTransformRef()->GetWorldTransform();
+					auto mWorld				= gameObj->GetTransform_PtrRaw()->GetWorldTransform();
 					//================================================================================
 
 					// skip objects that are missing required components
@@ -717,7 +717,7 @@ namespace Directus
 			{
 				for (const auto& gameObject : m_renderables)
 				{
-					if (auto renderable = gameObject->GetRenderableRef())
+					if (auto renderable = gameObject->GetRenderable_PtrRaw())
 					{
 						m_lineRenderer->AddBoundigBox(renderable->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
@@ -771,7 +771,7 @@ namespace Directus
 					continue;
 
 				Texture* lightTex = nullptr;
-				LightType type = light->GetGameObject_Ref()->GetComponent<Light>().lock()->GetLightType();
+				LightType type = light->GetGameObject_PtrRaw()->GetComponent<Light>().lock()->GetLightType();
 				if (type == LightType_Directional)
 				{
 					lightTex = m_gizmoTexLightDirectional.get();

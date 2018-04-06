@@ -309,14 +309,14 @@ namespace Directus
 			return;
 
 		// remove any descendants
-		vector<Transform*> children = gameObjPtr->GetTransformRef()->GetChildren();
+		vector<Transform*> children = gameObjPtr->GetTransform_PtrRaw()->GetChildren();
 		for (const auto& child : children)
 		{
-			GameObject_Remove(child->GetGameObject_RefWeak());
+			GameObject_Remove(child->GetGameObject_PtrWeak());
 		}
 
 		// Keep a reference to it's parent (in case it has one)
-		Transform* parent = gameObjPtr->GetTransformRef()->GetParent();
+		Transform* parent = gameObjPtr->GetTransform_PtrRaw()->GetParent();
 
 		// Remove this GameObject
 		for (auto it = m_gameObjects.begin(); it < m_gameObjects.end();)
@@ -344,7 +344,7 @@ namespace Directus
 		vector<weak_ptr<GameObject>> rootGameObjects;
 		for (const auto& gameObj : m_gameObjects)
 		{
-			if (gameObj->GetTransformRef()->IsRoot())
+			if (gameObj->GetTransform_PtrRaw()->IsRoot())
 			{
 				rootGameObjects.emplace_back(gameObj);
 			}
@@ -358,7 +358,7 @@ namespace Directus
 		if (gameObject.expired())
 			return weak_ptr<GameObject>();
 
-		return gameObject.lock()->GetTransformRef()->GetRoot()->GetGameObject_RefWeak();
+		return gameObject.lock()->GetTransform_PtrRaw()->GetRoot()->GetGameObject_PtrWeak();
 	}
 
 	weak_ptr<GameObject> Scene::GetGameObjectByName(const string& name)
@@ -447,7 +447,7 @@ namespace Directus
 		skybox->SetHierarchyVisibility(false);
 		skybox->AddComponent<LineRenderer>();
 		skybox->AddComponent<Skybox>();	
-		skybox->GetTransformRef()->SetParent(m_mainCamera.lock()->GetTransformRef());
+		skybox->GetTransform_PtrRaw()->SetParent(m_mainCamera.lock()->GetTransform_PtrRaw());
 
 		return skybox;
 	}
@@ -463,7 +463,7 @@ namespace Directus
 		camera->AddComponent<AudioListener>();
 		camera->AddComponent<Script>().lock()->SetScript(scriptDirectory + "MouseLook.as");
 		camera->AddComponent<Script>().lock()->SetScript(scriptDirectory + "FirstPersonController.as");
-		camera->GetTransformRef()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+		camera->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
 		return camera;
 	}
@@ -472,8 +472,8 @@ namespace Directus
 	{
 		shared_ptr<GameObject> light = GameObject_CreateAdd().lock();
 		light->SetName("DirectionalLight");
-		light->GetTransformRef()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
-		light->GetTransformRef()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
+		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
+		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
 		Light* lightComp = light->AddComponent<Light>().lock().get();
 		lightComp->SetLightType(LightType_Directional);

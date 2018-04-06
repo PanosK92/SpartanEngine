@@ -62,7 +62,7 @@ namespace Directus
 		stream->Write(m_rotationLocal);
 		stream->Write(m_scaleLocal);
 		stream->Write(m_lookAt);
-		stream->Write(m_parent ? m_parent->GetGameObject_Ref()->GetID() : NOT_ASSIGNED_HASH);
+		stream->Write(m_parent ? m_parent->GetGameObject_PtrRaw()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
 	void Transform::Deserialize(FileStream* stream)
@@ -80,7 +80,7 @@ namespace Directus
 			auto parent = GetContext()->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
 			if (!parent.expired())
 			{
-				parent.lock()->GetTransformRef()->AddChild(this);
+				parent.lock()->GetTransform_PtrRaw()->AddChild(this);
 			}
 		}
 
@@ -336,7 +336,7 @@ namespace Directus
 				continue;
 
 			// get the possible child
-			Transform* possibleChild = gameObject->GetTransformRef();
+			Transform* possibleChild = gameObject->GetTransform_PtrRaw();
 
 			// if it doesn't have a parent, forget about it.
 			if (!possibleChild->HasParent())

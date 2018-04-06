@@ -55,9 +55,9 @@ namespace Directus
 			Math::Matrix mEngine = aiMatrix4x4ToMatrix(node->mTransformation);
 
 			// Apply position, rotation and scale
-			gameObject.lock()->GetTransformRef()->SetPositionLocal(mEngine.GetTranslation());
-			gameObject.lock()->GetTransformRef()->SetRotationLocal(mEngine.GetRotation());
-			gameObject.lock()->GetTransformRef()->SetScaleLocal(mEngine.GetScale());
+			gameObject.lock()->GetTransform_PtrRaw()->SetPositionLocal(mEngine.GetTranslation());
+			gameObject.lock()->GetTransform_PtrRaw()->SetRotationLocal(mEngine.GetRotation());
+			gameObject.lock()->GetTransform_PtrRaw()->SetScaleLocal(mEngine.GetScale());
 		}
 
 		static Math::Vector4 ToVector4(const aiColor4D& aiColor)
