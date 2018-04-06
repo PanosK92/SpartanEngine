@@ -19,12 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================================
+//= INCLUDES ===================================================
 #include "RigidBody.h"
-#include "BulletDynamics/Dynamics/btRigidBody.h"
-#include <BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
-#include <LinearMath/btMotionState.h>
 #include "Transform.h"
 #include "Collider.h"
 #include "../GameObject.h"
@@ -33,7 +29,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../Math/Quaternion.h"
 #include "../../IO/FileStream.h"
-//===========================================================
+#pragma warning(push, 0) // Hide warnings which belong to Bullet
+#include "BulletDynamics/Dynamics/btRigidBody.h"
+#include <BulletCollision/CollisionShapes/btCollisionShape.h>
+#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
+#include <LinearMath/btMotionState.h>
+#pragma warning(pop)
+//==============================================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -103,8 +105,8 @@ namespace Directus
 
 	void RigidBody::OnUpdate()
 	{
-		// To make the body able to get positioned directly by the use without worrying about Bullet 
-		// reseting it's state, we secretly set is as kinematic when the engine is not simulating (e.g. Editor Mode)
+		// To make the body able to get positioned directly (via the Editor) without worrying about Bullet 
+		// reseting it's state, we secretly set is as kinematic when the engine is not simulating.
 		if (!m_rigidBody)
 			return;
 

@@ -104,6 +104,7 @@ namespace Directus
 		//=============================================
 		int GetSoundMode();
 		void LogErrorFMOD(int error);
+		bool IsChannelValid();
 
 		Transform* m_transform;
 		FMOD::System* m_systemFMOD;

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 #include "../Scene/Components/Transform.h"
 #include "../Profiling/Profiler.h"
+#include "../Core/Engine.h"
 //========================================
 
 //= NAMESPACES ======
@@ -137,6 +138,10 @@ namespace Directus
 
 	bool Audio::Update()
 	{
+		// Don't play audio if the engine is not in game mode
+		if (!Engine::EngineMode_IsSet(Engine_Game))
+			return true;
+
 		if (!m_initialized)
 			return false;
 

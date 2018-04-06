@@ -127,7 +127,7 @@ namespace Directus
 		{
 			indices.push_back(i);
 		}
-		m_indexCount = indices.size();
+		m_indexCount = (unsigned int)indices.size();
 
 		CreateBuffers(vertices, indices);
 	}

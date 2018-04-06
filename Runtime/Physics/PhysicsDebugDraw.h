@@ -21,11 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES ==========================
+// Hide warnings which belong to Bullet
+#pragma warning(push, 0)   
 #include <LinearMath/btIDebugDraw.h>
+#pragma warning(pop)
 #include <vector>
 #include "../Graphics/Vertex.h"
-//===================================
+//=====================================
 
 namespace Directus
 {

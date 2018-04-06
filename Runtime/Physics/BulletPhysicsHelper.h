@@ -21,12 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
-#include "LinearMath/btQuaternion.h"
+//= INCLUDES ==========================
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
-//==================================
+// Hide warnings which belong to Bullet
+#pragma warning(push, 0) 
+#include "LinearMath/btQuaternion.h"
+#pragma warning(pop)
+//=====================================
 
 inline Directus::Math::Vector3 ToVector3(const btVector3& vector)
 {
