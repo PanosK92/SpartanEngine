@@ -711,6 +711,7 @@ void Widget_Properties::ShowMaterial(Material* material)
 		auto texNormal		= material->GetTextureByType(TextureType_Normal).lock();
 		auto texHeight		= material->GetTextureByType(TextureType_Height).lock();
 		auto texOcclusion	= material->GetTextureByType(TextureType_Occlusion).lock();
+		auto texEmission	= material->GetTextureByType(TextureType_Emission).lock();
 		auto texMask		= material->GetTextureByType(TextureType_Mask).lock();
 
 		// Name
@@ -761,6 +762,9 @@ void Widget_Properties::ShowMaterial(Material* material)
 
 			// Occlusion
 			MAT_TEX(texOcclusion, "Occlusion", TextureType_Occlusion);
+
+			// Emission
+			MAT_TEX(texEmission, "Emission", TextureType_Emission);
 
 			// Mask
 			MAT_TEX(texMask, "Mask", TextureType_Mask);

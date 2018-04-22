@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========
-#include "../Input.h"
-//===================
+//= INCLUDES =========
+#include "../IInput.h"
+//====================
 
 namespace Directus
 {

@@ -21,39 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include <angelscript.h>
-//=========================
+//= INCLUDES ============
+#include "Backends_Def.h"
+//=======================
 
-namespace Directus
-{
-	class Context;
+//= GRAPHICS API =====================================
+#if defined(API_D3D11)
+	#pragma comment(lib, "d3d11.lib")
+	#pragma comment(lib, "dxgi.lib")
+	#pragma comment(lib, "d3dcompiler.lib")
+	#pragma comment(lib, "dxguid.lib")
+	#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
+#endif
+//====================================================
 
-	class ScriptInterface
-	{
-	public:
-		void Register(asIScriptEngine* scriptEngine, Context* context);
-
-	private:
-		void RegisterEnumerations();
-		void RegisterTypes();
-		void RegisterSettings();
-		void RegisterInput();
-		void RegisterTime();
-		void RegisterGameObject();
-		void RegisterTransform();
-		void RegisterRenderable();
-		void RegisterMaterial();
-		void RegisterCamera();
-		void RegisterRigidBody();
-		void RegisterMathHelper();
-		void RegisterVector2();
-		void RegisterVector3();
-		void RegisterQuaternion();
-		void RegisterMath();
-		void RegisterDebug();
-
-		asIScriptEngine* m_scriptEngine;
-		Context* m_context;
-	};
-}
+//= INPUT API =========================
+#if defined(API_DInput)
+	#pragma comment(lib, "dinput8.lib")
+	#define DIRECTINPUT_VERSION 0x0800
+	#include "../Input/DInput/DInput.h"
+#endif
+//=====================================

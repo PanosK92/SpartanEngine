@@ -22,14 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========================
-#include "../Core/Context.h"
-#include "../FileSystem/FileSystem.h"
-#include "../Core/GUIDGenerator.h"
 #include <memory>
+#include "../Core/Context.h"
+#include "../Core/GUIDGenerator.h"
+#include "../FileSystem/FileSystem.h"
+#include "../Logging/Log.h"
 //===================================
 
 namespace Directus
 {
+	class ResourceManager;
+
 	enum ResourceType
 	{
 		Resource_Unknown,
@@ -56,20 +59,24 @@ namespace Directus
 	class ENGINE_CLASS IResource : public std::enable_shared_from_this<IResource>
 	{
 	public:
-		IResource(Context* context)
-		{
-			m_context = context;
-		}
+		IResource(Context* context);
 		virtual ~IResource() {}
 
 		template <typename T>
-		void RegisterResource();
+		void RegisterResource()
+		{
+			m_resourceType	= DeduceResourceType<T>();
+			m_resourceID	= GENERATE_GUID;
+			m_loadState		= LoadState_Idle;
+		}
 
-		//= PROPERTIES =========================================================================
+		//= PROPERTIES =================================================================================================
 		unsigned int GetResourceID() { return m_resourceID; }
 	
 		ResourceType GetResourceType() { return m_resourceType; }
 		void SetResourceType(ResourceType type) { m_resourceType = type; }
+
+		const char* GetResourceType_cstr() { return typeid(*this).name(); }
 
 		const std::string& GetResourceName() { return m_resourceName; }
 		void SetResourceName(const std::string& name) { m_resourceName = name; }
@@ -79,20 +86,40 @@ namespace Directus
 
 		bool HasFilePath() { return m_resourceFilePath != NOT_ASSIGNED;}
 
-		std::string GetResourceFileName();
-		std::string GetResourceDirectory();
-		//======================================================================================
+		std::string GetResourceFileName() { return FileSystem::GetFileNameNoExtensionFromFilePath(m_resourceFilePath); }
+		std::string GetResourceDirectory() { return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath); }
+		//==============================================================================================================
 
-		//= CACHE ================================================================
-		// Checks whether the resource is cached or not
-		template <typename T>
-		bool IsCached();
+		//= CACHE =========================================================
+		// Checks whether this resource is cached or not
+		bool IsCached()
+		{
+			if (!m_context)
+			{
+				LOG_ERROR(std::string(GetResourceType_cstr()) + "::IsCached(): Context is null, can't execute function");
+				return false;
+			}
 
-		// Adds the resource into the resource cache and returns a cache reference
-		// In case the resource is already cached, it returns the existing one
+			return _IsCached();
+		}
+
+		// Caches the resource (if not cached) and returns a weak reference
 		template <typename T>
-		std::weak_ptr<T> Cache();
-		//========================================================================
+		std::weak_ptr<T> Cache()
+		{
+			if (!m_context)
+			{
+				LOG_ERROR(std::string(GetResourceType_cstr()) + "::Cache(): Context is null, can't execute function");
+				return std::weak_ptr<T>();
+			}
+
+			auto base = _Cache().lock();
+			std::shared_ptr<T> derivedShared = std::static_pointer_cast<T>(base);
+			std::weak_ptr<T> derivedWeak = std::weak_ptr<T>(derivedShared);
+
+			return derivedWeak;
+		}
+		//=================================================================
 
 		//= IO ================================================================
 		virtual bool SaveToFile(const std::string& filePath) { return true; }
@@ -101,9 +128,6 @@ namespace Directus
 		//=====================================================================
 
 		//= TYPE ================================
-		std::string GetResourceTypeStr();
-
-		ResourceType DeduceResourceType();
 		template <typename T>
 		static ResourceType DeduceResourceType();
 		//=======================================
@@ -115,12 +139,16 @@ namespace Directus
 		LoadState GetLoadState() { return m_loadState; }
 		void GetLoadState(LoadState state) { m_loadState = state; }
 
-	protected:	
-		unsigned int m_resourceID		= NOT_ASSIGNED_HASH;
-		std::string m_resourceName		= NOT_ASSIGNED;
-		std::string m_resourceFilePath	= NOT_ASSIGNED;
-		ResourceType m_resourceType		= Resource_Unknown;
-		LoadState m_loadState			= LoadState_Idle;
-		Context* m_context				= nullptr;
+	protected:
+		std::weak_ptr<IResource> _Cache();
+		bool _IsCached();
+
+		unsigned int m_resourceID			= NOT_ASSIGNED_HASH;
+		std::string m_resourceName			= NOT_ASSIGNED;
+		std::string m_resourceFilePath		= NOT_ASSIGNED;
+		ResourceType m_resourceType			= Resource_Unknown;
+		LoadState m_loadState				= LoadState_Idle;
+		Context* m_context					= nullptr;
+		ResourceManager* m_resourceManager	= nullptr;
 	};
 }

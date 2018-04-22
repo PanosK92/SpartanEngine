@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================================
-#include <vector>
+//= INCLUDES ====================
+#include <map>
 #include <memory>
-#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
 #include "../Core/Settings.h"
-//================================================
+#include "../Core/Backends_Def.h"
+//===============================
 
 namespace Directus
 {
@@ -41,13 +41,7 @@ namespace Directus
 		GBuffer_Target_Depth
 	};
 
-	struct GBuffer_Texture
-	{
-		std::unique_ptr<D3D11RenderTexture> texture;
-		GBuffer_Texture_Type type;
-	};
-
-	class GBuffer
+	class ENGINE_CLASS GBuffer
 	{
 	public:
 		GBuffer(Graphics* graphics, int width = RESOLUTION_WIDTH, int height = RESOLUTION_HEIGHT);
@@ -55,13 +49,10 @@ namespace Directus
 
 		bool SetAsRenderTarget();
 		bool Clear();
-
 		void* GetShaderResource(GBuffer_Texture_Type type);
 
 	private:
-		std::vector<GBuffer_Texture> m_renderTargets;
-
-		// Dependencies
+		std::map<GBuffer_Texture_Type, std::shared_ptr<D3D11RenderTexture>> m_renderTargets;
 		Graphics* m_graphics;
 	};
 }

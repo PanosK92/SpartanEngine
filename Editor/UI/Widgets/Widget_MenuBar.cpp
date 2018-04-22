@@ -220,7 +220,7 @@ void Widget_MenuBar::ShowResourceCache()
 			continue;
 
 		// Type
-		ImGui::Text(resource->GetResourceTypeStr().c_str());			ImGui::NextColumn();
+		ImGui::Text(resource->GetResourceType_cstr());					ImGui::NextColumn();
 
 		// ID
 		ImGui::Text(to_string(resource->GetResourceID()).c_str());		ImGui::NextColumn();

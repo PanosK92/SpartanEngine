@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11InputLayout.h"
 #include "D3D11Sampler.h"
 #include "D3D11GraphicsDevice.h"
+#include <map>
 //==============================
 
 namespace Directus
@@ -44,8 +45,7 @@ namespace Directus
 		void Set();
 
 		void SetName(const std::string& name) { m_name = name; }
-		void AddDefine(LPCSTR, LPCSTR definition);
-		void AddDefine(LPCSTR, bool definition);
+		void AddDefine(const std::string& define, const std::string& value);
 
 		bool IsCompiled() { return m_compiled; }
 
@@ -71,9 +71,12 @@ namespace Directus
 		ID3D11PixelShader* m_pixelShader;
 		ID3D10Blob* m_VSBlob = nullptr;
 
-		//= MACROS ============================
+		//= MACROS =======================================
 		std::vector<D3D_SHADER_MACRO> m_macros;
-		std::set<std::string> m_definitionPool;
+		// D3D_SHADER_MACRO stores pointers so we need
+		// m_macrosStr to actually keep the defines around
+		std::map<std::string, std::string> m_macrosStr;
+
 
 		//= INPUT LAYOUT ======================
 		std::shared_ptr<D3D11InputLayout> m_D3D11InputLayout;

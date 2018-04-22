@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 #include "../Core/Settings.h"
 #include "../Core/Stopwatch.h"
+#include "../Core/Backends_Imp.h"
 //================================================
 
 //= NAMESPACES ================

@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "ScriptInterface.h"
 #include "../Core/Timer.h"
+#include "../Core/Backends_Imp.h"
 #include "../Logging/Log.h"
 #include "../Graphics/Material.h"
 #include "../Math/Vector3.h"
@@ -31,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/GameObject.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
-#include "../Input/DInput/DInput.h"
 //===========================================
 
 //= NAMESPACES ================

@@ -54,7 +54,7 @@ namespace Directus
 		m_ID			= GENERATE_GUID;
 	}
 
-	shared_ptr<Directus::GameObject> IComponent::GetGameObject_PtrShared()
+	shared_ptr<GameObject> IComponent::GetGameObject_PtrShared()
 	{
 		return m_gameObject->GetPtrShared();
 	}
@@ -69,19 +69,19 @@ namespace Directus
 
 	template <typename T>
 	ComponentType IComponent::Type_To_Enum() { return ComponentType_Unknown; }
-
-	#define REGISTER_COMPONENT(T, enumT) template<> ENGINE_CLASS ComponentType IComponent::Type_To_Enum<T>() { return enumT; }
 	// Explicit template instantiation
-	REGISTER_COMPONENT(AudioListener,	ComponentType_AudioListener);
-	REGISTER_COMPONENT(AudioSource,		ComponentType_AudioSource);
-	REGISTER_COMPONENT(Camera,			ComponentType_Camera);
-	REGISTER_COMPONENT(Collider,		ComponentType_Collider);
-	REGISTER_COMPONENT(Constraint,		ComponentType_Constraint);
-	REGISTER_COMPONENT(Light,			ComponentType_Light);
-	REGISTER_COMPONENT(LineRenderer,	ComponentType_LineRenderer);
-	REGISTER_COMPONENT(Renderable,		ComponentType_Renderable);
-	REGISTER_COMPONENT(RigidBody,		ComponentType_RigidBody);
-	REGISTER_COMPONENT(Script,			ComponentType_Script);
-	REGISTER_COMPONENT(Skybox,			ComponentType_Skybox);
-	REGISTER_COMPONENT(Transform,		ComponentType_Transform);
+	#define REGISTER_COMPONENT(T, enumT) template<> ENGINE_CLASS ComponentType IComponent::Type_To_Enum<T>() { return enumT; }
+	// To add a new component to the engine, simply register it here
+	REGISTER_COMPONENT(AudioListener,	ComponentType_AudioListener)
+	REGISTER_COMPONENT(AudioSource,		ComponentType_AudioSource)
+	REGISTER_COMPONENT(Camera,			ComponentType_Camera)
+	REGISTER_COMPONENT(Collider,		ComponentType_Collider)
+	REGISTER_COMPONENT(Constraint,		ComponentType_Constraint)
+	REGISTER_COMPONENT(Light,			ComponentType_Light)
+	REGISTER_COMPONENT(LineRenderer,	ComponentType_LineRenderer)
+	REGISTER_COMPONENT(Renderable,		ComponentType_Renderable)
+	REGISTER_COMPONENT(RigidBody,		ComponentType_RigidBody)
+	REGISTER_COMPONENT(Script,			ComponentType_Script)
+	REGISTER_COMPONENT(Skybox,			ComponentType_Skybox)
+	REGISTER_COMPONENT(Transform,		ComponentType_Transform)
 }

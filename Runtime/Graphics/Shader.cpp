@@ -19,15 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ==========================
 #include "Shader.h"
 #include "D3D11/D3D11Shader.h"
 #include "D3D11/D3D11ConstantBuffer.h"
 #include "../Core/Context.h"
+#include "../Core/Backends_Imp.h"
 #include "../Logging/Log.h"
 #include "../Scene/Components/Light.h"
 #include "../Scene/Components/Camera.h"
-//====================================
+//=====================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -95,14 +96,14 @@ namespace Directus
 		m_shader->Compile(filePath);
 	}
 
-	void Shader::AddDefine(LPCSTR define)
+	void Shader::AddDefine(const char* define)
 	{
 		if (!m_shader)
 		{
 			m_shader = make_unique<D3D11Shader>(m_graphics);
 		}
 
-		m_shader->AddDefine(define, true);
+		m_shader->AddDefine(define, "1");
 	}
 
 	void Shader::AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope)

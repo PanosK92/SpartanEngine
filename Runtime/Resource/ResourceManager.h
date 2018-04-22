@@ -55,7 +55,7 @@ namespace Directus
 		{
 			if (filePath == NOT_ASSIGNED)
 			{
-				LOG_WARNING("ResourceManager: Can't load resource, filepath \"" + filePath + "\" is unassigned.");
+				LOG_WARNING("ResourceManager::Load: Can't load resource of type \"" + std::string(typeid(T).name()) + "\", filepath \"" + filePath + "\" is unassigned.");
 				return std::weak_ptr<T>();
 			}
 
@@ -78,7 +78,7 @@ namespace Directus
 			// Load
 			if (!typed->LoadFromFile(filePathRelative))
 			{
-				LOG_WARNING("ResourceManager: Resource \"" + filePathRelative + "\" failed to load");
+				LOG_WARNING("ResourceManager::Load: Resource \"" + filePathRelative + "\" failed to load");
 				return std::weak_ptr<T>();
 			}
 
@@ -118,6 +118,18 @@ namespace Directus
 		std::weak_ptr<T> GetResourceByName(const std::string& name)
 		{
 			return ToDerivedWeak<T>(m_resourceCache->GetByName<T>(name));
+		}
+
+		// Returns cached resource by name
+		std::weak_ptr<IResource> GetResourceByName(const std::string& name, ResourceType type)
+		{
+			return m_resourceCache->GetByName(name, type);
+		}
+
+		// Checks if a resource exists
+		bool ExistsByName(const std::string& name, ResourceType type)
+		{
+			return m_resourceCache->GetByName(name, type) != nullptr;
 		}
 
 		// Returns cached resource by path

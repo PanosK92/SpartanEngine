@@ -428,7 +428,7 @@ namespace Directus
 		m_deviceContext->ClearRenderTargetView(m_renderTargetView, color.Data()); // back buffer
 		if (m_depthEnabled)
 		{
-			m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_maxDepth, 0); // depth buffer
+			m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, m_maxDepth, 0); // depth buffer
 		}
 	}
 
@@ -611,19 +611,19 @@ namespace Directus
 		DXGI_SWAP_CHAIN_DESC swapChainDesc;
 		ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
 
-		swapChainDesc.BufferCount = 1;
-		swapChainDesc.BufferDesc.Width = RESOLUTION_WIDTH;
-		swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT;
-		swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.OutputWindow = m_drawHandle;
-		swapChainDesc.SampleDesc.Count = 1;
-		swapChainDesc.SampleDesc.Quality = 0;
-		swapChainDesc.Windowed = (BOOL)!FULLSCREEN_ENABLED;
-		swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-		swapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-		swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // alt + enter fullscreen
+		swapChainDesc.BufferCount					= 1;
+		swapChainDesc.BufferDesc.Width				= RESOLUTION_WIDTH;
+		swapChainDesc.BufferDesc.Height				= RESOLUTION_HEIGHT;
+		swapChainDesc.BufferDesc.Format				= DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDesc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.OutputWindow					= m_drawHandle;
+		swapChainDesc.SampleDesc.Count				= 1;
+		swapChainDesc.SampleDesc.Quality			= 0;
+		swapChainDesc.Windowed						= (BOOL)!FULLSCREEN_ENABLED;
+		swapChainDesc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		swapChainDesc.BufferDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
+		swapChainDesc.SwapEffect					= DXGI_SWAP_EFFECT_DISCARD;
+		swapChainDesc.Flags							= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; //| DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING; // alt + enter fullscreen
 
 		// Create the swap chain, Direct3D device, and Direct3D device context.
 		HRESULT result = D3D11CreateDeviceAndSwapChain(

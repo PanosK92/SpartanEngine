@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
+//= INCLUDES ========================
 #include <memory>
-#include "../D3D11/D3D11GraphicsDevice.h"
 #include "../../Resource/IResource.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Matrix.h"
-//=======================================
+#include "../../Core/Backends_Def.h"
+//===================================
 
 struct ID3D11ShaderResourceView;
 
@@ -65,19 +65,19 @@ namespace Directus
 		void UpdatePerFrameBuffer(Camera* camera);
 		void UpdatePerMaterialBuffer(Material* material);
 		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
-		void UpdateTextures(const std::vector<ID3D11ShaderResourceView*>& textureArray);
+		void UpdateTextures(const std::vector<void*>& textureArray);
 		void Render(int indexCount);
 
-		unsigned long GetShaderFlags() { return m_shaderFlags; }
-		bool HasAlbedoTexture() { return m_shaderFlags & Variaton_Albedo; }
-		bool HasRoughnessTexture() { return m_shaderFlags & Variaton_Roughness; }
-		bool HasMetallicTexture() { return m_shaderFlags & Variaton_Metallic; }
-		bool HasNormalTexture() { return m_shaderFlags & Variaton_Normal; }
-		bool HasHeightTexture() { return m_shaderFlags & Variaton_Height; }
-		bool HasOcclusionTexture() { return m_shaderFlags & Variaton_Occlusion; }
-		bool HasEmissionTexture() { return m_shaderFlags & Variaton_Emission; }
-		bool HasMaskTexture() { return m_shaderFlags & Variaton_Mask; }
-		bool HasCubeMapTexture() { return m_shaderFlags & Variaton_Cubemap; }
+		unsigned long GetShaderFlags()	{ return m_shaderFlags; }
+		bool HasAlbedoTexture()			{ return m_shaderFlags & Variaton_Albedo; }
+		bool HasRoughnessTexture()		{ return m_shaderFlags & Variaton_Roughness; }
+		bool HasMetallicTexture()		{ return m_shaderFlags & Variaton_Metallic; }
+		bool HasNormalTexture()			{ return m_shaderFlags & Variaton_Normal; }
+		bool HasHeightTexture()			{ return m_shaderFlags & Variaton_Height; }
+		bool HasOcclusionTexture()		{ return m_shaderFlags & Variaton_Occlusion; }
+		bool HasEmissionTexture()		{ return m_shaderFlags & Variaton_Emission; }
+		bool HasMaskTexture()			{ return m_shaderFlags & Variaton_Mask; }
+		bool HasCubeMapTexture()		{ return m_shaderFlags & Variaton_Cubemap; }
 
 	private:
 		void AddDefinesBasedOnMaterial(const std::shared_ptr<D3D11Shader>& shader);

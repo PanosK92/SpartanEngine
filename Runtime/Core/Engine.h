@@ -20,9 +20,6 @@ DEALINGS IN THE SOFTWARE. */
 #include "Context.h"
 //==================
 
-#define ENGINE_VERSION "v0.3 alpha"
-#define WIN32_LEAN_AND_MEAN
-
 namespace Directus
 {
 	enum Engine_Mode : unsigned long

@@ -22,14 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <utility>
-#include <vector>
-#include <memory>
 #include <map>
+#include <memory>
 #include "Texture.h"
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
-#include "Rectangle.h"
+#include "IGraphics.h"
 //================================
 
 namespace Directus
@@ -59,7 +57,7 @@ namespace Directus
 
 		//= TEXTURES =====================================================================
 		void SetTexture(const std::weak_ptr<Texture>& textureWeak, bool autoCache = true);
-		std::weak_ptr<Texture> GetTextureByType(TextureType type);
+		std::weak_ptr<Texture> GetTextureByType(TextureType type) { return m_textures[type]; }
 		bool HasTextureOfType(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
@@ -72,7 +70,7 @@ namespace Directus
 		std::weak_ptr<ShaderVariation> GetOrCreateShader(unsigned long shaderFlags);
 		std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
 		bool HasShader() { return GetShader().expired() ? false : true; }
-		void** GetShaderResource(TextureType type);
+		const std::vector<void*>& GetShaderResources();
 		//====================================================================================
 
 		//= PROPERTIES ================================================================	
@@ -125,24 +123,6 @@ namespace Directus
 	private:
 		void TextureBasedMultiplierAdjustment();
 
-		std::weak_ptr<ShaderVariation> m_shader;
-
-		struct TexInfo
-		{
-			TexInfo(const std::weak_ptr<Texture>& texture, const std::string& name, const std::string& path)
-			{
-				this->texture = texture;
-				this->name	= name;
-				this->path	= path;
-			}
-
-			std::weak_ptr<Texture> texture;
-			std::string name;
-			std::string path;
-		};
-		// <tex_type, <tex,	tex_path>>
-		std::map<TextureType, TexInfo> m_textures;
-
 		unsigned int m_modelID;	
 		float m_opacity;
 		bool m_alphaBlending;
@@ -156,5 +136,9 @@ namespace Directus
 		Math::Vector2 m_uvTiling;
 		Math::Vector2 m_uvOffset;	
 		bool m_isEditable;
+		std::weak_ptr<ShaderVariation> m_shader;
+		// <tex_type, <tex,	tex_path>>
+		std::map<TextureType, std::weak_ptr<Texture>> m_textures;
+		std::vector<void*> m_shaderResources;
 	};
 }

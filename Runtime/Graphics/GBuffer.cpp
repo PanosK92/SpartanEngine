@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "GBuffer.h"
+#include "../Core/Backends_Imp.h"
 #include "D3D11/D3D11RenderTexture.h"
 //===================================
 
@@ -35,15 +36,12 @@ namespace Directus
 	{
 		m_graphics = graphics;
 
-		// ALBEDO
-		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, false, DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Albedo });
-		// NORMAL
-		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, false, DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Normal });
-		// SPECULAR
-		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, false, DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Specular });
-		// DEPTH
-		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, true,	DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Depth });	
+		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<D3D11RenderTexture>(m_graphics, width, height, false, DXGI_FORMAT_R32G32B32A32_FLOAT);
+		m_renderTargets[GBuffer_Target_Normal]		= make_shared<D3D11RenderTexture>(m_graphics, width, height, false,	DXGI_FORMAT_R32G32B32A32_FLOAT);
+		m_renderTargets[GBuffer_Target_Specular]	= make_shared<D3D11RenderTexture>(m_graphics, width, height, false,	DXGI_FORMAT_R32G32B32A32_FLOAT);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11RenderTexture>(m_graphics, width, height, true, DXGI_FORMAT_R32G32B32A32_FLOAT);
 	}
+
 
 	GBuffer::~GBuffer()
 	{
@@ -58,18 +56,18 @@ namespace Directus
 		// Bind the render target view array and depth stencil buffer to the output render pipeline.
 		ID3D11RenderTargetView* views[4]
 		{
-			m_renderTargets[0].texture->GetRenderTargetView(),
-			m_renderTargets[1].texture->GetRenderTargetView(),
-			m_renderTargets[2].texture->GetRenderTargetView(),
-			m_renderTargets[3].texture->GetRenderTargetView()
+			m_renderTargets[GBuffer_Target_Albedo]->GetRenderTargetView(),
+			m_renderTargets[GBuffer_Target_Normal]->GetRenderTargetView(),
+			m_renderTargets[GBuffer_Target_Specular]->GetRenderTargetView(),
+			m_renderTargets[GBuffer_Target_Depth]->GetRenderTargetView()
 		};
 		ID3D11RenderTargetView** renderTargetViews = views;
 
 		// Depth
-		m_graphics->GetDeviceContext()->OMSetRenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[3].texture->GetDepthStencilView());
+		m_graphics->GetDeviceContext()->OMSetRenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView());
 
 		// Set the viewport.
-		m_graphics->GetDeviceContext()->RSSetViewports(1, &m_renderTargets[0].texture->GetViewport());
+		m_graphics->GetDeviceContext()->RSSetViewports(1, &m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
 
 		return true;
 	}
@@ -82,15 +80,15 @@ namespace Directus
 		// Clear the render target buffers.
 		for (auto& renderTarget : m_renderTargets)
 		{
-			if (!renderTarget.texture->GetDepthEnabled())
+			if (!renderTarget.second->GetDepthEnabled())
 			{
 				// Color buffer
-				m_graphics->GetDeviceContext()->ClearRenderTargetView(renderTarget.texture->GetRenderTargetView(), Vector4::Zero.Data());
+				m_graphics->GetDeviceContext()->ClearRenderTargetView(renderTarget.second->GetRenderTargetView(), Vector4::Zero.Data());
 			}
 			else
 			{
 				// Clear the depth buffer.
-				m_graphics->GetDeviceContext()->ClearDepthStencilView(renderTarget.texture->GetDepthStencilView(), D3D11_CLEAR_DEPTH, renderTarget.texture->GetMaxDepth(), 0);
+				m_graphics->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH, renderTarget.second->GetMaxDepth(), 0);
 			}
 		}
 		return true;
@@ -98,14 +96,6 @@ namespace Directus
 
 	void* GBuffer::GetShaderResource(GBuffer_Texture_Type type)
 	{
-		for (auto& renderTarget : m_renderTargets)
-		{
-			if (renderTarget.type == type)
-			{
-				return (void*)renderTarget.texture->GetShaderResourceView();
-			}
-		}
-
-		return nullptr;
+		return (void*)m_renderTargets[type]->GetShaderResourceView();
 	}
 }

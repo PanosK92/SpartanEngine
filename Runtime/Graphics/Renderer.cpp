@@ -27,11 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "Grid.h"
 #include "Shader.h"
-#include "../Core/Context.h"
-#include "../Core/EventSystem.h"
 #include "D3D11/D3D11RenderTexture.h"
 #include "DeferredShaders/ShaderVariation.h"
 #include "DeferredShaders/DeferredShader.h"
+#include "../Core/Context.h"
+#include "../Core/EventSystem.h"
 #include "../Scene/GameObject.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
@@ -509,18 +509,8 @@ namespace Directus
 				// UPDATE PER MATERIAL BUFFER
 				shader->UpdatePerMaterialBuffer(material);
 
-				// Order the textures they way the shader expects them
-				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Albedo));
-				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Roughness));
-				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Metallic));
-				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Normal));
-				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Height));
-				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Occlusion));
-				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Emission));
-				m_textures.emplace_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Mask));
-
 				// UPDATE TEXTURE BUFFER
-				shader->UpdateTextures(m_textures);
+				shader->UpdateTextures(material->GetShaderResources());
 				//==================================================================================
 
 				for (const auto& gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
@@ -563,9 +553,6 @@ namespace Directus
 						m_renderedMeshesCount++;
 					}
 				} // GAMEOBJECT/MESH ITERATION
-
-				m_textures.clear();
-
 			} // MATERIAL ITERATION
 		} // SHADER ITERATION
 

@@ -21,12 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
-#include "D3D11/D3D11GraphicsDevice.h"
+//= INCLUDES ====================
+#include <memory>
+#include <vector>
+#include "IGraphics.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector2.h"
-#include <memory>
-//====================================
+#include "../Core/Backends_Def.h"
+//===============================
 
 namespace Directus
 {
@@ -60,7 +62,7 @@ namespace Directus
 
 		void Compile(const std::string& filePath);
 
-		void AddDefine(LPCSTR define);
+		void AddDefine(const char* define);
 		void AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope);
 		bool AddSampler(
 			Texture_Sampler_Filter filter = Texture_Sampler_Anisotropic, 

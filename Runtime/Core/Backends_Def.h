@@ -21,39 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= RENDERING ===
-#define API_D3D11
-//===============
+// Note: In the future, these can be implicitly defined via the platform
 
-//= INPUT ============
+/* GRAPHICS API	-> */ #define API_D3D11
+/* INPUT API	-> */ #define API_DInput
+
+// GRAPHICS
 #if defined(API_D3D11)
-#define API_DInput
+	namespace Directus
+	{
+		class D3D11GraphicsDevice;
+	}
+	typedef Directus::D3D11GraphicsDevice Graphics;
 #endif
-//====================
 
-namespace Directus
-{
-//= RENDERING ====================================
-#if defined(API_D3D11)
-#pragma comment(lib, "d3d11.lib")
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "d3dcompiler.lib")
-#pragma comment(lib, "dxguid.lib")
-#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
-	class D3D11GraphicsDevice;
-	typedef D3D11GraphicsDevice Graphics;
-#elif defined(API_VULKAN)
-#include "VULKAN/VulkanGraphicsDevice.h"
-	class VULKANGraphicsDevice;
-	typedef VULKANGraphicsDevice Graphics;
-#endif
-//================================================
-
-//= INPUT =========================
+// INPUT
 #if defined(API_DInput)
-#pragma comment(lib, "dinput8.lib")
-	class DInput;
-	typedef DInput Input;
+	namespace Directus
+	{
+		class DInput;
+	}
+	typedef Directus::DInput Input;
 #endif
-//=================================
-}

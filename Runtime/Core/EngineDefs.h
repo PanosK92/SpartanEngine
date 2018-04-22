@@ -21,6 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#define ENGINE_VERSION "v0.3 alpha"
+#define WIN32_LEAN_AND_MEAN
+
 //= DISABLED WARNINGS ===========================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
 #pragma warning(disable: 4251) // https://msdn.microsoft.com/en-us/library/esew7y1w.aspx
