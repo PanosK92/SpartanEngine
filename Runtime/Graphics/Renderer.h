@@ -24,12 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <memory>
 #include <vector>
-#include "D3D11/D3D11GraphicsDevice.h"
-#include "../Core/SubSystem.h"
 #include "../Math/Matrix.h"
-#include "../Resource/ResourceManager.h"
 #include "../Core/Settings.h"
+#include "../Core/SubSystem.h"
+#include "../Core/Backends_Def.h"
+#include "../Resource/ResourceManager.h"
 //======================================
+
+struct ID3D11ShaderResourceView;
 
 namespace Directus
 {
@@ -48,7 +50,7 @@ namespace Directus
 	class D3D11GraphicsDevice;
 	class Font;
 	class Grid;
-	class Variant;
+	class Variant;	
 
 	namespace Math
 	{
@@ -182,7 +184,6 @@ namespace Directus
 		Math::Matrix m_mViewBase;
 		float m_nearPlane;
 		float m_farPlane;
-		std::vector<ID3D11ShaderResourceView*> m_textures;
 		Graphics* m_graphics;
 		//================================================
 

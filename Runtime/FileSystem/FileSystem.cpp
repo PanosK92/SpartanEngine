@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <regex>
 #include "../Logging/Log.h"
 #include <Windows.h>
+#include <shellapi.h>
 //=========================
 
 //= NAMESPACES ==========================
@@ -191,14 +192,7 @@ namespace Directus
 
 	void FileSystem::OpenDirectoryWindow(const std::string& directory)
 	{
-		int strLength	= (int)directory.length() + 1;
-		int len			= MultiByteToWideChar(CP_ACP, 0, directory.c_str(), strLength, nullptr, 0); 
-		wchar_t* buf	= new wchar_t[len];
-		MultiByteToWideChar(CP_ACP, 0, directory.c_str(), strLength, buf, len);
-		std::wstring wstr(buf);
-		delete[] buf;
-
-		ShellExecute(nullptr, nullptr, wstr.c_str(), nullptr, nullptr, SW_SHOW);
+		ShellExecute(nullptr, nullptr, StringToWString(directory).c_str(), nullptr, nullptr, SW_SHOW);
 	}
 
 	//====================================================================================
@@ -684,6 +678,17 @@ namespace Directus
 	string FileSystem::ReplaceExpression(const string& str, const string& from, const string& to)
 	{
 		return regex_replace(str, regex(from), to);
+	}
+
+	wstring FileSystem::StringToWString(const string& str)
+	{
+		int slength = int(str.length()) + 1;
+		int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
+		wchar_t* buf = new wchar_t[len];
+		MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
+		wstring result(buf);
+		delete[] buf;
+		return result;
 	}
 	//=====================================================================================
 

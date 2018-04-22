@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Toolbar.h"
 #include "UI/ThumbnailProvider.h"
 #include "UI/EditorHelper.h"
+#include "Core/Settings.h"
 //=======================================
 
 //= NAMESPACES ==========
@@ -63,7 +64,7 @@ void Editor::Initialize(Context* context)
 	m_context = context;
 	ThumbnailProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);
-
+	Settings::Get().g_versionImGui = IMGUI_VERSION;
 	ImGui_ImplDX11_Init(context);
 
 	ApplyStyle();

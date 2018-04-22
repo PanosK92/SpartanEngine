@@ -100,16 +100,11 @@ namespace Directus
 			string texPath	= xml->GetAttributeAsStr(nodeName, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
-			auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Texture>(texName);
-			m_textures.insert(make_pair(texType, TexInfo(texture, texName, texPath)));
-		}
-
-		// Load unloaded (expired) textures
-		for (auto& it : m_textures)
-		{
-			if (it.second.texture.expired())
+			m_textures[texType] = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Texture>(texName);
+			// If there is not texture (it's not loaded yet), load it
+			if (m_textures[texType].expired())
 			{
-				it.second.texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(it.second.path);
+				m_textures[texType] = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(texPath);
 			}
 		}
 
@@ -155,8 +150,8 @@ namespace Directus
 			string texNode = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", texNode);
 			xml->AddAttribute(texNode, "Texture_Type", (int)texture.first);
-			xml->AddAttribute(texNode, "Texture_Name", texture.second.name);
-			xml->AddAttribute(texNode, "Texture_Path", texture.second.path);
+			xml->AddAttribute(texNode, "Texture_Name", !texture.second.expired() ? texture.second.lock()->GetResourceName() : NOT_ASSIGNED);
+			xml->AddAttribute(texNode, "Texture_Path", !texture.second.expired() ? texture.second.lock()->GetResourceFilePath() : NOT_ASSIGNED);
 			i++;
 		}
 
@@ -172,7 +167,7 @@ namespace Directus
 		size += sizeof(float) * 5;
 		size += sizeof(Vector2) * 2;
 		size += sizeof(Vector4);
-		size += (unsigned int)(sizeof(std::map<TextureType, TexInfo>) + (sizeof(TextureType) + sizeof(TexInfo)) * m_textures.size());
+		size += (unsigned int)(sizeof(std::map<TextureType, std::weak_ptr<Texture>>) + (sizeof(TextureType) + sizeof(std::weak_ptr<Texture>)) * m_textures.size());
 
 		return size;
 	}
@@ -193,87 +188,49 @@ namespace Directus
 
 		// Cache it or use the provided reference as is
 		auto texRef = autoCache ? textureWeak.lock()->Cache<Texture>() : textureWeak;
-
-		TextureType texType = texture->GetType();
-		string texName		= texture->GetResourceName();
-		string texPath		= texture->GetResourceFilePath();
-
-		// Check if a texture of that type already exists and replace it
-		auto it = m_textures.find(texType);
-		if (it != m_textures.end())
-		{
-			it->second.texture	= texRef;
-			it->second.name		= texName;
-			it->second.path		= texPath;
-		}
-		else
-		{
-			// If that's a new texture type, simply add it
-			m_textures.insert(make_pair(texType, TexInfo(texRef, texName, texPath)));
-		}
+		// Save a reference
+		m_textures[texture->GetType()] = texRef;
 
 		TextureBasedMultiplierAdjustment();
 		AcquireShader();
 	}
 
-	weak_ptr<Texture> Material::GetTextureByType(TextureType type)
-	{
-		for (const auto& it : m_textures)
-		{
-			if (it.first == type)
-			{
-				return it.second.texture;
-			}
-		}
-
-		return weak_ptr<Texture>();
-	}
-
 	bool Material::HasTextureOfType(TextureType type)
 	{
-		for (const auto& it : m_textures)
-		{
-			if (it.first == type)
-			{
-				return true;
-			}
-		}
-
-		return false;
+		return !m_textures[type].expired();
 	}
 
 	bool Material::HasTexture(const string& path)
 	{
 		for (const auto& it : m_textures)
 		{
-			if (it.second.path == path)
-			{
+			if (it.second.expired())
+				continue;
+
+			if (it.second.lock()->GetResourceFilePath() == path)
 				return true;
-			}
 		}
 
 		return false;
 	}
 
-	string Material::GetTexturePathByType(TextureType type)
+	std::string Material::GetTexturePathByType(TextureType type)
 	{
-		for (const auto& it : m_textures)
-		{
-			if (it.first == type)
-			{
-				return it.second.path;
-			}
-		}
+		if (m_textures[type].expired())
+			return NOT_ASSIGNED;
 
-		return (string)NOT_ASSIGNED;
+		return m_textures[type].lock()->GetResourceFilePath();
 	}
 
 	vector<string> Material::GetTexturePaths()
 	{
 		vector<string> paths;
-		for (auto it : m_textures)
+		for (const auto& it : m_textures)
 		{
-			paths.push_back(it.second.path);
+			if (it.second.expired())
+				continue;
+
+			paths.push_back(it.second.lock()->GetResourceFilePath());
 		}
 
 		return paths;
@@ -293,15 +250,15 @@ namespace Directus
 		// matching shader already exists, it will be returned.
 		unsigned long shaderFlags = 0;
 
-		if (HasTextureOfType(TextureType_Albedo)) shaderFlags		|= Variaton_Albedo;
-		if (HasTextureOfType(TextureType_Roughness)) shaderFlags	|= Variaton_Roughness;
-		if (HasTextureOfType(TextureType_Metallic)) shaderFlags		|= Variaton_Metallic;
-		if (HasTextureOfType(TextureType_Normal)) shaderFlags		|= Variaton_Normal;
-		if (HasTextureOfType(TextureType_Height)) shaderFlags		|= Variaton_Height;
-		if (HasTextureOfType(TextureType_Occlusion)) shaderFlags	|= Variaton_Occlusion;
-		if (HasTextureOfType(TextureType_Emission)) shaderFlags		|= Variaton_Emission;
-		if (HasTextureOfType(TextureType_Mask)) shaderFlags			|= Variaton_Mask;
-		if (HasTextureOfType(TextureType_CubeMap)) shaderFlags		|= Variaton_Cubemap;
+		if (HasTextureOfType(TextureType_Albedo))		shaderFlags	|= Variaton_Albedo;
+		if (HasTextureOfType(TextureType_Roughness))	shaderFlags	|= Variaton_Roughness;
+		if (HasTextureOfType(TextureType_Metallic))		shaderFlags	|= Variaton_Metallic;
+		if (HasTextureOfType(TextureType_Normal))		shaderFlags	|= Variaton_Normal;
+		if (HasTextureOfType(TextureType_Height))		shaderFlags	|= Variaton_Height;
+		if (HasTextureOfType(TextureType_Occlusion))	shaderFlags	|= Variaton_Occlusion;
+		if (HasTextureOfType(TextureType_Emission))		shaderFlags	|= Variaton_Emission;
+		if (HasTextureOfType(TextureType_Mask))			shaderFlags	|= Variaton_Mask;
+		if (HasTextureOfType(TextureType_CubeMap))		shaderFlags	|= Variaton_Cubemap;
 
 		m_shader = GetOrCreateShader(shaderFlags);
 	}
@@ -339,16 +296,24 @@ namespace Directus
 		return shader->Cache<ShaderVariation>();
 	}
 
-	void** Material::GetShaderResource(TextureType type)
+	const std::vector<void*>& Material::GetShaderResources()
 	{
-		auto texture = GetTextureByType(type);
+		m_shaderResources.clear();
+		m_shaderResources.shrink_to_fit();
 
-		if (!texture.expired())
-		{
-			return texture.lock()->GetShaderResource();
-		}
+		// Must maintain the same order as the way the G-Buffer stage expects them to
+		// Note: this is not efficient, have to do it better
+		#define GET_SR(type) !m_textures[type].expired() ? m_textures[type].lock()->GetShaderResource() : nullptr
+		m_shaderResources.emplace_back(GET_SR(TextureType_Albedo));
+		m_shaderResources.emplace_back(GET_SR(TextureType_Roughness));
+		m_shaderResources.emplace_back(GET_SR(TextureType_Metallic));
+		m_shaderResources.emplace_back(GET_SR(TextureType_Normal));
+		m_shaderResources.emplace_back(GET_SR(TextureType_Height));
+		m_shaderResources.emplace_back(GET_SR(TextureType_Occlusion));
+		m_shaderResources.emplace_back(GET_SR(TextureType_Emission));
+		m_shaderResources.emplace_back(GET_SR(TextureType_Mask));
 
-		return nullptr;
+		return m_shaderResources;
 	}
 
 	void Material::SetMultiplier(TextureType type, float value)

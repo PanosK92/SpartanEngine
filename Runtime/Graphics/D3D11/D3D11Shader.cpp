@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../FileSystem/FileSystem.h"
 #include <d3dcompiler.h>
 #include <sstream> 
-#include <fstream>
 //======================================
 
 //= NAMESPACES =====
@@ -35,17 +34,6 @@ using namespace std;
 
 namespace Directus
 {
-	wstring string_to_wstring(const string& string)
-	{
-		int slength = int(string.length()) + 1;
-		int len = MultiByteToWideChar(CP_ACP, 0, string.c_str(), slength, nullptr, 0);
-		wchar_t* buf = new wchar_t[len];
-		MultiByteToWideChar(CP_ACP, 0, string.c_str(), slength, buf, len);
-		wstring result(buf);
-		delete[] buf;
-		return result;
-	}
-
 	D3D11Shader::D3D11Shader(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 	{
 		m_vertexShader		= nullptr;
@@ -99,9 +87,9 @@ namespace Directus
 		psMacros.push_back(D3D_SHADER_MACRO{ "COMPILE_PS", "1" });
 		psMacros.push_back(D3D_SHADER_MACRO{ nullptr, nullptr });
 
-		ID3D10Blob* PSBlob = nullptr;
+		ID3D10Blob* psBlob = nullptr;
 		m_compiled = CompilePixelShader(
-			&PSBlob,
+			&psBlob,
 			&m_pixelShader,
 			m_filePath,
 			"DirectusPixelShader",
@@ -109,7 +97,7 @@ namespace Directus
 			&psMacros.front()
 		);
 
-		SafeRelease(PSBlob);
+		SafeRelease(psBlob);
 		//==================================================================
 
 		return m_compiled;
@@ -194,19 +182,21 @@ namespace Directus
 	}
 
 	// All overloads resolve to this
-	void D3D11Shader::AddDefine(LPCSTR name, LPCSTR definition)
+	void D3D11Shader::AddDefine(const string& define, const string& value)
 	{
-		D3D_SHADER_MACRO newMacro;
+		m_macrosStr[define] = value;
 
-		newMacro.Name = name;
-		newMacro.Definition = definition;
+		D3D_SHADER_MACRO newMacro;
+		for (const auto& macro : m_macrosStr)
+		{
+			if (macro.first == define)
+			{
+				newMacro.Name			= macro.first.c_str();
+				newMacro.Definition		= macro.second.c_str();
+			}
+		}
 
 		m_macros.push_back(newMacro);
-	}
-
-	void D3D11Shader::AddDefine(LPCSTR name, bool definition)
-	{
-		AddDefine(name, m_definitionPool.insert(to_string((int)definition)).first->c_str());
 	}
 
 	//= COMPILATION ================================================================================================================================================================================
@@ -262,7 +252,7 @@ namespace Directus
 		ID3DBlob* errorBlob = nullptr;
 		ID3DBlob* shaderBlob = nullptr;
 		auto result = D3DCompileFromFile(
-			string_to_wstring(filePath).c_str(),
+			FileSystem::StringToWString(filePath).c_str(),
 			macros,
 			D3D_COMPILE_STANDARD_FILE_INCLUDE,
 			entryPoint,

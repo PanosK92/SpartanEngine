@@ -99,6 +99,18 @@ namespace Directus
 			return std::shared_ptr<IResource>();
 		}
 
+		// Returns a resource by name
+		std::shared_ptr<IResource> GetByName(const std::string& name, ResourceType type)
+		{
+			for (const auto& resource : m_resourceGroups[type])
+			{
+				if (name == resource->GetResourceName())
+					return resource;
+			}
+
+			return std::shared_ptr<IResource>();
+		}
+
 		// Returns a resource by path
 		template <class T>
 		std::shared_ptr<IResource> GetByPath(const std::string& path)

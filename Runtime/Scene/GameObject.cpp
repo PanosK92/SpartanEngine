@@ -274,7 +274,7 @@ namespace Directus
 			case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
 			case ComponentType_Light:			component = AddComponent<Light>();			break;
 			case ComponentType_LineRenderer:	component = AddComponent<LineRenderer>();	break;
-			case ComponentType_Renderable:	component = AddComponent<Renderable>();	break;
+			case ComponentType_Renderable:		component = AddComponent<Renderable>();		break;
 			case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
 			case ComponentType_Script:			component = AddComponent<Script>();			break;
 			case ComponentType_Skybox:			component = AddComponent<Skybox>();			break;

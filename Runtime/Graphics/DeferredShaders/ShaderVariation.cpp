@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Settings.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Camera.h"
+#include "../../Core/Backends_Imp.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -197,7 +198,7 @@ namespace Directus
 		m_perObjectBuffer->SetVS(2);
 	}
 
-	void ShaderVariation::UpdateTextures(const vector<ID3D11ShaderResourceView*>& textureArray)
+	void ShaderVariation::UpdateTextures(const vector<void*>& textureArray)
 	{
 		if (!m_graphics)
 		{
@@ -205,7 +206,7 @@ namespace Directus
 			return;
 		}
 
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (unsigned int)textureArray.size(), &textureArray.front());
+		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (unsigned int)textureArray.size(), (ID3D11ShaderResourceView**)&textureArray[0]);
 	}
 
 	void ShaderVariation::Render(int indexCount)
@@ -225,14 +226,14 @@ namespace Directus
 			return;
 
 		// Define in the shader what kind of textures it should expect
-		shader->AddDefine("ALBEDO_MAP",		HasAlbedoTexture());
-		shader->AddDefine("ROUGHNESS_MAP",	HasRoughnessTexture());
-		shader->AddDefine("METALLIC_MAP",	HasMetallicTexture());
-		shader->AddDefine("NORMAL_MAP",		HasNormalTexture());
-		shader->AddDefine("HEIGHT_MAP",		HasHeightTexture());
-		shader->AddDefine("OCCLUSION_MAP",	HasOcclusionTexture());
-		shader->AddDefine("EMISSION_MAP",	HasEmissionTexture());
-		shader->AddDefine("MASK_MAP",		HasMaskTexture());
-		shader->AddDefine("CUBE_MAP",		HasCubeMapTexture());
+		shader->AddDefine("ALBEDO_MAP",		HasAlbedoTexture()		? "1" : "0");
+		shader->AddDefine("ROUGHNESS_MAP",	HasRoughnessTexture()	? "1" : "0");
+		shader->AddDefine("METALLIC_MAP",	HasMetallicTexture()	? "1" : "0");
+		shader->AddDefine("NORMAL_MAP",		HasNormalTexture()		? "1" : "0");
+		shader->AddDefine("HEIGHT_MAP",		HasHeightTexture()		? "1" : "0");
+		shader->AddDefine("OCCLUSION_MAP",	HasOcclusionTexture()	? "1" : "0");
+		shader->AddDefine("EMISSION_MAP",	HasEmissionTexture()	? "1" : "0");
+		shader->AddDefine("MASK_MAP",		HasMaskTexture()		? "1" : "0");
+		shader->AddDefine("CUBE_MAP",		HasCubeMapTexture()		? "1" : "0");
 	}
 }

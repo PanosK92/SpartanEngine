@@ -32,7 +32,7 @@
 #include "Core/Engine.h"
 #include "Core/Timer.h"
 #include "Graphics/Renderer.h"
-#include "Input/DInput/DInput.h"
+#include "Core/Backends_Imp.h"
 //=============================================
 
 //= NAMESPACES ==========
@@ -42,32 +42,32 @@ using namespace Directus;
 // Engine Data
 namespace ImGuiImpl_Engine
 {
-static Renderer* g_renderer = nullptr;
-static Timer* g_timer		= nullptr;
-static Input* g_input		= nullptr;
+	static Renderer* g_renderer = nullptr;
+	static Timer* g_timer		= nullptr;
+	static Input* g_input		= nullptr;
 }
 
 static INT64 g_Time = 0;
 static INT64 g_TicksPerSecond = 0;
-static ImGuiMouseCursor         g_LastMouseCursor = ImGuiMouseCursor_COUNT;
+static ImGuiMouseCursor g_LastMouseCursor = ImGuiMouseCursor_COUNT;
 
 // DirectX data
-static ID3D11Device*            g_pd3dDevice = nullptr;
-static struct ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
-static ID3D11Buffer*            g_pVB = nullptr;
-static ID3D11Buffer*            g_pIB = nullptr;
-static ID3D10Blob *             g_pVertexShaderBlob = nullptr;
-static ID3D11VertexShader*      g_pVertexShader = nullptr;
-static ID3D11InputLayout*       g_pInputLayout = nullptr;
-static ID3D11Buffer*            g_pVertexConstantBuffer = nullptr;
-static ID3D10Blob *             g_pPixelShaderBlob = nullptr;
-static ID3D11PixelShader*       g_pPixelShader = nullptr;
-static ID3D11SamplerState*      g_pFontSampler = nullptr;
-static ID3D11ShaderResourceView*g_pFontTextureView = nullptr;
-static ID3D11RasterizerState*   g_pRasterizerState = nullptr;
-static ID3D11BlendState*        g_pBlendState = nullptr;
-static ID3D11DepthStencilState* g_pDepthStencilState = nullptr;
-static int                      g_VertexBufferSize = 5000, g_IndexBufferSize = 10000;
+static ID3D11Device*				g_pd3dDevice = nullptr;
+static struct ID3D11DeviceContext*	g_pd3dDeviceContext = nullptr;
+static ID3D11Buffer*				g_pVB = nullptr;
+static ID3D11Buffer*				g_pIB = nullptr;
+static ID3D10Blob *					g_pVertexShaderBlob = nullptr;
+static ID3D11VertexShader*			g_pVertexShader = nullptr;
+static ID3D11InputLayout*			g_pInputLayout = nullptr;
+static ID3D11Buffer*				g_pVertexConstantBuffer = nullptr;
+static ID3D10Blob*					g_pPixelShaderBlob = nullptr;
+static ID3D11PixelShader*			g_pPixelShader = nullptr;
+static ID3D11SamplerState*			g_pFontSampler = nullptr;
+static ID3D11ShaderResourceView*	g_pFontTextureView = nullptr;
+static ID3D11RasterizerState*		g_pRasterizerState = nullptr;
+static ID3D11BlendState*			g_pBlendState = nullptr;
+static ID3D11DepthStencilState*		g_pDepthStencilState = nullptr;
+static int							g_VertexBufferSize = 5000, g_IndexBufferSize = 10000;
 
 struct VERTEX_CONSTANT_BUFFER
 {
@@ -78,12 +78,12 @@ struct VERTEX_CONSTANT_BUFFER
 // (this used to be set in io.RenderDrawListsFn and called by ImGui::Render(), but you can now call this directly from your main loop)
 void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
 {
-    ID3D11DeviceContext* ctx = g_pd3dDeviceContext;
+   ID3D11DeviceContext* ctx = g_pd3dDeviceContext;
 
     // Create and grow vertex/index buffers if needed
     if (!g_pVB || g_VertexBufferSize < draw_data->TotalVtxCount)
     {
-        if (g_pVB) { g_pVB->Release(); g_pVB = nullptr; }
+        if (g_pVB) { g_pVB->Release(); g_pVB = NULL; }
         g_VertexBufferSize = draw_data->TotalVtxCount + 5000;
         D3D11_BUFFER_DESC desc;
         memset(&desc, 0, sizeof(D3D11_BUFFER_DESC));
@@ -92,12 +92,12 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
         desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         desc.MiscFlags = 0;
-        if (g_pd3dDevice->CreateBuffer(&desc, nullptr, &g_pVB) < 0)
+        if (g_pd3dDevice->CreateBuffer(&desc, NULL, &g_pVB) < 0)
             return;
     }
     if (!g_pIB || g_IndexBufferSize < draw_data->TotalIdxCount)
     {
-        if (g_pIB) { g_pIB->Release(); g_pIB = nullptr; }
+        if (g_pIB) { g_pIB->Release(); g_pIB = NULL; }
         g_IndexBufferSize = draw_data->TotalIdxCount + 10000;
         D3D11_BUFFER_DESC desc;
         memset(&desc, 0, sizeof(D3D11_BUFFER_DESC));
@@ -105,7 +105,7 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
         desc.ByteWidth = g_IndexBufferSize * sizeof(ImDrawIdx);
         desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-        if (g_pd3dDevice->CreateBuffer(&desc, nullptr, &g_pIB) < 0)
+        if (g_pd3dDevice->CreateBuffer(&desc, NULL, &g_pIB) < 0)
             return;
     }
 
@@ -208,9 +208,9 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
     ctx->IASetVertexBuffers(0, 1, &g_pVB, &stride, &offset);
     ctx->IASetIndexBuffer(g_pIB, sizeof(ImDrawIdx) == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT, 0);
     ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    ctx->VSSetShader(g_pVertexShader, nullptr, 0);
+    ctx->VSSetShader(g_pVertexShader, NULL, 0);
     ctx->VSSetConstantBuffers(0, 1, &g_pVertexConstantBuffer);
-    ctx->PSSetShader(g_pPixelShader, nullptr, 0);
+    ctx->PSSetShader(g_pPixelShader, NULL, 0);
     ctx->PSSetSamplers(0, 1, &g_pFontSampler);
 
     // Setup render state
@@ -260,13 +260,13 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
     ctx->IASetPrimitiveTopology(old.PrimitiveTopology);
     ctx->IASetIndexBuffer(old.IndexBuffer, old.IndexBufferFormat, old.IndexBufferOffset); if (old.IndexBuffer) old.IndexBuffer->Release();
     ctx->IASetVertexBuffers(0, 1, &old.VertexBuffer, &old.VertexBufferStride, &old.VertexBufferOffset); if (old.VertexBuffer) old.VertexBuffer->Release();
-    ctx->IASetInputLayout(old.InputLayout); if (old.InputLayout) old.InputLayout->Release();
+ctx->IASetInputLayout(old.InputLayout); if (old.InputLayout) old.InputLayout->Release();
 }
 
 static bool ImGui_ImplWin32_UpdateMouseCursor()
 {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.ConfigFlags & ImGuiConfigFlags_NoSetMouseCursor)
+    if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
         return false;
 
     ImGuiMouseCursor imgui_cursor = io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor();
@@ -390,7 +390,7 @@ static void ImGui_ImplDX11_CreateFontsTexture()
         desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
         desc.CPUAccessFlags = 0;
 
-        ID3D11Texture2D *pTexture = nullptr;
+        ID3D11Texture2D *pTexture = NULL;
         D3D11_SUBRESOURCE_DATA subResource;
         subResource.pSysMem = pixels;
         subResource.SysMemPitch = desc.Width * 4;
@@ -424,7 +424,7 @@ static void ImGui_ImplDX11_CreateFontsTexture()
         desc.MinLOD = 0.f;
         desc.MaxLOD = 0.f;
         g_pd3dDevice->CreateSamplerState(&desc, &g_pFontSampler);
-    }
+	}
 }
 
 void ImGui_ImplDX11_InvalidateDeviceObjects()
@@ -450,8 +450,9 @@ void ImGui_ImplDX11_InvalidateDeviceObjects()
 
 bool ImGui_ImplDX11_CreateDeviceObjects()
 {
-    if (!g_pd3dDevice)
+	if (!g_pd3dDevice)
         return false;
+
     if (g_pFontSampler)
         ImGui_ImplDX11_InvalidateDeviceObjects();
 
@@ -491,17 +492,17 @@ bool ImGui_ImplDX11_CreateDeviceObjects()
             return output;\
             }";
 
-        D3DCompile(vertexShader, strlen(vertexShader), nullptr, nullptr, nullptr, "main", "vs_4_0", 0, 0, &g_pVertexShaderBlob, nullptr);
-        if (g_pVertexShaderBlob == nullptr) // NB: Pass ID3D10Blob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
+        D3DCompile(vertexShader, strlen(vertexShader), NULL, NULL, NULL, "main", "vs_4_0", 0, 0, &g_pVertexShaderBlob, NULL);
+        if (g_pVertexShaderBlob == NULL) // NB: Pass ID3D10Blob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
             return false;
-        if (g_pd3dDevice->CreateVertexShader((DWORD*)g_pVertexShaderBlob->GetBufferPointer(), g_pVertexShaderBlob->GetBufferSize(), nullptr, &g_pVertexShader) != S_OK)
+        if (g_pd3dDevice->CreateVertexShader((DWORD*)g_pVertexShaderBlob->GetBufferPointer(), g_pVertexShaderBlob->GetBufferSize(), NULL, &g_pVertexShader) != S_OK)
             return false;
 
         // Create the input layout
         D3D11_INPUT_ELEMENT_DESC local_layout[] = {
-            { "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (size_t)(&((ImDrawVert*)nullptr)->pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (size_t)(&((ImDrawVert*)nullptr)->uv),  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, (size_t)(&((ImDrawVert*)nullptr)->col), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (size_t)(&((ImDrawVert*)0)->pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (size_t)(&((ImDrawVert*)0)->uv),  D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, (size_t)(&((ImDrawVert*)0)->col), D3D11_INPUT_PER_VERTEX_DATA, 0 },
         };
         if (g_pd3dDevice->CreateInputLayout(local_layout, 3, g_pVertexShaderBlob->GetBufferPointer(), g_pVertexShaderBlob->GetBufferSize(), &g_pInputLayout) != S_OK)
             return false;
@@ -514,7 +515,7 @@ bool ImGui_ImplDX11_CreateDeviceObjects()
             desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
             desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
             desc.MiscFlags = 0;
-            g_pd3dDevice->CreateBuffer(&desc, nullptr, &g_pVertexConstantBuffer);
+            g_pd3dDevice->CreateBuffer(&desc, NULL, &g_pVertexConstantBuffer);
         }
     }
 
@@ -536,10 +537,10 @@ bool ImGui_ImplDX11_CreateDeviceObjects()
             return out_col; \
             }";
 
-        D3DCompile(pixelShader, strlen(pixelShader), nullptr, nullptr, nullptr, "main", "ps_4_0", 0, 0, &g_pPixelShaderBlob, nullptr);
-        if (g_pPixelShaderBlob == nullptr)  // NB: Pass ID3D10Blob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
+        D3DCompile(pixelShader, strlen(pixelShader), NULL, NULL, NULL, "main", "ps_4_0", 0, 0, &g_pPixelShaderBlob, NULL);
+        if (g_pPixelShaderBlob == NULL)  // NB: Pass ID3D10Blob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
             return false;
-        if (g_pd3dDevice->CreatePixelShader((DWORD*)g_pPixelShaderBlob->GetBufferPointer(), g_pPixelShaderBlob->GetBufferSize(), nullptr, &g_pPixelShader) != S_OK)
+        if (g_pd3dDevice->CreatePixelShader((DWORD*)g_pPixelShaderBlob->GetBufferPointer(), g_pPixelShaderBlob->GetBufferSize(), NULL, &g_pPixelShader) != S_OK)
             return false;
     }
 
@@ -586,7 +587,7 @@ bool ImGui_ImplDX11_CreateDeviceObjects()
 
     ImGui_ImplDX11_CreateFontsTexture();
 
-    return true;
+	return true;
 }
 
 bool ImGui_ImplDX11_Init(Context* context)
@@ -652,7 +653,7 @@ void ImGui_ImplDX11_NewFrame()
     ImGuiIO& io = ImGui::GetIO();
 
     // Setup display size (every frame to accommodate for window resizing)
-    io.DisplaySize = ImVec2(DISPLAY_WIDTH, DISPLAY_HEIGHT);
+    io.DisplaySize = ImVec2((float)DISPLAY_WIDTH, (float)DISPLAY_HEIGHT);
 
     // Setup time step
     INT64 current_time;

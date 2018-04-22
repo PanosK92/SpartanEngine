@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "D3D11/D3D11Texture.h"
 #include "../IO/FileStream.h"
+#include "../Core/Backends_Imp.h"
 //================================================
 
 //= NAMESPACES =====

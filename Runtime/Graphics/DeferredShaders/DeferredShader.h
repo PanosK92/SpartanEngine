@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============================
+#include "../../Core/Backends_Def.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Vector4.h"
-#include "../D3D11/D3D11GraphicsDevice.h"
 #include "../D3D11/D3D11ConstantBuffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Scene/Components/Camera.h"
