@@ -75,29 +75,29 @@ namespace Directus
 		if (!xml->Load(GetResourceFilePath()))
 			return false;
 
-		SetResourceName(xml->GetAttributeAsStr("Material", "Name"));
-		SetResourceFilePath(xml->GetAttributeAsStr("Material", "Path"));
-		xml->GetAttribute("Material", "Model_ID", m_modelID);
-		xml->GetAttribute("Material", "Opacity", m_opacity);
-		xml->GetAttribute("Material", "Alpha_Blending", m_alphaBlending);	
-		xml->GetAttribute("Material", "Roughness_Multiplier", m_roughnessMultiplier);
-		xml->GetAttribute("Material", "Metallic_Multiplier", m_metallicMultiplier);
-		xml->GetAttribute("Material", "Normal_Multiplier", m_normalMultiplier);
-		xml->GetAttribute("Material", "Height_Multiplier", m_heightMultiplier);
-		xml->GetAttribute("Material", "IsEditable", m_isEditable);
-		m_cullMode		= CullMode(xml->GetAttributeAsInt("Material", "Cull_Mode"));
-		m_shadingMode	= ShadingMode(xml->GetAttributeAsInt("Material", "Shading_Mode"));
-		m_colorAlbedo	= xml->GetAttributeAsVector4("Material", "Color");
-		m_uvTiling		= xml->GetAttributeAsVector2("Material", "UV_Tiling");
-		m_uvOffset		= xml->GetAttributeAsVector2("Material", "UV_Offset");
+		SetResourceName(xml->GetAttributeAs<string>("Material", "Name"));
+		SetResourceFilePath(xml->GetAttributeAs<string>("Material", "Path"));
+		xml->GetAttribute("Material", "Model_ID",				&m_modelID);
+		xml->GetAttribute("Material", "Opacity",				&m_opacity);
+		xml->GetAttribute("Material", "Alpha_Blending",			&m_alphaBlending);	
+		xml->GetAttribute("Material", "Roughness_Multiplier",	&m_roughnessMultiplier);
+		xml->GetAttribute("Material", "Metallic_Multiplier",	&m_metallicMultiplier);
+		xml->GetAttribute("Material", "Normal_Multiplier",		&m_normalMultiplier);
+		xml->GetAttribute("Material", "Height_Multiplier",		&m_heightMultiplier);
+		xml->GetAttribute("Material", "IsEditable",				&m_isEditable);
+		xml->GetAttribute("Material", "Cull_Mode",				(unsigned int*)&m_cullMode);
+		xml->GetAttribute("Material", "Shading_Mode",			(unsigned int*)&m_shadingMode);
+		xml->GetAttribute("Material", "Color",					&m_colorAlbedo);
+		xml->GetAttribute("Material", "UV_Tiling",				&m_uvTiling);
+		xml->GetAttribute("Material", "UV_Offset",				&m_uvOffset);
 
-		int textureCount = xml->GetAttributeAsInt("Textures", "Count");
+		int textureCount = xml->GetAttributeAs<int>("Textures", "Count");
 		for (int i = 0; i < textureCount; i++)
 		{
-			string nodeName	= "Texture_" + to_string(i);
-			auto texType	= (TextureType)xml->GetAttributeAsInt(nodeName, "Texture_Type");
-			string texName	= xml->GetAttributeAsStr(nodeName, "Texture_Name");
-			string texPath	= xml->GetAttributeAsStr(nodeName, "Texture_Path");
+			string nodeName		= "Texture_" + to_string(i);
+			TextureType texType	= (TextureType)xml->GetAttributeAs<unsigned int>(nodeName, "Texture_Type");
+			string texName		= xml->GetAttributeAs<string>(nodeName, "Texture_Name");
+			string texPath		= xml->GetAttributeAs<string>(nodeName, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
 			m_textures[texType] = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Texture>(texName);
@@ -126,30 +126,30 @@ namespace Directus
 
 		auto xml = make_unique<XmlDocument>();
 		xml->AddNode("Material");
-		xml->AddAttribute("Material", "Name", GetResourceName());
-		xml->AddAttribute("Material", "Path", GetResourceFilePath());
-		xml->AddAttribute("Material", "Model_ID", m_modelID);
-		xml->AddAttribute("Material", "Opacity", m_opacity);
-		xml->AddAttribute("Material", "Alpha_Blending", m_alphaBlending);
-		xml->AddAttribute("Material", "Cull_Mode", int(m_cullMode));	
-		xml->AddAttribute("Material", "Shading_Mode", int(m_shadingMode));
-		xml->AddAttribute("Material", "Color", m_colorAlbedo);
-		xml->AddAttribute("Material", "Roughness_Multiplier", m_roughnessMultiplier);
-		xml->AddAttribute("Material", "Metallic_Multiplier", m_metallicMultiplier);
-		xml->AddAttribute("Material", "Normal_Multiplier", m_normalMultiplier);
-		xml->AddAttribute("Material", "Height_Multiplier", m_heightMultiplier);
-		xml->AddAttribute("Material", "UV_Tiling", m_uvTiling);
-		xml->AddAttribute("Material", "UV_Offset", m_uvOffset);
-		xml->AddAttribute("Material", "IsEditable", m_isEditable);
+		xml->AddAttribute("Material", "Name",					GetResourceName());
+		xml->AddAttribute("Material", "Path",					GetResourceFilePath());
+		xml->AddAttribute("Material", "Model_ID",				m_modelID);
+		xml->AddAttribute("Material", "Opacity",				m_opacity);
+		xml->AddAttribute("Material", "Alpha_Blending",			m_alphaBlending);
+		xml->AddAttribute("Material", "Cull_Mode",				unsigned int(m_cullMode));	
+		xml->AddAttribute("Material", "Shading_Mode",			unsigned int(m_shadingMode));
+		xml->AddAttribute("Material", "Color",					m_colorAlbedo);
+		xml->AddAttribute("Material", "Roughness_Multiplier",	m_roughnessMultiplier);
+		xml->AddAttribute("Material", "Metallic_Multiplier",	m_metallicMultiplier);
+		xml->AddAttribute("Material", "Normal_Multiplier",		m_normalMultiplier);
+		xml->AddAttribute("Material", "Height_Multiplier",		m_heightMultiplier);
+		xml->AddAttribute("Material", "UV_Tiling",				m_uvTiling);
+		xml->AddAttribute("Material", "UV_Offset",				m_uvOffset);
+		xml->AddAttribute("Material", "IsEditable",				m_isEditable);
 
 		xml->AddChildNode("Material", "Textures");
-		xml->AddAttribute("Textures", "Count", (int)m_textures.size());
+		xml->AddAttribute("Textures", "Count", (unsigned int)m_textures.size());
 		int i = 0;
 		for (const auto& texture : m_textures)
 		{
 			string texNode = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", texNode);
-			xml->AddAttribute(texNode, "Texture_Type", (int)texture.first);
+			xml->AddAttribute(texNode, "Texture_Type", (unsigned int)texture.first);
 			xml->AddAttribute(texNode, "Texture_Name", !texture.second.expired() ? texture.second.lock()->GetResourceName() : NOT_ASSIGNED);
 			xml->AddAttribute(texNode, "Texture_Path", !texture.second.expired() ? texture.second.lock()->GetResourceFilePath() : NOT_ASSIGNED);
 			i++;

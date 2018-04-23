@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ==================
 #include <memory>
-#include <vector>
 #include <string>
-//===============
+#include <vector>
+#include "../Core/EngineDefs.h"
+//=============================
 
 //= FORWARD DECLARATIONS =
 namespace pugi
@@ -47,7 +48,7 @@ namespace Directus
 	}
 	//========================
 
-	class XmlDocument
+	class ENGINE_CLASS XmlDocument
 	{
 	public:
 		XmlDocument();
@@ -59,7 +60,6 @@ namespace Directus
 		//=====================================================================================
 
 		//= ADD ATTRIBUTE =========================================================================================
-		bool AddAttribute(const std::string& nodeName, const char* attributeName, const char* value);
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, const std::string& value);
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, bool value);
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, int value);
@@ -71,21 +71,25 @@ namespace Directus
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector4& value);
 		//=========================================================================================================
 
-		//= GET ATTRIBUTE =============================================================================
-		bool GetAttribute(const std::string& nodeName, const char* attributeName, std::string& value);
-		bool GetAttribute(const std::string& nodeName, const char* attributeName, int& value);
-		bool GetAttribute(const std::string& nodeName, const char* attributeName, unsigned int& value);
-		bool GetAttribute(const std::string& nodeName, const char* attributeName, bool& value);
-		bool GetAttribute(const std::string& nodeName, const char* attributeName, float& value);
-		bool GetAttribute(const std::string& nodeName, const char* attributeName, double& value);
+		//= GET ATTRIBUTE ===================================================================================
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, std::string* value);
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, int* value);
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, unsigned int* value);
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, bool* value);
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, float* value);
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, double* value);
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector2* value);
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector3* value);
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector4* value);
 
-		std::string GetAttributeAsStr(const std::string& nodeName, const char* attributeName);
-		int GetAttributeAsInt(const std::string& nodeName, const char* attributeName);
-		unsigned int GetAttributeAsUnsignedInt(const std::string& nodeName, const char* attributeName);
-		Math::Vector2 GetAttributeAsVector2(const std::string& nodeName, const char* attributeName);
-		Math::Vector3 GetAttributeAsVector3(const std::string& nodeName, const char* attributeName);
-		Math::Vector4 GetAttributeAsVector4(const std::string& nodeName, const char* attributeName);
-		//=============================================================================================
+		template <class T>
+		T GetAttributeAs(const std::string& nodeName, const std::string& attributeName)
+		{
+			T value;
+			GetAttribute(nodeName, attributeName, &value);
+			return value;
+		}
+		//====================================================================================================
 
 		//= IO ================================
 		bool Load(const std::string& filePath);
@@ -94,7 +98,7 @@ namespace Directus
 
 	private:
 		// Returns an attribute as xml_attribute for further handling
-		pugi::xml_attribute GetAttribute(const std::string& nodeName, const char* attributeName);
+		pugi::xml_attribute GetAttribute(const std::string& nodeName, const std::string& attributeName);
 
 		// Returns a node by name
 		std::shared_ptr<pugi::xml_node> GetNodeByName(const std::string& name);
