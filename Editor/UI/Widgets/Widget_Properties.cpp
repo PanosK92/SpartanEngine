@@ -72,7 +72,9 @@ static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
 		ImGui::OpenPopup(g_contexMenuID);									\
 	}																		\
 	if (g_contexMenuID == ##name)											\
+	{																		\
 		ComponentContextMenu_Options(g_contexMenuID, componentInstance);	\
+	}																		\
 	ImGui::SameLine(25);													\
 	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))			\
 	{																		\
