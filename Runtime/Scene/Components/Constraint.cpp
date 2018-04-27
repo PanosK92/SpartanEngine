@@ -134,6 +134,24 @@ namespace Directus
 		}
 	}
 
+	void Constraint::SetPositionOther(const Math::Vector3& position)
+	{
+		if (position != m_positionOther)
+		{
+			m_positionOther = position;
+			ApplyFrames();
+		}
+	}
+
+	void Constraint::SetRotationOther(const Math::Quaternion& rotation)
+	{
+		if (rotation != m_rotationOther)
+		{
+			m_rotationOther = rotation;
+			ApplyFrames();
+		}
+	}
+
 	void Constraint::SetHighLimit(const Vector2& limit)
 	{
 		if (m_highLimit != limit)
@@ -157,7 +175,6 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void Constraint::ConstructConstraint()
 	{
-		/*
 		ReleaseConstraint();
 
 		m_bodyOwn = m_gameObject->GetComponent<RigidBody>();
@@ -170,12 +187,12 @@ namespace Directus
 		if (!btOtherBody)
 		{
 		    btOtherBody = &btTypedConstraint::getFixedBody();
-		}
+		}	
+		
+		RigidBody* otherBody =  m_bodyOther.lock().get();
 
 		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - m_bodyOwn.lock()->GetColliderCenter();
-
-		RigidBody* otherBody			=  m_bodyOther.lock().get();
-		Vector3 otherBodyScaledPosition = otherBody ? otherTransform->GetPosition() * otherTransform->GetScale() - m_bodyOther.lock()->GetColliderCenter() : otherTransform->GetPosition();
+		Vector3 otherBodyScaledPosition = otherBody ? m_positionOther * otherBody->GetTransform()->GetScale() - m_bodyOther.lock()->GetColliderCenter() : m_positionOther;
 
 		switch (m_type)
 		{
@@ -188,7 +205,7 @@ namespace Directus
 			case ConstraintType_Hinge:
 			    {
 			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(otherTransform->GetRotation()), ToBtVector3(otherBodyScaledPosition));
+			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
 			        m_constraint = make_unique<btHingeConstraint>(*btOwnBody, *btOtherBody, ownFrame, otherFrame);
 			    }
 			    break;
@@ -196,7 +213,7 @@ namespace Directus
 			case ConstraintType_Slider:
 			    {
 			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(otherTransform->GetRotation()), ToBtVector3(otherBodyScaledPosition));
+			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
 			        m_constraint = make_unique<btSliderConstraint>(*btOwnBody, *btOtherBody, ownFrame, otherFrame, false);
 			    }
 			    break;
@@ -204,7 +221,7 @@ namespace Directus
 			case ConstraintType_ConeTwist:
 			    {
 			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(otherTransform->GetRotation()), ToBtVector3(otherBodyScaledPosition));
+			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
 			        m_constraint = make_unique<btConeTwistConstraint>(*btOwnBody, *btOtherBody, ownFrame, otherFrame);
 			    }
 			    break;
@@ -227,7 +244,6 @@ namespace Directus
 
 		    GetContext()->GetSubsystem<Physics>()->GetWorld()->addConstraint(m_constraint.get(), !m_collisionWithLinkedBody);
 		}
-		*/
 	}
 
 	void Constraint::ApplyLimits()
@@ -278,12 +294,13 @@ namespace Directus
 
 	void Constraint::ApplyFrames()
 	{
-		/*
 		if (!m_constraint || m_bodyOther.expired())
 			return;
 
+		RigidBody* bodyOther = m_bodyOther.lock().get();
+
 		Vector3 ownBodyScaledPosition = m_position * m_transform->GetScale() - m_bodyOwn.lock()->GetColliderCenter();
-		Vector3 otherBodyScaledPosition = !m_bodyOther.expired() ? otherPosition_ * otherBody_->GetNode()->GetWorldScale() - otherBody_->GetCenterOfMass() : otherPosition_;
+		Vector3 otherBodyScaledPosition = !m_bodyOther.expired() ? m_positionOther * bodyOther->GetTransform()->GetScale() - bodyOther->GetColliderCenter() : m_positionOther;
 
 		switch (m_constraint->getConstraintType())
 		{
@@ -299,7 +316,7 @@ namespace Directus
 			    {
 			        auto* hingeConstraint = static_cast<btHingeConstraint*>(m_constraint.get());
 			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(otherRotation_), ToBtVector3(otherBodyScaledPosition));
+			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
 			        hingeConstraint->setFrames(ownFrame, otherFrame);
 			    }
 			    break;
@@ -308,7 +325,7 @@ namespace Directus
 			    {
 			        auto* sliderConstraint = static_cast<btSliderConstraint*>(m_constraint.get());
 			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(otherRotation_), ToBtVector3(otherBodyScaledPosition));
+			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
 			        sliderConstraint->setFrames(ownFrame, otherFrame);
 			    }
 			    break;
@@ -317,7 +334,7 @@ namespace Directus
 			    {
 			        auto* coneTwistConstraint = static_cast<btConeTwistConstraint*>(m_constraint.get());
 			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(otherRotation_), ToBtVector3(otherBodyScaledPosition));
+			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
 			        coneTwistConstraint->setFrames(ownFrame, otherFrame);
 			    }
 			    break;
@@ -325,7 +342,6 @@ namespace Directus
 			default:
 			    break;
 		}
-		*/
 	}
 
 	void Constraint::ReleaseConstraint()

@@ -77,6 +77,14 @@ namespace Directus
 		// Set constraint rotation relative to own body.
 		void SetRotation(const Math::Quaternion& rotation);
 
+		const Math::Vector3& GetPositionOther() { return m_positionOther; }
+		// Set constraint position relative to other body.
+		void SetPositionOther(const Math::Vector3& position);
+
+		const Math::Quaternion& GetRotationOther() { return m_rotationOther; }
+		// Set constraint rotation relative to other body.
+		void SetRotationOther(const Math::Quaternion& rotation);
+
 	private:
 		void ConstructConstraint();
 		void ApplyLimits();
@@ -84,10 +92,15 @@ namespace Directus
 		void ReleaseConstraint();
 
 		std::unique_ptr<btTypedConstraint> m_constraint;
+
 		std::weak_ptr<RigidBody> m_bodyOwn;
-		std::weak_ptr<RigidBody> m_bodyOther;
 		Math::Vector3 m_position;
 		Math::Quaternion m_rotation;
+
+		std::weak_ptr<RigidBody> m_bodyOther;
+		Math::Vector3 m_positionOther;
+		Math::Quaternion m_rotationOther;
+
 		Math::Vector2 m_highLimit;
 		Math::Vector2 m_lowLimit;
 		float m_errorReduction;
