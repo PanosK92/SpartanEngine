@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
-#include "D3D11GraphicsDevice.h"
-//==============================
+//= INCLUDES ============
+#include "../IGraphics.h"
+//=======================
 
 namespace Directus
 {
 	class D3D11ConstantBuffer
 	{
 	public:
-		D3D11ConstantBuffer(D3D11GraphicsDevice* graphicsDevice);
+		D3D11ConstantBuffer(D3D11Graphics* graphicsDevice);
 		~D3D11ConstantBuffer();
 
 		bool Create(unsigned int size);
@@ -42,7 +42,7 @@ namespace Directus
 		bool SetPS(unsigned int startSlot);
 
 	private:
-		D3D11GraphicsDevice* m_graphics;
+		D3D11Graphics* m_graphics;
 		ID3D11Buffer* m_buffer;
 	};
 }

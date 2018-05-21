@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Core/Stopwatch.h"
 #include "../Core/EventSystem.h"
+#include "../Core/Backends_Imp.h"
 #include "../Resource/ResourceManager.h"
 #include "../Graphics/Mesh.h"
 #include "../IO/FileStream.h"

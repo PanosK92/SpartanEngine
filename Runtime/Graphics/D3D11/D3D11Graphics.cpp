@@ -20,11 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===========================
-#include "D3D11GraphicsDevice.h"
 #include "../../Logging/Log.h"
-#include "../../Core/EngineDefs.h"
-#include "../../Core/Settings.h"
 #include "../../FileSystem/FileSystem.h"
+#include "../../Core/Settings.h"
+#include "../../Core/EngineDefs.h"
+#include "../../Core/Backends_Imp.h"
 //======================================
 
 //= NAMESPACES ================
@@ -32,37 +32,27 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
+namespace D3D11Settings
+{
+	const static D3D_DRIVER_TYPE driverType = D3D_DRIVER_TYPE_HARDWARE;
+	const static unsigned int sdkVersion = D3D11_SDK_VERSION;
+
+	 // Define the ordering of feature levels that Direct3D attempts to create.
+	const static D3D_FEATURE_LEVEL featureLevels[] =
+    {
+        D3D_FEATURE_LEVEL_11_1,
+        D3D_FEATURE_LEVEL_11_0,
+        D3D_FEATURE_LEVEL_10_1,
+        D3D_FEATURE_LEVEL_10_0,
+        D3D_FEATURE_LEVEL_9_3,
+        D3D_FEATURE_LEVEL_9_1
+    };
+}
+
 namespace Directus
 {
-	//= ENUMERATIONS ===============================================
-	// This helps convert engine enumerations to d3d11 specific
-	// enumerations, however the order of the d3d11 enumerations
-	// must match the order of the engine's enumerations.
-	static const D3D11_CULL_MODE d3dCullMode[] =
+	D3D11Graphics::D3D11Graphics(Context* context) : IGraphics(context)
 	{
-		D3D11_CULL_NONE,
-		D3D11_CULL_FRONT,
-		D3D11_CULL_BACK
-	};
-
-	static const D3D11_PRIMITIVE_TOPOLOGY d3dPrimitiveTopology[] =
-	{
-		D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-		D3D11_PRIMITIVE_TOPOLOGY_LINELIST
-	};
-	//===============================================================
-
-	D3D11GraphicsDevice::D3D11GraphicsDevice(Context* context) : IGraphics(context)
-	{
-		m_driverType				= D3D_DRIVER_TYPE_HARDWARE;
-		m_featureLevel				= D3D_FEATURE_LEVEL_11_0;
-		m_sdkVersion				= D3D11_SDK_VERSION;
-
-		m_inputLayout				= PositionTextureTBN;
-		m_cullMode					= CullBack;
-		m_primitiveTopology			= TriangleList;
-		m_depthEnabled				= true;
-		m_alphaBlendingEnabled		= false;
 		m_device					= nullptr;
 		m_deviceContext				= nullptr;
 		m_swapChain					= nullptr;
@@ -82,11 +72,10 @@ namespace Directus
 		m_blendStateAlphaDisabled	= nullptr;
 		m_drawHandle				= nullptr;
 		m_initialized				= false;
-		m_maxDepth					= 1.0f;
-		m_viewport					= D3D11_VIEWPORT{};
+		m_eventReporter				= nullptr;
 	}
 
-	D3D11GraphicsDevice::~D3D11GraphicsDevice()
+	D3D11Graphics::~D3D11Graphics()
 	{
 		// Before shutting down set to windowed mode or 
 		// upon releasing the swap chain it will throw an exception.
@@ -116,9 +105,9 @@ namespace Directus
 		}
 	}
 
-	bool D3D11GraphicsDevice::Initialize()
+	bool D3D11Graphics::Initialize()
 	{
-		if (!IsWindow(m_drawHandle))
+		if (!IsWindow((HWND)m_drawHandle))
 		{
 			LOG_ERROR("Aborting D3D11 initialization. Invalid draw handle.");
 			return false;
@@ -155,8 +144,8 @@ namespace Directus
 				return false;
 			}
 
-			// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
-			result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, nullptr);
+			// Get the number of modes that fit the requested format, for the adapter output (monitor).
+			result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_backBuffer_format], DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, nullptr);
 			if (FAILED(result))
 			{
 				LOG_ERROR("Failed to get adapter's display modes.");
@@ -172,7 +161,7 @@ namespace Directus
 			}
 
 			// Now fill the display mode list structures.
-			result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, m_displayModeList);
+			result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_backBuffer_format], DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, m_displayModeList);
 			if (FAILED(result))
 			{
 				LOG_ERROR("Failed to fill the display mode list structures.");
@@ -253,19 +242,19 @@ namespace Directus
 
 		//= RASTERIZERS ========================================================================
 		{
-			if (!CreateRasterizerState(D3D11_CULL_BACK, D3D11_FILL_SOLID, &m_rasterStateCullBack))
+			if (!CreateRasterizerState(CullBack, FillMode_Solid, &m_rasterStateCullBack))
 			{
 				LOG_ERROR("Failed to create the rasterizer state.");
 				return false;
 			}
 
-			if (!CreateRasterizerState(D3D11_CULL_FRONT, D3D11_FILL_SOLID, &m_rasterStateCullFront))
+			if (!CreateRasterizerState(CullFront, FillMode_Solid, &m_rasterStateCullFront))
 			{
 				LOG_ERROR("Failed to create the rasterizer state.");
 				return false;
 			}
 
-			if (!CreateRasterizerState(D3D11_CULL_NONE, D3D11_FILL_SOLID, &m_rasterStateCullNone))
+			if (!CreateRasterizerState(CullNone, FillMode_Solid, &m_rasterStateCullNone))
 			{
 				LOG_ERROR("Failed to create the rasterizer state.");
 				return false;
@@ -281,13 +270,21 @@ namespace Directus
 			return false;
 		//=======================
 
+		m_eventReporter = nullptr;
+		result = m_deviceContext->QueryInterface(__uuidof(m_eventReporter), reinterpret_cast<void**>(&m_eventReporter));
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting");
+			return false;
+		}
+
 		LOG_INFO("IGraphicsDevice: Direct3D " + to_string(D3D11_MAJOR_VERSION) + "." + to_string(D3D11_MINOR_VERSION) + " (" + GetAdapterDescription(adapter) + ")");
 
 		m_initialized = true;
 		return true;
 	}
 
-	bool D3D11GraphicsDevice::CreateBlendStates()
+	bool D3D11Graphics::CreateBlendStates()
 	{
 		D3D11_BLEND_DESC blendStateDesc;
 		ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
@@ -323,13 +320,8 @@ namespace Directus
 		return true;
 	}
 
-	void D3D11GraphicsDevice::SetHandle(void* drawHandle)
-	{
-		m_drawHandle = (HWND)drawHandle;
-	}
-
 	//= DEPTH ================================================================================================================
-	void D3D11GraphicsDevice::EnableDepth(bool enable)
+	void D3D11Graphics::EnableDepth(bool enable)
 	{
 		if (!m_deviceContext || m_depthEnabled == enable)
 			return;
@@ -340,7 +332,7 @@ namespace Directus
 		m_deviceContext->OMSetDepthStencilState(m_depthEnabled ? m_depthStencilStateEnabled : m_depthStencilStateDisabled, 1);
 	}
 
-	bool D3D11GraphicsDevice::CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled)
+	bool D3D11Graphics::CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled)
 	{
 		if (!m_device)
 			return false;
@@ -377,7 +369,7 @@ namespace Directus
 		return !FAILED(result);
 	}
 
-	bool D3D11GraphicsDevice::CreateDepthStencilBuffer()
+	bool D3D11Graphics::CreateDepthStencilBuffer()
 	{
 		if (!m_device)
 			return false;
@@ -402,7 +394,7 @@ namespace Directus
 		return !FAILED(result);
 	}
 
-	bool D3D11GraphicsDevice::CreateDepthStencilView()
+	bool D3D11Graphics::CreateDepthStencilView()
 	{
 		if (!m_device)
 			return false;
@@ -420,7 +412,7 @@ namespace Directus
 	}
 	//========================================================================================================================
 
-	void D3D11GraphicsDevice::Clear(const Vector4& color)
+	void D3D11Graphics::Clear(const Vector4& color)
 	{
 		if (!m_deviceContext)
 			return;
@@ -432,7 +424,7 @@ namespace Directus
 		}
 	}
 
-	void D3D11GraphicsDevice::Present()
+	void D3D11Graphics::Present()
 	{
 		if (!m_swapChain)
 			return;
@@ -440,7 +432,7 @@ namespace Directus
 		m_swapChain->Present(VSYNC, 0);
 	}
 
-	void D3D11GraphicsDevice::SetBackBufferAsRenderTarget()
+	void D3D11Graphics::SetBackBufferAsRenderTarget()
 	{
 		if (!m_deviceContext)
 		{
@@ -451,7 +443,7 @@ namespace Directus
 		m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthEnabled ? m_depthStencilView : nullptr);
 	}
 
-	void D3D11GraphicsDevice::EnableAlphaBlending(bool enable)
+	void D3D11Graphics::EnableAlphaBlending(bool enable)
 	{
 		if (!m_deviceContext || m_alphaBlendingEnabled == enable)
 			return;
@@ -463,7 +455,7 @@ namespace Directus
 		m_alphaBlendingEnabled = enable;
 	}
 
-	bool D3D11GraphicsDevice::SetResolution(int width, int height)
+	bool D3D11Graphics::SetResolution(int width, int height)
 	{
 		if (!m_swapChain)
 			return false;
@@ -479,7 +471,7 @@ namespace Directus
 		ZeroMemory(&dxgiModeDesc, sizeof(dxgiModeDesc));
 		dxgiModeDesc.Width				= (unsigned int)width;
 		dxgiModeDesc.Height				= (unsigned int)height;
-		dxgiModeDesc.Format				= DXGI_FORMAT_R8G8B8A8_UNORM;
+		dxgiModeDesc.Format				= d3d11_dxgi_format[m_backBuffer_format];
 		dxgiModeDesc.RefreshRate		= DXGI_RATIONAL{ m_refreshRateNumerator, m_refreshRateDenominator };
 		dxgiModeDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
 		dxgiModeDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -494,7 +486,7 @@ namespace Directus
 
 		//= RESIZE BUFFERS =================================================
 		// Resize the swap chain and recreate the render target views. 
-		result = m_swapChain->ResizeBuffers(1, (unsigned int)width, (unsigned int)height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+		result = m_swapChain->ResizeBuffers(1, (unsigned int)width, (unsigned int)height, dxgiModeDesc.Format, 0);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to resize swapchain buffers.");
@@ -529,44 +521,56 @@ namespace Directus
 	}
 
 	//= VIEWPORT =====================================================
-	void D3D11GraphicsDevice::SetViewport(float width, float height)
+	void D3D11Graphics::SetViewport(float width, float height)
 	{
 		if (!m_deviceContext)
 			return;
 
-		m_viewport.Width = width;
-		m_viewport.Height = height;
-		m_viewport.MinDepth = 0.0f;
-		m_viewport.MaxDepth = m_maxDepth;
-		m_viewport.TopLeftX = 0.0f;
-		m_viewport.TopLeftY = 0.0f;
+		m_backBuffer_viewport.width		= width;
+		m_backBuffer_viewport.height	= height;
+		m_backBuffer_viewport.minDepth	= 0.0f;
+		m_backBuffer_viewport.maxDepth	= m_maxDepth;
+		m_backBuffer_viewport.topLeftX	= 0.0f;
+		m_backBuffer_viewport.topLeftY	= 0.0f;
 
-		m_deviceContext->RSSetViewports(1, &m_viewport);
+		m_deviceContext->RSSetViewports(1, (D3D11_VIEWPORT*)&m_backBuffer_viewport);
 	}
 
-	void D3D11GraphicsDevice::SetViewport()
+	void D3D11Graphics::SetViewport()
 	{
 		if (!m_deviceContext)
 			return;
 
-		m_deviceContext->RSSetViewports(1, &m_viewport);
+		m_deviceContext->RSSetViewports(1, (D3D11_VIEWPORT*)&m_backBuffer_viewport);
 	}
 	//================================================================
 
-	void D3D11GraphicsDevice::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
+	//= EVENTS ==================================================
+	void D3D11Graphics::EventBegin(const std::string& name)
+	{
+		m_eventReporter->BeginEvent(FileSystem::StringToWString(name).c_str());
+	}
+
+	void D3D11Graphics::EventEnd()
+	{
+		m_eventReporter->EndEvent();
+	}
+	//===========================================================
+
+	void D3D11Graphics::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
 	{
 		// Set PrimitiveTopology only if not already set
 		if (!m_deviceContext || m_primitiveTopology == primitiveTopology)
 			return;
 
 		// Ser primitive topology
-		m_deviceContext->IASetPrimitiveTopology(d3dPrimitiveTopology[primitiveTopology]);
+		m_deviceContext->IASetPrimitiveTopology(d3d11_primitive_topology[primitiveTopology]);
 
 		// Save the current PrimitiveTopology mode
 		m_primitiveTopology = primitiveTopology;
 	}
 
-	void D3D11GraphicsDevice::SetInputLayout(InputLayout inputLayout)
+	void D3D11Graphics::SetInputLayout(InputLayout inputLayout)
 	{
 		if (m_inputLayout == inputLayout)
 			return;
@@ -574,7 +578,7 @@ namespace Directus
 		m_inputLayout = inputLayout;
 	}
 
-	void D3D11GraphicsDevice::SetCullMode(CullMode cullMode)
+	void D3D11Graphics::SetCullMode(CullMode cullMode)
 	{
 		if (!m_deviceContext)
 		{
@@ -586,7 +590,7 @@ namespace Directus
 		if (m_cullMode == cullMode)
 			return;
 
-		auto mode = d3dCullMode[cullMode];
+		auto mode = d3d11_cull_mode[cullMode];
 
 		if (mode == D3D11_CULL_NONE)
 		{
@@ -606,7 +610,7 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ================================================================================
-	bool D3D11GraphicsDevice::CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain)
+	bool D3D11Graphics::CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain)
 	{
 		DXGI_SWAP_CHAIN_DESC swapChainDesc;
 		ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
@@ -614,9 +618,9 @@ namespace Directus
 		swapChainDesc.BufferCount					= 1;
 		swapChainDesc.BufferDesc.Width				= RESOLUTION_WIDTH;
 		swapChainDesc.BufferDesc.Height				= RESOLUTION_HEIGHT;
-		swapChainDesc.BufferDesc.Format				= DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDesc.BufferDesc.Format				= d3d11_dxgi_format[m_backBuffer_format];
 		swapChainDesc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.OutputWindow					= m_drawHandle;
+		swapChainDesc.OutputWindow					= (HWND)m_drawHandle;
 		swapChainDesc.SampleDesc.Count				= 1;
 		swapChainDesc.SampleDesc.Quality			= 0;
 		swapChainDesc.Windowed						= (BOOL)!FULLSCREEN_ENABLED;
@@ -625,15 +629,32 @@ namespace Directus
 		swapChainDesc.SwapEffect					= DXGI_SWAP_EFFECT_DISCARD;
 		swapChainDesc.Flags							= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; //| DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING; // alt + enter fullscreen
 
+		// Define the ordering of feature levels that Direct3D attempts to create.
+        D3D_FEATURE_LEVEL featureLevels[] =
+        {
+            D3D_FEATURE_LEVEL_11_1,
+            D3D_FEATURE_LEVEL_11_0,
+            D3D_FEATURE_LEVEL_10_1,
+            D3D_FEATURE_LEVEL_10_0,
+            D3D_FEATURE_LEVEL_9_3,
+            D3D_FEATURE_LEVEL_9_1
+        };
+
+		UINT deviceFlags = 0;
+#ifdef DEBUG
+		//deviceFlags |= D3D11_CREATE_DEVICE_DEBUG; // To use the debug layer, make sure to install the Windows 10 optional feature of “Graphics Tools”. 
+		//deviceFlags |= D3D11_CREATE_DEVICE_DEBUGGABLE;
+#endif
+
 		// Create the swap chain, Direct3D device, and Direct3D device context.
 		HRESULT result = D3D11CreateDeviceAndSwapChain(
-			nullptr,
-			m_driverType,
-			nullptr,
-			0,
-			&m_featureLevel,
-			1,
-			m_sdkVersion,
+			nullptr,									// specify nullptr to use the default adapter
+			D3D11Settings::driverType,
+			nullptr,									// specify nullptr because D3D_DRIVER_TYPE_HARDWARE indicates that this...
+			deviceFlags,								// ...function uses hardware, optionally set debug and Direct2D compatibility flags
+			D3D11Settings::featureLevels,
+			ARRAYSIZE(D3D11Settings::featureLevels),
+			D3D11Settings::sdkVersion,					// always set this to D3D11_SDK_VERSION
 			&swapChainDesc,
 			swapchain,
 			device,
@@ -650,7 +671,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11GraphicsDevice::CreateRasterizerState(D3D11_CULL_MODE cullMode, D3D11_FILL_MODE fillMode, ID3D11RasterizerState** rasterizer)
+	bool D3D11Graphics::CreateRasterizerState(CullMode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer)
 	{
 		if (!m_device)
 		{
@@ -659,8 +680,8 @@ namespace Directus
 		}
 
 		D3D11_RASTERIZER_DESC desc = {};
-		desc.FillMode = fillMode;
-		desc.CullMode = cullMode;
+		desc.FillMode = d3d11_fill_Mode[fillMode];
+		desc.CullMode = d3d11_cull_mode[cullMode];
 		desc.FrontCounterClockwise = FALSE;
 		desc.DepthBias = 0;
 		desc.DepthBiasClamp = 0.0f;
@@ -681,7 +702,7 @@ namespace Directus
 		return true;
 	}
 
-	vector<IDXGIAdapter*> D3D11GraphicsDevice::GetAvailableAdapters(IDXGIFactory* factory)
+	vector<IDXGIAdapter*> D3D11Graphics::GetAvailableAdapters(IDXGIFactory* factory)
 	{
 		unsigned int i = 0;
 		IDXGIAdapter* pAdapter;
@@ -695,7 +716,7 @@ namespace Directus
 		return adapters;
 	}
 
-	IDXGIAdapter* D3D11GraphicsDevice::GetAdapterWithTheHighestVRAM(IDXGIFactory* factory)
+	IDXGIAdapter* D3D11Graphics::GetAdapterWithTheHighestVRAM(IDXGIFactory* factory)
 	{
 		IDXGIAdapter* maxAdapter = nullptr;
 		unsigned int maxVRAM = 0;
@@ -716,7 +737,7 @@ namespace Directus
 		return maxAdapter;
 	}
 
-	IDXGIAdapter* D3D11GraphicsDevice::GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID)
+	IDXGIAdapter* D3D11Graphics::GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID)
 	{
 		// Nvidia: 0x10DE
 		// AMD: 0x1002, 0x1022
@@ -735,7 +756,7 @@ namespace Directus
 		return nullptr;
 	}
 
-	string D3D11GraphicsDevice::GetAdapterDescription(IDXGIAdapter* adapter)
+	string D3D11Graphics::GetAdapterDescription(IDXGIAdapter* adapter)
 	{
 		if (!adapter)
 			return NOT_ASSIGNED;

@@ -29,8 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Backends_Def.h"
 //===================================
 
-struct ID3D11ShaderResourceView;
-
 namespace Directus
 {
 	class Light;

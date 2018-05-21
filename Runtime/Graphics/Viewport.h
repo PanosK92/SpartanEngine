@@ -22,35 +22,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include <memory>
 #include "../Core/EngineDefs.h"
 //=============================
 
 namespace Directus
 {
-	class Camera;
-	class Context;
-	class D3D11RenderTexture;
-	namespace Math
-	{
-		class Matrix;
-		class Vector3;
-	}
-
-	class ENGINE_CLASS Cascade
+	class ENGINE_CLASS Viewport
 	{
 	public:
-		Cascade(int resolution, Camera* camera, Context* context);
-		~Cascade() {}
 
-		void SetAsRenderTarget();
-		void* GetShaderResource();
-		Math::Matrix ComputeProjectionMatrix(int cascadeIndex, const Math::Vector3& centerPos, const Math::Matrix& viewMatrix);
-		float GetSplit(int cascadeIndex);
+		Viewport()
+		{
+			topLeftX	= 0.0f;
+			topLeftY	= 0.0f;
+			width		= 1.0f;
+			height		= 1.0f;
+			minDepth	= 0.0f;
+			maxDepth	= 1.0f;
+		}
 
-	private:
-		std::unique_ptr<D3D11RenderTexture> m_depthMap;
-		int m_resolution;
-		Camera* m_camera;
+		~Viewport(){};
+
+		float topLeftX;
+		float topLeftY;
+		float width;
+		float height;
+		float minDepth;
+		float maxDepth;
 	};
 }

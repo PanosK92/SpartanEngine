@@ -21,28 +21,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
-#include "D3D11GraphicsDevice.h"
+//= INCLUDES ============
 #include <vector>
-//==============================
+#include "../IGraphics.h"
+//=======================
 
 namespace Directus
 {
 	class D3D11Texture
 	{
 	public:
-		D3D11Texture(D3D11GraphicsDevice* context);
+		D3D11Texture(D3D11Graphics* context);
 		~D3D11Texture();
 
 		// Create from data
-		bool Create(int width, int height, int channels, const std::vector<std::byte>& data, DXGI_FORMAT format);
+		bool Create(int width, int height, int channels, const std::vector<std::byte>& data, Texture_Format format);
 
 		// Creates from data with mimaps
-		bool Create(int width, int height, int channels, const std::vector<std::vector<std::byte>>& mipmaps, DXGI_FORMAT format);
+		bool Create(int width, int height, int channels, const std::vector<std::vector<std::byte>>& mipmaps, Texture_Format format);
 
 		// Creates a texture and generates mimaps (easy way to get mimaps 
 		// but not as high quality as the mimaps you can generate manually)
-		bool CreateAndGenerateMipmaps(int width, int height, int channels, const std::vector<std::byte>& data, DXGI_FORMAT format);
+		bool CreateAndGenerateMipmaps(int width, int height, int channels, const std::vector<std::byte>& data, Texture_Format format);
 
 		// Shader resource
 		ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
@@ -52,7 +52,7 @@ namespace Directus
 
 	private:
 		ID3D11ShaderResourceView* m_shaderResourceView;
-		D3D11GraphicsDevice* m_graphics;
+		D3D11Graphics* m_graphics;
 		unsigned int m_memoryUsage;
 	};
 }

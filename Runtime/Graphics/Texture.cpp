@@ -22,13 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================================
 #include "Texture.h"
 #include "../Logging/Log.h"
-#include "../Core/EngineDefs.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Resource/Import/DDSTextureImporter.h"
 #include "../Resource/ResourceManager.h"
-#include "D3D11/D3D11Texture.h"
 #include "../IO/FileStream.h"
+#include "../Core/EngineDefs.h"
 #include "../Core/Backends_Imp.h"
+#include "D3D11/D3D11Texture.h"
 //================================================
 
 //= NAMESPACES =====
@@ -51,14 +51,6 @@ namespace Directus
 		"CubeMap",
 	};
 
-	static const DXGI_FORMAT apiTextureFormat[]
-	{
-		DXGI_FORMAT_R32G32B32_FLOAT,
-		DXGI_FORMAT_R16G16B16A16_FLOAT,
-		DXGI_FORMAT_R8G8B8A8_UNORM,
-		DXGI_FORMAT_R8_UNORM
-	};
-
 	Texture::Texture(Context* context) : IResource(context)
 	{
 		//= IResource ==============
@@ -67,7 +59,8 @@ namespace Directus
 
 		// Texture
 		m_isUsingMipmaps	= true;
-		m_textureAPI		= make_shared<D3D11Texture>(m_context->GetSubsystem<Graphics>());
+		m_format			= Texture_Format_R8G8B8A8_UNORM;
+		m_textureLowLevel	= make_shared<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 	}
 
 	Texture::~Texture()
@@ -138,7 +131,7 @@ namespace Directus
 		}
 
 		// Compute shader resource (in case it's created)
-		size += m_textureAPI->GetMemoryUsage();
+		size += m_textureLowLevel->GetMemoryUsage();
 		return size;
 	}
 
@@ -157,10 +150,10 @@ namespace Directus
 	//= SHADER RESOURCE =====================================
 	void** Texture::GetShaderResource()
 	{
-		if (!m_textureAPI)
+		if (!m_textureLowLevel)
 			return nullptr;
 
-		return (void**)m_textureAPI->GetShaderResourceView();
+		return (void**)m_textureLowLevel->GetShaderResourceView();
 	}
 	//=======================================================
 
@@ -197,9 +190,9 @@ namespace Directus
 	}
 	//================================================================================
 
-	bool Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<std::byte>& rgba, TextureFormat format)
+	bool Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<std::byte>& rgba, Texture_Format format)
 	{
-		if (!m_textureAPI->Create(width, height, channels, rgba, apiTextureFormat[format]))
+		if (!m_textureLowLevel->Create(width, height, channels, rgba, m_format))
 		{
 			LOG_ERROR("Texture: Failed to create shader resource for \"" + m_resourceFilePath + "\".");
 			return false;
@@ -210,7 +203,7 @@ namespace Directus
 
 	bool Texture::CreateShaderResource()
 	{
-		if (!m_textureAPI)
+		if (!m_textureLowLevel)
 		{
 			LOG_ERROR("Texture: Failed to create shader resource. API texture not initialized.");
 			return false;
@@ -218,7 +211,7 @@ namespace Directus
 
 		if (!m_isUsingMipmaps)
 		{
-			if (!m_textureAPI->Create(m_width, m_height, m_channels, m_textureBytes[0], apiTextureFormat[m_format]))
+			if (!m_textureLowLevel->Create(m_width, m_height, m_channels, m_textureBytes[0], m_format))
 			{
 				LOG_ERROR("Texture: Failed to create shader resource for \"" + m_resourceFilePath + "\".");
 				return false;
@@ -226,7 +219,7 @@ namespace Directus
 		}
 		else
 		{
-			if (!m_textureAPI->Create(m_width, m_height, m_channels, m_textureBytes, apiTextureFormat[m_format]))
+			if (!m_textureLowLevel->Create(m_width, m_height, m_channels, m_textureBytes, m_format))
 			{
 				LOG_ERROR("Texture: Failed to create shader resource with mipmaps for \"" + m_resourceFilePath + "\".");
 				return false;
@@ -260,7 +253,7 @@ namespace Directus
 				return false;
 			}
 
-			m_textureAPI->SetShaderResourceView(ddsTex);
+			m_textureLowLevel->SetShaderResourceView(ddsTex);
 			return true;
 		}
 

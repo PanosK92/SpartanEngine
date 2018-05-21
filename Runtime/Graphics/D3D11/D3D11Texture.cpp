@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES =======================
 #include "D3D11Texture.h"
-#include "D3D11GraphicsDevice.h"
 #include "../../Logging/Log.h"
-//============================
+#include "../../Core/Backends_Imp.h"
+//==================================
 
 //= NAMESPAECES ====
 using namespace std;
@@ -31,7 +31,7 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11Texture::D3D11Texture(D3D11GraphicsDevice* graphics)
+	D3D11Texture::D3D11Texture(D3D11Graphics* graphics)
 	{
 		m_shaderResourceView = nullptr;
 		m_graphics = graphics;
@@ -47,7 +47,7 @@ namespace Directus
 		m_shaderResourceView = nullptr;
 	}
 
-	bool D3D11Texture::Create(int width, int height, int channels, const vector<std::byte>& data, DXGI_FORMAT format)
+	bool D3D11Texture::Create(int width, int height, int channels, const vector<std::byte>& data, Texture_Format format)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
@@ -63,9 +63,9 @@ namespace Directus
 		// SUBRESROUCE DATA
 		D3D11_SUBRESOURCE_DATA subresource;
 		ZeroMemory(&subresource, sizeof(subresource));
-		subresource.pSysMem = &data[0];
-		subresource.SysMemPitch = (width * channels) * sizeof(std::byte);
-		subresource.SysMemSlicePitch = (width * height * channels) * sizeof(std::byte);
+		subresource.pSysMem				= &data[0];
+		subresource.SysMemPitch			= (width * channels) * sizeof(std::byte);
+		subresource.SysMemSlicePitch	= (width * height * channels) * sizeof(std::byte);
 
 		// Compute memory usage
 		m_memoryUsage = (unsigned int)(sizeof(std::byte) * data.size());
@@ -73,17 +73,17 @@ namespace Directus
 		// ID3D11Texture2D
 		D3D11_TEXTURE2D_DESC textureDesc;
 		ZeroMemory(&textureDesc, sizeof(textureDesc));
-		textureDesc.Width = (unsigned int)width;
-		textureDesc.Height = (unsigned int)height;
-		textureDesc.MipLevels = mipLevels;
-		textureDesc.ArraySize = (unsigned int)1;
-		textureDesc.Format = format;
-		textureDesc.SampleDesc.Count = (unsigned int)1;
-		textureDesc.SampleDesc.Quality = (unsigned int)0;
-		textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
-		textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		textureDesc.MiscFlags = 0;
-		textureDesc.CPUAccessFlags = 0;
+		textureDesc.Width				= (unsigned int)width;
+		textureDesc.Height				= (unsigned int)height;
+		textureDesc.MipLevels			= mipLevels;
+		textureDesc.ArraySize			= (unsigned int)1;
+		textureDesc.Format				= d3d11_dxgi_format[format];
+		textureDesc.SampleDesc.Count	= (unsigned int)1;
+		textureDesc.SampleDesc.Quality	= (unsigned int)0;
+		textureDesc.Usage				= D3D11_USAGE_IMMUTABLE;
+		textureDesc.BindFlags			= D3D11_BIND_SHADER_RESOURCE;
+		textureDesc.MiscFlags			= 0;
+		textureDesc.CPUAccessFlags		= 0;
 
 		ID3D11Texture2D* texture = nullptr;
 		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, &subresource, &texture);
@@ -95,7 +95,7 @@ namespace Directus
 
 		// SHADER RESOURCE VIEW
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		srvDesc.Format = format;
+		srvDesc.Format = textureDesc.Format;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		srvDesc.Texture2D.MipLevels = mipLevels;
@@ -110,7 +110,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11Texture::Create(int width, int height, int channels, const vector<vector<std::byte>>& mipmaps, DXGI_FORMAT format)
+	bool D3D11Texture::Create(int width, int height, int channels, const vector<vector<std::byte>>& mipmaps, Texture_Format format)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
@@ -129,23 +129,23 @@ namespace Directus
 
 			// SUBRESROUCE DATA
 			subresourceData.push_back(D3D11_SUBRESOURCE_DATA{});
-			subresourceData.back().pSysMem = &mipmaps[i][0];
-			subresourceData.back().SysMemPitch = (width * channels) * sizeof(std::byte);
+			subresourceData.back().pSysMem			= &mipmaps[i][0];
+			subresourceData.back().SysMemPitch		= (width * channels) * sizeof(std::byte);
 			subresourceData.back().SysMemSlicePitch = (width * height * channels) * sizeof(std::byte);
 
 			// ID3D11Texture2D
 			textureDescs.push_back(D3D11_TEXTURE2D_DESC{});
-			textureDescs.back().Width = (unsigned int)width;
-			textureDescs.back().Height = (unsigned int)height;
-			textureDescs.back().MipLevels = mipLevels;
-			textureDescs.back().ArraySize = (unsigned int)1;
-			textureDescs.back().Format = format;
-			textureDescs.back().SampleDesc.Count = (unsigned int)1;
-			textureDescs.back().SampleDesc.Quality = (unsigned int)0;
-			textureDescs.back().Usage = D3D11_USAGE_IMMUTABLE;
-			textureDescs.back().BindFlags = D3D11_BIND_SHADER_RESOURCE;
-			textureDescs.back().MiscFlags = 0;
-			textureDescs.back().CPUAccessFlags = 0;
+			textureDescs.back().Width				= (unsigned int)width;
+			textureDescs.back().Height				= (unsigned int)height;
+			textureDescs.back().MipLevels			= mipLevels;
+			textureDescs.back().ArraySize			= (unsigned int)1;
+			textureDescs.back().Format				= d3d11_dxgi_format[format];
+			textureDescs.back().SampleDesc.Count	= (unsigned int)1;
+			textureDescs.back().SampleDesc.Quality	= (unsigned int)0;
+			textureDescs.back().Usage				= D3D11_USAGE_IMMUTABLE;
+			textureDescs.back().BindFlags			= D3D11_BIND_SHADER_RESOURCE;
+			textureDescs.back().MiscFlags			= 0;
+			textureDescs.back().CPUAccessFlags		= 0;
 
 			width = max(width / 2, 1);
 			height = max(height / 2, 1);
@@ -163,10 +163,10 @@ namespace Directus
 
 		// SHADER RESOURCE VIEW
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		srvDesc.Format = format;
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Texture2D.MipLevels = mipLevels;
+		srvDesc.Format						= d3d11_dxgi_format[format];
+		srvDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip	= 0;
+		srvDesc.Texture2D.MipLevels			= mipLevels;
 
 		result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
 		if (FAILED(result))
@@ -178,7 +178,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11Texture::CreateAndGenerateMipmaps(int width, int height, int channels, const vector<std::byte>& data, DXGI_FORMAT format)
+	bool D3D11Texture::CreateAndGenerateMipmaps(int width, int height, int channels, const vector<std::byte>& data, Texture_Format format)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
@@ -192,7 +192,7 @@ namespace Directus
 		textureDesc.Height = (unsigned int)height;
 		textureDesc.MipLevels = mipLevels;
 		textureDesc.ArraySize = (unsigned int)1;
-		textureDesc.Format = format;
+		textureDesc.Format = d3d11_dxgi_format[format];
 		textureDesc.SampleDesc.Count = (unsigned int)1;
 		textureDesc.SampleDesc.Quality = (unsigned int)0;
 		textureDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -211,7 +211,7 @@ namespace Directus
 
 		// SHADER RESOURCE VIEW
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		srvDesc.Format = format;
+		srvDesc.Format = textureDesc.Format;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		srvDesc.Texture2D.MipLevels = mipLevels;

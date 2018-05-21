@@ -53,9 +53,9 @@ namespace Directus
 		m_shader = make_shared<D3D11Shader>(m_graphics);
 		m_shader->Compile(filePath);
 		m_shader->SetInputLayout(PositionTextureTBN);
-		m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-		m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-		m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+		m_shader->AddSampler(Texture_Sampler_Point, Texture_Address_Wrap, Texture_Comparison_Always);
+		m_shader->AddSampler(Texture_Sampler_Anisotropic, Texture_Address_Wrap, Texture_Comparison_Always);
+		m_shader->AddSampler(Texture_Sampler_Linear, Texture_Address_Wrap, Texture_Comparison_Always);
 
 		// Create matrix buffer
 		m_matrixBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);

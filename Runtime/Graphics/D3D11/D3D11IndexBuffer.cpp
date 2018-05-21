@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES =======================
+#include "D3D11Graphics.h"
 #include "D3D11IndexBuffer.h"
 #include "../../Logging/Log.h"
-#include <minwinbase.h>
-//=============================
+#include "../../Core/Backends_Imp.h"
+//==================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -31,7 +32,7 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11IndexBuffer::D3D11IndexBuffer(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
+	D3D11IndexBuffer::D3D11IndexBuffer(D3D11Graphics* graphicsDevice) : m_graphics(graphicsDevice)
 	{
 		m_buffer = nullptr;
 		m_memoryUsage = 0;

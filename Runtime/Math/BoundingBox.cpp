@@ -54,13 +54,13 @@ namespace Directus::Math
 
 		for (const auto& vertex : vertices)
 		{
-			max.x = Max(max.x, vertex.position.x);
-			max.y = Max(max.y, vertex.position.y);
-			max.z = Max(max.z, vertex.position.z);
+			max.x = Max(max.x, vertex.position[0]);
+			max.y = Max(max.y, vertex.position[1]);
+			max.z = Max(max.z, vertex.position[2]);
 
-			min.x = Min(min.x, vertex.position.x);
-			min.y = Min(min.y, vertex.position.y);
-			min.z = Min(min.z, vertex.position.z);
+			min.x = Min(min.x, vertex.position[0]);
+			min.y = Min(min.y, vertex.position[1]);
+			min.z = Min(min.z, vertex.position[2]);
 		}
 	}
 

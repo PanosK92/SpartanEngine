@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EditorHelper.h"
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
+#include "Core/Backends_Imp.h"
 #include "Graphics/DeferredShaders/ShaderVariation.h"
 #include "Graphics/Mesh.h"
 //===================================================

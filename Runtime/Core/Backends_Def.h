@@ -28,15 +28,52 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // GRAPHICS
 #if defined(API_D3D11)
+
+	// Forward declarations - Graphics API
 	namespace Directus
 	{
-		class D3D11GraphicsDevice;
+		class D3D11Graphics;
+		class D3D11RenderTexture;
+		class D3D11InputLayout;
+		class D3D11Sampler;
+		class D3D11VertexBuffer;
+		class D3D11Texture;
 	}
-	typedef Directus::D3D11GraphicsDevice Graphics;
+	typedef Directus::D3D11Graphics Graphics;
+	
+	// Forward declarations - D3D11 API
+	struct ID3D11DepthStencilView;
+	struct ID3D11Device;
+	struct ID3D11DeviceContext;
+	struct ID3D11ShaderResourceView;
+	struct ID3D11InputLayout;
+	struct ID3D11VertexShader;
+	struct ID3D11PixelShader;
+	struct ID3D11SamplerState;
+	struct ID3D11Texture2D;
+	struct ID3D11RasterizerState;
+	struct ID3D11DepthStencilState;
+	struct ID3D11RenderTargetView;
+	struct ID3D11BlendState;
+	struct DXGI_MODE_DESC;
+	struct IDXGIAdapter;
+	struct IDXGISwapChain;
+	struct IDXGIFactory;
+	struct D3D11_VIEWPORT;
+	struct D3D11_INPUT_ELEMENT_DESC;
+	enum D3D_DRIVER_TYPE;
+	enum D3D_FEATURE_LEVEL;
+	struct ID3D11Buffer;
+	struct _D3D_SHADER_MACRO;
+	typedef _D3D_SHADER_MACRO D3D_SHADER_MACRO;
+	struct ID3D10Blob;
+	typedef ID3D10Blob ID3DBlob;
+	struct ID3DUserDefinedAnnotation;
 #endif
 
 // INPUT
 #if defined(API_DInput)
+	// Forward declarations - Input API
 	namespace Directus
 	{
 		class DInput;

@@ -21,17 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ================
 #include <map>
 #include <memory>
+#include "IGraphics.h"
 #include "../Core/Settings.h"
-#include "../Core/Backends_Def.h"
-//===============================
+//===========================
 
 namespace Directus
 {
-	class D3D11RenderTexture;
-
 	enum GBuffer_Texture_Type
 	{
 		GBuffer_Target_Unknown,

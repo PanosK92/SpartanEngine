@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES =======================
 #include "D3D11InputLayout.h"
-#include "D3D11GraphicsDevice.h"
-#include "../../Core/EngineDefs.h"
 #include "../../Logging/Log.h"
-//=============================
+#include "../../Core/EngineDefs.h"
+#include "../../Core/Backends_Imp.h"
+//==================================
 
 namespace Directus
 {
-	D3D11InputLayout::D3D11InputLayout(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
+	D3D11InputLayout::D3D11InputLayout(D3D11Graphics* graphicsDevice) : m_graphics(graphicsDevice)
 	{
 		m_ID3D11InputLayout = nullptr;
 		m_inputLayout = PositionTextureTBN;
@@ -42,12 +42,10 @@ namespace Directus
 	//= MISC ==================================================
 	bool D3D11InputLayout::Set()
 	{
-		if (!m_graphics->GetDeviceContext()) {
+		if (!m_graphics->GetDeviceContext())
 			return false;
-		}
 
 		m_graphics->GetDeviceContext()->IASetInputLayout(m_ID3D11InputLayout);
-
 		return true;
 	}
 
