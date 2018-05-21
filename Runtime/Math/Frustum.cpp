@@ -19,23 +19,23 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========
-#include "Frustrum.h"
-//===================
+//= INCLUDES =======
+#include "Frustum.h"
+//==================
 
 namespace Directus::Math
 {
-	Frustrum::Frustrum()
+	Frustum::Frustum()
 	{
 
 	}
 
-	Frustrum::~Frustrum()
+	Frustum::~Frustum()
 	{
 
 	}
 
-	void Frustrum::Construct(const Matrix& mView, const Matrix& mProjection, float screenDepth)
+	void Frustum::Construct(const Matrix& mView, const Matrix& mProjection, float screenDepth)
 	{
 		// Calculate the minimum Z distance in the frustum.
 		float zMinimum = -mProjection.m32 / mProjection.m22;
@@ -90,7 +90,7 @@ namespace Directus::Math
 		m_planes[5].Normalize();
 	}
 
-	Intersection Frustrum::CheckCube(const Vector3& center, const Vector3& extent)
+	Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent)
 	{
 		// Check if any one point of the cube is in the view frustum.
 		Intersection result = Inside;
@@ -119,7 +119,7 @@ namespace Directus::Math
 		return result;
 	}
 
-	Intersection Frustrum::CheckSphere(const Vector3& center, float radius)
+	Intersection Frustum::CheckSphere(const Vector3& center, float radius)
 	{
 		// calculate our distances to each of the planes
 		for (const auto& plane : m_planes)

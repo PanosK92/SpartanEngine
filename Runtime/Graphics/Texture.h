@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../Resource/IResource.h"
 #include <memory>
+#include "IGraphics.h"
 //================================
 
 namespace Directus
@@ -42,14 +43,6 @@ namespace Directus
 		TextureType_Emission,
 		TextureType_Mask,
 		TextureType_CubeMap,
-	};
-
-	enum TextureFormat
-	{
-		RGBA_32_FLOAT,
-		RGBA_16_FLOAT,
-		RGBA_8_UNORM,
-		R_8_UNORM
 	};
 
 	class ENGINE_CLASS Texture : public IResource
@@ -108,7 +101,7 @@ namespace Directus
 			unsigned int height, 
 			unsigned int channels, 
 			const std::vector<std::byte>& rgba, 
-			TextureFormat format
+			Texture_Format format
 		);
 		// Creates a shader resource from memory
 		bool CreateShaderResource();
@@ -123,8 +116,8 @@ namespace Directus
 		bool LoadFromForeignFormat(const std::string& filePath);
 		TextureType TextureTypeFromString(const std::string& type);
 
-		std::shared_ptr<D3D11Texture> m_textureAPI;
-		TextureFormat m_format = RGBA_8_UNORM;
+		std::shared_ptr<D3D11Texture> m_textureLowLevel;
+		Texture_Format m_format;
 
 		//= DATA ==========================================
 		unsigned int m_bpp = 0;

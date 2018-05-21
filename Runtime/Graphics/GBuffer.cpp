@@ -36,10 +36,10 @@ namespace Directus
 	{
 		m_graphics = graphics;
 
-		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<D3D11RenderTexture>(m_graphics, width, height, false, DXGI_FORMAT_R32G32B32A32_FLOAT);
-		m_renderTargets[GBuffer_Target_Normal]		= make_shared<D3D11RenderTexture>(m_graphics, width, height, false,	DXGI_FORMAT_R32G32B32A32_FLOAT);
-		m_renderTargets[GBuffer_Target_Specular]	= make_shared<D3D11RenderTexture>(m_graphics, width, height, false,	DXGI_FORMAT_R32G32B32A32_FLOAT);
-		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11RenderTexture>(m_graphics, width, height, true, DXGI_FORMAT_R32G32B32A32_FLOAT);
+		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<D3D11RenderTexture>(m_graphics, width, height, false, Texture_Format_R32G32B32A32_FLOAT);
+		m_renderTargets[GBuffer_Target_Normal]		= make_shared<D3D11RenderTexture>(m_graphics, width, height, false,	Texture_Format_R32G32B32A32_FLOAT);
+		m_renderTargets[GBuffer_Target_Specular]	= make_shared<D3D11RenderTexture>(m_graphics, width, height, false,	Texture_Format_R32G32B32A32_FLOAT);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11RenderTexture>(m_graphics, width, height, true,	Texture_Format_R32G32B32A32_FLOAT);
 	}
 
 
@@ -67,7 +67,7 @@ namespace Directus
 		m_graphics->GetDeviceContext()->OMSetRenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView());
 
 		// Set the viewport.
-		m_graphics->GetDeviceContext()->RSSetViewports(1, &m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
+		m_graphics->GetDeviceContext()->RSSetViewports(1, (D3D11_VIEWPORT*)&m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
 
 		return true;
 	}
@@ -88,7 +88,7 @@ namespace Directus
 			else
 			{
 				// Clear the depth buffer.
-				m_graphics->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH, renderTarget.second->GetMaxDepth(), 0);
+				m_graphics->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH, renderTarget.second->GetViewport().maxDepth, 0);
 			}
 		}
 		return true;

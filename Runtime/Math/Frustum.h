@@ -29,11 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus::Math
 {
-	class Frustrum
+	class Frustum
 	{
 	public:
-		Frustrum();
-		~Frustrum();
+		Frustum();
+		~Frustum();
 
 		void Construct(const Matrix& mView, const Matrix&  mProjection, float screenDepth);
 		Intersection CheckCube(const Vector3& center, const Vector3& extent);

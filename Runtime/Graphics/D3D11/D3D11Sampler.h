@@ -21,22 +21,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
-#include "D3D11GraphicsDevice.h"
-//==============================
+//= INCLUDES ============
+#include "../IGraphics.h"
+//=======================
 
 namespace Directus
 {
 	class D3D11Sampler
 	{
 	public:
-		D3D11Sampler(D3D11GraphicsDevice* graphics);
+		D3D11Sampler(D3D11Graphics* graphics);
 		~D3D11Sampler();
 
-		bool Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
+		bool Create(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction);
 		bool Set(unsigned int startSlot);
 	private:
-		D3D11GraphicsDevice* m_graphics;
+		D3D11Graphics* m_graphics;
 		ID3D11SamplerState* m_sampler;
 	};
 }

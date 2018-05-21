@@ -21,27 +21,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES ============
 #include <vector>
 #include <set>
 #include <memory>
-#include "D3D11InputLayout.h"
-#include "D3D11Sampler.h"
-#include "D3D11GraphicsDevice.h"
 #include <map>
-//==============================
+#include "../IGraphics.h"
+#include "Windows.h" // Used for LPCSTR, must remove
+//=======================
 
 namespace Directus
 {
 	class D3D11Shader
 	{
 	public:
-		D3D11Shader(D3D11GraphicsDevice* graphicsDevice);
+		D3D11Shader(D3D11Graphics* graphicsDevice);
 		~D3D11Shader();
 
 		bool Compile(const std::string& filePath);
 		bool SetInputLayout(InputLayout inputLayout);
-		bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
+		bool AddSampler(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction);
 		void Set();
 
 		void SetName(const std::string& name) { m_name = name; }
@@ -83,6 +82,6 @@ namespace Directus
 		bool m_layoutHasBeenSet;
 
 		//= DEPENDENCIES============
-		D3D11GraphicsDevice* m_graphics;
+		D3D11Graphics* m_graphics;
 	};
 }

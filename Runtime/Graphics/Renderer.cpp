@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "Grid.h"
 #include "Shader.h"
+#include "D3D11/D3D11Graphics.h"
 #include "D3D11/D3D11RenderTexture.h"
 #include "DeferredShaders/ShaderVariation.h"
 #include "DeferredShaders/DeferredShader.h"
@@ -43,6 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Font/Font.h"
 #include "../Profiling/Profiler.h"
+#include <d3d11.h>
 //===========================================
 
 //= NAMESPACES ================
@@ -183,9 +185,9 @@ namespace Directus
 		m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 
 		// Create render textures (used for post-processing)
-		m_renderTexSpare = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-		m_renderTexShadowing = make_shared<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
-		m_renderTexFinalFrame = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexSpare		= make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexShadowing	= make_shared<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
+		m_renderTexFinalFrame	= make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		// Noise texture (used by SSAO shader)
 		m_texNoiseMap = make_unique<Texture>(m_context);
@@ -320,10 +322,9 @@ namespace Directus
 		m_graphics->SetViewport((float)width, (float)height);
 	}
 
-	Vector4 Renderer::GetViewportBackBuffer()
+	const Viewport& Renderer::GetViewportBackBuffer()
 	{
-		D3D11_VIEWPORT* viewport = (D3D11_VIEWPORT*)m_graphics->GetViewport();
-		return Vector4(viewport->TopLeftX, viewport->TopLeftY, viewport->Width, viewport->Height);
+		return m_graphics->GetViewport();
 	}
 
 	void Renderer::SetResolutionInternal(int width, int height)
@@ -426,6 +427,7 @@ namespace Directus
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
+		m_graphics->EventBegin("Pass_DepthDirectionalLight");
 
 		m_graphics->EnableDepth(true);
 		m_shaderDepth->Set();
@@ -470,6 +472,7 @@ namespace Directus
 
 		m_graphics->EnableDepth(false);
 
+		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
@@ -479,6 +482,7 @@ namespace Directus
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
+		m_graphics->EventBegin("Pass_GBuffer");
 
 		m_gbuffer->SetAsRenderTarget();
 		m_gbuffer->Clear();
@@ -556,12 +560,14 @@ namespace Directus
 			} // MATERIAL ITERATION
 		} // SHADER ITERATION
 
+		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::Pass_PreDeferred(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing)
 	{
 		PROFILE_FUNCTION_BEGIN();
+		m_graphics->EventBegin("Pass_PreDeferred");
 
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
@@ -571,6 +577,7 @@ namespace Directus
 		// Blur the shadows and the ssao
 		Pass_Blur(((D3D11RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureShadowing, GET_RESOLUTION);
 
+		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
@@ -580,6 +587,7 @@ namespace Directus
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
+		m_graphics->EventBegin("Pass_Deferred");
 
 		// Set the deferred shader
 		m_shaderDeferred->Set();
@@ -606,12 +614,14 @@ namespace Directus
 
 		m_shaderDeferred->Render(m_quad->GetIndexCount());
 
+		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::Pass_PostDeferred(shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, shared_ptr<D3D11RenderTexture>& outRenderTexture)
 	{
 		PROFILE_FUNCTION_BEGIN();
+		m_graphics->EventBegin("Pass_PostDeferred");
 
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
@@ -628,12 +638,14 @@ namespace Directus
 		Pass_DebugGBuffer();
 		Pass_Debug();
 
+		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
 	bool Renderer::Pass_DebugGBuffer()
 	{
 		PROFILE_FUNCTION_BEGIN();
+		m_graphics->EventBegin("Pass_DebugGBuffer");
 
 		bool albedo		= RenderMode_IsSet(Render_Albedo);
 		bool normal		= RenderMode_IsSet(Render_Normal);
@@ -667,6 +679,7 @@ namespace Directus
 		m_shaderTexture->SetTexture(m_gbuffer->GetShaderResource(texType), 0);
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
+		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 
 		return true;
@@ -675,6 +688,7 @@ namespace Directus
 	void Renderer::Pass_Debug()
 	{
 		PROFILE_FUNCTION_BEGIN();
+		m_graphics->EventBegin("Pass_Debug");
 
 		//= PRIMITIVES ===================================================================================
 		// Anything that is a bunch of vertices (doesn't have a vertex and and index buffer) get's rendered here
@@ -728,11 +742,15 @@ namespace Directus
 		// Grid
 		if (m_flags & Render_SceneGrid)
 		{
+			m_graphics->EventBegin("Pass_SceneGrid");
+
 			m_grid->SetBuffer();
 			m_shaderGrid->Set();
 			m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()), m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
 			m_shaderGrid->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
+
+			m_graphics->EventEnd();
 		}
 
 		// Light gizmo
@@ -804,34 +822,47 @@ namespace Directus
 
 		m_graphics->EnableAlphaBlending(false);
 
+		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::Pass_FXAA(void* texture, void* renderTarget)
 	{
+		m_graphics->EventBegin("Pass_FXAA");
+
 		SetRenderTarget(renderTarget, false);
 		m_shaderFXAA->Set();
 		m_shaderFXAA->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, GET_RESOLUTION, 0);
 		m_shaderFXAA->SetTexture(texture, 0);
 		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
 	}
 
 	void Renderer::Pass_Sharpening(void* texture, void* renderTarget)
 	{
+		m_graphics->EventBegin("Pass_Sharpening");
+
 		SetRenderTarget(renderTarget, false);
 		m_shaderSharpening->Set();
 		m_shaderSharpening->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, GET_RESOLUTION, 0);
 		m_shaderSharpening->SetTexture(texture, 0);
 		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
 	}
 
 	void Renderer::Pass_Blur(void* texture, void* renderTarget, const Vector2& blurScale)
 	{
+		m_graphics->EventBegin("Pass_Blur");
+
 		SetRenderTarget(renderTarget, false);
 		m_shaderBlur->Set();
 		m_shaderBlur->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, blurScale, 0);
 		m_shaderBlur->SetTexture(texture, 0); // Shadows are alpha
 		m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
 	}
 
 	void Renderer::Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture)
@@ -840,6 +871,7 @@ namespace Directus
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
+		m_graphics->EventBegin("Pass_Shadowing");
 
 		// SHADOWING (Shadow mapping + SSAO)
 		SetRenderTarget(outRenderTexture, false);
@@ -877,6 +909,7 @@ namespace Directus
 
 		m_shaderShadowing->DrawIndexed(m_quad->GetIndexCount());
 
+		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 	//=============================================================================================================

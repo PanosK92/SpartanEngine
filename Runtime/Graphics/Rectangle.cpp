@@ -83,40 +83,25 @@ namespace Directus
 		vector<VertexPosTex> vertices;
 		vector<unsigned int> indices;
 
-		// Load the vertex array with data.		
-		VertexPosTex vertex;
-
 		// First triangle
 		// Top left
-		vertex.position = Vector3(left, top, 0.0f); 
-		vertex.uv = Vector2(0.0f, 0.0f);
-		vertices.push_back(vertex);
+		vertices.emplace_back(VertexPosTex(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
 
 		// Bottom right
-		vertex.position = Vector3(right, bottom, 0.0f); 
-		vertex.uv = Vector2(1.0f, 1.0f);
-		vertices.push_back(vertex);
+		vertices.emplace_back(VertexPosTex(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
 
 		// Bottom left
-		vertex.position = Vector3(left, bottom, 0.0f); 
-		vertex.uv = Vector2(0.0f, 1.0f);
-		vertices.push_back(vertex);
+		vertices.emplace_back(VertexPosTex(Vector3(left, bottom, 0.0f), Vector2(0.0f, 1.0f)));
 
 		// Second triangle
 		// Top left
-		vertex.position = Vector3(left, top, 0.0f); 
-		vertex.uv = Vector2(0.0f, 0.0f);
-		vertices.push_back(vertex);
+		vertices.emplace_back(VertexPosTex(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
 
 		// Top right
-		vertex.position = Vector3(right, top, 0.0f);
-		vertex.uv = Vector2(1.0f, 0.0f);
-		vertices.push_back(vertex);
+		vertices.emplace_back(VertexPosTex(Vector3(right, top, 0.0f), Vector2(1.0f, 0.0f)));
 
 		// Bottom right
-		vertex.position = Vector3(right, bottom, 0.0f); 
-		vertex.uv = Vector2(1.0f, 1.0f);
-		vertices.push_back(vertex);
+		vertices.emplace_back(VertexPosTex(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
 
 		// Load the index array with data.
 		for (unsigned int i = 0; i < vertices.size(); i++)

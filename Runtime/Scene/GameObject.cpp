@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileStream.h"
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
+#include "../Core/Backends_Imp.h"
 #include "../Scene/Components/Camera.h"
 #include "../Scene/Components/Collider.h"
 #include "../Scene/Components/Transform.h"

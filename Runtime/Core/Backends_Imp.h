@@ -31,7 +31,68 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	#pragma comment(lib, "dxgi.lib")
 	#pragma comment(lib, "d3dcompiler.lib")
 	#pragma comment(lib, "dxguid.lib")
-	#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
+	#include <d3d11.h>
+	#include <d3d11_1.h>
+	#include <d3dcompiler.h>
+	#include <d3dcommon.h>
+	#include "../Graphics/D3D11/D3D11Graphics.h"
+	#include "../Graphics/D3D11/D3D11RenderTexture.h"
+
+	static const D3D11_CULL_MODE d3d11_cull_mode[] =
+	{
+		D3D11_CULL_NONE,
+		D3D11_CULL_FRONT,
+		D3D11_CULL_BACK
+	};
+
+	static const D3D11_FILL_MODE d3d11_fill_Mode[]
+	{
+		D3D11_FILL_SOLID,
+		D3D11_FILL_WIREFRAME	
+	};
+
+	static const D3D11_PRIMITIVE_TOPOLOGY d3d11_primitive_topology[] =
+	{
+		D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+		D3D11_PRIMITIVE_TOPOLOGY_LINELIST
+	};
+
+	static const DXGI_FORMAT d3d11_dxgi_format[]
+	{
+		DXGI_FORMAT_R32G32B32A32_FLOAT,
+		DXGI_FORMAT_R16G16B16A16_FLOAT,
+		DXGI_FORMAT_R8G8B8A8_UNORM,
+		DXGI_FORMAT_R8_UNORM
+	};
+
+	static const D3D11_TEXTURE_ADDRESS_MODE d3d11_texture_address_mode[]
+	{
+		D3D11_TEXTURE_ADDRESS_WRAP,
+        D3D11_TEXTURE_ADDRESS_MIRROR,
+        D3D11_TEXTURE_ADDRESS_CLAMP,
+        D3D11_TEXTURE_ADDRESS_BORDER,
+        D3D11_TEXTURE_ADDRESS_MIRROR_ONCE
+	};
+
+	static const D3D11_COMPARISON_FUNC d3d11_comparison_func[]=
+	{
+		D3D11_COMPARISON_NEVER,
+		D3D11_COMPARISON_LESS,
+		D3D11_COMPARISON_EQUAL,
+		D3D11_COMPARISON_LESS_EQUAL,
+		D3D11_COMPARISON_GREATER,
+		D3D11_COMPARISON_NOT_EQUAL,
+		D3D11_COMPARISON_GREATER_EQUAL,
+		D3D11_COMPARISON_ALWAYS
+	};
+
+	static const D3D11_FILTER d3d11_filter[] =
+	{
+		D3D11_FILTER_MIN_MAG_MIP_POINT,
+		D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,
+		D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+		D3D11_FILTER_ANISOTROPIC
+	};
 #endif
 //====================================================
 

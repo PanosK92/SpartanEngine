@@ -40,8 +40,7 @@ namespace Directus
 	Cascade::Cascade(int resolution, Camera* camera, Context* context)
 	{
 		m_resolution	= resolution;
-		auto graphics	= context->GetSubsystem<Graphics>();
-		m_depthMap		= make_unique<D3D11RenderTexture>(graphics, m_resolution, m_resolution, true);
+		m_depthMap		= make_unique<D3D11RenderTexture>(context->GetSubsystem<Graphics>(), m_resolution, m_resolution, true);
 		m_camera		= camera;
 	}
 
@@ -51,7 +50,7 @@ namespace Directus
 		m_depthMap->Clear(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
-	ID3D11ShaderResourceView* Cascade::GetShaderResource()
+	void* Cascade::GetShaderResource()
 	{
 		return m_depthMap ? m_depthMap->GetShaderResourceView() : nullptr;
 	}

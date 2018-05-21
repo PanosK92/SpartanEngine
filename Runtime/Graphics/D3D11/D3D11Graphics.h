@@ -22,18 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ============
-#include "../IGraphics.h"
-#include <d3d11.h>
 #include <vector>
+#include "../IGraphics.h"
 //=======================
 
 namespace Directus
 {
-	class D3D11GraphicsDevice : public IGraphics
+	class D3D11Graphics : public IGraphics
 	{
 	public:
-		D3D11GraphicsDevice(Context* context);
-		~D3D11GraphicsDevice();	
+		D3D11Graphics(Context* context);
+		~D3D11Graphics();	
 
 		//= Sybsystem ============
 		bool Initialize() override;
@@ -41,8 +40,7 @@ namespace Directus
 
 		bool CreateBlendStates();
 
-		//= IGraphicsDevice ========================================================
-		void SetHandle(void* drawHandle) override;
+		//= IGraphics ========================================================
 		void Clear(const Math::Vector4& color) override;
 		void Present() override;
 		void SetBackBufferAsRenderTarget() override;
@@ -61,7 +59,7 @@ namespace Directus
 
 		// Viewport
 		bool SetResolution(int width, int height) override;
-		void* GetViewport() override { return (void*)&m_viewport; }
+		const Viewport& GetViewport() override { return m_backBuffer_viewport; }
 		void SetViewport(float width, float height) override;
 		void SetViewport() override;
 		float GetMaxDepth() override { return m_maxDepth; }
@@ -69,6 +67,12 @@ namespace Directus
 		bool IsInitialized() override { return m_initialized; }
 
 		ID3D11DepthStencilView* GetDepthStencilView() { return m_depthStencilView; }
+
+		//= EVENTS =======================================
+		void EventBegin(const std::string& name) override;
+		void EventEnd() override;
+		//================================================
+
 		//======================================================================
 
 		ID3D11Device* GetDevice() { return m_device; }
@@ -77,27 +81,21 @@ namespace Directus
 	private:
 		//= HELPER FUNCTIONS =================================================================================================
 		bool CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain);
-		bool CreateRasterizerState(D3D11_CULL_MODE cullMode, D3D11_FILL_MODE fillMode, ID3D11RasterizerState** rasterizer);
+		bool CreateRasterizerState(CullMode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer);
 		std::vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory);	
 		IDXGIAdapter* GetAdapterWithTheHighestVRAM(IDXGIFactory* factory);
 		IDXGIAdapter* GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID);
 		std::string GetAdapterDescription(IDXGIAdapter* adapter);
 		//====================================================================================================================
 
-		D3D_DRIVER_TYPE m_driverType;
-		D3D_FEATURE_LEVEL m_featureLevel;
-		unsigned int m_sdkVersion;
-
 		ID3D11Device* m_device;
 		ID3D11DeviceContext* m_deviceContext;
 		IDXGISwapChain* m_swapChain;
-		ID3D11RenderTargetView* m_renderTargetView;
-		D3D11_VIEWPORT m_viewport{};
+		ID3D11RenderTargetView* m_renderTargetView;	
 		unsigned int m_displayModeCount;
 		unsigned int m_refreshRateNumerator;
 		unsigned int m_refreshRateDenominator;
-		DXGI_MODE_DESC* m_displayModeList;
-		
+		DXGI_MODE_DESC* m_displayModeList;	
 		ID3D11Texture2D* m_depthStencilBuffer;
 		ID3D11DepthStencilState* m_depthStencilStateEnabled;
 		ID3D11DepthStencilState* m_depthStencilStateDisabled;
@@ -107,8 +105,7 @@ namespace Directus
 		ID3D11RasterizerState* m_rasterStateCullNone;
 		ID3D11BlendState* m_blendStateAlphaEnabled;
 		ID3D11BlendState* m_blendStateAlphaDisabled;
-		HWND m_drawHandle;
 		bool m_initialized;
-		float m_maxDepth;
+		ID3DUserDefinedAnnotation* m_eventReporter;
 	};
 }

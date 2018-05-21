@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Graphics/Vertex.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Ray.h"
+#include "../../Math/Frustum.h"
 //================================
 
 namespace Directus
@@ -42,7 +43,6 @@ namespace Directus
 		class Vector2;
 		class Vector3;
 		class Vector3;
-		class Frustrum;
 	}
 
 	enum ProjectionType
@@ -114,7 +114,7 @@ namespace Directus
 		float m_nearPlane;
 		float m_farPlane;
 		Math::Ray m_ray;
-		std::shared_ptr<Math::Frustrum> m_frustrum;
+		Math::Frustum m_frustrum;
 		ProjectionType m_projection;
 		Math::Vector4 m_clearColor;
 

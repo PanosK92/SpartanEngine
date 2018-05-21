@@ -21,35 +21,37 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES ============
 #include <vector>
-#include "D3D11GraphicsDevice.h"
-//==============================
+#include "../IGraphics.h"
+//=======================
 
 namespace Directus
 {
 	class D3D11InputLayout
 	{
 	public:
-		D3D11InputLayout(D3D11GraphicsDevice* d3d11Device);
+		D3D11InputLayout(D3D11Graphics* d3d11Device);
 		~D3D11InputLayout();
 
 		//= MISC ====================================
 		bool Set();
 		InputLayout GetInputLayout() { return m_inputLayout; }
 
-		//= LAYOUT CREATION ============================================================================
+		//= LAYOUT CREATION ====================================================================================
 		bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, unsigned int elementCount);
 		bool Create(ID3D10Blob* VSBlob, InputLayout layout);
+		//======================================================================================================
 
 	private:
-		//= LAYOUTS ===============================
+		//= LAYOUTS ==============================
 		bool CreatePosDesc(ID3D10Blob* VSBlob);
 		bool CreatePosColDesc(ID3D10Blob* VSBlob);
 		bool CreatePosTexDesc(ID3D10Blob* VSBlob);
 		bool CreatePosTBNDesc(ID3D10Blob* VSBlob);
+		//========================================
 
-		D3D11GraphicsDevice* m_graphics;
+		D3D11Graphics* m_graphics;
 		ID3D11InputLayout* m_ID3D11InputLayout;
 		InputLayout m_inputLayout;
 		std::vector<D3D11_INPUT_ELEMENT_DESC> m_layoutDesc;

@@ -31,13 +31,7 @@ namespace Directus
 {
 	struct VertexPosTexTBN
 	{
-		Math::Vector3 position;
-		Math::Vector2 uv;
-		Math::Vector3 normal;
-		Math::Vector3 tangent;
-		Math::Vector3 bitangent;
-
-		VertexPosTexTBN() {}
+		VertexPosTexTBN(){}
 		VertexPosTexTBN(
 			const Math::Vector3& position,
 			const Math::Vector2& uv,
@@ -45,12 +39,31 @@ namespace Directus
 			const Math::Vector3& tangent,
 			const Math::Vector3& bitangent)
 		{
-			this->position = position;
-			this->uv = uv;
-			this->normal = normal;
-			this->tangent = tangent;
-			this->bitangent = bitangent;
+			this->position[0]	= position.x;
+			this->position[1]	= position.y;
+			this->position[2]	= position.z;
+
+			this->uv[0]		= uv.x;
+			this->uv[1]		= uv.y;
+
+			this->normal[0]	= normal.x;
+			this->normal[1]	= normal.y;
+			this->normal[2]	= normal.z;
+
+			this->tangent[0]	= tangent.x;
+			this->tangent[1]	= tangent.y;
+			this->tangent[2]	= tangent.z;
+
+			this->bitangent[0]	= bitangent.x;
+			this->bitangent[1]	= bitangent.y;
+			this->bitangent[2]	= bitangent.z;
 		}
+
+		float position[3]	= { 0 };
+		float uv[2]			= { 0 };
+		float normal[3]		= { 0 };
+		float tangent[3]	= { 0 };
+		float bitangent[3]	= { 0 };
 	};
 
 	struct VertexPosTexNor
@@ -63,26 +76,37 @@ namespace Directus
 	struct VertexPosTex
 	{
 		VertexPosTex(){}
+
 		VertexPosTex(const Math::Vector3& position, const Math::Vector2& uv)
 		{
-			this->position = position;
-			this->uv = uv;
+			this->position[0]	= position.x;
+			this->position[1]	= position.y;
+			this->position[2]	= position.z;
+
+			this->uv[0]		= uv.x;
+			this->uv[1]		= uv.y;
 		}
 
-		Math::Vector3 position;
-		Math::Vector2 uv;
+		float position[3]	= { 0 };
+		float uv[2]			= { 0 };
 	};
 
 	struct VertexPosCol
 	{
-		VertexPosCol() {}
+		VertexPosCol(){}
 		VertexPosCol(const Math::Vector3& position, const Math::Vector4& color)
 		{
-			this->position = position;
-			this->color = color;
+			this->pos[0]	= position.x;
+			this->pos[1]	= position.y;
+			this->pos[2]	= position.z;
+
+			this->color[0]	= color.x;
+			this->color[1]	= color.y;
+			this->color[2]	= color.z;
+			this->color[3]	= color.w;
 		}
 
-		Math::Vector3 position;
-		Math::Vector4 color;
+		float pos[3]	= {0};
+		float color[4]	= {0};
 	};
 }

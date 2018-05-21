@@ -21,14 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "ShaderVariation.h"
-#include "../Material.h"
+#include "../D3D11/D3D11Graphics.h"
 #include "../D3D11/D3D11ConstantBuffer.h"
 #include "../D3D11/D3D11Shader.h"
+#include "../Material.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
+#include "../../Core/Backends_Imp.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Camera.h"
-#include "../../Core/Backends_Imp.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -67,7 +68,7 @@ namespace Directus
 		AddDefinesBasedOnMaterial(m_D3D11Shader);
 		m_D3D11Shader->Compile(filePath);
 		m_D3D11Shader->SetInputLayout(PositionTextureTBN);
-		m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+		m_D3D11Shader->AddSampler(Texture_Sampler_Anisotropic, Texture_Address_Wrap, Texture_Comparison_Always);
 
 		// Matrix Buffer
 		m_perObjectBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);

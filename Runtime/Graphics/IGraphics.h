@@ -21,10 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ====================
 #include "../Math/Vector4.h"
 #include "../Core/SubSystem.h"
-//============================
+#include "../Core/Backends_Def.h"
+#include "Viewport.h"
+//===============================
 
 namespace Directus
 {
@@ -48,6 +50,12 @@ namespace Directus
 		CullNone,
 		CullFront,
 		CullBack
+	};
+
+	enum FillMode
+	{
+		FillMode_Solid,
+		FillMode_Wireframe
 	};
 
 	enum Texture_Sampler_Filter
@@ -78,6 +86,15 @@ namespace Directus
         Texture_Comparison_GreaterEqual,
         Texture_Comparison_Always
 	};
+
+	enum Texture_Format
+	{
+		Texture_Format_R32G32B32A32_FLOAT,
+		Texture_Format_R16G16B16A16_FLOAT,
+		Texture_Format_R8G8B8A8_UNORM,
+		Texture_Format_R8_UNORM
+	};
+
 	class IGraphics : public Subsystem
 	{
 	public:
@@ -86,13 +103,19 @@ namespace Directus
 			m_primitiveTopology		= TriangleList;
 			m_inputLayout			= PositionTextureTBN;
 			m_cullMode				= CullBack;
+			m_backBuffer_format		= Texture_Format_R8G8B8A8_UNORM;
 			m_depthEnabled			= true;
-			m_alphaBlendingEnabled	= true;
+			m_maxDepth				= 1.0f;
+			m_alphaBlendingEnabled	= false;
+			m_drawHandle			= nullptr;
 		}
 		virtual ~IGraphics() {}
 
+		//= BINDING ===========================================================
+		virtual void SetHandle(void* drawHandle) { m_drawHandle = drawHandle; }
+		//=====================================================================
+
 		//=================================================
-		virtual void SetHandle(void* drawHandle) = 0;
 		virtual void Clear(const Math::Vector4& color) = 0;
 		virtual void Present() = 0;
 		virtual void SetBackBufferAsRenderTarget() = 0;
@@ -105,29 +128,47 @@ namespace Directus
 		virtual void EnableDepth(bool enable) = 0;
 		//======================================================================================================
 
-		//=========================================================================
+		//= ALPHA BLENDING ===============================
 		virtual void EnableAlphaBlending(bool enable) = 0;
-		virtual void SetInputLayout(InputLayout inputLayout) = 0;
+		//================================================
+
+		// CULL MODE ===================================
 		virtual CullMode GetCullMode() = 0;
 		virtual void SetCullMode(CullMode cullMode) = 0;
+		//==============================================
+
+		//= PRIMITIVE TOPOLOGY ==================================
+		virtual void SetInputLayout(InputLayout inputLayout) = 0;
+		//=======================================================
+
+		//= INPUT LAYOUT ==========================================================
 		virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology) = 0;
 		//=========================================================================
 
 		//= VIEWPORT ===========================================
 		virtual bool SetResolution(int width, int height) = 0;
-		virtual void* GetViewport() = 0;
+		virtual const Viewport& GetViewport() = 0;
 		virtual void SetViewport(float width, float height) = 0;
 		virtual void SetViewport() = 0;
 		virtual float GetMaxDepth() = 0;
 		//======================================================
+
+		//= EVENTS =======================================
+		virtual void EventBegin(const std::string& name){}
+		virtual void EventEnd(){}
+		//================================================
 
 		virtual bool IsInitialized() = 0;
 
 	protected:
 		PrimitiveTopology m_primitiveTopology;
 		InputLayout m_inputLayout;
-		CullMode m_cullMode;	
+		CullMode m_cullMode;
+		Texture_Format m_backBuffer_format;
+		Viewport m_backBuffer_viewport;
 		bool m_depthEnabled;
 		bool m_alphaBlendingEnabled;
+		void* m_drawHandle;
+		float m_maxDepth;
 	};
 }

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Vertex.h"
 #include "../Graphics/D3D11/D3D11VertexBuffer.h"
 #include "../Graphics/D3D11/D3D11IndexBuffer.h"
-#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
+#include "../Graphics/D3D11/D3D11Graphics.h"
 #include "../Graphics/Texture.h"
 #include "../Core/Settings.h"
 #include "../Core/Stopwatch.h"
@@ -90,7 +90,7 @@ namespace Directus
 
 		// Create a font texture atlas form the provided data
 		m_textureAtlas = make_unique<Texture>(m_context);
-		if (!m_textureAtlas->CreateShaderResource(texAtlasWidth, texAtlasHeight, 1, atlasBuffer, R_8_UNORM))
+		if (!m_textureAtlas->CreateShaderResource(texAtlasWidth, texAtlasHeight, 1, atlasBuffer, Texture_Format_R8_UNORM))
 		{
 			LOG_ERROR("Font: Failed to create shader resource.");
 		}
@@ -199,28 +199,28 @@ namespace Directus
 		if (!m_vertexBuffer)
 		{
 			m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphics);
-			if (!m_vertexBuffer->CreateDynamic(sizeof(VertexPosTex), (unsigned int)vertices.size()))
+			if (!m_vertexBuffer->CreateDynamic(sizeof(VertexPosTex), vertices.size()))
 			{
 				LOG_ERROR("Font: Failed to create vertex buffer.");
 				return false;
 			}	
 		}
 		void* data = m_vertexBuffer->Map();
-		memcpy(data, &vertices[0], sizeof(VertexPosTex) * (int)vertices.size());
+		memcpy(data, &vertices[0], sizeof(VertexPosTex) * vertices.size());
 		m_vertexBuffer->Unmap();
 
 		// Index buffer
 		if (!m_indexBuffer)
 		{
 			m_indexBuffer = make_shared<D3D11IndexBuffer>(graphics);
-			if (!m_indexBuffer->CreateDynamic((unsigned int)indices.size()))
+			if (!m_indexBuffer->CreateDynamic(indices.size()))
 			{
 				LOG_ERROR("Font: Failed to create index buffer.");
 				return false;
 			}
 		}
 		data = m_indexBuffer->Map();
-		memcpy(data, &indices[0], sizeof(unsigned int) * (int)indices.size());
+		memcpy(data, &indices[0], sizeof(unsigned int) * indices.size());
 		m_indexBuffer->Unmap();
 
 		return true;

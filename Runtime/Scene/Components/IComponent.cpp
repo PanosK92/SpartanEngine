@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Core/GUIDGenerator.h"
 #include "../../FileSystem/FileSystem.h"
+#include "../../Core/Backends_Imp.h"
 //======================================
 
 //= NAMESPACES =====

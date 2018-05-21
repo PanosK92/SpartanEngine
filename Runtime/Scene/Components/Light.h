@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================================
+//= INCLUDES ======================
 #include <vector>
 #include <memory>
 #include "IComponent.h"
@@ -29,9 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
 #include "../../Core/Settings.h"
-#include "../../Graphics/D3D11/D3D11RenderTexture.h"
 #include "../../Graphics/Cascade.h"
-//==================================================
+//=================================
 
 namespace Directus
 {
@@ -40,7 +39,7 @@ namespace Directus
 
 	namespace Math
 	{
-		class Frustrum;
+		class Frustum;
 	}
 
 	enum LightType
@@ -113,7 +112,7 @@ namespace Directus
 		float m_bias;
 		Math::Matrix m_viewMatrix;
 		Math::Matrix m_projectionMatrix;
-		std::shared_ptr<Math::Frustrum> m_frustrum;
+		std::shared_ptr<Math::Frustum> m_frustrum;
 		int m_cascades;
 		std::vector<std::shared_ptr<Cascade>> m_shadowMaps;
 		Math::Quaternion m_lastRot;

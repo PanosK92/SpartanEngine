@@ -31,8 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 //======================================
 
-struct ID3D11ShaderResourceView;
-
 namespace Directus
 {
 	class GameObject;
@@ -47,14 +45,14 @@ namespace Directus
 	class Texture;
 	class ResourceManager;
 	class D3D11RenderTexture;
-	class D3D11GraphicsDevice;
+	class D3D11Graphics;
 	class Font;
 	class Grid;
 	class Variant;	
 
 	namespace Math
 	{
-		class Frustrum;
+		class Frustum;
 	}
 
 	enum RenderMode : unsigned long
@@ -90,7 +88,7 @@ namespace Directus
 
 		// The back-buffer is the final output (should match the display size)
 		void SetBackBufferSize(int width, int height);
-		Math::Vector4 GetViewportBackBuffer();
+		const Viewport& GetViewportBackBuffer();
 
 		// The actual frame that all rendering takes palce (or the viewport window in the editor)
 		void SetResolutionInternal(int width, int height);

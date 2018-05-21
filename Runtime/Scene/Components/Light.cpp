@@ -27,10 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Core/Settings.h"
 #include "../../Core/Context.h"
+#include "../../Core/Backends_Imp.h"
 #include "../../Scene/GameObject.h"
 #include "../../Logging/Log.h"
 #include "../../Math/BoundingBox.h"
-#include "../../Math/Frustrum.h"
+#include "../../Math/Frustum.h"
 #include "Renderable.h"
 //=================================
 
@@ -51,7 +52,7 @@ namespace Directus
 		m_color			= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
 		m_bias			= 0.001f;
 		m_cascades		= 3;
-		m_frustrum		= make_shared<Frustrum>();
+		m_frustrum		= make_shared<Frustum>();
 		m_isDirty		= true;
 	}
 

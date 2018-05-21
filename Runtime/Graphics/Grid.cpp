@@ -53,7 +53,6 @@ namespace Directus
 	void Grid::BuildGrid()
 	{
 		vector<VertexPosCol> vertices;
-		VertexPosCol vertex;
 		int halfSizeW = int(m_terrainWidth * 0.5f);
 		int halfSizeH = int(m_terrainHeight * 0.5f);
 
@@ -65,61 +64,45 @@ namespace Directus
 				// Upper left.
 				float positionX = (float)i;
 				float positionZ = (float)(j + 1);
-				vertex.position = Vector3(positionX, 0.0f, positionZ);
-				vertex.color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-				vertices.push_back(vertex);
+				vertices.emplace_back(VertexPosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// Upper right.
 				positionX = (float)(i + 1);
 				positionZ = (float)(j + 1);
-				vertex.position = Vector3(positionX, 0.0f, positionZ);
-				vertex.color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-				vertices.push_back(vertex);
+				vertices.emplace_back(VertexPosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// LINE 2
 				// Upper right.
 				positionX = (float)(i + 1);
 				positionZ = (float)(j + 1);
-				vertex.position = Vector3(positionX, 0.0f, positionZ);
-				vertex.color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-				vertices.push_back(vertex);
+				vertices.emplace_back(VertexPosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// Bottom right.
 				positionX = (float)(i + 1);
 				positionZ = (float)j;
-				vertex.position = Vector3(positionX, 0.0f, positionZ);
-				vertex.color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-				vertices.push_back(vertex);
+				vertices.emplace_back(VertexPosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// LINE 3
 				// Bottom right.
 				positionX = (float)(i + 1);
 				positionZ = (float)j;
-				vertex.position = Vector3(positionX, 0.0f, positionZ);
-				vertex.color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-				vertices.push_back(vertex);
+				vertices.emplace_back(VertexPosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// Bottom left.
 				positionX = (float)i;
 				positionZ = (float)j;
-				vertex.position = Vector3(positionX, 0.0f, positionZ);
-				vertex.color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-				vertices.push_back(vertex);
+				vertices.emplace_back(VertexPosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// LINE 4
 				// Bottom left.
 				positionX = (float)i;
 				positionZ = (float)j;
-				vertex.position = Vector3(positionX, 0.0f, positionZ);
-				vertex.color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-				vertices.push_back(vertex);
+				vertices.emplace_back(VertexPosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// Upper left.
 				positionX = (float)i;
 				positionZ = (float)(j + 1);
-				vertex.position = Vector3(positionX, 0.0f, positionZ);
-				vertex.color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-				vertices.push_back(vertex);
+				vertices.emplace_back(VertexPosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 			}
 		}
 

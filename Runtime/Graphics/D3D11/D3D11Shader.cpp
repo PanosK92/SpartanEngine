@@ -21,10 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "D3D11Shader.h"
+#include "D3D11InputLayout.h"
+#include "D3D11Sampler.h"
 #include "../../Core/EngineDefs.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
-#include <d3dcompiler.h>
+#include "../../Core/Backends_Imp.h"
 #include <sstream> 
 //======================================
 
@@ -34,7 +36,7 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11Shader::D3D11Shader(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
+	D3D11Shader::D3D11Shader(D3D11Graphics* graphicsDevice) : m_graphics(graphicsDevice)
 	{
 		m_vertexShader		= nullptr;
 		m_pixelShader		= nullptr;
@@ -144,7 +146,7 @@ namespace Directus
 		return m_layoutHasBeenSet;
 	}
 
-	bool D3D11Shader::AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction)
+	bool D3D11Shader::AddSampler(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction)
 	{
 		if (!m_graphics->GetDevice())
 		{

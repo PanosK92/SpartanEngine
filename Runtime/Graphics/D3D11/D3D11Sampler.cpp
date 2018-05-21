@@ -19,17 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES =======================
+#include "D3D11Graphics.h"
 #include "D3D11Sampler.h"
-#include "D3D11GraphicsDevice.h"
 #include "../../Core/EngineDefs.h"
 #include "../../Core/Settings.h"
 #include "../../Logging/Log.h"
-//=============================
+#include "../../Core/Backends_Imp.h"
+//==================================
 
 namespace Directus
 {
-	D3D11Sampler::D3D11Sampler(D3D11GraphicsDevice* graphics)
+	D3D11Sampler::D3D11Sampler(D3D11Graphics* graphics)
 	{
 		m_graphics = graphics;
 		m_sampler = nullptr;
@@ -40,19 +41,19 @@ namespace Directus
 		SafeRelease(m_sampler);
 	}
 
-	bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction)
+	bool D3D11Sampler::Create(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
 
 		D3D11_SAMPLER_DESC samplerDesc;
-		samplerDesc.Filter = filter;
-		samplerDesc.AddressU = textureAddressMode;
-		samplerDesc.AddressV = textureAddressMode;
-		samplerDesc.AddressW = textureAddressMode;
+		samplerDesc.Filter = d3d11_filter[filter];
+		samplerDesc.AddressU = d3d11_texture_address_mode[textureAddressMode];
+		samplerDesc.AddressV = d3d11_texture_address_mode[textureAddressMode];
+		samplerDesc.AddressW = d3d11_texture_address_mode[textureAddressMode];
 		samplerDesc.MipLODBias = 0.0f;
 		samplerDesc.MaxAnisotropy = ANISOTROPY_LEVEL;
-		samplerDesc.ComparisonFunc = comparisonFunction;
+		samplerDesc.ComparisonFunc = d3d11_comparison_func[comparisonFunction];
 		samplerDesc.BorderColor[0] = 0;
 		samplerDesc.BorderColor[1] = 0;
 		samplerDesc.BorderColor[2] = 0;

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Vector4.h"
-#include "../../Math/Frustrum.h"
+#include "../../Math/Frustum.h"
 #include "../../Graphics/Renderer.h"
 #include "../GameObject.h"
 #include "Renderable.h"
@@ -46,7 +46,7 @@ namespace Directus
 	{
 		m_nearPlane			= 0.3f;
 		m_farPlane			= 1000.0f;
-		m_frustrum			= make_shared<Frustrum>();
+		m_frustrum			= Frustum();
 		m_projection		= Projection_Perspective;
 		m_clearColor		= Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 		m_isDirty			= false;
@@ -89,7 +89,7 @@ namespace Directus
 		ComputeViewMatrix();
 		ComputeProjection();
 
-		m_frustrum->Construct(GetViewMatrix(), GetProjectionMatrix(), GetFarPlane());
+		m_frustrum.Construct(GetViewMatrix(), GetProjectionMatrix(), GetFarPlane());
 
 		m_isDirty = false;
 	}
@@ -152,28 +152,20 @@ namespace Directus
 		Vector3 center = box.GetCenter();
 		Vector3 extents = box.GetExtents();
 
-		return m_frustrum->CheckCube(center, extents) != Outside;
+		return m_frustrum.CheckCube(center, extents) != Outside;
 	}
 
 	bool Camera::IsInViewFrustrum(const Vector3& center, const Vector3& extents)
 	{
-		return m_frustrum->CheckCube(center, extents) != Outside;
+		return m_frustrum.CheckCube(center, extents) != Outside;
 	}
 
 	vector<VertexPosCol> Camera::GetPickingRay()
 	{
 		vector<VertexPosCol> lines;
 
-		VertexPosCol rayStart;
-		rayStart.color = Vector4(0, 1, 0, 1);
-		rayStart.position = m_ray.GetOrigin();
-
-		VertexPosCol rayEnd;
-		rayEnd.color = Vector4(0, 1, 0, 1);
-		rayEnd.position = m_ray.GetEnd();
-
-		lines.push_back(rayStart);
-		lines.push_back(rayEnd);
+		lines.emplace_back(VertexPosCol(m_ray.GetOrigin(), Vector4(0, 1, 0, 1)));
+		lines.emplace_back(VertexPosCol(m_ray.GetEnd(), Vector4(0, 1, 0, 1)));
 
 		return lines;
 	}
