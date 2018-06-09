@@ -115,9 +115,9 @@ namespace Directus
 		void Pass_RenderableAcquisition(const Variant& renderables);
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
-		void Pass_PreDeferred(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing);
-		void Pass_Deferred(void* inTextureShadowing, void* outRenderTexture);	
-		void Pass_PostDeferred(std::shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, std::shared_ptr<D3D11RenderTexture>& outRenderTexture);
+		void Pass_PreLight(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing);
+		void Pass_Light(void* inTextureShadowing, void* outRenderTexture);	
+		void Pass_PostLight(std::shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, std::shared_ptr<D3D11RenderTexture>& outRenderTexture);
 		bool Pass_DebugGBuffer();
 		void Pass_Debug();
 		void Pass_FXAA(void* texture, void* renderTarget);

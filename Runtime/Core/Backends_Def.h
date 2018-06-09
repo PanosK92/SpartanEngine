@@ -38,9 +38,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 		class D3D11Sampler;
 		class D3D11VertexBuffer;
 		class D3D11Texture;
+
+		typedef D3D11Graphics Graphics;
 	}
-	typedef Directus::D3D11Graphics Graphics;
-	
+		
 	// Forward declarations - D3D11 API
 	struct ID3D11DepthStencilView;
 	struct ID3D11Device;
@@ -77,6 +78,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	namespace Directus
 	{
 		class DInput;
+		typedef DInput Input;
 	}
-	typedef Directus::DInput Input;
 #endif

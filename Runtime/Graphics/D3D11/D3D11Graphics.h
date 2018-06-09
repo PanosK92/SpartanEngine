@@ -49,13 +49,12 @@ namespace Directus
 		bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled) override;
 		bool CreateDepthStencilBuffer() override;
 		bool CreateDepthStencilView() override;
-		void EnableDepth(bool enable) override;
+		bool EnableDepth(bool enable) override;
 
-		void EnableAlphaBlending(bool enable) override;
-		void SetInputLayout(InputLayout inputLayout) override;
+		bool EnableAlphaBlending(bool enable) override;
 		CullMode GetCullMode() override { return m_cullMode; }
-		void SetCullMode(CullMode cullMode) override;
-		void SetPrimitiveTopology(PrimitiveTopology primitiveTopology) override;
+		bool SetCullMode(CullMode cullMode) override;
+		bool SetPrimitiveTopology(PrimitiveTopology primitiveTopology) override;
 
 		// Viewport
 		bool SetResolution(int width, int height) override;

@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/ThumbnailProvider.h"
 #include "UI/EditorHelper.h"
 #include "Core/Settings.h"
+#include "Core/Backends_Imp.h"
 //=======================================
 
 //= NAMESPACES ==========
@@ -45,6 +46,7 @@ using namespace Directus;
 Editor::Editor()
 {
 	m_context = nullptr;
+	m_graphics = nullptr;
 	m_widgets.emplace_back(make_unique<Widget_MenuBar>());
 	m_widgets.emplace_back(make_unique<Widget_Toolbar>());
 	m_widgets.emplace_back(make_unique<Widget_Properties>());
@@ -62,6 +64,8 @@ Editor::~Editor()
 void Editor::Initialize(Context* context)
 {
 	m_context = context;
+	m_graphics = context->GetSubsystem<Graphics>();
+
 	ThumbnailProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);
 	Settings::Get().g_versionImGui = IMGUI_VERSION;
@@ -92,7 +96,9 @@ void Editor::Update()
 
 	// [ImGui] End frame
 	ImGui::Render();
+	m_graphics->EventBegin("Pass_ImGui");
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+	m_graphics->EventEnd();
 }
 
 void Editor::Shutdown()

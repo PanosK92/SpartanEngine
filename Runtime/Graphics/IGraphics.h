@@ -125,25 +125,60 @@ namespace Directus
 		virtual bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled) = 0;
 		virtual bool CreateDepthStencilBuffer() = 0;
 		virtual bool CreateDepthStencilView() = 0;
-		virtual void EnableDepth(bool enable) = 0;
+		virtual bool EnableDepth(bool enable)
+		{
+			if (m_depthEnabled == enable)
+				return false;
+
+			m_depthEnabled = enable;
+			return true;
+		}
 		//======================================================================================================
 
-		//= ALPHA BLENDING ===============================
-		virtual void EnableAlphaBlending(bool enable) = 0;
-		//================================================
+		//= ALPHA BLENDING ==========================
+		virtual bool EnableAlphaBlending(bool enable)
+		{
+			if (m_alphaBlendingEnabled == enable)
+				return false;
 
-		// CULL MODE ===================================
+			m_alphaBlendingEnabled = enable;
+			return true;
+		}
+		//===========================================
+
+		// CULL MODE ==============================
 		virtual CullMode GetCullMode() = 0;
-		virtual void SetCullMode(CullMode cullMode) = 0;
-		//==============================================
+		virtual bool SetCullMode(CullMode cullMode)
+		{
+			if (m_cullMode == cullMode)
+				return false;
 
-		//= PRIMITIVE TOPOLOGY ==================================
-		virtual void SetInputLayout(InputLayout inputLayout) = 0;
-		//=======================================================
+			m_cullMode = cullMode;
+			return true;
+		}
+		//=========================================
 
-		//= INPUT LAYOUT ==========================================================
-		virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology) = 0;
-		//=========================================================================
+		//= PRIMITIVE TOPOLOGY =====================
+		bool SetInputLayout(InputLayout inputLayout)
+		{
+			if (m_inputLayout == inputLayout)
+				return false;
+
+			m_inputLayout = inputLayout;
+			return true;
+		}
+		//==========================================
+
+		//= INPUT LAYOUT =====================================================
+		virtual bool SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
+		{
+			if (m_primitiveTopology == primitiveTopology)
+				return false;
+
+			m_primitiveTopology = primitiveTopology;
+			return true;
+		}
+		//====================================================================
 
 		//= VIEWPORT ===========================================
 		virtual bool SetResolution(int width, int height) = 0;

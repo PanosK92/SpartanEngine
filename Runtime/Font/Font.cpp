@@ -199,7 +199,7 @@ namespace Directus
 		if (!m_vertexBuffer)
 		{
 			m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphics);
-			if (!m_vertexBuffer->CreateDynamic(sizeof(VertexPosTex), vertices.size()))
+			if (!m_vertexBuffer->CreateDynamic(sizeof(VertexPosTex), (unsigned int)vertices.size()))
 			{
 				LOG_ERROR("Font: Failed to create vertex buffer.");
 				return false;
@@ -213,7 +213,7 @@ namespace Directus
 		if (!m_indexBuffer)
 		{
 			m_indexBuffer = make_shared<D3D11IndexBuffer>(graphics);
-			if (!m_indexBuffer->CreateDynamic(indices.size()))
+			if (!m_indexBuffer->CreateDynamic((unsigned int)indices.size()))
 			{
 				LOG_ERROR("Font: Failed to create index buffer.");
 				return false;
