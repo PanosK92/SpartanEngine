@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================================
+//= INCLUDES ========================================
 #include "Texture.h"
-#include "../Logging/Log.h"
-#include "../Resource/Import/ImageImporter.h"
-#include "../Resource/Import/DDSTextureImporter.h"
-#include "../Resource/ResourceManager.h"
-#include "../IO/FileStream.h"
-#include "../Core/EngineDefs.h"
-#include "../Core/Backends_Imp.h"
+#include "../../Logging/Log.h"
+#include "../../Resource/Import/ImageImporter.h"
+#include "../../Resource/Import/DDSTextureImporter.h"
+#include "../../Resource/ResourceManager.h"
+#include "../../IO/FileStream.h"
+#include "../../Core/EngineDefs.h"
+#include "Backend_Imp.h"
 #include "D3D11/D3D11Texture.h"
-//================================================
+//===================================================
 
 //= NAMESPACES =====
 using namespace std;

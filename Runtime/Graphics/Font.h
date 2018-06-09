@@ -22,10 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "../Core/EngineDefs.h"
-#include "../Resource/IResource.h"
 #include <memory>
 #include <map>
+#include "RI/Backend_Def.h"
+#include "../Core/EngineDefs.h"
+#include "../Resource/IResource.h"
 #include "../Math/Vector4.h"
 //================================
 
@@ -39,8 +40,6 @@ namespace Directus
 	struct Glyph;
 	struct VertexPosTex;
 	class Texture;
-	class D3D11VertexBuffer;
-	class D3D11IndexBuffer;
 
 	class ENGINE_CLASS Font : IResource
 	{
@@ -60,7 +59,9 @@ namespace Directus
 		void SetColor(const Math::Vector4& color) { m_fontColor = color; }
 
 		void** GetShaderResource();
-		bool SetBuffer();
+		bool SetBuffers();
+		bool SetInputLayout();
+
 		unsigned int GetIndexCount() { return (unsigned int)m_indices.size(); }
 			
 	private:	

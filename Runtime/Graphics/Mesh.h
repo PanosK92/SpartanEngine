@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include <memory>
-#include "Vertex.h"
+#include "RI/Vertex.h"
 #include "../Math/BoundingBox.h"
 #include "../Resource/IResource.h"
 //================================

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <LinearMath/btIDebugDraw.h>
 #pragma warning(pop)
 #include <vector>
-#include "../Graphics/Vertex.h"
+#include "../Graphics/RI/Vertex.h"
 //=====================================
 
 namespace Directus

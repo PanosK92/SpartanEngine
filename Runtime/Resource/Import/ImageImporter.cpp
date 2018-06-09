@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
-#include "../../Graphics/Texture.h"
+#include "../../Graphics/RI/Texture.h"
 #include "../../Core/Settings.h"
 //====================================
 

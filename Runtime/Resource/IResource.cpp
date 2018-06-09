@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================================
 #include "../Resource/IResource.h"
 #include "ResourceManager.h"
-#include "../Font/Font.h"
 #include "../Audio/AudioClip.h"
-#include "../Graphics/Texture.h"
+#include "../Graphics/RI/Texture.h"
+#include "../Graphics/Font.h"
 #include "../Graphics/Animation.h"
 #include "../Graphics/Model.h"
 #include "../Graphics/Material.h"

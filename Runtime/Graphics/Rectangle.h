@@ -21,15 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ==============
 #include <memory>
-#include "../Core/Backends_Def.h"
-//===============================
+#include "RI/Backend_Def.h"
+//=========================
 
 namespace Directus
 {
-	class D3D11VertexBuffer;
-	class D3D11IndexBuffer;
 	class Context;
 
 	class Rectangle

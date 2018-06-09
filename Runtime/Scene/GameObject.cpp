@@ -22,11 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "GameObject.h"
 #include "Scene.h"
-#include "../Logging/Log.h"
-#include "../IO/FileStream.h"
-#include "../Core/GUIDGenerator.h"
-#include "../FileSystem/FileSystem.h"
-#include "../Core/Backends_Imp.h"
 #include "../Scene/Components/Camera.h"
 #include "../Scene/Components/Collider.h"
 #include "../Scene/Components/Transform.h"
@@ -39,6 +34,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Components/Script.h"
 #include "../Scene/Components/AudioSource.h"
 #include "../Scene/Components/AudioListener.h"
+#include "../Logging/Log.h"
+#include "../IO/FileStream.h"
+#include "../Core/GUIDGenerator.h"
+#include "../FileSystem/FileSystem.h"
+#include "../Graphics/RI/Backend_Def.h"
+#include "../Graphics/RI/Backend_Imp.h"
 //============================================
 
 //= NAMESPACES =====

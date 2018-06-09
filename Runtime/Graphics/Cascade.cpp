@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 #include "../Logging/Log.h"
 #include "../Core/Context.h"
-#include "../Core/Backends_Imp.h"
 #include "../Scene/Components/Camera.h"
 #include "../Scene/Components/Transform.h"
-#include "D3D11/D3D11RenderTexture.h"
+#include "RI/Backend_Imp.h"
+#include "RI/D3D11/D3D11RenderTexture.h"
 //========================================
 
 //= NAMESPACES ================

@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include "../Resource/IResource.h"
+//= INCLUDES ========================
+#include "../../Resource/IResource.h"
 #include <memory>
 #include "IGraphics.h"
-//================================
+//===================================
 
 namespace Directus
 {
