@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Editor.h"
 #include <memory>
 #include "Core/Context.h"
+#include "Core/Settings.h"
 #include "UI/ImGui_Implementation.h"
 #include "UI/Widgets/Widget.h"
 #include "UI/Widgets/Widget_MenuBar.h"
@@ -34,8 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Toolbar.h"
 #include "UI/ThumbnailProvider.h"
 #include "UI/EditorHelper.h"
-#include "Core/Settings.h"
-#include "Core/Backends_Imp.h"
+#include "Graphics/RI/Backend_Def.h"
+#include "Graphics/RI/Backend_Imp.h"
 //=======================================
 
 //= NAMESPACES ==========

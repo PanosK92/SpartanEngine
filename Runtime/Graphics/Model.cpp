@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/GameObject.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
-#include "../Graphics/Vertex.h"
+#include "../Graphics/RI/Vertex.h"
 #include "../Graphics/Material.h"
 #include "../Graphics/Animation.h"
 #include "../IO/FileStream.h"
@@ -449,7 +449,7 @@ namespace Directus
 			bool geometryMatches = true;
 			for (unsigned int i = 0; i < meshVertices.size(); i++)
 			{
-				if (meshVertices[i].position != cachedVertices[i].position)
+				if (meshVertices[i].pos != cachedVertices[i].pos)
 				{
 					geometryMatches = false;
 					break;

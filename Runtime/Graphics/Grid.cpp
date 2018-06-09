@@ -22,12 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "Grid.h"
 #include "../Core/Context.h"
-#include "Vertex.h"
-#include "D3D11/D3D11VertexBuffer.h"
-#include "D3D11/D3D11IndexBuffer.h"
 #include "../Logging/Log.h"
 #include "../Scene/Components/Transform.h"
-#include "../Core/Backends_Imp.h"
+#include "RI/Vertex.h"
+#include "RI/D3D11/D3D11VertexBuffer.h"
+#include "RI/D3D11/D3D11IndexBuffer.h"
+#include "RI/Backend_Imp.h"
 //========================================
 
 //= NAMESPACES ================

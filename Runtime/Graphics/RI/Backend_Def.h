@@ -22,34 +22,52 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======================
-#include <vector>
-#include <memory>
-#include "Graphics/RI/Backend_Def.h"
+#include "../../Backends/Backends.h"
 //==================================
 
-struct ImGuiContext;
-class Widget;
+#ifdef API_D3D11
+
+// Forward declarations - Graphics API
 namespace Directus
 {
-	class Context;
+	class D3D11Graphics;
+	class D3D11RenderTexture;
+	class D3D11InputLayout;
+	class D3D11Sampler;
+	class D3D11VertexBuffer;
+	class D3D11IndexBuffer;
+	class D3D11Texture;
+
+	typedef D3D11Graphics Graphics;
 }
 
-class Editor
-{
-public:
-	Editor();
-	~Editor();
+// Forward declarations - D3D11 API
+struct ID3D11DepthStencilView;
+struct ID3D11Device;
+struct ID3D11DeviceContext;
+struct ID3D11ShaderResourceView;
+struct ID3D11InputLayout;
+struct ID3D11VertexShader;
+struct ID3D11PixelShader;
+struct ID3D11SamplerState;
+struct ID3D11Texture2D;
+struct ID3D11RasterizerState;
+struct ID3D11DepthStencilState;
+struct ID3D11RenderTargetView;
+struct ID3D11BlendState;
+struct DXGI_MODE_DESC;
+struct IDXGIAdapter;
+struct IDXGISwapChain;
+struct IDXGIFactory;
+struct D3D11_VIEWPORT;
+struct D3D11_INPUT_ELEMENT_DESC;
+enum D3D_DRIVER_TYPE;
+enum D3D_FEATURE_LEVEL;
+struct ID3D11Buffer;
+struct _D3D_SHADER_MACRO;
+typedef _D3D_SHADER_MACRO D3D_SHADER_MACRO;
+struct ID3D10Blob;
+typedef ID3D10Blob ID3DBlob;
+struct ID3DUserDefinedAnnotation;
 
-	void Initialize(Directus::Context* context);
-	void Resize();
-	void Update();
-	void Shutdown();
-
-private:
-	void DrawEditor();
-	void ApplyStyle();
-
-	std::vector<std::unique_ptr<Widget>> m_widgets;
-	Directus::Context* m_context;
-	Directus::Graphics* m_graphics;
-};
+#endif

@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <map>
 #include <memory>
-#include "Texture.h"
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
-#include "IGraphics.h"
+#include "RI/IGraphics.h"
+#include "RI/Texture.h"
 //================================
 
 namespace Directus

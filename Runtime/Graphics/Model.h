@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
-#include "Texture.h"
+#include "RI/Texture.h"
 //================================
 
 namespace Directus

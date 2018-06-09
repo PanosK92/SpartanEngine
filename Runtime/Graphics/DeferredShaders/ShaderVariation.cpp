@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "ShaderVariation.h"
-#include "../D3D11/D3D11Graphics.h"
-#include "../D3D11/D3D11ConstantBuffer.h"
-#include "../D3D11/D3D11Shader.h"
+#include "../RI/D3D11/D3D11Graphics.h"
+#include "../RI/D3D11/D3D11ConstantBuffer.h"
+#include "../RI/D3D11/D3D11Shader.h"
+#include "../RI/Backend_Imp.h"
 #include "../Material.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
-#include "../../Core/Backends_Imp.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Camera.h"
 //===========================================

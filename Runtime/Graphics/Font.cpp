@@ -19,18 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================================
+//= INCLUDES ======================================
 #include "Font.h"
 #include "../Resource/ResourceManager.h"
-#include "../Graphics/Vertex.h"
-#include "../Graphics/D3D11/D3D11VertexBuffer.h"
-#include "../Graphics/D3D11/D3D11IndexBuffer.h"
-#include "../Graphics/D3D11/D3D11Graphics.h"
-#include "../Graphics/Texture.h"
+#include "../Graphics/RI/Vertex.h"
+#include "../Graphics/RI/D3D11/D3D11VertexBuffer.h"
+#include "../Graphics/RI/D3D11/D3D11IndexBuffer.h"
+#include "../Graphics/RI/D3D11/D3D11Graphics.h"
+#include "../Graphics/RI/Texture.h"
+#include "../Graphics/RI/Backend_Imp.h"
 #include "../Core/Settings.h"
 #include "../Core/Stopwatch.h"
-#include "../Core/Backends_Imp.h"
-//================================================
+//=================================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -109,16 +109,22 @@ namespace Directus
 		return m_textureAtlas->GetShaderResource();
 	}
 
-	bool Font::SetBuffer()
+	bool Font::SetBuffers()
 	{
-		if (!graphics || !m_vertexBuffer || !m_indexBuffer)
+		if (!m_vertexBuffer || !m_indexBuffer)
 			return false;
 
 		m_vertexBuffer->SetIA();
 		m_indexBuffer->SetIA();
 
-		// Set the type of primitive that should 
-		// be rendered from this vertex buffer
+		return true;
+	}
+
+	bool Font::SetInputLayout()
+	{
+		if (!graphics)
+			return false;
+
 		graphics->SetPrimitiveTopology(TriangleList);
 
 		return true;

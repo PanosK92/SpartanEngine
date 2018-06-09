@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES =============================
 #include "Shader.h"
 #include "D3D11/D3D11Shader.h"
 #include "D3D11/D3D11ConstantBuffer.h"
-#include "../Logging/Log.h"
-#include "../Core/Context.h"
-#include "../Core/Backends_Imp.h"
-#include "../Scene/Components/Light.h"
-#include "../Scene/Components/Camera.h"
-//=====================================
+#include "Backend_Imp.h"
+#include "../../Logging/Log.h"
+#include "../../Core/Context.h"
+#include "../../Scene/Components/Light.h"
+#include "../../Scene/Components/Camera.h"
+//========================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;

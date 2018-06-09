@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ==========================
 #include "Rectangle.h"
-#include "D3D11/D3D11IndexBuffer.h"
-#include "D3D11/D3D11VertexBuffer.h"
+#include "RI/D3D11/D3D11IndexBuffer.h"
+#include "RI/D3D11/D3D11VertexBuffer.h"
+#include "RI/Vertex.h"
+#include "RI/Backend_Imp.h"
 #include "../Core/EngineDefs.h"
-#include "../Graphics/Vertex.h"
-#include "../Logging/Log.h"
 #include "../Core/Context.h"
 #include "../Core/Settings.h"
-#include "../Core/Backends_Imp.h"
-//==================================
+#include "../Logging/Log.h"
+//=====================================
 
 //= NAMESPACES ================
 using namespace std;

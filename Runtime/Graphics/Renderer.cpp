@@ -26,9 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Mesh.h"
 #include "Grid.h"
-#include "Shader.h"
-#include "D3D11/D3D11Graphics.h"
-#include "D3D11/D3D11RenderTexture.h"
+#include "Font.h"
+#include "RI/Shader.h"
+#include "RI/D3D11/D3D11Graphics.h"
+#include "RI/D3D11/D3D11RenderTexture.h"
 #include "DeferredShaders/ShaderVariation.h"
 #include "DeferredShaders/DeferredShader.h"
 #include "../Core/Context.h"
@@ -42,9 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsDebugDraw.h"
 #include "../Logging/Log.h"
 #include "../Resource/ResourceManager.h"
-#include "../Font/Font.h"
 #include "../Profiling/Profiler.h"
-#include <d3d11.h>
 //===========================================
 
 //= NAMESPACES ================
@@ -809,7 +808,7 @@ namespace Directus
 				m_gizmoRectLight->SetBuffer();
 				m_shaderTexture->Set();
 				m_shaderTexture->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, 0);
-				m_shaderTexture->SetTexture((ID3D11ShaderResourceView*)lightTex->GetShaderResource(), 0);
+				m_shaderTexture->SetTexture(lightTex->GetShaderResource(), 0);
 				m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
 			}
 
@@ -820,11 +819,12 @@ namespace Directus
 		if (m_flags & Render_PerformanceMetrics)
 		{
 			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
-			m_font->SetBuffer();
+			m_font->SetBuffers();
+			m_font->SetInputLayout();
 
 			m_shaderFont->Set();
 			m_shaderFont->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, m_font->GetColor(), 0);
-			m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource(), 0);
+			m_shaderFont->SetTexture(m_font->GetShaderResource(), 0);
 			m_shaderFont->DrawIndexed(m_font->GetIndexCount());
 		}
 

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include <map>
 #include <memory>
-#include "IGraphics.h"
+#include "RI/IGraphics.h"
 #include "../Core/Settings.h"
 //===========================
 

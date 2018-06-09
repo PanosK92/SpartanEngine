@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 #include "../Core/Settings.h"
 #include "../Core/SubSystem.h"
-#include "../Core/Backends_Def.h"
+#include "RI/Backend_Def.h"
 #include "../Resource/ResourceManager.h"
 //======================================
 

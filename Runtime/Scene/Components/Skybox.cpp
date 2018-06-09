@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Renderable.h"
 #include "../GameObject.h"
-#include "../../Graphics/Texture.h"
+#include "../../Graphics/RI/Texture.h"
 #include "../../Math/Vector3.h"
 #include "../../Resource/ResourceManager.h"
 //=========================================

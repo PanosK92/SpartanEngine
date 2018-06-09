@@ -21,21 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include "../Core/EngineDefs.h"
-#include <vector>
-#include "RI/Vertex.h"
-//=============================
+//= INCLUDES ====================
+#include "../Backends/Backends.h"
+//===============================
 
+#ifdef API_DInput
 namespace Directus
 {
-	class ENGINE_CLASS GeometryUtility
-	{
-	public:
-		static void CreateCube(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
-		static void CreateQuad(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
-		static void CreateSphere(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, int slices = 15, int stacks = 15);
-		static void CreateCylinder(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15);
-		static void CreateCone(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, float height = 2.0f);
-	};
+	class DInput;
+	typedef DInput Input;
 }
+#endif
