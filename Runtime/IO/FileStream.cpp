@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES =========================
 #include "FileStream.h"
 #include "../Scene/GameObject.h"
 #include "../Math/Vector2.h"
@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
 #include "../Logging/Log.h"
-#include "../Graphics/RI/Vertex.h"
+#include "../Rendering/RI/RI_Vertex.h"
 #include <iostream>
-//================================
+//====================================
 
 //= NAMESPACES ================
 using namespace std;

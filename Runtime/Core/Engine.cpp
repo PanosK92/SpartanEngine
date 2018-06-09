@@ -24,20 +24,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 #include "Settings.h"
 #include "Stopwatch.h"
+#include "../Input/Backend_Def.h"
+#include "../Input/Backend_Imp.h"
+#include "../Rendering/Renderer.h"
+#include "../Rendering/RI/Backend_Def.h"
+#include "../Rendering/RI/Backend_Imp.h"
 #include "../Core/EventSystem.h"
 #include "../Logging/Log.h"
 #include "../Threading/Threading.h"
 #include "../Resource/ResourceManager.h"
 #include "../Scripting/Scripting.h"
-#include "../Graphics/Renderer.h"
 #include "../Audio/Audio.h"
 #include "../Physics/Physics.h"
 #include "../Scene/Scene.h"
 #include "../Profiling/Profiler.h"
-#include "../Graphics/RI/Backend_Def.h"
-#include "../Graphics/RI/Backend_Imp.h"
-#include "../Input/Backend_Def.h"
-#include "../Input/Backend_Imp.h"
 //======================================
 
 //= NAMESPACES =====
@@ -75,7 +75,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Input(m_context));
 		m_context->RegisterSubsystem(new Threading(m_context));
 		m_context->RegisterSubsystem(new ResourceManager(m_context));
-		m_context->RegisterSubsystem(new Graphics(m_context));
+		m_context->RegisterSubsystem(new Rendering(m_context));
 		m_context->RegisterSubsystem(new Renderer(m_context));
 		m_context->RegisterSubsystem(new Audio(m_context));
 		m_context->RegisterSubsystem(new Physics(m_context));
@@ -117,8 +117,8 @@ namespace Directus
 		}
 
 		// Graphics
-		m_context->GetSubsystem<Graphics>()->SetHandle(m_drawHandle);
-		if (!m_context->GetSubsystem<Graphics>()->Initialize())
+		m_context->GetSubsystem<Rendering>()->SetHandle(m_drawHandle);
+		if (!m_context->GetSubsystem<Rendering>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Graphics subsystem");
 			success = false;

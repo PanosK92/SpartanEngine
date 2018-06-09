@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector3.h"
 #include "../../Math/Vector4.h"
 #include "../../Math/Frustum.h"
-#include "../../Graphics/Renderer.h"
+#include "../../Rendering/Renderer.h"
 #include "../GameObject.h"
 #include "Renderable.h"
 //===================================

@@ -19,12 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================
+//= INCLUDES =================
 #include "BoundingBox.h"
-#include "../Graphics/Mesh.h"
+#include "../Rendering/Mesh.h"
 #include "MathHelper.h"
 #include "Matrix.h"
-//===========================
+//============================
 
 namespace Directus::Math
 {

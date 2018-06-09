@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ==========================
 #include "ImageImporter.h"
 #include "FreeImagePlus.h"
 #include <future>
@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
-#include "../../Graphics/RI/Texture.h"
+#include "../../Rendering/RI/RI_Texture.h"
 #include "../../Core/Settings.h"
-//====================================
+//=====================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -53,7 +53,7 @@ namespace Directus
 		FreeImage_DeInitialise();
 	}
 
-	void ImageImporter::LoadAsync(const string& filePath, Texture* texInfo)
+	void ImageImporter::LoadAsync(const string& filePath, RI_Texture* texInfo)
 	{
 		m_context->GetSubsystem<Threading>()->AddTask([this, &filePath, &texInfo]()
 		{
@@ -61,7 +61,7 @@ namespace Directus
 		});
 	}
 
-	bool ImageImporter::Load(const string& filePath, Texture* texture)
+	bool ImageImporter::Load(const string& filePath, RI_Texture* texture)
 	{
 		if (!texture)
 			return false;
@@ -241,7 +241,7 @@ namespace Directus
 		return result;
 	}
 
-	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, Texture* texture)
+	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, RI_Texture* texture)
 	{
 		if (!texture)
 			return;

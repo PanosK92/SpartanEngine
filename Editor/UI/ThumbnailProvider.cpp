@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ====================
 #include "ThumbnailProvider.h"
-#include "Graphics/RI/Texture.h"
+#include "Rendering/RI/RI_Texture.h"
 #include "../ImGui/imgui.h"
 #include "EditorHelper.h"
 #include "Threading/Threading.h"
-//==============================
+//===============================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -162,7 +162,7 @@ const Thumbnail& ThumbnailProvider::Thumbnail_Load(const string& filePath, Thumb
 	if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
 	{
 		// Make a cheap texture
-		auto texture = std::make_shared<Texture>(m_context);
+		auto texture = std::make_shared<RI_Texture>(m_context);
 		texture->EnableMimaps(false);
 		texture->SetWidth(size);
 		texture->SetHeight(size);

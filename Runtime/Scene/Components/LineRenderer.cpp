@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================================
+//= INCLUDES ======================================
 #include "LineRenderer.h"
 #include "../../Core/Context.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
-#include "../../Graphics/RI/Backend_Def.h"
-#include "../../Graphics/RI/D3D11/D3D11Graphics.h"
-//================================================
+#include "../../Rendering/RI/Backend_Def.h"
+#include "../../Rendering/RI/D3D11/D3D11_Device.h"
+//=================================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -110,12 +110,12 @@ namespace Directus
 		m_vertexBuffer->SetIA();
 
 		// Set primitive topology
-		GetContext()->GetSubsystem<Graphics>()->SetPrimitiveTopology(LineList);
+		GetContext()->GetSubsystem<Rendering>()->SetPrimitiveTopology(LineList);
 	}
 
 	void LineRenderer::CreateVertexBuffer()
 	{
-		m_vertexBuffer = make_shared<D3D11VertexBuffer>(GetContext()->GetSubsystem<Graphics>());
+		m_vertexBuffer = make_shared<D3D11_VertexBuffer>(GetContext()->GetSubsystem<Rendering>());
 		m_vertexBuffer->CreateDynamic(sizeof(VertexPosCol), (unsigned int)m_vertices.size());
 	}
 

@@ -22,14 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================================
 #include "Renderable.h"
 #include "Transform.h"
+#include "../../Rendering/Material.h"
+#include "../../Rendering/DeferredShaders/ShaderVariation.h"
+#include "../../Rendering/GeometryUtility.h"
+#include "../../Rendering/Mesh.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
-#include "../../Graphics/Material.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../Resource/ResourceManager.h"
-#include "../../Graphics/DeferredShaders/ShaderVariation.h"
-#include "../../Graphics/GeometryUtility.h"
-#include "../../Graphics/Mesh.h"
 //=========================================================
 
 //= NAMESPACES ================

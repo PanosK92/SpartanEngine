@@ -26,8 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 #include "../Core/EventSystem.h"
 #include "../Scene/Scene.h"
-#include "../Graphics/Material.h"
-#include "../Graphics/Renderer.h"
+#include "../Rendering/Material.h"
+#include "../Rendering/Renderer.h"
 #include "../Resource/ResourceManager.h"
 #include <iomanip>
 #include <sstream>

@@ -35,8 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Toolbar.h"
 #include "UI/ThumbnailProvider.h"
 #include "UI/EditorHelper.h"
-#include "Graphics/RI/Backend_Def.h"
-#include "Graphics/RI/Backend_Imp.h"
+#include "Rendering/RI/Backend_Def.h"
+#include "Rendering/RI/Backend_Imp.h"
 //=======================================
 
 //= NAMESPACES ==========
@@ -65,7 +65,7 @@ Editor::~Editor()
 void Editor::Initialize(Context* context)
 {
 	m_context = context;
-	m_graphics = context->GetSubsystem<Graphics>();
+	m_graphics = context->GetSubsystem<Rendering>();
 
 	ThumbnailProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);

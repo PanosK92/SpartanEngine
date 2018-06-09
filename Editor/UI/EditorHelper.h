@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/imgui.h"
 #include "Math/Vector4.h"
 #include "Math/Vector2.h"
-#include "Graphics/RI/Texture.h"
+#include "Rendering/RI/RI_Texture.h"
 #include "Resource/ResourceManager.h"
 #include "Core/Engine.h"
 #include "Core/EventSystem.h"
@@ -119,13 +119,13 @@ public:
 		}
 	}
 
-	std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, bool async = false)
+	std::weak_ptr<Directus::RI_Texture> GetOrLoadTexture(const std::string& filePath, bool async = false)
 	{
 		// Validate file path
 		if (Directus::FileSystem::IsDirectory(filePath))
-			return std::weak_ptr<Directus::Texture>();
+			return std::weak_ptr<Directus::RI_Texture>();
 		if (!Directus::FileSystem::IsSupportedImageFile(filePath) && !Directus::FileSystem::IsEngineTextureFile(filePath))
-			return std::weak_ptr<Directus::Texture>();
+			return std::weak_ptr<Directus::RI_Texture>();
 
 		// Compute some useful information
 		auto path = Directus::FileSystem::GetRelativeFilePath(filePath);
@@ -133,13 +133,13 @@ public:
 
 		// Check if this texture is already cached, if so return the cached one
 		auto resourceManager = m_context->GetSubsystem<Directus::ResourceManager>();	
-		if (auto cached = resourceManager->GetResourceByName<Directus::Texture>(name).lock())
+		if (auto cached = resourceManager->GetResourceByName<Directus::RI_Texture>(name).lock())
 		{			
 			return cached;
 		}
 
 		// Since the texture is not cached, load it and returned a cached ref
-		auto texture = std::make_shared<Directus::Texture>(m_context);
+		auto texture = std::make_shared<Directus::RI_Texture>(m_context);
 		texture->SetResourceName(name);
 		texture->SetResourceFilePath(path);
 		if (!async)
@@ -154,7 +154,7 @@ public:
 			});
 		}
 
-		return texture->Cache<Directus::Texture>();
+		return texture->Cache<Directus::RI_Texture>();
 	}
 
 	void LoadModel(const std::string& filePath)

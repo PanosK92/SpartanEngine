@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "Input/Backend_Def.h"
 #include "Input/Backend_Imp.h"
-#include "Graphics/Renderer.h"
+#include "Rendering/Renderer.h"
 //==================================
 
 //= NAMESPACES ==========

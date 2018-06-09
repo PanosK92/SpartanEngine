@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES =========================
 #include "MathHelper.h"
 #include "Vector3.h"
 #include <vector>
-#include "../Graphics/RI/Vertex.h"
-//================================
+#include "../Rendering/RI/RI_Vertex.h"
+//====================================
 
 namespace Directus
 {

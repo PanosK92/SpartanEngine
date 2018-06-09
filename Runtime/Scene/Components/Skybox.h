@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class Material;
-	class Texture;
+	class RI_Texture;
 
 	class ENGINE_CLASS Skybox : public IComponent
 	{
@@ -50,6 +50,6 @@ namespace Directus
 
 	private:
 		std::shared_ptr<Material> m_matSkybox;
-		std::shared_ptr<Texture> m_cubemapTexture;	
+		std::shared_ptr<RI_Texture> m_cubemapTexture;	
 	};
 }
