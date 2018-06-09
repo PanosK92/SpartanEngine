@@ -286,7 +286,7 @@ namespace Directus
 
 			Pass_GBuffer();
 
-			Pass_PreDeferred(
+			Pass_PreLight(
 				m_gbuffer->GetShaderResource(GBuffer_Target_Normal),	// IN:	Texture			- Normal
 				m_gbuffer->GetShaderResource(GBuffer_Target_Depth),		// IN:	Texture			- Depth
 				m_texNoiseMap->GetShaderResource(),						// IN:	Texture			- Normal noise
@@ -294,12 +294,12 @@ namespace Directus
 				m_renderTexShadowing.get()								// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
 			);
 
-			Pass_Deferred(
+			Pass_Light(
 				m_renderTexShadowing->GetShaderResourceView(),	// IN:	Texture			- Shadowing (Shadow mapping + SSAO)
 				m_renderTexSpare.get()							// OUT: Render texture	- Result
 			);
 
-			Pass_PostDeferred(
+			Pass_PostLight(
 				m_renderTexSpare,		// IN:	Render texture - Deferred pass result
 				m_renderTexFinalFrame	// OUT: Render texture - Result
 			);
@@ -517,7 +517,7 @@ namespace Directus
 				shader->UpdateTextures(material->GetShaderResources());
 				//==================================================================================
 
-				for (const auto& gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
+				for (auto gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
 				{
 					//= Get all that we need =========================================================
 					Renderable* renderable	= gameObj->GetRenderable_PtrRaw();
@@ -564,10 +564,10 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::Pass_PreDeferred(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing)
+	void Renderer::Pass_PreLight(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing)
 	{
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_PreDeferred");
+		m_graphics->EventBegin("Pass_PreLight");
 
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
@@ -581,13 +581,13 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::Pass_Deferred(void* inTextureShadowing, void* outRenderTexture)
+	void Renderer::Pass_Light(void* inTextureShadowing, void* outRenderTexture)
 	{
 		if (!m_shaderDeferred->IsCompiled())
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_Deferred");
+		m_graphics->EventBegin("Pass_Light");
 
 		// Set the deferred shader
 		m_shaderDeferred->Set();
@@ -618,10 +618,10 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::Pass_PostDeferred(shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, shared_ptr<D3D11RenderTexture>& outRenderTexture)
+	void Renderer::Pass_PostLight(shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, shared_ptr<D3D11RenderTexture>& outRenderTexture)
 	{
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_PostDeferred");
+		m_graphics->EventBegin("Pass_PostLight");
 
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
@@ -695,6 +695,8 @@ namespace Directus
 		// by passing it's vertices (VertexPosCol) to the LineRenderer. Typically used only for debugging.
 		if (m_lineRenderer)
 		{
+			m_graphics->EventBegin("Pass_Debug_Physics");
+
 			m_lineRenderer->ClearVertices();
 
 			// Physics
@@ -734,6 +736,8 @@ namespace Directus
 				m_shaderLine->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0); // depth
 				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
 			}
+
+			m_graphics->EventEnd();
 		}
 		//============================================================================================================
 
@@ -756,6 +760,8 @@ namespace Directus
 		// Light gizmo
 		if (m_flags & Render_Light)
 		{
+			m_graphics->EventBegin("Pass_Debug_Gizmos");
+
 			for (auto* light : m_lights)
 			{
 				Vector3 lightWorldPos = light->GetTransform()->GetPosition();
@@ -806,6 +812,8 @@ namespace Directus
 				m_shaderTexture->SetTexture((ID3D11ShaderResourceView*)lightTex->GetShaderResource(), 0);
 				m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
 			}
+
+			m_graphics->EventEnd();
 		}
 
 		// Performance metrics

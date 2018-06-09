@@ -321,15 +321,20 @@ namespace Directus
 	}
 
 	//= DEPTH ================================================================================================================
-	void D3D11Graphics::EnableDepth(bool enable)
+	bool D3D11Graphics::EnableDepth(bool enable)
 	{
-		if (!m_deviceContext || m_depthEnabled == enable)
-			return;
+		if (!IGraphics::EnableDepth(enable))
+			return false;
 
-		m_depthEnabled = enable;
+		if (!m_deviceContext)
+		{
+			LOG_WARNING("D3D11Graphics::EnableDepth: Device context is uninitialized.");
+			return false;
+		}
 
 		// Set depth stencil state
 		m_deviceContext->OMSetDepthStencilState(m_depthEnabled ? m_depthStencilStateEnabled : m_depthStencilStateDisabled, 1);
+		return true;
 	}
 
 	bool D3D11Graphics::CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled)
@@ -415,7 +420,10 @@ namespace Directus
 	void D3D11Graphics::Clear(const Vector4& color)
 	{
 		if (!m_deviceContext)
+		{
+			LOG_WARNING("3DD11Graphics::Clear: Device context is uninitialized.");
 			return;
+		}
 
 		m_deviceContext->ClearRenderTargetView(m_renderTargetView, color.Data()); // back buffer
 		if (m_depthEnabled)
@@ -436,23 +444,29 @@ namespace Directus
 	{
 		if (!m_deviceContext)
 		{
-			LOG_INFO("Cant't set back buffer as render terget, device context is uninitialized");
+			LOG_WARNING("D3D11Graphics::SetBackBufferAsRenderTarget: Device context is uninitialized.");
 			return;
 		}
 
 		m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthEnabled ? m_depthStencilView : nullptr);
 	}
 
-	void D3D11Graphics::EnableAlphaBlending(bool enable)
+	bool D3D11Graphics::EnableAlphaBlending(bool enable)
 	{
-		if (!m_deviceContext || m_alphaBlendingEnabled == enable)
-			return;
+		if (!IGraphics::EnableAlphaBlending(enable))
+			return false;
+
+		if (!m_deviceContext)
+		{
+			LOG_WARNING("D3D11Graphics::EnableAlphaBlending: Device context is uninitialized.");
+			return false;
+		}
 
 		// Set blend state
 		float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 		m_deviceContext->OMSetBlendState(enable ? m_blendStateAlphaEnabled : m_blendStateAlphaDisabled, blendFactor, 0xffffffff);
 
-		m_alphaBlendingEnabled = enable;
+		return true;
 	}
 
 	bool D3D11Graphics::SetResolution(int width, int height)
@@ -557,38 +571,32 @@ namespace Directus
 	}
 	//===========================================================
 
-	void D3D11Graphics::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
+	bool D3D11Graphics::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
 	{
-		// Set PrimitiveTopology only if not already set
-		if (!m_deviceContext || m_primitiveTopology == primitiveTopology)
-			return;
+		if (!IGraphics::SetPrimitiveTopology(primitiveTopology))
+			return false;
+
+		if (!m_deviceContext)
+		{
+			LOG_ERROR("D3D11Graphics::SetPrimitiveTopology: Device context is uninitialized");
+			return false;
+		}
 
 		// Ser primitive topology
 		m_deviceContext->IASetPrimitiveTopology(d3d11_primitive_topology[primitiveTopology]);
-
-		// Save the current PrimitiveTopology mode
-		m_primitiveTopology = primitiveTopology;
+		return true;
 	}
 
-	void D3D11Graphics::SetInputLayout(InputLayout inputLayout)
+	bool D3D11Graphics::SetCullMode(CullMode cullMode)
 	{
-		if (m_inputLayout == inputLayout)
-			return;
+		if (!IGraphics::SetCullMode(cullMode))
+			return false;
 
-		m_inputLayout = inputLayout;
-	}
-
-	void D3D11Graphics::SetCullMode(CullMode cullMode)
-	{
 		if (!m_deviceContext)
 		{
-			LOG_WARNING("Can't set cull mode, device context is uninitialized.");
-			return;
+			LOG_WARNING("D3D11Graphics::SetCullMode: Device context is uninitialized.");
+			return false;
 		}
-
-		// Set face CullMode only if not already set
-		if (m_cullMode == cullMode)
-			return;
 
 		auto mode = d3d11_cull_mode[cullMode];
 
@@ -605,8 +613,7 @@ namespace Directus
 			m_deviceContext->RSSetState(m_rasterStateCullBack);
 		}
 
-		// Save the current CullMode mode
-		m_cullMode = cullMode;
+		return true;
 	}
 
 	//= HELPER FUNCTIONS ================================================================================
@@ -628,17 +635,6 @@ namespace Directus
 		swapChainDesc.BufferDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
 		swapChainDesc.SwapEffect					= DXGI_SWAP_EFFECT_DISCARD;
 		swapChainDesc.Flags							= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; //| DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING; // alt + enter fullscreen
-
-		// Define the ordering of feature levels that Direct3D attempts to create.
-        D3D_FEATURE_LEVEL featureLevels[] =
-        {
-            D3D_FEATURE_LEVEL_11_1,
-            D3D_FEATURE_LEVEL_11_0,
-            D3D_FEATURE_LEVEL_10_1,
-            D3D_FEATURE_LEVEL_10_0,
-            D3D_FEATURE_LEVEL_9_3,
-            D3D_FEATURE_LEVEL_9_1
-        };
 
 		UINT deviceFlags = 0;
 #ifdef DEBUG

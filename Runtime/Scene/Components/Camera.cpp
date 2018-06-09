@@ -46,7 +46,6 @@ namespace Directus
 	{
 		m_nearPlane			= 0.3f;
 		m_farPlane			= 1000.0f;
-		m_frustrum			= Frustum();
 		m_projection		= Projection_Perspective;
 		m_clearColor		= Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 		m_isDirty			= false;

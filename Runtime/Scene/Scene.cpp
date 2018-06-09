@@ -166,7 +166,7 @@ namespace Directus
 		vector<weak_ptr<GameObject>> rootGameObjects = GetRootGameObjects();
 
 		// 1st - GameObject count
-		int rootGameObjectCount = (int)rootGameObjects.size();
+		auto rootGameObjectCount = (int)rootGameObjects.size();
 		file->Write(rootGameObjectCount);
 
 		// 2nd - GameObject IDs

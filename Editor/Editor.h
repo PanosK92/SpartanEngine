@@ -21,14 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES =================
 #include <vector>
 #include <memory>
-//===============
+#include "Core/Backends_Def.h"
+//============================
 
 struct ImGuiContext;
 class Widget;
-namespace Directus {class Context;}
+namespace Directus
+{
+	class Context;
+}
 
 class Editor
 {
@@ -47,4 +51,5 @@ private:
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
 	Directus::Context* m_context;
+	Directus::Graphics* m_graphics;
 };
