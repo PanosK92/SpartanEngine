@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Renderable.h"
 #include "../GameObject.h"
-#include "../../Graphics/RI/Texture.h"
+#include "../../Rendering/RI/RI_Texture.h"
 #include "../../Math/Vector3.h"
 #include "../../Resource/ResourceManager.h"
 //=========================================
@@ -51,7 +51,7 @@ namespace Directus
 		// Load environment texture and create a cubemap
 		auto cubemapDirectory	= GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
 		auto texPath			= cubemapDirectory + "environment.dds";
-		m_cubemapTexture		= make_shared<Texture>(GetContext());
+		m_cubemapTexture		= make_shared<RI_Texture>(GetContext());
 		m_cubemapTexture->SetResourceName("Cubemap");
 		m_cubemapTexture->LoadFromFile(texPath);
 		m_cubemapTexture->SetType(TextureType_CubeMap);

@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================================
+//= INCLUDES ==========================================
 #include "IComponent.h"
 #include <memory>
 #include <vector>
-#include "../../Graphics/RI/Vertex.h"
-#include "../../Graphics/RI/D3D11/D3D11VertexBuffer.h"
-//====================================================
+#include "../../Rendering/RI/RI_Vertex.h"
+#include "../../Rendering/RI/D3D11/D3D11_VertexBuffer.h"
+//=====================================================
 
 namespace Directus
 {
@@ -57,7 +57,7 @@ namespace Directus
 
 	private:
 		//= VERTICES =====================================
-		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
 		std::vector<VertexPosCol> m_vertices;
 		//================================================
 

@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../GameObject.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/BulletPhysicsHelper.h"
-#include "../../Graphics/Mesh.h"
+#include "../../Rendering/Mesh.h"
 #include "../../Logging/Log.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>

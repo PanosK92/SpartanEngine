@@ -38,8 +38,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileStream.h"
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
-#include "../Graphics/RI/Backend_Def.h"
-#include "../Graphics/RI/Backend_Imp.h"
+#include "../Rendering/RI/Backend_Def.h"
+#include "../Rendering/RI/Backend_Imp.h"
 //============================================
 
 //= NAMESPACES =====

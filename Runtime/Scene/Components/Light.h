@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =======================
 #include <vector>
 #include <memory>
 #include "IComponent.h"
@@ -29,8 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
 #include "../../Core/Settings.h"
-#include "../../Graphics/Cascade.h"
-//=================================
+#include "../../Rendering/Cascade.h"
+//==================================
 
 namespace Directus
 {

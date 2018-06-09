@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include <memory>
 #include <map>
 #include "ResourceCache.h"
@@ -29,10 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Import/ModelImporter.h"
 #include "Import/ImageImporter.h"
 #include "Import/FontImporter.h"
-#include "../Graphics/Model.h"
-#include "../Graphics/Material.h"
+#include "../Rendering/Model.h"
+#include "../Rendering/Material.h"
 #include "../Audio/AudioClip.h"
-//===============================
+//================================
 
 namespace Directus
 {

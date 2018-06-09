@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Backend_Def.h"
 #include "../Input/Backend_Imp.h"
 #include "../Logging/Log.h"
-#include "../Graphics/Material.h"
+#include "../Rendering/Material.h"
 #include "../Math/Vector3.h"
 #include "../Math/Quaternion.h"
 #include "../Scene/Components/RigidBody.h"

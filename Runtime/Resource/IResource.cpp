@@ -19,18 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================================
+//= INCLUDES ============================================
 #include "../Resource/IResource.h"
 #include "ResourceManager.h"
 #include "../Audio/AudioClip.h"
-#include "../Graphics/RI/Texture.h"
-#include "../Graphics/Font.h"
-#include "../Graphics/Animation.h"
-#include "../Graphics/Model.h"
-#include "../Graphics/Material.h"
-#include "../Graphics/Mesh.h"
-#include "../Graphics/DeferredShaders/ShaderVariation.h"
-//======================================================
+#include "../Rendering/RI/RI_Texture.h"
+#include "../Rendering/Font.h"
+#include "../Rendering/Animation.h"
+#include "../Rendering/Model.h"
+#include "../Rendering/Material.h"
+#include "../Rendering/Mesh.h"
+#include "../Rendering/DeferredShaders/ShaderVariation.h"
+//=======================================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -41,7 +41,7 @@ template <typename T>
 ResourceType IResource::DeduceResourceType() { return Resource_Unknown; }
 // Explicit template instantiation
 #define INSTANTIATE_ToResourceType(T, enumT) template<> ENGINE_CLASS ResourceType IResource::DeduceResourceType<T>() { return enumT; }
-INSTANTIATE_ToResourceType(Texture,			Resource_Texture)
+INSTANTIATE_ToResourceType(RI_Texture,			Resource_Texture)
 INSTANTIATE_ToResourceType(AudioClip,		Resource_Audio)
 INSTANTIATE_ToResourceType(Material,		Resource_Material)
 INSTANTIATE_ToResourceType(ShaderVariation, Resource_Shader)

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================================
+//= INCLUDES =========================================
 #include "Widget_Properties.h"
 #include "Widget_Scene.h"
 #include "../../ImGui/imgui.h"
@@ -38,11 +38,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/AudioListener.h"
 #include "Scene/Components/Camera.h"
 #include "Scene/Components/Script.h"
-#include "Graphics/RI/Backend_Imp.h"
-#include "Graphics/Material.h"
-#include "Graphics/DeferredShaders/ShaderVariation.h"
-#include "Graphics/Mesh.h"
-//===================================================
+#include "Rendering/RI/Backend_Imp.h"
+#include "Rendering/Material.h"
+#include "Rendering/DeferredShaders/ShaderVariation.h"
+#include "Rendering/Mesh.h"
+//====================================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -91,17 +91,17 @@ static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
 	}									\
 	ImGui::Separator()					\
 
-#define DROP_TARGET_TEXTURE(textureType)																	\
-{																											\
-	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))										\
-	{																										\
-		if (auto texture = g_resourceManager->Load<Texture>(std::get<std::string>(payload->data)).lock())	\
-		{																									\
-			texture->SetType(textureType);																	\
-			material->SetTexture(texture);																	\
-		}																									\
-	}																										\
-}																											\
+#define DROP_TARGET_TEXTURE(textureType)																		\
+{																												\
+	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))											\
+	{																											\
+		if (auto texture = g_resourceManager->Load<RI_Texture>(std::get<std::string>(payload->data)).lock())	\
+		{																										\
+			texture->SetType(textureType);																		\
+			material->SetTexture(texture);																		\
+		}																										\
+	}																											\
+}																												\
 //=======================================================================
 
 Widget_Properties::Widget_Properties()

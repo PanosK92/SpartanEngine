@@ -25,15 +25,15 @@
 //  2016-05-07: DirectX11: Disabling depth-write.
 
 
-//= INCLUDES =======================
+//= INCLUDES ========================
 #include "../ImGui/imgui.h"
 #include "Core/Engine.h"
 #include "Core/Timer.h"
-#include "Graphics/RI/Backend_Imp.h"
-#include "Graphics/Renderer.h"
+#include "Rendering/RI/Backend_Imp.h"
+#include "Rendering/Renderer.h"
 #include "Input/Backend_Def.h"
 #include "Input/Backend_Imp.h"
-//==================================
+//===================================
 
 //= NAMESPACES ==========
 using namespace Directus;
@@ -595,8 +595,8 @@ bool ImGui_ImplDX11_Init(Context* context)
 	ImGuiImpl_Engine::g_renderer	= context->GetSubsystem<Renderer>();
 	ImGuiImpl_Engine::g_timer		= context->GetSubsystem<Timer>();
 	ImGuiImpl_Engine::g_input		= context->GetSubsystem<Input>();
-    g_pd3dDevice					= context->GetSubsystem<Graphics>()->GetDevice();
-    g_pd3dDeviceContext				= context->GetSubsystem<Graphics>()->GetDeviceContext();
+    g_pd3dDevice					= context->GetSubsystem<Rendering>()->GetDevice();
+    g_pd3dDeviceContext				= context->GetSubsystem<Rendering>()->GetDeviceContext();
 	
 	 if (!QueryPerformanceFrequency((LARGE_INTEGER*)&g_TicksPerSecond))
         return false;

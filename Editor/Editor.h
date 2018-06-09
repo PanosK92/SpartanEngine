@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES ========================
 #include <vector>
 #include <memory>
-#include "Graphics/RI/Backend_Def.h"
-//==================================
+#include "Rendering/RI/Backend_Def.h"
+//===================================
 
 struct ImGuiContext;
 class Widget;
@@ -51,5 +51,5 @@ private:
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
 	Directus::Context* m_context;
-	Directus::Graphics* m_graphics;
+	Directus::Rendering* m_graphics;
 };

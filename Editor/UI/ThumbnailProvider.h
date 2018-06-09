@@ -56,13 +56,13 @@ enum Thumbnail_Type
 namespace Directus
 {
 	class Context;
-	class Texture;
+	class RI_Texture;
 }
 
 struct Thumbnail
 {
 	Thumbnail(){}
-	Thumbnail(Thumbnail_Type type, std::shared_ptr<Directus::Texture> texture, const std::string& filePath)
+	Thumbnail(Thumbnail_Type type, std::shared_ptr<Directus::RI_Texture> texture, const std::string& filePath)
 	{
 		this->type = type;
 		this->texture = texture;
@@ -70,7 +70,7 @@ struct Thumbnail
 	}
 
 	Thumbnail_Type type;
-	std::shared_ptr<Directus::Texture> texture;
+	std::shared_ptr<Directus::RI_Texture> texture;
 	std::string filePath;
 };
 
