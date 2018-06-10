@@ -204,7 +204,7 @@ namespace Directus
 			}
 
 			// Get mesh geometry
-			vector<VertexPosTexTBN> vertices;
+			vector<RI_Vertex_PosUVTBN> vertices;
 			vector<unsigned int> indices;
 			mesh->GetGeometry(&vertices, &indices);
 
@@ -215,7 +215,7 @@ namespace Directus
 			m_collisionShape = make_shared<btConvexHullShape>(
 				(btScalar*)&vertices[0],				// points
 				mesh->GetVertexCount(),					// point count
-				(unsigned int)sizeof(VertexPosTexTBN));	// stride
+				(unsigned int)sizeof(RI_Vertex_PosUVTBN));	// stride
 
 			// Scaling has to be done before (potential) optimization
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));

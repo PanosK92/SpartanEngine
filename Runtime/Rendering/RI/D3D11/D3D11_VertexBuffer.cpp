@@ -44,12 +44,12 @@ namespace Directus
 		SafeRelease(m_buffer);
 	}
 
-	bool D3D11_VertexBuffer::Create(const vector<VertexPosCol>& vertices)
+	bool D3D11_VertexBuffer::Create(const vector<RI_Vertex_PosCol>& vertices)
 	{
 		if (!m_graphics->GetDevice() || vertices.empty())
 			return false;
 
-		m_stride = sizeof(VertexPosCol);
+		m_stride = sizeof(RI_Vertex_PosCol);
 		unsigned int size = (unsigned int)vertices.size();
 		unsigned int byteWidth = m_stride * size;
 
@@ -70,7 +70,7 @@ namespace Directus
 		initData.SysMemSlicePitch = 0;
 
 		// Compute memory usage
-		m_memoryUsage = (unsigned int)(sizeof(VertexPosCol) * vertices.size());
+		m_memoryUsage = (unsigned int)(sizeof(RI_Vertex_PosCol) * vertices.size());
 
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
@@ -82,12 +82,12 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11_VertexBuffer::Create(const vector<VertexPosTex>& vertices)
+	bool D3D11_VertexBuffer::Create(const vector<RI_Vertex_PosUV>& vertices)
 	{
 		if (!m_graphics || !m_graphics->GetDevice() || vertices.empty())
 			return false;
 
-		m_stride = sizeof(VertexPosTex);
+		m_stride = sizeof(RI_Vertex_PosUV);
 		auto size = (unsigned int)vertices.size();
 		unsigned int byteWidth = m_stride * size;
 
@@ -108,7 +108,7 @@ namespace Directus
 		initData.SysMemSlicePitch = 0;
 
 		// Compute memory usage
-		m_memoryUsage = (unsigned int)(sizeof(VertexPosTex) * vertices.size());
+		m_memoryUsage = (unsigned int)(sizeof(RI_Vertex_PosUV) * vertices.size());
 
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
@@ -120,12 +120,12 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11_VertexBuffer::Create(const vector<VertexPosTexTBN>& vertices)
+	bool D3D11_VertexBuffer::Create(const vector<RI_Vertex_PosUVTBN>& vertices)
 	{
 		if (!m_graphics || !m_graphics->GetDevice() || vertices.empty())
 			return false;
 
-		m_stride = sizeof(VertexPosTexTBN);
+		m_stride = sizeof(RI_Vertex_PosUVTBN);
 		unsigned int size = (unsigned int)vertices.size();
 		unsigned int byteWidth = m_stride * size;
 
@@ -146,7 +146,7 @@ namespace Directus
 		initData.SysMemSlicePitch = 0;
 
 		// Compute memory usage
-		m_memoryUsage = (unsigned int)(sizeof(VertexPosTexTBN) * vertices.size());
+		m_memoryUsage = (unsigned int)(sizeof(RI_Vertex_PosUVTBN) * vertices.size());
 
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))

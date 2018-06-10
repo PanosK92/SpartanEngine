@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include <memory>
-#include "RI/RI_Vertex.h"
+#include "RI/Backend_Def.h"
 #include "../Math/BoundingBox.h"
 #include "../Resource/IResource.h"
 //================================
@@ -33,8 +33,6 @@ namespace Directus
 {
 	class Context;
 	class FileStream;
-	class D3D11_VertexBuffer;
-	class D3D11_IndexBuffer;
 
 	class Mesh : public IResource
 	{
@@ -54,17 +52,17 @@ namespace Directus
 		// Clears geometry (vertices and indices)
 		void ClearGeometry();
 		// Returns vertices & indices and loads them from disk. in case they have been erased
-		void GetGeometry(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
+		void GetGeometry(std::vector<RI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices);
 		// Returns vertices. Will be empty after creating a vertex buffer for the GPU
-		std::vector<VertexPosTexTBN>& GetVertices() { return m_vertices; }
+		std::vector<RI_Vertex_PosUVTBN>& GetVertices() { return m_vertices; }
 		// Sets vertices
-		void SetVertices(const std::vector<VertexPosTexTBN>& vertices) { m_vertices = vertices; }
+		void SetVertices(const std::vector<RI_Vertex_PosUVTBN>& vertices) { m_vertices = vertices; }
 		// Returns indices. Will be empty after creating an index buffer
 		std::vector<unsigned int>& GetIndices() { return m_indices; }
 		// Sets indices
 		void SetIndices(const std::vector<unsigned int>& indices) { m_indices = indices; }
 		// Adds a single vertex
-		void AddVertex(const VertexPosTexTBN& vertex) { m_vertices.emplace_back(vertex); }
+		void AddVertex(const RI_Vertex_PosUVTBN& vertex) { m_vertices.emplace_back(vertex); }
 		// Adds a single index
 		void AddIndex(unsigned int index) { m_indices.emplace_back(index); }
 
@@ -90,7 +88,7 @@ namespace Directus
 		//======================
 
 		std::string m_modelName;
-		std::vector<VertexPosTexTBN> m_vertices;
+		std::vector<RI_Vertex_PosUVTBN> m_vertices;
 		std::vector<unsigned int> m_indices;
 		unsigned int m_vertexCount;
 		unsigned int m_indexCount;

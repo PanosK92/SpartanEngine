@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include <vector>
+#include "RI/Backend_Def.h"
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
-#include "RI/RI_Texture.h"
 //================================
 
 namespace Directus
@@ -36,7 +36,6 @@ namespace Directus
 	class Mesh;
 	class Material;
 	class Animation;
-	struct VertexPosTexTBN;
 
 	namespace Math
 	{
@@ -59,7 +58,7 @@ namespace Directus
 		void SetRootGameObject(const std::weak_ptr<GameObject>& gameObj) { m_rootGameObj = gameObj; }
 
 		// Adds a mesh by creating it from scratch
-		void AddMesh(const std::string& name, std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices, const std::weak_ptr<GameObject>& gameObject);
+		void AddMesh(const std::string& name, std::vector<RI_Vertex_PosUVTBN>& vertices, std::vector<unsigned int>& indices, const std::weak_ptr<GameObject>& gameObject);
 
 		// Adds a new mesh
 		void AddMesh(const std::weak_ptr<Mesh>& mesh, const std::weak_ptr<GameObject>& gameObject, bool autoCache = true);

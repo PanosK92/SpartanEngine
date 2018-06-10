@@ -72,7 +72,7 @@ namespace Directus
 
 		//= RAYCASTING ====================================================
 		// Returns a the picking ray as vertices (can be used to render it)
-		std::vector<VertexPosCol> GetPickingRay();
+		std::vector<RI_Vertex_PosCol> GetPickingRay();
 
 		// Returns the nearest GameObject under the cursor
 		std::weak_ptr<GameObject> Pick(const Math::Vector2& mousePos);

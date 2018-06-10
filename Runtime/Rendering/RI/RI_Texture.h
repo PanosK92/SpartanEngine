@@ -22,28 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========================
-#include "../../Resource/IResource.h"
 #include <memory>
 #include "Backend_Def.h"
-#include "RI_Device.h"
+#include "../../Resource/IResource.h"
 //===================================
 
 namespace Directus
 {
-	enum TextureType
-	{
-		TextureType_Unknown,
-		TextureType_Albedo,
-		TextureType_Roughness,
-		TextureType_Metallic,
-		TextureType_Normal,
-		TextureType_Height,
-		TextureType_Occlusion,
-		TextureType_Emission,
-		TextureType_Mask,
-		TextureType_CubeMap,
-	};
-
 	class ENGINE_CLASS RI_Texture : public IResource
 	{
 	public:

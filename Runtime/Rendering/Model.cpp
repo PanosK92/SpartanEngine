@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
 #include "../Rendering/RI/RI_Vertex.h"
+#include "../Rendering/RI/RI_Texture.h"
 #include "../Rendering/Material.h"
 #include "../Rendering/Animation.h"
 #include "../IO/FileStream.h"
@@ -114,7 +115,7 @@ namespace Directus
 	}
 	//=======================================================
 
-	void Model::AddMesh(const string& name, vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices, const weak_ptr<GameObject>& gameObject)
+	void Model::AddMesh(const string& name, vector<RI_Vertex_PosUVTBN>& vertices, vector<unsigned int>& indices, const weak_ptr<GameObject>& gameObject)
 	{
 		// In case this mesh is already loaded, use that one
 		auto existingMesh = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(name);
@@ -438,11 +439,11 @@ namespace Directus
 			if (cachedMesh.lock()->GetVertexCount() != mesh->GetVertexCount())
 				continue;
 
-			vector<VertexPosTexTBN> meshVertices;
+			vector<RI_Vertex_PosUVTBN> meshVertices;
 			vector<unsigned int> meshIndices;
 			mesh->GetGeometry(&meshVertices, &meshIndices);
 
-			vector<VertexPosTexTBN> cachedVertices;
+			vector<RI_Vertex_PosUVTBN> cachedVertices;
 			vector<unsigned int> cachedIndices;
 			cachedMesh.lock()->GetGeometry(&cachedVertices, &cachedIndices);
 

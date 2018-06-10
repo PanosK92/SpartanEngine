@@ -38,8 +38,6 @@ namespace Directus
 	}
 
 	struct Glyph;
-	struct VertexPosTex;
-	class RI_Texture;
 
 	class ENGINE_CLASS Font : IResource
 	{
@@ -65,7 +63,7 @@ namespace Directus
 		unsigned int GetIndexCount() { return (unsigned int)m_indices.size(); }
 			
 	private:	
-		bool UpdateBuffers(std::vector<VertexPosTex>& vertices, std::vector<unsigned int>& indices);
+		bool UpdateBuffers(std::vector<RI_Vertex_PosUV>& vertices, std::vector<unsigned int>& indices);
 
 		std::map<unsigned int, Glyph> m_glyphs;
 		std::unique_ptr<RI_Texture> m_textureAtlas;
@@ -75,7 +73,7 @@ namespace Directus
 		Math::Vector4 m_fontColor;
 		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<D3D11_IndexBuffer> m_indexBuffer;
-		std::vector<VertexPosTex> m_vertices;
+		std::vector<RI_Vertex_PosUV> m_vertices;
 		std::vector<unsigned int> m_indices;
 		std::string m_currentText;
 	};

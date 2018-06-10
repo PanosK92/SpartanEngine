@@ -40,7 +40,7 @@ namespace Directus
 {
 	Rectangle::Rectangle(Context* context)
 	{
-		m_graphics = context->GetSubsystem<Rendering>();
+		m_graphics = context->GetSubsystem<RenderingDevice>();
 		m_x = 0;
 		m_y = 0;
 		m_width = 0;
@@ -80,28 +80,28 @@ namespace Directus
 		float bottom = top - m_height;
 
 		// Create index and vertex arrays
-		vector<VertexPosTex> vertices;
+		vector<RI_Vertex_PosUV> vertices;
 		vector<unsigned int> indices;
 
 		// First triangle
 		// Top left
-		vertices.emplace_back(VertexPosTex(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
+		vertices.emplace_back(RI_Vertex_PosUV(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
 
 		// Bottom right
-		vertices.emplace_back(VertexPosTex(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
+		vertices.emplace_back(RI_Vertex_PosUV(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
 
 		// Bottom left
-		vertices.emplace_back(VertexPosTex(Vector3(left, bottom, 0.0f), Vector2(0.0f, 1.0f)));
+		vertices.emplace_back(RI_Vertex_PosUV(Vector3(left, bottom, 0.0f), Vector2(0.0f, 1.0f)));
 
 		// Second triangle
 		// Top left
-		vertices.emplace_back(VertexPosTex(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
+		vertices.emplace_back(RI_Vertex_PosUV(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
 
 		// Top right
-		vertices.emplace_back(VertexPosTex(Vector3(right, top, 0.0f), Vector2(1.0f, 0.0f)));
+		vertices.emplace_back(RI_Vertex_PosUV(Vector3(right, top, 0.0f), Vector2(1.0f, 0.0f)));
 
 		// Bottom right
-		vertices.emplace_back(VertexPosTex(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
+		vertices.emplace_back(RI_Vertex_PosUV(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
 
 		// Load the index array with data.
 		for (unsigned int i = 0; i < vertices.size(); i++)

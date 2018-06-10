@@ -84,7 +84,7 @@ namespace Directus
 		unsigned long m_shaderFlags;
 
 		//= MISC ==================================================
-		Rendering* m_graphics;
+		RenderingDevice* m_graphics;
 		std::shared_ptr<D3D11_ConstantBuffer> m_perObjectBuffer;
 		std::shared_ptr<D3D11_ConstantBuffer> m_materialBuffer;
 		std::shared_ptr<D3D11_ConstantBuffer> m_miscBuffer;

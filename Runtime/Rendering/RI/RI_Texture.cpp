@@ -60,7 +60,7 @@ namespace Directus
 		// Texture
 		m_isUsingMipmaps	= true;
 		m_format			= Texture_Format_R8G8B8A8_UNORM;
-		m_textureLowLevel	= make_shared<D3D11_Texture>(m_context->GetSubsystem<Rendering>());
+		m_textureLowLevel	= make_shared<D3D11_Texture>(m_context->GetSubsystem<RenderingDevice>());
 	}
 
 	RI_Texture::~RI_Texture()
@@ -241,7 +241,7 @@ namespace Directus
 		// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
 		if (FileSystem::GetExtensionFromFilePath(filePath) == ".dds")
 		{
-			auto graphicsDevice = m_context->GetSubsystem<Rendering>()->GetDevice();
+			auto graphicsDevice = m_context->GetSubsystem<RenderingDevice>()->GetDevice();
 			if (!graphicsDevice)
 				return false;
 

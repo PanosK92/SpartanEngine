@@ -24,13 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <memory>
 #include "../Core/EngineDefs.h"
+#include "RI/Backend_Def.h"
 //=============================
 
 namespace Directus
 {
 	class Camera;
 	class Context;
-	class D3D11_RenderTexture;
 	namespace Math
 	{
 		class Matrix;

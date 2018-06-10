@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RI_Shader.h"
 #include "D3D11/D3D11_Shader.h"
 #include "D3D11/D3D11_ConstantBuffer.h"
+#include "D3D11/D3D11_RenderTexture.h"
 #include "Backend_Imp.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Context.h"
@@ -39,7 +40,7 @@ namespace Directus
 {
 	RI_Shader::RI_Shader(Context* context)
 	{
-		m_graphics		= context->GetSubsystem<Rendering>();
+		m_graphics		= context->GetSubsystem<RenderingDevice>();
 		m_bufferType	= CB_WVP;
 		m_bufferScope	= VertexShader;
 	}

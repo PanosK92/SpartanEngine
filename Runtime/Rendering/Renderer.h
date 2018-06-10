@@ -86,7 +86,7 @@ namespace Directus
 		void SetBackBufferSize(int width, int height);
 		const RI_Viewport& GetViewportBackBuffer();
 
-		// The actual frame that all rendering takes palce (or the viewport window in the editor)
+		// The actual frame that all rendering takes place (or the viewport window in the editor)
 		void SetResolutionInternal(int width, int height);
 		const Math::Vector2& GetViewportInternal();
 
@@ -178,7 +178,7 @@ namespace Directus
 		Math::Matrix m_mViewBase;
 		float m_nearPlane;
 		float m_farPlane;
-		Rendering* m_graphics;
+		RenderingDevice* m_graphics;
 		//================================================
 
 		// Metrics

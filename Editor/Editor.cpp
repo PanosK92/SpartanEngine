@@ -65,7 +65,7 @@ Editor::~Editor()
 void Editor::Initialize(Context* context)
 {
 	m_context = context;
-	m_graphics = context->GetSubsystem<Rendering>();
+	m_graphics = context->GetSubsystem<RenderingDevice>();
 
 	ThumbnailProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);

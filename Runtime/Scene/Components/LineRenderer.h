@@ -46,8 +46,8 @@ namespace Directus
 		//= INPUT ===================================================================================
 		void AddBoundigBox(const Math::BoundingBox& box, const Math::Vector4& color);
 		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color);	
-		void AddLines(const std::vector<VertexPosCol>& lineList);
-		void AddVertex(const VertexPosCol& line);
+		void AddLines(const std::vector<RI_Vertex_PosCol>& lineList);
+		void AddVertex(const RI_Vertex_PosCol& line);
 		void ClearVertices();
 
 		//= MISC ================================================================
@@ -58,7 +58,7 @@ namespace Directus
 	private:
 		//= VERTICES =====================================
 		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
-		std::vector<VertexPosCol> m_vertices;
+		std::vector<RI_Vertex_PosCol> m_vertices;
 		//================================================
 
 		//= MISC =================

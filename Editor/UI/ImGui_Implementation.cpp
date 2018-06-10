@@ -595,8 +595,8 @@ bool ImGui_ImplDX11_Init(Context* context)
 	ImGuiImpl_Engine::g_renderer	= context->GetSubsystem<Renderer>();
 	ImGuiImpl_Engine::g_timer		= context->GetSubsystem<Timer>();
 	ImGuiImpl_Engine::g_input		= context->GetSubsystem<Input>();
-    g_pd3dDevice					= context->GetSubsystem<Rendering>()->GetDevice();
-    g_pd3dDeviceContext				= context->GetSubsystem<Rendering>()->GetDeviceContext();
+    g_pd3dDevice					= context->GetSubsystem<RenderingDevice>()->GetDevice();
+    g_pd3dDeviceContext				= context->GetSubsystem<RenderingDevice>()->GetDeviceContext();
 	
 	 if (!QueryPerformanceFrequency((LARGE_INTEGER*)&g_TicksPerSecond))
         return false;

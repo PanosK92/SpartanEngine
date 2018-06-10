@@ -47,16 +47,16 @@ namespace Directus
 
 	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor)
 	{
-		m_lines.emplace_back(VertexPosCol{ ToVector3(from), ToVector4(fromColor) });
-		m_lines.emplace_back(VertexPosCol{ ToVector3(to), ToVector4(toColor) });
+		m_lines.emplace_back(RI_Vertex_PosCol{ ToVector3(from), ToVector4(fromColor) });
+		m_lines.emplace_back(RI_Vertex_PosCol{ ToVector3(to), ToVector4(toColor) });
 
 		m_isDirty = true;
 	}
 
 	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
 	{
-		m_lines.emplace_back(VertexPosCol{ ToVector3(from), ToVector4(color) });
-		m_lines.emplace_back(VertexPosCol{ ToVector3(to), ToVector4(color) });
+		m_lines.emplace_back(RI_Vertex_PosCol{ ToVector3(from), ToVector4(color) });
+		m_lines.emplace_back(RI_Vertex_PosCol{ ToVector3(to), ToVector4(color) });
 
 		m_isDirty = true;
 	}
@@ -128,7 +128,7 @@ namespace Directus
 		return m_isDirty;
 	}
 
-	const std::vector<VertexPosCol>& PhysicsDebugDraw::GetLines()
+	const std::vector<RI_Vertex_PosCol>& PhysicsDebugDraw::GetLines()
 	{
 		return m_lines;
 	}

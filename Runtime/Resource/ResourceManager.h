@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Model.h"
 #include "../Rendering/Material.h"
 #include "../Audio/AudioClip.h"
+#include "../Rendering/RI/RI_Texture.h"
 //================================
 
 namespace Directus

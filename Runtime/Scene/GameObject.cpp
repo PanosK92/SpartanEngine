@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================================
+//= INCLUDES ==========================================
 #include "GameObject.h"
 #include "Scene.h"
 #include "../Scene/Components/Camera.h"
@@ -34,13 +34,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Components/Script.h"
 #include "../Scene/Components/AudioSource.h"
 #include "../Scene/Components/AudioListener.h"
+#include "../Rendering/RI/Backend_Def.h"
+#include "../Rendering/RI/Backend_Imp.h"
+#include "../Rendering/RI/D3D11//D3D11_RenderTexture.h"
 #include "../Logging/Log.h"
 #include "../IO/FileStream.h"
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
-#include "../Rendering/RI/Backend_Def.h"
-#include "../Rendering/RI/Backend_Imp.h"
-//============================================
+//=====================================================
 
 //= NAMESPACES =====
 using namespace std;

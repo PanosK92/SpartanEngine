@@ -55,7 +55,7 @@ namespace Directus
 			}
 
 			// Compute bounding box from vertices
-			void ComputeFromVertices(const std::vector<VertexPosTexTBN>& vertices);
+			void ComputeFromVertices(const std::vector<RI_Vertex_PosUVTBN>& vertices);
 
 			// Returns the center
 			Vector3 GetCenter() const { return (max + min) * 0.5f; }

@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "GBuffer.h"
 #include "../RI/Backend_Imp.h"
+#include "../RI/RI_Device.h"
 #include "../RI/D3D11/D3D11_RenderTexture.h"
 //==========================================
 
@@ -32,7 +33,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	GBuffer::GBuffer(Rendering* graphics, int width, int height)
+	GBuffer::GBuffer(RenderingDevice* graphics, int width, int height)
 	{
 		m_graphics = graphics;
 

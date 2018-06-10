@@ -47,7 +47,7 @@ namespace Directus::Math
 
 	}
 
-	void BoundingBox::ComputeFromVertices(const std::vector<VertexPosTexTBN>& vertices)
+	void BoundingBox::ComputeFromVertices(const std::vector<RI_Vertex_PosUVTBN>& vertices)
 	{
 		min = Vector3::Infinity;
 		max = Vector3::InfinityNeg;

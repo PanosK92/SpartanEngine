@@ -40,7 +40,7 @@ namespace Directus
 	Cascade::Cascade(int resolution, Camera* camera, Context* context)
 	{
 		m_resolution	= resolution;
-		m_depthMap		= make_unique<D3D11_RenderTexture>(context->GetSubsystem<Rendering>(), m_resolution, m_resolution, true);
+		m_depthMap		= make_unique<D3D11_RenderTexture>(context->GetSubsystem<RenderingDevice>(), m_resolution, m_resolution, true);
 		m_camera		= camera;
 	}
 

@@ -117,7 +117,7 @@ namespace Directus
 	{
 		// Vertices & Indices
 		unsigned int size = 0;
-		size += unsigned int(m_vertices.size() * sizeof(VertexPosTexTBN));
+		size += unsigned int(m_vertices.size() * sizeof(RI_Vertex_PosUVTBN));
 		size += unsigned int(m_indices.size() * sizeof(unsigned int));
 
 		// Buffers
@@ -127,7 +127,7 @@ namespace Directus
 		return size;
 	}
 
-	void Mesh::GetGeometry(vector<VertexPosTexTBN>* vertices, vector<unsigned>* indices)
+	void Mesh::GetGeometry(vector<RI_Vertex_PosUVTBN>* vertices, vector<unsigned>* indices)
 	{
 		if (!m_vertices.empty() && !m_indices.empty())
 		{
@@ -180,7 +180,7 @@ namespace Directus
 		}
 
 		// Set the type of primitive that should be rendered from mesh
-		m_context->GetSubsystem<Rendering>()->SetPrimitiveTopology(TriangleList);
+		m_context->GetSubsystem<RenderingDevice>()->SetPrimitiveTopology(TriangleList);
 
 		return success;
 	}
@@ -188,7 +188,7 @@ namespace Directus
 	//= HELPER FUNCTIONS ===========================================================
 	bool Mesh::ConstructBuffers()
 	{
-		auto graphics = m_context->GetSubsystem<Rendering>();
+		auto graphics = m_context->GetSubsystem<RenderingDevice>();
 		if (!graphics->GetDevice())
 		{
 			LOG_ERROR("Mesh: Aborting vertex buffer creation. Graphics device is not present.");
