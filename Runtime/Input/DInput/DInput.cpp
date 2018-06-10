@@ -170,7 +170,7 @@ namespace Directus
 			ss << hex << DIRECTINPUT_VERSION;
 			auto major = ss.str().erase(1, 2);
 			auto minor = ss.str().erase(0, 1);
-			LOG_INFO("Input: DirectInput " + major + "." + minor);
+			LOGF_INFO("Input: DirectInput %s.%s", &major[0], &minor[0]);
 		}
 
 		return success;

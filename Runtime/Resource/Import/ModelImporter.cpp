@@ -85,7 +85,7 @@ namespace Directus
 		int minor = aiGetVersionMinor();
 		int rev = aiGetVersionRevision();
 		Settings::Get().g_versionAssimp = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
-		LOG_INFO("ModelImporter: Assimp " + Settings::Get().g_versionAssimp);
+		LOGF_INFO("ModelImporter: Assimp %s", Settings::Get().g_versionAssimp.data());
 	}
 
 	ModelImporter::~ModelImporter()
