@@ -21,13 +21,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= RENDERING ======
-#define API_D3D11
-//#define API_VULKAN
-//==================
+//= INCLUDES ===================
+#include <map>
+#include <memory>
+#include "../RI/RI_Device.h"
+#include "../../Core/Settings.h"
+//==============================
 
-//= INPUT ========
-#define API_DInput
-//================
+namespace Directus
+{
+	enum GBuffer_Texture_Type
+	{
+		GBuffer_Target_Unknown,
+		GBuffer_Target_Albedo,
+		GBuffer_Target_Normal,
+		GBuffer_Target_Specular,
+		GBuffer_Target_Depth
+	};
 
-// Note: In the future, these can be implicitly defined via the platform
+	class ENGINE_CLASS GBuffer
+	{
+	public:
+		GBuffer(Rendering* graphics, int width = RESOLUTION_WIDTH, int height = RESOLUTION_HEIGHT);
+		~GBuffer();
+
+		bool SetAsRenderTarget();
+		bool Clear();
+		void* GetShaderResource(GBuffer_Texture_Type type);
+
+	private:
+		std::map<GBuffer_Texture_Type, std::shared_ptr<D3D11_RenderTexture>> m_renderTargets;
+		Rendering* m_graphics;
+	};
+}

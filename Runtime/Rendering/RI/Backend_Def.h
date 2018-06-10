@@ -25,8 +25,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Backends/Backends.h"
 //==================================
 
-#ifdef API_D3D11
+// Forward declarations - RI (Rendering Interface)
+namespace Directus
+{
+	class RI_Texture;
+	class RI_Shader;
+}
 
+#ifdef API_D3D11
 // Forward declarations - Graphics API
 namespace Directus
 {
@@ -37,7 +43,7 @@ namespace Directus
 	class D3D11_VertexBuffer;
 	class D3D11_IndexBuffer;
 	class D3D11_Texture;
-
+	
 	typedef D3D11_Device Rendering;
 }
 
@@ -69,5 +75,13 @@ typedef _D3D_SHADER_MACRO D3D_SHADER_MACRO;
 struct ID3D10Blob;
 typedef ID3D10Blob ID3DBlob;
 struct ID3DUserDefinedAnnotation;
+#endif
 
+#ifdef API_VULKAN
+namespace Directus
+{
+	class Vulkan_Device;
+
+	typedef Vulkan_Device Rendering;
+}
 #endif

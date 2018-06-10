@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 
 #ifdef API_D3D11
-
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -93,5 +92,8 @@ static const D3D11_FILTER d3d11_filter[] =
 	D3D11_FILTER_MIN_MAG_MIP_LINEAR,
 	D3D11_FILTER_ANISOTROPIC
 };
+#endif
 
+#ifdef API_VULKAN
+#include <vulkan/vulkan.h>
 #endif
