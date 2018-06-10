@@ -43,7 +43,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Rendering* graphics;
+	RenderingDevice* graphics;
 
 	Font::Font(Context* context) : IResource(context)
 	{
@@ -51,7 +51,7 @@ namespace Directus
 		m_charMaxWidth	= 0;
 		m_charMaxHeight = 0;
 		m_fontColor		= Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-		graphics		= m_context->GetSubsystem<Rendering>();
+		graphics		= m_context->GetSubsystem<RenderingDevice>();
 	}
 
 	Font::~Font()
@@ -196,7 +196,7 @@ namespace Directus
 		UpdateBuffers(m_vertices, m_indices);
 	}
 
-	bool Font::UpdateBuffers(vector<VertexPosTex>& vertices, vector<unsigned int>& indices)
+	bool Font::UpdateBuffers(vector<RI_Vertex_PosUV>& vertices, vector<unsigned int>& indices)
 	{
 		if (!m_context)
 			return false;
@@ -205,14 +205,14 @@ namespace Directus
 		if (!m_vertexBuffer)
 		{
 			m_vertexBuffer = make_shared<D3D11_VertexBuffer>(graphics);
-			if (!m_vertexBuffer->CreateDynamic(sizeof(VertexPosTex), (unsigned int)vertices.size()))
+			if (!m_vertexBuffer->CreateDynamic(sizeof(RI_Vertex_PosUV), (unsigned int)vertices.size()))
 			{
 				LOG_ERROR("Font: Failed to create vertex buffer.");
 				return false;
 			}	
 		}
 		void* data = m_vertexBuffer->Map();
-		memcpy(data, &vertices[0], sizeof(VertexPosTex) * vertices.size());
+		memcpy(data, &vertices[0], sizeof(RI_Vertex_PosUV) * vertices.size());
 		m_vertexBuffer->Unmap();
 
 		// Index buffer

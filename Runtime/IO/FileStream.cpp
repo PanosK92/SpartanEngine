@@ -118,11 +118,11 @@ namespace Directus
 		out.write(reinterpret_cast<const char*>(&value), sizeof(Quaternion));
 	}
 
-	void FileStream::Write(const vector<VertexPosTexTBN>& value)
+	void FileStream::Write(const vector<RI_Vertex_PosUVTBN>& value)
 	{
 		unsigned int length = (unsigned int)value.size();
 		Write(length);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(VertexPosTexTBN) * length);
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RI_Vertex_PosUVTBN) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned int>& value)
@@ -194,7 +194,7 @@ namespace Directus
 		}
 	}
 
-	void FileStream::Read(vector<VertexPosTexTBN>* vec)
+	void FileStream::Read(vector<RI_Vertex_PosUVTBN>* vec)
 	{
 		if (!vec)
 			return;
@@ -207,7 +207,7 @@ namespace Directus
 		vec->reserve(length);
 		vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(vec->data()), sizeof(VertexPosTexTBN) * length);
+		in.read(reinterpret_cast<char*>(vec->data()), sizeof(RI_Vertex_PosUVTBN) * length);
 	}
 
 	void FileStream::Read(vector<unsigned int>* vec)

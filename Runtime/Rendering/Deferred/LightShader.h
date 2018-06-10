@@ -40,7 +40,7 @@ namespace Directus
 		LightShader();
 		~LightShader();
 
-		void Load(const std::string& filePath, Rendering* graphics);
+		void Load(const std::string& filePath, RenderingDevice* graphics);
 		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mBaseView,
 			const Math::Matrix& mPerspectiveProjection, const Math::Matrix& mOrthographicProjection);
 		void UpdateMiscBuffer(const std::vector<Light*>& lights, Camera* camera);
@@ -96,6 +96,6 @@ namespace Directus
 		std::shared_ptr<D3D11_ConstantBuffer> m_matrixBuffer;
 		std::shared_ptr<D3D11_ConstantBuffer> m_miscBuffer;
 		std::shared_ptr<D3D11_Shader> m_shader;
-		Rendering* m_graphics;
+		RenderingDevice* m_graphics;
 	};
 }

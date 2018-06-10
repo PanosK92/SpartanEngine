@@ -51,5 +51,5 @@ private:
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
 	Directus::Context* m_context;
-	Directus::Rendering* m_graphics;
+	Directus::RenderingDevice* m_graphics;
 };

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Deferred/ShaderVariation.h"
 #include "../../Rendering/GeometryUtility.h"
 #include "../../Rendering/Mesh.h"
+#include "../../Rendering/RI/RI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 #include "../../FileSystem/FileSystem.h"
@@ -183,7 +184,7 @@ namespace Directus
 		}
 
 		// Construct vertices/indices
-		vector<VertexPosTexTBN> vertices;
+		vector<RI_Vertex_PosUVTBN> vertices;
 		vector<unsigned int> indices;
 		if (type == MeshType_Cube)
 		{

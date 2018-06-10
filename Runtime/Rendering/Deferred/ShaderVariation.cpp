@@ -45,7 +45,7 @@ namespace Directus
 		RegisterResource<ShaderVariation>();
 		//==================================
 
-		m_graphics		= m_context->GetSubsystem<Rendering>();
+		m_graphics		= m_context->GetSubsystem<RenderingDevice>();
 		m_shaderFlags	= 0;
 	}
 

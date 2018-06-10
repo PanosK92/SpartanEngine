@@ -29,10 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	struct VertexPosTexTBN
+	struct RI_Vertex_PosUVTBN
 	{
-		VertexPosTexTBN(){}
-		VertexPosTexTBN(
+		RI_Vertex_PosUVTBN(){}
+		RI_Vertex_PosUVTBN(
 			const Math::Vector3& position,
 			const Math::Vector2& uv,
 			const Math::Vector3& normal,
@@ -66,10 +66,10 @@ namespace Directus
 		float bitangent[3]	= { 0 };
 	};
 
-	struct VertexPosTexNor
+	struct RI_Vertex_PosUVNor
 	{
-		VertexPosTexNor(){}
-		VertexPosTexNor(const Math::Vector3& position, const Math::Vector2& uv, const Math::Vector3& normal)
+		RI_Vertex_PosUVNor(){}
+		RI_Vertex_PosUVNor(const Math::Vector3& position, const Math::Vector2& uv, const Math::Vector3& normal)
 		{
 			this->pos[0] = position.x;
 			this->pos[1] = position.y;
@@ -88,11 +88,11 @@ namespace Directus
 		float normal[3] = { 0 };
 	};
 
-	struct VertexPosTex
+	struct RI_Vertex_PosUV
 	{
-		VertexPosTex(){}
+		RI_Vertex_PosUV(){}
 
-		VertexPosTex(float posX, float posY, float posZ, float uvX, float uvY)
+		RI_Vertex_PosUV(float posX, float posY, float posZ, float uvX, float uvY)
 		{
 			pos[0] = posX;
 			pos[1] = posY;
@@ -102,7 +102,7 @@ namespace Directus
 			uv[1] = uvY;
 		}
 
-		VertexPosTex(const Math::Vector3& position, const Math::Vector2& uv)
+		RI_Vertex_PosUV(const Math::Vector3& position, const Math::Vector2& uv)
 		{
 			this->pos[0]	= position.x;
 			this->pos[1]	= position.y;
@@ -116,10 +116,10 @@ namespace Directus
 		float uv[2]			= { 0 };
 	};
 
-	struct VertexPosCol
+	struct RI_Vertex_PosCol
 	{
-		VertexPosCol(){}
-		VertexPosCol(const Math::Vector3& position, const Math::Vector4& color)
+		RI_Vertex_PosCol(){}
+		RI_Vertex_PosCol(const Math::Vector3& position, const Math::Vector4& color)
 		{
 			this->pos[0]	= position.x;
 			this->pos[1]	= position.y;
@@ -135,8 +135,8 @@ namespace Directus
 		float color[4]	= {0};
 	};
 
-	static_assert(std::is_trivially_copyable<VertexPosTexTBN>::value, "VertexPosTexTBN is not trivially copyable");
-	static_assert(std::is_trivially_copyable<VertexPosTexNor>::value, "VertexPosTexNor is not trivially copyable");
-	static_assert(std::is_trivially_copyable<VertexPosTex>::value, "VertexPosTex is not trivially copyable");
-	static_assert(std::is_trivially_copyable<VertexPosCol>::value, "VertexPosCol is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RI_Vertex_PosUVTBN>::value, "RI_Vertex_PosUVTBN is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RI_Vertex_PosUVNor>::value, "RI_Vertex_PosUVNor is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RI_Vertex_PosUV>::value, "RI_Vertex_PosUV is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RI_Vertex_PosCol>::value, "RI_Vertex_PosCol is not trivially copyable");
 }

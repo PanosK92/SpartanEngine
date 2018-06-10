@@ -41,6 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/GameObject.h"
 #include "../ProgressReport.h"
+#include "../../Rendering/RI/RI_Device.h"
+#include "../../Rendering/RI/RI_Texture.h"
 //===========================================
 
 //= NAMESPACES ================

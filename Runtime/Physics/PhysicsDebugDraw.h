@@ -54,10 +54,10 @@ namespace Directus
 		//=============================================================================================================================================
 
 		bool IsDirty();
-		const std::vector<VertexPosCol>& GetLines();
+		const std::vector<RI_Vertex_PosCol>& GetLines();
 		void Clear();
 	private:
-		std::vector<VertexPosCol> m_lines;
+		std::vector<RI_Vertex_PosCol> m_lines;
 		bool m_isDirty;
 	};
 }

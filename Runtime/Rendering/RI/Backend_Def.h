@@ -25,11 +25,97 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Backends/Backends.h"
 //==================================
 
-// Forward declarations - RI (Rendering Interface)
+// RI (Rendering Interface)
 namespace Directus
 {
 	class RI_Texture;
 	class RI_Shader;
+	class RI_Viewport;
+	class RI_Shader;
+
+	struct RI_Vertex_PosUVTBN;
+	struct RI_Vertex_PosUVNor;
+	struct RI_Vertex_PosUV;
+	struct RI_Vertex_PosCol;
+
+	enum PrimitiveTopology
+	{
+		TriangleList,
+		LineList
+	};
+
+	enum InputLayout
+	{
+		Auto,
+		Position,
+		PositionColor,
+		PositionTexture,
+		PositionTextureTBN
+	};
+
+	enum CullMode
+	{
+		CullNone,
+		CullFront,
+		CullBack
+	};
+
+	enum FillMode
+	{
+		FillMode_Solid,
+		FillMode_Wireframe
+	};
+
+	enum TextureType
+	{
+		TextureType_Unknown,
+		TextureType_Albedo,
+		TextureType_Roughness,
+		TextureType_Metallic,
+		TextureType_Normal,
+		TextureType_Height,
+		TextureType_Occlusion,
+		TextureType_Emission,
+		TextureType_Mask,
+		TextureType_CubeMap,
+	};
+
+	enum Texture_Sampler_Filter
+	{
+		Texture_Sampler_Point,
+		Texture_Sampler_Bilinear,
+		Texture_Sampler_Linear,
+		Texture_Sampler_Anisotropic
+	};
+
+	enum Texture_Address_Mode
+	{
+		Texture_Address_Wrap,
+		Texture_Address_Mirror,
+		Texture_Address_Clamp,
+		Texture_Address_Border,
+		Texture_Address_MirrorOnce,
+	};
+
+	enum Texture_Comparison_Function
+	{
+		Texture_Comparison_Never,
+		Texture_Comparison_Less,
+		Texture_Comparison_Equal,
+		Texture_Comparison_LessEqual,
+		Texture_Comparison_Greater,
+		Texture_Comparison_NotEqual,
+		Texture_Comparison_GreaterEqual,
+		Texture_Comparison_Always
+	};
+
+	enum Texture_Format
+	{
+		Texture_Format_R32G32B32A32_FLOAT,
+		Texture_Format_R16G16B16A16_FLOAT,
+		Texture_Format_R8G8B8A8_UNORM,
+		Texture_Format_R8_UNORM
+	};
 }
 
 #ifdef API_D3D11
@@ -44,7 +130,7 @@ namespace Directus
 	class D3D11_IndexBuffer;
 	class D3D11_Texture;
 	
-	typedef D3D11_Device Rendering;
+	typedef D3D11_Device RenderingDevice;
 }
 
 // Forward declarations - D3D11 API
@@ -82,6 +168,6 @@ namespace Directus
 {
 	class Vulkan_Device;
 
-	typedef Vulkan_Device Rendering;
+	typedef Vulkan_Device RenderingDevice;
 }
 #endif

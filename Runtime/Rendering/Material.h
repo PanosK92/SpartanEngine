@@ -24,16 +24,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <map>
 #include <memory>
+#include "RI/Backend_Def.h"
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
-#include "RI/RI_Device.h"
-#include "RI/RI_Texture.h"
+#include "../Math/Vector4.h"
 //================================
 
 namespace Directus
-{
-	class ShaderVariation;
+{	
 	class ShaderPool;
+	class ShaderVariation;
 	class TexturePool;
 
 	class ENGINE_CLASS Material : public IResource

@@ -22,19 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "../Core/EngineDefs.h"
 #include <vector>
 #include <memory>
+#include "RI/Backend_Def.h"
 #include "../Math/Matrix.h"
+#include "../Core/EngineDefs.h"
 //=============================
 
 namespace Directus
 {
 	class Context;
-	class D3D11_VertexBuffer;
-	class D3D11_IndexBuffer;
 	class Transform;
-	struct VertexPosCol;
 
 	class ENGINE_CLASS Grid
 	{
@@ -48,7 +46,7 @@ namespace Directus
 		unsigned int GetIndexCount() { return m_indexCount; }
 
 	private:	
-		bool CreateBuffers(std::vector<VertexPosCol>& vertices, std::vector<unsigned int>& indices);
+		bool CreateBuffers(std::vector<RI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices);
 
 		Context* m_context;
 		unsigned int m_indexCount;

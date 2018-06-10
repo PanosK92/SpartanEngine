@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Grid.h"
 #include "Font.h"
 #include "RI/RI_Shader.h"
+#include "RI/RI_Texture.h"
 #include "RI/D3D11/D3D11_Device.h"
 #include "RI/D3D11/D3D11_RenderTexture.h"
 #include "Deferred/ShaderVariation.h"
@@ -88,7 +89,7 @@ namespace Directus
 	bool Renderer::Initialize()
 	{
 		// Get Graphics subsystem
-		m_graphics = m_context->GetSubsystem<Rendering>();
+		m_graphics = m_context->GetSubsystem<RenderingDevice>();
 		if (!m_graphics->IsInitialized())
 		{
 			LOG_ERROR("Renderer: Can't initialize, Graphics subsystem uninitialized.");

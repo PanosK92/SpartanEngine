@@ -75,7 +75,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Input(m_context));
 		m_context->RegisterSubsystem(new Threading(m_context));
 		m_context->RegisterSubsystem(new ResourceManager(m_context));
-		m_context->RegisterSubsystem(new Rendering(m_context));
+		m_context->RegisterSubsystem(new RenderingDevice(m_context));
 		m_context->RegisterSubsystem(new Renderer(m_context));
 		m_context->RegisterSubsystem(new Audio(m_context));
 		m_context->RegisterSubsystem(new Physics(m_context));
@@ -117,8 +117,8 @@ namespace Directus
 		}
 
 		// Graphics
-		m_context->GetSubsystem<Rendering>()->SetHandle(m_drawHandle);
-		if (!m_context->GetSubsystem<Rendering>()->Initialize())
+		m_context->GetSubsystem<RenderingDevice>()->SetHandle(m_drawHandle);
+		if (!m_context->GetSubsystem<RenderingDevice>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Graphics subsystem");
 			success = false;
