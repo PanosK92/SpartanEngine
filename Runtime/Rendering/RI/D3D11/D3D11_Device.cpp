@@ -278,7 +278,7 @@ namespace Directus
 			return false;
 		}
 
-		LOG_INFO("IGraphicsDevice: Direct3D " + to_string(D3D11_MAJOR_VERSION) + "." + to_string(D3D11_MINOR_VERSION) + " (" + GetAdapterDescription(adapter) + ")");
+		LOGF_INFO("D3D11_Device: DirectX %d.%d (%s)", D3D11_MAJOR_VERSION, D3D11_MINOR_VERSION, GetAdapterDescription(adapter).data());
 
 		m_initialized = true;
 		return true;
