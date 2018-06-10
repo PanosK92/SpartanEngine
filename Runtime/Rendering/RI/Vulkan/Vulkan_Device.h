@@ -21,36 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
-#include <map>
-#include <memory>
-#include "RI/RI_Device.h"
-#include "../Core/Settings.h"
-//===========================
+//= INCLUDES ============
+#include <vector>
+#include "../RI_Device.h"
+//=======================
 
 namespace Directus
 {
-	enum GBuffer_Texture_Type
-	{
-		GBuffer_Target_Unknown,
-		GBuffer_Target_Albedo,
-		GBuffer_Target_Normal,
-		GBuffer_Target_Specular,
-		GBuffer_Target_Depth
-	};
-
-	class ENGINE_CLASS GBuffer
+	class Vulkan_Device : public RI_Device
 	{
 	public:
-		GBuffer(Rendering* graphics, int width = RESOLUTION_WIDTH, int height = RESOLUTION_HEIGHT);
-		~GBuffer();
-
-		bool SetAsRenderTarget();
-		bool Clear();
-		void* GetShaderResource(GBuffer_Texture_Type type);
-
+		Vulkan_Device(Context* context);
+		~Vulkan_Device();
 	private:
-		std::map<GBuffer_Texture_Type, std::shared_ptr<D3D11_RenderTexture>> m_renderTargets;
-		Rendering* m_graphics;
 	};
 }

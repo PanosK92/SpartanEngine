@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "Renderer.h"
-#include "GBuffer.h"
 #include "Rectangle.h"
 #include "Material.h"
 #include "Mesh.h"
@@ -30,8 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RI/RI_Shader.h"
 #include "RI/D3D11/D3D11_Device.h"
 #include "RI/D3D11/D3D11_RenderTexture.h"
-#include "DeferredShaders/ShaderVariation.h"
-#include "DeferredShaders/DeferredShader.h"
+#include "Deferred/ShaderVariation.h"
+#include "Deferred/LightShader.h"
+#include "Deferred/GBuffer.h"
 #include "../Core/Context.h"
 #include "../Core/EventSystem.h"
 #include "../Scene/GameObject.h"
@@ -110,9 +110,9 @@ namespace Directus
 		string shaderDirectory	= g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
 		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
 
-		// Deferred shader
-		m_shaderDeferred = make_unique<DeferredShader>();
-		m_shaderDeferred->Load(shaderDirectory + "Deferred.hlsl", m_graphics);
+		// Light shader
+		m_shaderLight = make_unique<LightShader>();
+		m_shaderLight->Load(shaderDirectory + "Light.hlsl", m_graphics);
 
 		// Line shader
 		m_shaderLine = make_unique<RI_Shader>(m_context);
@@ -582,21 +582,21 @@ namespace Directus
 
 	void Renderer::Pass_Light(void* inTextureShadowing, void* outRenderTexture)
 	{
-		if (!m_shaderDeferred->IsCompiled())
+		if (!m_shaderLight->IsCompiled())
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
 		m_graphics->EventBegin("Pass_Light");
 
 		// Set the deferred shader
-		m_shaderDeferred->Set();
+		m_shaderLight->Set();
 
 		// Set render target
 		SetRenderTarget(outRenderTexture, false);
 
 		// Update buffers
-		m_shaderDeferred->UpdateMatrixBuffer(Matrix::Identity, m_mView, m_mViewBase, m_mProjectionPersp, m_mProjectionOrtho);
-		m_shaderDeferred->UpdateMiscBuffer(m_lights, m_camera);
+		m_shaderLight->UpdateMatrixBuffer(Matrix::Identity, m_mView, m_mViewBase, m_mProjectionPersp, m_mProjectionOrtho);
+		m_shaderLight->UpdateMiscBuffer(m_lights, m_camera);
 
 		//= Update textures ===========================================================
 		m_texArray.clear();
@@ -608,10 +608,10 @@ namespace Directus
 		m_texArray.emplace_back(nullptr); // previous frame for SSR
 		m_texArray.emplace_back(m_skybox ? m_skybox->GetShaderResource() : nullptr);
 
-		m_shaderDeferred->UpdateTextures(m_texArray);
+		m_shaderLight->UpdateTextures(m_texArray);
 		//=============================================================================
 
-		m_shaderDeferred->Render(m_quad->GetIndexCount());
+		m_shaderLight->Render(m_quad->GetIndexCount());
 
 		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();

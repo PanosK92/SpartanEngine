@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <memory>
 #include <vector>
-#include "../Math/Matrix.h"
+#include "RI/Backend_Def.h"
 #include "../Core/Settings.h"
 #include "../Core/SubSystem.h"
-#include "RI/Backend_Def.h"
+#include "../Math/Matrix.h"
 #include "../Resource/ResourceManager.h"
 //======================================
 
@@ -40,12 +40,8 @@ namespace Directus
 	class Light;
 	class GBuffer;
 	class Rectangle;
-	class DeferredShader;
-	class RI_Shader;
-	class RI_Texture;
+	class LightShader;
 	class ResourceManager;
-	class D3D11_RenderTexture;
-	class D3D11_Device;
 	class Font;
 	class Grid;
 	class Variant;	
@@ -141,8 +137,8 @@ namespace Directus
 		std::shared_ptr<D3D11_RenderTexture> m_renderTexFinalFrame;
 		//=========================================================
 
-		//= SHADERS =====================================
-		std::unique_ptr<DeferredShader> m_shaderDeferred;
+		//= SHADERS ==================================
+		std::unique_ptr<LightShader> m_shaderLight;
 		std::unique_ptr<RI_Shader> m_shaderDepth;
 		std::unique_ptr<RI_Shader> m_shaderLine;
 		std::unique_ptr<RI_Shader> m_shaderGrid;
@@ -152,7 +148,7 @@ namespace Directus
 		std::unique_ptr<RI_Shader> m_shaderShadowing;
 		std::unique_ptr<RI_Shader> m_shaderSharpening;
 		std::unique_ptr<RI_Shader> m_shaderBlur;
-		//==============================================
+		//============================================
 
 		//= DEBUG ==========================================
 		std::unique_ptr<Font> m_font;

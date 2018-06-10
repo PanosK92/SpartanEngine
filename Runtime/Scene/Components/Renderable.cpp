@@ -19,18 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================================
+//= INCLUDES ========================================
 #include "Renderable.h"
 #include "Transform.h"
 #include "../../Rendering/Material.h"
-#include "../../Rendering/DeferredShaders/ShaderVariation.h"
+#include "../../Rendering/Deferred/ShaderVariation.h"
 #include "../../Rendering/GeometryUtility.h"
 #include "../../Rendering/Mesh.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../Resource/ResourceManager.h"
-//=========================================================
+//===================================================
 
 //= NAMESPACES ================
 using namespace std;

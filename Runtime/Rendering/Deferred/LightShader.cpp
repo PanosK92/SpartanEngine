@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ================================
-#include "DeferredShader.h"
+#include "LightShader.h"
 #include "../../Logging/Log.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Light.h"
@@ -35,17 +35,17 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	DeferredShader::DeferredShader()
+	LightShader::LightShader()
 	{
 		m_graphics = nullptr;
 	}
 
-	DeferredShader::~DeferredShader()
+	LightShader::~LightShader()
 	{
 
 	}
 
-	void DeferredShader::Load(const string& filePath, Rendering* graphics)
+	void LightShader::Load(const string& filePath, Rendering* graphics)
 	{
 		m_graphics = graphics;
 
@@ -66,7 +66,7 @@ namespace Directus
 		m_miscBuffer->Create(sizeof(MiscBufferType));
 	}
 
-	void DeferredShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mBaseView, const Matrix& mPerspectiveProjection, const Matrix& mOrthographicProjection)
+	void LightShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mBaseView, const Matrix& mPerspectiveProjection, const Matrix& mOrthographicProjection)
 	{
 		if (!IsCompiled())
 		{
@@ -95,7 +95,7 @@ namespace Directus
 		m_matrixBuffer->SetPS(0);
 	}
 
-	void DeferredShader::UpdateMiscBuffer(const vector<Light*>& lights, Camera* camera)
+	void LightShader::UpdateMiscBuffer(const vector<Light*>& lights, Camera* camera)
 	{
 		if (!IsCompiled())
 		{
@@ -187,7 +187,7 @@ namespace Directus
 		m_miscBuffer->SetPS(1);
 	}
 
-	void DeferredShader::UpdateTextures(vector<void*> textures)
+	void LightShader::UpdateTextures(vector<void*> textures)
 	{
 		if (!m_graphics)
 			return;
@@ -199,7 +199,7 @@ namespace Directus
 		m_graphics->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
 	}
 
-	void DeferredShader::Set()
+	void LightShader::Set()
 	{
 		if (!m_shader)
 		{
@@ -210,7 +210,7 @@ namespace Directus
 		m_shader->Set();
 	}
 
-	void DeferredShader::Render(int indexCount)
+	void LightShader::Render(int indexCount)
 	{
 		if (!m_shader)
 		{
@@ -221,7 +221,7 @@ namespace Directus
 		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}
 
-	bool DeferredShader::IsCompiled()
+	bool LightShader::IsCompiled()
 	{
 		return m_shader ? m_shader->IsCompiled() : false;
 	}

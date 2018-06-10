@@ -19,15 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES ==============
+#include "Vulkan_Device.h"
+#include "../Backend_Imp.h"
+//=========================
 
-//= RENDERING ======
-#define API_D3D11
-//#define API_VULKAN
-//==================
+namespace Directus
+{
+	Vulkan_Device::Vulkan_Device(Context* context) : RI_Device(context)
+	{
 
-//= INPUT ========
-#define API_DInput
-//================
+	}
 
-// Note: In the future, these can be implicitly defined via the platform
+	Vulkan_Device::~Vulkan_Device()
+	{
+
+	}
+}

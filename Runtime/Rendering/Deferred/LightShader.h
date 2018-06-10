@@ -34,11 +34,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DeferredShader
+	class LightShader
 	{
 	public:
-		DeferredShader();
-		~DeferredShader();
+		LightShader();
+		~LightShader();
 
 		void Load(const std::string& filePath, Rendering* graphics);
 		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mBaseView,
