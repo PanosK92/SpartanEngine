@@ -170,13 +170,13 @@ namespace Directus
 			}
 
 			// First triangle in quad.		
-			m_vertices.emplace_back(Vector3(pen.x,					pen.y - glyph.descent,					0.0f),	Vector2(glyph.uvXLeft,	glyph.uvYTop));		// Top left
-			m_vertices.emplace_back(Vector3((pen.x + glyph.width),	(pen.y - glyph.height - glyph.descent),	0.0f),	Vector2(glyph.uvXRight, glyph.uvYBottom));	// Bottom right
-			m_vertices.emplace_back(Vector3(pen.x,					(pen.y - glyph.height - glyph.descent), 0.0f),	Vector2(glyph.uvXLeft,	glyph.uvYBottom));	// Bottom left
+			m_vertices.emplace_back(pen.x,					pen.y - glyph.descent,					0.0f, glyph.uvXLeft, glyph.uvYTop);		// Top left
+			m_vertices.emplace_back((pen.x + glyph.width),	(pen.y - glyph.height - glyph.descent), 0.0f, glyph.uvXRight, glyph.uvYBottom);	// Bottom right
+			m_vertices.emplace_back(pen.x,					(pen.y - glyph.height - glyph.descent), 0.0f, glyph.uvXLeft, glyph.uvYBottom);	// Bottom left
 			// Second triangle in quad.
-			m_vertices.emplace_back(Vector3(pen.x,					pen.y - glyph.descent, 0.0f),					Vector2(glyph.uvXLeft,	glyph.uvYTop));		// Top left
-			m_vertices.emplace_back(Vector3(pen.x + glyph.width,	pen.y - glyph.descent,					0.0f),	Vector2(glyph.uvXRight, glyph.uvYTop));		// Top right
-			m_vertices.emplace_back(Vector3((pen.x + glyph.width), (pen.y - glyph.height - glyph.descent),	0.0f),	Vector2(glyph.uvXRight, glyph.uvYBottom));	// Bottom right
+			m_vertices.emplace_back(pen.x,					pen.y - glyph.descent,					0.0f, glyph.uvXLeft, glyph.uvYTop);		// Top left
+			m_vertices.emplace_back((pen.x	+ glyph.width),	pen.y - glyph.descent,					0.0f, glyph.uvXRight, glyph.uvYTop);	// Top right
+			m_vertices.emplace_back((pen.x	+ glyph.width),	(pen.y - glyph.height - glyph.descent), 0.0f, glyph.uvXRight, glyph.uvYBottom);	// Bottom right
 
 			// Update the x location for drawing by the size of the letter and one pixel.
 			pen.x = pen.x + glyph.width;

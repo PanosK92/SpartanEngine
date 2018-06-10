@@ -192,7 +192,7 @@ namespace Directus
 
 	bool RI_Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<std::byte>& rgba, Texture_Format format)
 	{
-		if (!m_textureLowLevel->Create(width, height, channels, rgba, m_format))
+		if (!m_textureLowLevel->Create(width, height, channels, rgba, format))
 		{
 			LOG_ERROR("Texture: Failed to create shader resource for \"" + m_resourceFilePath + "\".");
 			return false;

@@ -92,6 +92,16 @@ namespace Directus
 	{
 		VertexPosTex(){}
 
+		VertexPosTex(float posX, float posY, float posZ, float uvX, float uvY)
+		{
+			pos[0] = posX;
+			pos[1] = posY;
+			pos[2] = posZ;
+
+			uv[0] = uvX;
+			uv[1] = uvY;
+		}
+
 		VertexPosTex(const Math::Vector3& position, const Math::Vector2& uv)
 		{
 			this->pos[0]	= position.x;
