@@ -1,8 +1,8 @@
-//= DEFINES ======================
+//= DEFINES ==============
 #define PCF 2
 #define PCF_DIM PCF / 2
 #define PCF_UNROLL PCF * 2
-//================================
+//========================
 
 float2 texOffset(float2 shadowMapSize, int x, int y)
 {

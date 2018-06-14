@@ -1,6 +1,5 @@
 // = INCLUDES ========
 #include "Common.hlsl"
-#include "Helper.hlsl"
 //====================
 
 //= TEXTURES ===============================

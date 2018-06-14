@@ -1,7 +1,3 @@
-// = INCLUDES ========
-#include "Common.hlsl"
-//====================
-
 //= TEXTURES ==============================
 Texture2D texAlbedo 		: register(t0);
 Texture2D texNormal 		: register(t1);
@@ -57,24 +53,8 @@ cbuffer MiscBuffer : register(b1)
 };
 //=====================================
 
-struct Material
-{
-	float3 albedo;
-	float roughness;
-	float metallic;
-	float3 padding;
-};
-
-struct Light
-{
-	float3 color;
-	float intensity;
-	float3 direction;
-	float padding;
-};
-
 // = INCLUDES ========
-#include "Helper.hlsl"
+#include "Common.hlsl"
 #include "SSRR.hlsl"
 #include "PBR.hlsl"
 //====================
