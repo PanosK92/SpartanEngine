@@ -73,12 +73,11 @@ namespace Directus
 
 		m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
 
-		// Log version
+		// Get version
 		string major	= to_string(ANGELSCRIPT_VERSION).erase(1, 4);
 		string minor	= to_string(ANGELSCRIPT_VERSION).erase(0, 1).erase(2, 2);
 		string rev		= to_string(ANGELSCRIPT_VERSION).erase(0, 3);
 		Settings::Get().m_versionAngelScript = major + "." + minor + "." + rev;
-		LOGF_INFO("Scripting: AngelScript %s", Settings::Get().m_versionAngelScript.data());
 
 		return true;
 	}

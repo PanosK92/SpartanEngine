@@ -59,13 +59,12 @@ namespace Directus
 			LOG_ERROR("FreeType: Failed to initialize.");
 		}
 
-		// Log version
+		// Get version
 		FT_Int major;
 		FT_Int minor;
 		FT_Int rev;
 		FT_Library_Version(m_library, &major, &minor, &rev);
 		Settings::Get().m_versionFreeType = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
-		LOGF_INFO("FontImporter: FreeType %s", Settings::Get().m_versionFreeType.data());
 	}
 
 	// Glyph metrics:

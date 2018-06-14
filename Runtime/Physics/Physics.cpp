@@ -92,11 +92,10 @@ namespace Directus
 		m_world->getSolverInfo().m_numIterations = MAX_SOLVER_ITERATIONS;
 		m_world->setDebugDrawer(m_debugDraw.get());
 
-		// Log version
+		// Get version
 		string major = to_string(btGetVersion() / 100);
 		string minor = to_string(btGetVersion()).erase(0, 1);
 		Settings::Get().m_versionBullet = major + "." + minor;
-		LOGF_INFO("Physics: Bullet %s", Settings::Get().m_versionBullet.data());
 
 		return true;
 	}
