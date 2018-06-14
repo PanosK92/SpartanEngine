@@ -441,6 +441,8 @@ namespace Directus
 
 		for (int cascadeIndex = 0; cascadeIndex < directionalLight->GetShadowCascadeCount(); cascadeIndex++)
 		{
+			m_graphics->EventBegin("Cascade");
+
 			// Set appropriate shadow map as render target
 			directionalLight->SetShadowCascadeAsRenderTarget(cascadeIndex);
 
@@ -475,6 +477,8 @@ namespace Directus
 					m_shaderDepth->DrawIndexed(mesh->GetIndexCount());
 				}
 			}
+
+			m_graphics->EventEnd();
 		}
 
 		m_graphics->EnableDepth(false);
@@ -660,7 +664,10 @@ namespace Directus
 		bool depth		= RenderMode_IsSet(Render_Depth);
 
 		if (!albedo && !normal && !specular && !depth)
+		{
+			m_graphics->EventEnd();
 			return false;
+		}
 
 		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
 		if (albedo)
@@ -702,8 +709,6 @@ namespace Directus
 		// by passing it's vertices (VertexPosCol) to the LineRenderer. Typically used only for debugging.
 		if (m_lineRenderer)
 		{
-			m_graphics->EventBegin("Pass_Debug_Physics");
-
 			m_lineRenderer->ClearVertices();
 
 			// Physics
@@ -736,15 +741,17 @@ namespace Directus
 
 			if (m_lineRenderer->GetVertexCount() != 0)
 			{
+				m_graphics->EventBegin("Lines");
+
 				// Render
 				m_lineRenderer->SetBuffer();
 				m_shaderLine->Set();
 				m_shaderLine->SetBuffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
 				m_shaderLine->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0); // depth
 				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
-			}
 
-			m_graphics->EventEnd();
+				m_graphics->EventEnd();
+			}			
 		}
 		//============================================================================================================
 
@@ -753,7 +760,7 @@ namespace Directus
 		// Grid
 		if (m_flags & Render_SceneGrid)
 		{
-			m_graphics->EventBegin("Pass_SceneGrid");
+			m_graphics->EventBegin("Grid");
 
 			m_grid->SetBuffer();
 			m_shaderGrid->Set();
@@ -765,11 +772,11 @@ namespace Directus
 		}
 
 		// Light gizmo
-		m_graphics->EventBegin("Pass_Debug_Gizmos");
+		m_graphics->EventBegin("Gizmos");
 		{
 			if (m_flags & Render_Light)
 			{
-				m_graphics->EventBegin("Pass_Debug_Gizmos_Lights");
+				m_graphics->EventBegin("Lights");
 				for (auto* light : m_lights)
 				{
 					Vector3 lightWorldPos = light->GetTransform()->GetPosition();
@@ -824,7 +831,7 @@ namespace Directus
 			}
 
 			// Transformation Gizmo
-			m_graphics->EventBegin("Pass_Debug_Gizmos_Transformation");
+			m_graphics->EventBegin("Transformation");
 			{
 				TransformationGizmo* gizmo = m_camera->GetTransformationGizmo();
 				gizmo->SetBuffers();

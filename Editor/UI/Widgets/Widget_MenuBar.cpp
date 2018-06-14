@@ -184,15 +184,41 @@ void Widget_MenuBar::ShowAboutWindow()
 	ImGui::Separator();
 
 	ImGui::Text("Third party libraries");
-	static float posX = 120;
-	ImGui::BulletText("AngelScript");	ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionAngelScript).c_str());
-	ImGui::BulletText("Assimp");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionAssimp).c_str());
-	ImGui::BulletText("Bullet");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionBullet).c_str());
-	ImGui::BulletText("FMOD ");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionFMOD).c_str());
-	ImGui::BulletText("FreeImage");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionFreeImage).c_str());
-	ImGui::BulletText("FreeType");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionFreeType).c_str());
-	ImGui::BulletText("ImGui");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionImGui).c_str());
-	ImGui::BulletText("PugiXML");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionPugiXML).c_str());
+
+	static float columnA = 120;
+	static float columnB = 200;
+
+	ImGui::BulletText("AngelScript");
+	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionAngelScript).c_str()); ImGui::SameLine(columnB);
+	ImGui::PushID("Button_AngelScript"); if (ImGui::Button("Website")) { FileSystem::OpenDirectoryWindow("https://www.angelcode.com/angelscript/"); } ImGui::PopID();
+
+	ImGui::BulletText("Assimp");
+	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionAssimp).c_str()); ImGui::SameLine(columnB);
+	ImGui::PushID("Button_Assimp"); if (ImGui::Button("GitHub")) { FileSystem::OpenDirectoryWindow("https://github.com/assimp/assimp"); } ImGui::PopID();
+
+	ImGui::BulletText("Bullet");
+	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionBullet).c_str()); ImGui::SameLine(columnB);
+	ImGui::PushID("Button_Bullet"); if (ImGui::Button("GitHub")) { FileSystem::OpenDirectoryWindow("https://github.com/bulletphysics/bullet3"); } ImGui::PopID();
+
+	ImGui::BulletText("FMOD");
+	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionFMOD).c_str()); ImGui::SameLine(columnB);
+	ImGui::PushID("Button_FMOD"); if (ImGui::Button("Website")) { FileSystem::OpenDirectoryWindow("https://www.fmod.com/"); } ImGui::PopID();
+
+	ImGui::BulletText("FreeImage");
+	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionFreeImage).c_str()); ImGui::SameLine(columnB);
+	ImGui::PushID("Button_FreeImage"); if (ImGui::Button("SourceForge")) { FileSystem::OpenDirectoryWindow("https://sourceforge.net/projects/freeimage/files/Source%20Distribution/"); } ImGui::PopID();
+
+	ImGui::BulletText("FreeType");
+	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionFreeType).c_str()); ImGui::SameLine(columnB);
+	ImGui::PushID("Button_FreeType"); if (ImGui::Button("SourceForge")) { FileSystem::OpenDirectoryWindow("https://sourceforge.net/projects/freetype/files/freetype2/"); } ImGui::PopID();
+
+	ImGui::BulletText("ImGui");	
+	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionImGui).c_str()); ImGui::SameLine(columnB);
+	ImGui::PushID("Button_ImGui"); if (ImGui::Button("GitHub")) { FileSystem::OpenDirectoryWindow("https://github.com/ocornut/imgui"); } ImGui::PopID();
+
+	ImGui::BulletText("PugiXML");
+	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionPugiXML).c_str()); ImGui::SameLine(columnB);
+	ImGui::PushID("Button_PugiXML");  if (ImGui::Button("GitHub")) { FileSystem::OpenDirectoryWindow("https://github.com/zeux/pugixml"); } ImGui::PopID();
 
 	ImGui::End();
 }
@@ -232,7 +258,7 @@ void Widget_MenuBar::ShowResourceCache()
 		ImGui::Text(resource->GetResourceFilePath().c_str());			ImGui::NextColumn();
 
 		// Memory
-		unsigned int memory = (unsigned int)(resource->GetMemory() / 1000.0f); // default in Kb
+		auto memory = (unsigned int)(resource->GetMemory() / 1000.0f); // default in Kb
 		if (memory <= 1024)
 		{
 			ImGui::Text((to_string(memory) + string(" Kb")).c_str());	ImGui::NextColumn();
