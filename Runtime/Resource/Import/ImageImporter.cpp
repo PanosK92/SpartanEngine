@@ -44,8 +44,8 @@ namespace Directus
 		FreeImage_Initialise(true);
 
 		// Log version
-		Settings::Get().g_versionFreeImage = FreeImage_GetVersion();
-		LOGF_INFO("ImageImporter: FreeImage %s", Settings::Get().g_versionFreeImage.data());
+		Settings::Get().m_versionFreeImage = FreeImage_GetVersion();
+		LOGF_INFO("ImageImporter: FreeImage %s", Settings::Get().m_versionFreeImage.data());
 	}
 
 	ImageImporter::~ImageImporter()

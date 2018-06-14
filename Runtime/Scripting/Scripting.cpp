@@ -77,8 +77,8 @@ namespace Directus
 		string major	= to_string(ANGELSCRIPT_VERSION).erase(1, 4);
 		string minor	= to_string(ANGELSCRIPT_VERSION).erase(0, 1).erase(2, 2);
 		string rev		= to_string(ANGELSCRIPT_VERSION).erase(0, 3);
-		Settings::Get().g_versionAngelScript = major + "." + minor + "." + rev;
-		LOGF_INFO("Scripting: AngelScript %s", Settings::Get().g_versionAngelScript.data());
+		Settings::Get().m_versionAngelScript = major + "." + minor + "." + rev;
+		LOGF_INFO("Scripting: AngelScript %s", Settings::Get().m_versionAngelScript.data());
 
 		return true;
 	}

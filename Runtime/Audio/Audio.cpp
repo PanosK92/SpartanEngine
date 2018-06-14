@@ -129,8 +129,8 @@ namespace Directus
 		string major	= ss.str().erase(1, 4);
 		string minor	= ss.str().erase(0, 1).erase(2, 2);
 		string rev		= ss.str().erase(0, 3);
-		Settings::Get().g_versionFMOD = major + "." + minor + "." + rev;
-		LOGF_INFO("Audio: FMOD %s", Settings::Get().g_versionFMOD.data());
+		Settings::Get().m_versionFMOD = major + "." + minor + "." + rev;
+		LOGF_INFO("Audio: FMOD %s", Settings::Get().m_versionFMOD.data());
 
 		m_initialized = true;
 		return true;

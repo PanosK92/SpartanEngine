@@ -1,17 +1,10 @@
-/*------------------------------------------------------------------------------
-								[BUFFERS]
-------------------------------------------------------------------------------*/
+// = INCLUDES ========
+#include "Common.hlsl"
+//====================
+
 cbuffer MiscBuffer : register(b0)
 {
-	matrix mWorldViewProjection;
-};
-
-/*------------------------------------------------------------------------------
-								[STRUCTS]
-------------------------------------------------------------------------------*/
-struct VertexInputType
-{
-    float4 position : POSITION;
+	matrix mTransform;
 };
 
 struct PixelInputType
@@ -19,22 +12,18 @@ struct PixelInputType
     float4 position : SV_POSITION;
 };
 
-/*------------------------------------------------------------------------------
-									[VS]
-------------------------------------------------------------------------------*/
-PixelInputType DirectusVertexShader(VertexInputType input)
+// Vertex Shader
+PixelInputType DirectusVertexShader(Vertex_Pos input)
 {
 	PixelInputType output;
      
     input.position.w = 1.0f;
-    output.position = mul(input.position, mWorldViewProjection);
+    output.position = mul(input.position, mTransform);
 	
 	return output;
 }
 
-/*------------------------------------------------------------------------------
-									[PS]
-------------------------------------------------------------------------------*/
+// Pixel Shader
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	return input.position.z / input.position.w;

@@ -1,3 +1,7 @@
+// = INCLUDES ========
+#include "Common.hlsl"
+//====================
+
 //= TEXTURES ==============================
 Texture2D texAlbedo 		: register(t0);
 Texture2D texNormal 		: register(t1);
@@ -76,21 +80,15 @@ struct Light
 //====================
 
 //= INPUT LAYOUT ======================
-struct VertexInputType
-{
-    float4 position : POSITION;
-    float2 uv : TEXCOORD0;
-};
-
 struct PixelInputType
 {
     float4 position : SV_POSITION;
-    float2 uv : TEXCOORD0;
+    float2 uv 		: TEXCOORD;
 };
 //=====================================
 
 //= VS() ==================================================================================
-PixelInputType DirectusVertexShader(VertexInputType input)
+PixelInputType DirectusVertexShader(Vertex_PosUv input)
 {
     PixelInputType output;
     

@@ -45,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Resource/ResourceManager.h"
 #include "../Profiling/Profiler.h"
+#include "../Scene/TransformationGizmo.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -120,34 +121,34 @@ namespace Directus
 		m_shaderLine->Compile(shaderDirectory + "Line.hlsl");
 		m_shaderLine->SetInputLaytout(PositionColor);
 		m_shaderLine->AddSampler(Texture_Sampler_Linear);
-		m_shaderLine->AddBuffer(CB_W_V_P, VertexShader);
+		m_shaderLine->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 		// Depth shader
 		m_shaderDepth = make_unique<RI_Shader>(m_context);
 		m_shaderDepth->Compile(shaderDirectory + "Depth.hlsl");
 		m_shaderDepth->SetInputLaytout(Position);
-		m_shaderDepth->AddBuffer(CB_WVP, VertexShader);
+		m_shaderDepth->AddBuffer(CB_Matrix, VertexShader);
 
 		// Grid shader
 		m_shaderGrid = make_unique<RI_Shader>(m_context);
 		m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl");
 		m_shaderGrid->SetInputLaytout(PositionColor);
 		m_shaderGrid->AddSampler(Texture_Sampler_Anisotropic);
-		m_shaderGrid->AddBuffer(CB_WVP, VertexShader);
+		m_shaderGrid->AddBuffer(CB_Matrix, VertexShader);
 
 		// Font shader
 		m_shaderFont = make_unique<RI_Shader>(m_context);
 		m_shaderFont->Compile(shaderDirectory + "Font.hlsl");
 		m_shaderFont->SetInputLaytout(PositionTexture);
 		m_shaderFont->AddSampler(Texture_Sampler_Point);
-		m_shaderFont->AddBuffer(CB_WVP_Color, Global);
+		m_shaderFont->AddBuffer(CB_Matrix_Vector4, Global);
 
 		// Texture shader
 		m_shaderTexture = make_unique<RI_Shader>(m_context);
 		m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl");
 		m_shaderTexture->SetInputLaytout(PositionTexture);
 		m_shaderTexture->AddSampler(Texture_Sampler_Linear);
-		m_shaderTexture->AddBuffer(CB_WVP, VertexShader);
+		m_shaderTexture->AddBuffer(CB_Matrix, VertexShader);
 
 		// FXAA Shader
 		m_shaderFXAA = make_unique<RI_Shader>(m_context);
@@ -156,7 +157,7 @@ namespace Directus
 		m_shaderFXAA->SetInputLaytout(PositionTexture);
 		m_shaderFXAA->AddSampler(Texture_Sampler_Point);
 		m_shaderFXAA->AddSampler(Texture_Sampler_Bilinear);
-		m_shaderFXAA->AddBuffer(CB_WVP_Resolution, Global);
+		m_shaderFXAA->AddBuffer(CB_Matrix_Vector2, Global);
 
 		// Sharpening shader
 		m_shaderSharpening = make_unique<RI_Shader>(m_context);
@@ -165,7 +166,7 @@ namespace Directus
 		m_shaderSharpening->SetInputLaytout(PositionTexture);
 		m_shaderSharpening->AddSampler(Texture_Sampler_Point);
 		m_shaderSharpening->AddSampler(Texture_Sampler_Bilinear);
-		m_shaderSharpening->AddBuffer(CB_WVP_Resolution, Global);
+		m_shaderSharpening->AddBuffer(CB_Matrix_Vector2, Global);
 
 		// Blur shader
 		m_shaderBlur = make_unique<RI_Shader>(m_context);
@@ -174,7 +175,13 @@ namespace Directus
 		m_shaderBlur->SetInputLaytout(PositionTexture);
 		m_shaderBlur->AddSampler(Texture_Sampler_Point);
 		m_shaderBlur->AddSampler(Texture_Sampler_Bilinear);
-		m_shaderBlur->AddBuffer(CB_WVP_Resolution, Global);
+		m_shaderBlur->AddBuffer(CB_Matrix_Vector2, Global);
+
+		// Transformation Gizmo shader
+		m_shaderTransformationGizmo = make_unique<RI_Shader>(m_context);
+		m_shaderTransformationGizmo->Compile(shaderDirectory + "TransformationGizmo.hlsl");
+		m_shaderTransformationGizmo->SetInputLaytout(PositionTextureTBN);
+		m_shaderTransformationGizmo->AddBuffer(CB_Matrix_Vector3_Vector3, Global);
 
 		// Shadowing shader (Shadow mapping & SSAO)
 		m_shaderShadowing = make_unique<RI_Shader>(m_context);
@@ -458,13 +465,13 @@ namespace Directus
 				if (material->GetOpacity() < 1.0f)
 					continue;
 
-				// skip objects outside of the view frustrum
+				// skip objects outside of the view frustum
 				//if (!m_directionalLight->IsInViewFrustrum(meshFilter))
 					//continue;
 
 				if (renderable->SetBuffers())
 				{
-					m_shaderDepth->SetBuffer(gameObj->GetTransform_PtrRaw()->GetWorldTransform(), mViewLight, mProjectionLight, 0);
+					m_shaderDepth->SetBuffer(gameObj->GetTransform_PtrRaw()->GetWorldTransform() * mViewLight * mProjectionLight, 0);
 					m_shaderDepth->DrawIndexed(mesh->GetIndexCount());
 				}
 			}
@@ -675,7 +682,7 @@ namespace Directus
 
 		// TEXTURE
 		m_shaderTexture->Set();
-		m_shaderTexture->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, 0);
+		m_shaderTexture->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
 		m_shaderTexture->SetTexture(m_gbuffer->GetShaderResource(texType), 0);
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
@@ -691,7 +698,7 @@ namespace Directus
 		m_graphics->EventBegin("Pass_Debug");
 
 		//= PRIMITIVES ===================================================================================
-		// Anything that is a bunch of vertices (doesn't have a vertex and and index buffer) get's rendered here
+		// Anything that is a bunch of vertices (doesn't have a vertex and and index buffer) gets rendered here
 		// by passing it's vertices (VertexPosCol) to the LineRenderer. Typically used only for debugging.
 		if (m_lineRenderer)
 		{
@@ -750,7 +757,7 @@ namespace Directus
 
 			m_grid->SetBuffer();
 			m_shaderGrid->Set();
-			m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()), m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
+			m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(), 0);
 			m_shaderGrid->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 
@@ -758,63 +765,84 @@ namespace Directus
 		}
 
 		// Light gizmo
-		if (m_flags & Render_Light)
+		m_graphics->EventBegin("Pass_Debug_Gizmos");
 		{
-			m_graphics->EventBegin("Pass_Debug_Gizmos");
-
-			for (auto* light : m_lights)
+			if (m_flags & Render_Light)
 			{
-				Vector3 lightWorldPos = light->GetTransform()->GetPosition();
-				Vector3 cameraWorldPos = m_camera->GetTransform()->GetPosition();
-
-				// Compute light screen space position and scale (based on distance from the camera)
-				Vector2 lightScreenPos	= m_camera->WorldToScreenPoint(lightWorldPos);
-				float distance			= Vector3::Length(lightWorldPos, cameraWorldPos);
-				float scale				= GIZMO_MAX_SIZE / distance;
-				scale					= Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
-
-				// Skip if the light is not in front of the camera
-				if (!m_camera->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))
-					continue;
-
-				// Skip if the light if it's too small
-				if (scale == GIZMO_MIN_SIZE)
-					continue;
-
-				RI_Texture* lightTex = nullptr;
-				LightType type = light->GetGameObject_PtrRaw()->GetComponent<Light>().lock()->GetLightType();
-				if (type == LightType_Directional)
+				m_graphics->EventBegin("Pass_Debug_Gizmos_Lights");
+				for (auto* light : m_lights)
 				{
-					lightTex = m_gizmoTexLightDirectional.get();
-				}
-				else if (type == LightType_Point)
-				{
-					lightTex = m_gizmoTexLightPoint.get();
-				}
-				else if (type == LightType_Spot)
-				{
-					lightTex = m_gizmoTexLightSpot.get();
-				}
+					Vector3 lightWorldPos = light->GetTransform()->GetPosition();
+					Vector3 cameraWorldPos = m_camera->GetTransform()->GetPosition();
 
-				// Construct appropriate rectangle
-				float texWidth = lightTex->GetWidth() * scale;
-				float texHeight = lightTex->GetHeight() * scale;
-				m_gizmoRectLight->Create(
-					lightScreenPos.x - texWidth * 0.5f,
-					lightScreenPos.y - texHeight * 0.5f,
-					texWidth,
-					texHeight
-				);
+					// Compute light screen space position and scale (based on distance from the camera)
+					Vector2 lightScreenPos	= m_camera->WorldToScreenPoint(lightWorldPos);
+					float distance			= Vector3::Length(lightWorldPos, cameraWorldPos);
+					float scale				= GIZMO_MAX_SIZE / distance;
+					scale					= Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
 
-				m_gizmoRectLight->SetBuffer();
-				m_shaderTexture->Set();
-				m_shaderTexture->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, 0);
-				m_shaderTexture->SetTexture(lightTex->GetShaderResource(), 0);
-				m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
+					// Skip if the light is not in front of the camera
+					if (!m_camera->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))
+						continue;
+
+					// Skip if the light if it's too small
+					if (scale == GIZMO_MIN_SIZE)
+						continue;
+
+					RI_Texture* lightTex = nullptr;
+					LightType type = light->GetGameObject_PtrRaw()->GetComponent<Light>().lock()->GetLightType();
+					if (type == LightType_Directional)
+					{
+						lightTex = m_gizmoTexLightDirectional.get();
+					}
+					else if (type == LightType_Point)
+					{
+						lightTex = m_gizmoTexLightPoint.get();
+					}
+					else if (type == LightType_Spot)
+					{
+						lightTex = m_gizmoTexLightSpot.get();
+					}
+
+					// Construct appropriate rectangle
+					float texWidth = lightTex->GetWidth() * scale;
+					float texHeight = lightTex->GetHeight() * scale;
+					m_gizmoRectLight->Create(
+						lightScreenPos.x - texWidth * 0.5f,
+						lightScreenPos.y - texHeight * 0.5f,
+						texWidth,
+						texHeight
+					);
+
+					m_gizmoRectLight->SetBuffer();
+					m_shaderTexture->Set();
+					m_shaderTexture->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
+					m_shaderTexture->SetTexture(lightTex->GetShaderResource(), 0);
+					m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
+				}
+				m_graphics->EventEnd();
 			}
 
+			// Transformation Gizmo
+			m_graphics->EventBegin("Pass_Debug_Gizmos_Transformation");
+			{
+				TransformationGizmo* gizmo = m_camera->GetTransformationGizmo();
+				gizmo->SetBuffers();
+				m_shaderTransformationGizmo->Set();
+
+				// X - Axis
+				m_shaderTransformationGizmo->SetBuffer(gizmo->GetTransformationX() * m_mView * m_mProjectionPersp, Vector3::Right, Vector3::Zero, 0);
+				m_shaderTransformationGizmo->DrawIndexed(gizmo->GetIndexCount());
+				// Y - Axis
+				m_shaderTransformationGizmo->SetBuffer(gizmo->GetTransformationY() * m_mView * m_mProjectionPersp, Vector3::Up, Vector3::Zero, 0);
+				m_shaderTransformationGizmo->DrawIndexed(gizmo->GetIndexCount());
+				// Z - Axis
+				m_shaderTransformationGizmo->SetBuffer(gizmo->GetTransformationZ() * m_mView * m_mProjectionPersp, Vector3::Forward, Vector3::Zero, 0);
+				m_shaderTransformationGizmo->DrawIndexed(gizmo->GetIndexCount());
+			}
 			m_graphics->EventEnd();
 		}
+		m_graphics->EventEnd();
 
 		// Performance metrics
 		if (m_flags & Render_PerformanceMetrics)
@@ -824,7 +852,7 @@ namespace Directus
 			m_font->SetInputLayout();
 
 			m_shaderFont->Set();
-			m_shaderFont->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, m_font->GetColor(), 0);
+			m_shaderFont->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, m_font->GetColor(), 0);
 			m_shaderFont->SetTexture(m_font->GetShaderResource(), 0);
 			m_shaderFont->DrawIndexed(m_font->GetIndexCount());
 		}
@@ -841,7 +869,7 @@ namespace Directus
 
 		SetRenderTarget(renderTarget, false);
 		m_shaderFXAA->Set();
-		m_shaderFXAA->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, GET_RESOLUTION, 0);
+		m_shaderFXAA->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION, 0);
 		m_shaderFXAA->SetTexture(texture, 0);
 		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
 
@@ -854,7 +882,7 @@ namespace Directus
 
 		SetRenderTarget(renderTarget, false);
 		m_shaderSharpening->Set();
-		m_shaderSharpening->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, GET_RESOLUTION, 0);
+		m_shaderSharpening->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION, 0);
 		m_shaderSharpening->SetTexture(texture, 0);
 		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
 
@@ -867,7 +895,7 @@ namespace Directus
 
 		SetRenderTarget(renderTarget, false);
 		m_shaderBlur->Set();
-		m_shaderBlur->SetBuffer(Matrix::Identity, m_mViewBase, m_mProjectionOrtho, blurScale, 0);
+		m_shaderBlur->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, blurScale, 0);
 		m_shaderBlur->SetTexture(texture, 0); // Shadows are alpha
 		m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
 

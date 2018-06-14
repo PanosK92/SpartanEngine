@@ -1,4 +1,4 @@
-WIN_SDK_VERSION 	= "10.0.16299.0"
+WIN_SDK_VERSION 	= "10.0.17134.0"
 SOLUTION_NAME 		= "Directus"
 EDITOR_NAME 		= "Editor"
 RUNTIME_NAME 		= "Runtime"

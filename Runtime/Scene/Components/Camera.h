@@ -21,29 +21,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
+//= INCLUDES ==============================
 #include "IComponent.h"
 #include <memory>
 #include <vector>
-#include "../../Rendering/RI/RI_Vertex.h"
+#include "../../Rendering/RI/Backend_Def.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Ray.h"
 #include "../../Math/Frustum.h"
-//=======================================
+#include "../../Math/Vector2.h"
+//=========================================
 
 namespace Directus
 {
 	class GameObject;
 	class Model;
 	class Renderable;
-
-	namespace Math
-	{
-		class Quaternion;
-		class Vector2;
-		class Vector3;
-		class Vector3;
-	}
+	class TransformationGizmo;
 
 	enum ProjectionType
 	{
@@ -105,6 +99,8 @@ namespace Directus
 		void SetClearColor(const Math::Vector4& color) { m_clearColor = color; }
 		//===============================================================================
 
+		TransformationGizmo* GetTransformationGizmo() { return m_transformGizmo.get(); }
+
 	private:
 		void ComputeViewMatrix();
 		void ComputeBaseView();
@@ -127,5 +123,7 @@ namespace Directus
 		bool m_isDirty;
 
 		Math::Vector2 m_lastKnownResolution;	
+
+		std::shared_ptr<TransformationGizmo> m_transformGizmo;
 	};
 }

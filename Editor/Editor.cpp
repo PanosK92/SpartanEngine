@@ -69,7 +69,7 @@ void Editor::Initialize(Context* context)
 
 	ThumbnailProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);
-	Settings::Get().g_versionImGui = IMGUI_VERSION;
+	Settings::Get().m_versionImGui = IMGUI_VERSION;
 	ImGui_ImplDX11_Init(context);
 
 	ApplyStyle();
