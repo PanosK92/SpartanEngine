@@ -185,14 +185,14 @@ void Widget_MenuBar::ShowAboutWindow()
 
 	ImGui::Text("Third party libraries");
 	static float posX = 120;
-	ImGui::BulletText("AngelScript");	ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionAngelScript).c_str());
-	ImGui::BulletText("Assimp");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionAssimp).c_str());
-	ImGui::BulletText("Bullet");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionBullet).c_str());
-	ImGui::BulletText("FMOD ");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionFMOD).c_str());
-	ImGui::BulletText("FreeImage");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionFreeImage).c_str());
-	ImGui::BulletText("FreeType");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionFreeType).c_str());
-	ImGui::BulletText("ImGui");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionImGui).c_str());
-	ImGui::BulletText("PugiXML");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().g_versionPugiXML).c_str());
+	ImGui::BulletText("AngelScript");	ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionAngelScript).c_str());
+	ImGui::BulletText("Assimp");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionAssimp).c_str());
+	ImGui::BulletText("Bullet");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionBullet).c_str());
+	ImGui::BulletText("FMOD ");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionFMOD).c_str());
+	ImGui::BulletText("FreeImage");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionFreeImage).c_str());
+	ImGui::BulletText("FreeType");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionFreeType).c_str());
+	ImGui::BulletText("ImGui");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionImGui).c_str());
+	ImGui::BulletText("PugiXML");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::Get().m_versionPugiXML).c_str());
 
 	ImGui::End();
 }

@@ -278,7 +278,48 @@ namespace Directus
 			return false;
 		}
 
-		LOGF_INFO("D3D11_Device: DirectX %d.%d (%s)", D3D11_MAJOR_VERSION, D3D11_MINOR_VERSION, GetAdapterDescription(adapter).data());
+		// Log feature level and adapter info
+		D3D_FEATURE_LEVEL featureLevel = m_device->GetFeatureLevel();
+		string featureLevelStr;
+		switch (featureLevel)
+		{
+		case D3D_FEATURE_LEVEL_9_1:
+			featureLevelStr = "9.1";
+			break;
+
+		case D3D_FEATURE_LEVEL_9_2:
+			featureLevelStr = "9.2";
+			break;
+
+		case D3D_FEATURE_LEVEL_9_3:
+			featureLevelStr = "9.3";
+			break;
+
+		case D3D_FEATURE_LEVEL_10_0:
+			featureLevelStr = "10.0";
+			break;
+
+		case D3D_FEATURE_LEVEL_10_1:
+			featureLevelStr = "10.1";
+			break;
+
+		case D3D_FEATURE_LEVEL_11_0:
+			featureLevelStr = "11.0";
+			break;
+
+		case D3D_FEATURE_LEVEL_11_1:
+			featureLevelStr = "11.1";
+			break;
+
+		case D3D_FEATURE_LEVEL_12_0:
+			featureLevelStr = "12.0";
+			break;
+
+		case D3D_FEATURE_LEVEL_12_1:
+			featureLevelStr = "12.1";
+			break;
+		}
+		LOGF_INFO("D3D11_Device: Feature level %s - %s", featureLevelStr.data(), GetAdapterDescription(adapter).data());
 
 		m_initialized = true;
 		return true;

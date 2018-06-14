@@ -1,4 +1,5 @@
 // = INCLUDES ========
+#include "Common.hlsl"
 #include "Helper.hlsl"
 //====================
 
@@ -48,24 +49,15 @@ cbuffer PerObjectBuffer : register(b2)
 //===========================================
 
 //= STRUCTS =================================
-struct VertexInputType
-{
-    float4 position : POSITION;
-    float2 uv : TEXCOORD;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-	float3 bitangent : BITANGENT;
-};
-
 struct PixelInputType
 {
-    float4 positionCS : SV_POSITION;
-    float4 positionVS : POSITIONT0;
-    float4 positionWS : POSITIONT1;
-    float2 uv : TEXCOORD;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-	float3 bitangent : BITANGENT;
+    float4 positionCS 	: SV_POSITION;
+    float4 positionVS 	: POSITIONT0;
+    float4 positionWS 	: POSITIONT1;
+    float2 uv 			: TEXCOORD;
+    float3 normal 		: NORMAL;
+    float3 tangent 		: TANGENT;
+	float3 bitangent 	: BITANGENT;
 };
 
 struct PixelOutputType
@@ -77,7 +69,7 @@ struct PixelOutputType
 };
 //===========================================
 
-PixelInputType DirectusVertexShader(VertexInputType input)
+PixelInputType DirectusVertexShader(Vertex_PosUvTbn input)
 {
     PixelInputType output;
     

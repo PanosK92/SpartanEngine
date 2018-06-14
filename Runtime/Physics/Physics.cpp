@@ -95,8 +95,8 @@ namespace Directus
 		// Log version
 		string major = to_string(btGetVersion() / 100);
 		string minor = to_string(btGetVersion()).erase(0, 1);
-		Settings::Get().g_versionBullet = major + "." + minor;
-		LOGF_INFO("Physics: Bullet %s", Settings::Get().g_versionBullet.data());
+		Settings::Get().m_versionBullet = major + "." + minor;
+		LOGF_INFO("Physics: Bullet %s", Settings::Get().m_versionBullet.data());
 
 		return true;
 	}

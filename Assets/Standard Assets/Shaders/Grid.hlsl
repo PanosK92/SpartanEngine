@@ -1,42 +1,36 @@
+// = INCLUDES ========
+#include "Common.hlsl"
+//====================
+
 Texture2D depthTexture 			: register(t0);
 SamplerState samplerAnisoWrap 	: register(s0);
 
-#include "Helper.hlsl"
-
-//= Constant Buffers ===============
 cbuffer MiscBuffer : register(b0)
 {
-	matrix mWVP;
-};
-
-//= Structs ========================
-struct VertexInputType
-{
-    float4 position : POSITION;
-    float4 color : COLOR;
+	matrix mTransform;
 };
 
 struct PixelInputType
 {
     float4 position : SV_POSITION;
-    float4 color : COLOR;
-	float4 gridPos : POSITION;
+    float4 color 	: COLOR;
+	float4 gridPos 	: GRID_POSITION;
 };
 
-//= Vertex Shader ======================================================================================
-PixelInputType DirectusVertexShader(VertexInputType input)
+// Vertex Shader
+PixelInputType DirectusVertexShader(Vertex_PosColor input)
 {
     PixelInputType output;
     	
-    input.position.w = 1.0f;
-    output.position = mul(input.position, mWVP);
-	output.gridPos = output.position;
-	output.color = input.color;
+    input.position.w 	= 1.0f;
+    output.position 	= mul(input.position, mTransform);
+	output.gridPos 		= output.position;
+	output.color 		= input.color;
 	
 	return output;
 }
 
-//= Pixel Shader =======================================================================================
+// Pixel Shader
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	float2 projectDepthMapTexCoord;

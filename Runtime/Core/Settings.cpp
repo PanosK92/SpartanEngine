@@ -72,7 +72,7 @@ namespace Directus
 		m_shadowMapResolution	= 2048;
 		m_anisotropy			= 16;
 		SettingsIO::fileName	= "Directus3D.ini";
-		g_versionPugiXML		= "1.80";
+		m_versionPugiXML		= "1.80";
 		m_maxFPS				= 165.0f;
 	}
 

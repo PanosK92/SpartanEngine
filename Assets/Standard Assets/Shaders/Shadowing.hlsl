@@ -1,3 +1,7 @@
+// = INCLUDES ========
+#include "Common.hlsl"
+//====================
+
 //= DEFINES ======
 #define CASCADES 3
 //================
@@ -35,16 +39,10 @@ cbuffer DefaultBuffer : register(b0)
 //========================================
 
 //= STRUCTS ========================
-struct VertexInputType
-{
-    float4 position : POSITION;
-    float2 uv : TEXCOORD;
-};
-
 struct PixelInputType
 {
     float4 position : SV_POSITION;
-    float2 uv : TEXCOORD;
+    float2 uv 		: TEXCOORD;
 };
 //==================================
 
@@ -55,7 +53,7 @@ struct PixelInputType
 #include "SSAO.hlsl"
 //===========================
 
-PixelInputType DirectusVertexShader(VertexInputType input)
+PixelInputType DirectusVertexShader(Vertex_PosUv input)
 {
     PixelInputType output;
 	

@@ -54,7 +54,7 @@ namespace Directus
 	{
 		if (!m_graphics->GetDevice())
 		{
-			LOG_ERROR("Aborting input layout creation. Graphics device is not present.");
+			LOG_ERROR("D3D11_InputLayout::Create: Graphics device is not present.");
 			return false;
 		}
 

@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../GameObject.h"
 #include "Renderable.h"
+#include "../TransformationGizmo.h"
 //===================================
 
 //= NAMESPACES ================
@@ -50,6 +51,7 @@ namespace Directus
 		m_clearColor		= Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 		m_isDirty			= false;
 		m_fovHorizontalRad	= DegreesToRadians(90.0f);
+		m_transformGizmo	= make_shared<TransformationGizmo>(context);
 	}
 
 	Camera::~Camera()
@@ -199,8 +201,13 @@ namespace Directus
 			hits[hitDistance] = gameObj;
 		}
 
-		// Return closest hit
-		return !hits.empty() ? hits.begin()->second : weak_ptr<GameObject>();
+		// Get closest hit
+		weak_ptr<GameObject> hit = !hits.empty() ? hits.begin()->second : weak_ptr<GameObject>();
+
+		// Display transformation gizmo
+		m_transformGizmo->Pick(hit);
+
+		return hit;
 	}
 
 	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)

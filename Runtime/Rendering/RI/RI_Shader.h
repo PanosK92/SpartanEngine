@@ -40,10 +40,12 @@ namespace Directus
 
 	enum ConstantBufferType
 	{
-		CB_WVP,
-		CB_W_V_P,
-		CB_WVP_Color,
-		CB_WVP_Resolution,
+		CB_Matrix,	
+		CB_Matrix_Vector4,
+		CB_Matrix_Vector3,
+		CB_Matrix_Vector2,
+		CB_Matrix_Matrix_Matrix,
+		CB_Matrix_Vector3_Vector3,
 		CB_Shadowing
 	};
 
@@ -72,18 +74,24 @@ namespace Directus
 
 		void Set();
 		void SetInputLaytout(InputLayout inputLayout);
+
+		// Bind - Texture
 		void SetTexture(void* texture, unsigned int slot);
 		void SetTextures(std::vector<void*> textures);
 
+		// Bind - Constant Buffer
+		void SetBuffer(const Math::Matrix& matrix, unsigned int slot);
+		void SetBuffer(const Math::Matrix& matrix, const Math::Vector4& vector4, unsigned int slot);
+		void SetBuffer(const Math::Matrix& matrix, const Math::Vector3& vector3, unsigned int slot);
+		void SetBuffer(const Math::Matrix& matrix, const Math::Vector2& vector2, unsigned int slot);
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, unsigned int slot);
-		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector4& color, unsigned int slot);
-		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector2& resolution, unsigned int slot);
+		void SetBuffer(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B, unsigned int slot);
 		void SetBuffer(
 			const Math::Matrix& mWVPortho, 
 			const Math::Matrix& mWVPinv, 
 			const Math::Matrix& mView, 
 			const Math::Matrix& mProjection,		
-			const Math::Vector2& resolution,
+			const Math::Vector2& vector2,
 			Light* dirLight,
 			Camera* camera,
 			unsigned int slot
@@ -95,28 +103,28 @@ namespace Directus
 	private:
 		void SetBufferScope(D3D11_ConstantBuffer* buffer, unsigned int slot);
 
-		struct Struct_WVP
+		struct Struct_Matrix
 		{
-			Math::Matrix wvp;
+			Math::Matrix matrix;
 		};
 
-		struct Struct_W_V_P
+		struct Struct_Matrix_Vector4
 		{
-			Math::Matrix world;
-			Math::Matrix view;
-			Math::Matrix projection;
+			Math::Matrix matrix;
+			Math::Vector4 vector4;
 		};
 
-		struct Struct_WVP_Color
+		struct Struct_Matrix_Vector3
 		{
-			Math::Matrix wvp;
-			Math::Vector4 color;
+			Math::Matrix matrix;
+			Math::Vector3 vector3;
+			float padding;
 		};
 
-		struct Struct_WVP_Resolution
+		struct Struct_Matrix_Vector2
 		{
-			Math::Matrix wvp;
-			Math::Vector2 resolution;
+			Math::Matrix matrix;
+			Math::Vector2 vector2;
 			Math::Vector2 padding;
 		};
 
@@ -136,6 +144,22 @@ namespace Directus
 			float farPlane;
 			float doShadowMapping;
 			Math::Vector3 padding;
+		};
+
+		struct Struct_Matrix_Matrix_Matrix
+		{
+			Math::Matrix matrixA;
+			Math::Matrix matrixB;
+			Math::Matrix matrixC;
+		};
+
+		struct Struct_Matrix_Vector3_Vector3
+		{
+			Math::Matrix matrix;
+			Math::Vector3 vector3A;
+			float padding;
+			Math::Vector3 vector3B;
+			float padding2;
 		};
 
 		std::unique_ptr<D3D11_ConstantBuffer> m_constantBuffer;

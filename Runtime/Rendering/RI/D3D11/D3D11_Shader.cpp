@@ -112,7 +112,7 @@ namespace Directus
 
 		if (!m_compiled)
 		{
-			LOG_ERROR("D3D11Shader: Can't set input layout of a non-compiled shader.");
+			LOG_ERROR("D3D11_Shader: Can't set input layout of a non-compiled shader.");
 			return false;
 		}
 
@@ -140,7 +140,7 @@ namespace Directus
 		}
 		else
 		{
-			LOG_ERROR("D3D11Shader: Failed to create vertex input layout for " + FileSystem::GetFileNameFromFilePath(m_filePath) + ".");
+			LOGF_ERROR("D3D11_Shader: Failed to create vertex input layout for %s", FileSystem::GetFileNameFromFilePath(m_filePath).data());
 		}
 
 		return m_layoutHasBeenSet;
@@ -150,7 +150,7 @@ namespace Directus
 	{
 		if (!m_graphics->GetDevice())
 		{
-			LOG_ERROR("D3D11Shader: Aborting sampler creation. Graphics device is not present.");
+			LOG_ERROR("D3D11_Shader: Aborting sampler creation. Graphics device is not present.");
 			return false;
 		}
 
@@ -215,7 +215,7 @@ namespace Directus
 		auto result = m_graphics->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11Shader: Failed to create vertex shader.");
+			LOG_ERROR("D3D11_Shader: Failed to create vertex shader.");
 			return false;
 		}
 
@@ -236,7 +236,7 @@ namespace Directus
 		result = m_graphics->GetDevice()->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11Shader: Failed to create pixel shader.");
+			LOG_ERROR("D3D11_Shader: Failed to create pixel shader.");
 			return false;
 		}
 
@@ -277,11 +277,11 @@ namespace Directus
 			}
 			else if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 			{
-				LOG_ERROR("D3D11Shader: Failed to find shader \"" + shaderName + " \" with path \"" + filePath + "\".");
+				LOG_ERROR("D3D11_Shader: Failed to find shader \"" + shaderName + " \" with path \"" + filePath + "\".");
 			}
 			else
 			{
-				LOG_ERROR("D3D11Shader: An unknown error occured when trying to load and compile \"" + shaderName + "\"");
+				LOG_ERROR("D3D11_Shader: An unknown error occured when trying to load and compile \"" + shaderName + "\"");
 			}
 		}
 
@@ -319,7 +319,7 @@ namespace Directus
 		ID3D11ShaderReflection* reflector = nullptr;
 		if (FAILED(D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), IID_ID3D11ShaderReflection, (void**)&reflector)))
 		{
-			LOG_ERROR("D3D11Shader: Failed to reflect shader.");
+			LOG_ERROR("D3D11_Shader: Failed to reflect shader.");
 			return inputLayoutDesc;
 		}
 

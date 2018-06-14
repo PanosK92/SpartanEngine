@@ -137,7 +137,7 @@ namespace Directus
 		std::shared_ptr<D3D11_RenderTexture> m_renderTexFinalFrame;
 		//=========================================================
 
-		//= SHADERS ==================================
+		//= SHADERS ===========================================
 		std::unique_ptr<LightShader> m_shaderLight;
 		std::unique_ptr<RI_Shader> m_shaderDepth;
 		std::unique_ptr<RI_Shader> m_shaderLine;
@@ -148,7 +148,8 @@ namespace Directus
 		std::unique_ptr<RI_Shader> m_shaderShadowing;
 		std::unique_ptr<RI_Shader> m_shaderSharpening;
 		std::unique_ptr<RI_Shader> m_shaderBlur;
-		//============================================
+		std::unique_ptr<RI_Shader> m_shaderTransformationGizmo;
+		//=====================================================
 
 		//= DEBUG ==========================================
 		std::unique_ptr<Font> m_font;

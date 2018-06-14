@@ -1,9 +1,10 @@
+// = INCLUDES ========
+#include "Common.hlsl"
+//====================
+
 Texture2D depthTexture 			: register(t0);
 SamplerState samplerAnisoWrap 	: register(s0);
 
-#include "Helper.hlsl"
-
-//= Constant Buffers ===============
 cbuffer MiscBuffer : register(b0)
 {
 	matrix mWorld;
@@ -11,22 +12,15 @@ cbuffer MiscBuffer : register(b0)
 	matrix mProjection;
 };
 
-//= Structs ========================
-struct VertexInputType
-{
-    float4 position : POSITION;
-    float4 color : COLOR;
-};
-
 struct PixelInputType
 {
-    float4 position : SV_POSITION;
-    float4 color : COLOR;
-	float4 colliderPos : WHATEVER;
+    float4 position 	: SV_POSITION;
+    float4 color 		: COLOR;
+	float4 colliderPos 	: WHATEVER;
 };
 
-//= Vertex Shader ======================================================================================
-PixelInputType DirectusVertexShader(VertexInputType input)
+// Vertex Shader
+PixelInputType DirectusVertexShader(Vertex_PosColor input)
 {
     PixelInputType output;
     	
@@ -44,7 +38,7 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 	return output;
 }
 
-//= Pixel Shader =======================================================================================
+// Pixel Shader
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	float2 projectDepthMapTexCoord;

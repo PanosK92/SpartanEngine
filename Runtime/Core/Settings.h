@@ -98,14 +98,14 @@ namespace Directus
 		//============================================================================================
 
 		// Third party lib versions
-		std::string g_versionAngelScript;
-		std::string g_versionAssimp;
-		std::string g_versionBullet;
-		std::string g_versionFMOD;
-		std::string g_versionFreeImage;
-		std::string g_versionFreeType;
-		std::string g_versionImGui;
-		std::string g_versionPugiXML;
+		std::string m_versionAngelScript;
+		std::string m_versionAssimp;
+		std::string m_versionBullet;
+		std::string m_versionFMOD;
+		std::string m_versionFreeImage;
+		std::string m_versionFreeType;
+		std::string m_versionImGui;
+		std::string m_versionPugiXML;
 
 	private:
 		bool m_isFullScreen;
