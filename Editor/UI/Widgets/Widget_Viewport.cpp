@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ========================
 #include "Widget_Viewport.h"
-#include "../../ImGui/imgui.h"
+#include "../../ImGui/Source/imgui.h"
 #include "Rendering/Renderer.h"
 #include "Scene/Scene.h"
 #include "Scene/GameObject.h"
@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EditorHelper.h"
 #include "Widget_Scene.h"
 #include "../DragDrop.h"
-//==================================
+//===================================
 
 //= NAMESPACES ==========
 using namespace std;

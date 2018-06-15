@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================================
 #include "Widget_Scene.h"
 #include "Widget_Properties.h"
-#include "../../ImGui/imgui.h"
+#include "../../ImGui/Source/imgui.h"
 #include "../DragDrop.h"
 #include "../EditorHelper.h"
 #include "Core/Engine.h"
