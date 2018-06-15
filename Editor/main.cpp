@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ======================
 #include "Window.h"
 #include "Editor.h"
-#include "ImGui/imgui.h"
-#include "UI/ImGui_Implementation.h"
-#include "Core/Engine.h"
+#include "ImGui/Source/imgui.h"
+#include "ImGui/imgui_impl_win32.h"
 #include "Input/Backend_Def.h"
 #include "Input/Backend_Imp.h"
+#include "Core/Engine.h"
 #include "Rendering/Renderer.h"
-//==================================
+//=================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -56,26 +56,23 @@ void Directus_SetOutputFrameSize(int width, int height)
 
 void Engine_Initialize(HWND windowHandle, HINSTANCE windowInstance, int windowWidth, int windowHeight)
 {
-	ImGui::CreateContext();
-
-	// Create the editor before the engine because it implements
-	// the engine's logging system and will catch all output from it.
+	// 1. Create the editor but don't initialize it yet. This is because the editor implements the engine's
+	// logging system and can display all output in the console upon initialization. We don't want to lose that.
 	g_editor = make_unique<Editor>();
 
-	// Create and initialize the engine
+	// 2. Create and initialize the engine
 	Engine::SetHandles(windowHandle, windowHandle, windowInstance);
 	g_engine = make_unique<Engine>(new Context);
 	g_engine->Initialize();
 
-	// Keep some useful subsystems
+	// Keep some useful subsystems around
 	g_engineContext = g_engine->GetContext();
 	g_renderer		= g_engineContext->GetSubsystem<Renderer>();
 	g_input			= g_engineContext->GetSubsystem<Input>();
-
 	Directus_SetOutputFrameSize(windowWidth, windowHeight);
 
-	// Initialize
-	g_editor->Initialize(g_engineContext);
+	// 3. Initialize the editor now that we have everything it needs (console handle, initialized D3D11 device)
+	g_editor->Initialize(g_engineContext, windowHandle);
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -110,8 +107,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		g_engine->Shutdown();
 		g_engine.release();
-
-		ImGui::DestroyContext();
 	}
 
     return 0;

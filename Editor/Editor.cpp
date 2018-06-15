@@ -24,7 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "Core/Context.h"
 #include "Core/Settings.h"
-#include "UI/ImGui_Implementation.h"
+#include "ImGui/imgui_impl_win32.h"
+#include "ImGui/imgui_impl_dx11.h"
 #include "UI/Widgets/Widget.h"
 #include "UI/Widgets/Widget_MenuBar.h"
 #include "UI/Widgets/Widget_Properties.h"
@@ -62,16 +63,20 @@ Editor::~Editor()
 	Shutdown();
 }
 
-void Editor::Initialize(Context* context)
+void Editor::Initialize(Context* context, void* windowHandle)
 {
-	m_context = context;
-	m_graphics = context->GetSubsystem<RenderingDevice>();
+	m_context	= context;
+	m_graphics	= context->GetSubsystem<RenderingDevice>();
+
+	// ImGui implementation - initialize
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(windowHandle);
+	ImGui_ImplDX11_Init(m_graphics->GetDevice(), m_graphics->GetDeviceContext());
 
 	ThumbnailProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);
 	Settings::Get().m_versionImGui = IMGUI_VERSION;
-	ImGui_ImplDX11_Init(context);
-
 	ApplyStyle();
 
 	for (auto& widget : m_widgets)
@@ -88,14 +93,16 @@ void Editor::Resize()
 
 void Editor::Update()
 {	
-	// [ImGui] Start new frame
+	// ImGui implementation - start frame
 	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
 
-	// Do editor stuff
+	// Editor update
 	DrawEditor();
 	EditorHelper::Get().Update();
 
-	// [ImGui] End frame
+	// ImGui implementation - end frame
 	ImGui::Render();
 	m_graphics->EventBegin("Pass_ImGui");
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -107,7 +114,10 @@ void Editor::Shutdown()
 	m_widgets.clear();
 	m_widgets.shrink_to_fit();
 
+	// ImGui implementation - shutdown
 	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }
 
 void Editor::DrawEditor()

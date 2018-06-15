@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
-#include "../ImGui/imgui.h"
+//= INCLUDES =====================
+#include "../ImGui/Source/imgui.h"
 #include "EditorHelper.h"
 #include "ThumbnailProvider.h"
 #include <variant>
-//============================
+//================================
 
 enum DragPayloadType
 {

@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/RI/Backend_Def.h"
 //===================================
 
-struct ImGuiContext;
 class Widget;
 namespace Directus
 {
@@ -40,7 +39,7 @@ public:
 	Editor();
 	~Editor();
 
-	void Initialize(Directus::Context* context);
+	void Initialize(Directus::Context* context, void* windowHandle);
 	void Resize();
 	void Update();
 	void Shutdown();
