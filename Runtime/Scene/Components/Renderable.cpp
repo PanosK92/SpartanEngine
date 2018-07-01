@@ -124,7 +124,7 @@ namespace Directus
 		stream->Write(m_geometryVertexOffset);
 		stream->Write(m_geometryVertexCount);
 		stream->Write(m_geometryAABB);
-		stream->Write(!m_model ? m_model->GetResourceName() : NOT_ASSIGNED);
+		stream->Write(m_model ? m_model->GetResourceName() : NOT_ASSIGNED);
 
 		// Material
 		stream->Write(m_castShadows);

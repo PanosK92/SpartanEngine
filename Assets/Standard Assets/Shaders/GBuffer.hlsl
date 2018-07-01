@@ -64,7 +64,7 @@ struct PixelOutputType
 	float4 albedo		: SV_Target0;
 	float4 normal		: SV_Target1;
 	float4 specular		: SV_Target2;
-	float4 depth		: SV_Target3;
+	float2 depth		: SV_Target3;
 };
 //===========================================
 
@@ -167,8 +167,8 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	// Write to G-Buffer
 	output.albedo		= albedo;
 	output.normal 		= float4(PackNormal(normal), occlusion);
-	output.specular		= float4(roughness, metallic, type, 1.0f);
-	output.depth 		= float4(depthCS, depthVS, emission, 1.0f);
+	output.specular		= float4(roughness, metallic, emission, type);
+	output.depth 		= float2(depthCS, depthVS);
 
     return output;
 }

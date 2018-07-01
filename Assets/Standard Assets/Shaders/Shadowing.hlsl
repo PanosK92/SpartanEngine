@@ -59,7 +59,7 @@ PixelInputType DirectusVertexShader(Vertex_PosUv input)
     return output;
 }
 
-float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
+float2 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	float2 texCoord 	= input.uv;
 	float3 normal 		= texNormal.Sample(samplerPoint, texCoord).rgb;
@@ -116,5 +116,5 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	//============================================================================================
 
-    return float4(shadow, ssao, 0.0f, 1.0f);
+    return float2(shadow, ssao);
 }
