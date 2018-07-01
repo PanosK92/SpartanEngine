@@ -96,6 +96,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	material.albedo 	= albedo.rgb;
     material.roughness 	= specularSample.r;
     material.metallic 	= specularSample.g;
+	material.emission	= specularSample.b * 2.0f;
 		
 	// Extract any values out of those samples
     float3 normal 	= normalize(UnpackNormal(normalSample.rgb));
@@ -107,17 +108,13 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float shadow 		= shadowing.r;
 	float ssao 			= shadowing.g;
 	
-	// Misc
-	float emission = depthSample.b * 100.0f;
-	float renderTechnique = specularSample.b;
-	
 	// Calculate view direction
     float3 viewDir = normalize(cameraPosWS.xyz - worldPos.xyz);
    	
 	// some totally fake dynamic skybox
 	float ambientLight = clamp(dirLightIntensity, 0.01f, 1.0f); 
 	
-    if (renderTechnique == 1.0f)
+    if (specularSample.a == 1.0f) // Render technique
     {
         finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir)).rgb;
         finalColor = ACESFilm(finalColor);
@@ -128,7 +125,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
         return float4(finalColor, luma);
     }
 	
+	// Ambient terms
 	ambientLight *= ssao;
+	ambientLight += material.emission;
 	 
 	//= DIRECTIONAL LIGHT ========================================================================================================================================
 	Light directionalLight;
@@ -138,7 +137,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	directionalLight.intensity 	= dirLightIntensity.r;
 	directionalLight.direction	= normalize(-dirLightDirection).xyz;
 	directionalLight.intensity 	*= shadow;
-	directionalLight.intensity 	+= emission;
 	
 	finalColor += ImageBasedLighting(material, directionalLight.direction, normal, viewDir) * ambientLight;
 	

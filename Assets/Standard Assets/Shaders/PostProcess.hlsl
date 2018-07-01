@@ -17,9 +17,9 @@ SamplerState bilinearSampler 	: register(s1);
 #include "FXAA.hlsl"
 #endif
 
-cbuffer DefaultBuffer : register(b0)
+cbuffer DefaultBuffer
 {
-    matrix mWorldViewProjection;
+    matrix mTransform;
     float2 resolution;
     float2 padding;
 };
@@ -35,7 +35,7 @@ PixelInputType DirectusVertexShader(Vertex_PosUv input)
     PixelInputType output;
 	
     input.position.w = 1.0f;
-    output.position = mul(input.position, mWorldViewProjection);
+    output.position = mul(input.position, mTransform);
     output.uv = input.uv;
 	
     return output;
@@ -49,9 +49,9 @@ float4 FXAAPass(float2 texCoord, float2 texelSize)
 {
 	FxaaTex tex 						= { bilinearSampler, sourceTexture };	
     float2 fxaaQualityRcpFrame			= texelSize;
-    float fxaaQualitySubpix				= 1.5f; // 0.75f // The amount of sub-pixel aliasing removal.
-    float fxaaQualityEdgeThreshold		= 0.125f; // 0.125f; // Edge detection threshold. The minimum amount of local contrast required to apply algorithm.
-    float fxaaQualityEdgeThresholdMin	= 0.0833f; // 0.0833f // Darkness threshold. Trims the algorithm from processing darks.
+    float fxaaQualitySubpix				= 1.5f; 	// 0.75f	// The amount of sub-pixel aliasing removal.
+    float fxaaQualityEdgeThreshold		= 0.125f; 	// 0.125f	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.
+    float fxaaQualityEdgeThresholdMin	= 0.0833f; 	// 0.0833f	// Darkness threshold. Trims the algorithm from processing darks.
 	
 	float3 fxaa = FxaaPixelShader
 	( 

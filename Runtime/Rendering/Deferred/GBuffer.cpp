@@ -40,7 +40,7 @@ namespace Directus
 		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<D3D11_RenderTexture>(m_renderingDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
 		m_renderTargets[GBuffer_Target_Normal]		= make_shared<D3D11_RenderTexture>(m_renderingDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
 		m_renderTargets[GBuffer_Target_Specular]	= make_shared<D3D11_RenderTexture>(m_renderingDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11_RenderTexture>(m_renderingDevice, width, height, true,	Texture_Format_R32G32B32A32_FLOAT);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11_RenderTexture>(m_renderingDevice, width, height, true,	Texture_Format_R32G32_FLOAT);
 	}
 
 	GBuffer::~GBuffer()

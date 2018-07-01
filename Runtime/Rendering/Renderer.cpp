@@ -191,9 +191,9 @@ namespace Directus
 		m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 
 		// Create render textures (used for post-processing)
-		m_renderTexSpare		= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-		m_renderTexShadowing	= make_shared<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
-		m_renderTexFinalFrame	= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexSpare		= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
+		m_renderTexShadowing	= make_shared<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false, Texture_Format_R32G32_FLOAT);
+		m_renderTexFinalFrame	= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
 
 		// Noise texture (used by SSAO shader)
 		m_texNoiseMap = make_unique<RI_Texture>(m_context);
