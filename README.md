@@ -37,6 +37,7 @@ New editor               		| 60% | Replace Qt editor with ImGui editor (will wai
 Debug Rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
 SSAO         					| 100% | -
+Bloom         					| 90% | -
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 Point light support             | 100% | -
 XML I/O                         | 100% | -

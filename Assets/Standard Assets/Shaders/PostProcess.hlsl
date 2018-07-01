@@ -1,21 +1,12 @@
-// = INCLUDES ========
+// = INCLUDES ===============
 #include "Common.hlsl"
-//====================
+#include "Common_Passes.hlsl"
+//===========================
 
 Texture2D sourceTexture 		: register(t0);
+Texture2D sourceTexture2 		: register(t1);
 SamplerState pointSampler 		: register(s0);
 SamplerState bilinearSampler 	: register(s1);
-
-#if SHARPENING
-#include "LumaSharpen.hlsl"
-#endif
-
-#if FXAA
-#define FXAA_PC 1
-#define FXAA_HLSL_5 1
-#define FXAA_QUALITY__PRESET 29
-#include "FXAA.hlsl"
-#endif
 
 cbuffer DefaultBuffer
 {
@@ -24,15 +15,16 @@ cbuffer DefaultBuffer
     float2 padding;
 };
 
-struct PixelInputType
+struct VS_Output
 {
     float4 position : SV_POSITION;
     float2 uv 		: TEXCOORD;
 };
 
-PixelInputType DirectusVertexShader(Vertex_PosUv input)
+// Vertex Shader
+VS_Output DirectusVertexShader(Vertex_PosUv input)
 {
-    PixelInputType output;
+    VS_Output output;
 	
     input.position.w = 1.0f;
     output.position = mul(input.position, mTransform);
@@ -41,85 +33,50 @@ PixelInputType DirectusVertexShader(Vertex_PosUv input)
     return output;
 }
 
-/*------------------------------------------------------------------------------
-									[FXAA]
-------------------------------------------------------------------------------*/
-#if FXAA
-float4 FXAAPass(float2 texCoord, float2 texelSize)
+
+// Pixel Shader
+float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 {
-	FxaaTex tex 						= { bilinearSampler, sourceTexture };	
-    float2 fxaaQualityRcpFrame			= texelSize;
-    float fxaaQualitySubpix				= 1.5f; 	// 0.75f	// The amount of sub-pixel aliasing removal.
-    float fxaaQualityEdgeThreshold		= 0.125f; 	// 0.125f	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.
-    float fxaaQualityEdgeThresholdMin	= 0.0833f; 	// 0.0833f	// Darkness threshold. Trims the algorithm from processing darks.
+    float2 texCoord 	= input.uv;
+    float4 color 		= float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float2 texelSize 	= float2(1.0f / resolution.x, 1.0f / resolution.y);
 	
-	float3 fxaa = FxaaPixelShader
-	( 
-		texCoord, 0, tex, tex, tex,
-		fxaaQualityRcpFrame, 0, 0, 0,
-		fxaaQualitySubpix,
-		fxaaQualityEdgeThreshold,
-		fxaaQualityEdgeThresholdMin,
-		0, 0, 0, 0
-	).xyz;
+#if PASS_FXAA
+	color = float4(Pass_FXAA(texCoord, texelSize, sourceTexture, bilinearSampler), 1.0f);
+#endif
 	
-    return float4(fxaa, 1.0f);
-}
+#if PASS_SHARPENING
+	color = Pass_Sharpening(texCoord, sourceTexture, bilinearSampler, resolution);
+#endif
+	
+#if PASS_BLUR_BOX
+	color = Pass_BlurBox(texCoord, texelSize, 4, sourceTexture, pointSampler);
 #endif
 
-/*------------------------------------------------------------------------------
-							[SHARPENING]
-------------------------------------------------------------------------------*/
-#if SHARPENING
-float4 SharpeningPass(float2 texCoord)
-{
-	return LumaSharpen(sourceTexture, bilinearSampler, texCoord, resolution);
-}
+#if PASS_BLUR_GAUSSIAN_H
+	color = Pass_BlurGaussian(texCoord, sourceTexture, pointSampler, resolution, float2(1.0f, 0.0f), 150.0f);
 #endif
 
-/*------------------------------------------------------------------------------
-								[BLUR]
-------------------------------------------------------------------------------*/
-#if BLUR
-float4 BlurPass(float2 texCoord, float2 texelSize)
-{
-	int uBlurSize = 4; // use size of noise texture
-	
-	float4 result = float4(0.0f, 0.0f, 0.0f, 0.0f);
-	float temp = float(-uBlurSize) * 0.5f + 0.5f;
-	float2 hlim = float2(temp, temp);
-	for (int i = 0; i < uBlurSize; ++i) 
-		for (int j = 0; j < uBlurSize; ++j) 
-		{
-			float2 offset = (hlim + float2(float(i), float(j))) * texelSize;
-			result += sourceTexture.Sample(pointSampler, texCoord + offset);
-		}
-		
-	result = result / float(uBlurSize * uBlurSize);
-	   
-	return result;
-}
+#if PASS_BLUR_GAUSSIAN_V
+	color = Pass_BlurGaussian(texCoord, sourceTexture, pointSampler, resolution, float2(0.0f, 1.0f), 150.0f);
 #endif
 
-/*------------------------------------------------------------------------------
-									[PS()]
-------------------------------------------------------------------------------*/
-float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
-{
-    float2 texCoord = input.uv;
-    float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    float2 texelSize = float2(1.0f / resolution.x, 1.0f / resolution.y);
-	
-#if FXAA
-	color = FXAAPass(texCoord, texelSize);
+#if PASS_BRIGHT
+	color 				= sourceTexture.Sample(pointSampler, input.uv);
+    float brightness 	= dot(color.rgb, float3(0.299f, 0.587f, 0.114f));	
+	color 				= brightness > 0.7f ? color : float4(0.0f, 0.0f, 0.0f, 0.0f);
 #endif
+
+#if PASS_BLEND_ADDITIVE
+	float4 sourceColor 	= sourceTexture.Sample(pointSampler, input.uv);
+	float4 sourceColor2 = sourceTexture2.Sample(pointSampler, input.uv);
 	
-#if SHARPENING
-	color = SharpeningPass(texCoord);
+	// Additive blending
+	color = sourceColor + sourceColor2;
 #endif
-	
-#if BLUR
-	color = BlurPass(texCoord, texelSize);
+
+#if PASS_CORRECTION
+	color = Pass_Correction(texCoord, sourceTexture, pointSampler);
 #endif
 
     return color;

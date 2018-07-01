@@ -107,111 +107,6 @@ namespace Directus
 		m_quad = make_unique<Rectangle>(m_context);
 		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
 
-		// Get standard resource directories
-		string shaderDirectory	= g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
-		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
-
-		// Light shader
-		m_shaderLight = make_unique<LightShader>();
-		m_shaderLight->Load(shaderDirectory + "Light.hlsl", m_graphics);
-
-		// Line shader
-		m_shaderLine = make_unique<RI_Shader>(m_context);
-		m_shaderLine->Compile(shaderDirectory + "Line.hlsl");
-		m_shaderLine->SetInputLaytout(PositionColor);
-		m_shaderLine->AddSampler(Texture_Sampler_Linear);
-		m_shaderLine->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
-
-		// Depth shader
-		m_shaderLightDepth = make_unique<RI_Shader>(m_context);
-		m_shaderLightDepth->Compile(shaderDirectory + "ShadowingDepth.hlsl");
-		m_shaderLightDepth->SetInputLaytout(Position);
-		m_shaderLightDepth->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
-
-		// Grid shader
-		m_shaderGrid = make_unique<RI_Shader>(m_context);
-		m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl");
-		m_shaderGrid->SetInputLaytout(PositionColor);
-		m_shaderGrid->AddSampler(Texture_Sampler_Anisotropic);
-		m_shaderGrid->AddBuffer(CB_Matrix, VertexShader);
-
-		// Font shader
-		m_shaderFont = make_unique<RI_Shader>(m_context);
-		m_shaderFont->Compile(shaderDirectory + "Font.hlsl");
-		m_shaderFont->SetInputLaytout(PositionTexture);
-		m_shaderFont->AddSampler(Texture_Sampler_Point);
-		m_shaderFont->AddBuffer(CB_Matrix_Vector4, Global);
-
-		// Texture shader
-		m_shaderTexture = make_unique<RI_Shader>(m_context);
-		m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl");
-		m_shaderTexture->SetInputLaytout(PositionTexture);
-		m_shaderTexture->AddSampler(Texture_Sampler_Linear);
-		m_shaderTexture->AddBuffer(CB_Matrix, VertexShader);
-
-		// FXAA Shader
-		m_shaderFXAA = make_unique<RI_Shader>(m_context);
-		m_shaderFXAA->AddDefine("FXAA");
-		m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl");
-		m_shaderFXAA->SetInputLaytout(PositionTexture);
-		m_shaderFXAA->AddSampler(Texture_Sampler_Point);
-		m_shaderFXAA->AddSampler(Texture_Sampler_Bilinear);
-		m_shaderFXAA->AddBuffer(CB_Matrix_Vector2, Global);
-
-		// Sharpening shader
-		m_shaderSharpening = make_unique<RI_Shader>(m_context);
-		m_shaderSharpening->AddDefine("SHARPENING");
-		m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl");
-		m_shaderSharpening->SetInputLaytout(PositionTexture);
-		m_shaderSharpening->AddSampler(Texture_Sampler_Point);
-		m_shaderSharpening->AddSampler(Texture_Sampler_Bilinear);
-		m_shaderSharpening->AddBuffer(CB_Matrix_Vector2, Global);
-
-		// Blur shader
-		m_shaderBlur = make_unique<RI_Shader>(m_context);
-		m_shaderBlur->AddDefine("BLUR");
-		m_shaderBlur->Compile(shaderDirectory + "PostProcess.hlsl");
-		m_shaderBlur->SetInputLaytout(PositionTexture);
-		m_shaderBlur->AddSampler(Texture_Sampler_Point);
-		m_shaderBlur->AddSampler(Texture_Sampler_Bilinear);
-		m_shaderBlur->AddBuffer(CB_Matrix_Vector2, Global);
-
-		// Transformation Gizmo shader
-		m_shaderTransformationGizmo = make_unique<RI_Shader>(m_context);
-		m_shaderTransformationGizmo->Compile(shaderDirectory + "TransformationGizmo.hlsl");
-		m_shaderTransformationGizmo->SetInputLaytout(PositionTextureTBN);
-		m_shaderTransformationGizmo->AddBuffer(CB_Matrix_Vector3_Vector3, Global);
-
-		// Shadowing shader (Shadow mapping & SSAO)
-		m_shaderShadowing = make_unique<RI_Shader>(m_context);
-		m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
-		m_shaderShadowing->SetInputLaytout(PositionTexture);
-		m_shaderShadowing->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp); // Shadow mapping
-		m_shaderShadowing->AddSampler(Texture_Sampler_Linear); // SSAO
-		m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
-
-		// Create render textures (used for post-processing)
-		m_renderTexSpare		= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
-		m_renderTexShadowing	= make_shared<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false, Texture_Format_R32G32_FLOAT);
-		m_renderTexFinalFrame	= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
-
-		// Noise texture (used by SSAO shader)
-		m_texNoiseMap = make_unique<RI_Texture>(m_context);
-		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
-		m_texNoiseMap->SetType(TextureType_Normal);
-
-		// Gizmo icons
-		m_gizmoTexLightDirectional = make_unique<RI_Texture>(m_context);
-		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
-		m_gizmoTexLightDirectional->SetType(TextureType_Albedo);
-		m_gizmoTexLightPoint = make_unique<RI_Texture>(m_context);
-		m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
-		m_gizmoTexLightPoint->SetType(TextureType_Albedo);
-		m_gizmoTexLightSpot = make_unique<RI_Texture>(m_context);
-		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
-		m_gizmoTexLightSpot->SetType(TextureType_Albedo);
-		m_gizmoRectLight = make_unique<Rectangle>(m_context);
-
 		// Performance Metrics
 		m_font = make_unique<Font>(m_context);
 		string fontDir = g_resourceMng->GetStandardResourceDirectory(Resource_Font);
@@ -222,6 +117,163 @@ namespace Directus
 		// Scene grid
 		m_grid = make_unique<Grid>(m_context);
 		m_grid->BuildGrid();
+
+		// Get standard resource directories
+		string shaderDirectory	= g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
+		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
+
+		// SHADERS
+		{
+			// Light
+			m_shaderLight = make_unique<LightShader>();
+			m_shaderLight->Load(shaderDirectory + "Light.hlsl", m_graphics);
+
+			// Line
+			m_shaderLine = make_unique<RI_Shader>(m_context);
+			m_shaderLine->Compile(shaderDirectory + "Line.hlsl");
+			m_shaderLine->SetInputLaytout(PositionColor);
+			m_shaderLine->AddSampler(Texture_Sampler_Linear);
+			m_shaderLine->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
+
+			// Depth
+			m_shaderLightDepth = make_unique<RI_Shader>(m_context);
+			m_shaderLightDepth->Compile(shaderDirectory + "ShadowingDepth.hlsl");
+			m_shaderLightDepth->SetInputLaytout(Position);
+			m_shaderLightDepth->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
+
+			// Grid
+			m_shaderGrid = make_unique<RI_Shader>(m_context);
+			m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl");
+			m_shaderGrid->SetInputLaytout(PositionColor);
+			m_shaderGrid->AddSampler(Texture_Sampler_Anisotropic);
+			m_shaderGrid->AddBuffer(CB_Matrix, VertexShader);
+
+			// Font
+			m_shaderFont = make_unique<RI_Shader>(m_context);
+			m_shaderFont->Compile(shaderDirectory + "Font.hlsl");
+			m_shaderFont->SetInputLaytout(PositionTexture);
+			m_shaderFont->AddSampler(Texture_Sampler_Point);
+			m_shaderFont->AddBuffer(CB_Matrix_Vector4, Global);
+
+			// Texture
+			m_shaderTexture = make_unique<RI_Shader>(m_context);
+			m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl");
+			m_shaderTexture->SetInputLaytout(PositionTexture);
+			m_shaderTexture->AddSampler(Texture_Sampler_Linear);
+			m_shaderTexture->AddBuffer(CB_Matrix, VertexShader);
+
+			// FXAA
+			m_shaderFXAA = make_unique<RI_Shader>(m_context);
+			m_shaderFXAA->AddDefine("PASS_FXAA");
+			m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl");
+			m_shaderFXAA->SetInputLaytout(PositionTexture);
+			m_shaderFXAA->AddSampler(Texture_Sampler_Point);
+			m_shaderFXAA->AddSampler(Texture_Sampler_Bilinear);
+			m_shaderFXAA->AddBuffer(CB_Matrix_Vector2, Global);
+
+			// Sharpening
+			m_shaderSharpening = make_unique<RI_Shader>(m_context);
+			m_shaderSharpening->AddDefine("PASS_SHARPENING");
+			m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl");
+			m_shaderSharpening->SetInputLaytout(PositionTexture);
+			m_shaderSharpening->AddSampler(Texture_Sampler_Point);
+			m_shaderSharpening->AddSampler(Texture_Sampler_Bilinear);
+			m_shaderSharpening->AddBuffer(CB_Matrix_Vector2, Global);
+
+			// Blur Box
+			m_shaderBlurBox = make_unique<RI_Shader>(m_context);
+			m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
+			m_shaderBlurBox->Compile(shaderDirectory + "PostProcess.hlsl");
+			m_shaderBlurBox->SetInputLaytout(PositionTexture);
+			m_shaderBlurBox->AddSampler(Texture_Sampler_Point);
+			m_shaderBlurBox->AddSampler(Texture_Sampler_Bilinear);
+			m_shaderBlurBox->AddBuffer(CB_Matrix_Vector2, Global);
+
+			// Blur Gaussian Horizontal
+			m_shaderBlurGaussianH = make_unique<RI_Shader>(m_context);
+			m_shaderBlurGaussianH->AddDefine("PASS_BLUR_GAUSSIAN_H");
+			m_shaderBlurGaussianH->Compile(shaderDirectory + "PostProcess.hlsl");
+			m_shaderBlurGaussianH->SetInputLaytout(PositionTexture);
+			m_shaderBlurGaussianH->AddSampler(Texture_Sampler_Point);
+			m_shaderBlurGaussianH->AddSampler(Texture_Sampler_Bilinear);
+			m_shaderBlurGaussianH->AddBuffer(CB_Matrix_Vector2, Global);
+
+			// Blur Gaussian Vertical
+			m_shaderBlurGaussianV = make_unique<RI_Shader>(m_context);
+			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V");
+			m_shaderBlurGaussianV->Compile(shaderDirectory + "PostProcess.hlsl");
+			m_shaderBlurGaussianV->SetInputLaytout(PositionTexture);
+			m_shaderBlurGaussianV->AddSampler(Texture_Sampler_Point);
+			m_shaderBlurGaussianV->AddSampler(Texture_Sampler_Bilinear);
+			m_shaderBlurGaussianV->AddBuffer(CB_Matrix_Vector2, Global);
+
+			// Bloom - bright
+			m_shaderBloom_Bright = make_unique<RI_Shader>(m_context);
+			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT");
+			m_shaderBloom_Bright->Compile(shaderDirectory + "PostProcess.hlsl");
+			m_shaderBloom_Bright->SetInputLaytout(PositionTexture);
+			m_shaderBloom_Bright->AddSampler(Texture_Sampler_Point);
+			m_shaderBloom_Bright->AddBuffer(CB_Matrix_Vector2, Global);
+
+			// Bloom - blend
+			m_shaderBloom_BlurBlend = make_unique<RI_Shader>(m_context);
+			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
+			m_shaderBloom_BlurBlend->Compile(shaderDirectory + "PostProcess.hlsl");
+			m_shaderBloom_BlurBlend->SetInputLaytout(PositionTexture);
+			m_shaderBloom_BlurBlend->AddSampler(Texture_Sampler_Point);
+			m_shaderBloom_BlurBlend->AddBuffer(CB_Matrix, VertexShader);
+
+			// Correction
+			m_shaderCorrection = make_unique<RI_Shader>(m_context);
+			m_shaderCorrection->AddDefine("PASS_CORRECTION");
+			m_shaderCorrection->Compile(shaderDirectory + "PostProcess.hlsl");
+			m_shaderCorrection->SetInputLaytout(PositionTexture);
+			m_shaderCorrection->AddSampler(Texture_Sampler_Point);
+			m_shaderCorrection->AddSampler(Texture_Sampler_Bilinear);
+			m_shaderCorrection->AddBuffer(CB_Matrix_Vector2, Global);
+
+			// Transformation gizmo
+			m_shaderTransformationGizmo = make_unique<RI_Shader>(m_context);
+			m_shaderTransformationGizmo->Compile(shaderDirectory + "TransformationGizmo.hlsl");
+			m_shaderTransformationGizmo->SetInputLaytout(PositionTextureTBN);
+			m_shaderTransformationGizmo->AddBuffer(CB_Matrix_Vector3_Vector3, Global);
+
+			// Shadowing (shadow mapping & SSAO)
+			m_shaderShadowing = make_unique<RI_Shader>(m_context);
+			m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
+			m_shaderShadowing->SetInputLaytout(PositionTexture);
+			m_shaderShadowing->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp); // Shadow mapping
+			m_shaderShadowing->AddSampler(Texture_Sampler_Linear); // SSAO
+			m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
+		}
+
+		// RENDER TARGETS
+		{
+			m_renderTexPing			= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);	
+			m_renderTexPing2		= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
+			m_renderTexPong			= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
+			m_renderTexShadowing	= make_shared<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false, Texture_Format_R32G32_FLOAT);
+		}
+
+		// TEXTURES
+		{
+			// Noise texture (used by SSAO shader)
+			m_texNoiseMap = make_unique<RI_Texture>(m_context);
+			m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
+			m_texNoiseMap->SetType(TextureType_Normal);
+
+			// Gizmo icons
+			m_gizmoTexLightDirectional = make_unique<RI_Texture>(m_context);
+			m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
+			m_gizmoTexLightDirectional->SetType(TextureType_Albedo);
+			m_gizmoTexLightPoint = make_unique<RI_Texture>(m_context);
+			m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
+			m_gizmoTexLightPoint->SetType(TextureType_Albedo);
+			m_gizmoTexLightSpot = make_unique<RI_Texture>(m_context);
+			m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
+			m_gizmoTexLightSpot->SetType(TextureType_Albedo);
+			m_gizmoRectLight = make_unique<Rectangle>(m_context);
+		}
 
 		return true;
 	}
@@ -248,7 +300,7 @@ namespace Directus
 
 	void* Renderer::GetFrame()
 	{
-		return (void*)m_renderTexFinalFrame->GetShaderResourceView();
+		return (void*)m_renderTexPong->GetShaderResourceView();
 	}
 
 	void Renderer::Present()
@@ -291,18 +343,19 @@ namespace Directus
 				m_gbuffer->GetShaderResource(GBuffer_Target_Normal),	// IN:	Texture			- Normal
 				m_gbuffer->GetShaderResource(GBuffer_Target_Depth),		// IN:	Texture			- Depth
 				m_texNoiseMap->GetShaderResource(),						// IN:	Texture			- Normal noise
-				m_renderTexSpare.get(),									// IN:	Render texture		
+				m_renderTexPing.get(),									// IN:	Render texture		
 				m_renderTexShadowing.get()								// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
 			);
 
 			Pass_Light(
 				m_renderTexShadowing->GetShaderResourceView(),	// IN:	Texture			- Shadowing (Shadow mapping + SSAO)
-				m_renderTexSpare.get()							// OUT: Render texture	- Result
+				m_renderTexPing.get()							// OUT: Render texture	- Result
 			);
 
 			Pass_PostLight(
-				m_renderTexSpare,		// IN:	Render texture - Deferred pass result
-				m_renderTexFinalFrame	// OUT: Render texture - Result
+				m_renderTexPing,	// IN:	Render texture - Deferred pass result
+				m_renderTexPing2,	// IN:	Render texture - A spare one
+				m_renderTexPong		// OUT: Render texture - Result
 			);
 		}		
 		else // If there is no camera, clear to black
@@ -345,14 +398,17 @@ namespace Directus
 		m_quad = make_unique<Rectangle>(m_context);
 		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
 
-		m_renderTexSpare.reset();
-		m_renderTexSpare = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexPing.reset();
+		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
+
+		m_renderTexPing2.reset();
+		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
+
+		m_renderTexPong.reset();
+		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
 
 		m_renderTexShadowing.reset();
-		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
-
-		m_renderTexFinalFrame.reset();
-		m_renderTexFinalFrame = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false, Texture_Format_R32G32_FLOAT);
 	}
 
 	const Vector2& Renderer::GetViewportInternal()
@@ -496,10 +552,10 @@ namespace Directus
 		{
 			cascades->SetAsRenderTarget(i);
 
-			for (const auto& gameObj : m_renderables)
+			for (const auto& actor : m_renderables)
 			{
 				// Get renderable and material
-				Renderable* obj_renderable = gameObj->GetRenderable_PtrRaw();
+				Renderable* obj_renderable = actor->GetRenderable_PtrRaw();
 				Material* obj_material = obj_renderable ? obj_renderable->Material_Ref() : nullptr;
 
 				if (!obj_renderable || !obj_material)
@@ -530,7 +586,7 @@ namespace Directus
 					//continue;
 
 				m_shaderLightDepth->Bind_Buffer(
-					gameObj->GetTransform_PtrRaw()->GetWorldTransform() * directionalLight->ComputeViewMatrix() * cascades->ComputeProjectionMatrix(i)
+					actor->GetTransform_PtrRaw()->GetWorldTransform() * directionalLight->ComputeViewMatrix() * cascades->ComputeProjectionMatrix(i)
 				);
 				m_shaderLightDepth->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
 
@@ -558,10 +614,10 @@ namespace Directus
 		m_gbuffer->SetAsRenderTarget();
 		m_gbuffer->Clear();
 		
-		for (auto gameObj : m_renderables)
+		for (auto actor : m_renderables)
 		{
 			// Get renderable and material
-			Renderable* obj_renderable	= gameObj->GetRenderable_PtrRaw();
+			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
 			Material* obj_material		= obj_renderable ? obj_renderable->Material_Ref() : nullptr;
 
 			if (!obj_renderable || !obj_material)
@@ -609,7 +665,7 @@ namespace Directus
 			}
 
 			// UPDATE PER OBJECT BUFFER
-			auto mWorld	= gameObj->GetTransform_PtrRaw()->GetWorldTransform();
+			auto mWorld	= actor->GetTransform_PtrRaw()->GetWorldTransform();
 			obj_shader->Bind_PerObjectBuffer(mWorld, m_mView, m_mProjectionPersp);
 		
 			// render			
@@ -686,7 +742,7 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::Pass_PostLight(shared_ptr<D3D11_RenderTexture>& inRenderTextureFrame, shared_ptr<D3D11_RenderTexture>& outRenderTexture)
+	void Renderer::Pass_PostLight(shared_ptr<D3D11_RenderTexture>& inRenderTexture1, shared_ptr<D3D11_RenderTexture>& inRenderTexture2, shared_ptr<D3D11_RenderTexture>& outRenderTexture)
 	{
 		PROFILE_FUNCTION_BEGIN();
 		m_graphics->EventBegin("Pass_PostLight");
@@ -694,15 +750,25 @@ namespace Directus
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
-		// FXAA
-		Pass_FXAA(inRenderTextureFrame->GetShaderResourceView(), outRenderTexture.get());
+		// CORRECTION (Gamma, Tone-mapping)
+		Pass_Correction(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
 
 		// Swap the render textures instead of swapping render targets (cheaper)
-		outRenderTexture.swap(inRenderTextureFrame);	
+		outRenderTexture.swap(inRenderTexture1);
+
+		// FXAA
+		Pass_FXAA(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+
+		outRenderTexture.swap(inRenderTexture1);	
 
 		// SHARPENING
-		Pass_Sharpening(inRenderTextureFrame->GetShaderResourceView(), outRenderTexture.get());
-	
+		Pass_Sharpening(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+
+		outRenderTexture.swap(inRenderTexture1);
+
+		// BLOOM
+		Pass_Bloom(inRenderTexture1, inRenderTexture2, outRenderTexture);
+
 		Pass_DebugGBuffer();
 		Pass_Debug();
 
@@ -747,7 +813,7 @@ namespace Directus
 		// TEXTURE
 		m_shaderTexture->Bind();
 		m_shaderTexture->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
-		m_shaderTexture->SetTexture(m_gbuffer->GetShaderResource(texType), 0);
+		m_shaderTexture->Bind_Texture(m_gbuffer->GetShaderResource(texType), 0);
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
 		m_graphics->EventEnd();
@@ -804,7 +870,7 @@ namespace Directus
 				m_lineRenderer->SetBuffer();
 				m_shaderLine->Bind();
 				m_shaderLine->Bind_Buffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
-				m_shaderLine->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0); // depth
+				m_shaderLine->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0); // depth
 				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
 
 				m_graphics->EventEnd();
@@ -822,7 +888,7 @@ namespace Directus
 			m_grid->SetBuffer();
 			m_shaderGrid->Bind();
 			m_shaderGrid->Bind_Buffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(), 0);
-			m_shaderGrid->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
+			m_shaderGrid->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 
 			m_graphics->EventEnd();
@@ -881,7 +947,7 @@ namespace Directus
 					m_gizmoRectLight->SetBuffer();
 					m_shaderTexture->Bind();
 					m_shaderTexture->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
-					m_shaderTexture->SetTexture(lightTex->GetShaderResource(), 0);
+					m_shaderTexture->Bind_Texture(lightTex->GetShaderResource(), 0);
 					m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
 				}
 				m_graphics->EventEnd();
@@ -919,7 +985,7 @@ namespace Directus
 
 			m_shaderFont->Bind();
 			m_shaderFont->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, m_font->GetColor(), 0);
-			m_shaderFont->SetTexture(m_font->GetShaderResource(), 0);
+			m_shaderFont->Bind_Texture(m_font->GetShaderResource(), 0);
 			m_shaderFont->DrawIndexed(m_font->GetIndexCount());
 		}
 
@@ -929,14 +995,27 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
+	void Renderer::Pass_Correction(void* texture, void* renderTarget)
+	{
+		m_graphics->EventBegin("Pass_Correction");
+
+		SetRenderTarget(renderTarget, false);
+		m_shaderCorrection->Bind();
+		m_shaderCorrection->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
+		m_shaderCorrection->Bind_Texture(texture);
+		m_shaderCorrection->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
+	}
+
 	void Renderer::Pass_FXAA(void* texture, void* renderTarget)
 	{
 		m_graphics->EventBegin("Pass_FXAA");
 
 		SetRenderTarget(renderTarget, false);
 		m_shaderFXAA->Bind();
-		m_shaderFXAA->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION, 0);
-		m_shaderFXAA->SetTexture(texture, 0);
+		m_shaderFXAA->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
+		m_shaderFXAA->Bind_Texture(texture);
 		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
 
 		m_graphics->EventEnd();
@@ -948,9 +1027,47 @@ namespace Directus
 
 		SetRenderTarget(renderTarget, false);
 		m_shaderSharpening->Bind();
-		m_shaderSharpening->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION, 0);
-		m_shaderSharpening->SetTexture(texture, 0);
+		m_shaderSharpening->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
+		m_shaderSharpening->Bind_Texture(texture);
 		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
+	}
+
+	void Renderer::Pass_Bloom(shared_ptr<D3D11_RenderTexture>& inRenderTexture1, shared_ptr<D3D11_RenderTexture>& inRenderTexture2, shared_ptr<D3D11_RenderTexture>& outRenderTexture)
+	{
+		m_graphics->EventBegin("Pass_Bloom");
+
+		Matrix transformation = Matrix::Identity * m_mViewBase * m_mProjectionOrtho;
+
+		// Bright pass
+		SetRenderTarget(inRenderTexture2.get(), false);
+		m_shaderBloom_Bright->Bind();
+		m_shaderBloom_Bright->Bind_Buffer(transformation, GET_RESOLUTION);
+		m_shaderBloom_Bright->Bind_Texture(inRenderTexture1->GetShaderResourceView());
+		m_shaderBloom_Bright->DrawIndexed(m_quad->GetIndexCount());
+
+		// Horizontal Gaussian blur
+		SetRenderTarget(outRenderTexture.get(), false);
+		m_shaderBlurGaussianH->Bind();
+		m_shaderBlurGaussianH->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
+		m_shaderBlurGaussianH->Bind_Texture(inRenderTexture2->GetShaderResourceView());
+		m_shaderBlurGaussianH->DrawIndexed(m_quad->GetIndexCount());
+
+		// Vertical Gaussian blur
+		SetRenderTarget(inRenderTexture2.get(), false);
+		m_shaderBlurGaussianV->Bind();
+		m_shaderBlurGaussianV->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
+		m_shaderBlurGaussianV->Bind_Texture(outRenderTexture->GetShaderResourceView());
+		m_shaderBlurGaussianV->DrawIndexed(m_quad->GetIndexCount());
+
+		// Additive blending
+		SetRenderTarget(outRenderTexture.get(), false);
+		m_shaderBloom_BlurBlend->Bind();
+		m_shaderBloom_BlurBlend->Bind_Buffer(transformation);
+		m_shaderBloom_BlurBlend->Bind_Texture(inRenderTexture1->GetShaderResourceView(), 0);
+		m_shaderBloom_BlurBlend->Bind_Texture(inRenderTexture2->GetShaderResourceView(), 1);
+		m_shaderBloom_BlurBlend->DrawIndexed(m_quad->GetIndexCount());
 
 		m_graphics->EventEnd();
 	}
@@ -960,10 +1077,10 @@ namespace Directus
 		m_graphics->EventBegin("Pass_Blur");
 
 		SetRenderTarget(renderTarget, false);
-		m_shaderBlur->Bind();
-		m_shaderBlur->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, blurScale, 0);
-		m_shaderBlur->SetTexture(texture, 0); // Shadows are alpha
-		m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
+		m_shaderBlurBox->Bind();
+		m_shaderBlurBox->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, blurScale);
+		m_shaderBlurBox->Bind_Texture(texture, 0); // Shadows are in the alpha channel
+		m_shaderBlurBox->DrawIndexed(m_quad->GetIndexCount());
 
 		m_graphics->EventEnd();
 	}

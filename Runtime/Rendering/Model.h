@@ -55,7 +55,7 @@ namespace Directus
 		//=========================================================
 
 		// Sets the actor that represents this model in the scene
-		void SetRootactor(const std::weak_ptr<Actor>& gameObj) { m_rootGameObj = gameObj; }
+		void SetRootactor(const std::weak_ptr<Actor>& actor) { m_rootactor = actor; }
 
 		//= GEOMTETRY =============================================
 		void Geometry_Append(
@@ -102,7 +102,7 @@ namespace Directus
 		unsigned int Geometry_ComputeMemoryUsage();
 
 		// The root actor that represents this model in the scene
-		std::weak_ptr<Actor> m_rootGameObj;
+		std::weak_ptr<Actor> m_rootactor;
 
 		// Geometry
 		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;

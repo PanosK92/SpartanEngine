@@ -74,7 +74,7 @@ namespace Directus
 		void SetInputLaytout(InputLayout inputLayout);
 
 		// Bind - Texture
-		void SetTexture(void* texture, unsigned int slot = 0);
+		void Bind_Texture(void* texture, unsigned int slot = 0);
 		void SetTextures(std::vector<void*> textures);
 
 		// Bind - Constant Buffer

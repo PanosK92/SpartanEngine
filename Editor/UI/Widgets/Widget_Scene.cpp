@@ -104,9 +104,9 @@ void Widget_Scene::Tree_Show()
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_actor))
 		{
 			auto actorID = get<unsigned int>(payload->data);
-			if (auto droppedGameObj = HierarchyStatics::g_scene->GetActorByID(actorID).lock())
+			if (auto droppedactor = HierarchyStatics::g_scene->GetActorByID(actorID).lock())
 			{
-				droppedGameObj->GetTransform_PtrRaw()->SetParent(nullptr);
+				droppedactor->GetTransform_PtrRaw()->SetParent(nullptr);
 			}
 		}
 
@@ -231,11 +231,11 @@ void Widget_Scene::HandleDragDrop(Actor* actorPtr)
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_actor))
 	{
 		auto actorID = get<unsigned int>(payload->data);
-		if (auto droppedGameObj = HierarchyStatics::g_scene->GetActorByID(actorID).lock())
+		if (auto droppedactor = HierarchyStatics::g_scene->GetActorByID(actorID).lock())
 		{
-			if (droppedGameObj->GetID() != actorPtr->GetID())
+			if (droppedactor->GetID() != actorPtr->GetID())
 			{
-				droppedGameObj->GetTransform_PtrRaw()->SetParent(actorPtr->GetTransform_PtrRaw());
+				droppedactor->GetTransform_PtrRaw()->SetParent(actorPtr->GetTransform_PtrRaw());
 			}
 		}
 	}

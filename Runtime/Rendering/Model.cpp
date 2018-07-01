@@ -297,8 +297,8 @@ namespace Directus
 		{
 			// Set the normalized scale to the root actor's transform
 			m_normalizedScale = Geometry_ComputeNormalizedScale();
-			m_rootGameObj.lock()->GetComponent<Transform>().lock()->SetScale(m_normalizedScale);
-			m_rootGameObj.lock()->GetComponent<Transform>().lock()->UpdateTransform();
+			m_rootactor.lock()->GetComponent<Transform>().lock()->SetScale(m_normalizedScale);
+			m_rootactor.lock()->GetComponent<Transform>().lock()->UpdateTransform();
 
 			// Save the model in our custom format.
 			SaveToFile(GetResourceFilePath());
