@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
-#include "../Scene/GameObject.h"
+#include "../Scene/Actor.h"
 //===================================
 
 //= NAMESPACES =====
@@ -54,26 +54,26 @@ namespace Directus
 			m_scriptObject = nullptr;
 		}
 
-		m_constructorFunction = nullptr;
-		m_startFunction = nullptr;
-		m_updateFunction = nullptr;
-		m_scriptEngine = nullptr;
-		m_isInstantiated = false;
+		m_constructorFunction	= nullptr;
+		m_startFunction			= nullptr;
+		m_updateFunction		= nullptr;
+		m_scriptEngine			= nullptr;
+		m_isInstantiated		= false;
 	}
 
-	bool ScriptInstance::Instantiate(const string& path, std::weak_ptr<GameObject> gameObject, Scripting* scriptEngine)
+	bool ScriptInstance::Instantiate(const string& path, std::weak_ptr<Actor> actor, Scripting* scriptEngine)
 	{
-		if (gameObject.expired())
+		if (actor.expired())
 			return false;
 
 		m_scriptEngine = scriptEngine;
 
 		// Extract properties from path
 		m_scriptPath = path;
-		m_gameObject = gameObject;
+		m_actor = actor;
 		m_className = FileSystem::GetFileNameNoExtensionFromFilePath(m_scriptPath);
-		m_moduleName = m_className + to_string(m_gameObject.lock()->GetID());
-		m_constructorDeclaration = m_className + " @" + m_className + "(GameObject @)";
+		m_moduleName = m_className + to_string(m_actor.lock()->GetID());
+		m_constructorDeclaration = m_className + " @" + m_className + "(Actor @)";
 
 		// Instantiate the script
 		m_isInstantiated = CreateScriptObject();
@@ -119,7 +119,7 @@ namespace Directus
 		int r = context->Prepare(m_constructorFunction); // prepare the context to call the factory function
 		if (r < 0) return false;
 
-		r = context->SetArgObject(0, m_gameObject.lock().get()); // Pass the gameobject as the constructor's parameter
+		r = context->SetArgObject(0, m_actor.lock().get()); // Pass the actor as the constructor's parameter
 		if (r < 0) return false;
 
 		r = context->Execute(); // execute the call

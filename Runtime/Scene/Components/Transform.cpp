@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "Transform.h"
 #include "../Scene.h"
-#include "../GameObject.h"
+#include "../Actor.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 #include "../../FileSystem/FileSystem.h"
@@ -35,7 +35,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Transform::Transform(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
+	Transform::Transform(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 		m_positionLocal		= Vector3::Zero;
 		m_rotationLocal		= Quaternion(0, 0, 0, 1);
@@ -62,22 +62,22 @@ namespace Directus
 		stream->Write(m_rotationLocal);
 		stream->Write(m_scaleLocal);
 		stream->Write(m_lookAt);
-		stream->Write(m_parent ? m_parent->GetGameObject_PtrRaw()->GetID() : NOT_ASSIGNED_HASH);
+		stream->Write(m_parent ? m_parent->Getactor_PtrRaw()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
 	void Transform::Deserialize(FileStream* stream)
 	{
-		unsigned int parentGameObjectID = 0;
+		unsigned int parentactorID = 0;
 
 		stream->Read(&m_positionLocal);
 		stream->Read(&m_rotationLocal);
 		stream->Read(&m_scaleLocal);
 		stream->Read(&m_lookAt);
-		stream->Read(&parentGameObjectID);
+		stream->Read(&parentactorID);
 
-		if (parentGameObjectID != NOT_ASSIGNED_HASH)
+		if (parentactorID != NOT_ASSIGNED_HASH)
 		{
-			auto parent = GetContext()->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
+			auto parent = GetContext()->GetSubsystem<Scene>()->GetActorByID(parentactorID);
 			if (!parent.expired())
 			{
 				parent.lock()->GetTransform_PtrRaw()->AddChild(this);
@@ -297,7 +297,7 @@ namespace Directus
 	{
 		if (!HasChildren())
 		{
-			LOG_WARNING(GetGameObjectName() + " has no children.");
+			LOG_WARNING(GetactorName() + " has no children.");
 			return nullptr;
 		}
 
@@ -315,7 +315,7 @@ namespace Directus
 	{
 		for (const auto& child : m_children)
 		{
-			if (child->GetGameObjectName() == name)
+			if (child->GetactorName() == name)
 				return child;
 		}
 
@@ -329,14 +329,14 @@ namespace Directus
 		m_children.clear();
 		m_children.shrink_to_fit();
 
-		auto gameObjects = GetContext()->GetSubsystem<Scene>()->GetAllGameObjects();
-		for (const auto& gameObject : gameObjects)
+		auto actors = GetContext()->GetSubsystem<Scene>()->GetAllActors();
+		for (const auto& actor : actors)
 		{
-			if (!gameObject)
+			if (!actor)
 				continue;
 
 			// get the possible child
-			Transform* possibleChild = gameObject->GetTransform_PtrRaw();
+			Transform* possibleChild = actor->GetTransform_PtrRaw();
 
 			// if it doesn't have a parent, forget about it.
 			if (!possibleChild->HasParent())

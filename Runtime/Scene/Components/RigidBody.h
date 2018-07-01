@@ -32,7 +32,7 @@ class btCollisionShape;
 
 namespace Directus
 {
-	class GameObject;
+	class Actor;
 	class Constraint;
 	namespace Math { class Quaternion; }
 
@@ -45,7 +45,7 @@ namespace Directus
 	class ENGINE_CLASS RigidBody : public IComponent
 	{
 	public:
-		RigidBody(Context* context, GameObject* gameObject, Transform* transform);
+		RigidBody(Context* context, Actor* actor, Transform* transform);
 		~RigidBody();
 
 		//= ICOMPONENT ===============================

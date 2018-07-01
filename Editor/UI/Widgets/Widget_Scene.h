@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=================
 
-namespace Directus { class GameObject; }
+namespace Directus { class Actor; }
 
 class Widget_Scene : public Widget
 {
@@ -35,39 +35,39 @@ public:
 	void Initialize(Directus::Context* context) override;
 	void Update() override;
 
-	static std::weak_ptr<Directus::GameObject> GetSelectedGameObject() { return m_gameObjectSelected; }
-	static void SetSelectedGameObject(std::weak_ptr<Directus::GameObject> gameObject) ;
+	static std::weak_ptr<Directus::Actor> GetActorSelected() { return m_actorSelected; }
+	static void SetSelectedActor(std::weak_ptr<Directus::Actor> actor) ;
 
 private:
 	// Tree
 	void Tree_Show();
 	void OnTreeBegin();
 	void OnTreeEnd();
-	void Tree_AddGameObject(Directus::GameObject* gameObject);
+	void Tree_AddActor(Directus::Actor* actor);
 	void HandleClicking();
-	void HandleDragDrop(Directus::GameObject* gameObjPtr);
+	void HandleDragDrop(Directus::Actor* gameObjPtr);
 
 	// Misc
 	void ContextMenu();
 	void HandleKeyShortcuts();
 
 	// Context menu actions
-	void Action_GameObject_Delete(std::weak_ptr<Directus::GameObject> gameObject);
-	Directus::GameObject* Action_GameObject_CreateEmpty();
-	void Action_GameObject_CreateCube();
-	void Action_GameObject_CreateQuad();
-	void Action_GameObject_CreateSphere();
-	void Action_GameObject_CreateCylinder();
-	void Action_GameObject_CreateCone();
-	void Action_GameObject_CreateCamera();
-	void Action_GameObject_CreateLightDirectional();
-	void Action_GameObject_CreateLightPoint();
-	void Action_GameObject_CreateLightSpot();
-	void Action_GameObject_CreateRigidBody();
-	void Action_GameObject_CreateCollider();
-	void Action_GameObject_CreateConstraint();
-	void Action_GameObject_CreateAudioSource();
-	void Action_GameObject_CreateAudioListener();
+	void Action_actor_Delete(std::weak_ptr<Directus::Actor> actor);
+	Directus::Actor* Action_actor_CreateEmpty();
+	void Action_actor_CreateCube();
+	void Action_actor_CreateQuad();
+	void Action_actor_CreateSphere();
+	void Action_actor_CreateCylinder();
+	void Action_actor_CreateCone();
+	void Action_actor_CreateCamera();
+	void Action_actor_CreateLightDirectional();
+	void Action_actor_CreateLightPoint();
+	void Action_actor_CreateLightSpot();
+	void Action_actor_CreateRigidBody();
+	void Action_actor_CreateCollider();
+	void Action_actor_CreateConstraint();
+	void Action_actor_CreateAudioSource();
+	void Action_actor_CreateAudioListener();
 	
-	static std::weak_ptr<Directus::GameObject> m_gameObjectSelected;
+	static std::weak_ptr<Directus::Actor> m_actorSelected;
 };

@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================================
 #include "Scene.h"
-#include "GameObject.h"
+#include "Actor.h"
 #include "Components/Transform.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
@@ -81,17 +81,17 @@ namespace Directus
 
 	void Scene::Start()
 	{
-		for (const auto& gameObject : m_gameObjects)
+		for (const auto& actor : m_actors)
 		{
-			gameObject->Start();
+			actor->Start();
 		}
 	}
 
 	void Scene::Stop()
 	{
-		for (const auto& gameObject : m_gameObjects)
+		for (const auto& actor : m_actors)
 		{
-			gameObject->Stop();
+			actor->Stop();
 		}
 	}
 
@@ -113,9 +113,9 @@ namespace Directus
 		//=============================================================
 		m_isInEditorMode = !Engine::EngineMode_IsSet(Engine_Game);
 
-		for (const auto& gameObject : m_gameObjects)
+		for (const auto& actor : m_actors)
 		{
-			gameObject->Update();
+			actor->Update();
 		}
 
 		ComputeFPS();
@@ -125,8 +125,8 @@ namespace Directus
 
 	void Scene::Clear()
 	{
-		m_gameObjects.clear();
-		m_gameObjects.shrink_to_fit();
+		m_actors.clear();
+		m_actors.shrink_to_fit();
 
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
@@ -162,22 +162,22 @@ namespace Directus
 		m_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths(filePaths);
 		file->Write(filePaths);
 
-		//= Save GameObjects ============================
-		// Only save root GameObjects as they will also save their descendants
-		vector<weak_ptr<GameObject>> rootGameObjects = GetRootGameObjects();
+		//= Save actors ============================
+		// Only save root actors as they will also save their descendants
+		vector<weak_ptr<Actor>> rootactors = GetRootActors();
 
-		// 1st - GameObject count
-		auto rootGameObjectCount = (int)rootGameObjects.size();
-		file->Write(rootGameObjectCount);
+		// 1st - actor count
+		auto rootactorCount = (int)rootactors.size();
+		file->Write(rootactorCount);
 
-		// 2nd - GameObject IDs
-		for (const auto& root : rootGameObjects)
+		// 2nd - actor IDs
+		for (const auto& root : rootactors)
 		{
 			file->Write(root.lock()->GetID());
 		}
 
-		// 3rd - GameObjects
-		for (const auto& root : rootGameObjects)
+		// 3rd - actors
+		for (const auto& root : rootactors)
 		{
 			root.lock()->Serialize(file.get());
 		}
@@ -237,25 +237,25 @@ namespace Directus
 			ProgressReport::Get().JobDone(g_progress_Scene);
 		}
 
-		//= Load GameObjects ============================	
-		// 1st - Root GameObject count
-		int rootGameObjectCount = file->ReadInt();
+		//= Load actors ============================	
+		// 1st - Root actor count
+		int rootactorCount = file->ReadInt();
 
-		// 2nd - Root GameObject IDs
-		for (int i = 0; i < rootGameObjectCount; i++)
+		// 2nd - Root actor IDs
+		for (int i = 0; i < rootactorCount; i++)
 		{
-			auto gameObj = GameObject_CreateAdd().lock();
+			auto gameObj = Actor_CreateAdd().lock();
 			gameObj->SetID(file->ReadInt());
 		}
 
-		// 3rd - GameObjects
-		// It's important to loop with rootGameObjectCount
+		// 3rd - actors
+		// It's important to loop with rootactorCount
 		// as the vector size will increase as we deserialize
-		// GameObjects. This is because a GameObject will also
+		// actors. This is because a actor will also
 		// deserialize their descendants.
-		for (int i = 0; i < rootGameObjectCount; i++)
+		for (int i = 0; i < rootactorCount; i++)
 		{
-			m_gameObjects[i]->Deserialize(file.get(), nullptr);
+			m_actors[i]->Deserialize(file.get(), nullptr);
 		}
 		//==============================================
 
@@ -268,40 +268,40 @@ namespace Directus
 	}
 	//===================================================================================================
 
-	//= GAMEOBJECT HELPER FUNCTIONS  ====================================================================
-	weak_ptr<GameObject> Scene::GameObject_CreateAdd()
+	//= actor HELPER FUNCTIONS  ====================================================================
+	weak_ptr<Actor> Scene::Actor_CreateAdd()
 	{
-		auto gameObj = make_shared<GameObject>(m_context);
+		auto gameObj = make_shared<Actor>(m_context);
 
-		// First keep a local reference to this GameObject because 
+		// First keep a local reference to this actor because 
 		// as the Transform (added below) will call us back to get a reference to it
-		m_gameObjects.emplace_back(gameObj);
+		m_actors.emplace_back(gameObj);
 
 		gameObj->Initialize(gameObj->AddComponent<Transform>().lock().get());
 
 		return gameObj;
 	}
 
-	void Scene::GameObject_Add(shared_ptr<GameObject> gameObject)
+	void Scene::Actor_Add(shared_ptr<Actor> actor)
 	{
-		if (!gameObject)
+		if (!actor)
 			return;
 
-		m_gameObjects.emplace_back(gameObject);
+		m_actors.emplace_back(actor);
 	}
 
-	bool Scene::GameObject_Exists(const weak_ptr<GameObject>& gameObject)
+	bool Scene::Actor_Exists(const weak_ptr<Actor>& actor)
 	{
-		if (gameObject.expired())
+		if (actor.expired())
 			return false;
 
-		return !GetGameObjectByID(gameObject.lock()->GetID()).expired();
+		return !GetActorByID(actor.lock()->GetID()).expired();
 	}
 
-	// Removes a GameObject and all of it's children
-	void Scene::GameObject_Remove(const weak_ptr<GameObject>& gameObject)
+	// Removes a actor and all of it's children
+	void Scene::Actor_Remove(const weak_ptr<Actor>& actor)
 	{
-		GameObject* gameObjPtr = gameObject.lock().get();
+		Actor* gameObjPtr = actor.lock().get();
 		if (!gameObjPtr)
 			return;
 
@@ -309,19 +309,19 @@ namespace Directus
 		vector<Transform*> children = gameObjPtr->GetTransform_PtrRaw()->GetChildren();
 		for (const auto& child : children)
 		{
-			GameObject_Remove(child->GetGameObject_PtrWeak());
+			Actor_Remove(child->Getactor_PtrWeak());
 		}
 
 		// Keep a reference to it's parent (in case it has one)
 		Transform* parent = gameObjPtr->GetTransform_PtrRaw()->GetParent();
 
-		// Remove this GameObject
-		for (auto it = m_gameObjects.begin(); it < m_gameObjects.end();)
+		// Remove this actor
+		for (auto it = m_actors.begin(); it < m_actors.end();)
 		{
-			shared_ptr<GameObject> temp = *it;
+			shared_ptr<Actor> temp = *it;
 			if (temp->GetID() == gameObjPtr->GetID())
 			{
-				it = m_gameObjects.erase(it);
+				it = m_actors.erase(it);
 				break;
 			}
 			++it;
@@ -336,52 +336,52 @@ namespace Directus
 		Resolve();
 	}
 
-	vector<weak_ptr<GameObject>> Scene::GetRootGameObjects()
+	vector<weak_ptr<Actor>> Scene::GetRootActors()
 	{
-		vector<weak_ptr<GameObject>> rootGameObjects;
-		for (const auto& gameObj : m_gameObjects)
+		vector<weak_ptr<Actor>> rootactors;
+		for (const auto& gameObj : m_actors)
 		{
 			if (gameObj->GetTransform_PtrRaw()->IsRoot())
 			{
-				rootGameObjects.emplace_back(gameObj);
+				rootactors.emplace_back(gameObj);
 			}
 		}
 
-		return rootGameObjects;
+		return rootactors;
 	}
 
-	weak_ptr<GameObject> Scene::GetGameObjectRoot(weak_ptr<GameObject> gameObject)
+	weak_ptr<Actor> Scene::GetActorRoot(weak_ptr<Actor> actor)
 	{
-		if (gameObject.expired())
-			return weak_ptr<GameObject>();
+		if (actor.expired())
+			return weak_ptr<Actor>();
 
-		return gameObject.lock()->GetTransform_PtrRaw()->GetRoot()->GetGameObject_PtrWeak();
+		return actor.lock()->GetTransform_PtrRaw()->GetRoot()->Getactor_PtrWeak();
 	}
 
-	weak_ptr<GameObject> Scene::GetGameObjectByName(const string& name)
+	weak_ptr<Actor> Scene::GetActorByName(const string& name)
 	{
-		for (const auto& gameObject : m_gameObjects)
+		for (const auto& actor : m_actors)
 		{
-			if (gameObject->GetName() == name)
+			if (actor->GetName() == name)
 			{
-				return gameObject;
+				return actor;
 			}
 		}
 
-		return weak_ptr<GameObject>();
+		return weak_ptr<Actor>();
 	}
 
-	weak_ptr<GameObject> Scene::GetGameObjectByID(unsigned int ID)
+	weak_ptr<Actor> Scene::GetActorByID(unsigned int ID)
 	{
-		for (const auto& gameObject : m_gameObjects)
+		for (const auto& actor : m_actors)
 		{
-			if (gameObject->GetID() == ID)
+			if (actor->GetID() == ID)
 			{
-				return gameObject;
+				return actor;
 			}
 		}
 
-		return weak_ptr<GameObject>();
+		return weak_ptr<Actor>();
 	}
 	//===================================================================================================
 
@@ -393,29 +393,29 @@ namespace Directus
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 
-		for (const auto& gameObject : m_gameObjects)
+		for (const auto& actor : m_actors)
 		{
 			static bool hasCamera = false;
 			static bool hasSkybox = false;
 
 			// Find camera
-			if (gameObject->HasComponent<Camera>())
+			if (actor->HasComponent<Camera>())
 			{
-				m_mainCamera = gameObject;
+				m_mainCamera = actor;
 				hasCamera = true;
 			}
 
 			// Find skybox
-			if (gameObject->HasComponent<Skybox>())
+			if (actor->HasComponent<Skybox>())
 			{
-				m_skybox = gameObject;
+				m_skybox = actor;
 				hasSkybox = true;
 			}
 
 			// Find renderables
-			if (gameObject->HasComponent<Renderable>() || hasCamera || hasSkybox || gameObject->HasComponent<Light>())
+			if (actor->HasComponent<Renderable>() || hasCamera || hasSkybox || actor->HasComponent<Light>())
 			{
-				m_renderables.push_back(gameObject);
+				m_renderables.push_back(actor);
 			}
 		}
 
@@ -436,10 +436,10 @@ namespace Directus
 	}
 	//======================================================================================================
 
-	//= COMMON GAMEOBJECT CREATION =========================================================================
-	weak_ptr<GameObject> Scene::CreateSkybox()
+	//= COMMON actor CREATION =========================================================================
+	weak_ptr<Actor> Scene::CreateSkybox()
 	{
-		shared_ptr<GameObject> skybox = GameObject_CreateAdd().lock();
+		shared_ptr<Actor> skybox = Actor_CreateAdd().lock();
 		skybox->SetName("Skybox");
 		skybox->SetHierarchyVisibility(false);
 		skybox->AddComponent<LineRenderer>();
@@ -449,12 +449,12 @@ namespace Directus
 		return skybox;
 	}
 
-	weak_ptr<GameObject> Scene::CreateCamera()
+	weak_ptr<Actor> Scene::CreateCamera()
 	{
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
 		string scriptDirectory = resourceMng->GetStandardResourceDirectory(Resource_Script);
 
-		shared_ptr<GameObject> camera = GameObject_CreateAdd().lock();
+		shared_ptr<Actor> camera = Actor_CreateAdd().lock();
 		camera->SetName("Camera");
 		camera->AddComponent<Camera>();
 		camera->AddComponent<AudioListener>();
@@ -465,9 +465,9 @@ namespace Directus
 		return camera;
 	}
 
-	weak_ptr<GameObject> Scene::CreateDirectionalLight()
+	weak_ptr<Actor> Scene::CreateDirectionalLight()
 	{
-		shared_ptr<GameObject> light = GameObject_CreateAdd().lock();
+		shared_ptr<Actor> light = Actor_CreateAdd().lock();
 		light->SetName("DirectionalLight");
 		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
 		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));

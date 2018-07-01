@@ -51,7 +51,7 @@ namespace Directus
 	class ENGINE_CLASS Light : public IComponent
 	{
 	public:
-		Light(Context* context, GameObject* gameObject, Transform* transform);
+		Light(Context* context, Actor* actor, Transform* transform);
 		~Light();
 
 		//= COMPONENT ================================

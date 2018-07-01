@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Skybox.h"
 #include "Transform.h"
 #include "Renderable.h"
-#include "../GameObject.h"
+#include "../Actor.h"
 #include "../../Rendering/RI/RI_Texture.h"
 #include "../../Math/Vector3.h"
 #include "../../Resource/ResourceManager.h"
@@ -36,14 +36,14 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Skybox::Skybox(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
+	Skybox::Skybox(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 
 	}
 
 	Skybox::~Skybox()
 	{
-		 GetGameObject_PtrRaw()->RemoveComponent<Renderable>();
+		 Getactor_PtrRaw()->RemoveComponent<Renderable>();
 	}
 
 	void Skybox::OnInitialize()
@@ -68,7 +68,7 @@ namespace Directus
 		m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
 
 		// Add a Renderable and assign the skybox material to it
-		auto renderable = GetGameObject_PtrRaw()->AddComponent<Renderable>().lock();
+		auto renderable = Getactor_PtrRaw()->AddComponent<Renderable>().lock();
 		renderable->Geometry_Set(Geometry_Default_Cube);
 		renderable->SetCastShadows(false);
 		renderable->SetReceiveShadows(false);

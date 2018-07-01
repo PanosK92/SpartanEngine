@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AudioListener.h"
 #include "Light.h"
 #include "Transform.h"
-#include "../GameObject.h"
+#include "../Actor.h"
 #include "../../Core/Context.h"
 #include "../../Core/GUIDGenerator.h"
 #include "../../FileSystem/FileSystem.h"
@@ -47,26 +47,26 @@ using namespace std;
 
 namespace Directus
 {
-	IComponent::IComponent(Context* context, GameObject* gameObject, Transform* transform)
+	IComponent::IComponent(Context* context, Actor* actor, Transform* transform)
 	{
 		m_context		= context;
-		m_gameObject	= gameObject;
+		m_actor	= actor;
 		m_transform		= transform;
 		m_enabled		= true;
 		m_ID			= GENERATE_GUID;
 	}
 
-	shared_ptr<GameObject> IComponent::GetGameObject_PtrShared()
+	shared_ptr<Actor> IComponent::Getactor_PtrShared()
 	{
-		return m_gameObject->GetPtrShared();
+		return m_actor->GetPtrShared();
 	}
 
-	const string& IComponent::GetGameObjectName()
+	const string& IComponent::GetactorName()
 	{
-		if (!m_gameObject)
+		if (!m_actor)
 			return NOT_ASSIGNED;
 
-		return m_gameObject->GetName();
+		return m_actor->GetName();
 	}
 
 	template <typename T>

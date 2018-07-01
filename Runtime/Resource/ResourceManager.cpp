@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "ResourceManager.h"
-#include "../Scene/GameObject.h"
+#include "../Scene/Actor.h"
 #include "../Core/EventSystem.h"
 //==============================
 

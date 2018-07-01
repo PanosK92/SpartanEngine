@@ -37,7 +37,7 @@ using namespace std;
 
 namespace Directus
 {
-	AudioSource::AudioSource(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
+	AudioSource::AudioSource(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 		m_filePath			= NOT_ASSIGNED;
 		m_mute				= false;

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class GameObject;
+	class Actor;
 	class Transform;
 	class Context;
 	class FileStream;
@@ -54,7 +54,7 @@ namespace Directus
 	class ENGINE_CLASS IComponent
 	{
 	public:
-		IComponent(Context* context, GameObject* gameObject, Transform* transform);
+		IComponent(Context* context, Actor* actor, Transform* transform);
 		virtual ~IComponent() {}
 
 		// Runs when the component gets added
@@ -72,16 +72,16 @@ namespace Directus
 		// Runs every frame
 		virtual void OnUpdate() {}
 
-		// Runs when the GameObject is being saved
+		// Runs when the actor is being saved
 		virtual void Serialize(FileStream* stream) {}
 
-		// Runs when the GameObject is being loaded
+		// Runs when the actor is being loaded
 		virtual void Deserialize(FileStream* stream) {}
 		
 		//= PROPERTIES ==============================================================================
-		GameObject*					GetGameObject_PtrRaw()		{ return m_gameObject; }	
-		std::weak_ptr<GameObject>	GetGameObject_PtrWeak()		{ return GetGameObject_PtrShared(); }
-		std::shared_ptr<GameObject> GetGameObject_PtrShared();
+		Actor*					Getactor_PtrRaw()		{ return m_actor; }	
+		std::weak_ptr<Actor>	Getactor_PtrWeak()		{ return Getactor_PtrShared(); }
+		std::shared_ptr<Actor> Getactor_PtrShared();
 
 		Transform* GetTransform()			{ return m_transform; }
 		Context* GetContext()				{ return m_context; }
@@ -90,7 +90,7 @@ namespace Directus
 		ComponentType GetType()				{ return m_type; }
 		void SetType(ComponentType type)	{ m_type = type; }
 
-		const std::string& GetGameObjectName();
+		const std::string& GetactorName();
 
 		template <typename T>
 		static ComponentType Type_To_Enum();
@@ -104,7 +104,7 @@ namespace Directus
 		// The state of the component
 		bool m_enabled				= false;
 		// The owner of the component
-		GameObject* m_gameObject	= nullptr;
+		Actor* m_actor	= nullptr;
 		// The transform of the component (always exists)
 		Transform* m_transform		= nullptr;
 		// The context of the engine

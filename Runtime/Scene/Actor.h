@@ -34,11 +34,11 @@ namespace Directus
 	class Transform;
 	class Renderable;
 
-	class ENGINE_CLASS GameObject : public std::enable_shared_from_this<GameObject>
+	class ENGINE_CLASS Actor : public std::enable_shared_from_this<Actor>
 	{
 	public:
-		GameObject(Context* context);
-		~GameObject();
+		Actor(Context* context);
+		~Actor();
 
 		void Initialize(Transform* transform);
 
@@ -82,7 +82,7 @@ namespace Directus
 			// Add component
 			auto newComponent = std::make_shared<T>(
 				m_context, 
-				m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID()).lock().get(),
+				m_context->GetSubsystem<Scene>()->GetActorByID(GetID()).lock().get(),
 				GetTransform_PtrRaw()
 				);
 			m_components.insert(make_pair(type, newComponent));
@@ -176,7 +176,7 @@ namespace Directus
 		// Direct access for performance critical usage (not safe)
 		Transform* GetTransform_PtrRaw() { return m_transform; }
 		Renderable* GetRenderable_PtrRaw() { return m_renderable; }
-		std::shared_ptr<GameObject> GetPtrShared() { return shared_from_this(); }
+		std::shared_ptr<Actor> GetPtrShared() { return shared_from_this(); }
 
 	private:
 		unsigned int m_ID;

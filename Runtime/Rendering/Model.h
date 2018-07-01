@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class ResourceManager;
-	class GameObject;
+	class Actor;
 	class Mesh;
 	class Material;
 	class Animation;
@@ -54,8 +54,8 @@ namespace Directus
 		unsigned int GetMemory() override { return m_memoryUsage; }
 		//=========================================================
 
-		// Sets the GameObject that represents this model in the scene
-		void SetRootGameObject(const std::weak_ptr<GameObject>& gameObj) { m_rootGameObj = gameObj; }
+		// Sets the actor that represents this model in the scene
+		void SetRootactor(const std::weak_ptr<Actor>& gameObj) { m_rootGameObj = gameObj; }
 
 		//= GEOMTETRY =============================================
 		void Geometry_Append(
@@ -78,7 +78,7 @@ namespace Directus
 		//=========================================================
 
 		// Adds a new material
-		void AddMaterial(const std::weak_ptr<Material>& material, const std::weak_ptr<GameObject>& gameObject, bool autoCache = true);
+		void AddMaterial(const std::weak_ptr<Material>& material, const std::weak_ptr<Actor>& actor, bool autoCache = true);
 
 		// Adds a new animation
 		std::weak_ptr<Animation> AddAnimation(std::weak_ptr<Animation> animation);
@@ -101,8 +101,8 @@ namespace Directus
 		float Geometry_ComputeNormalizedScale();
 		unsigned int Geometry_ComputeMemoryUsage();
 
-		// The root GameObject that represents this model in the scene
-		std::weak_ptr<GameObject> m_rootGameObj;
+		// The root actor that represents this model in the scene
+		std::weak_ptr<Actor> m_rootGameObj;
 
 		// Geometry
 		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;

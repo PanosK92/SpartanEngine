@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EditorHelper.h"
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
-#include "Scene/GameObject.h"
+#include "Scene/Actor.h"
 #include "Scene/Components/Transform.h"
 #include "Scene/Components/Renderable.h"
 #include "Scene/Components/RigidBody.h"
@@ -51,7 +51,7 @@ using namespace Directus;
 using namespace Math;
 //=======================
 
-static weak_ptr<GameObject> g_inspectedGameObject;
+static weak_ptr<Actor> g_inspectedActor;
 static weak_ptr<Material> g_inspectedMaterial;
 static ResourceManager* g_resourceManager = nullptr;
 static const char* g_contexMenuID;
@@ -123,21 +123,21 @@ void Widget_Properties::Update()
 {
 	ImGui::PushItemWidth(g_maxWidth);
 
-	if (!g_inspectedGameObject.expired())
+	if (!g_inspectedActor.expired())
 	{
-		auto gameObjectPtr = g_inspectedGameObject.lock().get();
+		auto actorPtr = g_inspectedActor.lock().get();
 
-		auto transform		= gameObjectPtr->GetTransform_PtrRaw();
-		auto light			= gameObjectPtr->GetComponent<Light>().lock().get();
-		auto camera			= gameObjectPtr->GetComponent<Camera>().lock().get();
-		auto audioSource	= gameObjectPtr->GetComponent<AudioSource>().lock().get();
-		auto audioListener	= gameObjectPtr->GetComponent<AudioListener>().lock().get();
-		auto renderable		= gameObjectPtr->GetComponent<Renderable>().lock().get();
+		auto transform		= actorPtr->GetTransform_PtrRaw();
+		auto light			= actorPtr->GetComponent<Light>().lock().get();
+		auto camera			= actorPtr->GetComponent<Camera>().lock().get();
+		auto audioSource	= actorPtr->GetComponent<AudioSource>().lock().get();
+		auto audioListener	= actorPtr->GetComponent<AudioListener>().lock().get();
+		auto renderable		= actorPtr->GetComponent<Renderable>().lock().get();
 		auto material		= renderable ? renderable->Material_RefWeak().lock().get() : nullptr;
-		auto rigidBody		= gameObjectPtr->GetComponent<RigidBody>().lock().get();
-		auto collider		= gameObjectPtr->GetComponent<Collider>().lock().get();
-		auto constraint		= gameObjectPtr->GetComponent<Constraint>().lock().get();
-		auto scripts		= gameObjectPtr->GetComponents<Script>();
+		auto rigidBody		= actorPtr->GetComponent<RigidBody>().lock().get();
+		auto collider		= actorPtr->GetComponent<Collider>().lock().get();
+		auto constraint		= actorPtr->GetComponent<Constraint>().lock().get();
+		auto scripts		= actorPtr->GetComponents<Script>();
 
 		ShowTransform(transform);
 		ShowLight(light);
@@ -164,9 +164,9 @@ void Widget_Properties::Update()
 	ImGui::PopItemWidth();
 }
 
-void Widget_Properties::Inspect(weak_ptr<GameObject> gameObject)
+void Widget_Properties::Inspect(weak_ptr<Actor> actor)
 {
-	g_inspectedGameObject = gameObject;
+	g_inspectedActor = actor;
 
 	// If we were previously inspecting a material, save the changes
 	if (!g_inspectedMaterial.expired())
@@ -178,7 +178,7 @@ void Widget_Properties::Inspect(weak_ptr<GameObject> gameObject)
 
 void Widget_Properties::Inspect(weak_ptr<Material> material)
 {
-	g_inspectedGameObject.reset();
+	g_inspectedActor.reset();
 	g_inspectedMaterial = material;
 }
 
@@ -983,8 +983,8 @@ void Widget_Properties::ShowScript(Script* script)
 
 	/*if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
 	{
-		auto gameObjectPtr = m_gameObject.lock().get();
-		if (auto scriptComponent = gameObjectPtr->AddComponent<Script>().lock())
+		auto actorPtr = m_actor.lock().get();
+		if (auto scriptComponent = actorPtr->AddComponent<Script>().lock())
 		{
 			scriptComponent->SetScript(payload->data);
 		}
@@ -997,11 +997,11 @@ void Widget_Properties::ComponentContextMenu_Options(const char* id, IComponent*
 	{
 		if (ImGui::MenuItem("Remove"))
 		{
-			if (auto gameObject = Widget_Scene::GetSelectedGameObject().lock())
+			if (auto actor = Widget_Scene::GetActorSelected().lock())
 			{
 				if (component)
 				{
-					gameObject->RemoveComponentByID(component->GetID());
+					actor->RemoveComponentByID(component->GetID());
 				}
 			}
 		}
@@ -1025,12 +1025,12 @@ void Widget_Properties::ComponentContextMenu_Add()
 {
 	if (ImGui::BeginPopup("##ComponentContextMenu_Add"))
 	{
-		if (auto gameObject = Widget_Scene::GetSelectedGameObject().lock())
+		if (auto actor = Widget_Scene::GetActorSelected().lock())
 		{
 			// CAMERA
 			if (ImGui::MenuItem("Camera"))
 			{
-				gameObject->AddComponent<Camera>();
+				actor->AddComponent<Camera>();
 			}
 
 			// LIGHT
@@ -1038,15 +1038,15 @@ void Widget_Properties::ComponentContextMenu_Add()
 			{
 				if (ImGui::MenuItem("Directional"))
 				{
-					gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
+					actor->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
 				}
 				else if (ImGui::MenuItem("Point"))
 				{
-					gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Point);
+					actor->AddComponent<Light>().lock()->SetLightType(LightType_Point);
 				}
 				else if (ImGui::MenuItem("Spot"))
 				{
-					gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
+					actor->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
 				}
 
 				ImGui::EndMenu();
@@ -1057,15 +1057,15 @@ void Widget_Properties::ComponentContextMenu_Add()
 			{
 				if (ImGui::MenuItem("Rigid Body"))
 				{
-					gameObject->AddComponent<RigidBody>();
+					actor->AddComponent<RigidBody>();
 				}
 				else if (ImGui::MenuItem("Collider"))
 				{
-					gameObject->AddComponent<Collider>();
+					actor->AddComponent<Collider>();
 				}
 				else if (ImGui::MenuItem("Constraint"))
 				{
-					gameObject->AddComponent<Constraint>();
+					actor->AddComponent<Constraint>();
 				}
 
 				ImGui::EndMenu();
@@ -1076,11 +1076,11 @@ void Widget_Properties::ComponentContextMenu_Add()
 			{
 				if (ImGui::MenuItem("Audio Source"))
 				{
-					gameObject->AddComponent<AudioSource>();
+					actor->AddComponent<AudioSource>();
 				}
 				else if (ImGui::MenuItem("Audio Listener"))
 				{
-					gameObject->AddComponent<AudioListener>();
+					actor->AddComponent<AudioListener>();
 				}
 
 				ImGui::EndMenu();

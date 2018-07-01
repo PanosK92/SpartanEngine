@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class Context;
-	class GameObject;
+	class Actor;
 
 	enum TransformGizmo_Type
 	{
@@ -51,7 +51,7 @@ namespace Directus
 		TransformationGizmo(Context* context);
 		~TransformationGizmo();
 
-		void Pick(std::weak_ptr<GameObject> gameObject);
+		void Pick(std::weak_ptr<Actor> actor);
 		void SetBuffers();
 		unsigned int GetIndexCount();
 

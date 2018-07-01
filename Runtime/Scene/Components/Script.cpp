@@ -32,7 +32,7 @@ using namespace std;
 
 namespace Directus
 {
-	Script::Script(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
+	Script::Script(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 
 	}
@@ -86,7 +86,7 @@ namespace Directus
 	{
 		// Instantiate the script
 		m_scriptInstance = make_shared<ScriptInstance>();
-		m_scriptInstance->Instantiate(filePath, GetGameObject_PtrWeak(), GetContext()->GetSubsystem<Scripting>());
+		m_scriptInstance->Instantiate(filePath, Getactor_PtrWeak(), GetContext()->GetSubsystem<Scripting>());
 
 		// Check if the script has been instantiated successfully.
 		if (!m_scriptInstance->IsInstantiated())

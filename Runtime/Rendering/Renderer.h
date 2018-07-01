@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class GameObject;
+	class Actor;
 	class Camera;
 	class Skybox;
 	class LineRenderer;
@@ -104,11 +104,11 @@ namespace Directus
 		//====================================================================================
 
 		void Clear();
-		const std::vector<GameObject*>& GetRenderables() { return m_renderables; }
+		const std::vector<Actor*>& GetRenderables() { return m_renderables; }
 
 	private:
 		void Renderables_Acquire(const Variant& renderables);
-		void Renderables_Sort(std::vector<GameObject*>* renderables);
+		void Renderables_Sort(std::vector<Actor*>* renderables);
 
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
@@ -126,8 +126,8 @@ namespace Directus
 
 		std::unique_ptr<GBuffer> m_gbuffer;
 
-		// GAMEOBJECTS ========================
-		std::vector<GameObject*> m_renderables;
+		// actorS ========================
+		std::vector<Actor*> m_renderables;
 		std::vector<Light*> m_lights;
 		Light* m_directionalLight{};
 		//=====================================

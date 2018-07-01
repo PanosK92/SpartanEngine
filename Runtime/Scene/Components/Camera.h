@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class GameObject;
+	class Actor;
 	class Model;
 	class Renderable;
 	class TransformationGizmo;
@@ -48,7 +48,7 @@ namespace Directus
 	class ENGINE_CLASS Camera : public IComponent
 	{
 	public:
-		Camera(Context* context, GameObject* gameObject, Transform* transform);
+		Camera(Context* context, Actor* actor, Transform* transform);
 		~Camera();
 
 		//= ICOMPONENT ===============================
@@ -68,8 +68,8 @@ namespace Directus
 		// Returns a the picking ray as vertices (can be used to render it)
 		std::vector<RI_Vertex_PosCol> GetPickingRay();
 
-		// Returns the nearest GameObject under the cursor
-		std::weak_ptr<GameObject> Pick(const Math::Vector2& mousePos);
+		// Returns the nearest actor under the cursor
+		std::weak_ptr<Actor> Pick(const Math::Vector2& mousePos);
 
 		// Converts a world point to a screen point
 		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);

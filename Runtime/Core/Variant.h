@@ -34,26 +34,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= FORWARD DECLARATIONS =
 namespace Directus
 {
-	class GameObject;
+	class Actor;
 }
 //========================
 
-#define _VARIANT_TYPES									\
-	char,												\
-	unsigned char,										\
-	int,												\
-	unsigned int,										\
-	bool,												\
-	float,												\
-	double,												\
-	void*,												\
-	Directus::GameObject*,								\
-	std::weak_ptr<Directus::GameObject>,				\
-	std::vector<std::weak_ptr<Directus::GameObject>>,	\
-	Directus::Math::Vector2,							\
-	Directus::Math::Vector3,							\
-	Directus::Math::Vector4,							\
-	Directus::Math::Matrix,								\
+#define _VARIANT_TYPES								\
+	char,											\
+	unsigned char,									\
+	int,											\
+	unsigned int,									\
+	bool,											\
+	float,											\
+	double,											\
+	void*,											\
+	Directus::Actor*,								\
+	std::weak_ptr<Directus::Actor>,					\
+	std::vector<std::weak_ptr<Directus::Actor>>,	\
+	Directus::Math::Vector2,						\
+	Directus::Math::Vector3,						\
+	Directus::Math::Vector4,						\
+	Directus::Math::Matrix,							\
 	Directus::Math::Quaternion
 
 #define VARIANT_TYPES std::variant<_VARIANT_TYPES>
