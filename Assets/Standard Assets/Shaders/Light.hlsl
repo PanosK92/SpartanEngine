@@ -117,17 +117,13 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     if (specularSample.a == 1.0f) // Render technique
     {
         finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir)).rgb;
-        finalColor = ACESFilm(finalColor);
-        finalColor = ToGamma(finalColor);
         finalColor *= ambientLight; // some totally fake day/night effect	
-        float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
-
-        return float4(finalColor, luma);
+        return float4(finalColor, 1.0f);
     }
 	
 	// Ambient terms
 	ambientLight *= ssao;
-	ambientLight += material.emission;
+	ambientLight += material.emission * 10.0f;
 	 
 	//= DIRECTIONAL LIGHT ========================================================================================================================================
 	Light directionalLight;
@@ -197,9 +193,5 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     }
 	//============================================================================================================================================================
 
-    finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
-    finalColor = ToGamma(finalColor); // gamma correction
-    float luma = dot(finalColor.rgb, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
-
-    return float4(finalColor, luma);
+    return float4(finalColor, 1.0f);
 }

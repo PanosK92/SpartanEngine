@@ -182,14 +182,14 @@ namespace Directus
 
 		// Find all the actors that the ray hits
 		vector<std::weak_ptr<Actor>> actors = GetContext()->GetSubsystem<Scene>()->GetRenderables();
-		for (const auto& gameObj : actors)
+		for (const auto& actor : actors)
 		{
 			// Make sure there actor has a mesh and exclude the SkyBox
-			if (!gameObj.lock()->HasComponent<Renderable>() || gameObj.lock()->HasComponent<Skybox>())
+			if (!actor.lock()->HasComponent<Renderable>() || actor.lock()->HasComponent<Skybox>())
 				continue;
 
 			// Get bounding box
-			BoundingBox bb = gameObj.lock()->GetComponent<Renderable>().lock()->Geometry_BB();
+			BoundingBox bb = actor.lock()->GetComponent<Renderable>().lock()->Geometry_BB();
 
 			// Compute hit distance
 			float hitDistance = m_ray.HitDistance(bb);
@@ -198,7 +198,7 @@ namespace Directus
 			if (hitDistance == 0.0f || hitDistance == INFINITY)
 				continue;
 
-			hits[hitDistance] = gameObj;
+			hits[hitDistance] = actor;
 		}
 
 		// Get closest hit

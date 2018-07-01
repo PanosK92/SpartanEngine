@@ -143,7 +143,7 @@ namespace Directus
 		m_shader->SetInputLayout(inputLayout);
 	}
 
-	void RI_Shader::SetTexture(void* texture, unsigned int slot)
+	void RI_Shader::Bind_Texture(void* texture, unsigned int slot)
 	{
 		if (!m_renderingDevice)
 			return;

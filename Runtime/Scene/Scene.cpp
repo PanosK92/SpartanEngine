@@ -244,8 +244,8 @@ namespace Directus
 		// 2nd - Root actor IDs
 		for (int i = 0; i < rootactorCount; i++)
 		{
-			auto gameObj = Actor_CreateAdd().lock();
-			gameObj->SetID(file->ReadInt());
+			auto actor = Actor_CreateAdd().lock();
+			actor->SetID(file->ReadInt());
 		}
 
 		// 3rd - actors
@@ -271,15 +271,15 @@ namespace Directus
 	//= actor HELPER FUNCTIONS  ====================================================================
 	weak_ptr<Actor> Scene::Actor_CreateAdd()
 	{
-		auto gameObj = make_shared<Actor>(m_context);
+		auto actor = make_shared<Actor>(m_context);
 
 		// First keep a local reference to this actor because 
 		// as the Transform (added below) will call us back to get a reference to it
-		m_actors.emplace_back(gameObj);
+		m_actors.emplace_back(actor);
 
-		gameObj->Initialize(gameObj->AddComponent<Transform>().lock().get());
+		actor->Initialize(actor->AddComponent<Transform>().lock().get());
 
-		return gameObj;
+		return actor;
 	}
 
 	void Scene::Actor_Add(shared_ptr<Actor> actor)
@@ -298,28 +298,28 @@ namespace Directus
 		return !GetActorByID(actor.lock()->GetID()).expired();
 	}
 
-	// Removes a actor and all of it's children
+	// Removes an actor and all of it's children
 	void Scene::Actor_Remove(const weak_ptr<Actor>& actor)
 	{
-		Actor* gameObjPtr = actor.lock().get();
-		if (!gameObjPtr)
+		Actor* actorPtr = actor.lock().get();
+		if (!actorPtr)
 			return;
 
 		// remove any descendants
-		vector<Transform*> children = gameObjPtr->GetTransform_PtrRaw()->GetChildren();
+		vector<Transform*> children = actorPtr->GetTransform_PtrRaw()->GetChildren();
 		for (const auto& child : children)
 		{
 			Actor_Remove(child->Getactor_PtrWeak());
 		}
 
 		// Keep a reference to it's parent (in case it has one)
-		Transform* parent = gameObjPtr->GetTransform_PtrRaw()->GetParent();
+		Transform* parent = actorPtr->GetTransform_PtrRaw()->GetParent();
 
 		// Remove this actor
 		for (auto it = m_actors.begin(); it < m_actors.end();)
 		{
 			shared_ptr<Actor> temp = *it;
-			if (temp->GetID() == gameObjPtr->GetID())
+			if (temp->GetID() == actorPtr->GetID())
 			{
 				it = m_actors.erase(it);
 				break;
@@ -339,11 +339,11 @@ namespace Directus
 	vector<weak_ptr<Actor>> Scene::GetRootActors()
 	{
 		vector<weak_ptr<Actor>> rootactors;
-		for (const auto& gameObj : m_actors)
+		for (const auto& actor : m_actors)
 		{
-			if (gameObj->GetTransform_PtrRaw()->IsRoot())
+			if (actor->GetTransform_PtrRaw()->IsRoot())
 			{
-				rootactors.emplace_back(gameObj);
+				rootactors.emplace_back(actor);
 			}
 		}
 
@@ -474,7 +474,7 @@ namespace Directus
 
 		Light* lightComp = light->AddComponent<Light>().lock().get();
 		lightComp->SetLightType(LightType_Directional);
-		lightComp->SetIntensity(2.0f);
+		lightComp->SetIntensity(3.5f);
 
 		return light;
 	}

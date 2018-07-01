@@ -114,11 +114,21 @@ namespace Directus
 		void Pass_GBuffer();
 		void Pass_PreLight(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing);
 		void Pass_Light(void* inTextureShadowing, void* outRenderTexture);	
-		void Pass_PostLight(std::shared_ptr<D3D11_RenderTexture>& inRenderTextureFrame, std::shared_ptr<D3D11_RenderTexture>& outRenderTexture);
+		void Pass_PostLight(
+			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture1,
+			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture2,
+			std::shared_ptr<D3D11_RenderTexture>& outRenderTexture
+		);
 		bool Pass_DebugGBuffer();
 		void Pass_Debug();
+		void Pass_Correction(void* texture, void* renderTarget);
 		void Pass_FXAA(void* texture, void* renderTarget);
 		void Pass_Sharpening(void* texture, void* renderTarget);
+		void Pass_Bloom(
+			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture1,
+			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture2,
+			std::shared_ptr<D3D11_RenderTexture>& outRenderTexture
+		);
 		void Pass_Blur(void* texture, void* renderTarget, const Math::Vector2& blurScale);
 		void Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture);
 
@@ -132,11 +142,12 @@ namespace Directus
 		Light* m_directionalLight{};
 		//=====================================
 
-		//= RENDER TEXTURES =======================================
-		std::shared_ptr<D3D11_RenderTexture> m_renderTexSpare;
+		//= RENDER TEXTURES ======================================
+		std::shared_ptr<D3D11_RenderTexture> m_renderTexPing;
+		std::shared_ptr<D3D11_RenderTexture> m_renderTexPing2;
 		std::shared_ptr<D3D11_RenderTexture> m_renderTexShadowing;
-		std::shared_ptr<D3D11_RenderTexture> m_renderTexFinalFrame;
-		//=========================================================
+		std::shared_ptr<D3D11_RenderTexture> m_renderTexPong;
+		//========================================================
 
 		//= SHADERS ===========================================
 		std::unique_ptr<LightShader> m_shaderLight;
@@ -148,7 +159,12 @@ namespace Directus
 		std::unique_ptr<RI_Shader> m_shaderFXAA;
 		std::unique_ptr<RI_Shader> m_shaderShadowing;
 		std::unique_ptr<RI_Shader> m_shaderSharpening;
-		std::unique_ptr<RI_Shader> m_shaderBlur;
+		std::unique_ptr<RI_Shader> m_shaderBlurBox;
+		std::unique_ptr<RI_Shader> m_shaderBlurGaussianH;
+		std::unique_ptr<RI_Shader> m_shaderBlurGaussianV;
+		std::unique_ptr<RI_Shader> m_shaderBloom_Bright;
+		std::unique_ptr<RI_Shader> m_shaderBloom_BlurBlend;
+		std::unique_ptr<RI_Shader> m_shaderCorrection;
 		std::unique_ptr<RI_Shader> m_shaderTransformationGizmo;
 		//=====================================================
 

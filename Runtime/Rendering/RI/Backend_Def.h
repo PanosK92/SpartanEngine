@@ -113,7 +113,6 @@ namespace Directus
 	{
 		Texture_Format_R8_UNORM,
 		Texture_Format_R8G8B8A8_UNORM,
-
 		Texture_Format_R16_FLOAT,
 		Texture_Format_R32_FLOAT,
 		Texture_Format_R32G32_FLOAT,
