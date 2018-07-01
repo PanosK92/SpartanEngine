@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Rendering/RI/RI_Vertex.h"
 #include <iostream>
+#include "../Math/BoundingBox.h"
 //====================================
 
 //= NAMESPACES ================
@@ -118,30 +119,35 @@ namespace Directus
 		out.write(reinterpret_cast<const char*>(&value), sizeof(Quaternion));
 	}
 
+	void FileStream::Write(const BoundingBox& value)
+	{
+		out.write(reinterpret_cast<const char*>(&value), sizeof(BoundingBox));
+	}
+
 	void FileStream::Write(const vector<RI_Vertex_PosUVTBN>& value)
 	{
-		unsigned int length = (unsigned int)value.size();
+		auto length = (unsigned int)value.size();
 		Write(length);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RI_Vertex_PosUVTBN) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned int>& value)
 	{
-		unsigned int length = (unsigned int)value.size();
+		auto length = (unsigned int)value.size();
 		Write(length);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned int) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned char>& value)
 	{
-		unsigned int size = (unsigned int)value.size();
+		auto size = (unsigned int)value.size();
 		Write(size);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
 	}
 
 	void FileStream::Write(const vector<std::byte>& value)
 	{
-		unsigned int size = (unsigned int)value.size();
+		auto size = (unsigned int)value.size();
 		Write(size);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(std::byte) * size);
 	}
@@ -173,6 +179,11 @@ namespace Directus
 	void FileStream::Read(Quaternion* value)
 	{
 		in.read(reinterpret_cast<char*>(value), sizeof(Quaternion));
+	}
+
+	void FileStream::Read(BoundingBox* value)
+	{
+		in.read(reinterpret_cast<char*>(value), sizeof(BoundingBox));
 	}
 
 	void FileStream::Read(vector<string>* vec)

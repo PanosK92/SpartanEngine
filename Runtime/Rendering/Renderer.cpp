@@ -46,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Profiling/Profiler.h"
 #include "../Scene/TransformationGizmo.h"
+#include "ShadowCascades.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -71,15 +72,13 @@ namespace Directus
 		m_nearPlane					= 0.0f;
 		m_farPlane					= 0.0f;
 		m_graphics					= nullptr;
-		m_renderedMeshesCount		= 0;
-		m_renderedMeshesPerFrame	= 0;
 		m_flags						= 0;
 		m_flags						|= Render_SceneGrid;
 		m_flags						|= Render_Light;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVED, EVENT_HANDLER_VARIANT(Pass_RenderableAcquisition));
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVED, EVENT_HANDLER_VARIANT(Renderables_Acquire));
 	}
 
 	Renderer::~Renderer()
@@ -124,10 +123,10 @@ namespace Directus
 		m_shaderLine->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 		// Depth shader
-		m_shaderDepth = make_unique<RI_Shader>(m_context);
-		m_shaderDepth->Compile(shaderDirectory + "Depth.hlsl");
-		m_shaderDepth->SetInputLaytout(Position);
-		m_shaderDepth->AddBuffer(CB_Matrix, VertexShader);
+		m_shaderLightDepth = make_unique<RI_Shader>(m_context);
+		m_shaderLightDepth->Compile(shaderDirectory + "ShadowingDepth.hlsl");
+		m_shaderLightDepth->SetInputLaytout(Position);
+		m_shaderLightDepth->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 		// Grid shader
 		m_shaderGrid = make_unique<RI_Shader>(m_context);
@@ -229,7 +228,7 @@ namespace Directus
 
 	void Renderer::SetRenderTarget(void* renderTarget, bool clear /*= true*/)
 	{
-		D3D11_RenderTexture* renderTexture = (D3D11_RenderTexture*)renderTarget;
+		auto renderTexture = (D3D11_RenderTexture*)renderTarget;
 		if (renderTexture)
 		{
 			renderTexture->SetAsRenderTarget();
@@ -259,16 +258,11 @@ namespace Directus
 
 	void Renderer::Render()
 	{
-		if (!m_graphics)
+		if (!m_graphics || !m_graphics->IsInitialized())
 			return;
 
-		if (!m_graphics->IsInitialized())
-			return;
-
-		//= METRICS ==============
 		PROFILE_FUNCTION_BEGIN();
-		m_renderedMeshesCount = 0;
-		//========================
+		Profiler::Get().Reset();
 
 		// If there is a camera, render the scene
 		if (m_camera)
@@ -316,10 +310,7 @@ namespace Directus
 			m_graphics->Clear(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
 
-		//= METRICS =====================================
 		PROFILE_FUNCTION_END();
-		m_renderedMeshesPerFrame = m_renderedMeshesCount;
-		//===============================================
 	}
 
 	void Renderer::SetBackBufferSize(int width, int height)
@@ -384,8 +375,8 @@ namespace Directus
 		m_camera			= nullptr;
 	}
 
-	//= PASSES =================================================================================================
-	void Renderer::Pass_RenderableAcquisition(const Variant& renderables)
+	//= RENDERABLES ============================================================================================
+	void Renderer::Renderables_Acquire(const Variant& renderables)
 	{
 		PROFILE_FUNCTION_BEGIN();
 
@@ -399,12 +390,12 @@ namespace Directus
 				continue;
 
 			// Get renderables
-			m_renderables.push_back(gameObject);
+			m_renderables.emplace_back(gameObject);
 
 			// Get lights
 			if (auto light = gameObject->GetComponent<Light>().lock())
 			{
-				m_lights.push_back(light.get());
+				m_lights.emplace_back(light.get());
 				if (light->GetLightType() == LightType_Directional)
 				{
 					m_directionalLight = light.get();
@@ -414,8 +405,8 @@ namespace Directus
 			// Get skybox
 			if (auto skybox = gameObject->GetComponent<Skybox>().lock())
 			{
-				m_skybox		= skybox.get();
-				m_lineRenderer	= gameObject->GetComponent<LineRenderer>().lock().get(); // Hush hush...
+				m_skybox = skybox.get();
+				m_lineRenderer = gameObject->GetComponent<LineRenderer>().lock().get(); // Hush hush...
 			}
 
 			// Get camera
@@ -424,66 +415,135 @@ namespace Directus
 				m_camera = camera.get();
 			}
 		}
+		Renderables_Sort(&m_renderables);
 
 		PROFILE_FUNCTION_END();
 	}
 
+	void Renderer::Renderables_Sort(vector<GameObject*>* renderables)
+	{
+		if (renderables->size() <= 1)
+			return;
+
+		sort(renderables->begin(), renderables->end(),[](GameObject* a, GameObject* b)
+		{
+			// Get renderable component
+			auto a_renderable = a->GetRenderable_PtrRaw();
+			auto b_renderable = b->GetRenderable_PtrRaw();
+
+			// Validate renderable components
+			if (!a_renderable || !b_renderable)
+				return false;
+
+			// Get geometry parents
+			auto a_geometryModel = a_renderable->Geometry_Model();
+			auto b_geometryModel = b_renderable->Geometry_Model();
+
+			// Validate geometry parents
+			if (!a_geometryModel || !b_geometryModel)
+				return false;
+
+			// Get materials
+			auto a_material = a_renderable->Material_Ref();
+			auto b_material = b_renderable->Material_Ref();
+
+			if (!a_material || !b_material)
+				return false;
+
+			// Get key for models
+			auto a_keyModel = a_geometryModel->GetResourceID();
+			auto b_keyModel = b_geometryModel->GetResourceID();
+
+			// Get key for shaders
+			auto a_keyShader = a_material->GetShader().lock()->GetResourceID();
+			auto b_keyShader = b_material->GetShader().lock()->GetResourceID();
+
+			// Get key for materials
+			auto a_keyMaterial = a_material->GetResourceID();
+			auto b_keyMaterial = b_material->GetResourceID();
+
+			auto a_key = 
+				(((unsigned long long)a_keyModel)		<< 48u)	| 
+				(((unsigned long long)a_keyShader)		<< 32u)	|
+				(((unsigned long long)a_keyMaterial)	<< 16u);
+
+			auto b_key = 
+				(((unsigned long long)b_keyModel)		<< 48u)	|
+				(((unsigned long long)b_keyShader)		<< 32u)	|
+				(((unsigned long long)b_keyMaterial)	<< 16u);
+	
+			return a_key < b_key;
+		});
+	}
+	//==========================================================================================================
+
+	//= PASSES =================================================================================================
 	void Renderer::Pass_DepthDirectionalLight(Light* directionalLight)
 	{
 		if (!directionalLight || !directionalLight->GetCastShadows())
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
+
 		m_graphics->EventBegin("Pass_DepthDirectionalLight");
-
 		m_graphics->EnableDepth(true);
-		m_shaderDepth->Set();
 
-		for (int cascadeIndex = 0; cascadeIndex < directionalLight->GetShadowCascadeCount(); cascadeIndex++)
+		m_shaderLightDepth->Bind();
+
+		auto cascades = directionalLight->GetShadowCascades();
+
+		for (unsigned int i = 0; i < cascades->GetCascadeCount(); i++)
 		{
-			m_graphics->EventBegin("Cascade");
-
-			// Set appropriate shadow map as render target
-			directionalLight->SetShadowCascadeAsRenderTarget(cascadeIndex);
-
-			Matrix mViewLight		= directionalLight->GetViewMatrix();
-			Matrix mProjectionLight = directionalLight->GetOrthographicProjectionMatrix(cascadeIndex);
+			cascades->SetAsRenderTarget(i);
 
 			for (const auto& gameObj : m_renderables)
 			{
-				Renderable* renderable	= gameObj->GetRenderable_PtrRaw();
-				Material* material		= renderable	? renderable->GetMaterial_Ref()	: nullptr;
-				Mesh* mesh				= renderable	? renderable->GetMesh_Ref()		: nullptr;
+				// Get renderable and material
+				Renderable* obj_renderable = gameObj->GetRenderable_PtrRaw();
+				Material* obj_material = obj_renderable ? obj_renderable->Material_Ref() : nullptr;
 
-				// Make sure we have everything
-				if (!mesh || !renderable || !material)
+				if (!obj_renderable || !obj_material)
 					continue;
 
+				// Get geometry
+				Model* obj_geometry = obj_renderable->Geometry_Model();
+				if (!obj_geometry)
+					continue;
+
+				// Bind geometry
+				if (m_currentlyBoundGeometry != obj_geometry->GetResourceID())
+				{
+					obj_geometry->Geometry_Bind();
+					m_currentlyBoundGeometry = obj_geometry->GetResourceID();
+				}
+
 				// Skip meshes that don't cast shadows
-				if (!renderable->GetCastShadows())
+				if (!obj_renderable->GetCastShadows())
 					continue;
 
 				// Skip transparent meshes (for now)
-				if (material->GetOpacity() < 1.0f)
+				if (obj_material->GetOpacity() < 1.0f)
 					continue;
 
 				// skip objects outside of the view frustum
-				//if (!m_directionalLight->IsInViewFrustrum(meshFilter))
+				//if (!m_directionalLight->IsInViewFrustrum(obj_renderable))
 					//continue;
 
-				if (renderable->SetBuffers())
-				{
-					m_shaderDepth->SetBuffer(gameObj->GetTransform_PtrRaw()->GetWorldTransform() * mViewLight * mProjectionLight, 0);
-					m_shaderDepth->DrawIndexed(mesh->GetIndexCount());
-				}
-			}
+				m_shaderLightDepth->Bind_Buffer(
+					gameObj->GetTransform_PtrRaw()->GetWorldTransform() * directionalLight->ComputeViewMatrix() * cascades->ComputeProjectionMatrix(i)
+				);
+				m_shaderLightDepth->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
 
-			m_graphics->EventEnd();
+				Profiler::Get().m_drawCalls++;
+			}
 		}
 
+		// Reset pipeline state tracking
+		m_currentlyBoundGeometry = 0;
+		
 		m_graphics->EnableDepth(false);
-
 		m_graphics->EventEnd();
+
 		PROFILE_FUNCTION_END();
 	}
 
@@ -497,79 +557,73 @@ namespace Directus
 
 		m_gbuffer->SetAsRenderTarget();
 		m_gbuffer->Clear();
-
-		vector<weak_ptr<IResource>> materials	= g_resourceMng->GetResourcesByType(Resource_Material);
-		vector<weak_ptr<IResource>> shaders		= g_resourceMng->GetResourcesByType(Resource_Shader);
-
-		for (const auto& shaderIt : shaders) // SHADER ITERATION
+		
+		for (auto gameObj : m_renderables)
 		{
-			ShaderVariation* shader = (ShaderVariation*)shaderIt.lock().get();
-			if (!shader)
+			// Get renderable and material
+			Renderable* obj_renderable	= gameObj->GetRenderable_PtrRaw();
+			Material* obj_material		= obj_renderable ? obj_renderable->Material_Ref() : nullptr;
+
+			if (!obj_renderable || !obj_material)
 				continue;
 
-			// Set the shader and update frame buffer
-			shader->Set();
-			shader->UpdatePerFrameBuffer(m_camera);
+			// Get geometry and shader
+			Model* obj_geometry			= obj_renderable->Geometry_Model();
+			ShaderVariation* obj_shader	= obj_material->GetShader().lock().get();
 
-			for (const auto& materialIt : materials) // MATERIAL ITERATION
+			if (!obj_geometry || !obj_shader)
+				continue;
+
+			// Skip transparent objects (for now)
+			if (obj_material->GetOpacity() < 1.0f)
+				continue;
+
+			// Skip objects outside of the view frustum
+			if (!m_camera->IsInViewFrustrum(obj_renderable))
+				continue;
+
+			// set face culling (changes only if required)
+			m_graphics->SetCullMode(obj_material->GetCullMode());
+
+			// Bind geometry
+			if (m_currentlyBoundGeometry != obj_geometry->GetResourceID())
+			{	
+				obj_geometry->Geometry_Bind();
+				m_currentlyBoundGeometry = obj_geometry->GetResourceID();
+			}
+
+			// Bind shader
+			if (m_currentlyBoundShader != obj_shader->GetResourceID())
 			{
-				Material* material = (Material*)materialIt.lock().get();
-				if (!material)
-					continue;
+				obj_shader->Bind();
+				obj_shader->Bind_PerFrameBuffer(m_camera);
+				m_currentlyBoundShader = obj_shader->GetResourceID();
+			}
 
-				// Continue only if the material at hand happens to use the already set shader
-				if (!material->GetShader().expired() && (material->GetShader().lock()->GetResourceID() != shader->GetResourceID()))
-					continue;
+			// Bind material
+			if (m_currentlyBoundMaterial != obj_material->GetResourceID())
+			{
+				obj_shader->Bind_PerMaterialBuffer(obj_material);
+				obj_shader->Bind_Textures(obj_material->GetShaderResources());
+				m_currentlyBoundMaterial = obj_material->GetResourceID();
+			}
 
-				// UPDATE PER MATERIAL BUFFER
-				shader->UpdatePerMaterialBuffer(material);
+			// UPDATE PER OBJECT BUFFER
+			auto mWorld	= gameObj->GetTransform_PtrRaw()->GetWorldTransform();
+			obj_shader->Bind_PerObjectBuffer(mWorld, m_mView, m_mProjectionPersp);
+		
+			// render			
+			obj_renderable->Render();
 
-				// UPDATE TEXTURE BUFFER
-				shader->UpdateTextures(material->GetShaderResources());
-				//==================================================================================
+			Profiler::Get().m_drawCalls++;
+			Profiler::Get().m_meshesRendered++;
 
-				for (auto gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
-				{
-					//= Get all that we need =========================================================
-					Renderable* renderable	= gameObj->GetRenderable_PtrRaw();
-					Mesh* objMesh			= renderable	? renderable->GetMesh_Ref()		: nullptr;
-					Material* objMaterial	= renderable	? renderable->GetMaterial_Ref()	: nullptr;
-					auto mWorld				= gameObj->GetTransform_PtrRaw()->GetWorldTransform();
-					//================================================================================
+		} // GAMEOBJECT/MESH ITERATION
 
-					// skip objects that are missing required components
-					if (!objMesh || !renderable || !objMaterial)
-						continue;
-
-					// skip objects that use a different material
-					if (material->GetResourceID() != objMaterial->GetResourceID())
-						continue;
-
-					// skip transparent objects (for now)
-					if (objMaterial->GetOpacity() < 1.0f)
-						continue;
-
-					// skip objects outside of the view frustrum
-					if (!m_camera->IsInViewFrustrum(renderable))
-						continue;
-
-					// UPDATE PER OBJECT BUFFER
-					shader->UpdatePerObjectBuffer(mWorld, m_mView, m_mProjectionPersp);
-
-					// Set mesh buffer
-					if (renderable->HasMesh() && renderable->SetBuffers())
-					{
-						// Set face culling (changes only if required)
-						m_graphics->SetCullMode(objMaterial->GetCullMode());
-
-						// Render the mesh, finally!				
-						renderable->Render(objMesh->GetIndexCount());
-
-						m_renderedMeshesCount++;
-					}
-				} // GAMEOBJECT/MESH ITERATION
-			} // MATERIAL ITERATION
-		} // SHADER ITERATION
+		// Reset pipeline state tracking
+		m_currentlyBoundGeometry	= 0;
+		m_currentlyBoundShader		= 0;
+		m_currentlyBoundMaterial	= 0;
 
 		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
@@ -585,7 +639,7 @@ namespace Directus
 
 		// Shadow mapping + SSAO
 		Pass_Shadowing(inTextureNormal, inTextureDepth, inTextureNormalNoise, m_directionalLight, inRenderTexure);
-		// Blur the shadows and the ssao
+		// Blur the shadows and the SSAO
 		Pass_Blur(((D3D11_RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureShadowing, GET_RESOLUTION);
 
 		m_graphics->EventEnd();
@@ -600,6 +654,8 @@ namespace Directus
 		PROFILE_FUNCTION_BEGIN();
 		m_graphics->EventBegin("Pass_Light");
 
+		m_graphics->EnableDepth(false);
+
 		// Set the deferred shader
 		m_shaderLight->Set();
 
@@ -612,6 +668,7 @@ namespace Directus
 
 		//= Update textures ===========================================================
 		m_texArray.clear();
+		m_texArray.shrink_to_fit();
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Albedo));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
@@ -688,8 +745,8 @@ namespace Directus
 		}
 
 		// TEXTURE
-		m_shaderTexture->Set();
-		m_shaderTexture->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
+		m_shaderTexture->Bind();
+		m_shaderTexture->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
 		m_shaderTexture->SetTexture(m_gbuffer->GetShaderResource(texType), 0);
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
@@ -730,11 +787,11 @@ namespace Directus
 			// bounding boxes
 			if (m_flags & Render_AABB)
 			{
-				for (const auto& gameObject : m_renderables)
+				for (const auto& renderableWeak : m_renderables)
 				{
-					if (auto renderable = gameObject->GetRenderable_PtrRaw())
+					if (auto renderable = renderableWeak->GetRenderable_PtrRaw())
 					{
-						m_lineRenderer->AddBoundigBox(renderable->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						m_lineRenderer->AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 			}
@@ -745,8 +802,8 @@ namespace Directus
 
 				// Render
 				m_lineRenderer->SetBuffer();
-				m_shaderLine->Set();
-				m_shaderLine->SetBuffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
+				m_shaderLine->Bind();
+				m_shaderLine->Bind_Buffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
 				m_shaderLine->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0); // depth
 				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
 
@@ -763,8 +820,8 @@ namespace Directus
 			m_graphics->EventBegin("Grid");
 
 			m_grid->SetBuffer();
-			m_shaderGrid->Set();
-			m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(), 0);
+			m_shaderGrid->Bind();
+			m_shaderGrid->Bind_Buffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(), 0);
 			m_shaderGrid->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 
@@ -822,8 +879,8 @@ namespace Directus
 					);
 
 					m_gizmoRectLight->SetBuffer();
-					m_shaderTexture->Set();
-					m_shaderTexture->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
+					m_shaderTexture->Bind();
+					m_shaderTexture->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
 					m_shaderTexture->SetTexture(lightTex->GetShaderResource(), 0);
 					m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
 				}
@@ -831,6 +888,7 @@ namespace Directus
 			}
 
 			// Transformation Gizmo
+			/*
 			m_graphics->EventBegin("Transformation");
 			{
 				TransformationGizmo* gizmo = m_camera->GetTransformationGizmo();
@@ -848,6 +906,7 @@ namespace Directus
 				m_shaderTransformationGizmo->DrawIndexed(gizmo->GetIndexCount());
 			}
 			m_graphics->EventEnd();
+			*/
 		}
 		m_graphics->EventEnd();
 
@@ -858,8 +917,8 @@ namespace Directus
 			m_font->SetBuffers();
 			m_font->SetInputLayout();
 
-			m_shaderFont->Set();
-			m_shaderFont->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, m_font->GetColor(), 0);
+			m_shaderFont->Bind();
+			m_shaderFont->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, m_font->GetColor(), 0);
 			m_shaderFont->SetTexture(m_font->GetShaderResource(), 0);
 			m_shaderFont->DrawIndexed(m_font->GetIndexCount());
 		}
@@ -875,8 +934,8 @@ namespace Directus
 		m_graphics->EventBegin("Pass_FXAA");
 
 		SetRenderTarget(renderTarget, false);
-		m_shaderFXAA->Set();
-		m_shaderFXAA->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION, 0);
+		m_shaderFXAA->Bind();
+		m_shaderFXAA->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION, 0);
 		m_shaderFXAA->SetTexture(texture, 0);
 		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
 
@@ -888,8 +947,8 @@ namespace Directus
 		m_graphics->EventBegin("Pass_Sharpening");
 
 		SetRenderTarget(renderTarget, false);
-		m_shaderSharpening->Set();
-		m_shaderSharpening->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION, 0);
+		m_shaderSharpening->Bind();
+		m_shaderSharpening->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION, 0);
 		m_shaderSharpening->SetTexture(texture, 0);
 		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
 
@@ -901,8 +960,8 @@ namespace Directus
 		m_graphics->EventBegin("Pass_Blur");
 
 		SetRenderTarget(renderTarget, false);
-		m_shaderBlur->Set();
-		m_shaderBlur->SetBuffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, blurScale, 0);
+		m_shaderBlur->Bind();
+		m_shaderBlur->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, blurScale, 0);
 		m_shaderBlur->SetTexture(texture, 0); // Shadows are alpha
 		m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
 
@@ -911,9 +970,6 @@ namespace Directus
 
 	void Renderer::Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture)
 	{
-		if (!inDirectionalLight)
-			return;
-
 		PROFILE_FUNCTION_BEGIN();
 		m_graphics->EventBegin("Pass_Shadowing");
 
@@ -921,25 +977,24 @@ namespace Directus
 		SetRenderTarget(outRenderTexture, false);
 
 		// TEXTURES
-		vector<void*> textures;
-		textures.push_back(inTextureNormal);
-		textures.push_back(inTextureDepth);
-		textures.push_back(inTextureNormalNoise);
+		m_texArray.clear();
+		m_texArray.shrink_to_fit();
+		m_texArray.emplace_back(inTextureNormal);
+		m_texArray.emplace_back(inTextureDepth);
+		m_texArray.emplace_back(inTextureNormalNoise);
 		if (inDirectionalLight)
 		{
-			for (int i = 0; i < inDirectionalLight->GetShadowCascadeCount(); i++)
-			{
-				Cascade* shadowMap = inDirectionalLight->GetShadowCascade(i).lock().get();
-				textures.push_back(shadowMap ? shadowMap->GetShaderResource() : nullptr);
-			}
+			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(0));
+			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(1));
+			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(2));
 		}
 
 		// BUFFER
 		Matrix mvp_ortho		= Matrix::Identity * m_mViewBase * m_mProjectionOrtho;
 		Matrix mvp_persp_inv	= (Matrix::Identity * m_mView * m_mProjectionPersp).Inverted();
 
-		m_shaderShadowing->Set();
-		m_shaderShadowing->SetBuffer(
+		m_shaderShadowing->Bind();
+		m_shaderShadowing->Bind_Buffer(
 			mvp_ortho, 
 			mvp_persp_inv, 
 			m_mView, 
@@ -949,8 +1004,7 @@ namespace Directus
 			m_camera,
 			0
 		);
-		m_shaderShadowing->SetTextures(textures);
-
+		m_shaderShadowing->SetTextures(m_texArray);
 		m_shaderShadowing->DrawIndexed(m_quad->GetIndexCount());
 
 		m_graphics->EventEnd();

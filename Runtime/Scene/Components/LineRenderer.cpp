@@ -49,8 +49,8 @@ namespace Directus
 	void LineRenderer::AddBoundigBox(const BoundingBox& box, const Vector4& color)
 	{
 		// Compute points from min and max
-		Vector3 boundPoint1 = box.min;
-		Vector3 boundPoint2 = box.max;
+		Vector3 boundPoint1 = box.GetMin();
+		Vector3 boundPoint2 = box.GetMax();
 		Vector3 boundPoint3 = Vector3(boundPoint1.x, boundPoint1.y, boundPoint2.z);
 		Vector3 boundPoint4 = Vector3(boundPoint1.x, boundPoint2.y, boundPoint1.z);
 		Vector3 boundPoint5 = Vector3(boundPoint2.x, boundPoint1.y, boundPoint1.z);

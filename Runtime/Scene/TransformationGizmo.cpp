@@ -21,13 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
+//= INCLUDES ====================
 #include "TransformationGizmo.h"
-#include "..\Rendering\GeometryUtility.h"
-#include "..\Rendering\Mesh.h"
-#include "Components\Transform.h"
 #include "GameObject.h"
-//=======================================
+#include "Components\Transform.h"
+//===============================
 
 //=============================
 using namespace std;
@@ -47,7 +45,7 @@ namespace Directus
 		m_transformationY = Matrix::Identity;
 		m_transformationZ = Matrix::Identity;
 
-		m_type = TransformGizmo_Position;
+		m_type	= TransformGizmo_Position;
 		m_space = TransformGizmo_World;
 		m_scale	= Vector3(0.2f);
 	}
@@ -57,7 +55,7 @@ namespace Directus
 
 	}
 
-	void TransformationGizmo::Pick(std::weak_ptr<GameObject> gameObject)
+	void TransformationGizmo::Pick(weak_ptr<GameObject> gameObject)
 	{
 		if (gameObject.expired())
 			return;
@@ -65,11 +63,11 @@ namespace Directus
 		Transform* transformComponent = gameObject.lock()->GetComponent<Transform>().lock().get();
 		Matrix transform = (m_space == TransformGizmo_Local) ? transformComponent->GetWorldTransform() : transformComponent->GetWorldTransform();
 
-		Matrix mTranslation = Matrix::CreateTranslation(transform.GetTranslation());
-		Quaternion qRotation = transform.GetRotation();
-		Matrix mRotation = Matrix::CreateRotation(transform.GetRotation());
-		Vector3 mRotationEuler = transform.GetRotation().ToEulerAngles();
-		Matrix mScaleGizmo = Matrix::CreateScale(m_scale);
+		Matrix mTranslation		= Matrix::CreateTranslation(transform.GetTranslation());
+		Quaternion qRotation	= transform.GetRotation();
+		Matrix mRotation		= Matrix::CreateRotation(transform.GetRotation());
+		Vector3 mRotationEuler	= transform.GetRotation().ToEulerAngles();
+		Matrix mScaleGizmo		= Matrix::CreateScale(m_scale);
 
 		// Default transformation
 		m_transformationX = mTranslation * mRotation;
@@ -96,11 +94,11 @@ namespace Directus
 	{
 		if (m_type == TransformGizmo_Position)
 		{
-			m_meshCone->SetBuffers();
+			//m_meshCone->Geometry_Bind();
 		}
 		else if (m_type == TransformGizmo_Scale)
 		{
-			m_meshCube->SetBuffers();
+			//m_meshCube->Geometry_Bind();
 		}
 	}
 
@@ -108,11 +106,11 @@ namespace Directus
 	{
 		if (m_type == TransformGizmo_Position)
 		{
-			return m_meshCone->GetIndexCount();
+			//return m_meshCone->Indices_Count();
 		}
 		else if (m_type == TransformGizmo_Scale)
 		{
-			return m_meshCube->GetIndexCount();
+			//return m_meshCube->Indices_Count();
 		}
 
 		return 0;
@@ -121,23 +119,23 @@ namespace Directus
 	void TransformationGizmo::CreateGeometry()
 	{
 		// Create cone
-		vector<RI_Vertex_PosUVTBN> vertices;
-		vector<unsigned int> indices;
-		GeometryUtility::CreateCone(&vertices, &indices);
-		m_meshCone = make_unique<Mesh>(m_context);
-		m_meshCone->SetVertices(vertices);
-		m_meshCone->SetIndices(indices);
-		m_meshCone->SetResourceName("TransformGizmo:Translation");
-		m_meshCone->Construct();
+		//vector<RI_Vertex_PosUVTBN> vertices;
+		//vector<unsigned int> indices;
+		//GeometryUtility::CreateCone(&vertices, &indices);
+		//m_meshCone = make_unique<Mesh>(m_context);
+		//m_meshCone->Vertices_Set(vertices);
+		//m_meshCone->Indices_Set(indices);
+		//m_meshCone->SetResourceName("TransformGizmo:Translation");
+		//m_meshCone->Geometry_Update();
 
 		// Create cone
-		vertices.clear(); vertices.shrink_to_fit();
-		indices.clear(); indices.shrink_to_fit();
-		GeometryUtility::CreateCube(&vertices, &indices);
-		m_meshCube = make_unique<Mesh>(m_context);
-		m_meshCube->SetVertices(vertices);
-		m_meshCube->SetIndices(indices);
-		m_meshCube->SetResourceName("TransformGizmo:Scale");
-		m_meshCube->Construct();
+		//vertices.clear(); vertices.shrink_to_fit();
+		//indices.clear(); indices.shrink_to_fit();
+		//GeometryUtility::CreateCube(&vertices, &indices);
+		//m_meshCube = make_unique<Mesh>(m_context);
+		//m_meshCube->Vertices_Set(vertices);
+		//m_meshCube->Indices_Set(indices);
+		//m_meshCube->SetResourceName("TransformGizmo:Scale");
+		//m_meshCube->Geometry_Update();
 	}
 }

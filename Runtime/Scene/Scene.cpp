@@ -219,11 +219,6 @@ namespace Directus
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
 		for (const auto& resourcePath : resourcePaths)
 		{
-			if (FileSystem::IsEngineMeshFile(resourcePath))
-			{
-				resourceMng->Load<Mesh>(resourcePath);
-			}
-
 			if (FileSystem::IsEngineModelFile(resourcePath))
 			{
 				resourceMng->Load<Model>(resourcePath);

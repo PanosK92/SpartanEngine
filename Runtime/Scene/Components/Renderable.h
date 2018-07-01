@@ -21,29 +21,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ==============================
 #include "IComponent.h"
-//=====================
+#include <vector>
+#include "../../Rendering/RI/Backend_Def.h"
+#include "../../Math/BoundingBox.h"
+//=========================================
 
 namespace Directus
 {
+	class Model;
 	class Mesh;
 	class Light;
 	class Material;
 	namespace Math
 	{
 		class Vector3;
-		class BoundingBox;
 	}
 
-	enum MeshType
+	enum GeometryType
 	{
-		MeshType_Imported,
-		MeshType_Cube,
-		MeshType_Quad,
-		MeshType_Sphere,
-		MeshType_Cylinder,
-		MeshType_Cone
+		Geometry_Custom,
+		Geometry_Default_Cube,
+		Geometry_Default_Quad,
+		Geometry_Default_Sphere,
+		Geometry_Default_Cylinder,
+		Geometry_Default_Cone
 	};
 
 	class ENGINE_CLASS Renderable : public IComponent
@@ -57,68 +60,72 @@ namespace Directus
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= RENDERING =======================
-		void Render(unsigned int indexCount);
-		//===================================
+		void Render();
+		
+		//= GEOMETRY ====================================================================================
+		void Geometry_Set(
+			const std::string& name,
+			unsigned int indexOffset,
+			unsigned int indexCount,
+			unsigned int vertexOffset,
+			unsigned int vertexCount,
+			const Math::BoundingBox& AABB, 
+			Model* model
+		);
+		void Geometry_Get(std::vector<unsigned int>* indices, std::vector<RI_Vertex_PosUVTBN>* vertices);
+		void Geometry_Set(GeometryType type);
+		unsigned int Geometry_IndexOffset()				{ return m_geometryIndexOffset; }
+		unsigned int Geometry_IndexCount()				{ return m_geometryIndexCount; }		
+		unsigned int Geometry_VertexOffset()			{ return m_geometryVertexOffset; }
+		unsigned int Geometry_VertexCount()				{ return m_geometryVertexCount; }
+		GeometryType Geometry_Type()					{ return m_geometryType; }
+		const std::string& Geometry_Name()				{ return m_geometryName; }
+		Model* Geometry_Model()							{ return m_model; }
+		const Math::BoundingBox& Geometry_AABB() const	{ return m_geometryAABB; }
+		Math::BoundingBox Geometry_BB();
+		//===============================================================================================
 
-		//= MESH =============================================================
-		// Sets a mesh from memory
-		void SetMesh(const std::weak_ptr<Mesh>& mesh, bool autoCache = true);
-
-		// Sets a default mesh (cube, quad)
-		void UseStandardMesh(MeshType type);
-
-		// Set vertex and index buffers (must be called before rendering)
-		bool SetBuffers();
-
-		MeshType GetMeshType() { return m_meshType; }
-		std::string GetMeshName();
-		const std::weak_ptr<Mesh>& GetMesh_RefWeak() { return m_meshRefWeak; }
-		Mesh* GetMesh_Ref() { return m_meshRef; }
-		bool HasMesh() { return !m_meshRefWeak.expired(); }
-		//====================================================================
-
-		//= MATERIAL ==================================================================================
+		//= MATERIAL =========================================================================
 		// Sets a material from memory (adds it to the resource cache by default)
-		void SetMaterialFromMemory(const std::weak_ptr<Material>& materialWeak, bool autoCache = true);
+		void Material_Set(const std::weak_ptr<Material>& materialWeak, bool autoCache = true);
 
 		// Loads a material and the sets it
-		std::weak_ptr<Material> SetMaterialFromFile(const std::string& filePath);
+		std::weak_ptr<Material> Material_Set(const std::string& filePath);
 
-		void UseStandardMaterial();
-
-		std::weak_ptr<Material> GetMaterial_RefWeak() { return m_materialRefWeak; }
-		Material* GetMaterial_Ref() { return m_materialRef; }
-		bool HasMaterial() { return !m_materialRefWeak.expired(); }
-		std::string GetMaterialName();
-		//=============================================================================================
-
-		//= BOUNDING BOX ===============================
-		const Math::BoundingBox& GetBoundingBox() const;
-		Math::BoundingBox GetBoundingBoxTransformed();
-		//==============================================
+		void Material_UseDefault();
+		std::weak_ptr<Material> Material_RefWeak()	{ return m_materialRefWeak; }
+		Material* Material_Ref()					{ return m_materialRef; }
+		bool Material_Exists()						{ return !m_materialRefWeak.expired(); }
+		std::string Material_Name();
+		//====================================================================================
 
 		//= PROPERTIES ===================================================================
-		void SetCastShadows(bool castShadows) { m_castShadows = castShadows; }
-		bool GetCastShadows() { return m_castShadows; }
+		void SetCastShadows(bool castShadows)		{ m_castShadows = castShadows; }
+		bool GetCastShadows()						{ return m_castShadows; }
 		void SetReceiveShadows(bool receiveShadows) { m_receiveShadows = receiveShadows; }
-		bool GetReceiveShadows() { return m_receiveShadows; }
+		bool GetReceiveShadows()					{ return m_receiveShadows; }
 		//================================================================================
 
 	private:
+		//= GEOMETRY =======================
+		std::string m_geometryName;
+		unsigned int m_geometryIndexOffset;
+		unsigned int m_geometryIndexCount;
+		unsigned int m_geometryVertexOffset;
+		unsigned int m_geometryVertexCount;
+		Math::BoundingBox m_geometryAABB;
+		Model* m_model;
+		GeometryType m_geometryType;
+		//==================================
+
 		//= MATERIAL =============================
 		std::weak_ptr<Material> m_materialRefWeak;
 		Material* m_materialRef;
 		//========================================
 
-		//= MESH =========================
-		std::weak_ptr<Mesh> m_meshRefWeak;
-		Mesh* m_meshRef;
-		MeshType m_meshType;
-		//================================
-
+		// Misc
 		bool m_castShadows;
 		bool m_receiveShadows;
-		bool m_usingStandardMaterial;
+		bool m_materialDefault;
 	};
 }

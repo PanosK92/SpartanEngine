@@ -83,7 +83,7 @@ namespace Directus
 		m_miscBuffer->Create(sizeof(PerFrameBufferType));
 	}
 
-	void ShaderVariation::Set()
+	void ShaderVariation::Bind()
 	{
 		if (!m_D3D11Shader)
 		{
@@ -91,10 +91,10 @@ namespace Directus
 			return;
 		}
 
-		m_D3D11Shader->Set();
+		m_D3D11Shader->Bind();
 	}
 
-	void ShaderVariation::UpdatePerFrameBuffer(Camera* camera)
+	void ShaderVariation::Bind_PerFrameBuffer(Camera* camera)
 	{
 		if (!m_D3D11Shader || !m_D3D11Shader->IsCompiled())
 		{
@@ -105,8 +105,8 @@ namespace Directus
 		if (!camera)
 			return;
 
-		//= BUFFER UPDATE ======================================================================================================================
-		PerFrameBufferType* buffer = (PerFrameBufferType*)m_miscBuffer->Map();
+		//= BUFFER UPDATE ==========================================
+		auto buffer = (PerFrameBufferType*)m_miscBuffer->Map();
 
 		buffer->cameraPos	= camera->GetTransform()->GetPosition();
 		buffer->padding		= 0.0f;
@@ -114,13 +114,13 @@ namespace Directus
 		buffer->padding2	= Vector2::Zero;
 		
 		m_miscBuffer->Unmap();
-		//======================================================================================================================================
+		//==========================================================
 
 		// Set to shader slot
 		m_miscBuffer->SetPS(0);
 	}
 
-	void ShaderVariation::UpdatePerMaterialBuffer(Material* material)
+	void ShaderVariation::Bind_PerMaterialBuffer(Material* material)
 	{
 		if (!material)
 			return;
@@ -143,8 +143,8 @@ namespace Directus
 
 		if (update)
 		{
-			//= BUFFER UPDATE =========================================================================
-			PerMaterialBufferType* buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
+			//= BUFFER UPDATE ===================================================================================
+			auto buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
 
 			buffer->matAlbedo		= perMaterialBufferCPU.matAlbedo		= material->GetColorAlbedo();
 			buffer->matTilingUV		= perMaterialBufferCPU.matTilingUV		= material->GetTiling();
@@ -157,14 +157,14 @@ namespace Directus
 			buffer->paddding		= Vector3::Zero;
 
 			m_materialBuffer->Unmap();
-			//========================================================================================
+			//===================================================================================================
 		}
 
 		// Set to shader slot
 		m_materialBuffer->SetPS(1);
 	}
 
-	void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
+	void ShaderVariation::Bind_PerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
 	{
 		if (!m_D3D11Shader->IsCompiled())
 		{
@@ -184,22 +184,22 @@ namespace Directus
 
 		if (update)
 		{
-			//= BUFFER UPDATE ==============================================================================
-			PerObjectBufferType* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
+			//= BUFFER UPDATE ============================================================================
+			auto* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
 
 			buffer->mWorld = perObjectBufferCPU.mWorld								= world;
 			buffer->mWorldView = perObjectBufferCPU.mWorldView						= worldView;
 			buffer->mWorldViewProjection = perObjectBufferCPU.mWorldViewProjection	= worldViewProjection;
 
 			m_perObjectBuffer->Unmap();
-			//==============================================================================================
+			//============================================================================================
 		}
 
 		// Set to shader slot
 		m_perObjectBuffer->SetVS(2);
 	}
 
-	void ShaderVariation::UpdateTextures(const vector<void*>& textureArray)
+	void ShaderVariation::Bind_Textures(const vector<void*>& textureArray)
 	{
 		if (!m_graphics)
 		{
@@ -210,15 +210,15 @@ namespace Directus
 		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (unsigned int)textureArray.size(), (ID3D11ShaderResourceView**)&textureArray[0]);
 	}
 
-	void ShaderVariation::Render(int indexCount)
+	void ShaderVariation::Render(unsigned int indexCount, unsigned int indexOffset /*= 0*/, unsigned int vertexOffset /*= 0*/)
 	{
 		if (!m_graphics)
 		{
-			LOG_INFO("GraphicsDevice is expired. Cant't render with shader");
+			LOG_INFO("ShaderVariation::Render: Invalid graphics device");
 			return;
 		}
 
-		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, indexOffset, vertexOffset);
 	}
 
 	void ShaderVariation::AddDefinesBasedOnMaterial(const shared_ptr<D3D11_Shader>& shader)

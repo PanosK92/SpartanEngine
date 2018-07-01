@@ -23,34 +23,44 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <memory>
-#include "../Core/EngineDefs.h"
+#include <vector>
 #include "RI/Backend_Def.h"
+#include "../Core/EngineDefs.h"
 //=============================
 
 namespace Directus
 {
-	class Camera;
 	class Context;
+	class Light;
 	namespace Math
 	{
-		class Matrix;
 		class Vector3;
+		class Matrix;
 	}
 
-	class ENGINE_CLASS Cascade
+	class ENGINE_CLASS ShadowCascades
 	{
 	public:
-		Cascade(int resolution, Camera* camera, Context* context);
-		~Cascade() {}
+		ShadowCascades(Context* context, unsigned int cascadeCount, unsigned int resolution, Light* light);
+		~ShadowCascades();
 
-		void SetAsRenderTarget();
-		void* GetShaderResource();
-		Math::Matrix ComputeProjectionMatrix(int cascadeIndex, const Math::Vector3& centerPos, const Math::Matrix& viewMatrix);
-		float GetSplit(int cascadeIndex);
+		void SetAsRenderTarget(unsigned int cascadeIndex);
+		Math::Matrix ComputeProjectionMatrix(unsigned int cascadeIndex);
+		float GetSplit(unsigned int cascadeIndex);
+		void* GetShaderResource(unsigned int cascadeIndex);
+		unsigned int GetCascadeCount()	{ return m_cascadeCount; }
+		unsigned int GetResolution()	{ return m_resolution; }
+		void SetEnabled(bool enabled);
 
 	private:
-		std::unique_ptr<D3D11_RenderTexture> m_depthMap;
-		int m_resolution;
-		Camera* m_camera;
+		void RenderTargets_Create();
+		void RenderTargets_Destroy();
+
+		std::vector<std::shared_ptr<D3D11_RenderTexture>> m_renderTargets;
+		Context* m_context;
+		RenderingDevice* m_renderingDevice;
+		unsigned int m_resolution;
+		Light* m_light;
+		unsigned int m_cascadeCount;
 	};
 }

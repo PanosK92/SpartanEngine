@@ -44,27 +44,27 @@ namespace Directus
 			// Construct from minimum and maximum vectors.
 			BoundingBox(const Vector3& min, const Vector3& max);
 
-			~BoundingBox();
+			// Construct from vertices
+			BoundingBox(const std::vector<RI_Vertex_PosUVTBN>& vertices);
+
+			~BoundingBox() {}
 
 			// Assign from bounding box
 			BoundingBox& operator =(const BoundingBox& rhs)
 			{
-				min = rhs.min;
-				max = rhs.max;
+				m_min = rhs.m_min;
+				m_max = rhs.m_max;
 				return *this;
 			}
 
-			// Compute bounding box from vertices
-			void ComputeFromVertices(const std::vector<RI_Vertex_PosUVTBN>& vertices);
-
 			// Returns the center
-			Vector3 GetCenter() const { return (max + min) * 0.5f; }
+			Vector3 GetCenter() const { return (m_max + m_min) * 0.5f; }
 
 			// Returns the size
-			Vector3 GetSize() const { return max - min; }
+			Vector3 GetSize() const { return m_max - m_min; }
 
 			// Returns extents
-			Vector3 GetExtents() const { return (max - min) * 0.5f; }
+			Vector3 GetExtents() const { return (m_max - m_min) * 0.5f; }
 
 			// Test if a point is inside
 			Intersection IsInside(const Vector3& point) const;
@@ -78,12 +78,16 @@ namespace Directus
 			// Merge with another bounding box
 			void Merge(const BoundingBox& box);
 
-			void Undefine() { min = Vector3::InfinityNeg; max = Vector3::Infinity; }
-			bool Defined() const { return min.x != INFINITY; }
+			const Vector3& GetMin() const { return m_min; }
+			const Vector3& GetMax() const { return m_max; }
 
-			Vector3 min;
-			Vector3 max;
+			void Undefine() { m_min = Vector3::InfinityNeg; m_max = Vector3::Infinity; }
+			bool Defined() const { return m_min.x != INFINITY; }
+
 			static const BoundingBox Zero;
+		private:
+			Vector3 m_min;
+			Vector3 m_max;	
 		};
 	}
 }

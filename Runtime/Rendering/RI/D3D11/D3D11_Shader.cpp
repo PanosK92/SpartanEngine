@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../../Core/EngineDefs.h"
 #include "../../../Logging/Log.h"
 #include "../../../FileSystem/FileSystem.h"
+#include "../../../Profiling/Profiler.h"
 #include <sstream> 
 //=========================================
 
@@ -150,37 +151,57 @@ namespace Directus
 	{
 		if (!m_graphics->GetDevice())
 		{
-			LOG_ERROR("D3D11_Shader: Aborting sampler creation. Graphics device is not present.");
+			LOG_ERROR("D3D11_Shader::AddSampler: Graphics device is null");
 			return false;
 		}
 
 		auto sampler = make_shared<D3D11_Sampler>(m_graphics);
 		if (!sampler->Create(filter, textureAddressMode, comparisonFunction))
+		{
+			LOG_ERROR("D3D11_Shader::AddSampler: Failed to create sampler");
 			return false;
+		}
 
-		m_samplers.push_back(sampler);
+		m_samplers.emplace_back(sampler);
 
 		return true;
 	}
 
-	void D3D11_Shader::Set()
+	bool D3D11_Shader::Bind()
 	{
 		if (!m_compiled)
-			return;
+		{	
+			LOG_ERROR("D3D11_Shader::Bind: Shader hasn't compiled");
+			return false;
+		}
 
-		// set the vertex input layout.
+		bool success = true;
+
+		// Set the vertex input layout.
 		m_graphics->SetInputLayout(m_D3D11InputLayout->GetInputLayout());
-		m_D3D11InputLayout->Set();
+		if (!m_D3D11InputLayout->Set())
+		{
+			LOG_ERROR("D3D11_Shader::Bind: Failed to set input layout");
+			success = false;
+		}
 
-		// set the vertex and pixel shaders
+		// Set the vertex and pixel shaders
 		m_graphics->GetDeviceContext()->VSSetShader(m_vertexShader, nullptr, 0);
 		m_graphics->GetDeviceContext()->PSSetShader(m_pixelShader, nullptr, 0);
 
-		// set the samplers
+		// Set the samplers
 		for (unsigned int i = 0; i < m_samplers.size(); i++)
 		{
-			m_samplers[i]->Set(i);
+			if (!m_samplers[i]->Set(i))
+			{
+				LOGF_ERROR("D3D11_Shader::Bind: Failed to set texture sampler %d", i);
+				success = false;
+			}
 		}
+
+		Profiler::Get().m_bindShaderCount++;
+
+		return success;
 	}
 
 	// All overloads resolve to this

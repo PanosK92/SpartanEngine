@@ -65,9 +65,26 @@ namespace Directus
 		const auto& GetAllBlocks() { return m_timeBlocks; }
 		void UpdateMetrics();
 		const std::string& GetMetrics() { return m_metrics; }
+
+		void Reset()
+		{
+			m_drawCalls					= 0;
+			m_meshesRendered			= 0;
+			m_bindBufferIndexCount		= 0;
+			m_bindBufferVertexCount		= 0;
+			m_bindShaderCount			= 0;
+			m_bindUniformBufferCount	= 0;
+		}
+
+		unsigned int m_drawCalls;
+		unsigned int m_meshesRendered;
+		unsigned int m_bindBufferIndexCount;
+		unsigned int m_bindBufferVertexCount;
+		unsigned int m_bindShaderCount;
+		unsigned int m_bindUniformBufferCount;
 	
 	private:
-		// Converts float to string with specificed precision
+		// Converts float to string with specified precision
 		std::string to_string_precision(float value, int decimals);
 
 		// Timings

@@ -91,9 +91,7 @@ namespace Directus
 		std::weak_ptr<GameObject> CreateDirectionalLight();
 		//=================================================
 
-		//= HELPER FUNCTIONS =
-		void ComputeFPS();
-		//====================
+		void ComputeFPS(); // TODO: This doesn't belong here
 
 		std::vector<std::shared_ptr<GameObject>> m_gameObjects;
 		std::vector<std::weak_ptr<GameObject>> m_renderables;

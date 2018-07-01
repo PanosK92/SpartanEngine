@@ -31,7 +31,6 @@ namespace Directus
 {
 	class Context;
 	class GameObject;
-	class Mesh;
 
 	enum TransformGizmo_Type
 	{
@@ -63,8 +62,8 @@ namespace Directus
 	private:
 		void CreateGeometry();
 
-		std::unique_ptr<Mesh> m_meshCone;
-		std::unique_ptr<Mesh> m_meshCube;
+		//std::unique_ptr<Mesh> m_meshCone;
+		//std::unique_ptr<Mesh> m_meshCube;
 
 		Math::Matrix m_transformationX;
 		Math::Matrix m_transformationY;

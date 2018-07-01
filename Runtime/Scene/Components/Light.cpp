@@ -23,17 +23,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
+#include "Renderable.h"
 #include "../Scene.h"
 #include "../../Core/Settings.h"
 #include "../../Core/Context.h"
 #include "../../Math/BoundingBox.h"
 #include "../../Math/Frustum.h"
+#include "../../Rendering/RI/Backend_Imp.h"
+#include "../../Rendering/RI/D3D11//D3D11_RenderTexture.h"
+#include "../../Rendering/ShadowCascades.h"
 #include "../../Scene/GameObject.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
-#include "../../Rendering/RI/Backend_Imp.h"
-#include "../../Rendering/RI/D3D11//D3D11_RenderTexture.h"
-#include "Renderable.h"
 //========================================================
 
 //= NAMESPACES ================
@@ -45,26 +46,26 @@ namespace Directus
 {
 	Light::Light(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
-		m_lightType		= LightType_Point;
-		m_castShadows	= true;
-		m_range			= 1.0f;
-		m_intensity		= 2.0f;
-		m_angle			= 0.5f; // about 30 degrees
-		m_color			= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_bias			= 0.001f;
-		m_cascades		= 3;
-		m_frustrum		= make_shared<Frustum>();
-		m_isDirty		= true;
+		m_lightType			= LightType_Point;
+		m_castShadows		= true;
+		m_range				= 1.0f;
+		m_intensity			= 2.0f;
+		m_angle				= 0.5f; // about 30 degrees
+		m_color				= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+		m_bias				= 0.001f;	
+		m_frustum			= make_shared<Frustum>();
+		m_shadowCascades	= make_shared<ShadowCascades>(context, 3, SHADOWMAP_RESOLUTION, this);
+		m_isDirty			= true;
 	}
 
 	Light::~Light()
 	{
-		EnableShadowMaps(false);
+		m_shadowCascades->SetEnabled(false);
 	}
 
 	void Light::OnInitialize()
 	{
-		EnableShadowMaps(m_castShadows);
+		m_shadowCascades->SetEnabled(true);
 	}
 
 	void Light::OnStart()
@@ -97,7 +98,7 @@ namespace Directus
 		{
 			if (auto cameraComp = mainCamera->GetComponent<Camera>().lock().get())
 			{
-				m_frustrum->Construct(GetViewMatrix(), GetOrthographicProjectionMatrix(2), cameraComp->GetFarPlane());
+				m_frustum->Construct(ComputeViewMatrix(), m_shadowCascades->ComputeProjectionMatrix(2), cameraComp->GetFarPlane());
 			}
 		}
 	}
@@ -133,7 +134,7 @@ namespace Directus
 	void Light::SetCastShadows(bool castShadows)
 	{
 		m_castShadows = castShadows;
-		EnableShadowMaps(m_castShadows);
+		m_shadowCascades->SetEnabled(m_castShadows);
 	}
 
 	void Light::SetRange(float range)
@@ -166,7 +167,7 @@ namespace Directus
 		}
 	}
 
-	Matrix Light::GetViewMatrix()
+	Matrix Light::ComputeViewMatrix()
 	{
 		// Only re-compute if dirty
 		if (!m_isDirty)
@@ -177,10 +178,10 @@ namespace Directus
 		// the scene which can look weird
 		ClampRotation();
 
-		Vector3 lightDirection = GetDirection();
-		Vector3 position = lightDirection;
-		Vector3 lookAt = position + lightDirection;
-		Vector3 up = Vector3::Up;
+		Vector3 lightDirection	= GetDirection();
+		Vector3 position		= lightDirection;
+		Vector3 lookAt			= position + lightDirection;
+		Vector3 up				= Vector3::Up;
 
 		// Create the view matrix
 		m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
@@ -188,70 +189,12 @@ namespace Directus
 		return m_viewMatrix;
 	}
 
-	Matrix Light::GetOrthographicProjectionMatrix(int cascadeIndex)
-	{
-		if (!GetContext() || cascadeIndex >= (int)m_shadowMaps.size())
-			return Matrix::Identity;
-
-		// Only re-compute if dirty
-		if (!m_isDirty)
-			return m_projectionMatrix;
-
-		auto mainCamera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock();
-		Vector3 centerPos = mainCamera ? mainCamera->GetTransform_PtrRaw()->GetPosition() : Vector3::Zero;
-		m_projectionMatrix = m_shadowMaps[cascadeIndex]->ComputeProjectionMatrix(cascadeIndex, centerPos, GetViewMatrix());
-		return m_projectionMatrix;
-	}
-
-	void Light::SetShadowCascadeAsRenderTarget(int cascade)
-	{
-		if (cascade < (int)m_shadowMaps.size())
-			m_shadowMaps[cascade]->SetAsRenderTarget();
-	}
-
-	weak_ptr<Cascade> Light::GetShadowCascade(int cascadeIndex)
-	{
-		if (cascadeIndex >= (int)m_shadowMaps.size())
-			return weak_ptr<Cascade>();
-
-		return m_shadowMaps[cascadeIndex];
-	}
-
-	float Light::GetShadowCascadeSplit(int cascadeIndex)
-	{
-		if (cascadeIndex >= (int)m_shadowMaps.size())
-			return 0.0f;
-
-		return m_shadowMaps[cascadeIndex]->GetSplit(cascadeIndex);
-	}
-
 	bool Light::IsInViewFrustrum(Renderable* renderable)
 	{
-		BoundingBox box = renderable->GetBoundingBoxTransformed();
+		BoundingBox box = renderable->Geometry_BB();
 		Vector3 center	= box.GetCenter();
 		Vector3 extents = box.GetExtents();
 
-		return m_frustrum->CheckCube(center, extents) != Outside;
-	}
-
-	void Light::EnableShadowMaps(bool enable)
-	{
-		if (enable)
-		{
-			if (!m_shadowMaps.empty())
-				return;
-
-			m_shadowMaps.clear();
-			Camera* camera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
-			for (int i = 0; i < m_cascades; i++)
-			{
-				auto cascade = make_shared<Cascade>(SHADOWMAP_RESOLUTION, camera, GetContext());
-				m_shadowMaps.push_back(cascade);
-			}
-		}
-		else
-		{
-			m_shadowMaps.clear();
-		}
+		return m_frustum->CheckCube(center, extents) != Outside;
 	}
 }

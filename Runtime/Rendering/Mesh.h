@@ -23,78 +23,48 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <vector>
-#include <memory>
 #include "RI/Backend_Def.h"
-#include "../Math/BoundingBox.h"
-#include "../Resource/IResource.h"
 //================================
 
 namespace Directus
 {
-	class Context;
-	class FileStream;
-
-	class Mesh : public IResource
+	class Mesh
 	{
 	public:
-		Mesh(Context* context);
-		~Mesh();
+		Mesh() {}
+		~Mesh() { Geometry_Clear(); }
 
-		void Clear();
+		// Geometry
+		void Geometry_Clear();
+		void Geometry_Get(
+			unsigned int indexOffset,
+			unsigned int indexCount,
+			unsigned int vertexOffset,
+			unsigned vertexCount,
+			std::vector<unsigned int>* indices,
+			std::vector<RI_Vertex_PosUVTBN>* vertices
+		);
+		unsigned int Geometry_MemoryUsage();
 
-		//= RESOURCE INTERFACE =================================
-		bool LoadFromFile(const std::string& filePath) override;
-		bool SaveToFile(const std::string& filePath) override;
-		unsigned int GetMemory() override;
-		//======================================================
+		// Vertices
+		void Vertex_Add(const RI_Vertex_PosUVTBN& vertex);
+		void Vertices_Append(const std::vector<RI_Vertex_PosUVTBN>& vertices, unsigned int* vertexOffset);	
+		unsigned int Vertices_Count() const;
+		std::vector<RI_Vertex_PosUVTBN>& Vertices_Get()						{ return m_vertices; }
+		void Vertices_Set(const std::vector<RI_Vertex_PosUVTBN>& vertices)	{ m_vertices = vertices; }
 
-		//= GEOMETRY ================================================================================
-		// Clears geometry (vertices and indices)
-		void ClearGeometry();
-		// Returns vertices & indices and loads them from disk. in case they have been erased
-		void GetGeometry(std::vector<RI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices);
-		// Returns vertices. Will be empty after creating a vertex buffer for the GPU
-		std::vector<RI_Vertex_PosUVTBN>& GetVertices() { return m_vertices; }
-		// Sets vertices
-		void SetVertices(const std::vector<RI_Vertex_PosUVTBN>& vertices) { m_vertices = vertices; }
-		// Returns indices. Will be empty after creating an index buffer
-		std::vector<unsigned int>& GetIndices() { return m_indices; }
-		// Sets indices
-		void SetIndices(const std::vector<unsigned int>& indices) { m_indices = indices; }
-		// Adds a single vertex
-		void AddVertex(const RI_Vertex_PosUVTBN& vertex) { m_vertices.emplace_back(vertex); }
-		// Adds a single index
-		void AddIndex(unsigned int index) { m_indices.emplace_back(index); }
-
-		unsigned int GetVertexCount() const { return m_vertexCount; }
-		unsigned int GetIndexCount() const { return m_indexCount; }
-		unsigned int GetTriangleCount() const { return m_triangleCount; }
-		unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
-		//===========================================================================================
-
-		const std::string& GetModelName() { return m_modelName; }
-		void SetModelName(const std::string& modelName) { m_modelName = modelName; }
+		// Indices
+		void Index_Add(unsigned int index)							{ m_indices.emplace_back(index); }
+		std::vector<unsigned int>& Indices_Get()					{ return m_indices; }
+		void Indices_Set(const std::vector<unsigned int>& indices)	{ m_indices = indices; }
+		unsigned int Indices_Count() const							{ return (unsigned int)m_indices.size(); }
+		void Indices_Append(const std::vector<unsigned int>& indices, unsigned int* indexOffset);
 	
-		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
-
-		// Computes bounding box, creates vertex and index buffers etc...
-		bool Construct();
-		// Set the buffers to active in the input assembler so they can be rendered.
-		bool SetBuffers();
-
+		// Misc
+		unsigned int GetTriangleCount() const { return Indices_Count() / 3; }	
+		
 	private:
-		//= HELPER FUNCTIONS ===
-		bool ConstructBuffers();
-		//======================
-
-		std::string m_modelName;
 		std::vector<RI_Vertex_PosUVTBN> m_vertices;
 		std::vector<unsigned int> m_indices;
-		unsigned int m_vertexCount;
-		unsigned int m_indexCount;
-		unsigned int m_triangleCount;
-		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<D3D11_IndexBuffer> m_indexBuffer;
-		Math::BoundingBox m_boundingBox;
 	};
 }

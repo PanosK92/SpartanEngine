@@ -133,7 +133,7 @@ void Widget_Properties::Update()
 		auto audioSource	= gameObjectPtr->GetComponent<AudioSource>().lock().get();
 		auto audioListener	= gameObjectPtr->GetComponent<AudioListener>().lock().get();
 		auto renderable		= gameObjectPtr->GetComponent<Renderable>().lock().get();
-		auto material		= renderable ? renderable->GetMaterial_RefWeak().lock().get() : nullptr;
+		auto material		= renderable ? renderable->Material_RefWeak().lock().get() : nullptr;
 		auto rigidBody		= gameObjectPtr->GetComponent<RigidBody>().lock().get();
 		auto collider		= gameObjectPtr->GetComponent<Collider>().lock().get();
 		auto constraint		= gameObjectPtr->GetComponent<Constraint>().lock().get();
@@ -359,9 +359,8 @@ void Widget_Properties::ShowRenderable(Renderable* renderable)
 		return;
 
 	//= REFLECT ================================================================
-	auto mesh			= renderable->GetMesh_RefWeak().lock();
-	string meshName		= mesh ? mesh->GetResourceName() : NOT_ASSIGNED;
-	auto material		= renderable->GetMaterial_RefWeak().lock();
+	string meshName		= renderable->Geometry_Name();
+	auto material		= renderable->Material_RefWeak().lock();
 	string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
 	bool castShadows	= renderable->GetCastShadows();
 	bool receiveShadows = renderable->GetReceiveShadows();

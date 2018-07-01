@@ -19,15 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
-#include "Cascade.h"
-#include "../Math/Matrix.h"
-#include "../Logging/Log.h"
-#include "../Core/Context.h"
-#include "../Scene/Components/Camera.h"
-#include "../Scene/Components/Transform.h"
-#include "RI/Backend_Imp.h"
-#include "RI/D3D11/D3D11_RenderTexture.h"
+//= INCLUDES ==============================
+#include "ShadowCascades.h"
+#include "RI\D3D11\D3D11_RenderTexture.h"
+#include "RI\Backend_Imp.h"
+#include "..\Math\Vector3.h"
+#include "..\Math\Matrix.h"
+#include "..\Logging\Log.h"
+#include "..\Core\Context.h"
+#include "..\Scene\Components\Light.h"
+#include "..\Scene\Components\Transform.h"
+#include "..\Scene\Scene.h"
+#include "..\Scene\GameObject.h"
 //========================================
 
 //= NAMESPACES ================
@@ -37,26 +40,36 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Cascade::Cascade(int resolution, Camera* camera, Context* context)
+	ShadowCascades::ShadowCascades(Context* context, unsigned int cascadeCount, unsigned int resolution, Light* light)
 	{
-		m_resolution	= resolution;
-		m_depthMap		= make_unique<D3D11_RenderTexture>(context->GetSubsystem<RenderingDevice>(), m_resolution, m_resolution, true);
-		m_camera		= camera;
+		m_context			= context;
+		m_renderingDevice	= context->GetSubsystem<RenderingDevice>();
+		m_resolution		= resolution;
+		m_light				= light;
+		m_cascadeCount		= cascadeCount;
+		RenderTargets_Create();
 	}
 
-	void Cascade::SetAsRenderTarget()
+	ShadowCascades::~ShadowCascades()
 	{
-		m_depthMap->SetAsRenderTarget();
-		m_depthMap->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+		RenderTargets_Destroy();
 	}
 
-	void* Cascade::GetShaderResource()
+	void ShadowCascades::SetAsRenderTarget(unsigned int cascadeIndex)
 	{
-		return m_depthMap ? m_depthMap->GetShaderResourceView() : nullptr;
+		if (cascadeIndex >=	(unsigned int)m_renderTargets.size())
+			return;
+
+		m_renderTargets[cascadeIndex]->SetAsRenderTarget();
+		m_renderTargets[cascadeIndex]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
-	Matrix Cascade::ComputeProjectionMatrix(int cascadeIndex, const Vector3& centerPos, const Matrix& viewMatrix)
+	Matrix ShadowCascades::ComputeProjectionMatrix(unsigned int cascadeIndex)
 	{
+		auto mainCamera		= m_context->GetSubsystem<Scene>()->GetMainCamera().lock();
+		Vector3 centerPos	= mainCamera ? mainCamera->GetTransform_PtrRaw()->GetPosition() : Vector3::Zero;
+		Matrix mView		= m_light->ComputeViewMatrix();
+
 		// Hardcoded sizes to match the splits
 		float extents = 0;
 		if (cascadeIndex == 0)
@@ -68,7 +81,7 @@ namespace Directus
 		if (cascadeIndex == 2)
 			extents = 90;
 
-		Vector3 center = centerPos * viewMatrix;
+		Vector3 center = centerPos * mView;
 		Vector3 min = center - Vector3(extents, extents, extents);
 		Vector3 max = center + Vector3(extents, extents, extents);
 
@@ -87,14 +100,8 @@ namespace Directus
 		return Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);
 	}
 
-	float Cascade::GetSplit(int cascadeIndex)
+	float ShadowCascades::GetSplit(unsigned int cascadeIndex)
 	{
-		if (!m_camera)
-		{
-			LOG_WARNING("Cascade: Split can't be computed, camera is not present.");
-			return 0.0f;
-		}
-
 		// These cascade splits have a logarithmic nature, have to fix
 
 		// Second cascade
@@ -108,4 +115,34 @@ namespace Directus
 		return 0.0f;
 	}
 
+	void* ShadowCascades::GetShaderResource(unsigned int cascadeIndex)
+	{
+		if (cascadeIndex >= (unsigned int)m_renderTargets.size())
+			return nullptr;
+
+		return m_renderTargets[cascadeIndex]->GetShaderResourceView();
+	}
+
+	void ShadowCascades::SetEnabled(bool enabled)
+	{
+		enabled ? RenderTargets_Create() : RenderTargets_Destroy();
+	}
+
+	void ShadowCascades::RenderTargets_Create()
+	{
+		if (!m_renderTargets.empty())
+			return;
+
+		auto renderingDevice = m_context->GetSubsystem<RenderingDevice>();
+		for (unsigned int i = 0; i < m_cascadeCount; i++)
+		{
+			m_renderTargets.emplace_back(make_unique<D3D11_RenderTexture>(renderingDevice, m_resolution, m_resolution, true, Texture_Format_R32_FLOAT));
+		}
+	}
+
+	void ShadowCascades::RenderTargets_Destroy()
+	{
+		m_renderTargets.clear();
+		m_renderTargets.shrink_to_fit();
+	}
 }

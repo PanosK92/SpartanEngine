@@ -208,7 +208,7 @@ namespace Directus
 			return;
 		}
 
-		m_shader->Set();
+		m_shader->Bind();
 	}
 
 	void LightShader::Render(int indexCount)

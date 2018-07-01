@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES ===========================
 #include "D3D11_VertexBuffer.h"
-#include "../../../Logging/Log.h"
 #include "../Backend_Imp.h"
-//===============================
+#include "../../../Logging/Log.h"
+#include "../../../Profiling/Profiler.h"
+//======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -264,6 +265,7 @@ namespace Directus
 			return false;
 		}
 
+		Profiler::Get().m_bindBufferVertexCount++;
 		unsigned int offset = 0;
 		m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);
 

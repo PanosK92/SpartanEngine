@@ -149,8 +149,8 @@ namespace Directus
 
 	bool Camera::IsInViewFrustrum(Renderable* renderable)
 	{
-		BoundingBox box = renderable->GetBoundingBoxTransformed();
-		Vector3 center = box.GetCenter();
+		BoundingBox box = renderable->Geometry_BB();
+		Vector3 center	= box.GetCenter();
 		Vector3 extents = box.GetExtents();
 
 		return m_frustrum.CheckCube(center, extents) != Outside;
@@ -189,10 +189,10 @@ namespace Directus
 				continue;
 
 			// Get bounding box
-			BoundingBox box = gameObj.lock()->GetComponent<Renderable>().lock()->GetBoundingBoxTransformed();
+			BoundingBox bb = gameObj.lock()->GetComponent<Renderable>().lock()->Geometry_BB();
 
 			// Compute hit distance
-			float hitDistance = m_ray.HitDistance(box);
+			float hitDistance = m_ray.HitDistance(bb);
 
 			// Don't store hit data if we are inside the bounding box (0.0f) or there was no hit (INFINITY)
 			if (hitDistance == 0.0f || hitDistance == INFINITY)

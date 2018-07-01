@@ -51,6 +51,6 @@ namespace Directus
 
 	private:
 		std::map<GBuffer_Texture_Type, std::shared_ptr<D3D11_RenderTexture>> m_renderTargets;
-		RenderingDevice* m_graphics;
+		RenderingDevice* m_renderingDevice;
 	};
 }

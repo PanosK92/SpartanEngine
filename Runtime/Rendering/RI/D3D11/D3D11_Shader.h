@@ -41,7 +41,7 @@ namespace Directus
 		bool Compile(const std::string& filePath);
 		bool SetInputLayout(InputLayout inputLayout);
 		bool AddSampler(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction);
-		void Set();
+		bool Bind();
 
 		void SetName(const std::string& name) { m_name = name; }
 		void AddDefine(const std::string& define, const std::string& value);

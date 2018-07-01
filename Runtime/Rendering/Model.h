@@ -57,11 +57,25 @@ namespace Directus
 		// Sets the GameObject that represents this model in the scene
 		void SetRootGameObject(const std::weak_ptr<GameObject>& gameObj) { m_rootGameObj = gameObj; }
 
-		// Adds a mesh by creating it from scratch
-		void AddMesh(const std::string& name, std::vector<RI_Vertex_PosUVTBN>& vertices, std::vector<unsigned int>& indices, const std::weak_ptr<GameObject>& gameObject);
-
-		// Adds a new mesh
-		void AddMesh(const std::weak_ptr<Mesh>& mesh, const std::weak_ptr<GameObject>& gameObject, bool autoCache = true);
+		//= GEOMTETRY =============================================
+		void Geometry_Append(
+			std::vector<unsigned int>& indices,
+			std::vector<RI_Vertex_PosUVTBN>& vertices,
+			unsigned int* indexOffset,
+			unsigned int* vertexOffset
+		);
+		void Geometry_Get(
+			unsigned int indexOffset,
+			unsigned int indexCount,
+			unsigned int vertexOffset, 
+			unsigned int vertexCount,
+			std::vector<unsigned int>* indices,
+			std::vector<RI_Vertex_PosUVTBN>* vertices
+		);
+		bool Geometry_Bind();
+		void Geometry_Update();
+		const Math::BoundingBox& Geometry_AABB() { return m_aabb; }
+		//=========================================================
 
 		// Adds a new material
 		void AddMaterial(const std::weak_ptr<Material>& material, const std::weak_ptr<GameObject>& gameObject, bool autoCache = true);
@@ -72,17 +86,8 @@ namespace Directus
 		// Adds a texture (the material that uses this texture must be passed as well)
 		void AddTexture(const std::weak_ptr<Material>& material, TextureType textureType, const std::string& filePath);
 
-		std::weak_ptr<Mesh> GetMeshByName(const std::string& name);
-
 		bool IsAnimated() { return m_isAnimated; }
 		void SetAnimated(bool isAnimated) { m_isAnimated = isAnimated; }
-
-		// Returns model's bounding box (a merge of all the bounding boxes of it's meshes)
-		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
-		float GetBoundingSphereRadius();
-
-		// Returns the number of meshes used by this model
-		unsigned int GetMeshCount() { return (unsigned int)m_meshes.size(); }
 
 		void SetWorkingDirectory(const std::string& directory);
 
@@ -91,35 +96,37 @@ namespace Directus
 		bool LoadFromEngineFormat(const std::string& filePath);
 		bool LoadFromForeignFormat(const std::string& filePath);
 
-		void AddStandardComponents(const std::weak_ptr<GameObject>& gameObject, const std::weak_ptr<Mesh>& mesh);
-
-		// Scale relate functions
-		float ComputeNormalizeScale();
-		std::weak_ptr<Mesh> ComputeLargestBoundingBox();
-
-		// Misc
-		void ComputeMemoryUsage();
-		bool DetermineMeshUniqueness(Mesh* mesh);
+		// Geometry
+		bool Geometry_CreateBuffers();
+		float Geometry_ComputeNormalizedScale();
+		unsigned int Geometry_ComputeMemoryUsage();
 
 		// The root GameObject that represents this model in the scene
 		std::weak_ptr<GameObject> m_rootGameObj;
 
-		// Weak references to key resources
-		std::vector<std::weak_ptr<Mesh>> m_meshes;
+		// Geometry
+		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<D3D11_IndexBuffer> m_indexBuffer;
+		std::shared_ptr<Mesh> m_mesh;
+		Math::BoundingBox m_aabb;
+		unsigned int meshCount;
+
+		// Material
 		std::vector<std::weak_ptr<Material>> m_materials;
+
+		// Animations
 		std::vector<std::weak_ptr<Animation>> m_animations;
 
 		// Directories relative to this model
 		std::string m_modelDirectoryModel;
-		std::string m_modelDirectoryMeshes;
 		std::string m_modelDirectoryMaterials;
 		std::string m_modelDirectoryTextures;
 
 		// Misc
-		Math::BoundingBox m_boundingBox;
 		float m_normalizedScale;
+		unsigned int m_memoryUsage;		
 		bool m_isAnimated;
 		ResourceManager* m_resourceManager;
-		unsigned int m_memoryUsage;
+		RenderingDevice* m_renderingDevice;	
 	};
 }

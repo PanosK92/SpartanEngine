@@ -21,21 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES ===================
 #include <vector>
 #include <memory>
 #include "IComponent.h"
 #include "../../Math/Vector4.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
-#include "../../Core/Settings.h"
-#include "../../Rendering/Cascade.h"
-//==================================
+//==============================
 
 namespace Directus
 {
 	class Camera;
 	class Renderable;
+	class ShadowCascades;
 
 	namespace Math
 	{
@@ -88,21 +87,12 @@ namespace Directus
 		Math::Vector3 GetDirection();
 		void ClampRotation();
 
-		Math::Matrix GetViewMatrix();
-		Math::Matrix GetOrthographicProjectionMatrix(int cascadeIndex);
-
-		// Cascaded shadow mapping
-		void SetShadowCascadeAsRenderTarget(int cascade);
-		std::weak_ptr<Cascade> GetShadowCascade(int cascadeIndex);
-		int GetShadowCascadeResolution() { return SHADOWMAP_RESOLUTION; }
-		int GetShadowCascadeCount() { return m_cascades; }
-		float GetShadowCascadeSplit(int cascadeIndex);
-
+		Math::Matrix ComputeViewMatrix();	
 		bool IsInViewFrustrum(Renderable* renderable);
+		
+		std::shared_ptr<ShadowCascades> GetShadowCascades() { return m_shadowCascades; }
 
 	private:
-		void EnableShadowMaps(bool enable);
-
 		LightType m_lightType;
 		bool m_castShadows;
 		Math::Vector4 m_color;
@@ -111,10 +101,8 @@ namespace Directus
 		float m_angle;
 		float m_bias;
 		Math::Matrix m_viewMatrix;
-		Math::Matrix m_projectionMatrix;
-		std::shared_ptr<Math::Frustum> m_frustrum;
-		int m_cascades;
-		std::vector<std::shared_ptr<Cascade>> m_shadowMaps;
+		std::shared_ptr<Math::Frustum> m_frustum;
+		std::shared_ptr<ShadowCascades> m_shadowCascades;
 		Math::Quaternion m_lastRot;
 		Math::Vector3 m_lastPos;
 		bool m_isDirty;

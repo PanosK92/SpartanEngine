@@ -19,12 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ===========================
 #include "D3D11_Device.h"
 #include "D3D11_IndexBuffer.h"
-#include "../../../Logging/Log.h"
 #include "../Backend_Imp.h"
-//====================================
+#include "../../../Logging/Log.h"
+#include "../../../Profiling/Profiler.h"
+//======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -147,6 +148,7 @@ namespace Directus
 		if (!m_graphics->GetDeviceContext() || !m_buffer)
 			return false;
 
+		Profiler::Get().m_bindBufferIndexCount++;
 		m_graphics->GetDeviceContext()->IASetIndexBuffer(m_buffer, DXGI_FORMAT_R32_UINT, 0);
 		return true;
 	}

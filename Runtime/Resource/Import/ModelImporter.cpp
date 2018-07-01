@@ -19,10 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES =================================
 #include "ModelImporter.h"
 #include <vector>
-#include <future>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -38,42 +37,45 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Mesh.h"
 #include "../../Rendering/Material.h"
 #include "../../Scene/Scene.h"
-#include "../../Scene/Components/Transform.h"
 #include "../../Scene/GameObject.h"
+#include "../../Scene/Components/Transform.h"
+#include "../../Scene/Components/Renderable.h"
 #include "../ProgressReport.h"
 #include "../../Rendering/RI/RI_Device.h"
 #include "../../Rendering/RI/RI_Texture.h"
-//===========================================
+//============================================
 
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
 //=============================
 
-// Things for Assimp to do
-static auto ppsteps =
-aiProcess_CalcTangentSpace |
-aiProcess_GenSmoothNormals |
-aiProcess_JoinIdenticalVertices |
-aiProcess_ImproveCacheLocality |
-aiProcess_LimitBoneWeights |
-aiProcess_SplitLargeMeshes |
-aiProcess_Triangulate |
-aiProcess_GenUVCoords |
-aiProcess_SortByPType |
-aiProcess_FindDegenerates |
-aiProcess_FindInvalidData |
-aiProcess_FindInstances |
-aiProcess_ValidateDataStructure |
-aiProcess_OptimizeMeshes |
-aiProcess_Debone |
-aiProcess_ConvertToLeftHanded;
-
-static int normalSmoothAngle = 80;
-
 namespace Directus
 {
-	vector<string> materialNames;
+	namespace AssimpSettings
+	{
+		// Things for Assimp to do
+		static auto g_postProcessSteps =
+			aiProcess_CalcTangentSpace |
+			aiProcess_GenSmoothNormals |
+			aiProcess_JoinIdenticalVertices |
+			aiProcess_ImproveCacheLocality |
+			aiProcess_LimitBoneWeights |
+			aiProcess_SplitLargeMeshes |
+			aiProcess_Triangulate |
+			aiProcess_GenUVCoords |
+			aiProcess_SortByPType |
+			aiProcess_FindDegenerates |
+			aiProcess_FindInvalidData |
+			aiProcess_FindInstances |
+			aiProcess_ValidateDataStructure |
+			aiProcess_OptimizeMeshes |
+			aiProcess_Debone |
+			aiProcess_ConvertToLeftHanded;
+
+		static int g_normalSmoothAngle = 80; // Default is 45, max is 175
+	}
+
 
 	ModelImporter::ModelImporter(Context* context)
 	{
@@ -108,12 +110,12 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64); // Optimize mesh
 		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT); // Remove points and lines.
 		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS); // Remove cameras and lights
-		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, normalSmoothAngle); // Default is 45, max is 175
+		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, AssimpSettings::g_normalSmoothAngle); 
 
 		// Read the 3D model file from disk
 		ProgressReport::Get().Reset(g_progress_ModelImporter);
 		ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" from disk...");
-		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
+		const aiScene* scene = importer.ReadFile(m_modelPath, AssimpSettings::g_postProcessSteps);
 		if (!scene)
 		{
 			LOG_ERROR("ModelImporter: Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
@@ -127,6 +129,8 @@ namespace Directus
 
 		// Load animation (in case there are any)
 		ReadAnimations(model, scene);
+
+		model->Geometry_Update();
 
 		// Cleanup
 		importer.FreeScene();
@@ -265,25 +269,38 @@ namespace Directus
 		}
 	}
 
-	void ModelImporter::LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const weak_ptr<GameObject>& gameobject)
+	void ModelImporter::LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const weak_ptr<GameObject>& gameObject)
 	{
-		if (!model || !assimpMesh || !assimpScene || gameobject.expired())
+		if (!model || !assimpMesh || !assimpScene || gameObject.expired())
 			return;
 
-		//= GEOMETRY =====================================
-		// Create a new Mesh
-		auto mesh = make_shared<Mesh>(m_context);
-		mesh->SetResourceName(assimpMesh->mName.C_Str());
+		//= MESH ======================================================================
+		vector<RI_Vertex_PosUVTBN> vertices;
+		AssimpMesh_ExtractVertices(assimpMesh, &vertices);
 
-		// Populate mesh with vertices
-		LoadAiMeshVertices(assimpMesh, mesh); 
-
-		// Populate mesh with indices
-		LoadAiMeshIndices(assimpMesh, mesh); 
+		vector<unsigned int> indices;
+		AssimpMesh_ExtractIndices(assimpMesh, &indices);
 
 		// Add the mesh to the model
-		model->AddMesh(mesh, gameobject);
-		//================================================
+		unsigned int indexOffset;
+		unsigned int vertexOffset;
+		model->Geometry_Append(indices, vertices, &indexOffset, &vertexOffset);
+
+		// Add a renderable component to this GameObject
+		auto gameObjectShared	= gameObject.lock();
+		auto renderable			= gameObjectShared->AddComponent<Renderable>().lock();
+
+		// Set the geometry
+		renderable->Geometry_Set(
+			gameObjectShared->GetName(),
+			indexOffset,
+			(unsigned int)indices.size(),
+			vertexOffset,
+			(unsigned int)vertices.size(),
+			BoundingBox(vertices),
+			model
+		);
+		//=============================================================================
 
 		//= MATERIAL ========================================================================
 		auto material = shared_ptr<Material>();
@@ -292,7 +309,7 @@ namespace Directus
 			// Get aiMaterial
 			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
 			// Convert it and add it to the model
-			model->AddMaterial(AiMaterialToMaterial(model, assimpMaterial), gameobject);
+			model->AddMaterial(AiMaterialToMaterial(model, assimpMaterial), gameObject);
 		}
 		//===================================================================================
 
@@ -304,24 +321,7 @@ namespace Directus
 		//==============================================================================
 	}
 
-	void ModelImporter::LoadAiMeshIndices(aiMesh* assimpMesh, const shared_ptr<Mesh>& mesh)
-	{
-		// Get indices by iterating through each face of the mesh.
-		for (unsigned int faceIndex = 0; faceIndex < assimpMesh->mNumFaces; faceIndex++)
-		{
-			aiFace face = assimpMesh->mFaces[faceIndex];
-
-			if (face.mNumIndices < 3)
-				continue;
-
-			for (unsigned int j = 0; j < face.mNumIndices; j++)
-			{
-				mesh->GetIndices().emplace_back(face.mIndices[j]);
-			}
-		}
-	}
-
-	void ModelImporter::LoadAiMeshVertices(aiMesh* assimpMesh, const shared_ptr<Mesh>& mesh)
+	void ModelImporter::AssimpMesh_ExtractVertices(aiMesh* assimpMesh, vector<RI_Vertex_PosUVTBN>* vertices)
 	{
 		Vector3 position;
 		Vector2 uv;
@@ -329,7 +329,7 @@ namespace Directus
 		Vector3 tangent;
 		Vector3 bitangent;
 
-		mesh->GetVertices().reserve(assimpMesh->mNumVertices);
+		vertices->reserve(assimpMesh->mNumVertices);
 
 		for (unsigned int vertexIndex = 0; vertexIndex < assimpMesh->mNumVertices; vertexIndex++)
 		{
@@ -361,13 +361,30 @@ namespace Directus
 			}
 
 			// save the vertex
-			mesh->GetVertices().emplace_back(position, uv, normal, tangent, bitangent);
+			vertices->emplace_back(position, uv, normal, tangent, bitangent);
 
 			// reset the vertex for use in the next loop
 			uv			= Vector2::Zero;
 			normal		= Vector3::Zero;
 			tangent		= Vector3::Zero;
 			bitangent	= Vector3::Zero;
+		}
+	}
+
+	void ModelImporter::AssimpMesh_ExtractIndices(aiMesh* assimpMesh, vector<unsigned int>* indices)
+	{
+		// Get indices by iterating through each face of the mesh.
+		for (unsigned int faceIndex = 0; faceIndex < assimpMesh->mNumFaces; faceIndex++)
+		{
+			aiFace face = assimpMesh->mFaces[faceIndex];
+
+			if (face.mNumIndices < 3)
+				continue;
+
+			for (unsigned int j = 0; j < face.mNumIndices; j++)
+			{
+				indices->emplace_back(face.mIndices[j]);
+			}
 		}
 	}
 

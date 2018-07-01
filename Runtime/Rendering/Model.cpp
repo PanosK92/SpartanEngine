@@ -19,20 +19,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES ==============================
 #include "Model.h"
 #include "Mesh.h"
+#include "Material.h"
+#include "Animation.h"
+#include "RI/Backend_Imp.h"
+#include "RI/D3D11/D3D11_VertexBuffer.h"
+#include "RI/D3D11/D3D11_IndexBuffer.h"
 #include "../Scene/GameObject.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
-#include "../Rendering/RI/RI_Vertex.h"
-#include "../Rendering/RI/RI_Texture.h"
-#include "../Rendering/Material.h"
-#include "../Rendering/Animation.h"
 #include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceManager.h"
-//===========================================
+#include "../Math/BoundingBox.h"
+//=========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -50,14 +52,13 @@ namespace Directus
 		m_normalizedScale	= 1.0f;
 		m_isAnimated		= false;
 		m_resourceManager	= m_context->GetSubsystem<ResourceManager>();
+		m_renderingDevice	= m_context->GetSubsystem<RenderingDevice>();
 		m_memoryUsage		= 0;
+		m_mesh				= make_unique<Mesh>();
 	}
 
 	Model::~Model()
 	{
-		m_meshes.clear();
-		m_meshes.shrink_to_fit();
-
 		m_materials.clear();
 		m_materials.shrink_to_fit();
 
@@ -90,8 +91,8 @@ namespace Directus
 		bool engineFormat = FileSystem::GetExtensionFromFilePath(modelFilePath) == MODEL_EXTENSION;
 		bool success = engineFormat ? LoadFromEngineFormat(modelFilePath) : LoadFromForeignFormat(modelFilePath);
 
-		ComputeMemoryUsage();
-		LOG_INFO("Model: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
+		Geometry_ComputeMemoryUsage();
+		LOGF_INFO("Model::LoadFromFile: Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(filePath).c_str(), (int)timer.GetElapsedTimeMs());
 
 		return success;
 	}
@@ -105,86 +106,70 @@ namespace Directus
 		file->Write(GetResourceName());
 		file->Write(GetResourceFilePath());
 		file->Write(m_normalizedScale);
-		file->Write((int)m_meshes.size());
-		for (const auto& mesh : m_meshes)
-		{
-			file->Write(mesh.lock()->GetResourceName());
-		}
+		file->Write(m_mesh->Indices_Get());
+		file->Write(m_mesh->Vertices_Get());	
 
 		return true;
 	}
 	//=======================================================
 
-	void Model::AddMesh(const string& name, vector<RI_Vertex_PosUVTBN>& vertices, vector<unsigned int>& indices, const weak_ptr<GameObject>& gameObject)
+	void Model::Geometry_Append(std::vector<unsigned int>& indices, std::vector<RI_Vertex_PosUVTBN>& vertices, unsigned int* indexOffset, unsigned int* vertexOffset)
 	{
-		// In case this mesh is already loaded, use that one
-		auto existingMesh = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(name);
-		if (!existingMesh.expired())
-		{
-			AddMesh(existingMesh, gameObject, false);
-			return;
-		}
-
-		// In case this mesh is new, create one 
-		auto mesh = make_shared<Mesh>(m_context);
-		mesh->SetModelName(GetResourceName());
-		mesh->SetResourceName(name);
-		mesh->SetVertices(vertices);
-		mesh->SetIndices(indices);
-
-		// Add the mesh to the model
-		AddMesh(mesh, gameObject, true);
+		// Append indices and vertices to the main mesh
+		m_mesh->Indices_Append(indices, indexOffset);
+		m_mesh->Vertices_Append(vertices, vertexOffset);
 	}
 
-	void Model::AddMesh(const weak_ptr<Mesh>& mesh, const weak_ptr<GameObject>& gameObject, bool autoCache /* true */)
+	void Model::Geometry_Get(unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, vector<unsigned int>* indices, vector<RI_Vertex_PosUVTBN>* vertices)
 	{
-		if (mesh.expired())
+		m_mesh->Geometry_Get(indexOffset, indexCount, vertexOffset, vertexCount, indices, vertices);
+	}
+
+	bool Model::Geometry_Bind()
+	{
+		bool success = true;
+
+		// Bind index buffer
+		if (m_indexBuffer)
 		{
-			LOG_WARNING("Model::AddMesh(): Provided mesh is null, can't execute function");
-			return;
+			m_indexBuffer->SetIA();
 		}
-
-		// Don't add mesh if it's already added
-		if (DetermineMeshUniqueness(mesh.lock().get()))
-		{	
-			return;
-		}
-			
-		AddStandardComponents(gameObject, mesh);
-
-		// Update the mesh with Model directory relative file path. Then save it to this directory
-		string modelRelativeTexPath = m_modelDirectoryMeshes + mesh.lock()->GetResourceName() + MESH_EXTENSION;
-		mesh.lock()->SetResourceFilePath(modelRelativeTexPath);
-		mesh.lock()->SetModelName(GetResourceName());
-		mesh.lock()->SaveToFile(modelRelativeTexPath);
-
-		// Construct mesh (vertex buffer, index buffer, bounding box, etc...)
-		mesh.lock()->Construct();
-
-		// Calculate the bounding box of the model as well
-		m_boundingBox.Merge(mesh.lock()->GetBoundingBox());
-
-		// Cache it or use the provided reference as is
-		auto meshRef = autoCache ? mesh.lock()->Cache<Mesh>() : mesh;
-
-		if (!meshRef.expired())
+		else
 		{
-			// Save it
-			m_meshes.push_back(meshRef);
-
-			// Add some standard components
-			AddStandardComponents(gameObject, meshRef);
-
-			// Release geometry data now that we are done with it
-			meshRef.lock()->ClearGeometry();
+			LOGF_WARNING("Model::Geometry_Bind: Can't set index buffer. \"%s\" doesn't have an initialized index buffer.", m_resourceName.c_str());
+			success = false;
 		}
+
+		// Bind vertex buffer
+		if (m_vertexBuffer)
+		{
+			m_vertexBuffer->SetIA();
+		}
+		else
+		{
+			LOGF_WARNING("Model::Geometry_Bind: Can't set vertex buffer. \"%s\" doesn't have an initialized vertex buffer.", m_resourceName.c_str());
+			success = false;
+		}
+
+		// Set primitive topology
+		m_renderingDevice->SetPrimitiveTopology(TriangleList);
+
+		return success;
+	}
+
+	void Model::Geometry_Update()
+	{
+		Geometry_CreateBuffers();
+		m_normalizedScale	= Geometry_ComputeNormalizedScale();
+		m_memoryUsage		= Geometry_ComputeMemoryUsage();
+		m_aabb				= BoundingBox(m_mesh->Vertices_Get());
 	}
 
 	void Model::AddMaterial(const weak_ptr<Material>& material, const weak_ptr<GameObject>& gameObject, bool autoCache /* true */)
 	{
 		if (material.expired())
 		{
-			LOG_WARNING("Model::AddMaterial(): Provided material is null, can't execute function");
+			LOG_WARNING("Model::AddMaterial: Invalid parameters");
 			return;
 		}
 
@@ -204,7 +189,7 @@ namespace Directus
 		if (!gameObject.expired())
 		{
 			auto renderable = gameObject.lock()->AddComponent<Renderable>().lock();
-			renderable->SetMaterialFromMemory(matRef, false);
+			renderable->Material_Set(matRef, false);
 		}
 	}
 
@@ -267,36 +252,15 @@ namespace Directus
 		}
 	}
 
-	weak_ptr<Mesh> Model::GetMeshByName(const string& name)
-	{
-		for (const auto& mesh : m_meshes)
-		{
-			if (mesh.lock()->GetResourceName() == name)
-			{
-				return mesh;
-			}
-		}
-
-		return weak_ptr<Mesh>();
-	}
-
-	float Model::GetBoundingSphereRadius()
-	{
-		Vector3 extent = m_boundingBox.GetExtents().Absolute();
-		return Max(Max(extent.x, extent.y), extent.z);
-	}
-
 	void Model::SetWorkingDirectory(const string& directory)
 	{
-		// Set directoties based on new directory
+		// Set directories based on new directory
 		m_modelDirectoryModel		= directory;
-		m_modelDirectoryMeshes		= m_modelDirectoryModel + "Meshes//";
 		m_modelDirectoryMaterials	= m_modelDirectoryModel + "Materials//";
 		m_modelDirectoryTextures	= m_modelDirectoryModel + "Textures//";
 
 		// Create directories
 		FileSystem::CreateDirectory_(directory);
-		FileSystem::CreateDirectory_(m_modelDirectoryMeshes);
 		FileSystem::CreateDirectory_(m_modelDirectoryMaterials);
 		FileSystem::CreateDirectory_(m_modelDirectoryTextures);
 	}
@@ -304,7 +268,7 @@ namespace Directus
 	bool Model::LoadFromEngineFormat(const string& filePath)
 	{
 		// Deserialize
-		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
 		if (!file->IsOpen())
 			return false;
 
@@ -313,19 +277,10 @@ namespace Directus
 		file->Read(&m_resourceName);
 		file->Read(&m_resourceFilePath);
 		file->Read(&m_normalizedScale);
-		file->Read(&meshCount);
-		string meshName = NOT_ASSIGNED;
-		for (int i = 0; i < meshCount; i++)
-		{
-			file->Read(&meshName);
-			auto mesh = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
-			if (mesh.expired())
-			{
-				LOG_WARNING("Model: Failed to load mesh \"" + meshName + "\"");
-				continue;
-			}
-			m_meshes.push_back(mesh);
-		}
+		file->Read(&m_mesh->Indices_Get());
+		file->Read(&m_mesh->Vertices_Get());
+
+		Geometry_Update();
 
 		return true;
 	}
@@ -341,7 +296,7 @@ namespace Directus
 		if (m_resourceManager->GetModelImporter().lock()->Load(this, filePath))
 		{
 			// Set the normalized scale to the root GameObject's transform
-			m_normalizedScale = ComputeNormalizeScale();
+			m_normalizedScale = Geometry_ComputeNormalizedScale();
 			m_rootGameObj.lock()->GetComponent<Transform>().lock()->SetScale(m_normalizedScale);
 			m_rootGameObj.lock()->GetComponent<Transform>().lock()->UpdateTransform();
 
@@ -354,123 +309,65 @@ namespace Directus
 		return false;
 	}
 
-	void Model::AddStandardComponents(const weak_ptr<GameObject>& gameObject, const weak_ptr<Mesh>& mesh)
+	bool Model::Geometry_CreateBuffers()
 	{
-		if (gameObject.expired())
-			return;
+		bool success = true;
 
-		Renderable* renderable = gameObject.lock()->AddComponent<Renderable>().lock().get();
-		renderable->SetMesh(mesh);
+		// Get geometry
+		vector<unsigned int> indices		= m_mesh->Indices_Get();
+		vector<RI_Vertex_PosUVTBN> vertices	= m_mesh->Vertices_Get();
+
+		if (!indices.empty())
+		{
+			m_indexBuffer = make_shared<D3D11_IndexBuffer>(m_renderingDevice);
+			if (!m_indexBuffer->Create(indices))
+			{
+				LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create index buffer for \"%s\".", m_resourceName.c_str());
+				success = false;
+			}
+		}
+		else
+		{
+			LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create index buffer for \"%s\". Provided indices are empty", m_resourceName.c_str());
+			success = false;
+		}
+
+		if (!vertices.empty())
+		{
+			m_vertexBuffer = make_shared<D3D11_VertexBuffer>(m_renderingDevice);
+			if (!m_vertexBuffer->Create(vertices))
+			{
+				LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create vertex buffer for \"%s\".", m_resourceName.c_str());
+				success = false;
+			}
+		}
+		else
+		{
+			LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create vertex buffer for \"%s\". Provided veritces are empty", m_resourceName.c_str());
+			success = false;
+		}
+
+		return success;
 	}
 
-	float Model::ComputeNormalizeScale()
+	float Model::Geometry_ComputeNormalizedScale()
 	{
-		// Find the mesh with the largest bounding box
-		auto largestBoundingBoxMesh = ComputeLargestBoundingBox().lock();
+		// Compute scale offset
+		float scaleOffset = m_aabb.GetExtents().Length();
 
-		// Calculate the scale offset
-		float scaleOffset = !largestBoundingBoxMesh ? 1.0f : largestBoundingBoxMesh->GetBoundingBox().GetExtents().Length();
-
-		// Return the scale
+		// Return normalized scale
 		return 1.0f / scaleOffset;
 	}
 
-	weak_ptr<Mesh> Model::ComputeLargestBoundingBox()
+	unsigned int Model::Geometry_ComputeMemoryUsage()
 	{
-		if (m_meshes.empty())
-			return weak_ptr<Mesh>();
+		// Vertices & Indices
+		unsigned int size = !m_mesh ? 0 : m_mesh->Geometry_MemoryUsage();
 
-		Vector3 largestBoundingBox = Vector3::Zero;
-		weak_ptr<Mesh> largestBoundingBoxMesh = m_meshes.front();
+		// Buffers
+		size += m_vertexBuffer->GetMemoryUsage();
+		size += m_indexBuffer->GetMemoryUsage();
 
-		for (auto& mesh : m_meshes)
-		{
-			if (!mesh.expired())
-				continue;
-
-			Vector3 boundingBox = mesh.lock()->GetBoundingBox().GetExtents();
-			if (boundingBox.Volume() > largestBoundingBox.Volume())
-			{
-				largestBoundingBox = boundingBox;
-				largestBoundingBoxMesh = mesh;
-			}
-		}
-
-		return largestBoundingBoxMesh;
-	}
-
-	void Model::ComputeMemoryUsage()
-	{
-		m_memoryUsage = 0;
-		for (const auto& mesh : m_meshes)
-		{
-			m_memoryUsage += mesh.lock()->GetMemory();
-		}
-	}
-
-	bool Model::DetermineMeshUniqueness(Mesh* mesh)
-	{
-		// Problem:
-		// Some meshes can come from model formats like .obj
-		// Such formats contain pure geometry data, meaning that there is no transformation data.
-		// This in turn means that in order to have instances of the same mesh using different transforms,
-		// .obj simply re-defines the mesh in all the needed transformations using the exact same mesh name.
-		// This makes it easy to think that a mesh is already cached, hence ignore it and then see that the model is missing meshes.
-		// Solution:
-		// We simply go through are meshes, all meshes conflicting with or mesh (by name) are kept.
-		// We then compare our mesh against those meshes and to see if it's truly unique or not.
-		// If it is unique, we rename it to something that's also unique, so the engine doesn't discard it.
-
-		// Find all the meshes with the same name
-		vector<weak_ptr<Mesh>> sameNameMeshes;
-		for (const auto& cachedMesh : m_meshes)
-		{
-			if (cachedMesh.lock()->GetResourceName() == mesh->GetResourceName() 
-				|| cachedMesh.lock()->GetResourceName().find(mesh->GetResourceName()) != string::npos)
-			{
-				sameNameMeshes.push_back(cachedMesh);
-			}
-		}
-
-		bool isUnique = true;
-		for (const auto& cachedMesh : sameNameMeshes)
-		{
-			// Vertex count matches
-			if (cachedMesh.lock()->GetVertexCount() != mesh->GetVertexCount())
-				continue;
-
-			vector<RI_Vertex_PosUVTBN> meshVertices;
-			vector<unsigned int> meshIndices;
-			mesh->GetGeometry(&meshVertices, &meshIndices);
-
-			vector<RI_Vertex_PosUVTBN> cachedVertices;
-			vector<unsigned int> cachedIndices;
-			cachedMesh.lock()->GetGeometry(&cachedVertices, &cachedIndices);
-
-			bool geometryMatches = true;
-			for (unsigned int i = 0; i < meshVertices.size(); i++)
-			{
-				if (meshVertices[i].pos != cachedVertices[i].pos)
-				{
-					geometryMatches = false;
-					break;
-				}
-			}
-
-			if (geometryMatches)
-			{
-				isUnique = false;
-				break;
-			}
-		}
-
-		// If the mesh is unique, give it a different name (in case another with the same name exists)
-		if (isUnique)
-		{
-			string num = sameNameMeshes.empty() ? string("") : "_" + to_string(sameNameMeshes.size() + 1);
-			mesh->SetResourceName(mesh->GetResourceName() + num);
-		}
-
-		return !isUnique;
+		return size;
 	}
 }
