@@ -695,6 +695,7 @@ namespace Directus
 
 		// Shadow mapping + SSAO
 		Pass_Shadowing(inTextureNormal, inTextureDepth, inTextureNormalNoise, m_directionalLight, inRenderTexure);
+
 		// Blur the shadows and the SSAO
 		Pass_Blur(((D3D11_RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureShadowing, GET_RESOLUTION);
 
@@ -750,6 +751,11 @@ namespace Directus
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
+		// BLOOM
+		Pass_Bloom(inRenderTexture1, inRenderTexture2, outRenderTexture);
+
+		outRenderTexture.swap(inRenderTexture1);
+
 		// CORRECTION (Gamma, Tone-mapping)
 		Pass_Correction(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
 
@@ -763,11 +769,6 @@ namespace Directus
 
 		// SHARPENING
 		Pass_Sharpening(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
-
-		outRenderTexture.swap(inRenderTexture1);
-
-		// BLOOM
-		Pass_Bloom(inRenderTexture1, inRenderTexture2, outRenderTexture);
 
 		Pass_DebugGBuffer();
 		Pass_Debug();
@@ -1087,6 +1088,9 @@ namespace Directus
 
 	void Renderer::Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture)
 	{
+		if (!inDirectionalLight)
+			return;
+
 		PROFILE_FUNCTION_BEGIN();
 		m_graphics->EventBegin("Pass_Shadowing");
 

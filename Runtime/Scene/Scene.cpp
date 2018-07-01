@@ -474,7 +474,7 @@ namespace Directus
 
 		Light* lightComp = light->AddComponent<Light>().lock().get();
 		lightComp->SetLightType(LightType_Directional);
-		lightComp->SetIntensity(3.5f);
+		lightComp->SetIntensity(3.0f);
 
 		return light;
 	}
