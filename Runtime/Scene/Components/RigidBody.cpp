@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RigidBody.h"
 #include "Transform.h"
 #include "Collider.h"
-#include "../GameObject.h"
+#include "../Actor.h"
 #include "../../Core/Engine.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
@@ -78,7 +78,7 @@ namespace Directus
 		}
 	};
 
-	RigidBody::RigidBody(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
+	RigidBody::RigidBody(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 		m_inWorld			= false;
 		m_mass				= DEFAULT_MASS;
@@ -389,7 +389,7 @@ namespace Directus
 
 	Vector3 RigidBody::GetColliderCenter()
 	{
-		Collider* collider = GetGameObject_PtrRaw()->GetComponent<Collider>().lock().get();
+		Collider* collider = Getactor_PtrRaw()->GetComponent<Collider>().lock().get();
 		return collider ? collider->GetCenter() : Vector3::Zero;
 	}
 

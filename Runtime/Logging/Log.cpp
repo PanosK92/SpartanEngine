@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
-#include "../Scene/GameObject.h"
+#include "../Scene/Actor.h"
 #include "../FileSystem/FileSystem.h"
 #include <stdarg.h>
 //===================================
@@ -157,9 +157,9 @@ namespace Directus
 		value ? Write("True", type) : Write("False", type);
 	}
 
-	void Log::Write(const weak_ptr<GameObject>& gameObject, LogType type)
+	void Log::Write(const weak_ptr<Actor>& actor, LogType type)
 	{
-		gameObject.expired() ? Write("Null", type) : Write(gameObject.lock()->GetName(), type);
+		actor.expired() ? Write("Null", type) : Write(actor.lock()->GetName(), type);
 	}
 
 	void Log::LogString(const char* text, LogType type)

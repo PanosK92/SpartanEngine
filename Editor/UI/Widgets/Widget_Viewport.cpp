@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../ImGui/Source/imgui.h"
 #include "Rendering/Renderer.h"
 #include "Scene/Scene.h"
-#include "Scene/GameObject.h"
+#include "Scene/Actor.h"
 #include "Scene/Components/Camera.h"
 #include "../EditorHelper.h"
 #include "Widget_Scene.h"
@@ -154,12 +154,12 @@ void Widget_Viewport::MousePicking()
 		auto picked = camera.lock()->GetComponent<Camera>().lock()->Pick(mousePosRelative);
 		if (!picked.expired())
 		{
-			Widget_Scene::SetSelectedGameObject(picked);
+			Widget_Scene::SetSelectedActor(picked);
 			return;
 		}
 	}
 
-	Widget_Scene::SetSelectedGameObject(weak_ptr<GameObject>());
+	Widget_Scene::SetSelectedActor(weak_ptr<Actor>());
 }
 void Widget_Viewport::SetRenderFlags()
 {

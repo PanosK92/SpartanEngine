@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class GameObject;
+	class Actor;
 	class Transform;
 	class Light;
 	class Renderable;
@@ -50,7 +50,7 @@ public:
 	void Initialize(Directus::Context* context) override;
 	void Update() override;
 
-	static void Inspect(std::weak_ptr<Directus::GameObject> gameObject);
+	static void Inspect(std::weak_ptr<Directus::Actor> actor);
 	static void Inspect(std::weak_ptr<Directus::Material> material);
 
 private:

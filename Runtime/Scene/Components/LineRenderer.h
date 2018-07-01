@@ -40,7 +40,7 @@ namespace Directus
 	class ENGINE_CLASS LineRenderer : public IComponent
 	{
 	public:
-		LineRenderer(Context* context, GameObject* gameObject, Transform* transform);
+		LineRenderer(Context* context, Actor* actor, Transform* transform);
 		~LineRenderer();
 
 		//= INPUT ===================================================================================

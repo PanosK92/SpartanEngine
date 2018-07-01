@@ -33,7 +33,7 @@ class btTypedConstraint;
 namespace Directus
 {
 	class RigidBody;
-	class GameObject;
+	class Actor;
 
 	enum ConstraintType
 	{
@@ -46,7 +46,7 @@ namespace Directus
 	class ENGINE_CLASS Constraint : public IComponent
 	{
 	public:
-		Constraint(Context* context, GameObject* gameObject, Transform* transform);
+		Constraint(Context* context, Actor* actor, Transform* transform);
 		~Constraint();
 
 		//= COMPONENT ================================

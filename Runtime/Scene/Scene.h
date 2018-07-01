@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class GameObject;
+	class Actor;
 	class Light;
 
 	class ENGINE_CLASS Scene : public Subsystem
@@ -42,14 +42,14 @@ namespace Directus
 		bool Initialize() override;
 		//=========================
 
-		//= GameObject events ==========================
+		//= Actor events ===============================
 		// Runs every time the simulation starts
 		void Start();
 		// Runs every time the simulation stops
 		void Stop();
 		// Runs every frame
 		void Update();
-		// Runs when all GameObjects should be destroyed
+		// Runs when all actors should be destroyed
 		void Clear();
 		//==============================================
 
@@ -58,23 +58,23 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= GAMEOBJECT HELPER FUNCTIONS =============================================================
-		std::weak_ptr<GameObject> GameObject_CreateAdd();
-		void GameObject_Add(std::shared_ptr<GameObject> gameObject);
-		bool GameObject_Exists(const std::weak_ptr<GameObject>& gameObject);
-		void GameObject_Remove(const std::weak_ptr<GameObject>& gameObject);
-		const std::vector<std::shared_ptr<GameObject>>& GetAllGameObjects() { return m_gameObjects; }
-		std::vector<std::weak_ptr<GameObject>> GetRootGameObjects();
-		std::weak_ptr<GameObject> GetGameObjectRoot(std::weak_ptr<GameObject> gameObject);
-		std::weak_ptr<GameObject> GetGameObjectByName(const std::string& name);
-		std::weak_ptr<GameObject> GetGameObjectByID(unsigned int ID);	
-		int GetGameObjectCount() { return (int)m_gameObjects.size(); }
+		//= actor HELPER FUNCTIONS =============================================================
+		std::weak_ptr<Actor> Actor_CreateAdd();
+		void Actor_Add(std::shared_ptr<Actor> actor);
+		bool Actor_Exists(const std::weak_ptr<Actor>& actor);
+		void Actor_Remove(const std::weak_ptr<Actor>& actor);
+		const std::vector<std::shared_ptr<Actor>>& GetAllActors() { return m_actors; }
+		std::vector<std::weak_ptr<Actor>> GetRootActors();
+		std::weak_ptr<Actor> GetActorRoot(std::weak_ptr<Actor> actor);
+		std::weak_ptr<Actor> GetActorByName(const std::string& name);
+		std::weak_ptr<Actor> GetActorByID(unsigned int ID);	
+		int GetactorCount() { return (int)m_actors.size(); }
 		//===========================================================================================
 
 		//= SCENE RESOLUTION  ==============================
 		void Resolve();
-		const std::vector<std::weak_ptr<GameObject>>& GetRenderables() { return m_renderables; }
-		std::weak_ptr<GameObject> GetMainCamera() { return m_mainCamera; }
+		const std::vector<std::weak_ptr<Actor>>& GetRenderables() { return m_renderables; }
+		std::weak_ptr<Actor> GetMainCamera() { return m_mainCamera; }
 
 		//= MISC =======================================
 		void SetAmbientLight(float x, float y, float z);
@@ -85,19 +85,19 @@ namespace Directus
 		//==============================
 
 	private:
-		//= COMMON GAMEOBJECT CREATION ====================
-		std::weak_ptr<GameObject> CreateSkybox();
-		std::weak_ptr<GameObject> CreateCamera();
-		std::weak_ptr<GameObject> CreateDirectionalLight();
-		//=================================================
+		//= COMMON ACTOR CREATION ====================
+		std::weak_ptr<Actor> CreateSkybox();
+		std::weak_ptr<Actor> CreateCamera();
+		std::weak_ptr<Actor> CreateDirectionalLight();
+		//============================================
 
 		void ComputeFPS(); // TODO: This doesn't belong here
 
-		std::vector<std::shared_ptr<GameObject>> m_gameObjects;
-		std::vector<std::weak_ptr<GameObject>> m_renderables;
+		std::vector<std::shared_ptr<Actor>> m_actors;
+		std::vector<std::weak_ptr<Actor>> m_renderables;
 
-		std::weak_ptr<GameObject> m_mainCamera;
-		std::weak_ptr<GameObject> m_skybox;
+		std::weak_ptr<Actor> m_mainCamera;
+		std::weak_ptr<Actor> m_skybox;
 		Math::Vector3 m_ambientLight;
 
 		//= STATS ============

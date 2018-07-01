@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/RI/Backend_Imp.h"
 #include "../../Rendering/RI/D3D11//D3D11_RenderTexture.h"
 #include "../../Rendering/ShadowCascades.h"
-#include "../../Scene/GameObject.h"
+#include "../../Scene/Actor.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 //========================================================
@@ -44,7 +44,7 @@ using namespace std;
 
 namespace Directus
 {
-	Light::Light(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
+	Light::Light(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 		m_lightType			= LightType_Point;
 		m_castShadows		= true;

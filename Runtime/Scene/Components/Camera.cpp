@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector4.h"
 #include "../../Math/Frustum.h"
 #include "../../Rendering/Renderer.h"
-#include "../GameObject.h"
+#include "../Actor.h"
 #include "Renderable.h"
 #include "../TransformationGizmo.h"
 //===================================
@@ -43,7 +43,7 @@ using namespace std;
 
 namespace Directus
 {
-	Camera::Camera(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
+	Camera::Camera(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 		m_nearPlane			= 0.3f;
 		m_farPlane			= 1000.0f;
@@ -172,19 +172,19 @@ namespace Directus
 	}
 
 	//= RAYCASTING =======================================================================
-	weak_ptr<GameObject> Camera::Pick(const Vector2& mousePos)
+	weak_ptr<Actor> Camera::Pick(const Vector2& mousePos)
 	{
 		// Compute ray given the origin and end
 		m_ray = Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mousePos));
 
-		// Hits <Distance, GameObject>
-		map<float, std::weak_ptr<GameObject>> hits;
+		// Hits <Distance, actor>
+		map<float, std::weak_ptr<Actor>> hits;
 
-		// Find all the GameObjects that the ray hits
-		vector<std::weak_ptr<GameObject>> gameObjects = GetContext()->GetSubsystem<Scene>()->GetRenderables();
-		for (const auto& gameObj : gameObjects)
+		// Find all the actors that the ray hits
+		vector<std::weak_ptr<Actor>> actors = GetContext()->GetSubsystem<Scene>()->GetRenderables();
+		for (const auto& gameObj : actors)
 		{
-			// Make sure there GameObject has a mesh and exclude the SkyBox
+			// Make sure there actor has a mesh and exclude the SkyBox
 			if (!gameObj.lock()->HasComponent<Renderable>() || gameObj.lock()->HasComponent<Skybox>())
 				continue;
 
@@ -202,7 +202,7 @@ namespace Directus
 		}
 
 		// Get closest hit
-		weak_ptr<GameObject> hit = !hits.empty() ? hits.begin()->second : weak_ptr<GameObject>();
+		weak_ptr<Actor> hit = !hits.empty() ? hits.begin()->second : weak_ptr<Actor>();
 
 		// Display transformation gizmo
 		m_transformGizmo->Pick(hit);

@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class GameObject;
+	class Actor;
 	struct RI_Vertex_PosUVTBN;
 	namespace Math
 	{

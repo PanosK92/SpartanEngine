@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Mesh.h"
 #include "../../Rendering/Material.h"
 #include "../../Scene/Scene.h"
-#include "../../Scene/GameObject.h"
+#include "../../Scene/Actor.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Renderable.h"
 #include "../ProgressReport.h"
@@ -123,7 +123,7 @@ namespace Directus
 			return false;
 		}
 
-		// Map all the nodes as GameObjects while maintaining hierarchical relationships
+		// Map all the nodes as actors while maintaining hierarchical relationships
 		// as well as their properties (meshes, materials, textures etc.).
 		ReadNodeHierarchy(model, scene, scene->mRootNode);
 
@@ -144,15 +144,15 @@ namespace Directus
 	}
 
 	//= PROCESSING ===============================================================================
-	void ModelImporter::ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<GameObject> parentNode, weak_ptr<GameObject> newNode)
+	void ModelImporter::ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<Actor> parentNode, weak_ptr<Actor> newNode)
 	{
 		auto scene = m_context->GetSubsystem<Scene>();
 
 		// Is this the root node?
 		if (!assimpNode->mParent || newNode.expired())
 		{
-			newNode = scene->GameObject_CreateAdd();
-			model->SetRootGameObject(newNode.lock());
+			newNode = scene->Actor_CreateAdd();
+			model->SetRootactor(newNode.lock());
 
 			int jobCount;
 			ComputeNodeCount(assimpNode, &jobCount);
@@ -183,34 +183,34 @@ namespace Directus
 		newNode.lock()->GetTransform_PtrRaw()->SetParent(parentTrans);
 
 		// Set the transformation matrix of the Assimp node to the new node
-		AssimpHelper::SetGameObjectTransform(newNode, assimpNode);
+		AssimpHelper::SetActorTransform(newNode, assimpNode);
 
 		// Process all the node's meshes
 		for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)
 		{
-			weak_ptr<GameObject> gameobject = newNode; // set the current gameobject
+			weak_ptr<Actor> actor = newNode; // set the current actor
 			aiMesh* mesh = assimpScene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
 			string name = assimpNode->mName.C_Str(); // get name
 
-			// if this node has many meshes, then assign a new gameobject for each one of them
+			// if this node has many meshes, then assign a new actor for each one of them
 			if (assimpNode->mNumMeshes > 1)
 			{
-				gameobject = scene->GameObject_CreateAdd(); // create
-				gameobject.lock()->GetTransform_PtrRaw()->SetParent(newNode.lock()->GetTransform_PtrRaw()); // set parent
+				actor = scene->Actor_CreateAdd(); // create
+				actor.lock()->GetTransform_PtrRaw()->SetParent(newNode.lock()->GetTransform_PtrRaw()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
 
-			// Set gameobject name
-			gameobject.lock()->SetName(name);
+			// Set actor name
+			actor.lock()->SetName(name);
 
 			// Process mesh
-			LoadMesh(model, mesh, assimpScene, gameobject);
+			LoadMesh(model, mesh, assimpScene, actor);
 		}
 
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			weak_ptr<GameObject> child = scene->GameObject_CreateAdd();
+			weak_ptr<Actor> child = scene->Actor_CreateAdd();
 			ReadNodeHierarchy(model, assimpScene, assimpNode->mChildren[i], newNode, child);
 		}
 
@@ -269,9 +269,9 @@ namespace Directus
 		}
 	}
 
-	void ModelImporter::LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const weak_ptr<GameObject>& gameObject)
+	void ModelImporter::LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const weak_ptr<Actor>& parentActor)
 	{
-		if (!model || !assimpMesh || !assimpScene || gameObject.expired())
+		if (!model || !assimpMesh || !assimpScene || parentActor.expired())
 			return;
 
 		//= MESH ======================================================================
@@ -286,13 +286,13 @@ namespace Directus
 		unsigned int vertexOffset;
 		model->Geometry_Append(indices, vertices, &indexOffset, &vertexOffset);
 
-		// Add a renderable component to this GameObject
-		auto gameObjectShared	= gameObject.lock();
-		auto renderable			= gameObjectShared->AddComponent<Renderable>().lock();
+		// Add a renderable component to this Actor
+		auto actorShared	= parentActor.lock();
+		auto renderable			= actorShared->AddComponent<Renderable>().lock();
 
 		// Set the geometry
 		renderable->Geometry_Set(
-			gameObjectShared->GetName(),
+			actorShared->GetName(),
 			indexOffset,
 			(unsigned int)indices.size(),
 			vertexOffset,
@@ -309,7 +309,7 @@ namespace Directus
 			// Get aiMaterial
 			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
 			// Convert it and add it to the model
-			model->AddMaterial(AiMaterialToMaterial(model, assimpMaterial), gameObject);
+			model->AddMaterial(AiMaterialToMaterial(model, assimpMaterial), parentActor);
 		}
 		//===================================================================================
 

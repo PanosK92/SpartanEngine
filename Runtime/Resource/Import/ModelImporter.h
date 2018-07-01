@@ -39,7 +39,7 @@ namespace Directus
 	class Mesh;
 	class Context;
 	class Material;
-	class GameObject;
+	class Actor;
 	class Model;
 	class Transform;
 
@@ -57,11 +57,11 @@ namespace Directus
 			Model* model, 
 			const aiScene* assimpScene, 
 			aiNode* assimpNode,
-			std::weak_ptr<GameObject> parentNode = std::weak_ptr<GameObject>(), 
-			std::weak_ptr<GameObject> newNode = std::weak_ptr<GameObject>()
+			std::weak_ptr<Actor> parentNode = std::weak_ptr<Actor>(), 
+			std::weak_ptr<Actor> newNode = std::weak_ptr<Actor>()
 		);
 		void ReadAnimations(Model* model, const aiScene* scene);
-		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<GameObject>& parentGameObject);
+		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<Actor>& parentActor);
 		void AssimpMesh_ExtractVertices(aiMesh* assimpMesh, std::vector<RI_Vertex_PosUVTBN>* vertices);
 		void AssimpMesh_ExtractIndices(aiMesh* assimpMesh, std::vector<unsigned int>* indices);
 		std::shared_ptr<Material> AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial);

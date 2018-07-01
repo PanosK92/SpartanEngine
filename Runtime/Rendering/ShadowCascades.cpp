@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Scene\Components\Light.h"
 #include "..\Scene\Components\Transform.h"
 #include "..\Scene\Scene.h"
-#include "..\Scene\GameObject.h"
+#include "..\Scene\Actor.h"
 //========================================
 
 //= NAMESPACES ================

@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==========================================
-#include "GameObject.h"
+#include "Actor.h"
 #include "Scene.h"
 #include "../Scene/Components/Camera.h"
 #include "../Scene/Components/Collider.h"
@@ -49,11 +49,11 @@ using namespace std;
 
 namespace Directus
 {
-	GameObject::GameObject(Context* context)
+	Actor::Actor(Context* context)
 	{
 		m_context				= context;
 		m_ID					= GENERATE_GUID;
-		m_name					= "GameObject";
+		m_name					= "actor";
 		m_isActive				= true;
 		m_isPrefab				= false;
 		m_hierarchyVisibility	= true;
@@ -61,7 +61,7 @@ namespace Directus
 		m_renderable			= nullptr;
 	}
 
-	GameObject::~GameObject()
+	Actor::~Actor()
 	{
 		// delete components
 		for (auto it = m_components.begin(); it != m_components.end(); )
@@ -78,12 +78,12 @@ namespace Directus
 		m_hierarchyVisibility = true;
 	}
 
-	void GameObject::Initialize(Transform* transform)
+	void Actor::Initialize(Transform* transform)
 	{
 		m_transform = transform;
 	}
 
-	void GameObject::Start()
+	void Actor::Start()
 	{
 		// call component Start()
 		for (auto const& component : m_components)
@@ -92,7 +92,7 @@ namespace Directus
 		}
 	}
 
-	void GameObject::Stop()
+	void Actor::Stop()
 	{
 		// call component Stop()
 		for (auto const& component : m_components)
@@ -101,7 +101,7 @@ namespace Directus
 		}
 	}
 
-	void GameObject::Update()
+	void Actor::Update()
 	{
 		if (!m_isActive)
 			return;
@@ -113,7 +113,7 @@ namespace Directus
 		}
 	}
 
-	bool GameObject::SaveAsPrefab(const string& filePath)
+	bool Actor::SaveAsPrefab(const string& filePath)
 	{
 		// Create a prefab file
 		unique_ptr<FileStream> file = make_unique<FileStream>(filePath + PREFAB_EXTENSION, FileStreamMode_Write);
@@ -127,7 +127,7 @@ namespace Directus
 		return true;
 	}
 
-	bool GameObject::LoadFromPrefab(const string& filePath)
+	bool Actor::LoadFromPrefab(const string& filePath)
 	{
 		// Make sure that this is a prefab file
 		if (!FileSystem::IsEnginePrefabFile(filePath))
@@ -143,7 +143,7 @@ namespace Directus
 		return true;
 	}
 
-	void GameObject::Serialize(FileStream* stream)
+	void Actor::Serialize(FileStream* stream)
 	{
 		//= BASIC DATA ==========================
 		stream->Write(m_isPrefab);
@@ -182,20 +182,20 @@ namespace Directus
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			if (child->GetGameObject_PtrRaw())
+			if (child->Getactor_PtrRaw())
 			{
-				child->GetGameObject_PtrRaw()->Serialize(stream);
+				child->Getactor_PtrRaw()->Serialize(stream);
 			}
 			else
 			{
-				LOG_ERROR("Aborting GameObject serialization, child GameObject is nullptr.");
+				LOG_ERROR("Aborting actor serialization, child actor is nullptr.");
 				break;
 			}
 		}
 		//=============================================
 	}
 
-	void GameObject::Deserialize(FileStream* stream, Transform* parent)
+	void Actor::Deserialize(FileStream* stream, Transform* parent)
 	{
 		//= BASIC DATA =====================
 		stream->Read(&m_isPrefab);
@@ -239,10 +239,10 @@ namespace Directus
 
 		// 2nd - children IDs
 		auto scene = m_context->GetSubsystem<Scene>();
-		vector<std::weak_ptr<GameObject>> children;
+		vector<std::weak_ptr<Actor>> children;
 		for (int i = 0; i < childrenCount; i++)
 		{
-			std::weak_ptr<GameObject> child = scene->GameObject_CreateAdd();
+			std::weak_ptr<Actor> child = scene->Actor_CreateAdd();
 			child.lock()->SetID(stream->ReadUInt());
 			children.push_back(child);
 		}
@@ -263,7 +263,7 @@ namespace Directus
 		FIRE_EVENT(EVENT_SCENE_RESOLVE);
 	}
 
-	weak_ptr<IComponent> GameObject::AddComponent(ComponentType type)
+	weak_ptr<IComponent> Actor::AddComponent(ComponentType type)
 	{
 		// This is the only hardcoded part regarding components. It's 
 		// one function but it would be nice if that get's automated too, somehow...
@@ -292,7 +292,7 @@ namespace Directus
 		return component;
 	}
 
-	void GameObject::RemoveComponentByID(unsigned int id)
+	void Actor::RemoveComponentByID(unsigned int id)
 	{
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{

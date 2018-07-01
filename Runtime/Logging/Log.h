@@ -38,7 +38,7 @@ namespace Directus
 	#define LOGF_WARNING(text, ...)		Directus::Log::WriteFWarning(text,	__VA_ARGS__)
 	#define LOGF_ERROR(text, ...)		Directus::Log::WriteFError(text,	__VA_ARGS__)
 
-	class GameObject;
+	class Actor;
 
 	namespace Math
 	{
@@ -85,7 +85,7 @@ namespace Directus
 		static void Write(bool value, LogType type);
 
 		// Pointers
-		static void Write(const std::weak_ptr<GameObject>& gameObject, LogType type);
+		static void Write(const std::weak_ptr<Actor>& actor, LogType type);
 		template<typename T>
 		static void Write(std::weak_ptr<T> ptr, LogType type) { Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
 		template<typename T>

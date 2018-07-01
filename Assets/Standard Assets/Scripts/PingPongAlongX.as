@@ -1,7 +1,7 @@
 class PingPongAlongX
 {
-	GameObject @m_gameobject;
-	Transform @m_transform;
+	Actor @actor;
+	Transform @transform;
 	
 	//= MISC ===================
 	Vector3 m_currentPos;
@@ -12,10 +12,10 @@ class PingPongAlongX
 	//==========================
 	
 	// Constructor
-	PingPongAlongX(GameObject @obj)
+	PingPongAlongX(Actor @actorIn)
 	{
-		@m_gameobject = obj;
-		@m_transform = m_gameobject.GetTransform();	
+		@actor = actorIn;
+		@m_transform = actor.GetTransform();	
 	}
 	
 	// Use this for initialization

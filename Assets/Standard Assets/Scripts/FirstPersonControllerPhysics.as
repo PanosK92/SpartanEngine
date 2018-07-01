@@ -1,6 +1,6 @@
 class FirstPersonControllerPhysics
 {
-	GameObject @gameobject;
+	Actor @actor;
 	Transform @transform;
 	RigidBody @rigidbody;
 	
@@ -18,18 +18,18 @@ class FirstPersonControllerPhysics
 	bool allowToggle = false;
 	
 	// Constructor
-	FirstPersonControllerPhysics(GameObject @obj)
+	FirstPersonControllerPhysics(Actor @actorIn)
 	{
-		@gameobject = obj;
+		@actor = actorIn;
 	}
 	
 	// Use this for initialization
 	void Start()
 	{
-		@transform = gameobject.GetTransform();
-		@rigidbody = gameobject.GetRigidBody();
+		@transform = actor.GetTransform();
+		@rigidbody = actor.GetRigidBody();
 		
-		// Assuming that the camera GameObject is named "Camera"
+		// Assuming that the camera Actor is named "Camera"
 		@cameraTransform = transform.GetChildByName("Camera");
 	}
 

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RI/Backend_Imp.h"
 #include "RI/D3D11/D3D11_VertexBuffer.h"
 #include "RI/D3D11/D3D11_IndexBuffer.h"
-#include "../Scene/GameObject.h"
+#include "../Scene/Actor.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
 #include "../IO/FileStream.h"
@@ -165,7 +165,7 @@ namespace Directus
 		m_aabb				= BoundingBox(m_mesh->Vertices_Get());
 	}
 
-	void Model::AddMaterial(const weak_ptr<Material>& material, const weak_ptr<GameObject>& gameObject, bool autoCache /* true */)
+	void Model::AddMaterial(const weak_ptr<Material>& material, const weak_ptr<Actor>& actor, bool autoCache /* true */)
 	{
 		if (material.expired())
 		{
@@ -186,9 +186,9 @@ namespace Directus
 		m_materials.push_back(matRef);
 
 		// Create a Renderable and pass the material to it
-		if (!gameObject.expired())
+		if (!actor.expired())
 		{
-			auto renderable = gameObject.lock()->AddComponent<Renderable>().lock();
+			auto renderable = actor.lock()->AddComponent<Renderable>().lock();
 			renderable->Material_Set(matRef, false);
 		}
 	}
@@ -295,7 +295,7 @@ namespace Directus
 		// Load the model
 		if (m_resourceManager->GetModelImporter().lock()->Load(this, filePath))
 		{
-			// Set the normalized scale to the root GameObject's transform
+			// Set the normalized scale to the root actor's transform
 			m_normalizedScale = Geometry_ComputeNormalizedScale();
 			m_rootGameObj.lock()->GetComponent<Transform>().lock()->SetScale(m_normalizedScale);
 			m_rootGameObj.lock()->GetComponent<Transform>().lock()->UpdateTransform();

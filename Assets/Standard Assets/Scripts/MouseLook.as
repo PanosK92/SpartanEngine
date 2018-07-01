@@ -1,6 +1,6 @@
 class MouseLook
 {
-	GameObject @gameobject;
+	Actor @actor;
 	Transform @transform;
 	
 	// misc
@@ -12,10 +12,10 @@ class MouseLook
 	
 	
 	// Constructor
-	MouseLook(GameObject @obj)
+	MouseLook(Actor @actorIn)
 	{
-		@gameobject = obj;
-		@transform = gameobject.GetTransform();
+		@actor = actorIn;
+		@transform = actor.GetTransform();
 	}
 	
 	// Use this for initialization

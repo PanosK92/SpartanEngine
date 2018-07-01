@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "TransformationGizmo.h"
-#include "GameObject.h"
+#include "Actor.h"
 #include "Components\Transform.h"
 //===============================
 
@@ -55,12 +55,12 @@ namespace Directus
 
 	}
 
-	void TransformationGizmo::Pick(weak_ptr<GameObject> gameObject)
+	void TransformationGizmo::Pick(weak_ptr<Actor> actor)
 	{
-		if (gameObject.expired())
+		if (actor.expired())
 			return;
 
-		Transform* transformComponent = gameObject.lock()->GetComponent<Transform>().lock().get();
+		Transform* transformComponent = actor.lock()->GetComponent<Transform>().lock().get();
 		Matrix transform = (m_space == TransformGizmo_Local) ? transformComponent->GetWorldTransform() : transformComponent->GetWorldTransform();
 
 		Matrix mTranslation		= Matrix::CreateTranslation(transform.GetTranslation());

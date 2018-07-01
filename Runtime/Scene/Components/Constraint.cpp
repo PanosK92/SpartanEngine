@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Constraint.h"
 #include "RigidBody.h"
 #include "Transform.h"
-#include "../GameObject.h"
+#include "../Actor.h"
 #include "../Scene.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/Physics.h"
@@ -44,7 +44,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Constraint::Constraint(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
+	Constraint::Constraint(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 		m_constraint				= nullptr;
 		m_isDirty					= false;
@@ -92,16 +92,16 @@ namespace Directus
 
 	void Constraint::Serialize(FileStream* stream)
 	{
-		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetGameObject_PtrRaw()->GetID() : (unsigned int)0);
+		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->Getactor_PtrRaw()->GetID() : (unsigned int)0);
 	}
 
 	void Constraint::Deserialize(FileStream* stream)
 	{
 		unsigned int bodyOtherID = stream->ReadUInt();
-		auto otherGameObject = GetContext()->GetSubsystem<Scene>()->GetGameObjectByID(bodyOtherID);
-		if (!otherGameObject.expired())
+		auto otheractor = GetContext()->GetSubsystem<Scene>()->GetActorByID(bodyOtherID);
+		if (!otheractor.expired())
 		{
-			m_bodyOther = otherGameObject.lock()->GetComponent<RigidBody>();
+			m_bodyOther = otheractor.lock()->GetComponent<RigidBody>();
 		}
 
 		m_isDirty = true;
@@ -177,7 +177,7 @@ namespace Directus
 	{
 		ReleaseConstraint();
 
-		m_bodyOwn = m_gameObject->GetComponent<RigidBody>();
+		m_bodyOwn = m_actor->GetComponent<RigidBody>();
 		btRigidBody* btOwnBody		= !m_bodyOwn.expired() ? m_bodyOwn.lock()->GetBtRigidBody() : nullptr;
 		btRigidBody* btOtherBody	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetBtRigidBody() : nullptr;
 

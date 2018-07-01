@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h"
 #include "../Scene/Components/RigidBody.h"
 #include "../Scene/Components/Camera.h"
-#include "../Scene/GameObject.h"
+#include "../Scene/Actor.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
 //===========================================
@@ -61,7 +61,7 @@ namespace Directus
 		RegisterRenderable();
 		RegisterCamera();
 		RegisterRigidBody();
-		RegisterGameObject();
+		Registeractor();
 		RegisterDebug();
 	}
 
@@ -137,7 +137,7 @@ namespace Directus
 		m_scriptEngine->RegisterObjectType("Settings", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Input", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Time", 0, asOBJ_REF | asOBJ_NOCOUNT);
-		m_scriptEngine->RegisterObjectType("GameObject", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		m_scriptEngine->RegisterObjectType("Actor", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Transform", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Renderable", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Material", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -179,21 +179,21 @@ namespace Directus
 	}
 
 	/*------------------------------------------------------------------------------
-										[GAMEOBJECT]
+										[actor]
 	------------------------------------------------------------------------------*/
 
-	void ScriptInterface::RegisterGameObject()
+	void ScriptInterface::Registeractor()
 	{
-		m_scriptEngine->RegisterObjectMethod("GameObject", "GameObject &opAssign(const GameObject &in)", asMETHODPR(GameObject, operator =, (const GameObject&), GameObject&), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "int GetID()", asMETHOD(GameObject, GetID), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "string GetName()", asMETHOD(GameObject, GetName), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "void SetName(string)", asMETHOD(GameObject, SetName), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "bool IsActive()", asMETHOD(GameObject, IsActive), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "void SetActive(bool)", asMETHOD(GameObject, SetActive), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "Transform &GetTransform()", asMETHOD(GameObject, GetTransform_PtrRaw), asCALL_THISCALL);	
-		m_scriptEngine->RegisterObjectMethod("GameObject", "Camera &GetCamera()", asMETHOD(GameObject, GetComponent<Camera>), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "RigidBody &GetRigidBody()", asMETHOD(GameObject, GetComponent<RigidBody>), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "Renderable &GetRenderable()", asMETHOD(GameObject, GetComponent<Renderable>), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Actor", "Actor &opAssign(const Actor &in)", asMETHODPR(Actor, operator =, (const Actor&), Actor&), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Actor", "int GetID()", asMETHOD(Actor, GetID), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Actor", "string GetName()", asMETHOD(Actor, GetName), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Actor", "void SetName(string)", asMETHOD(Actor, SetName), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Actor", "bool IsActive()", asMETHOD(Actor, IsActive), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Actor", "void SetActive(bool)", asMETHOD(Actor, SetActive), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Actor", "Transform &GetTransform()", asMETHOD(Actor, GetTransform_PtrRaw), asCALL_THISCALL);	
+		m_scriptEngine->RegisterObjectMethod("Actor", "Camera &GetCamera()", asMETHOD(Actor, GetComponent<Camera>), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Actor", "RigidBody &GetRigidBody()", asMETHOD(Actor, GetComponent<RigidBody>), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Actor", "Renderable &GetRenderable()", asMETHOD(Actor, GetComponent<Renderable>), asCALL_THISCALL);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -221,7 +221,7 @@ namespace Directus
 		m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetParent()", asMETHOD(Transform, GetParent), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByIndex(int)", asMETHOD(Transform, GetChildByIndex), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByName(string)", asMETHOD(Transform, GetChildByName), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Transform", "GameObject &GetGameObject()", asMETHOD(Transform, GetGameObject_PtrRaw), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Transform", "Actor &Getactor()", asMETHOD(Transform, Getactor_PtrRaw), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void Translate(const Vector3& in)", asMETHOD(Transform, Translate), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in)", asMETHOD(Transform, Rotate), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void RotateLocal(const Quaternion& in)", asMETHOD(Transform, RotateLocal), asCALL_THISCALL);

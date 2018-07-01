@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Deferred/GBuffer.h"
 #include "../Core/Context.h"
 #include "../Core/EventSystem.h"
-#include "../Scene/GameObject.h"
+#include "../Scene/Actor.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
 #include "../Scene/Components/Skybox.h"
@@ -381,19 +381,19 @@ namespace Directus
 		PROFILE_FUNCTION_BEGIN();
 
 		Clear();
-		auto renderablesVec = VARIANT_GET_FROM(vector<weak_ptr<GameObject>>, renderables);
+		auto renderablesVec = VARIANT_GET_FROM(vector<weak_ptr<Actor>>, renderables);
 
 		for (const auto& renderable : renderablesVec)
 		{
-			GameObject* gameObject = renderable.lock().get();
-			if (!gameObject)
+			Actor* actor = renderable.lock().get();
+			if (!actor)
 				continue;
 
 			// Get renderables
-			m_renderables.emplace_back(gameObject);
+			m_renderables.emplace_back(actor);
 
 			// Get lights
-			if (auto light = gameObject->GetComponent<Light>().lock())
+			if (auto light = actor->GetComponent<Light>().lock())
 			{
 				m_lights.emplace_back(light.get());
 				if (light->GetLightType() == LightType_Directional)
@@ -403,14 +403,14 @@ namespace Directus
 			}
 
 			// Get skybox
-			if (auto skybox = gameObject->GetComponent<Skybox>().lock())
+			if (auto skybox = actor->GetComponent<Skybox>().lock())
 			{
 				m_skybox = skybox.get();
-				m_lineRenderer = gameObject->GetComponent<LineRenderer>().lock().get(); // Hush hush...
+				m_lineRenderer = actor->GetComponent<LineRenderer>().lock().get(); // Hush hush...
 			}
 
 			// Get camera
-			if (auto camera = gameObject->GetComponent<Camera>().lock())
+			if (auto camera = actor->GetComponent<Camera>().lock())
 			{
 				m_camera = camera.get();
 			}
@@ -420,12 +420,12 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::Renderables_Sort(vector<GameObject*>* renderables)
+	void Renderer::Renderables_Sort(vector<Actor*>* renderables)
 	{
 		if (renderables->size() <= 1)
 			return;
 
-		sort(renderables->begin(), renderables->end(),[](GameObject* a, GameObject* b)
+		sort(renderables->begin(), renderables->end(),[](Actor* a, Actor* b)
 		{
 			// Get renderable component
 			auto a_renderable = a->GetRenderable_PtrRaw();
@@ -618,7 +618,7 @@ namespace Directus
 			Profiler::Get().m_drawCalls++;
 			Profiler::Get().m_meshesRendered++;
 
-		} // GAMEOBJECT/MESH ITERATION
+		} // actor/MESH ITERATION
 
 		// Reset pipeline state tracking
 		m_currentlyBoundGeometry	= 0;
@@ -854,7 +854,7 @@ namespace Directus
 						continue;
 
 					RI_Texture* lightTex = nullptr;
-					LightType type = light->GetGameObject_PtrRaw()->GetComponent<Light>().lock()->GetLightType();
+					LightType type = light->Getactor_PtrRaw()->GetComponent<Light>().lock()->GetLightType();
 					if (type == LightType_Directional)
 					{
 						lightTex = m_gizmoTexLightDirectional.get();

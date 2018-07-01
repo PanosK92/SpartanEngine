@@ -93,7 +93,7 @@ namespace Directus
 		}
 	}
 
-	Renderable::Renderable(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
+	Renderable::Renderable(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 		m_geometryType			= Geometry_Custom;	
 		m_geometryIndexOffset	= 0;
@@ -181,13 +181,13 @@ namespace Directus
 		// Check if a material exists
 		if (m_materialRefWeak.expired()) 
 		{
-			LOGF_WARNING("Renderable: \"%s\" has no material. It can't be rendered.", GetGameObjectName().c_str());
+			LOGF_WARNING("Renderable: \"%s\" has no material. It can't be rendered.", GetactorName().c_str());
 			return;
 		}
 		// Check if the material has a shader
 		if (!m_materialRefWeak.lock()->HasShader()) 
 		{
-			LOGF_WARNING("Renderable: \"%s\" has a material but not a shader associated with it. It can't be rendered.", GetGameObjectName().c_str());
+			LOGF_WARNING("Renderable: \"%s\" has a material but not a shader associated with it. It can't be rendered.", GetactorName().c_str());
 			return;
 		}
 
