@@ -41,9 +41,9 @@ namespace Directus
 {
 	RI_Shader::RI_Shader(Context* context)
 	{
-		m_renderingDevice		= context->GetSubsystem<RenderingDevice>();
-		m_bufferType	= CB_Matrix;
-		m_bufferScope	= VertexShader;
+		m_renderingDevice	= context->GetSubsystem<RenderingDevice>();
+		m_bufferType		= CB_Matrix;
+		m_bufferScope		= VertexShader;
 	}
 
 	RI_Shader::~RI_Shader()

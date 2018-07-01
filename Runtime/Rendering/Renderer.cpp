@@ -194,8 +194,7 @@ namespace Directus
 			m_shaderBlurGaussianH->AddDefine("PASS_BLUR_GAUSSIAN_H");
 			m_shaderBlurGaussianH->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderBlurGaussianH->SetInputLaytout(PositionTexture);
-			m_shaderBlurGaussianH->AddSampler(Texture_Sampler_Point);
-			m_shaderBlurGaussianH->AddSampler(Texture_Sampler_Bilinear);
+			m_shaderBlurGaussianH->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp);
 			m_shaderBlurGaussianH->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Gaussian Vertical
@@ -203,8 +202,7 @@ namespace Directus
 			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V");
 			m_shaderBlurGaussianV->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderBlurGaussianV->SetInputLaytout(PositionTexture);
-			m_shaderBlurGaussianV->AddSampler(Texture_Sampler_Point);
-			m_shaderBlurGaussianV->AddSampler(Texture_Sampler_Bilinear);
+			m_shaderBlurGaussianV->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp);
 			m_shaderBlurGaussianV->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Bloom - bright
@@ -243,7 +241,7 @@ namespace Directus
 			m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
 			m_shaderShadowing->SetInputLaytout(PositionTexture);
 			m_shaderShadowing->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp); // Shadow mapping
-			m_shaderShadowing->AddSampler(Texture_Sampler_Linear); // SSAO
+			m_shaderShadowing->AddSampler(Texture_Sampler_Linear, Texture_Address_Clamp); // SSAO
 			m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 		}
 
