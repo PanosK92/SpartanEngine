@@ -71,8 +71,8 @@ namespace Directus
 	void Profiler::EndBlock(const char* funcName)
 	{
 		m_timeBlocks[funcName].end			= high_resolution_clock::now();
-		duration<double, milli> ms				= m_timeBlocks[funcName].end - m_timeBlocks[funcName].start;
-		m_timeBlocks[funcName].duration	= (float)ms.count();
+		duration<double, milli> ms			= m_timeBlocks[funcName].end - m_timeBlocks[funcName].start;
+		m_timeBlocks[funcName].duration		= (float)ms.count();
 	}
 
 	void Profiler::UpdateMetrics()
@@ -91,15 +91,20 @@ namespace Directus
 		int shaders		= m_resourceManager->GetResourceCountByType(Resource_Shader);
 
 		m_metrics =
-			"FPS:\t\t\t\t" + to_string_precision(fps, 2) + "\n"
-			"Frame:\t\t\t\t" + to_string_precision(delta, 2) + " ms\n"
-			//"Update:\t\t\t" + to_string_precision(delta - m_renderTimeMs, 2) + " ms\n" Must compute this properly
-			"Render:\t\t\t" + to_string_precision(GetBlockTimeMs("Directus::Renderer::Render"), 2) + " ms\n"
-			"Resolution:\t\t" + to_string(int(RESOLUTION_WIDTH)) + "x" + to_string(int(RESOLUTION_HEIGHT)) + "\n" 
-			"Meshes Rendered:\t" + to_string(m_renderer->GetRendereredMeshes()) + "\n"
-			"Textures:\t\t\t" + to_string(textures) + "\n"
-			"Materials:\t\t\t" + to_string(materials) + "\n"
-			"Shaders:\t\t\t" + to_string(shaders);
+			"FPS:\t\t\t\t\t\t\t"				+ to_string_precision(fps, 2) + "\n"
+			"Frame:\t\t\t\t\t\t\t"				+ to_string_precision(delta, 2) + " ms\n"
+			//"Update:\t\t\t"					+ to_string_precision(delta - m_renderTimeMs, 2) + " ms\n" Must compute this properly
+			"Render:\t\t\t\t\t\t"				+ to_string_precision(GetBlockTimeMs("Directus::Renderer::Render"), 2) + " ms\n"
+			"Resolution:\t\t\t\t\t"				+ to_string(int(RESOLUTION_WIDTH)) + "x" + to_string(int(RESOLUTION_HEIGHT)) + "\n"
+			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
+			"RI Draw calls:\t\t\t\t\t"			+ to_string(m_drawCalls) + "\n"
+			"RI Index buffer bindings:\t\t"		+ to_string(m_bindBufferIndexCount) + "\n"
+			"RI Vertex buffer bindings:\t\t"	+ to_string(m_bindBufferVertexCount) + "\n"
+			"RI Uniform buffer bindings:\t"		+ to_string(m_bindUniformBufferCount) + "\n"
+			"RI Shader bindings:\t\t\t\t"		+ to_string(m_bindShaderCount) + "\n"
+			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
+			"Materials:\t\t\t\t\t\t"			+ to_string(materials) + "\n"
+			"Shaders:\t\t\t\t\t\t"				+ to_string(shaders);
 
 		m_timeSinceLastUpdate = 0;
 	}

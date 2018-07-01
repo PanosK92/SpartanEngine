@@ -32,8 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class D3D11_ConstantBuffer;
-	class D3D11_Shader;
 	class Context;
 	class Light;
 	class Camera;
@@ -72,21 +70,21 @@ namespace Directus
 			Texture_Comparison_Function comparisonFunc = Texture_Comparison_Always
 		);
 
-		void Set();
+		bool Bind();
 		void SetInputLaytout(InputLayout inputLayout);
 
 		// Bind - Texture
-		void SetTexture(void* texture, unsigned int slot);
+		void SetTexture(void* texture, unsigned int slot = 0);
 		void SetTextures(std::vector<void*> textures);
 
 		// Bind - Constant Buffer
-		void SetBuffer(const Math::Matrix& matrix, unsigned int slot);
-		void SetBuffer(const Math::Matrix& matrix, const Math::Vector4& vector4, unsigned int slot);
-		void SetBuffer(const Math::Matrix& matrix, const Math::Vector3& vector3, unsigned int slot);
-		void SetBuffer(const Math::Matrix& matrix, const Math::Vector2& vector2, unsigned int slot);
-		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, unsigned int slot);
-		void SetBuffer(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B, unsigned int slot);
-		void SetBuffer(
+		void Bind_Buffer(const Math::Matrix& matrix, unsigned int slot = 0);
+		void Bind_Buffer(const Math::Matrix& matrix, const Math::Vector4& vector4, unsigned int slot = 0);
+		void Bind_Buffer(const Math::Matrix& matrix, const Math::Vector3& vector3, unsigned int slot = 0);
+		void Bind_Buffer(const Math::Matrix& matrix, const Math::Vector2& vector2, unsigned int slot = 0);
+		void Bind_Buffer(const Math::Matrix& m1, const Math::Matrix& m2, const Math::Matrix& m3, unsigned int slot = 0);
+		void Bind_Buffer(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B, unsigned int slot = 0);
+		void Bind_Buffer(
 			const Math::Matrix& mWVPortho, 
 			const Math::Matrix& mWVPinv, 
 			const Math::Matrix& mView, 
@@ -94,14 +92,14 @@ namespace Directus
 			const Math::Vector2& vector2,
 			Light* dirLight,
 			Camera* camera,
-			unsigned int slot
+			unsigned int slot  = 0
 		);
 
 		void Draw(unsigned int vertexCount);
-		void DrawIndexed(unsigned int indexCount);
+		void DrawIndexed(unsigned int indexCount, unsigned int indexOffset = 0, unsigned int vertexOffset = 0);
 
 	private:
-		void SetBufferScope(D3D11_ConstantBuffer* buffer, unsigned int slot);
+		void SetBufferScope(D3D11_ConstantBuffer* buffer, unsigned int slot = 0);
 
 		struct Struct_Matrix
 		{
@@ -148,9 +146,9 @@ namespace Directus
 
 		struct Struct_Matrix_Matrix_Matrix
 		{
-			Math::Matrix matrixA;
-			Math::Matrix matrixB;
-			Math::Matrix matrixC;
+			Math::Matrix m1;
+			Math::Matrix m2;
+			Math::Matrix m3;
 		};
 
 		struct Struct_Matrix_Vector3_Vector3
@@ -164,7 +162,7 @@ namespace Directus
 
 		std::unique_ptr<D3D11_ConstantBuffer> m_constantBuffer;
 		std::unique_ptr<D3D11_Shader> m_shader;
-		RenderingDevice* m_graphics;
+		RenderingDevice* m_renderingDevice;
 		ConstantBufferType m_bufferType;
 		ConstantBufferScope m_bufferScope;
 	};

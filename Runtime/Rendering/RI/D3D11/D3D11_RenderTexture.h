@@ -36,7 +36,7 @@ namespace Directus
 			D3D11_Device* graphics, 
 			int width				= RESOLUTION_WIDTH, 
 			int height				= RESOLUTION_HEIGHT, 
-			bool depth				= false, 
+			bool depth				= false,
 			Texture_Format format	= Texture_Format_R32G32B32A32_FLOAT
 		);
 		~D3D11_RenderTexture();
@@ -45,13 +45,13 @@ namespace Directus
 		bool Clear(const Math::Vector4& clearColor);
 		bool Clear(float red, float green, float blue, float alpha);
 		void ComputeOrthographicProjectionMatrix(float nearPlane, float farPlane);
-		const Math::Matrix& GetOrthographicProjectionMatrix() { return m_orthographicProjectionMatrix; }
-		ID3D11Texture2D* GetTexture()						{ return m_renderTargetTexture; }
-		ID3D11RenderTargetView* GetRenderTargetView()		{ return m_renderTargetView; }
-		ID3D11ShaderResourceView* GetShaderResourceView()	{ return m_shaderResourceView; }
-		ID3D11DepthStencilView* GetDepthStencilView()		{ return m_depthStencilView; }
+		const Math::Matrix& GetOrthographicProjectionMatrix()	{ return m_orthographicProjectionMatrix; }
+		ID3D11Texture2D* GetTexture()							{ return m_renderTargetTexture; }
+		ID3D11RenderTargetView* GetRenderTargetView()			{ return m_renderTargetView; }
+		ID3D11ShaderResourceView* GetShaderResourceView()		{ return m_shaderResourceView; }
+		ID3D11DepthStencilView* GetDepthStencilView()			{ return m_depthStencilView; }
 		const RI_Viewport& GetViewport()						{ return m_viewport; }
-		bool GetDepthEnabled()								{ return m_depthEnabled; }
+		bool GetDepthEnabled()									{ return m_depthEnabled; }
 
 	private:
 		bool Construct();

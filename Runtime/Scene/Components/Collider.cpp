@@ -23,10 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Collider.h"
 #include "Transform.h"
 #include "RigidBody.h"
+#include "Renderable.h"
 #include "../GameObject.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../Rendering/Mesh.h"
+#include "../../Rendering/RI/RI_Vertex.h"
 #include "../../Logging/Log.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
@@ -36,7 +38,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
 #include <BulletCollision/CollisionShapes/btConeShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
-#include "Renderable.h"
 //=============================================================
 
 //= NAMESPACES ================
@@ -65,7 +66,7 @@ namespace Directus
 		if (auto renderable = GetGameObject_PtrRaw()->GetRenderable_PtrRaw())
 		{
 			m_center = GetTransform()->GetPosition();
-			m_size = renderable->GetBoundingBoxTransformed().GetSize();
+			m_size = renderable->Geometry_BB().GetSize();
 		}
 
 		UpdateShape();
@@ -184,37 +185,32 @@ namespace Directus
 			Renderable* renderable = GetGameObject_PtrRaw()->GetComponent<Renderable>().lock().get();
 			if (!renderable)
 			{
-				LOG_WARNING("Collider: Can't construct mesh shape, there is no Renderable component attached.");
-				return;
-			}
-
-			// Get mesh
-			Mesh* mesh = renderable->GetMesh_RefWeak().lock().get();
-			if (!mesh)
-			{
-				LOG_WARNING("Collider: Can't construct mesh shape, Renderable component doesn't have a mesh.");
+				LOG_WARNING("Collider::UpdateShape: Can't construct mesh shape, there is no Renderable component attached.");
 				return;
 			}
 
 			// Validate vertex count
-			if (mesh->GetVertexCount() >= m_vertexLimit)
+			if (renderable->Geometry_VertexCount() >= m_vertexLimit)
 			{
-				LOG_WARNING("No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
+				LOG_WARNING("Collider::UpdateShape: No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
 				break;
 			}
 
-			// Get mesh geometry
-			vector<RI_Vertex_PosUVTBN> vertices;
+			// Get geometry
 			vector<unsigned int> indices;
-			mesh->GetGeometry(&vertices, &indices);
+			vector<RI_Vertex_PosUVTBN> vertices;
+			renderable->Geometry_Get(&indices, &vertices);
 
 			if (vertices.empty())
+			{
+				LOG_WARNING("Collider::UpdateShape: No vertices.");
 				return;
+			}
 
 			// Construct hull approximation
 			m_collisionShape = make_shared<btConvexHullShape>(
-				(btScalar*)&vertices[0],				// points
-				mesh->GetVertexCount(),					// point count
+				(btScalar*)&vertices[0],					// points
+				renderable->Geometry_VertexCount(),			// point count
 				(unsigned int)sizeof(RI_Vertex_PosUVTBN));	// stride
 
 			// Scaling has to be done before (potential) optimization
@@ -223,7 +219,7 @@ namespace Directus
 			// Optimize if requested
 			if (m_optimize)
 			{
-				btConvexHullShape* hull = (btConvexHullShape*)m_collisionShape.get();
+				auto hull = (btConvexHullShape*)m_collisionShape.get();
 				hull->optimizeConvexHull();
 				hull->initializePolyhedralFeatures();
 			}

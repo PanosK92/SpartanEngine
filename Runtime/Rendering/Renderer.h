@@ -105,10 +105,11 @@ namespace Directus
 
 		void Clear();
 		const std::vector<GameObject*>& GetRenderables() { return m_renderables; }
-		int GetRendereredMeshes() { return m_renderedMeshesCount; }
 
-	private:	
-		void Pass_RenderableAcquisition(const Variant& renderables);
+	private:
+		void Renderables_Acquire(const Variant& renderables);
+		void Renderables_Sort(std::vector<GameObject*>* renderables);
+
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
 		void Pass_PreLight(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing);
@@ -139,7 +140,7 @@ namespace Directus
 
 		//= SHADERS ===========================================
 		std::unique_ptr<LightShader> m_shaderLight;
-		std::unique_ptr<RI_Shader> m_shaderDepth;
+		std::unique_ptr<RI_Shader> m_shaderLightDepth;
 		std::unique_ptr<RI_Shader> m_shaderLine;
 		std::unique_ptr<RI_Shader> m_shaderGrid;
 		std::unique_ptr<RI_Shader> m_shaderFont;
@@ -168,7 +169,7 @@ namespace Directus
 		std::unique_ptr<Rectangle> m_quad;
 		//=========================================
 
-		//= PREREQUISITES ================================
+		//= PREREQUISITES ==============
 		Camera* m_camera;
 		Skybox* m_skybox;
 		LineRenderer* m_lineRenderer;
@@ -180,10 +181,12 @@ namespace Directus
 		float m_nearPlane;
 		float m_farPlane;
 		RenderingDevice* m_graphics;
-		//================================================
+		//==============================
 
-		// Metrics
-		int m_renderedMeshesCount;
-		int m_renderedMeshesPerFrame;
+		//= PIPELINE STATE ===================
+		unsigned int m_currentlyBoundGeometry;
+		unsigned int m_currentlyBoundShader;
+		unsigned int m_currentlyBoundMaterial;
+		//====================================
 	};
 }

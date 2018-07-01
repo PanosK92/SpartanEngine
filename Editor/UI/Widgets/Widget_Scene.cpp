@@ -380,8 +380,8 @@ void Widget_Scene::Action_GameObject_CreateCube()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	auto renderable = gameObject->AddComponent<Renderable>().lock();
-	renderable->UseStandardMesh(MeshType_Cube);
-	renderable->UseStandardMaterial();
+	renderable->Geometry_Set(Geometry_Default_Cube);
+	renderable->Material_UseDefault();
 	gameObject->SetName("Cube");
 }
 
@@ -389,8 +389,8 @@ void Widget_Scene::Action_GameObject_CreateQuad()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	auto renderable = gameObject->AddComponent<Renderable>().lock();
-	renderable->UseStandardMesh(MeshType_Quad);
-	renderable->UseStandardMaterial();
+	renderable->Geometry_Set(Geometry_Default_Quad);
+	renderable->Material_UseDefault();
 	gameObject->SetName("Quad");
 }
 
@@ -398,8 +398,8 @@ void Widget_Scene::Action_GameObject_CreateSphere()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	auto renderable = gameObject->AddComponent<Renderable>().lock();
-	renderable->UseStandardMesh(MeshType_Sphere);
-	renderable->UseStandardMaterial();
+	renderable->Geometry_Set(Geometry_Default_Sphere);
+	renderable->Material_UseDefault();
 	gameObject->SetName("Sphere");
 }
 
@@ -407,8 +407,8 @@ void Widget_Scene::Action_GameObject_CreateCylinder()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	auto renderable = gameObject->AddComponent<Renderable>().lock();
-	renderable->UseStandardMesh(MeshType_Cylinder);
-	renderable->UseStandardMaterial();
+	renderable->Geometry_Set(Geometry_Default_Cylinder);
+	renderable->Material_UseDefault();
 	gameObject->SetName("Cylinder");
 }
 
@@ -416,8 +416,8 @@ void Widget_Scene::Action_GameObject_CreateCone()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	auto renderable = gameObject->AddComponent<Renderable>().lock();
-	renderable->UseStandardMesh(MeshType_Cone);
-	renderable->UseStandardMaterial();
+	renderable->Geometry_Set(Geometry_Default_Cone);
+	renderable->Material_UseDefault();
 	gameObject->SetName("Cone");
 }
 

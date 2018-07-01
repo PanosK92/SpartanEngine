@@ -76,6 +76,9 @@ namespace Directus
 			typed->SetResourceName(name);
 			typed->SetResourceFilePath(filePathRelative);
 
+			// Cache it now so LoadFromFile() can safely pass around a reference to the resource from the ResourceManager
+			Add<T>(typed);
+
 			// Load
 			if (!typed->LoadFromFile(filePathRelative))
 			{
@@ -84,7 +87,7 @@ namespace Directus
 			}
 
 			// Cache it and cast it
-			return Add<T>(typed);
+			return typed;
 		}
 
 		// Adds a resource into the cache and returns the derived resource as a weak reference
@@ -230,7 +233,7 @@ namespace Directus
 		static std::weak_ptr<Type> ToDerivedWeak(std::shared_ptr<IResource> base)
 		{
 			std::shared_ptr<Type> derivedShared = std::dynamic_pointer_cast<Type>(base);
-			std::weak_ptr<Type> derivedWeak = std::weak_ptr<Type>(derivedShared);
+			std::weak_ptr<Type> derivedWeak		= std::weak_ptr<Type>(derivedShared);
 
 			return derivedWeak;
 		}

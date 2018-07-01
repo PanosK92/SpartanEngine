@@ -114,7 +114,9 @@ namespace Directus
 		Texture_Format_R32G32B32A32_FLOAT,
 		Texture_Format_R16G16B16A16_FLOAT,
 		Texture_Format_R8G8B8A8_UNORM,
-		Texture_Format_R8_UNORM
+		Texture_Format_R8_UNORM,
+		Texture_Format_R16_FLOAT,
+		Texture_Format_R32_FLOAT
 	};
 }
 
@@ -123,6 +125,8 @@ namespace Directus
 namespace Directus
 {
 	class D3D11_Device;
+	class D3D11_ConstantBuffer;
+	class D3D11_Shader;
 	class D3D11_RenderTexture;
 	class D3D11_InputLayout;
 	class D3D11_Sampler;

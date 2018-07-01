@@ -20,12 +20,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#include <string>
 
-//= INCLUDES =====================
+//= INCLUDES ==============================
 #include "../../Core/EngineDefs.h"
+#include "../../Rendering/RI/Backend_Def.h"
 #include <memory>
-//================================
+#include <string>
+#include <vector>
+//=========================================
 
 struct aiNode;
 struct aiScene;
@@ -34,7 +36,6 @@ struct aiMesh;
 
 namespace Directus
 {
-	enum TextureType;
 	class Mesh;
 	class Context;
 	class Material;
@@ -61,8 +62,8 @@ namespace Directus
 		);
 		void ReadAnimations(Model* model, const aiScene* scene);
 		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<GameObject>& parentGameObject);
-		void LoadAiMeshVertices(aiMesh* assimpMesh, const std::shared_ptr<Mesh>& mesh);
-		void LoadAiMeshIndices(aiMesh* assimpMesh, const std::shared_ptr<Mesh>& mesh);
+		void AssimpMesh_ExtractVertices(aiMesh* assimpMesh, std::vector<RI_Vertex_PosUVTBN>* vertices);
+		void AssimpMesh_ExtractIndices(aiMesh* assimpMesh, std::vector<unsigned int>* indices);
 		std::shared_ptr<Material> AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial);
 
 		// HELPER FUNCTIONS

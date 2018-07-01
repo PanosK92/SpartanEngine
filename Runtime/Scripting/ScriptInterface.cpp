@@ -238,7 +238,7 @@ namespace Directus
 	//= RENDERABLE ==================================================================
 	void ScriptInterface::RegisterRenderable()
 	{
-		m_scriptEngine->RegisterObjectMethod("Renderable", "Material &GetMaterial()", asMETHOD(Renderable, GetMaterial_RefWeak), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Renderable", "Material &GetMaterial()", asMETHOD(Renderable, Material_RefWeak), asCALL_THISCALL);
 	}
 	//===============================================================================
 

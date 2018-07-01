@@ -92,7 +92,7 @@ namespace Directus
 		// Clear depth buffer.
 		if (m_depthEnabled)
 		{
-			m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_graphics->GetMaxDepth(), 0); 
+			m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, m_graphics->GetMaxDepth(), 0); 
 		}
 
 		return true;

@@ -19,16 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
-#include "RI/D3D11/D3D11_VertexBuffer.h"
-#include "RI/D3D11/D3D11_IndexBuffer.h"
-#include "RI/Backend_Imp.h"
-#include "../Rendering/Mesh.h"
+//= INCLUDES ================
+#include "Mesh.h"
+#include "RI/RI_Vertex.h"
 #include "../Logging/Log.h"
-#include "../FileSystem/FileSystem.h"
 #include "../IO/FileStream.h"
 #include "../Core/Context.h"
-//=====================================
+//===========================
 
 //= NAMESPACES ================
 using namespace std;
@@ -37,25 +34,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Mesh::Mesh(Context* context) : IResource(context)
-	{
-		//= IResource ===========
-		RegisterResource<Mesh>();
-		//=======================
-
-		m_modelName		= NOT_ASSIGNED;
-		m_vertexCount	= 0;
-		m_indexCount	= 0;
-		m_triangleCount = 0;
-		m_boundingBox	= BoundingBox();
-	}
-
-	Mesh::~Mesh()
-	{
-		Clear();
-	}
-
-	void Mesh::ClearGeometry()
+	void Mesh::Geometry_Clear()
 	{
 		m_vertices.clear();
 		m_vertices.shrink_to_fit();
@@ -63,171 +42,61 @@ namespace Directus
 		m_indices.shrink_to_fit();
 	}
 
-	void Mesh::Clear()
+	unsigned int Mesh::Geometry_MemoryUsage()
 	{
-		ClearGeometry();
-		m_modelName		= NOT_ASSIGNED;
-		m_vertexCount	= 0;
-		m_indexCount	= 0;
-		m_triangleCount = 0;
-	}
-
-	//= RESOURCE ==============================================================
-	bool Mesh::LoadFromFile(const string& filePath)
-	{
-		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
-		if (!file->IsOpen())
-			return false;
-
-		Clear();
-
-		file->Read(&m_vertices);
-		file->Read(&m_indices);
-		file->Read(&m_modelName);
-		file->Read(&m_resourceName);
-		file->Read(&m_resourceFilePath);
-		
-		Construct();
-		ClearGeometry();
-
-		return true;
-	}
-
-	bool Mesh::SaveToFile(const string& filePath)
-	{
-		// If the geometry data has been cleared, load it again
-		// as we don't want to replaced existing data with nothing.
-		// If the geometry data is not cleared, it won't be loaded again.
-		GetGeometry(&m_vertices, &m_indices);
-
-		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
-		if (!file->IsOpen())
-			return false;
-
-		file->Write(m_vertices);
-		file->Write(m_indices);
-		file->Write(m_modelName);
-		file->Write(m_resourceName);
-		file->Write(m_resourceFilePath);
-
-		return true;
-	}
-
-	unsigned int Mesh::GetMemory()
-	{
-		// Vertices & Indices
 		unsigned int size = 0;
-		size += unsigned int(m_vertices.size() * sizeof(RI_Vertex_PosUVTBN));
-		size += unsigned int(m_indices.size() * sizeof(unsigned int));
-
-		// Buffers
-		size += m_vertexBuffer->GetMemoryUsage();
-		size += m_indexBuffer->GetMemoryUsage();
+		size += unsigned int(m_vertices.size()	* sizeof(RI_Vertex_PosUVTBN));
+		size += unsigned int(m_indices.size()	* sizeof(unsigned int));
 
 		return size;
 	}
 
-	void Mesh::GetGeometry(vector<RI_Vertex_PosUVTBN>* vertices, vector<unsigned>* indices)
+	void Mesh::Geometry_Get(unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned vertexCount, vector<unsigned int>* indices, vector<RI_Vertex_PosUVTBN>* vertices)
 	{
-		if (!m_vertices.empty() && !m_indices.empty())
+		if (indexOffset == 0 || indexCount == 0 || vertexOffset == 0 || vertexCount == 0 || !vertices || !indices)
 		{
-			vertices = &m_vertices;
-			indices = &m_indices;
+			LOG_ERROR("Mesh::Geometry_Get: Invalid parameters");
 			return;
 		}
 
-		auto file = make_unique<FileStream>(m_resourceFilePath, FileStreamMode_Read);
-		if (!file->IsOpen())
-			return;
+		// Indices
+		auto indexFirst	= m_indices.begin() + indexOffset;
+		auto indexLast	= m_indices.begin() + indexOffset + indexCount;
+		*indices		= vector<unsigned int>(indexFirst, indexLast);
 
-		// Read vertices and indices
-		file->Read(vertices);
-		file->Read(indices);
+		// Vertices
+		auto vertexFirst	= m_vertices.begin() + vertexOffset;
+		auto vertexLast		= m_vertices.begin() + vertexOffset + vertexCount;
+		*vertices			= vector<RI_Vertex_PosUVTBN>(vertexFirst, vertexLast);
 	}
 
-	//=========================================================================
-
-	bool Mesh::Construct()
+	void Mesh::Vertices_Append(const vector<RI_Vertex_PosUVTBN>& vertices, unsigned int* vertexOffset)
 	{
-		m_vertexCount	= (unsigned int)m_vertices.size();
-		m_indexCount	= (unsigned int)m_indices.size();
-		m_triangleCount = m_indexCount / 3;
-		m_boundingBox.ComputeFromVertices(m_vertices);
-		return ConstructBuffers();
+		if (vertexOffset)
+		{
+			*vertexOffset = (unsigned int)m_vertices.size();
+		}
+
+		m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
 	}
 
-	bool Mesh::SetBuffers()
+	unsigned int Mesh::Vertices_Count() const
 	{
-		bool success = true;
-		if (m_vertexBuffer)
-		{
-			m_vertexBuffer->SetIA();
-		}
-		else
-		{
-			LOG_WARNING("Mesh: Can't set vertex buffer. \"" + m_resourceName + "\" doesn't have an initialized vertex buffer.");
-			success = false;
-		}
-
-		if (m_indexBuffer)
-		{
-			m_indexBuffer->SetIA();
-		}
-		else
-		{
-			LOG_WARNING("Mesh: Can't set index buffer. \"" + m_resourceName + "\" doesn't have an initialized index buffer.");
-			success = false;
-		}
-
-		// Set the type of primitive that should be rendered from mesh
-		m_context->GetSubsystem<RenderingDevice>()->SetPrimitiveTopology(TriangleList);
-
-		return success;
+		return (unsigned int)m_vertices.size();
 	}
 
-	//= HELPER FUNCTIONS ===========================================================
-	bool Mesh::ConstructBuffers()
+	void Mesh::Vertex_Add(const RI_Vertex_PosUVTBN& vertex)
 	{
-		auto graphics = m_context->GetSubsystem<RenderingDevice>();
-		if (!graphics->GetDevice())
-		{
-			LOG_ERROR("Mesh: Aborting vertex buffer creation. Graphics device is not present.");
-			return false;
-		}
-
-		bool success = true;
-
-		if (!m_vertices.empty())
-		{
-			m_vertexBuffer = make_shared<D3D11_VertexBuffer>(graphics);
-			if (!m_vertexBuffer->Create(m_vertices))
-			{
-				LOG_ERROR("Mesh: Failed to create vertex buffer for \"" + m_resourceName + "\".");
-				success = false;
-			}
-		}
-		else
-		{
-			LOG_ERROR("Mesh: Can't create vertex buffer for \"" + m_resourceName + "\". Provided vertices are empty.");
-			success = false;
-		}
-
-		if (!m_indices.empty())
-		{
-			m_indexBuffer = make_shared<D3D11_IndexBuffer>(graphics);
-			if (!m_indexBuffer->Create(m_indices))
-			{
-				LOG_ERROR("Mesh: Failed to create index buffer for \"" + m_resourceName + "\".");
-				success = false;
-			}
-		}
-		else
-		{
-			LOG_ERROR("Mesh: Can't create index buffer for \"" + m_resourceName + "\". Provided indices are empty.");
-			success = false;
-		}
-
-		return success;
+		m_vertices.emplace_back(vertex);
 	}
-	//==============================================================================
+
+	void Mesh::Indices_Append(const vector<unsigned int>& indices, unsigned int* indexOffset)
+	{
+		if (indexOffset)
+		{
+			*indexOffset = (unsigned int)m_indices.size();
+		}
+
+		m_indices.insert(m_indices.end(), indices.begin(), indices.end());
+	}
 }

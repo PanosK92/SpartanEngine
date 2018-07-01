@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================================
 #include "Renderable.h"
 #include "Transform.h"
+#include "../../Rendering/RI/RI_Vertex.h"
 #include "../../Rendering/Material.h"
 #include "../../Rendering/Deferred/ShaderVariation.h"
 #include "../../Rendering/GeometryUtility.h"
 #include "../../Rendering/Mesh.h"
-#include "../../Rendering/RI/RI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 #include "../../FileSystem/FileSystem.h"
@@ -40,36 +40,97 @@ using namespace Directus::Math;
 
 namespace Directus
 {
+	namespace DefaultRenderables
+	{
+		inline void Build(GeometryType type, Renderable* renderable)
+		{	
+			Model* model = new Model(renderable->GetContext());
+			vector<RI_Vertex_PosUVTBN> vertices;
+			vector<unsigned int> indices;
+
+			// Construct geometry
+			if (type == Geometry_Default_Cube)
+			{
+				GeometryUtility::CreateCube(&vertices, &indices);		
+				model->SetResourceName("Default_Cube");
+			}
+			else if (type == Geometry_Default_Quad)
+			{
+				GeometryUtility::CreateQuad(&vertices, &indices);
+				model->SetResourceName("Default_Cube");
+			}
+			else if (type == Geometry_Default_Sphere)
+			{
+				GeometryUtility::CreateSphere(&vertices, &indices);
+				model->SetResourceName("Default_Cube");
+			}
+			else if (type == Geometry_Default_Cylinder)
+			{
+				GeometryUtility::CreateCylinder(&vertices, &indices);
+				model->SetResourceName("Default_Cube");
+			}
+			else if (type == Geometry_Default_Cone)
+			{
+				GeometryUtility::CreateCone(&vertices, &indices);
+				model->SetResourceName("Default_Cube");
+			}
+
+			if (vertices.empty() || indices.empty())
+				return;
+
+			model->Geometry_Append(indices, vertices, nullptr, nullptr);
+			model->Geometry_Update();
+
+			renderable->Geometry_Set(
+				"Default_Geometry",
+				0,
+				(unsigned int)indices.size(),
+				0,
+				(unsigned int)vertices.size(),
+				BoundingBox(vertices),
+				model
+			);
+		}
+	}
+
 	Renderable::Renderable(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
-		// Mesh
-		m_meshType				= MeshType_Imported;
-		m_meshRef				= nullptr;
-		// Material
-		m_usingStandardMaterial = false;
+		m_geometryType			= Geometry_Custom;	
+		m_geometryIndexOffset	= 0;
+		m_geometryIndexCount	= 0;
+		m_geometryVertexOffset	= 0;
+		m_geometryVertexCount	= 0;
+		m_materialDefault		= false;
 		m_materialRef			= nullptr;
-		// Properties
 		m_castShadows			= true;
 		m_receiveShadows		= true;
 	}
 
 	Renderable::~Renderable()
 	{
-
+		if (m_geometryType != Geometry_Custom)
+		{
+			delete m_model;
+		}
 	}
 
 	//= ICOMPONENT ===============================================================
 	void Renderable::Serialize(FileStream* stream)
 	{
 		// Mesh
-		stream->Write((int)m_meshType);
-		stream->Write(!m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetResourceName() : (string)NOT_ASSIGNED);
+		stream->Write((int)m_geometryType);
+		stream->Write(m_geometryIndexOffset);
+		stream->Write(m_geometryIndexCount);
+		stream->Write(m_geometryVertexOffset);
+		stream->Write(m_geometryVertexCount);
+		stream->Write(m_geometryAABB);
+		stream->Write(!m_model ? m_model->GetResourceName() : NOT_ASSIGNED);
 
 		// Material
 		stream->Write(m_castShadows);
 		stream->Write(m_receiveShadows);
-		stream->Write(m_usingStandardMaterial);
-		if (!m_usingStandardMaterial)
+		stream->Write(m_materialDefault);
+		if (!m_materialDefault)
 		{
 			stream->Write(!m_materialRefWeak.expired() ? m_materialRefWeak.lock()->GetResourceName() : NOT_ASSIGNED);
 		}
@@ -77,32 +138,30 @@ namespace Directus
 
 	void Renderable::Deserialize(FileStream* stream)
 	{
-		// Mesh
-		m_meshType		= (MeshType)stream->ReadInt();
-		string meshName	= NOT_ASSIGNED;
-		stream->Read(&meshName);
+		// Geometry
+		m_geometryType			= (GeometryType)stream->ReadInt();
+		m_geometryIndexOffset	= stream->ReadUInt();
+		m_geometryIndexCount	= stream->ReadUInt();	
+		m_geometryVertexOffset	= stream->ReadUInt();
+		m_geometryVertexCount	= stream->ReadUInt();
+		stream->Read(&m_geometryAABB);
+		string modelName;
+		stream->Read(&modelName);
+		m_model = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Model>(modelName).lock().get();
 
-		if (m_meshType == MeshType_Imported) // If it was an imported mesh, get it from the resource cache
+		// If it was a default mesh, we have to reconstruct it
+		if (m_geometryType != Geometry_Custom) 
 		{
-			m_meshRefWeak	= GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
-			m_meshRef		= m_meshRefWeak.lock().get();
-			if (m_meshRefWeak.expired())
-			{
-				LOG_WARNING("Renderable: Failed to load mesh \"" + meshName + "\".");
-			}
-		}
-		else // If it was a standard mesh, reconstruct it
-		{
-			UseStandardMesh(m_meshType);
+			Geometry_Set(m_geometryType);
 		}
 
 		// Material
 		stream->Read(&m_castShadows);
 		stream->Read(&m_receiveShadows);
-		stream->Read(&m_usingStandardMaterial);
-		if (m_usingStandardMaterial)
+		stream->Read(&m_materialDefault);
+		if (m_materialDefault)
 		{
-			UseStandardMaterial();		
+			Material_UseDefault();		
 		}
 		else
 		{
@@ -114,132 +173,70 @@ namespace Directus
 	}
 	//==============================================================================
 
-	void Renderable::Render(unsigned int indexCount)
+	void Renderable::Render()
 	{
+		if (m_geometryIndexCount == 0)
+			return;
+
 		// Check if a material exists
 		if (m_materialRefWeak.expired()) 
 		{
-			LOG_WARNING("Renderable: \"" + GetGameObjectName() + "\" has no material. It can't be rendered.");
+			LOGF_WARNING("Renderable: \"%s\" has no material. It can't be rendered.", GetGameObjectName().c_str());
 			return;
 		}
 		// Check if the material has a shader
 		if (!m_materialRefWeak.lock()->HasShader()) 
 		{
-			LOG_WARNING("Renderable: \"" + GetGameObjectName() + "\" has a material but not a shader associated with it. It can't be rendered.");
+			LOGF_WARNING("Renderable: \"%s\" has a material but not a shader associated with it. It can't be rendered.", GetGameObjectName().c_str());
 			return;
 		}
 
 		// Get it's shader and render
-		m_materialRefWeak.lock()->GetShader().lock()->Render(indexCount);
+		m_materialRefWeak.lock()->GetShader().lock()->Render(m_geometryIndexCount, m_geometryIndexOffset, m_geometryVertexOffset);
 	}
 
-	//= MESH =====================================================================================
-	void Renderable::SetMesh(const weak_ptr<Mesh>& mesh, bool autoCache /* true */)
-	{
-		m_meshRefWeak	= mesh;
-		m_meshRef		= m_meshRefWeak.lock().get();
-
-		// We do allow for a Renderable with no mesh
-		if (m_meshRefWeak.expired())
-			return;
-
-		m_meshRefWeak	= autoCache ? mesh.lock()->Cache<Mesh>() : mesh;
-		m_meshRef		= m_meshRefWeak.lock().get();
+	//= GEOMETRY =====================================================================================
+	void Renderable::Geometry_Set(const string& name, unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, const BoundingBox& AABB, Model* model)
+	{	
+		m_geometryName			= name;
+		m_geometryIndexOffset	= indexOffset;
+		m_geometryIndexCount	= indexCount;
+		m_geometryVertexOffset	= vertexOffset;
+		m_geometryVertexCount	= vertexCount;
+		m_geometryAABB			= AABB;
+		m_model					= model;
 	}
 
-	// Sets a default mesh (cube, quad)
-	void Renderable::UseStandardMesh(MeshType type)
+	void Renderable::Geometry_Set(GeometryType type)
 	{
-		m_meshType = type;
+		m_geometryType = type;
 
-		// Create a name for this standard mesh
-		string meshName;
-		if (type == MeshType_Cube)
+		if (type != Geometry_Custom)
 		{
-			meshName = "Standard_Cube";
+			DefaultRenderables::Build(type, this);
 		}
-		else if (type == MeshType_Quad)
-		{
-			meshName = "Standard_Quad";
-		}
-		else if (type == MeshType_Sphere)
-		{
-			meshName = "Standard_Sphere";
-		}
-		else if (type == MeshType_Cylinder)
-		{
-			meshName = "Standard_Cylinder";
-		}
-		else if (type == MeshType_Cone)
-		{
-			meshName = "Standard_Cone";
-		}
+	}
 
-		// Check if this mesh is already loaded, if so, use the existing one
-		if (auto existingMesh = GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName).lock())
+	void Renderable::Geometry_Get(vector<unsigned int>* indices, vector<RI_Vertex_PosUVTBN>* vertices)
+	{
+		if (!m_model)
 		{
-			// Cache it and keep a reference
-			SetMesh(existingMesh->Cache<Mesh>(), false);
+			LOG_ERROR("Renderable::Geometry_Get: Invalid model");
 			return;
 		}
 
-		// Construct vertices/indices
-		vector<RI_Vertex_PosUVTBN> vertices;
-		vector<unsigned int> indices;
-		if (type == MeshType_Cube)
-		{
-			GeometryUtility::CreateCube(&vertices, &indices);
-		}
-		else if (type == MeshType_Quad)
-		{
-			GeometryUtility::CreateQuad(&vertices, &indices);
-		}
-		else if (type == MeshType_Sphere)
-		{
-			GeometryUtility::CreateSphere(&vertices, &indices);
-		}
-		else if (type == MeshType_Cylinder)
-		{
-			GeometryUtility::CreateCylinder(&vertices, &indices);
-		}
-		else if (type == MeshType_Cone)
-		{
-			GeometryUtility::CreateCone(&vertices, &indices);
-		}
-
-		// Create a file path (in the project directory) for this standard mesh
-		string projectStandardAssetDir = GetContext()->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
-		FileSystem::CreateDirectory_(projectStandardAssetDir);
-
-		// Create a mesh
-		auto mesh = make_shared<Mesh>(GetContext());
-		mesh->SetVertices(vertices);
-		mesh->SetIndices(indices);
-		mesh->SetResourceName(meshName);
-		mesh->Construct();
-
-		// Cache it and keep a reference
-		SetMesh(mesh->Cache<Mesh>(), false);
+		m_model->Geometry_Get(m_geometryIndexOffset, m_geometryIndexCount, m_geometryVertexOffset, m_geometryVertexCount, indices, vertices);
 	}
 
-	bool Renderable::SetBuffers()
+	BoundingBox Renderable::Geometry_BB()
 	{
-		if (m_meshRefWeak.expired())
-			return false;
-
-		m_meshRefWeak.lock()->SetBuffers();
-		return true;
-	}
-
-	string Renderable::GetMeshName()
-	{
-		return !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetResourceName() : NOT_ASSIGNED;
+		return m_geometryAABB.Transformed(GetTransform()->GetWorldTransform());
 	}
 	//==============================================================================
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
-	void Renderable::SetMaterialFromMemory(const weak_ptr<Material>& materialWeak, bool autoCache /* true */)
+	void Renderable::Material_Set(const weak_ptr<Material>& materialWeak, bool autoCache /* true */)
 	{
 		// Validate material
 		auto material = materialWeak.lock();
@@ -258,7 +255,7 @@ namespace Directus
 				if (cachedMat->HasFilePath())
 				{
 					m_materialRef->SaveToFile(material->GetResourceFilePath());
-					m_usingStandardMaterial = false;
+					m_materialDefault = false;
 				}
 			}
 		}
@@ -269,26 +266,26 @@ namespace Directus
 		}
 	}
 
-	weak_ptr<Material> Renderable::SetMaterialFromFile(const string& filePath)
+	weak_ptr<Material> Renderable::Material_Set(const string& filePath)
 	{
 		// Load the material
 		auto material = make_shared<Material>(GetContext());
 		if (!material->LoadFromFile(filePath))
 		{
-			LOG_WARNING("Renderable::SetMaterialFromFile(): Failed to load material from \"" + filePath + "\"");
+			LOGF_WARNING("Renderable::SetMaterialFromFile(): Failed to load material from \"%s\"", filePath.c_str());
 			return weak_ptr<Material>();
 		}
 
 		// Set it as the current material
-		SetMaterialFromMemory(material);
+		Material_Set(material);
 
 		// Return it
-		return GetMaterial_RefWeak();
+		return Material_RefWeak();
 	}
 
-	void Renderable::UseStandardMaterial()
+	void Renderable::Material_UseDefault()
 	{
-		m_usingStandardMaterial = true;
+		m_materialDefault = true;
 
 		auto projectStandardAssetDir = GetContext()->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
 		FileSystem::CreateDirectory_(projectStandardAssetDir);
@@ -297,25 +294,12 @@ namespace Directus
 		materialStandard->SetCullMode(CullBack);
 		materialStandard->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		materialStandard->SetIsEditable(false);		
-		SetMaterialFromMemory(materialStandard->Cache<Material>(), false);
+		Material_Set(materialStandard->Cache<Material>(), false);
 	}
 
-	string Renderable::GetMaterialName()
+	string Renderable::Material_Name()
 	{
-		return !GetMaterial_RefWeak().expired() ? GetMaterial_RefWeak().lock()->GetResourceName() : NOT_ASSIGNED;
+		return !Material_RefWeak().expired() ? Material_RefWeak().lock()->GetResourceName() : NOT_ASSIGNED;
 	}
 	//==============================================================================
-
-	//= BOUNDING BOX ===================================================================================================
-	const BoundingBox& Renderable::GetBoundingBox() const
-	{
-		return !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetBoundingBox() : BoundingBox::Zero;
-	}
-
-	BoundingBox Renderable::GetBoundingBoxTransformed()
-	{
-		BoundingBox boundingBox = !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetBoundingBox() : BoundingBox::Zero;
-		return boundingBox.Transformed(GetTransform()->GetWorldTransform());
-	}
-	//==================================================================================================================
 }

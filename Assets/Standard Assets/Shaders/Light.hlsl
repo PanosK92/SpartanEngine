@@ -8,11 +8,11 @@ Texture2D texLastFrame 		: register(t5);
 TextureCube environmentTex 	: register(t6);
 //=========================================
 
-//= SAMPLERS =============================
-SamplerState samplerPoint : register(s0);
-SamplerState samplerAniso : register(s1);
-SamplerState samplerLinear : register(s3);
-//========================================
+//= SAMPLERS ==============================
+SamplerState samplerPoint 	: register(s0);
+SamplerState samplerAniso 	: register(s1);
+SamplerState samplerLinear 	: register(s2);
+//=========================================
 
 //= CONSTANT BUFFERS ===================
 cbuffer MatrixBuffer : register(b0)
@@ -117,7 +117,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// some totally fake dynamic skybox
 	float ambientLight = clamp(dirLightIntensity, 0.01f, 1.0f); 
 	
-    if (renderTechnique == 0.1f)
+    if (renderTechnique == 1.0f)
     {
         finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir)).rgb;
         finalColor = ACESFilm(finalColor);

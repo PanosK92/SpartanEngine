@@ -69,10 +69,10 @@ namespace Directus
 
 		// Add a Renderable and assign the skybox material to it
 		auto renderable = GetGameObject_PtrRaw()->AddComponent<Renderable>().lock();
-		renderable->UseStandardMesh(MeshType_Cube);
+		renderable->Geometry_Set(Geometry_Default_Cube);
 		renderable->SetCastShadows(false);
 		renderable->SetReceiveShadows(false);
-		renderable->SetMaterialFromMemory(m_matSkybox, true);
+		renderable->Material_Set(m_matSkybox, true);
 
 		// Make the skybox big enough
 		GetTransform()->SetScale(Vector3(1000, 1000, 1000));

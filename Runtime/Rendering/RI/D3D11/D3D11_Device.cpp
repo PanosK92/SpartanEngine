@@ -118,17 +118,17 @@ namespace Directus
 		HRESULT result = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)(&factory));
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create a DirectX graphics interface factory.");
+			LOG_ERROR("D3D11_Device::Initialize: Failed to create a DirectX graphics interface factory.");
 			return false;
 		}
 		//==============================================================================
 
 		//= ADAPTER ====================================================================
-		IDXGIAdapter* adapter = GetAdapterWithTheHighestVRAM(factory); // usually the dedicaded one
+		IDXGIAdapter* adapter = GetAdapterWithTheHighestVRAM(factory); // usually the dedicated one
 		factory->Release();
 		if (!adapter)
 		{
-			LOG_ERROR("Couldn't find any adapters.");
+			LOG_ERROR("D3D11_Device::Initialize: Couldn't find any adapters.");
 			return false;
 		}
 		//==============================================================================
@@ -140,7 +140,7 @@ namespace Directus
 			result = adapter->EnumOutputs(0, &adapterOutput);
 			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to enumerate the primary adapter output.");
+				LOG_ERROR("D3D11_Device::Initialize: Failed to enumerate the primary adapter output.");
 				return false;
 			}
 
@@ -148,7 +148,7 @@ namespace Directus
 			result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_backBuffer_format], DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, nullptr);
 			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to get adapter's display modes.");
+				LOG_ERROR("D3D11_Device::Initialize: Failed to get adapter's display modes.");
 				return false;
 			}
 
@@ -156,7 +156,7 @@ namespace Directus
 			m_displayModeList = new DXGI_MODE_DESC[m_displayModeCount];
 			if (!m_displayModeList)
 			{
-				LOG_ERROR("Failed to create a display mode list.");
+				LOG_ERROR("D3D11_Device::Initialize: Failed to create a display mode list.");
 				return false;
 			}
 
@@ -164,7 +164,7 @@ namespace Directus
 			result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_backBuffer_format], DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, m_displayModeList);
 			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to fill the display mode list structures.");
+				LOG_ERROR("D3D11_Device::Initialize: Failed to fill the display mode list structures.");
 				return false;
 			}
 			// Release the adapter output.
@@ -194,7 +194,7 @@ namespace Directus
 			result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&backBufferPtr));
 			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to get the pointer to the back buffer.");
+				LOG_ERROR("D3D11_Device::Initialize: Failed to get the pointer to the back buffer.");
 				return false;
 			}
 
@@ -202,7 +202,7 @@ namespace Directus
 			result = m_device->CreateRenderTargetView(backBufferPtr, nullptr, &m_renderTargetView);
 			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to create the render target view.");
+				LOG_ERROR("D3D11_Device::Initialize: Failed to create the render target view.");
 				return false;
 			}
 
@@ -217,25 +217,25 @@ namespace Directus
 		//= DEPTH ============================================
 		if (!CreateDepthStencilState(m_depthStencilStateEnabled, true, true))
 		{
-			LOG_ERROR("Failed to create depth stencil enabled state.");
+			LOG_ERROR("D3D11_Device::Initialize: Failed to create depth stencil enabled state.");
 			return false;
 		}
 
 		if (!CreateDepthStencilState(m_depthStencilStateDisabled, false, false))
 		{
-			LOG_ERROR("Failed to create depth stencil disabled state.");
+			LOG_ERROR("D3D11_Device::Initialize: Failed to create depth stencil disabled state.");
 			return false;
 		}
 
 		if (!CreateDepthStencilBuffer())
 		{
-			LOG_ERROR("Failed to create depth stencil buffer.");
+			LOG_ERROR("D3D11_Device::Initialize: Failed to create depth stencil buffer.");
 			return false;
 		}
 
 		if (!CreateDepthStencilView())
 		{
-			LOG_ERROR("Failed to create the rasterizer state.");
+			LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 			return false;
 		}
 		//====================================================
@@ -244,19 +244,19 @@ namespace Directus
 		{
 			if (!CreateRasterizerState(CullBack, FillMode_Solid, &m_rasterStateCullBack))
 			{
-				LOG_ERROR("Failed to create the rasterizer state.");
+				LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 				return false;
 			}
 
 			if (!CreateRasterizerState(CullFront, FillMode_Solid, &m_rasterStateCullFront))
 			{
-				LOG_ERROR("Failed to create the rasterizer state.");
+				LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 				return false;
 			}
 
 			if (!CreateRasterizerState(CullNone, FillMode_Solid, &m_rasterStateCullNone))
 			{
-				LOG_ERROR("Failed to create the rasterizer state.");
+				LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 				return false;
 			}
 
@@ -274,7 +274,7 @@ namespace Directus
 		result = m_deviceContext->QueryInterface(__uuidof(m_eventReporter), reinterpret_cast<void**>(&m_eventReporter));
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting");
+			LOG_ERROR("D3D11_Device::Initialize: Failed to create ID3DUserDefinedAnnotation for event reporting");
 			return false;
 		}
 
@@ -319,7 +319,7 @@ namespace Directus
 			featureLevelStr = "12.1";
 			break;
 		}
-		LOGF_INFO("D3D11_Device: Feature level %s - %s", featureLevelStr.data(), GetAdapterDescription(adapter).data());
+		LOGF_INFO("D3D11_Device::Initialize:  Feature level %s - %s", featureLevelStr.data(), GetAdapterDescription(adapter).data());
 
 		m_initialized = true;
 		return true;
@@ -345,7 +345,7 @@ namespace Directus
 		HRESULT result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaEnabled);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create blend state.");
+			LOG_ERROR("D3D11_Device::CreateBlendStates: Failed to create blend state.");
 			return false;
 		}
 
@@ -354,7 +354,7 @@ namespace Directus
 		result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaDisabled);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create blend state.");
+			LOG_ERROR("D3D11_Device::CreateBlendStates: Failed to create blend state.");
 			return false;
 		}
 
@@ -369,7 +369,7 @@ namespace Directus
 
 		if (!m_deviceContext)
 		{
-			LOG_WARNING("D3D11Graphics::EnableDepth: Device context is uninitialized.");
+			LOG_WARNING("D3D11_Device::EnableDepth: Device context is uninitialized.");
 			return false;
 		}
 
@@ -392,7 +392,7 @@ namespace Directus
 		desc.DepthFunc		= D3D11_COMPARISON_LESS;
 
 		// Stencil test parameters
-		desc.StencilEnable		= true;
+		desc.StencilEnable		= depthEnabled;
 		desc.StencilReadMask	= D3D11_DEFAULT_STENCIL_READ_MASK;
 		desc.StencilWriteMask	= D3D11_DEFAULT_STENCIL_WRITE_MASK;
 
@@ -409,7 +409,7 @@ namespace Directus
 		desc.BackFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
 
 		// Create a depth stencil state with depth enabled
-		ID3D11DepthStencilState* depthStencilStateTyped = (ID3D11DepthStencilState*)depthStencilState;
+		auto depthStencilStateTyped = (ID3D11DepthStencilState*)depthStencilState;
 		auto result = m_device->CreateDepthStencilState(&desc, &depthStencilStateTyped);
 
 		return !FAILED(result);
@@ -422,17 +422,17 @@ namespace Directus
 
 		D3D11_TEXTURE2D_DESC depthBufferDesc;
 		ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-		depthBufferDesc.Width = RESOLUTION_WIDTH;
-		depthBufferDesc.Height = RESOLUTION_HEIGHT;
-		depthBufferDesc.MipLevels = 1;
-		depthBufferDesc.ArraySize = 1;
-		depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		depthBufferDesc.SampleDesc.Count = 1;
-		depthBufferDesc.SampleDesc.Quality = 0;
-		depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		depthBufferDesc.CPUAccessFlags = 0;
-		depthBufferDesc.MiscFlags = 0;
+		depthBufferDesc.Width				= RESOLUTION_WIDTH;
+		depthBufferDesc.Height				= RESOLUTION_HEIGHT;
+		depthBufferDesc.MipLevels			= 1;
+		depthBufferDesc.ArraySize			= 1;
+		depthBufferDesc.Format				= DXGI_FORMAT_D24_UNORM_S8_UINT;
+		depthBufferDesc.SampleDesc.Count	= 1;
+		depthBufferDesc.SampleDesc.Quality	= 0;
+		depthBufferDesc.Usage				= D3D11_USAGE_DEFAULT;
+		depthBufferDesc.BindFlags			= D3D11_BIND_DEPTH_STENCIL;
+		depthBufferDesc.CPUAccessFlags		= 0;
+		depthBufferDesc.MiscFlags			= 0;
 
 		// Create the texture for the depth buffer using the filled out description.
 		auto result = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
@@ -462,7 +462,7 @@ namespace Directus
 	{
 		if (!m_deviceContext)
 		{
-			LOG_WARNING("3DD11Graphics::Clear: Device context is uninitialized.");
+			LOG_WARNING("D3D11_Device::Clear: Device context is uninitialized.");
 			return;
 		}
 
@@ -485,7 +485,7 @@ namespace Directus
 	{
 		if (!m_deviceContext)
 		{
-			LOG_WARNING("D3D11Graphics::SetBackBufferAsRenderTarget: Device context is uninitialized.");
+			LOG_WARNING("D3D11_Device::SetBackBufferAsRenderTarget: Device context is uninitialized.");
 			return;
 		}
 
@@ -499,7 +499,7 @@ namespace Directus
 
 		if (!m_deviceContext)
 		{
-			LOG_WARNING("D3D11Graphics::EnableAlphaBlending: Device context is uninitialized.");
+			LOG_WARNING("D3D11_Device::EnableAlphaBlending: Device context is uninitialized.");
 			return false;
 		}
 
@@ -534,7 +534,7 @@ namespace Directus
 		HRESULT result = m_swapChain->ResizeTarget(&dxgiModeDesc);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to resize swapchain target.");
+			LOG_ERROR("D3D11_Device::SetResolution: Failed to resize swapchain target.");
 			return false;
 		}
 		//==================================================================
@@ -544,7 +544,7 @@ namespace Directus
 		result = m_swapChain->ResizeBuffers(1, (unsigned int)width, (unsigned int)height, dxgiModeDesc.Format, 0);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to resize swapchain buffers.");
+			LOG_ERROR("D3D11_Device::SetResolution: Failed to resize swapchain buffers.");
 			return false;
 		}
 		//==================================================================
@@ -554,7 +554,7 @@ namespace Directus
 		result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&backBuffer));
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to get pointer to the swapchain's back buffer.");
+			LOG_ERROR("D3D11_Device::SetResolution: Failed to get pointer to the swapchain's back buffer.");
 			return false;
 		}
 
@@ -562,7 +562,7 @@ namespace Directus
 		SafeRelease(backBuffer);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create render target view.");
+			LOG_ERROR("D3D11_Device::SetResolution: Failed to create render target view.");
 			return false;
 		}
 		//====================================================================
@@ -619,11 +619,11 @@ namespace Directus
 
 		if (!m_deviceContext)
 		{
-			LOG_ERROR("D3D11Graphics::SetPrimitiveTopology: Device context is uninitialized");
+			LOG_ERROR("D3D11_Device::SetPrimitiveTopology: Device context is uninitialized");
 			return false;
 		}
 
-		// Ser primitive topology
+		// Set primitive topology
 		m_deviceContext->IASetPrimitiveTopology(d3d11_primitive_topology[primitiveTopology]);
 		return true;
 	}
@@ -635,7 +635,7 @@ namespace Directus
 
 		if (!m_deviceContext)
 		{
-			LOG_WARNING("D3D11Graphics::SetCullMode: Device context is uninitialized.");
+			LOG_WARNING("D3D11_Device::SetCullMode: Device context is uninitialized.");
 			return false;
 		}
 
@@ -701,7 +701,7 @@ namespace Directus
 
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create swap chain, device and device context.");
+			LOG_ERROR("D3D11_Device::CreateDeviceAndSwapChain: Failed to create swap chain, device and device context.");
 			return false;
 		}
 
@@ -712,7 +712,7 @@ namespace Directus
 	{
 		if (!m_device)
 		{
-			LOG_ERROR("Aborting rasterizer state creation, device is not present");
+			LOG_ERROR("D3D11_Device::CreateRasterizerState: Aborting rasterizer state creation, device is not present");
 			return false;
 		}
 
@@ -732,7 +732,7 @@ namespace Directus
 
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to rasterizer state.");
+			LOG_ERROR("D3D11_Device::CreateRasterizerState: Failed to rasterizer state.");
 			return false;
 		}
 
@@ -802,7 +802,7 @@ namespace Directus
 		HRESULT result = adapter->GetDesc(&adapterDesc);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to get adapter description.");
+			LOG_ERROR("D3D11_Device::GetAdapterDescription: Failed to get adapter description.");
 			return NOT_ASSIGNED;
 		}
 

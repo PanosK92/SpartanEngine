@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES ===========================
 #include "D3D11_ConstantBuffer.h"
 #include "../Backend_Imp.h"
 #include "../../../Logging/Log.h"
-//===============================
+#include "../../../Profiling/Profiler.h"
+//======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -95,6 +96,8 @@ namespace Directus
 
 		// re-enable GPU access to the vertex buffer data.
 		m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
+
+		Profiler::Get().m_bindUniformBufferCount++;
 
 		return true;
 	}

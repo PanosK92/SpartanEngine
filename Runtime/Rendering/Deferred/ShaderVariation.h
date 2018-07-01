@@ -59,12 +59,12 @@ namespace Directus
 
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
-		void Set();
-		void UpdatePerFrameBuffer(Camera* camera);
-		void UpdatePerMaterialBuffer(Material* material);
-		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
-		void UpdateTextures(const std::vector<void*>& textureArray);
-		void Render(int indexCount);
+		void Bind();
+		void Bind_PerFrameBuffer(Camera* camera);
+		void Bind_PerMaterialBuffer(Material* material);
+		void Bind_PerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
+		void Bind_Textures(const std::vector<void*>& textureArray);
+		void Render(unsigned int indexCount, unsigned int indexOffset = 0, unsigned int vertexOffset = 0);
 
 		unsigned long GetShaderFlags()	{ return m_shaderFlags; }
 		bool HasAlbedoTexture()			{ return m_shaderFlags & Variaton_Albedo; }

@@ -47,15 +47,9 @@ using namespace Directus;
 
 Editor::Editor()
 {
-	m_context = nullptr;
-	m_graphics = nullptr;
-	m_widgets.emplace_back(make_unique<Widget_MenuBar>());
-	m_widgets.emplace_back(make_unique<Widget_Toolbar>());
-	m_widgets.emplace_back(make_unique<Widget_Properties>());
-	m_widgets.emplace_back(make_unique<Widget_Console>());
-	m_widgets.emplace_back(make_unique<Widget_Scene>());
-	m_widgets.emplace_back(make_unique<Widget_Assets>());
-	m_widgets.emplace_back(make_unique<Widget_Viewport>());
+	m_context		= nullptr;
+	m_graphics		= nullptr;
+	m_initialized	= false;
 }
 
 Editor::~Editor()
@@ -67,6 +61,20 @@ void Editor::Initialize(Context* context, void* windowHandle)
 {
 	m_context	= context;
 	m_graphics	= context->GetSubsystem<RenderingDevice>();
+
+	if (!m_graphics->GetDevice() || !m_graphics->GetDeviceContext())
+	{
+		LOG_ERROR("Editor::Initialize: Rendering device is null");
+		return;
+	}
+
+	m_widgets.emplace_back(make_unique<Widget_MenuBar>());
+	m_widgets.emplace_back(make_unique<Widget_Toolbar>());
+	m_widgets.emplace_back(make_unique<Widget_Properties>());
+	m_widgets.emplace_back(make_unique<Widget_Console>());
+	m_widgets.emplace_back(make_unique<Widget_Scene>());
+	m_widgets.emplace_back(make_unique<Widget_Assets>());
+	m_widgets.emplace_back(make_unique<Widget_Viewport>());
 
 	// ImGui implementation - initialize
 	IMGUI_CHECKVERSION();
@@ -83,6 +91,8 @@ void Editor::Initialize(Context* context, void* windowHandle)
 	{
 		widget->Initialize(context);
 	}
+
+	m_initialized = true;
 }
 
 void Editor::Resize()
@@ -93,6 +103,9 @@ void Editor::Resize()
 
 void Editor::Update()
 {	
+	if (!m_initialized)
+		return;
+
 	// ImGui implementation - start frame
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -111,6 +124,9 @@ void Editor::Update()
 
 void Editor::Shutdown()
 {
+	if (!m_initialized)
+		return;
+
 	m_widgets.clear();
 	m_widgets.shrink_to_fit();
 

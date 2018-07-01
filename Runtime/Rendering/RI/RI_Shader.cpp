@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Scene/Components/Light.h"
 #include "../../Scene/Components/Camera.h"
+#include "../ShadowCascades.h"
 //========================================
 
 //= NAMESPACES ================
@@ -40,7 +41,7 @@ namespace Directus
 {
 	RI_Shader::RI_Shader(Context* context)
 	{
-		m_graphics		= context->GetSubsystem<RenderingDevice>();
+		m_renderingDevice		= context->GetSubsystem<RenderingDevice>();
 		m_bufferType	= CB_Matrix;
 		m_bufferScope	= VertexShader;
 	}
@@ -52,7 +53,7 @@ namespace Directus
 
 	void RI_Shader::Compile(const string& filePath)
 	{
-		if (!m_graphics)
+		if (!m_renderingDevice)
 		{
 			LOG_WARNING("RI_Shader: Uninitialized graphics, can't load shader.");
 			return;
@@ -60,7 +61,7 @@ namespace Directus
 
 		if (!m_shader)
 		{
-			m_shader = make_unique<D3D11_Shader>(m_graphics);
+			m_shader = make_unique<D3D11_Shader>(m_renderingDevice);
 		}
 
 		m_shader->Compile(filePath);
@@ -70,7 +71,7 @@ namespace Directus
 	{
 		if (!m_shader)
 		{
-			m_shader = make_unique<D3D11_Shader>(m_graphics);
+			m_shader = make_unique<D3D11_Shader>(m_renderingDevice);
 		}
 
 		m_shader->AddDefine(define, "1");
@@ -81,7 +82,7 @@ namespace Directus
 		m_bufferType = bufferType;
 		m_bufferScope = bufferScope;
 
-		m_constantBuffer = make_unique<D3D11_ConstantBuffer>(m_graphics);
+		m_constantBuffer = make_unique<D3D11_ConstantBuffer>(m_renderingDevice);
 
 		switch (m_bufferType)
 		{
@@ -113,26 +114,29 @@ namespace Directus
 	{
 		if (!m_shader)
 		{
-			LOG_WARNING("RI_Shader: Can't add sampler to uninitialized shader.");
+			LOG_WARNING("RI_Shader::AddSampler: Uninitialized shader.");
 			return false;
 		}
 
 		return m_shader->AddSampler(filter, addressMode, comparisonFunc);
 	}
 
-	void RI_Shader::Set()
+	bool RI_Shader::Bind()
 	{
 		if (!m_shader)
-			return;
+		{
+			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized shader.");
+			return false;
+		}
 
-		m_shader->Set();
+		return m_shader->Bind();
 	}
 
 	void RI_Shader::SetInputLaytout(InputLayout inputLayout)
 	{
 		if (!m_shader)
 		{
-			LOG_WARNING("RI_Shader: Can't set input layout for uninitialized shader.");
+			LOG_WARNING("RI_Shader::SetInputLaytout: Uninitialized shader.");
 			return;
 		}
 
@@ -141,30 +145,30 @@ namespace Directus
 
 	void RI_Shader::SetTexture(void* texture, unsigned int slot)
 	{
-		if (!m_graphics)
+		if (!m_renderingDevice)
 			return;
 
 		auto id3d11Srv = (ID3D11ShaderResourceView*)texture;
-		m_graphics->GetDeviceContext()->PSSetShaderResources(slot, 1, &id3d11Srv);
+		m_renderingDevice->GetDeviceContext()->PSSetShaderResources(slot, 1, &id3d11Srv);
 	}
 
 	void RI_Shader::SetTextures(vector<void*> textures)
 	{
-		if (!m_graphics)
+		if (!m_renderingDevice)
 			return;
 
-		auto ptr = (ID3D11ShaderResourceView**)textures.data();
-		unsigned int length = (unsigned int)textures.size();
-		auto tex = vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
+		auto ptr	= (ID3D11ShaderResourceView**)textures.data();
+		auto length = (unsigned int)textures.size();
+		auto tex	= vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
 
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
+		m_renderingDevice->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
 	}
 
-	void RI_Shader::SetBuffer(const Math::Matrix& matrix, unsigned int slot)
+	void RI_Shader::Bind_Buffer(const Math::Matrix& matrix, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
-			LOG_WARNING("RI_Shader: Can't map uninitialized buffer.");
+			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer");
 			return;
 		}
 
@@ -177,11 +181,11 @@ namespace Directus
 		SetBufferScope(m_constantBuffer.get(), slot);
 	}
 
-	void RI_Shader::SetBuffer(const Matrix& matrix, const Vector4& vector, unsigned int slot)
+	void RI_Shader::Bind_Buffer(const Matrix& matrix, const Vector4& vector, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
-			LOG_WARNING("RI_Shader: Can't map uninitialized buffer.");
+			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
 			return;
 		}
 
@@ -198,11 +202,11 @@ namespace Directus
 		SetBufferScope(m_constantBuffer.get(), slot);
 	}
 
-	void RI_Shader::SetBuffer(const Matrix& matrix, const Math::Vector3& vector3, unsigned int slot)
+	void RI_Shader::Bind_Buffer(const Matrix& matrix, const Math::Vector3& vector3, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
-			LOG_WARNING("RI_Shader: Can't map uninitialized buffer.");
+			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
 			return;
 		}
 
@@ -220,11 +224,11 @@ namespace Directus
 		SetBufferScope(m_constantBuffer.get(), slot);
 	}
 
-	void RI_Shader::SetBuffer(const Matrix& matrix, const Vector2& vector2, unsigned slot)
+	void RI_Shader::Bind_Buffer(const Matrix& matrix, const Vector2& vector2, unsigned slot)
 	{
 		if (!m_constantBuffer)
 		{
-			LOG_WARNING("RI_Shader: Can't map uninitialized buffer.");
+			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
 			return;
 		}
 
@@ -242,16 +246,16 @@ namespace Directus
 		SetBufferScope(m_constantBuffer.get(), slot);
 	}
 
-	void RI_Shader::SetBuffer(const Matrix& mWVPortho, const Matrix& mWVPinv, const Matrix& mView, const Matrix& mProjection, const Vector2& resolution, Light* dirLight, Camera* camera, unsigned slot)
+	void RI_Shader::Bind_Buffer(const Matrix& mWVPortho, const Matrix& mWVPinv, const Matrix& mView, const Matrix& mProjection, const Vector2& resolution, Light* dirLight, Camera* camera, unsigned slot)
 	{
 		if (!m_constantBuffer)
 		{
-			LOG_WARNING("RI_Shader: Can't map uninitialized buffer.");
+			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
 			return;
 		}
 
 		// Get a pointer of the buffer
-		auto buffer = static_cast<Struct_Shadowing*>(m_constantBuffer->Map());
+		auto buffer = (Struct_Shadowing*)m_constantBuffer->Map();
 
 		// Fill the buffer
 		buffer->wvpOrtho				= mWVPortho;
@@ -259,12 +263,15 @@ namespace Directus
 		buffer->view					= mView;
 		buffer->projection				= mProjection;
 		buffer->projectionInverse		= mProjection.Inverted();
-		buffer->mLightViewProjection[0] = dirLight->GetViewMatrix() * dirLight->GetOrthographicProjectionMatrix(0);
-		buffer->mLightViewProjection[1] = dirLight->GetViewMatrix() * dirLight->GetOrthographicProjectionMatrix(1);
-		buffer->mLightViewProjection[2] = dirLight->GetViewMatrix() * dirLight->GetOrthographicProjectionMatrix(2);
-		buffer->shadowSplits			= Vector4(dirLight->GetShadowCascadeSplit(1), dirLight->GetShadowCascadeSplit(2), 0, 0);
+
+		auto mLightView = dirLight->ComputeViewMatrix();
+		buffer->mLightViewProjection[0] = mLightView * dirLight->GetShadowCascades()->ComputeProjectionMatrix(0);
+		buffer->mLightViewProjection[1] = mLightView * dirLight->GetShadowCascades()->ComputeProjectionMatrix(1);
+		buffer->mLightViewProjection[2] = mLightView * dirLight->GetShadowCascades()->ComputeProjectionMatrix(2);
+
+		buffer->shadowSplits			= Vector4(dirLight->GetShadowCascades()->GetSplit(1), dirLight->GetShadowCascades()->GetSplit(2), 0, 0);
 		buffer->lightDir				= dirLight->GetDirection();
-		buffer->shadowMapResolution		= (float)dirLight->GetShadowCascadeResolution();
+		buffer->shadowMapResolution		= (float)dirLight->GetShadowCascades()->GetResolution();
 		buffer->resolution				= resolution;
 		buffer->nearPlane				= camera->GetNearPlane();
 		buffer->farPlane				= camera->GetFarPlane();
@@ -277,18 +284,18 @@ namespace Directus
 		SetBufferScope(m_constantBuffer.get(), slot);
 	}
 
-	void RI_Shader::SetBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, unsigned int slot)
+	void RI_Shader::Bind_Buffer(const Matrix& m1, const Matrix& m2, const Matrix& m3, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
-			LOG_WARNING("RI_Shader: Can't map uninitialized buffer.");
+			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
 			return;
 		}
 
 		auto buffer = static_cast<Struct_Matrix_Matrix_Matrix*>(m_constantBuffer->Map());
-		buffer->matrixA = mWorld;
-		buffer->matrixB = mView;
-		buffer->matrixC = mProjection;
+		buffer->m1 = m1;
+		buffer->m2 = m2;
+		buffer->m3 = m3;
 
 		// Unmap buffer
 		m_constantBuffer->Unmap();
@@ -296,11 +303,11 @@ namespace Directus
 		SetBufferScope(m_constantBuffer.get(), slot);
 	}
 
-	void RI_Shader::SetBuffer(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B, unsigned int slot)
+	void RI_Shader::Bind_Buffer(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
-			LOG_WARNING("RI_Shader: Can't map uninitialized buffer.");
+			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
 			return;
 		}
 
@@ -308,11 +315,11 @@ namespace Directus
 		auto buffer = static_cast<Struct_Matrix_Vector3_Vector3*>(m_constantBuffer->Map());
 
 		// Fill the buffer
-		buffer->matrix = matrix;
-		buffer->vector3A = vector3A;
-		buffer->padding = 0.0f;
-		buffer->vector3B = vector3B;
-		buffer->padding2 = 0.0f;
+		buffer->matrix		= matrix;
+		buffer->vector3A	= vector3A;
+		buffer->padding		= 0.0f;
+		buffer->vector3B	= vector3B;
+		buffer->padding2	= 0.0f;
 
 		// Unmap buffer
 		m_constantBuffer->Unmap();
@@ -322,18 +329,18 @@ namespace Directus
 
 	void RI_Shader::Draw(unsigned int vertexCount)
 	{
-		if (!m_graphics)
+		if (!m_renderingDevice)
 			return;
 
-		m_graphics->GetDeviceContext()->Draw(vertexCount, 0);
+		m_renderingDevice->GetDeviceContext()->Draw(vertexCount, 0);
 	}
 
-	void RI_Shader::DrawIndexed(unsigned int indexCount)
+	void RI_Shader::DrawIndexed(unsigned int indexCount, unsigned int indexOffset /*= 0 */, unsigned int vertexOffset /*= 0 */)
 	{
-		if (!m_graphics)
+		if (!m_renderingDevice)
 			return;
 
-		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+		m_renderingDevice->GetDeviceContext()->DrawIndexed(indexCount, indexOffset, vertexOffset);
 	}
 
 	void RI_Shader::SetBufferScope(D3D11_ConstantBuffer* buffer, unsigned int slot)
