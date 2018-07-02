@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum Thumbnail_Type
 {
-	Thumbnail_Custom,
 	Icon_Component_Options,
 	Icon_Component_AudioListener,
 	Icon_Component_AudioSource,
@@ -45,12 +44,22 @@ enum Thumbnail_Type
 	Icon_Console_Info,
 	Icon_Console_Warning,
 	Icon_Console_Error,	
+	Icon_Button_Play,
+	Thumbnail_Custom,
 	Thumbnail_Folder,
 	Thumbnail_File_Audio,
 	Thumbnail_File_Scene,
 	Thumbnail_File_Model,
 	Thumbnail_File_Default,
-	Icon_Button_Play
+	Thumbnail_File_Material,
+	Thumbnail_File_Shader,
+	Thumbnail_File_Xml,
+	Thumbnail_File_Dll,
+	Thumbnail_File_Txt,
+	Thumbnail_File_Ini,
+	Thumbnail_File_Exe,
+	Thumbnail_File_Script,
+	Thumbnail_File_Font
 };
 
 namespace Directus
@@ -74,11 +83,11 @@ struct Thumbnail
 	std::string filePath;
 };
 
-class ThumbnailProvider
+class IconProvider
 {
 public:
-	ThumbnailProvider();
-	~ThumbnailProvider();
+	IconProvider();
+	~IconProvider();
 
 	void Initialize(Directus::Context* context);
 
@@ -97,9 +106,9 @@ public:
 	const Thumbnail& Thumbnail_Load(const std::string& filePath, Thumbnail_Type type = Thumbnail_Custom, int size = 100);
 	//==============================================================================================================
 
-	 static ThumbnailProvider& Get()
+	 static IconProvider& Get()
      {
-         static ThumbnailProvider instance;
+         static IconProvider instance;
          return instance;
      }
 
@@ -107,5 +116,4 @@ private:
 	const Thumbnail& GetThumbnailByType(Thumbnail_Type type);
 	std::vector<Thumbnail> m_thumbnails;
 	Directus::Context* m_context;
-
 };

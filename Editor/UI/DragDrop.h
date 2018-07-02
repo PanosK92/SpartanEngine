@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../ImGui/Source/imgui.h"
 #include "EditorHelper.h"
-#include "ThumbnailProvider.h"
+#include "IconProvider.h"
 #include <variant>
 //================================
 

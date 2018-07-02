@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Assets.h"
 #include "UI/Widgets/Widget_Viewport.h"
 #include "UI/Widgets/Widget_Toolbar.h"
-#include "UI/ThumbnailProvider.h"
+#include "UI/IconProvider.h"
 #include "UI/EditorHelper.h"
 #include "Rendering/RI/Backend_Def.h"
 #include "Rendering/RI/Backend_Imp.h"
@@ -82,7 +82,7 @@ void Editor::Initialize(Context* context, void* windowHandle)
 	ImGui_ImplWin32_Init(windowHandle);
 	ImGui_ImplDX11_Init(m_graphics->GetDevice(), m_graphics->GetDeviceContext());
 
-	ThumbnailProvider::Get().Initialize(context);
+	IconProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);
 	Settings::Get().m_versionImGui = IMGUI_VERSION;
 	ApplyStyle();
