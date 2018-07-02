@@ -62,7 +62,10 @@ namespace Directus
 		Render_PickingRay			= 1UL << 6,
 		Render_SceneGrid			= 1UL << 7,
 		Render_PerformanceMetrics	= 1UL << 8,
-		Render_Light				= 1UL << 9
+		Render_Light				= 1UL << 9,
+		Render_Bloom				= 1UL << 10,
+		Render_FXAA					= 1UL << 11,
+		Render_Sharpening			= 1UL << 12
 	};
 
 	class ENGINE_CLASS Renderer : public Subsystem
@@ -92,15 +95,15 @@ namespace Directus
 
 		//= RENDER MODE ======================================================================
 		// Returns all render mode flags
-		static unsigned long RenderMode_GetAll()					{ return m_flags; }
+		static unsigned long RenderFlags_GetAll()					{ return m_flags; }
 		// Set's all render mode flags
-		static void RenderMode_SetAll(unsigned long renderFlags)	{ m_flags = renderFlags; }
+		static void RenderFlags_SetAll(unsigned long renderFlags)	{ m_flags = renderFlags; }
 		// Enables an render mode flag
-		static void RenderMode_Enable(RenderMode flag)				{ m_flags |= flag; }
+		static void RenderFlags_Enable(RenderMode flag)				{ m_flags |= flag; }
 		// Removes an render mode flag
-		static void RenderMode_Disable(RenderMode flag)				{ m_flags &= ~flag; }
+		static void RenderFlags_Disable(RenderMode flag)			{ m_flags &= ~flag; }
 		// Returns whether render mode flag is set
-		static bool RenderMode_IsSet(RenderMode flag)				{ return m_flags & flag; }
+		static bool RenderFlags_IsSet(RenderMode flag)				{ return m_flags & flag; }
 		//====================================================================================
 
 		void Clear();

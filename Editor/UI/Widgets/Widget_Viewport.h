@@ -37,5 +37,4 @@ private:
 	void ShowTopToolbar();
 	void ShowFrame();
 	void MousePicking();
-	void SetRenderFlags();
 };
