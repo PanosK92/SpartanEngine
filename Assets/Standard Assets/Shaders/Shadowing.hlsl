@@ -69,9 +69,9 @@ float2 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float3 positionWS 	= ReconstructPositionWorld(depthVS, mViewProjectionInverse, texCoord);
 	
 	
-	//== SSAO =================================
+	//== SSAO =============================================
 	float ssao = SSAO(texCoord, samplerLinear);
-	//=========================================
+	//=====================================================
 	
 	//= SHADOW MAPPING ===========================================================================	
 	float shadow = 1.0f;

@@ -87,10 +87,10 @@ float doAmbientOcclusion(float2 texCoord, float3 position, float3 normal, Sample
 	float3 sampledPos 	= GetPositionWorldFromDepth(texDepth, samplerState, mViewProjectionInverse, texCoord);
 	float3 diff 		= sampledPos - originPos;
 	 
-	float3 v = normalize(diff);
-	float d = length(diff) * noiseScale;
-	float occlusion = max(0.0f, dot(normal, v) - bias) * (1.0f / (1.0f + d));
-    float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(originPos - sampledPos));
+	float3 v 			= normalize(diff);
+	float d 			= length(diff) * noiseScale;
+	float occlusion		= max(0.0f, dot(normal, v) - bias) * (1.0f / (1.0f + d));
+    float rangeCheck 	= smoothstep(0.0f, 1.0f, radius / abs(originPos - sampledPos));
 	
 	return occlusion * rangeCheck;
 }
@@ -110,9 +110,7 @@ float SSAO(float2 texCoord, SamplerState samplerState)
 		float2 coord1 = reflect(sampleKernel[i], randNormal) * radius_depth;
 		float2 coord2 = float2(coord1.x - coord1.y, coord1.x + coord1.y);
 
-		//if(dot(normal, randNormal) < 0.0f)
-            //randNor *= -1.0;
-			
+
 		float acc = 0.0f;
 		acc += doAmbientOcclusion(texCoord + coord1 * 0.25f, position, normal, samplerState);
 		acc += doAmbientOcclusion(texCoord + coord2 * 0.5f, position, normal, samplerState);

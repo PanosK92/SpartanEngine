@@ -240,8 +240,8 @@ namespace Directus
 			m_shaderShadowing = make_unique<RI_Shader>(m_context);
 			m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
 			m_shaderShadowing->SetInputLaytout(PositionTexture);
-			m_shaderShadowing->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp); // Shadow mapping
-			m_shaderShadowing->AddSampler(Texture_Sampler_Linear, Texture_Address_Clamp); // SSAO
+			m_shaderShadowing->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp, Texture_Comparison_Greater); // Shadow mapping
+			m_shaderShadowing->AddSampler(Texture_Sampler_Linear, Texture_Address_Clamp, Texture_Comparison_Greater); // SSAO
 			m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 		}
 
@@ -729,7 +729,7 @@ namespace Directus
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Specular));
 		m_texArray.emplace_back(inTextureShadowing);
-		m_texArray.emplace_back(nullptr); // previous frame for SSR
+		m_texArray.emplace_back(m_renderTexPong->GetShaderResourceView()); // previous frame for SSR
 		m_texArray.emplace_back(m_skybox ? m_skybox->GetShaderResource() : nullptr);
 
 		m_shaderLight->UpdateTextures(m_texArray);

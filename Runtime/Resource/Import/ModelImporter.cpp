@@ -73,7 +73,7 @@ namespace Directus
 			aiProcess_Debone |
 			aiProcess_ConvertToLeftHanded;
 
-		static int g_normalSmoothAngle = 80; // Default is 45, max is 175
+		static int g_normalSmoothAngle = 45; // Default is 45, max is 175
 	}
 
 
