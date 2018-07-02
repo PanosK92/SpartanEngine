@@ -75,6 +75,9 @@ namespace Directus
 		m_flags						= 0;
 		m_flags						|= Render_SceneGrid;
 		m_flags						|= Render_Light;
+		m_flags						|= Render_Bloom;
+		m_flags						|= Render_FXAA;
+		m_flags						|= Render_Sharpening;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
@@ -750,9 +753,12 @@ namespace Directus
 		m_graphics->SetCullMode(CullBack);
 
 		// BLOOM
-		Pass_Bloom(inRenderTexture1, inRenderTexture2, outRenderTexture);
+		if (RenderFlags_IsSet(Render_Bloom))
+		{
+			Pass_Bloom(inRenderTexture1, inRenderTexture2, outRenderTexture);
 
-		outRenderTexture.swap(inRenderTexture1);
+			outRenderTexture.swap(inRenderTexture1);
+		}
 
 		// CORRECTION (Gamma, Tone-mapping)
 		Pass_Correction(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
@@ -761,12 +767,18 @@ namespace Directus
 		outRenderTexture.swap(inRenderTexture1);
 
 		// FXAA
-		Pass_FXAA(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+		if (RenderFlags_IsSet(Render_FXAA))
+		{
+			Pass_FXAA(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
 
-		outRenderTexture.swap(inRenderTexture1);	
+			outRenderTexture.swap(inRenderTexture1);
+		}
 
 		// SHARPENING
-		Pass_Sharpening(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+		if (RenderFlags_IsSet(Render_Sharpening))
+		{
+			Pass_Sharpening(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+		}
 
 		Pass_DebugGBuffer();
 		Pass_Debug();
@@ -780,10 +792,10 @@ namespace Directus
 		PROFILE_FUNCTION_BEGIN();
 		m_graphics->EventBegin("Pass_DebugGBuffer");
 
-		bool albedo		= RenderMode_IsSet(Render_Albedo);
-		bool normal		= RenderMode_IsSet(Render_Normal);
-		bool specular	= RenderMode_IsSet(Render_Specular);
-		bool depth		= RenderMode_IsSet(Render_Depth);
+		bool albedo		= RenderFlags_IsSet(Render_Albedo);
+		bool normal		= RenderFlags_IsSet(Render_Normal);
+		bool specular	= RenderFlags_IsSet(Render_Specular);
+		bool depth		= RenderFlags_IsSet(Render_Depth);
 
 		if (!albedo && !normal && !specular && !depth)
 		{

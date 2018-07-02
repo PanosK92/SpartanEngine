@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "Profiling/Profiler.h"
+#include "Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES ==========
@@ -39,9 +40,21 @@ static bool g_showStyleEditor		= false;
 static bool g_fileDialogVisible		= false;
 static bool g_showResourceCache		= false;
 static bool g_showProfiler			= false;
+static bool g_showRendererOptions	= false;
 static string g_fileDialogSelection;
 ResourceManager* g_resourceManager	= nullptr;
 Scene* g_scene						= nullptr;
+
+const char* g_rendererViews[] =
+{
+	"Default",
+	"Albedo",
+	"Normal",
+	"Specular",
+	"Depth"
+};
+static int g_rendererViewInt = 0;
+static const char* g_rendererView = g_rendererViews[g_rendererViewInt];
 
 Widget_MenuBar::Widget_MenuBar()
 {
@@ -98,6 +111,7 @@ void Widget_MenuBar::Update()
 			ImGui::MenuItem("Style", nullptr, &g_showStyleEditor);
 			ImGui::MenuItem("Resource Cache Viewer", nullptr, &g_showResourceCache);
 			ImGui::MenuItem("Profiler", nullptr, &g_showProfiler);
+			ImGui::MenuItem("Renderer Options", nullptr, &g_showRendererOptions);
 			ImGui::EndMenu();
 		}
 
@@ -110,19 +124,13 @@ void Widget_MenuBar::Update()
 		ImGui::EndMainMenuBar();
 	}
 
-	if (g_showMetricsWindow)
-	{
-		ImGui::ShowMetricsWindow();
-	}
-	if (g_showStyleEditor)
-	{
-		ImGui::ShowStyleEditor();
-	}
-
+	if (g_showMetricsWindow)	ImGui::ShowMetricsWindow();
+	if (g_showStyleEditor)		ImGui::ShowStyleEditor();
 	if (g_fileDialogVisible)	ShowFileDialog();
 	if (g_showAboutWindow)		ShowAboutWindow();
 	if (g_showResourceCache)	ShowResourceCache();
 	if (g_showProfiler)			ShowProfiler();
+	if (g_showRendererOptions)	ShowRendererOptions();
 }
 
 void Widget_MenuBar::ShowFileDialog()
@@ -290,6 +298,92 @@ void Widget_MenuBar::ShowProfiler()
 		ImGui::Text("%f ms", block.second.duration); ImGui::NextColumn();	
 	}
 	ImGui::Columns(1);
+
+	ImGui::End();
+}
+
+void Widget_MenuBar::ShowRendererOptions()
+{
+	ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_Always);
+	ImGui::Begin("Renderer Options", &g_showRendererOptions, ImGuiWindowFlags_NoResize);
+	float posX = 100.0f;
+
+	bool bloom		= Renderer:: RenderFlags_IsSet(Render_Bloom);
+	bool fxaa		= Renderer:: RenderFlags_IsSet(Render_FXAA);
+	bool sharpening	= Renderer:: RenderFlags_IsSet(Render_Sharpening);
+
+	// Bloom
+	ImGui::Text("Bloom");
+	ImGui::SameLine(posX); ImGui::Checkbox("##rendererBloom", &bloom);
+
+	// FXAA
+	ImGui::Text("FXAA");
+	ImGui::SameLine(posX); ImGui::Checkbox("##rendererFXAA", &fxaa);
+
+	// FXAA
+	ImGui::Text("Sharpening");
+	ImGui::SameLine(posX); ImGui::Checkbox("##rendererSharpening", &sharpening);
+
+	// G-Buffer Visualization
+	ImGui::Text("G-Buffer");
+	ImGui::SameLine(posX); if (ImGui::BeginCombo("##rendererGBuffer", g_rendererView))
+	{
+		for (int i = 0; i < IM_ARRAYSIZE(g_rendererViews); i++)
+		{
+			bool is_selected = (g_rendererView == g_rendererViews[i]);
+			if (ImGui::Selectable(g_rendererViews[i], is_selected))
+			{
+				g_rendererView = g_rendererViews[i];
+				g_rendererViewInt = i;
+			}
+			if (is_selected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
+
+	bloom		? Renderer:: RenderFlags_Enable(Render_Bloom)		: Renderer:: RenderFlags_Disable(Render_Bloom);
+	fxaa		? Renderer:: RenderFlags_Enable(Render_FXAA)		: Renderer:: RenderFlags_Disable(Render_FXAA);
+	sharpening	? Renderer:: RenderFlags_Enable(Render_Sharpening)	: Renderer:: RenderFlags_Disable(Render_Sharpening);
+
+	// G-buffer
+	if (g_rendererViewInt == 0) // Combined
+	{
+		Renderer::RenderFlags_Disable(Render_Albedo);
+		Renderer::RenderFlags_Disable(Render_Normal);
+		Renderer::RenderFlags_Disable(Render_Specular);
+		Renderer::RenderFlags_Disable(Render_Depth);
+	}
+	else if (g_rendererViewInt == 1) // Albedo
+	{
+		Renderer::RenderFlags_Enable(Render_Albedo);
+		Renderer::RenderFlags_Disable(Render_Normal);
+		Renderer::RenderFlags_Disable(Render_Specular);
+		Renderer::RenderFlags_Disable(Render_Depth);
+	}
+	else if (g_rendererViewInt == 2) // Normal
+	{
+		Renderer::RenderFlags_Disable(Render_Albedo);
+		Renderer::RenderFlags_Enable(Render_Normal);
+		Renderer::RenderFlags_Disable(Render_Specular);
+		Renderer::RenderFlags_Disable(Render_Depth);
+	}
+	else if (g_rendererViewInt == 3) // Specular
+	{
+		Renderer::RenderFlags_Disable(Render_Albedo);
+		Renderer::RenderFlags_Disable(Render_Normal);
+		Renderer::RenderFlags_Enable(Render_Specular);
+		Renderer::RenderFlags_Disable(Render_Depth);
+	}
+	else if (g_rendererViewInt == 4) // Depth
+	{
+		Renderer::RenderFlags_Disable(Render_Albedo);
+		Renderer::RenderFlags_Disable(Render_Normal);
+		Renderer::RenderFlags_Disable(Render_Specular);
+		Renderer::RenderFlags_Enable(Render_Depth);
+	}
 
 	ImGui::End();
 }

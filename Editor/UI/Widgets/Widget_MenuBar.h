@@ -45,6 +45,7 @@ private:
 	// DEBUG
 	void ShowResourceCache();
 	void ShowProfiler();
+	void ShowRendererOptions();
 
 	std::unique_ptr<FileDialog> m_fileDialog;
 };

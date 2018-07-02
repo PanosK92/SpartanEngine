@@ -66,7 +66,6 @@ private:
 	void ShowAudioListener(Directus::AudioListener* audioListener);
 	void ShowScript(Directus::Script* script);
 
-	void ComponentContextMenu_Options(const char* id, Directus::IComponent* component);
 	void ShowAddComponentButton();
 	void ComponentContextMenu_Add();
 };

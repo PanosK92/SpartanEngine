@@ -48,17 +48,6 @@ static bool g_pickingRay			= false;
 static bool g_grid					= true;
 static bool g_performanceMetrics	= false;
 
-const char* g_rendererViews[] =
-{
-	"Default",
-	"Albedo",
-	"Normal",
-	"Specular",
-	"Depth"
-};
-static int g_rendererViewInt		= 0;
-static const char* g_rendererView	= g_rendererViews[g_rendererViewInt];
-
 Widget_Viewport::Widget_Viewport()
 {
 	m_title = "Viewport";
@@ -92,29 +81,12 @@ void Widget_Viewport::ShowTopToolbar()
 	ImGui::SameLine(); ImGui::Checkbox("Scene Grid", &g_grid);
 	ImGui::SameLine(); ImGui::Checkbox("Performance Metrics", &g_performanceMetrics);
 
-	// G-Buffer Visualization
-	ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetWindowSize().x - 145); ImGui::Text("G-Buffer");
-	ImGui::PushItemWidth(80);
-	ImGui::SameLine(); if (ImGui::BeginCombo("##RendererConfig", g_rendererView))
-	{
-		for (int i = 0; i < IM_ARRAYSIZE(g_rendererViews); i++)
-		{
-			bool is_selected = (g_rendererView == g_rendererViews[i]);
-			if (ImGui::Selectable(g_rendererViews[i], is_selected))
-			{
-				g_rendererView = g_rendererViews[i];
-				g_rendererViewInt = i;
-			}
-			if (is_selected)
-			{
-				ImGui::SetItemDefaultFocus();
-			}
-		}
-		ImGui::EndCombo();
-	}
-	ImGui::PopItemWidth();
-
-	SetRenderFlags();
+	g_physics				? Renderer::RenderFlags_Enable(Render_Physics)			: Renderer::RenderFlags_Disable(Render_Physics);
+	g_aabb					? Renderer::RenderFlags_Enable(Render_AABB)				: Renderer::RenderFlags_Disable(Render_AABB);
+	g_gizmos				? Renderer::RenderFlags_Enable(Render_Light)			: Renderer::RenderFlags_Disable(Render_Light);
+	g_pickingRay			? Renderer::RenderFlags_Enable(Render_PickingRay)		: Renderer::RenderFlags_Disable(Render_PickingRay);
+	g_grid					? Renderer::RenderFlags_Enable(Render_SceneGrid)			: Renderer::RenderFlags_Disable(Render_SceneGrid);
+	g_performanceMetrics	? Renderer::RenderFlags_Enable(Render_PerformanceMetrics)	: Renderer::RenderFlags_Disable(Render_PerformanceMetrics);
 }
 
 void Widget_Viewport::ShowFrame()
@@ -133,7 +105,7 @@ void Widget_Viewport::ShowFrame()
 		ImColor(255, 255, 255, 255),
 		ImColor(50, 127, 166, 255)
 	);
-	// Hande model drop
+	// Handle model drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Model))
 	{
 		EditorHelper::Get().LoadModel(get<string>(payload->data));
@@ -160,51 +132,4 @@ void Widget_Viewport::MousePicking()
 	}
 
 	Widget_Scene::SetSelectedActor(weak_ptr<Actor>());
-}
-void Widget_Viewport::SetRenderFlags()
-{
-	g_physics				? Renderer::RenderMode_Enable(Render_Physics)				: Renderer::RenderMode_Disable(Render_Physics);		
-	g_aabb					? Renderer::RenderMode_Enable(Render_AABB)					: Renderer::RenderMode_Disable(Render_AABB);	
-	g_gizmos				? Renderer::RenderMode_Enable(Render_Light)					: Renderer::RenderMode_Disable(Render_Light);			
-	g_pickingRay			? Renderer::RenderMode_Enable(Render_PickingRay)			: Renderer::RenderMode_Disable(Render_PickingRay);	
-	g_grid					? Renderer::RenderMode_Enable(Render_SceneGrid)				: Renderer::RenderMode_Disable(Render_SceneGrid);		
-	g_performanceMetrics	? Renderer::RenderMode_Enable(Render_PerformanceMetrics)	: Renderer::RenderMode_Disable(Render_PerformanceMetrics);
-
-	// G-buffer
-	if (g_rendererViewInt == 0) // Combined
-	{
-		Renderer::RenderMode_Disable(Render_Albedo);
-		Renderer::RenderMode_Disable(Render_Normal);		
-		Renderer::RenderMode_Disable(Render_Specular);
-		Renderer::RenderMode_Disable(Render_Depth);
-	}
-	else if (g_rendererViewInt == 1) // Albedo
-	{
-		Renderer::RenderMode_Enable(Render_Albedo);
-		Renderer::RenderMode_Disable(Render_Normal);		
-		Renderer::RenderMode_Disable(Render_Specular);
-		Renderer::RenderMode_Disable(Render_Depth);
-	}
-	else if (g_rendererViewInt == 2) // Normal
-	{
-		Renderer::RenderMode_Disable(Render_Albedo);
-		Renderer::RenderMode_Enable(Render_Normal);		
-		Renderer::RenderMode_Disable(Render_Specular);
-		Renderer::RenderMode_Disable(Render_Depth);
-	}
-	else if (g_rendererViewInt == 3) // Specular
-	{
-		Renderer::RenderMode_Disable(Render_Albedo);
-		Renderer::RenderMode_Disable(Render_Normal);		
-		Renderer::RenderMode_Enable(Render_Specular);
-		Renderer::RenderMode_Disable(Render_Depth);
-	}
-	else if (g_rendererViewInt == 4) // Depth
-	{
-		Renderer::RenderMode_Disable(Render_Albedo);
-		Renderer::RenderMode_Disable(Render_Normal);		
-		Renderer::RenderMode_Disable(Render_Specular);
-		Renderer::RenderMode_Enable(Render_Depth);
-	}
-	
 }
