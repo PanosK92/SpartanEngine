@@ -40,25 +40,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const int BUFFER_TEXT_DEFAULT = 255;
 
 // An icon shader resource pointer by thumbnail id
-#define SHADER_RESOURCE(thumbnail)						ThumbnailProvider::Get().GetShaderResourceByThumbnail(thumbnail)
+#define SHADER_RESOURCE(thumbnail)						IconProvider::Get().GetShaderResourceByThumbnail(thumbnail)
 // An icon shader resource pointer by type 
-#define SHADER_RESOURCE_BY_TYPE(type)					ThumbnailProvider::Get().GetShaderResourceByType(type)
+#define SHADER_RESOURCE_BY_TYPE(type)					IconProvider::Get().GetShaderResourceByType(type)
 // An thumbnail button by thumbnail
 #define THUMBNAIL_BUTTON(thumbnail, size)				ImGui::ImageButton(SHADER_RESOURCE(thumbnail), ImVec2(size, size))
 // An thumbnail button by enum
 #define THUMBNAIL_BUTTON_BY_TYPE(type, size)			ImGui::ImageButton(SHADER_RESOURCE_BY_TYPE(type), ImVec2(size, size))
 // An thumbnail button by enum, with a specific ID
-#define THUMBNAIL_BUTTON_TYPE_UNIQUE_ID(id, type, size)	ThumbnailProvider::Get().ImageButton_enum_id(id, type, size)
+#define THUMBNAIL_BUTTON_TYPE_UNIQUE_ID(id, type, size)	IconProvider::Get().ImageButton_enum_id(id, type, size)
 
 // A thumbnail image
-#define THUMBNAIL_IMAGE(thumbnail, size)								\
-	ImGui::Image(														\
-	ThumbnailProvider::Get().GetShaderResourceByThumbnail(thumbnail),	\
-	ImVec2(size, size),													\
-	ImVec2(0, 0),														\
-	ImVec2(1, 1),														\
-	ImColor(255, 255, 255, 255),										\
-	ImColor(255, 255, 255, 0))											\
+#define THUMBNAIL_IMAGE(thumbnail, size)							\
+	ImGui::Image(													\
+	IconProvider::Get().GetShaderResourceByThumbnail(thumbnail),	\
+	ImVec2(size, size),												\
+	ImVec2(0, 0),													\
+	ImVec2(1, 1),													\
+	ImColor(255, 255, 255, 255),									\
+	ImColor(255, 255, 255, 0))										\
 
 // A thumbnail image by shader resource
 #define THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(srv, size)	\

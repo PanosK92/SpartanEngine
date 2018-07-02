@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include <memory>
 #include "Core/Stopwatch.h"
-#include "ThumbnailProvider.h"
+#include "IconProvider.h"
 #include "EditorHelper.h"
 //============================
 

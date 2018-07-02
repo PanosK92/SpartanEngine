@@ -155,17 +155,17 @@ namespace Directus
 
 		// Set supported font formats
 		{
-			m_supportedScriptFormats.emplace_back(".ttf");
-			m_supportedScriptFormats.emplace_back(".ttc");
-			m_supportedScriptFormats.emplace_back(".cff");
-			m_supportedScriptFormats.emplace_back(".woff");
-			m_supportedScriptFormats.emplace_back(".otf");
-			m_supportedScriptFormats.emplace_back(".otc");
-			m_supportedScriptFormats.emplace_back(".pfa");
-			m_supportedScriptFormats.emplace_back(".pfb");
-			m_supportedScriptFormats.emplace_back(".fnt");
-			m_supportedScriptFormats.emplace_back(".bdf");
-			m_supportedScriptFormats.emplace_back(".pfr");
+			m_supportedFontFormats.emplace_back(".ttf");
+			m_supportedFontFormats.emplace_back(".ttc");
+			m_supportedFontFormats.emplace_back(".cff");
+			m_supportedFontFormats.emplace_back(".woff");
+			m_supportedFontFormats.emplace_back(".otf");
+			m_supportedFontFormats.emplace_back(".otc");
+			m_supportedFontFormats.emplace_back(".pfa");
+			m_supportedFontFormats.emplace_back(".pfb");
+			m_supportedFontFormats.emplace_back(".fnt");
+			m_supportedFontFormats.emplace_back(".bdf");
+			m_supportedFontFormats.emplace_back(".pfr");
 		}
 	}
 
@@ -692,12 +692,12 @@ namespace Directus
 	}
 	//=====================================================================================
 
-	//= SUPPORTED ASSET FILE FORMATS ==========================================================
-	vector<string> FileSystem::GetSupportedImageFormats() { return m_supportedImageFormats; }
-	vector<string> FileSystem::GetSupportedAudioFormats() { return m_supportedAudioFormats; }
-	vector<string> FileSystem::GetSupportedModelFormats() { return m_supportedModelFormats; }
-	vector<string> FileSystem::GetSupportedShaderFormats() { return m_supportedShaderFormats; }
-	vector<string> FileSystem::GetSupportedScriptFormats() { return m_supportedScriptFormats; }
-	vector<string> FileSystem::GetSupportedFontFormats() { return m_supportedFontFormats; }
-	//=========================================================================================
+	//= SUPPORTED ASSET FILE FORMATS ===========================================================
+	vector<string> FileSystem::GetSupportedImageFormats()	{ return m_supportedImageFormats; }
+	vector<string> FileSystem::GetSupportedAudioFormats()	{ return m_supportedAudioFormats; }
+	vector<string> FileSystem::GetSupportedModelFormats()	{ return m_supportedModelFormats; }
+	vector<string> FileSystem::GetSupportedShaderFormats()	{ return m_supportedShaderFormats; }
+	vector<string> FileSystem::GetSupportedScriptFormats()	{ return m_supportedScriptFormats; }
+	vector<string> FileSystem::GetSupportedFontFormats()	{ return m_supportedFontFormats; }
+	//==========================================================================================
 }

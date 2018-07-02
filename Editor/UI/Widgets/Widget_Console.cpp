@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_Console.h"
 #include "../../ImGui/Source/imgui.h"
 #include "Logging/Log.h"
-#include "../ThumbnailProvider.h"
+#include "../IconProvider.h"
 #include "../EditorHelper.h"
 //==================================
 

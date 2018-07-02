@@ -167,19 +167,22 @@ void FileDialog::Dialog_Middle()
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);
 		ImGui::BeginChild(entry.first.c_str(), ImVec2(m_itemSize + 25, m_itemSize + 15), true, ImGuiWindowFlags_NoScrollbar);
 
-		// ICON
+		// THUMBNAIL
 		ImGui::PushID(index);
+		ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0)); // Make button's border transparent
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0)); // Make button's background transparent
 		if (ImGui::ImageButton(SHADER_RESOURCE(entry.second), ImVec2(m_itemSize, m_itemSize - 23.0f)))
 		{
 			if (m_currentFullPath != entry.first) // Single click
-			{
+			{		
 				m_currentFullPath = entry.first;
 				EditorHelper::SetCharArray(&m_selectedFileName[0], FileSystem::GetFileNameFromFilePath(entry.first));
+
+				// Double click timer
 				m_stopwatch->Start();
-				if (m_callback_OnPathClicked) 
-				{
-					m_callback_OnPathClicked(m_currentFullPath);
-				}
+
+				// Callback
+				if (m_callback_OnPathClicked) m_callback_OnPathClicked(entry.first);
 			}
 			else if (m_stopwatch->GetElapsedTimeMs() <= 500) // Double click
 			{
@@ -190,17 +193,24 @@ void FileDialog::Dialog_Middle()
 					m_isDirty     = true;
 				}
 				m_selectionMade = !isDirectory;
+
+				// Callback
 				if (m_callback_OnPathDoubleClicked) m_callback_OnPathDoubleClicked(m_currentPath + "/" + string(m_selectedFileName));
 			}
+			else // Missed double click time
+			{
+
+			}
 		}
-		ImGui::PopID();
-		
+		ImGui::PopStyleColor();
+		ImGui::PopStyleColor();
+		ImGui::PopID();		
 
 		// Manually detect some useful states
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
 		{
-			FileDialogStatics::g_isHoveringItem     = true;
-			FileDialogStatics::g_hoveredItemPath = entry.first.c_str();
+			FileDialogStatics::g_isHoveringItem		= true;
+			FileDialogStatics::g_hoveredItemPath	= entry.first.c_str();
 		}
 		FileDialogStatics::g_isMouseHoveringWindow = ImGui::IsMouseHoveringWindow() ? true : FileDialogStatics::g_isMouseHoveringWindow;
 		HandleClicking(FileDialogStatics::g_hoveredItemPath);
@@ -215,16 +225,16 @@ void FileDialog::Dialog_Middle()
 
 		// LABEL
 		ImGui::SameLine();
-		ImGui::SetCursorPosX(ImGui::GetCursorPosX() - m_itemSize - 20); // move to the left of the thumbnail
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 5);  // move to the bottom of the thumbnail
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() - m_itemSize - 25); // move to the left of the thumbnail
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 10);  // move to the bottom of the thumbnail
 		ImGui::PushItemWidth(m_itemSize + 8.5f);
 
 		EditorHelper::SetCharArray(&m_itemLabel[0], FileSystem::GetFileNameFromFilePath(entry.first));
 		ImGui::Text(m_itemLabel);
 
 		ImGui::PopItemWidth();
-		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize + 20); // move to the right of the thumbnail
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - m_itemSize + 5);  // move to the top of the thumbnail
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize + 25); // move to the right of the thumbnail
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - m_itemSize + 10);  // move to the top of the thumbnail
 
 		// COLUMN END
 		ImGui::NextColumn();
@@ -313,9 +323,9 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 	return true;
 }
 
-void FileDialog::AddThumbnail(const std::string& filePath, Thumbnail_Type type)
+void FileDialog::AddThumbnail(const std::string& filePath, Thumbnail_Type type /* = Thumbnail_Custom */)
 {
-	m_directoryEntries[filePath] = ThumbnailProvider::Get().Thumbnail_Load(filePath, type, (int)m_itemSize);
+	m_directoryEntries[filePath] = IconProvider::Get().Thumbnail_Load(filePath, type, (int)m_itemSize);
 }
 
 void FileDialog::HandleDrag(const map<basic_string<char>, Thumbnail>::value_type& entry)

@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =======================
-#include "ThumbnailProvider.h"
+#include "IconProvider.h"
 #include "Rendering/RI/RI_Texture.h"
 #include "../ImGui/Source/imgui.h"
 #include "EditorHelper.h"
@@ -34,17 +34,17 @@ using namespace Directus;
 
 static Thumbnail g_noThumbnail;
 
-ThumbnailProvider::ThumbnailProvider()
+IconProvider::IconProvider()
 {
 	m_context = nullptr;
 }
 
-ThumbnailProvider::~ThumbnailProvider()
+IconProvider::~IconProvider()
 {
 	m_thumbnails.clear();
 }
 
-void ThumbnailProvider::Initialize(Context* context)
+void IconProvider::Initialize(Context* context)
 {
 	m_context = context;
 
@@ -64,25 +64,34 @@ void ThumbnailProvider::Initialize(Context* context)
 	Thumbnail_Load("Standard Assets\\Editor\\console_info.png",					Icon_Console_Info);	
 	Thumbnail_Load("Standard Assets\\Editor\\console_warning.png",				Icon_Console_Warning);
 	Thumbnail_Load("Standard Assets\\Editor\\console_error.png",				Icon_Console_Error);	
+	Thumbnail_Load("Standard Assets\\Editor\\button_play.png",					Icon_Button_Play);
 	Thumbnail_Load("Standard Assets\\Editor\\file.png",							Thumbnail_File_Default);	
 	Thumbnail_Load("Standard Assets\\Editor\\folder.png",						Thumbnail_Folder);	
 	Thumbnail_Load("Standard Assets\\Editor\\audio.png",						Thumbnail_File_Audio);	
 	Thumbnail_Load("Standard Assets\\Editor\\model.png",						Thumbnail_File_Model);	
 	Thumbnail_Load("Standard Assets\\Editor\\scene.png",						Thumbnail_File_Scene);	
-	Thumbnail_Load("Standard Assets\\Editor\\button_play.png",					Icon_Button_Play);
+	Thumbnail_Load("Standard Assets\\Editor\\material.png",						Thumbnail_File_Material);
+	Thumbnail_Load("Standard Assets\\Editor\\shader.png",						Thumbnail_File_Shader);
+	Thumbnail_Load("Standard Assets\\Editor\\xml.png",							Thumbnail_File_Xml);
+	Thumbnail_Load("Standard Assets\\Editor\\dll.png",							Thumbnail_File_Dll);
+	Thumbnail_Load("Standard Assets\\Editor\\txt.png",							Thumbnail_File_Txt);
+	Thumbnail_Load("Standard Assets\\Editor\\ini.png",							Thumbnail_File_Ini);
+	Thumbnail_Load("Standard Assets\\Editor\\exe.png",							Thumbnail_File_Exe);
+	Thumbnail_Load("Standard Assets\\Editor\\script.png",						Thumbnail_File_Script);
+	Thumbnail_Load("Standard Assets\\Editor\\font.png",							Thumbnail_File_Font);
 }
 
-void* ThumbnailProvider::GetShaderResourceByType(Thumbnail_Type type)
+void* IconProvider::GetShaderResourceByType(Thumbnail_Type type)
 {
 	return Thumbnail_Load(NOT_ASSIGNED, type).texture->GetShaderResource();
 }
 
-void* ThumbnailProvider::GetShaderResourceByFilePath(const std::string& filePath)
+void* IconProvider::GetShaderResourceByFilePath(const std::string& filePath)
 {
 	return Thumbnail_Load(filePath).texture->GetShaderResource();
 }
 
-void* ThumbnailProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
+void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
 {
 	for (const auto& thumbnailTemp : m_thumbnails)
 	{
@@ -98,7 +107,7 @@ void* ThumbnailProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail
 	return nullptr;
 }
 
-bool ThumbnailProvider::ImageButton_enum_id(const char* id, Thumbnail_Type iconEnum, float size)
+bool IconProvider::ImageButton_enum_id(const char* id, Thumbnail_Type iconEnum, float size)
 {
 	ImGui::PushID(id);
 	bool pressed = ImGui::ImageButton(GetShaderResourceByType(iconEnum), ImVec2(size, size));
@@ -107,14 +116,14 @@ bool ThumbnailProvider::ImageButton_enum_id(const char* id, Thumbnail_Type iconE
 	return pressed;
 }
 
-bool ThumbnailProvider::ImageButton_filepath(const std::string& filepath, float size)
+bool IconProvider::ImageButton_filepath(const std::string& filepath, float size)
 {
 	bool pressed = ImGui::ImageButton(GetShaderResourceByFilePath(filepath), ImVec2(size, size));
 
 	return pressed;
 }
 
-const Thumbnail& ThumbnailProvider::Thumbnail_Load(const string& filePath, Thumbnail_Type type /*Icon_Custom*/, int size /*100*/)
+const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Thumbnail_Type type /*Icon_Custom*/, int size /*100*/)
 {
 	// Check if we already have this thumbnail (by type)
 	if (type != Thumbnail_Custom)
@@ -137,26 +146,32 @@ const Thumbnail& ThumbnailProvider::Thumbnail_Load(const string& filePath, Thumb
 	// Deduce file path type
 
 	// Directory
-	if (FileSystem::IsDirectory(filePath))
-		return GetThumbnailByType(Thumbnail_Folder);
-
+	if (FileSystem::IsDirectory(filePath))							return GetThumbnailByType(Thumbnail_Folder);
 	// Model
-	if (FileSystem::IsSupportedModelFile(filePath))
-	{
-		return GetThumbnailByType(Thumbnail_File_Model);
-	}
-
+	if (FileSystem::IsSupportedModelFile(filePath))					return GetThumbnailByType(Thumbnail_File_Model);
 	// Audio
-	if (FileSystem::IsSupportedAudioFile(filePath))
-	{
-		return GetThumbnailByType(Thumbnail_File_Audio);
-	}
-
+	if (FileSystem::IsSupportedAudioFile(filePath))					return GetThumbnailByType(Thumbnail_File_Audio);
+	// Material
+	if (FileSystem::IsEngineMaterialFile(filePath))					return GetThumbnailByType(Thumbnail_File_Material);
+	// Shader
+	if (FileSystem::IsSupportedShaderFile(filePath))				return GetThumbnailByType(Thumbnail_File_Shader);
 	// Scene
-	if (FileSystem::IsEngineSceneFile(filePath))
-	{
-		return GetThumbnailByType(Thumbnail_File_Scene);
-	}
+	if (FileSystem::IsEngineSceneFile(filePath))					return GetThumbnailByType(Thumbnail_File_Scene);
+	// Script
+	if (FileSystem::IsEngineScriptFile(filePath))					return GetThumbnailByType(Thumbnail_File_Script);
+	// Font
+	if (FileSystem::IsSupportedFontFile(filePath))					return GetThumbnailByType(Thumbnail_File_Font);
+
+	// Xml
+	if (FileSystem::GetExtensionFromFilePath(filePath) == ".xml")	return GetThumbnailByType(Thumbnail_File_Xml);
+	// Dll
+	if (FileSystem::GetExtensionFromFilePath(filePath) == ".dll")	return GetThumbnailByType(Thumbnail_File_Dll);
+	// Txt
+	if (FileSystem::GetExtensionFromFilePath(filePath) == ".txt")	return GetThumbnailByType(Thumbnail_File_Txt);
+	// Ini
+	if (FileSystem::GetExtensionFromFilePath(filePath) == ".ini")	return GetThumbnailByType(Thumbnail_File_Ini);
+	// Exe
+	if (FileSystem::GetExtensionFromFilePath(filePath) == ".exe")	return GetThumbnailByType(Thumbnail_File_Exe);
 
 	// Texture
 	if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
@@ -180,7 +195,7 @@ const Thumbnail& ThumbnailProvider::Thumbnail_Load(const string& filePath, Thumb
 	return GetThumbnailByType(Thumbnail_File_Default);
 }
 
-const Thumbnail& ThumbnailProvider::GetThumbnailByType(Thumbnail_Type type)
+const Thumbnail& IconProvider::GetThumbnailByType(Thumbnail_Type type)
 {
 	for (auto& thumbnail : m_thumbnails)
 	{
