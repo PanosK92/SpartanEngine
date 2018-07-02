@@ -70,10 +70,6 @@ public:
 		{
 			THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(thumbnailShaderResource, 50);
 		}
-		else
-		{
-			THUMBNAIL_IMAGE_BY_ENUM(Thumbnail_File_Default, 50);
-		}
 	}
 	void DragEnd() { ImGui::EndDragDropSource(); }
 

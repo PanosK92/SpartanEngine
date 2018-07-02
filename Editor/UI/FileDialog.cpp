@@ -338,26 +338,27 @@ void FileDialog::HandleDrag(const map<basic_string<char>, Thumbnail>::value_type
 			{
 				FileDialogStatics::g_dragDropPayload.type = DragPayload_Model;
 				FileDialogStatics::g_dragDropPayload.data = entry.first;
-				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
+				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload);
 			}
 			else if (FileSystem::IsSupportedImageFile(entry.first) || FileSystem::IsEngineTextureFile(entry.first))
 			{
 				FileDialogStatics::g_dragDropPayload.type = DragPayload_Texture;
 				FileDialogStatics::g_dragDropPayload.data = entry.first;
-				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
+				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload);
 			}
 			else if (FileSystem::IsSupportedAudioFile(entry.first))
 			{
 				FileDialogStatics::g_dragDropPayload.type = DragPayload_Audio;
 				FileDialogStatics::g_dragDropPayload.data = entry.first;
-				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
+				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload);
 			}
 			else if (FileSystem::IsEngineScriptFile(entry.first))
 			{
 				FileDialogStatics::g_dragDropPayload.type = DragPayload_Script;
 				FileDialogStatics::g_dragDropPayload.data = entry.first;
-				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
+				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload);
 			}
+			THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(entry.second.texture->GetShaderResource(), 50);
 			DragDrop::Get().DragEnd();
 		}
 	}
