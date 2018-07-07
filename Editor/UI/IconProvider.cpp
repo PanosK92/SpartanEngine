@@ -49,39 +49,39 @@ void IconProvider::Initialize(Context* context)
 	m_context = context;
 
 	// Load standard some standard icons
-	Thumbnail_Load("Standard Assets\\Editor\\component_ComponentOptions.png",	Icon_Component_Options);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_AudioListener.png",		Icon_Component_AudioListener);
-	Thumbnail_Load("Standard Assets\\Editor\\component_AudioSource.png",		Icon_Component_AudioSource);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_Camera.png",				Icon_Component_Camera);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_Collider.png",			Icon_Component_Collider);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_Light.png",				Icon_Component_Light);
-	Thumbnail_Load("Standard Assets\\Editor\\component_Material.png",			Icon_Component_Material);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_MeshCollider.png",		Icon_Component_MeshCollider);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_renderable.png",			Icon_Component_Renderable);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_RigidBody.png",			Icon_Component_RigidBody);
-	Thumbnail_Load("Standard Assets\\Editor\\component_Script.png",				Icon_Component_Script);	
-	Thumbnail_Load("Standard Assets\\Editor\\component_Transform.png",			Icon_Component_Transform);
-	Thumbnail_Load("Standard Assets\\Editor\\console_info.png",					Icon_Console_Info);	
-	Thumbnail_Load("Standard Assets\\Editor\\console_warning.png",				Icon_Console_Warning);
-	Thumbnail_Load("Standard Assets\\Editor\\console_error.png",				Icon_Console_Error);	
-	Thumbnail_Load("Standard Assets\\Editor\\button_play.png",					Icon_Button_Play);
-	Thumbnail_Load("Standard Assets\\Editor\\file.png",							Thumbnail_File_Default);	
-	Thumbnail_Load("Standard Assets\\Editor\\folder.png",						Thumbnail_Folder);	
-	Thumbnail_Load("Standard Assets\\Editor\\audio.png",						Thumbnail_File_Audio);	
-	Thumbnail_Load("Standard Assets\\Editor\\model.png",						Thumbnail_File_Model);	
-	Thumbnail_Load("Standard Assets\\Editor\\scene.png",						Thumbnail_File_Scene);	
-	Thumbnail_Load("Standard Assets\\Editor\\material.png",						Thumbnail_File_Material);
-	Thumbnail_Load("Standard Assets\\Editor\\shader.png",						Thumbnail_File_Shader);
-	Thumbnail_Load("Standard Assets\\Editor\\xml.png",							Thumbnail_File_Xml);
-	Thumbnail_Load("Standard Assets\\Editor\\dll.png",							Thumbnail_File_Dll);
-	Thumbnail_Load("Standard Assets\\Editor\\txt.png",							Thumbnail_File_Txt);
-	Thumbnail_Load("Standard Assets\\Editor\\ini.png",							Thumbnail_File_Ini);
-	Thumbnail_Load("Standard Assets\\Editor\\exe.png",							Thumbnail_File_Exe);
-	Thumbnail_Load("Standard Assets\\Editor\\script.png",						Thumbnail_File_Script);
-	Thumbnail_Load("Standard Assets\\Editor\\font.png",							Thumbnail_File_Font);
+	Thumbnail_Load("Standard Assets\\Icons\\component_ComponentOptions.png",	Icon_Component_Options);	
+	Thumbnail_Load("Standard Assets\\Icons\\component_AudioListener.png",		Icon_Component_AudioListener);
+	Thumbnail_Load("Standard Assets\\Icons\\component_AudioSource.png",			Icon_Component_AudioSource);	
+	Thumbnail_Load("Standard Assets\\Icons\\component_Camera.png",				Icon_Component_Camera);	
+	Thumbnail_Load("Standard Assets\\Icons\\component_Collider.png",			Icon_Component_Collider);	
+	Thumbnail_Load("Standard Assets\\Icons\\component_Light.png",				Icon_Component_Light);
+	Thumbnail_Load("Standard Assets\\Icons\\component_Material.png",			Icon_Component_Material);	
+	Thumbnail_Load("Standard Assets\\Icons\\component_MeshCollider.png",		Icon_Component_MeshCollider);	
+	Thumbnail_Load("Standard Assets\\Icons\\component_renderable.png",			Icon_Component_Renderable);	
+	Thumbnail_Load("Standard Assets\\Icons\\component_RigidBody.png",			Icon_Component_RigidBody);
+	Thumbnail_Load("Standard Assets\\Icons\\component_Script.png",				Icon_Component_Script);	
+	Thumbnail_Load("Standard Assets\\Icons\\component_Transform.png",			Icon_Component_Transform);
+	Thumbnail_Load("Standard Assets\\Icons\\console_info.png",					Icon_Console_Info);	
+	Thumbnail_Load("Standard Assets\\Icons\\console_warning.png",				Icon_Console_Warning);
+	Thumbnail_Load("Standard Assets\\Icons\\console_error.png",					Icon_Console_Error);	
+	Thumbnail_Load("Standard Assets\\Icons\\button_play.png",					Icon_Button_Play);
+	Thumbnail_Load("Standard Assets\\Icons\\file.png",							Thumbnail_File_Default);	
+	Thumbnail_Load("Standard Assets\\Icons\\folder.png",						Thumbnail_Folder);	
+	Thumbnail_Load("Standard Assets\\Icons\\audio.png",							Thumbnail_File_Audio);	
+	Thumbnail_Load("Standard Assets\\Icons\\model.png",							Thumbnail_File_Model);	
+	Thumbnail_Load("Standard Assets\\Icons\\scene.png",							Thumbnail_File_Scene);	
+	Thumbnail_Load("Standard Assets\\Icons\\material.png",						Thumbnail_File_Material);
+	Thumbnail_Load("Standard Assets\\Icons\\shader.png",						Thumbnail_File_Shader);
+	Thumbnail_Load("Standard Assets\\Icons\\xml.png",							Thumbnail_File_Xml);
+	Thumbnail_Load("Standard Assets\\Icons\\dll.png",							Thumbnail_File_Dll);
+	Thumbnail_Load("Standard Assets\\Icons\\txt.png",							Thumbnail_File_Txt);
+	Thumbnail_Load("Standard Assets\\Icons\\ini.png",							Thumbnail_File_Ini);
+	Thumbnail_Load("Standard Assets\\Icons\\exe.png",							Thumbnail_File_Exe);
+	Thumbnail_Load("Standard Assets\\Icons\\script.png",						Thumbnail_File_Script);
+	Thumbnail_Load("Standard Assets\\Icons\\font.png",							Thumbnail_File_Font);
 }
 
-void* IconProvider::GetShaderResourceByType(Thumbnail_Type type)
+void* IconProvider::GetShaderResourceByType(Icon_Type type)
 {
 	return Thumbnail_Load(NOT_ASSIGNED, type).texture->GetShaderResource();
 }
@@ -107,7 +107,7 @@ void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
 	return nullptr;
 }
 
-bool IconProvider::ImageButton_enum_id(const char* id, Thumbnail_Type iconEnum, float size)
+bool IconProvider::ImageButton_enum_id(const char* id, Icon_Type iconEnum, float size)
 {
 	ImGui::PushID(id);
 	bool pressed = ImGui::ImageButton(GetShaderResourceByType(iconEnum), ImVec2(size, size));
@@ -123,7 +123,7 @@ bool IconProvider::ImageButton_filepath(const std::string& filepath, float size)
 	return pressed;
 }
 
-const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Thumbnail_Type type /*Icon_Custom*/, int size /*100*/)
+const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type type /*Icon_Custom*/, int size /*100*/)
 {
 	// Check if we already have this thumbnail (by type)
 	if (type != Thumbnail_Custom)
@@ -195,7 +195,7 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Thumbnail_
 	return GetThumbnailByType(Thumbnail_File_Default);
 }
 
-const Thumbnail& IconProvider::GetThumbnailByType(Thumbnail_Type type)
+const Thumbnail& IconProvider::GetThumbnailByType(Icon_Type type)
 {
 	for (auto& thumbnail : m_thumbnails)
 	{

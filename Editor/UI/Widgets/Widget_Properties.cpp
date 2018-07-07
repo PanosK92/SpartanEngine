@@ -87,7 +87,7 @@ namespace ComponentProperty
 		}
 	}
 
-	inline bool Begin(const string& name, Thumbnail_Type icon_enum, IComponent* componentInstance, bool hasOptions = true)
+	inline bool Begin(const string& name, Icon_Type icon_enum, IComponent* componentInstance, bool hasOptions = true)
 	{
 		// Component Icon - Top left
 		THUMBNAIL_IMAGE_BY_ENUM(icon_enum, 15);									
@@ -300,7 +300,7 @@ void Widget_Properties::ShowLight(Light* light)
 	int typeInt								= (int)light->GetLightType();
 	const char* typeCharPtr					= types[typeInt];	
 	float intensity							= light->GetIntensity();
-	float angle								= light->GetAngle();
+	float angle								= light->GetAngle() * 179.0f;
 	bool castsShadows						= light->GetCastShadows();
 	float range								= light->GetRange();
 
@@ -365,7 +365,7 @@ void Widget_Properties::ShowLight(Light* light)
 	if ((LightType)typeInt	!= light->GetLightType())	light->SetLightType((LightType)typeInt);
 	if (intensity			!= light->GetIntensity())	light->SetIntensity(intensity);
 	if (castsShadows		!= light->GetCastShadows()) light->SetCastShadows(castsShadows);
-	if (angle				!= light->GetAngle())		light->SetAngle(angle);
+	if (angle / 179.0f		!= light->GetAngle())		light->SetAngle(angle / 179.0f);
 	if (range				!= light->GetRange())		light->SetRange(range);
 	if (g_lightButtonColorPicker->GetColor() != light->GetColor()) light->SetColor(g_lightButtonColorPicker->GetColor());
 	//===================================================================================================================

@@ -169,8 +169,8 @@ void Editor::ApplyStyle()
 	ImVec4 backgroundMedium		= ImVec4(0.26f, 0.26f, 0.27f, 1.0f);
 	ImVec4 backgroundLight		= ImVec4(0.37f, 0.38f, 0.39f, 1.0f);
 	ImVec4 highlightBlue		= ImVec4(0.172f, 0.239f, 0.341f, 1.0f);	
-	ImVec4 highlightBlueActive	= ImVec4(0.182f, 0.249f, 0.361f, 1.0f);
 	ImVec4 highlightBlueHovered	= ImVec4(0.202f, 0.269f, 0.391f, 1.0f); 
+	ImVec4 highlightBlueActive	= ImVec4(0.382f, 0.449f, 0.561f, 1.0f);
 	ImVec4 barBackground		= ImVec4(0.078f, 0.082f, 0.09f, 1.0f);
 	ImVec4 bar					= ImVec4(0.164f, 0.180f, 0.231f, 1.0f);
 	ImVec4 barHovered			= ImVec4(0.411f, 0.411f, 0.411f, 1.0f);
@@ -192,7 +192,7 @@ void Editor::ApplyStyle()
 	//style.ColumnsMinSpacing	= 50.0f;
 	//style.GrabMinSize			= 14.0f;
 	style.GrabRounding			= roundness;
-	//style.ScrollbarSize		= 12.0f;
+	style.ScrollbarSize			= 20.0f;
 	style.ScrollbarRounding		= roundness;	
 
 	// Colors
@@ -218,7 +218,7 @@ void Editor::ApplyStyle()
 	style.Colors[ImGuiCol_SliderGrabActive]			= barActive;
 	style.Colors[ImGuiCol_Button]					= barActive;
 	style.Colors[ImGuiCol_ButtonHovered]			= highlightBlue;
-	style.Colors[ImGuiCol_ButtonActive]				= highlightBlueHovered;
+	style.Colors[ImGuiCol_ButtonActive]				= highlightBlueActive;
 	style.Colors[ImGuiCol_Header]					= highlightBlue; // selected items (tree, menu bar etc.)
 	style.Colors[ImGuiCol_HeaderHovered]			= highlightBlueHovered; // hovered items (tree, menu bar etc.)
 	style.Colors[ImGuiCol_HeaderActive]				= highlightBlueActive;
@@ -238,5 +238,5 @@ void Editor::ApplyStyle()
 	//style.Colors[ImGuiCol_ModalWindowDarkening]	= ImVec4(0.20f, 0.22f, 0.27f, 0.73f);
 
 	ImGuiIO& io = ImGui::GetIO();
-	io.Fonts->AddFontFromFileTTF("Standard Assets\\Editor\\CalibriBold.ttf", fontSize);
+	io.Fonts->AddFontFromFileTTF("Standard Assets\\Fonts\\CalibriBold.ttf", fontSize);
 }

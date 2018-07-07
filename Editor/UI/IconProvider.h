@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //===============
 
-enum Thumbnail_Type
+enum Icon_Type
 {
 	Icon_Component_Options,
 	Icon_Component_AudioListener,
@@ -71,14 +71,14 @@ namespace Directus
 struct Thumbnail
 {
 	Thumbnail(){}
-	Thumbnail(Thumbnail_Type type, std::shared_ptr<Directus::RI_Texture> texture, const std::string& filePath)
+	Thumbnail(Icon_Type type, std::shared_ptr<Directus::RI_Texture> texture, const std::string& filePath)
 	{
 		this->type = type;
 		this->texture = texture;
 		this->filePath = filePath;
 	}
 
-	Thumbnail_Type type;
+	Icon_Type type;
 	std::shared_ptr<Directus::RI_Texture> texture;
 	std::string filePath;
 };
@@ -92,18 +92,18 @@ public:
 	void Initialize(Directus::Context* context);
 
 	//= SHADER RESOURCE ===========================================
-	void* GetShaderResourceByType(Thumbnail_Type type);
+	void* GetShaderResourceByType(Icon_Type type);
 	void* GetShaderResourceByFilePath(const std::string& filePath);
 	void* GetShaderResourceByThumbnail(const Thumbnail& thumbnail);
 	//=============================================================
 
 	//= ImGui::ImageButton =======================================================
-	bool ImageButton_enum_id(const char* id, Thumbnail_Type iconEnum, float size);
+	bool ImageButton_enum_id(const char* id, Icon_Type iconEnum, float size);
 	bool ImageButton_filepath(const std::string& filepath, float size);
 	//============================================================================
 
 	//= THUMBNAIL ==================================================================================================
-	const Thumbnail& Thumbnail_Load(const std::string& filePath, Thumbnail_Type type = Thumbnail_Custom, int size = 100);
+	const Thumbnail& Thumbnail_Load(const std::string& filePath, Icon_Type type = Thumbnail_Custom, int size = 100);
 	//==============================================================================================================
 
 	 static IconProvider& Get()
@@ -113,7 +113,7 @@ public:
      }
 
 private:
-	const Thumbnail& GetThumbnailByType(Thumbnail_Type type);
+	const Thumbnail& GetThumbnailByType(Icon_Type type);
 	std::vector<Thumbnail> m_thumbnails;
 	Directus::Context* m_context;
 };

@@ -45,6 +45,12 @@ static string g_fileDialogSelection;
 ResourceManager* g_resourceManager	= nullptr;
 Scene* g_scene						= nullptr;
 
+static bool g_physics = true;
+static bool g_aabb = false;
+static bool g_gizmos = true;
+static bool g_pickingRay = false;
+static bool g_grid = true;
+static bool g_performanceMetrics = false;
 const char* g_rendererViews[] =
 {
 	"Default",
@@ -66,7 +72,7 @@ void Widget_MenuBar::Initialize(Context* context)
 	Widget::Initialize(context);
 	g_resourceManager = m_context->GetSubsystem<ResourceManager>();
 	g_scene = m_context->GetSubsystem<Scene>();
-	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Scene);
+	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_FileFilter_Scene);
 }
 
 void Widget_MenuBar::Update()
@@ -152,7 +158,7 @@ void Widget_MenuBar::ShowFileDialog()
 	else if (m_fileDialog->GetStyle() == FileDialog_Save)
 	{
 		// Scene
-		if (m_fileDialog->GetFilter() == FileDialog_Scene)
+		if (m_fileDialog->GetFilter() == FileDialog_FileFilter_Scene)
 		{
 			EditorHelper::Get().SaveScene(g_fileDialogSelection);
 			g_fileDialogVisible = false;
@@ -304,85 +310,100 @@ void Widget_MenuBar::ShowProfiler()
 
 void Widget_MenuBar::ShowRendererOptions()
 {
-	ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiCond_Always);
-	ImGui::Begin("Renderer Options", &g_showRendererOptions, ImGuiWindowFlags_NoResize);
-	float posX = 100.0f;
-
-	bool bloom		= Renderer:: RenderFlags_IsSet(Render_Bloom);
-	bool fxaa		= Renderer:: RenderFlags_IsSet(Render_FXAA);
-	bool sharpening	= Renderer:: RenderFlags_IsSet(Render_Sharpening);
-
-	// Bloom
-	ImGui::Text("Bloom");
-	ImGui::SameLine(posX); ImGui::Checkbox("##rendererBloom", &bloom);
-
-	// FXAA
-	ImGui::Text("FXAA");
-	ImGui::SameLine(posX); ImGui::Checkbox("##rendererFXAA", &fxaa);
-
-	// FXAA
-	ImGui::Text("Sharpening");
-	ImGui::SameLine(posX); ImGui::Checkbox("##rendererSharpening", &sharpening);
+	ImGui::SetNextWindowFocus();
+	ImGui::Begin("Renderer Options", &g_showRendererOptions, ImGuiWindowFlags_AlwaysAutoResize);
 
 	// G-Buffer Visualization
-	ImGui::Text("G-Buffer");
-	ImGui::SameLine(posX); if (ImGui::BeginCombo("##rendererGBuffer", g_rendererView))
 	{
-		for (int i = 0; i < IM_ARRAYSIZE(g_rendererViews); i++)
+		if (ImGui::BeginCombo("G-Buffer", g_rendererView))
 		{
-			bool is_selected = (g_rendererView == g_rendererViews[i]);
-			if (ImGui::Selectable(g_rendererViews[i], is_selected))
+			for (int i = 0; i < IM_ARRAYSIZE(g_rendererViews); i++)
 			{
-				g_rendererView = g_rendererViews[i];
-				g_rendererViewInt = i;
+				bool is_selected = (g_rendererView == g_rendererViews[i]);
+				if (ImGui::Selectable(g_rendererViews[i], is_selected))
+				{
+					g_rendererView = g_rendererViews[i];
+					g_rendererViewInt = i;
+				}
+				if (is_selected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
 			}
-			if (is_selected)
-			{
-				ImGui::SetItemDefaultFocus();
-			}
+			ImGui::EndCombo();
 		}
-		ImGui::EndCombo();
+
+		if (g_rendererViewInt == 0) // Combined
+		{
+			Renderer::RenderFlags_Disable(Render_Albedo);
+			Renderer::RenderFlags_Disable(Render_Normal);
+			Renderer::RenderFlags_Disable(Render_Specular);
+			Renderer::RenderFlags_Disable(Render_Depth);
+		}
+		else if (g_rendererViewInt == 1) // Albedo
+		{
+			Renderer::RenderFlags_Enable(Render_Albedo);
+			Renderer::RenderFlags_Disable(Render_Normal);
+			Renderer::RenderFlags_Disable(Render_Specular);
+			Renderer::RenderFlags_Disable(Render_Depth);
+		}
+		else if (g_rendererViewInt == 2) // Normal
+		{
+			Renderer::RenderFlags_Disable(Render_Albedo);
+			Renderer::RenderFlags_Enable(Render_Normal);
+			Renderer::RenderFlags_Disable(Render_Specular);
+			Renderer::RenderFlags_Disable(Render_Depth);
+		}
+		else if (g_rendererViewInt == 3) // Specular
+		{
+			Renderer::RenderFlags_Disable(Render_Albedo);
+			Renderer::RenderFlags_Disable(Render_Normal);
+			Renderer::RenderFlags_Enable(Render_Specular);
+			Renderer::RenderFlags_Disable(Render_Depth);
+		}
+		else if (g_rendererViewInt == 4) // Depth
+		{
+			Renderer::RenderFlags_Disable(Render_Albedo);
+			Renderer::RenderFlags_Disable(Render_Normal);
+			Renderer::RenderFlags_Disable(Render_Specular);
+			Renderer::RenderFlags_Enable(Render_Depth);
+		}
 	}
 
-	bloom		? Renderer:: RenderFlags_Enable(Render_Bloom)		: Renderer:: RenderFlags_Disable(Render_Bloom);
-	fxaa		? Renderer:: RenderFlags_Enable(Render_FXAA)		: Renderer:: RenderFlags_Disable(Render_FXAA);
-	sharpening	? Renderer:: RenderFlags_Enable(Render_Sharpening)	: Renderer:: RenderFlags_Disable(Render_Sharpening);
+	ImGui::Separator();
 
-	// G-buffer
-	if (g_rendererViewInt == 0) // Combined
+	// Effects
 	{
-		Renderer::RenderFlags_Disable(Render_Albedo);
-		Renderer::RenderFlags_Disable(Render_Normal);
-		Renderer::RenderFlags_Disable(Render_Specular);
-		Renderer::RenderFlags_Disable(Render_Depth);
+		bool bloom		= Renderer:: RenderFlags_IsSet(Render_Bloom);
+		bool fxaa		= Renderer:: RenderFlags_IsSet(Render_FXAA);
+		bool sharpening	= Renderer:: RenderFlags_IsSet(Render_Sharpening);
+
+		ImGui::Checkbox("Bloom", &bloom);
+		ImGui::Checkbox("FXAA", &fxaa);
+		ImGui::Checkbox("Sharpening", &sharpening);
+
+		bloom		? Renderer::RenderFlags_Enable(Render_Bloom)		: Renderer::RenderFlags_Disable(Render_Bloom);
+		fxaa		? Renderer::RenderFlags_Enable(Render_FXAA)			: Renderer::RenderFlags_Disable(Render_FXAA);
+		sharpening	? Renderer::RenderFlags_Enable(Render_Sharpening)	: Renderer::RenderFlags_Disable(Render_Sharpening);
 	}
-	else if (g_rendererViewInt == 1) // Albedo
+
+	ImGui::Separator();
+
+	// Misc
 	{
-		Renderer::RenderFlags_Enable(Render_Albedo);
-		Renderer::RenderFlags_Disable(Render_Normal);
-		Renderer::RenderFlags_Disable(Render_Specular);
-		Renderer::RenderFlags_Disable(Render_Depth);
-	}
-	else if (g_rendererViewInt == 2) // Normal
-	{
-		Renderer::RenderFlags_Disable(Render_Albedo);
-		Renderer::RenderFlags_Enable(Render_Normal);
-		Renderer::RenderFlags_Disable(Render_Specular);
-		Renderer::RenderFlags_Disable(Render_Depth);
-	}
-	else if (g_rendererViewInt == 3) // Specular
-	{
-		Renderer::RenderFlags_Disable(Render_Albedo);
-		Renderer::RenderFlags_Disable(Render_Normal);
-		Renderer::RenderFlags_Enable(Render_Specular);
-		Renderer::RenderFlags_Disable(Render_Depth);
-	}
-	else if (g_rendererViewInt == 4) // Depth
-	{
-		Renderer::RenderFlags_Disable(Render_Albedo);
-		Renderer::RenderFlags_Disable(Render_Normal);
-		Renderer::RenderFlags_Disable(Render_Specular);
-		Renderer::RenderFlags_Enable(Render_Depth);
+		ImGui::Checkbox("Physics", &g_physics);
+		ImGui::Checkbox("AABB", &g_aabb);
+		ImGui::Checkbox("Gizmos", &g_gizmos);
+		ImGui::Checkbox("Picking Ray", &g_pickingRay);
+		ImGui::Checkbox("Scene Grid", &g_grid);
+		ImGui::Checkbox("Performance Metrics", &g_performanceMetrics);	
+
+		g_physics				? Renderer::RenderFlags_Enable(Render_Physics)				: Renderer::RenderFlags_Disable(Render_Physics);
+		g_aabb					? Renderer::RenderFlags_Enable(Render_AABB)					: Renderer::RenderFlags_Disable(Render_AABB);
+		g_gizmos				? Renderer::RenderFlags_Enable(Render_Light)				: Renderer::RenderFlags_Disable(Render_Light);
+		g_pickingRay			? Renderer::RenderFlags_Enable(Render_PickingRay)			: Renderer::RenderFlags_Disable(Render_PickingRay);
+		g_grid					? Renderer::RenderFlags_Enable(Render_SceneGrid)			: Renderer::RenderFlags_Disable(Render_SceneGrid);
+		g_performanceMetrics	? Renderer::RenderFlags_Enable(Render_PerformanceMetrics)	: Renderer::RenderFlags_Disable(Render_PerformanceMetrics);
 	}
 
 	ImGui::End();

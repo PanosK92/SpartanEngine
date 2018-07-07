@@ -48,8 +48,8 @@ Widget_Assets::Widget_Assets()
 void Widget_Assets::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-	m_fileDialogView	= make_unique<FileDialog>(m_context, false, FileDialog_All);
-	m_fileDialogLoad	= make_unique<FileDialog>(m_context, true, FileDialog_Model, FileDialog_Load);
+	m_fileDialogView	= make_unique<FileDialog>(m_context, false, FileDialog_FileFilter_All);
+	m_fileDialogLoad	= make_unique<FileDialog>(m_context, true, FileDialog_FileFilter_Model, FileDialog_Load);
 	m_windowFlags		|= ImGuiWindowFlags_NoScrollbar;
 
 	// Just clicked, not selected (double clicked, end of dialog)
