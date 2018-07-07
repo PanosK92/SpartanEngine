@@ -32,7 +32,7 @@ enum DragPayloadType
 {
 	DragPayload_Unknown,
 	DragPayload_Texture,
-	DragPayload_actor,
+	DragPayload_Actor,
 	DragPayload_Model,
 	DragPayload_Audio,
 	DragPayload_Script
@@ -40,7 +40,7 @@ enum DragPayloadType
 
 struct DragDropPayload
 {
-	typedef std::variant<const char*, std::string, unsigned int> payloadVariant;
+	typedef std::variant<const char*, unsigned int> payloadVariant;
 	DragDropPayload(DragPayloadType type = DragPayload_Unknown, payloadVariant data = nullptr)
 	{
 		this->type	= type;

@@ -290,17 +290,17 @@ void FileDialog::Item_Drag(FileDialog_Item* item)
 
 	if (DragDrop::Get().DragBegin())
 	{
-		auto SetPayload = [](DragPayloadType type, const char* path)
+		auto SetPayload = [this](DragPayloadType type, const char* path)
 		{
-			FileDialog_Options::g_dragDropPayload.type = DragPayload_Model;
+			FileDialog_Options::g_dragDropPayload.type = type;
 			FileDialog_Options::g_dragDropPayload.data = path;
 			DragDrop::Get().DragPayload(FileDialog_Options::g_dragDropPayload);
 		};
 
-		if (FileSystem::IsSupportedModelFile(item->GetPath()))														{ SetPayload(DragPayload_Model, item->GetPath()); }
-		if (FileSystem::IsSupportedImageFile(item->GetPath()) || FileSystem::IsEngineTextureFile(item->GetPath()))	{ SetPayload(DragPayload_Texture, item->GetPath()); }
-		if (FileSystem::IsSupportedAudioFile(item->GetPath()))														{ SetPayload(DragPayload_Audio, item->GetPath()); }
-		if (FileSystem::IsEngineScriptFile(item->GetPath()))														{ SetPayload(DragPayload_Script, item->GetPath()); }
+		if (FileSystem::IsSupportedModelFile(item->GetPath()))	{ SetPayload(DragPayload_Model,		item->GetPath()); }
+		if (FileSystem::IsSupportedImageFile(item->GetPath()))	{ SetPayload(DragPayload_Texture,	item->GetPath()); }
+		if (FileSystem::IsSupportedAudioFile(item->GetPath()))	{ SetPayload(DragPayload_Audio,		item->GetPath()); }
+		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ SetPayload(DragPayload_Script,	item->GetPath()); }
 
 		THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(item->GetShaderResource(), 50);
 		DragDrop::Get().DragEnd();

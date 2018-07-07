@@ -78,7 +78,7 @@ namespace Directus
 		//=====================================================================
 		
 		//= SHADER RESOURCE ============================
-		void** GetShaderResource();
+		void** GetShaderResource() const;
 		// Creates a shader resource from memory
 		bool CreateShaderResource(
 			unsigned int width, 

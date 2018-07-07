@@ -147,15 +147,15 @@ namespace Directus
 	}
 	//======================================================================================
 
-	//= SHADER RESOURCE =====================================
-	void** RI_Texture::GetShaderResource()
+	//= SHADER RESOURCE ==========================================
+	void** RI_Texture::GetShaderResource() const
 	{
 		if (!m_textureLowLevel)
 			return nullptr;
 
 		return (void**)m_textureLowLevel->GetShaderResourceView();
 	}
-	//=======================================================
+	//============================================================
 
 	//= TEXTURE BITS =================================================================
 	void RI_Texture::ClearTextureBytes()

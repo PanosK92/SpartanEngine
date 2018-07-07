@@ -101,7 +101,7 @@ void Widget_Scene::Tree_Show()
 	if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		// Dropping on the scene node should unparent the actor
-		if (auto payload = DragDrop::Get().GetPayload(DragPayload_actor))
+		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 		{
 			auto actorID = get<unsigned int>(payload->data);
 			if (auto droppedactor = HierarchyStatics::g_scene->GetActorByID(actorID).lock())
@@ -110,8 +110,8 @@ void Widget_Scene::Tree_Show()
 			}
 		}
 
-		auto rootactors = HierarchyStatics::g_scene->GetRootActors();
-		for (const auto& actor : rootactors)
+		auto rootActors = HierarchyStatics::g_scene->GetRootActors();
+		for (const auto& actor : rootActors)
 		{
 			Tree_AddActor(actor.lock().get());
 		}
@@ -223,12 +223,12 @@ void Widget_Scene::HandleDragDrop(Actor* actorPtr)
 	if (DragDrop::Get().DragBegin())
 	{
 		HierarchyStatics::g_payload.data = actorPtr->GetID();
-		HierarchyStatics::g_payload.type = DragPayload_actor;
+		HierarchyStatics::g_payload.type = DragPayload_Actor;
 		DragDrop::Get().DragPayload(HierarchyStatics::g_payload);
 		DragDrop::Get().DragEnd();
 	}
 	// Drop
-	if (auto payload = DragDrop::Get().GetPayload(DragPayload_actor))
+	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 	{
 		auto actorID = get<unsigned int>(payload->data);
 		if (auto droppedactor = HierarchyStatics::g_scene->GetActorByID(actorID).lock())
