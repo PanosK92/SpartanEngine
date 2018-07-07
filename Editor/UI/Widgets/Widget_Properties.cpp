@@ -737,64 +737,66 @@ void Widget_Properties::ShowMaterial(Material* material)
 		ImGui::Text("Shader");
 		ImGui::SameLine(ComponentProperty::g_posX_2); ImGui::Text(!material->GetShader().expired() ? material->GetShader().lock()->GetResourceName().c_str() : NOT_ASSIGNED.c_str());
 
-		#define DROP_TARGET_TEXTURE(textureType)																		\
-		{																												\
-			if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))											\
-			{																											\
-				if (auto texture = g_resourceManager->Load<RI_Texture>(std::get<std::string>(payload->data)).lock())	\
-				{																										\
-					texture->SetType(textureType);																		\
-					material->SetTexture(texture);																		\
-				}																										\
-			}																											\
-		}																												\
-
-		#define MAT_TEX(tex, texName, texEnum)						\
-		ImGui::Text(texName);										\
-		ImGui::SameLine(ComponentProperty::g_posX_2); ImGui::Image(	\
-			tex ? tex->GetShaderResource() : nullptr,				\
-			materialTextSize,										\
-			ImVec2(0, 0),											\
-			ImVec2(1, 1),											\
-			ImColor(255, 255, 255, 255),							\
-			ImColor(255, 255, 255, 128)								\
-		);															\
-		DROP_TARGET_TEXTURE(texEnum);								\
-
 		if (material->IsEditable())
 		{
+			auto DisplayTextureSlot = [&material](const RI_Texture* texture, const char* textureName, TextureType textureType)
+			{
+				ImGui::Text(textureName);
+				ImGui::SameLine(ComponentProperty::g_posX_2); ImGui::Image(
+					texture ? texture->GetShaderResource() : nullptr,
+					materialTextSize,
+					ImVec2(0, 0),
+					ImVec2(1, 1),
+					ImColor(255, 255, 255, 255),
+					ImColor(255, 255, 255, 128)
+				);
+
+				if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))
+				{
+					try 
+					{
+						if (auto texture = g_resourceManager->Load<RI_Texture>(get<const char*>(payload->data)).lock())
+						{
+							texture->SetType(textureType);
+							material->SetTexture(texture);
+						}
+					}
+					catch (const std::bad_variant_access& e) { LOGF_ERROR("Widget_Properties::ShowMaterial: %s", e.what()); }
+				}
+			};
+
 			// Albedo
-			MAT_TEX(texAlbedo, "Albedo", TextureType_Albedo); 
+			DisplayTextureSlot(texAlbedo.get(), "Albedo", TextureType_Albedo); 
 			ImGui::SameLine(); g_materialButtonColorPicker->Update();
 
 			// Roughness
-			MAT_TEX(texRoughness, "Roughness", TextureType_Roughness);
+			DisplayTextureSlot(texRoughness.get(), "Roughness", TextureType_Roughness);
 			roughness = material->GetRoughnessMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matRoughness", &roughness, 0.0f, 1.0f);
 
 			// Metallic
-			MAT_TEX(texMetallic, "Metallic", TextureType_Metallic); 
+			DisplayTextureSlot(texMetallic.get(), "Metallic", TextureType_Metallic); 
 			metallic = material->GetMetallicMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matMetallic", &metallic, 0.0f, 1.0f);
 
 			// Normal
-			MAT_TEX(texNormal, "Normal", TextureType_Normal);
+			DisplayTextureSlot(texNormal.get(), "Normal", TextureType_Normal);
 			normal = material->GetNormalMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matNormal", &normal, 0.0f, 1.0f);
 
 			// Height
-			MAT_TEX(texHeight, "Height", TextureType_Height); 
+			DisplayTextureSlot(texHeight.get(), "Height", TextureType_Height); 
 			height = material->GetHeightMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matHeight", &height, 0.0f, 1.0f);
 
 			// Occlusion
-			MAT_TEX(texOcclusion, "Occlusion", TextureType_Occlusion);
+			DisplayTextureSlot(texOcclusion.get(), "Occlusion", TextureType_Occlusion);
 
 			// Emission
-			MAT_TEX(texEmission, "Emission", TextureType_Emission);
+			DisplayTextureSlot(texEmission.get(), "Emission", TextureType_Emission);
 
 			// Mask
-			MAT_TEX(texMask, "Mask", TextureType_Mask);
+			DisplayTextureSlot(texMask.get(), "Mask", TextureType_Mask);
 
 			// Tiling
 			ImGui::Text("Tiling");
@@ -831,7 +833,7 @@ void Widget_Properties::ShowCamera(Camera* camera)
 		return;
 
 	//= REFLECT ===============================================================
-	static const char* projectionTypes[]	= { "Pespective", "Orthographic" };
+	static const char* projectionTypes[]	= { "Perspective", "Orthographic" };
 	int projectionInt						= (int)camera->GetProjection();
 	const char* projectionCharPtr			= projectionTypes[projectionInt];
 	float fov								= camera->GetFOV_Horizontal_Deg();
@@ -924,8 +926,8 @@ void Widget_Properties::ShowAudioSource(AudioSource* audioSource)
 		ImGui::PopItemWidth();
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Audio))													
 		{		
-			EditorHelper::SetCharArray(&audioClipCharArray[0], FileSystem::GetFileNameFromFilePath(get<string>(payload->data)));
-			auto audioClip = g_resourceManager->Load<AudioClip>(get<string>(payload->data));	
+			EditorHelper::SetCharArray(&audioClipCharArray[0], FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data)));
+			auto audioClip = g_resourceManager->Load<AudioClip>(get<const char*>(payload->data));	
 			audioSource->SetAudioClip(audioClip, false);											
 		}																	
 
@@ -1002,14 +1004,13 @@ void Widget_Properties::ShowScript(Script* script)
 	}
 	ComponentProperty::End();
 
-	/*if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
+	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
 	{
-		auto actorPtr = m_actor.lock().get();
-		if (auto scriptComponent = actorPtr->AddComponent<Script>().lock())
+		if (auto scriptComponent = g_inspectedActor.lock()->AddComponent<Script>().lock())
 		{
-			scriptComponent->SetScript(payload->data);
+			scriptComponent->SetScript(get<const char*>(payload->data));
 		}
-	}*/
+	}
 }
 
 void Widget_Properties::ShowAddComponentButton()

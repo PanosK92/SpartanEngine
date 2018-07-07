@@ -81,7 +81,7 @@ void Widget_Viewport::ShowFrame()
 	// Handle model drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Model))
 	{
-		EditorHelper::Get().LoadModel(get<string>(payload->data));
+		EditorHelper::Get().LoadModel(get<const char*>(payload->data));
 	}
 
 	MousePicking();

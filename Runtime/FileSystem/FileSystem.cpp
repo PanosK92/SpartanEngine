@@ -463,6 +463,9 @@ namespace Directus
 			if (fileExt == format || fileExt == ConvertToUppercase(format))
 				return true;
 		}
+		
+		if (GetExtensionFromFilePath(path) == TEXTURE_EXTENSION)
+			return true;
 
 		return false;
 	}
