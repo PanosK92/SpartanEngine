@@ -74,17 +74,17 @@ namespace Directus
 		vector<std::byte> atlasBuffer;
 		unsigned int texAtlasWidth = 0;
 		unsigned int texAtlasHeight = 0;
-		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter().lock()->LoadFont(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
+		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter().lock()->LoadFromFile(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
 		{
-			LOG_ERROR("Font: Failed to load font \"" + filePath + "\"");
+			LOGF_ERROR("Font::LoadFromFile Failed to load font \"%s\"", filePath.c_str());
 			atlasBuffer.clear();
 			return false;
 		}
 
-		// Find max character height (todo, actually get spacing from freetype)
+		// Find max character height (todo, actually get spacing from FreeType)
 		for (const auto& charInfo : m_glyphs)
 		{
-			m_charMaxWidth = Max<int>(charInfo.second.width, m_charMaxWidth);
+			m_charMaxWidth	= Max<int>(charInfo.second.width, m_charMaxWidth);
 			m_charMaxHeight = Max<int>(charInfo.second.height, m_charMaxHeight);
 		}
 
@@ -106,7 +106,7 @@ namespace Directus
 
 	void** Font::GetShaderResource()
 	{
-		return m_textureAtlas->GetShaderResource();
+		return m_textureAtlas ? m_textureAtlas->GetShaderResource() : nullptr;
 	}
 
 	bool Font::SetBuffers()
@@ -151,7 +151,7 @@ namespace Directus
 				int spaceCount = 8; // spaces in a typical terminal
 				int tabSpacing = spaceOffset * spaceCount;
 				int columnHeader = int(pen.x - position.x); // -position.x because it has to be zero based so we can do the mod below
-				int offsetToNextTabStop = tabSpacing - (columnHeader % tabSpacing);
+				int offsetToNextTabStop = tabSpacing - (columnHeader % (tabSpacing != 0 ? tabSpacing : 1));
 				pen.x += offsetToNextTabStop;
 				continue;
 			}

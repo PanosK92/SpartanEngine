@@ -68,4 +68,5 @@ private:
 
 	void ShowAddComponentButton();
 	void ComponentContextMenu_Add();
+	void Drop_AutoAddComponents();
 };

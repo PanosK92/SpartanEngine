@@ -99,7 +99,7 @@ namespace Directus
 	//              |------------- advanceX ----------->|
 
 
-	bool FontImporter::LoadFont(const string& filePath, int size, vector<std::byte>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, map<unsigned int, Glyph>& glyphs)
+	bool FontImporter::LoadFromFile(const string& filePath, int size, vector<std::byte>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, map<unsigned int, Glyph>& glyphs)
 	{
 		FT_Face face;
 
@@ -154,14 +154,15 @@ namespace Directus
 				penY += rowHeight;
 			}
 
-			auto bytes = (std::byte*)bitmap->buffer;
+			auto bytes	= (byte*)bitmap->buffer;
+			int	pitch	= bitmap->pitch;
 			for (unsigned int row = 0; row < bitmap->rows; row++)
 			{
 				for (unsigned int col = 0; col < bitmap->width; col++)
 				{
 					int x = penX + col;
 					int y = penY + row;
-					atlasBuffer[y * atlasWidth + x] = bytes[row * bitmap->pitch + col];
+					atlasBuffer[y * atlasWidth + x] = bytes[row * pitch + col];
 				}
 			}
 

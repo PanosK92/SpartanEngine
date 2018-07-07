@@ -176,6 +176,7 @@ void Widget_Properties::Update()
 		}
 
 		ShowAddComponentButton();
+		Drop_AutoAddComponents();
 	}
 	else if (!g_inspectedMaterial.expired())
 	{
@@ -1003,14 +1004,6 @@ void Widget_Properties::ShowScript(Script* script)
 		ImGui::PopID();
 	}
 	ComponentProperty::End();
-
-	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
-	{
-		if (auto scriptComponent = g_inspectedActor.lock()->AddComponent<Script>().lock())
-		{
-			scriptComponent->SetScript(get<const char*>(payload->data));
-		}
-	}
 }
 
 void Widget_Properties::ShowAddComponentButton()
@@ -1091,5 +1084,16 @@ void Widget_Properties::ComponentContextMenu_Add()
 		}
 
 		ImGui::EndPopup();
+	}
+}
+
+void Widget_Properties::Drop_AutoAddComponents()
+{
+	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
+	{
+		if (auto scriptComponent = g_inspectedActor.lock()->AddComponent<Script>().lock())
+		{
+			scriptComponent->SetScript(get<const char*>(payload->data));
+		}
 	}
 }

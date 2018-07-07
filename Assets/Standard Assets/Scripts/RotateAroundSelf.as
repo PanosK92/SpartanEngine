@@ -29,7 +29,7 @@ class RotateAroundSelf
 		float speed =  m_speed * time.GetDeltaTime();
 		m_rotation += speed;
 		
-		Quaternion newRot = QuaternionFromEuler(m_startingRot.x, m_rotation, m_startingRot.z);	
+		Quaternion newRot = QuaternionFromEuler(Vector3(m_startingRot.x, m_rotation, m_startingRot.z));	
 		transform.SetRotationLocal(newRot);
 	}
 }

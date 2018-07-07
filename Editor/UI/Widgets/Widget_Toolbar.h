@@ -32,4 +32,7 @@ public:
 	void Initialize(Directus::Context* context) override;
 	void Begin() override;
 	void Update() override;
+
+private:
+	void ShowRendererOptions();
 };
