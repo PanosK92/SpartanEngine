@@ -98,7 +98,7 @@ namespace Directus
 	{
 		if (!m_context)
 		{
-			LOG_ERROR("Aborting loading. ModelImporter requires an initialized Context");
+			LOG_ERROR("ModelImporter::Load: Uninitialized context");
 			return false;
 		}
 
@@ -118,7 +118,7 @@ namespace Directus
 		const aiScene* scene = importer.ReadFile(m_modelPath, AssimpSettings::g_postProcessSteps);
 		if (!scene)
 		{
-			LOG_ERROR("ModelImporter: Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
+			LOGF_ERROR("ModelImporter::Load:  Failed to load \"%s\". %s", model->GetResourceName().c_str(), importer.GetErrorString());
 			ProgressReport::Get().SetIsLoading(g_progress_ModelImporter, false);
 			return false;
 		}

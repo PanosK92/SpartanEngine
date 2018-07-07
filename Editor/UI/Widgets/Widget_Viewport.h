@@ -34,7 +34,6 @@ public:
 	void Update() override;
 
 private:
-	void ShowTopToolbar();
 	void ShowFrame();
 	void MousePicking();
 };

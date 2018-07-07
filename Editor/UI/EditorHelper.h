@@ -39,8 +39,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const int BUFFER_TEXT_DEFAULT = 255;
 
-// An icon shader resource pointer by thumbnail id
-#define SHADER_RESOURCE(thumbnail)						IconProvider::Get().GetShaderResourceByThumbnail(thumbnail)
+// An icon shader resource pointer by thumbnail
+#define SHADER_RESOURCE_BY_THUMBNAIL(thumbnail)			IconProvider::Get().GetShaderResourceByThumbnail(thumbnail)
 // An icon shader resource pointer by type 
 #define SHADER_RESOURCE_BY_TYPE(type)					IconProvider::Get().GetShaderResourceByType(type)
 // An thumbnail button by thumbnail

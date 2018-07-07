@@ -41,13 +41,6 @@ static Renderer* g_renderer			= nullptr;
 static Scene* g_scene				= nullptr;
 static Vector2 g_framePos;
 
-static bool g_physics				= true;
-static bool g_aabb					= false;
-static bool g_gizmos				= true;
-static bool g_pickingRay			= false;
-static bool g_grid					= true;
-static bool g_performanceMetrics	= false;
-
 Widget_Viewport::Widget_Viewport()
 {
 	m_title = "Viewport";
@@ -66,33 +59,13 @@ void Widget_Viewport::Update()
 	if (!g_renderer)
 		return;
 	
-	ShowTopToolbar();
-	ImGui::Separator();
 	ShowFrame();
-}
-
-void Widget_Viewport::ShowTopToolbar()
-{
-	// Render options
-	ImGui::SetCursorPosX(ImGui::GetStyle().WindowPadding.x); ImGui::Checkbox("Physics", &g_physics);
-	ImGui::SameLine(); ImGui::Checkbox("AABB", &g_aabb);
-	ImGui::SameLine(); ImGui::Checkbox("Gizmos", &g_gizmos);
-	ImGui::SameLine(); ImGui::Checkbox("Picking Ray", &g_pickingRay);
-	ImGui::SameLine(); ImGui::Checkbox("Scene Grid", &g_grid);
-	ImGui::SameLine(); ImGui::Checkbox("Performance Metrics", &g_performanceMetrics);
-
-	g_physics				? Renderer::RenderFlags_Enable(Render_Physics)			: Renderer::RenderFlags_Disable(Render_Physics);
-	g_aabb					? Renderer::RenderFlags_Enable(Render_AABB)				: Renderer::RenderFlags_Disable(Render_AABB);
-	g_gizmos				? Renderer::RenderFlags_Enable(Render_Light)			: Renderer::RenderFlags_Disable(Render_Light);
-	g_pickingRay			? Renderer::RenderFlags_Enable(Render_PickingRay)		: Renderer::RenderFlags_Disable(Render_PickingRay);
-	g_grid					? Renderer::RenderFlags_Enable(Render_SceneGrid)			: Renderer::RenderFlags_Disable(Render_SceneGrid);
-	g_performanceMetrics	? Renderer::RenderFlags_Enable(Render_PerformanceMetrics)	: Renderer::RenderFlags_Disable(Render_PerformanceMetrics);
 }
 
 void Widget_Viewport::ShowFrame()
 {
 	float width		= ImGui::GetWindowContentRegionWidth();
-	float height	= ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y - 30;
+	float height	= ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
 
 	g_renderer->SetResolutionInternal((int)width, (int)height);
 

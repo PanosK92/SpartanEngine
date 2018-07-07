@@ -32,14 +32,17 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static bool g_scrollToBottom = false;
-static ImVec4 g_logColor[3] =
+namespace Widget_ConsoleOptions
 {
-	ImVec4(0.76f, 0.77f, 0.8f, 1.0f),	// Info
-	ImVec4(1.0f, 1.0f, 0.0f, 1.0f),		// Warning
-	ImVec4(1.0f, 0.0f, 0.0f, 1.0f)		// Error
-};
-static ImGuiTextFilter g_logFilter;
+	static bool g_scrollToBottom = false;
+	static ImVec4 g_logColor[3] =
+	{
+		ImVec4(0.76f, 0.77f, 0.8f, 1.0f),	// Info
+		ImVec4(1.0f, 1.0f, 0.0f, 1.0f),		// Warning
+		ImVec4(1.0f, 0.0f, 0.0f, 1.0f)		// Error
+	};
+	static ImGuiTextFilter g_logFilter;
+}
 
 Widget_Console::Widget_Console()
 {
@@ -59,32 +62,49 @@ Widget_Console::Widget_Console()
 
 void Widget_Console::Update()
 {
-	if (ImGui::Button("Clear"))									{ Clear(); }														ImGui::SameLine();
-	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Console_Info,		15.0f))	{ m_showInfo		= !m_showInfo;		g_scrollToBottom = true; }	ImGui::SameLine();
-	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Console_Warning,	15.0f))	{ m_showWarnings	= !m_showWarnings;	g_scrollToBottom = true;}	ImGui::SameLine();
-	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Console_Error,	15.0f))	{ m_showErrors		= !m_showErrors;	g_scrollToBottom = true;}	ImGui::SameLine();
+	// Clear Button
+	if (ImGui::Button("Clear"))	{ Clear();} ImGui::SameLine();
 
-	g_logFilter.Draw("Filter", -100.0f);
+	// Lambda for info, warning, error filter button
+	auto DisplayButton = [](Icon_Type icon, bool* toggle)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, *toggle ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+		if (THUMBNAIL_BUTTON_BY_TYPE(icon, 15.0f))
+		{
+			*toggle = !(*toggle);
+			Widget_ConsoleOptions::g_scrollToBottom = true;
+		}
+		ImGui::PopStyleColor();
+		ImGui::SameLine();
+	};
+
+	DisplayButton(Icon_Console_Info, &m_showInfo);
+	DisplayButton(Icon_Console_Warning, &m_showWarnings);
+	DisplayButton(Icon_Console_Error, &m_showErrors);
+
+	// Text filter
+	Widget_ConsoleOptions::g_logFilter.Draw("Filter", -100.0f);
 	ImGui::Separator();
 
+	// Content
 	ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 	for (const auto& log : m_logs)
 	{
-		if (!g_logFilter.PassFilter(log.text.c_str()))
+		if (!Widget_ConsoleOptions::g_logFilter.PassFilter(log.text.c_str()))
 			continue;
 
 		if ((log.errorLevel == 0 && m_showInfo) || (log.errorLevel == 1 && m_showWarnings) || (log.errorLevel == 2 && m_showErrors))
 		{
-			ImGui::PushStyleColor(ImGuiCol_Text, g_logColor[log.errorLevel]);
+			ImGui::PushStyleColor(ImGuiCol_Text, Widget_ConsoleOptions::g_logColor[log.errorLevel]);
 			ImGui::TextUnformatted(log.text.c_str());
 			ImGui::PopStyleColor();
 		}
 	}
 
-	if (g_scrollToBottom)
+	if (Widget_ConsoleOptions::g_scrollToBottom)
 	{
 		ImGui::SetScrollHere();
-		g_scrollToBottom = false;
+		Widget_ConsoleOptions::g_scrollToBottom = false;
 	}
 
 	ImGui::EndChild();
@@ -98,7 +118,7 @@ void Widget_Console::AddLogPackage(LogPackage package)
 		m_logs.pop_front();
 	}
 
-	g_scrollToBottom = true;
+	Widget_ConsoleOptions::g_scrollToBottom = true;
 }
 
 void Widget_Console::Clear()
