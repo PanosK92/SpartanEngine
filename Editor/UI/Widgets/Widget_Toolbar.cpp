@@ -79,6 +79,7 @@ void Widget_Toolbar::Begin()
 	float height	= g.FontBaseSize + g.Style.FramePadding.y * 2.0f - 1.0f;
 	ImGui::SetNextWindowPos(ImVec2(0.0f, height - 1.0f));
 	ImGui::SetNextWindowSize(ImVec2(width, height + 16));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 5));
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 }
 
@@ -102,8 +103,10 @@ void Widget_Toolbar::Update()
 	}
 	ImGui::PopStyleColor();
 
+	ImGui::PopStyleVar(); // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 5));
+
 	// Visibility
-	if (g_showRendererOptions)	ShowRendererOptions();
+	if (g_showRendererOptions)	ShowRendererOptions();	
 }
 
 void Widget_Toolbar::ShowRendererOptions()
@@ -171,18 +174,21 @@ void Widget_Toolbar::ShowRendererOptions()
 	ImGui::Separator();
 
 	// Effects
-	{
-		bool bloom = Renderer::RenderFlags_IsSet(Render_Bloom);
-		bool fxaa = Renderer::RenderFlags_IsSet(Render_FXAA);
-		bool sharpening = Renderer::RenderFlags_IsSet(Render_Sharpening);
+	{	
+		bool bloom				= Renderer::RenderFlags_IsSet(Render_Bloom);
+		bool fxaa				= Renderer::RenderFlags_IsSet(Render_FXAA);
+		bool sharpening			= Renderer::RenderFlags_IsSet(Render_Sharpening);
+		bool correction			= Renderer::RenderFlags_IsSet(Render_Correction);
 
 		ImGui::Checkbox("Bloom", &bloom);
+		ImGui::Checkbox("Tone-mapping & Gamma correction", &correction);
 		ImGui::Checkbox("FXAA", &fxaa);
 		ImGui::Checkbox("Sharpening", &sharpening);
-
-		bloom ? Renderer::RenderFlags_Enable(Render_Bloom) : Renderer::RenderFlags_Disable(Render_Bloom);
-		fxaa ? Renderer::RenderFlags_Enable(Render_FXAA) : Renderer::RenderFlags_Disable(Render_FXAA);
-		sharpening ? Renderer::RenderFlags_Enable(Render_Sharpening) : Renderer::RenderFlags_Disable(Render_Sharpening);
+	
+		bloom		? Renderer::RenderFlags_Enable(Render_Bloom)		: Renderer::RenderFlags_Disable(Render_Bloom);
+		fxaa		? Renderer::RenderFlags_Enable(Render_FXAA)			: Renderer::RenderFlags_Disable(Render_FXAA);
+		sharpening	? Renderer::RenderFlags_Enable(Render_Sharpening)	: Renderer::RenderFlags_Disable(Render_Sharpening);
+		correction	? Renderer::RenderFlags_Enable(Render_Correction)	: Renderer::RenderFlags_Disable(Render_Correction);
 	}
 
 	ImGui::Separator();

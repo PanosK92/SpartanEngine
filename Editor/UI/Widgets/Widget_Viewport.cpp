@@ -78,6 +78,7 @@ void Widget_Viewport::ShowFrame()
 		ImColor(255, 255, 255, 255),
 		ImColor(50, 127, 166, 255)
 	);
+
 	// Handle model drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Model))
 	{

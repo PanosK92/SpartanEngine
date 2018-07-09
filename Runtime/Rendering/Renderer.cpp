@@ -72,12 +72,14 @@ namespace Directus
 		m_nearPlane					= 0.0f;
 		m_farPlane					= 0.0f;
 		m_graphics					= nullptr;
+		m_frame						= nullptr;
 		m_flags						= 0;
 		m_flags						|= Render_SceneGrid;
 		m_flags						|= Render_Light;
 		m_flags						|= Render_Bloom;
 		m_flags						|= Render_FXAA;
 		m_flags						|= Render_Sharpening;
+		m_flags						|= Render_Correction;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
@@ -103,13 +105,6 @@ namespace Directus
 		g_resourceMng	= m_context->GetSubsystem<ResourceManager>();
 		g_physics		= m_context->GetSubsystem<Physics>();
 
-		// Create G-Buffer
-		m_gbuffer = make_unique<GBuffer>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-
-		// Create fullscreen rectangle
-		m_quad = make_unique<Rectangle>(m_context);
-		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
-
 		// Performance Metrics
 		m_font = make_unique<Font>(m_context);
 		string fontDir = g_resourceMng->GetStandardResourceDirectory(Resource_Font);
@@ -124,6 +119,8 @@ namespace Directus
 		// Get standard resource directories
 		string shaderDirectory	= g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
 		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
+
+		RenderTargets_Create();
 
 		// SHADERS
 		{
@@ -224,7 +221,7 @@ namespace Directus
 			m_shaderBloom_BlurBlend->AddSampler(Texture_Sampler_Point);
 			m_shaderBloom_BlurBlend->AddBuffer(CB_Matrix, VertexShader);
 
-			// Correction
+			// Tone-mapping
 			m_shaderCorrection = make_unique<RI_Shader>(m_context);
 			m_shaderCorrection->AddDefine("PASS_CORRECTION");
 			m_shaderCorrection->Compile(shaderDirectory + "PostProcess.hlsl");
@@ -246,14 +243,6 @@ namespace Directus
 			m_shaderShadowing->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp, Texture_Comparison_Greater); // Shadow mapping
 			m_shaderShadowing->AddSampler(Texture_Sampler_Linear, Texture_Address_Clamp, Texture_Comparison_Greater); // SSAO
 			m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
-		}
-
-		// RENDER TARGETS
-		{
-			m_renderTexPing			= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);	
-			m_renderTexPing2		= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
-			m_renderTexPong			= make_shared<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
-			m_renderTexShadowing	= make_shared<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false, Texture_Format_R32G32_FLOAT);
 		}
 
 		// TEXTURES
@@ -299,11 +288,6 @@ namespace Directus
 		SetRenderTarget(renderTexture.get());
 	}
 
-	void* Renderer::GetFrame()
-	{
-		return (void*)m_renderTexPong->GetShaderResourceView();
-	}
-
 	void Renderer::Present()
 	{
 		m_graphics->Present();
@@ -320,13 +304,14 @@ namespace Directus
 		// If there is a camera, render the scene
 		if (m_camera)
 		{
-			m_mView				= m_camera->GetViewMatrix();
-			m_mProjectionPersp	= m_camera->GetProjectionMatrix();
-			m_mVP				= m_mView * m_mProjectionPersp;
-			m_mProjectionOrtho	= Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
-			m_mViewBase			= m_camera->GetBaseViewMatrix();
-			m_nearPlane			= m_camera->GetNearPlane();
-			m_farPlane			= m_camera->GetFarPlane();
+			m_mV					= m_camera->GetViewMatrix();
+			m_mV_base				= m_camera->GetBaseViewMatrix();
+			m_mP_perspective		= m_camera->GetProjectionMatrix();
+			m_mP_orthographic		= Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);		
+			m_wvp_perspective		= m_mV * m_mP_perspective;
+			m_wvp_baseOrthographic	= m_mV_base * m_mP_orthographic;
+			m_nearPlane				= m_camera->GetNearPlane();
+			m_farPlane				= m_camera->GetFarPlane();
 
 			// If there is nothing to render clear to camera's color and present
 			if (m_renderables.empty())
@@ -390,26 +375,7 @@ namespace Directus
 			return;
 
 		SET_RESOLUTION(Vector2((float)width, (float)height));
-		
-		// Resize everything
-		m_gbuffer.reset();
-		m_gbuffer = make_unique<GBuffer>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-
-		m_quad.reset();
-		m_quad = make_unique<Rectangle>(m_context);
-		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
-
-		m_renderTexPing.reset();
-		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
-
-		m_renderTexPing2.reset();
-		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
-
-		m_renderTexPong.reset();
-		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R8G8B8A8_UNORM);
-
-		m_renderTexShadowing.reset();
-		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false, Texture_Format_R32G32_FLOAT);
+		RenderTargets_Create();
 	}
 
 	const Vector2& Renderer::GetViewportInternal()
@@ -430,6 +396,29 @@ namespace Directus
 		m_skybox			= nullptr;
 		m_lineRenderer		= nullptr;
 		m_camera			= nullptr;
+	}
+
+	void Renderer::RenderTargets_Create()
+	{
+		// Resize everything
+		m_gbuffer.reset();
+		m_gbuffer = make_unique<GBuffer>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+
+		m_quad.reset();
+		m_quad = make_unique<Rectangle>(m_context);
+		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
+
+		m_renderTexPing.reset();
+		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R16G16B16A16_FLOAT);
+
+		m_renderTexPing2.reset();
+		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R16G16B16A16_FLOAT);
+
+		m_renderTexPong.reset();
+		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R16G16B16A16_FLOAT);
+
+		m_renderTexShadowing.reset();
+		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false, Texture_Format_R32G32_FLOAT);
 	}
 
 	//= RENDERABLES ============================================================================================
@@ -667,7 +656,7 @@ namespace Directus
 
 			// UPDATE PER OBJECT BUFFER
 			auto mWorld	= actor->GetTransform_PtrRaw()->GetWorldTransform();
-			obj_shader->Bind_PerObjectBuffer(mWorld, m_mView, m_mProjectionPersp);
+			obj_shader->Bind_PerObjectBuffer(mWorld, m_mV, m_mP_perspective);
 		
 			// render			
 			obj_renderable->Render();
@@ -721,7 +710,7 @@ namespace Directus
 		SetRenderTarget(outRenderTexture, false);
 
 		// Update buffers
-		m_shaderLight->UpdateMatrixBuffer(Matrix::Identity, m_mView, m_mViewBase, m_mProjectionPersp, m_mProjectionOrtho);
+		m_shaderLight->UpdateMatrixBuffer(Matrix::Identity, m_mV, m_mV_base, m_mP_perspective, m_mP_orthographic);
 		m_shaderLight->UpdateMiscBuffer(m_lights, m_camera);
 
 		//= Update textures ===========================================================
@@ -752,26 +741,33 @@ namespace Directus
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
+		// Keep track of render target swapping
+		bool swaped = false;
+		auto SwapTargets = [&swaped, &inRenderTexture1, &outRenderTexture]()
+		{
+			outRenderTexture.swap(inRenderTexture1);
+			swaped = !swaped;
+		};
+
 		// BLOOM
 		if (RenderFlags_IsSet(Render_Bloom))
 		{
 			Pass_Bloom(inRenderTexture1, inRenderTexture2, outRenderTexture);
-
-			outRenderTexture.swap(inRenderTexture1);
+			SwapTargets();
 		}
 
-		// CORRECTION (Gamma, Tone-mapping)
-		Pass_Correction(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
-
-		// Swap the render textures instead of swapping render targets (cheaper)
-		outRenderTexture.swap(inRenderTexture1);
+		// CORRECTION
+		if (RenderFlags_IsSet(Render_Correction))
+		{
+			Pass_Correction(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+			SwapTargets();
+		}
 
 		// FXAA
 		if (RenderFlags_IsSet(Render_FXAA))
 		{
 			Pass_FXAA(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
-
-			outRenderTexture.swap(inRenderTexture1);
+			SwapTargets();
 		}
 
 		// SHARPENING
@@ -780,12 +776,149 @@ namespace Directus
 			Pass_Sharpening(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
 		}
 
+		m_frame = outRenderTexture->GetShaderResourceView();
+
+		// DEBUG - Rendering continues on last bound target
 		Pass_DebugGBuffer();
 		Pass_Debug();
 
 		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
+
+	void Renderer::Pass_Correction(void* inTexture, void* outTexture)
+	{
+		m_graphics->EventBegin("Pass_Correction");
+
+		SetRenderTarget(outTexture, false);
+		m_shaderCorrection->Bind();
+		m_shaderCorrection->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderCorrection->Bind_Texture(inTexture);
+		m_shaderCorrection->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
+	}
+
+	void Renderer::Pass_FXAA(void* inTexture, void* outTexture)
+	{
+		m_graphics->EventBegin("Pass_FXAA");
+
+		SetRenderTarget(outTexture, false);
+		m_shaderFXAA->Bind();
+		m_shaderFXAA->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderFXAA->Bind_Texture(inTexture);
+		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
+	}
+
+	void Renderer::Pass_Sharpening(void* inTexture, void* outTexture)
+	{
+		m_graphics->EventBegin("Pass_Sharpening");
+
+		SetRenderTarget(outTexture, false);
+		m_shaderSharpening->Bind();
+		m_shaderSharpening->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderSharpening->Bind_Texture(inTexture);
+		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
+	}
+
+	void Renderer::Pass_Bloom(shared_ptr<D3D11_RenderTexture>& inSourceTexture, shared_ptr<D3D11_RenderTexture>& inTextureSpare, shared_ptr<D3D11_RenderTexture>& outTexture)
+	{
+		m_graphics->EventBegin("Pass_Bloom");
+
+		// Bright pass
+		SetRenderTarget(inTextureSpare.get(), false);
+		m_shaderBloom_Bright->Bind();
+		m_shaderBloom_Bright->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderBloom_Bright->Bind_Texture(inSourceTexture->GetShaderResourceView());
+		m_shaderBloom_Bright->DrawIndexed(m_quad->GetIndexCount());
+
+		// Horizontal Gaussian blur
+		SetRenderTarget(outTexture.get(), false);
+		m_shaderBlurGaussianH->Bind();
+		m_shaderBlurGaussianH->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderBlurGaussianH->Bind_Texture(inTextureSpare->GetShaderResourceView());
+		m_shaderBlurGaussianH->DrawIndexed(m_quad->GetIndexCount());
+
+		// Vertical Gaussian blur
+		SetRenderTarget(inTextureSpare.get(), false);
+		m_shaderBlurGaussianV->Bind();
+		m_shaderBlurGaussianV->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderBlurGaussianV->Bind_Texture(outTexture->GetShaderResourceView());
+		m_shaderBlurGaussianV->DrawIndexed(m_quad->GetIndexCount());
+
+		// Additive blending
+		SetRenderTarget(outTexture.get(), false);
+		m_shaderBloom_BlurBlend->Bind();
+		m_shaderBloom_BlurBlend->Bind_Buffer(m_wvp_baseOrthographic);
+		m_shaderBloom_BlurBlend->Bind_Texture(inSourceTexture->GetShaderResourceView(), 0);
+		m_shaderBloom_BlurBlend->Bind_Texture(inTextureSpare->GetShaderResourceView(), 1);
+		m_shaderBloom_BlurBlend->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
+	}
+
+	void Renderer::Pass_Blur(void* texture, void* renderTarget, const Vector2& blurScale)
+	{
+		m_graphics->EventBegin("Pass_Blur");
+
+		SetRenderTarget(renderTarget, false);
+		m_shaderBlurBox->Bind();
+		m_shaderBlurBox->Bind_Buffer(m_wvp_baseOrthographic, blurScale);
+		m_shaderBlurBox->Bind_Texture(texture, 0); // Shadows are in the alpha channel
+		m_shaderBlurBox->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
+	}
+
+	void Renderer::Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture)
+	{
+		if (!inDirectionalLight)
+			return;
+
+		PROFILE_FUNCTION_BEGIN();
+		m_graphics->EventBegin("Pass_Shadowing");
+
+		// SHADOWING (Shadow mapping + SSAO)
+		SetRenderTarget(outRenderTexture, false);
+
+		// TEXTURES
+		m_texArray.clear();
+		m_texArray.shrink_to_fit();
+		m_texArray.emplace_back(inTextureNormal);
+		m_texArray.emplace_back(inTextureDepth);
+		m_texArray.emplace_back(inTextureNormalNoise);
+		if (inDirectionalLight)
+		{
+			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(0));
+			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(1));
+			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(2));
+		}
+
+		// BUFFER
+		Matrix mvp_persp_inv = m_wvp_perspective.Inverted();
+
+		m_shaderShadowing->Bind();
+		m_shaderShadowing->Bind_Buffer(
+			m_wvp_baseOrthographic, 
+			mvp_persp_inv, 
+			m_mV, 
+			m_mP_perspective,		
+			GET_RESOLUTION, 
+			inDirectionalLight,
+			m_camera,
+			0
+		);
+		m_shaderShadowing->SetTextures(m_texArray);
+		m_shaderShadowing->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
+		PROFILE_FUNCTION_END();
+	}
+	//=============================================================================================================
 
 	bool Renderer::Pass_DebugGBuffer()
 	{
@@ -823,7 +956,7 @@ namespace Directus
 
 		// TEXTURE
 		m_shaderTexture->Bind();
-		m_shaderTexture->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
+		m_shaderTexture->Bind_Buffer(m_wvp_baseOrthographic, 0);
 		m_shaderTexture->Bind_Texture(m_gbuffer->GetShaderResource(texType), 0);
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
@@ -880,8 +1013,8 @@ namespace Directus
 				// Render
 				m_lineRenderer->SetBuffer();
 				m_shaderLine->Bind();
-				m_shaderLine->Bind_Buffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
-				m_shaderLine->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0); // depth
+				m_shaderLine->Bind_Buffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix());
+				m_shaderLine->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth)); // depth
 				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
 
 				m_graphics->EventEnd();
@@ -898,8 +1031,8 @@ namespace Directus
 
 			m_grid->SetBuffer();
 			m_shaderGrid->Bind();
-			m_shaderGrid->Bind_Buffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(), 0);
-			m_shaderGrid->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
+			m_shaderGrid->Bind_Buffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix());
+			m_shaderGrid->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 
 			m_graphics->EventEnd();
@@ -957,7 +1090,7 @@ namespace Directus
 
 					m_gizmoRectLight->SetBuffer();
 					m_shaderTexture->Bind();
-					m_shaderTexture->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, 0);
+					m_shaderTexture->Bind_Buffer(m_wvp_baseOrthographic, 0);
 					m_shaderTexture->Bind_Texture(lightTex->GetShaderResource(), 0);
 					m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
 				}
@@ -995,8 +1128,8 @@ namespace Directus
 			m_font->SetInputLayout();
 
 			m_shaderFont->Bind();
-			m_shaderFont->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, m_font->GetColor(), 0);
-			m_shaderFont->Bind_Texture(m_font->GetShaderResource(), 0);
+			m_shaderFont->Bind_Buffer(m_wvp_baseOrthographic, m_font->GetColor());
+			m_shaderFont->Bind_Texture(m_font->GetShaderResource());
 			m_shaderFont->DrawIndexed(m_font->GetIndexCount());
 		}
 
@@ -1005,143 +1138,6 @@ namespace Directus
 		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
-
-	void Renderer::Pass_Correction(void* texture, void* renderTarget)
-	{
-		m_graphics->EventBegin("Pass_Correction");
-
-		SetRenderTarget(renderTarget, false);
-		m_shaderCorrection->Bind();
-		m_shaderCorrection->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
-		m_shaderCorrection->Bind_Texture(texture);
-		m_shaderCorrection->DrawIndexed(m_quad->GetIndexCount());
-
-		m_graphics->EventEnd();
-	}
-
-	void Renderer::Pass_FXAA(void* texture, void* renderTarget)
-	{
-		m_graphics->EventBegin("Pass_FXAA");
-
-		SetRenderTarget(renderTarget, false);
-		m_shaderFXAA->Bind();
-		m_shaderFXAA->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
-		m_shaderFXAA->Bind_Texture(texture);
-		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
-
-		m_graphics->EventEnd();
-	}
-
-	void Renderer::Pass_Sharpening(void* texture, void* renderTarget)
-	{
-		m_graphics->EventBegin("Pass_Sharpening");
-
-		SetRenderTarget(renderTarget, false);
-		m_shaderSharpening->Bind();
-		m_shaderSharpening->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
-		m_shaderSharpening->Bind_Texture(texture);
-		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
-
-		m_graphics->EventEnd();
-	}
-
-	void Renderer::Pass_Bloom(shared_ptr<D3D11_RenderTexture>& inRenderTexture1, shared_ptr<D3D11_RenderTexture>& inRenderTexture2, shared_ptr<D3D11_RenderTexture>& outRenderTexture)
-	{
-		m_graphics->EventBegin("Pass_Bloom");
-
-		Matrix transformation = Matrix::Identity * m_mViewBase * m_mProjectionOrtho;
-
-		// Bright pass
-		SetRenderTarget(inRenderTexture2.get(), false);
-		m_shaderBloom_Bright->Bind();
-		m_shaderBloom_Bright->Bind_Buffer(transformation, GET_RESOLUTION);
-		m_shaderBloom_Bright->Bind_Texture(inRenderTexture1->GetShaderResourceView());
-		m_shaderBloom_Bright->DrawIndexed(m_quad->GetIndexCount());
-
-		// Horizontal Gaussian blur
-		SetRenderTarget(outRenderTexture.get(), false);
-		m_shaderBlurGaussianH->Bind();
-		m_shaderBlurGaussianH->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
-		m_shaderBlurGaussianH->Bind_Texture(inRenderTexture2->GetShaderResourceView());
-		m_shaderBlurGaussianH->DrawIndexed(m_quad->GetIndexCount());
-
-		// Vertical Gaussian blur
-		SetRenderTarget(inRenderTexture2.get(), false);
-		m_shaderBlurGaussianV->Bind();
-		m_shaderBlurGaussianV->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, GET_RESOLUTION);
-		m_shaderBlurGaussianV->Bind_Texture(outRenderTexture->GetShaderResourceView());
-		m_shaderBlurGaussianV->DrawIndexed(m_quad->GetIndexCount());
-
-		// Additive blending
-		SetRenderTarget(outRenderTexture.get(), false);
-		m_shaderBloom_BlurBlend->Bind();
-		m_shaderBloom_BlurBlend->Bind_Buffer(transformation);
-		m_shaderBloom_BlurBlend->Bind_Texture(inRenderTexture1->GetShaderResourceView(), 0);
-		m_shaderBloom_BlurBlend->Bind_Texture(inRenderTexture2->GetShaderResourceView(), 1);
-		m_shaderBloom_BlurBlend->DrawIndexed(m_quad->GetIndexCount());
-
-		m_graphics->EventEnd();
-	}
-
-	void Renderer::Pass_Blur(void* texture, void* renderTarget, const Vector2& blurScale)
-	{
-		m_graphics->EventBegin("Pass_Blur");
-
-		SetRenderTarget(renderTarget, false);
-		m_shaderBlurBox->Bind();
-		m_shaderBlurBox->Bind_Buffer(Matrix::Identity * m_mViewBase * m_mProjectionOrtho, blurScale);
-		m_shaderBlurBox->Bind_Texture(texture, 0); // Shadows are in the alpha channel
-		m_shaderBlurBox->DrawIndexed(m_quad->GetIndexCount());
-
-		m_graphics->EventEnd();
-	}
-
-	void Renderer::Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture)
-	{
-		if (!inDirectionalLight)
-			return;
-
-		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_Shadowing");
-
-		// SHADOWING (Shadow mapping + SSAO)
-		SetRenderTarget(outRenderTexture, false);
-
-		// TEXTURES
-		m_texArray.clear();
-		m_texArray.shrink_to_fit();
-		m_texArray.emplace_back(inTextureNormal);
-		m_texArray.emplace_back(inTextureDepth);
-		m_texArray.emplace_back(inTextureNormalNoise);
-		if (inDirectionalLight)
-		{
-			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(0));
-			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(1));
-			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(2));
-		}
-
-		// BUFFER
-		Matrix mvp_ortho		= Matrix::Identity * m_mViewBase * m_mProjectionOrtho;
-		Matrix mvp_persp_inv	= (Matrix::Identity * m_mView * m_mProjectionPersp).Inverted();
-
-		m_shaderShadowing->Bind();
-		m_shaderShadowing->Bind_Buffer(
-			mvp_ortho, 
-			mvp_persp_inv, 
-			m_mView, 
-			m_mProjectionPersp,		
-			GET_RESOLUTION, 
-			inDirectionalLight,
-			m_camera,
-			0
-		);
-		m_shaderShadowing->SetTextures(m_texArray);
-		m_shaderShadowing->DrawIndexed(m_quad->GetIndexCount());
-
-		m_graphics->EventEnd();
-		PROFILE_FUNCTION_END();
-	}
-	//=============================================================================================================
 
 	const Vector4& Renderer::GetClearColor()
 	{

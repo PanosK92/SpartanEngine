@@ -60,7 +60,7 @@ public:
 	unsigned int GetID() const		{ return m_id; }
 	void* GetShaderResource() const { return SHADER_RESOURCE_BY_THUMBNAIL(m_thumbnail); }
 	bool IsDirectory()				{ return m_isDirectory; }
-	float GetTimeSinceLastClickMs() { return m_timeSinceLastClick.count(); }
+	float GetTimeSinceLastClickMs() { return (float)m_timeSinceLastClick.count(); }
 
 	void Clicked()	
 	{ 

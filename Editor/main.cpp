@@ -90,7 +90,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// Update engine (will simulate and render)
 		g_engine->Tick();
 
-		// Set back buffer as render target (for ImGUI to render on)
+		// Set back buffer as render target (for ImGui to render on)
 		g_renderer->SetRenderTarget(nullptr);
 
 		// Update editor
