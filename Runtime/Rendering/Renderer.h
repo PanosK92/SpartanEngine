@@ -65,7 +65,8 @@ namespace Directus
 		Render_Light				= 1UL << 9,
 		Render_Bloom				= 1UL << 10,
 		Render_FXAA					= 1UL << 11,
-		Render_Sharpening			= 1UL << 12
+		Render_Sharpening			= 1UL << 12,
+		Render_Correction			= 1UL << 13, // Tone-mapping & Gamma correction
 	};
 
 	class ENGINE_CLASS Renderer : public Subsystem
@@ -81,7 +82,7 @@ namespace Directus
 		// Rendering
 		void SetRenderTarget(void* renderTarget, bool clear = true);
 		void SetRenderTarget(const std::shared_ptr<D3D11_RenderTexture>& renderTexture);
-		void* GetFrame();
+		void* GetFrame() { return m_frame; }
 		void Present();
 		void Render();
 
@@ -110,6 +111,8 @@ namespace Directus
 		const std::vector<Actor*>& GetRenderables() { return m_renderables; }
 
 	private:
+		void RenderTargets_Create();
+
 		void Renderables_Acquire(const Variant& renderables);
 		void Renderables_Sort(std::vector<Actor*>* renderables);
 
@@ -124,9 +127,9 @@ namespace Directus
 		);
 		bool Pass_DebugGBuffer();
 		void Pass_Debug();
-		void Pass_Correction(void* texture, void* renderTarget);
-		void Pass_FXAA(void* texture, void* renderTarget);
-		void Pass_Sharpening(void* texture, void* renderTarget);
+		void Pass_Correction(void* inTexture, void* outTexture);
+		void Pass_FXAA(void* inTexture, void* outTexture);
+		void Pass_Sharpening(void* inTexture, void* outTexture);
 		void Pass_Bloom(
 			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture1,
 			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture2,
@@ -186,17 +189,19 @@ namespace Directus
 		ID3D11ShaderResourceView* m_texEnvironment;
 		std::unique_ptr<RI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
+		void* m_frame;
 		//=========================================
 
 		//= PREREQUISITES ==============
 		Camera* m_camera;
 		Skybox* m_skybox;
 		LineRenderer* m_lineRenderer;
-		Math::Matrix m_mView;
-		Math::Matrix m_mProjectionPersp;
-		Math::Matrix m_mVP;
-		Math::Matrix m_mProjectionOrtho;
-		Math::Matrix m_mViewBase;
+		Math::Matrix m_mV;
+		Math::Matrix m_mP_perspective;
+		Math::Matrix m_mP_orthographic;
+		Math::Matrix m_mV_base;
+		Math::Matrix m_wvp_perspective;
+		Math::Matrix m_wvp_baseOrthographic;
 		float m_nearPlane;
 		float m_farPlane;
 		RenderingDevice* m_graphics;

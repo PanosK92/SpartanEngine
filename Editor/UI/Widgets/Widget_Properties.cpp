@@ -338,7 +338,7 @@ void Widget_Properties::ShowLight(Light* light)
 
 		// Intensity
 		ImGui::Text("Intensity");
-		ImGui::SameLine(ComponentProperty::g_posX_2); ImGui::SliderFloat("##lightIntensity", &intensity, 0.0f, 10.0f);
+		ImGui::SameLine(ComponentProperty::g_posX_2); ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightIntensity", &intensity, 0.0f, 100.0f); ImGui::PopItemWidth();
 
 		// Cast shadows
 		ImGui::Text("Shadows");

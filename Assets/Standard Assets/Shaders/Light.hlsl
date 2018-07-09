@@ -193,5 +193,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     }
 	//============================================================================================================================================================
 
-    return float4(finalColor, 1.0f);
+	float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f));
+    return float4(finalColor, luma);
 }
