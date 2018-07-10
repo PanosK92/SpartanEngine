@@ -65,9 +65,9 @@ namespace Directus
 		void AddDefine(const char* define);
 		void AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope);
 		bool AddSampler(
-			Texture_Sampler_Filter filter = Texture_Sampler_Anisotropic, 
-			Texture_Address_Mode addressMode = Texture_Address_Wrap, 
-			Texture_Comparison_Function comparisonFunc = Texture_Comparison_Always
+			Texture_Sampler_Filter filter				= Texture_Sampler_Anisotropic, 
+			Texture_Address_Mode addressMode			= Texture_Address_Wrap, 
+			Texture_Comparison_Function comparisonFunc	= Texture_Comparison_Always
 		);
 
 		bool Bind();
@@ -92,7 +92,7 @@ namespace Directus
 			const Math::Vector2& vector2,
 			Light* dirLight,
 			Camera* camera,
-			unsigned int slot  = 0
+			unsigned int slot = 0
 		);
 
 		void Draw(unsigned int vertexCount);
