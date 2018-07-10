@@ -296,19 +296,15 @@ void Widget_Properties::ShowLight(Light* light)
 	if (!light)
 		return;
 
-	//= REFLECT =================================================================
-	static const char* types[]				= { "Directional", "Point", "Spot" };
-	int typeInt								= (int)light->GetLightType();
-	const char* typeCharPtr					= types[typeInt];	
-	float intensity							= light->GetIntensity();
-	float angle								= light->GetAngle() * 179.0f;
-	bool castsShadows						= light->GetCastShadows();
-	float range								= light->GetRange();
-
-	char g_lightRange[BUFFER_TEXT_DEFAULT];
-	EditorHelper::SetCharArray(&g_lightRange[0], range);
-	g_lightButtonColorPicker->SetColor(light->GetColor());
-	//===========================================================================
+	//= REFLECT =====================================================
+	static const char* types[]	= { "Directional", "Point", "Spot" };
+	int typeInt					= (int)light->GetLightType();
+	const char* typeCharPtr		= types[typeInt];	
+	float intensity				= light->GetIntensity();
+	float angle					= light->GetAngle() * 179.0f;
+	bool castsShadows			= light->GetCastShadows();
+	float range					= light->GetRange();
+	//===============================================================
 	
 	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
 	{
@@ -338,7 +334,8 @@ void Widget_Properties::ShowLight(Light* light)
 
 		// Intensity
 		ImGui::Text("Intensity");
-		ImGui::SameLine(ComponentProperty::g_posX_2); ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightIntensity", &intensity, 0.0f, 100.0f); ImGui::PopItemWidth();
+		ImGui::SameLine(ComponentProperty::g_posX_2);
+		ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightIntensity", &intensity, 0.0f, 100.0f); ImGui::PopItemWidth();
 
 		// Cast shadows
 		ImGui::Text("Shadows");
@@ -348,28 +345,28 @@ void Widget_Properties::ShowLight(Light* light)
 		if (typeInt != (int)LightType_Directional)
 		{
 			ImGui::Text("Range");
-			ImGui::SameLine(ComponentProperty::g_posX_2); ImGui::InputText("##lightRange", g_lightRange, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(ComponentProperty::g_posX_2);
+			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightRange", &range, 0.0f, 100.0f); ImGui::PopItemWidth();
 		}
 
 		// Angle
 		if (typeInt == (int)LightType_Spot)
 		{
 			ImGui::Text("Angle");
-			ImGui::SameLine(ComponentProperty::g_posX_2); ImGui::SliderFloat("##lightAngle", &angle, 1.0f, 179.0f);
+			ImGui::SameLine(ComponentProperty::g_posX_2);
+			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightAngle", &angle, 1.0f, 179.0f); ImGui::PopItemWidth();
 		}
 	}
 	ComponentProperty::End();
 
-	//= MAP =============================================================================================================
-	range = (float)atof(&g_lightRange[0]);
-
-	if ((LightType)typeInt	!= light->GetLightType())	light->SetLightType((LightType)typeInt);
-	if (intensity			!= light->GetIntensity())	light->SetIntensity(intensity);
-	if (castsShadows		!= light->GetCastShadows()) light->SetCastShadows(castsShadows);
-	if (angle / 179.0f		!= light->GetAngle())		light->SetAngle(angle / 179.0f);
-	if (range				!= light->GetRange())		light->SetRange(range);
-	if (g_lightButtonColorPicker->GetColor() != light->GetColor()) light->SetColor(g_lightButtonColorPicker->GetColor());
-	//===================================================================================================================
+	//= MAP ==============================================================================================================
+	if ((LightType)typeInt	!= light->GetLightType())				light->SetLightType((LightType)typeInt);
+	if (intensity			!= light->GetIntensity())				light->SetIntensity(intensity);
+	if (castsShadows		!= light->GetCastShadows())				light->SetCastShadows(castsShadows);
+	if (angle / 179.0f		!= light->GetAngle())					light->SetAngle(angle / 179.0f);
+	if (range				!= light->GetRange())					light->SetRange(range);
+	if (g_lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(g_lightButtonColorPicker->GetColor());
+	//====================================================================================================================
 }
 
 void Widget_Properties::ShowRenderable(Renderable* renderable)
