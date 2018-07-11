@@ -264,7 +264,7 @@ namespace Directus
 		{
 			Vector2 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewportInternal();
 			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.y / viewport.x)); 
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, ASPECT_RATIO, m_nearPlane, m_farPlane);
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().GetAspectRatio(), m_nearPlane, m_farPlane);
 		}
 		else if (m_projection == Projection_Orthographic)
 		{
