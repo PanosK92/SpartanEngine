@@ -49,12 +49,12 @@ namespace Directus
 
 		void Initialize();
 
-		//= DISPLAY ===============================================================================================
-		int GetDisplayWidth()						{ return (int)m_displaySize.x; }
-		int GetDisplayHeight()						{ return (int)m_displaySize.y; }
-		const Math::Vector2& GetDisplaySize()		{ return m_displaySize; }
-		void SetDisplaySize(int width, int height)	{ m_displaySize = Math::Vector2((float)width, (float)height); }
-		//=========================================================================================================
+		//= DISPLAY ========================================================================================
+		int GetViewportWidth()					{ return (int)m_viewport.x; }
+		int GetViewportHeight()					{ return (int)m_viewport.y; }
+		const Math::Vector2& GetViewport()		{ return m_viewport; }
+		void SetViewport(int width, int height)	{ m_viewport = Math::Vector2((float)width, (float)height); }
+		//==================================================================================================
 
 		//= RESOLUTION ===================================================================================================
 		void SetResolution(int width, int height)			{ m_resolution = Math::Vector2((float)width, (float)height); }
@@ -68,7 +68,7 @@ namespace Directus
 		bool IsFullScreen()				{ return m_isFullScreen; }
 		bool IsMouseVisible()			{ return m_isMouseVisible; }
 		VSync GetVSync()				{ return (VSync)m_vsync; }
-		float GetScreenAspect()			{ return (float)GetResolutionWidth() / (float)GetResolutionHeight(); }
+		float GetAspectRatio()			{ return (float)GetResolutionWidth() / (float)GetResolutionHeight(); }
 		int GetShadowMapResolution()	{ return m_shadowMapResolution; }
 		unsigned int GetAnisotropy()	{ return m_anisotropy; }
 		float GetMaxFPS()				{ return m_maxFPS;}
@@ -87,7 +87,7 @@ namespace Directus
 	private:
 		bool m_isFullScreen;
 		// The display size in pixels
-		Math::Vector2 m_displaySize;
+		Math::Vector2 m_viewport;
 		// The rendering resolution
 		Math::Vector2 m_resolution;	
 		int m_vsync;

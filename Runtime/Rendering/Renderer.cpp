@@ -354,7 +354,7 @@ namespace Directus
 
 	void Renderer::SetBackBufferSize(int width, int height)
 	{
-		Settings::Get().SetDisplaySize(width, height);
+		Settings::Get().SetViewport(width, height);
 		m_graphics->SetResolution(width, height);
 		m_graphics->SetViewport((float)width, (float)height);
 	}

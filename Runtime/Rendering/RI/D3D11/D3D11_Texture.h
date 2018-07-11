@@ -35,18 +35,17 @@ namespace Directus
 		~D3D11_Texture();
 
 		// Create from data
-		bool Create(int width, int height, int channels, const std::vector<std::byte>& data, Texture_Format format);
+		bool Create(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);
 
-		// Creates from data with mimaps
-		bool Create(int width, int height, int channels, const std::vector<std::vector<std::byte>>& mipmaps, Texture_Format format);
+		// Creates from data with mipmaps
+		bool CreateFromMipmaps(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::vector<std::byte>>& mipmaps, Texture_Format format);
 
-		// Creates a texture and generates mimaps (easy way to get mimaps 
-		// but not as high quality as the mimaps you can generate manually)
-		bool CreateAndGenerateMipmaps(int width, int height, int channels, const std::vector<std::byte>& data, Texture_Format format);
+		// Creates a texture and generates mipmaps (easy way to get mipmaps but not as high quality as the mipmaps you can generate manually)
+		bool CreateAndGenerateMipmaps(unsigned int width, int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);
 
 		// Shader resource
-		ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
-		void SetShaderResourceView(ID3D11ShaderResourceView* srv) { m_shaderResourceView = srv; }
+		ID3D11ShaderResourceView* GetShaderResourceView()			{ return m_shaderResourceView; }
+		void SetShaderResourceView(ID3D11ShaderResourceView* srv)	{ m_shaderResourceView = srv; }
 
 		unsigned int GetMemoryUsage() { return m_memoryUsage; }
 

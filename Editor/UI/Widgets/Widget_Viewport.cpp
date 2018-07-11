@@ -68,8 +68,8 @@ void Widget_Viewport::Update(float deltaTime)
 
 void Widget_Viewport::ShowFrame(float deltaTime)
 {
-	int width	= ImGui::GetWindowContentRegionWidth();
-	int height	= ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
+	int width	= (int)ImGui::GetWindowContentRegionWidth();
+	int height	= (int)ImGui::GetWindowContentRegionMax().y - (int)ImGui::GetWindowContentRegionMin().y;
 
 	// Make sure we are pixel perfect
 	if (width % 2 != 0)

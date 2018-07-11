@@ -194,7 +194,7 @@ namespace Directus
 	{
 		if (!m_textureLowLevel->Create(width, height, channels, rgba, format))
 		{
-			LOG_ERROR("Texture: Failed to create shader resource for \"" + m_resourceFilePath + "\".");
+			LOGF_ERROR("RI_Texture::CreateShaderResource: Failed to create shader resource for \"%s\".",  m_resourceFilePath.c_str());
 			return false;
 		}
 
@@ -205,23 +205,23 @@ namespace Directus
 	{
 		if (!m_textureLowLevel)
 		{
-			LOG_ERROR("Texture: Failed to create shader resource. API texture not initialized.");
+			LOG_ERROR("RI_Texture::CreateShaderResource: Failed to create shader resource. API texture not initialized.");
 			return false;
 		}
 
-		if (!m_isUsingMipmaps)
+		if (m_isUsingMipmaps)
 		{
-			if (!m_textureLowLevel->Create(m_width, m_height, m_channels, m_textureBytes[0], m_format))
+			if (!m_textureLowLevel->CreateFromMipmaps(m_width, m_height, m_channels, m_textureBytes, m_format))
 			{
-				LOG_ERROR("Texture: Failed to create shader resource for \"" + m_resourceFilePath + "\".");
+				LOGF_ERROR("RI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".",  m_resourceFilePath.c_str());
 				return false;
-			}
+			}			
 		}
 		else
 		{
-			if (!m_textureLowLevel->Create(m_width, m_height, m_channels, m_textureBytes, m_format))
+			if (!m_textureLowLevel->Create(m_width, m_height, m_channels, m_textureBytes[0], m_format))
 			{
-				LOG_ERROR("Texture: Failed to create shader resource with mipmaps for \"" + m_resourceFilePath + "\".");
+				LOGF_ERROR("RI_Texture::CreateShaderResource: Failed to create shader resource for \"%s\".",  m_resourceFilePath.c_str());
 				return false;
 			}
 		}
@@ -234,7 +234,7 @@ namespace Directus
 	{
 		if (filePath == NOT_ASSIGNED)
 		{
-			LOG_WARNING("Texture: Can't load texture, filepath is unassigned.");
+			LOG_WARNING("RI_Texture::LoadFromForeignFormat: Can't load texture, filepath is unassigned.");
 			return false;
 		}
 
@@ -273,15 +273,15 @@ namespace Directus
 
 	TextureType RI_Texture::TextureTypeFromString(const string& type)
 	{
-		if (type == "Albedo") return TextureType_Albedo;
-		if (type == "Roughness") return TextureType_Roughness;
-		if (type == "Metallic") return TextureType_Metallic;
-		if (type == "Normal") return TextureType_Normal;
-		if (type == "Height") return TextureType_Height;
-		if (type == "Occlusion") return TextureType_Occlusion;
-		if (type == "Emission") return TextureType_Emission;
-		if (type == "Mask") return TextureType_Mask;
-		if (type == "CubeMap") return TextureType_CubeMap;
+		if (type == "Albedo")		return TextureType_Albedo;
+		if (type == "Roughness")	return TextureType_Roughness;
+		if (type == "Metallic")		return TextureType_Metallic;
+		if (type == "Normal")		return TextureType_Normal;
+		if (type == "Height")		return TextureType_Height;
+		if (type == "Occlusion")	return TextureType_Occlusion;
+		if (type == "Emission")		return TextureType_Emission;
+		if (type == "Mask")			return TextureType_Mask;
+		if (type == "CubeMap")		return TextureType_CubeMap;
 
 		return TextureType_Unknown;
 	}
