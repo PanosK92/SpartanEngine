@@ -42,7 +42,7 @@ namespace Directus
 	class ENGINE_CLASS GBuffer
 	{
 	public:
-		GBuffer(RenderingDevice* graphics, int width = RESOLUTION_WIDTH, int height = RESOLUTION_HEIGHT);
+		GBuffer(RenderingDevice* graphics, int width = Settings::Get().GetResolutionWidth(), int height = Settings::Get().GetResolutionHeight());
 		~GBuffer();
 
 		bool SetAsRenderTarget();

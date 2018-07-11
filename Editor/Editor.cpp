@@ -101,7 +101,7 @@ void Editor::Resize()
 	ImGui_ImplDX11_CreateDeviceObjects();
 }
 
-void Editor::Update()
+void Editor::Update(float deltaTime)
 {	
 	if (!m_initialized)
 		return;
@@ -112,7 +112,7 @@ void Editor::Update()
 	ImGui::NewFrame();
 
 	// Editor update
-	DrawEditor();
+	DrawEditor(deltaTime);
 	EditorHelper::Get().Update();
 
 	// ImGui implementation - end frame
@@ -136,7 +136,7 @@ void Editor::Shutdown()
 	ImGui::DestroyContext();
 }
 
-void Editor::DrawEditor()
+void Editor::DrawEditor(float deltaTime)
 {
 	for (auto& widget : m_widgets)
 	{
@@ -145,7 +145,7 @@ void Editor::DrawEditor()
 			widget->Begin();
 		}
 
-		widget->Update();
+		widget->Update(deltaTime);
 
 		if (widget->GetIsWindow())
 		{

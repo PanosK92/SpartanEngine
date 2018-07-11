@@ -83,7 +83,7 @@ void Widget_Toolbar::Begin()
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 }
 
-void Widget_Toolbar::Update()
+void Widget_Toolbar::Update(float deltaTime)
 {
 	// Play button
 	ImGui::SameLine();

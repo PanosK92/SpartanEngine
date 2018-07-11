@@ -95,7 +95,7 @@ namespace Directus
 			"Frame:\t\t\t\t\t\t\t"				+ to_string_precision(delta, 2) + " ms\n"
 			//"Update:\t\t\t"					+ to_string_precision(delta - m_renderTimeMs, 2) + " ms\n" Must compute this properly
 			"Render:\t\t\t\t\t\t"				+ to_string_precision(GetBlockTimeMs("Directus::Renderer::Render"), 2) + " ms\n"
-			"Resolution:\t\t\t\t\t"				+ to_string(int(RESOLUTION_WIDTH)) + "x" + to_string(int(RESOLUTION_HEIGHT)) + "\n"
+			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
 			"RI Draw calls:\t\t\t\t\t"			+ to_string(m_drawCalls) + "\n"
 			"RI Index buffer bindings:\t\t"		+ to_string(m_bindBufferIndexCount) + "\n"

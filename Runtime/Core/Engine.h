@@ -68,6 +68,8 @@ namespace Directus
 		static void* GetWindowInstance() { return m_windowInstance; }
 		//=================================================================================
 
+		float GetDeltaTime();
+
 		// Returns the engine's context
 		Context* GetContext() { return m_context; }
 

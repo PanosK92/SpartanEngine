@@ -33,7 +33,7 @@ class Widget_MenuBar : public Widget
 public:
 	Widget_MenuBar();
 	void Initialize(Directus::Context* context) override;
-	void Update() override;
+	void Update(float deltaTime) override;
 
 private:
 	void ShowFileDialog();

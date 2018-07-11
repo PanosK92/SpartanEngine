@@ -140,7 +140,7 @@ void Widget_Properties::Initialize(Context* context)
 	g_resourceManager = context->GetSubsystem<ResourceManager>();
 }
 
-void Widget_Properties::Update()
+void Widget_Properties::Update(float deltaTime)
 {
 	ImGui::PushItemWidth(g_maxWidth);
 

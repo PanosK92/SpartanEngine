@@ -79,7 +79,7 @@ void Widget_Scene::Initialize(Context* context)
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 }
 
-void Widget_Scene::Update()
+void Widget_Scene::Update(float deltaTime)
 {
 	// If something is being loaded, don't parse the hierarchy
 	if (EditorHelper::Get().GetEngineLoading())

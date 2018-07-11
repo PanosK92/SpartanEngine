@@ -34,8 +34,8 @@ namespace Directus
 	public:
 		D3D11_RenderTexture(
 			D3D11_Device* graphics, 
-			int width				= RESOLUTION_WIDTH, 
-			int height				= RESOLUTION_HEIGHT, 
+			int width				= Settings::Get().GetResolutionWidth(), 
+			int height				= Settings::Get().GetResolutionHeight(), 
 			bool depth				= false,
 			Texture_Format format	= Texture_Format_R32G32B32A32_FLOAT
 		);

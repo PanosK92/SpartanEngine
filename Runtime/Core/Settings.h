@@ -29,28 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	//= DISPLAY =========================================================================
-	#define SET_DISPLAY_SIZE(width, height)	Settings::Get().SetDisplaySize(width, height)
-	#define GET_DISPLAY_SIZE				Settings::Get().GetDisplaySize()
-	#define DISPLAY_WIDTH					Settings::Get().GetDisplayWidth()
-	#define DISPLAY_HEIGHT					Settings::Get().GetDisplayHeight()
-	//===================================================================================
-
-	//= RESOLUTION ==============================================================
-	#define SET_RESOLUTION(resolution)	Settings::Get().SetResolution(resolution)
-	#define GET_RESOLUTION				Settings::Get().GetResolution()
-	#define RESOLUTION_WIDTH			Settings::Get().GetResolutionWidth()
-	#define RESOLUTION_HEIGHT			Settings::Get().GetResolutionHeight()
-	//===========================================================================
-
-	//= OTHER ==============================================================
-	#define ASPECT_RATIO			Settings::Get().GetScreenAspect()
-	#define SHADOWMAP_RESOLUTION	Settings::Get().GetShadowMapResolution()
-	#define VSYNC					Settings::Get().GetVSync()
-	#define FULLSCREEN_ENABLED		Settings::Get().IsFullScreen()
-	#define ANISOTROPY_LEVEL		Settings::Get().GetAnisotropy()
-	//======================================================================
-
 	enum VSync
 	{
 		Off,
@@ -71,31 +49,30 @@ namespace Directus
 
 		void Initialize();
 
-		//= DISPLAY ==============================================================================================
-		int GetDisplayWidth() { return (int)m_displaySize.x; }
-		int GetDisplayHeight() { return (int)m_displaySize.y; }
-		const Math::Vector2& GetDisplaySize() { return m_displaySize; }
-		void SetDisplaySize(int width, int height) { m_displaySize = Math::Vector2((float)width, (float)height); }
-		//========================================================================================================
+		//= DISPLAY ===============================================================================================
+		int GetDisplayWidth()						{ return (int)m_displaySize.x; }
+		int GetDisplayHeight()						{ return (int)m_displaySize.y; }
+		const Math::Vector2& GetDisplaySize()		{ return m_displaySize; }
+		void SetDisplaySize(int width, int height)	{ m_displaySize = Math::Vector2((float)width, (float)height); }
+		//=========================================================================================================
 
-		//= RESOLUTION =========================================================================================
-		void SetResolution(int width, int height) { m_resolution = Math::Vector2((float)width, (float)height); }
+		//= RESOLUTION ===================================================================================================
+		void SetResolution(int width, int height)			{ m_resolution = Math::Vector2((float)width, (float)height); }
 		void SetResolution(const Math::Vector2& resolution) { m_resolution = resolution; }
-		const Math::Vector2& GetResolution() { return m_resolution; }
-		int GetResolutionWidth() { return (int)m_resolution.x; }
-		int GetResolutionHeight() { return (int)m_resolution.y; }
-		//======================================================================================================
-	
+		const Math::Vector2& GetResolution()				{ return m_resolution; }
+		int GetResolutionWidth()							{ return (int)m_resolution.x; }
+		int GetResolutionHeight()							{ return (int)m_resolution.y; }
+		//================================================================================================================
 
-		//= OTHER ====================================================================================
-		bool IsFullScreen() { return m_isFullScreen; }
-		bool IsMouseVisible() { return m_isMouseVisible; }
-		VSync GetVSync() { return (VSync)m_vsync; }
-		float GetScreenAspect() { return (float)GetResolutionWidth() / (float)GetResolutionHeight(); }
-		int GetShadowMapResolution() { return m_shadowMapResolution; }
-		unsigned int GetAnisotropy() { return m_anisotropy; }
-		float GetMaxFPS() { return m_maxFPS;}
-		//============================================================================================
+		//= MISC =============================================================================================
+		bool IsFullScreen()				{ return m_isFullScreen; }
+		bool IsMouseVisible()			{ return m_isMouseVisible; }
+		VSync GetVSync()				{ return (VSync)m_vsync; }
+		float GetScreenAspect()			{ return (float)GetResolutionWidth() / (float)GetResolutionHeight(); }
+		int GetShadowMapResolution()	{ return m_shadowMapResolution; }
+		unsigned int GetAnisotropy()	{ return m_anisotropy; }
+		float GetMaxFPS()				{ return m_maxFPS;}
+		//====================================================================================================
 
 		// Third party lib versions
 		std::string m_versionAngelScript;

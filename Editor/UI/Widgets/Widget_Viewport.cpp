@@ -37,47 +37,70 @@ using namespace Directus;
 using namespace Math;
 //=======================
 
-static Renderer* g_renderer			= nullptr;
-static Scene* g_scene				= nullptr;
-static Vector2 g_framePos;
+namespace Widget_Viewport_Properties
+{
+	static Renderer* g_renderer	= nullptr;
+	static Scene* g_scene		= nullptr;
+	static Vector2 g_framePos;
+}
 
 Widget_Viewport::Widget_Viewport()
 {
-	m_title = "Viewport";
+	m_title						= "Viewport";
+	m_timeSinceLastResChange	= 0.0f;
 }
 
 void Widget_Viewport::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-	m_windowFlags	|= ImGuiWindowFlags_NoScrollbar;
-	g_renderer		= m_context->GetSubsystem<Renderer>();
-	g_scene			= m_context->GetSubsystem<Scene>();
+	m_windowFlags							|= ImGuiWindowFlags_NoScrollbar;
+	Widget_Viewport_Properties::g_renderer	= m_context->GetSubsystem<Renderer>();
+	Widget_Viewport_Properties::g_scene		= m_context->GetSubsystem<Scene>();
 }
 
-void Widget_Viewport::Update()
+void Widget_Viewport::Update(float deltaTime)
 {
-	if (!g_renderer)
+	if (!Widget_Viewport_Properties::g_renderer)
 		return;
 	
-	ShowFrame();
+	ShowFrame(deltaTime);
 }
 
-void Widget_Viewport::ShowFrame()
+void Widget_Viewport::ShowFrame(float deltaTime)
 {
-	float width		= ImGui::GetWindowContentRegionWidth();
-	float height	= ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
+	int width	= ImGui::GetWindowContentRegionWidth();
+	int height	= ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
 
-	g_renderer->SetResolutionInternal((int)width, (int)height);
+	// Make sure we are pixel perfect
+	if (width % 2 != 0)
+		width--;
 
-	g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
+	if (height % 2 != 0)
+		height--;
+
+	// Display frame
+	Widget_Viewport_Properties::g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
 	ImGui::Image(
-		g_renderer->GetFrame(),
-		ImVec2(width, height),
+		Widget_Viewport_Properties::g_renderer->GetFrame(),
+		ImVec2((float)width, (float)height),
 		ImVec2(0, 0),
 		ImVec2(1, 1),
 		ImColor(255, 255, 255, 255),
 		ImColor(50, 127, 166, 255)
 	);
+
+	// Adjust resolution if necessary
+	if (Settings::Get().GetResolutionWidth() != width || Settings::Get().GetResolutionHeight() != height)
+	{
+		if (m_timeSinceLastResChange >= 0.1f) // Don't stress the system too much
+		{
+			Widget_Viewport_Properties::g_renderer->SetResolutionInternal(width, height);
+			m_timeSinceLastResChange = 0;
+		}
+	}
+	m_timeSinceLastResChange += deltaTime;
+	
+	
 
 	// Handle model drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Model))
@@ -93,10 +116,10 @@ void Widget_Viewport::MousePicking()
 	if (!ImGui::IsMouseHoveringWindow() || !ImGui::IsMouseClicked(0))
 		return;
 
-	auto camera = g_scene->GetMainCamera();
+	auto camera = Widget_Viewport_Properties::g_scene->GetMainCamera();
 	if (!camera.expired())
 	{
-		Vector2 mousePosRelative = EditorHelper::ToVector2(ImGui::GetMousePos()) - g_framePos;
+		Vector2 mousePosRelative = EditorHelper::ToVector2(ImGui::GetMousePos()) - Widget_Viewport_Properties::g_framePos;
 		auto picked = camera.lock()->GetComponent<Camera>().lock()->Pick(mousePosRelative);
 		if (!picked.expired())
 		{

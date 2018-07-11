@@ -69,9 +69,9 @@ namespace Directus
 
 	void Camera::OnUpdate()
 	{
-		if (m_lastKnownResolution != GET_RESOLUTION)
+		if (m_lastKnownResolution != Settings::Get().GetResolution())
 		{
-			m_lastKnownResolution = GET_RESOLUTION;
+			m_lastKnownResolution = Settings::Get().GetResolution();
 			m_isDirty = true;
 		}
 
@@ -268,7 +268,7 @@ namespace Directus
 		}
 		else if (m_projection == Projection_Orthographic)
 		{
-			m_mProjection = Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
+			m_mProjection = Matrix::CreateOrthographicLH((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight(), m_nearPlane, m_farPlane);
 		}
 	}
 }

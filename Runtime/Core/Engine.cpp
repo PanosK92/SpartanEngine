@@ -205,4 +205,9 @@ namespace Directus
 		m_windowHandle		= windowHandle;
 		m_windowInstance	= windowInstance;
 	}
+
+	float Engine::GetDeltaTime()
+	{
+		return m_timer->GetDeltaTimeSec();
+	}
 }
