@@ -41,11 +41,11 @@ public:
 
 	void Initialize(Directus::Context* context, void* windowHandle);
 	void Resize();
-	void Update();
+	void Update(float deltaTime);
 	void Shutdown();
 
 private:
-	void DrawEditor();
+	void DrawEditor(float deltaTime);
 	void ApplyStyle();
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;

@@ -31,9 +31,10 @@ public:
 	Widget_Viewport();
 
 	void Initialize(Directus::Context* context) override;	
-	void Update() override;
+	void Update(float deltaTime) override;
 
 private:
-	void ShowFrame();
+	void ShowFrame(float deltaTime);
 	void MousePicking();
+	float m_timeSinceLastResChange;
 };

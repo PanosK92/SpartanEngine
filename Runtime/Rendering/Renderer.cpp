@@ -307,7 +307,7 @@ namespace Directus
 			m_mV					= m_camera->GetViewMatrix();
 			m_mV_base				= m_camera->GetBaseViewMatrix();
 			m_mP_perspective		= m_camera->GetProjectionMatrix();
-			m_mP_orthographic		= Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);		
+			m_mP_orthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight(), m_nearPlane, m_farPlane);		
 			m_wvp_perspective		= m_mV * m_mP_perspective;
 			m_wvp_baseOrthographic	= m_mV_base * m_mP_orthographic;
 			m_nearPlane				= m_camera->GetNearPlane();
@@ -354,7 +354,7 @@ namespace Directus
 
 	void Renderer::SetBackBufferSize(int width, int height)
 	{
-		SET_DISPLAY_SIZE(width, height);
+		Settings::Get().SetDisplaySize(width, height);
 		m_graphics->SetResolution(width, height);
 		m_graphics->SetViewport((float)width, (float)height);
 	}
@@ -367,14 +367,14 @@ namespace Directus
 	void Renderer::SetResolutionInternal(int width, int height)
 	{
 		// Return if resolution already set
-		if (GET_RESOLUTION.x == width && GET_RESOLUTION.y == height)
+		if (Settings::Get().GetResolution().x == width && Settings::Get().GetResolution().y == height)
 			return;
 
 		// Return if resolution is invalid
 		if (width <= 0 || height <= 0)
 			return;
 
-		SET_RESOLUTION(Vector2((float)width, (float)height));
+		Settings::Get().SetResolution(Vector2((float)width, (float)height));
 		RenderTargets_Create();
 	}
 
@@ -402,23 +402,23 @@ namespace Directus
 	{
 		// Resize everything
 		m_gbuffer.reset();
-		m_gbuffer = make_unique<GBuffer>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		m_gbuffer = make_unique<GBuffer>(m_graphics, Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight());
 
 		m_quad.reset();
 		m_quad = make_unique<Rectangle>(m_context);
-		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
+		m_quad->Create(0, 0, (float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
 
 		m_renderTexPing.reset();
-		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_graphics, Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight(), false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPing2.reset();
-		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_graphics, Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight(), false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPong.reset();
-		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_graphics, Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight(), false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexShadowing.reset();
-		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false, Texture_Format_R32G32_FLOAT);
+		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_graphics, int(Settings::Get().GetResolutionWidth() * 0.5f), int(Settings::Get().GetResolutionHeight() * 0.5f), false, Texture_Format_R32G32_FLOAT);
 	}
 
 	//= RENDERABLES ============================================================================================
@@ -687,7 +687,7 @@ namespace Directus
 		Pass_Shadowing(inTextureNormal, inTextureDepth, inTextureNormalNoise, m_directionalLight, inRenderTexure);
 
 		// Blur the shadows and the SSAO
-		Pass_Blur(((D3D11_RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureShadowing, GET_RESOLUTION);
+		Pass_Blur(((D3D11_RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureShadowing, Settings::Get().GetResolution());
 
 		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
@@ -792,7 +792,7 @@ namespace Directus
 
 		SetRenderTarget(outTexture, false);
 		m_shaderCorrection->Bind();
-		m_shaderCorrection->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderCorrection->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_shaderCorrection->Bind_Texture(inTexture);
 		m_shaderCorrection->DrawIndexed(m_quad->GetIndexCount());
 
@@ -805,7 +805,7 @@ namespace Directus
 
 		SetRenderTarget(outTexture, false);
 		m_shaderFXAA->Bind();
-		m_shaderFXAA->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderFXAA->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_shaderFXAA->Bind_Texture(inTexture);
 		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
 
@@ -818,7 +818,7 @@ namespace Directus
 
 		SetRenderTarget(outTexture, false);
 		m_shaderSharpening->Bind();
-		m_shaderSharpening->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderSharpening->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_shaderSharpening->Bind_Texture(inTexture);
 		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
 
@@ -832,21 +832,21 @@ namespace Directus
 		// Bright pass
 		SetRenderTarget(inTextureSpare.get(), false);
 		m_shaderBloom_Bright->Bind();
-		m_shaderBloom_Bright->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderBloom_Bright->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_shaderBloom_Bright->Bind_Texture(inSourceTexture->GetShaderResourceView());
 		m_shaderBloom_Bright->DrawIndexed(m_quad->GetIndexCount());
 
 		// Horizontal Gaussian blur
 		SetRenderTarget(outTexture.get(), false);
 		m_shaderBlurGaussianH->Bind();
-		m_shaderBlurGaussianH->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderBlurGaussianH->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_shaderBlurGaussianH->Bind_Texture(inTextureSpare->GetShaderResourceView());
 		m_shaderBlurGaussianH->DrawIndexed(m_quad->GetIndexCount());
 
 		// Vertical Gaussian blur
 		SetRenderTarget(inTextureSpare.get(), false);
 		m_shaderBlurGaussianV->Bind();
-		m_shaderBlurGaussianV->Bind_Buffer(m_wvp_baseOrthographic, GET_RESOLUTION);
+		m_shaderBlurGaussianV->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_shaderBlurGaussianV->Bind_Texture(outTexture->GetShaderResourceView());
 		m_shaderBlurGaussianV->DrawIndexed(m_quad->GetIndexCount());
 
@@ -907,7 +907,7 @@ namespace Directus
 			mvp_persp_inv, 
 			m_mV, 
 			m_mP_perspective,		
-			GET_RESOLUTION, 
+			Settings::Get().GetResolution(), 
 			inDirectionalLight,
 			m_camera,
 			0
@@ -1106,7 +1106,7 @@ namespace Directus
 		// Performance metrics
 		if (m_flags & Render_PerformanceMetrics)
 		{
-			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
+			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(-Settings::Get().GetResolutionWidth() * 0.5f + 1.0f, Settings::Get().GetResolutionHeight() * 0.5f));
 			m_font->SetBuffers();
 			m_font->SetInputLayout();
 

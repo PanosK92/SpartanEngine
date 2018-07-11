@@ -110,7 +110,7 @@ namespace Directus
 
 		buffer->cameraPos	= camera->GetTransform()->GetPosition();
 		buffer->padding		= 0.0f;
-		buffer->viewport	= GET_RESOLUTION;
+		buffer->viewport	= Settings::Get().GetResolution();
 		buffer->padding2	= Vector2::Zero;
 		
 		m_miscBuffer->Unmap();

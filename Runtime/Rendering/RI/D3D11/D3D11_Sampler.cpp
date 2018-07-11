@@ -47,19 +47,19 @@ namespace Directus
 			return false;
 
 		D3D11_SAMPLER_DESC samplerDesc;
-		samplerDesc.Filter = d3d11_filter[filter];
-		samplerDesc.AddressU = d3d11_texture_address_mode[textureAddressMode];
-		samplerDesc.AddressV = d3d11_texture_address_mode[textureAddressMode];
-		samplerDesc.AddressW = d3d11_texture_address_mode[textureAddressMode];
-		samplerDesc.MipLODBias = 0.0f;
-		samplerDesc.MaxAnisotropy = ANISOTROPY_LEVEL;
-		samplerDesc.ComparisonFunc = d3d11_comparison_func[comparisonFunction];
-		samplerDesc.BorderColor[0] = 0;
-		samplerDesc.BorderColor[1] = 0;
-		samplerDesc.BorderColor[2] = 0;
-		samplerDesc.BorderColor[3] = 0;
-		samplerDesc.MinLOD = FLT_MIN;
-		samplerDesc.MaxLOD = FLT_MAX;
+		samplerDesc.Filter			= d3d11_filter[filter];
+		samplerDesc.AddressU		= d3d11_texture_address_mode[textureAddressMode];
+		samplerDesc.AddressV		= d3d11_texture_address_mode[textureAddressMode];
+		samplerDesc.AddressW		= d3d11_texture_address_mode[textureAddressMode];
+		samplerDesc.MipLODBias		= 0.0f;
+		samplerDesc.MaxAnisotropy	= Settings::Get().GetAnisotropy();
+		samplerDesc.ComparisonFunc	= d3d11_comparison_func[comparisonFunction];
+		samplerDesc.BorderColor[0]	= 0;
+		samplerDesc.BorderColor[1]	= 0;
+		samplerDesc.BorderColor[2]	= 0;
+		samplerDesc.BorderColor[3]	= 0;
+		samplerDesc.MinLOD			= FLT_MIN;
+		samplerDesc.MaxLOD			= FLT_MAX;
 
 		// create sampler state.
 		HRESULT result = m_graphics->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);

@@ -54,7 +54,7 @@ namespace Directus
 		m_color				= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
 		m_bias				= 0.001f;	
 		m_frustum			= make_shared<Frustum>();
-		m_shadowCascades	= make_shared<ShadowCascades>(context, 3, SHADOWMAP_RESOLUTION, this);
+		m_shadowCascades	= make_shared<ShadowCascades>(context, 3, Settings::Get().GetShadowMapResolution(), this);
 		m_isDirty			= true;
 	}
 

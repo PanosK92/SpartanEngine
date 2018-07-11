@@ -173,7 +173,7 @@ namespace Directus
 			// Go through all the display modes and find the one that matches the screen width and height.
 			for (unsigned int i = 0; i < m_displayModeCount; i++)
 			{	
-				if (m_displayModeList[i].Width == (unsigned int)RESOLUTION_WIDTH && m_displayModeList[i].Height == (unsigned int)RESOLUTION_HEIGHT)
+				if (m_displayModeList[i].Width == (unsigned int)Settings::Get().GetResolutionWidth() && m_displayModeList[i].Height == (unsigned int)Settings::Get().GetResolutionHeight())
 				{
 					m_refreshRateNumerator		= (unsigned int)m_displayModeList[i].RefreshRate.Numerator;
 					m_refreshRateDenominator	= (unsigned int)m_displayModeList[i].RefreshRate.Denominator;
@@ -212,7 +212,7 @@ namespace Directus
 		}
 		//==============================================================================
 
-		SetViewport((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
+		SetViewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
 
 		//= DEPTH ============================================
 		if (!CreateDepthStencilState(m_depthStencilStateEnabled, true, true))
@@ -422,8 +422,8 @@ namespace Directus
 
 		D3D11_TEXTURE2D_DESC depthBufferDesc;
 		ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-		depthBufferDesc.Width				= RESOLUTION_WIDTH;
-		depthBufferDesc.Height				= RESOLUTION_HEIGHT;
+		depthBufferDesc.Width				= Settings::Get().GetResolutionWidth();
+		depthBufferDesc.Height				= Settings::Get().GetResolutionHeight();
 		depthBufferDesc.MipLevels			= 1;
 		depthBufferDesc.ArraySize			= 1;
 		depthBufferDesc.Format				= DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -478,7 +478,7 @@ namespace Directus
 		if (!m_swapChain)
 			return;
 
-		m_swapChain->Present(VSYNC, 0);
+		m_swapChain->Present(Settings::Get().GetVSync(), 0);
 	}
 
 	void D3D11_Device::SetBackBufferAsRenderTarget()
@@ -664,14 +664,14 @@ namespace Directus
 		ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
 
 		swapChainDesc.BufferCount					= 1;
-		swapChainDesc.BufferDesc.Width				= RESOLUTION_WIDTH;
-		swapChainDesc.BufferDesc.Height				= RESOLUTION_HEIGHT;
+		swapChainDesc.BufferDesc.Width				= Settings::Get().GetResolutionWidth();
+		swapChainDesc.BufferDesc.Height				= Settings::Get().GetResolutionHeight();
 		swapChainDesc.BufferDesc.Format				= d3d11_dxgi_format[m_backBuffer_format];
 		swapChainDesc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		swapChainDesc.OutputWindow					= (HWND)m_drawHandle;
 		swapChainDesc.SampleDesc.Count				= 1;
 		swapChainDesc.SampleDesc.Quality			= 0;
-		swapChainDesc.Windowed						= (BOOL)!FULLSCREEN_ENABLED;
+		swapChainDesc.Windowed						= (BOOL)!Settings::Get().IsFullScreen();
 		swapChainDesc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 		swapChainDesc.BufferDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
 		swapChainDesc.SwapEffect					= DXGI_SWAP_EFFECT_DISCARD;
