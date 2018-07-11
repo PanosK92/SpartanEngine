@@ -111,7 +111,6 @@ void Widget_Toolbar::Update()
 
 void Widget_Toolbar::ShowRendererOptions()
 {
-	ImGui::SetNextWindowFocus();
 	ImGui::Begin("Renderer Options", &g_showRendererOptions, ImGuiWindowFlags_AlwaysAutoResize);
 
 	// G-Buffer Visualization
@@ -123,8 +122,8 @@ void Widget_Toolbar::ShowRendererOptions()
 				bool is_selected = (g_rendererView == g_rendererViews[i]);
 				if (ImGui::Selectable(g_rendererViews[i], is_selected))
 				{
-					g_rendererView = g_rendererViews[i];
-					g_rendererViewInt = i;
+					g_rendererView		= g_rendererViews[i];
+					g_rendererViewInt	= i;
 				}
 				if (is_selected)
 				{

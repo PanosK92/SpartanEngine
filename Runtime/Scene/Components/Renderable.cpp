@@ -292,7 +292,7 @@ namespace Directus
 		auto materialStandard = make_shared<Material>(GetContext());
 		materialStandard->SetResourceName("Standard");
 		materialStandard->SetCullMode(CullBack);
-		materialStandard->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		materialStandard->SetColorAlbedo(Vector4(0.6f, 0.6f, 0.6f, 1.0f));
 		materialStandard->SetIsEditable(false);		
 		Material_Set(materialStandard->Cache<Material>(), false);
 	}
