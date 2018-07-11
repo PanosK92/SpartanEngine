@@ -298,11 +298,11 @@ namespace Directus
 			}
 			else if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 			{
-				LOG_ERROR("D3D11_Shader: Failed to find shader \"" + shaderName + " \" with path \"" + filePath + "\".");
+				LOGF_ERROR("D3D11_Shader: Failed to find shader \"%s\" with path \"%s\".", shaderName, filePath);
 			}
 			else
 			{
-				LOG_ERROR("D3D11_Shader: An unknown error occured when trying to load and compile \"" + shaderName + "\"");
+				LOGF_ERROR("D3D11_Shader: An unknown error occured when trying to load and compile \"%s\"", shaderName);
 			}
 		}
 

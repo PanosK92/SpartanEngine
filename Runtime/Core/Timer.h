@@ -41,7 +41,7 @@ namespace Directus
 	private:
 		float m_deltaTimeMs;
 		float m_deltaTimeSec;
-
+		bool m_firstRun;
 		std::chrono::high_resolution_clock::time_point m_previousTime;
 	};
 }

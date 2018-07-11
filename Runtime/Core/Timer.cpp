@@ -34,6 +34,7 @@ namespace Directus
 	{
 		m_deltaTimeSec	= 0.0f;
 		m_deltaTimeMs	= 0.0f;
+		m_firstRun		= true;
 	}
 
 	Timer::~Timer()
@@ -48,6 +49,13 @@ namespace Directus
 		m_previousTime = currentTime;
 
 		m_deltaTimeMs	= (float)ms.count();
-		m_deltaTimeSec	= (float)(ms.count() / 1000);
+		m_deltaTimeSec	= (float)(ms.count() / 1000.0f);
+
+		if (m_firstRun)
+		{
+			m_deltaTimeMs = 0.0f;
+			m_deltaTimeSec = 0.0f;
+			m_firstRun = false;
+		}
 	}
 }

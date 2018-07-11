@@ -31,6 +31,7 @@ public:
 	Widget_Viewport();
 
 	void Initialize(Directus::Context* context) override;	
+	void Begin() override;
 	void Update(float deltaTime) override;
 
 private:
