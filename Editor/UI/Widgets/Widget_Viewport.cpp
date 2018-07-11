@@ -58,12 +58,19 @@ void Widget_Viewport::Initialize(Context* context)
 	Widget_Viewport_Properties::g_scene		= m_context->GetSubsystem<Scene>();
 }
 
+void Widget_Viewport::Begin()
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(3, 3));
+	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
+}
+
 void Widget_Viewport::Update(float deltaTime)
 {
 	if (!Widget_Viewport_Properties::g_renderer)
 		return;
 	
 	ShowFrame(deltaTime);
+	ImGui::PopStyleVar();
 }
 
 void Widget_Viewport::ShowFrame(float deltaTime)
@@ -92,15 +99,13 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	// Adjust resolution if necessary
 	if (Settings::Get().GetResolutionWidth() != width || Settings::Get().GetResolutionHeight() != height)
 	{
-		if (m_timeSinceLastResChange >= 0.1f) // Don't stress the system too much
+		if (m_timeSinceLastResChange >= 0.1f) // Don't stress the GPU too much
 		{
 			Widget_Viewport_Properties::g_renderer->SetResolutionInternal(width, height);
 			m_timeSinceLastResChange = 0;
 		}
 	}
 	m_timeSinceLastResChange += deltaTime;
-	
-	
 
 	// Handle model drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Model))

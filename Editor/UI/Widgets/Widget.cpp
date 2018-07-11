@@ -30,7 +30,7 @@ using namespace Directus;
 
 void Widget::Initialize(Context* context)
 {
-	m_windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_ResizeFromAnySide;
+	m_windowFlags = ImGuiWindowFlags_NoCollapse;
 	m_context = context;
 
 	m_xMin = 455;

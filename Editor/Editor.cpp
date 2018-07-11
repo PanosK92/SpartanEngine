@@ -156,6 +156,7 @@ void Editor::DrawEditor(float deltaTime)
 
 void Editor::ApplyStyle()
 {
+	ImGui::GetIO().OptResizeWindowsFromEdges = true;
 	ImGui::StyleColorsDark();
 	ImGuiStyle& style = ImGui::GetStyle();
 

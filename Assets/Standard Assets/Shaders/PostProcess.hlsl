@@ -135,8 +135,8 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 
 #if PASS_BRIGHT
 	color 				= sourceTexture.Sample(pointSampler, input.uv);
-    float brightness 	= dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));	
-	color 				= brightness > 0.905f ? color : float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float luminance 	= dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));	
+	color 				= luminance > 1.0f ? color : float4(0.0f, 0.0f, 0.0f, 1.0f);
 #endif
 
 #if PASS_BLEND_ADDITIVE
