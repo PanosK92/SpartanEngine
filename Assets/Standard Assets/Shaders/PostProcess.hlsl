@@ -126,11 +126,11 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_GAUSSIAN_H
-	color = Pass_BlurGaussian(texCoord, sourceTexture, pointSampler, resolution, float2(1.0f, 0.0f), 10.0f);
+	color = Pass_BlurGaussian(texCoord, sourceTexture, pointSampler, resolution, float2(1.0f, 0.0f), 3.0f);
 #endif
 
 #if PASS_BLUR_GAUSSIAN_V
-	color = Pass_BlurGaussian(texCoord, sourceTexture, pointSampler, resolution, float2(0.0f, 1.0f), 10.0f);
+	color = Pass_BlurGaussian(texCoord, sourceTexture, pointSampler, resolution, float2(0.0f, 1.0f), 3.0f);
 #endif
 
 #if PASS_BRIGHT

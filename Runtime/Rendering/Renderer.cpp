@@ -925,33 +925,16 @@ namespace Directus
 		PROFILE_FUNCTION_BEGIN();
 		m_graphics->EventBegin("Pass_DebugGBuffer");
 
-		bool albedo		= RenderFlags_IsSet(Render_Albedo);
-		bool normal		= RenderFlags_IsSet(Render_Normal);
-		bool specular	= RenderFlags_IsSet(Render_Specular);
-		bool depth		= RenderFlags_IsSet(Render_Depth);
+		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
+		texType	= RenderFlags_IsSet(Render_Albedo)		? GBuffer_Target_Albedo		: texType;
+		texType = RenderFlags_IsSet(Render_Normal)		? GBuffer_Target_Normal		: texType;
+		texType = RenderFlags_IsSet(Render_Specular)	? GBuffer_Target_Specular	: texType;
+		texType = RenderFlags_IsSet(Render_Depth)		? GBuffer_Target_Depth		: texType;
 
-		if (!albedo && !normal && !specular && !depth)
+		if (texType == GBuffer_Target_Unknown)
 		{
 			m_graphics->EventEnd();
 			return false;
-		}
-
-		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
-		if (albedo)
-		{
-			texType = GBuffer_Target_Albedo;
-		}
-		else if (normal)
-		{
-			texType = GBuffer_Target_Normal;
-		}
-		else if (specular)
-		{
-			texType = GBuffer_Target_Specular;			
-		}
-		else if (depth)
-		{
-			texType = GBuffer_Target_Depth;
 		}
 
 		// TEXTURE

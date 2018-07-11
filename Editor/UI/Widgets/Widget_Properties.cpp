@@ -304,6 +304,7 @@ void Widget_Properties::ShowLight(Light* light)
 	float angle					= light->GetAngle() * 179.0f;
 	bool castsShadows			= light->GetCastShadows();
 	float range					= light->GetRange();
+	g_lightButtonColorPicker->SetColor(light->GetColor());
 	//===============================================================
 	
 	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
