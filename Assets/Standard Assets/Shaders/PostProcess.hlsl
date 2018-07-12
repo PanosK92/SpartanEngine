@@ -144,9 +144,13 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 	
 #if PASS_SHARPENING
 	color = LumaSharpen(sourceTexture, bilinearSampler, texCoord, resolution);
-	color.a = 1.0f;
 #endif
 	
+#if PASS_CHROMATIC_ABERRATION
+	color.rgb = ChromaticAberrationPass(texCoord, texelSize, sourceTexture, bilinearSampler);
+	color.a = 1.0f;
+#endif
+
 #if PASS_BLUR_BOX
 	color = Pass_BlurBox(texCoord, texelSize, 4, sourceTexture, pointSampler);
 #endif

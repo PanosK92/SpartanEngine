@@ -103,7 +103,7 @@ void Widget_Toolbar::Update(float deltaTime)
 	}
 	ImGui::PopStyleColor();
 
-	ImGui::PopStyleVar(); // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 5));
+	ImGui::PopStyleVar();
 
 	// Visibility
 	if (g_showRendererOptions)	ShowRendererOptions();	
@@ -174,20 +174,24 @@ void Widget_Toolbar::ShowRendererOptions()
 
 	// Effects
 	{	
-		bool bloom				= Renderer::RenderFlags_IsSet(Render_Bloom);
-		bool fxaa				= Renderer::RenderFlags_IsSet(Render_FXAA);
-		bool sharpening			= Renderer::RenderFlags_IsSet(Render_Sharpening);
-		bool correction			= Renderer::RenderFlags_IsSet(Render_Correction);
+		bool bloom					= Renderer::RenderFlags_IsSet(Render_Bloom);
+		bool correction				= Renderer::RenderFlags_IsSet(Render_Correction);
+		bool fxaa					= Renderer::RenderFlags_IsSet(Render_FXAA);
+		bool sharpening				= Renderer::RenderFlags_IsSet(Render_Sharpening);
+		bool chromaticAberration	= Renderer::RenderFlags_IsSet(Render_ChromaticAberration);
+		
 
 		ImGui::Checkbox("Bloom", &bloom);
 		ImGui::Checkbox("Tone-mapping & Gamma correction", &correction);
 		ImGui::Checkbox("FXAA", &fxaa);
 		ImGui::Checkbox("Sharpening", &sharpening);
+		ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
 	
-		bloom		? Renderer::RenderFlags_Enable(Render_Bloom)		: Renderer::RenderFlags_Disable(Render_Bloom);
-		fxaa		? Renderer::RenderFlags_Enable(Render_FXAA)			: Renderer::RenderFlags_Disable(Render_FXAA);
-		sharpening	? Renderer::RenderFlags_Enable(Render_Sharpening)	: Renderer::RenderFlags_Disable(Render_Sharpening);
-		correction	? Renderer::RenderFlags_Enable(Render_Correction)	: Renderer::RenderFlags_Disable(Render_Correction);
+		bloom				? Renderer::RenderFlags_Enable(Render_Bloom)				: Renderer::RenderFlags_Disable(Render_Bloom);
+		correction			? Renderer::RenderFlags_Enable(Render_Correction)			: Renderer::RenderFlags_Disable(Render_Correction);
+		fxaa				? Renderer::RenderFlags_Enable(Render_FXAA)					: Renderer::RenderFlags_Disable(Render_FXAA);
+		sharpening			? Renderer::RenderFlags_Enable(Render_Sharpening)			: Renderer::RenderFlags_Disable(Render_Sharpening);
+		chromaticAberration	? Renderer::RenderFlags_Enable(Render_ChromaticAberration)	: Renderer::RenderFlags_Disable(Render_ChromaticAberration);	
 	}
 
 	ImGui::Separator();
@@ -201,12 +205,12 @@ void Widget_Toolbar::ShowRendererOptions()
 		ImGui::Checkbox("Scene Grid", &g_grid);
 		ImGui::Checkbox("Performance Metrics", &g_performanceMetrics);
 
-		g_physics ? Renderer::RenderFlags_Enable(Render_Physics) : Renderer::RenderFlags_Disable(Render_Physics);
-		g_aabb ? Renderer::RenderFlags_Enable(Render_AABB) : Renderer::RenderFlags_Disable(Render_AABB);
-		g_gizmos ? Renderer::RenderFlags_Enable(Render_Light) : Renderer::RenderFlags_Disable(Render_Light);
-		g_pickingRay ? Renderer::RenderFlags_Enable(Render_PickingRay) : Renderer::RenderFlags_Disable(Render_PickingRay);
-		g_grid ? Renderer::RenderFlags_Enable(Render_SceneGrid) : Renderer::RenderFlags_Disable(Render_SceneGrid);
-		g_performanceMetrics ? Renderer::RenderFlags_Enable(Render_PerformanceMetrics) : Renderer::RenderFlags_Disable(Render_PerformanceMetrics);
+		g_physics				? Renderer::RenderFlags_Enable(Render_Physics)				: Renderer::RenderFlags_Disable(Render_Physics);
+		g_aabb					? Renderer::RenderFlags_Enable(Render_AABB)					: Renderer::RenderFlags_Disable(Render_AABB);
+		g_gizmos				? Renderer::RenderFlags_Enable(Render_Light)				: Renderer::RenderFlags_Disable(Render_Light);
+		g_pickingRay			? Renderer::RenderFlags_Enable(Render_PickingRay)			: Renderer::RenderFlags_Disable(Render_PickingRay);
+		g_grid					? Renderer::RenderFlags_Enable(Render_SceneGrid)			: Renderer::RenderFlags_Disable(Render_SceneGrid);
+		g_performanceMetrics	? Renderer::RenderFlags_Enable(Render_PerformanceMetrics)	: Renderer::RenderFlags_Disable(Render_PerformanceMetrics);
 	}
 
 	ImGui::End();
