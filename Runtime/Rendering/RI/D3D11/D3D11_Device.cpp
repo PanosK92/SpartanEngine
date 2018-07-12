@@ -329,16 +329,16 @@ namespace Directus
 	{
 		D3D11_BLEND_DESC blendStateDesc;
 		ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
-		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
-		blendStateDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		blendStateDesc.RenderTarget[0].BlendEnable				= (BOOL)true;
+		blendStateDesc.RenderTarget[0].RenderTargetWriteMask	= D3D11_COLOR_WRITE_ENABLE_ALL;
 		
-		blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-		blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-		blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+		blendStateDesc.RenderTarget[0].SrcBlend		= D3D11_BLEND_SRC_ALPHA;
+		blendStateDesc.RenderTarget[0].DestBlend	= D3D11_BLEND_INV_SRC_ALPHA;
+		blendStateDesc.RenderTarget[0].BlendOp		= D3D11_BLEND_OP_ADD;
 		
-		blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ZERO;
-		blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
-		blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		blendStateDesc.RenderTarget[0].SrcBlendAlpha	= D3D11_BLEND_ZERO;
+		blendStateDesc.RenderTarget[0].DestBlendAlpha	= D3D11_BLEND_ONE;
+		blendStateDesc.RenderTarget[0].BlendOpAlpha		= D3D11_BLEND_OP_ADD;
 
 		// Create a blending state with alpha blending enabled
 		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
@@ -447,8 +447,8 @@ namespace Directus
 
 		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 		ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-		depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		depthStencilViewDesc.Format				= DXGI_FORMAT_D24_UNORM_S8_UINT;
+		depthStencilViewDesc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
 		depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 		// Create the depth stencil view.
@@ -719,14 +719,14 @@ namespace Directus
 		D3D11_RASTERIZER_DESC desc = {};
 		desc.FillMode = d3d11_fill_Mode[fillMode];
 		desc.CullMode = d3d11_cull_mode[cullMode];
-		desc.FrontCounterClockwise = FALSE;
-		desc.DepthBias = 0;
-		desc.DepthBiasClamp = 0.0f;
-		desc.SlopeScaledDepthBias = 0.0f;
-		desc.DepthClipEnable = TRUE;
-		desc.ScissorEnable = FALSE;
-		desc.MultisampleEnable = FALSE;
-		desc.AntialiasedLineEnable = FALSE;
+		desc.FrontCounterClockwise	= FALSE;
+		desc.DepthBias				= 0;
+		desc.DepthBiasClamp			= 0.0f;
+		desc.SlopeScaledDepthBias	= 0.0f;
+		desc.DepthClipEnable		= TRUE;
+		desc.ScissorEnable			= FALSE;
+		desc.MultisampleEnable		= FALSE;
+		desc.AntialiasedLineEnable	= FALSE;
 
 		HRESULT result = m_device->CreateRasterizerState(&desc, rasterizer);
 
@@ -796,14 +796,14 @@ namespace Directus
 	string D3D11_Device::GetAdapterDescription(IDXGIAdapter* adapter)
 	{
 		if (!adapter)
-			return NOT_ASSIGNED;
+			return "error";
 
 		DXGI_ADAPTER_DESC adapterDesc;
 		HRESULT result = adapter->GetDesc(&adapterDesc);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11_Device::GetAdapterDescription: Failed to get adapter description.");
-			return NOT_ASSIGNED;
+			return "error";
 		}
 
 		int adapterVRAM = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024); // MB

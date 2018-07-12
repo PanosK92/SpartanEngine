@@ -464,7 +464,7 @@ namespace Directus
 				return true;
 		}
 		
-		if (GetExtensionFromFilePath(path) == TEXTURE_EXTENSION)
+		if (GetExtensionFromFilePath(path) == EXTENSION_TEXTURE)
 			return true;
 
 		return false;
@@ -528,37 +528,37 @@ namespace Directus
 
 	bool FileSystem::IsEnginePrefabFile(const string& filePath)
 	{
-		return GetExtensionFromFilePath(filePath) == PREFAB_EXTENSION;
+		return GetExtensionFromFilePath(filePath) == EXTENSION_PREFAB;
 	}
 
 	bool FileSystem::IsEngineModelFile(const string& filePath)
 	{
-		return GetExtensionFromFilePath(filePath) == MODEL_EXTENSION;
+		return GetExtensionFromFilePath(filePath) == EXTENSION_MODEL;
 	}
 
 	bool FileSystem::IsEngineMaterialFile(const string& filePath)
 	{
-		return GetExtensionFromFilePath(filePath) == MATERIAL_EXTENSION;
+		return GetExtensionFromFilePath(filePath) == EXTENSION_MATERIAL;
 	}
 
 	bool FileSystem::IsEngineMeshFile(const string& filePath)
 	{
-		return GetExtensionFromFilePath(filePath) == MESH_EXTENSION;
+		return GetExtensionFromFilePath(filePath) == EXTENSION_MESH;
 	}
 
 	bool FileSystem::IsEngineSceneFile(const string& filePath)
 	{
-		return GetExtensionFromFilePath(filePath) == SCENE_EXTENSION;
+		return GetExtensionFromFilePath(filePath) == EXTENSION_SCENE;
 	}
 
 	bool FileSystem::IsEngineTextureFile(const string& filePath)
 	{
-		return GetExtensionFromFilePath(filePath) == TEXTURE_EXTENSION;
+		return GetExtensionFromFilePath(filePath) == EXTENSION_TEXTURE;
 	}
 
 	bool FileSystem::IsEngineShaderFile(const string& filePath)
 	{
-		return GetExtensionFromFilePath(filePath) == SHADER_EXTENSION;
+		return GetExtensionFromFilePath(filePath) == EXTENSION_SHADER;
 	}
 
 	bool FileSystem::IsEngineMetadataFile(const string& filePath)

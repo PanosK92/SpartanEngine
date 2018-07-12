@@ -38,7 +38,7 @@ static int g_progress_Scene			= 1;
 
 		void Clear()
 		{
-			status		= "N/A";
+			status		= NOT_ASSIGNED;
 			jobsDone	= 0;
 			jobCount	= 0;
 			isLoading	= false;

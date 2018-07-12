@@ -67,7 +67,7 @@ namespace Directus
 
 	void Script::Serialize(FileStream* stream)
 	{
-		stream->Write(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)NOT_ASSIGNED);
+		stream->Write(m_scriptInstance ? m_scriptInstance->GetScriptPath() : NOT_ASSIGNED);
 	}
 
 	void Script::Deserialize(FileStream* stream)
@@ -103,6 +103,6 @@ namespace Directus
 
 	string Script::GetName()
 	{
-		return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromFilePath(GetScriptPath()) : "N/A";
+		return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromFilePath(GetScriptPath()) : NOT_ASSIGNED;
 	}
 }

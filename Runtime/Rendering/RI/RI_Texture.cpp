@@ -95,7 +95,7 @@ namespace Directus
 
 		if (!loaded)
 		{
-			LOG_ERROR("Texture: Failed to load \"" + filePath + "\".");
+			LOGF_ERROR("RI_Texture::LoadFromFile: Failed to load \"%s\".", filePath.c_str());
 			GetLoadState(LoadState_Failed);
 			return false;
 		}
@@ -265,7 +265,7 @@ namespace Directus
 		}
 
 		// Change texture extension to an engine texture
-		SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(filePath) + TEXTURE_EXTENSION);
+		SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(filePath) + EXTENSION_TEXTURE);
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(GetResourceFilePath()));
 
 		return true;

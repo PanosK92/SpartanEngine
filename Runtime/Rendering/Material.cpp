@@ -121,9 +121,9 @@ namespace Directus
 		SetResourceFilePath(FileSystem::GetRelativeFilePath(filePath));
 
 		// Add material extension if not present
-		if (FileSystem::GetExtensionFromFilePath(GetResourceFilePath()) != MATERIAL_EXTENSION)
+		if (FileSystem::GetExtensionFromFilePath(GetResourceFilePath()) != EXTENSION_MATERIAL)
 		{
-			SetResourceFilePath(GetResourceFilePath() + MATERIAL_EXTENSION);
+			SetResourceFilePath(GetResourceFilePath() + EXTENSION_MATERIAL);
 		}
 
 		auto xml = make_unique<XmlDocument>();

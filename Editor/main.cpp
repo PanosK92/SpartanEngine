@@ -45,10 +45,7 @@ static Input* g_input			= nullptr;
 void Directus_SetOutputFrameSize(int width, int height)
 {
 	if (!g_renderer || !g_editor)
-	{
-		LOG_ERROR("Directus_SetOutputFrameSize: Failed");
 		return;
-	}
 
 	g_renderer->SetBackBufferSize(width, height);
 	g_editor->Resize();

@@ -22,7 +22,8 @@ Code quality is prioritized over development speed.
 - D3D11 rendering backend
 - Deferred rendering.
 - Frustum culling.
-- Multithreading.
+- HDR rendering.
+- Multi-threading.
 - Physically based shading.
 - Physics.
 - Post-process effects like FXAA & LumaSharpen.

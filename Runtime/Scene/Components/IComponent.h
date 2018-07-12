@@ -78,10 +78,10 @@ namespace Directus
 		// Runs when the actor is being loaded
 		virtual void Deserialize(FileStream* stream) {}
 		
-		//= PROPERTIES ==============================================================================
+		//= PROPERTIES =================================================================
 		Actor*					Getactor_PtrRaw()		{ return m_actor; }	
 		std::weak_ptr<Actor>	Getactor_PtrWeak()		{ return Getactor_PtrShared(); }
-		std::shared_ptr<Actor> Getactor_PtrShared();
+		std::shared_ptr<Actor>  Getactor_PtrShared();
 
 		Transform* GetTransform()			{ return m_transform; }
 		Context* GetContext()				{ return m_context; }
@@ -90,11 +90,11 @@ namespace Directus
 		ComponentType GetType()				{ return m_type; }
 		void SetType(ComponentType type)	{ m_type = type; }
 
-		const std::string& GetactorName();
+		const std::string& GetActorName();
 
 		template <typename T>
 		static ComponentType Type_To_Enum();
-		//===========================================================================================
+		//==============================================================================
 
 	protected:
 		// The type of the component
@@ -104,7 +104,7 @@ namespace Directus
 		// The state of the component
 		bool m_enabled				= false;
 		// The owner of the component
-		Actor* m_actor	= nullptr;
+		Actor* m_actor				= nullptr;
 		// The transform of the component (always exists)
 		Transform* m_transform		= nullptr;
 		// The context of the engine

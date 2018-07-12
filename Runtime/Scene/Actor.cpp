@@ -116,7 +116,7 @@ namespace Directus
 	bool Actor::SaveAsPrefab(const string& filePath)
 	{
 		// Create a prefab file
-		unique_ptr<FileStream> file = make_unique<FileStream>(filePath + PREFAB_EXTENSION, FileStreamMode_Write);
+		unique_ptr<FileStream> file = make_unique<FileStream>(filePath + EXTENSION_PREFAB, FileStreamMode_Write);
 		if (!file->IsOpen())
 			return false;
 

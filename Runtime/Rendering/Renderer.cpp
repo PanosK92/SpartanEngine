@@ -72,7 +72,6 @@ namespace Directus
 		m_nearPlane					= 0.0f;
 		m_farPlane					= 0.0f;
 		m_graphics					= nullptr;
-		m_frame						= nullptr;
 		m_flags						= 0;
 		m_flags						|= Render_SceneGrid;
 		m_flags						|= Render_Light;
@@ -120,7 +119,7 @@ namespace Directus
 		string shaderDirectory	= g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
 		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
 
-		RenderTargets_Create();
+		RenderTargets_Create(Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight());
 
 		// SHADERS
 		{
@@ -288,6 +287,11 @@ namespace Directus
 		SetRenderTarget(renderTexture.get());
 	}
 
+	void * Renderer::GetFrame()
+	{
+		return m_renderTexPong ? m_renderTexPong->GetShaderResourceView() : nullptr;
+	}
+
 	void Renderer::Present()
 	{
 		m_graphics->Present();
@@ -364,7 +368,7 @@ namespace Directus
 		return m_graphics->GetViewport();
 	}
 
-	void Renderer::SetResolutionInternal(int width, int height)
+	void Renderer::SetResolution(int width, int height)
 	{
 		// Return if resolution already set
 		if (Settings::Get().GetResolution().x == width && Settings::Get().GetResolution().y == height)
@@ -372,10 +376,18 @@ namespace Directus
 
 		// Return if resolution is invalid
 		if (width <= 0 || height <= 0)
+		{
+			LOG_WARNING("Renderer::SetResolutionInternal: Invalid resolution");
 			return;
+		}
+
+		// Make sure we are pixel perfect
+		width	-= (width	% 2 != 0) ? 1 : 0;
+		height	-= (height	% 2 != 0) ? 1 : 0;
 
 		Settings::Get().SetResolution(Vector2((float)width, (float)height));
-		RenderTargets_Create();
+		RenderTargets_Create(width, height);
+		LOGF_INFO("Renderer::SetResolution:: Resolution was set to %dx%d", width, height);
 	}
 
 	const Vector2& Renderer::GetViewportInternal()
@@ -398,27 +410,27 @@ namespace Directus
 		m_camera			= nullptr;
 	}
 
-	void Renderer::RenderTargets_Create()
+	void Renderer::RenderTargets_Create(int width, int height)
 	{
 		// Resize everything
 		m_gbuffer.reset();
-		m_gbuffer = make_unique<GBuffer>(m_graphics, Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight());
+		m_gbuffer = make_unique<GBuffer>(m_graphics, width, height);
 
 		m_quad.reset();
 		m_quad = make_unique<Rectangle>(m_context);
-		m_quad->Create(0, 0, (float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
+		m_quad->Create(0, 0, (float)width, (float)height);
 
 		m_renderTexPing.reset();
-		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_graphics, Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight(), false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_graphics, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPing2.reset();
-		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_graphics, Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight(), false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_graphics, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPong.reset();
-		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_graphics, Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight(), false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_graphics, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexShadowing.reset();
-		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_graphics, int(Settings::Get().GetResolutionWidth() * 0.5f), int(Settings::Get().GetResolutionHeight() * 0.5f), false, Texture_Format_R32G32_FLOAT);
+		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_graphics, int(width * 0.5f), int(height * 0.5f), false, Texture_Format_R32G32_FLOAT);
 	}
 
 	//= RENDERABLES ============================================================================================
@@ -769,19 +781,17 @@ namespace Directus
 			Pass_FXAA(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
 			SwapTargets();
 		}
-
+		
 		// SHARPENING
 		if (RenderFlags_IsSet(Render_Sharpening))
 		{
 			Pass_Sharpening(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
 		}
 
-		m_frame = outRenderTexture->GetShaderResourceView();
-
 		// DEBUG - Rendering continues on last bound target
 		Pass_DebugGBuffer();
 		Pass_Debug();
-
+		
 		m_graphics->EventEnd();
 		PROFILE_FUNCTION_END();
 	}

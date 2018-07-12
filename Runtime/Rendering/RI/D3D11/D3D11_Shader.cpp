@@ -43,8 +43,8 @@ namespace Directus
 		m_pixelShader		= nullptr;
 		m_VSBlob			= nullptr;
 		m_compiled			= false;
-		m_entrypoint		= NOT_ASSIGNED.c_str();
-		m_profile			= NOT_ASSIGNED.c_str();
+		m_entrypoint		= "";
+		m_profile			= "";
 		m_layoutHasBeenSet	= false;
 
 		// Create input layout

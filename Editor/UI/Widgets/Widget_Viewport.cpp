@@ -60,7 +60,7 @@ void Widget_Viewport::Initialize(Context* context)
 
 void Widget_Viewport::Begin()
 {
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(3, 3));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 }
 
@@ -75,15 +75,12 @@ void Widget_Viewport::Update(float deltaTime)
 
 void Widget_Viewport::ShowFrame(float deltaTime)
 {
-	int width	= (int)ImGui::GetWindowContentRegionWidth();
-	int height	= (int)ImGui::GetWindowContentRegionMax().y - (int)ImGui::GetWindowContentRegionMin().y;
+	int width	= (int)(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+	int height	= (int)(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
 	// Make sure we are pixel perfect
-	if (width % 2 != 0)
-		width--;
-
-	if (height % 2 != 0)
-		height--;
+	width	-= (width	% 2 != 0) ? 1 : 0;
+	height	-= (height	% 2 != 0) ? 1 : 0;
 
 	// Display frame
 	Widget_Viewport_Properties::g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
@@ -99,9 +96,9 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	// Adjust resolution if necessary
 	if (Settings::Get().GetResolutionWidth() != width || Settings::Get().GetResolutionHeight() != height)
 	{
-		if (m_timeSinceLastResChange >= 0.1f) // Don't stress the GPU too much
+		if (m_timeSinceLastResChange >= 10.0f) // Don't stress the GPU too much
 		{
-			Widget_Viewport_Properties::g_renderer->SetResolutionInternal(width, height);
+			Widget_Viewport_Properties::g_renderer->SetResolution(width, height);
 			m_timeSinceLastResChange = 0;
 		}
 	}
