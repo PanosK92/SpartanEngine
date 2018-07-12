@@ -78,6 +78,7 @@ namespace Directus
 		m_flags						|= Render_Bloom;
 		m_flags						|= Render_FXAA;
 		m_flags						|= Render_Sharpening;
+		m_flags						|= Render_ChromaticAberration;
 		m_flags						|= Render_Correction;
 
 		// Subscribe to events
@@ -178,6 +179,15 @@ namespace Directus
 			m_shaderSharpening->AddSampler(Texture_Sampler_Point);
 			m_shaderSharpening->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderSharpening->AddBuffer(CB_Matrix_Vector2, Global);
+
+			// Sharpening
+			m_shaderChromaticAberration = make_unique<RI_Shader>(m_context);
+			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
+			m_shaderChromaticAberration->Compile(shaderDirectory + "PostProcess.hlsl");
+			m_shaderChromaticAberration->SetInputLaytout(PositionTexture);
+			m_shaderChromaticAberration->AddSampler(Texture_Sampler_Point);
+			m_shaderChromaticAberration->AddSampler(Texture_Sampler_Bilinear);
+			m_shaderChromaticAberration->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Box
 			m_shaderBlurBox = make_unique<RI_Shader>(m_context);
@@ -786,6 +796,13 @@ namespace Directus
 		if (RenderFlags_IsSet(Render_Sharpening))
 		{
 			Pass_Sharpening(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+			SwapTargets();
+		}
+
+		// FXAA
+		if (RenderFlags_IsSet(Render_ChromaticAberration))
+		{
+			Pass_ChromaticAberration(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
 		}
 
 		// DEBUG - Rendering continues on last bound target
@@ -831,6 +848,19 @@ namespace Directus
 		m_shaderSharpening->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_shaderSharpening->Bind_Texture(inTexture);
 		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
+
+		m_graphics->EventEnd();
+	}
+
+	void Renderer::Pass_ChromaticAberration(void* inTexture, void* outTexture)
+	{
+		m_graphics->EventBegin("Pass_ChromaticAberration");
+
+		SetRenderTarget(outTexture, false);
+		m_shaderChromaticAberration->Bind();
+		m_shaderChromaticAberration->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
+		m_shaderChromaticAberration->Bind_Texture(inTexture);
+		m_shaderChromaticAberration->DrawIndexed(m_quad->GetIndexCount());
 
 		m_graphics->EventEnd();
 	}

@@ -66,7 +66,8 @@ namespace Directus
 		Render_Bloom				= 1UL << 10,
 		Render_FXAA					= 1UL << 11,
 		Render_Sharpening			= 1UL << 12,
-		Render_Correction			= 1UL << 13, // Tone-mapping & Gamma correction
+		Render_ChromaticAberration	= 1UL << 13,
+		Render_Correction			= 1UL << 14, // Tone-mapping & Gamma correction
 	};
 
 	class ENGINE_CLASS Renderer : public Subsystem
@@ -130,6 +131,7 @@ namespace Directus
 		void Pass_Correction(void* inTexture, void* outTexture);
 		void Pass_FXAA(void* inTexture, void* outTexture);
 		void Pass_Sharpening(void* inTexture, void* outTexture);
+		void Pass_ChromaticAberration(void* inTexture, void* outTexture);
 		void Pass_Bloom(
 			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture1,
 			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture2,
@@ -165,6 +167,7 @@ namespace Directus
 		std::unique_ptr<RI_Shader> m_shaderFXAA;
 		std::unique_ptr<RI_Shader> m_shaderShadowing;
 		std::unique_ptr<RI_Shader> m_shaderSharpening;
+		std::unique_ptr<RI_Shader> m_shaderChromaticAberration;
 		std::unique_ptr<RI_Shader> m_shaderBlurBox;
 		std::unique_ptr<RI_Shader> m_shaderBlurGaussianH;
 		std::unique_ptr<RI_Shader> m_shaderBlurGaussianV;
