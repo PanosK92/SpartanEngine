@@ -82,7 +82,7 @@ namespace Directus
 		// Rendering
 		void SetRenderTarget(void* renderTarget, bool clear = true);
 		void SetRenderTarget(const std::shared_ptr<D3D11_RenderTexture>& renderTexture);
-		void* GetFrame() { return m_frame; }
+		void* GetFrame();
 		void Present();
 		void Render();
 
@@ -91,7 +91,7 @@ namespace Directus
 		const RI_Viewport& GetViewportBackBuffer();
 
 		// The actual frame that all rendering takes place (or the viewport window in the editor)
-		void SetResolutionInternal(int width, int height);
+		void SetResolution(int width, int height);
 		const Math::Vector2& GetViewportInternal();
 
 		//= RENDER MODE ======================================================================
@@ -111,7 +111,7 @@ namespace Directus
 		const std::vector<Actor*>& GetRenderables() { return m_renderables; }
 
 	private:
-		void RenderTargets_Create();
+		void RenderTargets_Create(int width, int height);
 
 		void Renderables_Acquire(const Variant& renderables);
 		void Renderables_Sort(std::vector<Actor*>* renderables);
@@ -189,7 +189,6 @@ namespace Directus
 		ID3D11ShaderResourceView* m_texEnvironment;
 		std::unique_ptr<RI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
-		void* m_frame;
 		//=========================================
 
 		//= PREREQUISITES ==============

@@ -144,9 +144,9 @@ namespace Directus
 	
 		// Add scene file extension to the filepath if it's missing
 		string filePath = filePathIn;
-		if (FileSystem::GetExtensionFromFilePath(filePath) != SCENE_EXTENSION)
+		if (FileSystem::GetExtensionFromFilePath(filePath) != EXTENSION_SCENE)
 		{
-			filePath += SCENE_EXTENSION;
+			filePath += EXTENSION_SCENE;
 		}
 
 		// Save any in-memory changes done to resources while running.

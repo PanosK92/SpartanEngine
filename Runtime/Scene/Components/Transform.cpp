@@ -297,7 +297,7 @@ namespace Directus
 	{
 		if (!HasChildren())
 		{
-			LOG_WARNING(GetactorName() + " has no children.");
+			LOG_WARNING(GetActorName() + " has no children.");
 			return nullptr;
 		}
 
@@ -315,7 +315,7 @@ namespace Directus
 	{
 		for (const auto& child : m_children)
 		{
-			if (child->GetactorName() == name)
+			if (child->GetActorName() == name)
 				return child;
 		}
 

@@ -35,9 +35,9 @@ namespace Directus
 		RegisterResource<Animation>();
 		//============================
 
-		m_name = NOT_ASSIGNED;
-		m_duration = 0;
-		m_ticksPerSec = 0;
+		m_name			= NOT_ASSIGNED;
+		m_duration		= 0;
+		m_ticksPerSec	= 0;
 	}
 
 	Animation::~Animation()

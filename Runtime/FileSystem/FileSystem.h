@@ -34,13 +34,13 @@ static const char* METADATA_EXTENSION		= ".xml";
 static const char* METADATA_TYPE_TEXTURE	= "Texture";
 static const char* METADATA_TYPE_AUDIOCLIP	= "Audio_Clip";
 // Engine file extensions
-static const char* SCENE_EXTENSION			= ".directus";
-static const char* MATERIAL_EXTENSION		= ".mat";
-static const char* MODEL_EXTENSION			= ".model";
-static const char* PREFAB_EXTENSION			= ".prefab";
-static const char* SHADER_EXTENSION			= ".shader";
-static const char* TEXTURE_EXTENSION		= ".texture";
-static const char* MESH_EXTENSION			= ".mesh";
+static const char* EXTENSION_SCENE			= ".directus";
+static const char* EXTENSION_MATERIAL		= ".mat";
+static const char* EXTENSION_MODEL			= ".model";
+static const char* EXTENSION_PREFAB			= ".prefab";
+static const char* EXTENSION_SHADER			= ".shader";
+static const char* EXTENSION_TEXTURE		= ".texture";
+static const char* EXTENSION_MESH			= ".mesh";
 //=========================================================
 
 namespace Directus

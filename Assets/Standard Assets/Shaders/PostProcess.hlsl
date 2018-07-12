@@ -91,7 +91,33 @@ float4 Pass_BlurGaussian(float2 uv, Texture2D sourceTexture, SamplerState pointS
 	return color;
 }	
 
-// Pixel Shader
+/*------------------------------------------------------------------------------
+							[Chromatic Aberration]
+------------------------------------------------------------------------------*/
+float3 ChromaticAberrationPass(float2 texCoord, float2 texelSize, Texture2D sourceTexture, SamplerState bilinearSampler)
+{
+float2 shift 	= float2(2.5f, -0.5f);	// 	[-10, 10]
+	float strength 	= 1.0f;  				//	[0, 1]
+	
+	// supposedly, lens effect
+	shift.x *= abs(texCoord.x * 2.0f - 1.0f);
+	shift.y *= abs(texCoord.y * 2.0f - 1.0f);
+	
+	float3 color 		= float3(0.0f, 0.0f, 0.0f);
+	float3 colorInput 	= sourceTexture.Sample(pointSampler, texCoord).rgb;
+	
+	// sample the color components
+	color.r = sourceTexture.Sample(bilinearSampler, texCoord + (texelSize * shift)).r;
+	color.g = colorInput.g;
+	color.b = sourceTexture.Sample(bilinearSampler, texCoord - (texelSize * shift)).b;
+
+	// adjust the strength of the effect
+	return lerp(colorInput, color, strength);
+}
+
+/*------------------------------------------------------------------------------
+								[Pixel Shader]
+------------------------------------------------------------------------------*/
 float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 {
     float2 texCoord 	= input.uv;
@@ -136,7 +162,7 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 #if PASS_BRIGHT
 	color 				= sourceTexture.Sample(pointSampler, input.uv);
     float luminance 	= dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));	
-	color 				= luminance > 1.0f ? color : float4(0.0f, 0.0f, 0.0f, 1.0f);
+	color 				= luminance > 1.0f ? color : float4(0.0f, 0.0f, 0.0f, color.a); // maintain alpha as it holds FXAA luma
 #endif
 
 #if PASS_BLEND_ADDITIVE

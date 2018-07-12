@@ -88,7 +88,7 @@ namespace Directus
 			}
 		}
 
-		bool engineFormat = FileSystem::GetExtensionFromFilePath(modelFilePath) == MODEL_EXTENSION;
+		bool engineFormat = FileSystem::GetExtensionFromFilePath(modelFilePath) == EXTENSION_MODEL;
 		bool success = engineFormat ? LoadFromEngineFormat(modelFilePath) : LoadFromForeignFormat(modelFilePath);
 
 		Geometry_ComputeMemoryUsage();
@@ -174,7 +174,7 @@ namespace Directus
 		}
 
 		// Create a file path for this material
-		material.lock()->SetResourceFilePath(m_modelDirectoryMaterials + material.lock()->GetResourceName() + MATERIAL_EXTENSION);
+		material.lock()->SetResourceFilePath(m_modelDirectoryMaterials + material.lock()->GetResourceName() + EXTENSION_MATERIAL);
 
 		// Save the material in the model directory		
 		material.lock()->SaveToFile(material.lock()->GetResourceFilePath());
@@ -240,7 +240,7 @@ namespace Directus
 			texture->SetType(textureType);
 
 			// Update the texture with Model directory relative file path. Then save it to this directory
-			string modelRelativeTexPath = m_modelDirectoryTextures + texName + TEXTURE_EXTENSION;
+			string modelRelativeTexPath = m_modelDirectoryTextures + texName + EXTENSION_TEXTURE;
 			texture->SetResourceFilePath(modelRelativeTexPath);
 			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
 			texture->SaveToFile(modelRelativeTexPath);
@@ -289,7 +289,7 @@ namespace Directus
 	{
 		// Set some crucial data (Required by ModelImporter)
 		SetWorkingDirectory(m_context->GetSubsystem<ResourceManager>()->GetProjectDirectory() + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"); // Assets/Sponza/
-		SetResourceFilePath(m_modelDirectoryModel + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION); // Assets/Sponza/Sponza.model
+		SetResourceFilePath(m_modelDirectoryModel + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + EXTENSION_MODEL); // Assets/Sponza/Sponza.model
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath)); // Sponza
 
 		// Load the model

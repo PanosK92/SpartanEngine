@@ -50,7 +50,7 @@ namespace Directus
 	IComponent::IComponent(Context* context, Actor* actor, Transform* transform)
 	{
 		m_context		= context;
-		m_actor	= actor;
+		m_actor			= actor;
 		m_transform		= transform;
 		m_enabled		= true;
 		m_ID			= GENERATE_GUID;
@@ -61,7 +61,7 @@ namespace Directus
 		return m_actor->GetPtrShared();
 	}
 
-	const string& IComponent::GetactorName()
+	const string& IComponent::GetActorName()
 	{
 		if (!m_actor)
 			return NOT_ASSIGNED;

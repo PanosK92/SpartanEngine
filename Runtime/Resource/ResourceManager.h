@@ -56,7 +56,7 @@ namespace Directus
 		{
 			if (filePath == NOT_ASSIGNED)
 			{
-				LOG_WARNING("ResourceManager::Load: Can't load resource of type \"" + std::string(typeid(T).name()) + "\", filepath \"" + filePath + "\" is unassigned.");
+				LOGF_WARNING("ResourceManager::Load: Can't load resource of type \"%s\", filepath \"%s\" is unassigned.", typeid(T).name(), filePath.c_str());
 				return std::weak_ptr<T>();
 			}
 
@@ -82,7 +82,7 @@ namespace Directus
 			// Load
 			if (!typed->LoadFromFile(filePathRelative))
 			{
-				LOG_WARNING("ResourceManager::Load: Resource \"" + filePathRelative + "\" failed to load");
+				LOGF_WARNING("ResourceManager::Load: Resource \"%s\" failed to load", filePathRelative.c_str());
 				return std::weak_ptr<T>();
 			}
 
