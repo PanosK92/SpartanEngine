@@ -67,9 +67,12 @@ namespace Directus
 
 		ID3D11DepthStencilView* GetDepthStencilView() { return m_depthStencilView; }
 
-		//= EVENTS =======================================
+		//= PROFILING =====================================
 		void EventBegin(const std::string& name) override;
 		void EventEnd() override;
+
+		void QueryBegin() override;
+		void QueryEnd() override;
 		//================================================
 
 		//======================================================================
@@ -78,14 +81,13 @@ namespace Directus
 		ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
 
 	private:
-		//= HELPER FUNCTIONS =================================================================================================
-		bool CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain);
+		//= HELPER FUNCTIONS ================================================================================
 		bool CreateRasterizerState(CullMode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer);
 		std::vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory);	
 		IDXGIAdapter* GetAdapterWithTheHighestVRAM(IDXGIFactory* factory);
 		IDXGIAdapter* GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID);
 		std::string GetAdapterDescription(IDXGIAdapter* adapter);
-		//====================================================================================================================
+		//===================================================================================================
 
 		ID3D11Device* m_device;
 		ID3D11DeviceContext* m_deviceContext;

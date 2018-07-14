@@ -206,7 +206,7 @@ namespace Directus
 		Math::Matrix m_wvp_baseOrthographic;
 		float m_nearPlane;
 		float m_farPlane;
-		RenderingDevice* m_graphics;
+		RenderingDevice* m_renderingDevice;
 		//==============================
 
 		//= PIPELINE STATE ===================

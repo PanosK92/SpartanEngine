@@ -30,17 +30,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum FileDialog_Type
 {
-	FileDialog_Browser,
-	FileDialog_Open,
-	FileDialog_Load,
-	FileDialog_Save
+	FileDialog_Type_Browser,
+	FileDialog_Type_FileSelection
 };
 
-enum FileDialog_FileFilter_Type
+enum FileDialog_Operation
 {
-	FileDialog_FileFilter_All,
-	FileDialog_FileFilter_Scene,
-	FileDialog_FileFilter_Model
+	FileDialog_Op_Open,
+	FileDialog_Op_Load,
+	FileDialog_Op_Save
+};
+
+enum FileDialog_Filter
+{
+	FileDialog_Filter_All,
+	FileDialog_Filter_Scene,
+	FileDialog_Filter_Model
 };
 
 class FileDialog_Item
@@ -83,15 +88,15 @@ private:
 class FileDialog
 {
 public:
-	FileDialog(Directus::Context* context, bool standaloneWindow = true, FileDialog_FileFilter_Type filter = FileDialog_FileFilter_All, FileDialog_Type type = FileDialog_Browser);
+	FileDialog(Directus::Context* context, bool standaloneWindow, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
 
-	// Filter
-	FileDialog_FileFilter_Type GetFilter() { return m_filter; }
-	void SetFilter(FileDialog_FileFilter_Type filter);
+	// Type & Filter
+	FileDialog_Type GetType()			{ return m_type; }
+	FileDialog_Filter GetFilter()	{ return m_filter; }
 
-	// Style
-	FileDialog_Type GetStyle() { return m_style; }
-	void SetStyle(FileDialog_Type type);
+	// Operation
+	FileDialog_Operation GetOperation() { return m_operation; }
+	void SetOperation(FileDialog_Operation operation);
 
 	// Shows the dialog and returns true if a a selection was made
 	bool Show(bool* isVisible, std::string* pathDoubleClicked = nullptr);
@@ -115,13 +120,15 @@ private:
 	void Dialog_ContextMenu();
 	void Dialog_SetCurrentPath(const std::string& path);
 
+	FileDialog_Type m_type;
+	FileDialog_Operation m_operation;
+	FileDialog_Filter m_filter;
+
 	std::string m_title;
 	std::string m_currentPath;
 	unsigned int m_currentPathID;
-	char m_selectedFileName[BUFFER_TEXT_DEFAULT]{};
+	char m_inputBox[BUFFER_TEXT_DEFAULT]{};
 	std::vector<FileDialog_Item> m_items;
-	FileDialog_Type m_style;
-	FileDialog_FileFilter_Type m_filter;
 	bool m_isWindow;
 	float m_itemSize;
 	bool m_selectionMade;

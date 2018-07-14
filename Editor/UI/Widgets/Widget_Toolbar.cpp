@@ -180,13 +180,12 @@ void Widget_Toolbar::ShowRendererOptions()
 		bool sharpening				= Renderer::RenderFlags_IsSet(Render_Sharpening);
 		bool chromaticAberration	= Renderer::RenderFlags_IsSet(Render_ChromaticAberration);
 		
-
 		ImGui::Checkbox("Bloom", &bloom);
 		ImGui::Checkbox("Tone-mapping & Gamma correction", &correction);
 		ImGui::Checkbox("FXAA", &fxaa);
-		ImGui::Checkbox("Sharpening", &sharpening);
 		ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
-	
+		ImGui::Checkbox("Sharpening", &sharpening);
+			
 		bloom				? Renderer::RenderFlags_Enable(Render_Bloom)				: Renderer::RenderFlags_Disable(Render_Bloom);
 		correction			? Renderer::RenderFlags_Enable(Render_Correction)			: Renderer::RenderFlags_Disable(Render_Correction);
 		fxaa				? Renderer::RenderFlags_Enable(Render_FXAA)					: Renderer::RenderFlags_Disable(Render_FXAA);
