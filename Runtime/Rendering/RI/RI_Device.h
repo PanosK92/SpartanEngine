@@ -123,9 +123,12 @@ namespace Directus
 		virtual float GetMaxDepth() = 0;
 		//======================================================
 
-		//= EVENTS =======================================
+		//= PROFILING ====================================
 		virtual void EventBegin(const std::string& name){}
 		virtual void EventEnd(){}
+
+		virtual void QueryBegin(){}
+		virtual void QueryEnd(){}
 		//================================================
 
 		virtual bool IsInitialized() = 0;

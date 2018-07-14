@@ -45,16 +45,17 @@ namespace FileDialog_Options
 	static unsigned int g_contextMenuID;
 }
 
-#define GET_WINDOW_NAME (type == FileDialog_Open)				? "Open"		: (type == FileDialog_Load)					? "Load"		: (type == FileDialog_Save) ? "Save" : "View"
-#define GET_FILTER_NAME	(m_filter == FileDialog_FileFilter_All)	? "All (*.*)"	: (m_filter == FileDialog_FileFilter_Model)	? "Model(*.*)"	: "Scene (*.scene)"
-#define GET_BUTTON_NAME (m_style == FileDialog_Open)			? "Open"		: (m_style == FileDialog_Load)				? "Load"		: "Save"
+#define OPERATION_NAME	(m_operation == FileDialog_Op_Open)	? "Open"		: (m_operation == FileDialog_Op_Load)	? "Load"		: (m_operation == FileDialog_Op_Save) ? "Save" : "View"
+#define FILTER_NAME		(m_filter == FileDialog_Filter_All)	? "All (*.*)"	: (m_filter == FileDialog_Filter_Model)	? "Model(*.*)"	: "Scene (*.scene)"
 
-FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_FileFilter_Type filter, FileDialog_Type type)
+FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter)
 {
 	m_context						= context;
+	m_type							= type;
+	m_operation						= operation;
 	m_filter						= filter;
-	m_style							= type;
-	m_title							= GET_WINDOW_NAME;
+	m_type							= type;
+	m_title							= OPERATION_NAME;
 	m_isWindow						= standaloneWindow;
 	m_currentPath					= FileSystem::GetWorkingDirectory();
 	m_itemSize						= 100.0f;
@@ -64,18 +65,13 @@ FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_FileF
 	m_callback_OnPathDoubleClicked	= nullptr;
 }
 
-void FileDialog::SetFilter(FileDialog_FileFilter_Type filter)
+void FileDialog::SetOperation(FileDialog_Operation operation)
 {
-	m_filter = filter;
+	m_operation = operation;
+	m_title		= OPERATION_NAME;
 }
 
-void FileDialog::SetStyle(FileDialog_Type type)
-{
-	m_style = type;
-	m_title = GET_WINDOW_NAME;
-}
-
-bool FileDialog::Show(bool* isVisible, string* pathDoubleClicked)
+bool FileDialog::Show(bool* isVisible, string* itemPath)
 {
 	if (!(*isVisible))
 	{
@@ -89,10 +85,10 @@ bool FileDialog::Show(bool* isVisible, string* pathDoubleClicked)
 		m_isDirty = true;
 	}
 
-	m_selectionMade								= false;
-	m_wasVisible								= true;
-	FileDialog_Options::g_isHoveringItem		= false;
-	FileDialog_Options::g_hoveredItemPath		= "";
+	m_selectionMade							= false;
+	m_wasVisible							= true;
+	FileDialog_Options::g_isHoveringItem	= false;
+	FileDialog_Options::g_hoveredItemPath	= "";
 	FileDialog_Options::g_isHoveringWindow	= false;
 
 	
@@ -111,9 +107,23 @@ bool FileDialog::Show(bool* isVisible, string* pathDoubleClicked)
 		m_isDirty = false;
 	}
 
-	if (pathDoubleClicked && m_selectionMade)
+	if (itemPath && m_selectionMade)
 	{
-		(*pathDoubleClicked) = m_currentPath;
+		if (m_type == FileDialog_Type_Browser)
+		{
+			(*itemPath) = m_currentPath;
+		}
+		else
+		{
+			if (m_operation == FileDialog_Op_Save)
+			{
+				(*itemPath) = m_currentPath + "/" + string(m_inputBox) + EXTENSION_SCENE;
+			}
+			else if (m_operation == FileDialog_Op_Open || m_operation == FileDialog_Op_Load)
+			{
+				(*itemPath) = m_currentPath;
+			}
+		}
 	}
 
 	Dialog_ContextMenu();
@@ -160,7 +170,7 @@ void FileDialog::Show_Middle()
 	// CONTENT WINDOW START
 	ImGuiWindow* window = ImGui::GetCurrentWindowRead();
 	float contentWidth  = window->ContentsRegionRect.Max.x - window->ContentsRegionRect.Min.x;
-	float contentHeight = window->ContentsRegionRect.Max.y - window->ContentsRegionRect.Min.y - (m_style != FileDialog_Browser ? 58.0f : 28.0f);
+	float contentHeight = window->ContentsRegionRect.Max.y - window->ContentsRegionRect.Min.y - (m_type != FileDialog_Type_Browser ? 58.0f : 28.0f);
 
 	PushStyle();
 	ImGui::BeginChild("##ContentRegion", ImVec2(contentWidth, contentHeight), true);
@@ -188,7 +198,7 @@ void FileDialog::Show_Middle()
 					{		
 						m_currentPath	= item.GetPath();
 						m_currentPathID = item.GetID();			
-						EditorHelper::SetCharArray(&m_selectedFileName[0], item.GetLabel());
+						EditorHelper::SetCharArray(&m_inputBox[0], item.GetLabel());
 
 						// Callback
 						if (m_callback_OnPathClicked) m_callback_OnPathClicked(item.GetPath());
@@ -256,36 +266,36 @@ void FileDialog::Show_Middle()
 void FileDialog::Show_Bottom(bool* isVisible)
 {
 	// Bottom-right buttons
-	if (m_style != FileDialog_Browser)
+	if (m_type == FileDialog_Type_Browser)
+		return;
+
+	ImGui::SetCursorPosY(ImGui::GetWindowSize().y - 35); // move to the bottom of the window
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 3.0f); // move to the bottom of the window
+
+	ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235);
+	ImGui::InputText("##InputBox", m_inputBox, BUFFER_TEXT_DEFAULT);
+	ImGui::PopItemWidth();
+
+	ImGui::SameLine();
+	ImGui::Text(FILTER_NAME);
+
+	ImGui::SameLine();
+	if (ImGui::Button(OPERATION_NAME))
 	{
-		ImGui::SetCursorPosY(ImGui::GetWindowSize().y - 35); // move to the bottom of the window
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 3.0f); // move to the bottom of the window
+		m_selectionMade = true;
+	}
 
-		ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235);
-		ImGui::InputText("##FileName", m_selectedFileName, BUFFER_TEXT_DEFAULT);
-		ImGui::PopItemWidth();
-
-		ImGui::SameLine();
-		ImGui::Text(GET_FILTER_NAME);
-
-		ImGui::SameLine();
-		if (ImGui::Button(GET_BUTTON_NAME))
-		{
-			m_selectionMade = true;
-		}
-
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel"))
-		{
-			m_selectionMade = false;
-			(*isVisible)    = false;
-		}
+	ImGui::SameLine();
+	if (ImGui::Button("Cancel"))
+	{
+		m_selectionMade = false;
+		(*isVisible) = false;
 	}
 }
 
 void FileDialog::Item_Drag(FileDialog_Item* item)
 {
-	if (!item || m_style != FileDialog_Browser)
+	if (!item || m_type != FileDialog_Type_Browser)
 		return;
 
 	if (DragDrop::Get().DragBegin())
@@ -382,7 +392,7 @@ bool FileDialog::Dialog_UpdateFromDirectory(const char* path /*= nullptr*/)
 
 	// Get files (based on filter)
 	vector<string> childFiles;
-	if (m_filter == FileDialog_FileFilter_All)
+	if (m_filter == FileDialog_Filter_All)
 	{
 		childFiles = FileSystem::GetFilesInDirectory(path);
 		for (const auto& childFile : childFiles)
@@ -390,7 +400,7 @@ bool FileDialog::Dialog_UpdateFromDirectory(const char* path /*= nullptr*/)
 			m_items.emplace_back(childFile, IconProvider::Get().Thumbnail_Load(childFile, Thumbnail_Custom, (int)m_itemSize));
 		}
 	}
-	else if (m_filter == FileDialog_FileFilter_Scene)
+	else if (m_filter == FileDialog_Filter_Scene)
 	{
 		childFiles = FileSystem::GetSupportedSceneFilesInDirectory(path);
 		for (const auto& childFile : childFiles)
@@ -398,7 +408,7 @@ bool FileDialog::Dialog_UpdateFromDirectory(const char* path /*= nullptr*/)
 			m_items.emplace_back(childFile, IconProvider::Get().Thumbnail_Load(childFile, Thumbnail_File_Scene, (int)m_itemSize));
 		}
 	}
-	else if (m_filter == FileDialog_FileFilter_Model)
+	else if (m_filter == FileDialog_Filter_Model)
 	{
 		childFiles = FileSystem::GetSupportedModelFilesInDirectory(path);
 		for (const auto& childFile : childFiles)

@@ -115,7 +115,7 @@ namespace Directus
 
 		//= GRAPHICS INTERFACE FACTORY =================================================
 		IDXGIFactory* factory;
-		HRESULT result = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)(&factory));
+		HRESULT result = CreateDXGIFactory(IID_PPV_ARGS(&factory));
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11_Device::Initialize: Failed to create a DirectX graphics interface factory.");
@@ -183,15 +183,60 @@ namespace Directus
 		}
 		//==============================================================================
 
-		// Create swap chain
-		if (!CreateDeviceAndSwapChain(&m_device, &m_deviceContext, &m_swapChain))
-			return false;
+		//= SWAPCHAIN ==================================================================
+		{
+			DXGI_SWAP_CHAIN_DESC swapChainDesc;
+			ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
+
+			swapChainDesc.BufferCount					= 1;
+			swapChainDesc.BufferDesc.Width				= Settings::Get().GetResolutionWidth();
+			swapChainDesc.BufferDesc.Height				= Settings::Get().GetResolutionHeight();
+			swapChainDesc.BufferDesc.Format				= d3d11_dxgi_format[m_backBuffer_format];
+			swapChainDesc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
+			swapChainDesc.OutputWindow					= (HWND)m_drawHandle;
+			swapChainDesc.SampleDesc.Count				= 1;
+			swapChainDesc.SampleDesc.Quality			= 0;
+			swapChainDesc.Windowed						= (BOOL)!Settings::Get().IsFullScreen();
+			swapChainDesc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+			swapChainDesc.BufferDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
+			swapChainDesc.SwapEffect					= DXGI_SWAP_EFFECT_DISCARD;
+			swapChainDesc.Flags							= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; //| DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING; // alt + enter fullscreen
+
+			UINT deviceFlags = 0;
+			#ifdef DEBUG
+			//deviceFlags |= D3D11_CREATE_DEVICE_DEBUG; // To use the debug layer, make sure to install the Windows 10 optional feature of “Graphics Tools”. 
+			//deviceFlags |= D3D11_CREATE_DEVICE_DEBUGGABLE;
+			#endif
+
+			// Create the swap chain, Direct3D device, and Direct3D device context.
+			HRESULT result = D3D11CreateDeviceAndSwapChain(
+				nullptr,									// specify nullptr to use the default adapter
+				D3D11Settings::driverType,
+				nullptr,									// specify nullptr because D3D_DRIVER_TYPE_HARDWARE indicates that this...
+				deviceFlags,								// ...function uses hardware, optionally set debug and Direct2D compatibility flags
+				D3D11Settings::featureLevels,
+				ARRAYSIZE(D3D11Settings::featureLevels),
+				D3D11Settings::sdkVersion,					// always set this to D3D11_SDK_VERSION
+				&swapChainDesc,
+				&m_swapChain,
+				&m_device,
+				nullptr,
+				&m_deviceContext
+			);
+
+			if (FAILED(result))
+			{
+				LOG_ERROR("D3D11_Device::CreateDeviceAndSwapChain: Failed to create swap chain, device and device context.");
+				return false;
+			}
+		}
+		//==============================================================================
 
 		//= RENDER TARGET VIEW =========================================================
 		{
 			ID3D11Texture2D* backBufferPtr;
 			// Get the pointer to the back buffer.
-			result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&backBufferPtr));
+			result = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBufferPtr));
 			if (FAILED(result))
 			{
 				LOG_ERROR("D3D11_Device::Initialize: Failed to get the pointer to the back buffer.");
@@ -214,7 +259,7 @@ namespace Directus
 
 		SetViewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
 
-		//= DEPTH ============================================
+		//= DEPTH ======================================================================
 		if (!CreateDepthStencilState(m_depthStencilStateEnabled, true, true))
 		{
 			LOG_ERROR("D3D11_Device::Initialize: Failed to create depth stencil enabled state.");
@@ -238,9 +283,9 @@ namespace Directus
 			LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 			return false;
 		}
-		//====================================================
+		//===============================================================================
 
-		//= RASTERIZERS ========================================================================
+		//= RASTERIZERS =================================================================
 		{
 			if (!CreateRasterizerState(CullBack, FillMode_Solid, &m_rasterStateCullBack))
 			{
@@ -263,15 +308,45 @@ namespace Directus
 			// Set default rasterizer state
 			m_deviceContext->RSSetState(m_rasterStateCullBack);
 		}
-		//=======================================================================================
+		//===============================================================================
 
-		//= BLEND STATES ========
-		if (!CreateBlendStates())
-			return false;
-		//=======================
+		//= BLEND STATES ================================================================
+		{
+			D3D11_BLEND_DESC blendStateDesc;
+			ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
+			blendStateDesc.RenderTarget[0].BlendEnable				= (BOOL)true;
+			blendStateDesc.RenderTarget[0].RenderTargetWriteMask	= D3D11_COLOR_WRITE_ENABLE_ALL;
+
+			blendStateDesc.RenderTarget[0].SrcBlend		= D3D11_BLEND_SRC_ALPHA;
+			blendStateDesc.RenderTarget[0].DestBlend	= D3D11_BLEND_INV_SRC_ALPHA;
+			blendStateDesc.RenderTarget[0].BlendOp		= D3D11_BLEND_OP_ADD;
+
+			blendStateDesc.RenderTarget[0].SrcBlendAlpha	= D3D11_BLEND_ZERO;
+			blendStateDesc.RenderTarget[0].DestBlendAlpha	= D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[0].BlendOpAlpha		= D3D11_BLEND_OP_ADD;
+
+			// Create a blending state with alpha blending enabled
+			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
+			HRESULT result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaEnabled);
+			if (FAILED(result))
+			{
+				LOG_ERROR("D3D11_Device::CreateBlendStates: Failed to create blend state.");
+				return false;
+			}
+
+			// Create a blending state with alpha blending disabled
+			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)false;
+			result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaDisabled);
+			if (FAILED(result))
+			{
+				LOG_ERROR("D3D11_Device::CreateBlendStates: Failed to create blend state.");
+				return false;
+			}
+		}
+		//===============================================================================
 
 		m_eventReporter = nullptr;
-		result = m_deviceContext->QueryInterface(__uuidof(m_eventReporter), reinterpret_cast<void**>(&m_eventReporter));
+		result = m_deviceContext->QueryInterface(IID_PPV_ARGS(&m_eventReporter));
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11_Device::Initialize: Failed to create ID3DUserDefinedAnnotation for event reporting");
@@ -322,42 +397,6 @@ namespace Directus
 		LOGF_INFO("D3D11_Device::Initialize:  Feature level %s - %s", featureLevelStr.data(), GetAdapterDescription(adapter).data());
 
 		m_initialized = true;
-		return true;
-	}
-
-	bool D3D11_Device::CreateBlendStates()
-	{
-		D3D11_BLEND_DESC blendStateDesc;
-		ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
-		blendStateDesc.RenderTarget[0].BlendEnable				= (BOOL)true;
-		blendStateDesc.RenderTarget[0].RenderTargetWriteMask	= D3D11_COLOR_WRITE_ENABLE_ALL;
-		
-		blendStateDesc.RenderTarget[0].SrcBlend		= D3D11_BLEND_SRC_ALPHA;
-		blendStateDesc.RenderTarget[0].DestBlend	= D3D11_BLEND_INV_SRC_ALPHA;
-		blendStateDesc.RenderTarget[0].BlendOp		= D3D11_BLEND_OP_ADD;
-		
-		blendStateDesc.RenderTarget[0].SrcBlendAlpha	= D3D11_BLEND_ZERO;
-		blendStateDesc.RenderTarget[0].DestBlendAlpha	= D3D11_BLEND_ONE;
-		blendStateDesc.RenderTarget[0].BlendOpAlpha		= D3D11_BLEND_OP_ADD;
-
-		// Create a blending state with alpha blending enabled
-		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
-		HRESULT result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaEnabled);
-		if (FAILED(result))
-		{
-			LOG_ERROR("D3D11_Device::CreateBlendStates: Failed to create blend state.");
-			return false;
-		}
-
-		// Create a blending state with alpha blending disabled
-		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)false;
-		result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaDisabled);
-		if (FAILED(result))
-		{
-			LOG_ERROR("D3D11_Device::CreateBlendStates: Failed to create blend state.");
-			return false;
-		}
-
 		return true;
 	}
 
@@ -551,7 +590,7 @@ namespace Directus
 
 		//= RENDER TARGET VIEW =============================================
 		ID3D11Texture2D* backBuffer = nullptr;
-		result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&backBuffer));
+		result = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11_Device::SetResolution: Failed to get pointer to the swapchain's back buffer.");
@@ -610,6 +649,19 @@ namespace Directus
 	{
 		m_eventReporter->EndEvent();
 	}
+
+	void D3D11_Device::QueryBegin()
+	{
+		// Begin disjoint query, and timestamp the beginning of the frame
+		//m_deviceContext->Begin(pQueryDisjoint);
+		//m_deviceContext->End(pQueryBeginFrame);
+	}
+
+	void D3D11_Device::QueryEnd()
+	{
+		//m_deviceContext->End(pQueryEndFrame);
+		//m_deviceContext->End(pQueryDisjoint);
+	}
 	//===========================================================
 
 	bool D3D11_Device::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
@@ -658,56 +710,6 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ================================================================================
-	bool D3D11_Device::CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain)
-	{
-		DXGI_SWAP_CHAIN_DESC swapChainDesc;
-		ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
-
-		swapChainDesc.BufferCount					= 1;
-		swapChainDesc.BufferDesc.Width				= Settings::Get().GetResolutionWidth();
-		swapChainDesc.BufferDesc.Height				= Settings::Get().GetResolutionHeight();
-		swapChainDesc.BufferDesc.Format				= d3d11_dxgi_format[m_backBuffer_format];
-		swapChainDesc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.OutputWindow					= (HWND)m_drawHandle;
-		swapChainDesc.SampleDesc.Count				= 1;
-		swapChainDesc.SampleDesc.Quality			= 0;
-		swapChainDesc.Windowed						= (BOOL)!Settings::Get().IsFullScreen();
-		swapChainDesc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-		swapChainDesc.BufferDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
-		swapChainDesc.SwapEffect					= DXGI_SWAP_EFFECT_DISCARD;
-		swapChainDesc.Flags							= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; //| DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING; // alt + enter fullscreen
-
-		UINT deviceFlags = 0;
-#ifdef DEBUG
-		//deviceFlags |= D3D11_CREATE_DEVICE_DEBUG; // To use the debug layer, make sure to install the Windows 10 optional feature of “Graphics Tools”. 
-		//deviceFlags |= D3D11_CREATE_DEVICE_DEBUGGABLE;
-#endif
-
-		// Create the swap chain, Direct3D device, and Direct3D device context.
-		HRESULT result = D3D11CreateDeviceAndSwapChain(
-			nullptr,									// specify nullptr to use the default adapter
-			D3D11Settings::driverType,
-			nullptr,									// specify nullptr because D3D_DRIVER_TYPE_HARDWARE indicates that this...
-			deviceFlags,								// ...function uses hardware, optionally set debug and Direct2D compatibility flags
-			D3D11Settings::featureLevels,
-			ARRAYSIZE(D3D11Settings::featureLevels),
-			D3D11Settings::sdkVersion,					// always set this to D3D11_SDK_VERSION
-			&swapChainDesc,
-			swapchain,
-			device,
-			nullptr,
-			deviceContext
-		);
-
-		if (FAILED(result))
-		{
-			LOG_ERROR("D3D11_Device::CreateDeviceAndSwapChain: Failed to create swap chain, device and device context.");
-			return false;
-		}
-
-		return true;
-	}
-
 	bool D3D11_Device::CreateRasterizerState(CullMode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer)
 	{
 		if (!m_device)

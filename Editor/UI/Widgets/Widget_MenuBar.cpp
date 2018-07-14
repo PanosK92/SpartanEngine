@@ -56,7 +56,7 @@ void Widget_MenuBar::Initialize(Context* context)
 	Widget::Initialize(context);
 	Widget_MenuBar_Settings::g_resourceManager = m_context->GetSubsystem<ResourceManager>();
 	Widget_MenuBar_Settings::g_scene = m_context->GetSubsystem<Scene>();
-	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_FileFilter_Scene);
+	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
 }
 
 void Widget_MenuBar::Update(float deltaTime)
@@ -74,7 +74,7 @@ void Widget_MenuBar::Update(float deltaTime)
 
 			if (ImGui::MenuItem("Load"))
 			{
-				m_fileDialog->SetStyle(FileDialog_Load);
+				m_fileDialog->SetOperation(FileDialog_Op_Load);
 				Widget_MenuBar_Settings::g_fileDialogVisible = true;
 			}
 
@@ -82,13 +82,13 @@ void Widget_MenuBar::Update(float deltaTime)
 
 			if (ImGui::MenuItem("Save"))
 			{
-				m_fileDialog->SetStyle(FileDialog_Save);
+				m_fileDialog->SetOperation(FileDialog_Op_Save);
 				Widget_MenuBar_Settings::g_fileDialogVisible = true;
 			}
 
 			if (ImGui::MenuItem("Save As..."))
 			{
-				m_fileDialog->SetStyle(FileDialog_Save);
+				m_fileDialog->SetOperation(FileDialog_Op_Save);
 				Widget_MenuBar_Settings::g_fileDialogVisible = true;
 			}
 
@@ -123,27 +123,27 @@ void Widget_MenuBar::Update(float deltaTime)
 
 void Widget_MenuBar::ShowFileDialog()
 {
-	if (!m_fileDialog->Show(&Widget_MenuBar_Settings::g_fileDialogVisible, &Widget_MenuBar_Settings::g_fileDialogSelection))
-		return;
-
-	// LOAD
-	if (m_fileDialog->GetStyle() == FileDialog_Open || m_fileDialog->GetStyle() == FileDialog_Load)
+	if (m_fileDialog->Show(&Widget_MenuBar_Settings::g_fileDialogVisible, &Widget_MenuBar_Settings::g_fileDialogSelection))
 	{
-		// Scene
-		if (FileSystem::IsEngineSceneFile(Widget_MenuBar_Settings::g_fileDialogSelection))
+		// LOAD
+		if (m_fileDialog->GetOperation() == FileDialog_Op_Open || m_fileDialog->GetOperation() == FileDialog_Op_Load)
 		{
-			EditorHelper::Get().LoadScene(Widget_MenuBar_Settings::g_fileDialogSelection);
-			Widget_MenuBar_Settings::g_fileDialogVisible = false;
+			// Scene
+			if (FileSystem::IsEngineSceneFile(Widget_MenuBar_Settings::g_fileDialogSelection))
+			{
+				EditorHelper::Get().LoadScene(Widget_MenuBar_Settings::g_fileDialogSelection);
+				Widget_MenuBar_Settings::g_fileDialogVisible = false;
+			}
 		}
-	}
-	// SAVE
-	else if (m_fileDialog->GetStyle() == FileDialog_Save)
-	{
-		// Scene
-		if (m_fileDialog->GetFilter() == FileDialog_FileFilter_Scene)
+		// SAVE
+		else if (m_fileDialog->GetOperation() == FileDialog_Op_Save)
 		{
-			EditorHelper::Get().SaveScene(Widget_MenuBar_Settings::g_fileDialogSelection);
-			Widget_MenuBar_Settings::g_fileDialogVisible = false;
+			// Scene
+			if (m_fileDialog->GetFilter() == FileDialog_Filter_Scene)
+			{
+				EditorHelper::Get().SaveScene(Widget_MenuBar_Settings::g_fileDialogSelection);
+				Widget_MenuBar_Settings::g_fileDialogVisible = false;
+			}
 		}
 	}
 }

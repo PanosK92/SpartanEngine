@@ -70,7 +70,7 @@ namespace Directus
 		m_lineRenderer				= nullptr;
 		m_nearPlane					= 0.0f;
 		m_farPlane					= 0.0f;
-		m_graphics					= nullptr;
+		m_renderingDevice					= nullptr;
 		m_flags						= 0;
 		m_flags						|= Render_SceneGrid;
 		m_flags						|= Render_Light;
@@ -93,8 +93,8 @@ namespace Directus
 	bool Renderer::Initialize()
 	{
 		// Get Graphics subsystem
-		m_graphics = m_context->GetSubsystem<RenderingDevice>();
-		if (!m_graphics->IsInitialized())
+		m_renderingDevice = m_context->GetSubsystem<RenderingDevice>();
+		if (!m_renderingDevice->IsInitialized())
 		{
 			LOG_ERROR("Renderer: Can't initialize, Graphics subsystem uninitialized.");
 			return false;
@@ -125,7 +125,7 @@ namespace Directus
 		{
 			// Light
 			m_shaderLight = make_unique<LightShader>();
-			m_shaderLight->Load(shaderDirectory + "Light.hlsl", m_graphics);
+			m_shaderLight->Load(shaderDirectory + "Light.hlsl", m_renderingDevice);
 
 			// Line
 			m_shaderLine = make_unique<RI_Shader>(m_context);
@@ -286,9 +286,9 @@ namespace Directus
 			return;
 		}
 
-		m_graphics->SetBackBufferAsRenderTarget();
-		m_graphics->SetViewport();
-		if (clear) m_graphics->Clear(GetClearColor());
+		m_renderingDevice->SetBackBufferAsRenderTarget();
+		m_renderingDevice->SetViewport();
+		if (clear) m_renderingDevice->Clear(GetClearColor());
 	}
 
 	void Renderer::SetRenderTarget(const shared_ptr<D3D11_RenderTexture>& renderTexture)
@@ -303,12 +303,12 @@ namespace Directus
 
 	void Renderer::Present()
 	{
-		m_graphics->Present();
+		m_renderingDevice->Present();
 	}
 
 	void Renderer::Render()
 	{
-		if (!m_graphics || !m_graphics->IsInitialized())
+		if (!m_renderingDevice || !m_renderingDevice->IsInitialized())
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
@@ -329,8 +329,8 @@ namespace Directus
 			// If there is nothing to render clear to camera's color and present
 			if (m_renderables.empty())
 			{
-				m_graphics->Clear(m_camera->GetClearColor());
-				m_graphics->Present();
+				m_renderingDevice->Clear(m_camera->GetClearColor());
+				m_renderingDevice->Present();
 				return;
 			}
 
@@ -359,7 +359,7 @@ namespace Directus
 		}		
 		else // If there is no camera, clear to black
 		{
-			m_graphics->Clear(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+			m_renderingDevice->Clear(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
 
 		PROFILE_FUNCTION_END();
@@ -368,13 +368,13 @@ namespace Directus
 	void Renderer::SetBackBufferSize(int width, int height)
 	{
 		Settings::Get().SetViewport(width, height);
-		m_graphics->SetResolution(width, height);
-		m_graphics->SetViewport((float)width, (float)height);
+		m_renderingDevice->SetResolution(width, height);
+		m_renderingDevice->SetViewport((float)width, (float)height);
 	}
 
 	const RI_Viewport& Renderer::GetViewportBackBuffer()
 	{
-		return m_graphics->GetViewport();
+		return m_renderingDevice->GetViewport();
 	}
 
 	void Renderer::SetResolution(int width, int height)
@@ -423,23 +423,23 @@ namespace Directus
 	{
 		// Resize everything
 		m_gbuffer.reset();
-		m_gbuffer = make_unique<GBuffer>(m_graphics, width, height);
+		m_gbuffer = make_unique<GBuffer>(m_renderingDevice, width, height);
 
 		m_quad.reset();
 		m_quad = make_unique<Rectangle>(m_context);
 		m_quad->Create(0, 0, (float)width, (float)height);
 
 		m_renderTexPing.reset();
-		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_graphics, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_renderingDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPing2.reset();
-		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_graphics, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_renderingDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPong.reset();
-		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_graphics, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_renderingDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexShadowing.reset();
-		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_graphics, int(width * 0.5f), int(height * 0.5f), false, Texture_Format_R32G32_FLOAT);
+		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_renderingDevice, int(width * 0.5f), int(height * 0.5f), false, Texture_Format_R32G32_FLOAT);
 	}
 
 	//= RENDERABLES ============================================================================================
@@ -552,8 +552,8 @@ namespace Directus
 
 		PROFILE_FUNCTION_BEGIN();
 
-		m_graphics->EventBegin("Pass_DepthDirectionalLight");
-		m_graphics->EnableDepth(true);
+		m_renderingDevice->EventBegin("Pass_DepthDirectionalLight");
+		m_renderingDevice->EnableDepth(true);
 		m_shaderLightDepth->Bind();
 
 		for (unsigned int i = 0; i < light->ShadowMap_GetCount(); i++)
@@ -605,19 +605,19 @@ namespace Directus
 		// Reset pipeline state tracking
 		m_currentlyBoundGeometry = 0;
 		
-		m_graphics->EnableDepth(false);
-		m_graphics->EventEnd();
+		m_renderingDevice->EnableDepth(false);
+		m_renderingDevice->EventEnd();
 
 		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::Pass_GBuffer()
 	{
-		if (!m_graphics)
+		if (!m_renderingDevice)
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_GBuffer");
+		m_renderingDevice->EventBegin("Pass_GBuffer");
 
 		m_gbuffer->SetAsRenderTarget();
 		m_gbuffer->Clear();
@@ -647,7 +647,7 @@ namespace Directus
 				continue;
 
 			// set face culling (changes only if required)
-			m_graphics->SetCullMode(obj_material->GetCullMode());
+			m_renderingDevice->SetCullMode(obj_material->GetCullMode());
 
 			// Bind geometry
 			if (m_currentlyBoundGeometry != obj_geometry->GetResourceID())
@@ -689,17 +689,17 @@ namespace Directus
 		m_currentlyBoundShader		= 0;
 		m_currentlyBoundMaterial	= 0;
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::Pass_PreLight(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing)
 	{
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_PreLight");
+		m_renderingDevice->EventBegin("Pass_PreLight");
 
 		m_quad->SetBuffer();
-		m_graphics->SetCullMode(CullBack);
+		m_renderingDevice->SetCullMode(CullBack);
 
 		// Shadow mapping + SSAO
 		Pass_Shadowing(inTextureNormal, inTextureDepth, inTextureNormalNoise, m_directionalLight, inRenderTexure);
@@ -707,7 +707,7 @@ namespace Directus
 		// Blur the shadows and the SSAO
 		Pass_Blur(((D3D11_RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureShadowing, Settings::Get().GetResolution());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
@@ -717,9 +717,9 @@ namespace Directus
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_Light");
+		m_renderingDevice->EventBegin("Pass_Light");
 
-		m_graphics->EnableDepth(false);
+		m_renderingDevice->EnableDepth(false);
 
 		// Set the deferred shader
 		m_shaderLight->Set();
@@ -747,17 +747,17 @@ namespace Directus
 
 		m_shaderLight->Render(m_quad->GetIndexCount());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::Pass_PostLight(shared_ptr<D3D11_RenderTexture>& inRenderTexture1, shared_ptr<D3D11_RenderTexture>& inRenderTexture2, shared_ptr<D3D11_RenderTexture>& outRenderTexture)
 	{
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_PostLight");
+		m_renderingDevice->EventBegin("Pass_PostLight");
 
 		m_quad->SetBuffer();
-		m_graphics->SetCullMode(CullBack);
+		m_renderingDevice->SetCullMode(CullBack);
 
 		// Keep track of render target swapping
 		bool swaped = false;
@@ -787,31 +787,31 @@ namespace Directus
 			Pass_FXAA(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
 			SwapTargets();
 		}
-		
+
+		// CHROMATIC ABERRATION
+		if (RenderFlags_IsSet(Render_ChromaticAberration))
+		{
+			Pass_ChromaticAberration(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+			SwapTargets();
+		}
+
 		// SHARPENING
 		if (RenderFlags_IsSet(Render_Sharpening))
 		{
 			Pass_Sharpening(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
-			SwapTargets();
-		}
-
-		// FXAA
-		if (RenderFlags_IsSet(Render_ChromaticAberration))
-		{
-			Pass_ChromaticAberration(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
 		}
 
 		// DEBUG - Rendering continues on last bound target
 		Pass_DebugGBuffer();
 		Pass_Debug();
 		
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::Pass_Correction(void* inTexture, void* outTexture)
 	{
-		m_graphics->EventBegin("Pass_Correction");
+		m_renderingDevice->EventBegin("Pass_Correction");
 
 		SetRenderTarget(outTexture, false);
 		m_shaderCorrection->Bind();
@@ -819,12 +819,12 @@ namespace Directus
 		m_shaderCorrection->Bind_Texture(inTexture);
 		m_shaderCorrection->DrawIndexed(m_quad->GetIndexCount());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 	}
 
 	void Renderer::Pass_FXAA(void* inTexture, void* outTexture)
 	{
-		m_graphics->EventBegin("Pass_FXAA");
+		m_renderingDevice->EventBegin("Pass_FXAA");
 
 		SetRenderTarget(outTexture, false);
 		m_shaderFXAA->Bind();
@@ -832,12 +832,12 @@ namespace Directus
 		m_shaderFXAA->Bind_Texture(inTexture);
 		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 	}
 
 	void Renderer::Pass_Sharpening(void* inTexture, void* outTexture)
 	{
-		m_graphics->EventBegin("Pass_Sharpening");
+		m_renderingDevice->EventBegin("Pass_Sharpening");
 
 		SetRenderTarget(outTexture, false);
 		m_shaderSharpening->Bind();
@@ -845,12 +845,12 @@ namespace Directus
 		m_shaderSharpening->Bind_Texture(inTexture);
 		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 	}
 
 	void Renderer::Pass_ChromaticAberration(void* inTexture, void* outTexture)
 	{
-		m_graphics->EventBegin("Pass_ChromaticAberration");
+		m_renderingDevice->EventBegin("Pass_ChromaticAberration");
 
 		SetRenderTarget(outTexture, false);
 		m_shaderChromaticAberration->Bind();
@@ -858,12 +858,12 @@ namespace Directus
 		m_shaderChromaticAberration->Bind_Texture(inTexture);
 		m_shaderChromaticAberration->DrawIndexed(m_quad->GetIndexCount());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 	}
 
 	void Renderer::Pass_Bloom(shared_ptr<D3D11_RenderTexture>& inSourceTexture, shared_ptr<D3D11_RenderTexture>& inTextureSpare, shared_ptr<D3D11_RenderTexture>& outTexture)
 	{
-		m_graphics->EventBegin("Pass_Bloom");
+		m_renderingDevice->EventBegin("Pass_Bloom");
 
 		// Bright pass
 		SetRenderTarget(inTextureSpare.get(), false);
@@ -894,12 +894,12 @@ namespace Directus
 		m_shaderBloom_BlurBlend->Bind_Texture(inTextureSpare->GetShaderResourceView(), 1);
 		m_shaderBloom_BlurBlend->DrawIndexed(m_quad->GetIndexCount());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 	}
 
 	void Renderer::Pass_Blur(void* texture, void* renderTarget, const Vector2& blurScale)
 	{
-		m_graphics->EventBegin("Pass_Blur");
+		m_renderingDevice->EventBegin("Pass_Blur");
 
 		SetRenderTarget(renderTarget, false);
 		m_shaderBlurBox->Bind();
@@ -907,7 +907,7 @@ namespace Directus
 		m_shaderBlurBox->Bind_Texture(texture, 0); // Shadows are in the alpha channel
 		m_shaderBlurBox->DrawIndexed(m_quad->GetIndexCount());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 	}
 
 	void Renderer::Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture)
@@ -916,7 +916,7 @@ namespace Directus
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_Shadowing");
+		m_renderingDevice->EventBegin("Pass_Shadowing");
 
 		// SHADOWING (Shadow mapping + SSAO)
 		SetRenderTarget(outRenderTexture, false);
@@ -951,7 +951,7 @@ namespace Directus
 		m_shaderShadowing->SetTextures(m_texArray);
 		m_shaderShadowing->DrawIndexed(m_quad->GetIndexCount());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 	//=============================================================================================================
@@ -959,7 +959,7 @@ namespace Directus
 	bool Renderer::Pass_DebugGBuffer()
 	{
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_DebugGBuffer");
+		m_renderingDevice->EventBegin("Pass_DebugGBuffer");
 
 		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
 		texType	= RenderFlags_IsSet(Render_Albedo)		? GBuffer_Target_Albedo		: texType;
@@ -969,7 +969,7 @@ namespace Directus
 
 		if (texType == GBuffer_Target_Unknown)
 		{
-			m_graphics->EventEnd();
+			m_renderingDevice->EventEnd();
 			return false;
 		}
 
@@ -979,7 +979,7 @@ namespace Directus
 		m_shaderTexture->Bind_Texture(m_gbuffer->GetShaderResource(texType), 0);
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 		PROFILE_FUNCTION_END();
 
 		return true;
@@ -988,7 +988,7 @@ namespace Directus
 	void Renderer::Pass_Debug()
 	{
 		PROFILE_FUNCTION_BEGIN();
-		m_graphics->EventBegin("Pass_Debug");
+		m_renderingDevice->EventBegin("Pass_Debug");
 
 		//= PRIMITIVES ===================================================================================
 		// Anything that is a bunch of vertices (doesn't have a vertex and and index buffer) gets rendered here
@@ -1027,7 +1027,7 @@ namespace Directus
 
 			if (m_lineRenderer->GetVertexCount() != 0)
 			{
-				m_graphics->EventBegin("Lines");
+				m_renderingDevice->EventBegin("Lines");
 
 				// Render
 				m_lineRenderer->SetBuffer();
@@ -1036,17 +1036,17 @@ namespace Directus
 				m_shaderLine->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth)); // depth
 				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
 
-				m_graphics->EventEnd();
+				m_renderingDevice->EventEnd();
 			}			
 		}
 		//============================================================================================================
 
-		m_graphics->EnableAlphaBlending(true);
+		m_renderingDevice->EnableAlphaBlending(true);
 
 		// Grid
 		if (m_flags & Render_SceneGrid)
 		{
-			m_graphics->EventBegin("Grid");
+			m_renderingDevice->EventBegin("Grid");
 
 			m_grid->SetBuffer();
 			m_shaderGrid->Bind();
@@ -1054,15 +1054,15 @@ namespace Directus
 			m_shaderGrid->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 
-			m_graphics->EventEnd();
+			m_renderingDevice->EventEnd();
 		}
 
 		// Light gizmo
-		m_graphics->EventBegin("Gizmos");
+		m_renderingDevice->EventBegin("Gizmos");
 		{
 			if (m_flags & Render_Light)
 			{
-				m_graphics->EventBegin("Lights");
+				m_renderingDevice->EventBegin("Lights");
 				for (auto* light : m_lights)
 				{
 					Vector3 lightWorldPos = light->GetTransform()->GetPosition();
@@ -1113,7 +1113,7 @@ namespace Directus
 					m_shaderTexture->Bind_Texture(lightTex->GetShaderResource(), 0);
 					m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
 				}
-				m_graphics->EventEnd();
+				m_renderingDevice->EventEnd();
 			}
 
 			// Transformation Gizmo
@@ -1137,7 +1137,7 @@ namespace Directus
 			m_graphics->EventEnd();
 			*/
 		}
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 
 		// Performance metrics
 		if (m_flags & Render_PerformanceMetrics)
@@ -1152,9 +1152,9 @@ namespace Directus
 			m_shaderFont->DrawIndexed(m_font->GetIndexCount());
 		}
 
-		m_graphics->EnableAlphaBlending(false);
+		m_renderingDevice->EnableAlphaBlending(false);
 
-		m_graphics->EventEnd();
+		m_renderingDevice->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 

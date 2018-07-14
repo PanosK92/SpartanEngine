@@ -170,10 +170,7 @@ namespace Directus
 	bool D3D11_Shader::Bind()
 	{
 		if (!m_compiled)
-		{	
-			LOG_ERROR("D3D11_Shader::Bind: Shader hasn't compiled");
 			return false;
-		}
 
 		bool success = true;
 
