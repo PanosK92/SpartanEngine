@@ -304,6 +304,8 @@ void Widget_Properties::ShowLight(Light* light)
 	float angle					= light->GetAngle() * 179.0f;
 	bool castsShadows			= light->GetCastShadows();
 	float range					= light->GetRange();
+	float split1				= light->ShadowMap_GetSplit(0);
+	float split2				= light->ShadowMap_GetSplit(1);
 	g_lightButtonColorPicker->SetColor(light->GetColor());
 	//===============================================================
 	
@@ -342,6 +344,18 @@ void Widget_Properties::ShowLight(Light* light)
 		ImGui::Text("Shadows");
 		ImGui::SameLine(ComponentProperty::g_posX_2); ImGui::Checkbox("##lightShadows", &castsShadows);
 
+		// Cascade splits
+		if (typeInt == (int)LightType_Directional)
+		{
+			ImGui::Text("Split 1");
+			ImGui::SameLine(ComponentProperty::g_posX_2);
+			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit1", &split1, 0.0f, 1.0f); ImGui::PopItemWidth();
+
+			ImGui::Text("Split 2");
+			ImGui::SameLine(ComponentProperty::g_posX_2);
+			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit2", &split2, 0.0f, 1.0f); ImGui::PopItemWidth();
+		}
+
 		// Range
 		if (typeInt != (int)LightType_Directional)
 		{
@@ -366,6 +380,8 @@ void Widget_Properties::ShowLight(Light* light)
 	if (castsShadows		!= light->GetCastShadows())				light->SetCastShadows(castsShadows);
 	if (angle / 179.0f		!= light->GetAngle())					light->SetAngle(angle / 179.0f);
 	if (range				!= light->GetRange())					light->SetRange(range);
+	if (split1				!= light->ShadowMap_GetSplit(0))		light->ShadowMap_SetSplit(split1, 0);
+	if (split2				!= light->ShadowMap_GetSplit(1))		light->ShadowMap_SetSplit(split2, 1);
 	if (g_lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(g_lightButtonColorPicker->GetColor());
 	//====================================================================================================================
 }

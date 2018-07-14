@@ -46,7 +46,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Profiling/Profiler.h"
 #include "../Scene/TransformationGizmo.h"
-#include "ShadowCascades.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -546,23 +545,20 @@ namespace Directus
 	//==========================================================================================================
 
 	//= PASSES =================================================================================================
-	void Renderer::Pass_DepthDirectionalLight(Light* directionalLight)
+	void Renderer::Pass_DepthDirectionalLight(Light* light)
 	{
-		if (!directionalLight || !directionalLight->GetCastShadows())
+		if (!light || !light->GetCastShadows())
 			return;
 
 		PROFILE_FUNCTION_BEGIN();
 
 		m_graphics->EventBegin("Pass_DepthDirectionalLight");
 		m_graphics->EnableDepth(true);
-
 		m_shaderLightDepth->Bind();
 
-		auto cascades = directionalLight->GetShadowCascades();
-
-		for (unsigned int i = 0; i < cascades->GetCascadeCount(); i++)
+		for (unsigned int i = 0; i < light->ShadowMap_GetCount(); i++)
 		{
-			cascades->SetAsRenderTarget(i);
+			light->ShadowMap_SetRenderTarget(i);
 
 			for (const auto& actor : m_renderables)
 			{
@@ -598,7 +594,7 @@ namespace Directus
 					//continue;
 
 				m_shaderLightDepth->Bind_Buffer(
-					actor->GetTransform_PtrRaw()->GetWorldTransform() * directionalLight->ComputeViewMatrix() * cascades->ComputeProjectionMatrix(i)
+					actor->GetTransform_PtrRaw()->GetWorldTransform() * light->ComputeViewMatrix() * light->ShadowMap_ComputeProjectionMatrix(i)
 				);
 				m_shaderLightDepth->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
 
@@ -933,9 +929,9 @@ namespace Directus
 		m_texArray.emplace_back(inTextureNormalNoise);
 		if (inDirectionalLight)
 		{
-			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(0));
-			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(1));
-			m_texArray.emplace_back(inDirectionalLight->GetShadowCascades()->GetShaderResource(2));
+			m_texArray.emplace_back(inDirectionalLight->ShadowMap_GetShaderResource(0));
+			m_texArray.emplace_back(inDirectionalLight->ShadowMap_GetShaderResource(1));
+			m_texArray.emplace_back(inDirectionalLight->ShadowMap_GetShaderResource(2));
 		}
 
 		// BUFFER
