@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Frustum.h"
 #include "../../Rendering/RI/Backend_Imp.h"
 #include "../../Rendering/RI/D3D11//D3D11_RenderTexture.h"
-#include "../../Rendering/ShadowCascades.h"
 #include "../../Scene/Actor.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
@@ -46,31 +45,37 @@ namespace Directus
 {
 	Light::Light(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
-		m_lightType			= LightType_Point;
-		m_castShadows		= true;
-		m_range				= 1.0f;
-		m_intensity			= 2.0f;
-		m_angle				= 0.5f; // about 30 degrees
-		m_color				= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_bias				= 0.001f;	
-		m_frustum			= make_shared<Frustum>();
-		m_shadowCascades	= make_shared<ShadowCascades>(context, 3, Settings::Get().GetShadowMapResolution(), this);
-		m_isDirty			= true;
+		m_lightType		= LightType_Point;
+		m_castShadows	= true;
+		m_range			= 1.0f;
+		m_intensity		= 2.0f;
+		m_angle			= 0.5f; // about 30 degrees
+		m_color			= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+		m_bias			= 0.001f;	
+		m_frustum		= make_shared<Frustum>();
+		m_isDirty		= true;
+
+		// Compute shadow map splits (for directional light's cascades)
+		m_shadowMapSplits.clear();
+		m_shadowMapSplits.shrink_to_fit();
+		// Note: These cascade splits have a logarithmic nature, have to fix
+		m_shadowMapSplits.emplace_back(0.79f);
+		m_shadowMapSplits.emplace_back(0.97f);
 	}
 
 	Light::~Light()
 	{
-		m_shadowCascades->SetEnabled(false);
+		ShadowMap_Destroy();
 	}
 
 	void Light::OnInitialize()
 	{
-		m_shadowCascades->SetEnabled(true);
+		ShadowMap_Create(true);
 	}
 
 	void Light::OnStart()
 	{
-		
+		ShadowMap_Create(false);
 	}
 
 	void Light::OnUpdate()
@@ -98,7 +103,7 @@ namespace Directus
 		{
 			if (auto cameraComp = mainCamera->GetComponent<Camera>().lock().get())
 			{
-				m_frustum->Construct(ComputeViewMatrix(), m_shadowCascades->ComputeProjectionMatrix(2), cameraComp->GetFarPlane());
+				m_frustum->Construct(ComputeViewMatrix(), ShadowMap_ComputeProjectionMatrix(2), cameraComp->GetFarPlane());
 			}
 		}
 	}
@@ -133,8 +138,11 @@ namespace Directus
 
 	void Light::SetCastShadows(bool castShadows)
 	{
+		if (m_castShadows = castShadows)
+			return;
+
 		m_castShadows = castShadows;
-		m_shadowCascades->SetEnabled(m_castShadows);
+		ShadowMap_Create(true);
 	}
 
 	void Light::SetRange(float range)
@@ -196,5 +204,108 @@ namespace Directus
 		Vector3 extents = box.GetExtents();
 
 		return m_frustum->CheckCube(center, extents) != Outside;
+	}
+
+	Directus::Math::Matrix Light::ShadowMap_ComputeProjectionMatrix(unsigned int index /*= 0*/)
+	{
+		Camera* camera		= m_context->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
+		Vector3 centerPos	= camera ? camera->GetTransform()->GetPosition() : Vector3::Zero;
+		Matrix mView		= ComputeViewMatrix();
+
+		// Hardcoded sizes to match the splits
+		float extents = 0;
+		if (index == 0)
+			extents = 10;
+
+		if (index == 1)
+			extents = 45;
+
+		if (index == 2)
+			extents = 90;
+
+		Vector3 center	= centerPos * mView;
+		Vector3 min		= center - Vector3(extents, extents, extents);
+		Vector3 max		= center + Vector3(extents, extents, extents);
+
+		//= Shadow shimmering remedy based on ============================================
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
+		float fWorldUnitsPerTexel = (extents * 2.0f) / m_shadowMapResolution;
+
+		min /= fWorldUnitsPerTexel;
+		min.Floor();
+		min *= fWorldUnitsPerTexel;
+		max /= fWorldUnitsPerTexel;
+		max.Floor();
+		max *= fWorldUnitsPerTexel;
+		//================================================================================
+
+		return Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);		
+	}
+
+	void Light::ShadowMap_SetRenderTarget(unsigned int index /*= 0*/)
+	{
+		if (index >= (unsigned int)m_shadowMaps.size())
+			return;
+
+		m_shadowMaps[index]->SetAsRenderTarget();
+		m_shadowMaps[index]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+	}
+
+	void* Light::ShadowMap_GetShaderResource(unsigned int index /*= 0*/)
+	{
+		if (index >= (unsigned int)m_shadowMaps.size())
+			return nullptr;
+
+		return m_shadowMaps[index]->GetShaderResourceView();
+	}
+
+	float Light::ShadowMap_GetSplit(unsigned int index /*= 0*/)
+	{
+		if (index >= (unsigned int)m_shadowMapSplits.size())
+			return 0.0f;
+
+		return m_shadowMapSplits[index];
+	}
+
+	void Light::ShadowMap_SetSplit(float split, unsigned int index /*= 0*/)
+	{
+		if (index >= (unsigned int)m_shadowMapSplits.size())
+			return;
+
+		m_shadowMapSplits[index] = split;
+	}
+
+	void Light::ShadowMap_Create(bool force)
+	{		
+		if (!force && !m_shadowMaps.empty())
+			return;
+
+		// Compute shadow map count
+		if (GetLightType() == LightType_Directional)
+		{
+			m_shadowMapCount = 3; // cascades
+		}
+		else if (GetLightType() == LightType_Point)
+		{
+			m_shadowMapCount = 6; // points of view
+		}
+		else if (GetLightType() == LightType_Spot)
+		{
+			m_shadowMapCount = 1;
+		}
+
+		// Create the shadow maps
+		m_shadowMapResolution	= Settings::Get().GetShadowMapResolution();
+		auto renderingDevice	= m_context->GetSubsystem<RenderingDevice>();
+		for (unsigned int i = 0; i < m_shadowMapCount; i++)
+		{
+			m_shadowMaps.emplace_back(make_unique<D3D11_RenderTexture>(renderingDevice, m_shadowMapResolution, m_shadowMapResolution, true, Texture_Format_R32_FLOAT));
+		}
+	}
+
+	void Light::ShadowMap_Destroy()
+	{
+		m_shadowMaps.clear();
+		m_shadowMaps.shrink_to_fit();
 	}
 }

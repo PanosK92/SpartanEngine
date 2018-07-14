@@ -21,20 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES ==============================
 #include <vector>
 #include <memory>
 #include "IComponent.h"
 #include "../../Math/Vector4.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
-//==============================
+#include "../../Rendering/RI/Backend_Def.h"
+//=========================================
 
 namespace Directus
 {
 	class Camera;
 	class Renderable;
-	class ShadowCascades;
 
 	namespace Math
 	{
@@ -65,9 +65,9 @@ namespace Directus
 		LightType GetLightType() { return m_lightType; }
 		void SetLightType(LightType type);
 
-		void SetColor(float r, float g, float b, float a) { m_color = Math::Vector4(r, g, b, a); }
-		void SetColor(Math::Vector4 color) { m_color = color; }
-		Math::Vector4 GetColor() { return m_color; }
+		void SetColor(float r, float g, float b, float a)	{ m_color = Math::Vector4(r, g, b, a); }
+		void SetColor(Math::Vector4 color)					{ m_color = color; }
+		Math::Vector4 GetColor()							{ return m_color; }
 
 		void SetIntensity(float value) { m_intensity = value; }
 		float GetIntensity() { return m_intensity; }
@@ -90,9 +90,18 @@ namespace Directus
 		Math::Matrix ComputeViewMatrix();	
 		bool IsInViewFrustrum(Renderable* renderable);
 		
-		std::shared_ptr<ShadowCascades> GetShadowCascades() { return m_shadowCascades; }
+		// Shadow maps
+		Math::Matrix ShadowMap_ComputeProjectionMatrix(unsigned int index = 0);	
+		void ShadowMap_SetRenderTarget(unsigned int index = 0);
+		void* ShadowMap_GetShaderResource(unsigned int index = 0);
+		float ShadowMap_GetSplit(unsigned int index = 0);
+		void ShadowMap_SetSplit(float split, unsigned int index = 0);
+		int ShadowMap_GetResolution()		{ return m_shadowMapResolution; }
+		unsigned int ShadowMap_GetCount()	{ return m_shadowMapCount; }
 
 	private:
+		void ShadowMap_Create(bool force);
+		void ShadowMap_Destroy();
 		LightType m_lightType;
 		bool m_castShadows;
 		Math::Vector4 m_color;
@@ -102,9 +111,14 @@ namespace Directus
 		float m_bias;
 		Math::Matrix m_viewMatrix;
 		std::shared_ptr<Math::Frustum> m_frustum;
-		std::shared_ptr<ShadowCascades> m_shadowCascades;
 		Math::Quaternion m_lastRot;
 		Math::Vector3 m_lastPos;
 		bool m_isDirty;
+
+		// Shadow maps
+		std::vector<std::shared_ptr<D3D11_RenderTexture>> m_shadowMaps;
+		unsigned int m_shadowMapResolution;
+		unsigned int m_shadowMapCount;
+		std::vector<float> m_shadowMapSplits;
 	};
 }

@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Scene/Components/Light.h"
 #include "../../Scene/Components/Camera.h"
-#include "../ShadowCascades.h"
 //========================================
 
 //= NAMESPACES ================
@@ -265,13 +264,13 @@ namespace Directus
 		buffer->projectionInverse		= mProjection.Inverted();
 
 		auto mLightView = dirLight->ComputeViewMatrix();
-		buffer->mLightViewProjection[0] = mLightView * dirLight->GetShadowCascades()->ComputeProjectionMatrix(0);
-		buffer->mLightViewProjection[1] = mLightView * dirLight->GetShadowCascades()->ComputeProjectionMatrix(1);
-		buffer->mLightViewProjection[2] = mLightView * dirLight->GetShadowCascades()->ComputeProjectionMatrix(2);
+		buffer->mLightViewProjection[0] = mLightView * dirLight->ShadowMap_ComputeProjectionMatrix(0);
+		buffer->mLightViewProjection[1] = mLightView * dirLight->ShadowMap_ComputeProjectionMatrix(1);
+		buffer->mLightViewProjection[2] = mLightView * dirLight->ShadowMap_ComputeProjectionMatrix(2);
 
-		buffer->shadowSplits			= Vector4(dirLight->GetShadowCascades()->GetSplit(1), dirLight->GetShadowCascades()->GetSplit(2), 0, 0);
+		buffer->shadowSplits			= Vector4(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1), 0, 0);
 		buffer->lightDir				= dirLight->GetDirection();
-		buffer->shadowMapResolution		= (float)dirLight->GetShadowCascades()->GetResolution();
+		buffer->shadowMapResolution		= (float)dirLight->ShadowMap_GetResolution();
 		buffer->resolution				= resolution;
 		buffer->nearPlane				= camera->GetNearPlane();
 		buffer->farPlane				= camera->GetFarPlane();
