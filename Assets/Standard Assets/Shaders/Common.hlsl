@@ -123,7 +123,7 @@ float3 TangentToWorld(float3 normalMapSample, float3 normalW, float3 tangentW, f
 /*------------------------------------------------------------------------------
 								[BLUR]
 ------------------------------------------------------------------------------*/
-float4 Pass_BlurBox(float2 texCoord, float2 texelSize, int blurSize, Texture2D sourceTexture, SamplerState pointSampler)
+float4 Pass_BlurBox(float2 texCoord, float2 texelSize, int blurSize, Texture2D sourceTexture, SamplerState bilinearSampler)
 {
 	float4 result 	= float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float temp 		= float(-blurSize) * 0.5f + 0.5f;
@@ -133,7 +133,7 @@ float4 Pass_BlurBox(float2 texCoord, float2 texelSize, int blurSize, Texture2D s
 		for (int j = 0; j < blurSize; ++j) 
 		{
 			float2 offset = (hlim + float2(float(i), float(j))) * texelSize;
-			result += sourceTexture.Sample(pointSampler, texCoord + offset);
+			result += sourceTexture.Sample(bilinearSampler, texCoord + offset);
 		}
 	}
 		
@@ -150,7 +150,7 @@ float CalcGaussianWeight(int sampleDist, float sigma)
 }
 
 // Performs a gaussian blur in one direction
-float4 Pass_BlurGaussian(float2 uv, Texture2D sourceTexture, SamplerState pointSampler, float2 resolution, float2 direction, float sigma)
+float4 Pass_BlurGaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSampler, float2 resolution, float2 direction, float sigma)
 {
 	// https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
 	float weightSum = 0.0f;
@@ -161,7 +161,7 @@ float4 Pass_BlurGaussian(float2 uv, Texture2D sourceTexture, SamplerState pointS
         weightSum += weight;
         float2 texCoord = uv;
         texCoord += (i / resolution) * direction;
-        float4 sample = sourceTexture.Sample(pointSampler, texCoord);
+        float4 sample = sourceTexture.Sample(bilinearSampler, texCoord);
         color += sample * weight;
     }
 

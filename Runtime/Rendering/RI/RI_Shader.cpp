@@ -109,17 +109,6 @@ namespace Directus
 		}
 	}
 
-	bool RI_Shader::AddSampler(Texture_Sampler_Filter filter, Texture_Address_Mode addressMode, Texture_Comparison_Function comparisonFunc)
-	{
-		if (!m_shader)
-		{
-			LOG_WARNING("RI_Shader::AddSampler: Uninitialized shader.");
-			return false;
-		}
-
-		return m_shader->AddSampler(filter, addressMode, comparisonFunc);
-	}
-
 	bool RI_Shader::Bind()
 	{
 		if (!m_shader)
@@ -140,27 +129,6 @@ namespace Directus
 		}
 
 		m_shader->SetInputLayout(inputLayout);
-	}
-
-	void RI_Shader::Bind_Texture(void* texture, unsigned int slot)
-	{
-		if (!m_rhi)
-			return;
-
-		auto id3d11Srv = (ID3D11ShaderResourceView*)texture;
-		m_rhi->GetDeviceContext()->PSSetShaderResources(slot, 1, &id3d11Srv);
-	}
-
-	void RI_Shader::Bind_Textures(const vector<void*>& textures)
-	{
-		if (!m_rhi)
-			return;
-
-		auto ptr	= (ID3D11ShaderResourceView**)textures.data();
-		auto length = (unsigned int)textures.size();
-		auto tex	= vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
-
-		m_rhi->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
 	}
 
 	void RI_Shader::Bind_Buffer(const Math::Matrix& matrix, unsigned int slot)
@@ -324,22 +292,6 @@ namespace Directus
 		m_constantBuffer->Unmap();
 
 		SetBufferScope(m_constantBuffer.get(), slot);
-	}
-
-	void RI_Shader::Draw(unsigned int vertexCount)
-	{
-		if (!m_rhi)
-			return;
-
-		m_rhi->GetDeviceContext()->Draw(vertexCount, 0);
-	}
-
-	void RI_Shader::DrawIndexed(unsigned int indexCount, unsigned int indexOffset /*= 0 */, unsigned int vertexOffset /*= 0 */)
-	{
-		if (!m_rhi)
-			return;
-
-		m_rhi->GetDeviceContext()->DrawIndexed(indexCount, indexOffset, vertexOffset);
 	}
 
 	void RI_Shader::SetBufferScope(D3D11_ConstantBuffer* buffer, unsigned int slot)

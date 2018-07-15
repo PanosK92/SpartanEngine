@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "../../Core/EngineDefs.h"
+#include "../../Core/Settings.h"
 //================================
 
 namespace Directus
@@ -30,24 +31,44 @@ namespace Directus
 	class ENGINE_CLASS RI_Viewport
 	{
 	public:
-
-		RI_Viewport()
+		RI_Viewport(float topLeftX, float topLeftY, float width, float height, float minDepth, float maxDepth)
 		{
-			topLeftX	= 0.0f;
-			topLeftY	= 0.0f;
-			width		= 1.0f;
-			height		= 1.0f;
-			minDepth	= 0.0f;
-			maxDepth	= 1.0f;
+			m_topLeftX	= topLeftX;
+			m_topLeftY	= topLeftY;
+			m_width		= width;
+			m_height	= height;
+			m_minDepth	= minDepth;
+			m_maxDepth	= maxDepth;
 		}
 
-		~RI_Viewport(){};
+		RI_Viewport(float width = (float)Settings::Get().GetResolutionWidth(), float height = (float)Settings::Get().GetResolutionHeight(), float maxDepth = 1.0f)
+		{
+			m_topLeftX	= 0.0f;
+			m_topLeftY	= 0.0f;
+			m_width		= width;
+			m_height	= height;
+			m_minDepth	= 0.0f;
+			m_maxDepth	= 1.0f;
+		}
 
-		float topLeftX;
-		float topLeftY;
-		float width;
-		float height;
-		float minDepth;
-		float maxDepth;
+		~RI_Viewport(){}
+
+		float GetTopLeftX() const { return m_topLeftX; }
+		float GetTopLeftY() const { return m_topLeftY; }
+		float GetWidth()	const { return m_width; }
+		float GetHeight()	const { return m_height; }
+		float GetMinDepth() const { return m_minDepth; }
+		float GetMaxDepth() const { return m_maxDepth; }
+
+		void SetWidth(float width)		{ m_width = width; }
+		void SetHeight(float height)	{ m_height = height; }
+
+	private:
+		float m_topLeftX;
+		float m_topLeftY;
+		float m_width;
+		float m_height;
+		float m_minDepth;
+		float m_maxDepth;
 	};
 }

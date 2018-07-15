@@ -40,13 +40,11 @@ namespace Directus
 		LightShader();
 		~LightShader();
 
-		void Load(const std::string& filePath, RHI* rhi);
+		void Compile(const std::string& filePath, RHI* rhi);
 		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mBaseView,
 			const Math::Matrix& mPerspectiveProjection, const Math::Matrix& mOrthographicProjection);
 		void UpdateMiscBuffer(const std::vector<Light*>& lights, Camera* camera);
-		void Bind_Textures(const std::vector<void*>& textures);
-		void Set();
-		void Render(int indexCount);
+		void Bind();
 		bool IsCompiled();
 
 	private:

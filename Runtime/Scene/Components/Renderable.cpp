@@ -173,28 +173,6 @@ namespace Directus
 	}
 	//==============================================================================
 
-	void Renderable::Render()
-	{
-		if (m_geometryIndexCount == 0)
-			return;
-
-		// Check if a material exists
-		if (m_materialRefWeak.expired()) 
-		{
-			LOGF_WARNING("Renderable: \"%s\" has no material. It can't be rendered.", GetActorName().c_str());
-			return;
-		}
-		// Check if the material has a shader
-		if (!m_materialRefWeak.lock()->HasShader()) 
-		{
-			LOGF_WARNING("Renderable: \"%s\" has a material but not a shader associated with it. It can't be rendered.", GetActorName().c_str());
-			return;
-		}
-
-		// Get it's shader and render
-		m_materialRefWeak.lock()->GetShader().lock()->Render(m_geometryIndexCount, m_geometryIndexOffset, m_geometryVertexOffset);
-	}
-
 	//= GEOMETRY =====================================================================================
 	void Renderable::Geometry_Set(const string& name, unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, const BoundingBox& AABB, Model* model)
 	{	

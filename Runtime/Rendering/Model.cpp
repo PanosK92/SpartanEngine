@@ -151,9 +151,6 @@ namespace Directus
 			success = false;
 		}
 
-		// Set primitive topology
-		m_rhi->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-
 		return success;
 	}
 

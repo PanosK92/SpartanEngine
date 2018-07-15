@@ -54,20 +54,19 @@ namespace Directus
 			return false;
 
 		// Bind the render target view array and depth stencil buffer to the output render pipeline.
-		ID3D11RenderTargetView* views[4]
+		void* views[4]
 		{
 			m_renderTargets[GBuffer_Target_Albedo]->GetRenderTargetView(),
 			m_renderTargets[GBuffer_Target_Normal]->GetRenderTargetView(),
 			m_renderTargets[GBuffer_Target_Specular]->GetRenderTargetView(),
 			m_renderTargets[GBuffer_Target_Depth]->GetRenderTargetView()
 		};
-		ID3D11RenderTargetView** renderTargetViews = views;
+		void** renderTargetViews = views;
 
-		// Depth
-		m_rhi->GetDeviceContext()->OMSetRenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView());
-
-		// Set the viewport.
-		m_rhi->GetDeviceContext()->RSSetViewports(1, (D3D11_VIEWPORT*)&m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
+		// Render Targets
+		m_rhi->Bind_RenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView());
+		// Viewport
+		m_rhi->SetViewport(m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
 
 		return true;
 	}
@@ -88,7 +87,7 @@ namespace Directus
 			else
 			{
 				// Clear the depth buffer.
-				m_rhi->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, renderTarget.second->GetViewport().maxDepth, 0);
+				m_rhi->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, renderTarget.second->GetViewport().GetMaxDepth(), 0);
 			}
 		}
 		return true;

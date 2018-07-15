@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RI/RI_Texture.h"
 #include "RI/D3D11/D3D11_Device.h"
 #include "RI/D3D11/D3D11_RenderTexture.h"
+#include "RI/D3D11/D3D11_Sampler.h"
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/LightShader.h"
 #include "Deferred/GBuffer.h"
@@ -44,7 +45,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsDebugDraw.h"
 #include "../Logging/Log.h"
 #include "../Resource/ResourceManager.h"
-#include "../Profiling/Profiler.h"
 #include "../Scene/TransformationGizmo.h"
 //===========================================
 
@@ -121,17 +121,27 @@ namespace Directus
 
 		RenderTargets_Create(Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight());
 
+		// SAMPLERS
+		{
+			m_samplerPointWrapAlways		= make_unique<D3D11_Sampler>(m_rhi, Texture_Sampler_Point,			Texture_Address_Wrap,	Texture_Comparison_Always);
+			m_samplerPointClampAlways		= make_unique<D3D11_Sampler>(m_rhi, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_Always);
+			m_samplerPointClampGreater		= make_unique<D3D11_Sampler>(m_rhi, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
+			m_samplerLinearClampGreater		= make_unique<D3D11_Sampler>(m_rhi, Texture_Sampler_Linear,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
+			m_samplerLinearWrapAlways		= make_unique<D3D11_Sampler>(m_rhi, Texture_Sampler_Linear,			Texture_Address_Wrap,	Texture_Comparison_Always);
+			m_samplerBilinearWrapAlways		= make_unique<D3D11_Sampler>(m_rhi, Texture_Sampler_Bilinear,		Texture_Address_Wrap,	Texture_Comparison_Always);
+			m_samplerAnisotropicWrapAlways	= make_unique<D3D11_Sampler>(m_rhi, Texture_Sampler_Anisotropic,	Texture_Address_Wrap,	Texture_Comparison_Always);
+		}
+
 		// SHADERS
 		{
 			// Light
 			m_shaderLight = make_unique<LightShader>();
-			m_shaderLight->Load(shaderDirectory + "Light.hlsl", m_rhi);
+			m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_rhi);
 
 			// Line
 			m_shaderLine = make_unique<RI_Shader>(m_context);
 			m_shaderLine->Compile(shaderDirectory + "Line.hlsl");
 			m_shaderLine->SetInputLaytout(Input_PositionColor);
-			m_shaderLine->AddSampler(Texture_Sampler_Linear);
 			m_shaderLine->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 			// Depth
@@ -144,21 +154,18 @@ namespace Directus
 			m_shaderGrid = make_unique<RI_Shader>(m_context);
 			m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl");
 			m_shaderGrid->SetInputLaytout(Input_PositionColor);
-			m_shaderGrid->AddSampler(Texture_Sampler_Anisotropic);
 			m_shaderGrid->AddBuffer(CB_Matrix, VertexShader);
 
 			// Font
 			m_shaderFont = make_unique<RI_Shader>(m_context);
 			m_shaderFont->Compile(shaderDirectory + "Font.hlsl");
 			m_shaderFont->SetInputLaytout(Input_PositionTexture);
-			m_shaderFont->AddSampler(Texture_Sampler_Point);
 			m_shaderFont->AddBuffer(CB_Matrix_Vector4, Global);
 
 			// Texture
 			m_shaderTexture = make_unique<RI_Shader>(m_context);
 			m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl");
 			m_shaderTexture->SetInputLaytout(Input_PositionTexture);
-			m_shaderTexture->AddSampler(Texture_Sampler_Linear);
 			m_shaderTexture->AddBuffer(CB_Matrix, VertexShader);
 
 			// FXAA
@@ -166,8 +173,6 @@ namespace Directus
 			m_shaderFXAA->AddDefine("PASS_FXAA");
 			m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderFXAA->SetInputLaytout(Input_PositionTexture);
-			m_shaderFXAA->AddSampler(Texture_Sampler_Point);
-			m_shaderFXAA->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderFXAA->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Sharpening
@@ -175,8 +180,6 @@ namespace Directus
 			m_shaderSharpening->AddDefine("PASS_SHARPENING");
 			m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderSharpening->SetInputLaytout(Input_PositionTexture);
-			m_shaderSharpening->AddSampler(Texture_Sampler_Point);
-			m_shaderSharpening->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderSharpening->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Sharpening
@@ -184,8 +187,6 @@ namespace Directus
 			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
 			m_shaderChromaticAberration->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderChromaticAberration->SetInputLaytout(Input_PositionTexture);
-			m_shaderChromaticAberration->AddSampler(Texture_Sampler_Point);
-			m_shaderChromaticAberration->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderChromaticAberration->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Box
@@ -193,8 +194,6 @@ namespace Directus
 			m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
 			m_shaderBlurBox->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderBlurBox->SetInputLaytout(Input_PositionTexture);
-			m_shaderBlurBox->AddSampler(Texture_Sampler_Point);
-			m_shaderBlurBox->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderBlurBox->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Gaussian Horizontal
@@ -202,7 +201,6 @@ namespace Directus
 			m_shaderBlurGaussianH->AddDefine("PASS_BLUR_GAUSSIAN_H");
 			m_shaderBlurGaussianH->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderBlurGaussianH->SetInputLaytout(Input_PositionTexture);
-			m_shaderBlurGaussianH->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp);
 			m_shaderBlurGaussianH->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Gaussian Vertical
@@ -210,7 +208,6 @@ namespace Directus
 			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V");
 			m_shaderBlurGaussianV->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderBlurGaussianV->SetInputLaytout(Input_PositionTexture);
-			m_shaderBlurGaussianV->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp);
 			m_shaderBlurGaussianV->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Bloom - bright
@@ -218,7 +215,6 @@ namespace Directus
 			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT");
 			m_shaderBloom_Bright->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderBloom_Bright->SetInputLaytout(Input_PositionTexture);
-			m_shaderBloom_Bright->AddSampler(Texture_Sampler_Point);
 			m_shaderBloom_Bright->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Bloom - blend
@@ -226,7 +222,6 @@ namespace Directus
 			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
 			m_shaderBloom_BlurBlend->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderBloom_BlurBlend->SetInputLaytout(Input_PositionTexture);
-			m_shaderBloom_BlurBlend->AddSampler(Texture_Sampler_Point);
 			m_shaderBloom_BlurBlend->AddBuffer(CB_Matrix, VertexShader);
 
 			// Tone-mapping
@@ -234,8 +229,6 @@ namespace Directus
 			m_shaderCorrection->AddDefine("PASS_CORRECTION");
 			m_shaderCorrection->Compile(shaderDirectory + "PostProcess.hlsl");
 			m_shaderCorrection->SetInputLaytout(Input_PositionTexture);
-			m_shaderCorrection->AddSampler(Texture_Sampler_Point);
-			m_shaderCorrection->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderCorrection->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Transformation gizmo
@@ -248,8 +241,6 @@ namespace Directus
 			m_shaderShadowing = make_unique<RI_Shader>(m_context);
 			m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
 			m_shaderShadowing->SetInputLaytout(Input_PositionTexture);
-			m_shaderShadowing->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp, Texture_Comparison_Greater); // Shadow mapping
-			m_shaderShadowing->AddSampler(Texture_Sampler_Linear, Texture_Address_Clamp, Texture_Comparison_Greater); // SSAO
 			m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 		}
 
@@ -286,8 +277,8 @@ namespace Directus
 			return;
 		}
 
-		m_rhi->SetBackBufferAsRenderTarget();
-		m_rhi->SetViewport();
+		m_rhi->Bind_BackBufferAsRenderTarget();
+		m_rhi->SetBackBufferViewport();
 		if (clear) m_rhi->Clear(GetClearColor());
 	}
 
@@ -369,12 +360,12 @@ namespace Directus
 	{
 		Settings::Get().SetViewport(width, height);
 		m_rhi->SetResolution(width, height);
-		m_rhi->SetViewport((float)width, (float)height);
+		m_rhi->SetBackBufferViewport((float)width, (float)height);
 	}
 
 	const RI_Viewport& Renderer::GetViewportBackBuffer()
 	{
-		return m_rhi->GetViewport();
+		return m_rhi->GetBackBufferViewport();
 	}
 
 	void Renderer::SetResolution(int width, int height)
@@ -578,6 +569,7 @@ namespace Directus
 				if (m_currentlyBoundGeometry != obj_geometry->GetResourceID())
 				{
 					obj_geometry->Geometry_Bind();
+					m_rhi->Set_PrimitiveTopology(PrimitiveTopology_TriangleList);
 					m_currentlyBoundGeometry = obj_geometry->GetResourceID();
 				}
 
@@ -596,7 +588,8 @@ namespace Directus
 				m_shaderLightDepth->Bind_Buffer(
 					actor->GetTransform_PtrRaw()->GetWorldTransform() * light->ComputeViewMatrix() * light->ShadowMap_ComputeProjectionMatrix(i)
 				);
-				m_shaderLightDepth->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
+
+				m_rhi->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
 
 				Profiler::Get().m_drawCalls++;
 			}
@@ -621,7 +614,10 @@ namespace Directus
 
 		m_gbuffer->SetAsRenderTarget();
 		m_gbuffer->Clear();
-		
+
+		// Bind sampler 
+		m_rhi->Bind_Sampler(0, m_samplerAnisotropicWrapAlways->GetSamplerState());
+
 		for (auto actor : m_renderables)
 		{
 			// Get renderable and material
@@ -668,7 +664,7 @@ namespace Directus
 			if (m_currentlyBoundMaterial != obj_material->GetResourceID())
 			{
 				obj_shader->Bind_PerMaterialBuffer(obj_material);
-				obj_shader->Bind_Textures(obj_material->GetShaderResources());
+				m_rhi->Bind_Textures(RESOURCES_FROM_VECTOR(obj_material->GetShaderResources()));
 				m_currentlyBoundMaterial = obj_material->GetResourceID();
 			}
 
@@ -676,13 +672,11 @@ namespace Directus
 			auto mWorld	= actor->GetTransform_PtrRaw()->GetWorldTransform();
 			obj_shader->Bind_PerObjectBuffer(mWorld, m_mV, m_mP_perspective);
 		
-			// render			
-			obj_renderable->Render();
-
-			Profiler::Get().m_drawCalls++;
+			// Render			
+			m_rhi->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
 			Profiler::Get().m_meshesRendered++;
 
-		} // actor/MESH ITERATION
+		} // Actor/MESH ITERATION
 
 		// Reset pipeline state tracking
 		m_currentlyBoundGeometry	= 0;
@@ -699,6 +693,7 @@ namespace Directus
 		m_rhi->EventBegin("Pass_PreLight");
 
 		m_quad->SetBuffer();
+		m_rhi->Set_PrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhi->SetCullMode(Cull_Back);
 
 		// Shadow mapping + SSAO
@@ -721,15 +716,14 @@ namespace Directus
 
 		m_rhi->EnableDepth(false);
 
-		// Set the deferred shader
-		m_shaderLight->Set();
-
 		// Set render target
 		SetRenderTarget(outRenderTexture, false);
 
 		// Update buffers
+		m_shaderLight->Bind();
 		m_shaderLight->UpdateMatrixBuffer(Matrix::Identity, m_mV, m_mV_base, m_mP_perspective, m_mP_orthographic);
 		m_shaderLight->UpdateMiscBuffer(m_lights, m_camera);
+		m_rhi->Bind_Sampler(0, m_samplerAnisotropicWrapAlways->GetSamplerState());
 
 		//= Update textures ===========================================================
 		m_texArray.clear();
@@ -742,10 +736,10 @@ namespace Directus
 		m_texArray.emplace_back(m_renderTexPong->GetShaderResourceView()); // previous frame for SSR
 		m_texArray.emplace_back(m_skybox ? m_skybox->GetShaderResource() : nullptr);
 
-		m_shaderLight->Bind_Textures(m_texArray);
+		m_rhi->Bind_Textures(RESOURCES_FROM_VECTOR(m_texArray));
 		//=============================================================================
 
-		m_shaderLight->Render(m_quad->GetIndexCount());
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhi->EventEnd();
 		PROFILE_FUNCTION_END();
@@ -757,6 +751,7 @@ namespace Directus
 		m_rhi->EventBegin("Pass_PostLight");
 
 		m_quad->SetBuffer();
+		m_rhi->Set_PrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhi->SetCullMode(Cull_Back);
 
 		// Keep track of render target swapping
@@ -816,8 +811,9 @@ namespace Directus
 		SetRenderTarget(outTexture, false);
 		m_shaderCorrection->Bind();
 		m_shaderCorrection->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
-		m_shaderCorrection->Bind_Texture(inTexture);
-		m_shaderCorrection->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, inTexture);
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhi->EventEnd();
 	}
@@ -829,8 +825,9 @@ namespace Directus
 		SetRenderTarget(outTexture, false);
 		m_shaderFXAA->Bind();
 		m_shaderFXAA->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
-		m_shaderFXAA->Bind_Texture(inTexture);
-		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, inTexture);
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhi->EventEnd();
 	}
@@ -842,8 +839,9 @@ namespace Directus
 		SetRenderTarget(outTexture, false);
 		m_shaderSharpening->Bind();
 		m_shaderSharpening->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
-		m_shaderSharpening->Bind_Texture(inTexture);
-		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, inTexture);
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhi->EventEnd();
 	}
@@ -855,8 +853,9 @@ namespace Directus
 		SetRenderTarget(outTexture, false);
 		m_shaderChromaticAberration->Bind();
 		m_shaderChromaticAberration->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
-		m_shaderChromaticAberration->Bind_Texture(inTexture);
-		m_shaderChromaticAberration->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, inTexture);
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhi->EventEnd();
 	}
@@ -869,30 +868,34 @@ namespace Directus
 		SetRenderTarget(inTextureSpare.get(), false);
 		m_shaderBloom_Bright->Bind();
 		m_shaderBloom_Bright->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
-		m_shaderBloom_Bright->Bind_Texture(inSourceTexture->GetShaderResourceView());
-		m_shaderBloom_Bright->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, inSourceTexture->GetShaderResourceView());
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Horizontal Gaussian blur
 		SetRenderTarget(outTexture.get(), false);
 		m_shaderBlurGaussianH->Bind();
 		m_shaderBlurGaussianH->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
-		m_shaderBlurGaussianH->Bind_Texture(inTextureSpare->GetShaderResourceView());
-		m_shaderBlurGaussianH->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, inTextureSpare->GetShaderResourceView());
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
 		SetRenderTarget(inTextureSpare.get(), false);
 		m_shaderBlurGaussianV->Bind();
 		m_shaderBlurGaussianV->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
-		m_shaderBlurGaussianV->Bind_Texture(outTexture->GetShaderResourceView());
-		m_shaderBlurGaussianV->DrawIndexed(m_quad->GetIndexCount());
+			m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, outTexture->GetShaderResourceView());
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Additive blending
 		SetRenderTarget(outTexture.get(), false);
 		m_shaderBloom_BlurBlend->Bind();
 		m_shaderBloom_BlurBlend->Bind_Buffer(m_wvp_baseOrthographic);
-		m_shaderBloom_BlurBlend->Bind_Texture(inSourceTexture->GetShaderResourceView(), 0);
-		m_shaderBloom_BlurBlend->Bind_Texture(inTextureSpare->GetShaderResourceView(), 1);
-		m_shaderBloom_BlurBlend->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, inSourceTexture->GetShaderResourceView());
+		m_rhi->Bind_Texture(1, inTextureSpare->GetShaderResourceView());
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhi->EventEnd();
 	}
@@ -904,8 +907,9 @@ namespace Directus
 		SetRenderTarget(renderTarget, false);
 		m_shaderBlurBox->Bind();
 		m_shaderBlurBox->Bind_Buffer(m_wvp_baseOrthographic, blurScale);
-		m_shaderBlurBox->Bind_Texture(texture, 0); // Shadows are in the alpha channel
-		m_shaderBlurBox->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, texture); // Shadows are in the alpha channel
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhi->EventEnd();
 	}
@@ -935,12 +939,10 @@ namespace Directus
 		}
 
 		// BUFFER
-		Matrix mvp_persp_inv = m_wvp_perspective.Inverted();
-
 		m_shaderShadowing->Bind();
 		m_shaderShadowing->Bind_Buffer(
 			m_wvp_baseOrthographic, 
-			mvp_persp_inv, 
+			m_wvp_perspective.Inverted(), 
 			m_mV, 
 			m_mP_perspective,		
 			Settings::Get().GetResolution(), 
@@ -948,8 +950,10 @@ namespace Directus
 			m_camera,
 			0
 		);
-		m_shaderShadowing->Bind_Textures(m_texArray);
-		m_shaderShadowing->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerPointClampGreater->GetSamplerState());	// Shadow mapping
+		m_rhi->Bind_Sampler(1, m_samplerLinearClampGreater->GetSamplerState()); // SSAO
+		m_rhi->Bind_Textures(RESOURCES_FROM_VECTOR(m_texArray));
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhi->EventEnd();
 		PROFILE_FUNCTION_END();
@@ -976,8 +980,9 @@ namespace Directus
 		// TEXTURE
 		m_shaderTexture->Bind();
 		m_shaderTexture->Bind_Buffer(m_wvp_baseOrthographic, 0);
-		m_shaderTexture->Bind_Texture(m_gbuffer->GetShaderResource(texType), 0);
-		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
+		m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+		m_rhi->Bind_Texture(0, m_gbuffer->GetShaderResource(texType));
+		m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhi->EventEnd();
 		PROFILE_FUNCTION_END();
@@ -1033,8 +1038,10 @@ namespace Directus
 				m_lineRenderer->SetBuffer();
 				m_shaderLine->Bind();
 				m_shaderLine->Bind_Buffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix());
-				m_shaderLine->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth)); // depth
-				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
+				m_rhi->Set_PrimitiveTopology(PrimitiveTopology_LineList);
+				m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+				m_rhi->Bind_Texture(0, m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
+				m_rhi->Draw(m_lineRenderer->GetVertexCount());
 
 				m_rhi->EventEnd();
 			}			
@@ -1051,8 +1058,10 @@ namespace Directus
 			m_grid->SetBuffer();
 			m_shaderGrid->Bind();
 			m_shaderGrid->Bind_Buffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix());
-			m_shaderGrid->Bind_Texture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
-			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
+			m_rhi->Set_PrimitiveTopology(PrimitiveTopology_LineList);
+			m_rhi->Bind_Sampler(0, m_samplerAnisotropicWrapAlways->GetSamplerState());
+			m_rhi->Bind_Texture(0, m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
+			m_rhi->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
 
 			m_rhi->EventEnd();
 		}
@@ -1110,8 +1119,10 @@ namespace Directus
 					m_gizmoRectLight->SetBuffer();
 					m_shaderTexture->Bind();
 					m_shaderTexture->Bind_Buffer(m_wvp_baseOrthographic, 0);
-					m_shaderTexture->Bind_Texture(lightTex->GetShaderResource(), 0);
-					m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
+					m_rhi->Set_PrimitiveTopology(PrimitiveTopology_TriangleList);
+					m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+					m_rhi->Bind_Texture(0, lightTex->GetShaderResource());
+					m_rhi->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 				}
 				m_rhi->EventEnd();
 			}
@@ -1143,13 +1154,13 @@ namespace Directus
 		if (m_flags & Render_PerformanceMetrics)
 		{
 			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(-Settings::Get().GetResolutionWidth() * 0.5f + 1.0f, Settings::Get().GetResolutionHeight() * 0.5f));
-			m_font->SetBuffers();
-			m_font->SetInputLayout();
-
+			m_font->SetVertexAndIndexBuffers();
 			m_shaderFont->Bind();
 			m_shaderFont->Bind_Buffer(m_wvp_baseOrthographic, m_font->GetColor());
-			m_shaderFont->Bind_Texture(m_font->GetShaderResource());
-			m_shaderFont->DrawIndexed(m_font->GetIndexCount());
+			m_rhi->Set_PrimitiveTopology(PrimitiveTopology_TriangleList);
+			m_rhi->Bind_Sampler(0, m_samplerLinearWrapAlways->GetSamplerState());
+			m_rhi->Bind_Texture(0, m_font->GetShaderResource());
+			m_rhi->DrawIndexed(m_font->GetIndexCount(), 0, 0);
 		}
 
 		m_rhi->EnableAlphaBlending(false);

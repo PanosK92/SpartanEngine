@@ -9,9 +9,7 @@ TextureCube environmentTex 	: register(t6);
 //=========================================
 
 //= SAMPLERS ==============================
-SamplerState samplerPoint 	: register(s0);
-SamplerState samplerAniso 	: register(s1);
-SamplerState samplerLinear 	: register(s2);
+SamplerState samplerAniso 	: register(s0);
 //=========================================
 
 //= CONSTANT BUFFERS ===================
@@ -88,7 +86,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Sample from G-Buffer
     float4 albedo 			= ToLinear(texAlbedo.Sample(samplerAniso, texCoord));
     float4 normalSample 	= texNormal.Sample(samplerAniso, texCoord);
-	float4 specularSample	= texSpecular.Sample(samplerPoint, texCoord);
+	float4 specularSample	= texSpecular.Sample(samplerAniso, texCoord);
     float4 depthSample 		= texDepth.Sample(samplerAniso, texCoord);
     	
 	// Create material
@@ -134,7 +132,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	directionalLight.direction	= normalize(-dirLightDirection).xyz;
 	directionalLight.intensity 	*= shadow;
 	
-	finalColor += ImageBasedLighting(material, directionalLight.direction, normal, viewDir) * ambientLight;
+	finalColor += ImageBasedLighting(material, directionalLight.direction, normal, viewDir, samplerAniso) * ambientLight;
 	
 	// Compute illumination
 	finalColor += PBR(material, directionalLight, normal, viewDir);

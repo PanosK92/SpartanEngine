@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright(c) 2016-2018 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -97,11 +97,11 @@ namespace Directus
 			"Render:\t\t\t\t\t\t"				+ to_string_precision(GetBlockTimeMs("Directus::Renderer::Render"), 2) + " ms\n"
 			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
-			"RI Draw calls:\t\t\t\t\t"			+ to_string(m_drawCalls) + "\n"
-			"RI Index buffer bindings:\t\t"		+ to_string(m_bindBufferIndexCount) + "\n"
-			"RI Vertex buffer bindings:\t\t"	+ to_string(m_bindBufferVertexCount) + "\n"
-			"RI Uniform buffer bindings:\t"		+ to_string(m_bindUniformBufferCount) + "\n"
-			"RI Shader bindings:\t\t\t\t"		+ to_string(m_bindShaderCount) + "\n"
+			"RHI Draw calls:\t\t\t\t\t"			+ to_string(m_drawCalls) + "\n"
+			"RHI Index buffer bindings:\t\t"	+ to_string(m_bindBufferIndexCount) + "\n"
+			"RHI Vertex buffer bindings:\t"		+ to_string(m_bindBufferVertexCount) + "\n"
+			"RHI Uniform buffer bindings:\t"	+ to_string(m_bindUniformBufferCount) + "\n"
+			"RHI Shader bindings:\t\t\t"		+ to_string(m_bindShaderCount) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
 			"Materials:\t\t\t\t\t\t"			+ to_string(materials) + "\n"
 			"Shaders:\t\t\t\t\t\t"				+ to_string(shaders);

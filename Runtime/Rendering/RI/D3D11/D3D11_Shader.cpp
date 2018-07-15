@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "D3D11_Shader.h"
 #include "D3D11_InputLayout.h"
-#include "D3D11_Sampler.h"
 #include "../Backend_Imp.h"
 #include "../../../Core/EngineDefs.h"
 #include "../../../Logging/Log.h"
@@ -55,10 +54,6 @@ namespace Directus
 	{
 		SafeRelease(m_vertexShader);
 		SafeRelease(m_pixelShader);
-
-		// delete samplers
-		m_samplers.clear();
-		m_samplers.shrink_to_fit();
 	}
 
 	bool D3D11_Shader::Compile(const string& filePath)
@@ -147,26 +142,6 @@ namespace Directus
 		return m_layoutHasBeenSet;
 	}
 
-	bool D3D11_Shader::AddSampler(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction)
-	{
-		if (!m_graphics->GetDevice())
-		{
-			LOG_ERROR("D3D11_Shader::AddSampler: Graphics device is null");
-			return false;
-		}
-
-		auto sampler = make_shared<D3D11_Sampler>(m_graphics);
-		if (!sampler->Create(filter, textureAddressMode, comparisonFunction))
-		{
-			LOG_ERROR("D3D11_Shader::AddSampler: Failed to create sampler");
-			return false;
-		}
-
-		m_samplers.emplace_back(sampler);
-
-		return true;
-	}
-
 	bool D3D11_Shader::Bind()
 	{
 		if (!m_compiled)
@@ -175,7 +150,7 @@ namespace Directus
 		bool success = true;
 
 		// Set the vertex input layout.
-		m_graphics->SetInputLayout(m_D3D11InputLayout->GetInputLayout());
+		m_graphics->Set_InputLayout(m_D3D11InputLayout->GetInputLayout());
 		if (!m_D3D11InputLayout->Set())
 		{
 			LOG_ERROR("D3D11_Shader::Bind: Failed to set input layout");
@@ -185,16 +160,6 @@ namespace Directus
 		// Set the vertex and pixel shaders
 		m_graphics->GetDeviceContext()->VSSetShader(m_vertexShader, nullptr, 0);
 		m_graphics->GetDeviceContext()->PSSetShader(m_pixelShader, nullptr, 0);
-
-		// Set the samplers
-		for (unsigned int i = 0; i < m_samplers.size(); i++)
-		{
-			if (!m_samplers[i]->Set(i))
-			{
-				LOGF_ERROR("D3D11_Shader::Bind: Failed to set texture sampler %d", i);
-				success = false;
-			}
-		}
 
 		Profiler::Get().m_bindShaderCount++;
 

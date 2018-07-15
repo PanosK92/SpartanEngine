@@ -60,8 +60,6 @@ namespace Directus
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		void Render();
-		
 		//= GEOMETRY ====================================================================================
 		void Geometry_Set(
 			const std::string& name,

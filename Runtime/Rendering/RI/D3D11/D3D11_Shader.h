@@ -40,12 +40,9 @@ namespace Directus
 
 		bool Compile(const std::string& filePath);
 		bool SetInputLayout(Input_Layout inputLayout);
-		bool AddSampler(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction);
 		bool Bind();
-
 		void SetName(const std::string& name) { m_name = name; }
 		void AddDefine(const std::string& define, const std::string& value);
-
 		bool IsCompiled() { return m_compiled; }
 
 	private:
@@ -65,7 +62,6 @@ namespace Directus
 		LPCSTR m_entrypoint;
 		LPCSTR m_profile;
 		bool m_compiled;
-		std::vector<std::shared_ptr<D3D11_Sampler>> m_samplers;
 		ID3D11VertexShader* m_vertexShader;
 		ID3D11PixelShader* m_pixelShader;
 		ID3D10Blob* m_VSBlob = nullptr;

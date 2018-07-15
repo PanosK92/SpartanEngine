@@ -30,21 +30,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	D3D11_Sampler::D3D11_Sampler(D3D11_Device* graphics)
+	D3D11_Sampler::D3D11_Sampler(D3D11_Device* device,
+		Texture_Sampler_Filter filter					/*= Texture_Sampler_Anisotropic*/,
+		Texture_Address_Mode textureAddressMode			/*= Texture_Address_Wrap*/, 
+		Texture_Comparison_Function comparisonFunction	/*= Texture_Comparison_Always*/)
 	{
-		m_graphics = graphics;
-		m_sampler = nullptr;
-	}
-
-	D3D11_Sampler::~D3D11_Sampler()
-	{
-		SafeRelease(m_sampler);
-	}
-
-	bool D3D11_Sampler::Create(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction)
-	{
-		if (!m_graphics->GetDevice())
-			return false;
+		if (!device)
+		{
+			LOG_ERROR("D3D11_Sampler::D3D11_Sampler: Invalid device");
+			return;
+		}
 
 		D3D11_SAMPLER_DESC samplerDesc;
 		samplerDesc.Filter			= d3d11_filter[filter];
@@ -61,24 +56,15 @@ namespace Directus
 		samplerDesc.MinLOD			= FLT_MIN;
 		samplerDesc.MaxLOD			= FLT_MAX;
 
-		// create sampler state.
-		HRESULT result = m_graphics->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
-		if (FAILED(result))
+		// Create sampler state.
+		if (FAILED(device->GetDevice()->CreateSamplerState(&samplerDesc, &m_samplerState)))
 		{
-			LOG_INFO("Failed to create sampler.");
-			return false;
+			LOG_ERROR("Failed to create sampler.");
 		}
-
-		return true;
 	}
 
-	bool D3D11_Sampler::Set(unsigned int startSlot)
+	D3D11_Sampler::~D3D11_Sampler()
 	{
-		if (!m_graphics->GetDeviceContext())
-			return false;
-
-		m_graphics->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
-
-		return true;
+		SafeRelease(m_samplerState);
 	}
 }

@@ -38,48 +38,64 @@ namespace Directus
 		bool Initialize() override;
 		//=========================
 
-		//= IGraphics ========================================================
+		//= RI_DEVICE - RENDERING ==============================================================================
+		void Draw(unsigned int vertexCount) override;
+		void DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset) override;
 		void Clear(const Math::Vector4& color) override;
 		void Present() override;
-		void SetBackBufferAsRenderTarget() override;
+		//======================================================================================================
 
-		// Depth
-		bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled) override;
-		bool CreateDepthStencilBuffer() override;
-		bool CreateDepthStencilView() override;
+		//= RI_DEVICE - BINDING =========================================================================================
+		void Bind_BackBufferAsRenderTarget() override;
+		void Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil) override;
+		void Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources) override;
+		void Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers) override;
+		//===============================================================================================================
+
+		//= RI_DEVICE - VIEWPORT ==============================
+		const RI_Viewport& GetViewport() override;
+		void SetViewport(const RI_Viewport& viewport) override;
+		//=====================================================
+
+		//= RI_DEVICE - RESOLUTION ========================
+		bool SetResolution(int width, int height) override; 
+		//=================================================
+
+		//= RI_DEVICE - DEPTH =================
 		bool EnableDepth(bool enable) override;
+		//=====================================
 
+		//= ALPHA BLENDING ===========================
 		bool EnableAlphaBlending(bool enable) override;
+		//=============================================
+
+		// RI_DEVICE -CULL MODE ===============================
 		Cull_Mode GetCullMode() override { return m_cullMode; }
 		bool SetCullMode(Cull_Mode cullMode) override;
-		bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology) override;
+		//=====================================================
 
-		// Viewport
-		bool SetResolution(int width, int height) override;
-		const RI_Viewport& GetViewport() override { return m_backBuffer_viewport; }
-		void SetViewport(float width, float height) override;
-		void SetViewport() override;
-		float GetMaxDepth() override { return m_maxDepth; }
+		//= RI_DEVICE -PRIMITIVE TOPOLOGY ===========================================
+		bool Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology) override;
+		//===========================================================================
 
-		bool IsInitialized() override { return m_initialized; }
-
-		ID3D11DepthStencilView* GetDepthStencilView() { return m_depthStencilView; }
+		bool IsInitialized() override { return m_initialized; }	
 
 		//= PROFILING =====================================
 		void EventBegin(const std::string& name) override;
 		void EventEnd() override;
-
 		void QueryBegin() override;
 		void QueryEnd() override;
 		//================================================
 
-		//======================================================================
-
-		ID3D11Device* GetDevice()				{ return m_device; }
-		ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
+		ID3D11Device* GetDevice()						{ return m_device; }
+		ID3D11DeviceContext* GetDeviceContext()			{ return m_deviceContext; }
+		ID3D11DepthStencilView* GetDepthStencilView()	{ return m_depthStencilView; }
 
 	private:
 		//= HELPER FUNCTIONS =================================================================================
+		bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled);
+		bool CreateDepthStencilBuffer();
+		bool CreateDepthStencilView();
 		bool CreateRasterizerState(Cull_Mode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer);
 		std::vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory);	
 		IDXGIAdapter* GetAdapterWithTheHighestVRAM(IDXGIFactory* factory);
