@@ -64,18 +64,8 @@ namespace Directus
 
 		void AddDefine(const char* define);
 		void AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope);
-		bool AddSampler(
-			Texture_Sampler_Filter filter				= Texture_Sampler_Anisotropic, 
-			Texture_Address_Mode addressMode			= Texture_Address_Wrap, 
-			Texture_Comparison_Function comparisonFunc	= Texture_Comparison_Always
-		);
-
 		bool Bind();
 		void SetInputLaytout(Input_Layout inputLayout);
-
-		// Bind - Texture
-		void Bind_Texture(void* texture, unsigned int slot = 0);
-		void Bind_Textures(const std::vector<void*>& textures);
 
 		// Bind - Constant Buffer
 		void Bind_Buffer(const Math::Matrix& matrix, unsigned int slot = 0);
@@ -94,9 +84,6 @@ namespace Directus
 			Camera* camera,
 			unsigned int slot = 0
 		);
-
-		void Draw(unsigned int vertexCount);
-		void DrawIndexed(unsigned int indexCount, unsigned int indexOffset = 0, unsigned int vertexOffset = 0);
 
 	private:
 		void SetBufferScope(D3D11_ConstantBuffer* buffer, unsigned int slot = 0);

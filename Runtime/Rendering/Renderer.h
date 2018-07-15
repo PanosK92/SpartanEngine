@@ -177,6 +177,16 @@ namespace Directus
 		std::unique_ptr<RI_Shader> m_shaderTransformationGizmo;
 		//=====================================================
 
+		//= SAMPLERS =================================================
+		std::unique_ptr<D3D11_Sampler> m_samplerPointWrapAlways;
+		std::unique_ptr<D3D11_Sampler> m_samplerPointClampAlways;
+		std::unique_ptr<D3D11_Sampler> m_samplerPointClampGreater;
+		std::unique_ptr<D3D11_Sampler> m_samplerLinearClampGreater;
+		std::unique_ptr<D3D11_Sampler> m_samplerLinearWrapAlways;
+		std::unique_ptr<D3D11_Sampler> m_samplerBilinearWrapAlways;
+		std::unique_ptr<D3D11_Sampler> m_samplerAnisotropicWrapAlways;
+		//============================================================
+
 		//= DEBUG ==========================================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;

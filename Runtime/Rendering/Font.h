@@ -57,8 +57,7 @@ namespace Directus
 		void SetColor(const Math::Vector4& color) { m_fontColor = color; }
 
 		void** GetShaderResource();
-		bool SetBuffers();
-		bool SetInputLayout();
+		bool SetVertexAndIndexBuffers();
 
 		unsigned int GetIndexCount() { return (unsigned int)m_indices.size(); }
 			

@@ -30,13 +30,15 @@ namespace Directus
 	class D3D11_Sampler
 	{
 	public:
-		D3D11_Sampler(D3D11_Device* graphics);
+		D3D11_Sampler(D3D11_Device* graphics, 
+			Texture_Sampler_Filter filter					= Texture_Sampler_Anisotropic,
+			Texture_Address_Mode textureAddressMode			= Texture_Address_Wrap,
+			Texture_Comparison_Function comparisonFunction	= Texture_Comparison_Always);
 		~D3D11_Sampler();
 
-		bool Create(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction);
-		bool Set(unsigned int startSlot);
+		ID3D11SamplerState* GetSamplerState() { return m_samplerState; }
+
 	private:
-		D3D11_Device* m_graphics;
-		ID3D11SamplerState* m_sampler;
+		ID3D11SamplerState* m_samplerState;
 	};
 }

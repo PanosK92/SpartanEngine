@@ -68,7 +68,6 @@ namespace Directus
 		AddDefinesBasedOnMaterial(m_D3D11Shader);
 		m_D3D11Shader->Compile(filePath);
 		m_D3D11Shader->SetInputLayout(Input_PositionTextureTBN);
-		m_D3D11Shader->AddSampler(Texture_Sampler_Anisotropic, Texture_Address_Wrap, Texture_Comparison_Always);
 
 		// Matrix Buffer
 		m_perObjectBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
@@ -197,28 +196,6 @@ namespace Directus
 
 		// Set to shader slot
 		m_perObjectBuffer->SetVS(2);
-	}
-
-	void ShaderVariation::Bind_Textures(const vector<void*>& textureArray)
-	{
-		if (!m_rhi)
-		{
-			LOG_INFO("GraphicsDevice is expired. Cant't update shader textures.");
-			return;
-		}
-
-		m_rhi->GetDeviceContext()->PSSetShaderResources(0, (unsigned int)textureArray.size(), (ID3D11ShaderResourceView**)&textureArray[0]);
-	}
-
-	void ShaderVariation::Render(unsigned int indexCount, unsigned int indexOffset /*= 0*/, unsigned int vertexOffset /*= 0*/)
-	{
-		if (!m_rhi)
-		{
-			LOG_INFO("ShaderVariation::Render: Invalid graphics device");
-			return;
-		}
-
-		m_rhi->GetDeviceContext()->DrawIndexed(indexCount, indexOffset, vertexOffset);
 	}
 
 	void ShaderVariation::AddDefinesBasedOnMaterial(const shared_ptr<D3D11_Shader>& shader)

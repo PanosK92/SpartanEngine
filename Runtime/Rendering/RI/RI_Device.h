@@ -21,15 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ========================
 #include "../../Math/Vector4.h"
 #include "../../Core/SubSystem.h"
 #include "Backend_Def.h"
 #include "RI_Viewport.h"
-//===============================
+#include "../../Profiling/Profiler.h"
+//===================================
 
 namespace Directus
 {
+	#define RESOURCES_FROM_VECTOR(vector) 0, (unsigned int)vector.size(), &vector[0]
+
 	class RI_Device : public Subsystem
 	{
 	public:
@@ -38,28 +41,59 @@ namespace Directus
 			m_primitiveTopology		= PrimitiveTopology_NotAssigned;
 			m_inputLayout			= Input_NotAssigned;
 			m_cullMode				= Cull_NotAssigned;
-			m_backBuffer_format		= Texture_Format_R8G8B8A8_UNORM;
+			m_format				= Texture_Format_R8G8B8A8_UNORM;
 			m_depthEnabled			= true;
-			m_maxDepth				= 1.0f;
 			m_alphaBlendingEnabled	= false;
 			m_drawHandle			= nullptr;
+			m_maxDepth				= 1.0f;
 		}
 		virtual ~RI_Device() {}
 
-		//= BINDING ===========================================================
-		virtual void SetHandle(void* drawHandle) { m_drawHandle = drawHandle; }
-		//=====================================================================
-
-		//=================================================
+		//= RENDERING ============================================================================================================================
+		virtual void Draw(unsigned int vertexCount)																{ Profiler::Get().m_drawCalls++; }
+		virtual void DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)	{ Profiler::Get().m_drawCalls++; }
 		virtual void Clear(const Math::Vector4& color) = 0;
-		virtual void Present() = 0;
-		virtual void SetBackBufferAsRenderTarget() = 0;
-		//=================================================
+		virtual void Present(){}
+		//========================================================================================================================================
 
-		//= DEPTH ==============================================================================================
-		virtual bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled) = 0;
-		virtual bool CreateDepthStencilBuffer() = 0;
-		virtual bool CreateDepthStencilView() = 0;
+		//= BINDING ========================================================================================================
+		virtual void SetHandle(void* drawHandle) { m_drawHandle = drawHandle; }
+		virtual void Bind_BackBufferAsRenderTarget() = 0;
+		virtual void Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil) = 0;
+		virtual void Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources) = 0;
+		void Bind_Texture(unsigned int startSlot, void* shaderResource) { Bind_Textures(startSlot, 1, &shaderResource); }
+		virtual void Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers) = 0;
+		void Bind_Sampler(unsigned int startSlot, void* sampler) { Bind_Samplers(startSlot, 1, &sampler); }
+		//==================================================================================================================
+
+		//= RESOLUTION ==================================
+		virtual bool SetResolution(int width, int height)
+		{
+			if (width == 0 || height == 0)
+				return false;
+
+			return true;
+		}
+		//===============================================
+
+		//= VIEWPORT =============================================================
+		virtual const RI_Viewport& GetViewport() = 0;
+		virtual void SetViewport(const RI_Viewport& viewport) = 0;
+		float GetMaxDepth() { return m_maxDepth; }
+
+		void SetBackBufferViewport(float width = 0, float height = 0) 
+		{ 
+			if (width == 0 || height == 0)
+			{
+				m_backBufferViewport.SetWidth(width);
+				m_backBufferViewport.SetHeight(height);
+			}
+			SetViewport(m_backBufferViewport); 
+		}
+		const RI_Viewport& GetBackBufferViewport() { return m_backBufferViewport; }
+		//========================================================================
+
+		//= DEPTH ===========================
 		virtual bool EnableDepth(bool enable)
 		{
 			if (m_depthEnabled == enable)
@@ -68,7 +102,7 @@ namespace Directus
 			m_depthEnabled = enable;
 			return true;
 		}
-		//======================================================================================================
+		//===================================
 
 		//= ALPHA BLENDING ==========================
 		virtual bool EnableAlphaBlending(bool enable)
@@ -93,19 +127,8 @@ namespace Directus
 		}
 		//=========================================
 
-		//= PRIMITIVE TOPOLOGY =====================
-		bool SetInputLayout(Input_Layout inputLayout)
-		{
-			if (m_inputLayout == inputLayout)
-				return false;
-
-			m_inputLayout = inputLayout;
-			return true;
-		}
-		//==========================================
-
-		//= INPUT LAYOUT =====================================================
-		virtual bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+		//= PRIMITIVE TOPOLOGY =====================================================
+		virtual bool Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 		{
 			if (m_primitiveTopology == primitiveTopology)
 				return false;
@@ -113,26 +136,22 @@ namespace Directus
 			m_primitiveTopology = primitiveTopology;
 			return true;
 		}
-		//====================================================================
+		//==========================================================================
 
-		//= VIEWPORT ===========================================
-		virtual bool SetResolution(int width, int height)
+		//= INPUT LAYOUT =============================
+		bool Set_InputLayout(Input_Layout inputLayout)
 		{
-			if (width == 0 || height == 0)
+			if (m_inputLayout == inputLayout)
 				return false;
 
+			m_inputLayout = inputLayout;
 			return true;
 		}
-		virtual const RI_Viewport& GetViewport() = 0;
-		virtual void SetViewport(float width, float height) = 0;
-		virtual void SetViewport() = 0;
-		virtual float GetMaxDepth() = 0;
-		//======================================================
+		//============================================
 
 		//= PROFILING ====================================
 		virtual void EventBegin(const std::string& name){}
 		virtual void EventEnd(){}
-
 		virtual void QueryBegin(){}
 		virtual void QueryEnd(){}
 		//================================================
@@ -143,8 +162,8 @@ namespace Directus
 		PrimitiveTopology_Mode m_primitiveTopology;
 		Input_Layout m_inputLayout;
 		Cull_Mode m_cullMode;
-		Texture_Format m_backBuffer_format;
-		RI_Viewport m_backBuffer_viewport;
+		Texture_Format m_format;
+		RI_Viewport m_backBufferViewport;
 		bool m_depthEnabled;
 		bool m_alphaBlendingEnabled;
 		void* m_drawHandle;

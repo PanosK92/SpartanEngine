@@ -145,7 +145,7 @@ namespace Directus
 			}
 
 			// Get the number of modes that fit the requested format, for the adapter output (monitor).
-			result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_backBuffer_format], DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, nullptr);
+			result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_format], DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, nullptr);
 			if (FAILED(result))
 			{
 				LOG_ERROR("D3D11_Device::Initialize: Failed to get adapter's display modes.");
@@ -161,7 +161,7 @@ namespace Directus
 			}
 
 			// Now fill the display mode list structures.
-			result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_backBuffer_format], DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, m_displayModeList);
+			result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_format], DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, m_displayModeList);
 			if (FAILED(result))
 			{
 				LOG_ERROR("D3D11_Device::Initialize: Failed to fill the display mode list structures.");
@@ -191,7 +191,7 @@ namespace Directus
 			swapChainDesc.BufferCount					= 1;
 			swapChainDesc.BufferDesc.Width				= Settings::Get().GetResolutionWidth();
 			swapChainDesc.BufferDesc.Height				= Settings::Get().GetResolutionHeight();
-			swapChainDesc.BufferDesc.Format				= d3d11_dxgi_format[m_backBuffer_format];
+			swapChainDesc.BufferDesc.Format				= d3d11_dxgi_format[m_format];
 			swapChainDesc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 			swapChainDesc.OutputWindow					= (HWND)m_drawHandle;
 			swapChainDesc.SampleDesc.Count				= 1;
@@ -256,7 +256,8 @@ namespace Directus
 		}
 		//==============================================================================
 
-		SetViewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
+		m_backBufferViewport = RI_Viewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
+		SetViewport(m_backBufferViewport);
 
 		//= DEPTH ======================================================================
 		if (!CreateDepthStencilState(m_depthStencilStateEnabled, true, true))
@@ -391,102 +392,23 @@ namespace Directus
 		return true;
 	}
 
-	//= DEPTH ================================================================================================================
-	bool D3D11_Device::EnableDepth(bool enable)
+	void D3D11_Device::Draw(unsigned int vertexCount)
 	{
-		if (!RI_Device::EnableDepth(enable))
-			return false;
-
 		if (!m_deviceContext)
-		{
-			LOG_WARNING("D3D11_Device::EnableDepth: Device context is uninitialized.");
-			return false;
-		}
+			return;
 
-		// Set depth stencil state
-		m_deviceContext->OMSetDepthStencilState(m_depthEnabled ? m_depthStencilStateEnabled : m_depthStencilStateDisabled, 1);
-		return true;
+		RI_Device::Draw(vertexCount);
+		m_deviceContext->Draw(vertexCount, 0);
 	}
 
-	bool D3D11_Device::CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled)
+	void D3D11_Device::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
 	{
-		if (!m_device)
-			return false;
+		if (!m_deviceContext)
+			return;
 
-		D3D11_DEPTH_STENCIL_DESC desc;
-		ZeroMemory(&desc, sizeof(desc));
-
-		// Depth test parameters
-		desc.DepthEnable	= depthEnabled ? TRUE : FALSE;
-		desc.DepthWriteMask = writeEnabled ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-		desc.DepthFunc		= D3D11_COMPARISON_LESS;
-
-		// Stencil test parameters
-		desc.StencilEnable		= depthEnabled;
-		desc.StencilReadMask	= D3D11_DEFAULT_STENCIL_READ_MASK;
-		desc.StencilWriteMask	= D3D11_DEFAULT_STENCIL_WRITE_MASK;
-
-		// Stencil operations if pixel is front-facing
-		desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
-		desc.FrontFace.StencilDepthFailOp	= D3D11_STENCIL_OP_INCR;
-		desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_KEEP;
-		desc.FrontFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
-
-		// Stencil operations if pixel is back-facing
-		desc.BackFace.StencilFailOp			= D3D11_STENCIL_OP_KEEP;
-		desc.BackFace.StencilDepthFailOp	= D3D11_STENCIL_OP_DECR;
-		desc.BackFace.StencilPassOp			= D3D11_STENCIL_OP_KEEP;
-		desc.BackFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
-
-		// Create a depth stencil state with depth enabled
-		auto depthStencilStateTyped = (ID3D11DepthStencilState*)depthStencilState;
-		auto result = m_device->CreateDepthStencilState(&desc, &depthStencilStateTyped);
-
-		return !FAILED(result);
+		RI_Device::DrawIndexed(indexCount, indexOffset, vertexOffset);
+		m_deviceContext->DrawIndexed(indexCount, indexOffset, vertexOffset);
 	}
-
-	bool D3D11_Device::CreateDepthStencilBuffer()
-	{
-		if (!m_device)
-			return false;
-
-		D3D11_TEXTURE2D_DESC depthBufferDesc;
-		ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-		depthBufferDesc.Width				= Settings::Get().GetResolutionWidth();
-		depthBufferDesc.Height				= Settings::Get().GetResolutionHeight();
-		depthBufferDesc.MipLevels			= 1;
-		depthBufferDesc.ArraySize			= 1;
-		depthBufferDesc.Format				= DXGI_FORMAT_D24_UNORM_S8_UINT;
-		depthBufferDesc.SampleDesc.Count	= 1;
-		depthBufferDesc.SampleDesc.Quality	= 0;
-		depthBufferDesc.Usage				= D3D11_USAGE_DEFAULT;
-		depthBufferDesc.BindFlags			= D3D11_BIND_DEPTH_STENCIL;
-		depthBufferDesc.CPUAccessFlags		= 0;
-		depthBufferDesc.MiscFlags			= 0;
-
-		// Create the texture for the depth buffer using the filled out description.
-		auto result = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
-
-		return !FAILED(result);
-	}
-
-	bool D3D11_Device::CreateDepthStencilView()
-	{
-		if (!m_device)
-			return false;
-
-		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-		ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-		depthStencilViewDesc.Format				= DXGI_FORMAT_D24_UNORM_S8_UINT;
-		depthStencilViewDesc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
-		depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-		// Create the depth stencil view.
-		auto result = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
-
-		return !FAILED(result);
-	}
-	//========================================================================================================================
 
 	void D3D11_Device::Clear(const Vector4& color)
 	{
@@ -496,7 +418,7 @@ namespace Directus
 		m_deviceContext->ClearRenderTargetView(m_renderTargetView, color.Data()); // back buffer
 		if (m_depthEnabled)
 		{
-			m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, m_maxDepth, 0); // depth buffer
+			m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, m_backBufferViewport.GetMaxDepth(), 0); // depth buffer
 		}
 	}
 
@@ -505,10 +427,11 @@ namespace Directus
 		if (!m_swapChain)
 			return;
 
+		RI_Device::Present();
 		m_swapChain->Present(Settings::Get().GetVSync(), 0);
 	}
 
-	void D3D11_Device::SetBackBufferAsRenderTarget()
+	void D3D11_Device::Bind_BackBufferAsRenderTarget()
 	{
 		if (!m_deviceContext)
 			return;
@@ -516,22 +439,28 @@ namespace Directus
 		m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthEnabled ? m_depthStencilView : nullptr);
 	}
 
-	bool D3D11_Device::EnableAlphaBlending(bool enable)
+	void D3D11_Device::Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
 	{
-		if (!RI_Device::EnableAlphaBlending(enable))
-			return false;
-
 		if (!m_deviceContext)
-		{
-			LOG_WARNING("D3D11_Device::EnableAlphaBlending: Device context is uninitialized.");
-			return false;
-		}
+			return;
 
-		// Set blend state
-		float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		m_deviceContext->OMSetBlendState(enable ? m_blendStateAlphaEnabled : m_blendStateAlphaDisabled, blendFactor, 0xffffffff);
+		m_deviceContext->OMSetRenderTargets(renderTargetCount, (ID3D11RenderTargetView**)&renderTargets[0], (ID3D11DepthStencilView*)depthStencil);
+	}
 
-		return true;
+	void D3D11_Device::Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
+	{
+		if (!m_deviceContext)
+			return;
+
+		m_deviceContext->PSSetShaderResources(startSlot, resourceCount, (ID3D11ShaderResourceView**)shaderResources);
+	}
+
+	void D3D11_Device::Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* sampler)
+	{
+		if (!m_deviceContext)
+			return;
+
+		m_deviceContext->PSSetSamplers(startSlot, samplerCount, (ID3D11SamplerState**)&sampler[0]);
 	}
 
 	bool D3D11_Device::SetResolution(int width, int height)
@@ -551,12 +480,12 @@ namespace Directus
 		//= RESIZE TARGET ==================================================
 		DXGI_MODE_DESC dxgiModeDesc;
 		ZeroMemory(&dxgiModeDesc, sizeof(dxgiModeDesc));
-		dxgiModeDesc.Width				= (unsigned int)width;
-		dxgiModeDesc.Height				= (unsigned int)height;
-		dxgiModeDesc.Format				= d3d11_dxgi_format[m_backBuffer_format];
-		dxgiModeDesc.RefreshRate		= DXGI_RATIONAL{ m_refreshRateNumerator, m_refreshRateDenominator };
-		dxgiModeDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
-		dxgiModeDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		dxgiModeDesc.Width = (unsigned int)width;
+		dxgiModeDesc.Height = (unsigned int)height;
+		dxgiModeDesc.Format = d3d11_dxgi_format[m_format];
+		dxgiModeDesc.RefreshRate = DXGI_RATIONAL{ m_refreshRateNumerator, m_refreshRateDenominator };
+		dxgiModeDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+		dxgiModeDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 
 		HRESULT result = m_swapChain->ResizeTarget(&dxgiModeDesc);
 		if (FAILED(result))
@@ -602,32 +531,67 @@ namespace Directus
 		return true;
 	}
 
-	//= VIEWPORT =====================================================
-	void D3D11_Device::SetViewport(float width, float height)
+	const Directus::RI_Viewport& D3D11_Device::GetViewport()
+	{
+		if (!m_deviceContext)
+			return RI_Viewport();
+
+		UINT viewportCount = 1;
+		D3D11_VIEWPORT viewport;
+		m_deviceContext->RSGetViewports(&viewportCount, &viewport);
+
+		return RI_Viewport(
+			viewport.TopLeftX,
+			viewport.TopLeftY,
+			viewport.Width,
+			viewport.Height,
+			viewport.MinDepth,
+			viewport.MaxDepth
+		);
+	}
+
+	void D3D11_Device::SetViewport(const RI_Viewport& viewport)
 	{
 		if (!m_deviceContext)
 			return;
 
-		m_backBuffer_viewport.width		= width;
-		m_backBuffer_viewport.height	= height;
-		m_backBuffer_viewport.minDepth	= 0.0f;
-		m_backBuffer_viewport.maxDepth	= m_maxDepth;
-		m_backBuffer_viewport.topLeftX	= 0.0f;
-		m_backBuffer_viewport.topLeftY	= 0.0f;
-
-		m_deviceContext->RSSetViewports(1, (D3D11_VIEWPORT*)&m_backBuffer_viewport);
+		m_deviceContext->RSSetViewports(1, (D3D11_VIEWPORT*)&viewport);
 	}
 
-	void D3D11_Device::SetViewport()
+	bool D3D11_Device::EnableDepth(bool enable)
 	{
+		if (!RI_Device::EnableDepth(enable))
+			return false;
+
 		if (!m_deviceContext)
-			return;
+		{
+			LOG_WARNING("D3D11_Device::EnableDepth: Device context is uninitialized.");
+			return false;
+		}
 
-		m_deviceContext->RSSetViewports(1, (D3D11_VIEWPORT*)&m_backBuffer_viewport);
+		// Set depth stencil state
+		m_deviceContext->OMSetDepthStencilState(m_depthEnabled ? m_depthStencilStateEnabled : m_depthStencilStateDisabled, 1);
+		return true;
 	}
-	//================================================================
 
-	//= EVENTS ==================================================
+	bool D3D11_Device::EnableAlphaBlending(bool enable)
+	{
+		if (!RI_Device::EnableAlphaBlending(enable))
+			return false;
+
+		if (!m_deviceContext)
+		{
+			LOG_WARNING("D3D11_Device::EnableAlphaBlending: Device context is uninitialized.");
+			return false;
+		}
+
+		// Set blend state
+		float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		m_deviceContext->OMSetBlendState(enable ? m_blendStateAlphaEnabled : m_blendStateAlphaDisabled, blendFactor, 0xffffffff);
+
+		return true;
+	}
+
 	void D3D11_Device::EventBegin(const std::string& name)
 	{
 		m_eventReporter->BeginEvent(FileSystem::StringToWString(name).c_str());
@@ -650,11 +614,10 @@ namespace Directus
 		//m_deviceContext->End(pQueryEndFrame);
 		//m_deviceContext->End(pQueryDisjoint);
 	}
-	//===========================================================
 
-	bool D3D11_Device::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	bool D3D11_Device::Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
-		if (!RI_Device::SetPrimitiveTopology(primitiveTopology))
+		if (!RI_Device::Set_PrimitiveTopology(primitiveTopology))
 			return false;
 
 		if (!m_deviceContext)
@@ -698,6 +661,85 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ================================================================================
+	bool D3D11_Device::CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled)
+	{
+		if (!m_device)
+			return false;
+
+		D3D11_DEPTH_STENCIL_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+
+		// Depth test parameters
+		desc.DepthEnable = depthEnabled ? TRUE : FALSE;
+		desc.DepthWriteMask = writeEnabled ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+		desc.DepthFunc = D3D11_COMPARISON_LESS;
+
+		// Stencil test parameters
+		desc.StencilEnable = depthEnabled;
+		desc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+		desc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+
+		// Stencil operations if pixel is front-facing
+		desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+		desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+		// Stencil operations if pixel is back-facing
+		desc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+		desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+		// Create a depth stencil state with depth enabled
+		auto depthStencilStateTyped = (ID3D11DepthStencilState*)depthStencilState;
+		auto result = m_device->CreateDepthStencilState(&desc, &depthStencilStateTyped);
+
+		return !FAILED(result);
+	}
+
+	bool D3D11_Device::CreateDepthStencilBuffer()
+	{
+		if (!m_device)
+			return false;
+
+		D3D11_TEXTURE2D_DESC depthBufferDesc;
+		ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
+		depthBufferDesc.Width = Settings::Get().GetResolutionWidth();
+		depthBufferDesc.Height = Settings::Get().GetResolutionHeight();
+		depthBufferDesc.MipLevels = 1;
+		depthBufferDesc.ArraySize = 1;
+		depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		depthBufferDesc.SampleDesc.Count = 1;
+		depthBufferDesc.SampleDesc.Quality = 0;
+		depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+		depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		depthBufferDesc.CPUAccessFlags = 0;
+		depthBufferDesc.MiscFlags = 0;
+
+		// Create the texture for the depth buffer using the filled out description.
+		auto result = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
+
+		return !FAILED(result);
+	}
+
+	bool D3D11_Device::CreateDepthStencilView()
+	{
+		if (!m_device)
+			return false;
+
+		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
+		ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
+		depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		depthStencilViewDesc.Texture2D.MipSlice = 0;
+
+		// Create the depth stencil view.
+		auto result = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
+
+		return !FAILED(result);
+	}
+
 	bool D3D11_Device::CreateRasterizerState(Cull_Mode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer)
 	{
 		if (!m_device)

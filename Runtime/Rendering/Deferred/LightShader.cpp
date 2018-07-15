@@ -46,7 +46,7 @@ namespace Directus
 
 	}
 
-	void LightShader::Load(const string& filePath, RHI* rhi)
+	void LightShader::Compile(const string& filePath, RHI* rhi)
 	{
 		m_rhi = rhi;
 
@@ -54,9 +54,6 @@ namespace Directus
 		m_shader = make_shared<D3D11_Shader>(m_rhi);
 		m_shader->Compile(filePath);
 		m_shader->SetInputLayout(Input_PositionTextureTBN);
-		m_shader->AddSampler(Texture_Sampler_Point, Texture_Address_Wrap, Texture_Comparison_Always);
-		m_shader->AddSampler(Texture_Sampler_Anisotropic, Texture_Address_Wrap, Texture_Comparison_Always);
-		m_shader->AddSampler(Texture_Sampler_Linear, Texture_Address_Wrap, Texture_Comparison_Always);
 
 		// Create matrix buffer
 		m_matrixBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
@@ -76,17 +73,17 @@ namespace Directus
 		}
 
 		// Get some stuff
-		Matrix worlBaseViewProjection = mWorld * mBaseView * mOrthographicProjection;
-		Matrix viewProjection = mView * mPerspectiveProjection;
+		Matrix worlBaseViewProjection	= mWorld * mBaseView * mOrthographicProjection;
+		Matrix viewProjection			= mView * mPerspectiveProjection;
 
 		// Map/Unmap buffer
 		auto buffer = (MatrixBufferType*)m_matrixBuffer->Map();
 
-		buffer->worldViewProjection = worlBaseViewProjection;
-		buffer->mProjection = mPerspectiveProjection;
-		buffer->mProjectionInverse = mPerspectiveProjection.Inverted();
-		buffer->mViewProjection = viewProjection;
-		buffer->mViewProjectionInverse = viewProjection.Inverted();
+		buffer->worldViewProjection		= worlBaseViewProjection;
+		buffer->mProjection				= mPerspectiveProjection;
+		buffer->mProjectionInverse		= mPerspectiveProjection.Inverted();
+		buffer->mViewProjection			= viewProjection;
+		buffer->mViewProjectionInverse	= viewProjection.Inverted();
 		buffer->mView = mView;
 
 		m_matrixBuffer->Unmap();
@@ -119,11 +116,11 @@ namespace Directus
 		buffer->dirLightIntensity = Vector4::Zero;
 		for (int i = 0; i < maxLights; i++)
 		{
-			buffer->pointLightPosition[i] = Vector4::Zero;
-			buffer->pointLightColor[i] = Vector4::Zero;
-			buffer->pointLightIntenRange[i] = Vector4::Zero;
-			buffer->spotLightPosition[i] = Vector4::Zero;
-			buffer->spotLightColor[i] = Vector4::Zero;
+			buffer->pointLightPosition[i]		= Vector4::Zero;
+			buffer->pointLightColor[i]			= Vector4::Zero;
+			buffer->pointLightIntenRange[i]		= Vector4::Zero;
+			buffer->spotLightPosition[i]		= Vector4::Zero;
+			buffer->spotLightColor[i]			= Vector4::Zero;
 			buffer->spotLightIntenRangeAngle[i] = Vector4::Zero;
 		}
 
@@ -188,19 +185,7 @@ namespace Directus
 		m_miscBuffer->SetPS(1);
 	}
 
-	void LightShader::Bind_Textures(const vector<void*>& textures)
-	{
-		if (!m_rhi)
-			return;
-
-		auto ptr	= (ID3D11ShaderResourceView**)textures.data();
-		auto length	= (int)textures.size();
-		auto tex	= vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
-
-		m_rhi->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
-	}
-
-	void LightShader::Set()
+	void LightShader::Bind()
 	{
 		if (!m_shader)
 		{
@@ -209,17 +194,6 @@ namespace Directus
 		}
 
 		m_shader->Bind();
-	}
-
-	void LightShader::Render(int indexCount)
-	{
-		if (!m_shader)
-		{
-			LOG_INFO("Unintialized shader, can't render");
-			return;
-		}
-
-		m_rhi->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}
 
 	bool LightShader::IsCompiled()
