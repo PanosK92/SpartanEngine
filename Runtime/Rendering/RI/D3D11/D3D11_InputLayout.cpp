@@ -31,7 +31,7 @@ namespace Directus
 	D3D11_InputLayout::D3D11_InputLayout(D3D11_Device* graphicsDevice) : m_graphics(graphicsDevice)
 	{
 		m_ID3D11InputLayout = nullptr;
-		m_inputLayout = PositionTextureTBN;
+		m_inputLayout = Input_PositionTextureTBN;
 	}
 
 	D3D11_InputLayout::~D3D11_InputLayout()
@@ -69,20 +69,20 @@ namespace Directus
 		return SUCCEEDED(result);
 	}
 
-	bool D3D11_InputLayout::Create(ID3D10Blob* VSBlob, InputLayout layout)
+	bool D3D11_InputLayout::Create(ID3D10Blob* VSBlob, Input_Layout layout)
 	{
 		m_inputLayout = layout;
 
-		if (m_inputLayout == Position)
+		if (m_inputLayout == Input_Position)
 			return CreatePosDesc(VSBlob);
 
-		if (m_inputLayout == PositionColor)
+		if (m_inputLayout == Input_PositionColor)
 			return CreatePosColDesc(VSBlob);
 
-		if (m_inputLayout == PositionTexture)
+		if (m_inputLayout == Input_PositionTexture)
 			return CreatePosTexDesc(VSBlob);
 
-		if (m_inputLayout == PositionTextureTBN)
+		if (m_inputLayout == Input_PositionTextureTBN)
 			return CreatePosTBNDesc(VSBlob);
 
 		return false;

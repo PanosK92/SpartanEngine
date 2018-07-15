@@ -206,7 +206,7 @@ void Widget_MenuBar::ShowAboutWindow()
 
 	ImGui::BulletText("FreeType");
 	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionFreeType).c_str()); ImGui::SameLine(columnB);
-	ImGui::PushID("Button_FreeType"); if (ImGui::Button("SourceForge")) { FileSystem::OpenDirectoryWindow("https://sourceforge.net/projects/freetype/files/freetype2/"); } ImGui::PopID();
+	ImGui::PushID("Button_FreeType"); if (ImGui::Button("Website")) { FileSystem::OpenDirectoryWindow("https://www.freetype.org/"); } ImGui::PopID();
 
 	ImGui::BulletText("ImGui");	
 	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionImGui).c_str()); ImGui::SameLine(columnB);

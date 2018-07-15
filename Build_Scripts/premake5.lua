@@ -32,8 +32,8 @@ OBJ_DIR 			= "../Binaries/Obj"
 	includedirs { "../ThirdParty/Bullet_2.87" }
 	includedirs { "../ThirdParty/FMOD_1.10.03" }
 	includedirs { "../ThirdParty/FreeImage_3.17.0" }
-	includedirs { "../ThirdParty/FreeType_2.9" }
-	includedirs { "../ThirdParty/pugixml_1.8" }
+	includedirs { "../ThirdParty/FreeType_2.9.1" }
+	includedirs { "../ThirdParty/pugixml_1.9" }
 	
 -- Library directory
 	libdirs { "../ThirdParty/mvsc141_x64" }

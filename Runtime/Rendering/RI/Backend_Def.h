@@ -38,26 +38,29 @@ namespace Directus
 	struct RI_Vertex_PosUV;
 	struct RI_Vertex_PosCol;
 
-	enum PrimitiveTopology
+	enum PrimitiveTopology_Mode
 	{
-		TriangleList,
-		LineList
+		PrimitiveTopology_TriangleList,
+		PrimitiveTopology_LineList,
+		PrimitiveTopology_NotAssigned
 	};
 
-	enum InputLayout
+	enum Input_Layout
 	{
-		Auto,
-		Position,
-		PositionColor,
-		PositionTexture,
-		PositionTextureTBN
+		Input_Auto,
+		Input_Position,
+		Input_PositionColor,
+		Input_PositionTexture,
+		Input_PositionTextureTBN,
+		Input_NotAssigned
 	};
 
-	enum CullMode
+	enum Cull_Mode
 	{
-		CullNone,
-		CullFront,
-		CullBack
+		Cull_None,
+		Cull_Front,
+		Cull_Back,
+		Cull_NotAssigned
 	};
 
 	enum FillMode

@@ -110,7 +110,7 @@ namespace Directus
 		m_vertexBuffer->SetIA();
 
 		// Set primitive topology
-		GetContext()->GetSubsystem<RenderingDevice>()->SetPrimitiveTopology(LineList);
+		GetContext()->GetSubsystem<RenderingDevice>()->SetPrimitiveTopology(PrimitiveTopology_LineList);
 	}
 
 	void LineRenderer::CreateVertexBuffer()

@@ -53,7 +53,7 @@ namespace Directus
 		// load the vertex and the pixel shader
 		m_shader = make_shared<D3D11_Shader>(m_graphics);
 		m_shader->Compile(filePath);
-		m_shader->SetInputLayout(PositionTextureTBN);
+		m_shader->SetInputLayout(Input_PositionTextureTBN);
 		m_shader->AddSampler(Texture_Sampler_Point, Texture_Address_Wrap, Texture_Comparison_Always);
 		m_shader->AddSampler(Texture_Sampler_Anisotropic, Texture_Address_Wrap, Texture_Comparison_Always);
 		m_shader->AddSampler(Texture_Sampler_Linear, Texture_Address_Wrap, Texture_Comparison_Always);

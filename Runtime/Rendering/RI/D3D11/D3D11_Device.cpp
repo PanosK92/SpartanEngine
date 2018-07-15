@@ -204,8 +204,7 @@ namespace Directus
 
 			UINT deviceFlags = 0;
 			#ifdef DEBUG
-			//deviceFlags |= D3D11_CREATE_DEVICE_DEBUG; // To use the debug layer, make sure to install the Windows 10 optional feature of “Graphics Tools”. 
-			//deviceFlags |= D3D11_CREATE_DEVICE_DEBUGGABLE;
+			deviceFlags |= D3D11_CREATE_DEVICE_DEBUG; // Enable debug layer
 			#endif
 
 			// Create the swap chain, Direct3D device, and Direct3D device context.
@@ -287,19 +286,19 @@ namespace Directus
 
 		//= RASTERIZERS =================================================================
 		{
-			if (!CreateRasterizerState(CullBack, FillMode_Solid, &m_rasterStateCullBack))
+			if (!CreateRasterizerState(Cull_Back, FillMode_Solid, &m_rasterStateCullBack))
 			{
 				LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 				return false;
 			}
 
-			if (!CreateRasterizerState(CullFront, FillMode_Solid, &m_rasterStateCullFront))
+			if (!CreateRasterizerState(Cull_Front, FillMode_Solid, &m_rasterStateCullFront))
 			{
 				LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 				return false;
 			}
 
-			if (!CreateRasterizerState(CullNone, FillMode_Solid, &m_rasterStateCullNone))
+			if (!CreateRasterizerState(Cull_None, FillMode_Solid, &m_rasterStateCullNone))
 			{
 				LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 				return false;
@@ -551,6 +550,9 @@ namespace Directus
 
 	bool D3D11_Device::SetResolution(int width, int height)
 	{
+		if (!RI_Device::SetResolution(width, height))
+			return false;
+
 		if (!m_swapChain)
 			return false;
 
@@ -664,7 +666,7 @@ namespace Directus
 	}
 	//===========================================================
 
-	bool D3D11_Device::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
+	bool D3D11_Device::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
 		if (!RI_Device::SetPrimitiveTopology(primitiveTopology))
 			return false;
@@ -680,7 +682,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11_Device::SetCullMode(CullMode cullMode)
+	bool D3D11_Device::SetCullMode(Cull_Mode cullMode)
 	{
 		if (!RI_Device::SetCullMode(cullMode))
 			return false;
@@ -710,7 +712,7 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ================================================================================
-	bool D3D11_Device::CreateRasterizerState(CullMode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer)
+	bool D3D11_Device::CreateRasterizerState(Cull_Mode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer)
 	{
 		if (!m_device)
 		{

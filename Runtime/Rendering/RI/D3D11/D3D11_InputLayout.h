@@ -36,11 +36,11 @@ namespace Directus
 
 		//= MISC ====================================
 		bool Set();
-		InputLayout GetInputLayout() { return m_inputLayout; }
+		Input_Layout GetInputLayout() { return m_inputLayout; }
 
 		//= LAYOUT CREATION ====================================================================================
 		bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, unsigned int elementCount);
-		bool Create(ID3D10Blob* VSBlob, InputLayout layout);
+		bool Create(ID3D10Blob* VSBlob, Input_Layout layout);
 		//======================================================================================================
 
 	private:
@@ -53,7 +53,7 @@ namespace Directus
 
 		D3D11_Device* m_graphics;
 		ID3D11InputLayout* m_ID3D11InputLayout;
-		InputLayout m_inputLayout;
+		Input_Layout m_inputLayout;
 		std::vector<D3D11_INPUT_ELEMENT_DESC> m_layoutDesc;
 	};
 }

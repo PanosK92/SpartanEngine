@@ -128,7 +128,7 @@ namespace Directus
 
 		// Set the type of primitive that should 
 		// be rendered from this vertex buffer
-		graphics->SetPrimitiveTopology(LineList);
+		graphics->SetPrimitiveTopology(PrimitiveTopology_LineList);
 
 		return true;
 	}
