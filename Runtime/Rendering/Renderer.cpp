@@ -92,32 +92,25 @@ namespace Directus
 
 	bool Renderer::Initialize()
 	{
-		// Get RHI subsystem
+		// Get required subsystems
 		m_rhi = m_context->GetSubsystem<RHI>();
 		if (!m_rhi->IsInitialized())
 		{
-			LOG_ERROR("Renderer: Can't initialize, Graphics subsystem uninitialized.");
+			LOG_ERROR("Renderer::Initialize: Invalid RHI.");
 			return false;
 		}
-
-		// Get ResourceManager subsystem
 		g_resourceMng	= m_context->GetSubsystem<ResourceManager>();
 		g_physics		= m_context->GetSubsystem<Physics>();
 
-		// Performance Metrics
-		m_font = make_unique<Font>(m_context);
-		string fontDir = g_resourceMng->GetStandardResourceDirectory(Resource_Font);
-		m_font->SetSize(12);
-		m_font->SetColor(Vector4(0.7f, 0.7f, 0.7f, 1.0f));
-		m_font->LoadFromFile(fontDir + "CalibriBold.ttf");
-
-		// Scene grid
-		m_grid = make_unique<Grid>(m_context);
-		m_grid->BuildGrid();
-
 		// Get standard resource directories
+		string fontDir			= g_resourceMng->GetStandardResourceDirectory(Resource_Font);
 		string shaderDirectory	= g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
 		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
+
+		// Load a font (used for performance metrics)
+		m_font = make_unique<Font>(m_context, fontDir + "CalibriBold.ttf", 12, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
+		// Make a grid (used in editor)
+		m_grid = make_unique<Grid>(m_context);
 
 		RenderTargets_Create(Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight());
 
@@ -140,107 +133,91 @@ namespace Directus
 
 			// Line
 			m_shaderLine = make_unique<RI_Shader>(m_context);
-			m_shaderLine->Compile(shaderDirectory + "Line.hlsl");
-			m_shaderLine->SetInputLaytout(Input_PositionColor);
+			m_shaderLine->Compile(shaderDirectory + "Line.hlsl", Input_PositionColor);
 			m_shaderLine->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 			// Depth
 			m_shaderLightDepth = make_unique<RI_Shader>(m_context);
-			m_shaderLightDepth->Compile(shaderDirectory + "ShadowingDepth.hlsl");
-			m_shaderLightDepth->SetInputLaytout(Input_Position);
+			m_shaderLightDepth->Compile(shaderDirectory + "ShadowingDepth.hlsl", Input_Position);
 			m_shaderLightDepth->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 			// Grid
 			m_shaderGrid = make_unique<RI_Shader>(m_context);
-			m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl");
-			m_shaderGrid->SetInputLaytout(Input_PositionColor);
+			m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl", Input_PositionColor);
 			m_shaderGrid->AddBuffer(CB_Matrix, VertexShader);
 
 			// Font
 			m_shaderFont = make_unique<RI_Shader>(m_context);
-			m_shaderFont->Compile(shaderDirectory + "Font.hlsl");
-			m_shaderFont->SetInputLaytout(Input_PositionTexture);
+			m_shaderFont->Compile(shaderDirectory + "Font.hlsl", Input_PositionTexture);
 			m_shaderFont->AddBuffer(CB_Matrix_Vector4, Global);
 
 			// Texture
 			m_shaderTexture = make_unique<RI_Shader>(m_context);
-			m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl");
-			m_shaderTexture->SetInputLaytout(Input_PositionTexture);
+			m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl", Input_PositionTexture);
 			m_shaderTexture->AddBuffer(CB_Matrix, VertexShader);
 
 			// FXAA
 			m_shaderFXAA = make_unique<RI_Shader>(m_context);
 			m_shaderFXAA->AddDefine("PASS_FXAA");
-			m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderFXAA->SetInputLaytout(Input_PositionTexture);
+			m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
 			m_shaderFXAA->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Sharpening
 			m_shaderSharpening = make_unique<RI_Shader>(m_context);
 			m_shaderSharpening->AddDefine("PASS_SHARPENING");
-			m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderSharpening->SetInputLaytout(Input_PositionTexture);
+			m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
 			m_shaderSharpening->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Sharpening
 			m_shaderChromaticAberration = make_unique<RI_Shader>(m_context);
 			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
-			m_shaderChromaticAberration->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderChromaticAberration->SetInputLaytout(Input_PositionTexture);
+			m_shaderChromaticAberration->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
 			m_shaderChromaticAberration->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Box
 			m_shaderBlurBox = make_unique<RI_Shader>(m_context);
 			m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
-			m_shaderBlurBox->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBlurBox->SetInputLaytout(Input_PositionTexture);
+			m_shaderBlurBox->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
 			m_shaderBlurBox->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Gaussian Horizontal
 			m_shaderBlurGaussianH = make_unique<RI_Shader>(m_context);
 			m_shaderBlurGaussianH->AddDefine("PASS_BLUR_GAUSSIAN_H");
-			m_shaderBlurGaussianH->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBlurGaussianH->SetInputLaytout(Input_PositionTexture);
+			m_shaderBlurGaussianH->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
 			m_shaderBlurGaussianH->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Gaussian Vertical
 			m_shaderBlurGaussianV = make_unique<RI_Shader>(m_context);
 			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V");
-			m_shaderBlurGaussianV->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBlurGaussianV->SetInputLaytout(Input_PositionTexture);
+			m_shaderBlurGaussianV->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
 			m_shaderBlurGaussianV->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Bloom - bright
 			m_shaderBloom_Bright = make_unique<RI_Shader>(m_context);
 			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT");
-			m_shaderBloom_Bright->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBloom_Bright->SetInputLaytout(Input_PositionTexture);
+			m_shaderBloom_Bright->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
 			m_shaderBloom_Bright->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Bloom - blend
 			m_shaderBloom_BlurBlend = make_unique<RI_Shader>(m_context);
 			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
-			m_shaderBloom_BlurBlend->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBloom_BlurBlend->SetInputLaytout(Input_PositionTexture);
+			m_shaderBloom_BlurBlend->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
 			m_shaderBloom_BlurBlend->AddBuffer(CB_Matrix, VertexShader);
 
 			// Tone-mapping
 			m_shaderCorrection = make_unique<RI_Shader>(m_context);
 			m_shaderCorrection->AddDefine("PASS_CORRECTION");
-			m_shaderCorrection->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderCorrection->SetInputLaytout(Input_PositionTexture);
+			m_shaderCorrection->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
 			m_shaderCorrection->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Transformation gizmo
 			m_shaderTransformationGizmo = make_unique<RI_Shader>(m_context);
-			m_shaderTransformationGizmo->Compile(shaderDirectory + "TransformationGizmo.hlsl");
-			m_shaderTransformationGizmo->SetInputLaytout(Input_PositionTextureTBN);
+			m_shaderTransformationGizmo->Compile(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN);
 			m_shaderTransformationGizmo->AddBuffer(CB_Matrix_Vector3_Vector3, Global);
 
 			// Shadowing (shadow mapping & SSAO)
 			m_shaderShadowing = make_unique<RI_Shader>(m_context);
-			m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
-			m_shaderShadowing->SetInputLaytout(Input_PositionTexture);
+			m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl", Input_PositionTexture);
 			m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 		}
 
@@ -287,7 +264,7 @@ namespace Directus
 		SetRenderTarget(renderTexture.get());
 	}
 
-	void * Renderer::GetFrame()
+	void* Renderer::GetFrame()
 	{
 		return m_renderTexPong ? m_renderTexPong->GetShaderResourceView() : nullptr;
 	}
@@ -550,7 +527,7 @@ namespace Directus
 		for (unsigned int i = 0; i < light->ShadowMap_GetCount(); i++)
 		{
 			light->ShadowMap_SetRenderTarget(i);
-
+			m_rhi->EventBegin("Pass_ShadowMap_" + to_string(i));
 			for (const auto& actor : m_renderables)
 			{
 				// Get renderable and material
@@ -582,17 +559,14 @@ namespace Directus
 					continue;
 
 				// skip objects outside of the view frustum
-				//if (!m_directionalLight->IsInViewFrustrum(obj_renderable))
+				//if (!m_directionalLight->IsInViewFrustrum(obj_renderable, i))
 					//continue;
 
-				m_shaderLightDepth->Bind_Buffer(
-					actor->GetTransform_PtrRaw()->GetWorldTransform() * light->ComputeViewMatrix() * light->ShadowMap_ComputeProjectionMatrix(i)
-				);
-
+				m_shaderLightDepth->Bind_Buffer(actor->GetTransform_PtrRaw()->GetWorldTransform() * light->ComputeViewMatrix() * light->ShadowMap_ComputeProjectionMatrix(i));
 				m_rhi->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
-
 				Profiler::Get().m_drawCalls++;
 			}
+			m_rhi->EventEnd();
 		}
 
 		// Reset pipeline state tracking

@@ -30,11 +30,6 @@ namespace Directus::Math
 
 	}
 
-	Frustum::~Frustum()
-	{
-
-	}
-
 	void Frustum::Construct(const Matrix& mView, const Matrix& mProjection, float screenDepth)
 	{
 		// Calculate the minimum Z distance in the frustum.
