@@ -40,13 +40,13 @@ namespace Directus
 {
 	Rectangle::Rectangle(Context* context)
 	{
-		m_graphics = context->GetSubsystem<RenderingDevice>();
-		m_x = 0;
-		m_y = 0;
-		m_width = 0;
-		m_height = 0;
-		m_resolutionWidth = Settings::Get().GetResolutionWidth();
-		m_resolutionHeight = Settings::Get().GetResolutionHeight();
+		m_rhi				= context->GetSubsystem<RHI>();
+		m_x					= 0;
+		m_y					= 0;
+		m_width				= 0;
+		m_height			= 0;
+		m_resolutionWidth	= Settings::Get().GetResolutionWidth();
+		m_resolutionHeight	= Settings::Get().GetResolutionHeight();
 	}
 
 	Rectangle::~Rectangle()
@@ -109,14 +109,14 @@ namespace Directus
 			indices.push_back(i);
 		}
 
-		m_vertexBuffer = make_unique<D3D11_VertexBuffer>(m_graphics);
+		m_vertexBuffer = make_unique<D3D11_VertexBuffer>(m_rhi);
 		if (!m_vertexBuffer->Create(vertices))
 		{
 			LOG_ERROR("Rectangle: Failed to create vertex buffer.");
 			return false;
 		}
 
-		m_indexBuffer = make_unique<D3D11_IndexBuffer>(m_graphics);
+		m_indexBuffer = make_unique<D3D11_IndexBuffer>(m_rhi);
 		if (!m_indexBuffer->Create(indices))
 		{
 			LOG_ERROR("Rectangle: Failed to create index buffer.");
@@ -128,12 +128,12 @@ namespace Directus
 
 	bool Rectangle::SetBuffer()
 	{
-		if (!m_graphics || !m_vertexBuffer || !m_indexBuffer)
+		if (!m_rhi || !m_vertexBuffer || !m_indexBuffer)
 			return false;
 
 		m_vertexBuffer->SetIA();
 		m_indexBuffer->SetIA();
-		m_graphics->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhi->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 
 		return true;
 	}

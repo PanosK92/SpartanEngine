@@ -118,9 +118,9 @@ namespace Directus
 
 	bool Grid::SetBuffer()
 	{
-		auto graphics = m_context->GetSubsystem<RenderingDevice>();
+		auto rhi = m_context->GetSubsystem<RHI>();
 
-		if (!graphics || !m_vertexBuffer || !m_indexBuffer)
+		if (!rhi || !m_vertexBuffer || !m_indexBuffer)
 			return false;
 
 		m_vertexBuffer->SetIA();
@@ -128,7 +128,7 @@ namespace Directus
 
 		// Set the type of primitive that should 
 		// be rendered from this vertex buffer
-		graphics->SetPrimitiveTopology(PrimitiveTopology_LineList);
+		rhi->SetPrimitiveTopology(PrimitiveTopology_LineList);
 
 		return true;
 	}
@@ -156,7 +156,7 @@ namespace Directus
 		if (!m_context)
 			return false;
 
-		auto graphics = m_context->GetSubsystem<RenderingDevice>();
+		auto graphics = m_context->GetSubsystem<RHI>();
 
 		m_vertexBuffer.reset();
 		m_indexBuffer.reset();

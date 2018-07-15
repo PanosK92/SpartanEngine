@@ -139,7 +139,7 @@ namespace Directus
 	class D3D11_IndexBuffer;
 	class D3D11_Texture;
 	
-	typedef D3D11_Device RenderingDevice;
+	typedef D3D11_Device RHI;
 }
 
 // Forward declarations - D3D11 API
@@ -177,6 +177,6 @@ namespace Directus
 {
 	class Vulkan_Device;
 
-	typedef Vulkan_Device RenderingDevice;
+	typedef Vulkan_Device RHI;
 }
 #endif

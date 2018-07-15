@@ -162,7 +162,7 @@ namespace Directus
 
 		std::unique_ptr<D3D11_ConstantBuffer> m_constantBuffer;
 		std::unique_ptr<D3D11_Shader> m_shader;
-		RenderingDevice* m_renderingDevice;
+		RHI* m_rhi;
 		ConstantBufferType m_bufferType;
 		ConstantBufferScope m_bufferScope;
 	};

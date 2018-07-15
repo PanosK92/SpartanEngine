@@ -125,7 +125,7 @@ namespace Directus
 
 		//= ADAPTER ====================================================================
 		IDXGIAdapter* adapter = GetAdapterWithTheHighestVRAM(factory); // usually the dedicated one
-		factory->Release();
+		SafeRelease(factory);
 		if (!adapter)
 		{
 			LOG_ERROR("D3D11_Device::Initialize: Couldn't find any adapters.");
@@ -384,16 +384,8 @@ namespace Directus
 		case D3D_FEATURE_LEVEL_11_1:
 			featureLevelStr = "11.1";
 			break;
-
-		case D3D_FEATURE_LEVEL_12_0:
-			featureLevelStr = "12.0";
-			break;
-
-		case D3D_FEATURE_LEVEL_12_1:
-			featureLevelStr = "12.1";
-			break;
 		}
-		LOGF_INFO("D3D11_Device::Initialize:  Feature level %s - %s", featureLevelStr.data(), GetAdapterDescription(adapter).data());
+		LOGF_INFO("D3D11_Device::Initialize: Feature level %s - %s", featureLevelStr.data(), GetAdapterDescription(adapter).data());
 
 		m_initialized = true;
 		return true;
@@ -499,10 +491,7 @@ namespace Directus
 	void D3D11_Device::Clear(const Vector4& color)
 	{
 		if (!m_deviceContext)
-		{
-			LOG_WARNING("D3D11_Device::Clear: Device context is uninitialized.");
 			return;
-		}
 
 		m_deviceContext->ClearRenderTargetView(m_renderTargetView, color.Data()); // back buffer
 		if (m_depthEnabled)
@@ -522,10 +511,7 @@ namespace Directus
 	void D3D11_Device::SetBackBufferAsRenderTarget()
 	{
 		if (!m_deviceContext)
-		{
-			LOG_WARNING("D3D11_Device::SetBackBufferAsRenderTarget: Device context is uninitialized.");
 			return;
-		}
 
 		m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthEnabled ? m_depthStencilView : nullptr);
 	}

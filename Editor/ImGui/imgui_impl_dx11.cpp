@@ -224,14 +224,14 @@ void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
 		}
 		vtx_offset += cmd_list->VtxBuffer.Size;
 	}
-
+	
 	// Restore modified DX state
 	ctx->RSSetScissorRects(old.ScissorRectsCount, old.ScissorRects);
 	ctx->RSSetViewports(old.ViewportsCount, old.Viewports);
 	ctx->RSSetState(old.RS); if (old.RS) old.RS->Release();
-	ctx->OMSetBlendState(old.BlendState, old.BlendFactor, old.SampleMask); if (old.BlendState) old.BlendState->Release();
+	ctx->OMSetBlendState(old.BlendState, old.BlendFactor, old.SampleMask); if (old.BlendState) old.BlendState->Release();	
 	ctx->OMSetDepthStencilState(old.DepthStencilState, old.StencilRef); if (old.DepthStencilState) old.DepthStencilState->Release();
-	ctx->PSSetShaderResources(0, 1, &old.PSShaderResource); if (old.PSShaderResource) old.PSShaderResource->Release();
+	//ctx->PSSetShaderResources(0, 1, &old.PSShaderResource); if (old.PSShaderResource) old.PSShaderResource->Release(); // causes RenderDoc crash because previous srv is bound as a render target
 	ctx->PSSetSamplers(0, 1, &old.PSSampler); if (old.PSSampler) old.PSSampler->Release();
 	ctx->PSSetShader(old.PS, old.PSInstances, old.PSInstancesCount); if (old.PS) old.PS->Release();
 	for (UINT i = 0; i < old.PSInstancesCount; i++) if (old.PSInstances[i]) old.PSInstances[i]->Release();

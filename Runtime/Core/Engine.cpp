@@ -75,7 +75,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Input(m_context));
 		m_context->RegisterSubsystem(new Threading(m_context));
 		m_context->RegisterSubsystem(new ResourceManager(m_context));
-		m_context->RegisterSubsystem(new RenderingDevice(m_context));
+		m_context->RegisterSubsystem(new RHI(m_context));
 		m_context->RegisterSubsystem(new Renderer(m_context));
 		m_context->RegisterSubsystem(new Audio(m_context));
 		m_context->RegisterSubsystem(new Physics(m_context));
@@ -85,84 +85,82 @@ namespace Directus
 
 	bool Engine::Initialize()
 	{
-		bool success = true;
-
 		// Timer
 		m_timer = m_context->GetSubsystem<Timer>();
 		if (!m_timer->Initialize())
 		{
-			LOG_ERROR("Failed to initialize Timer subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Failed to initialize");
+			return false;
 		}
 	
 		// Input
 		if (!m_context->GetSubsystem<Input>()->Initialize())
 		{
-			LOG_ERROR("Failed to initialize Input subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Failed to initialize Input");
+			return false;
 		}
 
 		// Threading
 		if (!m_context->GetSubsystem<Threading>()->Initialize())
 		{
-			LOG_ERROR("Failed to initialize Multithreading subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Failed to initialize Multithreading");
+			return false;
 		}
 
 		// ResourceManager
 		if (!m_context->GetSubsystem<ResourceManager>()->Initialize())
 		{
-			LOG_ERROR("Failed to initialize ResourceManager subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Failed to initialize ResourceManager");
+			return false;
 		}
 
-		// Graphics
-		m_context->GetSubsystem<RenderingDevice>()->SetHandle(m_drawHandle);
-		if (!m_context->GetSubsystem<RenderingDevice>()->Initialize())
+		// RHI (Rendering Hardware Interface)
+		m_context->GetSubsystem<RHI>()->SetHandle(m_drawHandle);
+		if (!m_context->GetSubsystem<RHI>()->Initialize())
 		{
-			LOG_ERROR("Failed to initialize Graphics subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Engine::Initialize: Failed to initialize RHI");
+			return false;
 		}
 
 		// Renderer
 		if (!m_context->GetSubsystem<Renderer>()->Initialize())
 		{
-			LOG_ERROR("Failed to initialize Renderer subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Failed to initialize Renderer");
+			return false;
 		}
 
 		// Audio
 		if (!m_context->GetSubsystem<Audio>()->Initialize())
 		{
-			LOG_ERROR("Failed to initialize Audio subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Failed to initialize Audio");
+			return false;
 		}
 
 		// Physics
 		if (!m_context->GetSubsystem<Physics>()->Initialize())
 		{
-			LOG_ERROR("Failed to initialize Physics subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Failed to initialize Physics");
+			return false;
 		}
 
 		// Scripting
 		if (!m_context->GetSubsystem<Scripting>()->Initialize())
 		{
-			LOG_ERROR("Failed to initialize Scripting subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Failed to initialize Scripting");
+			return false;
 		}
 
 		// Scene
 		if (!m_context->GetSubsystem<Scene>()->Initialize())
 		{
-			LOG_ERROR("Failed to initialize Scene subsystem");
-			success = false;
+			LOG_ERROR("Engine::Initialize: Failed to initialize Scene");
+			return false;
 		}
 
 		Profiler::Get().Initialize(m_context);
 		g_stopwatch->Start();
 
-		return success;
+		return true;
 	}
 
 	void Engine::Tick()

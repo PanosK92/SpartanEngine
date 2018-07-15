@@ -194,7 +194,7 @@ namespace Directus
 		std::unique_ptr<Rectangle> m_quad;
 		//=========================================
 
-		//= PREREQUISITES ==============
+		//= PREREQUISITES ==================
 		Camera* m_camera;
 		Skybox* m_skybox;
 		LineRenderer* m_lineRenderer;
@@ -206,8 +206,8 @@ namespace Directus
 		Math::Matrix m_wvp_baseOrthographic;
 		float m_nearPlane;
 		float m_farPlane;
-		RenderingDevice* m_renderingDevice;
-		//==============================
+		RHI* m_rhi;
+		//==================================
 
 		//= PIPELINE STATE ===================
 		unsigned int m_currentlyBoundGeometry;

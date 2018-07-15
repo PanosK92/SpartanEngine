@@ -34,9 +34,9 @@ namespace Directus
 		D3D11_Device(Context* context);
 		~D3D11_Device();	
 
-		//= Sybsystem ============
+		//= Sybsystem =============
 		bool Initialize() override;
-		//========================
+		//=========================
 
 		//= IGraphics ========================================================
 		void Clear(const Math::Vector4& color) override;
@@ -75,17 +75,17 @@ namespace Directus
 
 		//======================================================================
 
-		ID3D11Device* GetDevice() { return m_device; }
+		ID3D11Device* GetDevice()				{ return m_device; }
 		ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
 
 	private:
-		//= HELPER FUNCTIONS ================================================================================
+		//= HELPER FUNCTIONS =================================================================================
 		bool CreateRasterizerState(Cull_Mode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer);
 		std::vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory);	
 		IDXGIAdapter* GetAdapterWithTheHighestVRAM(IDXGIFactory* factory);
 		IDXGIAdapter* GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID);
 		std::string GetAdapterDescription(IDXGIAdapter* adapter);
-		//===================================================================================================
+		//====================================================================================================
 
 		ID3D11Device* m_device;
 		ID3D11DeviceContext* m_deviceContext;

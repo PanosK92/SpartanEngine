@@ -110,12 +110,12 @@ namespace Directus
 		m_vertexBuffer->SetIA();
 
 		// Set primitive topology
-		GetContext()->GetSubsystem<RenderingDevice>()->SetPrimitiveTopology(PrimitiveTopology_LineList);
+		GetContext()->GetSubsystem<RHI>()->SetPrimitiveTopology(PrimitiveTopology_LineList);
 	}
 
 	void LineRenderer::CreateVertexBuffer()
 	{
-		m_vertexBuffer = make_shared<D3D11_VertexBuffer>(GetContext()->GetSubsystem<RenderingDevice>());
+		m_vertexBuffer = make_shared<D3D11_VertexBuffer>(GetContext()->GetSubsystem<RHI>());
 		m_vertexBuffer->CreateDynamic(sizeof(RI_Vertex_PosCol), (unsigned int)m_vertices.size());
 	}
 

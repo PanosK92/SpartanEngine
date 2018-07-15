@@ -43,7 +43,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	RenderingDevice* graphics;
+	RHI* rhi;
 
 	Font::Font(Context* context) : IResource(context)
 	{
@@ -51,7 +51,7 @@ namespace Directus
 		m_charMaxWidth	= 0;
 		m_charMaxHeight = 0;
 		m_fontColor		= Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-		graphics		= m_context->GetSubsystem<RenderingDevice>();
+		rhi				= m_context->GetSubsystem<RHI>();
 	}
 
 	Font::~Font()
@@ -122,10 +122,10 @@ namespace Directus
 
 	bool Font::SetInputLayout()
 	{
-		if (!graphics)
+		if (!rhi)
 			return false;
 
-		graphics->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		rhi->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 
 		return true;
 	}
@@ -204,7 +204,7 @@ namespace Directus
 		// Vertex buffer
 		if (!m_vertexBuffer)
 		{
-			m_vertexBuffer = make_shared<D3D11_VertexBuffer>(graphics);
+			m_vertexBuffer = make_shared<D3D11_VertexBuffer>(rhi);
 			if (!m_vertexBuffer->CreateDynamic(sizeof(RI_Vertex_PosUV), (unsigned int)vertices.size()))
 			{
 				LOG_ERROR("Font: Failed to create vertex buffer.");
@@ -218,7 +218,7 @@ namespace Directus
 		// Index buffer
 		if (!m_indexBuffer)
 		{
-			m_indexBuffer = make_shared<D3D11_IndexBuffer>(graphics);
+			m_indexBuffer = make_shared<D3D11_IndexBuffer>(rhi);
 			if (!m_indexBuffer->CreateDynamic((unsigned int)indices.size()))
 			{
 				LOG_ERROR("Font: Failed to create index buffer.");

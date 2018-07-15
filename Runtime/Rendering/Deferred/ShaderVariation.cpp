@@ -45,7 +45,7 @@ namespace Directus
 		RegisterResource<ShaderVariation>();
 		//==================================
 
-		m_graphics		= m_context->GetSubsystem<RenderingDevice>();
+		m_rhi			= m_context->GetSubsystem<RHI>();
 		m_shaderFlags	= 0;
 	}
 
@@ -57,29 +57,29 @@ namespace Directus
 	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
 	{
 		m_shaderFlags = shaderFlags;
-		if (!m_graphics)
+		if (!m_rhi)
 		{
 			LOG_INFO("GraphicsDevice is expired. Cant't compile shader");
 			return;
 		}
 
 		// Load and compile the vertex and the pixel shader
-		m_D3D11Shader = make_shared<D3D11_Shader>(m_graphics);
+		m_D3D11Shader = make_shared<D3D11_Shader>(m_rhi);
 		AddDefinesBasedOnMaterial(m_D3D11Shader);
 		m_D3D11Shader->Compile(filePath);
 		m_D3D11Shader->SetInputLayout(Input_PositionTextureTBN);
 		m_D3D11Shader->AddSampler(Texture_Sampler_Anisotropic, Texture_Address_Wrap, Texture_Comparison_Always);
 
 		// Matrix Buffer
-		m_perObjectBuffer = make_shared<D3D11_ConstantBuffer>(m_graphics);
+		m_perObjectBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
 		m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
 
 		// Object Buffer
-		m_materialBuffer = make_shared<D3D11_ConstantBuffer>(m_graphics);
+		m_materialBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
 		m_materialBuffer->Create(sizeof(PerMaterialBufferType));
 
 		// Object Buffer
-		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_graphics);
+		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
 		m_miscBuffer->Create(sizeof(PerFrameBufferType));
 	}
 
@@ -201,24 +201,24 @@ namespace Directus
 
 	void ShaderVariation::Bind_Textures(const vector<void*>& textureArray)
 	{
-		if (!m_graphics)
+		if (!m_rhi)
 		{
 			LOG_INFO("GraphicsDevice is expired. Cant't update shader textures.");
 			return;
 		}
 
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (unsigned int)textureArray.size(), (ID3D11ShaderResourceView**)&textureArray[0]);
+		m_rhi->GetDeviceContext()->PSSetShaderResources(0, (unsigned int)textureArray.size(), (ID3D11ShaderResourceView**)&textureArray[0]);
 	}
 
 	void ShaderVariation::Render(unsigned int indexCount, unsigned int indexOffset /*= 0*/, unsigned int vertexOffset /*= 0*/)
 	{
-		if (!m_graphics)
+		if (!m_rhi)
 		{
 			LOG_INFO("ShaderVariation::Render: Invalid graphics device");
 			return;
 		}
 
-		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, indexOffset, vertexOffset);
+		m_rhi->GetDeviceContext()->DrawIndexed(indexCount, indexOffset, vertexOffset);
 	}
 
 	void ShaderVariation::AddDefinesBasedOnMaterial(const shared_ptr<D3D11_Shader>& shader)
