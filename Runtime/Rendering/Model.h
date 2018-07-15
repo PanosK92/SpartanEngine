@@ -127,6 +127,6 @@ namespace Directus
 		unsigned int m_memoryUsage;		
 		bool m_isAnimated;
 		ResourceManager* m_resourceManager;
-		RenderingDevice* m_renderingDevice;	
+		RHI* m_rhi;	
 	};
 }

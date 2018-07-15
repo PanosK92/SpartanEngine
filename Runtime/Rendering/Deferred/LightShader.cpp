@@ -38,7 +38,7 @@ namespace Directus
 {
 	LightShader::LightShader()
 	{
-		m_graphics = nullptr;
+		m_rhi = nullptr;
 	}
 
 	LightShader::~LightShader()
@@ -46,12 +46,12 @@ namespace Directus
 
 	}
 
-	void LightShader::Load(const string& filePath, RenderingDevice* graphics)
+	void LightShader::Load(const string& filePath, RHI* rhi)
 	{
-		m_graphics = graphics;
+		m_rhi = rhi;
 
 		// load the vertex and the pixel shader
-		m_shader = make_shared<D3D11_Shader>(m_graphics);
+		m_shader = make_shared<D3D11_Shader>(m_rhi);
 		m_shader->Compile(filePath);
 		m_shader->SetInputLayout(Input_PositionTextureTBN);
 		m_shader->AddSampler(Texture_Sampler_Point, Texture_Address_Wrap, Texture_Comparison_Always);
@@ -59,11 +59,11 @@ namespace Directus
 		m_shader->AddSampler(Texture_Sampler_Linear, Texture_Address_Wrap, Texture_Comparison_Always);
 
 		// Create matrix buffer
-		m_matrixBuffer = make_shared<D3D11_ConstantBuffer>(m_graphics);
+		m_matrixBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
 		m_matrixBuffer->Create(sizeof(MatrixBufferType));
 
 		// Create misc buffer
-		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_graphics);
+		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
 		m_miscBuffer->Create(sizeof(MiscBufferType));
 	}
 
@@ -80,7 +80,7 @@ namespace Directus
 		Matrix viewProjection = mView * mPerspectiveProjection;
 
 		// Map/Unmap buffer
-		MatrixBufferType* buffer = (MatrixBufferType*)m_matrixBuffer->Map();
+		auto buffer = (MatrixBufferType*)m_matrixBuffer->Map();
 
 		buffer->worldViewProjection = worlBaseViewProjection;
 		buffer->mProjection = mPerspectiveProjection;
@@ -108,7 +108,7 @@ namespace Directus
 			return;
 
 		// Get a pointer to the data in the constant buffer.
-		MiscBufferType* buffer = (MiscBufferType*)m_miscBuffer->Map();
+		auto buffer = (MiscBufferType*)m_miscBuffer->Map();
 
 		Vector3 camPos = camera->GetTransform()->GetPosition();
 		buffer->cameraPosition = Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
@@ -188,16 +188,16 @@ namespace Directus
 		m_miscBuffer->SetPS(1);
 	}
 
-	void LightShader::UpdateTextures(vector<void*> textures)
+	void LightShader::Bind_Textures(const vector<void*>& textures)
 	{
-		if (!m_graphics)
+		if (!m_rhi)
 			return;
 
-		ID3D11ShaderResourceView** ptr = (ID3D11ShaderResourceView**)textures.data();
-		int length = (int)textures.size();
-		auto tex = vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
+		auto ptr	= (ID3D11ShaderResourceView**)textures.data();
+		auto length	= (int)textures.size();
+		auto tex	= vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
 
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
+		m_rhi->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
 	}
 
 	void LightShader::Set()
@@ -219,7 +219,7 @@ namespace Directus
 			return;
 		}
 
-		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+		m_rhi->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}
 
 	bool LightShader::IsCompiled()

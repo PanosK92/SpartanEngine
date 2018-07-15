@@ -40,9 +40,9 @@ namespace Directus
 {
 	RI_Shader::RI_Shader(Context* context)
 	{
-		m_renderingDevice	= context->GetSubsystem<RenderingDevice>();
-		m_bufferType		= CB_Matrix;
-		m_bufferScope		= VertexShader;
+		m_rhi			= context->GetSubsystem<RHI>();
+		m_bufferType	= CB_Matrix;
+		m_bufferScope	= VertexShader;
 	}
 
 	RI_Shader::~RI_Shader()
@@ -52,7 +52,7 @@ namespace Directus
 
 	void RI_Shader::Compile(const string& filePath)
 	{
-		if (!m_renderingDevice)
+		if (!m_rhi)
 		{
 			LOG_WARNING("RI_Shader: Uninitialized graphics, can't load shader.");
 			return;
@@ -60,7 +60,7 @@ namespace Directus
 
 		if (!m_shader)
 		{
-			m_shader = make_unique<D3D11_Shader>(m_renderingDevice);
+			m_shader = make_unique<D3D11_Shader>(m_rhi);
 		}
 
 		m_shader->Compile(filePath);
@@ -70,7 +70,7 @@ namespace Directus
 	{
 		if (!m_shader)
 		{
-			m_shader = make_unique<D3D11_Shader>(m_renderingDevice);
+			m_shader = make_unique<D3D11_Shader>(m_rhi);
 		}
 
 		m_shader->AddDefine(define, "1");
@@ -81,7 +81,7 @@ namespace Directus
 		m_bufferType = bufferType;
 		m_bufferScope = bufferScope;
 
-		m_constantBuffer = make_unique<D3D11_ConstantBuffer>(m_renderingDevice);
+		m_constantBuffer = make_unique<D3D11_ConstantBuffer>(m_rhi);
 
 		switch (m_bufferType)
 		{
@@ -144,23 +144,23 @@ namespace Directus
 
 	void RI_Shader::Bind_Texture(void* texture, unsigned int slot)
 	{
-		if (!m_renderingDevice)
+		if (!m_rhi)
 			return;
 
 		auto id3d11Srv = (ID3D11ShaderResourceView*)texture;
-		m_renderingDevice->GetDeviceContext()->PSSetShaderResources(slot, 1, &id3d11Srv);
+		m_rhi->GetDeviceContext()->PSSetShaderResources(slot, 1, &id3d11Srv);
 	}
 
 	void RI_Shader::Bind_Textures(const vector<void*>& textures)
 	{
-		if (!m_renderingDevice)
+		if (!m_rhi)
 			return;
 
 		auto ptr	= (ID3D11ShaderResourceView**)textures.data();
 		auto length = (unsigned int)textures.size();
 		auto tex	= vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
 
-		m_renderingDevice->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
+		m_rhi->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
 	}
 
 	void RI_Shader::Bind_Buffer(const Math::Matrix& matrix, unsigned int slot)
@@ -328,18 +328,18 @@ namespace Directus
 
 	void RI_Shader::Draw(unsigned int vertexCount)
 	{
-		if (!m_renderingDevice)
+		if (!m_rhi)
 			return;
 
-		m_renderingDevice->GetDeviceContext()->Draw(vertexCount, 0);
+		m_rhi->GetDeviceContext()->Draw(vertexCount, 0);
 	}
 
 	void RI_Shader::DrawIndexed(unsigned int indexCount, unsigned int indexOffset /*= 0 */, unsigned int vertexOffset /*= 0 */)
 	{
-		if (!m_renderingDevice)
+		if (!m_rhi)
 			return;
 
-		m_renderingDevice->GetDeviceContext()->DrawIndexed(indexCount, indexOffset, vertexOffset);
+		m_rhi->GetDeviceContext()->DrawIndexed(indexCount, indexOffset, vertexOffset);
 	}
 
 	void RI_Shader::SetBufferScope(D3D11_ConstantBuffer* buffer, unsigned int slot)

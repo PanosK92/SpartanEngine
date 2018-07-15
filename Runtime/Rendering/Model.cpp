@@ -52,7 +52,7 @@ namespace Directus
 		m_normalizedScale	= 1.0f;
 		m_isAnimated		= false;
 		m_resourceManager	= m_context->GetSubsystem<ResourceManager>();
-		m_renderingDevice	= m_context->GetSubsystem<RenderingDevice>();
+		m_rhi	= m_context->GetSubsystem<RHI>();
 		m_memoryUsage		= 0;
 		m_mesh				= make_unique<Mesh>();
 	}
@@ -152,7 +152,7 @@ namespace Directus
 		}
 
 		// Set primitive topology
-		m_renderingDevice->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhi->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 
 		return success;
 	}
@@ -319,7 +319,7 @@ namespace Directus
 
 		if (!indices.empty())
 		{
-			m_indexBuffer = make_shared<D3D11_IndexBuffer>(m_renderingDevice);
+			m_indexBuffer = make_shared<D3D11_IndexBuffer>(m_rhi);
 			if (!m_indexBuffer->Create(indices))
 			{
 				LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create index buffer for \"%s\".", m_resourceName.c_str());
@@ -334,7 +334,7 @@ namespace Directus
 
 		if (!vertices.empty())
 		{
-			m_vertexBuffer = make_shared<D3D11_VertexBuffer>(m_renderingDevice);
+			m_vertexBuffer = make_shared<D3D11_VertexBuffer>(m_rhi);
 			if (!m_vertexBuffer->Create(vertices))
 			{
 				LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create vertex buffer for \"%s\".", m_resourceName.c_str());

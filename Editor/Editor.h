@@ -50,6 +50,6 @@ private:
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
 	Directus::Context* m_context;
-	Directus::RenderingDevice* m_graphics;
+	Directus::RHI* m_rhi;
 	bool m_initialized;
 };
