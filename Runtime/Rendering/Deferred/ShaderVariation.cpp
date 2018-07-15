@@ -67,7 +67,7 @@ namespace Directus
 		m_D3D11Shader = make_shared<D3D11_Shader>(m_graphics);
 		AddDefinesBasedOnMaterial(m_D3D11Shader);
 		m_D3D11Shader->Compile(filePath);
-		m_D3D11Shader->SetInputLayout(PositionTextureTBN);
+		m_D3D11Shader->SetInputLayout(Input_PositionTextureTBN);
 		m_D3D11Shader->AddSampler(Texture_Sampler_Anisotropic, Texture_Address_Wrap, Texture_Comparison_Always);
 
 		// Matrix Buffer

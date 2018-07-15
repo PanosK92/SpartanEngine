@@ -131,7 +131,7 @@ namespace Directus
 		return m_shader->Bind();
 	}
 
-	void RI_Shader::SetInputLaytout(InputLayout inputLayout)
+	void RI_Shader::SetInputLaytout(Input_Layout inputLayout)
 	{
 		if (!m_shader)
 		{
@@ -151,7 +151,7 @@ namespace Directus
 		m_renderingDevice->GetDeviceContext()->PSSetShaderResources(slot, 1, &id3d11Srv);
 	}
 
-	void RI_Shader::SetTextures(vector<void*> textures)
+	void RI_Shader::Bind_Textures(const vector<void*>& textures)
 	{
 		if (!m_renderingDevice)
 			return;

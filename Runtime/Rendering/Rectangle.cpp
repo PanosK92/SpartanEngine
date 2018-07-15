@@ -133,7 +133,7 @@ namespace Directus
 
 		m_vertexBuffer->SetIA();
 		m_indexBuffer->SetIA();
-		m_graphics->SetPrimitiveTopology(TriangleList);
+		m_graphics->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 
 		return true;
 	}

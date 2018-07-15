@@ -71,11 +71,11 @@ namespace Directus
 		);
 
 		bool Bind();
-		void SetInputLaytout(InputLayout inputLayout);
+		void SetInputLaytout(Input_Layout inputLayout);
 
 		// Bind - Texture
 		void Bind_Texture(void* texture, unsigned int slot = 0);
-		void SetTextures(std::vector<void*> textures);
+		void Bind_Textures(const std::vector<void*>& textures);
 
 		// Bind - Constant Buffer
 		void Bind_Buffer(const Math::Matrix& matrix, unsigned int slot = 0);

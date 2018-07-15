@@ -39,7 +39,7 @@ namespace Directus
 		~D3D11_Shader();
 
 		bool Compile(const std::string& filePath);
-		bool SetInputLayout(InputLayout inputLayout);
+		bool SetInputLayout(Input_Layout inputLayout);
 		bool AddSampler(Texture_Sampler_Filter filter, Texture_Address_Mode textureAddressMode, Texture_Comparison_Function comparisonFunction);
 		bool Bind();
 

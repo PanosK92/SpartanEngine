@@ -77,8 +77,8 @@ namespace Directus
 		unsigned int GetModelID() { return m_modelID; }
 		void SetModelID(unsigned int ID) { m_modelID = ID; }
 
-		CullMode GetCullMode() { return m_cullMode; }
-		void SetCullMode(CullMode cullMode) { m_cullMode = cullMode; }
+		Cull_Mode GetCullMode() { return m_cullMode; }
+		void SetCullMode(Cull_Mode cullMode) { m_cullMode = cullMode; }
 
 		float GetOpacity() { return m_opacity; }
 		void SetOpacity(float opacity)
@@ -126,7 +126,7 @@ namespace Directus
 		unsigned int m_modelID;	
 		float m_opacity;
 		bool m_alphaBlending;
-		CullMode m_cullMode;
+		Cull_Mode m_cullMode;
 		ShadingMode m_shadingMode;
 		Math::Vector4 m_colorAlbedo;
 		float m_roughnessMultiplier;

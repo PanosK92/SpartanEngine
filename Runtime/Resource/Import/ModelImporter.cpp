@@ -411,7 +411,7 @@ namespace Directus
 		int result = assimpMaterial->Get(AI_MATKEY_TWOSIDED, isTwoSided);
 		if (result == aiReturn_SUCCESS && isTwoSided)
 		{
-			material->SetCullMode(CullNone);
+			material->SetCullMode(Cull_None);
 		}
 
 		// DIFFUSE COLOR

@@ -106,7 +106,7 @@ namespace Directus
 		return m_compiled;
 	}
 
-	bool D3D11_Shader::SetInputLayout(InputLayout inputLayout)
+	bool D3D11_Shader::SetInputLayout(Input_Layout inputLayout)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
@@ -118,7 +118,7 @@ namespace Directus
 		}
 
 		// Create vertex input layout
-		if (inputLayout != Auto)
+		if (inputLayout != Input_Auto)
 		{
 			m_layoutHasBeenSet = m_D3D11InputLayout->Create(m_VSBlob, inputLayout);
 		}

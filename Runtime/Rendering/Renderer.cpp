@@ -130,34 +130,34 @@ namespace Directus
 			// Line
 			m_shaderLine = make_unique<RI_Shader>(m_context);
 			m_shaderLine->Compile(shaderDirectory + "Line.hlsl");
-			m_shaderLine->SetInputLaytout(PositionColor);
+			m_shaderLine->SetInputLaytout(Input_PositionColor);
 			m_shaderLine->AddSampler(Texture_Sampler_Linear);
 			m_shaderLine->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 			// Depth
 			m_shaderLightDepth = make_unique<RI_Shader>(m_context);
 			m_shaderLightDepth->Compile(shaderDirectory + "ShadowingDepth.hlsl");
-			m_shaderLightDepth->SetInputLaytout(Position);
+			m_shaderLightDepth->SetInputLaytout(Input_Position);
 			m_shaderLightDepth->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 			// Grid
 			m_shaderGrid = make_unique<RI_Shader>(m_context);
 			m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl");
-			m_shaderGrid->SetInputLaytout(PositionColor);
+			m_shaderGrid->SetInputLaytout(Input_PositionColor);
 			m_shaderGrid->AddSampler(Texture_Sampler_Anisotropic);
 			m_shaderGrid->AddBuffer(CB_Matrix, VertexShader);
 
 			// Font
 			m_shaderFont = make_unique<RI_Shader>(m_context);
 			m_shaderFont->Compile(shaderDirectory + "Font.hlsl");
-			m_shaderFont->SetInputLaytout(PositionTexture);
+			m_shaderFont->SetInputLaytout(Input_PositionTexture);
 			m_shaderFont->AddSampler(Texture_Sampler_Point);
 			m_shaderFont->AddBuffer(CB_Matrix_Vector4, Global);
 
 			// Texture
 			m_shaderTexture = make_unique<RI_Shader>(m_context);
 			m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl");
-			m_shaderTexture->SetInputLaytout(PositionTexture);
+			m_shaderTexture->SetInputLaytout(Input_PositionTexture);
 			m_shaderTexture->AddSampler(Texture_Sampler_Linear);
 			m_shaderTexture->AddBuffer(CB_Matrix, VertexShader);
 
@@ -165,7 +165,7 @@ namespace Directus
 			m_shaderFXAA = make_unique<RI_Shader>(m_context);
 			m_shaderFXAA->AddDefine("PASS_FXAA");
 			m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderFXAA->SetInputLaytout(PositionTexture);
+			m_shaderFXAA->SetInputLaytout(Input_PositionTexture);
 			m_shaderFXAA->AddSampler(Texture_Sampler_Point);
 			m_shaderFXAA->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderFXAA->AddBuffer(CB_Matrix_Vector2, Global);
@@ -174,7 +174,7 @@ namespace Directus
 			m_shaderSharpening = make_unique<RI_Shader>(m_context);
 			m_shaderSharpening->AddDefine("PASS_SHARPENING");
 			m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderSharpening->SetInputLaytout(PositionTexture);
+			m_shaderSharpening->SetInputLaytout(Input_PositionTexture);
 			m_shaderSharpening->AddSampler(Texture_Sampler_Point);
 			m_shaderSharpening->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderSharpening->AddBuffer(CB_Matrix_Vector2, Global);
@@ -183,7 +183,7 @@ namespace Directus
 			m_shaderChromaticAberration = make_unique<RI_Shader>(m_context);
 			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
 			m_shaderChromaticAberration->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderChromaticAberration->SetInputLaytout(PositionTexture);
+			m_shaderChromaticAberration->SetInputLaytout(Input_PositionTexture);
 			m_shaderChromaticAberration->AddSampler(Texture_Sampler_Point);
 			m_shaderChromaticAberration->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderChromaticAberration->AddBuffer(CB_Matrix_Vector2, Global);
@@ -192,7 +192,7 @@ namespace Directus
 			m_shaderBlurBox = make_unique<RI_Shader>(m_context);
 			m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
 			m_shaderBlurBox->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBlurBox->SetInputLaytout(PositionTexture);
+			m_shaderBlurBox->SetInputLaytout(Input_PositionTexture);
 			m_shaderBlurBox->AddSampler(Texture_Sampler_Point);
 			m_shaderBlurBox->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderBlurBox->AddBuffer(CB_Matrix_Vector2, Global);
@@ -201,7 +201,7 @@ namespace Directus
 			m_shaderBlurGaussianH = make_unique<RI_Shader>(m_context);
 			m_shaderBlurGaussianH->AddDefine("PASS_BLUR_GAUSSIAN_H");
 			m_shaderBlurGaussianH->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBlurGaussianH->SetInputLaytout(PositionTexture);
+			m_shaderBlurGaussianH->SetInputLaytout(Input_PositionTexture);
 			m_shaderBlurGaussianH->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp);
 			m_shaderBlurGaussianH->AddBuffer(CB_Matrix_Vector2, Global);
 
@@ -209,7 +209,7 @@ namespace Directus
 			m_shaderBlurGaussianV = make_unique<RI_Shader>(m_context);
 			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V");
 			m_shaderBlurGaussianV->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBlurGaussianV->SetInputLaytout(PositionTexture);
+			m_shaderBlurGaussianV->SetInputLaytout(Input_PositionTexture);
 			m_shaderBlurGaussianV->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp);
 			m_shaderBlurGaussianV->AddBuffer(CB_Matrix_Vector2, Global);
 
@@ -217,7 +217,7 @@ namespace Directus
 			m_shaderBloom_Bright = make_unique<RI_Shader>(m_context);
 			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT");
 			m_shaderBloom_Bright->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBloom_Bright->SetInputLaytout(PositionTexture);
+			m_shaderBloom_Bright->SetInputLaytout(Input_PositionTexture);
 			m_shaderBloom_Bright->AddSampler(Texture_Sampler_Point);
 			m_shaderBloom_Bright->AddBuffer(CB_Matrix_Vector2, Global);
 
@@ -225,7 +225,7 @@ namespace Directus
 			m_shaderBloom_BlurBlend = make_unique<RI_Shader>(m_context);
 			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
 			m_shaderBloom_BlurBlend->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderBloom_BlurBlend->SetInputLaytout(PositionTexture);
+			m_shaderBloom_BlurBlend->SetInputLaytout(Input_PositionTexture);
 			m_shaderBloom_BlurBlend->AddSampler(Texture_Sampler_Point);
 			m_shaderBloom_BlurBlend->AddBuffer(CB_Matrix, VertexShader);
 
@@ -233,7 +233,7 @@ namespace Directus
 			m_shaderCorrection = make_unique<RI_Shader>(m_context);
 			m_shaderCorrection->AddDefine("PASS_CORRECTION");
 			m_shaderCorrection->Compile(shaderDirectory + "PostProcess.hlsl");
-			m_shaderCorrection->SetInputLaytout(PositionTexture);
+			m_shaderCorrection->SetInputLaytout(Input_PositionTexture);
 			m_shaderCorrection->AddSampler(Texture_Sampler_Point);
 			m_shaderCorrection->AddSampler(Texture_Sampler_Bilinear);
 			m_shaderCorrection->AddBuffer(CB_Matrix_Vector2, Global);
@@ -241,13 +241,13 @@ namespace Directus
 			// Transformation gizmo
 			m_shaderTransformationGizmo = make_unique<RI_Shader>(m_context);
 			m_shaderTransformationGizmo->Compile(shaderDirectory + "TransformationGizmo.hlsl");
-			m_shaderTransformationGizmo->SetInputLaytout(PositionTextureTBN);
+			m_shaderTransformationGizmo->SetInputLaytout(Input_PositionTextureTBN);
 			m_shaderTransformationGizmo->AddBuffer(CB_Matrix_Vector3_Vector3, Global);
 
 			// Shadowing (shadow mapping & SSAO)
 			m_shaderShadowing = make_unique<RI_Shader>(m_context);
 			m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
-			m_shaderShadowing->SetInputLaytout(PositionTexture);
+			m_shaderShadowing->SetInputLaytout(Input_PositionTexture);
 			m_shaderShadowing->AddSampler(Texture_Sampler_Point, Texture_Address_Clamp, Texture_Comparison_Greater); // Shadow mapping
 			m_shaderShadowing->AddSampler(Texture_Sampler_Linear, Texture_Address_Clamp, Texture_Comparison_Greater); // SSAO
 			m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
@@ -335,9 +335,9 @@ namespace Directus
 			}
 
 			Pass_DepthDirectionalLight(m_directionalLight);
-
+		
 			Pass_GBuffer();
-
+			
 			Pass_PreLight(
 				m_gbuffer->GetShaderResource(GBuffer_Target_Normal),	// IN:	Texture			- Normal
 				m_gbuffer->GetShaderResource(GBuffer_Target_Depth),		// IN:	Texture			- Depth
@@ -699,7 +699,7 @@ namespace Directus
 		m_renderingDevice->EventBegin("Pass_PreLight");
 
 		m_quad->SetBuffer();
-		m_renderingDevice->SetCullMode(CullBack);
+		m_renderingDevice->SetCullMode(Cull_Back);
 
 		// Shadow mapping + SSAO
 		Pass_Shadowing(inTextureNormal, inTextureDepth, inTextureNormalNoise, m_directionalLight, inRenderTexure);
@@ -757,7 +757,7 @@ namespace Directus
 		m_renderingDevice->EventBegin("Pass_PostLight");
 
 		m_quad->SetBuffer();
-		m_renderingDevice->SetCullMode(CullBack);
+		m_renderingDevice->SetCullMode(Cull_Back);
 
 		// Keep track of render target swapping
 		bool swaped = false;
@@ -948,7 +948,7 @@ namespace Directus
 			m_camera,
 			0
 		);
-		m_shaderShadowing->SetTextures(m_texArray);
+		m_shaderShadowing->Bind_Textures(m_texArray);
 		m_shaderShadowing->DrawIndexed(m_quad->GetIndexCount());
 
 		m_renderingDevice->EventEnd();

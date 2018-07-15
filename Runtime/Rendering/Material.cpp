@@ -48,7 +48,7 @@ namespace Directus
 		m_modelID				= NOT_ASSIGNED_HASH;
 		m_opacity				= 1.0f;
 		m_alphaBlending			= false;
-		m_cullMode				= CullBack;
+		m_cullMode				= Cull_Back;
 		m_shadingMode			= Shading_PBR;
 		m_colorAlbedo			= Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 		m_roughnessMultiplier	= 1.0f;

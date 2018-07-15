@@ -38,8 +38,6 @@ namespace Directus
 		bool Initialize() override;
 		//========================
 
-		bool CreateBlendStates();
-
 		//= IGraphics ========================================================
 		void Clear(const Math::Vector4& color) override;
 		void Present() override;
@@ -52,9 +50,9 @@ namespace Directus
 		bool EnableDepth(bool enable) override;
 
 		bool EnableAlphaBlending(bool enable) override;
-		CullMode GetCullMode() override { return m_cullMode; }
-		bool SetCullMode(CullMode cullMode) override;
-		bool SetPrimitiveTopology(PrimitiveTopology primitiveTopology) override;
+		Cull_Mode GetCullMode() override { return m_cullMode; }
+		bool SetCullMode(Cull_Mode cullMode) override;
+		bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology) override;
 
 		// Viewport
 		bool SetResolution(int width, int height) override;
@@ -82,7 +80,7 @@ namespace Directus
 
 	private:
 		//= HELPER FUNCTIONS ================================================================================
-		bool CreateRasterizerState(CullMode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer);
+		bool CreateRasterizerState(Cull_Mode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer);
 		std::vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory);	
 		IDXGIAdapter* GetAdapterWithTheHighestVRAM(IDXGIFactory* factory);
 		IDXGIAdapter* GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID);

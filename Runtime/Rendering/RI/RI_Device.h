@@ -35,9 +35,9 @@ namespace Directus
 	public:
 		RI_Device(Context* context) : Subsystem(context)
 		{
-			m_primitiveTopology		= TriangleList;
-			m_inputLayout			= PositionTextureTBN;
-			m_cullMode				= CullBack;
+			m_primitiveTopology		= PrimitiveTopology_NotAssigned;
+			m_inputLayout			= Input_NotAssigned;
+			m_cullMode				= Cull_NotAssigned;
 			m_backBuffer_format		= Texture_Format_R8G8B8A8_UNORM;
 			m_depthEnabled			= true;
 			m_maxDepth				= 1.0f;
@@ -82,8 +82,8 @@ namespace Directus
 		//===========================================
 
 		// CULL MODE ==============================
-		virtual CullMode GetCullMode() = 0;
-		virtual bool SetCullMode(CullMode cullMode)
+		virtual Cull_Mode GetCullMode() = 0;
+		virtual bool SetCullMode(Cull_Mode cullMode)
 		{
 			if (m_cullMode == cullMode)
 				return false;
@@ -94,7 +94,7 @@ namespace Directus
 		//=========================================
 
 		//= PRIMITIVE TOPOLOGY =====================
-		bool SetInputLayout(InputLayout inputLayout)
+		bool SetInputLayout(Input_Layout inputLayout)
 		{
 			if (m_inputLayout == inputLayout)
 				return false;
@@ -105,7 +105,7 @@ namespace Directus
 		//==========================================
 
 		//= INPUT LAYOUT =====================================================
-		virtual bool SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
+		virtual bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 		{
 			if (m_primitiveTopology == primitiveTopology)
 				return false;
@@ -116,7 +116,13 @@ namespace Directus
 		//====================================================================
 
 		//= VIEWPORT ===========================================
-		virtual bool SetResolution(int width, int height) = 0;
+		virtual bool SetResolution(int width, int height)
+		{
+			if (width == 0 || height == 0)
+				return false;
+
+			return true;
+		}
 		virtual const RI_Viewport& GetViewport() = 0;
 		virtual void SetViewport(float width, float height) = 0;
 		virtual void SetViewport() = 0;
@@ -134,9 +140,9 @@ namespace Directus
 		virtual bool IsInitialized() = 0;
 
 	protected:
-		PrimitiveTopology m_primitiveTopology;
-		InputLayout m_inputLayout;
-		CullMode m_cullMode;
+		PrimitiveTopology_Mode m_primitiveTopology;
+		Input_Layout m_inputLayout;
+		Cull_Mode m_cullMode;
 		Texture_Format m_backBuffer_format;
 		RI_Viewport m_backBuffer_viewport;
 		bool m_depthEnabled;

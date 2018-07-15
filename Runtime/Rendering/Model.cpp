@@ -152,7 +152,7 @@ namespace Directus
 		}
 
 		// Set primitive topology
-		m_renderingDevice->SetPrimitiveTopology(TriangleList);
+		m_renderingDevice->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 
 		return success;
 	}

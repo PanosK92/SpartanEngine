@@ -62,7 +62,7 @@ namespace Directus
 		// Create a skybox material
 		m_matSkybox = make_shared<Material>(GetContext());
 		m_matSkybox->SetResourceName("Standard_Skybox");
-		m_matSkybox->SetCullMode(CullFront);
+		m_matSkybox->SetCullMode(Cull_Front);
 		m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		m_matSkybox->SetIsEditable(false);
 		m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture

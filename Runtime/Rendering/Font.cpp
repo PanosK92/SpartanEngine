@@ -125,7 +125,7 @@ namespace Directus
 		if (!graphics)
 			return false;
 
-		graphics->SetPrimitiveTopology(TriangleList);
+		graphics->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 
 		return true;
 	}
