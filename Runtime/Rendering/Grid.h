@@ -38,14 +38,14 @@ namespace Directus
 	{
 	public:
 		Grid(Context* context);
-		~Grid();
-
-		void BuildGrid();
+		~Grid(){}
+		
 		bool SetBuffer();
 		const Math::Matrix& ComputeWorldMatrix(Transform* camera);
 		unsigned int GetIndexCount() { return m_indexCount; }
 
-	private:	
+	private:
+		void BuildGrid();
 		bool CreateBuffers(std::vector<RI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices);
 
 		Context* m_context;

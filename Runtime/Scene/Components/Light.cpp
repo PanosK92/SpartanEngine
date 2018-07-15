@@ -52,7 +52,6 @@ namespace Directus
 		m_angle			= 0.5f; // about 30 degrees
 		m_color			= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
 		m_bias			= 0.001f;	
-		m_frustum		= make_shared<Frustum>();
 		m_isDirty		= true;
 
 		// Compute shadow map splits (for directional light's cascades)
@@ -82,7 +81,6 @@ namespace Directus
 	{
 		if (m_lightType != LightType_Directional)
 			return;
-
 		// DIRTY CHECK
 		if (m_lastPos != GetTransform()->GetPosition() || m_lastRot != GetTransform()->GetRotation())
 		{
@@ -103,7 +101,10 @@ namespace Directus
 		{
 			if (auto cameraComp = mainCamera->GetComponent<Camera>().lock().get())
 			{
-				m_frustum->Construct(ComputeViewMatrix(), ShadowMap_ComputeProjectionMatrix(2), cameraComp->GetFarPlane());
+				for (unsigned int index = 0; index < (unsigned int)m_frustums.size(); index++)
+				{
+					m_frustums[index]->Construct(ComputeViewMatrix(), ShadowMap_ComputeProjectionMatrix(index), cameraComp->GetFarPlane());
+				}
 			}
 		}
 	}
@@ -134,6 +135,7 @@ namespace Directus
 	{
 		m_lightType = type;
 		m_isDirty = true;
+		ShadowMap_Create(true);
 	}
 
 	void Light::SetCastShadows(bool castShadows)
@@ -197,13 +199,13 @@ namespace Directus
 		return m_viewMatrix;
 	}
 
-	bool Light::IsInViewFrustrum(Renderable* renderable)
+	bool Light::IsInViewFrustrum(Renderable* renderable, unsigned int index  /*= 0*/)
 	{
 		BoundingBox box = renderable->Geometry_BB();
 		Vector3 center	= box.GetCenter();
 		Vector3 extents = box.GetExtents();
 
-		return m_frustum->CheckCube(center, extents) != Outside;
+		return m_frustums[index]->CheckCube(center, extents) != Outside;
 	}
 
 	Directus::Math::Matrix Light::ShadowMap_ComputeProjectionMatrix(unsigned int index /*= 0*/)
@@ -275,10 +277,20 @@ namespace Directus
 		m_shadowMapSplits[index] = split;
 	}
 
+	shared_ptr<Frustum> Light::ShadowMap_IsInViewFrustrum(unsigned int index /*= 0*/)
+	{
+		if (index >= (unsigned int)m_frustums.size())
+			return nullptr;
+
+		return m_frustums[index];
+	}
+
 	void Light::ShadowMap_Create(bool force)
 	{		
 		if (!force && !m_shadowMaps.empty())
 			return;
+
+		ShadowMap_Destroy();
 
 		// Compute shadow map count
 		if (GetLightType() == LightType_Directional)
@@ -300,6 +312,7 @@ namespace Directus
 		for (unsigned int i = 0; i < m_shadowMapCount; i++)
 		{
 			m_shadowMaps.emplace_back(make_unique<D3D11_RenderTexture>(rhi, m_shadowMapResolution, m_shadowMapResolution, true, Texture_Format_R32_FLOAT));
+			m_frustums.emplace_back(make_shared<Frustum>());
 		}
 	}
 
@@ -307,5 +320,8 @@ namespace Directus
 	{
 		m_shadowMaps.clear();
 		m_shadowMaps.shrink_to_fit();
+
+		m_frustums.clear();
+		m_frustums.shrink_to_fit();
 	}
 }

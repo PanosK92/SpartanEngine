@@ -33,7 +33,7 @@ namespace Directus::Math
 	{
 	public:
 		Frustum();
-		~Frustum();
+		~Frustum(){}
 
 		void Construct(const Matrix& mView, const Matrix&  mProjection, float screenDepth);
 		Intersection CheckCube(const Vector3& center, const Vector3& extent);

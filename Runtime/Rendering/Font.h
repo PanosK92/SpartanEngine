@@ -42,7 +42,7 @@ namespace Directus
 	class ENGINE_CLASS Font : IResource
 	{
 	public:
-		Font(Context* context);
+		Font(Context* context, const std::string& filePath, int fontSize, const Math::Vector4& color);
 		~Font();
 
 		//= RESOURCE INTERFACE =================================
@@ -53,7 +53,7 @@ namespace Directus
 		void SetText(const std::string& text, const Math::Vector2& position);
 		void SetSize(int size);
 
-		const Math::Vector4& GetColor() { return m_fontColor; }
+		const Math::Vector4& GetColor()			{ return m_fontColor; }
 		void SetColor(const Math::Vector4& color) { m_fontColor = color; }
 
 		void** GetShaderResource();

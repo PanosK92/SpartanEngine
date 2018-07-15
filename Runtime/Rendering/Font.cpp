@@ -45,13 +45,15 @@ namespace Directus
 {
 	RHI* rhi;
 
-	Font::Font(Context* context) : IResource(context)
+	Font::Font(Context* context, const string& filePath, int fontSize, const Vector4& color) : IResource(context)
 	{
-		m_fontSize		= 12;
+		rhi				= m_context->GetSubsystem<RHI>();
 		m_charMaxWidth	= 0;
 		m_charMaxHeight = 0;
-		m_fontColor		= Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-		rhi				= m_context->GetSubsystem<RHI>();
+		m_fontColor		= color;
+		
+		SetSize(fontSize);
+		LoadFromFile(filePath);
 	}
 
 	Font::~Font()
@@ -97,11 +99,6 @@ namespace Directus
 		LOG_INFO("Font: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
 
 		return true;
-	}
-
-	void Font::SetSize(int size)
-	{
-		m_fontSize = Clamp<int>(size, 8, 50);
 	}
 
 	void** Font::GetShaderResource()
@@ -184,6 +181,11 @@ namespace Directus
 		}		
 
 		UpdateBuffers(m_vertices, m_indices);
+	}
+
+	void Font::SetSize(int size)
+	{
+		m_fontSize = Clamp<int>(size, 8, 50);
 	}
 
 	bool Font::UpdateBuffers(vector<RI_Vertex_PosUV>& vertices, vector<unsigned int>& indices)

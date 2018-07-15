@@ -58,14 +58,12 @@ namespace Directus
 	{
 	public:
 		RI_Shader(Context* context);
-		~RI_Shader();
+		~RI_Shader(){}
 
-		void Compile(const std::string& filePath);
-
+		bool Compile(const std::string& filePath, Input_Layout inputLayout);
 		void AddDefine(const char* define);
 		void AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope);
 		bool Bind();
-		void SetInputLaytout(Input_Layout inputLayout);
 
 		// Bind - Constant Buffer
 		void Bind_Buffer(const Math::Matrix& matrix, unsigned int slot = 0);

@@ -39,15 +39,42 @@ namespace Directus
 {
 	Grid::Grid(Context* context)
 	{
-		m_context = context;
-		m_indexCount = 0;
+		m_context		= context;
+		m_indexCount	= 0;
 		m_terrainHeight = 200;
-		m_terrainWidth = 200;
+		m_terrainWidth	= 200;
+		BuildGrid();
 	}
 
-	Grid::~Grid()
+	bool Grid::SetBuffer()
 	{
+		auto rhi = m_context->GetSubsystem<RHI>();
 
+		if (!rhi || !m_vertexBuffer || !m_indexBuffer)
+			return false;
+
+		m_vertexBuffer->SetIA();
+		m_indexBuffer->SetIA();
+
+		return true;
+	}
+
+	const Matrix& Grid::ComputeWorldMatrix(Transform* camera)
+	{
+		// To get the grid to feel infinite, it has to follow the camera,
+		// but only by increments of the grid's spacing size. This gives the illusion 
+		// that the grid never moves and if the grid is large enough, the user can't tell.
+		float gridSpacing = 1.0f;
+		Vector3 translation = Vector3
+		(
+			(int)(camera->GetPosition().x / gridSpacing) * gridSpacing, 
+			0.0f, 
+			(int)(camera->GetPosition().z / gridSpacing) * gridSpacing
+		);
+	
+		m_world = Matrix::CreateScale(gridSpacing) * Matrix::CreateTranslation(translation);
+
+		return m_world;
 	}
 
 	void Grid::BuildGrid()
@@ -114,37 +141,6 @@ namespace Directus
 		m_indexCount = (unsigned int)indices.size();
 
 		CreateBuffers(vertices, indices);
-	}
-
-	bool Grid::SetBuffer()
-	{
-		auto rhi = m_context->GetSubsystem<RHI>();
-
-		if (!rhi || !m_vertexBuffer || !m_indexBuffer)
-			return false;
-
-		m_vertexBuffer->SetIA();
-		m_indexBuffer->SetIA();
-
-		return true;
-	}
-
-	const Matrix& Grid::ComputeWorldMatrix(Transform* camera)
-	{
-		// To get the grid to feel infinite, it has to follow the camera,
-		// but only by increments of the grid's spacing size. This gives the illusion 
-		// that the grid never moves and if the grid is large enough, the user can't tell.
-		float gridSpacing = 1.0f;
-		Vector3 translation = Vector3
-		(
-			(int)(camera->GetPosition().x / gridSpacing) * gridSpacing, 
-			0.0f, 
-			(int)(camera->GetPosition().z / gridSpacing) * gridSpacing
-		);
-	
-		m_world = Matrix::CreateScale(gridSpacing) * Matrix::CreateTranslation(translation);
-
-		return m_world;
 	}
 
 	bool Grid::CreateBuffers(vector<RI_Vertex_PosCol>& vertices, vector<unsigned>& indices)

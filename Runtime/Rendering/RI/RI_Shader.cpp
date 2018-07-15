@@ -40,48 +40,40 @@ namespace Directus
 {
 	RI_Shader::RI_Shader(Context* context)
 	{
-		m_rhi			= context->GetSubsystem<RHI>();
-		m_bufferType	= CB_Matrix;
-		m_bufferScope	= VertexShader;
-	}
-
-	RI_Shader::~RI_Shader()
-	{
-
-	}
-
-	void RI_Shader::Compile(const string& filePath)
-	{
-		if (!m_rhi)
+		if (!context)
 		{
-			LOG_WARNING("RI_Shader: Uninitialized graphics, can't load shader.");
+			LOG_ERROR("RI_Shader::RI_Shader: Invalid parameters");
 			return;
 		}
 
-		if (!m_shader)
-		{
-			m_shader = make_unique<D3D11_Shader>(m_rhi);
-		}
+		m_rhi			= context->GetSubsystem<RHI>();		
+		m_shader		= make_unique<D3D11_Shader>(m_rhi);
+		m_bufferType	= CB_Matrix;
+		m_bufferScope	= VertexShader;	
+	}
 
-		m_shader->Compile(filePath);
+	bool RI_Shader::Compile(const string& filePath, Input_Layout inputLayout)
+	{	
+		if (!m_shader->Compile(filePath))
+		{
+			LOGF_ERROR("RI_Shader::Compile: Failed to compile %s", filePath.c_str());
+			return false;
+		}
+		m_shader->SetInputLayout(inputLayout);
+
+		return true;
 	}
 
 	void RI_Shader::AddDefine(const char* define)
 	{
-		if (!m_shader)
-		{
-			m_shader = make_unique<D3D11_Shader>(m_rhi);
-		}
-
 		m_shader->AddDefine(define, "1");
 	}
 
 	void RI_Shader::AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope)
 	{
-		m_bufferType = bufferType;
-		m_bufferScope = bufferScope;
-
-		m_constantBuffer = make_unique<D3D11_ConstantBuffer>(m_rhi);
+		m_bufferType		= bufferType;
+		m_bufferScope		= bufferScope;
+		m_constantBuffer	= make_unique<D3D11_ConstantBuffer>(m_rhi);
 
 		switch (m_bufferType)
 		{
@@ -118,17 +110,6 @@ namespace Directus
 		}
 
 		return m_shader->Bind();
-	}
-
-	void RI_Shader::SetInputLaytout(Input_Layout inputLayout)
-	{
-		if (!m_shader)
-		{
-			LOG_WARNING("RI_Shader::SetInputLaytout: Uninitialized shader.");
-			return;
-		}
-
-		m_shader->SetInputLayout(inputLayout);
 	}
 
 	void RI_Shader::Bind_Buffer(const Math::Matrix& matrix, unsigned int slot)

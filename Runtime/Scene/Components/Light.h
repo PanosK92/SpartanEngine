@@ -88,7 +88,7 @@ namespace Directus
 		void ClampRotation();
 
 		Math::Matrix ComputeViewMatrix();	
-		bool IsInViewFrustrum(Renderable* renderable);
+		bool IsInViewFrustrum(Renderable* renderable, unsigned int index = 0);
 		
 		// Shadow maps
 		Math::Matrix ShadowMap_ComputeProjectionMatrix(unsigned int index = 0);	
@@ -96,6 +96,7 @@ namespace Directus
 		void* ShadowMap_GetShaderResource(unsigned int index = 0);
 		float ShadowMap_GetSplit(unsigned int index = 0);
 		void ShadowMap_SetSplit(float split, unsigned int index = 0);
+		std::shared_ptr<Math::Frustum> ShadowMap_IsInViewFrustrum(unsigned int index = 0);
 		int ShadowMap_GetResolution()		{ return m_shadowMapResolution; }
 		unsigned int ShadowMap_GetCount()	{ return m_shadowMapCount; }
 
@@ -110,13 +111,13 @@ namespace Directus
 		float m_angle;
 		float m_bias;
 		Math::Matrix m_viewMatrix;
-		std::shared_ptr<Math::Frustum> m_frustum;
 		Math::Quaternion m_lastRot;
 		Math::Vector3 m_lastPos;
 		bool m_isDirty;
 
 		// Shadow maps
 		std::vector<std::shared_ptr<D3D11_RenderTexture>> m_shadowMaps;
+		std::vector<std::shared_ptr<Math::Frustum>> m_frustums;
 		unsigned int m_shadowMapResolution;
 		unsigned int m_shadowMapCount;
 		std::vector<float> m_shadowMapSplits;
