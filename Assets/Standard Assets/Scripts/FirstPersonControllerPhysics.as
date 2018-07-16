@@ -6,16 +6,14 @@ class FirstPersonControllerPhysics
 	
 	// rigidbody
 	float movementSpeed = 10.0f;
-	float jumpForce = 0.1f;
+	float jumpForce 	= 0.1f;
 	
 	// child camera
 	Transform @cameraTransform;
-	float sensitivity = 3.0f;
-	float smoothing = 20.0f;
-	Vector2 smoothMouse = Vector2(0.0f, 0.0f);
+	float sensitivity 			= 3.0f;
+	float smoothing 			= 20.0f;
+	Vector2 smoothMouse 		= Vector2(0.0f, 0.0f);
 	Vector3 currentRotation;
-	bool control = false;
-	bool allowToggle = false;
 	
 	// Constructor
 	FirstPersonControllerPhysics(Actor @actorIn)
@@ -36,18 +34,10 @@ class FirstPersonControllerPhysics
 	// Update is called once per frame
 	void Update()
 	{
-		if (input.GetButtonKeyboard(E) && allowToggle)
+		if (input.GetButtonMouse(Right))
 		{
-			control = !control;
-			allowToggle = false;
-		}
-		else if (!input.GetButtonKeyboard(E))
-		{
-			allowToggle = true;
-		}
-			
-		if (control)
-			MouseLook();			
+			FreeLook();
+		}	
 			
 		Movement();
 	}
@@ -75,7 +65,7 @@ class FirstPersonControllerPhysics
 			rigidbody.ApplyForce(jumpForce * Vector3(0,1,0), Impulse);
 	}
 	
-	void MouseLook()
+	void FreeLook()
 	{
 		// Get raw mouse input
 		Vector2 mouseDelta = Vector2(input.GetMouseDelta().x, input.GetMouseDelta().y);
@@ -93,7 +83,7 @@ class FirstPersonControllerPhysics
 		currentRotation.y += smoothMouse.y;	
 		currentRotation.y = ClampRotation(currentRotation.y);
 		
-		cameraTransform.SetRotationLocal(QuaternionFromEuler(currentRotation.y, currentRotation.x, 0.0f));
+		cameraTransform.SetRotationLocal(QuaternionFromEuler(Vector3(currentRotation.y, currentRotation.x, 0.0f)));
 	}
 	
 	float ClampRotation(float rotation)

@@ -260,7 +260,7 @@ void Widget_Scene::ContextMenu()
 	// EMPTY
 	if (ImGui::MenuItem("Create Empty"))
 	{
-		Action_actor_CreateEmpty();
+		Action_Actor_CreateEmpty();
 	}
 
 	// 3D OBJECCTS
@@ -268,23 +268,23 @@ void Widget_Scene::ContextMenu()
 	{
 		if (ImGui::MenuItem("Cube"))
 		{
-			Action_actor_CreateCube();
+			Action_Actor_CreateCube();
 		}
 		else if (ImGui::MenuItem("Quad"))
 		{
-			Action_actor_CreateQuad();
+			Action_Actor_CreateQuad();
 		}
 		else if (ImGui::MenuItem("Sphere"))
 		{
-			Action_actor_CreateSphere();
+			Action_Actor_CreateSphere();
 		}
 		else if (ImGui::MenuItem("Cylinder"))
 		{
-			Action_actor_CreateCylinder();
+			Action_Actor_CreateCylinder();
 		}
 		else if (ImGui::MenuItem("Cone"))
 		{
-			Action_actor_CreateCone();
+			Action_Actor_CreateCone();
 		}
 
 		ImGui::EndMenu();
@@ -365,7 +365,7 @@ void Widget_Scene::Action_actor_Delete(weak_ptr<Actor> actor)
 	HierarchyStatics::g_scene->Actor_Remove(actor);
 }
 
-Actor* Widget_Scene::Action_actor_CreateEmpty()
+Actor* Widget_Scene::Action_Actor_CreateEmpty()
 {
 	auto actor = HierarchyStatics::g_scene->Actor_CreateAdd().lock().get();
 	if (auto selected = m_actorSelected.lock())
@@ -376,45 +376,45 @@ Actor* Widget_Scene::Action_actor_CreateEmpty()
 	return actor;
 }
 
-void Widget_Scene::Action_actor_CreateCube()
+void Widget_Scene::Action_Actor_CreateCube()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
 	renderable->Geometry_Set(Geometry_Default_Cube);
 	renderable->Material_UseDefault();
 	actor->SetName("Cube");
 }
 
-void Widget_Scene::Action_actor_CreateQuad()
+void Widget_Scene::Action_Actor_CreateQuad()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
 	renderable->Geometry_Set(Geometry_Default_Quad);
 	renderable->Material_UseDefault();
 	actor->SetName("Quad");
 }
 
-void Widget_Scene::Action_actor_CreateSphere()
+void Widget_Scene::Action_Actor_CreateSphere()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
 	renderable->Geometry_Set(Geometry_Default_Sphere);
 	renderable->Material_UseDefault();
 	actor->SetName("Sphere");
 }
 
-void Widget_Scene::Action_actor_CreateCylinder()
+void Widget_Scene::Action_Actor_CreateCylinder()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
 	renderable->Geometry_Set(Geometry_Default_Cylinder);
 	renderable->Material_UseDefault();
 	actor->SetName("Cylinder");
 }
 
-void Widget_Scene::Action_actor_CreateCone()
+void Widget_Scene::Action_Actor_CreateCone()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
 	renderable->Geometry_Set(Geometry_Default_Cone);
 	renderable->Material_UseDefault();
@@ -423,63 +423,63 @@ void Widget_Scene::Action_actor_CreateCone()
 
 void Widget_Scene::Action_actor_CreateCamera()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Camera>();
 	actor->SetName("Camera");
 }
 
 void Widget_Scene::Action_actor_CreateLightDirectional()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
 	actor->SetName("Directional");
 }
 
 void Widget_Scene::Action_actor_CreateLightPoint()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Light>().lock()->SetLightType(LightType_Point);
 	actor->SetName("Point");
 }
 
 void Widget_Scene::Action_actor_CreateLightSpot()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
 	actor->SetName("Spot");
 }
 
 void Widget_Scene::Action_actor_CreateRigidBody()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<RigidBody>();
 	actor->SetName("RigidBody");
 }
 
 void Widget_Scene::Action_actor_CreateCollider()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Collider>();
 	actor->SetName("Collider");
 }
 
 void Widget_Scene::Action_actor_CreateConstraint()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Constraint>();
 	actor->SetName("Constraint");
 }
 
 void Widget_Scene::Action_actor_CreateAudioSource()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<AudioSource>();
 	actor->SetName("AudioSource");
 }
 
 void Widget_Scene::Action_actor_CreateAudioListener()
 {
-	auto actor = Action_actor_CreateEmpty();
+	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<AudioListener>();
 	actor->SetName("AudioListener");
 }
