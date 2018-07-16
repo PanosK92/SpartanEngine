@@ -53,7 +53,7 @@ namespace Directus
 	{
 		m_context				= context;
 		m_ID					= GENERATE_GUID;
-		m_name					= "actor";
+		m_name					= "Actor";
 		m_isActive				= true;
 		m_isPrefab				= false;
 		m_hierarchyVisibility	= true;

@@ -53,12 +53,12 @@ private:
 
 	// Context menu actions
 	void Action_actor_Delete(std::weak_ptr<Directus::Actor> actor);
-	Directus::Actor* Action_actor_CreateEmpty();
-	void Action_actor_CreateCube();
-	void Action_actor_CreateQuad();
-	void Action_actor_CreateSphere();
-	void Action_actor_CreateCylinder();
-	void Action_actor_CreateCone();
+	Directus::Actor* Action_Actor_CreateEmpty();
+	void Action_Actor_CreateCube();
+	void Action_Actor_CreateQuad();
+	void Action_Actor_CreateSphere();
+	void Action_Actor_CreateCylinder();
+	void Action_Actor_CreateCone();
 	void Action_actor_CreateCamera();
 	void Action_actor_CreateLightDirectional();
 	void Action_actor_CreateLightPoint();

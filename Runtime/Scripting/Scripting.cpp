@@ -123,6 +123,11 @@ namespace Directus
 	// it will be inserted back in the pool for re-use
 	void Scripting::ReturnContext(asIScriptContext* context)
 	{
+		if (!context)
+		{
+			LOG_ERROR("Scripting::ReturnContext: Context is null");
+			return;
+		}
 		m_contexts.push_back(context);
 		context->Unprepare();
 	}
@@ -165,7 +170,7 @@ namespace Directus
 	void Scripting::LogExceptionInfo(asIScriptContext* ctx)
 	{
 		string exceptionDescription = ctx->GetExceptionString(); // get the exception that occurred
-		const asIScriptFunction* function = ctx->GetExceptionFunction(); // get the function where the exception occured
+		const asIScriptFunction* function = ctx->GetExceptionFunction(); // get the function where the exception occurred
 
 		string functionDecleration = function->GetDeclaration();
 		string moduleName = function->GetModuleName();
@@ -173,7 +178,7 @@ namespace Directus
 		string scriptFile = FileSystem::GetFileNameFromFilePath(scriptPath);
 		string exceptionLine = to_string(ctx->GetExceptionLineNumber());
 
-		LOG_ERROR(exceptionDescription + ", at line " + exceptionLine + ", in function " + functionDecleration + ", in script " + scriptFile);
+		LOGF_ERROR("%s, at line %s, in function %s, in script %s", exceptionDescription.c_str(), exceptionLine.c_str(), functionDecleration.c_str(), scriptFile.c_str());
 	}
 
 	// This is used for AngelScript error messages
