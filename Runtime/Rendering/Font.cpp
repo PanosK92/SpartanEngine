@@ -19,18 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================================
+//= INCLUDES ===============================
 #include "Font.h"
 #include "../Resource/ResourceManager.h"
-#include "../Rendering/RI/RI_Vertex.h"
-#include "../Rendering/RI/D3D11/D3D11_VertexBuffer.h"
-#include "../Rendering/RI/D3D11/D3D11_IndexBuffer.h"
-#include "../Rendering/RI/D3D11/D3D11_Device.h"
-#include "../Rendering/RI/RI_Texture.h"
-#include "../Rendering/RI/Backend_Imp.h"
+#include "../RHI/RHI_Vertex.h"
+#include "../RHI/D3D11/D3D11_VertexBuffer.h"
+#include "../RHI/D3D11/D3D11_IndexBuffer.h"
+#include "../RHI/D3D11/D3D11_Device.h"
+#include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_Implementation.h"
 #include "../Core/Settings.h"
 #include "../Core/Stopwatch.h"
-//=================================================
+//==========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -91,7 +91,7 @@ namespace Directus
 		}
 
 		// Create a font texture atlas form the provided data
-		m_textureAtlas = make_unique<RI_Texture>(m_context);
+		m_textureAtlas = make_unique<RHI_Texture>(m_context);
 		if (!m_textureAtlas->CreateShaderResource(texAtlasWidth, texAtlasHeight, 1, atlasBuffer, Texture_Format_R8_UNORM))
 		{
 			LOG_ERROR("Font: Failed to create shader resource.");
@@ -188,7 +188,7 @@ namespace Directus
 		m_fontSize = Clamp<int>(size, 8, 50);
 	}
 
-	bool Font::UpdateBuffers(vector<RI_Vertex_PosUV>& vertices, vector<unsigned int>& indices)
+	bool Font::UpdateBuffers(vector<RHI_Vertex_PosUV>& vertices, vector<unsigned int>& indices)
 	{
 		if (!m_context)
 			return false;
@@ -197,14 +197,14 @@ namespace Directus
 		if (!m_vertexBuffer)
 		{
 			m_vertexBuffer = make_shared<D3D11_VertexBuffer>(rhi);
-			if (!m_vertexBuffer->CreateDynamic(sizeof(RI_Vertex_PosUV), (unsigned int)vertices.size()))
+			if (!m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosUV), (unsigned int)vertices.size()))
 			{
 				LOG_ERROR("Font: Failed to create vertex buffer.");
 				return false;
 			}	
 		}
 		void* data = m_vertexBuffer->Map();
-		memcpy(data, &vertices[0], sizeof(RI_Vertex_PosUV) * vertices.size());
+		memcpy(data, &vertices[0], sizeof(RHI_Vertex_PosUV) * vertices.size());
 		m_vertexBuffer->Unmap();
 
 		// Index buffer

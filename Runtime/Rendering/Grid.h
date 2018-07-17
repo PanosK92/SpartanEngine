@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <vector>
 #include <memory>
-#include "RI/Backend_Def.h"
+#include "../RHI/RHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Core/EngineDefs.h"
 //=============================
@@ -46,7 +46,7 @@ namespace Directus
 
 	private:
 		void BuildGrid();
-		bool CreateBuffers(std::vector<RI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices);
+		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices);
 
 		Context* m_context;
 		unsigned int m_indexCount;

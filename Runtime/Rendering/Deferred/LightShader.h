@@ -21,16 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============================
-#include "../RI/Backend_Def.h"
-#include "../RI/D3D11/D3D11_ConstantBuffer.h"
-#include "../RI/D3D11/D3D11_Shader.h"
+//= INCLUDES ==============================
+#include "../../RHI/RHI_Definition.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Vector4.h"
 #include "../../Scene/Components/Camera.h"
 #include "../../Scene/Components/Light.h"
 #include "../../Resource/ResourceManager.h"
-//==========================================
+//=========================================
 
 namespace Directus
 {

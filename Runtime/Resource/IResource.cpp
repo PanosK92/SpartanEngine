@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/IResource.h"
 #include "ResourceManager.h"
 #include "../Audio/AudioClip.h"
-#include "../Rendering/RI/RI_Texture.h"
+#include "../RHI/RHI_Texture.h"
 #include "../Rendering/Font.h"
 #include "../Rendering/Animation.h"
 #include "../Rendering/Model.h"
@@ -41,7 +41,7 @@ template <typename T>
 ResourceType IResource::DeduceResourceType() { return Resource_Unknown; }
 // Explicit template instantiation
 #define INSTANTIATE_ToResourceType(T, enumT) template<> ENGINE_CLASS ResourceType IResource::DeduceResourceType<T>() { return enumT; }
-INSTANTIATE_ToResourceType(RI_Texture,			Resource_Texture)
+INSTANTIATE_ToResourceType(RHI_Texture,			Resource_Texture)
 INSTANTIATE_ToResourceType(AudioClip,		Resource_Audio)
 INSTANTIATE_ToResourceType(Material,		Resource_Material)
 INSTANTIATE_ToResourceType(ShaderVariation, Resource_Shader)

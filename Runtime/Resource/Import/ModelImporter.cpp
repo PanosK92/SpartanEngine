@@ -41,8 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Renderable.h"
 #include "../ProgressReport.h"
-#include "../../Rendering/RI/RI_Device.h"
-#include "../../Rendering/RI/RI_Texture.h"
+#include "../../RHI/RHI_Device.h"
+#include "../../RHI/RHI_Texture.h"
 //============================================
 
 //= NAMESPACES ================
@@ -275,7 +275,7 @@ namespace Directus
 			return;
 
 		//= MESH ======================================================================
-		vector<RI_Vertex_PosUVTBN> vertices;
+		vector<RHI_Vertex_PosUVTBN> vertices;
 		AssimpMesh_ExtractVertices(assimpMesh, &vertices);
 
 		vector<unsigned int> indices;
@@ -321,7 +321,7 @@ namespace Directus
 		//==============================================================================
 	}
 
-	void ModelImporter::AssimpMesh_ExtractVertices(aiMesh* assimpMesh, vector<RI_Vertex_PosUVTBN>* vertices)
+	void ModelImporter::AssimpMesh_ExtractVertices(aiMesh* assimpMesh, vector<RHI_Vertex_PosUVTBN>* vertices)
 	{
 		Vector3 position;
 		Vector2 uv;

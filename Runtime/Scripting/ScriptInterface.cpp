@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "ScriptInterface.h"
 #include "../Core/Timer.h"
-#include "../Input/Backend_Def.h"
-#include "../Input/Backend_Imp.h"
+#include "../Input/Input_Definition.h"
+#include "../Input/Input_Implementation.h"
 #include "../Logging/Log.h"
 #include "../Rendering/Material.h"
 #include "../Math/Vector3.h"

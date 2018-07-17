@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../Rendering/Mesh.h"
-#include "../../Rendering/RI/RI_Vertex.h"
+#include "../../RHI/RHI_Vertex.h"
 #include "../../Logging/Log.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
@@ -198,7 +198,7 @@ namespace Directus
 
 			// Get geometry
 			vector<unsigned int> indices;
-			vector<RI_Vertex_PosUVTBN> vertices;
+			vector<RHI_Vertex_PosUVTBN> vertices;
 			renderable->Geometry_Get(&indices, &vertices);
 
 			if (vertices.empty())
@@ -211,7 +211,7 @@ namespace Directus
 			m_collisionShape = make_shared<btConvexHullShape>(
 				(btScalar*)&vertices[0],					// points
 				renderable->Geometry_VertexCount(),			// point count
-				(unsigned int)sizeof(RI_Vertex_PosUVTBN));	// stride
+				(unsigned int)sizeof(RHI_Vertex_PosUVTBN));	// stride
 
 			// Scaling has to be done before (potential) optimization
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));

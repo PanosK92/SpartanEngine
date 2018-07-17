@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <LinearMath/btIDebugDraw.h>
 #pragma warning(pop)
 #include <vector>
-#include "../Rendering/RI/RI_Vertex.h"
+#include "../RHI/RHI_Vertex.h"
 //=====================================
 
 namespace Directus
@@ -54,10 +54,10 @@ namespace Directus
 		//=============================================================================================================================================
 
 		bool IsDirty();
-		const std::vector<RI_Vertex_PosCol>& GetLines();
+		const std::vector<RHI_Vertex_PosCol>& GetLines();
 		void Clear();
 	private:
-		std::vector<RI_Vertex_PosCol> m_lines;
+		std::vector<RHI_Vertex_PosCol> m_lines;
 		bool m_isDirty;
 	};
 }

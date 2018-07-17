@@ -25,8 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include <memory>
 #include <vector>
-#include "../../Rendering/RI/RI_Vertex.h"
-#include "../../Rendering/RI/D3D11/D3D11_VertexBuffer.h"
+#include "../../RHI/RHI_Vertex.h"
+#include "../../RHI/D3D11/D3D11_VertexBuffer.h"
 //=====================================================
 
 namespace Directus
@@ -46,8 +46,8 @@ namespace Directus
 		//= INPUT ===================================================================================
 		void AddBoundigBox(const Math::BoundingBox& box, const Math::Vector4& color);
 		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color);	
-		void AddLines(const std::vector<RI_Vertex_PosCol>& lineList);
-		void AddVertex(const RI_Vertex_PosCol& line);
+		void AddLines(const std::vector<RHI_Vertex_PosCol>& lineList);
+		void AddVertex(const RHI_Vertex_PosCol& line);
 		void ClearVertices();
 
 		//= MISC ================================================================
@@ -58,7 +58,7 @@ namespace Directus
 	private:
 		//= VERTICES =====================================
 		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
-		std::vector<RI_Vertex_PosCol> m_vertices;
+		std::vector<RHI_Vertex_PosCol> m_vertices;
 		//================================================
 
 		//= MISC =================

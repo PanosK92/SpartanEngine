@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include <memory>
 #include <vector>
-#include "../../Rendering/RI/Backend_Def.h"
+#include "../../RHI/RHI_Definition.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Ray.h"
 #include "../../Math/Frustum.h"
@@ -66,7 +66,7 @@ namespace Directus
 
 		//= RAYCASTING ====================================================
 		// Returns a the picking ray as vertices (can be used to render it)
-		std::vector<RI_Vertex_PosCol> GetPickingRay();
+		std::vector<RHI_Vertex_PosCol> GetPickingRay();
 
 		// Returns the nearest actor under the cursor
 		std::weak_ptr<Actor> Pick(const Math::Vector2& mousePos);

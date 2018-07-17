@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include <map>
-#include "RI/Backend_Def.h"
+#include "../RHI/RHI_Definition.h"
 #include "../Core/EngineDefs.h"
 #include "../Resource/IResource.h"
 #include "../Math/Vector4.h"
@@ -62,17 +62,17 @@ namespace Directus
 		unsigned int GetIndexCount() { return (unsigned int)m_indices.size(); }
 			
 	private:	
-		bool UpdateBuffers(std::vector<RI_Vertex_PosUV>& vertices, std::vector<unsigned int>& indices);
+		bool UpdateBuffers(std::vector<RHI_Vertex_PosUV>& vertices, std::vector<unsigned int>& indices);
 
 		std::map<unsigned int, Glyph> m_glyphs;
-		std::unique_ptr<RI_Texture> m_textureAtlas;
+		std::unique_ptr<RHI_Texture> m_textureAtlas;
 		int m_fontSize;
 		int m_charMaxWidth;
 		int m_charMaxHeight;
 		Math::Vector4 m_fontColor;
 		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<D3D11_IndexBuffer> m_indexBuffer;
-		std::vector<RI_Vertex_PosUV> m_vertices;
+		std::vector<RHI_Vertex_PosUV> m_vertices;
 		std::vector<unsigned int> m_indices;
 		std::string m_currentText;
 	};

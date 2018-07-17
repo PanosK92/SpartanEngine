@@ -19,21 +19,23 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES =================================
 #include "Renderer.h"
 #include "Rectangle.h"
 #include "Material.h"
 #include "Mesh.h"
 #include "Grid.h"
 #include "Font.h"
-#include "RI/RI_Shader.h"
-#include "RI/RI_Texture.h"
-#include "RI/D3D11/D3D11_Device.h"
-#include "RI/D3D11/D3D11_RenderTexture.h"
-#include "RI/D3D11/D3D11_Sampler.h"
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/LightShader.h"
 #include "Deferred/GBuffer.h"
+#include "../RHI/RHI_Shader.h"
+#include "../RHI/RHI_Texture.h"
+#include "../RHI/D3D11/D3D11_Device.h"
+#include "../RHI/D3D11/D3D11_RenderTexture.h"
+#include "../RHI/D3D11/D3D11_Sampler.h"
+#include "../RHI/D3D11/D3D11_Shader.h"
+#include "../RHI/D3D11/D3D11_ConstantBuffer.h"
 #include "../Core/Context.h"
 #include "../Core/EventSystem.h"
 #include "../Scene/Actor.h"
@@ -46,7 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Resource/ResourceManager.h"
 #include "../Scene/TransformationGizmo.h"
-//===========================================
+//============================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -132,91 +134,91 @@ namespace Directus
 			m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_rhi);
 
 			// Line
-			m_shaderLine = make_unique<RI_Shader>(m_context);
+			m_shaderLine = make_unique<RHI_Shader>(m_context);
 			m_shaderLine->Compile(shaderDirectory + "Line.hlsl", Input_PositionColor);
 			m_shaderLine->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 			// Depth
-			m_shaderLightDepth = make_unique<RI_Shader>(m_context);
+			m_shaderLightDepth = make_unique<RHI_Shader>(m_context);
 			m_shaderLightDepth->Compile(shaderDirectory + "ShadowingDepth.hlsl", Input_Position);
 			m_shaderLightDepth->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
 
 			// Grid
-			m_shaderGrid = make_unique<RI_Shader>(m_context);
+			m_shaderGrid = make_unique<RHI_Shader>(m_context);
 			m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl", Input_PositionColor);
 			m_shaderGrid->AddBuffer(CB_Matrix, VertexShader);
 
 			// Font
-			m_shaderFont = make_unique<RI_Shader>(m_context);
+			m_shaderFont = make_unique<RHI_Shader>(m_context);
 			m_shaderFont->Compile(shaderDirectory + "Font.hlsl", Input_PositionTexture);
 			m_shaderFont->AddBuffer(CB_Matrix_Vector4, Global);
 
 			// Texture
-			m_shaderTexture = make_unique<RI_Shader>(m_context);
+			m_shaderTexture = make_unique<RHI_Shader>(m_context);
 			m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl", Input_PositionTexture);
 			m_shaderTexture->AddBuffer(CB_Matrix, VertexShader);
 
 			// FXAA
-			m_shaderFXAA = make_unique<RI_Shader>(m_context);
+			m_shaderFXAA = make_unique<RHI_Shader>(m_context);
 			m_shaderFXAA->AddDefine("PASS_FXAA");
 			m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
 			m_shaderFXAA->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Sharpening
-			m_shaderSharpening = make_unique<RI_Shader>(m_context);
+			m_shaderSharpening = make_unique<RHI_Shader>(m_context);
 			m_shaderSharpening->AddDefine("PASS_SHARPENING");
 			m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
 			m_shaderSharpening->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Sharpening
-			m_shaderChromaticAberration = make_unique<RI_Shader>(m_context);
+			m_shaderChromaticAberration = make_unique<RHI_Shader>(m_context);
 			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
 			m_shaderChromaticAberration->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
 			m_shaderChromaticAberration->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Box
-			m_shaderBlurBox = make_unique<RI_Shader>(m_context);
+			m_shaderBlurBox = make_unique<RHI_Shader>(m_context);
 			m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
 			m_shaderBlurBox->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
 			m_shaderBlurBox->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Gaussian Horizontal
-			m_shaderBlurGaussianH = make_unique<RI_Shader>(m_context);
+			m_shaderBlurGaussianH = make_unique<RHI_Shader>(m_context);
 			m_shaderBlurGaussianH->AddDefine("PASS_BLUR_GAUSSIAN_H");
 			m_shaderBlurGaussianH->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
 			m_shaderBlurGaussianH->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Blur Gaussian Vertical
-			m_shaderBlurGaussianV = make_unique<RI_Shader>(m_context);
+			m_shaderBlurGaussianV = make_unique<RHI_Shader>(m_context);
 			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V");
 			m_shaderBlurGaussianV->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
 			m_shaderBlurGaussianV->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Bloom - bright
-			m_shaderBloom_Bright = make_unique<RI_Shader>(m_context);
+			m_shaderBloom_Bright = make_unique<RHI_Shader>(m_context);
 			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT");
 			m_shaderBloom_Bright->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
 			m_shaderBloom_Bright->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Bloom - blend
-			m_shaderBloom_BlurBlend = make_unique<RI_Shader>(m_context);
+			m_shaderBloom_BlurBlend = make_unique<RHI_Shader>(m_context);
 			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
 			m_shaderBloom_BlurBlend->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
 			m_shaderBloom_BlurBlend->AddBuffer(CB_Matrix, VertexShader);
 
 			// Tone-mapping
-			m_shaderCorrection = make_unique<RI_Shader>(m_context);
+			m_shaderCorrection = make_unique<RHI_Shader>(m_context);
 			m_shaderCorrection->AddDefine("PASS_CORRECTION");
 			m_shaderCorrection->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
 			m_shaderCorrection->AddBuffer(CB_Matrix_Vector2, Global);
 
 			// Transformation gizmo
-			m_shaderTransformationGizmo = make_unique<RI_Shader>(m_context);
+			m_shaderTransformationGizmo = make_unique<RHI_Shader>(m_context);
 			m_shaderTransformationGizmo->Compile(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN);
 			m_shaderTransformationGizmo->AddBuffer(CB_Matrix_Vector3_Vector3, Global);
 
 			// Shadowing (shadow mapping & SSAO)
-			m_shaderShadowing = make_unique<RI_Shader>(m_context);
+			m_shaderShadowing = make_unique<RHI_Shader>(m_context);
 			m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl", Input_PositionTexture);
 			m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 		}
@@ -224,18 +226,18 @@ namespace Directus
 		// TEXTURES
 		{
 			// Noise texture (used by SSAO shader)
-			m_texNoiseMap = make_unique<RI_Texture>(m_context);
+			m_texNoiseMap = make_unique<RHI_Texture>(m_context);
 			m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
 			m_texNoiseMap->SetType(TextureType_Normal);
 
 			// Gizmo icons
-			m_gizmoTexLightDirectional = make_unique<RI_Texture>(m_context);
+			m_gizmoTexLightDirectional = make_unique<RHI_Texture>(m_context);
 			m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
 			m_gizmoTexLightDirectional->SetType(TextureType_Albedo);
-			m_gizmoTexLightPoint = make_unique<RI_Texture>(m_context);
+			m_gizmoTexLightPoint = make_unique<RHI_Texture>(m_context);
 			m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
 			m_gizmoTexLightPoint->SetType(TextureType_Albedo);
-			m_gizmoTexLightSpot = make_unique<RI_Texture>(m_context);
+			m_gizmoTexLightSpot = make_unique<RHI_Texture>(m_context);
 			m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
 			m_gizmoTexLightSpot->SetType(TextureType_Albedo);
 			m_gizmoRectLight = make_unique<Rectangle>(m_context);
@@ -340,7 +342,7 @@ namespace Directus
 		m_rhi->SetBackBufferViewport((float)width, (float)height);
 	}
 
-	const RI_Viewport& Renderer::GetViewportBackBuffer()
+	const RHI_Viewport& Renderer::GetViewportBackBuffer()
 	{
 		return m_rhi->GetBackBufferViewport();
 	}
@@ -1065,7 +1067,7 @@ namespace Directus
 					if (scale == GIZMO_MIN_SIZE)
 						continue;
 
-					RI_Texture* lightTex = nullptr;
+					RHI_Texture* lightTex = nullptr;
 					LightType type = light->Getactor_PtrRaw()->GetComponent<Light>().lock()->GetLightType();
 					if (type == LightType_Directional)
 					{

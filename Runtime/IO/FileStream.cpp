@@ -19,18 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ===================
 #include "FileStream.h"
-#include "../Scene/Actor.h"
+#include <iostream>
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
-#include "../Logging/Log.h"
-#include "../Rendering/RI/RI_Vertex.h"
-#include <iostream>
 #include "../Math/BoundingBox.h"
-//====================================
+#include "../Scene/Actor.h"
+#include "../Logging/Log.h"
+#include "../RHI/RHI_Vertex.h"
+//==============================
 
 //= NAMESPACES ================
 using namespace std;
@@ -124,11 +124,11 @@ namespace Directus
 		out.write(reinterpret_cast<const char*>(&value), sizeof(BoundingBox));
 	}
 
-	void FileStream::Write(const vector<RI_Vertex_PosUVTBN>& value)
+	void FileStream::Write(const vector<RHI_Vertex_PosUVTBN>& value)
 	{
 		auto length = (unsigned int)value.size();
 		Write(length);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RI_Vertex_PosUVTBN) * length);
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RHI_Vertex_PosUVTBN) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned int>& value)
@@ -205,7 +205,7 @@ namespace Directus
 		}
 	}
 
-	void FileStream::Read(vector<RI_Vertex_PosUVTBN>* vec)
+	void FileStream::Read(vector<RHI_Vertex_PosUVTBN>* vec)
 	{
 		if (!vec)
 			return;
@@ -218,7 +218,7 @@ namespace Directus
 		vec->reserve(length);
 		vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(vec->data()), sizeof(RI_Vertex_PosUVTBN) * length);
+		in.read(reinterpret_cast<char*>(vec->data()), sizeof(RHI_Vertex_PosUVTBN) * length);
 	}
 
 	void FileStream::Read(vector<unsigned int>* vec)
