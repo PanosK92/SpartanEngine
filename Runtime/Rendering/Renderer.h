@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <memory>
 #include <vector>
-#include "RI/Backend_Def.h"
+#include "../RHI/RHI_Definition.h"
 #include "../Core/Settings.h"
 #include "../Core/SubSystem.h"
 #include "../Math/Matrix.h"
@@ -89,7 +89,7 @@ namespace Directus
 
 		// The back-buffer is the final output (should match the display size)
 		void SetBackBufferSize(int width, int height);
-		const RI_Viewport& GetViewportBackBuffer();
+		const RHI_Viewport& GetViewportBackBuffer();
 
 		// The actual frame that all rendering takes place (or the viewport window in the editor)
 		void SetResolution(int width, int height);
@@ -159,22 +159,22 @@ namespace Directus
 
 		//= SHADERS ===========================================
 		std::unique_ptr<LightShader> m_shaderLight;
-		std::unique_ptr<RI_Shader> m_shaderLightDepth;
-		std::unique_ptr<RI_Shader> m_shaderLine;
-		std::unique_ptr<RI_Shader> m_shaderGrid;
-		std::unique_ptr<RI_Shader> m_shaderFont;
-		std::unique_ptr<RI_Shader> m_shaderTexture;
-		std::unique_ptr<RI_Shader> m_shaderFXAA;
-		std::unique_ptr<RI_Shader> m_shaderShadowing;
-		std::unique_ptr<RI_Shader> m_shaderSharpening;
-		std::unique_ptr<RI_Shader> m_shaderChromaticAberration;
-		std::unique_ptr<RI_Shader> m_shaderBlurBox;
-		std::unique_ptr<RI_Shader> m_shaderBlurGaussianH;
-		std::unique_ptr<RI_Shader> m_shaderBlurGaussianV;
-		std::unique_ptr<RI_Shader> m_shaderBloom_Bright;
-		std::unique_ptr<RI_Shader> m_shaderBloom_BlurBlend;
-		std::unique_ptr<RI_Shader> m_shaderCorrection;
-		std::unique_ptr<RI_Shader> m_shaderTransformationGizmo;
+		std::unique_ptr<RHI_Shader> m_shaderLightDepth;
+		std::unique_ptr<RHI_Shader> m_shaderLine;
+		std::unique_ptr<RHI_Shader> m_shaderGrid;
+		std::unique_ptr<RHI_Shader> m_shaderFont;
+		std::unique_ptr<RHI_Shader> m_shaderTexture;
+		std::unique_ptr<RHI_Shader> m_shaderFXAA;
+		std::unique_ptr<RHI_Shader> m_shaderShadowing;
+		std::unique_ptr<RHI_Shader> m_shaderSharpening;
+		std::unique_ptr<RHI_Shader> m_shaderChromaticAberration;
+		std::unique_ptr<RHI_Shader> m_shaderBlurBox;
+		std::unique_ptr<RHI_Shader> m_shaderBlurGaussianH;
+		std::unique_ptr<RHI_Shader> m_shaderBlurGaussianV;
+		std::unique_ptr<RHI_Shader> m_shaderBloom_Bright;
+		std::unique_ptr<RHI_Shader> m_shaderBloom_BlurBlend;
+		std::unique_ptr<RHI_Shader> m_shaderCorrection;
+		std::unique_ptr<RHI_Shader> m_shaderTransformationGizmo;
 		//=====================================================
 
 		//= SAMPLERS =================================================
@@ -190,9 +190,9 @@ namespace Directus
 		//= DEBUG ==========================================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
-		std::unique_ptr<RI_Texture> m_gizmoTexLightDirectional;
-		std::unique_ptr<RI_Texture> m_gizmoTexLightPoint;
-		std::unique_ptr<RI_Texture> m_gizmoTexLightSpot;
+		std::unique_ptr<RHI_Texture> m_gizmoTexLightDirectional;
+		std::unique_ptr<RHI_Texture> m_gizmoTexLightPoint;
+		std::unique_ptr<RHI_Texture> m_gizmoTexLightSpot;
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
 		static unsigned long m_flags;
 		//==================================================
@@ -200,7 +200,7 @@ namespace Directus
 		//= MISC ==================================
 		std::vector<void*> m_texArray;
 		ID3D11ShaderResourceView* m_texEnvironment;
-		std::unique_ptr<RI_Texture> m_texNoiseMap;
+		std::unique_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
 		//=========================================
 

@@ -19,15 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================================
+//= INCLUDES ====================================
 #include "LightShader.h"
 #include "../../Logging/Log.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Light.h"
 #include "../../Core/Settings.h"
-#include "../RI/Backend_Imp.h"
-#include "../../Rendering/RI/D3D11//D3D11_RenderTexture.h"
-//========================================================
+#include "../../RHI/RHI_Implementation.h"
+#include "../../RHI/D3D11//D3D11_RenderTexture.h"
+#include "../../RHI/D3D11/D3D11_ConstantBuffer.h"
+#include "../../RHI/D3D11/D3D11_Shader.h"
+//===============================================
 
 //= NAMESPACES ================
 using namespace std;

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <vector>
 #include <memory>
-#include "Rendering/RI/Backend_Def.h"
+#include "RHI/RHI_Definition.h"
 //===================================
 
 class Widget;

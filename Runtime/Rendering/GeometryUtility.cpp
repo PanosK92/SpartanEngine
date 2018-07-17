@@ -19,12 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES =================
 #include "GeometryUtility.h"
 #include "..\Math\Vector2.h"
 #include "..\Math\Vector3.h"
-#include "..\Rendering\RI\RI_Vertex.h"
-//====================================
+#include "..\RHI\RHI_Vertex.h"
+//============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -33,7 +33,7 @@ using namespace std;
 
 namespace Directus
 {
-	void GeometryUtility::CreateCube(vector<RI_Vertex_PosUVTBN>* vertices, vector<unsigned int>* indices)
+	void GeometryUtility::CreateCube(vector<RHI_Vertex_PosUVTBN>* vertices, vector<unsigned int>* indices)
 	{
 		// front
 		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f),Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
@@ -96,7 +96,7 @@ namespace Directus
 		indices->emplace_back(23); indices->emplace_back(21); indices->emplace_back(22);
 	}
 
-	void GeometryUtility::CreateQuad(vector<RI_Vertex_PosUVTBN>* vertices, vector<unsigned int>* indices)
+	void GeometryUtility::CreateQuad(vector<RHI_Vertex_PosUVTBN>* vertices, vector<unsigned int>* indices)
 	{
 		vertices->emplace_back(Vector3(-0.5f, 0.0f, 0.5f),	Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 0 top-left
 		vertices->emplace_back(Vector3(0.5f, 0.0f, 0.5f),	Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 1 top-right
@@ -111,7 +111,7 @@ namespace Directus
 		indices->emplace_back(1);
 	}
 
-	void GeometryUtility::CreateSphere(vector<RI_Vertex_PosUVTBN>* vertices,vector<unsigned>* indices, float radius /*=1.0f*/, int slices /*=15*/, int stacks /*=15*/)
+	void GeometryUtility::CreateSphere(vector<RHI_Vertex_PosUVTBN>* vertices,vector<unsigned>* indices, float radius /*=1.0f*/, int slices /*=15*/, int stacks /*=15*/)
 	{
 		Vector3 normal		= Vector3(0, 1, 0);
 		Vector3 tangent		= Vector3(1, 0, 0);
@@ -176,7 +176,7 @@ namespace Directus
 		}
 	}
 
-	void GeometryUtility::CreateCylinder(vector<RI_Vertex_PosUVTBN>* vertices, vector<unsigned>* indices, float radiusTop /*=1.0f*/, float radiusBottom /*=1.0f*/, float height /*=1.0f*/, int slices /*=15*/, int stacks /*=15*/)
+	void GeometryUtility::CreateCylinder(vector<RHI_Vertex_PosUVTBN>* vertices, vector<unsigned>* indices, float radiusTop /*=1.0f*/, float radiusBottom /*=1.0f*/, float height /*=1.0f*/, int slices /*=15*/, int stacks /*=15*/)
 	{
 		float stackHeight	= height / stacks;
 		float radiusStep	= (radiusTop - radiusBottom) / stacks;
@@ -286,7 +286,7 @@ namespace Directus
 		}
 	}
 
-	void GeometryUtility::CreateCone(vector<RI_Vertex_PosUVTBN>* vertices, vector<unsigned>* indices, float radius /*=1.0f*/, float height /*=2.0f*/)
+	void GeometryUtility::CreateCone(vector<RHI_Vertex_PosUVTBN>* vertices, vector<unsigned>* indices, float radius /*=1.0f*/, float height /*=2.0f*/)
 	{
 		CreateCylinder(vertices, indices, 0.0f, radius, height);
 	}

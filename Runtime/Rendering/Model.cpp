@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "Material.h"
 #include "Animation.h"
-#include "RI/Backend_Imp.h"
-#include "RI/D3D11/D3D11_VertexBuffer.h"
-#include "RI/D3D11/D3D11_IndexBuffer.h"
+#include "../RHI/RHI_Implementation.h"
+#include "../RHI/D3D11/D3D11_VertexBuffer.h"
+#include "../RHI/D3D11/D3D11_IndexBuffer.h"
 #include "../Scene/Actor.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
@@ -113,14 +113,14 @@ namespace Directus
 	}
 	//=======================================================
 
-	void Model::Geometry_Append(std::vector<unsigned int>& indices, std::vector<RI_Vertex_PosUVTBN>& vertices, unsigned int* indexOffset, unsigned int* vertexOffset)
+	void Model::Geometry_Append(std::vector<unsigned int>& indices, std::vector<RHI_Vertex_PosUVTBN>& vertices, unsigned int* indexOffset, unsigned int* vertexOffset)
 	{
 		// Append indices and vertices to the main mesh
 		m_mesh->Indices_Append(indices, indexOffset);
 		m_mesh->Vertices_Append(vertices, vertexOffset);
 	}
 
-	void Model::Geometry_Get(unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, vector<unsigned int>* indices, vector<RI_Vertex_PosUVTBN>* vertices)
+	void Model::Geometry_Get(unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, vector<unsigned int>* indices, vector<RHI_Vertex_PosUVTBN>* vertices)
 	{
 		m_mesh->Geometry_Get(indexOffset, indexCount, vertexOffset, vertexCount, indices, vertices);
 	}
@@ -222,7 +222,7 @@ namespace Directus
 
 		// Try to get the texture
 		auto texName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
-		auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RI_Texture>(texName).lock();
+		auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName).lock();
 		if (texture)
 		{
 			texture->SetType(textureType); // if this texture was cached from the editor, it has no type, we have to set it
@@ -232,7 +232,7 @@ namespace Directus
 		else if (!texture)
 		{
 			// Load texture
-			texture = make_shared<RI_Texture>(m_context);
+			texture = make_shared<RHI_Texture>(m_context);
 			texture->LoadFromFile(filePath);
 			texture->SetType(textureType);
 
@@ -245,7 +245,7 @@ namespace Directus
 			texture->ClearTextureBytes();
 
 			// Set the texture to the provided material
-			material.lock()->SetTexture(texture->Cache<RI_Texture>(), false);
+			material.lock()->SetTexture(texture->Cache<RHI_Texture>(), false);
 		}
 	}
 
@@ -312,7 +312,7 @@ namespace Directus
 
 		// Get geometry
 		vector<unsigned int> indices		= m_mesh->Indices_Get();
-		vector<RI_Vertex_PosUVTBN> vertices	= m_mesh->Vertices_Get();
+		vector<RHI_Vertex_PosUVTBN> vertices	= m_mesh->Vertices_Get();
 
 		if (!indices.empty())
 		{

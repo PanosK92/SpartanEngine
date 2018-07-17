@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <map>
 #include <memory>
-#include "RI/Backend_Def.h"
+#include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
@@ -56,8 +56,8 @@ namespace Directus
 		//==============================================================
 
 		//= TEXTURES =====================================================================
-		void SetTexture(const std::weak_ptr<RI_Texture>& textureWeak, bool autoCache = true);
-		std::weak_ptr<RI_Texture> GetTextureByType(TextureType type) { return m_textures[type]; }
+		void SetTexture(const std::weak_ptr<RHI_Texture>& textureWeak, bool autoCache = true);
+		std::weak_ptr<RHI_Texture> GetTextureByType(TextureType type) { return m_textures[type]; }
 		bool HasTextureOfType(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
@@ -138,7 +138,7 @@ namespace Directus
 		bool m_isEditable;
 		std::weak_ptr<ShaderVariation> m_shader;
 		// <tex_type, <tex,	tex_path>>
-		std::map<TextureType, std::weak_ptr<RI_Texture>> m_textures;
+		std::map<TextureType, std::weak_ptr<RHI_Texture>> m_textures;
 		std::vector<void*> m_shaderResources;
 	};
 }

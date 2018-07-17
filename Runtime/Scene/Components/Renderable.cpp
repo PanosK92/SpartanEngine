@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================================
 #include "Renderable.h"
 #include "Transform.h"
-#include "../../Rendering/RI/RI_Vertex.h"
+#include "../../RHI/RHI_Vertex.h"
 #include "../../Rendering/Material.h"
 #include "../../Rendering/Deferred/ShaderVariation.h"
 #include "../../Rendering/GeometryUtility.h"
@@ -45,7 +45,7 @@ namespace Directus
 		inline void Build(GeometryType type, Renderable* renderable)
 		{	
 			Model* model = new Model(renderable->GetContext());
-			vector<RI_Vertex_PosUVTBN> vertices;
+			vector<RHI_Vertex_PosUVTBN> vertices;
 			vector<unsigned int> indices;
 
 			// Construct geometry
@@ -195,7 +195,7 @@ namespace Directus
 		}
 	}
 
-	void Renderable::Geometry_Get(vector<unsigned int>* indices, vector<RI_Vertex_PosUVTBN>* vertices)
+	void Renderable::Geometry_Get(vector<unsigned int>* indices, vector<RHI_Vertex_PosUVTBN>* vertices)
 	{
 		if (!m_model)
 		{

@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ========================
 #include <string>
 #include <vector>
 #include <memory>
-//===============
+#include "RHI/RHI_Definition.h"
+//===================================
 
 enum Icon_Type
 {
@@ -62,16 +63,12 @@ enum Icon_Type
 	Thumbnail_File_Font
 };
 
-namespace Directus
-{
-	class Context;
-	class RI_Texture;
-}
+namespace Directus {class Context;}
 
 struct Thumbnail
 {
 	Thumbnail(){}
-	Thumbnail(Icon_Type type, std::shared_ptr<Directus::RI_Texture> texture, const std::string& filePath)
+	Thumbnail(Icon_Type type, std::shared_ptr<Directus::RHI_Texture> texture, const std::string& filePath)
 	{
 		this->type = type;
 		this->texture = texture;
@@ -79,7 +76,7 @@ struct Thumbnail
 	}
 
 	Icon_Type type;
-	std::shared_ptr<Directus::RI_Texture> texture;
+	std::shared_ptr<Directus::RHI_Texture> texture;
 	std::string filePath;
 };
 

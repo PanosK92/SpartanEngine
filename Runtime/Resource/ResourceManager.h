@@ -25,14 +25,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <map>
 #include "ResourceCache.h"
-#include "../Core/SubSystem.h"
 #include "Import/ModelImporter.h"
 #include "Import/ImageImporter.h"
 #include "Import/FontImporter.h"
+#include "../Core/SubSystem.h"
+#include "../Audio/AudioClip.h"
 #include "../Rendering/Model.h"
 #include "../Rendering/Material.h"
-#include "../Audio/AudioClip.h"
-#include "../Rendering/RI/RI_Texture.h"
+#include "../RHI/RHI_Texture.h"
 //================================
 
 namespace Directus

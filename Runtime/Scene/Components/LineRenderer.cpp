@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
-#include "../../Rendering/RI/Backend_Def.h"
-#include "../../Rendering/RI/D3D11/D3D11_Device.h"
+#include "../../RHI/RHI_Definition.h"
+#include "../../RHI/D3D11/D3D11_Device.h"
 //=================================================
 
 //= NAMESPACES ================
@@ -79,17 +79,17 @@ namespace Directus
 
 	void LineRenderer::AddLine(const Vector3& from, const Vector3& to, const Vector4& color)
 	{
-		AddVertex(RI_Vertex_PosCol{ from, color });
-		AddVertex(RI_Vertex_PosCol{ to, color });
+		AddVertex(RHI_Vertex_PosCol{ from, color });
+		AddVertex(RHI_Vertex_PosCol{ to, color });
 	}
 
-	void LineRenderer::AddLines(const vector<RI_Vertex_PosCol>& lineList)
+	void LineRenderer::AddLines(const vector<RHI_Vertex_PosCol>& lineList)
 	{
 		m_vertices.insert(m_vertices.end(), lineList.begin(), lineList.end());
 	}
 
 	// All add functions resolve to this one
-	void LineRenderer::AddVertex(const RI_Vertex_PosCol& line)
+	void LineRenderer::AddVertex(const RHI_Vertex_PosCol& line)
 	{
 		m_vertices.push_back(line);
 	}
@@ -113,7 +113,7 @@ namespace Directus
 	void LineRenderer::CreateVertexBuffer()
 	{
 		m_vertexBuffer = make_shared<D3D11_VertexBuffer>(GetContext()->GetSubsystem<RHI>());
-		m_vertexBuffer->CreateDynamic(sizeof(RI_Vertex_PosCol), (unsigned int)m_vertices.size());
+		m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosCol), (unsigned int)m_vertices.size());
 	}
 
 	//= MISC ================================================================
@@ -126,7 +126,7 @@ namespace Directus
 		void* data = m_vertexBuffer->Map();
 
 		// update the vertex buffer.
-		memcpy(data, &m_vertices[0], sizeof(RI_Vertex_PosCol) * (int)m_vertices.size());
+		memcpy(data, &m_vertices[0], sizeof(RHI_Vertex_PosCol) * (int)m_vertices.size());
 
 		// re-enable GPU access to the vertex buffer data.
 		m_vertexBuffer->Unmap();

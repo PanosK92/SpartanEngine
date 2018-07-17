@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
-#include "../../Rendering/RI/RI_Texture.h"
+#include "../../RHI/RHI_Texture.h"
 #include "../../Core/Settings.h"
 //=====================================
 
@@ -52,7 +52,7 @@ namespace Directus
 		FreeImage_DeInitialise();
 	}
 
-	void ImageImporter::LoadAsync(const string& filePath, RI_Texture* texInfo)
+	void ImageImporter::LoadAsync(const string& filePath, RHI_Texture* texInfo)
 	{
 		m_context->GetSubsystem<Threading>()->AddTask([this, &filePath, &texInfo]()
 		{
@@ -60,7 +60,7 @@ namespace Directus
 		});
 	}
 
-	bool ImageImporter::Load(const string& filePath, RI_Texture* texture)
+	bool ImageImporter::Load(const string& filePath, RHI_Texture* texture)
 	{
 		if (!texture)
 			return false;
@@ -240,7 +240,7 @@ namespace Directus
 		return result;
 	}
 
-	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, RI_Texture* texture)
+	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, RHI_Texture* texture)
 	{
 		if (!texture)
 			return;

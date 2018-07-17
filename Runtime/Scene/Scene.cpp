@@ -38,8 +38,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Resource/ProgressReport.h"
 #include "../Rendering/Mesh.h"
-#include "../Rendering/RI/Backend_Imp.h"
-#include "../Rendering/RI/D3D11//D3D11_RenderTexture.h"
+#include "../RHI/RHI_Implementation.h"
+#include "../RHI/D3D11//D3D11_RenderTexture.h"
 #include "../IO/FileStream.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
@@ -231,7 +231,7 @@ namespace Directus
 
 			if (FileSystem::IsEngineTextureFile(resourcePath))
 			{
-				resourceMng->Load<RI_Texture>(resourcePath);
+				resourceMng->Load<RHI_Texture>(resourcePath);
 			}
 
 			ProgressReport::Get().JobDone(g_progress_Scene);

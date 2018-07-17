@@ -37,8 +37,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Core/GUIDGenerator.h"
 #include "../../FileSystem/FileSystem.h"
-#include "../../Rendering/RI/Backend_Imp.h"
-#include "../../Rendering/RI/D3D11//D3D11_RenderTexture.h"
+#include "../../RHI/RHI_Implementation.h"
+#include "../../RHI/D3D11//D3D11_RenderTexture.h"
 //========================================================
 
 //= NAMESPACES =====

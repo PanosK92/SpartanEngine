@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES =====================
 #include "../../Core/EngineDefs.h"
-#include "../../Rendering/RI/Backend_Def.h"
+#include "../../RHI/RHI_Definition.h"
 #include <memory>
 #include <string>
 #include <vector>
-//=========================================
+//================================
 
 struct aiNode;
 struct aiScene;
@@ -62,7 +62,7 @@ namespace Directus
 		);
 		void ReadAnimations(Model* model, const aiScene* scene);
 		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<Actor>& parentActor);
-		void AssimpMesh_ExtractVertices(aiMesh* assimpMesh, std::vector<RI_Vertex_PosUVTBN>* vertices);
+		void AssimpMesh_ExtractVertices(aiMesh* assimpMesh, std::vector<RHI_Vertex_PosUVTBN>* vertices);
 		void AssimpMesh_ExtractIndices(aiMesh* assimpMesh, std::vector<unsigned int>* indices);
 		std::shared_ptr<Material> AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial);
 

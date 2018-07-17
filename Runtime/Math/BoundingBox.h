@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES =================
 #include "MathHelper.h"
 #include "Vector3.h"
 #include <vector>
-#include "../Rendering/RI/RI_Vertex.h"
-//====================================
+#include "../RHI/RHI_Vertex.h"
+//============================
 
 namespace Directus
 {
@@ -45,7 +45,7 @@ namespace Directus
 			BoundingBox(const Vector3& min, const Vector3& max);
 
 			// Construct from vertices
-			BoundingBox(const std::vector<RI_Vertex_PosUVTBN>& vertices);
+			BoundingBox(const std::vector<RHI_Vertex_PosUVTBN>& vertices);
 
 			~BoundingBox() {}
 

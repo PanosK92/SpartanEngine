@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include <vector>
-#include "RI/Backend_Def.h"
+#include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
 //================================
@@ -60,7 +60,7 @@ namespace Directus
 		//= GEOMTETRY =============================================
 		void Geometry_Append(
 			std::vector<unsigned int>& indices,
-			std::vector<RI_Vertex_PosUVTBN>& vertices,
+			std::vector<RHI_Vertex_PosUVTBN>& vertices,
 			unsigned int* indexOffset,
 			unsigned int* vertexOffset
 		);
@@ -70,7 +70,7 @@ namespace Directus
 			unsigned int vertexOffset, 
 			unsigned int vertexCount,
 			std::vector<unsigned int>* indices,
-			std::vector<RI_Vertex_PosUVTBN>* vertices
+			std::vector<RHI_Vertex_PosUVTBN>* vertices
 		);
 		bool Geometry_Bind();
 		void Geometry_Update();

@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/IResource.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Matrix.h"
-#include "../RI/Backend_Def.h"
+#include "../../RHI/RHI_Definition.h"
 //===================================
 
 namespace Directus
@@ -34,8 +34,6 @@ namespace Directus
 	class Light;
 	class Camera;
 	class Material;
-	class D3D11_ConstantBuffer;
-	class D3D11_Shader;
 
 	enum ShaderFlags : unsigned long
 	{

@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ===============================
 #include "Rectangle.h"
-#include "RI/D3D11/D3D11_IndexBuffer.h"
-#include "RI/D3D11/D3D11_VertexBuffer.h"
-#include "RI/RI_Vertex.h"
-#include "RI/Backend_Imp.h"
+#include "../RHI/D3D11/D3D11_IndexBuffer.h"
+#include "../RHI/D3D11/D3D11_VertexBuffer.h"
+#include "../RHI/RHI_Vertex.h"
+#include "../RHI/RHI_Implementation.h"
 #include "../Core/EngineDefs.h"
 #include "../Core/Context.h"
 #include "../Core/Settings.h"
 #include "../Logging/Log.h"
-//=====================================
+//==========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -80,28 +80,28 @@ namespace Directus
 		float bottom = top - m_height;
 
 		// Create index and vertex arrays
-		vector<RI_Vertex_PosUV> vertices;
+		vector<RHI_Vertex_PosUV> vertices;
 		vector<unsigned int> indices;
 
 		// First triangle
 		// Top left
-		vertices.emplace_back(RI_Vertex_PosUV(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
+		vertices.emplace_back(RHI_Vertex_PosUV(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
 
 		// Bottom right
-		vertices.emplace_back(RI_Vertex_PosUV(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
+		vertices.emplace_back(RHI_Vertex_PosUV(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
 
 		// Bottom left
-		vertices.emplace_back(RI_Vertex_PosUV(Vector3(left, bottom, 0.0f), Vector2(0.0f, 1.0f)));
+		vertices.emplace_back(RHI_Vertex_PosUV(Vector3(left, bottom, 0.0f), Vector2(0.0f, 1.0f)));
 
 		// Second triangle
 		// Top left
-		vertices.emplace_back(RI_Vertex_PosUV(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
+		vertices.emplace_back(RHI_Vertex_PosUV(Vector3(left, top, 0.0f), Vector2(0.0f, 0.0f)));
 
 		// Top right
-		vertices.emplace_back(RI_Vertex_PosUV(Vector3(right, top, 0.0f), Vector2(1.0f, 0.0f)));
+		vertices.emplace_back(RHI_Vertex_PosUV(Vector3(right, top, 0.0f), Vector2(1.0f, 0.0f)));
 
 		// Bottom right
-		vertices.emplace_back(RI_Vertex_PosUV(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
+		vertices.emplace_back(RHI_Vertex_PosUV(Vector3(right, bottom, 0.0f), Vector2(1.0f, 1.0f)));
 
 		// Load the index array with data.
 		for (unsigned int i = 0; i < vertices.size(); i++)

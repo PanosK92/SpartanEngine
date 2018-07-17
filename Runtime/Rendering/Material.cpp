@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "Material.h"
 #include "Deferred/ShaderVariation.h"
-#include "RI/RI_Device.h"
-#include "RI/RI_Texture.h"
+#include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_Texture.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
@@ -102,11 +102,11 @@ namespace Directus
 			string texPath		= xml->GetAttributeAs<string>(nodeName, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
-			m_textures[texType] = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RI_Texture>(texName);
+			m_textures[texType] = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
 			// If there is not texture (it's not loaded yet), load it
 			if (m_textures[texType].expired())
 			{
-				m_textures[texType] = m_context->GetSubsystem<ResourceManager>()->Load<RI_Texture>(texPath);
+				m_textures[texType] = m_context->GetSubsystem<ResourceManager>()->Load<RHI_Texture>(texPath);
 			}
 		}
 
@@ -169,7 +169,7 @@ namespace Directus
 		size += sizeof(float) * 5;
 		size += sizeof(Vector2) * 2;
 		size += sizeof(Vector4);
-		size += (unsigned int)(sizeof(std::map<TextureType, std::weak_ptr<RI_Texture>>) + (sizeof(TextureType) + sizeof(std::weak_ptr<RI_Texture>)) * m_textures.size());
+		size += (unsigned int)(sizeof(std::map<TextureType, std::weak_ptr<RHI_Texture>>) + (sizeof(TextureType) + sizeof(std::weak_ptr<RHI_Texture>)) * m_textures.size());
 
 		return size;
 	}
@@ -178,7 +178,7 @@ namespace Directus
 
 	//= TEXTURES ===================================================================
 	// Set texture from an existing texture
-	void Material::SetTexture(const weak_ptr<RI_Texture>& textureWeak, bool autoCache /* true */)
+	void Material::SetTexture(const weak_ptr<RHI_Texture>& textureWeak, bool autoCache /* true */)
 	{
 		// Make sure this texture exists
 		auto texture = textureWeak.lock();
@@ -189,7 +189,7 @@ namespace Directus
 		}
 
 		// Cache it or use the provided reference as is
-		auto texRef = autoCache ? textureWeak.lock()->Cache<RI_Texture>() : textureWeak;
+		auto texRef = autoCache ? textureWeak.lock()->Cache<RHI_Texture>() : textureWeak;
 		// Save a reference
 		m_textures[texture->GetType()] = texRef;
 

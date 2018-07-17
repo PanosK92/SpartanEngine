@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ===============================
 #include "Grid.h"
 #include "../Core/Context.h"
 #include "../Logging/Log.h"
 #include "../Scene/Components/Transform.h"
-#include "RI/RI_Vertex.h"
-#include "RI/D3D11/D3D11_VertexBuffer.h"
-#include "RI/D3D11/D3D11_IndexBuffer.h"
-#include "RI/Backend_Imp.h"
-//========================================
+#include "../RHI/RHI_Vertex.h"
+#include "../RHI/D3D11/D3D11_VertexBuffer.h"
+#include "../RHI/D3D11/D3D11_IndexBuffer.h"
+#include "../RHI/RHI_Implementation.h"
+//==========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -79,7 +79,7 @@ namespace Directus
 
 	void Grid::BuildGrid()
 	{
-		vector<RI_Vertex_PosCol> vertices;
+		vector<RHI_Vertex_PosCol> vertices;
 		int halfSizeW = int(m_terrainWidth * 0.5f);
 		int halfSizeH = int(m_terrainHeight * 0.5f);
 
@@ -91,45 +91,45 @@ namespace Directus
 				// Upper left.
 				float positionX = (float)i;
 				float positionZ = (float)(j + 1);
-				vertices.emplace_back(RI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// Upper right.
 				positionX = (float)(i + 1);
 				positionZ = (float)(j + 1);
-				vertices.emplace_back(RI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// LINE 2
 				// Upper right.
 				positionX = (float)(i + 1);
 				positionZ = (float)(j + 1);
-				vertices.emplace_back(RI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// Bottom right.
 				positionX = (float)(i + 1);
 				positionZ = (float)j;
-				vertices.emplace_back(RI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// LINE 3
 				// Bottom right.
 				positionX = (float)(i + 1);
 				positionZ = (float)j;
-				vertices.emplace_back(RI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// Bottom left.
 				positionX = (float)i;
 				positionZ = (float)j;
-				vertices.emplace_back(RI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// LINE 4
 				// Bottom left.
 				positionX = (float)i;
 				positionZ = (float)j;
-				vertices.emplace_back(RI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 				// Upper left.
 				positionX = (float)i;
 				positionZ = (float)(j + 1);
-				vertices.emplace_back(RI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
 			}
 		}
 
@@ -143,7 +143,7 @@ namespace Directus
 		CreateBuffers(vertices, indices);
 	}
 
-	bool Grid::CreateBuffers(vector<RI_Vertex_PosCol>& vertices, vector<unsigned>& indices)
+	bool Grid::CreateBuffers(vector<RHI_Vertex_PosCol>& vertices, vector<unsigned>& indices)
 	{
 		if (!m_context)
 			return false;

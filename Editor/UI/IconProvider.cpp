@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "IconProvider.h"
-#include "Rendering/RI/RI_Texture.h"
+#include "RHI/RHI_Texture.h"
 #include "../ImGui/Source/imgui.h"
 #include "EditorHelper.h"
 #include "Threading/Threading.h"
@@ -177,7 +177,7 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type 
 	if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
 	{
 		// Make a cheap texture
-		auto texture = std::make_shared<RI_Texture>(m_context);
+		auto texture = std::make_shared<RHI_Texture>(m_context);
 		texture->EnableMimaps(false);
 		texture->SetWidth(size);
 		texture->SetHeight(size);

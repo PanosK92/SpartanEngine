@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <vector>
-#include "RI/Backend_Def.h"
+#include "../RHI/RHI_Definition.h"
 #include "../Core/EngineDefs.h"
 //=============================
 
@@ -32,10 +32,10 @@ namespace Directus
 	class ENGINE_CLASS GeometryUtility
 	{
 	public:
-		static void CreateCube(std::vector<RI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices);
-		static void CreateQuad(std::vector<RI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices);
-		static void CreateSphere(std::vector<RI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, int slices = 15, int stacks = 15);
-		static void CreateCylinder(std::vector<RI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15);
-		static void CreateCone(std::vector<RI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, float height = 2.0f);
+		static void CreateCube(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices);
+		static void CreateQuad(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices);
+		static void CreateSphere(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, int slices = 15, int stacks = 15);
+		static void CreateCylinder(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15);
+		static void CreateCone(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, float height = 2.0f);
 	};
 }

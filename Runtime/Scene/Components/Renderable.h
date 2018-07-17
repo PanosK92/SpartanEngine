@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "IComponent.h"
 #include <vector>
-#include "../../Rendering/RI/Backend_Def.h"
+#include "../../RHI/RHI_Definition.h"
 #include "../../Math/BoundingBox.h"
 //=========================================
 
@@ -70,7 +70,7 @@ namespace Directus
 			const Math::BoundingBox& AABB, 
 			Model* model
 		);
-		void Geometry_Get(std::vector<unsigned int>* indices, std::vector<RI_Vertex_PosUVTBN>* vertices);
+		void Geometry_Get(std::vector<unsigned int>* indices, std::vector<RHI_Vertex_PosUVTBN>* vertices);
 		void Geometry_Set(GeometryType type);
 		unsigned int Geometry_IndexOffset()				{ return m_geometryIndexOffset; }
 		unsigned int Geometry_IndexCount()				{ return m_geometryIndexCount; }		
