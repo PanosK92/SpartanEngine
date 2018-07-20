@@ -48,11 +48,13 @@ private:
 	void HandleDragDrop(Directus::Actor* actorPtr);
 
 	// Misc
-	void ContextMenu();
+	void Popups();
+	void Popup_ContextMenu();	
+	void Popup_ActorRename();
 	void HandleKeyShortcuts();
 
 	// Context menu actions
-	void Action_actor_Delete(std::weak_ptr<Directus::Actor> actor);
+	void Action_Actor_Delete(std::weak_ptr<Directus::Actor> actor);
 	Directus::Actor* Action_Actor_CreateEmpty();
 	void Action_Actor_CreateCube();
 	void Action_Actor_CreateQuad();
