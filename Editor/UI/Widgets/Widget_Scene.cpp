@@ -52,29 +52,30 @@ using namespace Directus;
 weak_ptr<Actor> Widget_Scene::m_actorSelected;
 weak_ptr<Actor> g_actorEmpty;
 
-namespace HierarchyStatics
+namespace SceneHelper
 {
 	static Actor* g_hoveredActor	= nullptr;
 	static Engine* g_engine			= nullptr;
 	static Scene* g_scene			= nullptr;
 	static Input* g_input			= nullptr;
 	static DragDropPayload g_payload;
+	static bool g_popupRenameActor	= false;
 }
 
 Widget_Scene::Widget_Scene()
 {
-	m_title						= "Scene";
-	m_context					= nullptr;
-	HierarchyStatics::g_scene	= nullptr;
+	m_title					= "Scene";
+	m_context				= nullptr;
+	SceneHelper::g_scene	= nullptr;
 }
 
 void Widget_Scene::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 
-	HierarchyStatics::g_engine = m_context->GetSubsystem<Engine>();
-	HierarchyStatics::g_scene = m_context->GetSubsystem<Scene>();
-	HierarchyStatics::g_input = m_context->GetSubsystem<Input>();
+	SceneHelper::g_engine	= m_context->GetSubsystem<Engine>();
+	SceneHelper::g_scene	= m_context->GetSubsystem<Scene>();
+	SceneHelper::g_input	= m_context->GetSubsystem<Input>();
 
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 }
@@ -104,13 +105,13 @@ void Widget_Scene::Tree_Show()
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 		{
 			auto actorID = get<unsigned int>(payload->data);
-			if (auto droppedactor = HierarchyStatics::g_scene->GetActorByID(actorID).lock())
+			if (auto droppedactor = SceneHelper::g_scene->GetActorByID(actorID).lock())
 			{
 				droppedactor->GetTransform_PtrRaw()->SetParent(nullptr);
 			}
 		}
 
-		auto rootActors = HierarchyStatics::g_scene->GetRootActors();
+		auto rootActors = SceneHelper::g_scene->GetRootActors();
 		for (const auto& actor : rootActors)
 		{
 			Tree_AddActor(actor.lock().get());
@@ -124,14 +125,14 @@ void Widget_Scene::Tree_Show()
 
 void Widget_Scene::OnTreeBegin()
 {
-	HierarchyStatics::g_hoveredActor = nullptr;
+	SceneHelper::g_hoveredActor = nullptr;
 }
 
 void Widget_Scene::OnTreeEnd()
 {
 	HandleKeyShortcuts();
 	HandleClicking();
-	ContextMenu();
+	Popups();
 }
 
 void Widget_Scene::Tree_AddActor(Actor* actor)
@@ -163,7 +164,7 @@ void Widget_Scene::Tree_AddActor(Actor* actor)
 	// Manually detect some useful states
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
 	{
-		HierarchyStatics::g_hoveredActor = actor;
+		SceneHelper::g_hoveredActor = actor;
 	}
 
 	HandleDragDrop(actor);	
@@ -194,24 +195,24 @@ void Widget_Scene::HandleClicking()
 		return;	
 
 	// Left click on item - Select
-	if (ImGui::IsMouseClicked(0) && HierarchyStatics::g_hoveredActor)
+	if (ImGui::IsMouseClicked(0) && SceneHelper::g_hoveredActor)
 	{
-		SetSelectedActor(HierarchyStatics::g_hoveredActor->GetPtrShared());
+		SetSelectedActor(SceneHelper::g_hoveredActor->GetPtrShared());
 	}
 
 	// Right click on item - Select and show context menu
 	if (ImGui::IsMouseClicked(1))
 	{
-		if (HierarchyStatics::g_hoveredActor)
+		if (SceneHelper::g_hoveredActor)
 		{			
-			SetSelectedActor(HierarchyStatics::g_hoveredActor->GetPtrShared());
+			SetSelectedActor(SceneHelper::g_hoveredActor->GetPtrShared());
 		}
 
-		ImGui::OpenPopup("##HierarchyContextMenu");		
+		ImGui::OpenPopup("##HierarchyContextMenu");
 	}
 
 	// Clicking on empty space - Clear selection
-	if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !HierarchyStatics::g_hoveredActor)
+	if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !SceneHelper::g_hoveredActor)
 	{
 		SetSelectedActor(g_actorEmpty);
 	}
@@ -222,16 +223,16 @@ void Widget_Scene::HandleDragDrop(Actor* actorPtr)
 	// Drag
 	if (DragDrop::Get().DragBegin())
 	{
-		HierarchyStatics::g_payload.data = actorPtr->GetID();
-		HierarchyStatics::g_payload.type = DragPayload_Actor;
-		DragDrop::Get().DragPayload(HierarchyStatics::g_payload);
+		SceneHelper::g_payload.data = actorPtr->GetID();
+		SceneHelper::g_payload.type = DragPayload_Actor;
+		DragDrop::Get().DragPayload(SceneHelper::g_payload);
 		DragDrop::Get().DragEnd();
 	}
 	// Drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 	{
 		auto actorID = get<unsigned int>(payload->data);
-		if (auto droppedactor = HierarchyStatics::g_scene->GetActorByID(actorID).lock())
+		if (auto droppedactor = SceneHelper::g_scene->GetActorByID(actorID).lock())
 		{
 			if (droppedactor->GetID() != actorPtr->GetID())
 			{
@@ -241,18 +242,27 @@ void Widget_Scene::HandleDragDrop(Actor* actorPtr)
 	}
 }
 
-void Widget_Scene::ContextMenu()
+void Widget_Scene::Popups()
+{
+	Popup_ContextMenu();
+	Popup_ActorRename();
+}
+
+void Widget_Scene::Popup_ContextMenu()
 {
 	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
 		return;
 
 	if (!m_actorSelected.expired())
 	{
-		ImGui::MenuItem("Rename");
+		if (ImGui::MenuItem("Rename"))
+		{
+			SceneHelper::g_popupRenameActor = true;
+		}
 
 		if (ImGui::MenuItem("Delete", "Delete"))
 		{
-			Action_actor_Delete(m_actorSelected);
+			Action_Actor_Delete(m_actorSelected);
 		}
 		ImGui::Separator();
 	}
@@ -352,22 +362,49 @@ void Widget_Scene::ContextMenu()
 	ImGui::EndPopup();
 }
 
-void Widget_Scene::HandleKeyShortcuts()
+void Widget_Scene::Popup_ActorRename()
 {
-	if (HierarchyStatics::g_input->GetButtonKeyboard(Delete))
+	if (SceneHelper::g_popupRenameActor)
 	{
-		Action_actor_Delete(m_actorSelected);
+		ImGui::OpenPopup("##RenameActor");
+		SceneHelper::g_popupRenameActor = false;
+	}
+
+	if (ImGui::BeginPopup("##RenameActor"))
+	{
+		auto actor = m_actorSelected.lock();
+		if (!actor)
+			ImGui::CloseCurrentPopup();
+
+		char name[BUFFER_TEXT_DEFAULT];
+		EditorHelper::SetCharArray(&name[0], actor->GetName());
+
+		ImGui::Text("Name:");
+		ImGui::InputText("##edit", name, IM_ARRAYSIZE(name));
+		if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
+
+		actor->SetName(string(name));
+
+		ImGui::EndPopup();
 	}
 }
 
-void Widget_Scene::Action_actor_Delete(weak_ptr<Actor> actor)
+void Widget_Scene::HandleKeyShortcuts()
 {
-	HierarchyStatics::g_scene->Actor_Remove(actor);
+	if (SceneHelper::g_input->GetButtonKeyboard(Delete))
+	{
+		Action_Actor_Delete(m_actorSelected);
+	}
+}
+
+void Widget_Scene::Action_Actor_Delete(weak_ptr<Actor> actor)
+{
+	SceneHelper::g_scene->Actor_Remove(actor);
 }
 
 Actor* Widget_Scene::Action_Actor_CreateEmpty()
 {
-	auto actor = HierarchyStatics::g_scene->Actor_CreateAdd().lock().get();
+	auto actor = SceneHelper::g_scene->Actor_CreateAdd().lock().get();
 	if (auto selected = m_actorSelected.lock())
 	{
 		actor->GetTransform_PtrRaw()->SetParent(selected->GetTransform_PtrRaw());
