@@ -39,7 +39,7 @@ namespace FileDialog_Options
 	static float g_itemSizeMin = 50.0f;
 	static float g_itemSizeMax = 200.0f;
 	static bool g_isHoveringItem;
-	static string g_hoveredItemPath;
+	static const char* g_hoveredItemPath;
 	static bool g_isHoveringWindow;
 	static DragDropPayload g_dragDropPayload;
 	static unsigned int g_contextMenuID;
@@ -47,16 +47,6 @@ namespace FileDialog_Options
 
 #define OPERATION_NAME	(m_operation == FileDialog_Op_Open)	? "Open"		: (m_operation == FileDialog_Op_Load)	? "Load"		: (m_operation == FileDialog_Op_Save) ? "Save" : "View"
 #define FILTER_NAME		(m_filter == FileDialog_Filter_All)	? "All (*.*)"	: (m_filter == FileDialog_Filter_Model)	? "Model(*.*)"	: "Scene (*.scene)"
-
-FileDialog_Item::FileDialog_Item(const std::string& path, const Thumbnail& thumbnail)
-{
-	m_path			= path;
-	m_thumbnail		= thumbnail;
-	m_id			= GENERATE_GUID;
-	m_isDirectory	= Directus::FileSystem::IsDirectory(path);
-	m_label			= Directus::FileSystem::GetFileNameFromFilePath(path);
-}
-
 
 FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter)
 {
@@ -208,7 +198,7 @@ void FileDialog::Show_Middle()
 					{		
 						m_currentPath	= item.GetPath();
 						m_currentPathID = item.GetID();			
-						m_inputBox		= item.GetLabel();
+						EditorHelper::SetCharArray(&m_inputBox[0], item.GetLabel());
 
 						// Callback
 						if (m_callback_OnPathClicked) m_callback_OnPathClicked(item.GetPath());
@@ -255,7 +245,7 @@ void FileDialog::Show_Middle()
 				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 13);	// move to the bottom of the thumbnail
 				ImGui::PushItemWidth(m_itemSize + 8.5f);
 
-				ImGui::Text(item.GetLabel().c_str());
+				ImGui::Text(item.GetLabel());
 
 				ImGui::PopItemWidth();
 				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize);		// move to the right of the thumbnail
@@ -283,7 +273,7 @@ void FileDialog::Show_Bottom(bool* isVisible)
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 3.0f); // move to the bottom of the window
 
 	ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235);
-	ImGui::InputText("##InputBox", m_inputBox.data(), m_inputBox.size());
+	ImGui::InputText("##InputBox", m_inputBox, BUFFER_TEXT_DEFAULT);
 	ImGui::PopItemWidth();
 
 	ImGui::SameLine();
@@ -317,10 +307,10 @@ void FileDialog::Item_Drag(FileDialog_Item* item)
 			DragDrop::Get().DragPayload(FileDialog_Options::g_dragDropPayload);
 		};
 
-		if (FileSystem::IsSupportedModelFile(item->GetPath()))	{ SetPayload(DragPayload_Model,		item->GetPath().c_str()); }
-		if (FileSystem::IsSupportedImageFile(item->GetPath()))	{ SetPayload(DragPayload_Texture,	item->GetPath().c_str()); }
-		if (FileSystem::IsSupportedAudioFile(item->GetPath()))	{ SetPayload(DragPayload_Audio,		item->GetPath().c_str()); }
-		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ SetPayload(DragPayload_Script,	item->GetPath().c_str()); }
+		if (FileSystem::IsSupportedModelFile(item->GetPath()))	{ SetPayload(DragPayload_Model,		item->GetPath()); }
+		if (FileSystem::IsSupportedImageFile(item->GetPath()))	{ SetPayload(DragPayload_Texture,	item->GetPath()); }
+		if (FileSystem::IsSupportedAudioFile(item->GetPath()))	{ SetPayload(DragPayload_Audio,		item->GetPath()); }
+		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ SetPayload(DragPayload_Script,	item->GetPath()); }
 
 		THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(item->GetShaderResource(), 50);
 		DragDrop::Get().DragEnd();
