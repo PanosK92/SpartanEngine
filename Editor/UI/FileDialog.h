@@ -51,14 +51,21 @@ enum FileDialog_Filter
 class FileDialog_Item
 {
 public:
-	FileDialog_Item(const std::string& path, const Thumbnail& thumbnail);
+	FileDialog_Item(const std::string& path, const Thumbnail& thumbnail)
+	{
+		m_path			= path;
+		m_thumbnail		= thumbnail;
+		m_id			= GENERATE_GUID;
+		m_isDirectory	= Directus::FileSystem::IsDirectory(path);
+		EditorHelper::SetCharArray(&m_label[0], Directus::FileSystem::GetFileNameFromFilePath(path));
+	}
 
-	const std::string& GetPath() const	{ return m_path; }
-	const std::string& GetLabel() const	{ return m_label; }
-	unsigned int GetID() const			{ return m_id; }
-	void* GetShaderResource() const		{ return SHADER_RESOURCE_BY_THUMBNAIL(m_thumbnail); }
-	bool IsDirectory()					{ return m_isDirectory; }
-	float GetTimeSinceLastClickMs()		{ return (float)m_timeSinceLastClick.count(); }
+	const char* GetPath() const		{ return m_path.c_str(); }
+	const char* GetLabel() const	{ return &m_label[0]; }
+	unsigned int GetID() const		{ return m_id; }
+	void* GetShaderResource() const { return SHADER_RESOURCE_BY_THUMBNAIL(m_thumbnail); }
+	bool IsDirectory()				{ return m_isDirectory; }
+	float GetTimeSinceLastClickMs() { return (float)m_timeSinceLastClick.count(); }
 
 	void Clicked()	
 	{ 
@@ -67,11 +74,12 @@ public:
 		m_lastClickTime			= now;
 	}
 	
+
 private:
 	Thumbnail m_thumbnail;
 	std::string m_path;
 	unsigned int m_id;
-	std::string m_label;
+	char m_label[BUFFER_TEXT_DEFAULT]{};
 	bool m_isDirectory;
 	std::chrono::duration<double, std::milli> m_timeSinceLastClick;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastClickTime;
@@ -119,7 +127,7 @@ private:
 	std::string m_title;
 	std::string m_currentPath;
 	unsigned int m_currentPathID;
-	std::string m_inputBox;
+	char m_inputBox[BUFFER_TEXT_DEFAULT]{};
 	std::vector<FileDialog_Item> m_items;
 	bool m_isWindow;
 	float m_itemSize;

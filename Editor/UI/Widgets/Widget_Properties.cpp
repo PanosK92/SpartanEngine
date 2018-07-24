@@ -51,22 +51,22 @@ using namespace Directus;
 using namespace Math;
 //=======================
 
-namespace Properties_Options
+static weak_ptr<Actor> g_inspectedActor;
+static weak_ptr<Material> g_inspectedMaterial;
+static ResourceManager* g_resourceManager = nullptr;
+
+//= COLOR PICKERS ===============================================
+static unique_ptr<ButtonColorPicker> g_materialButtonColorPicker;
+static unique_ptr<ButtonColorPicker> g_lightButtonColorPicker;
+static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
+//===============================================================
+
+namespace ComponentProperty
 {
 	static string g_contexMenuID;
 	static bool g_expand;
 	static float g_column = 140.0f;
 	static const float g_maxWidth = 100.0f;
-
-	static weak_ptr<Actor> g_inspectedActor;
-	static weak_ptr<Material> g_inspectedMaterial;
-	static ResourceManager* g_resourceManager = nullptr;
-
-	//= COLOR PICKERS ===============================================
-	static unique_ptr<ButtonColorPicker> g_materialButtonColorPicker;
-	static unique_ptr<ButtonColorPicker> g_lightButtonColorPicker;
-	static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
-	//===============================================================
 
 	inline void ComponentContextMenu_Options(const string& id, IComponent* component)
 	{
@@ -128,25 +128,25 @@ namespace Properties_Options
 
 Widget_Properties::Widget_Properties()
 {
-	m_title											= "Properties";
-	Properties_Options::g_lightButtonColorPicker	= make_unique<ButtonColorPicker>("Light Color Picker");
-	Properties_Options::g_materialButtonColorPicker = make_unique<ButtonColorPicker>("Material Color Picker");
-	Properties_Options::g_cameraButtonColorPicker	= make_unique<ButtonColorPicker>("Camera Color Picker");
+	m_title						= "Properties";
+	g_lightButtonColorPicker	= make_unique<ButtonColorPicker>("Light Color Picker");
+	g_materialButtonColorPicker = make_unique<ButtonColorPicker>("Material Color Picker");
+	g_cameraButtonColorPicker	= make_unique<ButtonColorPicker>("Camera Color Picker");
 }
 
 void Widget_Properties::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-	Properties_Options::g_resourceManager = context->GetSubsystem<ResourceManager>();
+	g_resourceManager = context->GetSubsystem<ResourceManager>();
 }
 
 void Widget_Properties::Update(float deltaTime)
 {
-	ImGui::PushItemWidth(Properties_Options::g_maxWidth);
+	ImGui::PushItemWidth(ComponentProperty::g_maxWidth);
 
-	if (!Properties_Options::g_inspectedActor.expired())
+	if (!g_inspectedActor.expired())
 	{
-		auto actorPtr = Properties_Options::g_inspectedActor.lock().get();
+		auto actorPtr = g_inspectedActor.lock().get();
 
 		auto transform		= actorPtr->GetTransform_PtrRaw();
 		auto light			= actorPtr->GetComponent<Light>().lock().get();
@@ -178,9 +178,9 @@ void Widget_Properties::Update(float deltaTime)
 		ShowAddComponentButton();
 		Drop_AutoAddComponents();
 	}
-	else if (!Properties_Options::g_inspectedMaterial.expired())
+	else if (!g_inspectedMaterial.expired())
 	{
-		ShowMaterial(Properties_Options::g_inspectedMaterial.lock().get());
+		ShowMaterial(g_inspectedMaterial.lock().get());
 	}
 
 	ImGui::PopItemWidth();
@@ -188,20 +188,20 @@ void Widget_Properties::Update(float deltaTime)
 
 void Widget_Properties::Inspect(weak_ptr<Actor> actor)
 {
-	Properties_Options::g_inspectedActor = actor;
+	g_inspectedActor = actor;
 
 	// If we were previously inspecting a material, save the changes
-	if (!Properties_Options::g_inspectedMaterial.expired())
+	if (!g_inspectedMaterial.expired())
 	{
-		Properties_Options::g_inspectedMaterial.lock()->SaveToFile(Properties_Options::g_inspectedMaterial.lock()->GetResourceFilePath());
+		g_inspectedMaterial.lock()->SaveToFile(g_inspectedMaterial.lock()->GetResourceFilePath());
 	}
-	Properties_Options::g_inspectedMaterial.reset();
+	g_inspectedMaterial.reset();
 }
 
 void Widget_Properties::Inspect(weak_ptr<Material> material)
 {
-	Properties_Options::g_inspectedActor.reset();
-	Properties_Options::g_inspectedMaterial = material;
+	g_inspectedActor.reset();
+	g_inspectedMaterial = material;
 }
 
 void Widget_Properties::ShowTransform(Transform* transform)
@@ -212,49 +212,59 @@ void Widget_Properties::ShowTransform(Transform* transform)
 	Vector3 rotationEuler	= rotation.ToEulerAngles();
 	Vector3 scale			= transform->GetScaleLocal();
 
-	string transPosX = to_string(position.x);
-	string transPosY = to_string(position.y);
-	string transPosZ = to_string(position.z);
-	string transRotX = to_string(rotationEuler.x);
-	string transRotY = to_string(rotationEuler.y);
-	string transRotZ = to_string(rotationEuler.z);
-	string transScaX = to_string(scale.x);
-	string transScaY = to_string(scale.y);
-	string transScaZ = to_string(scale.z);		
+	char transPosX[BUFFER_TEXT_DEFAULT];
+	char transPosY[BUFFER_TEXT_DEFAULT];
+	char transPosZ[BUFFER_TEXT_DEFAULT];
+	char transRotX[BUFFER_TEXT_DEFAULT];
+	char transRotY[BUFFER_TEXT_DEFAULT];
+	char transRotZ[BUFFER_TEXT_DEFAULT];
+	char transScaX[BUFFER_TEXT_DEFAULT];
+	char transScaY[BUFFER_TEXT_DEFAULT];
+	char transScaZ[BUFFER_TEXT_DEFAULT];
+		
+	EditorHelper::SetCharArray(&transPosX[0], position.x);
+	EditorHelper::SetCharArray(&transPosY[0], position.y);
+	EditorHelper::SetCharArray(&transPosZ[0], position.z);
+	EditorHelper::SetCharArray(&transRotX[0], rotationEuler.x);
+	EditorHelper::SetCharArray(&transRotY[0], rotationEuler.y);
+	EditorHelper::SetCharArray(&transRotZ[0], rotationEuler.z);
+	EditorHelper::SetCharArray(&transScaX[0], scale.x);
+	EditorHelper::SetCharArray(&transScaY[0], scale.y);
+	EditorHelper::SetCharArray(&transScaZ[0], scale.z);
 	//============================================================
 			
-	if (Properties_Options::Begin("Transform", Icon_Component_Transform, nullptr, false))
+	if (ComponentProperty::Begin("Transform", Icon_Component_Transform, nullptr, false))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Position
 		ImGui::Text("Position");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##TransPosX", transPosX.data(), transPosX.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##TransPosX", transPosX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##TransPosY", transPosY.data(), transPosY.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransPosY", transPosY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##TransPosZ", transPosZ.data(), transPosZ.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransPosZ", transPosZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Rotation
 		ImGui::Text("Rotation");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##TransRotX", transRotX.data(), transRotX.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##TransRotX", transRotX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##TransRotY", transRotY.data(), transRotY.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransRotY", transRotY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##TransRotZ", transRotZ.data(), transRotZ.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransRotZ", transRotZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Scale
 		ImGui::Text("Scale");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##TransScaX", transScaX.data(), transScaX.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##TransScaX", transScaX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##TransScaY", transScaY.data(), transScaY.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransScaY", transScaY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##TransScaZ", transScaZ.data(), transScaZ.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##TransScaZ", transScaZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 
 	//= MAP ==================================================================================
 	position = Vector3(
@@ -296,15 +306,15 @@ void Widget_Properties::ShowLight(Light* light)
 	float range					= light->GetRange();
 	float split1				= light->ShadowMap_GetSplit(0);
 	float split2				= light->ShadowMap_GetSplit(1);
-	Properties_Options::g_lightButtonColorPicker->SetColor(light->GetColor());
+	g_lightButtonColorPicker->SetColor(light->GetColor());
 	//===============================================================
 	
-	if (Properties_Options::Begin("Light", Icon_Component_Light, light))
+	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
 	{
 		// Type
 		ImGui::Text("Type");
 		ImGui::PushItemWidth(110.0f); 
-		ImGui::SameLine(Properties_Options::g_column); if (ImGui::BeginCombo("##LightType", typeCharPtr))
+		ImGui::SameLine(ComponentProperty::g_column); if (ImGui::BeginCombo("##LightType", typeCharPtr))
 		{		
 			for (int i = 0; i < IM_ARRAYSIZE(types); i++)
 			{
@@ -325,26 +335,26 @@ void Widget_Properties::ShowLight(Light* light)
 
 		// Color
 		ImGui::Text("Color");
-		ImGui::SameLine(Properties_Options::g_column); Properties_Options::g_lightButtonColorPicker->Update();
+		ImGui::SameLine(ComponentProperty::g_column); g_lightButtonColorPicker->Update();
 
 		// Intensity
 		ImGui::Text("Intensity");
-		ImGui::SameLine(Properties_Options::g_column);
+		ImGui::SameLine(ComponentProperty::g_column);
 		ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightIntensity", &intensity, 0.0f, 100.0f); ImGui::PopItemWidth();
 
 		// Cast shadows
 		ImGui::Text("Shadows");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Checkbox("##lightShadows", &castsShadows);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##lightShadows", &castsShadows);
 
 		// Cascade splits
 		if (typeInt == (int)LightType_Directional)
 		{
 			ImGui::Text("Split 1");
-			ImGui::SameLine(Properties_Options::g_column);
+			ImGui::SameLine(ComponentProperty::g_column);
 			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit1", &split1, 0.0f, 1.0f); ImGui::PopItemWidth();
 
 			ImGui::Text("Split 2");
-			ImGui::SameLine(Properties_Options::g_column);
+			ImGui::SameLine(ComponentProperty::g_column);
 			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit2", &split2, 0.0f, 1.0f); ImGui::PopItemWidth();
 		}
 
@@ -352,7 +362,7 @@ void Widget_Properties::ShowLight(Light* light)
 		if (typeInt != (int)LightType_Directional)
 		{
 			ImGui::Text("Range");
-			ImGui::SameLine(Properties_Options::g_column);
+			ImGui::SameLine(ComponentProperty::g_column);
 			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightRange", &range, 0.0f, 100.0f); ImGui::PopItemWidth();
 		}
 
@@ -360,11 +370,11 @@ void Widget_Properties::ShowLight(Light* light)
 		if (typeInt == (int)LightType_Spot)
 		{
 			ImGui::Text("Angle");
-			ImGui::SameLine(Properties_Options::g_column);
+			ImGui::SameLine(ComponentProperty::g_column);
 			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightAngle", &angle, 1.0f, 179.0f); ImGui::PopItemWidth();
 		}
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 
 	//= MAP ==============================================================================================================
 	if ((LightType)typeInt	!= light->GetLightType())				light->SetLightType((LightType)typeInt);
@@ -374,7 +384,7 @@ void Widget_Properties::ShowLight(Light* light)
 	if (range				!= light->GetRange())					light->SetRange(range);
 	if (split1				!= light->ShadowMap_GetSplit(0))		light->ShadowMap_SetSplit(split1, 0);
 	if (split2				!= light->ShadowMap_GetSplit(1))		light->ShadowMap_SetSplit(split2, 1);
-	if (Properties_Options::g_lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(Properties_Options::g_lightButtonColorPicker->GetColor());
+	if (g_lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(g_lightButtonColorPicker->GetColor());
 	//====================================================================================================================
 }
 
@@ -391,24 +401,24 @@ void Widget_Properties::ShowRenderable(Renderable* renderable)
 	bool receiveShadows = renderable->GetReceiveShadows();
 	//==========================================================================
 	
-	if (Properties_Options::Begin("Renderable", Icon_Component_Renderable, renderable))
+	if (ComponentProperty::Begin("Renderable", Icon_Component_Renderable, renderable))
 	{
 		ImGui::Text("Mesh");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text(meshName.c_str());
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(meshName.c_str());
 
 		// Material
 		ImGui::Text("Material");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text(materialName.c_str());
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(materialName.c_str());
 
 		// Cast shadows
 		ImGui::Text("Cast Shadows");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Checkbox("##RenderableCastShadows", &castShadows);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##RenderableCastShadows", &castShadows);
 
 		// Receive shadows
 		ImGui::Text("Receive Shadows");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Checkbox("##RenderableReceiveShadows", &receiveShadows);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##RenderableReceiveShadows", &receiveShadows);
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 
 	//= MAP ====================================================================================================
 	if (castShadows		!= renderable->GetCastShadows())		renderable->SetCastShadows(castShadows);
@@ -435,43 +445,48 @@ void Widget_Properties::ShowRigidBody(RigidBody* rigidBody)
 	bool freezeRotY			= (bool)rigidBody->GetRotationLock().y;
 	bool freezeRotZ			= (bool)rigidBody->GetRotationLock().z;
 
-	string massCharArray			= to_string(mass);
-	string frictionCharArray		= to_string(friction);
-	string frictionRollingCharArray	= to_string(frictionRolling);
-	string restitutionCharArray		= to_string(restitution);
+	char massCharArray[BUFFER_TEXT_DEFAULT]				= "0";
+	char frictionCharArray[BUFFER_TEXT_DEFAULT]			= "0";
+	char frictionRollingCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char restitutionCharArray[BUFFER_TEXT_DEFAULT]		= "0";
+
+	EditorHelper::SetCharArray(&massCharArray[0], mass);
+	EditorHelper::SetCharArray(&frictionCharArray[0], friction);
+	EditorHelper::SetCharArray(&frictionRollingCharArray[0], frictionRolling);
+	EditorHelper::SetCharArray(&restitutionCharArray[0], restitution);
 	//========================================================================
 
-	if (Properties_Options::Begin("RigidBody", Icon_Component_RigidBody, rigidBody))
+	if (ComponentProperty::Begin("RigidBody", Icon_Component_RigidBody, rigidBody))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Mass
 		ImGui::Text("Mass");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::InputText("##RigidBodyMass", massCharArray.data(), massCharArray.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::InputText("##RigidBodyMass", massCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Friction
 		ImGui::Text("Friction");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::InputText("##RigidBodyFriction", frictionCharArray.data(), frictionCharArray.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::InputText("##RigidBodyFriction", frictionCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Rolling Friction
 		ImGui::Text("Rolling Friction");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::InputText("##RigidBodyRollingFriction", frictionRollingCharArray.data(), frictionRollingCharArray.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::InputText("##RigidBodyRollingFriction", frictionRollingCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Restitution
 		ImGui::Text("Restitution");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::InputText("##RigidBodyRestitution", restitutionCharArray.data(), restitutionCharArray.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::InputText("##RigidBodyRestitution", restitutionCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Use Gravity
 		ImGui::Text("Use Gravity");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Checkbox("##RigidBodyUseGravity", &useGravity);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##RigidBodyUseGravity", &useGravity);
 
 		// Is Kinematic
 		ImGui::Text("Is Kinematic");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Checkbox("##RigidBodyKinematic", &isKinematic);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##RigidBodyKinematic", &isKinematic);
 
 		// Freeze Position
 		ImGui::Text("Freeze Position");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
 		ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosX", &freezePosX);
 		ImGui::SameLine(); ImGui::Text("Y");
 		ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosY", &freezePosY);
@@ -480,14 +495,14 @@ void Widget_Properties::ShowRigidBody(RigidBody* rigidBody)
 
 		// Freeze Rotation
 		ImGui::Text("Freeze Rotation");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
 		ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotX", &freezeRotX);
 		ImGui::SameLine(); ImGui::Text("Y");
 		ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotY", &freezeRotY);
 		ImGui::SameLine(); ImGui::Text("Z");
 		ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotZ", &freezeRotZ);
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 
 	//= MAP =====================================================================================================================================================
 	mass			= (float)atof(&massCharArray[0]);
@@ -515,7 +530,7 @@ void Widget_Properties::ShowCollider(Collider* collider)
 	if (!collider)
 		return;
 	
-	//= REFLECT ================================================
+	//= REFLECT ==========================================================
 	static const char* g_colShapes[] = {
 		"Box",
 		"Sphere",
@@ -531,21 +546,28 @@ void Widget_Properties::ShowCollider(Collider* collider)
 	Vector3 colliderCenter		= collider->GetCenter();
 	Vector3 colliderBoundingBox = collider->GetBoundingBox();
 
-	string centerXCharArray	= to_string(colliderCenter.x);
-	string centerYCharArray = to_string(colliderCenter.y);
-	string centerZCharArray = to_string(colliderCenter.z);
-	string sizeXCharArray	= to_string(colliderBoundingBox.x);
-	string sizeYCharArray	= to_string(colliderBoundingBox.y);
-	string sizeZCharArray	= to_string(colliderBoundingBox.z);
-	//==========================================================
+	char centerXCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char centerYCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char centerZCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char sizeXCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char sizeYCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char sizeZCharArray[BUFFER_TEXT_DEFAULT]	= "0";
 
-	if (Properties_Options::Begin("Collider", Icon_Component_Collider, collider))
+	EditorHelper::SetCharArray(&centerXCharArray[0], colliderCenter.x);
+	EditorHelper::SetCharArray(&centerYCharArray[0], colliderCenter.y);
+	EditorHelper::SetCharArray(&centerZCharArray[0], colliderCenter.z);
+	EditorHelper::SetCharArray(&sizeXCharArray[0], colliderBoundingBox.x);
+	EditorHelper::SetCharArray(&sizeYCharArray[0], colliderBoundingBox.y);
+	EditorHelper::SetCharArray(&sizeZCharArray[0], colliderBoundingBox.z);
+	//====================================================================
+
+	if (ComponentProperty::Begin("Collider", Icon_Component_Collider, collider))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Type
 		ImGui::Text("Type");
-		ImGui::SameLine(Properties_Options::g_column); if (ImGui::BeginCombo("##colliderType", shapeCharPtr))
+		ImGui::SameLine(ComponentProperty::g_column); if (ImGui::BeginCombo("##colliderType", shapeCharPtr))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(g_colShapes); i++)
 			{
@@ -565,30 +587,30 @@ void Widget_Properties::ShowCollider(Collider* collider)
 
 		// Center
 		ImGui::Text("Center");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##colliderCenterX", centerXCharArray.data(), centerXCharArray.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##colliderCenterX", centerXCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##colliderCenterY", centerYCharArray.data(), centerYCharArray.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##colliderCenterY", centerYCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##colliderCenterZ", centerZCharArray.data(), centerZCharArray.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##colliderCenterZ", centerZCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Size
 		ImGui::Text("Size");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##colliderSizeX", sizeXCharArray.data(), sizeXCharArray.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##colliderSizeX", sizeXCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##colliderSizeY", sizeYCharArray.data(), sizeYCharArray.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##colliderSizeY", sizeYCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##colliderSizeZ", sizeZCharArray.data(), sizeZCharArray.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##colliderSizeZ", sizeZCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Optimize
 		if (shapeInt == (int)ColliderShape_Mesh)
 		{
 			ImGui::Text("Optimize");
-			ImGui::SameLine(Properties_Options::g_column); ImGui::Checkbox("##colliderOptimize", &optimize);
+			ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##colliderOptimize", &optimize);
 		}
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 
 	//= MAP ====================================================================================================
 	colliderCenter.x		= (float)atof(&centerXCharArray[0]);
@@ -610,62 +632,73 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 	if (!constraint)
 		return;
 
-	//= REFLECT =========================================
+	//= REFLECT ==============================================
 	Vector3 position 		= constraint->GetPosition();
 	Quaternion rotation		= constraint->GetRotation();
 	Vector3 rotationEuler	= rotation.ToEulerAngles();
 	Vector2 highLimit 		= constraint->GetHighLimit();
 	Vector2 lowLimit 		= constraint->GetLowLimit();
 
-	string consPosX		= to_string(position.x);
-	string consPosY		= to_string(position.y);
-	string consPosZ		= to_string(position.z);
-	string consRotX		= to_string(rotationEuler.x);
-	string consRotY		= to_string(rotationEuler.y);
-	string consRotZ		= to_string(rotationEuler.z);
-	string consHighX	= to_string(highLimit.x);
-	string consHighY	= to_string(highLimit.y);
-	string consLowX		= to_string(lowLimit.x);
-	string consLowY		= to_string(lowLimit.y);
-	//===================================================
+	char consPosX[BUFFER_TEXT_DEFAULT];
+	char consPosY[BUFFER_TEXT_DEFAULT];
+	char consPosZ[BUFFER_TEXT_DEFAULT];
+	char consRotX[BUFFER_TEXT_DEFAULT];
+	char consRotY[BUFFER_TEXT_DEFAULT];
+	char consRotZ[BUFFER_TEXT_DEFAULT];
+	char consHighX[BUFFER_TEXT_DEFAULT];
+	char consHighY[BUFFER_TEXT_DEFAULT];
+	char consLowX[BUFFER_TEXT_DEFAULT];
+	char consLowY[BUFFER_TEXT_DEFAULT];
 
-	if (Properties_Options::Begin("Constraint", Icon_Component_AudioSource, constraint))
+	EditorHelper::SetCharArray(&consPosX[0], position.x);
+	EditorHelper::SetCharArray(&consPosY[0], position.y);
+	EditorHelper::SetCharArray(&consPosZ[0], position.z);
+	EditorHelper::SetCharArray(&consRotX[0], rotationEuler.x);
+	EditorHelper::SetCharArray(&consRotY[0], rotationEuler.y);
+	EditorHelper::SetCharArray(&consRotZ[0], rotationEuler.z);
+	EditorHelper::SetCharArray(&consHighX[0], highLimit.x);
+	EditorHelper::SetCharArray(&consHighY[0], highLimit.y);
+	EditorHelper::SetCharArray(&consLowX[0], lowLimit.x);
+	EditorHelper::SetCharArray(&consLowY[0], lowLimit.y);
+	//========================================================
+
+	if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Position
 		ImGui::Text("Position");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##ConsPosX", consPosX.data(), consPosX.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##ConsPosX", consPosX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##ConsPosY", consPosY.data(), consPosY.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##ConsPosY", consPosY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##ConsPosZ", consPosZ.data(), consPosZ.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##ConsPosZ", consPosZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Rotation
 		ImGui::Text("Rotation");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##ConsRotX", consRotX.data(), consRotX.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##ConsRotX", consRotX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##ConsRotY", consRotY.data(), consRotY.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##ConsRotY", consRotY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputText("##ConsRotZ", consRotZ.data(), consRotZ.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##ConsRotZ", consRotZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// High Limit
 		ImGui::Text("High Limit");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##ConsHighLimX", consHighX.data(), consHighX.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##ConsHighLimX", consHighX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##ConsHighLimY", consHighY.data(), consHighY.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##ConsHighLimY", consHighY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 
 		// Low Limit
 		ImGui::Text("Low Limit");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputText("##ConsLowLimX", consLowX.data(), consLowX.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
+		ImGui::SameLine(); ImGui::InputText("##ConsLowLimX", consLowX, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##ConsLowLimY", consLowY.data(), consLowY.size(), inputTextFlags);
+		ImGui::SameLine(); ImGui::InputText("##ConsLowLimY", consLowY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 
 	//= MAP ====================================================================================
 	if (position		!= constraint->GetPosition())		constraint->SetPosition(position);
@@ -687,15 +720,20 @@ void Widget_Properties::ShowMaterial(Material* material)
 	float height	= material->GetHeightMultiplier();
 	Vector2 tiling	=  material->GetTiling();
 	Vector2 offset	=  material->GetOffset();
-	Properties_Options::g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());
+	g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());
 
-	string tilingXCharArray = to_string(tiling.x);
-	string tilingYCharArray = to_string(tiling.y);
-	string offsetXCharArray = to_string(offset.x);
-	string offsetYCharArray = to_string(offset.y);
+	char tilingXCharArray[BUFFER_TEXT_DEFAULT];
+	char tilingYCharArray[BUFFER_TEXT_DEFAULT];
+	char offsetXCharArray[BUFFER_TEXT_DEFAULT];
+	char offsetYCharArray[BUFFER_TEXT_DEFAULT];	
+
+	EditorHelper::SetCharArray(&tilingXCharArray[0], tiling.x);
+	EditorHelper::SetCharArray(&tilingYCharArray[0], tiling.y);
+	EditorHelper::SetCharArray(&offsetXCharArray[0], offset.x);
+	EditorHelper::SetCharArray(&offsetYCharArray[0], offset.y);
 	//================================================================
 
-	Properties_Options::Begin("Material", Icon_Component_Material, nullptr, false);
+	ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false);
 	{
 		static const ImVec2 materialTextSize = ImVec2(80, 80);
 
@@ -710,18 +748,18 @@ void Widget_Properties::ShowMaterial(Material* material)
 
 		// Name
 		ImGui::Text("Name");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text(material->GetResourceName().c_str());
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(material->GetResourceName().c_str());
 
 		// Shader
 		ImGui::Text("Shader");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Text(!material->GetShader().expired() ? material->GetShader().lock()->GetResourceName().c_str() : NOT_ASSIGNED.c_str());
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(!material->GetShader().expired() ? material->GetShader().lock()->GetResourceName().c_str() : NOT_ASSIGNED.c_str());
 
 		if (material->IsEditable())
 		{
 			auto DisplayTextureSlot = [&material](const RHI_Texture* texture, const char* textureName, TextureType textureType)
 			{
 				ImGui::Text(textureName);
-				ImGui::SameLine(Properties_Options::g_column); ImGui::Image(
+				ImGui::SameLine(ComponentProperty::g_column); ImGui::Image(
 					texture ? texture->GetShaderResource() : nullptr,
 					materialTextSize,
 					ImVec2(0, 0),
@@ -734,7 +772,7 @@ void Widget_Properties::ShowMaterial(Material* material)
 				{
 					try 
 					{
-						if (auto texture = Properties_Options::g_resourceManager->Load<RHI_Texture>(get<const char*>(payload->data)).lock())
+						if (auto texture = g_resourceManager->Load<RHI_Texture>(get<const char*>(payload->data)).lock())
 						{
 							texture->SetType(textureType);
 							material->SetTexture(texture);
@@ -746,7 +784,7 @@ void Widget_Properties::ShowMaterial(Material* material)
 
 			// Albedo
 			DisplayTextureSlot(texAlbedo.get(), "Albedo", TextureType_Albedo); 
-			ImGui::SameLine(); Properties_Options::g_materialButtonColorPicker->Update();
+			ImGui::SameLine(); g_materialButtonColorPicker->Update();
 
 			// Roughness
 			DisplayTextureSlot(texRoughness.get(), "Roughness", TextureType_Roughness);
@@ -779,16 +817,16 @@ void Widget_Properties::ShowMaterial(Material* material)
 
 			// Tiling
 			ImGui::Text("Tiling");
-			ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputText("##matTilingX", tilingXCharArray.data(), tilingXCharArray.size(), ImGuiInputTextFlags_CharsDecimal);
-			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputText("##matTilingY", tilingYCharArray.data(), tilingYCharArray.size(), ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputText("##matTilingX", tilingXCharArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputText("##matTilingY", tilingYCharArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
 
 			// Offset
 			ImGui::Text("Offset");
-			ImGui::SameLine(Properties_Options::g_column); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputText("##matOffsetX", offsetXCharArray.data(), offsetXCharArray.size(), ImGuiInputTextFlags_CharsDecimal);
-			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputText("##matOffsetY", offsetYCharArray.data(), offsetYCharArray.size(), ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputText("##matOffsetX", offsetXCharArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputText("##matOffsetY", offsetYCharArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
 		}
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 
 	//= MAP =====================================================================================================================================
 	tiling.x = (float)atof(&tilingXCharArray[0]);
@@ -802,7 +840,7 @@ void Widget_Properties::ShowMaterial(Material* material)
 	if (height		!= material->GetHeightMultiplier())		material->SetHeightMultiplier(height);
 	if (tiling		!= material->GetTiling())				material->SetTiling(tiling);
 	if (offset		!= material->GetOffset())				material->SetOffset(offset);
-	if (Properties_Options::g_materialButtonColorPicker->GetColor()	!= material->GetColorAlbedo()) material->SetColorAlbedo(Properties_Options::g_materialButtonColorPicker->GetColor());
+	if (g_materialButtonColorPicker->GetColor()	!= material->GetColorAlbedo()) material->SetColorAlbedo(g_materialButtonColorPicker->GetColor());
 	//===========================================================================================================================================
 }
 
@@ -818,22 +856,26 @@ void Widget_Properties::ShowCamera(Camera* camera)
 	float fov								= camera->GetFOV_Horizontal_Deg();
 	float nearPlane							= camera->GetNearPlane();
 	float farPlane							= camera->GetFarPlane();
-	string nearPlaneCharArray				= to_string(nearPlane);
-	string farPlaneCharArray				= to_string(farPlane);
-	Properties_Options::g_cameraButtonColorPicker->SetColor(camera->GetClearColor());
+
+	char nearPlaneCharArray[BUFFER_TEXT_DEFAULT];
+	char farPlaneCharArray[BUFFER_TEXT_DEFAULT];
+
+	EditorHelper::SetCharArray(&nearPlaneCharArray[0], nearPlane);
+	EditorHelper::SetCharArray(&farPlaneCharArray[0], farPlane);
+	g_cameraButtonColorPicker->SetColor(camera->GetClearColor());
 	//=========================================================================
 
-	if (Properties_Options::Begin("Camera", Icon_Component_Camera, camera))
+	if (ComponentProperty::Begin("Camera", Icon_Component_Camera, camera))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Background
 		ImGui::Text("Background");
-		ImGui::SameLine(Properties_Options::g_column); Properties_Options::g_cameraButtonColorPicker->Update();
+		ImGui::SameLine(ComponentProperty::g_column); g_cameraButtonColorPicker->Update();
 
 		// Projection
 		ImGui::Text("Projection");
-		ImGui::SameLine(Properties_Options::g_column); 
+		ImGui::SameLine(ComponentProperty::g_column); 
 		ImGui::PushItemWidth(110.0f);
 		if (ImGui::BeginCombo("##cameraProjection", projectionCharPtr))
 		{
@@ -856,23 +898,24 @@ void Widget_Properties::ShowCamera(Camera* camera)
 
 		// Field of View
 		ImGui::Text("Field of View");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::SliderFloat("##cameraFOV", &fov, 1.0f, 179.0f);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::SliderFloat("##cameraFOV", &fov, 1.0f, 179.0f);
 
 		// Clipping Planes
 		ImGui::Text("Clipping Planes");
-		ImGui::SameLine(Properties_Options::g_column);		ImGui::Text("Near");	ImGui::SameLine(); ImGui::InputText("##cameraNear", nearPlaneCharArray.data(), nearPlaneCharArray.size(), inputTextFlags);
-		ImGui::SetCursorPosX(Properties_Options::g_column); ImGui::Text("Far");		ImGui::SameLine(); ImGui::InputText("##cameraFar", farPlaneCharArray.data(), farPlaneCharArray.size(), inputTextFlags);
+		ImGui::SameLine(ComponentProperty::g_column);		ImGui::Text("Near");	ImGui::SameLine(); ImGui::InputText("##cameraNear", nearPlaneCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		ImGui::SetCursorPosX(ComponentProperty::g_column); ImGui::Text("Far");		ImGui::SameLine(); ImGui::InputText("##cameraFar", farPlaneCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 
 	//= MAP =====================================================================================================================================
-	nearPlane	= (float)atof(&nearPlaneCharArray[0]);
-	farPlane	= (float)atof(&farPlaneCharArray[0]);
+	nearPlane = (float)atof(&nearPlaneCharArray[0]);
+	farPlane = (float)atof(&farPlaneCharArray[0]);
+
 	if ((ProjectionType)projectionInt			!= camera->GetProjection())			camera->SetProjection((ProjectionType)projectionInt);
 	if (fov										!= camera->GetFOV_Horizontal_Deg()) camera->SetFOV_Horizontal_Deg(fov);
 	if (nearPlane								!= camera->GetNearPlane())			camera->SetNearPlane(nearPlane);
 	if (farPlane								!= camera->GetFarPlane())			camera->SetFarPlane(farPlane);
-	if (Properties_Options::g_cameraButtonColorPicker->GetColor()	!= camera->GetClearColor())	camera->SetClearColor(Properties_Options::g_cameraButtonColorPicker->GetColor());
+	if (g_cameraButtonColorPicker->GetColor()	!= camera->GetClearColor())			camera->SetClearColor(g_cameraButtonColorPicker->GetColor());
 	//===========================================================================================================================================
 }
 
@@ -881,60 +924,62 @@ void Widget_Properties::ShowAudioSource(AudioSource* audioSource)
 	if (!audioSource)
 		return;
 
-	//= REFLECT ==============================================
-	string audioClipName	= audioSource->GetAudioClipName();
-	bool mute				= audioSource->GetMute();
-	bool playOnStart		= audioSource->GetPlayOnStart();
-	bool loop				= audioSource->GetLoop();
-	int priority			= audioSource->GetPriority();
-	float volume			= audioSource->GetVolume();
-	float pitch				= audioSource->GetPitch();
-	float pan				= audioSource->GetPan();
-	//========================================================
+	//= REFLECT ========================================================================
+	char audioClipCharArray[BUFFER_TEXT_DEFAULT];
+	EditorHelper::SetCharArray(&audioClipCharArray[0], audioSource->GetAudioClipName());
 
-	if (Properties_Options::Begin("Audio Source", Icon_Component_AudioSource, audioSource))
+	bool mute			= audioSource->GetMute();
+	bool playOnStart	= audioSource->GetPlayOnStart();
+	bool loop			= audioSource->GetLoop();
+	int priority		= audioSource->GetPriority();
+	float volume		= audioSource->GetVolume();
+	float pitch			= audioSource->GetPitch();
+	float pan			= audioSource->GetPan();
+	//==================================================================================
+
+	if (ComponentProperty::Begin("Audio Source", Icon_Component_AudioSource, audioSource))
 	{
 		// Audio clip
 		ImGui::Text("Audio Clip");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::PushItemWidth(250.0f);
-		ImGui::InputText("##audioSourceAudioClip", audioClipName.data(), audioClipName.size(), ImGuiInputTextFlags_ReadOnly);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(250.0f);
+		ImGui::InputText("##audioSourceAudioClip", audioClipCharArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
 		ImGui::PopItemWidth();
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Audio))													
 		{		
-			audioClipName	= FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data));
-			auto audioClip	= Properties_Options::g_resourceManager->Load<AudioClip>(get<const char*>(payload->data));	
+			EditorHelper::SetCharArray(&audioClipCharArray[0], FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data)));
+			auto audioClip = g_resourceManager->Load<AudioClip>(get<const char*>(payload->data));	
 			audioSource->SetAudioClip(audioClip, false);											
 		}																	
 
 		// Mute
 		ImGui::Text("Mute");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Checkbox("##audioSourceMute", &mute);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##audioSourceMute", &mute);
 
 		// Play on start
 		ImGui::Text("Play on Start");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Checkbox("##audioSourcePlayOnStart", &playOnStart);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##audioSourcePlayOnStart", &playOnStart);
 
 		// Loop
 		ImGui::Text("Loop");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::Checkbox("##audioSourceLoop", &loop);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##audioSourceLoop", &loop);
 
 		// Priority
 		ImGui::Text("Priority");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::SliderInt("##audioSourcePriority", &priority, 0, 255);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::SliderInt("##audioSourcePriority", &priority, 0, 255);
 
 		// Volume
 		ImGui::Text("Volume");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::SliderFloat("##audioSourceVolume", &volume, 0.0f, 1.0f);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::SliderFloat("##audioSourceVolume", &volume, 0.0f, 1.0f);
 
 		// Pitch
 		ImGui::Text("Pitch");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.0f, 3.0f);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.0f, 3.0f);
 
 		// Pan
 		ImGui::Text("Pan");
-		ImGui::SameLine(Properties_Options::g_column); ImGui::SliderFloat("##audioSourcePan", &pan, -1.0f, 1.0f);
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::SliderFloat("##audioSourcePan", &pan, -1.0f, 1.0f);
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 
 	//= MAP =====================================================================================
 	if (mute		!= audioSource->GetMute())			audioSource->SetMute(mute);
@@ -952,11 +997,11 @@ void Widget_Properties::ShowAudioListener(AudioListener* audioListener)
 	if (!audioListener)
 		return;
 
-	if (Properties_Options::Begin("Audio Listener", Icon_Component_AudioListener, audioListener))
+	if (ComponentProperty::Begin("Audio Listener", Icon_Component_AudioListener, audioListener))
 	{
 		
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 }
 
 void Widget_Properties::ShowScript(Script* script)
@@ -964,21 +1009,22 @@ void Widget_Properties::ShowScript(Script* script)
 	if (!script)
 		return;
 
-	//= REFLECT ==========================
-	string scriptName = script->GetName();
-	//====================================
+	//= REFLECT =======================================================
+	char scriptNameArray[BUFFER_TEXT_DEFAULT] = "N/A";
+	EditorHelper::SetCharArray(&scriptNameArray[0], script->GetName());
+	//=================================================================
 
-	if (Properties_Options::Begin(script->GetName(), Icon_Component_Script, script))
+	if (ComponentProperty::Begin(script->GetName(), Icon_Component_Script, script))
 	{
 		ImGui::Text("Script");
 		ImGui::SameLine(); 
 		ImGui::PushID("##ScriptNameTemp");
 		ImGui::PushItemWidth(200.0f);
-		ImGui::InputText("", scriptName.data(), scriptName.size(), ImGuiInputTextFlags_ReadOnly);
+		ImGui::InputText("", scriptNameArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
 		ImGui::PopItemWidth();
 		ImGui::PopID();
 	}
-	Properties_Options::End();
+	ComponentProperty::End();
 }
 
 void Widget_Properties::ShowAddComponentButton()
@@ -1066,7 +1112,7 @@ void Widget_Properties::Drop_AutoAddComponents()
 {
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
 	{
-		if (auto scriptComponent = Properties_Options::g_inspectedActor.lock()->AddComponent<Script>().lock())
+		if (auto scriptComponent = g_inspectedActor.lock()->AddComponent<Script>().lock())
 		{
 			scriptComponent->SetScript(get<const char*>(payload->data));
 		}
