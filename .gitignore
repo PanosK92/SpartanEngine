@@ -256,4 +256,4 @@ ModelManifest.xml
 /Runtime/log.txt
 /Runtime/Directus3D.ini
 /ThirdParty/mvsc141_x64/fmodL64.dll
-/ThirdParty/mvsc141_x64/fmodL64.dll
+/ThirdParty/mvsc141_x64/fmodL64_vc.lib

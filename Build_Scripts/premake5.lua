@@ -30,7 +30,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 	includedirs { "../ThirdParty/AngelScript_2.32.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
 	includedirs { "../ThirdParty/Bullet_2.87" }
-	includedirs { "../ThirdParty/FMOD_1.10.03" }
+	includedirs { "../ThirdParty/FMOD_1.10.07" }
 	includedirs { "../ThirdParty/FreeImage_3.17.0" }
 	includedirs { "../ThirdParty/FreeType_2.9.1" }
 	includedirs { "../ThirdParty/pugixml_1.9" }
@@ -57,7 +57,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 		debugdir (TARGET_DIR_DEBUG)
 		links { "angelscript64_debug" }
 		links { "assimp_debug" }
-		links { "fmod64_vc_debug" }
+		links { "fmodL64_vc" }
 		links { "FreeImageLib_debug" }
 		links { "freetype_debug" }
 		links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
