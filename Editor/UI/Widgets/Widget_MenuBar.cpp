@@ -118,7 +118,7 @@ void Widget_MenuBar::Update(float deltaTime)
 	if (Widget_MenuBar_Settings::g_fileDialogVisible)	{ ImGui::SetNextWindowFocus(); ShowFileDialog(); }
 	if (Widget_MenuBar_Settings::g_showAboutWindow)		{ ImGui::SetNextWindowFocus(); ShowAboutWindow(); }
 	if (Widget_MenuBar_Settings::g_showResourceCache)	{ ImGui::SetNextWindowFocus(); ShowResourceCache(); }
-	if (Widget_MenuBar_Settings::g_showProfiler)		{ ImGui::SetNextWindowFocus(); ShowResourceCache(); }
+	if (Widget_MenuBar_Settings::g_showProfiler)		{ ImGui::SetNextWindowFocus(); ShowProfiler(); }
 }
 
 void Widget_MenuBar::ShowFileDialog()

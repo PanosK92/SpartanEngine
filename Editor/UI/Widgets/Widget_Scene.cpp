@@ -380,11 +380,11 @@ void Widget_Scene::Popup_ActorRename()
 			return;
 		}
 
-		char name[BUFFER_TEXT_DEFAULT];
-		EditorHelper::SetCharArray(&name[0], actor->GetName());
+
+		string name = actor->GetName();
 
 		ImGui::Text("Name:");
-		ImGui::InputText("##edit", name, IM_ARRAYSIZE(name));
+		ImGui::InputText("##edit", name.data(), name.size());
 		actor->SetName(string(name));
 
 		if (ImGui::Button("Ok")) 
