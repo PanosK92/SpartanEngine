@@ -374,16 +374,25 @@ void Widget_Scene::Popup_ActorRename()
 	{
 		auto actor = m_actorSelected.lock();
 		if (!actor)
+		{
 			ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+			return;
+		}
 
 		char name[BUFFER_TEXT_DEFAULT];
 		EditorHelper::SetCharArray(&name[0], actor->GetName());
 
 		ImGui::Text("Name:");
 		ImGui::InputText("##edit", name, IM_ARRAYSIZE(name));
-		if (ImGui::Button("Ok")) { ImGui::CloseCurrentPopup(); }
-
 		actor->SetName(string(name));
+
+		if (ImGui::Button("Ok")) 
+		{ 
+			ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+			return;
+		}
 
 		ImGui::EndPopup();
 	}
