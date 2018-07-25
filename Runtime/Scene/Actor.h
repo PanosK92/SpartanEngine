@@ -41,6 +41,7 @@ namespace Directus
 		~Actor();
 
 		void Initialize(Transform* transform);
+		void Clone();
 
 		//============
 		void Start();
