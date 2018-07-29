@@ -40,8 +40,7 @@ namespace Directus
 			LOG_ERROR("D3D11_Sampler::D3D11_Sampler: Invalid device");
 			return;
 		}
-		m_rhiDevice = rhiDevice;
-
+		
 		D3D11_SAMPLER_DESC samplerDesc;
 		samplerDesc.Filter			= d3d11_filter[filter];
 		samplerDesc.AddressU		= d3d11_texture_address_mode[textureAddressMode];
@@ -58,7 +57,7 @@ namespace Directus
 		samplerDesc.MaxLOD			= FLT_MAX;
 
 		// Create sampler state.
-		if (FAILED(m_rhiDevice->GetDevice()->CreateSamplerState(&samplerDesc, &m_samplerState)))
+		if (FAILED(rhiDevice->GetDevice()->CreateSamplerState(&samplerDesc, &m_samplerState)))
 		{
 			LOG_ERROR("Failed to create sampler.");
 		}

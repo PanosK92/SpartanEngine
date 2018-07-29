@@ -42,16 +42,16 @@ namespace Directus
 		bool SetPixelShader(D3D11_Shader* shader);
 
 		// Texture
-		bool SetTextures(std::vector<void*> shaderResources, unsigned int startSlot);
-		bool SetTexture(void* shaderResource, unsigned int startSlot);
+		bool SetTextures(std::vector<void*> shaderResources, unsigned int slot);
+		bool SetTexture(void* shaderResource, unsigned int slot);
 		
 		// Constant, vertex & index buffers
-		bool SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope);
+		bool SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, BufferScope_Mode bufferScope);
 		bool SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
 		bool SetVertexBuffer(std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
 
 		// Sampler
-		bool SetSampler(std::shared_ptr<RHI_Sampler>& sampler, unsigned int startSlot);
+		bool SetSampler(std::shared_ptr<RHI_Sampler>& sampler, unsigned int slot);
 
 		// Primitive topology
 		bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
@@ -69,18 +69,27 @@ namespace Directus
 		bool Bind();
 
 	private:
+		// Primitive topology
 		PrimitiveTopology_Mode m_primitiveTopology;
-		bool m_primitiveTopologyIsDirty;
+		bool m_primitiveTopologyDirty;
 
+		// Input layout
 		Input_Layout m_inputLayout;
 		void* m_inputLayoutBuffer;
-		bool m_inputLayoutIsDirty;
+		bool m_inputLayoutDirty;
 
+		// Cull mode
 		Cull_Mode m_cullMode;
-		bool m_cullModeIsDirty;
+		bool m_cullModeDirty;
 
+		// Fill mode
 		Fill_Mode m_fillMode;
-		bool m_fillModeIsDirty;
+		bool m_fillModeDirty;
+
+		// Sampler
+		RHI_Sampler* m_sampler;
+		unsigned int m_samplerSlot;
+		bool m_samplerDirty;
 
 		RHI_Device* m_rhiDevice;
 	};
