@@ -72,7 +72,6 @@ namespace Directus
 			std::vector<unsigned int>* indices,
 			std::vector<RHI_Vertex_PosUVTBN>* vertices
 		);
-		bool Geometry_Bind();
 		void Geometry_Update();
 		const Math::BoundingBox& Geometry_AABB() { return m_aabb; }
 		//=========================================================
@@ -90,6 +89,9 @@ namespace Directus
 		void SetAnimated(bool isAnimated) { m_isAnimated = isAnimated; }
 
 		void SetWorkingDirectory(const std::string& directory);
+
+		std::shared_ptr<D3D11_IndexBuffer> GetIndexBuffer()		{ return m_indexBuffer; }
+		std::shared_ptr<D3D11_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }	
 
 	private:
 		// Load the model from disk

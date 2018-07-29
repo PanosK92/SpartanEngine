@@ -547,7 +547,8 @@ namespace Directus
 				// Bind geometry
 				if (m_currentlyBoundGeometry != obj_geometry->GetResourceID())
 				{
-					obj_geometry->Geometry_Bind();
+					m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
+					m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());
 					m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 					m_currentlyBoundGeometry = obj_geometry->GetResourceID();
 				}
@@ -565,8 +566,8 @@ namespace Directus
 					//continue;
 
 				m_shaderLightDepth->Bind_Buffer(actor->GetTransform_PtrRaw()->GetWorldTransform() * light->ComputeViewMatrix() * light->ShadowMap_ComputeProjectionMatrix(i));
-
 				m_rhiPipelineState->Bind();
+
 				m_rhiDevice->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
 
 				Profiler::Get().m_drawCalls++;
@@ -627,7 +628,8 @@ namespace Directus
 			// Bind geometry
 			if (m_currentlyBoundGeometry != obj_geometry->GetResourceID())
 			{	
-				obj_geometry->Geometry_Bind();
+				m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
+				m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());
 				m_currentlyBoundGeometry = obj_geometry->GetResourceID();
 			}
 
@@ -672,7 +674,8 @@ namespace Directus
 		PROFILE_FUNCTION_BEGIN();
 		m_rhiDevice->EventBegin("Pass_PreLight");
 
-		m_quad->SetBuffer();
+		m_rhiPipelineState->SetIndexBuffer(m_quad->GetIndexBuffer());
+		m_rhiPipelineState->SetVertexBuffer(m_quad->GetVertexBuffer());
 
 		// Shadow mapping + SSAO
 		Pass_Shadowing(inTextureNormal, inTextureDepth, inTextureNormalNoise, m_directionalLight, inRenderTexure);
@@ -727,7 +730,8 @@ namespace Directus
 		PROFILE_FUNCTION_BEGIN();
 		m_rhiDevice->EventBegin("Pass_PostLight");
 
-		m_quad->SetBuffer();
+		m_rhiPipelineState->SetIndexBuffer(m_quad->GetIndexBuffer());
+		m_rhiPipelineState->SetVertexBuffer(m_quad->GetVertexBuffer());
 
 		// Keep track of render target swapping
 		bool swaped = false;
@@ -1055,11 +1059,12 @@ namespace Directus
 				m_rhiDevice->EventBegin("Lines");
 
 				// Render
-				m_lineRenderer->SetBuffer();
+				m_lineRenderer->Update();
 
 				m_rhiPipelineState->SetShader(m_shaderLine);
 				m_rhiPipelineState->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
 				m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
+				m_rhiPipelineState->SetVertexBuffer(m_lineRenderer->GetVertexBuffer());
 				m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
 				m_shaderLine->Bind_Buffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix());	
 				m_rhiPipelineState->Bind();
@@ -1078,11 +1083,11 @@ namespace Directus
 		{
 			m_rhiDevice->EventBegin("Grid");
 
-			m_grid->SetBuffer();
-
 			m_rhiPipelineState->SetShader(m_shaderGrid);
 			m_rhiPipelineState->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
 			m_rhiPipelineState->SetSampler(m_samplerAnisotropicWrapAlways, 0);
+			m_rhiPipelineState->SetIndexBuffer(m_grid->GetIndexBuffer());
+			m_rhiPipelineState->SetVertexBuffer(m_grid->GetVertexBuffer());
 			m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
 			m_shaderGrid->Bind_Buffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix());
 			m_rhiPipelineState->Bind();
@@ -1142,11 +1147,11 @@ namespace Directus
 						texHeight
 					);
 
-					m_gizmoRectLight->SetBuffer();
-
 					m_rhiPipelineState->SetShader(m_shaderTexture);
 					m_rhiPipelineState->SetTexture(lightTex->GetShaderResource(), 0);
 					m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
+					m_rhiPipelineState->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
+					m_rhiPipelineState->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
 					m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 					m_shaderTexture->Bind_Buffer(m_wvp_baseOrthographic, 0);
 					m_rhiPipelineState->Bind();
@@ -1182,11 +1187,12 @@ namespace Directus
 		if (m_flags & Render_PerformanceMetrics)
 		{
 			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(-Settings::Get().GetResolutionWidth() * 0.5f + 1.0f, Settings::Get().GetResolutionHeight() * 0.5f));
-			m_font->SetVertexAndIndexBuffers();
 
 			m_rhiPipelineState->SetShader(m_shaderFont);
 			m_rhiPipelineState->SetTexture(m_font->GetShaderResource(), 0);
 			m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
+			m_rhiPipelineState->SetIndexBuffer(m_font->GetIndexBuffer());
+			m_rhiPipelineState->SetVertexBuffer(m_font->GetVertexBuffer());
 			m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 			m_shaderFont->Bind_Buffer(m_wvp_baseOrthographic, m_font->GetColor());
 			m_rhiPipelineState->Bind();

@@ -40,9 +40,8 @@ namespace Directus
 		void* Map();
 		bool Unmap();
 
-		bool SetIA();
-
-		unsigned int GetMemoryUsage() { return m_memoryUsage; }
+		ID3D11Buffer* GetBuffer()		{ return m_buffer; }
+		unsigned int GetMemoryUsage()	{ return m_memoryUsage; }
 
 	private:
 		D3D11_Device* m_graphics;

@@ -40,9 +40,11 @@ namespace Directus
 		Grid(Context* context);
 		~Grid(){}
 		
-		bool SetBuffer();
 		const Math::Matrix& ComputeWorldMatrix(Transform* camera);
-		unsigned int GetIndexCount() { return m_indexCount; }
+		
+		std::shared_ptr<D3D11_IndexBuffer> GetIndexBuffer()		{ return m_indexBuffer; }
+		std::shared_ptr<D3D11_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
+		unsigned int GetIndexCount()							{ return m_indexCount; }
 
 	private:
 		void BuildGrid();

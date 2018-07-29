@@ -53,9 +53,9 @@ namespace Directus
 
 	RHI_Texture::RHI_Texture(Context* context) : IResource(context)
 	{
-		//= IResource ==============
+		//= IResource ==================
 		RegisterResource<RHI_Texture>();
-		//==========================
+		//==============================
 
 		// Texture
 		m_isUsingMipmaps	= true;
