@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11/D3D11_VertexBuffer.h"
 #include "D3D11/D3D11_IndexBuffer.h"
 #include "D3D11/D3D11_Texture.h"
+#include "D3D11/D3D11_RenderTexture.h"
 
 static const D3D11_CULL_MODE d3d11_cull_mode[] =
 {

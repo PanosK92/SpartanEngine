@@ -36,8 +36,8 @@ namespace Directus
 		~IRHI_PipelineState(){}
 
 		// Shader
-		bool SetShader(std::shared_ptr<IRHI_Shader> shader);
-		bool SetShader(std::shared_ptr<D3D11_Shader> shader);
+		bool SetShader(std::shared_ptr<IRHI_Shader>& shader);
+		bool SetShader(std::shared_ptr<D3D11_Shader>& shader);
 		bool SetVertexShader(D3D11_Shader* shader);
 		bool SetPixelShader(D3D11_Shader* shader);
 
@@ -46,18 +46,18 @@ namespace Directus
 		bool SetTexture(void* shaderResource, unsigned int startSlot);
 		
 		// Constant, vertex & index buffers
-		bool SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer> constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope);
-		bool SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer> indexBuffer);
-		bool SetVertexBuffer(std::shared_ptr<RHI_VertexBuffer> vertexBuffer);
+		bool SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope);
+		bool SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
+		bool SetVertexBuffer(std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
 
 		// Sampler
-		bool SetSampler(std::shared_ptr<RHI_Sampler> sampler, unsigned int startSlot);
+		bool SetSampler(std::shared_ptr<RHI_Sampler>& sampler, unsigned int startSlot);
 
 		// Primitive topology
 		bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
 
 		// Input layout
-		bool SetInputLayout(std::shared_ptr<D3D11_InputLayout> inputLayout);
+		bool SetInputLayout(std::shared_ptr<D3D11_InputLayout>& inputLayout);
 
 		// Cull mode
 		bool SetCullMode(Cull_Mode cullMode);

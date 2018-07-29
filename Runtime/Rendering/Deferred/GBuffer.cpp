@@ -19,12 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES =============================
 #include "GBuffer.h"
 #include "../../RHI/IRHI_Implementation.h"
-#include "../../RHI/IRHI_Device.h"
-#include "../../RHI/D3D11/D3D11_RenderTexture.h"
-//==============================================
+//========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -37,10 +35,10 @@ namespace Directus
 	{
 		m_rhiDevice = rhiDevice;
 
-		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<D3D11_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Normal]		= make_shared<D3D11_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Specular]	= make_shared<D3D11_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11_RenderTexture>(m_rhiDevice, width, height, true,	Texture_Format_R32G32_FLOAT);
+		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<RHI_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Normal]		= make_shared<RHI_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Specular]	= make_shared<RHI_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(m_rhiDevice, width, height, true,	Texture_Format_R32G32_FLOAT);
 	}
 
 	GBuffer::~GBuffer()
@@ -82,12 +80,12 @@ namespace Directus
 			if (!renderTarget.second->GetDepthEnabled())
 			{
 				// Color buffer
-				m_rhiDevice->GetDeviceContext()->ClearRenderTargetView(renderTarget.second->GetRenderTargetView(), Vector4(0, 0, 0, 1).Data());
+				m_rhiDevice->GetDeviceContext()->ClearRenderTargetView((ID3D11RenderTargetView*)renderTarget.second->GetRenderTargetView(), Vector4(0, 0, 0, 1).Data());
 			}
 			else
 			{
 				// Clear the depth buffer.
-				m_rhiDevice->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, renderTarget.second->GetViewport().GetMaxDepth(), 0);
+				m_rhiDevice->GetDeviceContext()->ClearDepthStencilView((ID3D11DepthStencilView*)renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, renderTarget.second->GetViewport().GetMaxDepth(), 0);
 			}
 		}
 		return true;

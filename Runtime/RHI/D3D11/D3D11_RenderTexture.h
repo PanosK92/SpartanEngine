@@ -21,19 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
-#include "../../Math/Matrix.h"
-#include "../../Core/Settings.h"
-#include "../IRHI_Device.h"
-//==============================
+//= INCLUDES =====================
+#include "../IRHI_RenderTexture.h"
+//================================
 
 namespace Directus
 {
-	class ENGINE_CLASS D3D11_RenderTexture
+	class ENGINE_CLASS D3D11_RenderTexture : public IRHI_RenderTexture
 	{
 	public:
 		D3D11_RenderTexture(
-			D3D11_Device* graphics, 
+			RHI_Device* rhiDevice, 
 			int width				= Settings::Get().GetResolutionWidth(), 
 			int height				= Settings::Get().GetResolutionHeight(), 
 			bool depth				= false,
@@ -41,17 +39,14 @@ namespace Directus
 		);
 		~D3D11_RenderTexture();
 
-		bool SetAsRenderTarget();
-		bool Clear(const Math::Vector4& clearColor);
-		bool Clear(float red, float green, float blue, float alpha);
-		void ComputeOrthographicProjectionMatrix(float nearPlane, float farPlane);
-		const Math::Matrix& GetOrthographicProjectionMatrix()	{ return m_orthographicProjectionMatrix; }
-		ID3D11Texture2D* GetTexture()							{ return m_renderTargetTexture; }
-		ID3D11RenderTargetView* GetRenderTargetView()			{ return m_renderTargetView; }
-		ID3D11ShaderResourceView* GetShaderResourceView()		{ return m_shaderResourceView; }
-		ID3D11DepthStencilView* GetDepthStencilView()			{ return m_depthStencilView; }
-		const IRHI_Viewport& GetViewport()						{ return m_viewport; }
-		bool GetDepthEnabled()									{ return m_depthEnabled; }
+		bool SetAsRenderTarget() override;
+		bool Clear(const Math::Vector4& clearColor) override;
+		bool Clear(float red, float green, float blue, float alpha) override;
+		void ComputeOrthographicProjectionMatrix(float nearPlane, float farPlane) override;
+		void* GetTexture() override				{ return m_renderTargetTexture; }
+		void* GetRenderTargetView() override	{ return m_renderTargetView; }
+		void* GetShaderResourceView() override	{ return m_shaderResourceView; }
+		void* GetDepthStencilView() override	{ return m_depthStencilView; }
 
 	private:
 		bool Construct();
@@ -62,16 +57,10 @@ namespace Directus
 		ID3D11ShaderResourceView* m_shaderResourceView;
 		Texture_Format m_format;
 
-		// Depth texture
-		bool m_depthEnabled;
+		// Depth texture	
 		ID3D11Texture2D* m_depthStencilBuffer;
 		ID3D11DepthStencilView* m_depthStencilView;	
-
-		// Projection matrix
-		float m_nearPlane, m_farPlane;
-		Math::Matrix m_orthographicProjectionMatrix;
-
-		IRHI_Viewport m_viewport;
-		D3D11_Device* m_graphics;
+	
+		RHI_Device* m_rhiDevice;
 	};
 }

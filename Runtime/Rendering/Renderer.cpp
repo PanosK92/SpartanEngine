@@ -30,9 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Deferred/LightShader.h"
 #include "Deferred/GBuffer.h"
 #include "../RHI/IRHI_Implementation.h"
+#include "../RHI/IRHI_CommonBuffers.h"
 #include "../RHI/IRHI_Shader.h"
-#include "../RHI/RHI_CommonBuffers.h"
-#include "../RHI/D3D11/D3D11_RenderTexture.h"
 #include "../RHI/D3D11/D3D11_Shader.h"
 #include "../Core/Context.h"
 #include "../Core/EventSystem.h"
@@ -226,7 +225,7 @@ namespace Directus
 		// TEXTURES
 		{
 			// Noise texture (used by SSAO shader)
-			m_texNoiseMap = make_unique<RHI_Texture>(m_context);
+			m_texNoiseMap = make_shared<RHI_Texture>(m_context);
 			m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
 			m_texNoiseMap->SetType(TextureType_Normal);
 
@@ -247,24 +246,17 @@ namespace Directus
 		return true;
 	}
 
-	void Renderer::SetRenderTarget(void* renderTarget, bool clear /*= true*/)
+	void Renderer::SetRenderTarget(shared_ptr<RHI_RenderTexture>& renderTarget, bool clear /*= true*/)
 	{
-		auto renderTexture = (D3D11_RenderTexture*)renderTarget;
-		if (renderTexture)
-		{
-			renderTexture->SetAsRenderTarget();
-			if (clear) renderTexture->Clear(GetClearColor());
-			return;
-		}
+		renderTarget->SetAsRenderTarget();
+		if (clear) renderTarget->Clear(GetClearColor());
+	}
 
+	void Renderer::SetRenderTarget(bool clear /*= true*/)
+	{
 		m_rhiDevice->Bind_BackBufferAsRenderTarget();
 		m_rhiDevice->SetBackBufferViewport();
 		if (clear) m_rhiDevice->Clear(GetClearColor());
-	}
-
-	void Renderer::SetRenderTarget(const shared_ptr<D3D11_RenderTexture>& renderTexture)
-	{
-		SetRenderTarget(renderTexture.get());
 	}
 
 	void* Renderer::GetFrame()
@@ -312,14 +304,14 @@ namespace Directus
 			Pass_PreLight(
 				m_gbuffer->GetShaderResource(GBuffer_Target_Normal),	// IN:	Texture			- Normal
 				m_gbuffer->GetShaderResource(GBuffer_Target_Depth),		// IN:	Texture			- Depth
-				m_texNoiseMap->GetShaderResource(),						// IN:	Texture			- Normal noise
-				m_renderTexPing.get(),									// IN:	Render texture		
-				m_renderTexShadowing.get()								// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
+				m_texNoiseMap,											// IN:	Texture			- Normal noise
+				m_renderTexPing,										// IN:	Render texture		
+				m_renderTexShadowing									// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
 			);
 
 			Pass_Light(
-				m_renderTexShadowing->GetShaderResourceView(),	// IN:	Texture			- Shadowing (Shadow mapping + SSAO)
-				m_renderTexPing.get()							// OUT: Render texture	- Result
+				m_renderTexShadowing,	// IN:	Texture			- Shadowing (Shadow mapping + SSAO)
+				m_renderTexPing			// OUT: Render texture	- Result
 			);
 
 			Pass_PostLight(
@@ -401,16 +393,16 @@ namespace Directus
 		m_quad->Create(0, 0, (float)width, (float)height);
 
 		m_renderTexPing.reset();
-		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPing2.reset();
-		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPong.reset();
-		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPong = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexShadowing.reset();
-		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_rhiDevice, int(width * 0.5f), int(height * 0.5f), false, Texture_Format_R32G32_FLOAT);
+		m_renderTexShadowing = make_unique<RHI_RenderTexture>(m_rhiDevice, int(width * 0.5f), int(height * 0.5f), false, Texture_Format_R32G32_FLOAT);
 	}
 
 	//= RENDERABLES ============================================================================================
@@ -670,7 +662,13 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::Pass_PreLight(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing)
+	void Renderer::Pass_PreLight(
+		void* inTextureNormal,
+		void* inTextureDepth,
+		shared_ptr<RHI_Texture>& inTextureNormalNoise,
+		shared_ptr<RHI_RenderTexture>& inRenderTexure,
+		shared_ptr<RHI_RenderTexture>& outRenderTextureShadowing
+	)
 	{
 		PROFILE_FUNCTION_BEGIN();
 		m_rhiDevice->EventBegin("Pass_PreLight");
@@ -682,13 +680,13 @@ namespace Directus
 		Pass_Shadowing(inTextureNormal, inTextureDepth, inTextureNormalNoise, m_directionalLight, inRenderTexure);
 
 		// Blur the shadows and the SSAO
-		Pass_Blur(((D3D11_RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureShadowing, Settings::Get().GetResolution());
+		Pass_Blur(inRenderTexure, outRenderTextureShadowing, Settings::Get().GetResolution());
 
 		m_rhiDevice->EventEnd();
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::Pass_Light(void* inTextureShadowing, void* outRenderTexture)
+	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& inTextureShadowing, shared_ptr<RHI_RenderTexture>& outRenderTexture)
 	{
 		if (!m_shaderLight->IsCompiled())
 			return;
@@ -708,7 +706,7 @@ namespace Directus
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Specular));
-		m_texArray.emplace_back(inTextureShadowing);
+		m_texArray.emplace_back(inTextureShadowing->GetShaderResourceView());
 		m_texArray.emplace_back(m_renderTexPong->GetShaderResourceView()); // previous frame for SSR
 		m_texArray.emplace_back(m_skybox ? m_skybox->GetShaderResource() : nullptr);
 		//=============================================================================
@@ -726,7 +724,7 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::Pass_PostLight(shared_ptr<D3D11_RenderTexture>& inRenderTexture1, shared_ptr<D3D11_RenderTexture>& inRenderTexture2, shared_ptr<D3D11_RenderTexture>& outRenderTexture)
+	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& inRenderTexture1, shared_ptr<RHI_RenderTexture>& inRenderTexture2, shared_ptr<RHI_RenderTexture>& outRenderTexture)
 	{
 		PROFILE_FUNCTION_BEGIN();
 		m_rhiDevice->EventBegin("Pass_PostLight");
@@ -752,28 +750,28 @@ namespace Directus
 		// CORRECTION
 		if (RenderFlags_IsSet(Render_Correction))
 		{
-			Pass_Correction(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+			Pass_Correction(inRenderTexture1, outRenderTexture);
 			SwapTargets();
 		}
 
 		// FXAA
 		if (RenderFlags_IsSet(Render_FXAA))
 		{
-			Pass_FXAA(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+			Pass_FXAA(inRenderTexture1, outRenderTexture);
 			SwapTargets();
 		}
 
 		// CHROMATIC ABERRATION
 		if (RenderFlags_IsSet(Render_ChromaticAberration))
 		{
-			Pass_ChromaticAberration(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+			Pass_ChromaticAberration(inRenderTexture1, outRenderTexture);
 			SwapTargets();
 		}
 
 		// SHARPENING
 		if (RenderFlags_IsSet(Render_Sharpening))
 		{
-			Pass_Sharpening(inRenderTexture1->GetShaderResourceView(), outRenderTexture.get());
+			Pass_Sharpening(inRenderTexture1, outRenderTexture);
 		}
 
 		// DEBUG - Rendering continues on last bound target
@@ -784,7 +782,7 @@ namespace Directus
 		PROFILE_FUNCTION_END();
 	}
 
-	void Renderer::Pass_Correction(void* inTexture, void* outTexture)
+	void Renderer::Pass_Correction(shared_ptr<RHI_RenderTexture>& inTexture, shared_ptr<RHI_RenderTexture>& outTexture)
 	{
 		m_rhiDevice->EventBegin("Pass_Correction");
 
@@ -793,7 +791,7 @@ namespace Directus
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderCorrection);
-		m_rhiPipelineState->SetTexture(inTexture, 0);
+		m_rhiPipelineState->SetTexture(inTexture->GetShaderResourceView(), 0);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);	
 		m_shaderCorrection->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());	
 		m_rhiPipelineState->Bind();
@@ -803,7 +801,7 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_FXAA(void* inTexture, void* outTexture)
+	void Renderer::Pass_FXAA(shared_ptr<RHI_RenderTexture>& inTexture, shared_ptr<RHI_RenderTexture>& outTexture)
 	{
 		m_rhiDevice->EventBegin("Pass_FXAA");
 
@@ -812,7 +810,7 @@ namespace Directus
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderFXAA);	
-		m_rhiPipelineState->SetTexture(inTexture, 0);
+		m_rhiPipelineState->SetTexture(inTexture->GetShaderResourceView(), 0);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 		m_shaderFXAA->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_rhiPipelineState->Bind();
@@ -822,7 +820,7 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_Sharpening(void* inTexture, void* outTexture)
+	void Renderer::Pass_Sharpening(shared_ptr<RHI_RenderTexture>& inTexture, shared_ptr<RHI_RenderTexture>& outTexture)
 	{
 		m_rhiDevice->EventBegin("Pass_Sharpening");
 
@@ -831,7 +829,7 @@ namespace Directus
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderSharpening);
-		m_rhiPipelineState->SetTexture(inTexture, 0);
+		m_rhiPipelineState->SetTexture(inTexture->GetShaderResourceView(), 0);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 		m_shaderSharpening->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_rhiPipelineState->Bind();
@@ -841,7 +839,7 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_ChromaticAberration(void* inTexture, void* outTexture)
+	void Renderer::Pass_ChromaticAberration(shared_ptr<RHI_RenderTexture>& inTexture, shared_ptr<RHI_RenderTexture>& outTexture)
 	{
 		m_rhiDevice->EventBegin("Pass_ChromaticAberration");
 
@@ -851,7 +849,7 @@ namespace Directus
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderChromaticAberration);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
-		m_rhiPipelineState->SetTexture(inTexture, 0);
+		m_rhiPipelineState->SetTexture(inTexture->GetShaderResourceView(), 0);
 		m_shaderChromaticAberration->Bind_Buffer(m_wvp_baseOrthographic, Settings::Get().GetResolution());		
 		m_rhiPipelineState->Bind();
 
@@ -860,12 +858,12 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_Bloom(shared_ptr<D3D11_RenderTexture>& inSourceTexture, shared_ptr<D3D11_RenderTexture>& inTextureSpare, shared_ptr<D3D11_RenderTexture>& outTexture)
+	void Renderer::Pass_Bloom(shared_ptr<RHI_RenderTexture>& inSourceTexture, shared_ptr<RHI_RenderTexture>& inTextureSpare, shared_ptr<RHI_RenderTexture>& outTexture)
 	{
 		m_rhiDevice->EventBegin("Pass_Bloom");
 
 		// Bright pass
-		SetRenderTarget(inTextureSpare.get(), false);
+		SetRenderTarget(inTextureSpare, false);
 
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
@@ -878,7 +876,7 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Horizontal Gaussian blur
-		SetRenderTarget(outTexture.get(), false);
+		SetRenderTarget(outTexture, false);
 
 		m_rhiPipelineState->SetShader(m_shaderBlurGaussianH);
 		m_rhiPipelineState->SetTexture(inTextureSpare->GetShaderResourceView(), 0);
@@ -889,7 +887,7 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
-		SetRenderTarget(inTextureSpare.get(), false);
+		SetRenderTarget(inTextureSpare, false);
 
 		m_rhiPipelineState->SetShader(m_shaderBlurGaussianV);
 		m_rhiPipelineState->SetTexture(outTexture->GetShaderResourceView(), 0);
@@ -900,7 +898,7 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Additive blending
-		SetRenderTarget(outTexture.get(), false);
+		SetRenderTarget(outTexture, false);
 
 		m_rhiPipelineState->SetShader(m_shaderBloom_BlurBlend);
 		m_rhiPipelineState->SetTexture(inSourceTexture->GetShaderResourceView(), 0);
@@ -914,7 +912,7 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_Blur(void* texture, void* renderTarget, const Vector2& blurScale)
+	void Renderer::Pass_Blur(shared_ptr<RHI_RenderTexture>& texture, shared_ptr<RHI_RenderTexture>& renderTarget, const Vector2& blurScale)
 	{
 		m_rhiDevice->EventBegin("Pass_Blur");
 
@@ -923,7 +921,7 @@ namespace Directus
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderBlurBox);
-		m_rhiPipelineState->SetTexture(texture, 0); // Shadows are in the alpha channel
+		m_rhiPipelineState->SetTexture(texture->GetShaderResourceView(), 0); // Shadows are in the alpha channel
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 		m_shaderBlurBox->Bind_Buffer(m_wvp_baseOrthographic, blurScale);		
 		m_rhiPipelineState->Bind();
@@ -933,7 +931,12 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture)
+	void Renderer::Pass_Shadowing(
+		void* inTextureNormal_shaderResource,
+		void* inTextureDepth_shaderResource,
+		shared_ptr<RHI_Texture>& inTextureNormalNoise,
+		Light* inDirectionalLight,
+		shared_ptr<RHI_RenderTexture>& outRenderTexture)
 	{
 		if (!inDirectionalLight)
 			return;
@@ -947,9 +950,9 @@ namespace Directus
 		// TEXTURES
 		m_texArray.clear();
 		m_texArray.shrink_to_fit();
-		m_texArray.emplace_back(inTextureNormal);
-		m_texArray.emplace_back(inTextureDepth);
-		m_texArray.emplace_back(inTextureNormalNoise);
+		m_texArray.emplace_back(inTextureNormal_shaderResource);
+		m_texArray.emplace_back(inTextureDepth_shaderResource);
+		m_texArray.emplace_back(inTextureNormalNoise->GetShaderResource());
 		if (inDirectionalLight)
 		{
 			m_texArray.emplace_back(inDirectionalLight->ShadowMap_GetShaderResource(0));

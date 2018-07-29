@@ -88,7 +88,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		g_engine->Tick();
 
 		// Set back buffer as render target (for ImGui to render on)
-		g_renderer->SetRenderTarget(nullptr);
+		g_renderer->SetRenderTarget();
 
 		// Update editor
 		g_editor->Update(g_engine->GetDeltaTime());

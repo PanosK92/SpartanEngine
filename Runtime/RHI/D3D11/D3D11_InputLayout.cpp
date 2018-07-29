@@ -19,19 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ======================
 #include "D3D11_InputLayout.h"
+#include "../IRHI_Implementation.h"
 #include "../../Logging/Log.h"
 #include "../../Core/EngineDefs.h"
-#include "../IRHI_Implementation.h"
-//================================
+//=================================
 
 namespace Directus
 {
-	D3D11_InputLayout::D3D11_InputLayout(D3D11_Device* device) : m_graphics(device)
+	D3D11_InputLayout::D3D11_InputLayout(RHI_Device* rhiDevice)
 	{
-		m_ID3D11InputLayout = nullptr;
-		m_inputLayout = Input_PositionTextureTBN;
+		m_rhiDevice			= rhiDevice;
+		m_ID3D11InputLayout	= nullptr;
+		m_inputLayout		= Input_PositionTextureTBN;
 	}
 
 	D3D11_InputLayout::~D3D11_InputLayout()
@@ -42,13 +43,13 @@ namespace Directus
 	//= LAYOUT CREATION ==================================================
 	bool D3D11_InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, unsigned int elementCount)
 	{
-		if (!m_graphics->GetDevice())
+		if (!m_rhiDevice->GetDevice())
 		{
 			LOG_ERROR("D3D11_InputLayout::Create: Graphics device is not present.");
 			return false;
 		}
 
-		HRESULT result = m_graphics->GetDevice()->CreateInputLayout(
+		HRESULT result = m_rhiDevice->GetDevice()->CreateInputLayout(
 			vertexInputLayout,
 			elementCount,
 			VSBlob->GetBufferPointer(),
