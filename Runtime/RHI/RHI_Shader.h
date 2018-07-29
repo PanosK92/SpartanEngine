@@ -34,33 +34,23 @@ namespace Directus
 	class Light;
 	class Camera;
 
-	enum ConstantBufferType
-	{
-		CB_Matrix,	
-		CB_Matrix_Vector4,
-		CB_Matrix_Vector3,
-		CB_Matrix_Vector2,
-		CB_Matrix_Matrix_Matrix,
-		CB_Matrix_Vector3_Vector3,
-		CB_Shadowing
-	};
-
-	enum ConstantBufferScope
-	{
-		VertexShader,
-		PixelShader,
-		Global
-	};
-
-	class RHI_Shader
+	class ENGINE_CLASS RHI_Shader
 	{
 	public:
 		RHI_Shader(RHI_Device* rhiDevice);
 		~RHI_Shader(){}
 
-		bool Compile(const std::string& filePath, Input_Layout inputLayout);
 		void AddDefine(const char* define);
-		void AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope);
+		bool Compile(const std::string& filePath, Input_Layout inputLayout);
+		
+		template <typename T>
+		void AddBuffer(BufferScope_Mode bufferScope)
+		{
+			m_bufferScope = bufferScope;
+			m_bufferSize = sizeof(T);
+			m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
+			m_constantBuffer->Create(m_bufferSize);
+		}
 
 		// Bind - Constant Buffer
 		void Bind_Buffer(const Math::Matrix& matrix, unsigned int slot = 0);
@@ -83,71 +73,10 @@ namespace Directus
 		D3D11_Shader* GetShader() { return m_shader.get(); }
 
 	private:
-		void SetBufferScope(D3D11_ConstantBuffer* buffer, unsigned int slot = 0);
-
-		struct Struct_Matrix
-		{
-			Math::Matrix matrix;
-		};
-
-		struct Struct_Matrix_Vector4
-		{
-			Math::Matrix matrix;
-			Math::Vector4 vector4;
-		};
-
-		struct Struct_Matrix_Vector3
-		{
-			Math::Matrix matrix;
-			Math::Vector3 vector3;
-			float padding;
-		};
-
-		struct Struct_Matrix_Vector2
-		{
-			Math::Matrix matrix;
-			Math::Vector2 vector2;
-			Math::Vector2 padding;
-		};
-
-		struct Struct_Shadowing
-		{
-			Math::Matrix wvpOrtho;
-			Math::Matrix wvpInv;
-			Math::Matrix view;
-			Math::Matrix projection;
-			Math::Matrix projectionInverse;
-			Math::Matrix mLightViewProjection[3];
-			Math::Vector4 shadowSplits;
-			Math::Vector3 lightDir;
-			float shadowMapResolution;
-			Math::Vector2 resolution;
-			float nearPlane;
-			float farPlane;
-			float doShadowMapping;
-			Math::Vector3 padding;
-		};
-
-		struct Struct_Matrix_Matrix_Matrix
-		{
-			Math::Matrix m1;
-			Math::Matrix m2;
-			Math::Matrix m3;
-		};
-
-		struct Struct_Matrix_Vector3_Vector3
-		{
-			Math::Matrix matrix;
-			Math::Vector3 vector3A;
-			float padding;
-			Math::Vector3 vector3B;
-			float padding2;
-		};
-
-		std::unique_ptr<D3D11_ConstantBuffer> m_constantBuffer;
+		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
+		unsigned int m_bufferSize;
+		BufferScope_Mode m_bufferScope;
 		std::shared_ptr<D3D11_Shader> m_shader;
 		RHI_Device* m_rhiDevice;
-		ConstantBufferType m_bufferType;
-		ConstantBufferScope m_bufferScope;
 	};
 }

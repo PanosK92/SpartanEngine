@@ -21,36 +21,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============
+//= INCLUDES ====================
 #include <vector>
 #include "../RHI_Vertex.h"
-#include "../RHI_Device.h"
-//========================
+#include "../IRHI_VertexBuffer.h"
+//===============================
 
 namespace Directus
 {
-	class D3D11_VertexBuffer
+	class D3D11_VertexBuffer : public IRHI_VertexBuffer
 	{
 	public:
-		D3D11_VertexBuffer(D3D11_Device* graphicsDevice);
+		D3D11_VertexBuffer(RHI_Device* rhiDevice);
 		~D3D11_VertexBuffer();
 
-		bool Create(const std::vector<RHI_Vertex_PosCol>& vertices);
-		bool Create(const std::vector<RHI_Vertex_PosUV>& vertices);
-		bool Create(const std::vector<RHI_Vertex_PosUVTBN>& vertices);
-		bool CreateDynamic(unsigned int stride, unsigned int initialSize);
-
-		void* Map();
-		bool Unmap();
-
-		unsigned int GetStride()		{ return m_stride; }
-		ID3D11Buffer* GetBuffer()		{ return m_buffer; }
-		unsigned int GetMemoryUsage()	{ return m_memoryUsage; }
+		bool Create(const std::vector<RHI_Vertex_PosCol>& vertices) override;
+		bool Create(const std::vector<RHI_Vertex_PosUV>& vertices) override;
+		bool Create(const std::vector<RHI_Vertex_PosUVTBN>& vertices) override;
+		bool CreateDynamic(unsigned int stride, unsigned int initialSize) override;
+		void* Map() override;
+		bool Unmap() override;
+		bool Bind() override;
 
 	private:
-		D3D11_Device* m_graphics;
+		RHI_Device* m_rhiDevice;
 		ID3D11Buffer* m_buffer;
 		unsigned int m_stride;
-		unsigned int m_memoryUsage;
 	};
 }

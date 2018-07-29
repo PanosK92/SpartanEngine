@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES =====================
 #include <vector>
 #include <memory>
 #include "../RHI/RHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Core/EngineDefs.h"
-//=============================
+//================================
 
 namespace Directus
 {
@@ -42,9 +42,9 @@ namespace Directus
 		
 		const Math::Matrix& ComputeWorldMatrix(Transform* camera);
 		
-		std::shared_ptr<D3D11_IndexBuffer> GetIndexBuffer()		{ return m_indexBuffer; }
-		std::shared_ptr<D3D11_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
-		unsigned int GetIndexCount()							{ return m_indexCount; }
+		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
+		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
+		unsigned int GetIndexCount()						{ return m_indexCount; }
 
 	private:
 		void BuildGrid();
@@ -54,8 +54,8 @@ namespace Directus
 		unsigned int m_indexCount;
 		int m_terrainHeight;
 		int m_terrainWidth;
-		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<D3D11_IndexBuffer> m_indexBuffer;
+		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
 		Math::Matrix m_world;
 	};
 }

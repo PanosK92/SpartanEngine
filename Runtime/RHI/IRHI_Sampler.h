@@ -21,36 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include <memory>
-#include "../RHI/RHI_Definition.h"
-//================================
+//= INCLUDES ==============
+#include "RHI_Definition.h"
+//=========================
 
 namespace Directus
 {
-	class Context;
-
-	class Rectangle
+	class IRHI_Sampler
 	{
 	public:
-		Rectangle(Context* context);
-		~Rectangle();
+		IRHI_Sampler(RHI_Device* rhiDevice,
+			Texture_Sampler_Filter filter					= Texture_Sampler_Anisotropic,
+			Texture_Address_Mode textureAddressMode			= Texture_Address_Wrap,
+			Texture_Comparison_Function comparisonFunction	= Texture_Comparison_Always){};
+		~IRHI_Sampler(){};
 
-		bool Create(float x, float y, float width, float height);
-		int GetIndexCount() { return 6; }
-
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
-
-	private:
-		RHI_Device* m_rhiDevice;
-		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
-		float m_x;
-		float m_y;
-		float m_width;
-		float m_height;
-		int m_resolutionWidth;
-		int m_resolutionHeight;
+		virtual bool Bind(unsigned int slot) = 0;
 	};
 }

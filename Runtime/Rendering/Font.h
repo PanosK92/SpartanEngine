@@ -57,9 +57,9 @@ namespace Directus
 		void SetColor(const Math::Vector4& color)	{ m_fontColor = color; }
 
 		void** GetShaderResource();
-		std::shared_ptr<D3D11_IndexBuffer> GetIndexBuffer()		{ return m_indexBuffer; }
-		std::shared_ptr<D3D11_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
-		unsigned int GetIndexCount()							{ return (unsigned int)m_indices.size(); }
+		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
+		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
+		unsigned int GetIndexCount()						{ return (unsigned int)m_indices.size(); }
 			
 	private:	
 		bool UpdateBuffers(std::vector<RHI_Vertex_PosUV>& vertices, std::vector<unsigned int>& indices);
@@ -70,8 +70,8 @@ namespace Directus
 		int m_charMaxWidth;
 		int m_charMaxHeight;
 		Math::Vector4 m_fontColor;
-		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<D3D11_IndexBuffer> m_indexBuffer;
+		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
 		std::vector<RHI_Vertex_PosUV> m_vertices;
 		std::vector<unsigned int> m_indices;
 		std::string m_currentText;

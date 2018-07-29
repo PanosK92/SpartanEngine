@@ -90,8 +90,8 @@ namespace Directus
 
 		void SetWorkingDirectory(const std::string& directory);
 
-		std::shared_ptr<D3D11_IndexBuffer> GetIndexBuffer()		{ return m_indexBuffer; }
-		std::shared_ptr<D3D11_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }	
+		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()		{ return m_indexBuffer; }
+		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }	
 
 	private:
 		// Load the model from disk
@@ -107,8 +107,8 @@ namespace Directus
 		std::weak_ptr<Actor> m_rootactor;
 
 		// Geometry
-		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<D3D11_IndexBuffer> m_indexBuffer;
+		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
 		std::shared_ptr<Mesh> m_mesh;
 		Math::BoundingBox m_aabb;
 		unsigned int meshCount;

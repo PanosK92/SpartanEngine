@@ -22,14 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
-#include "RHI_Definition.h"
 #include <memory>
 #include <vector>
+#include "RHI_Definition.h"
 //=========================
 
 namespace Directus
 {
-	class RHI_PipelineState
+	class ENGINE_CLASS RHI_PipelineState
 	{
 	public:
 		RHI_PipelineState(RHI_Device* rhiDevice);
@@ -45,12 +45,13 @@ namespace Directus
 		bool SetTextures(std::vector<void*> shaderResources, unsigned int startSlot);
 		bool SetTexture(void* shaderResource, unsigned int startSlot);
 		
-		// Vertex & index buffers
-		bool SetIndexBuffer(std::shared_ptr<D3D11_IndexBuffer> indexBuffer);
-		bool SetVertexBuffer(std::shared_ptr<D3D11_VertexBuffer> vertexBuffer);
+		// Constant, vertex & index buffers
+		bool SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer> constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope);
+		bool SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer> indexBuffer);
+		bool SetVertexBuffer(std::shared_ptr<RHI_VertexBuffer> vertexBuffer);
 
 		// Sampler
-		bool SetSampler(std::shared_ptr<D3D11_Sampler> sampler, unsigned int startSlot);
+		bool SetSampler(std::shared_ptr<RHI_Sampler> sampler, unsigned int startSlot);
 
 		// Primitive topology
 		bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);

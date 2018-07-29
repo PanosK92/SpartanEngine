@@ -25,8 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Animation.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../RHI/D3D11/D3D11_VertexBuffer.h"
-#include "../RHI/D3D11/D3D11_IndexBuffer.h"
 #include "../Scene/Actor.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
@@ -287,7 +285,7 @@ namespace Directus
 
 		if (!indices.empty())
 		{
-			m_indexBuffer = make_shared<D3D11_IndexBuffer>((D3D11_Device*)m_rhiDevice);
+			m_indexBuffer = make_shared<RHI_IndexBuffer>(m_rhiDevice);
 			if (!m_indexBuffer->Create(indices))
 			{
 				LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create index buffer for \"%s\".", m_resourceName.c_str());
@@ -302,7 +300,7 @@ namespace Directus
 
 		if (!vertices.empty())
 		{
-			m_vertexBuffer = make_shared<D3D11_VertexBuffer>((D3D11_Device*)m_rhiDevice);
+			m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
 			if (!m_vertexBuffer->Create(vertices))
 			{
 				LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create vertex buffer for \"%s\".", m_resourceName.c_str());

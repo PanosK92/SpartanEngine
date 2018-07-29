@@ -53,16 +53,16 @@ namespace Directus
 		m_rhiDevice = rhiDevice;
 
 		// load the vertex and the pixel shader
-		m_shader = make_shared<D3D11_Shader>((D3D11_Device*)m_rhiDevice);
+		m_shader = make_shared<D3D11_Shader>(m_rhiDevice);
 		m_shader->Compile(filePath);
 		m_shader->SetInputLayout(Input_PositionTextureTBN);
 
 		// Create matrix buffer
-		m_matrixBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
+		m_matrixBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
 		m_matrixBuffer->Create(sizeof(MatrixBufferType));
 
 		// Create misc buffer
-		m_miscBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
+		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
 		m_miscBuffer->Create(sizeof(MiscBufferType));
 	}
 
@@ -91,8 +91,8 @@ namespace Directus
 		m_matrixBuffer->Unmap();
 
 		// Set to shader slot
-		m_matrixBuffer->SetVS(0);
-		m_matrixBuffer->SetPS(0);
+
+		m_matrixBuffer->Bind(BufferScope_Global, 0);
 	}
 
 	void LightShader::UpdateMiscBuffer(const vector<Light*>& lights, Camera* camera)
@@ -183,8 +183,7 @@ namespace Directus
 		m_miscBuffer->Unmap();
 
 		// Set to shader slot
-		m_miscBuffer->SetVS(1);
-		m_miscBuffer->SetPS(1);
+		m_miscBuffer->Bind(BufferScope_Global, 1);
 	}
 
 	bool LightShader::IsCompiled()

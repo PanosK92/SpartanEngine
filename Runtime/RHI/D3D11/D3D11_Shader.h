@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <set>
 #include <memory>
 #include <map>
-#include "../RHI_Device.h"
+#include "../IRHI_Device.h"
 #include "Windows.h" // Used for LPCSTR, must remove
 //=======================
 

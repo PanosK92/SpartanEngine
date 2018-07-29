@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include "../../Math/Matrix.h"
 #include "../../Core/Settings.h"
-#include "../RHI_Device.h"
+#include "../IRHI_Device.h"
 //==============================
 
 namespace Directus

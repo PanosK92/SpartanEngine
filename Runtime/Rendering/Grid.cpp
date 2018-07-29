@@ -19,16 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES =============================
 #include "Grid.h"
 #include "../Core/Context.h"
 #include "../Logging/Log.h"
 #include "../Scene/Components/Transform.h"
 #include "../RHI/RHI_Vertex.h"
-#include "../RHI/D3D11/D3D11_VertexBuffer.h"
-#include "../RHI/D3D11/D3D11_IndexBuffer.h"
 #include "../RHI/RHI_Implementation.h"
-//==========================================
+//========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -140,14 +138,14 @@ namespace Directus
 		m_vertexBuffer.reset();
 		m_indexBuffer.reset();
 
-		m_vertexBuffer = make_shared<D3D11_VertexBuffer>((D3D11_Device*)rhiDevice);
+		m_vertexBuffer = make_shared<RHI_VertexBuffer>(rhiDevice);
 		if (!m_vertexBuffer->Create(vertices))
 		{
 			LOG_ERROR("Font: Failed to create vertex buffer.");
 			return false;
 		}
 
-		m_indexBuffer = make_shared<D3D11_IndexBuffer>((D3D11_Device*)rhiDevice);
+		m_indexBuffer = make_shared<RHI_IndexBuffer>(rhiDevice);
 		if (!m_indexBuffer->Create(indices))
 		{
 			LOG_ERROR("Font: Failed to create index buffer.");

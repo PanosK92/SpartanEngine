@@ -32,12 +32,12 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11_VertexBuffer::D3D11_VertexBuffer(D3D11_Device* graphicsDevice)
+	D3D11_VertexBuffer::D3D11_VertexBuffer(RHI_Device* rhiDevice) : IRHI_VertexBuffer(rhiDevice)
 	{
-		m_graphics = graphicsDevice;
-		m_buffer = nullptr;
-		m_stride = 0;
-		m_memoryUsage = 0;
+		m_rhiDevice		= rhiDevice;
+		m_buffer		= nullptr;
+		m_stride		= 0;
+		m_memoryUsage	= 0;
 	}
 
 	D3D11_VertexBuffer::~D3D11_VertexBuffer()
@@ -47,7 +47,7 @@ namespace Directus
 
 	bool D3D11_VertexBuffer::Create(const vector<RHI_Vertex_PosCol>& vertices)
 	{
-		if (!m_graphics->GetDevice() || vertices.empty())
+		if (!m_rhiDevice->GetDevice() || vertices.empty())
 			return false;
 
 		m_stride = sizeof(RHI_Vertex_PosCol);
@@ -73,7 +73,7 @@ namespace Directus
 		// Compute memory usage
 		m_memoryUsage = (unsigned int)(sizeof(RHI_Vertex_PosCol) * vertices.size());
 
-		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
+		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11VertexBuffer: Failed to create vertex buffer");
@@ -85,7 +85,7 @@ namespace Directus
 
 	bool D3D11_VertexBuffer::Create(const vector<RHI_Vertex_PosUV>& vertices)
 	{
-		if (!m_graphics || !m_graphics->GetDevice() || vertices.empty())
+		if (!m_rhiDevice || !m_rhiDevice->GetDevice() || vertices.empty())
 			return false;
 
 		m_stride = sizeof(RHI_Vertex_PosUV);
@@ -111,7 +111,7 @@ namespace Directus
 		// Compute memory usage
 		m_memoryUsage = (unsigned int)(sizeof(RHI_Vertex_PosUV) * vertices.size());
 
-		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
+		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11VertexBuffer: Failed to create vertex buffer");
@@ -123,7 +123,7 @@ namespace Directus
 
 	bool D3D11_VertexBuffer::Create(const vector<RHI_Vertex_PosUVTBN>& vertices)
 	{
-		if (!m_graphics || !m_graphics->GetDevice() || vertices.empty())
+		if (!m_rhiDevice || !m_rhiDevice->GetDevice() || vertices.empty())
 			return false;
 
 		m_stride = sizeof(RHI_Vertex_PosUVTBN);
@@ -149,7 +149,7 @@ namespace Directus
 		// Compute memory usage
 		m_memoryUsage = (unsigned int)(sizeof(RHI_Vertex_PosUVTBN) * vertices.size());
 
-		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
+		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11VertexBuffer: Failed to create vertex buffer");
@@ -161,8 +161,11 @@ namespace Directus
 
 	bool D3D11_VertexBuffer::CreateDynamic(unsigned int stride, unsigned int initialSize)
 	{
-		if (!m_graphics || !m_graphics->GetDevice())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext())
+		{
+			LOG_ERROR("D3D11_IndexBuffer::Bind: Not initialized");
 			return false;
+		}
 
 		m_stride = stride;
 		unsigned int byteWidth = m_stride * initialSize;
@@ -177,7 +180,7 @@ namespace Directus
 		bufferDesc.MiscFlags = 0;
 		bufferDesc.StructureByteStride = 0;
 
-		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
 		if FAILED(result)
 		{
 			LOG_ERROR("D3D11VertexBuffer: Failed to create dynamic vertex buffer");
@@ -189,27 +192,15 @@ namespace Directus
 
 	void* D3D11_VertexBuffer::Map()
 	{
-		if (!m_graphics)
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext() || !m_buffer)
 		{
-			LOG_ERROR("D3D11VertexBuffer: Can't map. Graphics adapter is uninitialized.");
-			return nullptr;
-		}
-
-		if (!m_graphics->GetDeviceContext())
-		{
-			LOG_ERROR("D3D11VertexBuffer: Can't map. Graphics adapter context is uninitialized.");
-			return nullptr;
-		}
-
-		if (!m_buffer)
-		{
-			LOG_ERROR("D3D11VertexBuffer: Can't map. Buffer is uninitialized.");
-			return nullptr;
+			LOG_ERROR("D3D11_IndexBuffer::Bind: Not initialized");
+			return false;
 		}
 
 		// disable GPU access to the vertex buffer data.
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		HRESULT result = m_graphics->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		HRESULT result = m_rhiDevice->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11VertexBuffer: Failed to map vertex buffer.");
@@ -221,27 +212,27 @@ namespace Directus
 
 	bool D3D11_VertexBuffer::Unmap()
 	{
-		if (!m_graphics)
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext() || !m_buffer)
 		{
-			LOG_ERROR("D3D11VertexBuffer: Can't unmap. Graphics adapter is uninitialized.");
-			return false;
-		}
-
-		if (!m_graphics->GetDeviceContext())
-		{
-			LOG_ERROR("D3D11VertexBuffer: Can't unmap. Graphics adapter context is uninitialized.");
-			return false;
-		}
-
-		if (!m_buffer)
-		{
-			LOG_ERROR("D3D11VertexBuffer: Can't unmap. Buffer is uninitialized.");
+			LOG_ERROR("D3D11_IndexBuffer::Bind: Not initialized");
 			return false;
 		}
 
 		// re-enable GPU access to the vertex buffer data.
-		m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
+		m_rhiDevice->GetDeviceContext()->Unmap(m_buffer, 0);
 
 		return true;
+	}
+
+	bool D3D11_VertexBuffer::Bind()
+	{
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext() || !m_buffer)
+		{
+			LOG_ERROR("D3D11_IndexBuffer::Bind: Not initialized");
+			return false;
+		}
+
+		unsigned int offset = 0;
+		m_rhiDevice->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);
 	}
 }

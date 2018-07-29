@@ -55,13 +55,6 @@ namespace Directus
 				return static_cast<T*>(subsystem);
 		}
 
-		// Compare T with base subsystem types
-		for (const auto& subsystem : m_subsystems)
-		{
-			if (auto base = dynamic_cast<T*>(subsystem))
-				return base;
-		}
-
 		return nullptr;
 	}
 }

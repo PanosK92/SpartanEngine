@@ -19,18 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ===========================
 #include "Font.h"
 #include "../Resource/ResourceManager.h"
 #include "../RHI/RHI_Vertex.h"
-#include "../RHI/D3D11/D3D11_VertexBuffer.h"
-#include "../RHI/D3D11/D3D11_IndexBuffer.h"
-#include "../RHI/D3D11/D3D11_Device.h"
 #include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../Core/Settings.h"
 #include "../Core/Stopwatch.h"
-//==========================================
+//======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -185,7 +182,7 @@ namespace Directus
 		// Vertex buffer
 		if (!m_vertexBuffer)
 		{
-			m_vertexBuffer = make_shared<D3D11_VertexBuffer>((D3D11_Device*)rhi_device);
+			m_vertexBuffer = make_shared<RHI_VertexBuffer>(rhi_device);
 			if (!m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosUV), (unsigned int)vertices.size()))
 			{
 				LOG_ERROR("Font: Failed to create vertex buffer.");
@@ -199,7 +196,7 @@ namespace Directus
 		// Index buffer
 		if (!m_indexBuffer)
 		{
-			m_indexBuffer = make_shared<D3D11_IndexBuffer>((D3D11_Device*)rhi_device);
+			m_indexBuffer = make_shared<RHI_IndexBuffer>(rhi_device);
 			if (!m_indexBuffer->CreateDynamic((unsigned int)indices.size()))
 			{
 				LOG_ERROR("Font: Failed to create index buffer.");

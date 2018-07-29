@@ -45,7 +45,7 @@ namespace Directus
 		RegisterResource<ShaderVariation>();
 		//==================================
 
-		m_rhiDevice			= m_context->GetSubsystem<RHI_Device>();
+		m_rhiDevice		= m_context->GetSubsystem<RHI_Device>();
 		m_shaderFlags	= 0;
 	}
 
@@ -64,21 +64,21 @@ namespace Directus
 		}
 
 		// Load and compile the vertex and the pixel shader
-		m_D3D11Shader = make_shared<D3D11_Shader>((D3D11_Device*)m_rhiDevice);
+		m_D3D11Shader = make_shared<D3D11_Shader>(m_rhiDevice);
 		AddDefinesBasedOnMaterial(m_D3D11Shader);
 		m_D3D11Shader->Compile(filePath);
 		m_D3D11Shader->SetInputLayout(Input_PositionTextureTBN);
 
 		// Matrix Buffer
-		m_perObjectBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
+		m_perObjectBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
 		m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
 
 		// Object Buffer
-		m_materialBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
+		m_materialBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
 		m_materialBuffer->Create(sizeof(PerMaterialBufferType));
 
 		// Object Buffer
-		m_miscBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
+		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
 		m_miscBuffer->Create(sizeof(PerFrameBufferType));
 	}
 
@@ -105,7 +105,7 @@ namespace Directus
 		//==========================================================
 
 		// Set to shader slot
-		m_miscBuffer->SetPS(0);
+		m_miscBuffer->Bind(BufferScope_PixelShader, 0);
 	}
 
 	void ShaderVariation::Bind_PerMaterialBuffer(Material* material)
@@ -149,7 +149,7 @@ namespace Directus
 		}
 
 		// Set to shader slot
-		m_materialBuffer->SetPS(1);
+		m_materialBuffer->Bind(BufferScope_PixelShader, 1);
 	}
 
 	void ShaderVariation::Bind_PerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
@@ -184,7 +184,7 @@ namespace Directus
 		}
 
 		// Set to shader slot
-		m_perObjectBuffer->SetVS(2);
+		m_perObjectBuffer->Bind(BufferScope_VertexShader, 2);
 	}
 
 	void ShaderVariation::AddDefinesBasedOnMaterial(const shared_ptr<D3D11_Shader>& shader)

@@ -75,7 +75,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Input(m_context));
 		m_context->RegisterSubsystem(new Threading(m_context));
 		m_context->RegisterSubsystem(new ResourceManager(m_context));
-		m_context->RegisterSubsystem(new D3D11_Device(m_context));
+		m_context->RegisterSubsystem(new RHI_Device(m_context));
 		m_context->RegisterSubsystem(new Renderer(m_context));
 		m_context->RegisterSubsystem(new Audio(m_context));
 		m_context->RegisterSubsystem(new Physics(m_context));

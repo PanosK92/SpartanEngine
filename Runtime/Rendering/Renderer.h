@@ -177,14 +177,14 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderTransformationGizmo;
 		//======================================================
 
-		//= SAMPLERS =================================================
-		std::shared_ptr<D3D11_Sampler> m_samplerPointClampAlways;
-		std::shared_ptr<D3D11_Sampler> m_samplerPointClampGreater;
-		std::shared_ptr<D3D11_Sampler> m_samplerLinearClampGreater;
-		std::shared_ptr<D3D11_Sampler> m_samplerLinearClampAlways;
-		std::shared_ptr<D3D11_Sampler> m_samplerBilinearClampAlways;
-		std::shared_ptr<D3D11_Sampler> m_samplerAnisotropicWrapAlways;
-		//============================================================
+		//= SAMPLERS ===============================================
+		std::shared_ptr<RHI_Sampler> m_samplerPointClampAlways;
+		std::shared_ptr<RHI_Sampler> m_samplerPointClampGreater;
+		std::shared_ptr<RHI_Sampler> m_samplerLinearClampGreater;
+		std::shared_ptr<RHI_Sampler> m_samplerLinearClampAlways;
+		std::shared_ptr<RHI_Sampler> m_samplerBilinearClampAlways;
+		std::shared_ptr<RHI_Sampler> m_samplerAnisotropicWrapAlways;
+		//==========================================================
 
 		//= DEBUG ==========================================
 		std::unique_ptr<Font> m_font;
