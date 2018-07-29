@@ -34,9 +34,8 @@ namespace Directus
 		D3D11_InputLayout(D3D11_Device* d3d11Device);
 		~D3D11_InputLayout();
 
-		//= MISC ====================================
-		bool Set();
-		Input_Layout GetInputLayout() { return m_inputLayout; }
+		Input_Layout GetInputLayout()				{ return m_inputLayout; }
+		ID3D11InputLayout* GetInputLayoutBuffer()	{ return m_ID3D11InputLayout; }
 
 		//= LAYOUT CREATION ====================================================================================
 		bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, unsigned int elementCount);

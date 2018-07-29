@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ==================
 #include <vector>
 #include <memory>
 #include "RHI/RHI_Definition.h"
-//===================================
+//=============================
 
 class Widget;
 namespace Directus
@@ -50,6 +50,6 @@ private:
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
 	Directus::Context* m_context;
-	Directus::RHI* m_rhi;
+	Directus::RHI_Device* m_rhiDevice;
 	bool m_initialized;
 };

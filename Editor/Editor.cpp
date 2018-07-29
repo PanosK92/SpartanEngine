@@ -48,7 +48,7 @@ using namespace Directus;
 Editor::Editor()
 {
 	m_context		= nullptr;
-	m_rhi			= nullptr;
+	m_rhiDevice		= nullptr;
 	m_initialized	= false;
 }
 
@@ -60,9 +60,9 @@ Editor::~Editor()
 void Editor::Initialize(Context* context, void* windowHandle)
 {
 	m_context	= context;
-	m_rhi		= context->GetSubsystem<RHI>();
+	m_rhiDevice	= context->GetSubsystem<RHI_Device>();
 
-	if (!m_rhi->GetDevice() || !m_rhi->GetDeviceContext())
+	if (!((D3D11_Device*)m_rhiDevice)->GetDevice() || !((D3D11_Device*)m_rhiDevice)->GetDeviceContext())
 	{
 		LOG_ERROR("Editor::Initialize: Rendering device is null");
 		return;
@@ -80,7 +80,7 @@ void Editor::Initialize(Context* context, void* windowHandle)
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplWin32_Init(windowHandle);
-	ImGui_ImplDX11_Init(m_rhi->GetDevice(), m_rhi->GetDeviceContext());
+	ImGui_ImplDX11_Init(((D3D11_Device*)m_rhiDevice)->GetDevice(), ((D3D11_Device*)m_rhiDevice)->GetDeviceContext());
 
 	IconProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);
@@ -118,9 +118,9 @@ void Editor::Update(float deltaTime)
 	// ImGui implementation - end frame
 	ImGui::Render();
 
-	m_rhi->EventBegin("Pass_ImGui");
+	m_rhiDevice->EventBegin("Pass_ImGui");
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-	m_rhi->EventEnd();
+	m_rhiDevice->EventEnd();
 }
 
 void Editor::Shutdown()

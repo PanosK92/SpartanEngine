@@ -38,16 +38,16 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_Shader::RHI_Shader(Context* context)
+	RHI_Shader::RHI_Shader(RHI_Device* rhiDevice)
 	{
-		if (!context)
+		if (!rhiDevice)
 		{
 			LOG_ERROR("RI_Shader::RI_Shader: Invalid parameters");
 			return;
 		}
 
-		m_rhi			= context->GetSubsystem<RHI>();		
-		m_shader		= make_unique<D3D11_Shader>(m_rhi);
+		m_rhiDevice		= rhiDevice;		
+		m_shader		= make_shared<D3D11_Shader>((D3D11_Device*)m_rhiDevice);
 		m_bufferType	= CB_Matrix;
 		m_bufferScope	= VertexShader;	
 	}
@@ -73,7 +73,7 @@ namespace Directus
 	{
 		m_bufferType		= bufferType;
 		m_bufferScope		= bufferScope;
-		m_constantBuffer	= make_unique<D3D11_ConstantBuffer>(m_rhi);
+		m_constantBuffer	= make_unique<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
 
 		switch (m_bufferType)
 		{
@@ -99,17 +99,6 @@ namespace Directus
 				m_constantBuffer->Create(sizeof(Struct_Shadowing));
 				break;
 		}
-	}
-
-	bool RHI_Shader::Bind()
-	{
-		if (!m_shader)
-		{
-			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized shader.");
-			return false;
-		}
-
-		return m_shader->Bind();
 	}
 
 	void RHI_Shader::Bind_Buffer(const Math::Matrix& matrix, unsigned int slot)

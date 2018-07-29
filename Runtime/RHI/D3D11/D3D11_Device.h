@@ -69,14 +69,10 @@ namespace Directus
 		bool EnableAlphaBlending(bool enable) override;
 		//=============================================
 
-		// RI_DEVICE -CULL MODE ===============================
-		Cull_Mode GetCullMode() override { return m_cullMode; }
-		bool SetCullMode(Cull_Mode cullMode) override;
-		//=====================================================
-
-		//= RI_DEVICE -PRIMITIVE TOPOLOGY ===========================================
-		bool Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology) override;
-		//===========================================================================
+		/*RHI - Cull mode */			bool Set_CullMode(Cull_Mode cullMode) override;
+		/*RHI - Primitive topology*/	bool Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology) override;
+		/*RHI - Fill mode*/				bool Set_FillMode(Fill_Mode fillMode) override;
+		/*RHI - Input layout*/			bool Set_InputLayout(void* inputLayout)	override;
 
 		bool IsInitialized() override { return m_initialized; }	
 
@@ -96,7 +92,7 @@ namespace Directus
 		bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled);
 		bool CreateDepthStencilBuffer();
 		bool CreateDepthStencilView();
-		bool CreateRasterizerState(Cull_Mode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer);
+		bool CreateRasterizerState(Cull_Mode cullMode, Fill_Mode fillMode, ID3D11RasterizerState** rasterizer);
 		std::vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory);	
 		IDXGIAdapter* GetAdapterWithTheHighestVRAM(IDXGIFactory* factory);
 		IDXGIAdapter* GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID);

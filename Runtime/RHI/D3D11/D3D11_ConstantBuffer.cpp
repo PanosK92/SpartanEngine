@@ -32,7 +32,7 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11_ConstantBuffer::D3D11_ConstantBuffer(D3D11_Device* graphicsDevice) : m_graphics(graphicsDevice)
+	D3D11_ConstantBuffer::D3D11_ConstantBuffer(D3D11_Device* graphicsDevice) : m_device(graphicsDevice)
 	{
 		m_buffer = nullptr;
 	}
@@ -44,7 +44,7 @@ namespace Directus
 
 	bool D3D11_ConstantBuffer::Create(unsigned int size)
 	{
-		if (!m_graphics->GetDevice())
+		if (!m_device->GetDevice())
 			return false;
 
 		D3D11_BUFFER_DESC bufferDesc;
@@ -56,7 +56,7 @@ namespace Directus
 		bufferDesc.MiscFlags = 0;
 		bufferDesc.StructureByteStride = 0;
 
-		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+		HRESULT result = m_device->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
 		if FAILED(result)
 		{
 			LOG_ERROR("Failed to create constant buffer");
@@ -68,7 +68,7 @@ namespace Directus
 
 	void* D3D11_ConstantBuffer::Map()
 	{
-		if (!m_graphics->GetDeviceContext())
+		if (!m_device->GetDeviceContext())
 			return nullptr;
 
 		if (!m_buffer)
@@ -79,7 +79,7 @@ namespace Directus
 
 		// disable GPU access to the vertex buffer data.
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		HRESULT result = m_graphics->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		HRESULT result = m_device->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to map constant buffer.");
@@ -91,11 +91,11 @@ namespace Directus
 
 	bool D3D11_ConstantBuffer::Unmap()
 	{
-		if (!m_buffer || !m_graphics->GetDeviceContext())
+		if (!m_buffer || !m_device->GetDeviceContext())
 			return false;
 
 		// re-enable GPU access to the vertex buffer data.
-		m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
+		m_device->GetDeviceContext()->Unmap(m_buffer, 0);
 
 		Profiler::Get().m_bindUniformBufferCount++;
 
@@ -104,20 +104,20 @@ namespace Directus
 
 	bool D3D11_ConstantBuffer::SetVS(unsigned int startSlot)
 	{
-		if (!m_buffer || !m_graphics->GetDeviceContext())
+		if (!m_buffer || !m_device->GetDeviceContext())
 			return false;
 
-		m_graphics->GetDeviceContext()->VSSetConstantBuffers(startSlot, 1, &m_buffer);
+		m_device->GetDeviceContext()->VSSetConstantBuffers(startSlot, 1, &m_buffer);
 
 		return true;
 	}
 
 	bool D3D11_ConstantBuffer::SetPS(unsigned int startSlot)
 	{
-		if (!m_buffer || !m_graphics->GetDeviceContext())
+		if (!m_buffer || !m_device->GetDeviceContext())
 			return false;
 
-		m_graphics->GetDeviceContext()->PSSetConstantBuffers(startSlot, 1, &m_buffer);
+		m_device->GetDeviceContext()->PSSetConstantBuffers(startSlot, 1, &m_buffer);
 
 		return true;
 	}

@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include <map>
 #include <memory>
 #include "../../RHI/RHI_Definition.h"
 #include "../../Core/Settings.h"
-//================================
+//===================================
 
 namespace Directus
 {
@@ -42,7 +42,7 @@ namespace Directus
 	class ENGINE_CLASS GBuffer
 	{
 	public:
-		GBuffer(RHI* rhi, int width = Settings::Get().GetResolutionWidth(), int height = Settings::Get().GetResolutionHeight());
+		GBuffer(RHI_Device* rhiDevice, int width = Settings::Get().GetResolutionWidth(), int height = Settings::Get().GetResolutionHeight());
 		~GBuffer();
 
 		bool SetAsRenderTarget();
@@ -51,6 +51,6 @@ namespace Directus
 
 	private:
 		std::map<GBuffer_Texture_Type, std::shared_ptr<D3D11_RenderTexture>> m_renderTargets;
-		RHI* m_rhi;
+		RHI_Device* m_rhiDevice;
 	};
 }

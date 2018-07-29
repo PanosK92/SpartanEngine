@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	D3D11_InputLayout::D3D11_InputLayout(D3D11_Device* graphicsDevice) : m_graphics(graphicsDevice)
+	D3D11_InputLayout::D3D11_InputLayout(D3D11_Device* device) : m_graphics(device)
 	{
 		m_ID3D11InputLayout = nullptr;
 		m_inputLayout = Input_PositionTextureTBN;
@@ -37,16 +37,6 @@ namespace Directus
 	D3D11_InputLayout::~D3D11_InputLayout()
 	{
 		SafeRelease(m_ID3D11InputLayout);
-	}
-
-	//= MISC ==================================================
-	bool D3D11_InputLayout::Set()
-	{
-		if (!m_graphics->GetDeviceContext())
-			return false;
-
-		m_graphics->GetDeviceContext()->IASetInputLayout(m_ID3D11InputLayout);
-		return true;
 	}
 
 	//= LAYOUT CREATION ==================================================

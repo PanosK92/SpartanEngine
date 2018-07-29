@@ -33,14 +33,14 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	GBuffer::GBuffer(RHI* rhi, int width, int height)
+	GBuffer::GBuffer(RHI_Device* rhiDevice, int width, int height)
 	{
-		m_rhi = rhi;
+		m_rhiDevice = rhiDevice;
 
-		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<D3D11_RenderTexture>(m_rhi, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Normal]		= make_shared<D3D11_RenderTexture>(m_rhi, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Specular]	= make_shared<D3D11_RenderTexture>(m_rhi, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11_RenderTexture>(m_rhi, width, height, true,	Texture_Format_R32G32_FLOAT);
+		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Normal]		= make_shared<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Specular]	= make_shared<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, true,		Texture_Format_R32G32_FLOAT);
 	}
 
 	GBuffer::~GBuffer()
@@ -50,7 +50,7 @@ namespace Directus
 
 	bool GBuffer::SetAsRenderTarget()
 	{
-		if (!m_rhi->GetDeviceContext())
+		if (!((D3D11_Device*)m_rhiDevice)->GetDeviceContext())
 			return false;
 
 		// Bind the render target view array and depth stencil buffer to the output render pipeline.
@@ -64,16 +64,16 @@ namespace Directus
 		void** renderTargetViews = views;
 
 		// Render Targets
-		m_rhi->Bind_RenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView());
+		m_rhiDevice->Bind_RenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView());
 		// Viewport
-		m_rhi->SetViewport(m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
+		m_rhiDevice->SetViewport(m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
 
 		return true;
 	}
 
 	bool GBuffer::Clear()
 	{
-		if (!m_rhi->GetDeviceContext())
+		if (!((D3D11_Device*)m_rhiDevice)->GetDeviceContext())
 			return false;
 
 		// Clear the render target buffers.
@@ -82,12 +82,12 @@ namespace Directus
 			if (!renderTarget.second->GetDepthEnabled())
 			{
 				// Color buffer
-				m_rhi->GetDeviceContext()->ClearRenderTargetView(renderTarget.second->GetRenderTargetView(), Vector4(0, 0, 0, 1).Data());
+				((D3D11_Device*)m_rhiDevice)->GetDeviceContext()->ClearRenderTargetView(renderTarget.second->GetRenderTargetView(), Vector4(0, 0, 0, 1).Data());
 			}
 			else
 			{
 				// Clear the depth buffer.
-				m_rhi->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, renderTarget.second->GetViewport().GetMaxDepth(), 0);
+				((D3D11_Device*)m_rhiDevice)->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, renderTarget.second->GetViewport().GetMaxDepth(), 0);
 			}
 		}
 		return true;

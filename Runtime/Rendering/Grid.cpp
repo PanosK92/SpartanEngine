@@ -48,9 +48,7 @@ namespace Directus
 
 	bool Grid::SetBuffer()
 	{
-		auto rhi = m_context->GetSubsystem<RHI>();
-
-		if (!rhi || !m_vertexBuffer || !m_indexBuffer)
+		if (!m_vertexBuffer || !m_indexBuffer)
 			return false;
 
 		m_vertexBuffer->SetIA();
@@ -148,19 +146,19 @@ namespace Directus
 		if (!m_context)
 			return false;
 
-		auto graphics = m_context->GetSubsystem<RHI>();
+		auto rhiDevice = m_context->GetSubsystem<RHI_Device>();
 
 		m_vertexBuffer.reset();
 		m_indexBuffer.reset();
 
-		m_vertexBuffer = make_shared<D3D11_VertexBuffer>(graphics);
+		m_vertexBuffer = make_shared<D3D11_VertexBuffer>((D3D11_Device*)rhiDevice);
 		if (!m_vertexBuffer->Create(vertices))
 		{
 			LOG_ERROR("Font: Failed to create vertex buffer.");
 			return false;
 		}
 
-		m_indexBuffer = make_shared<D3D11_IndexBuffer>(graphics);
+		m_indexBuffer = make_shared<D3D11_IndexBuffer>((D3D11_Device*)rhiDevice);
 		if (!m_indexBuffer->Create(indices))
 		{
 			LOG_ERROR("Font: Failed to create index buffer.");

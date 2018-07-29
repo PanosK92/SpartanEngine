@@ -22,25 +22,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "../Math/Vector4.h"
-#include "../Core/SubSystem.h"
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
+#include "RHI_PipelineState.h"
+#include "../Math/Vector4.h"
+#include "../Core/SubSystem.h"
 #include "../Profiling/Profiler.h"
 //================================
 
 namespace Directus
 {
-	#define RESOURCES_FROM_VECTOR(vector) 0, (unsigned int)vector.size(), &vector[0]
-
 	class RHI_Device : public Subsystem
 	{
 	public:
 		RHI_Device(Context* context) : Subsystem(context)
 		{
-			m_primitiveTopology		= PrimitiveTopology_NotAssigned;
-			m_inputLayout			= Input_NotAssigned;
-			m_cullMode				= Cull_NotAssigned;
+			m_pipelineState			= std::make_shared<RHI_PipelineState>(this);
 			m_format				= Texture_Format_R8G8B8A8_UNORM;
 			m_depthEnabled			= true;
 			m_alphaBlendingEnabled	= false;
@@ -52,19 +49,17 @@ namespace Directus
 		//= RENDERING ============================================================================================================================
 		virtual void Draw(unsigned int vertexCount)																{ Profiler::Get().m_drawCalls++; }
 		virtual void DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)	{ Profiler::Get().m_drawCalls++; }
-		virtual void Clear(const Math::Vector4& color) = 0;
+		virtual void Clear(const Math::Vector4& color){}
 		virtual void Present(){}
 		//========================================================================================================================================
 
-		//= BINDING ========================================================================================================
+		//= BINDING ======================================================================================================
 		virtual void SetHandle(void* drawHandle) { m_drawHandle = drawHandle; }
-		virtual void Bind_BackBufferAsRenderTarget() = 0;
-		virtual void Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil) = 0;
-		virtual void Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources) = 0;
-		void Bind_Texture(unsigned int startSlot, void* shaderResource) { Bind_Textures(startSlot, 1, &shaderResource); }
-		virtual void Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers) = 0;
-		void Bind_Sampler(unsigned int startSlot, void* sampler) { Bind_Samplers(startSlot, 1, &sampler); }
-		//==================================================================================================================
+		virtual void Bind_BackBufferAsRenderTarget() {}
+		virtual void Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil) {}
+		virtual void Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources) {}
+		virtual void Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers) {}
+		//================================================================================================================
 
 		//= RESOLUTION ==================================
 		virtual bool SetResolution(int width, int height)
@@ -77,8 +72,8 @@ namespace Directus
 		//===============================================
 
 		//= VIEWPORT =============================================================
-		virtual const RHI_Viewport& GetViewport() = 0;
-		virtual void SetViewport(const RHI_Viewport& viewport) = 0;
+		virtual const RHI_Viewport& GetViewport() { return RHI_Viewport(); }
+		virtual void SetViewport(const RHI_Viewport& viewport){}
 		float GetMaxDepth() { return m_maxDepth; }
 
 		void SetBackBufferViewport(float width = 0, float height = 0) 
@@ -115,39 +110,10 @@ namespace Directus
 		}
 		//===========================================
 
-		// CULL MODE ==============================
-		virtual Cull_Mode GetCullMode() = 0;
-		virtual bool SetCullMode(Cull_Mode cullMode)
-		{
-			if (m_cullMode == cullMode)
-				return false;
-
-			m_cullMode = cullMode;
-			return true;
-		}
-		//=========================================
-
-		//= PRIMITIVE TOPOLOGY =====================================================
-		virtual bool Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
-		{
-			if (m_primitiveTopology == primitiveTopology)
-				return false;
-
-			m_primitiveTopology = primitiveTopology;
-			return true;
-		}
-		//==========================================================================
-
-		//= INPUT LAYOUT =============================
-		bool Set_InputLayout(Input_Layout inputLayout)
-		{
-			if (m_inputLayout == inputLayout)
-				return false;
-
-			m_inputLayout = inputLayout;
-			return true;
-		}
-		//============================================
+		/*Cull mode */			virtual bool Set_CullMode(Cull_Mode cullMode)									{ return false; }
+		/*Primitive topology*/	virtual bool Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)	{ return false; }	
+		/*Fill mode*/			virtual bool Set_FillMode(Fill_Mode fillMode)									{ return false; }
+		/*Input layout*/		virtual bool Set_InputLayout(void* inputLayout)									{ return false; }
 
 		//= PROFILING ====================================
 		virtual void EventBegin(const std::string& name){}
@@ -156,12 +122,12 @@ namespace Directus
 		virtual void QueryEnd(){}
 		//================================================
 
-		virtual bool IsInitialized() = 0;
+		virtual bool IsInitialized() { return false; }
+
+		std::shared_ptr<RHI_PipelineState> GetPipelineState() { return m_pipelineState; }
 
 	protected:
-		PrimitiveTopology_Mode m_primitiveTopology;
-		Input_Layout m_inputLayout;
-		Cull_Mode m_cullMode;
+		std::shared_ptr<RHI_PipelineState> m_pipelineState;
 		Texture_Format m_format;
 		RHI_Viewport m_backBufferViewport;
 		bool m_depthEnabled;

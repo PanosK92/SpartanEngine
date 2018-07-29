@@ -38,12 +38,13 @@ namespace Directus
 		LightShader();
 		~LightShader();
 
-		void Compile(const std::string& filePath, RHI* rhi);
+		void Compile(const std::string& filePath, RHI_Device* rhiDevice);
 		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mBaseView,
 			const Math::Matrix& mPerspectiveProjection, const Math::Matrix& mOrthographicProjection);
 		void UpdateMiscBuffer(const std::vector<Light*>& lights, Camera* camera);
-		void Bind();
 		bool IsCompiled();
+
+		std::shared_ptr<D3D11_Shader> GetShader() { return m_shader; }
 
 	private:
 
@@ -92,6 +93,6 @@ namespace Directus
 		std::shared_ptr<D3D11_ConstantBuffer> m_matrixBuffer;
 		std::shared_ptr<D3D11_ConstantBuffer> m_miscBuffer;
 		std::shared_ptr<D3D11_Shader> m_shader;
-		RHI* m_rhi;
+		RHI_Device* m_rhiDevice;
 	};
 }

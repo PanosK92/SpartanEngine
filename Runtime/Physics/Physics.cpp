@@ -115,7 +115,7 @@ namespace Directus
 
 		PROFILE_FUNCTION_BEGIN();
 
-		float timeStep = VARIANT_GET_FROM(float, deltaTime);
+		float timeStep = deltaTime.Get<float>();
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
 		float internalTimeStep = 1.0f / INTERNAL_FPS;

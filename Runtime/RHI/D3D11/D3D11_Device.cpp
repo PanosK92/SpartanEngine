@@ -287,19 +287,19 @@ namespace Directus
 
 		//= RASTERIZERS =================================================================
 		{
-			if (!CreateRasterizerState(Cull_Back, FillMode_Solid, &m_rasterStateCullBack))
+			if (!CreateRasterizerState(Cull_Back, Fill_Solid, &m_rasterStateCullBack))
 			{
 				LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 				return false;
 			}
 
-			if (!CreateRasterizerState(Cull_Front, FillMode_Solid, &m_rasterStateCullFront))
+			if (!CreateRasterizerState(Cull_Front, Fill_Solid, &m_rasterStateCullFront))
 			{
 				LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 				return false;
 			}
 
-			if (!CreateRasterizerState(Cull_None, FillMode_Solid, &m_rasterStateCullNone))
+			if (!CreateRasterizerState(Cull_None, Fill_Solid, &m_rasterStateCullNone))
 			{
 				LOG_ERROR("D3D11_Device::Initialize: Failed to create the rasterizer state.");
 				return false;
@@ -617,12 +617,9 @@ namespace Directus
 
 	bool D3D11_Device::Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
-		if (!RHI_Device::Set_PrimitiveTopology(primitiveTopology))
-			return false;
-
 		if (!m_deviceContext)
 		{
-			LOG_ERROR("D3D11_Device::SetPrimitiveTopology: Device context is uninitialized");
+			LOG_ERROR("D3D11_Device::Set_InputLayout: Invalid device context");
 			return false;
 		}
 
@@ -631,11 +628,25 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11_Device::SetCullMode(Cull_Mode cullMode)
+	bool D3D11_Device::Set_FillMode(Fill_Mode fillMode)
 	{
-		if (!RHI_Device::SetCullMode(cullMode))
-			return false;
+		return true;
+	}
 
+	bool D3D11_Device::Set_InputLayout(void* inputLayout)
+	{
+		if (!m_deviceContext)
+		{
+			LOG_ERROR("D3D11_Device::Set_InputLayout: Invalid device context");
+			return false;
+		}
+
+		m_deviceContext->IASetInputLayout((ID3D11InputLayout*)inputLayout);
+		return true;
+	}
+
+	bool D3D11_Device::Set_CullMode(Cull_Mode cullMode)
+	{
 		if (!m_deviceContext)
 		{
 			LOG_WARNING("D3D11_Device::SetCullMode: Device context is uninitialized.");
@@ -740,7 +751,7 @@ namespace Directus
 		return !FAILED(result);
 	}
 
-	bool D3D11_Device::CreateRasterizerState(Cull_Mode cullMode, FillMode fillMode, ID3D11RasterizerState** rasterizer)
+	bool D3D11_Device::CreateRasterizerState(Cull_Mode cullMode, Fill_Mode fillMode, ID3D11RasterizerState** rasterizer)
 	{
 		if (!m_device)
 		{
