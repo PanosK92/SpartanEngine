@@ -20,8 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
-#include "D3D11_Device.h"
-#include "D3D11_Sampler.h"
 #include "../RHI_Implementation.h"
 #include "../../Core/EngineDefs.h"
 #include "../../Core/Settings.h"
@@ -30,16 +28,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	D3D11_Sampler::D3D11_Sampler(D3D11_Device* device,
+	D3D11_Sampler::D3D11_Sampler(
+		RHI_Device* rhiDevice,
 		Texture_Sampler_Filter filter					/*= Texture_Sampler_Anisotropic*/,
 		Texture_Address_Mode textureAddressMode			/*= Texture_Address_Wrap*/, 
-		Texture_Comparison_Function comparisonFunction	/*= Texture_Comparison_Always*/)
-	{
-		if (!device)
+		Texture_Comparison_Function comparisonFunction	/*= Texture_Comparison_Always*/
+	) : IRHI_Sampler(rhiDevice, filter, textureAddressMode, comparisonFunction)
+	{	
+		if (!rhiDevice)
 		{
 			LOG_ERROR("D3D11_Sampler::D3D11_Sampler: Invalid device");
 			return;
 		}
+		m_rhiDevice = rhiDevice;
 
 		D3D11_SAMPLER_DESC samplerDesc;
 		samplerDesc.Filter			= d3d11_filter[filter];
@@ -57,7 +58,7 @@ namespace Directus
 		samplerDesc.MaxLOD			= FLT_MAX;
 
 		// Create sampler state.
-		if (FAILED(device->GetDevice()->CreateSamplerState(&samplerDesc, &m_samplerState)))
+		if (FAILED(m_rhiDevice->GetDevice()->CreateSamplerState(&samplerDesc, &m_samplerState)))
 		{
 			LOG_ERROR("Failed to create sampler.");
 		}
@@ -66,5 +67,19 @@ namespace Directus
 	D3D11_Sampler::~D3D11_Sampler()
 	{
 		SafeRelease(m_samplerState);
+	}
+
+	bool D3D11_Sampler::Bind(unsigned int slot)
+	{
+		if (!m_samplerState)
+		{
+			LOG_ERROR("D3D11_Sampler::Bind: Invalid sampler state");
+			return false;
+		}
+
+		unsigned int samplerCount = 1;
+		m_rhiDevice->GetDeviceContext()->PSSetSamplers(slot, samplerCount, &m_samplerState);
+
+		return true;
 	}
 }

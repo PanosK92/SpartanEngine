@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================================
+//= INCLUDES ================================
 #include "Renderer.h"
 #include "Rectangle.h"
 #include "Material.h"
@@ -31,11 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Deferred/GBuffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_CommonBuffers.h"
 #include "../RHI/D3D11/D3D11_Device.h"
 #include "../RHI/D3D11/D3D11_RenderTexture.h"
-#include "../RHI/D3D11/D3D11_Sampler.h"
 #include "../RHI/D3D11/D3D11_Shader.h"
-#include "../RHI/D3D11/D3D11_ConstantBuffer.h"
 #include "../Core/Context.h"
 #include "../Core/EventSystem.h"
 #include "../Scene/Actor.h"
@@ -48,7 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Resource/ResourceManager.h"
 #include "../Scene/TransformationGizmo.h"
-//============================================
+//===========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -119,12 +118,12 @@ namespace Directus
 
 		// SAMPLERS
 		{
-			m_samplerPointClampAlways		= make_shared<D3D11_Sampler>((D3D11_Device*)m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_Always);
-			m_samplerPointClampGreater		= make_shared<D3D11_Sampler>((D3D11_Device*)m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
-			m_samplerLinearClampGreater		= make_shared<D3D11_Sampler>((D3D11_Device*)m_rhiDevice, Texture_Sampler_Linear,		Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
-			m_samplerLinearClampAlways		= make_shared<D3D11_Sampler>((D3D11_Device*)m_rhiDevice, Texture_Sampler_Linear,		Texture_Address_Clamp,	Texture_Comparison_Always);
-			m_samplerBilinearClampAlways	= make_shared<D3D11_Sampler>((D3D11_Device*)m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_Always);
-			m_samplerAnisotropicWrapAlways	= make_shared<D3D11_Sampler>((D3D11_Device*)m_rhiDevice, Texture_Sampler_Anisotropic,	Texture_Address_Wrap,	Texture_Comparison_Always);
+			m_samplerPointClampAlways		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_Always);
+			m_samplerPointClampGreater		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
+			m_samplerLinearClampGreater		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Linear,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
+			m_samplerLinearClampAlways		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Linear,			Texture_Address_Clamp,	Texture_Comparison_Always);
+			m_samplerBilinearClampAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_Always);
+			m_samplerAnisotropicWrapAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,	Texture_Address_Wrap,	Texture_Comparison_Always);
 		}
 
 		// SHADERS
@@ -136,91 +135,91 @@ namespace Directus
 			// Line
 			m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderLine->Compile(shaderDirectory + "Line.hlsl", Input_PositionColor);
-			m_shaderLine->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
+			m_shaderLine->AddBuffer<Struct_Matrix_Matrix_Matrix>(BufferScope_VertexShader);
 
 			// Depth
 			m_shaderLightDepth = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderLightDepth->Compile(shaderDirectory + "ShadowingDepth.hlsl", Input_Position);
-			m_shaderLightDepth->AddBuffer(CB_Matrix_Matrix_Matrix, VertexShader);
+			m_shaderLightDepth->AddBuffer<Struct_Matrix_Matrix_Matrix>(BufferScope_VertexShader);
 
 			// Grid
 			m_shaderGrid = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl", Input_PositionColor);
-			m_shaderGrid->AddBuffer(CB_Matrix, VertexShader);
+			m_shaderGrid->AddBuffer<Struct_Matrix>(BufferScope_VertexShader);
 
 			// Font
 			m_shaderFont = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderFont->Compile(shaderDirectory + "Font.hlsl", Input_PositionTexture);
-			m_shaderFont->AddBuffer(CB_Matrix_Vector4, Global);
+			m_shaderFont->AddBuffer<Struct_Matrix_Vector4>(BufferScope_Global);
 
 			// Texture
 			m_shaderTexture = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl", Input_PositionTexture);
-			m_shaderTexture->AddBuffer(CB_Matrix, VertexShader);
+			m_shaderTexture->AddBuffer<Struct_Matrix>(BufferScope_VertexShader);
 
 			// FXAA
 			m_shaderFXAA = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderFXAA->AddDefine("PASS_FXAA");
 			m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
-			m_shaderFXAA->AddBuffer(CB_Matrix_Vector2, Global);
+			m_shaderFXAA->AddBuffer<Struct_Matrix_Vector2>(BufferScope_Global);
 
 			// Sharpening
 			m_shaderSharpening = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderSharpening->AddDefine("PASS_SHARPENING");
 			m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
-			m_shaderSharpening->AddBuffer(CB_Matrix_Vector2, Global);
+			m_shaderSharpening->AddBuffer<Struct_Matrix_Vector2>(BufferScope_Global);
 
 			// Sharpening
 			m_shaderChromaticAberration = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
 			m_shaderChromaticAberration->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
-			m_shaderChromaticAberration->AddBuffer(CB_Matrix_Vector2, Global);
+			m_shaderChromaticAberration->AddBuffer<Struct_Matrix_Vector2>(BufferScope_Global);
 
 			// Blur Box
 			m_shaderBlurBox = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
 			m_shaderBlurBox->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
-			m_shaderBlurBox->AddBuffer(CB_Matrix_Vector2, Global);
+			m_shaderBlurBox->AddBuffer<Struct_Matrix_Vector2>(BufferScope_Global);
 
 			// Blur Gaussian Horizontal
 			m_shaderBlurGaussianH = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBlurGaussianH->AddDefine("PASS_BLUR_GAUSSIAN_H");
 			m_shaderBlurGaussianH->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
-			m_shaderBlurGaussianH->AddBuffer(CB_Matrix_Vector2, Global);
+			m_shaderBlurGaussianH->AddBuffer<Struct_Matrix_Vector2>(BufferScope_Global);
 
 			// Blur Gaussian Vertical
 			m_shaderBlurGaussianV = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V");
 			m_shaderBlurGaussianV->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
-			m_shaderBlurGaussianV->AddBuffer(CB_Matrix_Vector2, Global);
+			m_shaderBlurGaussianV->AddBuffer<Struct_Matrix_Vector2>(BufferScope_Global);
 
 			// Bloom - bright
 			m_shaderBloom_Bright = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT");
 			m_shaderBloom_Bright->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
-			m_shaderBloom_Bright->AddBuffer(CB_Matrix_Vector2, Global);
+			m_shaderBloom_Bright->AddBuffer<Struct_Matrix_Vector2>(BufferScope_Global);
 
 			// Bloom - blend
 			m_shaderBloom_BlurBlend = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
 			m_shaderBloom_BlurBlend->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
-			m_shaderBloom_BlurBlend->AddBuffer(CB_Matrix, VertexShader);
+			m_shaderBloom_BlurBlend->AddBuffer<Struct_Matrix>(BufferScope_VertexShader);
 
 			// Tone-mapping
 			m_shaderCorrection = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderCorrection->AddDefine("PASS_CORRECTION");
 			m_shaderCorrection->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
-			m_shaderCorrection->AddBuffer(CB_Matrix_Vector2, Global);
+			m_shaderCorrection->AddBuffer<Struct_Matrix_Vector2>(BufferScope_Global);
 
 			// Transformation gizmo
 			m_shaderTransformationGizmo = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderTransformationGizmo->Compile(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN);
-			m_shaderTransformationGizmo->AddBuffer(CB_Matrix_Vector3_Vector3, Global);
+			m_shaderTransformationGizmo->AddBuffer<Struct_Matrix_Vector3_Vector3>(BufferScope_Global);
 
 			// Shadowing (shadow mapping & SSAO)
 			m_shaderShadowing = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl", Input_PositionTexture);
-			m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
+			m_shaderShadowing->AddBuffer<Struct_Shadowing>(BufferScope_Global);
 		}
 
 		// TEXTURES
@@ -400,16 +399,16 @@ namespace Directus
 		m_quad->Create(0, 0, (float)width, (float)height);
 
 		m_renderTexPing.reset();
-		m_renderTexPing = make_unique<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing = make_unique<D3D11_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPing2.reset();
-		m_renderTexPing2 = make_unique<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPing2 = make_unique<D3D11_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexPong.reset();
-		m_renderTexPong = make_unique<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexPong = make_unique<D3D11_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexShadowing.reset();
-		m_renderTexShadowing = make_unique<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, int(width * 0.5f), int(height * 0.5f), false, Texture_Format_R32G32_FLOAT);
+		m_renderTexShadowing = make_unique<D3D11_RenderTexture>(m_rhiDevice, int(width * 0.5f), int(height * 0.5f), false, Texture_Format_R32G32_FLOAT);
 	}
 
 	//= RENDERABLES ============================================================================================

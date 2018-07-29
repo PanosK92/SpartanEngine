@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "GBuffer.h"
 #include "../../RHI/RHI_Implementation.h"
-#include "../../RHI/RHI_Device.h"
+#include "../../RHI/IRHI_Device.h"
 #include "../../RHI/D3D11/D3D11_RenderTexture.h"
 //==============================================
 
@@ -37,10 +37,10 @@ namespace Directus
 	{
 		m_rhiDevice = rhiDevice;
 
-		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Normal]		= make_shared<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Specular]	= make_shared<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11_RenderTexture>((D3D11_Device*)m_rhiDevice, width, height, true,		Texture_Format_R32G32_FLOAT);
+		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<D3D11_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Normal]		= make_shared<D3D11_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Specular]	= make_shared<D3D11_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<D3D11_RenderTexture>(m_rhiDevice, width, height, true,	Texture_Format_R32G32_FLOAT);
 	}
 
 	GBuffer::~GBuffer()
@@ -50,7 +50,7 @@ namespace Directus
 
 	bool GBuffer::SetAsRenderTarget()
 	{
-		if (!((D3D11_Device*)m_rhiDevice)->GetDeviceContext())
+		if (!m_rhiDevice->GetDeviceContext())
 			return false;
 
 		// Bind the render target view array and depth stencil buffer to the output render pipeline.
@@ -73,7 +73,7 @@ namespace Directus
 
 	bool GBuffer::Clear()
 	{
-		if (!((D3D11_Device*)m_rhiDevice)->GetDeviceContext())
+		if (!m_rhiDevice->GetDeviceContext())
 			return false;
 
 		// Clear the render target buffers.
@@ -82,12 +82,12 @@ namespace Directus
 			if (!renderTarget.second->GetDepthEnabled())
 			{
 				// Color buffer
-				((D3D11_Device*)m_rhiDevice)->GetDeviceContext()->ClearRenderTargetView(renderTarget.second->GetRenderTargetView(), Vector4(0, 0, 0, 1).Data());
+				m_rhiDevice->GetDeviceContext()->ClearRenderTargetView(renderTarget.second->GetRenderTargetView(), Vector4(0, 0, 0, 1).Data());
 			}
 			else
 			{
 				// Clear the depth buffer.
-				((D3D11_Device*)m_rhiDevice)->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, renderTarget.second->GetViewport().GetMaxDepth(), 0);
+				m_rhiDevice->GetDeviceContext()->ClearDepthStencilView(renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, renderTarget.second->GetViewport().GetMaxDepth(), 0);
 			}
 		}
 		return true;

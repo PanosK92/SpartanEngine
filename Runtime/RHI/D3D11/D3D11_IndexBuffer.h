@@ -21,31 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============
+//= INCLUDES ===================
 #include <vector>
-#include "../RHI_Device.h"
-//========================
+#include "../IRHI_IndexBuffer.h"
+//==============================
 
 namespace Directus
 {
-	class D3D11_IndexBuffer
+	class D3D11_IndexBuffer : public IRHI_IndexBuffer
 	{
 	public:
-		D3D11_IndexBuffer(D3D11_Device* graphicsDevice);
+		D3D11_IndexBuffer(RHI_Device* rhiDevice);
 		~D3D11_IndexBuffer();
 
-		bool Create(const std::vector<unsigned int>& indices);
-		bool CreateDynamic(unsigned int initialSize);
-
-		void* Map();
-		bool Unmap();
-
-		ID3D11Buffer* GetBuffer()		{ return m_buffer; }
-		unsigned int GetMemoryUsage()	{ return m_memoryUsage; }
+		bool Create(const std::vector<unsigned int>& indices) override;
+		bool CreateDynamic(unsigned int initialSize) override;
+		void* Map() override;
+		bool Unmap() override;
+		bool Bind() override;
 
 	private:
-		D3D11_Device* m_graphics;
+		RHI_Device* m_rhiDevice;
 		ID3D11Buffer* m_buffer;
-		unsigned int m_memoryUsage;
 	};
 }

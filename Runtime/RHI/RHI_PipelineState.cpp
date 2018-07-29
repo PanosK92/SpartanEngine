@@ -21,19 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========================
+//= INCLUDES =======================
 #include "..\Logging\Log.h"
 #include "..\Core\Context.h"
 #include "RHI_PipelineState.h"
 #include "RHI_Implementation.h"
 #include "RHI_Shader.h"
 #include "D3D11\D3D11_Shader.h"
-#include "D3D11\D3D11_ConstantBuffer.h"
 #include "D3D11\D3D11_InputLayout.h"
-#include "D3D11\D3D11_Sampler.h"
-#include "D3D11\D3D11_VertexBuffer.h"
-#include "D3D11\D3D11_IndexBuffer.h"
-//=====================================
+//==================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -85,49 +81,39 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetIndexBuffer(std::shared_ptr<D3D11_IndexBuffer> indexBuffer)
+	bool RHI_PipelineState::SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer> indexBuffer)
 	{
 		if (!m_rhiDevice || !indexBuffer)
 		{
 			LOG_WARNING("RHI_PipelineState::SetIndexBuffer: Invalid parameters.");
 			return false;
 		}
-		
-		((D3D11_Device*)m_rhiDevice)->GetDeviceContext()->IASetIndexBuffer(indexBuffer->GetBuffer(), DXGI_FORMAT_R32_UINT, 0);
-		Profiler::Get().m_bindBufferIndexCount++;
 
-		return true;
+		Profiler::Get().m_bindBufferIndexCount++;
+		return indexBuffer->Bind();
 	}
 
-	bool RHI_PipelineState::SetVertexBuffer(shared_ptr<D3D11_VertexBuffer> vertexBuffer)
+	bool RHI_PipelineState::SetVertexBuffer(shared_ptr<RHI_VertexBuffer> vertexBuffer)
 	{
 		if (!m_rhiDevice || !vertexBuffer)
 		{
 			LOG_WARNING("RHI_PipelineState::SetVertexBuffer: Invalid parameters.");
 			return false;
 		}
-		
-		auto buffer			= vertexBuffer->GetBuffer();
-		auto stride			= vertexBuffer->GetStride();
-		unsigned int offset = 0;
-		((D3D11_Device*)m_rhiDevice)->GetDeviceContext()->IASetVertexBuffers(0, 1, &buffer, &stride, &offset);
-		Profiler::Get().m_bindBufferVertexCount++;
 
-		return true;
+		Profiler::Get().m_bindBufferVertexCount++;
+		return vertexBuffer->Bind();
 	}
 
-	bool RHI_PipelineState::SetSampler(shared_ptr<D3D11_Sampler> sampler, unsigned int startSlot)
+	bool RHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler> sampler, unsigned int startSlot)
 	{
 		if (!m_rhiDevice || !sampler)
 		{
-			LOG_ERROR("RHI_PipelineState::SetVertexShader: Invalid parameters");
+			LOG_ERROR("RHI_PipelineState::SetSampler: Invalid parameters");
 			return false;
 		}
 
-		void* samplerState = sampler->GetSamplerState();
-		m_rhiDevice->Bind_Samplers(startSlot, 1, &samplerState);
-
-		return true;
+		return sampler->Bind(startSlot);
 	}
 
 	bool RHI_PipelineState::SetVertexShader(D3D11_Shader* shader)
@@ -141,7 +127,7 @@ namespace Directus
 		// TODO: this has to be done outside of this function 
 		SetInputLayout(shader->GetInputLayout());
 
-		((D3D11_Device*)m_rhiDevice)->GetDeviceContext()->VSSetShader(shader->GetVertexShader(), nullptr, 0);
+		m_rhiDevice->GetDeviceContext()->VSSetShader(shader->GetVertexShader(), nullptr, 0);
 
 		Profiler::Get().m_bindShaderCount++;
 
@@ -156,7 +142,7 @@ namespace Directus
 			return false;
 		}
 
-		((D3D11_Device*)m_rhiDevice)->GetDeviceContext()->PSSetShader(shader->GetPixelShader(), nullptr, 0);
+		m_rhiDevice->GetDeviceContext()->PSSetShader(shader->GetPixelShader(), nullptr, 0);
 
 		Profiler::Get().m_bindShaderCount++;
 
@@ -186,6 +172,12 @@ namespace Directus
 
 		m_rhiDevice->Bind_Textures(startSlot, 1, &shaderResource);
 
+		return true;
+	}
+
+	bool RHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer> constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope)
+	{
+		constantBuffer->Bind(bufferScope, startSlot);
 		return true;
 	}
 

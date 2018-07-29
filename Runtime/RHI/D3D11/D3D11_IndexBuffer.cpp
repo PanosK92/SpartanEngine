@@ -33,10 +33,11 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11_IndexBuffer::D3D11_IndexBuffer(D3D11_Device* graphicsDevice) : m_graphics(graphicsDevice)
+	D3D11_IndexBuffer::D3D11_IndexBuffer(RHI_Device* rhiDevice) : IRHI_IndexBuffer(rhiDevice)
 	{
-		m_buffer = nullptr;
-		m_memoryUsage = 0;
+		m_rhiDevice		= rhiDevice;
+		m_buffer		= nullptr;
+		m_memoryUsage	= 0;
 	}
 
 	D3D11_IndexBuffer::~D3D11_IndexBuffer()
@@ -46,7 +47,7 @@ namespace Directus
 
 	bool D3D11_IndexBuffer::Create(const vector<unsigned int>& indices)
 	{
-		if (!m_graphics->GetDevice() || indices.empty())
+		if (!m_rhiDevice->GetDevice() || indices.empty())
 			return false;
 
 		unsigned int stride = sizeof(unsigned int);
@@ -72,7 +73,7 @@ namespace Directus
 		// Compute memory usage
 		m_memoryUsage = (unsigned int)(sizeof(unsigned int) * indices.size());
 
-		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
+		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if FAILED(result)
 		{
 			LOG_ERROR("D3D11IndexBuffer: Failed to create index buffer");
@@ -84,7 +85,7 @@ namespace Directus
 
 	bool D3D11_IndexBuffer::CreateDynamic(unsigned int initialSize)
 	{
-		if (!m_graphics || !m_graphics->GetDevice())
+		if (!m_rhiDevice || !m_rhiDevice->GetDevice())
 			return false;
 
 		unsigned int byteWidth = sizeof(unsigned int) * initialSize;
@@ -99,7 +100,7 @@ namespace Directus
 		bufferDesc.MiscFlags = 0;
 		bufferDesc.StructureByteStride = 0;
 
-		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
 		if FAILED(result)
 		{
 			LOG_ERROR("D3D11IndexBuffer: Failed to create dynamic index buffer");
@@ -111,7 +112,7 @@ namespace Directus
 
 	void* D3D11_IndexBuffer::Map()
 	{
-		if (!m_graphics || !m_graphics->GetDeviceContext())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext())
 			return nullptr;
 
 		if (!m_buffer)
@@ -122,7 +123,7 @@ namespace Directus
 
 		// disable GPU access to the index buffer data.
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		HRESULT result = m_graphics->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		HRESULT result = m_rhiDevice->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11IndexBuffer: Failed to map index buffer.");
@@ -134,12 +135,24 @@ namespace Directus
 
 	bool D3D11_IndexBuffer::Unmap()
 	{
-		if (!m_graphics || !m_graphics->GetDeviceContext() || !m_buffer)
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext() || !m_buffer)
 			return false;
 
 		// re-enable GPU access to the index buffer data.
-		m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
+		m_rhiDevice->GetDeviceContext()->Unmap(m_buffer, 0);
 
+		return true;
+	}
+
+	bool D3D11_IndexBuffer::Bind()
+	{
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext() || !m_buffer)
+		{
+			LOG_ERROR("D3D11_IndexBuffer::Bind: Invalid device context");
+			return false;
+		}
+
+		m_rhiDevice->GetDeviceContext()->IASetIndexBuffer(m_buffer, DXGI_FORMAT_R32_UINT, 0);
 		return true;
 	}
 }

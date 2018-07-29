@@ -21,37 +21,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES ==============
+#include "RHI_Definition.h"
 #include <vector>
-#include "../IRHI_Device.h"
-//=======================
+//=========================
 
 namespace Directus
 {
-	class D3D11_Texture
+	class IRHI_IndexBuffer
 	{
 	public:
-		D3D11_Texture(D3D11_Device* context);
-		~D3D11_Texture();
-
-		// Create from data
-		bool Create(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);
-
-		// Creates from data with mipmaps
-		bool CreateFromMipmaps(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::vector<std::byte>>& mipmaps, Texture_Format format);
-
-		// Creates a texture and generates mipmaps (easy way to get mipmaps but not as high quality as the mipmaps you can generate manually)
-		bool CreateAndGenerateMipmaps(unsigned int width, int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);
-
-		// Shader resource
-		ID3D11ShaderResourceView* GetShaderResourceView()			{ return m_shaderResourceView; }
-		void SetShaderResourceView(ID3D11ShaderResourceView* srv)	{ m_shaderResourceView = srv; }
+		IRHI_IndexBuffer(RHI_Device* rhiDevice) {};
+		~IRHI_IndexBuffer() {};
+	
+		virtual bool Create(const std::vector<unsigned int>& indices) = 0;
+		virtual bool CreateDynamic(unsigned int initialSize) = 0;
+		virtual void* Map() = 0;
+		virtual bool Unmap() = 0;
+		virtual bool Bind() = 0;
 
 		unsigned int GetMemoryUsage() { return m_memoryUsage; }
 
-	private:
-		ID3D11ShaderResourceView* m_shaderResourceView;
-		D3D11_Device* m_graphics;
+	protected:
 		unsigned int m_memoryUsage;
 	};
 }

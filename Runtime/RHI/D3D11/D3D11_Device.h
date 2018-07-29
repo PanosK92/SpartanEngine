@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES ==============
 #include <vector>
-#include "../RHI_Device.h"
-//=======================
+#include "../IRHI_Device.h"
+//=========================
 
 namespace Directus
 {
-	class D3D11_Device : public RHI_Device
+	class ENGINE_CLASS D3D11_Device : public IRHI_Device
 	{
 	public:
 		D3D11_Device(Context* context);
@@ -49,7 +49,6 @@ namespace Directus
 		void Bind_BackBufferAsRenderTarget() override;
 		void Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil) override;
 		void Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources) override;
-		void Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers) override;
 		//===============================================================================================================
 
 		//= RI_DEVICE - VIEWPORT ==============================

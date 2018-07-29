@@ -35,6 +35,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <d3dcompiler.h>
 #include <d3dcommon.h>
 #include "D3D11/D3D11_Device.h"
+#include "D3D11/D3D11_Sampler.h"
+#include "D3D11/D3D11_ConstantBuffer.h"
+#include "D3D11/D3D11_VertexBuffer.h"
+#include "D3D11/D3D11_IndexBuffer.h"
 
 static const D3D11_CULL_MODE d3d11_cull_mode[] =
 {

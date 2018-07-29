@@ -32,9 +32,10 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11_ConstantBuffer::D3D11_ConstantBuffer(D3D11_Device* graphicsDevice) : m_device(graphicsDevice)
+	D3D11_ConstantBuffer::D3D11_ConstantBuffer(RHI_Device* rhiDevice) : IRHI_ConstantBuffer(rhiDevice)
 	{
-		m_buffer = nullptr;
+		m_rhiDevice = rhiDevice;
+		m_buffer	= nullptr;
 	}
 
 	D3D11_ConstantBuffer::~D3D11_ConstantBuffer()
@@ -44,7 +45,7 @@ namespace Directus
 
 	bool D3D11_ConstantBuffer::Create(unsigned int size)
 	{
-		if (!m_device->GetDevice())
+		if (!m_rhiDevice->GetDevice())
 			return false;
 
 		D3D11_BUFFER_DESC bufferDesc;
@@ -56,7 +57,7 @@ namespace Directus
 		bufferDesc.MiscFlags = 0;
 		bufferDesc.StructureByteStride = 0;
 
-		HRESULT result = m_device->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
 		if FAILED(result)
 		{
 			LOG_ERROR("Failed to create constant buffer");
@@ -68,7 +69,7 @@ namespace Directus
 
 	void* D3D11_ConstantBuffer::Map()
 	{
-		if (!m_device->GetDeviceContext())
+		if (!m_rhiDevice->GetDeviceContext())
 			return nullptr;
 
 		if (!m_buffer)
@@ -79,7 +80,7 @@ namespace Directus
 
 		// disable GPU access to the vertex buffer data.
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		HRESULT result = m_device->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		HRESULT result = m_rhiDevice->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to map constant buffer.");
@@ -91,33 +92,34 @@ namespace Directus
 
 	bool D3D11_ConstantBuffer::Unmap()
 	{
-		if (!m_buffer || !m_device->GetDeviceContext())
+		if (!m_buffer || !m_rhiDevice->GetDeviceContext())
 			return false;
 
 		// re-enable GPU access to the vertex buffer data.
-		m_device->GetDeviceContext()->Unmap(m_buffer, 0);
+		m_rhiDevice->GetDeviceContext()->Unmap(m_buffer, 0);
 
 		Profiler::Get().m_bindUniformBufferCount++;
 
 		return true;
 	}
 
-	bool D3D11_ConstantBuffer::SetVS(unsigned int startSlot)
+	bool D3D11_ConstantBuffer::Bind(BufferScope_Mode bufferScope, unsigned int startSlot)
 	{
-		if (!m_buffer || !m_device->GetDeviceContext())
+		if (!m_buffer || !m_rhiDevice->GetDeviceContext())	
+		{
+			LOG_ERROR("D3D11_ConstantBuffer::Bind: Invalid device context");
 			return false;
+		}
 
-		m_device->GetDeviceContext()->VSSetConstantBuffers(startSlot, 1, &m_buffer);
+		if (bufferScope == BufferScope_VertexShader || bufferScope == BufferScope_Global)
+		{
+			m_rhiDevice->GetDeviceContext()->VSSetConstantBuffers(startSlot, 1, &m_buffer);
+		}
 
-		return true;
-	}
-
-	bool D3D11_ConstantBuffer::SetPS(unsigned int startSlot)
-	{
-		if (!m_buffer || !m_device->GetDeviceContext())
-			return false;
-
-		m_device->GetDeviceContext()->PSSetConstantBuffers(startSlot, 1, &m_buffer);
+		if (bufferScope == BufferScope_PixelShader || bufferScope == BufferScope_Global)
+		{
+			m_rhiDevice->GetDeviceContext()->PSSetConstantBuffers(startSlot, 1, &m_buffer);
+		}
 
 		return true;
 	}

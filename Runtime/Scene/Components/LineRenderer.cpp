@@ -19,15 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================================
+//= INCLUDES ============================
 #include "LineRenderer.h"
 #include "../../Core/Context.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
-#include "../../RHI/RHI_Definition.h"
-#include "../../RHI/D3D11/D3D11_Device.h"
-#include "../../RHI/D3D11/D3D11_VertexBuffer.h"
-//=================================================
+#include "../../RHI/RHI_Implementation.h"
+//=======================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -110,7 +108,7 @@ namespace Directus
 
 	void LineRenderer::CreateVertexBuffer()
 	{
-		m_vertexBuffer = make_shared<D3D11_VertexBuffer>((D3D11_Device*)GetContext()->GetSubsystem<RHI_Device>());
+		m_vertexBuffer = make_shared<RHI_VertexBuffer>(GetContext()->GetSubsystem<RHI_Device>());
 		m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosCol), (unsigned int)m_vertices.size());
 	}
 

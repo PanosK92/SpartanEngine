@@ -22,26 +22,68 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include "../IRHI_Sampler.h"
+#include "../Math/Matrix.h"
+#include "../Math/Vector2.h"
 //==========================
 
 namespace Directus
 {
-	class D3D11_Sampler : public IRHI_Sampler
+	struct Struct_Matrix
 	{
-	public:
-		D3D11_Sampler(
-			RHI_Device* rhiDevice, 
-			Texture_Sampler_Filter filter					= Texture_Sampler_Anisotropic,
-			Texture_Address_Mode textureAddressMode			= Texture_Address_Wrap,
-			Texture_Comparison_Function comparisonFunction	= Texture_Comparison_Always
-		);
-		~D3D11_Sampler();
+		Math::Matrix matrix;
+	};
 
-		bool Bind(unsigned int slot) override;
+	struct Struct_Matrix_Vector4
+	{
+		Math::Matrix matrix;
+		Math::Vector4 vector4;
+	};
 
-	private:
-		RHI_Device* m_rhiDevice;
-		ID3D11SamplerState* m_samplerState;
+	struct Struct_Matrix_Vector3
+	{
+		Math::Matrix matrix;
+		Math::Vector3 vector3;
+		float padding;
+	};
+
+	struct Struct_Matrix_Vector2
+	{
+		Math::Matrix matrix;
+		Math::Vector2 vector2;
+		Math::Vector2 padding;
+	};
+
+	struct Struct_Shadowing
+	{
+		Math::Matrix wvpOrtho;
+		Math::Matrix wvpInv;
+		Math::Matrix view;
+		Math::Matrix projection;
+		Math::Matrix projectionInverse;
+		Math::Matrix mLightViewProjection[3];
+		Math::Vector4 shadowSplits;
+		Math::Vector3 lightDir;
+		float shadowMapResolution;
+		Math::Vector2 resolution;
+		float nearPlane;
+		float farPlane;
+		float doShadowMapping;
+		Math::Vector3 padding;
+	};
+
+	struct Struct_Matrix_Matrix_Matrix
+	{
+		Math::Matrix m1;
+		Math::Matrix m2;
+		Math::Matrix m3;
+	};
+
+	struct Struct_Matrix_Vector3_Vector3
+	{
+		Math::Matrix matrix;
+		Math::Vector3 vector3A;
+		float padding;
+		Math::Vector3 vector3B;
+		float padding2;
 	};
 }

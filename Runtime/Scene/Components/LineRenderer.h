@@ -52,12 +52,12 @@ namespace Directus
 		void CreateVertexBuffer();
 		void Update();
 
-		unsigned int GetVertexCount()							{ return (unsigned int)m_vertices.size(); }
-		std::shared_ptr<D3D11_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }	
+		unsigned int GetVertexCount()						{ return (unsigned int)m_vertices.size(); }
+		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }	
 
 	private:
 		//= VERTICES ======================================
-		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
 		std::vector<RHI_Vertex_PosCol> m_vertices;
 		//=================================================
 

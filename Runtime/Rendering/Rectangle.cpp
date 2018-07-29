@@ -19,17 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES =========================
 #include "Rectangle.h"
-#include "../RHI/D3D11/D3D11_IndexBuffer.h"
-#include "../RHI/D3D11/D3D11_VertexBuffer.h"
 #include "../RHI/RHI_Vertex.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../Core/EngineDefs.h"
 #include "../Core/Context.h"
 #include "../Core/Settings.h"
 #include "../Logging/Log.h"
-//==========================================
+//====================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -109,14 +107,14 @@ namespace Directus
 			indices.push_back(i);
 		}
 
-		m_vertexBuffer = make_shared<D3D11_VertexBuffer>((D3D11_Device*)m_rhiDevice);
+		m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
 		if (!m_vertexBuffer->Create(vertices))
 		{
 			LOG_ERROR("Rectangle: Failed to create vertex buffer.");
 			return false;
 		}
 
-		m_indexBuffer = make_shared<D3D11_IndexBuffer>((D3D11_Device*)m_rhiDevice);
+		m_indexBuffer = make_shared<RHI_IndexBuffer>(m_rhiDevice);
 		if (!m_indexBuffer->Create(indices))
 		{
 			LOG_ERROR("Rectangle: Failed to create index buffer.");

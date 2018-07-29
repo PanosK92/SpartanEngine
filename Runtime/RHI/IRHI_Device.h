@@ -32,34 +32,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class RHI_Device : public Subsystem
+	class ENGINE_CLASS IRHI_Device : public Subsystem
 	{
 	public:
-		RHI_Device(Context* context) : Subsystem(context)
+		IRHI_Device(Context* context) : Subsystem(context)
 		{
-			m_pipelineState			= std::make_shared<RHI_PipelineState>(this);
+			m_pipelineState			= std::make_shared<RHI_PipelineState>((RHI_Device*)this);
 			m_format				= Texture_Format_R8G8B8A8_UNORM;
 			m_depthEnabled			= true;
 			m_alphaBlendingEnabled	= false;
 			m_drawHandle			= nullptr;
 			m_maxDepth				= 1.0f;
 		}
-		virtual ~RHI_Device() {}
+		virtual ~IRHI_Device() {}
 
 		//= RENDERING ============================================================================================================================
 		virtual void Draw(unsigned int vertexCount)																{ Profiler::Get().m_drawCalls++; }
 		virtual void DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)	{ Profiler::Get().m_drawCalls++; }
-		virtual void Clear(const Math::Vector4& color){}
-		virtual void Present(){}
+		virtual void Clear(const Math::Vector4& color) = 0;
+		virtual void Present() = 0;
 		//========================================================================================================================================
 
-		//= BINDING ======================================================================================================
+		//= BINDING ========================================================================================================
 		virtual void SetHandle(void* drawHandle) { m_drawHandle = drawHandle; }
-		virtual void Bind_BackBufferAsRenderTarget() {}
-		virtual void Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil) {}
-		virtual void Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources) {}
-		virtual void Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers) {}
-		//================================================================================================================
+		virtual void Bind_BackBufferAsRenderTarget() = 0;
+		virtual void Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil) = 0;
+		virtual void Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources) = 0;
+		//==================================================================================================================
 
 		//= RESOLUTION ==================================
 		virtual bool SetResolution(int width, int height)
@@ -115,14 +114,14 @@ namespace Directus
 		/*Fill mode*/			virtual bool Set_FillMode(Fill_Mode fillMode)									{ return false; }
 		/*Input layout*/		virtual bool Set_InputLayout(void* inputLayout)									{ return false; }
 
-		//= PROFILING ====================================
-		virtual void EventBegin(const std::string& name){}
-		virtual void EventEnd(){}
-		virtual void QueryBegin(){}
-		virtual void QueryEnd(){}
-		//================================================
+		//= PROFILING =======================================
+		virtual void EventBegin(const std::string& name) = 0;
+		virtual void EventEnd() = 0;
+		virtual void QueryBegin() = 0;
+		virtual void QueryEnd() = 0;
+		//===================================================
 
-		virtual bool IsInitialized() { return false; }
+		virtual bool IsInitialized() = 0;
 
 		std::shared_ptr<RHI_PipelineState> GetPipelineState() { return m_pipelineState; }
 

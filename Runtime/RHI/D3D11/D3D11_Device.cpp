@@ -51,7 +51,7 @@ namespace D3D11Settings
 
 namespace Directus
 {
-	D3D11_Device::D3D11_Device(Context* context) : RHI_Device(context)
+	D3D11_Device::D3D11_Device(Context* context) : IRHI_Device(context)
 	{
 		m_device					= nullptr;
 		m_deviceContext				= nullptr;
@@ -397,7 +397,7 @@ namespace Directus
 		if (!m_deviceContext)
 			return;
 
-		RHI_Device::Draw(vertexCount);
+		IRHI_Device::Draw(vertexCount);
 		m_deviceContext->Draw(vertexCount, 0);
 	}
 
@@ -406,7 +406,7 @@ namespace Directus
 		if (!m_deviceContext)
 			return;
 
-		RHI_Device::DrawIndexed(indexCount, indexOffset, vertexOffset);
+		IRHI_Device::DrawIndexed(indexCount, indexOffset, vertexOffset);
 		m_deviceContext->DrawIndexed(indexCount, indexOffset, vertexOffset);
 	}
 
@@ -427,7 +427,6 @@ namespace Directus
 		if (!m_swapChain)
 			return;
 
-		RHI_Device::Present();
 		m_swapChain->Present(Settings::Get().GetVSync(), 0);
 	}
 
@@ -455,17 +454,9 @@ namespace Directus
 		m_deviceContext->PSSetShaderResources(startSlot, resourceCount, (ID3D11ShaderResourceView**)shaderResources);
 	}
 
-	void D3D11_Device::Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* sampler)
-	{
-		if (!m_deviceContext)
-			return;
-
-		m_deviceContext->PSSetSamplers(startSlot, samplerCount, (ID3D11SamplerState**)&sampler[0]);
-	}
-
 	bool D3D11_Device::SetResolution(int width, int height)
 	{
-		if (!RHI_Device::SetResolution(width, height))
+		if (!IRHI_Device::SetResolution(width, height))
 			return false;
 
 		if (!m_swapChain)
@@ -560,7 +551,7 @@ namespace Directus
 
 	bool D3D11_Device::EnableDepth(bool enable)
 	{
-		if (!RHI_Device::EnableDepth(enable))
+		if (!IRHI_Device::EnableDepth(enable))
 			return false;
 
 		if (!m_deviceContext)
@@ -576,7 +567,7 @@ namespace Directus
 
 	bool D3D11_Device::EnableAlphaBlending(bool enable)
 	{
-		if (!RHI_Device::EnableAlphaBlending(enable))
+		if (!IRHI_Device::EnableAlphaBlending(enable))
 			return false;
 
 		if (!m_deviceContext)

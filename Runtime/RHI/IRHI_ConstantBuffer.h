@@ -21,38 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES ==============
+#include <memory>
 #include <vector>
-#include "../IRHI_Device.h"
-//=======================
+#include "RHI_Definition.h"
+//=========================
 
 namespace Directus
 {
-	class D3D11_InputLayout
+	class IRHI_ConstantBuffer
 	{
 	public:
-		D3D11_InputLayout(D3D11_Device* d3d11Device);
-		~D3D11_InputLayout();
+		IRHI_ConstantBuffer(RHI_Device* rhiDevice){};
+		~IRHI_ConstantBuffer(){};
 
-		Input_Layout GetInputLayout()				{ return m_inputLayout; }
-		ID3D11InputLayout* GetInputLayoutBuffer()	{ return m_ID3D11InputLayout; }
-
-		//= LAYOUT CREATION ====================================================================================
-		bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, unsigned int elementCount);
-		bool Create(ID3D10Blob* VSBlob, Input_Layout layout);
-		//======================================================================================================
-
-	private:
-		//= LAYOUTS ==============================
-		bool CreatePosDesc(ID3D10Blob* VSBlob);
-		bool CreatePosColDesc(ID3D10Blob* VSBlob);
-		bool CreatePosTexDesc(ID3D10Blob* VSBlob);
-		bool CreatePosTBNDesc(ID3D10Blob* VSBlob);
-		//========================================
-
-		D3D11_Device* m_graphics;
-		ID3D11InputLayout* m_ID3D11InputLayout;
-		Input_Layout m_inputLayout;
-		std::vector<D3D11_INPUT_ELEMENT_DESC> m_layoutDesc;
+		virtual bool Create(unsigned int size) = 0;
+		virtual void* Map() = 0;
+		virtual bool Unmap() = 0;
+		virtual bool Bind(BufferScope_Mode bufferScope, unsigned int startSlot) = 0;
+		virtual void* GetBuffer() = 0;
 	};
 }

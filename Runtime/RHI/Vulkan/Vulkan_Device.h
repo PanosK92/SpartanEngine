@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES ==============
 #include <vector>
-#include "../RHI_Device.h"
-//=======================
+#include "../IRHI_Device.h"
+//=========================
 
 namespace Directus
 {
-	class Vulkan_Device : public RHI_Device
+	class Vulkan_Device : public IRHI_Device
 	{
 	public:
 		Vulkan_Device(Context* context);
