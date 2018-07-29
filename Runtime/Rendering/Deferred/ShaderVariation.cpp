@@ -45,7 +45,7 @@ namespace Directus
 		RegisterResource<ShaderVariation>();
 		//==================================
 
-		m_rhi			= m_context->GetSubsystem<RHI>();
+		m_rhiDevice			= m_context->GetSubsystem<RHI_Device>();
 		m_shaderFlags	= 0;
 	}
 
@@ -57,40 +57,29 @@ namespace Directus
 	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
 	{
 		m_shaderFlags = shaderFlags;
-		if (!m_rhi)
+		if (!m_rhiDevice)
 		{
 			LOG_INFO("GraphicsDevice is expired. Cant't compile shader");
 			return;
 		}
 
 		// Load and compile the vertex and the pixel shader
-		m_D3D11Shader = make_shared<D3D11_Shader>(m_rhi);
+		m_D3D11Shader = make_shared<D3D11_Shader>((D3D11_Device*)m_rhiDevice);
 		AddDefinesBasedOnMaterial(m_D3D11Shader);
 		m_D3D11Shader->Compile(filePath);
 		m_D3D11Shader->SetInputLayout(Input_PositionTextureTBN);
 
 		// Matrix Buffer
-		m_perObjectBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
+		m_perObjectBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
 		m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
 
 		// Object Buffer
-		m_materialBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
+		m_materialBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
 		m_materialBuffer->Create(sizeof(PerMaterialBufferType));
 
 		// Object Buffer
-		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
+		m_miscBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
 		m_miscBuffer->Create(sizeof(PerFrameBufferType));
-	}
-
-	void ShaderVariation::Bind()
-	{
-		if (!m_D3D11Shader)
-		{
-			LOG_WARNING("Can't set uninitialized shader");
-			return;
-		}
-
-		m_D3D11Shader->Bind();
 	}
 
 	void ShaderVariation::Bind_PerFrameBuffer(Camera* camera)

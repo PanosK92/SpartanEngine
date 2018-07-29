@@ -40,10 +40,13 @@ namespace Directus
 
 		bool Compile(const std::string& filePath);
 		bool SetInputLayout(Input_Layout inputLayout);
-		bool Bind();
 		void SetName(const std::string& name) { m_name = name; }
 		void AddDefine(const std::string& define, const std::string& value);
 		bool IsCompiled() { return m_compiled; }
+
+		ID3D11VertexShader* GetVertexShader()				{ return m_vertexShader; }
+		ID3D11PixelShader* GetPixelShader()					{ return m_pixelShader; }
+		std::shared_ptr<D3D11_InputLayout> GetInputLayout() { return m_D3D11InputLayout; }
 
 	private:
 		//= COMPILATION ================================================================================================================================================================================

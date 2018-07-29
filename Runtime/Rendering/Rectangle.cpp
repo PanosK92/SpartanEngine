@@ -40,7 +40,7 @@ namespace Directus
 {
 	Rectangle::Rectangle(Context* context)
 	{
-		m_rhi				= context->GetSubsystem<RHI>();
+		m_rhiDevice			= context->GetSubsystem<RHI_Device>();
 		m_x					= 0;
 		m_y					= 0;
 		m_width				= 0;
@@ -109,14 +109,14 @@ namespace Directus
 			indices.push_back(i);
 		}
 
-		m_vertexBuffer = make_unique<D3D11_VertexBuffer>(m_rhi);
+		m_vertexBuffer = make_unique<D3D11_VertexBuffer>((D3D11_Device*)m_rhiDevice);
 		if (!m_vertexBuffer->Create(vertices))
 		{
 			LOG_ERROR("Rectangle: Failed to create vertex buffer.");
 			return false;
 		}
 
-		m_indexBuffer = make_unique<D3D11_IndexBuffer>(m_rhi);
+		m_indexBuffer = make_unique<D3D11_IndexBuffer>((D3D11_Device*)m_rhiDevice);
 		if (!m_indexBuffer->Create(indices))
 		{
 			LOG_ERROR("Rectangle: Failed to create index buffer.");
@@ -128,7 +128,7 @@ namespace Directus
 
 	bool Rectangle::SetBuffer()
 	{
-		if (!m_rhi || !m_vertexBuffer || !m_indexBuffer)
+		if (!m_rhiDevice || !m_vertexBuffer || !m_indexBuffer)
 			return false;
 
 		m_vertexBuffer->SetIA();

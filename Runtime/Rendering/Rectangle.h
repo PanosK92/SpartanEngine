@@ -41,7 +41,7 @@ namespace Directus
 		int GetIndexCount() { return 6; }
 
 	private:
-		RHI* m_rhi;
+		RHI_Device* m_rhiDevice;
 		std::unique_ptr<D3D11_VertexBuffer> m_vertexBuffer;
 		std::unique_ptr<D3D11_IndexBuffer> m_indexBuffer;
 		float m_x;

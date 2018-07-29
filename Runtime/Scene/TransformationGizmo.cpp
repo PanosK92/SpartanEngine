@@ -21,11 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ============================
 #include "TransformationGizmo.h"
 #include "Actor.h"
 #include "Components\Transform.h"
-//===============================
+#include "..\RHI\RHI_Vertex.h"
+#include "..\Rendering\GeometryUtility.h"
+#include "..\Rendering\Mesh.h"
+//=======================================
 
 //=============================
 using namespace std;
@@ -119,22 +122,22 @@ namespace Directus
 	void TransformationGizmo::CreateGeometry()
 	{
 		// Create cone
-		//vector<RI_Vertex_PosUVTBN> vertices;
-		//vector<unsigned int> indices;
-		//GeometryUtility::CreateCone(&vertices, &indices);
-		//m_meshCone = make_unique<Mesh>(m_context);
-		//m_meshCone->Vertices_Set(vertices);
-		//m_meshCone->Indices_Set(indices);
+		/*vector<RHI_Vertex_PosUVTBN> vertices;
+		vector<unsigned int> indices;
+		GeometryUtility::CreateCone(&vertices, &indices);
+		m_meshCone = make_unique<Mesh>(m_context);
+		m_meshCone->Vertices_Set(vertices);
+		m_meshCone->Indices_Set(indices);*/
 		//m_meshCone->SetResourceName("TransformGizmo:Translation");
 		//m_meshCone->Geometry_Update();
 
 		// Create cone
-		//vertices.clear(); vertices.shrink_to_fit();
-		//indices.clear(); indices.shrink_to_fit();
-		//GeometryUtility::CreateCube(&vertices, &indices);
-		//m_meshCube = make_unique<Mesh>(m_context);
-		//m_meshCube->Vertices_Set(vertices);
-		//m_meshCube->Indices_Set(indices);
+		/*vertices.clear(); vertices.shrink_to_fit();
+		indices.clear(); indices.shrink_to_fit();
+		GeometryUtility::CreateCube(&vertices, &indices);
+		m_meshCube = make_unique<Mesh>(m_context);
+		m_meshCube->Vertices_Set(vertices);
+		m_meshCube->Indices_Set(indices);*/
 		//m_meshCube->SetResourceName("TransformGizmo:Scale");
 		//m_meshCube->Geometry_Update();
 	}

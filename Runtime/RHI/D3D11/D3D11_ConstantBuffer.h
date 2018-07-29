@@ -42,7 +42,7 @@ namespace Directus
 		bool SetPS(unsigned int startSlot);
 
 	private:
-		D3D11_Device* m_graphics;
+		D3D11_Device* m_device;
 		ID3D11Buffer* m_buffer;
 	};
 }

@@ -21,13 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========
-#include "SubSystem.h"
+//= INCLUDES ==========
 #include <vector>
-//====================
+#include "EngineDefs.h"
+//=====================
 
 namespace Directus
 {
+	class Subsystem;
+
 	class ENGINE_CLASS Context
 	{
 	public:
@@ -46,10 +48,18 @@ namespace Directus
 	template <class T>
 	T* Context::GetSubsystem()
 	{
+		// Compare T with subsystem types
 		for (const auto& subsystem : m_subsystems)
 		{
 			if (typeid(T) == typeid(*subsystem))
 				return static_cast<T*>(subsystem);
+		}
+
+		// Compare T with base subsystem types
+		for (const auto& subsystem : m_subsystems)
+		{
+			if (auto base = dynamic_cast<T*>(subsystem))
+				return base;
 		}
 
 		return nullptr;

@@ -16,9 +16,10 @@ DEALINGS IN THE SOFTWARE. */
 
 #pragma once
 
-//= INCLUDES =======
+//= INCLUDES =========
 #include "Context.h"
-//==================
+#include "SubSystem.h"
+//====================
 
 namespace Directus
 {

@@ -308,10 +308,10 @@ namespace Directus
 
 		// Create the shadow maps
 		m_shadowMapResolution	= Settings::Get().GetShadowMapResolution();
-		auto rhi				= m_context->GetSubsystem<RHI>();
+		auto rhiDevice			= m_context->GetSubsystem<RHI_Device>();
 		for (unsigned int i = 0; i < m_shadowMapCount; i++)
 		{
-			m_shadowMaps.emplace_back(make_unique<D3D11_RenderTexture>(rhi, m_shadowMapResolution, m_shadowMapResolution, true, Texture_Format_R32_FLOAT));
+			m_shadowMaps.emplace_back(make_unique<D3D11_RenderTexture>((D3D11_Device*)rhiDevice, m_shadowMapResolution, m_shadowMapResolution, true, Texture_Format_R32_FLOAT));
 			m_frustums.emplace_back(make_shared<Frustum>());
 		}
 	}

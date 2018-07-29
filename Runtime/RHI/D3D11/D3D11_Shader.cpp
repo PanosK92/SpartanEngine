@@ -142,30 +142,6 @@ namespace Directus
 		return m_layoutHasBeenSet;
 	}
 
-	bool D3D11_Shader::Bind()
-	{
-		if (!m_compiled)
-			return false;
-
-		bool success = true;
-
-		// Set the vertex input layout.
-		m_graphics->Set_InputLayout(m_D3D11InputLayout->GetInputLayout());
-		if (!m_D3D11InputLayout->Set())
-		{
-			LOG_ERROR("D3D11_Shader::Bind: Failed to set input layout");
-			success = false;
-		}
-
-		// Set the vertex and pixel shaders
-		m_graphics->GetDeviceContext()->VSSetShader(m_vertexShader, nullptr, 0);
-		m_graphics->GetDeviceContext()->PSSetShader(m_pixelShader, nullptr, 0);
-
-		Profiler::Get().m_bindShaderCount++;
-
-		return success;
-	}
-
 	// All overloads resolve to this
 	void D3D11_Shader::AddDefine(const string& define, const string& value)
 	{

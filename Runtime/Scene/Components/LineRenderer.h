@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========================================
+//= INCLUDES ============================
 #include "IComponent.h"
 #include <memory>
 #include <vector>
 #include "../../RHI/RHI_Vertex.h"
-#include "../../RHI/D3D11/D3D11_VertexBuffer.h"
-//=====================================================
+#include "../../RHI/RHI_Implementation.h"
+//=======================================
 
 namespace Directus
 {
@@ -56,10 +56,10 @@ namespace Directus
 		unsigned int GetVertexCount() { return (unsigned int)m_vertices.size(); }
 
 	private:
-		//= VERTICES =====================================
+		//= VERTICES ======================================
 		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
 		std::vector<RHI_Vertex_PosCol> m_vertices;
-		//================================================
+		//=================================================
 
 		//= MISC =================
 		void UpdateVertexBuffer();

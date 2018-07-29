@@ -157,34 +157,33 @@ namespace Directus
 		std::shared_ptr<D3D11_RenderTexture> m_renderTexPong;
 		//========================================================
 
-		//= SHADERS ===========================================
-		std::unique_ptr<LightShader> m_shaderLight;
-		std::unique_ptr<RHI_Shader> m_shaderLightDepth;
-		std::unique_ptr<RHI_Shader> m_shaderLine;
-		std::unique_ptr<RHI_Shader> m_shaderGrid;
-		std::unique_ptr<RHI_Shader> m_shaderFont;
-		std::unique_ptr<RHI_Shader> m_shaderTexture;
-		std::unique_ptr<RHI_Shader> m_shaderFXAA;
-		std::unique_ptr<RHI_Shader> m_shaderShadowing;
-		std::unique_ptr<RHI_Shader> m_shaderSharpening;
-		std::unique_ptr<RHI_Shader> m_shaderChromaticAberration;
-		std::unique_ptr<RHI_Shader> m_shaderBlurBox;
-		std::unique_ptr<RHI_Shader> m_shaderBlurGaussianH;
-		std::unique_ptr<RHI_Shader> m_shaderBlurGaussianV;
-		std::unique_ptr<RHI_Shader> m_shaderBloom_Bright;
-		std::unique_ptr<RHI_Shader> m_shaderBloom_BlurBlend;
-		std::unique_ptr<RHI_Shader> m_shaderCorrection;
-		std::unique_ptr<RHI_Shader> m_shaderTransformationGizmo;
-		//=====================================================
+		//= SHADERS ============================================
+		std::shared_ptr<LightShader> m_shaderLight;
+		std::shared_ptr<RHI_Shader> m_shaderLightDepth;
+		std::shared_ptr<RHI_Shader> m_shaderLine;
+		std::shared_ptr<RHI_Shader> m_shaderGrid;
+		std::shared_ptr<RHI_Shader> m_shaderFont;
+		std::shared_ptr<RHI_Shader> m_shaderTexture;
+		std::shared_ptr<RHI_Shader> m_shaderFXAA;
+		std::shared_ptr<RHI_Shader> m_shaderShadowing;
+		std::shared_ptr<RHI_Shader> m_shaderSharpening;
+		std::shared_ptr<RHI_Shader> m_shaderChromaticAberration;
+		std::shared_ptr<RHI_Shader> m_shaderBlurBox;
+		std::shared_ptr<RHI_Shader> m_shaderBlurGaussianH;
+		std::shared_ptr<RHI_Shader> m_shaderBlurGaussianV;
+		std::shared_ptr<RHI_Shader> m_shaderBloom_Bright;
+		std::shared_ptr<RHI_Shader> m_shaderBloom_BlurBlend;
+		std::shared_ptr<RHI_Shader> m_shaderCorrection;
+		std::shared_ptr<RHI_Shader> m_shaderTransformationGizmo;
+		//======================================================
 
 		//= SAMPLERS =================================================
-		std::unique_ptr<D3D11_Sampler> m_samplerPointWrapAlways;
-		std::unique_ptr<D3D11_Sampler> m_samplerPointClampAlways;
-		std::unique_ptr<D3D11_Sampler> m_samplerPointClampGreater;
-		std::unique_ptr<D3D11_Sampler> m_samplerLinearClampGreater;
-		std::unique_ptr<D3D11_Sampler> m_samplerLinearWrapAlways;
-		std::unique_ptr<D3D11_Sampler> m_samplerBilinearWrapAlways;
-		std::unique_ptr<D3D11_Sampler> m_samplerAnisotropicWrapAlways;
+		std::shared_ptr<D3D11_Sampler> m_samplerPointClampAlways;
+		std::shared_ptr<D3D11_Sampler> m_samplerPointClampGreater;
+		std::shared_ptr<D3D11_Sampler> m_samplerLinearClampGreater;
+		std::shared_ptr<D3D11_Sampler> m_samplerLinearClampAlways;
+		std::shared_ptr<D3D11_Sampler> m_samplerBilinearClampAlways;
+		std::shared_ptr<D3D11_Sampler> m_samplerAnisotropicWrapAlways;
 		//============================================================
 
 		//= DEBUG ==========================================
@@ -203,8 +202,8 @@ namespace Directus
 		std::unique_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
 		//=========================================
-
-		//= PREREQUISITES ==================
+		
+		//= PREREQUISITES ====================================
 		Camera* m_camera;
 		Skybox* m_skybox;
 		LineRenderer* m_lineRenderer;
@@ -216,8 +215,9 @@ namespace Directus
 		Math::Matrix m_wvp_baseOrthographic;
 		float m_nearPlane;
 		float m_farPlane;
-		RHI* m_rhi;
-		//==================================
+		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
+		//====================================================
 
 		//= PIPELINE STATE ===================
 		unsigned int m_currentlyBoundGeometry;

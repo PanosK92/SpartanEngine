@@ -75,7 +75,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Input(m_context));
 		m_context->RegisterSubsystem(new Threading(m_context));
 		m_context->RegisterSubsystem(new ResourceManager(m_context));
-		m_context->RegisterSubsystem(new RHI(m_context));
+		m_context->RegisterSubsystem(new D3D11_Device(m_context));
 		m_context->RegisterSubsystem(new Renderer(m_context));
 		m_context->RegisterSubsystem(new Audio(m_context));
 		m_context->RegisterSubsystem(new Physics(m_context));
@@ -115,8 +115,8 @@ namespace Directus
 		}
 
 		// RHI (Rendering Hardware Interface)
-		m_context->GetSubsystem<RHI>()->SetHandle(m_drawHandle);
-		if (!m_context->GetSubsystem<RHI>()->Initialize())
+		m_context->GetSubsystem<RHI_Device>()->SetHandle(m_drawHandle);
+		if (!m_context->GetSubsystem<RHI_Device>()->Initialize())
 		{
 			LOG_ERROR("Engine::Initialize: Engine::Initialize: Failed to initialize RHI");
 			return false;

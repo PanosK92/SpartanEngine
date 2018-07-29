@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include <memory>
 #include <vector>
-#include "RHI_Device.h"
 #include "RHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector2.h"
@@ -32,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class Context;
 	class Light;
 	class Camera;
 
@@ -57,13 +55,12 @@ namespace Directus
 	class RHI_Shader
 	{
 	public:
-		RHI_Shader(Context* context);
+		RHI_Shader(RHI_Device* rhiDevice);
 		~RHI_Shader(){}
 
 		bool Compile(const std::string& filePath, Input_Layout inputLayout);
 		void AddDefine(const char* define);
 		void AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope);
-		bool Bind();
 
 		// Bind - Constant Buffer
 		void Bind_Buffer(const Math::Matrix& matrix, unsigned int slot = 0);
@@ -82,6 +79,8 @@ namespace Directus
 			Camera* camera,
 			unsigned int slot = 0
 		);
+
+		D3D11_Shader* GetShader() { return m_shader.get(); }
 
 	private:
 		void SetBufferScope(D3D11_ConstantBuffer* buffer, unsigned int slot = 0);
@@ -146,8 +145,8 @@ namespace Directus
 		};
 
 		std::unique_ptr<D3D11_ConstantBuffer> m_constantBuffer;
-		std::unique_ptr<D3D11_Shader> m_shader;
-		RHI* m_rhi;
+		std::shared_ptr<D3D11_Shader> m_shader;
+		RHI_Device* m_rhiDevice;
 		ConstantBufferType m_bufferType;
 		ConstantBufferScope m_bufferScope;
 	};

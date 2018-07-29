@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // RHI (Rendering Hardware Interface)
 namespace Directus
 {
+	class RHI_Device;
+	class RHI_PipelineState;
 	class RHI_Texture;
 	class RHI_Shader;
 	class RHI_Viewport;
@@ -63,10 +65,11 @@ namespace Directus
 		Cull_NotAssigned
 	};
 
-	enum FillMode
+	enum Fill_Mode
 	{
-		FillMode_Solid,
-		FillMode_Wireframe
+		Fill_Solid,
+		Fill_Wireframe,
+		Fill_NotAssigned
 	};
 
 	enum TextureType
@@ -138,8 +141,6 @@ namespace Directus
 	class D3D11_VertexBuffer;
 	class D3D11_IndexBuffer;
 	class D3D11_Texture;
-	
-	typedef D3D11_Device RHI;
 }
 
 // Forward declarations - D3D11 API
@@ -176,7 +177,5 @@ struct ID3DUserDefinedAnnotation;
 namespace Directus
 {
 	class Vulkan_Device;
-
-	typedef Vulkan_Device RHI;
 }
 #endif

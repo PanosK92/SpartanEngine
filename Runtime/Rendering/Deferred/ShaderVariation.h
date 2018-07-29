@@ -57,7 +57,6 @@ namespace Directus
 
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
-		void Bind();
 		void Bind_PerFrameBuffer(Camera* camera);
 		void Bind_PerMaterialBuffer(Material* material);
 		void Bind_PerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
@@ -73,6 +72,8 @@ namespace Directus
 		bool HasMaskTexture()			{ return m_shaderFlags & Variaton_Mask; }
 		bool HasCubeMapTexture()		{ return m_shaderFlags & Variaton_Cubemap; }
 
+		std::shared_ptr<D3D11_Shader> GetShader() { return m_D3D11Shader; }
+
 	private:
 		void AddDefinesBasedOnMaterial(const std::shared_ptr<D3D11_Shader>& shader);
 		
@@ -80,7 +81,7 @@ namespace Directus
 		unsigned long m_shaderFlags;
 
 		//= MISC ==================================================
-		RHI* m_rhi;
+		RHI_Device* m_rhiDevice;
 		std::shared_ptr<D3D11_ConstantBuffer> m_perObjectBuffer;
 		std::shared_ptr<D3D11_ConstantBuffer> m_materialBuffer;
 		std::shared_ptr<D3D11_ConstantBuffer> m_miscBuffer;

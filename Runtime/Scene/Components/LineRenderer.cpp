@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/BoundingBox.h"
 #include "../../RHI/RHI_Definition.h"
 #include "../../RHI/D3D11/D3D11_Device.h"
+#include "../../RHI/D3D11/D3D11_VertexBuffer.h"
 //=================================================
 
 //= NAMESPACES ================
@@ -112,7 +113,7 @@ namespace Directus
 
 	void LineRenderer::CreateVertexBuffer()
 	{
-		m_vertexBuffer = make_shared<D3D11_VertexBuffer>(GetContext()->GetSubsystem<RHI>());
+		m_vertexBuffer = make_shared<D3D11_VertexBuffer>((D3D11_Device*)GetContext()->GetSubsystem<RHI_Device>());
 		m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosCol), (unsigned int)m_vertices.size());
 	}
 

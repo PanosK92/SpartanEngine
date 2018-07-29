@@ -59,8 +59,6 @@ namespace Directus
 #define VARIANT_TYPES std::variant<_VARIANT_TYPES>
 typedef std::variant<_VARIANT_TYPES, VARIANT_TYPES> VariantInternal;
 
-#define VARIANT_GET_FROM(type, variant) std::get<type>(variant.GetVariantRaw())
-
 namespace Directus
 {
 	class ENGINE_CLASS Variant
@@ -84,7 +82,12 @@ namespace Directus
 
 		const VariantInternal& GetVariantRaw() const { return m_variant; }
 
+		template<class T>
+		inline const T& Get() const { return std::get<T>(m_variant); }
+
 	private:
 		VariantInternal m_variant;
 	};
+
+	
 }

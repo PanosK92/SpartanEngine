@@ -40,7 +40,7 @@ namespace Directus
 {
 	LightShader::LightShader()
 	{
-		m_rhi = nullptr;
+		m_rhiDevice = nullptr;
 	}
 
 	LightShader::~LightShader()
@@ -48,21 +48,21 @@ namespace Directus
 
 	}
 
-	void LightShader::Compile(const string& filePath, RHI* rhi)
+	void LightShader::Compile(const string& filePath, RHI_Device* rhiDevice)
 	{
-		m_rhi = rhi;
+		m_rhiDevice = rhiDevice;
 
 		// load the vertex and the pixel shader
-		m_shader = make_shared<D3D11_Shader>(m_rhi);
+		m_shader = make_shared<D3D11_Shader>((D3D11_Device*)m_rhiDevice);
 		m_shader->Compile(filePath);
 		m_shader->SetInputLayout(Input_PositionTextureTBN);
 
 		// Create matrix buffer
-		m_matrixBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
+		m_matrixBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
 		m_matrixBuffer->Create(sizeof(MatrixBufferType));
 
 		// Create misc buffer
-		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_rhi);
+		m_miscBuffer = make_shared<D3D11_ConstantBuffer>((D3D11_Device*)m_rhiDevice);
 		m_miscBuffer->Create(sizeof(MiscBufferType));
 	}
 
@@ -185,17 +185,6 @@ namespace Directus
 		// Set to shader slot
 		m_miscBuffer->SetVS(1);
 		m_miscBuffer->SetPS(1);
-	}
-
-	void LightShader::Bind()
-	{
-		if (!m_shader)
-		{
-			LOG_INFO("Unintialized shader, can't set");
-			return;
-		}
-
-		m_shader->Bind();
 	}
 
 	bool LightShader::IsCompiled()
