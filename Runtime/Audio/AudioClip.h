@@ -57,11 +57,11 @@ namespace Directus
 		AudioClip(Context* context);
 		~AudioClip();
 
-		//= IResource ==========================================================
+		//= IResource ========================================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override { return true; }
-		unsigned int GetMemory() override;
-		//======================================================================
+		unsigned int GetMemoryUsage() override;
+		//====================================================================
 
 		bool Play();
 		bool Pause();

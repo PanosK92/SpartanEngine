@@ -21,37 +21,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES ===============
 #include <vector>
-#include "../IRHI_Device.h"
-//=======================
+#include "../IRHI_Texture.h"
+//==========================
 
 namespace Directus
 {
-	class D3D11_Texture
+	class ENGINE_CLASS D3D11_Texture : public IRHI_Texture
 	{
 	public:
-		D3D11_Texture(D3D11_Device* context);
+		D3D11_Texture(Context* context);
 		~D3D11_Texture();
 
-		// Create from data
-		bool Create(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);
+		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format) override;					// Simple texture, no mimaps
+		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::vector<std::byte>>& mipmaps, Texture_Format format) override;	// With custom-generated mimaps
+		bool CreateShaderResource(unsigned int width, int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format) override;							// With auto-generated mimaps
 
-		// Creates from data with mipmaps
-		bool CreateFromMipmaps(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::vector<std::byte>>& mipmaps, Texture_Format format);
+		// Shader Resource
+		void* GetShaderResource() override								{ return m_shaderResourceView; }
+		virtual void SetShaderResource(void* shaderResource) override	{ m_shaderResourceView = (ID3D11ShaderResourceView*)shaderResource;}
 
-		// Creates a texture and generates mipmaps (easy way to get mipmaps but not as high quality as the mipmaps you can generate manually)
-		bool CreateAndGenerateMipmaps(unsigned int width, int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);
-
-		// Shader resource
-		ID3D11ShaderResourceView* GetShaderResourceView()			{ return m_shaderResourceView; }
-		void SetShaderResourceView(ID3D11ShaderResourceView* srv)	{ m_shaderResourceView = srv; }
-
-		unsigned int GetMemoryUsage() { return m_memoryUsage; }
+		unsigned int GetMemoryUsage() override;
 
 	private:
 		ID3D11ShaderResourceView* m_shaderResourceView;
-		D3D11_Device* m_graphics;
+		RHI_Device* m_rhiDevice;
 		unsigned int m_memoryUsage;
 	};
 }

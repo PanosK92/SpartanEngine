@@ -254,7 +254,7 @@ void Widget_MenuBar::ShowResourceCache()
 		ImGui::Text(resource->GetResourceFilePath().c_str());			ImGui::NextColumn();
 
 		// Memory
-		auto memory = (unsigned int)(resource->GetMemory() / 1000.0f); // default in Kb
+		auto memory = (unsigned int)(resource->GetMemoryUsage() / 1000.0f); // default in Kb
 		if (memory <= 1024)
 		{
 			ImGui::Text((to_string(memory) + string(" Kb")).c_str());	ImGui::NextColumn();

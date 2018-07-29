@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Renderable.h"
 #include "../Actor.h"
-#include "../../RHI/RHI_Texture.h"
+#include "../../RHI/RHI_Implementation.h"
 #include "../../Math/Vector3.h"
 #include "../../Resource/ResourceManager.h"
 //=========================================
@@ -83,7 +83,7 @@ namespace Directus
 
 	}
 
-	void** Skybox::GetShaderResource()
+	void* Skybox::GetShaderResource()
 	{
 		return m_cubemapTexture ? m_cubemapTexture->GetShaderResource() : nullptr;
 	}

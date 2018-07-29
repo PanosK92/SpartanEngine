@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class D3D11_VertexBuffer : public IRHI_VertexBuffer
+	class ENGINE_CLASS D3D11_VertexBuffer : public IRHI_VertexBuffer
 	{
 	public:
 		D3D11_VertexBuffer(RHI_Device* rhiDevice);

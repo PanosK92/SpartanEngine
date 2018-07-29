@@ -20,10 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================================
-#include "../Resource/IResource.h"
+#include "IResource.h"
 #include "ResourceManager.h"
 #include "../Audio/AudioClip.h"
-#include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_Implementation.h"
 #include "../Rendering/Font.h"
 #include "../Rendering/Animation.h"
 #include "../Rendering/Model.h"
@@ -39,9 +39,9 @@ using namespace Directus;
 
 template <typename T>
 ResourceType IResource::DeduceResourceType() { return Resource_Unknown; }
-// Explicit template instantiation
 #define INSTANTIATE_ToResourceType(T, enumT) template<> ENGINE_CLASS ResourceType IResource::DeduceResourceType<T>() { return enumT; }
-INSTANTIATE_ToResourceType(RHI_Texture,			Resource_Texture)
+// Explicit template instantiation
+INSTANTIATE_ToResourceType(RHI_Texture,		Resource_Texture)
 INSTANTIATE_ToResourceType(AudioClip,		Resource_Audio)
 INSTANTIATE_ToResourceType(Material,		Resource_Material)
 INSTANTIATE_ToResourceType(ShaderVariation, Resource_Shader)
@@ -56,7 +56,7 @@ IResource::IResource(Context* context)
 	m_resourceManager	= m_context->GetSubsystem<ResourceManager>();	
 }
 
-std::weak_ptr<IResource> IResource::_Cache()
+weak_ptr<IResource> IResource::_Cache()
 {
 	auto resource = m_resourceManager->GetResourceByName(GetResourceName(), m_resourceType);
 	if (resource.expired())

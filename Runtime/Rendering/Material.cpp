@@ -22,8 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "Material.h"
 #include "Deferred/ShaderVariation.h"
-#include "../RHI/IRHI_Device.h"
-#include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_Implementation.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
@@ -160,7 +159,7 @@ namespace Directus
 		return xml->Save(GetResourceFilePath());
 	}
 
-	unsigned int Material::GetMemory()
+	unsigned int Material::GetMemoryUsage()
 	{
 		// Doesn't have to be spot on, just representative
 		unsigned int size = 0;

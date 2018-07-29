@@ -39,10 +39,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/Camera.h"
 #include "Scene/Components/Script.h"
 #include "RHI/RHI_Implementation.h"
+#include "RHI/D3D11//D3D11_RenderTexture.h"
 #include "Rendering/Material.h"
 #include "Rendering/Deferred/ShaderVariation.h"
 #include "Rendering/Mesh.h"
-#include "RHI/D3D11//D3D11_RenderTexture.h"
 //==================================================
 
 //= NAMESPACES ==========
@@ -756,7 +756,7 @@ void Widget_Properties::ShowMaterial(Material* material)
 
 		if (material->IsEditable())
 		{
-			auto DisplayTextureSlot = [&material](const RHI_Texture* texture, const char* textureName, TextureType textureType)
+			auto DisplayTextureSlot = [&material](RHI_Texture* texture, const char* textureName, TextureType textureType)
 			{
 				ImGui::Text(textureName);
 				ImGui::SameLine(ComponentProperty::g_column); ImGui::Image(

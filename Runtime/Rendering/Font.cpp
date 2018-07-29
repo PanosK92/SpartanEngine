@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Font.h"
 #include "../Resource/ResourceManager.h"
 #include "../RHI/RHI_Vertex.h"
-#include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../Core/Settings.h"
 #include "../Core/Stopwatch.h"
@@ -98,7 +97,7 @@ namespace Directus
 		return true;
 	}
 
-	void** Font::GetShaderResource()
+	void* Font::GetShaderResource()
 	{
 		return m_textureAtlas ? m_textureAtlas->GetShaderResource() : nullptr;
 	}

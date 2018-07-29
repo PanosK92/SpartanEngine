@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class D3D11_IndexBuffer : public IRHI_IndexBuffer
+	class ENGINE_CLASS D3D11_IndexBuffer : public IRHI_IndexBuffer
 	{
 	public:
 		D3D11_IndexBuffer(RHI_Device* rhiDevice);

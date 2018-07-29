@@ -29,10 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/LightShader.h"
 #include "Deferred/GBuffer.h"
+#include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Shader.h"
-#include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_CommonBuffers.h"
-#include "../RHI/D3D11/D3D11_Device.h"
 #include "../RHI/D3D11/D3D11_RenderTexture.h"
 #include "../RHI/D3D11/D3D11_Shader.h"
 #include "../Core/Context.h"
@@ -113,6 +112,8 @@ namespace Directus
 		m_font = make_unique<Font>(m_context, fontDir + "CalibriBold.ttf", 12, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
 		// Make a grid (used in editor)
 		m_grid = make_unique<Grid>(m_context);
+		// Light gizmo icon rectangle
+		m_gizmoRectLight = make_unique<Rectangle>(m_context);
 
 		RenderTargets_Create(Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight());
 
@@ -233,13 +234,14 @@ namespace Directus
 			m_gizmoTexLightDirectional = make_unique<RHI_Texture>(m_context);
 			m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
 			m_gizmoTexLightDirectional->SetType(TextureType_Albedo);
+
 			m_gizmoTexLightPoint = make_unique<RHI_Texture>(m_context);
 			m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
 			m_gizmoTexLightPoint->SetType(TextureType_Albedo);
+
 			m_gizmoTexLightSpot = make_unique<RHI_Texture>(m_context);
 			m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
 			m_gizmoTexLightSpot->SetType(TextureType_Albedo);
-			m_gizmoRectLight = make_unique<Rectangle>(m_context);
 		}
 
 		return true;
