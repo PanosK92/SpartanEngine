@@ -41,7 +41,6 @@ namespace Directus
 		bool Bind(unsigned int slot) override;
 
 	private:
-		RHI_Device* m_rhiDevice;
 		ID3D11SamplerState* m_samplerState;
 	};
 }

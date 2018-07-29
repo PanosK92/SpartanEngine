@@ -33,9 +33,25 @@ namespace Directus
 		IRHI_Sampler(RHI_Device* rhiDevice,
 			Texture_Sampler_Filter filter					= Texture_Sampler_Anisotropic,
 			Texture_Address_Mode textureAddressMode			= Texture_Address_Wrap,
-			Texture_Comparison_Function comparisonFunction	= Texture_Comparison_Always){};
+			Texture_Comparison_Function comparisonFunction	= Texture_Comparison_Always)
+		{
+			m_rhiDevice				= rhiDevice;
+			m_filter				= filter;
+			m_textureAddressMode	= textureAddressMode;
+			m_comparisonFunction	= comparisonFunction;
+		}
 		~IRHI_Sampler(){};
 
 		virtual bool Bind(unsigned int slot) = 0;
+
+		Texture_Sampler_Filter GetFilter()					{ return m_filter; }
+		Texture_Address_Mode GetAddressMode()				{ return m_textureAddressMode; }
+		Texture_Comparison_Function GetComparisonFunction() { return m_comparisonFunction; }
+
+	protected:
+		RHI_Device* m_rhiDevice;
+		Texture_Sampler_Filter m_filter;
+		Texture_Address_Mode m_textureAddressMode;
+		Texture_Comparison_Function m_comparisonFunction;
 	};
 }

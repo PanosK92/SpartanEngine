@@ -45,6 +45,8 @@ namespace Directus
 		m_inputLayoutBuffer = nullptr;
 		m_cullMode			= Cull_NotAssigned;
 		m_fillMode			= Fill_NotAssigned;
+		m_sampler			= nullptr;
+		m_samplerSlot		= 0;
 	}
 
 	bool IRHI_PipelineState::SetShader(shared_ptr<IRHI_Shader>& shader)
@@ -105,7 +107,7 @@ namespace Directus
 		return vertexBuffer->Bind();
 	}
 
-	bool IRHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler>& sampler, unsigned int startSlot)
+	bool IRHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler>& sampler, unsigned int slot)
 	{
 		if (!m_rhiDevice || !sampler)
 		{
@@ -113,7 +115,23 @@ namespace Directus
 			return false;
 		}
 
-		return sampler->Bind(startSlot);
+		if (m_sampler)
+		{
+			// If there is already a sampler bound, make sure there new one is different
+			if (m_sampler->GetAddressMode()			== sampler->GetAddressMode()		&&
+				m_sampler->GetComparisonFunction()	== sampler->GetComparisonFunction() &&
+				m_sampler->GetFilter()				== sampler->GetFilter())
+			{
+				m_samplerDirty	= false;
+				return true;
+			}
+		}
+
+		m_sampler		= sampler.get();
+		m_samplerSlot	= slot;
+		m_samplerDirty	= true;
+
+		return true;
 	}
 
 	bool IRHI_PipelineState::SetVertexShader(D3D11_Shader* shader)
@@ -149,7 +167,7 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetTextures(vector<void*> shaderResources, unsigned int startSlot)
+	bool IRHI_PipelineState::SetTextures(vector<void*> shaderResources, unsigned int slot)
 	{
 		if (!m_rhiDevice || shaderResources.empty())
 		{
@@ -157,12 +175,12 @@ namespace Directus
 			return false;
 		}
 
-		m_rhiDevice->Bind_Textures(startSlot, (unsigned int)shaderResources.size(), &shaderResources[0]);
+		m_rhiDevice->Bind_Textures(slot, (unsigned int)shaderResources.size(), &shaderResources[0]);
 
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetTexture(void* shaderResource, unsigned int startSlot)
+	bool IRHI_PipelineState::SetTexture(void* shaderResource, unsigned int slot)
 	{
 		if (!m_rhiDevice || !shaderResource)
 		{
@@ -170,14 +188,14 @@ namespace Directus
 			return false;
 		}
 
-		m_rhiDevice->Bind_Textures(startSlot, 1, &shaderResource);
+		m_rhiDevice->Bind_Textures(slot, 1, &shaderResource);
 
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope)
+	bool IRHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, BufferScope_Mode bufferScope)
 	{
-		constantBuffer->Bind(bufferScope, startSlot);
+		constantBuffer->Bind(bufferScope, slot);
 		return true;
 	}
 
@@ -187,7 +205,7 @@ namespace Directus
 			return false;
 	
 		m_primitiveTopology			= primitiveTopology;
-		m_primitiveTopologyIsDirty	= true;
+		m_primitiveTopologyDirty	= true;
 
 		return true;
 	}
@@ -197,9 +215,9 @@ namespace Directus
 		if (m_inputLayout == inputLayout->GetInputLayout())
 			return false;
 
-		m_inputLayout			= inputLayout->GetInputLayout();
-		m_inputLayoutBuffer		= inputLayout->GetInputLayoutBuffer();
-		m_inputLayoutIsDirty	= true;
+		m_inputLayout		= inputLayout->GetInputLayout();
+		m_inputLayoutBuffer	= inputLayout->GetInputLayoutBuffer();
+		m_inputLayoutDirty	= true;
 
 		return true;
 	}
@@ -209,8 +227,8 @@ namespace Directus
 		if (m_cullMode == cullMode)
 			return false;
 
-		m_cullMode = cullMode;
-		m_cullModeIsDirty = true;
+		m_cullMode		= cullMode;
+		m_cullModeDirty = true;
 
 		return true;
 	}
@@ -220,8 +238,8 @@ namespace Directus
 		if (m_fillMode == fillMode)
 			return false;
 
-		m_fillMode = fillMode;
-		m_fillModeIsDirty = true;
+		m_fillMode		= fillMode;
+		m_fillModeDirty = true;
 
 		return true;
 	}
@@ -234,30 +252,42 @@ namespace Directus
 			return false;
 		}
 
-		if (m_primitiveTopologyIsDirty)
+		// Primitive topology
+		if (m_primitiveTopologyDirty)
 		{
 			m_rhiDevice->Set_PrimitiveTopology(m_primitiveTopology);
-			m_primitiveTopologyIsDirty = false;
+			m_primitiveTopologyDirty = false;
 		}
 
-		if (m_inputLayoutIsDirty)
+		// Input layout
+		if (m_inputLayoutDirty)
 		{
 			m_rhiDevice->Set_InputLayout(m_inputLayoutBuffer);
-			m_inputLayoutIsDirty = false;
+			m_inputLayoutDirty = false;
 		}
 
-		if (m_cullModeIsDirty)
+		// Cull mode
+		if (m_cullModeDirty)
 		{
 			m_rhiDevice->Set_CullMode(m_cullMode);
-			m_cullModeIsDirty = false;
+			m_cullModeDirty = false;
 		}
 
-		if (m_fillModeIsDirty)
+		// Fill mode
+		if (m_fillModeDirty)
 		{
 			m_rhiDevice->Set_FillMode(m_fillMode);
-			m_fillModeIsDirty = false;
+			m_fillModeDirty = false;
 		}
 
-		return true;
+		// Sampler
+		bool resultSampler = true;
+		if (m_samplerDirty)
+		{
+			resultSampler = m_sampler->Bind(m_samplerSlot);
+			m_samplerDirty = false;
+		}
+
+		return resultSampler;
 	}
 }
