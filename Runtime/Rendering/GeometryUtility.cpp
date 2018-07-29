@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GeometryUtility.h"
 #include "..\Math\Vector2.h"
 #include "..\Math\Vector3.h"
-#include "..\RHI\RHI_Vertex.h"
+#include "..\RHI\IRHI_Vertex.h"
 //============================
 
 //= NAMESPACES ================

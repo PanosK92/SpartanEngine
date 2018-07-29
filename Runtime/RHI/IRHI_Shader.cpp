@@ -20,10 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==========================
-#include "RHI_Shader.h"
+#include "IRHI_Shader.h"
 #include "D3D11/D3D11_Shader.h"
 #include "D3D11/D3D11_RenderTexture.h"
-#include "RHI_Implementation.h"
+#include "IRHI_Implementation.h"
 #include "../Logging/Log.h"
 #include "../Core/Context.h"
 #include "../Scene/Components/Light.h"
@@ -39,7 +39,7 @@ using namespace std;
 namespace Directus
 {
 
-	RHI_Shader::RHI_Shader(RHI_Device* rhiDevice)
+	IRHI_Shader::IRHI_Shader(RHI_Device* rhiDevice)
 	{
 		if (!rhiDevice)
 		{
@@ -51,7 +51,7 @@ namespace Directus
 		m_bufferScope	= BufferScope_Global;
 	}
 
-	void RHI_Shader::AddDefine(const char* define)
+	void IRHI_Shader::AddDefine(const char* define)
 	{
 		if (!m_shader)
 		{
@@ -61,7 +61,7 @@ namespace Directus
 		m_shader->AddDefine(define, "1");
 	}
 
-	bool RHI_Shader::Compile(const string& filePath, Input_Layout inputLayout)
+	bool IRHI_Shader::Compile(const string& filePath, Input_Layout inputLayout)
 	{	
 		if (!m_shader)
 		{
@@ -78,7 +78,7 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_Shader::Bind_Buffer(const Math::Matrix& matrix, unsigned int slot)
+	void IRHI_Shader::Bind_Buffer(const Math::Matrix& matrix, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
@@ -95,7 +95,7 @@ namespace Directus
 		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
 	}
 
-	void RHI_Shader::Bind_Buffer(const Matrix& matrix, const Vector4& vector, unsigned int slot)
+	void IRHI_Shader::Bind_Buffer(const Matrix& matrix, const Vector4& vector, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
@@ -116,7 +116,7 @@ namespace Directus
 		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
 	}
 
-	void RHI_Shader::Bind_Buffer(const Matrix& matrix, const Math::Vector3& vector3, unsigned int slot)
+	void IRHI_Shader::Bind_Buffer(const Matrix& matrix, const Math::Vector3& vector3, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
@@ -138,7 +138,7 @@ namespace Directus
 		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
 	}
 
-	void RHI_Shader::Bind_Buffer(const Matrix& matrix, const Vector2& vector2, unsigned slot)
+	void IRHI_Shader::Bind_Buffer(const Matrix& matrix, const Vector2& vector2, unsigned slot)
 	{
 		if (!m_constantBuffer)
 		{
@@ -160,7 +160,7 @@ namespace Directus
 		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
 	}
 
-	void RHI_Shader::Bind_Buffer(const Matrix& mWVPortho, const Matrix& mWVPinv, const Matrix& mView, const Matrix& mProjection, const Vector2& resolution, Light* dirLight, Camera* camera, unsigned slot)
+	void IRHI_Shader::Bind_Buffer(const Matrix& mWVPortho, const Matrix& mWVPinv, const Matrix& mView, const Matrix& mProjection, const Vector2& resolution, Light* dirLight, Camera* camera, unsigned slot)
 	{
 		if (!m_constantBuffer)
 		{
@@ -198,7 +198,7 @@ namespace Directus
 		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
 	}
 
-	void RHI_Shader::Bind_Buffer(const Matrix& m1, const Matrix& m2, const Matrix& m3, unsigned int slot)
+	void IRHI_Shader::Bind_Buffer(const Matrix& m1, const Matrix& m2, const Matrix& m3, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
@@ -217,7 +217,7 @@ namespace Directus
 		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
 	}
 
-	void RHI_Shader::Bind_Buffer(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B, unsigned int slot)
+	void IRHI_Shader::Bind_Buffer(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{

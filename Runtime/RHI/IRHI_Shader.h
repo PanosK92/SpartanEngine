@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include <memory>
 #include <vector>
-#include "RHI_Definition.h"
+#include "IRHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector2.h"
 //==========================
@@ -34,11 +34,11 @@ namespace Directus
 	class Light;
 	class Camera;
 
-	class ENGINE_CLASS RHI_Shader
+	class ENGINE_CLASS IRHI_Shader
 	{
 	public:
-		RHI_Shader(RHI_Device* rhiDevice);
-		~RHI_Shader(){}
+		IRHI_Shader(RHI_Device* rhiDevice);
+		~IRHI_Shader(){}
 
 		void AddDefine(const char* define);
 		bool Compile(const std::string& filePath, Input_Layout inputLayout);

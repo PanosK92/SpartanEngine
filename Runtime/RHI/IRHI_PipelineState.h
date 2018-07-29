@@ -24,19 +24,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include <memory>
 #include <vector>
-#include "RHI_Definition.h"
+#include "IRHI_Definition.h"
 //=========================
 
 namespace Directus
 {
-	class ENGINE_CLASS RHI_PipelineState
+	class ENGINE_CLASS IRHI_PipelineState
 	{
 	public:
-		RHI_PipelineState(RHI_Device* rhiDevice);
-		~RHI_PipelineState(){}
+		IRHI_PipelineState(RHI_Device* rhiDevice);
+		~IRHI_PipelineState(){}
 
 		// Shader
-		bool SetShader(std::shared_ptr<RHI_Shader> shader);
+		bool SetShader(std::shared_ptr<IRHI_Shader> shader);
 		bool SetShader(std::shared_ptr<D3D11_Shader> shader);
 		bool SetVertexShader(D3D11_Shader* shader);
 		bool SetPixelShader(D3D11_Shader* shader);

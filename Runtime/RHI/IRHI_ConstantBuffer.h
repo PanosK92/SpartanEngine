@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include <memory>
 #include <vector>
-#include "RHI_Definition.h"
+#include "IRHI_Definition.h"
 //=========================
 
 namespace Directus

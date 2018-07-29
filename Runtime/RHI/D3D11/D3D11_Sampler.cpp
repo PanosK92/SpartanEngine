@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
-#include "../RHI_Implementation.h"
+#include "../IRHI_Implementation.h"
 #include "../../Core/EngineDefs.h"
 #include "../../Core/Settings.h"
 #include "../../Logging/Log.h"

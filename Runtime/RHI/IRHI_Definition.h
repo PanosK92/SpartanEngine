@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // RHI (Rendering Hardware Interface)
 namespace Directus
 {
-	class RHI_PipelineState;
-	class RHI_Shader;
-	class RHI_Viewport;
-	class RHI_Shader;
+	class IRHI_PipelineState;
+	class IRHI_Shader;
+	class IRHI_Viewport;
+	class IRHI_Shader;
 
 	struct RHI_Vertex_PosUVTBN;
 	struct RHI_Vertex_PosUVNor;

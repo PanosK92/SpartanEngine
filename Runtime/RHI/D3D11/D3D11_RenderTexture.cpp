@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11_RenderTexture.h"
 #include "../../Core/EngineDefs.h"
 #include "../../Logging/Log.h"
-#include "../RHI_Implementation.h"
+#include "../IRHI_Implementation.h"
 //================================
 
 //= NAMESPACES ================
@@ -44,7 +44,7 @@ namespace Directus
 		m_nearPlane				= 0.0f;
 		m_farPlane				= 0.0f;
 		m_format				= format;
-		m_viewport				= RHI_Viewport((float)width, (float)height, m_graphics->GetMaxDepth());
+		m_viewport				= IRHI_Viewport((float)width, (float)height, m_graphics->GetMaxDepth());
 
 		Construct();
 	}

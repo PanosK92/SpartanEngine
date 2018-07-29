@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Logging/Log.h"
 #include "../Scene/Components/Transform.h"
-#include "../RHI/RHI_Vertex.h"
-#include "../RHI/RHI_Implementation.h"
+#include "../RHI/IRHI_Vertex.h"
+#include "../RHI/IRHI_Implementation.h"
 //========================================
 
 //= NAMESPACES ================

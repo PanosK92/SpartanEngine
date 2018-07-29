@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================================
 #include "Renderable.h"
 #include "Transform.h"
-#include "../../RHI/RHI_Vertex.h"
+#include "../../RHI/IRHI_Vertex.h"
 #include "../../Rendering/Material.h"
 #include "../../Rendering/Deferred/ShaderVariation.h"
 #include "../../Rendering/GeometryUtility.h"

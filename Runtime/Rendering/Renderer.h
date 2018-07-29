@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <memory>
 #include <vector>
-#include "../RHI/RHI_Definition.h"
+#include "../RHI/IRHI_Definition.h"
 #include "../Core/Settings.h"
 #include "../Core/SubSystem.h"
 #include "../Math/Matrix.h"
@@ -89,7 +89,7 @@ namespace Directus
 
 		// The back-buffer is the final output (should match the display size)
 		void SetBackBufferSize(int width, int height);
-		const RHI_Viewport& GetViewportBackBuffer();
+		const IRHI_Viewport& GetViewportBackBuffer();
 
 		// The actual frame that all rendering takes place (or the viewport window in the editor)
 		void SetResolution(int width, int height);
@@ -159,22 +159,22 @@ namespace Directus
 
 		//= SHADERS ============================================
 		std::shared_ptr<LightShader> m_shaderLight;
-		std::shared_ptr<RHI_Shader> m_shaderLightDepth;
-		std::shared_ptr<RHI_Shader> m_shaderLine;
-		std::shared_ptr<RHI_Shader> m_shaderGrid;
-		std::shared_ptr<RHI_Shader> m_shaderFont;
-		std::shared_ptr<RHI_Shader> m_shaderTexture;
-		std::shared_ptr<RHI_Shader> m_shaderFXAA;
-		std::shared_ptr<RHI_Shader> m_shaderShadowing;
-		std::shared_ptr<RHI_Shader> m_shaderSharpening;
-		std::shared_ptr<RHI_Shader> m_shaderChromaticAberration;
-		std::shared_ptr<RHI_Shader> m_shaderBlurBox;
-		std::shared_ptr<RHI_Shader> m_shaderBlurGaussianH;
-		std::shared_ptr<RHI_Shader> m_shaderBlurGaussianV;
-		std::shared_ptr<RHI_Shader> m_shaderBloom_Bright;
-		std::shared_ptr<RHI_Shader> m_shaderBloom_BlurBlend;
-		std::shared_ptr<RHI_Shader> m_shaderCorrection;
-		std::shared_ptr<RHI_Shader> m_shaderTransformationGizmo;
+		std::shared_ptr<IRHI_Shader> m_shaderLightDepth;
+		std::shared_ptr<IRHI_Shader> m_shaderLine;
+		std::shared_ptr<IRHI_Shader> m_shaderGrid;
+		std::shared_ptr<IRHI_Shader> m_shaderFont;
+		std::shared_ptr<IRHI_Shader> m_shaderTexture;
+		std::shared_ptr<IRHI_Shader> m_shaderFXAA;
+		std::shared_ptr<IRHI_Shader> m_shaderShadowing;
+		std::shared_ptr<IRHI_Shader> m_shaderSharpening;
+		std::shared_ptr<IRHI_Shader> m_shaderChromaticAberration;
+		std::shared_ptr<IRHI_Shader> m_shaderBlurBox;
+		std::shared_ptr<IRHI_Shader> m_shaderBlurGaussianH;
+		std::shared_ptr<IRHI_Shader> m_shaderBlurGaussianV;
+		std::shared_ptr<IRHI_Shader> m_shaderBloom_Bright;
+		std::shared_ptr<IRHI_Shader> m_shaderBloom_BlurBlend;
+		std::shared_ptr<IRHI_Shader> m_shaderCorrection;
+		std::shared_ptr<IRHI_Shader> m_shaderTransformationGizmo;
 		//======================================================
 
 		//= SAMPLERS ===============================================
@@ -216,7 +216,7 @@ namespace Directus
 		float m_nearPlane;
 		float m_farPlane;
 		RHI_Device* m_rhiDevice;
-		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
+		std::shared_ptr<IRHI_PipelineState> m_rhiPipelineState;
 		//====================================================
 
 		//= PIPELINE STATE ===================

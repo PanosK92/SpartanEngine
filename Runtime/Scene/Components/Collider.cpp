@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../Rendering/Mesh.h"
-#include "../../RHI/RHI_Vertex.h"
+#include "../../RHI/IRHI_Vertex.h"
 #include "../../Logging/Log.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>

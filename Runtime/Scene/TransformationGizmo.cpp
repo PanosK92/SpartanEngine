@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TransformationGizmo.h"
 #include "Actor.h"
 #include "Components\Transform.h"
-#include "..\RHI\RHI_Vertex.h"
+#include "..\RHI\IRHI_Vertex.h"
 #include "..\Rendering\GeometryUtility.h"
 #include "..\Rendering\Mesh.h"
 //=======================================

@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "..\Logging\Log.h"
 #include "..\Core\Context.h"
-#include "RHI_PipelineState.h"
-#include "RHI_Implementation.h"
-#include "RHI_Shader.h"
+#include "IRHI_PipelineState.h"
+#include "IRHI_Implementation.h"
+#include "IRHI_Shader.h"
 #include "D3D11\D3D11_Shader.h"
 #include "D3D11\D3D11_InputLayout.h"
 //==================================
@@ -37,7 +37,7 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_PipelineState::RHI_PipelineState(RHI_Device* rhiDevice)
+	IRHI_PipelineState::IRHI_PipelineState(RHI_Device* rhiDevice)
 	{
 		m_rhiDevice			= rhiDevice;
 		m_primitiveTopology = PrimitiveTopology_NotAssigned;
@@ -47,7 +47,7 @@ namespace Directus
 		m_fillMode			= Fill_NotAssigned;
 	}
 
-	bool RHI_PipelineState::SetShader(shared_ptr<RHI_Shader> shader)
+	bool IRHI_PipelineState::SetShader(shared_ptr<IRHI_Shader> shader)
 	{
 		if (!m_rhiDevice || !shader)
 		{
@@ -64,7 +64,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetShader(shared_ptr<D3D11_Shader> shader)
+	bool IRHI_PipelineState::SetShader(shared_ptr<D3D11_Shader> shader)
 	{
 		if (!m_rhiDevice || !shader)
 		{
@@ -81,7 +81,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer> indexBuffer)
+	bool IRHI_PipelineState::SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer> indexBuffer)
 	{
 		if (!m_rhiDevice || !indexBuffer)
 		{
@@ -93,7 +93,7 @@ namespace Directus
 		return indexBuffer->Bind();
 	}
 
-	bool RHI_PipelineState::SetVertexBuffer(shared_ptr<RHI_VertexBuffer> vertexBuffer)
+	bool IRHI_PipelineState::SetVertexBuffer(shared_ptr<RHI_VertexBuffer> vertexBuffer)
 	{
 		if (!m_rhiDevice || !vertexBuffer)
 		{
@@ -105,7 +105,7 @@ namespace Directus
 		return vertexBuffer->Bind();
 	}
 
-	bool RHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler> sampler, unsigned int startSlot)
+	bool IRHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler> sampler, unsigned int startSlot)
 	{
 		if (!m_rhiDevice || !sampler)
 		{
@@ -116,7 +116,7 @@ namespace Directus
 		return sampler->Bind(startSlot);
 	}
 
-	bool RHI_PipelineState::SetVertexShader(D3D11_Shader* shader)
+	bool IRHI_PipelineState::SetVertexShader(D3D11_Shader* shader)
 	{
 		if (!m_rhiDevice || !shader)
 		{
@@ -134,7 +134,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetPixelShader(D3D11_Shader* shader)
+	bool IRHI_PipelineState::SetPixelShader(D3D11_Shader* shader)
 	{
 		if (!m_rhiDevice || !shader)
 		{
@@ -149,7 +149,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetTextures(vector<void*> shaderResources, unsigned int startSlot)
+	bool IRHI_PipelineState::SetTextures(vector<void*> shaderResources, unsigned int startSlot)
 	{
 		if (!m_rhiDevice || shaderResources.empty())
 		{
@@ -162,7 +162,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetTexture(void* shaderResource, unsigned int startSlot)
+	bool IRHI_PipelineState::SetTexture(void* shaderResource, unsigned int startSlot)
 	{
 		if (!m_rhiDevice || !shaderResource)
 		{
@@ -175,13 +175,13 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer> constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope)
+	bool IRHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer> constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope)
 	{
 		constantBuffer->Bind(bufferScope, startSlot);
 		return true;
 	}
 
-	bool RHI_PipelineState::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	bool IRHI_PipelineState::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
 		if (m_primitiveTopology == primitiveTopology)
 			return false;
@@ -192,7 +192,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetInputLayout(shared_ptr<D3D11_InputLayout> inputLayout)
+	bool IRHI_PipelineState::SetInputLayout(shared_ptr<D3D11_InputLayout> inputLayout)
 	{
 		if (m_inputLayout == inputLayout->GetInputLayout())
 			return false;
@@ -204,7 +204,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetCullMode(Cull_Mode cullMode)
+	bool IRHI_PipelineState::SetCullMode(Cull_Mode cullMode)
 	{
 		if (m_cullMode == cullMode)
 			return false;
@@ -215,7 +215,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetFillMode(Fill_Mode fillMode)
+	bool IRHI_PipelineState::SetFillMode(Fill_Mode fillMode)
 	{
 		if (m_fillMode == fillMode)
 			return false;
@@ -226,7 +226,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::Bind()
+	bool IRHI_PipelineState::Bind()
 	{
 		if (!m_rhiDevice)
 		{

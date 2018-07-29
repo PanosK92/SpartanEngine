@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "Vulkan_Device.h"
-#include "../RHI_Implementation.h"
+#include "../IRHI_Implementation.h"
 //================================
 
 namespace Directus
