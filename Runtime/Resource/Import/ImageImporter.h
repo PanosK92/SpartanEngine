@@ -60,17 +60,17 @@ XPM files[reading, writing]
 
 #define FREEIMAGE_LIB
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include <vector>
 #include "../../Core/EngineDefs.h"
-//================================
+#include "../../RHI/RHI_Definition.h"
+//===================================
 
 struct FIBITMAP;
 
 namespace Directus
 {
 	class Context;
-	class RHI_Texture;
 
 	class ENGINE_CLASS ImageImporter
 	{

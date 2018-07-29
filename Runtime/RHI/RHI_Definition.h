@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class RHI_PipelineState;
-	class RHI_Texture;
 	class RHI_Shader;
 	class RHI_Viewport;
 	class RHI_Shader;
@@ -153,6 +152,7 @@ namespace Directus
 	typedef D3D11_Sampler			RHI_Sampler;
 	typedef D3D11_VertexBuffer		RHI_VertexBuffer;
 	typedef D3D11_IndexBuffer		RHI_IndexBuffer;
+	typedef D3D11_Texture			RHI_Texture;
 }
 
 // Forward declarations - D3D11 API

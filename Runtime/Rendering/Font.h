@@ -56,7 +56,7 @@ namespace Directus
 		const Math::Vector4& GetColor()				{ return m_fontColor; }
 		void SetColor(const Math::Vector4& color)	{ m_fontColor = color; }
 
-		void** GetShaderResource();
+		void* GetShaderResource();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
 		unsigned int GetIndexCount()						{ return (unsigned int)m_indices.size(); }

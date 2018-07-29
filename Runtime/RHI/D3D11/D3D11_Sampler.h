@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class D3D11_Sampler : public IRHI_Sampler
+	class ENGINE_CLASS D3D11_Sampler : public IRHI_Sampler
 	{
 	public:
 		D3D11_Sampler(

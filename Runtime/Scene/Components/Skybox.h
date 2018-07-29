@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ========================
 #include <memory>
 #include "IComponent.h"
-//=====================
+#include "../../RHI/RHI_Definition.h"
+//===================================
 
 namespace Directus
 {
 	class Material;
-	class RHI_Texture;
 
 	class ENGINE_CLASS Skybox : public IComponent
 	{
@@ -42,10 +42,7 @@ namespace Directus
 		void OnUpdate() override;
 		//=========================
 
-		//= MISC ==================
-		void** GetShaderResource();
-		//=========================
-
+		void* GetShaderResource();
 		std::weak_ptr<Material> GetMaterial() { return m_matSkybox;}
 
 	private:

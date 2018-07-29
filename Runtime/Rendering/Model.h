@@ -48,11 +48,11 @@ namespace Directus
 		Model(Context* context);
 		~Model();
 
-		//= RESOURCE INTERFACE ====================================
+		//= RESOURCE INTERFACE =========================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		unsigned int GetMemory() override { return m_memoryUsage; }
-		//=========================================================
+		unsigned int GetMemoryUsage() override { return m_memoryUsage; }
+		//==============================================================
 
 		// Sets the actor that represents this model in the scene
 		void SetRootactor(const std::weak_ptr<Actor>& actor) { m_rootactor = actor; }

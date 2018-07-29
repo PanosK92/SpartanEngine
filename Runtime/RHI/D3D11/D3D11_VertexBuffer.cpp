@@ -234,5 +234,6 @@ namespace Directus
 
 		unsigned int offset = 0;
 		m_rhiDevice->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);
+		return true;
 	}
 }

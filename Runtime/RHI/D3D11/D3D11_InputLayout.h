@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class D3D11_InputLayout
+	class ENGINE_CLASS D3D11_InputLayout
 	{
 	public:
 		D3D11_InputLayout(D3D11_Device* d3d11Device);

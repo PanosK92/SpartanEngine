@@ -186,7 +186,7 @@ namespace Directus
 		std::shared_ptr<RHI_Sampler> m_samplerAnisotropicWrapAlways;
 		//==========================================================
 
-		//= DEBUG ==========================================
+		//= DEBUG ==============================================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
 		std::unique_ptr<RHI_Texture> m_gizmoTexLightDirectional;
@@ -194,7 +194,7 @@ namespace Directus
 		std::unique_ptr<RHI_Texture> m_gizmoTexLightSpot;
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
 		static unsigned long m_flags;
-		//==================================================
+		//======================================================
 
 		//= MISC ==================================
 		std::vector<void*> m_texArray;

@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class D3D11_Shader
+	class ENGINE_CLASS D3D11_Shader
 	{
 	public:
 		D3D11_Shader(D3D11_Device* graphicsDevice);

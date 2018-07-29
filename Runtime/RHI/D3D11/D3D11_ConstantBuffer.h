@@ -23,11 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "../IRHI_ConstantBuffer.h"
+#include "../../Core/EngineDefs.h"
 //=================================
 
 namespace Directus
 {
-	class D3D11_ConstantBuffer : IRHI_ConstantBuffer
+	class ENGINE_CLASS D3D11_ConstantBuffer : IRHI_ConstantBuffer
 	{
 	public:
 		D3D11_ConstantBuffer(RHI_Device* rhiDevice);

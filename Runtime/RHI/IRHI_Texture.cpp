@@ -20,9 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================================
-#include "RHI_Texture.h"
+#include "IRHI_Texture.h"
 #include "RHI_Implementation.h"
-#include "D3D11/D3D11_Texture.h"
 #include "../Logging/Log.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Resource/Import/DDSTextureImporter.h"
@@ -51,30 +50,28 @@ namespace Directus
 		"CubeMap",
 	};
 
-	RHI_Texture::RHI_Texture(Context* context) : IResource(context)
+	IRHI_Texture::IRHI_Texture(Context* context) : IResource(context)
 	{
 		//= IResource ==================
 		RegisterResource<RHI_Texture>();
 		//==============================
 
-		// Texture
 		m_isUsingMipmaps	= true;
 		m_format			= Texture_Format_R8G8B8A8_UNORM;
-		m_textureLowLevel	= make_shared<D3D11_Texture>(m_context->GetSubsystem<RHI_Device>());
 	}
 
-	RHI_Texture::~RHI_Texture()
+	IRHI_Texture::~IRHI_Texture()
 	{
 		ClearTextureBytes();
 	}
 
 	//= RESOURCE INTERFACE =====================================================================
-	bool RHI_Texture::SaveToFile(const string& filePath)
+	bool IRHI_Texture::SaveToFile(const string& filePath)
 	{
 		return Serialize(filePath);
 	}
 
-	bool RHI_Texture::LoadFromFile(const string& rawFilePath)
+	bool IRHI_Texture::LoadFromFile(const string& rawFilePath)
 	{
 		bool loaded = false;
 		GetLoadState(LoadState_Started);
@@ -121,7 +118,7 @@ namespace Directus
 		return true;
 	}
 
-	unsigned int RHI_Texture::GetMemory()
+	unsigned int IRHI_Texture::GetMemoryUsage()
 	{
 		// Compute texture bits (in case they are loaded)
 		unsigned int size = 0;
@@ -130,15 +127,13 @@ namespace Directus
 			size += (unsigned int)mip.size();
 		}
 
-		// Compute shader resource (in case it's created)
-		size += m_textureLowLevel->GetMemoryUsage();
 		return size;
 	}
 
 	//=====================================================================================
 
 	//= PROPERTIES =========================================================================
-	void RHI_Texture::SetType(TextureType type)
+	void IRHI_Texture::SetType(TextureType type)
 	{
 		// Some models (or Assimp) pass a normal map as a height map
 		// and others pass a height map as a normal map, we try to fix that.
@@ -147,18 +142,8 @@ namespace Directus
 	}
 	//======================================================================================
 
-	//= SHADER RESOURCE ==========================================
-	void** RHI_Texture::GetShaderResource() const
-	{
-		if (!m_textureLowLevel)
-			return nullptr;
-
-		return (void**)m_textureLowLevel->GetShaderResourceView();
-	}
-	//============================================================
-
 	//= TEXTURE BITS =================================================================
-	void RHI_Texture::ClearTextureBytes()
+	void IRHI_Texture::ClearTextureBytes()
 	{
 		for (auto& mip : m_textureBytes)
 		{
@@ -169,7 +154,7 @@ namespace Directus
 		m_textureBytes.shrink_to_fit();
 	}
 
-	void RHI_Texture::GetTextureBytes(vector<vector<std::byte>>* textureBytes)
+	void IRHI_Texture::GetTextureBytes(vector<vector<std::byte>>* textureBytes)
 	{
 		if (!m_textureBytes.empty())
 		{
@@ -190,38 +175,21 @@ namespace Directus
 	}
 	//================================================================================
 
-	bool RHI_Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<std::byte>& rgba, Texture_Format format)
+	bool IRHI_Texture::CreateShaderResource()
 	{
-		if (!m_textureLowLevel->Create(width, height, channels, rgba, format))
-		{
-			LOGF_ERROR("RI_Texture::CreateShaderResource: Failed to create shader resource for \"%s\".",  m_resourceFilePath.c_str());
-			return false;
-		}
-
-		return true;
-	}
-
-	bool RHI_Texture::CreateShaderResource()
-	{
-		if (!m_textureLowLevel)
-		{
-			LOG_ERROR("RI_Texture::CreateShaderResource: Failed to create shader resource. API texture not initialized.");
-			return false;
-		}
-
 		if (m_isUsingMipmaps)
 		{
-			if (!m_textureLowLevel->CreateFromMipmaps(m_width, m_height, m_channels, m_textureBytes, m_format))
+			if (!CreateShaderResource(m_width, m_height, m_channels, m_textureBytes, m_format))
 			{
-				LOGF_ERROR("RI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".",  m_resourceFilePath.c_str());
+				LOGF_ERROR("IRHI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".",  m_resourceFilePath.c_str());
 				return false;
 			}			
 		}
 		else
 		{
-			if (!m_textureLowLevel->Create(m_width, m_height, m_channels, m_textureBytes[0], m_format))
+			if (!CreateShaderResource(m_width, m_height, m_channels, m_textureBytes[0], m_format))
 			{
-				LOGF_ERROR("RI_Texture::CreateShaderResource: Failed to create shader resource for \"%s\".",  m_resourceFilePath.c_str());
+				LOGF_ERROR("IRHI_Texture::CreateShaderResource: Failed to create shader resource for \"%s\".",  m_resourceFilePath.c_str());
 				return false;
 			}
 		}
@@ -230,7 +198,7 @@ namespace Directus
 	}
 	//=====================================================================================
 
-	bool RHI_Texture::LoadFromForeignFormat(const string& filePath)
+	bool IRHI_Texture::LoadFromForeignFormat(const string& filePath)
 	{
 		if (filePath == NOT_ASSIGNED)
 		{
@@ -253,13 +221,13 @@ namespace Directus
 				return false;
 			}
 
-			m_textureLowLevel->SetShaderResourceView(ddsTex);
+			SetShaderResource(ddsTex);
 			return true;
 		}
 
 		// Load texture
 		weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();	
-		if (!imageImp.lock()->Load(filePath, this))
+		if (!imageImp.lock()->Load(filePath, (RHI_Texture*)this))
 		{
 			return false;
 		}
@@ -271,7 +239,7 @@ namespace Directus
 		return true;
 	}
 
-	TextureType RHI_Texture::TextureTypeFromString(const string& type)
+	TextureType IRHI_Texture::TextureTypeFromString(const string& type)
 	{
 		if (type == "Albedo")		return TextureType_Albedo;
 		if (type == "Roughness")	return TextureType_Roughness;
@@ -286,7 +254,7 @@ namespace Directus
 		return TextureType_Unknown;
 	}
 
-	bool RHI_Texture::Serialize(const string& filePath)
+	bool IRHI_Texture::Serialize(const string& filePath)
 	{
 		// If the texture bits has been cleared, load it again
 		// as we don't want to replaced existing data with nothing.
@@ -322,7 +290,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Texture::Deserialize(const string& filePath)
+	bool IRHI_Texture::Deserialize(const string& filePath)
 	{
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
 		if (!file->IsOpen())

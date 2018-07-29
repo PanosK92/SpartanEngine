@@ -158,7 +158,7 @@ namespace Directus
 					if (!resource)
 						continue;
 
-					size += resource->GetMemory();
+					size += resource->GetMemoryUsage();
 				}
 			}
 
@@ -170,7 +170,7 @@ namespace Directus
 			unsigned int size = 0;
 			for (const auto& resource : m_resourceGroups[type])
 			{
-				size += resource->GetMemory();
+				size += resource->GetMemoryUsage();
 			}
 
 			return size;

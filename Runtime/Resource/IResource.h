@@ -125,7 +125,7 @@ namespace Directus
 		//= IO ================================================================
 		virtual bool SaveToFile(const std::string& filePath) { return true; }
 		virtual bool LoadFromFile(const std::string& filePath) { return true; }
-		virtual unsigned int GetMemory() { return 0; }
+		virtual unsigned int GetMemoryUsage() { return 0; }
 		//=====================================================================
 
 		//= TYPE ================================
