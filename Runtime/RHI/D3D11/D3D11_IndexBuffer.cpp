@@ -142,14 +142,4 @@ namespace Directus
 
 		return true;
 	}
-
-	bool D3D11_IndexBuffer::SetIA()
-	{
-		if (!m_graphics->GetDeviceContext() || !m_buffer)
-			return false;
-
-		Profiler::Get().m_bindBufferIndexCount++;
-		m_graphics->GetDeviceContext()->IASetIndexBuffer(m_buffer, DXGI_FORMAT_R32_UINT, 0);
-		return true;
-	}
 }

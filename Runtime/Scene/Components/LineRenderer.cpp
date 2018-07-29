@@ -102,13 +102,10 @@ namespace Directus
 	}
 
 	//= MISC ================================================================
-	void LineRenderer::SetBuffer()
+	void LineRenderer::Update()
 	{
 		CreateVertexBuffer();
 		UpdateVertexBuffer();
-
-		// Set vertex buffer
-		m_vertexBuffer->SetIA();
 	}
 
 	void LineRenderer::CreateVertexBuffer()

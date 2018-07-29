@@ -37,13 +37,15 @@ namespace Directus
 		~Rectangle();
 
 		bool Create(float x, float y, float width, float height);
-		bool SetBuffer();
 		int GetIndexCount() { return 6; }
+
+		std::shared_ptr<D3D11_IndexBuffer> GetIndexBuffer()		{ return m_indexBuffer; }
+		std::shared_ptr<D3D11_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
 
 	private:
 		RHI_Device* m_rhiDevice;
-		std::unique_ptr<D3D11_VertexBuffer> m_vertexBuffer;
-		std::unique_ptr<D3D11_IndexBuffer> m_indexBuffer;
+		std::shared_ptr<D3D11_VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<D3D11_IndexBuffer> m_indexBuffer;
 		float m_x;
 		float m_y;
 		float m_width;

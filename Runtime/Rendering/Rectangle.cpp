@@ -109,30 +109,19 @@ namespace Directus
 			indices.push_back(i);
 		}
 
-		m_vertexBuffer = make_unique<D3D11_VertexBuffer>((D3D11_Device*)m_rhiDevice);
+		m_vertexBuffer = make_shared<D3D11_VertexBuffer>((D3D11_Device*)m_rhiDevice);
 		if (!m_vertexBuffer->Create(vertices))
 		{
 			LOG_ERROR("Rectangle: Failed to create vertex buffer.");
 			return false;
 		}
 
-		m_indexBuffer = make_unique<D3D11_IndexBuffer>((D3D11_Device*)m_rhiDevice);
+		m_indexBuffer = make_shared<D3D11_IndexBuffer>((D3D11_Device*)m_rhiDevice);
 		if (!m_indexBuffer->Create(indices))
 		{
 			LOG_ERROR("Rectangle: Failed to create index buffer.");
 			return false;
 		}
-
-		return true;
-	}
-
-	bool Rectangle::SetBuffer()
-	{
-		if (!m_rhiDevice || !m_vertexBuffer || !m_indexBuffer)
-			return false;
-
-		m_vertexBuffer->SetIA();
-		m_indexBuffer->SetIA();
 
 		return true;
 	}

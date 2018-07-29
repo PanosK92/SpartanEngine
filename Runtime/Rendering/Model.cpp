@@ -125,35 +125,6 @@ namespace Directus
 		m_mesh->Geometry_Get(indexOffset, indexCount, vertexOffset, vertexCount, indices, vertices);
 	}
 
-	bool Model::Geometry_Bind()
-	{
-		bool success = true;
-
-		// Bind index buffer
-		if (m_indexBuffer)
-		{
-			m_indexBuffer->SetIA();
-		}
-		else
-		{
-			LOGF_WARNING("Model::Geometry_Bind: Can't set index buffer. \"%s\" doesn't have an initialized index buffer.", m_resourceName.c_str());
-			success = false;
-		}
-
-		// Bind vertex buffer
-		if (m_vertexBuffer)
-		{
-			m_vertexBuffer->SetIA();
-		}
-		else
-		{
-			LOGF_WARNING("Model::Geometry_Bind: Can't set vertex buffer. \"%s\" doesn't have an initialized vertex buffer.", m_resourceName.c_str());
-			success = false;
-		}
-
-		return success;
-	}
-
 	void Model::Geometry_Update()
 	{
 		Geometry_CreateBuffers();

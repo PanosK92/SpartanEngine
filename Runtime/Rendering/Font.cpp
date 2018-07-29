@@ -106,17 +106,6 @@ namespace Directus
 		return m_textureAtlas ? m_textureAtlas->GetShaderResource() : nullptr;
 	}
 
-	bool Font::SetVertexAndIndexBuffers()
-	{
-		if (!m_vertexBuffer || !m_indexBuffer)
-			return false;
-
-		m_vertexBuffer->SetIA();
-		m_indexBuffer->SetIA();
-
-		return true;
-	}
-
 	void Font::SetText(const string& text, const Vector2& position)
 	{
 		if (text == m_currentText)

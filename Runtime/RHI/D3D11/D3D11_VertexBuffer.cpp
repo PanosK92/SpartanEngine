@@ -244,31 +244,4 @@ namespace Directus
 
 		return true;
 	}
-
-	bool D3D11_VertexBuffer::SetIA()
-	{
-		if (!m_graphics)
-		{
-			LOG_ERROR("D3D11VertexBuffer: Can't set input assembly. Graphics adapter is uninitialized.");
-			return false;
-		}
-
-		if (!m_graphics->GetDeviceContext())
-		{
-			LOG_ERROR("D3D11VertexBuffer: Can't set input assembly. Graphics adapter context is uninitialized.");
-			return false;
-		}
-
-		if (!m_buffer)
-		{
-			LOG_ERROR("D3D11VertexBuffer: Can't set input assembly. Buffer is uninitialized.");
-			return false;
-		}
-
-		Profiler::Get().m_bindBufferVertexCount++;
-		unsigned int offset = 0;
-		m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);
-
-		return true;
-	}
 }

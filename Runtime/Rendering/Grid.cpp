@@ -46,17 +46,6 @@ namespace Directus
 		BuildGrid();
 	}
 
-	bool Grid::SetBuffer()
-	{
-		if (!m_vertexBuffer || !m_indexBuffer)
-			return false;
-
-		m_vertexBuffer->SetIA();
-		m_indexBuffer->SetIA();
-
-		return true;
-	}
-
 	const Matrix& Grid::ComputeWorldMatrix(Transform* camera)
 	{
 		// To get the grid to feel infinite, it has to follow the camera,

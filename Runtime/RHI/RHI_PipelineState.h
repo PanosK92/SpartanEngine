@@ -44,6 +44,10 @@ namespace Directus
 		// Texture
 		bool SetTextures(std::vector<void*> shaderResources, unsigned int startSlot);
 		bool SetTexture(void* shaderResource, unsigned int startSlot);
+		
+		// Vertex & index buffers
+		bool SetIndexBuffer(std::shared_ptr<D3D11_IndexBuffer> indexBuffer);
+		bool SetVertexBuffer(std::shared_ptr<D3D11_VertexBuffer> vertexBuffer);
 
 		// Sampler
 		bool SetSampler(std::shared_ptr<D3D11_Sampler> sampler, unsigned int startSlot);
