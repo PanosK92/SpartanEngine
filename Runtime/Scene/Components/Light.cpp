@@ -80,21 +80,40 @@ namespace Directus
 	{
 		if (m_lightType != LightType_Directional)
 			return;
+
 		// DIRTY CHECK
-		if (m_lastPos != GetTransform()->GetPosition() || m_lastRot != GetTransform()->GetRotation())
+		if (m_lastPosLight != GetTransform()->GetPosition() || m_lastRotLight != GetTransform()->GetRotation())
 		{
-			m_lastPos = GetTransform()->GetPosition();
-			m_lastRot = GetTransform()->GetRotation();
+			m_lastPosLight = GetTransform()->GetPosition();
+			m_lastRotLight = GetTransform()->GetRotation();
+			
+			// Used to prevent directional light
+			// from casting shadows form underneath
+			// the scene which can look weird
+			ClampRotation();
+			ComputeViewMatrix();
+
+			m_isDirty = true;
+		}
+
+		Camera* camera = m_context->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
+		if (m_lastPosCamera != camera->GetTransform()->GetPosition())
+		{
+			m_lastPosCamera = camera->GetTransform()->GetPosition();
+
+			// Update shadow map projection matrices
+			m_shadowMapsProjectionMatrix.clear();
+			for (unsigned int i = 0; i < m_shadowMapCount; i++)
+			{
+				m_shadowMapsProjectionMatrix.emplace_back(Matrix());
+				ShadowMap_ComputeProjectionMatrix(i);
+			}
+
 			m_isDirty = true;
 		}
 
 		if (!m_isDirty)
 			return;
-
-		// Used to prevent directional light
-		// from casting shadows from underneath
-		// the scene which can look weird
-		ClampRotation();
 
 		if (auto mainCamera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock().get())
 		{
@@ -102,7 +121,7 @@ namespace Directus
 			{
 				for (unsigned int index = 0; index < (unsigned int)m_frustums.size(); index++)
 				{
-					m_frustums[index]->Construct(ComputeViewMatrix(), ShadowMap_ComputeProjectionMatrix(index), cameraComp->GetFarPlane());
+					m_frustums[index]->Construct(m_viewMatrix, ShadowMap_GetProjectionMatrix(index), cameraComp->GetFarPlane());
 				}
 			}
 		}
@@ -176,17 +195,8 @@ namespace Directus
 		}
 	}
 
-	Matrix Light::ComputeViewMatrix()
+	void Light::ComputeViewMatrix()
 	{
-		// Only re-compute if dirty
-		if (!m_isDirty)
-			return m_viewMatrix;
-
-		// Used to prevent directional light
-		// from casting shadows form underneath
-		// the scene which can look weird
-		ClampRotation();
-
 		Vector3 lightDirection	= GetDirection();
 		Vector3 position		= lightDirection;
 		Vector3 lookAt			= position + lightDirection;
@@ -194,8 +204,6 @@ namespace Directus
 
 		// Create the view matrix
 		m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
-
-		return m_viewMatrix;
 	}
 
 	bool Light::IsInViewFrustrum(Renderable* renderable, unsigned int index  /*= 0*/)
@@ -207,40 +215,12 @@ namespace Directus
 		return m_frustums[index]->CheckCube(center, extents) != Outside;
 	}
 
-	Directus::Math::Matrix Light::ShadowMap_ComputeProjectionMatrix(unsigned int index /*= 0*/)
+	const Math::Matrix& Light::ShadowMap_GetProjectionMatrix(unsigned int index /*= 0*/)
 	{
-		Camera* camera		= m_context->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
-		Vector3 centerPos	= camera ? camera->GetTransform()->GetPosition() : Vector3::Zero;
-		Matrix mView		= ComputeViewMatrix();
+		if (index >= (unsigned int)m_shadowMapsProjectionMatrix.size())
+			return Matrix::Identity;
 
-		// Hardcoded sizes to match the splits
-		float extents = 0;
-		if (index == 0)
-			extents = 10;
-
-		if (index == 1)
-			extents = 45;
-
-		if (index == 2)
-			extents = 90;
-
-		Vector3 center	= centerPos * mView;
-		Vector3 min		= center - Vector3(extents, extents, extents);
-		Vector3 max		= center + Vector3(extents, extents, extents);
-
-		//= Shadow shimmering remedy based on ============================================
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
-		float fWorldUnitsPerTexel = (extents * 2.0f) / m_shadowMapResolution;
-
-		min /= fWorldUnitsPerTexel;
-		min.Floor();
-		min *= fWorldUnitsPerTexel;
-		max /= fWorldUnitsPerTexel;
-		max.Floor();
-		max *= fWorldUnitsPerTexel;
-		//================================================================================
-
-		return Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);		
+		return m_shadowMapsProjectionMatrix[index];
 	}
 
 	void Light::ShadowMap_SetRenderTarget(unsigned int index /*= 0*/)
@@ -282,6 +262,38 @@ namespace Directus
 			return nullptr;
 
 		return m_frustums[index];
+	}
+
+	void Light::ShadowMap_ComputeProjectionMatrix(unsigned int index /*= 0*/)
+	{
+		// Hardcoded sizes to match the splits
+		float extents = 0;
+		if (index == 0)
+			extents = 10;
+
+		if (index == 1)
+			extents = 45;
+
+		if (index == 2)
+			extents = 90;
+
+		Vector3 center = m_lastPosCamera * m_viewMatrix;
+		Vector3 min = center - Vector3(extents, extents, extents);
+		Vector3 max = center + Vector3(extents, extents, extents);
+
+		//= Shadow shimmering remedy based on ============================================
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
+		float fWorldUnitsPerTexel = (extents * 2.0f) / m_shadowMapResolution;
+
+		min /= fWorldUnitsPerTexel;
+		min.Floor();
+		min *= fWorldUnitsPerTexel;
+		max /= fWorldUnitsPerTexel;
+		max.Floor();
+		max *= fWorldUnitsPerTexel;
+		//================================================================================
+
+		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);
 	}
 
 	void Light::ShadowMap_Create(bool force)
