@@ -87,11 +87,11 @@ namespace Directus
 		Math::Vector3 GetDirection();
 		void ClampRotation();
 
-		Math::Matrix ComputeViewMatrix();	
+		Math::Matrix GetViewMatrix() { return m_viewMatrix; }
 		bool IsInViewFrustrum(Renderable* renderable, unsigned int index = 0);
 		
 		// Shadow maps
-		Math::Matrix ShadowMap_ComputeProjectionMatrix(unsigned int index = 0);	
+		const Math::Matrix& ShadowMap_GetProjectionMatrix(unsigned int index = 0);
 		void ShadowMap_SetRenderTarget(unsigned int index = 0);
 		void* ShadowMap_GetShaderResource(unsigned int index = 0);
 		float ShadowMap_GetSplit(unsigned int index = 0);
@@ -101,8 +101,11 @@ namespace Directus
 		unsigned int ShadowMap_GetCount()	{ return m_shadowMapCount; }
 
 	private:
+		void ComputeViewMatrix();
+		void ShadowMap_ComputeProjectionMatrix(unsigned int index = 0);	
 		void ShadowMap_Create(bool force);
 		void ShadowMap_Destroy();
+
 		LightType m_lightType;
 		bool m_castShadows;
 		Math::Vector4 m_color;
@@ -111,12 +114,14 @@ namespace Directus
 		float m_angle;
 		float m_bias;
 		Math::Matrix m_viewMatrix;
-		Math::Quaternion m_lastRot;
-		Math::Vector3 m_lastPos;
+		Math::Quaternion m_lastRotLight;
+		Math::Vector3 m_lastPosLight;
+		Math::Vector3 m_lastPosCamera;
 		bool m_isDirty;
 
 		// Shadow maps
 		std::vector<std::shared_ptr<RHI_RenderTexture>> m_shadowMaps;
+		std::vector<Math::Matrix> m_shadowMapsProjectionMatrix;
 		std::vector<std::shared_ptr<Math::Frustum>> m_frustums;
 		unsigned int m_shadowMapResolution;
 		unsigned int m_shadowMapCount;

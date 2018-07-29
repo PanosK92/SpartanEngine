@@ -177,10 +177,10 @@ namespace Directus
 		buffer->projection				= mProjection;
 		buffer->projectionInverse		= mProjection.Inverted();
 
-		auto mLightView = dirLight->ComputeViewMatrix();
-		buffer->mLightViewProjection[0] = mLightView * dirLight->ShadowMap_ComputeProjectionMatrix(0);
-		buffer->mLightViewProjection[1] = mLightView * dirLight->ShadowMap_ComputeProjectionMatrix(1);
-		buffer->mLightViewProjection[2] = mLightView * dirLight->ShadowMap_ComputeProjectionMatrix(2);
+		auto mLightView = dirLight->GetViewMatrix();
+		buffer->mLightViewProjection[0] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
+		buffer->mLightViewProjection[1] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
+		buffer->mLightViewProjection[2] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
 
 		buffer->shadowSplits			= Vector4(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1), 0, 0);
 		buffer->lightDir				= dirLight->GetDirection();

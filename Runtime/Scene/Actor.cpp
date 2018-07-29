@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Components/Script.h"
 #include "../Scene/Components/AudioSource.h"
 #include "../Scene/Components/AudioListener.h"
-#include "../RHI/IRHI_Implementation.h"
 #include "../Logging/Log.h"
 #include "../IO/FileStream.h"
 #include "../Core/GUIDGenerator.h"

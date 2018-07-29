@@ -53,9 +53,9 @@ namespace Directus
 		virtual void* GetShaderResourceView() = 0;
 		virtual void* GetDepthStencilView() = 0;
 
-		const Math::Matrix& GetOrthographicProjectionMatrix() { return m_orthographicProjectionMatrix; }
-		const IRHI_Viewport& GetViewport() { return m_viewport; }
-		bool GetDepthEnabled() { return m_depthEnabled; }
+		const Math::Matrix& GetOrthographicProjectionMatrix()	{ return m_orthographicProjectionMatrix; }
+		const IRHI_Viewport& GetViewport()						{ return m_viewport; }
+		bool GetDepthEnabled()									{ return m_depthEnabled; }
 
 	protected:
 		bool m_depthEnabled;

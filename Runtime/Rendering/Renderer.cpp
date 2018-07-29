@@ -558,7 +558,7 @@ namespace Directus
 				//if (!m_directionalLight->IsInViewFrustrum(obj_renderable, i))
 					//continue;
 
-				m_shaderLightDepth->Bind_Buffer(actor->GetTransform_PtrRaw()->GetWorldTransform() * light->ComputeViewMatrix() * light->ShadowMap_ComputeProjectionMatrix(i));
+				m_shaderLightDepth->Bind_Buffer(actor->GetTransform_PtrRaw()->GetWorldTransform() * light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i));
 				m_rhiPipelineState->Bind();
 
 				m_rhiDevice->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
