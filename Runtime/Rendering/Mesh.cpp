@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "Mesh.h"
-#include "../RHI/RHI_Vertex.h"
+#include "../RHI/IRHI_Vertex.h"
 #include "../Logging/Log.h"
 #include "../IO/FileStream.h"
 #include "../Core/Context.h"

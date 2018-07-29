@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
-#include "../../RHI/RHI_Implementation.h"
+#include "../../RHI/IRHI_Implementation.h"
 //=======================================
 
 //= NAMESPACES ================

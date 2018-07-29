@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IResource.h"
 #include "ResourceManager.h"
 #include "../Audio/AudioClip.h"
-#include "../RHI/RHI_Implementation.h"
+#include "../RHI/IRHI_Implementation.h"
 #include "../Rendering/Font.h"
 #include "../Rendering/Animation.h"
 #include "../Rendering/Model.h"

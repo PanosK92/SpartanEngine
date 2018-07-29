@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
-#include "../../RHI/RHI_Implementation.h"
+#include "../../RHI/IRHI_Implementation.h"
 #include "../../Core/Settings.h"
 //=======================================
 

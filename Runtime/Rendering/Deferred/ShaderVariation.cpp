@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/D3D11/D3D11_Device.h"
 #include "../../RHI/D3D11/D3D11_ConstantBuffer.h"
 #include "../../RHI/D3D11/D3D11_Shader.h"
-#include "../../RHI/RHI_Implementation.h"
+#include "../../RHI/IRHI_Implementation.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
 #include "../../Scene/Components/Transform.h"

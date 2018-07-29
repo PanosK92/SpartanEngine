@@ -50,7 +50,7 @@ namespace Directus
 		ID3D11RenderTargetView* GetRenderTargetView()			{ return m_renderTargetView; }
 		ID3D11ShaderResourceView* GetShaderResourceView()		{ return m_shaderResourceView; }
 		ID3D11DepthStencilView* GetDepthStencilView()			{ return m_depthStencilView; }
-		const RHI_Viewport& GetViewport()						{ return m_viewport; }
+		const IRHI_Viewport& GetViewport()						{ return m_viewport; }
 		bool GetDepthEnabled()									{ return m_depthEnabled; }
 
 	private:
@@ -71,7 +71,7 @@ namespace Directus
 		float m_nearPlane, m_farPlane;
 		Math::Matrix m_orthographicProjectionMatrix;
 
-		RHI_Viewport m_viewport;
+		IRHI_Viewport m_viewport;
 		D3D11_Device* m_graphics;
 	};
 }

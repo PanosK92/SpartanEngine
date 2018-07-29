@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector4.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
-#include "../../RHI/RHI_Definition.h"
+#include "../../RHI/IRHI_Definition.h"
 //=========================================
 
 namespace Directus

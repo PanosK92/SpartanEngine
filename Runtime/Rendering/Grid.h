@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include <memory>
-#include "../RHI/RHI_Definition.h"
+#include "../RHI/IRHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Core/EngineDefs.h"
 //================================

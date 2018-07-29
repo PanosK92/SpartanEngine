@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include <memory>
 #include <vector>
-#include "../../RHI/RHI_Definition.h"
+#include "../../RHI/IRHI_Definition.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Ray.h"
 #include "../../Math/Frustum.h"

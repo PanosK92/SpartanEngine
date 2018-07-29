@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "Material.h"
 #include "Animation.h"
-#include "../RHI/RHI_Implementation.h"
+#include "../RHI/IRHI_Implementation.h"
 #include "../Scene/Actor.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"

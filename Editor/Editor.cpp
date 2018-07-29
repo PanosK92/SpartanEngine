@@ -36,8 +36,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Toolbar.h"
 #include "UI/IconProvider.h"
 #include "UI/EditorHelper.h"
-#include "RHI/RHI_Definition.h"
-#include "RHI/RHI_Implementation.h"
+#include "RHI/IRHI_Definition.h"
+#include "RHI/IRHI_Implementation.h"
 //=======================================
 
 //= NAMESPACES ==========

@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "Rectangle.h"
-#include "../RHI/RHI_Vertex.h"
-#include "../RHI/RHI_Implementation.h"
+#include "../RHI/IRHI_Vertex.h"
+#include "../RHI/IRHI_Implementation.h"
 #include "../Core/EngineDefs.h"
 #include "../Core/Context.h"
 #include "../Core/Settings.h"

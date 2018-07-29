@@ -38,7 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Resource/ProgressReport.h"
 #include "../Rendering/Mesh.h"
-#include "../RHI/RHI_Implementation.h"
+#include "../RHI/IRHI_Implementation.h"
 #include "../RHI/D3D11//D3D11_RenderTexture.h"
 #include "../IO/FileStream.h"
 #include "../FileSystem/FileSystem.h"

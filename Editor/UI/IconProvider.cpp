@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "IconProvider.h"
-#include "RHI/RHI_Implementation.h"
+#include "RHI/IRHI_Implementation.h"
 #include "../ImGui/Source/imgui.h"
 #include "EditorHelper.h"
 #include "Threading/Threading.h"

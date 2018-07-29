@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "RHI_Definition.h"
-#include "RHI_Viewport.h"
-#include "RHI_PipelineState.h"
+#include "IRHI_Definition.h"
+#include "IRHI_Viewport.h"
+#include "IRHI_PipelineState.h"
 #include "../Math/Vector4.h"
 #include "../Core/SubSystem.h"
 #include "../Profiling/Profiler.h"
@@ -37,7 +37,7 @@ namespace Directus
 	public:
 		IRHI_Device(Context* context) : Subsystem(context)
 		{
-			m_pipelineState			= std::make_shared<RHI_PipelineState>((RHI_Device*)this);
+			m_pipelineState			= std::make_shared<IRHI_PipelineState>((RHI_Device*)this);
 			m_format				= Texture_Format_R8G8B8A8_UNORM;
 			m_depthEnabled			= true;
 			m_alphaBlendingEnabled	= false;
@@ -71,8 +71,8 @@ namespace Directus
 		//===============================================
 
 		//= VIEWPORT =============================================================
-		virtual const RHI_Viewport& GetViewport() { return RHI_Viewport(); }
-		virtual void SetViewport(const RHI_Viewport& viewport){}
+		virtual const IRHI_Viewport& GetViewport() { return IRHI_Viewport(); }
+		virtual void SetViewport(const IRHI_Viewport& viewport){}
 		float GetMaxDepth() { return m_maxDepth; }
 
 		void SetBackBufferViewport(float width = 0, float height = 0) 
@@ -84,7 +84,7 @@ namespace Directus
 			}
 			SetViewport(m_backBufferViewport); 
 		}
-		const RHI_Viewport& GetBackBufferViewport() { return m_backBufferViewport; }
+		const IRHI_Viewport& GetBackBufferViewport() { return m_backBufferViewport; }
 		//========================================================================
 
 		//= DEPTH ===========================
@@ -123,12 +123,12 @@ namespace Directus
 
 		virtual bool IsInitialized() = 0;
 
-		std::shared_ptr<RHI_PipelineState> GetPipelineState() { return m_pipelineState; }
+		std::shared_ptr<IRHI_PipelineState> GetPipelineState() { return m_pipelineState; }
 
 	protected:
-		std::shared_ptr<RHI_PipelineState> m_pipelineState;
+		std::shared_ptr<IRHI_PipelineState> m_pipelineState;
 		Texture_Format m_format;
-		RHI_Viewport m_backBufferViewport;
+		IRHI_Viewport m_backBufferViewport;
 		bool m_depthEnabled;
 		bool m_alphaBlendingEnabled;
 		void* m_drawHandle;

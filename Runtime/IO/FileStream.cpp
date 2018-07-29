@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/BoundingBox.h"
 #include "../Scene/Actor.h"
 #include "../Logging/Log.h"
-#include "../RHI/RHI_Vertex.h"
+#include "../RHI/IRHI_Vertex.h"
 //==============================
 
 //= NAMESPACES ================

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "D3D11_Shader.h"
 #include "D3D11_InputLayout.h"
-#include "../RHI_Implementation.h"
+#include "../IRHI_Implementation.h"
 #include "../../Core/EngineDefs.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"

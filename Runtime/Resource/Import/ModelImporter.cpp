@@ -41,7 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Renderable.h"
 #include "../ProgressReport.h"
-#include "../../RHI/RHI_Implementation.h"
+#include "../../RHI/IRHI_Implementation.h"
 //============================================
 
 //= NAMESPACES ================
