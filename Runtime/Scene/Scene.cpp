@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================================
+//= INCLUDES ===========================
 #include "Scene.h"
 #include "Actor.h"
 #include "Components/Transform.h"
@@ -39,12 +39,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ProgressReport.h"
 #include "../Rendering/Mesh.h"
 #include "../RHI/IRHI_Implementation.h"
-#include "../RHI/D3D11//D3D11_RenderTexture.h"
 #include "../IO/FileStream.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 #include "../Profiling/Profiler.h"
-//=====================================================
+//======================================
 
 //= NAMESPACES ================
 using namespace std;

@@ -36,8 +36,9 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11_Shader::D3D11_Shader(D3D11_Device* graphicsDevice) : m_graphics(graphicsDevice)
+	D3D11_Shader::D3D11_Shader(RHI_Device* rhiDevice)
 	{
+		m_rhiDevice			= rhiDevice;
 		m_vertexShader		= nullptr;
 		m_pixelShader		= nullptr;
 		m_VSBlob			= nullptr;
@@ -47,7 +48,7 @@ namespace Directus
 		m_layoutHasBeenSet	= false;
 
 		// Create input layout
-		m_D3D11InputLayout = make_shared<D3D11_InputLayout>(m_graphics);
+		m_D3D11InputLayout = make_shared<D3D11_InputLayout>(m_rhiDevice);
 	}
 
 	D3D11_Shader::~D3D11_Shader()
@@ -103,7 +104,7 @@ namespace Directus
 
 	bool D3D11_Shader::SetInputLayout(Input_Layout inputLayout)
 	{
-		if (!m_graphics->GetDevice())
+		if (!m_rhiDevice->GetDevice())
 			return false;
 
 		if (!m_compiled)
@@ -163,7 +164,7 @@ namespace Directus
 	//= COMPILATION ================================================================================================================================================================================
 	bool D3D11_Shader::CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, const string& path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
 	{
-		if (!m_graphics->GetDevice())
+		if (!m_rhiDevice->GetDevice())
 			return false;
 
 		if (!CompileShader(path, macros, entrypoint, profile, vsBlob))
@@ -171,7 +172,7 @@ namespace Directus
 
 		// Create the shader from the buffer.
 		ID3D10Blob* vsb = *vsBlob;
-		auto result = m_graphics->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
+		auto result = m_rhiDevice->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11_Shader::CompileVertexShader: Failed to create vertex shader.");
@@ -183,7 +184,7 @@ namespace Directus
 
 	bool D3D11_Shader::CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, const string& path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
 	{
-		if (!m_graphics->GetDevice())
+		if (!m_rhiDevice->GetDevice())
 			return false;
 
 		auto result = CompileShader(path, macros, entrypoint, profile, psBlob);
@@ -192,7 +193,7 @@ namespace Directus
 
 		// Create the shader from the buffer.
 		ID3D10Blob* psb = *psBlob;
-		result = m_graphics->GetDevice()->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader);
+		result = m_rhiDevice->GetDevice()->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11_Shader::CompilePixelShader: Failed to create pixel shader.");

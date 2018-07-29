@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES =========================
 #include <vector>
 #include <memory>
 #include "IComponent.h"
@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
 #include "../../RHI/IRHI_Definition.h"
-//=========================================
+//====================================
 
 namespace Directus
 {
@@ -116,7 +116,7 @@ namespace Directus
 		bool m_isDirty;
 
 		// Shadow maps
-		std::vector<std::shared_ptr<D3D11_RenderTexture>> m_shadowMaps;
+		std::vector<std::shared_ptr<RHI_RenderTexture>> m_shadowMaps;
 		std::vector<std::shared_ptr<Math::Frustum>> m_frustums;
 		unsigned int m_shadowMapResolution;
 		unsigned int m_shadowMapCount;

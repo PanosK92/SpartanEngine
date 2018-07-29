@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================================
+//= INCLUDES =============================
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
@@ -30,11 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/BoundingBox.h"
 #include "../../Math/Frustum.h"
 #include "../../RHI/IRHI_Implementation.h"
-#include "../../RHI/D3D11//D3D11_RenderTexture.h"
 #include "../../Scene/Actor.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
-//========================================================
+//========================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -311,7 +310,7 @@ namespace Directus
 		auto rhiDevice			= m_context->GetSubsystem<RHI_Device>();
 		for (unsigned int i = 0; i < m_shadowMapCount; i++)
 		{
-			m_shadowMaps.emplace_back(make_unique<D3D11_RenderTexture>(rhiDevice, m_shadowMapResolution, m_shadowMapResolution, true, Texture_Format_R32_FLOAT));
+			m_shadowMaps.emplace_back(make_unique<RHI_RenderTexture>(rhiDevice, m_shadowMapResolution, m_shadowMapResolution, true, Texture_Format_R32_FLOAT));
 			m_frustums.emplace_back(make_shared<Frustum>());
 		}
 	}

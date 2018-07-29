@@ -22,13 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========================
 #include "IRHI_Shader.h"
 #include "D3D11/D3D11_Shader.h"
-#include "D3D11/D3D11_RenderTexture.h"
 #include "IRHI_Implementation.h"
+#include "IRHI_CommonBuffers.h"
 #include "../Logging/Log.h"
 #include "../Core/Context.h"
 #include "../Scene/Components/Light.h"
 #include "../Scene/Components/Camera.h"
-#include "RHI_CommonBuffers.h"
 //=====================================
 
 //= NAMESPACES ================

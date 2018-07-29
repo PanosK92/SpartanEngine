@@ -25,8 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <vector>
 #include "../RHI/IRHI_Definition.h"
-#include "../Core/Settings.h"
-#include "../Core/SubSystem.h"
 #include "../Math/Matrix.h"
 #include "../Resource/ResourceManager.h"
 //======================================
@@ -81,8 +79,8 @@ namespace Directus
 		//========================
 
 		// Rendering
-		void SetRenderTarget(void* renderTarget, bool clear = true);
-		void SetRenderTarget(const std::shared_ptr<D3D11_RenderTexture>& renderTexture);
+		void SetRenderTarget(std::shared_ptr<RHI_RenderTexture>& renderTarget, bool clear = true);
+		void SetRenderTarget(bool clear = true);
 		void* GetFrame();
 		void Present();
 		void Render();
@@ -119,26 +117,68 @@ namespace Directus
 
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
-		void Pass_PreLight(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing);
-		void Pass_Light(void* inTextureShadowing, void* outRenderTexture);	
-		void Pass_PostLight(
-			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture1,
-			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture2,
-			std::shared_ptr<D3D11_RenderTexture>& outRenderTexture
+
+		void Pass_PreLight(
+			void* inTextureNormal,
+			void* inTextureDepth,
+			std::shared_ptr<RHI_Texture>& inTextureNormalNoise,
+			std::shared_ptr<RHI_RenderTexture>& inRenderTexure,
+			std::shared_ptr<RHI_RenderTexture>& outRenderTextureShadowing
 		);
+
+		void Pass_Light(
+			std::shared_ptr<RHI_RenderTexture>& inTextureShadowing,
+			std::shared_ptr<RHI_RenderTexture>& outRenderTexture
+		);	
+
+		void Pass_PostLight(
+			std::shared_ptr<RHI_RenderTexture>& inRenderTexture1,
+			std::shared_ptr<RHI_RenderTexture>& inRenderTexture2,
+			std::shared_ptr<RHI_RenderTexture>& outRenderTexture
+		);
+
 		bool Pass_DebugGBuffer();
 		void Pass_Debug();
-		void Pass_Correction(void* inTexture, void* outTexture);
-		void Pass_FXAA(void* inTexture, void* outTexture);
-		void Pass_Sharpening(void* inTexture, void* outTexture);
-		void Pass_ChromaticAberration(void* inTexture, void* outTexture);
-		void Pass_Bloom(
-			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture1,
-			std::shared_ptr<D3D11_RenderTexture>& inRenderTexture2,
-			std::shared_ptr<D3D11_RenderTexture>& outRenderTexture
+
+		void Pass_Correction(
+			std::shared_ptr<RHI_RenderTexture>& inTexture,
+			std::shared_ptr<RHI_RenderTexture>& outTexture
 		);
-		void Pass_Blur(void* texture, void* renderTarget, const Math::Vector2& blurScale);
-		void Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture);
+
+		void Pass_FXAA(
+			std::shared_ptr<RHI_RenderTexture>& inTexture,
+			std::shared_ptr<RHI_RenderTexture>& outTexture
+		);
+
+		void Pass_Sharpening(
+			std::shared_ptr<RHI_RenderTexture>& inTexture,
+			std::shared_ptr<RHI_RenderTexture>& ouTexture
+		);
+
+		void Pass_ChromaticAberration(
+			std::shared_ptr<RHI_RenderTexture>& inTexture,
+			std::shared_ptr<RHI_RenderTexture>& outTexture
+		);
+
+		void Pass_Bloom(
+			std::shared_ptr<RHI_RenderTexture>& inRenderTexture1,
+			std::shared_ptr<RHI_RenderTexture>& inRenderTexture2,
+			std::shared_ptr<RHI_RenderTexture>& outRenderTexture
+		);
+
+		void Pass_Blur(
+			std::shared_ptr<RHI_RenderTexture>& texture,
+			std::shared_ptr<RHI_RenderTexture>& renderTarget,
+			const Math::Vector2& blurScale
+		);
+
+		void Pass_Shadowing(
+			void* inTextureNormal_shaderResource,
+			void* inTextureDepth_shaderResource,
+			std::shared_ptr<RHI_Texture>& inTextureNormalNoise,
+			Light* inDirectionalLight,
+			std::shared_ptr<RHI_RenderTexture>& outRenderTexture
+		);
 
 		const Math::Vector4& GetClearColor();
 
@@ -150,12 +190,12 @@ namespace Directus
 		Light* m_directionalLight{};
 		//=====================================
 
-		//= RENDER TEXTURES ======================================
-		std::shared_ptr<D3D11_RenderTexture> m_renderTexPing;
-		std::shared_ptr<D3D11_RenderTexture> m_renderTexPing2;
-		std::shared_ptr<D3D11_RenderTexture> m_renderTexShadowing;
-		std::shared_ptr<D3D11_RenderTexture> m_renderTexPong;
-		//========================================================
+		//= RENDER TEXTURES ====================================
+		std::shared_ptr<RHI_RenderTexture> m_renderTexPing;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexPing2;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexShadowing;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexPong;
+		//======================================================
 
 		//= SHADERS ============================================
 		std::shared_ptr<LightShader> m_shaderLight;
@@ -199,7 +239,7 @@ namespace Directus
 		//= MISC ==================================
 		std::vector<void*> m_texArray;
 		ID3D11ShaderResourceView* m_texEnvironment;
-		std::unique_ptr<RHI_Texture> m_texNoiseMap;
+		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
 		//=========================================
 		

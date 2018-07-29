@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =========================
 #include <map>
 #include <memory>
-#include "../../RHI/IRHI_Definition.h"
 #include "../../Core/Settings.h"
-//===================================
+#include "../../RHI/IRHI_Definition.h"
+//====================================
 
 namespace Directus
 {
@@ -50,7 +50,7 @@ namespace Directus
 		void* GetShaderResource(GBuffer_Texture_Type type);
 
 	private:
-		std::map<GBuffer_Texture_Type, std::shared_ptr<D3D11_RenderTexture>> m_renderTargets;
+		std::map<GBuffer_Texture_Type, std::shared_ptr<RHI_RenderTexture>> m_renderTargets;
 		RHI_Device* m_rhiDevice;
 	};
 }

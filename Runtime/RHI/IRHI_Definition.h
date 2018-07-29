@@ -140,11 +140,11 @@ namespace Directus
 	class D3D11_Device;
 	class D3D11_ConstantBuffer;
 	class D3D11_Shader;
-	class D3D11_RenderTexture;
 	class D3D11_InputLayout;
 	class D3D11_Sampler;
 	class D3D11_VertexBuffer;
 	class D3D11_IndexBuffer;
+	class D3D11_RenderTexture;
 	class D3D11_Texture;
 
 	typedef D3D11_Device			RHI_Device;
@@ -153,6 +153,7 @@ namespace Directus
 	typedef D3D11_VertexBuffer		RHI_VertexBuffer;
 	typedef D3D11_IndexBuffer		RHI_IndexBuffer;
 	typedef D3D11_Texture			RHI_Texture;
+	typedef D3D11_RenderTexture		RHI_RenderTexture;
 }
 
 // Forward declarations - D3D11 API

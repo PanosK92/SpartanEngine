@@ -90,8 +90,8 @@ namespace Directus
 			Math::Vector2 padding;
 		};
 
-		std::shared_ptr<D3D11_ConstantBuffer> m_matrixBuffer;
-		std::shared_ptr<D3D11_ConstantBuffer> m_miscBuffer;
+		std::shared_ptr<RHI_ConstantBuffer> m_matrixBuffer;
+		std::shared_ptr<RHI_ConstantBuffer> m_miscBuffer;
 		std::shared_ptr<D3D11_Shader> m_shader;
 		RHI_Device* m_rhiDevice;
 	};

@@ -47,7 +47,7 @@ namespace Directus
 		m_fillMode			= Fill_NotAssigned;
 	}
 
-	bool IRHI_PipelineState::SetShader(shared_ptr<IRHI_Shader> shader)
+	bool IRHI_PipelineState::SetShader(shared_ptr<IRHI_Shader>& shader)
 	{
 		if (!m_rhiDevice || !shader)
 		{
@@ -64,7 +64,7 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetShader(shared_ptr<D3D11_Shader> shader)
+	bool IRHI_PipelineState::SetShader(shared_ptr<D3D11_Shader>& shader)
 	{
 		if (!m_rhiDevice || !shader)
 		{
@@ -81,7 +81,7 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer> indexBuffer)
+	bool IRHI_PipelineState::SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer>& indexBuffer)
 	{
 		if (!m_rhiDevice || !indexBuffer)
 		{
@@ -93,7 +93,7 @@ namespace Directus
 		return indexBuffer->Bind();
 	}
 
-	bool IRHI_PipelineState::SetVertexBuffer(shared_ptr<RHI_VertexBuffer> vertexBuffer)
+	bool IRHI_PipelineState::SetVertexBuffer(shared_ptr<RHI_VertexBuffer>& vertexBuffer)
 	{
 		if (!m_rhiDevice || !vertexBuffer)
 		{
@@ -105,7 +105,7 @@ namespace Directus
 		return vertexBuffer->Bind();
 	}
 
-	bool IRHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler> sampler, unsigned int startSlot)
+	bool IRHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler>& sampler, unsigned int startSlot)
 	{
 		if (!m_rhiDevice || !sampler)
 		{
@@ -175,7 +175,7 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer> constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope)
+	bool IRHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int startSlot, BufferScope_Mode bufferScope)
 	{
 		constantBuffer->Bind(bufferScope, startSlot);
 		return true;
@@ -192,7 +192,7 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetInputLayout(shared_ptr<D3D11_InputLayout> inputLayout)
+	bool IRHI_PipelineState::SetInputLayout(shared_ptr<D3D11_InputLayout>& inputLayout)
 	{
 		if (m_inputLayout == inputLayout->GetInputLayout())
 			return false;

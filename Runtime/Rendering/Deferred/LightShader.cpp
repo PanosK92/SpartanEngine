@@ -19,17 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================================
+//= INCLUDES ================================
 #include "LightShader.h"
 #include "../../Logging/Log.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Light.h"
 #include "../../Core/Settings.h"
 #include "../../RHI/IRHI_Implementation.h"
-#include "../../RHI/D3D11//D3D11_RenderTexture.h"
-#include "../../RHI/D3D11/D3D11_ConstantBuffer.h"
 #include "../../RHI/D3D11/D3D11_Shader.h"
-//===============================================
+//===========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -58,11 +56,11 @@ namespace Directus
 		m_shader->SetInputLayout(Input_PositionTextureTBN);
 
 		// Create matrix buffer
-		m_matrixBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
+		m_matrixBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 		m_matrixBuffer->Create(sizeof(MatrixBufferType));
 
 		// Create misc buffer
-		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
+		m_miscBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 		m_miscBuffer->Create(sizeof(MiscBufferType));
 	}
 
