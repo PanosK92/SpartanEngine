@@ -54,12 +54,13 @@ weak_ptr<Actor> g_actorEmpty;
 
 namespace SceneHelper
 {
-	static Actor* g_hoveredActor	= nullptr;
 	static Engine* g_engine			= nullptr;
 	static Scene* g_scene			= nullptr;
 	static Input* g_input			= nullptr;
-	static DragDropPayload g_payload;
 	static bool g_popupRenameActor	= false;
+	static DragDropPayload g_payload;
+	static Actor* g_actorHovered = nullptr;
+	static weak_ptr<Actor> g_actorCopied;
 }
 
 Widget_Scene::Widget_Scene()
@@ -125,7 +126,7 @@ void Widget_Scene::Tree_Show()
 
 void Widget_Scene::OnTreeBegin()
 {
-	SceneHelper::g_hoveredActor = nullptr;
+	SceneHelper::g_actorHovered = nullptr;
 }
 
 void Widget_Scene::OnTreeEnd()
@@ -164,7 +165,7 @@ void Widget_Scene::Tree_AddActor(Actor* actor)
 	// Manually detect some useful states
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
 	{
-		SceneHelper::g_hoveredActor = actor;
+		SceneHelper::g_actorHovered = actor;
 	}
 
 	HandleDragDrop(actor);	
@@ -195,24 +196,24 @@ void Widget_Scene::HandleClicking()
 		return;	
 
 	// Left click on item - Select
-	if (ImGui::IsMouseClicked(0) && SceneHelper::g_hoveredActor)
+	if (ImGui::IsMouseClicked(0) && SceneHelper::g_actorHovered)
 	{
-		SetSelectedActor(SceneHelper::g_hoveredActor->GetPtrShared());
+		SetSelectedActor(SceneHelper::g_actorHovered->GetPtrShared());
 	}
 
 	// Right click on item - Select and show context menu
 	if (ImGui::IsMouseClicked(1))
 	{
-		if (SceneHelper::g_hoveredActor)
+		if (SceneHelper::g_actorHovered)
 		{			
-			SetSelectedActor(SceneHelper::g_hoveredActor->GetPtrShared());
+			SetSelectedActor(SceneHelper::g_actorHovered->GetPtrShared());
 		}
 
 		ImGui::OpenPopup("##HierarchyContextMenu");
 	}
 
 	// Clicking on empty space - Clear selection
-	if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !SceneHelper::g_hoveredActor)
+	if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !SceneHelper::g_actorHovered)
 	{
 		SetSelectedActor(g_actorEmpty);
 	}
@@ -253,19 +254,31 @@ void Widget_Scene::Popup_ContextMenu()
 	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
 		return;
 
-	if (!m_actorSelected.expired())
-	{
-		if (ImGui::MenuItem("Rename"))
-		{
-			SceneHelper::g_popupRenameActor = true;
-		}
+	bool onActor = !m_actorSelected.expired();
 
-		if (ImGui::MenuItem("Delete", "Delete"))
-		{
-			Action_Actor_Delete(m_actorSelected);
-		}
-		ImGui::Separator();
+	if (onActor) if (ImGui::MenuItem("Copy"))
+	{
+		SceneHelper::g_actorCopied = m_actorSelected;
 	}
+
+	if (ImGui::MenuItem("Paste"))
+	{
+		if (auto actor = SceneHelper::g_actorCopied.lock())
+		{
+			actor->Clone();
+		}
+	}
+
+	if (onActor) if (ImGui::MenuItem("Rename"))
+	{
+		SceneHelper::g_popupRenameActor = true;
+	}
+
+	if (onActor) if (ImGui::MenuItem("Delete", "Delete"))
+	{
+		Action_Actor_Delete(m_actorSelected);
+	}
+	ImGui::Separator();
 
 	// EMPTY
 	if (ImGui::MenuItem("Create Empty"))

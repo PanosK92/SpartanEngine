@@ -83,6 +83,11 @@ namespace Directus
 		m_transform = transform;
 	}
 
+	void Actor::Clone()
+	{
+		LOGF_INFO("Todo: Clone %s", m_name.c_str());
+	}
+
 	void Actor::Start()
 	{
 		// call component Start()
