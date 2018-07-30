@@ -29,9 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class IRHI_PipelineState;
-	class IRHI_Shader;
 	class IRHI_Viewport;
-	class IRHI_Shader;
 
 	struct RHI_Vertex_PosUVTBN;
 	struct RHI_Vertex_PosUVNor;
@@ -138,8 +136,8 @@ namespace Directus
 namespace Directus
 {
 	class D3D11_Device;
-	class D3D11_ConstantBuffer;
 	class D3D11_Shader;
+	class D3D11_ConstantBuffer;
 	class D3D11_InputLayout;
 	class D3D11_Sampler;
 	class D3D11_VertexBuffer;
@@ -148,6 +146,7 @@ namespace Directus
 	class D3D11_Texture;
 
 	typedef D3D11_Device			RHI_Device;
+	typedef D3D11_Shader			RHI_Shader;
 	typedef D3D11_ConstantBuffer	RHI_ConstantBuffer;
 	typedef D3D11_Sampler			RHI_Sampler;
 	typedef D3D11_VertexBuffer		RHI_VertexBuffer;

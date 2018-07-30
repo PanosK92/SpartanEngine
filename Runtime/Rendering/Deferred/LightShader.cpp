@@ -21,12 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "LightShader.h"
-#include "../../Logging/Log.h"
 #include "../../Scene/Components/Transform.h"
-#include "../../Scene/Components/Light.h"
-#include "../../Core/Settings.h"
 #include "../../RHI/IRHI_Implementation.h"
-#include "../../RHI/D3D11/D3D11_Shader.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -51,9 +47,8 @@ namespace Directus
 		m_rhiDevice = rhiDevice;
 
 		// load the vertex and the pixel shader
-		m_shader = make_shared<D3D11_Shader>(m_rhiDevice);
-		m_shader->Compile(filePath);
-		m_shader->SetInputLayout(Input_PositionTextureTBN);
+		m_shader = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shader->Compile(filePath, Input_PositionTextureTBN);
 
 		// Create matrix buffer
 		m_matrixBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);

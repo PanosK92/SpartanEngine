@@ -36,8 +36,8 @@ namespace Directus
 		IRHI_Shader(RHI_Device* rhiDevice);
 		~IRHI_Shader(){}
 
-		void AddDefine(const char* define);
-		bool Compile(const std::string& filePath, Input_Layout inputLayout);
+		virtual void AddDefine(const std::string& define, const std::string& value = "1") = 0;
+		virtual bool Compile(const std::string& filePath, Input_Layout inputLayout) = 0;
 		
 		template <typename T>
 		void AddBuffer(BufferScope_Mode bufferScope)
@@ -49,13 +49,13 @@ namespace Directus
 		}
 
 		void BindBuffer(void* data, unsigned int slot);
-		D3D11_Shader* GetShader() { return m_shader.get(); }
+		virtual void* GetVertexShaderBuffer() = 0;
+		virtual void* GetPixelShaderBuffer() = 0;
 
-	private:	
+	protected:	
 		unsigned int m_bufferSize;
 		BufferScope_Mode m_bufferScope;
 		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
-		std::shared_ptr<D3D11_Shader> m_shader;
 		RHI_Device* m_rhiDevice;
 	};
 }

@@ -44,7 +44,7 @@ namespace Directus
 		void UpdateMiscBuffer(const std::vector<Light*>& lights, Camera* camera);
 		bool IsCompiled();
 
-		std::shared_ptr<D3D11_Shader> GetShader() { return m_shader; }
+		std::shared_ptr<RHI_Shader> GetShader() { return m_shader; }
 
 	private:
 
@@ -92,7 +92,7 @@ namespace Directus
 
 		std::shared_ptr<RHI_ConstantBuffer> m_matrixBuffer;
 		std::shared_ptr<RHI_ConstantBuffer> m_miscBuffer;
-		std::shared_ptr<D3D11_Shader> m_shader;
+		std::shared_ptr<RHI_Shader> m_shader;
 		RHI_Device* m_rhiDevice;
 	};
 }

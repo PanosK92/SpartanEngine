@@ -24,8 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "IRHI_PipelineState.h"
 #include "IRHI_Implementation.h"
-#include "IRHI_Shader.h"
-#include "D3D11\D3D11_Shader.h"
 #include "D3D11\D3D11_InputLayout.h"
 //==================================
 
@@ -47,7 +45,7 @@ namespace Directus
 		m_samplerSlot		= 0;
 	}
 
-	bool IRHI_PipelineState::SetShader(shared_ptr<IRHI_Shader>& shader)
+	bool IRHI_PipelineState::SetShader(shared_ptr<RHI_Shader>& shader)
 	{
 		if (!m_rhiDevice || !shader)
 		{
@@ -55,28 +53,14 @@ namespace Directus
 			return false;
 		}
 
-		if (!SetVertexShader(shader->GetShader()))
-			return false;
+		// TODO: this has to be done outside of this function 
+		SetInputLayout(shader->GetInputLayout());
 
-		if (!SetPixelShader(shader->GetShader()))
-			return false;
+		m_rhiDevice->GetDeviceContext()->VSSetShader((ID3D11VertexShader*)shader->GetVertexShaderBuffer(), nullptr, 0);
+		m_rhiDevice->GetDeviceContext()->PSSetShader((ID3D11PixelShader*)shader->GetPixelShaderBuffer(), nullptr, 0);
 
-		return true;
-	}
-
-	bool IRHI_PipelineState::SetShader(shared_ptr<D3D11_Shader>& shader)
-	{
-		if (!m_rhiDevice || !shader)
-		{
-			LOG_ERROR("RHI_PipelineState::SetVertexShader: Invalid parameters");
-			return false;
-		}
-
-		if (!SetVertexShader(shader.get()))
-			return false;
-
-		if (!SetPixelShader(shader.get()))
-			return false;
+		Profiler::Get().m_bindShaderCount++;
+		Profiler::Get().m_bindShaderCount++;
 
 		return true;
 	}
@@ -132,50 +116,17 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetVertexShader(D3D11_Shader* shader)
-	{
-		if (!m_rhiDevice || !shader)
-		{
-			LOG_ERROR("RHI_PipelineState::SetVertexShader: Invalid parameter");
-			return false;
-		}
-
-		// TODO: this has to be done outside of this function 
-		SetInputLayout(shader->GetInputLayout());
-
-		m_rhiDevice->GetDeviceContext()->VSSetShader(shader->GetVertexShader(), nullptr, 0);
-
-		Profiler::Get().m_bindShaderCount++;
-
-		return true;
-	}
-
-	bool IRHI_PipelineState::SetPixelShader(D3D11_Shader* shader)
-	{
-		if (!m_rhiDevice || !shader)
-		{
-			LOG_ERROR("RHI_PipelineState::SetPixelShader: Invalid parameter");
-			return false;
-		}
-
-		m_rhiDevice->GetDeviceContext()->PSSetShader(shader->GetPixelShader(), nullptr, 0);
-
-		Profiler::Get().m_bindShaderCount++;
-
-		return true;
-	}
-
 	void IRHI_PipelineState::SetTextures(const vector<void*>& shaderResources, unsigned int slot)
 	{
 		m_textures		= shaderResources;
-		m_textureSlots	= slot;
+		m_textureSlot	= slot;
 		m_textureDirty	= true;
 	}
 
 	void IRHI_PipelineState::SetTextures(void* shaderResource, unsigned int slot)
 	{
 		m_textures.emplace_back(shaderResource);
-		m_textureSlots = slot;
+		m_textureSlot = slot;
 		m_textureDirty = true;
 	}
 
@@ -272,10 +223,11 @@ namespace Directus
 		// Textures
 		if (m_textureDirty)
 		{
-			m_rhiDevice->Bind_Textures(m_textureSlots, (unsigned int)m_textures.size(), &m_textures[0]);
+			m_rhiDevice->Bind_Textures(m_textureSlot, (unsigned int)m_textures.size(), &m_textures[0]);
 			m_textures.clear();
 			m_textures.shrink_to_fit();
-			m_textureDirty = false;
+			m_textureSlot	= 0;
+			m_textureDirty	= false;
 		}
 
 		return resultSampler;

@@ -32,7 +32,7 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11_Shader::D3D11_Shader(RHI_Device* rhiDevice)
+	D3D11_Shader::D3D11_Shader(RHI_Device* rhiDevice) : IRHI_Shader(rhiDevice)
 	{
 		m_rhiDevice			= rhiDevice;
 		m_vertexShader		= nullptr;
@@ -53,7 +53,24 @@ namespace Directus
 		SafeRelease(m_pixelShader);
 	}
 
-	bool D3D11_Shader::Compile(const string& filePath)
+	void D3D11_Shader::AddDefine(const string& define, const std::string& value)
+	{
+		m_macrosStr[define] = value;
+
+		D3D_SHADER_MACRO newMacro;
+		for (const auto& macro : m_macrosStr)
+		{
+			if (macro.first == define)
+			{
+				newMacro.Name = macro.first.c_str();
+				newMacro.Definition = macro.second.c_str();
+			}
+		}
+
+		m_macros.push_back(newMacro);
+	}
+
+	bool D3D11_Shader::Compile(const string& filePath, Input_Layout inputLayout)
 	{
 		m_filePath = filePath;
 
@@ -94,6 +111,8 @@ namespace Directus
 
 		SafeRelease(psBlob);
 		//==================================================================
+
+		SetInputLayout(inputLayout);
 
 		return m_compiled;
 	}
@@ -137,24 +156,6 @@ namespace Directus
 		}
 
 		return m_layoutHasBeenSet;
-	}
-
-	// All overloads resolve to this
-	void D3D11_Shader::AddDefine(const string& define, const string& value)
-	{
-		m_macrosStr[define] = value;
-
-		D3D_SHADER_MACRO newMacro;
-		for (const auto& macro : m_macrosStr)
-		{
-			if (macro.first == define)
-			{
-				newMacro.Name			= macro.first.c_str();
-				newMacro.Definition		= macro.second.c_str();
-			}
-		}
-
-		m_macros.push_back(newMacro);
 	}
 
 	//= COMPILATION ================================================================================================================================================================================
