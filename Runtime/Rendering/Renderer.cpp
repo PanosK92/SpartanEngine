@@ -782,7 +782,7 @@ namespace Directus
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderCorrection);
-		m_rhiPipelineState->SetTexture(inTexture->GetShaderResourceView(), 0);
+		m_rhiPipelineState->SetTextures(inTexture->GetShaderResourceView(), 0);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 		m_shaderCorrection->BindBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution()), 0);	
 		m_rhiPipelineState->Bind();
@@ -801,7 +801,7 @@ namespace Directus
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderFXAA);	
-		m_rhiPipelineState->SetTexture(inTexture->GetShaderResourceView(), 0);
+		m_rhiPipelineState->SetTextures(inTexture->GetShaderResourceView(), 0);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 		m_shaderFXAA->BindBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution()), 0);
 		m_rhiPipelineState->Bind();
@@ -820,7 +820,7 @@ namespace Directus
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderSharpening);
-		m_rhiPipelineState->SetTexture(inTexture->GetShaderResourceView(), 0);
+		m_rhiPipelineState->SetTextures(inTexture->GetShaderResourceView(), 0);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 		m_shaderSharpening->BindBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution()), 0);
 		m_rhiPipelineState->Bind();
@@ -840,7 +840,7 @@ namespace Directus
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderChromaticAberration);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
-		m_rhiPipelineState->SetTexture(inTexture->GetShaderResourceView(), 0);
+		m_rhiPipelineState->SetTextures(inTexture->GetShaderResourceView(), 0);
 		m_shaderChromaticAberration->BindBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution()), 0);
 		m_rhiPipelineState->Bind();
 
@@ -852,55 +852,45 @@ namespace Directus
 	void Renderer::Pass_Bloom(shared_ptr<RHI_RenderTexture>& inSourceTexture, shared_ptr<RHI_RenderTexture>& inTextureSpare, shared_ptr<RHI_RenderTexture>& outTexture)
 	{
 		m_rhiDevice->EventBegin("Pass_Bloom");
-
-		// Bright pass
+	
 		SetRenderTarget(inTextureSpare, false);
 
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
-		m_rhiPipelineState->SetShader(m_shaderBloom_Bright);
-		m_rhiPipelineState->SetTexture(inSourceTexture->GetShaderResourceView(), 0);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
-
+		m_rhiPipelineState->SetShader(m_shaderBloom_Bright);
+		m_rhiPipelineState->SetTextures(inSourceTexture->GetShaderResourceView(), 0);		
 		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution());
 		m_shaderBloom_Bright->BindBuffer(&buffer, 0);
-
 		m_rhiPipelineState->Bind();
-
+		// Bright pass
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-
-		// Horizontal Gaussian blur
+	
 		SetRenderTarget(outTexture, false);
 
 		m_rhiPipelineState->SetShader(m_shaderBlurGaussianH);
-		m_rhiPipelineState->SetTexture(inTextureSpare->GetShaderResourceView(), 0);
-		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
+		m_rhiPipelineState->SetTextures(inTextureSpare->GetShaderResourceView(), 0);
 		m_shaderBlurGaussianH->BindBuffer(&buffer, 0);
 		m_rhiPipelineState->Bind();
-
+		// Horizontal Gaussian blur
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
-		// Vertical Gaussian blur
 		SetRenderTarget(inTextureSpare, false);
 
 		m_rhiPipelineState->SetShader(m_shaderBlurGaussianV);
-		m_rhiPipelineState->SetTexture(outTexture->GetShaderResourceView(), 0);
-		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
+		m_rhiPipelineState->SetTextures(outTexture->GetShaderResourceView(), 0);
 		m_shaderBlurGaussianV->BindBuffer(&buffer, 0);
 		m_rhiPipelineState->Bind();
-
+		// Vertical Gaussian blur
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-
-		// Additive blending
+		
 		SetRenderTarget(outTexture, false);
 
 		m_rhiPipelineState->SetShader(m_shaderBloom_BlurBlend);
-		m_rhiPipelineState->SetTexture(inSourceTexture->GetShaderResourceView(), 0);
-		m_rhiPipelineState->SetTexture(inTextureSpare->GetShaderResourceView(), 1);
-		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
+		m_rhiPipelineState->SetTextures({inSourceTexture->GetShaderResourceView(), inTextureSpare->GetShaderResourceView()} , 0);
 		m_shaderBloom_BlurBlend->BindBuffer(&Struct_Matrix(m_wvp_baseOrthographic), 0);	
 		m_rhiPipelineState->Bind();
-
+		// Additive blending
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
@@ -915,12 +905,9 @@ namespace Directus
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetShader(m_shaderBlurBox);
-		m_rhiPipelineState->SetTexture(texture->GetShaderResourceView(), 0); // Shadows are in the alpha channel
+		m_rhiPipelineState->SetTextures(texture->GetShaderResourceView(), 0); // Shadows are in the alpha channel
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
-
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, blurScale);
-		m_shaderBlurBox->BindBuffer(&buffer, 0);
-
+		m_shaderBlurBox->BindBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, blurScale), 0);
 		m_rhiPipelineState->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -1004,7 +991,7 @@ namespace Directus
 
 		// TEXTURE
 		m_rhiPipelineState->SetShader(m_shaderTexture);
-		m_rhiPipelineState->SetTexture(m_gbuffer->GetShaderResource(texType), 0);
+		m_rhiPipelineState->SetTextures(m_gbuffer->GetShaderResource(texType), 0);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 		m_shaderTexture->BindBuffer(&Struct_Matrix(m_wvp_baseOrthographic), 0);		
 		m_rhiPipelineState->Bind();
@@ -1065,7 +1052,7 @@ namespace Directus
 				m_lineRenderer->Update();
 
 				m_rhiPipelineState->SetShader(m_shaderLine);
-				m_rhiPipelineState->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
+				m_rhiPipelineState->SetTextures(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
 				m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 				m_rhiPipelineState->SetVertexBuffer(m_lineRenderer->GetVertexBuffer());
 				m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
@@ -1087,7 +1074,7 @@ namespace Directus
 			m_rhiDevice->EventBegin("Grid");
 
 			m_rhiPipelineState->SetShader(m_shaderGrid);
-			m_rhiPipelineState->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
+			m_rhiPipelineState->SetTextures(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
 			m_rhiPipelineState->SetSampler(m_samplerAnisotropicWrapAlways, 0);
 			m_rhiPipelineState->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipelineState->SetVertexBuffer(m_grid->GetVertexBuffer());
@@ -1151,7 +1138,7 @@ namespace Directus
 					);
 
 					m_rhiPipelineState->SetShader(m_shaderTexture);
-					m_rhiPipelineState->SetTexture(lightTex->GetShaderResource(), 0);
+					m_rhiPipelineState->SetTextures(lightTex->GetShaderResource(), 0);
 					m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 					m_rhiPipelineState->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
 					m_rhiPipelineState->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
@@ -1192,7 +1179,7 @@ namespace Directus
 			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(-Settings::Get().GetResolutionWidth() * 0.5f + 1.0f, Settings::Get().GetResolutionHeight() * 0.5f));
 
 			m_rhiPipelineState->SetShader(m_shaderFont);
-			m_rhiPipelineState->SetTexture(m_font->GetShaderResource(), 0);
+			m_rhiPipelineState->SetTextures(m_font->GetShaderResource(), 0);
 			m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways, 0);
 			m_rhiPipelineState->SetIndexBuffer(m_font->GetIndexBuffer());
 			m_rhiPipelineState->SetVertexBuffer(m_font->GetVertexBuffer());

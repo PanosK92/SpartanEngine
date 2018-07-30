@@ -71,8 +71,8 @@ namespace Directus
 		//===============================================
 
 		//= VIEWPORT =============================================================
-		virtual const IRHI_Viewport& GetViewport() { return IRHI_Viewport(); }
-		virtual void SetViewport(const IRHI_Viewport& viewport){}
+		virtual const IRHI_Viewport& GetViewport() = 0;
+		virtual void SetViewport(const IRHI_Viewport& viewport) = 0;
 		float GetMaxDepth() { return m_maxDepth; }
 
 		void SetBackBufferViewport(float width = 0, float height = 0) 
