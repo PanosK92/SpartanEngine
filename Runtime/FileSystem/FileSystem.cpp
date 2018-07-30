@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "FileSystem.h"
 #include <filesystem>
-#include <locale>
 #include <regex>
 #include "../Logging/Log.h"
 #include <Windows.h>

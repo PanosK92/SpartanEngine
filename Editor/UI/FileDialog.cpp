@@ -23,9 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileDialog.h"
 #include "../ImGui/Source/imgui.h"
 #include "../ImGui/Source/imgui_internal.h"
-#include "FileSystem/FileSystem.h"
-#include "Logging/Log.h"
-#include "EditorHelper.h"
 #include "DragDrop.h"
 //=========================================
 

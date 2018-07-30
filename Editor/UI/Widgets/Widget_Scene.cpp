@@ -19,19 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================================
+//= INCLUDES ==============================
 #include "Widget_Scene.h"
 #include "Widget_Properties.h"
-#include "../../ImGui/Source/imgui.h"
 #include "../DragDrop.h"
-#include "../EditorHelper.h"
-#include "Core/Engine.h"
 #include "Input/Input_Definition.h"
 #include "Input/Input_Implementation.h"
-#include "RHI/IRHI_Definition.h"
-#include "RHI/IRHI_Implementation.h"
-#include "RHI/D3D11//D3D11_RenderTexture.h"
-#include "Scene/Scene.h"
 #include "Scene/Actor.h"
 #include "Scene/Components/Transform.h"
 #include "Scene/Components/Light.h"
@@ -42,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/Camera.h"
 #include "Scene/Components/Constraint.h"
 #include "Scene/Components/Renderable.h"
-//==================================================
+//=========================================
 
 //= NAMESPACES ==========
 using namespace std;

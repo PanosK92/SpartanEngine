@@ -27,13 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Engine.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
-#include "../../Math/Quaternion.h"
 #include "../../IO/FileStream.h"
 #pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
-#include <LinearMath/btMotionState.h>
 #pragma warning(pop)
 //==============================================================
 

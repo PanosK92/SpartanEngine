@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "Module.h"
-#include <scriptbuilder/scriptbuilder.h>
 #include <scriptbuilder/scriptbuilder.cpp>
 #include "Scripting.h"
 #include "../Logging/Log.h"

@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "../Actor.h"
 #include "../../RHI/IRHI_Implementation.h"
-#include "../../Math/Vector3.h"
 #include "../../Resource/ResourceManager.h"
 //=========================================
 

@@ -21,14 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "Scripting.h"
-#include <angelscript.h>
-#include <scriptstdstring/scriptstdstring.h>
 #include <scriptstdstring/scriptstdstring.cpp>
 #include "ScriptInterface.h"
-#include "Module.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
-#include "../Core/Context.h"
 #include "../Core/EventSystem.h"
 #include "../Core/Settings.h"
 //===========================================

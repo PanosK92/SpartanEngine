@@ -22,9 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "Font.h"
 #include "../Resource/ResourceManager.h"
-#include "../RHI/IRHI_Vertex.h"
 #include "../RHI/IRHI_Implementation.h"
-#include "../Core/Settings.h"
 #include "../Core/Stopwatch.h"
 //======================================
 

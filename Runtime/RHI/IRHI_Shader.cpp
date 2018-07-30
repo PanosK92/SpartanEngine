@@ -19,16 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ===================
 #include "IRHI_Shader.h"
 #include "D3D11/D3D11_Shader.h"
 #include "IRHI_Implementation.h"
-#include "IRHI_CommonBuffers.h"
-#include "../Logging/Log.h"
-#include "../Core/Context.h"
-#include "../Scene/Components/Light.h"
-#include "../Scene/Components/Camera.h"
-//=====================================
+//==============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -37,12 +32,11 @@ using namespace std;
 
 namespace Directus
 {
-
 	IRHI_Shader::IRHI_Shader(RHI_Device* rhiDevice)
 	{
 		if (!rhiDevice)
 		{
-			LOG_ERROR("RI_Shader::RI_Shader: Invalid parameter");
+			LOG_ERROR("IRHI_Shader::RI_Shader: Invalid parameter");
 			return;
 		}
 
@@ -69,7 +63,7 @@ namespace Directus
 
 		if (!m_shader->Compile(filePath))
 		{
-			LOGF_ERROR("RI_Shader::Compile: Failed to compile %s", filePath.c_str());
+			LOGF_ERROR("IRHI_Shader::Compile: Failed to compile %s", filePath.c_str());
 			return false;
 		}
 		m_shader->SetInputLayout(inputLayout);
@@ -77,167 +71,19 @@ namespace Directus
 		return true;
 	}
 
-	void IRHI_Shader::Bind_Buffer(const Math::Matrix& matrix, unsigned int slot)
+	void IRHI_Shader::BindBuffer(void* data, unsigned int slot)
 	{
 		if (!m_constantBuffer)
 		{
-			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer");
-			return;
-		}
-
-		auto buffer = static_cast<Struct_Matrix*>(m_constantBuffer->Map());
-		buffer->matrix = matrix;
-
-		// Unmap buffer
-		m_constantBuffer->Unmap();
-
-		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
-	}
-
-	void IRHI_Shader::Bind_Buffer(const Matrix& matrix, const Vector4& vector, unsigned int slot)
-	{
-		if (!m_constantBuffer)
-		{
-			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
+			LOG_WARNING("IRHI_Shader::Bind_Buffer: Uninitialized buffer.");
 			return;
 		}
 
 		// Get a pointer of the buffer
-		auto buffer	= static_cast<Struct_Matrix_Vector4*>(m_constantBuffer->Map());
-
-		// Fill the buffer
-		buffer->matrix	= matrix;
-		buffer->vector4	= vector;
-
-		// Unmap buffer
-		m_constantBuffer->Unmap();
+		auto buffer = m_constantBuffer->Map();	// Get buffer pointer
+		memcpy(buffer, data, m_bufferSize);		// Copy data
+		m_constantBuffer->Unmap();				// Unmap buffer
 
 		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
 	}
-
-	void IRHI_Shader::Bind_Buffer(const Matrix& matrix, const Math::Vector3& vector3, unsigned int slot)
-	{
-		if (!m_constantBuffer)
-		{
-			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
-			return;
-		}
-
-		// Get a pointer of the buffer
-		auto buffer = static_cast<Struct_Matrix_Vector3*>(m_constantBuffer->Map());
-
-		// Fill the buffer
-		buffer->matrix	= matrix;
-		buffer->vector3 = vector3;
-		buffer->padding = 0.0f;
-
-		// Unmap buffer
-		m_constantBuffer->Unmap();
-
-		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
-	}
-
-	void IRHI_Shader::Bind_Buffer(const Matrix& matrix, const Vector2& vector2, unsigned slot)
-	{
-		if (!m_constantBuffer)
-		{
-			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
-			return;
-		}
-
-		// Get a pointer of the buffer
-		auto buffer = static_cast<Struct_Matrix_Vector2*>(m_constantBuffer->Map());
-
-		// Fill the buffer
-		buffer->matrix		= matrix;
-		buffer->vector2		= vector2;
-		buffer->padding		= Vector2::Zero;
-
-		// Unmap buffer
-		m_constantBuffer->Unmap();
-
-		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
-	}
-
-	void IRHI_Shader::Bind_Buffer(const Matrix& mWVPortho, const Matrix& mWVPinv, const Matrix& mView, const Matrix& mProjection, const Vector2& resolution, Light* dirLight, Camera* camera, unsigned slot)
-	{
-		if (!m_constantBuffer)
-		{
-			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
-			return;
-		}
-
-		// Get a pointer of the buffer
-		auto buffer = (Struct_Shadowing*)m_constantBuffer->Map();
-
-		// Fill the buffer
-		buffer->wvpOrtho				= mWVPortho;
-		buffer->wvpInv					= mWVPinv;
-		buffer->view					= mView;
-		buffer->projection				= mProjection;
-		buffer->projectionInverse		= mProjection.Inverted();
-
-		auto mLightView = dirLight->GetViewMatrix();
-		buffer->mLightViewProjection[0] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
-		buffer->mLightViewProjection[1] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
-		buffer->mLightViewProjection[2] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
-
-		buffer->shadowSplits			= Vector4(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1), 0, 0);
-		buffer->lightDir				= dirLight->GetDirection();
-		buffer->shadowMapResolution		= (float)dirLight->ShadowMap_GetResolution();
-		buffer->resolution				= resolution;
-		buffer->nearPlane				= camera->GetNearPlane();
-		buffer->farPlane				= camera->GetFarPlane();
-		buffer->doShadowMapping			= dirLight->GetCastShadows();
-		buffer->padding					= Vector3::Zero;
-
-		// Unmap buffer
-		m_constantBuffer->Unmap();
-
-		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
-	}
-
-	void IRHI_Shader::Bind_Buffer(const Matrix& m1, const Matrix& m2, const Matrix& m3, unsigned int slot)
-	{
-		if (!m_constantBuffer)
-		{
-			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
-			return;
-		}
-
-		auto buffer = static_cast<Struct_Matrix_Matrix_Matrix*>(m_constantBuffer->Map());
-		buffer->m1 = m1;
-		buffer->m2 = m2;
-		buffer->m3 = m3;
-
-		// Unmap buffer
-		m_constantBuffer->Unmap();
-
-		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
-	}
-
-	void IRHI_Shader::Bind_Buffer(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B, unsigned int slot)
-	{
-		if (!m_constantBuffer)
-		{
-			LOG_WARNING("RI_Shader::Bind_Buffer: Uninitialized buffer.");
-			return;
-		}
-
-		// Get a pointer of the buffer
-		auto buffer = static_cast<Struct_Matrix_Vector3_Vector3*>(m_constantBuffer->Map());
-
-		// Fill the buffer
-		buffer->matrix		= matrix;
-		buffer->vector3A	= vector3A;
-		buffer->padding		= 0.0f;
-		buffer->vector3B	= vector3B;
-		buffer->padding2	= 0.0f;
-
-		// Unmap buffer
-		m_constantBuffer->Unmap();
-
-		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
-	}
-
 }

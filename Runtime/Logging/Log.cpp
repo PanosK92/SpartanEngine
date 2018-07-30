@@ -21,13 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Log.h"
-#include <sstream> 
 #include <fstream>
 #include "ILogger.h"
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-#include "../Math/Quaternion.h"
 #include "../Scene/Actor.h"
 #include "../FileSystem/FileSystem.h"
 #include <stdarg.h>

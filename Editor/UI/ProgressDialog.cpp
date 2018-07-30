@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "ProgressDialog.h"
 #include "../ImGui/Source/imgui.h"
-#include "EditorHelper.h"
 //================================
 
 //= NAMESPACES ==========

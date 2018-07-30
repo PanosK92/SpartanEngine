@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "Quaternion.h"
-#include "MathHelper.h"
 #include "../Math/Matrix.h"
 //=========================
 

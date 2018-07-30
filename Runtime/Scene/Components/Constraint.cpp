@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RigidBody.h"
 #include "Transform.h"
 #include "../Actor.h"
-#include "../Scene.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"

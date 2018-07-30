@@ -21,20 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================================================
 #include "Physics.h"
-#include "../Core/Context.h"
 #include "../Core/Engine.h"
-#include "../Core/EngineDefs.h"
-#include "../Logging/Log.h"
 #include "../Core/EventSystem.h"
-#include "PhysicsDebugDraw.h"
-#include "BulletPhysicsHelper.h"
 #include "../Core/Settings.h"
 #include "../Profiling/Profiler.h"
+#include "PhysicsDebugDraw.h"
+#include "BulletPhysicsHelper.h"
 #pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
 #include "BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h"
-#include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
-#include "BulletDynamics/ConstraintSolver/btTypedConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
 #include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
 #pragma warning(pop)

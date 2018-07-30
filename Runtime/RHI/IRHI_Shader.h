@@ -21,19 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ==================
 #include <memory>
-#include <vector>
+#include <string>
 #include "IRHI_Definition.h"
-#include "../Math/Matrix.h"
-#include "../Math/Vector2.h"
-//==========================
+#include "..\Core\EngineDefs.h"
+//=============================
 
 namespace Directus
 {
-	class Light;
-	class Camera;
-
 	class ENGINE_CLASS IRHI_Shader
 	{
 	public:
@@ -52,30 +48,13 @@ namespace Directus
 			m_constantBuffer->Create(m_bufferSize);
 		}
 
-		// Bind - Constant Buffer
-		void Bind_Buffer(const Math::Matrix& matrix, unsigned int slot = 0);
-		void Bind_Buffer(const Math::Matrix& matrix, const Math::Vector4& vector4, unsigned int slot = 0);
-		void Bind_Buffer(const Math::Matrix& matrix, const Math::Vector3& vector3, unsigned int slot = 0);
-		void Bind_Buffer(const Math::Matrix& matrix, const Math::Vector2& vector2, unsigned int slot = 0);
-		void Bind_Buffer(const Math::Matrix& m1, const Math::Matrix& m2, const Math::Matrix& m3, unsigned int slot = 0);
-		void Bind_Buffer(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B, unsigned int slot = 0);
-		void Bind_Buffer(
-			const Math::Matrix& mWVPortho, 
-			const Math::Matrix& mWVPinv, 
-			const Math::Matrix& mView, 
-			const Math::Matrix& mProjection,		
-			const Math::Vector2& vector2,
-			Light* dirLight,
-			Camera* camera,
-			unsigned int slot = 0
-		);
-
+		void BindBuffer(void* data, unsigned int slot);
 		D3D11_Shader* GetShader() { return m_shader.get(); }
 
-	private:
-		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
+	private:	
 		unsigned int m_bufferSize;
 		BufferScope_Mode m_bufferScope;
+		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
 		std::shared_ptr<D3D11_Shader> m_shader;
 		RHI_Device* m_rhiDevice;
 	};

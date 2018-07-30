@@ -19,25 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =============
 #include "IComponent.h"
 #include "Skybox.h"
 #include "Script.h"
 #include "RigidBody.h"
-#include "Renderable.h"
 #include "LineRenderer.h"
-#include "Constraint.h"
 #include "Collider.h"
 #include "Camera.h"
 #include "AudioSource.h"
 #include "AudioListener.h"
-#include "Light.h"
-#include "Transform.h"
 #include "../Actor.h"
-#include "../../Core/Context.h"
-#include "../../Core/GUIDGenerator.h"
-#include "../../FileSystem/FileSystem.h"
-//======================================
+//========================
 
 //= NAMESPACES =====
 using namespace std;

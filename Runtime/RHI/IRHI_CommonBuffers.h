@@ -21,69 +21,145 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ==========================
 #include "../Math/Matrix.h"
 #include "../Math/Vector2.h"
-//==========================
+#include "../Scene/Components/Light.h"
+#include "../Scene/Components/Camera.h"
+//=====================================
 
 namespace Directus
 {
 	struct Struct_Matrix
 	{
-		Math::Matrix matrix;
+		Struct_Matrix(const Math::Matrix& matrix)
+		{
+			m_matrix = matrix;
+		};
+
+		Math::Matrix m_matrix;
 	};
 
 	struct Struct_Matrix_Vector4
 	{
-		Math::Matrix matrix;
-		Math::Vector4 vector4;
+		Struct_Matrix_Vector4(const Math::Matrix& matrix, const Math::Vector4& vector4)
+		{
+			m_matrix	= matrix;
+			m_vector4	= vector4;
+		}
+
+		Math::Matrix m_matrix;
+		Math::Vector4 m_vector4;
 	};
 
 	struct Struct_Matrix_Vector3
 	{
-		Math::Matrix matrix;
-		Math::Vector3 vector3;
-		float padding;
+		Struct_Matrix_Vector3(const Math::Matrix& matrix, const Math::Vector3& vector3)
+		{
+			m_matrix	= matrix;
+			m_vector3	= vector3;
+			m_padding	= 0.0f;
+		}
+
+		Math::Matrix m_matrix;
+		Math::Vector3 m_vector3;
+		float m_padding;
 	};
 
 	struct Struct_Matrix_Vector2
 	{
-		Math::Matrix matrix;
-		Math::Vector2 vector2;
-		Math::Vector2 padding;
+		Struct_Matrix_Vector2(const Math::Matrix& matrix, const Math::Vector2& vector2)
+		{
+			m_matrix	= matrix;
+			m_vector2	= vector2;
+			m_padding	= Math::Vector2::Zero;
+		}
+
+		Math::Matrix m_matrix;
+		Math::Vector2 m_vector2;
+		Math::Vector2 m_padding;
 	};
 
 	struct Struct_Shadowing
 	{
-		Math::Matrix wvpOrtho;
-		Math::Matrix wvpInv;
-		Math::Matrix view;
-		Math::Matrix projection;
-		Math::Matrix projectionInverse;
-		Math::Matrix mLightViewProjection[3];
-		Math::Vector4 shadowSplits;
-		Math::Vector3 lightDir;
-		float shadowMapResolution;
-		Math::Vector2 resolution;
-		float nearPlane;
-		float farPlane;
-		float doShadowMapping;
-		Math::Vector3 padding;
+		Struct_Shadowing
+		(
+			const Math::Matrix& mWVPortho,
+			const Math::Matrix& mWVPinv,
+			const Math::Matrix& mView,
+			const Math::Matrix& mProjection,
+			const Math::Vector2& resolution,
+			Light* dirLight,
+			Camera* camera
+		)
+		{
+			// Fill the buffer
+			m_wvpOrtho			= mWVPortho;
+			m_wvpInv			= mWVPinv;
+			m_view				= mView;
+			m_projection		= mProjection;
+			m_projectionInverse = mProjection.Inverted();
+
+			auto mLightView = dirLight->GetViewMatrix();
+			m_mLightViewProjection[0] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
+			m_mLightViewProjection[1] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
+			m_mLightViewProjection[2] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
+
+			m_shadowSplits			= Math::Vector4(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1), 0, 0);
+			m_lightDir				= dirLight->GetDirection();
+			m_shadowMapResolution	= (float)dirLight->ShadowMap_GetResolution();
+			m_resolution			= resolution;
+			m_nearPlane				= camera->GetNearPlane();
+			m_farPlane				= camera->GetFarPlane();
+			m_doShadowMapping		= dirLight->GetCastShadows();
+			m_padding				= Math::Vector3::Zero;
+		}
+
+		Math::Matrix m_wvpOrtho;
+		Math::Matrix m_wvpInv;
+		Math::Matrix m_view;
+		Math::Matrix m_projection;
+		Math::Matrix m_projectionInverse;
+		Math::Matrix m_mLightViewProjection[3];
+		Math::Vector4 m_shadowSplits;
+		Math::Vector3 m_lightDir;
+		float m_shadowMapResolution;
+		Math::Vector2 m_resolution;
+		float m_nearPlane;
+		float m_farPlane;
+		float m_doShadowMapping;
+		Math::Vector3 m_padding;
 	};
 
 	struct Struct_Matrix_Matrix_Matrix
 	{
-		Math::Matrix m1;
-		Math::Matrix m2;
-		Math::Matrix m3;
+		Struct_Matrix_Matrix_Matrix(const Math::Matrix& matrix1, const Math::Matrix& matrix2, const Math::Matrix& matrix3)
+		{
+			m_matrix1 = matrix1;
+			m_matrix2 = matrix2;
+			m_matrix3 = matrix3;
+		}
+
+		Math::Matrix m_matrix1;
+		Math::Matrix m_matrix2;
+		Math::Matrix m_matrix3;
 	};
 
 	struct Struct_Matrix_Vector3_Vector3
 	{
-		Math::Matrix matrix;
-		Math::Vector3 vector3A;
-		float padding;
-		Math::Vector3 vector3B;
-		float padding2;
+		Struct_Matrix_Vector3_Vector3(const Math::Matrix& matrix, const Math::Vector3& vector3A, const Math::Vector3& vector3B)
+		{
+			m_matrix	= matrix;
+			m_vector3A	= vector3A;
+			m_vector3B	= vector3B;
+			m_padding	= 0.0f;
+			m_padding2	= 0.0f;
+		}
+
+		Math::Matrix m_matrix;
+		Math::Vector3 m_vector3A;
+		float m_padding;
+		Math::Vector3 m_vector3B;
+		float m_padding2;
 	};
 }

@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Transform.h"
-#include "../Scene.h"
 #include "../Actor.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"

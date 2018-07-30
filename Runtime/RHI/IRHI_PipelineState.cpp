@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======================
-#include "..\Logging\Log.h"
-#include "..\Core\Context.h"
 #include "IRHI_PipelineState.h"
 #include "IRHI_Implementation.h"
 #include "IRHI_Shader.h"

@@ -21,14 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
+//= INCLUDES ====================
 #include "TransformationGizmo.h"
 #include "Actor.h"
 #include "Components\Transform.h"
-#include "..\RHI\IRHI_Vertex.h"
-#include "..\Rendering\GeometryUtility.h"
-#include "..\Rendering\Mesh.h"
-//=======================================
+//===============================
 
 //=============================
 using namespace std;

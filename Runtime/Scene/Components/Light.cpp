@@ -24,14 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Camera.h"
 #include "Renderable.h"
-#include "../Scene.h"
-#include "../../Core/Settings.h"
-#include "../../Core/Context.h"
-#include "../../Math/BoundingBox.h"
-#include "../../Math/Frustum.h"
 #include "../../RHI/IRHI_Implementation.h"
 #include "../../Scene/Actor.h"
-#include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 //========================================
 
