@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========================
 #include "Window.h"
 #include "Editor.h"
-#include "ImGui/Source/imgui.h"
 #include "ImGui/imgui_impl_win32.h"
 #include "Input/Input_Definition.h"
 #include "Input/Input_Implementation.h"

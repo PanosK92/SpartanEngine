@@ -22,12 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================================
 #include "IRHI_Texture.h"
 #include "IRHI_Implementation.h"
-#include "../Logging/Log.h"
-#include "../Resource/Import/ImageImporter.h"
 #include "../Resource/Import/DDSTextureImporter.h"
 #include "../Resource/ResourceManager.h"
 #include "../IO/FileStream.h"
-#include "../Core/EngineDefs.h"
 //================================================
 
 //= NAMESPACES =====

@@ -19,16 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES =============================
 #include "ImageImporter.h"
 #include "FreeImagePlus.h"
-#include <functional>
-#include "../../Logging/Log.h"
-#include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
 #include "../../RHI/IRHI_Implementation.h"
-#include "../../Core/Settings.h"
-//=======================================
+//========================================
 
 //= NAMESPACES ================
 using namespace std;

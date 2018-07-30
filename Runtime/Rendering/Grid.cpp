@@ -21,10 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "Grid.h"
-#include "../Core/Context.h"
-#include "../Logging/Log.h"
 #include "../Scene/Components/Transform.h"
-#include "../RHI/IRHI_Vertex.h"
 #include "../RHI/IRHI_Implementation.h"
 //========================================
 

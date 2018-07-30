@@ -19,12 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ======================
 #include "D3D11_VertexBuffer.h"
 #include "../IRHI_Implementation.h"
-#include "../../Logging/Log.h"
-#include "../../Profiling/Profiler.h"
-//===================================
+//=================================
 
 //= NAMESPACES =====
 using namespace std;

@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IconProvider.h"
 #include "../EditorHelper.h"
 #include "Rendering/Renderer.h"
-#include "../EditorHelper.h"
 //============================================
 
 //= NAMESPACES ==========

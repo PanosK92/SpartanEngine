@@ -27,11 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Actor.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/BulletPhysicsHelper.h"
-#include "../../Rendering/Mesh.h"
-#include "../../RHI/IRHI_Vertex.h"
 #include "../../Logging/Log.h"
-#include <BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
 #include <BulletCollision/CollisionShapes/btCapsuleShape.h>

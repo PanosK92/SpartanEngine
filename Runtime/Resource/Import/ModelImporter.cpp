@@ -21,27 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "ModelImporter.h"
-#include <vector>
-#include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/version.h>
 #include "AssimpHelper.h"
-#include "../../Core/Context.h"
 #include "../../Core/Settings.h"
-#include "../../Core/EventSystem.h"
-#include "../../FileSystem/FileSystem.h"
-#include "../../Logging/Log.h"
 #include "../../Rendering/Model.h"
 #include "../../Rendering/Animation.h"
-#include "../../Rendering/Mesh.h"
 #include "../../Rendering/Material.h"
-#include "../../Scene/Scene.h"
-#include "../../Scene/Actor.h"
-#include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Renderable.h"
 #include "../ProgressReport.h"
-#include "../../RHI/IRHI_Implementation.h"
 //============================================
 
 //= NAMESPACES ================

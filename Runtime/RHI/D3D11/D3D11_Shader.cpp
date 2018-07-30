@@ -19,16 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ======================
 #include "D3D11_Shader.h"
 #include "D3D11_InputLayout.h"
 #include "../IRHI_Implementation.h"
-#include "../../Core/EngineDefs.h"
-#include "../../Logging/Log.h"
-#include "../../FileSystem/FileSystem.h"
-#include "../../Profiling/Profiler.h"
 #include <sstream> 
-//======================================
+//=================================
 
 //= NAMESPACES =====
 using namespace std;

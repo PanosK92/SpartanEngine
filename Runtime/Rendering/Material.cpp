@@ -23,10 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Deferred/ShaderVariation.h"
 #include "../RHI/IRHI_Implementation.h"
-#include "../FileSystem/FileSystem.h"
-#include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
-#include "../Logging/Log.h"
 #include "../IO/XmlDocument.h"
 //======================================
 

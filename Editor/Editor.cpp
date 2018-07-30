@@ -21,12 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "Editor.h"
-#include <memory>
-#include "Core/Context.h"
-#include "Core/Settings.h"
 #include "ImGui/imgui_impl_win32.h"
 #include "ImGui/imgui_impl_dx11.h"
-#include "UI/Widgets/Widget.h"
 #include "UI/Widgets/Widget_MenuBar.h"
 #include "UI/Widgets/Widget_Properties.h"
 #include "UI/Widgets/Widget_Console.h"
@@ -36,8 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Toolbar.h"
 #include "UI/IconProvider.h"
 #include "UI/EditorHelper.h"
-#include "RHI/IRHI_Definition.h"
-#include "RHI/IRHI_Implementation.h"
 //=======================================
 
 //= NAMESPACES ==========

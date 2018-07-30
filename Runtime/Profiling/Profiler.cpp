@@ -19,19 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =====================
 #include "Profiler.h"
-#include "../Core/Stopwatch.h"
 #include "../Core/Timer.h"
 #include "../Core/Settings.h"
 #include "../Core/EventSystem.h"
 #include "../Scene/Scene.h"
-#include "../Rendering/Material.h"
 #include "../Rendering/Renderer.h"
-#include "../Resource/ResourceManager.h"
 #include <iomanip>
 #include <sstream>
-//======================================
+//================================
 
 //= NAMESPACES =============
 using namespace std;

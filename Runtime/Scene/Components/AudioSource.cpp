@@ -19,16 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ==============================
 #include "AudioSource.h"
-#include "../../Core/Context.h"
-#include "../../Audio/Audio.h"
-#include "../../FileSystem/FileSystem.h"
 #include "../../IO/FileStream.h"
-#include "../../Math/MathHelper.h"
-#include "../../Audio/AudioClip.h"
 #include "../../Resource/ResourceManager.h"
-//======================================
+//=========================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "FontImporter.h"
 #include "ft2build.h"
-#include FT_FREETYPE_H  
+#include FT_FREETYPE_H 
 #include "../../Logging/Log.h"
 #include "../../Math/MathHelper.h"
 #include "../../Core/Settings.h"
