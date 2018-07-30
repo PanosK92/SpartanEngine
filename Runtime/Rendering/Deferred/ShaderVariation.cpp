@@ -22,10 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "ShaderVariation.h"
 #include "../Material.h"
-#include "../../RHI/D3D11/D3D11_Shader.h"
 #include "../../RHI/IRHI_Implementation.h"
-#include "../../Logging/Log.h"
-#include "../../Core/Settings.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Camera.h"
 //===========================================
@@ -47,11 +44,6 @@ namespace Directus
 		m_shaderFlags	= 0;
 	}
 
-	ShaderVariation::~ShaderVariation()
-	{
-
-	}
-
 	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
 	{
 		m_shaderFlags = shaderFlags;
@@ -62,27 +54,26 @@ namespace Directus
 		}
 
 		// Load and compile the vertex and the pixel shader
-		m_D3D11Shader = make_shared<D3D11_Shader>(m_rhiDevice);
-		AddDefinesBasedOnMaterial(m_D3D11Shader);
-		m_D3D11Shader->Compile(filePath);
-		m_D3D11Shader->SetInputLayout(Input_PositionTextureTBN);
+		m_shader = make_shared<RHI_Shader>(m_rhiDevice);
+		AddDefinesBasedOnMaterial(m_shader);
+		m_shader->Compile(filePath, Input_PositionTextureTBN);
 
 		// Matrix Buffer
-		m_perObjectBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
+		m_perObjectBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 		m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
 
 		// Object Buffer
-		m_materialBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
+		m_materialBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 		m_materialBuffer->Create(sizeof(PerMaterialBufferType));
 
 		// Object Buffer
-		m_miscBuffer = make_shared<D3D11_ConstantBuffer>(m_rhiDevice);
+		m_miscBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 		m_miscBuffer->Create(sizeof(PerFrameBufferType));
 	}
 
 	void ShaderVariation::Bind_PerFrameBuffer(Camera* camera)
 	{
-		if (!m_D3D11Shader || !m_D3D11Shader->IsCompiled())
+		if (!m_shader || !m_shader->IsCompiled())
 		{
 			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per frame buffer.");
 			return;
@@ -111,7 +102,7 @@ namespace Directus
 		if (!material)
 			return;
 
-		if (!m_D3D11Shader->IsCompiled())
+		if (!m_shader->IsCompiled())
 		{
 			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per material buffer.");
 			return;
@@ -152,7 +143,7 @@ namespace Directus
 
 	void ShaderVariation::Bind_PerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
 	{
-		if (!m_D3D11Shader->IsCompiled())
+		if (!m_shader->IsCompiled())
 		{
 			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per object buffer.");
 			return;
@@ -185,7 +176,7 @@ namespace Directus
 		m_perObjectBuffer->Bind(BufferScope_VertexShader, 2);
 	}
 
-	void ShaderVariation::AddDefinesBasedOnMaterial(const shared_ptr<D3D11_Shader>& shader)
+	void ShaderVariation::AddDefinesBasedOnMaterial(const shared_ptr<RHI_Shader>& shader)
 	{
 		if (!shader)
 			return;

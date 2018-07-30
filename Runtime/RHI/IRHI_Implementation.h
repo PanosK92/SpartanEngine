@@ -35,10 +35,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <d3dcompiler.h>
 #include <d3dcommon.h>
 #include "D3D11/D3D11_Device.h"
-#include "D3D11/D3D11_Sampler.h"
-#include "D3D11/D3D11_ConstantBuffer.h"
+#include "D3D11/D3D11_Shader.h"
 #include "D3D11/D3D11_VertexBuffer.h"
 #include "D3D11/D3D11_IndexBuffer.h"
+#include "D3D11/D3D11_ConstantBuffer.h"
+#include "D3D11/D3D11_Sampler.h"
 #include "D3D11/D3D11_Texture.h"
 #include "D3D11/D3D11_RenderTexture.h"
 

@@ -37,10 +37,7 @@ namespace Directus
 		~IRHI_PipelineState(){}
 
 		// Shader
-		bool SetShader(std::shared_ptr<IRHI_Shader>& shader);
-		bool SetShader(std::shared_ptr<D3D11_Shader>& shader);
-		bool SetVertexShader(D3D11_Shader* shader);
-		bool SetPixelShader(D3D11_Shader* shader);
+		bool SetShader(std::shared_ptr<RHI_Shader>& shader);
 
 		// Texture
 		void SetTextures(const std::vector<void*>& shaderResources, unsigned int slot);
@@ -94,7 +91,7 @@ namespace Directus
 
 		// Textures
 		std::vector<void*> m_textures;
-		unsigned int m_textureSlots;
+		unsigned int m_textureSlot;
 		bool m_textureDirty;
 
 		RHI_Device* m_rhiDevice;

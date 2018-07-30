@@ -48,12 +48,11 @@ namespace Directus
 		Variaton_Cubemap	= 1UL << 8,
 	};
 
-
 	class ShaderVariation : public IResource
 	{
 	public:
 		ShaderVariation(Context* context);
-		~ShaderVariation();
+		~ShaderVariation(){}
 
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
@@ -72,22 +71,22 @@ namespace Directus
 		bool HasMaskTexture()			{ return m_shaderFlags & Variaton_Mask; }
 		bool HasCubeMapTexture()		{ return m_shaderFlags & Variaton_Cubemap; }
 
-		std::shared_ptr<D3D11_Shader> GetShader() { return m_D3D11Shader; }
+		std::shared_ptr<RHI_Shader> GetShader() const { return m_shader; }
 
 	private:
-		void AddDefinesBasedOnMaterial(const std::shared_ptr<D3D11_Shader>& shader);
+		void AddDefinesBasedOnMaterial(const std::shared_ptr<RHI_Shader>& shader);
 		
-		//= PROPERTIES =======
+		// PROPERTIES
 		unsigned long m_shaderFlags;
 
-		//= MISC ==================================================
+		// MISC
 		RHI_Device* m_rhiDevice;
-		std::shared_ptr<D3D11_ConstantBuffer> m_perObjectBuffer;
-		std::shared_ptr<D3D11_ConstantBuffer> m_materialBuffer;
-		std::shared_ptr<D3D11_ConstantBuffer> m_miscBuffer;
-		std::shared_ptr<D3D11_Shader> m_D3D11Shader;
+		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;
+		std::shared_ptr<RHI_ConstantBuffer> m_materialBuffer;
+		std::shared_ptr<RHI_ConstantBuffer> m_miscBuffer;
+		std::shared_ptr<RHI_Shader> m_shader;
 
-		//= BUFFERS ===============================================
+		// BUFFERS
 		struct PerFrameBufferType
 		{
 			Math::Vector3 cameraPos;
@@ -118,6 +117,5 @@ namespace Directus
 			Math::Matrix mWorldViewProjection;
 		};
 		PerObjectBufferType perObjectBufferCPU;
-		//==========================================================
 	};
 }

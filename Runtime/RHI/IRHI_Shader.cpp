@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "IRHI_Shader.h"
-#include "D3D11/D3D11_Shader.h"
 #include "IRHI_Implementation.h"
 //==============================
 
@@ -42,33 +41,6 @@ namespace Directus
 
 		m_rhiDevice		= rhiDevice;
 		m_bufferScope	= BufferScope_Global;
-	}
-
-	void IRHI_Shader::AddDefine(const char* define)
-	{
-		if (!m_shader)
-		{
-			m_shader = make_shared<D3D11_Shader>(m_rhiDevice);
-		}
-
-		m_shader->AddDefine(define, "1");
-	}
-
-	bool IRHI_Shader::Compile(const string& filePath, Input_Layout inputLayout)
-	{	
-		if (!m_shader)
-		{
-			m_shader = make_shared<D3D11_Shader>(m_rhiDevice);
-		}
-
-		if (!m_shader->Compile(filePath))
-		{
-			LOGF_ERROR("IRHI_Shader::Compile: Failed to compile %s", filePath.c_str());
-			return false;
-		}
-		m_shader->SetInputLayout(inputLayout);
-
-		return true;
 	}
 
 	void IRHI_Shader::BindBuffer(void* data, unsigned int slot)

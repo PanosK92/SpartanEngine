@@ -21,32 +21,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
 #include <vector>
 #include <set>
 #include <memory>
 #include <map>
 #include "Windows.h" // Used for LPCSTR, must remove
-#include "..\IRHI_Definition.h"
-#include "..\..\Core\EngineDefs.h"
-//================================
+#include "..\IRHI_Shader.h"
+//=========================
 
 namespace Directus
 {
-	class ENGINE_CLASS D3D11_Shader
+	class ENGINE_CLASS D3D11_Shader : public IRHI_Shader
 	{
 	public:
 		D3D11_Shader(RHI_Device* rhiDevice);
 		~D3D11_Shader();
 
-		bool Compile(const std::string& filePath);
-		bool SetInputLayout(Input_Layout inputLayout);
-		void SetName(const std::string& name) { m_name = name; }
-		void AddDefine(const std::string& define, const std::string& value);
-		bool IsCompiled() { return m_compiled; }
-
-		ID3D11VertexShader* GetVertexShader()				{ return m_vertexShader; }
-		ID3D11PixelShader* GetPixelShader()					{ return m_pixelShader; }
+		void AddDefine(const std::string& define, const std::string& value = "1") override;
+		bool Compile(const std::string& filePath, Input_Layout inputLayout) override;
+		
+		void SetName(const std::string& name)				{ m_name = name; }	
+		bool IsCompiled()									{ return m_compiled; }
+		void* GetVertexShaderBuffer() override				{ return m_vertexShader; }
+		void* GetPixelShaderBuffer() override				{ return m_pixelShader; }
 		std::shared_ptr<D3D11_InputLayout> GetInputLayout() { return m_D3D11InputLayout; }
 
 	private:
@@ -55,6 +53,7 @@ namespace Directus
 		bool CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, const std::string& path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
 		bool CompileShader(const std::string& filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut);
 		void LogD3DCompilerError(ID3D10Blob* errorMessage);
+		bool SetInputLayout(Input_Layout inputLayout);
 
 		// REFLECTION
 		using InputLayoutDesc = std::pair<std::vector<D3D11_INPUT_ELEMENT_DESC>, std::vector<std::string>>;
