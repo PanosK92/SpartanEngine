@@ -43,9 +43,9 @@ namespace Directus
 		bool SetPixelShader(D3D11_Shader* shader);
 
 		// Texture
-		bool SetTextures(std::vector<void*> shaderResources, unsigned int slot);
-		bool SetTexture(void* shaderResource, unsigned int slot);
-		
+		void SetTextures(const std::vector<void*>& shaderResources, unsigned int slot);
+		void SetTextures(void* shaderResource, unsigned int slot);
+
 		// Constant, vertex & index buffers
 		bool SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, BufferScope_Mode bufferScope);
 		bool SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
@@ -55,16 +55,16 @@ namespace Directus
 		bool SetSampler(std::shared_ptr<RHI_Sampler>& sampler, unsigned int slot);
 
 		// Primitive topology
-		bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
+		void SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
 
 		// Input layout
 		bool SetInputLayout(std::shared_ptr<D3D11_InputLayout>& inputLayout);
 
 		// Cull mode
-		bool SetCullMode(Cull_Mode cullMode);
+		void SetCullMode(Cull_Mode cullMode);
 
 		// Fill mode
-		bool SetFillMode(Fill_Mode filleMode);
+		void SetFillMode(Fill_Mode filleMode);
 
 		// Bind to the GPU
 		bool Bind();
@@ -91,6 +91,11 @@ namespace Directus
 		RHI_Sampler* m_sampler;
 		unsigned int m_samplerSlot;
 		bool m_samplerDirty;
+
+		// Textures
+		std::vector<void*> m_textures;
+		unsigned int m_textureSlots;
+		bool m_textureDirty;
 
 		RHI_Device* m_rhiDevice;
 	};

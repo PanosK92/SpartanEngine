@@ -107,7 +107,7 @@ namespace Directus
 
 	bool IRHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler>& sampler, unsigned int slot)
 	{
-		if (!m_rhiDevice || !sampler)
+		if (!sampler)
 		{
 			LOG_ERROR("RHI_PipelineState::SetSampler: Invalid parameters");
 			return false;
@@ -165,30 +165,18 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetTextures(vector<void*> shaderResources, unsigned int slot)
+	void IRHI_PipelineState::SetTextures(const vector<void*>& shaderResources, unsigned int slot)
 	{
-		if (!m_rhiDevice || shaderResources.empty())
-		{
-			LOG_ERROR("RHI_PipelineState::SetPixelShader: Invalid parameters");
-			return false;
-		}
-
-		m_rhiDevice->Bind_Textures(slot, (unsigned int)shaderResources.size(), &shaderResources[0]);
-
-		return true;
+		m_textures		= shaderResources;
+		m_textureSlots	= slot;
+		m_textureDirty	= true;
 	}
 
-	bool IRHI_PipelineState::SetTexture(void* shaderResource, unsigned int slot)
+	void IRHI_PipelineState::SetTextures(void* shaderResource, unsigned int slot)
 	{
-		if (!m_rhiDevice || !shaderResource)
-		{
-			LOG_ERROR("RHI_PipelineState::SetPixelShader: Invalid parameters");
-			return false;
-		}
-
-		m_rhiDevice->Bind_Textures(slot, 1, &shaderResource);
-
-		return true;
+		m_textures.emplace_back(shaderResource);
+		m_textureSlots = slot;
+		m_textureDirty = true;
 	}
 
 	bool IRHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, BufferScope_Mode bufferScope)
@@ -197,15 +185,13 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	void IRHI_PipelineState::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
 		if (m_primitiveTopology == primitiveTopology)
-			return false;
+			return;
 	
 		m_primitiveTopology			= primitiveTopology;
 		m_primitiveTopologyDirty	= true;
-
-		return true;
 	}
 
 	bool IRHI_PipelineState::SetInputLayout(shared_ptr<D3D11_InputLayout>& inputLayout)
@@ -220,33 +206,29 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetCullMode(Cull_Mode cullMode)
+	void IRHI_PipelineState::SetCullMode(Cull_Mode cullMode)
 	{
 		if (m_cullMode == cullMode)
-			return false;
+			return;
 
 		m_cullMode		= cullMode;
 		m_cullModeDirty = true;
-
-		return true;
 	}
 
-	bool IRHI_PipelineState::SetFillMode(Fill_Mode fillMode)
+	void IRHI_PipelineState::SetFillMode(Fill_Mode fillMode)
 	{
 		if (m_fillMode == fillMode)
-			return false;
+			return;
 
 		m_fillMode		= fillMode;
 		m_fillModeDirty = true;
-
-		return true;
 	}
 
 	bool IRHI_PipelineState::Bind()
 	{
 		if (!m_rhiDevice)
 		{
-			LOG_ERROR("RHI_PipelineState::Bind: Invalid RHI_Device");
+			LOG_ERROR("IRHI_PipelineState::Bind: Invalid RHI_Device");
 			return false;
 		}
 
@@ -282,8 +264,18 @@ namespace Directus
 		bool resultSampler = true;
 		if (m_samplerDirty)
 		{
-			resultSampler = m_sampler->Bind(m_samplerSlot);
-			m_samplerDirty = false;
+			resultSampler	= m_sampler->Bind(m_samplerSlot);
+			m_sampler		= nullptr;
+			m_samplerDirty	= false;
+		}
+
+		// Textures
+		if (m_textureDirty)
+		{
+			m_rhiDevice->Bind_Textures(m_textureSlots, (unsigned int)m_textures.size(), &m_textures[0]);
+			m_textures.clear();
+			m_textures.shrink_to_fit();
+			m_textureDirty = false;
 		}
 
 		return resultSampler;
