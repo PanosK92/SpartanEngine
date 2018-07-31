@@ -73,7 +73,7 @@ namespace Directus
 		m_anisotropy			= 16;
 		SettingsIO::fileName	= "Directus3D.ini";
 		m_versionPugiXML		= "1.90";
-		m_maxFPS				= 165.0f;
+		m_maxFPS				= FLT_MAX;
 	}
 
 	void Settings::Initialize()
