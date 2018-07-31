@@ -72,16 +72,20 @@ namespace Directus
 			m_meshesRendered			= 0;
 			m_bindBufferIndexCount		= 0;
 			m_bindBufferVertexCount		= 0;
-			m_bindShaderCount			= 0;
-			m_bindUniformBufferCount	= 0;
+			m_bindConstantBufferCount	= 0;
+			m_bindSamplerCount			= 0;
+			m_bindVertexShaderCount		= 0;
+			m_bindPixelShaderCount		= 0;
 		}
 
 		unsigned int m_drawCalls;
 		unsigned int m_meshesRendered;
 		unsigned int m_bindBufferIndexCount;
 		unsigned int m_bindBufferVertexCount;
-		unsigned int m_bindShaderCount;
-		unsigned int m_bindUniformBufferCount;
+		unsigned int m_bindConstantBufferCount;
+		unsigned int m_bindSamplerCount;
+		unsigned int m_bindVertexShaderCount;
+		unsigned int m_bindPixelShaderCount;
 	
 	private:
 		// Converts float to string with specified precision

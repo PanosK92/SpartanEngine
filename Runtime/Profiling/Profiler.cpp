@@ -91,14 +91,16 @@ namespace Directus
 			"FPS:\t\t\t\t\t\t\t"				+ to_string_precision(fps, 2) + "\n"
 			"Frame:\t\t\t\t\t\t\t"				+ to_string_precision(delta, 2) + " ms\n"
 			//"Update:\t\t\t"					+ to_string_precision(delta - m_renderTimeMs, 2) + " ms\n" Must compute this properly
-			"Render:\t\t\t\t\t\t"				+ to_string_precision(GetBlockTimeMs("Directus::Renderer::Render"), 2) + " ms\n"
+			"Render:\t\t\t\t\t\t"				+ to_string_precision(GetBlockTimeMs("Directus::Renderer::Render"), 2) + " ms\n" // this is also not true GPU time
 			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
 			"RHI Draw calls:\t\t\t\t\t"			+ to_string(m_drawCalls) + "\n"
 			"RHI Index buffer bindings:\t\t"	+ to_string(m_bindBufferIndexCount) + "\n"
 			"RHI Vertex buffer bindings:\t"		+ to_string(m_bindBufferVertexCount) + "\n"
-			"RHI Uniform buffer bindings:\t"	+ to_string(m_bindUniformBufferCount) + "\n"
-			"RHI Shader bindings:\t\t\t"		+ to_string(m_bindShaderCount) + "\n"
+			"RHI Constant buffer bindings:\t"	+ to_string(m_bindConstantBufferCount) + "\n"
+			"RHI Sampler bindings:\t\t\t"		+ to_string(m_bindSamplerCount) + "\n"
+			"RHI Vertex Shader bindings:\t"		+ to_string(m_bindVertexShaderCount) + "\n"
+			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_bindPixelShaderCount) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
 			"Materials:\t\t\t\t\t\t"			+ to_string(materials) + "\n"
 			"Shaders:\t\t\t\t\t\t"				+ to_string(shaders);

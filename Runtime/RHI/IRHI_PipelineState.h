@@ -85,7 +85,7 @@ namespace Directus
 		bool m_fillModeDirty;
 
 		// Sampler
-		RHI_Sampler* m_sampler;
+		std::shared_ptr<RHI_Sampler> m_sampler;
 		unsigned int m_samplerSlot;
 		bool m_samplerDirty;
 
@@ -93,6 +93,14 @@ namespace Directus
 		std::vector<void*> m_textures;
 		unsigned int m_textureSlot;
 		bool m_textureDirty;
+
+		// Index buffer
+		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
+		bool m_indexBufferDirty;
+
+		// Vertex buffer
+		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
+		bool m_vertexBufferDirty;
 
 		RHI_Device* m_rhiDevice;
 	};

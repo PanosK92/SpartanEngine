@@ -57,10 +57,9 @@ namespace Directus
 		SetInputLayout(shader->GetInputLayout());
 
 		m_rhiDevice->GetDeviceContext()->VSSetShader((ID3D11VertexShader*)shader->GetVertexShaderBuffer(), nullptr, 0);
+		Profiler::Get().m_bindVertexShaderCount++;
 		m_rhiDevice->GetDeviceContext()->PSSetShader((ID3D11PixelShader*)shader->GetPixelShaderBuffer(), nullptr, 0);
-
-		Profiler::Get().m_bindShaderCount++;
-		Profiler::Get().m_bindShaderCount++;
+		Profiler::Get().m_bindPixelShaderCount++;
 
 		return true;
 	}
@@ -73,8 +72,10 @@ namespace Directus
 			return false;
 		}
 
-		Profiler::Get().m_bindBufferIndexCount++;
-		return indexBuffer->Bind();
+		m_indexBuffer		= indexBuffer;
+		m_indexBufferDirty	= true;
+
+		return true;
 	}
 
 	bool IRHI_PipelineState::SetVertexBuffer(shared_ptr<RHI_VertexBuffer>& vertexBuffer)
@@ -85,8 +86,10 @@ namespace Directus
 			return false;
 		}
 
-		Profiler::Get().m_bindBufferVertexCount++;
-		return vertexBuffer->Bind();
+		m_vertexBuffer		= vertexBuffer;
+		m_vertexBufferDirty = true;
+
+		return true;
 	}
 
 	bool IRHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler>& sampler, unsigned int slot)
@@ -109,7 +112,7 @@ namespace Directus
 			}
 		}
 
-		m_sampler		= sampler.get();
+		m_sampler		= sampler;
 		m_samplerSlot	= slot;
 		m_samplerDirty	= true;
 
@@ -133,6 +136,7 @@ namespace Directus
 	bool IRHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, BufferScope_Mode bufferScope)
 	{
 		constantBuffer->Bind(bufferScope, slot);
+		Profiler::Get().m_bindConstantBufferCount++;
 		return true;
 	}
 
@@ -216,6 +220,7 @@ namespace Directus
 		if (m_samplerDirty)
 		{
 			resultSampler	= m_sampler->Bind(m_samplerSlot);
+			Profiler::Get().m_bindSamplerCount++;
 			m_sampler		= nullptr;
 			m_samplerDirty	= false;
 		}
@@ -230,6 +235,24 @@ namespace Directus
 			m_textureDirty	= false;
 		}
 
-		return resultSampler;
+		// Index buffer
+		bool resultIndexBuffer = true;
+		if (m_indexBufferDirty)
+		{		
+			resultIndexBuffer = m_indexBuffer->Bind();
+			Profiler::Get().m_bindBufferIndexCount++;
+			m_indexBufferDirty = false;
+		}
+
+		// Vertex buffer
+		bool resultVertexBuffer = true;
+		if (m_vertexBufferDirty)
+		{
+			resultVertexBuffer = m_vertexBuffer->Bind();
+			Profiler::Get().m_bindBufferVertexCount++;
+			m_vertexBufferDirty = false;
+		}
+
+		return resultSampler && resultIndexBuffer && resultVertexBuffer;
 	}
 }
