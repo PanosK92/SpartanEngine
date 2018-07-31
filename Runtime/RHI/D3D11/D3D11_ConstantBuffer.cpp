@@ -96,8 +96,6 @@ namespace Directus
 		// re-enable GPU access to the vertex buffer data.
 		m_rhiDevice->GetDeviceContext()->Unmap(m_buffer, 0);
 
-		Profiler::Get().m_bindUniformBufferCount++;
-
 		return true;
 	}
 
