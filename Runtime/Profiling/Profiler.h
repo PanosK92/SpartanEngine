@@ -74,8 +74,9 @@ namespace Directus
 			m_bindBufferVertexCount		= 0;
 			m_bindConstantBufferCount	= 0;
 			m_bindSamplerCount			= 0;
+			m_bindTextureCount			= 0;
 			m_bindVertexShaderCount		= 0;
-			m_bindPixelShaderCount		= 0;
+			m_bindPixelShaderCount		= 0;		
 		}
 
 		unsigned int m_drawCalls;
@@ -84,9 +85,10 @@ namespace Directus
 		unsigned int m_bindBufferVertexCount;
 		unsigned int m_bindConstantBufferCount;
 		unsigned int m_bindSamplerCount;
+		unsigned int m_bindTextureCount;
 		unsigned int m_bindVertexShaderCount;
 		unsigned int m_bindPixelShaderCount;
-	
+		
 	private:
 		// Converts float to string with specified precision
 		std::string to_string_precision(float value, int decimals);

@@ -52,8 +52,8 @@ namespace Directus
 		//===============================================================================================================
 
 		//= RI_DEVICE - VIEWPORT ==============================
-		const IRHI_Viewport& GetViewport() override;
-		void SetViewport(const IRHI_Viewport& viewport) override;
+		const RHI_Viewport& GetViewport() override;
+		void SetViewport(const RHI_Viewport& viewport) override;
 		//=====================================================
 
 		//= RI_DEVICE - RESOLUTION ========================

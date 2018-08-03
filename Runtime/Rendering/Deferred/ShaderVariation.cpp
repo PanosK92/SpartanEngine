@@ -67,11 +67,11 @@ namespace Directus
 		m_materialBuffer->Create(sizeof(PerMaterialBufferType));
 
 		// Object Buffer
-		m_miscBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_miscBuffer->Create(sizeof(PerFrameBufferType));
+		m_perfFrameBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
+		m_perfFrameBuffer->Create(sizeof(PerFrameBufferType));
 	}
 
-	void ShaderVariation::Bind_PerFrameBuffer(Camera* camera)
+	void ShaderVariation::UpdatePerFrameBuffer(Camera* camera)
 	{
 		if (!m_shader || !m_shader->IsCompiled())
 		{
@@ -83,21 +83,18 @@ namespace Directus
 			return;
 
 		//= BUFFER UPDATE ==========================================
-		auto buffer = (PerFrameBufferType*)m_miscBuffer->Map();
+		auto buffer = (PerFrameBufferType*)m_perfFrameBuffer->Map();
 
 		buffer->cameraPos	= camera->GetTransform()->GetPosition();
 		buffer->padding		= 0.0f;
 		buffer->viewport	= Settings::Get().GetResolution();
 		buffer->padding2	= Vector2::Zero;
 		
-		m_miscBuffer->Unmap();
+		m_perfFrameBuffer->Unmap();
 		//==========================================================
-
-		// Set to shader slot
-		m_miscBuffer->Bind(BufferScope_PixelShader, 0);
 	}
 
-	void ShaderVariation::Bind_PerMaterialBuffer(Material* material)
+	void ShaderVariation::UpdatePerMaterialBuffer(Material* material)
 	{
 		if (!material)
 			return;
@@ -136,12 +133,9 @@ namespace Directus
 			m_materialBuffer->Unmap();
 			//===================================================================================================
 		}
-
-		// Set to shader slot
-		m_materialBuffer->Bind(BufferScope_PixelShader, 1);
 	}
 
-	void ShaderVariation::Bind_PerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
+	void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
 	{
 		if (!m_shader->IsCompiled())
 		{
@@ -171,9 +165,6 @@ namespace Directus
 			m_perObjectBuffer->Unmap();
 			//============================================================================================
 		}
-
-		// Set to shader slot
-		m_perObjectBuffer->Bind(BufferScope_VertexShader, 2);
 	}
 
 	void ShaderVariation::AddDefinesBasedOnMaterial(const shared_ptr<RHI_Shader>& shader)

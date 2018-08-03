@@ -21,27 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
-#include "../IRHI_ConstantBuffer.h"
-#include "../../Core/EngineDefs.h"
-//=================================
+//= INCLUDES ===============
+#include "IRHI_Definition.h"
+//==========================
 
 namespace Directus
 {
-	class ENGINE_CLASS D3D11_ConstantBuffer : IRHI_ConstantBuffer
+	class RHI_ConstantBuffer
 	{
 	public:
-		D3D11_ConstantBuffer(RHI_Device* rhiDevice);
-		~D3D11_ConstantBuffer();
+		RHI_ConstantBuffer(RHI_Device* rhiDevice);
+		~RHI_ConstantBuffer();
 
-		bool Create(unsigned int size) override;
-		void* Map() override;
-		bool Unmap() override;
-		bool Bind(BufferScope_Mode bufferScope, unsigned int startSlot) override;
-		void* GetBuffer() override { return m_buffer; }
+		virtual bool Create(unsigned int size);
+		virtual void* Map();
+		virtual bool Unmap();
+		void* GetBuffer() { return m_buffer; }
 
 	private:
 		RHI_Device* m_rhiDevice;
-		ID3D11Buffer* m_buffer;
+		void* m_buffer;
 	};
 }

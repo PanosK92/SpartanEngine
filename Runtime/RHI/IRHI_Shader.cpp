@@ -40,7 +40,7 @@ namespace Directus
 		}
 
 		m_rhiDevice		= rhiDevice;
-		m_bufferScope	= BufferScope_Global;
+		m_bufferScope	= Buffer_Global;
 	}
 
 	void IRHI_Shader::BindBuffer(void* data, unsigned int slot)

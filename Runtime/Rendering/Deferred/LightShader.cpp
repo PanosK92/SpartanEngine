@@ -82,10 +82,6 @@ namespace Directus
 		buffer->mView = mView;
 
 		m_matrixBuffer->Unmap();
-
-		// Set to shader slot
-
-		m_matrixBuffer->Bind(BufferScope_Global, 0);
 	}
 
 	void LightShader::UpdateMiscBuffer(const vector<Light*>& lights, Camera* camera)
@@ -174,9 +170,6 @@ namespace Directus
 
 		// Unmap buffer
 		m_miscBuffer->Unmap();
-
-		// Set to shader slot
-		m_miscBuffer->Bind(BufferScope_Global, 1);
 	}
 
 	bool LightShader::IsCompiled()

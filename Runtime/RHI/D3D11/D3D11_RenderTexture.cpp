@@ -42,7 +42,7 @@ namespace Directus
 		m_nearPlane				= 0.0f;
 		m_farPlane				= 0.0f;
 		m_format				= format;
-		m_viewport				= IRHI_Viewport((float)width, (float)height, m_rhiDevice->GetMaxDepth());
+		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->GetMaxDepth());
 
 		Construct();
 	}

@@ -21,24 +21,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include <memory>
-#include <vector>
+//= INCLUDES ===============
 #include "IRHI_Definition.h"
-//=========================
+//==========================
 
 namespace Directus
 {
-	class IRHI_ConstantBuffer
+	class RHI_Sampler
 	{
 	public:
-		IRHI_ConstantBuffer(RHI_Device* rhiDevice){};
-		~IRHI_ConstantBuffer(){};
+		RHI_Sampler(
+			RHI_Device* rhiDevice,
+			Texture_Sampler_Filter filter					= Texture_Sampler_Anisotropic,
+			Texture_Address_Mode textureAddressMode			= Texture_Address_Wrap,
+			Texture_Comparison_Function comparisonFunction	= Texture_Comparison_Always);
+		~RHI_Sampler();
 
-		virtual bool Create(unsigned int size) = 0;
-		virtual void* Map() = 0;
-		virtual bool Unmap() = 0;
-		virtual bool Bind(BufferScope_Mode bufferScope, unsigned int startSlot) = 0;
-		virtual void* GetBuffer() = 0;
+		Texture_Sampler_Filter GetFilter()					{ return m_filter; }
+		Texture_Address_Mode GetAddressMode()				{ return m_textureAddressMode; }
+		Texture_Comparison_Function GetComparisonFunction() { return m_comparisonFunction; }
+		void* GetBuffer()									{ return m_buffer; }
+
+	private:
+		RHI_Device* m_rhiDevice;
+		void* m_buffer;
+		Texture_Sampler_Filter m_filter;
+		Texture_Address_Mode m_textureAddressMode;
+		Texture_Comparison_Function m_comparisonFunction;
 	};
 }

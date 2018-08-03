@@ -44,7 +44,9 @@ namespace Directus
 		void UpdateMiscBuffer(const std::vector<Light*>& lights, Camera* camera);
 		bool IsCompiled();
 
-		std::shared_ptr<RHI_Shader> GetShader() { return m_shader; }
+		std::shared_ptr<RHI_Shader> GetShader()					{ return m_shader; }
+		std::shared_ptr<RHI_ConstantBuffer> GetMatrixBuffer()	{ return m_matrixBuffer; }
+		std::shared_ptr<RHI_ConstantBuffer> GetMiscBuffer()		{ return m_miscBuffer; }
 
 	private:
 

@@ -28,19 +28,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // RHI (Rendering Hardware Interface)
 namespace Directus
 {
-	class IRHI_PipelineState;
-	class IRHI_Viewport;
+	class RHI_ConstantBuffer;
+	class RHI_Sampler;
+	class RHI_PipelineState;
+	class RHI_Viewport;
 
 	struct RHI_Vertex_PosUVTBN;
 	struct RHI_Vertex_PosUVNor;
 	struct RHI_Vertex_PosUV;
 	struct RHI_Vertex_PosCol;
 
-	enum BufferScope_Mode
+	enum Buffer_Scope
 	{
-		BufferScope_VertexShader,
-		BufferScope_PixelShader,
-		BufferScope_Global
+		Buffer_VertexShader,
+		Buffer_PixelShader,
+		Buffer_Global
 	};
 
 	enum PrimitiveTopology_Mode
@@ -137,9 +139,7 @@ namespace Directus
 {
 	class D3D11_Device;
 	class D3D11_Shader;
-	class D3D11_ConstantBuffer;
 	class D3D11_InputLayout;
-	class D3D11_Sampler;
 	class D3D11_VertexBuffer;
 	class D3D11_IndexBuffer;
 	class D3D11_RenderTexture;
@@ -147,8 +147,6 @@ namespace Directus
 
 	typedef D3D11_Device			RHI_Device;
 	typedef D3D11_Shader			RHI_Shader;
-	typedef D3D11_ConstantBuffer	RHI_ConstantBuffer;
-	typedef D3D11_Sampler			RHI_Sampler;
 	typedef D3D11_VertexBuffer		RHI_VertexBuffer;
 	typedef D3D11_IndexBuffer		RHI_IndexBuffer;
 	typedef D3D11_Texture			RHI_Texture;
