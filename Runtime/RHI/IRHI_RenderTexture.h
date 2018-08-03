@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Matrix.h"
 #include "../../Core/Settings.h"
 #include "IRHI_Definition.h"
-#include "IRHI_Viewport.h"
+#include "RHI_Viewport.h"
 #include <vector>
 //==============================
 
@@ -54,7 +54,7 @@ namespace Directus
 		virtual void* GetDepthStencilView() = 0;
 
 		const Math::Matrix& GetOrthographicProjectionMatrix()	{ return m_orthographicProjectionMatrix; }
-		const IRHI_Viewport& GetViewport()						{ return m_viewport; }
+		const RHI_Viewport& GetViewport()						{ return m_viewport; }
 		bool GetDepthEnabled()									{ return m_depthEnabled; }
 
 	protected:
@@ -64,6 +64,6 @@ namespace Directus
 		float m_nearPlane, m_farPlane;
 		Math::Matrix m_orthographicProjectionMatrix;
 
-		IRHI_Viewport m_viewport;
+		RHI_Viewport m_viewport;
 	};
 }

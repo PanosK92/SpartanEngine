@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ENGINE_CLASS IRHI_Viewport
+	class ENGINE_CLASS RHI_Viewport
 	{
 	public:
-		IRHI_Viewport(float topLeftX, float topLeftY, float width, float height, float minDepth, float maxDepth)
+		RHI_Viewport(float topLeftX, float topLeftY, float width, float height, float minDepth, float maxDepth)
 		{
 			m_topLeftX	= topLeftX;
 			m_topLeftY	= topLeftY;
@@ -41,7 +41,7 @@ namespace Directus
 			m_maxDepth	= maxDepth;
 		}
 
-		IRHI_Viewport(float width = (float)Settings::Get().GetResolutionWidth(), float height = (float)Settings::Get().GetResolutionHeight(), float maxDepth = 1.0f)
+		RHI_Viewport(float width = (float)Settings::Get().GetResolutionWidth(), float height = (float)Settings::Get().GetResolutionHeight(), float maxDepth = 1.0f)
 		{
 			m_topLeftX	= 0.0f;
 			m_topLeftY	= 0.0f;
@@ -51,7 +51,7 @@ namespace Directus
 			m_maxDepth	= 1.0f;
 		}
 
-		~IRHI_Viewport(){}
+		~RHI_Viewport(){}
 
 		float GetTopLeftX() const { return m_topLeftX; }
 		float GetTopLeftY() const { return m_topLeftY; }

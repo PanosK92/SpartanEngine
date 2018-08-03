@@ -38,23 +38,14 @@ OBJ_DIR 			= "../Binaries/Obj"
 -- Library directory
 	libdirs { "../ThirdParty/mvsc141_x64" }
 
--- Debug configuration
-	filter "configurations:Debug"
-		defines { "DEBUG", "COMPILING_LIB" }
-		symbols "On"
-		flags { "MultiProcessorCompile" }
-		
--- Release configuration
-	filter "configurations:Release"
-		defines { "NDEBUG", "COMPILING_LIB" }
-		optimize "Full"
-		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
-		
 -- Solution configuration "Debug"
 	configuration "Debug"
 		targetdir (TARGET_DIR_DEBUG)
 		objdir (OBJ_DIR)
 		debugdir (TARGET_DIR_DEBUG)
+		defines { "DEBUG", "COMPILING_LIB" }
+		symbols "On"
+		flags { "MultiProcessorCompile" }
 		links { "angelscript64_debug" }
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
@@ -69,6 +60,9 @@ OBJ_DIR 			= "../Binaries/Obj"
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (OBJ_DIR)
 		debugdir (TARGET_DIR_RELEASE)
+		defines { "NDEBUG", "COMPILING_LIB" }
+		optimize "Full"
+		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		links { "angelscript64" }
 		links { "assimp" }
 		links { "fmod64_vc" }

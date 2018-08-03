@@ -253,7 +253,7 @@ namespace Directus
 		}
 		//==============================================================================
 
-		m_backBufferViewport = IRHI_Viewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
+		m_backBufferViewport = RHI_Viewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
 		SetViewport(m_backBufferViewport);
 
 		//= DEPTH ======================================================================
@@ -519,16 +519,16 @@ namespace Directus
 		return true;
 	}
 
-	const Directus::IRHI_Viewport& D3D11_Device::GetViewport()
+	const Directus::RHI_Viewport& D3D11_Device::GetViewport()
 	{
 		if (!m_deviceContext)
-			return IRHI_Viewport();
+			return RHI_Viewport();
 
 		UINT viewportCount = 1;
 		D3D11_VIEWPORT viewport;
 		m_deviceContext->RSGetViewports(&viewportCount, &viewport);
 
-		return IRHI_Viewport(
+		return RHI_Viewport(
 			viewport.TopLeftX,
 			viewport.TopLeftY,
 			viewport.Width,
@@ -538,7 +538,7 @@ namespace Directus
 		);
 	}
 
-	void D3D11_Device::SetViewport(const IRHI_Viewport& viewport)
+	void D3D11_Device::SetViewport(const RHI_Viewport& viewport)
 	{
 		if (!m_deviceContext)
 			return;

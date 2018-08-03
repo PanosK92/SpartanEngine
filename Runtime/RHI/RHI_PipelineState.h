@@ -30,26 +30,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ENGINE_CLASS IRHI_PipelineState
+	struct ConstantBufferInfo
+	{
+		ConstantBufferInfo(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
+		{
+			m_constantBuffer	= constantBuffer;
+			m_slot				= slot;
+			m_scope				= scope;
+		}
+		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
+		unsigned int m_slot;
+		Buffer_Scope m_scope;
+	};
+
+	class ENGINE_CLASS RHI_PipelineState
 	{
 	public:
-		IRHI_PipelineState(RHI_Device* rhiDevice);
-		~IRHI_PipelineState(){}
+		RHI_PipelineState(RHI_Device* rhiDevice);
+		~RHI_PipelineState(){}
 
 		// Shader
 		bool SetShader(std::shared_ptr<RHI_Shader>& shader);
 
 		// Texture
-		void SetTextures(const std::vector<void*>& shaderResources, unsigned int slot);
-		void SetTextures(void* shaderResource, unsigned int slot);
+		bool SetTexture(void* shaderResource);
 
 		// Constant, vertex & index buffers
-		bool SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, BufferScope_Mode bufferScope);
+		void SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope);
 		bool SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
 		bool SetVertexBuffer(std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
 
 		// Sampler
-		bool SetSampler(std::shared_ptr<RHI_Sampler>& sampler, unsigned int slot);
+		bool SetSampler(std::shared_ptr<RHI_Sampler>& sampler);
 
 		// Primitive topology
 		void SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
@@ -84,15 +96,13 @@ namespace Directus
 		Fill_Mode m_fillMode;
 		bool m_fillModeDirty;
 
-		// Sampler
-		std::shared_ptr<RHI_Sampler> m_sampler;
-		unsigned int m_samplerSlot;
-		bool m_samplerDirty;
+		// Samplers
+		std::vector<void*> m_samplers;
+		bool m_samplersDirty;
 
 		// Textures
 		std::vector<void*> m_textures;
-		unsigned int m_textureSlot;
-		bool m_textureDirty;
+		bool m_texturesDirty;
 
 		// Index buffer
 		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
@@ -102,6 +112,19 @@ namespace Directus
 		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
 		bool m_vertexBufferDirty;
 
+		// Constant buffers
+		std::vector<ConstantBufferInfo> m_constantBuffersInfo;
+		bool m_constantBufferDirty;
+
+		// Vertex shader
+		void* m_vertexShader;
+		bool m_vertexShaderDirty;
+
+		// Pixel Shader
+		void* m_pixelShader;
+		bool m_pixelShaderDirty;
+
+		// Device
 		RHI_Device* m_rhiDevice;
 	};
 }

@@ -294,26 +294,6 @@ namespace Directus
 		return shader->Cache<ShaderVariation>();
 	}
 
-	const std::vector<void*>& Material::GetShaderResources()
-	{
-		m_shaderResources.clear();
-		m_shaderResources.shrink_to_fit();
-
-		// Must maintain the same order as the way the G-Buffer stage expects them to
-		// Note: this is not efficient, have to do it better
-		#define GET_SR(type) !m_textures[type].expired() ? m_textures[type].lock()->GetShaderResource() : nullptr
-		m_shaderResources.emplace_back(GET_SR(TextureType_Albedo));
-		m_shaderResources.emplace_back(GET_SR(TextureType_Roughness));
-		m_shaderResources.emplace_back(GET_SR(TextureType_Metallic));
-		m_shaderResources.emplace_back(GET_SR(TextureType_Normal));
-		m_shaderResources.emplace_back(GET_SR(TextureType_Height));
-		m_shaderResources.emplace_back(GET_SR(TextureType_Occlusion));
-		m_shaderResources.emplace_back(GET_SR(TextureType_Emission));
-		m_shaderResources.emplace_back(GET_SR(TextureType_Mask));
-
-		return m_shaderResources;
-	}
-
 	void Material::SetMultiplier(TextureType type, float value)
 	{
 		if (type == TextureType_Roughness)

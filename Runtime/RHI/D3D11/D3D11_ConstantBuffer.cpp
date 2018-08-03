@@ -19,10 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
-#include "D3D11_ConstantBuffer.h"
-#include "../IRHI_Implementation.h"
-//=================================
+//= INCLUDES =====================
+#include "../RHI_ConstantBuffer.h"
+#include <d3d11.h>
+#include "D3D11_Device.h"
+#include "../../Logging/Log.h"
+//================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -30,42 +32,46 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11_ConstantBuffer::D3D11_ConstantBuffer(RHI_Device* rhiDevice) : IRHI_ConstantBuffer(rhiDevice)
+	RHI_ConstantBuffer::RHI_ConstantBuffer(RHI_Device* rhiDevice)
 	{
 		m_rhiDevice = rhiDevice;
 		m_buffer	= nullptr;
 	}
 
-	D3D11_ConstantBuffer::~D3D11_ConstantBuffer()
+	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
-		SafeRelease(m_buffer);
+		if (m_buffer)
+		{
+			((ID3D11Buffer*)m_buffer)->Release();
+			m_buffer = nullptr;
+		}
 	}
 
-	bool D3D11_ConstantBuffer::Create(unsigned int size)
+	bool RHI_ConstantBuffer::Create(unsigned int size)
 	{
 		if (!m_rhiDevice->GetDevice())
 			return false;
 
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth = size;
-		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-		bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		bufferDesc.MiscFlags = 0;
-		bufferDesc.StructureByteStride = 0;
+		bufferDesc.ByteWidth			= size;
+		bufferDesc.Usage				= D3D11_USAGE_DYNAMIC;
+		bufferDesc.BindFlags			= D3D11_BIND_CONSTANT_BUFFER;
+		bufferDesc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
+		bufferDesc.MiscFlags			= 0;
+		bufferDesc.StructureByteStride	= 0;
 
-		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, nullptr, (ID3D11Buffer**)&m_buffer);
 		if FAILED(result)
 		{
-			LOG_ERROR("Failed to create constant buffer");
+			LOG_ERROR("RHI_ConstantBuffer::Create: Failed to create constant buffer");
 			return false;
 		}
 
 		return true;
 	}
 
-	void* D3D11_ConstantBuffer::Map()
+	void* RHI_ConstantBuffer::Map()
 	{
 		if (!m_rhiDevice->GetDeviceContext())
 			return nullptr;
@@ -78,44 +84,23 @@ namespace Directus
 
 		// disable GPU access to the vertex buffer data.
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		HRESULT result = m_rhiDevice->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		HRESULT result = m_rhiDevice->GetDeviceContext()->Map((ID3D11Buffer*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to map constant buffer.");
+			LOG_ERROR("RHI_ConstantBuffer::Map: Failed to map constant buffer.");
 			return nullptr;
 		}
 
 		return mappedResource.pData;
 	}
 
-	bool D3D11_ConstantBuffer::Unmap()
+	bool RHI_ConstantBuffer::Unmap()
 	{
 		if (!m_buffer || !m_rhiDevice->GetDeviceContext())
 			return false;
 
 		// re-enable GPU access to the vertex buffer data.
-		m_rhiDevice->GetDeviceContext()->Unmap(m_buffer, 0);
-
-		return true;
-	}
-
-	bool D3D11_ConstantBuffer::Bind(BufferScope_Mode bufferScope, unsigned int startSlot)
-	{
-		if (!m_buffer || !m_rhiDevice->GetDeviceContext())	
-		{
-			LOG_ERROR("D3D11_ConstantBuffer::Bind: Invalid device context");
-			return false;
-		}
-
-		if (bufferScope == BufferScope_VertexShader || bufferScope == BufferScope_Global)
-		{
-			m_rhiDevice->GetDeviceContext()->VSSetConstantBuffers(startSlot, 1, &m_buffer);
-		}
-
-		if (bufferScope == BufferScope_PixelShader || bufferScope == BufferScope_Global)
-		{
-			m_rhiDevice->GetDeviceContext()->PSSetConstantBuffers(startSlot, 1, &m_buffer);
-		}
+		m_rhiDevice->GetDeviceContext()->Unmap((ID3D11Buffer*)m_buffer, 0);
 
 		return true;
 	}

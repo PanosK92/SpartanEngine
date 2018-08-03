@@ -87,7 +87,7 @@ namespace Directus
 
 		// The back-buffer is the final output (should match the display size)
 		void SetBackBufferSize(int width, int height);
-		const IRHI_Viewport& GetViewportBackBuffer();
+		const RHI_Viewport& GetViewportBackBuffer();
 
 		// The actual frame that all rendering takes place (or the viewport window in the editor)
 		void SetResolution(int width, int height);
@@ -237,7 +237,6 @@ namespace Directus
 		//======================================================
 
 		//= MISC ==================================
-		std::vector<void*> m_texArray;
 		ID3D11ShaderResourceView* m_texEnvironment;
 		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
@@ -256,7 +255,7 @@ namespace Directus
 		float m_nearPlane;
 		float m_farPlane;
 		RHI_Device* m_rhiDevice;
-		std::shared_ptr<IRHI_PipelineState> m_rhiPipelineState;
+		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
 		//====================================================
 
 		//= PIPELINE STATE ===================

@@ -55,23 +55,22 @@ namespace Directus
 		unsigned int GetMemoryUsage() override;
 		//==============================================================
 
-		//= TEXTURES =====================================================================
+		//= TEXTURES =============================================================================
 		void SetTexture(const std::weak_ptr<RHI_Texture>& textureWeak, bool autoCache = true);
 		std::weak_ptr<RHI_Texture> GetTextureByType(TextureType type) { return m_textures[type]; }
 		bool HasTextureOfType(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//================================================================================
+		//========================================================================================
 
-		//= SHADER ===========================================================================
+		//= SHADER ==================================================================
 		void AcquireShader();
 		std::weak_ptr<ShaderVariation> FindMatchingShader(unsigned long shaderFlags);
 		std::weak_ptr<ShaderVariation> GetOrCreateShader(unsigned long shaderFlags);
 		std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
 		bool HasShader() { return GetShader().expired() ? false : true; }
-		const std::vector<void*>& GetShaderResources();
-		//====================================================================================
+		//===========================================================================
 
 		//= PROPERTIES ================================================================	
 		unsigned int GetModelID() { return m_modelID; }

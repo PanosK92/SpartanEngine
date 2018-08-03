@@ -22,9 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======================
-#include "IRHI_PipelineState.h"
+#include "RHI_PipelineState.h"
 #include "IRHI_Implementation.h"
 #include "D3D11\D3D11_InputLayout.h"
+#include "RHI_ConstantBuffer.h"
+#include "RHI_Sampler.h"
 //==================================
 
 //= NAMESPACES =====
@@ -33,7 +35,7 @@ using namespace std;
 
 namespace Directus
 {
-	IRHI_PipelineState::IRHI_PipelineState(RHI_Device* rhiDevice)
+	RHI_PipelineState::RHI_PipelineState(RHI_Device* rhiDevice)
 	{
 		m_rhiDevice			= rhiDevice;
 		m_primitiveTopology = PrimitiveTopology_NotAssigned;
@@ -41,34 +43,33 @@ namespace Directus
 		m_inputLayoutBuffer = nullptr;
 		m_cullMode			= Cull_NotAssigned;
 		m_fillMode			= Fill_NotAssigned;
-		m_sampler			= nullptr;
-		m_samplerSlot		= 0;
 	}
 
-	bool IRHI_PipelineState::SetShader(shared_ptr<RHI_Shader>& shader)
+	bool RHI_PipelineState::SetShader(shared_ptr<RHI_Shader>& shader)
 	{
-		if (!m_rhiDevice || !shader)
+		if (!shader)
 		{
-			LOG_ERROR("RHI_PipelineState::SetVertexShader: Invalid parameter");
+			LOG_WARNING("RHI_PipelineState::SetShader: Invalid parameter");
 			return false;
 		}
 
 		// TODO: this has to be done outside of this function 
 		SetInputLayout(shader->GetInputLayout());
 
-		m_rhiDevice->GetDeviceContext()->VSSetShader((ID3D11VertexShader*)shader->GetVertexShaderBuffer(), nullptr, 0);
-		Profiler::Get().m_bindVertexShaderCount++;
-		m_rhiDevice->GetDeviceContext()->PSSetShader((ID3D11PixelShader*)shader->GetPixelShaderBuffer(), nullptr, 0);
-		Profiler::Get().m_bindPixelShaderCount++;
+		m_vertexShader		= shader->GetVertexShaderBuffer();
+		m_vertexShaderDirty	= true;
+
+		m_pixelShader		= shader->GetPixelShaderBuffer();
+		m_pixelShaderDirty	= true;
 
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer>& indexBuffer)
+	bool RHI_PipelineState::SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer>& indexBuffer)
 	{
-		if (!m_rhiDevice || !indexBuffer)
+		if (!indexBuffer)
 		{
-			LOG_WARNING("RHI_PipelineState::SetIndexBuffer: Invalid parameters.");
+			LOG_WARNING("RHI_PipelineState::SetIndexBuffer: Invalid parameter");
 			return false;
 		}
 
@@ -78,11 +79,11 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetVertexBuffer(shared_ptr<RHI_VertexBuffer>& vertexBuffer)
+	bool RHI_PipelineState::SetVertexBuffer(shared_ptr<RHI_VertexBuffer>& vertexBuffer)
 	{
-		if (!m_rhiDevice || !vertexBuffer)
+		if (!vertexBuffer)
 		{
-			LOG_WARNING("RHI_PipelineState::SetVertexBuffer: Invalid parameters.");
+			LOG_WARNING("RHI_PipelineState::SetVertexBuffer: Invalid parameter");
 			return false;
 		}
 
@@ -92,55 +93,36 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler>& sampler, unsigned int slot)
+	bool RHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler>& sampler)
 	{
 		if (!sampler)
 		{
-			LOG_ERROR("RHI_PipelineState::SetSampler: Invalid parameters");
+			LOG_WARNING("RHI_PipelineState::SetSampler: Invalid parameter");
 			return false;
 		}
 
-		if (m_sampler)
-		{
-			// If there is already a sampler bound, make sure there new one is different
-			if (m_sampler->GetAddressMode()			== sampler->GetAddressMode()		&&
-				m_sampler->GetComparisonFunction()	== sampler->GetComparisonFunction() &&
-				m_sampler->GetFilter()				== sampler->GetFilter())
-			{
-				m_samplerDirty	= false;
-				return true;
-			}
-		}
-
-		m_sampler		= sampler;
-		m_samplerSlot	= slot;
-		m_samplerDirty	= true;
+		m_samplers.emplace_back(sampler->GetBuffer());
+		m_samplersDirty = true;
 
 		return true;
 	}
 
-	void IRHI_PipelineState::SetTextures(const vector<void*>& shaderResources, unsigned int slot)
+	bool RHI_PipelineState::SetTexture(void* shaderResource)
 	{
-		m_textures		= shaderResources;
-		m_textureSlot	= slot;
-		m_textureDirty	= true;
-	}
-
-	void IRHI_PipelineState::SetTextures(void* shaderResource, unsigned int slot)
-	{
+		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(shaderResource);
-		m_textureSlot = slot;
-		m_textureDirty = true;
-	}
+		m_texturesDirty	= true;
 
-	bool IRHI_PipelineState::SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, BufferScope_Mode bufferScope)
-	{
-		constantBuffer->Bind(bufferScope, slot);
-		Profiler::Get().m_bindConstantBufferCount++;
 		return true;
 	}
 
-	void IRHI_PipelineState::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	void RHI_PipelineState::SetConstantBuffer(shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
+	{
+		m_constantBuffersInfo.emplace_back(constantBuffer, slot, scope);
+		m_constantBufferDirty = true;
+	}
+
+	void RHI_PipelineState::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
 		if (m_primitiveTopology == primitiveTopology)
 			return;
@@ -149,7 +131,7 @@ namespace Directus
 		m_primitiveTopologyDirty	= true;
 	}
 
-	bool IRHI_PipelineState::SetInputLayout(shared_ptr<D3D11_InputLayout>& inputLayout)
+	bool RHI_PipelineState::SetInputLayout(shared_ptr<D3D11_InputLayout>& inputLayout)
 	{
 		if (m_inputLayout == inputLayout->GetInputLayout())
 			return false;
@@ -161,7 +143,7 @@ namespace Directus
 		return true;
 	}
 
-	void IRHI_PipelineState::SetCullMode(Cull_Mode cullMode)
+	void RHI_PipelineState::SetCullMode(Cull_Mode cullMode)
 	{
 		if (m_cullMode == cullMode)
 			return;
@@ -170,7 +152,7 @@ namespace Directus
 		m_cullModeDirty = true;
 	}
 
-	void IRHI_PipelineState::SetFillMode(Fill_Mode fillMode)
+	void RHI_PipelineState::SetFillMode(Fill_Mode fillMode)
 	{
 		if (m_fillMode == fillMode)
 			return;
@@ -179,12 +161,28 @@ namespace Directus
 		m_fillModeDirty = true;
 	}
 
-	bool IRHI_PipelineState::Bind()
+	bool RHI_PipelineState::Bind()
 	{
 		if (!m_rhiDevice)
 		{
 			LOG_ERROR("IRHI_PipelineState::Bind: Invalid RHI_Device");
 			return false;
+		}
+
+		// Vertex shader
+		if (m_vertexShaderDirty)
+		{
+			m_rhiDevice->GetDeviceContext()->VSSetShader((ID3D11VertexShader*)m_vertexShader, nullptr, 0);
+			Profiler::Get().m_bindVertexShaderCount++;
+			m_vertexShaderDirty = false;
+		}
+
+		// Pixel shader
+		if (m_pixelShaderDirty)
+		{
+			m_rhiDevice->GetDeviceContext()->PSSetShader((ID3D11PixelShader*)m_pixelShader, nullptr, 0);
+			Profiler::Get().m_bindPixelShaderCount++;
+			m_pixelShaderDirty = false;
 		}
 
 		// Primitive topology
@@ -216,23 +214,25 @@ namespace Directus
 		}
 
 		// Sampler
-		bool resultSampler = true;
-		if (m_samplerDirty)
+		if (m_samplersDirty)
 		{
-			resultSampler	= m_sampler->Bind(m_samplerSlot);
+			unsigned int startSlot = 0;
+			m_rhiDevice->GetDeviceContext()->PSSetSamplers(startSlot, m_samplers.size(), (ID3D11SamplerState*const*)&m_samplers[0]);
 			Profiler::Get().m_bindSamplerCount++;
-			m_sampler		= nullptr;
-			m_samplerDirty	= false;
+			m_samplers.clear();
+			m_samplers.shrink_to_fit();
+			m_samplersDirty	= false;
 		}
 
 		// Textures
-		if (m_textureDirty)
+		if (m_texturesDirty)
 		{
-			m_rhiDevice->Bind_Textures(m_textureSlot, (unsigned int)m_textures.size(), &m_textures[0]);
+			unsigned int startSlot = 0;
+			m_rhiDevice->Bind_Textures(startSlot, (unsigned int)m_textures.size(), &m_textures[0]);
 			m_textures.clear();
 			m_textures.shrink_to_fit();
-			m_textureSlot	= 0;
-			m_textureDirty	= false;
+			Profiler::Get().m_bindTextureCount++;
+			m_texturesDirty	= false;
 		}
 
 		// Index buffer
@@ -253,6 +253,31 @@ namespace Directus
 			m_vertexBufferDirty = false;
 		}
 
-		return resultSampler && resultIndexBuffer && resultVertexBuffer;
+		// Constant buffer
+		if (m_constantBufferDirty)
+		{
+			for (const auto& bufferInfo : m_constantBuffersInfo)
+			{
+				auto d3d11Buffer = (ID3D11Buffer*)bufferInfo.m_constantBuffer->GetBuffer();
+
+				if (bufferInfo.m_scope == Buffer_VertexShader || bufferInfo.m_scope == Buffer_Global)
+				{
+					m_rhiDevice->GetDeviceContext()->VSSetConstantBuffers(bufferInfo.m_slot, 1, &d3d11Buffer);
+					Profiler::Get().m_bindConstantBufferCount++;
+				}
+
+				if (bufferInfo.m_scope == Buffer_PixelShader || bufferInfo.m_scope == Buffer_Global)
+				{
+					m_rhiDevice->GetDeviceContext()->PSSetConstantBuffers(bufferInfo.m_slot, 1, &d3d11Buffer);
+					Profiler::Get().m_bindConstantBufferCount++;
+				}
+			}
+			
+			m_constantBuffersInfo.clear();
+			m_constantBuffersInfo.shrink_to_fit();
+			m_constantBufferDirty = false;
+		}
+
+		return resultIndexBuffer && resultVertexBuffer;
 	}
 }

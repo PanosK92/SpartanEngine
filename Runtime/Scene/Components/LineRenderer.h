@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include <memory>
 #include <vector>
-#include "../../RHI/IRHI_Vertex.h"
+#include "../../RHI/RHI_Vertex.h"
 #include "../../RHI/IRHI_Implementation.h"
 //=======================================
 

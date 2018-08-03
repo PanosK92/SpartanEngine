@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =========================
 #include <memory>
 #include "../../Resource/IResource.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Matrix.h"
 #include "../../RHI/IRHI_Definition.h"
-//===================================
+//====================================
 
 namespace Directus
 {
@@ -56,9 +56,9 @@ namespace Directus
 
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
-		void Bind_PerFrameBuffer(Camera* camera);
-		void Bind_PerMaterialBuffer(Material* material);
-		void Bind_PerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
+		void UpdatePerFrameBuffer(Camera* camera);
+		void UpdatePerMaterialBuffer(Material* material);
+		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
 
 		unsigned long GetShaderFlags()	{ return m_shaderFlags; }
 		bool HasAlbedoTexture()			{ return m_shaderFlags & Variaton_Albedo; }
@@ -71,7 +71,10 @@ namespace Directus
 		bool HasMaskTexture()			{ return m_shaderFlags & Variaton_Mask; }
 		bool HasCubeMapTexture()		{ return m_shaderFlags & Variaton_Cubemap; }
 
-		std::shared_ptr<RHI_Shader> GetShader() const { return m_shader; }
+		std::shared_ptr<RHI_ConstantBuffer>& GetPerObjectBuffer()	{ return m_perObjectBuffer; }
+		std::shared_ptr<RHI_ConstantBuffer>& GetMaterialBuffer()	{ return m_materialBuffer; }
+		std::shared_ptr<RHI_ConstantBuffer>& GetPerFrameBuffer()	{ return m_perfFrameBuffer; }
+		std::shared_ptr<RHI_Shader> GetShader() const				{ return m_shader; }
 
 	private:
 		void AddDefinesBasedOnMaterial(const std::shared_ptr<RHI_Shader>& shader);
@@ -83,7 +86,7 @@ namespace Directus
 		RHI_Device* m_rhiDevice;
 		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;
 		std::shared_ptr<RHI_ConstantBuffer> m_materialBuffer;
-		std::shared_ptr<RHI_ConstantBuffer> m_miscBuffer;
+		std::shared_ptr<RHI_ConstantBuffer> m_perfFrameBuffer;
 		std::shared_ptr<RHI_Shader> m_shader;
 
 		// BUFFERS

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "IRHI_Definition.h"
 #include "..\Core\EngineDefs.h"
+#include "RHI_ConstantBuffer.h"
 //=============================
 
 namespace Directus
@@ -40,7 +41,7 @@ namespace Directus
 		virtual bool Compile(const std::string& filePath, Input_Layout inputLayout) = 0;
 		
 		template <typename T>
-		void AddBuffer(BufferScope_Mode bufferScope)
+		void AddBuffer(Buffer_Scope bufferScope)
 		{
 			m_bufferScope = bufferScope;
 			m_bufferSize = sizeof(T);
@@ -54,7 +55,7 @@ namespace Directus
 
 	protected:	
 		unsigned int m_bufferSize;
-		BufferScope_Mode m_bufferScope;
+		Buffer_Scope m_bufferScope;
 		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
 		RHI_Device* m_rhiDevice;
 	};

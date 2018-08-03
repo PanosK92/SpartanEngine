@@ -94,16 +94,17 @@ namespace Directus
 			"Render:\t\t\t\t\t\t"				+ to_string_precision(GetBlockTimeMs("Directus::Renderer::Render"), 2) + " ms\n" // this is also not true GPU time
 			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
+			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
+			"Materials:\t\t\t\t\t\t"			+ to_string(materials) + "\n"
+			"Shaders:\t\t\t\t\t\t"				+ to_string(shaders) + "\n"
 			"RHI Draw calls:\t\t\t\t\t"			+ to_string(m_drawCalls) + "\n"
 			"RHI Index buffer bindings:\t\t"	+ to_string(m_bindBufferIndexCount) + "\n"
 			"RHI Vertex buffer bindings:\t"		+ to_string(m_bindBufferVertexCount) + "\n"
 			"RHI Constant buffer bindings:\t"	+ to_string(m_bindConstantBufferCount) + "\n"
 			"RHI Sampler bindings:\t\t\t"		+ to_string(m_bindSamplerCount) + "\n"
+			"RHI Texture bindings:\t\t\t"		+ to_string(m_bindTextureCount) + "\n"
 			"RHI Vertex Shader bindings:\t"		+ to_string(m_bindVertexShaderCount) + "\n"
-			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_bindPixelShaderCount) + "\n"
-			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
-			"Materials:\t\t\t\t\t\t"			+ to_string(materials) + "\n"
-			"Shaders:\t\t\t\t\t\t"				+ to_string(shaders);
+			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_bindPixelShaderCount);
 
 		m_timeSinceLastUpdate = 0;
 	}

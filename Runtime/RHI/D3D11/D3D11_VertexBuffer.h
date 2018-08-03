@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include <vector>
-#include "../IRHI_Vertex.h"
+#include "../RHI_Vertex.h"
 #include "../IRHI_VertexBuffer.h"
 //===============================
 
