@@ -160,7 +160,7 @@ namespace Directus
 			m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
 			m_shaderSharpening->AddBuffer<Struct_Matrix_Vector2>(Buffer_Global, 0);
 
-			// Sharpening
+			// Chromatic aberration
 			m_shaderChromaticAberration = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
 			m_shaderChromaticAberration->Compile(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
@@ -747,44 +747,42 @@ namespace Directus
 		m_rhiPipelineState->SetIndexBuffer(m_quad->GetIndexBuffer());
 
 		// Keep track of render target swapping
-		bool swaped = false;
-		auto SwapTargets = [&swaped, &inRenderTexture1, &outRenderTexture]()
-		{
-			outRenderTexture.swap(inRenderTexture1);
-			swaped = !swaped;
-		};
+		auto SwapTargets = [&inRenderTexture1, &outRenderTexture]() { outRenderTexture.swap(inRenderTexture1); };
+
+		SwapTargets();
 
 		// BLOOM
 		if (RenderFlags_IsSet(Render_Bloom))
 		{
-			Pass_Bloom(inRenderTexture1, inRenderTexture2, outRenderTexture);
 			SwapTargets();
+			Pass_Bloom(inRenderTexture1, inRenderTexture2, outRenderTexture);
 		}
 
 		// CORRECTION
 		if (RenderFlags_IsSet(Render_Correction))
 		{
-			Pass_Correction(inRenderTexture1, outRenderTexture);
 			SwapTargets();
+			Pass_Correction(inRenderTexture1, outRenderTexture);
 		}
 
 		// FXAA
 		if (RenderFlags_IsSet(Render_FXAA))
 		{
-			Pass_FXAA(inRenderTexture1, outRenderTexture);
 			SwapTargets();
+			Pass_FXAA(inRenderTexture1, outRenderTexture);
 		}
 
 		// CHROMATIC ABERRATION
 		if (RenderFlags_IsSet(Render_ChromaticAberration))
 		{
-			Pass_ChromaticAberration(inRenderTexture1, outRenderTexture);
 			SwapTargets();
+			Pass_ChromaticAberration(inRenderTexture1, outRenderTexture);
 		}
 
 		// SHARPENING
 		if (RenderFlags_IsSet(Render_Sharpening))
 		{
+			SwapTargets();
 			Pass_Sharpening(inRenderTexture1, outRenderTexture);
 		}
 
@@ -882,8 +880,9 @@ namespace Directus
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
 		m_rhiPipelineState->SetShader(m_shaderBloom_Bright);
-		m_rhiPipelineState->SetTexture(inSourceTexture->GetShaderResourceView());		
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution());
+		m_rhiPipelineState->SetTexture(inSourceTexture->GetShaderResourceView());
+		Vector2 computeLuma = Vector2(RenderFlags_IsSet(Render_FXAA) ? 1.0f : 0.0f, 0);
+		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution(), computeLuma);
 		m_shaderBloom_Bright->BindBuffer(&buffer, 0);
 		m_rhiPipelineState->Bind();
 		// Bright pass

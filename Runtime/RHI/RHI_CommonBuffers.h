@@ -75,6 +75,13 @@ namespace Directus
 			m_padding	= Math::Vector2::Zero;
 		}
 
+		Struct_Matrix_Vector2(const Math::Matrix& matrix, const Math::Vector2& vector2, const Math::Vector2& padding)
+		{
+			m_matrix	= matrix;
+			m_vector2	= vector2;
+			m_padding	= padding;
+		}
+
 		Math::Matrix m_matrix;
 		Math::Vector2 m_vector2;
 		Math::Vector2 m_padding;
