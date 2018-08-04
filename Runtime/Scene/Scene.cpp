@@ -89,7 +89,7 @@ namespace Directus
 
 	void Scene::Update()
 	{	
-		PROFILE_FUNCTION_BEGIN();
+		PROFILE_BEGIN_CPU();
 
 		//= DETECT TOGGLING TO GAME MODE =============================
 		if (Engine::EngineMode_IsSet(Engine_Game) && m_isInEditorMode)
@@ -112,7 +112,7 @@ namespace Directus
 
 		ComputeFPS();
 
-		PROFILE_FUNCTION_END();
+		PROFILE_END_CPU();
 	}
 
 	void Scene::Clear()
@@ -380,7 +380,7 @@ namespace Directus
 	//= SCENE RESOLUTION  ===============================================================================
 	void Scene::Resolve()
 	{
-		PROFILE_FUNCTION_BEGIN();
+		PROFILE_BEGIN_CPU();
 
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
@@ -411,7 +411,7 @@ namespace Directus
 			}
 		}
 
-		PROFILE_FUNCTION_END();
+		PROFILE_END_CPU();
 		FIRE_EVENT_DATA(EVENT_SCENE_RESOLVED, m_renderables);
 	}
 	//===================================================================================================

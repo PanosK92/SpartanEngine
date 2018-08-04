@@ -38,6 +38,12 @@ namespace Directus
 	struct RHI_Vertex_PosUV;
 	struct RHI_Vertex_PosCol;
 
+	enum Query_Type
+	{
+		Query_Timestamp,
+		Query_Timestamp_Disjoint
+	};
+
 	enum Buffer_Scope
 	{
 		Buffer_VertexShader,

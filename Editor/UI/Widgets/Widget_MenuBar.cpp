@@ -272,15 +272,22 @@ void Widget_MenuBar::ShowProfiler()
 	ImGui::SetNextWindowSize(ImVec2(600, 600), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Profiler", &Widget_MenuBar_Settings::g_showProfiler, ImGuiWindowFlags_HorizontalScrollbar);
 
-	ImGui::Columns(2, "##MenuBar::ShowProfilerColumns");
-	ImGui::Text("Function"); ImGui::NextColumn();
-	ImGui::Text("Duration"); ImGui::NextColumn();
+	ImGui::Columns(3, "##Widget_MenuBar::ShowProfiler:CPU");
+	ImGui::Text("Function");		ImGui::NextColumn();
+	ImGui::Text("Duration (CPU)");	ImGui::NextColumn();
+	ImGui::Text("Duration (GPU)");	ImGui::NextColumn();
 	ImGui::Separator();
 
-	for (const auto& block : Profiler::Get().GetAllBlocks())
+	auto& cpuBlocks = Profiler::Get().GetTimeBlocks_CPU();
+	auto gpuBlocks	= Profiler::Get().GetTimeBlocks_GPU();
+
+	for (const auto& cpuBlock : cpuBlocks)
 	{
-		ImGui::Text("%s", block.first); ImGui::NextColumn();
-		ImGui::Text("%f ms", block.second.duration); ImGui::NextColumn();	
+		auto& gpuBlock		= gpuBlocks[cpuBlock.first];
+
+		ImGui::Text("%s", cpuBlock.first);				ImGui::NextColumn();
+		ImGui::Text("%f ms", cpuBlock.second.duration);	ImGui::NextColumn();
+		gpuBlock.initialized ? ImGui::Text("%f ms", gpuBlock.duration) : ImGui::Text("N/A"); ImGui::NextColumn();
 	}
 	ImGui::Columns(1);
 

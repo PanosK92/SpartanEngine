@@ -144,7 +144,7 @@ namespace Directus
 		if (!m_initialized)
 			return false;
 
-		PROFILE_FUNCTION_BEGIN();
+		PROFILE_BEGIN_CPU();
 
 		// Update FMOD
 		m_resultFMOD = m_systemFMOD->update();
@@ -178,7 +178,7 @@ namespace Directus
 		}
 		//=============================================================
 
-		PROFILE_FUNCTION_END();
+		PROFILE_END_CPU();
 
 		return true;
 	}

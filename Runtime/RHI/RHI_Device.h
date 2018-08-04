@@ -63,20 +63,27 @@ namespace Directus
 		void SetViewport(const RHI_Viewport& viewport);
 		//===============================================
 
+		//= MISC ============================================================
 		bool EnableDepth(bool enable);
 		bool EnableAlphaBlending(bool enable);
-
 		bool Set_CullMode(Cull_Mode cullMode);
 		bool Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
 		bool Set_FillMode(Fill_Mode fillMode);
 		bool Set_InputLayout(void* inputLayout);
+		//===================================================================
 
-		//= PROFILING ===========================
+		//= EVENTS ==============================
 		void EventBegin(const std::string& name);
 		void EventEnd();
-		void QueryBegin();
-		void QueryEnd();
 		//=======================================
+
+		//= PROFILING ====================================================================
+		bool Profiling_CreateQuery(void** buffer, Query_Type type);
+		void Profiling_QueryStart(void* queryObject);
+		void Profiling_QueryEnd(void* queryObject);
+		void Profiling_GetTimeStamp(void* queryDisjoint);
+		float Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd);
+		//=================================================================================
 
 		bool IsInitialized() { return m_initialized; }
 

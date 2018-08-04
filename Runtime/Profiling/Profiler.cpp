@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include <iomanip>
 #include <sstream>
+#include "../RHI/RHI_Device.h"
 //================================
 
 //= NAMESPACES =============
@@ -39,59 +40,127 @@ namespace Directus
 {
 	Profiler::Profiler()
 	{
-		m_updateFrequencyMs			= 0;
-		m_timeSinceLastUpdate		= 0;
 		m_metrics					= NOT_ASSIGNED;
 		m_scene						= nullptr;
 		m_timer						= nullptr;
 		m_resourceManager			= nullptr;
-		m_renderer					= nullptr;
+		m_gpuProfiling				= true;	// expensive
+		m_cpuProfiling				= true;	// cheap
+		m_profilingFrequencyMs		= 0;
+		m_profilingLastUpdateTime	= 0;
 	}
 
 	void Profiler::Initialize(Context* context)
 	{
-		m_scene				= context->GetSubsystem<Scene>();
-		m_timer				= context->GetSubsystem<Timer>();
-		m_resourceManager	= context->GetSubsystem<ResourceManager>();
-		m_renderer			= context->GetSubsystem<Renderer>();
-		m_updateFrequencyMs = 200;
+		m_scene						= context->GetSubsystem<Scene>();
+		m_timer						= context->GetSubsystem<Timer>();
+		m_resourceManager			= context->GetSubsystem<ResourceManager>();
+		m_rhiDevice					= context->GetSubsystem<Renderer>()->GetRHIDevice();
+		m_profilingFrequencyMs		= 500;
+		m_profilingLastUpdateTime	= m_profilingFrequencyMs;
 
-		// Subscribe to update event
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(UpdateMetrics));
+		// Subscribe to events
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(OnUpdate));
+		SUBSCRIBE_TO_EVENT(EVENT_FRAME_END, EVENT_HANDLER(OnFrameEnd));
+	}
+
+	void Profiler::BeginBlock_CPU(const char* funcName)
+	{
+		if (!m_cpuProfiling || !m_shouldUpdate)
+			return;
+
+		m_timeBlocks_cpu[funcName].start = high_resolution_clock::now();
+	}
+
+	void Profiler::EndBlock_CPU(const char* funcName)
+	{
+		if (!m_cpuProfiling || !m_shouldUpdate)
+			return;
+
+		auto timeBlock = &m_timeBlocks_cpu[funcName];
+
+		timeBlock->end				= high_resolution_clock::now();
+		duration<double, milli> ms	= timeBlock->end - timeBlock->start;
+		timeBlock->duration			= (float)ms.count();
+	}
+
+	void Profiler::BeginBlock_GPU(const char* funcName)
+	{
+		if (!m_gpuProfiling || !m_shouldUpdate)
+			return;
+
+		auto timeBlock = &m_timeBlocks_gpu[funcName];
+
+		if (!timeBlock->initialized)
+		{
+			m_rhiDevice->Profiling_CreateQuery(&timeBlock->query,		Query_Timestamp_Disjoint);
+			m_rhiDevice->Profiling_CreateQuery(&timeBlock->time_start,	Query_Timestamp);
+			m_rhiDevice->Profiling_CreateQuery(&timeBlock->time_end,	Query_Timestamp);
+			timeBlock->initialized = true;
+		}
+
+		m_rhiDevice->Profiling_QueryStart(timeBlock->query);
+		m_rhiDevice->Profiling_GetTimeStamp(timeBlock->time_start);
+	}
+
+	void Profiler::EndBlock_GPU(const char* funcName)
+	{
+		if (!m_gpuProfiling || !m_shouldUpdate)
+			return;
+
+		auto timeBlock = &m_timeBlocks_gpu[funcName];
+
+		m_rhiDevice->Profiling_GetTimeStamp(timeBlock->time_end);
+		m_rhiDevice->Profiling_QueryEnd(timeBlock->query);
 	}
 
 	void Profiler::BeginBlock(const char* funcName)
 	{
-		m_timeBlocks[funcName].start = high_resolution_clock::now();
+		BeginBlock_CPU(funcName);
+		BeginBlock_GPU(funcName);
 	}
 
 	void Profiler::EndBlock(const char* funcName)
 	{
-		m_timeBlocks[funcName].end			= high_resolution_clock::now();
-		duration<double, milli> ms			= m_timeBlocks[funcName].end - m_timeBlocks[funcName].start;
-		m_timeBlocks[funcName].duration		= (float)ms.count();
+		EndBlock_CPU(funcName);
+		EndBlock_GPU(funcName);
+	}
+
+	void Profiler::OnUpdate()
+	{
+		m_profilingLastUpdateTime += m_timer->GetDeltaTimeMs();
+		if (m_profilingLastUpdateTime < m_profilingFrequencyMs)
+			return;
+
+		UpdateMetrics();
+		m_shouldUpdate				= true;
+		m_profilingLastUpdateTime	= 0.0f;
+	}
+
+	void Profiler::OnFrameEnd()
+	{
+		if (!m_shouldUpdate)
+			return;
+
+		for (auto& timeBlock : m_timeBlocks_gpu)
+		{
+			timeBlock.second.duration = m_rhiDevice->Profiling_GetDuration(timeBlock.second.query, timeBlock.second.time_start, timeBlock.second.time_end);
+		}
+
+		m_shouldUpdate = false;
 	}
 
 	void Profiler::UpdateMetrics()
 	{
-		float delta = m_timer->GetDeltaTimeMs();
-
-		m_timeSinceLastUpdate += delta;
-		if (m_timeSinceLastUpdate < m_updateFrequencyMs)
-		{
-			return;
-		}
-
-		float fps		= m_scene->GetFPS();	
-		int textures	= m_resourceManager->GetResourceCountByType(Resource_Texture);	
+		float fps		= m_scene->GetFPS();
+		int textures	= m_resourceManager->GetResourceCountByType(Resource_Texture);
 		int materials	= m_resourceManager->GetResourceCountByType(Resource_Material);
 		int shaders		= m_resourceManager->GetResourceCountByType(Resource_Shader);
 
 		m_metrics =
 			"FPS:\t\t\t\t\t\t\t"				+ to_string_precision(fps, 2) + "\n"
-			"Frame:\t\t\t\t\t\t\t"				+ to_string_precision(delta, 2) + " ms\n"
-			//"Update:\t\t\t"					+ to_string_precision(delta - m_renderTimeMs, 2) + " ms\n" Must compute this properly
-			"Render:\t\t\t\t\t\t"				+ to_string_precision(GetBlockTimeMs("Directus::Renderer::Render"), 2) + " ms\n" // this is also not true GPU time
+			"CPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_timer->GetDeltaTimeMs(), 2) + " ms\n"
+			"Render:\t\t\t\t\t\t"				+ to_string_precision(GetTimeBlockMs_GPU("Directus::Renderer::Render"), 2) + " ms\n"
 			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
@@ -105,8 +174,6 @@ namespace Directus
 			"RHI Texture bindings:\t\t\t"		+ to_string(m_bindTextureCount) + "\n"
 			"RHI Vertex Shader bindings:\t"		+ to_string(m_bindVertexShaderCount) + "\n"
 			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_bindPixelShaderCount);
-
-		m_timeSinceLastUpdate = 0;
 	}
 
 	string Profiler::to_string_precision(float value, int decimals)
