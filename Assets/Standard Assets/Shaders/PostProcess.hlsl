@@ -10,7 +10,7 @@ cbuffer DefaultBuffer
 {
     matrix mTransform;
     float2 resolution;
-    float2 padding;
+    float2 computeLuma;
 };
 
 struct VS_Output
@@ -41,7 +41,8 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
     float2 texelSize 	= float2(1.0f / resolution.x, 1.0f / resolution.y);
 	
 #if PASS_FXAA
-	color.rgb = FXAA(texCoord, texelSize, sourceTexture, bilinearSampler);
+	color.rgb 	= FXAA(texCoord, texelSize, sourceTexture, bilinearSampler);
+	color.a 	= 1.0f;
 #endif
 
 #if PASS_CHROMATIC_ABERRATION
@@ -49,8 +50,7 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_SHARPENING
-	color.rgb 	= LumaSharpen(texCoord, sourceTexture, bilinearSampler, resolution);
-	color.a 	= 1.0f;
+	color.rgb 	= LumaSharpen(texCoord, sourceTexture, bilinearSampler, resolution);	
 #endif
 	
 #if PASS_BLUR_BOX
@@ -68,7 +68,7 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 #if PASS_BRIGHT
 	color 				= sourceTexture.Sample(bilinearSampler, input.uv);
     float luminance 	= dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));	
-	color 				= luminance > 1.0f ? color : float4(0.0f, 0.0f, 0.0f, color.a); // maintain alpha as it holds FXAA luma
+	color 				= luminance > 1.0f ? color : float4(0.0f, 0.0f, 0.0f, computeLuma.x == 1.0f ? color.a : 1.0f); // maintain alpha as it holds FXAA luma
 #endif
 
 #if PASS_BLEND_ADDITIVE
