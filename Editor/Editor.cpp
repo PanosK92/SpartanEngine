@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Toolbar.h"
 #include "UI/IconProvider.h"
 #include "UI/EditorHelper.h"
+#include "RHI/RHI_Device.h"
+#include "Rendering/Renderer.h"
 //=======================================
 
 //= NAMESPACES ==========
@@ -54,9 +56,9 @@ Editor::~Editor()
 void Editor::Initialize(Context* context, void* windowHandle)
 {
 	m_context	= context;
-	m_rhiDevice	= context->GetSubsystem<RHI_Device>();
+	m_rhiDevice	= context->GetSubsystem<Renderer>()->GetRHIDevice();
 
-	if (!((D3D11_Device*)m_rhiDevice)->GetDevice() || !((D3D11_Device*)m_rhiDevice)->GetDeviceContext())
+	if (!m_rhiDevice->GetDevice<ID3D11Device>() || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 	{
 		LOG_ERROR("Editor::Initialize: Rendering device is null");
 		return;
@@ -74,7 +76,7 @@ void Editor::Initialize(Context* context, void* windowHandle)
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplWin32_Init(windowHandle);
-	ImGui_ImplDX11_Init(((D3D11_Device*)m_rhiDevice)->GetDevice(), ((D3D11_Device*)m_rhiDevice)->GetDeviceContext());
+	ImGui_ImplDX11_Init(m_rhiDevice->GetDevice<ID3D11Device>(), m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>());
 
 	IconProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);

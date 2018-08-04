@@ -20,19 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
-#include "Vulkan_Device.h"
-#include "../IRHI_Implementation.h"
 //================================
 
 namespace Directus
 {
-	Vulkan_Device::Vulkan_Device(Context* context) : IRHI_Device(context)
-	{
-
-	}
-
-	Vulkan_Device::~Vulkan_Device()
-	{
-
-	}
+	
 }

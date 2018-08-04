@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Grid.h"
 #include "../Scene/Components/Transform.h"
 #include "../RHI/IRHI_Implementation.h"
+#include "Renderer.h"
 //========================================
 
 //= NAMESPACES ================
@@ -130,7 +131,7 @@ namespace Directus
 		if (!m_context)
 			return false;
 
-		auto rhiDevice = m_context->GetSubsystem<RHI_Device>();
+		auto rhiDevice = m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 
 		m_vertexBuffer.reset();
 		m_indexBuffer.reset();

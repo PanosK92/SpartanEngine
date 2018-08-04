@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/DDSTextureImporter.h"
 #include "../Resource/ResourceManager.h"
 #include "../IO/FileStream.h"
+#include "../Rendering/Renderer.h"
+#include "RHI_Device.h"
 //================================================
 
 //= NAMESPACES =====
@@ -206,13 +208,13 @@ namespace Directus
 		// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
 		if (FileSystem::GetExtensionFromFilePath(filePath) == ".dds")
 		{
-			auto rhiDevice = m_context->GetSubsystem<RHI_Device>();
+			auto rhiDevice = m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 			if (!rhiDevice)
 				return false;
 
 			ID3D11ShaderResourceView* ddsTex = nullptr;
 			wstring widestr = wstring(filePath.begin(), filePath.end());
-			auto hresult = DirectX::CreateDDSTextureFromFile(rhiDevice->GetDevice(), widestr.c_str(), nullptr, &ddsTex);
+			auto hresult = DirectX::CreateDDSTextureFromFile(rhiDevice->GetDevice<ID3D11Device>(), widestr.c_str(), nullptr, &ddsTex);
 			if (FAILED(hresult))
 			{
 				return false;

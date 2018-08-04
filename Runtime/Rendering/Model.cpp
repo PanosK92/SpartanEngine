@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceManager.h"
+#include "Renderer.h"
 //=========================================
 
 //= NAMESPACES ================
@@ -48,7 +49,7 @@ namespace Directus
 		m_normalizedScale	= 1.0f;
 		m_isAnimated		= false;
 		m_resourceManager	= m_context->GetSubsystem<ResourceManager>();
-		m_rhiDevice			= m_context->GetSubsystem<RHI_Device>();
+		m_rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 		m_memoryUsage		= 0;
 		m_mesh				= make_unique<Mesh>();
 	}

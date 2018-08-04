@@ -26,19 +26,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "IRHI_Definition.h"
 #include "..\Core\EngineDefs.h"
+#include "RHI_Viewport.h"
 //=============================
 
 namespace Directus
 {
 	struct ConstantBufferInfo
 	{
-		ConstantBufferInfo(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
+		ConstantBufferInfo(void* buffer, unsigned int slot, Buffer_Scope scope)
 		{
-			m_constantBuffer	= constantBuffer;
-			m_slot				= slot;
-			m_scope				= scope;
+			m_buffer	= buffer;
+			m_slot		= slot;
+			m_scope		= scope;
 		}
-		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
+		void* m_buffer;
 		unsigned int m_slot;
 		Buffer_Scope m_scope;
 	};
@@ -46,7 +47,7 @@ namespace Directus
 	class ENGINE_CLASS RHI_PipelineState
 	{
 	public:
-		RHI_PipelineState(RHI_Device* rhiDevice);
+		RHI_PipelineState(std::shared_ptr<RHI_Device> rhiDevice);
 		~RHI_PipelineState(){}
 
 		// Shader
@@ -74,6 +75,9 @@ namespace Directus
 
 		// Fill mode
 		void SetFillMode(Fill_Mode filleMode);
+
+		// Viewport
+		void SetViewport(float width, float height);
 
 		// Bind to the GPU
 		bool Bind();
@@ -124,7 +128,11 @@ namespace Directus
 		void* m_pixelShader;
 		bool m_pixelShaderDirty;
 
+		// Viewport
+		RHI_Viewport m_viewport;
+		bool m_viewportDirty;
+
 		// Device
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

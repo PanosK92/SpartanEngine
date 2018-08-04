@@ -38,7 +38,7 @@ namespace Directus
 		LightShader();
 		~LightShader();
 
-		void Compile(const std::string& filePath, RHI_Device* rhiDevice);
+		void Compile(const std::string& filePath, std::shared_ptr<RHI_Device> rhiDevice);
 		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mBaseView,
 			const Math::Matrix& mPerspectiveProjection, const Math::Matrix& mOrthographicProjection);
 		void UpdateMiscBuffer(const std::vector<Light*>& lights, Camera* camera);
@@ -95,6 +95,6 @@ namespace Directus
 		std::shared_ptr<RHI_ConstantBuffer> m_matrixBuffer;
 		std::shared_ptr<RHI_ConstantBuffer> m_miscBuffer;
 		std::shared_ptr<RHI_Shader> m_shader;
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

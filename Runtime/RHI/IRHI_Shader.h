@@ -34,17 +34,18 @@ namespace Directus
 	class ENGINE_CLASS IRHI_Shader
 	{
 	public:
-		IRHI_Shader(RHI_Device* rhiDevice);
+		IRHI_Shader(std::shared_ptr<RHI_Device> rhiDevice);
 		~IRHI_Shader(){}
 
 		virtual void AddDefine(const std::string& define, const std::string& value = "1") = 0;
 		virtual bool Compile(const std::string& filePath, Input_Layout inputLayout) = 0;
 		
 		template <typename T>
-		void AddBuffer(Buffer_Scope bufferScope)
+		void AddBuffer(Buffer_Scope bufferScope, unsigned bufferSlot)
 		{
-			m_bufferScope = bufferScope;
-			m_bufferSize = sizeof(T);
+			m_bufferScope	= bufferScope;
+			m_bufferSlot	= bufferSlot;
+			m_bufferSize	= sizeof(T);
 			m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 			m_constantBuffer->Create(m_bufferSize);
 		}
@@ -52,11 +53,15 @@ namespace Directus
 		void BindBuffer(void* data, unsigned int slot);
 		virtual void* GetVertexShaderBuffer() = 0;
 		virtual void* GetPixelShaderBuffer() = 0;
+		std::shared_ptr<RHI_ConstantBuffer>& GetConstantBuffer() { return m_constantBuffer; }
+		unsigned int GetBufferSlot()	{ return m_bufferSlot; }
+		Buffer_Scope GetBufferScope()	{ return m_bufferScope; }
 
 	protected:	
-		unsigned int m_bufferSize;
+		unsigned int m_bufferSize;	
+		unsigned int m_bufferSlot;
 		Buffer_Scope m_bufferScope;
 		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

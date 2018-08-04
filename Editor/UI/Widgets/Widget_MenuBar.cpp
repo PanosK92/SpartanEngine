@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "Widget_MenuBar.h"
 #include "../FileDialog.h"
+#include "Profiling/Profiler.h"
 //=========================
 
 //= NAMESPACES ==========

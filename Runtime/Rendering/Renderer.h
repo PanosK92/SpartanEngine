@@ -71,7 +71,7 @@ namespace Directus
 	class ENGINE_CLASS Renderer : public Subsystem
 	{
 	public:
-		Renderer(Context* context);
+		Renderer(Context* context, void* drawHandle);
 		~Renderer();
 
 		//= Subsystem ============
@@ -107,7 +107,8 @@ namespace Directus
 		//====================================================================================
 
 		void Clear();
-		const std::vector<Actor*>& GetRenderables() { return m_renderables; }
+		const std::vector<Actor*>& GetRenderables()			{ return m_renderables; }
+		const std::shared_ptr<RHI_Device>& GetRHIDevice()	{ return m_rhiDevice; }
 
 	private:
 		void RenderTargets_Create(int width, int height);
@@ -182,13 +183,20 @@ namespace Directus
 
 		const Math::Vector4& GetClearColor();
 
-		std::unique_ptr<GBuffer> m_gbuffer;
-
-		// actorS ========================
+		// Actors ========================
 		std::vector<Actor*> m_renderables;
 		std::vector<Light*> m_lights;
 		Light* m_directionalLight{};
-		//=====================================
+		//================================
+
+		//= MISC ==========================================
+		std::shared_ptr<RHI_Device> m_rhiDevice;
+		std::shared_ptr<RHI_PipelineState> m_pipelineState;
+		std::unique_ptr<GBuffer> m_gbuffer;	
+		std::shared_ptr<RHI_Texture> m_texNoiseMap;
+		std::unique_ptr<Rectangle> m_quad;
+		void* m_texEnvironment;
+		//=================================================
 
 		//= RENDER TEXTURES ====================================
 		std::shared_ptr<RHI_RenderTexture> m_renderTexPing;
@@ -236,12 +244,6 @@ namespace Directus
 		static unsigned long m_flags;
 		//======================================================
 
-		//= MISC ==================================
-		ID3D11ShaderResourceView* m_texEnvironment;
-		std::shared_ptr<RHI_Texture> m_texNoiseMap;
-		std::unique_ptr<Rectangle> m_quad;
-		//=========================================
-		
 		//= PREREQUISITES ====================================
 		Camera* m_camera;
 		Skybox* m_skybox;
@@ -254,7 +256,6 @@ namespace Directus
 		Math::Matrix m_wvp_baseOrthographic;
 		float m_nearPlane;
 		float m_farPlane;
-		RHI_Device* m_rhiDevice;
 		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
 		//====================================================
 

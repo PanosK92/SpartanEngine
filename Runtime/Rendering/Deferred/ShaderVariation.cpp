@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/IRHI_Implementation.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Camera.h"
+#include "../Renderer.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -40,7 +41,7 @@ namespace Directus
 		RegisterResource<ShaderVariation>();
 		//==================================
 
-		m_rhiDevice		= m_context->GetSubsystem<RHI_Device>();
+		m_rhiDevice		= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 		m_shaderFlags	= 0;
 	}
 

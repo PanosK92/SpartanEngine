@@ -42,7 +42,7 @@ namespace Directus
 	class ENGINE_CLASS GBuffer
 	{
 	public:
-		GBuffer(RHI_Device* rhiDevice, int width = Settings::Get().GetResolutionWidth(), int height = Settings::Get().GetResolutionHeight());
+		GBuffer(std::shared_ptr<RHI_Device> rhiDevice, int width = Settings::Get().GetResolutionWidth(), int height = Settings::Get().GetResolutionHeight());
 		~GBuffer();
 
 		bool SetAsRenderTarget();
@@ -51,6 +51,6 @@ namespace Directus
 
 	private:
 		std::map<GBuffer_Texture_Type, std::shared_ptr<RHI_RenderTexture>> m_renderTargets;
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

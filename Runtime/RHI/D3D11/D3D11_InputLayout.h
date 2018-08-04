@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <vector>
+#include <memory>
 #include "../IRHI_Definition.h"
 #include "../../Core/EngineDefs.h"
 //================================
@@ -32,7 +33,7 @@ namespace Directus
 	class ENGINE_CLASS D3D11_InputLayout
 	{
 	public:
-		D3D11_InputLayout(RHI_Device* rhiDevice);
+		D3D11_InputLayout(std::shared_ptr<RHI_Device> rhiDevice);
 		~D3D11_InputLayout();
 
 		Input_Layout GetInputLayout()				{ return m_inputLayout; }
@@ -51,7 +52,7 @@ namespace Directus
 		bool CreatePosTBNDesc(ID3D10Blob* VSBlob);
 		//========================================
 
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 		ID3D11InputLayout* m_ID3D11InputLayout;
 		Input_Layout m_inputLayout;
 		std::vector<D3D11_INPUT_ELEMENT_DESC> m_layoutDesc;

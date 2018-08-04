@@ -129,6 +129,6 @@ namespace Directus
 		unsigned int m_memoryUsage;		
 		bool m_isAnimated;
 		ResourceManager* m_resourceManager;
-		RHI_Device* m_rhiDevice;	
+		std::shared_ptr<RHI_Device> m_rhiDevice;	
 	};
 }

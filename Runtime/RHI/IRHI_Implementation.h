@@ -26,15 +26,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===============================
 
 #ifdef API_D3D11
-#pragma comment(lib, "d3d11.lib")
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "d3dcompiler.lib")
-#pragma comment(lib, "dxguid.lib")
+	#ifdef COMPILING_LIB
+	#pragma comment(lib, "d3d11.lib")
+	#pragma comment(lib, "dxgi.lib")
+	#pragma comment(lib, "d3dcompiler.lib")
+	#pragma comment(lib, "dxguid.lib")
+	#endif
 #include <d3d11.h>
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
 #include <d3dcommon.h>
-#include "D3D11/D3D11_Device.h"
 #include "D3D11/D3D11_Shader.h"
 #include "D3D11/D3D11_VertexBuffer.h"
 #include "D3D11/D3D11_IndexBuffer.h"
