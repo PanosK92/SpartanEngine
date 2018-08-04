@@ -26,10 +26,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <map>
 #include <chrono>
+#include <memory>
 //=============================
 
-#define PROFILE_FUNCTION_BEGIN()	Directus::Profiler::Get().BeginBlock(__FUNCTION__)
-#define PROFILE_FUNCTION_END()		Directus::Profiler::Get().EndBlock(__FUNCTION__)
+#define PROFILE_BEGIN_CPU() Directus::Profiler::Get().BeginBlock_CPU(__FUNCTION__);
+#define PROFILE_END_CPU()	Directus::Profiler::Get().EndBlock_CPU(__FUNCTION__);
+#define PROFILE_BEGIN()		Directus::Profiler::Get().BeginBlock(__FUNCTION__);
+#define PROFILE_END()		Directus::Profiler::Get().EndBlock(__FUNCTION__);
 
 namespace Directus
 {
@@ -37,13 +40,22 @@ namespace Directus
 	class Scene;
 	class Timer;
 	class ResourceManager;
-	class Renderer;
+	class RHI_Device;
 
-	struct Block
+	struct TimeBlock_CPU
 	{
 		std::chrono::steady_clock::time_point start;
 		std::chrono::steady_clock::time_point end;
-		float duration;
+		float duration = 0.0f;
+	};
+
+	struct TimeBlock_GPU
+	{
+		void* query;
+		void* time_start;
+		void* time_end;
+		float duration		= 0.0f;
+		bool initialized	= false;
 	};
 
 	class ENGINE_CLASS Profiler
@@ -59,13 +71,29 @@ namespace Directus
 
 		void Initialize(Context* context);
 
+		// Multi-timing
 		void BeginBlock(const char* funcName);
 		void EndBlock(const char* funcName);
-		float GetBlockTimeMs(const char* funcName) { return m_timeBlocks[funcName].duration; }
-		const auto& GetAllBlocks() { return m_timeBlocks; }
-		void UpdateMetrics();
-		const std::string& GetMetrics() { return m_metrics; }
 
+		// CPU timing
+		void BeginBlock_CPU(const char* funcName);
+		void EndBlock_CPU(const char* funcName);
+
+		// GPU timing
+		void BeginBlock_GPU(const char* funcName);
+		void EndBlock_GPU(const char* funcName);
+
+		void OnUpdate();
+		void OnFrameEnd();
+
+		void SetProfilingEnabled_CPU(bool enabled)		{ m_cpuProfiling = enabled; }
+		void SetProfilingEnabled_GPU(bool enabled)		{ m_gpuProfiling = enabled; }
+		const std::string& GetMetrics()					{ return m_metrics; }
+		float GetTimeBlockMs_CPU(const char* funcName)	{ return m_timeBlocks_cpu[funcName].duration; }
+		float GetTimeBlockMs_GPU(const char* funcName)	{ return m_timeBlocks_gpu[funcName].duration; }
+		const auto& GetTimeBlocks_CPU()					{ return m_timeBlocks_cpu; }
+		const auto& GetTimeBlocks_GPU()					{ return m_timeBlocks_gpu; }
+		
 		void Reset()
 		{
 			m_drawCalls					= 0;
@@ -90,21 +118,28 @@ namespace Directus
 		unsigned int m_bindPixelShaderCount;
 		
 	private:
+		void UpdateMetrics();
 		// Converts float to string with specified precision
 		std::string to_string_precision(float value, int decimals);
 
-		// Timings
-		std::map<const char*, Block> m_timeBlocks;
+		// Profiling options
+		bool m_gpuProfiling;
+		bool m_cpuProfiling;
+		float m_profilingFrequencyMs;
+		float m_profilingLastUpdateTime;
+
+		// Time blocks
+		std::map<const char*, TimeBlock_CPU> m_timeBlocks_cpu;
+		std::map<const char*, TimeBlock_GPU> m_timeBlocks_gpu;
 
 		// Misc
-		float m_updateFrequencyMs;
-		float m_timeSinceLastUpdate;
 		std::string m_metrics;
+		bool m_shouldUpdate;
 
 		// Dependencies
 		Scene* m_scene;
 		Timer* m_timer;
 		ResourceManager* m_resourceManager;
-		Renderer* m_renderer;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

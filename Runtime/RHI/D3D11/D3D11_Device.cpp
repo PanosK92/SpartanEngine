@@ -33,25 +33,25 @@ namespace Directus
 {
 	namespace D3D11_Internals
 	{
-		static ID3D11Device* m_device;
-		static ID3D11DeviceContext* m_deviceContext;
-		static IDXGISwapChain* m_swapChain;
-		static ID3D11RenderTargetView* m_renderTargetView;
-		static unsigned int m_displayModeCount;
-		static unsigned int m_refreshRateNumerator;
-		static unsigned int m_refreshRateDenominator;
-		static DXGI_MODE_DESC* m_displayModeList;
-		static ID3D11Texture2D* m_depthStencilBuffer;
-		static ID3D11DepthStencilState* m_depthStencilStateEnabled;
-		static ID3D11DepthStencilState* m_depthStencilStateDisabled;
-		static ID3D11DepthStencilView* m_depthStencilView;
-		static ID3D11RasterizerState* m_rasterStateCullFront;
-		static ID3D11RasterizerState* m_rasterStateCullBack;
-		static ID3D11RasterizerState* m_rasterStateCullNone;
-		static ID3D11BlendState* m_blendStateAlphaEnabled;
-		static ID3D11BlendState* m_blendStateAlphaDisabled;
-		static ID3DUserDefinedAnnotation* m_eventReporter;
-
+		ID3D11Device* m_device;
+		ID3D11DeviceContext* m_deviceContext;
+		IDXGISwapChain* m_swapChain;
+		ID3D11RenderTargetView* m_renderTargetView;
+		unsigned int m_displayModeCount;
+		unsigned int m_refreshRateNumerator;
+		unsigned int m_refreshRateDenominator;
+		DXGI_MODE_DESC* m_displayModeList;
+		ID3D11Texture2D* m_depthStencilBuffer;
+		ID3D11DepthStencilState* m_depthStencilStateEnabled;
+		ID3D11DepthStencilState* m_depthStencilStateDisabled;
+		ID3D11DepthStencilView* m_depthStencilView;
+		ID3D11RasterizerState* m_rasterStateCullFront;
+		ID3D11RasterizerState* m_rasterStateCullBack;
+		ID3D11RasterizerState* m_rasterStateCullNone;
+		ID3D11BlendState* m_blendStateAlphaEnabled;
+		ID3D11BlendState* m_blendStateAlphaDisabled;
+		ID3DUserDefinedAnnotation* m_eventReporter;
+	
 		const static D3D_DRIVER_TYPE driverType = D3D_DRIVER_TYPE_HARDWARE;
 		const static unsigned int sdkVersion	= D3D11_SDK_VERSION;
 
@@ -763,17 +763,59 @@ namespace Directus
 		D3D11_Internals::m_eventReporter->EndEvent();
 	}
 
-	void RHI_Device::QueryBegin()
+	bool RHI_Device::Profiling_CreateQuery(void** query, Query_Type type)
 	{
-		// Begin disjoint query, and timestamp the beginning of the frame
-		//m_deviceContext->Begin(pQueryDisjoint);
-		//m_deviceContext->End(pQueryBeginFrame);
+		D3D11_QUERY_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+		desc.Query		= (type == Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
+		desc.MiscFlags	= 0;
+		auto result		= D3D11_Internals::m_device->CreateQuery(&desc, (ID3D11Query**)query);
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to create ID3D11Query");
+			return false;
+		}
+
+		return true;
 	}
 
-	void RHI_Device::QueryEnd()
+	void RHI_Device::Profiling_QueryStart(void* queryObject)
 	{
-		//m_deviceContext->End(pQueryEndFrame);
-		//m_deviceContext->End(pQueryDisjoint);
+		D3D11_Internals::m_deviceContext->Begin((ID3D11Query*)queryObject);
+	}
+
+	void RHI_Device::Profiling_QueryEnd(void* queryObject)
+	{ 
+		D3D11_Internals::m_deviceContext->End((ID3D11Query*)queryObject);
+	}
+
+	void RHI_Device::Profiling_GetTimeStamp(void* queryObject)
+	{
+		D3D11_Internals::m_deviceContext->End((ID3D11Query*)queryObject);
+	}
+
+	float RHI_Device::Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd)
+	{
+		// Wait for data to be available	
+		while (D3D11_Internals::m_deviceContext->GetData((ID3D11Query*)queryDisjoint, NULL, 0, 0) == S_FALSE){}
+
+		// Check whether timestamps were disjoint during the last frame
+		D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
+		D3D11_Internals::m_deviceContext->GetData((ID3D11Query*)queryDisjoint,	&disjointData,	sizeof(disjointData), 0);
+		if (disjointData.Disjoint)
+			return 0.0f;
+
+		// Get the query data		
+		UINT64 startTime	= 0;
+		UINT64 endTime		= 0;
+		D3D11_Internals::m_deviceContext->GetData((ID3D11Query*)queryStart,	&startTime,	sizeof(startTime),	0);
+		D3D11_Internals::m_deviceContext->GetData((ID3D11Query*)queryEnd,	&endTime,	sizeof(UINT64),		0);
+
+		// Compute delta in milliseconds
+		UINT64 delta		= endTime - startTime;
+		float durationMs	= (delta * 1000.0f) / (float)disjointData.Frequency;
+
+		return durationMs;
 	}
 
 	bool RHI_Device::Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)

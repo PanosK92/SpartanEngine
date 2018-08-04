@@ -38,14 +38,16 @@ To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 */
 
 //= EVENTS ===============================================================================
-#define EVENT_UPDATE			0	// Fired when the most engine subsystems should update
-#define EVENT_RENDER			1	// Fired when the Renderer should start rendering
-#define EVENT_SCENE_SAVED		2	// Fired when the Scene finished saving to file
-#define EVENT_SCENE_LOADED		3	// Fired when the Scene finished loading from file
-#define EVENT_SCENE_CLEARED		5	// Fired when the Scene should clear everything
-#define EVENT_SCENE_RESOLVE		6	// Fired when the Scene should be resolved
-#define EVENT_SCENE_RESOLVED	7	// Fired when the Scene has been resolved
-#define EVENT_MODEL_LOADED		8	// Fired when the ModelImporter finished loading
+#define EVENT_FRAME_START		0	// Fired when a new frame begins
+#define EVENT_FRAME_END			1	// Fired when a frame ends
+#define EVENT_UPDATE			2	// Fired when the most engine subsystems should update
+#define EVENT_RENDER			3	// Fired when the Renderer should start rendering
+#define EVENT_SCENE_SAVED		4	// Fired when the Scene finished saving to file
+#define EVENT_SCENE_LOADED		5	// Fired when the Scene finished loading from file
+#define EVENT_SCENE_CLEARED		6	// Fired when the Scene should clear everything
+#define EVENT_SCENE_RESOLVE		7	// Fired when the Scene should be resolved
+#define EVENT_SCENE_RESOLVED	8	// Fired when the Scene has been resolved
+#define EVENT_MODEL_LOADED		9	// Fired when the ModelImporter finished loading
 //========================================================================================
 
 //= MACROS ===============================================================================================

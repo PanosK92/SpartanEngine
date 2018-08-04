@@ -154,14 +154,15 @@ namespace Directus
 
 	void Engine::Tick()
 	{
-		//= MAX FPS =======================================================================
-		float maxFPS = EngineMode_IsSet(Engine_Game) ? Settings::Get().GetMaxFPS() : 60.0f;
-		if (g_stopwatch->GetElapsedTimeSec() < 1.0 / maxFPS)
-		{
-			return;
-		}
-		g_stopwatch->Start();
-		//=================================================================================
+		//= MAX FPS =========================================================================
+		// Doesn't work properly, must fix
+		//float maxFPS = EngineMode_IsSet(Engine_Game) ? Settings::Get().GetMaxFPS() : 60.0f;
+		//if (g_stopwatch->GetElapsedTimeSec() < 1.0 / maxFPS)
+		//{
+		//	return;
+		//}
+		//g_stopwatch->Start();
+		//==================================================================================
 		
 		m_timer->Tick();
 
