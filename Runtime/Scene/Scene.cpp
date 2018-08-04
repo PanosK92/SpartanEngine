@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Resource/ProgressReport.h"
 #include "../IO/FileStream.h"
+#include "../Profiling/Profiler.h"
 //======================================
 
 //= NAMESPACES ================

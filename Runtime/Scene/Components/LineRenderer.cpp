@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "LineRenderer.h"
 #include "../../Math/BoundingBox.h"
+#include "../../Rendering/Renderer.h"
 //=================================
 
 //= NAMESPACES ================
@@ -105,7 +106,7 @@ namespace Directus
 
 	void LineRenderer::CreateVertexBuffer()
 	{
-		m_vertexBuffer = make_shared<RHI_VertexBuffer>(GetContext()->GetSubsystem<RHI_Device>());
+		m_vertexBuffer = make_shared<RHI_VertexBuffer>(GetContext()->GetSubsystem<Renderer>()->GetRHIDevice());
 		m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosCol), (unsigned int)m_vertices.size());
 	}
 

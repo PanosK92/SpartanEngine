@@ -31,11 +31,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class IRHI_RenderTexture
+	class ENGINE_CLASS IRHI_RenderTexture
 	{
 	public:
 		IRHI_RenderTexture(
-			RHI_Device* rhiDevice,
+			std::shared_ptr<RHI_Device> rhiDevice,
 			int width				= Settings::Get().GetResolutionWidth(),
 			int height				= Settings::Get().GetResolutionHeight(),
 			bool depth				= false,

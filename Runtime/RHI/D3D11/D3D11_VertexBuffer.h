@@ -32,7 +32,7 @@ namespace Directus
 	class ENGINE_CLASS D3D11_VertexBuffer : public IRHI_VertexBuffer
 	{
 	public:
-		D3D11_VertexBuffer(RHI_Device* rhiDevice);
+		D3D11_VertexBuffer(std::shared_ptr<RHI_Device> rhiDevice);
 		~D3D11_VertexBuffer();
 
 		bool Create(const std::vector<RHI_Vertex_PosCol>& vertices) override;
@@ -44,7 +44,7 @@ namespace Directus
 		bool Bind() override;
 
 	private:
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 		ID3D11Buffer* m_buffer;
 		unsigned int m_stride;
 	};

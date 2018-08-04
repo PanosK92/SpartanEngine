@@ -23,6 +23,7 @@
 // DirectX
 #include <stdio.h>
 #include <d3d11.h>
+#pragma comment(lib, "d3dcompiler.lib")
 #include <d3dcompiler.h>
 
 // DirectX data

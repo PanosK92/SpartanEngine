@@ -22,15 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "D3D11_RenderTexture.h"
 #include "../IRHI_Implementation.h"
+#include "../RHI_Device.h"
 //=================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 namespace Directus
 {
-	D3D11_RenderTexture::D3D11_RenderTexture(D3D11_Device* rhiDevice, int width, int height, bool depth, Texture_Format format) : IRHI_RenderTexture(rhiDevice, width, height, depth, format)
+	D3D11_RenderTexture::D3D11_RenderTexture(shared_ptr<RHI_Device> rhiDevice, int width, int height, bool depth, Texture_Format format) : IRHI_RenderTexture(rhiDevice, width, height, depth, format)
 	{
 		m_renderTargetTexture	= nullptr;
 		m_renderTargetView		= nullptr;
@@ -42,7 +44,7 @@ namespace Directus
 		m_nearPlane				= 0.0f;
 		m_farPlane				= 0.0f;
 		m_format				= format;
-		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->GetMaxDepth());
+		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->GetViewport().GetMaxDepth());
 
 		Construct();
 	}
@@ -58,33 +60,33 @@ namespace Directus
 
 	bool D3D11_RenderTexture::SetAsRenderTarget()
 	{
-		if (!m_rhiDevice->GetDeviceContext())
+		if (!m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 		{
 			LOG_INFO("Uninitialized device context. Can't set render texture as rander target");
 			return false;
 		}
 
 		// Bind the render target view and depth stencil buffer to the output render pipeline.
-		m_rhiDevice->GetDeviceContext()->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
+		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 
 		// Set the viewport.
-		m_rhiDevice->GetDeviceContext()->RSSetViewports(1, (D3D11_VIEWPORT*)&m_viewport);
+		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->RSSetViewports(1, (D3D11_VIEWPORT*)&m_viewport);
 
 		return true;
 	}
 
 	bool D3D11_RenderTexture::Clear(const Vector4& clearColor)
 	{
-		if (!m_rhiDevice->GetDeviceContext())
+		if (!m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 			return false;
 
 		// Clear back buffer
-		m_rhiDevice->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor.Data()); 
+		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->ClearRenderTargetView(m_renderTargetView, clearColor.Data()); 
 
 		// Clear depth buffer.
 		if (m_depthEnabled)
 		{
-			m_rhiDevice->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, m_rhiDevice->GetMaxDepth(), 0); 
+			m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, m_rhiDevice->GetViewport().GetMaxDepth(), 0); 
 		}
 
 		return true;
@@ -107,7 +109,7 @@ namespace Directus
 
 	bool D3D11_RenderTexture::Construct()
 	{
-		if (!m_rhiDevice->GetDevice())
+		if (!m_rhiDevice->GetDevice<ID3D11DeviceContext>())
 		{
 			LOG_INFO("D3D11RenderTexture::Construct: Uninitialized device. Can't create render texture");
 			return false;
@@ -129,7 +131,7 @@ namespace Directus
 			textureDesc.CPUAccessFlags		= 0;
 			textureDesc.MiscFlags			= 0;
 
-			if (FAILED(m_rhiDevice->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTexture)))
+			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTexture)))
 			{
 				LOG_INFO("D3D11RenderTexture::Construct: CreateTexture2D() failed.");
 				return false;
@@ -143,7 +145,7 @@ namespace Directus
 			renderTargetViewDesc.ViewDimension		= D3D11_RTV_DIMENSION_TEXTURE2D;
 			renderTargetViewDesc.Texture2D.MipSlice = 0;
 
-			if (FAILED(m_rhiDevice->GetDevice()->CreateRenderTargetView(m_renderTargetTexture, &renderTargetViewDesc, &m_renderTargetView)))
+			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateRenderTargetView(m_renderTargetTexture, &renderTargetViewDesc, &m_renderTargetView)))
 			{
 				LOG_INFO("D3D11RenderTexture::Construct: CreateRenderTargetView() failed.");
 				return false;
@@ -158,7 +160,7 @@ namespace Directus
 			shaderResourceViewDesc.Texture2D.MostDetailedMip	= 0;
 			shaderResourceViewDesc.Texture2D.MipLevels			= 1;
 
-			if (FAILED(m_rhiDevice->GetDevice()->CreateShaderResourceView(m_renderTargetTexture, &shaderResourceViewDesc, &m_shaderResourceView)))
+			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(m_renderTargetTexture, &shaderResourceViewDesc, &m_shaderResourceView)))
 			{
 				LOG_INFO("D3D11RenderTexture::Construct: CreateShaderResourceView() failed.");
 				return false;
@@ -184,7 +186,7 @@ namespace Directus
 			depthTexDesc.CPUAccessFlags		= 0;
 			depthTexDesc.MiscFlags			= 0;
 
-			if (FAILED(m_rhiDevice->GetDevice()->CreateTexture2D(&depthTexDesc, nullptr, &m_depthStencilBuffer)))
+			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&depthTexDesc, nullptr, &m_depthStencilBuffer)))
 			{
 				LOG_INFO("D3D11RenderTexture::Construct: CreateTexture2D() failed.");
 				return false;
@@ -199,7 +201,7 @@ namespace Directus
 			depthStencilViewDesc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
 			depthStencilViewDesc.Texture2D.MipSlice = 0;
 
-			HRESULT result = m_rhiDevice->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
+			HRESULT result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
 			if (FAILED(result))
 			{
 				LOG_INFO("D3D11RenderTexture::Construct: CreateDepthStencilView() failed.");

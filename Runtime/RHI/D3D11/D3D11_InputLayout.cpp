@@ -22,11 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "D3D11_InputLayout.h"
 #include "../IRHI_Implementation.h"
+#include "../RHI_Device.h"
 //=================================
 
 namespace Directus
 {
-	D3D11_InputLayout::D3D11_InputLayout(RHI_Device* rhiDevice)
+	D3D11_InputLayout::D3D11_InputLayout(std::shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice			= rhiDevice;
 		m_ID3D11InputLayout	= nullptr;
@@ -41,13 +42,13 @@ namespace Directus
 	//= LAYOUT CREATION ==================================================
 	bool D3D11_InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, unsigned int elementCount)
 	{
-		if (!m_rhiDevice->GetDevice())
+		if (!m_rhiDevice->GetDevice<ID3D11Device>())
 		{
 			LOG_ERROR("D3D11_InputLayout::Create: Graphics device is not present.");
 			return false;
 		}
 
-		HRESULT result = m_rhiDevice->GetDevice()->CreateInputLayout(
+		HRESULT result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateInputLayout(
 			vertexInputLayout,
 			elementCount,
 			VSBlob->GetBufferPointer(),

@@ -46,7 +46,7 @@ namespace Directus
 
 	private:
 		ID3D11ShaderResourceView* m_shaderResourceView;
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 		unsigned int m_memoryUsage;
 	};
 }

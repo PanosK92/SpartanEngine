@@ -31,16 +31,9 @@ using namespace std;
 
 namespace Directus
 {
-	IRHI_Shader::IRHI_Shader(RHI_Device* rhiDevice)
+	IRHI_Shader::IRHI_Shader(shared_ptr<RHI_Device> rhiDevice)
 	{
-		if (!rhiDevice)
-		{
-			LOG_ERROR("IRHI_Shader::RI_Shader: Invalid parameter");
-			return;
-		}
-
-		m_rhiDevice		= rhiDevice;
-		m_bufferScope	= Buffer_Global;
+		m_rhiDevice	= rhiDevice;
 	}
 
 	void IRHI_Shader::BindBuffer(void* data, unsigned int slot)
@@ -56,6 +49,6 @@ namespace Directus
 		memcpy(buffer, data, m_bufferSize);		// Copy data
 		m_constantBuffer->Unmap();				// Unmap buffer
 
-		m_rhiDevice->GetPipelineState()->SetConstantBuffer(m_constantBuffer, slot, m_bufferScope);
+		m_bufferSlot = slot;
 	}
 }

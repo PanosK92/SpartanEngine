@@ -31,7 +31,7 @@ namespace Directus
 	{
 	public:
 		D3D11_RenderTexture(
-			RHI_Device* rhiDevice, 
+			std::shared_ptr<RHI_Device> rhiDevice, 
 			int width				= Settings::Get().GetResolutionWidth(), 
 			int height				= Settings::Get().GetResolutionHeight(), 
 			bool depth				= false,
@@ -61,6 +61,6 @@ namespace Directus
 		ID3D11Texture2D* m_depthStencilBuffer;
 		ID3D11DepthStencilView* m_depthStencilView;	
 	
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

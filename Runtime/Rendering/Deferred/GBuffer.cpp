@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "GBuffer.h"
 #include "../../RHI/IRHI_Implementation.h"
+#include "../../RHI/RHI_Device.h"
 //========================================
 
 //= NAMESPACES ================
@@ -31,7 +32,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	GBuffer::GBuffer(RHI_Device* rhiDevice, int width, int height)
+	GBuffer::GBuffer(shared_ptr<RHI_Device> rhiDevice, int width, int height)
 	{
 		m_rhiDevice = rhiDevice;
 
@@ -48,7 +49,7 @@ namespace Directus
 
 	bool GBuffer::SetAsRenderTarget()
 	{
-		if (!m_rhiDevice->GetDeviceContext())
+		if (!m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 			return false;
 
 		// Bind the render target view array and depth stencil buffer to the output render pipeline.
@@ -71,7 +72,7 @@ namespace Directus
 
 	bool GBuffer::Clear()
 	{
-		if (!m_rhiDevice->GetDeviceContext())
+		if (!m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 			return false;
 
 		// Clear the render target buffers.
@@ -80,12 +81,15 @@ namespace Directus
 			if (!renderTarget.second->GetDepthEnabled())
 			{
 				// Color buffer
-				m_rhiDevice->GetDeviceContext()->ClearRenderTargetView((ID3D11RenderTargetView*)renderTarget.second->GetRenderTargetView(), Vector4(0, 0, 0, 1).Data());
+				// TODO - This D3D11 specific, must remove
+				m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->ClearRenderTargetView((ID3D11RenderTargetView*)renderTarget.second->GetRenderTargetView(), Vector4(0, 0, 0, 1).Data());
 			}
 			else
 			{
 				// Clear the depth buffer.
-				m_rhiDevice->GetDeviceContext()->ClearDepthStencilView((ID3D11DepthStencilView*)renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, renderTarget.second->GetViewport().GetMaxDepth(), 0);
+				// TODO - This D3D11 specific, must remove
+				float maxDepth =  renderTarget.second->GetViewport().GetMaxDepth();
+				m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->ClearDepthStencilView((ID3D11DepthStencilView*)renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, maxDepth, 0);
 			}
 		}
 		return true;

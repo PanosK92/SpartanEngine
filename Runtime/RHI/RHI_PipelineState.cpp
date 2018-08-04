@@ -25,8 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_PipelineState.h"
 #include "IRHI_Implementation.h"
 #include "D3D11\D3D11_InputLayout.h"
-#include "RHI_ConstantBuffer.h"
 #include "RHI_Sampler.h"
+#include "RHI_Device.h"
 //==================================
 
 //= NAMESPACES =====
@@ -35,14 +35,23 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_PipelineState::RHI_PipelineState(RHI_Device* rhiDevice)
+	RHI_PipelineState::RHI_PipelineState(shared_ptr<RHI_Device> rhiDevice)
 	{
-		m_rhiDevice			= rhiDevice;
-		m_primitiveTopology = PrimitiveTopology_NotAssigned;
-		m_inputLayout		= Input_NotAssigned;
-		m_inputLayoutBuffer = nullptr;
-		m_cullMode			= Cull_NotAssigned;
-		m_fillMode			= Fill_NotAssigned;
+		m_rhiDevice				= rhiDevice;
+		m_primitiveTopology		= PrimitiveTopology_NotAssigned;
+		m_inputLayout			= Input_NotAssigned;
+		m_cullMode				= Cull_NotAssigned;
+		m_fillMode				= Fill_NotAssigned;
+		m_inputLayoutBuffer		= nullptr;
+		m_vertexShader			= nullptr;
+		m_vertexShaderDirty		= false;
+		m_pixelShader			= nullptr;
+		m_pixelShaderDirty		= false;
+		m_indexBufferDirty		= false;
+		m_vertexBufferDirty		= false;
+		m_constantBufferDirty	= false;
+		m_samplersDirty			= false;
+		m_texturesDirty			= false;	
 	}
 
 	bool RHI_PipelineState::SetShader(shared_ptr<RHI_Shader>& shader)
@@ -55,6 +64,7 @@ namespace Directus
 
 		// TODO: this has to be done outside of this function 
 		SetInputLayout(shader->GetInputLayout());
+		if (shader->GetConstantBuffer()) SetConstantBuffer(shader->GetConstantBuffer(), shader->GetBufferSlot(), shader->GetBufferScope());
 
 		m_vertexShader		= shader->GetVertexShaderBuffer();
 		m_vertexShaderDirty	= true;
@@ -118,7 +128,7 @@ namespace Directus
 
 	void RHI_PipelineState::SetConstantBuffer(shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
 	{
-		m_constantBuffersInfo.emplace_back(constantBuffer, slot, scope);
+		m_constantBuffersInfo.emplace_back(constantBuffer->GetBuffer(), slot, scope);
 		m_constantBufferDirty = true;
 	}
 
@@ -161,18 +171,34 @@ namespace Directus
 		m_fillModeDirty = true;
 	}
 
+	void RHI_PipelineState::SetViewport(float width, float height)
+	{
+		if (m_viewport.GetWidth() == width && m_viewport.GetHeight() == height)
+			return;
+
+		m_viewport		= RHI_Viewport(0.0f, 0.0f, width, height, 0.0f, 1.0f);
+		m_viewportDirty = true;
+	}
+
 	bool RHI_PipelineState::Bind()
 	{
 		if (!m_rhiDevice)
 		{
-			LOG_ERROR("IRHI_PipelineState::Bind: Invalid RHI_Device");
+			LOG_ERROR("RHI_PipelineState::Bind: Invalid RHI_Device");
 			return false;
+		}
+
+		// Viewport
+		if (m_viewportDirty)
+		{
+			m_rhiDevice->SetViewport(m_viewport);
+			m_viewportDirty = false;
 		}
 
 		// Vertex shader
 		if (m_vertexShaderDirty)
 		{
-			m_rhiDevice->GetDeviceContext()->VSSetShader((ID3D11VertexShader*)m_vertexShader, nullptr, 0);
+			m_rhiDevice->Bind_VertexShader(m_vertexShader);
 			Profiler::Get().m_bindVertexShaderCount++;
 			m_vertexShaderDirty = false;
 		}
@@ -180,7 +206,7 @@ namespace Directus
 		// Pixel shader
 		if (m_pixelShaderDirty)
 		{
-			m_rhiDevice->GetDeviceContext()->PSSetShader((ID3D11PixelShader*)m_pixelShader, nullptr, 0);
+			m_rhiDevice->Bind_PixelShader(m_pixelShader);
 			Profiler::Get().m_bindPixelShaderCount++;
 			m_pixelShaderDirty = false;
 		}
@@ -217,7 +243,7 @@ namespace Directus
 		if (m_samplersDirty)
 		{
 			unsigned int startSlot = 0;
-			m_rhiDevice->GetDeviceContext()->PSSetSamplers(startSlot, m_samplers.size(), (ID3D11SamplerState*const*)&m_samplers[0]);
+			m_rhiDevice->Bind_Samplers(startSlot, (unsigned int)m_samplers.size(), &m_samplers[0]);
 			Profiler::Get().m_bindSamplerCount++;
 			m_samplers.clear();
 			m_samplers.shrink_to_fit();
@@ -258,19 +284,8 @@ namespace Directus
 		{
 			for (const auto& bufferInfo : m_constantBuffersInfo)
 			{
-				auto d3d11Buffer = (ID3D11Buffer*)bufferInfo.m_constantBuffer->GetBuffer();
-
-				if (bufferInfo.m_scope == Buffer_VertexShader || bufferInfo.m_scope == Buffer_Global)
-				{
-					m_rhiDevice->GetDeviceContext()->VSSetConstantBuffers(bufferInfo.m_slot, 1, &d3d11Buffer);
-					Profiler::Get().m_bindConstantBufferCount++;
-				}
-
-				if (bufferInfo.m_scope == Buffer_PixelShader || bufferInfo.m_scope == Buffer_Global)
-				{
-					m_rhiDevice->GetDeviceContext()->PSSetConstantBuffers(bufferInfo.m_slot, 1, &d3d11Buffer);
-					Profiler::Get().m_bindConstantBufferCount++;
-				}
+				m_rhiDevice->Bind_ConstantBuffers(bufferInfo.m_slot, 1, bufferInfo.m_scope, &bufferInfo.m_buffer);
+				Profiler::Get().m_bindConstantBufferCount += Buffer_Global ? 2 : 1;
 			}
 			
 			m_constantBuffersInfo.clear();

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../RHI/IRHI_Implementation.h"
 #include "../Core/Stopwatch.h"
+#include "Renderer.h"
 //======================================
 
 //= NAMESPACES ================
@@ -37,11 +38,9 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	RHI_Device* rhi_device;
-
 	Font::Font(Context* context, const string& filePath, int fontSize, const Vector4& color) : IResource(context)
 	{
-		rhi_device		= m_context->GetSubsystem<RHI_Device>();
+		m_rhiDevice		= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 		m_charMaxWidth	= 0;
 		m_charMaxHeight = 0;
 		m_fontColor		= color;
@@ -179,7 +178,7 @@ namespace Directus
 		// Vertex buffer
 		if (!m_vertexBuffer)
 		{
-			m_vertexBuffer = make_shared<RHI_VertexBuffer>(rhi_device);
+			m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
 			if (!m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosUV), (unsigned int)vertices.size()))
 			{
 				LOG_ERROR("Font: Failed to create vertex buffer.");
@@ -193,7 +192,7 @@ namespace Directus
 		// Index buffer
 		if (!m_indexBuffer)
 		{
-			m_indexBuffer = make_shared<RHI_IndexBuffer>(rhi_device);
+			m_indexBuffer = make_shared<RHI_IndexBuffer>(m_rhiDevice);
 			if (!m_indexBuffer->CreateDynamic((unsigned int)indices.size()))
 			{
 				LOG_ERROR("Font: Failed to create index buffer.");

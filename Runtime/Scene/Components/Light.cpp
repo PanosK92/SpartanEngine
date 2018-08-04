@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/IRHI_Implementation.h"
 #include "../../Scene/Actor.h"
 #include "../../IO/FileStream.h"
+#include "../../Rendering/Renderer.h"
 //========================================
 
 //= NAMESPACES ================
@@ -313,7 +314,7 @@ namespace Directus
 
 		// Create the shadow maps
 		m_shadowMapResolution	= Settings::Get().GetShadowMapResolution();
-		auto rhiDevice			= m_context->GetSubsystem<RHI_Device>();
+		auto rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 		for (unsigned int i = 0; i < m_shadowMapCount; i++)
 		{
 			m_shadowMaps.emplace_back(make_unique<RHI_RenderTexture>(rhiDevice, m_shadowMapResolution, m_shadowMapResolution, true, Texture_Format_R32_FLOAT));

@@ -35,7 +35,7 @@ namespace Directus
 	class ENGINE_CLASS D3D11_Shader : public IRHI_Shader
 	{
 	public:
-		D3D11_Shader(RHI_Device* rhiDevice);
+		D3D11_Shader(std::shared_ptr<RHI_Device> rhiDevice);
 		~D3D11_Shader();
 
 		void AddDefine(const std::string& define, const std::string& value = "1") override;
@@ -78,7 +78,5 @@ namespace Directus
 		// INPUT LAYOUT
 		std::shared_ptr<D3D11_InputLayout> m_D3D11InputLayout;
 		bool m_layoutHasBeenSet;
-
-		RHI_Device* m_rhiDevice;
 	};
 }

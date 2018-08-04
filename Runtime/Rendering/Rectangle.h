@@ -43,7 +43,7 @@ namespace Directus
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
 
 	private:
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
 		float m_x;

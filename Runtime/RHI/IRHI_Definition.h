@@ -25,14 +25,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Backends/Backends.h"
 //===============================
 
-// RHI (Rendering Hardware Interface)
 namespace Directus
 {
+	// RHI (Rendering Hardware Interface)
+	class RHI_Device;
 	class RHI_ConstantBuffer;
 	class RHI_Sampler;
 	class RHI_PipelineState;
 	class RHI_Viewport;
-
 	struct RHI_Vertex_PosUVTBN;
 	struct RHI_Vertex_PosUVNor;
 	struct RHI_Vertex_PosUV;
@@ -131,13 +131,9 @@ namespace Directus
 		Texture_Format_R16G16B16A16_FLOAT,
 		Texture_Format_R32G32B32A32_FLOAT,
 	};
-}
 
+	// D3D11
 #ifdef API_D3D11
-// Forward declarations - Graphics API
-namespace Directus
-{
-	class D3D11_Device;
 	class D3D11_Shader;
 	class D3D11_InputLayout;
 	class D3D11_VertexBuffer;
@@ -145,12 +141,16 @@ namespace Directus
 	class D3D11_RenderTexture;
 	class D3D11_Texture;
 
-	typedef D3D11_Device			RHI_Device;
 	typedef D3D11_Shader			RHI_Shader;
 	typedef D3D11_VertexBuffer		RHI_VertexBuffer;
 	typedef D3D11_IndexBuffer		RHI_IndexBuffer;
 	typedef D3D11_Texture			RHI_Texture;
 	typedef D3D11_RenderTexture		RHI_RenderTexture;
+#endif
+	// VULKAN
+#ifdef API_VULKAN
+	class Vulkan_Device;
+#endif
 }
 
 // Forward declarations - D3D11 API
@@ -181,11 +181,3 @@ typedef _D3D_SHADER_MACRO D3D_SHADER_MACRO;
 struct ID3D10Blob;
 typedef ID3D10Blob ID3DBlob;
 struct ID3DUserDefinedAnnotation;
-#endif
-
-#ifdef API_VULKAN
-namespace Directus
-{
-	class Vulkan_Device;
-}
-#endif

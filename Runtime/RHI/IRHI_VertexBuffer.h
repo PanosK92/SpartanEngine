@@ -31,7 +31,7 @@ namespace Directus
 	class IRHI_VertexBuffer
 	{
 	public:
-		IRHI_VertexBuffer(RHI_Device* rhiDevice) {};
+		IRHI_VertexBuffer(std::shared_ptr<RHI_Device> rhiDevice) {};
 		~IRHI_VertexBuffer() {};
 
 		virtual bool Create(const std::vector<RHI_Vertex_PosCol>& vertices) = 0;

@@ -23,12 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IRHI_Implementation.h"
 #include "../RHI_Sampler.h"
 #include <winerror.h>
+#include "../RHI_Device.h"
 //=================================
 
 namespace Directus
 {
 	RHI_Sampler::RHI_Sampler(
-		RHI_Device* rhiDevice,
+		std::shared_ptr<RHI_Device> rhiDevice,
 		Texture_Sampler_Filter filter					/*= Texture_Sampler_Anisotropic*/,
 		Texture_Address_Mode textureAddressMode			/*= Texture_Address_Wrap*/, 
 		Texture_Comparison_Function comparisonFunction	/*= Texture_Comparison_Always*/
@@ -61,7 +62,7 @@ namespace Directus
 		samplerDesc.MaxLOD			= FLT_MAX;
 
 		// Create sampler state.
-		if (FAILED(rhiDevice->GetDevice()->CreateSamplerState(&samplerDesc, (ID3D11SamplerState**)&m_buffer)))
+		if (FAILED(rhiDevice->GetDevice<ID3D11Device>()->CreateSamplerState(&samplerDesc, (ID3D11SamplerState**)&m_buffer)))
 		{
 			LOG_ERROR("RHI_Sampler::RHI_Sampler: Failed to create sampler state");
 		}

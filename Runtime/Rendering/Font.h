@@ -75,5 +75,6 @@ namespace Directus
 		std::vector<RHI_Vertex_PosUV> m_vertices;
 		std::vector<unsigned int> m_indices;
 		std::string m_currentText;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

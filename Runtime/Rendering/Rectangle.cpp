@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========================
 #include "Rectangle.h"
 #include "../RHI/IRHI_Implementation.h"
+#include "Renderer.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -33,7 +34,7 @@ namespace Directus
 {
 	Rectangle::Rectangle(Context* context)
 	{
-		m_rhiDevice			= context->GetSubsystem<RHI_Device>();
+		m_rhiDevice			= context->GetSubsystem<Renderer>()->GetRHIDevice();
 		m_x					= 0;
 		m_y					= 0;
 		m_width				= 0;

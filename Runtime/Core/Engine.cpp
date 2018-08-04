@@ -27,8 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input_Definition.h"
 #include "../Input/Input_Implementation.h"
 #include "../Rendering/Renderer.h"
-#include "../RHI/IRHI_Definition.h"
-#include "../RHI/IRHI_Implementation.h"
 #include "../Core/EventSystem.h"
 #include "../Logging/Log.h"
 #include "../Threading/Threading.h"
@@ -75,8 +73,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Input(m_context));
 		m_context->RegisterSubsystem(new Threading(m_context));
 		m_context->RegisterSubsystem(new ResourceManager(m_context));
-		m_context->RegisterSubsystem(new RHI_Device(m_context));
-		m_context->RegisterSubsystem(new Renderer(m_context));
+		m_context->RegisterSubsystem(new Renderer(m_context, m_drawHandle));
 		m_context->RegisterSubsystem(new Audio(m_context));
 		m_context->RegisterSubsystem(new Physics(m_context));
 		m_context->RegisterSubsystem(new Scripting(m_context));
@@ -111,14 +108,6 @@ namespace Directus
 		if (!m_context->GetSubsystem<ResourceManager>()->Initialize())
 		{
 			LOG_ERROR("Engine::Initialize: Failed to initialize ResourceManager");
-			return false;
-		}
-
-		// RHI (Rendering Hardware Interface)
-		m_context->GetSubsystem<RHI_Device>()->SetHandle(m_drawHandle);
-		if (!m_context->GetSubsystem<RHI_Device>()->Initialize())
-		{
-			LOG_ERROR("Engine::Initialize: Engine::Initialize: Failed to initialize RHI");
 			return false;
 		}
 

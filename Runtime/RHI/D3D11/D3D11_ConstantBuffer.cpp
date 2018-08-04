@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../RHI_ConstantBuffer.h"
 #include <d3d11.h>
-#include "D3D11_Device.h"
 #include "../../Logging/Log.h"
+#include "../RHI_Device.h"
 //================================
 
 //= NAMESPACES =====
@@ -32,7 +32,7 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_ConstantBuffer::RHI_ConstantBuffer(RHI_Device* rhiDevice)
+	RHI_ConstantBuffer::RHI_ConstantBuffer(shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice = rhiDevice;
 		m_buffer	= nullptr;
@@ -49,7 +49,7 @@ namespace Directus
 
 	bool RHI_ConstantBuffer::Create(unsigned int size)
 	{
-		if (!m_rhiDevice->GetDevice())
+		if (!m_rhiDevice->GetDevice<ID3D11Device>())
 			return false;
 
 		D3D11_BUFFER_DESC bufferDesc;
@@ -61,7 +61,7 @@ namespace Directus
 		bufferDesc.MiscFlags			= 0;
 		bufferDesc.StructureByteStride	= 0;
 
-		HRESULT result = m_rhiDevice->GetDevice()->CreateBuffer(&bufferDesc, nullptr, (ID3D11Buffer**)&m_buffer);
+		HRESULT result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, (ID3D11Buffer**)&m_buffer);
 		if FAILED(result)
 		{
 			LOG_ERROR("RHI_ConstantBuffer::Create: Failed to create constant buffer");
@@ -73,7 +73,7 @@ namespace Directus
 
 	void* RHI_ConstantBuffer::Map()
 	{
-		if (!m_rhiDevice->GetDeviceContext())
+		if (!m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 			return nullptr;
 
 		if (!m_buffer)
@@ -84,7 +84,7 @@ namespace Directus
 
 		// disable GPU access to the vertex buffer data.
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		HRESULT result = m_rhiDevice->GetDeviceContext()->Map((ID3D11Buffer*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		HRESULT result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map((ID3D11Buffer*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("RHI_ConstantBuffer::Map: Failed to map constant buffer.");
@@ -96,11 +96,11 @@ namespace Directus
 
 	bool RHI_ConstantBuffer::Unmap()
 	{
-		if (!m_buffer || !m_rhiDevice->GetDeviceContext())
+		if (!m_buffer || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 			return false;
 
 		// re-enable GPU access to the vertex buffer data.
-		m_rhiDevice->GetDeviceContext()->Unmap((ID3D11Buffer*)m_buffer, 0);
+		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Buffer*)m_buffer, 0);
 
 		return true;
 	}

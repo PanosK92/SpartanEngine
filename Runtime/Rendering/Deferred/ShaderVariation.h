@@ -83,7 +83,7 @@ namespace Directus
 		unsigned long m_shaderFlags;
 
 		// MISC
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;
 		std::shared_ptr<RHI_ConstantBuffer> m_materialBuffer;
 		std::shared_ptr<RHI_ConstantBuffer> m_perfFrameBuffer;

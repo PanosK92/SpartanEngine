@@ -53,6 +53,19 @@ namespace Directus
 
 		~RHI_Viewport(){}
 
+		bool operator==(const RHI_Viewport& rhs) const
+		{
+			return 
+				m_topLeftX	== rhs.m_topLeftX	&& m_topLeftY	== rhs.m_topLeftY && 
+				m_width		== rhs.m_width		&& m_height		== rhs.m_height && 
+				m_minDepth	== rhs.m_minDepth	&& m_maxDepth	== rhs.m_maxDepth;
+		}
+
+		bool operator!=(const RHI_Viewport& rhs) const
+		{
+			return !(*this == rhs);
+		}
+
 		float GetTopLeftX() const { return m_topLeftX; }
 		float GetTopLeftY() const { return m_topLeftY; }
 		float GetWidth()	const { return m_width; }

@@ -21,25 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ==================
 #include "IRHI_Definition.h"
-//==========================
+#include <memory>
+#include "..\Core\EngineDefs.h"
+//=============================
 
 namespace Directus
 {
-	class RHI_ConstantBuffer
+	class ENGINE_CLASS RHI_ConstantBuffer
 	{
 	public:
-		RHI_ConstantBuffer(RHI_Device* rhiDevice);
+		RHI_ConstantBuffer(std::shared_ptr<RHI_Device> rhiDevice);
 		~RHI_ConstantBuffer();
 
-		virtual bool Create(unsigned int size);
-		virtual void* Map();
-		virtual bool Unmap();
+		bool Create(unsigned int size);
+		void* Map();
+		bool Unmap();
 		void* GetBuffer() { return m_buffer; }
 
 	private:
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 		void* m_buffer;
 	};
 }

@@ -50,6 +50,6 @@ private:
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
 	Directus::Context* m_context;
-	Directus::RHI_Device* m_rhiDevice;
+	std::shared_ptr<Directus::RHI_Device> m_rhiDevice;
 	bool m_initialized;
 };

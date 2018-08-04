@@ -42,7 +42,7 @@ namespace Directus
 
 	}
 
-	void LightShader::Compile(const string& filePath, RHI_Device* rhiDevice)
+	void LightShader::Compile(const string& filePath, shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice = rhiDevice;
 

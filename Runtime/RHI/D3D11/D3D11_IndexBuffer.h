@@ -31,7 +31,7 @@ namespace Directus
 	class ENGINE_CLASS D3D11_IndexBuffer : public IRHI_IndexBuffer
 	{
 	public:
-		D3D11_IndexBuffer(RHI_Device* rhiDevice);
+		D3D11_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice);
 		~D3D11_IndexBuffer();
 
 		bool Create(const std::vector<unsigned int>& indices) override;
@@ -41,7 +41,7 @@ namespace Directus
 		bool Bind() override;
 
 	private:
-		RHI_Device* m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 		ID3D11Buffer* m_buffer;
 	};
 }

@@ -31,7 +31,7 @@ namespace Directus
 	class IRHI_IndexBuffer
 	{
 	public:
-		IRHI_IndexBuffer(RHI_Device* rhiDevice) {};
+		IRHI_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice) {};
 		~IRHI_IndexBuffer() {};
 	
 		virtual bool Create(const std::vector<unsigned int>& indices) = 0;
