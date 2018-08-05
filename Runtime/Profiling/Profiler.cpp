@@ -64,7 +64,7 @@ namespace Directus
 		SUBSCRIBE_TO_EVENT(EVENT_FRAME_END, EVENT_HANDLER(OnFrameEnd));
 	}
 
-	void Profiler::BeginBlock_CPU(const char* funcName)
+	void Profiler::TimeBlockStart_CPU(const char* funcName)
 	{
 		if (!m_cpuProfiling || !m_shouldUpdate)
 			return;
@@ -72,7 +72,7 @@ namespace Directus
 		m_timeBlocks_cpu[funcName].start = high_resolution_clock::now();
 	}
 
-	void Profiler::EndBlock_CPU(const char* funcName)
+	void Profiler::TimeBlockEnd_CPU(const char* funcName)
 	{
 		if (!m_cpuProfiling || !m_shouldUpdate)
 			return;
@@ -84,7 +84,7 @@ namespace Directus
 		timeBlock->duration			= (float)ms.count();
 	}
 
-	void Profiler::BeginBlock_GPU(const char* funcName)
+	void Profiler::TimeBlockStart_GPU(const char* funcName)
 	{
 		if (!m_gpuProfiling || !m_shouldUpdate)
 			return;
@@ -104,7 +104,7 @@ namespace Directus
 		timeBlock->started = true;
 	}
 
-	void Profiler::EndBlock_GPU(const char* funcName)
+	void Profiler::TimeBlockEnd_GPU(const char* funcName)
 	{
 		if (!m_gpuProfiling || !m_shouldUpdate)
 			return;
@@ -115,16 +115,16 @@ namespace Directus
 		m_rhiDevice->Profiling_QueryEnd(timeBlock->query);
 	}
 
-	void Profiler::BeginBlock(const char* funcName)
+	void Profiler::TimeBlockStart_Multi(const char* funcName)
 	{
-		BeginBlock_CPU(funcName);
-		BeginBlock_GPU(funcName);
+		TimeBlockStart_CPU(funcName);
+		TimeBlockStart_GPU(funcName);
 	}
 
-	void Profiler::EndBlock(const char* funcName)
+	void Profiler::TimeBlockEnd_Multi(const char* funcName)
 	{
-		EndBlock_CPU(funcName);
-		EndBlock_GPU(funcName);
+		TimeBlockEnd_CPU(funcName);
+		TimeBlockEnd_GPU(funcName);
 	}
 
 	void Profiler::OnUpdate()
@@ -167,7 +167,7 @@ namespace Directus
 		m_metrics =
 			"FPS:\t\t\t\t\t\t\t"				+ to_string_precision(fps, 2) + "\n"
 			"CPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_timer->GetDeltaTimeMs(), 2) + " ms\n"
-			"Render:\t\t\t\t\t\t"				+ to_string_precision(GetTimeBlockMs_GPU("Directus::Renderer::Render"), 2) + " ms\n"
+			"GPU:\t\t\t\t\t\t\t"				+ to_string_precision(GetTimeBlockMs_GPU("Directus::Renderer::Render"), 2) + " ms\n"
 			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"

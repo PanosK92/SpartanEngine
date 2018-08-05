@@ -29,10 +29,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=============================
 
-#define PROFILE_BEGIN_CPU() Directus::Profiler::Get().BeginBlock_CPU(__FUNCTION__);
-#define PROFILE_END_CPU()	Directus::Profiler::Get().EndBlock_CPU(__FUNCTION__);
-#define PROFILE_BEGIN()		Directus::Profiler::Get().BeginBlock(__FUNCTION__);
-#define PROFILE_END()		Directus::Profiler::Get().EndBlock(__FUNCTION__);
+// Multi (CPU + GPU)
+#define TIME_BLOCK_START_MULTI()	Directus::Profiler::Get().TimeBlockStart_Multi(__FUNCTION__);
+#define TIME_BLOCK_END_MULTI()		Directus::Profiler::Get().TimeBlockEnd_Multi(__FUNCTION__);
+// CPU
+#define TIME_BLOCK_START_CPU()		Directus::Profiler::Get().TimeBlockStart_CPU(__FUNCTION__);
+#define TIME_BLOCK_END_CPU()		Directus::Profiler::Get().TimeBlockEnd_CPU(__FUNCTION__);
+// GPU
+#define TIME_BLOCK_START_GPU()		Directus::Profiler::Get().TimeBlockStart_CPU(__FUNCTION__);
+#define TIME_BLOCK_END_GPU()		Directus::Profiler::Get().TimeBlockEnd_GPU(__FUNCTION__);
 
 namespace Directus
 {
@@ -73,16 +78,16 @@ namespace Directus
 		void Initialize(Context* context);
 
 		// Multi-timing
-		void BeginBlock(const char* funcName);
-		void EndBlock(const char* funcName);
+		void TimeBlockStart_Multi(const char* funcName);
+		void TimeBlockEnd_Multi(const char* funcName);
 
 		// CPU timing
-		void BeginBlock_CPU(const char* funcName);
-		void EndBlock_CPU(const char* funcName);
+		void TimeBlockStart_CPU(const char* funcName);
+		void TimeBlockEnd_CPU(const char* funcName);
 
 		// GPU timing
-		void BeginBlock_GPU(const char* funcName);
-		void EndBlock_GPU(const char* funcName);
+		void TimeBlockStart_GPU(const char* funcName);
+		void TimeBlockEnd_GPU(const char* funcName);
 
 		void OnUpdate();
 		void OnFrameEnd();

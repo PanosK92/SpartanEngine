@@ -108,7 +108,7 @@ namespace Directus
 		if (!Engine::EngineMode_IsSet(Engine_Game))
 			return;
 
-		PROFILE_BEGIN_CPU();
+		TIME_BLOCK_START_CPU();
 
 		float timeStep = deltaTime.Get<float>();
 
@@ -132,7 +132,7 @@ namespace Directus
 
 		m_simulating = false;
 
-		PROFILE_END_CPU();
+		TIME_BLOCK_END_CPU();
 	}
 
 	void Physics::Clear()

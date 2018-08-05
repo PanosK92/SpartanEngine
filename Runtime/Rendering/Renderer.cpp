@@ -268,7 +268,7 @@ namespace Directus
 			return;
 
 		FIRE_EVENT(EVENT_FRAME_START);
-		PROFILE_BEGIN();
+		TIME_BLOCK_START_MULTI();
 		Profiler::Get().Reset();
 
 		// If there is a camera, render the scene
@@ -319,20 +319,14 @@ namespace Directus
 			m_rhiDevice->Clear(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
 
-		PROFILE_END();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::SetBackBufferSize(int width, int height)
 	{
-		Settings::Get().SetViewport(width, height);
 		m_rhiDevice->SetResolution(width, height);
 		m_rhiPipelineState->SetViewport((float)width, (float)height);
 		m_rhiPipelineState->Bind();
-	}
-
-	const RHI_Viewport& Renderer::GetViewportBackBuffer()
-	{
-		return m_rhiDevice->GetViewport();
 	}
 
 	void Renderer::SetResolution(int width, int height)
@@ -354,13 +348,7 @@ namespace Directus
 
 		Settings::Get().SetResolution(Vector2((float)width, (float)height));
 		RenderTargets_Create(width, height);
-		LOGF_INFO("Renderer::SetResolution:: Resolution was set to %dx%d", width, height);
-	}
-
-	const Vector2& Renderer::GetViewportInternal()
-	{
-		// The internal (frame) viewport equals the resolution
-		return Settings::Get().GetResolution();
+		LOGF_INFO("Renderer::SetResolution: Resolution was set to %dx%d", width, height);
 	}
 
 	void Renderer::Clear()
@@ -403,7 +391,7 @@ namespace Directus
 	//= RENDERABLES ============================================================================================
 	void Renderer::Renderables_Acquire(const Variant& renderables)
 	{
-		PROFILE_BEGIN_CPU();
+		TIME_BLOCK_START_CPU();
 
 		Clear();
 		auto renderablesVec = renderables.Get<vector<weak_ptr<Actor>>>();
@@ -442,7 +430,7 @@ namespace Directus
 		}
 		Renderables_Sort(&m_renderables);
 
-		PROFILE_END_CPU();
+		TIME_BLOCK_END_CPU();
 	}
 
 	void Renderer::Renderables_Sort(vector<Actor*>* renderables)
@@ -508,7 +496,7 @@ namespace Directus
 		if (!light || !light->GetCastShadows())
 			return;
 
-		PROFILE_BEGIN();
+		TIME_BLOCK_START_MULTI();
 
 		m_rhiDevice->EventBegin("Pass_DepthDirectionalLight");
 		m_rhiDevice->EnableDepth(true);
@@ -569,7 +557,7 @@ namespace Directus
 		m_rhiDevice->EnableDepth(false);
 		m_rhiDevice->EventEnd();
 
-		PROFILE_END();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_GBuffer()
@@ -577,7 +565,7 @@ namespace Directus
 		if (!m_rhiDevice)
 			return;
 
-		PROFILE_BEGIN();
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_GBuffer");
 
 		m_gbuffer->SetAsRenderTarget();
@@ -675,7 +663,7 @@ namespace Directus
 		m_currentlyBoundMaterial	= 0;
 
 		m_rhiDevice->EventEnd();
-		PROFILE_END();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_PreLight(
@@ -686,7 +674,7 @@ namespace Directus
 		shared_ptr<RHI_RenderTexture>& outRenderTextureShadowing
 	)
 	{
-		PROFILE_BEGIN();
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_PreLight");
 
 		m_rhiPipelineState->SetIndexBuffer(m_quad->GetIndexBuffer());
@@ -699,7 +687,7 @@ namespace Directus
 		Pass_Blur(inRenderTexure, outRenderTextureShadowing, Settings::Get().GetResolution());
 
 		m_rhiDevice->EventEnd();
-		PROFILE_END();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& inTextureShadowing, shared_ptr<RHI_RenderTexture>& outRenderTexture)
@@ -707,7 +695,7 @@ namespace Directus
 		if (!m_shaderLight->IsCompiled())
 			return;
 
-		PROFILE_BEGIN();
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Light");
 
 		m_rhiDevice->EnableDepth(false);
@@ -735,12 +723,12 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		PROFILE_END();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& inRenderTexture1, shared_ptr<RHI_RenderTexture>& inRenderTexture2, shared_ptr<RHI_RenderTexture>& outRenderTexture)
 	{
-		PROFILE_BEGIN();
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_PostLight");
 
 		m_rhiPipelineState->SetVertexBuffer(m_quad->GetVertexBuffer());
@@ -791,7 +779,7 @@ namespace Directus
 		Pass_Debug();
 
 		m_rhiDevice->EventEnd();
-		PROFILE_END();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_Correction(shared_ptr<RHI_RenderTexture>& inTexture, shared_ptr<RHI_RenderTexture>& outTexture)
@@ -948,7 +936,7 @@ namespace Directus
 		if (!inDirectionalLight)
 			return;
 
-		PROFILE_BEGIN();
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Shadowing");
 
 		// SHADOWING (Shadow mapping + SSAO)
@@ -985,13 +973,13 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		PROFILE_END();
+		TIME_BLOCK_END_MULTI();
 	}
 	//=============================================================================================================
 
 	bool Renderer::Pass_DebugGBuffer()
 	{
-		PROFILE_BEGIN();
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_DebugGBuffer");
 
 		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
@@ -1013,13 +1001,13 @@ namespace Directus
 		}
 
 		m_rhiDevice->EventEnd();
-		PROFILE_END();
+		TIME_BLOCK_END_MULTI();
 		return true;
 	}
 
 	void Renderer::Pass_Debug()
 	{
-		PROFILE_BEGIN();
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Debug");
 
 		//= PRIMITIVES ===================================================================================
@@ -1206,7 +1194,7 @@ namespace Directus
 		m_rhiDevice->EnableAlphaBlending(false);
 
 		m_rhiDevice->EventEnd();
-		PROFILE_END();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	const Vector4& Renderer::GetClearColor()
