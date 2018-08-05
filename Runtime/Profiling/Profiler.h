@@ -56,6 +56,7 @@ namespace Directus
 		void* time_end;
 		float duration		= 0.0f;
 		bool initialized	= false;
+		bool started		= false;
 	};
 
 	class ENGINE_CLASS Profiler

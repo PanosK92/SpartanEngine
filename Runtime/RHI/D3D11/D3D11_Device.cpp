@@ -809,7 +809,7 @@ namespace Directus
 		UINT64 startTime	= 0;
 		UINT64 endTime		= 0;
 		D3D11_Internals::m_deviceContext->GetData((ID3D11Query*)queryStart,	&startTime,	sizeof(startTime),	0);
-		D3D11_Internals::m_deviceContext->GetData((ID3D11Query*)queryEnd,	&endTime,	sizeof(UINT64),		0);
+		D3D11_Internals::m_deviceContext->GetData((ID3D11Query*)queryEnd,	&endTime,	sizeof(endTime),	0);
 
 		// Compute delta in milliseconds
 		UINT64 delta		= endTime - startTime;

@@ -1000,24 +1000,20 @@ namespace Directus
 		texType = RenderFlags_IsSet(Render_Specular)	? GBuffer_Target_Specular	: texType;
 		texType = RenderFlags_IsSet(Render_Depth)		? GBuffer_Target_Depth		: texType;
 
-		if (texType == GBuffer_Target_Unknown)
+		if (texType != GBuffer_Target_Unknown)
 		{
-			m_rhiDevice->EventEnd();
-			return false;
+			// TEXTURE
+			m_rhiPipelineState->SetShader(m_shaderTexture);
+			m_rhiPipelineState->SetTexture(m_gbuffer->GetShaderResource(texType));
+			m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
+			m_shaderTexture->BindBuffer(&Struct_Matrix(m_wvp_baseOrthographic), 0);
+			m_rhiPipelineState->Bind();
+
+			m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 		}
-
-		// TEXTURE
-		m_rhiPipelineState->SetShader(m_shaderTexture);
-		m_rhiPipelineState->SetTexture(m_gbuffer->GetShaderResource(texType));
-		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
-		m_shaderTexture->BindBuffer(&Struct_Matrix(m_wvp_baseOrthographic), 0);		
-		m_rhiPipelineState->Bind();
-
-		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		PROFILE_END();
-
 		return true;
 	}
 
