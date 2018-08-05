@@ -192,6 +192,7 @@ namespace Directus
 		if (m_viewportDirty)
 		{
 			m_rhiDevice->SetViewport(m_viewport);
+			Settings::Get().SetViewport(m_viewport.GetWidth(), m_viewport.GetHeight());
 			m_viewportDirty = false;
 		}
 

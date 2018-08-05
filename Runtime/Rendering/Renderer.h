@@ -85,13 +85,10 @@ namespace Directus
 		void Present();
 		void Render();
 
-		// The back-buffer is the final output (should match the display size)
+		// The back-buffer is the final output (should match the display/window size)
 		void SetBackBufferSize(int width, int height);
-		const RHI_Viewport& GetViewportBackBuffer();
-
 		// The actual frame that all rendering takes place (or the viewport window in the editor)
 		void SetResolution(int width, int height);
-		const Math::Vector2& GetViewportInternal();
 
 		//= RENDER MODE ======================================================================
 		// Returns all render mode flags
