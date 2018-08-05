@@ -101,6 +101,7 @@ namespace Directus
 
 		m_rhiDevice->Profiling_QueryStart(timeBlock->query);
 		m_rhiDevice->Profiling_GetTimeStamp(timeBlock->time_start);
+		timeBlock->started = true;
 	}
 
 	void Profiler::EndBlock_GPU(const char* funcName)
@@ -142,9 +143,15 @@ namespace Directus
 		if (!m_shouldUpdate)
 			return;
 
-		for (auto& timeBlock : m_timeBlocks_gpu)
+		for (auto& entry : m_timeBlocks_gpu)
 		{
-			timeBlock.second.duration = m_rhiDevice->Profiling_GetDuration(timeBlock.second.query, timeBlock.second.time_start, timeBlock.second.time_end);
+			auto& timeBlock = entry.second;
+
+			if (timeBlock.started)
+			{
+				timeBlock.duration = m_rhiDevice->Profiling_GetDuration(timeBlock.query, timeBlock.time_start, timeBlock.time_end);
+			}
+			timeBlock.started = false;
 		}
 
 		m_shouldUpdate = false;

@@ -49,7 +49,7 @@ namespace Directus
 		m_previousTime = currentTime;
 
 		m_deltaTimeMs	= (float)ms.count();
-		m_deltaTimeSec	= (float)(ms.count() / 1000.0f);
+		m_deltaTimeSec	= (float)(ms.count() / 1000.0);
 
 		if (m_firstRun)
 		{
