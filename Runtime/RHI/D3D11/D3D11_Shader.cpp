@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include <sstream> 
 #include "../RHI_Device.h"
+#include "../../Logging/Log.h"
+#include "../../FileSystem/FileSystem.h"
 //=================================
 
 //= NAMESPACES =====

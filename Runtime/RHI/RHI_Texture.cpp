@@ -20,13 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================================
-#include "IRHI_Texture.h"
-#include "RHI_Implementation.h"
-#include "../Resource/Import/DDSTextureImporter.h"
-#include "../Resource/ResourceManager.h"
+#include "RHI_Texture.h"
+#include "RHI_Device.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
-#include "RHI_Device.h"
+#include "../Resource/Import/DDSTextureImporter.h"
 //================================================
 
 //= NAMESPACES =====
@@ -49,7 +47,7 @@ namespace Directus
 		"CubeMap",
 	};
 
-	IRHI_Texture::IRHI_Texture(Context* context) : IResource(context)
+	RHI_Texture::RHI_Texture(Context* context) : IResource(context)
 	{
 		//= IResource ==================
 		RegisterResource<RHI_Texture>();
@@ -57,20 +55,18 @@ namespace Directus
 
 		m_isUsingMipmaps	= true;
 		m_format			= Texture_Format_R8G8B8A8_UNORM;
-	}
-
-	IRHI_Texture::~IRHI_Texture()
-	{
-		ClearTextureBytes();
+		m_rhiDevice			= context->GetSubsystem<Renderer>()->GetRHIDevice();
+		m_shaderResource	= nullptr;
+		m_memoryUsage		= 0;
 	}
 
 	//= RESOURCE INTERFACE =====================================================================
-	bool IRHI_Texture::SaveToFile(const string& filePath)
+	bool RHI_Texture::SaveToFile(const string& filePath)
 	{
 		return Serialize(filePath);
 	}
 
-	bool IRHI_Texture::LoadFromFile(const string& rawFilePath)
+	bool RHI_Texture::LoadFromFile(const string& rawFilePath)
 	{
 		bool loaded = false;
 		GetLoadState(LoadState_Started);
@@ -117,7 +113,7 @@ namespace Directus
 		return true;
 	}
 
-	unsigned int IRHI_Texture::GetMemoryUsage()
+	unsigned int RHI_Texture::GetMemoryUsage()
 	{
 		// Compute texture bits (in case they are loaded)
 		unsigned int size = 0;
@@ -132,7 +128,7 @@ namespace Directus
 	//=====================================================================================
 
 	//= PROPERTIES =========================================================================
-	void IRHI_Texture::SetType(TextureType type)
+	void RHI_Texture::SetType(TextureType type)
 	{
 		// Some models (or Assimp) pass a normal map as a height map
 		// and others pass a height map as a normal map, we try to fix that.
@@ -142,7 +138,7 @@ namespace Directus
 	//======================================================================================
 
 	//= TEXTURE BITS =================================================================
-	void IRHI_Texture::ClearTextureBytes()
+	void RHI_Texture::ClearTextureBytes()
 	{
 		for (auto& mip : m_textureBytes)
 		{
@@ -153,7 +149,7 @@ namespace Directus
 		m_textureBytes.shrink_to_fit();
 	}
 
-	void IRHI_Texture::GetTextureBytes(vector<vector<std::byte>>* textureBytes)
+	void RHI_Texture::GetTextureBytes(vector<vector<std::byte>>* textureBytes)
 	{
 		if (!m_textureBytes.empty())
 		{
@@ -174,7 +170,7 @@ namespace Directus
 	}
 	//================================================================================
 
-	bool IRHI_Texture::CreateShaderResource()
+	bool RHI_Texture::CreateShaderResource()
 	{
 		if (m_isUsingMipmaps)
 		{
@@ -197,7 +193,7 @@ namespace Directus
 	}
 	//=====================================================================================
 
-	bool IRHI_Texture::LoadFromForeignFormat(const string& filePath)
+	bool RHI_Texture::LoadFromForeignFormat(const string& filePath)
 	{
 		if (filePath == NOT_ASSIGNED)
 		{
@@ -238,7 +234,7 @@ namespace Directus
 		return true;
 	}
 
-	TextureType IRHI_Texture::TextureTypeFromString(const string& type)
+	TextureType RHI_Texture::TextureTypeFromString(const string& type)
 	{
 		if (type == "Albedo")		return TextureType_Albedo;
 		if (type == "Roughness")	return TextureType_Roughness;
@@ -253,7 +249,7 @@ namespace Directus
 		return TextureType_Unknown;
 	}
 
-	bool IRHI_Texture::Serialize(const string& filePath)
+	bool RHI_Texture::Serialize(const string& filePath)
 	{
 		// If the texture bits has been cleared, load it again
 		// as we don't want to replaced existing data with nothing.
@@ -289,7 +285,7 @@ namespace Directus
 		return true;
 	}
 
-	bool IRHI_Texture::Deserialize(const string& filePath)
+	bool RHI_Texture::Deserialize(const string& filePath)
 	{
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
 		if (!file->IsOpen())

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../Resource/ResourceManager.h"
 #include "../IO/XmlDocument.h"
+#include "../RHI/RHI_Texture.h"
 //======================================
 
 //= NAMESPACES ================

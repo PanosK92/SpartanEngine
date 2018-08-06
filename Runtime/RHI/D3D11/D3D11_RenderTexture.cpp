@@ -19,11 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES ========================
 #include "../RHI_Implementation.h"
 #include "../RHI_RenderTexture.h"
 #include "../RHI_Device.h"
-//=================================
+#include "../../Core/GUIDGenerator.h"
+#include "../../Logging/Log.h"
+//===================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;

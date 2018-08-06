@@ -34,6 +34,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Components/AudioSource.h"
 #include "../Scene/Components/AudioListener.h"
 #include "../IO/FileStream.h"
+#include "../FileSystem/FileSystem.h"
+#include "../Logging/Log.h"
+#include "../Core/GUIDGenerator.h"
 //============================================
 
 //= NAMESPACES =====

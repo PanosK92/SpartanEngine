@@ -36,6 +36,7 @@ namespace Directus
 	class RHI_PipelineState;
 	class RHI_Viewport;
 	class RHI_RenderTexture;
+	class RHI_Texture;
 	struct RHI_Vertex_PosUVTBN;
 	struct RHI_Vertex_PosUVNor;
 	struct RHI_Vertex_PosUV;
@@ -151,10 +152,7 @@ namespace Directus
 #ifdef API_D3D11
 	class D3D11_Shader;
 	class D3D11_InputLayout;
-	class D3D11_Texture;
-
-	typedef D3D11_Shader			RHI_Shader;
-	typedef D3D11_Texture			RHI_Texture;
+	typedef D3D11_Shader RHI_Shader;
 #endif
 	// VULKAN
 #ifdef API_VULKAN
