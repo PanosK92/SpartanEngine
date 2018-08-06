@@ -22,7 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "LightShader.h"
 #include "../../Scene/Components/Transform.h"
-#include "../../RHI/IRHI_Implementation.h"
+#include "../../RHI/RHI_Implementation.h"
+#include "../../Core/Settings.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -162,11 +163,11 @@ namespace Directus
 		}
 
 		buffer->pointLightCount = (float)pointIndex;
-		buffer->spotLightCount = (float)spotIndex;
-		buffer->nearPlane = camera->GetNearPlane();
-		buffer->farPlane = camera->GetFarPlane();
-		buffer->viewport = Settings::Get().GetResolution();
-		buffer->padding = Vector2::Zero;
+		buffer->spotLightCount	= (float)spotIndex;
+		buffer->nearPlane		= camera->GetNearPlane();
+		buffer->farPlane		= camera->GetFarPlane();
+		buffer->viewport		= Settings::Get().GetResolution();
+		buffer->padding			= Vector2::Zero;
 
 		// Unmap buffer
 		m_miscBuffer->Unmap();

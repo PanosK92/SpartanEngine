@@ -50,6 +50,16 @@ namespace Directus
 	}
 
 	template <typename T>
+	void SafeRelease(T* ptr)
+	{
+		if (ptr)
+		{
+			ptr->Release();
+			ptr = nullptr;
+		}
+	}
+
+	template <typename T>
 	void SafeDelete(T& ptr)
 	{
 		if (ptr)

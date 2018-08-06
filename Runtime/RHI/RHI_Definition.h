@@ -29,10 +29,13 @@ namespace Directus
 {
 	// RHI (Rendering Hardware Interface)
 	class RHI_Device;
+	class RHI_VertexBuffer;
+	class RHI_IndexBuffer;
 	class RHI_ConstantBuffer;
 	class RHI_Sampler;
 	class RHI_PipelineState;
 	class RHI_Viewport;
+	class RHI_RenderTexture;
 	struct RHI_Vertex_PosUVTBN;
 	struct RHI_Vertex_PosUVNor;
 	struct RHI_Vertex_PosUV;
@@ -42,6 +45,12 @@ namespace Directus
 	{
 		Query_Timestamp,
 		Query_Timestamp_Disjoint
+	};
+
+	enum Clear_Buffer
+	{
+		Clear_Depth		= 1 << 0,
+		Clear_Stencil	= 1 << 1
 	};
 
 	enum Buffer_Scope
@@ -142,16 +151,10 @@ namespace Directus
 #ifdef API_D3D11
 	class D3D11_Shader;
 	class D3D11_InputLayout;
-	class D3D11_VertexBuffer;
-	class D3D11_IndexBuffer;
-	class D3D11_RenderTexture;
 	class D3D11_Texture;
 
 	typedef D3D11_Shader			RHI_Shader;
-	typedef D3D11_VertexBuffer		RHI_VertexBuffer;
-	typedef D3D11_IndexBuffer		RHI_IndexBuffer;
 	typedef D3D11_Texture			RHI_Texture;
-	typedef D3D11_RenderTexture		RHI_RenderTexture;
 #endif
 	// VULKAN
 #ifdef API_VULKAN

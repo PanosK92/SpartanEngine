@@ -242,7 +242,7 @@ void FileDialog::Show_Middle()
 				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 13);	// move to the bottom of the thumbnail
 				ImGui::PushItemWidth(m_itemSize + 8.5f);
 
-				ImGui::Text(item.GetLabel());
+				ImGui::TextWrapped(item.GetLabel());
 
 				ImGui::PopItemWidth();
 				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize);		// move to the right of the thumbnail

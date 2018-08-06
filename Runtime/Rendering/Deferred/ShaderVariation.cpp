@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "ShaderVariation.h"
-#include "../Material.h"
-#include "../../RHI/IRHI_Implementation.h"
+#include "../Renderer.h"
+#include "../../RHI/RHI_Implementation.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Camera.h"
-#include "../Renderer.h"
+#include "../../Core/Settings.h"
 //===========================================
 
 //= NAMESPACES ================

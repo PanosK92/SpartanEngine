@@ -63,7 +63,7 @@ XPM files[reading, writing]
 //= INCLUDES ========================
 #include <vector>
 #include "../../Core/EngineDefs.h"
-#include "../../RHI/IRHI_Definition.h"
+#include "../../RHI/RHI_Definition.h"
 //===================================
 
 struct FIBITMAP;

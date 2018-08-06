@@ -23,14 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Model.h"
 #include "Mesh.h"
 #include "Animation.h"
-#include "../RHI/IRHI_Implementation.h"
+#include "Renderer.h"
+#include "../IO/FileStream.h"
+#include "../Core/Stopwatch.h"
 #include "../Scene/Actor.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"
-#include "../IO/FileStream.h"
-#include "../Core/Stopwatch.h"
-#include "../Resource/ResourceManager.h"
-#include "Renderer.h"
+#include "../RHI/RHI_Implementation.h"
+#include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_IndexBuffer.h"
 //=========================================
 
 //= NAMESPACES ================
@@ -279,7 +280,7 @@ namespace Directus
 		bool success = true;
 
 		// Get geometry
-		vector<unsigned int> indices		= m_mesh->Indices_Get();
+		vector<unsigned int> indices			= m_mesh->Indices_Get();
 		vector<RHI_Vertex_PosUVTBN> vertices	= m_mesh->Vertices_Get();
 
 		if (!indices.empty())

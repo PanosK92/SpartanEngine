@@ -110,7 +110,8 @@ namespace Directus
 			m_bindSamplerCount			= 0;
 			m_bindTextureCount			= 0;
 			m_bindVertexShaderCount		= 0;
-			m_bindPixelShaderCount		= 0;		
+			m_bindPixelShaderCount		= 0;
+			m_bindRenderTargetCount		= 0;
 		}
 
 		unsigned int m_drawCalls;
@@ -122,6 +123,7 @@ namespace Directus
 		unsigned int m_bindTextureCount;
 		unsigned int m_bindVertexShaderCount;
 		unsigned int m_bindPixelShaderCount;
+		unsigned int m_bindRenderTargetCount;
 		
 	private:
 		void UpdateMetrics();

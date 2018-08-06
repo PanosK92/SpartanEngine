@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============================
-#include "../../RHI/IRHI_Definition.h"
+#include "../../RHI/RHI_Definition.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Vector4.h"
 #include "../../Scene/Components/Camera.h"

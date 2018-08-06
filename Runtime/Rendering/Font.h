@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include <map>
-#include "../RHI/IRHI_Definition.h"
+#include "../RHI/RHI_Definition.h"
 #include "../Core/EngineDefs.h"
 #include "../Resource/IResource.h"
 #include "../Math/Vector4.h"
@@ -56,7 +56,7 @@ namespace Directus
 		const Math::Vector4& GetColor()				{ return m_fontColor; }
 		void SetColor(const Math::Vector4& color)	{ m_fontColor = color; }
 
-		void* GetShaderResource();
+		const std::shared_ptr<RHI_Texture>& GetTexture()	{ return m_textureAtlas; }
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
 		unsigned int GetIndexCount()						{ return (unsigned int)m_indices.size(); }
@@ -65,7 +65,7 @@ namespace Directus
 		bool UpdateBuffers(std::vector<RHI_Vertex_PosUV>& vertices, std::vector<unsigned int>& indices);
 
 		std::map<unsigned int, Glyph> m_glyphs;
-		std::unique_ptr<RHI_Texture> m_textureAtlas;
+		std::shared_ptr<RHI_Texture> m_textureAtlas;
 		int m_fontSize;
 		int m_charMaxWidth;
 		int m_charMaxHeight;

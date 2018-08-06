@@ -20,10 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
-#include "../IRHI_Implementation.h"
+#include "../RHI_Implementation.h"
+#include "../RHI_Device.h"
+#include "../RHI_IndexBuffer.h"
 #include "../../Logging/Log.h"
 #include "../../Profiling/Profiler.h"
-#include "../RHI_Device.h"
 //===================================
 
 //= NAMESPACES =====
@@ -32,19 +33,19 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11_IndexBuffer::D3D11_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice) : IRHI_IndexBuffer(rhiDevice)
+	RHI_IndexBuffer::RHI_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice		= rhiDevice;
 		m_buffer		= nullptr;
 		m_memoryUsage	= 0;
 	}
 
-	D3D11_IndexBuffer::~D3D11_IndexBuffer()
+	RHI_IndexBuffer::~RHI_IndexBuffer()
 	{
-		SafeRelease(m_buffer);
+		SafeRelease((ID3D11Buffer*)m_buffer);
 	}
 
-	bool D3D11_IndexBuffer::Create(const vector<unsigned int>& indices)
+	bool RHI_IndexBuffer::Create(const vector<unsigned int>& indices)
 	{
 		if (!m_rhiDevice->GetDevice<ID3D11Device>() || indices.empty())
 			return false;
@@ -72,7 +73,8 @@ namespace Directus
 		// Compute memory usage
 		m_memoryUsage = (unsigned int)(sizeof(unsigned int) * indices.size());
 
-		HRESULT result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
+		auto ptr = (ID3D11Buffer**)&m_buffer;
+		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR("D3D11IndexBuffer: Failed to create index buffer");
@@ -82,7 +84,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11_IndexBuffer::CreateDynamic(unsigned int initialSize)
+	bool RHI_IndexBuffer::CreateDynamic(unsigned int initialSize)
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 			return false;
@@ -99,7 +101,8 @@ namespace Directus
 		bufferDesc.MiscFlags = 0;
 		bufferDesc.StructureByteStride = 0;
 
-		HRESULT result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+		auto ptr = (ID3D11Buffer**)&m_buffer;
+		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR("D3D11IndexBuffer: Failed to create dynamic index buffer");
@@ -109,7 +112,7 @@ namespace Directus
 		return true;
 	}
 
-	void* D3D11_IndexBuffer::Map()
+	void* RHI_IndexBuffer::Map()
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 			return nullptr;
@@ -122,7 +125,7 @@ namespace Directus
 
 		// disable GPU access to the index buffer data.
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		HRESULT result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		auto result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map((ID3D11Resource*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11IndexBuffer: Failed to map index buffer.");
@@ -132,18 +135,18 @@ namespace Directus
 		return mappedResource.pData;
 	}
 
-	bool D3D11_IndexBuffer::Unmap()
+	bool RHI_IndexBuffer::Unmap()
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 			return false;
 
 		// re-enable GPU access to the index buffer data.
-		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap(m_buffer, 0);
+		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Resource*)m_buffer, 0);
 
 		return true;
 	}
 
-	bool D3D11_IndexBuffer::Bind()
+	bool RHI_IndexBuffer::Bind()
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
@@ -151,7 +154,7 @@ namespace Directus
 			return false;
 		}
 
-		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->IASetIndexBuffer(m_buffer, DXGI_FORMAT_R32_UINT, 0);
+		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->IASetIndexBuffer((ID3D11Buffer*)m_buffer, DXGI_FORMAT_R32_UINT, 0);
 		return true;
 	}
 }

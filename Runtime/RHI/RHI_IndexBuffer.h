@@ -21,31 +21,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ==============
+#include "RHI_Definition.h"
 #include <vector>
-#include "../RHI_Vertex.h"
-#include "../IRHI_VertexBuffer.h"
-//===============================
+//=========================
 
 namespace Directus
 {
-	class ENGINE_CLASS D3D11_VertexBuffer : public IRHI_VertexBuffer
+	class RHI_IndexBuffer
 	{
 	public:
-		D3D11_VertexBuffer(std::shared_ptr<RHI_Device> rhiDevice);
-		~D3D11_VertexBuffer();
+		RHI_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice);
+		~RHI_IndexBuffer();
+	
+		bool Create(const std::vector<unsigned int>& indices);
+		bool CreateDynamic(unsigned int initialSize);
+		void* Map();
+		bool Unmap();
+		bool Bind();
 
-		bool Create(const std::vector<RHI_Vertex_PosCol>& vertices) override;
-		bool Create(const std::vector<RHI_Vertex_PosUV>& vertices) override;
-		bool Create(const std::vector<RHI_Vertex_PosUVTBN>& vertices) override;
-		bool CreateDynamic(unsigned int stride, unsigned int initialSize) override;
-		void* Map() override;
-		bool Unmap() override;
-		bool Bind() override;
+		unsigned int GetMemoryUsage() { return m_memoryUsage; }
 
-	private:
+	protected:
+		unsigned int m_memoryUsage;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
-		ID3D11Buffer* m_buffer;
-		unsigned int m_stride;
+
+		// D3D11
+		void* m_buffer;
 	};
 }

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "IRHI_Definition.h"
+#include "RHI_Definition.h"
 #include "RHI_Viewport.h"
 #include "../Math/Vector4.h"
 #include "../Core/SubSystem.h"
@@ -40,7 +40,9 @@ namespace Directus
 		//= DRAW ======================================================================================
 		void Draw(unsigned int vertexCount);
 		void DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset);
-		void Clear(const Math::Vector4& color);
+		void ClearBackBuffer(const Math::Vector4& color);
+		void ClearRenderTarget(void* renderTarget, const Math::Vector4& color);
+		void ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, uint8_t stencil);
 		void Present();
 		//=============================================================================================
 
@@ -85,7 +87,7 @@ namespace Directus
 		float Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd);
 		//=================================================================================
 
-		bool IsInitialized() { return m_initialized; }
+		bool IsInitialized()	{ return m_initialized; }
 
 		template <typename T>
 		T* GetDevice()			{ return (T*)m_device; }

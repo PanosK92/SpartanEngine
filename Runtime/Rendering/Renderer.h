@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <memory>
 #include <vector>
-#include "../RHI/IRHI_Definition.h"
+#include "../RHI/RHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Resource/ResourceManager.h"
 //======================================
@@ -79,8 +79,7 @@ namespace Directus
 		//========================
 
 		// Rendering
-		void SetRenderTarget(std::shared_ptr<RHI_RenderTexture>& renderTarget, bool clear = true);
-		void SetRenderTarget(bool clear = true);
+		void SetBackBufferAsRenderTarget(bool clear = true);
 		void* GetFrame();
 		void Present();
 		void Render();
@@ -117,8 +116,8 @@ namespace Directus
 		void Pass_GBuffer();
 
 		void Pass_PreLight(
-			void* inTextureNormal,
-			void* inTextureDepth,
+			const std::shared_ptr<RHI_RenderTexture>& inTextureNormal,
+			const std::shared_ptr<RHI_RenderTexture>& inTextureDepth,
 			std::shared_ptr<RHI_Texture>& inTextureNormalNoise,
 			std::shared_ptr<RHI_RenderTexture>& inRenderTexure,
 			std::shared_ptr<RHI_RenderTexture>& outRenderTextureShadowing
@@ -171,8 +170,8 @@ namespace Directus
 		);
 
 		void Pass_Shadowing(
-			void* inTextureNormal_shaderResource,
-			void* inTextureDepth_shaderResource,
+			const std::shared_ptr<RHI_RenderTexture>& inTextureNormal_shaderResource,
+			const std::shared_ptr<RHI_RenderTexture>& inTextureDepth_shaderResource,
 			std::shared_ptr<RHI_Texture>& inTextureNormalNoise,
 			Light* inDirectionalLight,
 			std::shared_ptr<RHI_RenderTexture>& outRenderTexture
@@ -234,9 +233,9 @@ namespace Directus
 		//= DEBUG ==============================================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
-		std::unique_ptr<RHI_Texture> m_gizmoTexLightDirectional;
-		std::unique_ptr<RHI_Texture> m_gizmoTexLightPoint;
-		std::unique_ptr<RHI_Texture> m_gizmoTexLightSpot;
+		std::shared_ptr<RHI_Texture> m_gizmoTexLightDirectional;
+		std::shared_ptr<RHI_Texture> m_gizmoTexLightPoint;
+		std::shared_ptr<RHI_Texture> m_gizmoTexLightSpot;
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
 		static unsigned long m_flags;
 		//======================================================
