@@ -38,12 +38,11 @@ namespace Directus
 	class RHI_RenderTexture;
 	class RHI_Texture;
 	class RHI_Shader;
+	class RHI_InputLayout;
 	struct RHI_Vertex_PosUVTBN;
 	struct RHI_Vertex_PosUVNor;
 	struct RHI_Vertex_PosUV;
 	struct RHI_Vertex_PosCol;
-
-	class D3D11_InputLayout; // this must go
 
 	enum Query_Type
 	{
@@ -73,7 +72,6 @@ namespace Directus
 
 	enum Input_Layout
 	{
-		Input_Auto,
 		Input_Position,
 		Input_PositionColor,
 		Input_PositionTexture,

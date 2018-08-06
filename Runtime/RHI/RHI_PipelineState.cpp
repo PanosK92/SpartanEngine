@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES ==================
 #include "RHI_PipelineState.h"
 #include "RHI_Implementation.h"
 #include "RHI_Sampler.h"
@@ -32,9 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Texture.h"
 #include "RHI_Shader.h"
 #include "RHI_ConstantBuffer.h"
-#include "D3D11\D3D11_InputLayout.h"
+#include "RHI_InputLayout.h"
 #include "..\Logging\Log.h"
-//==================================
+//=============================
 
 //= NAMESPACES ================
 using namespace std;
@@ -191,13 +191,13 @@ namespace Directus
 		m_primitiveTopologyDirty	= true;
 	}
 
-	bool RHI_PipelineState::SetInputLayout(const shared_ptr<D3D11_InputLayout>& inputLayout)
+	bool RHI_PipelineState::SetInputLayout(const shared_ptr<RHI_InputLayout>& inputLayout)
 	{
 		if (m_inputLayout == inputLayout->GetInputLayout())
 			return false;
 
 		m_inputLayout		= inputLayout->GetInputLayout();
-		m_inputLayoutBuffer	= inputLayout->GetInputLayoutBuffer();
+		m_inputLayoutBuffer	= inputLayout->GetBuffer();
 		m_inputLayoutDirty	= true;
 
 		return true;

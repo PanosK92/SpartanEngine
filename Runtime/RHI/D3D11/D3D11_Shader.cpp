@@ -20,10 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===========================
-#include "D3D11_InputLayout.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
+#include "../RHI_InputLayout.h"
 #include <d3dcompiler.h>
 #include <sstream> 
 #include "../../Logging/Log.h"
@@ -141,95 +141,12 @@ namespace Directus
 			return true;
 		}
 
-		inline std::pair<std::vector<D3D11_INPUT_ELEMENT_DESC>, std::vector<std::string>> Reflect(ID3D10Blob* vsBlob)
-		{
-			std::pair<std::vector<D3D11_INPUT_ELEMENT_DESC>, std::vector<std::string>> inputLayoutDesc;
-
-			ID3D11ShaderReflection* reflector = nullptr;
-			if (FAILED(D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), IID_ID3D11ShaderReflection, (void**)&reflector)))
-			{
-				LOG_ERROR("D3D11_Shader: Failed to reflect shader.");
-				return inputLayoutDesc;
-			}
-
-			// Get shader info
-			D3D11_SHADER_DESC shaderDesc;
-			reflector->GetDesc(&shaderDesc);
-
-			// Read input layout description from shader info
-			for (unsigned int i = 0; i < shaderDesc.InputParameters; i++)
-			{
-				D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
-				reflector->GetInputParameterDesc(i, &paramDesc);
-
-				// fill out input element desc
-				D3D11_INPUT_ELEMENT_DESC elementDesc;
-
-				inputLayoutDesc.second.emplace_back(paramDesc.SemanticName);
-				elementDesc.SemanticName = nullptr;
-				elementDesc.SemanticIndex = paramDesc.SemanticIndex;
-				elementDesc.InputSlot = 0;
-				elementDesc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-				elementDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-				elementDesc.InstanceDataStepRate = 0;
-
-				// determine DXGI format
-				if (paramDesc.Mask == 1)
-				{
-					if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32_UINT;
-					else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32_SINT;
-					else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32_FLOAT;
-					elementDesc.AlignedByteOffset = 4;
-				}
-				else if (paramDesc.Mask <= 3)
-				{
-					if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32G32_UINT;
-					else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32G32_SINT;
-					else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
-					elementDesc.AlignedByteOffset = 8;
-				}
-				else if (paramDesc.Mask <= 7)
-				{
-					if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32_UINT;
-					else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32_SINT;
-					else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-					elementDesc.AlignedByteOffset = 12;
-				}
-				else if (paramDesc.Mask <= 15)
-				{
-					if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32A32_UINT;
-					else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) elementDesc.Format = DXGI_FORMAT_R32G32B32A32_SINT;
-					else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) elementDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-					elementDesc.AlignedByteOffset = 16;
-				}
-
-				inputLayoutDesc.first.push_back(elementDesc);
-			}
-			SafeRelease(reflector);
-
-			return inputLayoutDesc;
-		}
-
-		inline bool SetInputLayout(ID3D11Device* device, ID3D10Blob* vsBlob, std::shared_ptr<D3D11_InputLayout> inputLayout, Input_Layout inputLayoutEnum)
+		inline bool SetInputLayout(ID3D11Device* device, ID3D10Blob* vsBlob, shared_ptr<RHI_InputLayout> inputLayout, Input_Layout inputLayoutEnum)
 		{
 			bool result = false;
 
 			// Create vertex input layout
-			if (inputLayoutEnum != Input_Auto)
-			{
-				result = inputLayout->Create(vsBlob, inputLayoutEnum);
-			}
-			else
-			{
-				auto descPair = Reflect(vsBlob);
-				vector<D3D11_INPUT_ELEMENT_DESC> inputLayoutDesc = descPair.first;
-				for (unsigned int i = 0; i < inputLayoutDesc.size(); ++i)
-				{
-					inputLayoutDesc[i].SemanticName = descPair.second[i].c_str();
-				}
-
-				result = inputLayout->Create(vsBlob, &inputLayoutDesc[0], unsigned int(inputLayoutDesc.size()));
-			}
+			result = inputLayout->Create(vsBlob, inputLayoutEnum);
 
 			// If the creation was successful, release vsBlob else print a message
 			if (result)
@@ -240,7 +157,7 @@ namespace Directus
 			return result;
 		}
 
-		inline vector<D3D_SHADER_MACRO> GetD3DMacros(const std::map<std::string, std::string>& macros)
+		inline vector<D3D_SHADER_MACRO> GetD3DMacros(const map<string, string>& macros)
 		{
 			vector<D3D_SHADER_MACRO> d3dMacros;	
 			for (const auto& macro : macros)
@@ -262,7 +179,7 @@ namespace Directus
 		m_compiled			= false;
 		m_hasVertexShader	= false;
 		m_hasPixelShader	= false;
-		m_D3D11InputLayout	= make_shared<D3D11_InputLayout>(m_rhiDevice);
+		m_D3D11InputLayout	= make_shared<RHI_InputLayout>(m_rhiDevice);
 	}
 
 	RHI_Shader::~RHI_Shader()
@@ -271,7 +188,7 @@ namespace Directus
 		SafeRelease((ID3D11PixelShader*)m_pixelShader);
 	}
 
-	bool RHI_Shader::Compile_Vertex(const std::string& filePath, Input_Layout inputLayout)
+	bool RHI_Shader::Compile_Vertex(const string& filePath, Input_Layout inputLayout)
 	{
 		m_filePath = filePath;
 
@@ -309,7 +226,7 @@ namespace Directus
 		return result;
 	}
 
-	bool RHI_Shader::Compile_Pixel(const std::string& filePath)
+	bool RHI_Shader::Compile_Pixel(const string& filePath)
 	{
 		m_filePath = filePath;
 

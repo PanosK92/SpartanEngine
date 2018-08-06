@@ -35,12 +35,12 @@ namespace Directus
 	class ENGINE_CLASS RHI_Shader
 	{
 	public:
-		//= IMPLEMENTED BY API =========================================================
+		//= GRAPHICS API ==========================================================
 		RHI_Shader(std::shared_ptr<RHI_Device> rhiDevice);
 		~RHI_Shader();	
 		bool Compile_Vertex(const std::string& filePath, Input_Layout inputLayout);
 		bool Compile_Pixel(const std::string& filePath);
-		//==============================================================================
+		//=========================================================================
 		bool Compile_VertexPixel(const std::string& filePath, Input_Layout inputLayout)
 		{
 			return Compile_Vertex(filePath, inputLayout) && Compile_Pixel(filePath);
@@ -62,7 +62,7 @@ namespace Directus
 		bool IsCompiled()											{ return m_compiled; }
 		bool HasVertexShader()										{ return m_hasVertexShader; }
 		bool HasPixelShader()										{ return m_hasPixelShader; }
-		std::shared_ptr<D3D11_InputLayout> GetInputLayout()			{ return m_D3D11InputLayout; }
+		std::shared_ptr<RHI_InputLayout> GetInputLayout()			{ return m_D3D11InputLayout; }
 
 	private:
 		void CreateConstantBuffer();
@@ -75,7 +75,7 @@ namespace Directus
 		std::string m_entrypoint;
 		std::string m_profile;
 		std::map<std::string, std::string> m_macros;
-		std::shared_ptr<D3D11_InputLayout> m_D3D11InputLayout;
+		std::shared_ptr<RHI_InputLayout> m_D3D11InputLayout;
 		bool m_compiled;
 		bool m_hasVertexShader;
 		bool m_hasPixelShader;
