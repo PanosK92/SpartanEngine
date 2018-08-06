@@ -19,9 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_D3D11
+//================================
+
 //= INCLUDES ===========================
 #include "../RHI_Device.h"
-#include "../RHI_Implementation.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
 #include <d3d11_1.h>
@@ -567,7 +571,7 @@ namespace Directus
 			break;
 		}
 
-		LOGF_INFO("RHI_Device: Feature level %s - %s", featureLevelStr.data(), D3D11_Device::GetAdapterDescription(adapter).data());
+		LOGF_INFO("D3D11_Device::RHI_Device: Feature level %s - %s", featureLevelStr.data(), D3D11_Device::GetAdapterDescription(adapter).data());
 		m_device		= (void*)D3D11_Device::m_device;
 		m_deviceContext = (void*)D3D11_Device::m_deviceContext;
 		m_initialized	= true;
@@ -948,3 +952,5 @@ namespace Directus
 		return true;
 	}
 }
+
+#endif

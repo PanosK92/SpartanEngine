@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =====================
 #include "../RHI_Implementation.h"
 #include "../RHI_Sampler.h"
 #include <winerror.h>
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-//=================================
+//================================
 
 namespace Directus
 {
@@ -36,16 +36,17 @@ namespace Directus
 		Texture_Comparison_Function comparisonFunction	/*= Texture_Comparison_Always*/
 	)
 	{	
-		if (!rhiDevice)
-		{
-			LOG_ERROR("RHI_Sampler::RHI_Sampler: Invalid device");
-			return;
-		}
-
+		m_buffer				= nullptr;
 		m_rhiDevice				= rhiDevice;
 		m_filter				= filter;
 		m_textureAddressMode	= textureAddressMode;
 		m_comparisonFunction	= comparisonFunction;
+
+		if (!rhiDevice || !rhiDevice->GetDevice<ID3D11Device>())
+		{
+			LOG_ERROR("D3D11_Sampler::RHI_Sampler: Invalid device.");
+			return;
+		}
 		
 		D3D11_SAMPLER_DESC samplerDesc;
 		samplerDesc.Filter			= d3d11_filter[filter];

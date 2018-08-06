@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Backends/Backends.h"
 //===============================
 
-#ifdef API_D3D11
-#ifdef COMPILING_LIB
+#ifdef COMPILING_LIB // Only compile this for the engine
 
+//#ifdef API_D3D11 // Deactivate this for now as Vulkan is not ready
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -93,5 +93,10 @@ static const D3D11_FILTER d3d11_filter[] =
 	D3D11_FILTER_MIN_MAG_MIP_LINEAR,
 	D3D11_FILTER_ANISOTROPIC
 };
+//#endif
+
+#ifdef API_VULKAN
+#pragma comment(lib, "vulkan-1.lib")
 #endif
+
 #endif

@@ -27,6 +27,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 		cppdialect "C++17"
 	
 -- Includes
+	includedirs { "C:/VulkanSDK/1.1.82.0/Include" }
 	includedirs { "../ThirdParty/AngelScript_2.32.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
 	includedirs { "../ThirdParty/Bullet_2.87" }
@@ -36,6 +37,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 	includedirs { "../ThirdParty/pugixml_1.9" }
 	
 -- Library directory
+	libdirs { "C:/VulkanSDK/1.1.82.0/Lib" }
 	libdirs { "../ThirdParty/mvsc141_x64" }
 
 -- Solution configuration "Debug"
