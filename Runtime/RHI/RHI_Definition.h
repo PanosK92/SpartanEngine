@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Backends/Backends.h"
 //===============================
 
+// RHI (Rendering Hardware Interface) definitions
 namespace Directus
 {
-	// RHI (Rendering Hardware Interface)
 	class RHI_Device;
 	class RHI_VertexBuffer;
 	class RHI_IndexBuffer;
@@ -37,10 +37,13 @@ namespace Directus
 	class RHI_Viewport;
 	class RHI_RenderTexture;
 	class RHI_Texture;
+	class RHI_Shader;
 	struct RHI_Vertex_PosUVTBN;
 	struct RHI_Vertex_PosUVNor;
 	struct RHI_Vertex_PosUV;
 	struct RHI_Vertex_PosCol;
+
+	class D3D11_InputLayout; // this must go
 
 	enum Query_Type
 	{
@@ -147,44 +150,4 @@ namespace Directus
 		Texture_Format_R16G16B16A16_FLOAT,
 		Texture_Format_R32G32B32A32_FLOAT,
 	};
-
-	// D3D11
-#ifdef API_D3D11
-	class D3D11_Shader;
-	class D3D11_InputLayout;
-	typedef D3D11_Shader RHI_Shader;
-#endif
-	// VULKAN
-#ifdef API_VULKAN
-	class Vulkan_Device;
-#endif
 }
-
-// Forward declarations - D3D11 API
-struct ID3D11DepthStencilView;
-struct ID3D11Device;
-struct ID3D11DeviceContext;
-struct ID3D11ShaderResourceView;
-struct ID3D11InputLayout;
-struct ID3D11VertexShader;
-struct ID3D11PixelShader;
-struct ID3D11SamplerState;
-struct ID3D11Texture2D;
-struct ID3D11RasterizerState;
-struct ID3D11DepthStencilState;
-struct ID3D11RenderTargetView;
-struct ID3D11BlendState;
-struct DXGI_MODE_DESC;
-struct IDXGIAdapter;
-struct IDXGISwapChain;
-struct IDXGIFactory;
-struct D3D11_VIEWPORT;
-struct D3D11_INPUT_ELEMENT_DESC;
-enum D3D_DRIVER_TYPE;
-enum D3D_FEATURE_LEVEL;
-struct ID3D11Buffer;
-struct _D3D_SHADER_MACRO;
-typedef _D3D_SHADER_MACRO D3D_SHADER_MACRO;
-struct ID3D10Blob;
-typedef ID3D10Blob ID3DBlob;
-struct ID3DUserDefinedAnnotation;

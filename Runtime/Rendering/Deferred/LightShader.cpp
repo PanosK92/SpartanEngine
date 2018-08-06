@@ -22,8 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "LightShader.h"
 #include "../../Scene/Components/Transform.h"
-#include "../../RHI/RHI_Implementation.h"
 #include "../../Core/Settings.h"
+#include "../../RHI/RHI_Implementation.h"
+#include "../../RHI/RHI_Shader.h"
+#include "../../RHI/RHI_ConstantBuffer.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -49,7 +51,7 @@ namespace Directus
 
 		// load the vertex and the pixel shader
 		m_shader = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shader->Compile(filePath, Input_PositionTextureTBN);
+		m_shader->Compile_VertexPixel(filePath, Input_PositionTextureTBN);
 
 		// Create matrix buffer
 		m_matrixBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
