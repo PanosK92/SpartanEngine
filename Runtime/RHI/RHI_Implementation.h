@@ -23,18 +23,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "../Backends/Backends.h"
-
 //===============================
 
 #ifdef API_D3D11
-	#ifdef COMPILING_LIB
-	#pragma comment(lib, "d3d11.lib")
-	#pragma comment(lib, "dxgi.lib")
-	#pragma comment(lib, "d3dcompiler.lib")
-	#pragma comment(lib, "dxguid.lib")	
-	#endif
-#include <d3d11.h>
+#ifdef COMPILING_LIB
 
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "dxguid.lib")	
+#include <d3d11.h>
+	
 static const D3D11_CULL_MODE d3d11_cull_mode[] =
 {
 	D3D11_CULL_NONE,
@@ -95,7 +94,4 @@ static const D3D11_FILTER d3d11_filter[] =
 	D3D11_FILTER_ANISOTROPIC
 };
 #endif
-
-#ifdef API_VULKAN
-#include <vulkan/vulkan.h>
 #endif

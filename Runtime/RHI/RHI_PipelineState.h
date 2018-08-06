@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <memory>
 #include <vector>
-#include "RHI_Definition.h"
 #include "..\Core\EngineDefs.h"
+#include "RHI_Definition.h"
 #include "RHI_Viewport.h"
 //=============================
 
@@ -74,7 +74,7 @@ namespace Directus
 		void SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
 
 		// Input layout
-		bool SetInputLayout(const std::shared_ptr<D3D11_InputLayout>& inputLayout);
+		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout);
 
 		// Cull mode
 		void SetCullMode(Cull_Mode cullMode);
