@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Font.h"
-#include "../Resource/ResourceManager.h"
-#include "../RHI/IRHI_Implementation.h"
-#include "../Core/Stopwatch.h"
 #include "Renderer.h"
+#include "../Core/Stopwatch.h"
+#include "../RHI/RHI_Implementation.h"
+#include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_IndexBuffer.h"
 //======================================
 
 //= NAMESPACES ================
@@ -84,7 +85,7 @@ namespace Directus
 		}
 
 		// Create a font texture atlas form the provided data
-		m_textureAtlas = make_unique<RHI_Texture>(m_context);
+		m_textureAtlas = make_shared<RHI_Texture>(m_context);
 		if (!m_textureAtlas->CreateShaderResource(texAtlasWidth, texAtlasHeight, 1, atlasBuffer, Texture_Format_R8_UNORM))
 		{
 			LOG_ERROR("Font: Failed to create shader resource.");
@@ -92,11 +93,6 @@ namespace Directus
 		LOG_INFO("Font: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
 
 		return true;
-	}
-
-	void* Font::GetShaderResource()
-	{
-		return m_textureAtlas ? m_textureAtlas->GetShaderResource() : nullptr;
 	}
 
 	void Font::SetText(const string& text, const Vector2& position)

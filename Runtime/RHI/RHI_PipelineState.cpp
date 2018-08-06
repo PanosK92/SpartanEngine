@@ -23,15 +23,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "RHI_PipelineState.h"
-#include "IRHI_Implementation.h"
-#include "D3D11\D3D11_InputLayout.h"
+#include "RHI_Implementation.h"
 #include "RHI_Sampler.h"
 #include "RHI_Device.h"
+#include "RHI_RenderTexture.h"
+#include "RHI_VertexBuffer.h"
+#include "RHI_IndexBuffer.h"
+#include "D3D11\D3D11_InputLayout.h"
 //==================================
 
-//= NAMESPACES =====
+//= NAMESPACES ================
 using namespace std;
-//==================
+using namespace Directus::Math;
+//=============================
 
 namespace Directus
 {
@@ -51,7 +55,10 @@ namespace Directus
 		m_vertexBufferDirty		= false;
 		m_constantBufferDirty	= false;
 		m_samplersDirty			= false;
-		m_texturesDirty			= false;	
+		m_texturesDirty			= false;
+		m_renderTextureDirty	= false;
+		m_renderTargetDirty		= false;
+		m_viewportDirty			= false;
 	}
 
 	bool RHI_PipelineState::SetShader(shared_ptr<RHI_Shader>& shader)
@@ -64,7 +71,6 @@ namespace Directus
 
 		// TODO: this has to be done outside of this function 
 		SetInputLayout(shader->GetInputLayout());
-		if (shader->GetConstantBuffer()) SetConstantBuffer(shader->GetConstantBuffer(), shader->GetBufferSlot(), shader->GetBufferScope());
 
 		m_vertexShader		= shader->GetVertexShaderBuffer();
 		m_vertexShaderDirty	= true;
@@ -75,7 +81,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer>& indexBuffer)
+	bool RHI_PipelineState::SetIndexBuffer(const shared_ptr<RHI_IndexBuffer>& indexBuffer)
 	{
 		if (!indexBuffer)
 		{
@@ -89,7 +95,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetVertexBuffer(shared_ptr<RHI_VertexBuffer>& vertexBuffer)
+	bool RHI_PipelineState::SetVertexBuffer(const shared_ptr<RHI_VertexBuffer>& vertexBuffer)
 	{
 		if (!vertexBuffer)
 		{
@@ -103,7 +109,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetSampler(shared_ptr<RHI_Sampler>& sampler)
+	bool RHI_PipelineState::SetSampler(const shared_ptr<RHI_Sampler>& sampler)
 	{
 		if (!sampler)
 		{
@@ -117,16 +123,52 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetTexture(void* shaderResource)
+	bool RHI_PipelineState::SetTexture(const shared_ptr<RHI_RenderTexture>& texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
-		m_textures.emplace_back(shaderResource);
-		m_texturesDirty	= true;
+		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
+		m_texturesDirty = true;
 
 		return true;
 	}
 
-	void RHI_PipelineState::SetConstantBuffer(shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
+	bool RHI_PipelineState::SetTexture(const shared_ptr<RHI_Texture>& texture)
+	{
+		// allow for null texture to be bound so we can maintain slot order
+		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
+		m_texturesDirty = true;
+
+		return true;
+	}
+
+	bool RHI_PipelineState::SetRenderTexture(const shared_ptr<RHI_RenderTexture>& renderTexture, bool clear)
+	{
+		if (!renderTexture)
+		{
+			LOG_WARNING("RHI_PipelineState::SetRenderTexture: Invalid parameter");
+			return false;
+		}
+
+		if (m_renderTexture && m_renderTexture->GetID() == renderTexture->GetID())
+			return true;
+
+		SetViewport(renderTexture->GetViewport());
+
+		m_renderTexture			= renderTexture;
+		m_renderTextureClear	= clear;	
+		m_renderTextureDirty	= true;
+
+		return true;
+	}
+
+	void RHI_PipelineState::SetRenderTargets(const vector<void*>& renderTargets, void* depthStencil)
+	{
+		m_renderTargets		= renderTargets;
+		m_depthStencil		= depthStencil;
+		m_renderTargetDirty = true;
+	}
+
+	void RHI_PipelineState::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
 	{
 		m_constantBuffersInfo.emplace_back(constantBuffer->GetBuffer(), slot, scope);
 		m_constantBufferDirty = true;
@@ -141,7 +183,7 @@ namespace Directus
 		m_primitiveTopologyDirty	= true;
 	}
 
-	bool RHI_PipelineState::SetInputLayout(shared_ptr<D3D11_InputLayout>& inputLayout)
+	bool RHI_PipelineState::SetInputLayout(const shared_ptr<D3D11_InputLayout>& inputLayout)
 	{
 		if (m_inputLayout == inputLayout->GetInputLayout())
 			return false;
@@ -173,10 +215,15 @@ namespace Directus
 
 	void RHI_PipelineState::SetViewport(float width, float height)
 	{
-		if (m_viewport.GetWidth() == width && m_viewport.GetHeight() == height)
+		SetViewport(RHI_Viewport(0.0f, 0.0f, width, height, 0.0f, 1.0f));
+	}
+
+	void RHI_PipelineState::SetViewport(const RHI_Viewport& viewport)
+	{
+		if (m_viewport == viewport)
 			return;
 
-		m_viewport		= RHI_Viewport(0.0f, 0.0f, width, height, 0.0f, 1.0f);
+		m_viewport		= viewport;
 		m_viewportDirty = true;
 	}
 
@@ -188,11 +235,30 @@ namespace Directus
 			return false;
 		}
 
+		// Render Texture
+		if (m_renderTextureDirty)
+		{
+			auto renderTargetView = m_renderTexture->GetRenderTarget();
+			m_rhiDevice->Bind_RenderTargets(1, &renderTargetView, m_renderTexture->GetDepthStencil());
+			if (m_renderTextureClear) m_renderTexture->Clear(Vector4(0, 0, 0, 1));
+			Profiler::Get().m_bindRenderTargetCount++;
+			m_renderTextureClear = false;
+			m_renderTextureDirty = false;
+		}
+
+		// Render Texture
+		if (m_renderTargetDirty)
+		{
+			m_rhiDevice->Bind_RenderTargets((unsigned int)m_renderTargets.size(), &m_renderTargets[0], m_depthStencil);
+			Profiler::Get().m_bindRenderTargetCount++;
+			m_renderTargetDirty = false;
+		}
+
 		// Viewport
 		if (m_viewportDirty)
 		{
 			m_rhiDevice->SetViewport(m_viewport);
-			Settings::Get().SetViewport(m_viewport.GetWidth(), m_viewport.GetHeight());
+			Settings::Get().SetViewport((int)m_viewport.GetWidth(), (int)m_viewport.GetHeight());
 			m_viewportDirty = false;
 		}
 

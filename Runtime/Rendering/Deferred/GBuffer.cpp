@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ===========================
 #include "GBuffer.h"
-#include "../../RHI/IRHI_Implementation.h"
 #include "../../RHI/RHI_Device.h"
-//========================================
+#include "../../RHI/RHI_PipelineState.h"
+#include "../../RHI/RHI_RenderTexture.h"
+//======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -32,14 +33,17 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	GBuffer::GBuffer(shared_ptr<RHI_Device> rhiDevice, int width, int height)
+	GBuffer::GBuffer(const shared_ptr<RHI_Device>& rhiDevice, int width, int height)
 	{
-		m_rhiDevice = rhiDevice;
+		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Normal]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Specular]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, true,	Texture_Format_R32G32_FLOAT);
 
-		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<RHI_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Normal]		= make_shared<RHI_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Specular]	= make_shared<RHI_RenderTexture>(m_rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(m_rhiDevice, width, height, true,	Texture_Format_R32G32_FLOAT);
+		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Albedo]->GetRenderTarget());
+		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Normal]->GetRenderTarget());
+		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Specular]->GetRenderTarget());
+		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Depth]->GetRenderTarget());
 	}
 
 	GBuffer::~GBuffer()
@@ -47,56 +51,38 @@ namespace Directus
 		m_renderTargets.clear();
 	}
 
-	bool GBuffer::SetAsRenderTarget()
+	bool GBuffer::SetAsRenderTarget(const std::shared_ptr<RHI_PipelineState>& pipelineState)
 	{
-		if (!m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
-			return false;
-
-		// Bind the render target view array and depth stencil buffer to the output render pipeline.
-		void* views[4]
-		{
-			m_renderTargets[GBuffer_Target_Albedo]->GetRenderTargetView(),
-			m_renderTargets[GBuffer_Target_Normal]->GetRenderTargetView(),
-			m_renderTargets[GBuffer_Target_Specular]->GetRenderTargetView(),
-			m_renderTargets[GBuffer_Target_Depth]->GetRenderTargetView()
-		};
-		void** renderTargetViews = views;
-
-		// Render Targets
-		m_rhiDevice->Bind_RenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView());
-		// Viewport
-		m_rhiDevice->SetViewport(m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
+		pipelineState->SetRenderTargets(m_renderTargetViews, m_renderTargets[GBuffer_Target_Depth]->GetDepthStencil());
+		// Grab the viewport from one of the render targets and set it
+		pipelineState->SetViewport(m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
 
 		return true;
 	}
 
-	bool GBuffer::Clear()
+	bool GBuffer::Clear(const shared_ptr<RHI_Device>& rhiDevice)
 	{
-		if (!m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
-			return false;
-
 		// Clear the render target buffers.
 		for (auto& renderTarget : m_renderTargets)
 		{
 			if (!renderTarget.second->GetDepthEnabled())
 			{
 				// Color buffer
-				// TODO - This D3D11 specific, must remove
-				m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->ClearRenderTargetView((ID3D11RenderTargetView*)renderTarget.second->GetRenderTargetView(), Vector4(0, 0, 0, 1).Data());
+				rhiDevice->ClearRenderTarget(renderTarget.second->GetRenderTarget(), Vector4(0, 0, 0, 1));		
 			}
 			else
 			{
 				// Clear the depth buffer.
-				// TODO - This D3D11 specific, must remove
-				float maxDepth =  renderTarget.second->GetViewport().GetMaxDepth();
-				m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->ClearDepthStencilView((ID3D11DepthStencilView*)renderTarget.second->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, maxDepth, 0);
+				float maxDepth	= renderTarget.second->GetViewport().GetMaxDepth();
+				uint8_t stencil = 0;
+				rhiDevice->ClearDepthStencil(renderTarget.second->GetDepthStencil(), Clear_Depth | Clear_Stencil, maxDepth, stencil);
 			}
 		}
 		return true;
 	}
 
-	void* GBuffer::GetShaderResource(GBuffer_Texture_Type type)
+	const shared_ptr<RHI_RenderTexture>& GBuffer::GetTexture(GBuffer_Texture_Type type)
 	{
-		return (void*)m_renderTargets[type]->GetShaderResourceView();
+		return m_renderTargets[type];
 	}
 }

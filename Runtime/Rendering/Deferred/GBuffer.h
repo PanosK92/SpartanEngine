@@ -25,7 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <memory>
 #include "../../Core/Settings.h"
-#include "../../RHI/IRHI_Definition.h"
+#include "../../RHI/RHI_Definition.h"
+#include <vector>
 //====================================
 
 namespace Directus
@@ -42,15 +43,15 @@ namespace Directus
 	class ENGINE_CLASS GBuffer
 	{
 	public:
-		GBuffer(std::shared_ptr<RHI_Device> rhiDevice, int width = Settings::Get().GetResolutionWidth(), int height = Settings::Get().GetResolutionHeight());
+		GBuffer(const std::shared_ptr<RHI_Device>& rhiDevice, int width = Settings::Get().GetResolutionWidth(), int height = Settings::Get().GetResolutionHeight());
 		~GBuffer();
 
-		bool SetAsRenderTarget();
-		bool Clear();
-		void* GetShaderResource(GBuffer_Texture_Type type);
+		bool SetAsRenderTarget(const std::shared_ptr<RHI_PipelineState>& pipelineState);
+		bool Clear(const std::shared_ptr<RHI_Device>& rhiDevice);
+		const std::shared_ptr<RHI_RenderTexture>& GetTexture(GBuffer_Texture_Type type);
 
 	private:
 		std::map<GBuffer_Texture_Type, std::shared_ptr<RHI_RenderTexture>> m_renderTargets;
-		std::shared_ptr<RHI_Device> m_rhiDevice;
+		std::vector<void*> m_renderTargetViews;
 	};
 }

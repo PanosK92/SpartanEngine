@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector4.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
-#include "../../RHI/IRHI_Definition.h"
+#include "../../RHI/RHI_Definition.h"
 //====================================
 
 namespace Directus
@@ -92,8 +92,7 @@ namespace Directus
 		
 		// Shadow maps
 		const Math::Matrix& ShadowMap_GetProjectionMatrix(unsigned int index = 0);
-		void ShadowMap_SetRenderTarget(unsigned int index = 0);
-		void* ShadowMap_GetShaderResource(unsigned int index = 0);
+		const std::shared_ptr<RHI_RenderTexture>& ShadowMap_GetRenderTexture(unsigned int index = 0);
 		float ShadowMap_GetSplit(unsigned int index = 0);
 		void ShadowMap_SetSplit(float split, unsigned int index = 0);
 		std::shared_ptr<Math::Frustum> ShadowMap_IsInViewFrustrum(unsigned int index = 0);

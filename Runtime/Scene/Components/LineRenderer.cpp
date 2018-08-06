@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES ==========================
 #include "LineRenderer.h"
-#include "../../Math/BoundingBox.h"
 #include "../../Rendering/Renderer.h"
-//=================================
+#include "../../RHI/RHI_VertexBuffer.h"
+//=====================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;

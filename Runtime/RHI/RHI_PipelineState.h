@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <memory>
 #include <vector>
-#include "IRHI_Definition.h"
+#include "RHI_Definition.h"
 #include "..\Core\EngineDefs.h"
 #include "RHI_Viewport.h"
 //=============================
@@ -54,21 +54,27 @@ namespace Directus
 		bool SetShader(std::shared_ptr<RHI_Shader>& shader);
 
 		// Texture
-		bool SetTexture(void* shaderResource);
+		bool SetTexture(const std::shared_ptr<RHI_RenderTexture>& texture);
+		bool SetTexture(const std::shared_ptr<RHI_Texture>& texture);
+
+		// Render texture
+		bool SetRenderTexture(const std::shared_ptr<RHI_RenderTexture>& renderTexture, bool clear = false);
+		// Render targets
+		void SetRenderTargets(const std::vector<void*>& renderTargets, void* depthStencil);
 
 		// Constant, vertex & index buffers
-		void SetConstantBuffer(std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope);
-		bool SetIndexBuffer(std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
-		bool SetVertexBuffer(std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
-
+		void SetConstantBuffer(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope);
+		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
+		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
+		
 		// Sampler
-		bool SetSampler(std::shared_ptr<RHI_Sampler>& sampler);
+		bool SetSampler(const std::shared_ptr<RHI_Sampler>& sampler);
 
 		// Primitive topology
 		void SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
 
 		// Input layout
-		bool SetInputLayout(std::shared_ptr<D3D11_InputLayout>& inputLayout);
+		bool SetInputLayout(const std::shared_ptr<D3D11_InputLayout>& inputLayout);
 
 		// Cull mode
 		void SetCullMode(Cull_Mode cullMode);
@@ -78,6 +84,7 @@ namespace Directus
 
 		// Viewport
 		void SetViewport(float width, float height);
+		void SetViewport(const RHI_Viewport& viewport);
 
 		// Bind to the GPU
 		bool Bind();
@@ -131,6 +138,16 @@ namespace Directus
 		// Viewport
 		RHI_Viewport m_viewport;
 		bool m_viewportDirty;
+
+		// Render targets
+		std::shared_ptr<RHI_RenderTexture> m_renderTexture;
+		bool m_renderTextureClear;
+		bool m_renderTextureDirty;
+
+		// Render targets
+		std::vector<void*> m_renderTargets;
+		void* m_depthStencil;
+		bool m_renderTargetDirty;
 
 		// Device
 		std::shared_ptr<RHI_Device> m_rhiDevice;

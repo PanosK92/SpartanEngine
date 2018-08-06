@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <map>
 #include <memory>
-#include "../RHI/IRHI_Definition.h"
+#include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"

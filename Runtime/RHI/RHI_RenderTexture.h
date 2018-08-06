@@ -21,49 +21,52 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
-#include "../../Math/Matrix.h"
-#include "../../Core/Settings.h"
-#include "IRHI_Definition.h"
+//= INCLUDES ==============
+#include "RHI_Definition.h"
 #include "RHI_Viewport.h"
 #include <vector>
-//==============================
+#include "..\Math\Matrix.h"
+//=========================
 
 namespace Directus
 {
-	class ENGINE_CLASS IRHI_RenderTexture
+	class ENGINE_CLASS RHI_RenderTexture
 	{
 	public:
-		IRHI_RenderTexture(
+		RHI_RenderTexture(
 			std::shared_ptr<RHI_Device> rhiDevice,
 			int width				= Settings::Get().GetResolutionWidth(),
 			int height				= Settings::Get().GetResolutionHeight(),
-			bool depth				= false,
-			Texture_Format format	= Texture_Format_R32G32B32A32_FLOAT
-		){}
-		~IRHI_RenderTexture() {};
+			bool depth				= false,	
+			Texture_Format format	= Texture_Format_R8G8B8A8_UNORM
+		);
+		~RHI_RenderTexture();
 
-
-		virtual bool SetAsRenderTarget() = 0;
-		virtual bool Clear(const Math::Vector4& clearColor) = 0;
-		virtual bool Clear(float red, float green, float blue, float alpha) = 0;
-		virtual void ComputeOrthographicProjectionMatrix(float nearPlane, float farPlane) = 0;	
-		virtual void* GetTexture() = 0;
-		virtual void* GetRenderTargetView() = 0;
-		virtual void* GetShaderResourceView() = 0;
-		virtual void* GetDepthStencilView() = 0;
-
+		bool Clear(const Math::Vector4& clearColor);
+		bool Clear(float red, float green, float blue, float alpha);
+		void ComputeOrthographicProjectionMatrix(float nearPlane, float farPlane);
+		void* GetRenderTarget();
+		void* GetShaderResource();
+		void* GetDepthStencil();
 		const Math::Matrix& GetOrthographicProjectionMatrix()	{ return m_orthographicProjectionMatrix; }
 		const RHI_Viewport& GetViewport()						{ return m_viewport; }
 		bool GetDepthEnabled()									{ return m_depthEnabled; }
+		unsigned int GetID()									{ return m_id; }
 
 	protected:
-		bool m_depthEnabled;
-
-		// Projection matrix
+		unsigned int m_id;
+		bool m_depthEnabled = false;
 		float m_nearPlane, m_farPlane;
 		Math::Matrix m_orthographicProjectionMatrix;
-
 		RHI_Viewport m_viewport;
+		Texture_Format m_format;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
+
+		// D3D11
+		void* m_renderTargetTexture;
+		void* m_renderTargetView;
+		void* m_shaderResourceView;	
+		void* m_depthStencilBuffer;
+		void* m_depthStencilView;
 	};
 }

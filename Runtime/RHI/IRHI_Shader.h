@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <memory>
 #include <string>
-#include "IRHI_Definition.h"
+#include "RHI_Definition.h"
 #include "..\Core\EngineDefs.h"
 #include "RHI_ConstantBuffer.h"
 //=============================
@@ -43,24 +43,18 @@ namespace Directus
 		template <typename T>
 		void AddBuffer(Buffer_Scope bufferScope, unsigned bufferSlot)
 		{
-			m_bufferScope	= bufferScope;
-			m_bufferSlot	= bufferSlot;
-			m_bufferSize	= sizeof(T);
-			m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
+			m_bufferSize		= sizeof(T);
+			m_constantBuffer	= make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 			m_constantBuffer->Create(m_bufferSize);
 		}
 
-		void BindBuffer(void* data, unsigned int slot);
+		void UpdateBuffer(void* data);
 		virtual void* GetVertexShaderBuffer() = 0;
 		virtual void* GetPixelShaderBuffer() = 0;
 		std::shared_ptr<RHI_ConstantBuffer>& GetConstantBuffer() { return m_constantBuffer; }
-		unsigned int GetBufferSlot()	{ return m_bufferSlot; }
-		Buffer_Scope GetBufferScope()	{ return m_bufferScope; }
 
 	protected:	
 		unsigned int m_bufferSize;	
-		unsigned int m_bufferSlot;
-		Buffer_Scope m_bufferScope;
 		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};

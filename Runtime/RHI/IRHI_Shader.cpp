@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "IRHI_Shader.h"
-#include "IRHI_Implementation.h"
+#include "RHI_Implementation.h"
 //==============================
 
 //= NAMESPACES ================
@@ -36,7 +36,7 @@ namespace Directus
 		m_rhiDevice	= rhiDevice;
 	}
 
-	void IRHI_Shader::BindBuffer(void* data, unsigned int slot)
+	void IRHI_Shader::UpdateBuffer(void* data)
 	{
 		if (!m_constantBuffer)
 		{
@@ -48,7 +48,5 @@ namespace Directus
 		auto buffer = m_constantBuffer->Map();	// Get buffer pointer
 		memcpy(buffer, data, m_bufferSize);		// Copy data
 		m_constantBuffer->Unmap();				// Unmap buffer
-
-		m_bufferSlot = slot;
 	}
 }

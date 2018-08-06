@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Camera.h"
 #include "Renderable.h"
-#include "../../RHI/IRHI_Implementation.h"
 #include "../../Scene/Actor.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
+#include "../../RHI/RHI_RenderTexture.h"
 //========================================
 
 //= NAMESPACES ================
@@ -218,21 +218,12 @@ namespace Directus
 		return m_shadowMapsProjectionMatrix[index];
 	}
 
-	void Light::ShadowMap_SetRenderTarget(unsigned int index /*= 0*/)
-	{
-		if (index >= (unsigned int)m_shadowMaps.size())
-			return;
-
-		m_shadowMaps[index]->SetAsRenderTarget();
-		m_shadowMaps[index]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
-	}
-
-	void* Light::ShadowMap_GetShaderResource(unsigned int index /*= 0*/)
+	const std::shared_ptr<RHI_RenderTexture>& Light::ShadowMap_GetRenderTexture(unsigned int index /*= 0*/)
 	{
 		if (index >= (unsigned int)m_shadowMaps.size())
 			return nullptr;
 
-		return m_shadowMaps[index]->GetShaderResourceView();
+		return m_shadowMaps[index];
 	}
 
 	float Light::ShadowMap_GetSplit(unsigned int index /*= 0*/)

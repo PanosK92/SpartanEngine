@@ -180,7 +180,8 @@ namespace Directus
 			"RHI Sampler bindings:\t\t\t"		+ to_string(m_bindSamplerCount) + "\n"
 			"RHI Texture bindings:\t\t\t"		+ to_string(m_bindTextureCount) + "\n"
 			"RHI Vertex Shader bindings:\t"		+ to_string(m_bindVertexShaderCount) + "\n"
-			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_bindPixelShaderCount);
+			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_bindPixelShaderCount) + "\n"
+			"RHI Render Target bindings:\t"		+ to_string(m_bindRenderTargetCount);
 	}
 
 	string Profiler::to_string_precision(float value, int decimals)

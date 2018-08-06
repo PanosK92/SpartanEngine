@@ -19,11 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES =========================
 #include "Rectangle.h"
-#include "../RHI/IRHI_Implementation.h"
 #include "Renderer.h"
-//=====================================
+#include "../Core/Settings.h"
+#include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_IndexBuffer.h"
+//====================================
 
 //= NAMESPACES ================
 using namespace std;

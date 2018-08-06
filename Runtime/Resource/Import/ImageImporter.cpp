@@ -23,7 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImageImporter.h"
 #include "FreeImagePlus.h"
 #include "../../Threading/Threading.h"
-#include "../../RHI/IRHI_Implementation.h"
+#include "../../RHI/RHI_Implementation.h"
+#include "../../Core/Settings.h"
 //========================================
 
 //= NAMESPACES ================
