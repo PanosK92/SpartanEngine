@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ProgressDialog.h"
 #include "Scene/Scene.h"
 #include "Resource/ProgressReport.h"
+#include "RHI/RHI_Texture.h"
 //===================================
 
 static const int BUFFER_TEXT_DEFAULT = 255;

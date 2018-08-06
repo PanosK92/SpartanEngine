@@ -20,10 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
-#include "D3D11_Texture.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../../Rendering/Renderer.h"
+#include "../RHI_Texture.h"
 //===================================
 
 //= NAMESPAECES ====
@@ -32,23 +32,13 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11_Texture::D3D11_Texture(Context* context) : IRHI_Texture(context)
+	RHI_Texture::~RHI_Texture()
 	{
-		m_rhiDevice				= context->GetSubsystem<Renderer>()->GetRHIDevice();
-		m_shaderResourceView	= nullptr;	
-		m_memoryUsage			= 0;
+		SafeRelease((ID3D11ShaderResourceView*)m_shaderResource);
+		ClearTextureBytes();
 	}
 
-	D3D11_Texture::~D3D11_Texture()
-	{
-		if (!m_shaderResourceView)
-			return;
-
-		m_shaderResourceView->Release();
-		m_shaderResourceView = nullptr;
-	}
-
-	bool D3D11_Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<std::byte>& data, Texture_Format format)
+	bool RHI_Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<std::byte>& data, Texture_Format format)
 	{
 		if (!m_rhiDevice->GetDevice<ID3D11Device>())
 		{
@@ -101,7 +91,8 @@ namespace Directus
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		srvDesc.Texture2D.MipLevels = mipLevels;
 
-		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
+		auto ptr = (ID3D11ShaderResourceView**)&m_shaderResource;
+		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &srvDesc, ptr);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11_Texture::CreateShaderResource: Failed to create the ID3D11ShaderResourceView.");
@@ -114,7 +105,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11_Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<vector<std::byte>>& mipmaps, Texture_Format format)
+	bool RHI_Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<vector<std::byte>>& mipmaps, Texture_Format format)
 	{
 		if (!m_rhiDevice->GetDevice<ID3D11Device>())
 		{
@@ -175,7 +166,8 @@ namespace Directus
 		srvDesc.Texture2D.MostDetailedMip	= 0;
 		srvDesc.Texture2D.MipLevels			= mipLevels;
 
-		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
+		auto ptr = (ID3D11ShaderResourceView**)&m_shaderResource;
+		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &srvDesc, ptr);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11_Texture::CreateShaderResource: Failed to create the ID3D11ShaderResourceView.");
@@ -185,7 +177,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11_Texture::CreateShaderResource(unsigned int width, int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format)
+	bool RHI_Texture::CreateShaderResource(unsigned int width, int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format)
 	{
 		if (!m_rhiDevice->GetDevice<ID3D11Device>())
 		{
@@ -227,7 +219,8 @@ namespace Directus
 		srvDesc.Texture2D.MipLevels = mipLevels;
 
 		// Create shader resource view from description
-		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
+		auto ptr = (ID3D11ShaderResourceView**)&m_shaderResource;
+		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &srvDesc, ptr);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11_Texture::CreateShaderResource: Failed to create the ID3D11ShaderResourceView.");
@@ -248,13 +241,8 @@ namespace Directus
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->UpdateSubresource(texture, 0, nullptr, subresource.pSysMem, subresource.SysMemPitch, 0);
 
 		// Create mipmaps based on ID3D11ShaderResourveView
-		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->GenerateMips(m_shaderResourceView);
+		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->GenerateMips((ID3D11ShaderResourceView*)m_shaderResource);
 
 		return true;
-	}
-
-	unsigned int D3D11_Texture::GetMemoryUsage()
-	{
-		return IRHI_Texture::GetMemoryUsage() + m_memoryUsage;
 	}
 }

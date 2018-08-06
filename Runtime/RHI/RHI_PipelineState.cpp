@@ -29,7 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_RenderTexture.h"
 #include "RHI_VertexBuffer.h"
 #include "RHI_IndexBuffer.h"
+#include "RHI_Texture.h"
 #include "D3D11\D3D11_InputLayout.h"
+#include "..\Logging\Log.h"
 //==================================
 
 //= NAMESPACES ================

@@ -29,11 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ENGINE_CLASS IRHI_Texture : public IResource
+	class ENGINE_CLASS RHI_Texture : public IResource
 	{
 	public:
-		IRHI_Texture(Context* context);
-		~IRHI_Texture();
+		RHI_Texture(Context* context);
+		~RHI_Texture();
 
 		//= RESOURCE INTERFACE =================================
 		bool SaveToFile(const std::string& filePath) override;
@@ -41,19 +41,14 @@ namespace Directus
 		unsigned int GetMemoryUsage() override;
 		//======================================================
 
-		//= INTERFACE FOR GRAPHICS API  ========================
-		// Create from data
-		virtual bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format) = 0;
-		// Creates from data with mipmaps
-		virtual bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::vector<std::byte>>& mipmaps, Texture_Format format) = 0;
-		// Creates a texture and generates mipmaps (easy way to get mipmaps but not as high quality as the mipmaps you can generate manually)
-		virtual bool CreateShaderResource(unsigned int width, int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format) = 0;
-
-		virtual void* GetShaderResource() = 0;
-		virtual void SetShaderResource(void* shaderResource) = 0;
-		// Creates a shader resource from memory
+		//= IMPLEMENTED BY GRAPHICS API  ========================
+		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);					// Simple texture, no mimaps
+		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::vector<std::byte>>& mipmaps, Texture_Format format); 	// With custom-generated mimaps
+		bool CreateShaderResource(unsigned int width, int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);							// With auto-generated mimaps
+		void* GetShaderResource()						{ return m_shaderResource; }
+		void SetShaderResource(void* shaderResource)	{ m_shaderResource = shaderResource; }
 		bool CreateShaderResource();
-		//==============================================
+		//=======================================================
 
 		//= PROPERTIES ==========================================================================================
 		unsigned int GetWidth()						{ return m_width; }
@@ -110,5 +105,10 @@ namespace Directus
 		TextureType m_type = TextureType_Unknown;
 		Texture_Format m_format;
 		//=================================================
+
+		// D3D11
+		std::shared_ptr<RHI_Device> m_rhiDevice;
+		void* m_shaderResource;
+		unsigned int m_memoryUsage;
 	};
 }

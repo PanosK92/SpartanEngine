@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_PipelineState.h"
 #include "../RHI/RHI_RenderTexture.h"
+#include "../RHI/RHI_Texture.h"
 #include "../Scene/Actor.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/Renderable.h"

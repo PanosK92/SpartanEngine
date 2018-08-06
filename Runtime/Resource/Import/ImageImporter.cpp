@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES =========================
 #include "ImageImporter.h"
 #include "FreeImagePlus.h"
 #include "../../Threading/Threading.h"
-#include "../../RHI/RHI_Implementation.h"
 #include "../../Core/Settings.h"
-//========================================
+#include "../../RHI/RHI_Texture.h"
+//====================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -112,7 +112,7 @@ namespace Directus
 		bool scale = userDefineDimensions && dimensionMismatch;
 		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, texture->GetWidth(), texture->GetHeight(), FILTER_LANCZOS3) : bitmapOriginal;
 
-		// Convert it to 32 bits (if neccessery)
+		// Convert it to 32 bits (if necessary)
 		FIBITMAP* bitmap32 = FreeImage_GetBPP(bitmapOriginal) != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
 		texture->SetBPP(32);
 
