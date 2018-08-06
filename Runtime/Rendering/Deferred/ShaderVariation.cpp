@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ShaderVariation.h"
 #include "../Renderer.h"
 #include "../../RHI/RHI_Implementation.h"
+#include "../../RHI/RHI_Shader.h"
+#include "../../RHI/RHI_ConstantBuffer.h"
 #include "../../Scene/Components/Transform.h"
 #include "../../Scene/Components/Camera.h"
 #include "../../Core/Settings.h"
@@ -48,16 +50,11 @@ namespace Directus
 	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
 	{
 		m_shaderFlags = shaderFlags;
-		if (!m_rhiDevice)
-		{
-			LOG_INFO("GraphicsDevice is expired. Cant't compile shader");
-			return;
-		}
 
 		// Load and compile the vertex and the pixel shader
 		m_shader = make_shared<RHI_Shader>(m_rhiDevice);
 		AddDefinesBasedOnMaterial(m_shader);
-		m_shader->Compile(filePath, Input_PositionTextureTBN);
+		m_shader->Compile_VertexPixel(filePath, Input_PositionTextureTBN);
 
 		// Matrix Buffer
 		m_perObjectBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);

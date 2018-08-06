@@ -19,43 +19,40 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES ==================
-#include <memory>
-#include <string>
-#include "RHI_Definition.h"
-#include "..\Core\EngineDefs.h"
+#include "RHI_Shader.h"
 #include "RHI_ConstantBuffer.h"
+#include "..\Logging\Log.h"
 //=============================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Directus
 {
-	class ENGINE_CLASS IRHI_Shader
+	void RHI_Shader::AddDefine(const std::string& define, const std::string& value /*= "1"*/)
 	{
-	public:
-		IRHI_Shader(std::shared_ptr<RHI_Device> rhiDevice);
-		~IRHI_Shader(){}
+		m_macros[define] = value;
+	}
 
-		virtual void AddDefine(const std::string& define, const std::string& value = "1") = 0;
-		virtual bool Compile(const std::string& filePath, Input_Layout inputLayout) = 0;
-		
-		template <typename T>
-		void AddBuffer(Buffer_Scope bufferScope, unsigned bufferSlot)
+	void RHI_Shader::UpdateBuffer(void* data)
+	{
+		if (!m_constantBuffer)
 		{
-			m_bufferSize		= sizeof(T);
-			m_constantBuffer	= make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-			m_constantBuffer->Create(m_bufferSize);
+			LOG_WARNING("IRHI_Shader::Bind_Buffer: Uninitialized buffer.");
+			return;
 		}
 
-		void UpdateBuffer(void* data);
-		virtual void* GetVertexShaderBuffer() = 0;
-		virtual void* GetPixelShaderBuffer() = 0;
-		std::shared_ptr<RHI_ConstantBuffer>& GetConstantBuffer() { return m_constantBuffer; }
+		// Get a pointer of the buffer
+		auto buffer = m_constantBuffer->Map();	// Get buffer pointer
+		memcpy(buffer, data, m_bufferSize);		// Copy data
+		m_constantBuffer->Unmap();				// Unmap buffer
+	}
 
-	protected:	
-		unsigned int m_bufferSize;	
-		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
-		std::shared_ptr<RHI_Device> m_rhiDevice;
-	};
+	void RHI_Shader::CreateConstantBuffer()
+	{
+		m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
+		m_constantBuffer->Create(m_bufferSize);
+	}
 }

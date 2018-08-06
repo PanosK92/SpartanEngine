@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "../Backends/Backends.h"
+
 //===============================
 
 #ifdef API_D3D11
@@ -30,13 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	#pragma comment(lib, "d3d11.lib")
 	#pragma comment(lib, "dxgi.lib")
 	#pragma comment(lib, "d3dcompiler.lib")
-	#pragma comment(lib, "dxguid.lib")
+	#pragma comment(lib, "dxguid.lib")	
 	#endif
 #include <d3d11.h>
-#include <d3d11_1.h>
-#include <d3dcompiler.h>
-#include <d3dcommon.h>
-#include "D3D11/D3D11_Shader.h"
 
 static const D3D11_CULL_MODE d3d11_cull_mode[] =
 {

@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_VertexBuffer.h"
 #include "RHI_IndexBuffer.h"
 #include "RHI_Texture.h"
+#include "RHI_Shader.h"
+#include "RHI_ConstantBuffer.h"
 #include "D3D11\D3D11_InputLayout.h"
 #include "..\Logging\Log.h"
 //==================================
@@ -71,14 +73,18 @@ namespace Directus
 			return false;
 		}
 
-		// TODO: this has to be done outside of this function 
-		SetInputLayout(shader->GetInputLayout());
-
-		m_vertexShader		= shader->GetVertexShaderBuffer();
-		m_vertexShaderDirty	= true;
-
-		m_pixelShader		= shader->GetPixelShaderBuffer();
-		m_pixelShaderDirty	= true;
+		if (shader->HasVertexShader())
+		{		
+			SetInputLayout(shader->GetInputLayout()); // TODO: this has to be done outside of this function 
+			m_vertexShader		= shader->GetVertexShaderBuffer();
+			m_vertexShaderDirty	= true;
+		}
+		
+		if (shader->HasPixelShader())
+		{
+			m_pixelShader		= shader->GetPixelShaderBuffer();
+			m_pixelShaderDirty	= true;
+		}
 
 		return true;
 	}
@@ -248,20 +254,12 @@ namespace Directus
 			m_renderTextureDirty = false;
 		}
 
-		// Render Texture
+		// Render Target
 		if (m_renderTargetDirty)
 		{
 			m_rhiDevice->Bind_RenderTargets((unsigned int)m_renderTargets.size(), &m_renderTargets[0], m_depthStencil);
 			Profiler::Get().m_bindRenderTargetCount++;
 			m_renderTargetDirty = false;
-		}
-
-		// Viewport
-		if (m_viewportDirty)
-		{
-			m_rhiDevice->SetViewport(m_viewport);
-			Settings::Get().SetViewport((int)m_viewport.GetWidth(), (int)m_viewport.GetHeight());
-			m_viewportDirty = false;
 		}
 
 		// Vertex shader
@@ -272,6 +270,13 @@ namespace Directus
 			m_vertexShaderDirty = false;
 		}
 
+		// Input layout
+		if (m_inputLayoutDirty)
+		{
+			m_rhiDevice->Set_InputLayout(m_inputLayoutBuffer);
+			m_inputLayoutDirty = false;
+		}
+
 		// Pixel shader
 		if (m_pixelShaderDirty)
 		{
@@ -280,18 +285,19 @@ namespace Directus
 			m_pixelShaderDirty = false;
 		}
 
+		// Viewport
+		if (m_viewportDirty)
+		{
+			m_rhiDevice->SetViewport(m_viewport);
+			Settings::Get().SetViewport((int)m_viewport.GetWidth(), (int)m_viewport.GetHeight());
+			m_viewportDirty = false;
+		}
+
 		// Primitive topology
 		if (m_primitiveTopologyDirty)
 		{
 			m_rhiDevice->Set_PrimitiveTopology(m_primitiveTopology);
 			m_primitiveTopologyDirty = false;
-		}
-
-		// Input layout
-		if (m_inputLayoutDirty)
-		{
-			m_rhiDevice->Set_InputLayout(m_inputLayoutBuffer);
-			m_inputLayoutDirty = false;
 		}
 
 		// Cull mode

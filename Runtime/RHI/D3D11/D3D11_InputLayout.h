@@ -28,6 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EngineDefs.h"
 //================================
 
+// TODO: Remove this
+struct ID3D11InputLayout;
+struct D3D11_INPUT_ELEMENT_DESC;
+struct ID3D10Blob;
+
 namespace Directus
 {
 	class ENGINE_CLASS D3D11_InputLayout
