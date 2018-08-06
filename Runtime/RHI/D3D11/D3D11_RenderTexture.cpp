@@ -49,6 +49,12 @@ namespace Directus
 		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->GetViewport().GetMaxDepth());
 		m_id					= GENERATE_GUID;
 
+		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
+		{
+			LOG_ERROR("D3D11_RenderTexture::RHI_RenderTexture: Invalid device.");
+			return;
+		}
+
 		// RENDER TARGET TEXTURE
 		{
 			D3D11_TEXTURE2D_DESC textureDesc;

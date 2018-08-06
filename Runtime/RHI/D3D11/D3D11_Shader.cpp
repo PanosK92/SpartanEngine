@@ -61,9 +61,9 @@ namespace Directus
 		inline bool CompileShader(const string& filePath, D3D_SHADER_MACRO* macros, const string& entryPoint, const string& target, ID3DBlob** shaderBlobOut)
 		{
 			unsigned compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#ifdef DEBUG
+			#ifdef DEBUG
 			compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
-#endif
+			#endif
 
 			// Load and compile from file
 			ID3DBlob* errorBlob = nullptr;
@@ -108,6 +108,12 @@ namespace Directus
 
 		inline bool CompileVertexShader(ID3D11Device* device, ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, const string& path, const string& entrypoint, const string& profile, D3D_SHADER_MACRO* macros)
 		{
+			if (!device)
+			{
+				LOG_ERROR("D3D11_Shader::CompileVertexShader: Invalid device.");
+				return false;
+			}
+
 			if (!CompileShader(path, macros, entrypoint, profile, vsBlob))
 				return false;
 
@@ -125,6 +131,12 @@ namespace Directus
 
 		inline bool CompilePixelShader(ID3D11Device* device, ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, const string& path, const string& entrypoint, const string& profile, D3D_SHADER_MACRO* macros)
 		{
+			if (!device)
+			{
+				LOG_ERROR("D3D11_Shader::CompilePixelShader: Invalid device.");
+				return false;
+			}
+
 			auto result = CompileShader(path, macros, entrypoint, profile, psBlob);
 			if (FAILED(result))
 				return false;
