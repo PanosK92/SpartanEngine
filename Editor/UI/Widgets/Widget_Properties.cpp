@@ -57,7 +57,6 @@ static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
 namespace ComponentProperty
 {
 	static string g_contexMenuID;
-	static bool g_expand;
 	static float g_column = 140.0f;
 	static const float g_maxWidth = 100.0f;
 
@@ -82,15 +81,22 @@ namespace ComponentProperty
 
 	inline bool Begin(const string& name, Icon_Type icon_enum, IComponent* componentInstance, bool hasOptions = true)
 	{
+		// Collapsible contents
+		bool collapsed = ImGui::CollapsingHeader(name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_DefaultOpen);
+
 		// Component Icon - Top left
+		ImGui::SameLine();
+		ImGui::Spacing();
+		ImGui::SameLine();
+		float originalPenY = ImGui::GetCursorPosY();
+		ImGui::SetCursorPosY(originalPenY + 5.0f);
 		THUMBNAIL_IMAGE_BY_ENUM(icon_enum, 15);									
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);
 
 		// Component Options - Top right
 		if (hasOptions)
 		{
-			ImGui::SameLine(ImGui::GetWindowSize().x - 40.0f);	
-			if (THUMBNAIL_BUTTON_TYPE_UNIQUE_ID(name.c_str(), Icon_Component_Options, 15))
+			ImGui::SameLine(ImGui::GetWindowContentRegionWidth() * 0.97f); ImGui::SetCursorPosY(originalPenY + 1.5f);
+			if (THUMBNAIL_BUTTON_TYPE_UNIQUE_ID(name.c_str(), Icon_Component_Options, 12))
 			{																		
 				g_contexMenuID = name;											
 				ImGui::OpenPopup(g_contexMenuID.c_str());									
@@ -102,19 +108,11 @@ namespace ComponentProperty
 			}		
 		}
 
-		// Collapsible contents (as tree node)
-		ImGui::SameLine(25);													
-		g_expand = ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-		return g_expand;
+		return collapsed;
 	}
 
 	inline void End()
 	{
-		if (g_expand)
-		{
-			ImGui::TreePop();
-			g_expand = false;
-		}
 		ImGui::Separator();
 	}
 }
