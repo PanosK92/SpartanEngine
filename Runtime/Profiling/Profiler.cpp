@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iomanip>
 #include <sstream>
 #include "../RHI/RHI_Device.h"
+#include "../Core/Variant.h"
 //================================
 
 //= NAMESPACES =============
@@ -129,6 +130,9 @@ namespace Directus
 
 	void Profiler::OnUpdate()
 	{
+		m_timeCPUms = m_timer->GetDeltaTimeMs();
+		m_timeGPUms = GetTimeBlockMs_GPU("Directus::Renderer::Render");
+
 		m_profilingLastUpdateTime += m_timer->GetDeltaTimeMs();
 		if (m_profilingLastUpdateTime < m_profilingFrequencyMs)
 			return;
@@ -166,8 +170,8 @@ namespace Directus
 
 		m_metrics =
 			"FPS:\t\t\t\t\t\t\t"				+ to_string_precision(fps, 2) + "\n"
-			"CPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_timer->GetDeltaTimeMs(), 2) + " ms\n"
-			"GPU:\t\t\t\t\t\t\t"				+ to_string_precision(GetTimeBlockMs_GPU("Directus::Renderer::Render"), 2) + " ms\n"
+			"CPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_timeCPUms, 2) + " ms\n"
+			"GPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_timeGPUms, 2) + " ms\n"
 			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"

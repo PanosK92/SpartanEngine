@@ -99,7 +99,9 @@ namespace Directus
 		float GetTimeBlockMs_GPU(const char* funcName)	{ return m_timeBlocks_gpu[funcName].duration; }
 		const auto& GetTimeBlocks_CPU()					{ return m_timeBlocks_cpu; }
 		const auto& GetTimeBlocks_GPU()					{ return m_timeBlocks_gpu; }
-		
+		float GetTimeCPU()								{ return m_timeCPUms; }
+		float GetTimeGPU()								{ return m_timeGPUms; }
+
 		void Reset()
 		{
 			m_drawCalls					= 0;
@@ -143,6 +145,8 @@ namespace Directus
 		// Misc
 		std::string m_metrics;
 		bool m_shouldUpdate;
+		float m_timeCPUms;
+		float m_timeGPUms;
 
 		// Dependencies
 		Scene* m_scene;

@@ -19,12 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ==============
 #include "Widget_MenuBar.h"
 #include "../FileDialog.h"
-#include "Profiling/Profiler.h"
 #include "Core/Settings.h"
-//=============================
+//=========================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -38,7 +37,6 @@ namespace Widget_MenuBar_Settings
 	static bool g_showStyleEditor		= false;
 	static bool g_fileDialogVisible		= false;
 	static bool g_showResourceCache		= false;
-	static bool g_showProfiler			= false;
 	static string g_fileDialogSelection;
 	ResourceManager* g_resourceManager	= nullptr;
 	Scene* g_scene						= nullptr;
@@ -98,7 +96,6 @@ void Widget_MenuBar::Update(float deltaTime)
 			ImGui::MenuItem("Metrics", nullptr, &Widget_MenuBar_Settings::g_showMetricsWindow);
 			ImGui::MenuItem("Style", nullptr, &Widget_MenuBar_Settings::g_showStyleEditor);
 			ImGui::MenuItem("Resource Cache Viewer", nullptr, &Widget_MenuBar_Settings::g_showResourceCache);
-			ImGui::MenuItem("Profiler", nullptr, &Widget_MenuBar_Settings::g_showProfiler);
 			ImGui::EndMenu();
 		}
 
@@ -116,7 +113,6 @@ void Widget_MenuBar::Update(float deltaTime)
 	if (Widget_MenuBar_Settings::g_fileDialogVisible)	{ ImGui::SetNextWindowFocus(); ShowFileDialog(); }
 	if (Widget_MenuBar_Settings::g_showAboutWindow)		{ ImGui::SetNextWindowFocus(); ShowAboutWindow(); }
 	if (Widget_MenuBar_Settings::g_showResourceCache)	{ ImGui::SetNextWindowFocus(); ShowResourceCache(); }
-	if (Widget_MenuBar_Settings::g_showProfiler)		{ ImGui::SetNextWindowFocus(); ShowProfiler(); }
 }
 
 void Widget_MenuBar::ShowFileDialog()
@@ -262,33 +258,6 @@ void Widget_MenuBar::ShowResourceCache()
 			memory = (unsigned int)(memory / 1000.0f); // turn into Mb
 			ImGui::Text((to_string(memory) + string(" Mb")).c_str());	ImGui::NextColumn();
 		}		
-	}
-	ImGui::Columns(1);
-
-	ImGui::End();
-}
-
-void Widget_MenuBar::ShowProfiler()
-{
-	ImGui::SetNextWindowSize(ImVec2(600, 600), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Profiler", &Widget_MenuBar_Settings::g_showProfiler, ImGuiWindowFlags_HorizontalScrollbar);
-
-	ImGui::Columns(3, "##Widget_MenuBar::ShowProfiler:CPU");
-	ImGui::Text("Function");		ImGui::NextColumn();
-	ImGui::Text("Duration (CPU)");	ImGui::NextColumn();
-	ImGui::Text("Duration (GPU)");	ImGui::NextColumn();
-	ImGui::Separator();
-
-	auto& cpuBlocks = Profiler::Get().GetTimeBlocks_CPU();
-	auto gpuBlocks	= Profiler::Get().GetTimeBlocks_GPU();
-
-	for (const auto& cpuBlock : cpuBlocks)
-	{
-		auto& gpuBlock		= gpuBlocks[cpuBlock.first];
-
-		ImGui::Text("%s", cpuBlock.first);				ImGui::NextColumn();
-		ImGui::Text("%f ms", cpuBlock.second.duration);	ImGui::NextColumn();
-		gpuBlock.initialized ? ImGui::Text("%f ms", gpuBlock.duration) : ImGui::Text("N/A"); ImGui::NextColumn();
 	}
 	ImGui::Columns(1);
 

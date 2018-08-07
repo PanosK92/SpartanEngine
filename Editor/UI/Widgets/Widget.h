@@ -35,7 +35,10 @@ public:
 	virtual void Begin();
 	virtual void Update(float deltaTime) = 0;
 	virtual void End();
-	bool GetIsWindow() { return m_isWindow; }
+
+	bool IsWindow()					{ return m_isWindow; }
+	bool GetVisible()				{ return m_isVisible; }
+	void SetVisible(bool isVisible) { m_isVisible = isVisible; }
 
 protected:
 	Directus::Context* m_context = nullptr;

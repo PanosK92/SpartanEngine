@@ -35,7 +35,7 @@ namespace Directus
 		~Timer();
 
 		void Tick();
-		float GetDeltaTimeMs() { return m_deltaTimeMs; }
+		float GetDeltaTimeMs()	{ return m_deltaTimeMs; }
 		float GetDeltaTimeSec() { return m_deltaTimeSec; }
 
 	private:
