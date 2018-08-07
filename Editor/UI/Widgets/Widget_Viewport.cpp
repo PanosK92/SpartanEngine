@@ -51,13 +51,17 @@ Widget_Viewport::Widget_Viewport()
 void Widget_Viewport::Initialize(Context* context)
 {
 	Widget::Initialize(context);
+
 	m_windowFlags							|= ImGuiWindowFlags_NoScrollbar;
 	Widget_Viewport_Properties::g_renderer	= m_context->GetSubsystem<Renderer>();
 	Widget_Viewport_Properties::g_scene		= m_context->GetSubsystem<Scene>();
+	m_xMin = 400;
+	m_yMin = 250;
 }
 
 void Widget_Viewport::Begin()
 {
+	ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 }
