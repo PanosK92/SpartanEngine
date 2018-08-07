@@ -62,6 +62,7 @@ void IconProvider::Initialize(Context* context)
 	Thumbnail_Load("Standard Assets\\Icons\\console_warning.png",				Icon_Console_Warning);
 	Thumbnail_Load("Standard Assets\\Icons\\console_error.png",					Icon_Console_Error);	
 	Thumbnail_Load("Standard Assets\\Icons\\button_play.png",					Icon_Button_Play);
+	Thumbnail_Load("Standard Assets\\Icons\\profiler.png",						Icon_Profiler);
 	Thumbnail_Load("Standard Assets\\Icons\\file.png",							Thumbnail_File_Default);	
 	Thumbnail_Load("Standard Assets\\Icons\\folder.png",						Thumbnail_Folder);	
 	Thumbnail_Load("Standard Assets\\Icons\\audio.png",							Thumbnail_File_Audio);	
@@ -76,6 +77,7 @@ void IconProvider::Initialize(Context* context)
 	Thumbnail_Load("Standard Assets\\Icons\\exe.png",							Thumbnail_File_Exe);
 	Thumbnail_Load("Standard Assets\\Icons\\script.png",						Thumbnail_File_Script);
 	Thumbnail_Load("Standard Assets\\Icons\\font.png",							Thumbnail_File_Font);
+	
 }
 
 void* IconProvider::GetShaderResourceByType(Icon_Type type)

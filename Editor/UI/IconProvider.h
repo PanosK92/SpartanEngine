@@ -46,6 +46,7 @@ enum Icon_Type
 	Icon_Console_Warning,
 	Icon_Console_Error,	
 	Icon_Button_Play,
+	Icon_Profiler,
 	Thumbnail_Custom,
 	Thumbnail_Folder,
 	Thumbnail_File_Audio,

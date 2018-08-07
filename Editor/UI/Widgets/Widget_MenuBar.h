@@ -37,14 +37,10 @@ public:
 
 private:
 	void ShowFileDialog();
-	void ShowProgressDialog();
-	void OnSceneLoaded();
-	void OnSceneSaved();
 	void ShowAboutWindow();
 
 	// DEBUG
 	void ShowResourceCache();
-	void ShowProfiler();
 
 	std::unique_ptr<FileDialog> m_fileDialog;
 };

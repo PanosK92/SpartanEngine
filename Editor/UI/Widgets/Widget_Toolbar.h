@@ -23,7 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======
 #include "Widget.h"
+#include <vector>
 //=================
+
+//= FORWARD DECLARATIONS =
+class Widget_Profiler;
+//========================
 
 class Widget_Toolbar : public Widget
 {
@@ -35,4 +40,6 @@ public:
 
 private:
 	void ShowRendererOptions();
+
+	std::shared_ptr<Widget_Profiler> m_profiler;
 };
