@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\..\ImGui\Source\imgui.h"
 #include "Profiling\Profiler.h"
 #include "Math\MathHelper.h"
+#include "Core\Timer.h"
 //===================================
 
 struct Metric
@@ -68,10 +69,16 @@ public:
 		m_title					= "Profiler";
 		m_updateFrequency		= 0.05f;
 		m_timeSinceLastUpdate	= m_updateFrequency;
-		m_xMin					= 720;
-		m_yMin					= 400;
+		m_xMin					= 1000;
+		m_yMin					= 715;
 		m_xMax					= FLT_MAX;
 		m_yMax					= FLT_MAX;
+		// Fill with dummy values so that the plot can progress immediately
+		if (m_cpuTimes.empty() && m_gpuTimes.empty())
+		{
+			m_cpuTimes.resize(100);
+			m_gpuTimes.resize(100);
+		}
 	}
 
 	void Update(float deltaTime) override
@@ -81,62 +88,107 @@ public:
 
 		Widget::Begin();
 
-		ImGui::Columns(3, "##Widget_Profiler");
-		ImGui::Text("Function");		ImGui::NextColumn();
-		ImGui::Text("Duration (CPU)");	ImGui::NextColumn();
-		ImGui::Text("Duration (GPU)");	ImGui::NextColumn();
-		ImGui::Separator();
+		// Get some useful things
+		auto& cpuBlocks			= Directus::Profiler::Get().GetTimeBlocks_CPU();
+		auto gpuBlocks			= Directus::Profiler::Get().GetTimeBlocks_GPU();
+		float renderTimeCPU		= Directus::Profiler::Get().GetRenderTime_CPU();
+		float renderTimeGPU		= Directus::Profiler::Get().GetRenderTime_GPU();
+		float renderTimeTotal	= Directus::Profiler::Get().GetRenderTime_CPU() + Directus::Profiler::Get().GetRenderTime_GPU();
 
-		auto& cpuBlocks = Directus::Profiler::Get().GetTimeBlocks_CPU();
-		auto gpuBlocks	= Directus::Profiler::Get().GetTimeBlocks_GPU();
-
-		for (const auto& cpuBlock : cpuBlocks)
+		// Milliseconds
 		{
-			auto& gpuBlock = gpuBlocks[cpuBlock.first];
+			ImGui::Columns(3, "##Widget_Profiler");
+			ImGui::Text("Function");		ImGui::NextColumn();
+			ImGui::Text("Duration (CPU)");	ImGui::NextColumn();
+			ImGui::Text("Duration (GPU)");	ImGui::NextColumn();
+			ImGui::Separator();
 
-			ImGui::Text("%s", cpuBlock.first);				ImGui::NextColumn();
-			ImGui::Text("%f ms", cpuBlock.second.duration);	ImGui::NextColumn();
-			gpuBlock.initialized ? ImGui::Text("%f ms", gpuBlock.duration) : ImGui::Text("N/A"); ImGui::NextColumn();
-		}
-		ImGui::Columns(1);
-
-		ImGui::Separator();
-
-		// If we are just starting, fill with dummy values so that the plot can progress immediately
-		if (m_cpuTimes.empty() && m_gpuTimes.empty())
-		{
-			m_cpuTimes.resize(100);
-			m_gpuTimes.resize(100);
-		}
-
-		// Get sample data
-		m_timeSinceLastUpdate += deltaTime;
-		if (m_timeSinceLastUpdate >= m_updateFrequency)
-		{
-			float cpuMs	= Directus::Profiler::Get().GetTimeCPU();
-			m_metric_cpu.AddSample(cpuMs);
-			m_cpuTimes.emplace_back(cpuMs);
-			if (m_cpuTimes.size() >= 100)
+			for (const auto& cpuBlock : cpuBlocks)
 			{
-				m_cpuTimes.erase(m_cpuTimes.begin());
+				auto& gpuBlock = gpuBlocks[cpuBlock.first];
+
+				ImGui::Text("%s", cpuBlock.first);				ImGui::NextColumn();
+				ImGui::Text("%f ms", cpuBlock.second.duration);	ImGui::NextColumn();
+				gpuBlock.initialized ? ImGui::Text("%f ms", gpuBlock.duration) : ImGui::Text("N/A"); ImGui::NextColumn();
+			}
+			ImGui::Columns(1);
+		}
+
+		ImGui::Separator();
+
+		// Plots
+		{
+			// Get sample data
+			m_timeSinceLastUpdate += deltaTime;
+			if (m_timeSinceLastUpdate >= m_updateFrequency)
+			{
+				float cpuMs = m_context->GetSubsystem<Directus::Timer>()->GetDeltaTimeMs();
+				m_metric_cpu.AddSample(cpuMs);
+				m_cpuTimes.emplace_back(cpuMs);
+				if (m_cpuTimes.size() >= 100)
+				{
+					m_cpuTimes.erase(m_cpuTimes.begin());
+				}
+
+				m_metric_gpu.AddSample(renderTimeGPU);
+				m_gpuTimes.emplace_back(renderTimeGPU);
+
+				if (m_gpuTimes.size() >= 100)
+				{
+					m_gpuTimes.erase(m_gpuTimes.begin());
+				}
+				m_timeSinceLastUpdate = 0.0f;
 			}
 
-			float gpuMs	= Directus::Profiler::Get().GetTimeGPU();
-			m_metric_gpu.AddSample(gpuMs);
-			m_gpuTimes.emplace_back(gpuMs);
-
-			if (m_gpuTimes.size() >= 100)
-			{
-				m_gpuTimes.erase(m_gpuTimes.begin());
-			}
-			m_timeSinceLastUpdate = 0.0f;
+			ImGui::Text("CPU: Avg:%.2f, Min:%.2f, Max:%.2f", m_metric_cpu.m_avg, m_metric_cpu.m_min, m_metric_cpu.m_max);
+			ImGui::PlotLines("", m_cpuTimes.data(), m_cpuTimes.size(), 0, "", m_metric_cpu.m_min, m_metric_cpu.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
+			ImGui::Separator();
+			ImGui::Text("GPU: Avg:%.2f, Min:%.2f, Max:%.2f", m_metric_gpu.m_avg, m_metric_gpu.m_min, m_metric_gpu.m_max);
+			ImGui::PlotLines("", m_gpuTimes.data(), m_gpuTimes.size(), 0, "", m_metric_gpu.m_min, m_metric_gpu.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
 		}
 
-		ImGui::Text("CPU: Avg:%.2f, Min:%.2f, Max:%.2f", m_metric_cpu.m_avg, m_metric_cpu.m_min, m_metric_cpu.m_max);
-		ImGui::PlotLines("", m_cpuTimes.data(), m_cpuTimes.size(), 0, "", m_metric_cpu.m_min, m_metric_cpu.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
-		ImGui::Separator();
-		ImGui::Text("GPU: Avg:%.2f, Min:%.2f, Max:%.2f", m_metric_gpu.m_avg, m_metric_gpu.m_min, m_metric_gpu.m_max);
-		ImGui::PlotLines("", m_gpuTimes.data(), m_gpuTimes.size(), 0, "",  m_metric_gpu.m_min, m_metric_gpu.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
+		// Bars
+		{
+			ImGui::Separator();
+			ImGui::Text("GPU Workload Distribution");
+			ImVec2 pos		= ImGui::GetCursorScreenPos();
+			ImVec2 a		= pos;
+			ImVec2 b		= pos;	
+			float penX		= pos.x;
+			float penY		= pos.y;
+			float paddingX	= ImGui::GetStyle().WindowPadding.x;
+			float spacingY	= ImGui::GetStyle().FramePadding.y;
+			float widthMin	= 10.0f;
+			float height	= 20.0f;
+			int i			= 0;
+			for (const auto& cpuBlock : cpuBlocks)
+			{
+				auto& gpuBlock = gpuBlocks[cpuBlock.first];
+				float duration = gpuBlock.duration;
+
+				if (duration <= 0.01f || i != 0) // Ignore the main render GPU block (contains everything)
+				{	
+					float width = ImGui::GetWindowContentRegionWidth() / (renderTimeGPU / duration);
+					width		= Directus::Math::Max(width, widthMin);
+					Directus::Math::Vector3 color = Directus::Math::Lerp(Directus::Math::Vector3(0.0f, 200.0f, 0.0f), Directus::Math::Vector3(255.0f, 0.0f, 0.0f), (duration / renderTimeGPU));
+					ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(penX, penY), ImVec2(penX + width, penY + 20.0f), IM_COL32(color.x, color.y, 0, 255));
+					ImGui::GetWindowDrawList()->AddText(ImVec2(penX + paddingX, penY + 2.0f), IM_COL32(255, 255, 255, 255), cpuBlock.first);
+					penY += height + spacingY;
+				}
+				
+				i++;
+			}
+
+			float cpuWidth = (renderTimeCPU / renderTimeTotal) * ImGui::GetWindowContentRegionWidth();
+			float gpuWidth = (renderTimeGPU / renderTimeTotal) * ImGui::GetWindowContentRegionWidth();
+			float splitX = penX + cpuWidth;
+			ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(penX, penY), ImVec2(splitX, penY + 20.0f), IM_COL32(0, 150, 255, 255));		
+			ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(splitX, penY), ImVec2(splitX + gpuWidth, penY + 20.0f), IM_COL32(120, 200, 120, 255));
+			ImGui::GetWindowDrawList()->AddText(ImVec2(penX + paddingX, penY + 2.0f), IM_COL32(255, 255, 255, 255), std::string("CPU " + std::to_string((renderTimeCPU / renderTimeTotal) * 100.0f) + "%").c_str());
+			ImGui::GetWindowDrawList()->AddText(ImVec2(splitX + gpuWidth - 120.0f, penY + 2.0f), IM_COL32(255, 255, 255, 255), std::string("GPU " + std::to_string((renderTimeGPU / renderTimeTotal) * 100.0f) + "%").c_str());
+
+			ImGui::SetCursorPosY(penY - 160);
+		}
 
 		Widget::End();
 	}

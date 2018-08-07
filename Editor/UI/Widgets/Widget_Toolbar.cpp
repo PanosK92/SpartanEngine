@@ -58,8 +58,7 @@ namespace Widget_Toolbar_Options
 
 Widget_Toolbar::Widget_Toolbar()
 {
-	m_profiler = make_shared<Widget_Profiler>();
-	m_profiler->Initialize(m_context);
+	
 }
 
 void Widget_Toolbar::Initialize(Context* context)
@@ -74,6 +73,9 @@ void Widget_Toolbar::Initialize(Context* context)
 		ImGuiWindowFlags_NoTitleBar;
 
 	Engine::EngineMode_Disable(Engine_Game);
+
+	m_profiler = make_shared<Widget_Profiler>();
+	m_profiler->Initialize(m_context);
 }
 
 void Widget_Toolbar::Begin()
