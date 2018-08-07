@@ -76,8 +76,8 @@ public:
 		// Fill with dummy values so that the plot can progress immediately
 		if (m_cpuTimes.empty() && m_gpuTimes.empty())
 		{
-			m_cpuTimes.resize(100);
-			m_gpuTimes.resize(100);
+			m_cpuTimes.resize(200);
+			m_gpuTimes.resize(200);
 		}
 	}
 
@@ -125,7 +125,7 @@ public:
 				float cpuMs = m_context->GetSubsystem<Directus::Timer>()->GetDeltaTimeMs();
 				m_metric_cpu.AddSample(cpuMs);
 				m_cpuTimes.emplace_back(cpuMs);
-				if (m_cpuTimes.size() >= 100)
+				if (m_cpuTimes.size() >= 200)
 				{
 					m_cpuTimes.erase(m_cpuTimes.begin());
 				}
@@ -133,7 +133,7 @@ public:
 				m_metric_gpu.AddSample(renderTimeGPU);
 				m_gpuTimes.emplace_back(renderTimeGPU);
 
-				if (m_gpuTimes.size() >= 100)
+				if (m_gpuTimes.size() >= 200)
 				{
 					m_gpuTimes.erase(m_gpuTimes.begin());
 				}
