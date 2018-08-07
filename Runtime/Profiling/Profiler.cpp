@@ -57,7 +57,7 @@ namespace Directus
 		m_timer						= context->GetSubsystem<Timer>();
 		m_resourceManager			= context->GetSubsystem<ResourceManager>();
 		m_rhiDevice					= context->GetSubsystem<Renderer>()->GetRHIDevice();
-		m_profilingFrequencyMs		= 500;
+		m_profilingFrequencyMs		= 350;
 		m_profilingLastUpdateTime	= m_profilingFrequencyMs;
 
 		// Subscribe to events
@@ -130,8 +130,8 @@ namespace Directus
 
 	void Profiler::OnUpdate()
 	{
-		m_timeCPUms = m_timer->GetDeltaTimeMs();
-		m_timeGPUms = GetTimeBlockMs_GPU("Directus::Renderer::Render");
+		m_renderTimeGPU = GetTimeBlockMs_CPU("Directus::Renderer::Render");
+		m_renderTimeCPU = GetTimeBlockMs_GPU("Directus::Renderer::Render");
 
 		m_profilingLastUpdateTime += m_timer->GetDeltaTimeMs();
 		if (m_profilingLastUpdateTime < m_profilingFrequencyMs)
@@ -170,8 +170,8 @@ namespace Directus
 
 		m_metrics =
 			"FPS:\t\t\t\t\t\t\t"				+ to_string_precision(fps, 2) + "\n"
-			"CPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_timeCPUms, 2) + " ms\n"
-			"GPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_timeGPUms, 2) + " ms\n"
+			"CPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_renderTimeGPU, 2) + " ms\n"
+			"GPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_renderTimeCPU, 2) + " ms\n"
 			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"

@@ -102,8 +102,6 @@ void Editor::Update(float deltaTime)
 	if (!m_initialized)
 		return;
 
-	TIME_BLOCK_START_MULTI();
-
 	// ImGui implementation - start frame
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -119,8 +117,6 @@ void Editor::Update(float deltaTime)
 	m_rhiDevice->EventBegin("Pass_ImGui");
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 	m_rhiDevice->EventEnd();
-
-	TIME_BLOCK_END_MULTI();
 }
 
 void Editor::Shutdown()
