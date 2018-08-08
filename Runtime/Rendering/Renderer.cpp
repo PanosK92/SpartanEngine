@@ -321,6 +321,9 @@ namespace Directus
 
 	void Renderer::SetBackBufferSize(int width, int height)
 	{
+		if (width == 0 || height == 0)
+			return;
+
 		m_rhiDevice->SetResolution(width, height);
 		m_rhiPipelineState->SetViewport((float)width, (float)height);
 		m_rhiPipelineState->Bind();

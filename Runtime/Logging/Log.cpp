@@ -58,7 +58,7 @@ namespace Directus
 	}
 
 	//= LOGGING ==========================================================================
-	void Log::Write(const char* text, LogType type) // all functions resolve to that one
+	void Log::Write(const char* text, Log_Type type) // all functions resolve to that one
 	{
 		// if a logger is available use it, if not, write to file
 		!m_logger.expired() ? LogString(text, type) : LogToFile(text, type);
@@ -72,7 +72,7 @@ namespace Directus
 		int w = vsnprintf(buffer, sizeof(buffer), text, args);
 		va_end(args);
 
-		Write(buffer, Info);
+		Write(buffer, Log_Info);
 	}
 
 	void Log::WriteFWarning(const char* text, ...)
@@ -83,7 +83,7 @@ namespace Directus
 		int w = vsnprintf(buffer, sizeof(buffer), text, args);
 		va_end(args);
 
-		Write(buffer, Warning);
+		Write(buffer, Log_Warning);
 	}
 
 	void Log::WriteFError(const char* text, ...)
@@ -94,80 +94,80 @@ namespace Directus
 		int w = vsnprintf(buffer, sizeof(buffer), text, args);
 		va_end(args);
 
-		Write(buffer, Error);
+		Write(buffer, Log_Error);
 	}
 
-	void Log::Write(const string& text, LogType type) 
+	void Log::Write(const string& text, Log_Type type) 
 	{
 		Write(text.c_str(), type);
 	}
 
-	void Log::Write(const Vector2& vector, LogType type)
+	void Log::Write(const Vector2& vector, Log_Type type)
 	{
 		Write(vector.ToString(), type);
 	}
 
-	void Log::Write(const Vector3& vector, LogType type)
+	void Log::Write(const Vector3& vector, Log_Type type)
 	{
 		Write(vector.ToString(), type);
 	}
 
-	void Log::Write(const Vector4& vector, LogType type)
+	void Log::Write(const Vector4& vector, Log_Type type)
 	{
 		Write(vector.ToString(), type);
 	}
 
-	void Log::Write(const Quaternion& quaternion, LogType type)
+	void Log::Write(const Quaternion& quaternion, Log_Type type)
 	{
 		Write(quaternion.ToString(), type);
 	}
 
-	void Log::Write(float value, LogType type)
+	void Log::Write(float value, Log_Type type)
 	{
 		Write(to_string(value), type);
 	}
 
-	void Log::Write(double value, LogType type)
+	void Log::Write(double value, Log_Type type)
 	{
 		Write(to_string(value), type);
 	}
 
-	void Log::Write(int value, LogType type)
+	void Log::Write(int value, Log_Type type)
 	{
 		Write(to_string(value), type);
 	}
 
-	void Log::Write(unsigned int value, LogType type)
+	void Log::Write(unsigned int value, Log_Type type)
 	{
 		Write(to_string(value), type);
 	}
 
-	void Log::Write(size_t value, LogType type)
+	void Log::Write(size_t value, Log_Type type)
 	{
 		Write(to_string(value), type);
 	}
 
-	void Log::Write(bool value, LogType type)
+	void Log::Write(bool value, Log_Type type)
 	{
 		value ? Write("True", type) : Write("False", type);
 	}
 
-	void Log::Write(const weak_ptr<Actor>& actor, LogType type)
+	void Log::Write(const weak_ptr<Actor>& actor, Log_Type type)
 	{
 		actor.expired() ? Write("Null", type) : Write(actor.lock()->GetName(), type);
 	}
 
-	void Log::LogString(const char* text, LogType type)
+	void Log::LogString(const char* text, Log_Type type)
 	{
 		lock_guard<mutex> guard(m_mutex);
 		m_logger.lock()->Log(string(text), type);
 	}
 
-	void Log::LogToFile(const char* text, LogType type)
+	void Log::LogToFile(const char* text, Log_Type type)
 	{
 		lock_guard<mutex> guard(m_mutex);
 
-		string prefix = (type == Info) ? "Info:" : (type == Warning) ? "Warning:" : "Error:";
+		string prefix = (type == Log_Info) ? "Info:" : (type == Log_Warning) ? "Warning:" : "Error:";
 		string finalText = prefix + " " + text;
 
 		// Delete the previous log file (if it exists)

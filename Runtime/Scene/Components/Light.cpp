@@ -52,8 +52,8 @@ namespace Directus
 		m_shadowMapSplits.clear();
 		m_shadowMapSplits.shrink_to_fit();
 		// Note: These cascade splits have a logarithmic nature, have to fix
-		m_shadowMapSplits.emplace_back(0.79f);
-		m_shadowMapSplits.emplace_back(0.97f);
+		m_shadowMapSplits.emplace_back(0.906f);
+		m_shadowMapSplits.emplace_back(0.864f);
 	}
 
 	Light::~Light()
@@ -135,7 +135,7 @@ namespace Directus
 
 	void Light::Deserialize(FileStream* stream)
 	{
-		m_lightType = LightType(stream->ReadInt());
+		SetLightType(LightType(stream->ReadInt()));
 		stream->Read(&m_castShadows);
 		stream->Read(&m_color);
 		stream->Read(&m_range);
