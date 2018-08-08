@@ -78,7 +78,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11VertexBuffer: Failed to create vertex buffer");
+			LOG_ERROR("RHI_VertexBuffer::Create: Failed to create vertex buffer");
 			return false;
 		}
 
@@ -117,7 +117,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11VertexBuffer: Failed to create vertex buffer");
+			LOG_ERROR("RHI_VertexBuffer::Create: Failed to create vertex buffer");
 			return false;
 		}
 
@@ -156,7 +156,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11VertexBuffer: Failed to create vertex buffer");
+			LOG_ERROR("RHI_VertexBuffer::Create: Failed to create vertex buffer");
 			return false;
 		}
 
@@ -167,7 +167,7 @@ namespace Directus
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 		{
-			LOG_ERROR("D3D11_IndexBuffer::Bind: Not initialized");
+			LOG_ERROR("RHI_VertexBuffer::Bind: Not initialized");
 			return false;
 		}
 
@@ -188,7 +188,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, ptr);
 		if FAILED(result)
 		{
-			LOG_ERROR("D3D11VertexBuffer: Failed to create dynamic vertex buffer");
+			LOG_ERROR("RHI_VertexBuffer::Bind: Failed to create dynamic vertex buffer");
 			return false;
 		}
 
@@ -199,7 +199,7 @@ namespace Directus
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("D3D11_IndexBuffer::Bind: Not initialized");
+			LOG_ERROR("RHI_VertexBuffer::Map: Not initialized");
 			return false;
 		}
 
@@ -208,7 +208,7 @@ namespace Directus
 		HRESULT result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map((ID3D11Resource*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11VertexBuffer: Failed to map vertex buffer.");
+			LOG_ERROR("RHI_VertexBuffer::Map: Failed to map vertex buffer.");
 			return nullptr;
 		}
 
@@ -219,7 +219,7 @@ namespace Directus
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("D3D11_IndexBuffer::Bind: Not initialized");
+			LOG_ERROR("RHI_VertexBuffer::Unmap: Not initialized");
 			return false;
 		}
 
@@ -233,7 +233,7 @@ namespace Directus
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("D3D11_IndexBuffer::Bind: Not initialized");
+			LOG_ERROR("RHI_VertexBuffer::Bind: Not initialized");
 			return false;
 		}
 

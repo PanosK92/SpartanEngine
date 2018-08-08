@@ -65,29 +65,49 @@ namespace Directus
 		m_viewportDirty			= false;
 	}
 
-	bool RHI_PipelineState::SetShader(shared_ptr<RHI_Shader>& shader)
+	void RHI_PipelineState::SetShader(shared_ptr<RHI_Shader>& shader)
+	{
+		SetVertexShader(shader);
+		SetPixelShader(shader);	
+	}
+
+	bool RHI_PipelineState::SetVertexShader(shared_ptr<RHI_Shader>& shader)
 	{
 		if (!shader)
 		{
-			LOG_WARNING("RHI_PipelineState::SetShader: Invalid parameter");
+			LOG_WARNING("RHI_PipelineState::SetVertexShader: Invalid parameter");
 			return false;
 		}
 
-		if (shader->HasVertexShader())
-		{		
-			SetInputLayout(shader->GetInputLayout()); // TODO: this has to be done outside of this function 
-			m_vertexShader		= shader->GetVertexShaderBuffer();
-			m_vertexShaderDirty	= true;
-		}
-		
-		if (shader->HasPixelShader())
+		if (shader->HasVertexShader() && m_boundVertexShaderID != shader->GetID())
 		{
-			m_pixelShader		= shader->GetPixelShaderBuffer();
-			m_pixelShaderDirty	= true;
+			SetInputLayout(shader->GetInputLayout()); // TODO: this has to be done outside of this function 
+			m_vertexShader			= shader;
+			m_boundVertexShaderID	= m_vertexShader->GetID();
+			m_vertexShaderDirty		= true;
 		}
 
 		return true;
 	}
+
+	bool RHI_PipelineState::SetPixelShader(shared_ptr<RHI_Shader>& shader)
+	{
+		if (!shader)
+		{
+			LOG_WARNING("RHI_PipelineState::SetPixelShader: Invalid parameter");
+			return false;
+		}
+
+		if (shader->HasPixelShader() && m_boundPixelShaderID != shader->GetID())
+		{
+			m_pixelShader			= shader;
+			m_boundPixelShaderID	= m_pixelShader->GetID();
+			m_pixelShaderDirty		= true;
+		}
+
+		return true;
+	}
+
 
 	bool RHI_PipelineState::SetIndexBuffer(const shared_ptr<RHI_IndexBuffer>& indexBuffer)
 	{
@@ -176,10 +196,30 @@ namespace Directus
 		m_renderTargetDirty = true;
 	}
 
-	void RHI_PipelineState::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
+	bool RHI_PipelineState::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer)
 	{
-		m_constantBuffersInfo.emplace_back(constantBuffer->GetBuffer(), slot, scope);
+		if (!constantBuffer)
+		{
+			LOG_WARNING("RHI_PipelineState::SetConstantBuffer: Invalid parameter");
+			return false;
+		}
+
+		m_constantBuffers.buffers.emplace_back(constantBuffer);
+		m_constantBuffers.buffersLowLevel.emplace_back(constantBuffer->GetBuffer());
+
+		Buffer_Scope scope				= constantBuffer->GetScope();
+		m_constantBuffers.sharedScope	= true;
+		for (const auto& buffer : m_constantBuffers.buffers)
+		{
+			if (scope != buffer->GetScope())
+			{
+				m_constantBuffers.sharedScope = false;
+				break;
+			}
+		}
 		m_constantBufferDirty = true;
+
+		return true;
 	}
 
 	void RHI_PipelineState::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
@@ -265,9 +305,17 @@ namespace Directus
 		// Vertex shader
 		if (m_vertexShaderDirty)
 		{
-			m_rhiDevice->Bind_VertexShader(m_vertexShader);
+			m_rhiDevice->Bind_VertexShader(m_pixelShader->GetVertexShaderBuffer());
 			Profiler::Get().m_bindVertexShaderCount++;
-			m_vertexShaderDirty = false;
+			m_vertexShaderDirty	= false;
+		}
+
+		// Pixel shader
+		if (m_pixelShaderDirty)
+		{
+			m_rhiDevice->Bind_PixelShader(m_pixelShader->GetPixelShaderBuffer());
+			Profiler::Get().m_bindPixelShaderCount++;
+			m_pixelShaderDirty = false;
 		}
 
 		// Input layout
@@ -275,14 +323,6 @@ namespace Directus
 		{
 			m_rhiDevice->Set_InputLayout(m_inputLayoutBuffer);
 			m_inputLayoutDirty = false;
-		}
-
-		// Pixel shader
-		if (m_pixelShaderDirty)
-		{
-			m_rhiDevice->Bind_PixelShader(m_pixelShader);
-			Profiler::Get().m_bindPixelShaderCount++;
-			m_pixelShaderDirty = false;
 		}
 
 		// Viewport
@@ -357,14 +397,26 @@ namespace Directus
 		// Constant buffer
 		if (m_constantBufferDirty)
 		{
-			for (const auto& bufferInfo : m_constantBuffersInfo)
+			// Check to see if we can set them in one go
+			if (m_constantBuffers.buffers.size() > 1 && m_constantBuffers.sharedScope)
 			{
-				m_rhiDevice->Bind_ConstantBuffers(bufferInfo.m_slot, 1, bufferInfo.m_scope, &bufferInfo.m_buffer);
-				Profiler::Get().m_bindConstantBufferCount += Buffer_Global ? 2 : 1;
+				auto buffer				= m_constantBuffers.buffers.front();
+				unsigned int startSlot	= buffer->GetSlot();
+				Buffer_Scope scope		= buffer->GetScope();
+				m_rhiDevice->Bind_ConstantBuffers(startSlot, (unsigned int)m_constantBuffers.buffers.size(), scope, (void*const*)&m_constantBuffers.buffersLowLevel[0]);
+				Profiler::Get().m_bindConstantBufferCount += buffer->GetScope() == Buffer_Global ? 2 : 1;
+			}
+			else // Set them one by one
+			{
+				for (const auto& constantBuffer : m_constantBuffers.buffers)
+				{
+					auto ptr = constantBuffer->GetBuffer();
+					m_rhiDevice->Bind_ConstantBuffers(constantBuffer->GetSlot(), 1, constantBuffer->GetScope(), (void*const*)&ptr);
+					Profiler::Get().m_bindConstantBufferCount += constantBuffer->GetScope() == Buffer_Global ? 2 : 1;
+				}
 			}
 			
-			m_constantBuffersInfo.clear();
-			m_constantBuffersInfo.shrink_to_fit();
+			m_constantBuffers.Clear();
 			m_constantBufferDirty = false;
 		}
 

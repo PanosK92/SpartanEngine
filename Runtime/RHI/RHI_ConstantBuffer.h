@@ -35,13 +35,17 @@ namespace Directus
 		RHI_ConstantBuffer(std::shared_ptr<RHI_Device> rhiDevice);
 		~RHI_ConstantBuffer();
 
-		bool Create(unsigned int size);
+		bool Create(unsigned int size, unsigned int slot, Buffer_Scope scope);
 		void* Map();
 		bool Unmap();
-		void* GetBuffer() { return m_buffer; }
+		void* GetBuffer()		{ return m_buffer; }
+		unsigned int GetSlot()	{ return m_slot; }
+		Buffer_Scope GetScope()	{ return m_scope; }
 
 	private:
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		void* m_buffer;
+		unsigned int m_slot;
+		Buffer_Scope m_scope;
 	};
 }

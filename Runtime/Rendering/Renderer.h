@@ -254,11 +254,5 @@ namespace Directus
 		float m_farPlane;
 		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
 		//====================================================
-
-		//= PIPELINE STATE ===================
-		unsigned int m_currentlyBoundGeometry;
-		unsigned int m_currentlyBoundShader;
-		unsigned int m_currentlyBoundMaterial;
-		//====================================
 	};
 }

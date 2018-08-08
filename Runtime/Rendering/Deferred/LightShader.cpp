@@ -55,11 +55,11 @@ namespace Directus
 
 		// Create matrix buffer
 		m_matrixBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_matrixBuffer->Create(sizeof(MatrixBufferType));
+		m_matrixBuffer->Create(sizeof(MatrixBufferType), 0, Buffer_Global);
 
 		// Create misc buffer
 		m_miscBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_miscBuffer->Create(sizeof(MiscBufferType));
+		m_miscBuffer->Create(sizeof(MiscBufferType), 1, Buffer_PixelShader);
 	}
 
 	void LightShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mBaseView, const Matrix& mPerspectiveProjection, const Matrix& mOrthographicProjection)

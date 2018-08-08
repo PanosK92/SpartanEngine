@@ -56,66 +56,46 @@ namespace Directus
 		AddDefinesBasedOnMaterial(m_shader);
 		m_shader->Compile_VertexPixel(filePath, Input_PositionTextureTBN);
 
-		// Matrix Buffer
-		m_perObjectBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
+		// The buffers below have to match GBuffer.hlsl
 
-		// Object Buffer
+		// Material Buffer
 		m_materialBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_materialBuffer->Create(sizeof(PerMaterialBufferType));
+		m_materialBuffer->Create(sizeof(PerMaterialBufferType), 0, Buffer_PixelShader);
 
 		// Object Buffer
-		m_perfFrameBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_perfFrameBuffer->Create(sizeof(PerFrameBufferType));
+		m_perObjectBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
+		m_perObjectBuffer->Create(sizeof(PerObjectBufferType), 1, Buffer_VertexShader);
 	}
 
-	void ShaderVariation::UpdatePerFrameBuffer(Camera* camera)
+	void ShaderVariation::UpdatePerMaterialBuffer(Camera* camera, Material* material)
 	{
-		if (!m_shader || !m_shader->IsCompiled())
+		if (!camera || !material)
 		{
-			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per frame buffer.");
+			LOG_ERROR("ShaderVariation::UpdatePerMaterialBuffer: Invalid parameters.");
 			return;
 		}
 
-		if (!camera)
-			return;
-
-		//= BUFFER UPDATE ==========================================
-		auto buffer = (PerFrameBufferType*)m_perfFrameBuffer->Map();
-
-		buffer->cameraPos	= camera->GetTransform()->GetPosition();
-		buffer->padding		= 0.0f;
-		buffer->viewport	= Settings::Get().GetResolution();
-		buffer->padding2	= Vector2::Zero;
-		
-		m_perfFrameBuffer->Unmap();
-		//==========================================================
-	}
-
-	void ShaderVariation::UpdatePerMaterialBuffer(Material* material)
-	{
-		if (!material)
-			return;
-
 		if (!m_shader->IsCompiled())
 		{
-			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per material buffer.");
+			LOG_ERROR("ShaderVariation::UpdatePerMaterialBuffer: Shader hasn't been loaded or failed to compile.");
 			return;
 		}
 
 		// Determine if the material buffer needs to update
 		bool update = false;
-		update = perMaterialBufferCPU.matAlbedo			!= material->GetColorAlbedo()			? true : update;
-		update = perMaterialBufferCPU.matTilingUV		!= material->GetTiling()				? true : update;
-		update = perMaterialBufferCPU.matOffsetUV		!= material->GetOffset()				? true : update;
-		update = perMaterialBufferCPU.matRoughnessMul	!= material->GetRoughnessMultiplier()	? true : update;
-		update = perMaterialBufferCPU.matMetallicMul	!= material->GetMetallicMultiplier()	? true : update;
-		update = perMaterialBufferCPU.matNormalMul		!= material->GetNormalMultiplier()		? true : update;
-		update = perMaterialBufferCPU.matShadingMode	!= float(material->GetShadingMode())	? true : update;
+		update = perMaterialBufferCPU.matAlbedo			!= material->GetColorAlbedo()				? true : update;
+		update = perMaterialBufferCPU.matTilingUV		!= material->GetTiling()					? true : update;
+		update = perMaterialBufferCPU.matOffsetUV		!= material->GetOffset()					? true : update;
+		update = perMaterialBufferCPU.matRoughnessMul	!= material->GetRoughnessMultiplier()		? true : update;
+		update = perMaterialBufferCPU.matMetallicMul	!= material->GetMetallicMultiplier()		? true : update;
+		update = perMaterialBufferCPU.matNormalMul		!= material->GetNormalMultiplier()			? true : update;
+		update = perMaterialBufferCPU.matShadingMode	!= float(material->GetShadingMode())		? true : update;
+		update = perMaterialBufferCPU.cameraPos			!= camera->GetTransform()->GetPosition()	? true : update;
+		update = perMaterialBufferCPU.resolution		!= Settings::Get().GetResolution()			? true : update;
 
 		if (update)
 		{
-			//= BUFFER UPDATE ===================================================================================
+			//= BUFFER UPDATE ======================================================================================
 			auto buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
 
 			buffer->matAlbedo		= perMaterialBufferCPU.matAlbedo		= material->GetColorAlbedo();
@@ -126,10 +106,12 @@ namespace Directus
 			buffer->matNormalMul	= perMaterialBufferCPU.matNormalMul		= material->GetNormalMultiplier();
 			buffer->matHeightMul	= perMaterialBufferCPU.matNormalMul		= material->GetHeightMultiplier();
 			buffer->matShadingMode	= perMaterialBufferCPU.matShadingMode	= float(material->GetShadingMode());
-			buffer->paddding		= Vector3::Zero;
+			buffer->cameraPos		= perMaterialBufferCPU.cameraPos		= camera->GetTransform()->GetPosition();
+			buffer->resolution		= perMaterialBufferCPU.resolution		= Settings::Get().GetResolution();
+			buffer->padding			= perMaterialBufferCPU.padding			= Vector2::Zero;
 
 			m_materialBuffer->Unmap();
-			//===================================================================================================
+			//======================================================================================================
 		}
 	}
 
