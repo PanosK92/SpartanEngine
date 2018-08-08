@@ -51,29 +51,70 @@ namespace Directus
 
 			for (const char* layerName : validationLayers)
 			{
-				bool layerFound = false;
-
 				for (const auto& layerProperties : availableLayers)
 				{
 					if (strcmp(layerName, layerProperties.layerName) == 0)
 					{
-						layerFound = true;
-						break;
+						return true;
 					}
-				}
-
-				if (!layerFound)
-				{
-					LOG_ERROR("Vulkan_Device::RHI_Device: Validation layer was requested, but not available.");
-					return false;
 				}
 			}
 
-			return true;
+			LOG_ERROR("Vulkan_Device::RHI_Device: Validation layer was requested, but not available.");
+			return false;
+		}
+
+		inline VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pCallback)
+		{
+			if (auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"))
+				return func(instance, pCreateInfo, pAllocator, pCallback);
+
+			return VK_ERROR_EXTENSION_NOT_PRESENT;
+		}
+
+		inline void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT callback, const VkAllocationCallbacks* pAllocator) 
+		{
+			if (auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")) 
+			{
+				func(instance, callback, pAllocator);
+			}
+		}
+
+		static inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+			VkDebugUtilsMessageTypeFlagsEXT messageType,
+			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+			void* pUserData) 
+		{
+			Log_Type type	= Log_Info;
+			type			= messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT	? Log_Warning	: type;
+			type			= messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT		? Log_Error		: type;
+			Log::Write("Vulkan: " + string(pCallbackData->pMessage), type);
+
+			return VK_FALSE;
+		}
+
+		inline bool isDeviceSuitable(VkPhysicalDevice device) 
+		{
+			VkPhysicalDeviceProperties deviceProperties;
+			VkPhysicalDeviceFeatures deviceFeatures;
+			vkGetPhysicalDeviceProperties(device, &deviceProperties);
+			vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+			return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU || VK_PHYSICAL_DEVICE_TYPE_CPU;
 		}
 
 		VkInstance instance;
-		const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
+		VkPhysicalDevice device;
+		vector<const char*> validationLayers	= { "VK_LAYER_LUNARG_standard_validation" };
+		#ifdef DEBUG
+		const bool validationLayerEnabled		= true;
+		vector<const char*> extensions			= { "VK_KHR_win32_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+		#else
+		const bool validationLayerEnabled = false;
+		vector<const char*> extensions			= { "VK_KHR_win32_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+		#endif
+		VkDebugUtilsMessengerEXT callback;
 	}
 
 	RHI_Device::RHI_Device(void* drawHandle)
@@ -85,39 +126,34 @@ namespace Directus
 		m_device				= nullptr;
 		m_deviceContext			= nullptr;
 
-		LOG_INFO("Hello Vulkan!");
+		Settings::Get().m_versionVulkan = to_string(VK_API_VERSION_1_0);
+		LOG_INFO(Settings::Get().m_versionVulkan);
 
 		// Validation layer
 		bool validationLayerAvailable = false;
+		if (Vulkan_Device::validationLayerEnabled)
 		{
-			#ifdef DEBUG
-			const bool validationLayerEnabled = true;
-			#else
-			const bool validationLayerEnabled = false;
-			#endif
-			
-			if (validationLayerEnabled)
-			{
-				validationLayerAvailable = Vulkan_Device::AcquireValidationLayers(Vulkan_Device::validationLayers);
-			}
+			validationLayerAvailable = Vulkan_Device::AcquireValidationLayers(Vulkan_Device::validationLayers);
 		}
 		
 		// Create instance
 		{
 			VkApplicationInfo appInfo	= {};
 			appInfo.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
-			appInfo.pApplicationName	= "Hello Triangle";
+			appInfo.pApplicationName	= ENGINE_VERSION;
 			appInfo.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
-			appInfo.pEngineName			= "Directus3D";
+			appInfo.pEngineName			= ENGINE_VERSION;
 			appInfo.engineVersion		= VK_MAKE_VERSION(1, 0, 0);
 			appInfo.apiVersion			= VK_API_VERSION_1_1;
 
-			VkInstanceCreateInfo createInfo = {};
-			createInfo.sType				= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-			createInfo.pApplicationInfo		= &appInfo;
+			VkInstanceCreateInfo createInfo		= {};
+			createInfo.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+			createInfo.pApplicationInfo			= &appInfo;
+			createInfo.enabledExtensionCount	= (uint32_t)Vulkan_Device::extensions.size();
+			createInfo.ppEnabledExtensionNames	= Vulkan_Device::extensions.data();
 			if (validationLayerAvailable) 
 			{
-				createInfo.enabledLayerCount	= static_cast<uint32_t>(Vulkan_Device::validationLayers.size());
+				createInfo.enabledLayerCount	= (uint32_t)Vulkan_Device::validationLayers.size();
 				createInfo.ppEnabledLayerNames	= Vulkan_Device::validationLayers.data();
 			}
 			else 
@@ -145,6 +181,51 @@ namespace Directus
 			}
 		}
 
+		// Callback
+		if (Vulkan_Device::validationLayerEnabled)
+		{
+			VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+			createInfo.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+			createInfo.messageSeverity	= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+			createInfo.messageType		= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+			createInfo.pfnUserCallback	= Vulkan_Device::debugCallback;
+			createInfo.pUserData		= nullptr; // Optional
+
+			if (Vulkan_Device::CreateDebugUtilsMessengerEXT(Vulkan_Device::instance, &createInfo, nullptr, &Vulkan_Device::callback) != VK_SUCCESS) 
+			{
+				LOG_ERROR("Vulkan_Device::RHI_Device: Failed to setup callback");
+			}
+		}
+
+		// Device
+		{
+			Vulkan_Device::device	= VK_NULL_HANDLE;
+			uint32_t deviceCount	= 0;
+			vkEnumeratePhysicalDevices(Vulkan_Device::instance, &deviceCount, nullptr);
+			if (deviceCount == 0) 
+			{
+				LOG_ERROR("Vulkan_Device::RHI_Device: Failed to enumerate physical devices.");
+				return;
+			}
+			std::vector<VkPhysicalDevice> devices(deviceCount);
+			vkEnumeratePhysicalDevices(Vulkan_Device::instance, &deviceCount, devices.data());
+			
+			for (const auto& device : devices) 
+			{
+				if (Vulkan_Device::isDeviceSuitable(device))
+				{
+					Vulkan_Device::device = device;
+					break;
+				}
+			}
+
+			if (Vulkan_Device::device == VK_NULL_HANDLE) 
+			{
+				LOG_ERROR("Vulkan_Device::RHI_Device: Failed to find a suitable device.");
+				return;
+			}
+		}
+
 		//LOGF_INFO("Vulkan_Device::RHI_Device: Feature level %s - %s", featureLevelStr.data(), D3D11_Device::GetAdapterDescription(adapter).data());
 		m_device		= nullptr;
 		m_deviceContext = nullptr;
@@ -152,7 +233,8 @@ namespace Directus
 	}
 
 	RHI_Device::~RHI_Device()
-	{
+	{	
+		if (Vulkan_Device::validationLayerEnabled) Vulkan_Device::DestroyDebugUtilsMessengerEXT(Vulkan_Device::instance, Vulkan_Device::callback, nullptr);
 		vkDestroyInstance(Vulkan_Device::instance, nullptr);
 	}
 

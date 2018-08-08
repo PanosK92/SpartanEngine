@@ -83,6 +83,7 @@ namespace Directus
 		std::string m_versionFreeType;
 		std::string m_versionImGui;
 		std::string m_versionPugiXML;
+		std::string m_versionVulkan;
 
 	private:
 		bool m_isFullScreen;

@@ -44,7 +44,7 @@ namespace Directus
 		const static D3D_DRIVER_TYPE driverType = D3D_DRIVER_TYPE_HARDWARE;
 		const static unsigned int sdkVersion	= D3D11_SDK_VERSION;
 		UINT swapchainBufferCount				= 2;
-		auto swapchainFlags						= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+		auto swapchainFlags						= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		// The order of the feature levels that we'll try to create a device from
 		const static D3D_FEATURE_LEVEL featureLevels[] =
 		{
@@ -731,8 +731,17 @@ namespace Directus
 
 	bool RHI_Device::SetResolution(int width, int height)
 	{
-		if (!D3D11_Device::m_swapChain)
+		if (width == 0 || height == 0)
+		{
+			LOGF_ERROR("RHI_Device::SetResolution: Resolution %fx%f is invalid", width, height);
 			return false;
+		}
+
+		if (!D3D11_Device::m_swapChain)
+		{
+			LOG_ERROR("RHI_Device::SetResolution: Invalid swapchain");
+			return false;
+		}
 
 		// Release resolution based stuff
 		SafeRelease(D3D11_Device::m_renderTargetView);
