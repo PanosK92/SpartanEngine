@@ -46,6 +46,7 @@ namespace Directus
 	class Timer;
 	class ResourceManager;
 	class RHI_Device;
+	class Variant;
 
 	struct TimeBlock_CPU
 	{
@@ -89,7 +90,8 @@ namespace Directus
 		void TimeBlockStart_GPU(const char* funcName);
 		void TimeBlockEnd_GPU(const char* funcName);
 
-		void OnUpdate();
+		// Events
+		void OnUpdate(const Variant& deltaTimeVar);
 		void OnFrameEnd();
 
 		void SetProfilingEnabled_CPU(bool enabled)		{ m_cpuProfiling = enabled; }
@@ -128,25 +130,32 @@ namespace Directus
 		unsigned int m_bindRenderTargetCount;
 		
 	private:
-		void UpdateMetrics();
+		void UpdateMetrics(float fps);
+		void ComputeFPS(float deltaTime);
 		// Converts float to string with specified precision
 		std::string to_string_precision(float value, int decimals);
 
 		// Profiling options
 		bool m_gpuProfiling;
 		bool m_cpuProfiling;
-		float m_profilingFrequencyMs;
+		float m_profilingFrequencySec;
 		float m_profilingLastUpdateTime;
 
 		// Time blocks
 		std::map<const char*, TimeBlock_CPU> m_timeBlocks_cpu;
 		std::map<const char*, TimeBlock_GPU> m_timeBlocks_gpu;
+		float m_renderTimeGPU;
+		float m_renderTimeCPU;
 
 		// Misc
 		std::string m_metrics;
 		bool m_shouldUpdate;
-		float m_renderTimeGPU;
-		float m_renderTimeCPU;
+	
+		//= FPS ===========
+		float m_fps;
+		float m_timePassed;
+		int m_frameCount;
+		//=================
 
 		// Dependencies
 		Scene* m_scene;

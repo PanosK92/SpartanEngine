@@ -80,10 +80,6 @@ namespace Directus
 		void SetAmbientLight(float x, float y, float z);
 		Math::Vector3 GetAmbientLight();
 
-		//= STATS ======================
-		float GetFPS() { return m_fps; }
-		//==============================
-
 	private:
 		//= COMMON ACTOR CREATION ====================
 		std::weak_ptr<Actor> CreateSkybox();
@@ -91,20 +87,12 @@ namespace Directus
 		std::weak_ptr<Actor> CreateDirectionalLight();
 		//============================================
 
-		void ComputeFPS(); // TODO: This doesn't belong here
-
 		std::vector<std::shared_ptr<Actor>> m_actors;
 		std::vector<std::weak_ptr<Actor>> m_renderables;
 
 		std::weak_ptr<Actor> m_mainCamera;
 		std::weak_ptr<Actor> m_skybox;
 		Math::Vector3 m_ambientLight;
-
-		//= STATS ============
-		float m_fps;
-		float m_timePassed;
-		int m_frameCount;
 		bool m_isInEditorMode;
-		//====================
 	};
 }

@@ -56,8 +56,7 @@ namespace Directus
 
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
-		void UpdatePerFrameBuffer(Camera* camera);
-		void UpdatePerMaterialBuffer(Material* material);
+		void UpdatePerMaterialBuffer(Camera* camera, Material* material);
 		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
 
 		unsigned long GetShaderFlags()	{ return m_shaderFlags; }
@@ -73,7 +72,6 @@ namespace Directus
 
 		std::shared_ptr<RHI_ConstantBuffer>& GetPerObjectBuffer()	{ return m_perObjectBuffer; }
 		std::shared_ptr<RHI_ConstantBuffer>& GetMaterialBuffer()	{ return m_materialBuffer; }
-		std::shared_ptr<RHI_ConstantBuffer>& GetPerFrameBuffer()	{ return m_perfFrameBuffer; }
 		std::shared_ptr<RHI_Shader> GetShader() const				{ return m_shader; }
 
 	private:
@@ -84,23 +82,13 @@ namespace Directus
 
 		// MISC
 		std::shared_ptr<RHI_Device> m_rhiDevice;
-		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;
 		std::shared_ptr<RHI_ConstantBuffer> m_materialBuffer;
-		std::shared_ptr<RHI_ConstantBuffer> m_perfFrameBuffer;
+		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;	
 		std::shared_ptr<RHI_Shader> m_shader;
 
 		// BUFFERS
-		struct PerFrameBufferType
-		{
-			Math::Vector3 cameraPos;
-			float padding;
-			Math::Vector2 viewport;
-			Math::Vector2 padding2;			
-		};
-
 		struct PerMaterialBufferType
 		{
-			// Material
 			Math::Vector4 matAlbedo;
 			Math::Vector2 matTilingUV;
 			Math::Vector2 matOffsetUV;
@@ -109,7 +97,9 @@ namespace Directus
 			float matNormalMul;
 			float matHeightMul;
 			float matShadingMode;
-			Math::Vector3 paddding;
+			Math::Vector3 cameraPos;
+			Math::Vector2 resolution;
+			Math::Vector2 padding;
 		};
 		PerMaterialBufferType perMaterialBufferCPU;
 

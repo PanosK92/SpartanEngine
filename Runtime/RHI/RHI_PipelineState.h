@@ -31,17 +31,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	struct ConstantBufferInfo
+	struct ConstantBuffers
 	{
-		ConstantBufferInfo(void* buffer, unsigned int slot, Buffer_Scope scope)
+		std::vector<std::shared_ptr<RHI_ConstantBuffer>> buffers;
+		std::vector<void*> buffersLowLevel;
+		bool sharedScope;
+
+		void Clear()
 		{
-			m_buffer	= buffer;
-			m_slot		= slot;
-			m_scope		= scope;
+			buffers.clear();
+			buffersLowLevel.clear();
+			sharedScope = false;
 		}
-		void* m_buffer;
-		unsigned int m_slot;
-		Buffer_Scope m_scope;
 	};
 
 	class ENGINE_CLASS RHI_PipelineState
@@ -51,7 +52,9 @@ namespace Directus
 		~RHI_PipelineState(){}
 
 		// Shader
-		bool SetShader(std::shared_ptr<RHI_Shader>& shader);
+		void SetShader(std::shared_ptr<RHI_Shader>& shader);
+		bool SetVertexShader(std::shared_ptr<RHI_Shader>& shader);
+		bool SetPixelShader(std::shared_ptr<RHI_Shader>& shader);
 
 		// Texture
 		bool SetTexture(const std::shared_ptr<RHI_RenderTexture>& texture);
@@ -63,7 +66,7 @@ namespace Directus
 		void SetRenderTargets(const std::vector<void*>& renderTargets, void* depthStencil);
 
 		// Constant, vertex & index buffers
-		void SetConstantBuffer(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope);
+		bool SetConstantBuffer(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer);
 		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
 		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
 		
@@ -124,15 +127,15 @@ namespace Directus
 		bool m_vertexBufferDirty;
 
 		// Constant buffers
-		std::vector<ConstantBufferInfo> m_constantBuffersInfo;
+		ConstantBuffers m_constantBuffers;
 		bool m_constantBufferDirty;
 
 		// Vertex shader
-		void* m_vertexShader;
+		std::shared_ptr<RHI_Shader> m_vertexShader;
 		bool m_vertexShaderDirty;
 
 		// Pixel Shader
-		void* m_pixelShader;
+		std::shared_ptr<RHI_Shader> m_pixelShader;
 		bool m_pixelShaderDirty;
 
 		// Viewport
@@ -151,5 +154,9 @@ namespace Directus
 
 		// Device
 		std::shared_ptr<RHI_Device> m_rhiDevice;
+
+		// IDs
+		unsigned int m_boundVertexShaderID;
+		unsigned int m_boundPixelShaderID;
 	};
 }

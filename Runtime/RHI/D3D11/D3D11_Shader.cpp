@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream> 
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
+#include "../../Core/GUIDGenerator.h"
 //======================================
 
 //= NAMESPACES =====
@@ -191,7 +192,8 @@ namespace Directus
 		m_compiled			= false;
 		m_hasVertexShader	= false;
 		m_hasPixelShader	= false;
-		m_D3D11InputLayout	= make_shared<RHI_InputLayout>(m_rhiDevice);
+		m_inputLayout		= make_shared<RHI_InputLayout>(m_rhiDevice);
+		m_id				= GENERATE_GUID;
 	}
 
 	RHI_Shader::~RHI_Shader()
@@ -225,7 +227,7 @@ namespace Directus
 		// Set input layout
 		if (result)
 		{
-			result = D3D11_Shader::SetInputLayout(m_rhiDevice->GetDevice<ID3D11Device>(), blobVS, m_D3D11InputLayout, inputLayout);
+			result = D3D11_Shader::SetInputLayout(m_rhiDevice->GetDevice<ID3D11Device>(), blobVS, m_inputLayout, inputLayout);
 			if (!result)
 			{
 				LOGF_ERROR("D3D11_Shader::SetInputLayout: Failed to create vertex input layout for %s", FileSystem::GetFileNameFromFilePath(m_filePath).data());

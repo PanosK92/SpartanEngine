@@ -129,91 +129,91 @@ namespace Directus
 			// Line
 			m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderLine->Compile_VertexPixel(shaderDirectory + "Line.hlsl", Input_PositionColor);
-			m_shaderLine->AddBuffer<Struct_Matrix_Matrix_Matrix>();
+			m_shaderLine->AddBuffer<Struct_Matrix_Matrix_Matrix>(0, Buffer_VertexShader);
 
 			// Depth
 			m_shaderLightDepth = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderLightDepth->Compile_VertexPixel(shaderDirectory + "ShadowingDepth.hlsl", Input_Position);
-			m_shaderLightDepth->AddBuffer<Struct_Matrix>();
+			m_shaderLightDepth->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
 
 			// Grid
 			m_shaderGrid = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderGrid->Compile_VertexPixel(shaderDirectory + "Grid.hlsl", Input_PositionColor);
-			m_shaderGrid->AddBuffer<Struct_Matrix>();
+			m_shaderGrid->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);;
 
 			// Font
 			m_shaderFont = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderFont->Compile_VertexPixel(shaderDirectory + "Font.hlsl", Input_PositionTexture);
-			m_shaderFont->AddBuffer<Struct_Matrix_Vector4>();
+			m_shaderFont->AddBuffer<Struct_Matrix_Vector4>(0, Buffer_Global);
 
 			// Texture
 			m_shaderTexture = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderTexture->Compile_VertexPixel(shaderDirectory + "Texture.hlsl", Input_PositionTexture);
-			m_shaderTexture->AddBuffer<Struct_Matrix>();
+			m_shaderTexture->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
 
 			// FXAA
 			m_shaderFXAA = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderFXAA->AddDefine("PASS_FXAA");
 			m_shaderFXAA->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
-			m_shaderFXAA->AddBuffer<Struct_Matrix_Vector2>();
+			m_shaderFXAA->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Sharpening
 			m_shaderSharpening = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderSharpening->AddDefine("PASS_SHARPENING");
 			m_shaderSharpening->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
-			m_shaderSharpening->AddBuffer<Struct_Matrix_Vector2>();
+			m_shaderSharpening->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Chromatic aberration
 			m_shaderChromaticAberration = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
 			m_shaderChromaticAberration->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
-			m_shaderChromaticAberration->AddBuffer<Struct_Matrix_Vector2>();
+			m_shaderChromaticAberration->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Blur Box
 			m_shaderBlurBox = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
 			m_shaderBlurBox->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
-			m_shaderBlurBox->AddBuffer<Struct_Matrix_Vector2>();
+			m_shaderBlurBox->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Blur Gaussian Horizontal
 			m_shaderBlurGaussianH = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBlurGaussianH->AddDefine("PASS_BLUR_GAUSSIAN_H");
 			m_shaderBlurGaussianH->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
-			m_shaderBlurGaussianH->AddBuffer<Struct_Matrix_Vector2>();
+			m_shaderBlurGaussianH->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Blur Gaussian Vertical
 			m_shaderBlurGaussianV = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V", "1");
 			m_shaderBlurGaussianV->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
-			m_shaderBlurGaussianV->AddBuffer<Struct_Matrix_Vector2>();
+			m_shaderBlurGaussianV->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Bloom - bright
 			m_shaderBloom_Bright = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT", "1");
 			m_shaderBloom_Bright->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
-			m_shaderBloom_Bright->AddBuffer<Struct_Matrix_Vector2>();
+			m_shaderBloom_Bright->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Bloom - blend
 			m_shaderBloom_BlurBlend = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
 			m_shaderBloom_BlurBlend->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
-			m_shaderBloom_BlurBlend->AddBuffer<Struct_Matrix>();
+			m_shaderBloom_BlurBlend->AddBuffer<Struct_Matrix>(0, Buffer_Global);
 
 			// Tone-mapping
 			m_shaderCorrection = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderCorrection->AddDefine("PASS_CORRECTION");
 			m_shaderCorrection->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
-			m_shaderCorrection->AddBuffer<Struct_Matrix_Vector2>();
+			m_shaderCorrection->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Transformation gizmo
 			m_shaderTransformationGizmo = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderTransformationGizmo->Compile_VertexPixel(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN);
-			m_shaderTransformationGizmo->AddBuffer<Struct_Matrix_Vector3_Vector3>();
+			m_shaderTransformationGizmo->AddBuffer<Struct_Matrix_Vector3_Vector3>(0, Buffer_Global);
 
 			// Shadowing (shadow mapping & SSAO)
 			m_shaderShadowing = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderShadowing->Compile_VertexPixel(shaderDirectory + "Shadowing.hlsl", Input_PositionTexture);
-			m_shaderShadowing->AddBuffer<Struct_Shadowing>();
+			m_shaderShadowing->AddBuffer<Struct_Shadowing>(0, Buffer_Global);
 		}
 
 		// TEXTURES
@@ -306,10 +306,14 @@ namespace Directus
 			);
 
 			Pass_PostLight(
-				m_renderTexPing,	// IN:	Render texture - Deferred pass result
+				m_renderTexPing,	// IN:	Render texture - Light pass result
 				m_renderTexPing2,	// IN:	Render texture - A spare one
 				m_renderTexPong		// OUT: Render texture - Result
 			);
+
+			// Debug rendering (on the target that happens to be bound)
+			Pass_DebugGBuffer();
+			Pass_Debug();
 		}		
 		else // If there is no camera, clear to black
 		{
@@ -503,12 +507,17 @@ namespace Directus
 		m_rhiPipelineState->SetShader(m_shaderLightDepth);
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 
+		// Variables that help reduce state changes
+		unsigned int currentlyBoundGeometry = 0;
+
 		if (!m_renderables.empty())
 		{
 			for (unsigned int i = 0; i < light->ShadowMap_GetCount(); i++)
 			{
-				m_rhiPipelineState->SetRenderTexture(light->ShadowMap_GetRenderTexture(i), true);
 				m_rhiDevice->EventBegin("Pass_ShadowMap_" + to_string(i));
+
+				m_rhiPipelineState->SetRenderTexture(light->ShadowMap_GetRenderTexture(i), true);			
+				Matrix viewProjection = light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i);
 
 				for (const auto& actor : m_renderables)
 				{
@@ -533,19 +542,19 @@ namespace Directus
 						continue;
 
 					// Bind geometry
-					if (m_currentlyBoundGeometry != obj_geometry->GetResourceID())
+					if (currentlyBoundGeometry != obj_geometry->GetResourceID())
 					{
 						m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
 						m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());					
-						m_currentlyBoundGeometry = obj_geometry->GetResourceID();
+						currentlyBoundGeometry = obj_geometry->GetResourceID();
 					}
 
 					// skip objects outside of the view frustum
 					//if (!m_directionalLight->IsInViewFrustrum(obj_renderable, i))
 					//continue;
 		
-					m_shaderLightDepth->UpdateBuffer(&Struct_Matrix(actor->GetTransform_PtrRaw()->GetWorldTransform() * light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i)));
-					m_rhiPipelineState->SetConstantBuffer(m_shaderLightDepth->GetConstantBuffer(), 0, Buffer_VertexShader);
+					m_shaderLightDepth->UpdateBuffer(&Struct_Matrix(actor->GetTransform_PtrRaw()->GetWorldTransform() * viewProjection));
+					m_rhiPipelineState->SetConstantBuffer(m_shaderLightDepth->GetConstantBuffer());
 					m_rhiPipelineState->Bind();
 
 					m_rhiDevice->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
@@ -555,9 +564,6 @@ namespace Directus
 			}
 		}
 
-		// Reset pipeline state tracking
-		m_currentlyBoundGeometry = 0;
-		
 		m_rhiDevice->EnableDepth(false);
 		m_rhiDevice->EventEnd();
 
@@ -578,6 +584,12 @@ namespace Directus
 
 		// Bind sampler 
 		m_rhiPipelineState->SetSampler(m_samplerAnisotropicWrapAlways);
+
+		// Variables that help reduce state changes
+		bool vertexShaderBound				= false;
+		unsigned int currentlyBoundGeometry = 0;
+		unsigned int currentlyBoundShader	= 0;
+		unsigned int currentlyBoundMaterial = 0;
 
 		for (auto actor : m_renderables)
 		{
@@ -607,25 +619,29 @@ namespace Directus
 			m_rhiPipelineState->SetCullMode(obj_material->GetCullMode());
 
 			// Bind geometry
-			if (m_currentlyBoundGeometry != obj_geometry->GetResourceID())
+			if (currentlyBoundGeometry != obj_geometry->GetResourceID())
 			{	
 				m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
 				m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());
-				m_currentlyBoundGeometry = obj_geometry->GetResourceID();
+				currentlyBoundGeometry = obj_geometry->GetResourceID();
 			}
 
 			// Bind shader
-			if (m_currentlyBoundShader != obj_shader->GetResourceID())
+			if (currentlyBoundShader != obj_shader->GetResourceID())
 			{
-				m_rhiPipelineState->SetShader(obj_shader->GetShader());
-				obj_shader->UpdatePerFrameBuffer(m_camera);
-				m_currentlyBoundShader = obj_shader->GetResourceID();
+				if (!vertexShaderBound)
+				{
+					m_rhiPipelineState->SetVertexShader(obj_shader->GetShader());
+					vertexShaderBound = true;
+				}
+				m_rhiPipelineState->SetPixelShader(obj_shader->GetShader());
+				currentlyBoundShader = obj_shader->GetResourceID();
 			}
 
 			// Bind material
-			if (m_currentlyBoundMaterial != obj_material->GetResourceID())
+			if (currentlyBoundMaterial != obj_material->GetResourceID())
 			{
-				obj_shader->UpdatePerMaterialBuffer(obj_material);
+				obj_shader->UpdatePerMaterialBuffer(m_camera, obj_material);
 
 				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Albedo).lock());
 				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Roughness).lock());
@@ -636,7 +652,7 @@ namespace Directus
 				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Emission).lock());
 				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Mask).lock());
 
-				m_currentlyBoundMaterial = obj_material->GetResourceID();
+				currentlyBoundMaterial = obj_material->GetResourceID();
 			}
 
 			// UPDATE PER OBJECT BUFFER
@@ -646,9 +662,8 @@ namespace Directus
 				m_mP_perspective
 			);
 		
-			m_rhiPipelineState->SetConstantBuffer(obj_shader->GetPerFrameBuffer(), 0, Buffer_PixelShader);		
-			m_rhiPipelineState->SetConstantBuffer(obj_shader->GetMaterialBuffer(), 1, Buffer_PixelShader);
-			m_rhiPipelineState->SetConstantBuffer(obj_shader->GetPerObjectBuffer(), 2, Buffer_VertexShader);
+			m_rhiPipelineState->SetConstantBuffer(obj_shader->GetMaterialBuffer());
+			m_rhiPipelineState->SetConstantBuffer(obj_shader->GetPerObjectBuffer());
 
 			m_rhiPipelineState->Bind();
 
@@ -657,11 +672,6 @@ namespace Directus
 			Profiler::Get().m_meshesRendered++;
 
 		} // Actor/MESH ITERATION
-
-		// Reset pipeline state tracking
-		m_currentlyBoundGeometry	= 0;
-		m_currentlyBoundShader		= 0;
-		m_currentlyBoundMaterial	= 0;
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -680,7 +690,6 @@ namespace Directus
 
 		m_rhiPipelineState->SetIndexBuffer(m_quad->GetIndexBuffer());
 		m_rhiPipelineState->SetVertexBuffer(m_quad->GetVertexBuffer());
-
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		
@@ -718,8 +727,8 @@ namespace Directus
 		m_rhiPipelineState->SetTexture(m_renderTexPong); // previous frame for SSR // Todo SSR
 		m_rhiPipelineState->SetTexture(m_skybox ? m_skybox->GetTexture() : nullptr);
 		m_rhiPipelineState->SetSampler(m_samplerAnisotropicWrapAlways);	
-		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetMatrixBuffer(), 0, Buffer_Global);
-		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetMiscBuffer(), 1, Buffer_Global);
+		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetMatrixBuffer());
+		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetMiscBuffer());
 		m_rhiPipelineState->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -733,11 +742,18 @@ namespace Directus
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_PostLight");
 
+		// All post-process passes share the following, so set them once here
 		m_rhiPipelineState->SetVertexBuffer(m_quad->GetVertexBuffer());
 		m_rhiPipelineState->SetIndexBuffer(m_quad->GetIndexBuffer());
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
+		m_rhiPipelineState->SetVertexShader(m_shaderBloom_Bright);  // vertex shader is the same for every pass
+		Vector2 computeLuma = Vector2(RenderFlags_IsSet(Render_FXAA) ? 1.0f : 0.0f, 0);
+		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution(), computeLuma);
+		m_shaderBloom_Bright->UpdateBuffer(&buffer);
+		m_rhiPipelineState->SetConstantBuffer(m_shaderBloom_Bright->GetConstantBuffer());
+		
 
 		// Keep track of render target swapping
 		auto SwapTargets = [&inRenderTexture1, &outRenderTexture]() { outRenderTexture.swap(inRenderTexture1); };
@@ -779,12 +795,44 @@ namespace Directus
 			Pass_Sharpening(inRenderTexture1, outRenderTexture);
 		}
 
-		// DEBUG - Rendering continues on last bound target
-		Pass_DebugGBuffer();
-		Pass_Debug();
-
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
+	}
+
+	void Renderer::Pass_Bloom(shared_ptr<RHI_RenderTexture>& inSourceTexture, shared_ptr<RHI_RenderTexture>& inTextureSpare, shared_ptr<RHI_RenderTexture>& outTexture)
+	{
+		m_rhiDevice->EventBegin("Pass_Bloom");
+
+		// Bright pass
+		m_rhiPipelineState->SetRenderTexture(inTextureSpare);
+		m_rhiPipelineState->SetPixelShader(m_shaderBloom_Bright);
+		m_rhiPipelineState->SetTexture(inSourceTexture);
+		m_rhiPipelineState->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		// Horizontal Gaussian blur
+		m_rhiPipelineState->SetRenderTexture(outTexture);
+		m_rhiPipelineState->SetPixelShader(m_shaderBlurGaussianH);
+		m_rhiPipelineState->SetTexture(inTextureSpare);
+		m_rhiPipelineState->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		// Vertical Gaussian blur
+		m_rhiPipelineState->SetRenderTexture(inTextureSpare);
+		m_rhiPipelineState->SetPixelShader(m_shaderBlurGaussianV);
+		m_rhiPipelineState->SetTexture(outTexture);
+		m_rhiPipelineState->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		// Additive blending
+		m_rhiPipelineState->SetRenderTexture(outTexture);
+		m_rhiPipelineState->SetPixelShader(m_shaderBloom_BlurBlend);
+		m_rhiPipelineState->SetTexture(inSourceTexture);
+		m_rhiPipelineState->SetTexture(inTextureSpare);
+		m_rhiPipelineState->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		m_rhiDevice->EventEnd();
 	}
 
 	void Renderer::Pass_Correction(shared_ptr<RHI_RenderTexture>& inTexture, shared_ptr<RHI_RenderTexture>& outTexture)
@@ -792,10 +840,8 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_Correction");
 
 		m_rhiPipelineState->SetRenderTexture(outTexture);
-		m_rhiPipelineState->SetShader(m_shaderCorrection);
+		m_rhiPipelineState->SetPixelShader(m_shaderCorrection);
 		m_rhiPipelineState->SetTexture(inTexture);
-		m_shaderCorrection->UpdateBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution()));
-		m_rhiPipelineState->SetConstantBuffer(m_shaderCorrection->GetConstantBuffer(), 0, Buffer_Global);
 		m_rhiPipelineState->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -808,26 +854,8 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_FXAA");
 
 		m_rhiPipelineState->SetRenderTexture(outTexture);
-		m_rhiPipelineState->SetShader(m_shaderFXAA);	
+		m_rhiPipelineState->SetPixelShader(m_shaderFXAA);	
 		m_rhiPipelineState->SetTexture(inTexture);
-		m_shaderFXAA->UpdateBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution()));
-		m_rhiPipelineState->SetConstantBuffer(m_shaderFXAA->GetConstantBuffer(), 0, Buffer_Global);
-		m_rhiPipelineState->Bind();
-
-		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-
-		m_rhiDevice->EventEnd();
-	}
-
-	void Renderer::Pass_Sharpening(shared_ptr<RHI_RenderTexture>& inTexture, shared_ptr<RHI_RenderTexture>& outTexture)
-	{
-		m_rhiDevice->EventBegin("Pass_Sharpening");
-
-		m_rhiPipelineState->SetRenderTexture(outTexture);
-		m_rhiPipelineState->SetShader(m_shaderSharpening);
-		m_rhiPipelineState->SetTexture(inTexture);
-		m_shaderSharpening->UpdateBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution()));
-		m_rhiPipelineState->SetConstantBuffer(m_shaderSharpening->GetConstantBuffer(), 0, Buffer_Global);
 		m_rhiPipelineState->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -840,10 +868,8 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_ChromaticAberration");
 
 		m_rhiPipelineState->SetRenderTexture(outTexture);
-		m_rhiPipelineState->SetShader(m_shaderChromaticAberration);
+		m_rhiPipelineState->SetPixelShader(m_shaderChromaticAberration);
 		m_rhiPipelineState->SetTexture(inTexture);
-		m_shaderChromaticAberration->UpdateBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution()));
-		m_rhiPipelineState->SetConstantBuffer(m_shaderChromaticAberration->GetConstantBuffer(), 0, Buffer_Global);
 		m_rhiPipelineState->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -851,47 +877,15 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_Bloom(shared_ptr<RHI_RenderTexture>& inSourceTexture, shared_ptr<RHI_RenderTexture>& inTextureSpare, shared_ptr<RHI_RenderTexture>& outTexture)
+	void Renderer::Pass_Sharpening(shared_ptr<RHI_RenderTexture>& inTexture, shared_ptr<RHI_RenderTexture>& outTexture)
 	{
-		m_rhiDevice->EventBegin("Pass_Bloom");
+		m_rhiDevice->EventBegin("Pass_Sharpening");
 
-		// Bright pass
-		m_rhiPipelineState->SetRenderTexture(inTextureSpare);		
-		m_rhiPipelineState->SetShader(m_shaderBloom_Bright);
-		m_rhiPipelineState->SetTexture(inSourceTexture);
-		Vector2 computeLuma = Vector2(RenderFlags_IsSet(Render_FXAA) ? 1.0f : 0.0f, 0);
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution(), computeLuma);
-		m_shaderBloom_Bright->UpdateBuffer(&buffer);
-		m_rhiPipelineState->SetConstantBuffer(m_shaderBloom_Bright->GetConstantBuffer(), 0, Buffer_Global);
-		m_rhiPipelineState->Bind();
-		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-	
-		// Horizontal Gaussian blur
 		m_rhiPipelineState->SetRenderTexture(outTexture);
-		m_rhiPipelineState->SetShader(m_shaderBlurGaussianH);
-		m_rhiPipelineState->SetTexture(inTextureSpare);
-		m_shaderBlurGaussianH->UpdateBuffer(&buffer);
-		m_rhiPipelineState->SetConstantBuffer(m_shaderBlurGaussianH->GetConstantBuffer(), 0, Buffer_Global);
+		m_rhiPipelineState->SetPixelShader(m_shaderSharpening);
+		m_rhiPipelineState->SetTexture(inTexture);
 		m_rhiPipelineState->Bind();
-		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
-		// Vertical Gaussian blur
-		m_rhiPipelineState->SetRenderTexture(inTextureSpare);
-		m_rhiPipelineState->SetShader(m_shaderBlurGaussianV);
-		m_rhiPipelineState->SetTexture(outTexture);
-		m_shaderBlurGaussianV->UpdateBuffer(&buffer);
-		m_rhiPipelineState->SetConstantBuffer(m_shaderBlurGaussianV->GetConstantBuffer(), 0, Buffer_Global);
-		m_rhiPipelineState->Bind();	
-		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-		
-		// Additive blending
-		m_rhiPipelineState->SetRenderTexture(outTexture);
-		m_rhiPipelineState->SetShader(m_shaderBloom_BlurBlend);
-		m_rhiPipelineState->SetTexture(inSourceTexture);
-		m_rhiPipelineState->SetTexture(inTextureSpare);
-		m_shaderBloom_BlurBlend->UpdateBuffer(&buffer);
-		m_rhiPipelineState->SetConstantBuffer(m_shaderBloom_BlurBlend->GetConstantBuffer(), 0, Buffer_Global);
-		m_rhiPipelineState->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
@@ -906,7 +900,7 @@ namespace Directus
 		m_rhiPipelineState->SetTexture(texture); // Shadows are in the alpha channel
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
 		m_shaderBlurBox->UpdateBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, blurScale));
-		m_rhiPipelineState->SetConstantBuffer(m_shaderBlurBox->GetConstantBuffer(), 0, Buffer_Global);
+		m_rhiPipelineState->SetConstantBuffer(m_shaderBlurBox->GetConstantBuffer());
 		m_rhiPipelineState->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -952,7 +946,7 @@ namespace Directus
 				m_camera
 			)
 		);	
-		m_rhiPipelineState->SetConstantBuffer(m_shaderShadowing->GetConstantBuffer(), 0, Buffer_Global);
+		m_rhiPipelineState->SetConstantBuffer(m_shaderShadowing->GetConstantBuffer());
 		m_rhiPipelineState->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -980,7 +974,7 @@ namespace Directus
 			m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(texType));
 			m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
 			m_shaderTexture->UpdateBuffer(&Struct_Matrix(m_wvp_baseOrthographic));
-			m_rhiPipelineState->SetConstantBuffer(m_shaderTexture->GetConstantBuffer(), 0, Buffer_VertexShader);
+			m_rhiPipelineState->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
 			m_rhiPipelineState->Bind();
 
 			m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -1044,7 +1038,7 @@ namespace Directus
 				m_rhiPipelineState->SetVertexBuffer(m_lineRenderer->GetVertexBuffer());
 				m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
 				m_shaderLine->UpdateBuffer(&Struct_Matrix_Matrix_Matrix(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix()));	
-				m_rhiPipelineState->SetConstantBuffer(m_shaderLine->GetConstantBuffer(), 0, Buffer_VertexShader);
+				m_rhiPipelineState->SetConstantBuffer(m_shaderLine->GetConstantBuffer());
 				m_rhiPipelineState->Bind();
 
 				m_rhiDevice->Draw(m_lineRenderer->GetVertexCount());
@@ -1068,7 +1062,7 @@ namespace Directus
 			m_rhiPipelineState->SetVertexBuffer(m_grid->GetVertexBuffer());
 			m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
 			m_shaderGrid->UpdateBuffer(&Struct_Matrix(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix()));
-			m_rhiPipelineState->SetConstantBuffer(m_shaderGrid->GetConstantBuffer(), 0, Buffer_VertexShader);
+			m_rhiPipelineState->SetConstantBuffer(m_shaderGrid->GetConstantBuffer());
 			m_rhiPipelineState->Bind();
 
 			m_rhiDevice->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
@@ -1133,7 +1127,7 @@ namespace Directus
 					m_rhiPipelineState->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
 					m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 					m_shaderTexture->UpdateBuffer(&Struct_Matrix(m_wvp_baseOrthographic));
-					m_rhiPipelineState->SetConstantBuffer(m_shaderTexture->GetConstantBuffer(), 0, Buffer_VertexShader);
+					m_rhiPipelineState->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
 					m_rhiPipelineState->Bind();
 
 					m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -1175,7 +1169,7 @@ namespace Directus
 			m_rhiPipelineState->SetVertexBuffer(m_font->GetVertexBuffer());
 			m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 			m_shaderFont->UpdateBuffer(&Struct_Matrix_Vector4(m_wvp_baseOrthographic, m_font->GetColor()));
-			m_rhiPipelineState->SetConstantBuffer(m_shaderFont->GetConstantBuffer(), 0, Buffer_Global);
+			m_rhiPipelineState->SetConstantBuffer(m_shaderFont->GetConstantBuffer());
 			m_rhiPipelineState->Bind();
 
 			m_rhiDevice->DrawIndexed(m_font->GetIndexCount(), 0, 0);

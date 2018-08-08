@@ -47,8 +47,11 @@ namespace Directus
 		m_resourceManager			= nullptr;
 		m_gpuProfiling				= true;	// expensive
 		m_cpuProfiling				= true;	// cheap
-		m_profilingFrequencyMs		= 0;
+		m_profilingFrequencySec		= 0.0f;
 		m_profilingLastUpdateTime	= 0;
+		m_fps						= 0.0f;
+		m_timePassed				= 0.0f;
+		m_frameCount				= 0;
 	}
 
 	void Profiler::Initialize(Context* context)
@@ -57,11 +60,11 @@ namespace Directus
 		m_timer						= context->GetSubsystem<Timer>();
 		m_resourceManager			= context->GetSubsystem<ResourceManager>();
 		m_rhiDevice					= context->GetSubsystem<Renderer>()->GetRHIDevice();
-		m_profilingFrequencyMs		= 350;
-		m_profilingLastUpdateTime	= m_profilingFrequencyMs;
+		m_profilingFrequencySec		= 0.35f;
+		m_profilingLastUpdateTime	= m_profilingFrequencySec;
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(OnUpdate));
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER_VARIANT(OnUpdate));
 		SUBSCRIBE_TO_EVENT(EVENT_FRAME_END, EVENT_HANDLER(OnFrameEnd));
 	}
 
@@ -128,18 +131,26 @@ namespace Directus
 		TimeBlockEnd_GPU(funcName);
 	}
 
-	void Profiler::OnUpdate()
+	void Profiler::OnUpdate(const Variant& deltaTimeVar)
 	{
+		// Get delta time
+		float deltaTimeSec = deltaTimeVar.Get<float>();
+
+		// Compute FPS
+		ComputeFPS(deltaTimeSec);
+		// Get GPU render time
 		m_renderTimeGPU = GetTimeBlockMs_CPU("Directus::Renderer::Render");
+		// Get CPU render time
 		m_renderTimeCPU = GetTimeBlockMs_GPU("Directus::Renderer::Render");
 
-		m_profilingLastUpdateTime += m_timer->GetDeltaTimeMs();
-		if (m_profilingLastUpdateTime < m_profilingFrequencyMs)
-			return;
-
-		UpdateMetrics();
-		m_shouldUpdate				= true;
-		m_profilingLastUpdateTime	= 0.0f;
+		// Below this point, update every m_profilingFrequencyMs
+		m_profilingLastUpdateTime += deltaTimeSec;
+		if (m_profilingLastUpdateTime >= m_profilingFrequencySec)
+		{
+			UpdateMetrics(m_fps);
+			m_shouldUpdate				= true;
+			m_profilingLastUpdateTime	= 0.0f;
+		}
 	}
 
 	void Profiler::OnFrameEnd()
@@ -161,9 +172,8 @@ namespace Directus
 		m_shouldUpdate = false;
 	}
 
-	void Profiler::UpdateMetrics()
+	void Profiler::UpdateMetrics(float fps)
 	{
-		float fps		= m_scene->GetFPS();
 		int textures	= m_resourceManager->GetResourceCountByType(Resource_Texture);
 		int materials	= m_resourceManager->GetResourceCountByType(Resource_Material);
 		int shaders		= m_resourceManager->GetResourceCountByType(Resource_Shader);
@@ -186,6 +196,23 @@ namespace Directus
 			"RHI Vertex Shader bindings:\t"		+ to_string(m_bindVertexShaderCount) + "\n"
 			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_bindPixelShaderCount) + "\n"
 			"RHI Render Target bindings:\t"		+ to_string(m_bindRenderTargetCount);
+	}
+
+	void Profiler::ComputeFPS(float deltaTime)
+	{
+		// update counters
+		m_frameCount++;
+		m_timePassed += deltaTime;
+
+		if (m_timePassed >= 1.0f)
+		{
+			// compute fps
+			m_fps = (float)m_frameCount / (m_timePassed / 1.0f);
+
+			// reset counters
+			m_frameCount = 0;
+			m_timePassed = 0;
+		}
 	}
 
 	string Profiler::to_string_precision(float value, int decimals)

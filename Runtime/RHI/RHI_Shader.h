@@ -49,10 +49,10 @@ namespace Directus
 		void AddDefine(const std::string& define, const std::string& value = "1");
 
 		template <typename T>
-		void AddBuffer()
+		void AddBuffer(unsigned int slot, Buffer_Scope scope)
 		{
 			m_bufferSize = sizeof(T);
-			CreateConstantBuffer();
+			CreateConstantBuffer(m_bufferSize, slot, scope);
 		}
 		void UpdateBuffer(void* data);
 		void* GetVertexShaderBuffer()								{ return m_vertexShader; }
@@ -62,10 +62,11 @@ namespace Directus
 		bool IsCompiled()											{ return m_compiled; }
 		bool HasVertexShader()										{ return m_hasVertexShader; }
 		bool HasPixelShader()										{ return m_hasPixelShader; }
-		std::shared_ptr<RHI_InputLayout> GetInputLayout()			{ return m_D3D11InputLayout; }
+		std::shared_ptr<RHI_InputLayout> GetInputLayout()			{ return m_inputLayout; }
+		unsigned int GetID()										{ return m_id; }
 
 	private:
-		void CreateConstantBuffer();
+		void CreateConstantBuffer(unsigned int size, unsigned int slot, Buffer_Scope scope);
 
 		unsigned int m_bufferSize;	
 		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
@@ -75,10 +76,11 @@ namespace Directus
 		std::string m_entrypoint;
 		std::string m_profile;
 		std::map<std::string, std::string> m_macros;
-		std::shared_ptr<RHI_InputLayout> m_D3D11InputLayout;
+		std::shared_ptr<RHI_InputLayout> m_inputLayout;
 		bool m_compiled;
 		bool m_hasVertexShader;
 		bool m_hasPixelShader;
+		unsigned int m_id;
 
 		// D3D11
 		void* m_vertexShader;

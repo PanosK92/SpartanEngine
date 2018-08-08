@@ -47,7 +47,7 @@ struct Metric
 		m_max = Directus::Math::Max(m_max, sample);	
 		m_sum += sample;
 		m_sampleCount++;
-		m_avg = m_sum / (float)m_sampleCount;
+		m_avg = float(m_sum / (float)m_sampleCount);
 	}
 
 	float m_min;
@@ -141,10 +141,10 @@ public:
 			}
 
 			ImGui::Text("CPU: Avg:%.2f, Min:%.2f, Max:%.2f", m_metric_cpu.m_avg, m_metric_cpu.m_min, m_metric_cpu.m_max);
-			ImGui::PlotLines("", m_cpuTimes.data(), m_cpuTimes.size(), 0, "", m_metric_cpu.m_min, m_metric_cpu.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
+			ImGui::PlotLines("", m_cpuTimes.data(), (int)m_cpuTimes.size(), 0, "", m_metric_cpu.m_min, m_metric_cpu.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
 			ImGui::Separator();
 			ImGui::Text("GPU: Avg:%.2f, Min:%.2f, Max:%.2f", m_metric_gpu.m_avg, m_metric_gpu.m_min, m_metric_gpu.m_max);
-			ImGui::PlotLines("", m_gpuTimes.data(), m_gpuTimes.size(), 0, "", m_metric_gpu.m_min, m_metric_gpu.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
+			ImGui::PlotLines("", m_gpuTimes.data(), (int)m_gpuTimes.size(), 0, "", m_metric_gpu.m_min, m_metric_gpu.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
 		}
 
 		// Bars

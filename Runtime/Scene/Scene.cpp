@@ -47,10 +47,7 @@ namespace Directus
 {
 	Scene::Scene(Context* context) : Subsystem(context)
 	{
-		m_ambientLight = Vector3::Zero;
-		m_fps = 0.0f;
-		m_timePassed = 0.0f;
-		m_frameCount = 0;
+		m_ambientLight	= Vector3::Zero;
 
 		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE, EVENT_HANDLER(Resolve));
 		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
@@ -109,8 +106,6 @@ namespace Directus
 		{
 			actor->Update();
 		}
-
-		ComputeFPS();
 
 		TIME_BLOCK_END_CPU();
 	}
@@ -416,7 +411,7 @@ namespace Directus
 	}
 	//===================================================================================================
 
-	//= TEMPORARY EXPERIMENTS  ==========================================================================
+	//= TEMPORARY EXPERIMENTS  ===========================
 	void Scene::SetAmbientLight(float x, float y, float z)
 	{
 		m_ambientLight = Vector3(x, y, z);
@@ -426,9 +421,9 @@ namespace Directus
 	{
 		return m_ambientLight;
 	}
-	//======================================================================================================
+	//====================================================
 
-	//= COMMON actor CREATION =========================================================================
+	//= COMMON ACTOR CREATION ========================================================================
 	weak_ptr<Actor> Scene::CreateSkybox()
 	{
 		shared_ptr<Actor> skybox = Actor_CreateAdd().lock();
@@ -470,24 +465,5 @@ namespace Directus
 
 		return light;
 	}
-	//======================================================================================================
-
-	//= HELPER FUNCTIONS ===================================================================================
-	void Scene::ComputeFPS()
-	{
-		// update counters
-		m_frameCount++;
-		m_timePassed += m_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
-
-		if (m_timePassed >= 1000)
-		{
-			// calculate fps
-			m_fps = (float)m_frameCount / (m_timePassed / 1000.0f);
-
-			// reset counters
-			m_frameCount = 0;
-			m_timePassed = 0;
-		}
-	}
-	//======================================================================================================
+	//================================================================================================
 }
