@@ -76,15 +76,14 @@ namespace Directus
 		bool GetOptimize() { return m_optimize; }
 		void SetOptimize(bool optimize);
 
+		void SetRigidBody(RigidBody* rigidBody);
+
 	private:
 		// Update the collision shape
 		void UpdateShape();
 
 		// Deletes the collision shape
 		void ReleaseShape();
-
-		// Set a collision shape
-		void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape);
 
 		ColliderShape m_shapeType;
 		std::shared_ptr<btCollisionShape> m_collisionShape;

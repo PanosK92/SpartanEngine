@@ -34,6 +34,7 @@ namespace Directus
 {
 	class RigidBody;
 	class Actor;
+	class Physics;
 
 	enum ConstraintType
 	{
@@ -89,12 +90,13 @@ namespace Directus
 		std::weak_ptr<Actor> GetBodyOther() { return m_bodyOther; }
 		void SetBodyOther(std::weak_ptr<Actor> bodyOther);
 
+		void ReleaseConstraint();
+		void ApplyFrames();
+
 	private:
 		void ConstructConstraint();
 		void ApplyLimits();
-		void ApplyFrames();
-		void ReleaseConstraint();
-
+		
 		std::unique_ptr<btTypedConstraint> m_constraint;
 
 		Math::Vector3 m_position;
@@ -108,9 +110,10 @@ namespace Directus
 		Math::Vector2 m_lowLimit;
 		float m_errorReduction;
 		float m_constraintForceMixing;
-		bool m_isDirty;
 		bool m_enabledEffective;
 		bool m_collisionWithLinkedBody;
 		ConstraintType m_constraintType;
+
+		Physics* m_physics;
 	};
 }

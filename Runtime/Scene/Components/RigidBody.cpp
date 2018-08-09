@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RigidBody.h"
 #include "Transform.h"
 #include "Collider.h"
+#include "Constraint.h"
 #include "../Actor.h"
 #include "../../Core/Engine.h"
 #include "../../Physics/Physics.h"
@@ -31,7 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
+#include <BulletCollision/CollisionShapes/btCompoundShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
+#include "BulletDynamics/ConstraintSolver/btTypedConstraint.h"
 #pragma warning(pop)
 //==============================================================
 
@@ -88,17 +91,20 @@ namespace Directus
 		m_hasSimulated		= false;
 		m_positionLock		= Vector3::Zero;
 		m_rotationLock		= Vector3::Zero;
+		m_physics			= GetContext()->GetSubsystem<Physics>();
+		m_collisionShape	= nullptr;
+		m_trigger			= false;
 	}
 
 	RigidBody::~RigidBody()
 	{
-		ReleaseRigidBody();
+		Body_Release();
 	}
 
 	//= ICOMPONENT ==========================================================
 	void RigidBody::OnInitialize()
 	{
-		AddBodyToWorld();
+		Body_AddToWorld();
 	}
 
 	void RigidBody::OnUpdate()
@@ -111,13 +117,14 @@ namespace Directus
 		// Editor -> Kinematic (so the user can move it around)
 		if (!Engine::EngineMode_IsSet(Engine_Game) && !m_rigidBody->isKinematicObject())
 		{
-			AddBodyToWorld();
+			Flags_UpdateKinematic();
 		}
 
 		// Game -> Dynamic (so bullet starts simulating)
 		if (Engine::EngineMode_IsSet(Engine_Game) && !m_isKinematic && m_rigidBody->isKinematicObject())
 		{
-			AddBodyToWorld();
+			Flags_UpdateKinematic();
+			Activate();
 		}
 	}
 
@@ -132,6 +139,7 @@ namespace Directus
 		stream->Write(m_isKinematic);
 		stream->Write(m_positionLock);
 		stream->Write(m_rotationLock);
+		stream->Write(m_inWorld);
 	}
 
 	void RigidBody::Deserialize(FileStream* stream)
@@ -145,8 +153,9 @@ namespace Directus
 		stream->Read(&m_isKinematic);
 		stream->Read(&m_positionLock);
 		stream->Read(&m_rotationLock);
+		stream->Read(&m_inWorld);
 
-		AddBodyToWorld();
+		NotifyCollider(this);
 	}
 
 	// = PROPERTIES =========================================================
@@ -156,7 +165,7 @@ namespace Directus
 		if (mass != m_mass)
 		{
 			m_mass = mass;
-			AddBodyToWorld();
+			Body_AddToWorld();
 		}
 	}
 
@@ -193,7 +202,7 @@ namespace Directus
 			return;
 
 		m_useGravity = gravity;
-		AddBodyToWorld();
+		Body_AddToWorld();
 	}
 
 	void RigidBody::SetGravity(const Vector3& acceleration)
@@ -202,7 +211,7 @@ namespace Directus
 			return;
 
 		m_gravity = acceleration;
-		AddBodyToWorld();
+		Body_AddToWorld();
 	}
 
 	void RigidBody::SetIsKinematic(bool kinematic)
@@ -211,7 +220,7 @@ namespace Directus
 			return;
 
 		m_isKinematic = kinematic;
-		AddBodyToWorld();
+		Body_AddToWorld();
 	}
 
 	//= FORCE/TORQUE ========================================================
@@ -364,19 +373,6 @@ namespace Directus
 	}
 
 	//= MISC ====================================================================
-	void RigidBody::SetCollisionShape(weak_ptr<btCollisionShape> shape)
-	{
-		m_shape = shape;
-		if (!m_shape.expired())
-		{
-			AddBodyToWorld();
-		}
-		else
-		{
-			RemoveBodyFromWorld();
-		}
-	}
-
 	void RigidBody::ClearForces() const
 	{
 		if (!m_rigidBody)
@@ -412,88 +408,87 @@ namespace Directus
 
 	void RigidBody::AddConstraint(Constraint* constraint)
 	{
-		//constraints_.Push(constraint);
+		m_constraints.emplace_back(constraint);
 	}
 
 	void RigidBody::RemoveConstraint(Constraint* constraint)
 	{
+		for (auto it = m_constraints.begin(); it != m_constraints.end(); )
+		{
+			auto itConstraint = *it;
+			if (constraint->GetID() == itConstraint->GetID())
+			{
+				it = m_constraints.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
 
+		Activate();
 	}
 
-	//===========================================================================
+	void RigidBody::SetCollider(Collider* collider)
+	{
+		m_collisionShape = collider->GetBtCollisionShape();
 
-	//= HELPER FUNCTIONS ========================================================
-	void RigidBody::AddBodyToWorld()
+		if (m_collisionShape)
+		{
+			Body_AddToWorld();
+		}
+		else
+		{
+			Body_RemoveFromWorld();
+		}
+	}
+
+	void RigidBody::Body_AddToWorld()
 	{
 		if (m_mass < 0.0f)
 		{
 			m_mass = 0.0f;
 		}
 
-		// Remove existing btRigidBody but keep it's inertia
-		btVector3 localInertia(0, 0, 0);
-		if (m_rigidBody)
+		// Transfer inertia to new collision shape
+		btVector3 localInertia = btVector3(0, 0, 0);
+		if (m_collisionShape && m_rigidBody)
 		{
-			localInertia = m_rigidBody->getLocalInertia();
-			ReleaseRigidBody();
+			localInertia = m_rigidBody ? m_rigidBody->getLocalInertia() : localInertia;
+			m_collisionShape->calculateLocalInertia(m_mass, localInertia);
 		}
+		
+		Body_Release();
 
-		// Calculate local inertia
-		if (!m_shape.expired())
-		{
-			m_shape.lock()->calculateLocalInertia(m_mass, localInertia);
-		}
-
-		// Construction of btRigidBody
+		// CONSTRUCTION
 		{
 			// Create a motion state (memory will be freed by the RigidBody)
-			MotionState* motionState = new MotionState(this);
+			auto motionState = new MotionState(this);
 
 			// Info
-			btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, !m_shape.expired() ? m_shape.lock().get() : nullptr, localInertia);
-			constructionInfo.m_mass = m_mass;
-			constructionInfo.m_friction = m_friction;
-			constructionInfo.m_rollingFriction = m_frictionRolling;
-			constructionInfo.m_restitution = m_restitution;
-			//constructionInfo.m_startWorldTransform;
-			constructionInfo.m_collisionShape = !m_shape.expired() ? m_shape.lock().get() : nullptr;
-			constructionInfo.m_localInertia = localInertia;
-			constructionInfo.m_motionState = motionState;
+			btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, m_collisionShape.get(), localInertia);
+			constructionInfo.m_mass				= m_mass;
+			constructionInfo.m_friction			= m_friction;
+			constructionInfo.m_rollingFriction	= m_frictionRolling;
+			constructionInfo.m_restitution		= m_restitution;
+			constructionInfo.m_collisionShape	= m_collisionShape.get();
+			constructionInfo.m_localInertia		= localInertia;
+			constructionInfo.m_motionState		= motionState;
 
 			m_rigidBody = make_shared<btRigidBody>(constructionInfo);
+			m_rigidBody->setUserPointer(this);
 		}
 
-		UpdateGravity();
+		// Reapply constraint positions for new center of mass shift
+		for (const auto& constraint : m_constraints)
+		{
+			constraint->ApplyFrames();
+		}
 		
-		// Collision flags
-		{ 
-			int flags = m_rigidBody->getCollisionFlags();
+		Flags_UpdateCollision();
+		Flags_UpdateKinematic();
 
-			// Editor -> Kinematic (so the user can move it around)
-			bool originalKinematicState = m_isKinematic;
-			if (!Engine::EngineMode_IsSet(Engine_Game))
-			{
-				m_isKinematic = true;
-			}
-
-			if (m_isKinematic)
-			{
-				flags |= btCollisionObject::CF_KINEMATIC_OBJECT;
-			}
-			else
-			{
-				flags &= ~btCollisionObject::CF_KINEMATIC_OBJECT;
-			}
-
-			m_rigidBody->setCollisionFlags(flags);
-			m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
-
-			m_isKinematic = originalKinematicState;
-		}
-
-		m_rigidBody->setDeactivationTime(2000);
-
-		// Set initial transform
+		// Transform
 		SetPosition(GetTransform()->GetPosition());
 		SetRotation(GetTransform()->GetRotation());
 
@@ -501,8 +496,8 @@ namespace Directus
 		SetPositionLock(m_positionLock);
 		SetRotationLock(m_rotationLock);
 
-		// Add btRigidBody to world
-		GetContext()->GetSubsystem<Physics>()->GetWorld()->addRigidBody(m_rigidBody.get());
+		// Add to world
+		m_physics->GetWorld()->addRigidBody(m_rigidBody.get());
 		if (m_mass > 0.0f)
 		{
 			Activate();
@@ -513,27 +508,77 @@ namespace Directus
 			SetAngularVelocity(Vector3::Zero);
 		}
 
-		m_hasSimulated = false;
-		m_inWorld = true;
+		m_hasSimulated	= false;
+		m_inWorld		= true;
 	}
 
-	void RigidBody::RemoveBodyFromWorld()
+	void RigidBody::Body_Release()
+	{
+		if (!m_rigidBody)
+			return;
+
+		// Release any constraints that refer to it
+		for (const auto& constraint : m_constraints)
+		{
+			constraint->ReleaseConstraint();
+		}
+
+		// Remove it from the world
+		Body_RemoveFromWorld();
+
+		// Reset it
+		m_rigidBody = nullptr;
+	}
+
+	void RigidBody::Body_RemoveFromWorld()
 	{
 		if (!m_rigidBody)
 			return;
 
 		if (m_inWorld)
 		{
-			GetContext()->GetSubsystem<Physics>()->GetWorld()->removeRigidBody(m_rigidBody.get());
+			m_physics->GetWorld()->removeRigidBody(m_rigidBody.get());
+			delete m_rigidBody->getMotionState();
 			m_inWorld = false;
 		}
 	}
 
-	void RigidBody::UpdateGravity()
+	void RigidBody::Flags_UpdateKinematic()
 	{
-		if (!m_rigidBody)
-			return;
+		// Editor -> Kinematic (so the user can move it around)
+		bool originalKinematicState = m_isKinematic;
+		if (!Engine::EngineMode_IsSet(Engine_Game))
+		{
+			m_isKinematic = true;
+		}
 
+		int flags = m_rigidBody->getCollisionFlags();
+		if (m_trigger)
+		{
+			flags |= btCollisionObject::CF_NO_CONTACT_RESPONSE;
+		}
+		else
+		{
+			flags &= ~btCollisionObject::CF_NO_CONTACT_RESPONSE;
+		}
+
+		if (m_isKinematic)
+		{
+			flags |= btCollisionObject::CF_KINEMATIC_OBJECT;
+		}
+		else
+		{
+			flags &= ~btCollisionObject::CF_KINEMATIC_OBJECT;
+		}
+		m_rigidBody->setCollisionFlags(flags);
+		m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
+		m_rigidBody->setDeactivationTime(2000);
+
+		m_isKinematic = originalKinematicState;
+	}
+
+	void RigidBody::Flags_UpdateCollision()
+	{
 		int flags = m_rigidBody->getFlags();
 		if (m_useGravity)
 		{
@@ -556,20 +601,8 @@ namespace Directus
 		}
 	}
 
-	void RigidBody::ReleaseRigidBody()
-	{
-		if (!m_rigidBody)
-			return;
-
-		// Remove RigidBody from world
-		GetContext()->GetSubsystem<Physics>()->GetWorld()->removeRigidBody(m_rigidBody.get());
-		// Delete it's motion state
-		delete m_rigidBody->getMotionState();
-	}
-
 	bool RigidBody::IsActivated() const
 	{
 		return m_rigidBody->isActive();
 	}
-	//===========================================================================
 }

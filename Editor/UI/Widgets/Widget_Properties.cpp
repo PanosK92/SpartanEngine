@@ -641,8 +641,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 	bool otherBodyDirty						= false;
 	char otherBodyNameArray[BUFFER_TEXT_DEFAULT];
 	Vector3 position 						= constraint->GetPosition();
-	Quaternion rotation						= constraint->GetRotation();
-	Vector3 rotationEuler					= rotation.ToEulerAngles();
+	Vector3 rotation						= constraint->GetRotation().ToEulerAngles();
 	Vector2 highLimit 						= constraint->GetHighLimit();
 	Vector2 lowLimit 						= constraint->GetLowLimit();
 
@@ -661,9 +660,9 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 	EditorHelper::SetCharArray(&consPosX[0], position.x);
 	EditorHelper::SetCharArray(&consPosY[0], position.y);
 	EditorHelper::SetCharArray(&consPosZ[0], position.z);
-	EditorHelper::SetCharArray(&consRotX[0], rotationEuler.x);
-	EditorHelper::SetCharArray(&consRotY[0], rotationEuler.y);
-	EditorHelper::SetCharArray(&consRotZ[0], rotationEuler.z);
+	EditorHelper::SetCharArray(&consRotX[0], rotation.x);
+	EditorHelper::SetCharArray(&consRotY[0], rotation.y);
+	EditorHelper::SetCharArray(&consRotZ[0], rotation.z);
 	EditorHelper::SetCharArray(&consHighX[0], highLimit.x);
 	EditorHelper::SetCharArray(&consHighY[0], highLimit.y);
 	EditorHelper::SetCharArray(&consLowX[0], lowLimit.x);
@@ -742,14 +741,25 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 	}
 	ComponentProperty::End();
 
-	//= MAP ========================================================================================================================
-	if ((ConstraintType)typeInt != constraint->GetConstraintType())	constraint->SetConstraintType((ConstraintType)typeInt);
-	if (otherBodyDirty)												{ constraint->SetBodyOther(otherBody); otherBodyDirty = false; }
-	if (position				!= constraint->GetPosition())		constraint->SetPosition(position);
-	if (rotation				!= constraint->GetRotation())		constraint->SetRotation(rotation);
-	if (highLimit				!= constraint->GetHighLimit())		constraint->SetHighLimit(highLimit);
-	if (lowLimit				!= constraint->GetLowLimit())		constraint->SetLowLimit(lowLimit);
-	//==============================================================================================================================
+	//= MAP ====================================================================================================================================
+	position.x	= (float)atof(&consPosX[0]);
+	position.y	= (float)atof(&consPosY[0]);
+	position.x	= (float)atof(&consPosZ[0]);
+	rotation.x	= (float)atof(&consRotX[0]);
+	rotation.y	= (float)atof(&consRotY[0]);
+	rotation.x	= (float)atof(&consRotZ[0]);
+	highLimit.x	= (float)atof(&consHighX[0]);
+	highLimit.y	= (float)atof(&consHighY[0]);
+	lowLimit.x	= (float)atof(&consLowX[0]);
+	lowLimit.y	= (float)atof(&consLowY[0]);
+
+	if ((ConstraintType)typeInt != constraint->GetConstraintType())				constraint->SetConstraintType((ConstraintType)typeInt);
+	if (otherBodyDirty)															{ constraint->SetBodyOther(otherBody); otherBodyDirty = false; }
+	if (position				!= constraint->GetPosition())					constraint->SetPosition(position);
+	if (rotation				!= constraint->GetRotation().ToEulerAngles())	constraint->SetRotation(Quaternion::FromEulerAngles(rotation));
+	if (highLimit				!= constraint->GetHighLimit())					constraint->SetHighLimit(highLimit);
+	if (lowLimit				!= constraint->GetLowLimit())					constraint->SetLowLimit(lowLimit);
+	//==========================================================================================================================================
 }
 
 void Widget_Properties::ShowMaterial(Material* material)
