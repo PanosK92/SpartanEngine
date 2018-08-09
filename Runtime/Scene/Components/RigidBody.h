@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include <memory>
 #include "../../Math/Vector3.h"
+#include <vector>
 //=============================
 
 class btRigidBody;
@@ -34,6 +35,7 @@ namespace Directus
 {
 	class Actor;
 	class Constraint;
+	class Physics;
 	namespace Math { class Quaternion; }
 
 	enum ForceMode
@@ -97,7 +99,6 @@ namespace Directus
 		void SetRotationLock(const Math::Vector3& lock);
 		Math::Vector3 GetRotationLock() { return m_rotationLock; }
 		//========================================================
-
 		//= POSITION ===================================
 		Math::Vector3 GetPosition() const;
 		void SetPosition(const Math::Vector3& position);
@@ -106,40 +107,45 @@ namespace Directus
 		Math::Quaternion GetRotation() const;
 		void SetRotation(const Math::Quaternion& rotation);
 		//=================================================
-		//= MISC =====================================================
-		void SetCollisionShape(std::weak_ptr<btCollisionShape> shape);
+		//= MISC ==================================================
 		btRigidBody* GetBtRigidBody() { return m_rigidBody.get(); }
 		void ClearForces() const;
 		Math::Vector3 GetColliderCenter();
 		void Activate() const;
 		void Deactivate() const;
-		//============================================================
+		//=========================================================
 
+		// Communication with other physics components
 		void AddConstraint(Constraint* constraint);
 		void RemoveConstraint(Constraint* constraint);
+		void SetCollider(Collider* collider);
 
 	private:
-		//= HELPER FUNCTIONS ======
-		void AddBodyToWorld();
-		void RemoveBodyFromWorld();
-		void UpdateGravity();
-		void ReleaseRigidBody();
+		//= HELPER FUNCTIONS =======
+		void Body_AddToWorld();
+		void Body_Release();
+		void Body_RemoveFromWorld();
+		void Flags_UpdateKinematic();
+		void Flags_UpdateCollision();
 		bool IsActivated() const;
-		//=========================
+		//==========================
 
 		float m_mass;
 		float m_friction;
 		float m_frictionRolling;
 		float m_restitution;
 		bool m_useGravity;
+		bool m_trigger;
 		bool m_isKinematic;
 		Math::Vector3 m_gravity;
 		Math::Vector3 m_positionLock;
 		Math::Vector3 m_rotationLock;
 
 		std::shared_ptr<btRigidBody> m_rigidBody;
-		std::weak_ptr<btCollisionShape> m_shape;
+		std::shared_ptr<btCollisionShape> m_collisionShape;
+		std::vector<Constraint*> m_constraints;
 		bool m_inWorld;
+		Physics* m_physics;
 	public:
 		bool m_hasSimulated;
 	};

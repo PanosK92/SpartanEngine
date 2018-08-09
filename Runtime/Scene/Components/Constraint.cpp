@@ -27,13 +27,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
+#include "../../Logging/Log.h"
 #pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btSliderConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btConeTwistConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
-#include "../../Logging/Log.h"
 #pragma warning(pop)
 //==================================================================
 
@@ -47,12 +47,12 @@ namespace Directus
 	Constraint::Constraint(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
 		m_constraint				= nullptr;
-		m_isDirty					= false;
 		m_enabledEffective			= true;
 		m_collisionWithLinkedBody	= false;
 		m_errorReduction			= 0.0f;
 		m_constraintForceMixing		= 0.0f;
 		m_constraintType			= ConstraintType_Point;
+		m_physics					= GetContext()->GetSubsystem<Physics>();
 	}
 
 	Constraint::~Constraint()
@@ -82,12 +82,7 @@ namespace Directus
 
 	void Constraint::OnUpdate()
 	{
-		if (!m_isDirty)
-			return;
 
-		ConstructConstraint();
-
-		m_isDirty = false;
 	}
 
 	void Constraint::Serialize(FileStream* stream)
@@ -99,7 +94,8 @@ namespace Directus
 	{
 		unsigned int bodyOtherID = stream->ReadUInt();
 		m_bodyOther = GetContext()->GetSubsystem<Scene>()->GetActorByID(bodyOtherID);
-		m_isDirty = true;
+
+		ConstructConstraint();
 	}
 
 	void Constraint::SetConstraintType(ConstraintType type)
@@ -180,6 +176,77 @@ namespace Directus
 		}
 	}
 
+	void Constraint::ReleaseConstraint()
+	{
+		if (m_constraint)
+		{
+			RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().lock().get();
+			RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
+
+			// Make both bodies aware of the removal of this constraint
+			if (rigidBodyOwn)	rigidBodyOwn->RemoveConstraint(this);
+			if (rigidBodyOther) rigidBodyOther->RemoveConstraint(this);
+
+			m_physics->GetWorld()->removeConstraint(m_constraint.get());
+			m_constraint.reset();
+		}
+	}
+
+	void Constraint::ApplyFrames()
+	{
+		if (!m_constraint || m_bodyOther.expired())
+			return;
+
+		RigidBody* rigidBodyOwn			= m_actor->GetComponent<RigidBody>().lock().get();
+		RigidBody* rigidBodyOther		= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
+		btRigidBody* btOwnBody			= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
+		btRigidBody* btOtherBody		= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
+
+		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - rigidBodyOwn->GetColliderCenter();
+		Vector3 otherBodyScaledPosition = !m_bodyOther.expired() ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetColliderCenter() : m_positionOther;
+
+		switch (m_constraint->getConstraintType())
+		{
+		case POINT2POINT_CONSTRAINT_TYPE:
+		{
+			auto* pointConstraint = static_cast<btPoint2PointConstraint*>(m_constraint.get());
+			pointConstraint->setPivotA(ToBtVector3(ownBodyScaledPosition));
+			pointConstraint->setPivotB(ToBtVector3(otherBodyScaledPosition));
+		}
+		break;
+
+		case HINGE_CONSTRAINT_TYPE:
+		{
+			auto* hingeConstraint = static_cast<btHingeConstraint*>(m_constraint.get());
+			btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
+			btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
+			hingeConstraint->setFrames(ownFrame, otherFrame);
+		}
+		break;
+
+		case SLIDER_CONSTRAINT_TYPE:
+		{
+			auto* sliderConstraint = static_cast<btSliderConstraint*>(m_constraint.get());
+			btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
+			btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
+			sliderConstraint->setFrames(ownFrame, otherFrame);
+		}
+		break;
+
+		case CONETWIST_CONSTRAINT_TYPE:
+		{
+			auto* coneTwistConstraint = static_cast<btConeTwistConstraint*>(m_constraint.get());
+			btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
+			btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
+			coneTwistConstraint->setFrames(ownFrame, otherFrame);
+		}
+		break;
+
+		default:
+			break;
+		}
+	}
+
 	/*------------------------------------------------------------------------------
 								[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
@@ -243,15 +310,14 @@ namespace Directus
 		{
 		    m_constraint->setUserConstraintPtr(this);
 		    m_constraint->setEnabled(m_enabledEffective);
-		    rigidBodyOwn->AddConstraint(this);
-		    if (!m_bodyOther.expired())
-			{
-		        rigidBodyOther->AddConstraint(this);
-			}
+
+			// Make both bodies aware of this constraint
+			rigidBodyOwn->AddConstraint(this);
+			if (rigidBodyOther)
+				rigidBodyOther->AddConstraint(this);
 
 		    ApplyLimits();
-
-		    GetContext()->GetSubsystem<Physics>()->GetWorld()->addConstraint(m_constraint.get(), !m_collisionWithLinkedBody);
+		    m_physics->GetWorld()->addConstraint(m_constraint.get(), !m_collisionWithLinkedBody);
 		}
 	}
 
@@ -299,82 +365,5 @@ namespace Directus
 		{
 			m_constraint->setParam(BT_CONSTRAINT_STOP_CFM, m_constraintForceMixing);
 		}
-	}
-
-	void Constraint::ApplyFrames()
-	{
-		if (!m_constraint || m_bodyOther.expired())
-			return;
-
-		RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().lock().get();
-		RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
-		btRigidBody* btOwnBody		= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
-		btRigidBody* btOtherBody	= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
-
-		Vector3 ownBodyScaledPosition = m_position * m_transform->GetScale() - rigidBodyOwn->GetColliderCenter();
-		Vector3 otherBodyScaledPosition = !m_bodyOther.expired() ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetColliderCenter() : m_positionOther;
-
-		switch (m_constraint->getConstraintType())
-		{
-			case POINT2POINT_CONSTRAINT_TYPE:
-			    {
-			        auto* pointConstraint = static_cast<btPoint2PointConstraint*>(m_constraint.get());
-			        pointConstraint->setPivotA(ToBtVector3(ownBodyScaledPosition));
-			        pointConstraint->setPivotB(ToBtVector3(otherBodyScaledPosition));
-			    }
-			    break;
-
-			case HINGE_CONSTRAINT_TYPE:
-			    {
-			        auto* hingeConstraint = static_cast<btHingeConstraint*>(m_constraint.get());
-			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			        hingeConstraint->setFrames(ownFrame, otherFrame);
-			    }
-			    break;
-
-			case SLIDER_CONSTRAINT_TYPE:
-			    {
-			        auto* sliderConstraint = static_cast<btSliderConstraint*>(m_constraint.get());
-			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			        sliderConstraint->setFrames(ownFrame, otherFrame);
-			    }
-			    break;
-
-			case CONETWIST_CONSTRAINT_TYPE:
-			    {
-			        auto* coneTwistConstraint = static_cast<btConeTwistConstraint*>(m_constraint.get());
-			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			        coneTwistConstraint->setFrames(ownFrame, otherFrame);
-			    }
-			    break;
-
-			default:
-			    break;
-		}
-	}
-
-	void Constraint::ReleaseConstraint()
-	{
-		if (m_constraint)
-		{
-			RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().lock().get();
-			RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
-
-			if (rigidBodyOwn)
-			{
-				rigidBodyOwn->RemoveConstraint(this);
-			}
-
-			if (rigidBodyOther)
-			{
-				rigidBodyOther->RemoveConstraint(this);
-			}
-
-			GetContext()->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_constraint.get());
-			m_constraint.reset();
-		}	
 	}
 }

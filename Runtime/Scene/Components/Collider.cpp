@@ -28,12 +28,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../Logging/Log.h"
+#pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
 #include <BulletCollision/CollisionShapes/btCapsuleShape.h>
 #include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
 #include <BulletCollision/CollisionShapes/btConeShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
+#pragma warning(pop)
 //=============================================================
 
 //= NAMESPACES ================
@@ -55,13 +57,12 @@ namespace Directus
 
 	}
 
-	//= ICOMPONENT ==================================================================
 	void Collider::OnInitialize()
 	{
 		// If there is a mesh, use it's bounding box
 		if (auto renderable = GetActor_PtrRaw()->GetRenderable_PtrRaw())
 		{
-			m_center = GetTransform()->GetPosition();
+			m_center = Vector3::Zero;
 			m_size = renderable->Geometry_BB().GetSize();
 		}
 
@@ -93,9 +94,6 @@ namespace Directus
 
 		UpdateShape();
 	}
-	//===============================================================================
-
-	//= BOUNDING BOX =========================================
 	void Collider::SetBoundingBox(const Vector3& boundingBox)
 	{
 		if (m_size == boundingBox)
@@ -135,26 +133,30 @@ namespace Directus
 		m_optimize = optimize;
 		UpdateShape();
 	}
-	//========================================================
 
-	//= COLLISION SHAPE =======================================================
+	void Collider::SetRigidBody(RigidBody* rigidBody)
+	{
+		if (!rigidBody)
+			return;
+
+		rigidBody->SetCollider(this);
+	}
+
 	void Collider::UpdateShape()
 	{
-		// Release previous shape
 		ReleaseShape();
-
-		Vector3 newWorldScale = GetTransform()->GetScale();
+		Vector3 worldScale = GetTransform()->GetScale();
 
 		switch (m_shapeType)
 		{
 		case ColliderShape_Box:
 			m_collisionShape = make_shared<btBoxShape>(ToBtVector3(m_size * 0.5f));
-			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
+			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Sphere:
 			m_collisionShape = make_shared<btSphereShape>(m_size.x * 0.5f);
-			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
+			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_StaticPlane:
@@ -163,17 +165,17 @@ namespace Directus
 
 		case ColliderShape_Cylinder:
 			m_collisionShape = make_shared<btCylinderShape>(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
-			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
+			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Capsule:
 			m_collisionShape = make_shared<btCapsuleShape>(m_size.x * 0.5f, Max(m_size.y - m_size.x, 0.0f));
-			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
+			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Cone:
 			m_collisionShape = make_shared<btConeShape>(m_size.x * 0.5f, m_size.y);
-			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
+			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Mesh:
@@ -210,7 +212,7 @@ namespace Directus
 				(unsigned int)sizeof(RHI_Vertex_PosUVTBN));	// stride
 
 			// Scaling has to be done before (potential) optimization
-			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
+			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
 
 			// Optimize if requested
 			if (m_optimize)
@@ -222,24 +224,12 @@ namespace Directus
 			break;
 		}
 
-		SetRigidBodyCollisionShape(m_collisionShape);
+		NotifyRigidBody(this);
 	}
-	//=========================================================================
 
-	//= PRIVATE =======================================================================
 	void Collider::ReleaseShape()
 	{
-		SetRigidBodyCollisionShape(shared_ptr<btCollisionShape>());
+		NotifyRigidBody(this);
 		m_collisionShape.reset();
 	}
-
-	void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape)
-	{
-		RigidBody* rigidBody = GetActor_PtrRaw()->GetComponent<RigidBody>().lock().get();
-		if (rigidBody)
-		{
-			rigidBody->SetCollisionShape(shape);
-		}
-	}
-	//=================================================================================
 }

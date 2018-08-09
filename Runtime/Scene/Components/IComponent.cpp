@@ -49,6 +49,22 @@ namespace Directus
 		m_ID			= GENERATE_GUID;
 	}
 
+	void IComponent::NotifyCollider(RigidBody* rigidBody)
+	{
+		if (auto collider = m_actor->GetComponent<Collider>().lock())
+		{
+			collider->SetRigidBody(rigidBody);
+		}
+	}
+
+	void IComponent::NotifyRigidBody(Collider* collider)
+	{
+		if (auto rigidBody = m_actor->GetComponent<RigidBody>().lock())
+		{
+			rigidBody->SetCollider(collider);
+		}
+	}
+
 	shared_ptr<Actor> IComponent::GetActor_PtrShared()
 	{
 		return m_actor->GetPtrShared();

@@ -18,15 +18,7 @@ SamplerState samplerAniso : register (s0);
 //========================================
 
 //= BUFFERS ==================================
-cbuffer PerFrameBuffer : register(b0)
-{		
-	float3 cameraPosWS;
-	float1 padding;
-	float2 resolution;
-	float2 padding2;	
-};
-
-cbuffer PerMaterialBuffer : register(b1)
+cbuffer PerMaterialBuffer : register(b0)
 {		
     float4 materialAlbedoColor;
 	float2 materialTiling;
@@ -36,10 +28,12 @@ cbuffer PerMaterialBuffer : register(b1)
     float materialNormalStrength;
 	float materialHeight;
     float materialShadingMode;
-	float3 padding1;
+	float3 cameraPosWS;
+	float2 resolution;
+	float2 padding;	
 };
 
-cbuffer PerObjectBuffer : register(b2)
+cbuffer PerObjectBuffer : register(b1)
 {
 	matrix mWorld;
     matrix mWorldView;
