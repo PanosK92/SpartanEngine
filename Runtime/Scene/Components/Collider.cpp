@@ -74,7 +74,7 @@ namespace Directus
 		Shape_Release();
 	}
 
-	void Collider::OnUpdate()
+	void Collider::OnTick()
 	{
 
 	}

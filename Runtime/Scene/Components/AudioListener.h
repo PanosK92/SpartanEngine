@@ -37,7 +37,7 @@ namespace Directus
 
 		//= COMPONENT =============
 		void OnInitialize() override;
-		void OnUpdate() override;
+		void OnTick() override;
 		//=========================
 
 	private:

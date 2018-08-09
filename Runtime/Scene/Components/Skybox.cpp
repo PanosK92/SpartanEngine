@@ -78,7 +78,7 @@ namespace Directus
 		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 	}
 
-	void Skybox::OnUpdate()
+	void Skybox::OnTick()
 	{
 
 	}

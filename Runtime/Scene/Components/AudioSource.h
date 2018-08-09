@@ -42,7 +42,7 @@ namespace Directus
 		void OnStart() override;
 		void OnStop() override;
 		void OnRemove() override;
-		void OnUpdate() override;
+		void OnTick() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================

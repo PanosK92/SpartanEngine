@@ -49,7 +49,7 @@ namespace Directus
 		m_listener			= nullptr;
 
 		// Subscribe to update event
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
+		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Update));
 	}
 
 	Audio::~Audio()

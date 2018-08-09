@@ -91,7 +91,7 @@ namespace Directus
 		void TimeBlockEnd_GPU(const char* funcName);
 
 		// Events
-		void OnUpdate(const Variant& deltaTimeVar);
+		void OnFrameStart();
 		void OnFrameEnd();
 
 		void SetProfilingEnabled_CPU(bool enabled)		{ m_cpuProfiling = enabled; }

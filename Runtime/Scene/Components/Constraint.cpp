@@ -80,7 +80,7 @@ namespace Directus
 		ReleaseConstraint();
 	}
 
-	void Constraint::OnUpdate()
+	void Constraint::OnTick()
 	{
 
 	}

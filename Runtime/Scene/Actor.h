@@ -46,7 +46,7 @@ namespace Directus
 		//============
 		void Start();
 		void Stop();
-		void Update();
+		void Tick();
 		//============
 
 		bool SaveAsPrefab(const std::string& filePath);
