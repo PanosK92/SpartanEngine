@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Widget.h"
-#include <vector>
 #include "..\..\ImGui\Source\imgui.h"
 #include "Profiling\Profiler.h"
 #include "Math\MathHelper.h"
@@ -105,11 +104,12 @@ public:
 
 			for (const auto& cpuBlock : cpuBlocks)
 			{
-				auto& gpuBlock = gpuBlocks[cpuBlock.first];
-
 				ImGui::Text("%s", cpuBlock.first);				ImGui::NextColumn();
+				// CPU entry
 				ImGui::Text("%f ms", cpuBlock.second.duration);	ImGui::NextColumn();
-				gpuBlock.initialized ? ImGui::Text("%f ms", gpuBlock.duration) : ImGui::Text("N/A"); ImGui::NextColumn();
+				// GPU entry
+				bool exists = gpuBlocks.find(cpuBlock.first) != gpuBlocks.end();
+				exists ? ImGui::Text("%f ms", gpuBlocks[cpuBlock.first].duration) : ImGui::Text("N/A"); ImGui::NextColumn();
 			}
 			ImGui::Columns(1);
 		}
@@ -160,23 +160,20 @@ public:
 			float spacingY	= ImGui::GetStyle().FramePadding.y;
 			float widthMin	= 10.0f;
 			float height	= 20.0f;
-			int i			= 0;
-			for (const auto& cpuBlock : cpuBlocks)
+			for (const auto& gpuBlock : gpuBlocks)
 			{
-				auto& gpuBlock = gpuBlocks[cpuBlock.first];
-				float duration = gpuBlock.duration;
+				// Ignore main render block (we are displaying it's contents in relation to each other here)
+				if (strcmp(gpuBlock.first, "Directus::Renderer::Render") == 0) // must not compare str
+					continue;
 
-				if (duration <= 0.01f || i != 0) // Ignore the main render GPU block (contains everything)
-				{	
-					float width = ImGui::GetWindowContentRegionWidth() / (renderTimeGPU / duration);
-					width		= Directus::Math::Max(width, widthMin);
-					Directus::Math::Vector3 color = Directus::Math::Lerp(Directus::Math::Vector3(0.0f, 200.0f, 0.0f), Directus::Math::Vector3(255.0f, 0.0f, 0.0f), (duration / renderTimeGPU));
-					ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(penX, penY), ImVec2(penX + width, penY + 20.0f), IM_COL32(color.x, color.y, 0, 255));
-					ImGui::GetWindowDrawList()->AddText(ImVec2(penX + paddingX, penY + 2.0f), IM_COL32(255, 255, 255, 255), cpuBlock.first);
-					penY += height + spacingY;
-				}
-				
-				i++;
+				float duration = gpuBlock.second.duration;
+
+				float width = ImGui::GetWindowContentRegionWidth() / (renderTimeGPU / duration);
+				width = Directus::Math::Max(width, widthMin);
+				Directus::Math::Vector3 color = Directus::Math::Lerp(Directus::Math::Vector3(0.0f, 200.0f, 0.0f), Directus::Math::Vector3(255.0f, 0.0f, 0.0f), (duration / renderTimeGPU));
+				ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(penX, penY), ImVec2(penX + width, penY + 20.0f), IM_COL32(color.x, color.y, 0, 255));
+				ImGui::GetWindowDrawList()->AddText(ImVec2(penX + paddingX, penY + 2.0f), IM_COL32(255, 255, 255, 255), gpuBlock.first);
+				penY += height + spacingY;
 			}
 
 			float cpuWidth = (renderTimeCPU / renderTimeTotal) * ImGui::GetWindowContentRegionWidth();
