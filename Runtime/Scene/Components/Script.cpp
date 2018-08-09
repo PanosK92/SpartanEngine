@@ -54,7 +54,7 @@ namespace Directus
 		m_scriptInstance->ExecuteStart();
 	}
 
-	void Script::OnUpdate()
+	void Script::OnTick()
 	{
 		if (!m_scriptInstance)
 			return;

@@ -70,7 +70,7 @@ namespace Directus
 		virtual void OnRemove(){}
 
 		// Runs every frame
-		virtual void OnUpdate() {}
+		virtual void OnTick() {}
 
 		// Runs when the actor is being saved
 		virtual void Serialize(FileStream* stream) {}

@@ -39,7 +39,7 @@ namespace Directus
 
 		//= IComponent ============
 		void OnInitialize() override;
-		void OnUpdate() override;
+		void OnTick() override;
 		//=========================
 
 		const std::shared_ptr<RHI_Texture>& GetTexture() { return m_cubemapTexture; }

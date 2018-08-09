@@ -256,7 +256,6 @@ namespace Directus
 	void Renderer::Present()
 	{
 		m_rhiDevice->Present();
-		FIRE_EVENT(EVENT_FRAME_END);
 	}
 
 	void Renderer::Render()
@@ -264,7 +263,6 @@ namespace Directus
 		if (!m_rhiDevice || !m_rhiDevice->IsInitialized())
 			return;
 
-		FIRE_EVENT(EVENT_FRAME_START);
 		TIME_BLOCK_START_MULTI();
 		Profiler::Get().Reset();
 

@@ -164,17 +164,21 @@ namespace Directus
 		//g_stopwatch->Start();
 		//==================================================================================
 		
+		FIRE_EVENT(EVENT_FRAME_START);
+
 		m_timer->Tick();
 
 		if (EngineMode_IsSet(Engine_Update))
 		{
-			FIRE_EVENT_DATA(EVENT_UPDATE, m_timer->GetDeltaTimeSec());
+			FIRE_EVENT_DATA(EVENT_TICK, m_timer->GetDeltaTimeSec());
 		}
 
 		if (EngineMode_IsSet(Engine_Render))
 		{
 			FIRE_EVENT(EVENT_RENDER);
 		}
+
+		FIRE_EVENT(EVENT_FRAME_END);
 	}
 
 	void Engine::Shutdown()

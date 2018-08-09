@@ -49,6 +49,7 @@ namespace Directus
 	static const float DEFAULT_FRICTION = 0.5f;
 	static const float DEFAULT_FRICTION_ROLLING = 0.0f;
 	static const float DEFAULT_RESTITUTION = 0.0f;	
+	static const float DEFAULT_DEACTIVATION_TIME = 2000;
 
 	class MotionState : public btMotionState
 	{
@@ -117,7 +118,7 @@ namespace Directus
 		Activate();
 	}
 
-	void RigidBody::OnUpdate()
+	void RigidBody::OnTick()
 	{
 		// When in editor mode, get position from transform (so the user can move the body around)
 		if (!Engine::EngineMode_IsSet(Engine_Game))
@@ -605,6 +606,7 @@ namespace Directus
 
 		m_rigidBody->setCollisionFlags(flags);
 		m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
+		m_rigidBody->setDeactivationTime(DEFAULT_DEACTIVATION_TIME);
 	}
 
 	void RigidBody::Flags_UpdateGravity()

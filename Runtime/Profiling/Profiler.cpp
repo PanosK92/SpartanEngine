@@ -64,7 +64,7 @@ namespace Directus
 		m_profilingLastUpdateTime	= m_profilingFrequencySec;
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER_VARIANT(OnUpdate));
+		SUBSCRIBE_TO_EVENT(EVENT_FRAME_START, EVENT_HANDLER(OnFrameStart));
 		SUBSCRIBE_TO_EVENT(EVENT_FRAME_END, EVENT_HANDLER(OnFrameEnd));
 	}
 
@@ -131,10 +131,10 @@ namespace Directus
 		TimeBlockEnd_GPU(funcName);
 	}
 
-	void Profiler::OnUpdate(const Variant& deltaTimeVar)
+	void Profiler::OnFrameStart()
 	{
 		// Get delta time
-		float deltaTimeSec = deltaTimeVar.Get<float>();
+		float deltaTimeSec = m_timer->GetDeltaTimeSec();
 
 		// Compute FPS
 		ComputeFPS(deltaTimeSec);

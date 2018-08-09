@@ -71,7 +71,7 @@ namespace Directus
 		ShadowMap_Create(false);
 	}
 
-	void Light::OnUpdate()
+	void Light::OnTick()
 	{
 		if (m_lightType != LightType_Directional)
 			return;

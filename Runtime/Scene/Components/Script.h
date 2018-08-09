@@ -36,7 +36,7 @@ namespace Directus
 
 		//= ICOMPONENT ===============================
 		void OnStart() override;
-		void OnUpdate() override;
+		void OnTick() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================

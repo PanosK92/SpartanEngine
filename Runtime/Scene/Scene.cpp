@@ -50,7 +50,7 @@ namespace Directus
 		m_ambientLight	= Vector3::Zero;
 
 		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE, EVENT_HANDLER(Resolve));
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
+		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Update));
 	}
 
 	Scene::~Scene()
@@ -104,7 +104,7 @@ namespace Directus
 
 		for (const auto& actor : m_actors)
 		{
-			actor->Update();
+			actor->Tick();
 		}
 
 		TIME_BLOCK_END_CPU();

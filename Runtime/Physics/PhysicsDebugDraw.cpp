@@ -47,54 +47,18 @@ namespace Directus
 
 	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor)
 	{
-		m_lines.emplace_back(RHI_Vertex_PosCol{ ToVector3(from), ToVector4(fromColor) });
-		m_lines.emplace_back(RHI_Vertex_PosCol{ ToVector3(to), ToVector4(toColor) });
+		m_lines.emplace_back(ToVector3(from), ToVector4(fromColor));
+		m_lines.emplace_back(ToVector3(to), ToVector4(toColor));
 
 		m_isDirty = true;
 	}
 
 	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
 	{
-		m_lines.emplace_back(RHI_Vertex_PosCol{ ToVector3(from), ToVector4(color) });
-		m_lines.emplace_back(RHI_Vertex_PosCol{ ToVector3(to), ToVector4(color) });
+		m_lines.emplace_back(ToVector3(from), ToVector4(color));
+		m_lines.emplace_back(ToVector3(to), ToVector4(color));
 
 		m_isDirty = true;
-	}
-
-	void PhysicsDebugDraw::drawSphere(const btVector3& p, btScalar radius, const btVector3& color)
-	{
-		int lats = 5;
-		int longs = 5;
-
-		for (int i = 0; i <= lats; i++)
-		{
-			btScalar lat0 = SIMD_PI * (-btScalar(0.5) + (btScalar)(i - 1) / lats);
-			btScalar z0 = radius * sin(lat0);
-			btScalar zr0 = radius * cos(lat0);
-
-			btScalar lat1 = SIMD_PI * (-btScalar(0.5) + (btScalar)i / lats);
-			btScalar z1 = radius * sin(lat1);
-			btScalar zr1 = radius * cos(lat1);
-
-			for (int j = 0; j <= longs; j++)
-			{
-				btScalar lng = 2 * SIMD_PI * (btScalar)(j - 1) / longs;
-				btScalar x = cos(lng);
-				btScalar y = sin(lng);
-
-				const btVector3& from = btVector3(x * zr0, y * zr0, z0);
-				const btVector3& to = btVector3(x * zr1, y * zr1, z1);
-
-				drawLine(from, to, color);
-			}
-		}
-	}
-
-	void PhysicsDebugDraw::drawTriangle(const btVector3& a, const btVector3& b, const btVector3& c, const btVector3& color, btScalar alpha)
-	{
-		drawLine(a, b, color);
-		drawLine(b, c, color);
-		drawLine(c, a, color);
 	}
 
 	void PhysicsDebugDraw::drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color)

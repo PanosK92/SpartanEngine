@@ -48,7 +48,7 @@ namespace Directus
 		g_keyboard		= nullptr;
 		g_mouse			= nullptr;
 
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
+		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Update));
 	}
 
 	DInput::~DInput()

@@ -102,7 +102,7 @@ namespace Directus
 		}
 	}
 
-	void Actor::Update()
+	void Actor::Tick()
 	{
 		if (!m_isActive)
 			return;
@@ -110,7 +110,7 @@ namespace Directus
 		// call component Update()
 		for (const auto& component : m_components)
 		{
-			component.second->OnUpdate();
+			component.second->OnTick();
 		}
 	}
 

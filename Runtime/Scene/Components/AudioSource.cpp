@@ -80,7 +80,7 @@ namespace Directus
 		m_audioClip.lock()->Stop();
 	}
 	
-	void AudioSource::OnUpdate()
+	void AudioSource::OnTick()
 	{
 		if (m_audioClip.expired())
 			return;

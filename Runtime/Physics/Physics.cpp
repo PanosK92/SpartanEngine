@@ -41,9 +41,9 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-static const int MAX_SOLVER_ITERATIONS = 256;
-static const float INTERNAL_FPS = 60.0f;
-static const Vector3 GRAVITY = Vector3(0.0f, -9.81f, 0.0f);
+static const int MAX_SOLVER_ITERATIONS	= 256;
+static const float INTERNAL_FPS			= 60.0f;
+static const Vector3 GRAVITY			= Vector3(0.0f, -9.81f, 0.0f);
 
 namespace Directus
 { 
@@ -53,7 +53,7 @@ namespace Directus
 		m_simulating = false;
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE,			EVENT_HANDLER_VARIANT(Step));
+		SUBSCRIBE_TO_EVENT(EVENT_TICK,			EVENT_HANDLER_VARIANT(Step));
 		SUBSCRIBE_TO_EVENT(EVENT_SCENE_CLEARED,		EVENT_HANDLER(Clear));
 	}
 
@@ -75,16 +75,16 @@ namespace Directus
 									m_collisionConfiguration.get()
 									);
 
-		// create an implementation of the btIDebugDraw interface
+		// Create an implementation of the btIDebugDraw interface
 		m_debugDraw = make_shared<PhysicsDebugDraw>();
-		int debugMode = btIDebugDraw::DBG_MAX_DEBUG_DRAW_MODE;
-		m_debugDraw->setDebugMode(debugMode);
+		// Draw everything
+		m_debugDraw->setDebugMode(btIDebugDraw::DBG_MAX_DEBUG_DRAW_MODE);
 
 		// Setup world
 		m_world->setGravity(ToBtVector3(GRAVITY));
-		m_world->getDispatchInfo().m_useContinuous = true;
-		m_world->getSolverInfo().m_splitImpulse = false;
-		m_world->getSolverInfo().m_numIterations = MAX_SOLVER_ITERATIONS;
+		m_world->getDispatchInfo().m_useContinuous	= true;
+		m_world->getSolverInfo().m_splitImpulse		= false;
+		m_world->getSolverInfo().m_numIterations	= MAX_SOLVER_ITERATIONS;
 		m_world->setDebugDrawer(m_debugDraw.get());
 
 		// Get version
@@ -100,12 +100,8 @@ namespace Directus
 		if (!m_world)
 			return;
 		
-		// Don't simulate physics if they are turned off
-		if (!Engine::EngineMode_IsSet(Engine_Physics))
-			return;
-
-		// Don't simulate physics if they engine is not in game mode
-		if (!Engine::EngineMode_IsSet(Engine_Game))
+		// Don't simulate physics if they are turned off or the we are in editor mode
+		if (!Engine::EngineMode_IsSet(Engine_Physics) || !Engine::EngineMode_IsSet(Engine_Game))
 			return;
 
 		TIME_BLOCK_START_CPU();

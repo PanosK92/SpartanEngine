@@ -61,7 +61,7 @@ namespace Directus
 		ComputeProjection();
 	}
 
-	void Camera::OnUpdate()
+	void Camera::OnTick()
 	{
 		if (m_lastKnownResolution != Settings::Get().GetResolution())
 		{
