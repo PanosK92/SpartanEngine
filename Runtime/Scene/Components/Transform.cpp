@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 #include "../../FileSystem/FileSystem.h"
+#include "../../Core/Engine.h"
 //======================================
 
 //= NAMESPACES ================

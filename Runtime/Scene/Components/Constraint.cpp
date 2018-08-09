@@ -202,8 +202,8 @@ namespace Directus
 		btRigidBody* btOwnBody			= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
 		btRigidBody* btOtherBody		= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
 
-		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - rigidBodyOwn->GetColliderCenter();
-		Vector3 otherBodyScaledPosition = !m_bodyOther.expired() ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetColliderCenter() : m_positionOther;
+		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - rigidBodyOwn->GetCenterOfMass();
+		Vector3 otherBodyScaledPosition = !m_bodyOther.expired() ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetCenterOfMass() : m_positionOther;
 
 		switch (m_constraint->getConstraintType())
 		{
@@ -267,8 +267,8 @@ namespace Directus
 		    btOtherBody = &btTypedConstraint::getFixedBody();
 		}	
 		
-		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - rigidBodyOwn->GetColliderCenter();
-		Vector3 otherBodyScaledPosition = rigidBodyOther ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetColliderCenter() : m_positionOther;
+		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - rigidBodyOwn->GetCenterOfMass();
+		Vector3 otherBodyScaledPosition = rigidBodyOther ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetCenterOfMass() : m_positionOther;
 
 		switch (m_constraintType)
 		{

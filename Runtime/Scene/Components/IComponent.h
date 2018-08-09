@@ -33,8 +33,6 @@ namespace Directus
 	class Transform;
 	class Context;
 	class FileStream;
-	class RigidBody;
-	class Collider;
 
 	enum ComponentType : unsigned int
 	{
@@ -79,11 +77,6 @@ namespace Directus
 
 		// Runs when the actor is being loaded
 		virtual void Deserialize(FileStream* stream) {}
-
-		//= EVENTS ===============================
-		void NotifyCollider(RigidBody* rigidBody);
-		void NotifyRigidBody(Collider* collider);
-		//========================================
 
 		//= PROPERTIES =================================================================
 		Actor*					GetActor_PtrRaw()		{ return m_actor; }	

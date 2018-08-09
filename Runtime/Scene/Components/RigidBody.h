@@ -52,36 +52,45 @@ namespace Directus
 
 		//= ICOMPONENT ===============================
 		void OnInitialize() override;
+		void OnRemove() override;
+		void OnStart() override;
 		void OnUpdate() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================
+
 		//= MASS =========================
 		float GetMass() { return m_mass; }
 		void SetMass(float mass);
 		//================================
+
 		//= DRAG =================================
 		float GetFriction() { return m_friction; }
 		void SetFriction(float friction);
 		//========================================
+
 		//= ANGULAR DRAG =======================================
 		float GetFrictionRolling() { return m_frictionRolling; }
 		void SetFrictionRolling(float frictionRolling);
 		//======================================================
+
 		//= RESTITUTION ================================
 		float GetRestitution() { return m_restitution; }
 		void SetRestitution(float restitution);
 		//==============================================
+
 		//= GRAVITY =======================================
 		void SetUseGravity(bool gravity);
 		bool GetUseGravity() { return m_useGravity; };
 		Math::Vector3 GetGravity() { return m_gravity; }
 		void SetGravity(const Math::Vector3& acceleration);
 		//=================================================
+
 		//= KINEMATIC ===============================
 		void SetIsKinematic(bool kinematic);
 		bool GetIsKinematic() { return m_isKinematic; }
 		//===========================================
+
 		//= VELOCITY/FORCE/TORQUE ==========================================================================
 		void SetLinearVelocity(const Math::Vector3& velocity) const;
 		void SetAngularVelocity(const Math::Vector3& velocity);
@@ -89,57 +98,66 @@ namespace Directus
 		void ApplyForceAtPosition(const Math::Vector3& force, Math::Vector3 position, ForceMode mode) const;
 		void ApplyTorque(const Math::Vector3& torque, ForceMode mode) const;
 		//==================================================================================================
+
 		//= POSITION LOCK ========================================
 		void SetPositionLock(bool lock);
 		void SetPositionLock(const Math::Vector3& lock);
 		Math::Vector3 GetPositionLock() { return m_positionLock; }
 		//========================================================
+
 		//= ROTATION LOCK ========================================
 		void SetRotationLock(bool lock);
 		void SetRotationLock(const Math::Vector3& lock);
 		Math::Vector3 GetRotationLock() { return m_rotationLock; }
 		//========================================================
-		//= POSITION ===================================
+
+		//= CENTER OF MASS ==============================================
+		void SetCenterOfMass(const Math::Vector3& centerOfMass);
+		const Math::Vector3& GetCenterOfMass() { return m_centerOfMass; }
+		//===============================================================
+
+		//= POSITION =======================================
 		Math::Vector3 GetPosition() const;
 		void SetPosition(const Math::Vector3& position);
-		//==============================================
+		//==================================================
+
 		//= ROTATION ======================================
 		Math::Quaternion GetRotation() const;
 		void SetRotation(const Math::Quaternion& rotation);
 		//=================================================
-		//= MISC ==================================================
-		btRigidBody* GetBtRigidBody() { return m_rigidBody.get(); }
+
+		//= MISC ==================================================	
 		void ClearForces() const;
-		Math::Vector3 GetColliderCenter();
 		void Activate() const;
 		void Deactivate() const;
+		btRigidBody* GetBtRigidBody() { return m_rigidBody.get(); }
+		bool IsInWorld() { return m_inWorld; }
 		//=========================================================
 
 		// Communication with other physics components
 		void AddConstraint(Constraint* constraint);
 		void RemoveConstraint(Constraint* constraint);
-		void SetCollider(Collider* collider);
+		void SetShape(std::shared_ptr<btCollisionShape> shape);
 
 	private:
-		//= HELPER FUNCTIONS =======
 		void Body_AddToWorld();
 		void Body_Release();
 		void Body_RemoveFromWorld();
+		void Body_AcquireShape();
 		void Flags_UpdateKinematic();
-		void Flags_UpdateCollision();
+		void Flags_UpdateGravity();
 		bool IsActivated() const;
-		//==========================
 
 		float m_mass;
 		float m_friction;
 		float m_frictionRolling;
 		float m_restitution;
 		bool m_useGravity;
-		bool m_trigger;
 		bool m_isKinematic;
 		Math::Vector3 m_gravity;
 		Math::Vector3 m_positionLock;
 		Math::Vector3 m_rotationLock;
+		Math::Vector3 m_centerOfMass;
 
 		std::shared_ptr<btRigidBody> m_rigidBody;
 		std::shared_ptr<btCollisionShape> m_collisionShape;

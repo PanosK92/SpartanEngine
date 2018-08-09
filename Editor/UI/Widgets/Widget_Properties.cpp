@@ -142,16 +142,16 @@ void Widget_Properties::Update(float deltaTime)
 	{
 		auto actorPtr = g_inspectedActor.lock().get();
 
-		auto transform		= actorPtr->GetTransform_PtrRaw();
-		auto light			= actorPtr->GetComponent<Light>().lock().get();
-		auto camera			= actorPtr->GetComponent<Camera>().lock().get();
-		auto audioSource	= actorPtr->GetComponent<AudioSource>().lock().get();
-		auto audioListener	= actorPtr->GetComponent<AudioListener>().lock().get();
-		auto renderable		= actorPtr->GetComponent<Renderable>().lock().get();
-		auto material		= renderable ? renderable->Material_RefWeak().lock().get() : nullptr;
-		auto rigidBody		= actorPtr->GetComponent<RigidBody>().lock().get();
-		auto collider		= actorPtr->GetComponent<Collider>().lock().get();
-		auto constraint		= actorPtr->GetComponent<Constraint>().lock().get();
+		auto transform		= actorPtr->GetComponent<Transform>().lock();
+		auto light			= actorPtr->GetComponent<Light>().lock();
+		auto camera			= actorPtr->GetComponent<Camera>().lock();
+		auto audioSource	= actorPtr->GetComponent<AudioSource>().lock();
+		auto audioListener	= actorPtr->GetComponent<AudioListener>().lock();
+		auto renderable		= actorPtr->GetComponent<Renderable>().lock();
+		auto material		= renderable ? renderable->Material_RefWeak().lock() : nullptr;
+		auto rigidBody		= actorPtr->GetComponent<RigidBody>().lock();
+		auto collider		= actorPtr->GetComponent<Collider>().lock();
+		auto constraint		= actorPtr->GetComponent<Constraint>().lock();
 		auto scripts		= actorPtr->GetComponents<Script>();
 
 		ShowTransform(transform);
@@ -166,7 +166,7 @@ void Widget_Properties::Update(float deltaTime)
 		ShowConstraint(constraint);
 		for (const auto& script : scripts)
 		{
-			ShowScript(script.lock().get());
+			ShowScript(script.lock());
 		}
 
 		ShowAddComponentButton();
@@ -174,7 +174,7 @@ void Widget_Properties::Update(float deltaTime)
 	}
 	else if (!g_inspectedMaterial.expired())
 	{
-		ShowMaterial(g_inspectedMaterial.lock().get());
+		ShowMaterial(g_inspectedMaterial.lock());
 	}
 
 	ImGui::PopItemWidth();
@@ -198,7 +198,7 @@ void Widget_Properties::Inspect(weak_ptr<Material> material)
 	g_inspectedMaterial = material;
 }
 
-void Widget_Properties::ShowTransform(Transform* transform)
+void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 {
 	//= REFLECT ==================================================
 	Vector3 position		= transform->GetPositionLocal();
@@ -285,7 +285,7 @@ void Widget_Properties::ShowTransform(Transform* transform)
 	//========================================================================================
 }
 
-void Widget_Properties::ShowLight(Light* light)
+void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 {
 	if (!light)
 		return;
@@ -303,7 +303,7 @@ void Widget_Properties::ShowLight(Light* light)
 	g_lightButtonColorPicker->SetColor(light->GetColor());
 	//===============================================================
 	
-	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
+	if (ComponentProperty::Begin("Light", Icon_Component_Light, light.get()))
 	{
 		// Type
 		ImGui::Text("Type");
@@ -382,7 +382,7 @@ void Widget_Properties::ShowLight(Light* light)
 	//====================================================================================================================
 }
 
-void Widget_Properties::ShowRenderable(Renderable* renderable)
+void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable)
 {
 	if (!renderable)
 		return;
@@ -395,7 +395,7 @@ void Widget_Properties::ShowRenderable(Renderable* renderable)
 	bool receiveShadows = renderable->GetReceiveShadows();
 	//==========================================================================
 	
-	if (ComponentProperty::Begin("Renderable", Icon_Component_Renderable, renderable))
+	if (ComponentProperty::Begin("Renderable", Icon_Component_Renderable, renderable.get()))
 	{
 		ImGui::Text("Mesh");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(meshName.c_str());
@@ -420,7 +420,7 @@ void Widget_Properties::ShowRenderable(Renderable* renderable)
 	//==========================================================================================================
 }
 
-void Widget_Properties::ShowRigidBody(RigidBody* rigidBody)
+void Widget_Properties::ShowRigidBody(shared_ptr<RigidBody>& rigidBody)
 {
 	if (!rigidBody)
 		return;
@@ -450,7 +450,7 @@ void Widget_Properties::ShowRigidBody(RigidBody* rigidBody)
 	EditorHelper::SetCharArray(&restitutionCharArray[0], restitution);
 	//========================================================================
 
-	if (ComponentProperty::Begin("RigidBody", Icon_Component_RigidBody, rigidBody))
+	if (ComponentProperty::Begin("RigidBody", Icon_Component_RigidBody, rigidBody.get()))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -519,7 +519,7 @@ void Widget_Properties::ShowRigidBody(RigidBody* rigidBody)
 	//===========================================================================================================================================================
 }
 
-void Widget_Properties::ShowCollider(Collider* collider)
+void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 {
 	if (!collider)
 		return;
@@ -555,7 +555,7 @@ void Widget_Properties::ShowCollider(Collider* collider)
 	EditorHelper::SetCharArray(&sizeZCharArray[0], colliderBoundingBox.z);
 	//====================================================================
 
-	if (ComponentProperty::Begin("Collider", Icon_Component_Collider, collider))
+	if (ComponentProperty::Begin("Collider", Icon_Component_Collider, collider.get()))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -623,7 +623,7 @@ void Widget_Properties::ShowCollider(Collider* collider)
 	//==========================================================================================================
 }
 
-void Widget_Properties::ShowConstraint(Constraint* constraint)
+void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 {
 	if (!constraint)
 		return;
@@ -669,7 +669,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 	EditorHelper::SetCharArray(&consLowY[0], lowLimit.y);
 	//========================================================
 
-	if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint))
+	if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint.get()))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -762,7 +762,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 	//==========================================================================================================================================
 }
 
-void Widget_Properties::ShowMaterial(Material* material)
+void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 {
 	if (!material)
 		return;
@@ -898,7 +898,7 @@ void Widget_Properties::ShowMaterial(Material* material)
 	//===========================================================================================================================================
 }
 
-void Widget_Properties::ShowCamera(Camera* camera)
+void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 {
 	if (!camera)
 		return;
@@ -919,7 +919,7 @@ void Widget_Properties::ShowCamera(Camera* camera)
 	g_cameraButtonColorPicker->SetColor(camera->GetClearColor());
 	//=========================================================================
 
-	if (ComponentProperty::Begin("Camera", Icon_Component_Camera, camera))
+	if (ComponentProperty::Begin("Camera", Icon_Component_Camera, camera.get()))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -973,7 +973,7 @@ void Widget_Properties::ShowCamera(Camera* camera)
 	//===========================================================================================================================================
 }
 
-void Widget_Properties::ShowAudioSource(AudioSource* audioSource)
+void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audioSource)
 {
 	if (!audioSource)
 		return;
@@ -991,7 +991,7 @@ void Widget_Properties::ShowAudioSource(AudioSource* audioSource)
 	float pan			= audioSource->GetPan();
 	//==================================================================================
 
-	if (ComponentProperty::Begin("Audio Source", Icon_Component_AudioSource, audioSource))
+	if (ComponentProperty::Begin("Audio Source", Icon_Component_AudioSource, audioSource.get()))
 	{
 		// Audio clip
 		ImGui::Text("Audio Clip");
@@ -1046,19 +1046,19 @@ void Widget_Properties::ShowAudioSource(AudioSource* audioSource)
 	//===========================================================================================
 }
 
-void Widget_Properties::ShowAudioListener(AudioListener* audioListener)
+void Widget_Properties::ShowAudioListener(shared_ptr<AudioListener>& audioListener)
 {
 	if (!audioListener)
 		return;
 
-	if (ComponentProperty::Begin("Audio Listener", Icon_Component_AudioListener, audioListener))
+	if (ComponentProperty::Begin("Audio Listener", Icon_Component_AudioListener, audioListener.get()))
 	{
 		
 	}
 	ComponentProperty::End();
 }
 
-void Widget_Properties::ShowScript(Script* script)
+void Widget_Properties::ShowScript(shared_ptr<Script>& script)
 {
 	if (!script)
 		return;
@@ -1068,7 +1068,7 @@ void Widget_Properties::ShowScript(Script* script)
 	EditorHelper::SetCharArray(&scriptNameArray[0], script->GetName());
 	//=================================================================
 
-	if (ComponentProperty::Begin(script->GetName(), Icon_Component_Script, script))
+	if (ComponentProperty::Begin(script->GetName(), Icon_Component_Script, script.get()))
 	{
 		ImGui::Text("Script");
 		ImGui::SameLine(); 
