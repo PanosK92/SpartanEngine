@@ -71,22 +71,19 @@ namespace Directus
 		void SetShapeType(ColliderShape type);
 
 		// Collision shape
-		std::shared_ptr<btCollisionShape> GetBtCollisionShape() { return m_collisionShape; }
+		const auto& GetShape() { return m_shape; }
 
 		bool GetOptimize() { return m_optimize; }
 		void SetOptimize(bool optimize);
 
-		void SetRigidBody(RigidBody* rigidBody);
-
 	private:
-		// Update the collision shape
-		void UpdateShape();
-
-		// Deletes the collision shape
-		void ReleaseShape();
+		void Shape_Update();
+		void Shape_Release();
+		void RigidBody_SetShape(std::shared_ptr<btCollisionShape> shape);
+		void RigidBody_SetCenterOfMass(const Math::Vector3& center);
 
 		ColliderShape m_shapeType;
-		std::shared_ptr<btCollisionShape> m_collisionShape;
+		std::shared_ptr<btCollisionShape> m_shape;
 		Math::Vector3 m_size;
 		Math::Vector3 m_center;
 		unsigned int m_vertexLimit = 100000;

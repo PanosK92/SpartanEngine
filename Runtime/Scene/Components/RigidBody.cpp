@@ -60,7 +60,7 @@ namespace Directus
 		{
 			Vector3 lastPos		= m_rigidBody->GetTransform()->GetPosition();
 			Quaternion lastRot	= m_rigidBody->GetTransform()->GetRotation();
-			worldTrans.setOrigin(ToBtVector3(lastPos + lastRot * m_rigidBody->GetColliderCenter()));
+			worldTrans.setOrigin(ToBtVector3(lastPos + lastRot * m_rigidBody->GetCenterOfMass()));
 			worldTrans.setRotation(ToBtQuaternion(lastRot));
 
 			m_rigidBody->m_hasSimulated = true;
@@ -70,7 +70,7 @@ namespace Directus
 		void setWorldTransform(const btTransform& worldTrans) override
 		{
 			Quaternion newWorldRot	= ToQuaternion(worldTrans.getRotation());
-			Vector3 newWorldPos		= ToVector3(worldTrans.getOrigin()) - newWorldRot * m_rigidBody->GetColliderCenter();
+			Vector3 newWorldPos		= ToVector3(worldTrans.getOrigin()) - newWorldRot * m_rigidBody->GetCenterOfMass();
 
 			m_rigidBody->GetTransform()->SetPosition(newWorldPos);
 			m_rigidBody->GetTransform()->SetRotation(newWorldRot);
@@ -93,7 +93,6 @@ namespace Directus
 		m_rotationLock		= Vector3::Zero;
 		m_physics			= GetContext()->GetSubsystem<Physics>();
 		m_collisionShape	= nullptr;
-		m_trigger			= false;
 	}
 
 	RigidBody::~RigidBody()
@@ -104,27 +103,26 @@ namespace Directus
 	//= ICOMPONENT ==========================================================
 	void RigidBody::OnInitialize()
 	{
+		Body_AcquireShape();
 		Body_AddToWorld();
+	}
+
+	void RigidBody::OnRemove()
+	{
+		Body_Release();
+	}
+
+	void RigidBody::OnStart()
+	{
+		Activate();
 	}
 
 	void RigidBody::OnUpdate()
 	{
-		// To make the body able to get positioned directly (via the Editor) without worrying about Bullet 
-		// reseting it's state, we secretly set is as kinematic when the engine is not simulating.
-		if (!m_rigidBody)
-			return;
-
-		// Editor -> Kinematic (so the user can move it around)
-		if (!Engine::EngineMode_IsSet(Engine_Game) && !m_rigidBody->isKinematicObject())
+		// When in editor mode, get position from transform (so the user can move the body around)
+		if (!Engine::EngineMode_IsSet(Engine_Game))
 		{
-			Flags_UpdateKinematic();
-		}
-
-		// Game -> Dynamic (so bullet starts simulating)
-		if (Engine::EngineMode_IsSet(Engine_Game) && !m_isKinematic && m_rigidBody->isKinematicObject())
-		{
-			Flags_UpdateKinematic();
-			Activate();
+			SetPosition(GetTransform()->GetPosition());
 		}
 	}
 
@@ -155,7 +153,8 @@ namespace Directus
 		stream->Read(&m_rotationLock);
 		stream->Read(&m_inWorld);
 
-		NotifyCollider(this);
+		Body_AcquireShape();
+		Body_AddToWorld();
 	}
 
 	// = PROPERTIES =========================================================
@@ -344,10 +343,24 @@ namespace Directus
 		m_rigidBody->setAngularFactor(ToBtVector3(angularFactor));
 	}
 
+	//= CENTER OF MASS ===============================================
+	void RigidBody::SetCenterOfMass(const Math::Vector3& centerOfMass)
+	{
+		m_centerOfMass = centerOfMass;
+		SetPosition(GetPosition());
+	}
+	//================================================================
+
 	//= POSITION ============================================================
 	Vector3 RigidBody::GetPosition() const
 	{
-		return m_rigidBody ? ToVector3(m_rigidBody->getWorldTransform().getOrigin()) : Vector3::Zero;
+		if (m_rigidBody)
+		{
+			const btTransform& transform = m_rigidBody->getWorldTransform();
+			return ToVector3(transform.getOrigin()) - ToQuaternion(transform.getRotation()) * m_centerOfMass;
+		}
+	
+		return Vector3::Zero;
 	}
 
 	void RigidBody::SetPosition(const Vector3& position)
@@ -355,7 +368,18 @@ namespace Directus
 		if (!m_rigidBody)
 			return;
 
-		m_rigidBody->getWorldTransform().setOrigin(ToBtVector3(position + ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) * GetColliderCenter()));
+		btTransform& worldTrans = m_rigidBody->getWorldTransform();
+		worldTrans.setOrigin(ToBtVector3(position + ToQuaternion(worldTrans.getRotation()) * m_centerOfMass));
+
+		// Don't allow position update when the game is running
+		if (!m_hasSimulated && m_physics->IsSimulating())
+		{
+			btTransform interpTrans = m_rigidBody->getInterpolationWorldTransform();
+			interpTrans.setOrigin(worldTrans.getOrigin());
+			m_rigidBody->setInterpolationWorldTransform(interpTrans);
+		}
+
+		Activate();
 	}
 
 	//= ROTATION ============================================================
@@ -369,7 +393,28 @@ namespace Directus
 		if (!m_rigidBody)
 			return;
 
-		m_rigidBody->getWorldTransform().setRotation(ToBtQuaternion(rotation));
+		Vector3 oldPosition = GetPosition();
+		btTransform& worldTrans = m_rigidBody->getWorldTransform();
+		worldTrans.setRotation(ToBtQuaternion(rotation));
+		if (m_centerOfMass != Vector3::Zero)
+		{
+			worldTrans.setOrigin(ToBtVector3(oldPosition + rotation * m_centerOfMass));
+		}
+
+		if (!m_hasSimulated || m_physics->IsSimulating())
+		{
+			btTransform interpTrans = m_rigidBody->getInterpolationWorldTransform();
+			interpTrans.setRotation(worldTrans.getRotation());
+			if (m_centerOfMass != Vector3::Zero)
+			{
+				interpTrans.setOrigin(worldTrans.getOrigin());
+			}
+			m_rigidBody->setInterpolationWorldTransform(interpTrans);
+		}
+
+		m_rigidBody->updateInertiaTensor();
+
+		Activate();
 	}
 
 	//= MISC ====================================================================
@@ -379,12 +424,6 @@ namespace Directus
 			return;
 
 		m_rigidBody->clearForces();
-	}
-
-	Vector3 RigidBody::GetColliderCenter()
-	{
-		Collider* collider = GetActor_PtrRaw()->GetComponent<Collider>().lock().get();
-		return collider ? collider->GetCenter() : Vector3::Zero;
 	}
 
 	void RigidBody::Activate() const
@@ -429,10 +468,9 @@ namespace Directus
 		Activate();
 	}
 
-	void RigidBody::SetCollider(Collider* collider)
+	void RigidBody::SetShape(std::shared_ptr<btCollisionShape> shape)
 	{
-		m_collisionShape = collider->GetBtCollisionShape();
-
+		m_collisionShape = shape;
 		if (m_collisionShape)
 		{
 			Body_AddToWorld();
@@ -485,8 +523,8 @@ namespace Directus
 			constraint->ApplyFrames();
 		}
 		
-		Flags_UpdateCollision();
 		Flags_UpdateKinematic();
+		Flags_UpdateGravity();
 
 		// Transform
 		SetPosition(GetTransform()->GetPosition());
@@ -543,24 +581,18 @@ namespace Directus
 		}
 	}
 
+	void RigidBody::Body_AcquireShape()
+	{
+		if (const auto& collider = m_actor->GetComponent<Collider>().lock())
+		{
+			m_collisionShape	= collider->GetShape();
+			m_centerOfMass		= collider->GetCenter();
+		}
+	}
+
 	void RigidBody::Flags_UpdateKinematic()
 	{
-		// Editor -> Kinematic (so the user can move it around)
-		bool originalKinematicState = m_isKinematic;
-		if (!Engine::EngineMode_IsSet(Engine_Game))
-		{
-			m_isKinematic = true;
-		}
-
 		int flags = m_rigidBody->getCollisionFlags();
-		if (m_trigger)
-		{
-			flags |= btCollisionObject::CF_NO_CONTACT_RESPONSE;
-		}
-		else
-		{
-			flags &= ~btCollisionObject::CF_NO_CONTACT_RESPONSE;
-		}
 
 		if (m_isKinematic)
 		{
@@ -570,16 +602,15 @@ namespace Directus
 		{
 			flags &= ~btCollisionObject::CF_KINEMATIC_OBJECT;
 		}
+
 		m_rigidBody->setCollisionFlags(flags);
 		m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
-		m_rigidBody->setDeactivationTime(2000);
-
-		m_isKinematic = originalKinematicState;
 	}
 
-	void RigidBody::Flags_UpdateCollision()
+	void RigidBody::Flags_UpdateGravity()
 	{
 		int flags = m_rigidBody->getFlags();
+
 		if (m_useGravity)
 		{
 			flags &= ~BT_DISABLE_WORLD_GRAVITY;
@@ -588,6 +619,7 @@ namespace Directus
 		{
 			flags |= BT_DISABLE_WORLD_GRAVITY;
 		}
+
 		m_rigidBody->setFlags(flags);
 
 		if (m_useGravity)

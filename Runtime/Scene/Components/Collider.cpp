@@ -62,16 +62,16 @@ namespace Directus
 		// If there is a mesh, use it's bounding box
 		if (auto renderable = GetActor_PtrRaw()->GetRenderable_PtrRaw())
 		{
-			m_center = Vector3::Zero;
-			m_size = renderable->Geometry_BB().GetSize();
+			m_center	= Vector3::Zero;
+			m_size		= renderable->Geometry_BB().GetSize();
 		}
 
-		UpdateShape();
+		Shape_Update();
 	}
 
 	void Collider::OnRemove()
 	{
-		ReleaseShape();
+		Shape_Release();
 	}
 
 	void Collider::OnUpdate()
@@ -92,8 +92,9 @@ namespace Directus
 		stream->Read(&m_size);
 		stream->Read(&m_center);
 
-		UpdateShape();
+		Shape_Update();
 	}
+
 	void Collider::SetBoundingBox(const Vector3& boundingBox)
 	{
 		if (m_size == boundingBox)
@@ -104,7 +105,7 @@ namespace Directus
 		m_size.y = Clamp(m_size.y, M_EPSILON, INFINITY);
 		m_size.z = Clamp(m_size.z, M_EPSILON, INFINITY);
 
-		UpdateShape();
+		Shape_Update();
 	}
 
 	void Collider::SetCenter(const Vector3& center)
@@ -113,7 +114,7 @@ namespace Directus
 			return;
 
 		m_center = center;
-		UpdateShape();
+		RigidBody_SetCenterOfMass(m_center);
 	}
 
 	void Collider::SetShapeType(ColliderShape type)
@@ -122,7 +123,7 @@ namespace Directus
 			return;
 
 		m_shapeType = type;
-		UpdateShape();
+		Shape_Update();
 	}
 
 	void Collider::SetOptimize(bool optimize)
@@ -131,51 +132,43 @@ namespace Directus
 			return;
 
 		m_optimize = optimize;
-		UpdateShape();
+		Shape_Update();
 	}
 
-	void Collider::SetRigidBody(RigidBody* rigidBody)
+	void Collider::Shape_Update()
 	{
-		if (!rigidBody)
-			return;
-
-		rigidBody->SetCollider(this);
-	}
-
-	void Collider::UpdateShape()
-	{
-		ReleaseShape();
+		Shape_Release();
 		Vector3 worldScale = GetTransform()->GetScale();
 
 		switch (m_shapeType)
 		{
 		case ColliderShape_Box:
-			m_collisionShape = make_shared<btBoxShape>(ToBtVector3(m_size * 0.5f));
-			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
+			m_shape = make_shared<btBoxShape>(ToBtVector3(m_size * 0.5f));
+			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Sphere:
-			m_collisionShape = make_shared<btSphereShape>(m_size.x * 0.5f);
-			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
+			m_shape = make_shared<btSphereShape>(m_size.x * 0.5f);
+			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_StaticPlane:
-			m_collisionShape = make_shared<btStaticPlaneShape>(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
+			m_shape = make_shared<btStaticPlaneShape>(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
 			break;
 
 		case ColliderShape_Cylinder:
-			m_collisionShape = make_shared<btCylinderShape>(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
-			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
+			m_shape = make_shared<btCylinderShape>(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
+			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Capsule:
-			m_collisionShape = make_shared<btCapsuleShape>(m_size.x * 0.5f, Max(m_size.y - m_size.x, 0.0f));
-			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
+			m_shape = make_shared<btCapsuleShape>(m_size.x * 0.5f, Max(m_size.y - m_size.x, 0.0f));
+			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Cone:
-			m_collisionShape = make_shared<btConeShape>(m_size.x * 0.5f, m_size.y);
-			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
+			m_shape = make_shared<btConeShape>(m_size.x * 0.5f, m_size.y);
+			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Mesh:
@@ -183,14 +176,14 @@ namespace Directus
 			Renderable* renderable = GetActor_PtrRaw()->GetComponent<Renderable>().lock().get();
 			if (!renderable)
 			{
-				LOG_WARNING("Collider::UpdateShape: Can't construct mesh shape, there is no Renderable component attached.");
+				LOG_WARNING("Collider::Shape_Update: Can't construct mesh shape, there is no Renderable component attached.");
 				return;
 			}
 
 			// Validate vertex count
 			if (renderable->Geometry_VertexCount() >= m_vertexLimit)
 			{
-				LOG_WARNING("Collider::UpdateShape: No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
+				LOG_WARNING("Collider::Shape_Update: No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
 				break;
 			}
 
@@ -206,30 +199,47 @@ namespace Directus
 			}
 
 			// Construct hull approximation
-			m_collisionShape = make_shared<btConvexHullShape>(
+			m_shape = make_shared<btConvexHullShape>(
 				(btScalar*)&vertices[0],					// points
 				renderable->Geometry_VertexCount(),			// point count
 				(unsigned int)sizeof(RHI_Vertex_PosUVTBN));	// stride
 
 			// Scaling has to be done before (potential) optimization
-			m_collisionShape->setLocalScaling(ToBtVector3(worldScale));
+			m_shape->setLocalScaling(ToBtVector3(worldScale));
 
 			// Optimize if requested
 			if (m_optimize)
 			{
-				auto hull = (btConvexHullShape*)m_collisionShape.get();
+				auto hull = (btConvexHullShape*)m_shape.get();
 				hull->optimizeConvexHull();
 				hull->initializePolyhedralFeatures();
 			}
 			break;
 		}
 
-		NotifyRigidBody(this);
+		RigidBody_SetShape(m_shape);
+		RigidBody_SetCenterOfMass(m_center);
 	}
 
-	void Collider::ReleaseShape()
+	void Collider::Shape_Release()
 	{
-		NotifyRigidBody(this);
-		m_collisionShape.reset();
+		RigidBody_SetShape(nullptr);
+		m_shape.reset();
+	}
+
+	void Collider::RigidBody_SetShape(shared_ptr<btCollisionShape> shape)
+	{
+		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>().lock())
+		{
+			rigidBody->SetShape(shape);
+		}
+	}
+
+	void Collider::RigidBody_SetCenterOfMass(const Math::Vector3& center)
+	{
+		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>().lock())
+		{
+			rigidBody->SetCenterOfMass(center);
+		}
 	}
 }
