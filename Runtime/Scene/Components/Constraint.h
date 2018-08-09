@@ -59,6 +59,7 @@ namespace Directus
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
+		ConstraintType GetConstraintType() { return m_constraintType; }
 		void SetConstraintType(ConstraintType type);
 
 		const Math::Vector2& GetHighLimit() { return m_highLimit; }
@@ -84,6 +85,9 @@ namespace Directus
 		const Math::Quaternion& GetRotationOther() { return m_rotationOther; }
 		// Set constraint rotation relative to other body.
 		void SetRotationOther(const Math::Quaternion& rotation);
+		
+		std::weak_ptr<Actor> GetBodyOther() { return m_bodyOther; }
+		void SetBodyOther(std::weak_ptr<Actor> bodyOther);
 
 	private:
 		void ConstructConstraint();
@@ -93,11 +97,10 @@ namespace Directus
 
 		std::unique_ptr<btTypedConstraint> m_constraint;
 
-		std::weak_ptr<RigidBody> m_bodyOwn;
 		Math::Vector3 m_position;
 		Math::Quaternion m_rotation;
 
-		std::weak_ptr<RigidBody> m_bodyOther;
+		std::weak_ptr<Actor> m_bodyOther;
 		Math::Vector3 m_positionOther;
 		Math::Quaternion m_rotationOther;
 
@@ -108,6 +111,6 @@ namespace Directus
 		bool m_isDirty;
 		bool m_enabledEffective;
 		bool m_collisionWithLinkedBody;
-		ConstraintType m_type;
+		ConstraintType m_constraintType;
 	};
 }

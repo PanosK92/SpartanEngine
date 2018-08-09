@@ -387,7 +387,7 @@ namespace Directus
 
 	Vector3 RigidBody::GetColliderCenter()
 	{
-		Collider* collider = Getactor_PtrRaw()->GetComponent<Collider>().lock().get();
+		Collider* collider = GetActor_PtrRaw()->GetComponent<Collider>().lock().get();
 		return collider ? collider->GetCenter() : Vector3::Zero;
 	}
 

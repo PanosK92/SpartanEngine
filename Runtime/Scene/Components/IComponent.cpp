@@ -49,7 +49,7 @@ namespace Directus
 		m_ID			= GENERATE_GUID;
 	}
 
-	shared_ptr<Actor> IComponent::Getactor_PtrShared()
+	shared_ptr<Actor> IComponent::GetActor_PtrShared()
 	{
 		return m_actor->GetPtrShared();
 	}

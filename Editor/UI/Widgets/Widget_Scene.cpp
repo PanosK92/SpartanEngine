@@ -52,8 +52,10 @@ namespace SceneHelper
 	static Input* g_input			= nullptr;
 	static bool g_popupRenameActor	= false;
 	static DragDropPayload g_payload;
-	static Actor* g_actorHovered = nullptr;
-	static weak_ptr<Actor> g_actorCopied;
+	// Actors in relation to mouse events
+	static Actor* g_actorCopied		= nullptr;
+	static Actor* g_actorHovered	= nullptr;
+	static Actor* g_actorClicked	= nullptr;
 }
 
 Widget_Scene::Widget_Scene()
@@ -81,6 +83,17 @@ void Widget_Scene::Update(float deltaTime)
 		return;
 	
 	Tree_Show();
+
+	// On left click, select actor but only on release
+	if (ImGui::IsMouseReleased(0) && SceneHelper::g_actorClicked)
+	{
+		// Make sure that the mouse was released while on the same actor
+		if (SceneHelper::g_actorHovered && SceneHelper::g_actorHovered->GetID() == SceneHelper::g_actorClicked->GetID())
+		{
+			SetSelectedActor(SceneHelper::g_actorClicked->GetPtrShared());
+		}
+		SceneHelper::g_actorClicked = nullptr;
+	}
 }
 
 void Widget_Scene::SetSelectedActor(weak_ptr<Actor> actor)
@@ -99,9 +112,9 @@ void Widget_Scene::Tree_Show()
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 		{
 			auto actorID = get<unsigned int>(payload->data);
-			if (auto droppedactor = SceneHelper::g_scene->GetActorByID(actorID).lock())
+			if (auto droppedActor = SceneHelper::g_scene->GetActorByID(actorID).lock())
 			{
-				droppedactor->GetTransform_PtrRaw()->SetParent(nullptr);
+				droppedActor->GetTransform_PtrRaw()->SetParent(nullptr);
 			}
 		}
 
@@ -140,7 +153,7 @@ void Widget_Scene::Tree_AddActor(Actor* actor)
 	auto children = actor->GetTransform_PtrRaw()->GetChildren();
 	for (const auto& child : children)
 	{
-		if (child->Getactor_PtrRaw()->IsVisibleInHierarchy())
+		if (child->GetActor_PtrRaw()->IsVisibleInHierarchy())
 		{
 			hasVisibleChildren = true;
 			break;
@@ -161,7 +174,7 @@ void Widget_Scene::Tree_AddActor(Actor* actor)
 		SceneHelper::g_actorHovered = actor;
 	}
 
-	HandleDragDrop(actor);	
+	Actor_HandleDragDrop(actor);	
 
 	// Recursively show all child nodes
 	if (isNodeOpen)
@@ -170,10 +183,10 @@ void Widget_Scene::Tree_AddActor(Actor* actor)
 		{
 			for (const auto& child : children)
 			{
-				if (!child->Getactor_PtrRaw()->IsVisibleInHierarchy())
+				if (!child->GetActor_PtrRaw()->IsVisibleInHierarchy())
 					continue;
 
-				Tree_AddActor(child->Getactor_PtrRaw());
+				Tree_AddActor(child->GetActor_PtrRaw());
 			}
 		}
 
@@ -188,10 +201,10 @@ void Widget_Scene::HandleClicking()
 	if (!ImGui::IsMouseHoveringWindow())
 		return;	
 
-	// Left click on item - Select
+	// Left click on item - Don't selected yet
 	if (ImGui::IsMouseClicked(0) && SceneHelper::g_actorHovered)
 	{
-		SetSelectedActor(SceneHelper::g_actorHovered->GetPtrShared());
+		SceneHelper::g_actorClicked	= SceneHelper::g_actorHovered;
 	}
 
 	// Right click on item - Select and show context menu
@@ -212,7 +225,7 @@ void Widget_Scene::HandleClicking()
 	}
 }
 
-void Widget_Scene::HandleDragDrop(Actor* actorPtr)
+void Widget_Scene::Actor_HandleDragDrop(Actor* actorPtr)
 {
 	// Drag
 	if (DragDrop::Get().DragBegin())
@@ -226,11 +239,11 @@ void Widget_Scene::HandleDragDrop(Actor* actorPtr)
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 	{
 		auto actorID = get<unsigned int>(payload->data);
-		if (auto droppedactor = SceneHelper::g_scene->GetActorByID(actorID).lock())
+		if (auto droppedActor = SceneHelper::g_scene->GetActorByID(actorID).lock())
 		{
-			if (droppedactor->GetID() != actorPtr->GetID())
+			if (droppedActor->GetID() != actorPtr->GetID())
 			{
-				droppedactor->GetTransform_PtrRaw()->SetParent(actorPtr->GetTransform_PtrRaw());
+				droppedActor->GetTransform_PtrRaw()->SetParent(actorPtr->GetTransform_PtrRaw());
 			}
 		}
 	}
@@ -251,14 +264,14 @@ void Widget_Scene::Popup_ContextMenu()
 
 	if (onActor) if (ImGui::MenuItem("Copy"))
 	{
-		SceneHelper::g_actorCopied = m_actorSelected;
+		SceneHelper::g_actorCopied = m_actorSelected.lock().get();
 	}
 
 	if (ImGui::MenuItem("Paste"))
 	{
-		if (auto actor = SceneHelper::g_actorCopied.lock())
+		if (SceneHelper::g_actorCopied)
 		{
-			actor->Clone();
+			SceneHelper::g_actorCopied->Clone();
 		}
 	}
 

@@ -114,7 +114,14 @@ bool FileDialog::Show(bool* isVisible, string* itemPath)
 		{
 			if (m_operation == FileDialog_Op_Save)
 			{
-				(*itemPath) = m_currentPath + "/" + string(m_inputBox) + EXTENSION_SCENE;
+				if (FileSystem::IsDirectory(m_currentPath))
+				{
+					(*itemPath) = m_currentPath + "/" + string(m_inputBox);
+				}
+				else
+				{
+					(*itemPath) = m_currentPath;
+				}
 			}
 			else if (m_operation == FileDialog_Op_Open || m_operation == FileDialog_Op_Load)
 			{
@@ -452,7 +459,11 @@ void FileDialog::Dialog_ContextMenu()
 	ImGui::EndPopup();
 }
 
-void FileDialog::Dialog_SetCurrentPath(const std::string& path)
+bool FileDialog::Dialog_SetCurrentPath(const std::string& path)
 {
+	if (!FileSystem::IsDirectory(path))
+		return false;
+
 	m_currentPath = path;
+	return true;
 }

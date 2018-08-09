@@ -47,6 +47,7 @@ using namespace Math;
 static weak_ptr<Actor> g_inspectedActor;
 static weak_ptr<Material> g_inspectedMaterial;
 static ResourceManager* g_resourceManager = nullptr;
+static Scene* g_scene = nullptr;
 
 //= COLOR PICKERS ===============================================
 static unique_ptr<ButtonColorPicker> g_materialButtonColorPicker;
@@ -128,7 +129,9 @@ Widget_Properties::Widget_Properties()
 void Widget_Properties::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-	g_resourceManager = context->GetSubsystem<ResourceManager>();
+	g_resourceManager	= context->GetSubsystem<ResourceManager>();
+	g_scene				= context->GetSubsystem<Scene>();
+	m_xMin = 500; // min width
 }
 
 void Widget_Properties::Update(float deltaTime)
@@ -288,7 +291,7 @@ void Widget_Properties::ShowLight(Light* light)
 		return;
 
 	//= REFLECT =====================================================
-	static const char* types[]	= { "Directional", "Point", "Spot" };
+	static vector<char*> types	= { "Directional", "Point", "Spot" };
 	int typeInt					= (int)light->GetLightType();
 	const char* typeCharPtr		= types[typeInt];	
 	float intensity				= light->GetIntensity();
@@ -307,7 +310,7 @@ void Widget_Properties::ShowLight(Light* light)
 		ImGui::PushItemWidth(110.0f); 
 		ImGui::SameLine(ComponentProperty::g_column); if (ImGui::BeginCombo("##LightType", typeCharPtr))
 		{		
-			for (int i = 0; i < IM_ARRAYSIZE(types); i++)
+			for (unsigned int i = 0; i < (unsigned int)types.size(); i++)
 			{
 				bool is_selected = (typeCharPtr == types[i]);
 				if (ImGui::Selectable(types[i], is_selected))
@@ -522,7 +525,7 @@ void Widget_Properties::ShowCollider(Collider* collider)
 		return;
 	
 	//= REFLECT ==========================================================
-	static const char* g_colShapes[] = {
+	static vector<char*> type = {
 		"Box",
 		"Sphere",
 		"Static Plane",
@@ -532,7 +535,7 @@ void Widget_Properties::ShowCollider(Collider* collider)
 		"Mesh"
 	};	
 	int shapeInt				= (int)collider->GetShapeType();
-	const char* shapeCharPtr	= g_colShapes[shapeInt];
+	const char* shapeCharPtr	= type[shapeInt];
 	bool optimize				= collider->GetOptimize();
 	Vector3 colliderCenter		= collider->GetCenter();
 	Vector3 colliderBoundingBox = collider->GetBoundingBox();
@@ -558,14 +561,15 @@ void Widget_Properties::ShowCollider(Collider* collider)
 
 		// Type
 		ImGui::Text("Type");
+		ImGui::PushItemWidth(110);
 		ImGui::SameLine(ComponentProperty::g_column); if (ImGui::BeginCombo("##colliderType", shapeCharPtr))
 		{
-			for (int i = 0; i < IM_ARRAYSIZE(g_colShapes); i++)
+			for (unsigned int i = 0; i < (unsigned int)type.size(); i++)
 			{
-				bool is_selected = (shapeCharPtr == g_colShapes[i]);
-				if (ImGui::Selectable(g_colShapes[i], is_selected))
+				bool is_selected = (shapeCharPtr == type[i]);
+				if (ImGui::Selectable(type[i], is_selected))
 				{
-					shapeCharPtr = g_colShapes[i];
+					shapeCharPtr = type[i];
 					shapeInt = i;
 				}
 				if (is_selected)
@@ -575,6 +579,7 @@ void Widget_Properties::ShowCollider(Collider* collider)
 			}
 			ImGui::EndCombo();
 		}
+		ImGui::PopItemWidth();
 
 		// Center
 		ImGui::Text("Center");
@@ -624,11 +629,22 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 		return;
 
 	//= REFLECT ==============================================
-	Vector3 position 		= constraint->GetPosition();
-	Quaternion rotation		= constraint->GetRotation();
-	Vector3 rotationEuler	= rotation.ToEulerAngles();
-	Vector2 highLimit 		= constraint->GetHighLimit();
-	Vector2 lowLimit 		= constraint->GetLowLimit();
+	static vector<char*> types = {
+		"Point",
+		"Hinge",
+		"Slider",
+		"ConeTwist"
+	};
+	int typeInt								= (int)constraint->GetConstraintType();
+	const char* typeStr						= types[typeInt];
+	weak_ptr<Actor>	otherBody				= constraint->GetBodyOther();
+	bool otherBodyDirty						= false;
+	char otherBodyNameArray[BUFFER_TEXT_DEFAULT];
+	Vector3 position 						= constraint->GetPosition();
+	Quaternion rotation						= constraint->GetRotation();
+	Vector3 rotationEuler					= rotation.ToEulerAngles();
+	Vector2 highLimit 						= constraint->GetHighLimit();
+	Vector2 lowLimit 						= constraint->GetLowLimit();
 
 	char consPosX[BUFFER_TEXT_DEFAULT];
 	char consPosY[BUFFER_TEXT_DEFAULT];
@@ -641,6 +657,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 	char consLowX[BUFFER_TEXT_DEFAULT];
 	char consLowY[BUFFER_TEXT_DEFAULT];
 
+	EditorHelper::SetCharArray(&otherBodyNameArray[0], otherBody.expired() ? "N/A" : otherBody.lock()->GetName());
 	EditorHelper::SetCharArray(&consPosX[0], position.x);
 	EditorHelper::SetCharArray(&consPosY[0], position.y);
 	EditorHelper::SetCharArray(&consPosZ[0], position.z);
@@ -656,6 +673,40 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 	if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint))
 	{
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
+
+		// Type
+		ImGui::Text("Type");
+		ImGui::SameLine(ComponentProperty::g_column); if (ImGui::BeginCombo("##constraintType", typeStr))
+		{
+			for (unsigned int i = 0; i < (unsigned int)types.size(); i++)
+			{
+				bool is_selected = (typeStr == types[i]);
+				if (ImGui::Selectable(types[i], is_selected))
+				{
+					typeStr = types[i];
+					typeInt = i;
+				}
+				if (is_selected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		// Other body
+		ImGui::Text("Other Body"); ImGui::SameLine(ComponentProperty::g_column);
+		ImGui::PushID("##OtherBodyName");
+		ImGui::PushItemWidth(200.0f);
+		ImGui::InputText("", otherBodyNameArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
+		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
+		{
+			auto actorID	= get<unsigned int>(payload->data);
+			otherBody		= g_scene->GetActorByID(actorID);
+			otherBodyDirty	= true;
+		}
+		ImGui::PopItemWidth();
+		ImGui::PopID();
 
 		// Position
 		ImGui::Text("Position");
@@ -691,12 +742,14 @@ void Widget_Properties::ShowConstraint(Constraint* constraint)
 	}
 	ComponentProperty::End();
 
-	//= MAP ====================================================================================
-	if (position		!= constraint->GetPosition())		constraint->SetPosition(position);
-	if (rotation		!= constraint->GetRotation())		constraint->SetRotation(rotation);
-	if (highLimit		!= constraint->GetHighLimit())		constraint->SetHighLimit(highLimit);
-	if (lowLimit		!= constraint->GetLowLimit())		constraint->SetLowLimit(lowLimit);
-	//==========================================================================================
+	//= MAP ========================================================================================================================
+	if ((ConstraintType)typeInt != constraint->GetConstraintType())	constraint->SetConstraintType((ConstraintType)typeInt);
+	if (otherBodyDirty)												{ constraint->SetBodyOther(otherBody); otherBodyDirty = false; }
+	if (position				!= constraint->GetPosition())		constraint->SetPosition(position);
+	if (rotation				!= constraint->GetRotation())		constraint->SetRotation(rotation);
+	if (highLimit				!= constraint->GetHighLimit())		constraint->SetHighLimit(highLimit);
+	if (lowLimit				!= constraint->GetLowLimit())		constraint->SetLowLimit(lowLimit);
+	//==============================================================================================================================
 }
 
 void Widget_Properties::ShowMaterial(Material* material)
@@ -724,7 +777,7 @@ void Widget_Properties::ShowMaterial(Material* material)
 	EditorHelper::SetCharArray(&offsetYCharArray[0], offset.y);
 	//================================================================
 
-	ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false);
+	if (ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false))
 	{
 		static const ImVec2 materialTextSize = ImVec2(80, 80);
 

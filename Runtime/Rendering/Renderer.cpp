@@ -67,6 +67,7 @@ namespace Directus
 		m_farPlane					= 0.0f;
 		m_rhiDevice					= nullptr;
 		m_flags						= 0;
+		m_flags						|= Render_Physics;
 		m_flags						|= Render_SceneGrid;
 		m_flags						|= Render_Light;
 		m_flags						|= Render_Bloom;
@@ -91,8 +92,7 @@ namespace Directus
 
 	bool Renderer::Initialize()
 	{
-		// Create/Get required systems
-		
+		// Create/Get required systems		
 		g_resourceMng		= m_context->GetSubsystem<ResourceManager>();
 		g_physics			= m_context->GetSubsystem<Physics>();
 
@@ -335,16 +335,16 @@ namespace Directus
 
 	void Renderer::SetResolution(int width, int height)
 	{
-		// Return if resolution already set
-		if (Settings::Get().GetResolution().x == width && Settings::Get().GetResolution().y == height)
-			return;
-
 		// Return if resolution is invalid
 		if (width <= 0 || height <= 0)
 		{
 			LOG_WARNING("Renderer::SetResolutionInternal: Invalid resolution");
 			return;
 		}
+
+		// Return if resolution already set
+		if (Settings::Get().GetResolution().x == width && Settings::Get().GetResolution().y == height)
+			return;
 
 		// Make sure we are pixel perfect
 		width	-= (width	% 2 != 0) ? 1 : 0;
@@ -1096,7 +1096,7 @@ namespace Directus
 						continue;
 
 					shared_ptr<RHI_Texture> lightTex = nullptr;
-					LightType type = light->Getactor_PtrRaw()->GetComponent<Light>().lock()->GetLightType();
+					LightType type = light->GetActor_PtrRaw()->GetComponent<Light>().lock()->GetLightType();
 					if (type == LightType_Directional)
 					{
 						lightTex = m_gizmoTexLightDirectional;
