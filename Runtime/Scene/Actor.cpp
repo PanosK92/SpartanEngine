@@ -183,9 +183,9 @@ namespace Directus
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			if (child->Getactor_PtrRaw())
+			if (child->GetActor_PtrRaw())
 			{
-				child->Getactor_PtrRaw()->Serialize(stream);
+				child->GetActor_PtrRaw()->Serialize(stream);
 			}
 			else
 			{

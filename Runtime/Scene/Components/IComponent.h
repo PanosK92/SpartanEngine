@@ -79,9 +79,9 @@ namespace Directus
 		virtual void Deserialize(FileStream* stream) {}
 		
 		//= PROPERTIES =================================================================
-		Actor*					Getactor_PtrRaw()		{ return m_actor; }	
-		std::weak_ptr<Actor>	Getactor_PtrWeak()		{ return Getactor_PtrShared(); }
-		std::shared_ptr<Actor>  Getactor_PtrShared();
+		Actor*					GetActor_PtrRaw()		{ return m_actor; }	
+		std::weak_ptr<Actor>	GetActor_PtrWeak()		{ return GetActor_PtrShared(); }
+		std::shared_ptr<Actor>  GetActor_PtrShared();
 
 		Transform* GetTransform()			{ return m_transform; }
 		Context* GetContext()				{ return m_context; }

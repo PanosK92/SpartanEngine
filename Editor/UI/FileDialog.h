@@ -91,7 +91,7 @@ public:
 	FileDialog(Directus::Context* context, bool standaloneWindow, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
 
 	// Type & Filter
-	FileDialog_Type GetType()			{ return m_type; }
+	FileDialog_Type GetType()		{ return m_type; }
 	FileDialog_Filter GetFilter()	{ return m_filter; }
 
 	// Operation
@@ -118,7 +118,7 @@ private:
 	bool Dialog_UpdateFromDirectory(const char* path = nullptr);
 	void Dialog_Click();
 	void Dialog_ContextMenu();
-	void Dialog_SetCurrentPath(const std::string& path);
+	bool Dialog_SetCurrentPath(const std::string& path);
 
 	FileDialog_Type m_type;
 	FileDialog_Operation m_operation;

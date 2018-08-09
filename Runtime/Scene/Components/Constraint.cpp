@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletDynamics/ConstraintSolver/btSliderConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btConeTwistConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
+#include "../../Logging/Log.h"
 #pragma warning(pop)
 //==================================================================
 
@@ -51,7 +52,7 @@ namespace Directus
 		m_collisionWithLinkedBody	= false;
 		m_errorReduction			= 0.0f;
 		m_constraintForceMixing		= 0.0f;
-		m_type						= ConstraintType_Point;
+		m_constraintType			= ConstraintType_Point;
 	}
 
 	Constraint::~Constraint()
@@ -91,18 +92,13 @@ namespace Directus
 
 	void Constraint::Serialize(FileStream* stream)
 	{
-		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->Getactor_PtrRaw()->GetID() : (unsigned int)0);
+		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetID() : (unsigned int)0);
 	}
 
 	void Constraint::Deserialize(FileStream* stream)
 	{
 		unsigned int bodyOtherID = stream->ReadUInt();
-		auto otheractor = GetContext()->GetSubsystem<Scene>()->GetActorByID(bodyOtherID);
-		if (!otheractor.expired())
-		{
-			m_bodyOther = otheractor.lock()->GetComponent<RigidBody>();
-		}
-
+		m_bodyOther = GetContext()->GetSubsystem<Scene>()->GetActorByID(bodyOtherID);
 		m_isDirty = true;
 	}
 
@@ -110,7 +106,7 @@ namespace Directus
 	{
 		if (m_type != type || !m_constraint)
 		{
-			m_type = type;
+			m_constraintType = type;
 			ConstructConstraint();
 		}
 	}
@@ -151,6 +147,21 @@ namespace Directus
 		}
 	}
 
+	void Constraint::SetBodyOther(std::weak_ptr<Actor> bodyOther)
+	{
+		if (bodyOther.expired())
+			return;
+
+		if (!bodyOther.expired() && bodyOther.lock()->GetID() == m_actor->GetID())
+		{
+			LOG_WARNING("Constraint::SetBodyOther: You can't connect a body to itself.");
+			return;
+		}
+
+		m_bodyOther = bodyOther;
+		ConstructConstraint();
+	}
+
 	void Constraint::SetHighLimit(const Vector2& limit)
 	{
 		if (m_highLimit != limit)
@@ -176,9 +187,10 @@ namespace Directus
 	{
 		ReleaseConstraint();
 
-		m_bodyOwn = m_actor->GetComponent<RigidBody>();
-		btRigidBody* btOwnBody		= !m_bodyOwn.expired() ? m_bodyOwn.lock()->GetBtRigidBody() : nullptr;
-		btRigidBody* btOtherBody	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetBtRigidBody() : nullptr;
+		RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().lock().get();
+		RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
+		btRigidBody* btOwnBody		= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
+		btRigidBody* btOtherBody	= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
 
 		if (!btOwnBody)
 		    return;
@@ -188,12 +200,10 @@ namespace Directus
 		    btOtherBody = &btTypedConstraint::getFixedBody();
 		}	
 		
-		RigidBody* otherBody =  m_bodyOther.lock().get();
+		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - rigidBodyOwn->GetColliderCenter();
+		Vector3 otherBodyScaledPosition = rigidBodyOther ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetColliderCenter() : m_positionOther;
 
-		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - m_bodyOwn.lock()->GetColliderCenter();
-		Vector3 otherBodyScaledPosition = otherBody ? m_positionOther * otherBody->GetTransform()->GetScale() - m_bodyOther.lock()->GetColliderCenter() : m_positionOther;
-
-		switch (m_type)
+		switch (m_constraintType)
 		{
 			case ConstraintType_Point:
 			    {
@@ -233,10 +243,10 @@ namespace Directus
 		{
 		    m_constraint->setUserConstraintPtr(this);
 		    m_constraint->setEnabled(m_enabledEffective);
-		    m_bodyOwn.lock()->AddConstraint(this);
+		    rigidBodyOwn->AddConstraint(this);
 		    if (!m_bodyOther.expired())
 			{
-		        m_bodyOther.lock()->AddConstraint(this);
+		        rigidBodyOther->AddConstraint(this);
 			}
 
 		    ApplyLimits();
@@ -296,10 +306,13 @@ namespace Directus
 		if (!m_constraint || m_bodyOther.expired())
 			return;
 
-		RigidBody* bodyOther = m_bodyOther.lock().get();
+		RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().lock().get();
+		RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
+		btRigidBody* btOwnBody		= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
+		btRigidBody* btOtherBody	= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
 
-		Vector3 ownBodyScaledPosition = m_position * m_transform->GetScale() - m_bodyOwn.lock()->GetColliderCenter();
-		Vector3 otherBodyScaledPosition = !m_bodyOther.expired() ? m_positionOther * bodyOther->GetTransform()->GetScale() - bodyOther->GetColliderCenter() : m_positionOther;
+		Vector3 ownBodyScaledPosition = m_position * m_transform->GetScale() - rigidBodyOwn->GetColliderCenter();
+		Vector3 otherBodyScaledPosition = !m_bodyOther.expired() ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetColliderCenter() : m_positionOther;
 
 		switch (m_constraint->getConstraintType())
 		{
@@ -347,14 +360,17 @@ namespace Directus
 	{
 		if (m_constraint)
 		{
-			if (!m_bodyOwn.expired())
+			RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().lock().get();
+			RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
+
+			if (rigidBodyOwn)
 			{
-				m_bodyOwn.lock()->RemoveConstraint(this);
+				rigidBodyOwn->RemoveConstraint(this);
 			}
 
-			if (!m_bodyOther.expired())
+			if (rigidBodyOther)
 			{
-				m_bodyOther.lock()->RemoveConstraint(this);
+				rigidBodyOther->RemoveConstraint(this);
 			}
 
 			GetContext()->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_constraint.get());

@@ -61,7 +61,7 @@ namespace Directus
 		stream->Write(m_rotationLocal);
 		stream->Write(m_scaleLocal);
 		stream->Write(m_lookAt);
-		stream->Write(m_parent ? m_parent->Getactor_PtrRaw()->GetID() : NOT_ASSIGNED_HASH);
+		stream->Write(m_parent ? m_parent->GetActor_PtrRaw()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
 	void Transform::Deserialize(FileStream* stream)

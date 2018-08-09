@@ -296,7 +296,7 @@ namespace Directus
 		vector<Transform*> children = actorPtr->GetTransform_PtrRaw()->GetChildren();
 		for (const auto& child : children)
 		{
-			Actor_Remove(child->Getactor_PtrWeak());
+			Actor_Remove(child->GetActor_PtrWeak());
 		}
 
 		// Keep a reference to it's parent (in case it has one)
@@ -342,7 +342,7 @@ namespace Directus
 		if (actor.expired())
 			return weak_ptr<Actor>();
 
-		return actor.lock()->GetTransform_PtrRaw()->GetRoot()->Getactor_PtrWeak();
+		return actor.lock()->GetTransform_PtrRaw()->GetRoot()->GetActor_PtrWeak();
 	}
 
 	weak_ptr<Actor> Scene::GetActorByName(const string& name)

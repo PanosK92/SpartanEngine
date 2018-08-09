@@ -45,7 +45,7 @@ private:
 	void OnTreeEnd();
 	void Tree_AddActor(Directus::Actor* actor);
 	void HandleClicking();
-	void HandleDragDrop(Directus::Actor* actorPtr);
+	void Actor_HandleDragDrop(Directus::Actor* actorPtr);
 
 	// Misc
 	void Popups();
