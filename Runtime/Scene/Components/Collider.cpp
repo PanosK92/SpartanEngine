@@ -184,7 +184,7 @@ namespace Directus
 			if (renderable->Geometry_VertexCount() >= m_vertexLimit)
 			{
 				LOG_WARNING("Collider::Shape_Update: No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
-				break;
+				return;
 			}
 
 			// Get geometry
@@ -216,6 +216,8 @@ namespace Directus
 			}
 			break;
 		}
+
+		m_shape->setUserPointer(this);
 
 		RigidBody_SetShape(m_shape);
 		RigidBody_SetCenterOfMass(m_center);
