@@ -49,9 +49,6 @@ namespace Directus
 		void Tick();
 		//============
 
-		bool SaveAsPrefab(const std::string& filePath);
-		bool LoadFromPrefab(const std::string& filePath);
-
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);
 
@@ -183,7 +180,6 @@ namespace Directus
 		unsigned int m_ID;
 		std::string m_name;
 		bool m_isActive;
-		bool m_isPrefab;
 		bool m_hierarchyVisibility;
 		std::multimap<ComponentType, std::shared_ptr<IComponent>> m_components;
 		Context* m_context;

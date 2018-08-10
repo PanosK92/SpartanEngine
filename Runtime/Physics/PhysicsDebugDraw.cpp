@@ -33,32 +33,24 @@ namespace Directus
 {
 	PhysicsDebugDraw::PhysicsDebugDraw()
 	{
-		m_isDirty	= false;
 		m_debugMode = DBG_DrawWireframe | DBG_DrawContactPoints | DBG_DrawConstraints | DBG_DrawConstraintLimits | DBG_DrawNormals | DBG_DrawFrames;
 	}
 
 	PhysicsDebugDraw::~PhysicsDebugDraw()
 	{
-	}
-
-	void PhysicsDebugDraw::Release()
-	{
+		Clear();
 	}
 
 	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor)
 	{
 		m_lines.emplace_back(ToVector3(from), ToVector4(fromColor));
 		m_lines.emplace_back(ToVector3(to), ToVector4(toColor));
-
-		m_isDirty = true;
 	}
 
 	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
 	{
 		m_lines.emplace_back(ToVector3(from), ToVector4(color));
 		m_lines.emplace_back(ToVector3(to), ToVector4(color));
-
-		m_isDirty = true;
 	}
 
 	void PhysicsDebugDraw::drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color)
@@ -70,39 +62,12 @@ namespace Directus
 
 	void PhysicsDebugDraw::reportErrorWarning(const char* warningString)
 	{
-		LOG_WARNING("Physics: " + string(warningString));
-	}
-
-	void PhysicsDebugDraw::draw3dText(const btVector3& location, const char* textString)
-	{
-
-	}
-
-	void PhysicsDebugDraw::setDebugMode(int debugMode)
-	{
-		m_debugMode = debugMode;
-	}
-
-	int PhysicsDebugDraw::getDebugMode() const
-	{
-		return m_debugMode;
-	}
-
-	bool PhysicsDebugDraw::IsDirty()
-	{
-		return m_isDirty;
-	}
-
-	const std::vector<RHI_Vertex_PosCol>& PhysicsDebugDraw::GetLines()
-	{
-		return m_lines;
+		LOGF_WARNING("Physics: %s", warningString);
 	}
 
 	void PhysicsDebugDraw::Clear()
 	{
 		m_lines.clear();
 		m_lines.shrink_to_fit();
-
-		m_isDirty = false;
 	}
 }
