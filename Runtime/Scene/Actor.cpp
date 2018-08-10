@@ -51,7 +51,6 @@ namespace Directus
 		m_ID					= GENERATE_GUID;
 		m_name					= "Actor";
 		m_isActive				= true;
-		m_isPrefab				= false;
 		m_hierarchyVisibility	= true;
 		m_transform				= nullptr;
 		m_renderable			= nullptr;
@@ -81,7 +80,50 @@ namespace Directus
 
 	void Actor::Clone()
 	{
-		LOGF_INFO("Todo: Clone %s", m_name.c_str());
+		auto scene = m_context->GetSubsystem<Scene>();
+		vector<Actor*> clones;
+
+		// Creation of new actor and copying of a few properties
+		auto CloneActor = [&scene, &clones](Actor* actor)
+		{
+			Actor* clone = scene->Actor_CreateAdd().lock().get();
+			clone->SetID(actor->GetID());
+			clone->SetName(actor->GetName());
+			clones.emplace_back(clone);
+
+			return clone;
+		};
+
+		// Cloning of an actor and it's descendants (this is a recursive lambda)
+		function<Actor*(Actor*)> CloneActorAndDescendants = [&CloneActorAndDescendants, &CloneActor, &clones](Actor* original)
+		{
+			// clone self
+			Actor* cloneSelf = CloneActor(original);
+
+			// clone children make them call this lambda
+			for (const auto& childTransform : original->GetTransform_PtrRaw()->GetChildren())
+			{
+				Actor* cloneChild = CloneActorAndDescendants(childTransform->GetActor_PtrRaw());
+				cloneChild->GetTransform_PtrRaw()->SetParent(cloneSelf->GetTransform_PtrRaw());
+			}
+
+			// return self
+			return cloneSelf;
+		};
+
+		// Clone the entire hierarchy
+		CloneActorAndDescendants(this);
+
+		// Todo: stopping here for now
+		for (const auto& clone : clones)
+		{
+			auto oldID = clone->GetID();
+			auto newID = GENERATE_GUID;
+
+			clone->SetID(newID);
+		}
+
+		LOG_INFO("Todo: Also clone components");
 	}
 
 	void Actor::Start()
@@ -114,45 +156,14 @@ namespace Directus
 		}
 	}
 
-	bool Actor::SaveAsPrefab(const string& filePath)
-	{
-		// Create a prefab file
-		unique_ptr<FileStream> file = make_unique<FileStream>(filePath + EXTENSION_PREFAB, FileStreamMode_Write);
-		if (!file->IsOpen())
-			return false;
-
-		// Serialize
-		m_isPrefab = true;
-		Serialize(file.get());
-
-		return true;
-	}
-
-	bool Actor::LoadFromPrefab(const string& filePath)
-	{
-		// Make sure that this is a prefab file
-		if (!FileSystem::IsEnginePrefabFile(filePath))
-			return false;
-
-		// Try to open it
-		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Read);
-		if (!file->IsOpen())
-			return false;
-
-		Deserialize(file.get(), nullptr);
-
-		return true;
-	}
-
 	void Actor::Serialize(FileStream* stream)
 	{
-		//= BASIC DATA ==========================
-		stream->Write(m_isPrefab);
+		//= BASIC DATA ======================
 		stream->Write(m_isActive);
 		stream->Write(m_hierarchyVisibility);
 		stream->Write(m_ID);
 		stream->Write(m_name);
-		//=======================================
+		//===================================
 
 		//= COMPONENTS ================================
 		stream->Write((int)m_components.size());
@@ -199,7 +210,6 @@ namespace Directus
 	void Actor::Deserialize(FileStream* stream, Transform* parent)
 	{
 		//= BASIC DATA =====================
-		stream->Read(&m_isPrefab);
 		stream->Read(&m_isActive);
 		stream->Read(&m_hierarchyVisibility);
 		stream->Read(&m_ID);
@@ -257,7 +267,7 @@ namespace Directus
 
 		if (m_transform)
 		{
-			m_transform->ResolveChildrenRecursively();
+			m_transform->AcquireChildren();
 		}
 
 		// Make the scene resolve

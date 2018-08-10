@@ -59,7 +59,7 @@ namespace Directus
 
 	Physics::~Physics()
 	{
-		SafeRelease(m_debugDraw);
+
 	}
 
 	bool Physics::Initialize()

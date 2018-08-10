@@ -36,25 +36,23 @@ namespace Directus
 	{
 	public:
 		PhysicsDebugDraw();
-		void Release();
+		~PhysicsDebugDraw();
 
-		virtual ~PhysicsDebugDraw();
 		//= btIDebugDraw ==============================================================================================================================
 		void drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor) override;
 		void drawLine(const btVector3& from, const btVector3& to, const btVector3& color) override;
 		void drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color) override;
 		void reportErrorWarning(const char* warningString) override;
-		void draw3dText(const btVector3& location, const char* textString) override;
-		void setDebugMode(int debugMode) override;
-		int getDebugMode() const override;
+		void draw3dText(const btVector3& location, const char* textString) override {}
+		void setDebugMode(int debugMode) override	{ m_debugMode = debugMode; }
+		int getDebugMode() const override			{ return m_debugMode; }
 		//=============================================================================================================================================
 
-		bool IsDirty();
-		const std::vector<RHI_Vertex_PosCol>& GetLines();
+		bool IsDirty()										{ return !m_lines.empty(); }
+		const std::vector<RHI_Vertex_PosCol>& GetLines()	{ return m_lines; }
 		void Clear();
 	private:
 		std::vector<RHI_Vertex_PosCol> m_lines;
-		bool m_isDirty;
 		int m_debugMode;
 	};
 }

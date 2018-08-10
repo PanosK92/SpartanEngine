@@ -317,7 +317,7 @@ namespace Directus
 		// If there was a parent, update it
 		if (parent)
 		{
-			parent->ResolveChildrenRecursively();
+			parent->AcquireChildren();
 		}
 
 		Resolve();

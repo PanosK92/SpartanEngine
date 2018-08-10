@@ -79,23 +79,23 @@ namespace Directus
 		Math::Vector3 GetRight();
 		//=========================
 
-		//= HIERARCHY ==============================================================
-		bool IsRoot() { return !HasParent(); }
-		bool HasParent() { return m_parent; }
+		//= HIERARCHY =================================================================
+		bool IsRoot()		{ return !HasParent(); }
+		bool HasParent()	{ return m_parent; }
 		void SetParent(Transform* newParent);
 		void BecomeOrphan();
 		bool HasChildren() { return GetChildrenCount() > 0 ? true : false; }
 		void AddChild(Transform* child);
-		Transform* GetRoot() { return HasParent() ? GetParent()->GetRoot() : this; }
-		Transform* GetParent() { return m_parent; }
+		Transform* GetRoot()	{ return HasParent() ? GetParent()->GetRoot() : this; }
+		Transform* GetParent()	{ return m_parent; }
 		Transform* GetChildByIndex(int index);
 		Transform* GetChildByName(const std::string& name);
 		const std::vector<Transform*>& GetChildren() { return m_children; }
 		int GetChildrenCount() { return (int)m_children.size(); }
-		void ResolveChildrenRecursively();
+		void AcquireChildren();
 		bool IsDescendantOf(Transform* transform);
 		void GetDescendants(std::vector<Transform*>* descendants);
-		//==========================================================================
+		//=============================================================================
 
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
 		Math::Matrix& GetWorldTransform() { return m_worldTransform; }

@@ -262,20 +262,15 @@ namespace Directus
 			}
 		}
 
-		// Make this transform an orphan, this will also cause the 
-		// parent to "forget" about this transform/child
-		if (HasParent())
-		{
-			m_parent->ResolveChildrenRecursively();
-		}
-
-		// save the new parent as the current parent
+		// Switch parent but keep a pointer to the old one
+		auto parentOld = m_parent;
 		m_parent = newParent;
+		if (parentOld) parentOld->AcquireChildren(); // update the old parent (so it removes this child)
 
 		// make the new parent "aware" of this transform/child
 		if (m_parent)
 		{
-			m_parent->ResolveChildrenRecursively();
+			m_parent->AcquireChildren();
 		}
 
 		UpdateTransform();
@@ -322,9 +317,9 @@ namespace Directus
 		return nullptr;
 	}
 
-	// Searches the entiry hierarchy, finds any children and saves them in m_children.
+	// Searches the entire hierarchy, finds any children and saves them in m_children.
 	// This is a recursive function, the children will also find their own children and so on...
-	void Transform::ResolveChildrenRecursively()
+	void Transform::AcquireChildren()
 	{
 		m_children.clear();
 		m_children.shrink_to_fit();
@@ -346,11 +341,11 @@ namespace Directus
 			if (possibleChild->GetParent()->GetID() == m_ID)
 			{
 				// welcome home son
-				m_children.push_back(possibleChild);
+				m_children.emplace_back(possibleChild);
 
 				// make the child do the same thing all over, essentialy
 				// resolving the entire hierarchy.
-				possibleChild->ResolveChildrenRecursively();
+				possibleChild->AcquireChildren();
 			}
 		}
 	}
@@ -405,7 +400,7 @@ namespace Directus
 		// about this child, since it won't be able to find it
 		if (tempRef)
 		{
-			tempRef->ResolveChildrenRecursively();
+			tempRef->AcquireChildren();
 		}
 	}
 }
