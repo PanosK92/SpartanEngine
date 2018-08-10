@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../Core/Engine.h"
+#include "../../Math/Vector3.h"
 //======================================
 
 //= NAMESPACES ================
@@ -43,6 +44,12 @@ namespace Directus
 		m_worldTransform	= Matrix::Identity;
 		m_localTransform	= Matrix::Identity;
 		m_parent			= nullptr;
+
+		REGISTER_ATTRIBUTE(GetPosition, SetPosition,	Vector3);
+		REGISTER_ATTRIBUTE(GetRotation, SetRotation,	Quaternion);
+		REGISTER_ATTRIBUTE(GetScale,	SetScale,		Vector3);
+		//REGISTER_ATTRIBUTE(GetParent,	SetParent,		Transform*);
+		REGISTER_ATTRIBUTE_RAW(m_lookAt, Vector3);
 	}
 
 	Transform::~Transform()
@@ -67,17 +74,16 @@ namespace Directus
 
 	void Transform::Deserialize(FileStream* stream)
 	{
-		unsigned int parentactorID = 0;
-
 		stream->Read(&m_positionLocal);
 		stream->Read(&m_rotationLocal);
 		stream->Read(&m_scaleLocal);
 		stream->Read(&m_lookAt);
-		stream->Read(&parentactorID);
+		unsigned int parentActorID = 0;
+		stream->Read(&parentActorID);
 
-		if (parentactorID != NOT_ASSIGNED_HASH)
+		if (parentActorID != NOT_ASSIGNED_HASH)
 		{
-			auto parent = GetContext()->GetSubsystem<Scene>()->GetActorByID(parentactorID);
+			auto parent = GetContext()->GetSubsystem<Scene>()->GetActorByID(parentActorID);
 			if (!parent.expired())
 			{
 				parent.lock()->GetTransform_PtrRaw()->AddChild(this);
