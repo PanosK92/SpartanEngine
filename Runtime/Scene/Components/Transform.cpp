@@ -45,11 +45,12 @@ namespace Directus
 		m_localTransform	= Matrix::Identity;
 		m_parent			= nullptr;
 
-		REGISTER_ATTRIBUTE(GetPosition, SetPosition,	Vector3);
-		REGISTER_ATTRIBUTE(GetRotation, SetRotation,	Quaternion);
-		REGISTER_ATTRIBUTE(GetScale,	SetScale,		Vector3);
-		//REGISTER_ATTRIBUTE(GetParent,	SetParent,		Transform*);
-		REGISTER_ATTRIBUTE_RAW(m_lookAt, Vector3);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal,	Vector3);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLocal,	Quaternion);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_scaleLocal, Vector3);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_worldTransform, Matrix);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_localTransform, Matrix);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_lookAt, Vector3);
 	}
 
 	Transform::~Transform()

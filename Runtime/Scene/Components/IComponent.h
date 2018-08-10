@@ -115,13 +115,17 @@ namespace Directus
 		//=======================================================================================
 
 	protected:
-		#define REGISTER_ATTRIBUTE(getter, setter, type) RegisterAttribute(			\
-		[this]()						{ return getter(); },						\
-		[this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });	\
+		#define REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(		\
+		[this]()						{ return getter(); },							\
+		[this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });		\
 
-		#define REGISTER_ATTRIBUTE_RAW(value, type) RegisterAttribute(				\
-		[this]()						{ return value; },							\
-		[this](const std::any& valueIn) { value = std::any_cast<type>(valueIn); });	\
+		#define REGISTER_ATTRIBUTE_VALUE_SET(value, setter, type) RegisterAttribute(	\
+		[this]()						{ return value; },								\
+		[this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });		\
+
+		#define REGISTER_ATTRIBUTE_VALUE_VALUE(value, type) RegisterAttribute(			\
+		[this]()						{ return value; },								\
+		[this](const std::any& valueIn) { value = std::any_cast<type>(valueIn); });		\
 
 		// Registers an attribute
 		void RegisterAttribute(std::function<std::any()>&& getter, std::function<void(std::any)>&& setter)

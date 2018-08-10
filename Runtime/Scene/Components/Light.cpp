@@ -54,6 +54,14 @@ namespace Directus
 		// Note: These cascade splits have a logarithmic nature, have to fix
 		m_shadowMapSplits.emplace_back(0.906f);
 		m_shadowMapSplits.emplace_back(0.864f);
+
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows, bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_color, Vector4);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias, float);
+		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 	}
 
 	Light::~Light()

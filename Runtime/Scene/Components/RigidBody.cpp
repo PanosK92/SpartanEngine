@@ -94,6 +94,22 @@ namespace Directus
 		m_rotationLock		= Vector3::Zero;
 		m_physics			= GetContext()->GetSubsystem<Physics>();
 		m_collisionShape	= nullptr;
+
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_frictionRolling, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_restitution, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_useGravity, bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_isKinematic, bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_gravity, Vector3);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLock, Vector3);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLock, Vector3);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_centerOfMass, Vector3);	
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_constraints, vector<Constraint*>);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_inWorld, bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_physics, Physics*);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_hasSimulated, bool);
+		REGISTER_ATTRIBUTE_VALUE_SET(m_collisionShape, SetShape, shared_ptr<btCollisionShape>);
 	}
 
 	RigidBody::~RigidBody()
