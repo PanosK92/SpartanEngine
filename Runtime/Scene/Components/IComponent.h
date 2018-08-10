@@ -24,6 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include <string>
+#include <any>
+#include <vector>
+#include <functional>
 #include "../../Core/EngineDefs.h"
 //================================
 
@@ -49,6 +52,12 @@ namespace Directus
 		ComponentType_Skybox,
 		ComponentType_Transform,
 		ComponentType_Unknown
+	};
+
+	struct Attribute
+	{
+		std::function<std::any()> getter;
+		std::function<void(std::any)> setter;
 	};
 
 	class ENGINE_CLASS IComponent
@@ -78,7 +87,7 @@ namespace Directus
 		// Runs when the actor is being loaded
 		virtual void Deserialize(FileStream* stream) {}
 
-		//= PROPERTIES =================================================================
+		//= PROPERTIES ==========================================================================
 		Actor*					GetActor_PtrRaw()		{ return m_actor; }	
 		std::weak_ptr<Actor>	GetActor_PtrWeak()		{ return GetActor_PtrShared(); }
 		std::shared_ptr<Actor>  GetActor_PtrShared();
@@ -94,9 +103,35 @@ namespace Directus
 
 		template <typename T>
 		static ComponentType Type_To_Enum();
-		//==============================================================================
+
+		const auto& GetAttributes()	{ return m_attributes; }
+		void SetAttributes(const std::vector<Attribute>& attributes)
+		{ 
+			for (unsigned int i = 0; i < (unsigned int)m_attributes.size(); i++)
+			{
+				m_attributes[i].setter(attributes[i].getter());
+			}
+		}
+		//=======================================================================================
 
 	protected:
+		#define REGISTER_ATTRIBUTE(getter, setter, type) RegisterAttribute(			\
+		[this]()						{ return getter(); },						\
+		[this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });	\
+
+		#define REGISTER_ATTRIBUTE_RAW(value, type) RegisterAttribute(				\
+		[this]()						{ return value; },							\
+		[this](const std::any& valueIn) { value = std::any_cast<type>(valueIn); });	\
+
+		// Registers an attribute
+		void RegisterAttribute(std::function<std::any()>&& getter, std::function<void(std::any)>&& setter)
+		{ 
+			Attribute attribute;
+			attribute.getter = std::move(getter);
+			attribute.setter = std::move(setter);
+			m_attributes.emplace_back(attribute);
+		}
+
 		// The type of the component
 		ComponentType m_type		= ComponentType_Unknown;
 		// The id of the component
@@ -109,5 +144,9 @@ namespace Directus
 		Transform* m_transform		= nullptr;
 		// The context of the engine
 		Context* m_context			= nullptr;
+
+	private:
+		// The attributes of the component
+		std::vector<Attribute> m_attributes;
 	};
 }

@@ -169,6 +169,8 @@ namespace Directus
 		}
 
 		void RemoveComponentByID(unsigned int id);
+
+		const auto& GetAllComponents() { return m_components; }
 		//======================================================================================================
 
 		// Direct access for performance critical usage (not safe)

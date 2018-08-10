@@ -86,9 +86,18 @@ namespace Directus
 		// Creation of new actor and copying of a few properties
 		auto CloneActor = [&scene, &clones](Actor* actor)
 		{
+			// Clone the name and the ID
 			Actor* clone = scene->Actor_CreateAdd().lock().get();
 			clone->SetID(actor->GetID());
 			clone->SetName(actor->GetName());
+			// Clone all the components
+			for (const auto& component : actor->GetAllComponents())
+			{
+				shared_ptr<IComponent> originalComp = component.second;
+				shared_ptr<IComponent> cloneComp	= clone->AddComponent(component.first).lock();
+				cloneComp->SetAttributes(originalComp->GetAttributes());
+			}
+
 			clones.emplace_back(clone);
 
 			return clone;
