@@ -82,20 +82,34 @@ namespace Directus
 
 	void Constraint::OnTick()
 	{
-
+		if (m_deferredConstruction)
+		{
+			Construct();
+		}
 	}
 
 	void Constraint::Serialize(FileStream* stream)
 	{
+		stream->Write((int)m_constraintType);
+		stream->Write(m_position);
+		stream->Write(m_rotation);
+		stream->Write(m_highLimit);
+		stream->Write(m_lowLimit);
 		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetID() : (unsigned int)0);
 	}
 
 	void Constraint::Deserialize(FileStream* stream)
 	{
+		stream->Read(&((int)m_constraintType));
+		stream->Read(&m_position);
+		stream->Read(&m_rotation);
+		stream->Read(&m_highLimit);
+		stream->Read(&m_lowLimit);
+
 		unsigned int bodyOtherID = stream->ReadUInt();
 		m_bodyOther = GetContext()->GetSubsystem<Scene>()->GetActorByID(bodyOtherID);
 
-		ConstructConstraint();
+		Construct();
 	}
 
 	void Constraint::SetConstraintType(ConstraintType type)
@@ -103,7 +117,7 @@ namespace Directus
 		if (m_type != type || !m_constraint)
 		{
 			m_constraintType = type;
-			ConstructConstraint();
+			Construct();
 		}
 	}
 
@@ -155,7 +169,7 @@ namespace Directus
 		}
 
 		m_bodyOther = bodyOther;
-		ConstructConstraint();
+		Construct();
 	}
 
 	void Constraint::SetHighLimit(const Vector2& limit)
@@ -250,12 +264,25 @@ namespace Directus
 	/*------------------------------------------------------------------------------
 								[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	void Constraint::ConstructConstraint()
+	void Constraint::Construct()
 	{
 		ReleaseConstraint();
 
+		// Make sure we have two bodies
 		RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().lock().get();
 		RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
+		if (!rigidBodyOwn || !rigidBodyOther)
+		{
+			LOG_INFO("Constraint::Construct: A RigidBody component is still initializing, deferring construction...");
+			m_deferredConstruction = true;
+			return;
+		}
+		else if (m_deferredConstruction)
+		{
+			LOG_INFO("Constraint::Construct: Deferred construction has succeeded");
+			m_deferredConstruction = false;
+		}
+
 		btRigidBody* btOwnBody		= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
 		btRigidBody* btOtherBody	= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
 
@@ -314,7 +341,9 @@ namespace Directus
 			// Make both bodies aware of this constraint
 			rigidBodyOwn->AddConstraint(this);
 			if (rigidBodyOther)
+			{
 				rigidBodyOther->AddConstraint(this);
+			}
 
 		    ApplyLimits();
 		    m_physics->GetWorld()->addConstraint(m_constraint.get(), !m_collisionWithLinkedBody);

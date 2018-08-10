@@ -33,8 +33,8 @@ namespace Directus
 {
 	PhysicsDebugDraw::PhysicsDebugDraw()
 	{
-		m_isDirty = false;
-		m_debugMode = 0;
+		m_isDirty	= false;
+		m_debugMode = DBG_DrawWireframe | DBG_DrawContactPoints | DBG_DrawConstraints | DBG_DrawConstraintLimits | DBG_DrawNormals | DBG_DrawFrames;
 	}
 
 	PhysicsDebugDraw::~PhysicsDebugDraw()
@@ -75,6 +75,7 @@ namespace Directus
 
 	void PhysicsDebugDraw::draw3dText(const btVector3& location, const char* textString)
 	{
+
 	}
 
 	void PhysicsDebugDraw::setDebugMode(int debugMode)

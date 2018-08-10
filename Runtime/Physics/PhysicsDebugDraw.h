@@ -34,8 +34,6 @@ namespace Directus
 {
 	class PhysicsDebugDraw : public btIDebugDraw
 	{
-		int m_debugMode;
-
 	public:
 		PhysicsDebugDraw();
 		void Release();
@@ -57,5 +55,6 @@ namespace Directus
 	private:
 		std::vector<RHI_Vertex_PosCol> m_lines;
 		bool m_isDirty;
+		int m_debugMode;
 	};
 }

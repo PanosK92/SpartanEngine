@@ -729,25 +729,31 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 		ImGui::Text("High Limit");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
 		ImGui::SameLine(); ImGui::InputText("##ConsHighLimX", consHighX, BUFFER_TEXT_DEFAULT, inputTextFlags);
-		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##ConsHighLimY", consHighY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		if (constraint->GetConstraintType() == ConstraintType_Slider)
+		{
+			ImGui::SameLine(); ImGui::Text("Y");
+			ImGui::SameLine(); ImGui::InputText("##ConsHighLimY", consHighY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		}
 
 		// Low Limit
 		ImGui::Text("Low Limit");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
 		ImGui::SameLine(); ImGui::InputText("##ConsLowLimX", consLowX, BUFFER_TEXT_DEFAULT, inputTextFlags);
-		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputText("##ConsLowLimY", consLowY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		if (constraint->GetConstraintType() == ConstraintType_Slider)
+		{
+			ImGui::SameLine(); ImGui::Text("Y");
+			ImGui::SameLine(); ImGui::InputText("##ConsLowLimY", consLowY, BUFFER_TEXT_DEFAULT, inputTextFlags);
+		}
 	}
 	ComponentProperty::End();
 
 	//= MAP ====================================================================================================================================
 	position.x	= (float)atof(&consPosX[0]);
 	position.y	= (float)atof(&consPosY[0]);
-	position.x	= (float)atof(&consPosZ[0]);
+	position.z	= (float)atof(&consPosZ[0]);
 	rotation.x	= (float)atof(&consRotX[0]);
 	rotation.y	= (float)atof(&consRotY[0]);
-	rotation.x	= (float)atof(&consRotZ[0]);
+	rotation.z	= (float)atof(&consRotZ[0]);
 	highLimit.x	= (float)atof(&consHighX[0]);
 	highLimit.y	= (float)atof(&consHighY[0]);
 	lowLimit.x	= (float)atof(&consLowX[0]);

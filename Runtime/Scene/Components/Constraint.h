@@ -94,25 +94,27 @@ namespace Directus
 		void ApplyFrames();
 
 	private:
-		void ConstructConstraint();
+		void Construct();
 		void ApplyLimits();
 		
 		std::unique_ptr<btTypedConstraint> m_constraint;
 
+		ConstraintType m_constraintType;
 		Math::Vector3 m_position;
 		Math::Quaternion m_rotation;
+		Math::Vector2 m_highLimit;
+		Math::Vector2 m_lowLimit;
 
 		std::weak_ptr<Actor> m_bodyOther;
 		Math::Vector3 m_positionOther;
 		Math::Quaternion m_rotationOther;
 
-		Math::Vector2 m_highLimit;
-		Math::Vector2 m_lowLimit;
+	
 		float m_errorReduction;
 		float m_constraintForceMixing;
 		bool m_enabledEffective;
 		bool m_collisionWithLinkedBody;
-		ConstraintType m_constraintType;
+		bool m_deferredConstruction;
 
 		Physics* m_physics;
 	};

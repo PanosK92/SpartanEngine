@@ -77,8 +77,6 @@ namespace Directus
 
 		// Create an implementation of the btIDebugDraw interface
 		m_debugDraw = make_shared<PhysicsDebugDraw>();
-		// Draw everything
-		m_debugDraw->setDebugMode(btIDebugDraw::DBG_MAX_DEBUG_DRAW_MODE);
 
 		// Setup world
 		m_world->setGravity(ToBtVector3(GRAVITY));
