@@ -98,6 +98,20 @@ namespace Directus
 		m_materialRef			= nullptr;
 		m_castShadows			= true;
 		m_receiveShadows		= true;
+
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_materialDefault, bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_materialRef, Material*);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_materialRefWeak, weak_ptr<Material>);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows, bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_receiveShadows, bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset, unsigned int);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount, unsigned int);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset, unsigned int);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount, unsigned int);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName, string);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_model, Model*);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryAABB, BoundingBox);
+		REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, Geometry_Set, GeometryType);
 	}
 
 	Renderable::~Renderable()

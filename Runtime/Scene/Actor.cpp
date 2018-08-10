@@ -90,6 +90,9 @@ namespace Directus
 			Actor* clone = scene->Actor_CreateAdd().lock().get();
 			clone->SetID(actor->GetID());
 			clone->SetName(actor->GetName());
+			clone->SetActive(actor->IsActive());
+			clone->SetHierarchyVisibility(actor->IsVisibleInHierarchy());
+
 			// Clone all the components
 			for (const auto& component : actor->GetAllComponents())
 			{
@@ -131,8 +134,6 @@ namespace Directus
 
 			clone->SetID(newID);
 		}
-
-		LOG_INFO("Todo: Also clone components");
 	}
 
 	void Actor::Start()
