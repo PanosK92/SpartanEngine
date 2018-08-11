@@ -50,6 +50,12 @@ namespace Directus
 		m_shapeType = ColliderShape_Box;
 		m_center	= Vector3::Zero;
 		m_size		= Vector3::One;
+
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_center, Vector3);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_vertexLimit, unsigned int);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_optimize, bool);
+		REGISTER_ATTRIBUTE_VALUE_SET(m_shapeType, SetShapeType, ColliderShape);
 	}
 
 	Collider::~Collider()

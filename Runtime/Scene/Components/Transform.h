@@ -98,8 +98,8 @@ namespace Directus
 		//=============================================================================
 
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
-		Math::Matrix& GetWorldTransform() { return m_worldTransform; }
-		Math::Matrix& GetLocalTransform() { return m_localTransform; }
+		Math::Matrix& GetWorldTransform()	{ return m_worldTransform; }
+		Math::Matrix& GetLocalTransform()	 { return m_localTransform; }
 
 	private:
 		// local

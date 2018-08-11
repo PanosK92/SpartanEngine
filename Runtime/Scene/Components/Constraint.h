@@ -108,7 +108,6 @@ namespace Directus
 		std::weak_ptr<Actor> m_bodyOther;
 		Math::Vector3 m_positionOther;
 		Math::Quaternion m_rotationOther;
-
 	
 		float m_errorReduction;
 		float m_constraintForceMixing;
