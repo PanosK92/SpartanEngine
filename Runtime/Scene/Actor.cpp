@@ -88,7 +88,7 @@ namespace Directus
 		{
 			// Clone the name and the ID
 			Actor* clone = scene->Actor_CreateAdd().lock().get();
-			clone->SetID(actor->GetID());
+			clone->SetID(GENERATE_GUID);
 			clone->SetName(actor->GetName());
 			clone->SetActive(actor->IsActive());
 			clone->SetHierarchyVisibility(actor->IsVisibleInHierarchy());
@@ -125,15 +125,6 @@ namespace Directus
 
 		// Clone the entire hierarchy
 		CloneActorAndDescendants(this);
-
-		// Todo: stopping here for now
-		for (const auto& clone : clones)
-		{
-			auto oldID = clone->GetID();
-			auto newID = GENERATE_GUID;
-
-			clone->SetID(newID);
-		}
 	}
 
 	void Actor::Start()

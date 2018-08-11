@@ -219,36 +219,36 @@ void Widget_Properties::Inspect(weak_ptr<Material> material)
 }
 
 void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
-{
-	//= REFLECT ==================================================
-	Vector3 position		= transform->GetPositionLocal();
-	Quaternion rotation		= transform->GetRotationLocal();
-	Vector3 rotationEuler	= rotation.ToEulerAngles();
-	Vector3 scale			= transform->GetScaleLocal();
-
-	char transPosX[BUFFER_TEXT_DEFAULT];
-	char transPosY[BUFFER_TEXT_DEFAULT];
-	char transPosZ[BUFFER_TEXT_DEFAULT];
-	char transRotX[BUFFER_TEXT_DEFAULT];
-	char transRotY[BUFFER_TEXT_DEFAULT];
-	char transRotZ[BUFFER_TEXT_DEFAULT];
-	char transScaX[BUFFER_TEXT_DEFAULT];
-	char transScaY[BUFFER_TEXT_DEFAULT];
-	char transScaZ[BUFFER_TEXT_DEFAULT];
-		
-	EditorHelper::SetCharArray(&transPosX[0], position.x);
-	EditorHelper::SetCharArray(&transPosY[0], position.y);
-	EditorHelper::SetCharArray(&transPosZ[0], position.z);
-	EditorHelper::SetCharArray(&transRotX[0], rotationEuler.x);
-	EditorHelper::SetCharArray(&transRotY[0], rotationEuler.y);
-	EditorHelper::SetCharArray(&transRotZ[0], rotationEuler.z);
-	EditorHelper::SetCharArray(&transScaX[0], scale.x);
-	EditorHelper::SetCharArray(&transScaY[0], scale.y);
-	EditorHelper::SetCharArray(&transScaZ[0], scale.z);
-	//============================================================
-			
-	if (ComponentProperty::Begin("Transform", Icon_Component_Transform, nullptr, true, false))
+{		
+	if (ComponentProperty::Begin("Transform", Icon_Component_Transform, transform, true, false))
 	{
+		//= REFLECT ==================================================
+		Vector3 position = transform->GetPositionLocal();
+		Quaternion rotation = transform->GetRotationLocal();
+		Vector3 rotationEuler = rotation.ToEulerAngles();
+		Vector3 scale = transform->GetScaleLocal();
+
+		char transPosX[BUFFER_TEXT_DEFAULT];
+		char transPosY[BUFFER_TEXT_DEFAULT];
+		char transPosZ[BUFFER_TEXT_DEFAULT];
+		char transRotX[BUFFER_TEXT_DEFAULT];
+		char transRotY[BUFFER_TEXT_DEFAULT];
+		char transRotZ[BUFFER_TEXT_DEFAULT];
+		char transScaX[BUFFER_TEXT_DEFAULT];
+		char transScaY[BUFFER_TEXT_DEFAULT];
+		char transScaZ[BUFFER_TEXT_DEFAULT];
+
+		EditorHelper::SetCharArray(&transPosX[0], position.x);
+		EditorHelper::SetCharArray(&transPosY[0], position.y);
+		EditorHelper::SetCharArray(&transPosZ[0], position.z);
+		EditorHelper::SetCharArray(&transRotX[0], rotationEuler.x);
+		EditorHelper::SetCharArray(&transRotY[0], rotationEuler.y);
+		EditorHelper::SetCharArray(&transRotZ[0], rotationEuler.z);
+		EditorHelper::SetCharArray(&transScaX[0], scale.x);
+		EditorHelper::SetCharArray(&transScaY[0], scale.y);
+		EditorHelper::SetCharArray(&transScaZ[0], scale.z);
+		//============================================================
+
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Position
@@ -277,32 +277,32 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 		ImGui::SameLine(); ImGui::InputText("##TransScaY", transScaY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
 		ImGui::SameLine(); ImGui::InputText("##TransScaZ", transScaZ, BUFFER_TEXT_DEFAULT, inputTextFlags);
+
+		//= MAP ==================================================================================
+		position = Vector3(
+			(float)atof(&transPosX[0]),
+			(float)atof(&transPosY[0]),
+			(float)atof(&transPosZ[0])
+		);
+
+		rotation = Quaternion::FromEulerAngles(
+			(float)atof(&transRotX[0]),
+			(float)atof(&transRotY[0]),
+			(float)atof(&transRotZ[0])
+		);
+
+		scale = Vector3(
+			(float)atof(&transScaX[0]),
+			(float)atof(&transScaY[0]),
+			(float)atof(&transScaZ[0])
+		);
+
+		if (position != transform->GetPositionLocal())	transform->SetPositionLocal(position);
+		if (rotation != transform->GetRotationLocal())	transform->SetRotationLocal(rotation);
+		if (scale != transform->GetScaleLocal())		transform->SetScaleLocal(scale);
+		//========================================================================================
 	}
 	ComponentProperty::End();
-
-	//= MAP ==================================================================================
-	position = Vector3(
-		(float)atof(&transPosX[0]),
-		(float)atof(&transPosY[0]),
-		(float)atof(&transPosZ[0])
-	);
-
-	rotation = Quaternion::FromEulerAngles(
-		(float)atof(&transRotX[0]),
-		(float)atof(&transRotY[0]),
-		(float)atof(&transRotZ[0])
-	);
-
-	scale = Vector3(
-		(float)atof(&transScaX[0]),
-		(float)atof(&transScaY[0]),
-		(float)atof(&transScaZ[0])
-	);
-
-	if (position	!= transform->GetPositionLocal())	transform->SetPositionLocal(position);
-	if (rotation	!= transform->GetRotationLocal())	transform->SetRotationLocal(rotation);
-	if (scale		!= transform->GetScaleLocal())		transform->SetScaleLocal(scale);
-	//========================================================================================
 }
 
 void Widget_Properties::ShowLight(shared_ptr<Light>& light)
@@ -310,21 +310,21 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 	if (!light)
 		return;
 
-	//= REFLECT =====================================================
-	static vector<char*> types	= { "Directional", "Point", "Spot" };
-	int typeInt					= (int)light->GetLightType();
-	const char* typeCharPtr		= types[typeInt];	
-	float intensity				= light->GetIntensity();
-	float angle					= light->GetAngle() * 179.0f;
-	bool castsShadows			= light->GetCastShadows();
-	float range					= light->GetRange();
-	float split1				= light->ShadowMap_GetSplit(0);
-	float split2				= light->ShadowMap_GetSplit(1);
-	g_lightButtonColorPicker->SetColor(light->GetColor());
-	//===============================================================
-	
 	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
 	{
+		//= REFLECT =====================================================
+		static vector<char*> types = { "Directional", "Point", "Spot" };
+		int typeInt = (int)light->GetLightType();
+		const char* typeCharPtr = types[typeInt];
+		float intensity = light->GetIntensity();
+		float angle = light->GetAngle() * 179.0f;
+		bool castsShadows = light->GetCastShadows();
+		float range = light->GetRange();
+		float split1 = light->ShadowMap_GetSplit(0);
+		float split2 = light->ShadowMap_GetSplit(1);
+		g_lightButtonColorPicker->SetColor(light->GetColor());
+		//===============================================================
+
 		// Type
 		ImGui::Text("Type");
 		ImGui::PushItemWidth(110.0f); 
@@ -387,19 +387,19 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 			ImGui::SameLine(ComponentProperty::g_column);
 			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightAngle", &angle, 1.0f, 179.0f); ImGui::PopItemWidth();
 		}
+
+		//= MAP ==============================================================================================================
+		if ((LightType)typeInt != light->GetLightType())				light->SetLightType((LightType)typeInt);
+		if (intensity != light->GetIntensity())				light->SetIntensity(intensity);
+		if (castsShadows != light->GetCastShadows())				light->SetCastShadows(castsShadows);
+		if (angle / 179.0f != light->GetAngle())					light->SetAngle(angle / 179.0f);
+		if (range != light->GetRange())					light->SetRange(range);
+		if (split1 != light->ShadowMap_GetSplit(0))		light->ShadowMap_SetSplit(split1, 0);
+		if (split2 != light->ShadowMap_GetSplit(1))		light->ShadowMap_SetSplit(split2, 1);
+		if (g_lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(g_lightButtonColorPicker->GetColor());
+		//====================================================================================================================
 	}
 	ComponentProperty::End();
-
-	//= MAP ==============================================================================================================
-	if ((LightType)typeInt	!= light->GetLightType())				light->SetLightType((LightType)typeInt);
-	if (intensity			!= light->GetIntensity())				light->SetIntensity(intensity);
-	if (castsShadows		!= light->GetCastShadows())				light->SetCastShadows(castsShadows);
-	if (angle / 179.0f		!= light->GetAngle())					light->SetAngle(angle / 179.0f);
-	if (range				!= light->GetRange())					light->SetRange(range);
-	if (split1				!= light->ShadowMap_GetSplit(0))		light->ShadowMap_SetSplit(split1, 0);
-	if (split2				!= light->ShadowMap_GetSplit(1))		light->ShadowMap_SetSplit(split2, 1);
-	if (g_lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(g_lightButtonColorPicker->GetColor());
-	//====================================================================================================================
 }
 
 void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable)
@@ -407,16 +407,16 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable)
 	if (!renderable)
 		return;
 
-	//= REFLECT ================================================================
-	string meshName		= renderable->Geometry_Name();
-	auto material		= renderable->Material_RefWeak().lock();
-	string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
-	bool castShadows	= renderable->GetCastShadows();
-	bool receiveShadows = renderable->GetReceiveShadows();
-	//==========================================================================
-	
 	if (ComponentProperty::Begin("Renderable", Icon_Component_Renderable, renderable))
 	{
+		//= REFLECT ================================================================
+		string meshName = renderable->Geometry_Name();
+		auto material = renderable->Material_RefWeak().lock();
+		string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
+		bool castShadows = renderable->GetCastShadows();
+		bool receiveShadows = renderable->GetReceiveShadows();
+		//==========================================================================
+
 		ImGui::Text("Mesh");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(meshName.c_str());
 
@@ -431,13 +431,13 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable)
 		// Receive shadows
 		ImGui::Text("Receive Shadows");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##RenderableReceiveShadows", &receiveShadows);
+
+		//= MAP ====================================================================================================
+		if (castShadows != renderable->GetCastShadows())		renderable->SetCastShadows(castShadows);
+		if (receiveShadows != renderable->GetReceiveShadows())	renderable->SetReceiveShadows(receiveShadows);
+		//==========================================================================================================
 	}
 	ComponentProperty::End();
-
-	//= MAP ====================================================================================================
-	if (castShadows		!= renderable->GetCastShadows())		renderable->SetCastShadows(castShadows);
-	if (receiveShadows	!= renderable->GetReceiveShadows())	renderable->SetReceiveShadows(receiveShadows);
-	//==========================================================================================================
 }
 
 void Widget_Properties::ShowRigidBody(shared_ptr<RigidBody>& rigidBody)
@@ -445,33 +445,33 @@ void Widget_Properties::ShowRigidBody(shared_ptr<RigidBody>& rigidBody)
 	if (!rigidBody)
 		return;
 
-	//= REFLECT ==============================================================
-	float mass				= rigidBody->GetMass();
-	float friction			= rigidBody->GetFriction();
-	float frictionRolling	= rigidBody->GetFrictionRolling();
-	float restitution		= rigidBody->GetRestitution();
-	bool useGravity			= rigidBody->GetUseGravity();
-	bool isKinematic		= rigidBody->GetIsKinematic();
-	bool freezePosX			= (bool)rigidBody->GetPositionLock().x;
-	bool freezePosY			= (bool)rigidBody->GetPositionLock().y;
-	bool freezePosZ			= (bool)rigidBody->GetPositionLock().z;
-	bool freezeRotX			= (bool)rigidBody->GetRotationLock().x;
-	bool freezeRotY			= (bool)rigidBody->GetRotationLock().y;
-	bool freezeRotZ			= (bool)rigidBody->GetRotationLock().z;
-
-	char massCharArray[BUFFER_TEXT_DEFAULT]				= "0";
-	char frictionCharArray[BUFFER_TEXT_DEFAULT]			= "0";
-	char frictionRollingCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	char restitutionCharArray[BUFFER_TEXT_DEFAULT]		= "0";
-
-	EditorHelper::SetCharArray(&massCharArray[0], mass);
-	EditorHelper::SetCharArray(&frictionCharArray[0], friction);
-	EditorHelper::SetCharArray(&frictionRollingCharArray[0], frictionRolling);
-	EditorHelper::SetCharArray(&restitutionCharArray[0], restitution);
-	//========================================================================
-
 	if (ComponentProperty::Begin("RigidBody", Icon_Component_RigidBody, rigidBody))
 	{
+		//= REFLECT ==============================================================
+		float mass = rigidBody->GetMass();
+		float friction = rigidBody->GetFriction();
+		float frictionRolling = rigidBody->GetFrictionRolling();
+		float restitution = rigidBody->GetRestitution();
+		bool useGravity = rigidBody->GetUseGravity();
+		bool isKinematic = rigidBody->GetIsKinematic();
+		bool freezePosX = (bool)rigidBody->GetPositionLock().x;
+		bool freezePosY = (bool)rigidBody->GetPositionLock().y;
+		bool freezePosZ = (bool)rigidBody->GetPositionLock().z;
+		bool freezeRotX = (bool)rigidBody->GetRotationLock().x;
+		bool freezeRotY = (bool)rigidBody->GetRotationLock().y;
+		bool freezeRotZ = (bool)rigidBody->GetRotationLock().z;
+
+		char massCharArray[BUFFER_TEXT_DEFAULT] = "0";
+		char frictionCharArray[BUFFER_TEXT_DEFAULT] = "0";
+		char frictionRollingCharArray[BUFFER_TEXT_DEFAULT] = "0";
+		char restitutionCharArray[BUFFER_TEXT_DEFAULT] = "0";
+
+		EditorHelper::SetCharArray(&massCharArray[0], mass);
+		EditorHelper::SetCharArray(&frictionCharArray[0], friction);
+		EditorHelper::SetCharArray(&frictionRollingCharArray[0], frictionRolling);
+		EditorHelper::SetCharArray(&restitutionCharArray[0], restitution);
+		//========================================================================
+
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Mass
@@ -515,28 +515,28 @@ void Widget_Properties::ShowRigidBody(shared_ptr<RigidBody>& rigidBody)
 		ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotY", &freezeRotY);
 		ImGui::SameLine(); ImGui::Text("Z");
 		ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotZ", &freezeRotZ);
+
+		//= MAP =====================================================================================================================================================
+		mass = (float)atof(&massCharArray[0]);
+		friction = (float)atof(&frictionCharArray[0]);
+		frictionRolling = (float)atof(&frictionRollingCharArray[0]);
+		restitution = (float)atof(&restitutionCharArray[0]);
+
+		if (mass != rigidBody->GetMass())					rigidBody->SetMass(mass);
+		if (friction != rigidBody->GetFriction())				rigidBody->SetFriction(friction);
+		if (frictionRolling != rigidBody->GetFrictionRolling())			rigidBody->SetFrictionRolling(frictionRolling);
+		if (restitution != rigidBody->GetRestitution())				rigidBody->SetRestitution(restitution);
+		if (useGravity != rigidBody->GetUseGravity())				rigidBody->SetUseGravity(useGravity);
+		if (isKinematic != rigidBody->GetIsKinematic())				rigidBody->SetIsKinematic(isKinematic);
+		if (freezePosX != (bool)rigidBody->GetPositionLock().x)	rigidBody->SetPositionLock(Vector3((float)freezePosX, (float)freezePosY, (float)freezePosZ));
+		if (freezePosY != (bool)rigidBody->GetPositionLock().y)	rigidBody->SetPositionLock(Vector3((float)freezePosX, (float)freezePosY, (float)freezePosZ));
+		if (freezePosZ != (bool)rigidBody->GetPositionLock().z)	rigidBody->SetPositionLock(Vector3((float)freezePosX, (float)freezePosY, (float)freezePosZ));
+		if (freezeRotX != (bool)rigidBody->GetRotationLock().x)	rigidBody->SetRotationLock(Vector3((float)freezeRotX, (float)freezeRotY, (float)freezeRotZ));
+		if (freezeRotY != (bool)rigidBody->GetRotationLock().y)	rigidBody->SetRotationLock(Vector3((float)freezeRotX, (float)freezeRotY, (float)freezeRotZ));
+		if (freezeRotZ != (bool)rigidBody->GetRotationLock().z)	rigidBody->SetRotationLock(Vector3((float)freezeRotX, (float)freezeRotY, (float)freezeRotZ));
+		//===========================================================================================================================================================
 	}
 	ComponentProperty::End();
-
-	//= MAP =====================================================================================================================================================
-	mass			= (float)atof(&massCharArray[0]);
-	friction		= (float)atof(&frictionCharArray[0]);
-	frictionRolling = (float)atof(&frictionRollingCharArray[0]);
-	restitution		= (float)atof(&restitutionCharArray[0]);
-
-	if (mass			!= rigidBody->GetMass())					rigidBody->SetMass(mass);
-	if (friction		!= rigidBody->GetFriction())				rigidBody->SetFriction(friction);
-	if (frictionRolling != rigidBody->GetFrictionRolling())			rigidBody->SetFrictionRolling(frictionRolling);
-	if (restitution		!= rigidBody->GetRestitution())				rigidBody->SetRestitution(restitution);
-	if (useGravity		!= rigidBody->GetUseGravity())				rigidBody->SetUseGravity(useGravity);
-	if (isKinematic		!= rigidBody->GetIsKinematic())				rigidBody->SetIsKinematic(isKinematic);
-	if (freezePosX		!= (bool)rigidBody->GetPositionLock().x)	rigidBody->SetPositionLock(Vector3((float)freezePosX, (float)freezePosY, (float)freezePosZ));
-	if (freezePosY		!= (bool)rigidBody->GetPositionLock().y)	rigidBody->SetPositionLock(Vector3((float)freezePosX, (float)freezePosY, (float)freezePosZ));
-	if (freezePosZ		!= (bool)rigidBody->GetPositionLock().z)	rigidBody->SetPositionLock(Vector3((float)freezePosX, (float)freezePosY, (float)freezePosZ));
-	if (freezeRotX		!= (bool)rigidBody->GetRotationLock().x)	rigidBody->SetRotationLock(Vector3((float)freezeRotX, (float)freezeRotY, (float)freezeRotZ));
-	if (freezeRotY		!= (bool)rigidBody->GetRotationLock().y)	rigidBody->SetRotationLock(Vector3((float)freezeRotX, (float)freezeRotY, (float)freezeRotZ));
-	if (freezeRotZ		!= (bool)rigidBody->GetRotationLock().z)	rigidBody->SetRotationLock(Vector3((float)freezeRotX, (float)freezeRotY, (float)freezeRotZ));
-	//===========================================================================================================================================================
 }
 
 void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
@@ -544,39 +544,39 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 	if (!collider)
 		return;
 	
-	//= REFLECT ==========================================================
-	static vector<char*> type = {
-		"Box",
-		"Sphere",
-		"Static Plane",
-		"Cylinder",
-		"Capsule",
-		"Cone",
-		"Mesh"
-	};	
-	int shapeInt				= (int)collider->GetShapeType();
-	const char* shapeCharPtr	= type[shapeInt];
-	bool optimize				= collider->GetOptimize();
-	Vector3 colliderCenter		= collider->GetCenter();
-	Vector3 colliderBoundingBox = collider->GetBoundingBox();
-
-	char centerXCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	char centerYCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	char centerZCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	char sizeXCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	char sizeYCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	char sizeZCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-
-	EditorHelper::SetCharArray(&centerXCharArray[0], colliderCenter.x);
-	EditorHelper::SetCharArray(&centerYCharArray[0], colliderCenter.y);
-	EditorHelper::SetCharArray(&centerZCharArray[0], colliderCenter.z);
-	EditorHelper::SetCharArray(&sizeXCharArray[0], colliderBoundingBox.x);
-	EditorHelper::SetCharArray(&sizeYCharArray[0], colliderBoundingBox.y);
-	EditorHelper::SetCharArray(&sizeZCharArray[0], colliderBoundingBox.z);
-	//====================================================================
-
 	if (ComponentProperty::Begin("Collider", Icon_Component_Collider, collider))
 	{
+		//= REFLECT ==========================================================
+		static vector<char*> type = {
+			"Box",
+			"Sphere",
+			"Static Plane",
+			"Cylinder",
+			"Capsule",
+			"Cone",
+			"Mesh"
+		};
+		int shapeInt = (int)collider->GetShapeType();
+		const char* shapeCharPtr = type[shapeInt];
+		bool optimize = collider->GetOptimize();
+		Vector3 colliderCenter = collider->GetCenter();
+		Vector3 colliderBoundingBox = collider->GetBoundingBox();
+
+		char centerXCharArray[BUFFER_TEXT_DEFAULT] = "0";
+		char centerYCharArray[BUFFER_TEXT_DEFAULT] = "0";
+		char centerZCharArray[BUFFER_TEXT_DEFAULT] = "0";
+		char sizeXCharArray[BUFFER_TEXT_DEFAULT] = "0";
+		char sizeYCharArray[BUFFER_TEXT_DEFAULT] = "0";
+		char sizeZCharArray[BUFFER_TEXT_DEFAULT] = "0";
+
+		EditorHelper::SetCharArray(&centerXCharArray[0], colliderCenter.x);
+		EditorHelper::SetCharArray(&centerYCharArray[0], colliderCenter.y);
+		EditorHelper::SetCharArray(&centerZCharArray[0], colliderCenter.z);
+		EditorHelper::SetCharArray(&sizeXCharArray[0], colliderBoundingBox.x);
+		EditorHelper::SetCharArray(&sizeYCharArray[0], colliderBoundingBox.y);
+		EditorHelper::SetCharArray(&sizeZCharArray[0], colliderBoundingBox.z);
+		//====================================================================
+
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Type
@@ -625,22 +625,22 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 			ImGui::Text("Optimize");
 			ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##colliderOptimize", &optimize);
 		}
+
+		//= MAP ====================================================================================================
+		colliderCenter.x = (float)atof(&centerXCharArray[0]);
+		colliderCenter.y = (float)atof(&centerYCharArray[0]);
+		colliderCenter.z = (float)atof(&centerZCharArray[0]);
+		colliderBoundingBox.x = (float)atof(&sizeXCharArray[0]);
+		colliderBoundingBox.y = (float)atof(&sizeYCharArray[0]);
+		colliderBoundingBox.z = (float)atof(&sizeZCharArray[0]);
+
+		if ((ColliderShape)shapeInt != collider->GetShapeType())	collider->SetShapeType((ColliderShape)shapeInt);
+		if (colliderCenter != collider->GetCenter())		collider->SetCenter(colliderCenter);
+		if (colliderBoundingBox != collider->GetBoundingBox())	collider->SetBoundingBox(colliderBoundingBox);
+		if (optimize != collider->GetOptimize())		collider->SetOptimize(optimize);
+		//==========================================================================================================
 	}
 	ComponentProperty::End();
-
-	//= MAP ====================================================================================================
-	colliderCenter.x		= (float)atof(&centerXCharArray[0]);
-	colliderCenter.y		= (float)atof(&centerYCharArray[0]);
-	colliderCenter.z		= (float)atof(&centerZCharArray[0]);
-	colliderBoundingBox.x	= (float)atof(&sizeXCharArray[0]);
-	colliderBoundingBox.y	= (float)atof(&sizeYCharArray[0]);
-	colliderBoundingBox.z	= (float)atof(&sizeZCharArray[0]);
-
-	if ((ColliderShape)shapeInt != collider->GetShapeType())	collider->SetShapeType((ColliderShape)shapeInt);
-	if (colliderCenter			!= collider->GetCenter())		collider->SetCenter(colliderCenter);
-	if (colliderBoundingBox		!= collider->GetBoundingBox())	collider->SetBoundingBox(colliderBoundingBox);
-	if (optimize				!= collider->GetOptimize())		collider->SetOptimize(optimize);	
-	//==========================================================================================================
 }
 
 void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
@@ -648,49 +648,49 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 	if (!constraint)
 		return;
 
-	//= REFLECT ==============================================
-	static vector<char*> types = {
-		"Point",
-		"Hinge",
-		"Slider",
-		"ConeTwist"
-	};
-	int typeInt								= (int)constraint->GetConstraintType();
-	const char* typeStr						= types[typeInt];
-	weak_ptr<Actor>	otherBody				= constraint->GetBodyOther();
-	bool otherBodyDirty						= false;
-	char otherBodyNameArray[BUFFER_TEXT_DEFAULT];
-	Vector3 position 						= constraint->GetPosition();
-	Vector3 rotation						= constraint->GetRotation().ToEulerAngles();
-	Vector2 highLimit 						= constraint->GetHighLimit();
-	Vector2 lowLimit 						= constraint->GetLowLimit();
-
-	char consPosX[BUFFER_TEXT_DEFAULT];
-	char consPosY[BUFFER_TEXT_DEFAULT];
-	char consPosZ[BUFFER_TEXT_DEFAULT];
-	char consRotX[BUFFER_TEXT_DEFAULT];
-	char consRotY[BUFFER_TEXT_DEFAULT];
-	char consRotZ[BUFFER_TEXT_DEFAULT];
-	char consHighX[BUFFER_TEXT_DEFAULT];
-	char consHighY[BUFFER_TEXT_DEFAULT];
-	char consLowX[BUFFER_TEXT_DEFAULT];
-	char consLowY[BUFFER_TEXT_DEFAULT];
-
-	EditorHelper::SetCharArray(&otherBodyNameArray[0], otherBody.expired() ? "N/A" : otherBody.lock()->GetName());
-	EditorHelper::SetCharArray(&consPosX[0], position.x);
-	EditorHelper::SetCharArray(&consPosY[0], position.y);
-	EditorHelper::SetCharArray(&consPosZ[0], position.z);
-	EditorHelper::SetCharArray(&consRotX[0], rotation.x);
-	EditorHelper::SetCharArray(&consRotY[0], rotation.y);
-	EditorHelper::SetCharArray(&consRotZ[0], rotation.z);
-	EditorHelper::SetCharArray(&consHighX[0], highLimit.x);
-	EditorHelper::SetCharArray(&consHighY[0], highLimit.y);
-	EditorHelper::SetCharArray(&consLowX[0], lowLimit.x);
-	EditorHelper::SetCharArray(&consLowY[0], lowLimit.y);
-	//========================================================
-
 	if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint))
 	{
+		//= REFLECT ==============================================
+		static vector<char*> types = {
+			"Point",
+			"Hinge",
+			"Slider",
+			"ConeTwist"
+		};
+		int typeInt = (int)constraint->GetConstraintType();
+		const char* typeStr = types[typeInt];
+		weak_ptr<Actor>	otherBody = constraint->GetBodyOther();
+		bool otherBodyDirty = false;
+		char otherBodyNameArray[BUFFER_TEXT_DEFAULT];
+		Vector3 position = constraint->GetPosition();
+		Vector3 rotation = constraint->GetRotation().ToEulerAngles();
+		Vector2 highLimit = constraint->GetHighLimit();
+		Vector2 lowLimit = constraint->GetLowLimit();
+
+		char consPosX[BUFFER_TEXT_DEFAULT];
+		char consPosY[BUFFER_TEXT_DEFAULT];
+		char consPosZ[BUFFER_TEXT_DEFAULT];
+		char consRotX[BUFFER_TEXT_DEFAULT];
+		char consRotY[BUFFER_TEXT_DEFAULT];
+		char consRotZ[BUFFER_TEXT_DEFAULT];
+		char consHighX[BUFFER_TEXT_DEFAULT];
+		char consHighY[BUFFER_TEXT_DEFAULT];
+		char consLowX[BUFFER_TEXT_DEFAULT];
+		char consLowY[BUFFER_TEXT_DEFAULT];
+
+		EditorHelper::SetCharArray(&otherBodyNameArray[0], otherBody.expired() ? "N/A" : otherBody.lock()->GetName());
+		EditorHelper::SetCharArray(&consPosX[0], position.x);
+		EditorHelper::SetCharArray(&consPosY[0], position.y);
+		EditorHelper::SetCharArray(&consPosZ[0], position.z);
+		EditorHelper::SetCharArray(&consRotX[0], rotation.x);
+		EditorHelper::SetCharArray(&consRotY[0], rotation.y);
+		EditorHelper::SetCharArray(&consRotZ[0], rotation.z);
+		EditorHelper::SetCharArray(&consHighX[0], highLimit.x);
+		EditorHelper::SetCharArray(&consHighY[0], highLimit.y);
+		EditorHelper::SetCharArray(&consLowX[0], lowLimit.x);
+		EditorHelper::SetCharArray(&consLowY[0], lowLimit.y);
+		//========================================================
+
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Type
@@ -764,28 +764,28 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 			ImGui::SameLine(); ImGui::Text("Y");
 			ImGui::SameLine(); ImGui::InputText("##ConsLowLimY", consLowY, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		}
+
+		//= MAP ====================================================================================================================================
+		position.x = (float)atof(&consPosX[0]);
+		position.y = (float)atof(&consPosY[0]);
+		position.z = (float)atof(&consPosZ[0]);
+		rotation.x = (float)atof(&consRotX[0]);
+		rotation.y = (float)atof(&consRotY[0]);
+		rotation.z = (float)atof(&consRotZ[0]);
+		highLimit.x = (float)atof(&consHighX[0]);
+		highLimit.y = (float)atof(&consHighY[0]);
+		lowLimit.x = (float)atof(&consLowX[0]);
+		lowLimit.y = (float)atof(&consLowY[0]);
+
+		if ((ConstraintType)typeInt != constraint->GetConstraintType())				constraint->SetConstraintType((ConstraintType)typeInt);
+		if (otherBodyDirty) { constraint->SetBodyOther(otherBody); otherBodyDirty = false; }
+		if (position != constraint->GetPosition())					constraint->SetPosition(position);
+		if (rotation != constraint->GetRotation().ToEulerAngles())	constraint->SetRotation(Quaternion::FromEulerAngles(rotation));
+		if (highLimit != constraint->GetHighLimit())					constraint->SetHighLimit(highLimit);
+		if (lowLimit != constraint->GetLowLimit())					constraint->SetLowLimit(lowLimit);
+		//==========================================================================================================================================
 	}
 	ComponentProperty::End();
-
-	//= MAP ====================================================================================================================================
-	position.x	= (float)atof(&consPosX[0]);
-	position.y	= (float)atof(&consPosY[0]);
-	position.z	= (float)atof(&consPosZ[0]);
-	rotation.x	= (float)atof(&consRotX[0]);
-	rotation.y	= (float)atof(&consRotY[0]);
-	rotation.z	= (float)atof(&consRotZ[0]);
-	highLimit.x	= (float)atof(&consHighX[0]);
-	highLimit.y	= (float)atof(&consHighY[0]);
-	lowLimit.x	= (float)atof(&consLowX[0]);
-	lowLimit.y	= (float)atof(&consLowY[0]);
-
-	if ((ConstraintType)typeInt != constraint->GetConstraintType())				constraint->SetConstraintType((ConstraintType)typeInt);
-	if (otherBodyDirty)															{ constraint->SetBodyOther(otherBody); otherBodyDirty = false; }
-	if (position				!= constraint->GetPosition())					constraint->SetPosition(position);
-	if (rotation				!= constraint->GetRotation().ToEulerAngles())	constraint->SetRotation(Quaternion::FromEulerAngles(rotation));
-	if (highLimit				!= constraint->GetHighLimit())					constraint->SetHighLimit(highLimit);
-	if (lowLimit				!= constraint->GetLowLimit())					constraint->SetLowLimit(lowLimit);
-	//==========================================================================================================================================
 }
 
 void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
@@ -793,28 +793,28 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 	if (!material)
 		return;
 
-	//= REFLECT ======================================================
-	float roughness	= material->GetRoughnessMultiplier();
-	float metallic	= material->GetMetallicMultiplier();
-	float normal	= material->GetNormalMultiplier();
-	float height	= material->GetHeightMultiplier();
-	Vector2 tiling	=  material->GetTiling();
-	Vector2 offset	=  material->GetOffset();
-	g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());
-
-	char tilingXCharArray[BUFFER_TEXT_DEFAULT];
-	char tilingYCharArray[BUFFER_TEXT_DEFAULT];
-	char offsetXCharArray[BUFFER_TEXT_DEFAULT];
-	char offsetYCharArray[BUFFER_TEXT_DEFAULT];	
-
-	EditorHelper::SetCharArray(&tilingXCharArray[0], tiling.x);
-	EditorHelper::SetCharArray(&tilingYCharArray[0], tiling.y);
-	EditorHelper::SetCharArray(&offsetXCharArray[0], offset.x);
-	EditorHelper::SetCharArray(&offsetYCharArray[0], offset.y);
-	//================================================================
-
 	if (ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false))
 	{
+		//= REFLECT ======================================================
+		float roughness = material->GetRoughnessMultiplier();
+		float metallic = material->GetMetallicMultiplier();
+		float normal = material->GetNormalMultiplier();
+		float height = material->GetHeightMultiplier();
+		Vector2 tiling = material->GetTiling();
+		Vector2 offset = material->GetOffset();
+		g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());
+
+		char tilingXCharArray[BUFFER_TEXT_DEFAULT];
+		char tilingYCharArray[BUFFER_TEXT_DEFAULT];
+		char offsetXCharArray[BUFFER_TEXT_DEFAULT];
+		char offsetYCharArray[BUFFER_TEXT_DEFAULT];
+
+		EditorHelper::SetCharArray(&tilingXCharArray[0], tiling.x);
+		EditorHelper::SetCharArray(&tilingYCharArray[0], tiling.y);
+		EditorHelper::SetCharArray(&offsetXCharArray[0], offset.x);
+		EditorHelper::SetCharArray(&offsetYCharArray[0], offset.y);
+		//================================================================
+
 		static const ImVec2 materialTextSize = ImVec2(80, 80);
 
 		auto texAlbedo		= material->GetTextureByType(TextureType_Albedo).lock();
@@ -905,23 +905,23 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 			ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputText("##matOffsetX", offsetXCharArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
 			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputText("##matOffsetY", offsetYCharArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
 		}
+
+		//= MAP =====================================================================================================================================
+		tiling.x = (float)atof(&tilingXCharArray[0]);
+		tiling.y = (float)atof(&tilingYCharArray[0]);
+		offset.x = (float)atof(&offsetXCharArray[0]);
+		offset.y = (float)atof(&offsetYCharArray[0]);
+
+		if (roughness != material->GetRoughnessMultiplier())	material->SetRoughnessMultiplier(roughness);
+		if (metallic != material->GetMetallicMultiplier())	material->SetMetallicMultiplier(metallic);
+		if (normal != material->GetNormalMultiplier())		material->SetNormalMultiplier(normal);
+		if (height != material->GetHeightMultiplier())		material->SetHeightMultiplier(height);
+		if (tiling != material->GetTiling())				material->SetTiling(tiling);
+		if (offset != material->GetOffset())				material->SetOffset(offset);
+		if (g_materialButtonColorPicker->GetColor() != material->GetColorAlbedo()) material->SetColorAlbedo(g_materialButtonColorPicker->GetColor());
+		//===========================================================================================================================================
 	}
 	ComponentProperty::End();
-
-	//= MAP =====================================================================================================================================
-	tiling.x = (float)atof(&tilingXCharArray[0]);
-	tiling.y = (float)atof(&tilingYCharArray[0]);
-	offset.x = (float)atof(&offsetXCharArray[0]);
-	offset.y = (float)atof(&offsetYCharArray[0]);
-
-	if (roughness	!= material->GetRoughnessMultiplier())	material->SetRoughnessMultiplier(roughness);
-	if (metallic	!= material->GetMetallicMultiplier())	material->SetMetallicMultiplier(metallic);
-	if (normal		!= material->GetNormalMultiplier())		material->SetNormalMultiplier(normal);
-	if (height		!= material->GetHeightMultiplier())		material->SetHeightMultiplier(height);
-	if (tiling		!= material->GetTiling())				material->SetTiling(tiling);
-	if (offset		!= material->GetOffset())				material->SetOffset(offset);
-	if (g_materialButtonColorPicker->GetColor()	!= material->GetColorAlbedo()) material->SetColorAlbedo(g_materialButtonColorPicker->GetColor());
-	//===========================================================================================================================================
 }
 
 void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
@@ -929,24 +929,24 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 	if (!camera)
 		return;
 
-	//= REFLECT ===============================================================
-	static const char* projectionTypes[]	= { "Perspective", "Orthographic" };
-	int projectionInt						= (int)camera->GetProjection();
-	const char* projectionCharPtr			= projectionTypes[projectionInt];
-	float fov								= camera->GetFOV_Horizontal_Deg();
-	float nearPlane							= camera->GetNearPlane();
-	float farPlane							= camera->GetFarPlane();
-
-	char nearPlaneCharArray[BUFFER_TEXT_DEFAULT];
-	char farPlaneCharArray[BUFFER_TEXT_DEFAULT];
-
-	EditorHelper::SetCharArray(&nearPlaneCharArray[0], nearPlane);
-	EditorHelper::SetCharArray(&farPlaneCharArray[0], farPlane);
-	g_cameraButtonColorPicker->SetColor(camera->GetClearColor());
-	//=========================================================================
-
 	if (ComponentProperty::Begin("Camera", Icon_Component_Camera, camera))
 	{
+		//= REFLECT ===============================================================
+		static const char* projectionTypes[] = { "Perspective", "Orthographic" };
+		int projectionInt = (int)camera->GetProjection();
+		const char* projectionCharPtr = projectionTypes[projectionInt];
+		float fov = camera->GetFOV_Horizontal_Deg();
+		float nearPlane = camera->GetNearPlane();
+		float farPlane = camera->GetFarPlane();
+
+		char nearPlaneCharArray[BUFFER_TEXT_DEFAULT];
+		char farPlaneCharArray[BUFFER_TEXT_DEFAULT];
+
+		EditorHelper::SetCharArray(&nearPlaneCharArray[0], nearPlane);
+		EditorHelper::SetCharArray(&farPlaneCharArray[0], farPlane);
+		g_cameraButtonColorPicker->SetColor(camera->GetClearColor());
+		//=========================================================================
+
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Background
@@ -984,19 +984,19 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 		ImGui::Text("Clipping Planes");
 		ImGui::SameLine(ComponentProperty::g_column);		ImGui::Text("Near");	ImGui::SameLine(); ImGui::InputText("##cameraNear", nearPlaneCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
 		ImGui::SetCursorPosX(ComponentProperty::g_column); ImGui::Text("Far");		ImGui::SameLine(); ImGui::InputText("##cameraFar", farPlaneCharArray, BUFFER_TEXT_DEFAULT, inputTextFlags);
+
+		//= MAP =====================================================================================================================================
+		nearPlane = (float)atof(&nearPlaneCharArray[0]);
+		farPlane = (float)atof(&farPlaneCharArray[0]);
+
+		if ((ProjectionType)projectionInt != camera->GetProjection())			camera->SetProjection((ProjectionType)projectionInt);
+		if (fov != camera->GetFOV_Horizontal_Deg()) camera->SetFOV_Horizontal_Deg(fov);
+		if (nearPlane != camera->GetNearPlane())			camera->SetNearPlane(nearPlane);
+		if (farPlane != camera->GetFarPlane())			camera->SetFarPlane(farPlane);
+		if (g_cameraButtonColorPicker->GetColor() != camera->GetClearColor())			camera->SetClearColor(g_cameraButtonColorPicker->GetColor());
+		//===========================================================================================================================================
 	}
 	ComponentProperty::End();
-
-	//= MAP =====================================================================================================================================
-	nearPlane = (float)atof(&nearPlaneCharArray[0]);
-	farPlane = (float)atof(&farPlaneCharArray[0]);
-
-	if ((ProjectionType)projectionInt			!= camera->GetProjection())			camera->SetProjection((ProjectionType)projectionInt);
-	if (fov										!= camera->GetFOV_Horizontal_Deg()) camera->SetFOV_Horizontal_Deg(fov);
-	if (nearPlane								!= camera->GetNearPlane())			camera->SetNearPlane(nearPlane);
-	if (farPlane								!= camera->GetFarPlane())			camera->SetFarPlane(farPlane);
-	if (g_cameraButtonColorPicker->GetColor()	!= camera->GetClearColor())			camera->SetClearColor(g_cameraButtonColorPicker->GetColor());
-	//===========================================================================================================================================
 }
 
 void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audioSource)
@@ -1004,21 +1004,21 @@ void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audioSource)
 	if (!audioSource)
 		return;
 
-	//= REFLECT ========================================================================
-	char audioClipCharArray[BUFFER_TEXT_DEFAULT];
-	EditorHelper::SetCharArray(&audioClipCharArray[0], audioSource->GetAudioClipName());
-
-	bool mute			= audioSource->GetMute();
-	bool playOnStart	= audioSource->GetPlayOnStart();
-	bool loop			= audioSource->GetLoop();
-	int priority		= audioSource->GetPriority();
-	float volume		= audioSource->GetVolume();
-	float pitch			= audioSource->GetPitch();
-	float pan			= audioSource->GetPan();
-	//==================================================================================
-
 	if (ComponentProperty::Begin("Audio Source", Icon_Component_AudioSource, audioSource))
 	{
+		//= REFLECT ========================================================================
+		char audioClipCharArray[BUFFER_TEXT_DEFAULT];
+		EditorHelper::SetCharArray(&audioClipCharArray[0], audioSource->GetAudioClipName());
+
+		bool mute			= audioSource->GetMute();
+		bool playOnStart	= audioSource->GetPlayOnStart();
+		bool loop			= audioSource->GetLoop();
+		int priority		= audioSource->GetPriority();
+		float volume		= audioSource->GetVolume();
+		float pitch			= audioSource->GetPitch();
+		float pan			= audioSource->GetPan();
+		//==================================================================================
+
 		// Audio clip
 		ImGui::Text("Audio Clip");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(250.0f);
@@ -1058,18 +1058,18 @@ void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audioSource)
 		// Pan
 		ImGui::Text("Pan");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::SliderFloat("##audioSourcePan", &pan, -1.0f, 1.0f);
+
+		//= MAP =====================================================================================
+		if (mute != audioSource->GetMute())					audioSource->SetMute(mute);
+		if (playOnStart != audioSource->GetPlayOnStart())	audioSource->SetPlayOnStart(playOnStart);
+		if (loop != audioSource->GetLoop())					audioSource->SetLoop(loop);
+		if (priority != audioSource->GetPriority())			audioSource->SetPriority(priority);
+		if (volume != audioSource->GetVolume())				audioSource->SetVolume(volume);
+		if (pitch != audioSource->GetPitch())				audioSource->SetPitch(pitch);
+		if (pan != audioSource->GetPan())					audioSource->SetPan(pan);
+		//===========================================================================================
 	}
 	ComponentProperty::End();
-
-	//= MAP =====================================================================================
-	if (mute		!= audioSource->GetMute())			audioSource->SetMute(mute);
-	if (playOnStart != audioSource->GetPlayOnStart())	audioSource->SetPlayOnStart(playOnStart);
-	if (loop		!= audioSource->GetLoop())			audioSource->SetLoop(loop);
-	if (priority	!= audioSource->GetPriority())		audioSource->SetPriority(priority);
-	if (volume		!= audioSource->GetVolume())		audioSource->SetVolume(volume);
-	if (pitch		!= audioSource->GetPitch())			audioSource->SetPitch(pitch);
-	if (pan			!= audioSource->GetPan())			audioSource->SetPan(pan);
-	//===========================================================================================
 }
 
 void Widget_Properties::ShowAudioListener(shared_ptr<AudioListener>& audioListener)
@@ -1089,13 +1089,13 @@ void Widget_Properties::ShowScript(shared_ptr<Script>& script)
 	if (!script)
 		return;
 
-	//= REFLECT =======================================================
-	char scriptNameArray[BUFFER_TEXT_DEFAULT] = "N/A";
-	EditorHelper::SetCharArray(&scriptNameArray[0], script->GetName());
-	//=================================================================
-
 	if (ComponentProperty::Begin(script->GetName(), Icon_Component_Script, script))
 	{
+		//= REFLECT =======================================================
+		char scriptNameArray[BUFFER_TEXT_DEFAULT] = "N/A";
+		EditorHelper::SetCharArray(&scriptNameArray[0], script->GetName());
+		//=================================================================
+
 		ImGui::Text("Script");
 		ImGui::SameLine(); 
 		ImGui::PushID("##ScriptNameTemp");
