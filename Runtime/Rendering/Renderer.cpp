@@ -724,7 +724,7 @@ namespace Directus
 		m_rhiPipelineState->SetTexture(inTextureShadowing);
 		m_rhiPipelineState->SetTexture(m_renderTexPong); // previous frame for SSR // Todo SSR
 		m_rhiPipelineState->SetTexture(m_skybox ? m_skybox->GetTexture() : nullptr);
-		m_rhiPipelineState->SetSampler(m_samplerAnisotropicWrapAlways);	
+		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);	
 		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetMatrixBuffer());
 		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetMiscBuffer());
 		m_rhiPipelineState->Bind();

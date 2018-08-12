@@ -30,7 +30,7 @@ float4 BinarySearch( float3 dir, float3 viewPos )
 	for ( int i = 0; i < g_maxBinarySearchStep; ++i )
 	{
 		texCoord = GetTexCoordXYLinearDepthZ( viewPos );
-		srcdepth = texDepth.Sample(samplerAniso, texCoord.xy).x;
+		srcdepth = texDepth.Sample(samplerLinear, texCoord.xy).x;
 		depthDiff = srcdepth.x - texCoord.z;
 
 		if (depthDiff > 0.0f)
@@ -43,11 +43,11 @@ float4 BinarySearch( float3 dir, float3 viewPos )
 	}
 
 	texCoord = GetTexCoordXYLinearDepthZ( viewPos );	
-	srcdepth = texDepth.Sample(samplerAniso, texCoord.xy).x;
+	srcdepth = texDepth.Sample(samplerLinear, texCoord.xy).x;
 	depthDiff = abs(srcdepth - texCoord.z);
 	if (texCoord.z < 0.9f && depthDiff < g_depthbias )
 	{
-		return texLastFrame.Sample(samplerAniso, texCoord.xy);
+		return texLastFrame.Sample(samplerLinear, texCoord.xy);
 	}
 
 	return float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -71,7 +71,7 @@ float3 SSRR(float3 viewDirW, float3 normalW)
 	for ( int i = 0; i < g_maxRayStep; ++i )
 	{
 		float3 texCoord = GetTexCoordXYLinearDepthZ( reflectPos );
-		float srcdepth = texDepth.Sample(samplerAniso, texCoord.xy).x;
+		float srcdepth = texDepth.Sample(samplerLinear, texCoord.xy).x;
 
 		if ( texCoord.z - srcdepth > 0 && texCoord.z - srcdepth < g_maxThickness )
 		{
