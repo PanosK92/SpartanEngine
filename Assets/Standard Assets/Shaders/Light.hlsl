@@ -9,7 +9,7 @@ TextureCube environmentTex 	: register(t6);
 //=========================================
 
 //= SAMPLERS ==============================
-SamplerState samplerAniso 	: register(s0);
+SamplerState samplerLinear 	: register(s0);
 //=========================================
 
 //= CONSTANT BUFFERS ===================
@@ -54,7 +54,7 @@ cbuffer MiscBuffer : register(b1)
 // = INCLUDES ========
 #include "Common.hlsl"
 #include "SSRR.hlsl"
-#include "PBR.hlsl"
+#include "BRDF.hlsl"
 //====================
 
 //= INPUT LAYOUT ======================
@@ -84,10 +84,10 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float3 finalColor = float3(0, 0, 0);
 	
 	// Sample from G-Buffer
-    float4 albedo 			= ToLinear(texAlbedo.Sample(samplerAniso, texCoord));
-    float4 normalSample 	= texNormal.Sample(samplerAniso, texCoord);
-	float4 specularSample	= texSpecular.Sample(samplerAniso, texCoord);
-    float4 depthSample 		= texDepth.Sample(samplerAniso, texCoord);
+    float4 albedo 			= ToLinear(texAlbedo.Sample(samplerLinear, texCoord));
+    float4 normalSample 	= texNormal.Sample(samplerLinear, texCoord);
+	float4 specularSample	= texSpecular.Sample(samplerLinear, texCoord);
+    float4 depthSample 		= texDepth.Sample(samplerLinear, texCoord);
     	
 	// Create material
 	Material material;
@@ -102,7 +102,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float3 worldPos = ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
     
 	// Shadows + SSAO
-	float2 shadowing 	= texShadowing.Sample(samplerAniso, texCoord).rg;
+	float2 shadowing 	= texShadowing.Sample(samplerLinear, texCoord).rg;
 	float shadow 		= shadowing.r;
 	float ssao 			= shadowing.g;
 	
@@ -114,7 +114,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
     if (specularSample.a == 1.0f) // Render technique
     {
-        finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir)).rgb;
+        finalColor = ToLinear(environmentTex.Sample(samplerLinear, -viewDir)).rgb;
         finalColor *= ambientLight; // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }
@@ -132,10 +132,10 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	directionalLight.direction	= normalize(-dirLightDirection).xyz;
 	directionalLight.intensity 	*= shadow;
 	
-	finalColor += ImageBasedLighting(material, directionalLight.direction, normal, viewDir, samplerAniso) * ambientLight;
+	finalColor += ImageBasedLighting(material, directionalLight.direction, normal, viewDir, samplerLinear) * ambientLight;
 	
 	// Compute illumination
-	finalColor += PBR(material, directionalLight, normal, viewDir);
+	finalColor += BRDF(material, directionalLight, normal, viewDir);
 	//============================================================================================================================================================
 	
 	//= POINT LIGHTS =============================================================================================================================================
@@ -157,7 +157,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		// Compute illumination
         if (dist < range)
 		{
-            finalColor += PBR(material, pointLight, normal, viewDir);
+            finalColor += BRDF(material, pointLight, normal, viewDir);
 		}
     }
 	//============================================================================================================================================================
@@ -186,7 +186,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		// Compute illumination
 		if(theta > cutoffAngle)
 		{
-            finalColor += PBR(material, spotLight, normal, viewDir);
+            finalColor += BRDF(material, spotLight, normal, viewDir);
 		}
     }
 	//============================================================================================================================================================

@@ -105,14 +105,15 @@ float3 PackNormal(float3 normal)
 float3 TangentToWorld(float3 normalMapSample, float3 normalW, float3 tangentW, float3 bitangentW, float intensity)
 {
 	// normal intensity
-	normalMapSample.r *= intensity;
-	normalMapSample.g *= intensity;
+	intensity			= clamp(intensity, 0.01f, 1.0f);
+	normalMapSample.r 	*= intensity;
+	normalMapSample.g 	*= intensity;
 	
 	// construct TBN matrix
-	float3 N = normalW;
-	float3 T = tangentW;
-	float3 B = bitangentW;
-	float3x3 TBN = float3x3(T, B, N); 
+	float3 N 		= normalW;
+	float3 T 		= tangentW;
+	float3 B 		= bitangentW;
+	float3x3 TBN 	= float3x3(T, B, N); 
 	
 	// transform from tangent space to world space
 	float3 bumpedNormal = normalize(mul(normalMapSample, TBN)); 
