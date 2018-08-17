@@ -48,6 +48,12 @@ namespace Directus::Math
 			this->x = x;
 			this->y = y;
 		}
+		
+		Vector2(float x)
+		{
+			this->x = x;
+			this->y = x;
+		}
 
 		~Vector2() {}
 

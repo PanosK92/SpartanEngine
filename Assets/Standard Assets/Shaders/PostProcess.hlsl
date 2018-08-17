@@ -10,7 +10,7 @@ cbuffer DefaultBuffer
 {
     matrix mTransform;
     float2 resolution;
-    float2 computeLuma;
+    float2 parameters;
 };
 
 struct VS_Output
@@ -58,23 +58,23 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_GAUSSIAN_H
-	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, resolution, float2(1.0f, 0.0f), 3.0f);
+	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, resolution, float2(3.0f, 0.0f), 3.0f);
 #endif
 
 #if PASS_BLUR_GAUSSIAN_V
-	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, resolution, float2(0.0f, 1.0f), 3.0f);
+	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, resolution, float2(0.0f, 3.0f), 3.0f);
 #endif
 
 #if PASS_BRIGHT
 	color 				= sourceTexture.Sample(bilinearSampler, input.uv);
     float luminance 	= dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));	
-	color 				= luminance > 1.0f ? color : float4(0.0f, 0.0f, 0.0f, computeLuma.x == 1.0f ? color.a : 1.0f); // maintain alpha as it holds FXAA luma
+	color 				= luminance > 1.0f ? color : float4(0.0f, 0.0f, 0.0f, color.a);
 #endif
 
 #if PASS_BLEND_ADDITIVE
 	float4 sourceColor 	= sourceTexture.Sample(bilinearSampler, input.uv);
 	float4 sourceColor2 = sourceTexture2.Sample(bilinearSampler, input.uv);
-	color 				= sourceColor + sourceColor2;
+	color 				= sourceColor + sourceColor2 * parameters.x;
 #endif
 
 #if PASS_CORRECTION

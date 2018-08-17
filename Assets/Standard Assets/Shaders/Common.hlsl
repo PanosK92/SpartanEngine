@@ -146,8 +146,8 @@ float4 Pass_BlurBox(float2 texCoord, float2 texelSize, int blurSize, Texture2D s
 // Calculates the gaussian blur weight for a given distance and sigmas
 float CalcGaussianWeight(int sampleDist, float sigma)
 {
-    float g = 1.0f / sqrt(2.0f * 3.14159 * sigma * sigma);
-    return (g * exp(-(sampleDist * sampleDist) / (2 * sigma * sigma)));
+    float g = 1.0f / sqrt(2.0f * 3.14159f * sigma * sigma);
+    return (g * exp(-(sampleDist * sampleDist) / (2.0f * sigma * sigma)));
 }
 
 // Performs a gaussian blur in one direction
@@ -156,7 +156,7 @@ float4 Pass_BlurGaussian(float2 uv, Texture2D sourceTexture, SamplerState biline
 	// https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
 	float weightSum = 0.0f;
     float4 color = 0;
-    for (int i = -10; i < 10; i++)
+    for (int i = -7; i < 7; i++)
     {
         float weight = CalcGaussianWeight(i, sigma);
         weightSum += weight;

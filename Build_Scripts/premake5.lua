@@ -32,7 +32,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
 	includedirs { "../ThirdParty/Bullet_2.87" }
 	includedirs { "../ThirdParty/FMOD_1.10.07" }
-	includedirs { "../ThirdParty/FreeImage_3.17.0" }
+	includedirs { "../ThirdParty/FreeImage_3.18.0" }
 	includedirs { "../ThirdParty/FreeType_2.9.1" }
 	includedirs { "../ThirdParty/pugixml_1.9" }
 	
@@ -45,7 +45,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 		targetdir (TARGET_DIR_DEBUG)
 		objdir (OBJ_DIR)
 		debugdir (TARGET_DIR_DEBUG)
-		defines { "DEBUG", "COMPILING_LIB" }
+		defines { "DEBUG", "COMPILING_LIB", "_DISABLE_EXTENDED_ALIGNED_STORAGE" }
 		symbols "On"
 		flags { "MultiProcessorCompile" }
 		links { "angelscript64_debug" }
@@ -62,7 +62,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (OBJ_DIR)
 		debugdir (TARGET_DIR_RELEASE)
-		defines { "NDEBUG", "COMPILING_LIB" }
+		defines { "NDEBUG", "COMPILING_LIB", "_DISABLE_EXTENDED_ALIGNED_STORAGE" }
 		optimize "Full"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		links { "angelscript64" }

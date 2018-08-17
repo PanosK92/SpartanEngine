@@ -197,7 +197,7 @@ namespace Directus
 			m_shaderBloom_BlurBlend = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
 			m_shaderBloom_BlurBlend->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
-			m_shaderBloom_BlurBlend->AddBuffer<Struct_Matrix>(0, Buffer_Global);
+			m_shaderBloom_BlurBlend->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Tone-mapping
 			m_shaderCorrection = make_shared<RHI_Shader>(m_rhiDevice);
@@ -250,7 +250,7 @@ namespace Directus
 
 	void* Renderer::GetFrame()
 	{
-		return m_renderTexPong ? m_renderTexPong->GetShaderResource() : nullptr;
+		return m_renderTex3 ? m_renderTex3->GetShaderResource() : nullptr;
 	}
 
 	void Renderer::Present()
@@ -294,19 +294,18 @@ namespace Directus
 				m_gbuffer->GetTexture(GBuffer_Target_Normal),	// IN:	Texture			- Normal
 				m_gbuffer->GetTexture(GBuffer_Target_Depth),	// IN:	Texture			- Depth
 				m_texNoiseMap,									// IN:	Texture			- Normal noise
-				m_renderTexPing,								// IN:	Render texture		
+				m_renderTex1,									// IN:	Render texture		
 				m_renderTexShadowing							// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
 			);
 
 			Pass_Light(
 				m_renderTexShadowing,	// IN:	Texture			- Shadowing (Shadow mapping + SSAO)
-				m_renderTexPing			// OUT: Render texture	- Result
+				m_renderTex1			// OUT: Render texture	- Result
 			);
 
 			Pass_PostLight(
-				m_renderTexPing,	// IN:	Render texture - Light pass result
-				m_renderTexPing2,	// IN:	Render texture - A spare one
-				m_renderTexPong		// OUT: Render texture - Result
+				m_renderTex1,	// IN:	Render texture - Light pass result
+				m_renderTex3	// OUT: Render texture - Result
 			);
 
 			// Debug rendering (on the target that happens to be bound)
@@ -377,14 +376,20 @@ namespace Directus
 		m_quad = make_unique<Rectangle>(m_context);
 		m_quad->Create(0, 0, (float)width, (float)height);
 
-		m_renderTexPing.reset();
-		m_renderTexPing = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTex1.reset();
+		m_renderTex1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
-		m_renderTexPing2.reset();
-		m_renderTexPing2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTex2.reset();
+		m_renderTex2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
 
-		m_renderTexPong.reset();
-		m_renderTexPong = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTex3.reset();
+		m_renderTex3 = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, false, Texture_Format_R16G16B16A16_FLOAT);
+
+		m_renderTexQuarterRes1.reset();
+		m_renderTexQuarterRes1 = make_unique<RHI_RenderTexture>(m_rhiDevice, int(width * 0.25f), int(height * 0.25f), false, Texture_Format_R16G16B16A16_FLOAT);
+
+		m_renderTexQuarterRes2.reset();
+		m_renderTexQuarterRes2 = make_unique<RHI_RenderTexture>(m_rhiDevice, int(width * 0.25f), int(height * 0.25f), false, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexShadowing.reset();
 		m_renderTexShadowing = make_unique<RHI_RenderTexture>(m_rhiDevice, int(width * 0.5f), int(height * 0.5f), false, Texture_Format_R32G32_FLOAT);
@@ -722,7 +727,7 @@ namespace Directus
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Specular));
 		m_rhiPipelineState->SetTexture(inTextureShadowing);
-		m_rhiPipelineState->SetTexture(m_renderTexPong); // previous frame for SSR // Todo SSR
+		m_rhiPipelineState->SetTexture(m_renderTex3); // previous frame for SSR // Todo SSR
 		m_rhiPipelineState->SetTexture(m_skybox ? m_skybox->GetTexture() : nullptr);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);	
 		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetMatrixBuffer());
@@ -735,7 +740,7 @@ namespace Directus
 		TIME_BLOCK_END_MULTI();
 	}
 
-	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& inRenderTexture1, shared_ptr<RHI_RenderTexture>& inRenderTexture2, shared_ptr<RHI_RenderTexture>& outRenderTexture)
+	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_PostLight");
@@ -745,7 +750,7 @@ namespace Directus
 		m_rhiPipelineState->SetIndexBuffer(m_quad->GetIndexBuffer());
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipelineState->SetCullMode(Cull_Back);
-		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
+		m_rhiPipelineState->SetSampler(m_samplerBilinearClampAlways); // FXAA and Bloom (guassian blur) require a bilinear sampler
 		m_rhiPipelineState->SetVertexShader(m_shaderBloom_Bright);  // vertex shader is the same for every pass
 		Vector2 computeLuma = Vector2(RenderFlags_IsSet(Render_FXAA) ? 1.0f : 0.0f, 0);
 		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution(), computeLuma);
@@ -754,7 +759,7 @@ namespace Directus
 		
 
 		// Keep track of render target swapping
-		auto SwapTargets = [&inRenderTexture1, &outRenderTexture]() { outRenderTexture.swap(inRenderTexture1); };
+		auto SwapTargets = [&texIn, &texOut]() { texOut.swap(texIn); };
 
 		SwapTargets();
 
@@ -762,71 +767,74 @@ namespace Directus
 		if (RenderFlags_IsSet(Render_Bloom))
 		{
 			SwapTargets();
-			Pass_Bloom(inRenderTexture1, inRenderTexture2, outRenderTexture);
+			Pass_Bloom(texIn, texOut);
 		}
 
 		// CORRECTION
 		if (RenderFlags_IsSet(Render_Correction))
 		{
 			SwapTargets();
-			Pass_Correction(inRenderTexture1, outRenderTexture);
+			Pass_Correction(texIn, texOut);
 		}
 
 		// FXAA
 		if (RenderFlags_IsSet(Render_FXAA))
 		{
 			SwapTargets();
-			Pass_FXAA(inRenderTexture1, outRenderTexture);
+			Pass_FXAA(texIn, texOut);
 		}
 
 		// CHROMATIC ABERRATION
 		if (RenderFlags_IsSet(Render_ChromaticAberration))
 		{
 			SwapTargets();
-			Pass_ChromaticAberration(inRenderTexture1, outRenderTexture);
+			Pass_ChromaticAberration(texIn, texOut);
 		}
 
 		// SHARPENING
 		if (RenderFlags_IsSet(Render_Sharpening))
 		{
 			SwapTargets();
-			Pass_Sharpening(inRenderTexture1, outRenderTexture);
+			Pass_Sharpening(texIn, texOut);
 		}
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
 	}
 
-	void Renderer::Pass_Bloom(shared_ptr<RHI_RenderTexture>& inSourceTexture, shared_ptr<RHI_RenderTexture>& inTextureSpare, shared_ptr<RHI_RenderTexture>& outTexture)
+	void Renderer::Pass_Bloom(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
 		m_rhiDevice->EventBegin("Pass_Bloom");
 
 		// Bright pass
-		m_rhiPipelineState->SetRenderTexture(inTextureSpare);
+		m_rhiPipelineState->SetRenderTexture(m_renderTexQuarterRes1);
 		m_rhiPipelineState->SetPixelShader(m_shaderBloom_Bright);
-		m_rhiPipelineState->SetTexture(inSourceTexture);
+		m_rhiPipelineState->SetTexture(texIn);
 		m_rhiPipelineState->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Horizontal Gaussian blur
-		m_rhiPipelineState->SetRenderTexture(outTexture);
+		m_rhiPipelineState->SetRenderTexture(m_renderTexQuarterRes2);
 		m_rhiPipelineState->SetPixelShader(m_shaderBlurGaussianH);
-		m_rhiPipelineState->SetTexture(inTextureSpare);
+		m_rhiPipelineState->SetTexture(m_renderTexQuarterRes1);
 		m_rhiPipelineState->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
-		m_rhiPipelineState->SetRenderTexture(inTextureSpare);
+		m_rhiPipelineState->SetRenderTexture(m_renderTexQuarterRes1);
 		m_rhiPipelineState->SetPixelShader(m_shaderBlurGaussianV);
-		m_rhiPipelineState->SetTexture(outTexture);
+		m_rhiPipelineState->SetTexture(m_renderTexQuarterRes2);
 		m_rhiPipelineState->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Additive blending
-		m_rhiPipelineState->SetRenderTexture(outTexture);
+		m_rhiPipelineState->SetRenderTexture(texOut);
 		m_rhiPipelineState->SetPixelShader(m_shaderBloom_BlurBlend);
-		m_rhiPipelineState->SetTexture(inSourceTexture);
-		m_rhiPipelineState->SetTexture(inTextureSpare);
+		m_rhiPipelineState->SetTexture(texIn);
+		m_rhiPipelineState->SetTexture(m_renderTexQuarterRes1);
+		float bloomIntensity = 0.1f;
+		m_shaderBloom_BlurBlend->UpdateBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Settings::Get().GetResolution(), bloomIntensity));
+		m_rhiPipelineState->SetConstantBuffer(m_shaderBloom_BlurBlend->GetConstantBuffer());
 		m_rhiPipelineState->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
