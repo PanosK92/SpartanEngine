@@ -129,9 +129,8 @@ namespace Directus
 		);	
 
 		void Pass_PostLight(
-			std::shared_ptr<RHI_RenderTexture>& inRenderTexture1,
-			std::shared_ptr<RHI_RenderTexture>& inRenderTexture2,
-			std::shared_ptr<RHI_RenderTexture>& outRenderTexture
+			std::shared_ptr<RHI_RenderTexture>& texIn,
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
 		bool Pass_DebugGBuffer();
@@ -158,9 +157,8 @@ namespace Directus
 		);
 
 		void Pass_Bloom(
-			std::shared_ptr<RHI_RenderTexture>& inRenderTexture1,
-			std::shared_ptr<RHI_RenderTexture>& inRenderTexture2,
-			std::shared_ptr<RHI_RenderTexture>& outRenderTexture
+			std::shared_ptr<RHI_RenderTexture>& texIn,
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
 		void Pass_Blur(
@@ -195,10 +193,12 @@ namespace Directus
 		//=================================================
 
 		//= RENDER TEXTURES ====================================
-		std::shared_ptr<RHI_RenderTexture> m_renderTexPing;
-		std::shared_ptr<RHI_RenderTexture> m_renderTexPing2;
+		std::shared_ptr<RHI_RenderTexture> m_renderTex1;
+		std::shared_ptr<RHI_RenderTexture> m_renderTex2;
+		std::shared_ptr<RHI_RenderTexture> m_renderTex3;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarterRes1;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarterRes2;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexShadowing;
-		std::shared_ptr<RHI_RenderTexture> m_renderTexPong;
 		//======================================================
 
 		//= SHADERS ============================================
