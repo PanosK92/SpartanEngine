@@ -9,7 +9,7 @@ SamplerState bilinearSampler 	: register(s0);
 cbuffer DefaultBuffer
 {
     matrix mTransform;
-    float2 resolution;
+    float2 texRes;
     float2 parameters;
 };
 
@@ -24,9 +24,9 @@ VS_Output DirectusVertexShader(Vertex_PosUv input)
 {
     VS_Output output;
 	
-    input.position.w = 1.0f;
-    output.position = mul(input.position, mTransform);
-    output.uv = input.uv;
+    input.position.w 	= 1.0f;
+    output.position 	= mul(input.position, mTransform);
+    output.uv 			= input.uv;
 	
     return output;
 }
@@ -38,7 +38,7 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 {
     float2 texCoord 	= input.uv;
     float4 color 		= float4(0.0f, 0.0f, 0.0f, 1.0f);
-    float2 texelSize 	= float2(1.0f / resolution.x, 1.0f / resolution.y);
+    float2 texelSize 	= float2(1.0f / texRes.x, 1.0f / texRes.y);
 	
 #if PASS_FXAA
 	color.rgb 	= FXAA(texCoord, texelSize, sourceTexture, bilinearSampler);
@@ -50,7 +50,7 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_SHARPENING
-	color.rgb 	= LumaSharpen(texCoord, sourceTexture, bilinearSampler, resolution);	
+	color.rgb 	= LumaSharpen(texCoord, sourceTexture, bilinearSampler, texRes);	
 #endif
 	
 #if PASS_BLUR_BOX
@@ -58,11 +58,11 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_GAUSSIAN_H
-	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, resolution, float2(3.0f, 0.0f), 3.0f);
+	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, texRes, float2(3.0f, 0.0f), 3.0f);
 #endif
 
 #if PASS_BLUR_GAUSSIAN_V
-	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, resolution, float2(0.0f, 3.0f), 3.0f);
+	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, texRes, float2(0.0f, 3.0f), 3.0f);
 #endif
 
 #if PASS_BRIGHT

@@ -16,11 +16,7 @@ SamplerState samplerLinear 	: register(s0);
 cbuffer MatrixBuffer : register(b0)
 {
 	matrix mWorldViewProjection;
-	matrix mProjection;
-	matrix mProjectionInverse;
-	matrix mViewProjection;
     matrix mViewProjectionInverse;
-	matrix mView;
 }
 
 #define MaxLights 64
@@ -53,7 +49,6 @@ cbuffer MiscBuffer : register(b1)
 
 // = INCLUDES ========
 #include "Common.hlsl"
-#include "SSRR.hlsl"
 #include "BRDF.hlsl"
 //====================
 

@@ -19,9 +19,6 @@ cbuffer DefaultBuffer : register(b0)
 {
     matrix mWorldViewProjectionOrtho;
 	matrix mViewProjectionInverse;
-	matrix mView;
-	matrix mProjection;
-	matrix mProjectionInverse;
 	matrix mLightViewProjection[CASCADES];
 	float4 shadowSplits;	
 	float3 lightDir;
