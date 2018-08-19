@@ -19,7 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =======================
+#include "../Input_Implementation.h"
 #include "DInput.h"
 #include <dinput.h>
 #include <sstream>
@@ -27,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Engine.h"
 #include "../../Core/Settings.h"
 #include "../../Core/EventSystem.h"
-//=================================
+//==================================
 
 //= NAMESPACES ================
 using namespace std;
