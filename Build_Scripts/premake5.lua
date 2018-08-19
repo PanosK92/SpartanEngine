@@ -31,7 +31,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 	includedirs { "../ThirdParty/AngelScript_2.32.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
 	includedirs { "../ThirdParty/Bullet_2.87" }
-	includedirs { "../ThirdParty/FMOD_1.10.07" }
+	includedirs { "../ThirdParty/FMOD_1.10.08" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
 	includedirs { "../ThirdParty/FreeType_2.9.1" }
 	includedirs { "../ThirdParty/pugixml_1.9" }
