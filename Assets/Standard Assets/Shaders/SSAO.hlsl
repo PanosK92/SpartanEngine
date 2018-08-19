@@ -68,10 +68,10 @@ static const float3 sampleKernel[64] =
 	float3(-0.44272, -0.67928, 0.1865)
 };
 
-static const float intensity 	= 8.0f;
+static const float intensity 	= 6.0f;
 static const int kernelSize 	= 4;
-static const float radius 		= 0.2f;
-static const float bias 		= 0.2f;
+static const float radius 		= 0.8f;
+static const float bias 		= 0.0f;
 static const float2 noiseScale  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
 
 // Returns a random normal
@@ -109,7 +109,6 @@ float SSAO(float2 texCoord, SamplerState samplerState)
     {
 		float2 coord1 = reflect(sampleKernel[i], randNormal) * radius_depth;
 		float2 coord2 = float2(coord1.x - coord1.y, coord1.x + coord1.y);
-
 
 		float acc = 0.0f;
 		acc += doAmbientOcclusion(texCoord + coord1 * 0.25f, position, normal, samplerState);

@@ -48,6 +48,8 @@ namespace Directus
 		m_format				= format;
 		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->GetViewport().GetMaxDepth());
 		m_id					= GENERATE_GUID;
+		m_width					= width;
+		m_height				= height;
 
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{

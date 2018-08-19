@@ -53,11 +53,7 @@ namespace Directus
 		struct MatrixBufferType
 		{
 			Math::Matrix worldViewProjection;
-			Math::Matrix mProjection;
-			Math::Matrix mProjectionInverse;
-			Math::Matrix mViewProjection;
 			Math::Matrix mViewProjectionInverse;
-			Math::Matrix mView;
 		};
 
 		const static int maxLights = 64;

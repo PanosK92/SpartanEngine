@@ -93,8 +93,6 @@ namespace Directus
 		(
 			const Math::Matrix& mWVPortho,
 			const Math::Matrix& mWVPinv,
-			const Math::Matrix& mView,
-			const Math::Matrix& mProjection,
 			const Math::Vector2& resolution,
 			Light* dirLight,
 			Camera* camera
@@ -103,9 +101,6 @@ namespace Directus
 			// Fill the buffer
 			m_wvpOrtho			= mWVPortho;
 			m_wvpInv			= mWVPinv;
-			m_view				= mView;
-			m_projection		= mProjection;
-			m_projectionInverse = mProjection.Inverted();
 
 			auto mLightView = dirLight->GetViewMatrix();
 			m_mLightViewProjection[0] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
@@ -124,9 +119,6 @@ namespace Directus
 
 		Math::Matrix m_wvpOrtho;
 		Math::Matrix m_wvpInv;
-		Math::Matrix m_view;
-		Math::Matrix m_projection;
-		Math::Matrix m_projectionInverse;
 		Math::Matrix m_mLightViewProjection[3];
 		Math::Vector4 m_shadowSplits;
 		Math::Vector3 m_lightDir;

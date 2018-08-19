@@ -52,6 +52,8 @@ namespace Directus
 		const RHI_Viewport& GetViewport()						{ return m_viewport; }
 		bool GetDepthEnabled()									{ return m_depthEnabled; }
 		unsigned int GetID()									{ return m_id; }
+		unsigned int GetWidth()									{ return m_width; }
+		unsigned int GetHeight()								{ return m_height; }
 
 	protected:
 		unsigned int m_id;
@@ -61,6 +63,8 @@ namespace Directus
 		RHI_Viewport m_viewport;
 		Texture_Format m_format;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
+		unsigned int m_width;
+		unsigned int m_height;
 
 		// D3D11
 		void* m_renderTargetTexture;

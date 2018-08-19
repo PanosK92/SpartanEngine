@@ -116,16 +116,13 @@ namespace Directus
 		void Pass_GBuffer();
 
 		void Pass_PreLight(
-			const std::shared_ptr<RHI_RenderTexture>& inTextureNormal,
-			const std::shared_ptr<RHI_RenderTexture>& inTextureDepth,
-			std::shared_ptr<RHI_Texture>& inTextureNormalNoise,
-			std::shared_ptr<RHI_RenderTexture>& inRenderTexure,
-			std::shared_ptr<RHI_RenderTexture>& outRenderTextureShadowing
+			std::shared_ptr<RHI_RenderTexture>& texIn,
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
 		void Pass_Light(
-			std::shared_ptr<RHI_RenderTexture>& inTextureShadowing,
-			std::shared_ptr<RHI_RenderTexture>& outRenderTexture
+			std::shared_ptr<RHI_RenderTexture>& texIn,
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);	
 
 		void Pass_PostLight(
@@ -137,23 +134,23 @@ namespace Directus
 		void Pass_Debug();
 
 		void Pass_Correction(
-			std::shared_ptr<RHI_RenderTexture>& inTexture,
-			std::shared_ptr<RHI_RenderTexture>& outTexture
+			std::shared_ptr<RHI_RenderTexture>& texIn,
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
 		void Pass_FXAA(
-			std::shared_ptr<RHI_RenderTexture>& inTexture,
-			std::shared_ptr<RHI_RenderTexture>& outTexture
+			std::shared_ptr<RHI_RenderTexture>& texIn,
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
 		void Pass_Sharpening(
-			std::shared_ptr<RHI_RenderTexture>& inTexture,
-			std::shared_ptr<RHI_RenderTexture>& ouTexture
+			std::shared_ptr<RHI_RenderTexture>& texIn,
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
 		void Pass_ChromaticAberration(
-			std::shared_ptr<RHI_RenderTexture>& inTexture,
-			std::shared_ptr<RHI_RenderTexture>& outTexture
+			std::shared_ptr<RHI_RenderTexture>& texIn,
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
 		void Pass_Bloom(
@@ -162,17 +159,13 @@ namespace Directus
 		);
 
 		void Pass_Blur(
-			std::shared_ptr<RHI_RenderTexture>& texture,
-			std::shared_ptr<RHI_RenderTexture>& renderTarget,
-			const Math::Vector2& blurScale
+			std::shared_ptr<RHI_RenderTexture>& texIn,
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
 		void Pass_Shadowing(
-			const std::shared_ptr<RHI_RenderTexture>& inTextureNormal_shaderResource,
-			const std::shared_ptr<RHI_RenderTexture>& inTextureDepth_shaderResource,
-			std::shared_ptr<RHI_Texture>& inTextureNormalNoise,
 			Light* inDirectionalLight,
-			std::shared_ptr<RHI_RenderTexture>& outRenderTexture
+			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
 		const Math::Vector4& GetClearColor();
