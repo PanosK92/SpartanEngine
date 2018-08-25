@@ -67,11 +67,10 @@ namespace Directus
 		void SetScaleLocal(const Math::Vector3& scale);
 		//==============================================================
 
-		//= TRANSLATION/ROTATION =======================
+		//= TRANSLATION/ROTATION ==================
 		void Translate(const Math::Vector3& delta);
 		void Rotate(const Math::Quaternion& delta);
-		void RotateLocal(const Math::Quaternion& delta);
-		//==============================================
+		//=========================================
 
 		//= DIRECTIONS ============
 		Math::Vector3 GetUp();

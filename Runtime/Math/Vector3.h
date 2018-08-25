@@ -83,10 +83,10 @@ namespace Directus::Math
 		static Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
 		//========================================================================================================
 
-		//= DOT PRODUCT ==========================================================================================
-		static float Dot(const Vector3& v1, const Vector3& v2) { return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
-		float Dot(const Vector3& rhs) const { return x * rhs.x + y * rhs.y + z * rhs.z; }
-		//========================================================================================================
+		//= DOT PRODUCT =============================================================================================
+		static float Dot(const Vector3& v1, const Vector3& v2)	{ return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
+		float Dot(const Vector3& rhs) const						{ return x * rhs.x + y * rhs.y + z * rhs.z; }
+		//===========================================================================================================
 
 		//= CROSS PRODUCT ========================================================================================
 		static Vector3 Cross(const Vector3& v1, const Vector3& v2)

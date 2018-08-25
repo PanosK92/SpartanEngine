@@ -221,7 +221,6 @@ namespace Directus
 		m_scriptEngine->RegisterObjectMethod("Transform", "Actor &GetActor()", asMETHOD(Transform, GetActor_PtrRaw), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void Translate(const Vector3& in)", asMETHOD(Transform, Translate), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in)", asMETHOD(Transform, Rotate), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Transform", "void RotateLocal(const Quaternion& in)", asMETHOD(Transform, RotateLocal), asCALL_THISCALL);
 	}
 
 	//= MATERIAL ====================================================================
