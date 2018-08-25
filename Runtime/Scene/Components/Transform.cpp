@@ -196,14 +196,13 @@ namespace Directus
 	void Transform::Rotate(const Quaternion& delta)
 	{
 		if (!HasParent())
-			RotateLocal(delta);
-		
-		SetRotationLocal(m_rotationLocal * GetRotation().Inverse() * delta * GetRotation());
-	}
-
-	void Transform::RotateLocal(const Quaternion& delta)
-	{
-		SetRotationLocal((m_rotationLocal * delta).Normalized());
+		{
+			SetRotationLocal((m_rotationLocal * delta).Normalized());
+		}
+		else
+		{
+			SetRotationLocal(m_rotationLocal * GetRotation().Inverse() * delta * GetRotation());
+		}	
 	}
 
 	Vector3 Transform::GetUp()

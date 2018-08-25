@@ -220,13 +220,14 @@ void Widget_Properties::Inspect(weak_ptr<Material> material)
 
 void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 {		
+	
+
 	if (ComponentProperty::Begin("Transform", Icon_Component_Transform, transform, true, false))
 	{
 		//= REFLECT ==================================================
-		Vector3 position = transform->GetPositionLocal();
-		Quaternion rotation = transform->GetRotationLocal();
-		Vector3 rotationEuler = rotation.ToEulerAngles();
-		Vector3 scale = transform->GetScaleLocal();
+		Vector3 position		= transform->GetPositionLocal();
+		Vector3 rotationEuler	= transform->GetRotationLocal().ToEulerAngles();
+		Vector3 scale			= transform->GetScaleLocal();
 
 		char transPosX[BUFFER_TEXT_DEFAULT];
 		char transPosY[BUFFER_TEXT_DEFAULT];
@@ -284,8 +285,8 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 			(float)atof(&transPosY[0]),
 			(float)atof(&transPosZ[0])
 		);
-
-		rotation = Quaternion::FromEulerAngles(
+	
+		Vector3 newRotation = Vector3(
 			(float)atof(&transRotX[0]),
 			(float)atof(&transRotY[0]),
 			(float)atof(&transRotZ[0])
@@ -297,9 +298,25 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 			(float)atof(&transScaZ[0])
 		);
 
-		if (position != transform->GetPositionLocal())	transform->SetPositionLocal(position);
-		if (rotation != transform->GetRotationLocal())	transform->SetRotationLocal(rotation);
-		if (scale != transform->GetScaleLocal())		transform->SetScaleLocal(scale);
+		if (position != transform->GetPositionLocal())
+		{
+			transform->SetPositionLocal(position);
+		}
+
+		Vector3 rotationDelta = newRotation - rotationEuler;
+		//if (rotationDeltaEuler != Vector3::Zero)
+		{
+			transform->Rotate(Quaternion::FromYawPitchRoll(
+				rotationDelta.y * DEG_TO_RAD,
+				rotationDelta.x * DEG_TO_RAD,
+				rotationDelta.z * DEG_TO_RAD
+			));
+		}
+
+		if (scale != transform->GetScaleLocal())
+		{
+			transform->SetScaleLocal(scale);
+		}
 		//========================================================================================
 	}
 	ComponentProperty::End();

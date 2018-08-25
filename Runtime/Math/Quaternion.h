@@ -47,11 +47,11 @@ namespace Directus::Math
 			this->z = z;
 			this->w = w;
 		}
-
 		~Quaternion() {}
 
-		//= FROM ====================================================================
-		// Define from an angle (in degrees) and axis.
+		// Creates a new Quaternion from the specified axis and angle.
+		// The axis of rotation.
+		// The angle in radians.
 		static Quaternion FromAngleAxis(float angle, const Vector3& axis)
 		{
 			float half = angle * 0.5f;
@@ -65,7 +65,10 @@ namespace Directus::Math
 		static Quaternion FromEulerAngles(const Vector3& axes)						{ return FromYawPitchRoll(axes.y * DEG_TO_RAD, axes.x * DEG_TO_RAD, axes.z * DEG_TO_RAD); }
 		static Quaternion FromEulerAngles(float xAxis, float yAxis, float zAxis)	{ return FromYawPitchRoll(yAxis * DEG_TO_RAD, xAxis * DEG_TO_RAD, zAxis * DEG_TO_RAD); }
 
-		// Yaw - Y, Pitch - X, Roll - Z, Radians
+		// Creates a new Quaternion from the specified yaw, pitch and roll angles.
+		// Yaw around the y axis in radians.
+		// Pitch around the x axis in radians.
+		// Roll around the z axis in radians.
 		static Quaternion FromYawPitchRoll(float yaw, float pitch, float roll)
 		{
 			float halfRoll	= roll * 0.5f;
@@ -86,10 +89,8 @@ namespace Directus::Math
 				cosYaw * cosPitch * cosRoll + sinYaw * sinPitch * sinRoll
 			);
 		}
-		//===========================================================================
 
-		//= TO ================================================================================
-		// Returns euler angles in degrees
+		// Returns Euler angles in degrees
 		Vector3 ToEulerAngles() const
 		{
 			// Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
@@ -127,7 +128,6 @@ namespace Directus::Math
 		float Yaw() const	{ return ToEulerAngles().y; }
 		float Pitch() const { return ToEulerAngles().x; }
 		float Roll() const	{ return ToEulerAngles().z; }
-		//=====================================================================================
 
 		void FromRotationTo(const Vector3& start, const Vector3& end)
 		{
@@ -182,38 +182,49 @@ namespace Directus::Math
 			return Inverse(start) * end;
 		}
 
-		Quaternion Conjugate() const { return Quaternion(w, -x, -y, -z); }
-		float LengthSquared() const { return w * w + x * x + y * y + z * z; }
+		Quaternion Conjugate() const	{ return Quaternion(w, -x, -y, -z); }
+		float LengthSquared() const		{ return (x * x) + (y * y) + (z * z) + (w * w); }
 
-		//= NORMALIZATION =====================================
+		// Scales the quaternion magnitude to unit length
 		void Normalize()
 		{
-			float lenSquared = LengthSquared();
-			if (!Equals(lenSquared, 1.0f) && lenSquared > 0.0f)
-			{
-				float invLen = 1.0f / sqrtf(lenSquared);
-				w *= invLen;
-				x *= invLen;
-				y *= invLen;
-				z *= invLen;
-			}
+			float inverseLength = 1.0f / ((float)Sqrt(LengthSquared()));
+			x *= inverseLength;
+			y *= inverseLength;
+			z *= inverseLength;
+			w *= inverseLength;
 		}
 
+		// Scales the quaternion magnitude to unit length
 		Quaternion Normalized() const
-		{
-			float lenSquared = LengthSquared();
-			if (!Equals(lenSquared, 1.0f) && lenSquared > 0.0f)
-			{
-				float invLen = 1.0f / sqrtf(lenSquared);
-				return *this * invLen;
-			}
-
-			return *this;
+		{	
+			float inverseLength = 1.0f / ((float)Sqrt(LengthSquared()));
+			return Quaternion(x * inverseLength, y * inverseLength, z * inverseLength, w * inverseLength);
 		}
 
-		static Quaternion Inverse(const Quaternion& q);
-		Quaternion Inverse() const { return Inverse(*this); }
-		//=====================================================
+		// Returns the inverse quaternion which represents the opposite rotation
+		static Quaternion Inverse(const Quaternion& q)
+		{
+			float inverseLength = 1.0f / ((float)Sqrt(q.LengthSquared()));
+			Quaternion quaternion2;
+			quaternion2.x = -q.x * inverseLength;
+			quaternion2.y = -q.y * inverseLength;
+			quaternion2.z = -q.z * inverseLength;
+			quaternion2.w = q.w * inverseLength;
+			return quaternion2;
+		}
+
+		// Returns the inverse quaternion which represents the opposite rotation
+		Quaternion Inverse() const 
+		{ 
+			float inverseLength = 1.0f / ((float)Sqrt(LengthSquared()));
+			Quaternion quaternion2;
+			quaternion2.x = -x * inverseLength;
+			quaternion2.y = -y * inverseLength;
+			quaternion2.z = -z * inverseLength;
+			quaternion2.w = w * inverseLength;
+			return quaternion2;
+		}
 
 		//= ASSIGNMENT ==============================
 		Quaternion& operator =(const Quaternion& rhs)
@@ -230,20 +241,36 @@ namespace Directus::Math
 		//= MULTIPLICATION ==============================================================================
 		Quaternion operator*(const Quaternion& rhs) const
 		{
-			return Quaternion(
-				w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z,
-				w * rhs.x + x * rhs.w + y * rhs.z - z * rhs.y,
-				w * rhs.y + y * rhs.w + z * rhs.x - x* rhs.z,
-				w * rhs.z + z * rhs.w + x * rhs.y - y * rhs.x
-			);
+			float num4	= rhs.x;
+			float num3	= rhs.y;
+			float num2	= rhs.z;
+			float num	= rhs.w;
+			float num12 = (y * num2) - (z * num3);
+			float num11 = (z * num4) - (x * num2);
+			float num10 = (x * num3) - (y * num4);
+			float num9 = ((x * num4) + (y * num3)) + (z * num2);
+			Quaternion quaternion;
+			quaternion.x = ((x * num) + (num4 * w)) + num12;
+			quaternion.y = ((y * num) + (num3 * w)) + num11;
+			quaternion.z = ((z * num) + (num2 * w)) + num10;
+			quaternion.w = (w * num) - num9;
+			return quaternion;
 		}
 
 		void operator*=(const Quaternion& rhs)
 		{
-			x *= rhs.x;
-			y *= rhs.y;
-			z *= rhs.z;
-			w *= rhs.w;
+			float num4 = rhs.x;
+			float num3 = rhs.y;
+			float num2 = rhs.z;
+			float num = rhs.w;
+			float num12 = (y * num2) - (z * num3);
+			float num11 = (z * num4) - (x * num2);
+			float num10 = (x * num3) - (y * num4);
+			float num9 = ((x * num4) + (y * num3)) + (z * num2);
+			x	= ((x * num) + (num4 * w)) + num12;
+			y	= ((y * num) + (num3 * w)) + num11;
+			z	= ((z * num) + (num2 * w)) + num10;
+			w	= (w * num) - num9;
 		}
 
 		Vector3 operator*(const Vector3& rhs) const
