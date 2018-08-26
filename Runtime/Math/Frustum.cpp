@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 #include "Frustum.h"
+#include "Plane.h"
 //==================
+
+//= NAMESPACES ========================
+using namespace Directus::Math::Helper;
+//=====================================
 
 namespace Directus::Math
 {
-	Frustum::Frustum()
-	{
-
-	}
-
 	void Frustum::Construct(const Matrix& mView, const Matrix& mProjection, float screenDepth)
 	{
 		// Calculate the minimum Z distance in the frustum.
@@ -85,7 +85,7 @@ namespace Directus::Math
 		m_planes[5].Normalize();
 	}
 
-	Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent)
+	Helper::Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent)
 	{
 		// Check if any one point of the cube is in the view frustum.
 		Intersection result = Inside;
@@ -114,7 +114,7 @@ namespace Directus::Math
 		return result;
 	}
 
-	Intersection Frustum::CheckSphere(const Vector3& center, float radius)
+	Helper::Intersection Frustum::CheckSphere(const Vector3& center, float radius)
 	{
 		// calculate our distances to each of the planes
 		for (const auto& plane : m_planes)

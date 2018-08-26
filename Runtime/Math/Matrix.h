@@ -27,6 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector4.h"
 //=====================
 
+//= NAMESPACES ========================
+using namespace Directus::Math::Helper;
+//=====================================
+
 namespace Directus::Math
 {
 	class ENGINE_CLASS Matrix
@@ -245,7 +249,7 @@ namespace Directus::Math
 		// fieldOfView -> Field of view in the y direction, in radians.
 		static Matrix CreatePerspectiveFieldOfViewLH(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
 		{
-			float yScale = CotF(fieldOfView / 2);
+			float yScale = Helper::CotF(fieldOfView / 2);
 			float xScale = yScale / aspectRatio;
 
 

@@ -28,10 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Settings.h"
 //================================
 
-//= NAMESPACES ================
+//= NAMESPACES ========================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Math::Helper;
+//=====================================
 
 // A minimum size for a texture holding all visible ASCII characters
 #define GLYPH_START 32

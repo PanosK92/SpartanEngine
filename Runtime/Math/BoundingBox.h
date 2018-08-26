@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "MathHelper.h"
 #include "Vector3.h"
-#include <vector>
 #include "../RHI/RHI_Vertex.h"
+#include <vector>
 //============================
 
 namespace Directus
@@ -58,19 +58,19 @@ namespace Directus
 			}
 
 			// Returns the center
-			Vector3 GetCenter() const { return (m_max + m_min) * 0.5f; }
+			Vector3 GetCenter() const	{ return (m_max + m_min) * 0.5f; }
 
 			// Returns the size
-			Vector3 GetSize() const { return m_max - m_min; }
+			Vector3 GetSize() const		{ return m_max - m_min; }
 
 			// Returns extents
-			Vector3 GetExtents() const { return (m_max - m_min) * 0.5f; }
+			Vector3 GetExtents() const	{ return (m_max - m_min) * 0.5f; }
 
 			// Test if a point is inside
-			Intersection IsInside(const Vector3& point) const;
+			Helper::Intersection IsInside(const Vector3& point) const;
 
 			// Test if a bounding box is inside
-			Intersection IsInside (const BoundingBox& box) const;
+			Helper::Intersection IsInside (const BoundingBox& box) const;
 
 			// Returns a transformed bounding box
 			BoundingBox Transformed(const Matrix& transform);
@@ -81,10 +81,11 @@ namespace Directus
 			const Vector3& GetMin() const { return m_min; }
 			const Vector3& GetMax() const { return m_max; }
 
-			void Undefine() { m_min = Vector3::InfinityNeg; m_max = Vector3::Infinity; }
-			bool Defined() const { return m_min.x != INFINITY; }
+			void Undefine()			{ m_min = Vector3::InfinityNeg; m_max = Vector3::Infinity; }
+			bool Defined() const	{ return m_min.x != INFINITY; }
 
 			static const BoundingBox Zero;
+
 		private:
 			Vector3 m_min;
 			Vector3 m_max;	

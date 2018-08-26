@@ -32,10 +32,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Components/Renderable.h"
 //=========================================
 
-//= NAMESPACES ================
+//= NAMESPACES ========================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Math::Helper;
+//=====================================
 
 namespace Directus
 {
@@ -463,10 +464,9 @@ namespace Directus
 		m_scriptEngine->RegisterGlobalFunction("Quaternion FromLookRotation(const Vector3& in, const Vector3& in)", asFUNCTIONPR(Quaternion::FromLookRotation, (const Vector3&, const Vector3&), Quaternion), asCALL_CDECL);
 		//========================================================================================================================================================================================
 
-		//= STATIC FUNCTIONS =============================================================================================================================================================================
-		m_scriptEngine->RegisterGlobalFunction("Quaternion QuaternionFromYawPitchRoll(float, float, float)", asFUNCTIONPR(Quaternion::FromYawPitchRoll, (float, float, float), Quaternion), asCALL_CDECL);
-		m_scriptEngine->RegisterGlobalFunction("Quaternion QuaternionFromEuler(const Vector3& in)", asFUNCTIONPR(Quaternion::FromEulerAngles, (const Vector3&), Quaternion), asCALL_CDECL);
-		//================================================================================================================================================================================================
+		//= STATIC FUNCTIONS =====================================================================================================================================================================
+		m_scriptEngine->RegisterGlobalFunction("Quaternion Quaternion_FromEulerAngles(const Vector3& in)", asFUNCTIONPR(Quaternion::FromEulerAngles, (const Vector3&), Quaternion), asCALL_CDECL);
+		//========================================================================================================================================================================================
 	}
 
 	/*------------------------------------------------------------------------------
@@ -474,7 +474,7 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void ScriptInterface::RegisterMath()
 	{
-		//m_scriptEngine->RegisterGlobalFunction("float Clamp(float, float)", asFUNCTIONPR(Clamp, (float, float), float), asCALL_CDECL);
+		//m_scriptEngine->RegisterGlobalFunction("float Math_Clamp(float, float, float)", asFUNCTIONPR(Clamp, (float, float, float), float), asCALL_CDECL);
 	}
 
 	/*------------------------------------------------------------------------------

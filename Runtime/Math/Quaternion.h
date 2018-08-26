@@ -49,21 +49,17 @@ namespace Directus::Math
 		}
 		~Quaternion() {}
 
-		// Creates a new Quaternion from the specified axis and angle.
-		// The axis of rotation.
+		// Creates a new Quaternion from the specified axis and angle.	
 		// The angle in radians.
+		// The axis of rotation.
 		static Quaternion FromAngleAxis(float angle, const Vector3& axis)
 		{
-			float half = angle * 0.5f;
-		    float sin = sinf(half);
-		    float cos = cosf(half);
+			float half	= angle * 0.5f;
+			float sin	= sinf(half);
+			float cos	= cosf(half);
 			return Quaternion(axis.x * sin, axis.y * sin, axis.z * sin, cos);
 		}
 		void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
-
-		// Euler angles to quaternion (input in degrees)
-		static Quaternion FromEulerAngles(const Vector3& axes)						{ return FromYawPitchRoll(axes.y * DEG_TO_RAD, axes.x * DEG_TO_RAD, axes.z * DEG_TO_RAD); }
-		static Quaternion FromEulerAngles(float xAxis, float yAxis, float zAxis)	{ return FromYawPitchRoll(yAxis * DEG_TO_RAD, xAxis * DEG_TO_RAD, zAxis * DEG_TO_RAD); }
 
 		// Creates a new Quaternion from the specified yaw, pitch and roll angles.
 		// Yaw around the y axis in radians.
@@ -72,15 +68,15 @@ namespace Directus::Math
 		static Quaternion FromYawPitchRoll(float yaw, float pitch, float roll)
 		{
 			float halfRoll	= roll * 0.5f;
-            float halfPitch = pitch * 0.5f;
-            float halfYaw	= yaw * 0.5f;
+			float halfPitch = pitch * 0.5f;
+			float halfYaw	= yaw * 0.5f;
 
-            float sinRoll	= sin(halfRoll);
-            float cosRoll	= cos(halfRoll);
-            float sinPitch	= sin(halfPitch);
-            float cosPitch	= cos(halfPitch);
-            float sinYaw	= sin(halfYaw);
-            float cosYaw	= cos(halfYaw);
+			float sinRoll	= sin(halfRoll);
+			float cosRoll	= cos(halfRoll);
+			float sinPitch	= sin(halfPitch);
+			float cosPitch	= cos(halfPitch);
+			float sinYaw	= sin(halfYaw);
+			float cosYaw	= cos(halfYaw);
 
 			return Quaternion(
 				cosYaw * sinPitch * cosRoll + sinYaw * cosPitch * sinRoll,
@@ -89,6 +85,9 @@ namespace Directus::Math
 				cosYaw * cosPitch * cosRoll + sinYaw * sinPitch * sinRoll
 			);
 		}
+		// Euler angles to quaternion (input in degrees)
+		static Quaternion FromEulerAngles(const Vector3& rotation) { return FromYawPitchRoll(rotation.y * Helper::DEG_TO_RAD, rotation.x * Helper::DEG_TO_RAD, rotation.z * Helper::DEG_TO_RAD); }
+		static Quaternion FromEulerAngles(float rotationX, float rotationY, float rotationZ) { return FromYawPitchRoll(rotationY * Helper::DEG_TO_RAD, rotationX * Helper::DEG_TO_RAD, rotationZ * Helper::DEG_TO_RAD); }
 
 		// Returns Euler angles in degrees
 		Vector3 ToEulerAngles() const
@@ -103,7 +102,7 @@ namespace Directus::Math
 				(
 					-90.0f,
 					0.0f,
-					-atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
+					-atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
 				);
 			}
 
@@ -113,48 +112,54 @@ namespace Directus::Math
 				(
 					90.0f,
 					0.0f,
-					atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
+					atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
 				);
 			}
 
 			return Vector3
 			(
-				asinf(check) * RAD_TO_DEG,
-				atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * RAD_TO_DEG,
-				atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * RAD_TO_DEG
+				asinf(check) * Helper::RAD_TO_DEG,
+				atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * Helper::RAD_TO_DEG,
+				atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * Helper::RAD_TO_DEG
 			);
 		}
 
+		// Returns yaw in degrees
 		float Yaw() const	{ return ToEulerAngles().y; }
+
+		// Returns pitch in degrees
 		float Pitch() const { return ToEulerAngles().x; }
+
+		// Returns roll in degrees
 		float Roll() const	{ return ToEulerAngles().z; }
 
-		void FromRotationTo(const Vector3& start, const Vector3& end)
+		static Quaternion FromToRotation(const Vector3& start, const Vector3& end)
 		{
-			Vector3 normStart = start.Normalized();
-			Vector3 normEnd = end.Normalized();
-			float d = normStart.Dot(normEnd);
+			Vector3 normStart	= start.Normalized();
+			Vector3 normEnd		= end.Normalized();
+			float d				= normStart.Dot(normEnd);
 
-			if (d > -1.0f + M_EPSILON)
+			if (d > -1.0f + Helper::M_EPSILON)
 			{
 				Vector3 c = normStart.Cross(normEnd);
 				float s = sqrtf((1.0f + d) * 2.0f);
 				float invS = 1.0f / s;
 
-				x = c.x * invS;
-				y = c.y * invS;
-				z = c.z * invS;
-				w = 0.5f * s;
+				return Quaternion(
+					c.x * invS,
+					c.y * invS,
+					c.z * invS,
+					0.5f * s);
 			}
 			else
 			{
 				Vector3 axis = Vector3::Right.Cross(normStart);
-				if (axis.Length() < M_EPSILON)
+				if (axis.Length() < Helper::M_EPSILON)
 				{
 					axis = Vector3::Up.Cross(normStart);
 				}
 
-				FromAngleAxis(180.0f, axis);
+				return FromAngleAxis(180.0f, axis);
 			}
 		}
 
@@ -164,7 +169,7 @@ namespace Directus::Math
 			Vector3 forward = direction.Normalized();
 
 			Vector3 v = forward.Cross(upDirection);
-			if (v.LengthSquared() >= M_EPSILON)
+			if (v.LengthSquared() >= Helper::M_EPSILON)
 			{
 				v.Normalize();
 				Vector3 up = v.Cross(forward);
@@ -172,7 +177,7 @@ namespace Directus::Math
 				ret.FromAxes(right, up, forward);
 			}
 			else
-				ret.FromRotationTo(Vector3::Forward, forward);
+				ret.FromToRotation(Vector3::Forward, forward);
 
 			return ret;
 		}
@@ -188,7 +193,7 @@ namespace Directus::Math
 		// Scales the quaternion magnitude to unit length
 		void Normalize()
 		{
-			float inverseLength = 1.0f / ((float)Sqrt(LengthSquared()));
+			float inverseLength = 1.0f / (float)Helper::Sqrt(LengthSquared());
 			x *= inverseLength;
 			y *= inverseLength;
 			z *= inverseLength;
@@ -198,32 +203,32 @@ namespace Directus::Math
 		// Scales the quaternion magnitude to unit length
 		Quaternion Normalized() const
 		{	
-			float inverseLength = 1.0f / ((float)Sqrt(LengthSquared()));
+			float inverseLength = 1.0f / (float)Helper::Sqrt(LengthSquared());
 			return Quaternion(x * inverseLength, y * inverseLength, z * inverseLength, w * inverseLength);
 		}
 
 		// Returns the inverse quaternion which represents the opposite rotation
 		static Quaternion Inverse(const Quaternion& q)
 		{
-			float inverseLength = 1.0f / ((float)Sqrt(q.LengthSquared()));
-			Quaternion quaternion2;
-			quaternion2.x = -q.x * inverseLength;
-			quaternion2.y = -q.y * inverseLength;
-			quaternion2.z = -q.z * inverseLength;
-			quaternion2.w = q.w * inverseLength;
-			return quaternion2;
+			float inverseLength = 1.0f / (float)Helper::Sqrt(q.LengthSquared());
+			return Quaternion(
+				-q.x * inverseLength,
+				-q.y * inverseLength,
+				-q.z * inverseLength,
+				q.w * inverseLength
+			);
 		}
 
 		// Returns the inverse quaternion which represents the opposite rotation
 		Quaternion Inverse() const 
 		{ 
-			float inverseLength = 1.0f / ((float)Sqrt(LengthSquared()));
-			Quaternion quaternion2;
-			quaternion2.x = -x * inverseLength;
-			quaternion2.y = -y * inverseLength;
-			quaternion2.z = -z * inverseLength;
-			quaternion2.w = w * inverseLength;
-			return quaternion2;
+			float inverseLength = 1.0f / (float)Helper::Sqrt(LengthSquared());
+			return Quaternion(
+				-x * inverseLength,
+				-y * inverseLength,
+				-z * inverseLength,
+				w * inverseLength
+			);
 		}
 
 		//= ASSIGNMENT ==============================
@@ -295,14 +300,19 @@ namespace Directus::Math
 		Quaternion operator *(float rhs) const { return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs); }
 		//===============================================================================================
 
-		//= COMPARISON =========================================================================
+		//= COMPARISON =============================================================================
+		// Test for equality using epsilon
 		bool operator ==(const Quaternion& rhs) const
 		{
-			// Test for a quality while allowing for some error
-			return Equals(w, rhs.w) && Equals(x, rhs.x) && Equals(y, rhs.y) && Equals(z, rhs.z);
+			return Helper::Equals(w, rhs.w) && Helper::Equals(x, rhs.x) && Helper::Equals(y, rhs.y) && Helper::Equals(z, rhs.z);
 		}
-		bool operator !=(const Quaternion& rhs) const { return !(*this == rhs); }
-		//======================================================================================
+
+		// Test for inequality using epsilon
+		bool operator !=(const Quaternion& rhs) const 
+		{ 
+			return !Helper::Equals(w, rhs.w) || !Helper::Equals(x, rhs.x) || !Helper::Equals(y, rhs.y) || !Helper::Equals(z, rhs.z);
+		}
+		//==========================================================================================
 
 		std::string ToString() const;
 

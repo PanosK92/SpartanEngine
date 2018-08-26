@@ -42,8 +42,8 @@ struct Metric
 
 	void AddSample(float sample)
 	{
-		m_min = Directus::Math::Min(m_min, sample);
-		m_max = Directus::Math::Max(m_max, sample);	
+		m_min = Directus::Math::Helper::Min(m_min, sample);
+		m_max = Directus::Math::Helper::Max(m_max, sample);
 		m_sum += sample;
 		m_sampleCount++;
 		m_avg = float(m_sum / (float)m_sampleCount);
@@ -169,8 +169,8 @@ public:
 				float duration = gpuBlock.second.duration;
 
 				float width = ImGui::GetWindowContentRegionWidth() / (renderTimeGPU / duration);
-				width = Directus::Math::Max(width, widthMin);
-				Directus::Math::Vector3 color = Directus::Math::Lerp(Directus::Math::Vector3(0.0f, 200.0f, 0.0f), Directus::Math::Vector3(255.0f, 0.0f, 0.0f), (duration / renderTimeGPU));
+				width = Directus::Math::Helper::Max(width, widthMin);
+				Directus::Math::Vector3 color = Directus::Math::Helper::Lerp(Directus::Math::Vector3(0.0f, 200.0f, 0.0f), Directus::Math::Vector3(255.0f, 0.0f, 0.0f), (duration / renderTimeGPU));
 				ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(penX, penY), ImVec2(penX + width, penY + 20.0f), IM_COL32(color.x, color.y, 0, 255));
 				ImGui::GetWindowDrawList()->AddText(ImVec2(penX + paddingX, penY + 2.0f), IM_COL32(255, 255, 255, 255), gpuBlock.first);
 				penY += height + spacingY;

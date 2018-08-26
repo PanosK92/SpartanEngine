@@ -21,23 +21,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "../Math/Vector3.h"
+//= INCLUDES =============
 #include "../Math/Plane.h"
-#include "../Math/Matrix.h"
-//==========================
+#include "Matrix.h"
+#include "Vector3.h"
+//========================
 
 namespace Directus::Math
 {
 	class Frustum
 	{
 	public:
-		Frustum();
-		~Frustum(){}
+		Frustum() {}
+		~Frustum() {}
 
 		void Construct(const Matrix& mView, const Matrix&  mProjection, float screenDepth);
-		Intersection CheckCube(const Vector3& center, const Vector3& extent);
-		Intersection CheckSphere(const Vector3& center, float radius);
+		Helper::Intersection CheckCube(const Vector3& center, const Vector3& extent);
+		Helper::Intersection CheckSphere(const Vector3& center, float radius);
 
 	private:
 		Plane m_planes[6];
