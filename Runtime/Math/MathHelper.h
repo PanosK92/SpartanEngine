@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-namespace Directus::Math
+namespace Directus::Math::Helper
 {
 	enum Intersection
 	{
@@ -36,19 +36,19 @@ namespace Directus::Math
 		Intersects
 	};
 
-	static const float M_EPSILON = 0.000001f;
-	static const float PI = 3.14159265358979323846264338327950288f;
-	static const float PI_2 = 6.283185307f;
-	static const float PI_DIV_2 = 1.570796327f;
-	static const float PI_DIV_4 = 0.785398163f;
-	static const float PI_INV = 0.318309886f;
-	static const float DEG_TO_RAD = PI / 180.0f;
-	static const float RAD_TO_DEG = 180.0f / PI;
+	static const float M_EPSILON	= 0.000001f;
+	static const float PI			= 3.14159265359f;
+	static const float PI_2			= 6.28318530718f;
+	static const float PI_DIV_2		= 1.57079632679f;
+	static const float PI_DIV_4		= 0.78539816339f;
+	static const float PI_INV		= 0.31830988618f;
+	static const float DEG_TO_RAD	= PI / 180.0f;
+	static const float RAD_TO_DEG	= 180.0f / PI;
 
-	inline ENGINE_CLASS double Cot(float x) { return cos(x) / sin(x); }
-	inline ENGINE_CLASS float CotF(float x) { return cosf(x) / sinf(x); }
-	inline ENGINE_CLASS float DegreesToRadians(float degrees) { return degrees * DEG_TO_RAD; }
-	inline ENGINE_CLASS float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
+	inline ENGINE_CLASS double Cot(float x)						{ return cos(x) / sin(x); }
+	inline ENGINE_CLASS float CotF(float x)						{ return cosf(x) / sinf(x); }
+	inline ENGINE_CLASS float DegreesToRadians(float degrees)	{ return degrees * DEG_TO_RAD; }
+	inline ENGINE_CLASS float RadiansToDegrees(float radians)	{ return radians * RAD_TO_DEG; }
 
 	template <typename T>
 	T Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
@@ -63,7 +63,7 @@ namespace Directus::Math
 
 	// Check for equality but allow for a small error
 	template <class T>
-	bool Equals(T lhs, T rhs) { return lhs + std::numeric_limits<T>::epsilon() >= rhs && lhs - std::numeric_limits<T>::epsilon() <= rhs; }
+	bool Equals(T lhs, T rhs, T error = std::numeric_limits<T>::epsilon()) { return lhs + error >= rhs && lhs - error <= rhs; }
 
 	template <class T>
 	T Max(T a, T b) { return a > b ? a : b; }
@@ -83,6 +83,23 @@ namespace Directus::Math
 	template <class T>
 	T Round(T x) { return round(x); }
 
-	template <typename T> 
+	template <typename T>
 	int Sign(T x) { return (T(0) < x) - (x < T(0)); }
+
+	// Reduces a given angle to a value between PI and -PI
+	// The angle to reduce, in radians
+	inline float WrapAngle(float angle)
+	{
+		if ((angle > -PI) && (angle <= PI))
+			return angle;
+
+		angle = std::fmod(angle, PI_2);
+		if (angle <= -PI)
+			return angle + PI_2;
+
+		if (angle > PI)
+			return angle - PI_2;
+
+		return angle;
+	}
 }

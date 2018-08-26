@@ -25,10 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceManager.h"
 //=========================================
 
-//= NAMESPACES ================
-using namespace Directus::Math;
+//= NAMESPACES ========================
 using namespace std;
-//=============================
+using namespace Directus::Math;
+using namespace Directus::Math::Helper;
+//=====================================
 
 namespace Directus
 {

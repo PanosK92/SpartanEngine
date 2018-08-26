@@ -39,14 +39,14 @@ namespace Directus::Math
 		Ray(const Vector3& origin, const Vector3& end);
 
 		// Empty destructor
-		~Ray();
+		~Ray() {}
 
 		// Returns hit distance to a bounding box, or infinity if there is no hit.
 		float HitDistance(const BoundingBox& box);
 
-		Vector3 GetOrigin() { return m_origin; }
-		Vector3 GetEnd() { return m_end; }
-		Vector3 GetDirection() { return m_direction; }
+		Vector3 GetOrigin()		{ return m_origin; }
+		Vector3 GetEnd()		{ return m_end; }
+		Vector3 GetDirection()	{ return m_direction; }
 
 	private:
 		Vector3 m_origin;

@@ -43,10 +43,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsDebugDraw.h"
 //===========================================
 
-//= NAMESPACES ================
+//= NAMESPACES ========================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Math::Helper;
+//=====================================
 
 #define GIZMO_MAX_SIZE 5.0f
 #define GIZMO_MIN_SIZE 0.1f

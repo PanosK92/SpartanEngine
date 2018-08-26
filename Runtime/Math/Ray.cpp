@@ -28,21 +28,16 @@ namespace Directus::Math
 {
 	Ray::Ray()
 	{
-		m_origin = Vector3::Zero;
-		m_end = Vector3::Zero;
+		m_origin	= Vector3::Zero;
+		m_end		= Vector3::Zero;
 		m_direction = Vector3::Zero;
 	}
 
 	Ray::Ray(const Vector3& origin, const Vector3& end)
 	{
-		m_origin = origin;
-		m_end = end;
+		m_origin	= origin;
+		m_end		= end;
 		m_direction = (end - origin).Normalized();
-	}
-
-	Ray::~Ray()
-	{
-
 	}
 
 	float Ray::HitDistance(const BoundingBox& box)
