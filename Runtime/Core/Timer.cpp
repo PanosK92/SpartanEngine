@@ -21,6 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====
 #include "Timer.h"
+#include "Engine.h"
+#include "Settings.h"
+#include <thread>
 //================
 
 //= NAMESPACES ========
@@ -35,27 +38,45 @@ namespace Directus
 		m_deltaTimeSec	= 0.0f;
 		m_deltaTimeMs	= 0.0f;
 		m_firstRun		= true;
-	}
-
-	Timer::~Timer()
-	{
-
+		a				= std::chrono::system_clock::now();
+		b				= std::chrono::system_clock::now();
 	}
 
 	void Timer::Tick()
 	{
-		auto currentTime = high_resolution_clock::now();
-		duration<double, milli> ms = currentTime - m_previousTime;
-		m_previousTime = currentTime;
-
-		m_deltaTimeMs	= (float)ms.count();
-		m_deltaTimeSec	= (float)(ms.count() / 1000.0);
+		auto currentTime				= high_resolution_clock::now();
+		duration<double, milli> delta	= currentTime - m_previousTime;
+		m_previousTime					= currentTime;
+		m_deltaTimeMs					= (float)delta.count();
+		m_deltaTimeSec					= (float)(delta.count() / 1000.0);
 
 		if (m_firstRun)
 		{
-			m_deltaTimeMs = 0.0f;
-			m_deltaTimeSec = 0.0f;
-			m_firstRun = false;
+			m_deltaTimeMs	= 0.0f;
+			m_deltaTimeSec	= 0.0f;
+			m_firstRun		= false;
+		}
+
+		// FPS LIMIT
+		{
+			bool isEditor		= !Engine::EngineMode_IsSet(Engine_Game);
+			float maxFPS_editor = 60.0f;
+			float maxFPS_game	= Settings::Get().GetMaxFPS();
+			float maxFPS		= isEditor ? maxFPS_editor : maxFPS_game;
+			float maxMs			= (1.0f / maxFPS) * 1000;
+
+			// Maintain designated frequency
+			a = std::chrono::system_clock::now();
+			std::chrono::duration<double, std::milli> work_time = a - b;
+
+			if (work_time.count() < maxMs)
+			{
+				std::chrono::duration<double, std::milli> delta_ms(maxMs - work_time.count());
+				auto delta_ms_duration = std::chrono::duration_cast<std::chrono::milliseconds>(delta_ms);
+				std::this_thread::sleep_for(std::chrono::milliseconds(delta_ms_duration.count()));
+			}
+
+			b = std::chrono::system_clock::now();
 		}
 	}
 }
