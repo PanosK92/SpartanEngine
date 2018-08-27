@@ -32,7 +32,7 @@ namespace Directus
 	{
 	public:
 		Timer(Context* context);
-		~Timer();
+		~Timer() {}
 
 		void Tick();
 		float GetDeltaTimeMs()	{ return m_deltaTimeMs; }
@@ -43,5 +43,7 @@ namespace Directus
 		float m_deltaTimeSec;
 		bool m_firstRun;
 		std::chrono::high_resolution_clock::time_point m_previousTime;
+		std::chrono::system_clock::time_point a;
+		std::chrono::system_clock::time_point b;
 	};
 }

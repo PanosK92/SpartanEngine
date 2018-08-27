@@ -239,31 +239,42 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 		Vector3 position	= transform->GetPositionLocal();
 		Vector3 rotation	= !isPlaying ? WidgetProperties_Internal::rotationHint : transform->GetRotationLocal().ToEulerAngles();
 		Vector3 scale		= transform->GetScaleLocal();
-		//=========================================================================================================================
+		//=========================================================================================================================	
+		
+		float startColumn = ComponentProperty::g_column - 70.0f;
 
-		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
-		float itemWidth		= 125.0f;
-		float startColumn	= ComponentProperty::g_column - 70.0f;
-		float step			= 1.0f;
-		float step_fast		= 1.0f;
+		auto showFloat = [](const char* id, const char* label, float* value) 
+		{
+			float itemWidth		= 125.0f;
+			float step			= 1.0f;
+			float step_fast		= 1.0f;
+			int decimals		= 5;
+			auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
+
+			ImGui::PushItemWidth(125.0f);
+			ImGui::PushID(id);
+			ImGui::InputFloat(label, value, step, step_fast, decimals, inputTextFlags);
+			ImGui::PopID();
+			ImGui::PopItemWidth();
+		};
 
 		// Position
 		ImGui::Text("Position");
-		ImGui::SameLine(startColumn);	ImGui::PushItemWidth(itemWidth); ImGui::PushID("TraPosX"); ImGui::InputFloat("X", &position.x, step, step_fast, inputTextFlags); ImGui::PopID(); ImGui::PopItemWidth();
-		ImGui::SameLine();				ImGui::PushItemWidth(itemWidth); ImGui::PushID("TraPosY"); ImGui::InputFloat("Y", &position.y, step, step_fast, inputTextFlags); ImGui::PopID(); ImGui::PopItemWidth();
-		ImGui::SameLine();				ImGui::PushItemWidth(itemWidth); ImGui::PushID("TraPosZ"); ImGui::InputFloat("Z", &position.z, step, step_fast, inputTextFlags); ImGui::PopID(); ImGui::PopItemWidth();
+		ImGui::SameLine(startColumn);	showFloat("TraPosX", "X", &position.x);
+		ImGui::SameLine();				showFloat("TraPosY", "Y", &position.y);
+		ImGui::SameLine();				showFloat("TraPosZ", "Z", &position.z);
 
 		// Rotation
 		ImGui::Text("Rotation");
-		ImGui::SameLine(startColumn);	ImGui::PushItemWidth(itemWidth); ImGui::PushID("TraRotX"); ImGui::InputFloat("X", &rotation.x, step, step_fast, inputTextFlags); ImGui::PopID(); ImGui::PopItemWidth();
-		ImGui::SameLine();				ImGui::PushItemWidth(itemWidth); ImGui::PushID("TraRotY"); ImGui::InputFloat("Y", &rotation.y, step, step_fast, inputTextFlags); ImGui::PopID(); ImGui::PopItemWidth();
-		ImGui::SameLine();				ImGui::PushItemWidth(itemWidth); ImGui::PushID("TraRotZ"); ImGui::InputFloat("Z", &rotation.z, step, step_fast, inputTextFlags); ImGui::PopID(); ImGui::PopItemWidth();
+		ImGui::SameLine(startColumn);	showFloat("TraRotX", "X", &rotation.x);
+		ImGui::SameLine();				showFloat("TraRotY", "Y", &rotation.y);
+		ImGui::SameLine();				showFloat("TraRotZ", "Z", &rotation.z);
 
 		// Scale
 		ImGui::Text("Scale");
-		ImGui::SameLine(startColumn);	ImGui::PushItemWidth(itemWidth); ImGui::PushID("TraScaX"); ImGui::InputFloat("X", &scale.x, step, step_fast, inputTextFlags); ImGui::PopID(); ImGui::PopItemWidth();
-		ImGui::SameLine();				ImGui::PushItemWidth(itemWidth); ImGui::PushID("TraScaY"); ImGui::InputFloat("Y", &scale.y, step, step_fast, inputTextFlags); ImGui::PopID(); ImGui::PopItemWidth();
-		ImGui::SameLine();				ImGui::PushItemWidth(itemWidth); ImGui::PushID("TraScaZ"); ImGui::InputFloat("Z", &scale.z, step, step_fast, inputTextFlags); ImGui::PopID(); ImGui::PopItemWidth();
+		ImGui::SameLine(startColumn);	showFloat("TraScaX", "X", &scale.x);
+		ImGui::SameLine();				showFloat("TraScaY", "Y", &scale.y);
+		ImGui::SameLine();				showFloat("TraScaZ", "Z", &scale.z);
 
 		//= MAP ===================================================================
 		if (!isPlaying)
