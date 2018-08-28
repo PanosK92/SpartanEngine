@@ -64,9 +64,8 @@ namespace Directus
 		textureDesc.Format				= d3d11_dxgi_format[format];
 		textureDesc.SampleDesc.Count	= (unsigned int)1;
 		textureDesc.SampleDesc.Quality	= (unsigned int)0;
-		textureDesc.Usage				= D3D11_USAGE_DEFAULT;
-		textureDesc.BindFlags			= D3D11_BIND_SHADER_RESOURCE;
-		textureDesc.BindFlags			|= generateMimaps ? D3D11_BIND_RENDER_TARGET : 0; // Requirement by the D3D11_RESOURCE_MISC_GENERATE_MIPS flag
+		textureDesc.Usage				= generateMimaps ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
+		textureDesc.BindFlags			= generateMimaps ? (D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE) : D3D11_BIND_SHADER_RESOURCE; // D3D11_RESOURCE_MISC_GENERATE_MIPS flag requires D3D11_BIND_RENDER_TARGET
 		textureDesc.MiscFlags			= generateMimaps ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
 		textureDesc.CPUAccessFlags		= 0;
 
