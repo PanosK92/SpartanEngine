@@ -462,8 +462,8 @@ namespace Directus
 				return false;
 
 			// Get materials
-			auto a_material = a_renderable->Material_Ref();
-			auto b_material = b_renderable->Material_Ref();
+			auto a_material = a_renderable->Material_PtrRaw();
+			auto b_material = b_renderable->Material_PtrRaw();
 
 			if (!a_material || !b_material)
 				return false;
@@ -522,32 +522,35 @@ namespace Directus
 
 				for (const auto& actor : m_renderables)
 				{
-					// Get renderable and material
-					Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
-					Material* obj_material		= obj_renderable ? obj_renderable->Material_Ref() : nullptr;
-
-					if (!obj_renderable || !obj_material)
+					// Acquire renderable component
+					Renderable* renderable	= actor->GetRenderable_PtrRaw();
+					if (!renderable)
 						continue;
 
-					// Get geometry
-					Model* obj_geometry = obj_renderable->Geometry_Model();
-					if (!obj_geometry)
+					// Acquire material
+					Material* material = renderable ? renderable->Material_PtrRaw() : nullptr;
+					if (!material)
+						continue;
+
+					// Acquire geometry
+					Model* geometry = renderable->Geometry_Model();
+					if (!geometry)
 						continue;
 
 					// Skip meshes that don't cast shadows
-					if (!obj_renderable->GetCastShadows())
+					if (!renderable->GetCastShadows())
 						continue;
 
 					// Skip transparent meshes (for now)
-					if (obj_material->GetOpacity() < 1.0f)
+					if (material->GetOpacity() < 1.0f)
 						continue;
 
 					// Bind geometry
-					if (currentlyBoundGeometry != obj_geometry->GetResourceID())
+					if (currentlyBoundGeometry != geometry->GetResourceID())
 					{
-						m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
-						m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());					
-						currentlyBoundGeometry = obj_geometry->GetResourceID();
+						m_rhiPipelineState->SetIndexBuffer(geometry->GetIndexBuffer());
+						m_rhiPipelineState->SetVertexBuffer(geometry->GetVertexBuffer());					
+						currentlyBoundGeometry = geometry->GetResourceID();
 					}
 
 					// skip objects outside of the view frustum
@@ -558,7 +561,7 @@ namespace Directus
 					m_rhiPipelineState->SetConstantBuffer(m_shaderLightDepth->GetConstantBuffer());
 					m_rhiPipelineState->Bind();
 
-					m_rhiDevice->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
+					m_rhiDevice->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
 				}
 
 				m_rhiDevice->EventEnd();
@@ -596,7 +599,7 @@ namespace Directus
 		{
 			// Get renderable and material
 			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
-			Material* obj_material		= obj_renderable ? obj_renderable->Material_Ref() : nullptr;
+			Material* obj_material		= obj_renderable ? obj_renderable->Material_PtrRaw() : nullptr;
 
 			if (!obj_renderable || !obj_material)
 				continue;
