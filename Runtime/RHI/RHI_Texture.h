@@ -42,9 +42,9 @@ namespace Directus
 
 		//= IMPLEMENTED BY GRAPHICS API  ========================
 		~RHI_Texture();
-		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);					// Simple texture, no mimaps
-		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::vector<std::byte>>& mipmaps, Texture_Format format); 	// With custom-generated mimaps
-		bool CreateShaderResource(unsigned int width, int height, unsigned int channels, const std::vector<std::byte>& data, Texture_Format format);							// With auto-generated mimaps
+		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::byte>& data, bool generateMimaps = false);
+		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::byte>>& data);
+		
 		void* GetShaderResource()						{ return m_shaderResource; }
 		void SetShaderResource(void* shaderResource)	{ m_shaderResource = shaderResource; }
 		bool CreateShaderResource();

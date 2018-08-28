@@ -86,7 +86,7 @@ namespace Directus
 
 		// Create a font texture atlas form the provided data
 		m_textureAtlas = make_shared<RHI_Texture>(m_context);
-		if (!m_textureAtlas->CreateShaderResource(texAtlasWidth, texAtlasHeight, 1, atlasBuffer, Texture_Format_R8_UNORM))
+		if (!m_textureAtlas->CreateShaderResource(texAtlasWidth, texAtlasHeight, 1, Texture_Format_R8_UNORM, atlasBuffer))
 		{
 			LOG_ERROR("Font: Failed to create shader resource.");
 		}

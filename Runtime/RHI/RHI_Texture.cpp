@@ -174,17 +174,17 @@ namespace Directus
 	{
 		if (m_isUsingMipmaps)
 		{
-			if (!CreateShaderResource(m_width, m_height, m_channels, m_textureBytes, m_format))
+			if (!CreateShaderResource(m_width, m_height, m_channels, m_format, m_textureBytes))
 			{
-				LOGF_ERROR("IRHI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".",  m_resourceFilePath.c_str());
+				LOGF_ERROR("RHI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".",  m_resourceFilePath.c_str());
 				return false;
 			}			
 		}
 		else
 		{
-			if (!CreateShaderResource(m_width, m_height, m_channels, m_textureBytes[0], m_format))
+			if (!CreateShaderResource(m_width, m_height, m_channels, m_format, m_textureBytes[0]))
 			{
-				LOGF_ERROR("IRHI_Texture::CreateShaderResource: Failed to create shader resource for \"%s\".",  m_resourceFilePath.c_str());
+				LOGF_ERROR("RHI_Texture::CreateShaderResource: Failed to create shader resource for \"%s\".",  m_resourceFilePath.c_str());
 				return false;
 			}
 		}
@@ -197,7 +197,7 @@ namespace Directus
 	{
 		if (filePath == NOT_ASSIGNED)
 		{
-			LOG_WARNING("RI_Texture::LoadFromForeignFormat: Can't load texture, filepath is unassigned.");
+			LOG_WARNING("RHI_Texture::LoadFromForeignFormat: Can't load texture, filepath is unassigned.");
 			return false;
 		}
 
