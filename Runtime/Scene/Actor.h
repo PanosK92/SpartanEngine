@@ -174,9 +174,9 @@ namespace Directus
 		//======================================================================================================
 
 		// Direct access for performance critical usage (not safe)
-		Transform* GetTransform_PtrRaw() { return m_transform; }
-		Renderable* GetRenderable_PtrRaw() { return m_renderable; }
-		std::shared_ptr<Actor> GetPtrShared() { return shared_from_this(); }
+		Transform* GetTransform_PtrRaw()		{ return m_transform; }
+		Renderable* GetRenderable_PtrRaw()		{ return m_renderable; }
+		std::shared_ptr<Actor> GetPtrShared()	{ return shared_from_this(); }
 
 	private:
 		unsigned int m_ID;

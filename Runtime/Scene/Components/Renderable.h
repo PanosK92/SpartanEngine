@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES ========================
 #include "IComponent.h"
 #include <vector>
 #include "../../RHI/RHI_Definition.h"
 #include "../../Math/BoundingBox.h"
-//=========================================
+//===================================
 
 namespace Directus
 {
@@ -92,7 +92,7 @@ namespace Directus
 
 		void Material_UseDefault();
 		std::weak_ptr<Material> Material_RefWeak()	{ return m_materialRefWeak; }
-		Material* Material_Ref()					{ return m_materialRef; }
+		Material* Material_PtrRaw()					{ return m_materialRef; }
 		bool Material_Exists()						{ return !m_materialRefWeak.expired(); }
 		std::string Material_Name();
 		//====================================================================================

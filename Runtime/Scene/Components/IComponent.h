@@ -76,7 +76,7 @@ namespace Directus
 		virtual void OnStop() {}
 
 		// Runs when the component is removed
-		virtual void OnRemove(){}
+		virtual void OnRemove() {}
 
 		// Runs every frame
 		virtual void OnTick() {}

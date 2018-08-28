@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ProgressReport.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
+#include "Components/Renderable.h"
 //======================================
 
 //= NAMESPACES ================
@@ -382,31 +383,34 @@ namespace Directus
 
 		for (const auto& actor : m_actors)
 		{
-			static bool hasCamera = false;
-			static bool hasSkybox = false;
+			// Acquire rendering related components
+			weak_ptr<Camera> camera			= actor->GetComponent<Camera>();
+			weak_ptr<Skybox> skybox			= actor->GetComponent<Skybox>();
+			weak_ptr<Renderable> renderable = actor->GetComponent<Renderable>();
+			weak_ptr<Light> light			= actor->GetComponent<Light>();
 
-			// Find camera
-			if (actor->HasComponent<Camera>())
+			// Find main camera
+			if (!camera.expired())
 			{
 				m_mainCamera = actor;
-				hasCamera = true;
 			}
 
 			// Find skybox
-			if (actor->HasComponent<Skybox>())
+			if (!skybox.expired())
 			{
 				m_skybox = actor;
-				hasSkybox = true;
 			}
 
-			// Find renderables
-			if (actor->HasComponent<Renderable>() || hasCamera || hasSkybox || actor->HasComponent<Light>())
+			// Save any actor that has any of the above components
+			if (!camera.expired() || !skybox.expired() || !renderable.expired() || !light.expired())
 			{
-				m_renderables.push_back(actor);
+				m_renderables.emplace_back(actor);
 			}
 		}
 
 		TIME_BLOCK_END_CPU();
+
+		// Submit to the Renderer
 		FIRE_EVENT_DATA(EVENT_SCENE_RESOLVED, m_renderables);
 	}
 	//===================================================================================================
