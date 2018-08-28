@@ -523,7 +523,7 @@ namespace Directus
 				for (const auto& actor : m_renderables)
 				{
 					// Acquire renderable component
-					Renderable* renderable	= actor->GetRenderable_PtrRaw();
+					Renderable* renderable = actor->GetRenderable_PtrRaw();
 					if (!renderable)
 						continue;
 
