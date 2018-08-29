@@ -95,7 +95,8 @@ namespace Directus
 		// DDS textures load directly as a shader resource, no need to do it here
 		if (FileSystem::GetExtensionFromFilePath(filePath) != ".dds")
 		{
-			if (CreateShaderResource())
+			bool generateMipmaps = !m_isUsingMipmaps;
+			if (ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_textureBytes, generateMipmaps))
 			{
 				// If the texture was loaded from an image file, it's not 
 				// saved yet, hence we have to maintain it's texture bits.
@@ -106,6 +107,10 @@ namespace Directus
 				{
 					ClearTextureBytes();
 				}
+			}
+			else
+			{
+				LOGF_ERROR("RHI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".", m_resourceFilePath.c_str());
 			}
 		}
 
@@ -124,7 +129,6 @@ namespace Directus
 
 		return size;
 	}
-
 	//=====================================================================================
 
 	//= PROPERTIES =========================================================================
@@ -170,29 +174,7 @@ namespace Directus
 	}
 	//================================================================================
 
-	bool RHI_Texture::CreateShaderResource()
-	{
-		if (m_isUsingMipmaps)
-		{
-			if (!CreateShaderResource(m_width, m_height, m_channels, m_format, m_textureBytes))
-			{
-				LOGF_ERROR("RHI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".",  m_resourceFilePath.c_str());
-				return false;
-			}			
-		}
-		else
-		{
-			if (!CreateShaderResource(m_width, m_height, m_channels, m_format, m_textureBytes[0]))
-			{
-				LOGF_ERROR("RHI_Texture::CreateShaderResource: Failed to create shader resource for \"%s\".",  m_resourceFilePath.c_str());
-				return false;
-			}
-		}
-		
-		return true;
-	}
 	//=====================================================================================
-
 	bool RHI_Texture::LoadFromForeignFormat(const string& filePath)
 	{
 		if (filePath == NOT_ASSIGNED)
@@ -216,7 +198,7 @@ namespace Directus
 				return false;
 			}
 
-			SetShaderResource(ddsTex);
+			ShaderResource_Get(ddsTex);
 			return true;
 		}
 

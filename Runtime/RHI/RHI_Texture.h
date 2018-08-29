@@ -33,22 +33,28 @@ namespace Directus
 	{
 	public:
 		RHI_Texture(Context* context);
-	
-		//= RESOURCE INTERFACE =================================
+		~RHI_Texture()
+		{
+			ClearTextureBytes();
+			ShaderResource_Release();
+		}
+
+		//= IResource ==========================================
 		bool SaveToFile(const std::string& filePath) override;
 		bool LoadFromFile(const std::string& filePath) override;
 		unsigned int GetMemoryUsage() override;
 		//======================================================
 
-		//= IMPLEMENTED BY GRAPHICS API  ========================
-		~RHI_Texture();
-		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::byte>& data, bool generateMimaps = false);
-		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::byte>>& data);
+		//= GRAPHICS API  ==============================================================================================================================================================================
+		// Generates a shader resource with mip-map support. Mip-maps can be skipped. provided or generated (generateMimaps = true)
+		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::byte>>& data, bool generateMimaps = false);
+		// Generates a cube-map shader resource
+		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::byte>>& data);
 		
-		void* GetShaderResource()						{ return m_shaderResource; }
-		void SetShaderResource(void* shaderResource)	{ m_shaderResource = shaderResource; }
-		bool CreateShaderResource();
-		//=======================================================
+		void* ShaderResource_Get()						{ return m_shaderResource; }
+		void ShaderResource_Get(void* shaderResource)	{ m_shaderResource = shaderResource; }
+		void ShaderResource_Release();
+		//==============================================================================================================================================================================================
 
 		//= PROPERTIES ==========================================================================================
 		unsigned int GetWidth()						{ return m_width; }
@@ -94,16 +100,16 @@ namespace Directus
 		TextureType TextureTypeFromString(const std::string& type);
 
 		//= DATA ==========================================
-		unsigned int m_bpp = 0;
-		unsigned int m_width = 0;
-		unsigned int m_height = 0;
+		unsigned int m_bpp		= 0;
+		unsigned int m_width	= 0;
+		unsigned int m_height	= 0;
 		unsigned int m_channels = 0;
-		bool m_isGrayscale = false;
-		bool m_isTransparent = false;
-		bool m_isUsingMipmaps = false;
-		std::vector<std::vector<std::byte>> m_textureBytes;
-		TextureType m_type = TextureType_Unknown;
+		bool m_isGrayscale		= false;
+		bool m_isTransparent	= false;
+		bool m_isUsingMipmaps	= false;
+		TextureType m_type		= TextureType_Unknown;
 		Texture_Format m_format;
+		std::vector<std::vector<std::byte>> m_textureBytes;
 		//=================================================
 
 		// D3D11

@@ -750,7 +750,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 			{
 				ImGui::Text(textureName);
 				ImGui::SameLine(ComponentProperty::g_column); ImGui::Image(
-					texture ? texture->GetShaderResource() : nullptr,
+					texture ? texture->ShaderResource_Get() : nullptr,
 					materialTextSize,
 					ImVec2(0, 0),
 					ImVec2(1, 1),

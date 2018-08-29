@@ -163,7 +163,7 @@ namespace Directus
 	bool RHI_PipelineState::SetTexture(const shared_ptr<RHI_Texture>& texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
-		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
+		m_textures.emplace_back(texture ? texture->ShaderResource_Get() : nullptr);
 		m_texturesDirty = true;
 
 		return true;

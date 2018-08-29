@@ -32,8 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxguid.lib")	
-#include <d3d11.h>
-	
+#include <d3d11_4.h>
+
 static const D3D11_CULL_MODE d3d11_cull_mode[] =
 {
 	D3D11_CULL_NONE,
