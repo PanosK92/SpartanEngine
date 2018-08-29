@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
-#include <d3d11_1.h>
 //======================================
 
 //= NAMESPACES ================
@@ -405,10 +404,10 @@ namespace Directus
 
 			// Create the swap chain, Direct3D device, and Direct3D device context.
 			auto result = D3D11CreateDeviceAndSwapChain(
-				nullptr,									// specify nullptr to use the default adapter
+				nullptr,								// specify nullptr to use the default adapter
 				D3D11_Device::driverType,
-				nullptr,									// specify nullptr because D3D_DRIVER_TYPE_HARDWARE indicates that this...
-				deviceFlags,								// ...function uses hardware, optionally set debug and Direct2D compatibility flags
+				nullptr,								// specify nullptr because D3D_DRIVER_TYPE_HARDWARE indicates that this...
+				deviceFlags,							// ...function uses hardware, optionally set debug and Direct2D compatibility flags
 				D3D11_Device::featureLevels,
 				ARRAYSIZE(D3D11_Device::featureLevels),
 				D3D11_Device::sdkVersion,				// always set this to D3D11_SDK_VERSION
@@ -423,6 +422,21 @@ namespace Directus
 			{
 				LOGF_ERROR("RHI_Device::Initialize: Failed to create device and swapchain, %s.", D3D11_Device::DxgiErrorToString(result));
 				return;
+			}
+		}
+
+		// Enable multi-thread protection
+		{
+			ID3D11Multithread* multithread = nullptr;
+			if (SUCCEEDED(D3D11_Device::m_deviceContext->QueryInterface(__uuidof(ID3D11Multithread), (void**)&multithread)))
+			{		
+				multithread->SetMultithreadProtected(TRUE);
+				multithread->Release();
+				LOGF_INFO("RHI_Device::Initialize: Multithread protection was enabled sucesfully");
+			}
+			else 
+			{
+				LOGF_ERROR("RHI_Device::Initialize: Failed to enable multithreaded protection");
 			}
 		}
 
