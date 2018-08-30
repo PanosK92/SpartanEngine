@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Renderable.h"
 #include "../Actor.h"
-#include "../../RHI/RHI_Implementation.h"
 #include "../../Resource/ResourceManager.h"
 #include "../../RHI/RHI_Texture.h"
 //=========================================
@@ -38,7 +37,23 @@ namespace Directus
 {
 	Skybox::Skybox(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
+		auto cubemapDirectory = GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
 
+		// Individual textures (sides)
+		m_filePath_right	= cubemapDirectory + "hw_morning/X+.tga";
+		m_filePath_left		= cubemapDirectory + "hw_morning/X-.tga";
+		m_filepath_up		= cubemapDirectory + "hw_morning/Y+.tga";
+		m_filePath_down		= cubemapDirectory + "hw_morning/Y-.tga";
+		m_filePath_back		= cubemapDirectory + "hw_morning/Z-.tga";
+		m_filePath_front	= cubemapDirectory + "hw_morning/Z+.tga";
+		m_size				= 512;
+		m_format			= Texture_Format_R8G8B8A8_UNORM;
+
+		// Texture
+		m_cubemapTexture = make_shared<RHI_Texture>(GetContext());
+
+		// Material
+		m_matSkybox = make_shared<Material>(GetContext());
 	}
 
 	Skybox::~Skybox()
@@ -48,34 +63,64 @@ namespace Directus
 
 	void Skybox::OnInitialize()
 	{
-		// Load environment texture and create a cubemap
-		auto cubemapDirectory	= GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
-		auto texPath			= cubemapDirectory + "environment.dds";
-		m_cubemapTexture		= make_shared<RHI_Texture>(GetContext());
-		m_cubemapTexture->SetResourceName("Cubemap");
-		m_cubemapTexture->LoadFromFile(texPath);
-		m_cubemapTexture->SetType(TextureType_CubeMap);
-		m_cubemapTexture->SetWidth(1024);
-		m_cubemapTexture->SetHeight(1024);
-		m_cubemapTexture->SetGrayscale(false);
-		
-		// Create a skybox material
-		m_matSkybox = make_shared<Material>(GetContext());
-		m_matSkybox->SetResourceName("Standard_Skybox");
-		m_matSkybox->SetCullMode(Cull_Front);
-		m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-		m_matSkybox->SetIsEditable(false);
-		m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
+		// Load all textures (sides) in a different thread to speed up engine start-up
+		m_context->GetSubsystem<Threading>()->AddTask([this]()
+		{
+			vector<vector<std::byte>> cubemapData;
 
-		// Add a Renderable and assign the skybox material to it
-		auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>().lock();
-		renderable->Geometry_Set(Geometry_Default_Cube);
-		renderable->SetCastShadows(false);
-		renderable->SetReceiveShadows(false);
-		renderable->Material_Set(m_matSkybox, true);
+			// Load all the cubemap sides
+			auto loaderTex = make_shared<RHI_Texture>(GetContext());
+			{
+				loaderTex->LoadFromFile(m_filePath_right);
+				cubemapData.emplace_back(loaderTex->GetData().front());
 
-		// Make the skybox big enough
-		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
+				loaderTex->LoadFromFile(m_filePath_left);
+				cubemapData.emplace_back(loaderTex->GetData().front());
+
+				loaderTex->LoadFromFile(m_filepath_up);
+				cubemapData.emplace_back(loaderTex->GetData().front());
+
+				loaderTex->LoadFromFile(m_filePath_down);
+				cubemapData.emplace_back(loaderTex->GetData().front());
+
+				loaderTex->LoadFromFile(m_filePath_back);
+				cubemapData.emplace_back(loaderTex->GetData().front());
+
+				loaderTex->LoadFromFile(m_filePath_front);
+				cubemapData.emplace_back(loaderTex->GetData().front());
+			}
+
+			// Cubemap
+			{
+				m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
+				m_cubemapTexture->SetResourceName("Cubemap");
+				m_cubemapTexture->SetType(TextureType_CubeMap);
+				m_cubemapTexture->SetWidth(m_size);
+				m_cubemapTexture->SetHeight(m_size);
+				m_cubemapTexture->SetGrayscale(false);
+			}
+
+			// Material
+			{
+				m_matSkybox->SetResourceName("Standard_Skybox");
+				m_matSkybox->SetCullMode(Cull_Front);
+				m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				m_matSkybox->SetIsEditable(false);
+				m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
+			}
+
+			// Renderable
+			{
+				auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>().lock();
+				renderable->Geometry_Set(Geometry_Default_Cube);
+				renderable->SetCastShadows(false);
+				renderable->SetReceiveShadows(false);
+				renderable->Material_Set(m_matSkybox, true);
+			}
+
+			// Make the skybox big enough
+			GetTransform()->SetScale(Vector3(1000, 1000, 1000));
+		});
 	}
 
 	void Skybox::OnTick()

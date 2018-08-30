@@ -33,7 +33,6 @@ namespace Directus
 {
 	class ResourceManager;
 	
-
 	enum ResourceType
 	{
 		Resource_Unknown,
@@ -71,25 +70,25 @@ namespace Directus
 			m_loadState		= LoadState_Idle;
 		}
 
-		//= PROPERTIES =================================================================================================
+		//= PROPERTIES ===================================================================================================
 		unsigned int GetResourceID() { return m_resourceID; }
-	
-		ResourceType GetResourceType() { return m_resourceType; }
-		void SetResourceType(ResourceType type) { m_resourceType = type; }
+
+		ResourceType GetResourceType()				{ return m_resourceType; }
+		void SetResourceType(ResourceType type)		{ m_resourceType = type; }
 
 		const char* GetResourceType_cstr() { return typeid(*this).name(); }
 
-		const std::string& GetResourceName() { return m_resourceName; }
-		void SetResourceName(const std::string& name) { m_resourceName = name; }
+		const std::string& GetResourceName()			{ return m_resourceName; }
+		void SetResourceName(const std::string& name)	{ m_resourceName = name; }
 
-		const std::string& GetResourceFilePath() { return m_resourceFilePath; }
-		void SetResourceFilePath(const std::string& filePath) { m_resourceFilePath = filePath; }
+		const std::string& GetResourceFilePath()				{ return m_resourceFilePath; }
+		void SetResourceFilePath(const std::string& filePath)	{ m_resourceFilePath = filePath; }
 
-		bool HasFilePath() { return m_resourceFilePath != NOT_ASSIGNED;}
+		bool HasFilePath() { return m_resourceFilePath != NOT_ASSIGNED; }
 
-		std::string GetResourceFileName() { return FileSystem::GetFileNameNoExtensionFromFilePath(m_resourceFilePath); }
-		std::string GetResourceDirectory() { return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath); }
-		//==============================================================================================================
+		std::string GetResourceFileName()	{ return FileSystem::GetFileNameNoExtensionFromFilePath(m_resourceFilePath); }
+		std::string GetResourceDirectory()	{ return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath); }
+		//================================================================================================================
 
 		//= CACHE =========================================================
 		// Checks whether this resource is cached or not
@@ -122,11 +121,11 @@ namespace Directus
 		}
 		//=================================================================
 
-		//= IO ================================================================
-		virtual bool SaveToFile(const std::string& filePath) { return true; }
-		virtual bool LoadFromFile(const std::string& filePath) { return true; }
-		virtual unsigned int GetMemoryUsage() { return 0; }
-		//=====================================================================
+		//= IO =================================================================
+		virtual bool SaveToFile(const std::string& filePath)	{ return true; }
+		virtual bool LoadFromFile(const std::string& filePath)	{ return true; }
+		virtual unsigned int GetMemoryUsage()					{ return 0; }
+		//======================================================================
 
 		//= TYPE ================================
 		template <typename T>
@@ -137,8 +136,8 @@ namespace Directus
 		auto GetSharedPtr() { return shared_from_this(); }
 		//================================================
 
-		LoadState GetLoadState() { return m_loadState; }
-		void GetLoadState(LoadState state) { m_loadState = state; }
+		LoadState GetLoadState()			{ return m_loadState; }
+		void GetLoadState(LoadState state)	{ m_loadState = state; }
 
 	protected:
 		std::weak_ptr<IResource> _Cache();

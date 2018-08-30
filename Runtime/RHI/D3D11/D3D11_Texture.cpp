@@ -136,7 +136,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Texture::ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::byte>>& data)
+	bool RHI_Texture::ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const vector<vector<std::byte>>& data)
 	{
 		ID3D11Texture2D* cubeTexture					= nullptr;
 		ID3D11ShaderResourceView* shaderResourceView	= nullptr;
