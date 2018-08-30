@@ -37,16 +37,29 @@ namespace Directus
 		Skybox(Context* context, Actor* actor, Transform* transform);
 		~Skybox();
 
-		//= IComponent ============
+		//= IComponent ==============
 		void OnInitialize() override;
 		void OnTick() override;
-		//=========================
+		//===========================
 
-		const std::shared_ptr<RHI_Texture>& GetTexture() { return m_cubemapTexture; }
-		std::weak_ptr<Material> GetMaterial() { return m_matSkybox;}
+		const std::shared_ptr<RHI_Texture>& GetTexture()	{ return m_cubemapTexture; }
+		std::weak_ptr<Material> GetMaterial()				{ return m_matSkybox;}
 
 	private:
+		// Cubemap sides
+		std::string m_filePath_back;
+		std::string m_filePath_down;
+		std::string m_filePath_front;
+		std::string m_filePath_left;
+		std::string m_filePath_right;
+		std::string m_filepath_up;
+		unsigned int m_size;
+
+		// Cubemap texture
+		std::shared_ptr<RHI_Texture> m_cubemapTexture;
+		Texture_Format m_format;
+
+		// Material
 		std::shared_ptr<Material> m_matSkybox;
-		std::shared_ptr<RHI_Texture> m_cubemapTexture;	
 	};
 }

@@ -123,11 +123,11 @@ namespace Directus
 		texture->SetChannels(ComputeChannelCount(bitmap32, texture->GetBPP()));
 
 		// Fill RGBA vector with the data from the FIBITMAP
-		texture->GetRGBA().emplace_back(vector<std::byte>());
-		GetBitsFromFIBITMAP(&texture->GetRGBA()[0], bitmap32);
+		texture->GetData().emplace_back(vector<std::byte>());
+		GetBitsFromFIBITMAP(&texture->GetData()[0], bitmap32);
 
 		// Check if the image is grayscale
-		texture->SetGrayscale(GrayscaleCheck(texture->GetRGBA()[0], texture->GetWidth(), texture->GetHeight()));
+		texture->SetGrayscale(GrayscaleCheck(texture->GetData()[0], texture->GetWidth(), texture->GetHeight()));
 
 		if (texture->IsUsingMimmaps())
 		{
@@ -304,7 +304,7 @@ namespace Directus
 		// Now move the mip map data into the texture
 		for (const auto& job : rescaleJobs)
 		{
-			texture->GetRGBA().emplace_back(move(job.rgba));
+			texture->GetData().emplace_back(move(job.rgba));
 		}
 	}
 

@@ -19,13 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================================
+//= INCLUDES =====================
 #include "RHI_Texture.h"
 #include "RHI_Device.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
-#include "../Resource/Import/DDSTextureImporter.h"
-//================================================
+//================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -69,6 +68,8 @@ namespace Directus
 	bool RHI_Texture::LoadFromFile(const string& rawFilePath)
 	{
 		bool loaded = false;
+		m_dataRGBA.clear();
+		m_dataRGBA.shrink_to_fit();
 		GetLoadState(LoadState_Started);
 
 		// Make the path, relative to the engine
@@ -92,26 +93,22 @@ namespace Directus
 			return false;
 		}
 
-		// DDS textures load directly as a shader resource, no need to do it here
-		if (FileSystem::GetExtensionFromFilePath(filePath) != ".dds")
+		bool generateMipmaps = !m_isUsingMipmaps;
+		if (ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_dataRGBA, generateMipmaps))
 		{
-			bool generateMipmaps = !m_isUsingMipmaps;
-			if (ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_textureBytes, generateMipmaps))
+			// If the texture was loaded from an image file, it's not 
+			// saved yet, hence we have to maintain it's texture bits.
+			// However, if the texture was deserialized (engine format) 
+			// then we no longer need the texture bits. 
+			// We free them here to free up some memory.
+			if (FileSystem::IsEngineTextureFile(filePath))
 			{
-				// If the texture was loaded from an image file, it's not 
-				// saved yet, hence we have to maintain it's texture bits.
-				// However, if the texture was deserialized (engine format) 
-				// then we no longer need the texture bits. 
-				// We free them here to free up some memory.
-				if (FileSystem::IsEngineTextureFile(filePath))
-				{
-					ClearTextureBytes();
-				}
+				ClearTextureBytes();
 			}
-			else
-			{
-				LOGF_ERROR("RHI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".", m_resourceFilePath.c_str());
-			}
+		}
+		else
+		{
+			LOGF_ERROR("RHI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".", m_resourceFilePath.c_str());
 		}
 
 		GetLoadState(LoadState_Completed);
@@ -122,7 +119,7 @@ namespace Directus
 	{
 		// Compute texture bits (in case they are loaded)
 		unsigned int size = 0;
-		for (const auto& mip : m_textureBytes)
+		for (const auto& mip : m_dataRGBA)
 		{
 			size += (unsigned int)mip.size();
 		}
@@ -144,20 +141,20 @@ namespace Directus
 	//= TEXTURE BITS =================================================================
 	void RHI_Texture::ClearTextureBytes()
 	{
-		for (auto& mip : m_textureBytes)
+		for (auto& mip : m_dataRGBA)
 		{
 			mip.clear();
 			mip.shrink_to_fit();
 		}
-		m_textureBytes.clear();
-		m_textureBytes.shrink_to_fit();
+		m_dataRGBA.clear();
+		m_dataRGBA.shrink_to_fit();
 	}
 
 	void RHI_Texture::GetTextureBytes(vector<vector<std::byte>>* textureBytes)
 	{
-		if (!m_textureBytes.empty())
+		if (!m_dataRGBA.empty())
 		{
-			textureBytes = &m_textureBytes;
+			textureBytes = &m_dataRGBA;
 			return;
 		}
 
@@ -169,7 +166,7 @@ namespace Directus
 		for (unsigned int i = 0; i < mipCount; i++)
 		{
 			textureBytes->emplace_back(vector<std::byte>());
-			file->Read(&m_textureBytes[i]);
+			file->Read(&m_dataRGBA[i]);
 		}
 	}
 	//================================================================================
@@ -181,25 +178,6 @@ namespace Directus
 		{
 			LOG_WARNING("RHI_Texture::LoadFromForeignFormat: Can't load texture, filepath is unassigned.");
 			return false;
-		}
-
-		// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
-		if (FileSystem::GetExtensionFromFilePath(filePath) == ".dds")
-		{
-			auto rhiDevice = m_context->GetSubsystem<Renderer>()->GetRHIDevice();
-			if (!rhiDevice)
-				return false;
-
-			ID3D11ShaderResourceView* ddsTex = nullptr;
-			wstring widestr = wstring(filePath.begin(), filePath.end());
-			auto hresult = DirectX::CreateDDSTextureFromFile(rhiDevice->GetDevice<ID3D11Device>(), widestr.c_str(), nullptr, &ddsTex);
-			if (FAILED(hresult))
-			{
-				return false;
-			}
-
-			ShaderResource_Get(ddsTex);
-			return true;
 		}
 
 		// Load texture
@@ -236,15 +214,15 @@ namespace Directus
 		// If the texture bits has been cleared, load it again
 		// as we don't want to replaced existing data with nothing.
 		// If the texture bits are not cleared, no loading will take place.
-		GetTextureBytes(&m_textureBytes);
+		GetTextureBytes(&m_dataRGBA);
 
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
 		if (!file->IsOpen())
 			return false;
 
 		// Write texture bits
-		file->Write((unsigned int)m_textureBytes.size());
-		for (auto& mip : m_textureBytes)
+		file->Write((unsigned int)m_dataRGBA.size());
+		for (auto& mip : m_dataRGBA)
 		{
 			file->Write(mip);
 		}
@@ -278,8 +256,8 @@ namespace Directus
 		unsigned int mipCount = file->ReadUInt();
 		for (unsigned int i = 0; i < mipCount; i++)
 		{
-			m_textureBytes.emplace_back(vector<std::byte>());
-			file->Read(&m_textureBytes[i]);
+			m_dataRGBA.emplace_back(vector<std::byte>());
+			file->Read(&m_dataRGBA[i]);
 		}
 
 		// Read properties

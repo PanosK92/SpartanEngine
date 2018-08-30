@@ -56,7 +56,7 @@ namespace Directus
 		void ShaderResource_Release();
 		//==============================================================================================================================================================================================
 
-		//= PROPERTIES ==========================================================================================
+		//= PROPERTIES ===============================================================================
 		unsigned int GetWidth()						{ return m_width; }
 		void SetWidth(unsigned int width)			{ m_width = width; }
 
@@ -81,14 +81,14 @@ namespace Directus
 		void EnableMimaps(bool enable) { m_isUsingMipmaps = enable; }
 		bool IsUsingMimmaps() { return m_isUsingMipmaps; }
 
-		std::vector<std::vector<std::byte>>& GetRGBA()							{ return m_textureBytes; }
-		void SetRGBA(const std::vector<std::vector<std::byte>>& textureBits)	{ m_textureBytes = textureBits; }
-		//=======================================================================================================
+		std::vector<std::vector<std::byte>>& GetData()						{ return m_dataRGBA; }
+		void SetData(const std::vector<std::vector<std::byte>>& dataRGBA)	{ m_dataRGBA = dataRGBA; }
+		//============================================================================================
 
-		//= TEXTURE BITS ======================================================
+		//= TEXTURE BITS =======================================================
 		void ClearTextureBytes();
 		void GetTextureBytes(std::vector<std::vector<std::byte>>* textureBytes);
-		//=====================================================================
+		//======================================================================
 
 	protected:
 		//= NATIVE TEXTURE HANDLING (BINARY) =========
@@ -109,7 +109,7 @@ namespace Directus
 		bool m_isUsingMipmaps	= false;
 		TextureType m_type		= TextureType_Unknown;
 		Texture_Format m_format;
-		std::vector<std::vector<std::byte>> m_textureBytes;
+		std::vector<std::vector<std::byte>> m_dataRGBA;
 		//=================================================
 
 		// D3D11
