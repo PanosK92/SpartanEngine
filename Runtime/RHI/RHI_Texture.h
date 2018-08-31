@@ -49,7 +49,7 @@ namespace Directus
 		// Generates a shader resource with mip-map support. Mip-maps can be skipped. provided or generated (generateMimaps = true)
 		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::byte>>& data, bool generateMimaps = false);
 		// Generates a cube-map shader resource
-		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::byte>>& data);
+		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::vector<std::byte>>>& data);
 		
 		void* ShaderResource_Get()						{ return m_shaderResource; }
 		void ShaderResource_Get(void* shaderResource)	{ m_shaderResource = shaderResource; }
