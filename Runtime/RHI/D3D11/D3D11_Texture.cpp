@@ -43,92 +43,87 @@ namespace Directus
 
 		if (data.empty())
 		{
-			LOG_ERROR("D3D11_Texture::ShaderResource_Create: Invalid data.");
+			LOG_ERROR("D3D11_Texture::ShaderResource_Create2D: Invalid data.");
 			return false;
 		}
-
-		unsigned int mipLevels			= generateMimaps ? 7 : (unsigned int)data.size();
-		unsigned int descriptorCount	= generateMimaps ? 1 : (unsigned int)data.size();
-		vector<D3D11_SUBRESOURCE_DATA> vec_subresourceData;
-		vector<D3D11_TEXTURE2D_DESC> vec_textureDesc;
 
 		ID3D11Texture2D* texture						= nullptr;
 		ID3D11ShaderResourceView* shaderResourceView	= nullptr;
 
-		for (unsigned int i = 0; i < descriptorCount; i++)
+		// D3D11_TEXTURE2D_DESC
+		D3D11_TEXTURE2D_DESC textureDesc;
+		textureDesc.Width				= width;
+		textureDesc.Height				= height;
+		textureDesc.MipLevels			= generateMimaps ? 7 : (UINT)data.size();
+		textureDesc.ArraySize			= 1;
+		textureDesc.Format				= d3d11_dxgi_format[format];
+		textureDesc.SampleDesc.Count	= 1;
+		textureDesc.SampleDesc.Quality	= 0;
+		textureDesc.Usage				= D3D11_USAGE_IMMUTABLE;
+		textureDesc.BindFlags			= D3D11_BIND_SHADER_RESOURCE;
+		textureDesc.MiscFlags			= 0;
+		textureDesc.CPUAccessFlags		= 0;
+
+		// Adjust flags in case we are generating the mip-maps now
+		if (generateMimaps)
+		{
+			textureDesc.Usage		= D3D11_USAGE_DEFAULT;
+			textureDesc.BindFlags	|= D3D11_BIND_RENDER_TARGET; // D3D11_RESOURCE_MISC_GENERATE_MIPS flag requires D3D11_BIND_RENDER_TARGET
+			textureDesc.MiscFlags	|= D3D11_RESOURCE_MISC_GENERATE_MIPS;
+		}
+
+		// D3D11_SUBRESOURCE_DATA
+		vector<D3D11_SUBRESOURCE_DATA> vec_subresourceData;
+		unsigned int mipWidth	= width;
+		unsigned int mipHeight	= height;
+		for (unsigned int i = 0; i < (generateMimaps ? 1 : (unsigned int)data.size()); i++)
 		{
 			if (data[i].empty())
 			{
-				LOGF_ERROR("D3D11_Texture::ShaderResource_Create: Mip level %d has invalid data.", i);
+				LOGF_ERROR("D3D11_Texture::ShaderResource_Create2D: Mip level %d has invalid data.", i);
 				continue;
 			}
 
-			// D3D11_SUBRESOURCE_DATA
-			vec_subresourceData.push_back(D3D11_SUBRESOURCE_DATA{});
+			vec_subresourceData.emplace_back(D3D11_SUBRESOURCE_DATA{});
 			vec_subresourceData.back().pSysMem			= data[i].data();
-			vec_subresourceData.back().SysMemPitch		= (width * channels) * sizeof(std::byte);
-			vec_subresourceData.back().SysMemSlicePitch = (width * height * channels) * sizeof(std::byte);
-
-			// D3D11_TEXTURE2D_DESC
-			vec_textureDesc.push_back(D3D11_TEXTURE2D_DESC{});
-			vec_textureDesc.back().Width				= width;
-			vec_textureDesc.back().Height				= height;
-			vec_textureDesc.back().MipLevels			= mipLevels;
-			vec_textureDesc.back().ArraySize			= 1;
-			vec_textureDesc.back().Format				= d3d11_dxgi_format[format];
-			vec_textureDesc.back().SampleDesc.Count		= 1;
-			vec_textureDesc.back().SampleDesc.Quality	= 0;
-			vec_textureDesc.back().Usage				= D3D11_USAGE_IMMUTABLE;
-			vec_textureDesc.back().BindFlags			= D3D11_BIND_SHADER_RESOURCE;
-			vec_textureDesc.back().MiscFlags			= 0;
-			vec_textureDesc.back().CPUAccessFlags		= 0;
-
-			// Adjust flags in case we are generating the mip-maps now
-			if (generateMimaps)
-			{
-				vec_textureDesc.back().Usage		= D3D11_USAGE_DEFAULT;
-				vec_textureDesc.back().BindFlags	|= D3D11_BIND_RENDER_TARGET; // D3D11_RESOURCE_MISC_GENERATE_MIPS flag requires D3D11_BIND_RENDER_TARGET
-				vec_textureDesc.back().MiscFlags	|= D3D11_RESOURCE_MISC_GENERATE_MIPS;
-			}
+			vec_subresourceData.back().SysMemPitch		= (mipWidth * channels) * sizeof(std::byte);
+			vec_subresourceData.back().SysMemSlicePitch = 0;
 
 			// Compute size of next mip-map
-			width	= Max((int)width / 2, 1);
-			height	= Max((int)height / 2, 1);
+			mipWidth	= Max(mipWidth / 2, (unsigned int)1);
+			mipHeight	= Max(mipHeight / 2, (unsigned int)1);
 
 			// Compute memory usage (rough estimation)
 			m_memoryUsage += (unsigned int)(sizeof(std::byte) * data[i].size());
 		}
 
 		// Describe shader resource view
-		D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource;
-		shader_resource.Format						= d3d11_dxgi_format[format];
-		shader_resource.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
-		shader_resource.Texture2D.MostDetailedMip	= 0;
-		shader_resource.Texture2D.MipLevels			= mipLevels;
+		D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceDesc;
+		shaderResourceDesc.Format						= d3d11_dxgi_format[format];
+		shaderResourceDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
+		shaderResourceDesc.Texture2D.MostDetailedMip	= 0;
+		shaderResourceDesc.Texture2D.MipLevels			= textureDesc.MipLevels;
 
 		// Create texture
-		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(vec_textureDesc.data(), generateMimaps ? nullptr : vec_subresourceData.data(), &texture);
+		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&textureDesc, generateMimaps ? nullptr : vec_subresourceData.data(), &texture);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11_Texture::ShaderResource_Create: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			LOG_ERROR("D3D11_Texture::ShaderResource_Create2D: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
 
 		// Create shader resource
-		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &shader_resource, &shaderResourceView);
+		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &shaderResourceDesc, &shaderResourceView);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11_Texture::ShaderResource_Create: Failed to create the ID3D11ShaderResourceView.");
+			LOG_ERROR("D3D11_Texture::ShaderResource_Create2D: Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
 
 		// Generate mip-maps
 		if (generateMimaps)
 		{
-			// Copy data from memory to the sub-resource created in non-mappable memory	
-			m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->UpdateSubresource(texture, 0, nullptr, vec_subresourceData.front().pSysMem, vec_subresourceData.front().SysMemPitch, 0);
-
-			// Create mip-maps based on ID3D11ShaderResourveView		
+			m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->UpdateSubresource(texture, 0, nullptr, data[0].data(), (width * channels) * sizeof(std::byte), 0);
 			m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->GenerateMips(shaderResourceView);
 		}
 
@@ -136,50 +131,82 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Texture::ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const vector<vector<std::byte>>& data)
+	bool RHI_Texture::ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const vector<vector<vector<std::byte>>>& data)
 	{
+		if (data.empty())
+		{
+			LOG_ERROR("D3D11_Texture::ShaderResource_CreateCubemap: Invalid data.");
+			return false;
+		}
+
+		vector<D3D11_SUBRESOURCE_DATA> vec_subresourceData;
+		vector<D3D11_TEXTURE2D_DESC> vec_textureDesc;
 		ID3D11Texture2D* cubeTexture					= nullptr;
 		ID3D11ShaderResourceView* shaderResourceView	= nullptr;
+		UINT mipLevels									= (UINT)data[0].size();
 
-		// Description of each face
-		D3D11_TEXTURE2D_DESC texDesc;
-		texDesc.Width				= width;
-		texDesc.Height				= height;
-		texDesc.MipLevels			= 1;
-		texDesc.ArraySize			= 6;
-		texDesc.Format				= d3d11_dxgi_format[format];
-		texDesc.CPUAccessFlags		= 0;
-		texDesc.SampleDesc.Count	= 1;
-		texDesc.SampleDesc.Quality	= 0;
-		texDesc.Usage				= D3D11_USAGE_DEFAULT;
-		texDesc.BindFlags			= D3D11_BIND_SHADER_RESOURCE;
-		texDesc.CPUAccessFlags		= 0;
-		texDesc.MiscFlags			= D3D11_RESOURCE_MISC_TEXTURECUBE;
+		for (const auto& side : data)
+		{
+			if (side.empty())
+			{
+				LOG_ERROR("D3D11_Texture::ShaderResource_CreateCubemap: A side containts invalid data.");
+				continue;
+			}
+
+			// D3D11_TEXTURE2D_DESC	
+			D3D11_TEXTURE2D_DESC textureDesc;
+			textureDesc.Width				= width;
+			textureDesc.Height				= height;
+			textureDesc.MipLevels			= mipLevels;
+			textureDesc.ArraySize			= 6;
+			textureDesc.Format				= d3d11_dxgi_format[format];
+			textureDesc.SampleDesc.Count	= 1;
+			textureDesc.SampleDesc.Quality	= 0;
+			textureDesc.Usage				= D3D11_USAGE_IMMUTABLE;
+			textureDesc.BindFlags			= D3D11_BIND_SHADER_RESOURCE;
+			textureDesc.MiscFlags			= D3D11_RESOURCE_MISC_TEXTURECUBE;
+			textureDesc.CPUAccessFlags		= 0;
+
+			unsigned int mipWidth	= width;
+			unsigned int mipHeight	= height;
+
+			for (const auto& mip : side)
+			{
+				if (mip.empty())
+				{
+					LOG_ERROR("D3D11_Texture::ShaderResource_CreateCubemap: A mip-map containts invalid data.");
+					continue;
+				}
+
+				// D3D11_SUBRESOURCE_DATA
+				vec_subresourceData.emplace_back(D3D11_SUBRESOURCE_DATA{});
+				vec_subresourceData.back().pSysMem			= mip.data();									// Pointer to the pixel data			
+				vec_subresourceData.back().SysMemPitch		= (mipWidth * channels) * sizeof(std::byte);	// Line width in bytes
+				vec_subresourceData.back().SysMemSlicePitch = 0;											// This is only used for 3D textures.
+
+				// Compute size of next mip-map
+				mipWidth	= Max(mipWidth / 2, (unsigned int)1);
+				mipHeight	= Max(mipHeight / 2, (unsigned int)1);
+
+				// Compute memory usage (rough estimation)
+				m_memoryUsage += (unsigned int)(sizeof(std::byte) * mip.size());
+			}
+
+			vec_textureDesc.emplace_back(textureDesc);
+		}
 
 		// The Shader Resource view description
 		D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceDesc;
-		shaderResourceDesc.Format						= texDesc.Format;
+		shaderResourceDesc.Format						= d3d11_dxgi_format[format];
 		shaderResourceDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURECUBE;
-		shaderResourceDesc.TextureCube.MipLevels		= texDesc.MipLevels;
+		shaderResourceDesc.TextureCube.MipLevels		= mipLevels;
 		shaderResourceDesc.TextureCube.MostDetailedMip	= 0;
 
-		// Array to fill which we will use to point D3D at our loaded CPU images.
-		D3D11_SUBRESOURCE_DATA pData[6];
-		for (int cubeMapFaceIndex = 0; cubeMapFaceIndex < 6; cubeMapFaceIndex++)
-		{
-			// Pointer to the pixel data
-			pData[cubeMapFaceIndex].pSysMem				= data[cubeMapFaceIndex].data();
-			// Line width in bytes
-			pData[cubeMapFaceIndex].SysMemPitch			= (width * channels) * sizeof(std::byte);
-			// This is only used for 3d textures.
-			pData[cubeMapFaceIndex].SysMemSlicePitch	= 0;
-		}
-
 		// Create the Texture Resource
-		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&texDesc, &pData[0], &cubeTexture);
+		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(vec_textureDesc.data(), vec_subresourceData.data(), &cubeTexture);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11_Texture::ShaderResource_Create: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			LOG_ERROR("D3D11_Texture::ShaderResource_CreateCubemap: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
 
@@ -187,7 +214,7 @@ namespace Directus
 		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(cubeTexture, &shaderResourceDesc, &shaderResourceView);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11_Texture::ShaderResource_Create: Failed to create the ID3D11ShaderResourceView.");
+			LOG_ERROR("D3D11_Texture::ShaderResource_CreateCubemap: Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
 

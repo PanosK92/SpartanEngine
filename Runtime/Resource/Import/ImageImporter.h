@@ -78,7 +78,6 @@ namespace Directus
 		ImageImporter(Context* context);
 		~ImageImporter();
 
-		void LoadAsync(const std::string& filePath, RHI_Texture* texInfo);
 		bool Load(const std::string& filePath, RHI_Texture* texInfo);
 		bool RescaleBits(std::vector<std::byte>* rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int toWidth, unsigned int toHeight);
 

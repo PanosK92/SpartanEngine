@@ -48,14 +48,6 @@ namespace Directus
 		FreeImage_DeInitialise();
 	}
 
-	void ImageImporter::LoadAsync(const string& filePath, RHI_Texture* texInfo)
-	{
-		m_context->GetSubsystem<Threading>()->AddTask([this, &filePath, &texInfo]()
-		{
-			Load(filePath, texInfo);
-		});
-	}
-
 	bool ImageImporter::Load(const string& filePath, RHI_Texture* texture)
 	{
 		if (!texture)
@@ -63,13 +55,13 @@ namespace Directus
 
 		if (filePath.empty() || filePath == NOT_ASSIGNED)
 		{
-			LOG_WARNING("ImageImporter: Can't load image. No file path has been provided.");
+			LOG_WARNING("ImageImporter::Load: Can't load image. No file path has been provided.");
 			return false;
 		}
 
 		if (!FileSystem::FileExists(filePath))
 		{
-			LOG_WARNING("ImageImporter: Cant' load image. File path \"" + filePath + "\" is invalid.");
+			LOG_WARNING("ImageImporter::Load: Cant' load image. File path \"" + filePath + "\" is invalid.");
 			return false;
 		}
 
@@ -80,25 +72,23 @@ namespace Directus
 		if (format == FIF_UNKNOWN)
 		{
 			// Try getting the format from the file extension
-			LOG_WARNING("ImageImporter: Failed to determine image format for \"" + filePath + "\", attempting to detect it from the file's extension...");
+			LOG_WARNING("ImageImporter::Load: Failed to determine image format for \"" + filePath + "\", attempting to detect it from the file's extension...");
 			format = FreeImage_GetFIFFromFilename(filePath.c_str());
 
 			// If the format is still unknown, give up
 			if (!FreeImage_FIFSupportsReading(format))
 			{
-				LOG_WARNING("ImageImporter: Failed to detect the image format.");
+				LOG_WARNING("ImageImporter::Load: Failed to detect the image format.");
 				return false;
 			}
 
-			LOG_WARNING("ImageImporter: The image format has been detected succesfully.");
+			LOG_WARNING("ImageImporter::Load: The image format has been detected succesfully.");
 		}
 
 		// Get image format, format == -1 means the file was not found
 		// but I am checking against it also, just in case.
 		if (format == -1 || format == FIF_UNKNOWN)
-		{
 			return false;
-		}
 
 		// Load the image as a FIBITMAP*
 		FIBITMAP* bitmapOriginal = FreeImage_Load(format, filePath.c_str());
@@ -158,13 +148,13 @@ namespace Directus
 	{
 		if (rgba->empty())
 		{
-			LOG_WARNING("ImageImporter: Can't rescale bits. Provided bits are empty.");
+			LOG_WARNING("ImageImporter::Load: Can't rescale bits. Provided bits are empty.");
 			return false;
 		}
 
-		unsigned int pitch = fromWidth * 4;
-		FIBITMAP* bitmap = FreeImage_ConvertFromRawBits((BYTE*)rgba->data(), fromWidth, fromHeight, pitch, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
-		bool result = GetRescaledBitsFromBitmap(rgba, toWidth, toHeight, bitmap);
+		unsigned int pitch	= fromWidth * 4;
+		FIBITMAP* bitmap	= FreeImage_ConvertFromRawBits((BYTE*)rgba->data(), fromWidth, fromHeight, pitch, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
+		bool result			= GetRescaledBitsFromBitmap(rgba, toWidth, toHeight, bitmap);
 		return result;
 	}
 
@@ -186,16 +176,16 @@ namespace Directus
 		return 0;
 	}
 
-	bool ImageImporter::GetBitsFromFIBITMAP(vector<std::byte>* bitsRGBA, FIBITMAP* bitmap)
+	bool ImageImporter::GetBitsFromFIBITMAP(vector<std::byte>* data, FIBITMAP* bitmap)
 	{
-		unsigned int width = FreeImage_GetWidth(bitmap);
+		unsigned int width	= FreeImage_GetWidth(bitmap);
 		unsigned int height = FreeImage_GetHeight(bitmap);
 
 		if (width == 0 || height == 0)
 			return false;
 
 		unsigned int bytesPerPixel = FreeImage_GetLine(bitmap) / width;
-		bitsRGBA->reserve(4 * width * height);
+		data->reserve(4 * width * height);
 
 		// Construct an RGBA array
 		for (unsigned int y = 0; y < height; y++)
@@ -203,10 +193,10 @@ namespace Directus
 			auto bytes = (std::byte*)FreeImage_GetScanLine(bitmap, y);
 			for (unsigned int x = 0; x < width; x++)
 			{
-				bitsRGBA->emplace_back(bytes[FI_RGBA_RED]);
-				bitsRGBA->emplace_back(bytes[FI_RGBA_GREEN]);
-				bitsRGBA->emplace_back(bytes[FI_RGBA_BLUE]);
-				bitsRGBA->emplace_back(bytes[FI_RGBA_ALPHA]);
+				data->emplace_back(bytes[FI_RGBA_RED]);
+				data->emplace_back(bytes[FI_RGBA_GREEN]);
+				data->emplace_back(bytes[FI_RGBA_BLUE]);
+				data->emplace_back(bytes[FI_RGBA_ALPHA]);
 
 				// jump to next pixel
 				bytes += bytesPerPixel;
@@ -216,19 +206,19 @@ namespace Directus
 		return true;
 	}
 
-	bool ImageImporter::GetRescaledBitsFromBitmap(vector<std::byte>* bytesOutRGBA, int width, int height, FIBITMAP* bitmap)
+	bool ImageImporter::GetRescaledBitsFromBitmap(vector<std::byte>* dataOut, int width, int height, FIBITMAP* bitmap)
 	{
 		if (!bitmap || width == 0 || height == 0)
 			return false;
 
-		bytesOutRGBA->clear();
-		bytesOutRGBA->shrink_to_fit();
+		dataOut->clear();
+		dataOut->shrink_to_fit();
 
 		// Rescale
 		FIBITMAP* bitmapScaled = FreeImage_Rescale(bitmap, width, height, FILTER_LANCZOS3);
 
 		// Extract RGBA data from the FIBITMAP
-		bool result = GetBitsFromFIBITMAP(bytesOutRGBA, bitmapScaled);
+		bool result = GetBitsFromFIBITMAP(dataOut, bitmapScaled);
 
 		// Unload the FIBITMAP
 		FreeImage_Unload(bitmapScaled);
@@ -242,22 +232,22 @@ namespace Directus
 			return;
 
 		// First mip is full size, we won't do anything special for it
-		int width = texture->GetWidth();
-		int height = texture->GetHeight();
+		unsigned int width	= texture->GetWidth();
+		unsigned int height	= texture->GetHeight();
 
 		// Define a struct that the threads will work with
 		struct RescaleJob
 		{
-			int width = 0;
-			int height = 0;
-			bool complete = false;
-			vector<std::byte> rgba;
+			unsigned int width		= 0;
+			unsigned int height		= 0;
+			bool complete			= false;
+			vector<std::byte> data;
 
-			RescaleJob(int width, int height, bool scaled)
+			RescaleJob(unsigned int width, unsigned int height, bool scaled)
 			{
-				this->width = width;
-				this->height = height;
-				this->complete = scaled;
+				this->width		= width;
+				this->height	= height;
+				this->complete	= scaled;
 			}
 		};
 		vector<RescaleJob> rescaleJobs;
@@ -273,12 +263,12 @@ namespace Directus
 
 		// Parallelize mipmap generation using multiple
 		// threads as FreeImage_Rescale() using FILTER_LANCZOS3 can take a while.
-		Threading* threading = m_context->GetSubsystem<Threading>();
+		auto threading = m_context->GetSubsystem<Threading>();
 		for (auto& job : rescaleJobs)
 		{
 			threading->AddTask([this, &job, &bitmap]()
 			{
-				if (!GetRescaledBitsFromBitmap(&job.rgba, job.width, job.height, bitmap))
+				if (!GetRescaledBitsFromBitmap(&job.data, job.width, job.height, bitmap))
 				{
 					string mipSize = "(" + to_string(job.width) + "x" + to_string(job.height) + ")";
 					LOG_INFO("ImageImporter: Failed to create mip level " + mipSize + ".");
@@ -287,7 +277,7 @@ namespace Directus
 			});
 		}
 
-		// Wait until all mimaps have been generated
+		// Wait until all mipmaps have been generated
 		bool ready = false;
 		while (!ready)
 		{
@@ -304,26 +294,26 @@ namespace Directus
 		// Now move the mip map data into the texture
 		for (const auto& job : rescaleJobs)
 		{
-			texture->GetData().emplace_back(move(job.rgba));
+			texture->GetData().emplace_back(move(job.data));
 		}
 	}
 
-	bool ImageImporter::GrayscaleCheck(const vector<std::byte>& bitsRGBA, int width, int height)
+	bool ImageImporter::GrayscaleCheck(const vector<std::byte>& data, int width, int height)
 	{
-		if (bitsRGBA.empty())
+		if (data.empty())
 			return false;
 
-		int grayPixels = 0;
+		int grayPixels	= 0;
 		int totalPixels = width * height;
-		int channels = 4;
+		int channels	= 4;
 
 		for (int i = 0; i < height; i++)
 		{
 			for (int j = 0; j < width; j++)
 			{
-				std::byte red	= bitsRGBA[(i * width + j) * channels + 0];
-				std::byte green	= bitsRGBA[(i * width + j) * channels + 1];
-				std::byte blue	= bitsRGBA[(i * width + j) * channels + 2];
+				std::byte red	= data[(i * width + j) * channels + 0];
+				std::byte green	= data[(i * width + j) * channels + 1];
+				std::byte blue	= data[(i * width + j) * channels + 2];
 
 				if (red == green && red == blue)
 				{

@@ -66,28 +66,28 @@ namespace Directus
 		// Load all textures (sides) in a different thread to speed up engine start-up
 		m_context->GetSubsystem<Threading>()->AddTask([this]()
 		{
-			vector<vector<std::byte>> cubemapData;
+			vector<vector<vector<std::byte>>> cubemapData;
 
 			// Load all the cubemap sides
 			auto loaderTex = make_shared<RHI_Texture>(GetContext());
 			{
 				loaderTex->LoadFromFile(m_filePath_right);
-				cubemapData.emplace_back(loaderTex->GetData().front());
+				cubemapData.emplace_back(loaderTex->GetData());
 
 				loaderTex->LoadFromFile(m_filePath_left);
-				cubemapData.emplace_back(loaderTex->GetData().front());
+				cubemapData.emplace_back(loaderTex->GetData());
 
 				loaderTex->LoadFromFile(m_filepath_up);
-				cubemapData.emplace_back(loaderTex->GetData().front());
+				cubemapData.emplace_back(loaderTex->GetData());
 
 				loaderTex->LoadFromFile(m_filePath_down);
-				cubemapData.emplace_back(loaderTex->GetData().front());
+				cubemapData.emplace_back(loaderTex->GetData());
 
 				loaderTex->LoadFromFile(m_filePath_back);
-				cubemapData.emplace_back(loaderTex->GetData().front());
+				cubemapData.emplace_back(loaderTex->GetData());
 
 				loaderTex->LoadFromFile(m_filePath_front);
-				cubemapData.emplace_back(loaderTex->GetData().front());
+				cubemapData.emplace_back(loaderTex->GetData());
 			}
 
 			// Cubemap
