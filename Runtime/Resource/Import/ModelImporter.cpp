@@ -405,12 +405,12 @@ namespace Directus
 		// DIFFUSE COLOR
 		aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
 		aiGetMaterialColor(assimpMaterial, AI_MATKEY_COLOR_DIFFUSE, &colorDiffuse);
-		material->SetColorAlbedo(AssimpHelper::ToVector4(colorDiffuse));
-
+		
 		// OPACITY
 		aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
 		aiGetMaterialColor(assimpMaterial, AI_MATKEY_OPACITY, &opacity);
-		material->SetOpacity(opacity.r);
+
+		material->SetColorAlbedo(Vector4(colorDiffuse.r, colorDiffuse.g, colorDiffuse.b, opacity.r));
 
 		// TEXTURES
 		auto LoadMatTex = [this, &model, &assimpMaterial, &material](aiTextureType assimpTex, TextureType engineTex)

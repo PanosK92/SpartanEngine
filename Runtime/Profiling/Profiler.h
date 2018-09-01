@@ -106,33 +106,40 @@ namespace Directus
 
 		void Reset()
 		{
-			m_drawCalls					= 0;
-			m_meshesRendered			= 0;
-			m_bindBufferIndexCount		= 0;
-			m_bindBufferVertexCount		= 0;
-			m_bindConstantBufferCount	= 0;
-			m_bindSamplerCount			= 0;
-			m_bindTextureCount			= 0;
-			m_bindVertexShaderCount		= 0;
-			m_bindPixelShaderCount		= 0;
-			m_bindRenderTargetCount		= 0;
+			m_rhiDrawCalls				= 0;
+			m_rendererMeshesRendered	= 0;
+			m_rhiBindingsBufferIndex	= 0;
+			m_rhiBindingsBufferVertex	= 0;
+			m_rhiBindingsBufferConstant	= 0;
+			m_rhiBindingsSampler		= 0;
+			m_rhiBindingsTexture		= 0;
+			m_rhiBindingsVertexShader	= 0;
+			m_rhiBindingsPixelShader	= 0;
+			m_rhiBindingsRenderTarget	= 0;
 		}
 
-		// stats
-		unsigned int m_drawCalls;
-		unsigned int m_meshesRendered;
-		unsigned int m_bindBufferIndexCount;
-		unsigned int m_bindBufferVertexCount;
-		unsigned int m_bindConstantBufferCount;
-		unsigned int m_bindSamplerCount;
-		unsigned int m_bindTextureCount;
-		unsigned int m_bindVertexShaderCount;
-		unsigned int m_bindPixelShaderCount;
-		unsigned int m_bindRenderTargetCount;
+		// Metrics - RHI
+		unsigned int m_rhiDrawCalls;
+		unsigned int m_rhiBindingsBufferIndex;
+		unsigned int m_rhiBindingsBufferVertex;
+		unsigned int m_rhiBindingsBufferConstant;
+		unsigned int m_rhiBindingsSampler;
+		unsigned int m_rhiBindingsTexture;
+		unsigned int m_rhiBindingsVertexShader;
+		unsigned int m_rhiBindingsPixelShader;
+		unsigned int m_rhiBindingsRenderTarget;
 
-		// hardware
+		// Metrics - Renderer
+		unsigned int m_rendererMeshesRendered;
+
+		// Metrics - Hardware
 		std::string m_gpuName;
 		unsigned int m_gpuVRAM;
+
+		// Metrics - Time
+		float m_frameTime;
+		float m_cpuTime;
+		float m_gpuTime;
 
 	private:
 		void UpdateMetrics(float fps);
@@ -149,8 +156,6 @@ namespace Directus
 		// Time blocks
 		std::map<const char*, TimeBlock_CPU> m_timeBlocks_cpu;
 		std::map<const char*, TimeBlock_GPU> m_timeBlocks_gpu;
-		float m_cpuTime;
-		float m_gpuTime;
 
 		// Misc
 		std::string m_metrics;

@@ -215,6 +215,11 @@ namespace Directus
 			m_shaderShadowing = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderShadowing->Compile_VertexPixel(shaderDirectory + "Shadowing.hlsl", Input_PositionTexture);
 			m_shaderShadowing->AddBuffer<Struct_Shadowing>(0, Buffer_Global);
+
+			// Transparent
+			m_shaderTransparent = make_shared<RHI_Shader>(m_rhiDevice);
+			m_shaderTransparent->Compile_VertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureTBN);
+			m_shaderTransparent->AddBuffer<Struct_Matrix_Matrix_Vector4_Vector3_Vector3>(0, Buffer_Global);
 		}
 
 		// TEXTURES
@@ -290,7 +295,7 @@ namespace Directus
 			Pass_DepthDirectionalLight(m_directionalLight);
 		
 			Pass_GBuffer();
-			
+
 			Pass_PreLight(
 				m_renderTex1,			// IN:	Render texture		
 				m_renderTexShadowing	// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
@@ -305,6 +310,8 @@ namespace Directus
 				m_renderTex1,	// IN:	Render texture - Light pass result
 				m_renderTex3	// OUT: Render texture - Result
 			);
+
+			Pass_Transparent();
 
 			// Debug rendering (on the target that happens to be bound)
 			Pass_DebugGBuffer();
@@ -542,7 +549,7 @@ namespace Directus
 						continue;
 
 					// Skip transparent meshes (for now)
-					if (material->GetOpacity() < 1.0f)
+					if (material->GetColorAlbedo().w < 1.0f)
 						continue;
 
 					// Bind geometry
@@ -612,7 +619,7 @@ namespace Directus
 				continue;
 
 			// Skip transparent objects (for now)
-			if (obj_material->GetOpacity() < 1.0f)
+			if (obj_material->GetColorAlbedo().w < 1.0f)
 				continue;
 
 			// Skip objects outside of the view frustum
@@ -673,7 +680,7 @@ namespace Directus
 
 			// Render	
 			m_rhiDevice->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
-			Profiler::Get().m_meshesRendered++;
+			Profiler::Get().m_rendererMeshesRendered++;
 
 		} // Actor/MESH ITERATION
 
@@ -795,6 +802,71 @@ namespace Directus
 			SwapTargets();
 			Pass_Sharpening(texIn, texOut);
 		}
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
+	}
+
+	void Renderer::Pass_Transparent()
+	{
+		if (!m_directionalLight || !m_camera)
+			return;
+
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_Transparent");
+
+		m_rhiDevice->EnableAlphaBlending(true);
+		m_rhiPipelineState->SetShader(m_shaderTransparent);
+
+		for (auto actor : m_renderables)
+		{
+			// Get renderable and material
+			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
+			Material* obj_material		= obj_renderable ? obj_renderable->Material_PtrRaw() : nullptr;
+
+			if (!obj_renderable || !obj_material)
+				continue;
+
+			// Get geometry
+			Model* obj_geometry = obj_renderable->Geometry_Model();
+			if (!obj_geometry)
+				continue;
+
+			// Skip opaque objects
+			if (obj_material->GetColorAlbedo().w >= 1.0f)
+				continue;
+
+			// Skip objects outside of the view frustum
+			if (!m_camera->IsInViewFrustrum(obj_renderable))
+				continue;
+
+			// Set face culling (changes only if required)
+			m_rhiPipelineState->SetCullMode(obj_material->GetCullMode());
+
+			// Bind geometry
+			m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
+			m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());
+
+			// Constant buffer
+			m_shaderTransparent->UpdateBuffer(&Struct_Matrix_Matrix_Vector4_Vector3_Vector3(
+				actor->GetTransform_PtrRaw()->GetWorldTransform() * m_mV * m_mP_perspective,
+				actor->GetTransform_PtrRaw()->GetWorldTransform(),
+				obj_material->GetColorAlbedo(),
+				m_camera->GetTransform()->GetPosition(),
+				m_directionalLight->GetDirection(),
+				obj_material->GetRoughnessMultiplier()
+			));
+			m_rhiPipelineState->SetConstantBuffer(m_shaderTransparent->GetConstantBuffer());
+
+			m_rhiPipelineState->Bind();
+
+			// Render	
+			m_rhiDevice->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
+			Profiler::Get().m_rendererMeshesRendered++;
+
+		} // Actor/MESH ITERATION
+
+		m_rhiDevice->EnableAlphaBlending(false);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
