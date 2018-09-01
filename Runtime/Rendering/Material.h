@@ -73,49 +73,39 @@ namespace Directus
 		//===========================================================================
 
 		//= PROPERTIES ================================================================	
-		unsigned int GetModelID() { return m_modelID; }
-		void SetModelID(unsigned int ID) { m_modelID = ID; }
+		unsigned int GetModelID()			{ return m_modelID; }
+		void SetModelID(unsigned int ID)	{ m_modelID = ID; }
 
-		Cull_Mode GetCullMode() { return m_cullMode; }
-		void SetCullMode(Cull_Mode cullMode) { m_cullMode = cullMode; }
+		Cull_Mode GetCullMode()					{ return m_cullMode; }
+		void SetCullMode(Cull_Mode cullMode)	{ m_cullMode = cullMode; }
 
-		float GetOpacity() { return m_opacity; }
-		void SetOpacity(float opacity)
-		{
-			m_opacity = opacity;
-			m_alphaBlending = bool(opacity) ? true : false;
-		}
+		float& GetRoughnessMultiplier()					{ return m_roughnessMultiplier; }
+		void SetRoughnessMultiplier(float roughness)	{ m_roughnessMultiplier = roughness; }
 
-		bool GetAlphaBlending() { return m_alphaBlending; }
-		void SetAlphaBlending(bool alphaBlending) { m_alphaBlending = alphaBlending; }
+		float GetMetallicMultiplier()				{ return m_metallicMultiplier; }
+		void SetMetallicMultiplier(float metallic)	{ m_metallicMultiplier = metallic; }
 
-		float& GetRoughnessMultiplier() { return m_roughnessMultiplier; }
-		void SetRoughnessMultiplier(float roughness) { m_roughnessMultiplier = roughness; }
+		float GetNormalMultiplier()				{ return m_normalMultiplier; }
+		void SetNormalMultiplier(float normal)	{ m_normalMultiplier = normal; }
 
-		float GetMetallicMultiplier() { return m_metallicMultiplier; }
-		void SetMetallicMultiplier(float metallic) { m_metallicMultiplier = metallic; }
-
-		float GetNormalMultiplier() { return m_normalMultiplier; }
-		void SetNormalMultiplier(float normal) { m_normalMultiplier = normal; }
-
-		float GetHeightMultiplier() { return m_heightMultiplier; }
-		void SetHeightMultiplier(float height) { m_heightMultiplier = height; }
+		float GetHeightMultiplier()				{ return m_heightMultiplier; }
+		void SetHeightMultiplier(float height)	{ m_heightMultiplier = height; }
 
 		void SetMultiplier(TextureType type, float value);
 
-		ShadingMode GetShadingMode() { return m_shadingMode; }
-		void SetShadingMode(ShadingMode shadingMode) { m_shadingMode = shadingMode; }
+		ShadingMode GetShadingMode()					{ return m_shadingMode; }
+		void SetShadingMode(ShadingMode shadingMode)	{ m_shadingMode = shadingMode; }
 
-		const Math::Vector4& GetColorAlbedo() { return m_colorAlbedo; }
+		const Math::Vector4& GetColorAlbedo()			{ return m_colorAlbedo; }
 		void SetColorAlbedo(const Math::Vector4& color) { m_colorAlbedo = color; }
 
-		const Math::Vector2& GetTiling() { return m_uvTiling; }
+		const Math::Vector2& GetTiling()			{ return m_uvTiling; }
 		void SetTiling(const Math::Vector2& tiling) { m_uvTiling = tiling; }
 
-		const Math::Vector2& GetOffset() { return m_uvOffset; }
+		const Math::Vector2& GetOffset()			{ return m_uvOffset; }
 		void SetOffset(const Math::Vector2& offset) { m_uvOffset = offset; }
 
-		bool IsEditable() { return m_isEditable; }
+		bool IsEditable()					{ return m_isEditable; }
 		void SetIsEditable(bool isEditable) { m_isEditable = isEditable; }
 		//=============================================================================
 
@@ -123,8 +113,6 @@ namespace Directus
 		void TextureBasedMultiplierAdjustment();
 
 		unsigned int m_modelID;	
-		float m_opacity;
-		bool m_alphaBlending;
 		Cull_Mode m_cullMode;
 		ShadingMode m_shadingMode;
 		Math::Vector4 m_colorAlbedo;

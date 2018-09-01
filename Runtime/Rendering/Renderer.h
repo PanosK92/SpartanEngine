@@ -130,6 +130,8 @@ namespace Directus
 			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
+		void Pass_Transparent();
+
 		bool Pass_DebugGBuffer();
 		void Pass_Debug();
 
@@ -212,6 +214,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderBloom_BlurBlend;
 		std::shared_ptr<RHI_Shader> m_shaderCorrection;
 		std::shared_ptr<RHI_Shader> m_shaderTransformationGizmo;
+		std::shared_ptr<RHI_Shader> m_shaderTransparent;
 		//======================================================
 
 		//= SAMPLERS ===============================================

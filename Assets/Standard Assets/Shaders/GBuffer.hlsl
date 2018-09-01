@@ -45,12 +45,12 @@ cbuffer PerObjectBuffer : register(b1)
 struct PixelInputType
 {
     float4 positionCS 	: SV_POSITION;
-    float4 positionVS 	: POSITIONT0;
-    float4 positionWS 	: POSITIONT1;
     float2 uv 			: TEXCOORD;
     float3 normal 		: NORMAL;
     float3 tangent 		: TANGENT;
 	float3 bitangent 	: BITANGENT;
+	float4 positionVS 	: POSITIONT0;
+    float4 positionWS 	: POSITIONT1;
 };
 
 struct PixelOutputType
@@ -102,10 +102,10 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	//= HEIGHT ==================================================================================
 #if HEIGHT_MAP
 		// Parallax Mapping
-		float height_scale = materialHeight * 0.01f;
-		float3 viewDir = normalize(cameraPosWS - input.positionWS.xyz);
-		float height = texHeight.Sample(samplerAniso, texCoords).r;
-		float2 offset = viewDir * (height * height_scale);
+		float height_scale 	= materialHeight * 0.01f;
+		float3 viewDir 		= normalize(cameraPosWS - input.positionWS.xyz);
+		float height 		= texHeight.Sample(samplerAniso, texCoords).r;
+		float2 offset 		= viewDir * (height * height_scale);
 		if(texCoords.x <= 1.0 && texCoords.y <= 1.0 && texCoords.x >= 0.0 && texCoords.y >= 0.0)
 		{
 			texCoords += offset;

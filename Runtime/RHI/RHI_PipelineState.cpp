@@ -289,7 +289,7 @@ namespace Directus
 			auto renderTargetView = m_renderTexture->GetRenderTarget();
 			m_rhiDevice->Bind_RenderTargets(1, &renderTargetView, m_renderTexture->GetDepthStencil());
 			if (m_renderTextureClear) m_renderTexture->Clear(Vector4(0, 0, 0, 1));
-			Profiler::Get().m_bindRenderTargetCount++;
+			Profiler::Get().m_rhiBindingsRenderTarget++;
 			m_renderTextureClear = false;
 			m_renderTextureDirty = false;
 		}
@@ -298,7 +298,7 @@ namespace Directus
 		if (m_renderTargetDirty)
 		{
 			m_rhiDevice->Bind_RenderTargets((unsigned int)m_renderTargets.size(), &m_renderTargets[0], m_depthStencil);
-			Profiler::Get().m_bindRenderTargetCount++;
+			Profiler::Get().m_rhiBindingsRenderTarget++;
 			m_renderTargetDirty = false;
 		}
 
@@ -306,7 +306,7 @@ namespace Directus
 		if (m_vertexShaderDirty)
 		{
 			m_rhiDevice->Bind_VertexShader(m_pixelShader->GetVertexShaderBuffer());
-			Profiler::Get().m_bindVertexShaderCount++;
+			Profiler::Get().m_rhiBindingsVertexShader++;
 			m_vertexShaderDirty	= false;
 		}
 
@@ -314,7 +314,7 @@ namespace Directus
 		if (m_pixelShaderDirty)
 		{
 			m_rhiDevice->Bind_PixelShader(m_pixelShader->GetPixelShaderBuffer());
-			Profiler::Get().m_bindPixelShaderCount++;
+			Profiler::Get().m_rhiBindingsPixelShader++;
 			m_pixelShaderDirty = false;
 		}
 
@@ -359,7 +359,7 @@ namespace Directus
 		{
 			unsigned int startSlot = 0;
 			m_rhiDevice->Bind_Samplers(startSlot, (unsigned int)m_samplers.size(), &m_samplers[0]);
-			Profiler::Get().m_bindSamplerCount++;
+			Profiler::Get().m_rhiBindingsSampler++;
 			m_samplers.clear();
 			m_samplers.shrink_to_fit();
 			m_samplersDirty	= false;
@@ -372,7 +372,7 @@ namespace Directus
 			m_rhiDevice->Bind_Textures(startSlot, (unsigned int)m_textures.size(), &m_textures[0]);
 			m_textures.clear();
 			m_textures.shrink_to_fit();
-			Profiler::Get().m_bindTextureCount++;
+			Profiler::Get().m_rhiBindingsTexture++;
 			m_texturesDirty	= false;
 		}
 
@@ -381,7 +381,7 @@ namespace Directus
 		if (m_indexBufferDirty)
 		{		
 			resultIndexBuffer = m_indexBuffer->Bind();
-			Profiler::Get().m_bindBufferIndexCount++;
+			Profiler::Get().m_rhiBindingsBufferIndex++;
 			m_indexBufferDirty = false;
 		}
 
@@ -390,7 +390,7 @@ namespace Directus
 		if (m_vertexBufferDirty)
 		{
 			resultVertexBuffer = m_vertexBuffer->Bind();
-			Profiler::Get().m_bindBufferVertexCount++;
+			Profiler::Get().m_rhiBindingsBufferVertex++;
 			m_vertexBufferDirty = false;
 		}
 
@@ -404,7 +404,7 @@ namespace Directus
 				unsigned int startSlot	= buffer->GetSlot();
 				Buffer_Scope scope		= buffer->GetScope();
 				m_rhiDevice->Bind_ConstantBuffers(startSlot, (unsigned int)m_constantBuffers.buffers.size(), scope, (void*const*)&m_constantBuffers.buffersLowLevel[0]);
-				Profiler::Get().m_bindConstantBufferCount += buffer->GetScope() == Buffer_Global ? 2 : 1;
+				Profiler::Get().m_rhiBindingsBufferConstant += buffer->GetScope() == Buffer_Global ? 2 : 1;
 			}
 			else // Set them one by one
 			{
@@ -412,7 +412,7 @@ namespace Directus
 				{
 					auto ptr = constantBuffer->GetBuffer();
 					m_rhiDevice->Bind_ConstantBuffers(constantBuffer->GetSlot(), 1, constantBuffer->GetScope(), (void*const*)&ptr);
-					Profiler::Get().m_bindConstantBufferCount += constantBuffer->GetScope() == Buffer_Global ? 2 : 1;
+					Profiler::Get().m_rhiBindingsBufferConstant += constantBuffer->GetScope() == Buffer_Global ? 2 : 1;
 				}
 			}
 			

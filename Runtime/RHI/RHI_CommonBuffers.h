@@ -161,4 +161,26 @@ namespace Directus
 		Math::Vector3 m_vector3B;
 		float m_padding2;
 	};
+
+	struct Struct_Matrix_Matrix_Vector4_Vector3_Vector3
+	{
+		Struct_Matrix_Matrix_Vector4_Vector3_Vector3(const Math::Matrix& matrixA, const Math::Matrix& matrixB, const Math::Vector4& vector4A, const Math::Vector3& vector3A, const Math::Vector3& vector3B, float paddingA = 0.0f)
+		{
+			m_matrixA	= matrixA;
+			m_matrixB	= matrixB;
+			m_vector4A	= vector4A;
+			m_vector3A	= vector3A;
+			m_vector3B	= vector3B;
+			m_padding	= paddingA;
+			m_padding2	= 0.0f;
+		}
+
+		Math::Matrix m_matrixA;
+		Math::Matrix m_matrixB;
+		Math::Vector4 m_vector4A;
+		Math::Vector3 m_vector3A;
+		float m_padding;
+		Math::Vector3 m_vector3B;
+		float m_padding2;
+	};
 }

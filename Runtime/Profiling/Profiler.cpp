@@ -134,17 +134,18 @@ namespace Directus
 	void Profiler::OnFrameStart()
 	{
 		// Get delta time
-		float deltaTimeSec = m_timer->GetDeltaTimeSec();
+		m_frameTime			= m_timer->GetDeltaTimeMs();
+		float frameTimeSec	= m_timer->GetDeltaTimeSec();
 
 		// Compute FPS
-		ComputeFPS(deltaTimeSec);
+		ComputeFPS(frameTimeSec);
 		// Get GPU render time
 		m_cpuTime = GetTimeBlockMs_CPU("Directus::Renderer::Render");
 		// Get CPU render time
 		m_gpuTime = GetTimeBlockMs_GPU("Directus::Renderer::Render");
 
 		// Below this point, update every m_profilingFrequencyMs
-		m_profilingLastUpdateTime += deltaTimeSec;
+		m_profilingLastUpdateTime += frameTimeSec;
 		if (m_profilingLastUpdateTime >= m_profilingFrequencySec)
 		{
 			UpdateMetrics(m_fps);
@@ -179,24 +180,31 @@ namespace Directus
 		int shaders		= m_resourceManager->GetResourceCountByType(Resource_Shader);
 
 		m_metrics =
-			"GPU:\t\t\t\t\t\t\t"				+ m_gpuName + " (" + to_string(m_gpuVRAM) + "Mb)" + "\n"
-			"FPS:\t\t\t\t\t\t\t"				+ to_string_precision(fps, 2) + "\n"
-			"CPU time:\t\t\t\t\t\t"				+ to_string_precision(m_cpuTime, 2) + " ms\n"
-			"GPU time:\t\t\t\t\t\t"				+ to_string_precision(m_gpuTime, 2) + " ms\n"
+			// Performance
+			"FPS:\t\t\t\t\t\t\t"	+ to_string_precision(fps, 2) + "\n"
+			"Frame time:\t\t\t\t\t" + to_string_precision(m_frameTime, 2) + " ms\n"
+			"CPU time:\t\t\t\t\t\t" + to_string_precision(m_cpuTime, 2) + " ms\n"
+			"GPU time:\t\t\t\t\t\t" + to_string_precision(m_gpuTime, 2) + " ms\n"
+			"GPU:\t\t\t\t\t\t\t"	+ m_gpuName + "\n"
+			"VRAM:\t\t\t\t\t\t\t"	+ to_string(m_gpuVRAM) + " MB\n"
+
+			// Renderer
 			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
-			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
+			"Meshes rendered:\t\t\t\t"			+ to_string(m_rendererMeshesRendered) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
 			"Materials:\t\t\t\t\t\t"			+ to_string(materials) + "\n"
 			"Shaders:\t\t\t\t\t\t"				+ to_string(shaders) + "\n"
-			"RHI Draw calls:\t\t\t\t\t"			+ to_string(m_drawCalls) + "\n"
-			"RHI Index buffer bindings:\t\t"	+ to_string(m_bindBufferIndexCount) + "\n"
-			"RHI Vertex buffer bindings:\t"		+ to_string(m_bindBufferVertexCount) + "\n"
-			"RHI Constant buffer bindings:\t"	+ to_string(m_bindConstantBufferCount) + "\n"
-			"RHI Sampler bindings:\t\t\t"		+ to_string(m_bindSamplerCount) + "\n"
-			"RHI Texture bindings:\t\t\t"		+ to_string(m_bindTextureCount) + "\n"
-			"RHI Vertex Shader bindings:\t"		+ to_string(m_bindVertexShaderCount) + "\n"
-			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_bindPixelShaderCount) + "\n"
-			"RHI Render Target bindings:\t"		+ to_string(m_bindRenderTargetCount);
+
+			// RHI
+			"RHI Draw calls:\t\t\t\t\t"			+ to_string(m_rhiDrawCalls) + "\n"
+			"RHI Index buffer bindings:\t\t"	+ to_string(m_rhiBindingsBufferIndex) + "\n"
+			"RHI Vertex buffer bindings:\t"		+ to_string(m_rhiBindingsBufferVertex) + "\n"
+			"RHI Constant buffer bindings:\t"	+ to_string(m_rhiBindingsBufferConstant) + "\n"
+			"RHI Sampler bindings:\t\t\t"		+ to_string(m_rhiBindingsSampler) + "\n"
+			"RHI Texture bindings:\t\t\t"		+ to_string(m_rhiBindingsTexture) + "\n"
+			"RHI Vertex Shader bindings:\t"		+ to_string(m_rhiBindingsVertexShader) + "\n"
+			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_rhiBindingsPixelShader) + "\n"
+			"RHI Render Target bindings:\t"		+ to_string(m_rhiBindingsRenderTarget) + "\n";
 	}
 
 	void Profiler::ComputeFPS(float deltaTime)
