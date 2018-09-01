@@ -139,9 +139,9 @@ namespace Directus
 		// Compute FPS
 		ComputeFPS(deltaTimeSec);
 		// Get GPU render time
-		m_renderTimeGPU = GetTimeBlockMs_CPU("Directus::Renderer::Render");
+		m_cpuTime = GetTimeBlockMs_CPU("Directus::Renderer::Render");
 		// Get CPU render time
-		m_renderTimeCPU = GetTimeBlockMs_GPU("Directus::Renderer::Render");
+		m_gpuTime = GetTimeBlockMs_GPU("Directus::Renderer::Render");
 
 		// Below this point, update every m_profilingFrequencyMs
 		m_profilingLastUpdateTime += deltaTimeSec;
@@ -179,9 +179,10 @@ namespace Directus
 		int shaders		= m_resourceManager->GetResourceCountByType(Resource_Shader);
 
 		m_metrics =
+			"GPU:\t\t\t\t\t\t\t"				+ m_gpuName + " (" + to_string(m_gpuVRAM) + "Mb)" + "\n"
 			"FPS:\t\t\t\t\t\t\t"				+ to_string_precision(fps, 2) + "\n"
-			"CPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_renderTimeGPU, 2) + " ms\n"
-			"GPU:\t\t\t\t\t\t\t"				+ to_string_precision(m_renderTimeCPU, 2) + " ms\n"
+			"CPU time:\t\t\t\t\t\t"				+ to_string_precision(m_cpuTime, 2) + " ms\n"
+			"GPU time:\t\t\t\t\t\t"				+ to_string_precision(m_gpuTime, 2) + " ms\n"
 			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_meshesRendered) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"

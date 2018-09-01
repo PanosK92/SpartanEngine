@@ -272,25 +272,26 @@ namespace Directus
 			return nullptr;
 		}
 
-		inline string GetAdapterDescription(IDXGIAdapter* adapter)
+		inline void GetAdapterDescription(IDXGIAdapter* adapter, string* name, unsigned int* vram)
 		{
 			if (!adapter)
-				return "error";
+				return;
 
 			DXGI_ADAPTER_DESC adapterDesc;
 			HRESULT result = adapter->GetDesc(&adapterDesc);
 			if (FAILED(result))
 			{
 				LOG_ERROR("D3D11_Device::GetAdapterDescription: Failed to get adapter description.");
-				return "error";
+				return;
 			}
 
-			int adapterVRAM = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024); // MB
+			auto adapterVRAM = (unsigned int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024); // MB
 			char adapterName[128];
 			char DefChar = ' ';
 			WideCharToMultiByte(CP_ACP, 0, adapterDesc.Description, -1, adapterName, 128, &DefChar, nullptr);
 
-			return string(adapterName) + " (" + to_string(adapterVRAM) + " MB)";
+			(*name) = string(adapterName);
+			(*vram) = adapterVRAM;
 		}
 	}
 
@@ -585,10 +586,14 @@ namespace Directus
 			break;
 		}
 
-		LOGF_INFO("D3D11_Device::RHI_Device: Feature level %s - %s", featureLevelStr.data(), D3D11_Device::GetAdapterDescription(adapter).data());
-		m_device		= (void*)D3D11_Device::m_device;
-		m_deviceContext = (void*)D3D11_Device::m_deviceContext;
-		m_initialized	= true;
+		string deviceName;
+		unsigned int vram;
+		D3D11_Device::GetAdapterDescription(adapter, &deviceName, &vram);
+		Profiler::Get().m_gpuName	= deviceName;
+		Profiler::Get().m_gpuVRAM	= vram;
+		m_device						= (void*)D3D11_Device::m_device;
+		m_deviceContext					= (void*)D3D11_Device::m_deviceContext;
+		m_initialized					= true;
 	}
 
 	RHI_Device::~RHI_Device()

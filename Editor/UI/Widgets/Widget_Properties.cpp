@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/Camera.h"
 #include "Scene/Components/Script.h"
 #include "Rendering/Deferred/ShaderVariation.h"
+#include "../../ImGui/Source/imgui_stl.h"
 //=============================================
 
 //= NAMESPACES ========================
@@ -164,17 +165,17 @@ void Widget_Properties::Update(float deltaTime)
 	{
 		auto actorPtr = WidgetProperties_Internal::actorInspected.lock().get();
 
-		auto transform = actorPtr->GetComponent<Transform>().lock();
-		auto light = actorPtr->GetComponent<Light>().lock();
-		auto camera = actorPtr->GetComponent<Camera>().lock();
-		auto audioSource = actorPtr->GetComponent<AudioSource>().lock();
-		auto audioListener = actorPtr->GetComponent<AudioListener>().lock();
-		auto renderable = actorPtr->GetComponent<Renderable>().lock();
-		auto material = renderable ? renderable->Material_RefWeak().lock() : nullptr;
-		auto rigidBody = actorPtr->GetComponent<RigidBody>().lock();
-		auto collider = actorPtr->GetComponent<Collider>().lock();
-		auto constraint = actorPtr->GetComponent<Constraint>().lock();
-		auto scripts = actorPtr->GetComponents<Script>();
+		auto transform		= actorPtr->GetComponent<Transform>().lock();
+		auto light			= actorPtr->GetComponent<Light>().lock();
+		auto camera			= actorPtr->GetComponent<Camera>().lock();
+		auto audioSource	= actorPtr->GetComponent<AudioSource>().lock();
+		auto audioListener	= actorPtr->GetComponent<AudioListener>().lock();
+		auto renderable		= actorPtr->GetComponent<Renderable>().lock();
+		auto material		= renderable ? renderable->Material_RefWeak().lock() : nullptr;
+		auto rigidBody		= actorPtr->GetComponent<RigidBody>().lock();
+		auto collider		= actorPtr->GetComponent<Collider>().lock();
+		auto constraint		= actorPtr->GetComponent<Constraint>().lock();
+		auto scripts		= actorPtr->GetComponents<Script>();
 
 		ShowTransform(transform);
 		ShowLight(light);
@@ -300,18 +301,18 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 
 	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
 	{
-		//= REFLECT =====================================================
+		//= REFLECT ===================================================================
 		static vector<char*> types = { "Directional", "Point", "Spot" };
-		int typeInt = (int)light->GetLightType();
+		int typeInt				= (int)light->GetLightType();
 		const char* typeCharPtr = types[typeInt];
-		float intensity = light->GetIntensity();
-		float angle = light->GetAngle() * 179.0f;
-		bool castsShadows = light->GetCastShadows();
-		float range = light->GetRange();
-		float split1 = light->ShadowMap_GetSplit(0);
-		float split2 = light->ShadowMap_GetSplit(1);
+		float intensity			= light->GetIntensity();
+		float angle				= light->GetAngle() * 179.0f;
+		bool castsShadows		= light->GetCastShadows();
+		float range				= light->GetRange();
+		float split1			= light->ShadowMap_GetSplit(0);
+		float split2			= light->ShadowMap_GetSplit(1);
 		WidgetProperties_Internal::lightButtonColorPicker->SetColor(light->GetColor());
-		//===============================================================
+		//=============================================================================
 
 		// Type
 		ImGui::Text("Type");
@@ -398,10 +399,10 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable)
 	if (ComponentProperty::Begin("Renderable", Icon_Component_Renderable, renderable))
 	{
 		//= REFLECT ================================================================
-		string meshName = renderable->Geometry_Name();
-		auto material = renderable->Material_RefWeak().lock();
-		string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
-		bool castShadows = renderable->GetCastShadows();
+		string meshName		= renderable->Geometry_Name();
+		auto material		= renderable->Material_RefWeak().lock();
+		string materialName	= material ? material->GetResourceName() : NOT_ASSIGNED;
+		bool castShadows	= renderable->GetCastShadows();
 		bool receiveShadows = renderable->GetReceiveShadows();
 		//==========================================================================
 
@@ -436,24 +437,24 @@ void Widget_Properties::ShowRigidBody(shared_ptr<RigidBody>& rigidBody)
 	if (ComponentProperty::Begin("RigidBody", Icon_Component_RigidBody, rigidBody))
 	{
 		//= REFLECT ===================================================
-		float mass = rigidBody->GetMass();
-		float friction = rigidBody->GetFriction();
-		float frictionRolling = rigidBody->GetFrictionRolling();
-		float restitution = rigidBody->GetRestitution();
-		bool useGravity = rigidBody->GetUseGravity();
-		bool isKinematic = rigidBody->GetIsKinematic();
-		bool freezePosX = (bool)rigidBody->GetPositionLock().x;
-		bool freezePosY = (bool)rigidBody->GetPositionLock().y;
-		bool freezePosZ = (bool)rigidBody->GetPositionLock().z;
-		bool freezeRotX = (bool)rigidBody->GetRotationLock().x;
-		bool freezeRotY = (bool)rigidBody->GetRotationLock().y;
-		bool freezeRotZ = (bool)rigidBody->GetRotationLock().z;
+		float mass				= rigidBody->GetMass();
+		float friction			= rigidBody->GetFriction();
+		float frictionRolling	= rigidBody->GetFrictionRolling();
+		float restitution		= rigidBody->GetRestitution();
+		bool useGravity			= rigidBody->GetUseGravity();
+		bool isKinematic		= rigidBody->GetIsKinematic();
+		bool freezePosX			= (bool)rigidBody->GetPositionLock().x;
+		bool freezePosY			= (bool)rigidBody->GetPositionLock().y;
+		bool freezePosZ			= (bool)rigidBody->GetPositionLock().z;
+		bool freezeRotX			= (bool)rigidBody->GetRotationLock().x;
+		bool freezeRotY			= (bool)rigidBody->GetRotationLock().y;
+		bool freezeRotZ			= (bool)rigidBody->GetRotationLock().z;
 		//=============================================================
 
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
-		float itemWidth = 120.0f;
-		float step		= 0.1f;
-		float step_fast = 0.1f;
+		float itemWidth		= 120.0f;
+		float step			= 0.1f;
+		float step_fast		= 0.1f;
 
 		// Mass
 		ImGui::Text("Mass");
@@ -532,10 +533,10 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 			"Cone",
 			"Mesh"
 		};
-		auto shapeInt = (int)collider->GetShapeType();
-		const char* shapeCharPtr = type[shapeInt];
-		bool optimize = collider->GetOptimize();
-		Vector3 colliderCenter = collider->GetCenter();
+		auto shapeInt				= (int)collider->GetShapeType();
+		const char* shapeCharPtr	= type[shapeInt];
+		bool optimize				= collider->GetOptimize();
+		Vector3 colliderCenter		= collider->GetCenter();
 		Vector3 colliderBoundingBox = collider->GetBoundingBox();
 		//==========================================================
 
@@ -601,24 +602,24 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 
 	if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint))
 	{
-		//= REFLECT ==============================================
-		static vector<char*> types = {
+		//= REFLECT ============================================================================
+		static vector<char*> types = 
+		{
 			"Point",
 			"Hinge",
 			"Slider",
 			"ConeTwist"
 		};
 		auto typeInt = (int)constraint->GetConstraintType();
-		const char* typeStr = types[typeInt];
-		weak_ptr<Actor>	otherBody = constraint->GetBodyOther();
-		bool otherBodyDirty = false;
-		Vector3 position = constraint->GetPosition();
-		Vector3 rotation = constraint->GetRotation().ToEulerAngles();
-		Vector2 highLimit = constraint->GetHighLimit();
-		Vector2 lowLimit = constraint->GetLowLimit();
-		char otherBodyNameArray[BUFFER_TEXT_DEFAULT];
-		EditorHelper::SetCharArray(&otherBodyNameArray[0], otherBody.expired() ? "N/A" : otherBody.lock()->GetName());
-		//========================================================
+		const char* typeStr			= types[typeInt];
+		weak_ptr<Actor>	otherBody	= constraint->GetBodyOther();
+		bool otherBodyDirty			= false;
+		Vector3 position			= constraint->GetPosition();
+		Vector3 rotation			= constraint->GetRotation().ToEulerAngles();
+		Vector2 highLimit			= constraint->GetHighLimit();
+		Vector2 lowLimit			= constraint->GetLowLimit();
+		string otherBodyName		= otherBody.expired() ? "N/A" : otherBody.lock()->GetName();
+		//======================================================================================
 
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 		float step			= 0.1f;
@@ -648,12 +649,12 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 		ImGui::Text("Other Body"); ImGui::SameLine(ComponentProperty::g_column);
 		ImGui::PushID("##OtherBodyName");
 		ImGui::PushItemWidth(200.0f);
-		ImGui::InputText("", otherBodyNameArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
+		ImGui::InputText("", &otherBodyName, ImGuiInputTextFlags_ReadOnly);
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 		{
-			auto actorID = get<unsigned int>(payload->data);
-			otherBody = WidgetProperties_Internal::scene->GetActorByID(actorID);
-			otherBodyDirty = true;
+			auto actorID	= get<unsigned int>(payload->data);
+			otherBody		= WidgetProperties_Internal::scene->GetActorByID(actorID);
+			otherBodyDirty	= true;
 		}
 		ImGui::PopItemWidth();
 		ImGui::PopID();
@@ -696,14 +697,14 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 			ImGui::SameLine(); ImGui::InputFloat("##ConsLowLimY", &lowLimit.y, step, step_fast, inputTextFlags);
 		}
 
-		//= MAP ====================================================================================================================================
+		//= MAP ========================================================================================================================
 		if ((ConstraintType)typeInt != constraint->GetConstraintType())	constraint->SetConstraintType((ConstraintType)typeInt);
-		if (otherBodyDirty) { constraint->SetBodyOther(otherBody); otherBodyDirty = false; }
+		if (otherBodyDirty)												{ constraint->SetBodyOther(otherBody); otherBodyDirty = false; }
 		if (position != constraint->GetPosition())						constraint->SetPosition(position);
 		if (rotation != constraint->GetRotation().ToEulerAngles())		constraint->SetRotation(Quaternion::FromEulerAngles(rotation));
 		if (highLimit != constraint->GetHighLimit())					constraint->SetHighLimit(highLimit);
 		if (lowLimit != constraint->GetLowLimit())						constraint->SetLowLimit(lowLimit);
-		//==========================================================================================================================================
+		//==============================================================================================================================
 	}
 	ComponentProperty::End();
 }
@@ -901,27 +902,26 @@ void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audioSource)
 
 	if (ComponentProperty::Begin("Audio Source", Icon_Component_AudioSource, audioSource))
 	{
-		//= REFLECT ========================================================================
-		char audioClipCharArray[BUFFER_TEXT_DEFAULT];
-		EditorHelper::SetCharArray(&audioClipCharArray[0], audioSource->GetAudioClipName());
-		bool mute = audioSource->GetMute();
-		bool playOnStart = audioSource->GetPlayOnStart();
-		bool loop = audioSource->GetLoop();
-		int priority = audioSource->GetPriority();
-		float volume = audioSource->GetVolume();
-		float pitch = audioSource->GetPitch();
-		float pan = audioSource->GetPan();
-		//==================================================================================
+		//= REFLECT ==============================================
+		string audioClipName	= audioSource->GetAudioClipName();
+		bool mute				= audioSource->GetMute();
+		bool playOnStart		= audioSource->GetPlayOnStart();
+		bool loop				= audioSource->GetLoop();
+		int priority			= audioSource->GetPriority();
+		float volume			= audioSource->GetVolume();
+		float pitch				= audioSource->GetPitch();
+		float pan				= audioSource->GetPan();
+		//========================================================
 
 		// Audio clip
 		ImGui::Text("Audio Clip");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(250.0f);
-		ImGui::InputText("##audioSourceAudioClip", audioClipCharArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
+		ImGui::InputText("##audioSourceAudioClip", &audioClipName, ImGuiInputTextFlags_ReadOnly);
 		ImGui::PopItemWidth();
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Audio))
 		{
-			EditorHelper::SetCharArray(&audioClipCharArray[0], FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data)));
-			auto audioClip = WidgetProperties_Internal::resourceManager->Load<AudioClip>(get<const char*>(payload->data));
+			audioClipName	= FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data));
+			auto audioClip	= WidgetProperties_Internal::resourceManager->Load<AudioClip>(get<const char*>(payload->data));
 			audioSource->SetAudioClip(audioClip, false);
 		}
 
@@ -985,16 +985,15 @@ void Widget_Properties::ShowScript(shared_ptr<Script>& script)
 
 	if (ComponentProperty::Begin(script->GetName(), Icon_Component_Script, script))
 	{
-		//= REFLECT =======================================================
-		char scriptNameArray[BUFFER_TEXT_DEFAULT] = "N/A";
-		EditorHelper::SetCharArray(&scriptNameArray[0], script->GetName());
-		//=================================================================
+		//= REFLECT ==========================
+		string scriptName = script->GetName();
+		//====================================
 
 		ImGui::Text("Script");
 		ImGui::SameLine();
 		ImGui::PushID("##ScriptNameTemp");
 		ImGui::PushItemWidth(200.0f);
-		ImGui::InputText("", scriptNameArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
+		ImGui::InputText("", &scriptName, ImGuiInputTextFlags_ReadOnly);
 		ImGui::PopItemWidth();
 		ImGui::PopID();
 	}

@@ -1,4 +1,4 @@
-// dear imgui, v1.63 WIP
+// dear imgui, v1.64
 // (demo code)
 
 // Message to the person tempted to delete this file when integrating ImGui into their code base:
@@ -36,7 +36,6 @@
 
 #ifdef _MSC_VER
 #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strcpy, strdup, sprintf, vsnprintf, sscanf, fopen
-#define snprintf  _snprintf
 #define vsnprintf _vsnprintf
 #endif
 #ifdef __clang__
@@ -354,7 +353,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
                 static char str0[128] = "Hello, world!";
                 static int i0 = 123;
                 ImGui::InputText("input text", str0, IM_ARRAYSIZE(str0));
-                ImGui::SameLine(); ShowHelpMarker("Hold SHIFT or use mouse to select text.\n" "CTRL+Left/Right to word jump.\n" "CTRL+A or double-click to select all.\n" "CTRL+X,CTRL+C,CTRL+V clipboard.\n" "CTRL+Z,CTRL+Y undo/redo.\n" "ESCAPE to revert.\n");
+                ImGui::SameLine(); ShowHelpMarker("USER:\nHold SHIFT or use mouse to select text.\n" "CTRL+Left/Right to word jump.\n" "CTRL+A or double-click to select all.\n" "CTRL+X,CTRL+C,CTRL+V clipboard.\n" "CTRL+Z,CTRL+Y undo/redo.\n" "ESCAPE to revert.\n\nPROGRAMMER:\nYou can use the ImGuiInputTextFlags_CallbackResize facility if you need to wire InputText() to a dynamic string type. See misc/stl/imgui_stl.h for an example (this is not demonstrated in imgui_demo.cpp).");
 
                 ImGui::InputInt("input int", &i0);
                 ImGui::SameLine(); ShowHelpMarker("You can apply arithmetic operators +,*,/ on numerical values.\n  e.g. [ 100 ], input \'*2\', result becomes [ 200 ]\nUse +- to subtract.\n");
@@ -774,7 +773,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
             static char buf3[64] = ""; ImGui::InputText("hexadecimal", buf3, 64, ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
             static char buf4[64] = ""; ImGui::InputText("uppercase", buf4, 64, ImGuiInputTextFlags_CharsUppercase);
             static char buf5[64] = ""; ImGui::InputText("no blank", buf5, 64, ImGuiInputTextFlags_CharsNoBlank);
-            struct TextFilters { static int FilterImGuiLetters(ImGuiTextEditCallbackData* data) { if (data->EventChar < 256 && strchr("imgui", (char)data->EventChar)) return 0; return 1; } };
+            struct TextFilters { static int FilterImGuiLetters(ImGuiInputTextCallbackData* data) { if (data->EventChar < 256 && strchr("imgui", (char)data->EventChar)) return 0; return 1; } };
             static char buf6[64] = ""; ImGui::InputText("\"imgui\" letters", buf6, 64, ImGuiInputTextFlags_CallbackCharFilter, TextFilters::FilterImGuiLetters);
 
             ImGui::Text("Password input");
@@ -801,10 +800,10 @@ void ImGui::ShowDemoWindow(bool* p_open)
                 "label:\n"
                 "\tlock cmpxchg8b eax\n";
 
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0,0));
+            ShowHelpMarker("You can use the ImGuiInputTextFlags_CallbackResize facility if you need to wire InputTextMultiline() to a dynamic string type. See misc/stl/imgui_stl.h for an example. (This is not demonstrated in imgui_demo.cpp)");
             ImGui::Checkbox("Read-only", &read_only);
-            ImGui::PopStyleVar();
-            ImGui::InputTextMultiline("##source", text, IM_ARRAYSIZE(text), ImVec2(-1.0f, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_AllowTabInput | (read_only ? ImGuiInputTextFlags_ReadOnly : 0));
+            ImGuiInputTextFlags flags = ImGuiInputTextFlags_AllowTabInput | (read_only ? ImGuiInputTextFlags_ReadOnly : 0);
+            ImGui::InputTextMultiline("##source", text, IM_ARRAYSIZE(text), ImVec2(-1.0f, ImGui::GetTextLineHeight() * 16), flags);
             ImGui::TreePop();
         }
 
@@ -1022,14 +1021,25 @@ void ImGui::ShowDemoWindow(bool* p_open)
 
         if (ImGui::TreeNode("Data Types"))
         {
-            // The DragScalar, InputScalar, SliderScalar functions allow manipulating most common data types: signed/unsigned int/long long and float/double
-            // To avoid polluting the public API with all possible combinations, we use the ImGuiDataType enum to pass the type, and argument-by-values are turned into argument-by-address.
+            // The DragScalar/InputScalar/SliderScalar functions allow various data types: signed/unsigned int/long long and float/double
+            // To avoid polluting the public API with all possible combinations, we use the ImGuiDataType enum to pass the type, 
+            // and passing all arguments by address. 
             // This is the reason the test code below creates local variables to hold "zero" "one" etc. for each types.
-            // In practice, if you frequently use a given type that is not covered by the normal API entry points, you may want to wrap it yourself inside a 1 line function
-            // which can take typed values argument instead of void*, and then pass their address to the generic function. For example:
-            //   bool SliderU64(const char *label, u64* value, u64 min = 0, u64 max = 0, const char* format = "%lld") { return SliderScalar(label, ImGuiDataType_U64, value, &min, &max, format); }
-            // Below are helper variables we can take the address of to work-around this:
+            // In practice, if you frequently use a given type that is not covered by the normal API entry points, you can wrap it 
+            // yourself inside a 1 line function which can take typed argument as value instead of void*, and then pass their address 
+            // to the generic function. For example:
+            //   bool MySliderU64(const char *label, u64* value, u64 min = 0, u64 max = 0, const char* format = "%lld") 
+            //   { 
+            //      return SliderScalar(label, ImGuiDataType_U64, value, &min, &max, format); 
+            //   }
+
+            // Limits (as helper variables that we can take the address of)
             // Note that the SliderScalar function has a maximum usable range of half the natural type maximum, hence the /2 below.
+            #ifndef LLONG_MIN
+            ImS64 LLONG_MIN = -9223372036854775807LL - 1;
+            ImS64 LLONG_MAX = 9223372036854775807LL;
+            ImU64 ULLONG_MAX = (2ULL * 9223372036854775807LL + 1);
+            #endif
             const ImS32   s32_zero = 0,   s32_one = 1,   s32_fifty = 50, s32_min = INT_MIN/2,   s32_max = INT_MAX/2,    s32_hi_a = INT_MAX/2 - 100,    s32_hi_b = INT_MAX/2;
             const ImU32   u32_zero = 0,   u32_one = 1,   u32_fifty = 50, u32_min = 0,           u32_max = UINT_MAX/2,   u32_hi_a = UINT_MAX/2 - 100,   u32_hi_b = UINT_MAX/2;
             const ImS64   s64_zero = 0,   s64_one = 1,   s64_fifty = 50, s64_min = LLONG_MIN/2, s64_max = LLONG_MAX/2,  s64_hi_a = LLONG_MAX/2 - 100,  s64_hi_b = LLONG_MAX/2;
@@ -1265,19 +1275,20 @@ void ImGui::ShowDemoWindow(bool* p_open)
             ImGui::TreePop();
         }
 
-        if (ImGui::TreeNode("Active, Focused, Hovered & Focused Tests"))
+        if (ImGui::TreeNode("Querying Status (Active/Focused/Hovered etc.)"))
         {
             // Display the value of IsItemHovered() and other common item state functions. Note that the flags can be combined.
             // (because BulletText is an item itself and that would affect the output of IsItemHovered() we pass all state in a single call to simplify the code).
             static int item_type = 1;
             static bool b = false;
             static float col4f[4] = { 1.0f, 0.5, 0.0f, 1.0f };
-            ImGui::RadioButton("Text", &item_type, 0); ImGui::SameLine();
-            ImGui::RadioButton("Button", &item_type, 1); ImGui::SameLine();
-            ImGui::RadioButton("CheckBox", &item_type, 2); ImGui::SameLine();
-            ImGui::RadioButton("SliderFloat", &item_type, 3); ImGui::SameLine();
-            ImGui::RadioButton("ColorEdit4", &item_type, 4); ImGui::SameLine();
+            ImGui::RadioButton("Text", &item_type, 0);
+            ImGui::RadioButton("Button", &item_type, 1);
+            ImGui::RadioButton("CheckBox", &item_type, 2);
+            ImGui::RadioButton("SliderFloat", &item_type, 3);
+            ImGui::RadioButton("ColorEdit4", &item_type, 4);
             ImGui::RadioButton("ListBox", &item_type, 5);
+            ImGui::Separator();
             bool ret = false;
             if (item_type == 0) { ImGui::Text("ITEM: Text"); }                                              // Testing text items with no identifier/interaction
             if (item_type == 1) { ret = ImGui::Button("ITEM: Button"); }                                    // Testing button
@@ -1294,9 +1305,13 @@ void ImGui::ShowDemoWindow(bool* p_open)
                 "IsItemHovered(_AllowWhenOverlapped) = %d\n"
                 "IsItemHovered(_RectOnly) = %d\n"
                 "IsItemActive() = %d\n"
+                "IsItemEdited() = %d\n"
                 "IsItemDeactivated() = %d\n"
-                "IsItemDeactivatedAfterChange() = %d\n"
-                "IsItemVisible() = %d\n",
+                "IsItemDeactivatedEdit() = %d\n"
+                "IsItemVisible() = %d\n"
+                "GetItemRectMin() = (%.1f, %.1f)\n"
+                "GetItemRectMax() = (%.1f, %.1f)\n"
+                "GetItemRectSize() = (%.1f, %.1f)",
                 ret,
                 ImGui::IsItemFocused(),
                 ImGui::IsItemHovered(),
@@ -1305,9 +1320,13 @@ void ImGui::ShowDemoWindow(bool* p_open)
                 ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlapped),
                 ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly),
                 ImGui::IsItemActive(),
+                ImGui::IsItemEdited(),
                 ImGui::IsItemDeactivated(),
-                ImGui::IsItemDeactivatedAfterChange(),
-                ImGui::IsItemVisible()
+                ImGui::IsItemDeactivatedAfterEdit(),
+                ImGui::IsItemVisible(),
+                ImGui::GetItemRectMin().x, ImGui::GetItemRectMin().y,
+                ImGui::GetItemRectMax().x, ImGui::GetItemRectMax().y,
+                ImGui::GetItemRectSize().x, ImGui::GetItemRectSize().y
             );
 
             static bool embed_all_inside_a_child_window = false;
@@ -2798,14 +2817,15 @@ struct ExampleAppConsole
         bool reclaim_focus = false;
         if (ImGui::InputText("Input", InputBuf, IM_ARRAYSIZE(InputBuf), ImGuiInputTextFlags_EnterReturnsTrue|ImGuiInputTextFlags_CallbackCompletion|ImGuiInputTextFlags_CallbackHistory, &TextEditCallbackStub, (void*)this))
         {
-            Strtrim(InputBuf);
-            if (InputBuf[0])
-                ExecCommand(InputBuf);
-            strcpy(InputBuf, "");
+            char* s = InputBuf;
+            Strtrim(s);
+            if (s[0])
+                ExecCommand(s);
+            strcpy(s, "");
             reclaim_focus = true;
         }
 
-        // Demonstrate keeping focus on the input box
+        // Auto-focus on window apparition
         ImGui::SetItemDefaultFocus();
         if (reclaim_focus)
             ImGui::SetKeyboardFocusHere(-1); // Auto focus previous widget
@@ -2851,13 +2871,13 @@ struct ExampleAppConsole
         }
     }
 
-    static int TextEditCallbackStub(ImGuiTextEditCallbackData* data) // In C++11 you are better off using lambdas for this sort of forwarding callbacks
+    static int TextEditCallbackStub(ImGuiInputTextCallbackData* data) // In C++11 you are better off using lambdas for this sort of forwarding callbacks
     {
         ExampleAppConsole* console = (ExampleAppConsole*)data->UserData;
         return console->TextEditCallback(data);
     }
 
-    int     TextEditCallback(ImGuiTextEditCallbackData* data)
+    int     TextEditCallback(ImGuiInputTextCallbackData* data)
     {
         //AddLog("cursor: %d, selection: %d-%d", data->CursorPos, data->SelectionStart, data->SelectionEnd);
         switch (data->EventFlag)
@@ -2948,8 +2968,9 @@ struct ExampleAppConsole
                 // A better implementation would preserve the data on the current input line along with cursor position.
                 if (prev_history_pos != HistoryPos)
                 {
-                    data->CursorPos = data->SelectionStart = data->SelectionEnd = data->BufTextLen = (int)snprintf(data->Buf, (size_t)data->BufSize, "%s", (HistoryPos >= 0) ? History[HistoryPos] : "");
-                    data->BufDirty = true;
+                    const char* history_str = (HistoryPos >= 0) ? History[HistoryPos] : "";
+                    data->DeleteChars(0, data->BufTextLen);
+                    data->InsertChars(0, history_str);
                 }
             }
         }
