@@ -40,14 +40,14 @@ enum DragPayloadType
 
 struct DragDropPayload
 {
-	typedef std::variant<const char*, unsigned int> payloadVariant;
-	DragDropPayload(DragPayloadType type = DragPayload_Unknown, payloadVariant data = nullptr)
+	typedef std::variant<const char*, unsigned int> dataVariant;
+	DragDropPayload(DragPayloadType type = DragPayload_Unknown, dataVariant data = nullptr)
 	{
-		this->type	= type;
-		this->data	= data;
+		this->type = type;
+		this->data = data;
 	}
 	DragPayloadType type;
-	payloadVariant data;
+	dataVariant data;
 };
 
 static bool g_isDragging = false;
@@ -62,7 +62,11 @@ public:
 		return instance;
 	}
 
-	bool DragBegin() { return ImGui::BeginDragDropSource(); }
+	bool DragBegin() 
+	{ 
+		return ImGui::BeginDragDropSource(); 
+	}
+
 	void DragPayload(const DragDropPayload& payload, void* thumbnailShaderResource = nullptr)
 	{
 		ImGui::SetDragDropPayload((const char*)&payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
@@ -71,7 +75,11 @@ public:
 			THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(thumbnailShaderResource, 50);
 		}
 	}
-	void DragEnd() { ImGui::EndDragDropSource(); }
+
+	void DragEnd() 
+	{ 
+		ImGui::EndDragDropSource(); 
+	}
 
 	DragDropPayload* GetPayload(DragPayloadType type)
 	{

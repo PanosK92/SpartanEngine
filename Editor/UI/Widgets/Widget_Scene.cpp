@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../DragDrop.h"
 #include "Input/Input_Definition.h"
 #include "Input/Input_Implementation.h"
+#include "../../ImGui/Source/imgui_stl.h"
 #include "Scene/Actor.h"
 #include "Scene/Components/Transform.h"
 #include "Scene/Components/Light.h"
@@ -399,11 +400,10 @@ void Widget_Scene::Popup_ActorRename()
 			return;
 		}
 
-		char name[BUFFER_TEXT_DEFAULT];
-		EditorHelper::SetCharArray(&name[0], actor->GetName());
+		string name = actor->GetName();
 
 		ImGui::Text("Name:");
-		ImGui::InputText("##edit", name, IM_ARRAYSIZE(name));
+		ImGui::InputText("##edit", &name);
 		actor->SetName(string(name));
 
 		if (ImGui::Button("Ok")) 

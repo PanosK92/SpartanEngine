@@ -38,8 +38,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Texture.h"
 //===================================
 
-static const int BUFFER_TEXT_DEFAULT = 255;
-
 // An icon shader resource pointer by thumbnail
 #define SHADER_RESOURCE_BY_THUMBNAIL(thumbnail)			IconProvider::Get().GetShaderResourceByThumbnail(thumbnail)
 // An icon shader resource pointer by type 
@@ -209,35 +207,6 @@ public:
 	// LOADING (Whether any editor system caused the engine to load something
 	void SetEngineLoading(bool loading) { m_isLoading = loading; }
 	bool GetEngineLoading() { return m_isLoading; }
-
-	static void SetCharArray(char* array, const std::string& value)
-	{
-		if (value.length() > BUFFER_TEXT_DEFAULT)
-			return;
-
-		memset(&array[0], 0, BUFFER_TEXT_DEFAULT * sizeof(array[0]));
-		copy(value.begin(), value.end(), array);
-	}
-
-	template <class T, class = typename std::enable_if<
-		std::is_same<T, int>::value		||
-		std::is_same<T, float>::value	||
-		std::is_same<T, bool>::value	||
-		std::is_same<T, double>::value
-	>::type>
-	static void SetCharArray(char* array, T value)
-	{
-		// Remove trailing zeros
-		std::string str = std::to_string(value);
-		str.erase(str.find_last_not_of('0') + 1, std::string::npos);
-
-		if (str[str.length() -1] == '.')
-		{
-			str += '0';
-		}
-
-		SetCharArray(array, str);
-	}
 
 	//= CONVERSIONS ===================================================================================================
 	static ImVec4 ToImVec4(const Directus::Math::Vector4& v)	{ return ImVec4(v.x, v.y, v.z, v.w); }

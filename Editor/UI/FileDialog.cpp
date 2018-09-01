@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileDialog.h"
 #include "../ImGui/Source/imgui.h"
 #include "../ImGui/Source/imgui_internal.h"
+#include "../ImGui/Source/imgui_stl.h"
 #include "DragDrop.h"
 //=========================================
 
@@ -36,7 +37,7 @@ namespace FileDialog_Options
 	static float g_itemSizeMin = 50.0f;
 	static float g_itemSizeMax = 200.0f;
 	static bool g_isHoveringItem;
-	static const char* g_hoveredItemPath;
+	static string g_hoveredItemPath;
 	static bool g_isHoveringWindow;
 	static DragDropPayload g_dragDropPayload;
 	static unsigned int g_contextMenuID;
@@ -85,8 +86,8 @@ bool FileDialog::Show(bool* isVisible, string* itemPath)
 	m_selectionMade							= false;
 	m_wasVisible							= true;
 	FileDialog_Options::g_isHoveringItem	= false;
-	FileDialog_Options::g_hoveredItemPath	= "";
 	FileDialog_Options::g_isHoveringWindow	= false;
+	FileDialog_Options::g_hoveredItemPath;
 
 	
 	Show_Top(isVisible);	// Top menu	
@@ -201,8 +202,8 @@ void FileDialog::Show_Middle()
 					if (m_currentPathID != item.GetID()) // Single click
 					{		
 						m_currentPath	= item.GetPath();
-						m_currentPathID = item.GetID();			
-						EditorHelper::SetCharArray(&m_inputBox[0], item.GetLabel());
+						m_currentPathID = item.GetID();
+						m_inputBox		= item.GetLabel();
 
 						// Callback
 						if (m_callback_OnPathClicked) m_callback_OnPathClicked(item.GetPath());
@@ -249,7 +250,7 @@ void FileDialog::Show_Middle()
 				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 13);	// move to the bottom of the thumbnail
 				ImGui::PushItemWidth(m_itemSize + 8.5f);
 
-				ImGui::TextWrapped(item.GetLabel());
+				ImGui::TextWrapped(item.GetLabel().c_str());
 
 				ImGui::PopItemWidth();
 				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize);		// move to the right of the thumbnail
@@ -277,7 +278,7 @@ void FileDialog::Show_Bottom(bool* isVisible)
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 3.0f); // move to the bottom of the window
 
 	ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235);
-	ImGui::InputText("##InputBox", m_inputBox, BUFFER_TEXT_DEFAULT);
+	ImGui::InputText("##InputBox", &m_inputBox);
 	ImGui::PopItemWidth();
 
 	ImGui::SameLine();
@@ -304,10 +305,10 @@ void FileDialog::Item_Drag(FileDialog_Item* item)
 
 	if (DragDrop::Get().DragBegin())
 	{
-		auto SetPayload = [this](DragPayloadType type, const char* path)
+		auto SetPayload = [this](DragPayloadType type, const std::string& path)
 		{
 			FileDialog_Options::g_dragDropPayload.type = type;
-			FileDialog_Options::g_dragDropPayload.data = path;
+			FileDialog_Options::g_dragDropPayload.data = path.c_str();
 			DragDrop::Get().DragPayload(FileDialog_Options::g_dragDropPayload);
 		};
 

@@ -101,8 +101,8 @@ namespace Directus
 		float GetTimeBlockMs_GPU(const char* funcName)	{ return m_timeBlocks_gpu[funcName].duration; }
 		const auto& GetTimeBlocks_CPU()					{ return m_timeBlocks_cpu; }
 		const auto& GetTimeBlocks_GPU()					{ return m_timeBlocks_gpu; }
-		float GetRenderTime_CPU()						{ return m_renderTimeGPU; }
-		float GetRenderTime_GPU()						{ return m_renderTimeCPU; }
+		float GetRenderTime_CPU()						{ return m_cpuTime; }
+		float GetRenderTime_GPU()						{ return m_gpuTime; }
 
 		void Reset()
 		{
@@ -118,6 +118,7 @@ namespace Directus
 			m_bindRenderTargetCount		= 0;
 		}
 
+		// stats
 		unsigned int m_drawCalls;
 		unsigned int m_meshesRendered;
 		unsigned int m_bindBufferIndexCount;
@@ -128,7 +129,11 @@ namespace Directus
 		unsigned int m_bindVertexShaderCount;
 		unsigned int m_bindPixelShaderCount;
 		unsigned int m_bindRenderTargetCount;
-		
+
+		// hardware
+		std::string m_gpuName;
+		unsigned int m_gpuVRAM;
+
 	private:
 		void UpdateMetrics(float fps);
 		void ComputeFPS(float deltaTime);
@@ -144,8 +149,8 @@ namespace Directus
 		// Time blocks
 		std::map<const char*, TimeBlock_CPU> m_timeBlocks_cpu;
 		std::map<const char*, TimeBlock_GPU> m_timeBlocks_gpu;
-		float m_renderTimeGPU;
-		float m_renderTimeCPU;
+		float m_cpuTime;
+		float m_gpuTime;
 
 		// Misc
 		std::string m_metrics;
