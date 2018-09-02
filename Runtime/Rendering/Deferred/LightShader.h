@@ -41,7 +41,7 @@ namespace Directus
 		void Compile(const std::string& filePath, std::shared_ptr<RHI_Device> rhiDevice);
 		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mBaseView,
 			const Math::Matrix& mPerspectiveProjection, const Math::Matrix& mOrthographicProjection);
-		void UpdateMiscBuffer(const std::vector<Light*>& lights, Camera* camera);
+		void UpdateMiscBuffer(const std::vector<Actor*>& lights, Camera* camera);
 		bool IsCompiled();
 
 		std::shared_ptr<RHI_Shader> GetShader()					{ return m_shader; }
