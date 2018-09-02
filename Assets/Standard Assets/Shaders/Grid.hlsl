@@ -3,7 +3,7 @@
 //====================
 
 Texture2D depthTexture 			: register(t0);
-SamplerState samplerAnisoWrap 	: register(s0);
+SamplerState samplerPoint 	: register(s0);
 
 cbuffer MiscBuffer : register(b0)
 {
@@ -38,7 +38,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	projectDepthMapTexCoord.y = -input.gridPos.y / input.gridPos.w / 2.0f + 0.5f;
 	
 	float gridDepth = input.position.z / input.position.w;
-	float depthMapValue = depthTexture.Sample(samplerAnisoWrap, projectDepthMapTexCoord).r;
+	float depthMapValue = depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
 	
 	// If an object is in front of the grid, discard this grid pixel
 	if (depthMapValue >= gridDepth) 

@@ -2,8 +2,8 @@
 #include "Common.hlsl"
 //====================
 
-Texture2D depthTexture 			: register(t0);
-SamplerState samplerAnisoWrap 	: register(s0);
+Texture2D depthTexture 		: register(t0);
+SamplerState samplerPoint 	: register(s0);
 
 cbuffer MiscBuffer : register(b0)
 {
@@ -46,9 +46,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	projectDepthMapTexCoord.y = -input.colliderPos.y / input.colliderPos.w / 2.0f + 0.5f;
 	
 	float colliderDepthValue = input.position.z / input.position.w;
-	float depthMapValue = depthTexture.Sample(samplerAnisoWrap, projectDepthMapTexCoord).r;
+	float depthMapValue = depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
 	
-	if (depthMapValue >= colliderDepthValue) // If an object is in front of the collider
+	if (depthMapValue >= colliderDepthValue) // If an object is in front of the line
 		discard;
 	
 	return input.color;

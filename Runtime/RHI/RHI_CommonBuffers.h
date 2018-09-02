@@ -162,25 +162,37 @@ namespace Directus
 		float m_padding2;
 	};
 
-	struct Struct_Matrix_Matrix_Vector4_Vector3_Vector3
+	struct Struct_Transparency
 	{
-		Struct_Matrix_Matrix_Vector4_Vector3_Vector3(const Math::Matrix& matrixA, const Math::Matrix& matrixB, const Math::Vector4& vector4A, const Math::Vector3& vector3A, const Math::Vector3& vector3B, float paddingA = 0.0f)
+		Struct_Transparency(
+			const Math::Matrix& world,
+			const Math::Matrix& view,
+			const Math::Matrix& projection,
+			const Math::Vector4& color,
+			const Math::Vector3& cameraPos,
+			const Math::Vector3& lightDir,
+			float roughness = 0.0f
+		)
 		{
-			m_matrixA	= matrixA;
-			m_matrixB	= matrixB;
-			m_vector4A	= vector4A;
-			m_vector3A	= vector3A;
-			m_vector3B	= vector3B;
-			m_padding	= paddingA;
-			m_padding2	= 0.0f;
+			m_world			= world;
+			m_view			= view;
+			m_projection	= projection;
+			m_wvp			= world * view * projection;
+			m_color			= color;
+			m_cameraPos		= cameraPos;
+			m_lightDir		= lightDir;
+			m_roughness		= roughness;
+			m_padding		= 0.0f;
 		}
 
-		Math::Matrix m_matrixA;
-		Math::Matrix m_matrixB;
-		Math::Vector4 m_vector4A;
-		Math::Vector3 m_vector3A;
+		Math::Matrix m_world;
+		Math::Matrix m_view;
+		Math::Matrix m_projection;
+		Math::Matrix m_wvp;
+		Math::Vector4 m_color;
+		Math::Vector3 m_cameraPos;
+		float m_roughness;
+		Math::Vector3 m_lightDir;
 		float m_padding;
-		Math::Vector3 m_vector3B;
-		float m_padding2;
 	};
 }
