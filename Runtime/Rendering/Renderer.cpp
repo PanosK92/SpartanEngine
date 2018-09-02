@@ -219,7 +219,7 @@ namespace Directus
 			// Transparent
 			m_shaderTransparent = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderTransparent->Compile_VertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureTBN);
-			m_shaderTransparent->AddBuffer<Struct_Matrix_Matrix_Vector4_Vector3_Vector3>(0, Buffer_Global);
+			m_shaderTransparent->AddBuffer<Struct_Transparency>(0, Buffer_Global);
 		}
 
 		// TEXTURES
@@ -817,6 +817,8 @@ namespace Directus
 
 		m_rhiDevice->EnableAlphaBlending(true);
 		m_rhiPipelineState->SetShader(m_shaderTransparent);
+		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);
 
 		for (auto actor : m_renderables)
 		{
@@ -848,9 +850,10 @@ namespace Directus
 			m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());
 
 			// Constant buffer
-			m_shaderTransparent->UpdateBuffer(&Struct_Matrix_Matrix_Vector4_Vector3_Vector3(
-				actor->GetTransform_PtrRaw()->GetWorldTransform() * m_mV * m_mP_perspective,
+			m_shaderTransparent->UpdateBuffer(&Struct_Transparency(
 				actor->GetTransform_PtrRaw()->GetWorldTransform(),
+				m_mV,
+				m_mP_perspective,
 				obj_material->GetColorAlbedo(),
 				m_camera->GetTransform()->GetPosition(),
 				m_directionalLight->GetDirection(),
@@ -1105,7 +1108,7 @@ namespace Directus
 
 				m_rhiPipelineState->SetShader(m_shaderLine);
 				m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-				m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
+				m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);
 				m_rhiPipelineState->SetVertexBuffer(m_lineRenderer->GetVertexBuffer());
 				m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
 				m_shaderLine->UpdateBuffer(&Struct_Matrix_Matrix_Matrix(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix()));	
@@ -1128,7 +1131,7 @@ namespace Directus
 
 			m_rhiPipelineState->SetShader(m_shaderGrid);
 			m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-			m_rhiPipelineState->SetSampler(m_samplerAnisotropicWrapAlways);
+			m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);
 			m_rhiPipelineState->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipelineState->SetVertexBuffer(m_grid->GetVertexBuffer());
 			m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
