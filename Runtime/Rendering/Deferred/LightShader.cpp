@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Implementation.h"
 #include "../../RHI/RHI_Shader.h"
 #include "../../RHI/RHI_ConstantBuffer.h"
+#include "../../Scene/Actor.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -83,7 +84,7 @@ namespace Directus
 		m_matrixBuffer->Unmap();
 	}
 
-	void LightShader::UpdateMiscBuffer(const vector<Light*>& lights, Camera* camera)
+	void LightShader::UpdateMiscBuffer(const vector<Actor*>& lights, Camera* camera)
 	{
 		if (!IsCompiled())
 		{
@@ -117,13 +118,15 @@ namespace Directus
 		// Fill with directional lights
 		for (const auto& light : lights)
 		{
-			if (light->GetLightType() != LightType_Directional)
+			auto component = light->GetComponent<Light>().lock();
+
+			if (component->GetLightType() != LightType_Directional)
 				continue;
 
-			Vector3 direction = light->GetDirection();
+			Vector3 direction = component->GetDirection();
 
-			buffer->dirLightColor = light->GetColor();	
-			buffer->dirLightIntensity = Vector4(light->GetIntensity());
+			buffer->dirLightColor = component->GetColor();
+			buffer->dirLightIntensity = Vector4(component->GetIntensity());
 			buffer->dirLightDirection = Vector4(direction.x, direction.y, direction.z, 0.0f);
 		}
 
@@ -131,13 +134,16 @@ namespace Directus
 		int pointIndex = 0;
 		for (const auto& light : lights)
 		{
-			if (light->GetLightType() != LightType_Point)
+			auto component = light->GetComponent<Light>().lock();
+
+			if (component->GetLightType() != LightType_Point)
 				continue;
 
-			Vector3 pos = light->GetTransform()->GetPosition();
-			buffer->pointLightPosition[pointIndex] = Vector4(pos.x, pos.y, pos.z, 1.0f);
-			buffer->pointLightColor[pointIndex] = light->GetColor();
-			buffer->pointLightIntenRange[pointIndex] = Vector4(light->GetIntensity(), light->GetRange(), 0.0f, 0.0f);
+			Vector3 pos = light->GetTransform_PtrRaw()->GetPosition();
+
+			buffer->pointLightPosition[pointIndex]		= Vector4(pos.x, pos.y, pos.z, 1.0f);
+			buffer->pointLightColor[pointIndex]			= component->GetColor();
+			buffer->pointLightIntenRange[pointIndex]	= Vector4(component->GetIntensity(), component->GetRange(), 0.0f, 0.0f);
 
 			pointIndex++;
 		}
@@ -146,16 +152,18 @@ namespace Directus
 		int spotIndex = 0;
 		for (const auto& light : lights)
 		{
-			if (light->GetLightType() != LightType_Spot)
+			auto component = light->GetComponent<Light>().lock();
+
+			if (component->GetLightType() != LightType_Spot)
 				continue;
 
-			Vector3 direction = light->GetDirection();
-			Vector3 pos = light->GetTransform()->GetPosition();
+			Vector3 direction	= component->GetDirection();
+			Vector3 pos			= light->GetTransform_PtrRaw()->GetPosition();
 
-			buffer->spotLightColor[spotIndex] = light->GetColor();
-			buffer->spotLightPosition[spotIndex] = Vector4(pos.x, pos.y, pos.z, 1.0f);
-			buffer->spotLightDirection[spotIndex] = Vector4(direction.x, direction.y, direction.z, 0.0f);
-			buffer->spotLightIntenRangeAngle[spotIndex] = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), 0.0f);
+			buffer->spotLightColor[spotIndex]			= component->GetColor();
+			buffer->spotLightPosition[spotIndex]		= Vector4(pos.x, pos.y, pos.z, 1.0f);
+			buffer->spotLightDirection[spotIndex]		= Vector4(direction.x, direction.y, direction.z, 0.0f);
+			buffer->spotLightIntenRangeAngle[spotIndex] = Vector4(component->GetIntensity(), component->GetRange(), component->GetAngle(), 0.0f);
 
 			spotIndex++;
 		}

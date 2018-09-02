@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Resource/ResourceManager.h"
+#include <map>
 //======================================
 
 namespace Directus
@@ -68,6 +69,15 @@ namespace Directus
 		Render_Correction			= 1UL << 14, // Tone-mapping & Gamma correction
 	};
 
+	enum RenderableType
+	{
+		Renderable_ObjectOpaque,
+		Renderable_ObjectTransparent,
+		Renderable_Light,
+		Renderable_Camera,
+		Renderable_Skybox
+	};
+
 	class ENGINE_CLASS Renderer : public Subsystem
 	{
 	public:
@@ -103,8 +113,7 @@ namespace Directus
 		//====================================================================================
 
 		void Clear();
-		const std::vector<Actor*>& GetRenderables()			{ return m_renderables; }
-		const std::shared_ptr<RHI_Device>& GetRHIDevice()	{ return m_rhiDevice; }
+		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
 
 	private:
 		void RenderTargets_Create(int width, int height);
@@ -172,11 +181,20 @@ namespace Directus
 
 		const Math::Vector4& GetClearColor();
 
-		// Actors ========================
-		std::vector<Actor*> m_renderables;
-		std::vector<Light*> m_lights;
-		Light* m_directionalLight{};
-		//================================
+		// RENDERABLES =============================================
+		std::map<RenderableType, std::vector<Actor*>> m_renderables;
+		Math::Matrix m_mV;
+		Math::Matrix m_mP_perspective;
+		Math::Matrix m_mP_orthographic;
+		Math::Matrix m_mV_base;
+		Math::Matrix m_wvp_perspective;
+		Math::Matrix m_wvp_baseOrthographic;
+		float m_nearPlane;
+		float m_farPlane;
+		Camera* GetCamera();
+		Light* GetLightDirectional();
+		Skybox* GetSkybox();
+		//==========================================================
 
 		//= MISC ==========================================
 		std::shared_ptr<RHI_Device> m_rhiDevice;
@@ -184,7 +202,6 @@ namespace Directus
 		std::unique_ptr<GBuffer> m_gbuffer;	
 		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
-		void* m_texEnvironment;
 		//=================================================
 
 		//= RENDER TEXTURES ====================================
@@ -237,17 +254,7 @@ namespace Directus
 		//======================================================
 
 		//= PREREQUISITES ====================================
-		Camera* m_camera;
-		Skybox* m_skybox;
 		LineRenderer* m_lineRenderer;
-		Math::Matrix m_mV;
-		Math::Matrix m_mP_perspective;
-		Math::Matrix m_mP_orthographic;
-		Math::Matrix m_mV_base;
-		Math::Matrix m_wvp_perspective;
-		Math::Matrix m_wvp_baseOrthographic;
-		float m_nearPlane;
-		float m_farPlane;
 		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
 		//====================================================
 	};
