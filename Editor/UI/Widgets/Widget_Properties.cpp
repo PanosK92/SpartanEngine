@@ -249,7 +249,7 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 			float itemWidth		= 125.0f;
 			float step			= 1.0f;
 			float step_fast		= 1.0f;
-			int decimals		= 5;
+			char* decimals		= "%.3f";
 			auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 			ImGui::PushItemWidth(125.0f);
@@ -451,26 +451,27 @@ void Widget_Properties::ShowRigidBody(shared_ptr<RigidBody>& rigidBody)
 		bool freezeRotZ			= (bool)rigidBody->GetRotationLock().z;
 		//=============================================================
 
-		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
-		float itemWidth		= 120.0f;
-		float step			= 0.1f;
-		float step_fast		= 0.1f;
+		auto inputTextFlags		= ImGuiInputTextFlags_CharsDecimal;
+		float itemWidth			= 120.0f;
+		float step				= 0.1f;
+		float step_fast			= 0.1f;
+		const char* precision	= "%.3f";
 
 		// Mass
 		ImGui::Text("Mass");
-		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(itemWidth); ImGui::InputFloat("##RigidBodyMass", &mass, step, step_fast, inputTextFlags); ImGui::PopItemWidth();
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(itemWidth); ImGui::InputFloat("##RigidBodyMass", &mass, step, step_fast, precision, inputTextFlags); ImGui::PopItemWidth();
 
 		// Friction
 		ImGui::Text("Friction");
-		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(itemWidth); ImGui::InputFloat("##RigidBodyFriction", &friction, step, step_fast, inputTextFlags); ImGui::PopItemWidth();
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(itemWidth); ImGui::InputFloat("##RigidBodyFriction", &friction, step, step_fast, precision, inputTextFlags); ImGui::PopItemWidth();
 
 		// Rolling Friction
 		ImGui::Text("Rolling Friction");
-		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(itemWidth); ImGui::InputFloat("##RigidBodyRollingFriction", &frictionRolling, step, step_fast, inputTextFlags); ImGui::PopItemWidth();
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(itemWidth); ImGui::InputFloat("##RigidBodyRollingFriction", &frictionRolling, step, step_fast, precision, inputTextFlags); ImGui::PopItemWidth();
 
 		// Restitution
 		ImGui::Text("Restitution");
-		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(itemWidth); ImGui::InputFloat("##RigidBodyRestitution", &restitution, step, step_fast, inputTextFlags); ImGui::PopItemWidth();
+		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(itemWidth); ImGui::InputFloat("##RigidBodyRestitution", &restitution, step, step_fast, precision, inputTextFlags); ImGui::PopItemWidth();
 
 		// Use Gravity
 		ImGui::Text("Use Gravity");
@@ -540,9 +541,10 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 		Vector3 colliderBoundingBox = collider->GetBoundingBox();
 		//==========================================================
 
-		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
-		float step			= 0.1f;
-		float step_fast		= 0.1f;
+		auto inputTextFlags		= ImGuiInputTextFlags_CharsDecimal;
+		float step				= 0.1f;
+		float step_fast			= 0.1f;
+		const char* precision	= "%.3f";
 
 		// Type
 		ImGui::Text("Type");
@@ -568,15 +570,15 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 
 		// Center
 		ImGui::Text("Center");
-		ImGui::SameLine(ComponentProperty::g_column);	ImGui::PushID("colCenterX"); ImGui::InputFloat("X", &colliderCenter.x, step, step_fast, inputTextFlags); ImGui::PopID();
-		ImGui::SameLine();								ImGui::PushID("colCenterY"); ImGui::InputFloat("Y", &colliderCenter.y, step, step_fast, inputTextFlags); ImGui::PopID();
-		ImGui::SameLine();								ImGui::PushID("colCenterZ"); ImGui::InputFloat("Z", &colliderCenter.z, step, step_fast, inputTextFlags); ImGui::PopID();
+		ImGui::SameLine(ComponentProperty::g_column);	ImGui::PushID("colCenterX"); ImGui::InputFloat("X", &colliderCenter.x, step, step_fast, precision, inputTextFlags); ImGui::PopID();
+		ImGui::SameLine();								ImGui::PushID("colCenterY"); ImGui::InputFloat("Y", &colliderCenter.y, step, step_fast, precision, inputTextFlags); ImGui::PopID();
+		ImGui::SameLine();								ImGui::PushID("colCenterZ"); ImGui::InputFloat("Z", &colliderCenter.z, step, step_fast, precision, inputTextFlags); ImGui::PopID();
 
 		// Size
 		ImGui::Text("Size");
-		ImGui::SameLine(ComponentProperty::g_column);	ImGui::PushID("colSizeX"); ImGui::InputFloat("X", &colliderBoundingBox.x, step, step_fast, inputTextFlags); ImGui::PopID();
-		ImGui::SameLine();								ImGui::PushID("colSizeY"); ImGui::InputFloat("Y", &colliderBoundingBox.y, step, step_fast, inputTextFlags); ImGui::PopID();
-		ImGui::SameLine();								ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &colliderBoundingBox.z, step, step_fast, inputTextFlags); ImGui::PopID();
+		ImGui::SameLine(ComponentProperty::g_column);	ImGui::PushID("colSizeX"); ImGui::InputFloat("X", &colliderBoundingBox.x, step, step_fast, precision, inputTextFlags); ImGui::PopID();
+		ImGui::SameLine();								ImGui::PushID("colSizeY"); ImGui::InputFloat("Y", &colliderBoundingBox.y, step, step_fast, precision, inputTextFlags); ImGui::PopID();
+		ImGui::SameLine();								ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &colliderBoundingBox.z, step, step_fast, precision, inputTextFlags); ImGui::PopID();
 
 		// Optimize
 		if (shapeInt == (int)ColliderShape_Mesh)
@@ -621,9 +623,10 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 		string otherBodyName		= otherBody.expired() ? "N/A" : otherBody.lock()->GetName();
 		//======================================================================================
 
-		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
-		float step			= 0.1f;
-		float step_fast		= 0.1f;
+		auto inputTextFlags		= ImGuiInputTextFlags_CharsDecimal;
+		float step				= 0.1f;
+		float step_fast			= 0.1f;
+		const char* precision	= "%.3f";
 
 		// Type
 		ImGui::Text("Type");
@@ -662,39 +665,39 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 		// Position
 		ImGui::Text("Position");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputFloat("##ConsPosX", &position.x, step, step_fast, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputFloat("##ConsPosX", &position.x, step, step_fast, precision, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputFloat("##ConsPosY", &position.y, step, step_fast, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputFloat("##ConsPosY", &position.y, step, step_fast, precision, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputFloat("##ConsPosZ", &position.z, step, step_fast, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputFloat("##ConsPosZ", &position.z, step, step_fast, precision, inputTextFlags);
 
 		// Rotation
 		ImGui::Text("Rotation");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputFloat("##ConsRotX", &rotation.x, step, step_fast, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputFloat("##ConsRotX", &rotation.x, step, step_fast, precision, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Y");
-		ImGui::SameLine(); ImGui::InputFloat("##ConsRotY", &rotation.y, step, step_fast, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputFloat("##ConsRotY", &rotation.y, step, step_fast, precision, inputTextFlags);
 		ImGui::SameLine(); ImGui::Text("Z");
-		ImGui::SameLine(); ImGui::InputFloat("##ConsRotZ", &rotation.z, step, step_fast, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputFloat("##ConsRotZ", &rotation.z, step, step_fast, precision, inputTextFlags);
 
 		// High Limit
 		ImGui::Text("High Limit");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputFloat("##ConsHighLimX", &highLimit.x, step, step_fast, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputFloat("##ConsHighLimX", &highLimit.x, step, step_fast, precision, inputTextFlags);
 		if (constraint->GetConstraintType() == ConstraintType_Slider)
 		{
 			ImGui::SameLine(); ImGui::Text("Y");
-			ImGui::SameLine(); ImGui::InputFloat("##ConsHighLimY", &highLimit.y, step, step_fast, inputTextFlags);
+			ImGui::SameLine(); ImGui::InputFloat("##ConsHighLimY", &highLimit.y, step, step_fast, precision, inputTextFlags);
 		}
 
 		// Low Limit
 		ImGui::Text("Low Limit");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text("X");
-		ImGui::SameLine(); ImGui::InputFloat("##ConsLowLimX", &lowLimit.x, step, step_fast, inputTextFlags);
+		ImGui::SameLine(); ImGui::InputFloat("##ConsLowLimX", &lowLimit.x, step, step_fast, precision, inputTextFlags);
 		if (constraint->GetConstraintType() == ConstraintType_Slider)
 		{
 			ImGui::SameLine(); ImGui::Text("Y");
-			ImGui::SameLine(); ImGui::InputFloat("##ConsLowLimY", &lowLimit.y, step, step_fast, inputTextFlags);
+			ImGui::SameLine(); ImGui::InputFloat("##ConsLowLimY", &lowLimit.y, step, step_fast, precision, inputTextFlags);
 		}
 
 		//= MAP ========================================================================================================================
@@ -881,8 +884,8 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 
 		// Clipping Planes
 		ImGui::Text("Clipping Planes");
-		ImGui::SameLine(ComponentProperty::g_column);		ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &nearPlane, 0.1f, 0.1f, inputTextFlags); ImGui::PopItemWidth();
-		ImGui::SetCursorPosX(ComponentProperty::g_column);	ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &farPlane, 0.1f, 0.1f, inputTextFlags); ImGui::PopItemWidth();
+		ImGui::SameLine(ComponentProperty::g_column);		ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &nearPlane, 0.1f, 0.1f, "%.3f", inputTextFlags); ImGui::PopItemWidth();
+		ImGui::SetCursorPosX(ComponentProperty::g_column);	ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &farPlane, 0.1f, 0.1f, "%.3f", inputTextFlags); ImGui::PopItemWidth();
 
 		//= MAP =====================================================================================================================================
 		if ((ProjectionType)projectionInt != camera->GetProjection())									camera->SetProjection((ProjectionType)projectionInt);

@@ -180,7 +180,7 @@ void FileDialog::Show_Middle()
 	PushStyle();
 	ImGui::BeginChild("##ContentRegion", ImVec2(contentWidth, contentHeight), true);
 	{
-		FileDialog_Options::g_isHoveringWindow = ImGui::IsMouseHoveringWindow() ? true : FileDialog_Options::g_isHoveringWindow;
+		FileDialog_Options::g_isHoveringWindow = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : FileDialog_Options::g_isHoveringWindow;
 
 		// A bunch of columns, where is item represents a thumbnail
 		int index   = 0;

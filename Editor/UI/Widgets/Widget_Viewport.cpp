@@ -117,7 +117,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 
 void Widget_Viewport::MousePicking()
 {
-	if (!ImGui::IsMouseHoveringWindow() || !ImGui::IsMouseClicked(0))
+	if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) || !ImGui::IsMouseClicked(0))
 		return;
 
 	auto camera = Widget_Viewport_Properties::g_scene->GetMainCamera();

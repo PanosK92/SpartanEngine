@@ -199,7 +199,7 @@ void Widget_Scene::Tree_AddActor(Actor* actor)
 void Widget_Scene::HandleClicking()
 {
 	// Since we are handling clicking manually, we must ensure we are inside the window
-	if (!ImGui::IsMouseHoveringWindow())
+	if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
 		return;	
 
 	// Left click on item - Don't selected yet
