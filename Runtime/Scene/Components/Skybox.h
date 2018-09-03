@@ -31,6 +31,12 @@ namespace Directus
 {
 	class Material;
 
+	enum Skybox_Type
+	{
+		Skybox_Array,
+		Skybox_Cross
+	};
+
 	class ENGINE_CLASS Skybox : public IComponent
 	{
 	public:
@@ -46,13 +52,12 @@ namespace Directus
 		std::weak_ptr<Material> GetMaterial()				{ return m_matSkybox;}
 
 	private:
+
+		void CreateFromArray(const std::vector<std::string>& texturePaths);
+		void CreateFromCross(const std::string& texturePath);
+
 		// Cubemap sides
-		std::string m_filePath_back;
-		std::string m_filePath_down;
-		std::string m_filePath_front;
-		std::string m_filePath_left;
-		std::string m_filePath_right;
-		std::string m_filepath_up;
+		std::vector<std::string> m_texturePaths;
 		unsigned int m_size;
 
 		// Cubemap texture
@@ -61,5 +66,7 @@ namespace Directus
 
 		// Material
 		std::shared_ptr<Material> m_matSkybox;
+
+		Skybox_Type m_skyboxType;
 	};
 }

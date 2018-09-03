@@ -26,34 +26,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Actor.h"
 #include "../../Resource/ResourceManager.h"
 #include "../../RHI/RHI_Texture.h"
+#include "../../Math/MathHelper.h"
 //=========================================
 
-//= NAMESPACES ================
+//= NAMESPACES ========================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Math::Helper;
+//=====================================
 
 namespace Directus
 {
 	Skybox::Skybox(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
-		auto cubemapDirectory = GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
-
-		// Individual textures (sides)
-		m_filePath_right	= cubemapDirectory + "hw_morning/X+.tga";
-		m_filePath_left		= cubemapDirectory + "hw_morning/X-.tga";
-		m_filepath_up		= cubemapDirectory + "hw_morning/Y+.tga";
-		m_filePath_down		= cubemapDirectory + "hw_morning/Y-.tga";
-		m_filePath_back		= cubemapDirectory + "hw_morning/Z-.tga";
-		m_filePath_front	= cubemapDirectory + "hw_morning/Z+.tga";
-		m_size				= 512;
+		m_cubemapTexture	= make_shared<RHI_Texture>(GetContext());
+		m_matSkybox			= make_shared<Material>(GetContext());
 		m_format			= Texture_Format_R8G8B8A8_UNORM;
+		m_skyboxType		= Skybox_Array;
 
-		// Texture
-		m_cubemapTexture = make_shared<RHI_Texture>(GetContext());
-
-		// Material
-		m_matSkybox = make_shared<Material>(GetContext());
+		// Texture paths
+		auto cubemapDirectory = GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
+		if (m_skyboxType == Skybox_Array)
+		{
+			m_texturePaths =
+			{
+				cubemapDirectory + "hw_morning/X+.tga",	// right
+				cubemapDirectory + "hw_morning/X-.tga",	// left
+				cubemapDirectory + "hw_morning/Y+.tga",	// up
+				cubemapDirectory + "hw_morning/Y-.tga",	// down
+				cubemapDirectory + "hw_morning/Z-.tga",	// back
+				cubemapDirectory + "hw_morning/Z+.tga"	// front
+			};
+		}
+		else if (m_skyboxType == Skybox_Cross)
+		{
+			m_texturePaths = { cubemapDirectory + "cross.jpg" };
+		}
 	}
 
 	Skybox::~Skybox()
@@ -63,32 +71,52 @@ namespace Directus
 
 	void Skybox::OnInitialize()
 	{
+		if (m_skyboxType == Skybox_Array)
+		{
+			CreateFromArray(m_texturePaths);
+		}
+		else if (m_skyboxType == Skybox_Cross)
+		{
+			CreateFromCross(m_texturePaths.front());
+		}
+	}
+
+	void Skybox::OnTick()
+	{
+
+	}
+
+	void Skybox::CreateFromArray(const vector<string>& texturePaths)
+	{
 		// Load all textures (sides) in a different thread to speed up engine start-up
-		m_context->GetSubsystem<Threading>()->AddTask([this]()
+		m_context->GetSubsystem<Threading>()->AddTask([this, &texturePaths]()
 		{
 			vector<vector<vector<std::byte>>> cubemapData;
 
 			// Load all the cubemap sides
 			auto loaderTex = make_shared<RHI_Texture>(GetContext());
 			{
-				loaderTex->LoadFromFile(m_filePath_right);
+				loaderTex->LoadFromFile(texturePaths[0]);
 				cubemapData.emplace_back(loaderTex->GetData());
 
-				loaderTex->LoadFromFile(m_filePath_left);
+				loaderTex->LoadFromFile(texturePaths[1]);
 				cubemapData.emplace_back(loaderTex->GetData());
 
-				loaderTex->LoadFromFile(m_filepath_up);
+				loaderTex->LoadFromFile(texturePaths[2]);
 				cubemapData.emplace_back(loaderTex->GetData());
 
-				loaderTex->LoadFromFile(m_filePath_down);
+				loaderTex->LoadFromFile(texturePaths[3]);
 				cubemapData.emplace_back(loaderTex->GetData());
 
-				loaderTex->LoadFromFile(m_filePath_back);
+				loaderTex->LoadFromFile(texturePaths[4]);
 				cubemapData.emplace_back(loaderTex->GetData());
 
-				loaderTex->LoadFromFile(m_filePath_front);
+				loaderTex->LoadFromFile(texturePaths[5]);
 				cubemapData.emplace_back(loaderTex->GetData());
 			}
+
+			m_size		= loaderTex->GetWidth();
+			m_format	= loaderTex->GetFormat();
 
 			// Cubemap
 			{
@@ -123,8 +151,61 @@ namespace Directus
 		});
 	}
 
-	void Skybox::OnTick()
+	void Skybox::CreateFromCross(const string& texturePath)
 	{
+		// Load all textures (sides) in a different thread to speed up engine start-up
+		m_context->GetSubsystem<Threading>()->AddTask([this, &texturePath]()
+		{
+			// Load texture
+			vector<mipmap> data; // vector<mip<data>>>
+			auto texture = make_shared<RHI_Texture>(GetContext());
+			texture->LoadFromFile(texturePath);
+			data		= texture->GetData();
+			m_format	= texture->GetFormat();
+			m_size		= texture->GetHeight() / 3;
 
+			// Split the cross into 6 individual textures
+			vector<vector<mipmap>> cubemapData; // vector<texture<mip>>
+			unsigned int mipWidth	= texture->GetWidth();
+			unsigned int mipHeight	= texture->GetHeight();
+			for (const auto& mip : data)
+			{
+
+				// Compute size of next mip-map
+				mipWidth	= Max(mipWidth / 2, (unsigned int)1);
+				mipHeight	= Max(mipHeight / 2, (unsigned int)1);
+			}
+
+			// Cubemap
+			{
+				m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
+				m_cubemapTexture->SetResourceName("Cubemap");
+				m_cubemapTexture->SetType(TextureType_CubeMap);
+				m_cubemapTexture->SetWidth(m_size);
+				m_cubemapTexture->SetHeight(m_size);
+				m_cubemapTexture->SetGrayscale(false);
+			}
+
+			// Material
+			{
+				m_matSkybox->SetResourceName("Standard_Skybox");
+				m_matSkybox->SetCullMode(Cull_Front);
+				m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				m_matSkybox->SetIsEditable(false);
+				m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
+			}
+
+			// Renderable
+			{
+				auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>().lock();
+				renderable->Geometry_Set(Geometry_Default_Cube);
+				renderable->SetCastShadows(false);
+				renderable->SetReceiveShadows(false);
+				renderable->Material_Set(m_matSkybox, true);
+			}
+
+			// Make the skybox big enough
+			GetTransform()->SetScale(Vector3(1000, 1000, 1000));
+		});
 	}
 }
