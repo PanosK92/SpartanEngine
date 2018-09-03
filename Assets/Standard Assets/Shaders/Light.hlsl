@@ -52,15 +52,12 @@ cbuffer MiscBuffer : register(b1)
 #include "BRDF.hlsl"
 //====================
 
-//= INPUT LAYOUT ======================
 struct PixelInputType
 {
     float4 position : SV_POSITION;
     float2 uv 		: TEXCOORD;
 };
-//=====================================
 
-//= VS() ==================================================================================
 PixelInputType DirectusVertexShader(Vertex_PosUv input)
 {
     PixelInputType output;
@@ -72,7 +69,6 @@ PixelInputType DirectusVertexShader(Vertex_PosUv input)
     return output;
 }
 
-//= PS() =================================================================================
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	float2 texCoord = input.uv;
@@ -81,33 +77,31 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Sample from G-Buffer
     float4 albedo 			= ToLinear(texAlbedo.Sample(samplerLinear, texCoord));
     float4 normalSample 	= texNormal.Sample(samplerLinear, texCoord);
-	float4 specularSample	= texSpecular.Sample(samplerLinear, texCoord);
-    float4 depthSample 		= texDepth.Sample(samplerLinear, texCoord);
+	float occlusion			= normalSample.w;
+	float3 normal			= normalize(UnpackNormal(normalSample.xyz));
+	float4 specular			= texSpecular.Sample(samplerLinear, texCoord);
+    float4 depth 			= texDepth.Sample(samplerLinear, texCoord).g;
     	
 	// Create material
 	Material material;
 	material.albedo 	= albedo.rgb;
-    material.roughness 	= specularSample.r;
-    material.metallic 	= specularSample.g;
-	material.emission	= specularSample.b * 2.0f;
+    material.roughness 	= specular.r;
+    material.metallic 	= specular.g;
+	material.emission	= specular.b * 2.0f;
 		
-	// Extract any values out of those samples
-    float3 normal 	= normalize(UnpackNormal(normalSample.rgb));
-	float depth 	= depthSample.g;
+	// Extract useful values out of those samples
 	float3 worldPos = ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
-    
+     float3 viewDir = normalize(cameraPosWS.xyz - worldPos.xyz);
+	 
 	// Shadows + SSAO
 	float2 shadowing 	= texShadowing.Sample(samplerLinear, texCoord).rg;
 	float shadow 		= shadowing.r;
 	float ssao 			= shadowing.g;
 	
-	// Calculate view direction
-    float3 viewDir = normalize(cameraPosWS.xyz - worldPos.xyz);
-   	
 	// some totally fake dynamic skybox
 	float ambientLight = clamp(dirLightIntensity, 0.01f, 1.0f); 
 	
-    if (specularSample.a == 1.0f) // Render technique
+    if (specular.a == 1.0f) // Render technique
     {
         finalColor = ToLinear(environmentTex.Sample(samplerLinear, -viewDir)).rgb;
         finalColor *= ambientLight; // some totally fake day/night effect	
@@ -115,10 +109,11 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     }
 	
 	// Ambient terms
+	ambientLight *= occlusion;
 	ambientLight *= ssao;
 	ambientLight += material.emission * 10.0f;
 	 
-	//= DIRECTIONAL LIGHT ========================================================================================================================================
+	//= DIRECTIONAL LIGHT ================================================================================================
 	Light directionalLight;
 
 	// Compute
@@ -131,9 +126,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	// Compute illumination
 	finalColor += BRDF(material, directionalLight, normal, viewDir);
-	//============================================================================================================================================================
+	//====================================================================================================================
 	
-	//= POINT LIGHTS =============================================================================================================================================
+	//= POINT LIGHTS ==============================================================================
 	Light pointLight;
     for (int i = 0; i < pointlightCount; i++)
     {
@@ -155,9 +150,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
             finalColor += BRDF(material, pointLight, normal, viewDir);
 		}
     }
-	//============================================================================================================================================================
+	//=============================================================================================
 	
-	//= SPOT LIGHTS ==============================================================================================================================================
+	//= SPOT LIGHTS ==============================================================================================================
 	Light spotLight;
     for (int j = 0; j < spotlightCount; j++)
     {
@@ -184,7 +179,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
             finalColor += BRDF(material, spotLight, normal, viewDir);
 		}
     }
-	//============================================================================================================================================================
+	//============================================================================================================================
 
 	float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f));
     return float4(finalColor, luma);
