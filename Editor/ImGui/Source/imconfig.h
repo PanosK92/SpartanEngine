@@ -22,7 +22,7 @@
 //#define IMGUI_API __declspec( dllimport )
 
 //---- Don't define obsolete functions/enums names. Consider enabling from time to time after updating to avoid using soon-to-be obsolete function/names.
-//#define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
+#define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 
 //---- Don't implement demo windows functionality (ShowDemoWindow()/ShowStyleEditor()/ShowUserGuide() methods will be empty)
 //---- It is very strongly recommended to NOT disable the demo windows during development. Please read the comments in imgui_demo.cpp.
@@ -50,15 +50,16 @@
 
 //---- Define constructor and implicit cast operators to convert back<>forth between your math types and ImVec2/ImVec4.
 // This will be inlined as part of ImVec2 and ImVec4 class declarations.
-/*
-#define IM_VEC2_CLASS_EXTRA                                                 \
-        ImVec2(const MyVec2& f) { x = f.x; y = f.y; }                       \
-        operator MyVec2() const { return MyVec2(x,y); }
+#include "Math/Vector2.h"
+#include "Math/Vector4.h"
 
-#define IM_VEC4_CLASS_EXTRA                                                 \
-        ImVec4(const MyVec4& f) { x = f.x; y = f.y; z = f.z; w = f.w; }     \
-        operator MyVec4() const { return MyVec4(x,y,z,w); }
-*/
+#define IM_VEC2_CLASS_EXTRA																		\
+        ImVec2(const Directus::Math::Vector2& f) { x = f.x; y = f.y; }							\
+        operator Directus::Math::Vector2() const { return Directus::Math::Vector2(x,y); }
+
+#define IM_VEC4_CLASS_EXTRA																		\
+        ImVec4(const Directus::Math::Vector4& f) { x = f.x; y = f.y; z = f.z; w = f.w; }		\
+        operator Directus::Math::Vector4() const { return Directus::Math::Vector4(x,y,z,w); }
 
 //---- Use 32-bit vertex indices (default is 16-bit) to allow meshes with more than 64K vertices. Render function needs to support it.
 //#define ImDrawIdx unsigned int
