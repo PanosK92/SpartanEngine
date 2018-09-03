@@ -514,7 +514,7 @@ namespace Directus
 		{
 			// Create a motion state (memory will be freed by the RigidBody)
 			auto motionState = new MotionState(this);
-
+			
 			// Info
 			btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, m_collisionShape.get(), localInertia);
 			constructionInfo.m_mass				= m_mass;

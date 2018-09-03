@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	typedef std::vector<std::byte> mipmap;
+
 	class ENGINE_CLASS RHI_Texture : public IResource
 	{
 	public:
@@ -45,50 +47,52 @@ namespace Directus
 		unsigned int GetMemoryUsage() override;
 		//======================================================
 
-		//= GRAPHICS API  ================================================================================================================================================================================
+		//= GRAPHICS API  ================================================================================================================================================================
 		// Generates a shader resource with mip-map support. Mip-maps can be skipped. provided or generated (generateMimaps = true)
-		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::byte>>& data, bool generateMimaps = false);
-		// Generates a cube-map shader resource. Mip-maps have to be provided.
-		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::vector<std::byte>>>& data);
+		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<mipmap>& data, bool generateMimaps = false);
+		// Generates a cube-map shader resource. 6 textures containing mip-levels have to be provided (vector<textures<mip>>).
+		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<mipmap>>& data);
 		
 		void* ShaderResource_Get()						{ return m_shaderResource; }
 		void ShaderResource_Get(void* shaderResource)	{ m_shaderResource = shaderResource; }
 		void ShaderResource_Release();
-		//================================================================================================================================================================================================
+		//================================================================================================================================================================================
 
-		//= PROPERTIES ===============================================================================
-		unsigned int GetWidth()						{ return m_width; }
-		void SetWidth(unsigned int width)			{ m_width = width; }
+		//= PROPERTIES =========================================================================
+		unsigned int GetWidth()								{ return m_width; }
+		void SetWidth(unsigned int width)					{ m_width = width; }
 
-		unsigned int GetHeight()					{ return m_height; }
-		void SetHeight(unsigned int height)			{ m_height = height; }
+		unsigned int GetHeight()							{ return m_height; }
+		void SetHeight(unsigned int height)					{ m_height = height; }
 
-		TextureType GetType()						{ return m_type; }
+		TextureType GetType()								{ return m_type; }
 		void SetType(TextureType type);
 
-		bool GetGrayscale()							{ return m_isGrayscale; }
-		void SetGrayscale(bool isGrayscale)			{ m_isGrayscale = isGrayscale; }
+		bool GetGrayscale()									{ return m_isGrayscale; }
+		void SetGrayscale(bool isGrayscale)					{ m_isGrayscale = isGrayscale; }
 
-		bool GetTransparency()						{ return m_isTransparent; }
-		void SetTransparency(bool isTransparent)	{ m_isTransparent = isTransparent; }
+		bool GetTransparency()								{ return m_isTransparent; }
+		void SetTransparency(bool isTransparent)			{ m_isTransparent = isTransparent; }
 
-		unsigned int GetBPP()						{ return m_bpp; }
-		void SetBPP(unsigned int bpp)				{ m_bpp = bpp; }
+		unsigned int GetBPP()								{ return m_bpp; }
+		void SetBPP(unsigned int bpp)						{ m_bpp = bpp; }
 
-		unsigned int GetChannels()					{ return m_channels; }
-		void SetChannels(unsigned int channels)		{ m_channels = channels; }
+		unsigned int GetChannels()							{ return m_channels; }
+		void SetChannels(unsigned int channels)				{ m_channels = channels; }
 
-		void EnableMimaps(bool enable) { m_isUsingMipmaps = enable; }
-		bool IsUsingMimmaps() { return m_isUsingMipmaps; }
+		void EnableMimaps(bool enable)						{ m_isUsingMipmaps = enable; }
+		bool IsUsingMimmaps()								{ return m_isUsingMipmaps; }
 
-		std::vector<std::vector<std::byte>>& GetData()						{ return m_dataRGBA; }
-		void SetData(const std::vector<std::vector<std::byte>>& dataRGBA)	{ m_dataRGBA = dataRGBA; }
-		//============================================================================================
+		Texture_Format GetFormat()							{ return m_format; }
 
-		//= TEXTURE BITS =======================================================
+		std::vector<mipmap>& GetData()						{ return m_dataRGBA; }
+		void SetData(const std::vector<mipmap>& dataRGBA)	{ m_dataRGBA = dataRGBA; }
+		//======================================================================================
+
+		//= TEXTURE BITS =======================================
 		void ClearTextureBytes();
-		void GetTextureBytes(std::vector<std::vector<std::byte>>* textureBytes);
-		//======================================================================
+		void GetTextureBytes(std::vector<mipmap>* textureBytes);
+		//======================================================
 
 	protected:
 		//= NATIVE TEXTURE HANDLING (BINARY) =========
@@ -99,7 +103,7 @@ namespace Directus
 		bool LoadFromForeignFormat(const std::string& filePath);
 		TextureType TextureTypeFromString(const std::string& type);
 
-		//= DATA ==========================================
+		//= DATA =====================================
 		unsigned int m_bpp		= 0;
 		unsigned int m_width	= 0;
 		unsigned int m_height	= 0;
@@ -109,8 +113,8 @@ namespace Directus
 		bool m_isUsingMipmaps	= false;
 		TextureType m_type		= TextureType_Unknown;
 		Texture_Format m_format;
-		std::vector<std::vector<std::byte>> m_dataRGBA;
-		//=================================================
+		std::vector<mipmap> m_dataRGBA;
+		//============================================
 
 		// D3D11
 		std::shared_ptr<RHI_Device> m_rhiDevice;
