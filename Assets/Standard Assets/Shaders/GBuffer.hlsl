@@ -21,16 +21,23 @@ SamplerState samplerAniso : register (s0);
 cbuffer PerMaterialBuffer : register(b0)
 {		
     float4 materialAlbedoColor;
+	
 	float2 materialTiling;
 	float2 materialOffset;
+	
     float materialRoughness;
     float materialMetallic;
     float materialNormalStrength;
 	float materialHeight;
-    float materialShadingMode;
+
 	float3 cameraPosWS;
+	float padding;
+	
+	float2 planes;
 	float2 resolution;
-	float2 padding;	
+	
+	float materialShadingMode;
+	float3 padding2;
 };
 
 cbuffer PerObjectBuffer : register(b1)
@@ -55,10 +62,10 @@ struct PixelInputType
 
 struct PixelOutputType
 {
-	float4 albedo		: SV_Target0;
-	float4 normal		: SV_Target1;
-	float4 specular		: SV_Target2;
-	float2 depth		: SV_Target3;
+	float4 albedo	: SV_Target0;
+	float4 normal	: SV_Target1;
+	float4 specular	: SV_Target2;
+	float depth		: SV_Target3;
 };
 //===========================================
 
@@ -83,8 +90,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	PixelOutputType output;
 
 	float2 texel			= float2(1.0f / resolution.x, 1.0f / resolution.y);
-	float depthCS 			= input.positionCS.z / input.positionCS.w;
-	float depthVS 			= input.positionCS.z / input.positionWS.w;
+	float depth 			= LinerizeDepth(input.positionVS.z, planes.x, planes.y);
 	float2 texCoords 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;
@@ -162,7 +168,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	output.albedo		= albedo;
 	output.normal 		= float4(PackNormal(normal), occlusion);
 	output.specular		= float4(roughness, metallic, emission, type);
-	output.depth 		= float2(depthCS, depthVS);
+	output.depth 		= depth;
 
     return output;
 }

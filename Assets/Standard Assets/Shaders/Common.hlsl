@@ -287,26 +287,12 @@ float3 ReconstructPositionWorld(float depth, matrix mViewProjectionInverse, floa
     return worldPos.xyz / worldPos.w;  
 }
 
-// Returns world position
-float3 GetPositionWorldFromDepth(Texture2D texDepth, SamplerState samplerState, matrix mViewProjectionInverse, float2 texCoord)
-{
-	float depth = texDepth.Sample(samplerState, texCoord).g;
-	return ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
-}
-
 /*------------------------------------------------------------------------------
 								[MISC]
 ------------------------------------------------------------------------------*/
 float LinerizeDepth(float depth, float near, float far)
 {
 	return (far / (far - near)) * (1.0f - (near / depth));
-}
-
-// Returns linear depth
-float GetDepthLinear(Texture2D texDepth, SamplerState samplerState, float nearPlane, float farPlane, float2 texCoord)
-{
-	float depth = texDepth.Sample(samplerState, texCoord).r;
-	return 1.0f - LinerizeDepth(depth, nearPlane, farPlane);
 }
 
 // Returns normal

@@ -147,5 +147,6 @@ namespace Directus
 		Texture_Format_R32G32B32_FLOAT,
 		Texture_Format_R16G16B16A16_FLOAT,
 		Texture_Format_R32G32B32A32_FLOAT,
+		Texture_Format_D32_FLOAT
 	};
 }

@@ -35,10 +35,11 @@ namespace Directus
 	public:
 		RHI_RenderTexture(
 			std::shared_ptr<RHI_Device> rhiDevice,
-			int width				= Settings::Get().GetResolutionWidth(),
-			int height				= Settings::Get().GetResolutionHeight(),
-			bool depth				= false,	
-			Texture_Format format	= Texture_Format_R8G8B8A8_UNORM
+			int width						= Settings::Get().GetResolutionWidth(),
+			int height						= Settings::Get().GetResolutionHeight(),
+			Texture_Format textureFormat	= Texture_Format_R8G8B8A8_UNORM,
+			bool depth						= false,
+			Texture_Format depthFormat		= Texture_Format_D32_FLOAT
 		);
 		~RHI_RenderTexture();
 
