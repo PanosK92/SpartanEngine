@@ -34,7 +34,7 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_RenderTexture::RHI_RenderTexture(shared_ptr<RHI_Device> rhiDevice, int width, int height, bool depth, Texture_Format format)
+	RHI_RenderTexture::RHI_RenderTexture(shared_ptr<RHI_Device> rhiDevice, int width, int height, Texture_Format textureFormat, bool depth, Texture_Format depthFormat)
 	{
 		m_renderTargetTexture	= nullptr;
 		m_renderTargetView		= nullptr;
@@ -45,7 +45,7 @@ namespace Directus
 		m_depthEnabled			= depth;
 		m_nearPlane				= 0.0f;
 		m_farPlane				= 0.0f;
-		m_format				= format;
+		m_format				= textureFormat;
 		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->GetViewport().GetMaxDepth());
 		m_id					= GENERATE_GUID;
 		m_width					= width;
@@ -61,18 +61,17 @@ namespace Directus
 		{
 			D3D11_TEXTURE2D_DESC textureDesc;
 			ZeroMemory(&textureDesc, sizeof(textureDesc));
-			textureDesc.Width = (UINT)m_viewport.GetWidth();
-			textureDesc.Height = (UINT)m_viewport.GetHeight();
-			textureDesc.MipLevels = 1;
-			textureDesc.ArraySize = 1;
-			textureDesc.Format = d3d11_dxgi_format[m_format];
-			textureDesc.SampleDesc.Count = 1;
-			textureDesc.SampleDesc.Quality = 0;
-			textureDesc.Usage = D3D11_USAGE_DEFAULT;
-			textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-			textureDesc.CPUAccessFlags = 0;
-			textureDesc.MiscFlags = 0;
-
+			textureDesc.Width				= (UINT)m_viewport.GetWidth();
+			textureDesc.Height				= (UINT)m_viewport.GetHeight();
+			textureDesc.MipLevels			= 1;
+			textureDesc.ArraySize			= 1;
+			textureDesc.Format				= d3d11_dxgi_format[m_format];
+			textureDesc.SampleDesc.Count	= 1;
+			textureDesc.SampleDesc.Quality	= 0;
+			textureDesc.Usage				= D3D11_USAGE_DEFAULT;
+			textureDesc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+			textureDesc.CPUAccessFlags		= 0;
+			textureDesc.MiscFlags			= 0;
 			auto ptr = (ID3D11Texture2D**)&m_renderTargetTexture;
 			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&textureDesc, nullptr, ptr)))
 			{
@@ -84,8 +83,8 @@ namespace Directus
 		// RENDER TARGET VIEW
 		{
 			D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
-			renderTargetViewDesc.Format = d3d11_dxgi_format[m_format];
-			renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+			renderTargetViewDesc.Format				= d3d11_dxgi_format[m_format];
+			renderTargetViewDesc.ViewDimension		= D3D11_RTV_DIMENSION_TEXTURE2D;
 			renderTargetViewDesc.Texture2D.MipSlice = 0;
 
 			auto ptr = (ID3D11RenderTargetView**)&m_renderTargetView;
@@ -99,10 +98,10 @@ namespace Directus
 		// SHADER RESOURCE VIEW
 		{
 			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-			shaderResourceViewDesc.Format = d3d11_dxgi_format[m_format];
-			shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-			shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
-			shaderResourceViewDesc.Texture2D.MipLevels = 1;
+			shaderResourceViewDesc.Format						= d3d11_dxgi_format[m_format];
+			shaderResourceViewDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
+			shaderResourceViewDesc.Texture2D.MostDetailedMip	= 0;
+			shaderResourceViewDesc.Texture2D.MipLevels			= 1;
 
 			auto ptr = (ID3D11ShaderResourceView**)&m_shaderResourceView;
 			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView((ID3D11Texture2D*)m_renderTargetTexture, &shaderResourceViewDesc, ptr)))
@@ -119,17 +118,17 @@ namespace Directus
 		{
 			D3D11_TEXTURE2D_DESC depthTexDesc;
 			ZeroMemory(&depthTexDesc, sizeof(depthTexDesc));
-			depthTexDesc.Width = (UINT)m_viewport.GetWidth();
-			depthTexDesc.Height = (UINT)m_viewport.GetHeight();
-			depthTexDesc.MipLevels = 1;
-			depthTexDesc.ArraySize = 1;
-			depthTexDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-			depthTexDesc.SampleDesc.Count = 1;
+			depthTexDesc.Width				= (UINT)m_viewport.GetWidth();
+			depthTexDesc.Height				= (UINT)m_viewport.GetHeight();
+			depthTexDesc.MipLevels			= 1;
+			depthTexDesc.ArraySize			= 1;
+			depthTexDesc.Format				= d3d11_dxgi_format[depthFormat];
+			depthTexDesc.SampleDesc.Count	= 1;
 			depthTexDesc.SampleDesc.Quality = 0;
-			depthTexDesc.Usage = D3D11_USAGE_DEFAULT;
-			depthTexDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-			depthTexDesc.CPUAccessFlags = 0;
-			depthTexDesc.MiscFlags = 0;
+			depthTexDesc.Usage				= D3D11_USAGE_DEFAULT;
+			depthTexDesc.BindFlags			= D3D11_BIND_DEPTH_STENCIL;
+			depthTexDesc.CPUAccessFlags		= 0;
+			depthTexDesc.MiscFlags			= 0;
 
 			auto ptr = (ID3D11Texture2D**)&m_depthStencilBuffer;
 			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&depthTexDesc, nullptr, ptr)))
@@ -143,8 +142,8 @@ namespace Directus
 		{
 			D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 			ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-			depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-			depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+			depthStencilViewDesc.Format				= d3d11_dxgi_format[depthFormat];
+			depthStencilViewDesc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
 			depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 			auto ptr = (ID3D11DepthStencilView**)&m_depthStencilView;
@@ -177,9 +176,8 @@ namespace Directus
 		// Clear depth buffer.
 		if (m_depthEnabled)
 		{
-			float maxDepth	= m_rhiDevice->GetViewport().GetMaxDepth();
-			uint8_t stencil = 0;
-			m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth | Clear_Stencil, maxDepth, stencil); 
+			float maxDepth = m_rhiDevice->GetViewport().GetMaxDepth();
+			m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, maxDepth, 0); 
 		}
 
 		return true;

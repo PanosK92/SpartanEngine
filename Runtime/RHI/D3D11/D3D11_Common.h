@@ -41,20 +41,20 @@ inline D3D11_DEPTH_STENCIL_DESC Desc_DepthDisabled()
 
 inline D3D11_DEPTH_STENCIL_DESC Desc_DepthEnabled()
 {
-	D3D11_DEPTH_STENCIL_DESC dsDesc;
-	dsDesc.DepthEnable					= true;
-	dsDesc.DepthWriteMask				= D3D11_DEPTH_WRITE_MASK_ZERO;
-	dsDesc.DepthFunc					= D3D11_COMPARISON_LESS_EQUAL;
-	dsDesc.StencilEnable				= false;
-	dsDesc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
-	dsDesc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;
-	dsDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
-	dsDesc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
-	dsDesc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_REPLACE;
-	dsDesc.FrontFace.StencilFunc		= D3D11_COMPARISON_ALWAYS;
-	dsDesc.BackFace						= dsDesc.FrontFace;
+	D3D11_DEPTH_STENCIL_DESC desc;
+	desc.DepthEnable					= true;
+	desc.DepthWriteMask					= D3D11_DEPTH_WRITE_MASK_ALL;
+	desc.DepthFunc						= D3D11_COMPARISON_LESS_EQUAL;
+	desc.StencilEnable					= false;
+	desc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
+	desc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;
+	desc.FrontFace.StencilDepthFailOp	= D3D11_STENCIL_OP_KEEP;
+	desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
+	desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_REPLACE;
+	desc.FrontFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
+	desc.BackFace						= desc.FrontFace;
 
-	return dsDesc;
+	return desc;
 }
 
 inline D3D11_DEPTH_STENCIL_DESC Desc_DepthReverseEnabled()
@@ -86,7 +86,7 @@ inline D3D11_RASTERIZER_DESC Desc_RasterizerCullNone()
 	rastDesc.DepthClipEnable			= true;
 	rastDesc.FillMode					= D3D11_FILL_SOLID;
 	rastDesc.FrontCounterClockwise		= false;
-	rastDesc.MultisampleEnable			= true;
+	rastDesc.MultisampleEnable			= false;
 	rastDesc.ScissorEnable				= false;
 	rastDesc.SlopeScaledDepthBias		= 0;
 
@@ -104,7 +104,7 @@ inline D3D11_RASTERIZER_DESC Desc_RasterizerCullFront()
 	rastDesc.DepthClipEnable		= true;
 	rastDesc.FillMode				= D3D11_FILL_SOLID;
 	rastDesc.FrontCounterClockwise	= false;
-	rastDesc.MultisampleEnable		= true;
+	rastDesc.MultisampleEnable		= false;
 	rastDesc.ScissorEnable			= false;
 	rastDesc.SlopeScaledDepthBias	= 0;
 
@@ -122,7 +122,7 @@ inline D3D11_RASTERIZER_DESC Desc_RasterizerCullBack()
 	rastDesc.DepthClipEnable		= true;
 	rastDesc.FillMode				= D3D11_FILL_SOLID;
 	rastDesc.FrontCounterClockwise	= false;
-	rastDesc.MultisampleEnable		= true;
+	rastDesc.MultisampleEnable		= false;
 	rastDesc.ScissorEnable			= false;
 	rastDesc.SlopeScaledDepthBias	= 0;
 

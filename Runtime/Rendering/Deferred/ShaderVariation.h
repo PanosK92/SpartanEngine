@@ -95,11 +95,13 @@ namespace Directus
 			float matRoughnessMul;
 			float matMetallicMul;
 			float matNormalMul;
-			float matHeightMul;
-			float matShadingMode;
+			float matHeightMul;		
 			Math::Vector3 cameraPos;
-			Math::Vector2 resolution;
-			Math::Vector2 padding;
+			float padding;
+			Math::Vector2 planes;
+			Math::Vector2 resolution;		
+			float matShadingMode;
+			Math::Vector3 padding2;
 		};
 		PerMaterialBufferType perMaterialBufferCPU;
 

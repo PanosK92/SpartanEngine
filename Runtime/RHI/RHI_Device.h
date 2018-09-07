@@ -37,14 +37,14 @@ namespace Directus
 		RHI_Device(void* drawHandle);
 		~RHI_Device();
 
-		//= DRAW ======================================================================================
+		//= DRAW ========================================================================================
 		void Draw(unsigned int vertexCount);
 		void DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset);
 		void ClearBackBuffer(const Math::Vector4& color);
 		void ClearRenderTarget(void* renderTarget, const Math::Vector4& color);
-		void ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, uint8_t stencil);
+		void ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, uint8_t stencil = 0);
 		void Present();
-		//=============================================================================================
+		//===============================================================================================
 
 		//= BIND ============================================================================================================
 		void Bind_BackBufferAsRenderTarget();
@@ -99,8 +99,8 @@ namespace Directus
 		RHI_Viewport m_viewport;
 		bool m_depthEnabled;
 		bool m_alphaBlendingEnabled;
-		bool m_initialized;
-		void* m_device;
-		void* m_deviceContext;
+		bool m_initialized		= false;
+		void* m_device			= nullptr;
+		void* m_deviceContext	= nullptr;
 	};
 }

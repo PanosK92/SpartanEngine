@@ -80,7 +80,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float occlusion			= normalSample.w;
 	float3 normal			= normalize(UnpackNormal(normalSample.xyz));
 	float4 specular			= texSpecular.Sample(samplerLinear, texCoord);
-    float4 depth 			= texDepth.Sample(samplerLinear, texCoord).g;
+    float4 depth 			= texDepth.Sample(samplerLinear, texCoord).r; // linear
     	
 	// Create material
 	Material material;
@@ -91,7 +91,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		
 	// Extract useful values out of those samples
 	float3 worldPos = ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
-     float3 viewDir = normalize(cameraPosWS.xyz - worldPos.xyz);
+    float3 viewDir 	= normalize(cameraPosWS.xyz - worldPos.xyz);
 	 
 	// Shadows + SSAO
 	float2 shadowing 	= texShadowing.Sample(samplerLinear, texCoord).rg;

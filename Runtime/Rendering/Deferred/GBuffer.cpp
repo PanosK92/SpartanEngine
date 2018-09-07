@@ -35,10 +35,10 @@ namespace Directus
 {
 	GBuffer::GBuffer(const shared_ptr<RHI_Device>& rhiDevice, int width, int height)
 	{
-		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Normal]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Specular]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, false,	Texture_Format_R8G8B8A8_UNORM);
-		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, true,	Texture_Format_R32G32_FLOAT);
+		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,	false);
+		m_renderTargets[GBuffer_Target_Normal]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,	false);
+		m_renderTargets[GBuffer_Target_Specular]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,	false);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R32_FLOAT,		true, Texture_Format_D32_FLOAT);
 
 		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Albedo]->GetRenderTarget());
 		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Normal]->GetRenderTarget());
@@ -72,10 +72,8 @@ namespace Directus
 			}
 			else
 			{
-				// Clear the depth buffer.
 				float maxDepth	= renderTarget.second->GetViewport().GetMaxDepth();
-				uint8_t stencil = 0;
-				rhiDevice->ClearDepthStencil(renderTarget.second->GetDepthStencil(), Clear_Depth | Clear_Stencil, maxDepth, stencil);
+				rhiDevice->ClearDepthStencil(renderTarget.second->GetDepthStencil(), Clear_Depth, maxDepth);
 			}
 		}
 		return true;

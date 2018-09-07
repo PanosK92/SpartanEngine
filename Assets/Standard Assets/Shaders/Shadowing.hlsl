@@ -61,9 +61,8 @@ float2 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float2 texCoord 	= input.uv;
 	float3 normal 		= texNormal.Sample(samplerPoint, texCoord).rgb;
 	float3 depthSample 	= texDepth.Sample(samplerPoint, texCoord).rgb;
-	float depthCS 		= texDepth.Sample(samplerPoint, texCoord).r;
-	float depthVS 		= texDepth.Sample(samplerPoint, texCoord).g;
-	float3 positionWS 	= ReconstructPositionWorld(depthVS, mViewProjectionInverse, texCoord);
+	float depth 		= texDepth.Sample(samplerPoint, texCoord).r;
+	float3 positionWS 	= ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
 	
 	
 	//== SSAO =================================
@@ -71,17 +70,14 @@ float2 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	//=========================================
 	
 	//= SHADOW MAPPING ===========================================================================	
-	float shadow = 1.0f;
-	int cascadeIndex = 0;
+	float shadow 		= 1.0f;
+	int cascadeIndex 	= 0; // assume 1st cascade as default
 	if (doShadowMapping != 0.0f)
 	{
-		float z = 1.0f - depthCS;
-
-		cascadeIndex = 0; // assume 1st cascade as default
-		cascadeIndex += step(shadowSplits.x, z); // test 2nd cascade
-		cascadeIndex += step(shadowSplits.y, z); // test 3rd cascade
+		cascadeIndex += step(depth, shadowSplits.x); // test 2nd cascade
+		cascadeIndex += step(depth, shadowSplits.y); // test 3rd cascade
 		
-		float cascadeCompensation	= (cascadeIndex + 1.0f) * 2.0f; // the further the cascade, the more ugly under sharp angles
+		float cascadeCompensation	= (cascadeIndex + 1.0f) * 2.0f; // the further the cascade, the more ugly under sharp angles, damn
 		float shadowTexel 			= 1.0f / shadowMapResolution;
 		float bias 					= 2.0f * shadowTexel * cascadeCompensation;
 		float normalOffset 			= 70.0f * cascadeCompensation;
@@ -109,8 +105,7 @@ float2 DirectusPixelShader(PixelInputType input) : SV_TARGET
 				shadow	= ShadowMapping(lightDepthTex[2], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, bias);
 			}
 		}
-	}
-	
+	}	
 	//============================================================================================
 
     return float2(shadow, ssao);

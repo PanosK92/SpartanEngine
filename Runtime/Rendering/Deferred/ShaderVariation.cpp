@@ -81,6 +81,8 @@ namespace Directus
 			return;
 		}
 
+		Vector2 planes = Vector2(camera->GetNearPlane(), camera->GetFarPlane());
+
 		// Determine if the material buffer needs to update
 		bool update = false;
 		update = perMaterialBufferCPU.matAlbedo			!= material->GetColorAlbedo()				? true : update;
@@ -92,6 +94,7 @@ namespace Directus
 		update = perMaterialBufferCPU.matShadingMode	!= float(material->GetShadingMode())		? true : update;
 		update = perMaterialBufferCPU.cameraPos			!= camera->GetTransform()->GetPosition()	? true : update;
 		update = perMaterialBufferCPU.resolution		!= Settings::Get().GetResolution()			? true : update;
+		update = perMaterialBufferCPU.planes			!= planes									? true : update;
 
 		if (update)
 		{
@@ -108,7 +111,9 @@ namespace Directus
 			buffer->matShadingMode	= perMaterialBufferCPU.matShadingMode	= float(material->GetShadingMode());
 			buffer->cameraPos		= perMaterialBufferCPU.cameraPos		= camera->GetTransform()->GetPosition();
 			buffer->resolution		= perMaterialBufferCPU.resolution		= Settings::Get().GetResolution();
-			buffer->padding			= perMaterialBufferCPU.padding			= Vector2::Zero;
+			buffer->planes			= perMaterialBufferCPU.planes			= planes;
+			buffer->padding			= perMaterialBufferCPU.padding			= 0.0f;
+			buffer->padding2		= perMaterialBufferCPU.padding2			= Vector3::Zero;
 
 			m_materialBuffer->Unmap();
 			//======================================================================================================
@@ -138,9 +143,9 @@ namespace Directus
 			//= BUFFER UPDATE ============================================================================
 			auto* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
 
-			buffer->mWorld = perObjectBufferCPU.mWorld								= world;
-			buffer->mWorldView = perObjectBufferCPU.mWorldView						= worldView;
-			buffer->mWorldViewProjection = perObjectBufferCPU.mWorldViewProjection	= worldViewProjection;
+			buffer->mWorld					= perObjectBufferCPU.mWorld					= world;
+			buffer->mWorldView				= perObjectBufferCPU.mWorldView				= worldView;
+			buffer->mWorldViewProjection	= perObjectBufferCPU.mWorldViewProjection	= worldViewProjection;
 
 			m_perObjectBuffer->Unmap();
 			//============================================================================================

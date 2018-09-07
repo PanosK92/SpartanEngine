@@ -56,12 +56,11 @@ namespace Directus
 		m_bias			= 0.001f;	
 		m_isDirty		= true;
 
-		// Compute shadow map splits (for directional light's cascades)
+		// Shadow map splits (for directional light's cascades)
 		m_shadowMapSplits.clear();
 		m_shadowMapSplits.shrink_to_fit();
-		// Note: These cascade splits have a logarithmic nature, have to fix
-		m_shadowMapSplits.emplace_back(0.906f);
-		m_shadowMapSplits.emplace_back(0.864f);
+		m_shadowMapSplits.emplace_back(0.3f);
+		m_shadowMapSplits.emplace_back(0.7f);
 	}
 
 	Light::~Light()
@@ -316,7 +315,7 @@ namespace Directus
 		auto rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 		for (unsigned int i = 0; i < m_shadowMapCount; i++)
 		{
-			m_shadowMaps.emplace_back(make_unique<RHI_RenderTexture>(rhiDevice, m_shadowMapResolution, m_shadowMapResolution, true, Texture_Format_R32_FLOAT));
+			m_shadowMaps.emplace_back(make_unique<RHI_RenderTexture>(rhiDevice, m_shadowMapResolution, m_shadowMapResolution, Texture_Format_R32_FLOAT, true, Texture_Format_D32_FLOAT)); // could use the g-buffers depth which should be same res
 			m_frustums.emplace_back(make_shared<Frustum>());
 		}
 	}

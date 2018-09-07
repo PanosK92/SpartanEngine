@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
+#include "D3D11_Common.h"
 //======================================
 
 //= NAMESPACES ================
@@ -107,42 +108,6 @@ namespace Directus
 			return "Unknown error code";
 		}
 
-		inline bool CreateDepthStencilState(ID3D11DepthStencilState* depthStencilState, bool depthEnabled, bool writeEnabled)
-		{
-			if (!m_device)
-				return false;
-
-			D3D11_DEPTH_STENCIL_DESC desc;
-			ZeroMemory(&desc, sizeof(desc));
-
-			// Depth test parameters
-			desc.DepthEnable	= depthEnabled ? TRUE : FALSE;
-			desc.DepthWriteMask = writeEnabled ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-			desc.DepthFunc		= D3D11_COMPARISON_LESS;
-
-			// Stencil test parameters
-			desc.StencilEnable		= depthEnabled;
-			desc.StencilReadMask	= D3D11_DEFAULT_STENCIL_READ_MASK;
-			desc.StencilWriteMask	= D3D11_DEFAULT_STENCIL_WRITE_MASK;
-
-			// Stencil operations if pixel is front-facing
-			desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
-			desc.FrontFace.StencilDepthFailOp	= D3D11_STENCIL_OP_INCR;
-			desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_KEEP;
-			desc.FrontFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
-
-			// Stencil operations if pixel is back-facing
-			desc.BackFace.StencilFailOp			= D3D11_STENCIL_OP_KEEP;
-			desc.BackFace.StencilDepthFailOp	= D3D11_STENCIL_OP_DECR;
-			desc.BackFace.StencilPassOp			= D3D11_STENCIL_OP_KEEP;
-			desc.BackFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
-
-			// Create depth stencil state
-			auto result = m_device->CreateDepthStencilState(&desc, &depthStencilState);
-
-			return !FAILED(result);
-		}
-
 		inline bool CreateDepthStencilView(UINT width, UINT height)
 		{
 			if (!m_device)
@@ -181,37 +146,6 @@ namespace Directus
 			if (FAILED(result))
 			{
 				LOGF_ERROR("RHI_Device::CreateDepthStencilView: Failed to create depth stencil view, %s.", DxgiErrorToString(result));
-				return false;
-			}
-
-			return true;
-		}
-
-		inline bool CreateRasterizerState(Cull_Mode cullMode, Fill_Mode fillMode, ID3D11RasterizerState** rasterizer)
-		{
-			if (!m_device)
-			{
-				LOG_ERROR("D3D11_Device::CreateRasterizerState: Aborting rasterizer state creation, device is not present");
-				return false;
-			}
-
-			D3D11_RASTERIZER_DESC desc = {};
-			desc.FillMode = d3d11_fill_Mode[fillMode];
-			desc.CullMode = d3d11_cull_mode[cullMode];
-			desc.FrontCounterClockwise = FALSE;
-			desc.DepthBias = 0;
-			desc.DepthBiasClamp = 0.0f;
-			desc.SlopeScaledDepthBias = 0.0f;
-			desc.DepthClipEnable = TRUE;
-			desc.ScissorEnable = FALSE;
-			desc.MultisampleEnable = FALSE;
-			desc.AntialiasedLineEnable = FALSE;
-
-			HRESULT result = m_device->CreateRasterizerState(&desc, rasterizer);
-
-			if (FAILED(result))
-			{
-				LOG_ERROR("D3D11_Device::CreateRasterizerState: Failed to rasterizer state.");
 				return false;
 			}
 
@@ -443,8 +377,8 @@ namespace Directus
 
 		// RENDER TARGET VIEW
 		{
-			ID3D11Texture2D* backBufferPtr;
 			// Get the pointer to the back buffer.
+			ID3D11Texture2D* backBufferPtr;
 			result = D3D11_Device::m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBufferPtr));
 			if (FAILED(result))
 			{
@@ -466,19 +400,22 @@ namespace Directus
 		auto viewport = RHI_Viewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
 		SetViewport(viewport);
 
-		// DEPTH
-		if (!D3D11_Device::CreateDepthStencilState(D3D11_Device::m_depthStencilStateEnabled, true, true))
+		// DEPTH STATES
+		auto desc = Desc_DepthEnabled();
+		if (FAILED(D3D11_Device::m_device->CreateDepthStencilState(&desc, &D3D11_Device::m_depthStencilStateEnabled)))
 		{
 			LOG_ERROR("RHI_Device::Initialize: Failed to create depth stencil enabled state.");
 			return;
 		}
 
-		if (!D3D11_Device::CreateDepthStencilState(D3D11_Device::m_depthStencilStateDisabled, false, false))
+		desc = Desc_DepthDisabled();
+		if (FAILED(D3D11_Device::m_device->CreateDepthStencilState(&desc, &D3D11_Device::m_depthStencilStateDisabled)))
 		{
 			LOG_ERROR("RHI_Device::Initialize: Failed to create depth stencil disabled state.");
 			return;
 		}
 
+		// DEPTH STENCIL VIEW
 		if (!D3D11_Device::CreateDepthStencilView((UINT)Settings::Get().GetResolutionWidth(), (UINT)Settings::Get().GetResolutionHeight()))
 		{
 			LOG_ERROR("RHI_Device::Initialize: Failed to create depth stencil view.");
@@ -487,21 +424,24 @@ namespace Directus
 
 		// RASTERIZER STATES
 		{
-			if (!D3D11_Device::CreateRasterizerState(Cull_Back, Fill_Solid, &D3D11_Device::m_rasterStateCullBack))
+			auto desc = Desc_RasterizerCullBack();
+			if (FAILED(D3D11_Device::m_device->CreateRasterizerState(&desc, &D3D11_Device::m_rasterStateCullBack)))
 			{
-				LOG_ERROR("RHI_Device::Initialize: Failed to create the rasterizer state.");
+				LOG_ERROR("RHI_Device::Initialize: Failed to create the rasterizer cull back state.");
 				return;
 			}
 
-			if (!D3D11_Device::CreateRasterizerState(Cull_Front, Fill_Solid, &D3D11_Device::m_rasterStateCullFront))
+			desc = Desc_RasterizerCullFront();
+			if (FAILED(D3D11_Device::m_device->CreateRasterizerState(&desc, &D3D11_Device::m_rasterStateCullFront)))
 			{
-				LOG_ERROR("RHI_Device::Initialize: Failed to create the rasterizer state.");
+				LOG_ERROR("RHI_Device::Initialize: Failed to create the rasterizer cull front state.");
 				return;
 			}
 
-			if (!D3D11_Device::CreateRasterizerState(Cull_None, Fill_Solid, &D3D11_Device::m_rasterStateCullNone))
+			desc = Desc_RasterizerCullNone();
+			if (FAILED(D3D11_Device::m_device->CreateRasterizerState(&desc, &D3D11_Device::m_rasterStateCullNone)))
 			{
-				LOG_ERROR("RHI_Device::Initialize: Failed to create the rasterizer state.");
+				LOG_ERROR("RHI_Device::Initialize: Failed to create the rasterizer cull non state.");
 				return;
 			}
 
@@ -511,34 +451,19 @@ namespace Directus
 
 		// BLEND STATES
 		{
-			D3D11_BLEND_DESC blendStateDesc;
-			ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
-			blendStateDesc.RenderTarget[0].BlendEnable				= (BOOL)true;
-			blendStateDesc.RenderTarget[0].RenderTargetWriteMask	= D3D11_COLOR_WRITE_ENABLE_ALL;
-
-			blendStateDesc.RenderTarget[0].SrcBlend			= D3D11_BLEND_SRC_ALPHA;
-			blendStateDesc.RenderTarget[0].DestBlend		= D3D11_BLEND_INV_SRC_ALPHA;
-			blendStateDesc.RenderTarget[0].BlendOp			= D3D11_BLEND_OP_ADD;
-
-			blendStateDesc.RenderTarget[0].SrcBlendAlpha	= D3D11_BLEND_ZERO;
-			blendStateDesc.RenderTarget[0].DestBlendAlpha	= D3D11_BLEND_ONE;
-			blendStateDesc.RenderTarget[0].BlendOpAlpha		= D3D11_BLEND_OP_ADD;
-
 			// Create a blending state with alpha blending enabled
-			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
-			HRESULT result = D3D11_Device::m_device->CreateBlendState(&blendStateDesc, &D3D11_Device::m_blendStateAlphaEnabled);
-			if (FAILED(result))
+			auto desc = Desc_BlendAlpha();
+			if (FAILED(D3D11_Device::m_device->CreateBlendState(&desc, &D3D11_Device::m_blendStateAlphaEnabled)))
 			{
-				LOG_ERROR("RHI_Device::CreateBlendStates: Failed to create blend state.");
+				LOG_ERROR("RHI_Device::CreateBlendStates: Failed to create blend alpha state.");
 				return;
 			}
 
 			// Create a blending state with alpha blending disabled
-			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)false;
-			result = D3D11_Device::m_device->CreateBlendState(&blendStateDesc, &D3D11_Device::m_blendStateAlphaDisabled);
-			if (FAILED(result))
+			desc = Desc_BlendDisabled();
+			if (FAILED(D3D11_Device::m_device->CreateBlendState(&desc, &D3D11_Device::m_blendStateAlphaDisabled)))
 			{
-				LOG_ERROR("RHI_Device::CreateBlendStates: Failed to create blend state.");
+				LOG_ERROR("RHI_Device::CreateBlendStates: Failed to create blend disabled state.");
 				return;
 			}
 		}
@@ -589,8 +514,8 @@ namespace Directus
 		string deviceName;
 		unsigned int vram;
 		D3D11_Device::GetAdapterDescription(adapter, &deviceName, &vram);
-		Profiler::Get().m_gpuName	= deviceName;
-		Profiler::Get().m_gpuVRAM	= vram;
+		Profiler::Get().m_gpuName		= deviceName;
+		Profiler::Get().m_gpuVRAM		= vram;
 		m_device						= (void*)D3D11_Device::m_device;
 		m_deviceContext					= (void*)D3D11_Device::m_deviceContext;
 		m_initialized					= true;

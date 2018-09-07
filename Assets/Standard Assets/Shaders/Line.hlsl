@@ -45,10 +45,10 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	projectDepthMapTexCoord.x = input.colliderPos.x / input.colliderPos.w / 2.0f + 0.5f;
 	projectDepthMapTexCoord.y = -input.colliderPos.y / input.colliderPos.w / 2.0f + 0.5f;
 	
-	float colliderDepthValue = input.position.z / input.position.w;
-	float depthMapValue = depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
+	float colliderDepthValue 	= input.position.z;
+	float depthMapValue 		= depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
 	
-	if (depthMapValue >= colliderDepthValue) // If an object is in front of the line
+	if (depthMapValue < colliderDepthValue) // If an object is in front of the line
 		discard;
 	
 	return input.color;
