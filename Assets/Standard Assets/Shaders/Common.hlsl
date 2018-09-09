@@ -279,11 +279,12 @@ float3 LumaSharpen(float2 texCoord, Texture2D sourceTexture, SamplerState biline
 ------------------------------------------------------------------------------*/
 float3 ReconstructPositionWorld(float depth, matrix mViewProjectionInverse, float2 texCoord)
 {	
-	float x = texCoord.x * 2.0f - 1.0f;
-	float y = (1.0f - texCoord.y) * 2.0f - 1.0f;
-	float z = depth;
+	float x 			= texCoord.x * 2.0f - 1.0f;
+	float y 			= (1.0f - texCoord.y) * 2.0f - 1.0f;
+	float z 			= depth;
     float4 projectedPos = float4(x, y, z, 1.0f); // clip space
-	float4 worldPos = mul(projectedPos, mViewProjectionInverse); // world space
+	float4 worldPos 	= mul(projectedPos, mViewProjectionInverse); // world space
+	
     return worldPos.xyz / worldPos.w;  
 }
 

@@ -88,6 +88,9 @@ namespace Directus
 
 	void Skybox::CreateFromArray(const vector<string>& texturePaths)
 	{
+		if (texturePaths.empty())
+			return;
+
 		// Load all textures (sides) in a different thread to speed up engine start-up
 		m_context->GetSubsystem<Threading>()->AddTask([this, &texturePaths]()
 		{

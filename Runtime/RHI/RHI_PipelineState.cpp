@@ -60,8 +60,8 @@ namespace Directus
 		m_constantBufferDirty	= false;
 		m_samplersDirty			= false;
 		m_texturesDirty			= false;
-		m_renderTextureDirty	= false;
-		m_renderTargetDirty		= false;
+		m_renderTargetsDirty	= false;
+		m_depthStencil			= nullptr;
 		m_viewportDirty			= false;
 	}
 
@@ -107,7 +107,6 @@ namespace Directus
 
 		return true;
 	}
-
 
 	bool RHI_PipelineState::SetIndexBuffer(const shared_ptr<RHI_IndexBuffer>& indexBuffer)
 	{
@@ -169,31 +168,33 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetRenderTexture(const shared_ptr<RHI_RenderTexture>& renderTexture, bool clear)
+	bool RHI_PipelineState::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
 	{
-		if (!renderTexture)
-		{
-			LOG_WARNING("RHI_PipelineState::SetRenderTexture: Invalid parameter");
-			return false;
-		}
-
-		if (m_renderTexture && m_renderTexture->GetID() == renderTexture->GetID())
-			return true;
-
-		SetViewport(renderTexture->GetViewport());
-
-		m_renderTexture			= renderTexture;
-		m_renderTextureClear	= clear;	
-		m_renderTextureDirty	= true;
-
-		return true;
+		vector<void*> vec = { renderTarget->GetRenderTargetView() };
+		return SetRenderTargets(vec, depthStencilView, clear);
 	}
 
-	void RHI_PipelineState::SetRenderTargets(const vector<void*>& renderTargets, void* depthStencil)
+	bool RHI_PipelineState::SetRenderTargets(const vector<void*>& renderTargetViews, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
 	{
-		m_renderTargets		= renderTargets;
-		m_depthStencil		= depthStencil;
-		m_renderTargetDirty = true;
+		if (renderTargetViews.empty())
+			return false;
+
+		m_renderTargetViews.clear();
+		m_renderTargetViews.shrink_to_fit();
+		for (const auto& renderTarget : renderTargetViews)
+		{
+			if (!renderTarget)
+				continue;
+
+			m_renderTargetViews.emplace_back(renderTarget);
+		}
+
+		m_depthStencil = depthStencilView;
+
+		m_renderTargetsClear = clear;
+		m_renderTargetsDirty = true;
+
+		return true;
 	}
 
 	bool RHI_PipelineState::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer)
@@ -284,28 +285,41 @@ namespace Directus
 		}
 
 		// Render Texture
-		if (m_renderTextureDirty)
+		if (m_renderTargetsDirty)
 		{
-			auto renderTargetView = m_renderTexture->GetRenderTarget();
-			m_rhiDevice->Bind_RenderTargets(1, &renderTargetView, m_renderTexture->GetDepthStencil());
-			if (m_renderTextureClear) m_renderTexture->Clear(Vector4(0, 0, 0, 1));
-			Profiler::Get().m_rhiBindingsRenderTarget++;
-			m_renderTextureClear = false;
-			m_renderTextureDirty = false;
-		}
+			if (m_renderTargetViews.empty())
+			{
+				LOG_ERROR("RHI_PipelineState::Bind: Invalid render target(s)");
+				return false;
+			}
 
-		// Render Target
-		if (m_renderTargetDirty)
-		{
-			m_rhiDevice->Bind_RenderTargets((unsigned int)m_renderTargets.size(), &m_renderTargets[0], m_depthStencil);
+			// Enable or disable depth
+			m_rhiDevice->Set_DepthEnabled(m_depthStencil != nullptr);
+
+			m_rhiDevice->Set_RenderTargets((unsigned int)m_renderTargetViews.size(), &m_renderTargetViews[0], m_depthStencil);
 			Profiler::Get().m_rhiBindingsRenderTarget++;
-			m_renderTargetDirty = false;
+
+			if (m_renderTargetsClear)
+			{
+				for (const auto& renderTargetView : m_renderTargetViews)
+				{
+					m_rhiDevice->ClearRenderTarget(renderTargetView, Vector4(0, 0, 0, 1));
+				}
+
+				if (m_depthStencil)
+				{
+					m_rhiDevice->ClearDepthStencil(m_depthStencil, Clear_Depth, m_viewport.GetMaxDepth(), 1);
+				}
+			}
+
+			m_renderTargetsClear	= false;
+			m_renderTargetsDirty	= false;
 		}
 
 		// Vertex shader
 		if (m_vertexShaderDirty)
 		{
-			m_rhiDevice->Bind_VertexShader(m_pixelShader->GetVertexShaderBuffer());
+			m_rhiDevice->Set_VertexShader(m_pixelShader->GetVertexShaderBuffer());
 			Profiler::Get().m_rhiBindingsVertexShader++;
 			m_vertexShaderDirty	= false;
 		}
@@ -313,7 +327,7 @@ namespace Directus
 		// Pixel shader
 		if (m_pixelShaderDirty)
 		{
-			m_rhiDevice->Bind_PixelShader(m_pixelShader->GetPixelShaderBuffer());
+			m_rhiDevice->Set_PixelShader(m_pixelShader->GetPixelShaderBuffer());
 			Profiler::Get().m_rhiBindingsPixelShader++;
 			m_pixelShaderDirty = false;
 		}
@@ -328,7 +342,7 @@ namespace Directus
 		// Viewport
 		if (m_viewportDirty)
 		{
-			m_rhiDevice->SetViewport(m_viewport);
+			m_rhiDevice->Set_Viewport(m_viewport);
 			Settings::Get().SetViewport((int)m_viewport.GetWidth(), (int)m_viewport.GetHeight());
 			m_viewportDirty = false;
 		}
@@ -358,7 +372,7 @@ namespace Directus
 		if (m_samplersDirty)
 		{
 			unsigned int startSlot = 0;
-			m_rhiDevice->Bind_Samplers(startSlot, (unsigned int)m_samplers.size(), &m_samplers[0]);
+			m_rhiDevice->Set_Samplers(startSlot, (unsigned int)m_samplers.size(), &m_samplers[0]);
 			Profiler::Get().m_rhiBindingsSampler++;
 			m_samplers.clear();
 			m_samplers.shrink_to_fit();
@@ -369,7 +383,7 @@ namespace Directus
 		if (m_texturesDirty)
 		{
 			unsigned int startSlot = 0;
-			m_rhiDevice->Bind_Textures(startSlot, (unsigned int)m_textures.size(), &m_textures[0]);
+			m_rhiDevice->Set_Textures(startSlot, (unsigned int)m_textures.size(), &m_textures[0]);
 			m_textures.clear();
 			m_textures.shrink_to_fit();
 			Profiler::Get().m_rhiBindingsTexture++;
@@ -403,7 +417,7 @@ namespace Directus
 				auto buffer				= m_constantBuffers.buffers.front();
 				unsigned int startSlot	= buffer->GetSlot();
 				Buffer_Scope scope		= buffer->GetScope();
-				m_rhiDevice->Bind_ConstantBuffers(startSlot, (unsigned int)m_constantBuffers.buffers.size(), scope, (void*const*)&m_constantBuffers.buffersLowLevel[0]);
+				m_rhiDevice->Set_ConstantBuffers(startSlot, (unsigned int)m_constantBuffers.buffers.size(), scope, (void*const*)&m_constantBuffers.buffersLowLevel[0]);
 				Profiler::Get().m_rhiBindingsBufferConstant += buffer->GetScope() == Buffer_Global ? 2 : 1;
 			}
 			else // Set them one by one
@@ -411,7 +425,7 @@ namespace Directus
 				for (const auto& constantBuffer : m_constantBuffers.buffers)
 				{
 					auto ptr = constantBuffer->GetBuffer();
-					m_rhiDevice->Bind_ConstantBuffers(constantBuffer->GetSlot(), 1, constantBuffer->GetScope(), (void*const*)&ptr);
+					m_rhiDevice->Set_ConstantBuffers(constantBuffer->GetSlot(), 1, constantBuffer->GetScope(), (void*const*)&ptr);
 					Profiler::Get().m_rhiBindingsBufferConstant += constantBuffer->GetScope() == Buffer_Global ? 2 : 1;
 				}
 			}

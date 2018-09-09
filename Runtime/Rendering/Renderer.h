@@ -119,7 +119,7 @@ namespace Directus
 		void RenderTargets_Create(int width, int height);
 
 		void Renderables_Acquire(const Variant& renderables);
-		void Renderables_Sort(std::vector<Actor*>* renderables);
+		void Renderables_Sort(std::vector<std::weak_ptr<Actor>>* renderables);
 
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
@@ -139,7 +139,7 @@ namespace Directus
 			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
-		void Pass_Transparent();
+		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& texOut);
 
 		bool Pass_DebugGBuffer();
 		void Pass_Debug();
@@ -181,8 +181,8 @@ namespace Directus
 
 		const Math::Vector4& GetClearColor();
 
-		// RENDERABLES =============================================
-		std::map<RenderableType, std::vector<Actor*>> m_renderables;
+		// RENDERABLES ===========================================================
+		std::map<RenderableType, std::vector<std::weak_ptr<Actor>>> m_actors;
 		Math::Matrix m_mV;
 		Math::Matrix m_mP_perspective;
 		Math::Matrix m_mP_orthographic;
@@ -194,7 +194,7 @@ namespace Directus
 		Camera* GetCamera();
 		Light* GetLightDirectional();
 		Skybox* GetSkybox();
-		//==========================================================
+		//========================================================================
 
 		//= MISC ==========================================
 		std::shared_ptr<RHI_Device> m_rhiDevice;

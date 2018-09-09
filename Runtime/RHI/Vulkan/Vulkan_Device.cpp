@@ -268,57 +268,57 @@ namespace Directus
 		
 	}
 
-	void RHI_Device::Bind_BackBufferAsRenderTarget()
+	void RHI_Device::Set_BackBufferAsRenderTarget()
 	{
 		
 	}
 
-	void RHI_Device::Bind_VertexShader(void* buffer)
+	void RHI_Device::Set_VertexShader(void* buffer)
 	{
 		
 	}
 
-	void RHI_Device::Bind_PixelShader(void* buffer)
+	void RHI_Device::Set_PixelShader(void* buffer)
 	{
 		
 	}
 
-	void RHI_Device::Bind_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer)
+	void RHI_Device::Set_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer)
 	{
 		
 	}
 
-	void RHI_Device::Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers)
+	void RHI_Device::Set_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers)
 	{
 		
 	}
 
-	void RHI_Device::Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
+	void RHI_Device::Set_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
 	{
 		
 	}
 
-	void RHI_Device::Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
+	void RHI_Device::Set_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
 	{
 		
 	}
 
-	bool RHI_Device::SetResolution(int width, int height)
+	bool RHI_Device::Set_Resolution(int width, int height)
 	{
 		return true;
 	}
 
-	void RHI_Device::SetViewport(const RHI_Viewport& viewport)
+	void RHI_Device::Set_Viewport(const RHI_Viewport& viewport)
 	{
 		
 	}
 
-	bool RHI_Device::EnableDepth(bool enable)
+	bool RHI_Device::Set_DepthEnabled(bool enable)
 	{
 		return true;
 	}
 
-	bool RHI_Device::EnableAlphaBlending(bool enable)
+	bool RHI_Device::Set_AlphaBlendingEnabled(bool enable)
 	{
 		return true;
 	}

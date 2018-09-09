@@ -38,45 +38,27 @@ namespace Directus
 		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,	false);
 		m_renderTargets[GBuffer_Target_Normal]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,	false);
 		m_renderTargets[GBuffer_Target_Specular]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,	false);
-		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R32_FLOAT,		true, Texture_Format_D32_FLOAT);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R32G32_FLOAT,		true, Texture_Format_D32_FLOAT);
 
-		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Albedo]->GetRenderTarget());
-		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Normal]->GetRenderTarget());
-		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Specular]->GetRenderTarget());
-		m_renderTargetViews.emplace_back(m_renderTargets[GBuffer_Target_Depth]->GetRenderTarget());
+		for (const auto& renderTarget : m_renderTargets)
+		{
+			m_renderTargetViews.emplace_back(renderTarget.second->GetRenderTargetView());
+		}
 	}
 
 	GBuffer::~GBuffer()
 	{
 		m_renderTargets.clear();
+		m_renderTargetViews.clear();
 	}
 
-	bool GBuffer::SetAsRenderTarget(const std::shared_ptr<RHI_PipelineState>& pipelineState)
+	void GBuffer::SetAsRenderTarget(const std::shared_ptr<RHI_PipelineState>& pipelineState)
 	{
-		pipelineState->SetRenderTargets(m_renderTargetViews, m_renderTargets[GBuffer_Target_Depth]->GetDepthStencil());
+		bool clear = true;
+		pipelineState->SetRenderTargets(m_renderTargetViews, m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView(), clear);
+
 		// Grab the viewport from one of the render targets and set it
 		pipelineState->SetViewport(m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
-
-		return true;
-	}
-
-	bool GBuffer::Clear(const shared_ptr<RHI_Device>& rhiDevice)
-	{
-		// Clear the render target buffers.
-		for (auto& renderTarget : m_renderTargets)
-		{
-			if (!renderTarget.second->GetDepthEnabled())
-			{
-				// Color buffer
-				rhiDevice->ClearRenderTarget(renderTarget.second->GetRenderTarget(), Vector4(0, 0, 0, 1));		
-			}
-			else
-			{
-				float maxDepth	= renderTarget.second->GetViewport().GetMaxDepth();
-				rhiDevice->ClearDepthStencil(renderTarget.second->GetDepthStencil(), Clear_Depth, maxDepth);
-			}
-		}
-		return true;
 	}
 
 	const shared_ptr<RHI_RenderTexture>& GBuffer::GetTexture(GBuffer_Texture_Type type)

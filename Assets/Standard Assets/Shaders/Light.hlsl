@@ -12,16 +12,12 @@ TextureCube environmentTex 	: register(t6);
 SamplerState samplerLinear 	: register(s0);
 //=========================================
 
-//= CONSTANT BUFFERS ===================
-cbuffer MatrixBuffer : register(b0)
+//= CONSTANT BUFFERS ==========================
+#define MaxLights 64
+cbuffer MiscBuffer : register(b0)
 {
 	matrix mWorldViewProjection;
     matrix mViewProjectionInverse;
-}
-
-#define MaxLights 64
-cbuffer MiscBuffer : register(b1)
-{
     float4 cameraPosWS;
 	
     float4 dirLightColor;
@@ -45,7 +41,7 @@ cbuffer MiscBuffer : register(b1)
     float2 resolution;
     float2 padding;
 };
-//=====================================
+//=============================================
 
 // = INCLUDES ========
 #include "Common.hlsl"
@@ -62,17 +58,17 @@ PixelInputType DirectusVertexShader(Vertex_PosUv input)
 {
     PixelInputType output;
     
-    input.position.w = 1.0f;
-    output.position = mul(input.position, mWorldViewProjection);
-    output.uv = input.uv;
+    input.position.w 	= 1.0f;
+    output.position 	= mul(input.position, mWorldViewProjection);
+    output.uv 			= input.uv;
 	
     return output;
 }
 
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
-	float2 texCoord = input.uv;
-    float3 finalColor = float3(0, 0, 0);
+	float2 texCoord 	= input.uv;
+    float3 finalColor 	= float3(0, 0, 0);
 	
 	// Sample from G-Buffer
     float4 albedo 			= ToLinear(texAlbedo.Sample(samplerLinear, texCoord));
@@ -80,8 +76,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float occlusion			= normalSample.w;
 	float3 normal			= normalize(UnpackNormal(normalSample.xyz));
 	float4 specular			= texSpecular.Sample(samplerLinear, texCoord);
-    float4 depth 			= texDepth.Sample(samplerLinear, texCoord).r; // linear
-    	
+
 	// Create material
 	Material material;
 	material.albedo 	= albedo.rgb;
@@ -90,8 +85,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	material.emission	= specular.b * 2.0f;
 		
 	// Extract useful values out of those samples
-	float3 worldPos = ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
-    float3 viewDir 	= normalize(cameraPosWS.xyz - worldPos.xyz);
+	float depth_expo 	= texDepth.Sample(samplerLinear, texCoord).g;
+	float3 worldPos 	= ReconstructPositionWorld(depth_expo, mViewProjectionInverse, texCoord);
+    float3 viewDir 		= normalize(cameraPosWS.xyz - worldPos.xyz);
 	 
 	// Shadows + SSAO
 	float2 shadowing 	= texShadowing.Sample(samplerLinear, texCoord).rg;

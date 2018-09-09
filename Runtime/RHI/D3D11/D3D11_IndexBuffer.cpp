@@ -94,12 +94,12 @@ namespace Directus
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth = byteWidth;
-		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-		bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		bufferDesc.MiscFlags = 0;
-		bufferDesc.StructureByteStride = 0;
+		bufferDesc.ByteWidth			= byteWidth;
+		bufferDesc.Usage				= D3D11_USAGE_DYNAMIC;
+		bufferDesc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
+		bufferDesc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
+		bufferDesc.MiscFlags			= 0;
+		bufferDesc.StructureByteStride	= 0;
 
 		auto ptr = (ID3D11Buffer**)&m_buffer;
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, ptr);

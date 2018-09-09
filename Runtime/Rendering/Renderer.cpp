@@ -245,7 +245,7 @@ namespace Directus
 
 	void Renderer::SetBackBufferAsRenderTarget(bool clear /*= true*/)
 	{
-		m_rhiDevice->Bind_BackBufferAsRenderTarget();
+		m_rhiDevice->Set_BackBufferAsRenderTarget();
 		m_rhiPipelineState->SetViewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
 		m_rhiPipelineState->Bind();
 		if (clear) m_rhiDevice->ClearBackBuffer(GetClearColor());
@@ -282,7 +282,7 @@ namespace Directus
 			m_farPlane				= GetCamera()->GetFarPlane();
 
 			// If there is nothing to render clear to camera's color and present
-			if (m_renderables.empty())
+			if (m_actors.empty())
 			{
 				m_rhiDevice->ClearBackBuffer(GetCamera()->GetClearColor());
 				m_rhiDevice->Present();
@@ -308,7 +308,7 @@ namespace Directus
 				m_renderTex3	// OUT: Render texture - Result
 			);
 
-			Pass_Transparent();
+			Pass_Transparent(m_renderTex3);
 
 			// Debug rendering (on the target that happens to be bound)
 			Pass_DebugGBuffer();
@@ -327,7 +327,7 @@ namespace Directus
 		if (width == 0 || height == 0)
 			return;
 
-		m_rhiDevice->SetResolution(width, height);
+		m_rhiDevice->Set_Resolution(width, height);
 		m_rhiPipelineState->SetViewport((float)width, (float)height);
 		m_rhiPipelineState->Bind();
 	}
@@ -356,7 +356,7 @@ namespace Directus
 
 	void Renderer::Clear()
 	{
-		m_renderables.clear();
+		m_actors.clear();
 		m_lineRenderer	= nullptr;
 	}
 
@@ -390,64 +390,64 @@ namespace Directus
 	}
 
 	//= RENDERABLES ============================================================================================
-	void Renderer::Renderables_Acquire(const Variant& renderables)
+	void Renderer::Renderables_Acquire(const Variant& actors)
 	{
 		TIME_BLOCK_START_CPU();
 
 		Clear();
-		auto renderablesVec = renderables.Get<vector<weak_ptr<Actor>>>();
+		auto actorsVec = actors.Get<vector<weak_ptr<Actor>>>();
 
-		for (const auto& renderable : renderablesVec)
+		for (const auto& actorWeak : actorsVec)
 		{
-			Actor* actor = renderable.lock().get();
-			if (!actor)
+			auto actorShared = actorWeak.lock();
+			if (!actorShared)
 				continue;
 
 			// Get all the components we are interested in
-			auto renderable = actor->GetComponent<Renderable>().lock();
-			auto light		= actor->GetComponent<Light>().lock();
-			auto skybox		= actor->GetComponent<Skybox>().lock();
-			auto camera		= actor->GetComponent<Camera>().lock();
+			auto renderable = actorShared->GetComponent<Renderable>().lock();
+			auto light		= actorShared->GetComponent<Light>().lock();
+			auto skybox		= actorShared->GetComponent<Skybox>().lock();
+			auto camera		= actorShared->GetComponent<Camera>().lock();
 
 			if (renderable)
 			{
 				bool isTransparent = !renderable->Material_Exists() ? false : renderable->Material_PtrRaw()->GetColorAlbedo().w < 1.0f;
-				m_renderables[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(actor);
+				m_actors[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(actorWeak);
 			}
 
 			if (light)
 			{
-				m_renderables[Renderable_Light].emplace_back(actor);
+				m_actors[Renderable_Light].emplace_back(actorWeak);
 			}
 
 			if (skybox)
 			{
-				m_renderables[Renderable_Skybox].emplace_back(actor);
-				m_lineRenderer = actor->GetComponent<LineRenderer>().lock().get(); // Hush hush...
+				m_actors[Renderable_Skybox].emplace_back(actorWeak);
+				m_lineRenderer = actorShared->GetComponent<LineRenderer>().lock().get(); // Hush hush...
 			}
 
 			if (camera)
 			{
-				m_renderables[Renderable_Camera].emplace_back(actor);
+				m_actors[Renderable_Camera].emplace_back(actorWeak);
 			}
 		}
 
-		Renderables_Sort(&m_renderables[Renderable_ObjectOpaque]);
-		Renderables_Sort(&m_renderables[Renderable_ObjectTransparent]);
+		Renderables_Sort(&m_actors[Renderable_ObjectOpaque]);
+		Renderables_Sort(&m_actors[Renderable_ObjectTransparent]);
 
 		TIME_BLOCK_END_CPU();
 	}
 
-	void Renderer::Renderables_Sort(vector<Actor*>* renderables)
+	void Renderer::Renderables_Sort(vector<weak_ptr<Actor>>* renderables)
 	{
 		if (renderables->size() <= 2)
 			return;
 
-		sort(renderables->begin(), renderables->end(),[](Actor* a, Actor* b)
+		sort(renderables->begin(), renderables->end(),[](weak_ptr<Actor> a, weak_ptr<Actor> b)
 		{
 			// Get renderable component
-			auto a_renderable = a->GetRenderable_PtrRaw();
-			auto b_renderable = b->GetRenderable_PtrRaw();
+			auto a_renderable = a.lock()->GetRenderable_PtrRaw();
+			auto b_renderable = b.lock()->GetRenderable_PtrRaw();
 
 			// Validate renderable components
 			if (!a_renderable || !b_renderable)
@@ -504,24 +504,28 @@ namespace Directus
 		TIME_BLOCK_START_MULTI();
 
 		m_rhiDevice->EventBegin("Pass_DepthDirectionalLight");
-		m_rhiDevice->EnableDepth(true);
 		m_rhiPipelineState->SetShader(m_shaderLightDepth);
 		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 
 		// Variables that help reduce state changes
 		unsigned int currentlyBoundGeometry = 0;
 
-		if (!m_renderables.empty())
+		if (!m_actors.empty())
 		{
 			for (unsigned int i = 0; i < light->ShadowMap_GetCount(); i++)
 			{
 				m_rhiDevice->EventBegin("Pass_ShadowMap_" + to_string(i));
 
-				m_rhiPipelineState->SetRenderTexture(light->ShadowMap_GetRenderTexture(i), true);			
-				Matrix viewProjection = light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i);
+				auto& shadowMap = light->ShadowMap_GetRenderTexture(i);
+				m_rhiPipelineState->SetRenderTarget(shadowMap, shadowMap->GetDepthStencilView(), true);
+				m_rhiPipelineState->SetViewport(shadowMap->GetViewport());
 
-				for (const auto& actor : m_renderables[Renderable_ObjectOpaque])
+				for (const auto& actorWeak : m_actors[Renderable_ObjectOpaque])
 				{
+					auto actor = actorWeak.lock();
+					if (!actor)
+						continue;
+
 					// Acquire renderable component
 					Renderable* renderable = actor->GetRenderable_PtrRaw();
 					if (!renderable)
@@ -557,7 +561,7 @@ namespace Directus
 					//if (!m_directionalLight->IsInViewFrustrum(obj_renderable, i))
 					//continue;
 		
-					m_shaderLightDepth->UpdateBuffer(&Struct_Matrix(actor->GetTransform_PtrRaw()->GetWorldTransform() * viewProjection));
+					m_shaderLightDepth->UpdateBuffer(&Struct_Matrix(actor->GetTransform_PtrRaw()->GetWorldTransform() * light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i)));
 					m_rhiPipelineState->SetConstantBuffer(m_shaderLightDepth->GetConstantBuffer());
 					m_rhiPipelineState->Bind();
 
@@ -568,7 +572,6 @@ namespace Directus
 			}
 		}
 
-		m_rhiDevice->EnableDepth(false);
 		m_rhiDevice->EventEnd();
 
 		TIME_BLOCK_END_MULTI();
@@ -582,11 +585,8 @@ namespace Directus
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_GBuffer");
 
-		// Bind G-Buffer
+		//  Bind render target
 		m_gbuffer->SetAsRenderTarget(m_rhiPipelineState);
-		m_gbuffer->Clear(m_rhiDevice);
-
-		// Bind sampler 
 		m_rhiPipelineState->SetSampler(m_samplerAnisotropicWrapAlways);
 
 		// Variables that help reduce state changes
@@ -595,8 +595,12 @@ namespace Directus
 		unsigned int currentlyBoundShader	= 0;
 		unsigned int currentlyBoundMaterial = 0;
 
-		for (auto actor : m_renderables[Renderable_ObjectOpaque])
+		for (auto actorWeak : m_actors[Renderable_ObjectOpaque])
 		{
+			auto actor = actorWeak.lock();
+			if (!actor)
+				continue;
+
 			// Get renderable and material
 			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
 			Material* obj_material		= obj_renderable ? obj_renderable->Material_PtrRaw() : nullptr;
@@ -708,13 +712,19 @@ namespace Directus
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Light");
 
-		m_rhiDevice->EnableDepth(false);
+		// Update constant buffer
+		m_shaderLight->UpdateConstantBuffer(
+			Matrix::Identity,
+			m_mV,
+			m_mV_base,
+			m_mP_perspective,
+			m_mP_orthographic,
+			m_actors[Renderable_Light],
+			GetCamera()
+		);
 
-		// Update buffers
-		m_shaderLight->UpdateMatrixBuffer(Matrix::Identity, m_mV, m_mV_base, m_mP_perspective, m_mP_orthographic);
-		m_shaderLight->UpdateMiscBuffer(m_renderables[Renderable_Light], GetCamera());
-
-		m_rhiPipelineState->SetRenderTexture(texOut);
+		m_rhiPipelineState->SetRenderTarget(texOut);
+		m_rhiPipelineState->SetViewport(texOut->GetViewport());
 		m_rhiPipelineState->SetShader(m_shaderLight->GetShader());
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Albedo));
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
@@ -724,8 +734,7 @@ namespace Directus
 		m_rhiPipelineState->SetTexture(m_renderTex3); // previous frame for SSR // Todo SSR
 		m_rhiPipelineState->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : nullptr);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);	
-		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetMatrixBuffer());
-		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetMiscBuffer());
+		m_rhiPipelineState->SetConstantBuffer(m_shaderLight->GetConstantBuffer());
 		m_rhiPipelineState->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -747,11 +756,9 @@ namespace Directus
 		m_rhiPipelineState->SetSampler(m_samplerBilinearClampAlways); // FXAA and Bloom (Gaussian blur) require a bilinear sampler
 		m_rhiPipelineState->SetVertexShader(m_shaderBloom_Bright);  // vertex shader is the same for every pass
 		Vector2 computeLuma = Vector2(RenderFlags_IsSet(Render_FXAA) ? 1.0f : 0.0f, 0.0f);
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), computeLuma);
-		m_shaderBloom_Bright->UpdateBuffer(&buffer);
+		m_shaderBloom_Bright->UpdateBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), computeLuma));
 		m_rhiPipelineState->SetConstantBuffer(m_shaderBloom_Bright->GetConstantBuffer());
 		
-
 		// Keep track of render target swapping
 		auto SwapTargets = [&texIn, &texOut]() { texOut.swap(texIn); };
 
@@ -796,7 +803,7 @@ namespace Directus
 		TIME_BLOCK_END_MULTI();
 	}
 
-	void Renderer::Pass_Transparent()
+	void Renderer::Pass_Transparent(shared_ptr<RHI_RenderTexture>& texOut)
 	{
 		if (!GetLightDirectional() || !GetCamera())
 			return;
@@ -804,13 +811,18 @@ namespace Directus
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Transparent");
 
-		m_rhiDevice->EnableAlphaBlending(true);
-		m_rhiPipelineState->SetShader(m_shaderTransparent);
+		m_rhiDevice->Set_AlphaBlendingEnabled(true);
+		m_rhiPipelineState->SetShader(m_shaderTransparent);	
+		m_rhiPipelineState->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);
 
-		for (auto actor : m_renderables[Renderable_ObjectTransparent])
+		for (auto actorWeak : m_actors[Renderable_ObjectTransparent])
 		{
+			auto actor = actorWeak.lock();
+			if (!actor)
+				return;
+
 			// Get renderable and material
 			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
 			Material* obj_material		= obj_renderable ? obj_renderable->Material_PtrRaw() : nullptr;
@@ -854,7 +866,7 @@ namespace Directus
 
 		} // Actor/MESH ITERATION
 
-		m_rhiDevice->EnableAlphaBlending(false);
+		m_rhiDevice->Set_AlphaBlendingEnabled(false);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -865,32 +877,34 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_Bloom");
 
 		// Bright pass
-		m_rhiPipelineState->SetRenderTexture(m_renderTexQuarterRes1);
+		m_rhiPipelineState->SetRenderTarget(m_renderTexQuarterRes1);
+		m_rhiPipelineState->SetViewport(m_renderTexQuarterRes1->GetViewport());
 		m_rhiPipelineState->SetPixelShader(m_shaderBloom_Bright);
 		m_rhiPipelineState->SetTexture(texIn);
 		m_rhiPipelineState->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Horizontal Gaussian blur
-		m_rhiPipelineState->SetRenderTexture(m_renderTexQuarterRes2);
+		m_rhiPipelineState->SetRenderTarget(m_renderTexQuarterRes2);
 		m_rhiPipelineState->SetPixelShader(m_shaderBlurGaussianH);
 		m_rhiPipelineState->SetTexture(m_renderTexQuarterRes1);
 		m_rhiPipelineState->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
-		m_rhiPipelineState->SetRenderTexture(m_renderTexQuarterRes1);
+		m_rhiPipelineState->SetRenderTarget(m_renderTexQuarterRes1);
 		m_rhiPipelineState->SetPixelShader(m_shaderBlurGaussianV);
 		m_rhiPipelineState->SetTexture(m_renderTexQuarterRes2);
 		m_rhiPipelineState->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Additive blending
-		m_rhiPipelineState->SetRenderTexture(texOut);
+		m_rhiPipelineState->SetRenderTarget(texOut);
+		m_rhiPipelineState->SetViewport(texOut->GetViewport());
 		m_rhiPipelineState->SetPixelShader(m_shaderBloom_BlurBlend);
 		m_rhiPipelineState->SetTexture(texIn);
 		m_rhiPipelineState->SetTexture(m_renderTexQuarterRes1);
-		float bloomIntensity = 0.1f;
+		float bloomIntensity = 0.15f;
 		m_shaderBloom_BlurBlend->UpdateBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), bloomIntensity));
 		m_rhiPipelineState->SetConstantBuffer(m_shaderBloom_BlurBlend->GetConstantBuffer());
 		m_rhiPipelineState->Bind();
@@ -903,7 +917,8 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_Correction");
 
-		m_rhiPipelineState->SetRenderTexture(texOut);
+		m_rhiPipelineState->SetRenderTarget(texOut);
+		m_rhiPipelineState->SetViewport(texOut->GetViewport());
 		m_rhiPipelineState->SetPixelShader(m_shaderCorrection);
 		m_rhiPipelineState->SetTexture(texIn);
 		m_rhiPipelineState->Bind();
@@ -917,7 +932,8 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_FXAA");
 
-		m_rhiPipelineState->SetRenderTexture(texOut);
+		m_rhiPipelineState->SetRenderTarget(texOut);
+		m_rhiPipelineState->SetViewport(texOut->GetViewport());
 		m_rhiPipelineState->SetPixelShader(m_shaderFXAA);	
 		m_rhiPipelineState->SetTexture(texIn);
 		m_rhiPipelineState->Bind();
@@ -931,7 +947,8 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_ChromaticAberration");
 
-		m_rhiPipelineState->SetRenderTexture(texOut);
+		m_rhiPipelineState->SetRenderTarget(texOut);
+		m_rhiPipelineState->SetViewport(texOut->GetViewport());
 		m_rhiPipelineState->SetPixelShader(m_shaderChromaticAberration);
 		m_rhiPipelineState->SetTexture(texIn);
 		m_rhiPipelineState->Bind();
@@ -945,7 +962,8 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_Sharpening");
 
-		m_rhiPipelineState->SetRenderTexture(texOut);
+		m_rhiPipelineState->SetRenderTarget(texOut);
+		m_rhiPipelineState->SetViewport(texOut->GetViewport());
 		m_rhiPipelineState->SetPixelShader(m_shaderSharpening);
 		m_rhiPipelineState->SetTexture(texIn);
 		m_rhiPipelineState->Bind();
@@ -959,7 +977,8 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_Blur");
 
-		m_rhiPipelineState->SetRenderTexture(texOut);
+		m_rhiPipelineState->SetRenderTarget(texOut);
+		m_rhiPipelineState->SetViewport(texOut->GetViewport());
 		m_rhiPipelineState->SetShader(m_shaderBlurBox);
 		m_rhiPipelineState->SetTexture(texIn); // Shadows are in the alpha channel
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
@@ -983,7 +1002,8 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_Shadowing");
 
 		// SHADOWING (Shadow mapping + SSAO)
-		m_rhiPipelineState->SetRenderTexture(texOut);
+		m_rhiPipelineState->SetRenderTarget(texOut);
+		m_rhiPipelineState->SetViewport(texOut->GetViewport());
 		m_rhiPipelineState->SetShader(m_shaderShadowing);
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
@@ -1075,17 +1095,25 @@ namespace Directus
 			// bounding boxes
 			if (m_flags & Render_AABB)
 			{
-				for (const auto& renderableWeak : m_renderables[Renderable_ObjectOpaque])
+				for (const auto& actorWeak : m_actors[Renderable_ObjectOpaque])
 				{
-					if (auto renderable = renderableWeak->GetRenderable_PtrRaw())
+					auto actor = actorWeak.lock();
+					if (!actor)
+						continue;
+
+					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
 						m_lineRenderer->AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 
-				for (const auto& renderableWeak : m_renderables[Renderable_ObjectTransparent])
+				for (const auto& actorWeak : m_actors[Renderable_ObjectTransparent])
 				{
-					if (auto renderable = renderableWeak->GetRenderable_PtrRaw())
+					auto actor = actorWeak.lock();
+					if (!actor)
+						continue;
+
+					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
 						m_lineRenderer->AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
@@ -1115,7 +1143,7 @@ namespace Directus
 		}
 		//============================================================================================================
 
-		m_rhiDevice->EnableAlphaBlending(true);
+		m_rhiDevice->Set_AlphaBlendingEnabled(true);
 
 		// Grid
 		if (m_flags & Render_SceneGrid)
@@ -1143,8 +1171,12 @@ namespace Directus
 			if (m_flags & Render_Light)
 			{
 				m_rhiDevice->EventBegin("Lights");
-				for (const auto& light : m_renderables[Renderable_Light])
+				for (const auto& actorWeak : m_actors[Renderable_Light])
 				{
+					auto light = actorWeak.lock();
+					if (!light)
+						continue;
+
 					Vector3 lightWorldPos = light->GetTransform_PtrRaw()->GetPosition();
 					Vector3 cameraWorldPos = GetCamera()->GetTransform()->GetPosition();
 
@@ -1242,7 +1274,7 @@ namespace Directus
 			m_rhiDevice->DrawIndexed(m_font->GetIndexCount(), 0, 0);
 		}
 
-		m_rhiDevice->EnableAlphaBlending(false);
+		m_rhiDevice->Set_AlphaBlendingEnabled(false);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -1255,20 +1287,25 @@ namespace Directus
 
 	Camera* Renderer::GetCamera()
 	{
-		auto vec = m_renderables[Renderable_Camera];
-
-		if (vec.empty())
+		auto actors = m_actors[Renderable_Camera];
+		if (actors.empty())
 			return nullptr;
 
-		return vec.front()->GetComponent<Camera>().lock().get();
+		auto cameraActor = actors.front().lock();
+
+		return cameraActor ? cameraActor->GetComponent<Camera>().lock().get() : nullptr;
 	}
 
 	Light* Renderer::GetLightDirectional()
 	{
-		auto vec = m_renderables[Renderable_Light];
+		auto actors = m_actors[Renderable_Light];
 
-		for (const auto& actor : vec)
+		for (const auto& actorWeak : actors)
 		{
+			auto actor = actorWeak.lock();
+			if (!actor)
+				continue;
+
 			Light* light = actor->GetComponent<Light>().lock().get();
 			if (light->GetLightType() == LightType_Directional)
 				return light;
@@ -1279,11 +1316,12 @@ namespace Directus
 
 	Skybox* Renderer::GetSkybox()
 	{
-		auto vec = m_renderables[Renderable_Skybox];
-
-		if (vec.empty())
+		auto actors = m_actors[Renderable_Skybox];
+		if (actors.empty())
 			return nullptr;
 
-		return vec.front()->GetComponent<Skybox>().lock().get();
+		auto skyboxActor = actors.front().lock();
+
+		return skyboxActor ? skyboxActor->GetComponent<Skybox>().lock().get() : nullptr;
 	}
 }

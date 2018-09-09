@@ -36,29 +36,29 @@ namespace Directus
 	{
 	public:
 		LightShader();
-		~LightShader();
+		~LightShader() {}
 
 		void Compile(const std::string& filePath, std::shared_ptr<RHI_Device> rhiDevice);
-		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mBaseView,
-			const Math::Matrix& mPerspectiveProjection, const Math::Matrix& mOrthographicProjection);
-		void UpdateMiscBuffer(const std::vector<Actor*>& lights, Camera* camera);
+		void UpdateConstantBuffer(
+			const Math::Matrix& mWorld,
+			const Math::Matrix& mView,
+			const Math::Matrix& mBaseView,
+			const Math::Matrix& mPerspectiveProjection,
+			const Math::Matrix& mOrthographicProjection,
+			const std::vector<std::weak_ptr<Actor>>& lights,
+			Camera* camera
+		);
 		bool IsCompiled();
 
-		std::shared_ptr<RHI_Shader> GetShader()					{ return m_shader; }
-		std::shared_ptr<RHI_ConstantBuffer> GetMatrixBuffer()	{ return m_matrixBuffer; }
-		std::shared_ptr<RHI_ConstantBuffer> GetMiscBuffer()		{ return m_miscBuffer; }
+		std::shared_ptr<RHI_Shader> GetShader()						{ return m_shader; }
+		std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer()		{ return m_cbuffer; }
 
 	private:
-
-		struct MatrixBufferType
-		{
-			Math::Matrix worldViewProjection;
-			Math::Matrix mViewProjectionInverse;
-		};
-
 		const static int maxLights = 64;
-		struct MiscBufferType
+		struct LightBuffer
 		{
+			Math::Matrix m_wvp;
+			Math::Matrix m_vpInv;
 			Math::Vector4 cameraPosition;
 			
 			//= DIRECTIONAL LIGHT ==========	
@@ -88,8 +88,7 @@ namespace Directus
 			Math::Vector2 padding;
 		};
 
-		std::shared_ptr<RHI_ConstantBuffer> m_matrixBuffer;
-		std::shared_ptr<RHI_ConstantBuffer> m_miscBuffer;
+		std::shared_ptr<RHI_ConstantBuffer> m_cbuffer;
 		std::shared_ptr<RHI_Shader> m_shader;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};

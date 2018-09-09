@@ -107,7 +107,7 @@ namespace Directus
 		m_currentText = text;
 		m_vertices.clear();
 		m_vertices.shrink_to_fit();
-
+		
 		// Draw each letter onto a quad.
 		for (char textChar : m_currentText)
 		{
@@ -150,17 +150,13 @@ namespace Directus
 			pen.x = pen.x + glyph.width;
 		}
 
-		if (m_indices.size() != m_vertices.size())
-		{
-			m_indices.clear();
-			m_indices.shrink_to_fit();
-			m_indices.reserve(m_vertices.size());
-			for (unsigned int i = 0; i < m_vertices.size(); i++)
-			{
-				m_indices.emplace_back(i);
-			}
-		}		
+		m_indices.clear();
+		m_indices.shrink_to_fit();
 
+		for (unsigned int i = 0; i < m_vertices.size(); i++)
+		{
+			m_indices.emplace_back(i);
+		}
 		UpdateBuffers(m_vertices, m_indices);
 	}
 
