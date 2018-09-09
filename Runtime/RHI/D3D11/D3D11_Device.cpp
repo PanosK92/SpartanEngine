@@ -398,7 +398,7 @@ namespace Directus
 
 		// VIEWPORT
 		auto viewport = RHI_Viewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
-		SetViewport(viewport);
+		Set_Viewport(viewport);
 
 		// DEPTH STATES
 		auto desc = Desc_DepthEnabled();
@@ -608,7 +608,7 @@ namespace Directus
 		D3D11_Device::m_swapChain->Present(Settings::Get().GetVSync(), 0);
 	}
 
-	void RHI_Device::Bind_BackBufferAsRenderTarget()
+	void RHI_Device::Set_BackBufferAsRenderTarget()
 	{
 		if (!D3D11_Device::m_deviceContext)
 			return;
@@ -616,7 +616,7 @@ namespace Directus
 		D3D11_Device::m_deviceContext->OMSetRenderTargets(1, &D3D11_Device::m_renderTargetView, m_depthEnabled ? D3D11_Device::m_depthStencilView : nullptr);
 	}
 
-	void RHI_Device::Bind_VertexShader(void* buffer)
+	void RHI_Device::Set_VertexShader(void* buffer)
 	{
 		if (!D3D11_Device::m_deviceContext)
 			return;
@@ -624,7 +624,7 @@ namespace Directus
 		D3D11_Device::m_deviceContext->VSSetShader((ID3D11VertexShader*)buffer, nullptr, 0);
 	}
 
-	void RHI_Device::Bind_PixelShader(void* buffer)
+	void RHI_Device::Set_PixelShader(void* buffer)
 	{
 		if (!D3D11_Device::m_deviceContext)
 			return;
@@ -632,7 +632,7 @@ namespace Directus
 		D3D11_Device::m_deviceContext->PSSetShader((ID3D11PixelShader*)buffer, nullptr, 0);
 	}
 
-	void RHI_Device::Bind_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer)
+	void RHI_Device::Set_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer)
 	{
 		if (!D3D11_Device::m_deviceContext)
 			return;
@@ -649,7 +649,7 @@ namespace Directus
 		}
 	}
 
-	void RHI_Device::Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers)
+	void RHI_Device::Set_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers)
 	{
 		if (!D3D11_Device::m_deviceContext)
 			return;
@@ -657,7 +657,7 @@ namespace Directus
 		D3D11_Device::m_deviceContext->PSSetSamplers(startSlot, samplerCount, (ID3D11SamplerState* const*)samplers);
 	}
 
-	void RHI_Device::Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
+	void RHI_Device::Set_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
 	{
 		if (!D3D11_Device::m_deviceContext)
 			return;
@@ -665,7 +665,7 @@ namespace Directus
 		D3D11_Device::m_deviceContext->OMSetRenderTargets(renderTargetCount, (ID3D11RenderTargetView* const*)renderTargets, (ID3D11DepthStencilView*)depthStencil);
 	}
 
-	void RHI_Device::Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
+	void RHI_Device::Set_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
 	{
 		if (!D3D11_Device::m_deviceContext)
 			return;
@@ -673,7 +673,7 @@ namespace Directus
 		D3D11_Device::m_deviceContext->PSSetShaderResources(startSlot, resourceCount, (ID3D11ShaderResourceView* const*)shaderResources);
 	}
 
-	bool RHI_Device::SetResolution(int width, int height)
+	bool RHI_Device::Set_Resolution(int width, int height)
 	{
 		if (width == 0 || height == 0)
 		{
@@ -747,7 +747,7 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_Device::SetViewport(const RHI_Viewport& viewport)
+	void RHI_Device::Set_Viewport(const RHI_Viewport& viewport)
 	{
 		if (!D3D11_Device::m_deviceContext)
 			return;
@@ -756,7 +756,7 @@ namespace Directus
 		D3D11_Device::m_deviceContext->RSSetViewports(1, (D3D11_VIEWPORT*)&m_viewport);
 	}
 
-	bool RHI_Device::EnableDepth(bool enable)
+	bool RHI_Device::Set_DepthEnabled(bool enable)
 	{
 		if (!D3D11_Device::m_deviceContext)
 		{
@@ -764,12 +764,16 @@ namespace Directus
 			return false;
 		}
 
-		// Set depth stencil state
-		D3D11_Device::m_deviceContext->OMSetDepthStencilState(m_depthEnabled ? D3D11_Device::m_depthStencilStateEnabled : D3D11_Device::m_depthStencilStateDisabled, 1);
+		if (m_depthEnabled == enable)
+			return true;
+
+		D3D11_Device::m_deviceContext->OMSetDepthStencilState(enable ? D3D11_Device::m_depthStencilStateEnabled : D3D11_Device::m_depthStencilStateDisabled, 1);
+		m_depthEnabled = enable;
+
 		return true;
 	}
 
-	bool RHI_Device::EnableAlphaBlending(bool enable)
+	bool RHI_Device::Set_AlphaBlendingEnabled(bool enable)
 	{
 		if (!D3D11_Device::m_deviceContext)
 		{
@@ -881,23 +885,23 @@ namespace Directus
 
 	bool RHI_Device::Set_CullMode(Cull_Mode cullMode)
 	{
+		return true;
+
 		if (!D3D11_Device::m_deviceContext)
 		{
 			LOG_WARNING("D3D11_Device::SetCullMode: Device context is uninitialized.");
 			return false;
 		}
 
-		auto mode = d3d11_cull_mode[cullMode];
-
-		if (mode == D3D11_CULL_NONE)
+		if (cullMode == Cull_Mode::Cull_None)
 		{
 			D3D11_Device::m_deviceContext->RSSetState(D3D11_Device::m_rasterStateCullNone);
 		}
-		else if (mode == D3D11_CULL_FRONT)
+		else if (cullMode == Cull_Mode::Cull_Front)
 		{
 			D3D11_Device::m_deviceContext->RSSetState(D3D11_Device::m_rasterStateCullFront);
 		}
-		else if (mode == D3D11_CULL_BACK)
+		else if (cullMode == Cull_Mode::Cull_Back)
 		{
 			D3D11_Device::m_deviceContext->RSSetState(D3D11_Device::m_rasterStateCullBack);
 		}
@@ -905,5 +909,4 @@ namespace Directus
 		return true;
 	}
 }
-
 #endif

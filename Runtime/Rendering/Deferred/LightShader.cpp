@@ -41,50 +41,28 @@ namespace Directus
 		m_rhiDevice = nullptr;
 	}
 
-	LightShader::~LightShader()
-	{
-
-	}
-
 	void LightShader::Compile(const string& filePath, shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice = rhiDevice;
 
-		// load the vertex and the pixel shader
+		// Load the vertex and the pixel shader
 		m_shader = make_shared<RHI_Shader>(m_rhiDevice);
 		m_shader->Compile_VertexPixel(filePath, Input_PositionTextureTBN);
 
-		// Create matrix buffer
-		m_matrixBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_matrixBuffer->Create(sizeof(MatrixBufferType), 0, Buffer_Global);
-
-		// Create misc buffer
-		m_miscBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_miscBuffer->Create(sizeof(MiscBufferType), 1, Buffer_PixelShader);
+		// Create constant buffer
+		m_cbuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
+		m_cbuffer->Create(sizeof(LightBuffer), 0, Buffer_Global);
 	}
 
-	void LightShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mBaseView, const Matrix& mPerspectiveProjection, const Matrix& mOrthographicProjection)
-	{
-		if (!IsCompiled())
-		{
-			LOG_ERROR("Failed to compile deferred shader.");
-			return;
-		}
-
-		// Get some stuff
-		Matrix worlBaseViewProjection	= mWorld * mBaseView * mOrthographicProjection;
-		Matrix viewProjection			= mView * mPerspectiveProjection;
-
-		// Map/Unmap buffer
-		auto buffer = (MatrixBufferType*)m_matrixBuffer->Map();
-
-		buffer->worldViewProjection		= worlBaseViewProjection;
-		buffer->mViewProjectionInverse	= viewProjection.Inverted();
-
-		m_matrixBuffer->Unmap();
-	}
-
-	void LightShader::UpdateMiscBuffer(const vector<Actor*>& lights, Camera* camera)
+	void LightShader::UpdateConstantBuffer(
+		const Matrix& mWorld,
+		const Matrix& mView,
+		const Matrix& mBaseView,
+		const Matrix& mPerspectiveProjection,
+		const Matrix& mOrthographicProjection,
+		const vector<weak_ptr<Actor>>& lights,
+		Camera* camera
+	)
 	{
 		if (!IsCompiled())
 		{
@@ -96,10 +74,16 @@ namespace Directus
 			return;
 
 		// Get a pointer to the data in the constant buffer.
-		auto buffer = (MiscBufferType*)m_miscBuffer->Map();
+		auto buffer = (LightBuffer*)m_cbuffer->Map();
 
-		Vector3 camPos = camera->GetTransform()->GetPosition();
-		buffer->cameraPosition = Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
+		// Get some stuff
+		Matrix worlBaseViewProjection	= mWorld * mBaseView * mOrthographicProjection;
+		Matrix viewProjection			= mView * mPerspectiveProjection;
+		Vector3 camPos					= camera->GetTransform()->GetPosition();
+
+		buffer->cameraPosition	= Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
+		buffer->m_wvp			= worlBaseViewProjection;
+		buffer->m_vpInv			= viewProjection.Inverted();
 
 		// Reset any light buffer values because the shader will still use them
 		buffer->dirLightColor = Vector4::Zero;
@@ -116,9 +100,10 @@ namespace Directus
 		}
 
 		// Fill with directional lights
-		for (const auto& light : lights)
+		for (const auto& lightWeak : lights)
 		{
-			auto component = light->GetComponent<Light>().lock();
+			auto light		= lightWeak.lock();
+			auto component	= light->GetComponent<Light>().lock();
 
 			if (component->GetLightType() != LightType_Directional)
 				continue;
@@ -132,9 +117,10 @@ namespace Directus
 
 		// Fill with point lights
 		int pointIndex = 0;
-		for (const auto& light : lights)
+		for (const auto& lightWeak : lights)
 		{
-			auto component = light->GetComponent<Light>().lock();
+			auto light		= lightWeak.lock();
+			auto component	= light->GetComponent<Light>().lock();
 
 			if (component->GetLightType() != LightType_Point)
 				continue;
@@ -150,9 +136,10 @@ namespace Directus
 
 		// Fill with spot lights
 		int spotIndex = 0;
-		for (const auto& light : lights)
+		for (const auto& lightWeak : lights)
 		{
-			auto component = light->GetComponent<Light>().lock();
+			auto light		= lightWeak.lock();
+			auto component	= light->GetComponent<Light>().lock();
 
 			if (component->GetLightType() != LightType_Spot)
 				continue;
@@ -176,7 +163,7 @@ namespace Directus
 		buffer->padding			= Vector2::Zero;
 
 		// Unmap buffer
-		m_miscBuffer->Unmap();
+		m_cbuffer->Unmap();
 	}
 
 	bool LightShader::IsCompiled()

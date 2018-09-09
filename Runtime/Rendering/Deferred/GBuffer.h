@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES ========================
 #include <map>
 #include <memory>
+#include <vector>
 #include "../../Core/Settings.h"
 #include "../../RHI/RHI_Definition.h"
-#include <vector>
-//====================================
+//===================================
 
 namespace Directus
 {
@@ -46,8 +46,7 @@ namespace Directus
 		GBuffer(const std::shared_ptr<RHI_Device>& rhiDevice, int width = Settings::Get().GetResolutionWidth(), int height = Settings::Get().GetResolutionHeight());
 		~GBuffer();
 
-		bool SetAsRenderTarget(const std::shared_ptr<RHI_PipelineState>& pipelineState);
-		bool Clear(const std::shared_ptr<RHI_Device>& rhiDevice);
+		void SetAsRenderTarget(const std::shared_ptr<RHI_PipelineState>& pipelineState);
 		const std::shared_ptr<RHI_RenderTexture>& GetTexture(GBuffer_Texture_Type type);
 
 	private:

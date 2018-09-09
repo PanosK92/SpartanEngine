@@ -47,27 +47,27 @@ namespace Directus
 		//===============================================================================================
 
 		//= BIND ============================================================================================================
-		void Bind_BackBufferAsRenderTarget();
-		void Bind_VertexShader(void* buffer);
-		void Bind_PixelShader(void* buffer);
-		void Bind_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer);
-		void Bind_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers);
-		void Bind_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil);
-		void Bind_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources);
+		void Set_BackBufferAsRenderTarget();
+		void Set_VertexShader(void* buffer);
+		void Set_PixelShader(void* buffer);
+		void Set_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer);
+		void Set_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers);
+		void Set_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil);
+		void Set_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources);
 		//===================================================================================================================
 
 		//= RESOLUTION ===========================
-		bool SetResolution(int width, int height);
+		bool Set_Resolution(int width, int height);
 		//========================================
 
 		//= VIEWPORT ====================================
 		RHI_Viewport GetViewport() { return m_viewport; }
-		void SetViewport(const RHI_Viewport& viewport);
+		void Set_Viewport(const RHI_Viewport& viewport);
 		//===============================================
 
 		//= MISC ============================================================
-		bool EnableDepth(bool enable);
-		bool EnableAlphaBlending(bool enable);
+		bool Set_DepthEnabled(bool enable);
+		bool Set_AlphaBlendingEnabled(bool enable);
 		bool Set_CullMode(Cull_Mode cullMode);
 		bool Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
 		bool Set_FillMode(Fill_Mode fillMode);

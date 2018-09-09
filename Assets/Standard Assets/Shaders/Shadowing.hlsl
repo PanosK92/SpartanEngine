@@ -61,8 +61,9 @@ float2 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float2 texCoord 	= input.uv;
 	float3 normal 		= texNormal.Sample(samplerPoint, texCoord).rgb;
 	float3 depthSample 	= texDepth.Sample(samplerPoint, texCoord).rgb;
-	float depth 		= texDepth.Sample(samplerPoint, texCoord).r;
-	float3 positionWS 	= ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
+	float depth_linear 	= texDepth.Sample(samplerPoint, texCoord).r;
+	float depth_expo 	= texDepth.Sample(samplerPoint, texCoord).g;
+	float3 positionWS 	= ReconstructPositionWorld(depth_expo, mViewProjectionInverse, texCoord);
 	
 	
 	//== SSAO =================================
@@ -71,11 +72,11 @@ float2 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	//= SHADOW MAPPING ===========================================================================	
 	float shadow 		= 1.0f;
-	int cascadeIndex 	= 0; // assume 1st cascade as default
+	int cascadeIndex 	= 2; // assume 1st cascade as default
 	if (doShadowMapping != 0.0f)
 	{
-		cascadeIndex += step(depth, shadowSplits.x); // test 2nd cascade
-		cascadeIndex += step(depth, shadowSplits.y); // test 3rd cascade
+		cascadeIndex -= step(depth_linear, shadowSplits.x); // test 2nd cascade
+		cascadeIndex -= step(depth_linear, shadowSplits.y); // test 3rd cascade
 		
 		float cascadeCompensation	= (cascadeIndex + 1.0f) * 2.0f; // the further the cascade, the more ugly under sharp angles, damn
 		float shadowTexel 			= 1.0f / shadowMapResolution;

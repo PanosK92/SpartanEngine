@@ -198,7 +198,7 @@ namespace Directus
 		m_orthographicProjectionMatrix	= Matrix::CreateOrthographicLH(m_viewport.GetWidth(), m_viewport.GetHeight(), nearPlane, farPlane);
 	}
 
-	void* RHI_RenderTexture::GetRenderTarget()
+	void* RHI_RenderTexture::GetRenderTargetView()
 	{
 		return m_renderTargetView;
 	}
@@ -208,7 +208,7 @@ namespace Directus
 		return m_shaderResourceView;
 	}
 
-	void* RHI_RenderTexture::GetDepthStencil()
+	void* RHI_RenderTexture::GetDepthStencilView()
 	{
 		return m_depthStencilView;
 	}

@@ -65,7 +65,7 @@ struct PixelOutputType
 	float4 albedo	: SV_Target0;
 	float4 normal	: SV_Target1;
 	float4 specular	: SV_Target2;
-	float depth		: SV_Target3;
+	float2 depth	: SV_Target3;
 };
 //===========================================
 
@@ -90,7 +90,8 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	PixelOutputType output;
 
 	float2 texel			= float2(1.0f / resolution.x, 1.0f / resolution.y);
-	float depth 			= LinerizeDepth(input.positionVS.z, planes.x, planes.y);
+	float depth_linear 		= input.positionVS.z / planes.y;
+	float depth_expo 		= input.positionCS.z / input.positionWS.w;
 	float2 texCoords 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;
@@ -168,7 +169,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	output.albedo		= albedo;
 	output.normal 		= float4(PackNormal(normal), occlusion);
 	output.specular		= float4(roughness, metallic, emission, type);
-	output.depth 		= depth;
+	output.depth 		= float2(depth_linear, depth_expo);
 
     return output;
 }

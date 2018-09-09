@@ -60,10 +60,9 @@ namespace Directus
 		bool SetTexture(const std::shared_ptr<RHI_RenderTexture>& texture);
 		bool SetTexture(const std::shared_ptr<RHI_Texture>& texture);
 
-		// Render texture
-		bool SetRenderTexture(const std::shared_ptr<RHI_RenderTexture>& renderTexture, bool clear = false);
 		// Render targets
-		void SetRenderTargets(const std::vector<void*>& renderTargets, void* depthStencil);
+		bool SetRenderTarget(const std::shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView = nullptr, bool clear = false);
+		bool SetRenderTargets(const std::vector<void*>& renderTargetViews, void* depthStencilView = nullptr, bool clear = false);
 
 		// Constant, vertex & index buffers
 		bool SetConstantBuffer(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer);
@@ -143,14 +142,10 @@ namespace Directus
 		bool m_viewportDirty;
 
 		// Render targets
-		std::shared_ptr<RHI_RenderTexture> m_renderTexture;
-		bool m_renderTextureClear;
-		bool m_renderTextureDirty;
-
-		// Render targets
-		std::vector<void*> m_renderTargets;
+		std::vector<void*> m_renderTargetViews;	
 		void* m_depthStencil;
-		bool m_renderTargetDirty;
+		bool m_renderTargetsClear;
+		bool m_renderTargetsDirty;
 
 		// Device
 		std::shared_ptr<RHI_Device> m_rhiDevice;
