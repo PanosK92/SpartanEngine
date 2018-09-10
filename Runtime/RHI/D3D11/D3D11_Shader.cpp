@@ -67,8 +67,8 @@ namespace Directus
 			#endif
 
 			// Load and compile from file
-			ID3DBlob* errorBlob = nullptr;
-			ID3DBlob* shaderBlob = nullptr;
+			ID3DBlob* errorBlob		= nullptr;
+			ID3DBlob* shaderBlob	= nullptr;
 			auto result = D3DCompileFromFile(
 				FileSystem::StringToWString(filePath).c_str(),
 				macros,
@@ -114,14 +114,13 @@ namespace Directus
 				LOG_ERROR("D3D11_Shader::CompileVertexShader: Invalid device.");
 				return false;
 			}
-
+			// Compile shader
 			if (!CompileShader(path, macros, entrypoint, profile, vsBlob))
 				return false;
 
 			// Create the shader from the buffer.
 			ID3D10Blob* vsb = *vsBlob;
-			auto result = device->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
-			if (FAILED(result))
+			if (FAILED(device->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader)))
 			{
 				LOG_ERROR("D3D11_Shader::CompileVertexShader: Failed to create vertex shader.");
 				return false;
@@ -138,36 +137,19 @@ namespace Directus
 				return false;
 			}
 
-			auto result = CompileShader(path, macros, entrypoint, profile, psBlob);
-			if (FAILED(result))
+			// Compile the shader
+			if (!CompileShader(path, macros, entrypoint, profile, psBlob))
 				return false;
 
 			// Create the shader from the buffer.
 			ID3D10Blob* psb = *psBlob;
-			result = device->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader);
-			if (FAILED(result))
+			if (FAILED(device->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader)))
 			{
 				LOG_ERROR("D3D11_Shader::CompilePixelShader: Failed to create pixel shader.");
 				return false;
 			}
 
 			return true;
-		}
-
-		inline bool SetInputLayout(ID3D11Device* device, ID3D10Blob* vsBlob, shared_ptr<RHI_InputLayout> inputLayout, Input_Layout inputLayoutEnum)
-		{
-			bool result = false;
-
-			// Create vertex input layout
-			result = inputLayout->Create(vsBlob, inputLayoutEnum);
-
-			// If the creation was successful, release vsBlob else print a message
-			if (result)
-			{
-				SafeRelease(vsBlob);
-			}
-
-			return result;
 		}
 
 		inline vector<D3D_SHADER_MACRO> GetD3DMacros(const map<string, string>& macros)
@@ -214,30 +196,33 @@ namespace Directus
 		ID3D10Blob* blobVS	= nullptr;
 		auto shaderPtr		= (ID3D11VertexShader**)&m_vertexShader;
 
-		bool result = D3D11_Shader::CompileVertexShader(
+		// Compile the shader
+		if (D3D11_Shader::CompileVertexShader(
 			m_rhiDevice->GetDevice<ID3D11Device>(),
 			&blobVS,
 			shaderPtr,
 			m_filePath,
 			"DirectusVertexShader",
 			"vs_5_0",
-			&vsMacros.front()
-		);
-
-		// Set input layout
-		if (result)
+			&vsMacros.front()))
 		{
-			result = D3D11_Shader::SetInputLayout(m_rhiDevice->GetDevice<ID3D11Device>(), blobVS, m_inputLayout, inputLayout);
-			if (!result)
+			// Create input layout
+			if (!m_inputLayout->Create(blobVS, inputLayout))
 			{
 				LOGF_ERROR("D3D11_Shader::SetInputLayout: Failed to create vertex input layout for %s", FileSystem::GetFileNameFromFilePath(m_filePath).data());
 			}
+
+			SafeRelease(blobVS);
+			m_compiled			= true;
+			m_hasVertexShader	= true;
+		}
+		else
+		{
+			m_compiled			= false;
+			m_hasVertexShader	= false;
 		}
 
-		SafeRelease(blobVS);
-		m_compiled = result;
-		m_hasVertexShader = true;
-		return result;
+		return m_compiled;
 	}
 
 	bool RHI_Shader::Compile_Pixel(const string& filePath)
@@ -252,7 +237,7 @@ namespace Directus
 		ID3D10Blob* blobPS	= nullptr;
 		auto shaderPtr		= (ID3D11PixelShader**)&m_pixelShader;	
 
-		m_compiled = D3D11_Shader::CompilePixelShader(
+		if (D3D11_Shader::CompilePixelShader(
 			m_rhiDevice->GetDevice<ID3D11Device>(),
 			&blobPS,
 			shaderPtr,
@@ -260,10 +245,18 @@ namespace Directus
 			"DirectusPixelShader",
 			"ps_5_0",
 			&psMacros.front()
-		);
+		))
+		{
+			SafeRelease(blobPS);
+			m_hasPixelShader	= true;
+			m_compiled			= true;
+		}
+		else
+		{
+			m_hasPixelShader	= false;
+			m_compiled			= false;
+		}
 
-		SafeRelease(blobPS);
-		m_hasPixelShader = true;
 		return m_compiled;
 	}
 }
