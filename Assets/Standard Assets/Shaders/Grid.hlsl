@@ -37,14 +37,14 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	projectDepthMapTexCoord.x = input.gridPos.x / input.gridPos.w / 2.0f + 0.5f;
 	projectDepthMapTexCoord.y = -input.gridPos.y / input.gridPos.w / 2.0f + 0.5f;
 	
-	float gridDepth = input.position.z;
+	float gridDepth 	= input.position.z;
 	float depthMapValue = depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
 	
 	// If an object is in front of the grid, discard this grid pixel
-	if (depthMapValue < gridDepth) 
+	if (depthMapValue > gridDepth) 
 		discard;
 	
-	float alpha = (1.0f - gridDepth) - 0.0025f;
+	float alpha = saturate(1.0f - (gridDepth * gridDepth * gridDepth));
 
-	return float4(input.color.rgb, saturate(alpha));
+	return float4(input.color.rgb, alpha);
 }
