@@ -112,14 +112,14 @@ namespace Directus
 		static std::wstring StringToWString(const std::string& str);
 		//==============================================================================================================================================
 
-		//= SUPPORTED ASSET FILE FORMATS ===========================
-		static std::vector<std::string> GetSupportedImageFormats();
-		static std::vector<std::string> GetSupportedAudioFormats();
-		static std::vector<std::string> GetSupportedModelFormats();
-		static std::vector<std::string> GetSupportedShaderFormats();
-		static std::vector<std::string> GetSupportedScriptFormats();
-		static std::vector<std::string> GetSupportedFontFormats();
-		//==========================================================
+		//= SUPPORTED ASSET FILE FORMATS ===============================================================
+		static std::vector<std::string> GetSupportedImageFormats()	{ return m_supportedImageFormats; }
+		static std::vector<std::string> GetSupportedAudioFormats()	{ return m_supportedAudioFormats; }
+		static std::vector<std::string> GetSupportedModelFormats()	{ return m_supportedModelFormats; }
+		static std::vector<std::string> GetSupportedShaderFormats()	{ return m_supportedShaderFormats; }
+		static std::vector<std::string> GetSupportedScriptFormats()	{ return m_supportedScriptFormats; }
+		static std::vector<std::string> GetSupportedFontFormats()	{ return m_supportedFontFormats; }
+		//==============================================================================================
 
 	private:
 		static std::vector<std::string> m_supportedImageFormats;

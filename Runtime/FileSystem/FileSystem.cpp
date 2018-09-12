@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <shellapi.h>
 //=========================
 
-//= NAMESPACES ==========================
+//= NAMESPACES =================
 using namespace std;
-using namespace experimental::filesystem;
-//=======================================
+using namespace std::filesystem;
+//==============================
 
 namespace Directus
 {
@@ -44,128 +44,133 @@ namespace Directus
 
 	void FileSystem::Initialize()
 	{
-		// Set supported image formats
+		// Supported image formats
+		m_supportedImageFormats =
 		{
-			m_supportedImageFormats.emplace_back(".jpg");
-			m_supportedImageFormats.emplace_back(".png");
-			m_supportedImageFormats.emplace_back(".bmp");
-			m_supportedImageFormats.emplace_back(".tga");
-			m_supportedImageFormats.emplace_back(".dds");
-			m_supportedImageFormats.emplace_back(".exr");
-			m_supportedImageFormats.emplace_back(".raw");
-			m_supportedImageFormats.emplace_back(".gif");
-			m_supportedImageFormats.emplace_back(".hdr");
-			m_supportedImageFormats.emplace_back(".ico");
-			m_supportedImageFormats.emplace_back(".iff");
-			m_supportedImageFormats.emplace_back(".jng");
-			m_supportedImageFormats.emplace_back(".jpeg");
-			m_supportedImageFormats.emplace_back(".koala");
-			m_supportedImageFormats.emplace_back(".kodak");
-			m_supportedImageFormats.emplace_back(".mng");
-			m_supportedImageFormats.emplace_back(".pcx");
-			m_supportedImageFormats.emplace_back(".pbm");
-			m_supportedImageFormats.emplace_back(".pgm");
-			m_supportedImageFormats.emplace_back(".ppm");
-			m_supportedImageFormats.emplace_back(".pfm");
-			m_supportedImageFormats.emplace_back(".pict");
-			m_supportedImageFormats.emplace_back(".psd");
-			m_supportedImageFormats.emplace_back(".raw");
-			m_supportedImageFormats.emplace_back(".sgi");
-			m_supportedImageFormats.emplace_back(".targa");
-			m_supportedImageFormats.emplace_back(".tiff");
-			m_supportedImageFormats.emplace_back(".tif"); // tiff can also be tif
-			m_supportedImageFormats.emplace_back(".wbmp");
-			m_supportedImageFormats.emplace_back(".webp");
-			m_supportedImageFormats.emplace_back(".xbm");
-			m_supportedImageFormats.emplace_back(".xpm");
-		}
+			".jpg",
+			".png",
+			".bmp",
+			".tga",
+			".dds",
+			".exr",
+			".raw",
+			".gif",
+			".hdr",
+			".ico",
+			".iff",
+			".jng",
+			".jpeg",
+			".koala",
+			".kodak",
+			".mng",
+			".pcx",
+			".pbm",
+			".pgm",
+			".ppm",
+			".pfm",
+			".pict",
+			".psd",
+			".raw",
+			".sgi",
+			".targa",
+			".tiff",
+			".tif", // tiff can also be tif
+			".wbmp",
+			".webp",
+			".xbm",
+			".xpm"
+		};
 
-		// Set supported audio formats
+		// Supported audio formats
+		m_supportedAudioFormats =
 		{
-			m_supportedAudioFormats.emplace_back(".aiff");
-			m_supportedAudioFormats.emplace_back(".asf");
-			m_supportedAudioFormats.emplace_back(".asx");
-			m_supportedAudioFormats.emplace_back(".dls");
-			m_supportedAudioFormats.emplace_back(".flac");
-			m_supportedAudioFormats.emplace_back(".fsb");
-			m_supportedAudioFormats.emplace_back(".it");
-			m_supportedAudioFormats.emplace_back(".m3u");
-			m_supportedAudioFormats.emplace_back(".midi");
-			m_supportedAudioFormats.emplace_back(".mod");
-			m_supportedAudioFormats.emplace_back(".mp2");
-			m_supportedAudioFormats.emplace_back(".mp3");
-			m_supportedAudioFormats.emplace_back(".ogg");
-			m_supportedAudioFormats.emplace_back(".pls");
-			m_supportedAudioFormats.emplace_back(".s3m");
-			m_supportedAudioFormats.emplace_back(".vag"); // PS2/PSP
-			m_supportedAudioFormats.emplace_back(".wav");
-			m_supportedAudioFormats.emplace_back(".wax");
-			m_supportedAudioFormats.emplace_back(".wma");
-			m_supportedAudioFormats.emplace_back(".xm");
-			m_supportedAudioFormats.emplace_back(".xma"); // XBOX 360
-		}
+			".aiff",
+			".asf",
+			".asx",
+			".dls",
+			".flac",
+			".fsb",
+			".it",
+			".m3u",
+			".midi",
+			".mod",
+			".mp2",
+			".mp3",
+			".ogg",
+			".pls",
+			".s3m",
+			".vag", // PS2/PSP
+			".wav",
+			".wax",
+			".wma",
+			".xm",
+			".xma" // XBOX 360
+		};
 
-		// Set supported model formats
+		// Supported model formats
+		m_supportedModelFormats =
 		{
-			// Foreign formats
-			m_supportedModelFormats.emplace_back(".3ds");
-			m_supportedModelFormats.emplace_back(".obj");
-			m_supportedModelFormats.emplace_back(".fbx");
-			m_supportedModelFormats.emplace_back(".blend");
-			m_supportedModelFormats.emplace_back(".dae");
-			m_supportedModelFormats.emplace_back(".lwo");
-			m_supportedModelFormats.emplace_back(".c4d");
-			m_supportedModelFormats.emplace_back(".ase");
-			m_supportedModelFormats.emplace_back(".dxf");
-			m_supportedModelFormats.emplace_back(".hmp");
-			m_supportedModelFormats.emplace_back(".md2");
-			m_supportedModelFormats.emplace_back(".md3");
-			m_supportedModelFormats.emplace_back(".md5");
-			m_supportedModelFormats.emplace_back(".mdc");
-			m_supportedModelFormats.emplace_back(".mdl");
-			m_supportedModelFormats.emplace_back(".nff");
-			m_supportedModelFormats.emplace_back(".ply");
-			m_supportedModelFormats.emplace_back(".stl");
-			m_supportedModelFormats.emplace_back(".x");
-			m_supportedModelFormats.emplace_back(".smd");
-			m_supportedModelFormats.emplace_back(".lxo");
-			m_supportedModelFormats.emplace_back(".lws");
-			m_supportedModelFormats.emplace_back(".ter");
-			m_supportedModelFormats.emplace_back(".ac3d");
-			m_supportedModelFormats.emplace_back(".ms3d");
-			m_supportedModelFormats.emplace_back(".cob");
-			m_supportedModelFormats.emplace_back(".q3bsp");
-			m_supportedModelFormats.emplace_back(".xgl");
-			m_supportedModelFormats.emplace_back(".csm");
-			m_supportedModelFormats.emplace_back(".bvh");
-			m_supportedModelFormats.emplace_back(".b3d");
-			m_supportedModelFormats.emplace_back(".ndo");
-		}
+			".3ds",
+			".obj",
+			".fbx",
+			".blend",
+			".dae",
+			".lwo",
+			".c4d",
+			".ase",
+			".dxf",
+			".hmp",
+			".md2",
+			".md3",
+			".md5",
+			".mdc",
+			".mdl",
+			".nff",
+			".ply",
+			".stl",
+			".x",
+			".smd",
+			".lxo",
+			".lws",
+			".ter",
+			".ac3d",
+			".ms3d",
+			".cob",
+			".q3bsp",
+			".xgl",
+			".csm",
+			".bvh",
+			".b3d",
+			".ndo"
+		};
 
-		// Set supported shader formats
+		// Supported shader formats
+		m_supportedShaderFormats =
 		{
-			m_supportedShaderFormats.emplace_back(".hlsl");
-		}
+			".hlsl"
+		};
 
-		// Set supported script formats
+		// Supported script formats
+		m_supportedScriptFormats = 
 		{
-			m_supportedScriptFormats.emplace_back(".as");
-		}
+			".as"
+		};
 
-		// Set supported font formats
+		// Supported font formats
+		m_supportedFontFormats =
 		{
-			m_supportedFontFormats.emplace_back(".ttf");
-			m_supportedFontFormats.emplace_back(".ttc");
-			m_supportedFontFormats.emplace_back(".cff");
-			m_supportedFontFormats.emplace_back(".woff");
-			m_supportedFontFormats.emplace_back(".otf");
-			m_supportedFontFormats.emplace_back(".otc");
-			m_supportedFontFormats.emplace_back(".pfa");
-			m_supportedFontFormats.emplace_back(".pfb");
-			m_supportedFontFormats.emplace_back(".fnt");
-			m_supportedFontFormats.emplace_back(".bdf");
-			m_supportedFontFormats.emplace_back(".pfr");
-		}
+			".ttf",
+			".ttc",
+			".cff",
+			".woff",
+			".otf",
+			".otc",
+			".pfa",
+			".pfb",
+			".fnt",
+			".bdf",
+			".pfr"
+		};
 	}
 
 	//= DIRECTORIES ======================================================================
@@ -307,7 +312,7 @@ namespace Directus
 			if (!is_directory(itr->status()))
 				continue;
 
-			subDirs.push_back(itr->path().generic_string());
+			subDirs.emplace_back(itr->path().generic_string());
 		}
 
 		return subDirs;
@@ -322,7 +327,7 @@ namespace Directus
 			if (!is_regular_file(itr->status()))
 				continue;
 
-			filePaths.push_back(itr->path().generic_string());
+			filePaths.emplace_back(itr->path().generic_string());
 		}
 
 		return filePaths;
@@ -332,28 +337,28 @@ namespace Directus
 	//= SUPPORTED FILES IN DIRECTORY ========================================================================================
 	vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
 	{
-		vector<string> filesInDirectory = GetFilesInDirectory(directory);
-		vector<string> imagesInDirectory = GetSupportedImageFilesFromPaths(filesInDirectory); // get all the images
-		vector<string> scriptsInDirectory = GetSupportedScriptFilesFromPaths(filesInDirectory); // get all the scripts
-		vector<string> modelsInDirectory = GetSupportedModelFilesFromPaths(filesInDirectory); // get all the models
+		vector<string> filesInDirectory		= GetFilesInDirectory(directory);
+		vector<string> imagesInDirectory	= GetSupportedImageFilesFromPaths(filesInDirectory); // get all the images
+		vector<string> scriptsInDirectory	= GetSupportedScriptFilesFromPaths(filesInDirectory); // get all the scripts
+		vector<string> modelsInDirectory	= GetSupportedModelFilesFromPaths(filesInDirectory); // get all the models
 		vector<string> supportedFiles;
 
 		// get supported images
 		for (const auto& imageInDirectory : imagesInDirectory)
 		{
-			supportedFiles.push_back(imageInDirectory);
+			supportedFiles.emplace_back(imageInDirectory);
 		}
 
 		// get supported scripts
 		for (const auto& scriptInDirectory : scriptsInDirectory)
 		{
-			supportedFiles.push_back(scriptInDirectory);
+			supportedFiles.emplace_back(scriptInDirectory);
 		}
 
 		// get supported models
 		for (const auto& modelInDirectory : modelsInDirectory)
 		{
-			supportedFiles.push_back(modelInDirectory);
+			supportedFiles.emplace_back(modelInDirectory);
 		}
 
 		return supportedFiles;
@@ -367,7 +372,7 @@ namespace Directus
 			if (!IsSupportedImageFile(path))
 				continue;
 
-			imageFiles.push_back(path);
+			imageFiles.emplace_back(path);
 		}
 
 		return imageFiles;
@@ -381,7 +386,7 @@ namespace Directus
 			if (!IsSupportedAudioFile(path))
 				continue;
 
-			audioFiles.push_back(path);
+			audioFiles.emplace_back(path);
 		}
 
 		return audioFiles;
@@ -395,7 +400,7 @@ namespace Directus
 			if (!IsEngineScriptFile(path))
 				continue;
 
-			scripts.push_back(path);
+			scripts.emplace_back(path);
 		}
 
 		return scripts;
@@ -409,7 +414,7 @@ namespace Directus
 			if (!IsSupportedModelFile(path))
 				continue;
 
-			images.push_back(path);
+			images.emplace_back(path);
 		}
 
 		return images;
@@ -430,7 +435,7 @@ namespace Directus
 			if (!IsEngineSceneFile(file))
 				continue;
 
-			sceneFiles.push_back(file);
+			sceneFiles.emplace_back(file);
 		}
 
 		return sceneFiles;
@@ -685,21 +690,12 @@ namespace Directus
 	wstring FileSystem::StringToWString(const string& str)
 	{
 		int slength = int(str.length()) + 1;
-		int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
-		wchar_t* buf = new wchar_t[len];
+		int len		= MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
+		auto buf	= new wchar_t[len];
 		MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
 		wstring result(buf);
 		delete[] buf;
 		return result;
 	}
 	//=====================================================================================
-
-	//= SUPPORTED ASSET FILE FORMATS ===========================================================
-	vector<string> FileSystem::GetSupportedImageFormats()	{ return m_supportedImageFormats; }
-	vector<string> FileSystem::GetSupportedAudioFormats()	{ return m_supportedAudioFormats; }
-	vector<string> FileSystem::GetSupportedModelFormats()	{ return m_supportedModelFormats; }
-	vector<string> FileSystem::GetSupportedShaderFormats()	{ return m_supportedShaderFormats; }
-	vector<string> FileSystem::GetSupportedScriptFormats()	{ return m_supportedScriptFormats; }
-	vector<string> FileSystem::GetSupportedFontFormats()	{ return m_supportedFontFormats; }
-	//==========================================================================================
 }
