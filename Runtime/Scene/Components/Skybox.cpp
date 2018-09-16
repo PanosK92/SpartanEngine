@@ -130,28 +130,28 @@ namespace Directus
 				m_cubemapTexture->SetHeight(m_size);
 				m_cubemapTexture->SetGrayscale(false);
 			}
-
-			// Material
-			{
-				m_matSkybox->SetResourceName("Standard_Skybox");
-				m_matSkybox->SetCullMode(Cull_Front);
-				m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-				m_matSkybox->SetIsEditable(false);
-				m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
-			}
-
-			// Renderable
-			{
-				auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>().lock();
-				renderable->Geometry_Set(Geometry_Default_Cube);
-				renderable->SetCastShadows(false);
-				renderable->SetReceiveShadows(false);
-				renderable->Material_Set(m_matSkybox, true);
-			}
-
-			// Make the skybox big enough
-			GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 		});
+
+		// Material
+		{
+			m_matSkybox->SetResourceName("Standard_Skybox");
+			m_matSkybox->SetCullMode(Cull_Front);
+			m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+			m_matSkybox->SetIsEditable(false);
+			m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
+		}
+
+		// Renderable
+		{
+			auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>().lock();
+			renderable->Geometry_Set(Geometry_Default_Cube);
+			renderable->SetCastShadows(false);
+			renderable->SetReceiveShadows(false);
+			renderable->Material_Set(m_matSkybox, true);
+		}
+
+		// Make the skybox big enough
+		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 	}
 
 	void Skybox::CreateFromCross(const string& texturePath)
@@ -188,27 +188,27 @@ namespace Directus
 				m_cubemapTexture->SetHeight(m_size);
 				m_cubemapTexture->SetGrayscale(false);
 			}
-
-			// Material
-			{
-				m_matSkybox->SetResourceName("Standard_Skybox");
-				m_matSkybox->SetCullMode(Cull_Front);
-				m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-				m_matSkybox->SetIsEditable(false);
-				m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
-			}
-
-			// Renderable
-			{
-				auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>().lock();
-				renderable->Geometry_Set(Geometry_Default_Cube);
-				renderable->SetCastShadows(false);
-				renderable->SetReceiveShadows(false);
-				renderable->Material_Set(m_matSkybox, true);
-			}
-
-			// Make the skybox big enough
-			GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 		});
+
+		// Material
+		{
+			m_matSkybox->SetResourceName("Standard_Skybox");
+			m_matSkybox->SetCullMode(Cull_Front);
+			m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+			m_matSkybox->SetIsEditable(false);
+			m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
+		}
+
+		// Renderable
+		{
+			auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>().lock();
+			renderable->Geometry_Set(Geometry_Default_Cube);
+			renderable->SetCastShadows(false);
+			renderable->SetReceiveShadows(false);
+			renderable->Material_Set(m_matSkybox, true);
+		}
+
+		// Make the skybox big enough
+		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 	}
 }

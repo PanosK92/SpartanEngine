@@ -225,10 +225,10 @@ namespace Directus
 		return m_shadowMapsProjectionMatrix[index];
 	}
 
-	const std::shared_ptr<RHI_RenderTexture>& Light::ShadowMap_GetRenderTexture(unsigned int index /*= 0*/)
+	weak_ptr<RHI_RenderTexture> Light::ShadowMap_GetRenderTexture(unsigned int index /*= 0*/)
 	{
 		if (index >= (unsigned int)m_shadowMaps.size())
-			return nullptr;
+			return weak_ptr<RHI_RenderTexture>();
 
 		return m_shadowMaps[index];
 	}

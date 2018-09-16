@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_PipelineState.h"
 #include "../RHI/RHI_RenderTexture.h"
-#include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_Shader.h"
 #include "../Scene/Actor.h"
 #include "../Scene/Components/Transform.h"
@@ -516,9 +515,11 @@ namespace Directus
 			{
 				m_rhiDevice->EventBegin("Pass_ShadowMap_" + to_string(i));
 
-				auto& shadowMap = light->ShadowMap_GetRenderTexture(i);
-				m_rhiPipelineState->SetRenderTarget(shadowMap, shadowMap->GetDepthStencilView(), true);
-				m_rhiPipelineState->SetViewport(shadowMap->GetViewport());
+				if (auto shadowMap = light->ShadowMap_GetRenderTexture(i).lock())
+				{
+					m_rhiPipelineState->SetRenderTarget(shadowMap, shadowMap->GetDepthStencilView(), true);
+					m_rhiPipelineState->SetViewport(shadowMap->GetViewport());
+				}
 
 				for (const auto& actorWeak : m_actors[Renderable_ObjectOpaque])
 				{
@@ -1010,9 +1011,9 @@ namespace Directus
 		m_rhiPipelineState->SetTexture(m_texNoiseMap);
 		if (inDirectionalLight)
 		{
-			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(0));
-			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(1));
-			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(2));
+			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(0).lock());
+			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(1).lock());
+			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(2).lock());
 		}
 		m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);		// Shadow mapping
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampGreater);	// SSAO

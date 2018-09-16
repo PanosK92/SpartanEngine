@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Implementation.h"
 #include "Resource/ResourceManager.h"
 #include "Core/Engine.h"
-#include "Core/EventSystem.h"
 #include "FileSystem/FileSystem.h"
 #include "Threading/Threading.h"
 #include "ProgressDialog.h"
@@ -88,11 +87,6 @@ public:
 		m_engine			= nullptr;
 		m_resourceManager	= nullptr;
 		m_scene				= nullptr;
-		m_isLoading			= false;
-
-		SUBSCRIBE_TO_EVENT(EVENT_MODEL_LOADED,	EVENT_HANDLER(ProgressDialog_Hide));
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_SAVED,	EVENT_HANDLER(ProgressDialog_Hide));
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_LOADED,	EVENT_HANDLER(ProgressDialog_Hide));
 	}
 	~EditorHelper(){}
 
@@ -112,10 +106,7 @@ public:
 
 	void Update()
 	{
-		if (m_showProgressDialog)
-		{
-			ProgressDialog_Show();
-		}
+		ProgressDialog_Show();
 	}
 
 	std::weak_ptr<Directus::RHI_Texture> GetOrLoadTexture(const std::string& filePath, bool async = false)
@@ -158,94 +149,76 @@ public:
 
 	void LoadModel(const std::string& filePath)
 	{
-		// Make the engine stop
-		SetEngineUpdate(false);
-		SetEngineLoading(true);
-		
 		// Load the model asynchronously
 		m_context->GetSubsystem<Directus::Threading>()->AddTask([this, filePath]()
 		{
 			m_resourceManager->Load<Directus::Model>(filePath);
 		});
-		m_showProgressDialog = true;
-		m_isLoadingModel = true;
 	}
 
 	void LoadScene(const std::string& filePath)
 	{
-		// Make the engine stop
-		SetEngineUpdate(false);
-		SetEngineLoading(true);
-
 		// Load the scene asynchronously
 		m_context->GetSubsystem<Directus::Threading>()->AddTask([this, filePath]()
 		{
 			m_scene->LoadFromFile(filePath);
-		});		
-		m_showProgressDialog = true;
-		m_isLoadingModel = false;
+		});
 	}
 
 	void SaveScene(const std::string& filePath)
 	{
+		// Save the scene asynchronously
 		m_context->GetSubsystem<Directus::Threading>()->AddTask([this, filePath]()
 		{
 			m_scene->SaveToFile(filePath);
-		});		
-		m_showProgressDialog = true;
-		m_isLoadingModel = false;
+		});
 	}
-
-	// Whether the engine should update & render or not
-	void SetEngineUpdate(bool update)
-	{
-		auto flags = m_engine->EngineMode_GetAll();
-		flags = update ? flags | Directus::Engine_Update : flags & ~Directus::Engine_Update;
-		flags = update ? flags | Directus::Engine_Render : flags & ~Directus::Engine_Render;
-		m_engine->EngineMode_SetAll(flags);
-	}
-	// LOADING (Whether any editor system caused the engine to load something
-	void SetEngineLoading(bool loading) { m_isLoading = loading; }
-	bool GetEngineLoading() { return m_isLoading; }
 
 	//= CONVERSIONS ===================================================================================================
 	static Directus::Math::Vector4 ToVector4(const ImVec4& v)	{ return Directus::Math::Vector4(v.x, v.y, v.z, v.w); }
 	static Directus::Math::Vector2 ToVector2(const ImVec2& v)	{ return Directus::Math::Vector2{ v.x,v.y }; }
 	//=================================================================================================================
 
+	bool IsLoading()
+	{
+		Directus::ProgressReport& progressReport = Directus::ProgressReport::Get();
+
+		bool isLoadingModel = progressReport.GetIsLoading(Directus::g_progress_ModelImporter);
+		bool isLoadingScene = progressReport.GetIsLoading(Directus::g_progress_Scene);
+		bool isLoading		= isLoadingModel || isLoadingScene;
+
+		return isLoading;
+	}
+
 private:
 	void ProgressDialog_Show()
 	{
+		Directus::ProgressReport& progressReport = Directus::ProgressReport::Get();
+		ProgressDialog& progressDialog = ProgressDialog::Get();
+
+		bool isLoadingModel = progressReport.GetIsLoading(Directus::g_progress_ModelImporter);
+		bool isLoadingScene = progressReport.GetIsLoading(Directus::g_progress_Scene);
+		bool isLoading		= isLoadingModel || isLoadingScene;
+
 		// Tick	
-		ProgressDialog::Get().SetIsVisible(m_showProgressDialog);
+		ProgressDialog::Get().SetIsVisible(isLoading);
 		ProgressDialog::Get().Update();
 
 		// Show progress
-		if (m_isLoadingModel)
+		if (isLoadingModel)
 		{
-			ProgressDialog::Get().SetProgress(Directus::ProgressReport::Get().GetPercentage(Directus::g_progress_ModelImporter));
-			ProgressDialog::Get().SetProgressStatus(Directus::ProgressReport::Get().GetStatus(Directus::g_progress_ModelImporter));
+			progressDialog.SetProgress(progressReport.GetPercentage(Directus::g_progress_ModelImporter));
+			progressDialog.SetProgressStatus(progressReport.GetStatus(Directus::g_progress_ModelImporter));
 		}
-		else
+		else if (isLoadingScene)
 		{
-			ProgressDialog::Get().SetProgress(Directus::ProgressReport::Get().GetPercentage(Directus::g_progress_Scene));
-			ProgressDialog::Get().SetProgressStatus(Directus::ProgressReport::Get().GetStatus(Directus::g_progress_Scene));
+			progressDialog.SetProgress(progressReport.GetPercentage(Directus::g_progress_Scene));
+			progressDialog.SetProgressStatus(progressReport.GetStatus(Directus::g_progress_Scene));
 		}
-	}
-
-	void ProgressDialog_Hide()
-	{
-		m_showProgressDialog = false;
-		ProgressDialog::Get().SetIsVisible(false);
-		SetEngineUpdate(true);
-		SetEngineLoading(false);
 	}
 
 	Directus::Context* m_context;
 	Directus::Engine* m_engine;
 	Directus::ResourceManager* m_resourceManager;
 	Directus::Scene* m_scene;
-	bool m_isLoading;
-	bool m_showProgressDialog = false;
-	bool m_isLoadingModel = false;
 };

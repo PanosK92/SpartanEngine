@@ -32,6 +32,13 @@ namespace Directus
 	class Actor;
 	class Light;
 
+	enum SceneAsync_State
+	{
+		SceneAsync_Tick,
+		SceneAsync_IO,
+		SceneAsync_Idle
+	};
+
 	class ENGINE_CLASS Scene : public Subsystem
 	{
 	public:
@@ -42,23 +49,15 @@ namespace Directus
 		bool Initialize() override;
 		//=========================
 
-		//= Actor events ===============================
-		// Runs every time the simulation starts
-		void Start();
-		// Runs every time the simulation stops
-		void Stop();
-		// Runs every frame
-		void Update();
-		// Runs when all actors should be destroyed
+		void Tick();
 		void Clear();
-		//==============================================
 
 		//= IO ========================================
 		bool SaveToFile(const std::string& filePath);
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= actor HELPER FUNCTIONS =============================================================
+		//= actor HELPER FUNCTIONS ===================================================
 		std::weak_ptr<Actor> Actor_CreateAdd();
 		void Actor_Add(std::shared_ptr<Actor> actor);
 		bool Actor_Exists(const std::weak_ptr<Actor>& actor);
@@ -69,16 +68,18 @@ namespace Directus
 		std::weak_ptr<Actor> GetActorByName(const std::string& name);
 		std::weak_ptr<Actor> GetActorByID(unsigned int ID);	
 		int GetactorCount() { return (int)m_actors.size(); }
-		//===========================================================================================
+		//============================================================================
 
-		//= SCENE RESOLUTION  ==============================
+		//= SCENE RESOLUTION  ===============================================================
 		void Resolve();
-		const std::vector<std::weak_ptr<Actor>>& GetRenderables() { return m_renderables; }
-		std::weak_ptr<Actor> GetMainCamera() { return m_mainCamera; }
+		const std::vector<std::weak_ptr<Actor>>& GetRenderables()	{ return m_renderables; }
+		std::weak_ptr<Actor> GetMainCamera()						{ return m_mainCamera; }
+		//===================================================================================
 
 		//= MISC =======================================
 		void SetAmbientLight(float x, float y, float z);
 		Math::Vector3 GetAmbientLight();
+		//==============================================
 
 	private:
 		//= COMMON ACTOR CREATION ====================
@@ -93,6 +94,8 @@ namespace Directus
 		std::weak_ptr<Actor> m_mainCamera;
 		std::weak_ptr<Actor> m_skybox;
 		Math::Vector3 m_ambientLight;
-		bool m_isInEditorMode;
+		bool m_wasInEditorMode;
+		bool m_isDirty;
+		SceneAsync_State m_asyncState;
 	};
 }

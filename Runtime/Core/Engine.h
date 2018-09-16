@@ -26,7 +26,7 @@ namespace Directus
 	enum Engine_Mode : unsigned long
 	{
 		Engine_Update	= 1UL << 0,	// Should the engine update?
-		Engine_Physics	= 1UL << 1, // Should physics update?	
+		Engine_Physics	= 1UL << 1, // Should the physics update?	
 		Engine_Render	= 1UL << 2,	// Should the engine render?
 		Engine_Game		= 1UL << 3,	// Is the engine running in game or editor mode?
 	};

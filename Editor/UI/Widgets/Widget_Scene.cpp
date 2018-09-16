@@ -80,7 +80,7 @@ void Widget_Scene::Initialize(Context* context)
 void Widget_Scene::Update(float deltaTime)
 {
 	// If something is being loaded, don't parse the hierarchy
-	if (EditorHelper::Get().GetEngineLoading())
+	if (EditorHelper::Get().IsLoading())
 		return;
 	
 	Tree_Show();
@@ -145,6 +145,9 @@ void Widget_Scene::OnTreeEnd()
 
 void Widget_Scene::Tree_AddActor(Actor* actor)
 {
+	if (!actor)
+		return;
+
 	// Node self visibility
 	if (!actor->IsVisibleInHierarchy())
 		return;

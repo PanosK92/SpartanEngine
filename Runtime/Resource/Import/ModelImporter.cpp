@@ -90,8 +90,13 @@ namespace Directus
 			return false;
 		}
 
-		m_model = model;
+		m_model		= model;
 		m_modelPath = filePath;
+
+		// Start progress tracking
+		ProgressReport& progress = ProgressReport::Get();
+		progress.Reset(g_progress_ModelImporter);
+		progress.SetIsLoading(g_progress_ModelImporter, true);
 
 		// Set up an Assimp importer
 		Assimp::Importer importer;
@@ -101,8 +106,7 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, AssimpSettings::g_normalSmoothAngle); 
 
 		// Read the 3D model file from disk
-		ProgressReport::Get().Reset(g_progress_ModelImporter);
-		ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" from disk...");
+		progress.SetStatus(g_progress_ModelImporter, "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" from disk...");
 		const aiScene* scene = importer.ReadFile(m_modelPath, AssimpSettings::g_postProcessSteps);
 		if (!scene)
 		{

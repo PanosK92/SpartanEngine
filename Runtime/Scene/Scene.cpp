@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Skybox.h"
 #include "Components/AudioListener.h"
 #include "../Core/Engine.h"
-#include "../Core/Timer.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceManager.h"
 #include "../Resource/ProgressReport.h"
@@ -49,9 +48,10 @@ namespace Directus
 	Scene::Scene(Context* context) : Subsystem(context)
 	{
 		m_ambientLight	= Vector3::Zero;
+		m_asyncState	= SceneAsync_Idle;
 
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE, EVENT_HANDLER(Resolve));
-		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Update));
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE, [this](Variant) { m_isDirty = true; });
+		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Tick));
 	}
 
 	Scene::~Scene()
@@ -61,52 +61,58 @@ namespace Directus
 
 	bool Scene::Initialize()
 	{
-		m_mainCamera = CreateCamera();
+		m_isDirty		= true;
+		m_mainCamera	= CreateCamera();
 		CreateSkybox();
 		CreateDirectionalLight();
-		Resolve();
 
 		return true;
 	}
 
-	void Scene::Start()
-	{
-		for (const auto& actor : m_actors)
-		{
-			actor->Start();
-		}
-	}
-
-	void Scene::Stop()
-	{
-		for (const auto& actor : m_actors)
-		{
-			actor->Stop();
-		}
-	}
-
-	void Scene::Update()
+	void Scene::Tick()
 	{	
+		// Thread safety: Wait for scene to finish all jobs before ticking
+		if (m_asyncState != SceneAsync_Idle)
+			return;
+
 		TIME_BLOCK_START_CPU();
 
-		//= DETECT TOGGLING TO GAME MODE =============================
-		if (Engine::EngineMode_IsSet(Engine_Game) && m_isInEditorMode)
-		{
-			Start();
-		}
-		//============================================================
-		//= DETECT TOGGLING TO EDITOR MODE ============================
-		if (!Engine::EngineMode_IsSet(Engine_Game) && !m_isInEditorMode)
-		{
-			Stop();
-		}
-		//=============================================================
-		m_isInEditorMode = !Engine::EngineMode_IsSet(Engine_Game);
+		m_asyncState = SceneAsync_Tick;
 
+		if (m_isDirty)
+		{
+			Resolve();
+			m_isDirty = false;
+		}
+
+		// Detect game toggling
+		bool started		= Engine::EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
+		bool stopped		= !Engine::EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
+		m_wasInEditorMode	= !Engine::EngineMode_IsSet(Engine_Game);
+
+		// ACTOR START
+		if (started)
+		{			
+			for (const auto& actor : m_actors)
+			{
+				actor->Start();
+			}
+		}
+		// ACTOR STOP
+		if (stopped)
+		{		
+			for (const auto& actor : m_actors)
+			{
+				actor->Stop();
+			}
+		}
+		// ACTOR TICK
 		for (const auto& actor : m_actors)
 		{
 			actor->Tick();
 		}
+
+		m_asyncState = SceneAsync_Idle;
 
 		TIME_BLOCK_END_CPU();
 	}
@@ -127,6 +133,7 @@ namespace Directus
 	bool Scene::SaveToFile(const string& filePathIn)
 	{
 		ProgressReport::Get().Reset(g_progress_Scene);
+		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
 		ProgressReport::Get().SetStatus(g_progress_Scene, "Saving scene...");
 		Stopwatch timer;
 	
@@ -143,7 +150,10 @@ namespace Directus
 		// Create a prefab file
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
 		if (!file->IsOpen())
+		{
+			m_asyncState = SceneAsync_Idle;
 			return false;
+		}
 
 		// Save currently loaded resource paths
 		vector<string> filePaths;
@@ -171,11 +181,10 @@ namespace Directus
 		}
 		//==============================================
 
-		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
-		FIRE_EVENT(EVENT_SCENE_SAVED);
-
+		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
 
+		FIRE_EVENT(EVENT_SCENE_SAVED);
 		return true;
 	}
 
@@ -187,9 +196,18 @@ namespace Directus
 			return false;
 		}
 
-		Clear(); 
+		// Thread safety: Wait for scene to finish ticking before altering it
+		while (m_asyncState == SceneAsync_Tick)
+		{
+			this_thread::sleep_for(chrono::milliseconds(10));
+		}
+		m_asyncState = SceneAsync_IO;
+		 
 		ProgressReport::Get().Reset(g_progress_Scene);
+		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
 		ProgressReport::Get().SetStatus(g_progress_Scene, "Loading scene...");
+
+		Clear();
 
 		// Read all the resource file paths
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
@@ -247,11 +265,12 @@ namespace Directus
 		}
 		//==============================================
 
-		Resolve();
+		m_isDirty = true;
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
 		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
-		FIRE_EVENT(EVENT_SCENE_LOADED);
+		m_asyncState = SceneAsync_Idle;
 
+		FIRE_EVENT(EVENT_SCENE_LOADED);
 		return true;
 	}
 	//===================================================================================================
@@ -321,7 +340,7 @@ namespace Directus
 			parent->AcquireChildren();
 		}
 
-		Resolve();
+		m_isDirty = true;
 	}
 
 	vector<weak_ptr<Actor>> Scene::GetRootActors()
