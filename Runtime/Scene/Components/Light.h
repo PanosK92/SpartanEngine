@@ -92,7 +92,7 @@ namespace Directus
 		
 		// Shadow maps
 		const Math::Matrix& ShadowMap_GetProjectionMatrix(unsigned int index = 0);
-		const std::shared_ptr<RHI_RenderTexture>& ShadowMap_GetRenderTexture(unsigned int index = 0);
+		std::weak_ptr<RHI_RenderTexture> ShadowMap_GetRenderTexture(unsigned int index = 0);
 		float ShadowMap_GetSplit(unsigned int index = 0);
 		void ShadowMap_SetSplit(float split, unsigned int index = 0);
 		std::shared_ptr<Math::Frustum> ShadowMap_IsInViewFrustrum(unsigned int index = 0);
