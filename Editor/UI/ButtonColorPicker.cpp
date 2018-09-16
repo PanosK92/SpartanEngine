@@ -57,7 +57,7 @@ ButtonColorPicker::ButtonColorPicker(const string& windowTitle)
 
 void ButtonColorPicker::Update()
 {
-	if (ImGui::ColorButton(ButtonColorPicker_Settings::g_buttonLabel.c_str(), EditorHelper::ToImVec4(m_color)))
+	if (ImGui::ColorButton(ButtonColorPicker_Settings::g_buttonLabel.c_str(), m_color))
 	{
 		m_isVisible = true;
 	}
