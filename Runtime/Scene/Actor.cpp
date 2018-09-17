@@ -272,7 +272,7 @@ namespace Directus
 		}
 
 		// Make the scene resolve
-		FIRE_EVENT(EVENT_SCENE_RESOLVE);
+		FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
 	}
 
 	weak_ptr<IComponent> Actor::AddComponent(ComponentType type)
@@ -299,7 +299,7 @@ namespace Directus
 		}
 
 		// Make the scene resolve
-		FIRE_EVENT(EVENT_SCENE_RESOLVE);
+		FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
 
 		return component;
 	}
@@ -322,6 +322,6 @@ namespace Directus
 		}
 
 		// Make the scene resolve
-		FIRE_EVENT(EVENT_SCENE_RESOLVE);
+		FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
 	}
 }

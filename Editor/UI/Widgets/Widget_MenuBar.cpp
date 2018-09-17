@@ -63,7 +63,7 @@ void Widget_MenuBar::Update(float deltaTime)
 		{
 			if (ImGui::MenuItem("New"))
 			{
-				m_context->GetSubsystem<Scene>()->Clear();
+				m_context->GetSubsystem<Scene>()->Unload();
 			}
 
 			ImGui::Separator();

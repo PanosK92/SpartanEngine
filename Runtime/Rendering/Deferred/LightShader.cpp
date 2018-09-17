@@ -60,7 +60,7 @@ namespace Directus
 		const Matrix& mBaseView,
 		const Matrix& mPerspectiveProjection,
 		const Matrix& mOrthographicProjection,
-		const vector<weak_ptr<Actor>>& lights,
+		const vector<Actor*>& lights,
 		Camera* camera
 	)
 	{
@@ -100,10 +100,9 @@ namespace Directus
 		}
 
 		// Fill with directional lights
-		for (const auto& lightWeak : lights)
+		for (const auto& light : lights)
 		{
-			auto light		= lightWeak.lock();
-			auto component	= light->GetComponent<Light>().lock();
+			auto component = light->GetComponent<Light>().lock();
 
 			if (component->GetLightType() != LightType_Directional)
 				continue;
@@ -117,10 +116,9 @@ namespace Directus
 
 		// Fill with point lights
 		int pointIndex = 0;
-		for (const auto& lightWeak : lights)
+		for (const auto& light : lights)
 		{
-			auto light		= lightWeak.lock();
-			auto component	= light->GetComponent<Light>().lock();
+			auto component = light->GetComponent<Light>().lock();
 
 			if (component->GetLightType() != LightType_Point)
 				continue;
@@ -136,10 +134,9 @@ namespace Directus
 
 		// Fill with spot lights
 		int spotIndex = 0;
-		for (const auto& lightWeak : lights)
+		for (const auto& light : lights)
 		{
-			auto light		= lightWeak.lock();
-			auto component	= light->GetComponent<Light>().lock();
+			auto component = light->GetComponent<Light>().lock();
 
 			if (component->GetLightType() != LightType_Spot)
 				continue;

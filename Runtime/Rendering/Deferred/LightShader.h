@@ -45,7 +45,7 @@ namespace Directus
 			const Math::Matrix& mBaseView,
 			const Math::Matrix& mPerspectiveProjection,
 			const Math::Matrix& mOrthographicProjection,
-			const std::vector<std::weak_ptr<Actor>>& lights,
+			const std::vector<Actor*>& lights,
 			Camera* camera
 		);
 		bool IsCompiled();
