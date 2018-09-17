@@ -21,14 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include <memory>
 #include <string>
 #include <map>
 #include <vector>
 #include "RHI_Definition.h"
 #include "..\Core\EngineDefs.h"
-//=============================
+#include "..\Core\Context.h"
+#include "..\Threading\Threading.h"
+#include "..\Logging\Log.h"
+//=================================
 
 namespace Directus
 {
@@ -41,11 +44,17 @@ namespace Directus
 		bool Compile_Vertex(const std::string& filePath, Input_Layout inputLayout);
 		bool Compile_Pixel(const std::string& filePath);
 		//=========================================================================
-		bool Compile_VertexPixel(const std::string& filePath, Input_Layout inputLayout)
+
+		void Compile_VertexPixel_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
 		{
-			return Compile_Vertex(filePath, inputLayout) && Compile_Pixel(filePath);
+			context->GetSubsystem<Threading>()->AddTask([this, filePath, inputLayout]()
+			{
+				LOGF_INFO("RHI_Shader::Compile_VertexPixel_Async: Compiling %s...", filePath.c_str());
+				Compile_Vertex(filePath, inputLayout);
+				Compile_Pixel(filePath);
+			});
 		}
-		
+
 		void AddDefine(const std::string& define, const std::string& value = "1");
 
 		template <typename T>

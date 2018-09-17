@@ -121,100 +121,100 @@ namespace Directus
 		{
 			// Light
 			m_shaderLight = make_shared<LightShader>();
-			m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_rhiDevice);
+			m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_rhiDevice, m_context);
 
 			// Line
 			m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderLine->Compile_VertexPixel(shaderDirectory + "Line.hlsl", Input_PositionColor);
+			m_shaderLine->Compile_VertexPixel_Async(shaderDirectory + "Line.hlsl", Input_PositionColor, m_context);
 			m_shaderLine->AddBuffer<Struct_Matrix_Matrix_Matrix>(0, Buffer_VertexShader);
 
 			// Depth
 			m_shaderLightDepth = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderLightDepth->Compile_VertexPixel(shaderDirectory + "ShadowingDepth.hlsl", Input_Position);
+			m_shaderLightDepth->Compile_VertexPixel_Async(shaderDirectory + "ShadowingDepth.hlsl", Input_Position, m_context);
 			m_shaderLightDepth->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
 
 			// Grid
 			m_shaderGrid = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderGrid->Compile_VertexPixel(shaderDirectory + "Grid.hlsl", Input_PositionColor);
+			m_shaderGrid->Compile_VertexPixel_Async(shaderDirectory + "Grid.hlsl", Input_PositionColor, m_context);
 			m_shaderGrid->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);;
 
 			// Font
 			m_shaderFont = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderFont->Compile_VertexPixel(shaderDirectory + "Font.hlsl", Input_PositionTexture);
+			m_shaderFont->Compile_VertexPixel_Async(shaderDirectory + "Font.hlsl", Input_PositionTexture, m_context);
 			m_shaderFont->AddBuffer<Struct_Matrix_Vector4>(0, Buffer_Global);
 
 			// Texture
 			m_shaderTexture = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderTexture->Compile_VertexPixel(shaderDirectory + "Texture.hlsl", Input_PositionTexture);
+			m_shaderTexture->Compile_VertexPixel_Async(shaderDirectory + "Texture.hlsl", Input_PositionTexture, m_context);
 			m_shaderTexture->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
 
 			// FXAA
 			m_shaderFXAA = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderFXAA->AddDefine("PASS_FXAA");
-			m_shaderFXAA->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
+			m_shaderFXAA->Compile_VertexPixel_Async(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderFXAA->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Sharpening
 			m_shaderSharpening = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderSharpening->AddDefine("PASS_SHARPENING");
-			m_shaderSharpening->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
+			m_shaderSharpening->Compile_VertexPixel_Async(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderSharpening->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Chromatic aberration
 			m_shaderChromaticAberration = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
-			m_shaderChromaticAberration->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
+			m_shaderChromaticAberration->Compile_VertexPixel_Async(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderChromaticAberration->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Blur Box
 			m_shaderBlurBox = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
-			m_shaderBlurBox->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);	
+			m_shaderBlurBox->Compile_VertexPixel_Async(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderBlurBox->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Blur Gaussian Horizontal
 			m_shaderBlurGaussianH = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBlurGaussianH->AddDefine("PASS_BLUR_GAUSSIAN_H");
-			m_shaderBlurGaussianH->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
+			m_shaderBlurGaussianH->Compile_VertexPixel_Async(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderBlurGaussianH->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Blur Gaussian Vertical
 			m_shaderBlurGaussianV = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V", "1");
-			m_shaderBlurGaussianV->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
+			m_shaderBlurGaussianV->Compile_VertexPixel_Async(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderBlurGaussianV->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Bloom - bright
 			m_shaderBloom_Bright = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT", "1");
-			m_shaderBloom_Bright->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
+			m_shaderBloom_Bright->Compile_VertexPixel_Async(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderBloom_Bright->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Bloom - blend
 			m_shaderBloom_BlurBlend = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
-			m_shaderBloom_BlurBlend->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);
+			m_shaderBloom_BlurBlend->Compile_VertexPixel_Async(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderBloom_BlurBlend->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Tone-mapping
 			m_shaderCorrection = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderCorrection->AddDefine("PASS_CORRECTION");
-			m_shaderCorrection->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture);		
+			m_shaderCorrection->Compile_VertexPixel_Async(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderCorrection->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Transformation gizmo
 			m_shaderTransformationGizmo = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderTransformationGizmo->Compile_VertexPixel(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN);
+			m_shaderTransformationGizmo->Compile_VertexPixel_Async(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN, m_context);
 			m_shaderTransformationGizmo->AddBuffer<Struct_Matrix_Vector3_Vector3>(0, Buffer_Global);
 
 			// Shadowing (shadow mapping & SSAO)
 			m_shaderShadowing = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderShadowing->Compile_VertexPixel(shaderDirectory + "Shadowing.hlsl", Input_PositionTexture);
+			m_shaderShadowing->Compile_VertexPixel_Async(shaderDirectory + "Shadowing.hlsl", Input_PositionTexture, m_context);
 			m_shaderShadowing->AddBuffer<Struct_Shadowing>(0, Buffer_Global);
 
 			// Transparent
 			m_shaderTransparent = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderTransparent->Compile_VertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureTBN);
+			m_shaderTransparent->Compile_VertexPixel_Async(shaderDirectory + "Transparent.hlsl", Input_PositionTextureTBN, m_context);
 			m_shaderTransparent->AddBuffer<Struct_Transparency>(0, Buffer_Global);
 		}
 
@@ -515,7 +515,7 @@ namespace Directus
 			{
 				m_rhiDevice->EventBegin("Pass_ShadowMap_" + to_string(i));
 
-				if (auto shadowMap = light->ShadowMap_GetRenderTexture(i).lock())
+				if (auto shadowMap = light->ShadowMap_GetRenderTexture(i))
 				{
 					m_rhiPipelineState->SetRenderTarget(shadowMap, shadowMap->GetDepthStencilView(), true);
 					m_rhiPipelineState->SetViewport(shadowMap->GetViewport());
@@ -1011,9 +1011,9 @@ namespace Directus
 		m_rhiPipelineState->SetTexture(m_texNoiseMap);
 		if (inDirectionalLight)
 		{
-			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(0).lock());
-			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(1).lock());
-			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(2).lock());
+			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(0));
+			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(1));
+			m_rhiPipelineState->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(2));
 		}
 		m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);		// Shadow mapping
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampGreater);	// SSAO

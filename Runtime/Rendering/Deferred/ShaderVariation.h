@@ -54,7 +54,7 @@ namespace Directus
 		ShaderVariation(Context* context);
 		~ShaderVariation(){}
 
-		void Compile(const std::string& filePath, unsigned long shaderFlags);
+		void Compile(const std::string& filePath, unsigned long shaderFlags, Context* context);
 
 		void UpdatePerMaterialBuffer(Camera* camera, Material* material);
 		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);

@@ -41,13 +41,13 @@ namespace Directus
 		m_rhiDevice = nullptr;
 	}
 
-	void LightShader::Compile(const string& filePath, shared_ptr<RHI_Device> rhiDevice)
+	void LightShader::Compile(const string& filePath, shared_ptr<RHI_Device> rhiDevice, Context* context)
 	{
 		m_rhiDevice = rhiDevice;
 
 		// Load the vertex and the pixel shader
 		m_shader = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shader->Compile_VertexPixel(filePath, Input_PositionTextureTBN);
+		m_shader->Compile_VertexPixel_Async(filePath, Input_PositionTextureTBN, context);
 
 		// Create constant buffer
 		m_cbuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);

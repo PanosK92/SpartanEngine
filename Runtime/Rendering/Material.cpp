@@ -282,7 +282,7 @@ namespace Directus
 
 		// Create and initialize shader
 		auto shader = make_shared<ShaderVariation>(m_context);
-		shader->Compile(m_context->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shaderFlags);
+		shader->Compile(m_context->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shaderFlags, m_context);
 		shader->SetResourceName("ShaderVariation_" + to_string(shader->GetResourceID())); // set a different name for it's shader the cache doesn't thing they are the same
 
 		// Add the shader to the pool and return it
