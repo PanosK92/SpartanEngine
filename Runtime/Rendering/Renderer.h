@@ -115,11 +115,13 @@ namespace Directus
 		void Clear();
 		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
 
+		static bool IsRendering() { return m_isRendering; }
+
 	private:
 		void RenderTargets_Create(int width, int height);
 
 		void Renderables_Acquire(const Variant& renderables);
-		void Renderables_Sort(std::vector<std::weak_ptr<Actor>>* renderables);
+		void Renderables_Sort(std::vector<Actor*>* renderables);
 
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
@@ -182,7 +184,7 @@ namespace Directus
 		const Math::Vector4& GetClearColor();
 
 		// RENDERABLES ======================================================
-		std::map<RenderableType, std::vector<std::weak_ptr<Actor>>> m_actors;
+		std::map<RenderableType, std::vector<Actor*>> m_actors;
 		Math::Matrix m_mV;
 		Math::Matrix m_mP_perspective;
 		Math::Matrix m_mP_orthographic;
@@ -202,6 +204,7 @@ namespace Directus
 		std::unique_ptr<GBuffer> m_gbuffer;	
 		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
+		static bool m_isRendering;
 		//=================================================
 
 		//= RENDER TEXTURES ====================================

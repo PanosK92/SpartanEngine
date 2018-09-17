@@ -96,7 +96,7 @@ namespace Directus
 			}
 
 			// Make the scene resolve
-			FIRE_EVENT(EVENT_SCENE_RESOLVE);
+			FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
 
 			// Return it as a component of the requested type
 			return newComponent;
@@ -165,7 +165,7 @@ namespace Directus
 			}
 
 			// Make the scene resolve
-			FIRE_EVENT(EVENT_SCENE_RESOLVE);
+			FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
 		}
 
 		void RemoveComponentByID(unsigned int id);

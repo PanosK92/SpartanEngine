@@ -56,6 +56,7 @@ namespace Directus
 	static Physics* g_physics				= nullptr;
 	static ResourceManager* g_resourceMng	= nullptr;
 	unsigned long Renderer::m_flags;
+	bool Renderer::m_isRendering			= false;
 
 	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
 	{
@@ -79,7 +80,8 @@ namespace Directus
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVED, EVENT_HANDLER_VARIANT(Renderables_Acquire));
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE_END, EVENT_HANDLER_VARIANT(Renderables_Acquire));
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_UNLOAD, [this](Variant) { Clear(); });
 	}
 
 	Renderer::~Renderer()
@@ -262,29 +264,32 @@ namespace Directus
 
 	void Renderer::Render()
 	{
+		TIME_BLOCK_START_MULTI();
+
 		if (!m_rhiDevice || !m_rhiDevice->IsInitialized())
 			return;
 
-		TIME_BLOCK_START_MULTI();
+		m_isRendering = true;
 		Profiler::Get().Reset();
 
 		// If there is a camera, render the scene
-		if (GetCamera())
+		if (auto camera = GetCamera())
 		{
-			m_mV					= GetCamera()->GetViewMatrix();
-			m_mV_base				= GetCamera()->GetBaseViewMatrix();
-			m_mP_perspective		= GetCamera()->GetProjectionMatrix();
+			m_mV					= camera->GetViewMatrix();
+			m_mV_base				= camera->GetBaseViewMatrix();
+			m_mP_perspective		= camera->GetProjectionMatrix();
 			m_mP_orthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight(), m_nearPlane, m_farPlane);		
 			m_wvp_perspective		= m_mV * m_mP_perspective;
 			m_wvp_baseOrthographic	= m_mV_base * m_mP_orthographic;
-			m_nearPlane				= GetCamera()->GetNearPlane();
-			m_farPlane				= GetCamera()->GetFarPlane();
+			m_nearPlane				= camera->GetNearPlane();
+			m_farPlane				= camera->GetFarPlane();
 
 			// If there is nothing to render clear to camera's color and present
 			if (m_actors.empty())
 			{
-				m_rhiDevice->ClearBackBuffer(GetCamera()->GetClearColor());
+				m_rhiDevice->ClearBackBuffer(camera->GetClearColor());
 				m_rhiDevice->Present();
+				m_isRendering = false;
 				return;
 			}
 
@@ -317,6 +322,8 @@ namespace Directus
 		{
 			m_rhiDevice->ClearBackBuffer(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
+
+		m_isRendering = false;
 
 		TIME_BLOCK_END_MULTI();
 	}
@@ -398,36 +405,36 @@ namespace Directus
 
 		for (const auto& actorWeak : actorsVec)
 		{
-			auto actorShared = actorWeak.lock();
-			if (!actorShared)
+			auto actor = actorWeak.lock().get();
+			if (!actor)
 				continue;
 
 			// Get all the components we are interested in
-			auto renderable = actorShared->GetComponent<Renderable>().lock();
-			auto light		= actorShared->GetComponent<Light>().lock();
-			auto skybox		= actorShared->GetComponent<Skybox>().lock();
-			auto camera		= actorShared->GetComponent<Camera>().lock();
+			auto renderable = actor->GetComponent<Renderable>().lock();
+			auto light		= actor->GetComponent<Light>().lock();
+			auto skybox		= actor->GetComponent<Skybox>().lock();
+			auto camera		= actor->GetComponent<Camera>().lock();
 
 			if (renderable)
 			{
 				bool isTransparent = !renderable->Material_Exists() ? false : renderable->Material_PtrRaw()->GetColorAlbedo().w < 1.0f;
-				m_actors[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(actorWeak);
+				m_actors[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(actor);
 			}
 
 			if (light)
 			{
-				m_actors[Renderable_Light].emplace_back(actorWeak);
+				m_actors[Renderable_Light].emplace_back(actor);
 			}
 
 			if (skybox)
 			{
-				m_actors[Renderable_Skybox].emplace_back(actorWeak);
-				m_lineRenderer = actorShared->GetComponent<LineRenderer>().lock().get(); // Hush hush...
+				m_actors[Renderable_Skybox].emplace_back(actor);
+				m_lineRenderer = actor->GetComponent<LineRenderer>().lock().get(); // Hush hush...
 			}
 
 			if (camera)
 			{
-				m_actors[Renderable_Camera].emplace_back(actorWeak);
+				m_actors[Renderable_Camera].emplace_back(actor);
 			}
 		}
 
@@ -437,16 +444,16 @@ namespace Directus
 		TIME_BLOCK_END_CPU();
 	}
 
-	void Renderer::Renderables_Sort(vector<weak_ptr<Actor>>* renderables)
+	void Renderer::Renderables_Sort(vector<Actor*>* renderables)
 	{
 		if (renderables->size() <= 2)
 			return;
 
-		sort(renderables->begin(), renderables->end(),[](weak_ptr<Actor> a, weak_ptr<Actor> b)
+		sort(renderables->begin(), renderables->end(),[](Actor* a, Actor* b)
 		{
 			// Get renderable component
-			auto a_renderable = a.lock()->GetRenderable_PtrRaw();
-			auto b_renderable = b.lock()->GetRenderable_PtrRaw();
+			auto a_renderable = a->GetRenderable_PtrRaw();
+			auto b_renderable = b->GetRenderable_PtrRaw();
 
 			// Validate renderable components
 			if (!a_renderable || !b_renderable)
@@ -509,7 +516,9 @@ namespace Directus
 		// Variables that help reduce state changes
 		unsigned int currentlyBoundGeometry = 0;
 
-		if (!m_actors.empty())
+		auto& actors = m_actors[Renderable_ObjectOpaque];
+
+		if (!actors.empty())
 		{
 			for (unsigned int i = 0; i < light->ShadowMap_GetCount(); i++)
 			{
@@ -521,12 +530,8 @@ namespace Directus
 					m_rhiPipelineState->SetViewport(shadowMap->GetViewport());
 				}
 
-				for (const auto& actorWeak : m_actors[Renderable_ObjectOpaque])
+				for (const auto& actor : actors)
 				{
-					auto actor = actorWeak.lock();
-					if (!actor)
-						continue;
-
 					// Acquire renderable component
 					Renderable* renderable = actor->GetRenderable_PtrRaw();
 					if (!renderable)
@@ -596,12 +601,8 @@ namespace Directus
 		unsigned int currentlyBoundShader	= 0;
 		unsigned int currentlyBoundMaterial = 0;
 
-		for (auto actorWeak : m_actors[Renderable_ObjectOpaque])
+		for (auto actor : m_actors[Renderable_ObjectOpaque])
 		{
-			auto actor = actorWeak.lock();
-			if (!actor)
-				continue;
-
 			// Get renderable and material
 			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
 			Material* obj_material		= obj_renderable ? obj_renderable->Material_PtrRaw() : nullptr;
@@ -818,12 +819,8 @@ namespace Directus
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);
 
-		for (auto actorWeak : m_actors[Renderable_ObjectTransparent])
+		for (auto actor : m_actors[Renderable_ObjectTransparent])
 		{
-			auto actor = actorWeak.lock();
-			if (!actor)
-				return;
-
 			// Get renderable and material
 			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
 			Material* obj_material		= obj_renderable ? obj_renderable->Material_PtrRaw() : nullptr;
@@ -1096,24 +1093,16 @@ namespace Directus
 			// bounding boxes
 			if (m_flags & Render_AABB)
 			{
-				for (const auto& actorWeak : m_actors[Renderable_ObjectOpaque])
+				for (const auto& actor : m_actors[Renderable_ObjectOpaque])
 				{
-					auto actor = actorWeak.lock();
-					if (!actor)
-						continue;
-
 					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
 						m_lineRenderer->AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 
-				for (const auto& actorWeak : m_actors[Renderable_ObjectTransparent])
+				for (const auto& actor : m_actors[Renderable_ObjectTransparent])
 				{
-					auto actor = actorWeak.lock();
-					if (!actor)
-						continue;
-
 					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
 						m_lineRenderer->AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
@@ -1172,14 +1161,10 @@ namespace Directus
 			if (m_flags & Render_Light)
 			{
 				m_rhiDevice->EventBegin("Lights");
-				for (const auto& actorWeak : m_actors[Renderable_Light])
+				for (const auto& actor : m_actors[Renderable_Light])
 				{
-					auto light = actorWeak.lock();
-					if (!light)
-						continue;
-
-					Vector3 lightWorldPos = light->GetTransform_PtrRaw()->GetPosition();
-					Vector3 cameraWorldPos = GetCamera()->GetTransform()->GetPosition();
+					Vector3 lightWorldPos	= actor->GetTransform_PtrRaw()->GetPosition();
+					Vector3 cameraWorldPos	= GetCamera()->GetTransform()->GetPosition();
 
 					// Compute light screen space position and scale (based on distance from the camera)
 					Vector2 lightScreenPos	= GetCamera()->WorldToScreenPoint(lightWorldPos);
@@ -1196,7 +1181,7 @@ namespace Directus
 						continue;
 
 					shared_ptr<RHI_Texture> lightTex = nullptr;
-					LightType type = light->GetComponent<Light>().lock()->GetLightType();
+					LightType type = actor->GetComponent<Light>().lock()->GetLightType();
 					if (type == LightType_Directional)
 					{
 						lightTex = m_gizmoTexLightDirectional;
@@ -1292,8 +1277,7 @@ namespace Directus
 		if (actors.empty())
 			return nullptr;
 
-		auto cameraActor = actors.front().lock();
-
+		auto cameraActor = actors.front();
 		return cameraActor ? cameraActor->GetComponent<Camera>().lock().get() : nullptr;
 	}
 
@@ -1301,12 +1285,8 @@ namespace Directus
 	{
 		auto actors = m_actors[Renderable_Light];
 
-		for (const auto& actorWeak : actors)
+		for (const auto& actor : actors)
 		{
-			auto actor = actorWeak.lock();
-			if (!actor)
-				continue;
-
 			Light* light = actor->GetComponent<Light>().lock().get();
 			if (light->GetLightType() == LightType_Directional)
 				return light;
@@ -1321,8 +1301,7 @@ namespace Directus
 		if (actors.empty())
 			return nullptr;
 
-		auto skyboxActor = actors.front().lock();
-
+		auto skyboxActor = actors.front();
 		return skyboxActor ? skyboxActor->GetComponent<Skybox>().lock().get() : nullptr;
 	}
 }

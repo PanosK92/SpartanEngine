@@ -48,7 +48,7 @@ namespace Directus
 		m_initialized		= false;
 		m_listener			= nullptr;
 
-		// Subscribe to update event
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_UNLOAD, [this](Variant) { m_listener = nullptr; });
 		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Update));
 	}
 

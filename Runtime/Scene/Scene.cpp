@@ -29,13 +29,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/LineRenderer.h"
 #include "Components/Skybox.h"
 #include "Components/AudioListener.h"
+#include "Components/Renderable.h"
 #include "../Core/Engine.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceManager.h"
 #include "../Resource/ProgressReport.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
-#include "Components/Renderable.h"
+#include "../Rendering/Renderer.h"
 //======================================
 
 //= NAMESPACES ================
@@ -48,15 +49,15 @@ namespace Directus
 	Scene::Scene(Context* context) : Subsystem(context)
 	{
 		m_ambientLight	= Vector3::Zero;
-		m_asyncState	= SceneAsync_Idle;
+		m_state			= Scene_Idle;
 
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE, [this](Variant) { m_isDirty = true; });
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE_START, [this](Variant) { m_isDirty = true; });
 		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Tick));
 	}
 
 	Scene::~Scene()
 	{
-		Clear();
+		Unload();
 	}
 
 	bool Scene::Initialize()
@@ -71,13 +72,11 @@ namespace Directus
 
 	void Scene::Tick()
 	{	
-		// Thread safety: Wait for scene to finish all jobs before ticking
-		if (m_asyncState != SceneAsync_Idle)
-			return;
-
 		TIME_BLOCK_START_CPU();
 
-		m_asyncState = SceneAsync_Tick;
+		// Thread safety: Wait for the scene to finish all jobs before ticking
+		if (m_state != Scene_Idle) { return; }
+		m_state = Scene_Ticking;
 
 		if (m_isDirty)
 		{
@@ -112,26 +111,27 @@ namespace Directus
 			actor->Tick();
 		}
 
-		m_asyncState = SceneAsync_Idle;
+		m_state = Scene_Idle;
 
 		TIME_BLOCK_END_CPU();
 	}
 
-	void Scene::Clear()
+	void Scene::Unload()
 	{
+		FIRE_EVENT(EVENT_SCENE_UNLOAD);
+
 		m_actors.clear();
 		m_actors.shrink_to_fit();
 
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
-
-		FIRE_EVENT(EVENT_SCENE_CLEARED);
 	}
 	//=========================================================================================================
 
 	//= I/O ===================================================================================================
 	bool Scene::SaveToFile(const string& filePathIn)
 	{
+		m_state = Scene_Saving;
 		ProgressReport::Get().Reset(g_progress_Scene);
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
 		ProgressReport::Get().SetStatus(g_progress_Scene, "Saving scene...");
@@ -151,7 +151,7 @@ namespace Directus
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
 		if (!file->IsOpen())
 		{
-			m_asyncState = SceneAsync_Idle;
+			m_state = Scene_Idle;
 			return false;
 		}
 
@@ -181,8 +181,9 @@ namespace Directus
 		}
 		//==============================================
 
-		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
+		m_state = Scene_Idle;
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
+		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
 
 		FIRE_EVENT(EVENT_SCENE_SAVED);
 		return true;
@@ -196,18 +197,15 @@ namespace Directus
 			return false;
 		}
 
-		// Thread safety: Wait for scene to finish ticking before altering it
-		while (m_asyncState == SceneAsync_Tick)
-		{
-			this_thread::sleep_for(chrono::milliseconds(10));
-		}
-		m_asyncState = SceneAsync_IO;
+		// Thread safety: Wait for scene and the renderer to stop the actors (could do double buffering in the future)
+		while (m_state == Scene_Ticking || Renderer::IsRendering()) { this_thread::sleep_for(chrono::milliseconds(16)); }
+		m_state = Scene_Loading;
 		 
 		ProgressReport::Get().Reset(g_progress_Scene);
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
 		ProgressReport::Get().SetStatus(g_progress_Scene, "Loading scene...");
 
-		Clear();
+		Unload();
 
 		// Read all the resource file paths
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
@@ -266,16 +264,16 @@ namespace Directus
 		//==============================================
 
 		m_isDirty = true;
-		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
+		m_state = Scene_Idle;
+		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);	
 		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
-		m_asyncState = SceneAsync_Idle;
 
 		FIRE_EVENT(EVENT_SCENE_LOADED);
 		return true;
 	}
 	//===================================================================================================
 
-	//= actor HELPER FUNCTIONS  ====================================================================
+	//= Actor HELPER FUNCTIONS  ====================================================================
 	weak_ptr<Actor> Scene::Actor_CreateAdd()
 	{
 		auto actor = make_shared<Actor>(m_context);
@@ -430,7 +428,7 @@ namespace Directus
 		TIME_BLOCK_END_CPU();
 
 		// Submit to the Renderer
-		FIRE_EVENT_DATA(EVENT_SCENE_RESOLVED, m_renderables);
+		FIRE_EVENT_DATA(EVENT_SCENE_RESOLVE_END, m_renderables);
 	}
 	//===================================================================================================
 

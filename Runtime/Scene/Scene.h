@@ -32,11 +32,12 @@ namespace Directus
 	class Actor;
 	class Light;
 
-	enum SceneAsync_State
+	enum Scene_State
 	{
-		SceneAsync_Tick,
-		SceneAsync_IO,
-		SceneAsync_Idle
+		Scene_Idle,
+		Scene_Ticking,
+		Scene_Saving,
+		Scene_Loading
 	};
 
 	class ENGINE_CLASS Scene : public Subsystem
@@ -50,14 +51,14 @@ namespace Directus
 		//=========================
 
 		void Tick();
-		void Clear();
+		void Unload();
 
 		//= IO ========================================
 		bool SaveToFile(const std::string& filePath);
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= actor HELPER FUNCTIONS ===================================================
+		//= Actor HELPER FUNCTIONS ===================================================
 		std::weak_ptr<Actor> Actor_CreateAdd();
 		void Actor_Add(std::shared_ptr<Actor> actor);
 		bool Actor_Exists(const std::weak_ptr<Actor>& actor);
@@ -70,18 +71,16 @@ namespace Directus
 		int GetactorCount() { return (int)m_actors.size(); }
 		//============================================================================
 
-		//= SCENE RESOLUTION  ===============================================================
-		void Resolve();
+		//= MISC ============================================================================
 		const std::vector<std::weak_ptr<Actor>>& GetRenderables()	{ return m_renderables; }
 		std::weak_ptr<Actor> GetMainCamera()						{ return m_mainCamera; }
-		//===================================================================================
-
-		//= MISC =======================================
 		void SetAmbientLight(float x, float y, float z);
 		Math::Vector3 GetAmbientLight();
-		//==============================================
+		//===================================================================================
 
 	private:
+		void Resolve();
+
 		//= COMMON ACTOR CREATION ====================
 		std::weak_ptr<Actor> CreateSkybox();
 		std::weak_ptr<Actor> CreateCamera();
@@ -96,6 +95,6 @@ namespace Directus
 		Math::Vector3 m_ambientLight;
 		bool m_wasInEditorMode;
 		bool m_isDirty;
-		SceneAsync_State m_asyncState;
+		Scene_State m_state;
 	};
 }

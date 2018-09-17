@@ -37,18 +37,21 @@ To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 =============================================================================
 */
 
-//= EVENTS =============================================================================
-#define EVENT_FRAME_START		0	// Fired when a new frame begins
-#define EVENT_TICK				1	// Fired when the most engine subsystems should tick
-#define EVENT_FRAME_END			2	// Fired when a frame ends
-#define EVENT_RENDER			3	// Fired when the Renderer should start rendering
-#define EVENT_SCENE_SAVED		4	// Fired when the Scene finished saving to file
-#define EVENT_SCENE_LOADED		5	// Fired when the Scene finished loading from file
-#define EVENT_SCENE_CLEARED		6	// Fired when the Scene should clear everything
-#define EVENT_SCENE_RESOLVE		7	// Fired when the Scene should be resolved
-#define EVENT_SCENE_RESOLVED	8	// Fired when the Scene has been resolved
-#define EVENT_MODEL_LOADED		9	// Fired when the ModelImporter finished loading
-//======================================================================================
+//= EVENTS =================================================================================
+#define EVENT_FRAME_START			0	// Fired when a new frame begins
+#define EVENT_FRAME_END				1	// Fired when a frame ends
+
+#define EVENT_TICK					2	// Fired when the most engine subsystems should tick
+#define EVENT_RENDER				3	// Fired when the Renderer should start rendering
+
+#define EVENT_SCENE_SAVED			4	// Fired when the Scene finished saving to file
+#define EVENT_SCENE_LOADED			5	// Fired when the Scene finished loading from file
+#define EVENT_SCENE_UNLOAD			6	// Fired when the Scene should clear everything
+#define EVENT_SCENE_RESOLVE_START	7	// Signifies that the scene should resolve
+#define EVENT_SCENE_RESOLVE_END		8	// Signifies that the scene just finished resolving
+
+#define EVENT_MODEL_LOADED			9	// Fired when the ModelImporter finished loading
+//==========================================================================================
 
 //= MACROS ===============================================================================================
 #define EVENT_HANDLER_STATIC(function)			[](Directus::Variant var)		{ function(); }
