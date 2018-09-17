@@ -181,7 +181,7 @@ namespace Directus
 
 		const Math::Vector4& GetClearColor();
 
-		// RENDERABLES ===========================================================
+		// RENDERABLES ======================================================
 		std::map<RenderableType, std::vector<std::weak_ptr<Actor>>> m_actors;
 		Math::Matrix m_mV;
 		Math::Matrix m_mP_perspective;
@@ -194,7 +194,7 @@ namespace Directus
 		Camera* GetCamera();
 		Light* GetLightDirectional();
 		Skybox* GetSkybox();
-		//========================================================================
+		//===================================================================
 
 		//= MISC ==========================================
 		std::shared_ptr<RHI_Device> m_rhiDevice;

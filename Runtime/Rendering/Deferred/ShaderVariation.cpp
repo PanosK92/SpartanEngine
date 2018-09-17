@@ -47,14 +47,14 @@ namespace Directus
 		m_shaderFlags	= 0;
 	}
 
-	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
+	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags, Context* context)
 	{
 		m_shaderFlags = shaderFlags;
 
 		// Load and compile the vertex and the pixel shader
 		m_shader = make_shared<RHI_Shader>(m_rhiDevice);
 		AddDefinesBasedOnMaterial(m_shader);
-		m_shader->Compile_VertexPixel(filePath, Input_PositionTextureTBN);
+		m_shader->Compile_VertexPixel_Async(filePath, Input_PositionTextureTBN, context);
 
 		// The buffers below have to match GBuffer.hlsl
 

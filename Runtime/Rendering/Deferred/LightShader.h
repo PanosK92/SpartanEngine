@@ -38,7 +38,7 @@ namespace Directus
 		LightShader();
 		~LightShader() {}
 
-		void Compile(const std::string& filePath, std::shared_ptr<RHI_Device> rhiDevice);
+		void Compile(const std::string& filePath, std::shared_ptr<RHI_Device> rhiDevice, Context* context);
 		void UpdateConstantBuffer(
 			const Math::Matrix& mWorld,
 			const Math::Matrix& mView,
