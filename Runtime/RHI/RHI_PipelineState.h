@@ -59,6 +59,7 @@ namespace Directus
 		// Texture
 		bool SetTexture(const std::shared_ptr<RHI_RenderTexture>& texture);
 		bool SetTexture(const std::shared_ptr<RHI_Texture>& texture);
+		bool SetTexture(const RHI_Texture* texture);
 
 		// Render targets
 		bool SetRenderTarget(const std::shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView = nullptr, bool clear = false);

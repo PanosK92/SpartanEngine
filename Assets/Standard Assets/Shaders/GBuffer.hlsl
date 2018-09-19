@@ -91,7 +91,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 
 	float2 texel			= float2(1.0f / resolution.x, 1.0f / resolution.y);
 	float depth_linear 		= input.positionVS.z / planes.y;
-	float depth_expo 		= input.positionCS.z / input.positionWS.w;
+	float depth_expo 		= input.positionCS.z / input.positionVS.w;
 	float2 texCoords 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;

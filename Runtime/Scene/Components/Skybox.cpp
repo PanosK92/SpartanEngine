@@ -125,7 +125,7 @@ namespace Directus
 			{
 				m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
 				m_cubemapTexture->SetResourceName("Cubemap");
-				m_cubemapTexture->SetType(TextureType_CubeMap);
+				m_cubemapTexture->SetTextureType(TextureType_CubeMap);
 				m_cubemapTexture->SetWidth(m_size);
 				m_cubemapTexture->SetHeight(m_size);
 				m_cubemapTexture->SetGrayscale(false);
@@ -138,7 +138,7 @@ namespace Directus
 			m_matSkybox->SetCullMode(Cull_Front);
 			m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			m_matSkybox->SetIsEditable(false);
-			m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
+			m_matSkybox->SetTextureSlot(TextureType_CubeMap, m_cubemapTexture, false); // assign cubmap texture
 		}
 
 		// Renderable
@@ -183,7 +183,7 @@ namespace Directus
 			{
 				m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
 				m_cubemapTexture->SetResourceName("Cubemap");
-				m_cubemapTexture->SetType(TextureType_CubeMap);
+				m_cubemapTexture->SetTextureType(TextureType_CubeMap);
 				m_cubemapTexture->SetWidth(m_size);
 				m_cubemapTexture->SetHeight(m_size);
 				m_cubemapTexture->SetGrayscale(false);
@@ -196,7 +196,7 @@ namespace Directus
 			m_matSkybox->SetCullMode(Cull_Front);
 			m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			m_matSkybox->SetIsEditable(false);
-			m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
+			m_matSkybox->SetTextureSlot(TextureType_CubeMap, m_cubemapTexture, false); // assign cubmap texture
 		}
 
 		// Renderable

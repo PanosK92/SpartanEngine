@@ -719,26 +719,26 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 
 	if (ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false))
 	{
-		//= REFLECT ======================================================
+		//= REFLECT ===============================================================================
 		float roughness = material->GetRoughnessMultiplier();
-		float metallic = material->GetMetallicMultiplier();
-		float normal = material->GetNormalMultiplier();
-		float height = material->GetHeightMultiplier();
-		Vector2 tiling = material->GetTiling();
-		Vector2 offset = material->GetOffset();
+		float metallic	= material->GetMetallicMultiplier();
+		float normal	= material->GetNormalMultiplier();
+		float height	= material->GetHeightMultiplier();
+		Vector2 tiling	= material->GetTiling();
+		Vector2 offset	= material->GetOffset();
 		WidgetProperties_Internal::materialButtonColorPicker->SetColor(material->GetColorAlbedo());
-		//================================================================
+		//=========================================================================================
 
 		static const ImVec2 materialTextSize = ImVec2(80, 80);
 
-		auto texAlbedo = material->GetTextureByType(TextureType_Albedo).lock();
-		auto texRoughness = material->GetTextureByType(TextureType_Roughness).lock();
-		auto texMetallic = material->GetTextureByType(TextureType_Metallic).lock();
-		auto texNormal = material->GetTextureByType(TextureType_Normal).lock();
-		auto texHeight = material->GetTextureByType(TextureType_Height).lock();
-		auto texOcclusion = material->GetTextureByType(TextureType_Occlusion).lock();
-		auto texEmission = material->GetTextureByType(TextureType_Emission).lock();
-		auto texMask = material->GetTextureByType(TextureType_Mask).lock();
+		auto texAlbedo		= material->GetTextureSlotByType(TextureType_Albedo).ptr_raw;
+		auto texRoughness	= material->GetTextureSlotByType(TextureType_Roughness).ptr_raw;
+		auto texMetallic	= material->GetTextureSlotByType(TextureType_Metallic).ptr_raw;
+		auto texNormal		= material->GetTextureSlotByType(TextureType_Normal).ptr_raw;
+		auto texHeight		= material->GetTextureSlotByType(TextureType_Height).ptr_raw;
+		auto texOcclusion	= material->GetTextureSlotByType(TextureType_Occlusion).ptr_raw;
+		auto texEmission	= material->GetTextureSlotByType(TextureType_Emission).ptr_raw;
+		auto texMask		= material->GetTextureSlotByType(TextureType_Mask).ptr_raw;
 
 		// Name
 		ImGui::Text("Name");
@@ -754,7 +754,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 			{
 				ImGui::Text(textureName);
 				ImGui::SameLine(ComponentProperty::g_column); ImGui::Image(
-					texture ? texture->ShaderResource_Get() : nullptr,
+					texture ? texture->GetShaderResource() : nullptr,
 					materialTextSize,
 					ImVec2(0, 0),
 					ImVec2(1, 1),
@@ -768,8 +768,8 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 					{
 						if (auto texture = WidgetProperties_Internal::resourceManager->Load<RHI_Texture>(get<const char*>(payload->data)).lock())
 						{
-							texture->SetType(textureType);
-							material->SetTexture(texture);
+							texture->SetTextureType(textureType);
+							material->SetTextureSlot(texture->GetTextureType(), texture);
 						}
 					}
 					catch (const std::bad_variant_access& e) { LOGF_ERROR("Widget_Properties::ShowMaterial: %s", e.what()); }
@@ -777,37 +777,37 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 			};
 
 			// Albedo
-			DisplayTextureSlot(texAlbedo.get(), "Albedo", TextureType_Albedo);
+			DisplayTextureSlot(texAlbedo, "Albedo", TextureType_Albedo);
 			ImGui::SameLine(); WidgetProperties_Internal::materialButtonColorPicker->Update();
 
 			// Roughness
-			DisplayTextureSlot(texRoughness.get(), "Roughness", TextureType_Roughness);
+			DisplayTextureSlot(texRoughness, "Roughness", TextureType_Roughness);
 			roughness = material->GetRoughnessMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matRoughness", &roughness, 0.0f, 1.0f);
 
 			// Metallic
-			DisplayTextureSlot(texMetallic.get(), "Metallic", TextureType_Metallic);
+			DisplayTextureSlot(texMetallic, "Metallic", TextureType_Metallic);
 			metallic = material->GetMetallicMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matMetallic", &metallic, 0.0f, 1.0f);
 
 			// Normal
-			DisplayTextureSlot(texNormal.get(), "Normal", TextureType_Normal);
+			DisplayTextureSlot(texNormal, "Normal", TextureType_Normal);
 			normal = material->GetNormalMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matNormal", &normal, 0.0f, 1.0f);
 
 			// Height
-			DisplayTextureSlot(texHeight.get(), "Height", TextureType_Height);
+			DisplayTextureSlot(texHeight, "Height", TextureType_Height);
 			height = material->GetHeightMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matHeight", &height, 0.0f, 1.0f);
 
 			// Occlusion
-			DisplayTextureSlot(texOcclusion.get(), "Occlusion", TextureType_Occlusion);
+			DisplayTextureSlot(texOcclusion, "Occlusion", TextureType_Occlusion);
 
 			// Emission
-			DisplayTextureSlot(texEmission.get(), "Emission", TextureType_Emission);
+			DisplayTextureSlot(texEmission, "Emission", TextureType_Emission);
 
 			// Mask
-			DisplayTextureSlot(texMask.get(), "Mask", TextureType_Mask);
+			DisplayTextureSlot(texMask, "Mask", TextureType_Mask);
 
 			// Tiling
 			ImGui::Text("Tiling");

@@ -53,9 +53,8 @@ namespace Directus
 		// Generates a cube-map shader resource. 6 textures containing mip-levels have to be provided (vector<textures<mip>>).
 		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<mipmap>>& data);
 		
-		void* ShaderResource_Get()						{ return m_shaderResource; }
-		void ShaderResource_Get(void* shaderResource)	{ m_shaderResource = shaderResource; }
 		void ShaderResource_Release();
+		void* GetShaderResource() const { return m_shaderResource; }
 		//================================================================================================================================================================================
 
 		//= PROPERTIES =========================================================================
@@ -65,8 +64,8 @@ namespace Directus
 		unsigned int GetHeight()							{ return m_height; }
 		void SetHeight(unsigned int height)					{ m_height = height; }
 
-		TextureType GetType()								{ return m_type; }
-		void SetType(TextureType type);
+		TextureType GetTextureType()						{ return m_type; }
+		void SetTextureType(TextureType type);
 
 		bool GetGrayscale()									{ return m_isGrayscale; }
 		void SetGrayscale(bool isGrayscale)					{ m_isGrayscale = isGrayscale; }
