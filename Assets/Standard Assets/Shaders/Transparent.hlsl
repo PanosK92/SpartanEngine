@@ -57,7 +57,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float transparentGeometryDepth 	= input.position.z;
 	float opaqueGeometryDepth 		= depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
 	
-	if (opaqueGeometryDepth < transparentGeometryDepth)
+	if (opaqueGeometryDepth > transparentGeometryDepth)
 		discard;
 		
 	float3 viewDir 	= normalize(cameraPos - input.positionWS.xyz);
