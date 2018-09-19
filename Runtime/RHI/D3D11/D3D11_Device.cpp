@@ -790,7 +790,8 @@ namespace Directus
 
 	void RHI_Device::EventBegin(const std::string& name)
 	{
-		D3D11_Device::m_eventReporter->BeginEvent(FileSystem::StringToWString(name).c_str());
+		// Not safe to convert to wstring like that, but it's fast and it looks like it works okay
+		D3D11_Device::m_eventReporter->BeginEvent(LPCWSTR(name.c_str()));
 	}
 
 	void RHI_Device::EventEnd()

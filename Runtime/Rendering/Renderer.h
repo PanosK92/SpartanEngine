@@ -181,10 +181,8 @@ namespace Directus
 			std::shared_ptr<RHI_RenderTexture>& texOut
 		);
 
-		const Math::Vector4& GetClearColor();
-
-		// RENDERABLES ======================================================
-		std::map<RenderableType, std::vector<Actor*>> m_actors;
+		// RENDERABLES ==================================================
+		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
 		Math::Matrix m_mV;
 		Math::Matrix m_mP_perspective;
 		Math::Matrix m_mP_orthographic;
@@ -193,10 +191,10 @@ namespace Directus
 		Math::Matrix m_wvp_baseOrthographic;
 		float m_nearPlane;
 		float m_farPlane;
-		Camera* GetCamera();
+		Camera* m_camera;
 		Light* GetLightDirectional();
 		Skybox* GetSkybox();
-		//===================================================================
+		//===============================================================
 
 		//= MISC ==========================================
 		std::shared_ptr<RHI_Device> m_rhiDevice;

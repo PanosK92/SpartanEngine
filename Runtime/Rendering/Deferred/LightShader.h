@@ -57,8 +57,8 @@ namespace Directus
 		const static int maxLights = 64;
 		struct LightBuffer
 		{
-			Math::Matrix m_wvp;
-			Math::Matrix m_vpInv;
+			Math::Matrix wvp;
+			Math::Matrix viewProjectionInverse;
 			Math::Vector4 cameraPosition;
 			
 			//= DIRECTIONAL LIGHT ==========	

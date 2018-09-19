@@ -59,7 +59,8 @@ namespace Directus
 
 	Material::~Material()
 	{
-
+		m_textureSlots.clear();
+		m_textureSlots.shrink_to_fit();
 	}
 
 	//= IResource ==============================================
@@ -95,12 +96,13 @@ namespace Directus
 			string texPath		= xml->GetAttributeAs<string>(nodeName, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
-			m_textures[texType] = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
+			auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
 			// If there is not texture (it's not loaded yet), load it
-			if (m_textures[texType].expired())
+			if (texture.expired())
 			{
-				m_textures[texType] = m_context->GetSubsystem<ResourceManager>()->Load<RHI_Texture>(texPath);
+				texture = m_context->GetSubsystem<ResourceManager>()->Load<RHI_Texture>(texPath);
 			}
+			SetTextureSlot(texType, texture);
 		}
 
 		AcquireShader();
@@ -136,15 +138,15 @@ namespace Directus
 		xml->AddAttribute("Material", "IsEditable",				m_isEditable);
 
 		xml->AddChildNode("Material", "Textures");
-		xml->AddAttribute("Textures", "Count", (unsigned int)m_textures.size());
+		xml->AddAttribute("Textures", "Count", (unsigned int)m_textureSlots.size());
 		int i = 0;
-		for (const auto& texture : m_textures)
+		for (const auto& textureSlot : m_textureSlots)
 		{
 			string texNode = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", texNode);
-			xml->AddAttribute(texNode, "Texture_Type", (unsigned int)texture.first);
-			xml->AddAttribute(texNode, "Texture_Name", !texture.second.expired() ? texture.second.lock()->GetResourceName() : NOT_ASSIGNED);
-			xml->AddAttribute(texNode, "Texture_Path", !texture.second.expired() ? texture.second.lock()->GetResourceFilePath() : NOT_ASSIGNED);
+			xml->AddAttribute(texNode, "Texture_Type", (unsigned int)textureSlot.type);
+			xml->AddAttribute(texNode, "Texture_Name", !textureSlot.ptr_weak.expired() ? textureSlot.ptr_raw->GetResourceName() : NOT_ASSIGNED);
+			xml->AddAttribute(texNode, "Texture_Path", !textureSlot.ptr_weak.expired() ? textureSlot.ptr_raw->GetResourceFilePath() : NOT_ASSIGNED);
 			i++;
 		}
 
@@ -160,77 +162,97 @@ namespace Directus
 		size += sizeof(float) * 5;
 		size += sizeof(Vector2) * 2;
 		size += sizeof(Vector4);
-		size += (unsigned int)(sizeof(std::map<TextureType, std::weak_ptr<RHI_Texture>>) + (sizeof(TextureType) + sizeof(std::weak_ptr<RHI_Texture>)) * m_textures.size());
+		size += sizeof(TextureSlot) * (int)m_textureSlots.size();
 
 		return size;
 	}
 
-	//==========================================================
-
-	//= TEXTURES ===================================================================
-	// Set texture from an existing texture
-	void Material::SetTexture(const weak_ptr<RHI_Texture>& textureWeak, bool autoCache /* true */)
+	const TextureSlot& Material::GetTextureSlotByType(TextureType type)
 	{
-		// Make sure this texture exists
-		auto texture = textureWeak.lock();
-		if (!texture)
+		for (const auto& textureSlot : m_textureSlots)
 		{
-			LOG_WARNING("Material::SetTexture(): Provided texture is null, can't execute function");
+			if (textureSlot.type == type)
+				return textureSlot;
+		}
+
+		return m_emptyTextureSlot;
+	}
+
+	// Set texture from an existing texture
+	void Material::SetTextureSlot(TextureType type, const weak_ptr<RHI_Texture>& textureWeak, bool autoCache /* true */)
+	{
+		// Validate texture
+		if (textureWeak.expired())
+		{
+			LOG_WARNING("Material::SetTexture: Invalid parameter");
 			return;
 		}
 
 		// Cache it or use the provided reference as is
 		auto texRef = autoCache ? textureWeak.lock()->Cache<RHI_Texture>() : textureWeak;
-		// Save a reference
-		m_textures[texture->GetType()] = texRef;
+
+		// Assign - As a replacement (if there is a previous one)
+		bool replaced = false;
+		for (auto& textureSlot : m_textureSlots)
+		{
+			if (textureSlot.type == type)
+			{
+				textureSlot.ptr_weak	= texRef;
+				textureSlot.ptr_raw		= texRef.lock().get();
+				replaced = true;
+				break;
+			}
+		}
+		// Assign - Add a new one (in case it's the first time the slot is assigned)
+		if (!replaced)
+		{
+			m_textureSlots.emplace_back(type, texRef, texRef.lock().get());
+		}
 
 		TextureBasedMultiplierAdjustment();
 		AcquireShader();
 	}
 
-	bool Material::HasTextureOfType(TextureType type)
+	bool Material::HasTexture(TextureType type)
 	{
-		return !m_textures[type].expired();
+		auto textureSlot = GetTextureSlotByType(type);
+		return !textureSlot.ptr_weak.expired();
 	}
 
 	bool Material::HasTexture(const string& path)
 	{
-		for (const auto& it : m_textures)
+		for (const auto& textureSlot : m_textureSlots)
 		{
-			if (it.second.expired())
+			if (textureSlot.ptr_weak.expired())
 				continue;
 
-			if (it.second.lock()->GetResourceFilePath() == path)
+			if (textureSlot.ptr_raw->GetResourceFilePath() == path)
 				return true;
 		}
 
 		return false;
 	}
 
-	std::string Material::GetTexturePathByType(TextureType type)
+	string Material::GetTexturePathByType(TextureType type)
 	{
-		if (m_textures[type].expired())
-			return NOT_ASSIGNED;
-
-		return m_textures[type].lock()->GetResourceFilePath();
+		auto textureSlot = GetTextureSlotByType(type);
+		return textureSlot.ptr_weak.expired() ? NOT_ASSIGNED : textureSlot.ptr_raw->GetResourceFilePath();
 	}
 
 	vector<string> Material::GetTexturePaths()
 	{
 		vector<string> paths;
-		for (const auto& it : m_textures)
+		for (const auto& textureSlot : m_textureSlots)
 		{
-			if (it.second.expired())
+			if (textureSlot.ptr_weak.expired())
 				continue;
 
-			paths.push_back(it.second.lock()->GetResourceFilePath());
+			paths.emplace_back(textureSlot.ptr_raw->GetResourceFilePath());
 		}
 
 		return paths;
 	}
-	//==============================================================================
 
-	//= SHADER =====================================================================
 	void Material::AcquireShader()
 	{
 		if (!m_context)
@@ -243,15 +265,15 @@ namespace Directus
 		// matching shader already exists, it will be returned.
 		unsigned long shaderFlags = 0;
 
-		if (HasTextureOfType(TextureType_Albedo))		shaderFlags	|= Variaton_Albedo;
-		if (HasTextureOfType(TextureType_Roughness))	shaderFlags	|= Variaton_Roughness;
-		if (HasTextureOfType(TextureType_Metallic))		shaderFlags	|= Variaton_Metallic;
-		if (HasTextureOfType(TextureType_Normal))		shaderFlags	|= Variaton_Normal;
-		if (HasTextureOfType(TextureType_Height))		shaderFlags	|= Variaton_Height;
-		if (HasTextureOfType(TextureType_Occlusion))	shaderFlags	|= Variaton_Occlusion;
-		if (HasTextureOfType(TextureType_Emission))		shaderFlags	|= Variaton_Emission;
-		if (HasTextureOfType(TextureType_Mask))			shaderFlags	|= Variaton_Mask;
-		if (HasTextureOfType(TextureType_CubeMap))		shaderFlags	|= Variaton_Cubemap;
+		if (HasTexture(TextureType_Albedo))		shaderFlags	|= Variaton_Albedo;
+		if (HasTexture(TextureType_Roughness))	shaderFlags	|= Variaton_Roughness;
+		if (HasTexture(TextureType_Metallic))	shaderFlags	|= Variaton_Metallic;
+		if (HasTexture(TextureType_Normal))		shaderFlags	|= Variaton_Normal;
+		if (HasTexture(TextureType_Height))		shaderFlags	|= Variaton_Height;
+		if (HasTexture(TextureType_Occlusion))	shaderFlags	|= Variaton_Occlusion;
+		if (HasTexture(TextureType_Emission))	shaderFlags	|= Variaton_Emission;
+		if (HasTexture(TextureType_Mask))		shaderFlags	|= Variaton_Mask;
+		if (HasTexture(TextureType_CubeMap))	shaderFlags	|= Variaton_Cubemap;
 
 		m_shader = GetOrCreateShader(shaderFlags);
 	}
@@ -309,25 +331,24 @@ namespace Directus
 		}
 	}
 
-	//==============================================================================
 	void Material::TextureBasedMultiplierAdjustment()
 	{
-		if (HasTextureOfType(TextureType_Roughness))
+		if (HasTexture(TextureType_Roughness))
 		{
 			SetRoughnessMultiplier(1.0f);
 		}
 
-		if (HasTextureOfType(TextureType_Metallic))
+		if (HasTexture(TextureType_Metallic))
 		{
 			SetMetallicMultiplier(1.0f);
 		}
 
-		if (HasTextureOfType(TextureType_Normal))
+		if (HasTexture(TextureType_Normal))
 		{
 			SetNormalMultiplier(1.0f);
 		}
 
-		if (HasTextureOfType(TextureType_Height))
+		if (HasTexture(TextureType_Height))
 		{
 			SetHeightMultiplier(1.0f);
 		}

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <map>
+#include <vector>
 #include <memory>
 #include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
@@ -35,6 +35,26 @@ namespace Directus
 	class ShaderPool;
 	class ShaderVariation;
 	class TexturePool;
+
+	struct TextureSlot
+	{
+		TextureSlot()
+		{
+			type	= TextureType_Unknown;
+			ptr_raw = nullptr;
+		}
+
+		TextureSlot(TextureType type, std::weak_ptr<RHI_Texture> ptr_weak, RHI_Texture* ptr_raw)
+		{
+			this->type		= type;
+			this->ptr_weak	= ptr_weak;
+			this->ptr_raw	= ptr_raw;		
+		}
+
+		std::weak_ptr<RHI_Texture> ptr_weak;
+		RHI_Texture* ptr_raw;
+		TextureType type;
+	};
 
 	class ENGINE_CLASS Material : public IResource
 	{
@@ -55,14 +75,14 @@ namespace Directus
 		unsigned int GetMemoryUsage() override;
 		//==============================================================
 
-		//= TEXTURES =============================================================================
-		void SetTexture(const std::weak_ptr<RHI_Texture>& textureWeak, bool autoCache = true);
-		std::weak_ptr<RHI_Texture> GetTextureByType(TextureType type) { return m_textures[type]; }
-		bool HasTextureOfType(TextureType type);
+		//= TEXTURE SLOTS  =========================================================================================
+		const TextureSlot& GetTextureSlotByType(TextureType type);
+		void SetTextureSlot(TextureType type, const std::weak_ptr<RHI_Texture>& textureWeak, bool autoCache = true);	
+		bool HasTexture(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//========================================================================================
+		//==========================================================================================================
 
 		//= SHADER ==================================================================
 		void AcquireShader();
@@ -70,28 +90,27 @@ namespace Directus
 		std::weak_ptr<ShaderVariation> GetOrCreateShader(unsigned long shaderFlags);
 		std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
 		bool HasShader() { return GetShader().expired() ? false : true; }
+		void SetMultiplier(TextureType type, float value);
 		//===========================================================================
 
-		//= PROPERTIES ================================================================	
-		unsigned int GetModelID()			{ return m_modelID; }
-		void SetModelID(unsigned int ID)	{ m_modelID = ID; }
+		//= PROPERTIES =======================================================================
+		unsigned int GetModelID()						{ return m_modelID; }
+		void SetModelID(unsigned int ID)				{ m_modelID = ID; }
 
-		Cull_Mode GetCullMode()					{ return m_cullMode; }
-		void SetCullMode(Cull_Mode cullMode)	{ m_cullMode = cullMode; }
+		Cull_Mode GetCullMode()							{ return m_cullMode; }
+		void SetCullMode(Cull_Mode cullMode)			{ m_cullMode = cullMode; }
 
 		float& GetRoughnessMultiplier()					{ return m_roughnessMultiplier; }
 		void SetRoughnessMultiplier(float roughness)	{ m_roughnessMultiplier = roughness; }
 
-		float GetMetallicMultiplier()				{ return m_metallicMultiplier; }
-		void SetMetallicMultiplier(float metallic)	{ m_metallicMultiplier = metallic; }
+		float GetMetallicMultiplier()					{ return m_metallicMultiplier; }
+		void SetMetallicMultiplier(float metallic)		{ m_metallicMultiplier = metallic; }
 
-		float GetNormalMultiplier()				{ return m_normalMultiplier; }
-		void SetNormalMultiplier(float normal)	{ m_normalMultiplier = normal; }
+		float GetNormalMultiplier()						{ return m_normalMultiplier; }
+		void SetNormalMultiplier(float normal)			{ m_normalMultiplier = normal; }
 
-		float GetHeightMultiplier()				{ return m_heightMultiplier; }
-		void SetHeightMultiplier(float height)	{ m_heightMultiplier = height; }
-
-		void SetMultiplier(TextureType type, float value);
+		float GetHeightMultiplier()						{ return m_heightMultiplier; }
+		void SetHeightMultiplier(float height)			{ m_heightMultiplier = height; }
 
 		ShadingMode GetShadingMode()					{ return m_shadingMode; }
 		void SetShadingMode(ShadingMode shadingMode)	{ m_shadingMode = shadingMode; }
@@ -99,15 +118,15 @@ namespace Directus
 		const Math::Vector4& GetColorAlbedo()			{ return m_colorAlbedo; }
 		void SetColorAlbedo(const Math::Vector4& color) { m_colorAlbedo = color; }
 
-		const Math::Vector2& GetTiling()			{ return m_uvTiling; }
-		void SetTiling(const Math::Vector2& tiling) { m_uvTiling = tiling; }
+		const Math::Vector2& GetTiling()				{ return m_uvTiling; }
+		void SetTiling(const Math::Vector2& tiling)		{ m_uvTiling = tiling; }
 
-		const Math::Vector2& GetOffset()			{ return m_uvOffset; }
-		void SetOffset(const Math::Vector2& offset) { m_uvOffset = offset; }
+		const Math::Vector2& GetOffset()				{ return m_uvOffset; }
+		void SetOffset(const Math::Vector2& offset)		{ m_uvOffset = offset; }
 
-		bool IsEditable()					{ return m_isEditable; }
-		void SetIsEditable(bool isEditable) { m_isEditable = isEditable; }
-		//=============================================================================
+		bool IsEditable()								{ return m_isEditable; }
+		void SetIsEditable(bool isEditable)				{ m_isEditable = isEditable; }
+		//====================================================================================
 
 	private:
 		void TextureBasedMultiplierAdjustment();
@@ -124,8 +143,7 @@ namespace Directus
 		Math::Vector2 m_uvOffset;	
 		bool m_isEditable;
 		std::weak_ptr<ShaderVariation> m_shader;
-		// <tex_type, <tex,	tex_path>>
-		std::map<TextureType, std::weak_ptr<RHI_Texture>> m_textures;
-		std::vector<void*> m_shaderResources;
+		std::vector<TextureSlot> m_textureSlots;
+		TextureSlot m_emptyTextureSlot;
 	};
 }

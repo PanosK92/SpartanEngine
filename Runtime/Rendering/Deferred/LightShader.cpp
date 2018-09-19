@@ -76,14 +76,10 @@ namespace Directus
 		// Get a pointer to the data in the constant buffer.
 		auto buffer = (LightBuffer*)m_cbuffer->Map();
 
-		// Get some stuff
-		Matrix worlBaseViewProjection	= mWorld * mBaseView * mOrthographicProjection;
-		Matrix viewProjection			= mView * mPerspectiveProjection;
 		Vector3 camPos					= camera->GetTransform()->GetPosition();
-
-		buffer->cameraPosition	= Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
-		buffer->m_wvp			= worlBaseViewProjection;
-		buffer->m_vpInv			= viewProjection.Inverted();
+		buffer->cameraPosition			= Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
+		buffer->wvp						= mWorld * mBaseView * mOrthographicProjection;
+		buffer->viewProjectionInverse	= (mView * mPerspectiveProjection).Inverted();
 
 		// Reset any light buffer values because the shader will still use them
 		buffer->dirLightColor = Vector4::Zero;

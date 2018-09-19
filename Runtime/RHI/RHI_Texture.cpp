@@ -129,7 +129,7 @@ namespace Directus
 	//=====================================================================================
 
 	//= PROPERTIES =========================================================================
-	void RHI_Texture::SetType(TextureType type)
+	void RHI_Texture::SetTextureType(TextureType type)
 	{
 		// Some models (or Assimp) pass a normal map as a height map
 		// and others pass a height map as a normal map, we try to fix that.

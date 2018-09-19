@@ -92,15 +92,15 @@ namespace Directus
 		Struct_Shadowing
 		(
 			const Math::Matrix& mWVPortho,
-			const Math::Matrix& mWVPinv,
+			const Math::Matrix& mViewProjectionInverted,
 			const Math::Vector2& resolution,
 			Light* dirLight,
 			Camera* camera
 		)
 		{
 			// Fill the buffer
-			m_wvpOrtho			= mWVPortho;
-			m_wvpInv			= mWVPinv;
+			m_wvpOrtho					= mWVPortho;
+			m_viewprojectionInverted	= mViewProjectionInverted;
 
 			auto mLightView = dirLight->GetViewMatrix();
 			m_mLightViewProjection[0] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
@@ -118,7 +118,7 @@ namespace Directus
 		}
 
 		Math::Matrix m_wvpOrtho;
-		Math::Matrix m_wvpInv;
+		Math::Matrix m_viewprojectionInverted;
 		Math::Matrix m_mLightViewProjection[3];
 		Math::Vector4 m_shadowSplits;
 		Math::Vector3 m_lightDir;

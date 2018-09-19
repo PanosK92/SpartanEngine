@@ -60,19 +60,21 @@ namespace Directus
 
 	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
 	{
-		m_lineRenderer				= nullptr;
-		m_nearPlane					= 0.0f;
-		m_farPlane					= 0.0f;
-		m_rhiDevice					= nullptr;
-		m_flags						= 0;
-		m_flags						|= Render_Physics;
-		m_flags						|= Render_SceneGrid;
-		m_flags						|= Render_Light;
-		m_flags						|= Render_Bloom;
-		m_flags						|= Render_FXAA;
-		m_flags						|= Render_Sharpening;
-		m_flags						|= Render_ChromaticAberration;
-		m_flags						|= Render_Correction;
+		
+		m_nearPlane		= 0.0f;
+		m_farPlane		= 0.0f;
+		m_camera		= nullptr;
+		m_lineRenderer	= nullptr;
+		m_rhiDevice		= nullptr;	
+		m_flags			= 0;
+		m_flags			|= Render_Physics;
+		m_flags			|= Render_SceneGrid;
+		m_flags			|= Render_Light;
+		m_flags			|= Render_Bloom;
+		m_flags			|= Render_FXAA;
+		m_flags			|= Render_Sharpening;
+		m_flags			|= Render_ChromaticAberration;
+		m_flags			|= Render_Correction;
 
 		// Create RHI device
 		m_rhiDevice			= make_shared<RHI_Device>(drawHandle);
@@ -225,20 +227,20 @@ namespace Directus
 			// Noise texture (used by SSAO shader)
 			m_texNoiseMap = make_shared<RHI_Texture>(m_context);
 			m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
-			m_texNoiseMap->SetType(TextureType_Normal);
+			m_texNoiseMap->SetTextureType(TextureType_Normal);
 
 			// Gizmo icons
 			m_gizmoTexLightDirectional = make_shared<RHI_Texture>(m_context);
 			m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
-			m_gizmoTexLightDirectional->SetType(TextureType_Albedo);
+			m_gizmoTexLightDirectional->SetTextureType(TextureType_Albedo);
 
 			m_gizmoTexLightPoint = make_shared<RHI_Texture>(m_context);
 			m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
-			m_gizmoTexLightPoint->SetType(TextureType_Albedo);
+			m_gizmoTexLightPoint->SetTextureType(TextureType_Albedo);
 
 			m_gizmoTexLightSpot = make_shared<RHI_Texture>(m_context);
 			m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
-			m_gizmoTexLightSpot->SetType(TextureType_Albedo);
+			m_gizmoTexLightSpot->SetTextureType(TextureType_Albedo);
 		}
 
 		return true;
@@ -249,7 +251,7 @@ namespace Directus
 		m_rhiDevice->Set_BackBufferAsRenderTarget();
 		m_rhiPipelineState->SetViewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
 		m_rhiPipelineState->Bind();
-		if (clear) m_rhiDevice->ClearBackBuffer(GetClearColor());
+		if (clear) m_rhiDevice->ClearBackBuffer(m_camera ? m_camera->GetClearColor() : Vector4(0, 0, 0, 1));
 	}
 
 	void* Renderer::GetFrame()
@@ -273,21 +275,21 @@ namespace Directus
 		Profiler::Get().Reset();
 
 		// If there is a camera, render the scene
-		if (auto camera = GetCamera())
+		if (m_camera)
 		{
-			m_mV					= camera->GetViewMatrix();
-			m_mV_base				= camera->GetBaseViewMatrix();
-			m_mP_perspective		= camera->GetProjectionMatrix();
+			m_mV					= m_camera->GetViewMatrix();
+			m_mV_base				= m_camera->GetBaseViewMatrix();
+			m_mP_perspective		= m_camera->GetProjectionMatrix();
 			m_mP_orthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight(), m_nearPlane, m_farPlane);		
 			m_wvp_perspective		= m_mV * m_mP_perspective;
 			m_wvp_baseOrthographic	= m_mV_base * m_mP_orthographic;
-			m_nearPlane				= camera->GetNearPlane();
-			m_farPlane				= camera->GetFarPlane();
+			m_nearPlane				= m_camera->GetNearPlane();
+			m_farPlane				= m_camera->GetFarPlane();
 
 			// If there is nothing to render clear to camera's color and present
 			if (m_actors.empty())
 			{
-				m_rhiDevice->ClearBackBuffer(camera->GetClearColor());
+				m_rhiDevice->ClearBackBuffer(m_camera->GetClearColor());
 				m_rhiDevice->Present();
 				m_isRendering = false;
 				return;
@@ -364,6 +366,7 @@ namespace Directus
 	{
 		m_actors.clear();
 		m_lineRenderer	= nullptr;
+		m_camera		= nullptr;
 	}
 
 	void Renderer::RenderTargets_Create(int width, int height)
@@ -435,6 +438,7 @@ namespace Directus
 			if (camera)
 			{
 				m_actors[Renderable_Camera].emplace_back(actor);
+				m_camera = camera.get();
 			}
 		}
 
@@ -618,7 +622,7 @@ namespace Directus
 				continue;
 
 			// Skip objects outside of the view frustum
-			if (!GetCamera()->IsInViewFrustrum(obj_renderable))
+			if (!m_camera->IsInViewFrustrum(obj_renderable))
 				continue;
 
 			// set face culling (changes only if required)
@@ -647,16 +651,16 @@ namespace Directus
 			// Bind material
 			if (currentlyBoundMaterial != obj_material->GetResourceID())
 			{
-				obj_shader->UpdatePerMaterialBuffer(GetCamera(), obj_material);
+				obj_shader->UpdatePerMaterialBuffer(m_camera, obj_material);
 
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Albedo).lock());
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Roughness).lock());
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Metallic).lock());
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Normal).lock());
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Height).lock());
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Occlusion).lock());
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Emission).lock());
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureByType(TextureType_Mask).lock());
+				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Albedo).ptr_raw);
+				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Roughness).ptr_raw);
+				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Metallic).ptr_raw);
+				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Normal).ptr_raw);
+				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Height).ptr_raw);
+				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Occlusion).ptr_raw);
+				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Emission).ptr_raw);
+				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Mask).ptr_raw);
 
 				currentlyBoundMaterial = obj_material->GetResourceID();
 			}
@@ -722,7 +726,7 @@ namespace Directus
 			m_mP_perspective,
 			m_mP_orthographic,
 			m_actors[Renderable_Light],
-			GetCamera()
+			m_camera
 		);
 
 		m_rhiPipelineState->SetRenderTarget(texOut);
@@ -807,7 +811,7 @@ namespace Directus
 
 	void Renderer::Pass_Transparent(shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		if (!GetLightDirectional() || !GetCamera())
+		if (!GetLightDirectional())
 			return;
 
 		TIME_BLOCK_START_MULTI();
@@ -834,7 +838,7 @@ namespace Directus
 				continue;
 
 			// Skip objects outside of the view frustum
-			if (!GetCamera()->IsInViewFrustrum(obj_renderable))
+			if (!m_camera->IsInViewFrustrum(obj_renderable))
 				continue;
 
 			// Set face culling (changes only if required)
@@ -850,7 +854,7 @@ namespace Directus
 				m_mV,
 				m_mP_perspective,
 				obj_material->GetColorAlbedo(),
-				GetCamera()->GetTransform()->GetPosition(),
+				m_camera->GetTransform()->GetPosition(),
 				GetLightDirectional()->GetDirection(),
 				obj_material->GetRoughnessMultiplier()
 			));
@@ -1014,13 +1018,14 @@ namespace Directus
 		}
 		m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);		// Shadow mapping
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampGreater);	// SSAO
-		m_shaderShadowing->UpdateBuffer(&Struct_Shadowing
+		m_shaderShadowing->UpdateBuffer
+		(&Struct_Shadowing
 			(
 				m_wvp_baseOrthographic,
-				m_wvp_perspective.Inverted(),
+				(m_mV * m_mP_perspective).Inverted(),
 				Vector2(texOut->GetWidth(), texOut->GetHeight()),
 				inDirectionalLight,
-				GetCamera()
+				m_camera
 			)
 		);	
 		m_rhiPipelineState->SetConstantBuffer(m_shaderShadowing->GetConstantBuffer());
@@ -1087,7 +1092,7 @@ namespace Directus
 			// Picking ray
 			if (m_flags & Render_PickingRay)
 			{
-				m_lineRenderer->AddLines(GetCamera()->GetPickingRay());
+				m_lineRenderer->AddLines(m_camera->GetPickingRay());
 			}
 
 			// bounding boxes
@@ -1122,7 +1127,7 @@ namespace Directus
 				m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);
 				m_rhiPipelineState->SetVertexBuffer(m_lineRenderer->GetVertexBuffer());
 				m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
-				m_shaderLine->UpdateBuffer(&Struct_Matrix_Matrix_Matrix(Matrix::Identity, GetCamera()->GetViewMatrix(), GetCamera()->GetProjectionMatrix()));
+				m_shaderLine->UpdateBuffer(&Struct_Matrix_Matrix_Matrix(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix()));
 				m_rhiPipelineState->SetConstantBuffer(m_shaderLine->GetConstantBuffer());
 				m_rhiPipelineState->Bind();
 
@@ -1146,7 +1151,7 @@ namespace Directus
 			m_rhiPipelineState->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipelineState->SetVertexBuffer(m_grid->GetVertexBuffer());
 			m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
-			m_shaderGrid->UpdateBuffer(&Struct_Matrix(m_grid->ComputeWorldMatrix(GetCamera()->GetTransform()) * GetCamera()->GetViewMatrix() * GetCamera()->GetProjectionMatrix()));
+			m_shaderGrid->UpdateBuffer(&Struct_Matrix(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix()));
 			m_rhiPipelineState->SetConstantBuffer(m_shaderGrid->GetConstantBuffer());
 			m_rhiPipelineState->Bind();
 
@@ -1164,16 +1169,16 @@ namespace Directus
 				for (const auto& actor : m_actors[Renderable_Light])
 				{
 					Vector3 lightWorldPos	= actor->GetTransform_PtrRaw()->GetPosition();
-					Vector3 cameraWorldPos	= GetCamera()->GetTransform()->GetPosition();
+					Vector3 cameraWorldPos	= m_camera->GetTransform()->GetPosition();
 
 					// Compute light screen space position and scale (based on distance from the camera)
-					Vector2 lightScreenPos	= GetCamera()->WorldToScreenPoint(lightWorldPos);
+					Vector2 lightScreenPos	= m_camera->WorldToScreenPoint(lightWorldPos);
 					float distance			= Vector3::Length(lightWorldPos, cameraWorldPos);
 					float scale				= GIZMO_MAX_SIZE / distance;
 					scale					= Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
 
 					// Skip if the light is not in front of the camera
-					if (!GetCamera()->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))
+					if (!m_camera->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))
 						continue;
 
 					// Skip if the light if it's too small
@@ -1264,21 +1269,6 @@ namespace Directus
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
-	}
-
-	const Vector4& Renderer::GetClearColor()
-	{
-		return GetCamera() ? GetCamera()->GetClearColor() : Vector4::Zero;
-	}
-
-	Camera* Renderer::GetCamera()
-	{
-		auto actors = m_actors[Renderable_Camera];
-		if (actors.empty())
-			return nullptr;
-
-		auto cameraActor = actors.front();
-		return cameraActor ? cameraActor->GetComponent<Camera>().lock().get() : nullptr;
 	}
 
 	Light* Renderer::GetLightDirectional()

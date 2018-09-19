@@ -162,7 +162,16 @@ namespace Directus
 	bool RHI_PipelineState::SetTexture(const shared_ptr<RHI_Texture>& texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
-		m_textures.emplace_back(texture ? texture->ShaderResource_Get() : nullptr);
+		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
+		m_texturesDirty = true;
+
+		return true;
+	}
+
+	bool RHI_PipelineState::SetTexture(const RHI_Texture* texture)
+	{
+		// allow for null texture to be bound so we can maintain slot order
+		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
 		m_texturesDirty = true;
 
 		return true;
@@ -180,7 +189,6 @@ namespace Directus
 			return false;
 
 		m_renderTargetViews.clear();
-		m_renderTargetViews.shrink_to_fit();
 		for (const auto& renderTarget : renderTargetViews)
 		{
 			if (!renderTarget)
@@ -375,7 +383,6 @@ namespace Directus
 			m_rhiDevice->Set_Samplers(startSlot, (unsigned int)m_samplers.size(), &m_samplers[0]);
 			Profiler::Get().m_rhiBindingsSampler++;
 			m_samplers.clear();
-			m_samplers.shrink_to_fit();
 			m_samplersDirty	= false;
 		}
 
@@ -385,7 +392,6 @@ namespace Directus
 			unsigned int startSlot = 0;
 			m_rhiDevice->Set_Textures(startSlot, (unsigned int)m_textures.size(), &m_textures[0]);
 			m_textures.clear();
-			m_textures.shrink_to_fit();
 			Profiler::Get().m_rhiBindingsTexture++;
 			m_texturesDirty	= false;
 		}
