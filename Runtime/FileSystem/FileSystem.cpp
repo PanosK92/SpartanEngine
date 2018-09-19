@@ -173,7 +173,6 @@ namespace Directus
 		};
 	}
 
-	//= DIRECTORIES ======================================================================
 	bool FileSystem::CreateDirectory_(const string& path)
 	{
 		return create_directories(path);
@@ -186,7 +185,17 @@ namespace Directus
 
 	bool FileSystem::DirectoryExists(const string& directory)
 	{
-		return exists(directory);
+		bool result;
+		try
+		{
+			result = exists(directory);
+		}
+		catch (filesystem_error& e)
+		{
+			LOGF_ERROR("FileSystem::DirectoryExists: %s, %s", e.what(), directory.c_str());
+		}
+
+		return result;
 	}
 
 	bool FileSystem::IsDirectory(const string& directory)
@@ -199,12 +208,19 @@ namespace Directus
 		ShellExecute(nullptr, nullptr, StringToWString(directory).c_str(), nullptr, nullptr, SW_SHOW);
 	}
 
-	//====================================================================================
-
-	//= FILES ============================================================================
 	bool FileSystem::FileExists(const string& filePath)
 	{
-		return exists(filePath);
+		bool result;
+		try
+		{
+			result = exists(filePath);
+		}
+		catch (filesystem_error& e)
+		{
+			LOGF_ERROR("FileSystem::FileExists: %s, %s", e.what(), filePath.c_str());
+		}
+
+		return result;
 	}
 
 	bool FileSystem::DeleteFile_(const string& filePath)
@@ -220,7 +236,7 @@ namespace Directus
 		}
 		catch (filesystem_error& e)
 		{
-			LOG_ERROR("FileSystem: Could not delete \"" + filePath + "\". " + string(e.what()));
+			LOGF_ERROR("FileSystem::DeleteFile: %s, %s", e.what(), filePath.c_str());
 		}
 
 		return result;
@@ -249,9 +265,7 @@ namespace Directus
 
 		return result;
 	}
-	//====================================================================================
 
-	//= DIRECTORY PARSING ================================================================
 	string FileSystem::GetFileNameFromFilePath(const string& path)
 	{
 		size_t lastindex = path.find_last_of("\\/");
@@ -332,9 +346,7 @@ namespace Directus
 
 		return filePaths;
 	}
-	//====================================================================================
 
-	//= SUPPORTED FILES IN DIRECTORY ========================================================================================
 	vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
 	{
 		vector<string> filesInDirectory		= GetFilesInDirectory(directory);
@@ -440,9 +452,7 @@ namespace Directus
 
 		return sceneFiles;
 	}
-	//===========================================================================================
 
-	//= SUPPORTED FILE CHECKS ===================================================================
 	bool FileSystem::IsSupportedAudioFile(const string& path)
 	{
 		string fileExt = GetExtensionFromFilePath(path);
@@ -569,9 +579,7 @@ namespace Directus
 	{
 		return GetExtensionFromFilePath(filePath) == METADATA_EXTENSION;
 	}
-	//============================================================================================
 
-	//= STRING PARSING =====================================================================
 	// Returns a file path which is relative to the engine
 	string FileSystem::GetRelativeFilePath(const string& absoluteFilePath)
 	{		
@@ -697,5 +705,4 @@ namespace Directus
 		delete[] buf;
 		return result;
 	}
-	//=====================================================================================
 }
