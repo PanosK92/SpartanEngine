@@ -1,19 +1,22 @@
-// dear imgui, v1.64
+// dear imgui, v1.66 WIP
 // (drawing and font code)
 
 /*
 
 Index of this file:
-- Cruft for stb_truetype/stb_rectpack implementation
-- Style functions (default style)
-- ImDrawList
-- ImDrawData
-- ShadeVertsXXX helpers functions
-- ImFontConfig
-- ImFontAtlas
-- ImFont
-- Internal Render Helpers
-- Default font data
+
+// [SECTION] STB libraries implementation
+// [SECTION] Style functions
+// [SECTION] ImDrawList
+// [SECTION] ImDrawData
+// [SECTION] Helpers ShadeVertsXXX functions
+// [SECTION] ImFontConfig
+// [SECTION] ImFontAtlas
+// [SECTION] ImFontAtlas glyph ranges helpers + GlyphRangesBuilder
+// [SECTION] ImFont
+// [SECTION] Internal Render Helpers
+// [SECTION] Decompression code
+// [SECTION] Default font data (ProggyClean.ttf)
 
 */
 
@@ -72,7 +75,7 @@ Index of this file:
 #endif
 
 //-------------------------------------------------------------------------
-// STB libraries implementation
+// [SECTION] STB libraries implementation
 //-------------------------------------------------------------------------
 
 // Compile time options:
@@ -116,7 +119,7 @@ namespace IMGUI_STB_NAMESPACE
 #ifdef IMGUI_STB_RECT_PACK_FILENAME
 #include IMGUI_STB_RECT_PACK_FILENAME
 #else
-#include "stb_rect_pack.h"
+#include "imstb_rectpack.h"
 #endif
 #endif
 
@@ -139,7 +142,7 @@ namespace IMGUI_STB_NAMESPACE
 #ifdef IMGUI_STB_TRUETYPE_FILENAME
 #include IMGUI_STB_TRUETYPE_FILENAME
 #else
-#include "stb_truetype.h"
+#include "imstb_truetype.h"
 #endif
 #endif
 
@@ -161,7 +164,7 @@ using namespace IMGUI_STB_NAMESPACE;
 #endif
 
 //-----------------------------------------------------------------------------
-// Style functions
+// [SECTION] Style functions
 //-----------------------------------------------------------------------------
 
 void ImGui::StyleColorsDark(ImGuiStyle* dst)
@@ -316,7 +319,7 @@ void ImGui::StyleColorsLight(ImGuiStyle* dst)
 }
 
 //-----------------------------------------------------------------------------
-// ImDrawListData
+// ImDrawList
 //-----------------------------------------------------------------------------
 
 ImDrawListSharedData::ImDrawListSharedData()
@@ -333,10 +336,6 @@ ImDrawListSharedData::ImDrawListSharedData()
         CircleVtx12[i] = ImVec2(ImCos(a), ImSin(a));
     }
 }
-
-//-----------------------------------------------------------------------------
-// ImDrawList
-//-----------------------------------------------------------------------------
 
 void ImDrawList::Clear()
 {
@@ -823,6 +822,9 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
 
 void ImDrawList::AddConvexPolyFilled(const ImVec2* points, const int points_count, ImU32 col)
 {
+    if (points_count < 3)
+        return;
+
     const ImVec2 uv = _Data->TexUvWhitePixel;
 
     if (Flags & ImDrawListFlags_AntiAliasedFill)
@@ -1227,7 +1229,7 @@ void ImDrawList::AddImageRounded(ImTextureID user_texture_id, const ImVec2& a, c
 }
 
 //-----------------------------------------------------------------------------
-// ImDrawData
+// [SECTION] ImDrawData
 //-----------------------------------------------------------------------------
 
 // For backward compatibility: convert all buffers from indexed to de-indexed, in case you cannot render indexed. Note: this is slow and most likely a waste of resources. Always prefer indexed rendering!
@@ -1264,7 +1266,7 @@ void ImDrawData::ScaleClipRects(const ImVec2& scale)
 }
 
 //-----------------------------------------------------------------------------
-// Shade functions
+// [SECTION] Helpers ShadeVertsXXX functions
 //-----------------------------------------------------------------------------
 
 // Generic linear color gradient, write to RGB fields, leave A untouched.
@@ -1311,7 +1313,7 @@ void ImGui::ShadeVertsLinearUV(ImDrawList* draw_list, int vert_start_idx, int ve
 }
 
 //-----------------------------------------------------------------------------
-// ImFontConfig
+// [SECTION] ImFontConfig
 //-----------------------------------------------------------------------------
 
 ImFontConfig::ImFontConfig()
@@ -1337,7 +1339,7 @@ ImFontConfig::ImFontConfig()
 }
 
 //-----------------------------------------------------------------------------
-// ImFontAtlas
+// [SECTION] ImFontAtlas
 //-----------------------------------------------------------------------------
 
 // A work of art lies ahead! (. = white layer, X = black layer, others are blank)
@@ -1895,7 +1897,7 @@ bool    ImFontAtlasBuildWithStbTruetype(ImFontAtlas* atlas)
                     continue;
 
                 const int codepoint = range.first_unicode_codepoint_in_range + char_idx;
-                if (cfg.MergeMode && dst_font->FindGlyphNoFallback((unsigned short)codepoint))
+                if (cfg.MergeMode && dst_font->FindGlyphNoFallback((ImWchar)codepoint))
                     continue;
 
                 float char_advance_x_org = pc.xadvance;
@@ -2074,6 +2076,10 @@ static void UnpackAccumulativeOffsetsIntoRanges(int base_codepoint, const short*
     out_ranges[0] = 0;
 }
 
+//-------------------------------------------------------------------------
+// [SECTION] ImFontAtlas glyph ranges helpers + GlyphRangesBuilder
+//-------------------------------------------------------------------------
+
 const ImWchar*  ImFontAtlas::GetGlyphRangesChineseSimplifiedCommon()
 {
     // Store 2500 regularly used characters for Simplified Chinese.
@@ -2223,10 +2229,6 @@ const ImWchar*  ImFontAtlas::GetGlyphRangesThai()
     return &ranges[0];
 }
 
-//-----------------------------------------------------------------------------
-// ImFontAtlas::GlyphRangesBuilder
-//-----------------------------------------------------------------------------
-
 void ImFontAtlas::GlyphRangesBuilder::AddText(const char* text, const char* text_end)
 {
     while (text_end ? (text < text_end) : *text)
@@ -2262,7 +2264,7 @@ void ImFontAtlas::GlyphRangesBuilder::BuildRanges(ImVector<ImWchar>* out_ranges)
 }
 
 //-----------------------------------------------------------------------------
-// ImFont
+// [SECTION] ImFont
 //-----------------------------------------------------------------------------
 
 ImFont::ImFont()
@@ -2317,21 +2319,21 @@ void ImFont::BuildLookupTable()
     {
         int codepoint = (int)Glyphs[i].Codepoint;
         IndexAdvanceX[codepoint] = Glyphs[i].AdvanceX;
-        IndexLookup[codepoint] = (unsigned short)i;
+        IndexLookup[codepoint] = (ImWchar)i;
     }
 
     // Create a glyph to handle TAB
     // FIXME: Needs proper TAB handling but it needs to be contextualized (or we could arbitrary say that each string starts at "column 0" ?)
-    if (FindGlyph((unsigned short)' '))
+    if (FindGlyph((ImWchar)' '))
     {
         if (Glyphs.back().Codepoint != '\t')   // So we can call this function multiple times
             Glyphs.resize(Glyphs.Size + 1);
         ImFontGlyph& tab_glyph = Glyphs.back();
-        tab_glyph = *FindGlyph((unsigned short)' ');
+        tab_glyph = *FindGlyph((ImWchar)' ');
         tab_glyph.Codepoint = '\t';
         tab_glyph.AdvanceX *= 4;
         IndexAdvanceX[(int)tab_glyph.Codepoint] = (float)tab_glyph.AdvanceX;
-        IndexLookup[(int)tab_glyph.Codepoint] = (unsigned short)(Glyphs.Size-1);
+        IndexLookup[(int)tab_glyph.Codepoint] = (ImWchar)(Glyphs.Size-1);
     }
 
     FallbackGlyph = FindGlyphNoFallback(FallbackChar);
@@ -2353,7 +2355,7 @@ void ImFont::GrowIndex(int new_size)
     if (new_size <= IndexLookup.Size)
         return;
     IndexAdvanceX.resize(new_size, -1.0f);
-    IndexLookup.resize(new_size, (unsigned short)-1);
+    IndexLookup.resize(new_size, (ImWchar)-1);
 }
 
 // x0/y0/x1/y1 are offset from the character upper-left layout position, in pixels. Therefore x0/y0 are often fairly close to zero.
@@ -2386,13 +2388,13 @@ void ImFont::AddRemapChar(ImWchar dst, ImWchar src, bool overwrite_dst)
     IM_ASSERT(IndexLookup.Size > 0);    // Currently this can only be called AFTER the font has been built, aka after calling ImFontAtlas::GetTexDataAs*() function.
     int index_size = IndexLookup.Size;
 
-    if (dst < index_size && IndexLookup.Data[dst] == (unsigned short)-1 && !overwrite_dst) // 'dst' already exists
+    if (dst < index_size && IndexLookup.Data[dst] == (ImWchar)-1 && !overwrite_dst) // 'dst' already exists
         return;
     if (src >= index_size && dst >= index_size) // both 'dst' and 'src' don't exist -> no-op
         return;
 
     GrowIndex(dst + 1);
-    IndexLookup[dst] = (src < index_size) ? IndexLookup.Data[src] : (unsigned short)-1;
+    IndexLookup[dst] = (src < index_size) ? IndexLookup.Data[src] : (ImWchar)-1;
     IndexAdvanceX[dst] = (src < index_size) ? IndexAdvanceX.Data[src] : 1.0f;
 }
 
@@ -2400,8 +2402,8 @@ const ImFontGlyph* ImFont::FindGlyph(ImWchar c) const
 {
     if (c >= IndexLookup.Size)
         return FallbackGlyph;
-    const unsigned short i = IndexLookup[c];
-    if (i == (unsigned short)-1)
+    const ImWchar i = IndexLookup[c];
+    if (i == (ImWchar)-1)
         return FallbackGlyph;
     return &Glyphs.Data[i];
 }
@@ -2410,8 +2412,8 @@ const ImFontGlyph* ImFont::FindGlyphNoFallback(ImWchar c) const
 {
     if (c >= IndexLookup.Size)
         return NULL;
-    const unsigned short i = IndexLookup[c];
-    if (i == (unsigned short)-1)
+    const ImWchar i = IndexLookup[c];
+    if (i == (ImWchar)-1)
         return NULL;
     return &Glyphs.Data[i];
 }
@@ -2609,7 +2611,7 @@ ImVec2 ImFont::CalcTextSizeA(float size, float max_width, float wrap_width, cons
     return text_size;
 }
 
-void ImFont::RenderChar(ImDrawList* draw_list, float size, ImVec2 pos, ImU32 col, unsigned short c) const
+void ImFont::RenderChar(ImDrawList* draw_list, float size, ImVec2 pos, ImU32 col, ImWchar c) const
 {
     if (c == ' ' || c == '\t' || c == '\n' || c == '\r') // Match behavior of RenderText(), those 4 codepoints are hard-coded.
         return;
@@ -2734,7 +2736,7 @@ void ImFont::RenderText(ImDrawList* draw_list, float size, ImVec2 pos, ImU32 col
         }
 
         float char_width = 0.0f;
-        if (const ImFontGlyph* glyph = FindGlyph((unsigned short)c))
+        if (const ImFontGlyph* glyph = FindGlyph((ImWchar)c))
         {
             char_width = glyph->AdvanceX * scale;
 
@@ -2813,12 +2815,12 @@ void ImFont::RenderText(ImDrawList* draw_list, float size, ImVec2 pos, ImU32 col
 }
 
 //-----------------------------------------------------------------------------
-// Internals Render Helpers
+// [SECTION] Internal Render Helpers
 // (progressively moved from imgui.cpp to here when they are redesigned to stop accessing ImGui global state)
 //-----------------------------------------------------------------------------
-// RenderMouseCursor()
-// RenderArrowPointingAt()
-// RenderRectFilledRangeH()
+// - RenderMouseCursor()
+// - RenderArrowPointingAt()
+// - RenderRectFilledRangeH()
 //-----------------------------------------------------------------------------
 
 void ImGui::RenderMouseCursor(ImDrawList* draw_list, ImVec2 pos, float scale, ImGuiMouseCursor mouse_cursor)
@@ -2927,8 +2929,9 @@ void ImGui::RenderRectFilledRangeH(ImDrawList* draw_list, const ImRect& rect, Im
     draw_list->PathFillConvex(col);
 }
 
+
 //-----------------------------------------------------------------------------
-// DEFAULT FONT DATA
+// [SECTION] Decompression code
 //-----------------------------------------------------------------------------
 // Compressed with stb_compress() then converted to a C array and encoded as base85.
 // Use the program in misc/fonts/binary_to_compressed_c.cpp to create the array from a TTF file.
@@ -3047,6 +3050,8 @@ static unsigned int stb_decompress(unsigned char *output, const unsigned char *i
     }
 }
 
+//-----------------------------------------------------------------------------
+// [SECTION] Default font data (ProggyClean.ttf)
 //-----------------------------------------------------------------------------
 // ProggyClean.ttf
 // Copyright (c) 2004, 2005 Tristan Grimmer
