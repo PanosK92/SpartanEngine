@@ -175,12 +175,32 @@ namespace Directus
 
 	bool FileSystem::CreateDirectory_(const string& path)
 	{
-		return create_directories(path);
+		bool result;
+		try
+		{
+			result = create_directories(path);
+		}
+		catch (filesystem_error& e)
+		{
+			LOGF_ERROR("FileSystem::CreateDirectory: %s, %s", e.what(), path.c_str());
+		}
+
+		return result;
 	}
 
 	bool FileSystem::DeleteDirectory(const string& directory)
 	{
-		return remove_all(directory);
+		bool result;
+		try
+		{
+			result = remove_all(directory);
+		}
+		catch (filesystem_error& e)
+		{
+			LOGF_ERROR("FileSystem::DeleteDirectory: %s, %s", e.what(), directory.c_str());
+		}
+
+		return result;
 	}
 
 	bool FileSystem::DirectoryExists(const string& directory)
@@ -200,7 +220,17 @@ namespace Directus
 
 	bool FileSystem::IsDirectory(const string& directory)
 	{
-		return is_directory(directory);
+		bool result;
+		try
+		{
+			result = is_directory(directory);
+		}
+		catch (filesystem_error& e)
+		{
+			LOGF_ERROR("FileSystem::IsDirectory: %s, %s", e.what(), directory.c_str());
+		}
+
+		return result;
 	}
 
 	void FileSystem::OpenDirectoryWindow(const std::string& directory)
@@ -268,34 +298,33 @@ namespace Directus
 
 	string FileSystem::GetFileNameFromFilePath(const string& path)
 	{
-		size_t lastindex = path.find_last_of("\\/");
-		string fileName = path.substr(lastindex + 1, path.length());
+		auto lastindex	= path.find_last_of("\\/");
+		auto fileName	= path.substr(lastindex + 1, path.length());
 
 		return fileName;
 	}
 
 	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& filepath)
 	{
-		string fileName = GetFileNameFromFilePath(filepath);
-
-		size_t lastindex = fileName.find_last_of('.');
-		string fileNameNoExt = fileName.substr(0, lastindex);
+		auto fileName		= GetFileNameFromFilePath(filepath);
+		auto lastindex		= fileName.find_last_of('.');
+		auto fileNameNoExt	= fileName.substr(0, lastindex);
 
 		return fileNameNoExt;
 	}
 
 	string FileSystem::GetDirectoryFromFilePath(const string& filePath)
 	{
-		size_t lastindex = filePath.find_last_of("\\/");
-		string directory = filePath.substr(0, lastindex + 1);
+		auto lastindex = filePath.find_last_of("\\/");
+		auto directory = filePath.substr(0, lastindex + 1);
 
 		return directory;
 	}
 
 	string FileSystem::GetFilePathWithoutExtension(const string& filePath)
 	{
-		string directory = GetDirectoryFromFilePath(filePath);
-		string fileNameNoExt = GetFileNameNoExtensionFromFilePath(filePath);
+		auto directory		= GetDirectoryFromFilePath(filePath);
+		auto fileNameNoExt	= GetFileNameNoExtensionFromFilePath(filePath);
 
 		return directory + fileNameNoExt;
 	}
@@ -303,11 +332,9 @@ namespace Directus
 	string FileSystem::GetExtensionFromFilePath(const string& filePath)
 	{
 		if (filePath.empty() || filePath == NOT_ASSIGNED)
-		{
 			return NOT_ASSIGNED;
-		}
 
-		size_t lastindex = filePath.find_last_of('.');
+		auto lastindex = filePath.find_last_of('.');
 		if (string::npos != lastindex)
 		{
 			// extension with dot included
@@ -580,7 +607,7 @@ namespace Directus
 		return GetExtensionFromFilePath(filePath) == METADATA_EXTENSION;
 	}
 
-	// Returns a file path which is relative to the engine
+	// Returns a file path which is relative to the engine's executable
 	string FileSystem::GetRelativeFilePath(const string& absoluteFilePath)
 	{		
 		// create absolute paths
@@ -624,6 +651,7 @@ namespace Directus
 		return result.generic_string();
 	}
 
+	// Returns a file path which is where the engine's executable is located
 	string FileSystem::GetWorkingDirectory()
 	{
 		return current_path().generic_string() + "/";
@@ -631,8 +659,8 @@ namespace Directus
 
 	string FileSystem::GetParentDirectory(const string& directory)
 	{
-		size_t found	= directory.find_last_of("/\\");
-		string result	= directory;
+		auto found	= directory.find_last_of("/\\");
+		auto result	= directory;
 
 		// If no slash was found, return provided string
 		if (found == string::npos)
@@ -652,8 +680,8 @@ namespace Directus
 	string FileSystem::GetStringAfterExpression(const string& str, const string& expression)
 	{
 		// ("The quick brown fox", "brown") -> "brown fox"
-		size_t position = str.find(expression);
-		string remaining = position != string::npos ? str.substr(position + expression.length()) : str;
+		auto position	= str.find(expression);
+		auto remaining	= position != string::npos ? str.substr(position + expression.length()) : str;
 
 		return remaining;
 	}
@@ -697,9 +725,9 @@ namespace Directus
 
 	wstring FileSystem::StringToWString(const string& str)
 	{
-		int slength = int(str.length()) + 1;
-		int len		= MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
-		auto buf	= new wchar_t[len];
+		auto slength	= int(str.length()) + 1;
+		auto len		= MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
+		auto buf		= new wchar_t[len];
 		MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
 		wstring result(buf);
 		delete[] buf;

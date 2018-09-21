@@ -108,7 +108,7 @@ namespace Directus
 		}
 		else
 		{
-			LOGF_ERROR("RHI_Texture::CreateShaderResource: Failed to create shader resource with mipmaps for \"%s\".", m_resourceFilePath.c_str());
+			LOGF_ERROR("RHI_Texture::LoadFromFile: Failed to create shader resource for \"%s\".", m_resourceFilePath.c_str());
 		}
 
 		GetLoadState(LoadState_Completed);
