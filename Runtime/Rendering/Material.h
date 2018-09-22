@@ -145,5 +145,6 @@ namespace Directus
 		std::weak_ptr<ShaderVariation> m_shader;
 		std::vector<TextureSlot> m_textureSlots;
 		TextureSlot m_emptyTextureSlot;
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

@@ -35,23 +35,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	enum Shader_State
+	{
+		Shader_Uninitialized,
+		Shader_Compiling,
+		Shader_Built,
+		Shader_Failed
+	};
+
 	class ENGINE_CLASS RHI_Shader
 	{
 	public:
-		//= GRAPHICS API ==========================================================
+		//= GRAPHICS API ==================================================================
 		RHI_Shader(std::shared_ptr<RHI_Device> rhiDevice);
 		~RHI_Shader();	
-		bool Compile_Vertex(const std::string& filePath, Input_Layout inputLayout);
-		bool Compile_Pixel(const std::string& filePath);
-		//=========================================================================
+		virtual bool Compile_Vertex(const std::string& filePath, Input_Layout inputLayout);
+		virtual bool Compile_Pixel(const std::string& filePath);
+		//=================================================================================
 
-		void Compile_VertexPixel_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
+		virtual void Compile_VertexPixel_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
 		{
 			context->GetSubsystem<Threading>()->AddTask([this, filePath, inputLayout]()
 			{
-				LOGF_INFO("RHI_Shader::Compile_VertexPixel_Async: Compiling %s...", filePath.c_str());
-				Compile_Vertex(filePath, inputLayout);
-				Compile_Pixel(filePath);
+				m_shaderState	= Shader_Compiling;
+				bool vertex		= Compile_Vertex(filePath, inputLayout);
+				bool pixel		= Compile_Pixel(filePath);
+
+				m_shaderState = (vertex && pixel) ? Shader_Built : Shader_Failed;
+
+				if (m_shaderState == Shader_Built)
+				{
+					LOGF_INFO("RHI_Shader::Compile_VertexPixel_Async: Successfully compiled %s", filePath.c_str());
+				}
+				else if (m_shaderState == Shader_Failed)
+				{
+					LOGF_ERROR("RHI_Shader::Compile_VertexPixel_Async: Failed to compile %s", filePath.c_str());
+				}
 			});
 		}
 
@@ -68,31 +87,33 @@ namespace Directus
 		void* GetPixelShaderBuffer()								{ return m_pixelShader; }
 		std::shared_ptr<RHI_ConstantBuffer>& GetConstantBuffer()	{ return m_constantBuffer; }
 		void SetName(const std::string& name)						{ m_name = name; }
-		bool IsCompiled()											{ return m_compiled; }
 		bool HasVertexShader()										{ return m_hasVertexShader; }
 		bool HasPixelShader()										{ return m_hasPixelShader; }
 		std::shared_ptr<RHI_InputLayout> GetInputLayout()			{ return m_inputLayout; }
 		unsigned int GetID()										{ return m_id; }
+		Shader_State GetState()										{ return m_shaderState; }
+
+	protected:
+		std::shared_ptr<RHI_Device> m_rhiDevice;
 
 	private:
 		void CreateConstantBuffer(unsigned int size, unsigned int slot, Buffer_Scope scope);
 
 		unsigned int m_bufferSize;	
-		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
-		std::shared_ptr<RHI_Device> m_rhiDevice;
+		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;	
 		std::string m_name;
 		std::string m_filePath;
 		std::string m_entrypoint;
 		std::string m_profile;
 		std::map<std::string, std::string> m_macros;
-		std::shared_ptr<RHI_InputLayout> m_inputLayout;
-		bool m_compiled;
-		bool m_hasVertexShader;
-		bool m_hasPixelShader;
+		std::shared_ptr<RHI_InputLayout> m_inputLayout;	
 		unsigned int m_id;
+		bool m_hasVertexShader		= false;
+		bool m_hasPixelShader		= false;
+		Shader_State m_shaderState	= Shader_Uninitialized;
 
 		// D3D11
-		void* m_vertexShader;
-		void* m_pixelShader;
+		void* m_vertexShader	= nullptr;
+		void* m_pixelShader		= nullptr;
 	};
 }

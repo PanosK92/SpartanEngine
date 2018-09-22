@@ -47,31 +47,35 @@ namespace Directus
 
 	bool RHI_IndexBuffer::Create(const vector<unsigned int>& indices)
 	{
-		if (!m_rhiDevice->GetDevice<ID3D11Device>() || indices.empty())
+		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
+		{
+			LOG_ERROR("RHI_IndexBuffer::Create: Invalid RHI device");
 			return false;
+		}
 
-		unsigned int stride = sizeof(unsigned int);
-		unsigned int size = (unsigned int)indices.size();
-		unsigned int finalSize = stride * size;
+		if (indices.empty())
+		{
+			LOG_ERROR("RHI_IndexBuffer::Create: Invalid parameter");
+			return false;
+		}
 
-		// fill in a buffer description.
+		unsigned int stride		= sizeof(unsigned int);
+		unsigned int size		= (unsigned int)indices.size();
+		unsigned int finalSize	= stride * size;
+
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth = finalSize;
-		bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-		bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		bufferDesc.CPUAccessFlags = 0;
-		bufferDesc.MiscFlags = 0;
-		bufferDesc.StructureByteStride = 0;
+		bufferDesc.ByteWidth			= finalSize;
+		bufferDesc.Usage				= D3D11_USAGE_IMMUTABLE;
+		bufferDesc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
+		bufferDesc.CPUAccessFlags		= 0;
+		bufferDesc.MiscFlags			= 0;
+		bufferDesc.StructureByteStride	= 0;
 
-		// fill in the subresource data.
 		D3D11_SUBRESOURCE_DATA initData;
 		initData.pSysMem = indices.data();
 		initData.SysMemPitch = 0;
 		initData.SysMemSlicePitch = 0;
-
-		// Compute memory usage
-		m_memoryUsage = (unsigned int)(sizeof(unsigned int) * indices.size());
 
 		auto ptr = (ID3D11Buffer**)&m_buffer;
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
@@ -81,17 +85,22 @@ namespace Directus
 			return false;
 		}
 
+		// Compute memory usage
+		m_memoryUsage = (unsigned int)(sizeof(unsigned int) * indices.size());
+
 		return true;
 	}
 
 	bool RHI_IndexBuffer::CreateDynamic(unsigned int initialSize)
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
+		{
+			LOG_ERROR("RHI_IndexBuffer::Unmap: Invalid RHI device");
 			return false;
+		}
 
 		unsigned int byteWidth = sizeof(unsigned int) * initialSize;
 
-		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
 		bufferDesc.ByteWidth			= byteWidth;
@@ -115,20 +124,22 @@ namespace Directus
 	void* RHI_IndexBuffer::Map()
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
-			return nullptr;
+		{
+			LOG_ERROR("RHI_IndexBuffer::Unmap: Invalid RHI device");
+			return false;
+		}
 
 		if (!m_buffer)
 		{
-			LOG_ERROR("D3D11IndexBuffer: Can't map uninitialized index buffer.");
+			LOG_ERROR("RHI_IndexBuffer::Map: Invalid buffer.");
 			return nullptr;
 		}
 
-		// disable GPU access to the index buffer data.
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
 		auto result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map((ID3D11Resource*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
-			LOG_ERROR("D3D11IndexBuffer: Failed to map index buffer.");
+			LOG_ERROR("RHI_IndexBuffer: Failed to map index buffer.");
 			return nullptr;
 		}
 
@@ -137,10 +148,18 @@ namespace Directus
 
 	bool RHI_IndexBuffer::Unmap()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		{
+			LOG_ERROR("RHI_IndexBuffer::Unmap: Invalid RHI device");
 			return false;
+		}
 
-		// re-enable GPU access to the index buffer data.
+		if (!m_buffer)
+		{
+			LOG_ERROR("RHI_IndexBuffer::Unmap: Invalid buffer");
+			return nullptr;
+		}
+
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Resource*)m_buffer, 0);
 
 		return true;
@@ -148,10 +167,16 @@ namespace Directus
 
 	bool RHI_IndexBuffer::Bind()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 		{
-			LOG_ERROR("D3D11_IndexBuffer::Bind: Invalid device context");
+			LOG_ERROR("RHI_IndexBuffer::Bind: Invalid device context");
 			return false;
+		}
+
+		if (!m_buffer)
+		{
+			LOG_ERROR("RHI_IndexBuffer::Bind: Invalid buffer");
+			return nullptr;
 		}
 
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->IASetIndexBuffer((ID3D11Buffer*)m_buffer, DXGI_FORMAT_R32_UINT, 0);

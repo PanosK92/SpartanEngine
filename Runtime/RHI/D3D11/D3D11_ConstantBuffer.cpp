@@ -49,8 +49,11 @@ namespace Directus
 
 	bool RHI_ConstantBuffer::Create(unsigned int size, unsigned int slot, Buffer_Scope scope)
 	{
-		if (!m_rhiDevice->GetDevice<ID3D11Device>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
+		{
+			LOG_ERROR("RHI_ConstantBuffer::Create: Invalid RHI device");
 			return false;
+		}
 
 		m_slot	= slot;
 		m_scope = scope;
@@ -76,16 +79,18 @@ namespace Directus
 
 	void* RHI_ConstantBuffer::Map()
 	{
-		if (!m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
-			return nullptr;
-
-		if (!m_buffer)
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 		{
-			LOG_ERROR("Can't map uninitialized constant buffer.");
+			LOG_ERROR("RHI_ConstantBuffer::Map: Invalid RHI device");
 			return nullptr;
 		}
 
-		// disable GPU access to the vertex buffer data.
+		if (!m_buffer)
+		{
+			LOG_ERROR("RHI_ConstantBuffer::Map: Invalid buffer");
+			return nullptr;
+		}
+
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
 		HRESULT result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map((ID3D11Buffer*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
@@ -99,10 +104,18 @@ namespace Directus
 
 	bool RHI_ConstantBuffer::Unmap()
 	{
-		if (!m_buffer || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		{
+			LOG_ERROR("RHI_ConstantBuffer::Unmap: Invalid RHI device");
 			return false;
+		}
 
-		// re-enable GPU access to the vertex buffer data.
+		if (!m_buffer)
+		{
+			LOG_ERROR("RHI_ConstantBuffer::Unmap: Invalid buffer");
+			return false;
+		}
+
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Buffer*)m_buffer, 0);
 
 		return true;

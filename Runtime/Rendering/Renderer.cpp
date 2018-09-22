@@ -124,8 +124,8 @@ namespace Directus
 		// SHADERS
 		{
 			// Light
-			m_shaderLight = make_shared<LightShader>();
-			m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_rhiDevice, m_context);
+			m_shaderLight = make_shared<LightShader>(m_rhiDevice);
+			m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_context);
 
 			// Line
 			m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
@@ -614,11 +614,16 @@ namespace Directus
 			if (!obj_renderable || !obj_material)
 				continue;
 
-			// Get geometry and shader
-			Model* obj_geometry			= obj_renderable->Geometry_Model();
-			ShaderVariation* obj_shader	= obj_material->GetShader().lock().get();
+			// Get shader and geometry
+			auto obj_shader		= obj_material->GetShader().lock();
+			Model* obj_geometry = obj_renderable->Geometry_Model();
 
-			if (!obj_geometry || !obj_shader)
+			// Validate shader
+			if (!obj_shader || obj_shader->GetState() != Shader_Built)
+				continue;
+
+			// Validate geometry
+			if (!obj_geometry)
 				continue;
 
 			// Skip objects outside of the view frustum
@@ -641,10 +646,10 @@ namespace Directus
 			{
 				if (!vertexShaderBound)
 				{
-					m_rhiPipelineState->SetVertexShader(obj_shader->GetShader());
+					m_rhiPipelineState->SetVertexShader(shared_ptr<RHI_Shader>(obj_shader));
 					vertexShaderBound = true;
 				}
-				m_rhiPipelineState->SetPixelShader(obj_shader->GetShader());
+				m_rhiPipelineState->SetPixelShader(shared_ptr<RHI_Shader>(obj_shader));
 				currentlyBoundShader = obj_shader->GetResourceID();
 			}
 
@@ -712,7 +717,7 @@ namespace Directus
 
 	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		if (!m_shaderLight->IsCompiled())
+		if (m_shaderLight->GetState() != Shader_Built)
 			return;
 
 		TIME_BLOCK_START_MULTI();
@@ -731,7 +736,7 @@ namespace Directus
 
 		m_rhiPipelineState->SetRenderTarget(texOut);
 		m_rhiPipelineState->SetViewport(texOut->GetViewport());
-		m_rhiPipelineState->SetShader(m_shaderLight->GetShader());
+		m_rhiPipelineState->SetShader(shared_ptr<RHI_Shader>(m_shaderLight));
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Albedo));
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
