@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Camera.h"
 #include "Renderable.h"
-#include "../../Scene/Actor.h"
+#include "../../World/Actor.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_RenderTexture.h"
@@ -98,7 +98,7 @@ namespace Directus
 			m_isDirty = true;
 		}
 
-		Camera* camera = m_context->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
+		Camera* camera = m_context->GetSubsystem<World>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
 		if (m_lastPosCamera != camera->GetTransform()->GetPosition())
 		{
 			m_lastPosCamera = camera->GetTransform()->GetPosition();
@@ -117,7 +117,7 @@ namespace Directus
 		if (!m_isDirty)
 			return;
 
-		if (auto mainCamera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock().get())
+		if (auto mainCamera = GetContext()->GetSubsystem<World>()->GetMainCamera().lock().get())
 		{
 			if (auto cameraComp = mainCamera->GetComponent<Camera>().lock().get())
 			{

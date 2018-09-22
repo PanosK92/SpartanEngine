@@ -25,8 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Implementation.h"
 #include "../../RHI/RHI_Shader.h"
 #include "../../RHI/RHI_ConstantBuffer.h"
-#include "../../Scene/Components/Transform.h"
-#include "../../Scene/Components/Camera.h"
+#include "../../World/Components/Transform.h"
+#include "../../World/Components/Camera.h"
 #include "../../Core/Settings.h"
 //===========================================
 

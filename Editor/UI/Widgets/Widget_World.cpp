@@ -20,22 +20,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==============================
-#include "Widget_Scene.h"
+#include "Widget_World.h"
 #include "Widget_Properties.h"
 #include "../DragDrop.h"
 #include "Input/Input_Definition.h"
 #include "Input/Input_Implementation.h"
 #include "../../ImGui/Source/imgui_stl.h"
-#include "Scene/Actor.h"
-#include "Scene/Components/Transform.h"
-#include "Scene/Components/Light.h"
-#include "Scene/Components/AudioSource.h"
-#include "Scene/Components/AudioListener.h"
-#include "Scene/Components/RigidBody.h"
-#include "Scene/Components/Collider.h"
-#include "Scene/Components/Camera.h"
-#include "Scene/Components/Constraint.h"
-#include "Scene/Components/Renderable.h"
+#include "World/Actor.h"
+#include "World/Components/Transform.h"
+#include "World/Components/Light.h"
+#include "World/Components/AudioSource.h"
+#include "World/Components/AudioListener.h"
+#include "World/Components/RigidBody.h"
+#include "World/Components/Collider.h"
+#include "World/Components/Camera.h"
+#include "World/Components/Constraint.h"
+#include "World/Components/Renderable.h"
 //=========================================
 
 //= NAMESPACES ==========
@@ -43,13 +43,13 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-weak_ptr<Actor> Widget_Scene::m_actorSelected;
+weak_ptr<Actor> Widget_World::m_actorSelected;
 weak_ptr<Actor> g_actorEmpty;
 
 namespace SceneHelper
 {
 	static Engine* g_engine			= nullptr;
-	static Scene* g_scene			= nullptr;
+	static World* g_scene			= nullptr;
 	static Input* g_input			= nullptr;
 	static bool g_popupRenameActor	= false;
 	static DragDropPayload g_payload;
@@ -59,25 +59,25 @@ namespace SceneHelper
 	static Actor* g_actorClicked	= nullptr;
 }
 
-Widget_Scene::Widget_Scene()
+Widget_World::Widget_World()
 {
-	m_title					= "Scene";
+	m_title					= "World";
 	m_context				= nullptr;
 	SceneHelper::g_scene	= nullptr;
 }
 
-void Widget_Scene::Initialize(Context* context)
+void Widget_World::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 
 	SceneHelper::g_engine	= m_context->GetSubsystem<Engine>();
-	SceneHelper::g_scene	= m_context->GetSubsystem<Scene>();
+	SceneHelper::g_scene	= m_context->GetSubsystem<World>();
 	SceneHelper::g_input	= m_context->GetSubsystem<Input>();
 
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 }
 
-void Widget_Scene::Update(float deltaTime)
+void Widget_World::Update(float deltaTime)
 {
 	// If something is being loaded, don't parse the hierarchy
 	if (EditorHelper::Get().IsLoading())
@@ -97,13 +97,13 @@ void Widget_Scene::Update(float deltaTime)
 	}
 }
 
-void Widget_Scene::SetSelectedActor(weak_ptr<Actor> actor)
+void Widget_World::SetSelectedActor(weak_ptr<Actor> actor)
 {
 	m_actorSelected = actor;
 	Widget_Properties::Inspect(m_actorSelected);
 }
 
-void Widget_Scene::Tree_Show()
+void Widget_World::Tree_Show()
 {
 	OnTreeBegin();
 
@@ -131,19 +131,19 @@ void Widget_Scene::Tree_Show()
 	OnTreeEnd();
 }
 
-void Widget_Scene::OnTreeBegin()
+void Widget_World::OnTreeBegin()
 {
 	SceneHelper::g_actorHovered = nullptr;
 }
 
-void Widget_Scene::OnTreeEnd()
+void Widget_World::OnTreeEnd()
 {
 	HandleKeyShortcuts();
 	HandleClicking();
 	Popups();
 }
 
-void Widget_Scene::Tree_AddActor(Actor* actor)
+void Widget_World::Tree_AddActor(Actor* actor)
 {
 	if (!actor)
 		return;
@@ -199,7 +199,7 @@ void Widget_Scene::Tree_AddActor(Actor* actor)
 	}
 }
 
-void Widget_Scene::HandleClicking()
+void Widget_World::HandleClicking()
 {
 	// Since we are handling clicking manually, we must ensure we are inside the window
 	if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
@@ -229,7 +229,7 @@ void Widget_Scene::HandleClicking()
 	}
 }
 
-void Widget_Scene::Actor_HandleDragDrop(Actor* actorPtr)
+void Widget_World::Actor_HandleDragDrop(Actor* actorPtr)
 {
 	// Drag
 	if (DragDrop::Get().DragBegin())
@@ -253,13 +253,13 @@ void Widget_Scene::Actor_HandleDragDrop(Actor* actorPtr)
 	}
 }
 
-void Widget_Scene::Popups()
+void Widget_World::Popups()
 {
 	Popup_ContextMenu();
 	Popup_ActorRename();
 }
 
-void Widget_Scene::Popup_ContextMenu()
+void Widget_World::Popup_ContextMenu()
 {
 	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
 		return;
@@ -385,7 +385,7 @@ void Widget_Scene::Popup_ContextMenu()
 	ImGui::EndPopup();
 }
 
-void Widget_Scene::Popup_ActorRename()
+void Widget_World::Popup_ActorRename()
 {
 	if (SceneHelper::g_popupRenameActor)
 	{
@@ -420,7 +420,7 @@ void Widget_Scene::Popup_ActorRename()
 	}
 }
 
-void Widget_Scene::HandleKeyShortcuts()
+void Widget_World::HandleKeyShortcuts()
 {
 	if (SceneHelper::g_input->GetButtonKeyboard(Delete))
 	{
@@ -428,12 +428,12 @@ void Widget_Scene::HandleKeyShortcuts()
 	}
 }
 
-void Widget_Scene::Action_Actor_Delete(weak_ptr<Actor> actor)
+void Widget_World::Action_Actor_Delete(weak_ptr<Actor> actor)
 {
 	SceneHelper::g_scene->Actor_Remove(actor);
 }
 
-Actor* Widget_Scene::Action_Actor_CreateEmpty()
+Actor* Widget_World::Action_Actor_CreateEmpty()
 {
 	auto actor = SceneHelper::g_scene->Actor_CreateAdd().lock().get();
 	if (auto selected = m_actorSelected.lock())
@@ -444,7 +444,7 @@ Actor* Widget_Scene::Action_Actor_CreateEmpty()
 	return actor;
 }
 
-void Widget_Scene::Action_Actor_CreateCube()
+void Widget_World::Action_Actor_CreateCube()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
@@ -453,7 +453,7 @@ void Widget_Scene::Action_Actor_CreateCube()
 	actor->SetName("Cube");
 }
 
-void Widget_Scene::Action_Actor_CreateQuad()
+void Widget_World::Action_Actor_CreateQuad()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
@@ -462,7 +462,7 @@ void Widget_Scene::Action_Actor_CreateQuad()
 	actor->SetName("Quad");
 }
 
-void Widget_Scene::Action_Actor_CreateSphere()
+void Widget_World::Action_Actor_CreateSphere()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
@@ -471,7 +471,7 @@ void Widget_Scene::Action_Actor_CreateSphere()
 	actor->SetName("Sphere");
 }
 
-void Widget_Scene::Action_Actor_CreateCylinder()
+void Widget_World::Action_Actor_CreateCylinder()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
@@ -480,7 +480,7 @@ void Widget_Scene::Action_Actor_CreateCylinder()
 	actor->SetName("Cylinder");
 }
 
-void Widget_Scene::Action_Actor_CreateCone()
+void Widget_World::Action_Actor_CreateCone()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	auto renderable = actor->AddComponent<Renderable>().lock();
@@ -489,63 +489,63 @@ void Widget_Scene::Action_Actor_CreateCone()
 	actor->SetName("Cone");
 }
 
-void Widget_Scene::Action_actor_CreateCamera()
+void Widget_World::Action_actor_CreateCamera()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Camera>();
 	actor->SetName("Camera");
 }
 
-void Widget_Scene::Action_actor_CreateLightDirectional()
+void Widget_World::Action_actor_CreateLightDirectional()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
 	actor->SetName("Directional");
 }
 
-void Widget_Scene::Action_actor_CreateLightPoint()
+void Widget_World::Action_actor_CreateLightPoint()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Light>().lock()->SetLightType(LightType_Point);
 	actor->SetName("Point");
 }
 
-void Widget_Scene::Action_actor_CreateLightSpot()
+void Widget_World::Action_actor_CreateLightSpot()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
 	actor->SetName("Spot");
 }
 
-void Widget_Scene::Action_actor_CreateRigidBody()
+void Widget_World::Action_actor_CreateRigidBody()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<RigidBody>();
 	actor->SetName("RigidBody");
 }
 
-void Widget_Scene::Action_actor_CreateCollider()
+void Widget_World::Action_actor_CreateCollider()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Collider>();
 	actor->SetName("Collider");
 }
 
-void Widget_Scene::Action_actor_CreateConstraint()
+void Widget_World::Action_actor_CreateConstraint()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<Constraint>();
 	actor->SetName("Constraint");
 }
 
-void Widget_Scene::Action_actor_CreateAudioSource()
+void Widget_World::Action_actor_CreateAudioSource()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<AudioSource>();
 	actor->SetName("AudioSource");
 }
 
-void Widget_Scene::Action_actor_CreateAudioListener()
+void Widget_World::Action_actor_CreateAudioListener()
 {
 	auto actor = Action_Actor_CreateEmpty();
 	actor->AddComponent<AudioListener>();

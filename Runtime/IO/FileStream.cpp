@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
 #include "../Math/BoundingBox.h"
-#include "../Scene/Actor.h"
+#include "../World/Actor.h"
 #include "../Logging/Log.h"
 #include "../RHI/RHI_Vertex.h"
 //==============================
@@ -49,7 +49,7 @@ namespace Directus
 			out.open(path, ios::out | ios::binary);
 			if (out.fail())
 			{
-				LOG_ERROR("StreamIO: Failed to open \"" + path + "\" for writing.");
+				LOGF_ERROR("StreamIO: Failed to open \"%s\" for writing", path.c_str());
 				return;
 			}
 		}
@@ -58,7 +58,7 @@ namespace Directus
 			in.open(path, ios::in | ios::binary);
 			if(in.fail())
 			{
-				LOG_ERROR("StreamIO: Failed to open \"" + path + "\" for reading.");
+				LOGF_ERROR("StreamIO: Failed to open \"%s\" for reading", path.c_str());
 				return;
 			}
 		}
@@ -82,7 +82,7 @@ namespace Directus
 
 	void FileStream::Write(const string& value)
 	{
-		unsigned int length = (unsigned int)value.length();
+		auto length = (unsigned int)value.length();
 		Write(length);
 
 		out.write(const_cast<char*>(value.c_str()), length);
@@ -90,7 +90,7 @@ namespace Directus
 
 	void FileStream::Write(const vector<string>& value)
 	{
-		unsigned int size = (unsigned int)value.size();
+		auto size = (unsigned int)value.size();
 		Write(size);
 
 		for (unsigned int i = 0; i < size; i++)

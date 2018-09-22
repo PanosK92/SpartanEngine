@@ -70,7 +70,7 @@ namespace Directus
 		bool loaded = false;
 		m_dataRGBA.clear();
 		m_dataRGBA.shrink_to_fit();
-		GetLoadState(LoadState_Started);
+		SetLoadState(LoadState_Started);
 
 		// Make the path, relative to the engine
 		auto filePath = FileSystem::GetRelativeFilePath(rawFilePath);
@@ -89,7 +89,7 @@ namespace Directus
 		if (!loaded)
 		{
 			LOGF_ERROR("RI_Texture::LoadFromFile: Failed to load \"%s\".", filePath.c_str());
-			GetLoadState(LoadState_Failed);
+			SetLoadState(LoadState_Failed);
 			return false;
 		}
 
@@ -111,7 +111,7 @@ namespace Directus
 			LOGF_ERROR("RHI_Texture::LoadFromFile: Failed to create shader resource for \"%s\".", m_resourceFilePath.c_str());
 		}
 
-		GetLoadState(LoadState_Completed);
+		SetLoadState(LoadState_Completed);
 		return true;
 	}
 

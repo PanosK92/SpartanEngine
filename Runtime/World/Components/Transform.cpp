@@ -84,7 +84,7 @@ namespace Directus
 
 		if (parentActorID != NOT_ASSIGNED_HASH)
 		{
-			auto parent = GetContext()->GetSubsystem<Scene>()->GetActorByID(parentActorID);
+			auto parent = GetContext()->GetSubsystem<World>()->GetActorByID(parentActorID);
 			if (!parent.expired())
 			{
 				parent.lock()->GetTransform_PtrRaw()->AddChild(this);
@@ -330,7 +330,7 @@ namespace Directus
 		m_children.clear();
 		m_children.shrink_to_fit();
 
-		auto actors = GetContext()->GetSubsystem<Scene>()->GetAllActors();
+		auto actors = GetContext()->GetSubsystem<World>()->GetAllActors();
 		for (const auto& actor : actors)
 		{
 			if (!actor)

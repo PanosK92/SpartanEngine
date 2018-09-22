@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <map>
-#include "Scene.h"
+#include "World.h"
 #include "Components/IComponent.h"
 #include "../Core/Context.h"
 #include "../Core/EventSystem.h"
@@ -80,7 +80,7 @@ namespace Directus
 			// Add component
 			auto newComponent = std::make_shared<T>(
 				m_context, 
-				m_context->GetSubsystem<Scene>()->GetActorByID(GetID()).lock().get(),
+				m_context->GetSubsystem<World>()->GetActorByID(GetID()).lock().get(),
 				GetTransform_PtrRaw()
 				);
 			m_components.insert(make_pair(type, newComponent));

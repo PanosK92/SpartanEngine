@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===========================
-#include "Scene.h"
+#include "World.h"
 #include "Actor.h"
 #include "Components/Transform.h"
 #include "Components/Camera.h"
@@ -46,7 +46,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Scene::Scene(Context* context) : Subsystem(context)
+	World::World(Context* context) : Subsystem(context)
 	{
 		m_ambientLight	= Vector3::Zero;
 		m_state			= Scene_Idle;
@@ -55,12 +55,12 @@ namespace Directus
 		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Tick));
 	}
 
-	Scene::~Scene()
+	World::~World()
 	{
 		Unload();
 	}
 
-	bool Scene::Initialize()
+	bool World::Initialize()
 	{
 		m_isDirty		= true;
 		m_mainCamera	= CreateCamera();
@@ -70,7 +70,7 @@ namespace Directus
 		return true;
 	}
 
-	void Scene::Tick()
+	void World::Tick()
 	{	
 		TIME_BLOCK_START_CPU();
 
@@ -116,7 +116,7 @@ namespace Directus
 		TIME_BLOCK_END_CPU();
 	}
 
-	void Scene::Unload()
+	void World::Unload()
 	{
 		FIRE_EVENT(EVENT_SCENE_UNLOAD);
 
@@ -129,7 +129,7 @@ namespace Directus
 	//=========================================================================================================
 
 	//= I/O ===================================================================================================
-	bool Scene::SaveToFile(const string& filePathIn)
+	bool World::SaveToFile(const string& filePathIn)
 	{
 		m_state = Scene_Saving;
 		ProgressReport::Get().Reset(g_progress_Scene);
@@ -139,9 +139,9 @@ namespace Directus
 	
 		// Add scene file extension to the filepath if it's missing
 		string filePath = filePathIn;
-		if (FileSystem::GetExtensionFromFilePath(filePath) != EXTENSION_SCENE)
+		if (FileSystem::GetExtensionFromFilePath(filePath) != EXTENSION_WORLD)
 		{
-			filePath += EXTENSION_SCENE;
+			filePath += EXTENSION_WORLD;
 		}
 
 		// Save any in-memory changes done to resources while running.
@@ -189,7 +189,7 @@ namespace Directus
 		return true;
 	}
 
-	bool Scene::LoadFromFile(const string& filePath)
+	bool World::LoadFromFile(const string& filePath)
 	{
 		if (!FileSystem::FileExists(filePath))
 		{
@@ -274,7 +274,7 @@ namespace Directus
 	//===================================================================================================
 
 	//= Actor HELPER FUNCTIONS  ====================================================================
-	weak_ptr<Actor> Scene::Actor_CreateAdd()
+	weak_ptr<Actor> World::Actor_CreateAdd()
 	{
 		auto actor = make_shared<Actor>(m_context);
 
@@ -287,7 +287,7 @@ namespace Directus
 		return actor;
 	}
 
-	void Scene::Actor_Add(shared_ptr<Actor> actor)
+	void World::Actor_Add(shared_ptr<Actor> actor)
 	{
 		if (!actor)
 			return;
@@ -295,7 +295,7 @@ namespace Directus
 		m_actors.emplace_back(actor);
 	}
 
-	bool Scene::Actor_Exists(const weak_ptr<Actor>& actor)
+	bool World::Actor_Exists(const weak_ptr<Actor>& actor)
 	{
 		if (actor.expired())
 			return false;
@@ -304,7 +304,7 @@ namespace Directus
 	}
 
 	// Removes an actor and all of it's children
-	void Scene::Actor_Remove(const weak_ptr<Actor>& actor)
+	void World::Actor_Remove(const weak_ptr<Actor>& actor)
 	{
 		Actor* actorPtr = actor.lock().get();
 		if (!actorPtr)
@@ -341,7 +341,7 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	vector<weak_ptr<Actor>> Scene::GetRootActors()
+	vector<weak_ptr<Actor>> World::GetRootActors()
 	{
 		vector<weak_ptr<Actor>> rootactors;
 		for (const auto& actor : m_actors)
@@ -355,7 +355,7 @@ namespace Directus
 		return rootactors;
 	}
 
-	weak_ptr<Actor> Scene::GetActorRoot(weak_ptr<Actor> actor)
+	weak_ptr<Actor> World::GetActorRoot(weak_ptr<Actor> actor)
 	{
 		if (actor.expired())
 			return weak_ptr<Actor>();
@@ -363,7 +363,7 @@ namespace Directus
 		return actor.lock()->GetTransform_PtrRaw()->GetRoot()->GetActor_PtrWeak();
 	}
 
-	weak_ptr<Actor> Scene::GetActorByName(const string& name)
+	weak_ptr<Actor> World::GetActorByName(const string& name)
 	{
 		for (const auto& actor : m_actors)
 		{
@@ -376,7 +376,7 @@ namespace Directus
 		return weak_ptr<Actor>();
 	}
 
-	weak_ptr<Actor> Scene::GetActorByID(unsigned int ID)
+	weak_ptr<Actor> World::GetActorByID(unsigned int ID)
 	{
 		for (const auto& actor : m_actors)
 		{
@@ -391,7 +391,7 @@ namespace Directus
 	//===================================================================================================
 
 	//= SCENE RESOLUTION  ===============================================================================
-	void Scene::Resolve()
+	void World::Resolve()
 	{
 		TIME_BLOCK_START_CPU();
 
@@ -433,19 +433,19 @@ namespace Directus
 	//===================================================================================================
 
 	//= TEMPORARY EXPERIMENTS  ===========================
-	void Scene::SetAmbientLight(float x, float y, float z)
+	void World::SetAmbientLight(float x, float y, float z)
 	{
 		m_ambientLight = Vector3(x, y, z);
 	}
 
-	Vector3 Scene::GetAmbientLight()
+	Vector3 World::GetAmbientLight()
 	{
 		return m_ambientLight;
 	}
 	//====================================================
 
 	//= COMMON ACTOR CREATION ========================================================================
-	weak_ptr<Actor> Scene::CreateSkybox()
+	weak_ptr<Actor> World::CreateSkybox()
 	{
 		shared_ptr<Actor> skybox = Actor_CreateAdd().lock();
 		skybox->SetName("Skybox");
@@ -457,7 +457,7 @@ namespace Directus
 		return skybox;
 	}
 
-	weak_ptr<Actor> Scene::CreateCamera()
+	weak_ptr<Actor> World::CreateCamera()
 	{
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
 		string scriptDirectory = resourceMng->GetStandardResourceDirectory(Resource_Script);
@@ -473,7 +473,7 @@ namespace Directus
 		return camera;
 	}
 
-	weak_ptr<Actor> Scene::CreateDirectionalLight()
+	weak_ptr<Actor> World::CreateDirectionalLight()
 	{
 		shared_ptr<Actor> light = Actor_CreateAdd().lock();
 		light->SetName("DirectionalLight");

@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "Widget_Viewport.h"
 #include "Rendering/Renderer.h"
-#include "Scene/Actor.h"
-#include "Scene/Components/Camera.h"
-#include "Widget_Scene.h"
+#include "World/Actor.h"
+#include "World/Components/Camera.h"
+#include "Widget_World.h"
 #include "Core/Settings.h"
 #include "../DragDrop.h"
 //==================================
@@ -38,7 +38,7 @@ using namespace Math;
 namespace Widget_Viewport_Properties
 {
 	static Renderer* g_renderer	= nullptr;
-	static Scene* g_scene		= nullptr;
+	static World* g_scene		= nullptr;
 	static Vector2 g_framePos;
 }
 
@@ -54,7 +54,7 @@ void Widget_Viewport::Initialize(Context* context)
 
 	m_windowFlags							|= ImGuiWindowFlags_NoScrollbar;
 	Widget_Viewport_Properties::g_renderer	= m_context->GetSubsystem<Renderer>();
-	Widget_Viewport_Properties::g_scene		= m_context->GetSubsystem<Scene>();
+	Widget_Viewport_Properties::g_scene		= m_context->GetSubsystem<World>();
 	m_xMin = 400;
 	m_yMin = 250;
 }
@@ -127,10 +127,10 @@ void Widget_Viewport::MousePicking()
 		auto picked = camera.lock()->GetComponent<Camera>().lock()->Pick(mousePosRelative);
 		if (!picked.expired())
 		{
-			Widget_Scene::SetSelectedActor(picked);
+			Widget_World::SetSelectedActor(picked);
 			return;
 		}
 	}
 
-	Widget_Scene::SetSelectedActor(weak_ptr<Actor>());
+	Widget_World::SetSelectedActor(weak_ptr<Actor>());
 }

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector3.h"
 #include "../../Math/Quaternion.h"
 #include "../../Math/Matrix.h"
-#include "../Scene.h"
+#include "../World.h"
 //================================
 
 namespace Directus

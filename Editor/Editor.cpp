@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_MenuBar.h"
 #include "UI/Widgets/Widget_Properties.h"
 #include "UI/Widgets/Widget_Console.h"
-#include "UI/Widgets/Widget_Scene.h"
+#include "UI/Widgets/Widget_World.h"
 #include "UI/Widgets/Widget_Assets.h"
 #include "UI/Widgets/Widget_Viewport.h"
 #include "UI/Widgets/Widget_Toolbar.h"
@@ -51,7 +51,7 @@ Editor::Editor()
 	m_widgets.emplace_back(make_unique<Widget_Toolbar>());
 	m_widgets.emplace_back(make_unique<Widget_Properties>());
 	m_widgets.emplace_back(make_unique<Widget_Console>());
-	m_widgets.emplace_back(make_unique<Widget_Scene>());
+	m_widgets.emplace_back(make_unique<Widget_World>());
 	m_widgets.emplace_back(make_unique<Widget_Assets>());
 	m_widgets.emplace_back(make_unique<Widget_Viewport>());
 }

@@ -40,11 +40,11 @@ namespace Directus
 		Scene_Loading
 	};
 
-	class ENGINE_CLASS Scene : public Subsystem
+	class ENGINE_CLASS World : public Subsystem
 	{
 	public:
-		Scene(Context* context);
-		~Scene();
+		World(Context* context);
+		~World();
 
 		//= Subsystem =============
 		bool Initialize() override;

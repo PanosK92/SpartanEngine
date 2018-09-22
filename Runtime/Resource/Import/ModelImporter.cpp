@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Model.h"
 #include "../../Rendering/Animation.h"
 #include "../../Rendering/Material.h"
-#include "../../Scene/Components/Renderable.h"
+#include "../../World/Components/Renderable.h"
 #include "../ProgressReport.h"
 //============================================
 
@@ -138,7 +138,7 @@ namespace Directus
 	//= PROCESSING ===============================================================================
 	void ModelImporter::ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<Actor> parentNode, weak_ptr<Actor> newNode)
 	{
-		auto scene = m_context->GetSubsystem<Scene>();
+		auto scene = m_context->GetSubsystem<World>();
 
 		// Is this the root node?
 		if (!assimpNode->mParent || newNode.expired())

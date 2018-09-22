@@ -589,7 +589,7 @@ namespace Directus
 
 	bool FileSystem::IsEngineSceneFile(const string& filePath)
 	{
-		return GetExtensionFromFilePath(filePath) == EXTENSION_SCENE;
+		return GetExtensionFromFilePath(filePath) == EXTENSION_WORLD;
 	}
 
 	bool FileSystem::IsEngineTextureFile(const string& filePath)

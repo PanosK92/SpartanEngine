@@ -42,7 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class Context;
-	class Scene;
+	class World;
 	class Timer;
 	class ResourceManager;
 	class RHI_Device;
@@ -168,7 +168,7 @@ namespace Directus
 		//=================
 
 		// Dependencies
-		Scene* m_scene;
+		World* m_scene;
 		Timer* m_timer;
 		ResourceManager* m_resourceManager;
 		std::shared_ptr<RHI_Device> m_rhiDevice;

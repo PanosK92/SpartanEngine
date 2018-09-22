@@ -33,11 +33,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_PipelineState.h"
 #include "../RHI/RHI_RenderTexture.h"
 #include "../RHI/RHI_Shader.h"
-#include "../Scene/Actor.h"
-#include "../Scene/Components/Transform.h"
-#include "../Scene/Components/Renderable.h"
-#include "../Scene/Components/Skybox.h"
-#include "../Scene/Components/LineRenderer.h"
+#include "../World/Actor.h"
+#include "../World/Components/Transform.h"
+#include "../World/Components/Renderable.h"
+#include "../World/Components/Skybox.h"
+#include "../World/Components/LineRenderer.h"
 #include "../Physics/Physics.h"
 #include "../Physics/PhysicsDebugDraw.h"
 //===========================================
@@ -911,7 +911,7 @@ namespace Directus
 		m_rhiPipelineState->SetPixelShader(m_shaderBloom_BlurBlend);
 		m_rhiPipelineState->SetTexture(texIn);
 		m_rhiPipelineState->SetTexture(m_renderTexQuarterRes1);
-		float bloomIntensity = 0.15f;
+		float bloomIntensity = 0.2f;
 		m_shaderBloom_BlurBlend->UpdateBuffer(&Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), bloomIntensity));
 		m_rhiPipelineState->SetConstantBuffer(m_shaderBloom_BlurBlend->GetConstantBuffer());
 		m_rhiPipelineState->Bind();

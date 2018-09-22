@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Timer.h"
 #include "../Core/Settings.h"
 #include "../Core/EventSystem.h"
-#include "../Scene/Scene.h"
+#include "../World/World.h"
 #include "../Rendering/Renderer.h"
 #include <iomanip>
 #include <sstream>
@@ -56,7 +56,7 @@ namespace Directus
 
 	void Profiler::Initialize(Context* context)
 	{
-		m_scene						= context->GetSubsystem<Scene>();
+		m_scene						= context->GetSubsystem<World>();
 		m_timer						= context->GetSubsystem<Timer>();
 		m_resourceManager			= context->GetSubsystem<ResourceManager>();
 		m_rhiDevice					= context->GetSubsystem<Renderer>()->GetRHIDevice();
