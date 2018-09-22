@@ -21,20 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================================
 #include "Widget_Properties.h"
-#include "Widget_Scene.h"
+#include "Widget_World.h"
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
-#include "Scene/Actor.h"
-#include "Scene/Components/Transform.h"
-#include "Scene/Components/Renderable.h"
-#include "Scene/Components/RigidBody.h"
-#include "Scene/Components/Collider.h"
-#include "Scene/Components/Constraint.h"
-#include "Scene/Components/Light.h"
-#include "Scene/Components/AudioSource.h"
-#include "Scene/Components/AudioListener.h"
-#include "Scene/Components/Camera.h"
-#include "Scene/Components/Script.h"
+#include "World/Actor.h"
+#include "World/Components/Transform.h"
+#include "World/Components/Renderable.h"
+#include "World/Components/RigidBody.h"
+#include "World/Components/Collider.h"
+#include "World/Components/Constraint.h"
+#include "World/Components/Light.h"
+#include "World/Components/AudioSource.h"
+#include "World/Components/AudioListener.h"
+#include "World/Components/Camera.h"
+#include "World/Components/Script.h"
 #include "Rendering/Deferred/ShaderVariation.h"
 #include "../../ImGui/Source/imgui_stl.h"
 //=============================================
@@ -51,7 +51,7 @@ namespace WidgetProperties_Internal
 	static std::weak_ptr<Actor> actorInspected;
 	static std::weak_ptr<Material> inspectedMaterial;
 	static ResourceManager* resourceManager;
-	static Scene* scene;
+	static World* scene;
 	static Vector3 rotationHint;
 
 	//= COLOR PICKERS ===============================================
@@ -76,7 +76,7 @@ namespace ComponentProperty
 			{
 				if (ImGui::MenuItem("Remove"))
 				{
-					if (auto actor = Widget_Scene::GetActorSelected().lock())
+					if (auto actor = Widget_World::GetActorSelected().lock())
 					{
 						if (component)
 						{
@@ -153,7 +153,7 @@ void Widget_Properties::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 	WidgetProperties_Internal::resourceManager = context->GetSubsystem<ResourceManager>();
-	WidgetProperties_Internal::scene = context->GetSubsystem<Scene>();
+	WidgetProperties_Internal::scene = context->GetSubsystem<World>();
 	m_xMin = 500; // min width
 }
 
@@ -1018,7 +1018,7 @@ void Widget_Properties::ComponentContextMenu_Add()
 {
 	if (ImGui::BeginPopup("##ComponentContextMenu_Add"))
 	{
-		if (auto actor = Widget_Scene::GetActorSelected().lock())
+		if (auto actor = Widget_World::GetActorSelected().lock())
 		{
 			// CAMERA
 			if (ImGui::MenuItem("Camera"))

@@ -21,18 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "Actor.h"
-#include "../Scene/Components/Camera.h"
-#include "../Scene/Components/Collider.h"
-#include "../Scene/Components/Transform.h"
-#include "../Scene/Components/Constraint.h"
-#include "../Scene/Components/Light.h"
-#include "../Scene/Components/LineRenderer.h"
-#include "../Scene/Components/Renderable.h"
-#include "../Scene/Components/RigidBody.h"
-#include "../Scene/Components/Skybox.h"
-#include "../Scene/Components/Script.h"
-#include "../Scene/Components/AudioSource.h"
-#include "../Scene/Components/AudioListener.h"
+#include "../World/Components/Camera.h"
+#include "../World/Components/Collider.h"
+#include "../World/Components/Transform.h"
+#include "../World/Components/Constraint.h"
+#include "../World/Components/Light.h"
+#include "../World/Components/LineRenderer.h"
+#include "../World/Components/Renderable.h"
+#include "../World/Components/RigidBody.h"
+#include "../World/Components/Skybox.h"
+#include "../World/Components/Script.h"
+#include "../World/Components/AudioSource.h"
+#include "../World/Components/AudioListener.h"
 #include "../IO/FileStream.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
@@ -80,7 +80,7 @@ namespace Directus
 
 	void Actor::Clone()
 	{
-		auto scene = m_context->GetSubsystem<Scene>();
+		auto scene = m_context->GetSubsystem<World>();
 		vector<Actor*> clones;
 
 		// Creation of new actor and copying of a few properties
@@ -250,7 +250,7 @@ namespace Directus
 		int childrenCount = stream->ReadInt();
 
 		// 2nd - children IDs
-		auto scene = m_context->GetSubsystem<Scene>();
+		auto scene = m_context->GetSubsystem<World>();
 		vector<std::weak_ptr<Actor>> children;
 		for (int i = 0; i < childrenCount; i++)
 		{

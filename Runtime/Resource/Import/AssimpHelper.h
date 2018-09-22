@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
-#include "../../Scene/Actor.h"
-#include "../../Scene/Components/Transform.h"
+#include "../../World/Actor.h"
+#include "../../World/Components/Transform.h"
 //===========================================
 
 namespace Directus

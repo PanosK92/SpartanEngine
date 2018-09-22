@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "Threading/Threading.h"
 #include "ProgressDialog.h"
-#include "Scene/Scene.h"
+#include "World/World.h"
 #include "Resource/ProgressReport.h"
 #include "RHI/RHI_Texture.h"
 //===================================
@@ -101,7 +101,7 @@ public:
 		m_context			= context;
 		m_engine			= m_context->GetSubsystem<Directus::Engine>();
 		m_resourceManager	= m_context->GetSubsystem<Directus::ResourceManager>();
-		m_scene				= m_context->GetSubsystem<Directus::Scene>();
+		m_scene				= m_context->GetSubsystem<Directus::World>();
 	}
 
 	void Update()
@@ -220,5 +220,5 @@ private:
 	Directus::Context* m_context;
 	Directus::Engine* m_engine;
 	Directus::ResourceManager* m_resourceManager;
-	Directus::Scene* m_scene;
+	Directus::World* m_scene;
 };

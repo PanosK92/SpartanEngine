@@ -118,7 +118,7 @@ namespace Directus
 		stream->Read(&m_lowLimit);
 
 		unsigned int bodyOtherID = stream->ReadUInt();
-		m_bodyOther = GetContext()->GetSubsystem<Scene>()->GetActorByID(bodyOtherID);
+		m_bodyOther = GetContext()->GetSubsystem<World>()->GetActorByID(bodyOtherID);
 
 		Construct();
 	}

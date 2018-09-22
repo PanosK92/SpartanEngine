@@ -43,7 +43,7 @@ namespace Directus
 		Resource_Mesh,
 		Resource_Model,
 		Resource_Cubemap,
-		Resource_Script, // not an actual resource, resource manager simply uses this to return standard resource path (must remove)
+		Resource_Script, // not an actual resource, resource manager simply uses this to return a standard resource path (must remove)
 		Resource_Animation,
 		Resource_Font
 	};
@@ -137,7 +137,7 @@ namespace Directus
 		//================================================
 
 		LoadState GetLoadState()			{ return m_loadState; }
-		void GetLoadState(LoadState state)	{ m_loadState = state; }
+		void SetLoadState(LoadState state)	{ m_loadState = state; }
 
 	protected:
 		std::weak_ptr<IResource> _Cache();

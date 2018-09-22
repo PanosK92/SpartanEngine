@@ -25,11 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input_Definition.h"
 #include "../Input/Input_Implementation.h"
 #include "../Rendering/Material.h"
-#include "../Scene/Components/RigidBody.h"
-#include "../Scene/Components/Camera.h"
-#include "../Scene/Actor.h"
-#include "../Scene/Components/Transform.h"
-#include "../Scene/Components/Renderable.h"
+#include "../World/Components/RigidBody.h"
+#include "../World/Components/Camera.h"
+#include "../World/Actor.h"
+#include "../World/Components/Transform.h"
+#include "../World/Components/Renderable.h"
 //=========================================
 
 //= NAMESPACES ========================

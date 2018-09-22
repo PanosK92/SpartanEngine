@@ -175,7 +175,7 @@ namespace Directus
 		map<float, std::weak_ptr<Actor>> hits;
 
 		// Find all the actors that the ray hits
-		vector<std::weak_ptr<Actor>> actors = GetContext()->GetSubsystem<Scene>()->GetRenderables();
+		vector<std::weak_ptr<Actor>> actors = GetContext()->GetSubsystem<World>()->GetRenderables();
 		for (const auto& actor : actors)
 		{
 			// Make sure there actor has a mesh and exclude the SkyBox

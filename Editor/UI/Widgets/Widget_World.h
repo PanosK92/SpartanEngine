@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus { class Actor; }
 
-class Widget_Scene : public Widget
+class Widget_World : public Widget
 {
 public:
-	Widget_Scene();
+	Widget_World();
 	void Initialize(Directus::Context* context) override;
 	void Update(float deltaTime) override;
 

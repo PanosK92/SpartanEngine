@@ -34,7 +34,7 @@ static const char* METADATA_EXTENSION		= ".xml";
 static const char* METADATA_TYPE_TEXTURE	= "Texture";
 static const char* METADATA_TYPE_AUDIOCLIP	= "Audio_Clip";
 // Engine file extensions
-static const char* EXTENSION_SCENE			= ".directus";
+static const char* EXTENSION_WORLD			= ".world";
 static const char* EXTENSION_MATERIAL		= ".mat";
 static const char* EXTENSION_MODEL			= ".model";
 static const char* EXTENSION_PREFAB			= ".prefab";

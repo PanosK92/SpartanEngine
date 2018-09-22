@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Log.h"
 #include <fstream>
 #include "ILogger.h"
-#include "../Scene/Actor.h"
+#include "../World/Actor.h"
 #include "../FileSystem/FileSystem.h"
 #include <stdarg.h>
 //===================================

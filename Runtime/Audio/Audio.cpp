@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EventSystem.h"
 #include <sstream>
 #include "../Core/Settings.h"
-#include "../Scene/Components/Transform.h"
+#include "../World/Components/Transform.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/Engine.h"
 //========================================

@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========================
 #include "../Math/Matrix.h"
 #include "../Math/Vector2.h"
-#include "../Scene/Components/Light.h"
-#include "../Scene/Components/Camera.h"
+#include "../World/Components/Light.h"
+#include "../World/Components/Camera.h"
 //=====================================
 
 namespace Directus

@@ -39,7 +39,7 @@ namespace Widget_MenuBar_Settings
 	static bool g_showResourceCache		= false;
 	static string g_fileDialogSelection;
 	ResourceManager* g_resourceManager	= nullptr;
-	Scene* g_scene						= nullptr;
+	World* g_scene						= nullptr;
 }
 
 Widget_MenuBar::Widget_MenuBar()
@@ -51,7 +51,7 @@ void Widget_MenuBar::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 	Widget_MenuBar_Settings::g_resourceManager = m_context->GetSubsystem<ResourceManager>();
-	Widget_MenuBar_Settings::g_scene = m_context->GetSubsystem<Scene>();
+	Widget_MenuBar_Settings::g_scene = m_context->GetSubsystem<World>();
 	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
 }
 
@@ -59,11 +59,11 @@ void Widget_MenuBar::Update(float deltaTime)
 {
 	if (ImGui::BeginMainMenuBar())
 	{
-		if (ImGui::BeginMenu("Scene"))
+		if (ImGui::BeginMenu("World"))
 		{
 			if (ImGui::MenuItem("New"))
 			{
-				m_context->GetSubsystem<Scene>()->Unload();
+				m_context->GetSubsystem<World>()->Unload();
 			}
 
 			ImGui::Separator();

@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scripting/Scripting.h"
 #include "../Audio/Audio.h"
 #include "../Physics/Physics.h"
-#include "../Scene/Scene.h"
+#include "../World/World.h"
 #include "../Profiling/Profiler.h"
 //========================================
 
@@ -77,7 +77,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Audio(m_context));
 		m_context->RegisterSubsystem(new Physics(m_context));
 		m_context->RegisterSubsystem(new Scripting(m_context));
-		m_context->RegisterSubsystem(new Scene(m_context));
+		m_context->RegisterSubsystem(new World(m_context));
 	}
 
 	bool Engine::Initialize()
@@ -140,7 +140,7 @@ namespace Directus
 		}
 
 		// Scene
-		if (!m_context->GetSubsystem<Scene>()->Initialize())
+		if (!m_context->GetSubsystem<World>()->Initialize())
 		{
 			LOG_ERROR("Engine::Initialize: Failed to initialize Scene");
 			return false;
