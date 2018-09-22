@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Material.h"
+#include "Renderer.h"
 #include "Deferred/ShaderVariation.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../Resource/ResourceManager.h"
@@ -53,6 +54,7 @@ namespace Directus
 		m_uvTiling				= Vector2(1.0f, 1.0f);
 		m_uvOffset				= Vector2(0.0f, 0.0f);
 		m_isEditable			= true;
+		m_rhiDevice				= context->GetSubsystem<Renderer>()->GetRHIDevice();
 
 		AcquireShader();
 	}
@@ -87,13 +89,13 @@ namespace Directus
 		xml->GetAttribute("Material", "UV_Tiling",				&m_uvTiling);
 		xml->GetAttribute("Material", "UV_Offset",				&m_uvOffset);
 
-		int textureCount = xml->GetAttributeAs<int>("Textures", "Count");
+		auto textureCount = xml->GetAttributeAs<int>("Textures", "Count");
 		for (int i = 0; i < textureCount; i++)
 		{
 			string nodeName		= "Texture_" + to_string(i);
 			TextureType texType	= (TextureType)xml->GetAttributeAs<unsigned int>(nodeName, "Texture_Type");
-			string texName		= xml->GetAttributeAs<string>(nodeName, "Texture_Name");
-			string texPath		= xml->GetAttributeAs<string>(nodeName, "Texture_Path");
+			auto texName		= xml->GetAttributeAs<string>(nodeName, "Texture_Name");
+			auto texPath		= xml->GetAttributeAs<string>(nodeName, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
 			auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
@@ -303,8 +305,8 @@ namespace Directus
 			return existingShader;
 
 		// Create and initialize shader
-		auto shader = make_shared<ShaderVariation>(m_context);
-		shader->Compile(m_context->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shaderFlags, m_context);
+		auto shader = make_shared<ShaderVariation>(m_rhiDevice, m_context);
+		shader->Compile(m_context->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shaderFlags);
 		shader->SetResourceName("ShaderVariation_" + to_string(shader->GetResourceID())); // set a different name for it's shader the cache doesn't thing they are the same
 
 		// Add the shader to the pool and return it

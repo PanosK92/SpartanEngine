@@ -28,17 +28,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Scene/Components/Camera.h"
 #include "../../Scene/Components/Light.h"
 #include "../../Resource/ResourceManager.h"
+#include "../../RHI/RHI_Shader.h"
 //=========================================
 
 namespace Directus
 {
-	class LightShader
+	class LightShader : public RHI_Shader
 	{
 	public:
-		LightShader();
+		LightShader(std::shared_ptr<RHI_Device> rhiDevice);
 		~LightShader() {}
 
-		void Compile(const std::string& filePath, std::shared_ptr<RHI_Device> rhiDevice, Context* context);
+		void Compile(const std::string& filePath, Context* context);
 		void UpdateConstantBuffer(
 			const Math::Matrix& mWorld,
 			const Math::Matrix& mView,
@@ -48,10 +49,8 @@ namespace Directus
 			const std::vector<Actor*>& lights,
 			Camera* camera
 		);
-		bool IsCompiled();
 
-		std::shared_ptr<RHI_Shader> GetShader()						{ return m_shader; }
-		std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer()		{ return m_cbuffer; }
+		std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer()	{ return m_cbuffer; }
 
 	private:
 		const static int maxLights = 64;
@@ -89,7 +88,6 @@ namespace Directus
 		};
 
 		std::shared_ptr<RHI_ConstantBuffer> m_cbuffer;
-		std::shared_ptr<RHI_Shader> m_shader;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

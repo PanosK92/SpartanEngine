@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 #include "../../Math/Matrix.h"
 #include "../../RHI/RHI_Definition.h"
+#include "../../RHI/RHI_Shader.h"
 //====================================
 
 namespace Directus
@@ -48,13 +49,13 @@ namespace Directus
 		Variaton_Cubemap	= 1UL << 8,
 	};
 
-	class ShaderVariation : public IResource
+	class ShaderVariation : public RHI_Shader, public IResource
 	{
 	public:
-		ShaderVariation(Context* context);
+		ShaderVariation(std::shared_ptr<RHI_Device> device, Context* context);
 		~ShaderVariation(){}
 
-		void Compile(const std::string& filePath, unsigned long shaderFlags, Context* context);
+		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
 		void UpdatePerMaterialBuffer(Camera* camera, Material* material);
 		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
@@ -72,19 +73,16 @@ namespace Directus
 
 		std::shared_ptr<RHI_ConstantBuffer>& GetPerObjectBuffer()	{ return m_perObjectBuffer; }
 		std::shared_ptr<RHI_ConstantBuffer>& GetMaterialBuffer()	{ return m_materialBuffer; }
-		std::shared_ptr<RHI_Shader> GetShader() const				{ return m_shader; }
 
 	private:
-		void AddDefinesBasedOnMaterial(const std::shared_ptr<RHI_Shader>& shader);
+		void AddDefinesBasedOnMaterial();
 		
 		// PROPERTIES
 		unsigned long m_shaderFlags;
 
 		// MISC
-		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_ConstantBuffer> m_materialBuffer;
-		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;	
-		std::shared_ptr<RHI_Shader> m_shader;
+		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;
 
 		// BUFFERS
 		struct PerMaterialBufferType

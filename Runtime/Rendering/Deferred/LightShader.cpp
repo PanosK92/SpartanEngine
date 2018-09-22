@@ -36,22 +36,17 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	LightShader::LightShader()
+	LightShader::LightShader(std::shared_ptr<RHI_Device> rhiDevice) : RHI_Shader(rhiDevice)
 	{
-		m_rhiDevice = nullptr;
+		// Create constant buffer
+		m_cbuffer = make_shared<RHI_ConstantBuffer>(rhiDevice);
+		m_cbuffer->Create(sizeof(LightBuffer), 0, Buffer_Global);
 	}
 
-	void LightShader::Compile(const string& filePath, shared_ptr<RHI_Device> rhiDevice, Context* context)
+	void LightShader::Compile(const string& filePath, Context* context)
 	{
-		m_rhiDevice = rhiDevice;
-
-		// Load the vertex and the pixel shader
-		m_shader = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shader->Compile_VertexPixel_Async(filePath, Input_PositionTextureTBN, context);
-
-		// Create constant buffer
-		m_cbuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_cbuffer->Create(sizeof(LightBuffer), 0, Buffer_Global);
+		// Compile the vertex and the pixel shader
+		Compile_VertexPixel_Async(filePath, Input_PositionTextureTBN, context);
 	}
 
 	void LightShader::UpdateConstantBuffer(
@@ -64,17 +59,19 @@ namespace Directus
 		Camera* camera
 	)
 	{
-		if (!IsCompiled())
-		{
-			LOG_ERROR("Failed to compile deferred shader.");
+		if (GetState() != Shader_Built)
 			return;
-		}
 
 		if (!camera || lights.empty())
 			return;
 
 		// Get a pointer to the data in the constant buffer.
 		auto buffer = (LightBuffer*)m_cbuffer->Map();
+		if (!buffer)
+		{
+			LOG_ERROR("LightShader::UpdateConstantBuffer: Failed to map buffer");
+			return;
+		}
 
 		Vector3 camPos					= camera->GetTransform()->GetPosition();
 		buffer->cameraPosition			= Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
@@ -157,10 +154,5 @@ namespace Directus
 
 		// Unmap buffer
 		m_cbuffer->Unmap();
-	}
-
-	bool LightShader::IsCompiled()
-	{
-		return m_shader ? m_shader->IsCompiled() : false;
 	}
 }

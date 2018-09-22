@@ -169,11 +169,6 @@ namespace Directus
 	RHI_Shader::RHI_Shader(shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice			= rhiDevice;
-		m_vertexShader		= nullptr;
-		m_pixelShader		= nullptr;
-		m_compiled			= false;
-		m_hasVertexShader	= false;
-		m_hasPixelShader	= false;
 		m_inputLayout		= make_shared<RHI_InputLayout>(m_rhiDevice);
 		m_id				= GENERATE_GUID;
 	}
@@ -213,16 +208,14 @@ namespace Directus
 			}
 
 			SafeRelease(blobVS);
-			m_compiled			= true;
 			m_hasVertexShader	= true;
 		}
 		else
 		{
-			m_compiled			= false;
 			m_hasVertexShader	= false;
 		}
 
-		return m_compiled;
+		return m_hasVertexShader;
 	}
 
 	bool RHI_Shader::Compile_Pixel(const string& filePath)
@@ -248,15 +241,13 @@ namespace Directus
 		))
 		{
 			SafeRelease(blobPS);
-			m_hasPixelShader	= true;
-			m_compiled			= true;
+			m_hasPixelShader = true;
 		}
 		else
 		{
-			m_hasPixelShader	= false;
-			m_compiled			= false;
+			m_hasPixelShader = false;
 		}
 
-		return m_compiled;
+		return m_hasPixelShader;
 	}
 }

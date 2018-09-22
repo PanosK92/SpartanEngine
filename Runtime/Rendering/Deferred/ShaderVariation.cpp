@@ -37,24 +37,21 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	ShaderVariation::ShaderVariation(Context* context): IResource(context)
+	ShaderVariation::ShaderVariation(shared_ptr<RHI_Device> device, Context* context): RHI_Shader(device), IResource(context)
 	{
 		//= IResource ======================
 		RegisterResource<ShaderVariation>();
 		//==================================
-
-		m_rhiDevice		= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
-		m_shaderFlags	= 0;
+		m_shaderFlags = 0;
 	}
 
-	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags, Context* context)
+	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
 	{
 		m_shaderFlags = shaderFlags;
 
 		// Load and compile the vertex and the pixel shader
-		m_shader = make_shared<RHI_Shader>(m_rhiDevice);
-		AddDefinesBasedOnMaterial(m_shader);
-		m_shader->Compile_VertexPixel_Async(filePath, Input_PositionTextureTBN, context);
+		AddDefinesBasedOnMaterial();
+		Compile_VertexPixel_Async(filePath, Input_PositionTextureTBN, m_context);
 
 		// The buffers below have to match GBuffer.hlsl
 
@@ -75,11 +72,8 @@ namespace Directus
 			return;
 		}
 
-		if (!m_shader->IsCompiled())
-		{
-			LOG_ERROR("ShaderVariation::UpdatePerMaterialBuffer: Shader hasn't been loaded or failed to compile.");
+		if (GetState() != Shader_Built)
 			return;
-		}
 
 		Vector2 planes = Vector2(camera->GetNearPlane(), camera->GetFarPlane());
 
@@ -122,11 +116,8 @@ namespace Directus
 
 	void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
 	{
-		if (!m_shader->IsCompiled())
-		{
-			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per object buffer.");
+		if (GetState() != Shader_Built)
 			return;
-		}
 
 		Matrix world				= mWorld;
 		Matrix worldView			= mWorld * mView;
@@ -140,7 +131,7 @@ namespace Directus
 
 		if (update)
 		{
-			//= BUFFER UPDATE ============================================================================
+			//= BUFFER UPDATE ================================================================================
 			auto* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
 
 			buffer->mWorld					= perObjectBufferCPU.mWorld					= world;
@@ -148,24 +139,21 @@ namespace Directus
 			buffer->mWorldViewProjection	= perObjectBufferCPU.mWorldViewProjection	= worldViewProjection;
 
 			m_perObjectBuffer->Unmap();
-			//============================================================================================
+			//================================================================================================
 		}
 	}
 
-	void ShaderVariation::AddDefinesBasedOnMaterial(const shared_ptr<RHI_Shader>& shader)
+	void ShaderVariation::AddDefinesBasedOnMaterial()
 	{
-		if (!shader)
-			return;
-
 		// Define in the shader what kind of textures it should expect
-		shader->AddDefine("ALBEDO_MAP",		HasAlbedoTexture()		? "1" : "0");
-		shader->AddDefine("ROUGHNESS_MAP",	HasRoughnessTexture()	? "1" : "0");
-		shader->AddDefine("METALLIC_MAP",	HasMetallicTexture()	? "1" : "0");
-		shader->AddDefine("NORMAL_MAP",		HasNormalTexture()		? "1" : "0");
-		shader->AddDefine("HEIGHT_MAP",		HasHeightTexture()		? "1" : "0");
-		shader->AddDefine("OCCLUSION_MAP",	HasOcclusionTexture()	? "1" : "0");
-		shader->AddDefine("EMISSION_MAP",	HasEmissionTexture()	? "1" : "0");
-		shader->AddDefine("MASK_MAP",		HasMaskTexture()		? "1" : "0");
-		shader->AddDefine("CUBE_MAP",		HasCubeMapTexture()		? "1" : "0");
+		AddDefine("ALBEDO_MAP",		HasAlbedoTexture()		? "1" : "0");
+		AddDefine("ROUGHNESS_MAP",	HasRoughnessTexture()	? "1" : "0");
+		AddDefine("METALLIC_MAP",	HasMetallicTexture()	? "1" : "0");
+		AddDefine("NORMAL_MAP",		HasNormalTexture()		? "1" : "0");
+		AddDefine("HEIGHT_MAP",		HasHeightTexture()		? "1" : "0");
+		AddDefine("OCCLUSION_MAP",	HasOcclusionTexture()	? "1" : "0");
+		AddDefine("EMISSION_MAP",	HasEmissionTexture()	? "1" : "0");
+		AddDefine("MASK_MAP",		HasMaskTexture()		? "1" : "0");
+		AddDefine("CUBE_MAP",		HasCubeMapTexture()		? "1" : "0");
 	}
 }
