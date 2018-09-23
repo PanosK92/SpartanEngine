@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "Animation.h"
 #include "Renderer.h"
+#include "Material.h"
 #include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
 #include "../World/Actor.h"

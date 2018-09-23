@@ -40,7 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ========================
 using namespace std;
 using namespace Directus::Math;
-using namespace Directus::Math::Helper;
+using namespace Helper;
 //=====================================
 
 namespace Directus
@@ -150,7 +150,7 @@ namespace Directus
 		}
 	}
 
-	void Constraint::SetPositionOther(const Math::Vector3& position)
+	void Constraint::SetPositionOther(const Vector3& position)
 	{
 		if (position != m_positionOther)
 		{
@@ -159,7 +159,7 @@ namespace Directus
 		}
 	}
 
-	void Constraint::SetRotationOther(const Math::Quaternion& rotation)
+	void Constraint::SetRotationOther(const Quaternion& rotation)
 	{
 		if (rotation != m_rotationOther)
 		{

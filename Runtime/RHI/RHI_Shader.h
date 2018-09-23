@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <string>
 #include <map>
-#include <vector>
 #include "RHI_Definition.h"
 #include "..\Core\EngineDefs.h"
 #include "..\Core\Context.h"

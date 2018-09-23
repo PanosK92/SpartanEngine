@@ -87,7 +87,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	// Display frame
 	Widget_Viewport_Properties::g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
 	ImGui::Image(
-		Widget_Viewport_Properties::g_renderer->GetFrame(),
+		Widget_Viewport_Properties::g_renderer->GetFrameShaderResource(),
 		ImVec2((float)width, (float)height),
 		ImVec2(0, 0),
 		ImVec2(1, 1),

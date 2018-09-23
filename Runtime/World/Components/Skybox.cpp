@@ -27,12 +27,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceManager.h"
 #include "../../RHI/RHI_Texture.h"
 #include "../../Math/MathHelper.h"
+#include "../../Rendering/Material.h"
 //=========================================
 
 //= NAMESPACES ========================
 using namespace std;
 using namespace Directus::Math;
-using namespace Directus::Math::Helper;
+using namespace Helper;
 //=====================================
 
 namespace Directus

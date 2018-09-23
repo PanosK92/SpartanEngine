@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../World/Components/Transform.h"
 #include "../../World/Actor.h"
 #include "../../Core/Settings.h"
-#include "../../RHI/RHI_Implementation.h"
 #include "../../RHI/RHI_Shader.h"
 #include "../../RHI/RHI_ConstantBuffer.h"
 //===========================================

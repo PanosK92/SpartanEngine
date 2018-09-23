@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "LineRenderer.h"
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_VertexBuffer.h"
+#include "../../Math/BoundingBox.h"
 //=====================================
 
 //= NAMESPACES ================

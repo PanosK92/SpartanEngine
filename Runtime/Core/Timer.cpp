@@ -38,8 +38,8 @@ namespace Directus
 		m_deltaTimeSec	= 0.0f;
 		m_deltaTimeMs	= 0.0f;
 		m_firstRun		= true;
-		a				= std::chrono::system_clock::now();
-		b				= std::chrono::system_clock::now();
+		a				= system_clock::now();
+		b				= system_clock::now();
 	}
 
 	void Timer::Tick()
@@ -66,17 +66,17 @@ namespace Directus
 			float maxMs			= (1.0f / maxFPS) * 1000;
 
 			// Maintain designated frequency
-			a = std::chrono::system_clock::now();
-			std::chrono::duration<double, std::milli> work_time = a - b;
+			a = system_clock::now();
+			duration<double, std::milli> work_time = a - b;
 
 			if (work_time.count() < maxMs)
 			{
-				std::chrono::duration<double, std::milli> delta_ms(maxMs - work_time.count());
-				auto delta_ms_duration = std::chrono::duration_cast<std::chrono::milliseconds>(delta_ms);
-				std::this_thread::sleep_for(std::chrono::milliseconds(delta_ms_duration.count()));
+				duration<double, std::milli> delta_ms(maxMs - work_time.count());
+				auto delta_ms_duration = std::chrono::duration_cast<milliseconds>(delta_ms);
+				std::this_thread::sleep_for(milliseconds(delta_ms_duration.count()));
 			}
 
-			b = std::chrono::system_clock::now();
+			b = system_clock::now();
 		}
 	}
 }

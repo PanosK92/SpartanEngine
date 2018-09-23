@@ -19,9 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
-//= INCLUDES ==================
+//= INCLUDES =====================
 #include "RHI_PipelineState.h"
 #include "RHI_Implementation.h"
 #include "RHI_Sampler.h"
@@ -34,7 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_ConstantBuffer.h"
 #include "RHI_InputLayout.h"
 #include "..\Logging\Log.h"
-//=============================
+#include "../Profiling/Profiler.h"
+//================================
 
 //= NAMESPACES ================
 using namespace std;

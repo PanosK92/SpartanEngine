@@ -30,9 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Import/FontImporter.h"
 #include "../Core/SubSystem.h"
 #include "../Audio/AudioClip.h"
+#include "../RHI/RHI_Texture.h"
 #include "../Rendering/Model.h"
 #include "../Rendering/Material.h"
-#include "../RHI/RHI_Texture.h"
 //================================
 
 namespace Directus

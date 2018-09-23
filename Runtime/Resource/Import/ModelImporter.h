@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include "../../Core/EngineDefs.h"
 #include "../../RHI/RHI_Definition.h"
 #include <memory>
 #include <string>
 #include <vector>
-//================================
+//===================================
 
 struct aiNode;
 struct aiScene;
@@ -47,7 +47,7 @@ namespace Directus
 	{
 	public:
 		ModelImporter(Context* context);
-		~ModelImporter();
+		~ModelImporter() {}
 
 		bool Load(Model* model, const std::string& filePath);
 

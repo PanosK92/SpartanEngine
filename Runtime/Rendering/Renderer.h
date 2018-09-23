@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Resource/ResourceManager.h"
-#include <map>
+
 //======================================
 
 namespace Directus
@@ -64,9 +64,10 @@ namespace Directus
 		Render_Light				= 1UL << 9,
 		Render_Bloom				= 1UL << 10,
 		Render_FXAA					= 1UL << 11,
-		Render_Sharpening			= 1UL << 12,
-		Render_ChromaticAberration	= 1UL << 13,
-		Render_Correction			= 1UL << 14, // Tone-mapping & Gamma correction
+		Render_TAA					= 1UL << 12,
+		Render_Sharpening			= 1UL << 13,
+		Render_ChromaticAberration	= 1UL << 14,
+		Render_Correction			= 1UL << 15, // Tone-mapping & Gamma correction
 	};
 
 	enum RenderableType
@@ -90,7 +91,7 @@ namespace Directus
 
 		// Rendering
 		void SetBackBufferAsRenderTarget(bool clear = true);
-		void* GetFrame();
+		void* GetFrameShaderResource();
 		void Present();
 		void Render();
 
@@ -115,7 +116,8 @@ namespace Directus
 		void Clear();
 		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
 
-		static bool IsRendering() { return m_isRendering; }
+		static bool IsRendering()	{ return m_isRendering; }
+		static uint64_t GetFrame()	{ return m_frame; }
 
 	private:
 		void RenderTargets_Create(int width, int height);
@@ -203,6 +205,7 @@ namespace Directus
 		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
 		static bool m_isRendering;
+		static uint64_t m_frame;
 		//=================================================
 
 		//= RENDER TEXTURES ====================================

@@ -78,10 +78,9 @@ namespace Directus::Math
 		static Vector4 Transform(const Vector3& lhs, const Matrix& rhs);
 
 		std::string ToString() const;
+		const float* Data() const { return &x; }
 
 		float x, y, z, w;
-
-		const float* Data() const { return &x; }
 
 		static const Vector4 One;
 		static const Vector4 Zero;

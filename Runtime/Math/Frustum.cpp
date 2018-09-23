@@ -85,7 +85,7 @@ namespace Directus::Math
 		m_planes[5].Normalize();
 	}
 
-	Helper::Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent)
+	Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent)
 	{
 		// Check if any one point of the cube is in the view frustum.
 		Intersection result = Inside;
@@ -114,7 +114,7 @@ namespace Directus::Math
 		return result;
 	}
 
-	Helper::Intersection Frustum::CheckSphere(const Vector3& center, float radius)
+	Intersection Frustum::CheckSphere(const Vector3& center, float radius)
 	{
 		// calculate our distances to each of the planes
 		for (const auto& plane : m_planes)
