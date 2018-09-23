@@ -54,7 +54,7 @@ struct PixelInputType
     float2 uv 		: TEXCOORD;
 };
 
-PixelInputType DirectusVertexShader(Vertex_PosUv input)
+PixelInputType mainVS(Vertex_PosUv input)
 {
     PixelInputType output;
     
@@ -65,7 +65,7 @@ PixelInputType DirectusVertexShader(Vertex_PosUv input)
     return output;
 }
 
-float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
+float4 mainPS(PixelInputType input) : SV_TARGET
 {
 	float2 texCoord 	= input.uv;
     float3 finalColor 	= float3(0, 0, 0);
@@ -95,7 +95,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float ssao 			= shadowing.g;
 	
 	// some totally fake dynamic skybox
-	float ambientLight = clamp(dirLightIntensity, 0.01f, 1.0f); 
+	float ambientLight = clamp(dirLightIntensity.r, 0.01f, 1.0f); 
 	
     if (specular.a == 1.0f) // Render technique
     {

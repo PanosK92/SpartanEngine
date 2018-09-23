@@ -13,7 +13,7 @@ struct VS_Output
 };
 
 // Vertex Shader
-VS_Output DirectusVertexShader(Vertex_Pos input)
+VS_Output mainVS(Vertex_Pos input)
 {
 	input.position.w = 1.0f;
 	VS_Output output;
@@ -22,7 +22,7 @@ VS_Output DirectusVertexShader(Vertex_Pos input)
 }
 
 // Pixel Shader
-float DirectusPixelShader(VS_Output input) : SV_TARGET
+float mainPS(VS_Output input) : SV_TARGET
 {
 	return input.position.z / input.position.w;
 }

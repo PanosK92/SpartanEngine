@@ -45,7 +45,7 @@ struct PixelInputType
 };
 //==================================
 
-PixelInputType DirectusVertexShader(Vertex_PosUv input)
+PixelInputType mainVS(Vertex_PosUv input)
 {
     PixelInputType output;
 	
@@ -56,7 +56,7 @@ PixelInputType DirectusVertexShader(Vertex_PosUv input)
     return output;
 }
 
-float2 DirectusPixelShader(PixelInputType input) : SV_TARGET
+float2 mainPS(PixelInputType input) : SV_TARGET
 {
 	float2 texCoord 	= input.uv;
 	float3 normal 		= texNormal.Sample(samplerPoint, texCoord).rgb;
