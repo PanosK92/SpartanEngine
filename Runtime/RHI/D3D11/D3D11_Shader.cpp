@@ -39,7 +39,7 @@ namespace Directus
 {
 	namespace D3D11_Shader
 	{
-		inline void LogD3DCompilerError(ID3D10Blob* errorMessage)
+		inline void LogErrorBlob(ID3D10Blob* errorMessage)
 		{
 			stringstream ss((char*)errorMessage->GetBufferPointer());
 			string line;
@@ -59,7 +59,7 @@ namespace Directus
 			}
 		}
 
-		inline bool CompileShader(const string& filePath, D3D_SHADER_MACRO* macros, const string& entryPoint, const string& target, ID3DBlob** shaderBlobOut)
+		inline bool CompileShader(const string& filePath, D3D_SHADER_MACRO* macros, const char* entryPoint, const char* shaderModel, ID3DBlob** shaderBlobOut)
 		{
 			unsigned compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
 			#ifdef DEBUG
@@ -73,31 +73,32 @@ namespace Directus
 				FileSystem::StringToWString(filePath).c_str(),
 				macros,
 				D3D_COMPILE_STANDARD_FILE_INCLUDE,
-				entryPoint.c_str(),
-				target.c_str(),
+				entryPoint,
+				shaderModel,
 				compileFlags,
 				0,
 				&shaderBlob,
 				&errorBlob
 			);
 
-			// Handle any errors
+			// Log any compilation possible warnings and/or errors
+			if (errorBlob)
+			{
+				LogErrorBlob(errorBlob);
+				SafeRelease(errorBlob);
+			}
+
+			// Log compilation failure
 			if (FAILED(result))
 			{
 				string shaderName = FileSystem::GetFileNameFromFilePath(filePath);
-				// Log compilation warnings/errors
-				if (errorBlob)
+				if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 				{
-					LogD3DCompilerError(errorBlob);
-					SafeRelease(errorBlob);
-				}
-				else if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
-				{
-					LOGF_ERROR("D3D11_Shader::CompileShader: Failed to find shader \"%s\" with path \"%s\".", shaderName, filePath);
+					LOGF_ERROR("D3D11_Shader::CompileShader: Failed to find shader \"%s\" with path \"%s\".", shaderName.c_str(), filePath.c_str());
 				}
 				else
 				{
-					LOGF_ERROR("D3D11_Shader::CompileShader: An unknown error occured when trying to load and compile \"%s\"", shaderName);
+					LOGF_ERROR("D3D11_Shader::CompileShader: An error occured when trying to load and compile \"%s\"", shaderName.c_str());
 				}
 			}
 
@@ -107,7 +108,7 @@ namespace Directus
 			return SUCCEEDED(result);
 		}
 
-		inline bool CompileVertexShader(ID3D11Device* device, ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, const string& path, const string& entrypoint, const string& profile, D3D_SHADER_MACRO* macros)
+		inline bool CompileVertexShader(ID3D11Device* device, ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, const string& path, const char* entrypoint, const char* shaderModel, D3D_SHADER_MACRO* macros)
 		{
 			if (!device)
 			{
@@ -115,7 +116,7 @@ namespace Directus
 				return false;
 			}
 			// Compile shader
-			if (!CompileShader(path, macros, entrypoint, profile, vsBlob))
+			if (!CompileShader(path, macros, entrypoint, shaderModel, vsBlob))
 				return false;
 
 			// Create the shader from the buffer.
@@ -129,7 +130,7 @@ namespace Directus
 			return true;
 		}
 
-		inline bool CompilePixelShader(ID3D11Device* device, ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, const string& path, const string& entrypoint, const string& profile, D3D_SHADER_MACRO* macros)
+		inline bool CompilePixelShader(ID3D11Device* device, ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, const string& path, const char* entrypoint, const char* shaderModel, D3D_SHADER_MACRO* macros)
 		{
 			if (!device)
 			{
@@ -138,7 +139,7 @@ namespace Directus
 			}
 
 			// Compile the shader
-			if (!CompileShader(path, macros, entrypoint, profile, psBlob))
+			if (!CompileShader(path, macros, entrypoint, shaderModel, psBlob))
 				return false;
 
 			// Create the shader from the buffer.
@@ -197,8 +198,8 @@ namespace Directus
 			&blobVS,
 			shaderPtr,
 			m_filePath,
-			"DirectusVertexShader",
-			"vs_5_0",
+			VERTEX_SHADER_ENTRYPOINT,
+			VERTEX_SHADER_MODEL,
 			&vsMacros.front()))
 		{
 			// Create input layout
@@ -235,8 +236,8 @@ namespace Directus
 			&blobPS,
 			shaderPtr,
 			m_filePath,
-			"DirectusPixelShader",
-			"ps_5_0",
+			PIXEL_SHADER_ENTRYPOINT,
+			PIXEL_SHADER_MODEL,
 			&psMacros.front()
 		))
 		{

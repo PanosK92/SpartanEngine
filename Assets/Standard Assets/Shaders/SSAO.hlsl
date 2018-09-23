@@ -89,9 +89,9 @@ float doAmbientOcclusion(float2 texCoord, float3 position, float3 normal, Sample
 	float3 diff 		= sampledPos - originPos;
 	 
 	float3 v 			= normalize(diff);
-	float d 			= length(diff) * noiseScale;
+	float d 			= length(diff) * noiseScale.x;
 	float occlusion		= max(0.0f, dot(normal, v) - bias) * (1.0f / (1.0f + d));
-    float rangeCheck 	= smoothstep(0.0f, 1.0f, radius / abs(originPos - sampledPos));
+    float rangeCheck 	= smoothstep(0.0f, 1.0f, radius / abs(originPos - sampledPos)).x;
 	
 	return occlusion * rangeCheck;
 }
@@ -109,7 +109,7 @@ float SSAO(float2 texCoord, SamplerState samplerState)
 	[unroll(kernelSize)]
     for( int i = 0; i < kernelSize; i++)
     {
-		float2 coord1 = reflect(sampleKernel[i], randNormal) * radius_depth;
+		float2 coord1 = (reflect(sampleKernel[i], randNormal) * float2(radius_depth, radius_depth)).xy;
 		float2 coord2 = float2(coord1.x - coord1.y, coord1.x + coord1.y);
 
 		float acc = 0.0f;

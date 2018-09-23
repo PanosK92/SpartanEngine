@@ -69,7 +69,7 @@ struct PixelOutputType
 };
 //===========================================
 
-PixelInputType DirectusVertexShader(Vertex_PosUvTbn input)
+PixelInputType mainVS(Vertex_PosUvTbn input)
 {
     PixelInputType output;
     
@@ -85,7 +85,7 @@ PixelInputType DirectusVertexShader(Vertex_PosUvTbn input)
 	return output;
 }
 
-PixelOutputType DirectusPixelShader(PixelInputType input)
+PixelOutputType mainPS(PixelInputType input)
 {
 	PixelOutputType output;
 

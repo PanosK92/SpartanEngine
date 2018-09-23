@@ -18,7 +18,7 @@ struct PixelInputType
 };
 
 // Vertex Shader
-PixelInputType DirectusVertexShader(Vertex_PosColor input)
+PixelInputType mainVS(Vertex_PosColor input)
 {
     PixelInputType output;
     	
@@ -31,7 +31,7 @@ PixelInputType DirectusVertexShader(Vertex_PosColor input)
 }
 
 // Pixel Shader
-float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
+float4 mainPS(PixelInputType input) : SV_TARGET
 {
 	float2 projectDepthMapTexCoord;
 	projectDepthMapTexCoord.x = input.gridPos.x / input.gridPos.w / 2.0f + 0.5f;

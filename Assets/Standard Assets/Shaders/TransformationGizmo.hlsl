@@ -19,7 +19,7 @@ struct PixelInputType
 };
 
 // Vertex Shader
-PixelInputType DirectusVertexShader(Vertex_PosUvTbn input)
+PixelInputType mainVS(Vertex_PosUvTbn input)
 {
     PixelInputType output;
     	
@@ -34,7 +34,7 @@ PixelInputType DirectusVertexShader(Vertex_PosUvTbn input)
 }
 
 // Pixel Shader
-float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
+float4 mainPS(PixelInputType input) : SV_TARGET
 {
 	float4 color = float4(0, 0, 0, 1.0f);
 	color.rgb = axis.xyz;

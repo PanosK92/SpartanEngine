@@ -35,6 +35,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	static const char* VERTEX_SHADER_ENTRYPOINT = "mainVS";
+	static const char* PIXEL_SHADER_ENTRYPOINT	= "mainPS";
+	static const char* VERTEX_SHADER_MODEL		= "vs_5_0";
+	static const char* PIXEL_SHADER_MODEL		= "ps_5_0";
+
 	enum Shader_State
 	{
 		Shader_Uninitialized,

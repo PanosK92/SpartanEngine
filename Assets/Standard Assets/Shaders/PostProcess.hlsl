@@ -20,7 +20,7 @@ struct VS_Output
 };
 
 // Vertex Shader
-VS_Output DirectusVertexShader(Vertex_PosUv input)
+VS_Output mainVS(Vertex_PosUv input)
 {
     VS_Output output;
 	
@@ -34,7 +34,7 @@ VS_Output DirectusVertexShader(Vertex_PosUv input)
 /*------------------------------------------------------------------------------
 								[Pixel Shader]
 ------------------------------------------------------------------------------*/
-float4 DirectusPixelShader(VS_Output input) : SV_TARGET
+float4 mainPS(VS_Output input) : SV_TARGET
 {
     float2 texCoord 	= input.uv;
     float4 color 		= float4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -79,7 +79,7 @@ float4 DirectusPixelShader(VS_Output input) : SV_TARGET
 
 #if PASS_CORRECTION
 	color 		= sourceTexture.Sample(bilinearSampler, texCoord);
-	color.rgb 	= ACESFitted(color);
+	color.rgb 	= ACESFitted(color.rgb);
 	color 		= ToGamma(color);
 #endif
 
