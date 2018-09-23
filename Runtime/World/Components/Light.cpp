@@ -217,7 +217,7 @@ namespace Directus
 		return m_frustums[index]->CheckCube(center, extents) != Outside;
 	}
 
-	const Math::Matrix& Light::ShadowMap_GetProjectionMatrix(unsigned int index /*= 0*/)
+	const Matrix& Light::ShadowMap_GetProjectionMatrix(unsigned int index /*= 0*/)
 	{
 		if (index >= (unsigned int)m_shadowMapsProjectionMatrix.size())
 			return Matrix::Identity;

@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ========================
 using namespace std;
 using namespace Directus::Math;
-using namespace Directus::Math::Helper;
+using namespace Helper;
 //=====================================
 
 // A minimum size for a texture holding all visible ASCII characters

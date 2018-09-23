@@ -356,7 +356,7 @@ namespace Directus
 	}
 
 	//= CENTER OF MASS ===============================================
-	void RigidBody::SetCenterOfMass(const Math::Vector3& centerOfMass)
+	void RigidBody::SetCenterOfMass(const Vector3& centerOfMass)
 	{
 		m_centerOfMass = centerOfMass;
 		SetPosition(GetPosition());

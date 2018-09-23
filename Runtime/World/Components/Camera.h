@@ -58,11 +58,11 @@ namespace Directus
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= MATRICES ===============================================
-		Math::Matrix GetViewMatrix() { return m_mView; }
-		Math::Matrix GetProjectionMatrix() { return m_mProjection; }
-		Math::Matrix GetBaseViewMatrix() { return m_mBaseView; }
-		//==========================================================
+		//= MATRICES ========================================================
+		const Math::Matrix& GetViewMatrix()			{ return m_mView; }
+		const Math::Matrix& GetProjectionMatrix()	{ return m_mProjection; }
+		const Math::Matrix& GetBaseViewMatrix()		{ return m_mBaseView; }
+		//===================================================================
 
 		//= RAYCASTING ====================================================
 		// Returns a the picking ray as vertices (can be used to render it)
@@ -122,7 +122,7 @@ namespace Directus
 		Math::Quaternion m_rotation;
 		bool m_isDirty;
 
-		Math::Vector2 m_lastKnownResolution;	
+		Math::Vector2 m_lastKnownViewport;	
 
 		std::shared_ptr<TransformationGizmo> m_transformGizmo;
 	};

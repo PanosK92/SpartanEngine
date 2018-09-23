@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ========================
 using namespace std;
 using namespace Directus::Math;
-using namespace Directus::Math::Helper;
+using namespace Helper;
 //=====================================
 
 namespace Directus

@@ -63,9 +63,9 @@ namespace Directus
 
 	void Camera::OnTick()
 	{
-		if (m_lastKnownResolution != Settings::Get().GetResolution())
+		if (m_lastKnownViewport != Settings::Get().GetViewport())
 		{
-			m_lastKnownResolution = Settings::Get().GetResolution();
+			m_lastKnownViewport = Settings::Get().GetViewport();
 			m_isDirty = true;
 		}
 
@@ -254,15 +254,30 @@ namespace Directus
 
 	void Camera::ComputeProjection()
 	{
+		Vector2 viewport	= Settings::Get().GetViewport();
+		float width			= viewport.x;
+		float height		= viewport.y;
+
 		if (m_projection == Projection_Perspective)
 		{
-			Vector2 viewport = Settings::Get().GetViewport();
 			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.y / viewport.x)); 
 			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().GetAspectRatio(), m_nearPlane, m_farPlane);
 		}
 		else if (m_projection == Projection_Orthographic)
 		{
-			m_mProjection = Matrix::CreateOrthographicLH((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight(), m_nearPlane, m_farPlane);
+			m_mProjection = Matrix::CreateOrthographicLH(viewport.x, viewport.y, m_nearPlane, m_farPlane);
+		}
+
+		// TAA
+		if (Renderer::RenderFlags_IsSet(Render_TAA))
+		{
+			bool isOdd = (Renderer::GetFrame() % 2) == 1;
+
+			// Apply sub-pixel jitter		
+			Vector3 jitterA		= Vector3(-0.5f / width, -0.5f / height, 1.0f);
+			Vector3 jitterB		= Vector3(0.5f / width, 0.5f / height, 1.0f);
+			Matrix jitterMatrix	= Matrix::CreateTranslation(isOdd ? jitterA : jitterB);
+			m_mProjection		*= jitterMatrix;
 		}
 	}
 }

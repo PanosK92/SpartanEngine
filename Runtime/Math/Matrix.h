@@ -41,6 +41,14 @@ namespace Directus::Math
 			SetIdentity();
 		}
 
+		Matrix (const Matrix& rhs)
+		{
+			m00 = rhs.m00; m01 = rhs.m01; m02 = rhs.m02; m03 = rhs.m03;
+			m10 = rhs.m10; m11 = rhs.m11; m12 = rhs.m12; m13 = rhs.m13;
+			m20 = rhs.m20; m21 = rhs.m21; m22 = rhs.m22; m23 = rhs.m23;
+			m30 = rhs.m30; m31 = rhs.m31; m32 = rhs.m32; m33 = rhs.m33;
+		}
+
 		Matrix(
 			float m00, float m01, float m02, float m03,
 			float m10, float m11, float m12, float m13,
@@ -249,7 +257,7 @@ namespace Directus::Math
 		// fieldOfView -> Field of view in the y direction, in radians.
 		static Matrix CreatePerspectiveFieldOfViewLH(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
 		{
-			float yScale = Helper::CotF(fieldOfView / 2);
+			float yScale = CotF(fieldOfView / 2);
 			float xScale = yScale / aspectRatio;
 
 
@@ -376,6 +384,8 @@ namespace Directus::Math
 				m30 * rhs.m03 + m31 * rhs.m13 + m32 * rhs.m23 + m33 * rhs.m33
 			);
 		}
+
+		void operator*=(const Matrix& rhs) { (*this) = (*this) * rhs; }
 
 		Vector3 operator *(const Vector3& rhs) const
 		{

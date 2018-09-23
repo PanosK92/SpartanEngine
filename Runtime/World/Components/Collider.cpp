@@ -243,7 +243,7 @@ namespace Directus
 		}
 	}
 
-	void Collider::RigidBody_SetCenterOfMass(const Math::Vector3& center)
+	void Collider::RigidBody_SetCenterOfMass(const Vector3& center)
 	{
 		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>().lock())
 		{

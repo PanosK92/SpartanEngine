@@ -21,13 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
-#include "../Math/Vector4.h"
-#include "../Core/SubSystem.h"
-#include "../Profiling/Profiler.h"
-//================================
+//=========================
 
 namespace Directus
 {

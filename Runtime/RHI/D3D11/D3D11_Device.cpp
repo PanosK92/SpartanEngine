@@ -25,10 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 
 //= INCLUDES ===========================
+#include "D3D11_Common.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
-#include "D3D11_Common.h"
+#include "../../Profiling/Profiler.h"
 //======================================
 
 //= NAMESPACES ================

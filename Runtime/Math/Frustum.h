@@ -36,8 +36,8 @@ namespace Directus::Math
 		~Frustum() {}
 
 		void Construct(const Matrix& mView, const Matrix&  mProjection, float screenDepth);
-		Helper::Intersection CheckCube(const Vector3& center, const Vector3& extent);
-		Helper::Intersection CheckSphere(const Vector3& center, float radius);
+		Intersection CheckCube(const Vector3& center, const Vector3& extent);
+		Intersection CheckSphere(const Vector3& center, float radius);
 
 	private:
 		Plane m_planes[6];

@@ -62,7 +62,7 @@ namespace Directus::Math
 		}
 	}
 
-	Helper::Intersection BoundingBox::IsInside(const Vector3& point) const
+	Intersection BoundingBox::IsInside(const Vector3& point) const
 	{
 		if (point.x < m_min.x || point.x > m_max.x ||
 			point.y < m_min.y || point.y > m_max.y ||
@@ -76,7 +76,7 @@ namespace Directus::Math
 		}
 	}
 
-	Helper::Intersection BoundingBox::IsInside(const BoundingBox& box) const
+	Intersection BoundingBox::IsInside(const BoundingBox& box) const
 	{
 		if (box.m_max.x < m_min.x || box.m_min.x > m_max.x ||
 			box.m_max.y < m_min.y || box.m_min.y > m_max.y ||

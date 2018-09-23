@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
+using namespace Assimp;
 //=============================
 
 namespace Directus
@@ -67,19 +68,14 @@ namespace Directus
 
 	ModelImporter::ModelImporter(Context* context)
 	{
-		m_context = context;
-		m_model = nullptr;
+		m_context	= context;
+		m_model		= nullptr;
 
 		// Get version
-		int major = aiGetVersionMajor();
-		int minor = aiGetVersionMinor();
-		int rev = aiGetVersionRevision();
+		int major	= aiGetVersionMajor();
+		int minor	= aiGetVersionMinor();
+		int rev		= aiGetVersionRevision();
 		Settings::Get().m_versionAssimp = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
-	}
-
-	ModelImporter::~ModelImporter()
-	{
-
 	}
 
 	bool ModelImporter::Load(Model* model, const string& filePath)
@@ -99,7 +95,7 @@ namespace Directus
 		progress.SetIsLoading(g_progress_ModelImporter, true);
 
 		// Set up an Assimp importer
-		Assimp::Importer importer;
+		Importer importer;
 		importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64); // Optimize mesh
 		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT); // Remove points and lines.
 		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS); // Remove cameras and lights

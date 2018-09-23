@@ -225,6 +225,7 @@ namespace Directus::Math
 		//==========================================================================================
 
 		std::string ToString() const;
+		const float* Data() const { return &x; }
 
 		float x;
 		float y;

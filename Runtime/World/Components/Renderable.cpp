@@ -22,9 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "Renderable.h"
 #include "Transform.h"
-#include "../../Rendering/GeometryUtility.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceManager.h"
+#include "../../Rendering/GeometryUtility.h"
+#include "../../Rendering/Material.h"
+#include "../../Rendering/Model.h"
 //==========================================
 
 //= NAMESPACES ================

@@ -42,8 +42,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ========================
 using namespace std;
 using namespace Directus;
-using namespace Directus::Math;
-using namespace Directus::Math::Helper;
+using namespace Math;
+using namespace Helper;
 //=====================================
 
 namespace WidgetProperties_Internal
