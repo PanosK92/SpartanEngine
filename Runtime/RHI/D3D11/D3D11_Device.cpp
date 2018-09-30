@@ -368,7 +368,6 @@ namespace Directus
 			{		
 				multithread->SetMultithreadProtected(TRUE);
 				multithread->Release();
-				LOGF_INFO("RHI_Device::Initialize: Multithread protection was enabled sucesfully");
 			}
 			else 
 			{

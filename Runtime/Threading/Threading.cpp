@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ================
 #include "Threading.h"
-//====================
+#include "../Core/Settings.h"
+//===========================
 
 //= NAMESPACES ======
 using namespace  std;
@@ -31,7 +32,8 @@ namespace Directus
 {
 	Threading::Threading(Context* context) : Subsystem(context)
 	{
-		m_stopping = false;
+		m_stopping		= false;
+		m_threadCount	= Settings::Get().GetMaxThreadCount() - 1;
 	}
 
 	Threading::~Threading()

@@ -49,30 +49,32 @@ namespace Directus
 
 		void Initialize();
 
-		//= DISPLAY ========================================================================================
-		int GetViewportWidth()					{ return (int)m_viewport.x; }
-		int GetViewportHeight()					{ return (int)m_viewport.y; }
-		const Math::Vector2& GetViewport()		{ return m_viewport; }
-		void SetViewport(int width, int height)	{ m_viewport = Math::Vector2((float)width, (float)height); }
-		//==================================================================================================
+		//= DISPLAY ============================================================================================================
+		unsigned int GetViewportWidth()								{ return (unsigned int)m_viewport.x; }
+		unsigned int GetViewportHeight()							{ return (unsigned int)m_viewport.y; }
+		const Math::Vector2& GetViewport()							{ return m_viewport; }
+		void SetViewport(unsigned int width, unsigned int height)	{ m_viewport = Math::Vector2((float)width, (float)height); }
+		//======================================================================================================================
 
 		//= RESOLUTION ===================================================================================================
 		void SetResolution(int width, int height)			{ m_resolution = Math::Vector2((float)width, (float)height); }
 		void SetResolution(const Math::Vector2& resolution) { m_resolution = resolution; }
 		const Math::Vector2& GetResolution()				{ return m_resolution; }
-		int GetResolutionWidth()							{ return (int)m_resolution.x; }
-		int GetResolutionHeight()							{ return (int)m_resolution.y; }
+		unsigned int GetResolutionWidth()					{ return (unsigned int)m_resolution.x; }
+		unsigned int GetResolutionHeight()					{ return (unsigned int)m_resolution.y; }
 		//================================================================================================================
 
-		//= MISC =============================================================================================
-		bool IsFullScreen()				{ return m_isFullScreen; }
-		bool IsMouseVisible()			{ return m_isMouseVisible; }
-		VSync GetVSync()				{ return (VSync)m_vsync; }
-		float GetAspectRatio()			{ return (float)GetResolutionWidth() / (float)GetResolutionHeight(); }
-		int GetShadowMapResolution()	{ return m_shadowMapResolution; }
-		unsigned int GetAnisotropy()	{ return m_anisotropy; }
-		float GetMaxFPS()				{ return m_maxFPS;}
-		//====================================================================================================
+		//= MISC ==================================================================================================================
+		bool IsFullScreen()									{ return m_isFullScreen; }
+		bool IsMouseVisible()								{ return m_isMouseVisible; }
+		VSync GetVSync()									{ return (VSync)m_vsync; }
+		float GetAspectRatio()								{ return (float)GetResolutionWidth() / (float)GetResolutionHeight(); }
+		unsigned int GetShadowMapResolution()				{ return m_shadowMapResolution; }
+		unsigned int GetAnisotropy()						{ return m_anisotropy; }
+		float GetMaxFPS()									{ return m_maxFPS;}
+		void SetMaxThreadCount(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
+		unsigned int GetMaxThreadCount()					{ return m_maxThreadCount; }
+		//=========================================================================================================================
 
 		// Third party lib versions
 		std::string m_versionAngelScript;
@@ -87,14 +89,13 @@ namespace Directus
 
 	private:
 		bool m_isFullScreen;
-		// The display size in pixels
 		Math::Vector2 m_viewport;
-		// The rendering resolution
 		Math::Vector2 m_resolution;	
-		int m_vsync;
+		unsigned int m_vsync;
 		bool m_isMouseVisible;		
-		int m_shadowMapResolution;
+		unsigned int m_shadowMapResolution;
 		unsigned int m_anisotropy;	
 		float m_maxFPS;
+		unsigned int m_maxThreadCount;
 	};
 }
