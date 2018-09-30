@@ -74,6 +74,7 @@ namespace Directus
 		SettingsIO::fileName	= "Directus3D.ini";
 		m_versionPugiXML		= "1.90";
 		m_maxFPS				= FLT_MAX;
+		m_maxThreadCount		= thread::hardware_concurrency();
 	}
 
 	void Settings::Initialize()
@@ -87,14 +88,15 @@ namespace Directus
 			float resolutionY = 0;
 
 			// Read the settings
-			ReadSetting(SettingsIO::fin, "FullScreen",			m_isFullScreen);
-			ReadSetting(SettingsIO::fin, "VSync",				m_vsync);
-			ReadSetting(SettingsIO::fin, "IsMouseVisible",		m_isMouseVisible);
-			ReadSetting(SettingsIO::fin, "ResolutionWidth",		resolutionX);
-			ReadSetting(SettingsIO::fin, "ResolutionHeight",	resolutionY);
-			ReadSetting(SettingsIO::fin, "ShadowMapResolution",	m_shadowMapResolution);
-			ReadSetting(SettingsIO::fin, "Anisotropy",			m_anisotropy);
-			ReadSetting(SettingsIO::fin, "FPSLimit",			m_maxFPS);
+			ReadSetting(SettingsIO::fin, "bFullScreen",				m_isFullScreen);
+			ReadSetting(SettingsIO::fin, "iVSync",					m_vsync);
+			ReadSetting(SettingsIO::fin, "bIsMouseVisible",			m_isMouseVisible);
+			ReadSetting(SettingsIO::fin, "fResolutionWidth",		resolutionX);
+			ReadSetting(SettingsIO::fin, "fResolutionHeight",		resolutionY);
+			ReadSetting(SettingsIO::fin, "iShadowMapResolution",	m_shadowMapResolution);
+			ReadSetting(SettingsIO::fin, "iAnisotropy",				m_anisotropy);
+			ReadSetting(SettingsIO::fin, "fFPSLimit",				m_maxFPS);
+			ReadSetting(SettingsIO::fin, "iMaxThreadCount",			m_maxThreadCount);
 			
 			m_resolution = Vector2(resolutionX, resolutionY);
 
@@ -107,17 +109,24 @@ namespace Directus
 			SettingsIO::fout.open(SettingsIO::fileName, ofstream::out);
 
 			// Write the settings
-			WriteSetting(SettingsIO::fout, "FullScreen",			m_isFullScreen);
-			WriteSetting(SettingsIO::fout, "VSync",					m_vsync);
-			WriteSetting(SettingsIO::fout, "IsMouseVisible",		m_isMouseVisible);
-			WriteSetting(SettingsIO::fout, "ResolutionWidth",		m_resolution.x);
-			WriteSetting(SettingsIO::fout, "ResolutionHeight",		m_resolution.y);
-			WriteSetting(SettingsIO::fout, "ShadowMapResolution",	m_shadowMapResolution);
-			WriteSetting(SettingsIO::fout, "Anisotropy",			m_anisotropy);
-			WriteSetting(SettingsIO::fout, "FPSLimit",				m_maxFPS);
+			WriteSetting(SettingsIO::fout, "bFullScreen",			m_isFullScreen);
+			WriteSetting(SettingsIO::fout, "iVSync",				m_vsync);
+			WriteSetting(SettingsIO::fout, "bIsMouseVisible",		m_isMouseVisible);
+			WriteSetting(SettingsIO::fout, "fResolutionWidth",		m_resolution.x);
+			WriteSetting(SettingsIO::fout, "fResolutionHeight",		m_resolution.y);
+			WriteSetting(SettingsIO::fout, "iShadowMapResolution",	m_shadowMapResolution);
+			WriteSetting(SettingsIO::fout, "iAnisotropy",			m_anisotropy);
+			WriteSetting(SettingsIO::fout, "fFPSLimit",				m_maxFPS);
+			WriteSetting(SettingsIO::fout, "iMaxThreadCount",		m_maxThreadCount);
 
 			// Close the file.
 			SettingsIO::fout.close();
 		}
+
+		LOGF_INFO("Settings::Initialize: Resolution: %dx%d",		(int)m_resolution.x, (int)m_resolution.y);
+		LOGF_INFO("Settings::Initialize: Shadow resolution: %d",	m_shadowMapResolution);
+		LOGF_INFO("Settings::Initialize: Anisotropy: %d",			m_anisotropy);
+		LOGF_INFO("Settings::Initialize: Max fps: %f",				m_maxFPS);
+		LOGF_INFO("Settings::Initialize: Max threads: %d",			m_maxThreadCount);
 	}
 }
