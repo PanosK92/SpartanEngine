@@ -33,7 +33,7 @@ class Widget_Assets : public Widget
 public:
 	Widget_Assets();
 	void Initialize(Directus::Context* context) override;
-	void Update(float deltaTime) override;
+	void Tick(float deltaTime) override;
 
 private:
 	void OnPathClicked(const std::string& path);

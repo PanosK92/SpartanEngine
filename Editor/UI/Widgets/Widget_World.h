@@ -33,7 +33,7 @@ class Widget_World : public Widget
 public:
 	Widget_World();
 	void Initialize(Directus::Context* context) override;
-	void Update(float deltaTime) override;
+	void Tick(float deltaTime) override;
 
 	static std::weak_ptr<Directus::Actor> GetActorSelected() { return m_actorSelected; }
 	static void SetSelectedActor(std::weak_ptr<Directus::Actor> actor) ;

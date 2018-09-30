@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#ifdef API_VULKAN
+#ifdef API_VULKAN 
 //================================
 
 //= INCLUDES ==================

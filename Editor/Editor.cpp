@@ -97,7 +97,7 @@ void Editor::Resize()
 	ImGui_ImplDX11_CreateDeviceObjects();
 }
 
-void Editor::Update(float deltaTime)
+void Editor::Tick(float deltaTime)
 {	
 	if (!m_initialized)
 		return;
@@ -142,7 +142,7 @@ void Editor::DrawEditor(float deltaTime)
 			widget->Begin();
 		}
 
-		widget->Update(deltaTime);
+		widget->Tick(deltaTime);
 
 		if (widget->IsWindow())
 		{

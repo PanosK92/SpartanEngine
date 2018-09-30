@@ -21,39 +21,39 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "../Input_Implementation.h"
-#include "DInput.h"
-#include <dinput.h>
+#include "../Input.h"
 #include <sstream>
+#include "dinput.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Engine.h"
 #include "../../Core/Settings.h"
 #include "../../Core/EventSystem.h"
 //==================================
 
-//= NAMESPACES ========================
+//= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
 using namespace Helper;
-//=====================================
+//=============================
 
 namespace Directus
 {
-	IDirectInput8* g_directInput;
-	IDirectInputDevice8* g_keyboard;
-	IDirectInputDevice8* g_mouse;
-	DIMOUSESTATE g_mouseState;
-	unsigned char g_keyboardState[256];
+	IDirectInput8*			g_directInput;
+	IDirectInputDevice8*	g_keyboard;
+	IDirectInputDevice8*	g_mouse;
+	DIMOUSESTATE			g_mouseState;
+	unsigned char			g_keyboardState[256];
 
-	DInput::DInput(Context* context) : IInput(context)
+	Input::Input(Context* context) : Subsystem(context)
 	{
-		g_directInput	= nullptr;
-		g_keyboard		= nullptr;
-		g_mouse			= nullptr;
+		g_directInput		= nullptr;
+		g_keyboard			= nullptr;
+		g_mouse				= nullptr;
 
-		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Update));
+		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Tick));
 	}
 
-	DInput::~DInput()
+	Input::~Input()
 	{
 		// Release the mouse.
 		if (g_mouse)
@@ -79,7 +79,7 @@ namespace Directus
 		}
 	}
 
-	bool DInput::Input_Initialize()
+	bool Input::Initialize()
 	{
 		if (!Engine::GetWindowHandle() || !Engine::GetWindowInstance())
 			return false;
@@ -88,7 +88,7 @@ namespace Directus
 		auto windowHandle	= (HWND)Engine::GetWindowHandle();
 		auto windowInstance = (HINSTANCE)Engine::GetWindowInstance();
 
-		// Make sure the window has focus, otherwise the mouse and keyboard won't be able to be aquired.
+		// Make sure the window has focus, otherwise the mouse and keyboard won't be able to be acquired.
 		SetForegroundWindow(windowHandle);
 
 		// Initialize the main direct input interface.
@@ -177,7 +177,7 @@ namespace Directus
 		return success;
 	}
 
-	void DInput::Update()
+	void Input::Tick()
 	{
 		if (ReadMouse())
 		{
@@ -308,7 +308,7 @@ namespace Directus
 		}
 	}
 
-	bool DInput::ReadMouse()
+	bool Input::ReadMouse()
 	{
 		// Get mouse state
 		auto result = g_mouse->GetDeviceState(sizeof(DIMOUSESTATE), (LPVOID)&g_mouseState);
@@ -324,7 +324,7 @@ namespace Directus
 		return false;
 	}
 
-	bool DInput::ReadKeyboard()
+	bool Input::ReadKeyboard()
 	{
 		// Get keyboard state
 		auto result = g_keyboard->GetDeviceState(sizeof(g_keyboardState), (LPVOID)&g_keyboardState);

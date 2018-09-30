@@ -80,7 +80,7 @@ public:
 		}
 	}
 
-	void Update(float deltaTime) override
+	void Tick(float deltaTime) override
 	{
 		if (!m_isVisible)
 			return;

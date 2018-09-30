@@ -55,7 +55,7 @@ void Widget_MenuBar::Initialize(Context* context)
 	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
 }
 
-void Widget_MenuBar::Update(float deltaTime)
+void Widget_MenuBar::Tick(float deltaTime)
 {
 	if (ImGui::BeginMainMenuBar())
 	{

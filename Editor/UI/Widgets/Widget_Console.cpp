@@ -58,7 +58,7 @@ Widget_Console::Widget_Console()
 	m_showErrors	= true;
 }
 
-void Widget_Console::Update(float deltaTime)
+void Widget_Console::Tick(float deltaTime)
 {
 	// Clear Button
 	if (ImGui::Button("Clear"))	{ Clear();} ImGui::SameLine();

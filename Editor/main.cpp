@@ -19,15 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ======================
 #include "Window.h"
 #include "Editor.h"
 #include "ImGui/imgui_impl_win32.h"
-#include "Input/Input_Definition.h"
-#include "Input/Input_Implementation.h"
 #include "Core/Engine.h"
 #include "Rendering/Renderer.h"
-//=====================================
+#include "Input/Input.h"
+//=================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -90,7 +89,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		g_renderer->SetBackBufferAsRenderTarget();
 
 		// Update editor
-		g_editor->Update(g_engine->GetDeltaTime());
+		g_editor->Tick(g_engine->GetDeltaTime());
 
 		// Present back buffer (ImGui result)
 		g_renderer->Present();

@@ -33,7 +33,7 @@ public:
 	virtual ~Widget() {}
 	virtual void Initialize(Directus::Context* context);
 	virtual void Begin();
-	virtual void Update(float deltaTime) = 0;
+	virtual void Tick(float deltaTime) = 0;
 	virtual void End();
 
 	bool IsWindow()					{ return m_isWindow; }
