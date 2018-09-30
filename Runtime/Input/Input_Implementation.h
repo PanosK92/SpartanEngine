@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifdef API_DInput
 	#pragma comment(lib, "dinput8.lib")
+	#pragma comment(lib, "XInput.lib")
 	#ifndef DIRECTINPUT_VERSION
 	#define DIRECTINPUT_VERSION 0x0800
 	#endif
