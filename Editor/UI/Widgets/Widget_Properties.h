@@ -48,7 +48,7 @@ class Widget_Properties : public Widget
 public:
 	Widget_Properties();
 	void Initialize(Directus::Context* context) override;
-	void Update(float deltaTime) override;
+	void Tick(float deltaTime) override;
 
 	static void Inspect(std::weak_ptr<Directus::Actor> actor);
 	static void Inspect(std::weak_ptr<Directus::Material> material);

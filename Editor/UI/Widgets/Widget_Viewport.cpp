@@ -66,7 +66,7 @@ void Widget_Viewport::Begin()
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 }
 
-void Widget_Viewport::Update(float deltaTime)
+void Widget_Viewport::Tick(float deltaTime)
 {
 	if (!Widget_Viewport_Properties::g_renderer)
 		return;

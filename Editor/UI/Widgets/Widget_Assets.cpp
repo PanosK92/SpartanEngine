@@ -53,7 +53,7 @@ void Widget_Assets::Initialize(Context* context)
 	m_fileDialogView->SetCallback_OnPathClicked([this](const string& str) { OnPathClicked(str); });
 }
 
-void Widget_Assets::Update(float deltaTime)
+void Widget_Assets::Tick(float deltaTime)
 {	
 	if (ImGui::Button("Import"))
 	{

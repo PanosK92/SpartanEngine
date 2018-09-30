@@ -89,7 +89,7 @@ void Widget_Toolbar::Begin()
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 }
 
-void Widget_Toolbar::Update(float deltaTime)
+void Widget_Toolbar::Tick(float deltaTime)
 {
 	// Play button
 	ImGui::SameLine();
@@ -122,7 +122,7 @@ void Widget_Toolbar::Update(float deltaTime)
 
 	// Visibility
 	if (Widget_Toolbar_Options::g_showRendererOptions) ShowRendererOptions();
-	if (m_profiler->GetVisible()) m_profiler->Update(deltaTime);
+	if (m_profiler->GetVisible()) m_profiler->Tick(deltaTime);
 }
 
 void Widget_Toolbar::ShowRendererOptions()

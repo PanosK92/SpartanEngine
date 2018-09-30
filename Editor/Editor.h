@@ -41,7 +41,7 @@ public:
 
 	void Initialize(Directus::Context* context, void* windowHandle);
 	void Resize();
-	void Update(float deltaTime);
+	void Tick(float deltaTime);
 	void Shutdown();
 
 private:

@@ -30,4 +30,4 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define API_DInput
 //================
 
-// Note: In the future, these can be implicitly defined via the platform
+// Note: In the future, the above could be implicitly defined via the platform

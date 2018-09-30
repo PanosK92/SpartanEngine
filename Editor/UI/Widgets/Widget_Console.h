@@ -61,7 +61,7 @@ class Widget_Console : public Widget
 {
 public:
 	Widget_Console();
-	void Update(float deltaTime) override;
+	void Tick(float deltaTime) override;
 	void AddLogPackage(LogPackage package);
 	void Clear();
 

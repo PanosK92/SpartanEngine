@@ -65,33 +65,31 @@ namespace Directus
 		Insert
 	};
 
-	class ENGINE_CLASS IInput : public Subsystem
+	class ENGINE_CLASS Input : public Subsystem
 	{
 	public:
-		IInput(Context* context) : Subsystem(context)
-		{
-			m_mouseWheel = 0;
-			m_mouseWheelDelta = 0;
-		}
-		virtual ~IInput() {}
+		Input(Context* context);
+		~Input();
 
-		// SUBSYSTEM ============================================
-		bool Initialize() override { return Input_Initialize(); }
-		//=======================================================
+		// SUBSYSTEM ==============
+		bool Initialize() override;
+		//=========================
 
-		bool GetButtonKeyboard(Button_Keyboard button) { return m_keyboardState[(int)button]; }
-		bool GetButtonMouse(Button_Mouse button) { return m_mouseState[(int)button]; }
-		const Math::Vector2& GetMousePosition() { return m_mousePos; }
-		const Math::Vector2& GetMouseDelta() { return m_mouseDelta; }
+		void Tick();
+		bool ReadMouse();
+		bool ReadKeyboard();
 
-	protected:
-		virtual bool Input_Initialize() = 0;
+		bool GetButtonKeyboard(Button_Keyboard button)	{ return m_keyboardState[(int)button]; }
+		bool GetButtonMouse(Button_Mouse button)		{ return m_mouseState[(int)button]; }
+		const Math::Vector2& GetMousePosition()			{ return m_mousePos; }
+		const Math::Vector2& GetMouseDelta()			{ return m_mouseDelta; }
 
-		bool m_mouseState[3];
-		bool m_keyboardState[84];
-		Math::Vector2 m_mousePos;
-		Math::Vector2 m_mouseDelta;
-		float m_mouseWheel;
-		float m_mouseWheelDelta;
+	private:
+		bool m_mouseState[3]		= { false };
+		bool m_keyboardState[84]	= { false };
+		Math::Vector2 m_mousePos	= Math::Vector2::Zero;
+		Math::Vector2 m_mouseDelta	= Math::Vector2::Zero;
+		float m_mouseWheel			= 0;
+		float m_mouseWheelDelta		= 0;
 	};
 }

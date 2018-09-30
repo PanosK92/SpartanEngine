@@ -157,7 +157,7 @@ void Widget_Properties::Initialize(Context* context)
 	m_xMin = 500; // min width
 }
 
-void Widget_Properties::Update(float deltaTime)
+void Widget_Properties::Tick(float deltaTime)
 {
 	ImGui::PushItemWidth(ComponentProperty::g_maxWidth);
 

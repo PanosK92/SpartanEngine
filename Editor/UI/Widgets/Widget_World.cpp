@@ -23,9 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_World.h"
 #include "Widget_Properties.h"
 #include "../DragDrop.h"
-#include "Input/Input_Definition.h"
-#include "Input/Input_Implementation.h"
 #include "../../ImGui/Source/imgui_stl.h"
+#include "Input/Input.h"
 #include "World/Actor.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Light.h"
@@ -77,7 +76,7 @@ void Widget_World::Initialize(Context* context)
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 }
 
-void Widget_World::Update(float deltaTime)
+void Widget_World::Tick(float deltaTime)
 {
 	// If something is being loaded, don't parse the hierarchy
 	if (EditorHelper::Get().IsLoading())
