@@ -327,12 +327,19 @@ namespace Directus
 			m_gamepadButtons[9]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB;
 			m_gamepadButtons[10]	= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER;
 			m_gamepadButtons[11]	= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER;
-			m_triggerLeft			= (float)g_gamepad.Gamepad.bLeftTrigger		/ 255.0f;	// Convert [0, 255] to [0, 1]
-			m_triggerRight			= (float)g_gamepad.Gamepad.bRightTrigger	/ 255.0f;	// Convert [0, 255] to [0, 1]
-			m_thumbstickLeft.x		= (float)g_gamepad.Gamepad.sThumbLX			/ 32768.0f;	// Convert [-32768, 32767] to [-1, 1]
-			m_thumbstickLeft.y		= (float)g_gamepad.Gamepad.sThumbLY			/ 32768.0f;	// Convert [-32768, 32767] to [-1, 1]
-			m_thumbstickRight.x		= (float)g_gamepad.Gamepad.sThumbRX			/ 32768.0f;	// Convert [-32768, 32767] to [-1, 1]
-			m_thumbstickRight.y		= (float)g_gamepad.Gamepad.sThumbRY			/ 32768.0f;	// Convert [-32768, 32767] to [-1, 1]
+			m_triggerLeft			= (float)g_gamepad.Gamepad.bLeftTrigger;
+			m_triggerRight			= (float)g_gamepad.Gamepad.bRightTrigger;
+			m_thumbstickLeft.x		= (float)g_gamepad.Gamepad.sThumbLX;
+			m_thumbstickLeft.y		= (float)g_gamepad.Gamepad.sThumbLY;
+			m_thumbstickRight.x		= (float)g_gamepad.Gamepad.sThumbRX;
+			m_thumbstickRight.y		= (float)g_gamepad.Gamepad.sThumbRY;
+
+			if (m_triggerLeft != 0)			m_triggerLeft	/= 255.0f;	// Convert [0, 255] to [0, 1]
+			if (m_triggerRight != 0)		m_triggerRight	/= 255.0f;	// Convert [0, 255] to [0, 1]
+			if (m_thumbstickLeft.x != 0)	m_thumbstickLeft.x	= m_thumbstickLeft.x	< 0 ? m_thumbstickLeft.x	/ 32768.0f : m_thumbstickLeft.x		/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+			if (m_thumbstickLeft.y != 0)	m_thumbstickLeft.y	= m_thumbstickLeft.y	< 0 ? m_thumbstickLeft.y	/ 32768.0f : m_thumbstickLeft.y		/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+			if (m_thumbstickRight.x != 0)	m_thumbstickRight.x = m_thumbstickRight.x	< 0 ? m_thumbstickRight.x	/ 32768.0f : m_thumbstickRight.x	/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+			if (m_thumbstickRight.y != 0)	m_thumbstickRight.y = m_thumbstickRight.y	< 0 ? m_thumbstickRight.y	/ 32768.0f : m_thumbstickRight.y	/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
 
 			m_isGamepadConnected	= true;
 
@@ -340,6 +347,12 @@ namespace Directus
 		else
 		{
 			m_isGamepadConnected = false;
+		}
+
+		if (m_isGamepadConnected)
+		{
+			LOGF_INFO("LY: %f, RY: %f", m_thumbstickLeft.y, m_thumbstickRight.y);
+			VibrateGamepad(m_thumbstickLeft.y, m_thumbstickRight.y);			
 		}
 	}
 
@@ -389,8 +402,8 @@ namespace Directus
 		XINPUT_VIBRATION vibration;
 		ZeroMemory(&vibration, sizeof(XINPUT_VIBRATION));
 		
-		vibration.wLeftMotorSpeed	= (int)(leftMotorSpeed * 65535);	// Convert [0, 1] to [0, 65535]
-		vibration.wRightMotorSpeed	= (int)(rightMotorSpeed * 65535);	// Convert [0, 1] to [0, 65535]
+		vibration.wLeftMotorSpeed	= (int)(Clamp(leftMotorSpeed, 0.0f, 1.0f) * 65535);		// Convert [0, 1] to [0, 65535]
+		vibration.wRightMotorSpeed	= (int)(Clamp(rightMotorSpeed, 0.0f, 1.0f) * 65535);	// Convert [0, 1] to [0, 65535]
 
 		return XInputSetState(g_gamepadNum, &vibration) == ERROR_SUCCESS;
 	}
