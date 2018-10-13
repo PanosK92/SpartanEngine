@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Skybox.h"
 #include "Script.h"
 #include "RigidBody.h"
-#include "LineRenderer.h"
 #include "Collider.h"
 #include "Camera.h"
 #include "AudioSource.h"
@@ -73,7 +72,6 @@ namespace Directus
 	REGISTER_COMPONENT(Collider,		ComponentType_Collider)
 	REGISTER_COMPONENT(Constraint,		ComponentType_Constraint)
 	REGISTER_COMPONENT(Light,			ComponentType_Light)
-	REGISTER_COMPONENT(LineRenderer,	ComponentType_LineRenderer)
 	REGISTER_COMPONENT(Renderable,		ComponentType_Renderable)
 	REGISTER_COMPONENT(RigidBody,		ComponentType_RigidBody)
 	REGISTER_COMPONENT(Script,			ComponentType_Script)

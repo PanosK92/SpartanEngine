@@ -155,16 +155,6 @@ namespace Directus
 		return m_frustrum.CheckCube(center, extents) != Outside;
 	}
 
-	vector<RHI_Vertex_PosCol> Camera::GetPickingRay()
-	{
-		vector<RHI_Vertex_PosCol> lines;
-
-		lines.emplace_back(RHI_Vertex_PosCol(m_ray.GetOrigin(), Vector4(0, 1, 0, 1)));
-		lines.emplace_back(RHI_Vertex_PosCol(m_ray.GetEnd(), Vector4(0, 1, 0, 1)));
-
-		return lines;
-	}
-
 	//= RAYCASTING =======================================================================
 	weak_ptr<Actor> Camera::Pick(const Vector2& mousePos)
 	{

@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//==============================
+//================================
 #include "PhysicsDebugDraw.h"
 #include "BulletPhysicsHelper.h"
+#include "../Rendering/Renderer.h"
 #include "../Logging/Log.h"
-//==============================
+//================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -31,26 +32,15 @@ using namespace std;
 
 namespace Directus
 {
-	PhysicsDebugDraw::PhysicsDebugDraw()
+	PhysicsDebugDraw::PhysicsDebugDraw(Renderer* renderer)
 	{
+		m_renderer	= renderer;
 		m_debugMode = DBG_DrawWireframe | DBG_DrawContactPoints | DBG_DrawConstraints | DBG_DrawConstraintLimits | DBG_DrawNormals | DBG_DrawFrames;
-	}
-
-	PhysicsDebugDraw::~PhysicsDebugDraw()
-	{
-		Clear();
 	}
 
 	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor)
 	{
-		m_lines.emplace_back(ToVector3(from), ToVector4(fromColor));
-		m_lines.emplace_back(ToVector3(to), ToVector4(toColor));
-	}
-
-	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
-	{
-		m_lines.emplace_back(ToVector3(from), ToVector4(color));
-		m_lines.emplace_back(ToVector3(to), ToVector4(color));
+		m_renderer->AddLine(ToVector3(from), ToVector3(to), ToVector4(fromColor), ToVector4(toColor));
 	}
 
 	void PhysicsDebugDraw::drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color)
@@ -60,14 +50,8 @@ namespace Directus
 		drawLine(from, to, color);
 	}
 
-	void PhysicsDebugDraw::reportErrorWarning(const char* warningString)
+	void PhysicsDebugDraw::reportErrorWarning(const char* error_warning)
 	{
-		LOGF_WARNING("Physics: %s", warningString);
-	}
-
-	void PhysicsDebugDraw::Clear()
-	{
-		m_lines.clear();
-		m_lines.shrink_to_fit();
+		LOGF_WARNING("Physics: %s", error_warning);
 	}
 }

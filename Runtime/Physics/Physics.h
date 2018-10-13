@@ -26,11 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //============================
 
-class btCollisionShape;
-class btVector3;
 class btBroadphaseInterface;
-class btRigidBody;
-class btTypedConstraint;
 class btCollisionDispatcher;
 class btConstraintSolver;
 class btDefaultCollisionConfiguration;
@@ -39,10 +35,8 @@ class btDiscreteDynamicsWorld;
 namespace Directus
 {
 	class Variant;
-	class RigidBody;
-	class Collider;
-	class Constraint;
 	class PhysicsDebugDraw;
+
 	namespace Math
 	{
 		class Vector3;

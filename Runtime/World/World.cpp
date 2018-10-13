@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/Script.h"
-#include "Components/LineRenderer.h"
 #include "Components/Skybox.h"
 #include "Components/AudioListener.h"
 #include "Components/Renderable.h"
@@ -450,7 +449,6 @@ namespace Directus
 		shared_ptr<Actor> skybox = Actor_CreateAdd().lock();
 		skybox->SetName("Skybox");
 		skybox->SetHierarchyVisibility(false);
-		skybox->AddComponent<LineRenderer>();
 		skybox->AddComponent<Skybox>();	
 		skybox->GetTransform_PtrRaw()->SetParent(m_mainCamera.lock()->GetTransform_PtrRaw());
 

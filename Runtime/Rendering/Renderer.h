@@ -21,32 +21,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========================
+//= INCLUDES =====================
 #include <memory>
 #include <vector>
-#include "../RHI/RHI_Definition.h"
+#include <unordered_map>
 #include "../Math/Matrix.h"
-#include "../Resource/ResourceManager.h"
-
-//======================================
+#include "../Core/SubSystem.h"
+#include "../RHI/RHI_Definition.h"
+//================================
 
 namespace Directus
 {
 	class Actor;
 	class Camera;
 	class Skybox;
-	class LineRenderer;
 	class Light;
 	class GBuffer;
 	class Rectangle;
 	class LightShader;
 	class ResourceManager;
 	class Font;
+	class Variant;
 	class Grid;
-	class Variant;	
-
 	namespace Math
 	{
+		class BoundingBox;
 		class Frustum;
 	}
 
@@ -85,9 +84,9 @@ namespace Directus
 		Renderer(Context* context, void* drawHandle);
 		~Renderer();
 
-		//= Subsystem ============
+		//= Subsystem =============
 		bool Initialize() override;
-		//========================
+		//=========================
 
 		// Rendering
 		void SetBackBufferAsRenderTarget(bool clear = true);
@@ -112,6 +111,12 @@ namespace Directus
 		// Returns whether render mode flag is set
 		static bool RenderFlags_IsSet(RenderMode flag)				{ return m_flags & flag; }
 		//====================================================================================
+
+		//= LINE RENDERING ==============================================================================================================
+		void AddBoundigBox(const Math::BoundingBox& box, const Math::Vector4& color);
+		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color) { AddLine(from, to, color, color); }
+		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& colorFrom, const Math::Vector4& colorTo);
+		//===============================================================================================================================
 
 		void Clear();
 		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
@@ -198,24 +203,24 @@ namespace Directus
 		Skybox* GetSkybox();
 		//===============================================================
 
-		//= MISC ==========================================
+		//= MISC =============================================
 		std::shared_ptr<RHI_Device> m_rhiDevice;
-		std::shared_ptr<RHI_PipelineState> m_pipelineState;
+		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
 		std::unique_ptr<GBuffer> m_gbuffer;	
 		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
 		static bool m_isRendering;
 		static uint64_t m_frame;
-		//=================================================
+		//====================================================
 
-		//= RENDER TEXTURES ====================================
+		//= RENDER TEXTURES ======================================
 		std::shared_ptr<RHI_RenderTexture> m_renderTex1;
 		std::shared_ptr<RHI_RenderTexture> m_renderTex2;
 		std::shared_ptr<RHI_RenderTexture> m_renderTex3;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarterRes1;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarterRes2;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexShadowing;
-		//======================================================
+		//========================================================
 
 		//= SHADERS ============================================
 		std::shared_ptr<LightShader> m_shaderLight;
@@ -257,9 +262,10 @@ namespace Directus
 		static unsigned long m_flags;
 		//======================================================
 
-		//= PREREQUISITES ====================================
-		LineRenderer* m_lineRenderer;
-		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
-		//====================================================
+		//= LINE RENDERING ==================================
+		std::shared_ptr<RHI_VertexBuffer> m_lineVertexBuffer;
+		unsigned int m_lineVertexCount = 0;
+		std::vector<RHI_Vertex_PosCol> m_lineVertices;
+		//===================================================
 	};
 }

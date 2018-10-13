@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "Grid.h"
-#include "Renderer.h"
+#include "../Logging/Log.h"
 #include "../World/Components/Transform.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
@@ -35,13 +35,16 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Grid::Grid(Context* context)
+	Grid::Grid(shared_ptr<RHI_Device> rhiDevice)
 	{
-		m_context		= context;
 		m_indexCount	= 0;
 		m_terrainHeight = 200;
 		m_terrainWidth	= 200;
-		BuildGrid();
+
+		vector<RHI_Vertex_PosCol> vertices;
+		vector<unsigned> indices;
+		BuildGrid(&vertices, &indices);
+		CreateBuffers(vertices, indices, rhiDevice);
 	}
 
 	const Matrix& Grid::ComputeWorldMatrix(Transform* camera)
@@ -62,9 +65,8 @@ namespace Directus
 		return m_world;
 	}
 
-	void Grid::BuildGrid()
+	void Grid::BuildGrid(vector<RHI_Vertex_PosCol>* vertices, vector<unsigned int>* indices)
 	{
-		vector<RHI_Vertex_PosCol> vertices;
 		int halfSizeW = int(m_terrainWidth * 0.5f);
 		int halfSizeH = int(m_terrainHeight * 0.5f);
 
@@ -74,81 +76,73 @@ namespace Directus
 			{
 				// LINE 1
 				// Upper left.
-				float positionX = (float)i;
-				float positionZ = (float)(j + 1);
-				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				auto positionX = (float)i;
+				auto positionZ = (float)(j + 1);
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 				// Upper right.
 				positionX = (float)(i + 1);
 				positionZ = (float)(j + 1);
-				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 				// LINE 2
 				// Upper right.
 				positionX = (float)(i + 1);
 				positionZ = (float)(j + 1);
-				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 				// Bottom right.
 				positionX = (float)(i + 1);
 				positionZ = (float)j;
-				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 				// LINE 3
 				// Bottom right.
 				positionX = (float)(i + 1);
 				positionZ = (float)j;
-				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 				// Bottom left.
 				positionX = (float)i;
 				positionZ = (float)j;
-				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 				// LINE 4
 				// Bottom left.
 				positionX = (float)i;
 				positionZ = (float)j;
-				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 				// Upper left.
 				positionX = (float)i;
 				positionZ = (float)(j + 1);
-				vertices.emplace_back(RHI_Vertex_PosCol(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 		}
 
-		vector<unsigned int> indices;
-		for (unsigned int i = 0; i < vertices.size(); i++)
+		for (unsigned int i = 0; i < vertices->size(); i++)
 		{
-			indices.push_back(i);
+			indices->emplace_back(i);
 		}
-		m_indexCount = (unsigned int)indices.size();
-
-		CreateBuffers(vertices, indices);
+		m_indexCount = (unsigned int)indices->size();
 	}
 
-	bool Grid::CreateBuffers(vector<RHI_Vertex_PosCol>& vertices, vector<unsigned>& indices)
+	bool Grid::CreateBuffers(vector<RHI_Vertex_PosCol>& vertices, vector<unsigned>& indices, shared_ptr<RHI_Device> rhiDevice)
 	{
-		if (!m_context)
-			return false;
-
-		auto rhiDevice = m_context->GetSubsystem<Renderer>()->GetRHIDevice();
-
 		m_vertexBuffer.reset();
 		m_indexBuffer.reset();
 
 		m_vertexBuffer = make_shared<RHI_VertexBuffer>(rhiDevice);
 		if (!m_vertexBuffer->Create(vertices))
 		{
-			LOG_ERROR("Font: Failed to create vertex buffer.");
+			LOG_ERROR("Grid::CreateBuffers: Failed to create vertex buffer.");
 			return false;
 		}
 
 		m_indexBuffer = make_shared<RHI_IndexBuffer>(rhiDevice);
 		if (!m_indexBuffer->Create(indices))
 		{
-			LOG_ERROR("Font: Failed to create index buffer.");
+			LOG_ERROR("Grid::CreateBuffers: Failed to create index buffer.");
 			return false;
 		}
 

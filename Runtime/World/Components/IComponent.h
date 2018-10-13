@@ -45,7 +45,6 @@ namespace Directus
 		ComponentType_Collider,
 		ComponentType_Constraint,
 		ComponentType_Light,
-		ComponentType_LineRenderer,
 		ComponentType_Renderable,
 		ComponentType_RigidBody,
 		ComponentType_Script,

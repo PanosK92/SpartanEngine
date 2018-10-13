@@ -4,11 +4,15 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)
 
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
-The source code is clean, modern and tackles a lot of aspects of engine development. Have fun!
+The source code is clean, modern and tackles a lot of aspects of engine development.
 
-Note: This project is in an early development stage and there is a lot experimentation going on, regarding what works best.
-As a result, no design decision is set in stone and it will take a while until the engine is ready to produce games.
-Code quality is prioritized over development speed.
+The project is at an early development stage and there is a lot experimentation going on, regarding what works best.
+This means that the wisest thing to do is to approach it as study material, without expecting to make games with it (yet).
+
+There is always a chance that a part of the engine will be unstable and chances are that I am aware of it.
+Opening an issue can be helpful (and is always appreciated), fixing the issue and doing a pull request is optimal.
+
+Architectual quality is prioritized over development speed. Enjoy.
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview3.jpg)
 
