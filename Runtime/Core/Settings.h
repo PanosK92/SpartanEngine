@@ -71,9 +71,10 @@ namespace Directus
 		float GetAspectRatio()								{ return (float)GetResolutionWidth() / (float)GetResolutionHeight(); }
 		unsigned int GetShadowMapResolution()				{ return m_shadowMapResolution; }
 		unsigned int GetAnisotropy()						{ return m_anisotropy; }
-		float GetMaxFPS()									{ return m_maxFPS;}
+		float GetMaxFPSGame()								{ return m_maxFPS_game;}
+		float GetMaxFPSEditor()								{ return m_maxFPS_editor; }
 		void SetMaxThreadCount(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
-		unsigned int GetMaxThreadCount()					{ return m_maxThreadCount; }
+		unsigned int GetMaxThreadCount()					{ return m_maxThreadCount; }	
 		//========================================================================================================================
 
 		// Third party lib versions
@@ -95,7 +96,8 @@ namespace Directus
 		bool m_isMouseVisible				= true;
 		unsigned int m_shadowMapResolution	= 2048;
 		unsigned int m_anisotropy			= 16;
-		float m_maxFPS						= FLT_MAX;
+		float m_maxFPS_game					= FLT_MAX;
+		float m_maxFPS_editor				= 165.0f;
 		unsigned int m_maxThreadCount		= 0;
 	};
 }

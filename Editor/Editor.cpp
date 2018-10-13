@@ -41,6 +41,8 @@ using namespace std;
 using namespace Directus;
 //=======================
 
+#define DOCKING_ENABLED ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable
+
 Editor::Editor()
 {
 	m_context		= nullptr;
@@ -79,13 +81,11 @@ void Editor::Initialize(Context* context, void* windowHandle)
 
 	// ImGui configuration
 	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
-	io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleFonts;     // FIXME-DPI: THIS CURRENTLY DOESN'T WORK AS EXPECTED. DON'T USE IN USER APP!
-	io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleViewports; // FIXME-DPI
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsNoTaskBarIcon;
 	io.ConfigResizeWindowsFromEdges = true;
-	io.ConfigDockingWithShift		= true;
 	ApplyStyle();
 
 	// ImGui backend setup
@@ -133,7 +133,7 @@ void Editor::Tick(float deltaTime)
 	m_rhiDevice->EventEnd();
 
 	// Update and Render additional Platform Windows
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	if (DOCKING_ENABLED)
 	{
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
@@ -154,8 +154,56 @@ void Editor::Shutdown()
 	ImGui::DestroyContext();
 }
 
+inline void BeginDockspace(bool* open)
+{
+	static bool opt_fullscreen_persistant = true;
+	static ImGuiDockNodeFlags opt_flags = ImGuiDockNodeFlags_PassthruDockspace;
+	bool opt_fullscreen = opt_fullscreen_persistant;
+
+	// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
+	// because it would be confusing to have two docking targets within each others.
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+	if (opt_fullscreen)
+	{
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->Pos);
+		ImGui::SetNextWindowSize(viewport->Size);
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+	}
+
+	// When using ImGuiDockNodeFlags_PassthruDockspace, DockSpace() will render our 
+	// background and handle the pass-thru hole, so we ask Begin() to not render a background.
+	if (opt_flags & ImGuiDockNodeFlags_PassthruDockspace)
+		ImGui::SetNextWindowBgAlpha(0.0f);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("DockSpace Demo", open, window_flags);
+	ImGui::PopStyleVar();
+
+	if (opt_fullscreen)
+		ImGui::PopStyleVar(2);
+
+	ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
+	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), opt_flags);
+}
+
+inline void EndDockspace()
+{
+	ImGui::End();
+}
+
 void Editor::DrawEditor(float deltaTime)
 {
+	if (DOCKING_ENABLED) 
+	{ 
+		bool open = true;
+		BeginDockspace(&open); 
+	}
+
 	for (auto& widget : m_widgets)
 	{
 		if (widget->IsWindow())
@@ -170,6 +218,8 @@ void Editor::DrawEditor(float deltaTime)
 			widget->End();
 		}
 	}
+
+	if (DOCKING_ENABLED) { EndDockspace(); }
 }
 
 void Editor::ApplyStyle()
