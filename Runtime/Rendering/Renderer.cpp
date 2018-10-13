@@ -1295,7 +1295,8 @@ namespace Directus
 		// Performance metrics
 		if (m_flags & Render_PerformanceMetrics)
 		{
-			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(Settings::Get().GetResolutionWidth() * 0.5f + 1.0f, Settings::Get().GetResolutionHeight() * 0.5f));
+			Vector2 textPos = Vector2(-(int)Settings::Get().GetViewportWidth() * 0.5f + 1.0f, (int)Settings::Get().GetViewportHeight() * 0.5f);
+			m_font->SetText(Profiler::Get().GetMetrics(), textPos);
 
 			m_rhiPipelineState->SetShader(m_shaderFont);
 			m_rhiPipelineState->SetTexture(m_font->GetTexture());

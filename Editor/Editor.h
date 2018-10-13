@@ -46,11 +46,10 @@ private:
 	void DockSpace_End();
 	void DrawEditor(float deltaTime);
 	void ApplyStyle();
-	void ApplyLayout(unsigned int dockSpaceID);
+	void ApplyLayout(unsigned int rootNodeID);
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
 	std::shared_ptr<Directus::RHI_Device> m_rhiDevice;
 	Directus::Context* m_context	= nullptr;
 	bool m_initialized				= false;
-	bool m_layoutApplied			= false;
 };

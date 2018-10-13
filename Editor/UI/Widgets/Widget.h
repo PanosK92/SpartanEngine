@@ -42,6 +42,7 @@ public:
 	void SetVisible(bool isVisible) { m_isVisible = isVisible; }
 	float GetHeight()				{ return m_height; }
 	ImGuiWindow* GetWindow()		{ return m_window; }
+	const std::string& GetTitle()	{ return m_title; }
 
 protected:
 	Directus::Context* m_context = nullptr;
