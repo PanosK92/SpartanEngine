@@ -65,16 +65,7 @@ namespace Directus
 
 	Settings::Settings()
 	{
-		m_isFullScreen			= false;
-		m_vsync					= (int)Off;
-		m_isMouseVisible		= true;
-		m_resolution			= Vector2(1920, 1080);
-		m_shadowMapResolution	= 2048;
-		m_anisotropy			= 16;
-		SettingsIO::fileName	= "Directus3D.ini";
-		m_versionPugiXML		= "1.90";
-		m_maxFPS				= FLT_MAX;
-		m_maxThreadCount		= thread::hardware_concurrency();
+		m_maxThreadCount = thread::hardware_concurrency();
 	}
 
 	void Settings::Initialize()

@@ -91,7 +91,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// Update editor
 		g_editor->Tick(g_engine->GetDeltaTime());
 
-		// Present back buffer (ImGui result)
+		// Present back-buffer (ImGui result)
 		g_renderer->Present();
 	}
 

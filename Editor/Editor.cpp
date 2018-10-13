@@ -72,17 +72,31 @@ void Editor::Initialize(Context* context, void* windowHandle)
 		return;
 	}
 
-	// ImGui implementation - initialize
+	// ImGui context creation
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
+	Settings::Get().m_versionImGui = IMGUI_VERSION;
+
+	// ImGui configuration
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
+	io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleFonts;     // FIXME-DPI: THIS CURRENTLY DOESN'T WORK AS EXPECTED. DON'T USE IN USER APP!
+	io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleViewports; // FIXME-DPI
+	io.ConfigResizeWindowsFromEdges = true;
+	io.ConfigDockingWithShift		= true;
+	ApplyStyle();
+
+	// ImGui backend setup
 	ImGui_ImplWin32_Init(windowHandle);
 	ImGui_ImplDX11_Init(m_rhiDevice->GetDevice<ID3D11Device>(), m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>());
 
+	// Initialization of misc custom systems
 	IconProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);
-	Settings::Get().m_versionImGui = IMGUI_VERSION;
-	ApplyStyle();
 
+	// Widget initialization
 	for (auto& widget : m_widgets)
 	{
 		widget->Initialize(context);
@@ -117,6 +131,13 @@ void Editor::Tick(float deltaTime)
 	m_rhiDevice->EventBegin("Pass_ImGui");
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 	m_rhiDevice->EventEnd();
+
+	// Update and Render additional Platform Windows
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+	}
 }
 
 void Editor::Shutdown()
@@ -153,7 +174,6 @@ void Editor::DrawEditor(float deltaTime)
 
 void Editor::ApplyStyle()
 {
-	ImGui::GetIO().ConfigResizeWindowsFromEdges = true;
 	ImGui::StyleColorsDark();
 	ImGuiStyle& style = ImGui::GetStyle();
 

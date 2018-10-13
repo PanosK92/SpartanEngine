@@ -60,7 +60,7 @@ namespace Directus
 		// FPS LIMIT
 		{
 			bool isEditor		= !Engine::EngineMode_IsSet(Engine_Game);
-			float maxFPS_editor = 60.0f;
+			float maxFPS_editor = 165.0f;
 			float maxFPS_game	= Settings::Get().GetMaxFPS();
 			float maxFPS		= isEditor ? maxFPS_editor : maxFPS_game;
 			float maxMs			= (1.0f / maxFPS) * 1000;
