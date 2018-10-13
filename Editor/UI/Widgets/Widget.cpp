@@ -47,5 +47,6 @@ void Widget::Begin()
 
 void Widget::End()
 {
+	m_height = ImGui::GetWindowHeight();
 	ImGui::End();
 }

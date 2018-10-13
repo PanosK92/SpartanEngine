@@ -39,17 +39,19 @@ public:
 	Editor();
 	~Editor();
 
-	void Initialize(Directus::Context* context, void* windowHandle);
+	bool Initialize(Directus::Context* context, void* windowHandle);
 	void Resize();
 	void Tick(float deltaTime);
 	void Shutdown();
 
 private:
+	void DockSpace_Begin();
+	void DockSpace_End();
 	void DrawEditor(float deltaTime);
 	void ApplyStyle();
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
-	Directus::Context* m_context;
 	std::shared_ptr<Directus::RHI_Device> m_rhiDevice;
-	bool m_initialized;
+	Directus::Context* m_context	= nullptr;
+	bool m_initialized				= false;
 };

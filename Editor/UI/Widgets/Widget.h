@@ -39,6 +39,7 @@ public:
 	bool IsWindow()					{ return m_isWindow; }
 	bool GetVisible()				{ return m_isVisible; }
 	void SetVisible(bool isVisible) { m_isVisible = isVisible; }
+	float GetHeight()				{ return m_height; }
 
 protected:
 	Directus::Context* m_context = nullptr;
@@ -50,4 +51,5 @@ protected:
 	float m_xMax = 0;
 	float m_yMin = 0;
 	float m_yMax = 0;
+	float m_height = 0;
 };
