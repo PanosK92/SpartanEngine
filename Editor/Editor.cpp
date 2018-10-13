@@ -199,10 +199,9 @@ void Editor::DockSpace_Begin()
 
 	// Dock space
 	ImGuiID dockspace_id = ImGui::GetID(_Editor::dockspaceName);
-	if (!m_layoutApplied)
+	if (!ImGui::DockBuilderGetNode(dockspace_id))
 	{
 		ApplyLayout(dockspace_id);
-		m_layoutApplied = true;
 	}
 	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruDockspace);
 }
@@ -321,14 +320,14 @@ void Editor::ApplyStyle()
 	io.Fonts->AddFontFromFileTTF("Standard Assets\\Fonts\\CalibriBold.ttf", fontSize);
 }
 
-void Editor::ApplyLayout(unsigned int dockID_editor)
+void Editor::ApplyLayout(unsigned int rootNodeID)
 {
-	ImGui::DockBuilderRemoveNode(dockID_editor);
-	ImGui::DockBuilderAddNode(dockID_editor, ImGui::GetMainViewport()->Size);
+	ImGui::DockBuilderRemoveNode(rootNodeID);
+	ImGui::DockBuilderAddNode(rootNodeID, ImGui::GetMainViewport()->Size);
 
 	// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
 	ImGuiID spliterID_right;	
-	ImGuiID nodeID_right	= ImGui::DockBuilderSplitNode(dockID_editor,	ImGuiDir_Right, 0.2f, nullptr, &spliterID_right);
+	ImGuiID nodeID_right	= ImGui::DockBuilderSplitNode(rootNodeID,	ImGuiDir_Right, 0.2f, nullptr, &spliterID_right);
 	ImGuiID spliterID_down;	
 	ImGuiID nodeID_down		= ImGui::DockBuilderSplitNode(spliterID_right,	ImGuiDir_Down,	0.3f, nullptr, &spliterID_down);
 
@@ -337,7 +336,7 @@ void Editor::ApplyLayout(unsigned int dockID_editor)
 	ImGui::DockBuilderDockWindow("Properties",	nodeID_right);
 	ImGui::DockBuilderDockWindow("Console",		nodeID_down);
 	ImGui::DockBuilderDockWindow("Assets",		nodeID_down);
-	ImGui::DockBuilderDockWindow("Viewport",	dockID_editor);
-	
-	ImGui::DockBuilderFinish(dockID_editor);
+	//ImGui::DockBuilderDockWindow("Viewport",	rootNodeID);
+
+	ImGui::DockBuilderFinish(rootNodeID);
 }
