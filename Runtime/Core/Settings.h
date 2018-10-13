@@ -64,7 +64,7 @@ namespace Directus
 		unsigned int GetResolutionHeight()					{ return (unsigned int)m_resolution.y; }
 		//================================================================================================================
 
-		//= MISC ==================================================================================================================
+		//= MISC =================================================================================================================
 		bool IsFullScreen()									{ return m_isFullScreen; }
 		bool IsMouseVisible()								{ return m_isMouseVisible; }
 		VSync GetVSync()									{ return (VSync)m_vsync; }
@@ -74,7 +74,7 @@ namespace Directus
 		float GetMaxFPS()									{ return m_maxFPS;}
 		void SetMaxThreadCount(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
 		unsigned int GetMaxThreadCount()					{ return m_maxThreadCount; }
-		//=========================================================================================================================
+		//========================================================================================================================
 
 		// Third party lib versions
 		std::string m_versionAngelScript;
@@ -84,18 +84,18 @@ namespace Directus
 		std::string m_versionFreeImage;
 		std::string m_versionFreeType;
 		std::string m_versionImGui;
-		std::string m_versionPugiXML;
+		std::string m_versionPugiXML = "1.90";
 		std::string m_versionVulkan;
 
-	private:
-		bool m_isFullScreen;
+	private:	
 		Math::Vector2 m_viewport;
-		Math::Vector2 m_resolution;	
-		unsigned int m_vsync;
-		bool m_isMouseVisible;		
-		unsigned int m_shadowMapResolution;
-		unsigned int m_anisotropy;	
-		float m_maxFPS;
-		unsigned int m_maxThreadCount;
+		Math::Vector2 m_resolution			= Math::Vector2(1920, 1080);
+		unsigned int m_vsync				= (int)Off;
+		bool m_isFullScreen					= false;
+		bool m_isMouseVisible				= true;
+		unsigned int m_shadowMapResolution	= 2048;
+		unsigned int m_anisotropy			= 16;
+		float m_maxFPS						= FLT_MAX;
+		unsigned int m_maxThreadCount		= 0;
 	};
 }

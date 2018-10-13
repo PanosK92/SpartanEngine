@@ -7,6 +7,7 @@ RUNTIME_DIR			= "../" .. RUNTIME_NAME
 TARGET_DIR_RELEASE 	= "../Binaries/Release"
 TARGET_DIR_DEBUG 	= "../Binaries/Debug"
 OBJ_DIR 			= "../Binaries/Obj"
+CPP_VERSION 		= "C++17"
 
 -- Solution
 	solution (SOLUTION_NAME)
@@ -24,7 +25,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 		language "C++"
 		files { "../Runtime/**.h", "../Runtime/**.cpp", "../Runtime/**.hpp", "../Runtime/**.inl" }
 		systemversion(WIN_SDK_VERSION)
-		cppdialect "C++17"
+		cppdialect (CPP_VERSION)
 	
 -- Includes
 	includedirs { "C:/VulkanSDK/1.1.82.0/Include" }
@@ -83,7 +84,7 @@ OBJ_DIR 			= "../Binaries/Obj"
 		links { RUNTIME_NAME }
 		dependson { RUNTIME_NAME }
 		systemversion(WIN_SDK_VERSION)
-		cppdialect "C++17"
+		cppdialect (CPP_VERSION)
 
 -- Includes
 	includedirs { "../Runtime" }
