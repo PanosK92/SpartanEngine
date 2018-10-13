@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/EditorHelper.h"
 #include "RHI/RHI_Device.h"
 #include "Rendering/Renderer.h"
+#include "ImGui/imgui_internal.h"
 //=======================================
 
 //= NAMESPACES ==========
@@ -42,19 +43,28 @@ using namespace Directus;
 //=======================
 
 #define DOCKING_ENABLED ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable
-Widget* menuBar = nullptr;
-Widget* toolbar = nullptr;
+namespace _Editor
+{
+	Widget* widget_menuBar		= nullptr;
+	Widget* widget_toolbar		= nullptr;
+	Widget* widget_world		= nullptr;
+	const char* dockspaceName	= "EditorDockspace";
+}
 
 Editor::Editor()
 {
-	// Add widgets to the editor
 	m_widgets.emplace_back(make_unique<Widget_MenuBar>());
-	menuBar = m_widgets.back().get();
+	_Editor::widget_menuBar = m_widgets.back().get();
+
 	m_widgets.emplace_back(make_unique<Widget_Toolbar>());
-	toolbar = m_widgets.back().get();
+	_Editor::widget_toolbar = m_widgets.back().get();
+
 	m_widgets.emplace_back(make_unique<Widget_Properties>());
 	m_widgets.emplace_back(make_unique<Widget_Console>());
+
 	m_widgets.emplace_back(make_unique<Widget_World>());
+	_Editor::widget_world = m_widgets.back().get();
+
 	m_widgets.emplace_back(make_unique<Widget_Assets>());
 	m_widgets.emplace_back(make_unique<Widget_Viewport>());
 }
@@ -159,39 +169,42 @@ void Editor::Shutdown()
 void Editor::DockSpace_Begin()
 {
 	bool open = true;
-	static bool opt_fullscreen_persistant = true;
-	static ImGuiDockNodeFlags opt_flags = ImGuiDockNodeFlags_PassthruDockspace;
-	bool opt_fullscreen = opt_fullscreen_persistant;
 
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-	if (opt_fullscreen)
-	{
-		float offsetY = menuBar->GetHeight() + toolbar->GetHeight();
+	// Flags
+	ImGuiWindowFlags window_flags =
+		ImGuiWindowFlags_MenuBar |
+		ImGuiWindowFlags_NoDocking |
+		ImGuiWindowFlags_NoTitleBar |
+		ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_NoNavFocus;
 
-		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offsetY));
-		ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offsetY));
-		ImGui::SetNextWindowViewport(viewport->ID);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-	}
+	// Size, Pos
+	float offsetY = _Editor::widget_menuBar->GetHeight() + _Editor::widget_toolbar->GetHeight();
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offsetY));
+	ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offsetY));
+	ImGui::SetNextWindowViewport(viewport->ID);
 
-	// When using ImGuiDockNodeFlags_PassthruDockspace, DockSpace() will render our 
-	// background and handle the pass-thru hole, so we ask Begin() to not render a background.
-	if (opt_flags & ImGuiDockNodeFlags_PassthruDockspace)
-		ImGui::SetNextWindowBgAlpha(0.0f);
-
+	// Style
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::SetNextWindowBgAlpha(0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::Begin("EditorDockspace", &open, window_flags);
+	ImGui::Begin(_Editor::dockspaceName, &open, window_flags);
 	ImGui::PopStyleVar();
+	ImGui::PopStyleVar(2);
 
-	if (opt_fullscreen)
-		ImGui::PopStyleVar(2);
-
-	ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
-	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), opt_flags);
+	// Dock space
+	ImGuiID dockspace_id = ImGui::GetID(_Editor::dockspaceName);
+	if (!m_layoutApplied)
+	{
+		ApplyLayout(dockspace_id);
+		m_layoutApplied = true;
+	}
+	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruDockspace);
 }
 
 void Editor::DockSpace_End()
@@ -306,4 +319,25 @@ void Editor::ApplyStyle()
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->AddFontFromFileTTF("Standard Assets\\Fonts\\CalibriBold.ttf", fontSize);
+}
+
+void Editor::ApplyLayout(unsigned int dockID_editor)
+{
+	ImGui::DockBuilderRemoveNode(dockID_editor);
+	ImGui::DockBuilderAddNode(dockID_editor, ImGui::GetMainViewport()->Size);
+
+	// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
+	ImGuiID spliterID_right;	
+	ImGuiID nodeID_right	= ImGui::DockBuilderSplitNode(dockID_editor,	ImGuiDir_Right, 0.2f, nullptr, &spliterID_right);
+	ImGuiID spliterID_down;	
+	ImGuiID nodeID_down		= ImGui::DockBuilderSplitNode(spliterID_right,	ImGuiDir_Down,	0.3f, nullptr, &spliterID_down);
+
+	// Dock windows	
+	ImGui::DockBuilderDockWindow("World",		nodeID_right);
+	ImGui::DockBuilderDockWindow("Properties",	nodeID_right);
+	ImGui::DockBuilderDockWindow("Console",		nodeID_down);
+	ImGui::DockBuilderDockWindow("Assets",		nodeID_down);
+	ImGui::DockBuilderDockWindow("Viewport",	dockID_editor);
+	
+	ImGui::DockBuilderFinish(dockID_editor);
 }

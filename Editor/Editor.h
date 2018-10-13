@@ -28,10 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=============================
 
 class Widget;
-namespace Directus
-{
-	class Context;
-}
+namespace Directus { class Context; }
 
 class Editor
 {
@@ -49,9 +46,11 @@ private:
 	void DockSpace_End();
 	void DrawEditor(float deltaTime);
 	void ApplyStyle();
+	void ApplyLayout(unsigned int dockSpaceID);
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
 	std::shared_ptr<Directus::RHI_Device> m_rhiDevice;
 	Directus::Context* m_context	= nullptr;
 	bool m_initialized				= false;
+	bool m_layoutApplied			= false;
 };
