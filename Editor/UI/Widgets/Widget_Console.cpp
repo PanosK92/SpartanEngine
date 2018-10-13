@@ -101,7 +101,7 @@ void Widget_Console::Tick(float deltaTime)
 
 	if (Widget_ConsoleOptions::g_scrollToBottom)
 	{
-		ImGui::SetScrollHere();
+		ImGui::SetScrollHereY();
 		Widget_ConsoleOptions::g_scrollToBottom = false;
 	}
 
