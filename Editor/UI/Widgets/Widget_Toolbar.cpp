@@ -81,10 +81,9 @@ void Widget_Toolbar::Initialize(Context* context)
 void Widget_Toolbar::Begin()
 {
 	ImGuiContext& g = *GImGui;
-	float width		= g.IO.DisplaySize.x;
-	float height	= g.FontBaseSize + g.Style.FramePadding.y * 2.0f - 1.0f;
-	ImGui::SetNextWindowPos(ImVec2(0.0f, height - 1.0f));
-	ImGui::SetNextWindowSize(ImVec2(width, height + 16));
+	g.NextWindowData.MenuBarOffsetMinVal = ImVec2(g.Style.DisplaySafeAreaPadding.x, ImMax(g.Style.DisplaySafeAreaPadding.y - g.Style.FramePadding.y, 0.0f));
+	ImGui::SetNextWindowPos(ImVec2(g.Viewports[0]->Pos.x, g.Viewports[0]->Pos.y + 25.0f));
+	ImGui::SetNextWindowSize(ImVec2(g.Viewports[0]->Size.x, g.NextWindowData.MenuBarOffsetMinVal.y + g.FontBaseSize + g.Style.FramePadding.y + 20.0f));
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 5));
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 }

@@ -42,15 +42,16 @@ using namespace Directus;
 //=======================
 
 #define DOCKING_ENABLED ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable
+Widget* menuBar = nullptr;
+Widget* toolbar = nullptr;
 
 Editor::Editor()
 {
-	m_context		= nullptr;
-	m_rhiDevice		= nullptr;
-	m_initialized	= false;
-
+	// Add widgets to the editor
 	m_widgets.emplace_back(make_unique<Widget_MenuBar>());
+	menuBar = m_widgets.back().get();
 	m_widgets.emplace_back(make_unique<Widget_Toolbar>());
+	toolbar = m_widgets.back().get();
 	m_widgets.emplace_back(make_unique<Widget_Properties>());
 	m_widgets.emplace_back(make_unique<Widget_Console>());
 	m_widgets.emplace_back(make_unique<Widget_World>());
@@ -63,15 +64,15 @@ Editor::~Editor()
 	Shutdown();
 }
 
-void Editor::Initialize(Context* context, void* windowHandle)
+bool Editor::Initialize(Context* context, void* windowHandle)
 {
 	m_context	= context;
 	m_rhiDevice	= context->GetSubsystem<Renderer>()->GetRHIDevice();
 
 	if (!m_rhiDevice->GetDevice<ID3D11Device>() || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 	{
-		LOG_ERROR("Editor::Initialize: Rendering device is null");
-		return;
+		LOG_ERROR("Editor::Initialize: Invalid RHI device.");
+		return false;
 	}
 
 	// ImGui context creation
@@ -103,6 +104,7 @@ void Editor::Initialize(Context* context, void* windowHandle)
 	}
 
 	m_initialized = true;
+	return true;
 }
 
 void Editor::Resize()
@@ -154,20 +156,21 @@ void Editor::Shutdown()
 	ImGui::DestroyContext();
 }
 
-inline void BeginDockspace(bool* open)
+void Editor::DockSpace_Begin()
 {
+	bool open = true;
 	static bool opt_fullscreen_persistant = true;
 	static ImGuiDockNodeFlags opt_flags = ImGuiDockNodeFlags_PassthruDockspace;
 	bool opt_fullscreen = opt_fullscreen_persistant;
 
-	// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
-	// because it would be confusing to have two docking targets within each others.
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
 	if (opt_fullscreen)
 	{
+		float offsetY = menuBar->GetHeight() + toolbar->GetHeight();
+
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImGui::SetNextWindowPos(viewport->Pos);
-		ImGui::SetNextWindowSize(viewport->Size);
+		ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offsetY));
+		ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offsetY));
 		ImGui::SetNextWindowViewport(viewport->ID);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -181,7 +184,7 @@ inline void BeginDockspace(bool* open)
 		ImGui::SetNextWindowBgAlpha(0.0f);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::Begin("DockSpace Demo", open, window_flags);
+	ImGui::Begin("EditorDockspace", &open, window_flags);
 	ImGui::PopStyleVar();
 
 	if (opt_fullscreen)
@@ -191,18 +194,14 @@ inline void BeginDockspace(bool* open)
 	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), opt_flags);
 }
 
-inline void EndDockspace()
+void Editor::DockSpace_End()
 {
 	ImGui::End();
 }
 
 void Editor::DrawEditor(float deltaTime)
 {
-	if (DOCKING_ENABLED) 
-	{ 
-		bool open = true;
-		BeginDockspace(&open); 
-	}
+	if (DOCKING_ENABLED) { DockSpace_Begin(); }
 
 	for (auto& widget : m_widgets)
 	{
@@ -219,7 +218,7 @@ void Editor::DrawEditor(float deltaTime)
 		}
 	}
 
-	if (DOCKING_ENABLED) { EndDockspace(); }
+	if (DOCKING_ENABLED) { DockSpace_End(); }
 }
 
 void Editor::ApplyStyle()

@@ -30,7 +30,7 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-namespace Widget_MenuBar_Settings
+namespace _Widget_MenuBar
 {
 	static bool g_showAboutWindow		= false;
 	static bool g_showMetricsWindow		= false;
@@ -50,8 +50,8 @@ Widget_MenuBar::Widget_MenuBar()
 void Widget_MenuBar::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-	Widget_MenuBar_Settings::g_resourceManager = m_context->GetSubsystem<ResourceManager>();
-	Widget_MenuBar_Settings::g_scene = m_context->GetSubsystem<World>();
+	_Widget_MenuBar::g_resourceManager = m_context->GetSubsystem<ResourceManager>();
+	_Widget_MenuBar::g_scene = m_context->GetSubsystem<World>();
 	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
 }
 
@@ -71,7 +71,7 @@ void Widget_MenuBar::Tick(float deltaTime)
 			if (ImGui::MenuItem("Load"))
 			{
 				m_fileDialog->SetOperation(FileDialog_Op_Load);
-				Widget_MenuBar_Settings::g_fileDialogVisible = true;
+				_Widget_MenuBar::g_fileDialogVisible = true;
 			}
 
 			ImGui::Separator();
@@ -79,13 +79,13 @@ void Widget_MenuBar::Tick(float deltaTime)
 			if (ImGui::MenuItem("Save"))
 			{
 				m_fileDialog->SetOperation(FileDialog_Op_Save);
-				Widget_MenuBar_Settings::g_fileDialogVisible = true;
+				_Widget_MenuBar::g_fileDialogVisible = true;
 			}
 
 			if (ImGui::MenuItem("Save As..."))
 			{
 				m_fileDialog->SetOperation(FileDialog_Op_Save);
-				Widget_MenuBar_Settings::g_fileDialogVisible = true;
+				_Widget_MenuBar::g_fileDialogVisible = true;
 			}
 
 			ImGui::EndMenu();
@@ -93,40 +93,40 @@ void Widget_MenuBar::Tick(float deltaTime)
 
 		if (ImGui::BeginMenu("Tools"))
 		{
-			ImGui::MenuItem("Metrics", nullptr, &Widget_MenuBar_Settings::g_showMetricsWindow);
-			ImGui::MenuItem("Style", nullptr, &Widget_MenuBar_Settings::g_showStyleEditor);
-			ImGui::MenuItem("Resource Cache Viewer", nullptr, &Widget_MenuBar_Settings::g_showResourceCache);
+			ImGui::MenuItem("Metrics", nullptr, &_Widget_MenuBar::g_showMetricsWindow);
+			ImGui::MenuItem("Style", nullptr, &_Widget_MenuBar::g_showStyleEditor);
+			ImGui::MenuItem("Resource Cache Viewer", nullptr, &_Widget_MenuBar::g_showResourceCache);
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("Help"))
 		{
-			ImGui::MenuItem("About", nullptr, &Widget_MenuBar_Settings::g_showAboutWindow);
+			ImGui::MenuItem("About", nullptr, &_Widget_MenuBar::g_showAboutWindow);
 			ImGui::EndMenu();
 		}
 
 		ImGui::EndMainMenuBar();
 	}
 
-	if (Widget_MenuBar_Settings::g_showMetricsWindow)	{ ImGui::ShowMetricsWindow(); }
-	if (Widget_MenuBar_Settings::g_showStyleEditor)		{ ImGui::ShowStyleEditor(); }
-	if (Widget_MenuBar_Settings::g_fileDialogVisible)	{ ImGui::SetNextWindowFocus(); ShowFileDialog(); }
-	if (Widget_MenuBar_Settings::g_showAboutWindow)		{ ImGui::SetNextWindowFocus(); ShowAboutWindow(); }
-	if (Widget_MenuBar_Settings::g_showResourceCache)	{ ImGui::SetNextWindowFocus(); ShowResourceCache(); }
+	if (_Widget_MenuBar::g_showMetricsWindow)	{ ImGui::ShowMetricsWindow(); }
+	if (_Widget_MenuBar::g_showStyleEditor)		{ ImGui::ShowStyleEditor(); }
+	if (_Widget_MenuBar::g_fileDialogVisible)	{ ImGui::SetNextWindowFocus(); ShowFileDialog(); }
+	if (_Widget_MenuBar::g_showAboutWindow)		{ ImGui::SetNextWindowFocus(); ShowAboutWindow(); }
+	if (_Widget_MenuBar::g_showResourceCache)	{ ImGui::SetNextWindowFocus(); ShowResourceCache(); }
 }
 
 void Widget_MenuBar::ShowFileDialog()
 {
-	if (m_fileDialog->Show(&Widget_MenuBar_Settings::g_fileDialogVisible, &Widget_MenuBar_Settings::g_fileDialogSelection))
+	if (m_fileDialog->Show(&_Widget_MenuBar::g_fileDialogVisible, &_Widget_MenuBar::g_fileDialogSelection))
 	{
 		// LOAD
 		if (m_fileDialog->GetOperation() == FileDialog_Op_Open || m_fileDialog->GetOperation() == FileDialog_Op_Load)
 		{
 			// Scene
-			if (FileSystem::IsEngineSceneFile(Widget_MenuBar_Settings::g_fileDialogSelection))
+			if (FileSystem::IsEngineSceneFile(_Widget_MenuBar::g_fileDialogSelection))
 			{
-				EditorHelper::Get().LoadScene(Widget_MenuBar_Settings::g_fileDialogSelection);
-				Widget_MenuBar_Settings::g_fileDialogVisible = false;
+				EditorHelper::Get().LoadScene(_Widget_MenuBar::g_fileDialogSelection);
+				_Widget_MenuBar::g_fileDialogVisible = false;
 			}
 		}
 		// SAVE
@@ -135,8 +135,8 @@ void Widget_MenuBar::ShowFileDialog()
 			// Scene
 			if (m_fileDialog->GetFilter() == FileDialog_Filter_Scene)
 			{
-				EditorHelper::Get().SaveScene(Widget_MenuBar_Settings::g_fileDialogSelection);
-				Widget_MenuBar_Settings::g_fileDialogVisible = false;
+				EditorHelper::Get().SaveScene(_Widget_MenuBar::g_fileDialogSelection);
+				_Widget_MenuBar::g_fileDialogVisible = false;
 			}
 		}
 	}
@@ -144,7 +144,7 @@ void Widget_MenuBar::ShowFileDialog()
 
 void Widget_MenuBar::ShowAboutWindow()
 {
-	ImGui::Begin("About", &Widget_MenuBar_Settings::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
+	ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
 
 	ImGui::Text("Directus3D %s", ENGINE_VERSION);
 	ImGui::Text("Author: Panos Karabelas");
@@ -219,7 +219,7 @@ void Widget_MenuBar::ShowResourceCache()
 	auto totalMemoryUsage =  m_context->GetSubsystem<ResourceManager>()->GetMemoryUsage() / 1000.0f / 1000.0f;
 
 	ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Resource Cache Viewer", &Widget_MenuBar_Settings::g_showResourceCache, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::Begin("Resource Cache Viewer", &_Widget_MenuBar::g_showResourceCache, ImGuiWindowFlags_HorizontalScrollbar);
 
 	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", (int)resources.size(), (int)totalMemoryUsage);
 	ImGui::Separator();
