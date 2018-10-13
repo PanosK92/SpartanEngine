@@ -38,11 +38,8 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	ShaderVariation::ShaderVariation(shared_ptr<RHI_Device> device, Context* context): RHI_Shader(device), IResource(context)
+	ShaderVariation::ShaderVariation(shared_ptr<RHI_Device> device, Context* context): RHI_Shader(device), IResource(context, Resource_Shader)
 	{
-		//= IResource ======================
-		RegisterResource<ShaderVariation>();
-		//==================================
 		m_shaderFlags = 0;
 	}
 

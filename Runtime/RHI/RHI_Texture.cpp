@@ -47,12 +47,8 @@ namespace Directus
 		"CubeMap",
 	};
 
-	RHI_Texture::RHI_Texture(Context* context) : IResource(context)
+	RHI_Texture::RHI_Texture(Context* context) : IResource(context, Resource_Texture)
 	{
-		//= IResource ==================
-		RegisterResource<RHI_Texture>();
-		//==============================
-
 		m_isUsingMipmaps	= true;
 		m_format			= Texture_Format_R8G8B8A8_UNORM;
 		m_rhiDevice			= context->GetSubsystem<Renderer>()->GetRHIDevice();

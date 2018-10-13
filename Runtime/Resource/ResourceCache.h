@@ -100,7 +100,7 @@ namespace Directus
 		}
 
 		// Returns a resource by name
-		std::shared_ptr<IResource> GetByName(const std::string& name, ResourceType type)
+		std::shared_ptr<IResource> GetByName(const std::string& name, Resource_Type type)
 		{
 			for (const auto& resource : m_resourceGroups[type])
 			{
@@ -131,7 +131,7 @@ namespace Directus
 		}
 
 		// Checks whether a resource is already cached
-		bool IsCached(const std::string& resourceName, ResourceType resourceType)
+		bool IsCached(const std::string& resourceName, Resource_Type resourceType)
 		{
 			if (resourceName == NOT_ASSIGNED)
 			{
@@ -165,7 +165,7 @@ namespace Directus
 			return size;
 		}
 
-		unsigned int GetMemoryUsage(ResourceType type)
+		unsigned int GetMemoryUsage(Resource_Type type)
 		{
 			unsigned int size = 0;
 			for (const auto& resource : m_resourceGroups[type])
@@ -177,13 +177,13 @@ namespace Directus
 		}
 
 		// Returns all resources of a given type
-		const std::vector<std::shared_ptr<IResource>>& GetByType(ResourceType type) { return m_resourceGroups[type]; }
+		const std::vector<std::shared_ptr<IResource>>& GetByType(Resource_Type type) { return m_resourceGroups[type]; }
 
 		// Unloads all resources
 		void Clear() { m_resourceGroups.clear(); }
 
 	private:
-		std::map<ResourceType, std::vector<std::shared_ptr<IResource>>> m_resourceGroups;
+		std::map<Resource_Type, std::vector<std::shared_ptr<IResource>>> m_resourceGroups;
 		std::mutex m_mutex;
 	};
 }

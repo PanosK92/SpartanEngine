@@ -36,12 +36,8 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Material::Material(Context* context) : IResource(context)
+	Material::Material(Context* context) : IResource(context, Resource_Material)
 	{
-		//= IResource ===============
-		RegisterResource<Material>();
-		//===========================
-
 		// Material
 		m_modelID				= NOT_ASSIGNED_HASH;
 		m_cullMode				= Cull_Back;

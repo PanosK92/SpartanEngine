@@ -29,12 +29,8 @@ using namespace std;
 
 namespace Directus
 {
-	Animation::Animation(Context* context): IResource(context)
+	Animation::Animation(Context* context): IResource(context, Resource_Animation)
 	{
-		//= IResource ================
-		RegisterResource<Animation>();
-		//============================
-
 		m_name			= NOT_ASSIGNED;
 		m_duration		= 0;
 		m_ticksPerSec	= 0;
