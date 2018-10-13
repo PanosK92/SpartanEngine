@@ -35,12 +35,8 @@ using namespace FMOD;
 
 namespace Directus
 {
-	AudioClip::AudioClip(Context* context) : IResource(context)
+	AudioClip::AudioClip(Context* context) : IResource(context, Resource_Audio)
 	{
-		//= IResource ================
-		RegisterResource<AudioClip>();
-		//============================
-
 		// AudioClip
 		m_transform		= nullptr;
 		m_systemFMOD	= (System*)context->GetSubsystem<Audio>()->GetSystemFMOD();

@@ -33,8 +33,8 @@ using namespace Directus;
 //=======================
 
 template <typename T>
-ResourceType IResource::DeduceResourceType() { return Resource_Unknown; }
-#define INSTANTIATE_ToResourceType(T, enumT) template<> ENGINE_CLASS ResourceType IResource::DeduceResourceType<T>() { return enumT; }
+Resource_Type IResource::DeduceResourceType() { return Resource_Unknown; }
+#define INSTANTIATE_ToResourceType(T, enumT) template<> ENGINE_CLASS Resource_Type IResource::DeduceResourceType<T>() { return enumT; }
 // Explicit template instantiation
 INSTANTIATE_ToResourceType(RHI_Texture,		Resource_Texture)
 INSTANTIATE_ToResourceType(AudioClip,		Resource_Audio)
@@ -45,10 +45,13 @@ INSTANTIATE_ToResourceType(Model,			Resource_Model)
 INSTANTIATE_ToResourceType(Animation,		Resource_Animation)
 INSTANTIATE_ToResourceType(Font,			Resource_Font)
 
-IResource::IResource(Context* context)
+IResource::IResource(Context* context, Resource_Type type)
 {
 	m_context			= context;
-	m_resourceManager	= m_context->GetSubsystem<ResourceManager>();	
+	m_resourceManager	= m_context->GetSubsystem<ResourceManager>();
+	m_resourceType		= type;
+	m_resourceID		= GENERATE_GUID;
+	m_loadState			= LoadState_Idle;
 }
 
 weak_ptr<IResource> IResource::_Cache()

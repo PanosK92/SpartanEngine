@@ -33,7 +33,7 @@ namespace Directus
 {
 	class ResourceManager;
 	
-	enum ResourceType
+	enum Resource_Type
 	{
 		Resource_Unknown,
 		Resource_Texture,
@@ -59,22 +59,14 @@ namespace Directus
 	class ENGINE_CLASS IResource : public std::enable_shared_from_this<IResource>
 	{
 	public:
-		IResource(Context* context);
+		IResource(Context* context, Resource_Type type);
 		virtual ~IResource() {}
-
-		template <typename T>
-		void RegisterResource()
-		{
-			m_resourceType	= DeduceResourceType<T>();
-			m_resourceID	= GENERATE_GUID;
-			m_loadState		= LoadState_Idle;
-		}
 
 		//= PROPERTIES ===================================================================================================
 		unsigned int GetResourceID() { return m_resourceID; }
 
-		ResourceType GetResourceType()				{ return m_resourceType; }
-		void SetResourceType(ResourceType type)		{ m_resourceType = type; }
+		Resource_Type GetResourceType()				{ return m_resourceType; }
+		void SetResourceType(Resource_Type type)		{ m_resourceType = type; }
 
 		const char* GetResourceType_cstr() { return typeid(*this).name(); }
 
@@ -129,7 +121,7 @@ namespace Directus
 
 		//= TYPE ================================
 		template <typename T>
-		static ResourceType DeduceResourceType();
+		static Resource_Type DeduceResourceType();
 		//=======================================
 
 		//= PTR ==========================================
@@ -146,7 +138,7 @@ namespace Directus
 		unsigned int m_resourceID			= NOT_ASSIGNED_HASH;
 		std::string m_resourceName			= NOT_ASSIGNED;
 		std::string m_resourceFilePath		= NOT_ASSIGNED;
-		ResourceType m_resourceType			= Resource_Unknown;
+		Resource_Type m_resourceType			= Resource_Unknown;
 		LoadState m_loadState				= LoadState_Idle;
 		Context* m_context					= nullptr;
 		ResourceManager* m_resourceManager	= nullptr;

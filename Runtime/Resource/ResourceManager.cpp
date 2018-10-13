@@ -64,12 +64,12 @@ namespace Directus
 		return true;
 	}
 
-	void ResourceManager::AddStandardResourceDirectory(ResourceType type, const string& directory)
+	void ResourceManager::AddStandardResourceDirectory(Resource_Type type, const string& directory)
 	{
 		m_standardResourceDirectories[type] = directory;
 	}
 
-	const string& ResourceManager::GetStandardResourceDirectory(ResourceType type)
+	const string& ResourceManager::GetStandardResourceDirectory(Resource_Type type)
 	{
 		for (auto& directory : m_standardResourceDirectories)
 		{

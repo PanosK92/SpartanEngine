@@ -125,13 +125,13 @@ namespace Directus
 		}
 
 		// Returns cached resource by name
-		std::weak_ptr<IResource> GetResourceByName(const std::string& name, ResourceType type)
+		std::weak_ptr<IResource> GetResourceByName(const std::string& name, Resource_Type type)
 		{
 			return m_resourceCache->GetByName(name, type);
 		}
 
 		// Checks if a resource exists
-		bool ExistsByName(const std::string& name, ResourceType type)
+		bool ExistsByName(const std::string& name, Resource_Type type)
 		{
 			return m_resourceCache->GetByName(name, type) != nullptr;
 		}
@@ -161,7 +161,7 @@ namespace Directus
 			return typedVec;
 		}
 
-		std::vector<std::weak_ptr<IResource>> GetResourcesByType(ResourceType type)
+		std::vector<std::weak_ptr<IResource>> GetResourcesByType(Resource_Type type)
 		{
 			std::vector<std::weak_ptr<IResource>> vec;
 			for (const auto& resource : m_resourceCache->GetByType(type))
@@ -172,7 +172,7 @@ namespace Directus
 		}
 
 		// Returns all resources of a given type
-		unsigned int GetResourceCountByType(ResourceType type)
+		unsigned int GetResourceCountByType(Resource_Type type)
 		{
 			return (unsigned int)m_resourceCache->GetByType(type).size();
 		}
@@ -193,12 +193,12 @@ namespace Directus
 		}
 
 		// Memory
-		unsigned int GetMemoryUsage(ResourceType type)	{ return m_resourceCache->GetMemoryUsage(type); }
+		unsigned int GetMemoryUsage(Resource_Type type)	{ return m_resourceCache->GetMemoryUsage(type); }
 		unsigned int GetMemoryUsage()					{ return m_resourceCache->GetMemoryUsage(); }
 
 		// Directories
-		void AddStandardResourceDirectory(ResourceType type, const std::string& directory);
-		const std::string& GetStandardResourceDirectory(ResourceType type);
+		void AddStandardResourceDirectory(Resource_Type type, const std::string& directory);
+		const std::string& GetStandardResourceDirectory(Resource_Type type);
 		void SetProjectDirectory(const std::string& directory);
 		std::string GetProjectDirectoryAbsolute();
 		const std::string& GetProjectDirectory() { return m_projectDirectory; }	
@@ -211,7 +211,7 @@ namespace Directus
 
 	private:
 		std::unique_ptr<ResourceCache> m_resourceCache;
-		std::map<ResourceType, std::string> m_standardResourceDirectories;
+		std::map<Resource_Type, std::string> m_standardResourceDirectories;
 		std::string m_projectDirectory;
 
 		// Importers

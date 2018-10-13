@@ -42,7 +42,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Font::Font(Context* context, const string& filePath, int fontSize, const Vector4& color) : IResource(context)
+	Font::Font(Context* context, const string& filePath, int fontSize, const Vector4& color) : IResource(context, Resource_Font)
 	{
 		m_rhiDevice		= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 		m_charMaxWidth	= 0;
