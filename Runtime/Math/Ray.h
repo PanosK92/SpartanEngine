@@ -44,9 +44,9 @@ namespace Directus::Math
 		// Returns hit distance to a bounding box, or infinity if there is no hit.
 		float HitDistance(const BoundingBox& box);
 
-		Vector3 GetOrigin()		{ return m_origin; }
-		Vector3 GetEnd()		{ return m_end; }
-		Vector3 GetDirection()	{ return m_direction; }
+		const Vector3& GetOrigin() const	{ return m_origin; }
+		const Vector3& GetEnd()	const		{ return m_end; }
+		const Vector3& GetDirection() const	{ return m_direction; }
 
 	private:
 		Vector3 m_origin;

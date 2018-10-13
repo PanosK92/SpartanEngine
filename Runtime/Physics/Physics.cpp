@@ -27,14 +27,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "PhysicsDebugDraw.h"
 #include "BulletPhysicsHelper.h"
+#include "../Rendering/Renderer.h"
 #pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
 #include "BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h"
 #include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
 #include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
+#include "BulletDynamics/ConstraintSolver/btConstraintSolver.h"
 #pragma warning(pop)
 //==============================================================================
-
 
 //= NAMESPACES ================
 using namespace std;
@@ -76,7 +77,7 @@ namespace Directus
 									);
 
 		// Create an implementation of the btIDebugDraw interface
-		m_debugDraw = make_shared<PhysicsDebugDraw>();
+		m_debugDraw = make_shared<PhysicsDebugDraw>(m_context->GetSubsystem<Renderer>());
 
 		// Setup world
 		m_world->setGravity(ToBtVector3(GRAVITY));
@@ -142,7 +143,7 @@ namespace Directus
 			delete constraint;
 		}
 
-		// remove the rigidbodies from the dynamics world and delete them
+		// remove the rigid bodies from the dynamics world and delete them
 		for (int i = m_world->getNumCollisionObjects() - 1; i >= 0; i--)
 		{
 			auto obj = m_world->getCollisionObjectArray()[i];
@@ -158,7 +159,6 @@ namespace Directus
 
 	void Physics::DebugDraw()
 	{
-		m_debugDraw->Clear();
 		m_world->debugDrawWorld();
 	}
 

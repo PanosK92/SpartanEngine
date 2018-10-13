@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES ==============================
 #include "Renderer.h"
 #include "Rectangle.h"
 #include "Grid.h"
@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Deferred/GBuffer.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommonBuffers.h"
+#include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_PipelineState.h"
 #include "../RHI/RHI_RenderTexture.h"
@@ -37,24 +38,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Skybox.h"
-#include "../World/Components/LineRenderer.h"
 #include "../Physics/Physics.h"
 #include "../Physics/PhysicsDebugDraw.h"
 #include "../Profiling/Profiler.h"
-//===========================================
+#include "../Core/Context.h"
+#include "../Math/BoundingBox.h"
+//=========================================
 
-//= NAMESPACES ========================
+//= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
 using namespace Helper;
-//=====================================
+//=============================
 
 #define GIZMO_MAX_SIZE 5.0f
 #define GIZMO_MIN_SIZE 0.1f
 
 namespace Directus
 {
-	static Physics* g_physics				= nullptr;
 	static ResourceManager* g_resourceMng	= nullptr;
 	unsigned long Renderer::m_flags;
 	bool Renderer::m_isRendering			= false;
@@ -66,7 +67,6 @@ namespace Directus
 		m_nearPlane		= 0.0f;
 		m_farPlane		= 0.0f;
 		m_camera		= nullptr;
-		m_lineRenderer	= nullptr;
 		m_rhiDevice		= nullptr;	
 		m_flags			= 0;
 		m_flags			|= Render_Physics;
@@ -97,7 +97,6 @@ namespace Directus
 	{
 		// Create/Get required systems		
 		g_resourceMng		= m_context->GetSubsystem<ResourceManager>();
-		g_physics			= m_context->GetSubsystem<Physics>();
 
 		// Get standard resource directories
 		string fontDir			= g_resourceMng->GetStandardResourceDirectory(Resource_Font);
@@ -107,7 +106,7 @@ namespace Directus
 		// Load a font (used for performance metrics)
 		m_font = make_unique<Font>(m_context, fontDir + "CalibriBold.ttf", 12, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
 		// Make a grid (used in editor)
-		m_grid = make_unique<Grid>(m_context);
+		m_grid = make_unique<Grid>(m_rhiDevice);
 		// Light gizmo icon rectangle
 		m_gizmoRectLight = make_unique<Rectangle>(m_context);
 
@@ -365,11 +364,47 @@ namespace Directus
 		LOGF_INFO("Renderer::SetResolution: Resolution was set to %dx%d", width, height);
 	}
 
+	void Renderer::AddBoundigBox(const BoundingBox& box, const Vector4& color)
+	{
+		// Compute points from min and max
+		Vector3 boundPoint1 = box.GetMin();
+		Vector3 boundPoint2 = box.GetMax();
+		Vector3 boundPoint3 = Vector3(boundPoint1.x, boundPoint1.y, boundPoint2.z);
+		Vector3 boundPoint4 = Vector3(boundPoint1.x, boundPoint2.y, boundPoint1.z);
+		Vector3 boundPoint5 = Vector3(boundPoint2.x, boundPoint1.y, boundPoint1.z);
+		Vector3 boundPoint6 = Vector3(boundPoint1.x, boundPoint2.y, boundPoint2.z);
+		Vector3 boundPoint7 = Vector3(boundPoint2.x, boundPoint1.y, boundPoint2.z);
+		Vector3 boundPoint8 = Vector3(boundPoint2.x, boundPoint2.y, boundPoint1.z);
+
+		// top of rectangular cuboid (6-2-8-4)
+		AddLine(boundPoint6, boundPoint2, color);
+		AddLine(boundPoint2, boundPoint8, color);
+		AddLine(boundPoint8, boundPoint4, color);
+		AddLine(boundPoint4, boundPoint6, color);
+
+		// bottom of rectangular cuboid (3-7-5-1)
+		AddLine(boundPoint3, boundPoint7, color);
+		AddLine(boundPoint7, boundPoint5, color);
+		AddLine(boundPoint5, boundPoint1, color);
+		AddLine(boundPoint1, boundPoint3, color);
+
+		// legs (6-3, 2-7, 8-5, 4-1)
+		AddLine(boundPoint6, boundPoint3, color);
+		AddLine(boundPoint2, boundPoint7, color);
+		AddLine(boundPoint8, boundPoint5, color);
+		AddLine(boundPoint4, boundPoint1, color);
+	}
+
+	void Renderer::AddLine(const Vector3& from, const Vector3& to, const Vector4& colorFrom, const Vector4& colorTo)
+	{
+		m_lineVertices.emplace_back(from, colorFrom);
+		m_lineVertices.emplace_back(to, colorTo);
+	}
+
 	void Renderer::Clear()
 	{
 		m_actors.clear();
-		m_lineRenderer	= nullptr;
-		m_camera		= nullptr;
+		m_camera = nullptr;
 	}
 
 	void Renderer::RenderTargets_Create(int width, int height)
@@ -435,7 +470,6 @@ namespace Directus
 			if (skybox)
 			{
 				m_actors[Renderable_Skybox].emplace_back(actor);
-				m_lineRenderer = actor->GetComponent<LineRenderer>().lock().get(); // Hush hush...
 			}
 
 			if (camera)
@@ -1085,27 +1119,13 @@ namespace Directus
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Debug");
 
-		//= PRIMITIVES ===================================================================================
-		// Anything that is a bunch of vertices (doesn't have a vertex and and index buffer) gets rendered here
-		// by passing it's vertices (VertexPosCol) to the LineRenderer. Typically used only for debugging.
-		if (m_lineRenderer)
+		m_rhiDevice->EventBegin("Line_Rendering");
 		{
-			m_lineRenderer->ClearVertices();
-
-			// Physics
-			if (m_flags & Render_Physics)
-			{
-				g_physics->DebugDraw();
-				if (g_physics->GetPhysicsDebugDraw()->IsDirty())
-				{
-					m_lineRenderer->AddLines(g_physics->GetPhysicsDebugDraw()->GetLines());
-				}
-			}
-
 			// Picking ray
 			if (m_flags & Render_PickingRay)
 			{
-				m_lineRenderer->AddLines(m_camera->GetPickingRay());
+				const Ray& ray = m_camera->GetPickingRay();
+				AddLine(ray.GetOrigin(), ray.GetEnd(), Vector4(0, 1, 0, 1));
 			}
 
 			// bounding boxes
@@ -1115,7 +1135,7 @@ namespace Directus
 				{
 					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
-						m_lineRenderer->AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 
@@ -1123,34 +1143,43 @@ namespace Directus
 				{
 					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
-						m_lineRenderer->AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 			}
 
-			if (m_lineRenderer->GetVertexCount() != 0)
+			auto lineVertexBufferSize = (unsigned int)m_lineVertices.size();
+			if (lineVertexBufferSize != 0)
 			{
-				m_rhiDevice->EventBegin("Lines");
+				if (lineVertexBufferSize > m_lineVertexCount)
+				{
+					m_lineVertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
+					m_lineVertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosCol), lineVertexBufferSize);
+					m_lineVertexCount = lineVertexBufferSize;
+				}
 
-				// Render
-				m_lineRenderer->Update();
+				// Update line vertex buffer
+				void* data = m_lineVertexBuffer->Map();
+				memcpy(data, &m_lineVertices[0], sizeof(RHI_Vertex_PosCol) * lineVertexBufferSize);
+				m_lineVertexBuffer->Unmap();
 
+				// Set pipeline state
 				m_rhiPipelineState->SetShader(m_shaderLine);
 				m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 				m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);
-				m_rhiPipelineState->SetVertexBuffer(m_lineRenderer->GetVertexBuffer());
+				m_rhiPipelineState->SetVertexBuffer(m_lineVertexBuffer);
 				m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_LineList);
 				auto buffer = Struct_Matrix_Matrix_Matrix(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix());
 				m_shaderLine->UpdateBuffer(&buffer);
 				m_rhiPipelineState->SetConstantBuffer(m_shaderLine->GetConstantBuffer());
 				m_rhiPipelineState->Bind();
+				// Draw
+				m_rhiDevice->Draw(lineVertexBufferSize);
 
-				m_rhiDevice->Draw(m_lineRenderer->GetVertexCount());
-
-				m_rhiDevice->EventEnd();
-			}			
+				m_lineVertices.clear();	
+			}
 		}
-		//============================================================================================================
+		m_rhiDevice->EventEnd();
 
 		m_rhiDevice->Set_AlphaBlendingEnabled(true);
 
@@ -1266,7 +1295,7 @@ namespace Directus
 		// Performance metrics
 		if (m_flags & Render_PerformanceMetrics)
 		{
-			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(-Settings::Get().GetResolutionWidth() * 0.5f + 1.0f, Settings::Get().GetResolutionHeight() * 0.5f));
+			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(Settings::Get().GetResolutionWidth() * 0.5f + 1.0f, Settings::Get().GetResolutionHeight() * 0.5f));
 
 			m_rhiPipelineState->SetShader(m_shaderFont);
 			m_rhiPipelineState->SetTexture(m_font->GetTexture());

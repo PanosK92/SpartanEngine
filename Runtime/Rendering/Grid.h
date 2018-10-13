@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ======================
 #include <vector>
 #include <memory>
-#include "../RHI/RHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Core/EngineDefs.h"
+#include "../RHI/RHI_Definition.h"
 //================================
 
 namespace Directus
@@ -37,7 +37,7 @@ namespace Directus
 	class ENGINE_CLASS Grid
 	{
 	public:
-		Grid(Context* context);
+		Grid(std::shared_ptr<RHI_Device> rhiDevice);
 		~Grid(){}
 		
 		const Math::Matrix& ComputeWorldMatrix(Transform* camera);
@@ -47,13 +47,12 @@ namespace Directus
 		unsigned int GetIndexCount()						{ return m_indexCount; }
 
 	private:
-		void BuildGrid();
-		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices);
+		void BuildGrid(std::vector<RHI_Vertex_PosCol>* vertices, std::vector<unsigned int>* indices);
+		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices, std::shared_ptr<RHI_Device> rhiDevice);
 
-		Context* m_context;
 		unsigned int m_indexCount;
-		int m_terrainHeight;
-		int m_terrainWidth;
+		unsigned int m_terrainHeight;
+		unsigned int m_terrainWidth;
 		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
 		Math::Matrix m_world;

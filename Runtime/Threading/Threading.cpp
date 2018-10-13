@@ -62,7 +62,7 @@ namespace Directus
 
 	bool Threading::Initialize()
 	{
-		for (int i = 0; i < m_threadCount; i++)
+		for (unsigned int i = 0; i < m_threadCount; i++)
 		{
 			m_threads.emplace_back(thread(&Threading::Invoke, this));
 		}

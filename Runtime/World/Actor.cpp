@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Transform.h"
 #include "../World/Components/Constraint.h"
 #include "../World/Components/Light.h"
-#include "../World/Components/LineRenderer.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/RigidBody.h"
 #include "../World/Components/Skybox.h"
@@ -278,7 +277,7 @@ namespace Directus
 	weak_ptr<IComponent> Actor::AddComponent(ComponentType type)
 	{
 		// This is the only hardcoded part regarding components. It's 
-		// one function but it would be nice if that get's automated too, somehow...
+		// one function but it would be nice if that gets automated too, somehow...
 		weak_ptr<IComponent> component;
 		switch (type)
 		{
@@ -288,7 +287,6 @@ namespace Directus
 			case ComponentType_Collider:		component = AddComponent<Collider>();		break;
 			case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
 			case ComponentType_Light:			component = AddComponent<Light>();			break;
-			case ComponentType_LineRenderer:	component = AddComponent<LineRenderer>();	break;
 			case ComponentType_Renderable:		component = AddComponent<Renderable>();		break;
 			case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
 			case ComponentType_Script:			component = AddComponent<Script>();			break;

@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Timer.h"
 #include "../Rendering/Material.h"
 #include "../Input/Input.h"
+#include "../World/Actor.h"
 #include "../World/Components/RigidBody.h"
 #include "../World/Components/Camera.h"
-#include "../World/Actor.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
 //=========================================
@@ -78,7 +78,6 @@ namespace Directus
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Collider",		int(ComponentType_Collider));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Constraint",	int(ComponentType_Constraint));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Light",			int(ComponentType_Light));
-		m_scriptEngine->RegisterEnumValue("ComponentType", "LineRenderer",	int(ComponentType_LineRenderer));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Renderable",	int(ComponentType_Renderable));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "RigidBody",		int(ComponentType_RigidBody));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Script",		int(ComponentType_Script));

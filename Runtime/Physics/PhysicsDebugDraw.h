@@ -26,21 +26,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning(push, 0)   
 #include <LinearMath/btIDebugDraw.h>
 #pragma warning(pop)
-#include <vector>
-#include "../RHI/RHI_Vertex.h"
 //=====================================
 
 namespace Directus
 {
+	class Renderer;
+
 	class PhysicsDebugDraw : public btIDebugDraw
 	{
 	public:
-		PhysicsDebugDraw();
-		~PhysicsDebugDraw();
+		PhysicsDebugDraw(Renderer* renderer);
+		~PhysicsDebugDraw() {}
 
 		//= btIDebugDraw ==============================================================================================================================
 		void drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor) override;
-		void drawLine(const btVector3& from, const btVector3& to, const btVector3& color) override;
+		void drawLine(const btVector3& from, const btVector3& to, const btVector3& color) override { drawLine(from, to, color, color); }
 		void drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color) override;
 		void reportErrorWarning(const char* warningString) override;
 		void draw3dText(const btVector3& location, const char* textString) override {}
@@ -48,11 +48,8 @@ namespace Directus
 		int getDebugMode() const override			{ return m_debugMode; }
 		//=============================================================================================================================================
 
-		bool IsDirty()										{ return !m_lines.empty(); }
-		const std::vector<RHI_Vertex_PosCol>& GetLines()	{ return m_lines; }
-		void Clear();
 	private:
-		std::vector<RHI_Vertex_PosCol> m_lines;
+		Renderer* m_renderer;
 		int m_debugMode;
 	};
 }
