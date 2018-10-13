@@ -19,10 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ==========================
 #include "Widget.h"
 #include "../../ImGui/imgui.h"
-//============================
+#include "../../ImGui/imgui_internal.h"
+//=====================================
 
 //= NAMESPACES ==========
 using namespace Directus;
@@ -47,6 +48,7 @@ void Widget::Begin()
 
 void Widget::End()
 {
+	m_window = ImGui::GetCurrentWindow();
 	m_height = ImGui::GetWindowHeight();
 	ImGui::End();
 }

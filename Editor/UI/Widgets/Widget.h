@@ -25,7 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //===============
 
-namespace Directus { class Context; }
+struct ImGuiWindow;
+namespace Directus	{ class Context; }
 
 class Widget
 {
@@ -40,6 +41,7 @@ public:
 	bool GetVisible()				{ return m_isVisible; }
 	void SetVisible(bool isVisible) { m_isVisible = isVisible; }
 	float GetHeight()				{ return m_height; }
+	ImGuiWindow* GetWindow()		{ return m_window; }
 
 protected:
 	Directus::Context* m_context = nullptr;
@@ -52,4 +54,5 @@ protected:
 	float m_yMin = 0;
 	float m_yMax = 0;
 	float m_height = 0;
+	ImGuiWindow* m_window;
 };
