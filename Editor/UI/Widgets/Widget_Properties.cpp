@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_World.h"
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
+#include "../../ImGui/imgui_stdlib.h"
 #include "World/Actor.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"
@@ -36,7 +37,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "World/Components/Script.h"
 #include "Rendering/Deferred/ShaderVariation.h"
-#include "../../ImGui/Source/imgui_stl.h"
 //=============================================
 
 //= NAMESPACES ========================

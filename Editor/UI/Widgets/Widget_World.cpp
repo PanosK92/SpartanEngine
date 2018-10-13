@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget_World.h"
 #include "Widget_Properties.h"
 #include "../DragDrop.h"
-#include "../../ImGui/Source/imgui_stl.h"
+#include "../../ImGui/imgui_stdlib.h"
 #include "Input/Input.h"
 #include "World/Actor.h"
 #include "World/Components/Transform.h"
