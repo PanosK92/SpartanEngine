@@ -86,7 +86,7 @@ namespace Directus
 			ReadSetting(SettingsIO::fin, "fResolutionHeight",		resolutionY);
 			ReadSetting(SettingsIO::fin, "iShadowMapResolution",	m_shadowMapResolution);
 			ReadSetting(SettingsIO::fin, "iAnisotropy",				m_anisotropy);
-			ReadSetting(SettingsIO::fin, "fFPSLimit",				m_maxFPS);
+			ReadSetting(SettingsIO::fin, "fFPSLimit",				m_maxFPS_game);
 			ReadSetting(SettingsIO::fin, "iMaxThreadCount",			m_maxThreadCount);
 			
 			m_resolution = Vector2(resolutionX, resolutionY);
@@ -107,7 +107,7 @@ namespace Directus
 			WriteSetting(SettingsIO::fout, "fResolutionHeight",		m_resolution.y);
 			WriteSetting(SettingsIO::fout, "iShadowMapResolution",	m_shadowMapResolution);
 			WriteSetting(SettingsIO::fout, "iAnisotropy",			m_anisotropy);
-			WriteSetting(SettingsIO::fout, "fFPSLimit",				m_maxFPS);
+			WriteSetting(SettingsIO::fout, "fFPSLimit",				m_maxFPS_game);
 			WriteSetting(SettingsIO::fout, "iMaxThreadCount",		m_maxThreadCount);
 
 			// Close the file.
@@ -117,7 +117,7 @@ namespace Directus
 		LOGF_INFO("Settings::Initialize: Resolution: %dx%d",		(int)m_resolution.x, (int)m_resolution.y);
 		LOGF_INFO("Settings::Initialize: Shadow resolution: %d",	m_shadowMapResolution);
 		LOGF_INFO("Settings::Initialize: Anisotropy: %d",			m_anisotropy);
-		LOGF_INFO("Settings::Initialize: Max fps: %f",				m_maxFPS);
+		LOGF_INFO("Settings::Initialize: Max fps: %f",				m_maxFPS_game);
 		LOGF_INFO("Settings::Initialize: Max threads: %d",			m_maxThreadCount);
 	}
 }
