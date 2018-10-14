@@ -56,8 +56,6 @@ namespace Directus
 		void Step(const Variant& deltaTime);
 		// Remove everything from the world
 		void Clear();
-		// Draw debug geometry
-		void DebugDraw();
 		// Return the world
 		std::shared_ptr<btDiscreteDynamicsWorld> GetWorld() { return m_world; }
 		// Return the world's gravity
