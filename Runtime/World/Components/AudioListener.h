@@ -35,10 +35,10 @@ namespace Directus
 		AudioListener(Context* context, Actor* actor, Transform* transform);
 		~AudioListener();
 
-		//= COMPONENT =============
+		//= COMPONENT ===============
 		void OnInitialize() override;
 		void OnTick() override;
-		//=========================
+		//===========================
 
 	private:
 		Audio* m_audio;
