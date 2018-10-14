@@ -24,12 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
+#include "RHI_Object.h"
 #include "..\Math\Matrix.h"
 //=========================
 
 namespace Directus
 {
-	class ENGINE_CLASS RHI_RenderTexture
+	class ENGINE_CLASS RHI_RenderTexture : public RHI_Object
 	{
 	public:
 		RHI_RenderTexture(
@@ -51,12 +52,10 @@ namespace Directus
 		const Math::Matrix& GetOrthographicProjectionMatrix()	{ return m_orthographicProjectionMatrix; }
 		const RHI_Viewport& GetViewport()						{ return m_viewport; }
 		bool GetDepthEnabled()									{ return m_depthEnabled; }
-		unsigned int GetID()									{ return m_id; }
 		unsigned int GetWidth()									{ return m_width; }
 		unsigned int GetHeight()								{ return m_height; }
 
 	protected:
-		unsigned int m_id;
 		bool m_depthEnabled = false;
 		float m_nearPlane, m_farPlane;
 		Math::Matrix m_orthographicProjectionMatrix;

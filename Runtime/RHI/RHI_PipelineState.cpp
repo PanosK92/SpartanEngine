@@ -78,11 +78,11 @@ namespace Directus
 			return false;
 		}
 
-		if (shader->HasVertexShader() && m_boundVertexShaderID != shader->GetID())
+		if (shader->HasVertexShader() && m_boundVertexShaderID != shader->RHI_GetID())
 		{
 			SetInputLayout(shader->GetInputLayout()); // TODO: this has to be done outside of this function 
 			m_vertexShader			= shader;
-			m_boundVertexShaderID	= m_vertexShader->GetID();
+			m_boundVertexShaderID	= m_vertexShader->RHI_GetID();
 			m_vertexShaderDirty		= true;
 		}
 
@@ -97,10 +97,10 @@ namespace Directus
 			return false;
 		}
 
-		if (shader->HasPixelShader() && m_boundPixelShaderID != shader->GetID())
+		if (shader->HasPixelShader() && m_boundPixelShaderID != shader->RHI_GetID())
 		{
 			m_pixelShader			= shader;
-			m_boundPixelShaderID	= m_pixelShader->GetID();
+			m_boundPixelShaderID	= m_pixelShader->RHI_GetID();
 			m_pixelShaderDirty		= true;
 		}
 

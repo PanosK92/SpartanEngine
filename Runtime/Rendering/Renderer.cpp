@@ -516,16 +516,16 @@ namespace Directus
 				return false;
 
 			// Get key for models
-			auto a_keyModel = a_geometryModel->GetResourceID();
-			auto b_keyModel = b_geometryModel->GetResourceID();
+			auto a_keyModel = a_geometryModel->Resource_GetID();
+			auto b_keyModel = b_geometryModel->Resource_GetID();
 
 			// Get key for shaders
-			auto a_keyShader = a_material->GetShader().lock()->GetResourceID();
-			auto b_keyShader = b_material->GetShader().lock()->GetResourceID();
+			auto a_keyShader = a_material->GetShader().lock()->Resource_GetID();
+			auto b_keyShader = b_material->GetShader().lock()->Resource_GetID();
 
 			// Get key for materials
-			auto a_keyMaterial = a_material->GetResourceID();
-			auto b_keyMaterial = b_material->GetResourceID();
+			auto a_keyMaterial = a_material->Resource_GetID();
+			auto b_keyMaterial = b_material->Resource_GetID();
 
 			auto a_key = 
 				(((unsigned long long)a_keyModel)		<< 48u)	| 
@@ -597,11 +597,11 @@ namespace Directus
 						continue;
 
 					// Bind geometry
-					if (currentlyBoundGeometry != geometry->GetResourceID())
+					if (currentlyBoundGeometry != geometry->Resource_GetID())
 					{
 						m_rhiPipelineState->SetIndexBuffer(geometry->GetIndexBuffer());
 						m_rhiPipelineState->SetVertexBuffer(geometry->GetVertexBuffer());					
-						currentlyBoundGeometry = geometry->GetResourceID();
+						currentlyBoundGeometry = geometry->Resource_GetID();
 					}
 
 					// skip objects outside of the view frustum
@@ -672,15 +672,15 @@ namespace Directus
 			m_rhiPipelineState->SetCullMode(obj_material->GetCullMode());
 
 			// Bind geometry
-			if (currentlyBoundGeometry != obj_geometry->GetResourceID())
+			if (currentlyBoundGeometry != obj_geometry->Resource_GetID())
 			{	
 				m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
 				m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());
-				currentlyBoundGeometry = obj_geometry->GetResourceID();
+				currentlyBoundGeometry = obj_geometry->Resource_GetID();
 			}
 
 			// Bind shader
-			if (currentlyBoundShader != obj_shader->GetResourceID())
+			if (currentlyBoundShader != obj_shader->Resource_GetID())
 			{
 				if (!vertexShaderBound)
 				{
@@ -688,11 +688,11 @@ namespace Directus
 					vertexShaderBound = true;
 				}
 				m_rhiPipelineState->SetPixelShader(shared_ptr<RHI_Shader>(obj_shader));
-				currentlyBoundShader = obj_shader->GetResourceID();
+				currentlyBoundShader = obj_shader->Resource_GetID();
 			}
 
 			// Bind material
-			if (currentlyBoundMaterial != obj_material->GetResourceID())
+			if (currentlyBoundMaterial != obj_material->Resource_GetID())
 			{
 				obj_shader->UpdatePerMaterialBuffer(m_camera, obj_material);
 
@@ -705,7 +705,7 @@ namespace Directus
 				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Emission).ptr_raw);
 				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Mask).ptr_raw);
 
-				currentlyBoundMaterial = obj_material->GetResourceID();
+				currentlyBoundMaterial = obj_material->Resource_GetID();
 			}
 
 			// UPDATE PER OBJECT BUFFER

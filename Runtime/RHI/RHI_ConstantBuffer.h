@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
+#include "RHI_Object.h"
 #include "RHI_Definition.h"
 #include <memory>
 #include "..\Core\EngineDefs.h"
@@ -29,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ENGINE_CLASS RHI_ConstantBuffer
+	class ENGINE_CLASS RHI_ConstantBuffer : public RHI_Object
 	{
 	public:
 		RHI_ConstantBuffer(std::shared_ptr<RHI_Device> rhiDevice);

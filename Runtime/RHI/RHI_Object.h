@@ -21,34 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include "RHI_Definition.h"
-#include "RHI_Object.h"
-#include <memory>
-//=========================
+//= INCLUDES =====================
+#include "../Core/EngineDefs.h"
+#include "../Core/GUIDGenerator.h"
+//================================
 
 namespace Directus
 {
-	class RHI_Sampler : public RHI_Object
+	class ENGINE_CLASS RHI_Object
 	{
 	public:
-		RHI_Sampler(
-			std::shared_ptr<RHI_Device> rhiDevice,
-			Texture_Sampler_Filter filter					= Texture_Sampler_Anisotropic,
-			Texture_Address_Mode textureAddressMode			= Texture_Address_Wrap,
-			Texture_Comparison_Function comparisonFunction	= Texture_Comparison_Always);
-		~RHI_Sampler();
-
-		Texture_Sampler_Filter GetFilter()					{ return m_filter; }
-		Texture_Address_Mode GetAddressMode()				{ return m_textureAddressMode; }
-		Texture_Comparison_Function GetComparisonFunction() { return m_comparisonFunction; }
-		void* GetBuffer()									{ return m_buffer; }
-
+		RHI_Object() { m_ID = GENERATE_GUID; }
+		unsigned int RHI_GetID() { return m_ID; }
 	private:
-		std::shared_ptr<RHI_Device> m_rhiDevice;
-		void* m_buffer;
-		Texture_Sampler_Filter m_filter;
-		Texture_Address_Mode m_textureAddressMode;
-		Texture_Comparison_Function m_comparisonFunction;
+		unsigned int m_ID = 0;
 	};
 }
