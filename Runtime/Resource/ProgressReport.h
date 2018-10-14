@@ -29,8 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-static int g_progress_ModelImporter = 0;
-static int g_progress_Scene			= 1;
+	static int g_progress_ModelImporter = 0;
+	static int g_progress_Scene			= 1;
 
 	struct Progress
 	{
@@ -69,7 +69,8 @@ static int g_progress_Scene			= 1;
 		const std::string& GetStatus(int progressID)				{ return m_reports[progressID].status; }
 		void SetStatus(int progressID, const std::string& status)	{ m_reports[progressID].status = status; }
 		void SetJobCount(int progressID, int jobCount)				{ m_reports[progressID].jobCount = jobCount;}
-		void JobDone(int progressID)								{ m_reports[progressID].jobsDone++; }
+		void IncrementJobsDone(int progressID)						{ m_reports[progressID].jobsDone++; }
+		void SetJobsDone(int progressID, int jobsDone)				{ m_reports[progressID].jobsDone = jobsDone; }
 		float GetPercentage(int progressID)							{ return (float)m_reports[progressID].jobsDone / (float)m_reports[progressID].jobCount; }
 		bool GetIsLoading(int progressID)							{ return m_reports[progressID].isLoading; }
 		void SetIsLoading(int progressID, bool isLoading)			{ m_reports[progressID].isLoading = isLoading; }

@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "ModelImporter.h"
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/version.h>
+#include "assimp/Importer.hpp"
+#include "assimp/postprocess.h"
+#include "assimp/version.h"
+#include "assimp/ProgressHandler.hpp"
 #include "AssimpHelper.h"
 #include "../../Core/Settings.h"
 #include "../../Rendering/Model.h"
@@ -39,9 +40,52 @@ using namespace Directus::Math;
 using namespace Assimp;
 //=============================
 
+// Implement Assimp::ProgressHandler so the engine can track the loading/proccesing progress
+class _ProgressHandler : public ProgressHandler
+{
+public:
+	_ProgressHandler(const string& filePath)
+	{
+		m_filePath = filePath;
+		m_fileName = Directus::FileSystem::GetFileNameFromFilePath(filePath);
+
+		// Start progress tracking
+		Directus::ProgressReport& progress = Directus::ProgressReport::Get();
+		progress.Reset(Directus::g_progress_ModelImporter);
+		progress.SetIsLoading(Directus::g_progress_ModelImporter, true);
+	}
+
+	~_ProgressHandler() 
+	{
+		Directus::ProgressReport::Get().SetIsLoading(Directus::g_progress_ModelImporter, false);
+	}
+
+	bool Update(float percentage) { return true; }
+
+	void UpdateFileRead(int currentStep, int numberOfSteps) override
+	{
+		Directus::ProgressReport& progress = Directus::ProgressReport::Get();
+		progress.SetStatus(Directus::g_progress_ModelImporter, "Loading \"" + m_fileName + "\" from disk...");
+		progress.SetJobsDone(Directus::g_progress_ModelImporter, currentStep);
+		progress.SetJobCount(Directus::g_progress_ModelImporter, numberOfSteps);
+	}
+
+	void UpdatePostProcess(int currentStep, int numberOfSteps) override
+	{
+		Directus::ProgressReport& progress = Directus::ProgressReport::Get();
+		progress.SetStatus(Directus::g_progress_ModelImporter, "Post-Processing \"" + m_fileName + "\"");
+		progress.SetJobsDone(Directus::g_progress_ModelImporter, currentStep);
+		progress.SetJobCount(Directus::g_progress_ModelImporter, numberOfSteps);
+	}
+
+private:
+	string m_filePath;
+	string m_fileName;
+};
+
 namespace Directus
 {
-	namespace AssimpSettings
+	namespace _ModelImporter
 	{
 		// Things for Assimp to do
 		static auto g_postProcessSteps =
@@ -64,7 +108,6 @@ namespace Directus
 
 		static int g_normalSmoothAngle = 45; // Default is 45, max is 175
 	}
-
 
 	ModelImporter::ModelImporter(Context* context)
 	{
@@ -89,44 +132,27 @@ namespace Directus
 		m_model		= model;
 		m_modelPath = filePath;
 
-		// Start progress tracking
-		ProgressReport& progress = ProgressReport::Get();
-		progress.Reset(g_progress_ModelImporter);
-		progress.SetIsLoading(g_progress_ModelImporter, true);
-
 		// Set up an Assimp importer
 		Importer importer;
-		importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64); // Optimize mesh
-		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT); // Remove points and lines.
-		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS); // Remove cameras and lights
-		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, AssimpSettings::g_normalSmoothAngle); 
+		importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64);											// Optimize mesh
+		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);		// Remove points and lines.
+		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);			// Remove cameras and lights
+		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, _ModelImporter::g_normalSmoothAngle);	// Normal smoothing angle
+		importer.SetProgressHandler(new _ProgressHandler(filePath));											// Progress tracking
 
 		// Read the 3D model file from disk
-		progress.SetStatus(g_progress_ModelImporter, "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" from disk...");
-		const aiScene* scene = importer.ReadFile(m_modelPath, AssimpSettings::g_postProcessSteps);
-		if (!scene)
+		if (const aiScene* scene = importer.ReadFile(m_modelPath, _ModelImporter::g_postProcessSteps))
 		{
-			LOGF_ERROR("ModelImporter::Load:  Failed to load \"%s\". %s", model->GetResourceName().c_str(), importer.GetErrorString());
-			ProgressReport::Get().SetIsLoading(g_progress_ModelImporter, false);
+			ReadNodeHierarchy(model, scene, scene->mRootNode);
+			ReadAnimations(model, scene);
+			model->Geometry_Update();
+			FIRE_EVENT(EVENT_MODEL_LOADED);
+		}
+		else
+		{
+			LOGF_ERROR("ModelImporter::Load: %s", importer.GetErrorString());
 			return false;
 		}
-
-		// Map all the nodes as actors while maintaining hierarchical relationships
-		// as well as their properties (meshes, materials, textures etc.).
-		ReadNodeHierarchy(model, scene, scene->mRootNode);
-
-		// Load animation (in case there are any)
-		ReadAnimations(model, scene);
-
-		model->Geometry_Update();
-
-		// Cleanup
-		importer.FreeScene();
-
-		// Stats
-		ProgressReport::Get().SetIsLoading(g_progress_ModelImporter, false);
-
-		FIRE_EVENT(EVENT_MODEL_LOADED);
 
 		return true;
 	}
@@ -155,14 +181,14 @@ namespace Directus
 			string name = assimpNode->mName.C_Str();
 			newNode.lock()->SetName(name);
 
-			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Processing: " + name);
+			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for: " + name);
 		}
 		else
 		{
 			string name = FileSystem::GetFileNameNoExtensionFromFilePath(m_modelPath);
 			newNode.lock()->SetName(name);
 
-			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Processing: " + name);
+			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for: " + name);
 		}
 		//============================================================================
 
@@ -202,7 +228,7 @@ namespace Directus
 			ReadNodeHierarchy(model, assimpScene, assimpNode->mChildren[i], newNode, child);
 		}
 
-		ProgressReport::Get().JobDone(g_progress_ModelImporter);
+		ProgressReport::Get().IncrementJobsDone(g_progress_ModelImporter);
 	}
 
 	void ModelImporter::ReadAnimations(Model* model, const aiScene* scene)

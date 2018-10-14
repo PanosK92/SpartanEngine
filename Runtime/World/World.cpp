@@ -237,7 +237,7 @@ namespace Directus
 				resourceMng->Load<RHI_Texture>(resourcePath);
 			}
 
-			ProgressReport::Get().JobDone(g_progress_Scene);
+			ProgressReport::Get().IncrementJobsDone(g_progress_Scene);
 		}
 
 		//= Load actors ============================	
