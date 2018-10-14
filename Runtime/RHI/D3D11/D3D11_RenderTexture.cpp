@@ -47,7 +47,6 @@ namespace Directus
 		m_farPlane				= 0.0f;
 		m_format				= textureFormat;
 		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->GetViewport().GetMaxDepth());
-		m_id					= GENERATE_GUID;
 		m_width					= width;
 		m_height				= height;
 

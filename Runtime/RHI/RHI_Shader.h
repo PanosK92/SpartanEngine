@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <map>
 #include "RHI_Definition.h"
+#include "RHI_Object.h"
 #include "..\Core\EngineDefs.h"
 #include "..\Core\Context.h"
 #include "..\Threading\Threading.h"
@@ -47,7 +48,7 @@ namespace Directus
 		Shader_Failed
 	};
 
-	class ENGINE_CLASS RHI_Shader
+	class ENGINE_CLASS RHI_Shader : public RHI_Object
 	{
 	public:
 		//= GRAPHICS API ==================================================================
@@ -94,7 +95,6 @@ namespace Directus
 		bool HasVertexShader()										{ return m_hasVertexShader; }
 		bool HasPixelShader()										{ return m_hasPixelShader; }
 		std::shared_ptr<RHI_InputLayout> GetInputLayout()			{ return m_inputLayout; }
-		unsigned int GetID()										{ return m_id; }
 		Shader_State GetState()										{ return m_shaderState; }
 
 	protected:
@@ -111,7 +111,6 @@ namespace Directus
 		std::string m_profile;
 		std::map<std::string, std::string> m_macros;
 		std::shared_ptr<RHI_InputLayout> m_inputLayout;	
-		unsigned int m_id;
 		bool m_hasVertexShader		= false;
 		bool m_hasPixelShader		= false;
 		Shader_State m_shaderState	= Shader_Uninitialized;

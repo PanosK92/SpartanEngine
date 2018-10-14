@@ -63,7 +63,7 @@ namespace Directus
 		virtual ~IResource() {}
 
 		//= PROPERTIES ===================================================================================================
-		unsigned int GetResourceID() { return m_resourceID; }
+		unsigned int Resource_GetID() { return m_resourceID; }
 
 		Resource_Type GetResourceType()				{ return m_resourceType; }
 		void SetResourceType(Resource_Type type)		{ m_resourceType = type; }

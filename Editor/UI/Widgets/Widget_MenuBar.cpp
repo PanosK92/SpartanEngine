@@ -239,7 +239,7 @@ void Widget_MenuBar::ShowResourceCache()
 		ImGui::Text(resource->GetResourceType_cstr());					ImGui::NextColumn();
 
 		// ID
-		ImGui::Text(to_string(resource->GetResourceID()).c_str());		ImGui::NextColumn();
+		ImGui::Text(to_string(resource->Resource_GetID()).c_str());		ImGui::NextColumn();
 
 		// Name
 		ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();

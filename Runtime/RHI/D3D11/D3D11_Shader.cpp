@@ -171,7 +171,6 @@ namespace Directus
 	{
 		m_rhiDevice			= rhiDevice;
 		m_inputLayout		= make_shared<RHI_InputLayout>(m_rhiDevice);
-		m_id				= GENERATE_GUID;
 	}
 
 	RHI_Shader::~RHI_Shader()

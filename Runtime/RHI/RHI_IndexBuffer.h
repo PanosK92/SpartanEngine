@@ -23,12 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "RHI_Definition.h"
+#include "RHI_Object.h"
 #include <vector>
 //=========================
 
 namespace Directus
 {
-	class RHI_IndexBuffer
+	class RHI_IndexBuffer : public RHI_Object
 	{
 	public:
 		RHI_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice);
