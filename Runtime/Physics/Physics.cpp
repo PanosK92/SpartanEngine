@@ -99,6 +99,12 @@ namespace Directus
 		if (!m_world)
 			return;
 		
+		// Debug draw
+		if (Renderer::RenderFlags_IsSet(Render_Physics))
+		{
+			m_world->debugDrawWorld();
+		}
+
 		// Don't simulate physics if they are turned off or the we are in editor mode
 		if (!Engine::EngineMode_IsSet(Engine_Physics) || !Engine::EngineMode_IsSet(Engine_Game))
 			return;
@@ -155,11 +161,6 @@ namespace Directus
 			m_world->removeCollisionObject(obj);
 			delete obj;
 		}
-	}
-
-	void Physics::DebugDraw()
-	{
-		m_world->debugDrawWorld();
 	}
 
 	Vector3 Physics::GetGravity()
