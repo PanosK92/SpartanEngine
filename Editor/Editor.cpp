@@ -336,7 +336,7 @@ void Editor::ApplyLayout(unsigned int rootNodeID)
 	ImGui::DockBuilderDockWindow("Properties",	nodeID_right);
 	ImGui::DockBuilderDockWindow("Console",		nodeID_down);
 	ImGui::DockBuilderDockWindow("Assets",		nodeID_down);
-	//ImGui::DockBuilderDockWindow("Viewport",	rootNodeID);
+	ImGui::DockBuilderDockWindow("Viewport",	rootNodeID);
 
 	ImGui::DockBuilderFinish(rootNodeID);
 }
