@@ -36,8 +36,8 @@ namespace Widget_ConsoleOptions
 	static ImVec4 g_logColor[3] =
 	{
 		ImVec4(0.76f, 0.77f, 0.8f, 1.0f),	// Info
-		ImVec4(1.0f, 1.0f, 0.0f, 1.0f),		// Warning
-		ImVec4(1.0f, 0.0f, 0.0f, 1.0f)		// Error
+		ImVec4(0.75f, 0.75f, 0.0f, 1.0f),	// Warning
+		ImVec4(0.75f, 0.0f, 0.0f, 1.0f)		// Error
 	};
 	static ImGuiTextFilter g_logFilter;
 }

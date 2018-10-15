@@ -39,14 +39,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/Deferred/ShaderVariation.h"
 //=============================================
 
-//= NAMESPACES ========================
+//= NAMESPACES ==========
 using namespace std;
 using namespace Directus;
 using namespace Math;
 using namespace Helper;
-//=====================================
+//=======================
 
-namespace WidgetProperties_Internal
+namespace _Widget_Properties
 {
 	static std::weak_ptr<Actor> actorInspected;
 	static std::weak_ptr<Material> inspectedMaterial;
@@ -54,11 +54,11 @@ namespace WidgetProperties_Internal
 	static World* scene;
 	static Vector3 rotationHint;
 
-	//= COLOR PICKERS ===============================================
+	//= COLOR PICKERS =============================================
 	static unique_ptr<ButtonColorPicker> materialButtonColorPicker;
 	static unique_ptr<ButtonColorPicker> lightButtonColorPicker;
 	static unique_ptr<ButtonColorPicker> cameraButtonColorPicker;
-	//===============================================================
+	//=============================================================
 }
 
 namespace ComponentProperty
@@ -144,16 +144,16 @@ namespace ComponentProperty
 Widget_Properties::Widget_Properties()
 {
 	m_title = "Properties";
-	WidgetProperties_Internal::lightButtonColorPicker = make_unique<ButtonColorPicker>("Light Color Picker");
-	WidgetProperties_Internal::materialButtonColorPicker = make_unique<ButtonColorPicker>("Material Color Picker");
-	WidgetProperties_Internal::cameraButtonColorPicker = make_unique<ButtonColorPicker>("Camera Color Picker");
+	_Widget_Properties::lightButtonColorPicker		= make_unique<ButtonColorPicker>("Light Color Picker");
+	_Widget_Properties::materialButtonColorPicker	= make_unique<ButtonColorPicker>("Material Color Picker");
+	_Widget_Properties::cameraButtonColorPicker		= make_unique<ButtonColorPicker>("Camera Color Picker");
 }
 
 void Widget_Properties::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-	WidgetProperties_Internal::resourceManager = context->GetSubsystem<ResourceManager>();
-	WidgetProperties_Internal::scene = context->GetSubsystem<World>();
+	_Widget_Properties::resourceManager = context->GetSubsystem<ResourceManager>();
+	_Widget_Properties::scene			= context->GetSubsystem<World>();
 	m_xMin = 500; // min width
 }
 
@@ -161,9 +161,9 @@ void Widget_Properties::Tick(float deltaTime)
 {
 	ImGui::PushItemWidth(ComponentProperty::g_maxWidth);
 
-	if (!WidgetProperties_Internal::actorInspected.expired())
+	if (!_Widget_Properties::actorInspected.expired())
 	{
-		auto actorPtr = WidgetProperties_Internal::actorInspected.lock().get();
+		auto actorPtr = _Widget_Properties::actorInspected.lock().get();
 
 		auto transform		= actorPtr->GetComponent<Transform>().lock();
 		auto light			= actorPtr->GetComponent<Light>().lock();
@@ -195,9 +195,9 @@ void Widget_Properties::Tick(float deltaTime)
 		ShowAddComponentButton();
 		Drop_AutoAddComponents();
 	}
-	else if (!WidgetProperties_Internal::inspectedMaterial.expired())
+	else if (!_Widget_Properties::inspectedMaterial.expired())
 	{
-		ShowMaterial(WidgetProperties_Internal::inspectedMaterial.lock());
+		ShowMaterial(_Widget_Properties::inspectedMaterial.lock());
 	}
 
 	ImGui::PopItemWidth();
@@ -205,29 +205,29 @@ void Widget_Properties::Tick(float deltaTime)
 
 void Widget_Properties::Inspect(weak_ptr<Actor> actor)
 {
-	WidgetProperties_Internal::actorInspected = actor;
+	_Widget_Properties::actorInspected = actor;
 
 	if (auto sharedPtr = actor.lock())
 	{
-		WidgetProperties_Internal::rotationHint = sharedPtr->GetTransform_PtrRaw()->GetRotationLocal().ToEulerAngles();
+		_Widget_Properties::rotationHint = sharedPtr->GetTransform_PtrRaw()->GetRotationLocal().ToEulerAngles();
 	}
 	else
 	{
-		WidgetProperties_Internal::rotationHint = Vector3::Zero;
+		_Widget_Properties::rotationHint = Vector3::Zero;
 	}
 
 	// If we were previously inspecting a material, save the changes
-	if (!WidgetProperties_Internal::inspectedMaterial.expired())
+	if (!_Widget_Properties::inspectedMaterial.expired())
 	{
-		WidgetProperties_Internal::inspectedMaterial.lock()->SaveToFile(WidgetProperties_Internal::inspectedMaterial.lock()->GetResourceFilePath());
+		_Widget_Properties::inspectedMaterial.lock()->SaveToFile(_Widget_Properties::inspectedMaterial.lock()->GetResourceFilePath());
 	}
-	WidgetProperties_Internal::inspectedMaterial.reset();
+	_Widget_Properties::inspectedMaterial.reset();
 }
 
 void Widget_Properties::Inspect(weak_ptr<Material> material)
 {
-	WidgetProperties_Internal::actorInspected.reset();
-	WidgetProperties_Internal::inspectedMaterial = material;
+	_Widget_Properties::actorInspected.reset();
+	_Widget_Properties::inspectedMaterial = material;
 }
 
 void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
@@ -236,11 +236,11 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 	{
 		bool isPlaying = Engine::EngineMode_IsSet(Engine_Game);
 
-		//= REFLECT ===============================================================================================================
+		//= REFLECT ========================================================================================================
 		Vector3 position	= transform->GetPositionLocal();
-		Vector3 rotation	= !isPlaying ? WidgetProperties_Internal::rotationHint : transform->GetRotationLocal().ToEulerAngles();
+		Vector3 rotation	= !isPlaying ? _Widget_Properties::rotationHint : transform->GetRotationLocal().ToEulerAngles();
 		Vector3 scale		= transform->GetScaleLocal();
-		//=========================================================================================================================	
+		//==================================================================================================================
 		
 		float startColumn = ComponentProperty::g_column - 70.0f;
 
@@ -283,10 +283,10 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 			transform->SetPositionLocal(position);
 			transform->SetScaleLocal(scale);
 
-			if (rotation != WidgetProperties_Internal::rotationHint)
+			if (rotation != _Widget_Properties::rotationHint)
 			{
 				transform->SetRotationLocal(Quaternion::FromEulerAngles(rotation));
-				WidgetProperties_Internal::rotationHint = rotation;
+				_Widget_Properties::rotationHint = rotation;
 			}
 		}
 		//=========================================================================
@@ -301,7 +301,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 
 	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
 	{
-		//= REFLECT ===================================================================
+		//= REFLECT ============================================================
 		static vector<char*> types = { "Directional", "Point", "Spot" };
 		int typeInt				= (int)light->GetLightType();
 		const char* typeCharPtr = types[typeInt];
@@ -311,8 +311,8 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		float range				= light->GetRange();
 		float split1			= light->ShadowMap_GetSplit(0);
 		float split2			= light->ShadowMap_GetSplit(1);
-		WidgetProperties_Internal::lightButtonColorPicker->SetColor(light->GetColor());
-		//=============================================================================
+		_Widget_Properties::lightButtonColorPicker->SetColor(light->GetColor());
+		//======================================================================
 
 		// Type
 		ImGui::Text("Type");
@@ -338,7 +338,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 
 		// Color
 		ImGui::Text("Color");
-		ImGui::SameLine(ComponentProperty::g_column); WidgetProperties_Internal::lightButtonColorPicker->Update();
+		ImGui::SameLine(ComponentProperty::g_column); _Widget_Properties::lightButtonColorPicker->Update();
 
 		// Intensity
 		ImGui::Text("Intensity");
@@ -377,16 +377,16 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightAngle", &angle, 1.0f, 179.0f); ImGui::PopItemWidth();
 		}
 
-		//= MAP ==============================================================================================================
-		if ((LightType)typeInt != light->GetLightType())										light->SetLightType((LightType)typeInt);
-		if (intensity != light->GetIntensity())													light->SetIntensity(intensity);
-		if (castsShadows != light->GetCastShadows())											light->SetCastShadows(castsShadows);
-		if (angle / 179.0f != light->GetAngle())												light->SetAngle(angle / 179.0f);
-		if (range != light->GetRange())															light->SetRange(range);
-		if (split1 != light->ShadowMap_GetSplit(0))												light->ShadowMap_SetSplit(split1, 0);
-		if (split2 != light->ShadowMap_GetSplit(1))												light->ShadowMap_SetSplit(split2, 1);
-		if (WidgetProperties_Internal::lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(WidgetProperties_Internal::lightButtonColorPicker->GetColor());
-		//====================================================================================================================
+		//= MAP ====================================================================================================================================================
+		if ((LightType)typeInt != light->GetLightType())									light->SetLightType((LightType)typeInt);
+		if (intensity != light->GetIntensity())												light->SetIntensity(intensity);
+		if (castsShadows != light->GetCastShadows())										light->SetCastShadows(castsShadows);
+		if (angle / 179.0f != light->GetAngle())											light->SetAngle(angle / 179.0f);
+		if (range != light->GetRange())														light->SetRange(range);
+		if (split1 != light->ShadowMap_GetSplit(0))											light->ShadowMap_SetSplit(split1, 0);
+		if (split2 != light->ShadowMap_GetSplit(1))											light->ShadowMap_SetSplit(split2, 1);
+		if (_Widget_Properties::lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(_Widget_Properties::lightButtonColorPicker->GetColor());
+		//==========================================================================================================================================================
 	}
 	ComponentProperty::End();
 }
@@ -421,10 +421,10 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable)
 		ImGui::Text("Receive Shadows");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##RenderableReceiveShadows", &receiveShadows);
 
-		//= MAP ====================================================================================================
+		//= MAP ==============================================================================================
 		if (castShadows != renderable->GetCastShadows())		renderable->SetCastShadows(castShadows);
 		if (receiveShadows != renderable->GetReceiveShadows())	renderable->SetReceiveShadows(receiveShadows);
-		//==========================================================================================================
+		//====================================================================================================
 	}
 	ComponentProperty::End();
 }
@@ -656,7 +656,7 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 		{
 			auto actorID	= get<unsigned int>(payload->data);
-			otherBody		= WidgetProperties_Internal::scene->GetActorByID(actorID);
+			otherBody		= _Widget_Properties::scene->GetActorByID(actorID);
 			otherBodyDirty	= true;
 		}
 		ImGui::PopItemWidth();
@@ -726,7 +726,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 		float height	= material->GetHeightMultiplier();
 		Vector2 tiling	= material->GetTiling();
 		Vector2 offset	= material->GetOffset();
-		WidgetProperties_Internal::materialButtonColorPicker->SetColor(material->GetColorAlbedo());
+		_Widget_Properties::materialButtonColorPicker->SetColor(material->GetColorAlbedo());
 		//=========================================================================================
 
 		static const ImVec2 materialTextSize = ImVec2(80, 80);
@@ -766,7 +766,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 				{
 					try
 					{
-						if (auto texture = WidgetProperties_Internal::resourceManager->Load<RHI_Texture>(get<const char*>(payload->data)).lock())
+						if (auto texture = _Widget_Properties::resourceManager->Load<RHI_Texture>(get<const char*>(payload->data)).lock())
 						{
 							texture->SetTextureType(textureType);
 							material->SetTextureSlot(texture->GetTextureType(), texture);
@@ -778,7 +778,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 
 			// Albedo
 			DisplayTextureSlot(texAlbedo, "Albedo", TextureType_Albedo);
-			ImGui::SameLine(); WidgetProperties_Internal::materialButtonColorPicker->Update();
+			ImGui::SameLine(); _Widget_Properties::materialButtonColorPicker->Update();
 
 			// Roughness
 			DisplayTextureSlot(texRoughness, "Roughness", TextureType_Roughness);
@@ -827,7 +827,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 		if (height != material->GetHeightMultiplier())														material->SetHeightMultiplier(height);
 		if (tiling != material->GetTiling())																material->SetTiling(tiling);
 		if (offset != material->GetOffset())																material->SetOffset(offset);
-		if (WidgetProperties_Internal::materialButtonColorPicker->GetColor() != material->GetColorAlbedo()) material->SetColorAlbedo(WidgetProperties_Internal::materialButtonColorPicker->GetColor());
+		if (_Widget_Properties::materialButtonColorPicker->GetColor() != material->GetColorAlbedo()) material->SetColorAlbedo(_Widget_Properties::materialButtonColorPicker->GetColor());
 		//===========================================================================================================================================
 	}
 	ComponentProperty::End();
@@ -847,14 +847,14 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 		float fov = camera->GetFOV_Horizontal_Deg();
 		float nearPlane = camera->GetNearPlane();
 		float farPlane = camera->GetFarPlane();
-		WidgetProperties_Internal::cameraButtonColorPicker->SetColor(camera->GetClearColor());
+		_Widget_Properties::cameraButtonColorPicker->SetColor(camera->GetClearColor());
 		//====================================================================================
 
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Background
 		ImGui::Text("Background");
-		ImGui::SameLine(ComponentProperty::g_column); WidgetProperties_Internal::cameraButtonColorPicker->Update();
+		ImGui::SameLine(ComponentProperty::g_column); _Widget_Properties::cameraButtonColorPicker->Update();
 
 		// Projection
 		ImGui::Text("Projection");
@@ -892,7 +892,7 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 		if (fov != camera->GetFOV_Horizontal_Deg())														camera->SetFOV_Horizontal_Deg(fov);
 		if (nearPlane != camera->GetNearPlane())														camera->SetNearPlane(nearPlane);
 		if (farPlane != camera->GetFarPlane())															camera->SetFarPlane(farPlane);
-		if (WidgetProperties_Internal::cameraButtonColorPicker->GetColor() != camera->GetClearColor())	camera->SetClearColor(WidgetProperties_Internal::cameraButtonColorPicker->GetColor());
+		if (_Widget_Properties::cameraButtonColorPicker->GetColor() != camera->GetClearColor())	camera->SetClearColor(_Widget_Properties::cameraButtonColorPicker->GetColor());
 		//===========================================================================================================================================
 	}
 	ComponentProperty::End();
@@ -924,7 +924,7 @@ void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audioSource)
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Audio))
 		{
 			audioClipName	= FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data));
-			auto audioClip	= WidgetProperties_Internal::resourceManager->Load<AudioClip>(get<const char*>(payload->data));
+			auto audioClip	= _Widget_Properties::resourceManager->Load<AudioClip>(get<const char*>(payload->data));
 			audioSource->SetAudioClip(audioClip, false);
 		}
 
@@ -1088,7 +1088,7 @@ void Widget_Properties::Drop_AutoAddComponents()
 {
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
 	{
-		if (auto scriptComponent = WidgetProperties_Internal::actorInspected.lock()->AddComponent<Script>().lock())
+		if (auto scriptComponent = _Widget_Properties::actorInspected.lock()->AddComponent<Script>().lock())
 		{
 			scriptComponent->SetScript(get<const char*>(payload->data));
 		}

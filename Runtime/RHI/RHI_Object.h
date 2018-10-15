@@ -32,7 +32,7 @@ namespace Directus
 	{
 	public:
 		RHI_Object() { m_ID = GENERATE_GUID; }
-		unsigned int RHI_GetID() { return m_ID; }
+		unsigned int RHI_GetID() const { return m_ID; }
 	private:
 		unsigned int m_ID = 0;
 	};
