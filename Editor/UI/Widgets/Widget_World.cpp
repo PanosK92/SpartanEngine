@@ -200,12 +200,16 @@ void Widget_World::Tree_AddActor(Actor* actor)
 
 void Widget_World::HandleClicking()
 {
+	bool isWindowHovered	= ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+	bool leftClick			= ImGui::IsMouseClicked(0);
+	bool rightClick			= ImGui::IsMouseClicked(1);
+
 	// Since we are handling clicking manually, we must ensure we are inside the window
-	if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+	if (!isWindowHovered)
 		return;	
 
-	// Left click on item - Don't selected yet
-	if (ImGui::IsMouseClicked(0) && SceneHelper::g_actorHovered)
+	// Left click on item - Don't select yet
+	if (leftClick && SceneHelper::g_actorHovered)
 	{
 		SceneHelper::g_actorClicked	= SceneHelper::g_actorHovered;
 	}
@@ -222,7 +226,7 @@ void Widget_World::HandleClicking()
 	}
 
 	// Clicking on empty space - Clear selection
-	if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !SceneHelper::g_actorHovered)
+	if ((leftClick || rightClick) && !SceneHelper::g_actorHovered)
 	{
 		SetSelectedActor(g_actorEmpty);
 	}
