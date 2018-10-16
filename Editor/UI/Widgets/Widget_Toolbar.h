@@ -23,23 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======
 #include "Widget.h"
-#include <vector>
 //=================
-
-//= FORWARD DECLARATIONS =
-class Widget_Profiler;
-//========================
 
 class Widget_Toolbar : public Widget
 {
 public:
-	Widget_Toolbar();
-	void Initialize(Directus::Context* context) override;
+	Widget_Toolbar(Directus::Context* context);
 	void Begin() override;
 	void Tick(float deltaTime) override;
 
 private:
 	void ShowRendererOptions();
-
-	std::shared_ptr<Widget_Profiler> m_profiler;
 };

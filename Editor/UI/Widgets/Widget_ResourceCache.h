@@ -19,36 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+#pragma once
+
+//= INCLUDES ======
 #include "Widget.h"
-#include "../../ImGui/imgui.h"
-#include "../../ImGui/imgui_internal.h"
-//=====================================
+//=================
 
-//= NAMESPACES ==========
-using namespace Directus;
-//=======================
-
-void Widget::Initialize(Context* context)
+class Widget_ResourceCache : public Widget
 {
-	m_windowFlags	= ImGuiWindowFlags_NoCollapse;
-	m_context		= context;
-	m_xMin			= 0;
-	m_yMin			= 0;
-	m_xMax			= FLT_MAX;
-	m_yMax			= FLT_MAX;
-}
-
-void Widget::Begin()
-{
-	ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSizeConstraints(ImVec2(m_xMin, m_yMin), ImVec2(m_xMax, m_yMax));
-	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
-}
-
-void Widget::End()
-{
-	m_window = ImGui::GetCurrentWindow();
-	m_height = ImGui::GetWindowHeight();
-	ImGui::End();
-}
+public:
+	Widget_ResourceCache(Directus::Context* context);
+	void Tick(float deltaTime) override;
+};

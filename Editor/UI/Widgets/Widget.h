@@ -21,39 +21,54 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ==========================
 #include <string>
-//===============
+#include "../../ImGui/imgui.h"
+#include "../../ImGui/imgui_internal.h"
+//=====================================
 
-struct ImGuiWindow;
 namespace Directus	{ class Context; }
 
 class Widget
 {
 public:
+	Widget(Directus::Context* context) { m_context = context; }
 	virtual ~Widget() {}
-	virtual void Initialize(Directus::Context* context);
-	virtual void Begin();
-	virtual void Tick(float deltaTime) = 0;
-	virtual void End();
+
+	virtual void Begin()
+	{
+		ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSizeConstraints(ImVec2(m_xMin, m_yMin), ImVec2(m_xMax, m_yMax));
+		ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
+	}
+
+	virtual void Tick(float deltaTime = 0.0f) = 0;
+
+	virtual void End()
+	{
+		m_window = ImGui::GetCurrentWindow();
+		m_height = ImGui::GetWindowHeight();
+		ImGui::End();
+	}
 
 	bool IsWindow()					{ return m_isWindow; }
-	bool GetVisible()				{ return m_isVisible; }
+	bool& GetVisible()				{ return m_isVisible; }
 	void SetVisible(bool isVisible) { m_isVisible = isVisible; }
 	float GetHeight()				{ return m_height; }
 	ImGuiWindow* GetWindow()		{ return m_window; }
 	const std::string& GetTitle()	{ return m_title; }
 
 protected:
+	bool m_isVisible	= false;
+	bool m_isWindow		= true;	
+	int m_windowFlags	= ImGuiWindowFlags_NoCollapse;
+	float m_xMin		= 0;
+	float m_xMax		= FLT_MAX;
+	float m_yMin		= 0;
+	float m_yMax		= FLT_MAX;
+	float m_height		= 0;
+
 	Directus::Context* m_context = nullptr;
-	bool m_isVisible = false;
-	bool m_isWindow = true;
 	std::string m_title;
-	int m_windowFlags = 0;
-	float m_xMin = 0;
-	float m_xMax = 0;
-	float m_yMin = 0;
-	float m_yMax = 0;
-	float m_height = 0;
 	ImGuiWindow* m_window;
 };

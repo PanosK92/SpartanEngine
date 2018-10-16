@@ -58,16 +58,10 @@ namespace SceneHelper
 	static Actor* g_actorClicked	= nullptr;
 }
 
-Widget_World::Widget_World()
+Widget_World::Widget_World(Context* context) : Widget(context)
 {
 	m_title					= "World";
-	m_context				= nullptr;
 	SceneHelper::g_scene	= nullptr;
-}
-
-void Widget_World::Initialize(Context* context)
-{
-	Widget::Initialize(context);
 
 	SceneHelper::g_engine	= m_context->GetSubsystem<Engine>();
 	SceneHelper::g_scene	= m_context->GetSubsystem<World>();

@@ -19,11 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ====================
 #include "Widget_MenuBar.h"
 #include "../FileDialog.h"
 #include "Core/Settings.h"
-//=========================
+#include "Widget_ResourceCache.h"
+#include "Widget_Profiler.h"
+//===============================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -32,27 +34,26 @@ using namespace Directus;
 
 namespace _Widget_MenuBar
 {
-	static bool g_showAboutWindow		= false;
-	static bool g_showMetricsWindow		= false;
-	static bool g_showStyleEditor		= false;
-	static bool g_fileDialogVisible		= false;
-	static bool g_showResourceCache		= false;
-	static string g_fileDialogSelection;
+	static bool g_showAboutWindow	= false;
+	static bool g_fileDialogVisible	= false;
+	static bool imgui_metrics = false;
+	static bool imgui_style	= false;
+	static bool imgui_demo	= false;
+
 	ResourceManager* g_resourceManager	= nullptr;
 	World* g_scene						= nullptr;
+	static string g_fileDialogSelection;
 }
 
-Widget_MenuBar::Widget_MenuBar()
+Widget_MenuBar::Widget_MenuBar(Directus::Context* context) : Widget(context)
 {
 	m_isWindow = false;
-}
 
-void Widget_MenuBar::Initialize(Context* context)
-{
-	Widget::Initialize(context);
-	_Widget_MenuBar::g_resourceManager = m_context->GetSubsystem<ResourceManager>();
-	_Widget_MenuBar::g_scene = m_context->GetSubsystem<World>();
-	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
+	m_profiler		= make_unique<Widget_Profiler>(context);
+	m_resourceCache = make_unique<Widget_ResourceCache>(context);
+
+	_Widget_MenuBar::g_resourceManager	= m_context->GetSubsystem<ResourceManager>();
+	_Widget_MenuBar::g_scene			= m_context->GetSubsystem<World>();
 }
 
 void Widget_MenuBar::Tick(float deltaTime)
@@ -93,9 +94,16 @@ void Widget_MenuBar::Tick(float deltaTime)
 
 		if (ImGui::BeginMenu("Tools"))
 		{
-			ImGui::MenuItem("Metrics", nullptr, &_Widget_MenuBar::g_showMetricsWindow);
-			ImGui::MenuItem("Style", nullptr, &_Widget_MenuBar::g_showStyleEditor);
-			ImGui::MenuItem("Resource Cache Viewer", nullptr, &_Widget_MenuBar::g_showResourceCache);
+			ImGui::MenuItem("Resource Cache Viewer", nullptr, &m_resourceCache->GetVisible());
+			ImGui::MenuItem("Profiler", nullptr, &m_profiler->GetVisible());
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("View"))
+		{
+			ImGui::MenuItem("Metrics",	nullptr, &_Widget_MenuBar::imgui_metrics);
+			ImGui::MenuItem("Style",	nullptr, &_Widget_MenuBar::imgui_style);
+			ImGui::MenuItem("Demo",		nullptr, &_Widget_MenuBar::imgui_demo);
 			ImGui::EndMenu();
 		}
 
@@ -108,11 +116,25 @@ void Widget_MenuBar::Tick(float deltaTime)
 		ImGui::EndMainMenuBar();
 	}
 
-	if (_Widget_MenuBar::g_showMetricsWindow)	{ ImGui::ShowMetricsWindow(); }
-	if (_Widget_MenuBar::g_showStyleEditor)		{ ImGui::ShowStyleEditor(); }
+	if (_Widget_MenuBar::imgui_metrics)			{ ImGui::ShowMetricsWindow(); }
+	if (_Widget_MenuBar::imgui_style)			{ ImGui::Begin("Style Editor"); ImGui::ShowStyleEditor(); ImGui::End(); }
+	if (_Widget_MenuBar::imgui_demo)			{ ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo); }
 	if (_Widget_MenuBar::g_fileDialogVisible)	{ ImGui::SetNextWindowFocus(); ShowFileDialog(); }
 	if (_Widget_MenuBar::g_showAboutWindow)		{ ImGui::SetNextWindowFocus(); ShowAboutWindow(); }
-	if (_Widget_MenuBar::g_showResourceCache)	{ ImGui::SetNextWindowFocus(); ShowResourceCache(); }
+
+	if (m_profiler->GetVisible())
+	{
+		m_profiler->Begin();
+		m_profiler->Tick(deltaTime);
+		m_profiler->End();
+	}
+
+	if (m_resourceCache->GetVisible())
+	{
+		m_resourceCache->Begin();
+		m_resourceCache->Tick(deltaTime);
+		m_resourceCache->End();
+	}
 }
 
 void Widget_MenuBar::ShowFileDialog()
@@ -209,57 +231,6 @@ void Widget_MenuBar::ShowAboutWindow()
 	ImGui::BulletText("PugiXML");
 	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionPugiXML).c_str()); ImGui::SameLine(columnB);
 	ImGui::PushID("Button_PugiXML");  if (ImGui::Button("GitHub")) { FileSystem::OpenDirectoryWindow("https://github.com/zeux/pugixml"); } ImGui::PopID();
-
-	ImGui::End();
-}
-
-void Widget_MenuBar::ShowResourceCache()
-{
-	auto resources = m_context->GetSubsystem<ResourceManager>()->GetResourceAll();
-	auto totalMemoryUsage =  m_context->GetSubsystem<ResourceManager>()->GetMemoryUsage() / 1000.0f / 1000.0f;
-
-	ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Resource Cache Viewer", &_Widget_MenuBar::g_showResourceCache, ImGuiWindowFlags_HorizontalScrollbar);
-
-	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", (int)resources.size(), (int)totalMemoryUsage);
-	ImGui::Separator();
-	ImGui::Columns(5, "##MenuBar::ShowResourceCacheColumns");
-	ImGui::Text("Type"); ImGui::NextColumn();
-	ImGui::Text("ID"); ImGui::NextColumn();
-	ImGui::Text("Name"); ImGui::NextColumn();
-	ImGui::Text("Path"); ImGui::NextColumn();
-	ImGui::Text("Size"); ImGui::NextColumn();
-	ImGui::Separator();
-	for (const auto& resource : resources)
-	{
-		if (!resource)
-			continue;
-
-		// Type
-		ImGui::Text(resource->GetResourceType_cstr());					ImGui::NextColumn();
-
-		// ID
-		ImGui::Text(to_string(resource->Resource_GetID()).c_str());		ImGui::NextColumn();
-
-		// Name
-		ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();
-
-		// Path
-		ImGui::Text(resource->GetResourceFilePath().c_str());			ImGui::NextColumn();
-
-		// Memory
-		auto memory = (unsigned int)(resource->GetMemoryUsage() / 1000.0f); // default in Kb
-		if (memory <= 1024)
-		{
-			ImGui::Text((to_string(memory) + string(" Kb")).c_str());	ImGui::NextColumn();
-		}
-		else
-		{
-			memory = (unsigned int)(memory / 1000.0f); // turn into Mb
-			ImGui::Text((to_string(memory) + string(" Mb")).c_str());	ImGui::NextColumn();
-		}		
-	}
-	ImGui::Columns(1);
 
 	ImGui::End();
 }

@@ -1,12 +1,11 @@
 #pragma once
 
-//= INCLUDES ========
+//= INCLUDES =====================
 #include <string>
 #include <Windows.h>
 #include <functional>
 #include "FileSystem/FileSystem.h"
-
-//===================
+//================================
 
 namespace Window
 {

@@ -56,26 +56,17 @@ namespace Widget_Toolbar_Options
 	static const char* g_rendererView = g_rendererViews[g_rendererViewInt];
 }
 
-Widget_Toolbar::Widget_Toolbar()
+Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 {
-	
-}
-
-void Widget_Toolbar::Initialize(Context* context)
-{
-	Widget::Initialize(context);
 	m_title = "Toolbar";
-	m_windowFlags = ImGuiWindowFlags_NoCollapse | 
-		ImGuiWindowFlags_NoResize				| 
-		ImGuiWindowFlags_NoMove					| 
-		ImGuiWindowFlags_NoSavedSettings		| 
-		ImGuiWindowFlags_NoScrollbar			|
+	m_windowFlags = ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoScrollbar |
 		ImGuiWindowFlags_NoTitleBar;
 
 	Engine::EngineMode_Disable(Engine_Game);
-
-	m_profiler = make_shared<Widget_Profiler>();
-	m_profiler->Initialize(m_context);
 }
 
 void Widget_Toolbar::Begin()
@@ -108,20 +99,10 @@ void Widget_Toolbar::Tick(float deltaTime)
 	}
 	ImGui::PopStyleColor();
 
-	// Profiler button
-	ImGui::SameLine();
-	ImGui::PushStyleColor(ImGuiCol_Button, m_profiler->GetVisible() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Profiler, Widget_Toolbar_Options::g_buttonSize))
-	{
-		m_profiler->SetVisible(true);
-	}
-	ImGui::PopStyleColor();
-
 	ImGui::PopStyleVar();
 
 	// Visibility
 	if (Widget_Toolbar_Options::g_showRendererOptions) ShowRendererOptions();
-	if (m_profiler->GetVisible()) m_profiler->Tick(deltaTime);
 }
 
 void Widget_Toolbar::ShowRendererOptions()

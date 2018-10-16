@@ -42,7 +42,7 @@ namespace Widget_ConsoleOptions
 	static ImGuiTextFilter g_logFilter;
 }
 
-Widget_Console::Widget_Console()
+Widget_Console::Widget_Console(Context* context) : Widget(context)
 {
 	m_title = "Console";
 

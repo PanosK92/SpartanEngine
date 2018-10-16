@@ -66,7 +66,7 @@ void Engine_Initialize(HWND windowHandle, HINSTANCE windowInstance, int windowWi
 	g_input			= g_engineContext->GetSubsystem<Input>();
 	Directus_SetOutputFrameSize(windowWidth, windowHeight);
 
-	// 3. Initialize the editor now that we have everything it needs (console handle, initialized D3D11 device)
+	// 3. Initialize the editor now that we have everything it needs
 	g_editor->Initialize(g_engineContext, windowHandle);
 }
 

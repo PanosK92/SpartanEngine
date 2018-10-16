@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <queue>
 #include "../Core/SubSystem.h"
+#include "../Logging/Log.h"
 //============================
 
 namespace Directus
@@ -62,6 +63,13 @@ namespace Directus
 		template <typename Function>
 		void AddTask(Function&& function)
 		{
+			if (m_threadCount == 0)
+			{
+				LOG_WARNING("Threading::AddTask: No available threads, function will execute in the same thread");
+				function();
+				return;
+			}
+
 			// Lock tasks mutex
 			std::unique_lock<std::mutex> lock(m_tasksMutex);
 
