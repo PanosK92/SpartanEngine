@@ -141,20 +141,16 @@ namespace ComponentProperty
 	}
 }
 
-Widget_Properties::Widget_Properties()
+Widget_Properties::Widget_Properties(Context* context) : Widget(context)
 {
 	m_title = "Properties";
 	_Widget_Properties::lightButtonColorPicker		= make_unique<ButtonColorPicker>("Light Color Picker");
 	_Widget_Properties::materialButtonColorPicker	= make_unique<ButtonColorPicker>("Material Color Picker");
 	_Widget_Properties::cameraButtonColorPicker		= make_unique<ButtonColorPicker>("Camera Color Picker");
-}
 
-void Widget_Properties::Initialize(Context* context)
-{
-	Widget::Initialize(context);
-	_Widget_Properties::resourceManager = context->GetSubsystem<ResourceManager>();
-	_Widget_Properties::scene			= context->GetSubsystem<World>();
-	m_xMin = 500; // min width
+	_Widget_Properties::resourceManager = m_context->GetSubsystem<ResourceManager>();
+	_Widget_Properties::scene			= m_context->GetSubsystem<World>();
+	m_xMin								= 500; // min width
 }
 
 void Widget_Properties::Tick(float deltaTime)

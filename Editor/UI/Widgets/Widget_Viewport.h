@@ -28,9 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Widget_Viewport : public Widget
 {
 public:
-	Widget_Viewport();
-
-	void Initialize(Directus::Context* context) override;	
+	Widget_Viewport(Directus::Context* context);
 	void Begin() override;
 	void Tick(float deltaTime) override;
 

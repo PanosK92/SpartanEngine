@@ -42,6 +42,7 @@ public:
 	void Shutdown();
 
 private:
+	void AddWidgets();
 	void DockSpace_Begin();
 	void DockSpace_End();
 	void DrawEditor(float deltaTime);

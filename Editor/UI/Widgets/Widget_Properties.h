@@ -46,8 +46,7 @@ namespace Directus
 class Widget_Properties : public Widget
 {
 public:
-	Widget_Properties();
-	void Initialize(Directus::Context* context) override;
+	Widget_Properties(Directus::Context* context);
 	void Tick(float deltaTime) override;
 
 	static void Inspect(std::weak_ptr<Directus::Actor> actor);

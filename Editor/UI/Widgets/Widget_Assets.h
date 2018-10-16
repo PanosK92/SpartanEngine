@@ -31,8 +31,7 @@ class FileDialog;
 class Widget_Assets : public Widget
 {
 public:
-	Widget_Assets();
-	void Initialize(Directus::Context* context) override;
+	Widget_Assets(Directus::Context* context);
 	void Tick(float deltaTime) override;
 
 private:

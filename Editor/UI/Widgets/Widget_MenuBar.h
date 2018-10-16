@@ -27,20 +27,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=================
 
 class FileDialog;
+class Widget_Profiler;
+class Widget_ResourceCache;
+namespace Directus { class Context; }
 
 class Widget_MenuBar : public Widget
 {
 public:
-	Widget_MenuBar();
-	void Initialize(Directus::Context* context) override;
+	Widget_MenuBar(Directus::Context* context);
 	void Tick(float deltaTime) override;
 
 private:
 	void ShowFileDialog();
 	void ShowAboutWindow();
 
-	// DEBUG
-	void ShowResourceCache();
+	// WIDGETS
+	std::unique_ptr<Widget_Profiler> m_profiler;
+	std::unique_ptr<Widget_ResourceCache> m_resourceCache;
 
+	// Widget? Have to make it a proper one
 	std::unique_ptr<FileDialog> m_fileDialog;
 };

@@ -60,7 +60,7 @@ private:
 class Widget_Console : public Widget
 {
 public:
-	Widget_Console();
+	Widget_Console(Directus::Context* context);
 	void Tick(float deltaTime) override;
 	void AddLogPackage(LogPackage package);
 	void Clear();

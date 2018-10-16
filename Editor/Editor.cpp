@@ -53,20 +53,7 @@ namespace _Editor
 
 Editor::Editor()
 {
-	m_widgets.emplace_back(make_unique<Widget_MenuBar>());
-	_Editor::widget_menuBar = m_widgets.back().get();
-
-	m_widgets.emplace_back(make_unique<Widget_Toolbar>());
-	_Editor::widget_toolbar = m_widgets.back().get();
-
-	m_widgets.emplace_back(make_unique<Widget_Properties>());
-	m_widgets.emplace_back(make_unique<Widget_Console>());
-
-	m_widgets.emplace_back(make_unique<Widget_World>());
-	_Editor::widget_world = m_widgets.back().get();
-
-	m_widgets.emplace_back(make_unique<Widget_Assets>());
-	m_widgets.emplace_back(make_unique<Widget_Viewport>());
+	
 }
 
 Editor::~Editor()
@@ -78,6 +65,8 @@ bool Editor::Initialize(Context* context, void* windowHandle)
 {
 	m_context	= context;
 	m_rhiDevice	= context->GetSubsystem<Renderer>()->GetRHIDevice();
+
+	AddWidgets();
 
 	if (!m_rhiDevice->GetDevice<ID3D11Device>() || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 	{
@@ -97,8 +86,7 @@ bool Editor::Initialize(Context* context, void* windowHandle)
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsNoTaskBarIcon;
 	io.ConfigResizeWindowsFromEdges = true;
-	ApplyStyle();
-
+	
 	// ImGui backend setup
 	ImGui_ImplWin32_Init(windowHandle);
 	ImGui_ImplDX11_Init(m_rhiDevice->GetDevice<ID3D11Device>(), m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>());
@@ -107,11 +95,8 @@ bool Editor::Initialize(Context* context, void* windowHandle)
 	IconProvider::Get().Initialize(context);
 	EditorHelper::Get().Initialize(context);
 
-	// Widget initialization
-	for (auto& widget : m_widgets)
-	{
-		widget->Initialize(context);
-	}
+	// Apply style
+	ApplyStyle();
 
 	m_initialized = true;
 	return true;
@@ -164,6 +149,24 @@ void Editor::Shutdown()
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+}
+
+void Editor::AddWidgets()
+{
+	m_widgets.emplace_back(make_unique<Widget_MenuBar>(m_context));
+	_Editor::widget_menuBar = m_widgets.back().get();
+
+	m_widgets.emplace_back(make_unique<Widget_Toolbar>(m_context));
+	_Editor::widget_toolbar = m_widgets.back().get();
+
+	m_widgets.emplace_back(make_unique<Widget_Properties>(m_context));
+	m_widgets.emplace_back(make_unique<Widget_Console>(m_context));
+
+	m_widgets.emplace_back(make_unique<Widget_World>(m_context));
+	_Editor::widget_world = m_widgets.back().get();
+
+	m_widgets.emplace_back(make_unique<Widget_Assets>(m_context));
+	m_widgets.emplace_back(make_unique<Widget_Viewport>(m_context));
 }
 
 void Editor::DockSpace_Begin()
