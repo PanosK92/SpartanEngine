@@ -204,7 +204,24 @@ void Editor::DockSpace_Begin()
 	ImGuiID dockspace_id = ImGui::GetID(_Editor::dockspaceName);
 	if (!ImGui::DockBuilderGetNode(dockspace_id))
 	{
-		ApplyLayout(dockspace_id);
+		// Reset/clear current docking state
+		ImGui::DockBuilderRemoveNode(dockspace_id);
+		ImGui::DockBuilderAddNode(dockspace_id, ImGui::GetMainViewport()->Size);
+
+		// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
+		ImGuiID dock_main_id		= dockspace_id;
+		ImGuiID dock_right_id		= ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.2f, nullptr, &dock_main_id);
+		ImGuiID dock_rightDown_id	= ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down, 0.6f, nullptr, &dock_right_id);
+		ImGuiID dock_down_id		= ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.3f, nullptr, &dock_main_id);
+		ImGuiID dock_downRight_id	= ImGui::DockBuilderSplitNode(dock_down_id, ImGuiDir_Right, 0.6f, nullptr, &dock_down_id);
+
+		// Dock windows	
+		ImGui::DockBuilderDockWindow("World",		dock_right_id);
+		ImGui::DockBuilderDockWindow("Properties",	dock_rightDown_id);
+		ImGui::DockBuilderDockWindow("Console",		dock_down_id);
+		ImGui::DockBuilderDockWindow("Assets",		dock_downRight_id);
+		ImGui::DockBuilderDockWindow("Viewport",	dock_main_id);
+		ImGui::DockBuilderFinish(dock_main_id);
 	}
 	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruDockspace);
 }
@@ -321,25 +338,4 @@ void Editor::ApplyStyle()
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->AddFontFromFileTTF("Standard Assets\\Fonts\\CalibriBold.ttf", fontSize);
-}
-
-void Editor::ApplyLayout(unsigned int rootNodeID)
-{
-	ImGui::DockBuilderRemoveNode(rootNodeID);
-	ImGui::DockBuilderAddNode(rootNodeID, ImGui::GetMainViewport()->Size);
-
-	// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
-	ImGuiID spliterID_right;	
-	ImGuiID nodeID_right	= ImGui::DockBuilderSplitNode(rootNodeID,	ImGuiDir_Right, 0.2f, nullptr, &spliterID_right);
-	ImGuiID spliterID_down;	
-	ImGuiID nodeID_down		= ImGui::DockBuilderSplitNode(spliterID_right,	ImGuiDir_Down,	0.3f, nullptr, &spliterID_down);
-
-	// Dock windows	
-	ImGui::DockBuilderDockWindow("World",		nodeID_right);
-	ImGui::DockBuilderDockWindow("Properties",	nodeID_right);
-	ImGui::DockBuilderDockWindow("Console",		nodeID_down);
-	ImGui::DockBuilderDockWindow("Assets",		nodeID_down);
-	ImGui::DockBuilderDockWindow("Viewport",	rootNodeID);
-
-	ImGui::DockBuilderFinish(rootNodeID);
 }
