@@ -51,6 +51,7 @@ Widget_MenuBar::Widget_MenuBar(Directus::Context* context) : Widget(context)
 
 	m_profiler		= make_unique<Widget_Profiler>(context);
 	m_resourceCache = make_unique<Widget_ResourceCache>(context);
+	m_fileDialog	= make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
 
 	_Widget_MenuBar::g_resourceManager	= m_context->GetSubsystem<ResourceManager>();
 	_Widget_MenuBar::g_scene			= m_context->GetSubsystem<World>();
