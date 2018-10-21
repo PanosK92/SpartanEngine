@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Engine.h"
 #include "Settings.h"
 #include <thread>
+#include "../Logging/Log.h"
 //================
 
 //= NAMESPACES ========
@@ -35,48 +36,33 @@ namespace Directus
 {
 	Timer::Timer(Context* context) : Subsystem(context)
 	{
-		m_deltaTimeSec	= 0.0f;
+		time_a			= high_resolution_clock::now();
+		time_b			= high_resolution_clock::now();
 		m_deltaTimeMs	= 0.0f;
-		m_firstRun		= true;
-		a				= system_clock::now();
-		b				= system_clock::now();
 	}
 
 	void Timer::Tick()
 	{
-		auto currentTime				= high_resolution_clock::now();
-		duration<double, milli> delta	= currentTime - m_previousTime;
-		m_previousTime					= currentTime;
-		m_deltaTimeMs					= (float)delta.count();
-		m_deltaTimeSec					= (float)(delta.count() / 1000.0);
-
-		if (m_firstRun)
+		// Compute work time
+		time_a								= high_resolution_clock::now();
+		duration<double, milli> time_work	= time_a - time_b;
+		
+		// Compute sleep time (fps limiting)
+		bool isEditor		= !Engine::EngineMode_IsSet(Engine_Game);
+		auto maxFPS_editor	= (double)Settings::Get().GetMaxFPSEditor();
+		auto maxFPS_game	= (double)Settings::Get().GetMaxFPSGame();
+		double maxFPS		= isEditor ? maxFPS_editor : maxFPS_game;
+		double maxMs		= (1.0 / maxFPS) * 1000;
+		if (time_work.count() < maxMs)
 		{
-			m_deltaTimeMs	= 0.0f;
-			m_deltaTimeSec	= 0.0f;
-			m_firstRun		= false;
+			duration<double, milli> time_ms(maxMs - time_work.count());
+			auto time_ms_duration = duration_cast<milliseconds>(time_ms);
+			this_thread::sleep_for(milliseconds(time_ms_duration.count()));
 		}
 
-		// FPS LIMIT
-		{
-			bool isEditor		= !Engine::EngineMode_IsSet(Engine_Game);
-			float maxFPS_editor = Settings::Get().GetMaxFPSEditor();
-			float maxFPS_game	= Settings::Get().GetMaxFPSGame();
-			float maxFPS		= isEditor ? maxFPS_editor : maxFPS_game;
-			float maxMs			= (1.0f / maxFPS) * 1000;
-
-			// Maintain designated frequency
-			a = system_clock::now();
-			duration<double, std::milli> work_time = a - b;
-
-			if (work_time.count() < maxMs)
-			{
-				duration<double, std::milli> delta_ms(maxMs - work_time.count());
-				auto delta_ms_duration = std::chrono::duration_cast<milliseconds>(delta_ms);
-				std::this_thread::sleep_for(milliseconds(delta_ms_duration.count()));
-			}
-
-			b = system_clock::now();
-		}
+		// Compute delta
+		time_b								= high_resolution_clock::now();
+		duration<double, milli> time_sleep	= time_b - time_a;
+		m_deltaTimeMs						= (time_work + time_sleep).count();
 	}
 }
