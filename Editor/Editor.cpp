@@ -53,7 +53,8 @@ namespace _Editor
 
 Editor::Editor()
 {
-	
+	// Add console widget early so it picks up the engine's initialization output
+	m_widgets.emplace_back(make_unique<Widget_Console>(nullptr));
 }
 
 Editor::~Editor()
@@ -153,20 +154,18 @@ void Editor::Shutdown()
 
 void Editor::AddWidgets()
 {
+	m_widgets.emplace_back(make_unique<Widget_Assets>(m_context));
+	m_widgets.emplace_back(make_unique<Widget_Viewport>(m_context));
+	m_widgets.emplace_back(make_unique<Widget_Properties>(m_context));
+
 	m_widgets.emplace_back(make_unique<Widget_MenuBar>(m_context));
 	_Editor::widget_menuBar = m_widgets.back().get();
 
 	m_widgets.emplace_back(make_unique<Widget_Toolbar>(m_context));
 	_Editor::widget_toolbar = m_widgets.back().get();
 
-	m_widgets.emplace_back(make_unique<Widget_Properties>(m_context));
-	m_widgets.emplace_back(make_unique<Widget_Console>(m_context));
-
 	m_widgets.emplace_back(make_unique<Widget_World>(m_context));
 	_Editor::widget_world = m_widgets.back().get();
-
-	m_widgets.emplace_back(make_unique<Widget_Assets>(m_context));
-	m_widgets.emplace_back(make_unique<Widget_Viewport>(m_context));
 }
 
 void Editor::DockSpace_Begin()
