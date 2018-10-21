@@ -88,7 +88,7 @@ namespace Directus
 		std::string m_versionPugiXML = "1.90";
 		std::string m_versionVulkan;
 
-	private:	
+	private:
 		Math::Vector2 m_viewport;
 		Math::Vector2 m_resolution			= Math::Vector2(1920, 1080);
 		unsigned int m_vsync				= (int)Off;
