@@ -76,17 +76,17 @@ float4 ToLinear(float4 color)
 
 float3 ToLinear(float3 color)
 {
-	return pow(color, 2.2f);
+	return pow(abs(color), 2.2f);
 }
 
 float4 ToGamma(float4 color)
 {
-	return pow(color, 1.0f / 2.2f); 
+	return pow(abs(color), 1.0f / 2.2f); 
 }
 
 float3 ToGamma(float3 color)
 {
-	return pow(color, 1.0f / 2.2f); 
+	return pow(abs(color), 1.0f / 2.2f); 
 }
 
 /*------------------------------------------------------------------------------

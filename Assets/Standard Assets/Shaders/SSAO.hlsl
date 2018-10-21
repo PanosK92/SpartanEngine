@@ -109,7 +109,7 @@ float SSAO(float2 texCoord, SamplerState samplerState)
 	[unroll(kernelSize)]
     for( int i = 0; i < kernelSize; i++)
     {
-		float2 coord1 = (reflect(sampleKernel[i], randNormal) * float2(radius_depth, radius_depth)).xy;
+		float2 coord1 = reflect(sampleKernel[i], randNormal).xy * float2(radius_depth, radius_depth);
 		float2 coord2 = float2(coord1.x - coord1.y, coord1.x + coord1.y);
 
 		float acc = 0.0f;
