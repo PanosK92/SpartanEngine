@@ -44,8 +44,8 @@ namespace Directus
 		m_y					= 0;
 		m_width				= 0;
 		m_height			= 0;
-		m_resolutionWidth	= Settings::Get().GetResolutionWidth();
-		m_resolutionHeight	= Settings::Get().GetResolutionHeight();
+		m_resolutionWidth	= Settings::Get().Resolution_GetWidth();
+		m_resolutionHeight	= Settings::Get().Resolution_GetHeight();
 	}
 
 	Rectangle::~Rectangle()
@@ -60,8 +60,8 @@ namespace Directus
 			m_y == y && 
 			m_width == width && 
 			m_height == height && 
-			m_resolutionWidth == Settings::Get().GetResolutionWidth() && 
-			m_resolutionHeight == Settings::Get().GetResolutionHeight()
+			m_resolutionWidth == Settings::Get().Resolution_GetWidth() && 
+			m_resolutionHeight == Settings::Get().Resolution_GetHeight()
 			)
 			return true;
 
@@ -69,8 +69,8 @@ namespace Directus
 		m_y = y;
 		m_width = width;
 		m_height = height;
-		m_resolutionWidth = Settings::Get().GetResolutionWidth();
-		m_resolutionHeight = Settings::Get().GetResolutionHeight();
+		m_resolutionWidth = Settings::Get().Resolution_GetWidth();
+		m_resolutionHeight = Settings::Get().Resolution_GetHeight();
 
 		// Compute screen coordinates
 		float left = -m_resolutionWidth * 0.5f + m_x;

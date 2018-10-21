@@ -148,7 +148,7 @@ namespace Directus
 		buffer->spotLightCount	= (float)spotIndex;
 		buffer->nearPlane		= camera->GetNearPlane();
 		buffer->farPlane		= camera->GetFarPlane();
-		buffer->viewport		= Settings::Get().GetResolution();
+		buffer->viewport		= Settings::Get().Resolution_Get();
 		buffer->padding			= Vector2::Zero;
 
 		// Unmap buffer

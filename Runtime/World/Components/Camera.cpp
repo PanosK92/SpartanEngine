@@ -63,9 +63,9 @@ namespace Directus
 
 	void Camera::OnTick()
 	{
-		if (m_lastKnownViewport != Settings::Get().GetViewport())
+		if (m_lastKnownViewport != Settings::Get().Viewport_Get())
 		{
-			m_lastKnownViewport = Settings::Get().GetViewport();
+			m_lastKnownViewport = Settings::Get().Viewport_Get();
 			m_isDirty = true;
 		}
 
@@ -196,7 +196,7 @@ namespace Directus
 
 	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
 	{
-		Vector2 viewport = Settings::Get().GetViewport();
+		Vector2 viewport = Settings::Get().Viewport_Get();
 
 		Vector3 localSpace = worldPoint * m_mView * m_mProjection;
 
@@ -208,7 +208,7 @@ namespace Directus
 
 	Vector3 Camera::ScreenToWorldPoint(const Vector2& point)
 	{
-		Vector2 viewport = Settings::Get().GetViewport();
+		Vector2 viewport = Settings::Get().Viewport_Get();
 
 		// Convert screen pixel to view space
 		float pointX = 2.0f		* point.x / viewport.x - 1.0f;
@@ -244,14 +244,14 @@ namespace Directus
 
 	void Camera::ComputeProjection()
 	{
-		Vector2 viewport	= Settings::Get().GetViewport();
+		Vector2 viewport	= Settings::Get().Viewport_Get();
 		float width			= viewport.x;
 		float height		= viewport.y;
 
 		if (m_projection == Projection_Perspective)
 		{
 			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.y / viewport.x)); 
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().GetAspectRatio(), m_nearPlane, m_farPlane);
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_nearPlane, m_farPlane);
 		}
 		else if (m_projection == Projection_Orthographic)
 		{

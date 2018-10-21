@@ -120,4 +120,30 @@ namespace Directus
 		LOGF_INFO("Settings::Initialize: Max fps: %f",				m_maxFPS_game);
 		LOGF_INFO("Settings::Initialize: Max threads: %d",			m_maxThreadCount);
 	}
+
+	void Settings::DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator)
+	{
+		m_displayModes.emplace_back(width, height, refreshRateNumerator, refreshRateDenominator);
+	}
+
+	const Directus::DisplayMode& Settings::DisplayMode_GetFastest()
+	{
+		DisplayMode& fastestMode = m_displayModes.front();
+		for (const auto& mode : m_displayModes)
+		{
+			if (fastestMode.refreshRate < mode.refreshRate)
+			{
+				fastestMode = mode;
+			}
+		}
+
+		return fastestMode;
+	}
+
+	void Settings::Gpu_Set(const std::string& name, unsigned int memory)
+	{
+		m_gpuName	= name;
+		m_gpuMemory = memory;
+		LOGF_INFO("Settings::SetGPU: %s (%d MB)", name.c_str(), memory);
+	}
 }

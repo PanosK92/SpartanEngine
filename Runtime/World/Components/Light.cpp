@@ -311,7 +311,7 @@ namespace Directus
 		}
 
 		// Create the shadow maps
-		m_shadowMapResolution	= Settings::Get().GetShadowMapResolution();
+		m_shadowMapResolution	= Settings::Get().Shadows_GetResolution();
 		auto rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 		for (unsigned int i = 0; i < m_shadowMapCount; i++)
 		{

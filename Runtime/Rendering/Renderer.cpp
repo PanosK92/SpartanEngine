@@ -110,7 +110,7 @@ namespace Directus
 		// Light gizmo icon rectangle
 		m_gizmoRectLight = make_unique<Rectangle>(m_context);
 
-		RenderTargets_Create(Settings::Get().GetResolutionWidth(), Settings::Get().GetResolutionHeight());
+		RenderTargets_Create(Settings::Get().Resolution_GetWidth(), Settings::Get().Resolution_GetHeight());
 
 		// SAMPLERS
 		{
@@ -250,7 +250,7 @@ namespace Directus
 	void Renderer::SetBackBufferAsRenderTarget(bool clear /*= true*/)
 	{
 		m_rhiDevice->Set_BackBufferAsRenderTarget();
-		m_rhiPipelineState->SetViewport((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight());
+		m_rhiPipelineState->SetViewport((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight());
 		m_rhiPipelineState->Bind();
 		if (clear) m_rhiDevice->ClearBackBuffer(m_camera ? m_camera->GetClearColor() : Vector4(0, 0, 0, 1));
 	}
@@ -282,7 +282,7 @@ namespace Directus
 			m_mV					= m_camera->GetViewMatrix();
 			m_mV_base				= m_camera->GetBaseViewMatrix();
 			m_mP_perspective		= m_camera->GetProjectionMatrix();
-			m_mP_orthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().GetResolutionWidth(), (float)Settings::Get().GetResolutionHeight(), m_nearPlane, m_farPlane);		
+			m_mP_orthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
 			m_wvp_perspective		= m_mV * m_mP_perspective;
 			m_wvp_baseOrthographic	= m_mV_base * m_mP_orthographic;
 			m_nearPlane				= m_camera->GetNearPlane();
@@ -352,14 +352,14 @@ namespace Directus
 		}
 
 		// Return if resolution already set
-		if (Settings::Get().GetResolution().x == width && Settings::Get().GetResolution().y == height)
+		if (Settings::Get().Resolution_Get().x == width && Settings::Get().Resolution_Get().y == height)
 			return;
 
 		// Make sure we are pixel perfect
 		width	-= (width	% 2 != 0) ? 1 : 0;
 		height	-= (height	% 2 != 0) ? 1 : 0;
 
-		Settings::Get().SetResolution(Vector2((float)width, (float)height));
+		Settings::Get().Resolution_Set(Vector2((float)width, (float)height));
 		RenderTargets_Create(width, height);
 		LOGF_INFO("Renderer::SetResolution: Resolution was set to %dx%d", width, height);
 	}
@@ -1295,7 +1295,7 @@ namespace Directus
 		// Performance metrics
 		if (m_flags & Render_PerformanceMetrics)
 		{
-			Vector2 textPos = Vector2(-(int)Settings::Get().GetViewportWidth() * 0.5f + 1.0f, (int)Settings::Get().GetViewportHeight() * 0.5f);
+			Vector2 textPos = Vector2(-(int)Settings::Get().Viewport_GetWidth() * 0.5f + 1.0f, (int)Settings::Get().Viewport_GetHeight() * 0.5f);
 			m_font->SetText(Profiler::Get().GetMetrics(), textPos);
 
 			m_rhiPipelineState->SetShader(m_shaderFont);

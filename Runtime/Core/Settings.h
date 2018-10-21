@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EngineDefs.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
+#include <vector>
 //==========================
 
 namespace Directus
@@ -34,6 +35,24 @@ namespace Directus
 		Off,
 		Every_VBlank,
 		Every_Second_VBlank
+	};
+
+	struct DisplayMode
+	{
+		DisplayMode(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator)
+		{
+			this->width						= width;
+			this->height					= height;
+			this->refreshRateNumerator		= refreshRateNumerator;
+			this->refreshRateDenominator	= refreshRateDenominator;
+			this->refreshRate				= (float)refreshRateNumerator / (float)refreshRateDenominator;
+		}
+
+		unsigned int width					= 0;
+		unsigned int height					= 0;
+		unsigned int refreshRateNumerator	= 0;
+		unsigned int refreshRateDenominator = 0;
+		float refreshRate					= 0;
 	};
 
 	class ENGINE_CLASS Settings
@@ -49,33 +68,41 @@ namespace Directus
 
 		void Initialize();
 
-		//= DISPLAY ============================================================================================================
-		unsigned int GetViewportWidth()								{ return (unsigned int)m_viewport.x; }
-		unsigned int GetViewportHeight()							{ return (unsigned int)m_viewport.y; }
-		const Math::Vector2& GetViewport()							{ return m_viewport; }
-		void SetViewport(unsigned int width, unsigned int height)	{ m_viewport = Math::Vector2((float)width, (float)height); }
+		//= VIEWPORT ===========================================================================================================
+		unsigned int Viewport_GetWidth()							{ return (unsigned int)m_viewport.x; }
+		unsigned int Viewport_GetHeight()							{ return (unsigned int)m_viewport.y; }
+		const Math::Vector2& Viewport_Get()							{ return m_viewport; }
+		void Viewport_Set(unsigned int width, unsigned int height)	{ m_viewport = Math::Vector2((float)width, (float)height); }
 		//======================================================================================================================
 
-		//= RESOLUTION ===================================================================================================
-		void SetResolution(int width, int height)			{ m_resolution = Math::Vector2((float)width, (float)height); }
-		void SetResolution(const Math::Vector2& resolution) { m_resolution = resolution; }
-		const Math::Vector2& GetResolution()				{ return m_resolution; }
-		unsigned int GetResolutionWidth()					{ return (unsigned int)m_resolution.x; }
-		unsigned int GetResolutionHeight()					{ return (unsigned int)m_resolution.y; }
-		//================================================================================================================
+		//= RESOLUTION =================================================================================================================
+		void Resolution_Set(int width, int height)				{ m_resolution = Math::Vector2((float)width, (float)height); }
+		void Resolution_Set(const Math::Vector2& resolution)	{ m_resolution = resolution; }
+		const Math::Vector2& Resolution_Get()					{ return m_resolution; }
+		unsigned int Resolution_GetWidth()						{ return (unsigned int)m_resolution.x; }
+		unsigned int Resolution_GetHeight()						{ return (unsigned int)m_resolution.y; }
+		float AspectRatio_Get()									{ return (float)Resolution_GetWidth() / (float)Resolution_GetHeight(); }
+		//==============================================================================================================================
 
-		//= MISC =================================================================================================================
-		bool IsFullScreen()									{ return m_isFullScreen; }
-		bool IsMouseVisible()								{ return m_isMouseVisible; }
-		VSync GetVSync()									{ return (VSync)m_vsync; }
-		float GetAspectRatio()								{ return (float)GetResolutionWidth() / (float)GetResolutionHeight(); }
-		unsigned int GetShadowMapResolution()				{ return m_shadowMapResolution; }
-		unsigned int GetAnisotropy()						{ return m_anisotropy; }
-		float GetMaxFPSGame()								{ return m_maxFPS_game;}
-		float GetMaxFPSEditor()								{ return m_maxFPS_editor; }
-		void SetMaxThreadCount(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
-		unsigned int GetMaxThreadCount()					{ return m_maxThreadCount; }	
-		//========================================================================================================================
+		//= DISPLAY ==========================================================================================================================
+		void DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator);
+		const DisplayMode& DisplayMode_GetFastest();
+		//====================================================================================================================================
+
+		//= MISC =========================================================================================
+		bool FullScreen_Get()										{ return m_isFullScreen; }
+		bool MousVisible_Get()										{ return m_isMouseVisible; }
+		VSync VSync_Get()											{ return (VSync)m_vsync; }	
+		unsigned int Shadows_GetResolution()						{ return m_shadowMapResolution; }
+		unsigned int Anisotropy_Get()								{ return m_anisotropy; }
+		float MaxFps_GetGame()										{ return m_maxFPS_game;}
+		float MaxFps_GetEditor()									{ return m_maxFPS_editor; }
+		void ThreadCountMax_Set(unsigned int maxThreadCount)		{ m_maxThreadCount = maxThreadCount; }
+		unsigned int ThreadCountMax_Get()							{ return m_maxThreadCount; }	
+		const std::string& Gpu_GetName()							{ return m_gpuName; }
+		unsigned int Gpu_GetMemory()								{ return m_gpuMemory; }
+		void Gpu_Set(const std::string& name, unsigned int memory);
+		//================================================================================================
 
 		// Third party lib versions
 		std::string m_versionAngelScript;
@@ -99,5 +126,8 @@ namespace Directus
 		float m_maxFPS_game					= FLT_MAX;
 		float m_maxFPS_editor				= 165.0f;
 		unsigned int m_maxThreadCount		= 0;
+		std::string m_gpuName				= "Unknown";
+		unsigned int m_gpuMemory			= 0;
+		std::vector<DisplayMode> m_displayModes;
 	};
 }
