@@ -141,12 +141,15 @@ void Widget_World::Tree_AddActor(Actor* actor)
 	if (!actor)
 		return;
 
-	// Node self visibility
-	if (!actor->IsVisibleInHierarchy())
+	bool isVisibleInHierarchy	= actor->IsVisibleInHierarchy();
+	bool hasParent				= actor->GetTransform_PtrRaw()->HasParent();
+	bool hasVisibleChildren		= false;
+
+	// Don't draw invisible actors
+	if (!isVisibleInHierarchy)
 		return;
 
-	// Node children visibility
-	bool hasVisibleChildren = false;
+	// Determine children visibility
 	auto children = actor->GetTransform_PtrRaw()->GetChildren();
 	for (const auto& child : children)
 	{
@@ -157,8 +160,8 @@ void Widget_World::Tree_AddActor(Actor* actor)
 		}
 	}
 
-	ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowItemOverlap;
-	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; // Expandable?	
+	ImGuiTreeNodeFlags node_flags	= ImGuiTreeNodeFlags_AllowItemOverlap;
+	node_flags						|= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; // Expandable?	
 	if (!m_actorSelected.expired()) // Selected?
 	{
 		node_flags |= (m_actorSelected.lock()->GetID() == actor->GetID()) ? ImGuiTreeNodeFlags_Selected : 0;

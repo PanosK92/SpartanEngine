@@ -60,11 +60,11 @@ void Widget_Profiler::Tick(float deltaTime)
 	Widget::Begin();
 
 	// Get some useful things
-	auto& cpuBlocks			= Directus::Profiler::Get().GetTimeBlocks_CPU();
-	auto gpuBlocks			= Directus::Profiler::Get().GetTimeBlocks_GPU();
-	float renderTimeCPU		= Directus::Profiler::Get().GetRenderTime_CPU();
-	float renderTimeGPU		= Directus::Profiler::Get().GetRenderTime_GPU();
-	float renderTimeTotal	= Directus::Profiler::Get().GetRenderTime_CPU() + Directus::Profiler::Get().GetRenderTime_GPU();
+	auto& cpuBlocks			= Profiler::Get().GetTimeBlocks_CPU();
+	auto gpuBlocks			= Profiler::Get().GetTimeBlocks_GPU();
+	float renderTimeCPU		= Profiler::Get().GetRenderTime_CPU();
+	float renderTimeGPU		= Profiler::Get().GetRenderTime_GPU();
+	float renderTimeTotal	= Profiler::Get().GetRenderTime_CPU() + Profiler::Get().GetRenderTime_GPU();
 
 	// Milliseconds
 	{
