@@ -53,14 +53,14 @@ namespace Directus
 		void Set_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources);
 		//===================================================================================================================
 
-		//= RESOLUTION ===========================
-		bool Set_Resolution(int width, int height);
-		//========================================
+		//= RESOLUTION ==============================================
+		bool Set_Resolution(unsigned int width, unsigned int height);
+		//===========================================================
 
-		//= VIEWPORT ====================================
-		RHI_Viewport GetViewport() { return m_viewport; }
+		//= VIEWPORT =====================================
+		RHI_Viewport Get_Viewport() { return m_viewport; }
 		void Set_Viewport(const RHI_Viewport& viewport);
-		//===============================================
+		//================================================
 
 		//= MISC ============================================================
 		bool Set_DepthEnabled(bool enable);

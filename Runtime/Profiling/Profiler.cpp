@@ -186,11 +186,11 @@ namespace Directus
 			"Frame time:\t\t\t\t\t" + to_string_precision(m_frameTime, 2) + " ms\n"
 			"CPU time:\t\t\t\t\t\t" + to_string_precision(m_cpuTime, 2) + " ms\n"
 			"GPU time:\t\t\t\t\t\t" + to_string_precision(m_gpuTime, 2) + " ms\n"
-			"GPU:\t\t\t\t\t\t\t"	+ m_gpuName + "\n"
-			"VRAM:\t\t\t\t\t\t\t"	+ to_string(m_gpuVRAM) + " MB\n"
+			"GPU:\t\t\t\t\t\t\t"	+ Settings::Get().Gpu_GetName() + "\n"
+			"VRAM:\t\t\t\t\t\t\t"	+ to_string(Settings::Get().Gpu_GetMemory()) + " MB\n"
 
 			// Renderer
-			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().GetResolutionWidth())) + "x" + to_string(int(Settings::Get().GetResolutionHeight())) + "\n"
+			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().Resolution_GetWidth())) + "x" + to_string(int(Settings::Get().Resolution_GetHeight())) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_rendererMeshesRendered) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
 			"Materials:\t\t\t\t\t\t"			+ to_string(materials) + "\n"

@@ -46,7 +46,7 @@ namespace Directus
 		m_nearPlane				= 0.0f;
 		m_farPlane				= 0.0f;
 		m_format				= textureFormat;
-		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->GetViewport().GetMaxDepth());
+		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->Get_Viewport().GetMaxDepth());
 		m_width					= width;
 		m_height				= height;
 
@@ -175,7 +175,7 @@ namespace Directus
 		// Clear depth buffer.
 		if (m_depthEnabled)
 		{
-			float maxDepth = m_rhiDevice->GetViewport().GetMaxDepth();
+			float maxDepth = m_rhiDevice->Get_Viewport().GetMaxDepth();
 			m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, maxDepth, 0); 
 		}
 

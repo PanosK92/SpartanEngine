@@ -132,10 +132,6 @@ namespace Directus
 		// Metrics - Renderer
 		unsigned int m_rendererMeshesRendered;
 
-		// Metrics - Hardware
-		std::string m_gpuName;
-		unsigned int m_gpuVRAM;
-
 		// Metrics - Time
 		float m_frameTime;
 		float m_cpuTime;

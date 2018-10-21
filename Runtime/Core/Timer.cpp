@@ -48,8 +48,8 @@ namespace Directus
 		
 		// Compute sleep time (fps limiting)
 		bool isEditor		= !Engine::EngineMode_IsSet(Engine_Game);
-		auto maxFPS_editor	= (double)Settings::Get().GetMaxFPSEditor();
-		auto maxFPS_game	= (double)Settings::Get().GetMaxFPSGame();
+		auto maxFPS_editor	= (double)Settings::Get().MaxFps_GetEditor();
+		auto maxFPS_game	= (double)Settings::Get().MaxFps_GetGame();
 		double maxFPS		= isEditor ? maxFPS_editor : maxFPS_game;
 		double maxMs		= (1.0 / maxFPS) * 1000;
 		if (time_work.count() < maxMs)

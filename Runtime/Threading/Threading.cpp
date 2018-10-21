@@ -24,16 +24,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 //===========================
 
-//= NAMESPACES ======
-using namespace  std;
-//===================
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Directus
 {
 	Threading::Threading(Context* context) : Subsystem(context)
 	{
 		m_stopping		= false;
-		m_threadCount	= Settings::Get().GetMaxThreadCount() - 1;
+		m_threadCount	= Settings::Get().ThreadCountMax_Get() - 1;
 	}
 
 	Threading::~Threading()
@@ -66,6 +66,7 @@ namespace Directus
 		{
 			m_threads.emplace_back(thread(&Threading::Invoke, this));
 		}
+		LOGF_INFO("Threading::Initialize: %d threads have been created", m_threadCount);
 
 		return true;
 	}

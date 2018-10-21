@@ -85,7 +85,7 @@ namespace Directus
 		update = perMaterialBufferCPU.matNormalMul		!= material->GetNormalMultiplier()			? true : update;
 		update = perMaterialBufferCPU.matShadingMode	!= float(material->GetShadingMode())		? true : update;
 		update = perMaterialBufferCPU.cameraPos			!= camera->GetTransform()->GetPosition()	? true : update;
-		update = perMaterialBufferCPU.resolution		!= Settings::Get().GetResolution()			? true : update;
+		update = perMaterialBufferCPU.resolution		!= Settings::Get().Resolution_Get()			? true : update;
 		update = perMaterialBufferCPU.planes			!= planes									? true : update;
 
 		if (update)
@@ -102,7 +102,7 @@ namespace Directus
 			buffer->matHeightMul	= perMaterialBufferCPU.matNormalMul		= material->GetHeightMultiplier();
 			buffer->matShadingMode	= perMaterialBufferCPU.matShadingMode	= float(material->GetShadingMode());
 			buffer->cameraPos		= perMaterialBufferCPU.cameraPos		= camera->GetTransform()->GetPosition();
-			buffer->resolution		= perMaterialBufferCPU.resolution		= Settings::Get().GetResolution();
+			buffer->resolution		= perMaterialBufferCPU.resolution		= Settings::Get().Resolution_Get();
 			buffer->planes			= perMaterialBufferCPU.planes			= planes;
 			buffer->padding			= perMaterialBufferCPU.padding			= 0.0f;
 			buffer->padding2		= perMaterialBufferCPU.padding2			= Vector3::Zero;

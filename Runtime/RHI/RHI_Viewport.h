@@ -41,7 +41,7 @@ namespace Directus
 			m_maxDepth	= maxDepth;
 		}
 
-		RHI_Viewport(float width = (float)Settings::Get().GetResolutionWidth(), float height = (float)Settings::Get().GetResolutionHeight(), float maxDepth = 1.0f)
+		RHI_Viewport(float width = (float)Settings::Get().Resolution_GetWidth(), float height = (float)Settings::Get().Resolution_GetHeight(), float maxDepth = 1.0f)
 		{
 			m_topLeftX	= 0.0f;
 			m_topLeftY	= 0.0f;

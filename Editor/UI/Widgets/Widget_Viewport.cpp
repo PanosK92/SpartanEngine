@@ -91,7 +91,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	);
 
 	// Adjust resolution if necessary
-	if (Settings::Get().GetResolutionWidth() != width || Settings::Get().GetResolutionHeight() != height)
+	if (Settings::Get().Resolution_GetWidth() != width || Settings::Get().Resolution_GetHeight() != height)
 	{
 		if (m_timeSinceLastResChange >= 0.250f) // Don't stress the GPU too much
 		{

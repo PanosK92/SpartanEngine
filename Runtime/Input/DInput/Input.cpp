@@ -191,8 +191,8 @@ namespace Directus
 			m_mouseWheelDelta	= (float)g_mouseState.lZ; // lZ = wheel
 
 			// COMPUTE POSITION
-			m_mousePos.x = Clamp(m_mousePos.x + m_mouseDelta.x, 0.0f, (float)Settings::Get().GetViewportWidth());
-			m_mousePos.y = Clamp(m_mousePos.y + m_mouseDelta.y, 0.0f, (float)Settings::Get().GetViewportHeight());
+			m_mousePos.x = Clamp(m_mousePos.x + m_mouseDelta.x, 0.0f, (float)Settings::Get().Viewport_GetWidth());
+			m_mousePos.y = Clamp(m_mousePos.y + m_mouseDelta.y, 0.0f, (float)Settings::Get().Viewport_GetHeight());
 			m_mouseWheel += m_mouseWheelDelta;
 
 			// COMPUTE BUTTON STATE
