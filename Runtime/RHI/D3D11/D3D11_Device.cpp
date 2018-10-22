@@ -57,7 +57,7 @@ namespace Directus
 			D3D_FEATURE_LEVEL_9_1
 		};
 
-		// All the pointer that we need
+		// All the pointers that we need
 		ID3D11Device* m_device;
 		ID3D11DeviceContext* m_deviceContext;
 		IDXGISwapChain* m_swapChain;
@@ -152,77 +152,15 @@ namespace Directus
 		inline vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory)
 		{
 			unsigned int i = 0;
-			IDXGIAdapter* pAdapter;
-			vector <IDXGIAdapter*> adapters;
-			while (factory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND)
+			IDXGIAdapter* adapter;
+			vector<IDXGIAdapter*> adapters;
+			while (factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
 			{
-				adapters.push_back(pAdapter);
+				adapters.emplace_back(adapter);
 				++i;
 			}
 
 			return adapters;
-		}
-
-		inline IDXGIAdapter* GetAdapterWithTheHighestVRAM(IDXGIFactory* factory)
-		{
-			IDXGIAdapter* maxAdapter = nullptr;
-			unsigned int maxVRAM = 0;
-
-			auto adapters = GetAvailableAdapters(factory);
-			DXGI_ADAPTER_DESC adapterDesc;
-			for (const auto& adapter : adapters)
-			{
-				adapter->GetDesc(&adapterDesc);
-
-				if (adapterDesc.DedicatedVideoMemory > maxVRAM)
-				{
-					maxVRAM = (unsigned int)adapterDesc.DedicatedVideoMemory;
-					maxAdapter = adapter;
-				}
-			}
-
-			return maxAdapter;
-		}
-
-		inline IDXGIAdapter* GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID)
-		{
-			// Nvidia: 0x10DE
-			// AMD: 0x1002, 0x1022
-			// Intel: 0x163C, 0x8086, 0x8087
-
-			auto adapters = GetAvailableAdapters(factory);
-
-			DXGI_ADAPTER_DESC adapterDesc;
-			for (const auto& adapter : adapters)
-			{
-				adapter->GetDesc(&adapterDesc);
-				if (vendorID == adapterDesc.VendorId)
-					return adapter;
-			}
-
-			return nullptr;
-		}
-
-		inline void GetAdapterDescription(IDXGIAdapter* adapter, string* name, unsigned int* vram)
-		{
-			if (!adapter)
-				return;
-
-			DXGI_ADAPTER_DESC adapterDesc;
-			HRESULT result = adapter->GetDesc(&adapterDesc);
-			if (FAILED(result))
-			{
-				LOG_ERROR("D3D11_Device::GetAdapterDescription: Failed to get adapter description.");
-				return;
-			}
-
-			auto adapterVRAM = (unsigned int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024); // MB
-			char adapterName[128];
-			char DefChar = ' ';
-			WideCharToMultiByte(CP_ACP, 0, adapterDesc.Description, -1, adapterName, 128, &DefChar, nullptr);
-
-			(*name) = string(adapterName);
-			(*vram) = adapterVRAM;
 		}
 	}
 
@@ -248,16 +186,34 @@ namespace Directus
 			return;
 		}
 
-		// Get adapter
-		IDXGIAdapter* adapter = _D3D11_Device::GetAdapterWithTheHighestVRAM(factory);
+		// Get all available adapters
+		vector<IDXGIAdapter*> adapters = _D3D11_Device::GetAvailableAdapters(factory);	
 		SafeRelease(factory);
-		if (!adapter)
+		if (adapters.empty())
 		{
-			LOG_ERROR("RHI_Device::Initialize: Couldn't find any adapters.");
+			LOG_ERROR("RHI_Device::RHI_Device: Couldn't find any adapters.");
 			return;
 		}
+		// Save all available adapters
+		DXGI_ADAPTER_DESC adapterDesc;
+		for (IDXGIAdapter* displayAdapter : adapters)
+		{
+			if (FAILED(displayAdapter->GetDesc(&adapterDesc)))
+			{
+				LOG_ERROR("RHI_Device::RHI_Device: Failed to get adapter description");
+				continue;
+			}
 
-		// ADAPTER OUTPUT / DISPLAY MODE
+			auto memoryMB = (unsigned int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
+			char name[128];
+			char defChar = ' ';
+			WideCharToMultiByte(CP_ACP, 0, adapterDesc.Description, -1, name, 128, &defChar, nullptr);
+
+			Settings::Get().DisplayAdapter_Add(name, memoryMB, adapterDesc.VendorId, (void*)displayAdapter);
+		}
+	
+		// DISPLAY MODES
+		auto GetDisplayModes = [this](IDXGIAdapter* adapter)
 		{
 			// Enumerate the primary adapter output (monitor).
 			IDXGIOutput* adapterOutput;
@@ -287,7 +243,22 @@ namespace Directus
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::Initialize: Failed to get display modes (%s)", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("RHI_Device::RHI_Device: Failed to get display modes (%s)", _D3D11_Device::DxgiErrorToString(result));
+				return false;
+			}
+
+			return true;
+		};
+
+		// Get display modes and set primary adapter
+		for (const auto& displayAdapter : Settings::Get().DisplayAdapters_Get())
+		{
+			auto adapter = (IDXGIAdapter*)displayAdapter.data;
+			// Adapters are ordered by memory (descending), so stop on the first success
+			if (GetDisplayModes(adapter))
+			{
+				Settings::Get().DisplayAdapter_SetPrimary(&displayAdapter);
+				break;
 			}
 		}
 
@@ -333,7 +304,7 @@ namespace Directus
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::Initialize: Failed to create device and swapchain, %s.", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("RHI_Device::RHI_Device: Failed to create device and swapchain, %s.", _D3D11_Device::DxgiErrorToString(result));
 				return;
 			}
 		}
@@ -348,7 +319,7 @@ namespace Directus
 			}
 			else 
 			{
-				LOGF_ERROR("RHI_Device::Initialize: Failed to enable multithreaded protection");
+				LOGF_ERROR("RHI_Device::RHI_Device: Failed to enable multithreaded protection");
 			}
 		}
 
@@ -359,7 +330,7 @@ namespace Directus
 			result = _D3D11_Device::m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBufferPtr));
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::Initialize: Failed to get swapchain buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("RHI_Device::RHI_Device: Failed to get swapchain buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
 				return;
 			}
 
@@ -368,7 +339,7 @@ namespace Directus
 			SafeRelease(backBufferPtr);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::Initialize: Failed to create swapchain render target, %s.", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("RHI_Device::RHI_Device: Failed to create swapchain render target, %s.", _D3D11_Device::DxgiErrorToString(result));
 				return;
 			}
 		}
@@ -381,21 +352,21 @@ namespace Directus
 		auto desc = Desc_DepthEnabled();
 		if (FAILED(_D3D11_Device::m_device->CreateDepthStencilState(&desc, &_D3D11_Device::m_depthStencilStateEnabled)))
 		{
-			LOG_ERROR("RHI_Device::Initialize: Failed to create depth stencil enabled state.");
+			LOG_ERROR("RHI_Device::RHI_Device: Failed to create depth stencil enabled state.");
 			return;
 		}
 
 		desc = Desc_DepthDisabled();
 		if (FAILED(_D3D11_Device::m_device->CreateDepthStencilState(&desc, &_D3D11_Device::m_depthStencilStateDisabled)))
 		{
-			LOG_ERROR("RHI_Device::Initialize: Failed to create depth stencil disabled state.");
+			LOG_ERROR("RHI_Device::RHI_Device: Failed to create depth stencil disabled state.");
 			return;
 		}
 
 		// DEPTH STENCIL VIEW
 		if (!_D3D11_Device::CreateDepthStencilView((UINT)Settings::Get().Resolution_GetWidth(), (UINT)Settings::Get().Resolution_GetHeight()))
 		{
-			LOG_ERROR("RHI_Device::Initialize: Failed to create depth stencil view.");
+			LOG_ERROR("RHI_Device::RHI_Device: Failed to create depth stencil view.");
 			return;
 		}
 
@@ -404,21 +375,21 @@ namespace Directus
 			auto desc = Desc_RasterizerCullBack();
 			if (FAILED(_D3D11_Device::m_device->CreateRasterizerState(&desc, &_D3D11_Device::m_rasterStateCullBack)))
 			{
-				LOG_ERROR("RHI_Device::Initialize: Failed to create the rasterizer cull back state.");
+				LOG_ERROR("RHI_Device::RHI_Device: Failed to create the rasterizer cull back state.");
 				return;
 			}
 
 			desc = Desc_RasterizerCullFront();
 			if (FAILED(_D3D11_Device::m_device->CreateRasterizerState(&desc, &_D3D11_Device::m_rasterStateCullFront)))
 			{
-				LOG_ERROR("RHI_Device::Initialize: Failed to create the rasterizer cull front state.");
+				LOG_ERROR("RHI_Device::RHI_Device: Failed to create the rasterizer cull front state.");
 				return;
 			}
 
 			desc = Desc_RasterizerCullNone();
 			if (FAILED(_D3D11_Device::m_device->CreateRasterizerState(&desc, &_D3D11_Device::m_rasterStateCullNone)))
 			{
-				LOG_ERROR("RHI_Device::Initialize: Failed to create the rasterizer cull non state.");
+				LOG_ERROR("RHI_Device::RHI_Device: Failed to create the rasterizer cull non state.");
 				return;
 			}
 
@@ -432,7 +403,7 @@ namespace Directus
 			auto desc = Desc_BlendAlpha();
 			if (FAILED(_D3D11_Device::m_device->CreateBlendState(&desc, &_D3D11_Device::m_blendStateAlphaEnabled)))
 			{
-				LOG_ERROR("RHI_Device::CreateBlendStates: Failed to create blend alpha state.");
+				LOG_ERROR("RHI_Device::RHI_Device: Failed to create blend alpha state.");
 				return;
 			}
 
@@ -440,7 +411,7 @@ namespace Directus
 			desc = Desc_BlendDisabled();
 			if (FAILED(_D3D11_Device::m_device->CreateBlendState(&desc, &_D3D11_Device::m_blendStateAlphaDisabled)))
 			{
-				LOG_ERROR("RHI_Device::CreateBlendStates: Failed to create blend disabled state.");
+				LOG_ERROR("RHI_Device::RHI_Device: Failed to create blend disabled state.");
 				return;
 			}
 		}
@@ -450,7 +421,7 @@ namespace Directus
 		result = _D3D11_Device::m_deviceContext->QueryInterface(IID_PPV_ARGS(&_D3D11_Device::m_eventReporter));
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Device::Initialize: Failed to create ID3DUserDefinedAnnotation for event reporting");
+			LOG_ERROR("RHI_Device::RHI_Device: Failed to create ID3DUserDefinedAnnotation for event reporting");
 			return;
 		}
 
@@ -488,10 +459,6 @@ namespace Directus
 			break;
 		}
 
-		string deviceName;
-		unsigned int vram;
-		_D3D11_Device::GetAdapterDescription(adapter, &deviceName, &vram);
-		Settings::Get().Gpu_Set(deviceName, vram);
 		m_device						= (void*)_D3D11_Device::m_device;
 		m_deviceContext					= (void*)_D3D11_Device::m_deviceContext;
 		m_initialized					= true;

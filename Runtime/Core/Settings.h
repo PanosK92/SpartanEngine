@@ -55,6 +55,26 @@ namespace Directus
 		float refreshRate					= 0;
 	};
 
+	struct DisplayAdapter
+	{
+		DisplayAdapter(const std::string& name, unsigned int memory, unsigned int vendorID, void* data)
+		{
+			this->name		= name;
+			this->memory	= memory;
+			this->vendorID	= vendorID;
+			this->data		= data;
+		}
+
+		std::string name		= "Unknown";
+		unsigned int vendorID	= 0;
+		unsigned int memory		= 0;
+		void* data				= nullptr;
+
+		//Nvidia: 0x10DE
+		//AMD	: 0x1002, 0x1022
+		//Intel : 0x163C, 0x8086, 0x8087
+	};
+
 	class ENGINE_CLASS Settings
 	{
 	public:
@@ -89,6 +109,12 @@ namespace Directus
 		const DisplayMode& DisplayMode_GetFastest();
 		//====================================================================================================================================
 
+		//= ADAPTERS ===============================================================================================
+		void DisplayAdapter_Add(const std::string& name, unsigned int memory, unsigned int vendorID, void* adapter);
+		void DisplayAdapter_SetPrimary(const DisplayAdapter* primary);
+		const std::vector<DisplayAdapter>& DisplayAdapters_Get() { return m_displayAdapters; }
+		//==========================================================================================================
+
 		//= MISC =========================================================================================
 		bool FullScreen_Get()										{ return m_isFullScreen; }
 		bool MousVisible_Get()										{ return m_isMouseVisible; }
@@ -99,9 +125,8 @@ namespace Directus
 		float MaxFps_GetEditor()									{ return m_maxFPS_editor; }
 		void ThreadCountMax_Set(unsigned int maxThreadCount)		{ m_maxThreadCount = maxThreadCount; }
 		unsigned int ThreadCountMax_Get()							{ return m_maxThreadCount; }	
-		const std::string& Gpu_GetName()							{ return m_gpuName; }
-		unsigned int Gpu_GetMemory()								{ return m_gpuMemory; }
-		void Gpu_Set(const std::string& name, unsigned int memory);
+		const std::string& Gpu_GetName()							{ return m_primaryAdapter->name; }
+		unsigned int Gpu_GetMemory()								{ return m_primaryAdapter->memory; }
 		//================================================================================================
 
 		// Third party lib versions
@@ -117,17 +142,18 @@ namespace Directus
 
 	private:
 		Math::Vector2 m_viewport;
-		Math::Vector2 m_resolution			= Math::Vector2(1920, 1080);
-		unsigned int m_vsync				= (int)Off;
-		bool m_isFullScreen					= false;
-		bool m_isMouseVisible				= true;
-		unsigned int m_shadowMapResolution	= 2048;
-		unsigned int m_anisotropy			= 16;
-		float m_maxFPS_game					= FLT_MAX;
-		float m_maxFPS_editor				= 165.0f;
-		unsigned int m_maxThreadCount		= 0;
-		std::string m_gpuName				= "Unknown";
-		unsigned int m_gpuMemory			= 0;
+		Math::Vector2 m_resolution				= Math::Vector2(1920, 1080);
+		unsigned int m_vsync					= (int)Off;
+		bool m_isFullScreen						= false;
+		bool m_isMouseVisible					= true;
+		unsigned int m_shadowMapResolution		= 2048;
+		unsigned int m_anisotropy				= 16;
+		float m_maxFPS_game						= FLT_MAX;
+		float m_maxFPS_editor					= 165.0f;
+		unsigned int m_maxThreadCount			= 0;
+		const DisplayAdapter* m_primaryAdapter	= nullptr;
+
 		std::vector<DisplayMode> m_displayModes;
+		std::vector<DisplayAdapter> m_displayAdapters;	
 	};
 }
