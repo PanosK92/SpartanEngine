@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Settings.h"
 #include <string>
 #include <fstream>
+#include <algorithm>
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 //===================================
@@ -140,10 +141,21 @@ namespace Directus
 		return fastestMode;
 	}
 
-	void Settings::Gpu_Set(const std::string& name, unsigned int memory)
+	void Settings::DisplayAdapter_Add(const string& name, unsigned int memory, unsigned int vendorID, void* data)
 	{
-		m_gpuName	= name;
-		m_gpuMemory = memory;
-		LOGF_INFO("Settings::SetGPU: %s (%d MB)", name.c_str(), memory);
+		m_displayAdapters.emplace_back(name, memory, vendorID, data);
+		sort(m_displayAdapters.begin(), m_displayAdapters.end(), [](const DisplayAdapter& adapter1, const DisplayAdapter& adapter2)
+		{
+			return adapter1.memory > adapter2.memory;
+		});		
+	}
+
+	void Settings::DisplayAdapter_SetPrimary(const DisplayAdapter* primaryAdapter)
+	{
+		if (!primaryAdapter)
+			return;
+
+		m_primaryAdapter = primaryAdapter;
+		LOGF_INFO("Settings::DisplayAdapter_SetPrimary: %s (%d MB)", primaryAdapter->name.c_str(), primaryAdapter->memory);
 	}
 }
