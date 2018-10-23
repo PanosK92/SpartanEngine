@@ -178,8 +178,16 @@ namespace Directus
 
 	bool RHI_PipelineState::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
 	{
-		vector<void*> vec = { renderTarget->GetRenderTargetView() };
-		return SetRenderTargets(vec, depthStencilView, clear);
+		if (!renderTarget)
+			return false;
+
+		m_renderTargetViews.clear();
+		m_renderTargetViews.emplace_back(renderTarget->GetRenderTargetView());
+		m_depthStencil			= depthStencilView;
+		m_renderTargetsClear	= clear;
+		m_renderTargetsDirty	= true;
+
+		return true;
 	}
 
 	bool RHI_PipelineState::SetRenderTargets(const vector<void*>& renderTargetViews, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
@@ -196,10 +204,9 @@ namespace Directus
 			m_renderTargetViews.emplace_back(renderTarget);
 		}
 
-		m_depthStencil = depthStencilView;
-
-		m_renderTargetsClear = clear;
-		m_renderTargetsDirty = true;
+		m_depthStencil			= depthStencilView;
+		m_renderTargetsClear	= clear;
+		m_renderTargetsDirty	= true;
 
 		return true;
 	}

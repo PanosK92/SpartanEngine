@@ -348,12 +348,6 @@ namespace Directus
 		{
 			m_isGamepadConnected = false;
 		}
-
-		if (m_isGamepadConnected)
-		{
-			LOGF_INFO("LY: %f, RY: %f", m_thumbstickLeft.y, m_thumbstickRight.y);
-			VibrateGamepad(m_thumbstickLeft.y, m_thumbstickRight.y);			
-		}
 	}
 
 	bool Input::ReadMouse()
