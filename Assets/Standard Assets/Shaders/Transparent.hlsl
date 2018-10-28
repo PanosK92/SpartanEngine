@@ -3,7 +3,8 @@
 //====================
 
 Texture2D depthTexture 		: register(t0);
-SamplerState samplerPoint 	: register(s0);
+TextureCube environmentTex 	: register(t1);
+SamplerState samplerLinear 	: register(s0);
 
 cbuffer MiscBuffer : register(b0)
 {
@@ -35,14 +36,14 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
     PixelInputType output;
     	
     input.position.w 	= 1.0f;	
-	output.uv 			= input.uv;
-	  
+	
+	output.uv 			= input.uv;  
 	output.position 	= mul(input.position, mWVP);
-	output.positionWS 	= mul(input.position, mWVP);	
+	output.positionWS 	= mul(input.position, mWorld);	
 	output.gridPos 		= output.position;
-	output.normal 		= normalize(mul(float4(input.normal, 0.0f), mWVP)).xyz;
-	output.tangent 		= normalize(mul(float4(input.tangent, 0.0f), mWVP)).xyz;
-	output.bitangent 	= normalize(mul(float4(input.bitangent, 0.0f), mWVP)).xyz;
+	output.normal 		= normalize(mul(input.normal, 		(float3x3)mWorld)).xyz;
+	output.tangent 		= normalize(mul(input.tangent, 		(float3x3)mWorld)).xyz;
+	output.bitangent 	= normalize(mul(input.bitangent,	(float3x3)mWorld)).xyz;
 		
 	return output;
 }
@@ -55,18 +56,24 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	projectDepthMapTexCoord.y = -input.gridPos.y / input.gridPos.w / 2.0f + 0.5f;
 	
 	float transparentGeometryDepth 	= input.position.z;
-	float opaqueGeometryDepth 		= depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
+	float opaqueGeometryDepth 		= depthTexture.Sample(samplerLinear, projectDepthMapTexCoord).r;
 	
 	if (opaqueGeometryDepth > transparentGeometryDepth)
 		discard;
-		
-	float3 viewDir 	= normalize(cameraPos - input.positionWS.xyz);
-	float3 H 		= normalize(lightDir + viewDir);
+	
+	float3 normal				= normalize(input.normal);
+	float3 view 				= normalize(cameraPos - input.positionWS.xyz);
+	float3 reflection 			= reflect(-view, normal);
+	float3 environmentColor 	= ToLinear(environmentTex.Sample(samplerLinear, reflection)).rgb;
 
-	//Intensity of the specular light
+	// Intensity of the specular light
 	float specularHardness 	= roughness;
-	float NdotH 			= dot(input.normal, H);
+	float3 H 				= normalize(lightDir + view);
+	float NdotH 			= dot(normal, H);
 	float intensity 		= pow(saturate(NdotH), specularHardness);
 		
-	return color + float4(intensity, intensity, intensity, 0.0f);
+    float alpha         = color.a;
+    float3 finalColor   = saturate(color.rgb + environmentColor * intensity);
+
+    return float4(finalColor, alpha);
 }

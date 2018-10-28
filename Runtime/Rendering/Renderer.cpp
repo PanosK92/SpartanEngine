@@ -75,7 +75,7 @@ namespace Directus
 		m_flags			|= Render_Bloom;
 		m_flags			|= Render_FXAA;
 		m_flags			|= Render_Sharpening;
-		m_flags			|= Render_ChromaticAberration;
+		//m_flags		|= Render_ChromaticAberration;
 		m_flags			|= Render_Correction;
 
 		// Create RHI device
@@ -865,7 +865,8 @@ namespace Directus
 		m_rhiPipelineState->SetShader(m_shaderTransparent);	
 		m_rhiPipelineState->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-		m_rhiPipelineState->SetSampler(m_samplerPointClampGreater);
+		m_rhiPipelineState->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : nullptr);
+		m_rhiPipelineState->SetSampler(m_samplerLinearClampGreater);
 
 		for (auto actor : m_actors[Renderable_ObjectTransparent])
 		{
