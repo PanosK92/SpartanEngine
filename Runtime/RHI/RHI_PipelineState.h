@@ -92,6 +92,9 @@ namespace Directus
 		// Bind to the GPU
 		bool Bind();
 
+		// Clears all currently set settings
+		void Clear();
+
 	private:
 		// Primitive topology
 		PrimitiveTopology_Mode m_primitiveTopology;

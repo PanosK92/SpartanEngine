@@ -202,6 +202,13 @@ namespace Directus
 		shaderResourceDesc.TextureCube.MipLevels		= mipLevels;
 		shaderResourceDesc.TextureCube.MostDetailedMip	= 0;
 
+		// Validate device before usage
+		if (!m_rhiDevice->GetDevice<ID3D11Device>())
+		{
+			LOG_ERROR("RHI_Texture::ShaderResource_CreateCubemap: Invalid RHI device.");
+			return false;
+		}
+
 		// Create the Texture Resource
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(vec_textureDesc.data(), vec_subresourceData.data(), &cubeTexture);
 		if (FAILED(result))

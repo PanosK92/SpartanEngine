@@ -317,9 +317,8 @@ namespace Directus
 			);
 
 			Pass_Transparent(m_renderTex3);
-
+			Pass_DebugGBuffer(m_renderTex3);
 			// Debug rendering (on the target that happens to be bound)
-			Pass_DebugGBuffer();
 			Pass_Debug();
 		}		
 		else // If there is no camera, clear to black
@@ -636,6 +635,8 @@ namespace Directus
 		//  Bind render target
 		m_gbuffer->SetAsRenderTarget(m_rhiPipelineState);
 		m_rhiPipelineState->SetSampler(m_samplerAnisotropicWrapAlways);
+		m_rhiPipelineState->SetFillMode(Fill_Solid);
+		m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 
 		// Variables that help reduce state changes
 		bool vertexShaderBound				= false;
@@ -858,17 +859,21 @@ namespace Directus
 		if (!GetLightDirectional())
 			return;
 
+		auto& actors_transparent = m_actors[Renderable_ObjectTransparent];
+		if (actors_transparent.empty())
+			return;
+
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Transparent");
 
 		m_rhiDevice->Set_AlphaBlendingEnabled(true);
-		m_rhiPipelineState->SetShader(m_shaderTransparent);	
+		m_rhiPipelineState->SetShader(m_shaderTransparent);
 		m_rhiPipelineState->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
 		m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipelineState->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : nullptr);
 		m_rhiPipelineState->SetSampler(m_samplerLinearClampGreater);
 
-		for (auto actor : m_actors[Renderable_ObjectTransparent])
+		for (auto& actor : actors_transparent)
 		{
 			// Get renderable and material
 			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
@@ -886,10 +891,8 @@ namespace Directus
 			if (!m_camera->IsInViewFrustrum(obj_renderable))
 				continue;
 
-			// Set face culling (changes only if required)
+			// Set the following per object
 			m_rhiPipelineState->SetCullMode(obj_material->GetCullMode());
-
-			// Bind geometry
 			m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
 			m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());
 
@@ -1085,7 +1088,7 @@ namespace Directus
 	}
 	//=============================================================================================================
 
-	bool Renderer::Pass_DebugGBuffer()
+	bool Renderer::Pass_DebugGBuffer(shared_ptr<RHI_RenderTexture>& texOut)
 	{
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_DebugGBuffer");
@@ -1098,8 +1101,16 @@ namespace Directus
 
 		if (texType != GBuffer_Target_Unknown)
 		{
-			// TEXTURE
+			m_rhiPipelineState->Clear();
+			m_rhiPipelineState->SetVertexBuffer(m_quad->GetVertexBuffer());
+			m_rhiPipelineState->SetIndexBuffer(m_quad->GetIndexBuffer());
+			m_rhiPipelineState->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+			m_rhiPipelineState->SetFillMode(Fill_Solid);
+			m_rhiPipelineState->SetCullMode(Cull_Back);
+			m_rhiPipelineState->SetInputLayout(m_shaderTexture->GetInputLayout());
+			m_rhiPipelineState->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
 			m_rhiPipelineState->SetShader(m_shaderTexture);
+			m_rhiPipelineState->SetViewport(m_gbuffer->GetTexture(texType)->GetViewport());
 			m_rhiPipelineState->SetTexture(m_gbuffer->GetTexture(texType));
 			m_rhiPipelineState->SetSampler(m_samplerLinearClampAlways);
 			auto buffer = Struct_Matrix(m_wvp_baseOrthographic);
@@ -1218,7 +1229,7 @@ namespace Directus
 
 					// Compute light screen space position and scale (based on distance from the camera)
 					Vector2 lightScreenPos	= m_camera->WorldToScreenPoint(lightWorldPos);
-					float distance			= Vector3::Length(lightWorldPos, cameraWorldPos);
+					float distance			= Clamp(Vector3::Length(lightWorldPos, cameraWorldPos), 0.0f, FLT_MAX);
 					float scale				= GIZMO_MAX_SIZE / distance;
 					scale					= Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
 
@@ -1227,7 +1238,7 @@ namespace Directus
 						continue;
 
 					// Skip if the light if it's too small
-					if (scale == GIZMO_MIN_SIZE)
+					if (scale < GIZMO_MIN_SIZE)
 						continue;
 
 					shared_ptr<RHI_Texture> lightTex = nullptr;
