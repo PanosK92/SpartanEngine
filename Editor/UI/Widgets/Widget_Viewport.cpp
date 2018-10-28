@@ -54,11 +54,13 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
 	m_yMin = 250;
 }
 
-void Widget_Viewport::Begin()
+bool Widget_Viewport::Begin()
 {
 	ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
+
+	return true;
 }
 
 void Widget_Viewport::Tick(float deltaTime)

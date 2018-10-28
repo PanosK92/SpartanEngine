@@ -31,9 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "FileSystem/FileSystem.h"
 #include "Threading/Threading.h"
-#include "ProgressDialog.h"
 #include "World/World.h"
-#include "Resource/ProgressReport.h"
 #include "RHI/RHI_Texture.h"
 //===================================
 
@@ -102,11 +100,6 @@ public:
 		m_engine			= m_context->GetSubsystem<Directus::Engine>();
 		m_resourceManager	= m_context->GetSubsystem<Directus::ResourceManager>();
 		m_scene				= m_context->GetSubsystem<Directus::World>();
-	}
-
-	void Update()
-	{
-		ProgressDialog_Show();
 	}
 
 	std::weak_ptr<Directus::RHI_Texture> GetOrLoadTexture(const std::string& filePath, bool async = false)
@@ -179,44 +172,7 @@ public:
 	static Directus::Math::Vector2 ToVector2(const ImVec2& v)	{ return Directus::Math::Vector2{ v.x,v.y }; }
 	//=================================================================================================================
 
-	bool IsLoading()
-	{
-		Directus::ProgressReport& progressReport = Directus::ProgressReport::Get();
-
-		bool isLoadingModel = progressReport.GetIsLoading(Directus::g_progress_ModelImporter);
-		bool isLoadingScene = progressReport.GetIsLoading(Directus::g_progress_Scene);
-		bool isLoading		= isLoadingModel || isLoadingScene;
-
-		return isLoading;
-	}
-
 private:
-	void ProgressDialog_Show()
-	{
-		Directus::ProgressReport& progressReport = Directus::ProgressReport::Get();
-		ProgressDialog& progressDialog = ProgressDialog::Get();
-
-		bool isLoadingModel = progressReport.GetIsLoading(Directus::g_progress_ModelImporter);
-		bool isLoadingScene = progressReport.GetIsLoading(Directus::g_progress_Scene);
-		bool isLoading		= isLoadingModel || isLoadingScene;
-
-		// Tick	
-		ProgressDialog::Get().SetIsVisible(isLoading);
-		ProgressDialog::Get().Update();
-
-		// Show progress
-		if (isLoadingModel)
-		{
-			progressDialog.SetProgress(progressReport.GetPercentage(Directus::g_progress_ModelImporter));
-			progressDialog.SetProgressStatus(progressReport.GetStatus(Directus::g_progress_ModelImporter));
-		}
-		else if (isLoadingScene)
-		{
-			progressDialog.SetProgress(progressReport.GetPercentage(Directus::g_progress_Scene));
-			progressDialog.SetProgressStatus(progressReport.GetStatus(Directus::g_progress_Scene));
-		}
-	}
-
 	Directus::Context* m_context;
 	Directus::Engine* m_engine;
 	Directus::ResourceManager* m_resourceManager;

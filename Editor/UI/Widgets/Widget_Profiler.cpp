@@ -37,6 +37,7 @@ using namespace Helper;
 Widget_Profiler::Widget_Profiler(Directus::Context* context) : Widget(context)
 {
 	m_title					= "Profiler";
+	m_isVisible				= false;
 	m_updateFrequency		= 0.05f;
 	m_timeSinceLastUpdate	= m_updateFrequency;
 	m_xMin					= 1000;

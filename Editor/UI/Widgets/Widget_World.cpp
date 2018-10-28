@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../DragDrop.h"
 #include "../../ImGui/imgui_stdlib.h"
 #include "Input/Input.h"
+#include "Resource/ProgressReport.h"
 #include "World/Actor.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Light.h"
@@ -73,7 +74,11 @@ Widget_World::Widget_World(Context* context) : Widget(context)
 void Widget_World::Tick(float deltaTime)
 {
 	// If something is being loaded, don't parse the hierarchy
-	if (EditorHelper::Get().IsLoading())
+	ProgressReport& progressReport	= ProgressReport::Get();
+	bool isLoadingModel				= progressReport.GetIsLoading(g_progress_ModelImporter);
+	bool isLoadingScene				= progressReport.GetIsLoading(g_progress_Scene);
+	bool isLoading					= isLoadingModel || isLoadingScene;
+	if (isLoading)
 		return;
 	
 	Tree_Show();

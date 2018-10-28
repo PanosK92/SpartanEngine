@@ -34,7 +34,8 @@ using namespace Directus;
 
 Widget_ResourceCache::Widget_ResourceCache(Context* context) : Widget(context)
 {
-	m_title = "Profiler";
+	m_title			= "Profiler";
+	m_isVisible		= false;
 }
 
 void Widget_ResourceCache::Tick(float deltaTime)

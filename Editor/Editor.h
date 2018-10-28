@@ -42,10 +42,12 @@ public:
 	void Shutdown();
 
 private:
-	void AddWidgets();
+	void Widgets_Create();
+	void Widgets_Tick(float deltaTime);
+
 	void DockSpace_Begin();
 	void DockSpace_End();
-	void DrawEditor(float deltaTime);
+	
 	void ApplyStyle();
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;

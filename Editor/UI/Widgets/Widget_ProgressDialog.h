@@ -19,51 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
-#include "ProgressDialog.h"
-#include "../ImGui/imgui.h"
-//=========================
+#pragma once
 
-//= NAMESPACES ==========
-using namespace std;
-using namespace Directus;
-//=======================
+//= INCLUDES ======
+#include <string>
+#include "Widget.h"
+//=================
 
-static float width = 500.0f;
+namespace Directus { class Context;}
 
-ProgressDialog::ProgressDialog(char* title /*Hold on...*/)
+class Widget_ProgressDialog : public Widget
 {
-	m_title		= title;
-	m_isVisible	= true;
-	m_progress	= 0.0f;
-}
+public:
+	Widget_ProgressDialog(Directus::Context* contex);
+	~Widget_ProgressDialog() {}
+	bool Begin() override;
+	void Tick(float deltaTime) override;
 
-ProgressDialog::~ProgressDialog()
-{
-
-}
-
-void ProgressDialog::Update()
-{
-	if (!m_isVisible)
-		return;
-
-	ShowProgressBar();
-}
-
-void ProgressDialog::ShowProgressBar()
-{
-	// Window begin
-	ImGui::SetNextWindowSize(ImVec2(width, 83), ImGuiCond_Always);
-	ImGui::Begin(m_title.c_str(), &m_isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
-	ImGui::SetWindowFocus();
-
-	// Progress	
-	ImGui::PushItemWidth(width - ImGui::GetStyle().WindowPadding.x * 2.0f);
-	ImGui::ProgressBar(m_progress, ImVec2(0.0f, 0.0f));
-	ImGui::Text(m_progressStatus.c_str());
-	ImGui::PopItemWidth();
-
-	// Window end
-	ImGui::End();
-}
+private:
+	float m_progress;
+	std::string m_progressStatus;
+};

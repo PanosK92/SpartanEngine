@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ================================
 #include "Editor.h"
 #include "ImGui/imgui_impl_win32.h"
 #include "ImGui/imgui_impl_dx11.h"
@@ -30,12 +30,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Assets.h"
 #include "UI/Widgets/Widget_Viewport.h"
 #include "UI/Widgets/Widget_Toolbar.h"
+#include "UI/Widgets/Widget_ProgressDialog.h"
 #include "UI/IconProvider.h"
 #include "UI/EditorHelper.h"
 #include "RHI/RHI_Device.h"
 #include "Rendering/Renderer.h"
 #include "ImGui/imgui_internal.h"
-//=======================================
+//===========================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -67,7 +68,7 @@ bool Editor::Initialize(Context* context, void* windowHandle)
 	m_context	= context;
 	m_rhiDevice	= context->GetSubsystem<Renderer>()->GetRHIDevice();
 
-	AddWidgets();
+	Widgets_Create();
 
 	if (!m_rhiDevice->GetDevice<ID3D11Device>() || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 	{
@@ -120,8 +121,7 @@ void Editor::Tick(float deltaTime)
 	ImGui::NewFrame();
 
 	// Editor update
-	DrawEditor(deltaTime);
-	EditorHelper::Get().Update();
+	Widgets_Tick(deltaTime);
 
 	// ImGui implementation - end frame
 	ImGui::Render();
@@ -152,8 +152,9 @@ void Editor::Shutdown()
 	ImGui::DestroyContext();
 }
 
-void Editor::AddWidgets()
+void Editor::Widgets_Create()
 {
+	m_widgets.emplace_back(make_unique<Widget_ProgressDialog>(m_context));
 	m_widgets.emplace_back(make_unique<Widget_Assets>(m_context));
 	m_widgets.emplace_back(make_unique<Widget_Viewport>(m_context));
 	m_widgets.emplace_back(make_unique<Widget_Properties>(m_context));
@@ -166,6 +167,20 @@ void Editor::AddWidgets()
 
 	m_widgets.emplace_back(make_unique<Widget_World>(m_context));
 	_Editor::widget_world = m_widgets.back().get();
+}
+
+void Editor::Widgets_Tick(float deltaTime)
+{
+	if (DOCKING_ENABLED) { DockSpace_Begin(); }
+
+	for (auto& widget : m_widgets)
+	{
+		widget->Begin();
+		widget->Tick(deltaTime);
+		widget->End();
+	}
+
+	if (DOCKING_ENABLED) { DockSpace_End(); }
 }
 
 void Editor::DockSpace_Begin()
@@ -228,28 +243,6 @@ void Editor::DockSpace_Begin()
 void Editor::DockSpace_End()
 {
 	ImGui::End();
-}
-
-void Editor::DrawEditor(float deltaTime)
-{
-	if (DOCKING_ENABLED) { DockSpace_Begin(); }
-
-	for (auto& widget : m_widgets)
-	{
-		if (widget->IsWindow())
-		{
-			widget->Begin();
-		}
-
-		widget->Tick(deltaTime);
-
-		if (widget->IsWindow())
-		{
-			widget->End();
-		}
-	}
-
-	if (DOCKING_ENABLED) { DockSpace_End(); }
 }
 
 void Editor::ApplyStyle()
