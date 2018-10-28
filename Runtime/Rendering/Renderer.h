@@ -150,7 +150,7 @@ namespace Directus
 
 		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& texOut);
 
-		bool Pass_DebugGBuffer();
+		bool Pass_DebugGBuffer(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Debug();
 
 		void Pass_Correction(

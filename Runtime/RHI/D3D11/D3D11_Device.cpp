@@ -41,11 +41,19 @@ namespace Directus
 {
 	namespace _D3D11_Device
 	{
-		// Device & Swapchain options
-		const static D3D_DRIVER_TYPE driverType = D3D_DRIVER_TYPE_HARDWARE;
-		const static unsigned int sdkVersion	= D3D11_SDK_VERSION;
-		UINT swapchainBufferCount				= 2;
-		auto swapchainFlags						= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		// Options
+		const static D3D_DRIVER_TYPE driverType		= D3D_DRIVER_TYPE_HARDWARE;
+		const static unsigned int sdkVersion		= D3D11_SDK_VERSION;
+		const static UINT swapchainBufferCount		= 2;
+		const static auto swapEffect				= DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		const static auto swapchainFlags			= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		const static bool multithreadProtection		= true;		
+#ifdef DEBUG
+		const static UINT deviceFlags = D3D11_CREATE_DEVICE_DEBUG; // Debug layer
+#else
+		const static UINT deviceFlags = 0;
+#endif
+
 		// The order of the feature levels that we'll try to create a device from
 		const static D3D_FEATURE_LEVEL featureLevels[] =
 		{
@@ -194,6 +202,7 @@ namespace Directus
 			LOG_ERROR("RHI_Device::RHI_Device: Couldn't find any adapters.");
 			return;
 		}
+
 		// Save all available adapters
 		DXGI_ADAPTER_DESC adapterDesc;
 		for (IDXGIAdapter* displayAdapter : adapters)
@@ -278,20 +287,15 @@ namespace Directus
 			swapChainDesc.Windowed						= (BOOL)!Settings::Get().FullScreen_Get();
 			swapChainDesc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			swapChainDesc.BufferDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
-			swapChainDesc.SwapEffect					= DXGI_SWAP_EFFECT_FLIP_DISCARD;
+			swapChainDesc.SwapEffect					= _D3D11_Device::swapEffect;
 			swapChainDesc.Flags							= _D3D11_Device::swapchainFlags;
-
-			UINT deviceFlags = 0;
-#ifdef DEBUG
-			deviceFlags |= D3D11_CREATE_DEVICE_DEBUG; // Enable debug layer
-#endif
 
 			// Create the swap chain, Direct3D device, and Direct3D device context.
 			auto result = D3D11CreateDeviceAndSwapChain(
 				nullptr,								// specify nullptr to use the default adapter
 				_D3D11_Device::driverType,
 				nullptr,								// specify nullptr because D3D_DRIVER_TYPE_HARDWARE indicates that this...
-				deviceFlags,							// ...function uses hardware, optionally set debug and Direct2D compatibility flags
+				_D3D11_Device::deviceFlags,				// ...function uses hardware, optionally set debug and Direct2D compatibility flags
 				_D3D11_Device::featureLevels,
 				ARRAYSIZE(_D3D11_Device::featureLevels),
 				_D3D11_Device::sdkVersion,				// always set this to D3D11_SDK_VERSION
@@ -310,6 +314,7 @@ namespace Directus
 		}
 
 		// Enable multi-thread protection
+		if (_D3D11_Device::multithreadProtection)
 		{
 			ID3D11Multithread* multithread = nullptr;
 			if (SUCCEEDED(_D3D11_Device::m_deviceContext->QueryInterface(__uuidof(ID3D11Multithread), (void**)&multithread)))
@@ -740,6 +745,9 @@ namespace Directus
 
 	bool RHI_Device::Profiling_CreateQuery(void** query, Query_Type type)
 	{
+		if (!_D3D11_Device::m_device)
+			return false;
+
 		D3D11_QUERY_DESC desc;
 		ZeroMemory(&desc, sizeof(desc));
 		desc.Query		= (type == Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
@@ -756,35 +764,47 @@ namespace Directus
 
 	void RHI_Device::Profiling_QueryStart(void* queryObject)
 	{
+		if (!_D3D11_Device::m_deviceContext)
+			return;
+
 		_D3D11_Device::m_deviceContext->Begin((ID3D11Query*)queryObject);
 	}
 
 	void RHI_Device::Profiling_QueryEnd(void* queryObject)
 	{ 
+		if (!_D3D11_Device::m_deviceContext)
+			return;
+
 		_D3D11_Device::m_deviceContext->End((ID3D11Query*)queryObject);
 	}
 
 	void RHI_Device::Profiling_GetTimeStamp(void* queryObject)
 	{
+		if (!_D3D11_Device::m_deviceContext)
+			return;
+
 		_D3D11_Device::m_deviceContext->End((ID3D11Query*)queryObject);
 	}
 
 	float RHI_Device::Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd)
 	{
+		if (!_D3D11_Device::m_deviceContext)
+			return 0.0f;
+
 		// Wait for data to be available	
 		while (_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryDisjoint, NULL, 0, 0) == S_FALSE){}
 
 		// Check whether timestamps were disjoint during the last frame
 		D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
-		_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryDisjoint,	&disjointData,	sizeof(disjointData), 0);
+		_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryDisjoint, &disjointData, sizeof(disjointData), 0);
 		if (disjointData.Disjoint)
 			return 0.0f;
 
 		// Get the query data		
 		UINT64 startTime	= 0;
 		UINT64 endTime		= 0;
-		_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryStart,	&startTime,	sizeof(startTime),	0);
-		_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryEnd,	&endTime,	sizeof(endTime),	0);
+		_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryStart, &startTime, sizeof(startTime), 0);
+		_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryEnd,	&endTime, sizeof(endTime), 0);
 
 		// Compute delta in milliseconds
 		UINT64 delta		= endTime - startTime;

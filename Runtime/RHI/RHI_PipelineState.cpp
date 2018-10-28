@@ -44,24 +44,8 @@ namespace Directus
 {
 	RHI_PipelineState::RHI_PipelineState(shared_ptr<RHI_Device> rhiDevice)
 	{
-		m_rhiDevice				= rhiDevice;
-		m_primitiveTopology		= PrimitiveTopology_NotAssigned;
-		m_inputLayout			= Input_NotAssigned;
-		m_cullMode				= Cull_NotAssigned;
-		m_fillMode				= Fill_NotAssigned;
-		m_inputLayoutBuffer		= nullptr;
-		m_vertexShader			= nullptr;
-		m_vertexShaderDirty		= false;
-		m_pixelShader			= nullptr;
-		m_pixelShaderDirty		= false;
-		m_indexBufferDirty		= false;
-		m_vertexBufferDirty		= false;
-		m_constantBufferDirty	= false;
-		m_samplersDirty			= false;
-		m_texturesDirty			= false;
-		m_renderTargetsDirty	= false;
-		m_depthStencil			= nullptr;
-		m_viewportDirty			= false;
+		m_rhiDevice	= rhiDevice;
+		Clear();
 	}
 
 	void RHI_PipelineState::SetShader(shared_ptr<RHI_Shader>& shader)
@@ -326,8 +310,8 @@ namespace Directus
 				}
 			}
 
-			m_renderTargetsClear	= false;
-			m_renderTargetsDirty	= false;
+			m_renderTargetsClear = false;
+			m_renderTargetsDirty = false;
 		}
 
 		// Vertex shader
@@ -335,7 +319,7 @@ namespace Directus
 		{
 			m_rhiDevice->Set_VertexShader(m_pixelShader->GetVertexShaderBuffer());
 			Profiler::Get().m_rhiBindingsVertexShader++;
-			m_vertexShaderDirty	= false;
+			m_vertexShaderDirty = false;
 		}
 
 		// Pixel shader
@@ -389,7 +373,7 @@ namespace Directus
 			m_rhiDevice->Set_Samplers(startSlot, (unsigned int)m_samplers.size(), &m_samplers[0]);
 			Profiler::Get().m_rhiBindingsSampler++;
 			m_samplers.clear();
-			m_samplersDirty	= false;
+			m_samplersDirty = false;
 		}
 
 		// Textures
@@ -399,13 +383,13 @@ namespace Directus
 			m_rhiDevice->Set_Textures(startSlot, (unsigned int)m_textures.size(), &m_textures[0]);
 			m_textures.clear();
 			Profiler::Get().m_rhiBindingsTexture++;
-			m_texturesDirty	= false;
+			m_texturesDirty = false;
 		}
 
 		// Index buffer
 		bool resultIndexBuffer = true;
 		if (m_indexBufferDirty)
-		{		
+		{
 			resultIndexBuffer = m_indexBuffer->Bind();
 			Profiler::Get().m_rhiBindingsBufferIndex++;
 			m_indexBufferDirty = false;
@@ -426,9 +410,9 @@ namespace Directus
 			// Check to see if we can set them in one go
 			if (m_constantBuffers.buffers.size() > 1 && m_constantBuffers.sharedScope)
 			{
-				auto buffer				= m_constantBuffers.buffers.front();
-				unsigned int startSlot	= buffer->GetSlot();
-				Buffer_Scope scope		= buffer->GetScope();
+				auto buffer = m_constantBuffers.buffers.front();
+				unsigned int startSlot = buffer->GetSlot();
+				Buffer_Scope scope = buffer->GetScope();
 				m_rhiDevice->Set_ConstantBuffers(startSlot, (unsigned int)m_constantBuffers.buffers.size(), scope, (void*const*)&m_constantBuffers.buffersLowLevel[0]);
 				Profiler::Get().m_rhiBindingsBufferConstant += buffer->GetScope() == Buffer_Global ? 2 : 1;
 			}
@@ -441,11 +425,51 @@ namespace Directus
 					Profiler::Get().m_rhiBindingsBufferConstant += constantBuffer->GetScope() == Buffer_Global ? 2 : 1;
 				}
 			}
-			
+
 			m_constantBuffers.Clear();
 			m_constantBufferDirty = false;
 		}
 
 		return resultIndexBuffer && resultVertexBuffer;
+	}
+
+	void RHI_PipelineState::Clear()
+	{
+		m_primitiveTopology	= PrimitiveTopology_NotAssigned;
+		m_primitiveTopologyDirty = false;
+
+		m_fillMode = Fill_NotAssigned;
+		m_fillModeDirty = false;
+
+		m_inputLayout		= Input_NotAssigned;
+		m_inputLayoutDirty	= false;
+
+		m_cullMode			= Cull_NotAssigned;
+		m_cullModeDirty		= false;
+
+		m_inputLayoutBuffer	= nullptr;
+
+		m_viewportDirty	= false;
+
+		m_vertexShader			= nullptr;	
+		m_pixelShader			= nullptr;	
+		m_vertexShaderDirty		= false;
+		m_pixelShaderDirty		= false;
+
+		m_indexBufferDirty	= false;
+		m_vertexBufferDirty	= false;
+		
+		m_renderTargetsClear	= false;
+		m_renderTargetsDirty	= false;
+		m_depthStencil			= nullptr;
+
+		m_samplers.clear();
+		m_samplersDirty	= false;
+
+		m_textures.clear();
+		m_texturesDirty = false;
+
+		m_constantBuffers.Clear();
+		m_constantBufferDirty = false;
 	}
 }
