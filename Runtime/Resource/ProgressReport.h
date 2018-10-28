@@ -38,7 +38,7 @@ namespace Directus
 
 		void Clear()
 		{
-			status		= NOT_ASSIGNED;
+			status.clear();
 			jobsDone	= 0;
 			jobCount	= 0;
 			isLoading	= false;

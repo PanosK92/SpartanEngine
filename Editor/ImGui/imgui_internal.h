@@ -820,7 +820,8 @@ struct ImGuiContext
     ImGuiID                 HoveredId;                          // Hovered widget
     bool                    HoveredIdAllowOverlap;
     ImGuiID                 HoveredIdPreviousFrame;
-    float                   HoveredIdTimer;
+    float                   HoveredIdTimer;                     // Measure contiguous hovering time
+    float                   HoveredIdNotActiveTimer;            // Measure contiguous hovering time where the item has not been active
     ImGuiID                 ActiveId;                           // Active widget
     ImGuiID                 ActiveIdPreviousFrame;
     ImGuiID                 ActiveIdIsAlive;                    // Active widget has been seen this frame (we can't use a bool as the ActiveId may change within the frame)
@@ -984,7 +985,7 @@ struct ImGuiContext
         HoveredId = 0;
         HoveredIdAllowOverlap = false;
         HoveredIdPreviousFrame = 0;
-        HoveredIdTimer = 0.0f;
+        HoveredIdTimer = HoveredIdNotActiveTimer = 0.0f;
         ActiveId = 0;
         ActiveIdPreviousFrame = 0;
         ActiveIdIsAlive = 0;
@@ -1388,7 +1389,6 @@ namespace ImGui
 
     IMGUI_API void          SetCurrentFont(ImFont* font);
     inline ImFont*          GetDefaultFont() { ImGuiContext& g = *GImGui; return g.IO.FontDefault ? g.IO.FontDefault : g.IO.Fonts->Fonts[0]; }
-    IMGUI_API ImDrawList*   GetOverlayDrawList(ImGuiViewportP* viewport);
     inline ImDrawList*      GetOverlayDrawList(ImGuiWindow* window) { return GetOverlayDrawList(window->Viewport); }
 
     // Init

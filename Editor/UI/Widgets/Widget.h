@@ -32,23 +32,39 @@ namespace Directus	{ class Context; }
 class Widget
 {
 public:
-	Widget(Directus::Context* context) { m_context = context; }
+	Widget(Directus::Context* context) { m_context	= context; }
 	virtual ~Widget() {}
 
-	virtual void Begin()
+	virtual bool Begin()
 	{
+		if (!m_isWindow)
+			return false;
+
+		if (!m_isVisible)
+			return false;
+
 		ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowSizeConstraints(ImVec2(m_xMin, m_yMin), ImVec2(m_xMax, m_yMax));
 		ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
+
+		return true;
 	}
 
 	virtual void Tick(float deltaTime = 0.0f) = 0;
 
-	virtual void End()
+	virtual bool End()
 	{
+		if (!m_isWindow)
+			return false;
+
+		if (!m_isVisible)
+			return false;
+
 		m_window = ImGui::GetCurrentWindow();
 		m_height = ImGui::GetWindowHeight();
 		ImGui::End();
+
+		return true;
 	}
 
 	bool IsWindow()					{ return m_isWindow; }
@@ -59,7 +75,7 @@ public:
 	const std::string& GetTitle()	{ return m_title; }
 
 protected:
-	bool m_isVisible	= false;
+	bool m_isVisible	= true;
 	bool m_isWindow		= true;	
 	int m_windowFlags	= ImGuiWindowFlags_NoCollapse;
 	float m_xMin		= 0;

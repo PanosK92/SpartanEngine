@@ -69,7 +69,7 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 	Engine::EngineMode_Disable(Engine_Game);
 }
 
-void Widget_Toolbar::Begin()
+bool Widget_Toolbar::Begin()
 {
 	ImGuiContext& g = *GImGui;
 	g.NextWindowData.MenuBarOffsetMinVal = ImVec2(g.Style.DisplaySafeAreaPadding.x, ImMax(g.Style.DisplaySafeAreaPadding.y - g.Style.FramePadding.y, 0.0f));
@@ -77,6 +77,8 @@ void Widget_Toolbar::Begin()
 	ImGui::SetNextWindowSize(ImVec2(g.Viewports[0]->Size.x, g.NextWindowData.MenuBarOffsetMinVal.y + g.FontBaseSize + g.Style.FramePadding.y + 20.0f));
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 5));
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
+
+	return true;
 }
 
 void Widget_Toolbar::Tick(float deltaTime)
