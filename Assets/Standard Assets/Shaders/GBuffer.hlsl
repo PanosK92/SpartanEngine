@@ -77,9 +77,9 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
 	output.positionWS 	= mul(input.position, mWorld);
 	output.positionVS 	= mul(input.position, mWorldView);
 	output.positionCS 	= mul(input.position, mWorldViewProjection);	
-	output.normal 		= normalize(mul(float4(input.normal, 0.0f), mWorld)).xyz;	
-	output.tangent 		= normalize(mul(float4(input.tangent, 0.0f), mWorld)).xyz;
-	output.bitangent 	= normalize(mul(float4(input.bitangent, 0.0f), mWorld)).xyz;
+	output.normal 		= normalize(mul(input.normal, 		(float3x3)mWorld)).xyz;	
+	output.tangent 		= normalize(mul(input.tangent, 		(float3x3)mWorld)).xyz;
+	output.bitangent 	= normalize(mul(input.bitangent, 	(float3x3)mWorld)).xyz;
     output.uv 			= input.uv;
 	
 	return output;
@@ -87,7 +87,7 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
 
 PixelOutputType mainPS(PixelInputType input)
 {
-	PixelOutputType output;
+	PixelOutputType g_buffer;
 
 	float depth_linear 		= input.positionVS.z / planes.y;
 	float depth_expo 		= input.positionCS.z / input.positionVS.w;
@@ -111,7 +111,7 @@ PixelOutputType mainPS(PixelInputType input)
 		float height_scale 	= materialHeight * 0.01f;
 		float3 viewDir 		= normalize(cameraPosWS - input.positionWS.xyz);
 		float height 		= texHeight.Sample(samplerAniso, texCoords).r;
-		float2 offset 		= viewDir * (height * height_scale);
+		float2 offset 		= viewDir.xy * (height * height_scale);
 		if(texCoords.x <= 1.0 && texCoords.y <= 1.0 && texCoords.x >= 0.0 && texCoords.y >= 0.0)
 		{
 			texCoords += offset;
@@ -165,10 +165,10 @@ PixelOutputType mainPS(PixelInputType input)
 	//============================================================================================
 
 	// Write to G-Buffer
-	output.albedo		= albedo;
-	output.normal 		= float4(PackNormal(normal), occlusion);
-	output.specular		= float4(roughness, metallic, emission, type);
-	output.depth 		= float2(depth_linear, depth_expo);
+	g_buffer.albedo		= albedo;
+	g_buffer.normal 	= float4(PackNormal(normal), occlusion);
+	g_buffer.specular	= float4(roughness, metallic, emission, type);
+	g_buffer.depth 		= float2(depth_linear, depth_expo);
 
-    return output;
+    return g_buffer;
 }

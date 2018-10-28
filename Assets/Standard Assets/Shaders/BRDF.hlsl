@@ -10,8 +10,6 @@ float3 F_FresnelSchlick(float3 specularColor, float a, float3 h, float3 v)
     return specularColor + (max(1.0f - a, specularColor) - specularColor) * pow((1.0f - saturate(dot(v, h))), 5.0f);
 }
 
-//==========================================================================
-
 //= G - Geometric shadowing ================================================
 float G_SmithSchlickGGX(float NdotV, float NdotL, float a)
 {
@@ -21,7 +19,6 @@ float G_SmithSchlickGGX(float NdotV, float NdotL, float a)
 
     return GV * GL;
 }
-//==========================================================================
 
 //= D - Normal distribution ================================================
 float D_GGX(float a, float NdotH)
@@ -36,7 +33,6 @@ float D_GGX(float a, float NdotH)
 
     return a2 / denominator;
 }
-//===========================================================================
 
 //= BRDF - DIFFUSE ==========================================================
 // [Gotanda 2012, "Beyond a Simple Physically Based Blinn-Phong Model in Real-Time"]
@@ -51,15 +47,14 @@ float3 Diffuse_OrenNayar( float3 DiffuseColor, float Roughness, float NoV, float
 	float C2 	= 0.45 * s2 / (s2 + 0.09) * Cosri * ( Cosri >= 0 ? rcp( max( NoL, NoV + 0.0001f ) ) : 1 );
 	return DiffuseColor / PI * ( C1 + C2 ) * ( 1 + Roughness * 0.5 );
 }
-//=============================================================================
 
 // IMAGE BASED LIGHTING ======================================================
 float3 ImageBasedLighting(Material material, float3 lightDirection, float3 normal, float3 viewDir, SamplerState samplerLinear)
 {
 	// Compute reflection vector
-	float3 reflectionVector = normalize(reflect(-viewDir, normal));
+	float3 reflectionVector = reflect(-viewDir, normal);
 	
-	float a 			= max(0.001f, material.roughness * material.roughness);
+    float a             = max(0.001f, material.roughness * material.roughness);
 	float3 diffuseColor = (1.0f - material.metallic) * material.albedo;
 	float3 F0 			= lerp(0.03f, material.albedo, material.metallic);	
 
