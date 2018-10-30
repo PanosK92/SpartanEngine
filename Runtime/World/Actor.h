@@ -80,7 +80,7 @@ namespace Directus
 			// Add component
 			auto newComponent = std::make_shared<T>(
 				m_context, 
-				m_context->GetSubsystem<World>()->GetActorByID(GetID()).lock().get(),
+				m_context->GetSubsystem<World>()->Actor_GetByID(GetID()).lock().get(),
 				GetTransform_PtrRaw()
 				);
 			m_components.insert(make_pair(type, newComponent));

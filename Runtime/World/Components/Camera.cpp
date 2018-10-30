@@ -162,18 +162,18 @@ namespace Directus
 		m_ray = Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mousePos));
 
 		// Hits <Distance, actor>
-		map<float, std::weak_ptr<Actor>> hits;
+		map<float, weak_ptr<Actor>> hits;
 
 		// Find all the actors that the ray hits
-		vector<std::weak_ptr<Actor>> actors = GetContext()->GetSubsystem<World>()->GetRenderables();
+		vector<shared_ptr<Actor>> actors = GetContext()->GetSubsystem<World>()->Actors_GetAll();
 		for (const auto& actor : actors)
 		{
 			// Make sure there actor has a mesh and exclude the SkyBox
-			if (!actor.lock()->HasComponent<Renderable>() || actor.lock()->HasComponent<Skybox>())
+			if (!actor->HasComponent<Renderable>() || actor->HasComponent<Skybox>())
 				continue;
 
 			// Get bounding box
-			BoundingBox bb = actor.lock()->GetComponent<Renderable>().lock()->Geometry_BB();
+			BoundingBox bb = actor->GetComponent<Renderable>().lock()->Geometry_BB();
 
 			// Compute hit distance
 			float hitDistance = m_ray.HitDistance(bb);

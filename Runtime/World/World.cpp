@@ -79,7 +79,8 @@ namespace Directus
 
 		if (m_isDirty)
 		{
-			Resolve();
+			// Submit to the Renderer
+			FIRE_EVENT_DATA(EVENT_SCENE_RESOLVE_END, m_actors);
 			m_isDirty = false;
 		}
 
@@ -118,12 +119,8 @@ namespace Directus
 	void World::Unload()
 	{
 		FIRE_EVENT(EVENT_SCENE_UNLOAD);
-
 		m_actors.clear();
 		m_actors.shrink_to_fit();
-
-		m_renderables.clear();
-		m_renderables.shrink_to_fit();
 	}
 	//=========================================================================================================
 
@@ -161,7 +158,7 @@ namespace Directus
 
 		//= Save actors ============================
 		// Only save root actors as they will also save their descendants
-		vector<weak_ptr<Actor>> rootactors = GetRootActors();
+		vector<weak_ptr<Actor>> rootactors = Actors_GetRoots();
 
 		// 1st - actor count
 		auto rootactorCount = (int)rootactors.size();
@@ -299,7 +296,7 @@ namespace Directus
 		if (actor.expired())
 			return false;
 
-		return !GetActorByID(actor.lock()->GetID()).expired();
+		return !Actor_GetByID(actor.lock()->GetID()).expired();
 	}
 
 	// Removes an actor and all of it's children
@@ -340,7 +337,7 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	vector<weak_ptr<Actor>> World::GetRootActors()
+	vector<weak_ptr<Actor>> World::Actors_GetRoots()
 	{
 		vector<weak_ptr<Actor>> rootactors;
 		for (const auto& actor : m_actors)
@@ -354,7 +351,7 @@ namespace Directus
 		return rootactors;
 	}
 
-	weak_ptr<Actor> World::GetActorRoot(weak_ptr<Actor> actor)
+	weak_ptr<Actor> World::Actor_GetRoot(weak_ptr<Actor> actor)
 	{
 		if (actor.expired())
 			return weak_ptr<Actor>();
@@ -362,7 +359,7 @@ namespace Directus
 		return actor.lock()->GetTransform_PtrRaw()->GetRoot()->GetActor_PtrWeak();
 	}
 
-	weak_ptr<Actor> World::GetActorByName(const string& name)
+	weak_ptr<Actor> World::Actor_GetByName(const string& name)
 	{
 		for (const auto& actor : m_actors)
 		{
@@ -375,7 +372,7 @@ namespace Directus
 		return weak_ptr<Actor>();
 	}
 
-	weak_ptr<Actor> World::GetActorByID(unsigned int ID)
+	weak_ptr<Actor> World::Actor_GetByID(unsigned int ID)
 	{
 		for (const auto& actor : m_actors)
 		{
@@ -386,48 +383,6 @@ namespace Directus
 		}
 
 		return weak_ptr<Actor>();
-	}
-	//===================================================================================================
-
-	//= SCENE RESOLUTION  ===============================================================================
-	void World::Resolve()
-	{
-		TIME_BLOCK_START_CPU();
-
-		m_renderables.clear();
-		m_renderables.shrink_to_fit();
-
-		for (const auto& actor : m_actors)
-		{
-			// Acquire rendering related components
-			weak_ptr<Camera> camera			= actor->GetComponent<Camera>();
-			weak_ptr<Skybox> skybox			= actor->GetComponent<Skybox>();
-			weak_ptr<Renderable> renderable = actor->GetComponent<Renderable>();
-			weak_ptr<Light> light			= actor->GetComponent<Light>();
-
-			// Find main camera
-			if (!camera.expired())
-			{
-				m_mainCamera = actor;
-			}
-
-			// Find skybox
-			if (!skybox.expired())
-			{
-				m_skybox = actor;
-			}
-
-			// Save any actor that has any of the above components
-			if (!camera.expired() || !skybox.expired() || !renderable.expired() || !light.expired())
-			{
-				m_renderables.emplace_back(actor);
-			}
-		}
-
-		TIME_BLOCK_END_CPU();
-
-		// Submit to the Renderer
-		FIRE_EVENT_DATA(EVENT_SCENE_RESOLVE_END, m_renderables);
 	}
 	//===================================================================================================
 

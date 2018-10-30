@@ -88,7 +88,7 @@ namespace Directus
 	namespace _ModelImporter
 	{
 		// Things for Assimp to do
-		static auto g_postProcessSteps =
+		static auto flags =
 			aiProcess_CalcTangentSpace |
 			aiProcess_GenSmoothNormals |
 			aiProcess_JoinIdenticalVertices |
@@ -106,7 +106,7 @@ namespace Directus
 			aiProcess_Debone |
 			aiProcess_ConvertToLeftHanded;
 
-		static int g_normalSmoothAngle = 45; // Default is 45, max is 175
+		static float normalSmoothAngle = 90.0f; // Default is 45, max is 175
 	}
 
 	ModelImporter::ModelImporter(Context* context)
@@ -134,14 +134,14 @@ namespace Directus
 
 		// Set up an Assimp importer
 		Importer importer;
-		importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64);											// Optimize mesh
-		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);		// Remove points and lines.
-		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);			// Remove cameras and lights
-		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, _ModelImporter::g_normalSmoothAngle);	// Normal smoothing angle
-		importer.SetProgressHandler(new _ProgressHandler(filePath));											// Progress tracking
+		importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64);										// Optimize mesh
+		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);	// Remove points and lines.
+		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);		// Remove cameras and lights
+		importer.SetPropertyFloat(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, _ModelImporter::normalSmoothAngle);	// Normal smoothing angle
+		importer.SetProgressHandler(new _ProgressHandler(filePath));										// Progress tracking
 
 		// Read the 3D model file from disk
-		if (const aiScene* scene = importer.ReadFile(m_modelPath, _ModelImporter::g_postProcessSteps))
+		if (const aiScene* scene = importer.ReadFile(m_modelPath, _ModelImporter::flags))
 		{
 			ReadNodeHierarchy(model, scene, scene->mRootNode);
 			ReadAnimations(model, scene);

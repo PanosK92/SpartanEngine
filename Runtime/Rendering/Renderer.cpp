@@ -436,16 +436,16 @@ namespace Directus
 	}
 
 	//= RENDERABLES ============================================================================================
-	void Renderer::Renderables_Acquire(const Variant& actors)
+	void Renderer::Renderables_Acquire(const Variant& actorsVariant)
 	{
 		TIME_BLOCK_START_CPU();
 
 		Clear();
-		auto actorsVec = actors.Get<vector<weak_ptr<Actor>>>();
+		auto actorsVec = actorsVariant.Get<vector<shared_ptr<Actor>>>();
 
-		for (const auto& actorWeak : actorsVec)
+		for (const auto& actorShared : actorsVec)
 		{
-			auto actor = actorWeak.lock().get();
+			auto actor = actorShared.get();
 			if (!actor)
 				continue;
 
