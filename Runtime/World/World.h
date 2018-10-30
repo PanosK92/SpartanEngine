@@ -63,24 +63,21 @@ namespace Directus
 		void Actor_Add(std::shared_ptr<Actor> actor);
 		bool Actor_Exists(const std::weak_ptr<Actor>& actor);
 		void Actor_Remove(const std::weak_ptr<Actor>& actor);
-		const std::vector<std::shared_ptr<Actor>>& GetAllActors() { return m_actors; }
-		std::vector<std::weak_ptr<Actor>> GetRootActors();
-		std::weak_ptr<Actor> GetActorRoot(std::weak_ptr<Actor> actor);
-		std::weak_ptr<Actor> GetActorByName(const std::string& name);
-		std::weak_ptr<Actor> GetActorByID(unsigned int ID);	
-		int GetactorCount() { return (int)m_actors.size(); }
+		const std::vector<std::shared_ptr<Actor>>& Actors_GetAll() { return m_actors; }
+		std::vector<std::weak_ptr<Actor>> Actors_GetRoots();
+		std::weak_ptr<Actor> Actor_GetRoot(std::weak_ptr<Actor> actor);
+		std::weak_ptr<Actor> Actor_GetByName(const std::string& name);
+		std::weak_ptr<Actor> Actor_GetByID(unsigned int ID);	
+		int Actor_GetCount() { return (int)m_actors.size(); }
 		//============================================================================
 
-		//= MISC ============================================================================
-		const std::vector<std::weak_ptr<Actor>>& GetRenderables()	{ return m_renderables; }
-		std::weak_ptr<Actor> GetMainCamera()						{ return m_mainCamera; }
+		//= MISC ====================================================
+		std::weak_ptr<Actor> GetMainCamera() { return m_mainCamera; }
 		void SetAmbientLight(float x, float y, float z);
 		Math::Vector3 GetAmbientLight();
-		//===================================================================================
+		//===========================================================
 
 	private:
-		void Resolve();
-
 		//= COMMON ACTOR CREATION ====================
 		std::weak_ptr<Actor> CreateSkybox();
 		std::weak_ptr<Actor> CreateCamera();
@@ -88,8 +85,6 @@ namespace Directus
 		//============================================
 
 		std::vector<std::shared_ptr<Actor>> m_actors;
-		std::vector<std::weak_ptr<Actor>> m_renderables;
-
 		std::weak_ptr<Actor> m_mainCamera;
 		std::weak_ptr<Actor> m_skybox;
 		Math::Vector3 m_ambientLight;

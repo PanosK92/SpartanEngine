@@ -50,6 +50,7 @@ namespace Directus
 	Directus::Actor*,								\
 	std::weak_ptr<Directus::Actor>,					\
 	std::vector<std::weak_ptr<Directus::Actor>>,	\
+	std::vector<std::shared_ptr<Directus::Actor>>,	\
 	Directus::Math::Vector2,						\
 	Directus::Math::Vector3,						\
 	Directus::Math::Vector4,						\

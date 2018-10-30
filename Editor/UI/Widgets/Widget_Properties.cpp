@@ -652,7 +652,7 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 		{
 			auto actorID	= get<unsigned int>(payload->data);
-			otherBody		= _Widget_Properties::scene->GetActorByID(actorID);
+			otherBody		= _Widget_Properties::scene->Actor_GetByID(actorID);
 			otherBodyDirty	= true;
 		}
 		ImGui::PopItemWidth();
