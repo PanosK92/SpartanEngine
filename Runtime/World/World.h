@@ -73,8 +73,6 @@ namespace Directus
 
 		//= MISC ====================================================
 		std::weak_ptr<Actor> GetMainCamera() { return m_mainCamera; }
-		void SetAmbientLight(float x, float y, float z);
-		Math::Vector3 GetAmbientLight();
 		//===========================================================
 
 	private:
@@ -87,7 +85,6 @@ namespace Directus
 		std::vector<std::shared_ptr<Actor>> m_actors;
 		std::weak_ptr<Actor> m_mainCamera;
 		std::weak_ptr<Actor> m_skybox;
-		Math::Vector3 m_ambientLight;
 		bool m_wasInEditorMode;
 		bool m_isDirty;
 		Scene_State m_state;

@@ -47,9 +47,7 @@ namespace Directus
 {
 	World::World(Context* context) : Subsystem(context)
 	{
-		m_ambientLight	= Vector3::Zero;
-		m_state			= Scene_Idle;
-
+		m_state	= Scene_Idle;
 		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE_START, [this](Variant) { m_isDirty = true; });
 		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Tick));
 	}
@@ -385,18 +383,6 @@ namespace Directus
 		return weak_ptr<Actor>();
 	}
 	//===================================================================================================
-
-	//= TEMPORARY EXPERIMENTS  ===========================
-	void World::SetAmbientLight(float x, float y, float z)
-	{
-		m_ambientLight = Vector3(x, y, z);
-	}
-
-	Vector3 World::GetAmbientLight()
-	{
-		return m_ambientLight;
-	}
-	//====================================================
 
 	//= COMMON ACTOR CREATION ========================================================================
 	weak_ptr<Actor> World::CreateSkybox()
