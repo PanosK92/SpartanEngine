@@ -120,7 +120,6 @@ namespace Directus
 
 		void Clear();
 		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
-
 		static bool IsRendering()	{ return m_isRendering; }
 		static uint64_t GetFrame()	{ return m_frame; }
 
@@ -130,88 +129,23 @@ namespace Directus
 		void Renderables_Acquire(const Variant& renderables);
 		void Renderables_Sort(std::vector<Actor*>* renderables);
 
+		//= PASSES ==========================================================================================================
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
-
-		void Pass_PreLight(
-			std::shared_ptr<RHI_RenderTexture>& texIn,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);
-
-		void Pass_Light(
-			std::shared_ptr<RHI_RenderTexture>& texIn,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);	
-
-		void Pass_PostLight(
-			std::shared_ptr<RHI_RenderTexture>& texIn,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);
-
+		void Pass_PreLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Light(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_PostLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& texOut);
-
 		bool Pass_DebugGBuffer(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Debug();
-
-		void Pass_Correction(
-			std::shared_ptr<RHI_RenderTexture>& texIn,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);
-
-		void Pass_FXAA(
-			std::shared_ptr<RHI_RenderTexture>& texIn,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);
-
-		void Pass_Sharpening(
-			std::shared_ptr<RHI_RenderTexture>& texIn,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);
-
-		void Pass_ChromaticAberration(
-			std::shared_ptr<RHI_RenderTexture>& texIn,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);
-
-		void Pass_Bloom(
-			std::shared_ptr<RHI_RenderTexture>& texIn,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);
-
-		void Pass_Blur(
-			std::shared_ptr<RHI_RenderTexture>& texIn,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);
-
-		void Pass_Shadowing(
-			Light* inDirectionalLight,
-			std::shared_ptr<RHI_RenderTexture>& texOut
-		);
-
-		// RENDERABLES ==================================================
-		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
-		Math::Matrix m_mV;
-		Math::Matrix m_mP_perspective;
-		Math::Matrix m_mP_orthographic;
-		Math::Matrix m_mV_base;
-		Math::Matrix m_wvp_perspective;
-		Math::Matrix m_wvp_baseOrthographic;
-		float m_nearPlane;
-		float m_farPlane;
-		Camera* m_camera;
-		Light* GetLightDirectional();
-		Skybox* GetSkybox();
-		//===============================================================
-
-		//= MISC =============================================
-		std::shared_ptr<RHI_Device> m_rhiDevice;
-		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
-		std::unique_ptr<GBuffer> m_gbuffer;	
-		std::shared_ptr<RHI_Texture> m_texNoiseMap;
-		std::unique_ptr<Rectangle> m_quad;
-		static bool m_isRendering;
-		static uint64_t m_frame;
-		//====================================================
+		void Pass_Correction(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_FXAA(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Sharpening(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_ChromaticAberration(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Blur(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Shadowing(Light* inDirectionalLight, std::shared_ptr<RHI_RenderTexture>& texOut);
+		//===================================================================================================================
 
 		//= RENDER TEXTURES ======================================
 		std::shared_ptr<RHI_RenderTexture> m_renderTex1;
@@ -267,5 +201,27 @@ namespace Directus
 		unsigned int m_lineVertexCount = 0;
 		std::vector<RHI_Vertex_PosCol> m_lineVertices;
 		//===================================================
+
+		//= MISC ========================================================
+		std::shared_ptr<RHI_Device> m_rhiDevice;
+		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
+		std::unique_ptr<GBuffer> m_gbuffer;
+		std::shared_ptr<RHI_Texture> m_texNoiseMap;
+		std::unique_ptr<Rectangle> m_quad;
+		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
+		Math::Matrix m_mV;
+		Math::Matrix m_mP_perspective;
+		Math::Matrix m_mP_orthographic;
+		Math::Matrix m_mV_base;
+		Math::Matrix m_wvp_perspective;
+		Math::Matrix m_wvp_baseOrthographic;
+		float m_nearPlane;
+		float m_farPlane;
+		Camera* m_camera;
+		Light* GetLightDirectional();
+		Skybox* GetSkybox();
+		static bool m_isRendering;
+		static uint64_t m_frame;
+		//===============================================================
 	};
 }
