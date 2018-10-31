@@ -205,8 +205,8 @@ namespace Directus
 	{
 		if (m_constraint)
 		{
-			RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().lock().get();
-			RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
+			RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().get();
+			RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
 
 			// Make both bodies aware of the removal of this constraint
 			if (rigidBodyOwn)	rigidBodyOwn->RemoveConstraint(this);
@@ -222,8 +222,8 @@ namespace Directus
 		if (!m_constraint || m_bodyOther.expired())
 			return;
 
-		RigidBody* rigidBodyOwn			= m_actor->GetComponent<RigidBody>().lock().get();
-		RigidBody* rigidBodyOther		= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
+		RigidBody* rigidBodyOwn			= m_actor->GetComponent<RigidBody>().get();
+		RigidBody* rigidBodyOther		= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
 		btRigidBody* btOwnBody			= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
 		btRigidBody* btOtherBody		= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
 
@@ -280,8 +280,8 @@ namespace Directus
 		ReleaseConstraint();
 
 		// Make sure we have two bodies
-		RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().lock().get();
-		RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().lock().get() : nullptr;
+		RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().get();
+		RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
 		if (!rigidBodyOwn || !rigidBodyOther)
 		{
 			LOG_INFO("Constraint::Construct: A RigidBody component is still initializing, deferring construction...");

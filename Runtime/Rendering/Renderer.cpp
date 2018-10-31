@@ -450,10 +450,10 @@ namespace Directus
 				continue;
 
 			// Get all the components we are interested in
-			auto renderable = actor->GetComponent<Renderable>().lock();
-			auto light		= actor->GetComponent<Light>().lock();
-			auto skybox		= actor->GetComponent<Skybox>().lock();
-			auto camera		= actor->GetComponent<Camera>().lock();
+			auto renderable = actor->GetComponent<Renderable>();
+			auto light		= actor->GetComponent<Light>();
+			auto skybox		= actor->GetComponent<Skybox>();
+			auto camera		= actor->GetComponent<Camera>();
 
 			if (renderable)
 			{
@@ -1242,7 +1242,7 @@ namespace Directus
 						continue;
 
 					shared_ptr<RHI_Texture> lightTex = nullptr;
-					LightType type = actor->GetComponent<Light>().lock()->GetLightType();
+					LightType type = actor->GetComponent<Light>()->GetLightType();
 					if (type == LightType_Directional)
 					{
 						lightTex = m_gizmoTexLightDirectional;
@@ -1336,7 +1336,7 @@ namespace Directus
 
 		for (const auto& actor : actors)
 		{
-			Light* light = actor->GetComponent<Light>().lock().get();
+			Light* light = actor->GetComponent<Light>().get();
 			if (light->GetLightType() == LightType_Directional)
 				return light;
 		}
@@ -1351,6 +1351,6 @@ namespace Directus
 			return nullptr;
 
 		auto skyboxActor = actors.front();
-		return skyboxActor ? skyboxActor->GetComponent<Skybox>().lock().get() : nullptr;
+		return skyboxActor ? skyboxActor->GetComponent<Skybox>().get() : nullptr;
 	}
 }

@@ -300,7 +300,7 @@ namespace Directus
 		model->Geometry_Append(indices, vertices, &indexOffset, &vertexOffset);
 
 		// Add a renderable component to this Actor
-		auto renderable	= parentActor->AddComponent<Renderable>().lock();
+		auto renderable	= parentActor->AddComponent<Renderable>();
 
 		// Set the geometry
 		renderable->Geometry_Set(

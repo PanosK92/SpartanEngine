@@ -144,7 +144,7 @@ namespace Directus
 
 		// Renderable
 		{
-			auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>().lock();
+			auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>();
 			renderable->Geometry_Set(Geometry_Default_Cube);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
@@ -202,7 +202,7 @@ namespace Directus
 
 		// Renderable
 		{
-			auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>().lock();
+			auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>();
 			renderable->Geometry_Set(Geometry_Default_Cube);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);

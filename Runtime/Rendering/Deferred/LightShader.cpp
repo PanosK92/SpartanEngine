@@ -94,7 +94,7 @@ namespace Directus
 		// Fill with directional lights
 		for (const auto& light : lights)
 		{
-			auto component = light->GetComponent<Light>().lock();
+			auto component = light->GetComponent<Light>();
 
 			if (component->GetLightType() != LightType_Directional)
 				continue;
@@ -110,7 +110,7 @@ namespace Directus
 		int pointIndex = 0;
 		for (const auto& light : lights)
 		{
-			auto component = light->GetComponent<Light>().lock();
+			auto component = light->GetComponent<Light>();
 
 			if (component->GetLightType() != LightType_Point)
 				continue;
@@ -128,7 +128,7 @@ namespace Directus
 		int spotIndex = 0;
 		for (const auto& light : lights)
 		{
-			auto component = light->GetComponent<Light>().lock();
+			auto component = light->GetComponent<Light>();
 
 			if (component->GetLightType() != LightType_Spot)
 				continue;

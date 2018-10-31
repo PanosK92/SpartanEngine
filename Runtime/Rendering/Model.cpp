@@ -130,55 +130,55 @@ namespace Directus
 		m_aabb				= BoundingBox(m_mesh->Vertices_Get());
 	}
 
-	void Model::AddMaterial(const weak_ptr<Material>& material, const weak_ptr<Actor>& actor, bool autoCache /* true */)
+	void Model::AddMaterial(const shared_ptr<Material>& material, const shared_ptr<Actor>& actor, bool autoCache /* true */)
 	{
-		if (material.expired())
+		if (!material)
 		{
 			LOG_WARNING("Model::AddMaterial: Invalid parameters");
 			return;
 		}
 
 		// Create a file path for this material
-		material.lock()->SetResourceFilePath(m_modelDirectoryMaterials + material.lock()->GetResourceName() + EXTENSION_MATERIAL);
+		material->SetResourceFilePath(m_modelDirectoryMaterials + material->GetResourceName() + EXTENSION_MATERIAL);
 
 		// Save the material in the model directory		
-		material.lock()->SaveToFile(material.lock()->GetResourceFilePath());
+		material->SaveToFile(material->GetResourceFilePath());
 
 		// Cache it or use the provided reference as is
-		auto matRef = autoCache ? material.lock()->Cache<Material>() : material;
+		auto matRef = autoCache ? material->Cache<Material>() : material;
 
 		// Keep a reference to it
 		m_materials.push_back(matRef);
 
 		// Create a Renderable and pass the material to it
-		if (!actor.expired())
+		if (actor)
 		{
-			auto renderable = actor.lock()->AddComponent<Renderable>().lock();
+			auto renderable = actor->AddComponent<Renderable>();
 			renderable->Material_Set(matRef, false);
 		}
 	}
 
-	weak_ptr<Animation> Model::AddAnimation(weak_ptr<Animation> animation)
+	shared_ptr<Animation> Model::AddAnimation(const shared_ptr<Animation>& animation)
 	{
-		if (animation.expired())
+		if (!animation)
 			return animation;
 
 		// Add it to our resources
-		auto weakAnim = m_context->GetSubsystem<ResourceManager>()->Add<Animation>(animation.lock());
+		auto weakAnim = m_context->GetSubsystem<ResourceManager>()->Add<Animation>(animation);
 
 		// Keep a reference to it
-		m_animations.push_back(weakAnim);
+		m_animations.emplace_back(weakAnim);
 
 		m_isAnimated = true;
 
 		// Return it
-		return weakAnim;
+		return weakAnim.lock();
 	}
 
-	void Model::AddTexture(const weak_ptr<Material>& material, TextureType textureType, const string& filePath)
+	void Model::AddTexture(const shared_ptr<Material>& material, TextureType textureType, const string& filePath)
 	{
 		// Validate material
-		if (material.expired())
+		if (!material)
 			return;
 
 		// Validate texture file path
@@ -194,7 +194,7 @@ namespace Directus
 		if (texture)
 		{
 			texture->SetTextureType(textureType); // if this texture was cached from the editor, it has no type, we have to set it
-			material.lock()->SetTextureSlot(textureType, texture, false);
+			material->SetTextureSlot(textureType, texture, false);
 		}
 		// If we didn't get a texture, it's not cached, hence we have to load it and cache it now
 		else if (!texture)
@@ -214,7 +214,7 @@ namespace Directus
 
 			// Set the texture to the provided material
 			auto texWeak = texture->Cache<RHI_Texture>();
-			material.lock()->SetTextureSlot(textureType, texWeak, false);
+			material->SetTextureSlot(textureType, texWeak, false);
 		}
 	}
 
@@ -263,8 +263,8 @@ namespace Directus
 		{
 			// Set the normalized scale to the root actor's transform
 			m_normalizedScale = Geometry_ComputeNormalizedScale();
-			m_rootactor.lock()->GetComponent<Transform>().lock()->SetScale(m_normalizedScale);
-			m_rootactor.lock()->GetComponent<Transform>().lock()->UpdateTransform();
+			m_rootActor.lock()->GetComponent<Transform>()->SetScale(m_normalizedScale);
+			m_rootActor.lock()->GetComponent<Transform>()->UpdateTransform();
 
 			// Save the model in our custom format.
 			SaveToFile(GetResourceFilePath());

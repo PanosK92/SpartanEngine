@@ -69,13 +69,13 @@ namespace Directus
 		//= COMPONENTS =========================================================================================
 		// Adds a component of type T
 		template <class T>
-		std::weak_ptr<T> AddComponent()
+		std::shared_ptr<T> AddComponent()
 		{
 			ComponentType type = IComponent::Type_To_Enum<T>();
 
 			// Return component in case it already exists while ignoring Script components (they can exist multiple times)
 			if (HasComponent(type) && type != ComponentType_Script)
-				return std::static_pointer_cast<T>(GetComponent<T>().lock());
+				return GetComponent<T>();
 
 			// Add component
 			m_components.emplace_back
@@ -104,11 +104,11 @@ namespace Directus
 			return newComponent;
 		}
 
-		std::weak_ptr<IComponent> AddComponent(ComponentType type);
+		std::shared_ptr<IComponent> AddComponent(ComponentType type);
 
 		// Returns a component of type T (if it exists)
 		template <class T>
-		std::weak_ptr<T> GetComponent()
+		std::shared_ptr<T> GetComponent()
 		{
 			ComponentType type = IComponent::Type_To_Enum<T>();
 			for (const auto& component : m_components)
@@ -117,14 +117,14 @@ namespace Directus
 					return std::static_pointer_cast<T>(component);
 			}
 
-			return std::weak_ptr<T>();
+			return nullptr;
 		}
 
 		// Returns any components of type T (if they exist)
 		template <class T>
-		std::vector<std::weak_ptr<T>> GetComponents()
+		std::vector<std::shared_ptr<T>> GetComponents()
 		{
-			std::vector<std::weak_ptr<T>> components;
+			std::vector<std::shared_ptr<T>> components;
 
 			ComponentType type = IComponent::Type_To_Enum<T>();
 			for (const auto& component : m_components)
@@ -198,6 +198,7 @@ namespace Directus
 		bool m_hierarchyVisibility;
 		std::vector<std::shared_ptr<IComponent>> m_components;
 		Context* m_context;
+		std::shared_ptr<Actor> m_componentEmpty;
 
 		// Caching of performance critical components
 		Transform* m_transform;

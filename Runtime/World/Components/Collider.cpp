@@ -179,7 +179,7 @@ namespace Directus
 
 		case ColliderShape_Mesh:
 			// Get Renderable
-			Renderable* renderable = GetActor_PtrRaw()->GetComponent<Renderable>().lock().get();
+			Renderable* renderable = GetActor_PtrRaw()->GetComponent<Renderable>().get();
 			if (!renderable)
 			{
 				LOG_WARNING("Collider::Shape_Update: Can't construct mesh shape, there is no Renderable component attached.");
@@ -237,7 +237,7 @@ namespace Directus
 
 	void Collider::RigidBody_SetShape(shared_ptr<btCollisionShape> shape)
 	{
-		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>().lock())
+		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>())
 		{
 			rigidBody->SetShape(shape);
 		}
@@ -245,7 +245,7 @@ namespace Directus
 
 	void Collider::RigidBody_SetCenterOfMass(const Vector3& center)
 	{
-		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>().lock())
+		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>())
 		{
 			rigidBody->SetCenterOfMass(center);
 		}

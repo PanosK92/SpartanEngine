@@ -281,7 +281,7 @@ namespace Directus
 		// as the Transform (added below) will call us back to get a reference to it
 		m_actors.emplace_back(actor);
 
-		actor->Initialize(actor->AddComponent<Transform>().lock().get());
+		actor->Initialize(actor->AddComponent<Transform>().get());
 
 		return actor;
 	}
@@ -398,8 +398,8 @@ namespace Directus
 		camera->SetName("Camera");
 		camera->AddComponent<Camera>();
 		camera->AddComponent<AudioListener>();
-		camera->AddComponent<Script>().lock()->SetScript(scriptDirectory + "MouseLook.as");
-		camera->AddComponent<Script>().lock()->SetScript(scriptDirectory + "FirstPersonController.as");
+		camera->AddComponent<Script>()->SetScript(scriptDirectory + "MouseLook.as");
+		camera->AddComponent<Script>()->SetScript(scriptDirectory + "FirstPersonController.as");
 		camera->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
 		return camera;
@@ -412,7 +412,7 @@ namespace Directus
 		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
 		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
-		Light* lightComp = light->AddComponent<Light>().lock().get();
+		Light* lightComp = light->AddComponent<Light>().get();
 		lightComp->SetLightType(LightType_Directional);
 		lightComp->SetIntensity(3.0f);
 

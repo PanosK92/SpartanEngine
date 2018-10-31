@@ -103,7 +103,7 @@ namespace Directus
 		if (camera_actor.expired())
 			return;
 
-		auto camera_cmp = camera_actor.lock()->GetComponent<Camera>().lock();
+		auto camera_cmp = camera_actor.lock()->GetComponent<Camera>();
 
 		if (m_lastPosCamera != camera_cmp->GetTransform()->GetPosition())
 		{

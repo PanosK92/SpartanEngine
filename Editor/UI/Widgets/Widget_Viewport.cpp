@@ -121,7 +121,7 @@ void Widget_Viewport::MousePicking()
 	if (!camera.expired())
 	{
 		Vector2 mousePosRelative = EditorHelper::ToVector2(ImGui::GetMousePos()) - Widget_Viewport_Properties::g_framePos;
-		auto picked = camera.lock()->GetComponent<Camera>().lock()->Pick(mousePosRelative);
+		auto picked = camera.lock()->GetComponent<Camera>()->Pick(mousePosRelative);
 		if (!picked.expired())
 		{
 			Widget_World::SetSelectedActor(picked);
