@@ -57,7 +57,7 @@ IResource::IResource(Context* context, Resource_Type type)
 weak_ptr<IResource> IResource::_Cache()
 {
 	auto resource = m_resourceManager->GetResourceByName(GetResourceName(), m_resourceType);
-	if (resource.expired())
+	if (!resource)
 	{
 		m_resourceManager->Add(GetSharedPtr());
 		resource = m_resourceManager->GetResourceByName(GetResourceName(), m_resourceType);

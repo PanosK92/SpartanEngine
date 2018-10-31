@@ -178,8 +178,8 @@ namespace Directus
 		}
 
 		// Load texture
-		weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();	
-		if (!imageImp.lock()->Load(filePath, (RHI_Texture*)this))
+		ImageImporter* imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();	
+		if (!imageImp->Load(filePath, (RHI_Texture*)this))
 		{
 			return false;
 		}

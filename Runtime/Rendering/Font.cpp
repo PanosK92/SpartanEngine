@@ -73,7 +73,7 @@ namespace Directus
 		vector<std::byte> atlasBuffer;
 		unsigned int texAtlasWidth = 0;
 		unsigned int texAtlasHeight = 0;
-		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter().lock()->LoadFromFile(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
+		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()->LoadFromFile(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
 		{
 			LOGF_ERROR("Font::LoadFromFile Failed to load font \"%s\"", filePath.c_str());
 			atlasBuffer.clear();

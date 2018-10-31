@@ -762,7 +762,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 				{
 					try
 					{
-						if (auto texture = _Widget_Properties::resourceManager->Load<RHI_Texture>(get<const char*>(payload->data)).lock())
+						if (auto texture = _Widget_Properties::resourceManager->Load<RHI_Texture>(get<const char*>(payload->data)))
 						{
 							texture->SetTextureType(textureType);
 							material->SetTextureSlot(texture->GetTextureType(), texture);

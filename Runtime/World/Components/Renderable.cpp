@@ -157,7 +157,7 @@ namespace Directus
 		stream->Read(&m_geometryAABB);
 		string modelName;
 		stream->Read(&modelName);
-		m_model = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Model>(modelName).lock().get();
+		m_model = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Model>(modelName).get();
 
 		// If it was a default mesh, we have to reconstruct it
 		if (m_geometryType != Geometry_Custom) 

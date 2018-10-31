@@ -96,7 +96,7 @@ namespace Directus
 			// If the texture happens to be loaded, get a reference to it
 			auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
 			// If there is not texture (it's not loaded yet), load it
-			if (texture.expired())
+			if (!texture)
 			{
 				texture = m_context->GetSubsystem<ResourceManager>()->Load<RHI_Texture>(texPath);
 			}
@@ -281,7 +281,7 @@ namespace Directus
 		auto shaders = m_context->GetSubsystem<ResourceManager>()->GetResourcesByType<ShaderVariation>();
 		for (const auto& shader : shaders)
 		{
-			if (shader.lock()->GetShaderFlags() == shaderFlags)
+			if (shader->GetShaderFlags() == shaderFlags)
 				return shader;
 		}
 		return weak_ptr<ShaderVariation>();

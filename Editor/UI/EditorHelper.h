@@ -116,10 +116,8 @@ public:
 
 		// Check if this texture is already cached, if so return the cached one
 		auto resourceManager = m_context->GetSubsystem<Directus::ResourceManager>();	
-		if (auto cached = resourceManager->GetResourceByName<Directus::RHI_Texture>(name).lock())
-		{			
+		if (auto cached = resourceManager->GetResourceByName<Directus::RHI_Texture>(name))		
 			return cached;
-		}
 
 		// Since the texture is not cached, load it and returned a cached ref
 		auto texture = std::make_shared<Directus::RHI_Texture>(m_context);
