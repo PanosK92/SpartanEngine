@@ -96,7 +96,7 @@ namespace Directus
 			for (const auto& component : actor->GetAllComponents())
 			{
 				shared_ptr<IComponent> originalComp = component;
-				shared_ptr<IComponent> cloneComp	= clone->AddComponent(component->GetType()).lock();
+				shared_ptr<IComponent> cloneComp	= clone->AddComponent(component->GetType());
 				cloneComp->SetAttributes(originalComp->GetAttributes());
 			}
 
@@ -227,7 +227,7 @@ namespace Directus
 			stream->Read(&id); // load component's id
 
 			auto component = AddComponent((ComponentType)type);
-			component.lock()->SetID(id);
+			component->SetID(id);
 		}
 		// Sometimes there are component dependencies, e.g. a collider that needs
 		// to set it's shape to a rigibody. So, it's important to first create all 
@@ -274,11 +274,11 @@ namespace Directus
 		FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
 	}
 
-	weak_ptr<IComponent> Actor::AddComponent(ComponentType type)
+	shared_ptr<IComponent> Actor::AddComponent(ComponentType type)
 	{
 		// This is the only hardcoded part regarding components. It's 
 		// one function but it would be nice if that gets automated too, somehow...
-		weak_ptr<IComponent> component;
+		shared_ptr<IComponent> component;
 		switch (type)
 		{
 			case ComponentType_AudioListener:	component = AddComponent<AudioListener>();	break;

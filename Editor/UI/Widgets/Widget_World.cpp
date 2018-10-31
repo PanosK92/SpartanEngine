@@ -452,7 +452,7 @@ Actor* Widget_World::Action_Actor_CreateEmpty()
 void Widget_World::Action_Actor_CreateCube()
 {
 	auto actor = Action_Actor_CreateEmpty();
-	auto renderable = actor->AddComponent<Renderable>().lock();
+	auto renderable = actor->AddComponent<Renderable>();
 	renderable->Geometry_Set(Geometry_Default_Cube);
 	renderable->Material_UseDefault();
 	actor->SetName("Cube");
@@ -461,7 +461,7 @@ void Widget_World::Action_Actor_CreateCube()
 void Widget_World::Action_Actor_CreateQuad()
 {
 	auto actor = Action_Actor_CreateEmpty();
-	auto renderable = actor->AddComponent<Renderable>().lock();
+	auto renderable = actor->AddComponent<Renderable>();
 	renderable->Geometry_Set(Geometry_Default_Quad);
 	renderable->Material_UseDefault();
 	actor->SetName("Quad");
@@ -470,7 +470,7 @@ void Widget_World::Action_Actor_CreateQuad()
 void Widget_World::Action_Actor_CreateSphere()
 {
 	auto actor = Action_Actor_CreateEmpty();
-	auto renderable = actor->AddComponent<Renderable>().lock();
+	auto renderable = actor->AddComponent<Renderable>();
 	renderable->Geometry_Set(Geometry_Default_Sphere);
 	renderable->Material_UseDefault();
 	actor->SetName("Sphere");
@@ -479,7 +479,7 @@ void Widget_World::Action_Actor_CreateSphere()
 void Widget_World::Action_Actor_CreateCylinder()
 {
 	auto actor = Action_Actor_CreateEmpty();
-	auto renderable = actor->AddComponent<Renderable>().lock();
+	auto renderable = actor->AddComponent<Renderable>();
 	renderable->Geometry_Set(Geometry_Default_Cylinder);
 	renderable->Material_UseDefault();
 	actor->SetName("Cylinder");
@@ -488,7 +488,7 @@ void Widget_World::Action_Actor_CreateCylinder()
 void Widget_World::Action_Actor_CreateCone()
 {
 	auto actor = Action_Actor_CreateEmpty();
-	auto renderable = actor->AddComponent<Renderable>().lock();
+	auto renderable = actor->AddComponent<Renderable>();
 	renderable->Geometry_Set(Geometry_Default_Cone);
 	renderable->Material_UseDefault();
 	actor->SetName("Cone");
@@ -504,21 +504,21 @@ void Widget_World::Action_actor_CreateCamera()
 void Widget_World::Action_actor_CreateLightDirectional()
 {
 	auto actor = Action_Actor_CreateEmpty();
-	actor->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
+	actor->AddComponent<Light>()->SetLightType(LightType_Directional);
 	actor->SetName("Directional");
 }
 
 void Widget_World::Action_actor_CreateLightPoint()
 {
 	auto actor = Action_Actor_CreateEmpty();
-	actor->AddComponent<Light>().lock()->SetLightType(LightType_Point);
+	actor->AddComponent<Light>()->SetLightType(LightType_Point);
 	actor->SetName("Point");
 }
 
 void Widget_World::Action_actor_CreateLightSpot()
 {
 	auto actor = Action_Actor_CreateEmpty();
-	actor->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
+	actor->AddComponent<Light>()->SetLightType(LightType_Spot);
 	actor->SetName("Spot");
 }
 

@@ -60,7 +60,7 @@ namespace Directus
 		if (actor.expired())
 			return;
 
-		Transform* transformComponent = actor.lock()->GetComponent<Transform>().lock().get();
+		Transform* transformComponent = actor.lock()->GetComponent<Transform>().get();
 		Matrix transform = (m_space == TransformGizmo_Local) ? transformComponent->GetWorldTransform() : transformComponent->GetWorldTransform();
 
 		Matrix mTranslation		= Matrix::CreateTranslation(transform.GetTranslation());

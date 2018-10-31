@@ -173,7 +173,7 @@ namespace Directus
 				continue;
 
 			// Get bounding box
-			BoundingBox bb = actor->GetComponent<Renderable>().lock()->Geometry_BB();
+			BoundingBox bb = actor->GetComponent<Renderable>()->Geometry_BB();
 
 			// Compute hit distance
 			float hitDistance = m_ray.HitDistance(bb);

@@ -161,16 +161,16 @@ void Widget_Properties::Tick(float deltaTime)
 	{
 		auto actorPtr = _Widget_Properties::actorInspected.lock().get();
 
-		auto transform		= actorPtr->GetComponent<Transform>().lock();
-		auto light			= actorPtr->GetComponent<Light>().lock();
-		auto camera			= actorPtr->GetComponent<Camera>().lock();
-		auto audioSource	= actorPtr->GetComponent<AudioSource>().lock();
-		auto audioListener	= actorPtr->GetComponent<AudioListener>().lock();
-		auto renderable		= actorPtr->GetComponent<Renderable>().lock();
+		auto transform		= actorPtr->GetComponent<Transform>();
+		auto light			= actorPtr->GetComponent<Light>();
+		auto camera			= actorPtr->GetComponent<Camera>();
+		auto audioSource	= actorPtr->GetComponent<AudioSource>();
+		auto audioListener	= actorPtr->GetComponent<AudioListener>();
+		auto renderable		= actorPtr->GetComponent<Renderable>();
 		auto material		= renderable ? renderable->Material_RefWeak().lock() : nullptr;
-		auto rigidBody		= actorPtr->GetComponent<RigidBody>().lock();
-		auto collider		= actorPtr->GetComponent<Collider>().lock();
-		auto constraint		= actorPtr->GetComponent<Constraint>().lock();
+		auto rigidBody		= actorPtr->GetComponent<RigidBody>();
+		auto collider		= actorPtr->GetComponent<Collider>();
+		auto constraint		= actorPtr->GetComponent<Constraint>();
 		auto scripts		= actorPtr->GetComponents<Script>();
 
 		ShowTransform(transform);
@@ -183,9 +183,9 @@ void Widget_Properties::Tick(float deltaTime)
 		ShowRigidBody(rigidBody);
 		ShowCollider(collider);
 		ShowConstraint(constraint);
-		for (const auto& script : scripts)
+		for (auto& script : scripts)
 		{
-			ShowScript(script.lock());
+			ShowScript(script);
 		}
 
 		ShowAddComponentButton();
@@ -1027,15 +1027,15 @@ void Widget_Properties::ComponentContextMenu_Add()
 			{
 				if (ImGui::MenuItem("Directional"))
 				{
-					actor->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
+					actor->AddComponent<Light>()->SetLightType(LightType_Directional);
 				}
 				else if (ImGui::MenuItem("Point"))
 				{
-					actor->AddComponent<Light>().lock()->SetLightType(LightType_Point);
+					actor->AddComponent<Light>()->SetLightType(LightType_Point);
 				}
 				else if (ImGui::MenuItem("Spot"))
 				{
-					actor->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
+					actor->AddComponent<Light>()->SetLightType(LightType_Spot);
 				}
 
 				ImGui::EndMenu();
@@ -1084,7 +1084,7 @@ void Widget_Properties::Drop_AutoAddComponents()
 {
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
 	{
-		if (auto scriptComponent = _Widget_Properties::actorInspected.lock()->AddComponent<Script>().lock())
+		if (auto scriptComponent = _Widget_Properties::actorInspected.lock()->AddComponent<Script>())
 		{
 			scriptComponent->SetScript(get<const char*>(payload->data));
 		}

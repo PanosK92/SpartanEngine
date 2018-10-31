@@ -55,7 +55,7 @@ namespace Directus
 		//==============================================================
 
 		// Sets the actor that represents this model in the scene
-		void SetRootActor(const std::weak_ptr<Actor>& actor) { m_rootactor = actor; }
+		void SetRootActor(const std::shared_ptr<Actor>& actor) { m_rootActor = actor; }
 
 		//= GEOMTETRY =============================================
 		void Geometry_Append(
@@ -77,20 +77,20 @@ namespace Directus
 		//=========================================================
 
 		// Adds a new material
-		void AddMaterial(const std::weak_ptr<Material>& material, const std::weak_ptr<Actor>& actor, bool autoCache = true);
+		void AddMaterial(const std::shared_ptr<Material>& material, const std::shared_ptr<Actor>& actor, bool autoCache = true);
 
 		// Adds a new animation
-		std::weak_ptr<Animation> AddAnimation(std::weak_ptr<Animation> animation);
+		std::shared_ptr<Animation> AddAnimation(const std::shared_ptr<Animation>& animation);
 
 		// Adds a texture (the material that uses this texture must be passed as well)
-		void AddTexture(const std::weak_ptr<Material>& material, TextureType textureType, const std::string& filePath);
+		void AddTexture(const std::shared_ptr<Material>& material, TextureType textureType, const std::string& filePath);
 
 		bool IsAnimated() { return m_isAnimated; }
 		void SetAnimated(bool isAnimated) { m_isAnimated = isAnimated; }
 
 		void SetWorkingDirectory(const std::string& directory);
 
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()		{ return m_indexBuffer; }
+		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }	
 
 	private:
@@ -104,7 +104,7 @@ namespace Directus
 		unsigned int Geometry_ComputeMemoryUsage();
 
 		// The root actor that represents this model in the scene
-		std::weak_ptr<Actor> m_rootactor;
+		std::weak_ptr<Actor> m_rootActor;
 
 		// Geometry
 		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;

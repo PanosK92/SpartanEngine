@@ -595,7 +595,7 @@ namespace Directus
 
 	void RigidBody::Body_AcquireShape()
 	{
-		if (const auto& collider = m_actor->GetComponent<Collider>().lock())
+		if (const auto& collider = m_actor->GetComponent<Collider>())
 		{
 			m_collisionShape	= collider->GetShape();
 			m_centerOfMass		= collider->GetCenter();
