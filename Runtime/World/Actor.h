@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <map>
+#include <vector>
 #include "World.h"
 #include "Components/IComponent.h"
 #include "../Core/Context.h"
@@ -52,19 +52,19 @@ namespace Directus
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);
 
-		//= PROPERTIES =======================================================================================
-		const std::string& GetName() { return m_name; }
-		void SetName(const std::string& name) { m_name = name; }
+		//= PROPERTIES =========================================================================================
+		const std::string& GetName()			{ return m_name; }
+		void SetName(const std::string& name)	{ m_name = name; }
 
-		unsigned int GetID() { return m_ID; }
+		unsigned int GetID()		{ return m_ID; }
 		void SetID(unsigned int ID) { m_ID = ID; }
 
-		bool IsActive() { return m_isActive; }
+		bool IsActive()				{ return m_isActive; }
 		void SetActive(bool active) { m_isActive = active; }
 
-		bool IsVisibleInHierarchy() { return m_hierarchyVisibility; }
-		void SetHierarchyVisibility(bool hierarchyVisibility) { m_hierarchyVisibility = hierarchyVisibility; }
-		//====================================================================================================
+		bool IsVisibleInHierarchy()								{ return m_hierarchyVisibility; }
+		void SetHierarchyVisibility(bool hierarchyVisibility)	{ m_hierarchyVisibility = hierarchyVisibility; }
+		//======================================================================================================
 
 		//= COMPONENTS =========================================================================================
 		// Adds a component of type T
@@ -78,15 +78,18 @@ namespace Directus
 				return std::static_pointer_cast<T>(GetComponent<T>().lock());
 
 			// Add component
-			auto newComponent = std::make_shared<T>(
-				m_context, 
-				m_context->GetSubsystem<World>()->Actor_GetByID(GetID()).get(),
-				GetTransform_PtrRaw()
-				);
-			m_components.insert(make_pair(type, newComponent));
-			newComponent->SetType(IComponent::Type_To_Enum<T>());
+			m_components.emplace_back
+			(	
+				std::make_shared<T>
+				(
+					m_context,
+					m_context->GetSubsystem<World>()->Actor_GetByID(GetID()).get(),
+					GetTransform_PtrRaw()
+				)
+			);
 
-			// Register component
+			auto newComponent = std::static_pointer_cast<T>(m_components.back());
+			newComponent->SetType(IComponent::Type_To_Enum<T>());
 			newComponent->OnInitialize();
 
 			// Caching of rendering performance critical components
@@ -98,7 +101,6 @@ namespace Directus
 			// Make the scene resolve
 			FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
 
-			// Return it as a component of the requested type
 			return newComponent;
 		}
 
@@ -109,53 +111,64 @@ namespace Directus
 		std::weak_ptr<T> GetComponent()
 		{
 			ComponentType type = IComponent::Type_To_Enum<T>();
+			for (const auto& component : m_components)
+			{
+				if (component->GetType() == type)
+					return std::static_pointer_cast<T>(component);
+			}
 
-			if (m_components.find(type) == m_components.end())
-				return std::weak_ptr<T>();
-
-			return std::static_pointer_cast<T>(m_components.find(type)->second);
+			return std::weak_ptr<T>();
 		}
 
 		// Returns any components of type T (if they exist)
 		template <class T>
 		std::vector<std::weak_ptr<T>> GetComponents()
 		{
-			ComponentType type = IComponent::Type_To_Enum<T>();
-
 			std::vector<std::weak_ptr<T>> components;
+
+			ComponentType type = IComponent::Type_To_Enum<T>();
 			for (const auto& component : m_components)
 			{
-				if (type != component.second->GetType())
+				if (component->GetType() != type)
 					continue;
 
-				components.emplace_back(std::static_pointer_cast<T>(component.second));
+				components.emplace_back(std::static_pointer_cast<T>(component));
 			}
 
 			return components;
 		}
 		
 		// Checks if a component of ComponentType exists
-		bool HasComponent(ComponentType type) { return m_components.find(type) != m_components.end(); }
+		bool HasComponent(ComponentType type) 
+		{ 
+			for (const auto& component : m_components)
+			{
+				if (component->GetType() == type)
+					return true;
+			}
+
+			return false;
+		}
+
 		// Checks if a component of type T exists
 		template <class T>
-		bool HasComponent() { return HasComponent(IComponent::Type_To_Enum<T>()); }
+		bool HasComponent() 
+		{ 
+			return HasComponent(IComponent::Type_To_Enum<T>()); 
+		}
 
 		// Removes a component of type T (if it exists)
 		template <class T>
 		void RemoveComponent()
 		{
 			ComponentType type = IComponent::Type_To_Enum<T>();
-
-			if (m_components.find(type) == m_components.end())
-				return;
-
-			for (auto it = m_components.begin(); it != m_components.end(); )
+			for (auto it = m_components.begin(); it != m_components.end();)
 			{
 				auto component = *it;
-				if (type == component.second->GetType())
+				if (component->GetType() == type)
 				{
-					component.second->OnRemove();
-					component.second.reset();
+					component->OnRemove();
+					component.reset();
 					it = m_components.erase(it);
 				}
 				else
@@ -183,7 +196,7 @@ namespace Directus
 		std::string m_name;
 		bool m_isActive;
 		bool m_hierarchyVisibility;
-		std::multimap<ComponentType, std::shared_ptr<IComponent>> m_components;
+		std::vector<std::shared_ptr<IComponent>> m_components;
 		Context* m_context;
 
 		// Caching of performance critical components

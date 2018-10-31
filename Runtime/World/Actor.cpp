@@ -60,16 +60,16 @@ namespace Directus
 		// delete components
 		for (auto it = m_components.begin(); it != m_components.end(); )
 		{
-			(*it).second->OnRemove();
-			(*it).second.reset();
+			(*it)->OnRemove();
+			(*it).reset();
 			it = m_components.erase(it);
 		}
 		m_components.clear();
 
-		m_ID = NOT_ASSIGNED_HASH;
 		m_name.clear();
-		m_isActive = true;
-		m_hierarchyVisibility = true;
+		m_ID					= NOT_ASSIGNED_HASH;
+		m_isActive				= true;
+		m_hierarchyVisibility	= true;
 	}
 
 	void Actor::Initialize(Transform* transform)
@@ -95,8 +95,8 @@ namespace Directus
 			// Clone all the components
 			for (const auto& component : actor->GetAllComponents())
 			{
-				shared_ptr<IComponent> originalComp = component.second;
-				shared_ptr<IComponent> cloneComp	= clone->AddComponent(component.first).lock();
+				shared_ptr<IComponent> originalComp = component;
+				shared_ptr<IComponent> cloneComp	= clone->AddComponent(component->GetType()).lock();
 				cloneComp->SetAttributes(originalComp->GetAttributes());
 			}
 
@@ -131,7 +131,7 @@ namespace Directus
 		// call component Start()
 		for (auto const& component : m_components)
 		{
-			component.second->OnStart();
+			component->OnStart();
 		}
 	}
 
@@ -140,7 +140,7 @@ namespace Directus
 		// call component Stop()
 		for (auto const& component : m_components)
 		{
-			component.second->OnStop();
+			component->OnStop();
 		}
 	}
 
@@ -152,7 +152,7 @@ namespace Directus
 		// call component Update()
 		for (const auto& component : m_components)
 		{
-			component.second->OnTick();
+			component->OnTick();
 		}
 	}
 
@@ -169,13 +169,13 @@ namespace Directus
 		stream->Write((int)m_components.size());
 		for (const auto& component : m_components)
 		{
-			stream->Write((unsigned int)component.second->GetType());
-			stream->Write(component.second->GetID());
+			stream->Write((unsigned int)component->GetType());
+			stream->Write(component->GetID());
 		}
 
 		for (const auto& component : m_components)
 		{
-			component.second->Serialize(stream);
+			component->Serialize(stream);
 		}
 		//=============================================
 
@@ -234,7 +234,7 @@ namespace Directus
 		// the components (like above) and then deserialize them (like here).
 		for (const auto& component : m_components)
 		{
-			component.second->Deserialize(stream);
+			component->Deserialize(stream);
 		}
 		//=============================================
 
@@ -255,7 +255,7 @@ namespace Directus
 		{
 			std::shared_ptr<Actor> child = scene->Actor_Create();
 			child->SetID(stream->ReadUInt());
-			children.push_back(child);
+			children.emplace_back(child);
 		}
 
 		// 3rd - children
@@ -307,10 +307,10 @@ namespace Directus
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{
 			auto component = *it;
-			if (id == component.second->GetID())
+			if (id == component->GetID())
 			{
-				component.second->OnRemove();
-				component.second.reset();
+				component->OnRemove();
+				component.reset();
 				it = m_components.erase(it);
 			}
 			else
