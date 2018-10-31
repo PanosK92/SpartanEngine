@@ -67,7 +67,7 @@ namespace Directus
 
 	Skybox::~Skybox()
 	{
-		 GetActor_PtrRaw()->RemoveComponent<Renderable>();
+		 
 	}
 
 	void Skybox::OnInitialize()
