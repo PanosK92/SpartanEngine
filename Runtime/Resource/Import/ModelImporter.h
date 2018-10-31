@@ -53,18 +53,12 @@ namespace Directus
 
 	private:
 		// PROCESSING
-		void ReadNodeHierarchy(
-			Model* model, 
-			const aiScene* assimpScene, 
-			aiNode* assimpNode,
-			std::weak_ptr<Actor> parentNode = std::weak_ptr<Actor>(), 
-			std::weak_ptr<Actor> newNode = std::weak_ptr<Actor>()
-		);
-		void ReadAnimations(Model* model, const aiScene* scene);
-		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<Actor>& parentActor);
+		void ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, Model* model, Actor* parentNode = nullptr, Actor* newNode = nullptr);
+		void ReadAnimations(const aiScene* scene, Model* model);
+		void LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, Model* model, Actor* parentActor);
 		void AssimpMesh_ExtractVertices(aiMesh* assimpMesh, std::vector<RHI_Vertex_PosUVTBN>* vertices);
 		void AssimpMesh_ExtractIndices(aiMesh* assimpMesh, std::vector<unsigned int>* indices);
-		std::shared_ptr<Material> AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial);
+		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimpMaterial, Model* model);
 
 		// HELPER FUNCTIONS
 		std::string ValidateTexturePath(const std::string& texturePath);

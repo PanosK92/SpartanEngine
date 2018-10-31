@@ -45,6 +45,11 @@ using namespace Directus::Math;
 
 namespace Directus
 {
+	namespace _World
+	{
+		shared_ptr<Actor> emptyActor;
+	}
+
 	World::World(Context* context) : Subsystem(context)
 	{
 		m_state	= Scene_Idle;
@@ -156,22 +161,22 @@ namespace Directus
 
 		//= Save actors ============================
 		// Only save root actors as they will also save their descendants
-		vector<weak_ptr<Actor>> rootactors = Actors_GetRoots();
+		vector<shared_ptr<Actor>> rootActors = Actors_GetRoots();
 
 		// 1st - actor count
-		auto rootactorCount = (int)rootactors.size();
-		file->Write(rootactorCount);
+		auto rootActorCount = (int)rootActors.size();
+		file->Write(rootActorCount);
 
 		// 2nd - actor IDs
-		for (const auto& root : rootactors)
+		for (const auto& root : rootActors)
 		{
-			file->Write(root.lock()->GetID());
+			file->Write(root->GetID());
 		}
 
 		// 3rd - actors
-		for (const auto& root : rootactors)
+		for (const auto& root : rootActors)
 		{
-			root.lock()->Serialize(file.get());
+			root->Serialize(file.get());
 		}
 		//==============================================
 
@@ -242,7 +247,7 @@ namespace Directus
 		// 2nd - Root actor IDs
 		for (int i = 0; i < rootactorCount; i++)
 		{
-			auto actor = Actor_CreateAdd().lock();
+			auto& actor = Actor_Create();
 			actor->SetID(file->ReadInt());
 		}
 
@@ -268,7 +273,7 @@ namespace Directus
 	//===================================================================================================
 
 	//= Actor HELPER FUNCTIONS  ====================================================================
-	weak_ptr<Actor> World::Actor_CreateAdd()
+	shared_ptr<Actor> World::Actor_Create()
 	{
 		auto actor = make_shared<Actor>(m_context);
 
@@ -281,7 +286,7 @@ namespace Directus
 		return actor;
 	}
 
-	void World::Actor_Add(shared_ptr<Actor> actor)
+	void World::Actor_Add(const shared_ptr<Actor>& actor)
 	{
 		if (!actor)
 			return;
@@ -294,7 +299,7 @@ namespace Directus
 		if (actor.expired())
 			return false;
 
-		return !Actor_GetByID(actor.lock()->GetID()).expired();
+		return Actor_GetByID(actor.lock()->GetID()) != nullptr;
 	}
 
 	// Removes an actor and all of it's children
@@ -335,59 +340,47 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	vector<weak_ptr<Actor>> World::Actors_GetRoots()
+	vector<shared_ptr<Actor>> World::Actors_GetRoots()
 	{
-		vector<weak_ptr<Actor>> rootactors;
+		vector<shared_ptr<Actor>> rootActors;
 		for (const auto& actor : m_actors)
 		{
 			if (actor->GetTransform_PtrRaw()->IsRoot())
 			{
-				rootactors.emplace_back(actor);
+				rootActors.emplace_back(actor);
 			}
 		}
 
-		return rootactors;
+		return rootActors;
 	}
 
-	weak_ptr<Actor> World::Actor_GetRoot(weak_ptr<Actor> actor)
-	{
-		if (actor.expired())
-			return weak_ptr<Actor>();
-
-		return actor.lock()->GetTransform_PtrRaw()->GetRoot()->GetActor_PtrWeak();
-	}
-
-	weak_ptr<Actor> World::Actor_GetByName(const string& name)
+	const shared_ptr<Actor>& World::Actor_GetByName(const string& name)
 	{
 		for (const auto& actor : m_actors)
 		{
 			if (actor->GetName() == name)
-			{
 				return actor;
-			}
 		}
 
-		return weak_ptr<Actor>();
+		return _World::emptyActor;
 	}
 
-	weak_ptr<Actor> World::Actor_GetByID(unsigned int ID)
+	const shared_ptr<Actor>& World::Actor_GetByID(unsigned int ID)
 	{
 		for (const auto& actor : m_actors)
 		{
 			if (actor->GetID() == ID)
-			{
 				return actor;
-			}
 		}
 
-		return weak_ptr<Actor>();
+		return _World::emptyActor;
 	}
 	//===================================================================================================
 
 	//= COMMON ACTOR CREATION ========================================================================
-	weak_ptr<Actor> World::CreateSkybox()
+	shared_ptr<Actor> World::CreateSkybox()
 	{
-		shared_ptr<Actor> skybox = Actor_CreateAdd().lock();
+		shared_ptr<Actor> skybox = Actor_Create();
 		skybox->SetName("Skybox");
 		skybox->SetHierarchyVisibility(false);
 		skybox->AddComponent<Skybox>();	
@@ -396,12 +389,12 @@ namespace Directus
 		return skybox;
 	}
 
-	weak_ptr<Actor> World::CreateCamera()
+	shared_ptr<Actor> World::CreateCamera()
 	{
-		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		string scriptDirectory = resourceMng->GetStandardResourceDirectory(Resource_Script);
+		auto resourceMng		= m_context->GetSubsystem<ResourceManager>();
+		string scriptDirectory	= resourceMng->GetStandardResourceDirectory(Resource_Script);
 
-		shared_ptr<Actor> camera = Actor_CreateAdd().lock();
+		shared_ptr<Actor> camera = Actor_Create();
 		camera->SetName("Camera");
 		camera->AddComponent<Camera>();
 		camera->AddComponent<AudioListener>();
@@ -412,9 +405,9 @@ namespace Directus
 		return camera;
 	}
 
-	weak_ptr<Actor> World::CreateDirectionalLight()
+	shared_ptr<Actor> World::CreateDirectionalLight()
 	{
-		shared_ptr<Actor> light = Actor_CreateAdd().lock();
+		shared_ptr<Actor> light = Actor_Create();
 		light->SetName("DirectionalLight");
 		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
 		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));

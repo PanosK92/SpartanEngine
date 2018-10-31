@@ -143,8 +143,8 @@ namespace Directus
 		// Read the 3D model file from disk
 		if (const aiScene* scene = importer.ReadFile(m_modelPath, _ModelImporter::flags))
 		{
-			ReadNodeHierarchy(model, scene, scene->mRootNode);
-			ReadAnimations(model, scene);
+			ReadNodeHierarchy(scene, scene->mRootNode, model);
+			ReadAnimations(scene, model);
 			model->Geometry_Update();
 			FIRE_EVENT(EVENT_MODEL_LOADED);
 		}
@@ -157,16 +157,15 @@ namespace Directus
 		return true;
 	}
 
-	//= PROCESSING ===============================================================================
-	void ModelImporter::ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<Actor> parentNode, weak_ptr<Actor> newNode)
+	void ModelImporter::ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, Model* model, Actor* parentNode, Actor* newNode)
 	{
 		auto scene = m_context->GetSubsystem<World>();
 
 		// Is this the root node?
-		if (!assimpNode->mParent || newNode.expired())
+		if (!assimpNode->mParent || !newNode)
 		{
-			newNode = scene->Actor_CreateAdd();
-			model->SetRootactor(newNode.lock());
+			newNode = scene->Actor_Create().get();
+			model->SetRootActor(newNode->GetPtrShared());
 
 			int jobCount;
 			ComputeNodeCount(assimpNode, &jobCount);
@@ -179,59 +178,59 @@ namespace Directus
 		if (assimpNode->mParent)
 		{
 			string name = assimpNode->mName.C_Str();
-			newNode.lock()->SetName(name);
+			newNode->SetName(name);
 
 			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for: " + name);
 		}
 		else
 		{
 			string name = FileSystem::GetFileNameNoExtensionFromFilePath(m_modelPath);
-			newNode.lock()->SetName(name);
+			newNode->SetName(name);
 
 			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for: " + name);
 		}
 		//============================================================================
 
 		// Set the transform of parentNode as the parent of the newNode's transform
-		Transform* parentTrans = !parentNode.expired() ? parentNode.lock()->GetTransform_PtrRaw() : nullptr;
-		newNode.lock()->GetTransform_PtrRaw()->SetParent(parentTrans);
+		Transform* parentTrans = parentNode ? parentNode->GetTransform_PtrRaw() : nullptr;
+		newNode->GetTransform_PtrRaw()->SetParent(parentTrans);
 
 		// Set the transformation matrix of the Assimp node to the new node
-		AssimpHelper::SetActorTransform(newNode, assimpNode);
+		AssimpHelper::SetActorTransform(assimpNode, newNode);
 
 		// Process all the node's meshes
 		for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)
 		{
-			weak_ptr<Actor> actor = newNode; // set the current actor
-			aiMesh* mesh = assimpScene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
-			string name = assimpNode->mName.C_Str(); // get name
+			Actor* actor		= newNode; // set the current actor
+			aiMesh* assimpMesh	= assimpScene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
+			string name			= assimpNode->mName.C_Str(); // get name
 
 			// if this node has many meshes, then assign a new actor for each one of them
 			if (assimpNode->mNumMeshes > 1)
 			{
-				actor = scene->Actor_CreateAdd(); // create
-				actor.lock()->GetTransform_PtrRaw()->SetParent(newNode.lock()->GetTransform_PtrRaw()); // set parent
+				actor = scene->Actor_Create().get(); // create
+				actor->GetTransform_PtrRaw()->SetParent(newNode->GetTransform_PtrRaw()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
 
 			// Set actor name
-			actor.lock()->SetName(name);
+			actor->SetName(name);
 
 			// Process mesh
-			LoadMesh(model, mesh, assimpScene, actor);
+			LoadMesh(assimpScene, assimpMesh, model,  actor);
 		}
 
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			weak_ptr<Actor> child = scene->Actor_CreateAdd();
-			ReadNodeHierarchy(model, assimpScene, assimpNode->mChildren[i], newNode, child);
+			shared_ptr<Actor> child = scene->Actor_Create();
+			ReadNodeHierarchy(assimpScene, assimpNode->mChildren[i], model, newNode, child.get());
 		}
 
 		ProgressReport::Get().IncrementJobsDone(g_progress_ModelImporter);
 	}
 
-	void ModelImporter::ReadAnimations(Model* model, const aiScene* scene)
+	void ModelImporter::ReadAnimations(const aiScene* scene, Model* model)
 	{
 		for (unsigned int i = 0; i < scene->mNumAnimations; i++)
 		{
@@ -283,9 +282,9 @@ namespace Directus
 		}
 	}
 
-	void ModelImporter::LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const weak_ptr<Actor>& parentActor)
+	void ModelImporter::LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, Model* model, Actor* parentActor)
 	{
-		if (!model || !assimpMesh || !assimpScene || parentActor.expired())
+		if (!model || !assimpMesh || !assimpScene || !parentActor)
 			return;
 
 		//= MESH ======================================================================
@@ -301,12 +300,11 @@ namespace Directus
 		model->Geometry_Append(indices, vertices, &indexOffset, &vertexOffset);
 
 		// Add a renderable component to this Actor
-		auto actorShared	= parentActor.lock();
-		auto renderable			= actorShared->AddComponent<Renderable>().lock();
+		auto renderable	= parentActor->AddComponent<Renderable>().lock();
 
 		// Set the geometry
 		renderable->Geometry_Set(
-			actorShared->GetName(),
+			parentActor->GetName(),
 			indexOffset,
 			(unsigned int)indices.size(),
 			vertexOffset,
@@ -323,7 +321,7 @@ namespace Directus
 			// Get aiMaterial
 			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
 			// Convert it and add it to the model
-			model->AddMaterial(AiMaterialToMaterial(model, assimpMaterial), parentActor);
+			model->AddMaterial(AiMaterialToMaterial(assimpMaterial, model), parentActor->GetPtrShared());
 		}
 		//===================================================================================
 
@@ -402,7 +400,7 @@ namespace Directus
 		}
 	}
 
-	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial)
+	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(aiMaterial* assimpMaterial, Model* model)
 	{
 		if (!model || !assimpMaterial)
 		{
@@ -473,9 +471,7 @@ namespace Directus
 
 		return material;
 	}
-	//============================================================================================
 
-	//= HELPER FUNCTIONS =================================================================================================================================
 	string ModelImporter::ValidateTexturePath(const string& originalTexturePath)
 	{
 		// Models usually return a texture path which is relative to the model's directory.
