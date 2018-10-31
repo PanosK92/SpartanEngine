@@ -164,15 +164,15 @@ namespace Directus
 			return animation;
 
 		// Add it to our resources
-		auto weakAnim = m_context->GetSubsystem<ResourceManager>()->Add<Animation>(animation);
+		auto sharedAnim = m_context->GetSubsystem<ResourceManager>()->Add<Animation>(animation);
 
 		// Keep a reference to it
-		m_animations.emplace_back(weakAnim);
+		m_animations.emplace_back(sharedAnim);
 
 		m_isAnimated = true;
 
 		// Return it
-		return weakAnim.lock();
+		return sharedAnim;
 	}
 
 	void Model::AddTexture(const shared_ptr<Material>& material, TextureType textureType, const string& filePath)
@@ -190,7 +190,7 @@ namespace Directus
 
 		// Try to get the texture
 		auto texName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
-		auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName).lock();
+		auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
 		if (texture)
 		{
 			texture->SetTextureType(textureType); // if this texture was cached from the editor, it has no type, we have to set it
@@ -259,7 +259,7 @@ namespace Directus
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath)); // Sponza
 
 		// Load the model
-		if (m_resourceManager->GetModelImporter().lock()->Load(this, filePath))
+		if (m_resourceManager->GetModelImporter()->Load(this, filePath))
 		{
 			// Set the normalized scale to the root actor's transform
 			m_normalizedScale = Geometry_ComputeNormalizedScale();
