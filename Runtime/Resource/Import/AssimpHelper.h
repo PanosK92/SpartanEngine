@@ -46,18 +46,18 @@ namespace Directus
 			);
 		}
 
-		static void SetActorTransform(const std::weak_ptr<Actor>& actor, aiNode* node)
+		static void SetActorTransform(aiNode* node, Actor* actor)
 		{
-			if (actor.expired())
+			if (!actor)
 				return;
 
 			// Convert to engine matrix
 			Math::Matrix mEngine = aiMatrix4x4ToMatrix(node->mTransformation);
 
 			// Apply position, rotation and scale
-			actor.lock()->GetTransform_PtrRaw()->SetPositionLocal(mEngine.GetTranslation());
-			actor.lock()->GetTransform_PtrRaw()->SetRotationLocal(mEngine.GetRotation());
-			actor.lock()->GetTransform_PtrRaw()->SetScaleLocal(mEngine.GetScale());
+			actor->GetTransform_PtrRaw()->SetPositionLocal(mEngine.GetTranslation());
+			actor->GetTransform_PtrRaw()->SetRotationLocal(mEngine.GetRotation());
+			actor->GetTransform_PtrRaw()->SetScaleLocal(mEngine.GetScale());
 		}
 
 		static Math::Vector4 ToVector4(const aiColor4D& aiColor)

@@ -111,7 +111,7 @@ void Widget_World::Tree_Show()
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 		{
 			auto actorID = get<unsigned int>(payload->data);
-			if (auto droppedActor = SceneHelper::g_scene->Actor_GetByID(actorID).lock())
+			if (auto droppedActor = SceneHelper::g_scene->Actor_GetByID(actorID))
 			{
 				droppedActor->GetTransform_PtrRaw()->SetParent(nullptr);
 			}
@@ -120,7 +120,7 @@ void Widget_World::Tree_Show()
 		auto rootActors = SceneHelper::g_scene->Actors_GetRoots();
 		for (const auto& actor : rootActors)
 		{
-			Tree_AddActor(actor.lock().get());
+			Tree_AddActor(actor.get());
 		}
 
 		ImGui::TreePop();
@@ -248,7 +248,7 @@ void Widget_World::Actor_HandleDragDrop(Actor* actorPtr)
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 	{
 		auto actorID = get<unsigned int>(payload->data);
-		if (auto droppedActor = SceneHelper::g_scene->Actor_GetByID(actorID).lock())
+		if (auto droppedActor = SceneHelper::g_scene->Actor_GetByID(actorID))
 		{
 			if (droppedActor->GetID() != actorPtr->GetID())
 			{
@@ -440,7 +440,7 @@ void Widget_World::Action_Actor_Delete(weak_ptr<Actor> actor)
 
 Actor* Widget_World::Action_Actor_CreateEmpty()
 {
-	auto actor = SceneHelper::g_scene->Actor_CreateAdd().lock().get();
+	auto actor = SceneHelper::g_scene->Actor_Create().get();
 	if (auto selected = m_actorSelected.lock())
 	{
 		actor->GetTransform_PtrRaw()->SetParent(selected->GetTransform_PtrRaw());

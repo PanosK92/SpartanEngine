@@ -84,10 +84,9 @@ namespace Directus
 
 		if (parentActorID != NOT_ASSIGNED_HASH)
 		{
-			auto parent = GetContext()->GetSubsystem<World>()->Actor_GetByID(parentActorID);
-			if (!parent.expired())
+			if (auto parent = GetContext()->GetSubsystem<World>()->Actor_GetByID(parentActorID))
 			{
-				parent.lock()->GetTransform_PtrRaw()->AddChild(this);
+				parent->GetTransform_PtrRaw()->AddChild(this);
 			}
 		}
 

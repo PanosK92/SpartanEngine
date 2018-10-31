@@ -55,7 +55,7 @@ namespace Directus
 		//==============================================================
 
 		// Sets the actor that represents this model in the scene
-		void SetRootactor(const std::weak_ptr<Actor>& actor) { m_rootactor = actor; }
+		void SetRootActor(const std::weak_ptr<Actor>& actor) { m_rootactor = actor; }
 
 		//= GEOMTETRY =============================================
 		void Geometry_Append(

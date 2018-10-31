@@ -86,7 +86,7 @@ namespace Directus
 		auto CloneActor = [&scene, &clones](Actor* actor)
 		{
 			// Clone the name and the ID
-			Actor* clone = scene->Actor_CreateAdd().lock().get();
+			Actor* clone = scene->Actor_Create().get();
 			clone->SetID(GENERATE_GUID);
 			clone->SetName(actor->GetName());
 			clone->SetActive(actor->IsActive());
@@ -253,8 +253,8 @@ namespace Directus
 		vector<std::weak_ptr<Actor>> children;
 		for (int i = 0; i < childrenCount; i++)
 		{
-			std::weak_ptr<Actor> child = scene->Actor_CreateAdd();
-			child.lock()->SetID(stream->ReadUInt());
+			std::shared_ptr<Actor> child = scene->Actor_Create();
+			child->SetID(stream->ReadUInt());
 			children.push_back(child);
 		}
 
