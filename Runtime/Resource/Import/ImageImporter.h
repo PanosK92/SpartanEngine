@@ -79,14 +79,13 @@ namespace Directus
 		~ImageImporter();
 
 		bool Load(const std::string& filePath, RHI_Texture* texInfo);
-		bool RescaleBits(std::vector<std::byte>* rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int toWidth, unsigned int toHeight);
+		bool RescaleBits(std::vector<std::byte>* rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int channels, unsigned int toWidth, unsigned int toHeight);
 
 	private:
 		unsigned int ComputeChannelCount(FIBITMAP* bitmap, unsigned int bpp);
-		bool GetBitsFromFIBITMAP(std::vector<std::byte>* rgba, FIBITMAP* bitmap);
-		bool GetRescaledBitsFromBitmap(std::vector<std::byte>* rgbaOut, int width, int height, FIBITMAP* bitmap);
-		void GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, RHI_Texture* imageData);	
-		bool GrayscaleCheck(const std::vector<std::byte>& dataRGBA, int width, int height);
+		bool GetBitsFromFIBITMAP(std::vector<std::byte>* rgba, FIBITMAP* bitmap, unsigned int width, unsigned int height, unsigned int channels, bool* isGrayscale);
+		bool GetRescaledBitsFromBitmap(std::vector<std::byte>* rgbaOut, unsigned int width, unsigned int height, unsigned int channels, FIBITMAP* bitmap);
+		void GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, RHI_Texture* imageData, unsigned int width, unsigned int height);
 
 		Context* m_context;
 	};
