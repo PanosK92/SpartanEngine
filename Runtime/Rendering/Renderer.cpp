@@ -584,7 +584,7 @@ namespace Directus
 
 					// Acquire geometry
 					Model* geometry = renderable->Geometry_Model();
-					if (!geometry)
+					if (!geometry || !geometry->GetVertexBuffer() || !geometry->GetIndexBuffer())
 						continue;
 
 					// Skip meshes that don't cast shadows
@@ -647,82 +647,82 @@ namespace Directus
 		for (auto actor : m_actors[Renderable_ObjectOpaque])
 		{
 			// Get renderable and material
-			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
-			Material* obj_material		= obj_renderable ? obj_renderable->Material_PtrRaw() : nullptr;
+			Renderable* renderable	= actor->GetRenderable_PtrRaw();
+			Material* material		= renderable ? renderable->Material_PtrRaw() : nullptr;
 
-			if (!obj_renderable || !obj_material)
+			if (!renderable || !material)
 				continue;
 
 			// Get shader and geometry
-			auto obj_shader		= obj_material->GetShader().lock();
-			Model* obj_geometry = obj_renderable->Geometry_Model();
+			auto shader		= material->GetShader().lock();
+			Model* model	= renderable->Geometry_Model();
 
 			// Validate shader
-			if (!obj_shader || obj_shader->GetState() != Shader_Built)
+			if (!shader || shader->GetState() != Shader_Built)
 				continue;
 
 			// Validate geometry
-			if (!obj_geometry)
+			if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
 				continue;
 
 			// Skip objects outside of the view frustum
-			if (!m_camera->IsInViewFrustrum(obj_renderable))
+			if (!m_camera->IsInViewFrustrum(renderable))
 				continue;
 
 			// set face culling (changes only if required)
-			m_rhiPipelineState->SetCullMode(obj_material->GetCullMode());
+			m_rhiPipelineState->SetCullMode(material->GetCullMode());
 
 			// Bind geometry
-			if (currentlyBoundGeometry != obj_geometry->Resource_GetID())
+			if (currentlyBoundGeometry != model->Resource_GetID())
 			{	
-				m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
-				m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());
-				currentlyBoundGeometry = obj_geometry->Resource_GetID();
+				m_rhiPipelineState->SetIndexBuffer(model->GetIndexBuffer());
+				m_rhiPipelineState->SetVertexBuffer(model->GetVertexBuffer());
+				currentlyBoundGeometry = model->Resource_GetID();
 			}
 
 			// Bind shader
-			if (currentlyBoundShader != obj_shader->Resource_GetID())
+			if (currentlyBoundShader != shader->Resource_GetID())
 			{
 				if (!vertexShaderBound)
 				{
-					m_rhiPipelineState->SetVertexShader(shared_ptr<RHI_Shader>(obj_shader));
+					m_rhiPipelineState->SetVertexShader(shared_ptr<RHI_Shader>(shader));
 					vertexShaderBound = true;
 				}
-				m_rhiPipelineState->SetPixelShader(shared_ptr<RHI_Shader>(obj_shader));
-				currentlyBoundShader = obj_shader->Resource_GetID();
+				m_rhiPipelineState->SetPixelShader(shared_ptr<RHI_Shader>(shader));
+				currentlyBoundShader = shader->Resource_GetID();
 			}
 
 			// Bind material
-			if (currentlyBoundMaterial != obj_material->Resource_GetID())
+			if (currentlyBoundMaterial != material->Resource_GetID())
 			{
-				obj_shader->UpdatePerMaterialBuffer(m_camera, obj_material);
+				shader->UpdatePerMaterialBuffer(m_camera, material);
 
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Albedo).ptr_raw);
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Roughness).ptr_raw);
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Metallic).ptr_raw);
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Normal).ptr_raw);
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Height).ptr_raw);
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Occlusion).ptr_raw);
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Emission).ptr_raw);
-				m_rhiPipelineState->SetTexture(obj_material->GetTextureSlotByType(TextureType_Mask).ptr_raw);
+				m_rhiPipelineState->SetTexture(material->GetTextureSlotByType(TextureType_Albedo).ptr_raw);
+				m_rhiPipelineState->SetTexture(material->GetTextureSlotByType(TextureType_Roughness).ptr_raw);
+				m_rhiPipelineState->SetTexture(material->GetTextureSlotByType(TextureType_Metallic).ptr_raw);
+				m_rhiPipelineState->SetTexture(material->GetTextureSlotByType(TextureType_Normal).ptr_raw);
+				m_rhiPipelineState->SetTexture(material->GetTextureSlotByType(TextureType_Height).ptr_raw);
+				m_rhiPipelineState->SetTexture(material->GetTextureSlotByType(TextureType_Occlusion).ptr_raw);
+				m_rhiPipelineState->SetTexture(material->GetTextureSlotByType(TextureType_Emission).ptr_raw);
+				m_rhiPipelineState->SetTexture(material->GetTextureSlotByType(TextureType_Mask).ptr_raw);
 
-				currentlyBoundMaterial = obj_material->Resource_GetID();
+				currentlyBoundMaterial = material->Resource_GetID();
 			}
 
 			// UPDATE PER OBJECT BUFFER
-			obj_shader->UpdatePerObjectBuffer(
+			shader->UpdatePerObjectBuffer(
 				actor->GetTransform_PtrRaw()->GetWorldTransform(),
 				m_mV, 
 				m_mP_perspective
 			);
 		
-			m_rhiPipelineState->SetConstantBuffer(obj_shader->GetMaterialBuffer());
-			m_rhiPipelineState->SetConstantBuffer(obj_shader->GetPerObjectBuffer());
+			m_rhiPipelineState->SetConstantBuffer(shader->GetMaterialBuffer());
+			m_rhiPipelineState->SetConstantBuffer(shader->GetPerObjectBuffer());
 
 			m_rhiPipelineState->Bind();
 
 			// Render	
-			m_rhiDevice->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
+			m_rhiDevice->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
 			Profiler::Get().m_rendererMeshesRendered++;
 
 		} // Actor/MESH ITERATION
@@ -876,35 +876,35 @@ namespace Directus
 		for (auto& actor : actors_transparent)
 		{
 			// Get renderable and material
-			Renderable* obj_renderable	= actor->GetRenderable_PtrRaw();
-			Material* obj_material		= obj_renderable ? obj_renderable->Material_PtrRaw() : nullptr;
+			Renderable* renderable	= actor->GetRenderable_PtrRaw();
+			Material* material		= renderable ? renderable->Material_PtrRaw() : nullptr;
 
-			if (!obj_renderable || !obj_material)
+			if (!renderable || !material)
 				continue;
 
 			// Get geometry
-			Model* obj_geometry = obj_renderable->Geometry_Model();
-			if (!obj_geometry)
+			Model* model = renderable->Geometry_Model();
+			if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
 				continue;
 
 			// Skip objects outside of the view frustum
-			if (!m_camera->IsInViewFrustrum(obj_renderable))
+			if (!m_camera->IsInViewFrustrum(renderable))
 				continue;
 
 			// Set the following per object
-			m_rhiPipelineState->SetCullMode(obj_material->GetCullMode());
-			m_rhiPipelineState->SetIndexBuffer(obj_geometry->GetIndexBuffer());
-			m_rhiPipelineState->SetVertexBuffer(obj_geometry->GetVertexBuffer());
+			m_rhiPipelineState->SetCullMode(material->GetCullMode());
+			m_rhiPipelineState->SetIndexBuffer(model->GetIndexBuffer());
+			m_rhiPipelineState->SetVertexBuffer(model->GetVertexBuffer());
 
 			// Constant buffer
 			auto buffer = Struct_Transparency(
 				actor->GetTransform_PtrRaw()->GetWorldTransform(),
 				m_mV,
 				m_mP_perspective,
-				obj_material->GetColorAlbedo(),
+				material->GetColorAlbedo(),
 				m_camera->GetTransform()->GetPosition(),
 				GetLightDirectional()->GetDirection(),
-				obj_material->GetRoughnessMultiplier()
+				material->GetRoughnessMultiplier()
 			);
 			m_shaderTransparent->UpdateBuffer(&buffer);
 			m_rhiPipelineState->SetConstantBuffer(m_shaderTransparent->GetConstantBuffer());
@@ -912,7 +912,7 @@ namespace Directus
 			m_rhiPipelineState->Bind();
 
 			// Render	
-			m_rhiDevice->DrawIndexed(obj_renderable->Geometry_IndexCount(), obj_renderable->Geometry_IndexOffset(), obj_renderable->Geometry_VertexOffset());
+			m_rhiDevice->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
 			Profiler::Get().m_rendererMeshesRendered++;
 
 		} // Actor/MESH ITERATION

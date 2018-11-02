@@ -276,13 +276,8 @@ namespace Directus
 	shared_ptr<Actor> World::Actor_Create()
 	{
 		auto actor = make_shared<Actor>(m_context);
-
-		// First keep a local reference to this actor because 
-		// as the Transform (added below) will call us back to get a reference to it
-		m_actors.emplace_back(actor);
-
 		actor->Initialize(actor->AddComponent<Transform>().get());
-
+		m_actors.emplace_back(actor);
 		return actor;
 	}
 

@@ -91,7 +91,7 @@ namespace Directus
 		void SetWorkingDirectory(const std::string& directory);
 
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }	
+		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() { return m_vertexBuffer; }
 
 	private:
 		// Load the model from disk
