@@ -53,15 +53,9 @@ namespace Directus
 		if (!texture)
 			return false;
 
-		if (filePath.empty() || filePath == NOT_ASSIGNED)
-		{
-			LOG_WARNING("ImageImporter::Load: Can't load image. No file path has been provided.");
-			return false;
-		}
-
 		if (!FileSystem::FileExists(filePath))
 		{
-			LOG_WARNING("ImageImporter::Load: Cant' load image. File path \"" + filePath + "\" is invalid.");
+			LOGF_ERROR("ImageImporter::Load: Cant' load image. File path \"%s\" is invalid.", filePath.c_str());
 			return false;
 		}
 
@@ -72,79 +66,68 @@ namespace Directus
 		if (format == FIF_UNKNOWN)
 		{
 			// Try getting the format from the file extension
-			LOG_WARNING("ImageImporter::Load: Failed to determine image format for \"" + filePath + "\", attempting to detect it from the file's extension...");
+			LOGF_WARNING("ImageImporter::Load: Failed to determine image format for \"%s\", attempting to detect it from the file's extension...", filePath.c_str());
 			format = FreeImage_GetFIFFromFilename(filePath.c_str());
 
 			// If the format is still unknown, give up
 			if (!FreeImage_FIFSupportsReading(format))
 			{
-				LOG_WARNING("ImageImporter::Load: Failed to detect the image format.");
+				LOGF_ERROR("ImageImporter::Load: Failed to detect the image format.");
 				return false;
 			}
 
-			LOG_WARNING("ImageImporter::Load: The image format has been detected succesfully.");
+			LOG_INFO("ImageImporter::Load: The image format has been detected succesfully.");
 		}
 
-		// Get image format, format == -1 means the file was not found
-		// but I am checking against it also, just in case.
-		if (format == -1 || format == FIF_UNKNOWN)
-			return false;
-
-		// Load the image as a FIBITMAP*
+		// Load the image
 		FIBITMAP* bitmapOriginal = FreeImage_Load(format, filePath.c_str());
 
 		// Flip it vertically
 		FreeImage_FlipVertical(bitmapOriginal);
 
 		// Perform any scaling (if necessary)
-		bool userDefineDimensions = (texture->GetWidth() != 0 && texture->GetHeight() != 0);
-		bool dimensionMismatch = (FreeImage_GetWidth(bitmapOriginal) != texture->GetWidth() && FreeImage_GetHeight(bitmapOriginal) != texture->GetHeight());
-		bool scale = userDefineDimensions && dimensionMismatch;
-		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, texture->GetWidth(), texture->GetHeight(), FILTER_LANCZOS3) : bitmapOriginal;
+		bool userDefineDimensions	= (texture->GetWidth() != 0 && texture->GetHeight() != 0);
+		bool dimensionMismatch		= (FreeImage_GetWidth(bitmapOriginal) != texture->GetWidth() && FreeImage_GetHeight(bitmapOriginal) != texture->GetHeight());
+		bool scale					= userDefineDimensions && dimensionMismatch;
+		FIBITMAP* bitmapScaled		= scale ? FreeImage_Rescale(bitmapOriginal, texture->GetWidth(), texture->GetHeight(), FILTER_LANCZOS3) : bitmapOriginal;
 
 		// Convert it to 32 bits (if necessary)
 		FIBITMAP* bitmap32 = FreeImage_GetBPP(bitmapOriginal) != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
-		texture->SetBPP(32);
-
-		// Store some useful data	
-		texture->SetTransparency(bool(FreeImage_IsTransparent(bitmap32)));
-		texture->SetWidth(FreeImage_GetWidth(bitmap32));
-		texture->SetHeight(FreeImage_GetHeight(bitmap32));
-		texture->SetChannels(ComputeChannelCount(bitmap32, texture->GetBPP()));
-
+		
+		// Deduce image properties
+		unsigned int image_bbp		= 32;
+		bool image_transparency		= FreeImage_IsTransparent(bitmap32);
+		unsigned int image_width	= FreeImage_GetWidth(bitmap32);
+		unsigned int image_height	= FreeImage_GetHeight(bitmap32);
+		unsigned int image_channels = ComputeChannelCount(bitmap32, image_bbp);
+		bool image_grayscale		= false;
+		
 		// Fill RGBA vector with the data from the FIBITMAP
 		texture->GetData().emplace_back(vector<std::byte>());
-		GetBitsFromFIBITMAP(&texture->GetData()[0], bitmap32);
-
-		// Check if the image is grayscale
-		texture->SetGrayscale(GrayscaleCheck(texture->GetData()[0], texture->GetWidth(), texture->GetHeight()));
+		GetBitsFromFIBITMAP(&texture->GetData()[0], bitmap32, image_width, image_height, image_channels, &image_grayscale);
 
 		if (texture->IsUsingMimmaps())
 		{
-			GenerateMipmapsFromFIBITMAP(bitmap32, texture);
+			GenerateMipmapsFromFIBITMAP(bitmap32, texture, image_width, image_height);
 		}
 
-		//= Free memory =====================================
-		// unload the 32-bit bitmap
-		FreeImage_Unload(bitmap32);
+		// Free memory 
+		FreeImage_Unload(bitmap32);										// unload the 32-bit bitmap
+		if (image_bbp != 32)	{ FreeImage_Unload(bitmapScaled); }		// unload the scaled bitmap only if it was converted	
+		if (scale)				{ FreeImage_Unload(bitmapOriginal); }	// unload the non 32-bit bitmap only if it was scaled
 
-		// unload the scaled bitmap only if it was converted
-		if (texture->GetBPP() != 32)
-		{
-			FreeImage_Unload(bitmapScaled);
-		}
-
-		// unload the non 32-bit bitmap only if it was scaled
-		if (scale)
-		{
-			FreeImage_Unload(bitmapOriginal);
-		}
-		//====================================================
+		// Fill RHI_Texture with image properties
+		texture->SetBPP(image_bbp);		
+		texture->SetWidth(image_width);
+		texture->SetHeight(image_height);
+		texture->SetChannels(image_channels);
+		texture->SetTransparency(image_transparency);
+		texture->SetGrayscale(image_grayscale);
 
 		return true;
 	}
 
-	bool ImageImporter::RescaleBits(vector<std::byte>* rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int toWidth, unsigned int toHeight)
+	bool ImageImporter::RescaleBits(vector<std::byte>* rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int channels, unsigned int toWidth, unsigned int toHeight)
 	{
 		if (rgba->empty())
 		{
@@ -152,9 +135,9 @@ namespace Directus
 			return false;
 		}
 
-		unsigned int pitch	= fromWidth * 4;
+		unsigned int pitch	= fromWidth * channels;
 		FIBITMAP* bitmap	= FreeImage_ConvertFromRawBits((BYTE*)rgba->data(), fromWidth, fromHeight, pitch, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
-		bool result			= GetRescaledBitsFromBitmap(rgba, toWidth, toHeight, bitmap);
+		bool result			= GetRescaledBitsFromBitmap(rgba, toWidth, channels, toHeight, bitmap);
 		return result;
 	}
 
@@ -176,10 +159,10 @@ namespace Directus
 		return 0;
 	}
 
-	bool ImageImporter::GetBitsFromFIBITMAP(vector<std::byte>* data, FIBITMAP* bitmap)
+	bool ImageImporter::GetBitsFromFIBITMAP(vector<std::byte>* data, FIBITMAP* bitmap, unsigned int width, unsigned int height, unsigned int channels, bool* isGrayscale)
 	{
-		unsigned int width	= FreeImage_GetWidth(bitmap);
-		unsigned int height = FreeImage_GetHeight(bitmap);
+		int grayPixels	= 0;
+		int totalPixels = width * height;
 
 		if (width == 0 || height == 0)
 			return false;
@@ -193,22 +176,35 @@ namespace Directus
 			auto bytes = (std::byte*)FreeImage_GetScanLine(bitmap, y);
 			for (unsigned int x = 0; x < width; x++)
 			{
-				data->emplace_back(bytes[FI_RGBA_RED]);
-				data->emplace_back(bytes[FI_RGBA_GREEN]);
-				data->emplace_back(bytes[FI_RGBA_BLUE]);
-				data->emplace_back(bytes[FI_RGBA_ALPHA]);
+				std::byte& red		= bytes[FI_RGBA_RED];
+				std::byte& green	= bytes[FI_RGBA_GREEN];
+				std::byte& blue		= bytes[FI_RGBA_BLUE];
+				std::byte& alpha	= bytes[FI_RGBA_ALPHA];
+
+				// Grayscale check
+				if (red == green && red == blue)
+				{
+					grayPixels++;
+				}
+
+				data->emplace_back(red);
+				data->emplace_back(green);
+				data->emplace_back(blue);
+				data->emplace_back(alpha);
 
 				// jump to next pixel
 				bytes += bytesPerPixel;
 			}
 		}
 
+		(*isGrayscale) = (grayPixels == totalPixels);
+
 		return true;
 	}
 
-	bool ImageImporter::GetRescaledBitsFromBitmap(vector<std::byte>* dataOut, int width, int height, FIBITMAP* bitmap)
+	bool ImageImporter::GetRescaledBitsFromBitmap(vector<std::byte>* dataOut, unsigned int width, unsigned int height, unsigned int channels, FIBITMAP* bitmap)
 	{
-		if (!bitmap || width == 0 || height == 0)
+		if (!bitmap || width == 0 || height == 0 || channels == 0)
 			return false;
 
 		dataOut->clear();
@@ -218,7 +214,8 @@ namespace Directus
 		FIBITMAP* bitmapScaled = FreeImage_Rescale(bitmap, width, height, FILTER_LANCZOS3);
 
 		// Extract RGBA data from the FIBITMAP
-		bool result = GetBitsFromFIBITMAP(dataOut, bitmapScaled);
+		bool isGrayscale = false;
+		bool result = GetBitsFromFIBITMAP(dataOut, bitmapScaled, width, height, channels, &isGrayscale);
 
 		// Unload the FIBITMAP
 		FreeImage_Unload(bitmapScaled);
@@ -226,20 +223,17 @@ namespace Directus
 		return result;
 	}
 
-	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, RHI_Texture* texture)
+	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, RHI_Texture* texture, unsigned int width, unsigned int height)
 	{
 		if (!texture)
 			return;
-
-		// First mip is full size, we won't do anything special for it
-		unsigned int width	= texture->GetWidth();
-		unsigned int height	= texture->GetHeight();
 
 		// Define a struct that the threads will work with
 		struct RescaleJob
 		{
 			unsigned int width		= 0;
 			unsigned int height		= 0;
+			unsigned int channels	= 4;
 			bool complete			= false;
 			vector<std::byte> data;
 
@@ -255,8 +249,8 @@ namespace Directus
 		// For each mip level that we need, add a job
 		while (width > 1 && height > 1)
 		{
-			width = max(width / 2, 1);
-			height = max(height / 2, 1);
+			width	= max(width / 2, 1);
+			height	= max(height / 2, 1);
 
 			rescaleJobs.emplace_back(width, height, false);
 		}
@@ -268,10 +262,9 @@ namespace Directus
 		{
 			threading->AddTask([this, &job, &bitmap]()
 			{
-				if (!GetRescaledBitsFromBitmap(&job.data, job.width, job.height, bitmap))
+				if (!GetRescaledBitsFromBitmap(&job.data, job.width, job.height, job.channels, bitmap))
 				{
-					string mipSize = "(" + to_string(job.width) + "x" + to_string(job.height) + ")";
-					LOG_INFO("ImageImporter: Failed to create mip level " + mipSize + ".");
+					LOGF_INFO("ImageImporter:GenerateMipmapsFromFIBITMAP: Failed to create mip level %dx%d", job.width, job.height);
 				}
 				job.complete = true;
 			});
@@ -296,32 +289,5 @@ namespace Directus
 		{
 			texture->GetData().emplace_back(move(job.data));
 		}
-	}
-
-	bool ImageImporter::GrayscaleCheck(const vector<std::byte>& data, int width, int height)
-	{
-		if (data.empty())
-			return false;
-
-		int grayPixels	= 0;
-		int totalPixels = width * height;
-		int channels	= 4;
-
-		for (int i = 0; i < height; i++)
-		{
-			for (int j = 0; j < width; j++)
-			{
-				std::byte red	= data[(i * width + j) * channels + 0];
-				std::byte green	= data[(i * width + j) * channels + 1];
-				std::byte blue	= data[(i * width + j) * channels + 2];
-
-				if (red == green && red == blue)
-				{
-					grayPixels++;
-				}
-			}
-		}
-
-		return grayPixels == totalPixels;
 	}
 }
