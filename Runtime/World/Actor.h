@@ -83,7 +83,7 @@ namespace Directus
 				std::make_shared<T>
 				(
 					m_context,
-					m_context->GetSubsystem<World>()->Actor_GetByID(GetID()).get(),
+					this,
 					GetTransform_PtrRaw()
 				)
 			);
