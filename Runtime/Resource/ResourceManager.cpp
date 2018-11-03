@@ -35,7 +35,7 @@ namespace Directus
 	ResourceManager::ResourceManager(Context* context) : Subsystem(context)
 	{
 		m_resourceCache = nullptr;
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_UNLOAD, EVENT_HANDLER(Clear));
+		SUBSCRIBE_TO_EVENT(EVENT_WORLD_UNLOAD, EVENT_HANDLER(Clear));
 	}
 
 	bool ResourceManager::Initialize()

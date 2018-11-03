@@ -52,9 +52,11 @@ namespace Directus
 
 	World::World(Context* context) : Subsystem(context)
 	{
-		m_state	= Scene_Idle;
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE_START, [this](Variant) { m_isDirty = true; });
+		m_tick = true;
+		SUBSCRIBE_TO_EVENT(EVENT_WORLD_RESOLVE, [this](Variant) { m_isDirty = true; });
 		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Tick));
+		SUBSCRIBE_TO_EVENT(EVENT_WORLD_STOP, [this](Variant)	{ m_tick = false; });
+		SUBSCRIBE_TO_EVENT(EVENT_WORLD_START, [this](Variant)	{ m_tick = true; });
 	}
 
 	World::~World()
@@ -74,19 +76,11 @@ namespace Directus
 
 	void World::Tick()
 	{	
+		if (!m_tick)
+			return;
+
 		TIME_BLOCK_START_CPU();
-
-		// Thread safety: Wait for the scene to finish all jobs before ticking
-		if (m_state != Scene_Idle) { return; }
-		m_state = Scene_Ticking;
-
-		if (m_isDirty)
-		{
-			// Submit to the Renderer
-			FIRE_EVENT_DATA(EVENT_SCENE_RESOLVE_END, m_actors);
-			m_isDirty = false;
-		}
-
+		
 		// Detect game toggling
 		bool started		= Engine::EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
 		bool stopped		= !Engine::EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
@@ -114,14 +108,19 @@ namespace Directus
 			actor->Tick();
 		}
 
-		m_state = Scene_Idle;
-
 		TIME_BLOCK_END_CPU();
+
+		if (m_isDirty)
+		{
+			// Submit to the Renderer
+			FIRE_EVENT_DATA(EVENT_WORLD_SUBMIT, m_actors);
+			m_isDirty = false;
+		}
 	}
 
 	void World::Unload()
 	{
-		FIRE_EVENT(EVENT_SCENE_UNLOAD);
+		FIRE_EVENT(EVENT_WORLD_UNLOAD);
 		m_actors.clear();
 		m_actors.shrink_to_fit();
 	}
@@ -130,7 +129,7 @@ namespace Directus
 	//= I/O ===================================================================================================
 	bool World::SaveToFile(const string& filePathIn)
 	{
-		m_state = Scene_Saving;
+		m_tick = false;
 		ProgressReport::Get().Reset(g_progress_Scene);
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
 		ProgressReport::Get().SetStatus(g_progress_Scene, "Saving scene...");
@@ -150,7 +149,7 @@ namespace Directus
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
 		if (!file->IsOpen())
 		{
-			m_state = Scene_Idle;
+			m_tick = true;
 			return false;
 		}
 
@@ -180,11 +179,11 @@ namespace Directus
 		}
 		//==============================================
 
-		m_state = Scene_Idle;
+		m_tick = true;
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
 		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
+		FIRE_EVENT(EVENT_WORLD_SAVED);
 
-		FIRE_EVENT(EVENT_SCENE_SAVED);
 		return true;
 	}
 
@@ -197,8 +196,8 @@ namespace Directus
 		}
 
 		// Thread safety: Wait for scene and the renderer to stop the actors (could do double buffering in the future)
-		while (m_state == Scene_Ticking || Renderer::IsRendering()) { this_thread::sleep_for(chrono::milliseconds(16)); }
-		m_state = Scene_Loading;
+		while (m_tick || Renderer::IsRendering()) { this_thread::sleep_for(chrono::milliseconds(16)); }
+		m_tick = false;
 		 
 		ProgressReport::Get().Reset(g_progress_Scene);
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
@@ -263,11 +262,11 @@ namespace Directus
 		//==============================================
 
 		m_isDirty = true;
-		m_state = Scene_Idle;
+		m_tick = true;
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);	
 		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
 
-		FIRE_EVENT(EVENT_SCENE_LOADED);
+		FIRE_EVENT(EVENT_WORLD_LOADED);
 		return true;
 	}
 	//===================================================================================================
@@ -277,7 +276,9 @@ namespace Directus
 	{
 		auto actor = make_shared<Actor>(m_context);
 		actor->Initialize(actor->AddComponent<Transform>().get());
+
 		m_actors.emplace_back(actor);
+
 		return actor;
 	}
 

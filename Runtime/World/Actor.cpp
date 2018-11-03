@@ -271,7 +271,7 @@ namespace Directus
 		}
 
 		// Make the scene resolve
-		FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
+		FIRE_EVENT(EVENT_WORLD_RESOLVE);
 	}
 
 	shared_ptr<IComponent> Actor::AddComponent(ComponentType type)
@@ -297,7 +297,7 @@ namespace Directus
 		}
 
 		// Make the scene resolve
-		FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
+		FIRE_EVENT(EVENT_WORLD_RESOLVE);
 
 		return component;
 	}
@@ -320,6 +320,6 @@ namespace Directus
 		}
 
 		// Make the scene resolve
-		FIRE_EVENT(EVENT_SCENE_RESOLVE_START);
+		FIRE_EVENT(EVENT_WORLD_RESOLVE);
 	}
 }
