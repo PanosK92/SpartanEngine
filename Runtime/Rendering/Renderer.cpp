@@ -84,8 +84,8 @@ namespace Directus
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_RESOLVE_END, EVENT_HANDLER_VARIANT(Renderables_Acquire));
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_UNLOAD, [this](Variant) { Clear(); });
+		SUBSCRIBE_TO_EVENT(EVENT_WORLD_SUBMIT, EVENT_HANDLER_VARIANT(Renderables_Acquire));
+		SUBSCRIBE_TO_EVENT(EVENT_WORLD_UNLOAD, [this](Variant) { Clear(); });
 	}
 
 	Renderer::~Renderer()

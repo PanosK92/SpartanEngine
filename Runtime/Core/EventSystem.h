@@ -37,21 +37,20 @@ To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 =============================================================================
 */
 
-//= EVENTS =================================================================================
-#define EVENT_FRAME_START			0	// Fired when a new frame begins
-#define EVENT_FRAME_END				1	// Fired when a frame ends
+//= EVENTS =============================================================================================
+#define EVENT_FRAME_START			0	// Signifies that a frame begins
+#define EVENT_FRAME_END				1	// Signifies that that a frame ends
+#define EVENT_TICK					2	// Signifies that subsystems should tick
+#define EVENT_RENDER				3	// Signifies that Renderer should output a frame
 
-#define EVENT_TICK					2	// Fired when the most engine subsystems should tick
-#define EVENT_RENDER				3	// Fired when the Renderer should start rendering
-
-#define EVENT_SCENE_SAVED			4	// Fired when the Scene finished saving to file
-#define EVENT_SCENE_LOADED			5	// Fired when the Scene finished loading from file
-#define EVENT_SCENE_UNLOAD			6	// Fired when the Scene should clear everything
-#define EVENT_SCENE_RESOLVE_START	7	// Signifies that the scene should resolve
-#define EVENT_SCENE_RESOLVE_END		8	// Signifies that the scene just finished resolving
-
-#define EVENT_MODEL_LOADED			9	// Fired when the ModelImporter finished loading
-//==========================================================================================
+#define EVENT_WORLD_SAVED			4	// Signifies that the World finished saving to file
+#define EVENT_WORLD_LOADED			5	// Signifies that the World finished loading from file
+#define EVENT_WORLD_UNLOAD			6	// Signifies that the World should clear everything
+#define EVENT_WORLD_RESOLVE			7	// Signifies that the World should resolve
+#define EVENT_WORLD_SUBMIT			8	// Signifies that the World is submitting actors to the Renderer
+#define EVENT_WORLD_STOP			9	// Signifies that The World should stop ticking
+#define EVENT_WORLD_START			10	// Signifies that The World should start ticking
+//======================================================================================================
 
 //= MACROS ===============================================================================================
 #define EVENT_HANDLER_STATIC(function)			[](Directus::Variant var)		{ function(); }

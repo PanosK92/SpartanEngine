@@ -32,14 +32,6 @@ namespace Directus
 	class Actor;
 	class Light;
 
-	enum Scene_State
-	{
-		Scene_Idle,
-		Scene_Ticking,
-		Scene_Saving,
-		Scene_Loading
-	};
-
 	class ENGINE_CLASS World : public Subsystem
 	{
 	public:
@@ -58,7 +50,7 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= Actor HELPER FUNCTIONS ===================================================
+		//= Actor HELPER FUNCTIONS ====================================================
 		std::shared_ptr<Actor> Actor_Create();
 		void Actor_Add(const std::shared_ptr<Actor>& actor);
 		bool Actor_Exists(const std::weak_ptr<Actor>& actor);
@@ -68,7 +60,7 @@ namespace Directus
 		const std::shared_ptr<Actor>& Actor_GetByName(const std::string& name);
 		const std::shared_ptr<Actor>& Actor_GetByID(unsigned int ID);
 		int Actor_GetCount() { return (int)m_actors.size(); }
-		//============================================================================
+		//=============================================================================
 
 		//= MISC ====================================================
 		std::weak_ptr<Actor> GetMainCamera() { return m_mainCamera; }
@@ -86,6 +78,6 @@ namespace Directus
 		std::weak_ptr<Actor> m_skybox;
 		bool m_wasInEditorMode;
 		bool m_isDirty;
-		Scene_State m_state;
+		bool m_tick;
 	};
 }

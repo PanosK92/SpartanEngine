@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <deque>
 #include "Logging/ILogger.h"
+#include "type_traits"        // for forward, move
+#include "xstring"            // for string
 //==========================
 
 struct LogPackage
@@ -68,7 +70,7 @@ public:
 private:
 	std::shared_ptr<EngineLogger> m_logger;
 	std::deque<LogPackage> m_logs;
-	int m_maxLogEntries = 500;
+	unsigned int m_maxLogEntries = 500;
 	bool m_showInfo;
 	bool m_showWarnings;
 	bool m_showErrors;

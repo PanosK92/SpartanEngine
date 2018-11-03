@@ -143,10 +143,13 @@ namespace Directus
 		// Read the 3D model file from disk
 		if (const aiScene* scene = importer.ReadFile(m_modelPath, _ModelImporter::flags))
 		{
+			FIRE_EVENT(EVENT_WORLD_STOP);
+
 			ReadNodeHierarchy(scene, scene->mRootNode, model);
 			ReadAnimations(scene, model);
 			model->Geometry_Update();
-			FIRE_EVENT(EVENT_MODEL_LOADED);
+
+			FIRE_EVENT(EVENT_WORLD_START);
 		}
 		else
 		{
@@ -180,14 +183,14 @@ namespace Directus
 			string name = assimpNode->mName.C_Str();
 			newNode->SetName(name);
 
-			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for: " + name);
+			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for " + name);
 		}
 		else
 		{
 			string name = FileSystem::GetFileNameNoExtensionFromFilePath(m_modelPath);
 			newNode->SetName(name);
 
-			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for: " + name);
+			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for " + name);
 		}
 		//============================================================================
 

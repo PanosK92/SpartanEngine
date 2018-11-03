@@ -168,7 +168,7 @@ namespace Directus
 			return false;
 
 		unsigned int bytesPerPixel = FreeImage_GetLine(bitmap) / width;
-		data->reserve(4 * width * height);
+		data->reserve(width * height * channels);
 
 		// Construct an RGBA array
 		for (unsigned int y = 0; y < height; y++)

@@ -28,18 +28,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ==========
 using namespace std;
 using namespace Directus;
+using namespace Math;
 //=======================
 
-namespace Widget_ConsoleOptions
+namespace _Widget_Console
 {
-	static bool g_scrollToBottom = false;
-	static ImVec4 g_logColor[3] =
+	static bool scrollToBottom = false;
+	static const vector<Vector4> colors =
 	{
-		ImVec4(0.76f, 0.77f, 0.8f, 1.0f),	// Info
-		ImVec4(0.75f, 0.75f, 0.0f, 1.0f),	// Warning
-		ImVec4(0.75f, 0.0f, 0.0f, 1.0f)		// Error
+		Vector4(0.76f, 0.77f, 0.8f, 1.0f),	// Info
+		Vector4(0.75f, 0.75f, 0.0f, 1.0f),	// Warning
+		Vector4(0.75f, 0.0f, 0.0f, 1.0f)	// Error
 	};
-	static ImGuiTextFilter g_logFilter;
+	static ImGuiTextFilter logFilter;
 }
 
 Widget_Console::Widget_Console(Context* context) : Widget(context)
@@ -70,39 +71,40 @@ void Widget_Console::Tick(float deltaTime)
 		if (THUMBNAIL_BUTTON_BY_TYPE(icon, 15.0f))
 		{
 			*toggle = !(*toggle);
-			Widget_ConsoleOptions::g_scrollToBottom = true;
+			_Widget_Console::scrollToBottom = true;
 		}
 		ImGui::PopStyleColor();
 		ImGui::SameLine();
 	};
 
+	// Log category visibility buttons
 	DisplayButton(Icon_Console_Info, &m_showInfo);
 	DisplayButton(Icon_Console_Warning, &m_showWarnings);
 	DisplayButton(Icon_Console_Error, &m_showErrors);
 
 	// Text filter
-	Widget_ConsoleOptions::g_logFilter.Draw("Filter", -100.0f);
+	_Widget_Console::logFilter.Draw("Filter", -100.0f);
 	ImGui::Separator();
 
 	// Content
 	ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
-	for (const auto& log : m_logs)
+	for (auto& log : m_logs)
 	{
-		if (!Widget_ConsoleOptions::g_logFilter.PassFilter(log.text.c_str()))
+		if (!_Widget_Console::logFilter.PassFilter(log.text.c_str()))
 			continue;
 
 		if ((log.errorLevel == 0 && m_showInfo) || (log.errorLevel == 1 && m_showWarnings) || (log.errorLevel == 2 && m_showErrors))
 		{
-			ImGui::PushStyleColor(ImGuiCol_Text, Widget_ConsoleOptions::g_logColor[log.errorLevel]);
+			ImGui::PushStyleColor(ImGuiCol_Text, _Widget_Console::colors[log.errorLevel]);	// text
 			ImGui::TextUnformatted(log.text.c_str());
 			ImGui::PopStyleColor();
 		}
 	}
 
-	if (Widget_ConsoleOptions::g_scrollToBottom)
+	if (_Widget_Console::scrollToBottom)
 	{
 		ImGui::SetScrollHereY();
-		Widget_ConsoleOptions::g_scrollToBottom = false;
+		_Widget_Console::scrollToBottom = false;
 	}
 
 	ImGui::EndChild();
@@ -111,12 +113,12 @@ void Widget_Console::Tick(float deltaTime)
 void Widget_Console::AddLogPackage(LogPackage package)
 {
 	m_logs.push_back(package);
-	if ((int)m_logs.size() > m_maxLogEntries)
+	if ((unsigned int)m_logs.size() > m_maxLogEntries)
 	{
 		m_logs.pop_front();
 	}
 
-	Widget_ConsoleOptions::g_scrollToBottom = true;
+	_Widget_Console::scrollToBottom = true;
 }
 
 void Widget_Console::Clear()
