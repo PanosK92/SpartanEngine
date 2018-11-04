@@ -66,7 +66,7 @@ namespace Directus
 		unsigned int Resource_GetID() { return m_resourceID; }
 
 		Resource_Type GetResourceType()				{ return m_resourceType; }
-		void SetResourceType(Resource_Type type)		{ m_resourceType = type; }
+		void SetResourceType(Resource_Type type)	{ m_resourceType = type; }
 
 		const char* GetResourceType_cstr() { return typeid(*this).name(); }
 
@@ -97,19 +97,15 @@ namespace Directus
 
 		// Caches the resource (if not cached) and returns a weak reference
 		template <typename T>
-		std::weak_ptr<T> Cache()
+		std::shared_ptr<T> Cache()
 		{
 			if (!m_context)
 			{
-				LOG_ERROR(std::string(GetResourceType_cstr()) + "::Cache(): Context is null, can't execute function");
-				return std::weak_ptr<T>();
+				LOGF_ERROR("%s::Cache(): Context is null, can't execute function", GetResourceType_cstr());
+				return nullptr;
 			}
 
-			auto base = _Cache().lock();
-			std::shared_ptr<T> derivedShared = std::static_pointer_cast<T>(base);
-			std::weak_ptr<T> derivedWeak = std::weak_ptr<T>(derivedShared);
-
-			return derivedWeak;
+			return std::static_pointer_cast<T>(_Cache());
 		}
 		//=================================================================
 
@@ -132,7 +128,7 @@ namespace Directus
 		void SetLoadState(LoadState state)	{ m_loadState = state; }
 
 	protected:
-		std::weak_ptr<IResource> _Cache();
+		std::shared_ptr<IResource> _Cache();
 		bool _IsCached();
 
 		unsigned int m_resourceID			= NOT_ASSIGNED_HASH;

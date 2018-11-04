@@ -193,7 +193,6 @@ namespace Directus
 		auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
 		if (texture)
 		{
-			texture->SetTextureType(textureType); // if this texture was cached from the editor, it has no type, we have to set it
 			material->SetTextureSlot(textureType, texture, false);
 		}
 		// If we didn't get a texture, it's not cached, hence we have to load it and cache it now
@@ -202,7 +201,6 @@ namespace Directus
 			// Load texture
 			texture = make_shared<RHI_Texture>(m_context);
 			texture->LoadFromFile(filePath);
-			texture->SetTextureType(textureType);
 
 			// Update the texture with Model directory relative file path. Then save it to this directory
 			string modelRelativeTexPath = m_modelDirectoryTextures + texName + EXTENSION_TEXTURE;

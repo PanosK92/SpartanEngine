@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
+#include "Material.h"
 //================================
 
 namespace Directus
@@ -34,7 +35,6 @@ namespace Directus
 	class ResourceManager;
 	class Actor;
 	class Mesh;
-	class Material;
 	class Animation;
 
 	namespace Math

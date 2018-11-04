@@ -121,8 +121,8 @@ namespace Directus
 		unsigned int image_width	= FreeImage_GetWidth(bitmap);
 		unsigned int image_height	= FreeImage_GetHeight(bitmap);
 		unsigned int image_bbp		= FreeImage_GetBPP(bitmap);
-		unsigned int image_channels = image_bbp / 8;
-		bool image_grayscale		= FreeImage_GetColorType(bitmap) == FIC_MINISBLACK;
+		unsigned int image_channels	= image_bbp / 8;
+		bool image_grayscale		= IsVisuallyGrayscale(bitmap);
 
 		// Fill RGBA vector with the data from the FIBITMAP
 		auto mip = texture->Data_AddMipMap();
@@ -226,6 +226,32 @@ namespace Directus
 				{
 					ready = false;
 				}
+			}
+		}
+	}
+
+	bool ImageImporter::IsVisuallyGrayscale(FIBITMAP* bitmap)
+	{
+		switch (FreeImage_GetBPP(bitmap))
+		{
+			case 1:
+			case 4:
+			case 8: 
+			{
+				unsigned ncolors = FreeImage_GetColorsUsed(bitmap);
+				RGBQUAD *rgb = FreeImage_GetPalette(bitmap);
+				for (unsigned i = 0; i < ncolors; i++) 
+				{
+					if ((rgb->rgbRed != rgb->rgbGreen) || (rgb->rgbRed != rgb->rgbBlue)) 
+					{
+						return false;
+					}
+				}
+				return true;
+			}
+			default: 
+			{
+				return (FreeImage_GetColorType(bitmap) == FIC_MINISBLACK);
 			}
 		}
 	}

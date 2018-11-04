@@ -52,11 +52,11 @@ namespace Directus
 
 	World::World(Context* context) : Subsystem(context)
 	{
-		m_tick = true;
+		m_state = Ticking;
 		SUBSCRIBE_TO_EVENT(EVENT_WORLD_RESOLVE, [this](Variant) { m_isDirty = true; });
 		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Tick));
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_STOP, [this](Variant)	{ m_tick = false; });
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_START, [this](Variant)	{ m_tick = true; });
+		SUBSCRIBE_TO_EVENT(EVENT_WORLD_STOP, [this](Variant)	{ m_state = Idle; });
+		SUBSCRIBE_TO_EVENT(EVENT_WORLD_START, [this](Variant)	{ m_state = Ticking; });
 	}
 
 	World::~World()
@@ -76,7 +76,13 @@ namespace Directus
 
 	void World::Tick()
 	{	
-		if (!m_tick)
+		if (m_state == Request_Loading)
+		{
+			m_state = Loading;
+			return;
+		}
+
+		if (m_state != Ticking)
 			return;
 
 		TIME_BLOCK_START_CPU();
@@ -129,7 +135,6 @@ namespace Directus
 	//= I/O ===================================================================================================
 	bool World::SaveToFile(const string& filePathIn)
 	{
-		m_tick = false;
 		ProgressReport::Get().Reset(g_progress_Scene);
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
 		ProgressReport::Get().SetStatus(g_progress_Scene, "Saving scene...");
@@ -149,7 +154,6 @@ namespace Directus
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
 		if (!file->IsOpen())
 		{
-			m_tick = true;
 			return false;
 		}
 
@@ -179,7 +183,6 @@ namespace Directus
 		}
 		//==============================================
 
-		m_tick = true;
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
 		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
 		FIRE_EVENT(EVENT_WORLD_SAVED);
@@ -196,9 +199,8 @@ namespace Directus
 		}
 
 		// Thread safety: Wait for scene and the renderer to stop the actors (could do double buffering in the future)
-		while (m_tick || Renderer::IsRendering()) { this_thread::sleep_for(chrono::milliseconds(16)); }
-		m_tick = false;
-		 
+		while (m_state != Loading || Renderer::IsRendering()) { m_state = Request_Loading; this_thread::sleep_for(chrono::milliseconds(16)); }
+
 		ProgressReport::Get().Reset(g_progress_Scene);
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
 		ProgressReport::Get().SetStatus(g_progress_Scene, "Loading scene...");
@@ -261,8 +263,8 @@ namespace Directus
 		}
 		//==============================================
 
-		m_isDirty = true;
-		m_tick = true;
+		m_isDirty	= true;
+		m_state		= Ticking;
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);	
 		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
 

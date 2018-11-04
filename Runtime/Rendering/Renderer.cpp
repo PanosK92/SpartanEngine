@@ -228,20 +228,16 @@ namespace Directus
 			// Noise texture (used by SSAO shader)
 			m_texNoiseMap = make_shared<RHI_Texture>(m_context);
 			m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
-			m_texNoiseMap->SetTextureType(TextureType_Normal);
 
 			// Gizmo icons
 			m_gizmoTexLightDirectional = make_shared<RHI_Texture>(m_context);
 			m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
-			m_gizmoTexLightDirectional->SetTextureType(TextureType_Albedo);
 
 			m_gizmoTexLightPoint = make_shared<RHI_Texture>(m_context);
 			m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
-			m_gizmoTexLightPoint->SetTextureType(TextureType_Albedo);
 
 			m_gizmoTexLightSpot = make_shared<RHI_Texture>(m_context);
 			m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
-			m_gizmoTexLightSpot->SetTextureType(TextureType_Albedo);
 		}
 
 		return true;
@@ -457,7 +453,7 @@ namespace Directus
 
 			if (renderable)
 			{
-				bool isTransparent = !renderable->Material_Exists() ? false : renderable->Material_PtrRaw()->GetColorAlbedo().w < 1.0f;
+				bool isTransparent = !renderable->Material_Exists() ? false : renderable->Material_Ptr()->GetColorAlbedo().w < 1.0f;
 				m_actors[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(actor);
 			}
 
@@ -508,8 +504,8 @@ namespace Directus
 				return false;
 
 			// Get materials
-			auto a_material = a_renderable->Material_PtrRaw();
-			auto b_material = b_renderable->Material_PtrRaw();
+			auto a_material = a_renderable->Material_Ptr();
+			auto b_material = b_renderable->Material_Ptr();
 
 			if (!a_material || !b_material)
 				return false;
@@ -578,7 +574,7 @@ namespace Directus
 						continue;
 
 					// Acquire material
-					Material* material = renderable ? renderable->Material_PtrRaw() : nullptr;
+					Material* material = renderable ? renderable->Material_Ptr().get() : nullptr;
 					if (!material)
 						continue;
 
@@ -648,7 +644,7 @@ namespace Directus
 		{
 			// Get renderable and material
 			Renderable* renderable	= actor->GetRenderable_PtrRaw();
-			Material* material		= renderable ? renderable->Material_PtrRaw() : nullptr;
+			Material* material		= renderable ? renderable->Material_Ptr().get() : nullptr;
 
 			if (!renderable || !material)
 				continue;
@@ -877,7 +873,7 @@ namespace Directus
 		{
 			// Get renderable and material
 			Renderable* renderable	= actor->GetRenderable_PtrRaw();
-			Material* material		= renderable ? renderable->Material_PtrRaw() : nullptr;
+			Material* material		= renderable ? renderable->Material_Ptr().get() : nullptr;
 
 			if (!renderable || !material)
 				continue;

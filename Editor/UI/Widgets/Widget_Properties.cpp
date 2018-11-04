@@ -167,7 +167,7 @@ void Widget_Properties::Tick(float deltaTime)
 		auto audioSource	= actorPtr->GetComponent<AudioSource>();
 		auto audioListener	= actorPtr->GetComponent<AudioListener>();
 		auto renderable		= actorPtr->GetComponent<Renderable>();
-		auto material		= renderable ? renderable->Material_RefWeak().lock() : nullptr;
+		auto material		= renderable ? renderable->Material_Ptr() : nullptr;
 		auto rigidBody		= actorPtr->GetComponent<RigidBody>();
 		auto collider		= actorPtr->GetComponent<Collider>();
 		auto constraint		= actorPtr->GetComponent<Constraint>();
@@ -396,7 +396,7 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable)
 	{
 		//= REFLECT ================================================================
 		string meshName		= renderable->Geometry_Name();
-		auto material		= renderable->Material_RefWeak().lock();
+		auto material		= renderable->Material_Ptr();
 		string materialName	= material ? material->GetResourceName() : NOT_ASSIGNED;
 		bool castShadows	= renderable->GetCastShadows();
 		bool receiveShadows = renderable->GetReceiveShadows();
@@ -764,8 +764,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 					{
 						if (auto texture = _Widget_Properties::resourceManager->Load<RHI_Texture>(get<const char*>(payload->data)))
 						{
-							texture->SetTextureType(textureType);
-							material->SetTextureSlot(texture->GetTextureType(), texture);
+							material->SetTextureSlot(textureType, texture);
 						}
 					}
 					catch (const std::bad_variant_access& e) { LOGF_ERROR("Widget_Properties::ShowMaterial: %s", e.what()); }

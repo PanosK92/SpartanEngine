@@ -36,6 +36,20 @@ namespace Directus
 	class ShaderVariation;
 	class TexturePool;
 
+	enum TextureType
+	{
+		TextureType_Unknown,
+		TextureType_Albedo,
+		TextureType_Roughness,
+		TextureType_Metallic,
+		TextureType_Normal,
+		TextureType_Height,
+		TextureType_Occlusion,
+		TextureType_Emission,
+		TextureType_Mask,
+		TextureType_CubeMap,
+	};
+
 	struct TextureSlot
 	{
 		TextureSlot()
@@ -75,14 +89,14 @@ namespace Directus
 		unsigned int GetMemoryUsage() override;
 		//==============================================================
 
-		//= TEXTURE SLOTS  =========================================================================================
+		//= TEXTURE SLOTS  ===========================================================================================
 		const TextureSlot& GetTextureSlotByType(TextureType type);
-		void SetTextureSlot(TextureType type, const std::weak_ptr<RHI_Texture>& textureWeak, bool autoCache = true);	
+		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& textureWeak, bool autoCache = true);	
 		bool HasTexture(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//==========================================================================================================
+		//===========================================================================================================
 
 		//= SHADER ==================================================================
 		void AcquireShader();
@@ -127,6 +141,8 @@ namespace Directus
 		bool IsEditable()								{ return m_isEditable; }
 		void SetIsEditable(bool isEditable)				{ m_isEditable = isEditable; }
 		//====================================================================================
+
+		TextureType TextureTypeFromString(const std::string& type);
 
 	private:
 		void TextureBasedMultiplierAdjustment();

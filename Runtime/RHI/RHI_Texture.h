@@ -65,9 +65,6 @@ namespace Directus
 		unsigned int GetHeight()							{ return m_height; }
 		void SetHeight(unsigned int height)					{ m_height = height; }
 
-		TextureType GetTextureType()						{ return m_type; }
-		void SetTextureType(TextureType type);
-
 		bool GetGrayscale()									{ return m_isGrayscale; }
 		void SetGrayscale(bool isGrayscale)					{ m_isGrayscale = isGrayscale; }
 
@@ -103,9 +100,8 @@ namespace Directus
 		//============================================
 
 		bool LoadFromForeignFormat(const std::string& filePath);
-		TextureType TextureTypeFromString(const std::string& type);
-
-		//= DATA =====================================
+		
+		//= DATA =======================
 		unsigned int m_bpp		= 0;
 		unsigned int m_width	= 0;
 		unsigned int m_height	= 0;
@@ -113,10 +109,9 @@ namespace Directus
 		bool m_isGrayscale		= false;
 		bool m_isTransparent	= false;
 		bool m_isUsingMipmaps	= false;
-		TextureType m_type		= TextureType_Unknown;
 		Texture_Format m_format;
 		std::vector<Mipmap> m_data;
-		//============================================
+		//==============================
 
 		// D3D11
 		std::shared_ptr<RHI_Device> m_rhiDevice;

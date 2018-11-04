@@ -82,19 +82,18 @@ namespace Directus
 		Math::BoundingBox Geometry_BB();
 		//===============================================================================================
 
-		//= MATERIAL =========================================================================
+		//= MATERIAL ===========================================================================
 		// Sets a material from memory (adds it to the resource cache by default)
-		void Material_Set(const std::weak_ptr<Material>& materialWeak, bool autoCache = true);
+		void Material_Set(const std::shared_ptr<Material>& materialWeak, bool autoCache = true);
 
 		// Loads a material and the sets it
-		std::weak_ptr<Material> Material_Set(const std::string& filePath);
+		std::shared_ptr<Material> Material_Set(const std::string& filePath);
 
 		void Material_UseDefault();
-		std::weak_ptr<Material> Material_RefWeak()	{ return m_materialRefWeak; }
-		Material* Material_PtrRaw()					{ return m_materialRef; }
-		bool Material_Exists()						{ return !m_materialRefWeak.expired(); }
-		std::string Material_Name();
-		//====================================================================================
+		const std::string& Material_Name();
+		auto Material_Ptr()		{ return m_material; }
+		bool Material_Exists()	{ return !m_material; }
+		//=====================================================================================
 
 		//= PROPERTIES ===================================================================
 		void SetCastShadows(bool castShadows)		{ m_castShadows = castShadows; }
@@ -115,10 +114,9 @@ namespace Directus
 		GeometryType m_geometryType;
 		//==================================
 
-		//= MATERIAL =============================
-		std::weak_ptr<Material> m_materialRefWeak;
-		Material* m_materialRef;
-		//========================================
+		//= MATERIAL =======================
+		std::shared_ptr<Material> m_material;
+		//==================================
 
 		// Misc
 		bool m_castShadows;

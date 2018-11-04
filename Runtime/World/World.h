@@ -32,6 +32,14 @@ namespace Directus
 	class Actor;
 	class Light;
 
+	enum Scene_State
+	{
+		Ticking,
+		Idle,
+		Request_Loading,
+		Loading
+	};
+
 	class ENGINE_CLASS World : public Subsystem
 	{
 	public:
@@ -78,6 +86,6 @@ namespace Directus
 		std::weak_ptr<Actor> m_skybox;
 		bool m_wasInEditorMode;
 		bool m_isDirty;
-		bool m_tick;
+		Scene_State m_state;
 	};
 }

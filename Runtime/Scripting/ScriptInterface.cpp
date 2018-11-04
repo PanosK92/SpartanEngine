@@ -55,7 +55,6 @@ namespace Directus
 		RegisterQuaternion();
 		RegisterTransform();
 		RegisterMaterial();
-		RegisterRenderable();
 		RegisterCamera();
 		RegisterRigidBody();
 		Registeractor();
@@ -226,14 +225,6 @@ namespace Directus
 	void ScriptInterface::RegisterMaterial()
 	{
 		m_scriptEngine->RegisterObjectMethod("Material", "void SetOffsetUV(Vector2)", asMETHOD(Material, SetOffset), asCALL_THISCALL);
-	}
-	//===============================================================================
-
-
-	//= RENDERABLE ==================================================================
-	void ScriptInterface::RegisterRenderable()
-	{
-		m_scriptEngine->RegisterObjectMethod("Renderable", "Material &GetMaterial()", asMETHOD(Renderable, Material_RefWeak), asCALL_THISCALL);
 	}
 	//===============================================================================
 
