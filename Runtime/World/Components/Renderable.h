@@ -92,7 +92,7 @@ namespace Directus
 		void Material_UseDefault();
 		const std::string& Material_Name();
 		auto Material_Ptr()		{ return m_material; }
-		bool Material_Exists()	{ return !m_material; }
+		bool Material_Exists()	{ return m_material != nullptr; }
 		//=====================================================================================
 
 		//= PROPERTIES ===================================================================
