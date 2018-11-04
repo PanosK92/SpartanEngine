@@ -65,8 +65,8 @@ namespace Directus
 	bool RHI_Texture::LoadFromFile(const string& rawFilePath)
 	{
 		bool loaded = false;
-		m_dataRGBA.clear();
-		m_dataRGBA.shrink_to_fit();
+		m_data.clear();
+		m_data.shrink_to_fit();
 		SetLoadState(LoadState_Started);
 
 		// Make the path, relative to the engine
@@ -91,7 +91,7 @@ namespace Directus
 		}
 
 		bool generateMipmaps = !m_isUsingMipmaps;
-		if (ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_dataRGBA, generateMipmaps))
+		if (ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_data, generateMipmaps))
 		{
 			// If the texture was loaded from an image file, it's not 
 			// saved yet, hence we have to maintain it's texture bits.
@@ -116,7 +116,7 @@ namespace Directus
 	{
 		// Compute texture bits (in case they are loaded)
 		unsigned int size = 0;
-		for (const auto& mip : m_dataRGBA)
+		for (const auto& mip : m_data)
 		{
 			size += (unsigned int)mip.size();
 		}
@@ -135,23 +135,34 @@ namespace Directus
 	}
 	//======================================================================================
 
+	Mipmap* RHI_Texture::Data_GetMip(unsigned int index)
+	{
+		if (index >= m_data.size())
+		{
+			LOG_WARNING("RHI_Texture::Data_GetMip: Index out of range");
+			return nullptr;
+		}
+
+		return &m_data[index];
+	}
+
 	//= TEXTURE BITS =================================================================
 	void RHI_Texture::ClearTextureBytes()
 	{
-		for (auto& mip : m_dataRGBA)
+		for (auto& mip : m_data)
 		{
 			mip.clear();
 			mip.shrink_to_fit();
 		}
-		m_dataRGBA.clear();
-		m_dataRGBA.shrink_to_fit();
+		m_data.clear();
+		m_data.shrink_to_fit();
 	}
 
 	void RHI_Texture::GetTextureBytes(vector<vector<std::byte>>* textureBytes)
 	{
-		if (!m_dataRGBA.empty())
+		if (!m_data.empty())
 		{
-			textureBytes = &m_dataRGBA;
+			textureBytes = &m_data;
 			return;
 		}
 
@@ -163,7 +174,7 @@ namespace Directus
 		for (unsigned int i = 0; i < mipCount; i++)
 		{
 			textureBytes->emplace_back(vector<std::byte>());
-			file->Read(&m_dataRGBA[i]);
+			file->Read(&m_data[i]);
 		}
 	}
 	//================================================================================
@@ -211,15 +222,15 @@ namespace Directus
 		// If the texture bits has been cleared, load it again
 		// as we don't want to replaced existing data with nothing.
 		// If the texture bits are not cleared, no loading will take place.
-		GetTextureBytes(&m_dataRGBA);
+		GetTextureBytes(&m_data);
 
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
 		if (!file->IsOpen())
 			return false;
 
 		// Write texture bits
-		file->Write((unsigned int)m_dataRGBA.size());
-		for (auto& mip : m_dataRGBA)
+		file->Write((unsigned int)m_data.size());
+		for (auto& mip : m_data)
 		{
 			file->Write(mip);
 		}
@@ -253,8 +264,8 @@ namespace Directus
 		unsigned int mipCount = file->ReadUInt();
 		for (unsigned int i = 0; i < mipCount; i++)
 		{
-			m_dataRGBA.emplace_back(vector<std::byte>());
-			file->Read(&m_dataRGBA[i]);
+			m_data.emplace_back(vector<std::byte>());
+			file->Read(&m_data[i]);
 		}
 
 		// Read properties

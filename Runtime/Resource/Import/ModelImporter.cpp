@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "ModelImporter.h"
-#include "assimp/Importer.hpp"
-#include "assimp/postprocess.h"
-#include "assimp/version.h"
-#include "assimp/ProgressHandler.hpp"
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/version.h>
+#include <assimp/ProgressHandler.hpp>
 #include "AssimpHelper.h"
 #include "../../Core/Settings.h"
 #include "../../Rendering/Model.h"

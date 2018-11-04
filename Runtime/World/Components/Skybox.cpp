@@ -101,22 +101,22 @@ namespace Directus
 			auto loaderTex = make_shared<RHI_Texture>(GetContext());
 			{
 				loaderTex->LoadFromFile(texturePaths[0]);
-				cubemapData.emplace_back(loaderTex->GetData());
+				cubemapData.emplace_back(loaderTex->Data_Get());
 
 				loaderTex->LoadFromFile(texturePaths[1]);
-				cubemapData.emplace_back(loaderTex->GetData());
+				cubemapData.emplace_back(loaderTex->Data_Get());
 
 				loaderTex->LoadFromFile(texturePaths[2]);
-				cubemapData.emplace_back(loaderTex->GetData());
+				cubemapData.emplace_back(loaderTex->Data_Get());
 
 				loaderTex->LoadFromFile(texturePaths[3]);
-				cubemapData.emplace_back(loaderTex->GetData());
+				cubemapData.emplace_back(loaderTex->Data_Get());
 
 				loaderTex->LoadFromFile(texturePaths[4]);
-				cubemapData.emplace_back(loaderTex->GetData());
+				cubemapData.emplace_back(loaderTex->Data_Get());
 
 				loaderTex->LoadFromFile(texturePaths[5]);
-				cubemapData.emplace_back(loaderTex->GetData());
+				cubemapData.emplace_back(loaderTex->Data_Get());
 			}
 
 			m_size		= loaderTex->GetWidth();
@@ -161,15 +161,15 @@ namespace Directus
 		m_context->GetSubsystem<Threading>()->AddTask([this, &texturePath]()
 		{
 			// Load texture
-			vector<mipmap> data; // vector<mip<data>>>
+			vector<Mipmap> data; // vector<mip<data>>>
 			auto texture = make_shared<RHI_Texture>(GetContext());
 			texture->LoadFromFile(texturePath);
-			data		= texture->GetData();
+			data		= texture->Data_Get();
 			m_format	= texture->GetFormat();
 			m_size		= texture->GetHeight() / 3;
 
 			// Split the cross into 6 individual textures
-			vector<vector<mipmap>> cubemapData; // vector<texture<mip>>
+			vector<vector<Mipmap>> cubemapData; // vector<texture<mip>>
 			unsigned int mipWidth	= texture->GetWidth();
 			unsigned int mipHeight	= texture->GetHeight();
 			for (const auto& mip : data)
