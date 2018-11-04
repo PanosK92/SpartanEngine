@@ -120,10 +120,10 @@ namespace Directus
 		bool image_transparency		= FreeImage_IsTransparent(bitmap);
 		unsigned int image_width	= FreeImage_GetWidth(bitmap);
 		unsigned int image_height	= FreeImage_GetHeight(bitmap);
-		unsigned int image_bbp		= 32;
+		unsigned int image_bbp		= FreeImage_GetBPP(bitmap);
 		unsigned int image_channels = image_bbp / 8;
-		bool image_grayscale		= false; // <------------------------------------ THIS HAS TO BE DEDUCED
-		
+		bool image_grayscale		= FreeImage_GetColorType(bitmap) == FIC_MINISBLACK;
+
 		// Fill RGBA vector with the data from the FIBITMAP
 		auto mip = texture->Data_AddMipMap();
 		GetBitsFromFIBITMAP(mip, bitmap, image_width, image_height, image_channels);
