@@ -388,10 +388,12 @@ namespace Directus
 
 	void ModelImporter::AssimpMesh_ExtractIndices(aiMesh* assimpMesh, vector<unsigned int>* indices)
 	{
+		indices->reserve(assimpMesh->mNumFaces);
+
 		// Get indices by iterating through each face of the mesh.
 		for (unsigned int faceIndex = 0; faceIndex < assimpMesh->mNumFaces; faceIndex++)
 		{
-			aiFace face = assimpMesh->mFaces[faceIndex];
+			aiFace& face = assimpMesh->mFaces[faceIndex];
 
 			if (face.mNumIndices < 3)
 				continue;
