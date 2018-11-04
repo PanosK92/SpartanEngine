@@ -126,7 +126,6 @@ namespace Directus
 			{
 				m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
 				m_cubemapTexture->SetResourceName("Cubemap");
-				m_cubemapTexture->SetTextureType(TextureType_CubeMap);
 				m_cubemapTexture->SetWidth(m_size);
 				m_cubemapTexture->SetHeight(m_size);
 				m_cubemapTexture->SetGrayscale(false);
@@ -184,7 +183,6 @@ namespace Directus
 			{
 				m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
 				m_cubemapTexture->SetResourceName("Cubemap");
-				m_cubemapTexture->SetTextureType(TextureType_CubeMap);
 				m_cubemapTexture->SetWidth(m_size);
 				m_cubemapTexture->SetHeight(m_size);
 				m_cubemapTexture->SetGrayscale(false);

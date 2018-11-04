@@ -94,20 +94,6 @@ namespace Directus
 		Fill_NotAssigned
 	};
 
-	enum TextureType
-	{
-		TextureType_Unknown,
-		TextureType_Albedo,
-		TextureType_Roughness,
-		TextureType_Metallic,
-		TextureType_Normal,
-		TextureType_Height,
-		TextureType_Occlusion,
-		TextureType_Emission,
-		TextureType_Mask,
-		TextureType_CubeMap,
-	};
-
 	enum Texture_Sampler_Filter
 	{
 		Texture_Sampler_Point,

@@ -54,7 +54,7 @@ IResource::IResource(Context* context, Resource_Type type)
 	m_loadState			= LoadState_Idle;
 }
 
-weak_ptr<IResource> IResource::_Cache()
+shared_ptr<IResource> IResource::_Cache()
 {
 	auto resource = m_resourceManager->GetResourceByName(GetResourceName(), m_resourceType);
 	if (!resource)

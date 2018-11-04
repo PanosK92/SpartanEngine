@@ -36,6 +36,20 @@ using namespace Directus::Math;
 
 namespace Directus
 {
+	static const char* textureTypeChar[] =
+	{
+		"Unknown",
+		"Albedo",
+		"Roughness",
+		"Metallic",
+		"Normal",
+		"Height",
+		"Occlusion",
+		"Emission",
+		"Mask",
+		"CubeMap",
+	};
+
 	Material::Material(Context* context) : IResource(context, Resource_Material)
 	{
 		// Material
@@ -177,17 +191,23 @@ namespace Directus
 	}
 
 	// Set texture from an existing texture
-	void Material::SetTextureSlot(TextureType type, const weak_ptr<RHI_Texture>& textureWeak, bool autoCache /* true */)
+	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_Texture>& texture, bool autoCache /* true */)
 	{
 		// Validate texture
-		if (textureWeak.expired())
+		if (!texture)
 		{
 			LOG_WARNING("Material::SetTexture: Invalid parameter");
 			return;
 		}
 
 		// Cache it or use the provided reference as is
-		auto texRef = autoCache ? textureWeak.lock()->Cache<RHI_Texture>() : textureWeak;
+		auto texCached = autoCache ? texture->Cache<RHI_Texture>() : texture;
+
+		// Some models (or Assimp) pass a normal map as a height map
+		// and others pass a height map as a normal map, we try to fix that.
+		type = 
+			(type == TextureType_Normal && texCached->GetGrayscale()) ? TextureType_Height :
+			(type == TextureType_Height && !texCached->GetGrayscale()) ? TextureType_Normal : type;
 
 		// Assign - As a replacement (if there is a previous one)
 		bool replaced = false;
@@ -195,8 +215,8 @@ namespace Directus
 		{
 			if (textureSlot.type == type)
 			{
-				textureSlot.ptr_weak	= texRef;
-				textureSlot.ptr_raw		= texRef.lock().get();
+				textureSlot.ptr_weak	= texCached;
+				textureSlot.ptr_raw		= texCached.get();
 				replaced = true;
 				break;
 			}
@@ -204,7 +224,7 @@ namespace Directus
 		// Assign - Add a new one (in case it's the first time the slot is assigned)
 		if (!replaced)
 		{
-			m_textureSlots.emplace_back(type, texRef, texRef.lock().get());
+			m_textureSlots.emplace_back(type, texCached, texCached.get());
 		}
 
 		TextureBasedMultiplierAdjustment();
@@ -350,5 +370,20 @@ namespace Directus
 		{
 			SetHeightMultiplier(1.0f);
 		}
+	}
+
+	TextureType Material::TextureTypeFromString(const string& type)
+	{
+		if (type == "Albedo")		return TextureType_Albedo;
+		if (type == "Roughness")	return TextureType_Roughness;
+		if (type == "Metallic")		return TextureType_Metallic;
+		if (type == "Normal")		return TextureType_Normal;
+		if (type == "Height")		return TextureType_Height;
+		if (type == "Occlusion")	return TextureType_Occlusion;
+		if (type == "Emission")		return TextureType_Emission;
+		if (type == "Mask")			return TextureType_Mask;
+		if (type == "CubeMap")		return TextureType_CubeMap;
+
+		return TextureType_Unknown;
 	}
 }

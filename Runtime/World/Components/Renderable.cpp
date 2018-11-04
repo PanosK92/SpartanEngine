@@ -97,13 +97,11 @@ namespace Directus
 		m_geometryVertexOffset	= 0;
 		m_geometryVertexCount	= 0;
 		m_materialDefault		= false;
-		m_materialRef			= nullptr;
 		m_castShadows			= true;
 		m_receiveShadows		= true;
 
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_materialDefault, bool);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_materialRef, Material*);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_materialRefWeak, weak_ptr<Material>);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, shared_ptr<Material>);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows, bool);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_receiveShadows, bool);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset, unsigned int);
@@ -142,7 +140,7 @@ namespace Directus
 		stream->Write(m_materialDefault);
 		if (!m_materialDefault)
 		{
-			stream->Write(!m_materialRefWeak.expired() ? m_materialRefWeak.lock()->GetResourceName() : NOT_ASSIGNED);
+			stream->Write(m_material ? m_material->GetResourceName() : NOT_ASSIGNED);
 		}
 	}
 
@@ -177,8 +175,7 @@ namespace Directus
 		{
 			string materialName;
 			stream->Read(&materialName);
-			m_materialRefWeak	= m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Material>(materialName);
-			m_materialRef		= m_materialRefWeak.lock().get();
+			m_material = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Material>(materialName);
 		}
 	}
 	//==============================================================================
@@ -224,10 +221,9 @@ namespace Directus
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
-	void Renderable::Material_Set(const weak_ptr<Material>& materialWeak, bool autoCache /* true */)
+	void Renderable::Material_Set(const shared_ptr<Material>& material, bool autoCache /* true */)
 	{
 		// Validate material
-		auto material = materialWeak.lock();
 		if (!material)
 		{
 			LOG_WARNING("Renderable::SetMaterialFromMemory(): Provided material is null, can't execute function");
@@ -236,39 +232,37 @@ namespace Directus
 
 		if (autoCache) // Cache it
 		{
-			if (auto cachedMat = material->Cache<Material>().lock())
+			if (auto matCached = material->Cache<Material>())
 			{
-				m_materialRefWeak = cachedMat;
-				m_materialRef = m_materialRefWeak.lock().get();
-				if (cachedMat->HasFilePath())
+				m_material = matCached;
+				if (m_material->HasFilePath())
 				{
-					m_materialRef->SaveToFile(material->GetResourceFilePath());
+					m_material->SaveToFile(material->GetResourceFilePath());
 					m_materialDefault = false;
 				}
 			}
 		}
 		else
 		{
-			m_materialRefWeak = material;
-			m_materialRef = m_materialRefWeak.lock().get();
+			m_material = material;
 		}
 	}
 
-	weak_ptr<Material> Renderable::Material_Set(const string& filePath)
+	shared_ptr<Material> Renderable::Material_Set(const string& filePath)
 	{
 		// Load the material
 		auto material = make_shared<Material>(GetContext());
 		if (!material->LoadFromFile(filePath))
 		{
 			LOGF_WARNING("Renderable::SetMaterialFromFile(): Failed to load material from \"%s\"", filePath.c_str());
-			return weak_ptr<Material>();
+			return nullptr;
 		}
 
 		// Set it as the current material
 		Material_Set(material);
 
 		// Return it
-		return Material_RefWeak();
+		return material;
 	}
 
 	void Renderable::Material_UseDefault()
@@ -285,9 +279,9 @@ namespace Directus
 		Material_Set(materialStandard->Cache<Material>(), false);
 	}
 
-	string Renderable::Material_Name()
+	const string& Renderable::Material_Name()
 	{
-		return !Material_RefWeak().expired() ? Material_RefWeak().lock()->GetResourceName() : NOT_ASSIGNED;
+		return m_material ? m_material->GetResourceName() : NOT_ASSIGNED;
 	}
 	//==============================================================================
 }

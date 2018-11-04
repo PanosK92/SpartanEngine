@@ -33,20 +33,6 @@ using namespace std;
 
 namespace Directus
 {
-	static const char* textureTypeChar[] =
-	{
-		"Unknown",
-		"Albedo",
-		"Roughness",
-		"Metallic",
-		"Normal",
-		"Height",
-		"Occlusion",
-		"Emission",
-		"Mask",
-		"CubeMap",
-	};
-
 	RHI_Texture::RHI_Texture(Context* context) : IResource(context, Resource_Texture)
 	{
 		m_isUsingMipmaps	= true;
@@ -64,7 +50,6 @@ namespace Directus
 
 	bool RHI_Texture::LoadFromFile(const string& rawFilePath)
 	{
-		bool loaded = false;
 		m_data.clear();
 		m_data.shrink_to_fit();
 		SetLoadState(LoadState_Started);
@@ -75,15 +60,14 @@ namespace Directus
 		// engine format (binary)
 		if (FileSystem::IsEngineTextureFile(filePath)) 
 		{
-			loaded = Deserialize(filePath);
+			Deserialize(filePath);
 		}
 		// foreign format (most known image formats)
 		else if (FileSystem::IsSupportedImageFile(filePath))
 		{
-			loaded = LoadFromForeignFormat(filePath);
+			LoadFromForeignFormat(filePath);
 		}
-
-		if (!loaded)
+		else
 		{
 			LOGF_ERROR("RI_Texture::LoadFromFile: Failed to load \"%s\".", filePath.c_str());
 			SetLoadState(LoadState_Failed);
@@ -125,16 +109,6 @@ namespace Directus
 	}
 	//=====================================================================================
 
-	//= PROPERTIES =========================================================================
-	void RHI_Texture::SetTextureType(TextureType type)
-	{
-		// Some models (or Assimp) pass a normal map as a height map
-		// and others pass a height map as a normal map, we try to fix that.
-		m_type = (type == TextureType_Normal && GetGrayscale()) ? TextureType_Height : 
-				(type == TextureType_Height && !GetGrayscale()) ? TextureType_Normal : type;
-	}
-	//======================================================================================
-
 	Mipmap* RHI_Texture::Data_GetMip(unsigned int index)
 	{
 		if (index >= m_data.size())
@@ -146,7 +120,6 @@ namespace Directus
 		return &m_data[index];
 	}
 
-	//= TEXTURE BITS =================================================================
 	void RHI_Texture::ClearTextureBytes()
 	{
 		for (auto& mip : m_data)
@@ -177,9 +150,7 @@ namespace Directus
 			file->Read(&m_data[i]);
 		}
 	}
-	//================================================================================
 
-	//=====================================================================================
 	bool RHI_Texture::LoadFromForeignFormat(const string& filePath)
 	{
 		if (filePath == NOT_ASSIGNED)
@@ -202,21 +173,6 @@ namespace Directus
 		return true;
 	}
 
-	TextureType RHI_Texture::TextureTypeFromString(const string& type)
-	{
-		if (type == "Albedo")		return TextureType_Albedo;
-		if (type == "Roughness")	return TextureType_Roughness;
-		if (type == "Metallic")		return TextureType_Metallic;
-		if (type == "Normal")		return TextureType_Normal;
-		if (type == "Height")		return TextureType_Height;
-		if (type == "Occlusion")	return TextureType_Occlusion;
-		if (type == "Emission")		return TextureType_Emission;
-		if (type == "Mask")			return TextureType_Mask;
-		if (type == "CubeMap")		return TextureType_CubeMap;
-
-		return TextureType_Unknown;
-	}
-
 	bool RHI_Texture::Serialize(const string& filePath)
 	{
 		// If the texture bits has been cleared, load it again
@@ -236,7 +192,6 @@ namespace Directus
 		}
 
 		// Write properties
-		file->Write((int)m_type);
 		file->Write(m_bpp);
 		file->Write(m_width);
 		file->Write(m_height);
@@ -269,7 +224,6 @@ namespace Directus
 		}
 
 		// Read properties
-		m_type = (TextureType)file->ReadInt();
 		file->Read(&m_bpp);
 		file->Read(&m_width);
 		file->Read(&m_height);

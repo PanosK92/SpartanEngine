@@ -81,6 +81,8 @@ namespace Directus
 	private:	
 		bool GetBitsFromFIBITMAP(std::vector<std::byte>* data, FIBITMAP* bitmap, unsigned int width, unsigned int height, unsigned int channels);
 		void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, unsigned int width, unsigned int height, unsigned int channels);
+
+		bool IsVisuallyGrayscale(FIBITMAP* bitmap);
 		FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap);
 		FIBITMAP* _FreeImage_ConvertTo32Bits(FIBITMAP* bitmap);
 		FIBITMAP* _FreeImage_Rescale(FIBITMAP* bitmap, unsigned int width, unsigned int height);
