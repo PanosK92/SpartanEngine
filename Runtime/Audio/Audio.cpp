@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "Audio.h"
-#include "fmod.hpp"
-#include "fmod_errors.h"
-#include "../Logging/Log.h"
-#include "../Core/EventSystem.h"
+#include <fmod.hpp>
+#include <fmod_errors.h>
 #include <sstream>
-#include "../Core/Settings.h"
-#include "../World/Components/Transform.h"
-#include "../Profiling/Profiler.h"
+#include "../Logging/Log.h"
 #include "../Core/Engine.h"
+#include "../Core/EventSystem.h"
+#include "../Core/Settings.h"
+#include "../Profiling/Profiler.h"
+#include "../World/Components/Transform.h"
 //========================================
 
 //= NAMESPACES ======

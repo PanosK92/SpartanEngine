@@ -58,8 +58,6 @@ XBM files[reading]
 XPM files[reading, writing]
 */
 
-#define FREEIMAGE_LIB
-
 //= INCLUDES ========================
 #include <vector>
 #include "../../Core/EngineDefs.h"
@@ -78,14 +76,14 @@ namespace Directus
 		ImageImporter(Context* context);
 		~ImageImporter();
 
-		bool Load(const std::string& filePath, RHI_Texture* texInfo);
-		bool RescaleBits(std::vector<std::byte>* rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int channels, unsigned int toWidth, unsigned int toHeight);
+		bool Load(const std::string& filePath, RHI_Texture* texture);
 
-	private:
-		unsigned int ComputeChannelCount(FIBITMAP* bitmap, unsigned int bpp);
-		bool GetBitsFromFIBITMAP(std::vector<std::byte>* rgba, FIBITMAP* bitmap, unsigned int width, unsigned int height, unsigned int channels, bool* isGrayscale);
-		bool GetRescaledBitsFromBitmap(std::vector<std::byte>* rgbaOut, unsigned int width, unsigned int height, unsigned int channels, FIBITMAP* bitmap);
-		void GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, RHI_Texture* imageData, unsigned int width, unsigned int height);
+	private:	
+		bool GetBitsFromFIBITMAP(std::vector<std::byte>* data, FIBITMAP* bitmap, unsigned int width, unsigned int height, unsigned int channels);
+		void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, unsigned int width, unsigned int height, unsigned int channels);
+		FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap);
+		FIBITMAP* _FreeImage_ConvertTo32Bits(FIBITMAP* bitmap);
+		FIBITMAP* _FreeImage_Rescale(FIBITMAP* bitmap, unsigned int width, unsigned int height);
 
 		Context* m_context;
 	};

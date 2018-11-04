@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	typedef std::vector<std::byte> mipmap;
+	typedef std::vector<std::byte> Mipmap;
 
 	class ENGINE_CLASS RHI_Texture : public RHI_Object, public IResource
 	{
@@ -50,15 +50,15 @@ namespace Directus
 
 		//= GRAPHICS API  ================================================================================================================================================================
 		// Generates a shader resource with mip-map support. Mip-maps can be skipped. provided or generated (generateMimaps = true)
-		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<mipmap>& data, bool generateMimaps = false);
+		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<Mipmap>& data, bool generateMimaps = false);
 		// Generates a cube-map shader resource. 6 textures containing mip-levels have to be provided (vector<textures<mip>>).
-		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<mipmap>>& data);
+		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<Mipmap>>& data);
 		
 		void ShaderResource_Release();
 		void* GetShaderResource() const { return m_shaderResource; }
 		//================================================================================================================================================================================
 
-		//= PROPERTIES =========================================================================
+		//= PROPERTIES ===============================================================================
 		unsigned int GetWidth()								{ return m_width; }
 		void SetWidth(unsigned int width)					{ m_width = width; }
 
@@ -85,13 +85,15 @@ namespace Directus
 
 		Texture_Format GetFormat()							{ return m_format; }
 
-		std::vector<mipmap>& GetData()						{ return m_dataRGBA; }
-		void SetData(const std::vector<mipmap>& dataRGBA)	{ m_dataRGBA = dataRGBA; }
-		//======================================================================================
+		const std::vector<Mipmap>& Data_Get()				{ return m_data; }
+		void Data_Set(const std::vector<Mipmap>& dataRGBA)	{ m_data = dataRGBA; }
+		Mipmap* Data_AddMipMap()							{ return &m_data.emplace_back(Mipmap()); }
+		Mipmap* Data_GetMip(unsigned int index);
+		//============================================================================================
 
 		//= TEXTURE BITS =======================================
 		void ClearTextureBytes();
-		void GetTextureBytes(std::vector<mipmap>* textureBytes);
+		void GetTextureBytes(std::vector<Mipmap>* textureBytes);
 		//======================================================
 
 	protected:
@@ -113,7 +115,7 @@ namespace Directus
 		bool m_isUsingMipmaps	= false;
 		TextureType m_type		= TextureType_Unknown;
 		Texture_Format m_format;
-		std::vector<mipmap> m_dataRGBA;
+		std::vector<Mipmap> m_data;
 		//============================================
 
 		// D3D11
