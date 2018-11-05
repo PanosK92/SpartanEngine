@@ -117,24 +117,20 @@ namespace Directus
 		if (GetState() != Shader_Built)
 			return;
 
-		Matrix world				= mWorld;
-		Matrix worldView			= mWorld * mView;
-		Matrix worldViewProjection	= worldView * mProjection;
-
 		// Determine if the buffer actually needs to update
 		bool update = false;
-		update = perObjectBufferCPU.mWorld					!= world ? true : update;
-		update = perObjectBufferCPU.mWorldView				!= worldView ? true : update;
-		update = perObjectBufferCPU.mWorldViewProjection	!= worldViewProjection ? true : update;
+		update = perObjectBufferCPU.mWorld		!= mWorld ? true : update;
+		update = perObjectBufferCPU.mView		!= mView ? true : update;
+		update = perObjectBufferCPU.mProjection	!= mProjection ? true : update;
 
 		if (update)
 		{
 			//= BUFFER UPDATE ================================================================================
 			auto* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
 
-			buffer->mWorld					= perObjectBufferCPU.mWorld					= world;
-			buffer->mWorldView				= perObjectBufferCPU.mWorldView				= worldView;
-			buffer->mWorldViewProjection	= perObjectBufferCPU.mWorldViewProjection	= worldViewProjection;
+			buffer->mWorld		= perObjectBufferCPU.mWorld			= mWorld;
+			buffer->mView		= perObjectBufferCPU.mView			= mView;
+			buffer->mProjection	= perObjectBufferCPU.mProjection	= mProjection;
 
 			m_perObjectBuffer->Unmap();
 			//================================================================================================

@@ -117,12 +117,10 @@ void Widget_Viewport::MousePicking()
 	if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) || !ImGui::IsMouseClicked(0))
 		return;
 
-	auto camera = Widget_Viewport_Properties::g_scene->GetMainCamera();
-	if (!camera.expired())
+	if (auto camera = Widget_Viewport_Properties::g_renderer->GetCamera())
 	{
 		Vector2 mousePosRelative = EditorHelper::ToVector2(ImGui::GetMousePos()) - Widget_Viewport_Properties::g_framePos;
-		auto picked = camera.lock()->GetComponent<Camera>()->Pick(mousePosRelative);
-		if (!picked.expired())
+		if (auto picked = camera->Pick(mousePosRelative))
 		{
 			Widget_World::SetSelectedActor(picked);
 			return;

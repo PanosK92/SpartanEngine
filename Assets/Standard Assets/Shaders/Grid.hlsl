@@ -37,14 +37,13 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	projectDepthMapTexCoord.x = input.gridPos.x / input.gridPos.w / 2.0f + 0.5f;
 	projectDepthMapTexCoord.y = -input.gridPos.y / input.gridPos.w / 2.0f + 0.5f;
 	
-	float gridDepth 	= input.position.z;
-	float depthMapValue = depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
+    float farPlane      = 1000.0f; // Todo: pass from the cpu
+    float gridDepth     = input.position.z / input.position.w;
+    float depthMapValue = depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r * farPlane;
 	
 	// If an object is in front of the grid, discard this grid pixel
 	if (depthMapValue > gridDepth) 
 		discard;
 	
-	float alpha = saturate(1.0f - (gridDepth * gridDepth * gridDepth));
-
-	return float4(input.color.rgb, alpha);
+    return float4(input.color.rgb, gridDepth - 0.01f);
 }

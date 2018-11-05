@@ -84,8 +84,8 @@ float3 GetRandomNormal(float2 texCoord, SamplerState samplerState)
 float doAmbientOcclusion(float2 texCoord, float3 position, float3 normal, SamplerState samplerState)
 {
 	float3 originPos 	= position;
-	float depth_expo 	= texDepth.Sample(samplerState, texCoord).g;
-	float3 sampledPos 	= ReconstructPositionWorld(depth_expo, mViewProjectionInverse, texCoord);
+	float depth_cs 	    = texDepth.Sample(samplerState, texCoord).g;
+    float3 sampledPos   = ReconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
 	float3 diff 		= sampledPos - originPos;
 	 
 	float3 v 			= normalize(diff);
@@ -101,9 +101,8 @@ float SSAO(float2 texCoord, SamplerState samplerState)
 	float3 randNormal 	= GetRandomNormal(texCoord, samplerState);
     float3 normal 		= GetNormalUnpacked(texNormal, samplerState, texCoord);
 	float depth_linear 	= texDepth.Sample(samplerState, texCoord).r;
-	float depth_expo 	= texDepth.Sample(samplerState, texCoord).g;
-	float3 position 	= ReconstructPositionWorld(depth_expo, mViewProjectionInverse, texCoord);
-	float radius_depth 	= radius / depth_linear;
+    float3 position     = ReconstructPositionWorld(depth_linear, mViewProjectionInverse, texCoord);
+    float radius_depth  = radius / depth_linear;
 	float occlusion 	= 0.0f;
 	
 	[unroll(kernelSize)]

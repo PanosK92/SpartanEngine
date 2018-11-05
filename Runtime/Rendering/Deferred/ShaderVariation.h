@@ -106,8 +106,8 @@ namespace Directus
 		struct PerObjectBufferType
 		{
 			Math::Matrix mWorld;
-			Math::Matrix mWorldView;
-			Math::Matrix mWorldViewProjection;
+			Math::Matrix mView;
+			Math::Matrix mProjection;
 		};
 		PerObjectBufferType perObjectBufferCPU;
 	};
