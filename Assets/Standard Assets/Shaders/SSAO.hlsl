@@ -70,7 +70,7 @@ static const float3 sampleKernel[64] =
 
 static const float intensity 	= 6.0f;
 static const int kernelSize 	= 4;
-static const float radius 		= 0.8f;
+static const float radius 		= 0.1f;
 static const float bias 		= 0.0f;
 static const float2 noiseScale  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
 
@@ -100,9 +100,9 @@ float SSAO(float2 texCoord, SamplerState samplerState)
 {
 	float3 randNormal 	= GetRandomNormal(texCoord, samplerState);
     float3 normal 		= GetNormalUnpacked(texNormal, samplerState, texCoord);
-	float depth_linear 	= texDepth.Sample(samplerState, texCoord).r;
-    float3 position     = ReconstructPositionWorld(depth_linear, mViewProjectionInverse, texCoord);
-    float radius_depth  = radius / depth_linear;
+    float depth         = texDepth.Sample(samplerState, texCoord).g;
+    float3 position     = ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
+    float radius_depth  = radius / depth;
 	float occlusion 	= 0.0f;
 	
 	[unroll(kernelSize)]
