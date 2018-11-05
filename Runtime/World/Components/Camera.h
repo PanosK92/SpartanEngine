@@ -69,7 +69,7 @@ namespace Directus
 		const Math::Ray& GetPickingRay() { return m_ray; }
 
 		// Returns the nearest actor under the cursor
-		std::weak_ptr<Actor> Pick(const Math::Vector2& mousePos);
+		std::shared_ptr<Actor> Pick(const Math::Vector2& mousePos);
 
 		// Converts a world point to a screen point
 		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);

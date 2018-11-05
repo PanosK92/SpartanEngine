@@ -156,16 +156,16 @@ namespace Directus
 	}
 
 	//= RAYCASTING =======================================================================
-	weak_ptr<Actor> Camera::Pick(const Vector2& mousePos)
+	shared_ptr<Actor> Camera::Pick(const Vector2& mousePos)
 	{
 		// Compute ray given the origin and end
 		m_ray = Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mousePos));
 
 		// Hits <Distance, actor>
-		map<float, weak_ptr<Actor>> hits;
+		map<float, shared_ptr<Actor>> hits;
 
 		// Find all the actors that the ray hits
-		vector<shared_ptr<Actor>> actors = GetContext()->GetSubsystem<World>()->Actors_GetAll();
+		const vector<shared_ptr<Actor>>& actors = GetContext()->GetSubsystem<World>()->Actors_GetAll();
 		for (const auto& actor : actors)
 		{
 			// Make sure there actor has a mesh and exclude the SkyBox
@@ -186,7 +186,7 @@ namespace Directus
 		}
 
 		// Get closest hit
-		weak_ptr<Actor> hit = !hits.empty() ? hits.begin()->second : weak_ptr<Actor>();
+		shared_ptr<Actor> hit = !hits.empty() ? hits.begin()->second : nullptr;
 
 		// Display transformation gizmo
 		m_transformGizmo->Pick(hit);

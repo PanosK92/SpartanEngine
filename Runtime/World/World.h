@@ -59,8 +59,8 @@ namespace Directus
 		//=============================================
 
 		//= Actor HELPER FUNCTIONS ====================================================
-		std::shared_ptr<Actor> Actor_Create();
-		void Actor_Add(const std::shared_ptr<Actor>& actor);
+		std::shared_ptr<Actor>& Actor_Create();
+		std::shared_ptr<Actor>& Actor_Add(const std::shared_ptr<Actor>& actor);
 		bool Actor_Exists(const std::weak_ptr<Actor>& actor);
 		void Actor_Remove(const std::weak_ptr<Actor>& actor);
 		const std::vector<std::shared_ptr<Actor>>& Actors_GetAll() { return m_actors; }
@@ -70,19 +70,15 @@ namespace Directus
 		int Actor_GetCount() { return (int)m_actors.size(); }
 		//=============================================================================
 
-		//= MISC ====================================================
-		std::weak_ptr<Actor> GetMainCamera() { return m_mainCamera; }
-		//===========================================================
-
 	private:
-		//= COMMON ACTOR CREATION ======================
-		std::shared_ptr<Actor> CreateSkybox();
-		std::shared_ptr<Actor> CreateCamera();
-		std::shared_ptr<Actor> CreateDirectionalLight();
-		//==============================================
+		//= COMMON ACTOR CREATION =======================
+		std::shared_ptr<Actor>& CreateSkybox();
+		std::shared_ptr<Actor>& CreateCamera();
+		std::shared_ptr<Actor>& CreateDirectionalLight();
+		//===============================================
 
 		std::vector<std::shared_ptr<Actor>> m_actors;
-		std::weak_ptr<Actor> m_mainCamera;
+		std::shared_ptr<Actor> m_actorEmpty;
 		std::weak_ptr<Actor> m_skybox;
 		bool m_wasInEditorMode;
 		bool m_isDirty;

@@ -122,6 +122,7 @@ namespace Directus
 		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
 		static bool IsRendering()	{ return m_isRendering; }
 		static uint64_t GetFrame()	{ return m_frame; }
+		Camera* GetCamera()			{ return m_camera; }
 
 	private:
 		void RenderTargets_Create(int width, int height);

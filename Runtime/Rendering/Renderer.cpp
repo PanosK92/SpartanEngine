@@ -141,7 +141,7 @@ namespace Directus
 			// Grid
 			m_shaderGrid = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderGrid->Compile_VertexPixel_Async(shaderDirectory + "Grid.hlsl", Input_PositionColor, m_context);
-			m_shaderGrid->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);;
+			m_shaderGrid->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
 
 			// Font
 			m_shaderFont = make_shared<RHI_Shader>(m_rhiDevice);

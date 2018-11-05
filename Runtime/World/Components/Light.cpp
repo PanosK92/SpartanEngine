@@ -99,15 +99,13 @@ namespace Directus
 		}
 
 		// Acquire camera
-		weak_ptr<Actor> camera_actor = m_context->GetSubsystem<World>()->GetMainCamera();
-		if (camera_actor.expired())
+		Camera* camera = m_context->GetSubsystem<Renderer>()->GetCamera();
+		if (!camera)
 			return;
 
-		auto camera_cmp = camera_actor.lock()->GetComponent<Camera>();
-
-		if (m_lastPosCamera != camera_cmp->GetTransform()->GetPosition())
+		if (m_lastPosCamera != camera->GetTransform()->GetPosition())
 		{
-			m_lastPosCamera = camera_cmp->GetTransform()->GetPosition();
+			m_lastPosCamera = camera->GetTransform()->GetPosition();
 
 			// Update shadow map projection matrices
 			m_shadowMapsProjectionMatrix.clear();
@@ -125,7 +123,7 @@ namespace Directus
 
 		for (unsigned int index = 0; index < (unsigned int)m_frustums.size(); index++)
 		{
-			m_frustums[index]->Construct(m_viewMatrix, ShadowMap_GetProjectionMatrix(index), camera_cmp->GetFarPlane());
+			m_frustums[index]->Construct(m_viewMatrix, ShadowMap_GetProjectionMatrix(index), camera->GetFarPlane());
 		}
 	}
 

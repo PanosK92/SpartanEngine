@@ -85,8 +85,8 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	material.emission	= specular.b * 2.0f;
 		
 	// Extract useful values out of those samples
-	float depth_expo 	= texDepth.Sample(samplerLinear, texCoord).g;
-	float3 worldPos 	= ReconstructPositionWorld(depth_expo, mViewProjectionInverse, texCoord);
+	float depth_cs 	    = texDepth.Sample(samplerLinear, texCoord).g;
+    float3 worldPos     = ReconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
     float3 viewDir 		= normalize(cameraPosWS.xyz - worldPos.xyz);
 	 
 	// Shadows + SSAO

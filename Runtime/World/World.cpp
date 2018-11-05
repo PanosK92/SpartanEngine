@@ -66,8 +66,8 @@ namespace Directus
 
 	bool World::Initialize()
 	{
-		m_isDirty		= true;
-		m_mainCamera	= CreateCamera();
+		m_isDirty = true;
+		CreateCamera();
 		CreateSkybox();
 		CreateDirectionalLight();
 
@@ -274,22 +274,19 @@ namespace Directus
 	//===================================================================================================
 
 	//= Actor HELPER FUNCTIONS  ====================================================================
-	shared_ptr<Actor> World::Actor_Create()
+	shared_ptr<Actor>& World::Actor_Create()
 	{
 		auto actor = make_shared<Actor>(m_context);
 		actor->Initialize(actor->AddComponent<Transform>().get());
-
-		m_actors.emplace_back(actor);
-
-		return actor;
+		return m_actors.emplace_back(actor);
 	}
 
-	void World::Actor_Add(const shared_ptr<Actor>& actor)
+	shared_ptr<Actor>& World::Actor_Add(const shared_ptr<Actor>& actor)
 	{
 		if (!actor)
-			return;
+			return m_actorEmpty;
 
-		m_actors.emplace_back(actor);
+		return m_actors.emplace_back(actor);
 	}
 
 	bool World::Actor_Exists(const weak_ptr<Actor>& actor)
@@ -376,23 +373,22 @@ namespace Directus
 	//===================================================================================================
 
 	//= COMMON ACTOR CREATION ========================================================================
-	shared_ptr<Actor> World::CreateSkybox()
+	shared_ptr<Actor>& World::CreateSkybox()
 	{
-		shared_ptr<Actor> skybox = Actor_Create();
+		shared_ptr<Actor>& skybox = Actor_Create();
 		skybox->SetName("Skybox");
 		skybox->SetHierarchyVisibility(false);
 		skybox->AddComponent<Skybox>();	
-		skybox->GetTransform_PtrRaw()->SetParent(m_mainCamera.lock()->GetTransform_PtrRaw());
 
 		return skybox;
 	}
 
-	shared_ptr<Actor> World::CreateCamera()
+	shared_ptr<Actor>& World::CreateCamera()
 	{
 		auto resourceMng		= m_context->GetSubsystem<ResourceManager>();
 		string scriptDirectory	= resourceMng->GetStandardResourceDirectory(Resource_Script);
 
-		shared_ptr<Actor> camera = Actor_Create();
+		shared_ptr<Actor>& camera = Actor_Create();
 		camera->SetName("Camera");
 		camera->AddComponent<Camera>();
 		camera->AddComponent<AudioListener>();
@@ -403,9 +399,9 @@ namespace Directus
 		return camera;
 	}
 
-	shared_ptr<Actor> World::CreateDirectionalLight()
+	shared_ptr<Actor>& World::CreateDirectionalLight()
 	{
-		shared_ptr<Actor> light = Actor_Create();
+		shared_ptr<Actor>& light = Actor_Create();
 		light->SetName("DirectionalLight");
 		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
 		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
