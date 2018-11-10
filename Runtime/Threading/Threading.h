@@ -63,7 +63,7 @@ namespace Directus
 		template <typename Function>
 		void AddTask(Function&& function)
 		{
-			if (m_threadCount == 0)
+			if (m_threads.empty())
 			{
 				LOG_WARNING("Threading::AddTask: No available threads, function will execute in the same thread");
 				function();

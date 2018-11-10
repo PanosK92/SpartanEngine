@@ -120,8 +120,8 @@ namespace Directus
 		bool image_transparency		= FreeImage_IsTransparent(bitmap);
 		unsigned int image_width	= FreeImage_GetWidth(bitmap);
 		unsigned int image_height	= FreeImage_GetHeight(bitmap);
-		unsigned int image_bbp		= FreeImage_GetBPP(bitmap);
-		unsigned int image_channels	= image_bbp / 8;
+		unsigned int image_bpp		= FreeImage_GetBPP(bitmap);
+		unsigned int image_channels	= image_bpp / 8;
 		bool image_grayscale		= IsVisuallyGrayscale(bitmap);
 
 		// Fill RGBA vector with the data from the FIBITMAP
@@ -138,7 +138,7 @@ namespace Directus
 		FreeImage_Unload(bitmap);
 
 		// Fill RHI_Texture with image properties
-		texture->SetBPP(image_bbp);		
+		texture->SetBPP(image_bpp);		
 		texture->SetWidth(image_width);
 		texture->SetHeight(image_height);
 		texture->SetChannels(image_channels);

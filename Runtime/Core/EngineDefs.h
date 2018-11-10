@@ -24,12 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ENGINE_VERSION "v0.3 alpha"
 #define WIN32_LEAN_AND_MEAN
 
-//= DISABLED WARNINGS ===========================================================================
+//= DISABLED WARNINGS ================================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
 #pragma warning(disable: 4251) // https://msdn.microsoft.com/en-us/library/esew7y1w.aspx
 // non – DLL-interface classkey 'identifier' used as base for DLL-interface classkey 'identifier'
 #pragma warning(disable: 4275) // https://msdn.microsoft.com/en-us/library/3tdb471s.aspx
-//===============================================================================================
+// PDB 'filename' was not found with 'object/library' or at 'path'; linking object as if no debug info
+#pragma warning(disable: 4099) // https://msdn.microsoft.com/en-us/library/b7whw3f3.aspx
+//====================================================================================================
 
 #ifdef COMPILING_LIB
 #define ENGINE_CLASS __declspec(dllexport)
