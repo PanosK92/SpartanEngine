@@ -79,11 +79,11 @@ namespace Directus
 	private:
 		void Shape_Update();
 		void Shape_Release();
-		void RigidBody_SetShape(std::shared_ptr<btCollisionShape> shape);
+		void RigidBody_SetShape(btCollisionShape* shape);
 		void RigidBody_SetCenterOfMass(const Math::Vector3& center);
 
 		ColliderShape m_shapeType;
-		std::shared_ptr<btCollisionShape> m_shape;
+		btCollisionShape* m_shape;
 		Math::Vector3 m_size;
 		Math::Vector3 m_center;
 		unsigned int m_vertexLimit = 100000;

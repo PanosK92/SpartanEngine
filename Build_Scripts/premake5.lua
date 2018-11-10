@@ -46,7 +46,7 @@ CPP_VERSION 		= "C++17"
 		targetdir (TARGET_DIR_DEBUG)
 		objdir (OBJ_DIR)
 		debugdir (TARGET_DIR_DEBUG)
-		defines { "DEBUG", "COMPILING_LIB", "_ENABLE_EXTENDED_ALIGNED_STORAGE" }
+		defines { "DEBUG", "COMPILING_LIB" }
 		symbols "On"
 		flags { "MultiProcessorCompile" }
 		links { "angelscript64_debug" }
@@ -63,7 +63,7 @@ CPP_VERSION 		= "C++17"
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (OBJ_DIR)
 		debugdir (TARGET_DIR_RELEASE)
-		defines { "NDEBUG", "COMPILING_LIB", "_ENABLE_EXTENDED_ALIGNED_STORAGE" }
+		defines { "NDEBUG", "COMPILING_LIB" }
 		optimize "Full"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		links { "angelscript64" }

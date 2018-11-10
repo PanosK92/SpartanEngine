@@ -50,6 +50,7 @@ namespace Directus
 		m_shapeType = ColliderShape_Box;
 		m_center	= Vector3::Zero;
 		m_size		= Vector3::One;
+		m_shape			= nullptr;
 
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_center, Vector3);
@@ -149,31 +150,31 @@ namespace Directus
 		switch (m_shapeType)
 		{
 		case ColliderShape_Box:
-			m_shape = make_shared<btBoxShape>(ToBtVector3(m_size * 0.5f));
+			m_shape = new btBoxShape(ToBtVector3(m_size * 0.5f));
 			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Sphere:
-			m_shape = make_shared<btSphereShape>(m_size.x * 0.5f);
+			m_shape = new btSphereShape(m_size.x * 0.5f);
 			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_StaticPlane:
-			m_shape = make_shared<btStaticPlaneShape>(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
+			m_shape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
 			break;
 
 		case ColliderShape_Cylinder:
-			m_shape = make_shared<btCylinderShape>(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
+			m_shape = new btCylinderShape(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
 			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Capsule:
-			m_shape = make_shared<btCapsuleShape>(m_size.x * 0.5f, Max(m_size.y - m_size.x, 0.0f));
+			m_shape = new btCapsuleShape(m_size.x * 0.5f, Max(m_size.y - m_size.x, 0.0f));
 			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
 		case ColliderShape_Cone:
-			m_shape = make_shared<btConeShape>(m_size.x * 0.5f, m_size.y);
+			m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
 			m_shape->setLocalScaling(ToBtVector3(worldScale));
 			break;
 
@@ -205,7 +206,7 @@ namespace Directus
 			}
 
 			// Construct hull approximation
-			m_shape = make_shared<btConvexHullShape>(
+			m_shape = new btConvexHullShape(
 				(btScalar*)&vertices[0],					// points
 				renderable->Geometry_VertexCount(),			// point count
 				(unsigned int)sizeof(RHI_Vertex_PosUVTBN));	// stride
@@ -216,7 +217,7 @@ namespace Directus
 			// Optimize if requested
 			if (m_optimize)
 			{
-				auto hull = (btConvexHullShape*)m_shape.get();
+				auto hull = (btConvexHullShape*)m_shape;
 				hull->optimizeConvexHull();
 				hull->initializePolyhedralFeatures();
 			}
@@ -232,10 +233,10 @@ namespace Directus
 	void Collider::Shape_Release()
 	{
 		RigidBody_SetShape(nullptr);
-		m_shape.reset();
+		SafeDelete(m_shape);
 	}
 
-	void Collider::RigidBody_SetShape(shared_ptr<btCollisionShape> shape)
+	void Collider::RigidBody_SetShape(btCollisionShape* shape)
 	{
 		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>())
 		{

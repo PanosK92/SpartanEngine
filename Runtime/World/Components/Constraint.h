@@ -97,7 +97,7 @@ namespace Directus
 		void Construct();
 		void ApplyLimits();
 		
-		std::unique_ptr<btTypedConstraint> m_constraint;
+		btTypedConstraint* m_constraint;
 
 		ConstraintType m_constraintType;
 		Math::Vector3 m_position;
