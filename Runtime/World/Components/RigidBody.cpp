@@ -94,6 +94,7 @@ namespace Directus
 		m_rotationLock		= Vector3::Zero;
 		m_physics			= GetContext()->GetSubsystem<Physics>();
 		m_collisionShape	= nullptr;
+		m_rigidBody			= nullptr;
 
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -480,7 +481,7 @@ namespace Directus
 		Activate();
 	}
 
-	void RigidBody::SetShape(std::shared_ptr<btCollisionShape> shape)
+	void RigidBody::SetShape(btCollisionShape* shape)
 	{
 		m_collisionShape = shape;
 		if (m_collisionShape)
@@ -516,16 +517,16 @@ namespace Directus
 			auto motionState = new MotionState(this);
 			
 			// Info
-			btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, m_collisionShape.get(), localInertia);
+			btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, m_collisionShape, localInertia);
 			constructionInfo.m_mass				= m_mass;
 			constructionInfo.m_friction			= m_friction;
 			constructionInfo.m_rollingFriction	= m_frictionRolling;
 			constructionInfo.m_restitution		= m_restitution;
-			constructionInfo.m_collisionShape	= m_collisionShape.get();
+			constructionInfo.m_collisionShape	= m_collisionShape;
 			constructionInfo.m_localInertia		= localInertia;
 			constructionInfo.m_motionState		= motionState;
 
-			m_rigidBody = make_shared<btRigidBody>(constructionInfo);
+			m_rigidBody = new btRigidBody(constructionInfo);
 			m_rigidBody->setUserPointer(this);
 		}
 
@@ -547,7 +548,7 @@ namespace Directus
 		SetRotationLock(m_rotationLock);
 
 		// Add to world
-		m_physics->GetWorld()->addRigidBody(m_rigidBody.get());
+		m_physics->GetWorld()->addRigidBody(m_rigidBody);
 		if (m_mass > 0.0f)
 		{
 			Activate();
@@ -587,8 +588,10 @@ namespace Directus
 
 		if (m_inWorld)
 		{
-			m_physics->GetWorld()->removeRigidBody(m_rigidBody.get());
+			m_physics->GetWorld()->removeRigidBody(m_rigidBody);
 			delete m_rigidBody->getMotionState();
+			delete m_rigidBody;
+			m_rigidBody = nullptr;
 			m_inWorld = false;
 		}
 	}

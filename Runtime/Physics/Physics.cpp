@@ -54,37 +54,34 @@ namespace Directus
 		m_simulating = false;
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EVENT_TICK,			EVENT_HANDLER_VARIANT(Step));
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_UNLOAD,	EVENT_HANDLER(Clear));
+		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER_VARIANT(Step));
 	}
 
 	Physics::~Physics()
 	{
-
+		SafeDelete(m_world);
+		SafeDelete(m_constraintSolver);
+		SafeDelete(m_dispatcher);
+		SafeDelete(m_collisionConfiguration);
+		SafeDelete(m_broadphase);
+		SafeDelete(m_debugDraw);
 	}
 
 	bool Physics::Initialize()
 	{
-		m_broadphase				= make_unique<btDbvtBroadphase>();
-		m_collisionConfiguration	= make_unique<btDefaultCollisionConfiguration>();
-		m_dispatcher				= make_unique<btCollisionDispatcher>(m_collisionConfiguration.get());
-		m_constraintSolver			= make_unique<btSequentialImpulseConstraintSolver>();
-		m_world						= make_shared<btDiscreteDynamicsWorld>(
-									m_dispatcher.get(), 
-									m_broadphase.get(), 
-									m_constraintSolver.get(), 
-									m_collisionConfiguration.get()
-									);
-
-		// Create an implementation of the btIDebugDraw interface
-		m_debugDraw = make_shared<PhysicsDebugDraw>(m_context->GetSubsystem<Renderer>());
+		m_broadphase				= new btDbvtBroadphase();
+		m_collisionConfiguration	= new btDefaultCollisionConfiguration();
+		m_dispatcher				= new btCollisionDispatcher(m_collisionConfiguration);
+		m_constraintSolver			= new btSequentialImpulseConstraintSolver();
+		m_debugDraw					= new PhysicsDebugDraw(m_context->GetSubsystem<Renderer>());
+		m_world						= new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraintSolver, m_collisionConfiguration);
 
 		// Setup world
 		m_world->setGravity(ToBtVector3(GRAVITY));
 		m_world->getDispatchInfo().m_useContinuous	= true;
 		m_world->getSolverInfo().m_splitImpulse		= false;
 		m_world->getSolverInfo().m_numIterations	= MAX_SOLVER_ITERATIONS;
-		m_world->setDebugDrawer(m_debugDraw.get());
+		m_world->setDebugDrawer(m_debugDraw);
 
 		// Get version
 		string major = to_string(btGetVersion() / 100);
@@ -134,33 +131,6 @@ namespace Directus
 		m_simulating = false;
 
 		TIME_BLOCK_END_CPU();
-	}
-
-	void Physics::Clear()
-	{
-		if (!m_world)
-			return;
-
-		// delete constraints
-		for (int i = m_world->getNumConstraints() - 1; i >= 0; i--)
-		{
-			auto constraint = m_world->getConstraint(i);
-			m_world->removeConstraint(constraint);
-			delete constraint;
-		}
-
-		// remove the rigid bodies from the dynamics world and delete them
-		for (int i = m_world->getNumCollisionObjects() - 1; i >= 0; i--)
-		{
-			auto obj = m_world->getCollisionObjectArray()[i];
-			auto body = btRigidBody::upcast(obj);
-			if (body && body->getMotionState())
-			{
-				delete body->getMotionState();
-			}
-			m_world->removeCollisionObject(obj);
-			delete obj;
-		}
 	}
 
 	Vector3 Physics::GetGravity()

@@ -212,8 +212,9 @@ namespace Directus
 			if (rigidBodyOwn)	rigidBodyOwn->RemoveConstraint(this);
 			if (rigidBodyOther) rigidBodyOther->RemoveConstraint(this);
 
-			m_physics->GetWorld()->removeConstraint(m_constraint.get());
-			m_constraint.reset();
+			m_physics->GetWorld()->removeConstraint(m_constraint);
+			delete m_constraint;
+			m_constraint = nullptr;
 		}
 	}
 
@@ -234,7 +235,7 @@ namespace Directus
 		{
 		case POINT2POINT_CONSTRAINT_TYPE:
 		{
-			auto* pointConstraint = static_cast<btPoint2PointConstraint*>(m_constraint.get());
+			auto* pointConstraint = static_cast<btPoint2PointConstraint*>(m_constraint);
 			pointConstraint->setPivotA(ToBtVector3(ownBodyScaledPosition));
 			pointConstraint->setPivotB(ToBtVector3(otherBodyScaledPosition));
 		}
@@ -242,7 +243,7 @@ namespace Directus
 
 		case HINGE_CONSTRAINT_TYPE:
 		{
-			auto* hingeConstraint = static_cast<btHingeConstraint*>(m_constraint.get());
+			auto* hingeConstraint = static_cast<btHingeConstraint*>(m_constraint);
 			btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
 			btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
 			hingeConstraint->setFrames(ownFrame, otherFrame);
@@ -251,7 +252,7 @@ namespace Directus
 
 		case SLIDER_CONSTRAINT_TYPE:
 		{
-			auto* sliderConstraint = static_cast<btSliderConstraint*>(m_constraint.get());
+			auto* sliderConstraint = static_cast<btSliderConstraint*>(m_constraint);
 			btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
 			btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
 			sliderConstraint->setFrames(ownFrame, otherFrame);
@@ -260,7 +261,7 @@ namespace Directus
 
 		case CONETWIST_CONSTRAINT_TYPE:
 		{
-			auto* coneTwistConstraint = static_cast<btConeTwistConstraint*>(m_constraint.get());
+			auto* coneTwistConstraint = static_cast<btConeTwistConstraint*>(m_constraint);
 			btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
 			btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
 			coneTwistConstraint->setFrames(ownFrame, otherFrame);
@@ -312,7 +313,7 @@ namespace Directus
 		{
 			case ConstraintType_Point:
 			    {
-			        m_constraint = make_unique<btPoint2PointConstraint>(*btOwnBody, *btOtherBody, ToBtVector3(ownBodyScaledPosition), ToBtVector3(otherBodyScaledPosition));
+			        m_constraint = new btPoint2PointConstraint(*btOwnBody, *btOtherBody, ToBtVector3(ownBodyScaledPosition), ToBtVector3(otherBodyScaledPosition));
 			    }
 			    break;
 
@@ -320,7 +321,7 @@ namespace Directus
 			    {
 			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
 			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			        m_constraint = make_unique<btHingeConstraint>(*btOwnBody, *btOtherBody, ownFrame, otherFrame);
+			        m_constraint = new btHingeConstraint(*btOwnBody, *btOtherBody, ownFrame, otherFrame);
 			    }
 			    break;
 
@@ -328,7 +329,7 @@ namespace Directus
 			    {
 			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
 			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			        m_constraint = make_unique<btSliderConstraint>(*btOwnBody, *btOtherBody, ownFrame, otherFrame, false);
+			        m_constraint = new btSliderConstraint(*btOwnBody, *btOtherBody, ownFrame, otherFrame, false);
 			    }
 			    break;
 
@@ -336,7 +337,7 @@ namespace Directus
 			    {
 			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
 			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			        m_constraint = make_unique<btConeTwistConstraint>(*btOwnBody, *btOtherBody, ownFrame, otherFrame);
+			        m_constraint = new btConeTwistConstraint(*btOwnBody, *btOtherBody, ownFrame, otherFrame);
 			    }
 			    break;
 
@@ -357,7 +358,7 @@ namespace Directus
 			}
 
 		    ApplyLimits();
-		    m_physics->GetWorld()->addConstraint(m_constraint.get(), !m_collisionWithLinkedBody);
+		    m_physics->GetWorld()->addConstraint(m_constraint, !m_collisionWithLinkedBody);
 		}
 	}
 
@@ -370,14 +371,14 @@ namespace Directus
 		{
 			case HINGE_CONSTRAINT_TYPE:
 			    {
-			        auto* hingeConstraint = static_cast<btHingeConstraint*>(m_constraint.get());
+			        auto* hingeConstraint = static_cast<btHingeConstraint*>(m_constraint);
 			        hingeConstraint->setLimit(m_lowLimit.x * DEG_TO_RAD, m_highLimit.x * DEG_TO_RAD);
 			    }
 			    break;
 
 			case SLIDER_CONSTRAINT_TYPE:
 			    {
-			        auto* sliderConstraint = static_cast<btSliderConstraint*>(m_constraint.get());
+			        auto* sliderConstraint = static_cast<btSliderConstraint*>(m_constraint);
 			        sliderConstraint->setUpperLinLimit(m_highLimit.x);
 			        sliderConstraint->setUpperAngLimit(m_highLimit.y * DEG_TO_RAD);
 			        sliderConstraint->setLowerLinLimit(m_lowLimit.x);
@@ -387,7 +388,7 @@ namespace Directus
 
 			case CONETWIST_CONSTRAINT_TYPE:
 			    {
-			        auto* coneTwistConstraint = static_cast<btConeTwistConstraint*>(m_constraint.get());
+			        auto* coneTwistConstraint = static_cast<btConeTwistConstraint*>(m_constraint);
 			        coneTwistConstraint->setLimit(m_highLimit.y * DEG_TO_RAD, m_highLimit.y * DEG_TO_RAD, m_highLimit.x * DEG_TO_RAD);
 			    }
 			    break;

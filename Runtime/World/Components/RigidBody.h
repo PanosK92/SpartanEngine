@@ -126,18 +126,18 @@ namespace Directus
 		void SetRotation(const Math::Quaternion& rotation);
 		//=================================================
 
-		//= MISC ==================================================	
+		//= MISC ============================================
 		void ClearForces() const;
 		void Activate() const;
 		void Deactivate() const;
-		btRigidBody* GetBtRigidBody() { return m_rigidBody.get(); }
+		btRigidBody* GetBtRigidBody() { return m_rigidBody; }
 		bool IsInWorld() { return m_inWorld; }
-		//=========================================================
+		//===================================================
 
 		// Communication with other physics components
 		void AddConstraint(Constraint* constraint);
 		void RemoveConstraint(Constraint* constraint);
-		void SetShape(std::shared_ptr<btCollisionShape> shape);
+		void SetShape(btCollisionShape* shape);
 
 	private:
 		void Body_AddToWorld();
@@ -159,8 +159,8 @@ namespace Directus
 		Math::Vector3 m_rotationLock;
 		Math::Vector3 m_centerOfMass;
 
-		std::shared_ptr<btRigidBody> m_rigidBody;
-		std::shared_ptr<btCollisionShape> m_collisionShape;
+		btRigidBody* m_rigidBody;
+		btCollisionShape* m_collisionShape;
 		std::vector<Constraint*> m_constraints;
 		bool m_inWorld;
 		Physics* m_physics;
