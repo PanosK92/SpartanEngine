@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
-#include "RHI_PipelineState.h"
+#include "RHI_Pipeline.h"
 #include "RHI_Implementation.h"
 #include "RHI_Sampler.h"
 #include "RHI_Device.h"
@@ -42,19 +42,19 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	RHI_PipelineState::RHI_PipelineState(shared_ptr<RHI_Device> rhiDevice)
+	RHI_Pipeline::RHI_Pipeline(shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice	= rhiDevice;
 		Clear();
 	}
 
-	void RHI_PipelineState::SetShader(shared_ptr<RHI_Shader>& shader)
+	void RHI_Pipeline::SetShader(shared_ptr<RHI_Shader>& shader)
 	{
 		SetVertexShader(shader);
 		SetPixelShader(shader);	
 	}
 
-	bool RHI_PipelineState::SetVertexShader(shared_ptr<RHI_Shader>& shader)
+	bool RHI_Pipeline::SetVertexShader(shared_ptr<RHI_Shader>& shader)
 	{
 		if (!shader)
 		{
@@ -73,7 +73,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetPixelShader(shared_ptr<RHI_Shader>& shader)
+	bool RHI_Pipeline::SetPixelShader(shared_ptr<RHI_Shader>& shader)
 	{
 		if (!shader)
 		{
@@ -91,7 +91,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetIndexBuffer(const shared_ptr<RHI_IndexBuffer>& indexBuffer)
+	bool RHI_Pipeline::SetIndexBuffer(const shared_ptr<RHI_IndexBuffer>& indexBuffer)
 	{
 		if (!indexBuffer)
 		{
@@ -105,7 +105,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetVertexBuffer(const shared_ptr<RHI_VertexBuffer>& vertexBuffer)
+	bool RHI_Pipeline::SetVertexBuffer(const shared_ptr<RHI_VertexBuffer>& vertexBuffer)
 	{
 		if (!vertexBuffer)
 		{
@@ -119,7 +119,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetSampler(const shared_ptr<RHI_Sampler>& sampler)
+	bool RHI_Pipeline::SetSampler(const shared_ptr<RHI_Sampler>& sampler)
 	{
 		if (!sampler)
 		{
@@ -133,7 +133,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetTexture(const shared_ptr<RHI_RenderTexture>& texture)
+	bool RHI_Pipeline::SetTexture(const shared_ptr<RHI_RenderTexture>& texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
@@ -142,7 +142,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetTexture(const shared_ptr<RHI_Texture>& texture)
+	bool RHI_Pipeline::SetTexture(const shared_ptr<RHI_Texture>& texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
@@ -151,7 +151,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetTexture(const RHI_Texture* texture)
+	bool RHI_Pipeline::SetTexture(const RHI_Texture* texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
@@ -160,7 +160,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
+	bool RHI_Pipeline::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
 	{
 		if (!renderTarget)
 			return false;
@@ -174,7 +174,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetRenderTargets(const vector<void*>& renderTargetViews, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
+	bool RHI_Pipeline::SetRenderTargets(const vector<void*>& renderTargetViews, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
 	{
 		if (renderTargetViews.empty())
 			return false;
@@ -195,7 +195,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_PipelineState::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer)
+	bool RHI_Pipeline::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer)
 	{
 		if (!constantBuffer)
 		{
@@ -221,7 +221,7 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_PipelineState::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	void RHI_Pipeline::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
 		if (m_primitiveTopology == primitiveTopology)
 			return;
@@ -230,7 +230,7 @@ namespace Directus
 		m_primitiveTopologyDirty	= true;
 	}
 
-	bool RHI_PipelineState::SetInputLayout(const shared_ptr<RHI_InputLayout>& inputLayout)
+	bool RHI_Pipeline::SetInputLayout(const shared_ptr<RHI_InputLayout>& inputLayout)
 	{
 		if (m_inputLayout == inputLayout->GetInputLayout())
 			return false;
@@ -242,7 +242,7 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_PipelineState::SetCullMode(Cull_Mode cullMode)
+	void RHI_Pipeline::SetCullMode(Cull_Mode cullMode)
 	{
 		if (m_cullMode == cullMode)
 			return;
@@ -251,7 +251,7 @@ namespace Directus
 		m_cullModeDirty = true;
 	}
 
-	void RHI_PipelineState::SetFillMode(Fill_Mode fillMode)
+	void RHI_Pipeline::SetFillMode(Fill_Mode fillMode)
 	{
 		if (m_fillMode == fillMode)
 			return;
@@ -260,12 +260,12 @@ namespace Directus
 		m_fillModeDirty = true;
 	}
 
-	void RHI_PipelineState::SetViewport(float width, float height)
+	void RHI_Pipeline::SetViewport(float width, float height)
 	{
 		SetViewport(RHI_Viewport(0.0f, 0.0f, width, height, 0.0f, 1.0f));
 	}
 
-	void RHI_PipelineState::SetViewport(const RHI_Viewport& viewport)
+	void RHI_Pipeline::SetViewport(const RHI_Viewport& viewport)
 	{
 		if (m_viewport == viewport)
 			return;
@@ -274,7 +274,7 @@ namespace Directus
 		m_viewportDirty = true;
 	}
 
-	bool RHI_PipelineState::Bind()
+	bool RHI_Pipeline::Bind()
 	{
 		if (!m_rhiDevice)
 		{
@@ -317,7 +317,7 @@ namespace Directus
 		// Vertex shader
 		if (m_vertexShaderDirty)
 		{
-			m_rhiDevice->Set_VertexShader(m_pixelShader->GetVertexShaderBuffer());
+			m_rhiDevice->Set_VertexShader(m_vertexShader->GetVertexShaderBuffer());
 			Profiler::Get().m_rhiBindingsVertexShader++;
 			m_vertexShaderDirty = false;
 		}
@@ -433,7 +433,7 @@ namespace Directus
 		return resultIndexBuffer && resultVertexBuffer;
 	}
 
-	void RHI_PipelineState::Clear()
+	void RHI_Pipeline::Clear()
 	{
 		m_primitiveTopology	= PrimitiveTopology_NotAssigned;
 		m_primitiveTopologyDirty = false;

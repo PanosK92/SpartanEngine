@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommonBuffers.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Sampler.h"
-#include "../RHI/RHI_PipelineState.h"
+#include "../RHI/RHI_Pipeline.h"
 #include "../RHI/RHI_RenderTexture.h"
 #include "../RHI/RHI_Shader.h"
 #include "../World/Actor.h"
@@ -80,7 +80,7 @@ namespace Directus
 
 		// Create RHI device
 		m_rhiDevice			= make_shared<RHI_Device>(drawHandle);
-		m_rhiPipelineState	= make_shared<RHI_PipelineState>(m_rhiDevice);
+		m_rhiPipelineState	= make_shared<RHI_Pipeline>(m_rhiDevice);
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));

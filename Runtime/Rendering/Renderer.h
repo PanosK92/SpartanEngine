@@ -205,7 +205,7 @@ namespace Directus
 
 		//= MISC ========================================================
 		std::shared_ptr<RHI_Device> m_rhiDevice;
-		std::shared_ptr<RHI_PipelineState> m_rhiPipelineState;
+		std::shared_ptr<RHI_Pipeline> m_rhiPipelineState;
 		std::unique_ptr<GBuffer> m_gbuffer;
 		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;

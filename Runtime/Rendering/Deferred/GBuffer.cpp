@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "GBuffer.h"
 #include "../../RHI/RHI_Device.h"
-#include "../../RHI/RHI_PipelineState.h"
+#include "../../RHI/RHI_Pipeline.h"
 #include "../../RHI/RHI_RenderTexture.h"
 //======================================
 
@@ -52,7 +52,7 @@ namespace Directus
 		m_renderTargetViews.clear();
 	}
 
-	void GBuffer::SetAsRenderTarget(const std::shared_ptr<RHI_PipelineState>& pipelineState)
+	void GBuffer::SetAsRenderTarget(const std::shared_ptr<RHI_Pipeline>& pipelineState)
 	{
 		bool clear = true;
 		pipelineState->SetRenderTargets(m_renderTargetViews, m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView(), clear);
