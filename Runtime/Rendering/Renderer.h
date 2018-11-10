@@ -161,7 +161,6 @@ namespace Directus
 		std::shared_ptr<LightShader> m_shaderLight;
 		std::shared_ptr<RHI_Shader> m_shaderLightDepth;
 		std::shared_ptr<RHI_Shader> m_shaderLine;
-		std::shared_ptr<RHI_Shader> m_shaderGrid;
 		std::shared_ptr<RHI_Shader> m_shaderFont;
 		std::shared_ptr<RHI_Shader> m_shaderTexture;
 		std::shared_ptr<RHI_Shader> m_shaderFXAA;
@@ -205,7 +204,7 @@ namespace Directus
 
 		//= MISC ========================================================
 		std::shared_ptr<RHI_Device> m_rhiDevice;
-		std::shared_ptr<RHI_Pipeline> m_rhiPipelineState;
+		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
 		std::unique_ptr<GBuffer> m_gbuffer;
 		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
