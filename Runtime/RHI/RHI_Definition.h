@@ -33,7 +33,7 @@ namespace Directus
 	class RHI_IndexBuffer;
 	class RHI_ConstantBuffer;
 	class RHI_Sampler;
-	class RHI_PipelineState;
+	class RHI_Pipeline;
 	class RHI_Viewport;
 	class RHI_RenderTexture;
 	class RHI_Texture;

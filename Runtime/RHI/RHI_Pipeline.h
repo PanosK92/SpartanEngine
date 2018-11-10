@@ -45,11 +45,11 @@ namespace Directus
 		}
 	};
 
-	class ENGINE_CLASS RHI_PipelineState
+	class ENGINE_CLASS RHI_Pipeline
 	{
 	public:
-		RHI_PipelineState(std::shared_ptr<RHI_Device> rhiDevice);
-		~RHI_PipelineState(){}
+		RHI_Pipeline(std::shared_ptr<RHI_Device> rhiDevice);
+		~RHI_Pipeline(){}
 
 		// Shader
 		void SetShader(std::shared_ptr<RHI_Shader>& shader);
