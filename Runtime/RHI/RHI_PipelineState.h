@@ -34,11 +34,11 @@ namespace Directus
 		PrimitiveTopology_Mode primitiveTopology;
 		Cull_Mode cullMode;
 		Fill_Mode fillMode;
-		std::shared_ptr<RHI_Sampler> sampler;
 		std::shared_ptr<RHI_Shader> vertexShader;
 		std::shared_ptr<RHI_Shader> pixelShader;
-		std::shared_ptr<RHI_IndexBuffer> indexBuffer;
 		std::shared_ptr<RHI_VertexBuffer> vertexBuffer;
+		std::shared_ptr<RHI_IndexBuffer> indexBuffer;
+		std::shared_ptr<RHI_Sampler> sampler;
 		std::shared_ptr<RHI_ConstantBuffer> constantBuffer;
 		std::shared_ptr<RHI_Viewport> viewport;
 	};

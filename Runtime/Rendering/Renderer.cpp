@@ -218,6 +218,18 @@ namespace Directus
 			m_shaderTransparent->AddBuffer<Struct_Transparency>(0, Buffer_Global);
 		}
 
+		// PIPELINE STATES
+		{
+			// Line
+			m_pipelineLine.primitiveTopology	= PrimitiveTopology_LineList;
+			m_pipelineLine.cullMode				= Cull_Back;
+			m_pipelineLine.fillMode				= Fill_Solid;
+			m_pipelineLine.vertexShader			= m_shaderLine;
+			m_pipelineLine.pixelShader			= m_shaderLine;
+			m_pipelineLine.constantBuffer		= m_shaderLine->GetConstantBuffer();
+			m_pipelineLine.sampler				= m_samplerPointClampGreater;
+		}
+
 		// TEXTURES
 		{
 			// Noise texture (used by SSAO shader)
@@ -1167,16 +1179,12 @@ namespace Directus
 				m_lineVertexBuffer->Unmap();
 
 				// Set pipeline state
-				m_rhiPipeline->SetShader(m_shaderLine);
+				m_rhiPipeline->SetState(m_pipelineLine);
 				m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-				m_rhiPipeline->SetSampler(m_samplerPointClampGreater);
 				m_rhiPipeline->SetVertexBuffer(m_lineVertexBuffer);
-				m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_LineList);
 				auto buffer = Struct_Matrix(Matrix::Identity * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix());
 				m_shaderLine->UpdateBuffer(&buffer);
-				m_rhiPipeline->SetConstantBuffer(m_shaderLine->GetConstantBuffer());
 				m_rhiPipeline->Bind();
-				// Draw
 				m_rhiDevice->Draw(lineVertexBufferSize);
 
 				m_lineVertices.clear();	
@@ -1191,17 +1199,13 @@ namespace Directus
 		{
 			m_rhiDevice->EventBegin("Grid");
 
-			m_rhiPipeline->SetShader(m_shaderLine);
+			m_rhiPipeline->SetState(m_pipelineLine);
 			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-			m_rhiPipeline->SetSampler(m_samplerPointClampGreater);
 			m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
-			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_LineList);
 			auto buffer = Struct_Matrix(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix());
 			m_shaderLine->UpdateBuffer(&buffer);
-			m_rhiPipeline->SetConstantBuffer(m_shaderLine->GetConstantBuffer());
 			m_rhiPipeline->Bind();
-
 			m_rhiDevice->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
 
 			m_rhiDevice->EventEnd();

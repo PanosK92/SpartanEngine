@@ -48,6 +48,19 @@ namespace Directus
 		Clear();
 	}
 
+	bool RHI_Pipeline::SetState(RHI_PipelineState& pipelineState)
+	{
+		SetPrimitiveTopology(pipelineState.primitiveTopology);
+		SetCullMode(pipelineState.cullMode);
+		SetFillMode(pipelineState.fillMode);
+		if (pipelineState.vertexShader)		SetVertexShader(pipelineState.vertexShader);
+		if (pipelineState.pixelShader)		SetPixelShader(pipelineState.pixelShader);
+		if (pipelineState.constantBuffer)	SetConstantBuffer(pipelineState.constantBuffer);
+		if (pipelineState.sampler)			SetSampler(pipelineState.sampler);
+
+		return true;
+	}
+
 	void RHI_Pipeline::SetShader(shared_ptr<RHI_Shader>& shader)
 	{
 		SetVertexShader(shader);

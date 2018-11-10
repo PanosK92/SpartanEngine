@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 #include "../Core/SubSystem.h"
 #include "../RHI/RHI_Definition.h"
+#include "../RHI/RHI_Pipeline.h"
 //================================
 
 namespace Directus
@@ -185,6 +186,10 @@ namespace Directus
 		std::shared_ptr<RHI_Sampler> m_samplerBilinearClampAlways;
 		std::shared_ptr<RHI_Sampler> m_samplerAnisotropicWrapAlways;
 		//==========================================================
+
+		//= PIPELINE STATES =============
+		RHI_PipelineState m_pipelineLine;
+		//===============================
 
 		//= DEBUG ==============================================
 		std::unique_ptr<Font> m_font;

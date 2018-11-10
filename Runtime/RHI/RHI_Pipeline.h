@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Core\EngineDefs.h"
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
+#include "RHI_PipelineState.h"
 //=============================
 
 namespace Directus
@@ -50,6 +51,8 @@ namespace Directus
 	public:
 		RHI_Pipeline(std::shared_ptr<RHI_Device> rhiDevice);
 		~RHI_Pipeline(){}
+
+		bool SetState(RHI_PipelineState& pipelineState);
 
 		// Shader
 		void SetShader(std::shared_ptr<RHI_Shader>& shader);
