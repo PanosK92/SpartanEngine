@@ -60,9 +60,9 @@ namespace Directus
 
 		virtual void Compile_VertexPixel(const std::string& filePath, Input_Layout inputLayout, Context* context)
 		{
-			m_shaderState = Shader_Compiling;
-			bool vertex = Compile_Vertex(filePath, inputLayout);
-			bool pixel = Compile_Pixel(filePath);
+			m_shaderState	= Shader_Compiling;
+			bool vertex		= Compile_Vertex(filePath, inputLayout);
+			bool pixel		= Compile_Pixel(filePath);
 
 			m_shaderState = (vertex && pixel) ? Shader_Built : Shader_Failed;
 

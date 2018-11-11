@@ -74,49 +74,55 @@ namespace Directus
 		{
 			for (int i = -halfSizeW; i < halfSizeW; i++)
 			{
+				// Become more transparent, the further out we go
+				float alphaWidth	= 1.0f - ((float)Math::Helper::Abs(j) / (float)halfSizeH);
+				float alphaHeight	= 1.0f - ((float)Math::Helper::Abs(i) / (float)halfSizeW);
+				float alpha			= (alphaWidth + alphaHeight) * 0.5f;
+				alpha				= Math::Helper::Pow(alpha, 10.0f);
+
 				// LINE 1
 				// Upper left.
 				auto positionX = (float)i;
 				auto positionZ = (float)(j + 1);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// Upper right.
 				positionX = (float)(i + 1);
 				positionZ = (float)(j + 1);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// LINE 2
 				// Upper right.
 				positionX = (float)(i + 1);
 				positionZ = (float)(j + 1);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// Bottom right.
 				positionX = (float)(i + 1);
 				positionZ = (float)j;
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// LINE 3
 				// Bottom right.
 				positionX = (float)(i + 1);
 				positionZ = (float)j;
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// Bottom left.
 				positionX = (float)i;
 				positionZ = (float)j;
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// LINE 4
 				// Bottom left.
 				positionX = (float)i;
 				positionZ = (float)j;
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// Upper left.
 				positionX = (float)i;
 				positionZ = (float)(j + 1);
-				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 			}
 		}
 

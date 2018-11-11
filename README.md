@@ -53,6 +53,7 @@ Font importing and rendering    | 100% | Ability to load any font file
 - C# scripting.
 - Vulkan rendering backend.
 - Dynamic resolution scaling.
+- Real-time ray tracing (experimental).
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Skeletal Animation.

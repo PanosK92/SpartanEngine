@@ -50,113 +50,113 @@ namespace Directus
 		inline void CreatePosDesc(ID3D10Blob* VSBlob, vector<any>* layout)
 		{
 			D3D11_INPUT_ELEMENT_DESC positionDesc;
-			positionDesc.SemanticName = "POSITION";
-			positionDesc.SemanticIndex = 0;
-			positionDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-			positionDesc.InputSlot = 0;
-			positionDesc.AlignedByteOffset = 0;
-			positionDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			positionDesc.InstanceDataStepRate = 0;
-			layout->push_back(positionDesc);
+			positionDesc.SemanticName			= "POSITION";
+			positionDesc.SemanticIndex			= 0;
+			positionDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
+			positionDesc.InputSlot				= 0;
+			positionDesc.AlignedByteOffset		= 0;
+			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			positionDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(positionDesc);
 		}
 
 		inline void CreatePosColDesc(ID3D10Blob* VSBlob, vector<any>* layout)
 		{
 			D3D11_INPUT_ELEMENT_DESC positionDesc;
-			positionDesc.SemanticName = "POSITION";
-			positionDesc.SemanticIndex = 0;
-			positionDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-			positionDesc.InputSlot = 0;
-			positionDesc.AlignedByteOffset = 0;
-			positionDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			positionDesc.InstanceDataStepRate = 0;
-			layout->push_back(positionDesc);
+			positionDesc.SemanticName			= "POSITION";
+			positionDesc.SemanticIndex			= 0;
+			positionDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
+			positionDesc.InputSlot				= 0;
+			positionDesc.AlignedByteOffset		= 0;
+			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			positionDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(positionDesc);
 
 			D3D11_INPUT_ELEMENT_DESC colorDesc;
-			colorDesc.SemanticName = "COLOR";
-			colorDesc.SemanticIndex = 0;
-			colorDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-			colorDesc.InputSlot = 0;
-			colorDesc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-			colorDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			colorDesc.InstanceDataStepRate = 0;
-			layout->push_back(colorDesc);
+			colorDesc.SemanticName			= "COLOR";
+			colorDesc.SemanticIndex			= 0;
+			colorDesc.Format				= DXGI_FORMAT_R32G32B32A32_FLOAT;
+			colorDesc.InputSlot				= 0;
+			colorDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
+			colorDesc.InputSlotClass		= D3D11_INPUT_PER_VERTEX_DATA;
+			colorDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(colorDesc);
 		}
 
 		inline void CreatePosTexDesc(ID3D10Blob* VSBlob, vector<any>* layout)
 		{
 			D3D11_INPUT_ELEMENT_DESC positionDesc;
-			positionDesc.SemanticName = "POSITION";
-			positionDesc.SemanticIndex = 0;
-			positionDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-			positionDesc.InputSlot = 0;
-			positionDesc.AlignedByteOffset = 0;
-			positionDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			positionDesc.InstanceDataStepRate = 0;
-			layout->push_back(positionDesc);
+			positionDesc.SemanticName			= "POSITION";
+			positionDesc.SemanticIndex			= 0;
+			positionDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
+			positionDesc.InputSlot				= 0;
+			positionDesc.AlignedByteOffset		= 0;
+			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			positionDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(positionDesc);
 
 			D3D11_INPUT_ELEMENT_DESC texCoordDesc;
-			texCoordDesc.SemanticName = "TEXCOORD";
-			texCoordDesc.SemanticIndex = 0;
-			texCoordDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
-			texCoordDesc.InputSlot = 0;
-			texCoordDesc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-			texCoordDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			texCoordDesc.InstanceDataStepRate = 0;
-			layout->push_back(texCoordDesc);
+			texCoordDesc.SemanticName			= "TEXCOORD";
+			texCoordDesc.SemanticIndex			= 0;
+			texCoordDesc.Format					= DXGI_FORMAT_R32G32_FLOAT;
+			texCoordDesc.InputSlot				= 0;
+			texCoordDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
+			texCoordDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			texCoordDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(texCoordDesc);
 		}
 
 		inline void CreatePosTBNDesc(ID3D10Blob* VSBlob, vector<any>* layout)
 		{
 			D3D11_INPUT_ELEMENT_DESC positionDesc;
-			positionDesc.SemanticName = "POSITION";
-			positionDesc.SemanticIndex = 0;
-			positionDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-			positionDesc.InputSlot = 0;
-			positionDesc.AlignedByteOffset = 0;
-			positionDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			positionDesc.InstanceDataStepRate = 0;
-			layout->push_back(positionDesc);
+			positionDesc.SemanticName			= "POSITION";
+			positionDesc.SemanticIndex			= 0;
+			positionDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
+			positionDesc.InputSlot				= 0;
+			positionDesc.AlignedByteOffset		= 0;
+			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			positionDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(positionDesc);
 
 			D3D11_INPUT_ELEMENT_DESC texCoordDesc;
-			texCoordDesc.SemanticName = "TEXCOORD";
-			texCoordDesc.SemanticIndex = 0;
-			texCoordDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
-			texCoordDesc.InputSlot = 0;
-			texCoordDesc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-			texCoordDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			texCoordDesc.InstanceDataStepRate = 0;
-			layout->push_back(texCoordDesc);
+			texCoordDesc.SemanticName			= "TEXCOORD";
+			texCoordDesc.SemanticIndex			= 0;
+			texCoordDesc.Format					= DXGI_FORMAT_R32G32_FLOAT;
+			texCoordDesc.InputSlot				= 0;
+			texCoordDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
+			texCoordDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			texCoordDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(texCoordDesc);
 
 			D3D11_INPUT_ELEMENT_DESC normalDesc;
-			normalDesc.SemanticName = "NORMAL";
-			normalDesc.SemanticIndex = 0;
-			normalDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-			normalDesc.InputSlot = 0;
-			normalDesc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-			normalDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			normalDesc.InstanceDataStepRate = 0;
-			layout->push_back(normalDesc);
+			normalDesc.SemanticName				= "NORMAL";
+			normalDesc.SemanticIndex			= 0;
+			normalDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
+			normalDesc.InputSlot				= 0;
+			normalDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
+			normalDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			normalDesc.InstanceDataStepRate		= 0;
+			layout->emplace_back(normalDesc);
 
 			D3D11_INPUT_ELEMENT_DESC tangentDesc;
-			tangentDesc.SemanticName = "TANGENT";
-			tangentDesc.SemanticIndex = 0;
-			tangentDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-			tangentDesc.InputSlot = 0;
-			tangentDesc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-			tangentDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			tangentDesc.InstanceDataStepRate = 0;
-			layout->push_back(tangentDesc);
+			tangentDesc.SemanticName			= "TANGENT";
+			tangentDesc.SemanticIndex			= 0;
+			tangentDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
+			tangentDesc.InputSlot				= 0;
+			tangentDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
+			tangentDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			tangentDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(tangentDesc);
 
 			D3D11_INPUT_ELEMENT_DESC bitangentDesc;
-			bitangentDesc.SemanticName = "BITANGENT";
-			bitangentDesc.SemanticIndex = 0;
-			bitangentDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-			bitangentDesc.InputSlot = 0;
-			bitangentDesc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-			bitangentDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			bitangentDesc.InstanceDataStepRate = 0;
-			layout->push_back(bitangentDesc);
+			bitangentDesc.SemanticName			= "BITANGENT";
+			bitangentDesc.SemanticIndex			= 0;
+			bitangentDesc.Format				= DXGI_FORMAT_R32G32B32_FLOAT;
+			bitangentDesc.InputSlot				= 0;
+			bitangentDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
+			bitangentDesc.InputSlotClass		= D3D11_INPUT_PER_VERTEX_DATA;
+			bitangentDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(bitangentDesc);
 		}
 	}
 
