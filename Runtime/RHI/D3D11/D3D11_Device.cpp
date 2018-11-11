@@ -66,20 +66,21 @@ namespace Directus
 		};
 
 		// All the pointers that we need
-		ID3D11Device* m_device;
-		ID3D11DeviceContext* m_deviceContext;
-		IDXGISwapChain* m_swapChain;
-		ID3D11RenderTargetView* m_renderTargetView;
-		ID3D11Texture2D* m_depthStencilBuffer;
-		ID3D11DepthStencilState* m_depthStencilStateEnabled;
-		ID3D11DepthStencilState* m_depthStencilStateDisabled;
-		ID3D11DepthStencilView* m_depthStencilView;
-		ID3D11RasterizerState* m_rasterStateCullFront;
-		ID3D11RasterizerState* m_rasterStateCullBack;
-		ID3D11RasterizerState* m_rasterStateCullNone;
-		ID3D11BlendState* m_blendStateAlphaEnabled;
-		ID3D11BlendState* m_blendStateAlphaDisabled;
-		ID3DUserDefinedAnnotation* m_eventReporter;	
+		ID3D11Device* device;
+		ID3D11DeviceContext* deviceContext;
+		IDXGISwapChain* swapChain;
+		ID3D11RenderTargetView* renderTargetView;
+		ID3D11Texture2D* depthStencilBuffer;
+		ID3D11DepthStencilState* depthStencilStateEnabled;
+		ID3D11DepthStencilState* depthStencilStateDisabled;
+		ID3D11DepthStencilView* depthStencilView;
+		ID3D11RasterizerState* rasterStateCullFront;
+		ID3D11RasterizerState* rasterStateCullBack;
+		ID3D11RasterizerState* rasterStateCullNone;
+		ID3D11BlendState* blendStateAlphaEnabled;
+		ID3D11BlendState* blendStateAlphaDisabled;
+		ID3DUserDefinedAnnotation* eventReporter;	
+		D3D11_VIEWPORT viewport;
 
 		inline const char* DxgiErrorToString(HRESULT errorCode)
 		{
@@ -115,7 +116,7 @@ namespace Directus
 
 		inline bool CreateDepthStencilView(UINT width, UINT height)
 		{
-			if (!m_device)
+			if (!device)
 				return false;
 
 			D3D11_TEXTURE2D_DESC depthBufferDesc;
@@ -133,7 +134,7 @@ namespace Directus
 			depthBufferDesc.MiscFlags			= 0;
 
 			// Create the texture for the depth buffer using the filled out description.
-			auto result = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
+			auto result = device->CreateTexture2D(&depthBufferDesc, nullptr, &depthStencilBuffer);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("RHI_Device::CreateDepthStencilView: Failed to create depth stencil buffer, %s.", DxgiErrorToString(result));
@@ -147,7 +148,7 @@ namespace Directus
 			depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 			// Create the depth stencil view.
-			result = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
+			result = device->CreateDepthStencilView(depthStencilBuffer, &depthStencilViewDesc, &depthStencilView);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("RHI_Device::CreateDepthStencilView: Failed to create depth stencil view, %s.", DxgiErrorToString(result));
@@ -300,10 +301,10 @@ namespace Directus
 				ARRAYSIZE(_D3D11_Device::featureLevels),
 				_D3D11_Device::sdkVersion,				// always set this to D3D11_SDK_VERSION
 				&swapChainDesc,
-				&_D3D11_Device::m_swapChain,
-				&_D3D11_Device::m_device,
+				&_D3D11_Device::swapChain,
+				&_D3D11_Device::device,
 				nullptr,
-				&_D3D11_Device::m_deviceContext
+				&_D3D11_Device::deviceContext
 			);
 
 			if (FAILED(result))
@@ -317,7 +318,7 @@ namespace Directus
 		if (_D3D11_Device::multithreadProtection)
 		{
 			ID3D11Multithread* multithread = nullptr;
-			if (SUCCEEDED(_D3D11_Device::m_deviceContext->QueryInterface(__uuidof(ID3D11Multithread), (void**)&multithread)))
+			if (SUCCEEDED(_D3D11_Device::deviceContext->QueryInterface(__uuidof(ID3D11Multithread), (void**)&multithread)))
 			{		
 				multithread->SetMultithreadProtected(TRUE);
 				multithread->Release();
@@ -332,7 +333,7 @@ namespace Directus
 		{
 			// Get the pointer to the back buffer.
 			ID3D11Texture2D* backBufferPtr;
-			result = _D3D11_Device::m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBufferPtr));
+			result = _D3D11_Device::swapChain->GetBuffer(0, IID_PPV_ARGS(&backBufferPtr));
 			if (FAILED(result))
 			{
 				LOGF_ERROR("RHI_Device::RHI_Device: Failed to get swapchain buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
@@ -340,7 +341,7 @@ namespace Directus
 			}
 
 			// Create the render target view with the back buffer pointer.
-			result = _D3D11_Device::m_device->CreateRenderTargetView(backBufferPtr, nullptr, &_D3D11_Device::m_renderTargetView);
+			result = _D3D11_Device::device->CreateRenderTargetView(backBufferPtr, nullptr, &_D3D11_Device::renderTargetView);
 			SafeRelease(backBufferPtr);
 			if (FAILED(result))
 			{
@@ -350,19 +351,20 @@ namespace Directus
 		}
 
 		// VIEWPORT
-		auto viewport = RHI_Viewport((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight());
-		Set_Viewport(viewport);
+		m_viewport = make_shared<RHI_Viewport>();
+		ZeroMemory(&_D3D11_Device::viewport, sizeof(D3D11_VIEWPORT));
+		Set_Viewport(m_viewport);
 
 		// DEPTH STATES
 		auto desc = Desc_DepthEnabled();
-		if (FAILED(_D3D11_Device::m_device->CreateDepthStencilState(&desc, &_D3D11_Device::m_depthStencilStateEnabled)))
+		if (FAILED(_D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateEnabled)))
 		{
 			LOG_ERROR("RHI_Device::RHI_Device: Failed to create depth stencil enabled state.");
 			return;
 		}
 
 		desc = Desc_DepthDisabled();
-		if (FAILED(_D3D11_Device::m_device->CreateDepthStencilState(&desc, &_D3D11_Device::m_depthStencilStateDisabled)))
+		if (FAILED(_D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateDisabled)))
 		{
 			LOG_ERROR("RHI_Device::RHI_Device: Failed to create depth stencil disabled state.");
 			return;
@@ -378,35 +380,35 @@ namespace Directus
 		// RASTERIZER STATES
 		{
 			auto desc = Desc_RasterizerCullBack();
-			if (FAILED(_D3D11_Device::m_device->CreateRasterizerState(&desc, &_D3D11_Device::m_rasterStateCullBack)))
+			if (FAILED(_D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullBack)))
 			{
 				LOG_ERROR("RHI_Device::RHI_Device: Failed to create the rasterizer cull back state.");
 				return;
 			}
 
 			desc = Desc_RasterizerCullFront();
-			if (FAILED(_D3D11_Device::m_device->CreateRasterizerState(&desc, &_D3D11_Device::m_rasterStateCullFront)))
+			if (FAILED(_D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullFront)))
 			{
 				LOG_ERROR("RHI_Device::RHI_Device: Failed to create the rasterizer cull front state.");
 				return;
 			}
 
 			desc = Desc_RasterizerCullNone();
-			if (FAILED(_D3D11_Device::m_device->CreateRasterizerState(&desc, &_D3D11_Device::m_rasterStateCullNone)))
+			if (FAILED(_D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullNone)))
 			{
 				LOG_ERROR("RHI_Device::RHI_Device: Failed to create the rasterizer cull non state.");
 				return;
 			}
 
 			// Set default rasterizer state
-			_D3D11_Device::m_deviceContext->RSSetState(_D3D11_Device::m_rasterStateCullBack);
+			_D3D11_Device::deviceContext->RSSetState(_D3D11_Device::rasterStateCullBack);
 		}
 
 		// BLEND STATES
 		{
 			// Create a blending state with alpha blending enabled
 			auto desc = Desc_BlendAlpha();
-			if (FAILED(_D3D11_Device::m_device->CreateBlendState(&desc, &_D3D11_Device::m_blendStateAlphaEnabled)))
+			if (FAILED(_D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaEnabled)))
 			{
 				LOG_ERROR("RHI_Device::RHI_Device: Failed to create blend alpha state.");
 				return;
@@ -414,7 +416,7 @@ namespace Directus
 
 			// Create a blending state with alpha blending disabled
 			desc = Desc_BlendDisabled();
-			if (FAILED(_D3D11_Device::m_device->CreateBlendState(&desc, &_D3D11_Device::m_blendStateAlphaDisabled)))
+			if (FAILED(_D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaDisabled)))
 			{
 				LOG_ERROR("RHI_Device::RHI_Device: Failed to create blend disabled state.");
 				return;
@@ -422,8 +424,8 @@ namespace Directus
 		}
 
 		// EVENT REPORTER
-		_D3D11_Device::m_eventReporter = nullptr;
-		result = _D3D11_Device::m_deviceContext->QueryInterface(IID_PPV_ARGS(&_D3D11_Device::m_eventReporter));
+		_D3D11_Device::eventReporter = nullptr;
+		result = _D3D11_Device::deviceContext->QueryInterface(IID_PPV_ARGS(&_D3D11_Device::eventReporter));
 		if (FAILED(result))
 		{
 			LOG_ERROR("RHI_Device::RHI_Device: Failed to create ID3DUserDefinedAnnotation for event reporting");
@@ -431,7 +433,7 @@ namespace Directus
 		}
 
 		// Log feature level and adapter info
-		D3D_FEATURE_LEVEL featureLevel = _D3D11_Device::m_device->GetFeatureLevel();
+		D3D_FEATURE_LEVEL featureLevel = _D3D11_Device::device->GetFeatureLevel();
 		string featureLevelStr;
 		switch (featureLevel)
 		{
@@ -464,155 +466,155 @@ namespace Directus
 			break;
 		}
 
-		m_device						= (void*)_D3D11_Device::m_device;
-		m_deviceContext					= (void*)_D3D11_Device::m_deviceContext;
-		m_initialized					= true;
+		m_device		= (void*)_D3D11_Device::device;
+		m_deviceContext	= (void*)_D3D11_Device::deviceContext;
+		m_initialized	= true;
 	}
 
 	RHI_Device::~RHI_Device()
 	{
 		// Before shutting down set to windowed mode or 
 		// upon releasing the swap chain it will throw an exception.
-		if (_D3D11_Device::m_swapChain)
+		if (_D3D11_Device::swapChain)
 		{
-			_D3D11_Device::m_swapChain->SetFullscreenState(false, nullptr);
+			_D3D11_Device::swapChain->SetFullscreenState(false, nullptr);
 		}
 
-		SafeRelease(_D3D11_Device::m_blendStateAlphaEnabled);
-		SafeRelease(_D3D11_Device::m_blendStateAlphaDisabled);
-		SafeRelease(_D3D11_Device::m_rasterStateCullFront);
-		SafeRelease(_D3D11_Device::m_rasterStateCullBack);
-		SafeRelease(_D3D11_Device::m_rasterStateCullNone);
-		SafeRelease(_D3D11_Device::m_depthStencilView);
-		SafeRelease(_D3D11_Device::m_depthStencilStateEnabled);
-		SafeRelease(_D3D11_Device::m_depthStencilStateDisabled);
-		SafeRelease(_D3D11_Device::m_depthStencilBuffer);
-		SafeRelease(_D3D11_Device::m_renderTargetView);
-		SafeRelease(_D3D11_Device::m_deviceContext);
-		SafeRelease(_D3D11_Device::m_device);
-		SafeRelease(_D3D11_Device::m_swapChain);
+		SafeRelease(_D3D11_Device::blendStateAlphaEnabled);
+		SafeRelease(_D3D11_Device::blendStateAlphaDisabled);
+		SafeRelease(_D3D11_Device::rasterStateCullFront);
+		SafeRelease(_D3D11_Device::rasterStateCullBack);
+		SafeRelease(_D3D11_Device::rasterStateCullNone);
+		SafeRelease(_D3D11_Device::depthStencilView);
+		SafeRelease(_D3D11_Device::depthStencilStateEnabled);
+		SafeRelease(_D3D11_Device::depthStencilStateDisabled);
+		SafeRelease(_D3D11_Device::depthStencilBuffer);
+		SafeRelease(_D3D11_Device::renderTargetView);
+		SafeRelease(_D3D11_Device::deviceContext);
+		SafeRelease(_D3D11_Device::device);
+		SafeRelease(_D3D11_Device::swapChain);
 	}
 
 	void RHI_Device::Draw(unsigned int vertexCount)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->Draw(vertexCount, 0);
+		_D3D11_Device::deviceContext->Draw(vertexCount, 0);
 		Profiler::Get().m_rhiDrawCalls++;
 	}
 
 	void RHI_Device::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->DrawIndexed(indexCount, indexOffset, vertexOffset);
+		_D3D11_Device::deviceContext->DrawIndexed(indexCount, indexOffset, vertexOffset);
 		Profiler::Get().m_rhiDrawCalls++;
 	}
 
 	void RHI_Device::ClearBackBuffer(const Vector4& color)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->ClearRenderTargetView(_D3D11_Device::m_renderTargetView, color.Data()); // back buffer
+		_D3D11_Device::deviceContext->ClearRenderTargetView(_D3D11_Device::renderTargetView, color.Data()); // back buffer
 		if (m_depthEnabled)
 		{
-			_D3D11_Device::m_deviceContext->ClearDepthStencilView(_D3D11_Device::m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, m_viewport.GetMaxDepth(), 0); // depth buffer
+			_D3D11_Device::deviceContext->ClearDepthStencilView(_D3D11_Device::depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, _D3D11_Device::viewport.MaxDepth, 0); // depth buffer
 		}
 	}
 
 	void RHI_Device::ClearRenderTarget(void* renderTarget, const Math::Vector4& color)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->ClearRenderTargetView((ID3D11RenderTargetView*)renderTarget, color.Data());
+		_D3D11_Device::deviceContext->ClearRenderTargetView((ID3D11RenderTargetView*)renderTarget, color.Data());
 	}
 
 	void RHI_Device::ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, uint8_t stencil)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
 		unsigned int clearFlags = 0;
 		clearFlags |= flags & Clear_Depth ? D3D11_CLEAR_DEPTH : 0;
 		clearFlags |= flags & Clear_Stencil ? D3D11_CLEAR_STENCIL : 0;
-		_D3D11_Device::m_deviceContext->ClearDepthStencilView((ID3D11DepthStencilView*)depthStencil, clearFlags, depth, stencil);
+		_D3D11_Device::deviceContext->ClearDepthStencilView((ID3D11DepthStencilView*)depthStencil, clearFlags, depth, stencil);
 	}
 
 	void RHI_Device::Present()
 	{
-		if (!_D3D11_Device::m_swapChain)
+		if (!_D3D11_Device::swapChain)
 			return;
 
-		_D3D11_Device::m_swapChain->Present(Settings::Get().VSync_Get(), 0);
+		_D3D11_Device::swapChain->Present(Settings::Get().VSync_Get(), 0);
 	}
 
 	void RHI_Device::Set_BackBufferAsRenderTarget()
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->OMSetRenderTargets(1, &_D3D11_Device::m_renderTargetView, m_depthEnabled ? _D3D11_Device::m_depthStencilView : nullptr);
+		_D3D11_Device::deviceContext->OMSetRenderTargets(1, &_D3D11_Device::renderTargetView, m_depthEnabled ? _D3D11_Device::depthStencilView : nullptr);
 	}
 
 	void RHI_Device::Set_VertexShader(void* buffer)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->VSSetShader((ID3D11VertexShader*)buffer, nullptr, 0);
+		_D3D11_Device::deviceContext->VSSetShader((ID3D11VertexShader*)buffer, nullptr, 0);
 	}
 
 	void RHI_Device::Set_PixelShader(void* buffer)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->PSSetShader((ID3D11PixelShader*)buffer, nullptr, 0);
+		_D3D11_Device::deviceContext->PSSetShader((ID3D11PixelShader*)buffer, nullptr, 0);
 	}
 
 	void RHI_Device::Set_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
 		auto d3d11buffer = (ID3D11Buffer*const*)buffer;
 		if (scope == Buffer_VertexShader || scope == Buffer_Global)
 		{
-			_D3D11_Device::m_deviceContext->VSSetConstantBuffers(startSlot, bufferCount, d3d11buffer);
+			_D3D11_Device::deviceContext->VSSetConstantBuffers(startSlot, bufferCount, d3d11buffer);
 		}
 
 		if (scope == Buffer_PixelShader || scope == Buffer_Global)
 		{
-			_D3D11_Device::m_deviceContext->PSSetConstantBuffers(startSlot, bufferCount, d3d11buffer);
+			_D3D11_Device::deviceContext->PSSetConstantBuffers(startSlot, bufferCount, d3d11buffer);
 		}
 	}
 
 	void RHI_Device::Set_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->PSSetSamplers(startSlot, samplerCount, (ID3D11SamplerState* const*)samplers);
+		_D3D11_Device::deviceContext->PSSetSamplers(startSlot, samplerCount, (ID3D11SamplerState* const*)samplers);
 	}
 
 	void RHI_Device::Set_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->OMSetRenderTargets(renderTargetCount, (ID3D11RenderTargetView* const*)renderTargets, (ID3D11DepthStencilView*)depthStencil);
+		_D3D11_Device::deviceContext->OMSetRenderTargets(renderTargetCount, (ID3D11RenderTargetView* const*)renderTargets, (ID3D11DepthStencilView*)depthStencil);
 	}
 
 	void RHI_Device::Set_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->PSSetShaderResources(startSlot, resourceCount, (ID3D11ShaderResourceView* const*)shaderResources);
+		_D3D11_Device::deviceContext->PSSetShaderResources(startSlot, resourceCount, (ID3D11ShaderResourceView* const*)shaderResources);
 	}
 
 	bool RHI_Device::Set_Resolution(unsigned int width, unsigned int height)
@@ -623,7 +625,7 @@ namespace Directus
 			return false;
 		}
 
-		if (!_D3D11_Device::m_swapChain)
+		if (!_D3D11_Device::swapChain)
 		{
 			LOG_ERROR("RHI_Device::SetResolution: Invalid swapchain");
 			return false;
@@ -632,9 +634,9 @@ namespace Directus
 		const DisplayMode& displayMode = Settings::Get().DisplayMode_GetFastest();
 
 		// Release resolution based stuff
-		SafeRelease(_D3D11_Device::m_renderTargetView);
-		SafeRelease(_D3D11_Device::m_depthStencilBuffer);
-		SafeRelease(_D3D11_Device::m_depthStencilView);
+		SafeRelease(_D3D11_Device::renderTargetView);
+		SafeRelease(_D3D11_Device::depthStencilBuffer);
+		SafeRelease(_D3D11_Device::depthStencilView);
 
 		// Resize swapchain target
 		DXGI_MODE_DESC dxgiModeDesc;
@@ -646,7 +648,7 @@ namespace Directus
 		dxgiModeDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
 		dxgiModeDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 
-		auto result = _D3D11_Device::m_swapChain->ResizeTarget(&dxgiModeDesc);
+		auto result = _D3D11_Device::swapChain->ResizeTarget(&dxgiModeDesc);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("RHI_Device::SetResolution: Failed to resize swapchain target, %s.", _D3D11_Device::DxgiErrorToString(result));
@@ -654,7 +656,7 @@ namespace Directus
 		}
 
 		// Resize swapchain buffers
-		result = _D3D11_Device::m_swapChain->ResizeBuffers(
+		result = _D3D11_Device::swapChain->ResizeBuffers(
 			_D3D11_Device::swapchainBufferCount,
 			width,
 			height,
@@ -669,7 +671,7 @@ namespace Directus
 
 		// Get the swapchain buffer
 		ID3D11Texture2D* backBuffer = nullptr;	
-		result = _D3D11_Device::m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+		result = _D3D11_Device::swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
 		if (FAILED(result))
 		{
 			LOGF_ERROR("RHI_Device::SetResolution: Failed to get pointer to the swapchain's back buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
@@ -678,7 +680,7 @@ namespace Directus
 		SafeRelease(backBuffer);
 
 		// Create render target view
-		result = _D3D11_Device::m_device->CreateRenderTargetView(backBuffer, nullptr, &_D3D11_Device::m_renderTargetView);
+		result = _D3D11_Device::device->CreateRenderTargetView(backBuffer, nullptr, &_D3D11_Device::renderTargetView);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("RHI_Device::SetResolution:  Failed to create render target view, %s.", _D3D11_Device::DxgiErrorToString(result));
@@ -691,27 +693,40 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_Device::Set_Viewport(const RHI_Viewport& viewport)
+	void RHI_Device::Set_Viewport(const shared_ptr<RHI_Viewport>& viewport)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!viewport)
+		{
+			LOG_WARNING("RHI_Device::Set_Viewport: Invalid parameter");
+			return;
+		}
+
+		if (!_D3D11_Device::deviceContext)
 			return;
 
 		m_viewport = viewport;
-		_D3D11_Device::m_deviceContext->RSSetViewports(1, (D3D11_VIEWPORT*)&m_viewport);
+		_D3D11_Device::viewport.TopLeftX	= viewport->GetTopLeftX();
+		_D3D11_Device::viewport.TopLeftY	= viewport->GetTopLeftY();
+		_D3D11_Device::viewport.Width		= viewport->GetWidth();
+		_D3D11_Device::viewport.Height		= viewport->GetHeight();
+		_D3D11_Device::viewport.MinDepth	= viewport->GetMinDepth();
+		_D3D11_Device::viewport.MaxDepth	= viewport->GetMaxDepth();
+
+		_D3D11_Device::deviceContext->RSSetViewports(1, &_D3D11_Device::viewport);
 	}
 
 	bool RHI_Device::Set_DepthEnabled(bool enable)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_WARNING("D3D11_Device::EnableDepth: Device context is uninitialized.");
+			LOG_WARNING("RHI_Device::EnableDepth: Device context is uninitialized.");
 			return false;
 		}
 
 		if (m_depthEnabled == enable)
 			return true;
 
-		_D3D11_Device::m_deviceContext->OMSetDepthStencilState(enable ? _D3D11_Device::m_depthStencilStateEnabled : _D3D11_Device::m_depthStencilStateDisabled, 1);
+		_D3D11_Device::deviceContext->OMSetDepthStencilState(enable ? _D3D11_Device::depthStencilStateEnabled : _D3D11_Device::depthStencilStateDisabled, 1);
 		m_depthEnabled = enable;
 
 		return true;
@@ -719,15 +734,15 @@ namespace Directus
 
 	bool RHI_Device::Set_AlphaBlendingEnabled(bool enable)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_WARNING("D3D11_Device::EnableAlphaBlending: Device context is uninitialized.");
+			LOG_WARNING("RHI_Device::EnableAlphaBlending: Device context is uninitialized.");
 			return false;
 		}
 
 		// Set blend state
 		float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		_D3D11_Device::m_deviceContext->OMSetBlendState(enable ? _D3D11_Device::m_blendStateAlphaEnabled : _D3D11_Device::m_blendStateAlphaDisabled, blendFactor, 0xffffffff);
+		_D3D11_Device::deviceContext->OMSetBlendState(enable ? _D3D11_Device::blendStateAlphaEnabled : _D3D11_Device::blendStateAlphaDisabled, blendFactor, 0xffffffff);
 
 		return true;
 	}
@@ -735,27 +750,27 @@ namespace Directus
 	void RHI_Device::EventBegin(const std::string& name)
 	{
 		// Not safe to convert to wstring like that, but it's fast and it looks like it works okay
-		_D3D11_Device::m_eventReporter->BeginEvent(LPCWSTR(name.c_str()));
+		_D3D11_Device::eventReporter->BeginEvent(LPCWSTR(name.c_str()));
 	}
 
 	void RHI_Device::EventEnd()
 	{
-		_D3D11_Device::m_eventReporter->EndEvent();
+		_D3D11_Device::eventReporter->EndEvent();
 	}
 
 	bool RHI_Device::Profiling_CreateQuery(void** query, Query_Type type)
 	{
-		if (!_D3D11_Device::m_device)
+		if (!_D3D11_Device::device)
 			return false;
 
 		D3D11_QUERY_DESC desc;
 		ZeroMemory(&desc, sizeof(desc));
 		desc.Query		= (type == Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
 		desc.MiscFlags	= 0;
-		auto result		= _D3D11_Device::m_device->CreateQuery(&desc, (ID3D11Query**)query);
+		auto result		= _D3D11_Device::device->CreateQuery(&desc, (ID3D11Query**)query);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create ID3D11Query");
+			LOG_ERROR("RHI_Device::Profiling_CreateQuery: Failed to create ID3D11Query");
 			return false;
 		}
 
@@ -764,47 +779,47 @@ namespace Directus
 
 	void RHI_Device::Profiling_QueryStart(void* queryObject)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->Begin((ID3D11Query*)queryObject);
+		_D3D11_Device::deviceContext->Begin((ID3D11Query*)queryObject);
 	}
 
 	void RHI_Device::Profiling_QueryEnd(void* queryObject)
 	{ 
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->End((ID3D11Query*)queryObject);
+		_D3D11_Device::deviceContext->End((ID3D11Query*)queryObject);
 	}
 
 	void RHI_Device::Profiling_GetTimeStamp(void* queryObject)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::m_deviceContext->End((ID3D11Query*)queryObject);
+		_D3D11_Device::deviceContext->End((ID3D11Query*)queryObject);
 	}
 
 	float RHI_Device::Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 			return 0.0f;
 
 		// Wait for data to be available	
-		while (_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryDisjoint, NULL, 0, 0) == S_FALSE){}
+		while (_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryDisjoint, NULL, 0, 0) == S_FALSE){}
 
 		// Check whether timestamps were disjoint during the last frame
 		D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
-		_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryDisjoint, &disjointData, sizeof(disjointData), 0);
+		_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryDisjoint, &disjointData, sizeof(disjointData), 0);
 		if (disjointData.Disjoint)
 			return 0.0f;
 
 		// Get the query data		
 		UINT64 startTime	= 0;
 		UINT64 endTime		= 0;
-		_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryStart, &startTime, sizeof(startTime), 0);
-		_D3D11_Device::m_deviceContext->GetData((ID3D11Query*)queryEnd,	&endTime, sizeof(endTime), 0);
+		_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryStart, &startTime, sizeof(startTime), 0);
+		_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryEnd,	&endTime, sizeof(endTime), 0);
 
 		// Compute delta in milliseconds
 		UINT64 delta		= endTime - startTime;
@@ -815,14 +830,14 @@ namespace Directus
 
 	bool RHI_Device::Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 		{
 			LOG_ERROR("D3D11_Device::Set_InputLayout: Invalid device context");
 			return false;
 		}
 
 		// Set primitive topology
-		_D3D11_Device::m_deviceContext->IASetPrimitiveTopology(d3d11_primitive_topology[primitiveTopology]);
+		_D3D11_Device::deviceContext->IASetPrimitiveTopology(d3d11_primitive_topology[primitiveTopology]);
 		return true;
 	}
 
@@ -833,13 +848,13 @@ namespace Directus
 
 	bool RHI_Device::Set_InputLayout(void* inputLayout)
 	{
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 		{
 			LOG_ERROR("D3D11_Device::Set_InputLayout: Invalid device context");
 			return false;
 		}
 
-		_D3D11_Device::m_deviceContext->IASetInputLayout((ID3D11InputLayout*)inputLayout);
+		_D3D11_Device::deviceContext->IASetInputLayout((ID3D11InputLayout*)inputLayout);
 		return true;
 	}
 
@@ -847,7 +862,7 @@ namespace Directus
 	{
 		return true;
 
-		if (!_D3D11_Device::m_deviceContext)
+		if (!_D3D11_Device::deviceContext)
 		{
 			LOG_WARNING("D3D11_Device::SetCullMode: Device context is uninitialized.");
 			return false;
@@ -855,15 +870,15 @@ namespace Directus
 
 		if (cullMode == Cull_Mode::Cull_None)
 		{
-			_D3D11_Device::m_deviceContext->RSSetState(_D3D11_Device::m_rasterStateCullNone);
+			_D3D11_Device::deviceContext->RSSetState(_D3D11_Device::rasterStateCullNone);
 		}
 		else if (cullMode == Cull_Mode::Cull_Front)
 		{
-			_D3D11_Device::m_deviceContext->RSSetState(_D3D11_Device::m_rasterStateCullFront);
+			_D3D11_Device::deviceContext->RSSetState(_D3D11_Device::rasterStateCullFront);
 		}
 		else if (cullMode == Cull_Mode::Cull_Back)
 		{
-			_D3D11_Device::m_deviceContext->RSSetState(_D3D11_Device::m_rasterStateCullBack);
+			_D3D11_Device::deviceContext->RSSetState(_D3D11_Device::rasterStateCullBack);
 		}
 
 		return true;

@@ -55,6 +55,10 @@ Widget_Profiler::Widget_Profiler(Directus::Context* context) : Widget(context)
 
 void Widget_Profiler::Tick(float deltaTime)
 {
+	// Only profile when user is observing (because it can be expensive)
+	Profiler::Get().SetProfilingEnabled_CPU(m_isVisible);
+	Profiler::Get().SetProfilingEnabled_GPU(m_isVisible);
+
 	if (!m_isVisible)
 		return;
 

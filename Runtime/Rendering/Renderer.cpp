@@ -103,6 +103,7 @@ namespace Directus
 		string shaderDirectory	= g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
 		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
 
+		m_viewport = make_shared<RHI_Viewport>();
 		// Load a font (used for performance metrics)
 		m_font = make_unique<Font>(m_context, fontDir + "CalibriBold.ttf", 12, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
 		// Make a grid (used in editor)
@@ -253,7 +254,9 @@ namespace Directus
 	void Renderer::SetBackBufferAsRenderTarget(bool clear /*= true*/)
 	{
 		m_rhiDevice->Set_BackBufferAsRenderTarget();
-		m_rhiPipeline->SetViewport((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight());
+		m_viewport->SetWidth((float)Settings::Get().Resolution_GetWidth());
+		m_viewport->SetHeight((float)Settings::Get().Resolution_GetHeight());
+		m_rhiPipeline->SetViewport(m_viewport);
 		m_rhiPipeline->Bind();
 		if (clear) m_rhiDevice->ClearBackBuffer(m_camera ? m_camera->GetClearColor() : Vector4(0, 0, 0, 1));
 	}
@@ -270,14 +273,8 @@ namespace Directus
 
 	void Renderer::Render()
 	{
-		TIME_BLOCK_START_MULTI();
-
 		if (!m_rhiDevice || !m_rhiDevice->IsInitialized())
 			return;
-
-		m_isRendering = true;
-		Profiler::Get().Reset();
-		m_frame++;
 
 		// If there is a camera, render the scene
 		if (m_camera)
@@ -299,6 +296,11 @@ namespace Directus
 				m_isRendering = false;
 				return;
 			}
+
+			TIME_BLOCK_START_MULTI();
+			m_isRendering = true;
+			Profiler::Get().Reset();
+			m_frame++;
 
 			Pass_DepthDirectionalLight(GetLightDirectional());
 		
@@ -323,31 +325,32 @@ namespace Directus
 			Pass_DebugGBuffer(m_renderTex3);
 			// Debug rendering (on the target that happens to be bound)
 			Pass_Debug();
+
+			m_isRendering = false;
+			TIME_BLOCK_END_MULTI();
 		}		
 		else // If there is no camera, clear to black
 		{
 			m_rhiDevice->ClearBackBuffer(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
-
-		m_isRendering = false;
-
-		TIME_BLOCK_END_MULTI();
 	}
 
-	void Renderer::SetBackBufferSize(int width, int height)
+	void Renderer::SetBackBufferSize(unsigned int width, unsigned int height)
 	{
 		if (width == 0 || height == 0)
 			return;
 
 		m_rhiDevice->Set_Resolution(width, height);
-		m_rhiPipeline->SetViewport((float)width, (float)height);
+		m_viewport->SetWidth((float)width);
+		m_viewport->SetHeight((float)height);
+		m_rhiPipeline->SetViewport(m_viewport);
 		m_rhiPipeline->Bind();
 	}
 
-	void Renderer::SetResolution(int width, int height)
+	void Renderer::SetResolution(unsigned int width, unsigned int height)
 	{
 		// Return if resolution is invalid
-		if (width <= 0 || height <= 0)
+		if (width == 0 || height == 0)
 		{
 			LOG_WARNING("Renderer::SetResolutionInternal: Invalid resolution");
 			return;
@@ -409,7 +412,7 @@ namespace Directus
 		m_camera = nullptr;
 	}
 
-	void Renderer::RenderTargets_Create(int width, int height)
+	void Renderer::RenderTargets_Create(unsigned int width, unsigned int height)
 	{
 		// Resize everything
 		m_gbuffer.reset();

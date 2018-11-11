@@ -46,7 +46,7 @@ namespace Directus
 		m_nearPlane				= 0.0f;
 		m_farPlane				= 0.0f;
 		m_format				= textureFormat;
-		m_viewport				= RHI_Viewport((float)width, (float)height, m_rhiDevice->Get_Viewport().GetMaxDepth());
+		m_viewport				= make_shared<RHI_Viewport>(0.0f, 0.0f, (float)width, (float)height, 0.0f, m_rhiDevice->Get_Viewport()->GetMaxDepth());
 		m_width					= width;
 		m_height				= height;
 
@@ -60,8 +60,8 @@ namespace Directus
 		{
 			D3D11_TEXTURE2D_DESC textureDesc;
 			ZeroMemory(&textureDesc, sizeof(textureDesc));
-			textureDesc.Width				= (UINT)m_viewport.GetWidth();
-			textureDesc.Height				= (UINT)m_viewport.GetHeight();
+			textureDesc.Width				= (UINT)m_viewport->GetWidth();
+			textureDesc.Height				= (UINT)m_viewport->GetHeight();
 			textureDesc.MipLevels			= 1;
 			textureDesc.ArraySize			= 1;
 			textureDesc.Format				= d3d11_dxgi_format[m_format];
@@ -117,8 +117,8 @@ namespace Directus
 		{
 			D3D11_TEXTURE2D_DESC depthTexDesc;
 			ZeroMemory(&depthTexDesc, sizeof(depthTexDesc));
-			depthTexDesc.Width				= (UINT)m_viewport.GetWidth();
-			depthTexDesc.Height				= (UINT)m_viewport.GetHeight();
+			depthTexDesc.Width				= (UINT)m_viewport->GetWidth();
+			depthTexDesc.Height				= (UINT)m_viewport->GetHeight();
 			depthTexDesc.MipLevels			= 1;
 			depthTexDesc.ArraySize			= 1;
 			depthTexDesc.Format				= d3d11_dxgi_format[depthFormat];
@@ -170,13 +170,13 @@ namespace Directus
 			return false;
 
 		// Clear back buffer
-		m_rhiDevice->ClearRenderTarget(m_renderTargetView, clearColor); 
+		m_rhiDevice->ClearRenderTarget(m_renderTargetView, clearColor);
 
 		// Clear depth buffer.
 		if (m_depthEnabled)
 		{
-			float maxDepth = m_rhiDevice->Get_Viewport().GetMaxDepth();
-			m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, maxDepth, 0); 
+			float maxDepth = m_rhiDevice->Get_Viewport()->GetMaxDepth();
+			m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, maxDepth, 0);
 		}
 
 		return true;
@@ -194,21 +194,6 @@ namespace Directus
 
 		m_nearPlane						= nearPlane;
 		m_farPlane						= farPlane;
-		m_orthographicProjectionMatrix	= Matrix::CreateOrthographicLH(m_viewport.GetWidth(), m_viewport.GetHeight(), nearPlane, farPlane);
-	}
-
-	void* RHI_RenderTexture::GetRenderTargetView()
-	{
-		return m_renderTargetView;
-	}
-
-	void* RHI_RenderTexture::GetShaderResource()
-	{
-		return m_shaderResourceView;
-	}
-
-	void* RHI_RenderTexture::GetDepthStencilView()
-	{
-		return m_depthStencilView;
+		m_orthographicProjectionMatrix	= Matrix::CreateOrthographicLH((float)m_viewport->GetWidth(), (float)m_viewport->GetHeight(), nearPlane, farPlane);
 	}
 }
