@@ -61,7 +61,7 @@ namespace Directus
 		}
 		else if (m_skyboxType == Skybox_Cross)
 		{
-			m_texturePaths = { cubemapDirectory + "cross.jpg" };
+			m_texturePaths = { cubemapDirectory + "cross.jpeg" };
 		}
 	}
 
@@ -156,6 +156,13 @@ namespace Directus
 
 	void Skybox::CreateFromCross(const string& texturePath)
 	{
+		//cubemapDirectory + "hw_morning/X+.tga",	// right
+		//cubemapDirectory + "hw_morning/X-.tga",	// left
+		//cubemapDirectory + "hw_morning/Y+.tga",	// up
+		//cubemapDirectory + "hw_morning/Y-.tga",	// down
+		//cubemapDirectory + "hw_morning/Z-.tga",	// back
+		//cubemapDirectory + "hw_morning/Z+.tga"	// front
+
 		// Load all textures (sides) in a different thread to speed up engine start-up
 		m_context->GetSubsystem<Threading>()->AddTask([this, &texturePath]()
 		{
@@ -168,12 +175,11 @@ namespace Directus
 			m_size		= texture->GetHeight() / 3;
 
 			// Split the cross into 6 individual textures
-			vector<vector<Mipmap>> cubemapData; // vector<texture<mip>>
+			vector<vector<Mipmap>> cubemapData;
 			unsigned int mipWidth	= texture->GetWidth();
 			unsigned int mipHeight	= texture->GetHeight();
-			for (const auto& mip : data)
+			for (vector<std::byte>& mip : data)
 			{
-
 				// Compute size of next mip-map
 				mipWidth	= Max(mipWidth / 2, (unsigned int)1);
 				mipHeight	= Max(mipHeight / 2, (unsigned int)1);
