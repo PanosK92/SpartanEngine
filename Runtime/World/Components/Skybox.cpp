@@ -92,45 +92,42 @@ namespace Directus
 		if (texturePaths.empty())
 			return;
 
-		// Load all textures (sides) in a different thread to speed up engine start-up
-		m_context->GetSubsystem<Threading>()->AddTask([this, &texturePaths]()
+		// Load all textures (sides)
+		vector<vector<vector<std::byte>>> cubemapData;
+
+		// Load all the cubemap sides
+		auto loaderTex = make_shared<RHI_Texture>(GetContext());
 		{
-			vector<vector<vector<std::byte>>> cubemapData;
+			loaderTex->LoadFromFile(texturePaths[0]);
+			cubemapData.emplace_back(loaderTex->Data_Get());
 
-			// Load all the cubemap sides
-			auto loaderTex = make_shared<RHI_Texture>(GetContext());
-			{
-				loaderTex->LoadFromFile(texturePaths[0]);
-				cubemapData.emplace_back(loaderTex->Data_Get());
+			loaderTex->LoadFromFile(texturePaths[1]);
+			cubemapData.emplace_back(loaderTex->Data_Get());
 
-				loaderTex->LoadFromFile(texturePaths[1]);
-				cubemapData.emplace_back(loaderTex->Data_Get());
+			loaderTex->LoadFromFile(texturePaths[2]);
+			cubemapData.emplace_back(loaderTex->Data_Get());
 
-				loaderTex->LoadFromFile(texturePaths[2]);
-				cubemapData.emplace_back(loaderTex->Data_Get());
+			loaderTex->LoadFromFile(texturePaths[3]);
+			cubemapData.emplace_back(loaderTex->Data_Get());
 
-				loaderTex->LoadFromFile(texturePaths[3]);
-				cubemapData.emplace_back(loaderTex->Data_Get());
+			loaderTex->LoadFromFile(texturePaths[4]);
+			cubemapData.emplace_back(loaderTex->Data_Get());
 
-				loaderTex->LoadFromFile(texturePaths[4]);
-				cubemapData.emplace_back(loaderTex->Data_Get());
+			loaderTex->LoadFromFile(texturePaths[5]);
+			cubemapData.emplace_back(loaderTex->Data_Get());
+		}
 
-				loaderTex->LoadFromFile(texturePaths[5]);
-				cubemapData.emplace_back(loaderTex->Data_Get());
-			}
+		m_size		= loaderTex->GetWidth();
+		m_format	= loaderTex->GetFormat();
 
-			m_size		= loaderTex->GetWidth();
-			m_format	= loaderTex->GetFormat();
-
-			// Cubemap
-			{
-				m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
-				m_cubemapTexture->SetResourceName("Cubemap");
-				m_cubemapTexture->SetWidth(m_size);
-				m_cubemapTexture->SetHeight(m_size);
-				m_cubemapTexture->SetGrayscale(false);
-			}
-		});
+		// Cubemap
+		{
+			m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
+			m_cubemapTexture->SetResourceName("Cubemap");
+			m_cubemapTexture->SetWidth(m_size);
+			m_cubemapTexture->SetHeight(m_size);
+			m_cubemapTexture->SetGrayscale(false);
+		}
 
 		// Material
 		{
@@ -163,37 +160,33 @@ namespace Directus
 		//cubemapDirectory + "hw_morning/Z-.tga",	// back
 		//cubemapDirectory + "hw_morning/Z+.tga"	// front
 
-		// Load all textures (sides) in a different thread to speed up engine start-up
-		m_context->GetSubsystem<Threading>()->AddTask([this, &texturePath]()
+		// Load all textures (sides)
+		vector<Mipmap> data; // vector<mip<data>>>
+		auto texture = make_shared<RHI_Texture>(GetContext());
+		texture->LoadFromFile(texturePath);
+		data		= texture->Data_Get();
+		m_format	= texture->GetFormat();
+		m_size		= texture->GetHeight() / 3;
+
+		// Split the cross into 6 individual textures
+		vector<vector<Mipmap>> cubemapData;
+		unsigned int mipWidth	= texture->GetWidth();
+		unsigned int mipHeight	= texture->GetHeight();
+		for (vector<std::byte>& mip : data)
 		{
-			// Load texture
-			vector<Mipmap> data; // vector<mip<data>>>
-			auto texture = make_shared<RHI_Texture>(GetContext());
-			texture->LoadFromFile(texturePath);
-			data		= texture->Data_Get();
-			m_format	= texture->GetFormat();
-			m_size		= texture->GetHeight() / 3;
+			// Compute size of next mip-map
+			mipWidth	= Max(mipWidth / 2, (unsigned int)1);
+			mipHeight	= Max(mipHeight / 2, (unsigned int)1);
+		}
 
-			// Split the cross into 6 individual textures
-			vector<vector<Mipmap>> cubemapData;
-			unsigned int mipWidth	= texture->GetWidth();
-			unsigned int mipHeight	= texture->GetHeight();
-			for (vector<std::byte>& mip : data)
-			{
-				// Compute size of next mip-map
-				mipWidth	= Max(mipWidth / 2, (unsigned int)1);
-				mipHeight	= Max(mipHeight / 2, (unsigned int)1);
-			}
-
-			// Cubemap
-			{
-				m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
-				m_cubemapTexture->SetResourceName("Cubemap");
-				m_cubemapTexture->SetWidth(m_size);
-				m_cubemapTexture->SetHeight(m_size);
-				m_cubemapTexture->SetGrayscale(false);
-			}
-		});
+		// Cubemap
+		{
+			m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
+			m_cubemapTexture->SetResourceName("Cubemap");
+			m_cubemapTexture->SetWidth(m_size);
+			m_cubemapTexture->SetHeight(m_size);
+			m_cubemapTexture->SetGrayscale(false);
+		}
 
 		// Material
 		{
