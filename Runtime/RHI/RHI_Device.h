@@ -57,10 +57,10 @@ namespace Directus
 		bool Set_Resolution(unsigned int width, unsigned int height);
 		//===========================================================
 
-		//= VIEWPORT =====================================
-		RHI_Viewport Get_Viewport() { return m_viewport; }
-		void Set_Viewport(const RHI_Viewport& viewport);
-		//================================================
+		//= VIEWPORT ======================================================
+		std::shared_ptr<RHI_Viewport> Get_Viewport() { return m_viewport; }
+		void Set_Viewport(const std::shared_ptr<RHI_Viewport>& viewport);
+		//=================================================================
 
 		//= MISC ============================================================
 		bool Set_DepthEnabled(bool enable);
@@ -93,7 +93,7 @@ namespace Directus
 
 	private:
 		Texture_Format m_format;
-		RHI_Viewport m_viewport;
+		std::shared_ptr<RHI_Viewport> m_viewport;
 		bool m_depthEnabled;
 		bool m_alphaBlendingEnabled;
 		bool m_initialized		= false;

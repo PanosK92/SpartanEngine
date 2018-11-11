@@ -89,8 +89,7 @@ namespace Directus
 		void SetFillMode(Fill_Mode filleMode);
 
 		// Viewport
-		void SetViewport(float width, float height);
-		void SetViewport(const RHI_Viewport& viewport);
+		void SetViewport(const std::shared_ptr<RHI_Viewport>& viewport);
 
 		// Bind to the GPU
 		bool Bind();
@@ -145,7 +144,7 @@ namespace Directus
 		bool m_pixelShaderDirty;
 
 		// Viewport
-		RHI_Viewport m_viewport;
+		std::shared_ptr<RHI_Viewport> m_viewport;
 		bool m_viewportDirty;
 
 		// Render targets

@@ -81,11 +81,9 @@ namespace Directus
 		// Multi-timing
 		void TimeBlockStart_Multi(const char* funcName);
 		void TimeBlockEnd_Multi(const char* funcName);
-
 		// CPU timing
 		void TimeBlockStart_CPU(const char* funcName);
 		void TimeBlockEnd_CPU(const char* funcName);
-
 		// GPU timing
 		void TimeBlockStart_GPU(const char* funcName);
 		void TimeBlockEnd_GPU(const char* funcName);

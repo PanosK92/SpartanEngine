@@ -273,15 +273,16 @@ namespace Directus
 		m_fillModeDirty = true;
 	}
 
-	void RHI_Pipeline::SetViewport(float width, float height)
+	void RHI_Pipeline::SetViewport(const shared_ptr<RHI_Viewport>& viewport)
 	{
-		SetViewport(RHI_Viewport(0.0f, 0.0f, width, height, 0.0f, 1.0f));
-	}
-
-	void RHI_Pipeline::SetViewport(const RHI_Viewport& viewport)
-	{
-		if (m_viewport == viewport)
+		if (!viewport)
 			return;
+
+		if (m_viewport)
+		{
+			if (*m_viewport.get() == *viewport.get())
+				return;
+		}
 
 		m_viewport		= viewport;
 		m_viewportDirty = true;
@@ -319,7 +320,7 @@ namespace Directus
 
 				if (m_depthStencil)
 				{
-					m_rhiDevice->ClearDepthStencil(m_depthStencil, Clear_Depth, m_viewport.GetMaxDepth(), 1);
+					m_rhiDevice->ClearDepthStencil(m_depthStencil, Clear_Depth, m_viewport->GetMaxDepth(), 1);
 				}
 			}
 
@@ -354,7 +355,7 @@ namespace Directus
 		if (m_viewportDirty)
 		{
 			m_rhiDevice->Set_Viewport(m_viewport);
-			Settings::Get().Viewport_Set((int)m_viewport.GetWidth(), (int)m_viewport.GetHeight());
+			Settings::Get().Viewport_Set((int)m_viewport->GetWidth(), (int)m_viewport->GetHeight());
 			m_viewportDirty = false;
 		}
 

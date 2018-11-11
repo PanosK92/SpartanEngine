@@ -46,8 +46,8 @@ namespace Directus
 		m_scene						= nullptr;
 		m_timer						= nullptr;
 		m_resourceManager			= nullptr;
-		m_gpuProfiling				= true;	// expensive
-		m_cpuProfiling				= true;	// cheap
+		m_gpuProfiling				= false; // expensive
+		m_cpuProfiling				= false; // cheap
 		m_profilingFrequencySec		= 0.0f;
 		m_profilingLastUpdateTime	= 0;
 		m_fps						= 0.0f;

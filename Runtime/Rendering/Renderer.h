@@ -96,9 +96,9 @@ namespace Directus
 		void Render();
 
 		// The back-buffer is the final output (should match the display/window size)
-		void SetBackBufferSize(int width, int height);
+		void SetBackBufferSize(unsigned int width, unsigned int height);
 		// The actual frame that all rendering takes place (or the viewport window in the editor)
-		void SetResolution(int width, int height);
+		void SetResolution(unsigned int width, unsigned int height);
 
 		//= RENDER MODE ======================================================================
 		// Returns all render mode flags
@@ -126,7 +126,7 @@ namespace Directus
 		Camera* GetCamera()			{ return m_camera; }
 
 	private:
-		void RenderTargets_Create(int width, int height);
+		void RenderTargets_Create(unsigned int width, unsigned int height);
 
 		void Renderables_Acquire(const Variant& renderables);
 		void Renderables_Sort(std::vector<Actor*>* renderables);
@@ -211,6 +211,7 @@ namespace Directus
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
 		std::unique_ptr<GBuffer> m_gbuffer;
+		std::shared_ptr<RHI_Viewport> m_viewport;
 		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
 		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;

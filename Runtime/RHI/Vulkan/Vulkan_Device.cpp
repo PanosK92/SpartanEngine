@@ -123,8 +123,8 @@ namespace Directus
 		m_depthEnabled			= true;
 		m_alphaBlendingEnabled	= false;
 		m_initialized			= false;
-		m_device				= nullptr;
-		m_deviceContext			= nullptr;
+		device					= nullptr;
+		deviceContext			= nullptr;
 
 		Settings::Get().m_versionVulkan = to_string(VK_API_VERSION_1_0);
 		LOG_INFO(Settings::Get().m_versionVulkan);
@@ -227,8 +227,8 @@ namespace Directus
 		}
 
 		//LOGF_INFO("Vulkan_Device::RHI_Device: Feature level %s - %s", featureLevelStr.data(), D3D11_Device::GetAdapterDescription(adapter).data());
-		m_device		= nullptr;
-		m_deviceContext = nullptr;
+		device		= nullptr;
+		deviceContext = nullptr;
 		m_initialized	= false;
 	}
 

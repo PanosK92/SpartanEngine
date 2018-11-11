@@ -46,11 +46,11 @@ namespace Directus
 		bool Clear(const Math::Vector4& clearColor);
 		bool Clear(float red, float green, float blue, float alpha);
 		void ComputeOrthographicProjectionMatrix(float nearPlane, float farPlane);
-		void* GetRenderTargetView();
-		void* GetShaderResource();
-		void* GetDepthStencilView();
+		void* GetRenderTargetView()								{ return m_renderTargetView; }
+		void* GetShaderResource()								{ return m_shaderResourceView; }
+		void* GetDepthStencilView()								{ return m_depthStencilView; }
 		const Math::Matrix& GetOrthographicProjectionMatrix()	{ return m_orthographicProjectionMatrix; }
-		const RHI_Viewport& GetViewport()						{ return m_viewport; }
+		const std::shared_ptr<RHI_Viewport> GetViewport()		{ return m_viewport; }
 		bool GetDepthEnabled()									{ return m_depthEnabled; }
 		unsigned int GetWidth()									{ return m_width; }
 		unsigned int GetHeight()								{ return m_height; }
@@ -59,7 +59,7 @@ namespace Directus
 		bool m_depthEnabled = false;
 		float m_nearPlane, m_farPlane;
 		Math::Matrix m_orthographicProjectionMatrix;
-		RHI_Viewport m_viewport;
+		std::shared_ptr<RHI_Viewport> m_viewport;
 		Texture_Format m_format;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		unsigned int m_width;
