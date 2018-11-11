@@ -204,7 +204,7 @@ namespace Directus
 			// Create input layout
 			if (!m_inputLayout->Create(blobVS, inputLayout))
 			{
-				LOGF_ERROR("D3D11_Shader::SetInputLayout: Failed to create vertex input layout for %s", FileSystem::GetFileNameFromFilePath(m_filePath).data());
+				LOGF_ERROR("D3D11_Shader::SetInputLayout: Failed to create vertex input layout for %s", FileSystem::GetFileNameFromFilePath(m_filePath).c_str());
 			}
 
 			SafeRelease(blobVS);

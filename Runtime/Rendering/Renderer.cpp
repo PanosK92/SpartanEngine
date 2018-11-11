@@ -129,10 +129,10 @@ namespace Directus
 			m_shaderLight = make_shared<LightShader>(m_rhiDevice);
 			m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_context);
 
-			// Line
-			m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderLine->Compile_VertexPixel(shaderDirectory + "Line.hlsl", Input_PositionColor, m_context);
-			m_shaderLine->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
+			// Transparent
+			m_shaderTransparent = make_shared<RHI_Shader>(m_rhiDevice);
+			m_shaderTransparent->Compile_VertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureTBN, m_context);
+			m_shaderTransparent->AddBuffer<Struct_Transparency>(0, Buffer_Global);
 
 			// Depth
 			m_shaderLightDepth = make_shared<RHI_Shader>(m_rhiDevice);
@@ -213,10 +213,10 @@ namespace Directus
 			m_shaderShadowing->Compile_VertexPixel(shaderDirectory + "Shadowing.hlsl", Input_PositionTexture, m_context);
 			m_shaderShadowing->AddBuffer<Struct_Shadowing>(0, Buffer_Global);
 
-			// Transparent
-			m_shaderTransparent = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderTransparent->Compile_VertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureTBN, m_context);
-			m_shaderTransparent->AddBuffer<Struct_Transparency>(0, Buffer_Global);
+			// Line
+			m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
+			m_shaderLine->Compile_VertexPixel(shaderDirectory + "Line.hlsl", Input_PositionColor, m_context);
+			m_shaderLine->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
 		}
 
 		// PIPELINE STATES

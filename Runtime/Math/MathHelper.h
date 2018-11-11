@@ -86,6 +86,9 @@ namespace Directus::Math::Helper
 	template <typename T>
 	int Sign(T x) { return (T(0) < x) - (x < T(0)); }
 
+	template <class T>
+	T Pow(T x, T y) { return pow(x, y); }
+
 	// Reduces a given angle to a value between PI and -PI
 	// The angle to reduce, in radians
 	inline float WrapAngle(float angle)

@@ -88,12 +88,12 @@ namespace Directus
 
 		void Initialize();
 
-		//= VIEWPORT ===========================================================================================================
-		unsigned int Viewport_GetWidth()							{ return (unsigned int)m_viewport.x; }
-		unsigned int Viewport_GetHeight()							{ return (unsigned int)m_viewport.y; }
-		const Math::Vector2& Viewport_Get()							{ return m_viewport; }
-		void Viewport_Set(unsigned int width, unsigned int height)	{ m_viewport = Math::Vector2((float)width, (float)height); }
-		//======================================================================================================================
+		//= VIEWPORT =================================================================================
+		float Viewport_GetWidth()						{ return m_viewport.x; }
+		float Viewport_GetHeight()						{ return m_viewport.y; }
+		const Math::Vector2& Viewport_Get()				{ return m_viewport; }
+		void Viewport_Set(float width, float height)	{ m_viewport = Math::Vector2(width, height); }
+		//============================================================================================
 
 		//= RESOLUTION =================================================================================================================
 		void Resolution_Set(int width, int height)				{ m_resolution = Math::Vector2((float)width, (float)height); }
