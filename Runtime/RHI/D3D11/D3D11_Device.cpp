@@ -749,13 +749,28 @@ namespace Directus
 
 	void RHI_Device::EventBegin(const std::string& name)
 	{
-		// Not safe to convert to wstring like that, but it's fast and it looks like it works okay
-		_D3D11_Device::eventReporter->BeginEvent(LPCWSTR(name.c_str()));
+		#ifdef DEBUG
+		auto s2ws = [](const std::string& s)
+		{
+			int len;
+			int slength = (int)s.length() + 1;
+			len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
+			auto buf = new wchar_t[len];
+			MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
+			std::wstring r(buf);
+			delete[] buf;
+			return r;
+		};
+
+		_D3D11_Device::eventReporter->BeginEvent(s2ws(name).c_str());
+		#endif
 	}
 
 	void RHI_Device::EventEnd()
 	{
+		#ifdef DEBUG
 		_D3D11_Device::eventReporter->EndEvent();
+		#endif
 	}
 
 	bool RHI_Device::Profiling_CreateQuery(void** query, Query_Type type)
