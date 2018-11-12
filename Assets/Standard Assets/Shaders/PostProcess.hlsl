@@ -54,7 +54,8 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 	
 #if PASS_BLUR_BOX
-	color = Pass_BlurBox(texCoord, texelSize, 4, sourceTexture, bilinearSampler);
+	float ssaoBlur = 8.0f;
+	color = Pass_BlurBox(texCoord, texelSize, ssaoBlur, sourceTexture, bilinearSampler);
 #endif
 
 #if PASS_BLUR_GAUSSIAN_H

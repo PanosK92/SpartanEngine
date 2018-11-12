@@ -9,10 +9,11 @@ Texture2D texNoise : register(t2);
 Texture2D lightDepthTex[3] : register(t3);
 //==========================================
 
-//= SAMPLERS ===============================
+//= SAMPLERS ===================================
 SamplerState samplerPoint : register(s0);
-SamplerState samplerLinear : register(s1);
-//==========================================
+SamplerState samplerLinear_clamp : register(s1);
+SamplerState samplerLinear_wrap : register(s2);
+//==============================================
 
 //= CONSTANT BUFFERS =====================
 cbuffer DefaultBuffer : register(b0)
@@ -59,16 +60,16 @@ PixelInputType mainVS(Vertex_PosUv input)
 float2 mainPS(PixelInputType input) : SV_TARGET
 {
     float2 texCoord     = input.uv;
-    float3 normal       = texNormal.Sample(samplerPoint, texCoord).rgb;
-    float2 depthSample  = texDepth.Sample(samplerPoint, texCoord).rg;
+    float3 normal       = texNormal.Sample(samplerLinear_clamp, texCoord).rgb;
+    float2 depthSample  = texDepth.Sample(samplerLinear_clamp, texCoord).rg;
     float depth_linear  = depthSample.r;
     float depth_cs      = depthSample.g;
     float3 positionWS   = ReconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
 	
 	
-	//== SSAO =================================
-    float ssao = SSAO(texCoord, samplerLinear);
-	//=========================================
+	//== SSAO ===========================================================
+    float ssao = SSAO(texCoord, samplerLinear_clamp, samplerLinear_wrap);
+	//===================================================================
 	
 	//= SHADOW MAPPING ===========================================================================	
     float shadow = 1.0f;
