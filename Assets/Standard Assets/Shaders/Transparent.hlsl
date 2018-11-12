@@ -67,13 +67,13 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	float3 environmentColor 	= ToLinear(environmentTex.Sample(samplerLinear, reflection)).rgb;
 
 	// Intensity of the specular light
-	float specularHardness 	= roughness;
+	float specularHardness 	= 0;
 	float3 H 				= normalize(lightDir + view);
 	float NdotH 			= dot(normal, H);
 	float intensity 		= pow(saturate(NdotH), specularHardness);
 		
     float alpha         = color.a;
-    float3 finalColor   = saturate(color.rgb + environmentColor * intensity);
+    float3 finalColor   = saturate(color.rgb * intensity + environmentColor * (1.0f - specularHardness));
 
     return float4(finalColor, alpha);
 }
