@@ -91,12 +91,9 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	 
 	// Shadows + SSAO
     float2 shadowing    = texShadowing.Sample(samplerLinear, texCoord).rg;
-    float shadow        = shadowing.r;
+    float dirShadow     = shadowing.r;
     float ssao          = shadowing.g;
-    float count         = step(shadow, 0.01f);
-    count               += step(ssao, 0.01f);
-    count               += step(occlusionTex, 0.01f);
-    float occlusion     = saturate((shadow + ssao + occlusionTex) / count);
+    float occlusion     = ssao * occlusionTex;
 
     if (specular.a == 1.0f) // Render technique
     {
@@ -110,10 +107,10 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 
 	// Compute
     directionalLight.color      = dirLightColor.rgb;
-    directionalLight.intensity  = dirLightIntensity.r * occlusion;
+    directionalLight.intensity  = dirLightIntensity.r * dirShadow * occlusion;
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
 	
-    float fakeNight = clamp(dirLightIntensity.r, 0.01f, 1.0f) * shadow;
+    float fakeNight = clamp(dirLightIntensity.r, 0.01f, 1.0f) * dirShadow;
     finalColor += ImageBasedLighting(material, directionalLight.direction, normal, viewDir, samplerLinear) * fakeNight;
 	
 	// Compute illumination
