@@ -182,6 +182,7 @@ namespace Directus
 		std::shared_ptr<RHI_Sampler> m_samplerPointClampAlways;
 		std::shared_ptr<RHI_Sampler> m_samplerPointClampGreater;
 		std::shared_ptr<RHI_Sampler> m_samplerLinearClampGreater;
+		std::shared_ptr<RHI_Sampler> m_samplerLinearWrapGreater;
 		std::shared_ptr<RHI_Sampler> m_samplerLinearClampAlways;
 		std::shared_ptr<RHI_Sampler> m_samplerBilinearClampAlways;
 		std::shared_ptr<RHI_Sampler> m_samplerAnisotropicWrapAlways;

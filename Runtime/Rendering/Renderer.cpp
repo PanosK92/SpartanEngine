@@ -118,9 +118,10 @@ namespace Directus
 			m_samplerPointClampAlways		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_Always);
 			m_samplerPointClampGreater		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
 			m_samplerLinearClampGreater		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Linear,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
+			m_samplerLinearWrapGreater		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Linear,			Texture_Address_Wrap,	Texture_Comparison_GreaterEqual);
 			m_samplerLinearClampAlways		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Linear,			Texture_Address_Clamp,	Texture_Comparison_Always);
 			m_samplerBilinearClampAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_Always);
-			m_samplerAnisotropicWrapAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,	Texture_Address_Wrap,	Texture_Comparison_Always);
+			m_samplerAnisotropicWrapAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,	Texture_Address_Wrap,	Texture_Comparison_Always);	
 		}
 
 		// SHADERS
@@ -751,10 +752,10 @@ namespace Directus
 		m_rhiPipeline->SetCullMode(Cull_Back);
 		
 		// Shadow mapping + SSAO
-		Pass_Shadowing(GetLightDirectional(), texOut);
+		Pass_Shadowing(GetLightDirectional(), texIn);
 
 		// Blur the shadows and the SSAO
-		Pass_Blur(texOut, texIn);
+		Pass_Blur(texIn, texOut);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -1073,8 +1074,9 @@ namespace Directus
 			m_rhiPipeline->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(1));
 			m_rhiPipeline->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(2));
 		}
-		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);		// Shadow mapping
-		m_rhiPipeline->SetSampler(m_samplerLinearClampGreater);	// SSAO
+		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);	// Shadow mapping
+		m_rhiPipeline->SetSampler(m_samplerLinearClampGreater);	// SSAO (clamp)
+		m_rhiPipeline->SetSampler(m_samplerLinearWrapGreater); // SSAO noise texture (wrap)
 		auto buffer = Struct_Shadowing
 			(
 				m_wvp_baseOrthographic,
