@@ -152,10 +152,10 @@ namespace Directus
 		//= RENDER TEXTURES ======================================
 		std::shared_ptr<RHI_RenderTexture> m_renderTex1;
 		std::shared_ptr<RHI_RenderTexture> m_renderTex2;
-		std::shared_ptr<RHI_RenderTexture> m_renderTex3;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarterRes1;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarterRes2;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexShadowing;
+		std::shared_ptr<RHI_RenderTexture> m_finalFrame;
 		//========================================================
 
 		//= SHADERS ============================================
