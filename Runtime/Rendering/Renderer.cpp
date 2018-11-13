@@ -264,7 +264,7 @@ namespace Directus
 
 	void* Renderer::GetFrameShaderResource()
 	{
-		return m_renderTex3 ? m_renderTex3->GetShaderResource() : nullptr;
+		return m_finalFrame ? m_finalFrame->GetShaderResource() : nullptr;
 	}
 
 	void Renderer::Present()
@@ -319,11 +319,11 @@ namespace Directus
 
 			Pass_PostLight(
 				m_renderTex1,	// IN:	Render texture - Light pass result
-				m_renderTex3	// OUT: Render texture - Result
+				m_finalFrame	// OUT: Render texture - Result
 			);
 
-			Pass_Transparent(m_renderTex3);
-			Pass_DebugGBuffer(m_renderTex3);
+			Pass_Transparent(m_finalFrame);
+			Pass_DebugGBuffer(m_finalFrame);
 			// Debug rendering (on the target that happens to be bound)
 			Pass_Debug();
 
@@ -429,8 +429,8 @@ namespace Directus
 		m_renderTex2.reset();
 		m_renderTex2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
 
-		m_renderTex3.reset();
-		m_renderTex3 = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
+		m_finalFrame.reset();
+		m_finalFrame = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexQuarterRes1.reset();
 		m_renderTexQuarterRes1 = make_unique<RHI_RenderTexture>(m_rhiDevice, int(width * 0.25f), int(height * 0.25f), Texture_Format_R16G16B16A16_FLOAT);
@@ -788,7 +788,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Specular));
 		m_rhiPipeline->SetTexture(texIn);
-		m_rhiPipeline->SetTexture(m_renderTex3); // previous frame for SSR // Todo SSR
+		m_rhiPipeline->SetTexture(m_finalFrame); // previous frame for SSR // Todo SSR
 		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : nullptr);
 		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);	
 		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer());
@@ -1051,13 +1051,8 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_Shadowing(
-		Light* inDirectionalLight,
-		shared_ptr<RHI_RenderTexture>& texOut)
+	void Renderer::Pass_Shadowing(Light* inDirectionalLight, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		if (!inDirectionalLight)
-			return;
-
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Shadowing");
 
@@ -1076,7 +1071,7 @@ namespace Directus
 		}
 		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);	// Shadow mapping
 		m_rhiPipeline->SetSampler(m_samplerLinearClampGreater);	// SSAO (clamp)
-		m_rhiPipeline->SetSampler(m_samplerLinearWrapGreater); // SSAO noise texture (wrap)
+		m_rhiPipeline->SetSampler(m_samplerLinearWrapGreater);	// SSAO noise texture (wrap)
 		auto buffer = Struct_Shadowing
 			(
 				m_wvp_baseOrthographic,
@@ -1088,7 +1083,6 @@ namespace Directus
 		m_shaderShadowing->UpdateBuffer(&buffer);	
 		m_rhiPipeline->SetConstantBuffer(m_shaderShadowing->GetConstantBuffer());
 		m_rhiPipeline->Bind();
-
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();

@@ -101,20 +101,23 @@ namespace Directus
 			// Fill the buffer
 			m_wvpOrtho					= mWVPortho;
 			m_viewprojectionInverted	= mViewProjectionInverted;
+			m_doShadowMapping			= false;
+			m_resolution				= resolution;
+			m_nearPlane					= camera->GetNearPlane();
+			m_farPlane					= camera->GetFarPlane();
+			m_padding					= Math::Vector3::Zero;
 
-			auto mLightView = dirLight->GetViewMatrix();
-			m_mLightViewProjection[0] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
-			m_mLightViewProjection[1] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
-			m_mLightViewProjection[2] = mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
-
-			m_shadowSplits			= Math::Vector4(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1), 0, 0);
-			m_lightDir				= dirLight->GetDirection();
-			m_shadowMapResolution	= (float)dirLight->ShadowMap_GetResolution();
-			m_resolution			= resolution;
-			m_nearPlane				= camera->GetNearPlane();
-			m_farPlane				= camera->GetFarPlane();
-			m_doShadowMapping		= dirLight->GetCastShadows();
-			m_padding				= Math::Vector3::Zero;
+			if (dirLight)
+			{
+				auto mLightView				= dirLight->GetViewMatrix();
+				m_mLightViewProjection[0]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
+				m_mLightViewProjection[1]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
+				m_mLightViewProjection[2]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
+				m_shadowSplits				= Math::Vector4(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1), 0, 0);
+				m_lightDir					= dirLight->GetDirection();
+				m_shadowMapResolution		= (float)dirLight->ShadowMap_GetResolution();
+				m_doShadowMapping			= dirLight->GetCastShadows();
+			}
 		}
 
 		Math::Matrix m_wvpOrtho;
