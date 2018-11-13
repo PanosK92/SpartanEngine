@@ -138,7 +138,7 @@ namespace Directus
 			// Depth
 			m_shaderLightDepth = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderLightDepth->Compile_VertexPixel(shaderDirectory + "ShadowingDepth.hlsl", Input_Position, m_context);
-			m_shaderLightDepth->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
+			m_shaderLightDepth->AddBuffer<Struct_Matrix_Matrix_Float>(0, Buffer_Global);
 
 			// Font
 			m_shaderFont = make_shared<RHI_Shader>(m_rhiDevice);
@@ -614,7 +614,9 @@ namespace Directus
 					//if (!m_directionalLight->IsInViewFrustum(obj_renderable, i))
 					//continue;
 
-					auto buffer = Struct_Matrix(actor->GetTransform_PtrRaw()->GetWorldTransform() * light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i));
+					auto worldView				= actor->GetTransform_PtrRaw()->GetWorldTransform() * light->GetViewMatrix();
+					auto worldViewProjection	= worldView * light->ShadowMap_GetProjectionMatrix(i);
+					auto buffer					= Struct_Matrix_Matrix_Float(worldView, worldViewProjection, m_camera->GetFarPlane());
 					m_shaderLightDepth->UpdateBuffer(&buffer);
 					m_rhiPipeline->SetConstantBuffer(m_shaderLightDepth->GetConstantBuffer());
 					m_rhiPipeline->Bind();
