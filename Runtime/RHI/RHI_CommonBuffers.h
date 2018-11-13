@@ -40,6 +40,22 @@ namespace Directus
 		Math::Matrix m_matrix;
 	};
 
+	struct Struct_Matrix_Matrix_Float
+	{
+		Struct_Matrix_Matrix_Float(const Math::Matrix& matrix1, const Math::Matrix& matrix2, float value)
+		{
+			m_matrix1	= matrix1;
+			m_matrix2	= matrix2;
+			m_value		= value;
+			padding		= Math::Vector3::Zero;
+		};
+
+		Math::Matrix m_matrix1;
+		Math::Matrix m_matrix2;
+		float m_value;
+		Math::Vector3 padding;
+	};
+
 	struct Struct_Matrix_Vector4
 	{
 		Struct_Matrix_Vector4(const Math::Matrix& matrix, const Math::Vector4& vector4)
@@ -110,6 +126,7 @@ namespace Directus
 			if (dirLight)
 			{
 				auto mLightView				= dirLight->GetViewMatrix();
+				m_mLightView				= mLightView;
 				m_mLightViewProjection[0]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
 				m_mLightViewProjection[1]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
 				m_mLightViewProjection[2]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
@@ -122,6 +139,7 @@ namespace Directus
 
 		Math::Matrix m_wvpOrtho;
 		Math::Matrix m_viewprojectionInverted;
+		Math::Matrix m_mLightView;
 		Math::Matrix m_mLightViewProjection[3];
 		Math::Vector4 m_shadowSplits;
 		Math::Vector3 m_lightDir;

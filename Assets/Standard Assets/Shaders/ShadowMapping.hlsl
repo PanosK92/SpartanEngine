@@ -58,7 +58,7 @@ float random(float2 seed2)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float4 pos, float3 normal, float3 lightDir, float bias)
+float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float4 pos, float3 normal, float3 lightDir, float compareDepth)
 {	
 	// Re-homogenize position after interpolation
     pos.xyz /= pos.w;
@@ -72,32 +72,29 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	pos.x = pos.x / 2.0f + 0.5f;
 	pos.y = pos.y / -2.0f + 0.5f;
 
-	// Apply shadow map bias
-	pos.z -= bias;
-
 	// Interpolation + PCF
-	float amountLit = sampleShadowMapPCF(shadowMap, samplerState, shadowMapResolution, pos.xy, pos.z);
+	//float amountLit = sampleShadowMapPCF(shadowMap, samplerState, shadowMapResolution, pos.xy, compareDepth);
 	
 	// Stratified Poisson Sampling
 	// Poisson sampling for shadow map
-	//float packing = 2000.0f; // how close together are the samples
-	//float2 poissonDisk[4] = 
-	//{
-	//  float2( -0.94201624f, -0.39906216f ),
-	//  float2( 0.94558609f, -0.76890725f ),
-	//  float2( -0.094184101f, -0.92938870f ),
-	//  float2( 0.34495938f, 0.29387760f )
-	//};
-    //
-	//uint samples = 8;
-	//float amountLit = 0.0f;
-	//[unroll(samples)]
-	//for (uint i = 0; i < samples; i++)
-	//{
-	//	uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-	//	amountLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + (poissonDisk[index] / packing), pos.z);
-	//}	
-	//amountLit /= (float)samples;
+	float packing = 1000.0f; // how close together are the samples
+	float2 poissonDisk[4] = 
+	{
+		float2( -0.94201624f, -0.39906216f ),
+		float2( 0.94558609f, -0.76890725f ),
+		float2( -0.094184101f, -0.92938870f ),
+		float2( 0.34495938f, 0.29387760f )
+	};
+    
+	uint samples = 8;
+	float amountLit = 0.0f;
+	[unroll(samples)]
+	for (uint i = 0; i < samples; i++)
+	{
+		uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+		amountLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + (poissonDisk[index] / packing), compareDepth);
+	}	
+	amountLit /= (float)samples;
 	
 	return amountLit;
 }

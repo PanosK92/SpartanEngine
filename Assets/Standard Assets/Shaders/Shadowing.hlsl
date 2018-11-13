@@ -20,6 +20,7 @@ cbuffer DefaultBuffer : register(b0)
 {
     matrix mWorldViewProjectionOrtho;
     matrix mViewProjectionInverse;
+	matrix mLightView;
     matrix mLightViewProjection[CASCADES];
     float4 shadowSplits;
     float3 lightDir;
@@ -81,31 +82,27 @@ float2 mainPS(PixelInputType input) : SV_TARGET
 		
         float cascadeCompensation   = (cascadeIndex + 1.0f) * 2.0f; // the further the cascade, the more ugly under sharp angles, damn
         float shadowTexel           = 1.0f / shadowMapResolution;
-        float bias                  = 2.0f * shadowTexel * cascadeCompensation;
         float normalOffset          = 70.0f * cascadeCompensation;
         float NdotL                 = dot(normal, lightDir);
         float cosAngle              = saturate(1.0f - NdotL);
         float3 scaledNormalOffset   = normal * (normalOffset * cosAngle * shadowTexel);
+		float4 worldPos 			= float4(positionWS + scaledNormalOffset, 1.0f);
+		float compareDepth			= mul(worldPos, mLightView).z / farPlane;
 		
-		// Perform shadow mapping only if the polygons are back-faced
-		// from the light, to avoid self-shadowing artifacts
-		//if (NdotL < 0.0f)
-		{
-            if (cascadeIndex == 0)
-            {
-                float4 lightPos = mul(float4(positionWS + scaledNormalOffset, 1.0f), mLightViewProjection[0]);
-                shadow = ShadowMapping(lightDepthTex[0], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, bias);
-            }
-            else if (cascadeIndex == 1)
-            {
-                float4 lightPos = mul(float4(positionWS + scaledNormalOffset, 1.0f), mLightViewProjection[1]);
-                shadow = ShadowMapping(lightDepthTex[1], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, bias);
-            }
-            else if (cascadeIndex == 2)
-            {
-                float4 lightPos = mul(float4(positionWS + scaledNormalOffset, 1.0f), mLightViewProjection[2]);
-                shadow = ShadowMapping(lightDepthTex[2], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, bias);
-            }
+        if (cascadeIndex == 0)
+        {
+            float4 lightPos = mul(worldPos, mLightViewProjection[0]);
+            shadow = ShadowMapping(lightDepthTex[0], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, compareDepth);
+        }
+        else if (cascadeIndex == 1)
+        {
+            float4 lightPos = mul(worldPos, mLightViewProjection[1]);
+            shadow = ShadowMapping(lightDepthTex[1], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, compareDepth);
+        }
+        else if (cascadeIndex == 2)
+        {
+            float4 lightPos = mul(worldPos, mLightViewProjection[2]);
+            shadow = ShadowMapping(lightDepthTex[2], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, compareDepth);
         }
     }
 	//============================================================================================
