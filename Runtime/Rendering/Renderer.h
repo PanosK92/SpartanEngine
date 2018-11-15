@@ -215,11 +215,11 @@ namespace Directus
 		std::shared_ptr<RHI_Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
 		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
-		Math::Matrix m_mV;
-		Math::Matrix m_mP_perspective;
-		Math::Matrix m_mP_orthographic;
-		Math::Matrix m_mV_base;
-		Math::Matrix m_wvp_perspective;
+		Math::Matrix m_mView;
+		Math::Matrix m_mViewBase;
+		Math::Matrix m_mProjection;
+		Math::Matrix m_mProjectionOtrhographic;
+		Math::Matrix m_mViewProjectionPerspective;
 		Math::Matrix m_wvp_baseOrthographic;
 		float m_nearPlane;
 		float m_farPlane;

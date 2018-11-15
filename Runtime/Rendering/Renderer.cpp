@@ -217,7 +217,7 @@ namespace Directus
 			// Line
 			m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderLine->Compile_VertexPixel(shaderDirectory + "Line.hlsl", Input_PositionColor, m_context);
-			m_shaderLine->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
+			m_shaderLine->AddBuffer<Struct_Matrix_Matrix>(0, Buffer_VertexShader);
 		}
 
 		// PIPELINE STATES
@@ -283,14 +283,14 @@ namespace Directus
 			return;
 		}
 
-		m_mV					= m_camera->GetViewMatrix();
-		m_mV_base				= m_camera->GetBaseViewMatrix();
-		m_mP_perspective		= m_camera->GetProjectionMatrix();
-		m_mP_orthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
-		m_wvp_perspective		= m_mV * m_mP_perspective;
-		m_wvp_baseOrthographic	= m_mV_base * m_mP_orthographic;
-		m_nearPlane				= m_camera->GetNearPlane();
-		m_farPlane				= m_camera->GetFarPlane();
+		m_nearPlane						= m_camera->GetNearPlane();
+		m_farPlane						= m_camera->GetFarPlane();
+		m_mView							= m_camera->GetViewMatrix();
+		m_mViewBase						= m_camera->GetBaseViewMatrix();
+		m_mProjection					= m_camera->GetProjectionMatrix();
+		m_mProjectionOtrhographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
+		m_mViewProjectionPerspective	= Matrix::Identity * m_mView * m_mProjection;
+		m_wvp_baseOrthographic			= m_mViewBase * m_mProjectionOtrhographic;
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_actors.empty())
@@ -715,8 +715,8 @@ namespace Directus
 			// UPDATE PER OBJECT BUFFER
 			shader->UpdatePerObjectBuffer(
 				actor->GetTransform_PtrRaw()->GetWorldTransform(),
-				m_mV, 
-				m_mP_perspective
+				m_mView, 
+				m_mProjection
 			);
 		
 			m_rhiPipeline->SetConstantBuffer(shader->GetMaterialBuffer());
@@ -768,10 +768,10 @@ namespace Directus
 		// Update constant buffer
 		m_shaderLight->UpdateConstantBuffer(
 			Matrix::Identity,
-			m_mV,
-			m_mV_base,
-			m_mP_perspective,
-			m_mP_orthographic,
+			m_mView,
+			m_mViewBase,
+			m_mProjection,
+			m_mProjectionOtrhographic,
 			m_actors[Renderable_Light],
 			m_camera
 		);
@@ -902,8 +902,8 @@ namespace Directus
 			// Constant buffer
 			auto buffer = Struct_Transparency(
 				actor->GetTransform_PtrRaw()->GetWorldTransform(),
-				m_mV,
-				m_mP_perspective,
+				m_mView,
+				m_mProjection,
 				material->GetColorAlbedo(),
 				m_camera->GetTransform()->GetPosition(),
 				GetLightDirectional()->GetDirection(),
@@ -1071,7 +1071,7 @@ namespace Directus
 		auto buffer = Struct_Shadowing
 			(
 				m_wvp_baseOrthographic,
-				(m_mV * m_mP_perspective).Inverted(),
+				(m_mView * m_mProjection).Inverted(),
 				Vector2(texOut->GetWidth(), texOut->GetHeight()),
 				inDirectionalLight,
 				m_camera
@@ -1177,7 +1177,7 @@ namespace Directus
 				m_rhiPipeline->SetState(m_pipelineLine);
 				m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 				m_rhiPipeline->SetVertexBuffer(m_lineVertexBuffer);
-				auto buffer = Struct_Matrix(Matrix::Identity * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix());
+				auto buffer = Struct_Matrix_Matrix(m_mView, m_mProjection);
 				m_shaderLine->UpdateBuffer(&buffer);
 				m_rhiPipeline->Bind();
 				m_rhiDevice->Draw(lineVertexBufferSize);
@@ -1198,7 +1198,7 @@ namespace Directus
 			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 			m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
-			auto buffer = Struct_Matrix(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix());
+			auto buffer = Struct_Matrix_Matrix(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_mView, m_mProjection);
 			m_shaderLine->UpdateBuffer(&buffer);
 			m_rhiPipeline->Bind();
 			m_rhiDevice->DrawIndexed(m_grid->GetIndexCount(), 0, 0);

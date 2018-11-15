@@ -7,7 +7,8 @@ SamplerState samplerPoint 	: register(s0);
 
 cbuffer MiscBuffer : register(b0)
 {
-	matrix mTransform;
+	matrix view;
+	matrix projection;
 };
 
 struct PixelInputType
@@ -23,8 +24,8 @@ PixelInputType mainVS(Vertex_PosColor input)
     PixelInputType output;
     	
     input.position.w 	= 1.0f;
-    output.position 	= mul(input.position, mTransform);
-    output.linePos      = output.position;
+	output.linePos      = mul(input.position, view);
+    output.position 	= mul(output.linePos, projection);
 	output.color 		= input.color;
 	
 	return output;
@@ -37,8 +38,8 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     projectDepthMapTexCoord.x = input.linePos.x / input.linePos.w / 2.0f + 0.5f;
     projectDepthMapTexCoord.y = -input.linePos.y / input.linePos.w / 2.0f + 0.5f;
 	
-    float lineDepth     = input.position.z / input.position.w;
-    float depthMapValue = depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).g;
+    float lineDepth     = input.linePos.z;
+    float depthMapValue = depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
 	
 	// If an object is in front of the grid, discard this grid pixel
     if (depthMapValue > lineDepth) 
