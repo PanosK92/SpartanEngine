@@ -320,14 +320,15 @@ namespace Directus
 			m_renderTex1			// OUT: Render texture	- Result
 		);
 
+		Pass_Transparent(m_renderTex1);
+		
 		Pass_PostLight(
 			m_renderTex1,	// IN:	Render texture - Light pass result
 			m_finalFrame	// OUT: Render texture - Result
 		);
-
-		Pass_Transparent(m_finalFrame);
-		Pass_DebugGBuffer(m_finalFrame);
-		// Debug rendering (on the target that happens to be bound)
+	
+		Pass_GBufferVisualize(m_finalFrame);
+		Pass_Lines(m_finalFrame);
 		Pass_Debug();
 
 		m_isRendering = false;
@@ -1084,52 +1085,15 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
 	}
-	//=============================================================================================================
 
-	bool Renderer::Pass_DebugGBuffer(shared_ptr<RHI_RenderTexture>& texOut)
+	void Renderer::Pass_Lines(shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Pass_DebugGBuffer");
-
-		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
-		texType	= RenderFlags_IsSet(Render_Albedo)		? GBuffer_Target_Albedo		: texType;
-		texType = RenderFlags_IsSet(Render_Normal)		? GBuffer_Target_Normal		: texType;
-		texType = RenderFlags_IsSet(Render_Specular)	? GBuffer_Target_Specular	: texType;
-		texType = RenderFlags_IsSet(Render_Depth)		? GBuffer_Target_Depth		: texType;
-
-		if (texType != GBuffer_Target_Unknown)
-		{
-			m_rhiPipeline->Clear();
-			m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
-			m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
-			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-			m_rhiPipeline->SetFillMode(Fill_Solid);
-			m_rhiPipeline->SetCullMode(Cull_Back);
-			m_rhiPipeline->SetInputLayout(m_shaderTexture->GetInputLayout());
-			m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
-			m_rhiPipeline->SetShader(m_shaderTexture);
-			m_rhiPipeline->SetViewport(m_gbuffer->GetTexture(texType)->GetViewport());
-			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(texType));
-			m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
-			auto buffer = Struct_Matrix(m_wvp_baseOrthographic);
-			m_shaderTexture->UpdateBuffer(&buffer);
-			m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
-			m_rhiPipeline->Bind();
-
-			m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-		}
-
-		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
-		return true;
-	}
-
-	void Renderer::Pass_Debug()
-	{
-		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Pass_Debug");
-
 		m_rhiDevice->EventBegin("Line_Rendering");
+
+		m_rhiPipeline->SetState(m_pipelineLine);
+		m_rhiDevice->Set_AlphaBlendingEnabled(true);
+		m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		{
 			// Picking ray
 			if (m_flags & Render_PickingRay)
@@ -1174,37 +1138,77 @@ namespace Directus
 				m_lineVertexBuffer->Unmap();
 
 				// Set pipeline state
-				m_rhiPipeline->SetState(m_pipelineLine);
-				m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 				m_rhiPipeline->SetVertexBuffer(m_lineVertexBuffer);
 				auto buffer = Struct_Matrix_Matrix(m_mView, m_mProjection);
 				m_shaderLine->UpdateBuffer(&buffer);
 				m_rhiPipeline->Bind();
 				m_rhiDevice->Draw(lineVertexBufferSize);
 
-				m_lineVertices.clear();	
+				m_lineVertices.clear();
 			}
 		}
-		m_rhiDevice->EventEnd();
-
-		m_rhiDevice->Set_AlphaBlendingEnabled(true);
-
+		
 		// Grid
 		if (m_flags & Render_SceneGrid)
 		{
-			m_rhiDevice->EventBegin("Grid");
-
-			m_rhiPipeline->SetState(m_pipelineLine);
-			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 			m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
 			auto buffer = Struct_Matrix_Matrix(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_mView, m_mProjection);
 			m_shaderLine->UpdateBuffer(&buffer);
 			m_rhiPipeline->Bind();
 			m_rhiDevice->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
-
-			m_rhiDevice->EventEnd();
 		}
+
+		m_rhiDevice->Set_AlphaBlendingEnabled(false);
+		m_rhiDevice->EventEnd();
+	}
+
+	//=============================================================================================================
+
+	bool Renderer::Pass_GBufferVisualize(shared_ptr<RHI_RenderTexture>& texOut)
+	{
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_DebugGBuffer");
+
+		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
+		texType	= RenderFlags_IsSet(Render_Albedo)		? GBuffer_Target_Albedo		: texType;
+		texType = RenderFlags_IsSet(Render_Normal)		? GBuffer_Target_Normal		: texType;
+		texType = RenderFlags_IsSet(Render_Specular)	? GBuffer_Target_Specular	: texType;
+		texType = RenderFlags_IsSet(Render_Depth)		? GBuffer_Target_Depth		: texType;
+
+		if (texType != GBuffer_Target_Unknown)
+		{
+			m_rhiPipeline->Clear();
+			m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
+			m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
+			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+			m_rhiPipeline->SetFillMode(Fill_Solid);
+			m_rhiPipeline->SetCullMode(Cull_Back);
+			m_rhiPipeline->SetInputLayout(m_shaderTexture->GetInputLayout());
+			m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
+			m_rhiPipeline->SetShader(m_shaderTexture);
+			m_rhiPipeline->SetViewport(m_gbuffer->GetTexture(texType)->GetViewport());
+			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(texType));
+			m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
+			auto buffer = Struct_Matrix(m_wvp_baseOrthographic);
+			m_shaderTexture->UpdateBuffer(&buffer);
+			m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
+			m_rhiPipeline->Bind();
+
+			m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		}
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
+		return true;
+	}
+
+	void Renderer::Pass_Debug()
+	{
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_Debug");
+
+		m_rhiDevice->Set_AlphaBlendingEnabled(true);
 
 		// Gizmos
 		m_rhiDevice->EventBegin("Gizmos");
