@@ -433,7 +433,7 @@ namespace Directus
 		m_renderTexQuarterRes2 = make_unique<RHI_RenderTexture>(m_rhiDevice, int(width * 0.25f), int(height * 0.25f), Texture_Format_R16G16B16A16_FLOAT);
 
 		m_renderTexShadowing.reset();
-		m_renderTexShadowing = make_unique<RHI_RenderTexture>(m_rhiDevice, int(width * 0.5f), int(height * 0.5f), Texture_Format_R32G32_FLOAT);
+		m_renderTexShadowing = make_unique<RHI_RenderTexture>(m_rhiDevice, int(width * 0.5f), int(height * 0.5f), Texture_Format_R16G16_FLOAT);
 	}
 
 	//= RENDERABLES ============================================================================================
