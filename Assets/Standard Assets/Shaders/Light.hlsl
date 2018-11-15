@@ -105,14 +105,14 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	// Image based lighting
 	float ambientTerm = 0.1f;
 	float fakeAmbient = clamp(saturate(dirLightIntensity.r), ambientTerm, 1.0f);
-    finalColor += ImageBasedLighting(material, normal, viewDir, samplerLinear) * fakeAmbient;
+    finalColor += ImageBasedLighting(material, normal, viewDir, samplerLinear) * occlusion * fakeAmbient;
 	
 	//= DIRECTIONAL LIGHT =============================================================================================
     Light directionalLight;
 
 	// Compute
     directionalLight.color      = dirLightColor.rgb;
-    directionalLight.intensity  = dirLightIntensity.r * dirShadow * occlusion;
+    directionalLight.intensity  = dirLightIntensity.r * dirShadow;
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
 
 	// Compute illumination
@@ -126,7 +126,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		// Get light data
         pointLight.color        = pointLightColor[i].rgb;
         float3 position         = pointLightPosition[i].xyz;
-        pointLight.intensity    = pointLightIntenRange[i].x * occlusion;
+        pointLight.intensity    = pointLightIntenRange[i].x;
         float range             = pointLightIntenRange[i].y;
         
 		// Compute light
@@ -151,7 +151,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		// Get light data
         spotLight.color     = spotLightColor[j].rgb;
         float3 position     = spotLightPosition[j].xyz;
-        spotLight.intensity = spotLightIntenRangeAngle[j].x * occlusion;
+        spotLight.intensity = spotLightIntenRangeAngle[j].x;
         spotLight.direction = normalize(-spotLightDirection[j].xyz);
         float range         = spotLightIntenRangeAngle[j].y;
         float cutoffAngle   = 1.0f - spotLightIntenRangeAngle[j].z;
