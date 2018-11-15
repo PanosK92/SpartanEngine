@@ -875,8 +875,6 @@ namespace Directus
 
 	bool RHI_Device::Set_CullMode(Cull_Mode cullMode)
 	{
-		return true;
-
 		if (!_D3D11_Device::deviceContext)
 		{
 			LOG_WARNING("D3D11_Device::SetCullMode: Device context is uninitialized.");

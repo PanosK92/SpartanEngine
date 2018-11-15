@@ -575,17 +575,17 @@ namespace Directus
 				for (const auto& actor : actors)
 				{
 					// Acquire renderable component
-					Renderable* renderable = actor->GetRenderable_PtrRaw();
+					auto renderable = actor->GetRenderable_PtrRaw();
 					if (!renderable)
 						continue;
 
 					// Acquire material
-					Material* material = renderable ? renderable->Material_Ptr().get() : nullptr;
+					auto material = renderable->Material_Ptr();
 					if (!material)
 						continue;
 
 					// Acquire geometry
-					shared_ptr<Model> geometry = renderable->Geometry_Model();
+					auto geometry = renderable->Geometry_Model();
 					if (!geometry || !geometry->GetVertexBuffer() || !geometry->GetIndexBuffer())
 						continue;
 
