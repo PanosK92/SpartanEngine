@@ -49,25 +49,23 @@ namespace Directus
 		ModelImporter(Context* context);
 		~ModelImporter() {}
 
-		bool Load(Model* model, const std::string& filePath);
+		bool Load(std::shared_ptr<Model> model, const std::string& filePath);
 
 	private:
 		// PROCESSING
-		void ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, Model* model, Actor* parentNode = nullptr, Actor* newNode = nullptr);
-		void ReadAnimations(const aiScene* scene, Model* model);
-		void LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, Model* model, Actor* parentActor);
+		void ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, std::shared_ptr<Model>& model, Actor* parentNode = nullptr, Actor* newNode = nullptr);
+		void ReadAnimations(const aiScene* scene, std::shared_ptr<Model>& model);
+		void LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, std::shared_ptr<Model>& model, Actor* parentActor);
 		void AssimpMesh_ExtractVertices(aiMesh* assimpMesh, std::vector<RHI_Vertex_PosUVTBN>* vertices);
 		void AssimpMesh_ExtractIndices(aiMesh* assimpMesh, std::vector<unsigned int>* indices);
-		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimpMaterial, Model* model);
+		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimpMaterial, std::shared_ptr<Model>& model);
 
 		// HELPER FUNCTIONS
 		std::string ValidateTexturePath(const std::string& texturePath);
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 		void ComputeNodeCount(aiNode* node, int* count);
 	
-		Model* m_model;
 		std::string m_modelPath;
-
 		Context* m_context;
 	};
 }

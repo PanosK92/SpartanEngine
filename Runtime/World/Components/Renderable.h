@@ -67,7 +67,7 @@ namespace Directus
 			unsigned int vertexOffset,
 			unsigned int vertexCount,
 			const Math::BoundingBox& AABB, 
-			Model* model
+			std::shared_ptr<Model>& model
 		);
 		void Geometry_Get(std::vector<unsigned int>* indices, std::vector<RHI_Vertex_PosUVTBN>* vertices);
 		void Geometry_Set(GeometryType type);
@@ -77,7 +77,7 @@ namespace Directus
 		unsigned int Geometry_VertexCount()				{ return m_geometryVertexCount; }
 		GeometryType Geometry_Type()					{ return m_geometryType; }
 		const std::string& Geometry_Name()				{ return m_geometryName; }
-		Model* Geometry_Model()							{ return m_model; }
+		std::shared_ptr<Model> Geometry_Model()			{ return m_model; }
 		const Math::BoundingBox& Geometry_AABB() const	{ return m_geometryAABB; }
 		Math::BoundingBox Geometry_BB();
 		//===============================================================================================
@@ -110,7 +110,7 @@ namespace Directus
 		unsigned int m_geometryVertexOffset;
 		unsigned int m_geometryVertexCount;
 		Math::BoundingBox m_geometryAABB;
-		Model* m_model;
+		std::shared_ptr<Model> m_model;
 		GeometryType m_geometryType;
 		//==================================
 

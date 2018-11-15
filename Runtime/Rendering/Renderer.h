@@ -119,7 +119,6 @@ namespace Directus
 		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& colorFrom, const Math::Vector4& colorTo);
 		//===============================================================================================================================
 
-		void Clear();
 		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
 		static bool IsRendering()	{ return m_isRendering; }
 		static uint64_t GetFrame()	{ return m_frame; }

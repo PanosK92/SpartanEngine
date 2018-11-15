@@ -112,7 +112,6 @@ namespace Directus
 	ModelImporter::ModelImporter(Context* context)
 	{
 		m_context	= context;
-		m_model		= nullptr;
 
 		// Get version
 		int major	= aiGetVersionMajor();
@@ -121,7 +120,7 @@ namespace Directus
 		Settings::Get().m_versionAssimp = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
 	}
 
-	bool ModelImporter::Load(Model* model, const string& filePath)
+	bool ModelImporter::Load(shared_ptr<Model> model, const string& filePath)
 	{
 		if (!m_context)
 		{
@@ -129,7 +128,6 @@ namespace Directus
 			return false;
 		}
 
-		m_model		= model;
 		m_modelPath = filePath;
 
 		// Set up an Assimp importer
@@ -160,7 +158,7 @@ namespace Directus
 		return true;
 	}
 
-	void ModelImporter::ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, Model* model, Actor* parentNode, Actor* newNode)
+	void ModelImporter::ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, shared_ptr<Model>& model, Actor* parentNode, Actor* newNode)
 	{
 		auto scene = m_context->GetSubsystem<World>();
 
@@ -220,7 +218,7 @@ namespace Directus
 			actor->SetName(name);
 
 			// Process mesh
-			LoadMesh(assimpScene, assimpMesh, model,  actor);
+			LoadMesh(assimpScene, assimpMesh, model, actor);
 		}
 
 		// Process children
@@ -233,7 +231,7 @@ namespace Directus
 		ProgressReport::Get().IncrementJobsDone(g_progress_ModelImporter);
 	}
 
-	void ModelImporter::ReadAnimations(const aiScene* scene, Model* model)
+	void ModelImporter::ReadAnimations(const aiScene* scene, shared_ptr<Model>& model)
 	{
 		for (unsigned int i = 0; i < scene->mNumAnimations; i++)
 		{
@@ -285,7 +283,7 @@ namespace Directus
 		}
 	}
 
-	void ModelImporter::LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, Model* model, Actor* parentActor)
+	void ModelImporter::LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, shared_ptr<Model>& model, Actor* parentActor)
 	{
 		if (!model || !assimpMesh || !assimpScene || !parentActor)
 			return;
@@ -405,7 +403,7 @@ namespace Directus
 		}
 	}
 
-	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(aiMaterial* assimpMaterial, Model* model)
+	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(aiMaterial* assimpMaterial, shared_ptr<Model>& model)
 	{
 		if (!model || !assimpMaterial)
 		{

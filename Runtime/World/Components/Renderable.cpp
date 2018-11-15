@@ -40,7 +40,7 @@ namespace Directus
 	{
 		inline void Build(GeometryType type, Renderable* renderable)
 		{	
-			Model* model = new Model(renderable->GetContext());
+			auto model = make_shared<Model>(renderable->GetContext());
 			vector<RHI_Vertex_PosUVTBN> vertices;
 			vector<unsigned int> indices;
 
@@ -109,17 +109,14 @@ namespace Directus
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset, unsigned int);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount, unsigned int);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName, string);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_model, Model*);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_model, shared_ptr<Model>);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryAABB, BoundingBox);
 		REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, Geometry_Set, GeometryType);
 	}
 
 	Renderable::~Renderable()
 	{
-		if (m_geometryType != Geometry_Custom)
-		{
-			delete m_model;
-		}
+
 	}
 
 	//= ICOMPONENT ===============================================================
@@ -155,7 +152,7 @@ namespace Directus
 		stream->Read(&m_geometryAABB);
 		string modelName;
 		stream->Read(&modelName);
-		m_model = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Model>(modelName).get();
+		m_model = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Model>(modelName);
 
 		// If it was a default mesh, we have to reconstruct it
 		if (m_geometryType != Geometry_Custom) 
@@ -181,7 +178,7 @@ namespace Directus
 	//==============================================================================
 
 	//= GEOMETRY =====================================================================================
-	void Renderable::Geometry_Set(const string& name, unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, const BoundingBox& AABB, Model* model)
+	void Renderable::Geometry_Set(const string& name, unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, const BoundingBox& AABB, shared_ptr<Model>& model)
 	{	
 		m_geometryName			= name;
 		m_geometryIndexOffset	= indexOffset;
