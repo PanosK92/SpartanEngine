@@ -40,6 +40,18 @@ namespace Directus
 		Math::Matrix m_matrix;
 	};
 
+	struct Struct_Matrix_Matrix
+	{
+		Struct_Matrix_Matrix(const Math::Matrix& matrix1, const Math::Matrix& matrix2)
+		{
+			m_matrix1 = matrix1;
+			m_matrix2 = matrix2;
+		};
+
+		Math::Matrix m_matrix1;
+		Math::Matrix m_matrix2;
+	};
+
 	struct Struct_Matrix_Matrix_Float
 	{
 		Struct_Matrix_Matrix_Float(const Math::Matrix& matrix1, const Math::Matrix& matrix2, float value)
