@@ -137,7 +137,7 @@ namespace Directus
 		void Pass_Light(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_PostLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& texOut);
-		bool Pass_DebugGBuffer(std::shared_ptr<RHI_RenderTexture>& texOut);
+		bool Pass_GBufferVisualize(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Debug();
 		void Pass_Correction(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_FXAA(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
@@ -146,6 +146,7 @@ namespace Directus
 		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Blur(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Shadowing(Light* inDirectionalLight, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Lines(std::shared_ptr<RHI_RenderTexture>& texOut);
 		//===================================================================================================================
 
 		//= RENDER TEXTURES ======================================
