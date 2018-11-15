@@ -63,7 +63,7 @@ float2 mainPS(PixelInputType input) : SV_TARGET
     float2 texCoord     = input.uv;
     float3 normal       = texNormal.Sample(samplerLinear_clamp, texCoord).rgb;
     float2 depthSample  = texDepth.Sample(samplerLinear_clamp, texCoord).rg;
-    float depth_linear  = depthSample.r;
+    float depth_linear  = depthSample.r * farPlane;
     float depth_cs      = depthSample.g;
     float3 positionWS   = ReconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
 	
@@ -74,11 +74,12 @@ float2 mainPS(PixelInputType input) : SV_TARGET
 	
 	//= SHADOW MAPPING ===========================================================================	
     float shadow = 1.0f;
-    int cascadeIndex = 2; // assume 1st cascade as default
     if (doShadowMapping != 0.0f)
     {
-        cascadeIndex -= step(depth_linear, shadowSplits.x); // test 2nd cascade
-        cascadeIndex -= step(depth_linear, shadowSplits.y); // test 3rd cascade
+		// Determine cascade to use
+		int cascadeIndex 	= 2;
+        cascadeIndex 		-= step(depth_linear, shadowSplits.x);
+        cascadeIndex 		-= step(depth_linear, shadowSplits.y);
 		
         float cascadeCompensation   = (cascadeIndex + 1.0f) * 2.0f; // the further the cascade, the more ugly under sharp angles, damn
         float shadowTexel           = 1.0f / shadowMapResolution;
@@ -88,20 +89,18 @@ float2 mainPS(PixelInputType input) : SV_TARGET
         float3 scaledNormalOffset   = normal * (normalOffset * cosAngle * shadowTexel);
 		float4 worldPos 			= float4(positionWS + scaledNormalOffset, 1.0f);
 		float compareDepth			= mul(worldPos, mLightView).z / farPlane;
-		
+		float4 lightPos 			= mul(worldPos, mLightViewProjection[cascadeIndex]);
+
         if (cascadeIndex == 0)
-        {
-            float4 lightPos = mul(worldPos, mLightViewProjection[0]);
+        {      
             shadow = ShadowMapping(lightDepthTex[0], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, compareDepth);
         }
         else if (cascadeIndex == 1)
         {
-            float4 lightPos = mul(worldPos, mLightViewProjection[1]);
             shadow = ShadowMapping(lightDepthTex[1], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, compareDepth);
         }
         else if (cascadeIndex == 2)
         {
-            float4 lightPos = mul(worldPos, mLightViewProjection[2]);
             shadow = ShadowMapping(lightDepthTex[2], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, compareDepth);
         }
     }

@@ -305,8 +305,8 @@ void Editor::ApplyStyle()
 	style.Colors[ImGuiCol_ScrollbarGrabHovered]		= barHovered;
 	style.Colors[ImGuiCol_ScrollbarGrabActive]		= barActive;
 	style.Colors[ImGuiCol_CheckMark]				= white;
-	style.Colors[ImGuiCol_SliderGrab]				= bar;
-	style.Colors[ImGuiCol_SliderGrabActive]			= barActive;
+	style.Colors[ImGuiCol_SliderGrab]				= highlightBlue;
+	style.Colors[ImGuiCol_SliderGrabActive]			= highlightBlueHovered;
 	style.Colors[ImGuiCol_Button]					= barActive;
 	style.Colors[ImGuiCol_ButtonHovered]			= highlightBlue;
 	style.Colors[ImGuiCol_ButtonActive]				= highlightBlueActive;

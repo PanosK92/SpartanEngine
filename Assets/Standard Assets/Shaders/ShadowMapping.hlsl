@@ -77,13 +77,17 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	
 	// Stratified Poisson Sampling
 	// Poisson sampling for shadow map
-	float packing = 1000.0f; // how close together are the samples
-	float2 poissonDisk[4] = 
+	float packing = 700.0f; // how close together are the samples
+	float2 poissonDisk[8] = 
 	{
-		float2( -0.94201624f, -0.39906216f ),
-		float2( 0.94558609f, -0.76890725f ),
-		float2( -0.094184101f, -0.92938870f ),
-		float2( 0.34495938f, 0.29387760f )
+		float2(0.493393f, 0.394269f),
+		float2(0.798547f, 0.885922f),
+		float2(0.247322f, 0.92645f),
+		float2(0.0514542f, 0.140782f),
+		float2(0.831843f, 0.00955229f),
+		float2(0.428632f, 0.0171514f),
+		float2(0.015656f, 0.749779f),
+		float2(0.758385f, 0.49617f)
 	};
     
 	uint samples = 8;
@@ -92,7 +96,7 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	for (uint i = 0; i < samples; i++)
 	{
 		uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-		amountLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + (poissonDisk[index] / packing), compareDepth);
+		amountLit += depthTest(shadowMap, samplerState, pos.xy + (poissonDisk[index] / packing), compareDepth);
 	}	
 	amountLit /= (float)samples;
 	
