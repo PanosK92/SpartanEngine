@@ -350,11 +350,11 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		{
 			ImGui::Text("Split 1");
 			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit1", &split1, 0.0f, 1.0f); ImGui::PopItemWidth();
+			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit1", &split1, 0.0f, 1000.0f); ImGui::PopItemWidth();
 
 			ImGui::Text("Split 2");
 			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit2", &split2, 0.0f, 1.0f); ImGui::PopItemWidth();
+			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit2", &split2, 0.0f, 1000.0f); ImGui::PopItemWidth();
 		}
 
 		// Range

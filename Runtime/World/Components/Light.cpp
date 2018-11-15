@@ -59,8 +59,8 @@ namespace Directus
 		// Shadow map splits (for directional light's cascades)
 		m_shadowMapSplits.clear();
 		m_shadowMapSplits.shrink_to_fit();
-		m_shadowMapSplits.emplace_back(0.01f);
-		m_shadowMapSplits.emplace_back(0.035f);
+		m_shadowMapSplits.emplace_back(10.0f);
+		m_shadowMapSplits.emplace_back(60.0f);
 	}
 
 	Light::~Light()
