@@ -101,7 +101,12 @@ float4 mainPS(PixelInputType input) : SV_TARGET
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }
-	 
+
+	// Image based lighting
+	float ambientTerm = 0.1f;
+	float fakeAmbient = clamp(saturate(dirLightIntensity.r), ambientTerm, 1.0f);
+    finalColor += ImageBasedLighting(material, normal, viewDir, samplerLinear) * fakeAmbient;
+	
 	//= DIRECTIONAL LIGHT =============================================================================================
     Light directionalLight;
 
@@ -109,10 +114,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     directionalLight.color      = dirLightColor.rgb;
     directionalLight.intensity  = dirLightIntensity.r * dirShadow * occlusion;
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
-	
-    float fakeNight = clamp(dirLightIntensity.r, 0.01f, 1.0f) * dirShadow;
-    finalColor += ImageBasedLighting(material, directionalLight.direction, normal, viewDir, samplerLinear) * fakeNight;
-	
+
 	// Compute illumination
     finalColor += BRDF(material, directionalLight, normal, viewDir);
 	//=================================================================================================================
