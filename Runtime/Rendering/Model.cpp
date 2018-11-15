@@ -257,7 +257,7 @@ namespace Directus
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath)); // Sponza
 
 		// Load the model
-		if (m_resourceManager->GetModelImporter()->Load(this, filePath))
+		if (m_resourceManager->GetModelImporter()->Load(std::dynamic_pointer_cast<Model>(GetSharedPtr()), filePath))
 		{
 			// Set the normalized scale to the root actor's transform
 			m_normalizedScale = Geometry_ComputeNormalizedScale();

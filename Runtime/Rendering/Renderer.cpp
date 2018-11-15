@@ -79,18 +79,18 @@ namespace Directus
 		m_flags			|= Render_Correction;
 
 		// Create RHI device
-		m_rhiDevice			= make_shared<RHI_Device>(drawHandle);
+		m_rhiDevice		= make_shared<RHI_Device>(drawHandle);
 		m_rhiPipeline	= make_shared<RHI_Pipeline>(m_rhiDevice);
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
 		SUBSCRIBE_TO_EVENT(EVENT_WORLD_SUBMIT, EVENT_HANDLER_VARIANT(Renderables_Acquire));
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_UNLOAD, [this](Variant) { Clear(); });
 	}
 
 	Renderer::~Renderer()
 	{
-
+		m_actors.clear();
+		m_camera = nullptr;
 	}
 
 	bool Renderer::Initialize()
@@ -277,63 +277,61 @@ namespace Directus
 		if (!m_rhiDevice || !m_rhiDevice->IsInitialized())
 			return;
 
-		// If there is a camera, render the scene
-		if (m_camera)
-		{
-			m_mV					= m_camera->GetViewMatrix();
-			m_mV_base				= m_camera->GetBaseViewMatrix();
-			m_mP_perspective		= m_camera->GetProjectionMatrix();
-			m_mP_orthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
-			m_wvp_perspective		= m_mV * m_mP_perspective;
-			m_wvp_baseOrthographic	= m_mV_base * m_mP_orthographic;
-			m_nearPlane				= m_camera->GetNearPlane();
-			m_farPlane				= m_camera->GetFarPlane();
-
-			// If there is nothing to render clear to camera's color and present
-			if (m_actors.empty())
-			{
-				m_rhiDevice->ClearBackBuffer(m_camera->GetClearColor());
-				m_rhiDevice->Present();
-				m_isRendering = false;
-				return;
-			}
-
-			TIME_BLOCK_START_MULTI();
-			m_isRendering = true;
-			Profiler::Get().Reset();
-			m_frame++;
-
-			Pass_DepthDirectionalLight(GetLightDirectional());
-		
-			Pass_GBuffer();
-
-			Pass_PreLight(
-				m_renderTex1,			// IN:	Render texture		
-				m_renderTexShadowing	// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
-			);
-
-			Pass_Light(
-				m_renderTexShadowing,	// IN:	Texture			- Shadowing (Shadow mapping + SSAO)
-				m_renderTex1			// OUT: Render texture	- Result
-			);
-
-			Pass_PostLight(
-				m_renderTex1,	// IN:	Render texture - Light pass result
-				m_finalFrame	// OUT: Render texture - Result
-			);
-
-			Pass_Transparent(m_finalFrame);
-			Pass_DebugGBuffer(m_finalFrame);
-			// Debug rendering (on the target that happens to be bound)
-			Pass_Debug();
-
-			m_isRendering = false;
-			TIME_BLOCK_END_MULTI();
-		}		
-		else // If there is no camera, clear to black
+		if (!m_camera)
 		{
 			m_rhiDevice->ClearBackBuffer(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+			return;
 		}
+
+		m_mV					= m_camera->GetViewMatrix();
+		m_mV_base				= m_camera->GetBaseViewMatrix();
+		m_mP_perspective		= m_camera->GetProjectionMatrix();
+		m_mP_orthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
+		m_wvp_perspective		= m_mV * m_mP_perspective;
+		m_wvp_baseOrthographic	= m_mV_base * m_mP_orthographic;
+		m_nearPlane				= m_camera->GetNearPlane();
+		m_farPlane				= m_camera->GetFarPlane();
+
+		// If there is nothing to render clear to camera's color and present
+		if (m_actors.empty())
+		{
+			m_rhiDevice->ClearBackBuffer(m_camera->GetClearColor());
+			m_rhiDevice->Present();
+			m_isRendering = false;
+			return;
+		}
+
+		TIME_BLOCK_START_MULTI();
+		m_isRendering = true;
+		Profiler::Get().Reset();
+		m_frame++;
+
+		Pass_DepthDirectionalLight(GetLightDirectional());
+		
+		Pass_GBuffer();
+
+		Pass_PreLight(
+			m_renderTex1,			// IN:	Render texture		
+			m_renderTexShadowing	// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
+		);
+
+		Pass_Light(
+			m_renderTexShadowing,	// IN:	Texture			- Shadowing (Shadow mapping + SSAO)
+			m_renderTex1			// OUT: Render texture	- Result
+		);
+
+		Pass_PostLight(
+			m_renderTex1,	// IN:	Render texture - Light pass result
+			m_finalFrame	// OUT: Render texture - Result
+		);
+
+		Pass_Transparent(m_finalFrame);
+		Pass_DebugGBuffer(m_finalFrame);
+		// Debug rendering (on the target that happens to be bound)
+		Pass_Debug();
+
+		m_isRendering = false;
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::SetBackBufferSize(unsigned int width, unsigned int height)
@@ -407,12 +405,6 @@ namespace Directus
 		m_lineVertices.emplace_back(to, colorTo);
 	}
 
-	void Renderer::Clear()
-	{
-		m_actors.clear();
-		m_camera = nullptr;
-	}
-
 	void Renderer::RenderTargets_Create(unsigned int width, unsigned int height)
 	{
 		// Resize everything
@@ -447,9 +439,11 @@ namespace Directus
 	{
 		TIME_BLOCK_START_CPU();
 
-		Clear();
+		// Clear previous state
+		m_actors.clear();
+		m_camera = nullptr;
+		
 		auto actorsVec = actorsVariant.Get<vector<shared_ptr<Actor>>>();
-
 		for (const auto& actorShared : actorsVec)
 		{
 			auto actor = actorShared.get();
@@ -562,7 +556,7 @@ namespace Directus
 
 		// Variables that help reduce state changes
 		unsigned int currentlyBoundGeometry = 0;
-
+		
 		auto& actors = m_actors[Renderable_ObjectOpaque];
 
 		if (!actors.empty())
@@ -590,7 +584,7 @@ namespace Directus
 						continue;
 
 					// Acquire geometry
-					Model* geometry = renderable->Geometry_Model();
+					shared_ptr<Model> geometry = renderable->Geometry_Model();
 					if (!geometry || !geometry->GetVertexBuffer() || !geometry->GetIndexBuffer())
 						continue;
 
@@ -663,8 +657,8 @@ namespace Directus
 				continue;
 
 			// Get shader and geometry
-			auto shader		= material->GetShader().lock();
-			Model* model	= renderable->Geometry_Model();
+			auto shader	= material->GetShader().lock();
+			auto model	= renderable->Geometry_Model();
 
 			// Validate shader
 			if (!shader || shader->GetState() != Shader_Built)
@@ -892,7 +886,7 @@ namespace Directus
 				continue;
 
 			// Get geometry
-			Model* model = renderable->Geometry_Model();
+			auto model = renderable->Geometry_Model();
 			if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
 				continue;
 

@@ -63,11 +63,11 @@ namespace Directus
 		std::shared_ptr<Actor>& Actor_Add(const std::shared_ptr<Actor>& actor);
 		bool Actor_Exists(const std::weak_ptr<Actor>& actor);
 		void Actor_Remove(const std::weak_ptr<Actor>& actor);
-		const std::vector<std::shared_ptr<Actor>>& Actors_GetAll() { return m_actors; }
+		const std::vector<std::shared_ptr<Actor>>& Actors_GetAll() { return m_actorsPrimary; }
 		std::vector<std::shared_ptr<Actor>> Actors_GetRoots();
 		const std::shared_ptr<Actor>& Actor_GetByName(const std::string& name);
 		const std::shared_ptr<Actor>& Actor_GetByID(unsigned int ID);
-		int Actor_GetCount() { return (int)m_actors.size(); }
+		int Actor_GetCount() { return (int)m_actorsPrimary.size(); }
 		//=============================================================================
 
 	private:
@@ -77,7 +77,10 @@ namespace Directus
 		std::shared_ptr<Actor>& CreateDirectionalLight();
 		//===============================================
 
-		std::vector<std::shared_ptr<Actor>> m_actors;
+		// Double-buffered actors
+		std::vector<std::shared_ptr<Actor>> m_actorsPrimary;
+		std::vector<std::shared_ptr<Actor>> m_actorsSecondry;
+
 		std::shared_ptr<Actor> m_actorEmpty;
 		std::weak_ptr<Actor> m_skybox;
 		bool m_wasInEditorMode;

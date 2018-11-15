@@ -95,7 +95,7 @@ namespace Directus
 		// ACTOR START
 		if (started)
 		{			
-			for (const auto& actor : m_actors)
+			for (const auto& actor : m_actorsPrimary)
 			{
 				actor->Start();
 			}
@@ -103,13 +103,13 @@ namespace Directus
 		// ACTOR STOP
 		if (stopped)
 		{		
-			for (const auto& actor : m_actors)
+			for (const auto& actor : m_actorsPrimary)
 			{
 				actor->Stop();
 			}
 		}
 		// ACTOR TICK
-		for (const auto& actor : m_actors)
+		for (const auto& actor : m_actorsPrimary)
 		{
 			actor->Tick();
 		}
@@ -118,8 +118,9 @@ namespace Directus
 
 		if (m_isDirty)
 		{
+			m_actorsSecondry = m_actorsPrimary;
 			// Submit to the Renderer
-			FIRE_EVENT_DATA(EVENT_WORLD_SUBMIT, m_actors);
+			FIRE_EVENT_DATA(EVENT_WORLD_SUBMIT, m_actorsSecondry);
 			m_isDirty = false;
 		}
 	}
@@ -127,8 +128,8 @@ namespace Directus
 	void World::Unload()
 	{
 		FIRE_EVENT(EVENT_WORLD_UNLOAD);
-		m_actors.clear();
-		m_actors.shrink_to_fit();
+		m_actorsPrimary.clear();
+		m_actorsPrimary.shrink_to_fit();
 	}
 	//=========================================================================================================
 
@@ -259,7 +260,7 @@ namespace Directus
 		// deserialize their descendants.
 		for (int i = 0; i < rootactorCount; i++)
 		{
-			m_actors[i]->Deserialize(file.get(), nullptr);
+			m_actorsPrimary[i]->Deserialize(file.get(), nullptr);
 		}
 		//==============================================
 
@@ -278,7 +279,7 @@ namespace Directus
 	{
 		auto actor = make_shared<Actor>(m_context);
 		actor->Initialize(actor->AddComponent<Transform>().get());
-		return m_actors.emplace_back(actor);
+		return m_actorsPrimary.emplace_back(actor);
 	}
 
 	shared_ptr<Actor>& World::Actor_Add(const shared_ptr<Actor>& actor)
@@ -286,7 +287,7 @@ namespace Directus
 		if (!actor)
 			return m_actorEmpty;
 
-		return m_actors.emplace_back(actor);
+		return m_actorsPrimary.emplace_back(actor);
 	}
 
 	bool World::Actor_Exists(const weak_ptr<Actor>& actor)
@@ -315,12 +316,12 @@ namespace Directus
 		Transform* parent = actorPtr->GetTransform_PtrRaw()->GetParent();
 
 		// Remove this actor
-		for (auto it = m_actors.begin(); it < m_actors.end();)
+		for (auto it = m_actorsPrimary.begin(); it < m_actorsPrimary.end();)
 		{
 			shared_ptr<Actor> temp = *it;
 			if (temp->GetID() == actorPtr->GetID())
 			{
-				it = m_actors.erase(it);
+				it = m_actorsPrimary.erase(it);
 				break;
 			}
 			++it;
@@ -338,7 +339,7 @@ namespace Directus
 	vector<shared_ptr<Actor>> World::Actors_GetRoots()
 	{
 		vector<shared_ptr<Actor>> rootActors;
-		for (const auto& actor : m_actors)
+		for (const auto& actor : m_actorsPrimary)
 		{
 			if (actor->GetTransform_PtrRaw()->IsRoot())
 			{
@@ -351,7 +352,7 @@ namespace Directus
 
 	const shared_ptr<Actor>& World::Actor_GetByName(const string& name)
 	{
-		for (const auto& actor : m_actors)
+		for (const auto& actor : m_actorsPrimary)
 		{
 			if (actor->GetName() == name)
 				return actor;
@@ -362,7 +363,7 @@ namespace Directus
 
 	const shared_ptr<Actor>& World::Actor_GetByID(unsigned int ID)
 	{
-		for (const auto& actor : m_actors)
+		for (const auto& actor : m_actorsPrimary)
 		{
 			if (actor->GetID() == ID)
 				return actor;
