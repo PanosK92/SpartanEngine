@@ -49,7 +49,7 @@ float3 Diffuse_OrenNayar( float3 DiffuseColor, float Roughness, float NoV, float
 }
 
 // IMAGE BASED LIGHTING ======================================================
-float3 ImageBasedLighting(Material material, float3 lightDirection, float3 normal, float3 viewDir, SamplerState samplerLinear)
+float3 ImageBasedLighting(Material material, float3 normal, float3 viewDir, SamplerState samplerLinear)
 {
 	// Compute reflection vector
 	float3 reflectionVector = reflect(-viewDir, normal);
