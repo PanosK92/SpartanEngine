@@ -216,11 +216,10 @@ namespace Directus
 
 		// Read texture bits
 		ClearTextureBytes();
-		unsigned int mipCount = file->ReadUInt();
-		for (unsigned int i = 0; i < mipCount; i++)
+		m_data.resize(file->ReadUInt());
+		for (auto& mip : m_data)
 		{
-			m_data.emplace_back(vector<std::byte>());
-			file->Read(&m_data[i]);
+			file->Read(&mip);
 		}
 
 		// Read properties
