@@ -329,7 +329,8 @@ namespace Directus
 	
 		Pass_GBufferVisualize(m_finalFrame);
 		Pass_Lines(m_finalFrame);
-		Pass_Debug();
+		Pass_Gizmos(m_finalFrame);
+		Pass_PerformanceMetrics(m_finalFrame);
 
 		m_isRendering = false;
 		TIME_BLOCK_END_MULTI();
@@ -1088,6 +1089,7 @@ namespace Directus
 
 	void Renderer::Pass_Lines(shared_ptr<RHI_RenderTexture>& texOut)
 	{
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Line_Rendering");
 
 		m_rhiPipeline->SetState(m_pipelineLine);
@@ -1160,16 +1162,137 @@ namespace Directus
 		}
 
 		m_rhiDevice->Set_AlphaBlendingEnabled(false);
+
 		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
 	}
 
-	//=============================================================================================================
+	void Renderer::Pass_Gizmos(shared_ptr<RHI_RenderTexture>& texOut)
+	{
+		bool draw = m_flags & Render_Light;
+		if (!draw)
+			return;
+
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Gizmos");
+
+		m_rhiDevice->Set_AlphaBlendingEnabled(true);
+		m_rhiDevice->EventBegin("Lights");
+		for (const auto& actor : m_actors[Renderable_Light])
+		{
+			Vector3 lightWorldPos = actor->GetTransform_PtrRaw()->GetPosition();
+			Vector3 cameraWorldPos = m_camera->GetTransform()->GetPosition();
+
+			// Compute light screen space position and scale (based on distance from the camera)
+			Vector2 lightScreenPos = m_camera->WorldToScreenPoint(lightWorldPos);
+			float distance = Clamp(Vector3::Length(lightWorldPos, cameraWorldPos), 0.0f, FLT_MAX);
+			float scale = GIZMO_MAX_SIZE / distance;
+			scale = Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
+
+			// Skip if the light is not in front of the camera
+			if (!m_camera->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))
+				continue;
+
+			// Skip if the light if it's too small
+			if (scale < GIZMO_MIN_SIZE)
+				continue;
+
+			shared_ptr<RHI_Texture> lightTex = nullptr;
+			LightType type = actor->GetComponent<Light>()->GetLightType();
+			if (type == LightType_Directional)
+			{
+				lightTex = m_gizmoTexLightDirectional;
+			}
+			else if (type == LightType_Point)
+			{
+				lightTex = m_gizmoTexLightPoint;
+			}
+			else if (type == LightType_Spot)
+			{
+				lightTex = m_gizmoTexLightSpot;
+			}
+
+			// Construct appropriate rectangle
+			float texWidth = lightTex->GetWidth() * scale;
+			float texHeight = lightTex->GetHeight() * scale;
+			m_gizmoRectLight->Create(
+				lightScreenPos.x - texWidth * 0.5f,
+				lightScreenPos.y - texHeight * 0.5f,
+				texWidth,
+				texHeight
+			);
+
+			m_rhiPipeline->SetShader(m_shaderTexture);
+			m_rhiPipeline->SetTexture(lightTex);
+			m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
+			m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
+			m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
+			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+			auto buffer = Struct_Matrix(m_wvp_baseOrthographic);
+			m_shaderTexture->UpdateBuffer(&buffer);
+			m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
+			m_rhiPipeline->Bind();
+			m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		}
+		m_rhiDevice->EventEnd();
+
+		// Transformation Gizmo		
+		//m_rhi->EventBegin("Transformation");
+		//{
+		//	TransformationGizmo* gizmo = m_camera->GetTransformationGizmo();
+		//	gizmo->SetBuffers();
+		//	m_shaderTransformationGizmo->Bind();
+
+		//	// X - Axis
+		//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationX() * m_mV * m_mP_perspective, Vector3::Right, Vector3::Zero, 0);
+		//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
+		//	// Y - Axis
+		//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationY() * m_mV * m_mP_perspective, Vector3::Up, Vector3::Zero, 0);
+		//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
+		//	// Z - Axis
+		//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationZ() * m_mV * m_mP_perspective, Vector3::Forward, Vector3::Zero, 0);
+		//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
+		//}
+		//m_rhi->EventEnd();
+		m_rhiDevice->Set_AlphaBlendingEnabled(false);
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
+	}
+
+	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_RenderTexture>& texOut)
+	{
+		bool draw = m_flags & Render_PerformanceMetrics;
+		if (!draw)
+			return;
+
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_PerformanceMetrics");
+
+		Vector2 textPos = Vector2(-(int)Settings::Get().Viewport_GetWidth() * 0.5f + 1.0f, (int)Settings::Get().Viewport_GetHeight() * 0.5f);
+		m_font->SetText(Profiler::Get().GetMetrics(), textPos);
+
+		m_rhiDevice->Set_AlphaBlendingEnabled(true);
+		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetShader(m_shaderFont);
+		m_rhiPipeline->SetTexture(m_font->GetTexture());
+		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
+		m_rhiPipeline->SetIndexBuffer(m_font->GetIndexBuffer());
+		m_rhiPipeline->SetVertexBuffer(m_font->GetVertexBuffer());
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		auto buffer = Struct_Matrix_Vector4(m_wvp_baseOrthographic, m_font->GetColor());
+		m_shaderFont->UpdateBuffer(&buffer);
+		m_rhiPipeline->SetConstantBuffer(m_shaderFont->GetConstantBuffer());
+		m_rhiPipeline->Bind();
+		m_rhiDevice->DrawIndexed(m_font->GetIndexCount(), 0, 0);
+		m_rhiDevice->Set_AlphaBlendingEnabled(false);
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
+	}
 
 	bool Renderer::Pass_GBufferVisualize(shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Pass_DebugGBuffer");
-
 		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
 		texType	= RenderFlags_IsSet(Render_Albedo)		? GBuffer_Target_Albedo		: texType;
 		texType = RenderFlags_IsSet(Render_Normal)		? GBuffer_Target_Normal		: texType;
@@ -1178,6 +1301,10 @@ namespace Directus
 
 		if (texType != GBuffer_Target_Unknown)
 		{
+			TIME_BLOCK_START_MULTI();
+			m_rhiDevice->EventBegin("Pass_GBufferVisualize");
+
+			m_rhiPipeline->SetRenderTarget(texOut);
 			m_rhiPipeline->Clear();
 			m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
 			m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
@@ -1185,7 +1312,6 @@ namespace Directus
 			m_rhiPipeline->SetFillMode(Fill_Solid);
 			m_rhiPipeline->SetCullMode(Cull_Back);
 			m_rhiPipeline->SetInputLayout(m_shaderTexture->GetInputLayout());
-			m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
 			m_rhiPipeline->SetShader(m_shaderTexture);
 			m_rhiPipeline->SetViewport(m_gbuffer->GetTexture(texType)->GetViewport());
 			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(texType));
@@ -1196,133 +1322,15 @@ namespace Directus
 			m_rhiPipeline->Bind();
 
 			m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+			m_rhiDevice->EventEnd();
+			TIME_BLOCK_END_MULTI();
 		}
 
-		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
 		return true;
 	}
 
-	void Renderer::Pass_Debug()
-	{
-		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Pass_Debug");
-
-		m_rhiDevice->Set_AlphaBlendingEnabled(true);
-
-		// Gizmos
-		m_rhiDevice->EventBegin("Gizmos");
-		{
-			if (m_flags & Render_Light)
-			{
-				m_rhiDevice->EventBegin("Lights");
-				for (const auto& actor : m_actors[Renderable_Light])
-				{
-					Vector3 lightWorldPos	= actor->GetTransform_PtrRaw()->GetPosition();
-					Vector3 cameraWorldPos	= m_camera->GetTransform()->GetPosition();
-
-					// Compute light screen space position and scale (based on distance from the camera)
-					Vector2 lightScreenPos	= m_camera->WorldToScreenPoint(lightWorldPos);
-					float distance			= Clamp(Vector3::Length(lightWorldPos, cameraWorldPos), 0.0f, FLT_MAX);
-					float scale				= GIZMO_MAX_SIZE / distance;
-					scale					= Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
-
-					// Skip if the light is not in front of the camera
-					if (!m_camera->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))
-						continue;
-
-					// Skip if the light if it's too small
-					if (scale < GIZMO_MIN_SIZE)
-						continue;
-
-					shared_ptr<RHI_Texture> lightTex = nullptr;
-					LightType type = actor->GetComponent<Light>()->GetLightType();
-					if (type == LightType_Directional)
-					{
-						lightTex = m_gizmoTexLightDirectional;
-					}
-					else if (type == LightType_Point)
-					{
-						lightTex = m_gizmoTexLightPoint;
-					}
-					else if (type == LightType_Spot)
-					{
-						lightTex = m_gizmoTexLightSpot;
-					}
-
-					// Construct appropriate rectangle
-					float texWidth = lightTex->GetWidth() * scale;
-					float texHeight = lightTex->GetHeight() * scale;
-					m_gizmoRectLight->Create(
-						lightScreenPos.x - texWidth * 0.5f,
-						lightScreenPos.y - texHeight * 0.5f,
-						texWidth,
-						texHeight
-					);
-
-					m_rhiPipeline->SetShader(m_shaderTexture);
-					m_rhiPipeline->SetTexture(lightTex);
-					m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
-					m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
-					m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
-					m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-					auto buffer = Struct_Matrix(m_wvp_baseOrthographic);
-					m_shaderTexture->UpdateBuffer(&buffer);
-					m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
-					m_rhiPipeline->Bind();
-
-					m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-				}
-				m_rhiDevice->EventEnd();
-			}
-
-			// Transformation Gizmo		
-			//m_rhi->EventBegin("Transformation");
-			//{
-			//	TransformationGizmo* gizmo = m_camera->GetTransformationGizmo();
-			//	gizmo->SetBuffers();
-			//	m_shaderTransformationGizmo->Bind();
-
-			//	// X - Axis
-			//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationX() * m_mV * m_mP_perspective, Vector3::Right, Vector3::Zero, 0);
-			//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
-			//	// Y - Axis
-			//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationY() * m_mV * m_mP_perspective, Vector3::Up, Vector3::Zero, 0);
-			//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
-			//	// Z - Axis
-			//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationZ() * m_mV * m_mP_perspective, Vector3::Forward, Vector3::Zero, 0);
-			//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
-			//}
-			//m_rhi->EventEnd();
-			
-		}
-		m_rhiDevice->EventEnd();
-
-		// Performance metrics
-		if (m_flags & Render_PerformanceMetrics)
-		{
-			Vector2 textPos = Vector2(-(int)Settings::Get().Viewport_GetWidth() * 0.5f + 1.0f, (int)Settings::Get().Viewport_GetHeight() * 0.5f);
-			m_font->SetText(Profiler::Get().GetMetrics(), textPos);
-
-			m_rhiPipeline->SetShader(m_shaderFont);
-			m_rhiPipeline->SetTexture(m_font->GetTexture());
-			m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
-			m_rhiPipeline->SetIndexBuffer(m_font->GetIndexBuffer());
-			m_rhiPipeline->SetVertexBuffer(m_font->GetVertexBuffer());
-			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-			auto buffer = Struct_Matrix_Vector4(m_wvp_baseOrthographic, m_font->GetColor());
-			m_shaderFont->UpdateBuffer(&buffer);
-			m_rhiPipeline->SetConstantBuffer(m_shaderFont->GetConstantBuffer());
-			m_rhiPipeline->Bind();
-
-			m_rhiDevice->DrawIndexed(m_font->GetIndexCount(), 0, 0);
-		}
-
-		m_rhiDevice->Set_AlphaBlendingEnabled(false);
-
-		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
-	}
+	//=============================================================================================================
 
 	Light* Renderer::GetLightDirectional()
 	{
