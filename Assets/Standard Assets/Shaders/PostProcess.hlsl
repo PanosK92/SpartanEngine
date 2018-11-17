@@ -59,11 +59,15 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_GAUSSIAN_H
-	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, texRes, float2(3.0f, 0.0f), 3.0f);
+	float2 dir 	= float2(1.0f, 0.0f);
+	float sigma = parameters.x;
+	color 		= Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, texRes, dir, sigma);
 #endif
 
 #if PASS_BLUR_GAUSSIAN_V
-	color = Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, texRes, float2(0.0f, 3.0f), 3.0f);
+	float2 dir 	= float2(0.0f, 1.0f);
+	float sigma = parameters.x;
+	color 		= Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, texRes, dir, sigma);
 #endif
 
 #if PASS_BRIGHT
