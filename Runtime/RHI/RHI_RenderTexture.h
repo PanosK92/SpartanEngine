@@ -54,6 +54,7 @@ namespace Directus
 		bool GetDepthEnabled()									{ return m_depthEnabled; }
 		unsigned int GetWidth()									{ return m_width; }
 		unsigned int GetHeight()								{ return m_height; }
+		Texture_Format GetFormat()								{ return m_format; }
 
 	protected:
 		bool m_depthEnabled = false;

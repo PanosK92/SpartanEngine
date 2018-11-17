@@ -431,13 +431,13 @@ namespace Directus
 		m_renderTexFull_FinalFrame	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
 
 		// Half res
-		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, unsigned int(width * 0.5f), unsigned int(height * 0.5f), Texture_Format_R16_FLOAT);
-		m_renderTexHalf_SSAO	= make_unique<RHI_RenderTexture>(m_rhiDevice, unsigned int(width * 0.5f), unsigned int(height * 0.5f), Texture_Format_R16_FLOAT);
-		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, unsigned int(width * 0.5f), unsigned int(height * 0.5f), Texture_Format_R16_FLOAT);
+		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16_FLOAT);
+		m_renderTexHalf_SSAO	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16_FLOAT);
+		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16_FLOAT);
 
 		// Quarter res
-		m_renderTexQuarter1 = make_unique<RHI_RenderTexture>(m_rhiDevice, unsigned int(width * 0.25f), unsigned int(height * 0.25f), Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexQuarter2 = make_unique<RHI_RenderTexture>(m_rhiDevice, unsigned int(width * 0.25f), unsigned int(height * 0.25f), Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexQuarter1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexQuarter2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
 	}
 
 	//= RENDERABLES ============================================================================================
@@ -758,14 +758,16 @@ namespace Directus
 		if (auto lightDir = GetLightDirectional())
 		{
 			Pass_ShadowMapping(texIn_Spare, GetLightDirectional());
-			Pass_Blur(texIn_Spare, texOut_Shadows, 8.0f);
+			float sigma = 1.5f;
+			Pass_BlurGaussian(texIn_Spare, texOut_Shadows, sigma);
 		}
 
 		// SSAO + Blur
 		if (m_flags & Render_SSAO)
 		{
 			Pass_SSAO(texIn_Spare);
-			Pass_Blur(texIn_Spare, texOut_SSAO, 12.0f);
+			float sigma = 5.0f;
+			Pass_BlurGaussian(texIn_Spare, texOut_SSAO, sigma);
 		}
 
 		m_rhiDevice->EventEnd();
@@ -835,7 +837,7 @@ namespace Directus
 		TIME_BLOCK_END_MULTI();
 	}
 
-	void Renderer::Pass_Blur(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut, float blur)
+	void Renderer::Pass_BlurBox(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut, float blur)
 	{
 		m_rhiDevice->EventBegin("Pass_Blur");
 
@@ -850,6 +852,43 @@ namespace Directus
 		m_rhiPipeline->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		m_rhiDevice->EventEnd();
+	}
+
+	void Renderer::Pass_BlurGaussian(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut, float sigma)
+	{
+		if (texIn->GetWidth() != texOut->GetWidth() ||
+			texIn->GetHeight() != texOut->GetHeight() ||
+			texIn->GetFormat() != texOut->GetFormat())
+		{
+			LOG_ERROR("Renderer::Pass_BlurGaussian: Invalid parameters, textures must match because they will get swapped");
+			return;
+		}
+
+		m_rhiDevice->EventBegin("Pass_BlurGaussian");
+
+		// Set common states
+		m_rhiPipeline->SetViewport(texIn->GetViewport());
+		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), sigma);
+		m_shaderBlurGaussianH->UpdateBuffer(&buffer);
+		m_rhiPipeline->SetConstantBuffer(m_shaderBlurGaussianH->GetConstantBuffer());
+
+		// Horizontal Gaussian blur
+		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetPixelShader(m_shaderBlurGaussianH);
+		m_rhiPipeline->SetTexture(texIn);
+		m_rhiPipeline->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		// Vertical Gaussian blur
+		m_rhiPipeline->SetRenderTarget(texIn);
+		m_rhiPipeline->SetPixelShader(m_shaderBlurGaussianV);
+		m_rhiPipeline->SetTexture(texOut);
+		m_rhiPipeline->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		texIn.swap(texOut);
 
 		m_rhiDevice->EventEnd();
 	}
@@ -1036,26 +1075,15 @@ namespace Directus
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
-		// Horizontal Gaussian blur
-		m_rhiPipeline->SetRenderTarget(m_renderTexQuarter2);
-		m_rhiPipeline->SetPixelShader(m_shaderBlurGaussianH);
-		m_rhiPipeline->SetTexture(m_renderTexQuarter1);
-		m_rhiPipeline->Bind();
-		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-
-		// Vertical Gaussian blur
-		m_rhiPipeline->SetRenderTarget(m_renderTexQuarter1);
-		m_rhiPipeline->SetPixelShader(m_shaderBlurGaussianV);
-		m_rhiPipeline->SetTexture(m_renderTexQuarter2);
-		m_rhiPipeline->Bind();
-		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		float sigma = 2.0f;
+		Pass_BlurGaussian(m_renderTexQuarter1, m_renderTexQuarter2, sigma);
 
 		// Additive blending
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderBloom_BlurBlend);
 		m_rhiPipeline->SetTexture(texIn);
-		m_rhiPipeline->SetTexture(m_renderTexQuarter1);
+		m_rhiPipeline->SetTexture(m_renderTexQuarter2);
 		float bloomIntensity = 0.2f;
 		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), bloomIntensity);
 		m_shaderBloom_BlurBlend->UpdateBuffer(&buffer);
