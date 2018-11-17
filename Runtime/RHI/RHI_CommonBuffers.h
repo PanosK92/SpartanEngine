@@ -96,14 +96,7 @@ namespace Directus
 
 	struct Struct_Matrix_Vector2
 	{
-		Struct_Matrix_Vector2(const Math::Matrix& matrix, const Math::Vector2& vector2)
-		{
-			m_matrix	= matrix;
-			m_vector2	= vector2;
-			m_padding	= Math::Vector2::Zero;
-		}
-
-		Struct_Matrix_Vector2(const Math::Matrix& matrix, const Math::Vector2& vector2, const Math::Vector2& padding)
+		Struct_Matrix_Vector2(const Math::Matrix& matrix, const Math::Vector2& vector2, const Math::Vector2& padding = Math::Vector2::Zero)
 		{
 			m_matrix	= matrix;
 			m_vector2	= vector2;
@@ -113,54 +106,6 @@ namespace Directus
 		Math::Matrix m_matrix;
 		Math::Vector2 m_vector2;
 		Math::Vector2 m_padding;
-	};
-
-	struct Struct_Shadowing
-	{
-		Struct_Shadowing
-		(
-			const Math::Matrix& mWVPortho,
-			const Math::Matrix& mViewProjectionInverted,
-			const Math::Vector2& resolution,
-			Light* dirLight,
-			Camera* camera
-		)
-		{
-			// Fill the buffer
-			m_wvpOrtho					= mWVPortho;
-			m_viewprojectionInverted	= mViewProjectionInverted;
-			m_doShadowMapping			= false;
-			m_resolution				= resolution;
-			m_nearPlane					= camera->GetNearPlane();
-			m_farPlane					= camera->GetFarPlane();
-			m_padding					= Math::Vector3::Zero;
-
-			if (dirLight)
-			{
-				auto mLightView				= dirLight->GetViewMatrix();
-				m_mLightView				= mLightView;
-				m_mLightViewProjection[0]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
-				m_mLightViewProjection[1]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
-				m_mLightViewProjection[2]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
-				m_shadowSplits				= Math::Vector4(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1), 0, 0);
-				m_lightDir					= dirLight->GetDirection();
-				m_shadowMapResolution		= (float)dirLight->ShadowMap_GetResolution();
-				m_doShadowMapping			= dirLight->GetCastShadows();
-			}
-		}
-
-		Math::Matrix m_wvpOrtho;
-		Math::Matrix m_viewprojectionInverted;
-		Math::Matrix m_mLightView;
-		Math::Matrix m_mLightViewProjection[3];
-		Math::Vector4 m_shadowSplits;
-		Math::Vector3 m_lightDir;
-		float m_shadowMapResolution;
-		Math::Vector2 m_resolution;
-		float m_nearPlane;
-		float m_farPlane;
-		float m_doShadowMapping;
-		Math::Vector3 m_padding;
 	};
 
 	struct Struct_Matrix_Matrix_Matrix
@@ -226,6 +171,73 @@ namespace Directus
 		Math::Vector3 m_cameraPos;
 		float m_roughness;
 		Math::Vector3 m_lightDir;
+		float m_padding;
+	};
+
+	struct Struct_ShadowMapping
+	{
+		Struct_ShadowMapping
+		(
+			const Math::Matrix& mWVPortho,
+			const Math::Matrix& mViewProjectionInverted,
+			Light* dirLight,
+			Camera* camera
+		)
+		{
+			// Fill the buffer
+			m_wvpOrtho					= mWVPortho;
+			m_viewprojectionInverted	= mViewProjectionInverted;
+			m_doShadowMapping			= false;
+			m_farPlane					= camera->GetFarPlane();
+			m_padding					= Math::Vector2::Zero;
+
+			if (dirLight)
+			{
+				auto mLightView				= dirLight->GetViewMatrix();
+				m_mLightView				= mLightView;
+				m_mLightViewProjection[0]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
+				m_mLightViewProjection[1]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
+				m_mLightViewProjection[2]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
+				m_shadowSplits				= Math::Vector4(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1), 0, 0);
+				m_lightDir					= dirLight->GetDirection();
+				m_shadowMapResolution		= (float)dirLight->ShadowMap_GetResolution();
+				m_doShadowMapping			= dirLight->GetCastShadows();
+			}
+		}
+
+		Math::Matrix m_wvpOrtho;
+		Math::Matrix m_viewprojectionInverted;
+		Math::Matrix m_mLightView;
+		Math::Matrix m_mLightViewProjection[3];
+		Math::Vector4 m_shadowSplits;
+		Math::Vector3 m_lightDir;
+		float m_shadowMapResolution;
+		float m_farPlane;
+		float m_doShadowMapping;
+		Math::Vector2 m_padding;
+	};
+
+	struct Struct_Matrix_Matrix_Vector2
+	{
+		Struct_Matrix_Matrix_Vector2
+		(
+			const Math::Matrix& matrix1,
+			const Math::Matrix& matrix2,
+			const Math::Vector2& vector,
+			float value
+		)
+		{
+			m_matrix1	= matrix1;
+			m_matrix2	= matrix2;
+			m_vector	= vector;
+			m_value		= value;
+			m_padding	= 0.0f;
+		}
+
+		Math::Matrix m_matrix1;
+		Math::Matrix m_matrix2;
+		Math::Vector2 m_vector;
+		float m_value;
 		float m_padding;
 	};
 }

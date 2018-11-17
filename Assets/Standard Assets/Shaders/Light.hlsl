@@ -1,11 +1,12 @@
 //= TEXTURES ==============================
-Texture2D texAlbedo : register(t0);
-Texture2D texNormal : register(t1);
-Texture2D texDepth : register(t2);
-Texture2D texSpecular : register(t3);
-Texture2D texShadowing : register(t4);
-Texture2D texLastFrame : register(t5);
-TextureCube environmentTex : register(t6);
+Texture2D texAlbedo 		: register(t0);
+Texture2D texNormal 		: register(t1);
+Texture2D texDepth 			: register(t2);
+Texture2D texSpecular 		: register(t3);
+Texture2D texShadows 		: register(t4);
+Texture2D texSSAO 			: register(t5);
+Texture2D texLastFrame 		: register(t6);
+TextureCube environmentTex 	: register(t7);
 //=========================================
 
 //= SAMPLERS ==============================
@@ -90,10 +91,9 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 viewDir  = normalize(cameraPosWS.xyz - worldPos.xyz);
 	 
 	// Shadows + SSAO
-    float2 shadowing    = texShadowing.Sample(samplerLinear, texCoord).rg;
-    float dirShadow     = shadowing.r;
-    float ssao          = shadowing.g;
-    float occlusion     = ssao * occlusionTex;
+    float dirShadow    = texShadows.Sample(samplerLinear, texCoord).r;
+    float ssao         = texSSAO.Sample(samplerLinear, texCoord).r;
+    float occlusion    = ssao * occlusionTex;
 
     if (specular.a == 1.0f) // Render technique
     {

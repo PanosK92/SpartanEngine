@@ -259,15 +259,15 @@ namespace Directus
 		}
 
 		// TAA
-		if (Renderer::RenderFlags_IsSet(Render_TAA))
-		{
-			bool isOdd = (Renderer::GetFrame() % 2) == 1;
+		//if (Renderer::RenderFlags_IsSet(Render_TAA))
+		//{
+		//	bool isOdd = (Renderer::GetFrame() % 2) == 1;
 
-			// Apply sub-pixel jitter		
-			Vector3 jitterA		= Vector3(-0.5f / width, -0.5f / height, 1.0f);
-			Vector3 jitterB		= Vector3(0.5f / width, 0.5f / height, 1.0f);
-			Matrix jitterMatrix	= Matrix::CreateTranslation(isOdd ? jitterA : jitterB);
-			m_mProjection		*= jitterMatrix;
-		}
+		//	// Apply sub-pixel jitter		
+		//	Vector3 jitterA		= Vector3(-0.5f / width, -0.5f / height, 1.0f);
+		//	Vector3 jitterB		= Vector3(0.5f / width, 0.5f / height, 1.0f);
+		//	Matrix jitterMatrix	= Matrix::CreateTranslation(isOdd ? jitterA : jitterB);
+		//	m_mProjection		*= jitterMatrix;
+		//}
 	}
 }
