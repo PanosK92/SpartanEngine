@@ -64,7 +64,7 @@ namespace Directus
 		Render_Light				= 1UL << 9,
 		Render_Bloom				= 1UL << 10,
 		Render_FXAA					= 1UL << 11,
-		Render_TAA					= 1UL << 12,
+		Render_SSAO					= 1UL << 12,
 		Render_Sharpening			= 1UL << 13,
 		Render_ChromaticAberration	= 1UL << 14,
 		Render_Correction			= 1UL << 15, // Tone-mapping & Gamma correction
@@ -125,16 +125,16 @@ namespace Directus
 		Camera* GetCamera()			{ return m_camera; }
 
 	private:
-		void RenderTargets_Create(unsigned int width, unsigned int height);
+		void CreateRenderTextures(unsigned int width, unsigned int height);
 
 		void Renderables_Acquire(const Variant& renderables);
 		void Renderables_Sort(std::vector<Actor*>* renderables);
 
-		//= PASSES ==========================================================================================================
+		//= PASSES ==============================================================================================================================================
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
-		void Pass_PreLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
-		void Pass_Light(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_PreLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, std::shared_ptr<RHI_RenderTexture>& texOut2);
+		void Pass_Light(std::shared_ptr<RHI_RenderTexture>& texShadows, std::shared_ptr<RHI_RenderTexture>& texSSAO, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_PostLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& texOut);
 		bool Pass_GBufferVisualize(std::shared_ptr<RHI_RenderTexture>& texOut);
@@ -143,21 +143,24 @@ namespace Directus
 		void Pass_Sharpening(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ChromaticAberration(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
-		void Pass_Blur(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
-		void Pass_Shadowing(Light* inDirectionalLight, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Blur(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float blur);
+		void Pass_SSAO(std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_ShadowMapping(std::shared_ptr<RHI_RenderTexture>& texOut, Light* inDirectionalLight);
 		void Pass_Lines(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Gizmos(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_PerformanceMetrics(std::shared_ptr<RHI_RenderTexture>& texOut);
-		//===================================================================================================================
+		//=======================================================================================================================================================
 
-		//= RENDER TEXTURES ======================================
-		std::shared_ptr<RHI_RenderTexture> m_renderTex1;
-		std::shared_ptr<RHI_RenderTexture> m_renderTex2;
-		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarterRes1;
-		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarterRes2;
-		std::shared_ptr<RHI_RenderTexture> m_renderTexShadowing;
-		std::shared_ptr<RHI_RenderTexture> m_finalFrame;
-		//========================================================
+		//= RENDER TEXTURES =======================================
+		std::shared_ptr<RHI_RenderTexture> m_renderTexFull1;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexFull2;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarter1;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarter2;	
+		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_Shadows;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_SSAO;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_Spare;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_FinalFrame;
+		//=========================================================
 
 		//= SHADERS ============================================
 		std::shared_ptr<LightShader> m_shaderLight;
@@ -166,7 +169,8 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderFont;
 		std::shared_ptr<RHI_Shader> m_shaderTexture;
 		std::shared_ptr<RHI_Shader> m_shaderFXAA;
-		std::shared_ptr<RHI_Shader> m_shaderShadowing;
+		std::shared_ptr<RHI_Shader> m_shaderSSAO;
+		std::shared_ptr<RHI_Shader> m_shaderShadowMapping;
 		std::shared_ptr<RHI_Shader> m_shaderSharpening;
 		std::shared_ptr<RHI_Shader> m_shaderChromaticAberration;
 		std::shared_ptr<RHI_Shader> m_shaderBlurBox;
@@ -193,14 +197,12 @@ namespace Directus
 		RHI_PipelineState m_pipelineLine;
 		//===============================
 
-		//= DEBUG ==============================================
-		std::unique_ptr<Font> m_font;
-		std::unique_ptr<Grid> m_grid;
+		//= STANDARD TEXTURES ==================================
+		std::shared_ptr<RHI_Texture> m_texNoiseNormal;
+		std::shared_ptr<RHI_Texture> m_texWhite;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightDirectional;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightPoint;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightSpot;
-		std::unique_ptr<Rectangle> m_gizmoRectLight;
-		static unsigned long m_flags;
 		//======================================================
 
 		//= LINE RENDERING ==================================
@@ -214,7 +216,7 @@ namespace Directus
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
 		std::unique_ptr<GBuffer> m_gbuffer;
 		std::shared_ptr<RHI_Viewport> m_viewport;
-		std::shared_ptr<RHI_Texture> m_texNoiseMap;
+		
 		std::unique_ptr<Rectangle> m_quad;
 		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
 		Math::Matrix m_mView;
@@ -230,6 +232,11 @@ namespace Directus
 		Skybox* GetSkybox();
 		static bool m_isRendering;
 		static uint64_t m_frame;
+
+		std::unique_ptr<Font> m_font;
+		std::unique_ptr<Grid> m_grid;
+		std::unique_ptr<Rectangle> m_gizmoRectLight;
+		static unsigned long m_flags;
 		//===============================================================
 	};
 }

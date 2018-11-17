@@ -1,5 +1,37 @@
-// Hemisphere sample kernel generated according to the needs of the SSAO approach described here:
-// http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
+// = INCLUDES ========
+#include "Common.hlsl"
+//====================
+
+//= STRUCTS ========================
+struct PixelInputType
+{
+    float4 position : SV_POSITION;
+    float2 uv : TEXCOORD;
+};
+//==================================
+
+//= TEXTURES ======================
+Texture2D texNormal : register(t0);
+Texture2D texDepth : register(t1);
+Texture2D texNoise : register(t2);
+//=================================
+
+//= SAMPLERS ===================================
+SamplerState samplerLinear_clamp : register(s0);
+SamplerState samplerLinear_wrap : register(s1);
+//==============================================
+
+//= CONSTANT BUFFERS =====================
+cbuffer DefaultBuffer : register(b0)
+{
+    matrix mWorldViewProjectionOrtho;
+    matrix mViewProjectionInverse;
+    float2 resolution;
+    float farPlane;
+    float padding;
+};
+//========================================
+
 static const float3 sampleKernel[64] =
 {
     float3(0.04977, -0.04471, 0.04996),
@@ -68,7 +100,7 @@ static const float3 sampleKernel[64] =
 	float3(-0.44272, -0.67928, 0.1865)
 };
 
-static const float intensity    = 10.0f;
+static const float intensity    = 15.0f;
 static const int kernelSize     = 16;
 static const float radius       = 1.2f;
 static const float bias         = 0.01f;
@@ -106,13 +138,25 @@ float doAmbientOcclusion(float2 uv, float3 originPos, float3 normal, SamplerStat
     return occlusion * rangeCheck;
 }
 
-float SSAO(float2 texCoord, SamplerState sampler_clamp, SamplerState sampler_wrap)
+PixelInputType mainVS(Vertex_PosUv input)
 {
-    float3 randNormal   	= GetRandomNormal(texCoord * noiseScale, sampler_wrap);
-    float3 normal       	= GetNormalUnpacked(texNormal, sampler_clamp, texCoord);
+    PixelInputType output;
+	
+    input.position.w 	= 1.0f;
+    output.position 	= mul(input.position, mWorldViewProjectionOrtho);
+    output.uv 			= input.uv;
+	
+    return output;
+}
+
+float mainPS(PixelInputType input) : SV_TARGET
+{
+	float2 texCoord			= input.uv;
+    float3 randNormal   	= GetRandomNormal(texCoord * noiseScale, samplerLinear_wrap);
+    float3 normal       	= GetNormalUnpacked(texNormal, samplerLinear_clamp, texCoord);
     float depth_linear  	= 0.0f;
     float depth_cs      	= 0.0f;
-    float3 position     	= GetWorldPosition(texCoord, sampler_clamp, depth_linear, depth_cs);
+    float3 position     	= GetWorldPosition(texCoord, samplerLinear_clamp, depth_linear, depth_cs);
     float radius_depth		= radius / depth_linear;
     float totalOcclusion	= 0.0f;
 	
@@ -122,7 +166,7 @@ float SSAO(float2 texCoord, SamplerState sampler_clamp, SamplerState sampler_wra
 		float3 sampleDir 	= reflect(sampleKernel[i], randNormal) * radius_depth;
 		float2 uv 			= texCoord + sampleDir.xy;
         float occlusion 	= 0.0f;
-        occlusion 			+= doAmbientOcclusion(uv, position, normal, sampler_clamp);	
+        occlusion 			+= doAmbientOcclusion(uv, position, normal, samplerLinear_clamp);	
         totalOcclusion 		+= occlusion * intensity;
     }
 
