@@ -90,10 +90,8 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 worldPos = ReconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
     float3 viewDir  = normalize(cameraPosWS.xyz - worldPos.xyz);
 	 
-	// Shadows + SSAO
-    float dirShadow    = texShadows.Sample(samplerLinear, texCoord).r;
-    float ssao         = texSSAO.Sample(samplerLinear, texCoord).r;
-    float occlusion    = ssao * occlusionTex;
+	// Shadows
+    float dirShadow		= texShadows.Sample(samplerLinear, texCoord).r;
 
     if (specular.a == 1.0f) // Render technique
     {
@@ -105,8 +103,14 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	// Image based lighting
 	float ambientTerm = 0.1f;
 	float fakeAmbient = clamp(saturate(dirLightIntensity.r), ambientTerm, 1.0f);
-    finalColor += ImageBasedLighting(material, normal, viewDir, samplerLinear) * occlusion * fakeAmbient;
+    finalColor += ImageBasedLighting(material, normal, viewDir, samplerLinear) * fakeAmbient;
 	
+	// Apply SSDO
+	float4 ssdo				= texSSAO.Sample(samplerLinear, texCoord);
+    float3 occlusion    	= ssdo.a * occlusionTex;
+	finalColor 				+= ssdo.rgb;
+	finalColor 				*= occlusion;
+
 	//= DIRECTIONAL LIGHT =============================================================================================
     Light directionalLight;
 
@@ -177,6 +181,8 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	// Emission
     float3 emission = material.emission * albedo.rgb * 10.0f;
     finalColor += emission;
+
+	
 
 	// Compute luma for FXAA
     float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f));

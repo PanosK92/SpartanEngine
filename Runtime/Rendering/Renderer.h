@@ -64,7 +64,7 @@ namespace Directus
 		Render_Light				= 1UL << 9,
 		Render_Bloom				= 1UL << 10,
 		Render_FXAA					= 1UL << 11,
-		Render_SSAO					= 1UL << 12,
+		Render_SSDO					= 1UL << 12,
 		Render_Sharpening			= 1UL << 13,
 		Render_ChromaticAberration	= 1UL << 14,
 		Render_Correction			= 1UL << 15, // Tone-mapping & Gamma correction
@@ -145,23 +145,23 @@ namespace Directus
 		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_BlurBox(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float blur);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
-		void Pass_SSAO(std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_SSDO(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ShadowMapping(std::shared_ptr<RHI_RenderTexture>& texOut, Light* inDirectionalLight);
 		void Pass_Lines(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Gizmos(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_PerformanceMetrics(std::shared_ptr<RHI_RenderTexture>& texOut);
 		//=======================================================================================================================================================
 
-		//= RENDER TEXTURES =======================================
+		//= RENDER TEXTURES ==========================================
 		std::shared_ptr<RHI_RenderTexture> m_renderTexFull1;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexFull2;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarter1;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarter2;	
 		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_Shadows;
-		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_SSAO;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_SSDO;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_Spare;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_FinalFrame;
-		//=========================================================
+		//============================================================
 
 		//= SHADERS ============================================
 		std::shared_ptr<LightShader> m_shaderLight;
@@ -170,7 +170,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderFont;
 		std::shared_ptr<RHI_Shader> m_shaderTexture;
 		std::shared_ptr<RHI_Shader> m_shaderFXAA;
-		std::shared_ptr<RHI_Shader> m_shaderSSAO;
+		std::shared_ptr<RHI_Shader> m_shaderSSDO;
 		std::shared_ptr<RHI_Shader> m_shaderShadowMapping;
 		std::shared_ptr<RHI_Shader> m_shaderSharpening;
 		std::shared_ptr<RHI_Shader> m_shaderChromaticAberration;
@@ -201,6 +201,7 @@ namespace Directus
 		//= STANDARD TEXTURES ==================================
 		std::shared_ptr<RHI_Texture> m_texNoiseNormal;
 		std::shared_ptr<RHI_Texture> m_texWhite;
+		std::shared_ptr<RHI_Texture> m_texBlack;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightDirectional;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightPoint;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightSpot;

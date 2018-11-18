@@ -41,7 +41,7 @@ Easy to build               	| 100% | Single click project generation which incl
 New editor               		| 90% | Replace Qt editor with ImGui editor.
 Debug Rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
-SSAO         					| 100% | -
+SSDO         					| 100% | Screen space directional occlusion.
 Bloom         					| 90% | -
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 Point light support             | 100% | -
