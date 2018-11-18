@@ -11,9 +11,10 @@ struct PixelInputType
 //==================================
 
 //= TEXTURES ======================
-Texture2D texNormal : register(t0);
-Texture2D texDepth : register(t1);
-Texture2D texNoise : register(t2);
+Texture2D texColor  : register(t0);
+Texture2D texNormal : register(t1);
+Texture2D texDepth  : register(t2);
+Texture2D texNoise  : register(t3);
 //=================================
 
 //= SAMPLERS ===================================
@@ -100,18 +101,11 @@ static const float3 sampleKernel[64] =
 	float3(-0.44272, -0.67928, 0.1865)
 };
 
-static const float intensity    = 15.0f;
-static const int kernelSize     = 16;
-static const float radius       = 1.2f;
-static const float bias         = 0.01f;
-static const float2 noiseScale  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
-
-// Returns a random normal
-float3 GetRandomNormal(float2 texCoord, SamplerState samplerState)
-{
-    float3 randNormal = texNoise.Sample(samplerState, texCoord).rgb;
-    return normalize(UnpackNormal(randNormal));
-}
+static const int sample_count		= 16;
+static const float radius			= 1.2f;
+static const float intensity    	= 4.0f;
+static const float bias         	= 0.01f;
+static const float2 noiseScale  	= float2(resolution.x / 64.0f, resolution.y / 64.0f);
 
 float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_linear, out float depth_cs)
 {
@@ -119,23 +113,6 @@ float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_li
     depth_linear  	= depth.r * farPlane;
     depth_cs      	= depth.g;
     return ReconstructPositionWorld(depth_cs, mViewProjectionInverse, uv);
-}
-
-float doAmbientOcclusion(float2 uv, float3 originPos, float3 normal, SamplerState samplerState)
-{
-	float depth_linear  = 0.0f;
-    float depth_cs      = 0.0f;
-    float3 sampledPos   = GetWorldPosition(uv, samplerState, depth_linear, depth_cs);
-    float3 dir    		= sampledPos - originPos;
-    float dist      	= length(dir);
-	dir					= normalize(dir);
-	float attunation	= (1.0f / (1.0f + dist));
-    float occlusion     = saturate(dot(normal, dir) - bias) * attunation;
-
-    float radius_depth  = radius / depth_linear;
-    float rangeCheck    = smoothstep(0.0f, 1.0f, radius_depth / abs(originPos - sampledPos)).x;
-	
-    return occlusion * rangeCheck;
 }
 
 PixelInputType mainVS(Vertex_PosUv input)
@@ -149,29 +126,44 @@ PixelInputType mainVS(Vertex_PosUv input)
     return output;
 }
 
-float mainPS(PixelInputType input) : SV_TARGET
+float4 mainPS(PixelInputType input) : SV_TARGET
 {
-	float2 texCoord			= input.uv;
-    float3 randNormal   	= GetRandomNormal(texCoord * noiseScale, samplerLinear_wrap);
-    float3 normal       	= GetNormalUnpacked(texNormal, samplerLinear_clamp, texCoord);
-    float depth_linear  	= 0.0f;
-    float depth_cs      	= 0.0f;
-    float3 position     	= GetWorldPosition(texCoord, samplerLinear_clamp, depth_linear, depth_cs);
-    float radius_depth		= radius / depth_linear;
-    float totalOcclusion	= 0.0f;
+	float2 texCoord				= input.uv;   
+    float depth_linear  		= 0.0f;
+    float depth_cs      		= 0.0f;
+    float3 center_pos        	= GetWorldPosition(texCoord, samplerLinear_clamp, depth_linear, depth_cs); 
+    float3 center_normal     	= GetNormalUnpacked(texNormal, samplerLinear_clamp, texCoord);
+	float3 randomNormal       	= normalize(UnpackNormal(texNoise.Sample(samplerLinear_wrap, texCoord * noiseScale).rgb));
+	float radius_depth			= radius / depth_linear;
+    float occlusion         	= 0.0f;
+    float3 color            	= float3(0.0f, 0.0f, 0.0f);
 	
-	[unroll(kernelSize)]
-    for (int i = 0; i < kernelSize; i++)
+    // Occlusion
+    for (int i = 0; i < sample_count; i++)
     {	
-		float3 sampleDir 	= reflect(sampleKernel[i], randNormal) * radius_depth;
-		float2 uv 			= texCoord + sampleDir.xy;
-        float occlusion 	= 0.0f;
-        occlusion 			+= doAmbientOcclusion(uv, position, normal, samplerLinear_clamp);	
-        totalOcclusion 		+= occlusion * intensity;
+		// Compute sample uv
+		float3 sampleDir        			= reflect(sampleKernel[i], randomNormal) * radius_depth;
+        float2 uv               			= texCoord + sampleDir.xy;
+		
+		// Acquire/Compute sample data
+        float3 sample_pos      				= GetWorldPosition(uv, samplerLinear_clamp, depth_linear, depth_cs);
+        float3 sample_color     			= texColor.Sample(samplerLinear_clamp, uv).rgb;
+        float3 sampled_normal   			= GetNormalUnpacked(texNormal, samplerLinear_clamp, uv);      
+        float3 center_to_sample				= sample_pos - center_pos;
+		float center_to_sample_distance		= length(center_to_sample);
+		float3 center_to_sample_normalized 	= normalize(center_to_sample);
+		
+		// Accumulate
+		float NdotDir						= dot(center_normal, center_to_sample_normalized);
+		float attunation					= (1.0f / (1.0f + center_to_sample_distance));
+		float rangeCheck    				= smoothstep(0.0f, 1.0f, radius_depth / center_to_sample_distance);	
+		float sample_occlusion 				= saturate(NdotDir - bias) * attunation * rangeCheck * intensity;
+		occlusion 							+= sample_occlusion;	
+        color                   			+= sample_color * saturate(NdotDir) * rangeCheck;
     }
+    occlusion /= (float)sample_count;
+    occlusion = saturate(1.0f - occlusion);
+	color /= (float)sample_count;
 
-    totalOcclusion /= (float) kernelSize * 4.0f;
-    totalOcclusion = 1.0f - totalOcclusion;
-	
-    return saturate(totalOcclusion);
+    return float4(color, occlusion);
 }

@@ -74,7 +74,7 @@ namespace Directus
 		m_flags			|= Render_Light;
 		m_flags			|= Render_Bloom;
 		m_flags			|= Render_FXAA;
-		m_flags			|= Render_SSAO;
+		m_flags			|= Render_SSDO;
 		m_flags			|= Render_Sharpening;
 		//m_flags		|= Render_ChromaticAberration;
 		m_flags			|= Render_Correction;
@@ -210,10 +210,10 @@ namespace Directus
 			m_shaderTransformationGizmo->Compile_VertexPixel(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN, m_context);
 			m_shaderTransformationGizmo->AddBuffer<Struct_Matrix_Vector3_Vector3>(0, Buffer_Global);
 
-			// SSAO
-			m_shaderSSAO = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderSSAO->Compile_VertexPixel(shaderDirectory + "SSAO.hlsl", Input_PositionTexture, m_context);
-			m_shaderSSAO->AddBuffer<Struct_Matrix_Matrix_Vector2>(0, Buffer_Global);
+			// SSDO
+			m_shaderSSDO = make_shared<RHI_Shader>(m_rhiDevice);
+			m_shaderSSDO->Compile_VertexPixel(shaderDirectory + "SSDO.hlsl", Input_PositionTexture, m_context);
+			m_shaderSSDO->AddBuffer<Struct_Matrix_Matrix_Vector2>(0, Buffer_Global);
 
 			// Shadow mapping
 			m_shaderShadowMapping = make_shared<RHI_Shader>(m_rhiDevice);
@@ -240,12 +240,15 @@ namespace Directus
 
 		// TEXTURES
 		{
-			// Noise texture (used by SSAO shader)
+			// Noise texture (used by SSDO shader)
 			m_texNoiseNormal = make_shared<RHI_Texture>(m_context);
 			m_texNoiseNormal->LoadFromFile(textureDirectory + "noise.png");
 
 			m_texWhite = make_shared<RHI_Texture>(m_context);
 			m_texWhite->LoadFromFile(textureDirectory + "white.png");
+
+			m_texBlack = make_shared<RHI_Texture>(m_context);
+			m_texBlack->LoadFromFile(textureDirectory + "black.png");
 
 			// Gizmo icons
 			m_gizmoTexLightDirectional = make_shared<RHI_Texture>(m_context);
@@ -322,12 +325,12 @@ namespace Directus
 		Pass_PreLight(
 			m_renderTexHalf_Spare,		// IN:	Render texture		
 			m_renderTexHalf_Shadows,	// OUT: Render texture	- Shadows
-			m_renderTexHalf_SSAO		// OUT: Render texture	- SSAO
+			m_renderTexHalf_SSDO		// OUT: Render texture	- SSAO
 		);
 
 		Pass_Light(
 			m_renderTexHalf_Shadows,	// IN:	Texture - Shadows
-			m_renderTexHalf_SSAO,		// IN:	Texture - SSAO
+			m_renderTexHalf_SSDO,		// IN:	Texture - SSAO
 			m_renderTexFull1				// OUT: Render texture	- Result
 		);
 
@@ -431,9 +434,9 @@ namespace Directus
 		m_renderTexFull_FinalFrame	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
 
 		// Half res
-		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16_FLOAT);
-		m_renderTexHalf_SSAO	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16_FLOAT);
-		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16_FLOAT);
+		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexHalf_SSDO	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16G16B16A16_FLOAT);
 
 		// Quarter res
 		m_renderTexQuarter1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
@@ -556,10 +559,6 @@ namespace Directus
 
 		TIME_BLOCK_START_MULTI();
 
-		m_rhiDevice->EventBegin("Pass_DepthDirectionalLight");
-		m_rhiPipeline->SetShader(m_shaderLightDepth);
-		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-
 		// Variables that help reduce state changes
 		unsigned int currentlyBoundGeometry = 0;
 		
@@ -567,10 +566,12 @@ namespace Directus
 
 		if (!actors.empty())
 		{
+			m_rhiDevice->EventBegin("Pass_DepthDirectionalLight");
+			m_rhiPipeline->SetShader(m_shaderLightDepth);
+			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+
 			for (unsigned int i = 0; i < light->ShadowMap_GetCount(); i++)
 			{
-				m_rhiDevice->EventBegin("Pass_ShadowMap_" + to_string(i));
-
 				if (auto shadowMap = light->ShadowMap_GetRenderTexture(i))
 				{
 					m_rhiPipeline->SetRenderTarget(shadowMap, shadowMap->GetDepthStencilView(), true);
@@ -610,10 +611,6 @@ namespace Directus
 						currentlyBoundGeometry = geometry->Resource_GetID();
 					}
 
-					// skip objects outside of the view frustum
-					//if (!m_directionalLight->IsInViewFrustum(obj_renderable, i))
-					//continue;
-
 					auto worldView				= actor->GetTransform_PtrRaw()->GetWorldTransform() * light->GetViewMatrix();
 					auto worldViewProjection	= worldView * light->ShadowMap_GetProjectionMatrix(i);
 					auto buffer					= Struct_Matrix_Matrix_Float(worldView, worldViewProjection, m_camera->GetFarPlane());
@@ -623,13 +620,9 @@ namespace Directus
 
 					m_rhiDevice->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
 				}
-
-				m_rhiDevice->EventEnd();
 			}
+			m_rhiDevice->EventEnd();
 		}
-
-		m_rhiDevice->EventEnd();
-
 		TIME_BLOCK_END_MULTI();
 	}
 
@@ -762,11 +755,11 @@ namespace Directus
 			Pass_BlurGaussian(texIn_Spare, texOut_Shadows, sigma);
 		}
 
-		// SSAO + Blur
-		if (m_flags & Render_SSAO)
+		// SSDO + Blur
+		if (m_flags & Render_SSDO)
 		{
-			Pass_SSAO(texIn_Spare);
-			float sigma = 5.0f;
+			Pass_SSDO(texIn_Spare);
+			float sigma = 8.0f;
 			Pass_BlurGaussian(texIn_Spare, texOut_SSAO, sigma);
 		}
 
@@ -808,19 +801,21 @@ namespace Directus
 		TIME_BLOCK_END_MULTI();
 	}
 
-	void Renderer::Pass_SSAO(shared_ptr<RHI_RenderTexture>& texOut)
+	void Renderer::Pass_SSDO(shared_ptr<RHI_RenderTexture>& texOut)
 	{
 		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Pass_SSAO");
+		m_rhiDevice->EventBegin("Pass_SSDO");
 
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
-		m_rhiPipeline->SetShader(m_shaderSSAO);
+		m_rhiPipeline->SetShader(m_shaderSSDO);
+		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame);
+		//m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Albedo));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_texNoiseNormal);
-		m_rhiPipeline->SetSampler(m_samplerLinearClampGreater);	// SSAO (clamp)
-		m_rhiPipeline->SetSampler(m_samplerLinearWrapGreater);	// SSAO noise texture (wrap)
+		m_rhiPipeline->SetSampler(m_samplerLinearClampGreater);	// SSDO (clamp)
+		m_rhiPipeline->SetSampler(m_samplerLinearWrapGreater);	// SSDO noise texture (wrap)
 		auto buffer = Struct_Matrix_Matrix_Vector2
 		(
 			m_wvp_baseOrthographic,
@@ -828,8 +823,8 @@ namespace Directus
 			Vector2(texOut->GetWidth(), texOut->GetHeight()),
 			m_camera->GetFarPlane()
 		);
-		m_shaderSSAO->UpdateBuffer(&buffer);
-		m_rhiPipeline->SetConstantBuffer(m_shaderSSAO->GetConstantBuffer());
+		m_shaderSSDO->UpdateBuffer(&buffer);
+		m_rhiPipeline->SetConstantBuffer(m_shaderSSDO->GetConstantBuffer());
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
@@ -920,7 +915,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Specular));
 		m_rhiPipeline->SetTexture(texShadows);
-		if (m_flags & Render_SSAO) { m_rhiPipeline->SetTexture(texSSAO); } else { m_rhiPipeline->SetTexture(m_texWhite); }
+		if (m_flags & Render_SSDO) { m_rhiPipeline->SetTexture(texSSAO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
 		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame); // previous frame for SSR // Todo SSR
 		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
 		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);	
