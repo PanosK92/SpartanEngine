@@ -146,7 +146,7 @@ namespace Directus
 		unsigned int m_vsync					= (int)Off;
 		bool m_isFullScreen						= false;
 		bool m_isMouseVisible					= true;
-		unsigned int m_shadowMapResolution		= 2048;
+		unsigned int m_shadowMapResolution		= 4096;
 		unsigned int m_anisotropy				= 16;
 		float m_maxFPS_game						= FLT_MAX;
 		float m_maxFPS_editor					= 165.0f;

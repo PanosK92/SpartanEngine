@@ -751,7 +751,7 @@ namespace Directus
 		if (auto lightDir = GetLightDirectional())
 		{
 			Pass_ShadowMapping(texIn_Spare, GetLightDirectional());
-			float sigma = 1.5f;
+			float sigma = 1.0f;
 			Pass_BlurGaussian(texIn_Spare, texOut_Shadows, sigma);
 		}
 
