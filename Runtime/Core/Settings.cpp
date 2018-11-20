@@ -37,7 +37,7 @@ namespace SettingsIO
 {
 	ofstream fout;
 	ifstream fin;
-	string fileName;
+	string fileName = "Directus.ini";
 }
 
 namespace Directus

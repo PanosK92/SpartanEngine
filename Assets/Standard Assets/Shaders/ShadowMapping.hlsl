@@ -113,32 +113,32 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	pos.y = pos.y / -2.0f + 0.5f;
 
 	// Interpolation + PCF
-	//float amountLit = sampleShadowMapPCF(shadowMap, samplerState, shadowMapResolution, pos.xy, compareDepth);
+	float amountLit = sampleShadowMapPCF(shadowMap, samplerState, shadowMapResolution, pos.xy, compareDepth);
 	
 	// Stratified Poisson Sampling
 	// Poisson sampling for shadow map
-	float packing = 700.0f; // how close together are the samples
-	float2 poissonDisk[8] = 
-	{
-		float2(0.493393f, 0.394269f),
-		float2(0.798547f, 0.885922f),
-		float2(0.247322f, 0.92645f),
-		float2(0.0514542f, 0.140782f),
-		float2(0.831843f, 0.00955229f),
-		float2(0.428632f, 0.0171514f),
-		float2(0.015656f, 0.749779f),
-		float2(0.758385f, 0.49617f)
-	};
-    
-	uint samples = 8;
-	float amountLit = 0.0f;
-	[unroll(samples)]
-	for (uint i = 0; i < samples; i++)
-	{
-		uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-		amountLit += depthTest(shadowMap, samplerState, pos.xy + (poissonDisk[index] / packing), compareDepth);
-	}	
-	amountLit /= (float)samples;
+	//float packing = 700.0f; // how close together are the samples
+	//float2 poissonDisk[8] = 
+	//{
+	//	float2(0.493393f, 0.394269f),
+	//	float2(0.798547f, 0.885922f),
+	//	float2(0.247322f, 0.92645f),
+	//	float2(0.0514542f, 0.140782f),
+	//	float2(0.831843f, 0.00955229f),
+	//	float2(0.428632f, 0.0171514f),
+	//	float2(0.015656f, 0.749779f),
+	//	float2(0.758385f, 0.49617f)
+	//};
+    //
+	//uint samples = 8;
+	//float amountLit = 0.0f;
+	//[unroll(samples)]
+	//for (uint i = 0; i < samples; i++)
+	//{
+	//	uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+	//	amountLit += depthTest(shadowMap, samplerState, pos.xy + (poissonDisk[index] / packing), compareDepth);
+	//}	
+	//amountLit /= (float)samples;
 	
 	return amountLit;
 }
