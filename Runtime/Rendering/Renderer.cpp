@@ -183,13 +183,25 @@ namespace Directus
 
 			// Blur Gaussian Vertical
 			m_shaderBlurGaussianV = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V", "1");
+			m_shaderBlurGaussianV->AddDefine("PASS_BLUR_GAUSSIAN_V");
 			m_shaderBlurGaussianV->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderBlurGaussianV->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
+			// Blur Bilateral Gaussian Horizontal
+			m_shaderBlurBilateralGaussianH = make_shared<RHI_Shader>(m_rhiDevice);
+			m_shaderBlurBilateralGaussianH->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN_H");
+			m_shaderBlurBilateralGaussianH->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
+			m_shaderBlurBilateralGaussianH->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
+
+			// Blur Bilateral Gaussian Vertical
+			m_shaderBlurBilateralGaussianV = make_shared<RHI_Shader>(m_rhiDevice);
+			m_shaderBlurBilateralGaussianV->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN_V");
+			m_shaderBlurBilateralGaussianV->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
+			m_shaderBlurBilateralGaussianV->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
+
 			// Bloom - bright
 			m_shaderBloom_Bright = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT", "1");
+			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT");
 			m_shaderBloom_Bright->Compile_VertexPixel(shaderDirectory + "PostProcess.hlsl", Input_PositionTexture, m_context);
 			m_shaderBloom_Bright->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
@@ -759,8 +771,8 @@ namespace Directus
 		if (m_flags & Render_SSDO)
 		{
 			Pass_SSDO(texIn_Spare);
-			float sigma = 8.0f;
-			Pass_BlurGaussian(texIn_Spare, texOut_SSAO, sigma);
+			float sigma = 3.0f;
+			Pass_BlurBilateralGaussian(texIn_Spare, texOut_SSAO, sigma);
 		}
 
 		m_rhiDevice->EventEnd();
@@ -880,6 +892,45 @@ namespace Directus
 		m_rhiPipeline->SetRenderTarget(texIn);
 		m_rhiPipeline->SetPixelShader(m_shaderBlurGaussianV);
 		m_rhiPipeline->SetTexture(texOut);
+		m_rhiPipeline->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		texIn.swap(texOut);
+
+		m_rhiDevice->EventEnd();
+	}
+
+	void Renderer::Pass_BlurBilateralGaussian(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut, float sigma)
+	{
+		if (texIn->GetWidth() != texOut->GetWidth() ||
+			texIn->GetHeight() != texOut->GetHeight() ||
+			texIn->GetFormat() != texOut->GetFormat())
+		{
+			LOG_ERROR("Renderer::Pass_BlurBilateralGaussian: Invalid parameters, textures must match because they will get swapped");
+			return;
+		}
+
+		m_rhiDevice->EventBegin("Pass_BlurBilateralGaussian");
+
+		// Set common states
+		m_rhiPipeline->SetViewport(texIn->GetViewport());
+		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), sigma);
+		m_shaderBlurBilateralGaussianH->UpdateBuffer(&buffer);
+		m_rhiPipeline->SetConstantBuffer(m_shaderBlurBilateralGaussianH->GetConstantBuffer());
+
+		// Horizontal Gaussian blur
+		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetPixelShader(m_shaderBlurBilateralGaussianH);
+		m_rhiPipeline->SetTexture(texIn);
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhiPipeline->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		// Vertical Gaussian blur
+		m_rhiPipeline->SetRenderTarget(texIn);
+		m_rhiPipeline->SetPixelShader(m_shaderBlurBilateralGaussianV);
+		m_rhiPipeline->SetTexture(texOut);
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 

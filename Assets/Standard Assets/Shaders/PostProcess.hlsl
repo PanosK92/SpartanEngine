@@ -70,6 +70,18 @@ float4 mainPS(VS_Output input) : SV_TARGET
 	color 		= Pass_BlurGaussian(texCoord, sourceTexture, bilinearSampler, texRes, dir, sigma);
 #endif
 
+#if PASS_BLUR_BILATERAL_GAUSSIAN_H
+	float2 dir 	= float2(1.0f, 0.0f);
+	float sigma = parameters.x;
+	color 		= Pass_BilateralGaussian(texCoord, sourceTexture, sourceTexture2, bilinearSampler, texRes, dir, sigma);
+#endif
+
+#if PASS_BLUR_BILATERAL_GAUSSIAN_V
+	float2 dir 	= float2(0.0f, 1.0f);
+	float sigma = parameters.x;
+	color 		= Pass_BilateralGaussian(texCoord, sourceTexture, sourceTexture2, bilinearSampler, texRes, dir, sigma);
+#endif
+
 #if PASS_BRIGHT
 	color 				= sourceTexture.Sample(bilinearSampler, input.uv);
     float luminance 	= dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));	

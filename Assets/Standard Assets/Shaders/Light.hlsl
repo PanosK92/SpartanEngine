@@ -104,12 +104,6 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	float ambientTerm = 0.1f;
 	float fakeAmbient = clamp(saturate(dirLightIntensity.r), ambientTerm, 1.0f);
     finalColor += ImageBasedLighting(material, normal, viewDir, samplerLinear) * fakeAmbient;
-	
-	// Apply SSDO
-	float4 ssdo				= texSSAO.Sample(samplerLinear, texCoord);
-    float3 occlusion    	= ssdo.a * occlusionTex;
-	finalColor 				+= ssdo.rgb;
-	finalColor 				*= occlusion;
 
 	//= DIRECTIONAL LIGHT =============================================================================================
     Light directionalLight;
@@ -182,7 +176,11 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 emission = material.emission * albedo.rgb * 10.0f;
     finalColor += emission;
 
-	
+	// Apply SSDO
+	float4 ssdo				= texSSAO.Sample(samplerLinear, texCoord);
+    float3 occlusion    	= ssdo.a * occlusionTex;
+	finalColor 				+= ssdo.rgb;
+	finalColor 				*= occlusion;
 
 	// Compute luma for FXAA
     float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f));
