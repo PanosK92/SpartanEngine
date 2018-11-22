@@ -764,7 +764,7 @@ namespace Directus
 		{
 			Pass_ShadowMapping(texIn_Spare, GetLightDirectional());
 			float sigma = 1.0f;
-			Pass_BlurGaussian(texIn_Spare, texOut_Shadows, sigma);
+			Pass_BlurBilateralGaussian(texIn_Spare, texOut_Shadows, sigma);
 		}
 
 		// SSDO + Blur
