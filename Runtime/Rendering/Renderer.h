@@ -145,6 +145,7 @@ namespace Directus
 		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_BlurBox(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float blur);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
+		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
 		void Pass_SSDO(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ShadowMapping(std::shared_ptr<RHI_RenderTexture>& texOut, Light* inDirectionalLight);
 		void Pass_Lines(std::shared_ptr<RHI_RenderTexture>& texOut);
@@ -163,7 +164,7 @@ namespace Directus
 		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_FinalFrame;
 		//============================================================
 
-		//= SHADERS ============================================
+		//= SHADERS ===============================================
 		std::shared_ptr<LightShader> m_shaderLight;
 		std::shared_ptr<RHI_Shader> m_shaderLightDepth;
 		std::shared_ptr<RHI_Shader> m_shaderLine;
@@ -177,12 +178,14 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderBlurBox;
 		std::shared_ptr<RHI_Shader> m_shaderBlurGaussianH;
 		std::shared_ptr<RHI_Shader> m_shaderBlurGaussianV;
+		std::shared_ptr<RHI_Shader> m_shaderBlurBilateralGaussianH;
+		std::shared_ptr<RHI_Shader> m_shaderBlurBilateralGaussianV;
 		std::shared_ptr<RHI_Shader> m_shaderBloom_Bright;
 		std::shared_ptr<RHI_Shader> m_shaderBloom_BlurBlend;
 		std::shared_ptr<RHI_Shader> m_shaderCorrection;
 		std::shared_ptr<RHI_Shader> m_shaderTransformationGizmo;
 		std::shared_ptr<RHI_Shader> m_shaderTransparent;
-		//======================================================
+		//=========================================================
 
 		//= SAMPLERS ===============================================
 		std::shared_ptr<RHI_Sampler> m_samplerPointClampAlways;
