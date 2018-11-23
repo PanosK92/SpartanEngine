@@ -102,9 +102,9 @@ static const float3 sampleKernel[64] =
 };
 
 static const int sample_count		= 16;
-static const float radius			= 0.5f;
-static const float intensity    	= 3.0f;
-static const float bias         	= 0.1f;
+static const float radius			= 2.0f;
+static const float intensity    	= 5.0f;
+static const float bias         	= 0.01f;
 static const float2 noiseScale  	= float2(resolution.x / 64.0f, resolution.y / 64.0f);
 
 float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_linear, out float depth_cs)
@@ -133,16 +133,18 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float depth_cs      		= 0.0f;
     float3 center_pos        	= GetWorldPosition(texCoord, samplerLinear_clamp, depth_linear, depth_cs); 
     float3 center_normal     	= GetNormalUnpacked(texNormal, samplerLinear_clamp, texCoord);
-	float3 randomNormal       	= normalize(UnpackNormal(texNoise.Sample(samplerLinear_wrap, texCoord * noiseScale).rgb));
 	float radius_depth			= radius / depth_linear;
     float occlusion         	= 0.0f;
     float3 color            	= float3(0.0f, 0.0f, 0.0f);
-	
+		
+	// Get random noise vector
+	float3 rvec	= UnpackNormal(texNoise.Sample(samplerLinear_wrap, texCoord * noiseScale).xyz);
+
     // Occlusion
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv
-		float3 sampleDir        			= reflect(sampleKernel[i], randomNormal) * radius_depth;
+		float3 sampleDir        			= reflect(sampleKernel[i], rvec) * radius_depth;
         float2 uv               			= texCoord + sampleDir.xy;
 		
 		// Acquire/Compute sample data
@@ -154,7 +156,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		float3 center_to_sample_normalized 	= normalize(center_to_sample);
 		
 		// Accumulate
-		float NdotDir						= dot(center_normal, center_to_sample_normalized - bias);
+		float NdotDir						= dot(center_normal, center_to_sample_normalized) - bias;
 		float attunation					= (1.0f / (1.0f + center_to_sample_distance));
 		float rangeCheck    				= smoothstep(0.0f, 1.0f, radius_depth / center_to_sample_distance);	
 		float sample_occlusion 				= saturate(NdotDir) * attunation * rangeCheck * intensity;

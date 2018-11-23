@@ -320,7 +320,7 @@ namespace Directus
 
 				if (m_depthStencil)
 				{
-					m_rhiDevice->ClearDepthStencil(m_depthStencil, Clear_Depth, m_viewport->GetMaxDepth(), 1);
+					m_rhiDevice->ClearDepthStencil(m_depthStencil, Clear_Depth, m_viewport->GetMaxDepth(), 0);
 				}
 			}
 

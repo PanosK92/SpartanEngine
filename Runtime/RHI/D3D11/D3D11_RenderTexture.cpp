@@ -46,7 +46,7 @@ namespace Directus
 		m_nearPlane				= 0.0f;
 		m_farPlane				= 0.0f;
 		m_format				= textureFormat;
-		m_viewport				= make_shared<RHI_Viewport>(0.0f, 0.0f, (float)width, (float)height, 0.0f, m_rhiDevice->Get_Viewport()->GetMaxDepth());
+		m_viewport				= make_shared<RHI_Viewport>(0.0f, 0.0f, (float)width, (float)height, m_rhiDevice->Get_Viewport()->GetMinDepth(), m_rhiDevice->Get_Viewport()->GetMaxDepth());
 		m_width					= width;
 		m_height				= height;
 
@@ -175,8 +175,7 @@ namespace Directus
 		// Clear depth buffer.
 		if (m_depthEnabled)
 		{
-			float maxDepth = m_rhiDevice->Get_Viewport()->GetMaxDepth();
-			m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, maxDepth, 0);
+			m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, m_viewport->GetMaxDepth(), 0);
 		}
 
 		return true;
@@ -185,15 +184,5 @@ namespace Directus
 	bool RHI_RenderTexture::Clear(float red, float green, float blue, float alpha)
 	{
 		return Clear(Vector4(red, green, blue, alpha));
-	}
-
-	void RHI_RenderTexture::ComputeOrthographicProjectionMatrix(float nearPlane, float farPlane)
-	{
-		if (m_nearPlane == nearPlane && m_farPlane == farPlane)
-			return;
-
-		m_nearPlane						= nearPlane;
-		m_farPlane						= farPlane;
-		m_orthographicProjectionMatrix	= Matrix::CreateOrthographicLH((float)m_viewport->GetWidth(), (float)m_viewport->GetHeight(), nearPlane, farPlane);
 	}
 }

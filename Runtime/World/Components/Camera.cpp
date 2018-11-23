@@ -84,7 +84,11 @@ namespace Directus
 		ComputeViewMatrix();
 		ComputeProjection();
 
+		#if REVERSE_Z == 1
+		m_frustrum.Construct(GetViewMatrix(), GetProjectionMatrix(), GetNearPlane());
+		#else
 		m_frustrum.Construct(GetViewMatrix(), GetProjectionMatrix(), GetFarPlane());
+		#endif
 
 		m_isDirty = false;
 	}
@@ -251,11 +255,11 @@ namespace Directus
 		if (m_projection == Projection_Perspective)
 		{
 			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.y / viewport.x)); 
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_nearPlane, m_farPlane);
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_farPlane, m_nearPlane);
 		}
 		else if (m_projection == Projection_Orthographic)
 		{
-			m_mProjection = Matrix::CreateOrthographicLH(viewport.x, viewport.y, m_nearPlane, m_farPlane);
+			m_mProjection = Matrix::CreateOrthographicLH(viewport.x, viewport.y, m_farPlane, m_nearPlane);
 		}
 
 		// TAA

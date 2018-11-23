@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	#define REVERSE_Z 1
+
 	enum VSync
 	{
 		Off,

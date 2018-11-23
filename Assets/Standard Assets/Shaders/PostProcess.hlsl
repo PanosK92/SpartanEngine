@@ -71,15 +71,17 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN_H
-	float2 dir 	= float2(1.0f, 0.0f);
-	float sigma = parameters.x;
+	float sigma 		= parameters.x;
+	float pixelStride 	= parameters.y;
+	float2 dir 			= float2(1.0f, 0.0f) * pixelStride;
 	color 		= Pass_BilateralGaussian(texCoord, sourceTexture, sourceTexture2, samplerState, texRes, dir, sigma);
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN_V
-	float2 dir 	= float2(0.0f, 1.0f);
-	float sigma = parameters.x;
-	color 		= Pass_BilateralGaussian(texCoord, sourceTexture, sourceTexture2, samplerState, texRes, dir, sigma);
+	float sigma 		= parameters.x;
+	float pixelStride 	= parameters.y;
+	float2 dir 			= float2(0.0f, 1.0f) * pixelStride;
+	color 				= Pass_BilateralGaussian(texCoord, sourceTexture, sourceTexture2, samplerState, texRes, dir, sigma);
 #endif
 
 #if PASS_BRIGHT
