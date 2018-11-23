@@ -178,7 +178,7 @@ float4 Pass_BilateralGaussian(float2 uv, Texture2D sourceTexture, Texture2D dept
 	float weightSum 	= 0.0f;
     float4 color 		= 0;
 	float origin_depth	= depthTexture.Sample(bilinearSampler, uv).r;
-	float threshold		= 0.0001f;
+	float threshold		= 0.00005f;
 	
     for (int i = -7; i < 7; i++)
     {

@@ -356,7 +356,11 @@ namespace Directus
 		Set_Viewport(m_viewport);
 
 		// DEPTH STATES
+		#if REVERSE_Z == 1
+		auto desc = Desc_DepthReverseEnabled();
+		#else
 		auto desc = Desc_DepthEnabled();
+		#endif
 		if (FAILED(_D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateEnabled)))
 		{
 			LOG_ERROR("RHI_Device::RHI_Device: Failed to create depth stencil enabled state.");
@@ -521,7 +525,11 @@ namespace Directus
 		_D3D11_Device::deviceContext->ClearRenderTargetView(_D3D11_Device::renderTargetView, color.Data()); // back buffer
 		if (m_depthEnabled)
 		{
-			_D3D11_Device::deviceContext->ClearDepthStencilView(_D3D11_Device::depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, _D3D11_Device::viewport.MaxDepth, 0); // depth buffer
+			float depth = _D3D11_Device::viewport.MaxDepth;
+			#if REVERSE_Z == 1
+			depth = 1.0f - depth;
+			#endif
+			_D3D11_Device::deviceContext->ClearDepthStencilView(_D3D11_Device::depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, depth, 0); // depth buffer
 		}
 	}
 
@@ -537,6 +545,10 @@ namespace Directus
 	{
 		if (!_D3D11_Device::deviceContext)
 			return;
+
+		#if REVERSE_Z == 1
+		depth = 1.0f - depth;
+		#endif
 
 		unsigned int clearFlags = 0;
 		clearFlags |= flags & Clear_Depth ? D3D11_CLEAR_DEPTH : 0;
@@ -711,7 +723,6 @@ namespace Directus
 		_D3D11_Device::viewport.Height		= viewport->GetHeight();
 		_D3D11_Device::viewport.MinDepth	= viewport->GetMinDepth();
 		_D3D11_Device::viewport.MaxDepth	= viewport->GetMaxDepth();
-
 		_D3D11_Device::deviceContext->RSSetViewports(1, &_D3D11_Device::viewport);
 	}
 

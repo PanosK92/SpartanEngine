@@ -763,16 +763,18 @@ namespace Directus
 		if (auto lightDir = GetLightDirectional())
 		{
 			Pass_ShadowMapping(texIn_Spare, GetLightDirectional());
-			float sigma = 1.0f;
-			Pass_BlurBilateralGaussian(texIn_Spare, texOut_Shadows, sigma);
+			float sigma			= 1.0f;
+			float pixelStride = 1.0f;
+			Pass_BlurBilateralGaussian(texIn_Spare, texOut_Shadows, sigma, pixelStride);
 		}
 
 		// SSDO + Blur
 		if (m_flags & Render_SSDO)
 		{
 			Pass_SSDO(texIn_Spare);
-			float sigma = 3.0f;
-			Pass_BlurBilateralGaussian(texIn_Spare, texOut_SSAO, sigma);
+			float sigma			= 3.0f;
+			float pixelStride	= 2.0f;
+			Pass_BlurBilateralGaussian(texIn_Spare, texOut_SSAO, sigma, pixelStride);
 		}
 
 		m_rhiDevice->EventEnd();
@@ -900,7 +902,7 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_BlurBilateralGaussian(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut, float sigma)
+	void Renderer::Pass_BlurBilateralGaussian(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut, float sigma, float pixelStride)
 	{
 		if (texIn->GetWidth() != texOut->GetWidth() ||
 			texIn->GetHeight() != texOut->GetHeight() ||
@@ -914,7 +916,7 @@ namespace Directus
 
 		// Set common states
 		m_rhiPipeline->SetViewport(texIn->GetViewport());
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), sigma);
+		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), Vector2(sigma, pixelStride));
 		m_shaderBlurBilateralGaussianH->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderBlurBilateralGaussianH->GetConstantBuffer());
 

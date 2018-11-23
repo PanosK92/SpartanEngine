@@ -284,7 +284,11 @@ namespace Directus
 		max *= fWorldUnitsPerTexel;
 		//================================================================================
 
+		#if REVERSE_Z == 1
+		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, max.z, min.z);
+		#else
 		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);
+		#endif
 	}
 
 	void Light::ShadowMap_Create(bool force)
