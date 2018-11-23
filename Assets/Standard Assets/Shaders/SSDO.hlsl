@@ -101,10 +101,10 @@ static const float3 sampleKernel[64] =
 	float3(-0.44272, -0.67928, 0.1865)
 };
 
-static const int sample_count		= 32;
+static const int sample_count		= 16;
 static const float radius			= 0.5f;
 static const float intensity    	= 3.0f;
-static const float bias         	= 0.01f;
+static const float bias         	= 0.1f;
 static const float2 noiseScale  	= float2(resolution.x / 64.0f, resolution.y / 64.0f);
 
 float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_linear, out float depth_cs)
@@ -154,10 +154,10 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		float3 center_to_sample_normalized 	= normalize(center_to_sample);
 		
 		// Accumulate
-		float NdotDir						= dot(center_normal, center_to_sample_normalized);
+		float NdotDir						= dot(center_normal, center_to_sample_normalized - bias);
 		float attunation					= (1.0f / (1.0f + center_to_sample_distance));
 		float rangeCheck    				= smoothstep(0.0f, 1.0f, radius_depth / center_to_sample_distance);	
-		float sample_occlusion 				= saturate(NdotDir - bias) * attunation * rangeCheck * intensity;
+		float sample_occlusion 				= saturate(NdotDir) * attunation * rangeCheck * intensity;
 		occlusion 							+= sample_occlusion;	
         color                   			+= sample_color * saturate(NdotDir) * rangeCheck;
     }

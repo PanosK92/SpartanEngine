@@ -987,9 +987,6 @@ namespace Directus
 		// All post-process passes share the following, so set them once here
 		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
 		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
-		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		m_rhiPipeline->SetCullMode(Cull_Back);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways); // FXAA and Bloom (Gaussian blur) require a bilinear sampler
 		m_rhiPipeline->SetVertexShader(m_shaderBloom_Bright);  // vertex shader is the same for every pass
 		Vector2 computeLuma = Vector2(RenderFlags_IsSet(Render_FXAA) ? 1.0f : 0.0f, 0.0f);
 		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), computeLuma);
@@ -1113,6 +1110,10 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_Bloom");
 
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+
 		// Bright pass
 		m_rhiPipeline->SetRenderTarget(m_renderTexQuarter1);
 		m_rhiPipeline->SetViewport(m_renderTexQuarter1->GetViewport());
@@ -1144,6 +1145,9 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_Correction");
 
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetSampler(m_samplerPointClampAlways);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderCorrection);
@@ -1159,6 +1163,9 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_FXAA");
 
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderFXAA);	
@@ -1174,6 +1181,9 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_ChromaticAberration");
 
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderChromaticAberration);
@@ -1189,6 +1199,9 @@ namespace Directus
 	{
 		m_rhiDevice->EventBegin("Pass_Sharpening");
 
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderSharpening);
@@ -1202,8 +1215,15 @@ namespace Directus
 
 	void Renderer::Pass_Lines(shared_ptr<RHI_RenderTexture>& texOut)
 	{
+		bool drawPickingRay = m_flags & Render_PickingRay;
+		bool drawAABBs		= m_flags & Render_AABB;
+		bool drawGrid		= m_flags & Render_SceneGrid;
+		bool draw			= drawPickingRay | drawAABBs | drawGrid;
+		if (!draw)
+			return;
+
 		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Line_Rendering");
+		m_rhiDevice->EventBegin("Pass_Lines");
 
 		m_rhiPipeline->SetState(m_pipelineLine);
 		m_rhiDevice->Set_AlphaBlendingEnabled(true);
@@ -1211,14 +1231,14 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		{
 			// Picking ray
-			if (m_flags & Render_PickingRay)
+			if (drawPickingRay)
 			{
 				const Ray& ray = m_camera->GetPickingRay();
 				AddLine(ray.GetOrigin(), ray.GetEnd(), Vector4(0, 1, 0, 1));
 			}
 
 			// bounding boxes
-			if (m_flags & Render_AABB)
+			if (drawAABBs)
 			{
 				for (const auto& actor : m_actors[Renderable_ObjectOpaque])
 				{
@@ -1264,7 +1284,7 @@ namespace Directus
 		}
 		
 		// Grid
-		if (m_flags & Render_SceneGrid)
+		if (drawGrid)
 		{
 			m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
@@ -1287,67 +1307,73 @@ namespace Directus
 			return;
 
 		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Gizmos");
+		m_rhiDevice->EventBegin("Pass_Gizmos");
 
-		m_rhiDevice->Set_AlphaBlendingEnabled(true);
-		m_rhiDevice->EventBegin("Lights");
-		for (const auto& actor : m_actors[Renderable_Light])
+		auto& lights = m_actors[Renderable_Light];
+		if (lights.size() != 0)
 		{
-			Vector3 lightWorldPos = actor->GetTransform_PtrRaw()->GetPosition();
-			Vector3 cameraWorldPos = m_camera->GetTransform()->GetPosition();
+			m_rhiDevice->EventBegin("Lights");
 
-			// Compute light screen space position and scale (based on distance from the camera)
-			Vector2 lightScreenPos = m_camera->WorldToScreenPoint(lightWorldPos);
-			float distance = Clamp(Vector3::Length(lightWorldPos, cameraWorldPos), 0.0f, FLT_MAX);
-			float scale = GIZMO_MAX_SIZE / distance;
-			scale = Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
-
-			// Skip if the light is not in front of the camera
-			if (!m_camera->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))
-				continue;
-
-			// Skip if the light if it's too small
-			if (scale < GIZMO_MIN_SIZE)
-				continue;
-
-			shared_ptr<RHI_Texture> lightTex = nullptr;
-			LightType type = actor->GetComponent<Light>()->GetLightType();
-			if (type == LightType_Directional)
-			{
-				lightTex = m_gizmoTexLightDirectional;
-			}
-			else if (type == LightType_Point)
-			{
-				lightTex = m_gizmoTexLightPoint;
-			}
-			else if (type == LightType_Spot)
-			{
-				lightTex = m_gizmoTexLightSpot;
-			}
-
-			// Construct appropriate rectangle
-			float texWidth = lightTex->GetWidth() * scale;
-			float texHeight = lightTex->GetHeight() * scale;
-			m_gizmoRectLight->Create(
-				lightScreenPos.x - texWidth * 0.5f,
-				lightScreenPos.y - texHeight * 0.5f,
-				texWidth,
-				texHeight
-			);
-
-			m_rhiPipeline->SetShader(m_shaderTexture);
-			m_rhiPipeline->SetTexture(lightTex);
-			m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
-			m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
-			m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
 			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-			auto buffer = Struct_Matrix(m_wvp_baseOrthographic);
-			m_shaderTexture->UpdateBuffer(&buffer);
-			m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
-			m_rhiPipeline->Bind();
-			m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+			m_rhiPipeline->SetShader(m_shaderTexture);
+			m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
+			for (const auto& actor : lights)
+			{
+				Vector3 lightWorldPos = actor->GetTransform_PtrRaw()->GetPosition();
+				Vector3 cameraWorldPos = m_camera->GetTransform()->GetPosition();
+
+				// Compute light screen space position and scale (based on distance from the camera)
+				Vector2 lightScreenPos = m_camera->WorldToScreenPoint(lightWorldPos);
+				float distance = Clamp(Vector3::Length(lightWorldPos, cameraWorldPos), 0.0f, FLT_MAX);
+				float scale = GIZMO_MAX_SIZE / distance;
+				scale = Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
+
+				// Skip if the light is not in front of the camera
+				if (!m_camera->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))
+					continue;
+
+				// Skip if the light if it's too small
+				if (scale < GIZMO_MIN_SIZE)
+					continue;
+
+				shared_ptr<RHI_Texture> lightTex = nullptr;
+				LightType type = actor->GetComponent<Light>()->GetLightType();
+				if (type == LightType_Directional)
+				{
+					lightTex = m_gizmoTexLightDirectional;
+				}
+				else if (type == LightType_Point)
+				{
+					lightTex = m_gizmoTexLightPoint;
+				}
+				else if (type == LightType_Spot)
+				{
+					lightTex = m_gizmoTexLightSpot;
+				}
+
+				// Construct appropriate rectangle
+				float texWidth = lightTex->GetWidth() * scale;
+				float texHeight = lightTex->GetHeight() * scale;
+				m_gizmoRectLight->Create(
+					lightScreenPos.x - texWidth * 0.5f,
+					lightScreenPos.y - texHeight * 0.5f,
+					texWidth,
+					texHeight
+				);
+			
+				m_rhiPipeline->SetTexture(lightTex);
+				m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
+				m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
+				auto buffer = Struct_Matrix(m_wvp_baseOrthographic);
+				m_shaderTexture->UpdateBuffer(&buffer);
+				m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
+				m_rhiPipeline->Bind();
+				m_rhiDevice->Set_AlphaBlendingEnabled(true);
+				m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+				m_rhiDevice->Set_AlphaBlendingEnabled(false);
+			}
+			m_rhiDevice->EventEnd();
 		}
-		m_rhiDevice->EventEnd();
 
 		// Transformation Gizmo		
 		//m_rhi->EventBegin("Transformation");
@@ -1367,7 +1393,6 @@ namespace Directus
 		//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
 		//}
 		//m_rhi->EventEnd();
-		m_rhiDevice->Set_AlphaBlendingEnabled(false);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -1386,13 +1411,15 @@ namespace Directus
 		m_font->SetText(Profiler::Get().GetMetrics(), textPos);
 
 		m_rhiDevice->Set_AlphaBlendingEnabled(true);
-		m_rhiPipeline->SetRenderTarget(texOut);
-		m_rhiPipeline->SetShader(m_shaderFont);
-		m_rhiPipeline->SetTexture(m_font->GetTexture());
-		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetFillMode(Fill_Solid);
 		m_rhiPipeline->SetIndexBuffer(m_font->GetIndexBuffer());
 		m_rhiPipeline->SetVertexBuffer(m_font->GetVertexBuffer());
-		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetRenderTarget(texOut);	
+		m_rhiPipeline->SetTexture(m_font->GetTexture());
+		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
+		m_rhiPipeline->SetShader(m_shaderFont);
 		auto buffer = Struct_Matrix_Vector4(m_wvp_baseOrthographic, m_font->GetColor());
 		m_shaderFont->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderFont->GetConstantBuffer());
