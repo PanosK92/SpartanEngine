@@ -175,17 +175,19 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     }
 	//=======================================================================================================================
 
+	// Dirty and ugly, just the way I like it
+	float ambientTerm 	= 0.1f;
+	float fakeAmbient 	= clamp(saturate(dirLightIntensity.r), ambientTerm, 1.0f);
+	
 	// SSR - screen space reflections
 	if (padding.x != 0.0f)
 	{
 		float4 ssr	= SSR(worldPos, normal, farPlane, mView, mProjection, texFrame, texDepth, sampler_point_clamp);
-		finalColor += ssr.xyz * (1.0f - material.roughness);
+		finalColor += ssr.xyz * (1.0f - material.roughness)  * fakeAmbient;
 	}
 	
 	// IBL - Image based lighting
-	float ambientTerm 	= 0.1f;
-	float fakeAmbient 	= clamp(saturate(dirLightIntensity.r), ambientTerm, 1.0f);
-    finalColor 			+= ImageBasedLighting(material, normal, camera_to_pixel, samplerLinear) * fakeAmbient;
+    finalColor 	+= ImageBasedLighting(material, normal, camera_to_pixel, samplerLinear) * fakeAmbient;
 
 	// SDDO - Screen space directional occlusion
 	float4 ssdo			= texSSDO.Sample(samplerLinear, texCoord);
