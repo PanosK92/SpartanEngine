@@ -55,7 +55,8 @@ namespace Directus
 		const Matrix& mPerspectiveProjection,
 		const Matrix& mOrthographicProjection,
 		const vector<Actor*>& lights,
-		Camera* camera
+		Camera* camera,
+		bool doSSR
 	)
 	{
 		if (GetState() != Shader_Built)
@@ -75,6 +76,8 @@ namespace Directus
 		Vector3 camPos					= camera->GetTransform()->GetPosition();
 		buffer->cameraPosition			= Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
 		buffer->wvp						= mWorld * mBaseView * mOrthographicProjection;
+		buffer->view					= mView;
+		buffer->projection				= mPerspectiveProjection;
 		buffer->viewProjectionInverse	= (mView * mPerspectiveProjection).Inverted();
 
 		// Reset any light buffer values because the shader will still use them
@@ -149,7 +152,7 @@ namespace Directus
 		buffer->nearPlane		= camera->GetNearPlane();
 		buffer->farPlane		= camera->GetFarPlane();
 		buffer->viewport		= Settings::Get().Resolution_Get();
-		buffer->padding			= Vector2::Zero;
+		buffer->padding			= Vector2(doSSR ? 1.0f : 0.0f, 0.0f);
 
 		// Unmap buffer
 		m_cbuffer->Unmap();

@@ -4,8 +4,8 @@ Texture2D texNormal 		: register(t1);
 Texture2D texDepth 			: register(t2);
 Texture2D texSpecular 		: register(t3);
 Texture2D texShadows 		: register(t4);
-Texture2D texSSAO 			: register(t5);
-Texture2D texLastFrame 		: register(t6);
+Texture2D texSSDO 			: register(t5);
+Texture2D texFrame 			: register(t6);
 TextureCube environmentTex 	: register(t7);
 //=========================================
 
@@ -18,6 +18,8 @@ SamplerState samplerLinear : register(s0);
 cbuffer MiscBuffer : register(b0)
 {
     matrix mWorldViewProjection;
+	matrix mView;
+	matrix mProjection;
     matrix mViewProjectionInverse;
     float4 cameraPosWS;
 	
@@ -47,6 +49,7 @@ cbuffer MiscBuffer : register(b0)
 // = INCLUDES ========
 #include "Common.hlsl"
 #include "BRDF.hlsl"
+#include "SSR.hlsl"
 //====================
 
 struct PixelInputType
@@ -86,16 +89,16 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     material.emission   = specular.b * 2.0f;
 		
 	// Extract useful values out of those samples
-    float depth_cs  = texDepth.Sample(samplerLinear, texCoord).g;
-    float3 worldPos = ReconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
-    float3 viewDir  = normalize(cameraPosWS.xyz - worldPos.xyz);
+    float2 depth  			= texDepth.Sample(samplerLinear, texCoord).rg;
+    float3 worldPos 		= ReconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
+    float3 camera_to_pixel  = normalize(worldPos.xyz - cameraPosWS.xyz);
 	 
 	// Shadows
     float dirShadow		= texShadows.Sample(samplerLinear, texCoord).r;
 
     if (specular.a == 1.0f) // Render technique
     {
-        finalColor = ToLinear(environmentTex.Sample(samplerLinear, -viewDir)).rgb;
+        finalColor = ToLinear(environmentTex.Sample(samplerLinear, camera_to_pixel)).rgb;
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }
@@ -103,8 +106,8 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	// Image based lighting
 	float ambientTerm = 0.1f;
 	float fakeAmbient = clamp(saturate(dirLightIntensity.r), ambientTerm, 1.0f);
-    finalColor += ImageBasedLighting(material, normal, viewDir, samplerLinear) * fakeAmbient;
-
+    finalColor += ImageBasedLighting(material, normal, camera_to_pixel, samplerLinear) * fakeAmbient;
+	
 	//= DIRECTIONAL LIGHT =============================================================================================
     Light directionalLight;
 
@@ -114,7 +117,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
 
 	// Compute illumination
-    finalColor += BRDF(material, directionalLight, normal, viewDir);
+    finalColor += BRDF(material, directionalLight, normal, camera_to_pixel);
 	//=================================================================================================================
 	
 	//= POINT LIGHTS ====================================================
@@ -137,7 +140,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		// Compute illumination
         if (dist < range)
         {
-            finalColor += BRDF(material, pointLight, normal, viewDir);
+            finalColor += BRDF(material, pointLight, normal, camera_to_pixel);
         }
     }
 	//===================================================================
@@ -167,7 +170,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		// Compute illumination
         if (theta > cutoffAngle)
         {
-            finalColor += BRDF(material, spotLight, normal, viewDir);
+            finalColor += BRDF(material, spotLight, normal, camera_to_pixel);
         }
     }
 	//=======================================================================================================================
@@ -177,10 +180,17 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     finalColor += emission;
 
 	// Apply SSDO
-	float4 ssdo				= texSSAO.Sample(samplerLinear, texCoord);
+	float4 ssdo				= texSSDO.Sample(samplerLinear, texCoord);
     float3 occlusion    	= ssdo.a * occlusionTex;
 	finalColor 				+= ssdo.rgb;
 	finalColor 				*= occlusion;
+	
+	// Apply SSR
+	if (padding.x != 0.0f)
+	{
+		float3 ssr 	= SSR(worldPos, normal, camera_to_pixel, farPlane, mView, mProjection, texFrame, texDepth, samplerLinear);
+		finalColor 	+= ssr * (1.0f - material.roughness) * occlusion;
+	}
 
 	// Compute luma for FXAA
     float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f));

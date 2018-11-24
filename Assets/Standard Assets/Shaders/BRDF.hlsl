@@ -49,10 +49,10 @@ float3 Diffuse_OrenNayar( float3 DiffuseColor, float Roughness, float NoV, float
 }
 
 // IMAGE BASED LIGHTING ======================================================
-float3 ImageBasedLighting(Material material, float3 normal, float3 viewDir, SamplerState samplerLinear)
+float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, SamplerState samplerLinear)
 {
 	// Compute reflection vector
-	float3 reflectionVector = reflect(-viewDir, normal);
+	float3 reflectionVector = reflect(camera_to_pixel, normal);
 	
     float a             = max(0.001f, material.roughness * material.roughness);
 	float3 diffuseColor = (1.0f - material.metallic) * material.albedo;
@@ -60,7 +60,7 @@ float3 ImageBasedLighting(Material material, float3 normal, float3 viewDir, Samp
 
 	float3 indirectDiffuse  = ToLinear(environmentTex.SampleLevel(samplerLinear, reflectionVector, 10.0f)).rgb;
 	float3 indirectSpecular = ToLinear(environmentTex.SampleLevel(samplerLinear, reflectionVector, a * 10.0f)).rgb;
-	float3 envFresnel 		= F_FresnelSchlick(F0, a, normal, viewDir);
+	float3 envFresnel 		= F_FresnelSchlick(F0, a, normal, -camera_to_pixel);
 
 	float3 cDiffuse 	= indirectDiffuse * diffuseColor;
 	float3 cSpecular 	= indirectSpecular * envFresnel;
@@ -69,14 +69,14 @@ float3 ImageBasedLighting(Material material, float3 normal, float3 viewDir, Samp
 }
 
 //============================================================================
-float3 BRDF(Material material, Light light, float3 normal, float3 viewDir)
+float3 BRDF(Material material, Light light, float3 normal, float3 camera_to_pixel)
 {
 	// Compute some commmon vectors
-	float3 h 	= normalize(light.direction + viewDir);
-	float NdotV = abs(dot(normal, viewDir)) + 1e-5;
+	float3 h 	= normalize(light.direction - camera_to_pixel);
+	float NdotV = abs(dot(normal, -camera_to_pixel)) + 1e-5;
     float NdotL = clamp(dot(normal, light.direction), 0.0f, 1.0f);   
     float NdotH = clamp(dot(normal, h), 0.0f, 1.0f);
-    float VdotH = clamp(dot(viewDir, h), 0.0f, 1.0f);
+    float VdotH = clamp(dot(-camera_to_pixel, h), 0.0f, 1.0f);
 	
 	float a 			= max(0.001f, material.roughness * material.roughness);
 	float3 diffuseColor = (1.0f - material.metallic) * material.albedo;

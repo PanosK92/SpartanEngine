@@ -75,9 +75,10 @@ namespace Directus
 		m_flags			|= Render_Bloom;
 		m_flags			|= Render_FXAA;
 		m_flags			|= Render_SSDO;
-		m_flags			|= Render_Sharpening;
-		//m_flags		|= Render_ChromaticAberration;
+		//m_flags			|= Render_SSR;	
 		m_flags			|= Render_Correction;
+		//m_flags		|= Render_Sharpening;
+		//m_flags		|= Render_ChromaticAberration#;
 
 		// Create RHI device
 		m_rhiDevice		= make_shared<RHI_Device>(drawHandle);
@@ -337,19 +338,19 @@ namespace Directus
 		Pass_PreLight(
 			m_renderTexHalf_Spare,		// IN:	Render texture		
 			m_renderTexHalf_Shadows,	// OUT: Render texture	- Shadows
-			m_renderTexHalf_SSDO		// OUT: Render texture	- SSAO
+			m_renderTexHalf_SSDO		// OUT: Render texture	- SSDO
 		);
 
 		Pass_Light(
 			m_renderTexHalf_Shadows,	// IN:	Texture - Shadows
-			m_renderTexHalf_SSDO,		// IN:	Texture - SSAO
-			m_renderTexFull1				// OUT: Render texture	- Result
+			m_renderTexHalf_SSDO,		// IN:	Texture - SSDO
+			m_renderTexFull1			// OUT: Render texture	- Result
 		);
 
 		Pass_Transparent(m_renderTexFull1);
 		
 		Pass_PostLight(
-			m_renderTexFull1,	// IN:	Render texture - Light pass result
+			m_renderTexFull1,			// IN:	Render texture - Light pass result
 			m_renderTexFull_FinalFrame	// OUT: Render texture - Result
 		);
 	
@@ -941,7 +942,7 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& texShadows, shared_ptr<RHI_RenderTexture>& texSSAO, shared_ptr<RHI_RenderTexture>& texOut)
+	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& texShadows, shared_ptr<RHI_RenderTexture>& texSSDO, shared_ptr<RHI_RenderTexture>& texOut)
 	{
 		if (m_shaderLight->GetState() != Shader_Built)
 			return;
@@ -957,7 +958,8 @@ namespace Directus
 			m_mProjection,
 			m_mProjectionOtrhographic,
 			m_actors[Renderable_Light],
-			m_camera
+			m_camera,
+			m_flags & Render_SSR
 		);
 
 		m_rhiPipeline->SetRenderTarget(texOut);
@@ -968,8 +970,8 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Specular));
 		m_rhiPipeline->SetTexture(texShadows);
-		if (m_flags & Render_SSDO) { m_rhiPipeline->SetTexture(texSSAO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
-		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame); // previous frame for SSR // Todo SSR
+		if (m_flags & Render_SSDO) { m_rhiPipeline->SetTexture(texSSDO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
+		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame); // SSR
 		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
 		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);	
 		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer());

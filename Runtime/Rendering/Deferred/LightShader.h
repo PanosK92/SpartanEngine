@@ -47,7 +47,8 @@ namespace Directus
 			const Math::Matrix& mPerspectiveProjection,
 			const Math::Matrix& mOrthographicProjection,
 			const std::vector<Actor*>& lights,
-			Camera* camera
+			Camera* camera,
+			bool doSSR
 		);
 
 		std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer()	{ return m_cbuffer; }
@@ -57,6 +58,8 @@ namespace Directus
 		struct LightBuffer
 		{
 			Math::Matrix wvp;
+			Math::Matrix view;
+			Math::Matrix projection;
 			Math::Matrix viewProjectionInverse;
 			Math::Vector4 cameraPosition;
 			

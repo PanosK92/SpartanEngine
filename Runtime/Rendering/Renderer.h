@@ -65,9 +65,10 @@ namespace Directus
 		Render_Bloom				= 1UL << 10,
 		Render_FXAA					= 1UL << 11,
 		Render_SSDO					= 1UL << 12,
-		Render_Sharpening			= 1UL << 13,
-		Render_ChromaticAberration	= 1UL << 14,
-		Render_Correction			= 1UL << 15, // Tone-mapping & Gamma correction
+		Render_SSR					= 1UL << 13,
+		Render_Sharpening			= 1UL << 14,
+		Render_ChromaticAberration	= 1UL << 15,
+		Render_Correction			= 1UL << 16, // Tone-mapping & Gamma correction
 	};
 
 	enum RenderableType
@@ -134,7 +135,7 @@ namespace Directus
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
 		void Pass_PreLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, std::shared_ptr<RHI_RenderTexture>& texOut2);
-		void Pass_Light(std::shared_ptr<RHI_RenderTexture>& texShadows, std::shared_ptr<RHI_RenderTexture>& texSSAO, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Light(std::shared_ptr<RHI_RenderTexture>& texShadows, std::shared_ptr<RHI_RenderTexture>& texSSDO, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_PostLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& texOut);
 		bool Pass_GBufferVisualize(std::shared_ptr<RHI_RenderTexture>& texOut);
