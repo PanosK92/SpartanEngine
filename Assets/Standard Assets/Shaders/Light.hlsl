@@ -9,9 +9,10 @@ Texture2D texFrame 			: register(t6);
 TextureCube environmentTex 	: register(t7);
 //=========================================
 
-//= SAMPLERS ==============================
+//= SAMPLERS ===================================
 SamplerState samplerLinear : register(s0);
-//=========================================
+SamplerState sampler_point_clamp : register(s1);
+//==============================================
 
 //= CONSTANT BUFFERS ==========================
 #define MaxLights 64
@@ -188,7 +189,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	// Apply SSR
 	if (padding.x != 0.0f)
 	{
-		float3 ssr 	= SSR(worldPos, normal, camera_to_pixel, farPlane, mView, mProjection, texFrame, texDepth, samplerLinear);
+		float3 ssr 	= SSR(worldPos, normal, farPlane, mView, mProjection, texFrame, texDepth, sampler_point_clamp);
 		finalColor 	+= ssr * (1.0f - material.roughness) * occlusion;
 	}
 
