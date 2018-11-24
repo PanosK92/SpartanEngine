@@ -4,12 +4,6 @@ float3 F_FresnelSchlick(float HdV, float3 F0)
 	return F0 + (1.0f - F0) * pow(1.0f - HdV, 5.0f);
 }
 
-float3 F_FresnelSchlick(float3 specularColor, float a, float3 h, float3 v)
-{
-	// Sclick using roughness to attenuate fresnel.
-    return specularColor + (max(1.0f - a, specularColor) - specularColor) * pow((1.0f - saturate(dot(v, h))), 5.0f);
-}
-
 //= G - Geometric shadowing ================================================
 float G_SmithSchlickGGX(float NdotV, float NdotL, float a)
 {
@@ -48,26 +42,6 @@ float3 Diffuse_OrenNayar( float3 DiffuseColor, float Roughness, float NoV, float
 	return DiffuseColor / PI * ( C1 + C2 ) * ( 1 + Roughness * 0.5 );
 }
 
-// IMAGE BASED LIGHTING ======================================================
-float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, SamplerState samplerLinear)
-{
-	// Compute reflection vector
-	float3 reflectionVector = reflect(camera_to_pixel, normal);
-	
-    float a             = max(0.001f, material.roughness * material.roughness);
-	float3 diffuseColor = (1.0f - material.metallic) * material.albedo;
-	float3 F0 			= lerp(0.03f, material.albedo, material.metallic);	
-
-	float3 indirectDiffuse  = ToLinear(environmentTex.SampleLevel(samplerLinear, reflectionVector, 10.0f)).rgb;
-	float3 indirectSpecular = ToLinear(environmentTex.SampleLevel(samplerLinear, reflectionVector, a * 10.0f)).rgb;
-	float3 envFresnel 		= F_FresnelSchlick(F0, a, normal, -camera_to_pixel);
-
-	float3 cDiffuse 	= indirectDiffuse * diffuseColor;
-	float3 cSpecular 	= indirectSpecular * envFresnel;
-	
-	return cDiffuse + cSpecular;
-}
-
 //============================================================================
 float3 BRDF(Material material, Light light, float3 normal, float3 camera_to_pixel)
 {
@@ -78,17 +52,13 @@ float3 BRDF(Material material, Light light, float3 normal, float3 camera_to_pixe
     float NdotH = clamp(dot(normal, h), 0.0f, 1.0f);
     float VdotH = clamp(dot(-camera_to_pixel, h), 0.0f, 1.0f);
 	
-	float a 			= max(0.001f, material.roughness * material.roughness);
-	float3 diffuseColor = (1.0f - material.metallic) * material.albedo;
-	float3 F0 			= lerp(0.03f, material.albedo, material.metallic);
-	 
 	 // BRDF Diffuse
-    float3 cDiffuse 	= Diffuse_OrenNayar(diffuseColor, material.roughness, NdotV, NdotL, VdotH);
+    float3 cDiffuse 	= Diffuse_OrenNayar(material.color_diffuse, material.roughness, NdotV, NdotL, VdotH);
 	
 	// BRDF Specular	
-	float3 F 			= F_FresnelSchlick(VdotH, F0);
-    float G 			= G_SmithSchlickGGX(NdotV, NdotL, a);
-    float D 			= D_GGX(a, NdotH);
+	float3 F 			= F_FresnelSchlick(VdotH, material.color_specular);
+    float G 			= G_SmithSchlickGGX(NdotV, NdotL, material.alpha);
+    float D 			= D_GGX(material.alpha, NdotH);
 	float3 nominator 	= F * G * D;
 	float denominator 	= 4.0f * NdotL * NdotV;
 	float3 cSpecular 	= nominator / max(0.001f, denominator);

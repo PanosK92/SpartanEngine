@@ -2,7 +2,7 @@ static const int g_steps 					= 16;
 static const int g_binarySearchSteps 		= 16;
 static const float g_binarySearchThreshold 	= 0.05f;
 static const float g_ray_step 				= 1.15f;
-static const float2 g_failed				= float2(1.57f, 1.57f);
+static const float2 g_failed				= float2(-1.0f, -1.0f);
 
 float2 Project(float3 viewPosition, matrix projection)
 {
@@ -63,20 +63,21 @@ float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir, float farPlane, matrix proje
 	return g_failed;
 }
 
-float3 SSR(float3 position, float3 normal, float farPlane, matrix view, matrix projection, Texture2D tex_color, Texture2D tex_depth, SamplerState sampler_point_clamp)
+float4 SSR(float3 position, float3 normal, float farPlane, matrix view, matrix projection, Texture2D tex_color, Texture2D tex_depth, SamplerState sampler_point_clamp)
 {
 	// Convert everything to view space
-	float3 viewPos				= mul(float4(position, 1.0f), view).xyz;
-	float3 viewNormal			= mul(float4(normal, 0.0f), view).xyz;
-	float3 viewRayDir 			= normalize(reflect(viewPos, viewNormal));
+	float3 viewPos		= mul(float4(position, 1.0f), view).xyz;
+	float3 viewNormal	= mul(float4(normal, 0.0f), view).xyz;
+	float3 viewRayDir 	= normalize(reflect(viewPos, viewNormal));
 	
 	float3 ray_pos 			= viewPos;
 	float2 reflection_uv 	= SSR_RayMarch(ray_pos, viewRayDir, farPlane, projection, tex_depth, sampler_point_clamp);
 	float2 edgeFactor 		= float2(1, 1) - pow(saturate(abs(reflection_uv - float2(0.5f, 0.5f)) * 2), 8);
 	float screenEdge 		= saturate(min(edgeFactor.x, edgeFactor.y));
 	
-	if (reflection_uv.x * reflection_uv.y == 3.14f)
-		return -1.0f;
+	float alpha = 1.0f;
+	if (reflection_uv.x + reflection_uv.y == -2.0f)
+		alpha = 0.0f;
 
-	return tex_color.Sample(sampler_point_clamp, reflection_uv).rgb * screenEdge;
+	return float4(tex_color.Sample(sampler_point_clamp, reflection_uv).rgb * screenEdge, alpha);
 }
