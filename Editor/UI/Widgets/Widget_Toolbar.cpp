@@ -176,6 +176,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		bool correction				= Renderer::RenderFlags_IsSet(Render_Correction);
 		bool fxaa					= Renderer::RenderFlags_IsSet(Render_FXAA);
 		bool ssdo					= Renderer::RenderFlags_IsSet(Render_SSDO);
+		bool ssr					= Renderer::RenderFlags_IsSet(Render_SSR);
 		bool sharpening				= Renderer::RenderFlags_IsSet(Render_Sharpening);
 		bool chromaticAberration	= Renderer::RenderFlags_IsSet(Render_ChromaticAberration);
 		
@@ -183,6 +184,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		ImGui::Checkbox("Tone-mapping & Gamma correction", &correction);
 		ImGui::Checkbox("FXAA", &fxaa);
 		ImGui::Checkbox("SSDO", &ssdo);
+		ImGui::Checkbox("SSR", &ssr);
 		ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
 		ImGui::Checkbox("Sharpening", &sharpening);
 			
@@ -190,6 +192,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		correction			? Renderer::RenderFlags_Enable(Render_Correction)			: Renderer::RenderFlags_Disable(Render_Correction);
 		fxaa				? Renderer::RenderFlags_Enable(Render_FXAA)					: Renderer::RenderFlags_Disable(Render_FXAA);
 		ssdo				? Renderer::RenderFlags_Enable(Render_SSDO)					: Renderer::RenderFlags_Disable(Render_SSDO);
+		ssr					? Renderer::RenderFlags_Enable(Render_SSR)					: Renderer::RenderFlags_Disable(Render_SSR);
 		sharpening			? Renderer::RenderFlags_Enable(Render_Sharpening)			: Renderer::RenderFlags_Disable(Render_Sharpening);
 		chromaticAberration	? Renderer::RenderFlags_Enable(Render_ChromaticAberration)	: Renderer::RenderFlags_Disable(Render_ChromaticAberration);	
 	}

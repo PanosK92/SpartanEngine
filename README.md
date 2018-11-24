@@ -43,6 +43,7 @@ Debug Rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
 SSDO         					| 100% | Screen space directional occlusion.
 Bloom         					| 90% | -
+Screen space reflections		| 90% |	
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 Point light support             | 100% | -
 XML I/O                         | 100% | -
@@ -57,7 +58,6 @@ Font importing and rendering    | 100% | Ability to load any font file
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Skeletal Animation.
-- Screen space reflections.
 - Volumetric Lighting.
 - Global Illumination.
 - UI components.

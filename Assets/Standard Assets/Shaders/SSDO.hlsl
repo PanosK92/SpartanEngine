@@ -102,7 +102,7 @@ static const float3 sampleKernel[64] =
 };
 
 static const int sample_count		= 16;
-static const float radius			= 2.0f;
+static const float radius			= 1.0f;
 static const float intensity    	= 5.0f;
 static const float bias         	= 0.01f;
 static const float2 noiseScale  	= float2(resolution.x / 64.0f, resolution.y / 64.0f);
