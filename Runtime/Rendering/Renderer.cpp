@@ -973,7 +973,8 @@ namespace Directus
 		if (m_flags & Render_SSDO) { m_rhiPipeline->SetTexture(texSSDO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
 		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame); // SSR
 		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
-		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);	
+		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);
 		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer());
 		m_rhiPipeline->Bind();
 
