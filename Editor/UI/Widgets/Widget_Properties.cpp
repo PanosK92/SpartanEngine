@@ -837,7 +837,7 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 	{
 		//= REFLECT ==========================================================================
 		static const char* projectionTypes[] = { "Perspective", "Orthographic" };
-		auto projectionInt = (int)camera->GetProjection();
+		auto projectionInt = (int)camera->GetProjectionType();
 		const char* projectionCharPtr = projectionTypes[projectionInt];
 		float fov = camera->GetFOV_Horizontal_Deg();
 		float nearPlane = camera->GetNearPlane();
@@ -883,7 +883,7 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 		ImGui::SetCursorPosX(ComponentProperty::g_column);	ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &farPlane, 0.1f, 0.1f, "%.3f", inputTextFlags); ImGui::PopItemWidth();
 
 		//= MAP =====================================================================================================================================
-		if ((ProjectionType)projectionInt != camera->GetProjection())									camera->SetProjection((ProjectionType)projectionInt);
+		if ((ProjectionType)projectionInt != camera->GetProjectionType())									camera->SetProjection((ProjectionType)projectionInt);
 		if (fov != camera->GetFOV_Horizontal_Deg())														camera->SetFOV_Horizontal_Deg(fov);
 		if (nearPlane != camera->GetNearPlane())														camera->SetNearPlane(nearPlane);
 		if (farPlane != camera->GetFarPlane())															camera->SetFarPlane(farPlane);

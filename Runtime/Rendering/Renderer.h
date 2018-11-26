@@ -66,9 +66,10 @@ namespace Directus
 		Render_FXAA					= 1UL << 11,
 		Render_SSDO					= 1UL << 12,
 		Render_SSR					= 1UL << 13,
-		Render_Sharpening			= 1UL << 14,
-		Render_ChromaticAberration	= 1UL << 15,
-		Render_Correction			= 1UL << 16, // Tone-mapping & Gamma correction
+		Render_TAA					= 1UL << 14,
+		Render_Sharpening			= 1UL << 15,
+		Render_ChromaticAberration	= 1UL << 16,
+		Render_Correction			= 1UL << 17, // Tone-mapping & Gamma correction
 	};
 
 	enum RenderableType
@@ -101,18 +102,14 @@ namespace Directus
 		// The actual frame that all rendering takes place (or the viewport window in the editor)
 		void SetResolution(unsigned int width, unsigned int height);
 
-		//= RENDER MODE ======================================================================
-		// Returns all render mode flags
-		static unsigned long RenderFlags_GetAll()					{ return m_flags; }
-		// Set's all render mode flags
-		static void RenderFlags_SetAll(unsigned long renderFlags)	{ m_flags = renderFlags; }
+		//= RENDER MODE ==================================================
 		// Enables an render mode flag
-		static void RenderFlags_Enable(RenderMode flag)				{ m_flags |= flag; }
+		void Flags_Enable(RenderMode flag)		{ m_flags |= flag; }
 		// Removes an render mode flag
-		static void RenderFlags_Disable(RenderMode flag)			{ m_flags &= ~flag; }
+		void Flags_Disable(RenderMode flag)		{ m_flags &= ~flag; }
 		// Returns whether render mode flag is set
-		static bool RenderFlags_IsSet(RenderMode flag)				{ return m_flags & flag; }
-		//====================================================================================
+		bool Flags_IsSet(RenderMode flag)		{ return m_flags & flag; }
+		//================================================================
 
 		//= LINE RENDERING ==============================================================================================================
 		void AddBoundigBox(const Math::BoundingBox& box, const Math::Vector4& color);
@@ -122,7 +119,7 @@ namespace Directus
 
 		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
 		static bool IsRendering()	{ return m_isRendering; }
-		static uint64_t GetFrame()	{ return m_frame; }
+		uint64_t GetFrameNum()		{ return m_frameNum; }
 		Camera* GetCamera()			{ return m_camera; }
 
 	private:
@@ -225,24 +222,23 @@ namespace Directus
 		
 		std::unique_ptr<Rectangle> m_quad;
 		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
-		Math::Matrix m_mView;
-		Math::Matrix m_mViewBase;
-		Math::Matrix m_mProjection;
-		Math::Matrix m_mProjectionOtrhographic;
-		Math::Matrix m_mViewProjectionPerspective;
-		Math::Matrix m_wvp_baseOrthographic;
+		Math::Matrix m_view;
+		Math::Matrix m_viewBase;
+		Math::Matrix m_projection;
+		Math::Matrix m_projectionOrthographic;
+		Math::Matrix m_viewProjection;
+		Math::Matrix m_viewProjection_Orthographic;
 		float m_nearPlane;
 		float m_farPlane;
 		Camera* m_camera;
 		Light* GetLightDirectional();
 		Skybox* GetSkybox();
 		static bool m_isRendering;
-		static uint64_t m_frame;
-
+		uint64_t m_frameNum;
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
-		static unsigned long m_flags;
+		unsigned long m_flags;
 		//===============================================================
 	};
 }

@@ -56,10 +56,8 @@ using namespace Helper;
 
 namespace Directus
 {
-	static ResourceManager* g_resourceMng	= nullptr;
-	unsigned long Renderer::m_flags;
-	bool Renderer::m_isRendering			= false;
-	uint64_t Renderer::m_frame				= 0;
+	static ResourceManager* g_resourceMng = nullptr;
+	bool Renderer::m_isRendering = false;
 
 	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
 	{
@@ -67,7 +65,8 @@ namespace Directus
 		m_nearPlane		= 0.0f;
 		m_farPlane		= 0.0f;
 		m_camera		= nullptr;
-		m_rhiDevice		= nullptr;	
+		m_rhiDevice		= nullptr;
+		m_frameNum		= 0;
 		m_flags			= 0;
 		m_flags			|= Render_Physics;
 		m_flags			|= Render_SceneGrid;
@@ -75,10 +74,11 @@ namespace Directus
 		m_flags			|= Render_Bloom;
 		m_flags			|= Render_FXAA;
 		m_flags			|= Render_SSDO;
-		//m_flags			|= Render_SSR;	
+		m_flags			|= Render_SSR;
+		//m_flags			|= Render_TAA;
 		m_flags			|= Render_Correction;
 		//m_flags		|= Render_Sharpening;
-		//m_flags		|= Render_ChromaticAberration#;
+		//m_flags		|= Render_ChromaticAberration;
 
 		// Create RHI device
 		m_rhiDevice		= make_shared<RHI_Device>(drawHandle);
@@ -308,14 +308,17 @@ namespace Directus
 			return;
 		}
 
-		m_nearPlane						= m_camera->GetNearPlane();
-		m_farPlane						= m_camera->GetFarPlane();
-		m_mView							= m_camera->GetViewMatrix();
-		m_mViewBase						= m_camera->GetBaseViewMatrix();
-		m_mProjection					= m_camera->GetProjectionMatrix();
-		m_mProjectionOtrhographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
-		m_mViewProjectionPerspective	= Matrix::Identity * m_mView * m_mProjection;
-		m_wvp_baseOrthographic			= m_mViewBase * m_mProjectionOtrhographic;
+		// Get camera matrices
+		{
+			m_nearPlane						= m_camera->GetNearPlane();
+			m_farPlane						= m_camera->GetFarPlane();
+			m_view							= m_camera->GetViewMatrix();
+			m_viewBase						= m_camera->GetBaseViewMatrix();
+			m_projection					= m_camera->GetProjectionMatrix();
+			m_viewProjection				= m_view * m_projection;
+			m_projectionOrthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
+			m_viewProjection_Orthographic	= m_viewBase * m_projectionOrthographic;
+		}
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_actors.empty())
@@ -329,7 +332,7 @@ namespace Directus
 		TIME_BLOCK_START_MULTI();
 		m_isRendering = true;
 		Profiler::Get().Reset();
-		m_frame++;
+		m_frameNum++;
 
 		Pass_DepthDirectionalLight(GetLightDirectional());
 		
@@ -727,8 +730,8 @@ namespace Directus
 			// UPDATE PER OBJECT BUFFER
 			shader->UpdatePerObjectBuffer(
 				actor->GetTransform_PtrRaw()->GetWorldTransform(),
-				m_mView, 
-				m_mProjection
+				m_view, 
+				m_projection
 			);
 		
 			m_rhiPipeline->SetConstantBuffer(shader->GetMaterialBuffer());
@@ -802,8 +805,8 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerLinearClampGreater);
 		auto buffer = Struct_ShadowMapping
 		(
-			m_wvp_baseOrthographic,
-			(m_mView * m_mProjection).Inverted(),
+			m_viewProjection_Orthographic,
+			(m_viewProjection).Inverted(),
 			inDirectionalLight,
 			m_camera
 		);
@@ -833,8 +836,8 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerLinearWrapGreater);	// SSDO noise texture (wrap)
 		auto buffer = Struct_Matrix_Matrix_Vector2
 		(
-			m_wvp_baseOrthographic,
-			(m_mView * m_mProjection).Inverted(),
+			m_viewProjection_Orthographic,
+			(m_viewProjection).Inverted(),
 			Vector2(texOut->GetWidth(), texOut->GetHeight()),
 			m_camera->GetFarPlane()
 		);
@@ -856,7 +859,7 @@ namespace Directus
 		m_rhiPipeline->SetShader(m_shaderBlurBox);
 		m_rhiPipeline->SetTexture(texIn); // Shadows are in the alpha channel
 		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), Vector2(blur, blur));
+		auto buffer = Struct_Matrix_Vector2(m_viewProjection_Orthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), Vector2(blur, blur));
 		m_shaderBlurBox->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderBlurBox->GetConstantBuffer());
 		m_rhiPipeline->Bind();
@@ -880,7 +883,7 @@ namespace Directus
 
 		// Set common states
 		m_rhiPipeline->SetViewport(texIn->GetViewport());
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), sigma);
+		auto buffer = Struct_Matrix_Vector2(m_viewProjection_Orthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), sigma);
 		m_shaderBlurGaussianH->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderBlurGaussianH->GetConstantBuffer());
 
@@ -917,7 +920,7 @@ namespace Directus
 
 		// Set common states
 		m_rhiPipeline->SetViewport(texIn->GetViewport());
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), Vector2(sigma, pixelStride));
+		auto buffer = Struct_Matrix_Vector2(m_viewProjection_Orthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), Vector2(sigma, pixelStride));
 		m_shaderBlurBilateralGaussianH->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderBlurBilateralGaussianH->GetConstantBuffer());
 
@@ -950,13 +953,22 @@ namespace Directus
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Light");
 
+		// TAA - Apply jitter to view projection matrix
+		Matrix m_projectionJittered = m_viewProjection_Orthographic;
+		if (Flags_IsSet(Render_TAA))
+		{
+			Vector2 viewport		= Settings::Get().Viewport_Get();
+			float jitterSign		= (m_frameNum % 2) == 1 ? 1.0f : -1.0f;
+			auto jitterDir			= Vector3(-0.5f / viewport.x, -0.5f / viewport.y, 0.0f);
+			Matrix jitterMatrix		= Matrix::CreateTranslation(jitterDir * jitterSign);
+			m_projectionJittered	= m_viewProjection_Orthographic * jitterMatrix;
+		}
+
 		// Update constant buffer
 		m_shaderLight->UpdateConstantBuffer(
-			Matrix::Identity,
-			m_mView,
-			m_mViewBase,
-			m_mProjection,
-			m_mProjectionOtrhographic,
+			m_projectionJittered,
+			m_view,
+			m_projection,
 			m_actors[Renderable_Light],
 			m_camera,
 			m_flags & Render_SSR
@@ -993,8 +1005,8 @@ namespace Directus
 		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
 		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
 		m_rhiPipeline->SetVertexShader(m_shaderBloom_Bright);  // vertex shader is the same for every pass
-		Vector2 computeLuma = Vector2(RenderFlags_IsSet(Render_FXAA) ? 1.0f : 0.0f, 0.0f);
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), computeLuma);
+		Vector2 computeLuma = Vector2(Flags_IsSet(Render_FXAA) ? 1.0f : 0.0f, 0.0f);
+		auto buffer = Struct_Matrix_Vector2(m_viewProjection_Orthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), computeLuma);
 		m_shaderBloom_Bright->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderBloom_Bright->GetConstantBuffer());
 		
@@ -1004,35 +1016,35 @@ namespace Directus
 		SwapTargets();
 
 		// BLOOM
-		if (RenderFlags_IsSet(Render_Bloom))
+		if (Flags_IsSet(Render_Bloom))
 		{
 			SwapTargets();
 			Pass_Bloom(texIn, texOut);
 		}
 
 		// CORRECTION
-		if (RenderFlags_IsSet(Render_Correction))
+		if (Flags_IsSet(Render_Correction))
 		{
 			SwapTargets();
 			Pass_Correction(texIn, texOut);
 		}
 
 		// FXAA
-		if (RenderFlags_IsSet(Render_FXAA))
+		if (Flags_IsSet(Render_FXAA))
 		{
 			SwapTargets();
 			Pass_FXAA(texIn, texOut);
 		}
 
 		// CHROMATIC ABERRATION
-		if (RenderFlags_IsSet(Render_ChromaticAberration))
+		if (Flags_IsSet(Render_ChromaticAberration))
 		{
 			SwapTargets();
 			Pass_ChromaticAberration(texIn, texOut);
 		}
 
 		// SHARPENING
-		if (RenderFlags_IsSet(Render_Sharpening))
+		if (Flags_IsSet(Render_Sharpening))
 		{
 			SwapTargets();
 			Pass_Sharpening(texIn, texOut);
@@ -1087,8 +1099,8 @@ namespace Directus
 			// Constant buffer
 			auto buffer = Struct_Transparency(
 				actor->GetTransform_PtrRaw()->GetWorldTransform(),
-				m_mView,
-				m_mProjection,
+				m_view,
+				m_projection,
 				material->GetColorAlbedo(),
 				m_camera->GetTransform()->GetPosition(),
 				GetLightDirectional()->GetDirection(),
@@ -1137,7 +1149,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_renderTexQuarter2);
 		float bloomIntensity = 0.2f;
-		auto buffer = Struct_Matrix_Vector2(m_wvp_baseOrthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), bloomIntensity);
+		auto buffer = Struct_Matrix_Vector2(m_viewProjection_Orthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), bloomIntensity);
 		m_shaderBloom_BlurBlend->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderBloom_BlurBlend->GetConstantBuffer());
 		m_rhiPipeline->Bind();
@@ -1279,7 +1291,7 @@ namespace Directus
 
 				// Set pipeline state
 				m_rhiPipeline->SetVertexBuffer(m_lineVertexBuffer);
-				auto buffer = Struct_Matrix_Matrix(m_mView, m_mProjection);
+				auto buffer = Struct_Matrix_Matrix(m_view, m_projection);
 				m_shaderLine->UpdateBuffer(&buffer);
 				m_rhiPipeline->Bind();
 				m_rhiDevice->Draw(lineVertexBufferSize);
@@ -1293,7 +1305,7 @@ namespace Directus
 		{
 			m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
-			auto buffer = Struct_Matrix_Matrix(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_mView, m_mProjection);
+			auto buffer = Struct_Matrix_Matrix(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_view, m_projection);
 			m_shaderLine->UpdateBuffer(&buffer);
 			m_rhiPipeline->Bind();
 			m_rhiDevice->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
@@ -1369,7 +1381,7 @@ namespace Directus
 				m_rhiPipeline->SetTexture(lightTex);
 				m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
 				m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
-				auto buffer = Struct_Matrix(m_wvp_baseOrthographic);
+				auto buffer = Struct_Matrix(m_viewProjection_Orthographic);
 				m_shaderTexture->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
 				m_rhiPipeline->Bind();
@@ -1381,23 +1393,23 @@ namespace Directus
 		}
 
 		// Transformation Gizmo		
-		//m_rhi->EventBegin("Transformation");
+		//m_rhiDevice->EventBegin("Transformation");
 		//{
 		//	TransformationGizmo* gizmo = m_camera->GetTransformationGizmo();
 		//	gizmo->SetBuffers();
 		//	m_shaderTransformationGizmo->Bind();
 
 		//	// X - Axis
-		//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationX() * m_mV * m_mP_perspective, Vector3::Right, Vector3::Zero, 0);
-		//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
+		//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationX() * m_mView * m_mProjection, Vector3::Right, Vector3::Zero, 0);
+		//	m_rhiDevice->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
 		//	// Y - Axis
-		//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationY() * m_mV * m_mP_perspective, Vector3::Up, Vector3::Zero, 0);
-		//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
+		//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationY() * m_mView * m_mProjection, Vector3::Up, Vector3::Zero, 0);
+		//	m_rhiDevice->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
 		//	// Z - Axis
-		//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationZ() * m_mV * m_mP_perspective, Vector3::Forward, Vector3::Zero, 0);
-		//	m_rhi->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
+		//	m_shaderTransformationGizmo->Bind_Buffer(gizmo->GetTransformationZ() * m_mView * m_mProjection, Vector3::Forward, Vector3::Zero, 0);
+		//	m_rhiDevice->DrawIndexed(gizmo->GetIndexCount(), 0, 0);
 		//}
-		//m_rhi->EventEnd();
+		//m_rhiDevice->EventEnd();
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -1425,7 +1437,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_font->GetTexture());
 		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
 		m_rhiPipeline->SetShader(m_shaderFont);
-		auto buffer = Struct_Matrix_Vector4(m_wvp_baseOrthographic, m_font->GetColor());
+		auto buffer = Struct_Matrix_Vector4(m_viewProjection_Orthographic, m_font->GetColor());
 		m_shaderFont->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderFont->GetConstantBuffer());
 		m_rhiPipeline->Bind();
@@ -1439,10 +1451,10 @@ namespace Directus
 	bool Renderer::Pass_GBufferVisualize(shared_ptr<RHI_RenderTexture>& texOut)
 	{
 		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
-		texType	= RenderFlags_IsSet(Render_Albedo)		? GBuffer_Target_Albedo		: texType;
-		texType = RenderFlags_IsSet(Render_Normal)		? GBuffer_Target_Normal		: texType;
-		texType = RenderFlags_IsSet(Render_Specular)	? GBuffer_Target_Specular	: texType;
-		texType = RenderFlags_IsSet(Render_Depth)		? GBuffer_Target_Depth		: texType;
+		texType	= Flags_IsSet(Render_Albedo)		? GBuffer_Target_Albedo		: texType;
+		texType = Flags_IsSet(Render_Normal)		? GBuffer_Target_Normal		: texType;
+		texType = Flags_IsSet(Render_Specular)	? GBuffer_Target_Specular	: texType;
+		texType = Flags_IsSet(Render_Depth)		? GBuffer_Target_Depth		: texType;
 
 		if (texType != GBuffer_Target_Unknown)
 		{
@@ -1461,7 +1473,7 @@ namespace Directus
 			m_rhiPipeline->SetViewport(m_gbuffer->GetTexture(texType)->GetViewport());
 			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(texType));
 			m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
-			auto buffer = Struct_Matrix(m_wvp_baseOrthographic);
+			auto buffer = Struct_Matrix(m_viewProjection_Orthographic);
 			m_shaderTexture->UpdateBuffer(&buffer);
 			m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
 			m_rhiPipeline->Bind();

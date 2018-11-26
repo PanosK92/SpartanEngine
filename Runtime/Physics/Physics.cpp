@@ -52,6 +52,7 @@ namespace Directus
 	{
 		m_maxSubSteps = 1;
 		m_simulating = false;
+		m_renderer = context->GetSubsystem<Renderer>();
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER_VARIANT(Step));
@@ -97,7 +98,7 @@ namespace Directus
 			return;
 		
 		// Debug draw
-		if (Renderer::RenderFlags_IsSet(Render_Physics))
+		if (m_renderer->Flags_IsSet(Render_Physics))
 		{
 			m_world->debugDrawWorld();
 		}

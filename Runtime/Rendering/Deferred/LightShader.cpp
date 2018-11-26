@@ -49,11 +49,9 @@ namespace Directus
 	}
 
 	void LightShader::UpdateConstantBuffer(
-		const Matrix& mWorld,
+		const Matrix& mViewProjection_Orthographic,
 		const Matrix& mView,
-		const Matrix& mBaseView,
-		const Matrix& mPerspectiveProjection,
-		const Matrix& mOrthographicProjection,
+		const Matrix& mProjection,
 		const vector<Actor*>& lights,
 		Camera* camera,
 		bool doSSR
@@ -75,10 +73,10 @@ namespace Directus
 
 		Vector3 camPos					= camera->GetTransform()->GetPosition();
 		buffer->cameraPosition			= Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
-		buffer->wvp						= mWorld * mBaseView * mOrthographicProjection;
+		buffer->mvp						= mViewProjection_Orthographic;
 		buffer->view					= mView;
-		buffer->projection				= mPerspectiveProjection;
-		buffer->viewProjectionInverse	= (mView * mPerspectiveProjection).Inverted();
+		buffer->projection				= mProjection;
+		buffer->viewProjectionInverse	= (mView * mProjection).Inverted();
 
 		// Reset any light buffer values because the shader will still use them
 		buffer->dirLightColor = Vector4::Zero;

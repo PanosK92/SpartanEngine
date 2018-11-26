@@ -1,7 +1,8 @@
-float3 F_FresnelSchlick(float3 specularColor, float a, float3 h, float3 v)
+float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 {
-	// Sclick using roughness to attenuate fresnel.
-    return specularColor + (max(1.0f - a, specularColor) - specularColor) * pow((1.0f - saturate(dot(v, h))), 5.0f);
+	const float smoothness = 1.0f - roughness;
+	const float lerpFactor = smoothness * (sqrt(smoothness) + roughness);
+	return lerp(normal, reflection, lerpFactor);
 }
 
 float GetMipFromRoughness(float roughness)
@@ -31,20 +32,22 @@ float3 FixCubeLookup(float3 v)
     return v;
 }
 
-float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, SamplerState samplerLinear)
+float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, TextureCube tex_cube, SamplerState samplerLinear, float ambientTerm)
 {
+	float brightness 	= clamp(ambientTerm, 0.0, 1.0);
 	float3 reflection 	= reflect(camera_to_pixel, normal);
-	const float ndv 	= saturate(dot(camera_to_pixel, normal));
+	reflection			= GetSpecularDominantDir(normal, reflection, material.roughness);
+	float NdV 			= saturate(dot(camera_to_pixel, normal));
 	
-	const float mipSelect 	= GetMipFromRoughness(material.roughness);	
-	float3 cubeSpecular		= ToLinear(environmentTex.SampleLevel(samplerLinear, FixCubeLookup(reflection), mipSelect)).rgb;
-	float3 cubeDiffuse  	= ToLinear(environmentTex.SampleLevel(samplerLinear, FixCubeLookup(normal), 10.0f)).rgb;
-
-	const float3 environmentSpecular 	= EnvBRDFApprox(material.color_specular, material.roughness, ndv);
-	const float3 environmentDiffuse 	= EnvBRDFApprox(material.color_diffuse, 1.0f, ndv);
-
-	float3 cDiffuse 	= cubeDiffuse * environmentDiffuse;
-	float3 cSpecular 	= cubeSpecular * environmentSpecular;
+	float mipSelect 		= GetMipFromRoughness(material.roughness);	
+	float3 cube_specular	= ToLinear(tex_cube.SampleLevel(samplerLinear, FixCubeLookup(reflection), mipSelect)).rgb;
+	float3 cube_diffuse  	= ToLinear(tex_cube.SampleLevel(samplerLinear, FixCubeLookup(reflection), 10.0f)).rgb;
 	
-	return cDiffuse + cSpecular;
+	float3 env_specular = EnvBRDFApprox(material.color_specular, material.roughness, NdV);
+	float3 env_diffuse 	= EnvBRDFApprox(material.color_diffuse, 1.0f, NdV);
+
+	float3 cSpecular 	= cube_specular * env_specular;
+	float3 cDiffuse 	= cube_diffuse * env_diffuse;
+		
+	return (cDiffuse + cSpecular) * brightness;
 }

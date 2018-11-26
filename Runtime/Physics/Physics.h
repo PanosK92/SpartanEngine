@@ -33,6 +33,7 @@ class btDiscreteDynamicsWorld;
 
 namespace Directus
 {
+	class Renderer;
 	class Variant;
 	class PhysicsDebugDraw;
 
@@ -69,5 +70,7 @@ namespace Directus
 		int m_maxSubSteps;
 		bool m_simulating;
 		//================
+
+		Renderer* m_renderer;
 	};
 }
