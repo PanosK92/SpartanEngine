@@ -66,6 +66,7 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 		ImGuiWindowFlags_NoScrollbar |
 		ImGuiWindowFlags_NoTitleBar;
 
+	m_renderer = context->GetSubsystem<Renderer>();
 	Engine::EngineMode_Disable(Engine_Game);
 }
 
@@ -133,38 +134,38 @@ void Widget_Toolbar::ShowRendererOptions()
 
 		if (Widget_Toolbar_Options::g_rendererViewInt == 0) // Combined
 		{
-			Renderer::RenderFlags_Disable(Render_Albedo);
-			Renderer::RenderFlags_Disable(Render_Normal);
-			Renderer::RenderFlags_Disable(Render_Specular);
-			Renderer::RenderFlags_Disable(Render_Depth);
+			m_renderer->Flags_Disable(Render_Albedo);
+			m_renderer->Flags_Disable(Render_Normal);
+			m_renderer->Flags_Disable(Render_Specular);
+			m_renderer->Flags_Disable(Render_Depth);
 		}
 		else if (Widget_Toolbar_Options::g_rendererViewInt == 1) // Albedo
 		{
-			Renderer::RenderFlags_Enable(Render_Albedo);
-			Renderer::RenderFlags_Disable(Render_Normal);
-			Renderer::RenderFlags_Disable(Render_Specular);
-			Renderer::RenderFlags_Disable(Render_Depth);
+			m_renderer->Flags_Enable(Render_Albedo);
+			m_renderer->Flags_Disable(Render_Normal);
+			m_renderer->Flags_Disable(Render_Specular);
+			m_renderer->Flags_Disable(Render_Depth);
 		}
 		else if (Widget_Toolbar_Options::g_rendererViewInt == 2) // Normal
 		{
-			Renderer::RenderFlags_Disable(Render_Albedo);
-			Renderer::RenderFlags_Enable(Render_Normal);
-			Renderer::RenderFlags_Disable(Render_Specular);
-			Renderer::RenderFlags_Disable(Render_Depth);
+			m_renderer->Flags_Disable(Render_Albedo);
+			m_renderer->Flags_Enable(Render_Normal);
+			m_renderer->Flags_Disable(Render_Specular);
+			m_renderer->Flags_Disable(Render_Depth);
 		}
 		else if (Widget_Toolbar_Options::g_rendererViewInt == 3) // Specular
 		{
-			Renderer::RenderFlags_Disable(Render_Albedo);
-			Renderer::RenderFlags_Disable(Render_Normal);
-			Renderer::RenderFlags_Enable(Render_Specular);
-			Renderer::RenderFlags_Disable(Render_Depth);
+			m_renderer->Flags_Disable(Render_Albedo);
+			m_renderer->Flags_Disable(Render_Normal);
+			m_renderer->Flags_Enable(Render_Specular);
+			m_renderer->Flags_Disable(Render_Depth);
 		}
 		else if (Widget_Toolbar_Options::g_rendererViewInt == 4) // Depth
 		{
-			Renderer::RenderFlags_Disable(Render_Albedo);
-			Renderer::RenderFlags_Disable(Render_Normal);
-			Renderer::RenderFlags_Disable(Render_Specular);
-			Renderer::RenderFlags_Enable(Render_Depth);
+			m_renderer->Flags_Disable(Render_Albedo);
+			m_renderer->Flags_Disable(Render_Normal);
+			m_renderer->Flags_Disable(Render_Specular);
+			m_renderer->Flags_Enable(Render_Depth);
 		}
 	}
 
@@ -172,29 +173,32 @@ void Widget_Toolbar::ShowRendererOptions()
 
 	// Effects
 	{	
-		bool bloom					= Renderer::RenderFlags_IsSet(Render_Bloom);
-		bool correction				= Renderer::RenderFlags_IsSet(Render_Correction);
-		bool fxaa					= Renderer::RenderFlags_IsSet(Render_FXAA);
-		bool ssdo					= Renderer::RenderFlags_IsSet(Render_SSDO);
-		bool ssr					= Renderer::RenderFlags_IsSet(Render_SSR);
-		bool sharpening				= Renderer::RenderFlags_IsSet(Render_Sharpening);
-		bool chromaticAberration	= Renderer::RenderFlags_IsSet(Render_ChromaticAberration);
+		bool bloom					= m_renderer->Flags_IsSet(Render_Bloom);
+		bool correction				= m_renderer->Flags_IsSet(Render_Correction);
+		bool fxaa					= m_renderer->Flags_IsSet(Render_FXAA);
+		bool ssdo					= m_renderer->Flags_IsSet(Render_SSDO);
+		bool ssr					= m_renderer->Flags_IsSet(Render_SSR);
+		bool taa					= m_renderer->Flags_IsSet(Render_TAA);
+		bool sharpening				= m_renderer->Flags_IsSet(Render_Sharpening);
+		bool chromaticAberration	= m_renderer->Flags_IsSet(Render_ChromaticAberration);
 		
 		ImGui::Checkbox("Bloom", &bloom);
 		ImGui::Checkbox("Tone-mapping & Gamma correction", &correction);
 		ImGui::Checkbox("FXAA", &fxaa);
 		ImGui::Checkbox("SSDO", &ssdo);
 		ImGui::Checkbox("SSR", &ssr);
+		ImGui::Checkbox("TAA (Under development)", &taa);
 		ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
 		ImGui::Checkbox("Sharpening", &sharpening);
 			
-		bloom				? Renderer::RenderFlags_Enable(Render_Bloom)				: Renderer::RenderFlags_Disable(Render_Bloom);
-		correction			? Renderer::RenderFlags_Enable(Render_Correction)			: Renderer::RenderFlags_Disable(Render_Correction);
-		fxaa				? Renderer::RenderFlags_Enable(Render_FXAA)					: Renderer::RenderFlags_Disable(Render_FXAA);
-		ssdo				? Renderer::RenderFlags_Enable(Render_SSDO)					: Renderer::RenderFlags_Disable(Render_SSDO);
-		ssr					? Renderer::RenderFlags_Enable(Render_SSR)					: Renderer::RenderFlags_Disable(Render_SSR);
-		sharpening			? Renderer::RenderFlags_Enable(Render_Sharpening)			: Renderer::RenderFlags_Disable(Render_Sharpening);
-		chromaticAberration	? Renderer::RenderFlags_Enable(Render_ChromaticAberration)	: Renderer::RenderFlags_Disable(Render_ChromaticAberration);	
+		bloom				? m_renderer->Flags_Enable(Render_Bloom)				: m_renderer->Flags_Disable(Render_Bloom);
+		correction			? m_renderer->Flags_Enable(Render_Correction)			: m_renderer->Flags_Disable(Render_Correction);
+		fxaa				? m_renderer->Flags_Enable(Render_FXAA)					: m_renderer->Flags_Disable(Render_FXAA);
+		ssdo				? m_renderer->Flags_Enable(Render_SSDO)					: m_renderer->Flags_Disable(Render_SSDO);
+		ssr					? m_renderer->Flags_Enable(Render_SSR)					: m_renderer->Flags_Disable(Render_SSR);
+		taa					? m_renderer->Flags_Enable(Render_TAA)					: m_renderer->Flags_Disable(Render_TAA);
+		sharpening			? m_renderer->Flags_Enable(Render_Sharpening)			: m_renderer->Flags_Disable(Render_Sharpening);
+		chromaticAberration	? m_renderer->Flags_Enable(Render_ChromaticAberration)	: m_renderer->Flags_Disable(Render_ChromaticAberration);	
 	}
 
 	ImGui::Separator();
@@ -208,12 +212,12 @@ void Widget_Toolbar::ShowRendererOptions()
 		ImGui::Checkbox("Scene Grid", &Widget_Toolbar_Options::g_grid);
 		ImGui::Checkbox("Performance Metrics", &Widget_Toolbar_Options::g_performanceMetrics);
 
-		Widget_Toolbar_Options::g_physics				? Renderer::RenderFlags_Enable(Render_Physics)				: Renderer::RenderFlags_Disable(Render_Physics);
-		Widget_Toolbar_Options::g_aabb					? Renderer::RenderFlags_Enable(Render_AABB)					: Renderer::RenderFlags_Disable(Render_AABB);
-		Widget_Toolbar_Options::g_gizmos				? Renderer::RenderFlags_Enable(Render_Light)				: Renderer::RenderFlags_Disable(Render_Light);
-		Widget_Toolbar_Options::g_pickingRay			? Renderer::RenderFlags_Enable(Render_PickingRay)			: Renderer::RenderFlags_Disable(Render_PickingRay);
-		Widget_Toolbar_Options::g_grid					? Renderer::RenderFlags_Enable(Render_SceneGrid)			: Renderer::RenderFlags_Disable(Render_SceneGrid);
-		Widget_Toolbar_Options::g_performanceMetrics	? Renderer::RenderFlags_Enable(Render_PerformanceMetrics)	: Renderer::RenderFlags_Disable(Render_PerformanceMetrics);
+		Widget_Toolbar_Options::g_physics				? m_renderer->Flags_Enable(Render_Physics)				: m_renderer->Flags_Disable(Render_Physics);
+		Widget_Toolbar_Options::g_aabb					? m_renderer->Flags_Enable(Render_AABB)					: m_renderer->Flags_Disable(Render_AABB);
+		Widget_Toolbar_Options::g_gizmos				? m_renderer->Flags_Enable(Render_Light)				: m_renderer->Flags_Disable(Render_Light);
+		Widget_Toolbar_Options::g_pickingRay			? m_renderer->Flags_Enable(Render_PickingRay)			: m_renderer->Flags_Disable(Render_PickingRay);
+		Widget_Toolbar_Options::g_grid					? m_renderer->Flags_Enable(Render_SceneGrid)			: m_renderer->Flags_Disable(Render_SceneGrid);
+		Widget_Toolbar_Options::g_performanceMetrics	? m_renderer->Flags_Enable(Render_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_PerformanceMetrics);
 	}
 
 	ImGui::End();

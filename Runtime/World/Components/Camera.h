@@ -78,14 +78,14 @@ namespace Directus
 		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& point);
 		//=================================================================
 
-		//= PLANES/PROJECTION =====================================================
-		float GetNearPlane() { return m_nearPlane; }
-		void SetNearPlane(float nearPlane);
-		float GetFarPlane() { return m_farPlane; }
-		void SetFarPlane(float farPlane);
-		ProjectionType GetProjection() { ComputeProjection();  return m_projection; }
+		//= PLANES/PROJECTION ================================================================
+		void SetNearPlane(float nearPlane);		
+		void SetFarPlane(float farPlane);	
 		void SetProjection(ProjectionType projection);
-		//=========================================================================
+		float GetNearPlane()				{ return m_nearPlane; }
+		float GetFarPlane()					{ return m_farPlane; }
+		ProjectionType GetProjectionType()	{ ComputeProjection();  return m_projectionType; }
+		//====================================================================================
 
 		//= FOV ==============================
 		float GetFOV_Horizontal_Deg();
@@ -111,19 +111,15 @@ namespace Directus
 		float m_farPlane;
 		Math::Ray m_ray;
 		Math::Frustum m_frustrum;
-		ProjectionType m_projection;
+		ProjectionType m_projectionType;
 		Math::Vector4 m_clearColor;
-
 		Math::Matrix m_mView;
 		Math::Matrix m_mProjection;
 		Math::Matrix m_mBaseView;
-
 		Math::Vector3 m_position;
 		Math::Quaternion m_rotation;
 		bool m_isDirty;
-
 		Math::Vector2 m_lastKnownViewport;	
-
 		std::shared_ptr<TransformationGizmo> m_transformGizmo;
 	};
 }

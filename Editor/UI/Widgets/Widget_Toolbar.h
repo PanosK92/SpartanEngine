@@ -25,6 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 //=================
 
+namespace Directus
+{
+	class Renderer;
+}
+
 class Widget_Toolbar : public Widget
 {
 public:
@@ -34,4 +39,5 @@ public:
 
 private:
 	void ShowRendererOptions();
+	Directus::Renderer* m_renderer;
 };

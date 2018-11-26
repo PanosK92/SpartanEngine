@@ -41,11 +41,9 @@ namespace Directus
 
 		void Compile(const std::string& filePath, Context* context);
 		void UpdateConstantBuffer(
-			const Math::Matrix& mWorld,
+			const Math::Matrix& mViewProjection_Orthographic,
 			const Math::Matrix& mView,
-			const Math::Matrix& mBaseView,
-			const Math::Matrix& mPerspectiveProjection,
-			const Math::Matrix& mOrthographicProjection,
+			const Math::Matrix& mProjection,
 			const std::vector<Actor*>& lights,
 			Camera* camera,
 			bool doSSR
@@ -57,7 +55,7 @@ namespace Directus
 		const static int maxLights = 64;
 		struct LightBuffer
 		{
-			Math::Matrix wvp;
+			Math::Matrix mvp;
 			Math::Matrix view;
 			Math::Matrix projection;
 			Math::Matrix viewProjectionInverse;

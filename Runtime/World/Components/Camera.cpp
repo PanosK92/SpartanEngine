@@ -41,7 +41,7 @@ namespace Directus
 	{
 		m_nearPlane			= 0.3f;
 		m_farPlane			= 1000.0f;
-		m_projection		= Projection_Perspective;
+		m_projectionType	= Projection_Perspective;
 		m_clearColor		= Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 		m_isDirty			= false;
 		m_fovHorizontalRad	= DegreesToRadians(90.0f);
@@ -96,7 +96,7 @@ namespace Directus
 	void Camera::Serialize(FileStream* stream)
 	{
 		stream->Write(m_clearColor);
-		stream->Write(int(m_projection));
+		stream->Write(int(m_projectionType));
 		stream->Write(m_fovHorizontalRad);
 		stream->Write(m_nearPlane);
 		stream->Write(m_farPlane);
@@ -105,7 +105,7 @@ namespace Directus
 	void Camera::Deserialize(FileStream* stream)
 	{
 		stream->Read(&m_clearColor);
-		m_projection = ProjectionType(stream->ReadInt());
+		m_projectionType = ProjectionType(stream->ReadInt());
 		stream->Read(&m_fovHorizontalRad);
 		stream->Read(&m_nearPlane);
 		stream->Read(&m_farPlane);
@@ -130,7 +130,7 @@ namespace Directus
 
 	void Camera::SetProjection(ProjectionType projection)
 	{
-		m_projection = projection;
+		m_projectionType = projection;
 		m_isDirty = true;
 	}
 
@@ -241,9 +241,9 @@ namespace Directus
 
 	void Camera::ComputeBaseView()
 	{
-		Vector3 cameraPos = Vector3(0, 0, -0.3f);
-		Vector3 lookAt = (Vector3::Forward * Matrix::Identity).Normalized();
-		m_mBaseView = Matrix::CreateLookAtLH(cameraPos, lookAt, Vector3::Up);
+		Vector3 cameraPos	= Vector3(0, 0, -0.3f);
+		Vector3 lookAt		= (Vector3::Forward * Matrix::Identity).Normalized();
+		m_mBaseView			= Matrix::CreateLookAtLH(cameraPos, lookAt, Vector3::Up);
 	}
 
 	void Camera::ComputeProjection()
@@ -252,26 +252,14 @@ namespace Directus
 		float width			= viewport.x;
 		float height		= viewport.y;
 
-		if (m_projection == Projection_Perspective)
+		if (m_projectionType == Projection_Perspective)
 		{
 			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.y / viewport.x)); 
 			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_farPlane, m_nearPlane);
 		}
-		else if (m_projection == Projection_Orthographic)
+		else if (m_projectionType == Projection_Orthographic)
 		{
 			m_mProjection = Matrix::CreateOrthographicLH(viewport.x, viewport.y, m_farPlane, m_nearPlane);
 		}
-
-		// TAA
-		//if (Renderer::RenderFlags_IsSet(Render_TAA))
-		//{
-		//	bool isOdd = (Renderer::GetFrame() % 2) == 1;
-
-		//	// Apply sub-pixel jitter		
-		//	Vector3 jitterA		= Vector3(-0.5f / width, -0.5f / height, 1.0f);
-		//	Vector3 jitterB		= Vector3(0.5f / width, 0.5f / height, 1.0f);
-		//	Matrix jitterMatrix	= Matrix::CreateTranslation(isOdd ? jitterA : jitterB);
-		//	m_mProjection		*= jitterMatrix;
-		//}
 	}
 }

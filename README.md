@@ -43,7 +43,8 @@ Debug Rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
 SSDO         					| 100% | Screen space directional occlusion.
 Bloom         					| 90% | -
-Screen space reflections		| 90% |	
+SSR								| 90% |	 Screen space reflections
+TAA								| 10% |	 Temporal Anti-Aliasing
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 Point light support             | 100% | -
 XML I/O                         | 100% | -
