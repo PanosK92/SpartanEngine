@@ -54,11 +54,27 @@ using namespace Helper;
 #define GIZMO_MAX_SIZE 5.0f
 #define GIZMO_MIN_SIZE 0.1f
 
+namespace HaltonSequence
+{
+	float Generate(int index, int base)
+	{
+		float f = 1;
+		float r = 0;
+		while (index > 0) 
+		{
+			f		= f / base;
+			r		= r + f * (index % base);
+			index	= index / base;
+		}
+
+		return r;
+	}
+}
+
 namespace Directus
 {
 	static ResourceManager* g_resourceMng = nullptr;
 	bool Renderer::m_isRendering = false;
-
 	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
 	{
 		
@@ -228,6 +244,11 @@ namespace Directus
 			m_shaderSSDO->Compile_VertexPixel(shaderDirectory + "SSDO.hlsl", Input_PositionTexture, m_context);
 			m_shaderSSDO->AddBuffer<Struct_Matrix_Matrix_Vector2>(0, Buffer_Global);
 
+			// TAA
+			m_shaderTAA = make_shared<RHI_Shader>(m_rhiDevice);
+			m_shaderTAA->Compile_VertexPixel(shaderDirectory + "TAA_Resolve.hlsl", Input_PositionTexture, m_context);
+			m_shaderTAA->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
+
 			// Shadow mapping
 			m_shaderShadowMapping = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderShadowMapping->Compile_VertexPixel(shaderDirectory + "ShadowMapping.hlsl", Input_PositionTexture, m_context);
@@ -333,28 +354,29 @@ namespace Directus
 		m_isRendering = true;
 		Profiler::Get().Reset();
 		m_frameNum++;
+		m_isOddFrame = (m_frameNum % 2) == 1;
 
 		Pass_DepthDirectionalLight(GetLightDirectional());
 		
 		Pass_GBuffer();
 
 		Pass_PreLight(
-			m_renderTexHalf_Spare,		// IN:	Render texture		
-			m_renderTexHalf_Shadows,	// OUT: Render texture	- Shadows
-			m_renderTexHalf_SSDO		// OUT: Render texture	- SSDO
+			m_renderTexHalf_Spare,		// IN:	
+			m_renderTexHalf_Shadows,	// OUT: Shadows
+			m_renderTexHalf_SSDO		// OUT: DO
 		);
 
 		Pass_Light(
-			m_renderTexHalf_Shadows,	// IN:	Texture - Shadows
-			m_renderTexHalf_SSDO,		// IN:	Texture - SSDO
-			m_renderTexFull1			// OUT: Render texture	- Result
+			m_renderTexHalf_Shadows,	// IN:	Shadows
+			m_renderTexHalf_SSDO,		// IN:	SSDO
+			m_renderTexFull_Light		// Out: Result
 		);
 
-		Pass_Transparent(m_renderTexFull1);
+		Pass_Transparent(m_renderTexFull_Light);
 		
 		Pass_PostLight(
-			m_renderTexFull1,			// IN:	Render texture - Light pass result
-			m_renderTexFull_FinalFrame	// OUT: Render texture - Result
+			m_renderTexFull_Light,		// IN:	Light pass result
+			m_renderTexFull_FinalFrame	// OUT: Result
 		);
 	
 		Pass_GBufferVisualize(m_renderTexFull_FinalFrame);
@@ -445,8 +467,9 @@ namespace Directus
 		m_quad->Create(0, 0, (float)width, (float)height);
 
 		// Full res
-		m_renderTexFull1			= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexFull2			= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexFull_Light		= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexFull_TAA_Current	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexFull_TAA_History	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
 		m_renderTexFull_FinalFrame	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
 
 		// Half res
@@ -455,8 +478,8 @@ namespace Directus
 		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16G16B16A16_FLOAT);
 
 		// Quarter res
-		m_renderTexQuarter1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexQuarter2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexQuarter_Blur1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexQuarter_Blur2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
 	}
 
 	//= RENDERABLES ============================================================================================
@@ -957,10 +980,16 @@ namespace Directus
 		Matrix m_projectionJittered = m_viewProjection_Orthographic;
 		if (Flags_IsSet(Render_TAA))
 		{
-			Vector2 viewport		= Settings::Get().Viewport_Get();
-			float jitterSign		= (m_frameNum % 2) == 1 ? 1.0f : -1.0f;
-			auto jitterDir			= Vector3(-0.5f / viewport.x, -0.5f / viewport.y, 0.0f);
-			Matrix jitterMatrix		= Matrix::CreateTranslation(jitterDir * jitterSign);
+			unsigned int samples	= 2;
+			unsigned int index		= m_frameNum % samples;
+			float jitterScale		= 3.0f;
+			Vector2 jitter			= Vector2::Zero;
+			jitter.x				= HaltonSequence::Generate(index, samples) * 2.0f - 1.0f;
+			jitter.y				= HaltonSequence::Generate(index, samples) * 2.0f - 1.0f;
+			jitter					*= jitterScale;
+			float offsetX			= jitter.x * (1.0f / texOut->GetWidth());
+			float offsetY			= jitter.y * (1.0f / texOut->GetHeight());
+			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(offsetX, -offsetY, 0.0f));
 			m_projectionJittered	= m_viewProjection_Orthographic * jitterMatrix;
 		}
 
@@ -971,7 +1000,7 @@ namespace Directus
 			m_projection,
 			m_actors[Renderable_Light],
 			m_camera,
-			m_flags & Render_SSR
+			Flags_IsSet(Render_SSR)
 		);
 
 		m_rhiPipeline->SetRenderTarget(texOut);
@@ -982,7 +1011,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Specular));
 		m_rhiPipeline->SetTexture(texShadows);
-		if (m_flags & Render_SSDO) { m_rhiPipeline->SetTexture(texSSDO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
+		if (Flags_IsSet(Render_SSDO)) { m_rhiPipeline->SetTexture(texSSDO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
 		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame); // SSR
 		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
 		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
@@ -1004,16 +1033,22 @@ namespace Directus
 		// All post-process passes share the following, so set them once here
 		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
 		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
-		m_rhiPipeline->SetVertexShader(m_shaderBloom_Bright);  // vertex shader is the same for every pass
+		m_rhiPipeline->SetShader(m_shaderBloom_Bright);  // vertex shader is the same for every pass
 		Vector2 computeLuma = Vector2(Flags_IsSet(Render_FXAA) ? 1.0f : 0.0f, 0.0f);
 		auto buffer = Struct_Matrix_Vector2(m_viewProjection_Orthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), computeLuma);
 		m_shaderBloom_Bright->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderBloom_Bright->GetConstantBuffer());
 		
-		// Keep track of render target swapping
+		// Render target swapping
 		auto SwapTargets = [&texIn, &texOut]() { texOut.swap(texIn); };
-
 		SwapTargets();
+
+		// TAA	
+		if (Flags_IsSet(Render_TAA))
+		{
+			SwapTargets();
+			Pass_TAA(texIn, texOut);
+		}
 
 		// BLOOM
 		if (Flags_IsSet(Render_Bloom))
@@ -1049,6 +1084,47 @@ namespace Directus
 			SwapTargets();
 			Pass_Sharpening(texIn, texOut);
 		}
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
+	}
+
+	void Renderer::Pass_TAA(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
+	{
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_TAA");
+
+		// Resolve
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
+		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
+		m_rhiPipeline->SetRenderTarget(m_renderTexFull_TAA_Current);
+		m_rhiPipeline->SetViewport(m_renderTexFull_TAA_Current->GetViewport());
+		m_rhiPipeline->SetShader(m_shaderTAA);
+		auto buffer = Struct_Matrix(m_viewProjection_Orthographic);
+		m_shaderTAA->UpdateBuffer(&buffer);
+		m_rhiPipeline->SetConstantBuffer(m_shaderTAA->GetConstantBuffer());
+		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetTexture(m_renderTexFull_TAA_History);
+		m_rhiPipeline->SetTexture(texIn);
+		m_rhiPipeline->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		// Output to texOut
+		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetViewport(texOut->GetViewport());
+		m_rhiPipeline->SetShader(m_shaderTexture);
+		buffer = Struct_Matrix(m_viewProjection_Orthographic);
+		m_shaderTexture->UpdateBuffer(&buffer);
+		m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
+		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);
+		m_rhiPipeline->SetTexture(m_renderTexFull_TAA_Current);
+		m_rhiPipeline->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		// Swap textures so current becomes history
+		m_renderTexFull_TAA_Current.swap(m_renderTexFull_TAA_History);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -1132,22 +1208,22 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
 
 		// Bright pass
-		m_rhiPipeline->SetRenderTarget(m_renderTexQuarter1);
-		m_rhiPipeline->SetViewport(m_renderTexQuarter1->GetViewport());
+		m_rhiPipeline->SetRenderTarget(m_renderTexQuarter_Blur1);
+		m_rhiPipeline->SetViewport(m_renderTexQuarter_Blur1->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderBloom_Bright);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		float sigma = 2.0f;
-		Pass_BlurGaussian(m_renderTexQuarter1, m_renderTexQuarter2, sigma);
+		Pass_BlurGaussian(m_renderTexQuarter_Blur1, m_renderTexQuarter_Blur2, sigma);
 
 		// Additive blending
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderBloom_BlurBlend);
 		m_rhiPipeline->SetTexture(texIn);
-		m_rhiPipeline->SetTexture(m_renderTexQuarter2);
+		m_rhiPipeline->SetTexture(m_renderTexQuarter_Blur2);
 		float bloomIntensity = 0.2f;
 		auto buffer = Struct_Matrix_Vector2(m_viewProjection_Orthographic, Vector2(texIn->GetWidth(), texIn->GetHeight()), bloomIntensity);
 		m_shaderBloom_BlurBlend->UpdateBuffer(&buffer);
