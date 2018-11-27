@@ -54,20 +54,23 @@ using namespace Helper;
 #define GIZMO_MAX_SIZE 5.0f
 #define GIZMO_MIN_SIZE 0.1f
 
-namespace HaltonSequence
+namespace TAA_Sequence
 {
-	float Generate(int index, int base)
+	inline float Halton(int index, int base)
 	{
-		float f = 1;
-		float r = 0;
-		while (index > 0) 
+		float f = 1; float r = 0;
+		while (index > 0)
 		{
-			f		= f / base;
-			r		= r + f * (index % base);
-			index	= index / base;
+			f = f / (float)base;
+			r = r + f * (index % base);
+			index = index / base;
 		}
-
 		return r;
+	}
+
+	inline Vector2 Halton2D(int index, int baseA, int baseB)
+	{
+		return Vector2(Halton(index, baseA), Halton(index, baseB));
 	}
 }
 
@@ -980,16 +983,12 @@ namespace Directus
 		Matrix m_projectionJittered = m_viewProjection_Orthographic;
 		if (Flags_IsSet(Render_TAA))
 		{
-			unsigned int samples	= 2;
-			unsigned int index		= m_frameNum % samples;
-			float jitterScale		= 3.0f;
-			Vector2 jitter			= Vector2::Zero;
-			jitter.x				= HaltonSequence::Generate(index, samples) * 2.0f - 1.0f;
-			jitter.y				= HaltonSequence::Generate(index, samples) * 2.0f - 1.0f;
-			jitter					*= jitterScale;
-			float offsetX			= jitter.x * (1.0f / texOut->GetWidth());
-			float offsetY			= jitter.y * (1.0f / texOut->GetHeight());
-			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(offsetX, -offsetY, 0.0f));
+			int samples				= 16;
+			int index				= m_frameNum % samples;
+			Vector2 jitter			= TAA_Sequence::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+			jitter.x				= jitter.x * (1.0f / (float)texOut->GetWidth());
+			jitter.y				= jitter.y * (1.0f / (float)texOut->GetHeight());
+			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(jitter.x, -jitter.y, 0.0f));
 			m_projectionJittered	= m_viewProjection_Orthographic * jitterMatrix;
 		}
 
@@ -1105,7 +1104,7 @@ namespace Directus
 		auto buffer = Struct_Matrix(m_viewProjection_Orthographic);
 		m_shaderTAA->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderTAA->GetConstantBuffer());
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
 		m_rhiPipeline->SetTexture(m_renderTexFull_TAA_History);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->Bind();
