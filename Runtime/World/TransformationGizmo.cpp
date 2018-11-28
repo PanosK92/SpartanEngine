@@ -77,7 +77,7 @@ namespace Directus
 			return;
 
 		Transform* transformComponent = actor.lock()->GetComponent<Transform>().get();
-		Matrix transform = (m_space == TransformGizmo_Local) ? transformComponent->GetWorldTransform() : transformComponent->GetWorldTransform();
+		Matrix transform = (m_space == TransformGizmo_Local) ? transformComponent->GetMatrix() : transformComponent->GetMatrix();
 
 		Matrix mTranslation		= Matrix::CreateTranslation(transform.GetTranslation());
 		Quaternion qRotation	= transform.GetRotation();

@@ -42,30 +42,35 @@ cbuffer PerMaterialBuffer : register(b0)
 
 cbuffer PerObjectBuffer : register(b1)
 {
-	matrix mWorld;
+	matrix mModel;
     matrix mView;
     matrix mProjection;
+	matrix mMVP_current;
+	matrix mMVP_previous;
 }
 //===========================================
 
 //= STRUCTS =================================
 struct PixelInputType
 {
-    float4 positionCS 	: SV_POSITION;
-    float2 uv 			: TEXCOORD;
-    float3 normal 		: NORMAL;
-    float3 tangent 		: TANGENT;
-	float3 bitangent 	: BITANGENT;
-	float4 positionVS 	: POSITIONT0;
-    float4 positionWS 	: POSITIONT1;
+    float4 positionCS 			: SV_POSITION;
+    float2 uv 					: TEXCOORD;
+    float3 normal 				: NORMAL;
+    float3 tangent 				: TANGENT;
+	float3 bitangent 			: BITANGENT;
+	float4 positionVS 			: POSITIONT0;
+    float4 positionWS 			: POSITIONT1;
+	float4 positionCS_Current 	: POSITIONT2;
+	float4 positionCS_Previous 	: POSITIONT3;
 };
 
 struct PixelOutputType
 {
 	float4 albedo	: SV_Target0;
 	float4 normal	: SV_Target1;
-	float4 specular	: SV_Target2;
-	float2 depth	: SV_Target3;
+	float4 material	: SV_Target2;
+	float2 velocity	: SV_Target3;
+	float2 depth	: SV_Target4;
 };
 //===========================================
 
@@ -73,14 +78,16 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
 {
     PixelInputType output;
     
-    input.position.w 	= 1.0f;	
-	output.positionWS 	= mul(input.position, mWorld);
-    output.positionVS   = mul(output.positionWS, mView);
-    output.positionCS   = mul(output.positionVS, mProjection);
-	output.normal 		= normalize(mul(input.normal, 		(float3x3)mWorld)).xyz;	
-	output.tangent 		= normalize(mul(input.tangent, 		(float3x3)mWorld)).xyz;
-	output.bitangent 	= normalize(mul(input.bitangent, 	(float3x3)mWorld)).xyz;
-    output.uv 			= input.uv;
+    input.position.w 			= 1.0f;	
+	output.positionWS 			= mul(input.position, mModel);
+    output.positionVS   		= mul(output.positionWS, mView);
+    output.positionCS   		= mul(output.positionVS, mProjection);
+	output.positionCS_Current 	= mul(input.position, mMVP_current);
+	output.positionCS_Previous 	= mul(input.position, mMVP_previous);
+	output.normal 				= normalize(mul(input.normal, 		(float3x3)mModel)).xyz;	
+	output.tangent 				= normalize(mul(input.tangent, 		(float3x3)mModel)).xyz;
+	output.bitangent 			= normalize(mul(input.bitangent, 	(float3x3)mModel)).xyz;
+    output.uv 					= input.uv;
 	
 	return output;
 }
@@ -98,15 +105,20 @@ PixelOutputType mainPS(PixelInputType input)
 	float emission		= 0.0f;
 	float occlusion		= 1.0f;
 	float3 normal		= input.normal.xyz;
-	float type			= 0.0f; // pbr mesh
-	
+	float type			= 1.0f; // default
 	//= TYPE CODES ============================
-	// 0.0 = Default mesh 	-> PBR
-	// 0.1 = CubeMap 		-> texture mapping
+	// 1.0 = Default mesh 	-> PBR
+	// 0.0 = CubeMap 		-> texture mapping
 	//=========================================
+	
+	//= VELOCITY ================================================================================
+	float2 a 		= (input.positionCS_Current.xy / input.positionCS_Current.w) * 0.5f + 0.5f;
+	float2 b 		= (input.positionCS_Previous.xy / input.positionCS_Previous.w) * 0.5f + 0.5f;
+    float2 velocity = a - b;
+	//===========================================================================================
 
 	//= HEIGHT ==================================================================================
-#if HEIGHT_MAP
+	#if HEIGHT_MAP
 		// Parallax Mapping
 		float height_scale 	= materialHeight * 0.01f;
 		float3 viewDir 		= normalize(cameraPosWS - input.positionWS.xyz);
@@ -116,58 +128,59 @@ PixelOutputType mainPS(PixelInputType input)
 		{
 			texCoords += offset;
 		}
-#endif
+	#endif
 	
 	//= MASK ====================================================================================
-#if MASK_MAP
+	#if MASK_MAP
 		float3 maskSample = texMask.Sample(samplerAniso, texCoords).rgb;
 		float threshold = 0.6f;
 		if (maskSample.r <= threshold && maskSample.g <= threshold && maskSample.b <= threshold)
 			discard;
-#endif
+	#endif
 	
 	//= ALBEDO ==================================================================================
-#if ALBEDO_MAP
+	#if ALBEDO_MAP
 		albedo *= texAlbedo.Sample(samplerAniso, texCoords);
-#endif
+	#endif
 	
 	//= ROUGHNESS ===============================================================================
-#if ROUGHNESS_MAP
+	#if ROUGHNESS_MAP
 		roughness *= texRoughness.Sample(samplerAniso, texCoords).r;
-#endif
+	#endif
 	
 	//= METALLIC ================================================================================
-#if METALLIC_MAP
+	#if METALLIC_MAP
 		metallic *= texMetallic.Sample(samplerAniso, texCoords).r;
-#endif
+	#endif
 	
 	//= NORMAL ==================================================================================
-#if NORMAL_MAP
+	#if NORMAL_MAP
 		float3 normalSample = normalize(UnpackNormal(texNormal.Sample(samplerAniso, texCoords).rgb));
 		normal = TangentToWorld(normalSample, input.normal.xyz, input.tangent.xyz, input.bitangent.xyz, materialNormalStrength);
-#endif
+	#endif
 	//============================================================================================
 	
 	//= OCCLUSION ================================================================================
-#if OCCLUSION_MAP
+	#if OCCLUSION_MAP
 		occlusion = texOcclusion.Sample(samplerAniso, texCoords).r;
-#endif
+	#endif
 	
 	//= EMISSION ================================================================================
-#if EMISSION_MAP
+	#if EMISSION_MAP
 		emission = texEmission.Sample(samplerAniso, texCoords).r;
-#endif
+	#endif
 		
 	//= CUBEMAP ==================================================================================
-#if CUBE_MAP
-		type = 1.0f;
-#endif
+	#if CUBE_MAP
+		type = 0.0f;
+	#endif
 	//============================================================================================
 
 	// Write to G-Buffer
 	g_buffer.albedo		= albedo;
 	g_buffer.normal 	= float4(PackNormal(normal), occlusion);
-	g_buffer.specular	= float4(roughness, metallic, emission, type);
+	g_buffer.material	= float4(roughness, metallic, emission, type);
+	g_buffer.velocity	= velocity;
     g_buffer.depth      = float2(depth_linear, depth_cs);
 
     return g_buffer;

@@ -2,7 +2,7 @@
 Texture2D texAlbedo 		: register(t0);
 Texture2D texNormal 		: register(t1);
 Texture2D texDepth 			: register(t2);
-Texture2D texSpecular 		: register(t3);
+Texture2D texMaterial 		: register(t3);
 Texture2D texShadows 		: register(t4);
 Texture2D texSSDO 			: register(t5);
 Texture2D texFrame 			: register(t6);
@@ -77,18 +77,18 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 finalColor   = float3(0, 0, 0);
 	
 	// Sample from G-Buffer
-    float4 albedo       = ToLinear(texAlbedo.Sample(samplerLinear, texCoord));
-    float4 normalSample = texNormal.Sample(samplerLinear, texCoord);
-    float occlusionTex  = normalSample.w;
-    float3 normal       = normalize(UnpackNormal(normalSample.xyz));
-    float4 specular     = texSpecular.Sample(samplerLinear, texCoord);
+    float4 albedo       	= ToLinear(texAlbedo.Sample(samplerLinear, texCoord));
+    float4 normalSample 	= texNormal.Sample(samplerLinear, texCoord);
+    float occlusionTex  	= normalSample.w;
+    float3 normal			= normalize(UnpackNormal(normalSample.xyz));
+    float4 materialSample   = texMaterial.Sample(samplerLinear, texCoord);
 
 	// Create material
     Material material;
     material.albedo     	= albedo.rgb;
-    material.roughness  	= specular.r;
-    material.metallic   	= specular.g;
-    material.emission   	= specular.b;
+    material.roughness  	= materialSample.r;
+    material.metallic   	= materialSample.g;
+    material.emission   	= materialSample.b;
 	material.color_diffuse 	= (1.0f - material.metallic) * material.albedo;	
 	material.color_specular = lerp(0.03f, material.albedo, material.metallic); // Aka F0
 	material.alpha 			= max(0.001f, material.roughness * material.roughness);	
@@ -98,7 +98,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 worldPos 		= ReconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
     float3 camera_to_pixel  = normalize(worldPos.xyz - cameraPosWS.xyz);
 
-    if (specular.a == 1.0f) // Render technique
+    if (materialSample.a == 0.0f) // Render technique
     {
         finalColor = ToLinear(environmentTex.Sample(samplerLinear, camera_to_pixel)).rgb;
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	

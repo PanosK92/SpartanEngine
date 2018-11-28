@@ -653,7 +653,7 @@ namespace Directus
 						currentlyBoundGeometry = geometry->Resource_GetID();
 					}
 
-					auto worldView				= actor->GetTransform_PtrRaw()->GetWorldTransform() * light->GetViewMatrix();
+					auto worldView				= actor->GetTransform_PtrRaw()->GetMatrix() * light->GetViewMatrix();
 					auto worldViewProjection	= worldView * light->ShadowMap_GetProjectionMatrix(i);
 					auto buffer					= Struct_Matrix_Matrix_Float(worldView, worldViewProjection, m_camera->GetFarPlane());
 					m_shaderLightDepth->UpdateBuffer(&buffer);
@@ -754,12 +754,8 @@ namespace Directus
 			}
 
 			// UPDATE PER OBJECT BUFFER
-			shader->UpdatePerObjectBuffer(
-				actor->GetTransform_PtrRaw()->GetWorldTransform(),
-				m_view, 
-				m_projection
-			);
-		
+			shader->UpdatePerObjectBuffer(actor->GetTransform_PtrRaw(), m_view, m_projection);
+				
 			m_rhiPipeline->SetConstantBuffer(shader->GetMaterialBuffer());
 			m_rhiPipeline->SetConstantBuffer(shader->GetPerObjectBuffer());
 
@@ -1008,7 +1004,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Albedo));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Specular));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Material));
 		m_rhiPipeline->SetTexture(texShadows);
 		if (Flags_IsSet(Render_SSDO)) { m_rhiPipeline->SetTexture(texSSDO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
 		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame); // SSR
@@ -1173,7 +1169,7 @@ namespace Directus
 
 			// Constant buffer
 			auto buffer = Struct_Transparency(
-				actor->GetTransform_PtrRaw()->GetWorldTransform(),
+				actor->GetTransform_PtrRaw()->GetMatrix(),
 				m_view,
 				m_projection,
 				material->GetColorAlbedo(),
@@ -1526,9 +1522,10 @@ namespace Directus
 	bool Renderer::Pass_GBufferVisualize(shared_ptr<RHI_RenderTexture>& texOut)
 	{
 		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
-		texType	= Flags_IsSet(Render_Albedo)		? GBuffer_Target_Albedo		: texType;
-		texType = Flags_IsSet(Render_Normal)		? GBuffer_Target_Normal		: texType;
-		texType = Flags_IsSet(Render_Specular)	? GBuffer_Target_Specular	: texType;
+		texType	= Flags_IsSet(Render_Albedo)	? GBuffer_Target_Albedo		: texType;
+		texType = Flags_IsSet(Render_Normal)	? GBuffer_Target_Normal		: texType;
+		texType = Flags_IsSet(Render_Material)	? GBuffer_Target_Material	: texType;
+		texType = Flags_IsSet(Render_Velocity)	? GBuffer_Target_Velocity	: texType;
 		texType = Flags_IsSet(Render_Depth)		? GBuffer_Target_Depth		: texType;
 
 		if (texType != GBuffer_Target_Unknown)

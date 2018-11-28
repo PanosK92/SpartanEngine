@@ -245,7 +245,7 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
 			float itemWidth		= 125.0f;
 			float step			= 1.0f;
 			float step_fast		= 1.0f;
-			char* decimals		= "%.3f";
+			char* decimals		= "%.4f";
 			auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 			ImGui::PushItemWidth(125.0f);

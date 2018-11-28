@@ -35,6 +35,7 @@ namespace Directus
 	class Light;
 	class Camera;
 	class Material;
+	class Transform;
 
 	enum ShaderFlags : unsigned long
 	{
@@ -58,7 +59,7 @@ namespace Directus
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
 		void UpdatePerMaterialBuffer(Camera* camera, Material* material);
-		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
+		void UpdatePerObjectBuffer(Transform* transform, const Math::Matrix& mView, const Math::Matrix& mProjection);
 
 		unsigned long GetShaderFlags()	{ return m_shaderFlags; }
 		bool HasAlbedoTexture()			{ return m_shaderFlags & Variaton_Albedo; }
@@ -108,6 +109,8 @@ namespace Directus
 			Math::Matrix mWorld;
 			Math::Matrix mView;
 			Math::Matrix mProjection;
+			Math::Matrix mMVP_current;
+			Math::Matrix mMVP_previous;
 		};
 		PerObjectBufferType perObjectBufferCPU;
 	};
