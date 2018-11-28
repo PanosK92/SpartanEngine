@@ -27,7 +27,8 @@ cbuffer DefaultBuffer : register(b0)
     matrix mViewProjectionInverse;
 	matrix mLightView;
     matrix mLightViewProjection[CASCADES];
-    float4 shadowSplits;
+    float2 shadowSplits;
+	float2 biases;
     float3 lightDir;
     float shadowMapResolution;
     float farPlane;
@@ -162,6 +163,8 @@ float mainPS(PixelInputType input) : SV_TARGET
     float depth_linear  = depthSample.r * farPlane;
     float depth_cs      = depthSample.g;
     float3 positionWS   = ReconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
+	float bias			= biases.x;
+	float normalBias	= biases.y;
 		
     float shadow = 1.0f;
     if (doShadowMapping != 0.0f)
@@ -171,15 +174,14 @@ float mainPS(PixelInputType input) : SV_TARGET
         cascadeIndex 		-= step(depth_linear, shadowSplits.x);
         cascadeIndex 		-= step(depth_linear, shadowSplits.y);
 		
-        float cascadeCompensation   = (cascadeIndex + 1.0f) * 2.0f; // the further the cascade, the more ugly under sharp angles, damn
         float shadowTexel           = 1.0f / shadowMapResolution;
-        float normalOffset          = 70.0f * cascadeCompensation;
         float NdotL                 = dot(normal, lightDir);
         float cosAngle              = saturate(1.0f - NdotL);
-        float3 scaledNormalOffset   = normal * (normalOffset * cosAngle * shadowTexel);
+		float biasCascadeFactor		= cascadeIndex + 1;
+        float3 scaledNormalOffset   = normal * (normalBias * biasCascadeFactor * biasCascadeFactor) * cosAngle * shadowTexel;
 		float4 worldPos 			= float4(positionWS + scaledNormalOffset, 1.0f);
 		float compareDepth			= mul(worldPos, mLightView).z / farPlane;
-		float4 lightPos 			= mul(worldPos, mLightViewProjection[cascadeIndex]) - 0.0005f;
+		float4 lightPos 			= mul(worldPos, mLightViewProjection[cascadeIndex]) - bias;
 
         if (cascadeIndex == 0)
         {      

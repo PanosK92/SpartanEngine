@@ -304,6 +304,8 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		float intensity			= light->GetIntensity();
 		float angle				= light->GetAngle() * 179.0f;
 		bool castsShadows		= light->GetCastShadows();
+		float bias				= light->GetBias();
+		float normalBias		= light->GetNormalBias();
 		float range				= light->GetRange();
 		float split1			= light->ShadowMap_GetSplit(0);
 		float split2			= light->ShadowMap_GetSplit(1);
@@ -348,6 +350,16 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		// Cascade splits
 		if (typeInt == (int)LightType_Directional)
 		{
+			// Bias
+			ImGui::Text("Bias");
+			ImGui::SameLine(ComponentProperty::g_column);
+			ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.0001f, 0.0001f, "%.4f"); ImGui::PopItemWidth();
+
+			// Normal Bias
+			ImGui::Text("Normal Bias");
+			ImGui::SameLine(ComponentProperty::g_column);
+			ImGui::PushItemWidth(300); ImGui::InputFloat("##lightNormalBias", &normalBias, 1.0f, 1.0f, "%.0f"); ImGui::PopItemWidth();
+
 			ImGui::Text("Split 1");
 			ImGui::SameLine(ComponentProperty::g_column);
 			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit1", &split1, 0.0f, 1000.0f); ImGui::PopItemWidth();
@@ -377,6 +389,8 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		if ((LightType)typeInt != light->GetLightType())									light->SetLightType((LightType)typeInt);
 		if (intensity != light->GetIntensity())												light->SetIntensity(intensity);
 		if (castsShadows != light->GetCastShadows())										light->SetCastShadows(castsShadows);
+		if (bias != light->GetBias())														light->SetBias(bias);
+		if (normalBias != light->GetNormalBias())											light->SetNormalBias(normalBias);
 		if (angle / 179.0f != light->GetAngle())											light->SetAngle(angle / 179.0f);
 		if (range != light->GetRange())														light->SetRange(range);
 		if (split1 != light->ShadowMap_GetSplit(0))											light->ShadowMap_SetSplit(split1, 0);

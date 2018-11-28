@@ -198,7 +198,8 @@ namespace Directus
 				m_mLightViewProjection[0]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
 				m_mLightViewProjection[1]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
 				m_mLightViewProjection[2]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
-				m_shadowSplits				= Math::Vector4(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1), 0, 0);
+				m_shadowSplits				= Math::Vector2(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1));
+				m_biases					= Math::Vector2(dirLight->GetBias(), dirLight->GetNormalBias());
 				m_lightDir					= dirLight->GetDirection();
 				m_shadowMapResolution		= (float)dirLight->ShadowMap_GetResolution();
 				m_doShadowMapping			= dirLight->GetCastShadows();
@@ -209,7 +210,8 @@ namespace Directus
 		Math::Matrix m_viewprojectionInverted;
 		Math::Matrix m_mLightView;
 		Math::Matrix m_mLightViewProjection[3];
-		Math::Vector4 m_shadowSplits;
+		Math::Vector2 m_shadowSplits;
+		Math::Vector2 m_biases;
 		Math::Vector3 m_lightDir;
 		float m_shadowMapResolution;
 		float m_farPlane;

@@ -45,6 +45,7 @@ namespace Directus
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle, float);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_color, Vector4);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_normalBias, float);
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
 		m_lightType		= LightType_Point;
@@ -53,7 +54,8 @@ namespace Directus
 		m_intensity		= 2.0f;
 		m_angle			= 0.5f; // about 30 degrees
 		m_color			= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_bias			= 0.001f;	
+		m_bias			= 0.0007f;
+		m_normalBias	= 100.0f;
 		m_isDirty		= true;
 
 		// Shadow map splits (for directional light's cascades)
@@ -136,6 +138,7 @@ namespace Directus
 		stream->Write(m_intensity);
 		stream->Write(m_angle);
 		stream->Write(m_bias);
+		stream->Write(m_normalBias);
 	}
 
 	void Light::Deserialize(FileStream* stream)
@@ -147,6 +150,7 @@ namespace Directus
 		stream->Read(&m_intensity);
 		stream->Read(&m_angle);
 		stream->Read(&m_bias);
+		stream->Read(&m_normalBias);
 	}
 
 	void Light::SetLightType(LightType type)

@@ -81,8 +81,11 @@ namespace Directus
 		void SetAngle(float angle);
 		float GetAngle() { return m_angle; }
 
-		void SetBias(float value) { m_bias = value; }
-		float GetBias() { return m_bias; }
+		void SetBias(float value)	{ m_bias = value; }
+		float GetBias()				{ return m_bias; }
+
+		void SetNormalBias(float value) { m_normalBias = value; }
+		float GetNormalBias()			{ return m_normalBias; }
 
 		Math::Vector3 GetDirection();
 		void ClampRotation();
@@ -112,6 +115,7 @@ namespace Directus
 		float m_intensity;
 		float m_angle;
 		float m_bias;
+		float m_normalBias;
 		Math::Matrix m_viewMatrix;
 		Math::Quaternion m_lastRotLight;
 		Math::Vector3 m_lastPosLight;
