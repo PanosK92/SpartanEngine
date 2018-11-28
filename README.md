@@ -39,18 +39,19 @@ Feature       		            | Completion | Notes
 ------------- 		            | :--: | -
 Easy to build               	| 100% | Single click project generation which includes editor and runtime.
 New editor               		| 90% | Replace Qt editor with ImGui editor.
-Debug Rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
+Debug rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
 SSDO         					| 100% | Screen space directional occlusion.
-Bloom         					| 90% | -
+Bloom         					| 100% | -.
 SSR								| 90% |	 Screen space reflections
-TAA								| 10% |	 Temporal Anti-Aliasing
-Velocity Buffer					| 100% | -
+TAA								| 10% |	 Temporal Anti-Aliasing.
+Per-Pixel motion blur			| 0% |
+Velocity Buffer					| 100% | Required for TAA and Motion Blur.
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 Point light support             | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Performance improvements, bug fixes and overall higher quality codebase.
-Font importing and rendering    | 100% | Ability to load any font file
+Font importing and rendering    | 100% | Ability to load any font file.
 
 # Roadmap
 - C# scripting.

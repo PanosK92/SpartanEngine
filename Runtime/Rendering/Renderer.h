@@ -63,7 +63,7 @@ namespace Directus
 		Render_SceneGrid			= 1UL << 8,
 		Render_PerformanceMetrics	= 1UL << 9,
 		Render_Light				= 1UL << 10,
-		Render_Bloom				= 1UL << 12,
+		Render_Bloom				= 1UL << 11,
 		Render_FXAA					= 1UL << 12,
 		Render_SSDO					= 1UL << 13,
 		Render_SSR					= 1UL << 14,

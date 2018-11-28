@@ -94,7 +94,7 @@ namespace Directus
 		m_flags			|= Render_FXAA;
 		m_flags			|= Render_SSDO;
 		m_flags			|= Render_SSR;
-		//m_flags			|= Render_TAA;
+		m_flags			|= Render_TAA;
 		m_flags			|= Render_Correction;
 		//m_flags		|= Render_Sharpening;
 		//m_flags		|= Render_ChromaticAberration;
@@ -250,7 +250,7 @@ namespace Directus
 			// TAA
 			m_shaderTAA = make_shared<RHI_Shader>(m_rhiDevice);
 			m_shaderTAA->Compile_VertexPixel(shaderDirectory + "TAA_Resolve.hlsl", Input_PositionTexture, m_context);
-			m_shaderTAA->AddBuffer<Struct_Matrix>(0, Buffer_VertexShader);
+			m_shaderTAA->AddBuffer<Struct_Matrix_Vector2>(0, Buffer_Global);
 
 			// Shadow mapping
 			m_shaderShadowMapping = make_shared<RHI_Shader>(m_rhiDevice);
@@ -982,8 +982,8 @@ namespace Directus
 			int samples				= 16;
 			int index				= m_frameNum % samples;
 			Vector2 jitter			= TAA_Sequence::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-			jitter.x				= jitter.x * (1.0f / (float)texOut->GetWidth());
-			jitter.y				= jitter.y * (1.0f / (float)texOut->GetHeight());
+			jitter.x				= jitter.x / (float)texOut->GetWidth();
+			jitter.y				= jitter.y / (float)texOut->GetHeight();
 			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(jitter.x, -jitter.y, 0.0f));
 			m_projectionJittered	= m_viewProjection_Orthographic * jitterMatrix;
 		}
@@ -1097,12 +1097,13 @@ namespace Directus
 		m_rhiPipeline->SetRenderTarget(m_renderTexFull_TAA_Current);
 		m_rhiPipeline->SetViewport(m_renderTexFull_TAA_Current->GetViewport());
 		m_rhiPipeline->SetShader(m_shaderTAA);
-		auto buffer = Struct_Matrix(m_viewProjection_Orthographic);
+		auto buffer = Struct_Matrix_Vector2(m_viewProjection_Orthographic, Vector2(m_renderTexFull_TAA_Current->GetWidth(), m_renderTexFull_TAA_Current->GetHeight()));
 		m_shaderTAA->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderTAA->GetConstantBuffer());
 		m_rhiPipeline->SetSampler(m_samplerLinearClampAlways);
 		m_rhiPipeline->SetTexture(m_renderTexFull_TAA_History);
 		m_rhiPipeline->SetTexture(texIn);
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
@@ -1110,8 +1111,8 @@ namespace Directus
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetShader(m_shaderTexture);
-		buffer = Struct_Matrix(m_viewProjection_Orthographic);
-		m_shaderTexture->UpdateBuffer(&buffer);
+		auto buffer2 = Struct_Matrix(m_viewProjection_Orthographic);
+		m_shaderTexture->UpdateBuffer(&buffer2);
 		m_rhiPipeline->SetConstantBuffer(m_shaderTexture->GetConstantBuffer());
 		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);
 		m_rhiPipeline->SetTexture(m_renderTexFull_TAA_Current);

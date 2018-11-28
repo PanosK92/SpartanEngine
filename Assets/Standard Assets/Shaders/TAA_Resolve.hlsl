@@ -4,11 +4,13 @@
 
 Texture2D texHistory	: register(t0);
 Texture2D texCurrent	: register(t1);
+Texture2D texVelocity	: register(t2);
 SamplerState texSampler : register(s0);
 
 cbuffer MiscBuffer : register(b0)
 {
 	matrix mTransform;
+	float2 resolution;
 };
 
 struct PixelInputType
@@ -30,9 +32,10 @@ PixelInputType mainVS(Vertex_PosUv input)
 
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
+	float blendfactor 		= 0.05f;
 	float3 color_history 	= texHistory.Sample(texSampler, input.uv).rgb;
 	float3 color_current 	= texCurrent.Sample(texSampler, input.uv).rgb;
-	float3 color_result		= lerp(color_history, color_current, 0.05f);
+	float3 color_result		= lerp(color_history, color_current, blendfactor);
 	
 	// Re-compute luma for FXAA
     float luma = dot(color_result, float3(0.299f, 0.587f, 0.114f));
