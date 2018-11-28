@@ -117,11 +117,15 @@ namespace Directus
 		if (GetState() != Shader_Built)
 			return;
 
+		Matrix mMVP_current = transform->GetMatrix() * mView * mProjection;
+
 		// Determine if the buffer actually needs to update
 		bool update = false;
-		update = perObjectBufferCPU.mWorld		!= transform->GetMatrix() ? true : update;
-		update = perObjectBufferCPU.mView		!= mView ? true : update;
-		update = perObjectBufferCPU.mProjection	!= mProjection ? true : update;
+		update = perObjectBufferCPU.mWorld			!= transform->GetMatrix() ? true : update;
+		update = perObjectBufferCPU.mView			!= mView ? true : update;
+		update = perObjectBufferCPU.mProjection		!= mProjection ? true : update;
+		update = perObjectBufferCPU.mMVP_current	!= mMVP_current ? true : update;
+		update = perObjectBufferCPU.mMVP_previous	!= transform->GetWVP_Previous() ? true : update;
 
 		if (update)
 		{
@@ -131,13 +135,13 @@ namespace Directus
 			buffer->mWorld			= perObjectBufferCPU.mWorld			= transform->GetMatrix();
 			buffer->mView			= perObjectBufferCPU.mView			= mView;
 			buffer->mProjection		= perObjectBufferCPU.mProjection	= mProjection;
-			buffer->mMVP_current	= perObjectBufferCPU.mMVP_current	= transform->GetMatrix() * mView * mProjection;
+			buffer->mMVP_current	= perObjectBufferCPU.mMVP_current	= mMVP_current;
 			buffer->mMVP_previous	= perObjectBufferCPU.mMVP_previous	= transform->GetWVP_Previous();
 
 			m_perObjectBuffer->Unmap();
 			//=========================================================================================
 
-			transform->SetWVP_Previous(perObjectBufferCPU.mMVP_current);
+			transform->SetWVP_Previous(mMVP_current);
 		}
 	}
 
