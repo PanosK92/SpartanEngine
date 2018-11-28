@@ -34,7 +34,7 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-namespace Widget_Toolbar_Options
+namespace _Widget_Toolbar
 {
 	static float g_buttonSize			= 20.0f;
 	static bool g_showRendererOptions	= false;
@@ -44,16 +44,17 @@ namespace Widget_Toolbar_Options
 	static bool g_pickingRay			= false;
 	static bool g_grid					= true;
 	static bool g_performanceMetrics	= false;
-	const char* g_rendererViews[]	=
+	static vector<string> gbufferTextures =
 	{
 		"Default",
 		"Albedo",
 		"Normal",
-		"Specular",
+		"Material",
+		"Velocity",
 		"Depth"
 	};
-	static int g_rendererViewInt = 0;
-	static const char* g_rendererView = g_rendererViews[g_rendererViewInt];
+	static int gbufferSelectedTextureIndex	= 0;
+	static string gbufferSelectedTexture	= gbufferTextures[0];
 }
 
 Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
@@ -87,7 +88,7 @@ void Widget_Toolbar::Tick(float deltaTime)
 	// Play button
 	ImGui::SameLine();
 	ImGui::PushStyleColor(ImGuiCol_Button, Engine::EngineMode_IsSet(Engine_Game) ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Button_Play, Widget_Toolbar_Options::g_buttonSize))
+	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Button_Play, _Widget_Toolbar::g_buttonSize))
 	{
 		Engine::EngineMode_Toggle(Engine_Game);
 	}
@@ -95,34 +96,34 @@ void Widget_Toolbar::Tick(float deltaTime)
 
 	// Renderer options button
 	ImGui::SameLine();
-	ImGui::PushStyleColor(ImGuiCol_Button, Widget_Toolbar_Options::g_showRendererOptions ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Component_Options, Widget_Toolbar_Options::g_buttonSize))
+	ImGui::PushStyleColor(ImGuiCol_Button, _Widget_Toolbar::g_showRendererOptions ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Component_Options, _Widget_Toolbar::g_buttonSize))
 	{
-		Widget_Toolbar_Options::g_showRendererOptions = true;
+		_Widget_Toolbar::g_showRendererOptions = true;
 	}
 	ImGui::PopStyleColor();
 
 	ImGui::PopStyleVar();
 
 	// Visibility
-	if (Widget_Toolbar_Options::g_showRendererOptions) ShowRendererOptions();
+	if (_Widget_Toolbar::g_showRendererOptions) ShowRendererOptions();
 }
 
 void Widget_Toolbar::ShowRendererOptions()
 {
-	ImGui::Begin("Renderer Options", &Widget_Toolbar_Options::g_showRendererOptions, ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_showRendererOptions, ImGuiWindowFlags_AlwaysAutoResize);
 
 	// G-Buffer Visualization
 	{
-		if (ImGui::BeginCombo("G-Buffer", Widget_Toolbar_Options::g_rendererView))
+		if (ImGui::BeginCombo("G-Buffer", _Widget_Toolbar::gbufferSelectedTexture.c_str()))
 		{
-			for (int i = 0; i < IM_ARRAYSIZE(Widget_Toolbar_Options::g_rendererViews); i++)
+			for (int i = 0; i < _Widget_Toolbar::gbufferTextures.size(); i++)
 			{
-				bool is_selected = (Widget_Toolbar_Options::g_rendererView == Widget_Toolbar_Options::g_rendererViews[i]);
-				if (ImGui::Selectable(Widget_Toolbar_Options::g_rendererViews[i], is_selected))
+				bool is_selected = (_Widget_Toolbar::gbufferSelectedTexture == _Widget_Toolbar::gbufferTextures[i]);
+				if (ImGui::Selectable(_Widget_Toolbar::gbufferTextures[i].c_str(), is_selected))
 				{
-					Widget_Toolbar_Options::g_rendererView		= Widget_Toolbar_Options::g_rendererViews[i];
-					Widget_Toolbar_Options::g_rendererViewInt	= i;
+					_Widget_Toolbar::gbufferSelectedTexture		= _Widget_Toolbar::gbufferTextures[i].data();
+					_Widget_Toolbar::gbufferSelectedTextureIndex	= i;
 				}
 				if (is_selected)
 				{
@@ -132,39 +133,52 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::EndCombo();
 		}
 
-		if (Widget_Toolbar_Options::g_rendererViewInt == 0) // Combined
+		if (_Widget_Toolbar::gbufferSelectedTextureIndex == 0) // Combined
 		{
 			m_renderer->Flags_Disable(Render_Albedo);
 			m_renderer->Flags_Disable(Render_Normal);
-			m_renderer->Flags_Disable(Render_Specular);
+			m_renderer->Flags_Disable(Render_Material);
+			m_renderer->Flags_Disable(Render_Velocity);
 			m_renderer->Flags_Disable(Render_Depth);
 		}
-		else if (Widget_Toolbar_Options::g_rendererViewInt == 1) // Albedo
+		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 1) // Albedo
 		{
 			m_renderer->Flags_Enable(Render_Albedo);
 			m_renderer->Flags_Disable(Render_Normal);
-			m_renderer->Flags_Disable(Render_Specular);
+			m_renderer->Flags_Disable(Render_Material);
+			m_renderer->Flags_Disable(Render_Velocity);
 			m_renderer->Flags_Disable(Render_Depth);
 		}
-		else if (Widget_Toolbar_Options::g_rendererViewInt == 2) // Normal
+		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 2) // Normal
 		{
 			m_renderer->Flags_Disable(Render_Albedo);
 			m_renderer->Flags_Enable(Render_Normal);
-			m_renderer->Flags_Disable(Render_Specular);
+			m_renderer->Flags_Disable(Render_Material);
+			m_renderer->Flags_Disable(Render_Velocity);
 			m_renderer->Flags_Disable(Render_Depth);
 		}
-		else if (Widget_Toolbar_Options::g_rendererViewInt == 3) // Specular
+		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 3) // Material
 		{
 			m_renderer->Flags_Disable(Render_Albedo);
 			m_renderer->Flags_Disable(Render_Normal);
-			m_renderer->Flags_Enable(Render_Specular);
+			m_renderer->Flags_Enable(Render_Material);
+			m_renderer->Flags_Disable(Render_Velocity);
 			m_renderer->Flags_Disable(Render_Depth);
 		}
-		else if (Widget_Toolbar_Options::g_rendererViewInt == 4) // Depth
+		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 4) // Velocity
 		{
 			m_renderer->Flags_Disable(Render_Albedo);
 			m_renderer->Flags_Disable(Render_Normal);
-			m_renderer->Flags_Disable(Render_Specular);
+			m_renderer->Flags_Disable(Render_Material);
+			m_renderer->Flags_Enable(Render_Velocity);
+			m_renderer->Flags_Disable(Render_Depth);
+		}
+		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 5) // Depth
+		{
+			m_renderer->Flags_Disable(Render_Albedo);
+			m_renderer->Flags_Disable(Render_Normal);
+			m_renderer->Flags_Disable(Render_Material);
+			m_renderer->Flags_Disable(Render_Velocity);
 			m_renderer->Flags_Enable(Render_Depth);
 		}
 	}
@@ -205,19 +219,19 @@ void Widget_Toolbar::ShowRendererOptions()
 
 	// Misc
 	{
-		ImGui::Checkbox("Physics", &Widget_Toolbar_Options::g_physics);
-		ImGui::Checkbox("AABB", &Widget_Toolbar_Options::g_aabb);
-		ImGui::Checkbox("Gizmos", &Widget_Toolbar_Options::g_gizmos);
-		ImGui::Checkbox("Picking Ray", &Widget_Toolbar_Options::g_pickingRay);
-		ImGui::Checkbox("Scene Grid", &Widget_Toolbar_Options::g_grid);
-		ImGui::Checkbox("Performance Metrics", &Widget_Toolbar_Options::g_performanceMetrics);
+		ImGui::Checkbox("Physics", &_Widget_Toolbar::g_physics);
+		ImGui::Checkbox("AABB", &_Widget_Toolbar::g_aabb);
+		ImGui::Checkbox("Gizmos", &_Widget_Toolbar::g_gizmos);
+		ImGui::Checkbox("Picking Ray", &_Widget_Toolbar::g_pickingRay);
+		ImGui::Checkbox("Scene Grid", &_Widget_Toolbar::g_grid);
+		ImGui::Checkbox("Performance Metrics", &_Widget_Toolbar::g_performanceMetrics);
 
-		Widget_Toolbar_Options::g_physics				? m_renderer->Flags_Enable(Render_Physics)				: m_renderer->Flags_Disable(Render_Physics);
-		Widget_Toolbar_Options::g_aabb					? m_renderer->Flags_Enable(Render_AABB)					: m_renderer->Flags_Disable(Render_AABB);
-		Widget_Toolbar_Options::g_gizmos				? m_renderer->Flags_Enable(Render_Light)				: m_renderer->Flags_Disable(Render_Light);
-		Widget_Toolbar_Options::g_pickingRay			? m_renderer->Flags_Enable(Render_PickingRay)			: m_renderer->Flags_Disable(Render_PickingRay);
-		Widget_Toolbar_Options::g_grid					? m_renderer->Flags_Enable(Render_SceneGrid)			: m_renderer->Flags_Disable(Render_SceneGrid);
-		Widget_Toolbar_Options::g_performanceMetrics	? m_renderer->Flags_Enable(Render_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_PerformanceMetrics);
+		_Widget_Toolbar::g_physics				? m_renderer->Flags_Enable(Render_Physics)				: m_renderer->Flags_Disable(Render_Physics);
+		_Widget_Toolbar::g_aabb					? m_renderer->Flags_Enable(Render_AABB)					: m_renderer->Flags_Disable(Render_AABB);
+		_Widget_Toolbar::g_gizmos				? m_renderer->Flags_Enable(Render_Light)				: m_renderer->Flags_Disable(Render_Light);
+		_Widget_Toolbar::g_pickingRay			? m_renderer->Flags_Enable(Render_PickingRay)			: m_renderer->Flags_Disable(Render_PickingRay);
+		_Widget_Toolbar::g_grid					? m_renderer->Flags_Enable(Render_SceneGrid)			: m_renderer->Flags_Disable(Render_SceneGrid);
+		_Widget_Toolbar::g_performanceMetrics	? m_renderer->Flags_Enable(Render_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_PerformanceMetrics);
 	}
 
 	ImGui::End();

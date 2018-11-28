@@ -212,7 +212,7 @@ namespace Directus
 
 	BoundingBox Renderable::Geometry_BB()
 	{
-		return m_geometryAABB.Transformed(GetTransform()->GetWorldTransform());
+		return m_geometryAABB.Transformed(GetTransform()->GetMatrix());
 	}
 	//==============================================================================
 

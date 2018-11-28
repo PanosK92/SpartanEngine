@@ -112,28 +112,32 @@ namespace Directus
 		}
 	}
 
-	void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
+	void ShaderVariation::UpdatePerObjectBuffer(Transform* transform, const Matrix& mView, const Matrix& mProjection)
 	{
 		if (GetState() != Shader_Built)
 			return;
 
 		// Determine if the buffer actually needs to update
 		bool update = false;
-		update = perObjectBufferCPU.mWorld		!= mWorld ? true : update;
+		update = perObjectBufferCPU.mWorld		!= transform->GetMatrix() ? true : update;
 		update = perObjectBufferCPU.mView		!= mView ? true : update;
 		update = perObjectBufferCPU.mProjection	!= mProjection ? true : update;
 
 		if (update)
 		{
-			//= BUFFER UPDATE ================================================================================
+			//= BUFFER UPDATE =========================================================================
 			auto* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
 
-			buffer->mWorld		= perObjectBufferCPU.mWorld			= mWorld;
-			buffer->mView		= perObjectBufferCPU.mView			= mView;
-			buffer->mProjection	= perObjectBufferCPU.mProjection	= mProjection;
+			buffer->mWorld			= perObjectBufferCPU.mWorld			= transform->GetMatrix();
+			buffer->mView			= perObjectBufferCPU.mView			= mView;
+			buffer->mProjection		= perObjectBufferCPU.mProjection	= mProjection;
+			buffer->mMVP_current	= perObjectBufferCPU.mMVP_current	= transform->GetMatrix() * mView * mProjection;
+			buffer->mMVP_previous	= perObjectBufferCPU.mMVP_previous	= transform->GetWVP_Previous();
 
 			m_perObjectBuffer->Unmap();
-			//================================================================================================
+			//=========================================================================================
+
+			transform->SetWVP_Previous(perObjectBufferCPU.mMVP_current);
 		}
 	}
 

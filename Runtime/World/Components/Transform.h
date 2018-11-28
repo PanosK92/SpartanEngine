@@ -47,21 +47,21 @@ namespace Directus
 		void UpdateTransform();
 
 		//= POSITION ============================================================
-		Math::Vector3 GetPosition() { return m_worldTransform.GetTranslation(); }
+		Math::Vector3 GetPosition() { return m_matrix.GetTranslation(); }
 		const Math::Vector3& GetPositionLocal() { return m_positionLocal; }
 		void SetPosition(const Math::Vector3& position);
 		void SetPositionLocal(const Math::Vector3& position);
 		//=======================================================================
 
 		//= ROTATION ============================================================
-		Math::Quaternion GetRotation() { return m_worldTransform.GetRotation(); }
+		Math::Quaternion GetRotation() { return m_matrix.GetRotation(); }
 		const Math::Quaternion& GetRotationLocal() { return m_rotationLocal; }
 		void SetRotation(const Math::Quaternion& rotation);
 		void SetRotationLocal(const Math::Quaternion& rotation);
 		//=======================================================================
 
 		//= SCALE ======================================================
-		Math::Vector3 GetScale() { return m_worldTransform.GetScale(); }
+		Math::Vector3 GetScale() { return m_matrix.GetScale(); }
 		const Math::Vector3& GetScaleLocal() { return m_scaleLocal; }
 		void SetScale(const Math::Vector3& scale);
 		void SetScaleLocal(const Math::Vector3& scale);
@@ -97,8 +97,12 @@ namespace Directus
 		//=============================================================================
 
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
-		Math::Matrix& GetWorldTransform()	{ return m_worldTransform; }
-		Math::Matrix& GetLocalTransform()	 { return m_localTransform; }
+		Math::Matrix& GetMatrix()			{ return m_matrix; }
+		Math::Matrix& GetLocalMatrix()		{ return m_matrixLocal; }
+
+		// Velocity tracking
+		Math::Matrix& GetWVP_Previous()				{ return m_wvp_previous; }
+		void SetWVP_Previous(Math::Matrix& matrix)	{ m_wvp_previous = matrix; }
 
 	private:
 		// local
@@ -106,12 +110,15 @@ namespace Directus
 		Math::Quaternion m_rotationLocal;
 		Math::Vector3 m_scaleLocal;
 
-		Math::Matrix m_worldTransform;
-		Math::Matrix m_localTransform;
+		Math::Matrix m_matrix;
+		Math::Matrix m_matrixLocal;
 		Math::Vector3 m_lookAt;
 
 		Transform* m_parent; // the parent of this transform
 		std::vector<Transform*> m_children; // the children of this transform
+
+		// Velocity tracking
+		Math::Matrix m_wvp_previous;
 
 		//= HELPER FUNCTIONS ================================================================
 		Math::Matrix GetParentTransformMatrix();

@@ -41,15 +41,16 @@ namespace Directus
 		m_positionLocal		= Vector3::Zero;
 		m_rotationLocal		= Quaternion(0, 0, 0, 1);
 		m_scaleLocal		= Vector3::One;
-		m_worldTransform	= Matrix::Identity;
-		m_localTransform	= Matrix::Identity;
+		m_matrix			= Matrix::Identity;
+		m_matrixLocal		= Matrix::Identity;
+		m_wvp_previous		= Matrix::Identity;
 		m_parent			= nullptr;
 
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal,	Vector3);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLocal,	Quaternion);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_scaleLocal, Vector3);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_worldTransform, Matrix);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_localTransform, Matrix);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix, Matrix);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrixLocal, Matrix);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_lookAt, Vector3);
 	}
 
@@ -96,16 +97,16 @@ namespace Directus
 	void Transform::UpdateTransform()
 	{
 		// Compute local transform
-		m_localTransform = Matrix(m_positionLocal, m_rotationLocal, m_scaleLocal);
+		m_matrixLocal = Matrix(m_positionLocal, m_rotationLocal, m_scaleLocal);
 
 		// Compute world transform
 		if (!HasParent())
 		{
-			m_worldTransform = m_localTransform;
+			m_matrix = m_matrixLocal;
 		}
 		else
 		{
-			m_worldTransform = m_localTransform * GetParentTransformMatrix();
+			m_matrix = m_matrixLocal * GetParentTransformMatrix();
 		}
 		
 		// Update children
@@ -121,7 +122,7 @@ namespace Directus
 		if (GetPosition() == position)
 			return;
 
-		SetPositionLocal(!HasParent() ? position : position * GetParent()->GetWorldTransform().Inverted());
+		SetPositionLocal(!HasParent() ? position : position * GetParent()->GetMatrix().Inverted());
 	}
 
 	void Transform::SetPositionLocal(const Vector3& position)
@@ -188,7 +189,7 @@ namespace Directus
 		}
 		else
 		{
-			SetPositionLocal(m_positionLocal + GetParent()->GetWorldTransform().Inverted() * delta);
+			SetPositionLocal(m_positionLocal + GetParent()->GetMatrix().Inverted() * delta);
 		}
 	}
 
@@ -381,7 +382,7 @@ namespace Directus
 
 	Matrix Transform::GetParentTransformMatrix()
 	{
-		return HasParent() ? GetParent()->GetWorldTransform() : Matrix::Identity;
+		return HasParent() ? GetParent()->GetMatrix() : Matrix::Identity;
 	}
 
 	// Makes this transform have no parent
