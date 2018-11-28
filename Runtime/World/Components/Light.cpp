@@ -54,8 +54,8 @@ namespace Directus
 		m_intensity		= 2.0f;
 		m_angle			= 0.5f; // about 30 degrees
 		m_color			= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_bias			= 0.0007f;
-		m_normalBias	= 100.0f;
+		m_bias			= 0.0017f;
+		m_normalBias	= 150.0f;
 		m_isDirty		= true;
 
 		// Shadow map splits (for directional light's cascades)
