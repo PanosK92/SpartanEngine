@@ -125,7 +125,7 @@ namespace Directus
 
 		//= Settings =============================
 		// FXAA
-		float m_fxaaSubPixel			= 1.75f;	// The amount of sub-pixel aliasing removal														- Default: 0.75f
+		float m_fxaaSubPixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Default: 0.75f
 		float m_fxaaEdgeThreshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Default: 0.166f
 		float m_fxaaEdgeThresholdMin	= 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Default: 0.0833f
 		float m_bloomIntensity			= 0.2f;		// The intensity of the bloom
@@ -210,9 +210,8 @@ namespace Directus
 		//= SAMPLERS ===============================================
 		std::shared_ptr<RHI_Sampler> m_samplerPointClampAlways;
 		std::shared_ptr<RHI_Sampler> m_samplerPointClampGreater;
-		std::shared_ptr<RHI_Sampler> m_samplerLinearClampGreater;
-		std::shared_ptr<RHI_Sampler> m_samplerLinearWrapGreater;
-		std::shared_ptr<RHI_Sampler> m_samplerLinearClampAlways;
+		std::shared_ptr<RHI_Sampler> m_samplerBilinearClampGreater;
+		std::shared_ptr<RHI_Sampler> m_samplerBilinearWrapGreater;
 		std::shared_ptr<RHI_Sampler> m_samplerBilinearClampAlways;
 		std::shared_ptr<RHI_Sampler> m_samplerAnisotropicWrapAlways;
 		//==========================================================

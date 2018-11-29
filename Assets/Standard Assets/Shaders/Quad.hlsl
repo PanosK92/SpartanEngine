@@ -6,6 +6,7 @@
 #include "ChromaticAberration.hlsl"
 #include "Blur.hlsl"
 #include "ACES.hlsl"
+#include "ResolveTAA.hlsl"
 #define FXAA_PC 1
 #define FXAA_HLSL_5 1
 #define FXAA_QUALITY__PRESET 39
@@ -101,6 +102,14 @@ float4 mainPS(VS_Output input) : SV_TARGET
 	color 		= sourceTexture.Sample(samplerState, texCoord);
 	color.rgb 	= ACESFitted(color.rgb);
 	color 		= ToGamma(color);
+#endif
+
+#if PASS_TAA_RESOLVE
+	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, samplerState);
+#endif
+
+#if PASS_TEXTURE
+	color = sourceTexture.Sample(samplerState, texCoord);
 #endif
 
     return color;
