@@ -1,5 +1,5 @@
 // = INCLUDES ========
-#include "Common.hlsl"
+#include "Vertex.hlsl"
 //====================
 
 Texture2D tex			: register(t0);
@@ -16,19 +16,17 @@ struct PixelInputType
     float2 uv 		: TEXCOORD;
 };
 
-// Vertex Shader
 PixelInputType mainVS(Vertex_PosUv input)
 {
     PixelInputType output;
 	
-    input.position.w = 1.0f;
-    output.position = mul(input.position, mTransform);
-    output.uv = input.uv;
+    input.position.w 	= 1.0f;
+    output.position 	= mul(input.position, mTransform);
+    output.uv 			= input.uv;
 	
     return output;
 }
 
-// Pixel Shader
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
 	return tex.Sample(texSampler, input.uv);

@@ -39,7 +39,7 @@ namespace Directus
 	{
 		// Create constant buffer
 		m_cbuffer = make_shared<RHI_ConstantBuffer>(rhiDevice);
-		m_cbuffer->Create(sizeof(LightBuffer), 0, Buffer_Global);
+		m_cbuffer->Create(sizeof(LightBuffer));
 	}
 
 	void LightShader::Compile(const string& filePath, Context* context)

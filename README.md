@@ -42,8 +42,8 @@ New editor               		| 90% | Replace Qt editor with ImGui editor.
 Debug rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
 SSDO         					| 100% | Screen space directional occlusion.
-Bloom         					| 100% | -.
-SSR								| 90% |	 Screen space reflections
+Bloom         					| 100% | -
+SSR								| 90% |	 Screen space reflections.
 TAA								| 10% |	 Temporal Anti-Aliasing.
 Per-Pixel motion blur			| 0% |
 Velocity Buffer					| 100% | Required for TAA and Motion Blur.

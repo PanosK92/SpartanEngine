@@ -50,9 +50,9 @@ namespace Directus
 		m_constantBuffer->Unmap();				// Unmap buffer
 	}
 
-	void RHI_Shader::CreateConstantBuffer(unsigned int size, unsigned int slot, Buffer_Scope scope)
+	void RHI_Shader::CreateConstantBuffer(unsigned int size)
 	{
 		m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_constantBuffer->Create(size, slot, scope);
+		m_constantBuffer->Create(size);
 	}
 }

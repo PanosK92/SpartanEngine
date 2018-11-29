@@ -1,5 +1,5 @@
 // = INCLUDES ========
-#include "Common.hlsl"
+#include "Vertex.hlsl"
 //====================
 
 cbuffer MiscBuffer
