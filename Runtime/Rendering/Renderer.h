@@ -123,9 +123,25 @@ namespace Directus
 		uint64_t GetFrameNum()		{ return m_frameNum; }
 		Camera* GetCamera()			{ return m_camera; }
 
+		//= Settings =============================
+		// FXAA
+		float m_fxaaSubPixel			= 1.75f;	// The amount of sub-pixel aliasing removal														- Default: 0.75f
+		float m_fxaaEdgeThreshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Default: 0.166f
+		float m_fxaaEdgeThresholdMin	= 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Default: 0.0833f
+		float m_bloomIntensity			= 0.2f;		// The intensity of the bloom
+		float m_sharpenStrength			= 1.0f;		// Strength of the sharpening
+		float m_sharpenClamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Default: 0.035f
+		//========================================
+
 	private:
 		void CreateRenderTextures(unsigned int width, unsigned int height);
-
+		void SetGlobalBuffer(
+			const Math::Matrix& mMVP			= Math::Matrix::Identity,
+			unsigned int resolutionWidth		= Settings::Get().Resolution_GetWidth(),
+			unsigned int resolutionHeight		= Settings::Get().Resolution_GetHeight(),
+			float blur_sigma					= 0.0f,
+			const Math::Vector2& blur_direction	= Math::Vector2::Zero
+		);
 		void Renderables_Acquire(const Variant& renderables);
 		void Renderables_Sort(std::vector<Actor*>* renderables);
 
@@ -143,7 +159,7 @@ namespace Directus
 		void Pass_Sharpening(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ChromaticAberration(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
-		void Pass_BlurBox(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float blur);
+		void Pass_BlurBox(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
 		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma, float pixelStride);
 		void Pass_SSDO(std::shared_ptr<RHI_RenderTexture>& texOut);
@@ -175,16 +191,15 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderFont;
 		std::shared_ptr<RHI_Shader> m_shaderTexture;
 		std::shared_ptr<RHI_Shader> m_shaderFXAA;
+		std::shared_ptr<RHI_Shader> m_shaderLuma;
 		std::shared_ptr<RHI_Shader> m_shaderSSDO;
 		std::shared_ptr<RHI_Shader> m_shaderTAA;
 		std::shared_ptr<RHI_Shader> m_shaderShadowMapping;
 		std::shared_ptr<RHI_Shader> m_shaderSharpening;
 		std::shared_ptr<RHI_Shader> m_shaderChromaticAberration;
 		std::shared_ptr<RHI_Shader> m_shaderBlurBox;
-		std::shared_ptr<RHI_Shader> m_shaderBlurGaussianH;
-		std::shared_ptr<RHI_Shader> m_shaderBlurGaussianV;
-		std::shared_ptr<RHI_Shader> m_shaderBlurBilateralGaussianH;
-		std::shared_ptr<RHI_Shader> m_shaderBlurBilateralGaussianV;
+		std::shared_ptr<RHI_Shader> m_shaderBlurGaussian;
+		std::shared_ptr<RHI_Shader> m_shaderBlurBilateralGaussian;
 		std::shared_ptr<RHI_Shader> m_shaderBloom_Bright;
 		std::shared_ptr<RHI_Shader> m_shaderBloom_BlurBlend;
 		std::shared_ptr<RHI_Shader> m_shaderCorrection;
@@ -225,8 +240,7 @@ namespace Directus
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
 		std::unique_ptr<GBuffer> m_gbuffer;
-		std::shared_ptr<RHI_Viewport> m_viewport;
-		
+		std::shared_ptr<RHI_Viewport> m_viewport;		
 		std::unique_ptr<Rectangle> m_quad;
 		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
 		Math::Matrix m_view;
@@ -246,7 +260,32 @@ namespace Directus
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
 		unsigned long m_flags;
 		uint64_t m_frameNum;
-		bool m_isOddFrame;
+		bool m_isOddFrame;		
 		//===============================================================
+		
+		// Global buffer (holds what is need by almost every shader)
+		struct ConstantBuffer_Global
+		{
+			Math::Matrix mMVP;
+			Math::Matrix mView;
+			Math::Matrix mProjection;	
+
+			float camera_near;
+			float camera_far;
+			Math::Vector2 resolution;
+
+			Math::Vector3 camera_position;
+			float fxaa_subPixel;
+
+			float fxaa_edgeThreshold;
+			float fxaa_edgeThresholdMin;
+			Math::Vector2 blur_direction;
+
+			float blur_sigma;
+			float bloom_intensity;
+			float sharpen_strength;
+			float sharpen_clamp;
+		};
+		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};
 }

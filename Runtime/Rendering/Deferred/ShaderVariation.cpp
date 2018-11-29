@@ -51,98 +51,58 @@ namespace Directus
 		AddDefinesBasedOnMaterial();
 		Compile_VertexPixel_Async(filePath, Input_PositionTextureTBN, m_context);
 
-		// The buffers below have to match GBuffer.hlsl
-
-		// Material Buffer
-		m_materialBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_materialBuffer->Create(sizeof(PerMaterialBufferType), 0, Buffer_PixelShader);
-
-		// Object Buffer
+		// Object Buffer (has to match GBuffer.hlsl)
 		m_perObjectBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_perObjectBuffer->Create(sizeof(PerObjectBufferType), 1, Buffer_VertexShader);
+		m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
 	}
 
-	void ShaderVariation::UpdatePerMaterialBuffer(Camera* camera, Material* material)
+	void ShaderVariation::UpdatePerObjectBuffer(Transform* transform, Material* material, const Matrix& mView, const Matrix mProjection)
 	{
-		if (!camera || !material)
+		if (!material)
 		{
-			LOG_ERROR("ShaderVariation::UpdatePerMaterialBuffer: Invalid parameters.");
+			LOG_ERROR("ShaderVariation::UpdatePerObjectBuffer: Invalid parameters.");
 			return;
 		}
 
-		if (GetState() != Shader_Built)
-			return;
-
-		Vector2 planes = Vector2(camera->GetNearPlane(), camera->GetFarPlane());
-
-		// Determine if the material buffer needs to update
-		bool update = false;
-		update = perMaterialBufferCPU.matAlbedo			!= material->GetColorAlbedo()				? true : update;
-		update = perMaterialBufferCPU.matTilingUV		!= material->GetTiling()					? true : update;
-		update = perMaterialBufferCPU.matOffsetUV		!= material->GetOffset()					? true : update;
-		update = perMaterialBufferCPU.matRoughnessMul	!= material->GetRoughnessMultiplier()		? true : update;
-		update = perMaterialBufferCPU.matMetallicMul	!= material->GetMetallicMultiplier()		? true : update;
-		update = perMaterialBufferCPU.matNormalMul		!= material->GetNormalMultiplier()			? true : update;
-		update = perMaterialBufferCPU.matShadingMode	!= float(material->GetShadingMode())		? true : update;
-		update = perMaterialBufferCPU.cameraPos			!= camera->GetTransform()->GetPosition()	? true : update;
-		update = perMaterialBufferCPU.resolution		!= Settings::Get().Resolution_Get()			? true : update;
-		update = perMaterialBufferCPU.planes			!= planes									? true : update;
-
-		if (update)
-		{
-			//= BUFFER UPDATE ======================================================================================
-			auto buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
-
-			buffer->matAlbedo		= perMaterialBufferCPU.matAlbedo		= material->GetColorAlbedo();
-			buffer->matTilingUV		= perMaterialBufferCPU.matTilingUV		= material->GetTiling();
-			buffer->matOffsetUV		= perMaterialBufferCPU.matOffsetUV		= material->GetOffset();
-			buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul	= material->GetRoughnessMultiplier();
-			buffer->matMetallicMul	= perMaterialBufferCPU.matMetallicMul	= material->GetMetallicMultiplier();
-			buffer->matNormalMul	= perMaterialBufferCPU.matNormalMul		= material->GetNormalMultiplier();
-			buffer->matHeightMul	= perMaterialBufferCPU.matNormalMul		= material->GetHeightMultiplier();
-			buffer->matShadingMode	= perMaterialBufferCPU.matShadingMode	= float(material->GetShadingMode());
-			buffer->cameraPos		= perMaterialBufferCPU.cameraPos		= camera->GetTransform()->GetPosition();
-			buffer->resolution		= perMaterialBufferCPU.resolution		= Settings::Get().Resolution_Get();
-			buffer->planes			= perMaterialBufferCPU.planes			= planes;
-			buffer->padding			= perMaterialBufferCPU.padding			= 0.0f;
-			buffer->padding2		= perMaterialBufferCPU.padding2			= Vector3::Zero;
-
-			m_materialBuffer->Unmap();
-			//======================================================================================================
-		}
-	}
-
-	void ShaderVariation::UpdatePerObjectBuffer(Transform* transform, const Matrix& mView, const Matrix& mProjection)
-	{
 		if (GetState() != Shader_Built)
 			return;
 
 		Matrix mMVP_current = transform->GetMatrix() * mView * mProjection;
 
-		// Determine if the buffer actually needs to update
+		// Determine if the material buffer needs to update
 		bool update = false;
-		update = perObjectBufferCPU.mWorld			!= transform->GetMatrix() ? true : update;
-		update = perObjectBufferCPU.mView			!= mView ? true : update;
-		update = perObjectBufferCPU.mProjection		!= mProjection ? true : update;
-		update = perObjectBufferCPU.mMVP_current	!= mMVP_current ? true : update;
-		update = perObjectBufferCPU.mMVP_previous	!= transform->GetWVP_Previous() ? true : update;
+		update = perObjectBufferCPU.matAlbedo		!= material->GetColorAlbedo()				? true : update;
+		update = perObjectBufferCPU.matTilingUV		!= material->GetTiling()					? true : update;
+		update = perObjectBufferCPU.matOffsetUV		!= material->GetOffset()					? true : update;
+		update = perObjectBufferCPU.matRoughnessMul	!= material->GetRoughnessMultiplier()		? true : update;
+		update = perObjectBufferCPU.matMetallicMul	!= material->GetMetallicMultiplier()		? true : update;
+		update = perObjectBufferCPU.matNormalMul	!= material->GetNormalMultiplier()			? true : update;
+		update = perObjectBufferCPU.matShadingMode	!= float(material->GetShadingMode())		? true : update;
+		update = perObjectBufferCPU.mModel			!= transform->GetMatrix()					? true : update;
+		update = perObjectBufferCPU.mMVP_current	!= mMVP_current								? true : update;
+		update = perObjectBufferCPU.mMVP_previous	!= transform->GetWVP_Previous()				? true : update;
 
-		if (update)
-		{
-			//= BUFFER UPDATE =========================================================================
-			auto* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
+		if (!update)
+			return;
 
-			buffer->mWorld			= perObjectBufferCPU.mWorld			= transform->GetMatrix();
-			buffer->mView			= perObjectBufferCPU.mView			= mView;
-			buffer->mProjection		= perObjectBufferCPU.mProjection	= mProjection;
-			buffer->mMVP_current	= perObjectBufferCPU.mMVP_current	= mMVP_current;
-			buffer->mMVP_previous	= perObjectBufferCPU.mMVP_previous	= transform->GetWVP_Previous();
+		auto buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
+		
+		buffer->matAlbedo		= perObjectBufferCPU.matAlbedo			= material->GetColorAlbedo();
+		buffer->matTilingUV		= perObjectBufferCPU.matTilingUV		= material->GetTiling();
+		buffer->matOffsetUV		= perObjectBufferCPU.matOffsetUV		= material->GetOffset();
+		buffer->matRoughnessMul = perObjectBufferCPU.matRoughnessMul	= material->GetRoughnessMultiplier();
+		buffer->matMetallicMul	= perObjectBufferCPU.matMetallicMul		= material->GetMetallicMultiplier();
+		buffer->matNormalMul	= perObjectBufferCPU.matNormalMul		= material->GetNormalMultiplier();
+		buffer->matHeightMul	= perObjectBufferCPU.matNormalMul		= material->GetHeightMultiplier();
+		buffer->matShadingMode	= perObjectBufferCPU.matShadingMode		= float(material->GetShadingMode());
+		buffer->padding			= perObjectBufferCPU.padding			= Vector3::Zero;
+		buffer->mModel			= perObjectBufferCPU.mModel				= transform->GetMatrix();
+		buffer->mMVP_current	= perObjectBufferCPU.mMVP_current		= mMVP_current;
+		buffer->mMVP_previous	= perObjectBufferCPU.mMVP_previous		= transform->GetWVP_Previous();
+		
+		m_perObjectBuffer->Unmap();
 
-			m_perObjectBuffer->Unmap();
-			//=========================================================================================
-
-			transform->SetWVP_Previous(mMVP_current);
-		}
+		transform->SetWVP_Previous(mMVP_current);
 	}
 
 	void ShaderVariation::AddDefinesBasedOnMaterial()

@@ -49,6 +49,7 @@ cbuffer MiscBuffer : register(b0)
 
 // = INCLUDES ========
 #include "Common.hlsl"
+#include "Vertex.hlsl"
 #include "BRDF.hlsl"
 #include "IBL.hlsl"
 #include "SSR.hlsl"
@@ -199,8 +200,5 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 emission = material.emission * albedo.rgb * 20.0f;
     finalColor 		+= emission;
 
-	// Compute luma for FXAA
-    float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f));
-
-    return float4(finalColor, luma);
+    return float4(finalColor, 1.0f);
 }

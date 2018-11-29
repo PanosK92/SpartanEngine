@@ -57,9 +57,7 @@ namespace Directus
 		~ShaderVariation(){}
 
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
-
-		void UpdatePerMaterialBuffer(Camera* camera, Material* material);
-		void UpdatePerObjectBuffer(Transform* transform, const Math::Matrix& mView, const Math::Matrix& mProjection);
+		void UpdatePerObjectBuffer(Transform* transform, Material* material, const Math::Matrix& mView, const Math::Matrix mProjection);
 
 		unsigned long GetShaderFlags()	{ return m_shaderFlags; }
 		bool HasAlbedoTexture()			{ return m_shaderFlags & Variaton_Albedo; }
@@ -73,20 +71,14 @@ namespace Directus
 		bool HasCubeMapTexture()		{ return m_shaderFlags & Variaton_Cubemap; }
 
 		std::shared_ptr<RHI_ConstantBuffer>& GetPerObjectBuffer()	{ return m_perObjectBuffer; }
-		std::shared_ptr<RHI_ConstantBuffer>& GetMaterialBuffer()	{ return m_materialBuffer; }
-
 	private:
 		void AddDefinesBasedOnMaterial();
 		
 		// PROPERTIES
 		unsigned long m_shaderFlags;
 
-		// MISC
-		std::shared_ptr<RHI_ConstantBuffer> m_materialBuffer;
-		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;
-
-		// BUFFERS
-		struct PerMaterialBufferType
+		// BUFFER
+		struct PerObjectBufferType
 		{
 			Math::Vector4 matAlbedo;
 			Math::Vector2 matTilingUV;
@@ -95,23 +87,13 @@ namespace Directus
 			float matMetallicMul;
 			float matNormalMul;
 			float matHeightMul;		
-			Math::Vector3 cameraPos;
-			float padding;
-			Math::Vector2 planes;
-			Math::Vector2 resolution;		
 			float matShadingMode;
-			Math::Vector3 padding2;
-		};
-		PerMaterialBufferType perMaterialBufferCPU;
-
-		struct PerObjectBufferType
-		{
-			Math::Matrix mWorld;
-			Math::Matrix mView;
-			Math::Matrix mProjection;
+			Math::Vector3 padding;
+			Math::Matrix mModel;
 			Math::Matrix mMVP_current;
 			Math::Matrix mMVP_previous;
 		};
 		PerObjectBufferType perObjectBufferCPU;
+		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;
 	};
 }

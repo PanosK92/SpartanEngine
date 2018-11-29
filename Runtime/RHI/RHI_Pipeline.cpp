@@ -55,7 +55,7 @@ namespace Directus
 		SetFillMode(pipelineState.fillMode);
 		if (pipelineState.vertexShader)		SetVertexShader(pipelineState.vertexShader);
 		if (pipelineState.pixelShader)		SetPixelShader(pipelineState.pixelShader);
-		if (pipelineState.constantBuffer)	SetConstantBuffer(pipelineState.constantBuffer);
+		if (pipelineState.constantBuffer)	SetConstantBuffer(pipelineState.constantBuffer, 0, Buffer_Global);
 		if (pipelineState.sampler)			SetSampler(pipelineState.sampler);
 
 		return true;
@@ -208,7 +208,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Pipeline::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer)
+	bool RHI_Pipeline::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
 	{
 		if (!constantBuffer)
 		{
@@ -216,19 +216,7 @@ namespace Directus
 			return false;
 		}
 
-		m_constantBuffers.buffers.emplace_back(constantBuffer);
-		m_constantBuffers.buffersLowLevel.emplace_back(constantBuffer->GetBuffer());
-
-		Buffer_Scope scope				= constantBuffer->GetScope();
-		m_constantBuffers.sharedScope	= true;
-		for (const auto& buffer : m_constantBuffers.buffers)
-		{
-			if (scope != buffer->GetScope())
-			{
-				m_constantBuffers.sharedScope = false;
-				break;
-			}
-		}
+		m_constantBuffers.emplace_back(constantBuffer->GetBuffer(), slot, scope);
 		m_constantBufferDirty = true;
 
 		return true;
@@ -421,26 +409,13 @@ namespace Directus
 		// Constant buffer
 		if (m_constantBufferDirty)
 		{
-			// Check to see if we can set them in one go
-			if (m_constantBuffers.buffers.size() > 1 && m_constantBuffers.sharedScope)
+			for (const auto& constantBuffer : m_constantBuffers)
 			{
-				auto buffer = m_constantBuffers.buffers.front();
-				unsigned int startSlot = buffer->GetSlot();
-				Buffer_Scope scope = buffer->GetScope();
-				m_rhiDevice->Set_ConstantBuffers(startSlot, (unsigned int)m_constantBuffers.buffers.size(), scope, (void*const*)&m_constantBuffers.buffersLowLevel[0]);
-				Profiler::Get().m_rhiBindingsBufferConstant += buffer->GetScope() == Buffer_Global ? 2 : 1;
-			}
-			else // Set them one by one
-			{
-				for (const auto& constantBuffer : m_constantBuffers.buffers)
-				{
-					auto ptr = constantBuffer->GetBuffer();
-					m_rhiDevice->Set_ConstantBuffers(constantBuffer->GetSlot(), 1, constantBuffer->GetScope(), (void*const*)&ptr);
-					Profiler::Get().m_rhiBindingsBufferConstant += constantBuffer->GetScope() == Buffer_Global ? 2 : 1;
-				}
+				m_rhiDevice->Set_ConstantBuffers(constantBuffer.slot, 1, constantBuffer.scope, (void*const*)&constantBuffer.buffer);
+				Profiler::Get().m_rhiBindingsBufferConstant += (constantBuffer.scope == Buffer_Global) ? 2 : 1;
 			}
 
-			m_constantBuffers.Clear();
+			m_constantBuffers.clear();
 			m_constantBufferDirty = false;
 		}
 
@@ -483,7 +458,7 @@ namespace Directus
 		m_textures.clear();
 		m_texturesDirty = false;
 
-		m_constantBuffers.Clear();
+		m_constantBuffers.clear();
 		m_constantBufferDirty = false;
 	}
 }

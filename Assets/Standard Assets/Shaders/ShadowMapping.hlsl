@@ -7,6 +7,7 @@
 
 // = INCLUDES ========
 #include "Common.hlsl"
+#include "Vertex.hlsl"
 //====================
 
 //= TEXTURES =============================
@@ -73,8 +74,14 @@ float sampleShadowMap(Texture2D shadowMap, SamplerState samplerState, float2 siz
     return c;
 }
 
-// Performs PCF filtering on a 4 x 4 texel neighborhood
-float sampleShadowMapPCF(Texture2D shadowMap, SamplerState samplerState, float2 size, float2 texCoords, float compare)
+float random(float2 seed2) 
+{
+	float4 seed4 = float4(seed2.x, seed2.y, seed2.y, 1.0f);
+	float dot_product = dot(seed4, float4(12.9898f, 78.233f, 45.164f, 94.673f));
+    return frac(sin(dot_product) * 43758.5453);
+}
+
+float Technique_PCF(Texture2D shadowMap, SamplerState samplerState, float2 size, float2 texCoords, float compare)
 {
 	float amountLit = 0.0f;
 	float count = 0.0f;
@@ -92,12 +99,32 @@ float sampleShadowMapPCF(Texture2D shadowMap, SamplerState samplerState, float2 
 	return amountLit /= count;
 }
 
-float random(float2 seed2) 
+float Technique_Poisson(Texture2D shadowMap, SamplerState samplerState, float4 pos, float compareDepth)
 {
-	float4 seed4 = float4(seed2.x, seed2.y, seed2.y, 1.0f);
-	float dot_product = dot(seed4, float4(12.9898f, 78.233f, 45.164f, 94.673f));
-    return frac(sin(dot_product) * 43758.5453);
+	float packing = 700.0f; // how close together are the samples
+	float2 poissonDisk[8] = 
+	{
+		float2(0.493393f, 0.394269f),
+		float2(0.798547f, 0.885922f),
+		float2(0.247322f, 0.92645f),
+		float2(0.0514542f, 0.140782f),
+		float2(0.831843f, 0.00955229f),
+		float2(0.428632f, 0.0171514f),
+		float2(0.015656f, 0.749779f),
+		float2(0.758385f, 0.49617f)
+	};
+    
+	uint samples = 8;
+	float amountLit = 0.0f;
+	[unroll(samples)]
+	for (uint i = 0; i < samples; i++)
+	{
+		uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+		amountLit += depthTest(shadowMap, samplerState, pos.xy + (poissonDisk[index] / packing), compareDepth);
+	}	
+	amountLit /= (float)samples;
 }
+
 
 float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float4 pos, float3 normal, float3 lightDir, float compareDepth)
 {	
@@ -113,35 +140,7 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	pos.x = pos.x / 2.0f + 0.5f;
 	pos.y = pos.y / -2.0f + 0.5f;
 
-	// Interpolation + PCF
-	float amountLit = sampleShadowMapPCF(shadowMap, samplerState, shadowMapResolution, pos.xy, compareDepth);
-	
-	// Stratified Poisson Sampling
-	// Poisson sampling for shadow map
-	//float packing = 700.0f; // how close together are the samples
-	//float2 poissonDisk[8] = 
-	//{
-	//	float2(0.493393f, 0.394269f),
-	//	float2(0.798547f, 0.885922f),
-	//	float2(0.247322f, 0.92645f),
-	//	float2(0.0514542f, 0.140782f),
-	//	float2(0.831843f, 0.00955229f),
-	//	float2(0.428632f, 0.0171514f),
-	//	float2(0.015656f, 0.749779f),
-	//	float2(0.758385f, 0.49617f)
-	//};
-    //
-	//uint samples = 8;
-	//float amountLit = 0.0f;
-	//[unroll(samples)]
-	//for (uint i = 0; i < samples; i++)
-	//{
-	//	uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-	//	amountLit += depthTest(shadowMap, samplerState, pos.xy + (poissonDisk[index] / packing), compareDepth);
-	//}	
-	//amountLit /= (float)samples;
-	
-	return amountLit;
+	return Technique_PCF(shadowMap, samplerState, shadowMapResolution, pos.xy, compareDepth);
 }
 
 PixelInputType mainVS(Vertex_PosUv input)

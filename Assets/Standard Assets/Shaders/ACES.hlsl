@@ -11,9 +11,6 @@
 // The code in this file was originally written by Stephen Hill (@self_shadow), who deserves all
 // credit for coming up with this fit and implementing it. Buy him a beer next time you see him. :)
 
-// I would be more than happy to buy you both a beer
-// - Panos
-
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
 static const float3x3 ACESInputMat =
 {

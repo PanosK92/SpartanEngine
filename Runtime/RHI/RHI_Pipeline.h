@@ -32,18 +32,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	struct ConstantBuffers
+	struct ConstantBuffer
 	{
-		std::vector<std::shared_ptr<RHI_ConstantBuffer>> buffers;
-		std::vector<void*> buffersLowLevel;
-		bool sharedScope;
-
-		void Clear()
+		ConstantBuffer(void* buffer, unsigned int slot, Buffer_Scope scope)
 		{
-			buffers.clear();
-			buffersLowLevel.clear();
-			sharedScope = false;
+			this->buffer	= (void*const*)buffer;
+			this->slot		= slot;
+			this->scope		= scope;
 		}
+
+		void*const* buffer;
+		unsigned int slot;
+		Buffer_Scope scope;
 	};
 
 	class ENGINE_CLASS RHI_Pipeline
@@ -69,7 +69,7 @@ namespace Directus
 		bool SetRenderTargets(const std::vector<void*>& renderTargetViews, void* depthStencilView = nullptr, bool clear = false);
 
 		// Constant, vertex & index buffers
-		bool SetConstantBuffer(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer);
+		bool SetConstantBuffer(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope);
 		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
 		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
 		
@@ -132,7 +132,7 @@ namespace Directus
 		bool m_vertexBufferDirty;
 
 		// Constant buffers
-		ConstantBuffers m_constantBuffers;
+		std::vector<ConstantBuffer> m_constantBuffers;
 		bool m_constantBufferDirty;
 
 		// Vertex shader

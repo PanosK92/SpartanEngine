@@ -1,5 +1,7 @@
 // = INCLUDES ========
 #include "Common.hlsl"
+#include "Vertex.hlsl"
+#include "Buffer.hlsl"
 //====================
 
 //= TEXTURES ===============================
@@ -17,40 +19,22 @@ Texture2D texMask 			: register (t7);
 SamplerState samplerAniso : register (s0);
 //========================================
 
-//= BUFFERS ==================================
-cbuffer PerMaterialBuffer : register(b0)
+cbuffer PerObjectBuffer : register(b1)
 {		
-    float4 materialAlbedoColor;
-	
+    float4 materialAlbedoColor;	
 	float2 materialTiling;
 	float2 materialOffset;
-	
     float materialRoughness;
     float materialMetallic;
     float materialNormalStrength;
 	float materialHeight;
-
-	float3 cameraPosWS;
-	float padding;
-	
-	float2 planes;
-	float2 resolution;
-	
 	float materialShadingMode;
 	float3 padding2;
+	matrix mModel;
+	matrix mMVP_current;
+	matrix mMVP_previous;	
 };
 
-cbuffer PerObjectBuffer : register(b1)
-{
-	matrix mModel;
-    matrix mView;
-    matrix mProjection;
-	matrix mMVP_current;
-	matrix mMVP_previous;
-}
-//===========================================
-
-//= STRUCTS =================================
 struct PixelInputType
 {
     float4 positionCS 			: SV_POSITION;
@@ -72,7 +56,6 @@ struct PixelOutputType
 	float2 velocity	: SV_Target3;
 	float2 depth	: SV_Target4;
 };
-//===========================================
 
 PixelInputType mainVS(Vertex_PosUvTbn input)
 {
@@ -96,7 +79,7 @@ PixelOutputType mainPS(PixelInputType input)
 {
 	PixelOutputType g_buffer;
 
-    float depth_linear  = input.positionVS.z / planes.y;
+    float depth_linear  = input.positionVS.z / camera_far;
     float depth_cs      = input.positionCS.z / input.positionVS.w;
 	float2 texCoords 	= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo		= materialAlbedoColor;

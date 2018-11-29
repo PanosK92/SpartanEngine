@@ -87,10 +87,10 @@ namespace Directus
 		void AddDefine(const std::string& define, const std::string& value = "1");
 
 		template <typename T>
-		void AddBuffer(unsigned int slot, Buffer_Scope scope)
+		void AddBuffer()
 		{
 			m_bufferSize = sizeof(T);
-			CreateConstantBuffer(m_bufferSize, slot, scope);
+			CreateConstantBuffer(m_bufferSize);
 		}
 		void UpdateBuffer(void* data);
 		void* GetVertexShaderBuffer()								{ return m_vertexShader; }
@@ -106,7 +106,7 @@ namespace Directus
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 
 	private:
-		void CreateConstantBuffer(unsigned int size, unsigned int slot, Buffer_Scope scope);
+		void CreateConstantBuffer(unsigned int size);
 
 		unsigned int m_bufferSize;	
 		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;	

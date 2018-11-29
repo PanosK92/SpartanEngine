@@ -1,5 +1,6 @@
 // = INCLUDES ========
 #include "Common.hlsl"
+#include "Vertex.hlsl"
 //====================
 
 Texture2D depthTexture 		: register(t0);
@@ -30,7 +31,6 @@ struct PixelInputType
 	float4 gridPos 		: POSITIONT1;
 };
 
-// Vertex Shader
 PixelInputType mainVS(Vertex_PosUvTbn input)
 {
     PixelInputType output;
@@ -48,7 +48,6 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
 	return output;
 }
 
-// Pixel Shader
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
 	float2 projectDepthMapTexCoord;

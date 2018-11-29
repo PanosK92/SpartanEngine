@@ -47,16 +47,13 @@ namespace Directus
 		}
 	}
 
-	bool RHI_ConstantBuffer::Create(unsigned int size, unsigned int slot, Buffer_Scope scope)
+	bool RHI_ConstantBuffer::Create(unsigned int size)
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{
 			LOG_ERROR("RHI_ConstantBuffer::Create: Invalid RHI device");
 			return false;
 		}
-
-		m_slot	= slot;
-		m_scope = scope;
 
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));

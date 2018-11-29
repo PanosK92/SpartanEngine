@@ -1,5 +1,6 @@
 // = INCLUDES ========
 #include "Common.hlsl"
+#include "Vertex.hlsl"
 //====================
 
 Texture2D textureAtlas 	: register(t0);
@@ -17,7 +18,6 @@ struct PixelInputType
     float2 uv 		: TEXCOORD;
 };
 
-// Vertex Shader
 PixelInputType mainVS(Vertex_PosUv input)
 {
     PixelInputType output;
@@ -29,7 +29,6 @@ PixelInputType mainVS(Vertex_PosUv input)
     return output;
 }
 
-// Pixel Shader
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
 	float4 finalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
