@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include <memory>
-#include "../../Resource/IResource.h"
+#include <vector>
 #include "../../Math/Vector2.h"
 #include "../../Math/Matrix.h"
 #include "../../RHI/RHI_Definition.h"
@@ -50,11 +50,11 @@ namespace Directus
 		Variaton_Cubemap	= 1UL << 8,
 	};
 
-	class ShaderVariation : public RHI_Shader, public IResource
+	class ShaderVariation : public RHI_Shader, public std::enable_shared_from_this<ShaderVariation>
 	{
 	public:
 		ShaderVariation(std::shared_ptr<RHI_Device> device, Context* context);
-		~ShaderVariation(){}
+		~ShaderVariation();
 
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
 		void UpdatePerObjectBuffer(Transform* transform, Material* material, const Math::Matrix& mView, const Math::Matrix mProjection);
@@ -70,13 +70,20 @@ namespace Directus
 		bool HasMaskTexture()			{ return m_shaderFlags & Variaton_Mask; }
 		bool HasCubeMapTexture()		{ return m_shaderFlags & Variaton_Cubemap; }
 
-		std::shared_ptr<RHI_ConstantBuffer>& GetPerObjectBuffer()	{ return m_perObjectBuffer; }
+		std::shared_ptr<RHI_ConstantBuffer>& GetPerObjectBuffer()	{ return m_constantBuffer; }
+
+		// Variation cache
+		static std::shared_ptr<ShaderVariation> GetMatchingShader(unsigned long flags);
+
 	private:
 		void AddDefinesBasedOnMaterial();
 		
-		// PROPERTIES
+		Context* m_context;
 		unsigned long m_shaderFlags;
 
+		// Variation cache
+		static std::vector<std::shared_ptr<ShaderVariation>> m_variations;
+		
 		// BUFFER
 		struct PerObjectBufferType
 		{
@@ -94,6 +101,6 @@ namespace Directus
 			Math::Matrix mMVP_previous;
 		};
 		PerObjectBufferType perObjectBufferCPU;
-		std::shared_ptr<RHI_ConstantBuffer> m_perObjectBuffer;
+		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
 	};
 }

@@ -55,7 +55,7 @@ using namespace Helper;
 #define GIZMO_MAX_SIZE 5.0f
 #define GIZMO_MIN_SIZE 0.1f
 
-namespace TAA_Sequence
+namespace TAA_Jitter
 {
 	inline float Halton(int index, int base)
 	{
@@ -73,12 +73,18 @@ namespace TAA_Sequence
 	{
 		return Vector2(Halton(index, baseA), Halton(index, baseB));
 	}
+
+	int samples				= 16;
+	float scale				= 1.0f;
+	Vector2 jitterOffset	= Vector2::Zero;
+	Vector2 previousJitter	= Vector2::Zero;
 }
 
 namespace Directus
 {
 	static ResourceManager* g_resourceMng = nullptr;
 	bool Renderer::m_isRendering = false;
+
 	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
 	{
 		
@@ -118,173 +124,190 @@ namespace Directus
 	bool Renderer::Initialize()
 	{
 		// Create/Get required systems		
-		g_resourceMng		= m_context->GetSubsystem<ResourceManager>();
-
-		// Get standard resource directories
-		string fontDir			= g_resourceMng->GetStandardResourceDirectory(Resource_Font);
-		string shaderDirectory	= g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
-		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
+		g_resourceMng = m_context->GetSubsystem<ResourceManager>();
 
 		m_viewport = make_shared<RHI_Viewport>();
-		// Load a font (used for performance metrics)
-		m_font = make_unique<Font>(m_context, fontDir + "CalibriBold.ttf", 12, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
+
 		// Make a grid (used in editor)
 		m_grid = make_unique<Grid>(m_rhiDevice);
+
 		// Light gizmo icon rectangle
 		m_gizmoRectLight = make_unique<Rectangle>(m_context);
+
 		// Create a constant buffer that will be used for most shaders
 		m_bufferGlobal = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 		m_bufferGlobal->Create(sizeof(ConstantBuffer_Global));
-
+	
 		CreateRenderTextures(Settings::Get().Resolution_GetWidth(), Settings::Get().Resolution_GetHeight());
+		CreateFonts();
+		CreateShaders();
+		CreateSamplers();
+		CreateTextures();
 
-		// SAMPLERS
-		{
-			m_samplerPointClampAlways		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_Always);
-			m_samplerPointClampGreater		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
-			m_samplerBilinearClampGreater	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
-			m_samplerBilinearWrapGreater	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Wrap,	Texture_Comparison_GreaterEqual);
-			m_samplerBilinearClampAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_Always);
-			m_samplerAnisotropicWrapAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,	Texture_Address_Wrap,	Texture_Comparison_Always);	
-		}
-
-		// SHADERS
-		{
-			// Light
-			m_shaderLight = make_shared<LightShader>(m_rhiDevice);
-			m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_context);
-
-			// Transparent
-			m_shaderTransparent = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderTransparent->Compile_VertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureTBN, m_context);
-			m_shaderTransparent->AddBuffer<Struct_Transparency>();
-
-			// Depth
-			m_shaderLightDepth = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderLightDepth->Compile_VertexPixel(shaderDirectory + "ShadowingDepth.hlsl", Input_Position, m_context);
-			m_shaderLightDepth->AddBuffer<Struct_Matrix_Matrix_Float>();
-
-			// Font
-			m_shaderFont = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderFont->Compile_VertexPixel(shaderDirectory + "Font.hlsl", Input_PositionTexture, m_context);
-			m_shaderFont->AddBuffer<Struct_Matrix_Vector4>();
-
-			// Transformation gizmo
-			m_shaderTransformationGizmo = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderTransformationGizmo->Compile_VertexPixel(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN, m_context);
-			m_shaderTransformationGizmo->AddBuffer<Struct_Matrix_Vector3_Vector3>();
-
-			// SSDO
-			m_shaderSSDO = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderSSDO->Compile_VertexPixel(shaderDirectory + "SSDO.hlsl", Input_PositionTexture, m_context);
-			m_shaderSSDO->AddBuffer<Struct_Matrix_Matrix_Vector2>();
-
-			// Shadow mapping
-			m_shaderShadowMapping = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderShadowMapping->Compile_VertexPixel(shaderDirectory + "ShadowMapping.hlsl", Input_PositionTexture, m_context);
-			m_shaderShadowMapping->AddBuffer<Struct_ShadowMapping>();
-
-			// Line
-			m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderLine->Compile_VertexPixel(shaderDirectory + "Line.hlsl", Input_PositionColor, m_context);
-			m_shaderLine->AddBuffer<Struct_Matrix_Matrix>();
-
-			// Texture
-			m_shaderTexture = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderTexture->AddDefine("PASS_TEXTURE");
-			m_shaderTexture->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// FXAA
-			m_shaderFXAA = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderFXAA->AddDefine("PASS_FXAA");
-			m_shaderFXAA->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// Luma
-			m_shaderLuma = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderLuma->AddDefine("PASS_LUMA");
-			m_shaderLuma->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// Sharpening
-			m_shaderSharpening = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderSharpening->AddDefine("PASS_SHARPENING");
-			m_shaderSharpening->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// Chromatic aberration
-			m_shaderChromaticAberration = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
-			m_shaderChromaticAberration->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// Blur Box
-			m_shaderBlurBox = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
-			m_shaderBlurBox->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// Blur Gaussian Horizontal
-			m_shaderBlurGaussian = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderBlurGaussian->AddDefine("PASS_BLUR_GAUSSIAN");
-			m_shaderBlurGaussian->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// Blur Bilateral Gaussian Horizontal
-			m_shaderBlurBilateralGaussian = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderBlurBilateralGaussian->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
-			m_shaderBlurBilateralGaussian->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// Bloom - bright
-			m_shaderBloom_Bright = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderBloom_Bright->AddDefine("PASS_BRIGHT");
-			m_shaderBloom_Bright->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// Bloom - blend
-			m_shaderBloom_BlurBlend = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
-			m_shaderBloom_BlurBlend->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// Tone-mapping
-			m_shaderCorrection = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderCorrection->AddDefine("PASS_CORRECTION");
-			m_shaderCorrection->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-
-			// TAA
-			m_shaderTAA = make_shared<RHI_Shader>(m_rhiDevice);
-			m_shaderTAA->AddDefine("PASS_TAA_RESOLVE");
-			m_shaderTAA->Compile_VertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
-		}
-
-		// PIPELINE STATES
-		{
-			m_pipelineLine.primitiveTopology	= PrimitiveTopology_LineList;
-			m_pipelineLine.cullMode				= Cull_Back;
-			m_pipelineLine.fillMode				= Fill_Solid;
-			m_pipelineLine.vertexShader			= m_shaderLine;
-			m_pipelineLine.pixelShader			= m_shaderLine;
-			m_pipelineLine.constantBuffer		= m_shaderLine->GetConstantBuffer();
-			m_pipelineLine.sampler				= m_samplerPointClampGreater;
-		}
-
-		// TEXTURES
-		{
-			// Noise texture (used by SSDO shader)
-			m_texNoiseNormal = make_shared<RHI_Texture>(m_context);
-			m_texNoiseNormal->LoadFromFile(textureDirectory + "noise.png");
-
-			m_texWhite = make_shared<RHI_Texture>(m_context);
-			m_texWhite->LoadFromFile(textureDirectory + "white.png");
-
-			m_texBlack = make_shared<RHI_Texture>(m_context);
-			m_texBlack->LoadFromFile(textureDirectory + "black.png");
-
-			// Gizmo icons
-			m_gizmoTexLightDirectional = make_shared<RHI_Texture>(m_context);
-			m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
-
-			m_gizmoTexLightPoint = make_shared<RHI_Texture>(m_context);
-			m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
-
-			m_gizmoTexLightSpot = make_shared<RHI_Texture>(m_context);
-			m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
-		}
+		// PIPELINE STATES - EXPERIMENTAL
+		m_pipelineLine.primitiveTopology	= PrimitiveTopology_LineList;
+		m_pipelineLine.cullMode				= Cull_Back;
+		m_pipelineLine.fillMode				= Fill_Solid;
+		m_pipelineLine.vertexShader			= m_shaderLine;
+		m_pipelineLine.pixelShader			= m_shaderLine;
+		m_pipelineLine.constantBuffer		= m_shaderLine->GetConstantBuffer();
+		m_pipelineLine.sampler				= m_samplerPointClampGreater;
 
 		return true;
+	}
+
+	void Renderer::CreateFonts()
+	{
+		// Get standard font directory
+		string fontDir = g_resourceMng->GetStandardResourceDirectory(Resource_Font);
+
+		// Load a font (used for performance metrics)
+		m_font = make_unique<Font>(m_context, fontDir + "CalibriBold.ttf", 12, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
+	}
+
+	void Renderer::CreateTextures()
+	{
+		// Get standard texture directory
+		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
+
+		// Noise texture (used by SSDO shader)
+		m_texNoiseNormal = make_shared<RHI_Texture>(m_context);
+		m_texNoiseNormal->LoadFromFile(textureDirectory + "noise.png");
+
+		m_texWhite = make_shared<RHI_Texture>(m_context);
+		m_texWhite->LoadFromFile(textureDirectory + "white.png");
+
+		m_texBlack = make_shared<RHI_Texture>(m_context);
+		m_texBlack->LoadFromFile(textureDirectory + "black.png");
+
+		// Gizmo icons
+		m_gizmoTexLightDirectional = make_shared<RHI_Texture>(m_context);
+		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
+
+		m_gizmoTexLightPoint = make_shared<RHI_Texture>(m_context);
+		m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
+
+		m_gizmoTexLightSpot = make_shared<RHI_Texture>(m_context);
+		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
+	}
+
+	void Renderer::CreateShaders()
+	{
+		// Get standard shader directory
+		string shaderDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
+
+		// G-Buffer
+		m_shaderGBuffer = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderGBuffer->CompileVertex(shaderDirectory + "GBuffer.hlsl", Input_PositionTextureTBN);
+
+		// Light
+		m_shaderLight = make_shared<LightShader>(m_rhiDevice);
+		m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_context);
+
+		// Transparent
+		m_shaderTransparent = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderTransparent->CompileVertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureTBN, m_context);
+		m_shaderTransparent->AddBuffer<Struct_Transparency>();
+
+		// Depth
+		m_shaderLightDepth = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderLightDepth->CompileVertexPixel(shaderDirectory + "ShadowingDepth.hlsl", Input_Position, m_context);
+		m_shaderLightDepth->AddBuffer<Struct_Matrix_Matrix_Float>();
+
+		// Font
+		m_shaderFont = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderFont->CompileVertexPixel(shaderDirectory + "Font.hlsl", Input_PositionTexture, m_context);
+		m_shaderFont->AddBuffer<Struct_Matrix_Vector4>();
+
+		// Transformation gizmo
+		m_shaderTransformationGizmo = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderTransformationGizmo->CompileVertexPixel(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN, m_context);
+		m_shaderTransformationGizmo->AddBuffer<Struct_Matrix_Vector3_Vector3>();
+
+		// SSDO
+		m_shaderSSDO = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderSSDO->CompileVertexPixel(shaderDirectory + "SSDO.hlsl", Input_PositionTexture, m_context);
+		m_shaderSSDO->AddBuffer<Struct_Matrix_Matrix_Vector2>();
+
+		// Shadow mapping
+		m_shaderShadowMapping = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderShadowMapping->CompileVertexPixel(shaderDirectory + "ShadowMapping.hlsl", Input_PositionTexture, m_context);
+		m_shaderShadowMapping->AddBuffer<Struct_ShadowMapping>();
+
+		// Line
+		m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderLine->CompileVertexPixel(shaderDirectory + "Line.hlsl", Input_PositionColor, m_context);
+		m_shaderLine->AddBuffer<Struct_Matrix_Matrix>();
+
+		// Texture
+		m_shaderTexture = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderTexture->AddDefine("PASS_TEXTURE");
+		m_shaderTexture->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// FXAA
+		m_shaderFXAA = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderFXAA->AddDefine("PASS_FXAA");
+		m_shaderFXAA->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// Luma
+		m_shaderLuma = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderLuma->AddDefine("PASS_LUMA");
+		m_shaderLuma->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// Sharpening
+		m_shaderSharpening = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderSharpening->AddDefine("PASS_SHARPENING");
+		m_shaderSharpening->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// Chromatic aberration
+		m_shaderChromaticAberration = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderChromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
+		m_shaderChromaticAberration->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// Blur Box
+		m_shaderBlurBox = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderBlurBox->AddDefine("PASS_BLUR_BOX");
+		m_shaderBlurBox->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// Blur Gaussian Horizontal
+		m_shaderBlurGaussian = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderBlurGaussian->AddDefine("PASS_BLUR_GAUSSIAN");
+		m_shaderBlurGaussian->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// Blur Bilateral Gaussian Horizontal
+		m_shaderBlurBilateralGaussian = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderBlurBilateralGaussian->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
+		m_shaderBlurBilateralGaussian->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// Bloom - bright
+		m_shaderBloom_Bright = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderBloom_Bright->AddDefine("PASS_BRIGHT");
+		m_shaderBloom_Bright->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// Bloom - blend
+		m_shaderBloom_BlurBlend = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderBloom_BlurBlend->AddDefine("PASS_BLEND_ADDITIVE");
+		m_shaderBloom_BlurBlend->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// Tone-mapping
+		m_shaderCorrection = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderCorrection->AddDefine("PASS_CORRECTION");
+		m_shaderCorrection->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+
+		// TAA
+		m_shaderTAA = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderTAA->AddDefine("PASS_TAA_RESOLVE");
+		m_shaderTAA->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture, m_context);
+	}
+
+	void Renderer::CreateSamplers()
+	{
+		m_samplerPointClampAlways = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point, Texture_Address_Clamp, Texture_Comparison_Always);
+		m_samplerPointClampGreater = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point, Texture_Address_Clamp, Texture_Comparison_GreaterEqual);
+		m_samplerBilinearClampGreater = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear, Texture_Address_Clamp, Texture_Comparison_GreaterEqual);
+		m_samplerBilinearWrapGreater = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear, Texture_Address_Wrap, Texture_Comparison_GreaterEqual);
+		m_samplerBilinearClampAlways = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear, Texture_Address_Clamp, Texture_Comparison_Always);
+		m_samplerAnisotropicWrapAlways = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic, Texture_Address_Wrap, Texture_Comparison_Always);
 	}
 
 	void Renderer::SetBackBufferAsRenderTarget(bool clear /*= true*/)
@@ -490,6 +513,7 @@ namespace Directus
 		buffer->bloom_intensity			= m_bloomIntensity;
 		buffer->sharpen_strength		= m_sharpenStrength;
 		buffer->sharpen_clamp			= m_sharpenClamp;
+		buffer->taa_jitterOffset		= TAA_Jitter::jitterOffset;
 
 		m_bufferGlobal->Unmap();
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);
@@ -581,8 +605,8 @@ namespace Directus
 			auto b_keyModel = b_geometryModel->Resource_GetID();
 
 			// Get key for shaders
-			auto a_keyShader = a_material->GetShader().lock()->Resource_GetID();
-			auto b_keyShader = b_material->GetShader().lock()->Resource_GetID();
+			auto a_keyShader = a_material->GetShader()->RHI_GetID();
+			auto b_keyShader = b_material->GetShader()->RHI_GetID();
 
 			// Get key for materials
 			auto a_keyMaterial = a_material->Resource_GetID();
@@ -694,10 +718,10 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerAnisotropicWrapAlways);
 		m_rhiPipeline->SetFillMode(Fill_Solid);
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetVertexShader(m_shaderGBuffer);
 		SetGlobalBuffer();
 
 		// Variables that help reduce state changes
-		bool vertexShaderBound				= false;
 		unsigned int currentlyBoundGeometry = 0;
 		unsigned int currentlyBoundShader	= 0;
 		unsigned int currentlyBoundMaterial = 0;
@@ -712,7 +736,7 @@ namespace Directus
 				continue;
 
 			// Get shader and geometry
-			auto shader	= material->GetShader().lock();
+			auto shader	= material->GetShader();
 			auto model	= renderable->Geometry_Model();
 
 			// Validate shader
@@ -739,15 +763,10 @@ namespace Directus
 			}
 
 			// Bind shader
-			if (currentlyBoundShader != shader->Resource_GetID())
+			if (currentlyBoundShader != shader->RHI_GetID())
 			{
-				if (!vertexShaderBound)
-				{
-					m_rhiPipeline->SetVertexShader(shared_ptr<RHI_Shader>(shader));
-					vertexShaderBound = true;
-				}
 				m_rhiPipeline->SetPixelShader(shared_ptr<RHI_Shader>(shader));
-				currentlyBoundShader = shader->Resource_GetID();
+				currentlyBoundShader = shader->RHI_GetID();
 			}
 
 			// Bind textures
@@ -986,16 +1005,19 @@ namespace Directus
 
 		// TAA - Apply jitter to view projection matrix
 		Matrix m_projectionJittered = m_viewProjection_Orthographic;
+		Vector2 jitter = Vector2::Zero;
 		if (Flags_IsSet(Render_TAA))
 		{
-			int samples				= 16;
-			int index				= m_frameNum % samples;
-			Vector2 jitter			= TAA_Sequence::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+			int index				= m_frameNum % TAA_Jitter::samples;
+			jitter					= TAA_Jitter::Halton2D(index, 2, 3) * 2.0f - 1.0f;
 			jitter.x				= jitter.x / (float)texOut->GetWidth();
 			jitter.y				= jitter.y / (float)texOut->GetHeight();
+			jitter					*= TAA_Jitter::scale;
 			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(jitter.x, -jitter.y, 0.0f));
 			m_projectionJittered	= m_viewProjection_Orthographic * jitterMatrix;
 		}
+		TAA_Jitter::jitterOffset = (jitter - TAA_Jitter::previousJitter) * 0.5f;
+		TAA_Jitter::previousJitter = jitter;
 
 		// Update constant buffer
 		m_shaderLight->UpdateConstantBuffer(
@@ -1046,18 +1068,18 @@ namespace Directus
 		auto SwapTargets = [&texIn, &texOut]() { texOut.swap(texIn); };
 		SwapTargets();
 
-		// TAA	
-		if (Flags_IsSet(Render_TAA))
-		{
-			SwapTargets();
-			Pass_TAA(texIn, texOut);
-		}
-
 		// BLOOM
 		if (Flags_IsSet(Render_Bloom))
 		{
 			SwapTargets();
 			Pass_Bloom(texIn, texOut);
+		}
+
+		// TAA	
+		if (Flags_IsSet(Render_TAA))
+		{
+			SwapTargets();
+			Pass_TAA(texIn, texOut);
 		}
 
 		// CORRECTION
@@ -1105,7 +1127,7 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
 		m_rhiPipeline->SetTexture(m_renderTexFull_TAA_History);
 		m_rhiPipeline->SetTexture(texIn);
-		//m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 

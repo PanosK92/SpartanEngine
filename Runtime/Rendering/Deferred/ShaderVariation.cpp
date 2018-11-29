@@ -38,22 +38,43 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	ShaderVariation::ShaderVariation(shared_ptr<RHI_Device> device, Context* context): RHI_Shader(device), IResource(context, Resource_Shader)
+	vector<shared_ptr<ShaderVariation>> ShaderVariation::m_variations;
+
+	shared_ptr<ShaderVariation> ShaderVariation::GetMatchingShader(unsigned long flags)
 	{
-		m_shaderFlags = 0;
+		for (const auto& shader : m_variations)
+		{
+			if (shader->GetShaderFlags() == flags)
+				return shader;
+		}
+
+		return nullptr;
+	}
+
+	ShaderVariation::ShaderVariation(shared_ptr<RHI_Device> device, Context* context) : RHI_Shader(device)
+	{
+		m_context		= context;
+		m_shaderFlags	= 0;
+	}
+
+	ShaderVariation::~ShaderVariation()
+	{
+
 	}
 
 	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
 	{
 		m_shaderFlags = shaderFlags;
 
-		// Load and compile the vertex and the pixel shader
+		// Load and compile the pixel shader
 		AddDefinesBasedOnMaterial();
-		Compile_VertexPixel_Async(filePath, Input_PositionTextureTBN, m_context);
+		CompilePixel_Async(filePath, m_context);
 
 		// Object Buffer (has to match GBuffer.hlsl)
-		m_perObjectBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
+		m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
+		m_constantBuffer->Create(sizeof(PerObjectBufferType));
+
+		m_variations.emplace_back(shared_from_this());
 	}
 
 	void ShaderVariation::UpdatePerObjectBuffer(Transform* transform, Material* material, const Matrix& mView, const Matrix mProjection)
@@ -85,7 +106,7 @@ namespace Directus
 		if (!update)
 			return;
 
-		auto buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
+		auto buffer = (PerObjectBufferType*)m_constantBuffer->Map();
 		
 		buffer->matAlbedo		= perObjectBufferCPU.matAlbedo			= material->GetColorAlbedo();
 		buffer->matTilingUV		= perObjectBufferCPU.matTilingUV		= material->GetTiling();
@@ -100,7 +121,7 @@ namespace Directus
 		buffer->mMVP_current	= perObjectBufferCPU.mMVP_current		= mMVP_current;
 		buffer->mMVP_previous	= perObjectBufferCPU.mMVP_previous		= transform->GetWVP_Previous();
 		
-		m_perObjectBuffer->Unmap();
+		m_constantBuffer->Unmap();
 
 		transform->SetWVP_Previous(mMVP_current);
 	}

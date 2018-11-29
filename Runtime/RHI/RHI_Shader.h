@@ -51,36 +51,73 @@ namespace Directus
 	class ENGINE_CLASS RHI_Shader : public RHI_Object
 	{
 	public:
-		//= GRAPHICS API ==================================================================
+		//= GRAPHICS API =================================
 		RHI_Shader(std::shared_ptr<RHI_Device> rhiDevice);
-		~RHI_Shader();	
-		virtual bool Compile_Vertex(const std::string& filePath, Input_Layout inputLayout);
-		virtual bool Compile_Pixel(const std::string& filePath);
-		//=================================================================================
+		~RHI_Shader();
+		//================================================
 
-		virtual void Compile_VertexPixel(const std::string& filePath, Input_Layout inputLayout, Context* context)
+		void HandleResult(Shader_State state, const std::string& filePath)
 		{
-			m_shaderState	= Shader_Compiling;
-			bool vertex		= Compile_Vertex(filePath, inputLayout);
-			bool pixel		= Compile_Pixel(filePath);
-
-			m_shaderState = (vertex && pixel) ? Shader_Built : Shader_Failed;
-
-			if (m_shaderState == Shader_Built)
+			if (state == Shader_Built)
 			{
-				LOGF_INFO("RHI_Shader::Compile_VertexPixel: Successfully compiled %s", filePath.c_str());
+				LOGF_INFO("RHI_Shader::Compile: Successfully compiled %s", filePath.c_str());
 			}
-			else if (m_shaderState == Shader_Failed)
+			else if (state == Shader_Failed)
 			{
-				LOGF_ERROR("RHI_Shader::Compile_VertexPixel: Failed to compile %s", filePath.c_str());
+				LOGF_ERROR("RHI_Shader::Compile: Failed to compile %s", filePath.c_str());
 			}
 		}
 
-		virtual void Compile_VertexPixel_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
+		virtual void CompileVertex(const std::string& filePath, Input_Layout inputLayout)
+		{
+			m_shaderState	= Shader_Compiling;
+			bool vertex		= API_CompileVertex(filePath, inputLayout);
+
+			m_shaderState = (vertex) ? Shader_Built : Shader_Failed;
+			HandleResult(m_shaderState, filePath);
+		}
+
+		virtual void CompileVertex_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
+		{
+			context->GetSubsystem<Threading>()->AddTask([this, filePath, inputLayout]()
+			{
+				CompileVertex(filePath, inputLayout);
+			});
+		}
+
+		virtual void CompilePixel(const std::string& filePath)
+		{
+			m_shaderState	= Shader_Compiling;
+			bool pixel		= API_CompilePixel(filePath);
+
+			m_shaderState= (pixel) ? Shader_Built : Shader_Failed;
+			HandleResult(m_shaderState, filePath);
+		}
+
+
+		virtual void CompilePixel_Async(const std::string& filePath, Context* context)
+		{
+			context->GetSubsystem<Threading>()->AddTask([this, filePath]()
+			{
+				CompilePixel(filePath);
+			});
+		}
+
+		virtual void CompileVertexPixel(const std::string& filePath, Input_Layout inputLayout, Context* context)
+		{
+			m_shaderState	= Shader_Compiling;
+			bool vertex		= API_CompileVertex(filePath, inputLayout);
+			bool pixel		= API_CompilePixel(filePath);
+
+			m_shaderState = (vertex && pixel) ? Shader_Built : Shader_Failed;
+			HandleResult(m_shaderState, filePath);		
+		}
+
+		virtual void CompileVertexPixel_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
 		{
 			context->GetSubsystem<Threading>()->AddTask([this, filePath, inputLayout, context]()
 			{
-				Compile_VertexPixel(filePath, inputLayout, context);
+				CompileVertexPixel(filePath, inputLayout, context);
 			});
 		}
 
@@ -106,6 +143,10 @@ namespace Directus
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 
 	private:
+		//= API ==============================================================================
+		virtual bool API_CompileVertex(const std::string& filePath, Input_Layout inputLayout);
+		virtual bool API_CompilePixel(const std::string& filePath);
+		//====================================================================================
 		void CreateConstantBuffer(unsigned int size);
 
 		unsigned int m_bufferSize;	

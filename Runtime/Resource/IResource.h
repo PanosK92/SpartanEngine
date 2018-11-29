@@ -38,14 +38,14 @@ namespace Directus
 		Resource_Unknown,
 		Resource_Texture,
 		Resource_Audio,
-		Resource_Material,
-		Resource_Shader,
+		Resource_Material,	
 		Resource_Mesh,
 		Resource_Model,
-		Resource_Cubemap,
-		Resource_Script, // not an actual resource, resource manager simply uses this to return a standard resource path (must remove)
+		Resource_Cubemap,	
 		Resource_Animation,
-		Resource_Font
+		Resource_Font,
+		Resource_Shader, // not an actual resource, just a memory resource, enum is here just so we can get a standard path
+		Resource_Script	 // not an actual resource, just a memory resource, enum is here just so we can get a standard path
 	};
 
 	enum LoadState
