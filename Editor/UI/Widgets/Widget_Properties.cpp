@@ -754,10 +754,6 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 		ImGui::Text("Name");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(material->GetResourceName().c_str());
 
-		// Shader
-		ImGui::Text("Shader");
-		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(!material->GetShader().expired() ? material->GetShader().lock()->GetResourceName().c_str() : NOT_ASSIGNED.c_str());
-
 		if (material->IsEditable())
 		{
 			auto DisplayTextureSlot = [&material](RHI_Texture* texture, const char* textureName, TextureType textureType)

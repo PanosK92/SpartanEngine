@@ -92,6 +92,11 @@ namespace Directus
 		bool Initialize() override;
 		//=========================
 
+		void CreateFonts();
+		void CreateTextures();
+		void CreateShaders();
+		void CreateSamplers();
+
 		// Rendering
 		void SetBackBufferAsRenderTarget(bool clear = true);
 		void* GetFrameShaderResource();
@@ -185,6 +190,7 @@ namespace Directus
 		//=============================================================
 
 		//= SHADERS ===============================================
+		std::shared_ptr<RHI_Shader> m_shaderGBuffer;
 		std::shared_ptr<LightShader> m_shaderLight;
 		std::shared_ptr<RHI_Shader> m_shaderLightDepth;
 		std::shared_ptr<RHI_Shader> m_shaderLine;
@@ -284,6 +290,9 @@ namespace Directus
 			float bloom_intensity;
 			float sharpen_strength;
 			float sharpen_clamp;
+
+			Math::Vector2 taa_jitterOffset;
+			Math::Vector2 padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};

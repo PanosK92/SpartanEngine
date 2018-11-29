@@ -98,14 +98,13 @@ namespace Directus
 		std::vector<std::string> GetTexturePaths();
 		//===========================================================================================================
 
-		//= SHADER ==================================================================
+		//= SHADER ====================================================================
 		void AcquireShader();
-		std::weak_ptr<ShaderVariation> FindMatchingShader(unsigned long shaderFlags);
-		std::weak_ptr<ShaderVariation> GetOrCreateShader(unsigned long shaderFlags);
-		std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
-		bool HasShader() { return GetShader().expired() ? false : true; }
+		std::shared_ptr<ShaderVariation> GetOrCreateShader(unsigned long shaderFlags);
+		std::shared_ptr<ShaderVariation> GetShader() { return m_shader; }
+		bool HasShader() { return GetShader() != nullptr; }
 		void SetMultiplier(TextureType type, float value);
-		//===========================================================================
+		//=============================================================================
 
 		//= PROPERTIES =======================================================================
 		unsigned int GetModelID()						{ return m_modelID; }
@@ -158,7 +157,7 @@ namespace Directus
 		Math::Vector2 m_uvTiling;
 		Math::Vector2 m_uvOffset;	
 		bool m_isEditable;
-		std::weak_ptr<ShaderVariation> m_shader;
+		std::shared_ptr<ShaderVariation> m_shader;
 		std::vector<TextureSlot> m_textureSlots;
 		TextureSlot m_emptyTextureSlot;
 		std::shared_ptr<RHI_Device> m_rhiDevice;

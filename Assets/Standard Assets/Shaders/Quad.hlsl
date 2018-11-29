@@ -15,6 +15,7 @@
 
 Texture2D sourceTexture 		: register(t0);
 Texture2D sourceTexture2 		: register(t1);
+Texture2D sourceTexture3 		: register(t2);
 SamplerState samplerState 		: register(s0);
 
 struct VS_Output
@@ -105,7 +106,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_TAA_RESOLVE
-	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, samplerState);
+	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState);
 #endif
 
 #if PASS_TEXTURE

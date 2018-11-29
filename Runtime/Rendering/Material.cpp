@@ -296,37 +296,23 @@ namespace Directus
 		m_shader = GetOrCreateShader(shaderFlags);
 	}
 
-	weak_ptr<ShaderVariation> Material::FindMatchingShader(unsigned long shaderFlags)
-	{
-		auto shaders = m_context->GetSubsystem<ResourceManager>()->GetResourcesByType<ShaderVariation>();
-		for (const auto& shader : shaders)
-		{
-			if (shader->GetShaderFlags() == shaderFlags)
-				return shader;
-		}
-		return weak_ptr<ShaderVariation>();
-	}
-
-	weak_ptr<ShaderVariation> Material::GetOrCreateShader(unsigned long shaderFlags)
+	shared_ptr<ShaderVariation> Material::GetOrCreateShader(unsigned long shaderFlags)
 	{
 		if (!m_context)
 		{
 			LOG_ERROR("Material::GetOrCreateShader(): Context is null, can't execute function");
-			return weak_ptr<ShaderVariation>();
+			return nullptr;
 		}
 
-		// If an appropriate shader already exists, return it's ID
-		auto existingShader = FindMatchingShader(shaderFlags);
-		if (!existingShader.expired())
+		// If an appropriate shader already exists, return it instead
+		if (auto existingShader = ShaderVariation::GetMatchingShader(shaderFlags))
 			return existingShader;
 
-		// Create and initialize shader
+		// Create and compile shader
 		auto shader = make_shared<ShaderVariation>(m_rhiDevice, m_context);
 		shader->Compile(m_context->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shaderFlags);
-		shader->SetResourceName("ShaderVariation_" + to_string(shader->Resource_GetID())); // set a different name for it's shader the cache doesn't thing they are the same
 
-		// Add the shader to the pool and return it
-		return shader->Cache<ShaderVariation>();
+		return shader;
 	}
 
 	void Material::SetMultiplier(TextureType type, float value)

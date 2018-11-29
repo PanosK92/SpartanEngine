@@ -98,6 +98,7 @@ PixelOutputType mainPS(PixelInputType input)
 	float2 a 		= (input.positionCS_Current.xy / input.positionCS_Current.w) * 0.5f + 0.5f;
 	float2 b 		= (input.positionCS_Previous.xy / input.positionCS_Previous.w) * 0.5f + 0.5f;
     float2 velocity = a - b;
+	velocity 		-= taa_jitterOffset;
 	//===========================================================================================
 
 	//= HEIGHT ==================================================================================

@@ -45,7 +45,7 @@ namespace Directus
 	void LightShader::Compile(const string& filePath, Context* context)
 	{
 		// Compile the vertex and the pixel shader
-		Compile_VertexPixel_Async(filePath, Input_PositionTextureTBN, context);
+		CompileVertexPixel_Async(filePath, Input_PositionTextureTBN, context);
 	}
 
 	void LightShader::UpdateConstantBuffer(
