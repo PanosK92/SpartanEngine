@@ -98,7 +98,7 @@ namespace Directus
 	{
 		Texture_Sampler_Point,
 		Texture_Sampler_Bilinear,
-		Texture_Sampler_Linear,
+		Texture_Sampler_Trilinear,
 		Texture_Sampler_Anisotropic
 	};
 
