@@ -65,7 +65,7 @@ namespace Directus
 		Render_Light				= 1UL << 10,
 		Render_Bloom				= 1UL << 11,
 		Render_FXAA					= 1UL << 12,
-		Render_SSDO					= 1UL << 13,
+		Render_SSAO					= 1UL << 13,
 		Render_SSR					= 1UL << 14,
 		Render_TAA					= 1UL << 15,
 		Render_MotionBlur			= 1UL << 16,
@@ -156,7 +156,7 @@ namespace Directus
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
 		void Pass_PreLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, std::shared_ptr<RHI_RenderTexture>& texOut2);
-		void Pass_Light(std::shared_ptr<RHI_RenderTexture>& texShadows, std::shared_ptr<RHI_RenderTexture>& texSSDO, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Light(std::shared_ptr<RHI_RenderTexture>& texShadows, std::shared_ptr<RHI_RenderTexture>& texSSAO, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_PostLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_TAA(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& texOut);
@@ -170,7 +170,7 @@ namespace Directus
 		void Pass_BlurBox(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
 		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma, float pixelStride);
-		void Pass_SSDO(std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_SSAO(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ShadowMapping(std::shared_ptr<RHI_RenderTexture>& texOut, Light* inDirectionalLight);
 		void Pass_Lines(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Gizmos(std::shared_ptr<RHI_RenderTexture>& texOut);
@@ -185,7 +185,7 @@ namespace Directus
 		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_FinalFrame;
 		// 1/2
 		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_Shadows;
-		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_SSDO;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_SSAO;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_Spare;
 		// 1/4
 		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarter_Blur1;
@@ -199,7 +199,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderLine;
 		std::shared_ptr<RHI_Shader> m_shaderFont;
 		std::shared_ptr<RHI_Shader> m_shaderShadowMapping;
-		std::shared_ptr<RHI_Shader> m_shaderSSDO;
+		std::shared_ptr<RHI_Shader> m_shaderSSAO;
 		std::shared_ptr<RHI_Shader> m_shaderTransformationGizmo;
 		std::shared_ptr<RHI_Shader> m_shaderTransparent;
 		std::shared_ptr<RHI_Shader> m_shaderQuad;

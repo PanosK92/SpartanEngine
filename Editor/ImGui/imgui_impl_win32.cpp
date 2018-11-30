@@ -387,7 +387,7 @@ float ImGui_ImplWin32_GetDpiScaleForRect(int x1, int y1, int x2, int y2)
 // IME (Input Method Editor) basic support for e.g. Asian language users
 //--------------------------------------------------------------------------------------------------------
 
-#if defined(_WIN32) && !defined(IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS) && !defined(__GNUC__)
+#if defined(_WIN32) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS) && !defined(IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS) && !defined(__GNUC__)
 #define HAS_WIN32_IME   1
 #include <imm.h>
 #ifdef _MSC_VER
@@ -536,11 +536,23 @@ static bool ImGui_ImplWin32_GetWindowFocus(ImGuiViewport* viewport)
     return ::GetActiveWindow() == data->Hwnd;
 }
 
-static void ImGui_ImplWin32_SetWindowTitle(ImGuiViewport* viewport, const char* title)
+static bool ImGui_ImplWin32_GetWindowMinimized(ImGuiViewport* viewport)
 {
     ImGuiViewportDataWin32* data = (ImGuiViewportDataWin32*)viewport->PlatformUserData;
     IM_ASSERT(data->Hwnd != 0);
-    ::SetWindowTextA(data->Hwnd, title);
+    return ::IsIconic(data->Hwnd) != 0;
+}
+
+static void ImGui_ImplWin32_SetWindowTitle(ImGuiViewport* viewport, const char* title)
+{
+    // ::SetWindowTextA() doesn't properly handle UTF-8 so we explicitely convert our string.
+    ImGuiViewportDataWin32* data = (ImGuiViewportDataWin32*)viewport->PlatformUserData;
+    IM_ASSERT(data->Hwnd != 0);
+    int n = ::MultiByteToWideChar(CP_UTF8, 0, title, -1, NULL, 0);
+    ImVector<wchar_t> title_w;
+    title_w.resize(n);
+    ::MultiByteToWideChar(CP_UTF8, 0, title, -1, title_w.Data, n);
+    ::SetWindowTextW(data->Hwnd, title_w.Data);
 }
 
 static void ImGui_ImplWin32_SetWindowAlpha(ImGuiViewport* viewport, float alpha)
@@ -678,6 +690,7 @@ static void ImGui_ImplWin32_InitPlatformInterface()
     platform_io.Platform_GetWindowSize = ImGui_ImplWin32_GetWindowSize;
     platform_io.Platform_SetWindowFocus = ImGui_ImplWin32_SetWindowFocus;
     platform_io.Platform_GetWindowFocus = ImGui_ImplWin32_GetWindowFocus;
+    platform_io.Platform_GetWindowMinimized = ImGui_ImplWin32_GetWindowMinimized;
     platform_io.Platform_SetWindowTitle = ImGui_ImplWin32_SetWindowTitle;
     platform_io.Platform_SetWindowAlpha = ImGui_ImplWin32_SetWindowAlpha;
     platform_io.Platform_GetWindowDpiScale = ImGui_ImplWin32_GetWindowDpiScale;

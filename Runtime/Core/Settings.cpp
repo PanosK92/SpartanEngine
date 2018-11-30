@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
+#include "../Math/MathHelper.h"
 //===================================
 
 //= NAMESPACES ================
@@ -87,10 +88,24 @@ namespace Directus
 			ReadSetting(SettingsIO::fin, "fResolutionHeight",		resolutionY);
 			ReadSetting(SettingsIO::fin, "iShadowMapResolution",	m_shadowMapResolution);
 			ReadSetting(SettingsIO::fin, "iAnisotropy",				m_anisotropy);
-			ReadSetting(SettingsIO::fin, "fFPSLimit",				m_maxFPS_game);
+			ReadSetting(SettingsIO::fin, "fFPSLimit",				m_fpsLimit);
 			ReadSetting(SettingsIO::fin, "iMaxThreadCount",			m_maxThreadCount);
-			
+
 			m_resolution = Vector2(resolutionX, resolutionY);
+
+			if (m_fpsLimit == 0.0f)
+			{
+				m_fpsPolicy = FPS_Unlocked;
+				m_fpsLimit	= FLT_MAX;
+			}
+			else if (m_fpsLimit == -1.0f)
+			{
+				m_fpsPolicy = FPS_MonitorMatch;
+			}
+			else
+			{
+				m_fpsPolicy = FPS_Locked;
+			}
 
 			// Close the file.
 			SettingsIO::fin.close();
@@ -108,7 +123,7 @@ namespace Directus
 			WriteSetting(SettingsIO::fout, "fResolutionHeight",		m_resolution.y);
 			WriteSetting(SettingsIO::fout, "iShadowMapResolution",	m_shadowMapResolution);
 			WriteSetting(SettingsIO::fout, "iAnisotropy",			m_anisotropy);
-			WriteSetting(SettingsIO::fout, "fFPSLimit",				m_maxFPS_game);
+			WriteSetting(SettingsIO::fout, "fFPSLimit",				m_fpsLimit);
 			WriteSetting(SettingsIO::fout, "iMaxThreadCount",		m_maxThreadCount);
 
 			// Close the file.
@@ -118,13 +133,19 @@ namespace Directus
 		LOGF_INFO("Settings::Initialize: Resolution: %dx%d",		(int)m_resolution.x, (int)m_resolution.y);
 		LOGF_INFO("Settings::Initialize: Shadow resolution: %d",	m_shadowMapResolution);
 		LOGF_INFO("Settings::Initialize: Anisotropy: %d",			m_anisotropy);
-		LOGF_INFO("Settings::Initialize: Max fps: %f",				m_maxFPS_game);
+		LOGF_INFO("Settings::Initialize: Max fps: %f",				m_fpsLimit);
 		LOGF_INFO("Settings::Initialize: Max threads: %d",			m_maxThreadCount);
 	}
 
 	void Settings::DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator)
 	{
-		m_displayModes.emplace_back(width, height, refreshRateNumerator, refreshRateDenominator);
+		DisplayMode& mode = m_displayModes.emplace_back(width, height, refreshRateNumerator, refreshRateDenominator);
+
+		// Try to deduce the maximum frame rate based on how fast is the monitor
+		if (m_fpsPolicy == FPS_MonitorMatch)
+		{
+			FPS_SetLimit(Math::Helper::Max(m_fpsLimit, mode.refreshRate));
+		}
 	}
 
 	const Directus::DisplayMode& Settings::DisplayMode_GetFastest()
@@ -157,5 +178,15 @@ namespace Directus
 
 		m_primaryAdapter = primaryAdapter;
 		LOGF_INFO("Settings::DisplayAdapter_SetPrimary: %s (%d MB)", primaryAdapter->name.c_str(), primaryAdapter->memory);
+	}
+
+	void Settings::FPS_SetLimit(float fps)
+	{
+		if (m_fpsLimit != fps)
+		{
+			LOGF_INFO("Settings::SetFPSLimit: FPS limit set to %f", fps);
+		}
+
+		m_fpsLimit = fps;
 	}
 }
