@@ -7,6 +7,7 @@
 #include "Blur.hlsl"
 #include "ACES.hlsl"
 #include "ResolveTAA.hlsl"
+#include "MotionBlur.hlsl"
 #define FXAA_PC 1
 #define FXAA_HLSL_5 1
 #define FXAA_QUALITY__PRESET 39
@@ -39,6 +40,10 @@ float4 mainPS(VS_Output input) : SV_TARGET
 {
     float2 texCoord 	= input.uv;
     float4 color 		= float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+#if PASS_TEXTURE
+	color = sourceTexture.Sample(samplerState, texCoord);
+#endif
 
 #if PASS_FXAA
 	// Requirements: Bilinear sampler
@@ -109,8 +114,8 @@ float4 mainPS(VS_Output input) : SV_TARGET
 	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState);
 #endif
 
-#if PASS_TEXTURE
-	color = sourceTexture.Sample(samplerState, texCoord);
+#if PASS_MOTION_BLUR
+	color = MotionBlur(texCoord, sourceTexture, sourceTexture2, samplerState);
 #endif
 
     return color;

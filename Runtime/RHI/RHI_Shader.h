@@ -103,7 +103,7 @@ namespace Directus
 			});
 		}
 
-		virtual void CompileVertexPixel(const std::string& filePath, Input_Layout inputLayout, Context* context)
+		virtual void CompileVertexPixel(const std::string& filePath, Input_Layout inputLayout)
 		{
 			m_shaderState	= Shader_Compiling;
 			bool vertex		= API_CompileVertex(filePath, inputLayout);
@@ -115,9 +115,9 @@ namespace Directus
 
 		virtual void CompileVertexPixel_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
 		{
-			context->GetSubsystem<Threading>()->AddTask([this, filePath, inputLayout, context]()
+			context->GetSubsystem<Threading>()->AddTask([this, filePath, inputLayout]()
 			{
-				CompileVertexPixel(filePath, inputLayout, context);
+				CompileVertexPixel(filePath, inputLayout);
 			});
 		}
 

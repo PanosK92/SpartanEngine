@@ -21,7 +21,8 @@ cbuffer GlobalBuffer : register(b0)
 	float sharpen_clamp;
 	
 	float2 taa_jitterOffset;
-	float2 padding;
+	float motionBlur_strength;
+	float padding;
 };
 
 static const float2 texelSize = float2(1.0f / resolution.x, 1.0f / resolution.y);

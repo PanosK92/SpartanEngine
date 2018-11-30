@@ -114,64 +114,65 @@ void Widget_Toolbar::ShowRendererOptions()
 {
 	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_showRendererOptions, ImGuiWindowFlags_AlwaysAutoResize);
 
-	ImGui::BeginChild("##Effects", ImVec2(390, 490), true, ImGuiWindowFlags_AlwaysAutoResize);
+	if (ImGui::CollapsingHeader("Effects", ImGuiTreeNodeFlags_DefaultOpen))
 	{	
-		ImGui::Text("Effects");
-
+		// Read from engine
 		bool bloom					= m_renderer->Flags_IsSet(Render_Bloom);
 		bool correction				= m_renderer->Flags_IsSet(Render_Correction);
 		bool fxaa					= m_renderer->Flags_IsSet(Render_FXAA);
 		bool ssdo					= m_renderer->Flags_IsSet(Render_SSDO);
 		bool ssr					= m_renderer->Flags_IsSet(Render_SSR);
 		bool taa					= m_renderer->Flags_IsSet(Render_TAA);
+		bool motionBlur				= m_renderer->Flags_IsSet(Render_MotionBlur);
 		bool sharpening				= m_renderer->Flags_IsSet(Render_Sharpening);
 		bool chromaticAberration	= m_renderer->Flags_IsSet(Render_ChromaticAberration);
 		
-		ImGui::Checkbox("Tone-mapping & Gamma correction", &correction);
-		ImGui::Separator();
+		// Display
+		{
+			auto tooltip = [this](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
 
-		ImGui::Checkbox("Bloom", &bloom);
-		ImGui::InputFloat("Intensity", &m_renderer->m_bloomIntensity, 0.1f); m_renderer->m_bloomIntensity = Abs(m_renderer->m_bloomIntensity);
-		ImGui::Separator();
+			ImGui::Checkbox("Tone-mapping & Gamma correction", &correction);
+			ImGui::Checkbox("Bloom", &bloom);
+			ImGui::InputFloat("Intensity", &m_renderer->m_bloomIntensity, 0.1f);		
+			ImGui::Checkbox("SSDO - Screen Space Directional Occlusion", &ssdo);
+			ImGui::Checkbox("SSR - Screen Space Reflections", &ssr);
+			ImGui::Checkbox("Motion Blur", &motionBlur);
+			ImGui::InputFloat("Strength", &m_renderer->m_motionBlurStrength, 0.1f);
+			ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
+			ImGui::Checkbox("TAA - Temporal Anti-Aliasing - DEVELOPMENT", &taa);
+			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &fxaa);
+			ImGui::InputFloat("Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f);					tooltip("The amount of sub-pixel aliasing removal");
+			ImGui::InputFloat("Edge Threshold", &m_renderer->m_fxaaEdgeThreshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
+			ImGui::InputFloat("Edge Threshold Min", &m_renderer->m_fxaaEdgeThresholdMin, 0.1f); tooltip("Trims the algorithm from processing darks");
+			ImGui::Checkbox("Sharpening", &sharpening);
+			ImGui::InputFloat("Strength", &m_renderer->m_sharpenStrength, 0.1f);
+			ImGui::InputFloat("Clamp", &m_renderer->m_sharpenClamp, 0.1f); tooltip("Limits maximum amount of sharpening a pixel receives");
+			ImGui::Separator();
+		}
 
-		ImGui::Checkbox("FXAA (Fast Approximate Anti-Aliasing)", &fxaa);
-		ImGui::InputFloat("Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f); m_renderer->m_fxaaSubPixel = Abs(m_renderer->m_fxaaSubPixel);
-		ImGui::InputFloat("Edge Threshold", &m_renderer->m_fxaaEdgeThreshold, 0.1f); m_renderer->m_fxaaEdgeThreshold = Abs(m_renderer->m_fxaaEdgeThreshold);
-		ImGui::InputFloat("Edge Threshold Min", &m_renderer->m_fxaaEdgeThresholdMin, 0.1f); m_renderer->m_fxaaEdgeThresholdMin = Abs(m_renderer->m_fxaaEdgeThresholdMin);
-		ImGui::Separator();
+		// Filter input
+		m_renderer->m_bloomIntensity		= Abs(m_renderer->m_bloomIntensity);
+		m_renderer->m_fxaaSubPixel			= Abs(m_renderer->m_fxaaSubPixel);
+		m_renderer->m_fxaaEdgeThreshold		= Abs(m_renderer->m_fxaaEdgeThreshold);
+		m_renderer->m_fxaaEdgeThresholdMin	= Abs(m_renderer->m_fxaaEdgeThresholdMin);
+		m_renderer->m_sharpenStrength		= Abs(m_renderer->m_sharpenStrength);
+		m_renderer->m_sharpenClamp			= Abs(m_renderer->m_sharpenClamp);
+		m_renderer->m_motionBlurStrength	= Abs(m_renderer->m_motionBlurStrength);
 
-		ImGui::Checkbox("TAA (Temporal Anti-Aliasing) - DEVELOPMENT", &taa);
-		ImGui::Separator();
-
-		ImGui::Checkbox("SSDO (Screen Space Directional Occlusion)", &ssdo);
-		ImGui::Separator();
-
-		ImGui::Checkbox("SSR (Screen Space Reflections)", &ssr);
-		ImGui::Separator();
-
-		ImGui::Checkbox("Sharpening", &sharpening);
-		ImGui::InputFloat("Strength", &m_renderer->m_sharpenStrength, 0.1f); m_renderer->m_sharpenStrength = Abs(m_renderer->m_sharpenStrength);
-		ImGui::InputFloat("Clamp", &m_renderer->m_sharpenClamp, 0.1f); m_renderer->m_sharpenClamp = Abs(m_renderer->m_sharpenClamp);
-		ImGui::Separator();
-
-		ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
-
+		// Map back to engine
 		bloom				? m_renderer->Flags_Enable(Render_Bloom)				: m_renderer->Flags_Disable(Render_Bloom);
 		correction			? m_renderer->Flags_Enable(Render_Correction)			: m_renderer->Flags_Disable(Render_Correction);
 		fxaa				? m_renderer->Flags_Enable(Render_FXAA)					: m_renderer->Flags_Disable(Render_FXAA);
 		ssdo				? m_renderer->Flags_Enable(Render_SSDO)					: m_renderer->Flags_Disable(Render_SSDO);
 		ssr					? m_renderer->Flags_Enable(Render_SSR)					: m_renderer->Flags_Disable(Render_SSR);
 		taa					? m_renderer->Flags_Enable(Render_TAA)					: m_renderer->Flags_Disable(Render_TAA);
+		motionBlur			? m_renderer->Flags_Enable(Render_MotionBlur)			: m_renderer->Flags_Disable(Render_MotionBlur);
 		sharpening			? m_renderer->Flags_Enable(Render_Sharpening)			: m_renderer->Flags_Disable(Render_Sharpening);
 		chromaticAberration	? m_renderer->Flags_Enable(Render_ChromaticAberration)	: m_renderer->Flags_Disable(Render_ChromaticAberration);	
 	}
-	ImGui::EndChild();
 
-	ImGui::SameLine(); 
-	ImGui::BeginChild("##DebugVisualization", ImVec2(310, 245), true, ImGuiWindowFlags_AlwaysAutoResize);
+	if (ImGui::CollapsingHeader("Debug Visualization", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Text("Debug Visualization");
-
 		if (ImGui::BeginCombo("G-Buffer", _Widget_Toolbar::gbufferSelectedTexture.c_str()))
 		{
 			for (int i = 0; i < _Widget_Toolbar::gbufferTextures.size(); i++)
@@ -253,7 +254,6 @@ void Widget_Toolbar::ShowRendererOptions()
 		_Widget_Toolbar::g_grid					? m_renderer->Flags_Enable(Render_SceneGrid)			: m_renderer->Flags_Disable(Render_SceneGrid);
 		_Widget_Toolbar::g_performanceMetrics	? m_renderer->Flags_Enable(Render_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_PerformanceMetrics);
 	}
-	ImGui::EndChild();
 
 	ImGui::End();
 }
