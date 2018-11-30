@@ -14,7 +14,7 @@ Opening an issue can be helpful (and is always appreciated), fixing the issue an
 
 Architectual quality is prioritized over development speed. Enjoy.
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4.jpg)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4_1.jpg)
 
 # Features
 - 20+ audio file formats support.
@@ -44,8 +44,8 @@ Improved shadows         		| 90% | Sharper shadows with smoother edges and no sh
 SSDO         					| 100% | Screen space directional occlusion.
 Bloom         					| 100% | -
 SSR								| 90% |	 Screen space reflections.
-TAA								| 10% |	 Temporal Anti-Aliasing.
-Per-Pixel motion blur			| 0% |
+TAA								| 30% |	 Temporal Anti-Aliasing.
+Per-Pixel motion blur			| 90% |
 Velocity Buffer					| 100% | Required for TAA and Motion Blur.
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 Point light support             | 100% | -

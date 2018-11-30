@@ -68,9 +68,10 @@ namespace Directus
 		Render_SSDO					= 1UL << 13,
 		Render_SSR					= 1UL << 14,
 		Render_TAA					= 1UL << 15,
-		Render_Sharpening			= 1UL << 16,
-		Render_ChromaticAberration	= 1UL << 17,
-		Render_Correction			= 1UL << 18, // Tone-mapping & Gamma correction
+		Render_MotionBlur			= 1UL << 16,
+		Render_Sharpening			= 1UL << 17,
+		Render_ChromaticAberration	= 1UL << 18,
+		Render_Correction			= 1UL << 19, // Tone-mapping & Gamma correction
 	};
 
 	enum RenderableType
@@ -136,6 +137,7 @@ namespace Directus
 		float m_bloomIntensity			= 0.2f;		// The intensity of the bloom
 		float m_sharpenStrength			= 1.0f;		// Strength of the sharpening
 		float m_sharpenClamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Default: 0.035f
+		float m_motionBlurStrength		= 2.0f;		// Strength of the motion blur
 		//========================================
 
 	private:
@@ -163,6 +165,7 @@ namespace Directus
 		void Pass_FXAA(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Sharpening(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ChromaticAberration(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_MotionBlur(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_BlurBox(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
@@ -189,29 +192,31 @@ namespace Directus
 		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarter_Blur2;
 		//=============================================================
 
-		//= SHADERS ===============================================
+		//= SHADERS ====================================================
 		std::shared_ptr<RHI_Shader> m_shaderGBuffer;
 		std::shared_ptr<LightShader> m_shaderLight;
 		std::shared_ptr<RHI_Shader> m_shaderLightDepth;
 		std::shared_ptr<RHI_Shader> m_shaderLine;
 		std::shared_ptr<RHI_Shader> m_shaderFont;
-		std::shared_ptr<RHI_Shader> m_shaderTexture;
-		std::shared_ptr<RHI_Shader> m_shaderFXAA;
-		std::shared_ptr<RHI_Shader> m_shaderLuma;
-		std::shared_ptr<RHI_Shader> m_shaderSSDO;
-		std::shared_ptr<RHI_Shader> m_shaderTAA;
 		std::shared_ptr<RHI_Shader> m_shaderShadowMapping;
-		std::shared_ptr<RHI_Shader> m_shaderSharpening;
-		std::shared_ptr<RHI_Shader> m_shaderChromaticAberration;
-		std::shared_ptr<RHI_Shader> m_shaderBlurBox;
-		std::shared_ptr<RHI_Shader> m_shaderBlurGaussian;
-		std::shared_ptr<RHI_Shader> m_shaderBlurBilateralGaussian;
-		std::shared_ptr<RHI_Shader> m_shaderBloom_Bright;
-		std::shared_ptr<RHI_Shader> m_shaderBloom_BlurBlend;
-		std::shared_ptr<RHI_Shader> m_shaderCorrection;
+		std::shared_ptr<RHI_Shader> m_shaderSSDO;
 		std::shared_ptr<RHI_Shader> m_shaderTransformationGizmo;
 		std::shared_ptr<RHI_Shader> m_shaderTransparent;
-		//=========================================================
+		std::shared_ptr<RHI_Shader> m_shaderQuad;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_texture;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_fxaa;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_luma;	
+		std::shared_ptr<RHI_Shader> m_shaderQuad_taa;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_motionBlur;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_sharpening;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_chromaticAberration;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_blur_box;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_blur_gaussian;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_blur_gaussianBilateral;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_bloomBright;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_bloomBLend;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_correction;	
+		//==============================================================
 
 		//= SAMPLERS ===============================================
 		std::shared_ptr<RHI_Sampler> m_samplerPointClampAlways;
@@ -292,7 +297,8 @@ namespace Directus
 			float sharpen_clamp;
 
 			Math::Vector2 taa_jitterOffset;
-			Math::Vector2 padding;
+			float motionBlur_strength;
+			float padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};
