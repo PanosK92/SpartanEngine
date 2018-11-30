@@ -9,6 +9,8 @@
 // Missing features:
 //  [ ] Platform: Gamepad support (best leaving it to user application to fill io.NavInputs[] with gamepad inputs from their source of choice).
 
+#pragma once
+
 //= INCLUDES =======
 #include "imgui.h"
 #include "Windows.h"
@@ -27,4 +29,4 @@ IMGUI_API float       ImGui_ImplWin32_GetDpiScaleForRect(int x1, int y1, int x2,
 // Handler for Win32 messages, update mouse/keyboard data.
 // You may or not need this for your implementation, but it can serve as reference for handling inputs.
 // Intentionally commented out to avoid dragging dependencies on <windows.h> types. You can copy the extern declaration in your code.
-IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+IMGUI_IMPL_API LRESULT  ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

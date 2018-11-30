@@ -41,7 +41,7 @@ Easy to build               	| 100% | Single click project generation which incl
 New editor               		| 90% | Replace Qt editor with ImGui editor.
 Debug rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
-SSDO         					| 100% | Screen space directional occlusion.
+SSAO         					| 100% | Screen space ambient occlusion.
 Bloom         					| 100% | -
 SSR								| 90% |	 Screen space reflections.
 TAA								| 30% |	 Temporal Anti-Aliasing.

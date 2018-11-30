@@ -120,7 +120,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		bool bloom					= m_renderer->Flags_IsSet(Render_Bloom);
 		bool correction				= m_renderer->Flags_IsSet(Render_Correction);
 		bool fxaa					= m_renderer->Flags_IsSet(Render_FXAA);
-		bool ssdo					= m_renderer->Flags_IsSet(Render_SSDO);
+		bool ssao					= m_renderer->Flags_IsSet(Render_SSAO);
 		bool ssr					= m_renderer->Flags_IsSet(Render_SSR);
 		bool taa					= m_renderer->Flags_IsSet(Render_TAA);
 		bool motionBlur				= m_renderer->Flags_IsSet(Render_MotionBlur);
@@ -134,7 +134,7 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::Checkbox("Tone-mapping & Gamma correction", &correction);
 			ImGui::Checkbox("Bloom", &bloom);
 			ImGui::InputFloat("Intensity", &m_renderer->m_bloomIntensity, 0.1f);		
-			ImGui::Checkbox("SSDO - Screen Space Directional Occlusion", &ssdo);
+			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &ssao);
 			ImGui::Checkbox("SSR - Screen Space Reflections", &ssr);
 			ImGui::Checkbox("Motion Blur", &motionBlur);
 			ImGui::InputFloat("Strength", &m_renderer->m_motionBlurStrength, 0.1f);
@@ -163,7 +163,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		bloom				? m_renderer->Flags_Enable(Render_Bloom)				: m_renderer->Flags_Disable(Render_Bloom);
 		correction			? m_renderer->Flags_Enable(Render_Correction)			: m_renderer->Flags_Disable(Render_Correction);
 		fxaa				? m_renderer->Flags_Enable(Render_FXAA)					: m_renderer->Flags_Disable(Render_FXAA);
-		ssdo				? m_renderer->Flags_Enable(Render_SSDO)					: m_renderer->Flags_Disable(Render_SSDO);
+		ssao				? m_renderer->Flags_Enable(Render_SSAO)					: m_renderer->Flags_Disable(Render_SSAO);
 		ssr					? m_renderer->Flags_Enable(Render_SSR)					: m_renderer->Flags_Disable(Render_SSR);
 		taa					? m_renderer->Flags_Enable(Render_TAA)					: m_renderer->Flags_Disable(Render_TAA);
 		motionBlur			? m_renderer->Flags_Enable(Render_MotionBlur)			: m_renderer->Flags_Disable(Render_MotionBlur);

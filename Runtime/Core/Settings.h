@@ -77,6 +77,13 @@ namespace Directus
 		//Intel : 0x163C, 0x8086, 0x8087
 	};
 
+	enum FPS_Policy
+	{
+		FPS_Unlocked,
+		FPS_Locked,
+		FPS_MonitorMatch
+	};
+
 	class ENGINE_CLASS Settings
 	{
 	public:
@@ -117,14 +124,17 @@ namespace Directus
 		const std::vector<DisplayAdapter>& DisplayAdapters_Get() { return m_displayAdapters; }
 		//==========================================================================================================
 
+		//= FPS ===================================
+		void FPS_SetLimit(float fps);
+		float FPS_GetLimit() { return m_fpsLimit; }
+		//=========================================
+
 		//= MISC =========================================================================================
 		bool FullScreen_Get()										{ return m_isFullScreen; }
 		bool MousVisible_Get()										{ return m_isMouseVisible; }
 		VSync VSync_Get()											{ return (VSync)m_vsync; }	
 		unsigned int Shadows_GetResolution()						{ return m_shadowMapResolution; }
 		unsigned int Anisotropy_Get()								{ return m_anisotropy; }
-		float MaxFps_GetGame()										{ return m_maxFPS_game;}
-		float MaxFps_GetEditor()									{ return m_maxFPS_editor; }
 		void ThreadCountMax_Set(unsigned int maxThreadCount)		{ m_maxThreadCount = maxThreadCount; }
 		unsigned int ThreadCountMax_Get()							{ return m_maxThreadCount; }	
 		const std::string& Gpu_GetName()							{ return m_primaryAdapter->name; }
@@ -150,11 +160,11 @@ namespace Directus
 		bool m_isMouseVisible					= true;
 		unsigned int m_shadowMapResolution		= 4096;
 		unsigned int m_anisotropy				= 16;
-		float m_maxFPS_game						= FLT_MAX;
-		float m_maxFPS_editor					= 165.0f;
 		unsigned int m_maxThreadCount			= 0;
-		const DisplayAdapter* m_primaryAdapter	= nullptr;
+		float m_fpsLimit						= -1.0f;
+		FPS_Policy m_fpsPolicy					= FPS_MonitorMatch;
 
+		const DisplayAdapter* m_primaryAdapter	= nullptr;
 		std::vector<DisplayMode> m_displayModes;
 		std::vector<DisplayAdapter> m_displayAdapters;	
 	};

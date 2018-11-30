@@ -1,4 +1,4 @@
-// dear imgui, v1.66
+// dear imgui, v1.67 WIP
 // (main code and documentation)
 
 // Call and read ImGui::ShowDemoWindow() in imgui_demo.cpp for demo code.
@@ -920,6 +920,9 @@ static const float NAV_WINDOWING_LIST_APPEAR_DELAY          = 0.15f;    // Time 
 static const float RESIZE_WINDOWS_FROM_EDGES_HALF_THICKNESS = 4.0f;     // Extend outside and inside windows. Affect FindHoveredWindow().
 static const float RESIZE_WINDOWS_FROM_EDGES_FEEDBACK_TIMER = 0.04f;    // Reduce visual noise by only highlighting the border after a certain time.
 
+// Docking
+static const float DOCKING_TRANSPARENT_PAYLOAD_ALPHA        = 0.50f;    // For use with io.ConfigDockingTransparentPayload. Apply to Viewport _or_ WindowBg in host viewport.
+
 //-------------------------------------------------------------------------
 // [SECTION] FORWARD DECLARATIONS
 //-------------------------------------------------------------------------
@@ -1091,8 +1094,8 @@ ImGuiIO::ImGuiIO()
     memset(this, 0, sizeof(*this));
 
     // Settings
-    ConfigFlags = 0x00;
-    BackendFlags = 0x00;
+    ConfigFlags = ImGuiConfigFlags_None;
+    BackendFlags = ImGuiBackendFlags_None;
     DisplaySize = ImVec2(-1.0f, -1.0f);
     DeltaTime = 1.0f/60.0f;
     IniSavingRate = 5.0f;
@@ -1114,6 +1117,7 @@ ImGuiIO::ImGuiIO()
 
     // Miscellaneous configuration options
     ConfigDockingWithShift = false;
+    ConfigDockingTransparentPayload = false;
 #ifdef __APPLE__
     ConfigMacOSXBehaviors = true;  // Set Mac OS X style defaults based on __APPLE__ compile time flag
 #else
@@ -3026,7 +3030,7 @@ void ImGui::UpdateMouseMovingWindow()
         {
             // Try to merge the window back into the main viewport. 
             // This works because MouseViewport should be != MovingWindow->Viewport on release (as per code in UpdateViewports)
-            if (g.IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            if (g.ConfigFlagsForFrame & ImGuiConfigFlags_ViewportsEnable)
                 UpdateTryMergeWindowIntoHostViewport(moving_window, g.MouseViewport);
 
             // Restore the mouse viewport so that we don't hover the viewport _under_ the moved window during the frame we released the mouse button.
@@ -3281,6 +3285,8 @@ void ImGui::NewFrame()
             IM_ASSERT(g.PlatformIO.Platform_GetWindowSize != NULL  && "Platform init didn't install handlers?");
             IM_ASSERT(g.PlatformIO.Platform_SetWindowSize != NULL  && "Platform init didn't install handlers?");
             IM_ASSERT((g.Viewports[0]->PlatformUserData != NULL || g.Viewports[0]->PlatformHandle != NULL) && "Platform init didn't setup main viewport.");
+            if (g.IO.ConfigDockingTransparentPayload && (g.IO.ConfigFlags & ImGuiConfigFlags_DockingEnable))
+                IM_ASSERT(g.PlatformIO.Platform_SetWindowAlpha != NULL && "Platform_SetWindowAlpha handler is required to use io.ConfigDockingTransparent!");
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
             IM_ASSERT(g.IO.RenderDrawListsFn == NULL);  // Call ImGui::Render() then pass ImGui::GetDrawData() yourself to your render function!
 #endif
@@ -3329,6 +3335,7 @@ void ImGui::NewFrame()
     g.FrameCount += 1;
     g.TooltipOverrideCount = 0;
     g.WindowsActiveCount = 0;
+    g.ConfigFlagsForFrame = g.IO.ConfigFlags;
 
     UpdateViewports();
 
@@ -3491,7 +3498,6 @@ void ImGui::Initialize(ImGuiContext* context)
     ImGuiViewportP* viewport = IM_NEW(ImGuiViewportP)();
     viewport->ID = IMGUI_VIEWPORT_DEFAULT_ID;
     viewport->Idx = 0;
-    viewport->CreatedPlatformWindow = true;     // Set this flag so DestroyPlatformWindows() gives a chance for backend to receive DestroyWindow calls for the main viewport.
     g.Viewports.push_back(viewport);
     g.PlatformIO.MainViewport = g.Viewports[0]; // Make it accessible in public-facing GetPlatformIO() immediately (before the first call to EndFrame)
     g.PlatformIO.Viewports.push_back(g.Viewports[0]);
@@ -3730,7 +3736,7 @@ void ImGui::EndFrame()
     IM_ASSERT(g.FrameScopeActive && "Forgot to call ImGui::NewFrame()");
 
     // Notify OS when our Input Method Editor cursor has moved (e.g. CJK inputs using Microsoft IME)
-    if (g.PlatformIO.Platform_SetImeInputPos && g.PlatformImePosViewport != NULL && ImLengthSqr(g.PlatformImePos - g.PlatformImeLastPos) > 0.0001f)
+    if (g.PlatformIO.Platform_SetImeInputPos && ImLengthSqr(g.PlatformImePos - g.PlatformImeLastPos) > 0.0001f && g.PlatformImePosViewport && g.PlatformImePosViewport->PlatformWindowCreated)
     {
         g.PlatformIO.Platform_SetImeInputPos(g.PlatformImePosViewport, g.PlatformImePos);
         g.PlatformImeLastPos = g.PlatformImePos;
@@ -3857,6 +3863,7 @@ void ImGui::EndFrame()
     for (int i = 0; i < g.Viewports.Size; i++)
     {
         ImGuiViewportP* viewport = g.Viewports[i];
+        viewport->LastPos = viewport->Pos;
         if (viewport->LastFrameActive < g.FrameCount || viewport->Size.x <= 0.0f || viewport->Size.y <= 0.0f)
             continue;
         if (viewport->Window && !IsWindowActiveAndVisible(viewport->Window))
@@ -5366,13 +5373,29 @@ bool ImGui::Begin(const char* name, bool* p_open, ImGuiWindowFlags flags)
             // Window background
             if (!(flags & ImGuiWindowFlags_NoBackground))
             {
+                bool is_docking_transparent_payload = false;
+                if (g.DragDropActive && (g.FrameCount - g.DragDropAcceptFrameCount) <= 1 && g.IO.ConfigDockingTransparentPayload)
+                    if (g.DragDropPayload.IsDataType(IMGUI_PAYLOAD_TYPE_WINDOW) && *(ImGuiWindow**)g.DragDropPayload.Data == window)
+                        is_docking_transparent_payload = true;
+
                 ImU32 bg_col = GetColorU32(GetWindowBgColorIdxFromFlags(flags));
-                if (g.NextWindowData.BgAlphaCond != 0)
-                    bg_col = (bg_col & ~IM_COL32_A_MASK) | (IM_F32_TO_INT8_SAT(g.NextWindowData.BgAlphaVal) << IM_COL32_A_SHIFT);
                 if (window->ViewportOwned)
                 {
-                    //window->Viewport->Alpha = ((bg_col & IM_COL32_A_MASK) >> IM_COL32_A_SHIFT) / 255.0f;
+                    // No alpha
                     bg_col = (bg_col | IM_COL32_A_MASK);
+                    if (is_docking_transparent_payload)
+                        window->Viewport->Alpha *= DOCKING_TRANSPARENT_PAYLOAD_ALPHA;
+                }
+                else
+                {
+                    // Adjust alpha. For docking
+                    float alpha = 1.0f;
+                    if (g.NextWindowData.BgAlphaCond != 0)
+                        alpha = g.NextWindowData.BgAlphaVal;
+                    if (is_docking_transparent_payload)
+                        alpha *= DOCKING_TRANSPARENT_PAYLOAD_ALPHA;
+                    if (alpha != 1.0f)
+                        bg_col = (bg_col & ~IM_COL32_A_MASK) | (IM_F32_TO_INT8_SAT(alpha) << IM_COL32_A_SHIFT);
                 }
                 window->DrawList->AddRectFilled(window->Pos + ImVec2(0, window->TitleBarHeight()), window->Pos + window->Size, bg_col, window_rounding, (flags & ImGuiWindowFlags_NoTitleBar) ? ImDrawCornerFlags_All : ImDrawCornerFlags_Bot);
             }
@@ -5395,6 +5418,21 @@ bool ImGui::Begin(const char* name, bool* p_open, ImGuiWindowFlags flags)
                 window->DrawList->AddRectFilled(menu_bar_rect.Min, menu_bar_rect.Max, GetColorU32(ImGuiCol_MenuBarBg), (flags & ImGuiWindowFlags_NoTitleBar) ? window_rounding : 0.0f, ImDrawCornerFlags_Top);
                 if (style.FrameBorderSize > 0.0f && menu_bar_rect.Max.y < window->Pos.y + window->Size.y)
                     window->DrawList->AddLine(menu_bar_rect.GetBL(), menu_bar_rect.GetBR(), GetColorU32(ImGuiCol_Border), style.FrameBorderSize);
+            }
+
+            // Docking: Unhide tab bar
+            if (window->DockNode && window->DockNode->IsHiddenTabBar)
+            {
+                float unhide_sz_draw = ImFloor(g.FontSize * 0.70f);
+                float unhide_sz_hit = ImFloor(g.FontSize * 0.55f);
+                ImVec2 p = window->DockNode->Pos;
+                ImRect r(p, p + ImVec2(unhide_sz_hit, unhide_sz_hit));
+                bool hovered, held;
+                if (ButtonBehavior(r, window->GetID("#UNHIDE"), &hovered, &held, ImGuiButtonFlags_FlattenChildren))
+                    window->DockNode->WantHiddenTabBarToggle = true;
+                // FIXME-DOCK: Ideally we'd use ImGuiCol_TitleBgActive/ImGuiCol_TitleBg here, but neither is guaranteed to be visible enough at this sort of size..
+                ImU32 col = GetColorU32(((held && hovered) || (window->DockNode->IsFocused && !hovered)) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+                window->DrawList->AddTriangleFilled(p, p + ImVec2(unhide_sz_draw, 0.0f), p + ImVec2(0.0f, unhide_sz_draw), col);
             }
 
             // Scrollbars
@@ -7396,7 +7434,7 @@ static bool ImGui::GetWindowAlwaysWantOwnViewport(ImGuiWindow* window)
 {
     // Tooltips and menus are not automatically forced into their own viewport when the NoMerge flag is set, however the multiplication of viewports makes them more likely to protude and create their own.
     ImGuiContext& g = *GImGui;
-    if ((g.IO.ConfigFlags & ImGuiConfigFlags_ViewportsNoMerge) && (g.IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
+    if ((g.IO.ConfigFlags & ImGuiConfigFlags_ViewportsNoMerge) && (g.ConfigFlagsForFrame & ImGuiConfigFlags_ViewportsEnable))
         if (!window->DockIsActive)
             if ((window->Flags & (ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_ChildMenu | ImGuiWindowFlags_Tooltip)) == 0)
                 return true;
@@ -7406,12 +7444,22 @@ static bool ImGui::GetWindowAlwaysWantOwnViewport(ImGuiWindow* window)
 static bool ImGui::UpdateTryMergeWindowIntoHostViewport(ImGuiWindow* window, ImGuiViewportP* viewport)
 {
     ImGuiContext& g = *GImGui;
-    if (!(viewport->Flags & ImGuiViewportFlags_CanHostOtherWindows) || window->Viewport == viewport)
+    if (!(viewport->Flags & ImGuiViewportFlags_CanHostOtherWindows) || window->Viewport == viewport || viewport->PlatformWindowMinimized)
         return false;
     if (!viewport->GetRect().Contains(window->Rect()))
         return false;
     if (GetWindowAlwaysWantOwnViewport(window))
         return false;
+
+    for (int n = 0; n < g.Windows.Size; n++)
+    {
+        ImGuiWindow* window_behind = g.Windows[n];
+        if (window_behind == window)
+            break;
+        if (window_behind->WasActive && window_behind->ViewportOwned && !(window_behind->Flags & ImGuiWindowFlags_ChildWindow))
+            if (window_behind->Viewport->GetRect().Overlaps(window->Rect()))
+                return false;
+    }
 
     // Move to the existing viewport, Move child/hosted windows as well (FIXME-OPT: iterate child)
     ImGuiViewportP* old_viewport = window->Viewport;
@@ -7451,7 +7499,7 @@ static ImGuiViewportP* FindViewportHoveredFromPlatformWindowStack(const ImVec2 m
     for (int n = 0; n < g.Viewports.Size; n++)
     {
         ImGuiViewportP* viewport = g.Viewports[n];
-        if (!(viewport->Flags & ImGuiViewportFlags_NoInputs) && viewport->GetRect().Contains(mouse_platform_pos))
+        if (!(viewport->Flags & ImGuiViewportFlags_NoInputs) && !viewport->PlatformWindowMinimized && viewport->GetRect().Contains(mouse_platform_pos))
             if (best_candidate == NULL || best_candidate->LastFrontMostStampCount < viewport->LastFrontMostStampCount)
                 best_candidate = viewport;
     }
@@ -7469,7 +7517,7 @@ static void ImGui::UpdateViewports()
     IM_ASSERT(main_viewport->ID == IMGUI_VIEWPORT_DEFAULT_ID);
     IM_ASSERT(main_viewport->Window == NULL);
     ImVec2 main_viewport_platform_pos = ImVec2(0.0f, 0.0f);
-    if ((g.IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
+    if ((g.ConfigFlagsForFrame & ImGuiConfigFlags_ViewportsEnable))
         main_viewport_platform_pos = g.PlatformIO.Platform_GetWindowPos(main_viewport);
     AddUpdateViewport(NULL, IMGUI_VIEWPORT_DEFAULT_ID, main_viewport_platform_pos, g.IO.DisplaySize, ImGuiViewportFlags_CanHostOtherWindows);
 
@@ -7486,7 +7534,10 @@ static void ImGui::UpdateViewports()
             // Clear references to this viewport in windows (window->ViewportId becomes the master data)
             for (int window_n = 0; window_n < g.Windows.Size; window_n++)
                 if (g.Windows[window_n]->Viewport == viewport)
+                {
                     g.Windows[window_n]->Viewport = NULL;
+                    g.Windows[window_n]->ViewportOwned = false;
+                }
             if (viewport == g.MouseLastHoveredViewport) 
                 g.MouseLastHoveredViewport = NULL;
             g.Viewports.erase(g.Viewports.Data + n);
@@ -7500,25 +7551,36 @@ static void ImGui::UpdateViewports()
             continue;
         }
 
-        if ((g.IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
+        const bool platform_funcs_available = (n == 0 || viewport->PlatformWindowCreated);
+        if ((g.ConfigFlagsForFrame & ImGuiConfigFlags_ViewportsEnable))
         {
-            // Apply Position and Size (from Platform Window to ImGui) if requested. 
-            // We do it early in the frame instead of waiting for UpdatePlatformWindows() to avoid a frame of lag when moving/resizing using OS facilities.
-            if (viewport->PlatformRequestMove)
-                viewport->Pos = g.PlatformIO.Platform_GetWindowPos(viewport);
-            if (viewport->PlatformRequestResize)
-                viewport->Size = g.PlatformIO.Platform_GetWindowSize(viewport);
+            if (g.PlatformIO.Platform_GetWindowMinimized && platform_funcs_available)
+                viewport->PlatformWindowMinimized = g.PlatformIO.Platform_GetWindowMinimized(viewport);
 
-            // Translate imgui windows when a Host Viewport has been moved
-            ImVec2 delta = viewport->Pos - viewport->LastPos;
-            if ((viewport->Flags & ImGuiViewportFlags_CanHostOtherWindows) && (delta.x != 0.0f || delta.y != 0.0f))
-                for (int window_n = 0; window_n < g.Windows.Size; window_n++)
-                    if (g.Windows[window_n]->Viewport == viewport)
-                        TranslateWindow(g.Windows[window_n], delta);
+            // Update Position and Size (from Platform Window to ImGui) if requested. 
+            // We do it early in the frame instead of waiting for UpdatePlatformWindows() to avoid a frame of lag when moving/resizing using OS facilities.
+            if (!viewport->PlatformWindowMinimized && platform_funcs_available)
+            {
+                if (viewport->PlatformRequestMove)
+                    viewport->Pos = viewport->LastPlatformPos = g.PlatformIO.Platform_GetWindowPos(viewport);
+                if (viewport->PlatformRequestResize)
+                    viewport->Size = viewport->LastPlatformSize = g.PlatformIO.Platform_GetWindowSize(viewport);
+            }
 
             // Update monitor (we'll use this info to clamp windows and save windows lost in a removed monitor)
             viewport->PlatformMonitor = FindPlatformMonitorForRect(viewport->GetRect());
         }
+
+        // Reset alpha every frame. Users of transparency (docking) needs to request a lower alpha back.
+        viewport->Alpha = 1.0f;
+
+        // Translate imgui windows when a Host Viewport has been moved
+        // (This additionally keeps windows at the same place when ImGuiConfigFlags_ViewportsEnable is toggled!)
+        ImVec2 viewport_delta = viewport->Pos - viewport->LastPos;
+        if ((viewport->Flags & ImGuiViewportFlags_CanHostOtherWindows) && (viewport_delta.x != 0.0f || viewport_delta.y != 0.0f))
+            for (int window_n = 0; window_n < g.Windows.Size; window_n++)
+                if (g.Windows[window_n]->Viewport == viewport || (g.ConfigFlagsForFrame & ImGuiConfigFlags_ViewportsEnable) == 0)
+                    TranslateWindow(g.Windows[window_n], viewport_delta);
 
         // Update DPI scale
         float new_dpi_scale;
@@ -7543,7 +7605,7 @@ static void ImGui::UpdateViewports()
         viewport->DpiScale = new_dpi_scale;
     }
 
-    if (!(g.IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
+    if (!(g.ConfigFlagsForFrame & ImGuiConfigFlags_ViewportsEnable))
     {
         g.MouseViewport = main_viewport;
         return;
@@ -7588,14 +7650,14 @@ static void ImGui::UpdateViewports()
     const bool is_mouse_dragging_with_an_expected_destination = g.DragDropActive;
     if (is_mouse_dragging_with_an_expected_destination && viewport_hovered == NULL)
         viewport_hovered = g.MouseLastHoveredViewport;
-    if (is_mouse_dragging_with_an_expected_destination || g.ActiveId == 0 || !ImGui::IsAnyMouseDown())
+    if (is_mouse_dragging_with_an_expected_destination || g.ActiveId == 0 || !IsAnyMouseDown())
         if (viewport_hovered != NULL && viewport_hovered != g.MouseViewport && !(viewport_hovered->Flags & ImGuiViewportFlags_NoInputs))
             g.MouseViewport = viewport_hovered;
 
     IM_ASSERT(g.MouseViewport != NULL);
 }
 
-// FIXME: We should ideally refactor the system to call this everyframe (we currently don't)
+// FIXME: We should ideally refactor the system to call this every frame (we currently don't)
 ImGuiViewportP* ImGui::AddUpdateViewport(ImGuiWindow* window, ImGuiID id, const ImVec2& pos, const ImVec2& size, ImGuiViewportFlags flags)
 {
     ImGuiContext& g = *GImGui;
@@ -7660,15 +7722,16 @@ static void ImGui::UpdateSelectWindowViewport(ImGuiWindow* window)
 
     // Restore main viewport if multi-viewport is not supported by the back-end
     ImGuiViewportP* main_viewport = g.Viewports[0];
-    if (!(g.IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
+    if (!(g.ConfigFlagsForFrame & ImGuiConfigFlags_ViewportsEnable))
     {
         SetWindowViewport(window, main_viewport);
         return;
     }
 
     // Merge into host viewport
+    bool try_to_merge_into_host_viewport = false;
     if (window->ViewportOwned && g.ActiveId == 0)
-        UpdateTryMergeWindowIntoHostViewport(window, g.Viewports[0]);
+        try_to_merge_into_host_viewport = true;
     window->ViewportOwned = false;
 
     // Appearing popups reset their viewport so they can inherit again
@@ -7699,7 +7762,7 @@ static void ImGui::UpdateSelectWindowViewport(ImGuiWindow* window)
         window->Viewport = FindViewportByID(g.NextWindowData.ViewportId);
         window->ViewportId = g.NextWindowData.ViewportId; // Store ID even if Viewport isn't resolved yet.
     }
-    else if ((flags & ImGuiWindowFlags_ChildWindow) && !(flags & ImGuiWindowFlags_ChildMenu))
+    else if ((flags & ImGuiWindowFlags_ChildWindow) || (flags & ImGuiWindowFlags_ChildMenu))
     {
         // Always inherit viewport from parent window
         window->Viewport = window->ParentWindow->Viewport;
@@ -7717,17 +7780,27 @@ static void ImGui::UpdateSelectWindowViewport(ImGuiWindow* window)
         if (window->Viewport != NULL && window->Viewport->Window == window)
             window->Viewport = AddUpdateViewport(window, window->ID, window->Pos, window->Size, ImGuiViewportFlags_None);
     }
+    else
+    {
+        if (try_to_merge_into_host_viewport)
+            UpdateTryMergeWindowIntoHostViewport(window, g.Viewports[0]);
+    }
+
+    // Fallback to default viewport
+    if (window->Viewport == NULL)
+        window->Viewport = main_viewport;
 
     // Mark window as allowed to protrude outside of its viewport and into the current monitor
-    // We need to take account of the possibility that mouse may become invalid.
     if (flags & (ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_Popup))
     {
+        // We need to take account of the possibility that mouse may become invalid.
+        // Popups/Tooltip always set ViewportAllowPlatformMonitorExtend so GetWindowAllowedExtentRect() will return full monitor bounds.
         ImVec2 mouse_ref = (flags & ImGuiWindowFlags_Tooltip) ? g.IO.MousePos : g.CurrentPopupStack.back().OpenMousePos;
         bool use_mouse_ref = (g.NavDisableHighlight || !g.NavDisableMouseHover || !g.NavWindow);
         bool mouse_valid = IsMousePosValid(&mouse_ref);
         if ((window->Appearing || (flags & ImGuiWindowFlags_Tooltip)) && (!use_mouse_ref || mouse_valid))
             window->ViewportAllowPlatformMonitorExtend = FindPlatformMonitorForPos((use_mouse_ref && mouse_valid) ? mouse_ref : NavCalcPreferredRefPos());
-        else
+        else 
             window->ViewportAllowPlatformMonitorExtend = window->Viewport->PlatformMonitor;
     }
     else if (window->Viewport && window != window->Viewport->Window && window->Viewport->Window && !(flags & ImGuiWindowFlags_ChildWindow))
@@ -7749,11 +7822,9 @@ static void ImGui::UpdateSelectWindowViewport(ImGuiWindow* window)
         }
     }
 
-    // Fallback to default viewport
-    if (window->Viewport == NULL)
-        window->Viewport = main_viewport;
-
-    if (window->ViewportAllowPlatformMonitorExtend < 0)
+    // Regular (non-child, non-popup) windows by default are also allowed to protrude
+    // Child windows are kept contained within their parent.
+    else if (window->ViewportAllowPlatformMonitorExtend < 0 && (flags & ImGuiWindowFlags_ChildWindow) == 0)
         window->ViewportAllowPlatformMonitorExtend = window->Viewport->PlatformMonitor;
 
     // Update flags
@@ -7773,8 +7844,7 @@ void ImGui::UpdatePlatformWindows()
     IM_ASSERT(g.FrameCountEnded == g.FrameCount && "Forgot to call Render() or EndFrame() before UpdatePlatformWindows()?");
     IM_ASSERT(g.FrameCountPlatformEnded < g.FrameCount);
     g.FrameCountPlatformEnded = g.FrameCount;
-    g.Viewports[0]->LastPos = g.Viewports[0]->Pos;
-    if (!(g.IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
+    if (!(g.ConfigFlagsForFrame & ImGuiConfigFlags_ViewportsEnable))
         return;
 
     // Create/resize/destroy platform windows to match each active viewport.
@@ -7782,7 +7852,6 @@ void ImGui::UpdatePlatformWindows()
     for (int i = 1; i < g.Viewports.Size; i++)
     {
         ImGuiViewportP* viewport = g.Viewports[i];
-        viewport->LastPos = viewport->Pos;
 
         // Destroy platform window if the viewport hasn't been submitted or if it is hosting a hidden window (the implicit Debug window will be registered its viewport then be disabled)
         bool destroy_platform_window = false;
@@ -7814,7 +7883,7 @@ void ImGui::UpdatePlatformWindows()
         }
 
         // Create window
-        bool is_new_window = (viewport->CreatedPlatformWindow == false);
+        bool is_new_window = (viewport->PlatformWindowCreated == false);
         if (is_new_window)
         {
             //IMGUI_DEBUG_LOG("Create Platform Window %08X (%s)\n", viewport->ID, viewport->Window ? viewport->Window->Name : "n/a");
@@ -7822,18 +7891,20 @@ void ImGui::UpdatePlatformWindows()
             if (g.PlatformIO.Renderer_CreateWindow != NULL)
                 g.PlatformIO.Renderer_CreateWindow(viewport);
             viewport->LastNameHash = 0;
-            viewport->RendererLastSize = viewport->Size;
-            viewport->CreatedPlatformWindow = true;
+            viewport->LastPlatformPos = viewport->LastPlatformSize = ImVec2(FLT_MAX, FLT_MAX); // By clearing those we'll enforce a call to Platform_SetWindowPos/Platform_SetWindowSize before Platform_ShowWindow
+            viewport->LastRendererSize = viewport->Size;
+            viewport->PlatformWindowCreated = true;
         }
 
         // Apply Position and Size (from ImGui to Platform/Renderer back-ends)
-        if (!viewport->PlatformRequestMove)
+        if ((viewport->LastPlatformPos.x != viewport->Pos.x || viewport->LastPlatformPos.y != viewport->Pos.y) && !viewport->PlatformRequestMove)
             g.PlatformIO.Platform_SetWindowPos(viewport, viewport->Pos);
-        if (!viewport->PlatformRequestResize)
+        if ((viewport->LastPlatformSize.x != viewport->Size.x || viewport->LastPlatformSize.y != viewport->Size.y) && !viewport->PlatformRequestResize)
             g.PlatformIO.Platform_SetWindowSize(viewport, viewport->Size);
-        if (g.PlatformIO.Renderer_SetWindowSize && (viewport->RendererLastSize.x != viewport->Size.x || viewport->RendererLastSize.y != viewport->Size.y))
+        if ((viewport->LastRendererSize.x != viewport->Size.x || viewport->LastRendererSize.y != viewport->Size.y) && g.PlatformIO.Renderer_SetWindowSize)
             g.PlatformIO.Renderer_SetWindowSize(viewport, viewport->Size);
-        viewport->RendererLastSize = viewport->Size;
+        viewport->LastPlatformPos = viewport->Pos;
+        viewport->LastPlatformSize = viewport->LastRendererSize = viewport->Size;
 
         // Update title bar (if it changed)
         if (ImGuiWindow* window_for_title = GetWindowForTitleDisplay(viewport->Window))
@@ -7873,13 +7944,17 @@ void ImGui::UpdatePlatformWindows()
     }
 
     // Update our implicit z-order knowledge of platform windows, which is used when the back-end cannot provide io.MouseHoveredViewport.
+    // When setting Platform_GetWindowFocus, it is expected that the platform back-end can handle calls without crashing if it doesn't have data stored. 
     if (g.PlatformIO.Platform_GetWindowFocus != NULL)
     {
         ImGuiViewportP* focused_viewport = NULL;
-        for (int i = 0; i < g.Viewports.Size && focused_viewport == NULL; i++)
-            if (g.Viewports[i]->PlatformUserData != NULL || g.Viewports[i]->PlatformHandle != NULL || g.Viewports[i]->CreatedPlatformWindow)
-                if (g.PlatformIO.Platform_GetWindowFocus(g.Viewports[i]))
-                    focused_viewport = g.Viewports[i];
+        for (int n = 0; n < g.Viewports.Size && focused_viewport == NULL; n++)
+        {
+            ImGuiViewportP* viewport = g.Viewports[n];
+            if (n == 0 || viewport->PlatformWindowCreated)
+                if (g.PlatformIO.Platform_GetWindowFocus(viewport))
+                    focused_viewport = viewport;
+        }
         if (focused_viewport && g.PlatformLastFocusedViewport != focused_viewport->ID)
         {
             if (focused_viewport->LastFrontMostStampCount != g.WindowsFrontMostStampCount)
@@ -7960,28 +8035,29 @@ void ImGui::RenderPlatformWindowsDefault(void* platform_render_arg, void* render
 void ImGui::DestroyPlatformWindow(ImGuiViewportP* viewport)
 {
     ImGuiContext& g = *GImGui;
-    if (viewport->CreatedPlatformWindow && g.PlatformIO.Renderer_DestroyWindow)
+    if (g.PlatformIO.Renderer_DestroyWindow)
         g.PlatformIO.Renderer_DestroyWindow(viewport);
-    if (viewport->CreatedPlatformWindow && g.PlatformIO.Platform_DestroyWindow)
+    if (g.PlatformIO.Platform_DestroyWindow)
         g.PlatformIO.Platform_DestroyWindow(viewport);
     IM_ASSERT(viewport->RendererUserData == NULL);
     IM_ASSERT(viewport->PlatformUserData == NULL);
     viewport->PlatformHandle = NULL;
     viewport->RendererUserData = viewport->PlatformHandle = NULL;
-    viewport->CreatedPlatformWindow = false;
+    viewport->PlatformWindowCreated = false;
+    viewport->PlatformRequestClose = viewport->PlatformRequestMove = viewport->PlatformRequestResize = false;
 }
 
 void ImGui::DestroyPlatformWindows()
 {
-    // We call the destroy window on the main viewport (index 0) to give a chance to the back-end to clear any data 
-    // have stored in e.g. PlatformUserData, RendererUserData. It can be convenient for the platform back-end code to
-    // store something in the main viewport, in order for e.g. the mouse handling code to work in a more generic manner.
+    // We call the destroy window on every viewport (including the main viewport, index 0) to give a chance to the back-end 
+    // to clear any data they may have stored in e.g. PlatformUserData, RendererUserData. 
+    // It is convenient for the platform back-end code to store something in the main viewport, in order for e.g. the mouse handling 
+    // code to operator a consistent manner.
     // It is expected that the back-end can handle calls to Renderer_DestroyWindow/Platform_DestroyWindow without
     // crashing if it doesn't have data stored. 
     ImGuiContext& g = *GImGui;
     for (int i = 0; i < g.Viewports.Size; i++)
-        if (g.Viewports[i]->CreatedPlatformWindow)
-            DestroyPlatformWindow(g.Viewports[i]);
+        DestroyPlatformWindow(g.Viewports[i]);
 }
 
 //-----------------------------------------------------------------------------
@@ -9709,10 +9785,11 @@ struct ImGuiDockNodeSettings
     char            Depth;
     char            IsDockSpace;
     char            IsCentralNode;
+    char            IsHiddenTabBar;
     ImVec2ih        Pos;
     ImVec2ih        Size;
     ImVec2ih        SizeRef;
-    ImGuiDockNodeSettings() { ID = ParentID = SelectedTabID = 0; SplitAxis = ImGuiAxis_None; Depth = 0; IsDockSpace = IsCentralNode = 0; }
+    ImGuiDockNodeSettings() { ID = ParentID = SelectedTabID = 0; SplitAxis = ImGuiAxis_None; Depth = 0; IsDockSpace = IsCentralNode = IsHiddenTabBar = 0; }
 };
 
 struct ImGuiDockContext
@@ -10057,6 +10134,7 @@ static void ImGui::DockContextBuildNodesFromSettings(ImGuiContext* ctx, ImGuiDoc
         node->SplitAxis = node_settings->SplitAxis;
         node->IsDockSpace = node_settings->IsDockSpace != 0;
         node->IsCentralNode = node_settings->IsCentralNode != 0;
+        node->IsHiddenTabBar = node_settings->IsHiddenTabBar != 0;
 
         // Bind host window immediately if it already exist (in case of a rebuild)
         // This is useful as the RootWindowForTitleBarHighlight links necessary to highlight the currently focused node requires node->HostWindow to be set.
@@ -10184,10 +10262,12 @@ void ImGui::DockContextProcessDock(ImGuiContext* ctx, ImGuiDockRequest* req)
         if (target_node)
         {
             inheritor_node->IsCentralNode = target_node->IsCentralNode;
+            inheritor_node->IsHiddenTabBar = target_node->IsHiddenTabBar;
             target_node->IsCentralNode = false;
         }
         target_node = new_node;
     }
+    target_node->IsHiddenTabBar = false;
 
     if (target_node != payload_node)
     {
@@ -10301,14 +10381,15 @@ ImGuiDockNode::ImGuiDockNode(ImGuiID id)
     SplitAxis = ImGuiAxis_None;
 
     HostWindow = VisibleWindow = NULL;
-    OnlyNodeWithWindows = NULL;
-    LastFrameAlive = LastFrameActive = -1;
+    CentralNode = OnlyNodeWithWindows = NULL;
+    LastFrameAlive = LastFrameActive = LastFrameFocused = -1;
     LastFocusedNodeID = 0;
     SelectedTabID = 0;
     WantCloseTabID = 0;
     InitFromFirstWindowPosSize = InitFromFirstWindowViewport = false;
     IsVisible = true;
-    IsDockSpace = IsCentralNode = HasCloseButton = HasCollapseButton = WantCloseAll = WantLockSizeOnce = WantMouseMove = false;
+    IsFocused = IsDockSpace = IsCentralNode = IsHiddenTabBar = HasCloseButton = HasCollapseButton = false;
+    WantCloseAll = WantLockSizeOnce = WantMouseMove = WantHiddenTabBarToggle = false;
 }
 
 ImGuiDockNode::~ImGuiDockNode()
@@ -10515,10 +10596,10 @@ static void ImGui::DockNodeHideHostWindow(ImGuiDockNode* node)
 
 struct ImGuiDockNodeUpdateScanResults
 {
-    ImGuiDockNode*  CentralNode;
-    ImGuiDockNode*  FirstNodeWithWindows;
-    int             CountNodesWithWindows;
-    ImGuiDockFamily DockFamilyForMerges;
+    ImGuiDockNode*      CentralNode;
+    ImGuiDockNode*      FirstNodeWithWindows;
+    int                 CountNodesWithWindows;
+    //ImGuiDockFamily   DockFamilyForMerges;
 
     ImGuiDockNodeUpdateScanResults() { CentralNode = FirstNodeWithWindows = NULL; CountNodesWithWindows = 0; }
 };
@@ -10544,6 +10625,8 @@ static void DockNodeUpdateScanRec(ImGuiDockNode* node, ImGuiDockNodeUpdateScanRe
         DockNodeUpdateScanRec(node->ChildNodes[1], results);
 }
 
+// - Remove inactive windows/nodes.
+// - Update visibility flag.
 static void ImGui::DockNodeUpdateVisibleFlagAndInactiveChilds(ImGuiDockNode* node)
 {
     ImGuiContext& g = *GImGui;
@@ -10587,6 +10670,13 @@ static void ImGui::DockNodeUpdateVisibleFlagAndInactiveChilds(ImGuiDockNode* nod
         window_n--;
     }
 
+    // Apply toggles at a single point of the frame (here!)
+    if (node->Windows.Size > 1)
+        node->IsHiddenTabBar = false;
+    else if (node->WantHiddenTabBarToggle)
+        node->IsHiddenTabBar ^= 1;
+    node->WantHiddenTabBarToggle = false;
+
     DockNodeUpdateVisibleFlag(node);
 }
 
@@ -10617,18 +10707,20 @@ static void ImGui::DockNodeUpdate(ImGuiDockNode* node)
     IM_ASSERT(node->LastFrameActive != g.FrameCount);
     node->LastFrameAlive = g.FrameCount;
 
-    ImGuiDockNode* central_node = NULL;
+    node->CentralNode = node->OnlyNodeWithWindows = NULL;
     if (node->IsRootNode())
     {
         DockNodeUpdateVisibleFlagAndInactiveChilds(node);
 
-        // Find if there's only a single visible window in the hierarchy (in which case we need to display a regular title bar -> FIXME-DOCK: that last part is not done yet!)
+        // FIXME-DOCK: Merge this scan into the one above.
+        // - Setup central node pointers
+        // - Find if there's only a single visible window in the hierarchy (in which case we need to display a regular title bar -> FIXME-DOCK: that last part is not done yet!)
         ImGuiDockNodeUpdateScanResults results;
         DockNodeUpdateScanRec(node, &results);
-        node->OnlyNodeWithWindows = (results.CountNodesWithWindows == 1 ? results.FirstNodeWithWindows : NULL);
+        node->CentralNode = results.CentralNode;
+        node->OnlyNodeWithWindows = (results.CountNodesWithWindows == 1) ? results.FirstNodeWithWindows : NULL;
         if (node->LastFocusedNodeID == 0 && results.FirstNodeWithWindows != NULL)
             node->LastFocusedNodeID = results.FirstNodeWithWindows->ID;
-        central_node = results.CentralNode;
 
         // Copy the dock family from of our window so it can be used for proper dock filtering.
         // When node has mixed windows, prioritize the family with the most constraint (CompatibleWithNeutral = false) as the reference to copy.
@@ -10699,7 +10791,7 @@ static void ImGui::DockNodeUpdate(ImGuiDockNode* node)
         node->HasCollapseButton = (node->Windows.Size > 0);
         for (int window_n = 0; window_n < node->Windows.Size; window_n++)
         {
-            // FIXME: Setting DockIsActive here means that for single active window in a leaf node, DockIsActive will be cleared until the next Begin() call.
+            // FIXME-DOCK: Setting DockIsActive here means that for single active window in a leaf node, DockIsActive will be cleared until the next Begin() call.
             ImGuiWindow* window = node->Windows[window_n];
             window->DockIsActive = (node->Windows.Size > 1);
             node->HasCloseButton |= window->HasCloseButton;
@@ -10768,7 +10860,8 @@ static void ImGui::DockNodeUpdate(ImGuiDockNode* node)
     }
 
     // Register a hit-test hole in the window unless we are currently dragging a window that is compatible with our dockspace
-    bool central_node_hole = node->IsRootNode() && host_window && (node->Flags & ImGuiDockNodeFlags_PassthruDockspace) != 0 && central_node != NULL && central_node->IsEmpty();
+    const ImGuiDockNode* central_node = node->CentralNode;
+    const bool central_node_hole = node->IsRootNode() && host_window && (node->Flags & ImGuiDockNodeFlags_PassthruDockspace) != 0 && central_node != NULL && central_node->IsEmpty();
     bool central_node_hole_register_hit_test_hole = central_node_hole;
     if (central_node_hole)
         if (const ImGuiPayload* payload = ImGui::GetDragDropPayload())
@@ -10820,6 +10913,7 @@ static void ImGui::DockNodeUpdate(ImGuiDockNode* node)
     {
         node->WantCloseAll = false;
         node->WantCloseTabID = 0;
+        node->IsFocused = false;
         if (node->Windows.Size > 0)
             node->SelectedTabID = node->Windows[0]->ID;
     }
@@ -10866,6 +10960,33 @@ static void ImGui::DockNodeUpdateTabBar(ImGuiDockNode* node, ImGuiWindow* host_w
     node->WantCloseAll = false;
     node->WantCloseTabID = 0;
 
+    // Decide if we should use a focused title bar color
+    bool is_focused = false;
+    ImGuiDockNode* root_node = DockNodeGetRootNode(node);
+    if (g.NavWindowingTarget)
+        is_focused = (g.NavWindowingTarget->DockNode == node);
+    else if (g.NavWindow && g.NavWindow->RootWindowForTitleBarHighlight == host_window->RootWindow && root_node->LastFocusedNodeID == node->ID)
+        is_focused = true;
+
+    // Hidden tab bar will show a triangle on the upper-left (in Begin)
+    if (node->IsHiddenTabBar)
+    {
+        node->VisibleWindow = (node->Windows.Size > 0) ? node->Windows[0] : NULL;
+        node->IsFocused = is_focused;
+        if (is_focused)
+            node->LastFrameFocused = g.FrameCount;
+
+        // Notify root of visible window (used to display title in OS task bar)
+        if (node->VisibleWindow)
+        {
+            if (is_focused || root_node->VisibleWindow == NULL)
+                root_node->VisibleWindow = node->VisibleWindow;
+            if (node->TabBar)
+                node->TabBar->VisibleTabId = node->VisibleWindow->ID;
+        }
+        return;
+    }
+
     // Move ourselves to the Menu layer (so we can be accessed by tapping Alt) + undo SkipItems flag in order to draw over the title bar even if the window is collapsed
     bool backup_skip_item = host_window->SkipItems;
     if (!node->IsDockSpace)
@@ -10881,14 +11002,6 @@ static void ImGui::DockNodeUpdateTabBar(ImGuiDockNode* node, ImGuiWindow* host_w
     if (tab_bar == NULL)
         tab_bar = node->TabBar = IM_NEW(ImGuiTabBar)();
 
-    // Decide if we should use a focused title bar color
-    bool is_focused = false;
-    ImGuiDockNode* root_node = DockNodeGetRootNode(node);
-    if (g.NavWindowingTarget)
-        is_focused = (g.NavWindowingTarget->DockNode == node);
-    else if (g.NavWindow && g.NavWindow->RootWindowForTitleBarHighlight == host_window->RootWindow && root_node->LastFocusedNodeID == node->ID)
-        is_focused = true;
-
     // Collapse button changes shape and display a list
     if (IsPopupOpen("#TabListMenu"))
     {
@@ -10896,14 +11009,22 @@ static void ImGui::DockNodeUpdateTabBar(ImGuiDockNode* node, ImGuiWindow* host_w
         if (BeginPopup("#TabListMenu"))
         {
             is_focused = true;
-            for (int tab_n = 0; tab_n < tab_bar->Tabs.Size; tab_n++)
+            if (tab_bar->Tabs.Size == 1)
             {
-                ImGuiTabItem* tab = &tab_bar->Tabs[tab_n];
-                IM_ASSERT(tab->Window != NULL);
-                if (Selectable(tab->Window->Name, tab->ID == tab_bar->SelectedTabId))
-                    tab_bar->NextSelectedTabId = tab_bar->WantFocusTabId = tab->ID;
-                SameLine();
-                Text("   ");
+                if (MenuItem("Hide tab bar", NULL, node->IsHiddenTabBar))
+                    node->WantHiddenTabBarToggle = true;
+            }
+            else
+            {
+                for (int tab_n = 0; tab_n < tab_bar->Tabs.Size; tab_n++)
+                {
+                    ImGuiTabItem* tab = &tab_bar->Tabs[tab_n];
+                    IM_ASSERT(tab->Window != NULL);
+                    if (Selectable(tab->Window->Name, tab->ID == tab_bar->SelectedTabId))
+                        tab_bar->NextSelectedTabId = tab_bar->WantFocusTabId = tab->ID;
+                    SameLine();
+                    Text("   ");
+                }
             }
             EndPopup();
         }
@@ -10912,6 +11033,9 @@ static void ImGui::DockNodeUpdateTabBar(ImGuiDockNode* node, ImGuiWindow* host_w
     ImGuiID focus_tab_id = 0;
 
     // Title bar
+    node->IsFocused = is_focused;
+    if (is_focused)
+        node->LastFrameFocused = g.FrameCount;
     ImRect title_bar_rect = ImRect(node->Pos, node->Pos + ImVec2(node->Size.x, g.FontSize + style.FramePadding.y * 2.0f));
     ImU32 title_bar_col = GetColorU32(host_window->Collapsed ? ImGuiCol_TitleBgCollapsed : is_focused ? ImGuiCol_TitleBgActive : ImGuiCol_TitleBg);
     host_window->DrawList->AddRectFilled(title_bar_rect.Min, title_bar_rect.Max, title_bar_col, host_window->WindowRounding, ImDrawCornerFlags_Top);
@@ -11258,19 +11382,23 @@ static void ImGui::DockNodePreviewDockRender(ImGuiWindow* host_window, ImGuiDock
 {
     ImGuiContext& g = *GImGui;
 
+    // With this option, we only display the preview on the target viewport, and the payload viewport is made transparent.
+    // To compensate for the single layer obstructed by the payload, we'll increase the alpha of the preview nodes.
+    const bool is_transparent_payload = g.IO.ConfigDockingTransparentPayload;
+
     // In case the two windows involved are on different viewports, we will draw the overlay on each of them.
     int overlay_draw_lists_count = 0;
     ImDrawList* overlay_draw_lists[2];
     overlay_draw_lists[overlay_draw_lists_count++] = GetOverlayDrawList(host_window->Viewport);
-    if (host_window->Viewport != root_payload->Viewport)
+    if (host_window->Viewport != root_payload->Viewport && !is_transparent_payload)
         overlay_draw_lists[overlay_draw_lists_count++] = GetOverlayDrawList(root_payload->Viewport);
 
     // Draw main preview rectangle
     const ImU32 overlay_col_tabs = GetColorU32(ImGuiCol_TabActive);
-    const ImU32 overlay_col_main = GetColorU32(ImGuiCol_DockingPreview, 0.40f);
-    const ImU32 overlay_col_drop = GetColorU32(ImGuiCol_DockingPreview, 0.70f);
-    const ImU32 overlay_col_drop_hovered = GetColorU32(ImGuiCol_DockingPreview);
-    const ImU32 overlay_col_lines = GetColorU32(ImGuiCol_NavWindowingHighlight, 0.60f);
+    const ImU32 overlay_col_main = GetColorU32(ImGuiCol_DockingPreview, is_transparent_payload ? 0.60f : 0.40f);
+    const ImU32 overlay_col_drop = GetColorU32(ImGuiCol_DockingPreview, is_transparent_payload ? 0.90f : 0.70f);
+    const ImU32 overlay_col_drop_hovered = GetColorU32(ImGuiCol_DockingPreview, is_transparent_payload ? 1.20f : 1.00f);
+    const ImU32 overlay_col_lines = GetColorU32(ImGuiCol_NavWindowingHighlight, is_transparent_payload ? 0.80f : 0.60f);
 
     // Display area preview
     const bool can_preview_tabs = (root_payload->DockNodeAsHost == NULL || root_payload->DockNodeAsHost->Windows.Size > 0);
@@ -11291,9 +11419,16 @@ static void ImGui::DockNodePreviewDockRender(ImGuiWindow* host_window, ImGuiDock
         ImRect tab_bar_rect = DockNodeCalcTabBarRect(&data->FutureNode);
         ImVec2 tab_pos = tab_bar_rect.Min;
         if (host_node && host_node->TabBar)
-            tab_pos.x += host_node->TabBar->OffsetMax + g.Style.ItemInnerSpacing.x; // We don't use OffsetNewTab because when using non-persistent-order tab bar it is incremented with each Tab submission.
+        {
+            if (!host_node->IsHiddenTabBar)
+                tab_pos.x += host_node->TabBar->OffsetMax + g.Style.ItemInnerSpacing.x; // We don't use OffsetNewTab because when using non-persistent-order tab bar it is incremented with each Tab submission.
+            else
+                tab_pos.x += g.Style.ItemInnerSpacing.x + TabItemCalcSize(host_node->Windows[0]->Name, host_node->Windows[0]->HasCloseButton).x;
+        }
         else if (!(host_window->Flags & ImGuiWindowFlags_DockNodeHost))
+        {
             tab_pos.x += g.Style.ItemInnerSpacing.x + TabItemCalcSize(host_window->Name, host_window->HasCloseButton).x; // Account for slight offset which will be added when changing from title bar to tab bar
+        }
 
         // Draw tab shape/label preview (payload may be a loose window or a host window carrying multiple tabbed windows)
         if (root_payload->DockNodeAsHost)
@@ -11411,6 +11546,7 @@ void ImGui::DockNodeTreeMerge(ImGuiContext* ctx, ImGuiDockNode* parent_node, ImG
     parent_node->InitFromFirstWindowPosSize = parent_node->InitFromFirstWindowViewport = false;
     parent_node->VisibleWindow = merge_lead_child->VisibleWindow;
     parent_node->IsCentralNode = (child_0 && child_0->IsCentralNode) || (child_1 && child_1->IsCentralNode);
+    parent_node->IsHiddenTabBar = merge_lead_child->IsHiddenTabBar;
     parent_node->SizeRef = backup_last_explicit_size;
 
     if (child_0)
@@ -11526,82 +11662,90 @@ void ImGui::DockNodeTreeUpdateSplitter(ImGuiDockNode* node)
         bb.Max[axis ^ 1] += child_1->Size[axis ^ 1];
         //if (g.IO.KeyCtrl) GetOverlayDrawList(g.CurrentWindow->Viewport)->AddRect(bb.Min, bb.Max, IM_COL32(255,0,255,255));
 
-        //bb.Min[axis] += 1; // Display a little inward so highlight doesn't connect with nearby tabs on the neighbor node.
-        //bb.Max[axis] -= 1;
-        PushID(node->ID);
-
-        // Gather list of nodes that are touching the splitter line. Find resizing limits based on those nodes.
-        ImVector<ImGuiDockNode*> touching_nodes[2];
-        float min_size = g.Style.WindowMinSize[axis];
-        float resize_limits[2];
-        resize_limits[0] = node->ChildNodes[0]->Pos[axis] + min_size;
-        resize_limits[1] = node->ChildNodes[1]->Pos[axis] + node->ChildNodes[1]->Size[axis] - min_size;
-
-        ImGuiID splitter_id = GetID("##Splitter");
-        if (g.ActiveId == splitter_id)
+        if (node->Flags & ImGuiDockNodeFlags_NoResize)
         {
-            // Only process when splitter is active
-            DockNodeTreeUpdateSplitterFindTouchingNode(child_0, axis, 1, &touching_nodes[0]);
-            DockNodeTreeUpdateSplitterFindTouchingNode(child_1, axis, 0, &touching_nodes[1]);
-            for (int touching_node_n = 0; touching_node_n < touching_nodes[0].Size; touching_node_n++)
-                resize_limits[0] = ImMax(resize_limits[0], touching_nodes[0][touching_node_n]->Rect().Min[axis] + min_size);
-            for (int touching_node_n = 0; touching_node_n < touching_nodes[1].Size; touching_node_n++)
-                resize_limits[1] = ImMin(resize_limits[1], touching_nodes[1][touching_node_n]->Rect().Max[axis] - min_size);
-
-            /*
-            // [DEBUG] Render limits
-            ImDrawList* draw_list = node->HostWindow ? GetOverlayDrawList(node->HostWindow) : GetOverlayDrawList((ImGuiViewportP*)GetMainViewport());
-            for (int n = 0; n < 2; n++)
-            if (axis == ImGuiAxis_X)
-            draw_list->AddLine(ImVec2(resize_limits[n], node->ChildNodes[n]->Pos.y), ImVec2(resize_limits[n], node->ChildNodes[n]->Pos.y + node->ChildNodes[n]->Size.y), IM_COL32(255, 0, 255, 255), 3.0f);
-            else
-            draw_list->AddLine(ImVec2(node->ChildNodes[n]->Pos.x, resize_limits[n]), ImVec2(node->ChildNodes[n]->Pos.x + node->ChildNodes[n]->Size.x, resize_limits[n]), IM_COL32(255, 0, 255, 255), 3.0f);
-            */
+            ImGuiWindow* window = g.CurrentWindow;
+            window->DrawList->AddRectFilled(bb.Min, bb.Max, GetColorU32(ImGuiCol_Separator), g.Style.FrameRounding);
         }
-
-        // Use a short delay before highlighting the splitter (and changing the mouse cursor) in order for regular mouse movement to not highlight many splitters
-        float cur_size_0 = child_0->Size[axis];
-        float cur_size_1 = child_1->Size[axis];
-        float min_size_0 = resize_limits[0] - child_0->Pos[axis];
-        float min_size_1 = child_1->Pos[axis] + child_1->Size[axis] - resize_limits[1];
-        if (SplitterBehavior(bb, GetID("##Splitter"), axis, &cur_size_0, &cur_size_1, min_size_0, min_size_1, RESIZE_WINDOWS_FROM_EDGES_HALF_THICKNESS, RESIZE_WINDOWS_FROM_EDGES_FEEDBACK_TIMER))
+        else
         {
-            if (touching_nodes[0].Size > 0 && touching_nodes[1].Size > 0)
-            {
-                child_0->Size[axis] = child_0->SizeRef[axis] = cur_size_0;
-                child_1->Pos[axis] -= cur_size_1 - child_1->Size[axis];
-                child_1->Size[axis] = child_1->SizeRef[axis] = cur_size_1;
+            //bb.Min[axis] += 1; // Display a little inward so highlight doesn't connect with nearby tabs on the neighbor node.
+            //bb.Max[axis] -= 1;
+            PushID(node->ID);
 
-                // Lock the size of every node that is a sibling of the node we are touching
-                // This might be less desirable if we can merge sibling of a same axis into the same parental level.
+            // Gather list of nodes that are touching the splitter line. Find resizing limits based on those nodes.
+            ImVector<ImGuiDockNode*> touching_nodes[2];
+            float min_size = g.Style.WindowMinSize[axis];
+            float resize_limits[2];
+            resize_limits[0] = node->ChildNodes[0]->Pos[axis] + min_size;
+            resize_limits[1] = node->ChildNodes[1]->Pos[axis] + node->ChildNodes[1]->Size[axis] - min_size;
+
+            ImGuiID splitter_id = GetID("##Splitter");
+            if (g.ActiveId == splitter_id)
+            {
+                // Only process when splitter is active
+                DockNodeTreeUpdateSplitterFindTouchingNode(child_0, axis, 1, &touching_nodes[0]);
+                DockNodeTreeUpdateSplitterFindTouchingNode(child_1, axis, 0, &touching_nodes[1]);
+                for (int touching_node_n = 0; touching_node_n < touching_nodes[0].Size; touching_node_n++)
+                    resize_limits[0] = ImMax(resize_limits[0], touching_nodes[0][touching_node_n]->Rect().Min[axis] + min_size);
+                for (int touching_node_n = 0; touching_node_n < touching_nodes[1].Size; touching_node_n++)
+                    resize_limits[1] = ImMin(resize_limits[1], touching_nodes[1][touching_node_n]->Rect().Max[axis] - min_size);
+
+                /*
+                // [DEBUG] Render limits
+                ImDrawList* draw_list = node->HostWindow ? GetOverlayDrawList(node->HostWindow) : GetOverlayDrawList((ImGuiViewportP*)GetMainViewport());
+                for (int n = 0; n < 2; n++)
+                if (axis == ImGuiAxis_X)
+                draw_list->AddLine(ImVec2(resize_limits[n], node->ChildNodes[n]->Pos.y), ImVec2(resize_limits[n], node->ChildNodes[n]->Pos.y + node->ChildNodes[n]->Size.y), IM_COL32(255, 0, 255, 255), 3.0f);
+                else
+                draw_list->AddLine(ImVec2(node->ChildNodes[n]->Pos.x, resize_limits[n]), ImVec2(node->ChildNodes[n]->Pos.x + node->ChildNodes[n]->Size.x, resize_limits[n]), IM_COL32(255, 0, 255, 255), 3.0f);
+                */
+            }
+
+            // Use a short delay before highlighting the splitter (and changing the mouse cursor) in order for regular mouse movement to not highlight many splitters
+            float cur_size_0 = child_0->Size[axis];
+            float cur_size_1 = child_1->Size[axis];
+            float min_size_0 = resize_limits[0] - child_0->Pos[axis];
+            float min_size_1 = child_1->Pos[axis] + child_1->Size[axis] - resize_limits[1];
+            if (SplitterBehavior(bb, GetID("##Splitter"), axis, &cur_size_0, &cur_size_1, min_size_0, min_size_1, RESIZE_WINDOWS_FROM_EDGES_HALF_THICKNESS, RESIZE_WINDOWS_FROM_EDGES_FEEDBACK_TIMER))
+            {
+                if (touching_nodes[0].Size > 0 && touching_nodes[1].Size > 0)
+                {
+                    child_0->Size[axis] = child_0->SizeRef[axis] = cur_size_0;
+                    child_1->Pos[axis] -= cur_size_1 - child_1->Size[axis];
+                    child_1->Size[axis] = child_1->SizeRef[axis] = cur_size_1;
+
+                    // Lock the size of every node that is a sibling of the node we are touching
+                    // This might be less desirable if we can merge sibling of a same axis into the same parental level.
 #if 1
-                for (int side_n = 0; side_n < 2; side_n++)
-                    for (int touching_node_n = 0; touching_node_n < touching_nodes[side_n].Size; touching_node_n++)
-                    {
-                        ImGuiDockNode* touching_node = touching_nodes[side_n][touching_node_n];
-                        //ImDrawList* draw_list = node->HostWindow ? GetOverlayDrawList(node->HostWindow) : GetOverlayDrawList((ImGuiViewportP*)GetMainViewport());
-                        //draw_list->AddRect(touching_node->Pos, touching_node->Pos + touching_node->Size, IM_COL32(255, 128, 0, 255));
-                        while (touching_node->ParentNode != node)
+                    for (int side_n = 0; side_n < 2; side_n++)
+                        for (int touching_node_n = 0; touching_node_n < touching_nodes[side_n].Size; touching_node_n++)
                         {
-                            if (touching_node->ParentNode->SplitAxis == axis)
+                            ImGuiDockNode* touching_node = touching_nodes[side_n][touching_node_n];
+                            //ImDrawList* draw_list = node->HostWindow ? GetOverlayDrawList(node->HostWindow) : GetOverlayDrawList((ImGuiViewportP*)GetMainViewport());
+                            //draw_list->AddRect(touching_node->Pos, touching_node->Pos + touching_node->Size, IM_COL32(255, 128, 0, 255));
+                            while (touching_node->ParentNode != node)
                             {
-                                // Mark other node so its size will be preserved during the upcoming call to DockNodeTreeUpdatePosSize().
-                                ImGuiDockNode* node_to_preserve = touching_node->ParentNode->ChildNodes[side_n];
-                                node_to_preserve->WantLockSizeOnce = true;
-                                //draw_list->AddRect(touching_node->Pos, touching_node->Rect().Max, IM_COL32(255, 0, 0, 255));
-                                //draw_list->AddRectFilled(node_to_preserve->Pos, node_to_preserve->Rect().Max, IM_COL32(0, 255, 0, 100));
+                                if (touching_node->ParentNode->SplitAxis == axis)
+                                {
+                                    // Mark other node so its size will be preserved during the upcoming call to DockNodeTreeUpdatePosSize().
+                                    ImGuiDockNode* node_to_preserve = touching_node->ParentNode->ChildNodes[side_n];
+                                    node_to_preserve->WantLockSizeOnce = true;
+                                    //draw_list->AddRect(touching_node->Pos, touching_node->Rect().Max, IM_COL32(255, 0, 0, 255));
+                                    //draw_list->AddRectFilled(node_to_preserve->Pos, node_to_preserve->Rect().Max, IM_COL32(0, 255, 0, 100));
+                                }
+                                touching_node = touching_node->ParentNode;
                             }
-                            touching_node = touching_node->ParentNode;
                         }
-                    }
 #endif
 
-                DockNodeTreeUpdatePosSize(child_0, child_0->Pos, child_0->Size);
-                DockNodeTreeUpdatePosSize(child_1, child_1->Pos, child_1->Size);
-                MarkIniSettingsDirty();
+                    DockNodeTreeUpdatePosSize(child_0, child_0->Pos, child_0->Size);
+                    DockNodeTreeUpdatePosSize(child_1, child_1->Pos, child_1->Size);
+                    MarkIniSettingsDirty();
+                }
             }
+            PopID();
         }
-        PopID();
     }
 
     if (child_0->IsVisible)
@@ -11643,9 +11787,25 @@ void ImGui::SetWindowDock(ImGuiWindow* window, ImGuiID dock_id, ImGuiCond cond)
         return;
     window->SetWindowDockAllowFlags &= ~(ImGuiCond_Once | ImGuiCond_FirstUseEver | ImGuiCond_Appearing);
 
-    // Set
     if (window->DockId == dock_id)
         return;
+
+    // If the user attempt to set a dock id that is a split node, we'll dig within to find a suitable docking spot
+    ImGuiContext* ctx = GImGui;
+    if (ImGuiDockNode* new_node = DockContextFindNodeByID(ctx, dock_id))
+        if (new_node->IsSplitNode())
+        {
+            // Policy: Find central node or latest focused node. We first move back to our root node.
+            new_node = DockNodeGetRootNode(new_node);
+            if (new_node->CentralNode)
+                dock_id = new_node->CentralNode->ID;
+            else
+                dock_id = new_node->LastFocusedNodeID;
+        }
+
+    if (window->DockId == dock_id)
+        return;
+
     if (window->DockNode)
         DockNodeRemoveWindow(window->DockNode, window, 0);
     window->DockId = dock_id;
@@ -11749,15 +11909,15 @@ ImGuiID ImGui::DockSpaceOverViewport(ImGuiViewport* viewport, ImGuiDockNodeFlags
     char label[32];
     ImFormatString(label, IM_ARRAYSIZE(label), "DockspaceViewport_%08X", viewport->ID);
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::Begin(label, NULL, host_window_flags);
-    ImGui::PopStyleVar(3);
+    PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    Begin(label, NULL, host_window_flags);
+    PopStyleVar(3);
 
-    ImGuiID dockspace_id = ImGui::GetID("Dockspace");
-    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags, dock_family);
-    ImGui::End();
+    ImGuiID dockspace_id = GetID("Dockspace");
+    DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags, dock_family);
+    End();
 
     return dockspace_id;
 }
@@ -11845,7 +12005,8 @@ void ImGui::DockBuilderRemoveNodeChildNodes(ImGuiID root_id)
 
     // DockNodeMoveWindows->DockNodeAddWindow will normally set those when reaching two windows (which is only adequate during interactive merge)
     // Make sure we don't lose our current pos/size. (FIXME-DOCK: Consider tidying up that code in DockNodeAddWindow instead)
-    root_node->InitFromFirstWindowPosSize = false;
+    if (root_node)
+        root_node->InitFromFirstWindowPosSize = false;
 
     // Apply to settings
     for (int settings_n = 0; settings_n < ctx->SettingsWindows.Size; settings_n++)
@@ -12119,14 +12280,17 @@ void ImGui::BeginDocked(ImGuiWindow* window, bool* p_open)
     if (window->DockId != 0 && dock_node == NULL)
     {
         dock_node = DockContextFindNodeByID(ctx, window->DockId);
-        if (dock_node == NULL)
-            dock_node = DockContextAddNode(ctx, window->DockId);
-
-        if (dock_node->IsSplitNode())
+        
+        // We should not be docking into a split node (SetWindowDock should avoid this)
+        if (dock_node && dock_node->IsSplitNode())
         {
             DockContextProcessUndockWindow(ctx, window);
             return;
         }
+
+        // Create node
+        if (dock_node == NULL)
+            dock_node = DockContextAddNode(ctx, window->DockId);
 
         DockNodeAddWindow(dock_node, window, true);
         IM_ASSERT(dock_node == window->DockNode);
@@ -12205,7 +12369,10 @@ void ImGui::BeginDocked(ImGuiWindow* window, bool* p_open)
     // Update window flag
     IM_ASSERT((window->Flags & ImGuiWindowFlags_ChildWindow) == 0);
     window->Flags |= ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_NoResize;
-    window->Flags &= ~ImGuiWindowFlags_NoTitleBar;      // Clear the NoTitleBar flag in case the user set it: confusingly enough we need a title bar height so we are correctly offset, but it won't be displayed!
+    if (dock_node->IsHiddenTabBar)
+        window->Flags |= ImGuiWindowFlags_NoTitleBar;
+    else
+        window->Flags &= ~ImGuiWindowFlags_NoTitleBar;      // Clear the NoTitleBar flag in case the user set it: confusingly enough we need a title bar height so we are correctly offset, but it won't be displayed!
 
     // Save new dock order only if the tab bar is active
     if (dock_node->TabBar)
@@ -12283,6 +12450,8 @@ void ImGui::BeginAsDockableDragDropTarget(ImGuiWindow* window)
                     if (DockNodePreviewDockCalc(window, root_node, payload_window, &split_outer, is_explicit_target, true))
                         split_data = &split_outer;
             DockNodePreviewDockCalc(window, target_node, payload_window, &split_inner, is_explicit_target, false);
+            if (split_data == &split_outer)
+                split_inner.IsDropAllowed = false;
 
             // Draw inner then outer, so that previewed tab (in inner data) will be behind the outer drop boxes
             DockNodePreviewDockRender(window, target_node, payload_window, &split_inner);
@@ -12381,6 +12550,7 @@ static void ImGui::DockSettingsHandler_ReadLine(ImGuiContext* ctx, ImGuiSettings
     }
     if (sscanf(line, " Split=%c%n", &c, &r) == 1)                   { line += r; if (c == 'X') node.SplitAxis = ImGuiAxis_X; else if (c == 'Y') node.SplitAxis = ImGuiAxis_Y; }
     if (sscanf(line, " CentralNode=%d%n", &x, &r) == 1)             { line += r; node.IsCentralNode = (x != 0); }
+    if (sscanf(line, " HiddenTabBar=%d%n", &x, &r) == 1)            { line += r; node.IsHiddenTabBar = (x != 0); }
     if (sscanf(line, " SelectedTab=0x%08X%n", &node.SelectedTabID,&r) == 1) { line += r; }
     ImGuiDockContext* dc = ctx->DockContext;
     if (node.ParentID != 0)
@@ -12400,6 +12570,7 @@ static void DockSettingsHandler_DockNodeToSettings(ImGuiDockContext* dc, ImGuiDo
     node_settings.Depth = (char)depth;
     node_settings.IsDockSpace = (char)node->IsDockSpace;
     node_settings.IsCentralNode = (char)node->IsCentralNode;
+    node_settings.IsHiddenTabBar = (char)node->IsHiddenTabBar;
     node_settings.Pos = ImVec2ih((short)node->Pos.x, (short)node->Pos.y);
     node_settings.Size = ImVec2ih((short)node->Size.x, (short)node->Size.y);
     node_settings.SizeRef = ImVec2ih((short)node->SizeRef.x, (short)node->SizeRef.y);
@@ -12447,7 +12618,9 @@ static void ImGui::DockSettingsHandler_WriteAll(ImGuiContext* ctx, ImGuiSettings
         if (node_settings->SplitAxis != ImGuiAxis_None)
             buf->appendf(" Split=%c", (node_settings->SplitAxis == ImGuiAxis_X) ? 'X' : 'Y');
         if (node_settings->IsCentralNode)
-            buf->appendf(" CentralNode=%d", node_settings->IsCentralNode);
+            buf->appendf(" CentralNode=1");
+        if (node_settings->IsHiddenTabBar)
+            buf->appendf(" HiddenTabBar=1");
         if (node_settings->SelectedTabID)
             buf->appendf(" SelectedTab=0x%08X", node_settings->SelectedTabID);
 
@@ -12986,7 +13159,8 @@ static void RenderViewportThumbnail(ImDrawList* draw_list, ImGuiViewportP* viewp
 
     ImVec2 scale = bb.GetSize() / viewport->Size;
     ImVec2 off = bb.Min - viewport->Pos * scale;
-    window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Border, 0.40f));
+    float alpha_mul = viewport->PlatformWindowMinimized ? 0.30f : 1.00f;
+    window->DrawList->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Border, alpha_mul * 0.40f));
     for (int i = 0; i != g.Windows.Size; i++)
     {
         ImGuiWindow* thumb_window = g.Windows[i];
@@ -13004,13 +13178,13 @@ static void RenderViewportThumbnail(ImDrawList* draw_list, ImGuiViewportP* viewp
         thumb_r_scaled.ClipWithFull(bb);
         title_r_scaled.ClipWithFull(bb);
         const bool window_is_focused = (g.NavWindow && thumb_window->RootWindowForTitleBarHighlight == g.NavWindow->RootWindowForTitleBarHighlight);
-        window->DrawList->AddRectFilled(thumb_r_scaled.Min, thumb_r_scaled.Max, ImGui::GetColorU32(ImGuiCol_WindowBg));
-        window->DrawList->AddRectFilled(title_r_scaled.Min, title_r_scaled.Max, ImGui::GetColorU32(window_is_focused ? ImGuiCol_TitleBgActive : ImGuiCol_TitleBg));
-        window->DrawList->AddRect(thumb_r_scaled.Min, thumb_r_scaled.Max, ImGui::GetColorU32(ImGuiCol_Border));
+        window->DrawList->AddRectFilled(thumb_r_scaled.Min, thumb_r_scaled.Max, ImGui::GetColorU32(ImGuiCol_WindowBg, alpha_mul));
+        window->DrawList->AddRectFilled(title_r_scaled.Min, title_r_scaled.Max, ImGui::GetColorU32(window_is_focused ? ImGuiCol_TitleBgActive : ImGuiCol_TitleBg, alpha_mul));
+        window->DrawList->AddRect(thumb_r_scaled.Min, thumb_r_scaled.Max, ImGui::GetColorU32(ImGuiCol_Border, alpha_mul));
         if (ImGuiWindow* window_for_title = GetWindowForTitleDisplay(thumb_window))
-            window->DrawList->AddText(g.Font, g.FontSize * 1.0f, title_r_scaled.Min, ImGui::GetColorU32(ImGuiCol_Text), window_for_title->Name, ImGui::FindRenderedTextEnd(window_for_title->Name));
+            window->DrawList->AddText(g.Font, g.FontSize * 1.0f, title_r_scaled.Min, ImGui::GetColorU32(ImGuiCol_Text, alpha_mul), window_for_title->Name, ImGui::FindRenderedTextEnd(window_for_title->Name));
     }
-    draw_list->AddRect(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Border));
+    draw_list->AddRect(bb.Min, bb.Max, ImGui::GetColorU32(ImGuiCol_Border, alpha_mul));
 }
 
 void ImGui::ShowViewportThumbnails()
@@ -13192,10 +13366,10 @@ void ImGui::ShowMetricsWindow(bool* p_open)
                 ImGuiWindowFlags flags = viewport->Flags;
                 ImGui::BulletText("Pos: (%.0f,%.0f), Size: (%.0f,%.0f), Monitor: %d, DpiScale: %.0f%%", viewport->Pos.x, viewport->Pos.y, viewport->Size.x, viewport->Size.y, viewport->PlatformMonitor, viewport->DpiScale * 100.0f);
                 if (viewport->Idx > 0) { ImGui::SameLine(); if (ImGui::SmallButton("Reset Pos")) { viewport->Pos = ImVec2(200,200); if (viewport->Window) viewport->Window->Pos = ImVec2(200,200); } }
-                ImGui::BulletText("Flags: 0x%04X =%s%s%s%s%s", viewport->Flags,
+                ImGui::BulletText("Flags: 0x%04X =%s%s%s%s%s%s", viewport->Flags,
                     (flags & ImGuiViewportFlags_CanHostOtherWindows) ? " CanHostOtherWindows" : "", (flags & ImGuiViewportFlags_NoDecoration) ? " NoDecoration" : "",
                     (flags & ImGuiViewportFlags_NoFocusOnAppearing)  ? " NoFocusOnAppearing"  : "", (flags & ImGuiViewportFlags_NoInputs)     ? " NoInputs"     : "",
-                    (flags & ImGuiViewportFlags_NoRendererClear)     ? " NoRendererClear"     : "");
+                    (flags & ImGuiViewportFlags_NoRendererClear)     ? " NoRendererClear"     : "", viewport->PlatformWindowMinimized ? ", PlatformWindowMinimized" : "");
                 for (int layer_i = 0; layer_i < IM_ARRAYSIZE(viewport->DrawDataBuilder.Layers); layer_i++)
                     for (int draw_list_i = 0; draw_list_i < viewport->DrawDataBuilder.Layers[layer_i].Size; draw_list_i++)
                         Funcs::NodeDrawList(NULL, viewport, viewport->DrawDataBuilder.Layers[layer_i][draw_list_i], "DrawList");
@@ -13306,7 +13480,7 @@ void ImGui::ShowDockingDebug()
                 IM_ASSERT(node->ChildNodes[1] == NULL || node->ChildNodes[1]->ParentNode == node);
                 ImGui::BulletText("Pos (%.0f,%.0f), Size (%.0f, %.0f) Ref (%.0f, %.0f)",
                     node->Pos.x, node->Pos.y, node->Size.x, node->Size.y, node->SizeRef.x, node->SizeRef.y);
-                ImGui::BulletText("Flags %02X%s%s%s%s",
+                ImGui::BulletText("Flags 0x%02X%s%s%s%s",
                     node->Flags, node->IsDockSpace ? ", IsDockSpace" : "", node->IsCentralNode ? ", IsCentralNode" : "",
                     (GImGui->FrameCount - node->LastFrameAlive < 2) ? ", IsAlive" : "", (GImGui->FrameCount - node->LastFrameActive < 2) ? ", IsActive" : "");
                 if (node->ChildNodes[0])

@@ -1,4 +1,4 @@
-// dear imgui, v1.66
+// dear imgui, v1.67 WIP
 // (internal structures/api)
 
 // You may use this file to debug, understand or extend ImGui features but we don't provide any guarantee of forward compatibility!
@@ -224,28 +224,29 @@ static inline ImVec2 ImRotate(const ImVec2& v, float cos_a, float sin_a)        
 static inline float  ImLinearSweep(float current, float target, float speed)    { if (current < target) return ImMin(current + speed, target); if (current > target) return ImMax(current - speed, target); return current; }
 static inline ImVec2 ImMul(const ImVec2& lhs, const ImVec2& rhs)                { return ImVec2(lhs.x * rhs.x, lhs.y * rhs.y); }
 
-// Helper: ImPool<>. Basic keyed storage for contiguous instances, slow/amortized insertion, O(1) indexable, O(Log N) queries by ID over a dense/hot buffer
-// Creation/Erasure invalidate all pointers, but indexes are valid as long as the object lifetime.
+// Helper: ImPool<>. Basic keyed storage for contiguous instances, slow/amortized insertion, O(1) indexable, O(Log N) queries by ID over a dense/hot buffer,
+// Honor constructor/destructor. Add/remove invalidate all pointers. Indexes have the same lifetime as the associated object.
+typedef int ImPoolIdx;
 template<typename T>
 struct IMGUI_API ImPool
 {
     ImVector<T>     Data;       // Contiguous data
     ImGuiStorage    Map;        // ID->Index
-    int             FreeIdx;    // Next free idx to use
+    ImPoolIdx       FreeIdx;    // Next free idx to use
 
     ImPool()    { FreeIdx = 0; }
     ~ImPool()   { Clear(); }
     T*          GetByKey(ImGuiID key)               { int idx = Map.GetInt(key, -1); return (idx != -1) ? &Data[idx] : NULL; }
-    T*          GetByIndex(int n)                   { return &Data[n]; }
-    int         GetIndex(const T* p) const          { IM_ASSERT(p >= Data.Data && p < Data.Data + Data.Size); return (int)(p - Data.Data); }
+    T*          GetByIndex(ImPoolIdx n)             { return &Data[n]; }
+    ImPoolIdx   GetIndex(const T* p) const          { IM_ASSERT(p >= Data.Data && p < Data.Data + Data.Size); return (ImPoolIdx)(p - Data.Data); }
     T*          GetOrAddByKey(ImGuiID key)          { int* p_idx = Map.GetIntRef(key, -1); if (*p_idx != -1) return &Data[*p_idx]; *p_idx = FreeIdx; return Add(); }
     void        Clear()                             { for (int n = 0; n < Map.Data.Size; n++) { int idx = Map.Data[n].val_i; if (idx != -1) Data[idx].~T(); }  Map.Clear(); Data.clear(); FreeIdx = 0; }
     T*          Add()                               { int idx = FreeIdx; if (idx == Data.Size) { Data.resize(Data.Size + 1); FreeIdx++; } else { FreeIdx = *(int*)&Data[idx]; } IM_PLACEMENT_NEW(&Data[idx]) T(); return &Data[idx]; }
     void        Remove(ImGuiID key, const T* p)     { Remove(key, GetIndex(p)); }
-    void        Remove(ImGuiID key, int idx)        { Data[idx].~T(); *(int*)&Data[idx] = FreeIdx; FreeIdx = idx; Map.SetInt(key, -1); }
+    void        Remove(ImGuiID key, ImPoolIdx idx)  { Data[idx].~T(); *(int*)&Data[idx] = FreeIdx; FreeIdx = idx; Map.SetInt(key, -1); }
     void        Reserve(int capacity)               { Data.reserve(capacity); Map.Data.reserve(capacity); }
+    int         GetSize() const                     { return Data.Size; }
 };
-typedef int ImPoolIdx;
 
 //-----------------------------------------------------------------------------
 // Types
@@ -661,17 +662,20 @@ struct ImGuiViewportP : public ImGuiViewport
     int                 LastFrontMostStampCount;  // Last stamp number from when a window hosted by this viewport was made front-most (by comparing this value between two viewport we have an implicit viewport z-order
     ImGuiID             LastNameHash;
     ImVec2              LastPos;
-    bool                CreatedPlatformWindow;
     float               Alpha;                    // Window opacity (when dragging dockable windows/viewports we make them transparent)
     float               LastAlpha;
     int                 PlatformMonitor;
+    bool                PlatformWindowCreated;
+    bool                PlatformWindowMinimized;
     ImGuiWindow*        Window;                   // Set when the viewport is owned by a window
     ImDrawList*         OverlayDrawList;          // For convenience, a draw list we can render to that's always rendered last (we use it to draw software mouse cursor when io.MouseDrawCursor is set)
     ImDrawData          DrawDataP;
     ImDrawDataBuilder   DrawDataBuilder;
-    ImVec2              RendererLastSize;
+    ImVec2              LastPlatformPos;
+    ImVec2              LastPlatformSize;
+    ImVec2              LastRendererSize;
 
-    ImGuiViewportP()         { Idx = -1; LastFrameActive = LastFrameOverlayDrawList = LastFrontMostStampCount = -1; LastNameHash = 0; CreatedPlatformWindow = false; Alpha = LastAlpha = 1.0f; PlatformMonitor = INT_MIN; Window = NULL; OverlayDrawList = NULL; RendererLastSize = ImVec2(-1.0f,-1.0f); }
+    ImGuiViewportP()         { Idx = -1; LastFrameActive = LastFrameOverlayDrawList = LastFrontMostStampCount = -1; LastNameHash = 0; Alpha = LastAlpha = 1.0f; PlatformMonitor = INT_MIN; PlatformWindowCreated = PlatformWindowMinimized = false; Window = NULL; OverlayDrawList = NULL; LastPlatformPos = LastPlatformSize = LastRendererSize = ImVec2(FLT_MAX, FLT_MAX); }
     ~ImGuiViewportP()        { if (OverlayDrawList) IM_DELETE(OverlayDrawList); }
     ImRect  GetRect() const  { return ImRect(Pos.x, Pos.y, Pos.x + Size.x, Pos.y + Size.y); }
     ImVec2  GetCenter() const{ return ImVec2(Pos.x + Size.x * 0.5f, Pos.y + Size.y * 0.5f); }
@@ -748,39 +752,44 @@ struct ImGuiTabBarSortItem
     float       Width;
 };
 
-// sizeof() 108~144
+// sizeof() 116~160
 struct ImGuiDockNode
 {
     ImGuiID                 ID;
     ImGuiDockNodeFlags      Flags;
     ImGuiDockNode*          ParentNode;
-    ImGuiDockNode*          ChildNodes[2];          // [Split node only] Child nodes (left/right or top/bottom). Consider switching to an array.
-    ImVector<ImGuiWindow*>  Windows;                // Note: unordered list! Iterate TabBar->Tabs for user-order.
+    ImGuiDockNode*          ChildNodes[2];              // [Split node only] Child nodes (left/right or top/bottom). Consider switching to an array.
+    ImVector<ImGuiWindow*>  Windows;                    // Note: unordered list! Iterate TabBar->Tabs for user-order.
     ImGuiTabBar*            TabBar;
-    ImVec2                  Pos;                    // Current position
-    ImVec2                  Size;                   // Current size
-    ImVec2                  SizeRef;                // [Split node only] Last explicitly written-to size (overridden when using a splitter affecting the node), used to calculate Size.
-    int                     SplitAxis;              // [Split node only] Split axis (X or Y)
+    ImVec2                  Pos;                        // Current position
+    ImVec2                  Size;                       // Current size
+    ImVec2                  SizeRef;                    // [Split node only] Last explicitly written-to size (overridden when using a splitter affecting the node), used to calculate Size.
+    int                     SplitAxis;                  // [Split node only] Split axis (X or Y)
     ImGuiDockFamily         DockFamily;
 
     ImGuiWindow*            HostWindow;
     ImGuiWindow*            VisibleWindow;
-    ImGuiDockNode*          OnlyNodeWithWindows;    // [Root node only] Set when there is a single visible node within the hierarchy
-    int                     LastFrameAlive;         // Last frame number the node was updated or kept alive explicitly with DockSpace() + ImGuiDockNodeFlags_KeepAliveOnly
-    int                     LastFrameActive;        // Last frame number the node was updated.
-    ImGuiID                 LastFocusedNodeID;      // [Root node only] Which of our child node (any ancestor in the hierarchy) was last focused.
-    ImGuiID                 SelectedTabID;          // [Tab node only] Which of our tab is selected.
-    ImGuiID                 WantCloseTabID;         // [Tab node only] Set when closing a specific tab.
+    ImGuiDockNode*          CentralNode;                // [Root node only] Pointer to central node.
+    ImGuiDockNode*          OnlyNodeWithWindows;        // [Root node only] Set when there is a single visible node within the hierarchy.
+    int                     LastFrameAlive;             // Last frame number the node was updated or kept alive explicitly with DockSpace() + ImGuiDockNodeFlags_KeepAliveOnly
+    int                     LastFrameActive;            // Last frame number the node was updated.
+    int                     LastFrameFocused;           // Last frame number the node was focused.
+    ImGuiID                 LastFocusedNodeID;          // [Root node only] Which of our child node (any ancestor in the hierarchy) was last focused.
+    ImGuiID                 SelectedTabID;              // [Tab node only] Which of our tab is selected.
+    ImGuiID                 WantCloseTabID;             // [Tab node only] Set when closing a specific tab.
     bool                    InitFromFirstWindowPosSize  :1;
     bool                    InitFromFirstWindowViewport :1;
-    bool                    IsVisible           :1; // Set to false when the node is hidden (usually disabled as it has no active window)
-    bool                    IsDockSpace         :1; // Root node was created by a DockSpace() call.
-    bool                    IsCentralNode       :1;
-    bool                    HasCloseButton      :1;
-    bool                    HasCollapseButton   :1;
-    bool                    WantCloseAll        :1; // Set when closing all tabs at once.
-    bool                    WantLockSizeOnce    :1;
-    bool                    WantMouseMove       :1; // After a node extraction we need to transition toward moving the newly created host window
+    bool                    IsVisible               :1; // Set to false when the node is hidden (usually disabled as it has no active window)
+    bool                    IsFocused               :1;
+    bool                    IsDockSpace             :1; // Root node was created by a DockSpace() call.
+    bool                    IsCentralNode           :1;
+    bool                    IsHiddenTabBar          :1;
+    bool                    HasCloseButton          :1;
+    bool                    HasCollapseButton       :1;
+    bool                    WantCloseAll            :1; // Set when closing all tabs at once.
+    bool                    WantLockSizeOnce        :1;
+    bool                    WantMouseMove           :1; // After a node extraction we need to transition toward moving the newly created host window
+    bool                    WantHiddenTabBarToggle  :1;
 
     ImGuiDockNode(ImGuiID id);
     ~ImGuiDockNode();
@@ -803,6 +812,7 @@ struct ImGuiContext
     ImGuiIO                 IO;
     ImGuiPlatformIO         PlatformIO;
     ImGuiStyle              Style;
+    ImGuiConfigFlags        ConfigFlagsForFrame;                // = g.IO.ConfigFlags at the time of NewFrame()
     ImFont*                 Font;                               // (Shortcut) == FontStack.empty() ? IO.Font : FontStack.back()
     float                   FontSize;                           // (Shortcut) == FontBaseSize * g.CurrentWindow->FontWindowScale == window->FontSize(). Text height for current window.
     float                   FontBaseSize;                       // (Shortcut) == IO.FontGlobalScale * Font->Scale * Font->FontSize. Base text height.
@@ -944,7 +954,7 @@ struct ImGuiContext
 
     // Platform support
     ImVec2                  PlatformImePos, PlatformImeLastPos; // Cursor position request & last passed to the OS Input Method Editor
-    ImGuiViewport*          PlatformImePosViewport;
+    ImGuiViewportP*         PlatformImePosViewport;
 
     // Extensions
     // FIXME: We could provide an API to register one slot in an array held in ImGuiContext?
@@ -977,6 +987,7 @@ struct ImGuiContext
     {
         Initialized = false;
         FrameScopeActive = false;
+        ConfigFlagsForFrame = ImGuiConfigFlags_None;
         Font = NULL;
         FontSize = FontBaseSize = 0.0f;
         FontAtlasOwnedByContext = shared_font_atlas ? false : true;
@@ -1266,9 +1277,9 @@ struct IMGUI_API ImGuiWindow
     ImGuiItemStatusFlags    DockTabItemStatusFlags;
     ImRect                  DockTabItemRect;
     short                   DockOrder;                          // Order of the last time the window was visible within its DockNode. This is used to reorder windows that are reappearing on the same frame. Same value between windows that were active and windows that were none are possible.
-    bool                    DockIsActive;                       // =~ (DockNode != NULL) && (DockNode->Windows.Size > 1)
-    bool                    DockTabIsVisible;                   // Is the window visible this frame? =~ is the corresponding tab selected?
-    bool                    DockTabWantClose;
+    bool                    DockIsActive        :1;             // =~ (DockNode != NULL) && (DockNode->Windows.Size > 1)
+    bool                    DockTabIsVisible    :1;             // Is the window visible this frame? =~ is the corresponding tab selected?
+    bool                    DockTabWantClose    :1;
 
 public:
     ImGuiWindow(ImGuiContext* context, const char* name);
@@ -1479,6 +1490,7 @@ namespace ImGui
     inline bool             IsNavInputPressedAnyOfTwo(ImGuiNavInput n1, ImGuiNavInput n2, ImGuiInputReadMode mode) { return (GetNavInputAmount(n1, mode) + GetNavInputAmount(n2, mode)) > 0.0f; }
     
     // Docking
+    // (some functions are only declared in imgui.cpp, see Docking section)
     IMGUI_API void          DockContextInitialize(ImGuiContext* ctx);
     IMGUI_API void          DockContextShutdown(ImGuiContext* ctx);
     IMGUI_API void          DockContextOnLoadSettings(ImGuiContext* ctx);
@@ -1498,6 +1510,7 @@ namespace ImGui
     // Docking - Builder function needs to be generally called before the DockSpace() node is submitted.
     IMGUI_API void          DockBuilderDockWindow(const char* window_name, ImGuiID node_id);
     IMGUI_API ImGuiDockNode*DockBuilderGetNode(ImGuiID node_id);                    // Warning: DO NOT HOLD ON ImGuiDockNode* pointer, will be invalided by any split/merge/remove operation.
+    inline ImGuiDockNode*   DockBuilderGetCentralNode(ImGuiID node_id)              { ImGuiDockNode* node = DockBuilderGetNode(node_id); if (!node) return NULL; return DockNodeGetRootNode(node)->CentralNode; }
     IMGUI_API void          DockBuilderAddNode(ImGuiID node_id, ImVec2 ref_size, ImGuiDockNodeFlags flags = 0);
     IMGUI_API void          DockBuilderRemoveNode(ImGuiID node_id);                 // Remove node and all its child, undock all windows
     IMGUI_API void          DockBuilderRemoveNodeDockedWindows(ImGuiID node_id, bool clear_persistent_docking_references = true);
