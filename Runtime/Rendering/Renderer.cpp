@@ -104,8 +104,8 @@ namespace Directus
 		m_flags			|= Render_MotionBlur;
 		//m_flags			|= Render_TAA;
 		m_flags			|= Render_Correction;
-		//m_flags		|= Render_Sharpening;
-		//m_flags		|= Render_ChromaticAberration;
+		m_flags			|= Render_Sharpening;
+		m_flags			|= Render_ChromaticAberration;
 
 		// Create RHI device
 		m_rhiDevice		= make_shared<RHI_Device>(drawHandle);
@@ -525,6 +525,8 @@ namespace Directus
 		buffer->sharpen_clamp			= m_sharpenClamp;
 		buffer->taa_jitterOffset		= TAA_Jitter::jitterOffset;
 		buffer->motionBlur_strength		= m_motionBlurStrength;
+		buffer->fps_current				= Profiler::Get().GetFPS();
+		buffer->fps_target				= Settings::Get().FPS_GetLimit();
 
 		m_bufferGlobal->Unmap();
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);

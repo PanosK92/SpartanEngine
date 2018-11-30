@@ -45,7 +45,7 @@ SSAO         					| 100% | Screen space ambient occlusion.
 Bloom         					| 100% | -
 SSR								| 90% |	 Screen space reflections.
 TAA								| 30% |	 Temporal Anti-Aliasing.
-Per-Pixel motion blur			| 90% |
+Per-Pixel motion blur			| 100% |
 Velocity Buffer					| 100% | Required for TAA and Motion Blur.
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 Point light support             | 100% | -
