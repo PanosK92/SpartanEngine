@@ -101,6 +101,7 @@ namespace Directus
 		const auto& GetTimeBlocks_GPU()					{ return m_timeBlocks_gpu; }
 		float GetRenderTime_CPU()						{ return m_cpuTime; }
 		float GetRenderTime_GPU()						{ return m_gpuTime; }
+		float GetFPS()									{ return m_fps; }
 
 		void Reset()
 		{

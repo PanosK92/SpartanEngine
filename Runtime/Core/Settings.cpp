@@ -98,13 +98,13 @@ namespace Directus
 				m_fpsPolicy = FPS_Unlocked;
 				m_fpsLimit	= FLT_MAX;
 			}
-			else if (m_fpsLimit == -1.0f)
+			else if (m_fpsLimit > 0.0f)
 			{
-				m_fpsPolicy = FPS_MonitorMatch;
+				m_fpsPolicy = FPS_Locked;				
 			}
 			else
 			{
-				m_fpsPolicy = FPS_Locked;
+				m_fpsPolicy = FPS_MonitorMatch;
 			}
 
 			// Close the file.
