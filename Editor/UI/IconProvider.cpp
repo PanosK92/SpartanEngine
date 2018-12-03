@@ -177,7 +177,7 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type 
 	{
 		// Make a cheap texture
 		auto texture = std::make_shared<RHI_Texture>(m_context);
-		texture->EnableMimaps(false);
+		texture->SetNeedsMipChain(false);
 		texture->SetWidth(size);
 		texture->SetHeight(size);
 

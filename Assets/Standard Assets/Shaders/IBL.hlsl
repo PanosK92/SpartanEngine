@@ -1,6 +1,4 @@
-// Based on Urho3D
-
-static const float mipMax = 9.0f;
+static const float tex_maxMip = 11.0f;
 
 float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 {
@@ -19,29 +17,16 @@ float3 EnvBRDFApprox(float3 specColor, float roughness, float ndv)
     return specColor * AB.x + AB.y;
 }
 
-float3 FixCubeLookup(float3 v) 
- {
-    float M = max(max(abs(v.x), abs(v.y)), abs(v.z));
-    float scale = (512 - 1) / 512;
-    
-    if (abs(v.x) != M) v.x += scale;
-    if (abs(v.y) != M) v.y += scale;
-    if (abs(v.z) != M) v.z += scale; 
-    
-    return v;
-}
-
-float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, TextureCube tex_cube, SamplerState samplerLinear, float ambientTerm)
+float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, SamplerState samplerLinear, float ambientTerm)
 {
     float brightness    = clamp(ambientTerm, 0.0, 1.0);
 	float3 reflection 	= reflect(camera_to_pixel, normal);
 	reflection			= GetSpecularDominantDir(normal, reflection, material.roughness);
 	float NdV 			= saturate(dot(camera_to_pixel, normal));
-	float alpha			= material.roughness * material.roughness;
 
-	float mipSelect 		= alpha * mipMax;
-	float3 cube_specular	= ToLinear(tex_cube.SampleLevel(samplerLinear, FixCubeLookup(reflection), mipSelect)).rgb;
-	float3 cube_diffuse  	= ToLinear(tex_cube.SampleLevel(samplerLinear, FixCubeLookup(normal), mipMax)).rgb;
+	float mipSelect 		= material.roughness * tex_maxMip;
+	float3 cube_specular	= tex_environment.SampleLevel(samplerLinear, DirectionToSphereUV(reflection), mipSelect).rgb;
+	float3 cube_diffuse  	= tex_environment.SampleLevel(samplerLinear, DirectionToSphereUV(normal), tex_maxMip).rgb;
 	
 	float3 env_specular = EnvBRDFApprox(material.color_specular, material.roughness, NdV);
 	float3 env_diffuse 	= EnvBRDFApprox(material.color_diffuse, 1.0f, NdV);
