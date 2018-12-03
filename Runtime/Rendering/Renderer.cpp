@@ -97,13 +97,13 @@ namespace Directus
 		m_flags			|= Render_Physics;
 		m_flags			|= Render_SceneGrid;
 		m_flags			|= Render_Light;
+		m_flags			|= Render_Correction;
 		m_flags			|= Render_Bloom;
 		m_flags			|= Render_FXAA;
 		m_flags			|= Render_SSAO;
 		m_flags			|= Render_SSR;
 		m_flags			|= Render_MotionBlur;
 		//m_flags			|= Render_TAA;
-		m_flags			|= Render_Correction;
 		//m_flags			|= Render_Sharpening;
 		//m_flags			|= Render_ChromaticAberration;
 
@@ -314,12 +314,12 @@ namespace Directus
 
 	void Renderer::CreateSamplers()
 	{
-		m_samplerPointClampAlways = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point, Texture_Address_Clamp, Texture_Comparison_Always);
-		m_samplerPointClampGreater = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point, Texture_Address_Clamp, Texture_Comparison_GreaterEqual);
-		m_samplerBilinearClampGreater = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear, Texture_Address_Clamp, Texture_Comparison_GreaterEqual);
-		m_samplerBilinearWrapGreater = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear, Texture_Address_Wrap, Texture_Comparison_GreaterEqual);
-		m_samplerBilinearClampAlways = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear, Texture_Address_Clamp, Texture_Comparison_Always);
-		m_samplerAnisotropicWrapAlways = make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic, Texture_Address_Wrap, Texture_Comparison_Always);
+		m_samplerPointClampAlways		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_Always);
+		m_samplerPointClampGreater		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
+		m_samplerBilinearClampGreater	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
+		m_samplerBilinearWrapGreater	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Wrap,	Texture_Comparison_GreaterEqual);
+		m_samplerBilinearClampAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_Always);
+		m_samplerAnisotropicWrapAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,	Texture_Address_Wrap,	Texture_Comparison_Always);
 	}
 
 	void Renderer::SetBackBufferAsRenderTarget(bool clear /*= true*/)
