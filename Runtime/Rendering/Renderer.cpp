@@ -1063,7 +1063,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame); // SSR
 		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
 		m_rhiPipeline->SetTexture(m_tex_lutIBL);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerBilinearWrapGreater);
 		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);
 		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer(), 0, Buffer_Global);
 		m_rhiPipeline->Bind();
