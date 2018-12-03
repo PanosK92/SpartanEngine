@@ -183,6 +183,10 @@ namespace Directus
 		m_texBlack->SetNeedsMipChain(false);
 		m_texBlack->LoadFromFile(textureDirectory + "black.png");
 
+		m_tex_lutIBL = make_shared<RHI_Texture>(m_context);
+		m_tex_lutIBL->SetNeedsMipChain(false);
+		m_tex_lutIBL->LoadFromFile(textureDirectory + "ibl_brdf_lut.png");
+
 		// Gizmo icons
 		m_gizmoTexLightDirectional = make_shared<RHI_Texture>(m_context);
 		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
@@ -1058,6 +1062,7 @@ namespace Directus
 		if (Flags_IsSet(Render_SSAO)) { m_rhiPipeline->SetTexture(texSSAO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
 		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame); // SSR
 		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
+		m_rhiPipeline->SetTexture(m_tex_lutIBL);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
 		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);
 		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer(), 0, Buffer_Global);

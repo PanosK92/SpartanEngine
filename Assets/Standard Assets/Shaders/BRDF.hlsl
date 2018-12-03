@@ -3,34 +3,42 @@ float3 F_FresnelSchlick(float HdV, float3 F0)
 {
 	return F0 + (1.0f - F0) * pow(1.0f - HdV, 5.0f);
 }
-
+ 
 //= G - Geometric shadowing ================================================
-float G_SmithSchlickGGX(float NdotV, float NdotL, float a)
+float GeometrySchlickGGX(float NdotV, float roughness)
 {
-    float k = a * 0.5f;
-    float GV = NdotV / (NdotV * (1.0f - k) + k);
-    float GL = NdotL / (NdotL * (1.0f - k) + k);
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
 
-    return GV * GL;
+    float num   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+	
+    return num / denom;
+}
+float GeometrySmith(float NdotV, float NdotL, float roughness)
+{
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+	
+    return ggx1 * ggx2;
 }
 
 //= D - Normal distribution ================================================
-float D_GGX(float a, float NdotH)
+float DistributionGGX(float NdotH, float a)
 {
-    // Isotropic ggx.
-    float a2 = a*a;
+    float a2     = a*a;
     float NdotH2 = NdotH * NdotH;
-
-    float denominator = NdotH2 * (a2 - 1.0f) + 1.0f;
-    denominator *= denominator;
-    denominator *= PI;
-
-    return a2 / denominator;
+	
+    float num   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom 		= PI * denom * denom;
+	
+    return num / denom;
 }
 
 //= BRDF - DIFFUSE ==========================================================
 // [Gotanda 2012, "Beyond a Simple Physically Based Blinn-Phong Model in Real-Time"]
-float3 Diffuse_OrenNayar( float3 DiffuseColor, float Roughness, float NoV, float NoL, float VoH )
+float3 Diffuse_OrenNayar(float3 DiffuseColor, float Roughness, float NoV, float NoL, float VoH )
 {
 	float a 	= Roughness * Roughness;
 	float s 	= a;					// / ( 1.29 + 0.5 * a );
@@ -53,15 +61,20 @@ float3 BRDF(Material material, Light light, float3 normal, float3 camera_to_pixe
     float VdotH = saturate(dot(-camera_to_pixel, h));
 	
 	// BRDF Diffuse
-    float3 cDiffuse 	= Diffuse_OrenNayar(material.color_diffuse, material.roughness, NdotV, NdotL, VdotH);
+    float3 cDiffuse 	= Diffuse_OrenNayar(material.albedo, material.roughness, NdotV, NdotL, VdotH);
 	
 	// BRDF Specular	
-	float3 F 			= F_FresnelSchlick(VdotH, material.color_specular);
-    float G 			= G_SmithSchlickGGX(NdotV, NdotL, material.alpha);
-    float D 			= D_GGX(material.alpha, NdotH);
+	float3 F 			= F_FresnelSchlick(VdotH, material.F0);
+    float G 			= GeometrySmith(NdotV, NdotL, material.roughness);
+    float D 			= DistributionGGX(NdotH, material.alpha);
 	float3 nominator 	= F * G * D;
 	float denominator 	= 4.0f * NdotL * NdotV;
 	float3 cSpecular 	= nominator / max(0.00001f, denominator);
 	
-	return light.color * light.intensity * NdotL * (cDiffuse * (1.0f - cSpecular) + cSpecular);
+	float3 kS 	= F; 			// The energy of light that gets reflected
+	float3 kD 	= 1.0f - kS; 	// Remaining energy, light that gets refracted
+	kD 			*= 1.0f - material.metallic;	
+	
+	float radiance = light.color * light.intensity;
+	return (kD * cDiffuse + cSpecular) * radiance * NdotL;
 }

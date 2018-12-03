@@ -235,6 +235,7 @@ namespace Directus
 		std::shared_ptr<RHI_Texture> m_texNoiseNormal;
 		std::shared_ptr<RHI_Texture> m_texWhite;
 		std::shared_ptr<RHI_Texture> m_texBlack;
+		std::shared_ptr<RHI_Texture> m_tex_lutIBL;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightDirectional;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightPoint;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightSpot;
