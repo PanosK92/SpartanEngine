@@ -6,7 +6,8 @@ Texture2D texMaterial 		: register(t3);
 Texture2D texShadows 		: register(t4);
 Texture2D texSSDO 			: register(t5);
 Texture2D texFrame 			: register(t6);
-Texture2D environmentTex 	: register(t7);
+Texture2D texEnvironment 	: register(t7);
+Texture2D texLutIBL			: register(t8);
 //=========================================
 
 //= SAMPLERS ===================================
@@ -91,8 +92,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     material.roughness  	= materialSample.r;
     material.metallic   	= materialSample.g;
     material.emission   	= materialSample.b;
-	material.color_diffuse 	= (1.0f - material.metallic) * material.albedo;	
-	material.color_specular = lerp(0.03f, material.albedo, material.metallic); // Aka F0
+	material.F0 			= lerp(0.04f, material.albedo, material.metallic); // Aka F0
 	material.alpha 			= max(0.001f, material.roughness * material.roughness);	
 	
 	// Compute common values
@@ -102,7 +102,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 
     if (materialSample.a == 0.0f) // Render technique
     {
-        finalColor = environmentTex.Sample(samplerLinear, DirectionToSphereUV(camera_to_pixel)).rgb;
+        finalColor = texEnvironment.Sample(samplerLinear, DirectionToSphereUV(camera_to_pixel)).rgb;
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }
@@ -189,7 +189,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	}
 	
 	// IBL - Image based lighting
-    finalColor 	+= ImageBasedLighting(material, normal, camera_to_pixel, environmentTex, samplerLinear, ambientTerm);
+    finalColor 	+= ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, samplerLinear, ambientTerm);
 
 	// SDDO - Screen space directional occlusion
 	float4 ssdo			= texSSDO.Sample(samplerLinear, texCoord);

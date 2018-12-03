@@ -14,8 +14,7 @@ struct Material
 	float metallic;
 	float3 padding;
 	float emission;
-	float3 color_diffuse;
-	float3 color_specular; // Aka F0
+	float3 F0;
 	float alpha;
 };
 
