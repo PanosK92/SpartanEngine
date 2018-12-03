@@ -60,34 +60,37 @@ namespace Directus
 		// Make the path, relative to the engine
 		auto filePath = FileSystem::GetRelativeFilePath(rawFilePath);
 
+		bool loaded = false;
 		// engine format (binary)
 		if (FileSystem::IsEngineTextureFile(filePath))
 		{
-			Deserialize(filePath);
+			loaded = Deserialize(filePath);
 		}
 		// foreign format (most known image formats)
 		else if (FileSystem::IsSupportedImageFile(filePath))
 		{
-			LoadFromForeignFormat(filePath);
+			loaded = LoadFromForeignFormat(filePath);
 		}
-		else
+
+		if (!loaded)
 		{
 			LOGF_ERROR("RI_Texture::LoadFromFile: Failed to load \"%s\".", filePath.c_str());
 			SetLoadState(LoadState_Failed);
 			return false;
 		}
 
-		bool loaded = false;
+	
+		bool shaderResourceCreated = false;
 		if (HasMipChain())
 		{
-			loaded = ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain);
+			shaderResourceCreated = ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain);
 		}
 		else
 		{
-			loaded = ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain.front(), m_needsMipChain);
+			shaderResourceCreated = ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain.front(), m_needsMipChain);
 		}
 
-		if (loaded)
+		if (shaderResourceCreated)
 		{
 			// If the texture was loaded from an image file, it's not 
 			// saved yet, hence we have to maintain it's texture bits.
@@ -165,18 +168,10 @@ namespace Directus
 
 	bool RHI_Texture::LoadFromForeignFormat(const string& filePath)
 	{
-		if (filePath == NOT_ASSIGNED)
-		{
-			LOG_WARNING("RHI_Texture::LoadFromForeignFormat: Can't load texture, filepath is unassigned.");
-			return false;
-		}
-
 		// Load texture
 		ImageImporter* imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();	
 		if (!imageImp->Load(filePath, this))
-		{
 			return false;
-		}
 
 		// Change texture extension to an engine texture
 		SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(filePath) + EXTENSION_TEXTURE);
