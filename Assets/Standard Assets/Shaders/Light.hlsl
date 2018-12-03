@@ -6,7 +6,7 @@ Texture2D texMaterial 		: register(t3);
 Texture2D texShadows 		: register(t4);
 Texture2D texSSDO 			: register(t5);
 Texture2D texFrame 			: register(t6);
-TextureCube environmentTex 	: register(t7);
+Texture2D environmentTex 	: register(t7);
 //=========================================
 
 //= SAMPLERS ===================================
@@ -50,6 +50,7 @@ cbuffer MiscBuffer : register(b0)
 // = INCLUDES ========
 #include "Common.hlsl"
 #include "Vertex.hlsl"
+#include "Sky.hlsl"
 #include "BRDF.hlsl"
 #include "IBL.hlsl"
 #include "SSR.hlsl"
@@ -101,7 +102,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 
     if (materialSample.a == 0.0f) // Render technique
     {
-        finalColor = ToLinear(environmentTex.Sample(samplerLinear, camera_to_pixel)).rgb;
+        finalColor = environmentTex.Sample(samplerLinear, DirectionToSphereUV(camera_to_pixel)).rgb;
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }

@@ -34,7 +34,7 @@ namespace Directus
 	enum Skybox_Type
 	{
 		Skybox_Array,
-		Skybox_Cross
+		Skybox_Sphere
 	};
 
 	class ENGINE_CLASS Skybox : public IComponent
@@ -54,19 +54,11 @@ namespace Directus
 	private:
 
 		void CreateFromArray(const std::vector<std::string>& texturePaths);
-		void CreateFromCross(const std::string& texturePath);
+		void CreateFromSphere(const std::string& texturePath);
 
-		// Cubemap sides
 		std::vector<std::string> m_texturePaths;
-		unsigned int m_size;
-
-		// Cubemap texture
 		std::shared_ptr<RHI_Texture> m_cubemapTexture;
-		Texture_Format m_format;
-
-		// Material
 		std::shared_ptr<Material> m_matSkybox;
-
 		Skybox_Type m_skyboxType;
 	};
 }

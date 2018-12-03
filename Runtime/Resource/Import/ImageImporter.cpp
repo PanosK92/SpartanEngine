@@ -117,19 +117,21 @@ namespace Directus
 		bitmap						= scale ? _FreeImage_Rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
 
 		// Deduce image properties	
-		bool image_transparency		= FreeImage_IsTransparent(bitmap);
-		unsigned int image_width	= FreeImage_GetWidth(bitmap);
-		unsigned int image_height	= FreeImage_GetHeight(bitmap);
-		unsigned int image_bpp		= FreeImage_GetBPP(bitmap);
-		unsigned int image_channels	= image_bpp / 8;
-		bool image_grayscale		= IsVisuallyGrayscale(bitmap);
+		bool image_transparency				= FreeImage_IsTransparent(bitmap);
+		unsigned int image_width			= FreeImage_GetWidth(bitmap);
+		unsigned int image_height			= FreeImage_GetHeight(bitmap);
+		unsigned int image_bpp				= FreeImage_GetBPP(bitmap);
+		unsigned int image_bpc				= ComputeBytesPerChannel(bitmap);
+		unsigned int image_channels			= ComputeChannelCount(bitmap);
+		Texture_Format image_format			= ComputeTextureFormat(image_bpp, image_channels);
+		bool image_grayscale				= IsVisuallyGrayscale(bitmap);
 
 		// Fill RGBA vector with the data from the FIBITMAP
-		auto mip = texture->Data_AddMipMap();
+		auto mip = texture->Data_AddMipLevel();
 		GetBitsFromFIBITMAP(mip, bitmap, image_width, image_height, image_channels);
 
 		// If the texture requires mip-maps, generate them
-		if (texture->IsUsingMimmaps())
+		if (texture->GetNeedsMipChain())
 		{
 			GenerateMipmaps(bitmap, texture, image_width, image_height, image_channels);
 		}
@@ -138,11 +140,13 @@ namespace Directus
 		FreeImage_Unload(bitmap);
 
 		// Fill RHI_Texture with image properties
-		texture->SetBPP(image_bpp);		
+		texture->SetBPP(image_bpp);
+		texture->SetBPC(image_bpc);
 		texture->SetWidth(image_width);
 		texture->SetHeight(image_height);
 		texture->SetChannels(image_channels);
 		texture->SetTransparency(image_transparency);
+		texture->SetFormat(image_format);
 		texture->SetGrayscale(image_grayscale);
 
 		return true;
@@ -157,7 +161,7 @@ namespace Directus
 		}
 
 		// Compute expected data size and reserve enough memory
-		unsigned int size = width * height * channels;
+		unsigned int size = width * height * channels *  ComputeBytesPerChannel(bitmap);
 		if (size != data->size())
 		{
 			data->clear();
@@ -166,7 +170,7 @@ namespace Directus
 		}
 
 		// Copy the data over to our vector
-		auto bits = (byte*)FreeImage_GetBits(bitmap);
+		auto bits = FreeImage_GetBits(bitmap);
 		memcpy(&(*data)[0], bits, size);
 
 		return true;
@@ -187,7 +191,7 @@ namespace Directus
 			
 			// Resize the RHI_Texture vector accordingly
 			unsigned int size = width * height * channels;
-			vector<byte>* mip = texture->Data_AddMipMap();
+			vector<byte>* mip = texture->Data_AddMipLevel();
 			mip->reserve(size);
 			mip->resize(size);
 		}
@@ -196,7 +200,7 @@ namespace Directus
 		for (unsigned int i = 0; i < jobs.size(); i++)
 		{
 			// reminder: i + 1 because the 0 mip is the default image size
-			jobs[i].data = texture->Data_GetMip(i + 1);
+			jobs[i].data = texture->Data_GetMipLevel(i + 1);
 		}
 
 		// Parallelize mipmap generation using multiple threads (because FreeImage_Rescale() using FILTER_LANCZOS3 is expensive)
@@ -230,6 +234,61 @@ namespace Directus
 		}
 	}
 
+	unsigned int ImageImporter::ComputeChannelCount(FIBITMAP* bitmap)
+	{	
+		if (!bitmap)
+		{
+			LOGF_ERROR("ImageImporter::ComputeChannelCount: Invalid parameter");
+			return 0;
+		}
+
+		// Compute the number of bytes per pixel
+		unsigned int bytespp = FreeImage_GetLine(bitmap) / FreeImage_GetWidth(bitmap);
+
+		// Compute the number of samples per pixel
+		unsigned int channels = bytespp / ComputeBytesPerChannel(bitmap);
+
+		return channels;
+	}
+
+	unsigned int ImageImporter::ComputeBytesPerChannel(FIBITMAP* bitmap)
+	{
+		FREE_IMAGE_TYPE type	= FreeImage_GetImageType(bitmap);
+		unsigned int size		= 0;
+
+		if (type == FIT_BITMAP)
+		{
+			size = sizeof(BYTE);
+		}
+		else if (type == FIT_UINT16 || type == FIT_RGB16 || type == FIT_RGBA16)
+		{
+			size = sizeof(WORD);
+		}
+		else if (type == FIT_FLOAT || type == FIT_RGBF || type == FIT_RGBAF)
+		{
+			size = sizeof(float);
+		}
+
+		return size;
+	}
+
+	Texture_Format ImageImporter::ComputeTextureFormat(unsigned int bpp, unsigned int channels)
+	{
+		if (channels == 3)
+		{
+			if (bpp == 96)
+				return Texture_Format_R32G32B32_FLOAT;
+		}
+		else if (channels == 4)
+		{
+			if (bpp == 32)
+				return Texture_Format_R8G8B8A8_UNORM;
+		}
+		
+		LOG_ERROR("ImageImporter::ComputeTextureFormat: Failed to deduce channel count");
+		return Texture_Format_R8G8B8A8_UNORM;
+	}
+
 	bool ImageImporter::IsVisuallyGrayscale(FIBITMAP* bitmap)
 	{
 		switch (FreeImage_GetBPP(bitmap))
@@ -258,15 +317,33 @@ namespace Directus
 
 	FIBITMAP* ImageImporter::ApplyBitmapCorrections(FIBITMAP* bitmap)
 	{
-		// Convert it to 32 bits (if necessary)
-		bitmap = FreeImage_GetBPP(bitmap) != 32 ? _FreeImage_ConvertTo32Bits(bitmap) : bitmap;
+		if (!bitmap)
+		{
+			LOGF_ERROR("ImageImporter::ApplyBitmapCorrections: Invalid parameter");
+			return nullptr;
+		}
 
+		// Convert it to 32 bits (if lower)
+		if (FreeImage_GetBPP(bitmap) < 32)
+		{
+			bitmap = _FreeImage_ConvertTo32Bits(bitmap);
+		}
+
+		// Swap red with blue channel (if needed)
+		if (FreeImage_GetBPP(bitmap) == 32)
+		{		
+			if (FreeImage_GetRedMask(bitmap) == 0xff0000)
+			{
+				bool swapped = SwapRedBlue32(bitmap);
+				if (!swapped)
+				{
+					LOG_WARNING("ImageImporter::ApplyBitmapCorrections: Failed to swap red with blue channel");
+				}
+			}
+		}
+		
 		// Flip it vertically
 		FreeImage_FlipVertical(bitmap);
-
-		// Swap Red with Blue channel
-		if (FreeImage_GetRedMask(bitmap) == 0xff0000)
-			SwapRedBlue32(bitmap);
 
 		return bitmap;
 	}

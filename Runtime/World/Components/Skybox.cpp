@@ -42,8 +42,7 @@ namespace Directus
 	{
 		m_cubemapTexture	= make_shared<RHI_Texture>(GetContext());
 		m_matSkybox			= make_shared<Material>(GetContext());
-		m_format			= Texture_Format_R8G8B8A8_UNORM;
-		m_skyboxType		= Skybox_Array;
+		m_skyboxType		= Skybox_Sphere;
 
 		// Texture paths
 		auto cubemapDirectory = GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
@@ -51,17 +50,17 @@ namespace Directus
 		{
 			m_texturePaths =
 			{
-				cubemapDirectory + "hw_morning/X+.tga",	// right
-				cubemapDirectory + "hw_morning/X-.tga",	// left
-				cubemapDirectory + "hw_morning/Y+.tga",	// up
-				cubemapDirectory + "hw_morning/Y-.tga",	// down
-				cubemapDirectory + "hw_morning/Z-.tga",	// back
-				cubemapDirectory + "hw_morning/Z+.tga"	// front
+				cubemapDirectory + "array/X+.tga",	// right
+				cubemapDirectory + "array/X-.tga",	// left
+				cubemapDirectory + "array/Y+.tga",	// up
+				cubemapDirectory + "array/Y-.tga",	// down
+				cubemapDirectory + "array/Z-.tga",	// back
+				cubemapDirectory + "array/Z+.tga"	// front
 			};
 		}
-		else if (m_skyboxType == Skybox_Cross)
+		else if (m_skyboxType == Skybox_Sphere)
 		{
-			m_texturePaths = { cubemapDirectory + "cross.jpeg" };
+			m_texturePaths = { cubemapDirectory + "sphere/syferfontein_0d_clear_4k.hdr" };
 		}
 	}
 
@@ -76,9 +75,9 @@ namespace Directus
 		{
 			CreateFromArray(m_texturePaths);
 		}
-		else if (m_skyboxType == Skybox_Cross)
+		else if (m_skyboxType == Skybox_Sphere)
 		{
-			CreateFromCross(m_texturePaths.front());
+			CreateFromSphere(m_texturePaths.front());
 		}
 	}
 
@@ -117,15 +116,12 @@ namespace Directus
 			cubemapData.emplace_back(loaderTex->Data_Get());
 		}
 
-		m_size		= loaderTex->GetWidth();
-		m_format	= loaderTex->GetFormat();
-
 		// Cubemap
 		{
-			m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
+			m_cubemapTexture->ShaderResource_CreateCubemap(loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetChannels(), loaderTex->GetFormat(), cubemapData);
 			m_cubemapTexture->SetResourceName("Cubemap");
-			m_cubemapTexture->SetWidth(m_size);
-			m_cubemapTexture->SetHeight(m_size);
+			m_cubemapTexture->SetWidth(loaderTex->GetWidth());
+			m_cubemapTexture->SetHeight(loaderTex->GetHeight());
 			m_cubemapTexture->SetGrayscale(false);
 		}
 
@@ -151,62 +147,34 @@ namespace Directus
 		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 	}
 
-	void Skybox::CreateFromCross(const string& texturePath)
+	void Skybox::CreateFromSphere(const string& texturePath)
 	{
-		//cubemapDirectory + "hw_morning/X+.tga",	// right
-		//cubemapDirectory + "hw_morning/X-.tga",	// left
-		//cubemapDirectory + "hw_morning/Y+.tga",	// up
-		//cubemapDirectory + "hw_morning/Y-.tga",	// down
-		//cubemapDirectory + "hw_morning/Z-.tga",	// back
-		//cubemapDirectory + "hw_morning/Z+.tga"	// front
-
-		// Load all textures (sides)
-		vector<Mipmap> data; // vector<mip<data>>>
-		auto texture = make_shared<RHI_Texture>(GetContext());
-		texture->LoadFromFile(texturePath);
-		data		= texture->Data_Get();
-		m_format	= texture->GetFormat();
-		m_size		= texture->GetHeight() / 3;
-
-		// Split the cross into 6 individual textures
-		vector<vector<Mipmap>> cubemapData;
-		unsigned int mipWidth	= texture->GetWidth();
-		unsigned int mipHeight	= texture->GetHeight();
-		for (vector<std::byte>& mip : data)
+		// Texture
 		{
-			// Compute size of next mip-map
-			mipWidth	= Max(mipWidth / 2, (unsigned int)1);
-			mipHeight	= Max(mipHeight / 2, (unsigned int)1);
-		}
-
-		// Cubemap
-		{
-			m_cubemapTexture->ShaderResource_CreateCubemap(m_size, m_size, 4, m_format, cubemapData);
-			m_cubemapTexture->SetResourceName("Cubemap");
-			m_cubemapTexture->SetWidth(m_size);
-			m_cubemapTexture->SetHeight(m_size);
-			m_cubemapTexture->SetGrayscale(false);
+			m_cubemapTexture = make_shared<RHI_Texture>(GetContext());
+			m_cubemapTexture->LoadFromFile(texturePath);
+			m_cubemapTexture->SetResourceName("Skysphere");
 		}
 
 		// Material
 		{
-			m_matSkybox->SetResourceName("Standard_Skybox");
+			m_matSkybox->SetResourceName("Standard_Skysphere");
 			m_matSkybox->SetCullMode(Cull_Front);
 			m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			m_matSkybox->SetIsEditable(false);
-			m_matSkybox->SetTextureSlot(TextureType_CubeMap, m_cubemapTexture, false); // assign cubmap texture
+			m_matSkybox->SetTextureSlot(TextureType_CubeMap, m_cubemapTexture, false); // assign cubemap texture
 		}
 
 		// Renderable
 		{
 			auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>();
-			renderable->Geometry_Set(Geometry_Default_Cube);
+			renderable->Geometry_Set(Geometry_Default_Sphere);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
 			renderable->Material_Set(m_matSkybox, true);
 		}
 
 		// Make the skybox big enough
-		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
+		GetTransform()->SetScale(Vector3(980, 980, 980));
 	}
 }

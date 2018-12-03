@@ -104,8 +104,8 @@ namespace Directus
 		m_flags			|= Render_MotionBlur;
 		//m_flags			|= Render_TAA;
 		m_flags			|= Render_Correction;
-		m_flags			|= Render_Sharpening;
-		m_flags			|= Render_ChromaticAberration;
+		//m_flags			|= Render_Sharpening;
+		//m_flags			|= Render_ChromaticAberration;
 
 		// Create RHI device
 		m_rhiDevice		= make_shared<RHI_Device>(drawHandle);
@@ -176,9 +176,11 @@ namespace Directus
 		m_texNoiseNormal->LoadFromFile(textureDirectory + "noise.png");
 
 		m_texWhite = make_shared<RHI_Texture>(m_context);
+		m_texWhite->SetNeedsMipChain(false);
 		m_texWhite->LoadFromFile(textureDirectory + "white.png");
 
 		m_texBlack = make_shared<RHI_Texture>(m_context);
+		m_texBlack->SetNeedsMipChain(false);
 		m_texBlack->LoadFromFile(textureDirectory + "black.png");
 
 		// Gizmo icons
