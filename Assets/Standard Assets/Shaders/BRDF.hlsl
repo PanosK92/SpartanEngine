@@ -45,14 +45,14 @@ float3 Diffuse_OrenNayar( float3 DiffuseColor, float Roughness, float NoV, float
 //============================================================================
 float3 BRDF(Material material, Light light, float3 normal, float3 camera_to_pixel)
 {
-	// Compute some commmon vectors
+	// Compute some common vectors
 	float3 h 	= normalize(light.direction - camera_to_pixel);
-	float NdotV = abs(dot(normal, -camera_to_pixel)) + 1e-5;
-    float NdotL = clamp(dot(normal, light.direction), 0.0f, 1.0f);   
-    float NdotH = clamp(dot(normal, h), 0.0f, 1.0f);
-    float VdotH = clamp(dot(-camera_to_pixel, h), 0.0f, 1.0f);
+	float NdotV = saturate(dot(normal, -camera_to_pixel));
+    float NdotL = saturate(dot(normal, light.direction));   
+    float NdotH = saturate(dot(normal, h));
+    float VdotH = saturate(dot(-camera_to_pixel, h));
 	
-	 // BRDF Diffuse
+	// BRDF Diffuse
     float3 cDiffuse 	= Diffuse_OrenNayar(material.color_diffuse, material.roughness, NdotV, NdotL, VdotH);
 	
 	// BRDF Specular	
@@ -61,7 +61,7 @@ float3 BRDF(Material material, Light light, float3 normal, float3 camera_to_pixe
     float D 			= D_GGX(material.alpha, NdotH);
 	float3 nominator 	= F * G * D;
 	float denominator 	= 4.0f * NdotL * NdotV;
-	float3 cSpecular 	= nominator / max(0.001f, denominator);
+	float3 cSpecular 	= nominator / max(0.00001f, denominator);
 	
 	return light.color * light.intensity * NdotL * (cDiffuse * (1.0f - cSpecular) + cSpecular);
 }
