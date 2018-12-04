@@ -41,6 +41,16 @@ float4 mainPS(VS_Output input) : SV_TARGET
     float2 texCoord 	= input.uv;
     float4 color 		= float4(0.0f, 0.0f, 0.0f, 1.0f);
 
+#if PASS_GAMMA_CORRECTION
+	color 		= sourceTexture.Sample(samplerState, texCoord);
+	color 		= ToGamma(color);
+#endif
+
+#if PASS_TONEMAPPING
+	color 		= sourceTexture.Sample(samplerState, texCoord);
+	color.rgb 	= ACESFitted(color.rgb);
+#endif
+
 #if PASS_TEXTURE
 	color = sourceTexture.Sample(samplerState, texCoord);
 #endif
@@ -102,12 +112,6 @@ float4 mainPS(VS_Output input) : SV_TARGET
 	// Computes luma for FXAA
 	color 		= sourceTexture.Sample(samplerState, texCoord);
     color.a 	= dot(color.rgb, float3(0.299f, 0.587f, 0.114f));
-#endif
-
-#if PASS_CORRECTION
-	color 		= sourceTexture.Sample(samplerState, texCoord);
-	color.rgb 	= ACESFitted(color.rgb);
-	color 		= ToGamma(color);
 #endif
 
 #if PASS_TAA_RESOLVE

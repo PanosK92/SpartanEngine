@@ -71,7 +71,7 @@ namespace Directus
 		Render_MotionBlur			= 1UL << 16,
 		Render_Sharpening			= 1UL << 17,
 		Render_ChromaticAberration	= 1UL << 18,
-		Render_Correction			= 1UL << 19, // Tone-mapping & Gamma correction
+		Render_ToneMapping			= 1UL << 19,
 	};
 
 	enum RenderableType
@@ -129,16 +129,19 @@ namespace Directus
 		uint64_t GetFrameNum()		{ return m_frameNum; }
 		Camera* GetCamera()			{ return m_camera; }
 
-		//= Settings =============================
+		//= Settings =============================================================================================================================================================
 		// FXAA
-		float m_fxaaSubPixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Default: 0.75f
-		float m_fxaaEdgeThreshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Default: 0.166f
-		float m_fxaaEdgeThresholdMin	= 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Default: 0.0833f
+		float m_fxaaSubPixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
+		float m_fxaaEdgeThreshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
+		float m_fxaaEdgeThresholdMin	= 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Algorithm's default: 0.0833f
+		// Bloom
 		float m_bloomIntensity			= 0.2f;		// The intensity of the bloom
+		// Sharpening
 		float m_sharpenStrength			= 1.0f;		// Strength of the sharpening
-		float m_sharpenClamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Default: 0.035f
-		float m_motionBlurStrength		= 2.0f;		// Strength of the motion blur
-		//========================================
+		float m_sharpenClamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
+		// Motion Blur
+		float m_motionBlurStrength		= 1.5f;		// Strength of the motion blur
+		//========================================================================================================================================================================
 
 	private:
 		void CreateRenderTextures(unsigned int width, unsigned int height);
@@ -161,7 +164,8 @@ namespace Directus
 		void Pass_TAA(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& texOut);
 		bool Pass_GBufferVisualize(std::shared_ptr<RHI_RenderTexture>& texOut);
-		void Pass_Correction(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_ToneMapping(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_GammaCorrection(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_FXAA(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Sharpening(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ChromaticAberration(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
@@ -215,7 +219,8 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderQuad_blur_gaussianBilateral;
 		std::shared_ptr<RHI_Shader> m_shaderQuad_bloomBright;
 		std::shared_ptr<RHI_Shader> m_shaderQuad_bloomBLend;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_correction;	
+		std::shared_ptr<RHI_Shader> m_shaderQuad_toneMapping;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_gammaCorrection;
 		//==============================================================
 
 		//= SAMPLERS ===============================================

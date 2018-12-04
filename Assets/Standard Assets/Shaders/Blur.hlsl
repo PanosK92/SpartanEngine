@@ -8,7 +8,7 @@ float4 Blur_Box(float2 texCoord, float2 texelSize, int blurSize, Texture2D sourc
 		for (int j = 0; j < blurSize; ++j) 
 		{
 			float2 offset = (hlim + float2(float(i), float(j))) * texelSize;
-			result += sourceTexture.Sample(bilinearSampler, texCoord + offset);
+			result += sourceTexture.SampleLevel(bilinearSampler, texCoord + offset, 0);
 		}
 	}
 		
@@ -36,7 +36,7 @@ float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSa
         weightSum 		+= weight;
         float2 texCoord = uv;
         texCoord 		+= (i / resolution) * direction;
-        float4 sample 	= sourceTexture.Sample(bilinearSampler, texCoord);
+        float4 sample 	= sourceTexture.SampleLevel(bilinearSampler, texCoord, 0);
         color 			+= sample * weight;
     }
 
@@ -50,19 +50,19 @@ float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D dept
 {
 	float weightSum 	= 0.0f;
     float4 color 		= 0;
-	float origin_depth	= depthTexture.Sample(bilinearSampler, uv).r;
+	float origin_depth	= depthTexture.SampleLevel(bilinearSampler, uv, 0).r;
 	float threshold		= 0.00005f;
 	
     for (int i = -7; i < 7; i++)
     {
 		float2 texCoord 	= uv;	
         texCoord 			+= (i / resolution) * direction;    
-		float sampleDepth 	= depthTexture.Sample(bilinearSampler, texCoord).r;
+		float sampleDepth 	= depthTexture.SampleLevel(bilinearSampler, texCoord, 0).r;
 		float depthDelta	= abs(origin_depth - sampleDepth);
 		if (depthDelta < threshold)
 		{
 			float weight 		= CalcGaussianWeight(i, sigma);
-			float4 sample 		= sourceTexture.Sample(bilinearSampler, texCoord);
+			float4 sample 		= sourceTexture.SampleLevel(bilinearSampler, texCoord, 0);
 			weightSum 			+= weight; 
 			color 				+= sample * weight;
 		}

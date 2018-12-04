@@ -3,7 +3,7 @@ static const int MAX_SAMPLES = 16;
 float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_velocity, SamplerState bilinearSampler)
 {	
 	float4 color 	= texture_color.Sample(bilinearSampler, texCoord);	
-	float2 velocity = texture_velocity.Sample(bilinearSampler, texCoord).xy;
+	float2 velocity = GetVelocity(texCoord, texture_velocity, bilinearSampler);
 	
 	float velocity_scale 	= motionBlur_strength;
 	velocity				*= velocity_scale;

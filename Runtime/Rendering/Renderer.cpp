@@ -97,7 +97,7 @@ namespace Directus
 		m_flags			|= Render_Physics;
 		m_flags			|= Render_SceneGrid;
 		m_flags			|= Render_Light;
-		m_flags			|= Render_Correction;
+		m_flags			|= Render_ToneMapping;
 		m_flags			|= Render_Bloom;
 		m_flags			|= Render_FXAA;
 		m_flags			|= Render_SSAO;
@@ -301,9 +301,14 @@ namespace Directus
 		m_shaderQuad_bloomBLend->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Tone-mapping
-		m_shaderQuad_correction = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shaderQuad_correction->AddDefine("PASS_CORRECTION");
-		m_shaderQuad_correction->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_shaderQuad_toneMapping = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderQuad_toneMapping->AddDefine("PASS_TONEMAPPING");
+		m_shaderQuad_toneMapping->CompilePixel(shaderDirectory + "Quad.hlsl");
+
+		// Gamma correction
+		m_shaderQuad_gammaCorrection = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderQuad_gammaCorrection->AddDefine("PASS_GAMMA_CORRECTION");
+		m_shaderQuad_gammaCorrection->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// TAA
 		m_shaderQuad_taa = make_shared<RHI_Shader>(m_rhiDevice);
@@ -1089,56 +1094,58 @@ namespace Directus
 
 		// Render target swapping
 		auto SwapTargets = [&texIn, &texOut]() { texOut.swap(texIn); };
-		SwapTargets();
 
-		// BLOOM
+		// Bloom
 		if (Flags_IsSet(Render_Bloom))
 		{
-			SwapTargets();
 			Pass_Bloom(texIn, texOut);
+			SwapTargets();
 		}
 
 		// Motion Blur
 		if (Flags_IsSet(Render_MotionBlur))
 		{
-			SwapTargets();
 			Pass_MotionBlur(texIn, texOut);
+			SwapTargets();
 		}
 
 		// TAA	
 		if (Flags_IsSet(Render_TAA))
 		{
-			SwapTargets();
 			Pass_TAA(texIn, texOut);
+			SwapTargets();
 		}
 
-		// CORRECTION
-		if (Flags_IsSet(Render_Correction))
-		{
+		// Tone-Mapping
+		if (Flags_IsSet(Render_ToneMapping))
+		{;
+			Pass_ToneMapping(texIn, texOut);
 			SwapTargets();
-			Pass_Correction(texIn, texOut);
 		}
 
 		// FXAA
 		if (Flags_IsSet(Render_FXAA))
 		{
-			SwapTargets();
 			Pass_FXAA(texIn, texOut);
+			SwapTargets();
 		}
 
-		// SHARPENING
+		// Sharpening
 		if (Flags_IsSet(Render_Sharpening))
 		{
-			SwapTargets();
 			Pass_Sharpening(texIn, texOut);
+			SwapTargets();
 		}
 
-		// CHROMATIC ABERRATION
+		// Chromatic aberration
 		if (Flags_IsSet(Render_ChromaticAberration))
 		{
-			SwapTargets();
 			Pass_ChromaticAberration(texIn, texOut);
+			SwapTargets();
 		}
+
+		// Gamma correction
+		Pass_GammaCorrection(texIn, texOut);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -1280,16 +1287,33 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_Correction(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
+	void Renderer::Pass_ToneMapping(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		m_rhiDevice->EventBegin("Pass_Correction");
+		m_rhiDevice->EventBegin("Pass_ToneMapping");
 
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->SetCullMode(Cull_Back);
 		m_rhiPipeline->SetSampler(m_samplerPointClampAlways);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
-		m_rhiPipeline->SetPixelShader(m_shaderQuad_correction);
+		m_rhiPipeline->SetPixelShader(m_shaderQuad_toneMapping);
+		m_rhiPipeline->SetTexture(texIn);
+		m_rhiPipeline->Bind();
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		m_rhiDevice->EventEnd();
+	}
+
+	void Renderer::Pass_GammaCorrection(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut)
+	{
+		m_rhiDevice->EventBegin("Pass_GammaCorrection");
+
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetSampler(m_samplerPointClampAlways);
+		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetViewport(texOut->GetViewport());
+		m_rhiPipeline->SetPixelShader(m_shaderQuad_gammaCorrection);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);

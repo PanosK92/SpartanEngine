@@ -53,7 +53,7 @@ float2 texOffset(float2 shadowMapSize, int x, int y)
 
 float depthTest(Texture2D shadowMap, SamplerState samplerState, float2 texCoords, float compare)
 {
-    float depth = shadowMap.Sample(samplerState, texCoords).r;
+    float depth = shadowMap.SampleLevel(samplerState, texCoords, 0).r;
     return step(compare, depth);
 }
 

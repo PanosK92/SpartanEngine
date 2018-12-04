@@ -82,8 +82,8 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	// Sample from G-Buffer
     float4 albedo       	= ToLinear(texAlbedo.Sample(samplerLinear, texCoord));
     float4 normalSample 	= texNormal.Sample(samplerLinear, texCoord);
+	float3 normal			= Unpack(normalSample.xyz);
     float occlusionTex  	= normalSample.w;
-    float3 normal			= normalize(UnpackNormal(normalSample.xyz));
     float4 materialSample   = texMaterial.Sample(samplerLinear, texCoord);
 
 	// Create material

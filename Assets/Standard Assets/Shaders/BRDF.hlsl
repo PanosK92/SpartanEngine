@@ -75,6 +75,6 @@ float3 BRDF(Material material, Light light, float3 normal, float3 camera_to_pixe
 	float3 kD 	= 1.0f - kS; 	// Remaining energy, light that gets refracted
 	kD 			*= 1.0f - material.metallic;	
 	
-	float radiance = light.color * light.intensity;
+	float3 radiance = light.color * light.intensity;
 	return (kD * cDiffuse + cSpecular) * radiance * NdotL;
 }
