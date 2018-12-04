@@ -118,7 +118,7 @@ void Widget_Toolbar::ShowRendererOptions()
 	{	
 		// Read from engine
 		bool bloom					= m_renderer->Flags_IsSet(Render_Bloom);
-		bool correction				= m_renderer->Flags_IsSet(Render_Correction);
+		bool tonemapping			= m_renderer->Flags_IsSet(Render_ToneMapping);
 		bool fxaa					= m_renderer->Flags_IsSet(Render_FXAA);
 		bool ssao					= m_renderer->Flags_IsSet(Render_SSAO);
 		bool ssr					= m_renderer->Flags_IsSet(Render_SSR);
@@ -131,7 +131,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		{
 			auto tooltip = [this](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
 
-			ImGui::Checkbox("Tone-mapping & Gamma correction", &correction);
+			ImGui::Checkbox("Tone-mapping", &tonemapping); tooltip("ACES Filmic");
 			ImGui::Checkbox("Bloom", &bloom);
 			ImGui::InputFloat("Intensity", &m_renderer->m_bloomIntensity, 0.1f);		
 			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &ssao);
@@ -161,7 +161,7 @@ void Widget_Toolbar::ShowRendererOptions()
 
 		// Map back to engine
 		bloom				? m_renderer->Flags_Enable(Render_Bloom)				: m_renderer->Flags_Disable(Render_Bloom);
-		correction			? m_renderer->Flags_Enable(Render_Correction)			: m_renderer->Flags_Disable(Render_Correction);
+		tonemapping			? m_renderer->Flags_Enable(Render_ToneMapping)			: m_renderer->Flags_Disable(Render_ToneMapping);
 		fxaa				? m_renderer->Flags_Enable(Render_FXAA)					: m_renderer->Flags_Disable(Render_FXAA);
 		ssao				? m_renderer->Flags_Enable(Render_SSAO)					: m_renderer->Flags_Disable(Render_SSAO);
 		ssr					? m_renderer->Flags_Enable(Render_SSR)					: m_renderer->Flags_Disable(Render_SSR);

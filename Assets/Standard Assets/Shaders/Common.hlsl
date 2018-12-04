@@ -50,18 +50,43 @@ float3 ToGamma(float3 color)
 }
 
 /*------------------------------------------------------------------------------
+								[PROJECT]
+------------------------------------------------------------------------------*/
+float2 Project(float4 value)
+{
+	float2 projected;
+	projected.x = (value.x / value.w) / 2.0f + 0.5f;
+    projected.y = (-value.y / value.w) / 2.0f + 0.5f;
+	
+	return projected;
+}
+
+/*------------------------------------------------------------------------------
+								[PACKING]
+------------------------------------------------------------------------------*/
+float3 Unpack(float3 value)
+{
+	return value * 2.0f - 1.0f;
+}
+
+float3 Pack(float3 value)
+{
+	return value * 0.5f + 0.5f;
+}
+
+float2 Unpack(float2 value)
+{
+	return value * 2.0f - 1.0f;
+}
+
+float2 Pack(float2 value)
+{
+	return value * 0.5f + 0.5f;
+}
+
+/*------------------------------------------------------------------------------
 								[NORMALS]
 ------------------------------------------------------------------------------*/
-float3 UnpackNormal(float3 normal)
-{
-	return normal * 2.0f - 1.0f;
-}
-
-float3 PackNormal(float3 normal)
-{
-	return normal * 0.5f + 0.5f;
-}
-
 float3 TangentToWorld(float3 normalMapSample, float3 normalW, float3 tangentW, float3 bitangentW, float intensity)
 {
 	// normal intensity
@@ -81,6 +106,12 @@ float3 TangentToWorld(float3 normalMapSample, float3 normalW, float3 tangentW, f
     return bumpedNormal;
 }
 
+float3 GetNormal(Texture2D texNormal, SamplerState samplerState, float2 texCoord)
+{
+	float3 normal = texNormal.Sample(samplerState, texCoord).rgb;
+	return normalize(Unpack(normal));
+}
+
 /*------------------------------------------------------------------------------
 						[POSITION RECONSTRUCTION]
 ------------------------------------------------------------------------------*/
@@ -96,16 +127,21 @@ float3 ReconstructPositionWorld(float depth, matrix viewProjectionInverse, float
 }
 
 /*------------------------------------------------------------------------------
-								[MISC]
+								[VELOCITY]
+------------------------------------------------------------------------------*/
+float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, SamplerState sampler_bilinear)
+{	
+	float2 velocity = texture_velocity.Sample(sampler_bilinear, texCoord).xy;	
+	velocity		= pow(velocity, abs(1.0 / 3.0));
+	velocity		= Unpack(velocity);
+
+	return velocity;
+}
+
+/*------------------------------------------------------------------------------
+								[DEPTH]
 ------------------------------------------------------------------------------*/
 float LinerizeDepth(float depth, float near, float far)
 {
 	return (far / (far - near)) * (1.0f - (near / depth));
-}
-
-// Returns normal
-float3 GetNormalUnpacked(Texture2D texNormal, SamplerState samplerState, float2 texCoord)
-{
-	float3 normal = texNormal.Sample(samplerState, texCoord).rgb;
-	return normalize(UnpackNormal(normal));
 }

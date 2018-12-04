@@ -94,12 +94,14 @@ PixelOutputType mainPS(PixelInputType input)
 	// 0.0 = CubeMap 		-> texture mapping
 	//=========================================
 	
-	//= VELOCITY ================================================================================
-	float2 a 		= (input.positionCS_Current.xy / input.positionCS_Current.w) * 0.5f + 0.5f;
-	float2 b 		= (input.positionCS_Previous.xy / input.positionCS_Previous.w) * 0.5f + 0.5f;
-    float2 velocity = a - b;
-	velocity 		-= taa_jitterOffset;
-	//===========================================================================================
+	//= VELOCITY ========================================================================================================================
+	float2 a 		= Project(input.positionCS_Previous);
+	float2 b 		= Project(input.positionCS_Current);
+    float2 velocity = b - a;
+	velocity		= Pack(velocity);
+	velocity 		= pow(velocity, 3.0); 	// increase precision for small velocities at the cost of worse precision for high velocities
+	velocity 		-= taa_jitterOffset;	// Account for TAA jitter
+	//===================================================================================================================================
 
 	//= HEIGHT ==================================================================================
 	#if HEIGHT_MAP
@@ -139,7 +141,7 @@ PixelOutputType mainPS(PixelInputType input)
 	
 	//= NORMAL ==================================================================================
 	#if NORMAL_MAP
-		float3 normalSample = normalize(UnpackNormal(texNormal.Sample(samplerAniso, texCoords).rgb));
+		float3 normalSample = normalize(Unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
 		normal = TangentToWorld(normalSample, input.normal.xyz, input.tangent.xyz, input.bitangent.xyz, materialNormalStrength);
 	#endif
 	//============================================================================================
@@ -162,7 +164,7 @@ PixelOutputType mainPS(PixelInputType input)
 
 	// Write to G-Buffer
 	g_buffer.albedo		= albedo;
-	g_buffer.normal 	= float4(PackNormal(normal), occlusion);
+	g_buffer.normal 	= float4(Pack(normal), occlusion);
 	g_buffer.material	= float4(roughness, metallic, emission, type);
 	g_buffer.velocity	= velocity;
     g_buffer.depth      = float2(depth_linear, depth_cs);

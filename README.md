@@ -14,7 +14,7 @@ Opening an issue can be helpful (and is always appreciated), fixing the issue an
 
 Architectual quality is prioritized over development speed. Enjoy.
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4_1.jpg)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4.jpg)
 
 # Features
 - 20+ audio file formats support.

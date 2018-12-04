@@ -1,5 +1,6 @@
 // = INCLUDES ========
 #include "Vertex.hlsl"
+#include "Common.hlsl"
 //====================
 
 Texture2D depthTexture 		: register(t0);
@@ -32,12 +33,8 @@ PixelInputType mainVS(Vertex_PosColor input)
 
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
-	float2 projectDepthMapTexCoord;
-    projectDepthMapTexCoord.x = input.linePos.x / input.linePos.w / 2.0f + 0.5f;
-    projectDepthMapTexCoord.y = -input.linePos.y / input.linePos.w / 2.0f + 0.5f;
-	
     float lineDepth     = input.linePos.z;
-    float depthMapValue = depthTexture.Sample(samplerPoint, projectDepthMapTexCoord).r;
+    float depthMapValue = depthTexture.Sample(samplerPoint, Project(input.linePos)).r;
 	
 	// If an object is in front of the grid, discard this grid pixel
     if (depthMapValue > lineDepth) 
