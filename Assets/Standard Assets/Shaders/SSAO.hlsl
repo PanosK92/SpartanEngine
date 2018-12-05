@@ -23,16 +23,13 @@ SamplerState samplerLinear_clamp : register(s0);
 SamplerState samplerLinear_wrap : register(s1);
 //==============================================
 
-//= CONSTANT BUFFERS =====================
-cbuffer DefaultBuffer : register(b0)
+//= CONSTANT BUFFERS ================
+cbuffer DefaultBuffer : register(b1)
 {
     matrix mWorldViewProjectionOrtho;
     matrix mViewProjectionInverse;
-    float2 resolution;
-    float farPlane;
-    float padding;
 };
-//========================================
+//===================================
 
 static const float3 sampleKernel[64] =
 {
@@ -106,12 +103,12 @@ static const int sample_count		= 16;
 static const float radius			= 1.0f;
 static const float intensity    	= 5.0f;
 static const float bias         	= 0.01f;
-static const float2 noiseScale  	= float2(resolution.x / 64.0f, resolution.y / 64.0f);
+static const float2 noiseScale  	= float2(g_resolution.x / 64.0f, g_resolution.y / 64.0f);
 
 float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_linear, out float depth_cs)
 {
 	float2 depth	= texDepth.Sample(samplerState, uv).rg;
-    depth_linear  	= depth.r * farPlane;
+    depth_linear  	= depth.r * g_camera_far;
     depth_cs      	= depth.g;
     return ReconstructPositionWorld(depth_cs, mViewProjectionInverse, uv);
 }

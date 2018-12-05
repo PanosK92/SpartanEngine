@@ -1,31 +1,31 @@
 cbuffer GlobalBuffer : register(b0)
 {	
-	matrix mMVP;
-	matrix mView;
-	matrix mProjection;	
+	matrix g_mvp;
+	matrix g_view;
+	matrix g_projection;	
 	
-	float camera_near;
-    float camera_far;
-    float2 resolution;
+	float g_camera_near;
+    float g_camera_far;
+    float2 g_resolution;
 	
-	float3 camera_position;	
-	float fxaa_subPix;
+	float3 g_camera_position;	
+	float g_fxaa_subPix;
 	
-	float fxaa_edgeThreshold;
-    float fxaa_edgeThresholdMin;	
-	float2 blur_direction;
+	float g_fxaa_edgeThreshold;
+    float g_fxaa_edgeThresholdMin;	
+	float2 g_blur_direction;
 	
-	float blur_sigma;
-	float bloom_intensity;
-	float sharpen_strength;
-	float sharpen_clamp;
+	float g_blur_sigma;
+	float g_bloom_intensity;
+	float g_sharpen_strength;
+	float g_sharpen_clamp;
 	
-	float2 taa_jitterOffset;
-	float motionBlur_strength;
-	float fps_current;
+	float2 g_taa_jitterOffset;
+	float2 g_taa_jitterOffsetPrevious;
 	
-	float fps_target;
-	float3 padding;
+	float g_motionBlur_strength;
+	float g_deltaTime;
+	float2 padding;
 };
 
-static const float2 texelSize = float2(1.0f / resolution.x, 1.0f / resolution.y);
+static const float2 g_texelSize = float2(1.0f / g_resolution.x, 1.0f / g_resolution.y);

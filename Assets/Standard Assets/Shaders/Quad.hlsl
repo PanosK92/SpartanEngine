@@ -1,7 +1,6 @@
 // = INCLUDES =====================
 #include "Common.hlsl"
 #include "Vertex.hlsl"
-#include "Buffer.hlsl"
 #include "Sharpening.hlsl"
 #include "ChromaticAberration.hlsl"
 #include "Blur.hlsl"
@@ -30,7 +29,7 @@ VS_Output mainVS(Vertex_PosUv input)
     VS_Output output;
 	
     input.position.w 	= 1.0f;
-    output.position 	= mul(input.position, mMVP);
+    output.position 	= mul(input.position, g_mvp);
     output.uv 			= input.uv;
 	
     return output;
@@ -43,7 +42,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 
 #if PASS_GAMMA_CORRECTION
 	color 		= sourceTexture.Sample(samplerState, texCoord);
-	color 		= ToGamma(color);
+	color 		= Gamma(color);
 #endif
 
 #if PASS_TONEMAPPING
@@ -58,15 +57,15 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #if PASS_FXAA
 	// Requirements: Bilinear sampler
 	FxaaTex tex 				= { samplerState, sourceTexture };
-    float2 fxaaQualityRcpFrame	= texelSize;
+    float2 fxaaQualityRcpFrame	= g_texelSize;
   
 	color.rgb = FxaaPixelShader
 	( 
 		texCoord, 0, tex, tex, tex,
 		fxaaQualityRcpFrame, 0, 0, 0,
-		fxaa_subPix,
-		fxaa_edgeThreshold,
-		fxaa_edgeThresholdMin,
+		g_fxaa_subPix,
+		g_fxaa_edgeThreshold,
+		g_fxaa_edgeThresholdMin,
 		0, 0, 0, 0
 	).rgb;
 	color.a = 1.0f;
@@ -74,26 +73,26 @@ float4 mainPS(VS_Output input) : SV_TARGET
 
 #if PASS_CHROMATIC_ABERRATION
 	// Requirements: Bilinear sampler
-	color.rgb = ChromaticAberration(texCoord, texelSize, sourceTexture, samplerState);
+	color.rgb = ChromaticAberration(texCoord, g_texelSize, sourceTexture, samplerState);
 #endif
 
 #if PASS_SHARPENING
 	// Requirements: Bilinear sampler
-	color.rgb = LumaSharpen(texCoord, sourceTexture, samplerState, resolution, sharpen_strength, sharpen_clamp);	
+	color.rgb = LumaSharpen(texCoord, sourceTexture, samplerState, g_resolution, g_sharpen_strength, g_sharpen_clamp);	
 #endif
 	
 #if PASS_BLUR_BOX
-	color = Blur_Box(texCoord, texelSize, blur_sigma, sourceTexture, samplerState);
+	color = Blur_Box(texCoord, g_texelSize, g_blur_sigma, sourceTexture, samplerState);
 #endif
 
 #if PASS_BLUR_GAUSSIAN
 	// Requirements: Bilinear sampler
-	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, resolution, blur_direction, blur_sigma);
+	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_resolution, g_blur_direction, g_blur_sigma);
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN
 	// Requirements: Bilinear sampler
-	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, samplerState, resolution, blur_direction, blur_sigma);
+	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, samplerState, g_resolution, g_blur_direction, g_blur_sigma);
 #endif
 
 #if PASS_BRIGHT
@@ -105,7 +104,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #if PASS_BLEND_ADDITIVE
 	float4 sourceColor 	= sourceTexture.Sample(samplerState, texCoord);
 	float4 sourceColor2 = sourceTexture2.Sample(samplerState, texCoord);
-	color 				= sourceColor + sourceColor2 * bloom_intensity;
+	color 				= sourceColor + sourceColor2 * g_bloom_intensity;
 #endif
 
 #if PASS_LUMA

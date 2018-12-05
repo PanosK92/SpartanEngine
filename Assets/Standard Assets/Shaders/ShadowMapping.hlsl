@@ -34,7 +34,7 @@ cbuffer DefaultBuffer : register(b0)
     float shadowMapResolution;
     float farPlane;
     float doShadowMapping;
-    float2 padding;
+    float2 padding2;
 };
 //========================================
 

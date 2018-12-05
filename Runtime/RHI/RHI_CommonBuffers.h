@@ -153,8 +153,6 @@ namespace Directus
 		)
 		{
 			m_world			= world;
-			m_view			= view;
-			m_projection	= projection;
 			m_wvp			= world * view * projection;
 			m_color			= color;
 			m_cameraPos		= cameraPos;
@@ -164,8 +162,6 @@ namespace Directus
 		}
 
 		Math::Matrix m_world;
-		Math::Matrix m_view;
-		Math::Matrix m_projection;
 		Math::Matrix m_wvp;
 		Math::Vector4 m_color;
 		Math::Vector3 m_cameraPos;

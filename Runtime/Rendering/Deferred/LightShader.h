@@ -45,7 +45,6 @@ namespace Directus
 			const Math::Matrix& mView,
 			const Math::Matrix& mProjection,
 			const std::vector<Actor*>& lights,
-			Camera* camera,
 			bool doSSR
 		);
 
@@ -56,10 +55,7 @@ namespace Directus
 		struct LightBuffer
 		{
 			Math::Matrix mvp;
-			Math::Matrix view;
-			Math::Matrix projection;
 			Math::Matrix viewProjectionInverse;
-			Math::Vector4 cameraPosition;
 			
 			//= DIRECTIONAL LIGHT ==========	
 			Math::Vector4 dirLightColor;
@@ -82,9 +78,6 @@ namespace Directus
 
 			float pointLightCount;
 			float spotLightCount;
-			float nearPlane;
-			float farPlane;
-			Math::Vector2 viewport;
 			Math::Vector2 padding;
 		};
 

@@ -1,3 +1,7 @@
+//= INCLUDES =========
+#include "Buffer.hlsl"
+//====================
+
 /*------------------------------------------------------------------------------
 								[GLOBALS]
 ------------------------------------------------------------------------------*/
@@ -29,22 +33,22 @@ struct Light
 /*------------------------------------------------------------------------------
 							[GAMMA CORRECTION]
 ------------------------------------------------------------------------------*/
-float4 ToLinear(float4 color)
+float4 Degamma(float4 color)
 {
 	return pow(abs(color), 2.2f);
 }
 
-float3 ToLinear(float3 color)
+float3 Degamma(float3 color)
 {
 	return pow(abs(color), 2.2f);
 }
 
-float4 ToGamma(float4 color)
+float4 Gamma(float4 color)
 {
 	return pow(abs(color), 1.0f / 2.2f); 
 }
 
-float3 ToGamma(float3 color)
+float3 Gamma(float3 color)
 {
 	return pow(abs(color), 1.0f / 2.2f); 
 }
@@ -131,9 +135,20 @@ float3 ReconstructPositionWorld(float depth, matrix viewProjectionInverse, float
 ------------------------------------------------------------------------------*/
 float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, SamplerState sampler_bilinear)
 {	
-	float2 velocity = texture_velocity.Sample(sampler_bilinear, texCoord).xy;	
-	velocity		= pow(velocity, abs(1.0 / 3.0));
-	velocity		= Unpack(velocity);
+	// Dilate
+	float2 velocity_tl 		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, -2)).xy;
+	float2 velocity_tr		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, -2)).xy;
+	float2 velocity_bl		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, 2)).xy;
+	float2 velocity_br 		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, 2)).xy;
+	float2 velocity_ce 		= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
+	float2 velocity_average = (velocity_tl+ velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;
+
+	// Unpack
+	float2 velocity = pow(velocity_average, abs(1.0 / 3.0));
+	velocity 		= Unpack(velocity);
+	
+	// Get speed in texels
+	velocity /= g_texelSize;
 
 	return velocity;
 }
