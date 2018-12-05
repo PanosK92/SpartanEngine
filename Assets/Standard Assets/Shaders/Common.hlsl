@@ -147,9 +147,6 @@ float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, SamplerState sam
 	float2 velocity = pow(velocity_average, abs(1.0 / 3.0));
 	velocity 		= Unpack(velocity);
 	
-	// Get speed in texels
-	velocity /= g_texelSize;
-
 	return velocity;
 }
 

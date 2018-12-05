@@ -44,7 +44,7 @@ Improved shadows         		| 90% | Sharper shadows with smoother edges and no sh
 SSAO         					| 100% | Screen space ambient occlusion.
 Bloom         					| 100% | -
 SSR								| 90% |	 Screen space reflections.
-TAA								| 70% |	 Temporal Anti-Aliasing.
+TAA								| 70% |	 Temporal Anti-Aliasing (Based on Uncharted 4).
 Per-Pixel motion blur			| 100% |
 Velocity Buffer					| 100% | Required for TAA and Motion Blur.
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
