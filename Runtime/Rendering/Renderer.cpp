@@ -536,7 +536,6 @@ namespace Directus
 		buffer->sharpen_strength			= m_sharpenStrength;
 		buffer->sharpen_clamp				= m_sharpenClamp;
 		buffer->taa_jitterOffset			= TAA_Jitter::jitterOffset;
-		buffer->taa_jitterOffsetPrevious	= TAA_Jitter::jitterOffsetPrevious;
 		buffer->motionBlur_strength			= m_motionBlurStrength;
 		buffer->fps_current					= Profiler::Get().GetFPS();
 		buffer->fps_target					= Settings::Get().FPS_GetTarget();

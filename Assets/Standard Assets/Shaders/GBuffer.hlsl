@@ -78,25 +78,27 @@ PixelOutputType mainPS(PixelInputType input)
 {
 	PixelOutputType g_buffer;
 
-    float depth_linear  = input.positionVS.z / g_camera_far;
-    float depth_cs      = input.positionCS.z / input.positionVS.w;
-	float2 texCoords 	= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
-	float4 albedo		= materialAlbedoColor;
-	float roughness 	= materialRoughness;
-	float metallic 		= materialMetallic;
-	float emission		= 0.0f;
-	float occlusion		= 1.0f;
-	float3 normal		= input.normal.xyz;
-	float type			= 1.0f; // default
+    float depth_linear  	= input.positionVS.z / g_camera_far;
+    float depth_cs      	= input.positionCS.z / input.positionVS.w;
+	float2 texCoords 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
+	float4 albedo			= materialAlbedoColor;
+	float roughness 		= clamp(materialRoughness, 0.0001f, 1.0f);
+	float metallic 			= clamp(materialMetallic, 0.0001f, 1.0f);
+	float3 normal			= input.normal.xyz;
+	float normalIntensity	= clamp(materialNormalStrength, 0.012f, materialNormalStrength);
+	float emission			= 0.0f;
+	float occlusion			= 1.0f;	
+	float type				= 1.0f; // default
 	//= TYPE CODES ============================
 	// 1.0 = Default mesh 	-> PBR
 	// 0.0 = CubeMap 		-> texture mapping
 	//=========================================
 	
 	//= VELOCITY ========================================================================================================================
-	float2 a 		= Project(input.positionCS_Previous) + g_taa_jitterOffsetPrevious;
-	float2 b 		= Project(input.positionCS_Current) + g_taa_jitterOffset;
+	float2 a 		= Project(input.positionCS_Previous);
+	float2 b 		= Project(input.positionCS_Current);
     float2 velocity = Pack(b - a);
+	velocity		-= g_taa_jitterOffset; // Account for TAA jitter offset
 	velocity 		= pow(velocity, 3.0); 	// increase precision for small velocities at the cost of worse precision for high velocities
 	//===================================================================================================================================
 
@@ -139,7 +141,7 @@ PixelOutputType mainPS(PixelInputType input)
 	//= NORMAL ==================================================================================
 	#if NORMAL_MAP
 		float3 normalSample = normalize(Unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
-		normal = TangentToWorld(normalSample, input.normal.xyz, input.tangent.xyz, input.bitangent.xyz, materialNormalStrength);
+		normal = TangentToWorld(normalSample, input.normal.xyz, input.tangent.xyz, input.bitangent.xyz, normalIntensity);
 	#endif
 	//============================================================================================
 	
