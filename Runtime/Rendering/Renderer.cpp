@@ -538,7 +538,8 @@ namespace Directus
 		buffer->taa_jitterOffset			= TAA_Jitter::jitterOffset;
 		buffer->taa_jitterOffsetPrevious	= TAA_Jitter::jitterOffsetPrevious;
 		buffer->motionBlur_strength			= m_motionBlurStrength;
-		buffer->deltaTime					= Profiler::Get().GetFrameTimeSec();
+		buffer->fps_current					= Profiler::Get().GetFPS();
+		buffer->fps_target					= Settings::Get().FPS_GetTarget();
 
 		m_bufferGlobal->Unmap();
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);

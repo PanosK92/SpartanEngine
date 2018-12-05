@@ -124,10 +124,11 @@ namespace Directus
 		const std::vector<DisplayAdapter>& DisplayAdapters_Get() { return m_displayAdapters; }
 		//==========================================================================================================
 
-		//= FPS ===================================
+		//= FPS =====================================
 		void FPS_SetLimit(float fps);
 		float FPS_GetLimit() { return m_fpsLimit; }
-		//=========================================
+		float FPS_GetTarget() { return m_fpsTarget; }
+		//===========================================
 
 		//= MISC =========================================================================================
 		bool FullScreen_Get()										{ return m_isFullScreen; }
@@ -162,6 +163,7 @@ namespace Directus
 		unsigned int m_anisotropy				= 16;
 		unsigned int m_maxThreadCount			= 0;
 		float m_fpsLimit						= -1.0f;
+		float m_fpsTarget						= 165.0f;
 		FPS_Policy m_fpsPolicy					= FPS_MonitorMatch;
 
 		const DisplayAdapter* m_primaryAdapter	= nullptr;

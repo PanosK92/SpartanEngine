@@ -140,7 +140,7 @@ namespace Directus
 		float m_sharpenStrength			= 1.0f;		// Strength of the sharpening
 		float m_sharpenClamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
 		// Motion Blur
-		float m_motionBlurStrength		= 0.2f;		// Strength of the motion blur
+		float m_motionBlurStrength		= 2.0f;		// Strength of the motion blur
 		//========================================================================================================================================================================
 
 	private:
@@ -306,8 +306,9 @@ namespace Directus
 			Math::Vector2 taa_jitterOffsetPrevious;
 
 			float motionBlur_strength;
-			float deltaTime;
-			Math::Vector2 padding;
+			float fps_current;
+			float fps_target;
+			float padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};

@@ -24,8 +24,9 @@ cbuffer GlobalBuffer : register(b0)
 	float2 g_taa_jitterOffsetPrevious;
 	
 	float g_motionBlur_strength;
-	float g_deltaTime;
-	float2 padding;
+	float g_fps_current;
+	float g_fps_target;
+	float padding;
 };
 
 static const float2 g_texelSize = float2(1.0f / g_resolution.x, 1.0f / g_resolution.y);
