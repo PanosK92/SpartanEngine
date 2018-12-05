@@ -102,6 +102,7 @@ namespace Directus
 		float GetRenderTime_CPU()						{ return m_cpuTime; }
 		float GetRenderTime_GPU()						{ return m_gpuTime; }
 		float GetFPS()									{ return m_fps; }
+		float GetFrameTimeSec()							{ return m_frameTimeSec; }
 
 		void Reset()
 		{
@@ -132,7 +133,8 @@ namespace Directus
 		unsigned int m_rendererMeshesRendered;
 
 		// Metrics - Time
-		float m_frameTime;
+		float m_frameTimeMs;
+		float m_frameTimeSec;
 		float m_cpuTime;
 		float m_gpuTime;
 

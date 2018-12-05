@@ -17,14 +17,11 @@ SamplerState sampler_point_clamp : register(s1);
 
 //= CONSTANT BUFFERS ==========================
 #define MaxLights 64
-cbuffer MiscBuffer : register(b0)
+cbuffer MiscBuffer : register(b1)
 {
     matrix mWorldViewProjection;
-	matrix mView;
-	matrix mProjection;
     matrix mViewProjectionInverse;
-    float4 cameraPosWS;
-	
+
     float4 dirLightColor;
     float4 dirLightIntensity;
     float4 dirLightDirection;
@@ -40,11 +37,7 @@ cbuffer MiscBuffer : register(b0)
 	
     float pointlightCount;
     float spotlightCount;
-    float nearPlane;
-    float farPlane;
-	
-    float2 resolution;
-    float2 padding;
+    float2 padding2;
 };
 //=============================================
 
@@ -80,7 +73,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 finalColor   = float3(0, 0, 0);
 	
 	// Sample from G-Buffer
-    float4 albedo       	= ToLinear(texAlbedo.Sample(samplerLinear, texCoord));
+    float4 albedo       	= Degamma(texAlbedo.Sample(samplerLinear, texCoord));
     float4 normalSample 	= texNormal.Sample(samplerLinear, texCoord);
 	float3 normal			= Unpack(normalSample.xyz);
     float occlusionTex  	= normalSample.w;
@@ -98,7 +91,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	// Compute common values
     float2 depth  			= texDepth.Sample(samplerLinear, texCoord).rg;
     float3 worldPos 		= ReconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
-    float3 camera_to_pixel  = normalize(worldPos.xyz - cameraPosWS.xyz);
+    float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
     if (materialSample.a == 0.0f) // Render technique
     {
@@ -182,9 +175,9 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	ambientTerm 		= clamp(saturate(dirLightIntensity.r), ambientTerm, 1.0f);
 	
 	// SSR - screen space reflections
-	if (padding.x != 0.0f)
+	if (padding2.x != 0.0f)
 	{
-		float4 ssr	= SSR(worldPos, normal, farPlane, mView, mProjection, texFrame, texDepth, sampler_point_clamp);
+		float4 ssr	= SSR(worldPos, normal, texFrame, texDepth, sampler_point_clamp);
 		finalColor += ssr.xyz * (1.0f - material.roughness)  * ambientTerm;
 	}
 	

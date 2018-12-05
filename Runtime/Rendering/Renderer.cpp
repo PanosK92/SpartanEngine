@@ -73,11 +73,12 @@ namespace TAA_Jitter
 	{
 		return Vector2(Halton(index, baseA), Halton(index, baseB));
 	}
-
-	int samples				= 16;
-	float scale				= 1.0f;
-	Vector2 jitterOffset	= Vector2::Zero;
-	Vector2 previousJitter	= Vector2::Zero;
+		
+	int samples						= 16;
+	float scale						= 1.0f;
+	Vector2 jitterOffset			= Vector2::Zero;
+	Vector2 jitterOffsetPrevious	= Vector2::Zero;
+	Vector2 previousJitter			= Vector2::Zero;
 }
 
 namespace Directus
@@ -234,7 +235,7 @@ namespace Directus
 		// SSAO
 		m_shaderSSAO = make_shared<RHI_Shader>(m_rhiDevice);
 		m_shaderSSAO->CompileVertexPixel(shaderDirectory + "SSAO.hlsl", Input_PositionTexture);
-		m_shaderSSAO->AddBuffer<Struct_Matrix_Matrix_Vector2>();
+		m_shaderSSAO->AddBuffer<Struct_Matrix_Matrix>();
 
 		// Shadow mapping
 		m_shaderShadowMapping = make_shared<RHI_Shader>(m_rhiDevice);
@@ -519,25 +520,25 @@ namespace Directus
 	{
 		auto buffer = (ConstantBuffer_Global*)m_bufferGlobal->Map();
 
-		buffer->mMVP					= mMVP;
-		buffer->mView					= m_view;
-		buffer->mProjection				= m_projection;
-		buffer->camera_position			= m_camera->GetTransform()->GetPosition();
-		buffer->camera_near				= m_camera->GetNearPlane();
-		buffer->camera_far				= m_camera->GetFarPlane();
-		buffer->resolution				= Vector2((float)resolutionWidth, (float)resolutionHeight);
-		buffer->fxaa_subPixel			= m_fxaaSubPixel;
-		buffer->fxaa_edgeThreshold		= m_fxaaEdgeThreshold;
-		buffer->fxaa_edgeThresholdMin	= m_fxaaEdgeThresholdMin;
-		buffer->blur_direction			= blur_direction;
-		buffer->blur_sigma				= blur_sigma;
-		buffer->bloom_intensity			= m_bloomIntensity;
-		buffer->sharpen_strength		= m_sharpenStrength;
-		buffer->sharpen_clamp			= m_sharpenClamp;
-		buffer->taa_jitterOffset		= TAA_Jitter::jitterOffset;
-		buffer->motionBlur_strength		= m_motionBlurStrength;
-		buffer->fps_current				= Profiler::Get().GetFPS();
-		buffer->fps_target				= Settings::Get().FPS_GetLimit();
+		buffer->mMVP						= mMVP;
+		buffer->mView						= m_view;
+		buffer->mProjection					= m_projection;
+		buffer->camera_position				= m_camera->GetTransform()->GetPosition();
+		buffer->camera_near					= m_camera->GetNearPlane();
+		buffer->camera_far					= m_camera->GetFarPlane();
+		buffer->resolution					= Vector2((float)resolutionWidth, (float)resolutionHeight);
+		buffer->fxaa_subPixel				= m_fxaaSubPixel;
+		buffer->fxaa_edgeThreshold			= m_fxaaEdgeThreshold;
+		buffer->fxaa_edgeThresholdMin		= m_fxaaEdgeThresholdMin;
+		buffer->blur_direction				= blur_direction;
+		buffer->blur_sigma					= blur_sigma;
+		buffer->bloom_intensity				= m_bloomIntensity;
+		buffer->sharpen_strength			= m_sharpenStrength;
+		buffer->sharpen_clamp				= m_sharpenClamp;
+		buffer->taa_jitterOffset			= TAA_Jitter::jitterOffset;
+		buffer->taa_jitterOffsetPrevious	= TAA_Jitter::jitterOffsetPrevious;
+		buffer->motionBlur_strength			= m_motionBlurStrength;
+		buffer->deltaTime					= Profiler::Get().GetFrameTimeSec();
 
 		m_bufferGlobal->Unmap();
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);
@@ -908,15 +909,13 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_texNoiseNormal);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClampGreater);	// SSAO (clamp)
 		m_rhiPipeline->SetSampler(m_samplerBilinearWrapGreater);	// SSAO noise texture (wrap)
-		auto buffer = Struct_Matrix_Matrix_Vector2
+		auto buffer = Struct_Matrix_Matrix
 		(
 			m_viewProjection_Orthographic,
-			(m_viewProjection).Inverted(),
-			Vector2(texOut->GetWidth(), texOut->GetHeight()),
-			m_camera->GetFarPlane()
+			(m_viewProjection).Inverted()
 		);
 		m_shaderSSAO->UpdateBuffer(&buffer);
-		m_rhiPipeline->SetConstantBuffer(m_shaderSSAO->GetConstantBuffer(), 0, Buffer_Global);
+		m_rhiPipeline->SetConstantBuffer(m_shaderSSAO->GetConstantBuffer(), 1, Buffer_Global);
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
@@ -1043,8 +1042,9 @@ namespace Directus
 			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(jitter.x, -jitter.y, 0.0f));
 			m_projectionJittered	= m_viewProjection_Orthographic * jitterMatrix;
 		}
-		TAA_Jitter::jitterOffset = (jitter - TAA_Jitter::previousJitter) * 0.5f;
-		TAA_Jitter::previousJitter = jitter;
+		TAA_Jitter::jitterOffsetPrevious	= TAA_Jitter::jitterOffset;
+		TAA_Jitter::jitterOffset			= (jitter - TAA_Jitter::previousJitter) * 0.5f;
+		TAA_Jitter::previousJitter			= jitter;
 
 		// Update constant buffer
 		m_shaderLight->UpdateConstantBuffer(
@@ -1052,7 +1052,6 @@ namespace Directus
 			m_view,
 			m_projection,
 			m_actors[Renderable_Light],
-			m_camera,
 			Flags_IsSet(Render_SSR)
 		);
 
@@ -1070,7 +1069,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_tex_lutIBL);
 		m_rhiPipeline->SetSampler(m_samplerBilinearWrapGreater);
 		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);
-		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer(), 0, Buffer_Global);
+		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer(), 1, Buffer_Global);
 		m_rhiPipeline->Bind();
 
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -1238,7 +1237,7 @@ namespace Directus
 				material->GetRoughnessMultiplier()
 			);
 			m_shaderTransparent->UpdateBuffer(&buffer);
-			m_rhiPipeline->SetConstantBuffer(m_shaderTransparent->GetConstantBuffer(), 0, Buffer_Global);
+			m_rhiPipeline->SetConstantBuffer(m_shaderTransparent->GetConstantBuffer(), 1, Buffer_Global);
 
 			m_rhiPipeline->Bind();
 

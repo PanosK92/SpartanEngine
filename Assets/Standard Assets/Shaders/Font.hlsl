@@ -1,5 +1,4 @@
 // = INCLUDES ========
-#include "Common.hlsl"
 #include "Vertex.hlsl"
 //====================
 

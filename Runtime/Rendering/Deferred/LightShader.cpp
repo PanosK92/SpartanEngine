@@ -53,14 +53,13 @@ namespace Directus
 		const Matrix& mView,
 		const Matrix& mProjection,
 		const vector<Actor*>& lights,
-		Camera* camera,
 		bool doSSR
 	)
 	{
 		if (GetState() != Shader_Built)
 			return;
 
-		if (!camera || lights.empty())
+		if (lights.empty())
 			return;
 
 		// Get a pointer to the data in the constant buffer.
@@ -71,11 +70,7 @@ namespace Directus
 			return;
 		}
 
-		Vector3 camPos					= camera->GetTransform()->GetPosition();
-		buffer->cameraPosition			= Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
 		buffer->mvp						= mViewProjection_Orthographic;
-		buffer->view					= mView;
-		buffer->projection				= mProjection;
 		buffer->viewProjectionInverse	= (mView * mProjection).Inverted();
 
 		// Reset any light buffer values because the shader will still use them
@@ -147,9 +142,6 @@ namespace Directus
 
 		buffer->pointLightCount = (float)pointIndex;
 		buffer->spotLightCount	= (float)spotIndex;
-		buffer->nearPlane		= camera->GetNearPlane();
-		buffer->farPlane		= camera->GetFarPlane();
-		buffer->viewport		= Settings::Get().Resolution_Get();
 		buffer->padding			= Vector2(doSSR ? 1.0f : 0.0f, 0.0f);
 
 		// Unmap buffer

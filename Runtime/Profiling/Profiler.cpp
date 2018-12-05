@@ -135,18 +135,18 @@ namespace Directus
 	void Profiler::OnFrameStart()
 	{
 		// Get delta time
-		m_frameTime			= m_timer->GetDeltaTimeMs();
-		float frameTimeSec	= m_timer->GetDeltaTimeSec();
+		m_frameTimeMs	= m_timer->GetDeltaTimeMs();
+		m_frameTimeSec	= m_timer->GetDeltaTimeSec();
 
 		// Compute FPS
-		ComputeFPS(frameTimeSec);
+		ComputeFPS(m_frameTimeSec);
 		// Get GPU render time
 		m_cpuTime = GetTimeBlockMs_CPU("Directus::Renderer::Render");
 		// Get CPU render time
 		m_gpuTime = GetTimeBlockMs_GPU("Directus::Renderer::Render");
 
 		// Below this point, update every m_profilingFrequencyMs
-		m_profilingLastUpdateTime += frameTimeSec;
+		m_profilingLastUpdateTime += m_frameTimeSec;
 		if (m_profilingLastUpdateTime >= m_profilingFrequencySec)
 		{
 			UpdateMetrics(m_fps);
@@ -183,7 +183,7 @@ namespace Directus
 		m_metrics =
 			// Performance
 			"FPS:\t\t\t\t\t\t\t"	+ to_string_precision(fps, 2) + "\n"
-			"Frame time:\t\t\t\t\t" + to_string_precision(m_frameTime, 2) + " ms\n"
+			"Frame time:\t\t\t\t\t" + to_string_precision(m_frameTimeMs, 2) + " ms\n"
 			"CPU time:\t\t\t\t\t\t" + to_string_precision(m_cpuTime, 2) + " ms\n"
 			"GPU time:\t\t\t\t\t\t" + to_string_precision(m_gpuTime, 2) + " ms\n"
 			"GPU:\t\t\t\t\t\t\t"	+ Settings::Get().Gpu_GetName() + "\n"

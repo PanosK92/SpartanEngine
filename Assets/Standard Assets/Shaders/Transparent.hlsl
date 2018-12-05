@@ -7,11 +7,9 @@ Texture2D depthTexture 		: register(t0);
 TextureCube environmentTex 	: register(t1);
 SamplerState samplerLinear 	: register(s0);
 
-cbuffer MiscBuffer : register(b0)
+cbuffer MiscBuffer : register(b1)
 {
 	matrix mWorld;
-	matrix mView;
-	matrix mProjection;
 	matrix mWVP;
 	float4 color;
 	float3 cameraPos;
@@ -50,12 +48,8 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
 
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
-	float2 projectDepthMapTexCoord;
-	projectDepthMapTexCoord.x = input.gridPos.x / input.gridPos.w / 2.0f + 0.5f;
-	projectDepthMapTexCoord.y = -input.gridPos.y / input.gridPos.w / 2.0f + 0.5f;
-	
 	float transparentGeometryDepth 	= input.position.z;
-	float opaqueGeometryDepth 		= depthTexture.Sample(samplerLinear, projectDepthMapTexCoord).r;
+	float opaqueGeometryDepth 		= depthTexture.Sample(samplerLinear, Project(input.gridPos)).r;
 	
 	if (opaqueGeometryDepth > transparentGeometryDepth)
 		discard;
@@ -63,7 +57,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	float3 normal				= normalize(input.normal);
 	float3 view 				= normalize(cameraPos - input.positionWS.xyz);
 	float3 reflection 			= reflect(-view, normal);
-	float3 environmentColor 	= ToLinear(environmentTex.Sample(samplerLinear, reflection)).rgb;
+	float3 environmentColor 	= environmentTex.Sample(samplerLinear, reflection).rgb;
 
 	// Intensity of the specular light
 	float specularHardness 	= 0;

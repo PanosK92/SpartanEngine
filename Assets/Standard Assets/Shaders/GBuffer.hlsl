@@ -1,7 +1,6 @@
 // = INCLUDES ========
 #include "Common.hlsl"
 #include "Vertex.hlsl"
-#include "Buffer.hlsl"
 //====================
 
 //= TEXTURES ===============================
@@ -63,8 +62,8 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
     
     input.position.w 			= 1.0f;	
 	output.positionWS 			= mul(input.position, mModel);
-    output.positionVS   		= mul(output.positionWS, mView);
-    output.positionCS   		= mul(output.positionVS, mProjection);
+    output.positionVS   		= mul(output.positionWS, g_view);
+    output.positionCS   		= mul(output.positionVS, g_projection);
 	output.positionCS_Current 	= mul(input.position, mMVP_current);
 	output.positionCS_Previous 	= mul(input.position, mMVP_previous);
 	output.normal 				= normalize(mul(input.normal, 		(float3x3)mModel)).xyz;	
@@ -79,7 +78,7 @@ PixelOutputType mainPS(PixelInputType input)
 {
 	PixelOutputType g_buffer;
 
-    float depth_linear  = input.positionVS.z / camera_far;
+    float depth_linear  = input.positionVS.z / g_camera_far;
     float depth_cs      = input.positionCS.z / input.positionVS.w;
 	float2 texCoords 	= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo		= materialAlbedoColor;
@@ -95,12 +94,10 @@ PixelOutputType mainPS(PixelInputType input)
 	//=========================================
 	
 	//= VELOCITY ========================================================================================================================
-	float2 a 		= Project(input.positionCS_Previous);
-	float2 b 		= Project(input.positionCS_Current);
-    float2 velocity = b - a;
-	velocity		= Pack(velocity);
+	float2 a 		= Project(input.positionCS_Previous) + g_taa_jitterOffsetPrevious;
+	float2 b 		= Project(input.positionCS_Current) + g_taa_jitterOffset;
+    float2 velocity = Pack(b - a);
 	velocity 		= pow(velocity, 3.0); 	// increase precision for small velocities at the cost of worse precision for high velocities
-	velocity 		-= taa_jitterOffset;	// Account for TAA jitter
 	//===================================================================================================================================
 
 	//= HEIGHT ==================================================================================
