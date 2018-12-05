@@ -4,7 +4,7 @@ Texture2D texNormal 		: register(t1);
 Texture2D texDepth 			: register(t2);
 Texture2D texMaterial 		: register(t3);
 Texture2D texShadows 		: register(t4);
-Texture2D texSSDO 			: register(t5);
+Texture2D texSSAO 			: register(t5);
 Texture2D texFrame 			: register(t6);
 Texture2D texEnvironment 	: register(t7);
 Texture2D texLutIBL			: register(t8);
@@ -99,11 +99,27 @@ float4 mainPS(PixelInputType input) : SV_TARGET
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }
-
+	
+	//= OCCLUSION =========================================================
+	float dirShadow			= texShadows.Sample(samplerLinear, texCoord).r;
+	
+	// SSAO
+	float4 ssao				= texSSAO.Sample(samplerLinear, texCoord);
+    float ssao_occlusion	= ssao.a;
+	float3 ssao_color		= ssao.rgb;
+	
+	// Accumulate everything
+	float occlusion_total	= 1.0f;
+	occlusion_total			-= (1.0f - dirShadow);
+	occlusion_total			-= (1.0f - occlusionTex);
+	occlusion_total			-= (1.0f - ssao_occlusion);
+	occlusion_total 		= max(0.1f, saturate(occlusion_total) * dirLightIntensity.r);
+	
+	// Cheap, dirty and pretty light bleeding from ssao
+	finalColor += ssao_color * occlusion_total;
+	//=====================================================================
+	
 	//= DIRECTIONAL LIGHT ==================================================
-	// Directional shadow
-    float dirShadow	= texShadows.Sample(samplerLinear, texCoord).r;
-    
 	Light directionalLight;
 
 	// Compute
@@ -170,25 +186,15 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     }
 	//=======================================================================================================================
 
-	// Dirty and ugly, just the way I like it
-	float ambientTerm 	= 0.1f;
-	ambientTerm 		= clamp(saturate(dirLightIntensity.r), ambientTerm, 1.0f);
-	
 	// SSR - screen space reflections
 	if (padding2.x != 0.0f)
 	{
 		float4 ssr	= SSR(worldPos, normal, texFrame, texDepth, sampler_point_clamp);
-		finalColor += ssr.xyz * (1.0f - material.roughness)  * ambientTerm;
+		finalColor += ssr.xyz * (1.0f - material.roughness)  * occlusion_total;
 	}
 	
 	// IBL - Image based lighting
-    finalColor 	+= ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, samplerLinear, ambientTerm);
-
-	// SDDO - Screen space directional occlusion
-	float4 ssdo			= texSSDO.Sample(samplerLinear, texCoord);
-    float3 occlusion	= ssdo.a * occlusionTex;
-	finalColor			+= ssdo.rgb;
-	finalColor			*= occlusion;
+    finalColor 	+= ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, samplerLinear, occlusion_total);
 
 	// Emission
     float3 emission = material.emission * albedo.rgb * 20.0f;

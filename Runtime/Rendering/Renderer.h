@@ -279,7 +279,7 @@ namespace Directus
 		bool m_isOddFrame;		
 		//===============================================================
 		
-		// Global buffer (holds what is need by almost every shader)
+		// Global buffer (holds what is needed by almost every shader)
 		struct ConstantBuffer_Global
 		{
 			Math::Matrix mMVP;
@@ -303,12 +303,11 @@ namespace Directus
 			float sharpen_clamp;
 
 			Math::Vector2 taa_jitterOffset;
-			Math::Vector2 taa_jitterOffsetPrevious;
-
 			float motionBlur_strength;
 			float fps_current;
+
 			float fps_target;
-			float padding;
+			Math::Vector3 padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};

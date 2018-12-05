@@ -136,12 +136,12 @@ float3 ReconstructPositionWorld(float depth, matrix viewProjectionInverse, float
 float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, SamplerState sampler_bilinear)
 {	
 	// Dilate
-	float2 velocity_tl 		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, -2)).xy;
-	float2 velocity_tr		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, -2)).xy;
-	float2 velocity_bl		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, 2)).xy;
-	float2 velocity_br 		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, 2)).xy;
+	float2 velocity_tl 		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, -2) * g_texelSize).xy;
+	float2 velocity_tr		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, -2) * g_texelSize).xy;
+	float2 velocity_bl		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, 2) * g_texelSize).xy;
+	float2 velocity_br 		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, 2) * g_texelSize).xy;
 	float2 velocity_ce 		= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
-	float2 velocity_average = (velocity_tl+ velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;
+	float2 velocity_average = (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;
 
 	// Unpack
 	float2 velocity = pow(velocity_average, abs(1.0 / 3.0));
