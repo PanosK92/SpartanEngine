@@ -94,13 +94,13 @@ PixelOutputType mainPS(PixelInputType input)
 	// 0.0 = CubeMap 		-> texture mapping
 	//=========================================
 	
-	//= VELOCITY ========================================================================================================================
-	float2 a 		= Project(input.positionCS_Previous);
-	float2 b 		= Project(input.positionCS_Current);
-    float2 velocity = Pack(b - a);
-	velocity		-= g_taa_jitterOffset; // Account for TAA jitter offset
-	velocity 		= pow(velocity, 3.0); 	// increase precision for small velocities at the cost of worse precision for high velocities
-	//===================================================================================================================================
+	//= VELOCITY ====================================================================================================================================
+	float2 position_previous 	= Project(input.positionCS_Previous);
+	float2 position_current 	= Project(input.positionCS_Current);
+    float2 velocity 			= Pack(position_current - position_previous);
+	velocity					-= g_taa_jitterOffset;	// Account for TAA jitter offset
+	velocity 					= pow(velocity, 3.0); 	// increase precision for small velocities at the cost of worse precision for high velocities
+	//===============================================================================================================================================
 
 	//= HEIGHT ==================================================================================
 	#if HEIGHT_MAP

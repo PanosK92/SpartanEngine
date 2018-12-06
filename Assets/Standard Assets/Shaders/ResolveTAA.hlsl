@@ -31,10 +31,11 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	// Compute history color
 	float4 color_history 	= tex_history.Sample(sampler_bilinear, texCoord_history);
 	color_history 			= clamp(color_history, sampleMin, sampleMax);
-
+	
 	// Compute blend factor
-	float blendfactor = 0.05f;
-	blendfactor = any(texCoord_history - saturate(texCoord_history)) ? 1.0f : blendfactor;
+	float subpixel 		= frac(max(abs(velocity.x) * g_resolution.x, abs(velocity.y) * g_resolution.y)) * 0.5f;
+	float blendfactor 	= saturate(lerp(0.05f, 0.8f, subpixel));
+	blendfactor 		= any(texCoord_history - saturate(texCoord_history)) ? 1.0f : blendfactor;
    
 	// Resolve color
 	float4 color_resolved = lerp(color_history, color_current, blendfactor);
