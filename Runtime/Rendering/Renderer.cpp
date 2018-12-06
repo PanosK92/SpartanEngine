@@ -328,7 +328,7 @@ namespace Directus
 		m_samplerPointClampGreater		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
 		m_samplerBilinearClampGreater	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
 		m_samplerBilinearWrapGreater	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Wrap,	Texture_Comparison_GreaterEqual);
-		m_samplerBilinearClampAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_Always);
+		m_samplerTrilinearClampAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Trilinear,		Texture_Address_Clamp,	Texture_Comparison_Always);
 		m_samplerAnisotropicWrapAlways	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,	Texture_Address_Wrap,	Texture_Comparison_Always);
 	}
 
@@ -344,7 +344,7 @@ namespace Directus
 
 	void* Renderer::GetFrameShaderResource()
 	{
-		return m_renderTexFull_FinalFrame ? m_renderTexFull_FinalFrame->GetShaderResource() : nullptr;
+		return m_renderTexFull_HDR_Light2 ? m_renderTexFull_HDR_Light2->GetShaderResource() : nullptr;
 	}
 
 	void Renderer::Present()
@@ -403,20 +403,20 @@ namespace Directus
 		Pass_Light(
 			m_renderTexHalf_Shadows,	// IN:	Shadows
 			m_renderTexHalf_SSAO,		// IN:	SSAO
-			m_renderTexFull_Light		// Out: Result
+			m_renderTexFull_HDR_Light	// Out: Result
 		);
 
-		Pass_Transparent(m_renderTexFull_Light);
+		Pass_Transparent(m_renderTexFull_HDR_Light);
 		
 		Pass_PostLight(
-			m_renderTexFull_Light,		// IN:	Light pass result
-			m_renderTexFull_FinalFrame	// OUT: Result
+			m_renderTexFull_HDR_Light,	// IN:	Light pass result
+			m_renderTexFull_HDR_Light2	// OUT: Result
 		);
 	
-		Pass_GBufferVisualize(m_renderTexFull_FinalFrame);
-		Pass_Lines(m_renderTexFull_FinalFrame);
-		Pass_Gizmos(m_renderTexFull_FinalFrame);
-		Pass_PerformanceMetrics(m_renderTexFull_FinalFrame);
+		Pass_GBufferVisualize(m_renderTexFull_HDR_Light2);
+		Pass_Lines(m_renderTexFull_HDR_Light2);
+		Pass_Gizmos(m_renderTexFull_HDR_Light2);
+		Pass_PerformanceMetrics(m_renderTexFull_HDR_Light2);
 
 		m_isRendering = false;
 		TIME_BLOCK_END_MULTI();
@@ -501,11 +501,11 @@ namespace Directus
 		m_quad->Create(0, 0, (float)width, (float)height);
 
 		// Full res
-		m_renderTexFull_Light		= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexFull_HDR_Light	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R32G32B32A32_FLOAT);
+		m_renderTexFull_HDR_Light2	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R32G32B32A32_FLOAT);
 		m_renderTexFull_TAA_Current	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
 		m_renderTexFull_TAA_History	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexFull_FinalFrame	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
-
+		
 		// Half res
 		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16G16B16A16_FLOAT);
 		m_renderTexHalf_SSAO	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16G16B16A16_FLOAT);
@@ -903,7 +903,7 @@ namespace Directus
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetShader(m_shaderSSAO);
-		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame);
+		m_rhiPipeline->SetTexture(m_renderTexFull_HDR_Light2);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_texNoiseNormal);
@@ -933,7 +933,7 @@ namespace Directus
 		m_rhiPipeline->SetVertexShader(m_shaderQuad);
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_blur_box);
 		m_rhiPipeline->SetTexture(texIn); // Shadows are in the alpha channel
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
@@ -1064,10 +1064,10 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Material));
 		m_rhiPipeline->SetTexture(texShadows);
 		if (Flags_IsSet(Render_SSAO)) { m_rhiPipeline->SetTexture(texSSAO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
-		m_rhiPipeline->SetTexture(m_renderTexFull_FinalFrame); // SSR
+		m_rhiPipeline->SetTexture(m_renderTexFull_HDR_Light2); // SSR
 		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
 		m_rhiPipeline->SetTexture(m_tex_lutIBL);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 		m_rhiPipeline->SetSampler(m_samplerPointClampGreater);
 		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer(), 1, Buffer_Global);
 		m_rhiPipeline->Bind();
@@ -1160,7 +1160,7 @@ namespace Directus
 		m_rhiPipeline->SetRenderTarget(m_renderTexFull_TAA_Current);
 		m_rhiPipeline->SetViewport(m_renderTexFull_TAA_Current->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_taa);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 		m_rhiPipeline->SetTexture(m_renderTexFull_TAA_History);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
@@ -1259,7 +1259,7 @@ namespace Directus
 
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->SetCullMode(Cull_Back);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 		SetGlobalBuffer(m_viewProjection_Orthographic, texOut->GetWidth(), texOut->GetHeight());
 
 		// Bright pass
@@ -1327,7 +1327,7 @@ namespace Directus
 		// Common states
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->SetCullMode(Cull_Back);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 		SetGlobalBuffer(m_viewProjection_Orthographic, texIn->GetWidth(), texIn->GetHeight());
 
 		// Luma
@@ -1358,7 +1358,7 @@ namespace Directus
 
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->SetCullMode(Cull_Back);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_chromaticAberration);
@@ -1375,7 +1375,7 @@ namespace Directus
 
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_motionBlur);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
@@ -1391,7 +1391,7 @@ namespace Directus
 
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->SetCullMode(Cull_Back);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_sharpening);
@@ -1506,7 +1506,7 @@ namespace Directus
 
 			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 			m_rhiPipeline->SetShader(m_shaderQuad_texture);
-			m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+			m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 			for (const auto& actor : lights)
 			{
 				Vector3 lightWorldPos = actor->GetTransform_PtrRaw()->GetPosition();
@@ -1606,7 +1606,7 @@ namespace Directus
 		m_rhiPipeline->SetVertexBuffer(m_font->GetVertexBuffer());
 		m_rhiPipeline->SetRenderTarget(texOut);	
 		m_rhiPipeline->SetTexture(m_font->GetTexture());
-		m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 		m_rhiPipeline->SetShader(m_shaderFont);
 		auto buffer = Struct_Matrix_Vector4(m_viewProjection_Orthographic, m_font->GetColor());
 		m_shaderFont->UpdateBuffer(&buffer);
@@ -1645,7 +1645,7 @@ namespace Directus
 			m_rhiPipeline->SetShader(m_shaderQuad_texture);
 			m_rhiPipeline->SetViewport(m_gbuffer->GetTexture(texType)->GetViewport());
 			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(texType));
-			m_rhiPipeline->SetSampler(m_samplerBilinearClampAlways);
+			m_rhiPipeline->SetSampler(m_samplerTrilinearClampAlways);
 			m_rhiPipeline->Bind();
 
 			m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);

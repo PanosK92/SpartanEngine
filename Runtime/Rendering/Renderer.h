@@ -183,10 +183,10 @@ namespace Directus
 
 		//= RENDER TEXTURES ===========================================
 		// 1/1
-		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_Light;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_HDR_Light;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_TAA_Current;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_TAA_History;
-		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_FinalFrame;
+		std::shared_ptr<RHI_RenderTexture> m_renderTexFull_HDR_Light2;
 		// 1/2
 		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_Shadows;
 		std::shared_ptr<RHI_RenderTexture> m_renderTexHalf_SSAO;
@@ -228,7 +228,7 @@ namespace Directus
 		std::shared_ptr<RHI_Sampler> m_samplerPointClampGreater;
 		std::shared_ptr<RHI_Sampler> m_samplerBilinearClampGreater;
 		std::shared_ptr<RHI_Sampler> m_samplerBilinearWrapGreater;
-		std::shared_ptr<RHI_Sampler> m_samplerBilinearClampAlways;
+		std::shared_ptr<RHI_Sampler> m_samplerTrilinearClampAlways;
 		std::shared_ptr<RHI_Sampler> m_samplerAnisotropicWrapAlways;
 		//==========================================================
 

@@ -58,11 +58,7 @@ float3 Gamma(float3 color)
 ------------------------------------------------------------------------------*/
 float2 Project(float4 value)
 {
-	float2 projected;
-	projected.x = (value.x / value.w) / 2.0f + 0.5f;
-    projected.y = (-value.y / value.w) / 2.0f + 0.5f;
-	
-	return projected;
+	return (value.xy / value.w) * float2(0.5f, -0.5f) + 0.5f;
 }
 
 /*------------------------------------------------------------------------------
