@@ -132,7 +132,7 @@ namespace Directus
 
 		// Set up an Assimp importer
 		Importer importer;
-		importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64);										// Optimize mesh
+		//importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64);										// Optimize mesh
 		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);	// Remove points and lines.
 		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);		// Remove cameras and lights
 		importer.SetPropertyFloat(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, _ModelImporter::normalSmoothAngle);	// Normal smoothing angle
@@ -154,6 +154,8 @@ namespace Directus
 			LOGF_ERROR("ModelImporter::Load: %s", importer.GetErrorString());
 			return false;
 		}
+
+		importer.FreeScene();
 
 		return true;
 	}

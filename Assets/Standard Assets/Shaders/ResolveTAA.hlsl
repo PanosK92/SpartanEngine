@@ -7,15 +7,15 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	
 	// For non-existing and lighting change cases, clamp out too different history colors 
 	float4 samples[9];
-	samples[0] = tex_current.Sample(sampler_bilinear, texCoord + float2(-1, -1));
-	samples[1] = tex_current.Sample(sampler_bilinear, texCoord + float2(0, -1));
-	samples[2] = tex_current.Sample(sampler_bilinear, texCoord + float2(1, -1));
-	samples[3] = tex_current.Sample(sampler_bilinear, texCoord + float2(-1, 0));
+	samples[0] = tex_current.Sample(sampler_bilinear, texCoord + float2(-1, -1) * g_texelSize);
+	samples[1] = tex_current.Sample(sampler_bilinear, texCoord + float2(0, -1) * g_texelSize);
+	samples[2] = tex_current.Sample(sampler_bilinear, texCoord + float2(1, -1) * g_texelSize);
+	samples[3] = tex_current.Sample(sampler_bilinear, texCoord + float2(-1, 0) * g_texelSize);
 	samples[4] = tex_current.Sample(sampler_bilinear, texCoord + float2(0, 0));
-	samples[5] = tex_current.Sample(sampler_bilinear, texCoord + float2(1, 0));
-	samples[6] = tex_current.Sample(sampler_bilinear, texCoord + float2(-1, 1));
-	samples[7] = tex_current.Sample(sampler_bilinear, texCoord + float2(0, 1));
-	samples[8] = tex_current.Sample(sampler_bilinear, texCoord + float2(1, 1));
+	samples[5] = tex_current.Sample(sampler_bilinear, texCoord + float2(1, 0) * g_texelSize);
+	samples[6] = tex_current.Sample(sampler_bilinear, texCoord + float2(-1, 1) * g_texelSize);
+	samples[7] = tex_current.Sample(sampler_bilinear, texCoord + float2(0, 1) * g_texelSize);
+	samples[8] = tex_current.Sample(sampler_bilinear, texCoord + float2(1, 1) * g_texelSize);
 	float4 sampleMin = samples[0];
 	float4 sampleMax = samples[0];
 	[unroll]
@@ -30,11 +30,11 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 
 	// Compute history color
 	float4 color_history 	= tex_history.Sample(sampler_bilinear, texCoord_history);
-	//color_history 			= clamp(color_history, sampleMin, sampleMax);
+	color_history 			= clamp(color_history, sampleMin, sampleMax);
 
 	// Compute blend factor
 	float blendfactor = 0.05f;
-	//blendfactor = any(texCoord_history - saturate(texCoord_history)) ? 1.0f : blendfactor;
+	blendfactor = any(texCoord_history - saturate(texCoord_history)) ? 1.0f : blendfactor;
    
 	// Resolve color
 	float4 color_resolved = lerp(color_history, color_current, blendfactor);
