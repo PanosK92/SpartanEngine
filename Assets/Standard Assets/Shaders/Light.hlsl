@@ -10,10 +10,10 @@ Texture2D texEnvironment 	: register(t7);
 Texture2D texLutIBL			: register(t8);
 //=========================================
 
-//= SAMPLERS ===================================
-SamplerState samplerLinear : register(s0);
-SamplerState sampler_point_clamp : register(s1);
-//==============================================
+//= SAMPLERS ======================================
+SamplerState sampler_linear_clamp	: register(s0);
+SamplerState sampler_point_clamp	: register(s1);
+//=================================================
 
 //= CONSTANT BUFFERS ==========================
 #define MaxLights 64
@@ -73,11 +73,11 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 finalColor   = float3(0, 0, 0);
 	
 	// Sample from G-Buffer
-    float4 albedo       	= Degamma(texAlbedo.Sample(samplerLinear, texCoord));
-    float4 normalSample 	= texNormal.Sample(samplerLinear, texCoord);
+    float4 albedo       	= Degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
+    float4 normalSample 	= texNormal.Sample(sampler_linear_clamp, texCoord);
 	float3 normal			= Unpack(normalSample.xyz);
     float occlusionTex  	= normalSample.w;
-    float4 materialSample   = texMaterial.Sample(samplerLinear, texCoord);
+    float4 materialSample   = texMaterial.Sample(sampler_linear_clamp, texCoord);
 
 	// Create material
     Material material;
@@ -89,22 +89,22 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	material.alpha 			= max(0.001f, material.roughness * material.roughness);	
 	
 	// Compute common values
-    float2 depth  			= texDepth.Sample(samplerLinear, texCoord).rg;
+    float2 depth  			= texDepth.Sample(sampler_linear_clamp, texCoord).rg;
     float3 worldPos 		= ReconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
     if (materialSample.a == 0.0f) // Render technique
     {
-        finalColor = texEnvironment.Sample(samplerLinear, DirectionToSphereUV(camera_to_pixel)).rgb;
+        finalColor = texEnvironment.Sample(sampler_linear_clamp, DirectionToSphereUV(camera_to_pixel)).rgb;
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }
 	
 	//= OCCLUSION =========================================================
-	float dirShadow			= texShadows.Sample(samplerLinear, texCoord).r;
+	float dirShadow			= texShadows.Sample(sampler_linear_clamp, texCoord).r;
 	
 	// SSAO
-	float4 ssao				= texSSAO.Sample(samplerLinear, texCoord);
+	float4 ssao				= texSSAO.Sample(sampler_linear_clamp, texCoord);
     float ssao_occlusion	= ssao.a;
 	float3 ssao_color		= ssao.rgb;
 	
@@ -194,7 +194,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	}
 	
 	// IBL - Image based lighting
-    finalColor 	+= ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, samplerLinear, occlusion_total);
+    finalColor 	+= ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, sampler_linear_clamp, occlusion_total);
 
 	// Emission
     float3 emission = material.emission * albedo.rgb * 20.0f;

@@ -106,7 +106,7 @@ PixelOutputType mainPS(PixelInputType input)
 	#if HEIGHT_MAP
 		// Parallax Mapping
 		float height_scale 	= materialHeight * 0.01f;
-		float3 viewDir 		= normalize(cameraPosWS - input.positionWS.xyz);
+		float3 viewDir 		= normalize(g_camera_position - input.positionWS.xyz);
 		float height 		= texHeight.Sample(samplerAniso, texCoords).r;
 		float2 offset 		= viewDir.xy * (height * height_scale);
 		if(texCoords.x <= 1.0 && texCoords.y <= 1.0 && texCoords.x >= 0.0 && texCoords.y >= 0.0)
