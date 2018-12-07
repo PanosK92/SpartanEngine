@@ -3,7 +3,7 @@
 float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, SamplerState sampler_bilinear)
 {
 	float2 velocity			= GetVelocity(texCoord, tex_current, sampler_bilinear);
-    float2 texCoord_history	= texCoord - velocity;
+    float2 texCoord_history	= texCoord - velocity * g_texelSize;
 	
 	// For non-existing and lighting change cases, clamp out too different history colors 
 	float4 samples[9];

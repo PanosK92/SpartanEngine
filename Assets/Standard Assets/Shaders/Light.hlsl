@@ -75,7 +75,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	// Sample from G-Buffer
     float4 albedo       	= Degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
     float4 normalSample 	= texNormal.Sample(sampler_linear_clamp, texCoord);
-	float3 normal			= Unpack(normalSample.xyz);
+	float3 normal			= Normal_Decode(normalSample.xyz);
     float occlusionTex  	= normalSample.w;
     float4 materialSample   = texMaterial.Sample(sampler_linear_clamp, texCoord);
 

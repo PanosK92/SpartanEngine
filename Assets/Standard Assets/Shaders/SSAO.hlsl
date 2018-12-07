@@ -130,7 +130,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float depth_linear  		= 0.0f;
     float depth_cs      		= 0.0f;
     float3 center_pos        	= GetWorldPosition(texCoord, samplerLinear_clamp, depth_linear, depth_cs); 
-    float3 center_normal     	= GetNormal(texNormal, samplerLinear_clamp, texCoord);
+    float3 center_normal     	= Normal_Decode(texNormal.Sample(samplerLinear_clamp, texCoord).xyz); 
 	float radius_depth			= radius / depth_linear;
     float occlusion         	= 0.0f;
     float3 color            	= float3(0.0f, 0.0f, 0.0f);
@@ -148,7 +148,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		// Acquire/Compute sample data
         float3 sample_pos      				= GetWorldPosition(uv, samplerLinear_clamp, depth_linear, depth_cs);
         float3 sample_color     			= texColor.Sample(samplerLinear_clamp, uv).rgb;
-        float3 sampled_normal   			= GetNormal(texNormal, samplerLinear_clamp, uv);      
+        float3 sampled_normal   			= Normal_Decode(texNormal.Sample(samplerLinear_clamp, uv).xyz);  
         float3 center_to_sample				= sample_pos - center_pos;
 		float center_to_sample_distance		= length(center_to_sample);
 		float3 center_to_sample_normalized 	= normalize(center_to_sample);
