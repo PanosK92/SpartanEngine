@@ -52,26 +52,26 @@ namespace Directus
 
 	enum RenderMode : unsigned long
 	{
-		Render_Albedo				= 1UL << 0,
-		Render_Normal				= 1UL << 1,
-		Render_Material				= 1UL << 2,
-		Render_Velocity				= 1UL << 3,
-		Render_Depth				= 1UL << 4,	
-		Render_Physics				= 1UL << 5,
-		Render_AABB					= 1UL << 6,
-		Render_PickingRay			= 1UL << 7,
-		Render_SceneGrid			= 1UL << 8,
-		Render_PerformanceMetrics	= 1UL << 9,
-		Render_Light				= 1UL << 10,
-		Render_Bloom				= 1UL << 11,
-		Render_FXAA					= 1UL << 12,
-		Render_SSAO					= 1UL << 13,
-		Render_SSR					= 1UL << 14,
-		Render_TAA					= 1UL << 15,
-		Render_MotionBlur			= 1UL << 16,
-		Render_Sharpening			= 1UL << 17,
-		Render_ChromaticAberration	= 1UL << 18,
-		Render_ToneMapping			= 1UL << 19,
+		Render_Gizmo_AABB						= 1UL << 0,
+		Render_Gizmo_PickingRay					= 1UL << 1,
+		Render_Gizmo_Grid						= 1UL << 2,
+		Render_Gizmo_Light						= 1UL << 3,
+		Render_Gizmo_PerformanceMetrics			= 1UL << 4,
+		Render_Gizmo_Physics					= 1UL << 5,
+		Render_GBuffer_Albedo					= 1UL << 6,
+		Render_GBuffer_Normal					= 1UL << 7,
+		Render_GBuffer_Material					= 1UL << 8,
+		Render_GBuffer_Velocity					= 1UL << 9,
+		Render_GBuffer_Depth					= 1UL << 10,		
+		Render_PostProcess_Bloom				= 1UL << 11,
+		Render_PostProcess_FXAA					= 1UL << 12,
+		Render_PostProcess_SSAO					= 1UL << 13,
+		Render_PostProcess_SSR					= 1UL << 14,
+		Render_PostProcess_TAA					= 1UL << 15,
+		Render_PostProcess_MotionBlur			= 1UL << 16,
+		Render_PostProcess_Sharpening			= 1UL << 17,
+		Render_PostProcess_ChromaticAberration	= 1UL << 18,
+		Render_PostProcess_ToneMapping			= 1UL << 19
 	};
 
 	enum RenderableType
@@ -137,10 +137,10 @@ namespace Directus
 		// Bloom
 		float m_bloomIntensity			= 0.2f;		// The intensity of the bloom
 		// Sharpening
-		float m_sharpenStrength			= 1.0f;		// Strength of the sharpening
+		float m_sharpenStrength			= 2.0f;		// Strength of the sharpening
 		float m_sharpenClamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
 		// Motion Blur
-		float m_motionBlurStrength		= 2.0f;		// Strength of the motion blur
+		float m_motionBlurStrength		= 3.0f;		// Strength of the motion blur
 		//========================================================================================================================================================================
 
 	private:
@@ -223,14 +223,13 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderQuad_gammaCorrection;
 		//==============================================================
 
-		//= SAMPLERS ===============================================
-		std::shared_ptr<RHI_Sampler> m_samplerPointClampAlways;
-		std::shared_ptr<RHI_Sampler> m_samplerPointClampGreater;
-		std::shared_ptr<RHI_Sampler> m_samplerBilinearClampGreater;
-		std::shared_ptr<RHI_Sampler> m_samplerBilinearWrapGreater;
-		std::shared_ptr<RHI_Sampler> m_samplerTrilinearClampAlways;
-		std::shared_ptr<RHI_Sampler> m_samplerAnisotropicWrapAlways;
-		//==========================================================
+		//= SAMPLERS =========================================
+		std::shared_ptr<RHI_Sampler> m_samplerPointClamp;
+		std::shared_ptr<RHI_Sampler> m_samplerBilinearClamp;
+		std::shared_ptr<RHI_Sampler> m_samplerBilinearWrap;
+		std::shared_ptr<RHI_Sampler> m_samplerTrilinearClamp;
+		std::shared_ptr<RHI_Sampler> m_samplerAnisotropicWrap;
+		//====================================================
 
 		//= PIPELINE STATES =============
 		RHI_PipelineState m_pipelineLine;
