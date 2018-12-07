@@ -43,8 +43,8 @@ struct PixelInputType
 	float3 bitangent 			: BITANGENT;
 	float4 positionVS 			: POSITIONT0;
     float4 positionWS 			: POSITIONT1;
-	float4 positionCS_Current 	: POSITIONT2;
-	float4 positionCS_Previous 	: POSITIONT3;
+	float4 positionCS_Current 	: SCREEN_POS;
+	float4 positionCS_Previous 	: SCREEN_POS_PREVIOUS;
 };
 
 struct PixelOutputType
@@ -94,13 +94,11 @@ PixelOutputType mainPS(PixelInputType input)
 	// 0.0 = CubeMap 		-> texture mapping
 	//=========================================
 	
-	//= VELOCITY ====================================================================================================================================
-	float2 position_previous 	= Project(input.positionCS_Previous);
+	//= VELOCITY ====================================================================================================================================================
 	float2 position_current 	= Project(input.positionCS_Current);
-    float2 velocity 			= Pack(position_current - position_previous);
-	velocity					-= g_taa_jitterOffset;	// Account for TAA jitter offset
-	velocity 					= pow(velocity, 3.0); 	// increase precision for small velocities at the cost of worse precision for high velocities
-	//===============================================================================================================================================
+	float2 position_previous 	= Project(input.positionCS_Previous);
+    float2 velocity 			= (position_current - g_taa_jitterOffsetCurrent) - (position_previous - g_taa_jitterOffsetPrevious); // Account for TAA jitter offset
+	//===============================================================================================================================================================
 
 	//= HEIGHT ==================================================================================
 	#if HEIGHT_MAP
@@ -163,7 +161,7 @@ PixelOutputType mainPS(PixelInputType input)
 
 	// Write to G-Buffer
 	g_buffer.albedo		= albedo;
-	g_buffer.normal 	= float4(Pack(normal), occlusion);
+	g_buffer.normal 	= float4(Normal_Encode(normal), occlusion);
 	g_buffer.material	= float4(roughness, metallic, emission, type);
 	g_buffer.velocity	= velocity;
     g_buffer.depth      = float2(depth_linear, depth_cs);

@@ -301,12 +301,13 @@ namespace Directus
 			float sharpen_strength;
 			float sharpen_clamp;
 
-			Math::Vector2 taa_jitterOffset;
+			Math::Vector2 taa_jitterOffsetCurrent;
+			Math::Vector2 taa_jitterOffsetPrevious;
+
 			float motionBlur_strength;
 			float fps_current;
-
 			float fps_target;
-			Math::Vector3 padding;
+			float packNormals;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};

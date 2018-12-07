@@ -74,11 +74,10 @@ namespace TAA_Jitter
 		return Vector2(Halton(index, baseA), Halton(index, baseB));
 	}
 		
-	int samples						= 16;
-	float scale						= 1.0f;
-	Vector2 jitterOffset			= Vector2::Zero;
-	Vector2 jitterOffsetPrevious	= Vector2::Zero;
-	Vector2 previousJitter			= Vector2::Zero;
+	int samples				= 16;
+	float scale				= 1.0f;
+	Vector2 jitter_current	= Vector2::Zero;
+	Vector2 jitter_previous	= Vector2::Zero;
 }
 
 namespace Directus
@@ -104,8 +103,8 @@ namespace Directus
 		m_flags			|= Render_PostProcess_SSAO;
 		m_flags			|= Render_PostProcess_SSR;
 		m_flags			|= Render_PostProcess_MotionBlur;
-		//m_flags			|= Render_TAA;
-		//m_flags			|= Render_Sharpening;
+		//m_flags			|= Render_PostProcess_TAA;
+		//m_flags			|= Render_PostProcess_Sharpening;
 		//m_flags			|= Render_ChromaticAberration;
 
 		// Create RHI device
@@ -534,10 +533,12 @@ namespace Directus
 		buffer->bloom_intensity				= m_bloomIntensity;
 		buffer->sharpen_strength			= m_sharpenStrength;
 		buffer->sharpen_clamp				= m_sharpenClamp;
-		buffer->taa_jitterOffset			= TAA_Jitter::jitterOffset;
+		buffer->taa_jitterOffsetCurrent		= TAA_Jitter::jitter_current;
+		buffer->taa_jitterOffsetPrevious	= TAA_Jitter::jitter_previous;
 		buffer->motionBlur_strength			= m_motionBlurStrength;
 		buffer->fps_current					= Profiler::Get().GetFPS();
 		buffer->fps_target					= Settings::Get().FPS_GetTarget();
+		buffer->packNormals					= m_gbuffer->IsNormalPackingRequired() ? 1.0f : 0.0f;
 
 		m_bufferGlobal->Unmap();
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);
@@ -1041,9 +1042,8 @@ namespace Directus
 			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(jitter.x, -jitter.y, 0.0f));
 			m_projectionJittered	= m_viewProjection_Orthographic * jitterMatrix;
 		}
-		TAA_Jitter::jitterOffsetPrevious	= TAA_Jitter::jitterOffset;
-		TAA_Jitter::jitterOffset			= (jitter - TAA_Jitter::previousJitter) * 0.5f;
-		TAA_Jitter::previousJitter			= jitter;
+		TAA_Jitter::jitter_previous	= TAA_Jitter::jitter_current;
+		TAA_Jitter::jitter_current	= jitter;
 
 		// Update constant buffer
 		m_shaderLight->UpdateConstantBuffer(

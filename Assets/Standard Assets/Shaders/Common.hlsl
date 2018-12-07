@@ -100,16 +100,18 @@ float3 TangentToWorld(float3 normalMapSample, float3 normalW, float3 tangentW, f
 	float3 B 		= bitangentW;
 	float3x3 TBN 	= float3x3(T, B, N); 
 	
-	// transform from tangent space to world space
-	float3 bumpedNormal = normalize(mul(normalMapSample, TBN)); 
-	
-    return bumpedNormal;
+	// Transform from tangent space to world space
+    return normalize(mul(normalMapSample, TBN));
 }
 
-float3 GetNormal(Texture2D texNormal, SamplerState samplerState, float2 texCoord)
+float3 Normal_Decode(float3 normal)
 {
-	float3 normal = texNormal.Sample(samplerState, texCoord).rgb;
-	return normalize(Unpack(normal));
+	return normalize(g_packNormals == 1.0f ? Unpack(normal) : normal);
+}
+
+float3 Normal_Encode(float3 normal)
+{
+	return normalize(g_packNormals == 1.0f ? Pack(normal) : normal);
 }
 
 /*------------------------------------------------------------------------------
@@ -139,11 +141,7 @@ float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, SamplerState sam
 	float2 velocity_ce 		= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
 	float2 velocity_average = (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;
 
-	// Unpack
-	float2 velocity = pow(velocity_average, abs(1.0 / 3.0));
-	velocity 		= Unpack(velocity);
-	
-	return velocity;
+	return velocity_average;
 }
 
 /*------------------------------------------------------------------------------

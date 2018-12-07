@@ -66,4 +66,9 @@ namespace Directus
 	{
 		return m_renderTargets[type];
 	}
+
+	bool GBuffer::IsNormalPackingRequired()
+	{
+		return m_renderTargets[GBuffer_Target_Normal]->GetFormat() == Texture_Format_R8G8B8A8_UNORM;
+	}
 }
