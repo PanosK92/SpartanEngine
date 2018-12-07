@@ -49,7 +49,7 @@ namespace Directus
 	{
 		if (!FileSystem::FileExists(rawFilePath))
 		{
-			LOG_ERROR("RHI_Texture::LoadFromFile: Invalid file path.");
+			LOGF_ERROR("RHI_Texture::LoadFromFile: File path \"%s\" is invalid.", rawFilePath.c_str());
 			return false;
 		}
 
@@ -60,43 +60,53 @@ namespace Directus
 		// Make the path, relative to the engine
 		auto filePath = FileSystem::GetRelativeFilePath(rawFilePath);
 
+		// Load from disk
 		bool loaded = false;
-		// engine format (binary)
-		if (FileSystem::IsEngineTextureFile(filePath))
 		{
-			loaded = Deserialize(filePath);
-		}
-		// foreign format (most known image formats)
-		else if (FileSystem::IsSupportedImageFile(filePath))
-		{
-			loaded = LoadFromForeignFormat(filePath);
+			// engine format (binary)
+			if (FileSystem::IsEngineTextureFile(filePath))
+			{
+				loaded = Deserialize(filePath);
+			}
+			// foreign format (most known image formats)
+			else if (FileSystem::IsSupportedImageFile(filePath))
+			{
+				loaded = LoadFromForeignFormat(filePath);
+			}
+
+			if (!loaded)
+			{
+				LOGF_ERROR("RI_Texture::LoadFromFile: Failed to load \"%s\".", filePath.c_str());
+				SetLoadState(LoadState_Failed);
+				return false;
+			}
 		}
 
-		if (!loaded)
+		// Validate loaded data
+		if (m_mipChain.empty())
 		{
-			LOGF_ERROR("RI_Texture::LoadFromFile: Failed to load \"%s\".", filePath.c_str());
+			LOGF_WARNING("RHI_Texture::LoadFromFile: \"%s\" contains no data, it will be ignored.", filePath.c_str());
 			SetLoadState(LoadState_Failed);
 			return false;
 		}
 
-	
+		// Create shader resource
 		bool shaderResourceCreated = false;
-		if (HasMipChain())
 		{
-			shaderResourceCreated = ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain);
-		}
-		else
-		{
-			shaderResourceCreated = ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain.front(), m_needsMipChain);
+			if (HasMipChain())
+			{
+				shaderResourceCreated = ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain);
+			}
+			else
+			{
+				shaderResourceCreated = ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain.front(), m_needsMipChain);
+			}
 		}
 
 		if (shaderResourceCreated)
 		{
-			// If the texture was loaded from an image file, it's not 
-			// saved yet, hence we have to maintain it's texture bits.
-			// However, if the texture was deserialized (engine format) 
-			// then we no longer need the texture bits. 
-			// We free them here to free up some memory.
+			// If the texture was loaded from a foreign format, it hasn't been serialized yet (engine format), hence we have to maintain it's texture bits.
+			// However, if the texture was deserialized (engine format), then we no longer need the texture bits. We can free them here and free some memory.
 			if (FileSystem::IsEngineTextureFile(filePath))
 			{
 				ClearTextureBytes();

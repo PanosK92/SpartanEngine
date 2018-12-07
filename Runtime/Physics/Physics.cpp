@@ -98,7 +98,7 @@ namespace Directus
 			return;
 		
 		// Debug draw
-		if (m_renderer->Flags_IsSet(Render_Physics))
+		if (m_renderer->Flags_IsSet(Render_Gizmo_Physics))
 		{
 			m_world->debugDrawWorld();
 		}

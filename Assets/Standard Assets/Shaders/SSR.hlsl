@@ -1,6 +1,6 @@
 static const int g_steps 					= 16;
 static const int g_binarySearchSteps 		= 16;
-static const float g_binarySearchThreshold 	= 0.05f;
+static const float g_binarySearchThreshold 	= 0.01f;
 static const float g_ray_step 				= 1.15f;
 static const float2 g_failed				= float2(-1.0f, -1.0f);
 

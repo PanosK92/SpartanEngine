@@ -39,15 +39,15 @@ namespace _Widget_Toolbar
 {
 	static float g_buttonSize			= 20.0f;
 	static bool g_showRendererOptions	= false;
-	static bool g_physics				= true;
-	static bool g_aabb					= false;
-	static bool g_gizmos				= true;
-	static bool g_pickingRay			= false;
-	static bool g_grid					= true;
-	static bool g_performanceMetrics	= false;
+	static bool g_gizmo_physics				= true;
+	static bool g_gizmo_aabb					= false;
+	static bool g_gizmo_light				= true;
+	static bool g_gizmo_pickingRay			= false;
+	static bool g_gizmo_grid					= true;
+	static bool g_gizmo_performanceMetrics	= false;
 	static vector<string> gbufferTextures =
 	{
-		"Default",
+		"Light",
 		"Albedo",
 		"Normal",
 		"Material",
@@ -117,15 +117,15 @@ void Widget_Toolbar::ShowRendererOptions()
 	if (ImGui::CollapsingHeader("Effects", ImGuiTreeNodeFlags_DefaultOpen))
 	{	
 		// Read from engine
-		bool bloom					= m_renderer->Flags_IsSet(Render_Bloom);
-		bool tonemapping			= m_renderer->Flags_IsSet(Render_ToneMapping);
-		bool fxaa					= m_renderer->Flags_IsSet(Render_FXAA);
-		bool ssao					= m_renderer->Flags_IsSet(Render_SSAO);
-		bool ssr					= m_renderer->Flags_IsSet(Render_SSR);
-		bool taa					= m_renderer->Flags_IsSet(Render_TAA);
-		bool motionBlur				= m_renderer->Flags_IsSet(Render_MotionBlur);
-		bool sharpening				= m_renderer->Flags_IsSet(Render_Sharpening);
-		bool chromaticAberration	= m_renderer->Flags_IsSet(Render_ChromaticAberration);
+		bool bloom					= m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
+		bool tonemapping			= m_renderer->Flags_IsSet(Render_PostProcess_ToneMapping);
+		bool fxaa					= m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
+		bool ssao					= m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
+		bool ssr					= m_renderer->Flags_IsSet(Render_PostProcess_SSR);
+		bool taa					= m_renderer->Flags_IsSet(Render_PostProcess_TAA);
+		bool motionBlur				= m_renderer->Flags_IsSet(Render_PostProcess_MotionBlur);
+		bool sharpening				= m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
+		bool chromaticAberration	= m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
 		
 		// Display
 		{
@@ -133,20 +133,20 @@ void Widget_Toolbar::ShowRendererOptions()
 
 			ImGui::Checkbox("Tone-mapping", &tonemapping); tooltip("ACES Filmic");
 			ImGui::Checkbox("Bloom", &bloom);
-			ImGui::InputFloat("Intensity", &m_renderer->m_bloomIntensity, 0.1f);		
+			ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloomIntensity, 0.1f);		
 			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &ssao);
 			ImGui::Checkbox("SSR - Screen Space Reflections", &ssr);
 			ImGui::Checkbox("Motion Blur", &motionBlur);
-			ImGui::InputFloat("Strength", &m_renderer->m_motionBlurStrength, 0.1f);
+			ImGui::InputFloat("Motion Blur Strength", &m_renderer->m_motionBlurStrength, 0.1f);
 			ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
 			ImGui::Checkbox("TAA - Temporal Anti-Aliasing - DEVELOPMENT", &taa);
 			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &fxaa);
-			ImGui::InputFloat("Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f);					tooltip("The amount of sub-pixel aliasing removal");
-			ImGui::InputFloat("Edge Threshold", &m_renderer->m_fxaaEdgeThreshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
-			ImGui::InputFloat("Edge Threshold Min", &m_renderer->m_fxaaEdgeThresholdMin, 0.1f); tooltip("Trims the algorithm from processing darks");
-			ImGui::Checkbox("Sharpening", &sharpening);
-			ImGui::InputFloat("Strength", &m_renderer->m_sharpenStrength, 0.1f);
-			ImGui::InputFloat("Clamp", &m_renderer->m_sharpenClamp, 0.1f); tooltip("Limits maximum amount of sharpening a pixel receives");
+			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f);					tooltip("The amount of sub-pixel aliasing removal");
+			ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaaEdgeThreshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
+			ImGui::InputFloat("FXAA Edge Threshold Min", &m_renderer->m_fxaaEdgeThresholdMin, 0.1f); tooltip("Trims the algorithm from processing darks");
+			ImGui::Checkbox("Sharpen", &sharpening);
+			ImGui::InputFloat("Sharpen Strength", &m_renderer->m_sharpenStrength, 0.1f);
+			ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpenClamp, 0.1f); tooltip("Limits maximum amount of sharpening a pixel receives");
 			ImGui::Separator();
 		}
 
@@ -160,20 +160,20 @@ void Widget_Toolbar::ShowRendererOptions()
 		m_renderer->m_motionBlurStrength	= Abs(m_renderer->m_motionBlurStrength);
 
 		// Map back to engine
-		bloom				? m_renderer->Flags_Enable(Render_Bloom)				: m_renderer->Flags_Disable(Render_Bloom);
-		tonemapping			? m_renderer->Flags_Enable(Render_ToneMapping)			: m_renderer->Flags_Disable(Render_ToneMapping);
-		fxaa				? m_renderer->Flags_Enable(Render_FXAA)					: m_renderer->Flags_Disable(Render_FXAA);
-		ssao				? m_renderer->Flags_Enable(Render_SSAO)					: m_renderer->Flags_Disable(Render_SSAO);
-		ssr					? m_renderer->Flags_Enable(Render_SSR)					: m_renderer->Flags_Disable(Render_SSR);
-		taa					? m_renderer->Flags_Enable(Render_TAA)					: m_renderer->Flags_Disable(Render_TAA);
-		motionBlur			? m_renderer->Flags_Enable(Render_MotionBlur)			: m_renderer->Flags_Disable(Render_MotionBlur);
-		sharpening			? m_renderer->Flags_Enable(Render_Sharpening)			: m_renderer->Flags_Disable(Render_Sharpening);
-		chromaticAberration	? m_renderer->Flags_Enable(Render_ChromaticAberration)	: m_renderer->Flags_Disable(Render_ChromaticAberration);	
+		bloom				? m_renderer->Flags_Enable(Render_PostProcess_Bloom)				: m_renderer->Flags_Disable(Render_PostProcess_Bloom);
+		tonemapping			? m_renderer->Flags_Enable(Render_PostProcess_ToneMapping)			: m_renderer->Flags_Disable(Render_PostProcess_ToneMapping);
+		fxaa				? m_renderer->Flags_Enable(Render_PostProcess_FXAA)					: m_renderer->Flags_Disable(Render_PostProcess_FXAA);
+		ssao				? m_renderer->Flags_Enable(Render_PostProcess_SSAO)					: m_renderer->Flags_Disable(Render_PostProcess_SSAO);
+		ssr					? m_renderer->Flags_Enable(Render_PostProcess_SSR)					: m_renderer->Flags_Disable(Render_PostProcess_SSR);
+		taa					? m_renderer->Flags_Enable(Render_PostProcess_TAA)					: m_renderer->Flags_Disable(Render_PostProcess_TAA);
+		motionBlur			? m_renderer->Flags_Enable(Render_PostProcess_MotionBlur)			: m_renderer->Flags_Disable(Render_PostProcess_MotionBlur);
+		sharpening			? m_renderer->Flags_Enable(Render_PostProcess_Sharpening)			: m_renderer->Flags_Disable(Render_PostProcess_Sharpening);
+		chromaticAberration	? m_renderer->Flags_Enable(Render_PostProcess_ChromaticAberration)	: m_renderer->Flags_Disable(Render_PostProcess_ChromaticAberration);	
 	}
 
-	if (ImGui::CollapsingHeader("Debug Visualization", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("G-Buffer Visualization", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		if (ImGui::BeginCombo("G-Buffer", _Widget_Toolbar::gbufferSelectedTexture.c_str()))
+		if (ImGui::BeginCombo("Buffer", _Widget_Toolbar::gbufferSelectedTexture.c_str()))
 		{
 			for (int i = 0; i < _Widget_Toolbar::gbufferTextures.size(); i++)
 			{
@@ -193,66 +193,69 @@ void Widget_Toolbar::ShowRendererOptions()
 
 		if (_Widget_Toolbar::gbufferSelectedTextureIndex == 0) // Combined
 		{
-			m_renderer->Flags_Disable(Render_Albedo);
-			m_renderer->Flags_Disable(Render_Normal);
-			m_renderer->Flags_Disable(Render_Material);
-			m_renderer->Flags_Disable(Render_Velocity);
-			m_renderer->Flags_Disable(Render_Depth);
+			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
+			m_renderer->Flags_Disable(Render_GBuffer_Normal);
+			m_renderer->Flags_Disable(Render_GBuffer_Material);
+			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
+			m_renderer->Flags_Disable(Render_GBuffer_Depth);
 		}
 		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 1) // Albedo
 		{
-			m_renderer->Flags_Enable(Render_Albedo);
-			m_renderer->Flags_Disable(Render_Normal);
-			m_renderer->Flags_Disable(Render_Material);
-			m_renderer->Flags_Disable(Render_Velocity);
-			m_renderer->Flags_Disable(Render_Depth);
+			m_renderer->Flags_Enable(Render_GBuffer_Albedo);
+			m_renderer->Flags_Disable(Render_GBuffer_Normal);
+			m_renderer->Flags_Disable(Render_GBuffer_Material);
+			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
+			m_renderer->Flags_Disable(Render_GBuffer_Depth);
 		}
 		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 2) // Normal
 		{
-			m_renderer->Flags_Disable(Render_Albedo);
-			m_renderer->Flags_Enable(Render_Normal);
-			m_renderer->Flags_Disable(Render_Material);
-			m_renderer->Flags_Disable(Render_Velocity);
-			m_renderer->Flags_Disable(Render_Depth);
+			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
+			m_renderer->Flags_Enable(Render_GBuffer_Normal);
+			m_renderer->Flags_Disable(Render_GBuffer_Material);
+			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
+			m_renderer->Flags_Disable(Render_GBuffer_Depth);
 		}
 		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 3) // Material
 		{
-			m_renderer->Flags_Disable(Render_Albedo);
-			m_renderer->Flags_Disable(Render_Normal);
-			m_renderer->Flags_Enable(Render_Material);
-			m_renderer->Flags_Disable(Render_Velocity);
-			m_renderer->Flags_Disable(Render_Depth);
+			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
+			m_renderer->Flags_Disable(Render_GBuffer_Normal);
+			m_renderer->Flags_Enable(Render_GBuffer_Material);
+			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
+			m_renderer->Flags_Disable(Render_GBuffer_Depth);
 		}
 		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 4) // Velocity
 		{
-			m_renderer->Flags_Disable(Render_Albedo);
-			m_renderer->Flags_Disable(Render_Normal);
-			m_renderer->Flags_Disable(Render_Material);
-			m_renderer->Flags_Enable(Render_Velocity);
-			m_renderer->Flags_Disable(Render_Depth);
+			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
+			m_renderer->Flags_Disable(Render_GBuffer_Normal);
+			m_renderer->Flags_Disable(Render_GBuffer_Material);
+			m_renderer->Flags_Enable(Render_GBuffer_Velocity);
+			m_renderer->Flags_Disable(Render_GBuffer_Depth);
 		}
 		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 5) // Depth
 		{
-			m_renderer->Flags_Disable(Render_Albedo);
-			m_renderer->Flags_Disable(Render_Normal);
-			m_renderer->Flags_Disable(Render_Material);
-			m_renderer->Flags_Disable(Render_Velocity);
-			m_renderer->Flags_Enable(Render_Depth);
+			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
+			m_renderer->Flags_Disable(Render_GBuffer_Normal);
+			m_renderer->Flags_Disable(Render_GBuffer_Material);
+			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
+			m_renderer->Flags_Enable(Render_GBuffer_Depth);
 		}
+	}
 
-		ImGui::Checkbox("Physics", &_Widget_Toolbar::g_physics);
-		ImGui::Checkbox("AABB", &_Widget_Toolbar::g_aabb);
-		ImGui::Checkbox("Gizmos", &_Widget_Toolbar::g_gizmos);
-		ImGui::Checkbox("Picking Ray", &_Widget_Toolbar::g_pickingRay);
-		ImGui::Checkbox("Scene Grid", &_Widget_Toolbar::g_grid);
-		ImGui::Checkbox("Performance Metrics", &_Widget_Toolbar::g_performanceMetrics);
+	if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::Checkbox("Physics", &_Widget_Toolbar::g_gizmo_physics);
+		ImGui::Checkbox("AABB", &_Widget_Toolbar::g_gizmo_aabb);
+		ImGui::Checkbox("Lights", &_Widget_Toolbar::g_gizmo_light);
+		ImGui::Checkbox("Picking Ray", &_Widget_Toolbar::g_gizmo_pickingRay);
+		ImGui::Checkbox("Grid", &_Widget_Toolbar::g_gizmo_grid);
+		ImGui::Checkbox("Performance Metrics", &_Widget_Toolbar::g_gizmo_performanceMetrics);
 
-		_Widget_Toolbar::g_physics				? m_renderer->Flags_Enable(Render_Physics)				: m_renderer->Flags_Disable(Render_Physics);
-		_Widget_Toolbar::g_aabb					? m_renderer->Flags_Enable(Render_AABB)					: m_renderer->Flags_Disable(Render_AABB);
-		_Widget_Toolbar::g_gizmos				? m_renderer->Flags_Enable(Render_Light)				: m_renderer->Flags_Disable(Render_Light);
-		_Widget_Toolbar::g_pickingRay			? m_renderer->Flags_Enable(Render_PickingRay)			: m_renderer->Flags_Disable(Render_PickingRay);
-		_Widget_Toolbar::g_grid					? m_renderer->Flags_Enable(Render_SceneGrid)			: m_renderer->Flags_Disable(Render_SceneGrid);
-		_Widget_Toolbar::g_performanceMetrics	? m_renderer->Flags_Enable(Render_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_PerformanceMetrics);
+		_Widget_Toolbar::g_gizmo_physics			? m_renderer->Flags_Enable(Render_Gizmo_Physics)			: m_renderer->Flags_Disable(Render_Gizmo_Physics);
+		_Widget_Toolbar::g_gizmo_aabb				? m_renderer->Flags_Enable(Render_Gizmo_AABB)				: m_renderer->Flags_Disable(Render_Gizmo_AABB);
+		_Widget_Toolbar::g_gizmo_light				? m_renderer->Flags_Enable(Render_Gizmo_Light)				: m_renderer->Flags_Disable(Render_Gizmo_Light);
+		_Widget_Toolbar::g_gizmo_pickingRay			? m_renderer->Flags_Enable(Render_Gizmo_PickingRay)			: m_renderer->Flags_Disable(Render_Gizmo_PickingRay);
+		_Widget_Toolbar::g_gizmo_grid				? m_renderer->Flags_Enable(Render_Gizmo_Grid)				: m_renderer->Flags_Disable(Render_Gizmo_Grid);
+		_Widget_Toolbar::g_gizmo_performanceMetrics	? m_renderer->Flags_Enable(Render_Gizmo_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_Gizmo_PerformanceMetrics);
 	}
 
 	ImGui::End();
