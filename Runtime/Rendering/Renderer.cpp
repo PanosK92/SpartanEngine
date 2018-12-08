@@ -398,13 +398,14 @@ namespace Directus
 
 		Pass_Transparent(m_renderTexFull_HDR_Light);
 		
+		Pass_Lines(m_renderTexFull_HDR_Light);
+
 		Pass_PostLight(
 			m_renderTexFull_HDR_Light,	// IN:	Light pass result
 			m_renderTexFull_HDR_Light2	// OUT: Result
 		);
 	
 		Pass_GBufferVisualize(m_renderTexFull_HDR_Light2);
-		Pass_Lines(m_renderTexFull_HDR_Light2);
 		Pass_Gizmos(m_renderTexFull_HDR_Light2);
 		Pass_PerformanceMetrics(m_renderTexFull_HDR_Light2);
 
