@@ -277,7 +277,7 @@ namespace Directus
 		unsigned long m_flags;
 		uint64_t m_frameNum;
 		bool m_isOddFrame;
-		Math::Vector2 m_jitterCurrent;
+		Math::Vector2 m_jitterOffset;
 		Math::Vector2 m_jitterPrevious;
 		//===============================================================
 		
@@ -304,16 +304,14 @@ namespace Directus
 			float sharpen_strength;
 			float sharpen_clamp;
 
-			Math::Vector2 taa_jitterCurrent;
-			Math::Vector2 taa_jitterPrevious;
-
+			Math::Vector2 taa_jitterOffset;
 			float motionBlur_strength;
 			float fps_current;
+
 			float fps_target;
 			float packNormals;
-
 			float gamma;
-			Math::Vector3 padding;
+			float padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};
