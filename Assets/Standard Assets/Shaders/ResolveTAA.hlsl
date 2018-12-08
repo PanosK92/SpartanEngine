@@ -2,8 +2,8 @@
 
 float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, Texture2D tex_depth, SamplerState sampler_bilinear)
 {
-	float2 velocity			= GetVelocity(texCoord, tex_current, tex_depth, sampler_bilinear);
-    float2 texCoord_history	= texCoord - velocity * g_texelSize;
+	float2 velocity			= GetVelocity(texCoord, tex_current, tex_depth, sampler_bilinear) * g_texelSize;
+    float2 texCoord_history	= texCoord - velocity;
 	
 	// For non-existing and lighting change cases, clamp out too different history colors 
 	float4 samples[9];
@@ -32,9 +32,20 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float4 color_history 	= tex_history.Sample(sampler_bilinear, texCoord_history);
 	color_history 			= clamp(color_history, sampleMin, sampleMax);
 	
-	// Compute blend factor
-	float blendfactor 	= 0.05f;
-	blendfactor 		= any(texCoord_history - saturate(texCoord_history)) ? 1.0f : blendfactor;	
-
+	//= Compute blend factor =============================================================
+	// Decrease when pixel motion gets subpixel 
+	//float factor_subpixelMotion = sin(frac(length(velocity)) * PI);
+	
+	// Decrease when history is near clamp values
+	//float factor_clampMin = 1.0f - saturate(abs(length(color_history - sampleMin)));
+	//float factor_clampMax = 1.0f - saturate(abs(length(color_history - sampleMax)));
+	
+	// Total
+	float alpha 		= 0.0f;
+	float blendfactor 	= lerp(0.05f, 0.8f, 0);
+	// Don't blend when out of screen
+	blendfactor = any(texCoord_history - saturate(texCoord_history)) ? 1.0f : blendfactor;
+	//====================================================================================
+	
 	return lerp(color_history, color_current, blendfactor);
 }
