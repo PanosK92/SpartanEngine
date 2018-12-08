@@ -94,11 +94,12 @@ PixelOutputType mainPS(PixelInputType input)
 	// 0.0 = CubeMap 		-> texture mapping
 	//=========================================
 	
-	//= VELOCITY =======================================================================================================
+	//= VELOCITY ===============================================================
 	float2 position_current 	= Project(input.positionCS_Current);
 	float2 position_previous 	= Project(input.positionCS_Previous);
-    float2 velocity 			= (position_current - g_taa_jitterCurrent) - (position_previous - g_taa_jitterPrevious);
-	//==================================================================================================================
+    float2 velocity 			= position_current - position_previous;
+	velocity 					-=	g_taa_jitterOffset; // Acount for TAA jitter
+	//==========================================================================
 
 	//= HEIGHT ==================================================================================
 	#if HEIGHT_MAP

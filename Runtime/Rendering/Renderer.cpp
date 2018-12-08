@@ -355,11 +355,11 @@ namespace Directus
 
 		// Get camera matrices
 		{
-			m_nearPlane						= m_camera->GetNearPlane();
-			m_farPlane						= m_camera->GetFarPlane();
-			m_view							= m_camera->GetViewMatrix();
-			m_viewBase						= m_camera->GetBaseViewMatrix();
-			m_projection					= m_camera->GetProjectionMatrix();
+			m_nearPlane		= m_camera->GetNearPlane();
+			m_farPlane		= m_camera->GetFarPlane();
+			m_view			= m_camera->GetViewMatrix();
+			m_viewBase		= m_camera->GetBaseViewMatrix();
+			m_projection	= m_camera->GetProjectionMatrix();
 
 			// TAA - Generate jitter
 			Vector2 jitter = Vector2::Zero;
@@ -369,11 +369,11 @@ namespace Directus
 				jitter				= Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
 				jitter.x			= jitter.x / (float)Settings::Get().Resolution_GetWidth();
 				jitter.y			= jitter.y / (float)Settings::Get().Resolution_GetHeight();
-				Matrix jitterMatrix = Matrix::CreateTranslation(Vector3(m_jitterCurrent.x, m_jitterCurrent.y, 0.0f));
+				Matrix jitterMatrix = Matrix::CreateTranslation(Vector3(jitter.x, -jitter.y, 0.0f));
 				m_projection		*= jitterMatrix;
 			}
-			m_jitterPrevious	= m_jitterCurrent;
-			m_jitterCurrent		= jitter;
+			m_jitterOffset		= (jitter - m_jitterPrevious) * 0.5f;
+			m_jitterPrevious	= jitter;
 
 			m_viewProjection				= m_view * m_projection;
 			m_projectionOrthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
@@ -526,8 +526,7 @@ namespace Directus
 		buffer->bloom_intensity				= m_bloomIntensity;
 		buffer->sharpen_strength			= m_sharpenStrength;
 		buffer->sharpen_clamp				= m_sharpenClamp;
-		buffer->taa_jitterCurrent			= m_jitterCurrent;
-		buffer->taa_jitterPrevious			= m_jitterPrevious;
+		buffer->taa_jitterOffset			= m_jitterOffset;
 		buffer->motionBlur_strength			= m_motionBlurStrength;
 		buffer->fps_current					= Profiler::Get().GetFPS();
 		buffer->fps_target					= Settings::Get().FPS_GetTarget();
