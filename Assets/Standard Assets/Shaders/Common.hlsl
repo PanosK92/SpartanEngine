@@ -131,17 +131,42 @@ float3 ReconstructPositionWorld(float depth, matrix viewProjectionInverse, float
 /*------------------------------------------------------------------------------
 								[VELOCITY]
 ------------------------------------------------------------------------------*/
-float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, SamplerState sampler_bilinear)
-{	
-	// Dilate
-	float2 velocity_tl 		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, -2) * g_texelSize).xy;
-	float2 velocity_tr		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, -2) * g_texelSize).xy;
-	float2 velocity_bl		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, 2) * g_texelSize).xy;
-	float2 velocity_br 		= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, 2) * g_texelSize).xy;
-	float2 velocity_ce 		= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
-	float2 velocity_average = (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;
 
-	return velocity_average;
+#define VELOCITY_DILATE_DEPTH_NEAR
+
+float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear)
+{	
+	float2 velocity = 0.0f;
+
+#if defined VELOCITY_DILATE_AVERAGE
+	float2 velocity_tl 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, -2) * g_texelSize).xy;
+	float2 velocity_tr	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, -2) * g_texelSize).xy;
+	float2 velocity_bl	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, 2) * g_texelSize).xy;
+	float2 velocity_br 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, 2) * g_texelSize).xy;
+	float2 velocity_ce 	= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
+	velocity 			= (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;	
+#elif defined VELOCITY_DILATE_DEPTH_NEAR
+	float closestDepth 		= 1.0f;
+	float2 closestTexCoord 	= 0.0f;
+	[unroll]
+    for(int y = -1; y <= 1; ++y)
+    {
+		[unroll]
+        for(int x = -1; x <= 1; ++x)
+        {
+			float2 texCoordNew 	= texCoord + float2(x, y) * g_texelSize;
+			float depth			= texture_depth.Sample(sampler_bilinear, texCoordNew).r;
+			if(depth < closestDepth)
+			{
+				closestDepth	= depth;
+				closestTexCoord	= texCoordNew;
+			}
+        }
+	}
+	velocity = texture_velocity.Sample(sampler_bilinear, closestTexCoord).xy;
+#endif
+
+	return velocity;
 }
 
 /*------------------------------------------------------------------------------
@@ -150,4 +175,17 @@ float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, SamplerState sam
 float LinerizeDepth(float depth, float near, float far)
 {
 	return (far / (far - near)) * (1.0f - (near / depth));
+}
+
+/*------------------------------------------------------------------------------
+								[MISC]
+------------------------------------------------------------------------------*/
+float Luminance(float3 color)
+{
+    return dot(color, float3(0.299f, 0.587f, 0.114f));
+}
+
+float Luminance(float4 color)
+{
+    return dot(color.rgb, float3(0.299f, 0.587f, 0.114f));
 }

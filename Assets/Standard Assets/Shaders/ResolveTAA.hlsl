@@ -1,8 +1,8 @@
 // Based on "Temporal Antialiasing In Uncharted 4" by Ke XU
 
-float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, SamplerState sampler_bilinear)
+float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, Texture2D tex_depth, SamplerState sampler_bilinear)
 {
-	float2 velocity			= GetVelocity(texCoord, tex_current, sampler_bilinear);
+	float2 velocity			= GetVelocity(texCoord, tex_current, tex_depth, sampler_bilinear);
     float2 texCoord_history	= texCoord - velocity * g_texelSize;
 	
 	// For non-existing and lighting change cases, clamp out too different history colors 
@@ -33,12 +33,8 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	color_history 			= clamp(color_history, sampleMin, sampleMax);
 	
 	// Compute blend factor
-	float subpixel 		= frac(max(abs(velocity.x) * g_resolution.x, abs(velocity.y) * g_resolution.y)) * 0.5f;
-	float blendfactor 	= saturate(lerp(0.05f, 0.8f, subpixel));
-	blendfactor 		= any(texCoord_history - saturate(texCoord_history)) ? 1.0f : blendfactor;
-   
-	// Resolve color
-	float4 color_resolved = lerp(color_history, color_current, blendfactor);
+	float blendfactor 	= 0.05f;
+	blendfactor 		= any(texCoord_history - saturate(texCoord_history)) ? 1.0f : blendfactor;	
 
-	return color_resolved;
+	return lerp(color_history, color_current, blendfactor);
 }

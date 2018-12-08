@@ -103,8 +103,8 @@ namespace Directus
 		m_flags			|= Render_PostProcess_SSAO;
 		m_flags			|= Render_PostProcess_SSR;
 		m_flags			|= Render_PostProcess_MotionBlur;
-		//m_flags			|= Render_PostProcess_TAA;
-		//m_flags			|= Render_PostProcess_Sharpening;
+		m_flags			|= Render_PostProcess_TAA;
+		m_flags			|= Render_PostProcess_Sharpening;
 		//m_flags			|= Render_ChromaticAberration;
 
 		// Create RHI device
@@ -1039,7 +1039,7 @@ namespace Directus
 			jitter.x				= jitter.x / (float)texOut->GetWidth();
 			jitter.y				= jitter.y / (float)texOut->GetHeight();
 			jitter					*= TAA_Jitter::scale;
-			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(jitter.x, -jitter.y, 0.0f));
+			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(jitter.x, jitter.y, 0.0f));
 			m_projectionJittered	= m_viewProjection_Orthographic * jitterMatrix;
 		}
 		TAA_Jitter::jitter_previous	= TAA_Jitter::jitter_current;
@@ -1093,6 +1093,13 @@ namespace Directus
 		// Render target swapping
 		auto SwapTargets = [&texIn, &texOut]() { texOut.swap(texIn); };
 
+		// TAA	
+		if (Flags_IsSet(Render_PostProcess_TAA))
+		{
+			Pass_TAA(texIn, texOut);
+			SwapTargets();
+		}
+
 		// Bloom
 		if (Flags_IsSet(Render_PostProcess_Bloom))
 		{
@@ -1107,16 +1114,9 @@ namespace Directus
 			SwapTargets();
 		}
 
-		// TAA	
-		if (Flags_IsSet(Render_PostProcess_TAA))
-		{
-			Pass_TAA(texIn, texOut);
-			SwapTargets();
-		}
-
 		// Tone-Mapping
 		if (Flags_IsSet(Render_PostProcess_ToneMapping))
-		{;
+		{
 			Pass_ToneMapping(texIn, texOut);
 			SwapTargets();
 		}
@@ -1163,6 +1163,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_renderTexFull_TAA_History);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
@@ -1378,6 +1379,7 @@ namespace Directus
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_motionBlur);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
