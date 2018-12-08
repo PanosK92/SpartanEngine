@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ==================================
 #include "Renderable.h"
 #include "Transform.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceManager.h"
-#include "../../Rendering/GeometryUtility.h"
+#include "../../Rendering/Utilities/Geometry.h"
 #include "../../Rendering/Material.h"
 #include "../../Rendering/Model.h"
-//==========================================
+//=============================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -36,57 +36,54 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	namespace DefaultRenderables
-	{
-		inline void Build(GeometryType type, Renderable* renderable)
-		{	
-			auto model = make_shared<Model>(renderable->GetContext());
-			vector<RHI_Vertex_PosUVTBN> vertices;
-			vector<unsigned int> indices;
+	inline void Build(GeometryType type, Renderable* renderable)
+	{	
+		auto model = make_shared<Model>(renderable->GetContext());
+		vector<RHI_Vertex_PosUVTBN> vertices;
+		vector<unsigned int> indices;
 
-			// Construct geometry
-			if (type == Geometry_Default_Cube)
-			{
-				GeometryUtility::CreateCube(&vertices, &indices);		
-				model->SetResourceName("Default_Cube");
-			}
-			else if (type == Geometry_Default_Quad)
-			{
-				GeometryUtility::CreateQuad(&vertices, &indices);
-				model->SetResourceName("Default_Cube");
-			}
-			else if (type == Geometry_Default_Sphere)
-			{
-				GeometryUtility::CreateSphere(&vertices, &indices);
-				model->SetResourceName("Default_Cube");
-			}
-			else if (type == Geometry_Default_Cylinder)
-			{
-				GeometryUtility::CreateCylinder(&vertices, &indices);
-				model->SetResourceName("Default_Cube");
-			}
-			else if (type == Geometry_Default_Cone)
-			{
-				GeometryUtility::CreateCone(&vertices, &indices);
-				model->SetResourceName("Default_Cube");
-			}
-
-			if (vertices.empty() || indices.empty())
-				return;
-
-			model->Geometry_Append(indices, vertices, nullptr, nullptr);
-			model->Geometry_Update();
-
-			renderable->Geometry_Set(
-				"Default_Geometry",
-				0,
-				(unsigned int)indices.size(),
-				0,
-				(unsigned int)vertices.size(),
-				BoundingBox(vertices),
-				model
-			);
+		// Construct geometry
+		if (type == Geometry_Default_Cube)
+		{
+			Utility::Geometry::CreateCube(&vertices, &indices);		
+			model->SetResourceName("Default_Cube");
 		}
+		else if (type == Geometry_Default_Quad)
+		{
+			Utility::Geometry::CreateQuad(&vertices, &indices);
+			model->SetResourceName("Default_Cube");
+		}
+		else if (type == Geometry_Default_Sphere)
+		{
+			Utility::Geometry::CreateSphere(&vertices, &indices);
+			model->SetResourceName("Default_Cube");
+		}
+		else if (type == Geometry_Default_Cylinder)
+		{
+			Utility::Geometry::CreateCylinder(&vertices, &indices);
+			model->SetResourceName("Default_Cube");
+		}
+		else if (type == Geometry_Default_Cone)
+		{
+			Utility::Geometry::CreateCone(&vertices, &indices);
+			model->SetResourceName("Default_Cube");
+		}
+
+		if (vertices.empty() || indices.empty())
+			return;
+
+		model->Geometry_Append(indices, vertices, nullptr, nullptr);
+		model->Geometry_Update();
+
+		renderable->Geometry_Set(
+			"Default_Geometry",
+			0,
+			(unsigned int)indices.size(),
+			0,
+			(unsigned int)vertices.size(),
+			BoundingBox(vertices),
+			model
+		);
 	}
 
 	Renderable::Renderable(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
@@ -195,7 +192,7 @@ namespace Directus
 
 		if (type != Geometry_Custom)
 		{
-			DefaultRenderables::Build(type, this);
+			Build(type, this);
 		}
 	}
 

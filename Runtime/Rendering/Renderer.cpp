@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/LightShader.h"
 #include "Deferred/GBuffer.h"
+#include "Utilities/Sampling.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommonBuffers.h"
 #include "../RHI/RHI_VertexBuffer.h"
@@ -54,31 +55,6 @@ using namespace Helper;
 
 #define GIZMO_MAX_SIZE 5.0f
 #define GIZMO_MIN_SIZE 0.1f
-
-namespace TAA_Jitter
-{
-	inline float Halton(int index, int base)
-	{
-		float f = 1; float r = 0;
-		while (index > 0)
-		{
-			f = f / (float)base;
-			r = r + f * (index % base);
-			index = index / base;
-		}
-		return r;
-	}
-
-	inline Vector2 Halton2D(int index, int baseA, int baseB)
-	{
-		return Vector2(Halton(index, baseA), Halton(index, baseB));
-	}
-		
-	int samples				= 16;
-	float scale				= 1.0f;
-	Vector2 jitter_current	= Vector2::Zero;
-	Vector2 jitter_previous	= Vector2::Zero;
-}
 
 namespace Directus
 {
@@ -355,22 +331,11 @@ namespace Directus
 		if (!m_rhiDevice || !m_rhiDevice->IsInitialized())
 			return;
 
+		// If there is no camera, do nothing
 		if (!m_camera)
 		{
 			m_rhiDevice->ClearBackBuffer(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			return;
-		}
-
-		// Get camera matrices
-		{
-			m_nearPlane						= m_camera->GetNearPlane();
-			m_farPlane						= m_camera->GetFarPlane();
-			m_view							= m_camera->GetViewMatrix();
-			m_viewBase						= m_camera->GetBaseViewMatrix();
-			m_projection					= m_camera->GetProjectionMatrix();
-			m_viewProjection				= m_view * m_projection;
-			m_projectionOrthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
-			m_viewProjection_Orthographic	= m_viewBase * m_projectionOrthographic;
 		}
 
 		// If there is nothing to render clear to camera's color and present
@@ -383,10 +348,37 @@ namespace Directus
 		}
 
 		TIME_BLOCK_START_MULTI();
-		m_isRendering = true;
 		Profiler::Get().Reset();
+		m_isRendering = true;
 		m_frameNum++;
 		m_isOddFrame = (m_frameNum % 2) == 1;
+
+		// Get camera matrices
+		{
+			m_nearPlane						= m_camera->GetNearPlane();
+			m_farPlane						= m_camera->GetFarPlane();
+			m_view							= m_camera->GetViewMatrix();
+			m_viewBase						= m_camera->GetBaseViewMatrix();
+			m_projection					= m_camera->GetProjectionMatrix();
+
+			// TAA - Generate jitter
+			Vector2 jitter = Vector2::Zero;
+			if (Flags_IsSet(Render_PostProcess_TAA))
+			{
+				uint64_t index		= m_frameNum % 16;
+				jitter				= Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+				jitter.x			= jitter.x / (float)Settings::Get().Resolution_GetWidth();
+				jitter.y			= jitter.y / (float)Settings::Get().Resolution_GetHeight();
+				Matrix jitterMatrix = Matrix::CreateTranslation(Vector3(m_jitterCurrent.x, m_jitterCurrent.y, 0.0f));
+				m_projection		*= jitterMatrix;
+			}
+			m_jitterPrevious	= m_jitterCurrent;
+			m_jitterCurrent		= jitter;
+
+			m_viewProjection				= m_view * m_projection;
+			m_projectionOrthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
+			m_viewProjection_Orthographic	= m_viewBase * m_projectionOrthographic;
+		}
 
 		Pass_DepthDirectionalLight(GetLightDirectional());
 		
@@ -533,12 +525,13 @@ namespace Directus
 		buffer->bloom_intensity				= m_bloomIntensity;
 		buffer->sharpen_strength			= m_sharpenStrength;
 		buffer->sharpen_clamp				= m_sharpenClamp;
-		buffer->taa_jitterOffsetCurrent		= TAA_Jitter::jitter_current;
-		buffer->taa_jitterOffsetPrevious	= TAA_Jitter::jitter_previous;
+		buffer->taa_jitterCurrent			= m_jitterCurrent;
+		buffer->taa_jitterPrevious			= m_jitterPrevious;
 		buffer->motionBlur_strength			= m_motionBlurStrength;
 		buffer->fps_current					= Profiler::Get().GetFPS();
 		buffer->fps_target					= Settings::Get().FPS_GetTarget();
 		buffer->packNormals					= m_gbuffer->IsNormalPackingRequired() ? 1.0f : 0.0f;
+		buffer->gamma						= m_gamma;
 
 		m_bufferGlobal->Unmap();
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);
@@ -1029,25 +1022,10 @@ namespace Directus
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Light");
 
-		// TAA - Apply jitter to view projection matrix
-		Matrix m_projectionJittered = m_viewProjection_Orthographic;
-		Vector2 jitter = Vector2::Zero;
-		if (Flags_IsSet(Render_PostProcess_TAA))
-		{
-			int index				= m_frameNum % TAA_Jitter::samples;
-			jitter					= TAA_Jitter::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-			jitter.x				= jitter.x / (float)texOut->GetWidth();
-			jitter.y				= jitter.y / (float)texOut->GetHeight();
-			jitter					*= TAA_Jitter::scale;
-			Matrix jitterMatrix		= Matrix::CreateTranslation(Vector3(jitter.x, jitter.y, 0.0f));
-			m_projectionJittered	= m_viewProjection_Orthographic * jitterMatrix;
-		}
-		TAA_Jitter::jitter_previous	= TAA_Jitter::jitter_current;
-		TAA_Jitter::jitter_current	= jitter;
-
 		// Update constant buffer
-		m_shaderLight->UpdateConstantBuffer(
-			m_projectionJittered,
+		m_shaderLight->UpdateConstantBuffer
+		(
+			m_viewProjection_Orthographic,
 			m_view,
 			m_projection,
 			m_actors[Renderable_Light],

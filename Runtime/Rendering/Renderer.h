@@ -130,6 +130,7 @@ namespace Directus
 		Camera* GetCamera()			{ return m_camera; }
 
 		//= Settings =============================================================================================================================================================
+		float m_gamma					= 2.2f;
 		// FXAA
 		float m_fxaaSubPixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
 		float m_fxaaEdgeThreshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
@@ -275,7 +276,9 @@ namespace Directus
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
 		unsigned long m_flags;
 		uint64_t m_frameNum;
-		bool m_isOddFrame;		
+		bool m_isOddFrame;
+		Math::Vector2 m_jitterCurrent;
+		Math::Vector2 m_jitterPrevious;
 		//===============================================================
 		
 		// Global buffer (holds what is needed by almost every shader)
@@ -301,13 +304,16 @@ namespace Directus
 			float sharpen_strength;
 			float sharpen_clamp;
 
-			Math::Vector2 taa_jitterOffsetCurrent;
-			Math::Vector2 taa_jitterOffsetPrevious;
+			Math::Vector2 taa_jitterCurrent;
+			Math::Vector2 taa_jitterPrevious;
 
 			float motionBlur_strength;
 			float fps_current;
 			float fps_target;
 			float packNormals;
+
+			float gamma;
+			Math::Vector3 padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};

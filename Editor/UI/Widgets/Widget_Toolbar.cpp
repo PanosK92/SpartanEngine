@@ -37,13 +37,13 @@ using namespace Math;
 
 namespace _Widget_Toolbar
 {
-	static float g_buttonSize			= 20.0f;
-	static bool g_showRendererOptions	= false;
+	static float g_buttonSize				= 20.0f;
+	static bool g_showRendererOptions		= false;
 	static bool g_gizmo_physics				= true;
-	static bool g_gizmo_aabb					= false;
+	static bool g_gizmo_aabb				= false;
 	static bool g_gizmo_light				= true;
 	static bool g_gizmo_pickingRay			= false;
-	static bool g_gizmo_grid					= true;
+	static bool g_gizmo_grid				= true;
 	static bool g_gizmo_performanceMetrics	= false;
 	static vector<string> gbufferTextures =
 	{
@@ -114,7 +114,7 @@ void Widget_Toolbar::ShowRendererOptions()
 {
 	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_showRendererOptions, ImGuiWindowFlags_AlwaysAutoResize);
 
-	if (ImGui::CollapsingHeader("Effects", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
 	{	
 		// Read from engine
 		bool bloom					= m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
@@ -131,7 +131,8 @@ void Widget_Toolbar::ShowRendererOptions()
 		{
 			auto tooltip = [this](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
 
-			ImGui::Checkbox("Tone-mapping", &tonemapping); tooltip("ACES Filmic");
+			ImGui::InputFloat("Gamma", &m_renderer->m_gamma, 0.1f);
+			ImGui::Checkbox("Tone-mapping", &tonemapping);												tooltip("ACES Filmic");
 			ImGui::Checkbox("Bloom", &bloom);
 			ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloomIntensity, 0.1f);		
 			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &ssao);
@@ -141,12 +142,12 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
 			ImGui::Checkbox("TAA - Temporal Anti-Aliasing - DEVELOPMENT", &taa);
 			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &fxaa);
-			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f);					tooltip("The amount of sub-pixel aliasing removal");
-			ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaaEdgeThreshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
-			ImGui::InputFloat("FXAA Edge Threshold Min", &m_renderer->m_fxaaEdgeThresholdMin, 0.1f); tooltip("Trims the algorithm from processing darks");
+			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f);						tooltip("The amount of sub-pixel aliasing removal");
+			ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaaEdgeThreshold, 0.1f);			tooltip("The minimum amount of local contrast required to apply algorithm");
+			ImGui::InputFloat("FXAA Edge Threshold Min", &m_renderer->m_fxaaEdgeThresholdMin, 0.1f);	tooltip("Trims the algorithm from processing darks");
 			ImGui::Checkbox("Sharpen", &sharpening);
 			ImGui::InputFloat("Sharpen Strength", &m_renderer->m_sharpenStrength, 0.1f);
-			ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpenClamp, 0.1f); tooltip("Limits maximum amount of sharpening a pixel receives");
+			ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpenClamp, 0.1f);						tooltip("Limits maximum amount of sharpening a pixel receives");
 			ImGui::Separator();
 		}
 
