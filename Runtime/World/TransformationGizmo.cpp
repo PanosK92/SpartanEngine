@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
+//= INCLUDES ===============================
 #include "TransformationGizmo.h"
 #include "Actor.h"
 #include "Components\Transform.h"
 #include "..\RHI\RHI_Vertex.h"
-#include "..\Rendering\GeometryUtility.h"
-//=======================================
+#include "..\Rendering\Utilities\Geometry.h"
+//==========================================
 
 //=============================
 using namespace std;
@@ -36,7 +36,6 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-
 	TransformationGizmo::TransformationGizmo(Context* context)
 	{
 		m_context			= context;
@@ -50,7 +49,7 @@ namespace Directus
 		// Create cone
 		vector<RHI_Vertex_PosUVTBN> vertices;
 		vector<unsigned int> indices;
-		GeometryUtility::CreateCone(&vertices, &indices);
+		Utility::Geometry::CreateCone(&vertices, &indices);
 		/*m_meshCone = make_unique<Mesh>(m_context);
 		m_meshCone->Vertices_Set(vertices);
 		m_meshCone->Indices_Set(indices);
@@ -59,7 +58,7 @@ namespace Directus
 		// Create cone
 		vertices.clear(); vertices.shrink_to_fit();
 		indices.clear(); indices.shrink_to_fit();
-		GeometryUtility::CreateCube(&vertices, &indices);
+		Utility::Geometry::CreateCube(&vertices, &indices);
 		/*m_meshCube = make_unique<Mesh>(m_context);
 		m_meshCube->Vertices_Set(vertices);
 		m_meshCube->Indices_Set(indices);

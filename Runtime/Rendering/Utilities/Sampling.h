@@ -21,21 +21,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES =====================
 #include <vector>
 #include "../RHI/RHI_Definition.h"
-#include "../Core/EngineDefs.h"
-//=============================
+#include "../../Math/Vector2.h"
+//================================
 
-namespace Directus
+namespace Directus::Utility::Sampling
 {
-	class ENGINE_CLASS GeometryUtility
+	inline float Halton(uint64_t index, uint64_t base)
 	{
-	public:
-		static void CreateCube(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices);
-		static void CreateQuad(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices);
-		static void CreateSphere(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, int slices = 15, int stacks = 15);
-		static void CreateCylinder(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15);
-		static void CreateCone(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, float height = 2.0f);
-	};
+		float f = 1; float r = 0;
+		while (index > 0)
+		{
+			f = f / (float)base;
+			r = r + f * (index % base);
+			index = index / base;
+		}
+		return r;
+	}
+
+	inline Math::Vector2 Halton2D(uint64_t index, uint64_t baseA, uint64_t baseB)
+	{
+		return Math::Vector2(Halton(index, baseA), Halton(index, baseB));
+	}
 }
