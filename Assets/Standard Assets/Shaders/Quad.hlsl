@@ -16,6 +16,7 @@
 Texture2D sourceTexture 		: register(t0);
 Texture2D sourceTexture2 		: register(t1);
 Texture2D sourceTexture3 		: register(t2);
+Texture2D sourceTexture4 		: register(t3);
 SamplerState samplerState 		: register(s0);
 
 struct VS_Output
@@ -97,7 +98,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 
 #if PASS_BRIGHT
 	color 				= sourceTexture.Sample(samplerState, texCoord);
-    float luminance 	= dot(color.rgb, float3(0.2126f, 0.7152f, 0.0722f));	
+    float luminance 	= Luminance(color.rgb);
 	color 				= luminance > 1.0f ? color : float4(0.0f, 0.0f, 0.0f, color.a);
 #endif
 
@@ -108,17 +109,17 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_LUMA
-	// Computes luma for FXAA
+	// Compute luminance for FXAA
 	color 		= sourceTexture.Sample(samplerState, texCoord);
-    color.a 	= dot(color.rgb, float3(0.299f, 0.587f, 0.114f));
+    color.a 	= Luminance(color.rgb);
 #endif
 
 #if PASS_TAA_RESOLVE
-	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState);
+	color = ResolveTAA(texCoord, sourceTexture, sourceTexture2, sourceTexture3, sourceTexture4, samplerState);
 #endif
 
 #if PASS_MOTION_BLUR
-	color = MotionBlur(texCoord, sourceTexture, sourceTexture2, samplerState);
+	color = MotionBlur(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState);
 #endif
 
     return color;
