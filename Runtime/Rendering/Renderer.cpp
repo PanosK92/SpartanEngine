@@ -365,7 +365,9 @@ namespace Directus
 			Vector2 jitter = Vector2::Zero;
 			if (Flags_IsSet(Render_PostProcess_TAA))
 			{
-				uint64_t index		= m_frameNum % 16;
+				// Halton(2, 3) * 16 seems to work nice
+				uint64_t samples	= 16;
+				uint64_t index		= m_frameNum % samples;
 				jitter				= Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
 				jitter.x			= jitter.x / (float)Settings::Get().Resolution_GetWidth();
 				jitter.y			= jitter.y / (float)Settings::Get().Resolution_GetHeight();
@@ -1357,7 +1359,6 @@ namespace Directus
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_motionBlur);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
-		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
