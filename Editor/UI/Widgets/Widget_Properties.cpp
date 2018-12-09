@@ -741,14 +741,14 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 
 		static const ImVec2 materialTextSize = ImVec2(80, 80);
 
-		auto texAlbedo		= material->GetTextureSlotByType(TextureType_Albedo).ptr_raw;
-		auto texRoughness	= material->GetTextureSlotByType(TextureType_Roughness).ptr_raw;
-		auto texMetallic	= material->GetTextureSlotByType(TextureType_Metallic).ptr_raw;
-		auto texNormal		= material->GetTextureSlotByType(TextureType_Normal).ptr_raw;
-		auto texHeight		= material->GetTextureSlotByType(TextureType_Height).ptr_raw;
-		auto texOcclusion	= material->GetTextureSlotByType(TextureType_Occlusion).ptr_raw;
-		auto texEmission	= material->GetTextureSlotByType(TextureType_Emission).ptr_raw;
-		auto texMask		= material->GetTextureSlotByType(TextureType_Mask).ptr_raw;
+		auto texAlbedo		= material->GetTextureSlotByType(TextureType_Albedo).ptr.get();
+		auto texRoughness	= material->GetTextureSlotByType(TextureType_Roughness).ptr.get();
+		auto texMetallic	= material->GetTextureSlotByType(TextureType_Metallic).ptr.get();
+		auto texNormal		= material->GetTextureSlotByType(TextureType_Normal).ptr.get();
+		auto texHeight		= material->GetTextureSlotByType(TextureType_Height).ptr.get();
+		auto texOcclusion	= material->GetTextureSlotByType(TextureType_Occlusion).ptr.get();
+		auto texEmission	= material->GetTextureSlotByType(TextureType_Emission).ptr.get();
+		auto texMask		= material->GetTextureSlotByType(TextureType_Mask).ptr.get();
 
 		// Name
 		ImGui::Text("Name");

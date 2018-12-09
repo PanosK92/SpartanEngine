@@ -54,19 +54,16 @@ namespace Directus
 	{
 		TextureSlot()
 		{
-			type	= TextureType_Unknown;
-			ptr_raw = nullptr;
+			type = TextureType_Unknown;
 		}
 
-		TextureSlot(TextureType type, std::weak_ptr<RHI_Texture> ptr_weak, RHI_Texture* ptr_raw)
+		TextureSlot(TextureType type, std::shared_ptr<RHI_Texture> ptr)
 		{
-			this->type		= type;
-			this->ptr_weak	= ptr_weak;
-			this->ptr_raw	= ptr_raw;		
+			this->ptr	= ptr;
+			this->type	= type;
 		}
 
-		std::weak_ptr<RHI_Texture> ptr_weak;
-		RHI_Texture* ptr_raw;
+		std::shared_ptr<RHI_Texture> ptr;
 		TextureType type;
 	};
 

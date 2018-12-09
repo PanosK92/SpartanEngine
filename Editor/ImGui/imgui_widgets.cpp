@@ -1186,7 +1186,7 @@ void ImGui::Separator()
     window->DrawList->AddLine(bb.Min, ImVec2(bb.Max.x,bb.Min.y), GetColorU32(ImGuiCol_Separator));
 
     if (g.LogEnabled)
-        LogRenderedText(NULL, IM_NEWLINE "--------------------------------");
+        LogRenderedText(&bb.Min, "--------------------------------");
 
     if (window->DC.ColumnsSet)
     {
@@ -5529,8 +5529,8 @@ bool ImGui::BeginMenuBar()
 
     window->DC.CursorPos = ImVec2(bar_rect.Min.x + window->DC.MenuBarOffset.x, bar_rect.Min.y + window->DC.MenuBarOffset.y);
     window->DC.LayoutType = ImGuiLayoutType_Horizontal;
-    window->DC.NavLayerCurrent++;
-    window->DC.NavLayerCurrentMask <<= 1;
+    window->DC.NavLayerCurrent = ImGuiNavLayer_Menu;
+    window->DC.NavLayerCurrentMask = (1 << ImGuiNavLayer_Menu);
     window->DC.MenuBarAppending = true;
     AlignTextToFramePadding();
     return true;
@@ -5556,7 +5556,7 @@ void ImGui::EndMenuBar()
             IM_ASSERT(window->DC.NavLayerActiveMaskNext & 0x02); // Sanity check
             FocusWindow(window);
             SetNavIDWithRectRel(window->NavLastIds[1], 1, window->NavRectRel[1]);
-            g.NavLayer = 1;
+            g.NavLayer = ImGuiNavLayer_Menu;
             g.NavDisableHighlight = true; // Hide highlight for the current frame so we don't see the intermediary selection.
             g.NavMoveRequestForward = ImGuiNavForward_ForwardQueued;
             NavMoveRequestCancel();
@@ -5571,8 +5571,8 @@ void ImGui::EndMenuBar()
     window->DC.GroupStack.back().AdvanceCursor = false;
     EndGroup(); // Restore position on layer 0
     window->DC.LayoutType = ImGuiLayoutType_Vertical;
-    window->DC.NavLayerCurrent--;
-    window->DC.NavLayerCurrentMask >>= 1;
+    window->DC.NavLayerCurrent = ImGuiNavLayer_Main;
+    window->DC.NavLayerCurrentMask = (1 << ImGuiNavLayer_Main);
     window->DC.MenuBarAppending = false;
 }
 
@@ -5813,7 +5813,7 @@ namespace ImGui
 ImGuiTabBar::ImGuiTabBar()
 {
     ID = 0;
-    SelectedTabId = NextSelectedTabId = VisibleTabId = WantFocusTabId = 0;
+    SelectedTabId = NextSelectedTabId = VisibleTabId = 0;
     CurrFrameVisible = PrevFrameVisible = -1;
     OffsetMax = OffsetNextTab = 0.0f;
     ScrollingAnim = ScrollingTarget = 0.0f;
@@ -5960,7 +5960,6 @@ static void ImGui::TabBarLayout(ImGuiTabBar* tab_bar)
 
     // Setup next selected tab
     ImGuiID scroll_track_selected_tab_id = 0;
-    tab_bar->WantFocusTabId = 0;
     if (tab_bar->NextSelectedTabId)
     {
         tab_bar->SelectedTabId = tab_bar->NextSelectedTabId;
@@ -6157,7 +6156,6 @@ void ImGui::TabBarRemoveTab(ImGuiTabBar* tab_bar, ImGuiID tab_id)
     if (ImGuiTabItem* tab = TabBarFindTabByID(tab_bar, tab_id))
         tab_bar->Tabs.erase(tab);
     if (tab_bar->VisibleTabId == tab_id)      { tab_bar->VisibleTabId = 0; }
-    if (tab_bar->WantFocusTabId == tab_id)    { tab_bar->WantFocusTabId = 0; }
     if (tab_bar->SelectedTabId == tab_id)     { tab_bar->SelectedTabId = 0; }
     if (tab_bar->NextSelectedTabId == tab_id) { tab_bar->NextSelectedTabId = 0; }
 }
@@ -6447,16 +6445,26 @@ bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, 
     bool hovered, held;
     bool pressed = ButtonBehavior(bb, id, &hovered, &held, button_flags);
     hovered |= (g.HoveredId == id);
-    if (pressed || ((flags & ImGuiTabItemFlags_SetSelected) && !tab_contents_visible)) // SetSelected can only be passed on explicit tab bar, so we don't need to set WantFocusTabId
-        tab_bar->NextSelectedTabId = tab_bar->WantFocusTabId = id;
+    if (pressed || ((flags & ImGuiTabItemFlags_SetSelected) && !tab_contents_visible)) // SetSelected can only be passed on explicit tab bar
+        tab_bar->NextSelectedTabId = id;
 
     // Allow the close button to overlap unless we are dragging (in which case we don't want any overlapping tabs to be hovered)
     if (!held)
         SetItemAllowOverlap();
 
-    // Drag and drop
-    if (held && !tab_appearing && IsMouseDragging())
+    // Drag and drop a single floating window node moves it
+    // FIXME-DOCK: In theory we shouldn't test for the ConfigDockingNodifySingleWindows flag here.
+    // When our single window node and OnlyNodeWithWindows are working properly we may remove this check here.
+    ImGuiDockNode* node = docked_window ? docked_window->DockNode : NULL;
+    const bool single_window_node = node && node->IsRootNode() && node->Windows.Size == 1 && g.IO.ConfigDockingTabBarOnSingleWindows;
+    if (held && single_window_node && IsMouseDragging(0, 0.0f))
     {
+        // Move
+        StartMouseMovingWindow(docked_window);
+    }
+    else if (held && !tab_appearing && IsMouseDragging(0))
+    {
+        // Drag and drop
         // Re-order local or dockable tabs
         float drag_distance_from_edge_x = 0.0f;
         if (!g.DragDropActive && ((tab_bar->Flags & ImGuiTabBarFlags_Reorderable) || (flags & ImGuiTabItemFlags_DockedWindow)))
@@ -6480,9 +6488,8 @@ bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, 
         if (flags & ImGuiTabItemFlags_DockedWindow)
         {
             // We use a variable threshold to distinguish dragging tabs within a tab bar and extracting them out of the tab bar
-            //ImVec2 drag_delta = GetMouseDragDelta();
             bool undocking_tab = (g.DragDropActive && g.DragDropPayload.SourceId == id);
-            if (!undocking_tab && held)// && (drag_delta.x != 0.0f || drag_delta.y != 0.0f))
+            if (!undocking_tab && held)
             {
                 //if (!g.IO.ConfigDockingWithShift || g.IO.KeyShift)
                 {
@@ -6501,9 +6508,9 @@ bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, 
                 }
             }
 
-            // Undock
-            if (undocking_tab && g.ActiveId == id && IsMouseDragging())
+            if (undocking_tab)
             {
+                // Undock
                 DockContextQueueUndockWindow(&g, docked_window);
                 g.MovingWindow = docked_window;
                 g.ActiveId = g.MovingWindow->MoveId;
@@ -6531,7 +6538,7 @@ bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, 
     // Select with right mouse button. This is so the common idiom for context menu automatically highlight the current widget.
     const bool hovered_unblocked = IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup);
     if (hovered_unblocked && (IsMouseClicked(1) || IsMouseReleased(1)))
-        tab_bar->NextSelectedTabId = tab_bar->WantFocusTabId = id;
+        tab_bar->NextSelectedTabId = id;
 
     if (tab_bar->Flags & ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)
         flags |= ImGuiTabItemFlags_NoCloseWithMiddleMouseButton;

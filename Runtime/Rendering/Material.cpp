@@ -157,8 +157,8 @@ namespace Directus
 			string texNode = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", texNode);
 			xml->AddAttribute(texNode, "Texture_Type", (unsigned int)textureSlot.type);
-			xml->AddAttribute(texNode, "Texture_Name", !textureSlot.ptr_weak.expired() ? textureSlot.ptr_raw->GetResourceName() : NOT_ASSIGNED);
-			xml->AddAttribute(texNode, "Texture_Path", !textureSlot.ptr_weak.expired() ? textureSlot.ptr_raw->GetResourceFilePath() : NOT_ASSIGNED);
+			xml->AddAttribute(texNode, "Texture_Name", textureSlot.ptr ? textureSlot.ptr->GetResourceName() : NOT_ASSIGNED);
+			xml->AddAttribute(texNode, "Texture_Path", textureSlot.ptr ? textureSlot.ptr->GetResourceFilePath() : NOT_ASSIGNED);
 			i++;
 		}
 
@@ -215,8 +215,7 @@ namespace Directus
 		{
 			if (textureSlot.type == type)
 			{
-				textureSlot.ptr_weak	= texCached;
-				textureSlot.ptr_raw		= texCached.get();
+				textureSlot.ptr	= texCached;
 				replaced = true;
 				break;
 			}
@@ -224,7 +223,7 @@ namespace Directus
 		// Assign - Add a new one (in case it's the first time the slot is assigned)
 		if (!replaced)
 		{
-			m_textureSlots.emplace_back(type, texCached, texCached.get());
+			m_textureSlots.emplace_back(type, texCached);
 		}
 
 		TextureBasedMultiplierAdjustment();
@@ -234,17 +233,17 @@ namespace Directus
 	bool Material::HasTexture(TextureType type)
 	{
 		auto textureSlot = GetTextureSlotByType(type);
-		return !textureSlot.ptr_weak.expired();
+		return textureSlot.ptr != nullptr;
 	}
 
 	bool Material::HasTexture(const string& path)
 	{
 		for (const auto& textureSlot : m_textureSlots)
 		{
-			if (textureSlot.ptr_weak.expired())
+			if (textureSlot.ptr == nullptr)
 				continue;
 
-			if (textureSlot.ptr_raw->GetResourceFilePath() == path)
+			if (textureSlot.ptr->GetResourceFilePath() == path)
 				return true;
 		}
 
@@ -254,7 +253,7 @@ namespace Directus
 	string Material::GetTexturePathByType(TextureType type)
 	{
 		auto textureSlot = GetTextureSlotByType(type);
-		return textureSlot.ptr_weak.expired() ? NOT_ASSIGNED : textureSlot.ptr_raw->GetResourceFilePath();
+		return textureSlot.ptr == nullptr ? NOT_ASSIGNED : textureSlot.ptr->GetResourceFilePath();
 	}
 
 	vector<string> Material::GetTexturePaths()
@@ -262,10 +261,10 @@ namespace Directus
 		vector<string> paths;
 		for (const auto& textureSlot : m_textureSlots)
 		{
-			if (textureSlot.ptr_weak.expired())
+			if (textureSlot.ptr == nullptr)
 				continue;
 
-			paths.emplace_back(textureSlot.ptr_raw->GetResourceFilePath());
+			paths.emplace_back(textureSlot.ptr->GetResourceFilePath());
 		}
 
 		return paths;
