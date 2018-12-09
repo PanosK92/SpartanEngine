@@ -2,7 +2,7 @@
 								[GLOBALS]
 ------------------------------------------------------------------------------*/
 #define PI 3.1415926535897932384626433832795
-#define EPSILON 2.7182818284
+#define EPSILON 0.00000001
 
 cbuffer GlobalBuffer : register(b0)
 {	
@@ -176,9 +176,9 @@ float2 GetVelocity_Dilate_Average(float2 texCoord, Texture2D texture_velocity, S
 }
 
 // Returns velocity with closest depth
-float2 GetVelocity_Dilate_Depth(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear)
+float2 GetVelocity_Dilate_Depth(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear, out float closestDepth)
 {	
-	float closestDepth 		= 1.0f;
+	closestDepth			= 1.0f;
 	float2 closestTexCoord 	= 0.0f;
 	[unroll]
     for(int y = -1; y <= 1; ++y)

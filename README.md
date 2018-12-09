@@ -43,8 +43,8 @@ Debug rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
 SSAO         					| 100% | Screen space ambient occlusion.
 Bloom         					| 100% | -
-SSR								| 90% |	 Screen space reflections.
-TAA								| 95% |	 Temporal Anti-Aliasing (Based on Uncharted 4).
+SSR								| 100% |	 Screen space reflections.
+TAA								| 100% |	 Temporal Anti-Aliasing (Based on Uncharted 4).
 Per-Pixel motion blur			| 100% |
 Velocity Buffer					| 100% | Required for TAA and Motion Blur.
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
