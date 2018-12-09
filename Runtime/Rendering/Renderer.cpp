@@ -792,14 +792,14 @@ namespace Directus
 			// Bind textures
 			if (currentlyBoundMaterial != material->Resource_GetID())
 			{
-				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Albedo).ptr_raw);
-				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Roughness).ptr_raw);
-				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Metallic).ptr_raw);
-				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Normal).ptr_raw);
-				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Height).ptr_raw);
-				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Occlusion).ptr_raw);
-				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Emission).ptr_raw);
-				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Mask).ptr_raw);
+				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Albedo).ptr);
+				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Roughness).ptr);
+				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Metallic).ptr);
+				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Normal).ptr);
+				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Height).ptr);
+				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Occlusion).ptr);
+				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Emission).ptr);
+				m_rhiPipeline->SetTexture(material->GetTextureSlotByType(TextureType_Mask).ptr);
 
 				currentlyBoundMaterial = material->Resource_GetID();
 			}

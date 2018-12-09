@@ -140,7 +140,7 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::Checkbox("Motion Blur", &motionBlur);
 			ImGui::InputFloat("Motion Blur Strength", &m_renderer->m_motionBlurStrength, 0.1f);
 			ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
-			ImGui::Checkbox("TAA - Temporal Anti-Aliasing - DEVELOPMENT", &taa);
+			ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &taa);
 			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &fxaa);
 			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f);						tooltip("The amount of sub-pixel aliasing removal");
 			ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaaEdgeThreshold, 0.1f);			tooltip("The minimum amount of local contrast required to apply algorithm");
