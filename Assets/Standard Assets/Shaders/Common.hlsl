@@ -162,20 +162,22 @@ float3 ReconstructPositionWorld(float depth, matrix viewProjectionInverse, float
 								[VELOCITY]
 ------------------------------------------------------------------------------*/
 
-#define VELOCITY_DILATE_DEPTH_NEAR
-
-float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear)
-{	
-	float2 velocity = 0.0f;
-
-#if defined VELOCITY_DILATE_AVERAGE
+// Return average velocity
+float2 GetVelocity_Dilate_Average(float2 texCoord, Texture2D texture_velocity, SamplerState sampler_bilinear)
+{
 	float2 velocity_tl 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, -2) * g_texelSize).xy;
 	float2 velocity_tr	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, -2) * g_texelSize).xy;
 	float2 velocity_bl	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-2, 2) * g_texelSize).xy;
 	float2 velocity_br 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(2, 2) * g_texelSize).xy;
 	float2 velocity_ce 	= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
-	velocity 			= (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;	
-#elif defined VELOCITY_DILATE_DEPTH_NEAR
+	float2 velocity 	= (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;	
+	
+	return velocity;
+}
+
+// Returns velocity with closest depth
+float2 GetVelocity_Dilate_Depth(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear)
+{	
 	float closestDepth 		= 1.0f;
 	float2 closestTexCoord 	= 0.0f;
 	[unroll]
@@ -193,10 +195,8 @@ float2 GetVelocity(float2 texCoord, Texture2D texture_velocity, Texture2D textur
 			}
         }
 	}
-	velocity = texture_velocity.Sample(sampler_bilinear, closestTexCoord).xy;
-#endif
 
-	return velocity;
+	return texture_velocity.Sample(sampler_bilinear, closestTexCoord).xy;
 }
 
 /*------------------------------------------------------------------------------
@@ -208,7 +208,7 @@ float LinerizeDepth(float depth, float near, float far)
 }
 
 /*------------------------------------------------------------------------------
-								[MISC]
+								[LUMINANCE]
 ------------------------------------------------------------------------------*/
 float Luminance(float3 color)
 {
@@ -218,4 +218,19 @@ float Luminance(float3 color)
 float Luminance(float4 color)
 {
     return dot(color.rgb, float3(0.299f, 0.587f, 0.114f));
+}
+
+/*------------------------------------------------------------------------------
+								[SKY SPHERE]
+------------------------------------------------------------------------------*/
+#define INV_PI 1.0 / PI;
+float2 DirectionToSphereUV(float3 direction)
+{
+    float n 	= length(direction.xz);
+    float2 uv 	= float2((n > 0.0000001) ? direction.x / n : 0.0, direction.y);
+    uv 			= acos(uv) * INV_PI;
+    uv.x 		= (direction.z > 0.0) ? uv.x * 0.5 : 1.0 - (uv.x * 0.5);
+    uv.x 		= 1.0 - uv.x;
+	
+    return uv;
 }

@@ -119,7 +119,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_MOTION_BLUR
-	color = MotionBlur(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState);
+	color = MotionBlur(texCoord, sourceTexture, sourceTexture2, samplerState);
 #endif
 
     return color;

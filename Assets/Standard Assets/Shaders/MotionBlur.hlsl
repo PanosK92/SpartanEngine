@@ -1,9 +1,9 @@
 static const int MAX_SAMPLES = 16;
 
-float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_velocity, Texture2D texture_depth, SamplerState bilinearSampler)
+float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_velocity, SamplerState bilinearSampler)
 {	
 	float4 color 	= texture_color.Sample(bilinearSampler, texCoord);	
-	float2 velocity = GetVelocity(texCoord, texture_velocity, texture_depth, bilinearSampler);
+	float2 velocity = GetVelocity_Dilate_Average(texCoord, texture_velocity, bilinearSampler);
 	
 	// Make velocity scale based on user preference instead of frame rate
 	float velocity_scale 	= (g_fps_current / g_fps_target) * g_motionBlur_strength;

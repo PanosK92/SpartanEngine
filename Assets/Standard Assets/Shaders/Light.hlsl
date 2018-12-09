@@ -44,7 +44,6 @@ cbuffer MiscBuffer : register(b1)
 // = INCLUDES ========
 #include "Common.hlsl"
 #include "Vertex.hlsl"
-#include "Sky.hlsl"
 #include "BRDF.hlsl"
 #include "IBL.hlsl"
 #include "SSR.hlsl"
