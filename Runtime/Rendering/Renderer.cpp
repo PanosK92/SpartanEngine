@@ -362,20 +362,23 @@ namespace Directus
 			m_projection	= m_camera->GetProjectionMatrix();
 
 			// TAA - Generate jitter
-			Vector2 jitter = Vector2::Zero;
 			if (Flags_IsSet(Render_PostProcess_TAA))
 			{
+				m_taa_jitterPrevious = m_taa_jitter;
+
 				// Halton(2, 3) * 16 seems to work nice
 				uint64_t samples	= 16;
 				uint64_t index		= m_frameNum % samples;
-				jitter				= Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-				jitter.x			= jitter.x / (float)Settings::Get().Resolution_GetWidth();
-				jitter.y			= jitter.y / (float)Settings::Get().Resolution_GetHeight();
-				Matrix jitterMatrix = Matrix::CreateTranslation(Vector3(jitter.x, -jitter.y, 0.0f));
-				m_projection		*= jitterMatrix;
+				m_taa_jitter		= Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+				m_taa_jitter.x		= m_taa_jitter.x / (float)Settings::Get().Resolution_GetWidth();
+				m_taa_jitter.y		= m_taa_jitter.y / (float)Settings::Get().Resolution_GetHeight();
+				m_projection		*= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
 			}
-			m_jitterOffset		= (jitter - m_jitterPrevious) * 0.5f;
-			m_jitterPrevious	= jitter;
+			else
+			{
+				m_taa_jitter			= Vector2::Zero;
+				m_taa_jitterPrevious	= Vector2::Zero;		
+			}
 
 			m_viewProjection				= m_view * m_projection;
 			m_projectionOrthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
@@ -528,7 +531,8 @@ namespace Directus
 		buffer->bloom_intensity				= m_bloomIntensity;
 		buffer->sharpen_strength			= m_sharpenStrength;
 		buffer->sharpen_clamp				= m_sharpenClamp;
-		buffer->taa_jitterOffset			= m_jitterOffset;
+		buffer->taa_jitter					= m_taa_jitter;
+		buffer->taa_jitterPrevious			= m_taa_jitterPrevious;
 		buffer->motionBlur_strength			= m_motionBlurStrength;
 		buffer->fps_current					= Profiler::Get().GetFPS();
 		buffer->fps_target					= Settings::Get().FPS_GetTarget();
