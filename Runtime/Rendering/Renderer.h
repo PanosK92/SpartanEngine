@@ -277,8 +277,8 @@ namespace Directus
 		unsigned long m_flags;
 		uint64_t m_frameNum;
 		bool m_isOddFrame;
-		Math::Vector2 m_jitterOffset;
-		Math::Vector2 m_jitterPrevious;
+		Math::Vector2 m_taa_jitter;
+		Math::Vector2 m_taa_jitterPrevious;
 		//===============================================================
 		
 		// Global buffer (holds what is needed by almost every shader)
@@ -304,14 +304,16 @@ namespace Directus
 			float sharpen_strength;
 			float sharpen_clamp;
 
-			Math::Vector2 taa_jitterOffset;
+			Math::Vector2 taa_jitter;
+			Math::Vector2 taa_jitterPrevious;
+
 			float motionBlur_strength;
 			float fps_current;
-
 			float fps_target;
 			float packNormals;
+
 			float gamma;
-			float padding;
+			Math::Vector3 padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};
