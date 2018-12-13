@@ -90,6 +90,7 @@ static const D3D11_COMPARISON_FUNC d3d11_comparison_func[] =
 
 static const D3D11_FILTER d3d11_filter[] =
 {
+	D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
 	D3D11_FILTER_MIN_MAG_MIP_POINT,
 	D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,	// Use linear interpolation for minification and magnification, use point sampling for mip-level sampling.
 	D3D11_FILTER_MIN_MAG_MIP_LINEAR,		// Use linear interpolation for minification, magnification, and mip-level sampling.

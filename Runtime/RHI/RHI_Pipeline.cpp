@@ -187,7 +187,22 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Pipeline::SetRenderTargets(const vector<void*>& renderTargetViews, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
+	bool RHI_Pipeline::SetRenderTarget(void* renderTargetView, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
+	{
+		if (!renderTargetView)
+			return false;
+
+		m_renderTargetViews.clear();
+		m_renderTargetViews.emplace_back(renderTargetView);
+
+		m_depthStencil			= depthStencilView;
+		m_renderTargetsClear	= clear;
+		m_renderTargetsDirty	= true;
+
+		return true;
+	}
+
+	bool RHI_Pipeline::SetRenderTarget(const vector<void*>& renderTargetViews, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
 	{
 		if (renderTargetViews.empty())
 			return false;

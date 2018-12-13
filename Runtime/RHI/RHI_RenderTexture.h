@@ -35,39 +35,43 @@ namespace Directus
 	public:
 		RHI_RenderTexture(
 			std::shared_ptr<RHI_Device> rhiDevice,
-			unsigned int width				= Settings::Get().Resolution_GetWidth(),
-			unsigned int height				= Settings::Get().Resolution_GetHeight(),
-			Texture_Format textureFormat	= Texture_Format_R8G8B8A8_UNORM,
-			bool depth						= false,
-			Texture_Format depthFormat		= Texture_Format_D32_FLOAT
+			unsigned int width = Settings::Get().Resolution_GetWidth(),
+			unsigned int height = Settings::Get().Resolution_GetHeight(),
+			Texture_Format textureFormat = Texture_Format_R8G8B8A8_UNORM,
+			bool depth = false,
+			Texture_Format depthFormat = Texture_Format_D32_FLOAT,
+			unsigned int arraySize = 1
 		);
 		~RHI_RenderTexture();
 
 		bool Clear(const Math::Vector4& clearColor);
 		bool Clear(float red, float green, float blue, float alpha);
-		void* GetRenderTargetView()								{ return m_renderTargetView; }
+		void* GetRenderTargetView(unsigned int index = 0)		{ return m_renderTargetViews[index]; }
 		void* GetShaderResource()								{ return m_shaderResourceView; }
 		void* GetDepthStencilView()								{ return m_depthStencilView; }
 		const std::shared_ptr<RHI_Viewport> GetViewport()		{ return m_viewport; }
 		bool GetDepthEnabled()									{ return m_depthEnabled; }
 		unsigned int GetWidth()									{ return m_width; }
 		unsigned int GetHeight()								{ return m_height; }
+		unsigned int GetArraySize()								{ return m_arraySize; }
 		Texture_Format GetFormat()								{ return m_format; }
 
 	protected:
-		bool m_depthEnabled = false;
-		float m_nearPlane, m_farPlane;
+		bool m_depthEnabled	= false;
+		float m_nearPlane	= 0;
+		float m_farPlane	= 0;
 		std::shared_ptr<RHI_Viewport> m_viewport;
 		Texture_Format m_format;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		unsigned int m_width;
 		unsigned int m_height;
+		unsigned int m_arraySize;
 
 		// D3D11
-		void* m_renderTargetTexture;
-		void* m_renderTargetView;
-		void* m_shaderResourceView;	
-		void* m_depthStencilBuffer;
-		void* m_depthStencilView;
+		std::vector<void*> m_renderTargetViews;
+		void* m_renderTargetTexture = nullptr;
+		void* m_shaderResourceView	= nullptr;
+		void* m_depthStencilBuffer	= nullptr;
+		void* m_depthStencilView	= nullptr;
 	};
 }

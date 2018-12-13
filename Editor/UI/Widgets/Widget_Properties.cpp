@@ -298,17 +298,15 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
 	{
 		//= REFLECT ============================================================
-		static vector<char*> types = { "Directional", "Point", "Spot" };
-		int typeInt				= (int)light->GetLightType();
-		const char* typeCharPtr = types[typeInt];
-		float intensity			= light->GetIntensity();
-		float angle				= light->GetAngle() * 179.0f;
-		bool castsShadows		= light->GetCastShadows();
-		float bias				= light->GetBias();
-		float normalBias		= light->GetNormalBias();
-		float range				= light->GetRange();
-		float split1			= light->ShadowMap_GetSplit(0);
-		float split2			= light->ShadowMap_GetSplit(1);
+		static vector<char*> types	= { "Directional", "Point", "Spot" };
+		int typeInt					= (int)light->GetLightType();
+		const char* typeCharPtr		= types[typeInt];
+		float intensity				= light->GetIntensity();
+		float angle					= light->GetAngle() * 179.0f;
+		bool castsShadows			= light->GetCastShadows();
+		float bias					= light->GetBias();
+		float normalBias			= light->GetNormalBias();
+		float range					= light->GetRange();
 		_Widget_Properties::lightButtonColorPicker->SetColor(light->GetColor());
 		//======================================================================
 
@@ -359,14 +357,6 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 			ImGui::Text("Normal Bias");
 			ImGui::SameLine(ComponentProperty::g_column);
 			ImGui::PushItemWidth(300); ImGui::InputFloat("##lightNormalBias", &normalBias, 1.0f, 1.0f, "%.0f"); ImGui::PopItemWidth();
-
-			ImGui::Text("Split 1");
-			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit1", &split1, 0.0f, 1000.0f); ImGui::PopItemWidth();
-
-			ImGui::Text("Split 2");
-			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightSplit2", &split2, 0.0f, 1000.0f); ImGui::PopItemWidth();
 		}
 
 		// Range
@@ -393,8 +383,6 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		if (normalBias != light->GetNormalBias())											light->SetNormalBias(normalBias);
 		if (angle / 179.0f != light->GetAngle())											light->SetAngle(angle / 179.0f);
 		if (range != light->GetRange())														light->SetRange(range);
-		if (split1 != light->ShadowMap_GetSplit(0))											light->ShadowMap_SetSplit(split1, 0);
-		if (split2 != light->ShadowMap_GetSplit(1))											light->ShadowMap_SetSplit(split2, 1);
 		if (_Widget_Properties::lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(_Widget_Properties::lightButtonColorPicker->GetColor());
 		//==========================================================================================================================================================
 	}

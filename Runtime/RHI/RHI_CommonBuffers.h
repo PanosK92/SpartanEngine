@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector2.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
+#include "RHI_RenderTexture.h"
 //=====================================
 
 namespace Directus
@@ -172,46 +173,28 @@ namespace Directus
 
 	struct Struct_ShadowMapping
 	{
-		Struct_ShadowMapping
-		(
-			const Math::Matrix& mWVPortho,
-			const Math::Matrix& mViewProjectionInverted,
-			Light* dirLight,
-			Camera* camera
-		)
+		Struct_ShadowMapping(const Math::Matrix& mViewProjectionInverted, Light* dirLight, Camera* camera)
 		{
 			// Fill the buffer
-			m_wvpOrtho					= mWVPortho;
-			m_viewprojectionInverted	= mViewProjectionInverted;
-			m_doShadowMapping			= false;
-			m_farPlane					= camera->GetFarPlane();
-			m_padding					= Math::Vector2::Zero;
+			m_viewprojectionInverted = mViewProjectionInverted;
 
 			if (dirLight)
 			{
 				auto mLightView				= dirLight->GetViewMatrix();
-				m_mLightView				= mLightView;
 				m_mLightViewProjection[0]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(0);
 				m_mLightViewProjection[1]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(1);
 				m_mLightViewProjection[2]	= mLightView * dirLight->ShadowMap_GetProjectionMatrix(2);
-				m_shadowSplits				= Math::Vector2(dirLight->ShadowMap_GetSplit(0), dirLight->ShadowMap_GetSplit(1));
 				m_biases					= Math::Vector2(dirLight->GetBias(), dirLight->GetNormalBias());
 				m_lightDir					= dirLight->GetDirection();
-				m_shadowMapResolution		= (float)dirLight->ShadowMap_GetResolution();
-				m_doShadowMapping			= dirLight->GetCastShadows();
+				m_shadowMapResolution		= (float)dirLight->GetShadowMap()->GetWidth();
 			}
 		}
 
-		Math::Matrix m_wvpOrtho;
 		Math::Matrix m_viewprojectionInverted;
-		Math::Matrix m_mLightView;
-		Math::Matrix m_mLightViewProjection[3];
-		Math::Vector2 m_shadowSplits;
-		Math::Vector2 m_biases;
+		Math::Matrix m_mLightViewProjection[3];		
 		Math::Vector3 m_lightDir;
 		float m_shadowMapResolution;
-		float m_farPlane;
-		float m_doShadowMapping;
+		Math::Vector2 m_biases;
 		Math::Vector2 m_padding;
 	};
 

@@ -35,6 +35,7 @@ namespace Directus
 {
 	class Camera;
 	class Renderable;
+	class Renderer;
 
 	namespace Math
 	{
@@ -91,43 +92,33 @@ namespace Directus
 		void ClampRotation();
 
 		Math::Matrix GetViewMatrix() { return m_viewMatrix; }
-		bool IsInViewFrustrum(Renderable* renderable, unsigned int index = 0);
-		
+
 		// Shadow maps
-		const Math::Matrix& ShadowMap_GetProjectionMatrix(unsigned int index = 0);
-		std::shared_ptr<RHI_RenderTexture> ShadowMap_GetRenderTexture(unsigned int index = 0);
-		float ShadowMap_GetSplit(unsigned int index = 0);
-		void ShadowMap_SetSplit(float split, unsigned int index = 0);
-		std::shared_ptr<Math::Frustum> ShadowMap_IsInViewFrustrum(unsigned int index = 0);
-		int ShadowMap_GetResolution()		{ return m_shadowMapResolution; }
-		unsigned int ShadowMap_GetCount()	{ return m_shadowMapCount; }
+		const Math::Matrix& ShadowMap_GetProjectionMatrix(unsigned int index = 0);	
+		std::shared_ptr<RHI_RenderTexture> GetShadowMap() { return m_shadowMap; }
 
 	private:
 		void ComputeViewMatrix();
 		void ShadowMap_ComputeProjectionMatrix(unsigned int index = 0);	
 		void ShadowMap_Create(bool force);
-		void ShadowMap_Destroy();
 
-		LightType m_lightType;
-		bool m_castShadows;
+		LightType m_lightType	= LightType_Point;
+		bool m_castShadows		= true;
+		float m_range			= 1.0f;
+		float m_intensity		= 2.0f;
+		float m_angle			= 0.5f; // about 30 degrees
+		float m_bias			= 0.0008f;
+		float m_normalBias		= 120.0f;	
+		bool m_isDirty			= true;
 		Math::Vector4 m_color;
-		float m_range;
-		float m_intensity;
-		float m_angle;
-		float m_bias;
-		float m_normalBias;
 		Math::Matrix m_viewMatrix;
 		Math::Quaternion m_lastRotLight;
 		Math::Vector3 m_lastPosLight;
 		Math::Vector3 m_lastPosCamera;
-		bool m_isDirty;
-
-		// Shadow maps
-		std::vector<std::shared_ptr<RHI_RenderTexture>> m_shadowMaps;
+		
+		// Shadow map
+		std::shared_ptr<RHI_RenderTexture> m_shadowMap;
 		std::vector<Math::Matrix> m_shadowMapsProjectionMatrix;
-		std::vector<std::shared_ptr<Math::Frustum>> m_frustums;
-		unsigned int m_shadowMapResolution;
-		unsigned int m_shadowMapCount;
-		std::vector<float> m_shadowMapSplits;
+		Renderer* m_renderer;
 	};
 }

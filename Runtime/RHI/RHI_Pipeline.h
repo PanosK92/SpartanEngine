@@ -66,7 +66,8 @@ namespace Directus
 
 		// Render targets
 		bool SetRenderTarget(const std::shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView = nullptr, bool clear = false);
-		bool SetRenderTargets(const std::vector<void*>& renderTargetViews, void* depthStencilView = nullptr, bool clear = false);
+		bool SetRenderTarget(const std::vector<void*>& renderTargetViews, void* depthStencilView = nullptr, bool clear = false);
+		bool SetRenderTarget(void* renderTargetView, void* depthStencilView = nullptr, bool clear = false);
 
 		// Constant, vertex & index buffers
 		bool SetConstantBuffer(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope);

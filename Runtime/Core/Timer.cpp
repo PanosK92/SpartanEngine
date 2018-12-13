@@ -47,13 +47,12 @@ namespace Directus
 		duration<double, milli> time_work	= time_a - time_b;
 		
 		// Compute sleep time (fps limiting)
-		double maxFPS	= Settings::Get().FPS_GetLimit();
-		double maxMs	= (1.0 / maxFPS) * 1000;
-		if (time_work.count() < maxMs)
+		double maxFPS		= Settings::Get().FPS_GetLimit();
+		double minDt		= 1000.0 / maxFPS;
+		double dtRemaining	= minDt - time_work.count();
+		if (dtRemaining >  0)
 		{
-			duration<double, milli> time_ms(maxMs - time_work.count());
-			auto time_ms_duration = duration_cast<milliseconds>(time_ms);
-			this_thread::sleep_for(milliseconds(time_ms_duration.count()));
+			this_thread::sleep_for(milliseconds((int64_t)dtRemaining));
 		}
 
 		// Compute delta
