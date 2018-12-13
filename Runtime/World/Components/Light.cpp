@@ -48,26 +48,13 @@ namespace Directus
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_normalBias, float);
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
-		m_lightType		= LightType_Point;
-		m_castShadows	= true;
-		m_range			= 1.0f;
-		m_intensity		= 2.0f;
-		m_angle			= 0.5f; // about 30 degrees
-		m_color			= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_bias			= 0.0017f;
-		m_normalBias	= 150.0f;
-		m_isDirty		= true;
-
-		// Shadow map splits (for directional light's cascades)
-		m_shadowMapSplits.clear();
-		m_shadowMapSplits.shrink_to_fit();
-		m_shadowMapSplits.emplace_back(10.0f);
-		m_shadowMapSplits.emplace_back(60.0f);
+		m_color = Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+		m_renderer = m_context->GetSubsystem<Renderer>();
 	}
 
 	Light::~Light()
 	{
-		ShadowMap_Destroy();
+		
 	}
 
 	void Light::OnInitialize()
@@ -101,32 +88,26 @@ namespace Directus
 		}
 
 		// Acquire camera
-		Camera* camera = m_context->GetSubsystem<Renderer>()->GetCamera();
-		if (!camera)
-			return;
-
-		if (m_lastPosCamera != camera->GetTransform()->GetPosition())
+		if (Camera* camera = m_renderer->GetCamera())
 		{
-			m_lastPosCamera = camera->GetTransform()->GetPosition();
-
-			// Update shadow map projection matrices
-			m_shadowMapsProjectionMatrix.clear();
-			for (unsigned int i = 0; i < m_shadowMapCount; i++)
+			if (m_lastPosCamera != camera->GetTransform()->GetPosition())
 			{
-				m_shadowMapsProjectionMatrix.emplace_back(Matrix());
-				ShadowMap_ComputeProjectionMatrix(i);
-			}
+				m_lastPosCamera = camera->GetTransform()->GetPosition();
 
-			m_isDirty = true;
+				// Update shadow map projection matrices
+				m_shadowMapsProjectionMatrix.clear();
+				for (unsigned int i = 0; i < m_shadowMap->GetArraySize(); i++)
+				{
+					m_shadowMapsProjectionMatrix.emplace_back(Matrix());
+					ShadowMap_ComputeProjectionMatrix(i);
+				}
+
+				m_isDirty = true;
+			}
 		}
 
 		if (!m_isDirty)
 			return;
-
-		for (unsigned int index = 0; index < (unsigned int)m_frustums.size(); index++)
-		{
-			m_frustums[index]->Construct(m_viewMatrix, ShadowMap_GetProjectionMatrix(index), camera->GetFarPlane());
-		}
 	}
 
 	void Light::Serialize(FileStream* stream)
@@ -210,15 +191,6 @@ namespace Directus
 		m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
 	}
 
-	bool Light::IsInViewFrustrum(Renderable* renderable, unsigned int index  /*= 0*/)
-	{
-		BoundingBox box = renderable->Geometry_BB();
-		Vector3 center	= box.GetCenter();
-		Vector3 extents = box.GetExtents();
-
-		return m_frustums[index]->CheckCube(center, extents) != Outside;
-	}
-
 	const Matrix& Light::ShadowMap_GetProjectionMatrix(unsigned int index /*= 0*/)
 	{
 		if (index >= (unsigned int)m_shadowMapsProjectionMatrix.size())
@@ -227,58 +199,28 @@ namespace Directus
 		return m_shadowMapsProjectionMatrix[index];
 	}
 
-	shared_ptr<RHI_RenderTexture> Light::ShadowMap_GetRenderTexture(unsigned int index /*= 0*/)
-	{
-		if (index >= (unsigned int)m_shadowMaps.size())
-			return nullptr;
-
-		return m_shadowMaps[index];
-	}
-
-	float Light::ShadowMap_GetSplit(unsigned int index /*= 0*/)
-	{
-		if (index >= (unsigned int)m_shadowMapSplits.size())
-			return 0.0f;
-
-		return m_shadowMapSplits[index];
-	}
-
-	void Light::ShadowMap_SetSplit(float split, unsigned int index /*= 0*/)
-	{
-		if (index >= (unsigned int)m_shadowMapSplits.size())
-			return;
-
-		m_shadowMapSplits[index] = split;
-	}
-
-	shared_ptr<Frustum> Light::ShadowMap_IsInViewFrustrum(unsigned int index /*= 0*/)
-	{
-		if (index >= (unsigned int)m_frustums.size())
-			return nullptr;
-
-		return m_frustums[index];
-	}
-
 	void Light::ShadowMap_ComputeProjectionMatrix(unsigned int index /*= 0*/)
 	{
-		// Hardcoded sizes to match the splits
+		float farPlane = m_renderer->GetCamera() ? m_renderer->GetCamera()->GetFarPlane() : 0.0f;
+
+		// Cover view frustum with 3 cascades
 		float extents = 0;
 		if (index == 0)
-			extents = 10;
+			extents = farPlane * 0.05f;
 
 		if (index == 1)
-			extents = 45;
+			extents = farPlane * 0.2f;
 
 		if (index == 2)
-			extents = 90;
+			extents = farPlane;
 
-		Vector3 center = m_lastPosCamera * m_viewMatrix;
-		Vector3 min = center - Vector3(extents, extents, extents);
-		Vector3 max = center + Vector3(extents, extents, extents);
+		Vector3 center	= m_lastPosCamera * m_viewMatrix;
+		Vector3 min		= center - Vector3(extents, extents, extents);
+		Vector3 max		= center + Vector3(extents, extents, extents);
 
 		//= Shadow shimmering remedy based on ============================================
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
-		float fWorldUnitsPerTexel = (extents * 2.0f) / m_shadowMapResolution;
+		float fWorldUnitsPerTexel = (extents * 2.0f) / m_shadowMap->GetWidth();
 
 		min /= fWorldUnitsPerTexel;
 		min.Floor();
@@ -288,50 +230,38 @@ namespace Directus
 		max *= fWorldUnitsPerTexel;
 		//================================================================================
 
-		#if REVERSE_Z == 1
+#if REVERSE_Z == 1
 		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, max.z, min.z);
-		#else
+#else
 		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);
 		#endif
 	}
 
 	void Light::ShadowMap_Create(bool force)
 	{		
-		if (!force && !m_shadowMaps.empty())
+		if (!force && !m_shadowMap)
 			return;
 
-		ShadowMap_Destroy();
-
-		// Compute shadow map count
+		m_shadowMap.reset();
+	
+		// Compute array size
+		int arraySize = 0;
 		if (GetLightType() == LightType_Directional)
 		{
-			m_shadowMapCount = 3; // cascades
+			arraySize = 3; // cascades
 		}
 		else if (GetLightType() == LightType_Point)
 		{
-			m_shadowMapCount = 6; // points of view
+			arraySize = 6; // points of view
 		}
 		else if (GetLightType() == LightType_Spot)
 		{
-			m_shadowMapCount = 1;
+			arraySize = 1;
 		}
 
 		// Create the shadow maps
-		m_shadowMapResolution	= Settings::Get().Shadows_GetResolution();
+		unsigned int resolution	= Settings::Get().Shadows_GetResolution();
 		auto rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
-		for (unsigned int i = 0; i < m_shadowMapCount; i++)
-		{
-			m_shadowMaps.emplace_back(make_unique<RHI_RenderTexture>(rhiDevice, m_shadowMapResolution, m_shadowMapResolution, Texture_Format_R32_FLOAT, true, Texture_Format_D32_FLOAT)); // could use the g-buffers depth which should be same res
-			m_frustums.emplace_back(make_shared<Frustum>());
-		}
-	}
-
-	void Light::ShadowMap_Destroy()
-	{
-		m_shadowMaps.clear();
-		m_shadowMaps.shrink_to_fit();
-
-		m_frustums.clear();
-		m_frustums.shrink_to_fit();
+		m_shadowMap				= make_unique<RHI_RenderTexture>(rhiDevice, resolution, resolution, Texture_Format_R32_FLOAT, true, Texture_Format_D32_FLOAT, arraySize); // could use the g-buffers depth which should be same res
 	}
 }

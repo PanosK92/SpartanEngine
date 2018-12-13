@@ -62,7 +62,7 @@ namespace Directus
 		samplerDesc.BorderColor[3]	= 0;
 		samplerDesc.MinLOD			= FLT_MIN;
 		samplerDesc.MaxLOD			= FLT_MAX;
-
+	
 		// Create sampler state.
 		if (FAILED(rhiDevice->GetDevice<ID3D11Device>()->CreateSamplerState(&samplerDesc, (ID3D11SamplerState**)&m_buffer)))
 		{

@@ -38,9 +38,9 @@ Architectual quality is prioritized over development speed. Enjoy.
 Feature       		            | Completion | Notes 
 ------------- 		            | :--: | -
 Easy to build               	| 100% | Single click project generation which includes editor and runtime.
-New editor               		| 90% | Replace Qt editor with ImGui editor.
+New editor               		| 100% | Replace Qt editor with ImGui editor.
 Debug rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
-Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
+Improved shadows         		| 100% | Sharper shadows with smoother edges and no shimmering.
 SSAO         					| 100% | Screen space ambient occlusion.
 Bloom         					| 100% | -
 SSR								| 100% |	 Screen space reflections.

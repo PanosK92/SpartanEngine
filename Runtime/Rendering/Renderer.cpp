@@ -195,7 +195,6 @@ namespace Directus
 		// Depth
 		m_shaderLightDepth = make_shared<RHI_Shader>(m_rhiDevice);
 		m_shaderLightDepth->CompileVertexPixel(shaderDirectory + "ShadowingDepth.hlsl", Input_Position);
-		m_shaderLightDepth->AddBuffer<Struct_Matrix_Matrix_Float>();
 
 		// Font
 		m_shaderFont = make_shared<RHI_Shader>(m_rhiDevice);
@@ -299,11 +298,12 @@ namespace Directus
 
 	void Renderer::CreateSamplers()
 	{
-		m_samplerPointClamp			= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,			Texture_Address_Clamp,	Texture_Comparison_Always);
-		m_samplerBilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Clamp,	Texture_Comparison_Always);
-		m_samplerBilinearWrap		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,		Texture_Address_Wrap,	Texture_Comparison_Always);
-		m_samplerTrilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Trilinear,		Texture_Address_Clamp,	Texture_Comparison_Always);
-		m_samplerAnisotropicWrap	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,	Texture_Address_Wrap,	Texture_Comparison_Always);
+		m_samplerCompareDepth		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Comparison_Point,	Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
+		m_samplerPointClamp			= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,				Texture_Address_Clamp,	Texture_Comparison_Always);
+		m_samplerBilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,			Texture_Address_Clamp,	Texture_Comparison_Always);
+		m_samplerBilinearWrap		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,			Texture_Address_Wrap,	Texture_Comparison_Always);
+		m_samplerTrilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Trilinear,			Texture_Address_Clamp,	Texture_Comparison_Always);
+		m_samplerAnisotropicWrap	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,		Texture_Address_Wrap,	Texture_Comparison_Always);
 	}
 
 	void Renderer::SetBackBufferAsRenderTarget(bool clear /*= true*/)
@@ -654,75 +654,76 @@ namespace Directus
 	//= PASSES =================================================================================================
 	void Renderer::Pass_DepthDirectionalLight(Light* light)
 	{
+		// Validate light
 		if (!light || !light->GetCastShadows())
 			return;
 
-		TIME_BLOCK_START_MULTI();
+		// Validate light's shadow map
+		auto& shadowMap = light->GetShadowMap();
+		if (!shadowMap)
+			return;
 
+		// Validate actors
+		auto& actors = m_actors[Renderable_ObjectOpaque];
+		if (actors.empty())
+			return;
+
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_DepthDirectionalLight");
+
+		// Set common states	
+		m_rhiPipeline->SetShader(m_shaderLightDepth);
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetViewport(shadowMap->GetViewport());
+		
 		// Variables that help reduce state changes
 		unsigned int currentlyBoundGeometry = 0;
-		
-		auto& actors = m_actors[Renderable_ObjectOpaque];
-
-		if (!actors.empty())
+		for (unsigned int i = 0; i < light->GetShadowMap()->GetArraySize(); i++)
 		{
-			m_rhiDevice->EventBegin("Pass_DepthDirectionalLight");
-			m_rhiPipeline->SetShader(m_shaderLightDepth);
-			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+			m_rhiDevice->EventBegin(("Pass_DepthDirectionalLight " + to_string(i)).c_str());
+			m_rhiPipeline->SetRenderTarget(shadowMap->GetRenderTargetView(i), shadowMap->GetDepthStencilView(), true);		
 
-			for (unsigned int i = 0; i < light->ShadowMap_GetCount(); i++)
+			for (const auto& actor : actors)
 			{
-				if (auto shadowMap = light->ShadowMap_GetRenderTexture(i))
+				// Acquire renderable component
+				auto renderable = actor->GetRenderable_PtrRaw();
+				if (!renderable)
+					continue;
+
+				// Acquire material
+				auto material = renderable->Material_Ptr();
+				if (!material)
+					continue;
+
+				// Acquire geometry
+				auto geometry = renderable->Geometry_Model();
+				if (!geometry || !geometry->GetVertexBuffer() || !geometry->GetIndexBuffer())
+					continue;
+
+				// Skip meshes that don't cast shadows
+				if (!renderable->GetCastShadows())
+					continue;
+
+				// Skip transparent meshes (for now)
+				if (material->GetColorAlbedo().w < 1.0f)
+					continue;
+
+				// Bind geometry
+				if (currentlyBoundGeometry != geometry->Resource_GetID())
 				{
-					m_rhiPipeline->SetRenderTarget(shadowMap, shadowMap->GetDepthStencilView(), true);
-					m_rhiPipeline->SetViewport(shadowMap->GetViewport());
+					m_rhiPipeline->SetIndexBuffer(geometry->GetIndexBuffer());
+					m_rhiPipeline->SetVertexBuffer(geometry->GetVertexBuffer());
+					currentlyBoundGeometry = geometry->Resource_GetID();
 				}
 
-				for (const auto& actor : actors)
-				{
-					// Acquire renderable component
-					auto renderable = actor->GetRenderable_PtrRaw();
-					if (!renderable)
-						continue;
-
-					// Acquire material
-					auto material = renderable->Material_Ptr();
-					if (!material)
-						continue;
-
-					// Acquire geometry
-					auto geometry = renderable->Geometry_Model();
-					if (!geometry || !geometry->GetVertexBuffer() || !geometry->GetIndexBuffer())
-						continue;
-
-					// Skip meshes that don't cast shadows
-					if (!renderable->GetCastShadows())
-						continue;
-
-					// Skip transparent meshes (for now)
-					if (material->GetColorAlbedo().w < 1.0f)
-						continue;
-
-					// Bind geometry
-					if (currentlyBoundGeometry != geometry->Resource_GetID())
-					{
-						m_rhiPipeline->SetIndexBuffer(geometry->GetIndexBuffer());
-						m_rhiPipeline->SetVertexBuffer(geometry->GetVertexBuffer());					
-						currentlyBoundGeometry = geometry->Resource_GetID();
-					}
-
-					auto worldView				= actor->GetTransform_PtrRaw()->GetMatrix() * light->GetViewMatrix();
-					auto worldViewProjection	= worldView * light->ShadowMap_GetProjectionMatrix(i);
-					auto buffer					= Struct_Matrix_Matrix_Float(worldView, worldViewProjection, m_camera->GetFarPlane());
-					m_shaderLightDepth->UpdateBuffer(&buffer);
-					m_rhiPipeline->SetConstantBuffer(m_shaderLightDepth->GetConstantBuffer(), 0, Buffer_Global);
-					m_rhiPipeline->Bind();
-
-					m_rhiDevice->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
-				}
+				SetGlobalBuffer(actor->GetTransform_PtrRaw()->GetMatrix() * light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i));
+				m_rhiPipeline->Bind();
+				m_rhiDevice->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
 			}
 			m_rhiDevice->EventEnd();
 		}
+
+		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
 	}
 
@@ -824,11 +825,7 @@ namespace Directus
 		TIME_BLOCK_END_MULTI();
 	}
 
-	void Renderer::Pass_PreLight(
-		shared_ptr<RHI_RenderTexture>& texIn_Spare,
-		shared_ptr<RHI_RenderTexture>& texOut_Shadows,
-		shared_ptr<RHI_RenderTexture>& texOut_SSAO
-	)
+	void Renderer::Pass_PreLight(shared_ptr<RHI_RenderTexture>& texIn_Spare, shared_ptr<RHI_RenderTexture>& texOut_Shadows, shared_ptr<RHI_RenderTexture>& texOut_SSAO)
 	{
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_PreLight");
@@ -837,22 +834,25 @@ namespace Directus
 		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->SetCullMode(Cull_Back);
-		
+
 		// Shadow mapping + Blur
 		if (auto lightDir = GetLightDirectional())
 		{
-			Pass_ShadowMapping(texIn_Spare, GetLightDirectional());
-			float sigma			= 1.0f;
-			float pixelStride	= 1.0f;
-			Pass_BlurBilateralGaussian(texIn_Spare, texOut_Shadows, sigma, pixelStride);
+			if (lightDir->GetCastShadows())
+			{
+				Pass_ShadowMapping(texIn_Spare, GetLightDirectional());
+				float sigma = 1.0f;
+				float pixelStride = 1.0f;
+				Pass_BlurBilateralGaussian(texIn_Spare, texOut_Shadows, sigma, pixelStride);
+			}
 		}
 
 		// SSAO + Blur
 		if (m_flags & Render_PostProcess_SSAO)
 		{
 			Pass_SSAO(texIn_Spare);
-			float sigma			= 3.0f;
-			float pixelStride	= 2.0f;
+			float sigma = 3.0f;
+			float pixelStride = 2.0f;
 			Pass_BlurBilateralGaussian(texIn_Spare, texOut_SSAO, sigma, pixelStride);
 		}
 
@@ -865,6 +865,9 @@ namespace Directus
 		if (!inDirectionalLight)
 			return;
 
+		if (!inDirectionalLight->GetCastShadows())
+			return;
+
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Shadowing");
 
@@ -873,20 +876,13 @@ namespace Directus
 		m_rhiPipeline->SetShader(m_shaderShadowMapping);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-		m_rhiPipeline->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(0));
-		m_rhiPipeline->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(1));
-		m_rhiPipeline->SetTexture(inDirectionalLight->ShadowMap_GetRenderTexture(2));
-		m_rhiPipeline->SetSampler(m_samplerPointClamp);
+		m_rhiPipeline->SetTexture(inDirectionalLight->GetShadowMap()); // Texture2DArray
+		m_rhiPipeline->SetSampler(m_samplerCompareDepth);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
-		auto buffer = Struct_ShadowMapping
-		(
-			m_viewProjection_Orthographic,
-			(m_viewProjection).Inverted(),
-			inDirectionalLight,
-			m_camera
-		);
+		SetGlobalBuffer(m_viewProjection_Orthographic, texOut->GetWidth(), texOut->GetHeight());
+		auto buffer = Struct_ShadowMapping((m_viewProjection).Inverted(), inDirectionalLight, m_camera);
 		m_shaderShadowMapping->UpdateBuffer(&buffer);
-		m_rhiPipeline->SetConstantBuffer(m_shaderShadowMapping->GetConstantBuffer(), 0, Buffer_Global);
+		m_rhiPipeline->SetConstantBuffer(m_shaderShadowMapping->GetConstantBuffer(), 1, Buffer_Global);
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 

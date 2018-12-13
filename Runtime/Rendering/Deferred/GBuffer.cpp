@@ -56,7 +56,7 @@ namespace Directus
 	void GBuffer::SetAsRenderTarget(const std::shared_ptr<RHI_Pipeline>& pipelineState)
 	{
 		bool clear = true;
-		pipelineState->SetRenderTargets(m_renderTargetViews, m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView(), clear);
+		pipelineState->SetRenderTarget(m_renderTargetViews, m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView(), clear);
 
 		// Grab the viewport from one of the render targets and set it
 		pipelineState->SetViewport(m_renderTargets[GBuffer_Target_Albedo]->GetViewport());

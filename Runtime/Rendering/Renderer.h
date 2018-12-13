@@ -225,6 +225,7 @@ namespace Directus
 		//==============================================================
 
 		//= SAMPLERS =========================================
+		std::shared_ptr<RHI_Sampler> m_samplerCompareDepth;
 		std::shared_ptr<RHI_Sampler> m_samplerPointClamp;
 		std::shared_ptr<RHI_Sampler> m_samplerBilinearClamp;
 		std::shared_ptr<RHI_Sampler> m_samplerBilinearWrap;
