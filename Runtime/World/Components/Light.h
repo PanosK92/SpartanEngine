@@ -99,7 +99,7 @@ namespace Directus
 
 	private:
 		void ComputeViewMatrix();
-		void ShadowMap_ComputeProjectionMatrix(unsigned int index = 0);	
+		bool ShadowMap_ComputeProjectionMatrix(unsigned int index = 0);	
 		void ShadowMap_Create(bool force);
 
 		LightType m_lightType	= LightType_Point;
