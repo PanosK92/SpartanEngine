@@ -199,28 +199,29 @@ namespace Directus
 		return m_shadowMapsProjectionMatrix[index];
 	}
 
-	void Light::ShadowMap_ComputeProjectionMatrix(unsigned int index /*= 0*/)
+	bool Light::ShadowMap_ComputeProjectionMatrix(unsigned int index /*= 0*/)
 	{
-		float farPlane = m_renderer->GetCamera() ? m_renderer->GetCamera()->GetFarPlane() : 0.0f;
+		if (!m_renderer->GetCamera() || index >= m_shadowMap->GetArraySize())
+			return false;
 
-		// Cover view frustum with 3 cascades
-		float extents = 0;
-		if (index == 0)
-			extents = farPlane * 0.05f;
+		float camera_far			= m_renderer->GetCamera()->GetFarPlane();
+		const Matrix& camera_view	= m_renderer->GetCamera()->GetViewMatrix();
 
-		if (index == 1)
-			extents = farPlane * 0.2f;
+		vector<float> extents =
+		{
+			5,
+			20,
+			camera_far
+		};
+		float extent = extents[index];
 
-		if (index == 2)
-			extents = farPlane;
-
-		Vector3 center	= m_lastPosCamera * m_viewMatrix;
-		Vector3 min		= center - Vector3(extents, extents, extents);
-		Vector3 max		= center + Vector3(extents, extents, extents);
+		Vector3 center	= m_lastPosCamera * camera_view;
+		Vector3 min		= center - Vector3(extent, extent, extent);
+		Vector3 max		= center + Vector3(extent, extent, extent);
 
 		//= Shadow shimmering remedy based on ============================================
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
-		float fWorldUnitsPerTexel = (extents * 2.0f) / m_shadowMap->GetWidth();
+		float fWorldUnitsPerTexel = (extent * 2.0f) / m_shadowMap->GetWidth();
 
 		min /= fWorldUnitsPerTexel;
 		min.Floor();
@@ -235,6 +236,8 @@ namespace Directus
 #else
 		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);
 		#endif
+
+		return true;
 	}
 
 	void Light::ShadowMap_Create(bool force)

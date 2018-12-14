@@ -845,6 +845,10 @@ namespace Directus
 				float pixelStride = 1.0f;
 				Pass_BlurBilateralGaussian(texIn_Spare, texOut_Shadows, sigma, pixelStride);
 			}
+			else
+			{
+				texIn_Spare->Clear(1, 1, 1, 1);
+			}
 		}
 
 		// SSAO + Blur
