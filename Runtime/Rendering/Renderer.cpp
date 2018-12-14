@@ -847,7 +847,7 @@ namespace Directus
 			}
 			else
 			{
-				texIn_Spare->Clear(1, 1, 1, 1);
+				texOut_Shadows->Clear(1, 1, 1, 1);
 			}
 		}
 
