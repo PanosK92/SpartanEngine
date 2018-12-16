@@ -46,7 +46,7 @@ namespace Directus
 
 		bool Clear(const Math::Vector4& clearColor);
 		bool Clear(float red, float green, float blue, float alpha);
-		void* GetRenderTargetView(unsigned int index = 0)		{ return m_renderTargetViews[index]; }
+		void* GetRenderTargetView(unsigned int index = 0)		{ return index < m_renderTargetViews.size() ? m_renderTargetViews[index] : nullptr; }
 		void* GetShaderResource()								{ return m_shaderResourceView; }
 		void* GetDepthStencilView()								{ return m_depthStencilView; }
 		const std::shared_ptr<RHI_Viewport> GetViewport()		{ return m_viewport; }

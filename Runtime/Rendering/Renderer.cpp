@@ -970,6 +970,7 @@ namespace Directus
 		} // Actor/MESH ITERATION
 
 		m_rhiDevice->Set_AlphaBlendingEnabled(false);
+		m_rhiPipeline->ClearPendingBinds();
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
