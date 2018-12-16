@@ -152,11 +152,11 @@ float4 mainPS(PixelInputType input) : SV_TARGET
         float3 center_to_sample				= sample_pos - center_pos;
 		float center_to_sample_distance		= length(center_to_sample);
 		float3 center_to_sample_normalized 	= normalize(center_to_sample);
-
+		
 		// Accumulate
 		float NdotDir						= dot(center_normal, center_to_sample_normalized) - bias;
 		float attunation					= (1.0f / (1.0f + center_to_sample_distance));
-		float rangeCheck    				= smoothstep(0, 1, radius_depth - center_to_sample_distance);
+		float rangeCheck    				= center_to_sample_distance < radius_depth ? 1.0f : 0.0f;
 		occlusion 							+= saturate(NdotDir) * attunation * rangeCheck * intensity;
         color                   			+= sample_color * saturate(NdotDir) * rangeCheck;
     }

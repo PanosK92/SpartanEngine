@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/BackendConfig.h"
 //================================
 
-#ifdef COMPILING_LIB // Only compile this for the engine
+#ifdef ENGINE_RUNTIME // Only compile this for the engine
 
 //#ifdef API_D3D11 // Deactivate this for now as Vulkan is not ready
 #pragma comment(lib, "d3d11.lib")
