@@ -1,8 +1,8 @@
 @echo off
 
-:: Delete.obj files from the build directory
-echo 1. Deleting .obj files from the build directory...
-@RD /S /Q "Binaries\Obj"
+:: Delete intermediate files from the build directory
+echo 1. Deleting intermediate files from the build directory...
+@RD /S /Q "Binaries\Intermediate"
 
 :: Copy required assets to the build directory
 echo 2. Copying required assets to the build directory...
@@ -16,5 +16,5 @@ xcopy "ThirdParty\mvsc141_x64\fmod64.dll" "Binaries\Release\" /E /I /y
 
 :: Generate VS solution
 echo 4. Generating Visual Studio 2017 solution...
-cd Build_Scripts
+cd Scripts
 premake5 vs2017
