@@ -3,8 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2018, assimp team
-
+Copyright (c) 2006-2017, assimp team
 
 
 All rights reserved.
@@ -111,7 +110,8 @@ extern "C" {
 
 /** Maximum dimension for strings, ASSIMP strings are zero terminated. */
 #ifdef __cplusplus
-    static const size_t MAXLEN = 1024;
+static 
+const size_t MAXLEN = 1024;
 #else
 #   define MAXLEN 1024
 #endif
@@ -303,20 +303,6 @@ struct aiString
         memcpy( data, sz, len);
         data[len] = 0;
     }
-
-
-    /** Assigment operator */
-    aiString& operator = (const aiString &rOther) {
-        if (this == &rOther) {
-            return *this;
-        }
-
-        length = rOther.length;;
-        memcpy( data, rOther.data, length);
-        data[length] = '\0';
-        return *this;
-    }
-
 
     /** Assign a const char* to the string */
     aiString& operator = (const char* sz) {

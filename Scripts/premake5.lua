@@ -17,16 +17,17 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-WIN_SDK_VERSION 	= "10.0.17763.0"
-SOLUTION_NAME 		= "Directus"
-EDITOR_NAME 		= "Editor"
-RUNTIME_NAME 		= "Runtime"
-EDITOR_DIR			= "../" .. EDITOR_NAME
-RUNTIME_DIR			= "../" .. RUNTIME_NAME
-TARGET_DIR_RELEASE 	= "../Binaries/Release"
-TARGET_DIR_DEBUG 	= "../Binaries/Debug"
-OBJ_DIR 			= "../Binaries/Obj"
-CPP_VERSION 		= "C++17"
+WIN_SDK_VERSION 		= "10.0.17763.0"
+CPP_VERSION 			= "C++17"
+SOLUTION_NAME 			= "Directus"
+EDITOR_NAME 			= "Editor"
+RUNTIME_NAME 			= "Runtime"
+TARGET_DIR_RELEASE 		= "../Binaries/Release"
+TARGET_DIR_DEBUG 		= "../Binaries/Debug"
+INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
+EDITOR_DIR				= "../" .. EDITOR_NAME
+RUNTIME_DIR				= "../" .. RUNTIME_NAME
+EDITOR_POST_BUILD_CMD 	= 'call "$(SolutionDir)Scripts/delete.bat"'
 
 -- Solution
 	solution (SOLUTION_NAME)
@@ -40,18 +41,18 @@ CPP_VERSION 		= "C++17"
  -- Runtime -------------------------------------------------------------------------------------------------
 	project (RUNTIME_NAME)
 		location (RUNTIME_DIR)
-		kind "SharedLib"	
+		kind "StaticLib"	
 		language "C++"
 		files { "../Runtime/**.h", "../Runtime/**.cpp", "../Runtime/**.hpp", "../Runtime/**.inl" }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect (CPP_VERSION)
 	
 -- Includes
-	includedirs { "C:/VulkanSDK/1.1.82.0/Include" }
+	includedirs { "C:/VulkanSDK/1.1.85.0/Include" }
 	includedirs { "../ThirdParty/AngelScript_2.32.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
 	includedirs { "../ThirdParty/Bullet_2.87" }
-	includedirs { "../ThirdParty/FMOD_1.10.08" }
+	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
 	includedirs { "../ThirdParty/FreeType_2.9.1" }
 	includedirs { "../ThirdParty/pugixml_1.9" }
@@ -63,12 +64,13 @@ CPP_VERSION 		= "C++17"
 -- Solution configuration "Debug"
 	configuration "Debug"
 		targetdir (TARGET_DIR_DEBUG)
-		objdir (OBJ_DIR)
+		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_DEBUG)
 		defines { "DEBUG", "COMPILING_LIB" }
 		symbols "On"
+		staticruntime "On"
 		flags { "MultiProcessorCompile" }
-		links { "angelscript64_debug" }
+		links { "angelscript_debug" }
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
 		links { "FreeImageLib_debug" }
@@ -80,12 +82,13 @@ CPP_VERSION 		= "C++17"
 -- Solution configuration "Release"
 	configuration "Release"
 		targetdir (TARGET_DIR_RELEASE)
-		objdir (OBJ_DIR)
+		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
 		defines { "NDEBUG", "COMPILING_LIB" }
 		optimize "Full"
+		staticruntime "On"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
-		links { "angelscript64" }
+		links { "angelscript" }
 		links { "assimp" }
 		links { "fmod64_vc" }
 		links { "FreeImageLib" }
@@ -115,21 +118,25 @@ CPP_VERSION 		= "C++17"
 	filter "configurations:Debug"
 		defines { "DEBUG" }
 		symbols "On"
+		staticruntime "On"
 		flags { "MultiProcessorCompile" }
 
 -- Release configuration
 	filter "configurations:Release"
 		defines { "NDEBUG" }
 		optimize "Full"
+		staticruntime "On"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		
 -- Output directories	
 	configuration "Debug"
+		postbuildcommands (EDITOR_POST_BUILD_CMD)
 		targetdir (TARGET_DIR_DEBUG)
-		objdir (OBJ_DIR)
+		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_DEBUG)
 
 	configuration "Release"
+		postbuildcommands (EDITOR_POST_BUILD_CMD)
 		targetdir (TARGET_DIR_RELEASE)
-		objdir (OBJ_DIR)
+		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)

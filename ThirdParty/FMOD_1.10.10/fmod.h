@@ -623,6 +623,7 @@ FMOD_RESULT F_API FMOD_DSP_GetUserData                  (FMOD_DSP *dsp, void **u
 FMOD_RESULT F_API FMOD_DSP_SetMeteringEnabled           (FMOD_DSP *dsp, FMOD_BOOL inputEnabled, FMOD_BOOL outputEnabled);
 FMOD_RESULT F_API FMOD_DSP_GetMeteringEnabled           (FMOD_DSP *dsp, FMOD_BOOL *inputEnabled, FMOD_BOOL *outputEnabled);
 FMOD_RESULT F_API FMOD_DSP_GetMeteringInfo              (FMOD_DSP *dsp, FMOD_DSP_METERING_INFO *inputInfo, FMOD_DSP_METERING_INFO *outputInfo);
+FMOD_RESULT F_API FMOD_DSP_GetCPUUsage                  (FMOD_DSP *dsp, unsigned int *exclusive, unsigned int *inclusive);
 
 /*
     'DSPConnection' API

@@ -501,6 +501,7 @@ namespace FMOD
         FMOD_RESULT F_API setMeteringEnabled     (bool inputEnabled, bool outputEnabled);
         FMOD_RESULT F_API getMeteringEnabled     (bool *inputEnabled, bool *outputEnabled);
         FMOD_RESULT F_API getMeteringInfo        (FMOD_DSP_METERING_INFO *inputInfo, FMOD_DSP_METERING_INFO *outputInfo);
+        FMOD_RESULT F_API getCPUUsage            (unsigned int *exclusive, unsigned int *inclusive);
     };
 
 
