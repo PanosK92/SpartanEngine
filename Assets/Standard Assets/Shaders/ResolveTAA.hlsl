@@ -7,7 +7,7 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 {
 	// Get velocity for nearest depth (and the depth)
 	float depth 	= 1.0f;
-	float2 velocity	= GetVelocity_Dilate_Depth(texCoord, tex_current, tex_depth, sampler_bilinear, depth);	
+	float2 velocity	= GetVelocity_Dilate_Depth3X3(texCoord, tex_velocity, tex_depth, sampler_bilinear, depth);
 	
 	float4 color_current 	= tex_current.Sample(sampler_bilinear, texCoord);
 	float2 texCoord_history = texCoord - velocity * g_texelSize;
@@ -41,6 +41,6 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float unbiased_weight_sqr 	= unbiased_weight * unbiased_weight;
 	float feedback 				= lerp(g_blendMin, g_blendMax, unbiased_weight_sqr);
 	//==============================================================================
-
+	
 	return lerp(color_history, color_current, feedback);
 }
