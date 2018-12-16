@@ -45,7 +45,7 @@ namespace Directus
 	RHI_Pipeline::RHI_Pipeline(shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice	= rhiDevice;
-		Clear();
+		ClearPendingBinds();
 	}
 
 	bool RHI_Pipeline::SetState(RHI_PipelineState& pipelineState)
@@ -437,7 +437,7 @@ namespace Directus
 		return resultIndexBuffer && resultVertexBuffer;
 	}
 
-	void RHI_Pipeline::Clear()
+	void RHI_Pipeline::ClearPendingBinds()
 	{
 		m_primitiveTopology	= PrimitiveTopology_NotAssigned;
 		m_primitiveTopologyDirty = false;

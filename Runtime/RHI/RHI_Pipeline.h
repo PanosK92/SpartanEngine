@@ -96,7 +96,7 @@ namespace Directus
 		bool Bind();
 
 		// Clears all currently set settings
-		void Clear();
+		void ClearPendingBinds();
 
 	private:
 		// Primitive topology

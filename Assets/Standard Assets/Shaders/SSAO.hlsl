@@ -99,7 +99,7 @@ static const float3 sampleKernel[64] =
 	float3(-0.44272, -0.67928, 0.1865)
 };
 
-static const int sample_count		= 16;
+static const int sample_count		= 40;
 static const float radius			= 1.0f;
 static const float intensity    	= 5.0f;
 static const float bias         	= 0.01f;
@@ -152,18 +152,17 @@ float4 mainPS(PixelInputType input) : SV_TARGET
         float3 center_to_sample				= sample_pos - center_pos;
 		float center_to_sample_distance		= length(center_to_sample);
 		float3 center_to_sample_normalized 	= normalize(center_to_sample);
-		
+
 		// Accumulate
 		float NdotDir						= dot(center_normal, center_to_sample_normalized) - bias;
 		float attunation					= (1.0f / (1.0f + center_to_sample_distance));
-		float rangeCheck    				= smoothstep(0.0f, 1.0f, radius_depth / center_to_sample_distance);	
-		float sample_occlusion 				= saturate(NdotDir) * attunation * rangeCheck * intensity;
-		occlusion 							+= sample_occlusion;	
+		float rangeCheck    				= smoothstep(0, 1, radius_depth - center_to_sample_distance);
+		occlusion 							+= saturate(NdotDir) * attunation * rangeCheck * intensity;
         color                   			+= sample_color * saturate(NdotDir) * rangeCheck;
     }
-    occlusion /= (float)sample_count;
-    occlusion = saturate(1.0f - occlusion);
-	color /= (float)sample_count;
+    occlusion 	/= (float)sample_count;
+    occlusion 	= saturate(1.0f - occlusion);
+	color 		/= (float)sample_count;
 
     return float4(color, occlusion);
 }
