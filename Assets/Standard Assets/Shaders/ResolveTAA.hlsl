@@ -33,14 +33,14 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	color_history = clamp(color_history, cMin, cMax);
 	//================================================================================================
 	
-	//= Compute feedback weight from unbiased luminance difference (Timothy Lottes)=
-	float lum0 					= Luminance(color_current);
-	float lum1 					= Luminance(color_history);
-	float unbiased_diff 		= abs(lum0 - lum1) / max(lum0, max(lum1, 0.2f));
-	float unbiased_weight 		= 1.0f - unbiased_diff;
-	float unbiased_weight_sqr 	= unbiased_weight * unbiased_weight;
-	float feedback 				= lerp(g_blendMin, g_blendMax, unbiased_weight_sqr);
-	//==============================================================================
+	//= Compute blend factor based on the amount of subpixel velocity ==========================================================
+	float factor_velocity 	= abs(sin(frac(length(velocity)) * PI) - 1.0f); // Decrease when pixel motion gets subpixel
+	float factor_clampMin 	= length(color_history - cMin); 				// Decrease when history is near min clamp
+	float factor_clampMax 	= length(color_history - cMax); 				// Decrease when history is near max clamp
+	//float factor_contrast	= saturate(1.0f - Luminance(cMax - cMin)); 		// Increase when local contrast is low
+	float alpha				= saturate(1.0f - ((factor_velocity + factor_clampMin + factor_clampMax) / 3.0f));
+	float blendfactor 		= lerp(g_blendMin, g_blendMax, alpha);
+	//==========================================================================================================================
 	
-	return lerp(color_history, color_current, feedback);
+	return lerp(color_history, color_current, blendfactor);
 }
