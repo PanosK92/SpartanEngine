@@ -864,6 +864,189 @@ namespace Directus
 		TIME_BLOCK_END_MULTI();
 	}
 
+	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& texShadows, shared_ptr<RHI_RenderTexture>& texSSAO, shared_ptr<RHI_RenderTexture>& texOut)
+	{
+		if (m_shaderLight->GetState() != Shader_Built)
+			return;
+
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_Light");
+
+		// Update constant buffer
+		m_shaderLight->UpdateConstantBuffer
+		(
+			m_viewProjection_Orthographic,
+			m_view,
+			m_projection,
+			m_actors[Renderable_Light],
+			Flags_IsSet(Render_PostProcess_SSR)
+		);
+
+		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetViewport(texOut->GetViewport());
+		m_rhiPipeline->SetShader(shared_ptr<RHI_Shader>(m_shaderLight));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Albedo));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Material));
+		m_rhiPipeline->SetTexture(texShadows);
+		if (Flags_IsSet(Render_PostProcess_SSAO)) { m_rhiPipeline->SetTexture(texSSAO); }
+		else { m_rhiPipeline->SetTexture(m_texBlack); }
+		m_rhiPipeline->SetTexture(m_renderTexFull_HDR_Light2); // SSR
+		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
+		m_rhiPipeline->SetTexture(m_tex_lutIBL);
+		m_rhiPipeline->SetSampler(m_samplerTrilinearClamp);
+		m_rhiPipeline->SetSampler(m_samplerPointClamp);
+		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer(), 1, Buffer_Global);
+		m_rhiPipeline->Bind();
+
+		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
+	}
+
+	void Renderer::Pass_Transparent(shared_ptr<RHI_RenderTexture>& texOut)
+	{
+		if (!GetLightDirectional())
+			return;
+
+		auto& actors_transparent = m_actors[Renderable_ObjectTransparent];
+		if (actors_transparent.empty())
+			return;
+
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_Transparent");
+
+		m_rhiDevice->Set_AlphaBlendingEnabled(true);
+		m_rhiPipeline->SetShader(m_shaderTransparent);
+		m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : nullptr);
+		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
+
+		for (auto& actor : actors_transparent)
+		{
+			// Get renderable and material
+			Renderable* renderable = actor->GetRenderable_PtrRaw();
+			Material* material = renderable ? renderable->Material_Ptr().get() : nullptr;
+
+			if (!renderable || !material)
+				continue;
+
+			// Get geometry
+			auto model = renderable->Geometry_Model();
+			if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+				continue;
+
+			// Skip objects outside of the view frustum
+			if (!m_camera->IsInViewFrustrum(renderable))
+				continue;
+
+			// Set the following per object
+			m_rhiPipeline->SetCullMode(material->GetCullMode());
+			m_rhiPipeline->SetIndexBuffer(model->GetIndexBuffer());
+			m_rhiPipeline->SetVertexBuffer(model->GetVertexBuffer());
+
+			// Constant buffer
+			auto buffer = Struct_Transparency(
+				actor->GetTransform_PtrRaw()->GetMatrix(),
+				m_view,
+				m_projection,
+				material->GetColorAlbedo(),
+				m_camera->GetTransform()->GetPosition(),
+				GetLightDirectional()->GetDirection(),
+				material->GetRoughnessMultiplier()
+			);
+			m_shaderTransparent->UpdateBuffer(&buffer);
+			m_rhiPipeline->SetConstantBuffer(m_shaderTransparent->GetConstantBuffer(), 1, Buffer_Global);
+
+			m_rhiPipeline->Bind();
+
+			// Render	
+			m_rhiDevice->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
+			Profiler::Get().m_rendererMeshesRendered++;
+
+		} // Actor/MESH ITERATION
+
+		m_rhiDevice->Set_AlphaBlendingEnabled(false);
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
+	}
+
+	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
+	{
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_PostLight");
+
+		// All post-process passes share the following, so set them once here
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
+		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
+		m_rhiPipeline->SetVertexShader(m_shaderQuad);
+		SetGlobalBuffer(m_viewProjection_Orthographic, texIn->GetWidth(), texIn->GetHeight());
+
+		// Render target swapping
+		auto SwapTargets = [&texIn, &texOut]() { texOut.swap(texIn); };
+
+		// TAA	
+		if (Flags_IsSet(Render_PostProcess_TAA))
+		{
+			Pass_TAA(texIn, texOut);
+			SwapTargets();
+		}
+
+		// Bloom
+		if (Flags_IsSet(Render_PostProcess_Bloom))
+		{
+			Pass_Bloom(texIn, texOut);
+			SwapTargets();
+		}
+
+		// Motion Blur
+		if (Flags_IsSet(Render_PostProcess_MotionBlur))
+		{
+			Pass_MotionBlur(texIn, texOut);
+			SwapTargets();
+		}
+
+		// Tone-Mapping
+		if (Flags_IsSet(Render_PostProcess_ToneMapping))
+		{
+			Pass_ToneMapping(texIn, texOut);
+			SwapTargets();
+		}
+
+		// FXAA
+		if (Flags_IsSet(Render_PostProcess_FXAA))
+		{
+			Pass_FXAA(texIn, texOut);
+			SwapTargets();
+		}
+
+		// Sharpening
+		if (Flags_IsSet(Render_PostProcess_Sharpening))
+		{
+			Pass_Sharpening(texIn, texOut);
+			SwapTargets();
+		}
+
+		// Chromatic aberration
+		if (Flags_IsSet(Render_PostProcess_ChromaticAberration))
+		{
+			Pass_ChromaticAberration(texIn, texOut);
+			SwapTargets();
+		}
+
+		// Gamma correction
+		Pass_GammaCorrection(texIn, texOut);
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
+	}
+
 	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_RenderTexture>& texOut, Light* inDirectionalLight)
 	{
 		if (!inDirectionalLight)
@@ -1020,119 +1203,6 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& texShadows, shared_ptr<RHI_RenderTexture>& texSSAO, shared_ptr<RHI_RenderTexture>& texOut)
-	{
-		if (m_shaderLight->GetState() != Shader_Built)
-			return;
-
-		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Pass_Light");
-
-		// Update constant buffer
-		m_shaderLight->UpdateConstantBuffer
-		(
-			m_viewProjection_Orthographic,
-			m_view,
-			m_projection,
-			m_actors[Renderable_Light],
-			Flags_IsSet(Render_PostProcess_SSR)
-		);
-
-		m_rhiPipeline->SetRenderTarget(texOut);
-		m_rhiPipeline->SetViewport(texOut->GetViewport());
-		m_rhiPipeline->SetShader(shared_ptr<RHI_Shader>(m_shaderLight));
-		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Albedo));
-		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
-		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Material));
-		m_rhiPipeline->SetTexture(texShadows);
-		if (Flags_IsSet(Render_PostProcess_SSAO)) { m_rhiPipeline->SetTexture(texSSAO); } else { m_rhiPipeline->SetTexture(m_texBlack); }
-		m_rhiPipeline->SetTexture(m_renderTexFull_HDR_Light2); // SSR
-		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
-		m_rhiPipeline->SetTexture(m_tex_lutIBL);
-		m_rhiPipeline->SetSampler(m_samplerTrilinearClamp);
-		m_rhiPipeline->SetSampler(m_samplerPointClamp);
-		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer(), 1, Buffer_Global);
-		m_rhiPipeline->Bind();
-
-		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-
-		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
-	}
-
-	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
-	{
-		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Pass_PostLight");
-
-		// All post-process passes share the following, so set them once here
-		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		m_rhiPipeline->SetCullMode(Cull_Back);
-		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
-		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
-		m_rhiPipeline->SetVertexShader(m_shaderQuad);
-		SetGlobalBuffer(m_viewProjection_Orthographic, texIn->GetWidth(), texIn->GetHeight());
-
-		// Render target swapping
-		auto SwapTargets = [&texIn, &texOut]() { texOut.swap(texIn); };
-
-		// TAA	
-		if (Flags_IsSet(Render_PostProcess_TAA))
-		{
-			Pass_TAA(texIn, texOut);
-			SwapTargets();
-		}
-
-		// Bloom
-		if (Flags_IsSet(Render_PostProcess_Bloom))
-		{
-			Pass_Bloom(texIn, texOut);
-			SwapTargets();
-		}
-
-		// Motion Blur
-		if (Flags_IsSet(Render_PostProcess_MotionBlur))
-		{
-			Pass_MotionBlur(texIn, texOut);
-			SwapTargets();
-		}
-
-		// Tone-Mapping
-		if (Flags_IsSet(Render_PostProcess_ToneMapping))
-		{
-			Pass_ToneMapping(texIn, texOut);
-			SwapTargets();
-		}
-
-		// FXAA
-		if (Flags_IsSet(Render_PostProcess_FXAA))
-		{
-			Pass_FXAA(texIn, texOut);
-			SwapTargets();
-		}
-
-		// Sharpening
-		if (Flags_IsSet(Render_PostProcess_Sharpening))
-		{
-			Pass_Sharpening(texIn, texOut);
-			SwapTargets();
-		}
-
-		// Chromatic aberration
-		if (Flags_IsSet(Render_PostProcess_ChromaticAberration))
-		{
-			Pass_ChromaticAberration(texIn, texOut);
-			SwapTargets();
-		}
-
-		// Gamma correction
-		Pass_GammaCorrection(texIn, texOut);
-
-		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
-	}
-
 	void Renderer::Pass_TAA(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
 		TIME_BLOCK_START_MULTI();
@@ -1163,75 +1233,6 @@ namespace Directus
 
 		// Swap textures so current becomes history
 		m_renderTexFull_TAA_Current.swap(m_renderTexFull_TAA_History);
-
-		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
-	}
-
-	void Renderer::Pass_Transparent(shared_ptr<RHI_RenderTexture>& texOut)
-	{
-		if (!GetLightDirectional())
-			return;
-
-		auto& actors_transparent = m_actors[Renderable_ObjectTransparent];
-		if (actors_transparent.empty())
-			return;
-
-		TIME_BLOCK_START_MULTI();
-		m_rhiDevice->EventBegin("Pass_Transparent");
-
-		m_rhiDevice->Set_AlphaBlendingEnabled(true);
-		m_rhiPipeline->SetShader(m_shaderTransparent);
-		m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
-		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : nullptr);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
-
-		for (auto& actor : actors_transparent)
-		{
-			// Get renderable and material
-			Renderable* renderable	= actor->GetRenderable_PtrRaw();
-			Material* material		= renderable ? renderable->Material_Ptr().get() : nullptr;
-
-			if (!renderable || !material)
-				continue;
-
-			// Get geometry
-			auto model = renderable->Geometry_Model();
-			if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
-				continue;
-
-			// Skip objects outside of the view frustum
-			if (!m_camera->IsInViewFrustrum(renderable))
-				continue;
-
-			// Set the following per object
-			m_rhiPipeline->SetCullMode(material->GetCullMode());
-			m_rhiPipeline->SetIndexBuffer(model->GetIndexBuffer());
-			m_rhiPipeline->SetVertexBuffer(model->GetVertexBuffer());
-
-			// Constant buffer
-			auto buffer = Struct_Transparency(
-				actor->GetTransform_PtrRaw()->GetMatrix(),
-				m_view,
-				m_projection,
-				material->GetColorAlbedo(),
-				m_camera->GetTransform()->GetPosition(),
-				GetLightDirectional()->GetDirection(),
-				material->GetRoughnessMultiplier()
-			);
-			m_shaderTransparent->UpdateBuffer(&buffer);
-			m_rhiPipeline->SetConstantBuffer(m_shaderTransparent->GetConstantBuffer(), 1, Buffer_Global);
-
-			m_rhiPipeline->Bind();
-
-			// Render	
-			m_rhiDevice->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
-			Profiler::Get().m_rendererMeshesRendered++;
-
-		} // Actor/MESH ITERATION
-
-		m_rhiDevice->Set_AlphaBlendingEnabled(false);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -1470,6 +1471,7 @@ namespace Directus
 		}
 
 		m_rhiDevice->Set_AlphaBlendingEnabled(false);
+		m_rhiPipeline->ClearPendingBinds();
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -1545,6 +1547,7 @@ namespace Directus
 				m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 				m_rhiDevice->Set_AlphaBlendingEnabled(false);
 			}
+			m_rhiPipeline->ClearPendingBinds();
 			m_rhiDevice->EventEnd();
 		}
 
@@ -1599,6 +1602,7 @@ namespace Directus
 		m_rhiPipeline->Bind();
 		m_rhiDevice->DrawIndexed(m_font->GetIndexCount(), 0, 0);
 		m_rhiDevice->Set_AlphaBlendingEnabled(false);
+		m_rhiPipeline->ClearPendingBinds();
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -1620,7 +1624,7 @@ namespace Directus
 
 			SetGlobalBuffer(m_viewProjection_Orthographic, texOut->GetWidth(), texOut->GetHeight());
 			m_rhiPipeline->SetRenderTarget(texOut);
-			m_rhiPipeline->Clear();
+			m_rhiPipeline->ClearPendingBinds();
 			m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
 			m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
 			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
@@ -1632,8 +1636,8 @@ namespace Directus
 			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(texType));
 			m_rhiPipeline->SetSampler(m_samplerTrilinearClamp);
 			m_rhiPipeline->Bind();
-
 			m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+			m_rhiPipeline->ClearPendingBinds();
 
 			m_rhiDevice->EventEnd();
 			TIME_BLOCK_END_MULTI();
