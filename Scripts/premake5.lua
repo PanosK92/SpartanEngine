@@ -66,7 +66,7 @@ EDITOR_POST_BUILD_CMD 	= 'call "$(SolutionDir)Scripts/delete.bat"'
 		targetdir (TARGET_DIR_DEBUG)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_DEBUG)
-		defines { "DEBUG", "COMPILING_LIB" }
+		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		symbols "On"
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
@@ -84,7 +84,7 @@ EDITOR_POST_BUILD_CMD 	= 'call "$(SolutionDir)Scripts/delete.bat"'
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
-		defines { "NDEBUG", "COMPILING_LIB" }
+		defines { "NDEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		optimize "Full"
 		staticruntime "On"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
@@ -116,14 +116,14 @@ EDITOR_POST_BUILD_CMD 	= 'call "$(SolutionDir)Scripts/delete.bat"'
 	
 -- Debug configuration
 	filter "configurations:Debug"
-		defines { "DEBUG" }
+		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		symbols "On"
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
 
 -- Release configuration
 	filter "configurations:Release"
-		defines { "NDEBUG" }
+		defines { "NDEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		optimize "Full"
 		staticruntime "On"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
