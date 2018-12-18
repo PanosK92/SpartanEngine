@@ -1,8 +1,8 @@
 @echo off
 
 :: Delete intermediate files from the build directory
-echo 1. Deleting intermediate files from the build directory...
-@RD /S /Q "Binaries\Intermediate"
+echo 1. Deleting intermediate, lib and pdb files...
+call "Scripts\clean.bat"
 
 :: Copy required assets to the build directory
 echo 2. Copying required assets to the build directory...
