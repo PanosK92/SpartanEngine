@@ -99,7 +99,7 @@ static const float3 sampleKernel[64] =
 	float3(-0.44272, -0.67928, 0.1865)
 };
 
-static const int sample_count		= 40;
+static const int sample_count		= 16;
 static const float radius			= 1.0f;
 static const float intensity    	= 5.0f;
 static const float bias         	= 0.01f;

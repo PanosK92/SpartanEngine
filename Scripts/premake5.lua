@@ -27,7 +27,6 @@ TARGET_DIR_DEBUG 		= "../Binaries/Debug"
 INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
 EDITOR_DIR				= "../" .. EDITOR_NAME
 RUNTIME_DIR				= "../" .. RUNTIME_NAME
-EDITOR_POST_BUILD_CMD 	= 'call "$(SolutionDir)Scripts/delete.bat"'
 
 -- Solution
 	solution (SOLUTION_NAME)
@@ -130,13 +129,11 @@ EDITOR_POST_BUILD_CMD 	= 'call "$(SolutionDir)Scripts/delete.bat"'
 		
 -- Output directories	
 	configuration "Debug"
-		postbuildcommands (EDITOR_POST_BUILD_CMD)
 		targetdir (TARGET_DIR_DEBUG)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_DEBUG)
 
 	configuration "Release"
-		postbuildcommands (EDITOR_POST_BUILD_CMD)
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
