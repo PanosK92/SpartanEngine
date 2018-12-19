@@ -32,10 +32,7 @@ cbuffer GlobalBuffer : register(b0)
 	float g_motionBlur_strength;
 	float g_fps_current;		
 	float g_fps_target;
-	float g_packNormals;	
-	
 	float g_gamma;
-	float3 padding;
 };
 
 static const float2 g_texelSize = float2(1.0f / g_resolution.x, 1.0f / g_resolution.y);
@@ -138,12 +135,14 @@ float3 TangentToWorld(float3 normalMapSample, float3 normalW, float3 tangentW, f
 
 float3 Normal_Decode(float3 normal)
 {
-	return normalize(g_packNormals == 1.0f ? Unpack(normal) : normal);
+	// No decoding required
+	return normalize(normal);
 }
 
 float3 Normal_Encode(float3 normal)
 {
-	return normalize(g_packNormals == 1.0f ? Pack(normal) : normal);
+	// No encoding required
+	return normalize(normal);
 }
 
 /*------------------------------------------------------------------------------

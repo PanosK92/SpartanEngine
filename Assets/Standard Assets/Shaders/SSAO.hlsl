@@ -139,6 +139,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	float3 rvec	= Unpack(texNoise.Sample(samplerLinear_wrap, texCoord * noiseScale).xyz);
 
     // Occlusion
+	[unroll]
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv
