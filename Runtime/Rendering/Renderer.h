@@ -311,10 +311,7 @@ namespace Directus
 			float motionBlur_strength;
 			float fps_current;
 			float fps_target;
-			float packNormals;
-
 			float gamma;
-			Math::Vector3 padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};

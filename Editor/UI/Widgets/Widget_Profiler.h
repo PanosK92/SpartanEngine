@@ -67,7 +67,7 @@ private:
 	std::vector<float> m_cpuTimes;
 	std::vector<float> m_gpuTimes;
 	float m_updateFrequency;
-	float m_timeSinceLastUpdate;
+	float m_plotTimeSinceLastUpdate;
 	Metric m_metric_cpu;
 	Metric m_metric_gpu;
 };

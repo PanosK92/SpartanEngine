@@ -536,7 +536,6 @@ namespace Directus
 		buffer->motionBlur_strength			= m_motionBlurStrength;
 		buffer->fps_current					= Profiler::Get().GetFPS();
 		buffer->fps_target					= Settings::Get().FPS_GetTarget();
-		buffer->packNormals					= m_gbuffer->IsNormalPackingRequired() ? 1.0f : 0.0f;
 		buffer->gamma						= m_gamma;
 
 		m_bufferGlobal->Unmap();
@@ -827,7 +826,6 @@ namespace Directus
 
 	void Renderer::Pass_PreLight(shared_ptr<RHI_RenderTexture>& texIn_Spare, shared_ptr<RHI_RenderTexture>& texOut_Shadows, shared_ptr<RHI_RenderTexture>& texOut_SSAO)
 	{
-		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_PreLight");
 
 		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
@@ -861,7 +859,6 @@ namespace Directus
 		}
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& texShadows, shared_ptr<RHI_RenderTexture>& texSSAO, shared_ptr<RHI_RenderTexture>& texOut)
@@ -978,7 +975,6 @@ namespace Directus
 
 	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_PostLight");
 
 		// All post-process passes share the following, so set them once here
@@ -1045,7 +1041,6 @@ namespace Directus
 		Pass_GammaCorrection(texIn, texOut);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_RenderTexture>& texOut, Light* inDirectionalLight)
@@ -1241,6 +1236,7 @@ namespace Directus
 
 	void Renderer::Pass_Bloom(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Bloom");
 
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
@@ -1270,10 +1266,12 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_ToneMapping(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut)
 	{
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_ToneMapping");
 
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
@@ -1287,10 +1285,12 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_GammaCorrection(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut)
 	{
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_GammaCorrection");
 
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
@@ -1304,10 +1304,12 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_FXAA(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_FXAA");
 
 		// Common states
@@ -1336,10 +1338,12 @@ namespace Directus
 		texIn.swap(texOut);
 
 		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_ChromaticAberration(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_ChromaticAberration");
 
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
@@ -1353,10 +1357,12 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_MotionBlur(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_MotionBlur");
 
 		m_rhiPipeline->SetRenderTarget(texOut);
@@ -1369,10 +1375,12 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_Sharpening(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
+		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Sharpening");
 
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
@@ -1387,6 +1395,7 @@ namespace Directus
 		m_rhiDevice->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
 	}
 
 	void Renderer::Pass_Lines(shared_ptr<RHI_RenderTexture>& texOut)

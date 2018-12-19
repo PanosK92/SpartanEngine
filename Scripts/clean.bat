@@ -13,3 +13,4 @@ del	"Binaries\Debug\Editor.exp"
 del	"Binaries\Debug\Editor.pdb"
 del	"Binaries\Debug\Editor.ilk"
 
+exit /b
