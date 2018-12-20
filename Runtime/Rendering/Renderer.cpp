@@ -201,10 +201,10 @@ namespace Directus
 		m_shaderFont->CompileVertexPixel(shaderDirectory + "Font.hlsl", Input_PositionTexture);
 		m_shaderFont->AddBuffer<Struct_Matrix_Vector4>();
 
-		// Transformation gizmo
-		m_shaderTransformationGizmo = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shaderTransformationGizmo->CompileVertexPixel(shaderDirectory + "TransformationGizmo.hlsl", Input_PositionTextureTBN);
-		m_shaderTransformationGizmo->AddBuffer<Struct_Matrix_Matrix_Vector3>();
+		// Transform gizmo
+		m_shaderTransformGizmo = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderTransformGizmo->CompileVertexPixel(shaderDirectory + "TransformGizmo.hlsl", Input_PositionTextureTBN);
+		m_shaderTransformGizmo->AddBuffer<Struct_Matrix_Vector3>();
 
 		// SSAO
 		m_shaderSSAO = make_shared<RHI_Shader>(m_rhiDevice);
@@ -1485,7 +1485,7 @@ namespace Directus
 				Vector3 position_light_world		= actor->GetTransform_PtrRaw()->GetPosition();
 				Vector3 position_camera_world		= m_camera->GetTransform()->GetPosition();
 				Vector3 direction_camera_to_light	= (position_light_world - position_camera_world).Normalized();
-				float VdL							= Vector3::Dot(direction_camera_to_light, m_camera->GetTransform()->GetForward());
+				float VdL							= Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
 
 				// Don't bother drawing if out of view
 				if (VdL <= 0.5f)
@@ -1521,23 +1521,33 @@ namespace Directus
 		}
 
 		// Transform
-		if (shared_ptr<Actor> pickedActor = m_camera->GetPickedActor().lock())
+		/*if (shared_ptr<Actor> pickedActor = m_camera->GetPickedActor().lock())
 		{
 			m_rhiDevice->EventBegin("Gizmo_Transform");
 
 			m_transformGizmo->Pick(pickedActor);
 
-			m_rhiPipeline->SetShader(m_shaderTransformationGizmo);
+			m_rhiPipeline->SetShader(m_shaderTransformGizmo);
 			m_rhiPipeline->SetIndexBuffer(m_transformGizmo->GetIndexBuffer());
 			m_rhiPipeline->SetVertexBuffer(m_transformGizmo->GetVertexBuffer());		
 
 			// X - Axis		
-			auto buffer = Struct_Matrix_Matrix_Vector3(m_transformGizmo->GetTransformationX(), pickedActor->GetTransform_PtrRaw()->GetMatrix(), Vector3::Right);
-			m_shaderTransformationGizmo->UpdateBuffer(&buffer);
+			auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetTransformX() * m_viewProjection, Vector3::Right);
+			m_shaderTransformGizmo->UpdateBuffer(&buffer);
+			m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+
+			// Y - Axis		
+			buffer = Struct_Matrix_Vector3(m_transformGizmo->GetTransformY() * m_viewProjection, Vector3::Up);
+			m_shaderTransformGizmo->UpdateBuffer(&buffer);
+			m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+
+			// Z - Axis		
+			buffer = Struct_Matrix_Vector3(m_transformGizmo->GetTransformZ() * m_viewProjection, Vector3::Forward);
+			m_shaderTransformGizmo->UpdateBuffer(&buffer);
 			m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
 			m_rhiDevice->EventEnd();
-		}
+		}*/
 
 		m_rhiPipeline->ClearPendingStates();
 
