@@ -44,6 +44,7 @@ namespace Directus
 	class Font;
 	class Variant;
 	class Grid;
+	class TransformGizmo;
 	namespace Math
 	{
 		class BoundingBox;
@@ -55,23 +56,24 @@ namespace Directus
 		Render_Gizmo_AABB						= 1UL << 0,
 		Render_Gizmo_PickingRay					= 1UL << 1,
 		Render_Gizmo_Grid						= 1UL << 2,
-		Render_Gizmo_Light						= 1UL << 3,
-		Render_Gizmo_PerformanceMetrics			= 1UL << 4,
-		Render_Gizmo_Physics					= 1UL << 5,
-		Render_GBuffer_Albedo					= 1UL << 6,
-		Render_GBuffer_Normal					= 1UL << 7,
-		Render_GBuffer_Material					= 1UL << 8,
-		Render_GBuffer_Velocity					= 1UL << 9,
-		Render_GBuffer_Depth					= 1UL << 10,		
-		Render_PostProcess_Bloom				= 1UL << 11,
-		Render_PostProcess_FXAA					= 1UL << 12,
-		Render_PostProcess_SSAO					= 1UL << 13,
-		Render_PostProcess_SSR					= 1UL << 14,
-		Render_PostProcess_TAA					= 1UL << 15,
-		Render_PostProcess_MotionBlur			= 1UL << 16,
-		Render_PostProcess_Sharpening			= 1UL << 17,
-		Render_PostProcess_ChromaticAberration	= 1UL << 18,
-		Render_PostProcess_ToneMapping			= 1UL << 19
+		Render_Gizmo_Transform					= 1UL << 3,
+		Render_Gizmo_Lights						= 1UL << 4,
+		Render_Gizmo_PerformanceMetrics			= 1UL << 5,
+		Render_Gizmo_Physics					= 1UL << 6,
+		Render_GBuffer_Albedo					= 1UL << 7,
+		Render_GBuffer_Normal					= 1UL << 8,
+		Render_GBuffer_Material					= 1UL << 9,
+		Render_GBuffer_Velocity					= 1UL << 10,
+		Render_GBuffer_Depth					= 1UL << 11,		
+		Render_PostProcess_Bloom				= 1UL << 12,
+		Render_PostProcess_FXAA					= 1UL << 13,
+		Render_PostProcess_SSAO					= 1UL << 14,
+		Render_PostProcess_SSR					= 1UL << 15,
+		Render_PostProcess_TAA					= 1UL << 16,
+		Render_PostProcess_MotionBlur			= 1UL << 17,
+		Render_PostProcess_Sharpening			= 1UL << 18,
+		Render_PostProcess_ChromaticAberration	= 1UL << 19,
+		Render_PostProcess_ToneMapping			= 1UL << 20
 	};
 
 	enum RenderableType
@@ -253,7 +255,15 @@ namespace Directus
 		std::vector<RHI_Vertex_PosCol> m_lineVertices;
 		//===================================================
 
+		//= EDITOR ===========================================
+		std::unique_ptr<TransformGizmo> m_transformGizmo;
+		std::unique_ptr<Grid> m_grid;
+		std::unique_ptr<Rectangle> m_gizmoRectLight;
+		//====================================================
+
 		//= MISC ========================================================
+		Light* GetLightDirectional();
+		Skybox* GetSkybox();
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
 		std::unique_ptr<GBuffer> m_gbuffer;
@@ -269,12 +279,8 @@ namespace Directus
 		float m_nearPlane;
 		float m_farPlane;
 		Camera* m_camera;
-		Light* GetLightDirectional();
-		Skybox* GetSkybox();
 		static bool m_isRendering;
-		std::unique_ptr<Font> m_font;
-		std::unique_ptr<Grid> m_grid;
-		std::unique_ptr<Rectangle> m_gizmoRectLight;
+		std::unique_ptr<Font> m_font;	
 		unsigned long m_flags;
 		uint64_t m_frameNum;
 		bool m_isOddFrame;

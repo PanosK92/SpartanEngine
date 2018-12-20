@@ -100,20 +100,10 @@ namespace Directus::Math
 		Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
 		//=================================================================
 
-		//= LENGTH ============================================================================================================
-		static float Length(const Vector3& v1, const Vector3& v2)
-		{
-			return Helper::Sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z));
-		}
-
-		static float LengthSquared(const Vector3& v1, const Vector3& v2)
-		{
-			return (v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z);
-		}
-
-		float Length() const { return Helper::Sqrt(x * x + y * y + z * z); }
+		//= LENGTH ================================================================
+		float Length() const		{ return Helper::Sqrt(x * x + y * y + z * z); }
 		float LengthSquared() const { return x * x + y * y + z * z; }
-		//=====================================================================================================================
+		//=========================================================================
 
 		//= MISC ===========================================================
 		void Floor()

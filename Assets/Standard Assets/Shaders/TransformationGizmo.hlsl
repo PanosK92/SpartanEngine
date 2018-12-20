@@ -4,7 +4,8 @@
 
 cbuffer MiscBuffer : register(b0)
 {
-	matrix transform;
+	matrix world;
+	matrix transform;	
 	float3 axis;
 	float padding;
 };
@@ -24,9 +25,9 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
     	
     input.position.w 	= 1.0f;	
 	output.position 	= mul(input.position, transform);
-	output.normal 		= normalize(mul(float4(input.normal, 0.0f), transform)).xyz;	
-	output.tangent 		= normalize(mul(float4(input.tangent, 0.0f), transform)).xyz;
-	output.bitangent 	= normalize(mul(float4(input.bitangent, 0.0f), transform)).xyz;
+	output.normal 		= normalize(mul(float4(input.normal, 0.0f), world)).xyz;	
+	output.tangent 		= normalize(mul(float4(input.tangent, 0.0f), world)).xyz;
+	output.bitangent 	= normalize(mul(float4(input.bitangent, 0.0f), world)).xyz;
     output.uv 			= input.uv;
 	
 	return output;

@@ -253,7 +253,7 @@ void Widget_Toolbar::ShowRendererOptions()
 
 		_Widget_Toolbar::g_gizmo_physics			? m_renderer->Flags_Enable(Render_Gizmo_Physics)			: m_renderer->Flags_Disable(Render_Gizmo_Physics);
 		_Widget_Toolbar::g_gizmo_aabb				? m_renderer->Flags_Enable(Render_Gizmo_AABB)				: m_renderer->Flags_Disable(Render_Gizmo_AABB);
-		_Widget_Toolbar::g_gizmo_light				? m_renderer->Flags_Enable(Render_Gizmo_Light)				: m_renderer->Flags_Disable(Render_Gizmo_Light);
+		_Widget_Toolbar::g_gizmo_light				? m_renderer->Flags_Enable(Render_Gizmo_Lights)				: m_renderer->Flags_Disable(Render_Gizmo_Lights);
 		_Widget_Toolbar::g_gizmo_pickingRay			? m_renderer->Flags_Enable(Render_Gizmo_PickingRay)			: m_renderer->Flags_Disable(Render_Gizmo_PickingRay);
 		_Widget_Toolbar::g_gizmo_grid				? m_renderer->Flags_Enable(Render_Gizmo_Grid)				: m_renderer->Flags_Disable(Render_Gizmo_Grid);
 		_Widget_Toolbar::g_gizmo_performanceMetrics	? m_renderer->Flags_Enable(Render_Gizmo_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_Gizmo_PerformanceMetrics);

@@ -61,8 +61,8 @@ namespace Directus
 		void Geometry_Append(
 			std::vector<unsigned int>& indices,
 			std::vector<RHI_Vertex_PosUVTBN>& vertices,
-			unsigned int* indexOffset,
-			unsigned int* vertexOffset
+			unsigned int* indexOffset = nullptr,
+			unsigned int* vertexOffset = nullptr
 		);
 		void Geometry_Get(
 			unsigned int indexOffset,

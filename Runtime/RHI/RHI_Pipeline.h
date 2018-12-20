@@ -52,8 +52,13 @@ namespace Directus
 		RHI_Pipeline(std::shared_ptr<RHI_Device> rhiDevice);
 		~RHI_Pipeline(){}
 
+		// Experimental
 		bool SetState(RHI_PipelineState& pipelineState);
 
+		// Draw
+		bool Draw(unsigned int vertexCount);
+		bool DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset);
+		
 		// Shader
 		void SetShader(std::shared_ptr<RHI_Shader>& shader);
 		bool SetVertexShader(std::shared_ptr<RHI_Shader>& shader);
@@ -89,16 +94,19 @@ namespace Directus
 		// Fill mode
 		void SetFillMode(Fill_Mode filleMode);
 
+		// Alpha blending
+		void SetAlphaBlending(bool enabled);
+
 		// Viewport
 		void SetViewport(const std::shared_ptr<RHI_Viewport>& viewport);
 
+		// Clears all currently set settings
+		void ClearPendingStates();
+
+	private:
 		// Bind to the GPU
 		bool Bind();
 
-		// Clears all currently set settings
-		void ClearPendingBinds();
-
-	private:
 		// Primitive topology
 		PrimitiveTopology_Mode m_primitiveTopology;
 		bool m_primitiveTopologyDirty;
@@ -147,6 +155,10 @@ namespace Directus
 		// Viewport
 		std::shared_ptr<RHI_Viewport> m_viewport;
 		bool m_viewportDirty;
+
+		// Alpha blending
+		bool m_alphaBlending;
+		bool m_alphaBlendingDirty;
 
 		// Render targets
 		std::vector<void*> m_renderTargetViews;	

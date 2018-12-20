@@ -29,8 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class Model;
 	class Context;
 	class Actor;
+	class RHI_IndexBuffer;
+	class RHI_VertexBuffer;
 
 	enum TransformGizmo_Type
 	{
@@ -45,31 +48,30 @@ namespace Directus
 		TransformGizmo_World
 	};
 
-	class ENGINE_CLASS TransformationGizmo
+	class ENGINE_CLASS TransformGizmo
 	{
 	public:
-		TransformationGizmo(Context* context);
-		~TransformationGizmo();
+		TransformGizmo(Context* context);
+		~TransformGizmo();
 
-		void Pick(std::weak_ptr<Actor> actor);
-		void SetBuffers();
-		unsigned int GetIndexCount();
-
+		void Pick(std::shared_ptr<Actor> actor);
 		const Math::Matrix& GetTransformationX() { return m_transformationX; }
 		const Math::Matrix& GetTransformationY() { return m_transformationY; }
 		const Math::Matrix& GetTransformationZ() { return m_transformationZ; }
+		unsigned int GetIndexCount();
+		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
+		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
 
 	private:
-		//std::unique_ptr<Mesh> m_meshCone;
-		//std::unique_ptr<Mesh> m_meshCube;
-
 		Math::Matrix m_transformationX;
 		Math::Matrix m_transformationY;
 		Math::Matrix m_transformationZ;
-
+		Math::Matrix m_scale;
 		TransformGizmo_Type m_type;
 		TransformGizmo_Space m_space;
-		Math::Vector3 m_scale;
+
+		std::unique_ptr<Model> m_positionModel;
+		std::unique_ptr<Model> m_scaleModel;
 
 		Context* m_context;
 	};

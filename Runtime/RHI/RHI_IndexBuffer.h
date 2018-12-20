@@ -36,14 +36,16 @@ namespace Directus
 		~RHI_IndexBuffer();
 	
 		bool Create(const std::vector<unsigned int>& indices);
-		bool CreateDynamic(unsigned int initialSize);
+		bool CreateDynamic(unsigned int indexCount);
 		void* Map();
 		bool Unmap();
 		bool Bind();
 
-		unsigned int GetMemoryUsage() { return m_memoryUsage; }
+		unsigned int GetMemoryUsage()	{ return m_memoryUsage; }
+		unsigned int GetIndexCount()	{ return m_indexCount; }
 
 	protected:
+		unsigned int m_indexCount;
 		unsigned int m_memoryUsage;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 
