@@ -230,9 +230,9 @@ namespace Directus
 			const Math::Vector3& vector
 		)
 		{
-			m_matrix1 = matrix1;
-			m_matrix2 = matrix2;
-			m_vector = vector;
+			m_matrix1	= matrix1;
+			m_matrix2	= matrix2;
+			m_vector	= vector;
 		}
 
 		Math::Matrix m_matrix1;

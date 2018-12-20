@@ -40,15 +40,15 @@ namespace Directus
 {
 	TransformGizmo::TransformGizmo(Context* context)
 	{
-		m_context			= context;
-		m_transformationX	= Matrix::Identity;
-		m_transformationY	= Matrix::Identity;
-		m_transformationZ	= Matrix::Identity;
-		m_type				= TransformGizmo_Position;
-		m_space				= TransformGizmo_World;
-		m_scale				= Matrix::CreateScale(Vector3(0.2f));
+		m_context		= context;
+		m_transformX	= Matrix::Identity;
+		m_transformY	= Matrix::Identity;
+		m_transformZ	= Matrix::Identity;
+		m_type			= TransformGizmo_Position;
+		m_space			= TransformGizmo_World;
+		m_scale			= Matrix::CreateScale(Vector3(0.2f));
 	
-		// Create cone
+		// Create position model
 		vector<RHI_Vertex_PosUVTBN> vertices;
 		vector<unsigned int> indices;
 		Utility::Geometry::CreateCone(&vertices, &indices);
@@ -56,7 +56,7 @@ namespace Directus
 		m_positionModel->Geometry_Append(indices, vertices);
 		m_positionModel->Geometry_Update();
 
-		// Create cube
+		// Create scale model
 		vertices.clear(); vertices.shrink_to_fit();
 		indices.clear(); indices.shrink_to_fit();
 		Utility::Geometry::CreateCube(&vertices, &indices);
@@ -83,26 +83,25 @@ namespace Directus
 		Matrix mRotation		= Matrix::CreateRotation(transform.GetRotation());
 		Vector3 mRotationEuler	= transform.GetRotation().ToEulerAngles();
 		
+		// Default transform
+		m_transformX = mTranslation * mRotation;
+		m_transformY = m_transformX;
+		m_transformZ = m_transformX;
 
-		// Default transformation
-		m_transformationX = mTranslation * mRotation;
-		m_transformationY = m_transformationX;
-		m_transformationZ = m_transformationX;
+		// Position offset
+		m_transformX = Matrix::CreateTranslation(Vector3::Right) * m_transformX;
+		m_transformY = Matrix::CreateTranslation(Vector3::Up) * m_transformY;
+		m_transformZ = Matrix::CreateTranslation(Vector3::Forward) * m_transformZ;
 
-		// Add position offset
-		m_transformationY = Matrix::CreateTranslation(Vector3(0, 1, 0)) * m_transformationY;
-		m_transformationX = Matrix::CreateTranslation(Vector3(1, 0, 0)) * m_transformationX;
-		m_transformationZ = Matrix::CreateTranslation(Vector3(0, 0, 1)) * m_transformationZ;
+		// Rotation offset
+		m_transformY = m_transformY;
+		m_transformX = Matrix::CreateRotation(qRotation * Quaternion::FromEulerAngles(Vector3(mRotationEuler.x + 90.0f, mRotationEuler.y, mRotationEuler.z))) * m_transformX;
+		m_transformZ = Matrix::CreateRotation(qRotation * Quaternion::FromEulerAngles(Vector3(mRotationEuler.x, mRotationEuler.y, mRotationEuler.z + 90.0f))) * m_transformZ;	
 
-		// Add rotation offset
-		m_transformationY = m_transformationY;
-		m_transformationX = Matrix::CreateRotation(qRotation * Quaternion::FromEulerAngles(Vector3(mRotationEuler.x + 90.0f, mRotationEuler.y, mRotationEuler.z))) * m_transformationX;
-		m_transformationZ = Matrix::CreateRotation(qRotation * Quaternion::FromEulerAngles(Vector3(mRotationEuler.x, mRotationEuler.y, mRotationEuler.z + 90.0f))) * m_transformationZ;	
-
-		// Add scale offset
-		m_transformationY = m_scale * m_transformationY;
-		m_transformationX = m_scale * m_transformationX;
-		m_transformationZ = m_scale * m_transformationZ;
+		// Scale offset
+		m_transformX = m_scale * m_transformX;
+		m_transformY = m_scale * m_transformY;
+		m_transformZ = m_scale * m_transformZ;
 	}
 
 	unsigned int TransformGizmo::GetIndexCount()

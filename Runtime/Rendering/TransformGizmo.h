@@ -55,24 +55,22 @@ namespace Directus
 		~TransformGizmo();
 
 		void Pick(std::shared_ptr<Actor> actor);
-		const Math::Matrix& GetTransformationX() { return m_transformationX; }
-		const Math::Matrix& GetTransformationY() { return m_transformationY; }
-		const Math::Matrix& GetTransformationZ() { return m_transformationZ; }
+		const Math::Matrix& GetTransformX() { return m_transformX; }
+		const Math::Matrix& GetTransformY() { return m_transformY; }
+		const Math::Matrix& GetTransformZ() { return m_transformZ; }
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
 
 	private:
-		Math::Matrix m_transformationX;
-		Math::Matrix m_transformationY;
-		Math::Matrix m_transformationZ;
+		Math::Matrix m_transformX;
+		Math::Matrix m_transformY;
+		Math::Matrix m_transformZ;
 		Math::Matrix m_scale;
 		TransformGizmo_Type m_type;
 		TransformGizmo_Space m_space;
-
 		std::unique_ptr<Model> m_positionModel;
 		std::unique_ptr<Model> m_scaleModel;
-
 		Context* m_context;
 	};
 }

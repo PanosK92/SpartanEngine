@@ -207,7 +207,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderFont;
 		std::shared_ptr<RHI_Shader> m_shaderShadowMapping;
 		std::shared_ptr<RHI_Shader> m_shaderSSAO;
-		std::shared_ptr<RHI_Shader> m_shaderTransformationGizmo;
+		std::shared_ptr<RHI_Shader> m_shaderTransformGizmo;
 		std::shared_ptr<RHI_Shader> m_shaderTransparent;
 		std::shared_ptr<RHI_Shader> m_shaderQuad;
 		std::shared_ptr<RHI_Shader> m_shaderQuad_texture;
