@@ -45,7 +45,21 @@ namespace Directus
 	RHI_Pipeline::RHI_Pipeline(shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice	= rhiDevice;
-		ClearPendingBinds();
+		ClearPendingStates();
+	}
+
+	bool RHI_Pipeline::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
+	{
+		bool bindResult = Bind();
+		m_rhiDevice->DrawIndexed(indexCount, indexOffset, vertexOffset);
+		return bindResult;
+	}
+
+	bool RHI_Pipeline::Draw(unsigned int vertexCount)
+	{
+		bool bindResult = Bind();
+		m_rhiDevice->Draw(vertexCount);
+		return bindResult;
 	}
 
 	bool RHI_Pipeline::SetState(RHI_PipelineState& pipelineState)
@@ -276,6 +290,15 @@ namespace Directus
 		m_fillModeDirty = true;
 	}
 
+	void RHI_Pipeline::SetAlphaBlending(bool enabled)
+	{
+		if (m_alphaBlending == enabled)
+			return;
+
+		m_alphaBlending			= enabled;
+		m_alphaBlendingDirty	= true;
+	}
+
 	void RHI_Pipeline::SetViewport(const shared_ptr<RHI_Viewport>& viewport)
 	{
 		if (!viewport)
@@ -404,7 +427,7 @@ namespace Directus
 		}
 
 		// Index buffer
-		bool resultIndexBuffer = true;
+		bool resultIndexBuffer = false;
 		if (m_indexBufferDirty)
 		{
 			resultIndexBuffer = m_indexBuffer->Bind();
@@ -413,7 +436,7 @@ namespace Directus
 		}
 
 		// Vertex buffer
-		bool resultVertexBuffer = true;
+		bool resultVertexBuffer = false;
 		if (m_vertexBufferDirty)
 		{
 			resultVertexBuffer = m_vertexBuffer->Bind();
@@ -434,10 +457,17 @@ namespace Directus
 			m_constantBufferDirty = false;
 		}
 
-		return resultIndexBuffer && resultVertexBuffer;
+		// Alpha blending
+		bool resultAlphaBlending = false;
+		if (m_alphaBlendingDirty)
+		{
+			m_rhiDevice->Set_AlphaBlendingEnabled(m_alphaBlending);
+		}
+
+		return resultIndexBuffer && resultVertexBuffer && resultAlphaBlending;
 	}
 
-	void RHI_Pipeline::ClearPendingBinds()
+	void RHI_Pipeline::ClearPendingStates()
 	{
 		m_primitiveTopology	= PrimitiveTopology_NotAssigned;
 		m_primitiveTopologyDirty = false;

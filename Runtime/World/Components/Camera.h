@@ -37,7 +37,6 @@ namespace Directus
 	class Actor;
 	class Model;
 	class Renderable;
-	class TransformationGizmo;
 
 	enum ProjectionType
 	{
@@ -70,6 +69,7 @@ namespace Directus
 
 		// Returns the nearest actor under the cursor
 		std::shared_ptr<Actor> Pick(const Math::Vector2& mousePos);
+		std::weak_ptr<Actor> GetPickedActor() { return m_pickedActor; }
 
 		// Converts a world point to a screen point
 		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);
@@ -99,8 +99,6 @@ namespace Directus
 		void SetClearColor(const Math::Vector4& color) { m_clearColor = color; }
 		//===============================================================================
 
-		TransformationGizmo* GetTransformationGizmo() { return m_transformGizmo.get(); }
-
 	private:
 		void ComputeViewMatrix();
 		void ComputeBaseView();
@@ -120,6 +118,6 @@ namespace Directus
 		Math::Quaternion m_rotation;
 		bool m_isDirty;
 		Math::Vector2 m_lastKnownViewport;	
-		std::shared_ptr<TransformationGizmo> m_transformGizmo;
+		std::weak_ptr<Actor> m_pickedActor;
 	};
 }

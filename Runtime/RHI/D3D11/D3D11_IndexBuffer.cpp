@@ -58,9 +58,8 @@ namespace Directus
 			return false;
 		}
 
-		unsigned int stride		= sizeof(unsigned int);
-		unsigned int size		= (unsigned int)indices.size();
-		unsigned int finalSize	= stride * size;
+		m_indexCount			= (unsigned int)indices.size();
+		unsigned int finalSize	= sizeof(unsigned int) * m_indexCount;
 
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
@@ -85,12 +84,12 @@ namespace Directus
 		}
 
 		// Compute memory usage
-		m_memoryUsage = (unsigned int)(sizeof(unsigned int) * indices.size());
+		m_memoryUsage = unsigned int((sizeof(unsigned int) * indices.size()));
 
 		return true;
 	}
 
-	bool RHI_IndexBuffer::CreateDynamic(unsigned int initialSize)
+	bool RHI_IndexBuffer::CreateDynamic(unsigned int indexCount)
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{
@@ -98,11 +97,11 @@ namespace Directus
 			return false;
 		}
 
-		unsigned int byteWidth = sizeof(unsigned int) * initialSize;
+		m_indexCount = sizeof(unsigned int) * indexCount;
 
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= byteWidth;
+		bufferDesc.ByteWidth			= m_indexCount;
 		bufferDesc.Usage				= D3D11_USAGE_DYNAMIC;
 		bufferDesc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
 		bufferDesc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;

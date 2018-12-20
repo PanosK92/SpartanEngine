@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../Actor.h"
 #include "Renderable.h"
-#include "../TransformationGizmo.h"
 //===================================
 
 //= NAMESPACES ================
@@ -45,7 +44,6 @@ namespace Directus
 		m_clearColor		= Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 		m_isDirty			= false;
 		m_fovHorizontalRad	= DegreesToRadians(90.0f);
-		m_transformGizmo	= make_shared<TransformationGizmo>(context);
 	}
 
 	Camera::~Camera()
@@ -192,37 +190,44 @@ namespace Directus
 		// Get closest hit
 		shared_ptr<Actor> hit = !hits.empty() ? hits.begin()->second : nullptr;
 
-		// Display transformation gizmo
-		m_transformGizmo->Pick(hit);
+		// Save closest hit
+		m_pickedActor = hit;
 
 		return hit;
 	}
 
-	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
+	Vector2 Camera::WorldToScreenPoint(const Vector3& position_world)
 	{
 		Vector2 viewport = Settings::Get().Viewport_Get();
 
-		Vector3 localSpace = worldPoint * m_mView * m_mProjection;
+		// Convert world space position to clip space position
+		float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.y / viewport.x));
+		Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_nearPlane, m_farPlane); // compute non reverse z projection
+		Vector3 position_clip = position_world * m_mView * projection;
 
-		float screenX = localSpace.x	/ localSpace.z	* (viewport.x * 0.5f)	+ viewport.x * 0.5f;
-		float screenY = -(localSpace.y	/ localSpace.z	* (viewport.y * 0.5f))	+ viewport.y * 0.5f;
+		// Convert clip space position to screen space position
+		Vector2 position_screen;
+		position_screen.x = (position_clip.x / position_clip.z) * (0.5f * viewport.x) + (0.5f * viewport.x);
+		position_screen.y = (position_clip.y / position_clip.z) * -(0.5f * viewport.y) + (0.5f * viewport.y);
 
-		return Vector2(screenX, screenY);
+		return position_screen;
 	}
 
-	Vector3 Camera::ScreenToWorldPoint(const Vector2& point)
+	Vector3 Camera::ScreenToWorldPoint(const Vector2& position_screen)
 	{
 		Vector2 viewport = Settings::Get().Viewport_Get();
 
-		// Convert screen pixel to view space
-		float pointX = 2.0f		* point.x / viewport.x - 1.0f;
-		float pointY = -2.0f	* point.y / viewport.y + 1.0f;
+		// Convert screen space position to clip space position
+		Vector3 position_clip;
+		position_clip.x = (position_screen.x / viewport.x) * 2.0f - 1.0f;
+		position_clip.y = (position_screen.y / viewport.y) * -2.0f + 1.0f;
+		position_clip.z = 1.0f;
 
-		// Unproject point
-		Matrix unprojectMatrix = (m_mView * m_mProjection).Inverted();
-		Vector3 worldPoint = Vector3(pointX, pointY, 1.0f) * unprojectMatrix;
+		// Compute world space position
+		Matrix viewProjectionInverted	= (m_mView * m_mProjection).Inverted();
+		Vector3 position_world			= position_clip * viewProjectionInverted;
 
-		return worldPoint;
+		return position_world;
 	}
 
 	//= PRIVATE =======================================================================

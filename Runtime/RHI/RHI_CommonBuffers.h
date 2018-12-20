@@ -83,15 +83,14 @@ namespace Directus
 
 	struct Struct_Matrix_Vector3
 	{
-		Struct_Matrix_Vector3(const Math::Matrix& matrix, const Math::Vector3& vector3)
+		Struct_Matrix_Vector3(const Math::Matrix& matrix, const Math::Vector3& vector)
 		{
 			m_matrix	= matrix;
-			m_vector3	= vector3;
-			m_padding	= 0.0f;
+			m_vector	= vector;
 		}
 
 		Math::Matrix m_matrix;
-		Math::Vector3 m_vector3;
+		Math::Vector3 m_vector;
 		float m_padding;
 	};
 
@@ -219,6 +218,26 @@ namespace Directus
 		Math::Matrix m_matrix2;
 		Math::Vector2 m_vector;
 		float m_value;
+		float m_padding;
+	};
+
+	struct Struct_Matrix_Matrix_Vector3
+	{
+		Struct_Matrix_Matrix_Vector3
+		(
+			const Math::Matrix& matrix1,
+			const Math::Matrix& matrix2,
+			const Math::Vector3& vector
+		)
+		{
+			m_matrix1 = matrix1;
+			m_matrix2 = matrix2;
+			m_vector = vector;
+		}
+
+		Math::Matrix m_matrix1;
+		Math::Matrix m_matrix2;
+		Math::Vector3 m_vector;
 		float m_padding;
 	};
 }

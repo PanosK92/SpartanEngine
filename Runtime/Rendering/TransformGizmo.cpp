@@ -22,11 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============================
-#include "TransformationGizmo.h"
-#include "Actor.h"
-#include "Components\Transform.h"
+#include "TransformGizmo.h"
 #include "..\RHI\RHI_Vertex.h"
+#include "..\RHI\RHI_IndexBuffer.h"
 #include "..\Rendering\Utilities\Geometry.h"
+#include "..\Rendering\Model.h"
+#include "..\World\Components\Transform.h"
+#include "..\World\Actor.h"
 //==========================================
 
 //=============================
@@ -36,7 +38,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	TransformationGizmo::TransformationGizmo(Context* context)
+	TransformGizmo::TransformGizmo(Context* context)
 	{
 		m_context			= context;
 		m_transformationX	= Matrix::Identity;
@@ -44,45 +46,43 @@ namespace Directus
 		m_transformationZ	= Matrix::Identity;
 		m_type				= TransformGizmo_Position;
 		m_space				= TransformGizmo_World;
-		m_scale				= Vector3(0.2f);
+		m_scale				= Matrix::CreateScale(Vector3(0.2f));
 	
 		// Create cone
 		vector<RHI_Vertex_PosUVTBN> vertices;
 		vector<unsigned int> indices;
 		Utility::Geometry::CreateCone(&vertices, &indices);
-		/*m_meshCone = make_unique<Mesh>(m_context);
-		m_meshCone->Vertices_Set(vertices);
-		m_meshCone->Indices_Set(indices);
-		m_meshCone->Geometry_Update();*/
+		m_positionModel = make_unique<Model>(m_context);
+		m_positionModel->Geometry_Append(indices, vertices);
+		m_positionModel->Geometry_Update();
 
-		// Create cone
+		// Create cube
 		vertices.clear(); vertices.shrink_to_fit();
 		indices.clear(); indices.shrink_to_fit();
 		Utility::Geometry::CreateCube(&vertices, &indices);
-		/*m_meshCube = make_unique<Mesh>(m_context);
-		m_meshCube->Vertices_Set(vertices);
-		m_meshCube->Indices_Set(indices);
-		m_meshCube->Geometry_Update();*/
+		m_scaleModel = make_unique<Model>(m_context);
+		m_scaleModel->Geometry_Append(indices, vertices);
+		m_scaleModel->Geometry_Update();
 	}
 
-	TransformationGizmo::~TransformationGizmo()
+	TransformGizmo::~TransformGizmo()
 	{
 
 	}
 
-	void TransformationGizmo::Pick(weak_ptr<Actor> actor)
+	void TransformGizmo::Pick(shared_ptr<Actor> actor)
 	{
-		if (actor.expired())
+		if (!actor)
 			return;
 
-		Transform* transformComponent = actor.lock()->GetComponent<Transform>().get();
-		Matrix transform = (m_space == TransformGizmo_Local) ? transformComponent->GetMatrix() : transformComponent->GetMatrix();
+		Transform* transformComponent = actor->GetTransform_PtrRaw();
+		Matrix transform = (m_space == TransformGizmo_Local) ? transformComponent->GetLocalMatrix() : transformComponent->GetMatrix();
 
 		Matrix mTranslation		= Matrix::CreateTranslation(transform.GetTranslation());
 		Quaternion qRotation	= transform.GetRotation();
 		Matrix mRotation		= Matrix::CreateRotation(transform.GetRotation());
 		Vector3 mRotationEuler	= transform.GetRotation().ToEulerAngles();
-		Matrix mScaleGizmo		= Matrix::CreateScale(m_scale);
+		
 
 		// Default transformation
 		m_transformationX = mTranslation * mRotation;
@@ -100,34 +100,50 @@ namespace Directus
 		m_transformationZ = Matrix::CreateRotation(qRotation * Quaternion::FromEulerAngles(Vector3(mRotationEuler.x, mRotationEuler.y, mRotationEuler.z + 90.0f))) * m_transformationZ;	
 
 		// Add scale offset
-		m_transformationY = mScaleGizmo * m_transformationY;
-		m_transformationX = mScaleGizmo * m_transformationX;
-		m_transformationZ = mScaleGizmo * m_transformationZ;
+		m_transformationY = m_scale * m_transformationY;
+		m_transformationX = m_scale * m_transformationX;
+		m_transformationZ = m_scale * m_transformationZ;
 	}
 
-	void TransformationGizmo::SetBuffers()
+	unsigned int TransformGizmo::GetIndexCount()
 	{
 		if (m_type == TransformGizmo_Position)
 		{
-			//m_meshCone->Geometry_Bind();
+			return m_positionModel->GetIndexBuffer()->GetIndexCount();
 		}
 		else if (m_type == TransformGizmo_Scale)
 		{
-			//m_meshCube->Geometry_Bind();
-		}
-	}
-
-	unsigned int TransformationGizmo::GetIndexCount()
-	{
-		if (m_type == TransformGizmo_Position)
-		{
-			//return m_meshCone->Indices_Count();
-		}
-		else if (m_type == TransformGizmo_Scale)
-		{
-			//return m_meshCube->Indices_Count();
+			return m_scaleModel->GetIndexBuffer()->GetIndexCount();
 		}
 
 		return 0;
+	}
+
+	shared_ptr<RHI_VertexBuffer> TransformGizmo::GetVertexBuffer()
+	{
+		if (m_type == TransformGizmo_Position)
+		{
+			return m_positionModel->GetVertexBuffer();
+		}
+		else if (m_type == TransformGizmo_Scale)
+		{
+			return m_scaleModel->GetVertexBuffer();
+		}
+
+		return nullptr;
+	}
+
+	shared_ptr<RHI_IndexBuffer> TransformGizmo::GetIndexBuffer()
+	{
+		if (m_type == TransformGizmo_Position)
+		{
+			return m_positionModel->GetIndexBuffer();
+		}
+		else if (m_type == TransformGizmo_Scale)
+		{
+			return m_scaleModel->GetIndexBuffer();
+		}
+
+		return nullptr;
 	}
 }
