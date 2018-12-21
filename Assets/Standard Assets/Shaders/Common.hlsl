@@ -35,7 +35,7 @@ cbuffer GlobalBuffer : register(b0)
 	float g_gamma;
 };
 
-static const float2 g_texelSize = float2(1.0f / g_resolution.x, 1.0f / g_resolution.y);
+#define g_texelSize float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
 
 /*------------------------------------------------------------------------------
 							[STRUCTS]
