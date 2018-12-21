@@ -397,6 +397,11 @@ bool ImGui::ButtonBehavior(const ImRect& bb, ImGuiID id, bool* out_hovered, bool
     if (flatten_hovered_children)
         g.HoveredWindow = window;
 
+#ifdef IMGUI_ENABLE_TEST_ENGINE
+    if (window->DC.LastItemId != id)
+        ImGuiTestEngineHook_ItemAdd(bb, id);
+#endif
+
     bool pressed = false;
     bool hovered = ItemHoverable(bb, id);
 
@@ -946,6 +951,7 @@ bool ImGui::Checkbox(const char* label, bool* v)
     if (label_size.x > 0.0f)
         RenderText(text_bb.Min, label);
 
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, window->DC.ItemFlags | ImGuiItemStatusFlags_Checkable | (*v ? ImGuiItemStatusFlags_Checked : 0));
     return pressed;
 }
 
@@ -1362,7 +1368,7 @@ bool ImGui::BeginCombo(const char* label, const char* preview_value, ImGuiComboF
     }
 
     char name[16];
-    ImFormatString(name, IM_ARRAYSIZE(name), "##Combo_%02d", g.CurrentPopupStack.Size); // Recycle windows based on depth
+    ImFormatString(name, IM_ARRAYSIZE(name), "##Combo_%02d", g.BeginPopupStack.Size); // Recycle windows based on depth
 
     // Peak into expected window size so we can position it
     if (ImGuiWindow* popup_window = FindWindowByName(name))
@@ -4794,6 +4800,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
     // (Ideally we'd want to add a flag for the user to specify if we want the hit test to be done up to the right side of the content or not)
     const ImRect interact_bb = display_frame ? frame_bb : ImRect(frame_bb.Min.x, frame_bb.Min.y, frame_bb.Min.x + text_width + style.ItemSpacing.x*2, frame_bb.Max.y);
     bool is_open = TreeNodeBehaviorIsOpen(id, flags);
+    bool is_leaf = (flags & ImGuiTreeNodeFlags_Leaf) != 0;
 
     // Store a flag for the current depth to tell if we will allow closing this node when navigating one of its child.
     // For this purpose we essentially compare if g.NavIdIsAlive went from 0 to 1 between TreeNode() and TreePop().
@@ -4809,6 +4816,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
     {
         if (is_open && !(flags & ImGuiTreeNodeFlags_NoTreePushOnOpen))
             TreePushRawID(id);
+        IMGUI_TEST_ENGINE_ITEM_INFO(window->DC.LastItemId, label, window->DC.ItemFlags | (is_leaf ? 0 : ImGuiItemStatusFlags_Openable) | (is_open ? ImGuiItemStatusFlags_Opened : 0));
         return is_open;
     }
 
@@ -4818,13 +4826,13 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
     // - OpenOnArrow .................... single-click on arrow to open
     // - OpenOnDoubleClick|OpenOnArrow .. single-click on arrow or double-click anywhere to open
     ImGuiButtonFlags button_flags = ImGuiButtonFlags_NoKeyModifiers | ((flags & ImGuiTreeNodeFlags_AllowItemOverlap) ? ImGuiButtonFlags_AllowItemOverlap : 0);
-    if (!(flags & ImGuiTreeNodeFlags_Leaf))
+    if (!is_leaf)
         button_flags |= ImGuiButtonFlags_PressedOnDragDropHold;
     if (flags & ImGuiTreeNodeFlags_OpenOnDoubleClick)
         button_flags |= ImGuiButtonFlags_PressedOnDoubleClick | ((flags & ImGuiTreeNodeFlags_OpenOnArrow) ? ImGuiButtonFlags_PressedOnClickRelease : 0);
 
     bool hovered, held, pressed = ButtonBehavior(interact_bb, id, &hovered, &held, button_flags);
-    if (!(flags & ImGuiTreeNodeFlags_Leaf))
+    if (!is_leaf)
     {
         bool toggled = false;
         if (pressed)
@@ -4892,7 +4900,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
 
         if (flags & ImGuiTreeNodeFlags_Bullet)
             RenderBullet(frame_bb.Min + ImVec2(text_offset_x * 0.5f, g.FontSize*0.50f + text_base_offset_y));
-        else if (!(flags & ImGuiTreeNodeFlags_Leaf))
+        else if (!is_leaf)
             RenderArrow(frame_bb.Min + ImVec2(padding.x, g.FontSize*0.15f + text_base_offset_y), is_open ? ImGuiDir_Down : ImGuiDir_Right, 0.70f);
         if (g.LogEnabled)
             LogRenderedText(&text_pos, ">");
@@ -4901,6 +4909,7 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
 
     if (is_open && !(flags & ImGuiTreeNodeFlags_NoTreePushOnOpen))
         TreePushRawID(id);
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, window->DC.ItemFlags | (is_leaf ? 0 : ImGuiItemStatusFlags_Openable) | (is_open ? ImGuiItemStatusFlags_Opened : 0));
     return is_open;
 }
 
@@ -5590,7 +5599,7 @@ bool ImGui::BeginMenu(const char* label, bool enabled)
 
     bool pressed;
     bool menu_is_open = IsPopupOpen(id);
-    bool menuset_is_open = !(window->Flags & ImGuiWindowFlags_Popup) && (g.OpenPopupStack.Size > g.CurrentPopupStack.Size && g.OpenPopupStack[g.CurrentPopupStack.Size].OpenParentId == window->IDStack.back());
+    bool menuset_is_open = !(window->Flags & ImGuiWindowFlags_Popup) && (g.OpenPopupStack.Size > g.BeginPopupStack.Size && g.OpenPopupStack[g.BeginPopupStack.Size].OpenParentId == window->IDStack.back());
     ImGuiWindow* backed_nav_window = g.NavWindow;
     if (menuset_is_open)
         g.NavWindow = window;  // Odd hack to allow hovering across menus of a same menu-set (otherwise we wouldn't be able to hover parent)
@@ -5631,9 +5640,9 @@ bool ImGui::BeginMenu(const char* label, bool enabled)
     {
         // Implement http://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown to avoid using timers, so menus feels more reactive.
         bool moving_within_opened_triangle = false;
-        if (g.HoveredWindow == window && g.OpenPopupStack.Size > g.CurrentPopupStack.Size && g.OpenPopupStack[g.CurrentPopupStack.Size].ParentWindow == window && !(window->Flags & ImGuiWindowFlags_MenuBar))
+        if (g.HoveredWindow == window && g.OpenPopupStack.Size > g.BeginPopupStack.Size && g.OpenPopupStack[g.BeginPopupStack.Size].ParentWindow == window && !(window->Flags & ImGuiWindowFlags_MenuBar))
         {
-            if (ImGuiWindow* next_window = g.OpenPopupStack[g.CurrentPopupStack.Size].Window)
+            if (ImGuiWindow* next_window = g.OpenPopupStack[g.BeginPopupStack.Size].Window)
             {
                 ImRect next_window_rect = next_window->Rect();
                 ImVec2 ta = g.IO.MousePos - g.IO.MouseDelta;
@@ -5684,9 +5693,11 @@ bool ImGui::BeginMenu(const char* label, bool enabled)
     if (!enabled) // explicitly close if an open menu becomes disabled, facilitate users code a lot in pattern such as 'if (BeginMenu("options", has_object)) { ..use object.. }'
         want_close = true;
     if (want_close && IsPopupOpen(id))
-        ClosePopupToLevel(g.CurrentPopupStack.Size);
+        ClosePopupToLevel(g.BeginPopupStack.Size, true);
 
-    if (!menu_is_open && want_open && g.OpenPopupStack.Size > g.CurrentPopupStack.Size)
+    IMGUI_TEST_ENGINE_ITEM_INFO(id, label, window->DC.ItemFlags | ImGuiItemStatusFlags_Openable | (menu_is_open ? ImGuiItemStatusFlags_Opened : 0));
+
+    if (!menu_is_open && want_open && g.OpenPopupStack.Size > g.BeginPopupStack.Size)
     {
         // Don't recycle same menu level in the same frame, first close the other menu and yield for a frame.
         OpenPopup(label);
@@ -5712,14 +5723,14 @@ bool ImGui::BeginMenu(const char* label, bool enabled)
 
 void ImGui::EndMenu()
 {
-    // Nav: When a left move request _within our child menu_ failed, close the menu.
+    // Nav: When a left move request _within our child menu_ failed, close ourselves (the _parent_ menu).
     // A menu doesn't close itself because EndMenuBar() wants the catch the last Left<>Right inputs.
     // However, it means that with the current code, a BeginMenu() from outside another menu or a menu-bar won't be closable with the Left direction.
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = g.CurrentWindow;
     if (g.NavWindow && g.NavWindow->ParentWindow == window && g.NavMoveDir == ImGuiDir_Left && NavMoveRequestButNoResultYet() && window->DC.LayoutType == ImGuiLayoutType_Vertical)
     {
-        ClosePopupToLevel(g.OpenPopupStack.Size - 1);
+        ClosePopupToLevel(g.BeginPopupStack.Size, true);
         NavMoveRequestCancel();
     }
 
@@ -5765,6 +5776,8 @@ bool ImGui::MenuItem(const char* label, const char* shortcut, bool selected, boo
         if (selected)
             RenderCheckMark(pos + ImVec2(window->MenuColumns.Pos[2] + extra_w + g.FontSize * 0.40f, g.FontSize * 0.134f * 0.5f), GetColorU32(enabled ? ImGuiCol_Text : ImGuiCol_TextDisabled), g.FontSize  * 0.866f);
     }
+
+    IMGUI_TEST_ENGINE_ITEM_INFO(window->DC.LastItemId, label, window->DC.ItemFlags | ImGuiItemStatusFlags_Checkable | (selected ? ImGuiItemStatusFlags_Checked : 0));
     return pressed;
 }
 
@@ -5781,6 +5794,8 @@ bool ImGui::MenuItem(const char* label, const char* shortcut, bool* p_selected, 
 
 //-------------------------------------------------------------------------
 // [SECTION] Widgets: BeginTabBar, EndTabBar, etc.
+//-------------------------------------------------------------------------
+// [BETA API] API may evolve!
 //-------------------------------------------------------------------------
 // - BeginTabBar()
 // - BeginTabBarEx() [Internal]
@@ -5972,7 +5987,7 @@ static void ImGui::TabBarLayout(ImGuiTabBar* tab_bar)
     {
         if (ImGuiTabItem* tab1 = TabBarFindTabByID(tab_bar, tab_bar->ReorderRequestTabId))
         {
-            IM_ASSERT(tab_bar->Flags & ImGuiTabBarFlags_Reorderable);
+            //IM_ASSERT(tab_bar->Flags & ImGuiTabBarFlags_Reorderable); // <- this may happen when using debug tools
             int tab2_order = tab_bar->GetTabOrder(tab1) + tab_bar->ReorderRequestDir;
             if (tab2_order >= 0 && tab2_order < tab_bar->Tabs.Size)
             {
@@ -6134,7 +6149,7 @@ ImGuiTabItem* ImGui::TabBarFindTabByID(ImGuiTabBar* tab_bar, ImGuiID tab_id)
 
 // The purpose of this call is to register tab in advance so we can control their order at the time they appear. 
 // Otherwise calling this is unnecessary as tabs are appending as needed by the BeginTabItem() function.
-void ImGui::TabBarAddTab(ImGuiTabBar* tab_bar, ImGuiWindow* window, ImGuiTabItemFlags tab_flags)
+void ImGui::TabBarAddTab(ImGuiTabBar* tab_bar, ImGuiTabItemFlags tab_flags, ImGuiWindow* window)
 {
     ImGuiContext& g = *GImGui;
     IM_ASSERT(TabBarFindTabByID(tab_bar, window->ID) == NULL);
@@ -6298,6 +6313,8 @@ static ImGuiTabItem* ImGui::TabBarTabListPopupButton(ImGuiTabBar* tab_bar)
 //-------------------------------------------------------------------------
 // [SECTION] Widgets: BeginTabItem, EndTabItem, etc.
 //-------------------------------------------------------------------------
+// [BETA API] API may evolve!
+//-------------------------------------------------------------------------
 // - BeginTabItem()
 // - EndTabItem()
 // - TabItemEx() [Internal]
@@ -6317,7 +6334,10 @@ bool    ImGui::BeginTabItem(const char* label, bool* p_open, ImGuiTabItemFlags f
     ImGuiTabBar* tab_bar = g.CurrentTabBar.back();
     bool ret = TabItemEx(tab_bar, label, p_open, flags, NULL);
     if (ret && !(flags & ImGuiTabItemFlags_NoPushId))
-        PushID(tab_bar->Tabs[tab_bar->LastTabItemIdx].ID);
+    {
+        ImGuiTabItem* tab = &tab_bar->Tabs[tab_bar->LastTabItemIdx];
+        g.CurrentWindow->IDStack.push_back(tab->ID);    // We already hashed 'label' so push into the ID stack directly instead of doing another hash through PushID(label)
+    }
     return ret;
 }
 
@@ -6331,7 +6351,7 @@ void    ImGui::EndTabItem()
     ImGuiTabBar* tab_bar = g.CurrentTabBar.back();
     ImGuiTabItem* tab = &tab_bar->Tabs[tab_bar->LastTabItemIdx];
     if (!(tab->Flags & ImGuiTabItemFlags_NoPushId))
-        PopID();
+        g.CurrentWindow->IDStack.pop_back();
 }
 
 bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, ImGuiTabItemFlags flags, ImGuiWindow* docked_window)
@@ -6464,8 +6484,7 @@ bool    ImGui::TabItemEx(ImGuiTabBar* tab_bar, const char* label, bool* p_open, 
     }
     else if (held && !tab_appearing && IsMouseDragging(0))
     {
-        // Drag and drop
-        // Re-order local or dockable tabs
+        // Drag and drop: re-order tabs
         float drag_distance_from_edge_x = 0.0f;
         if (!g.DragDropActive && ((tab_bar->Flags & ImGuiTabBarFlags_Reorderable) || (flags & ImGuiTabItemFlags_DockedWindow)))
         {
@@ -6620,7 +6639,7 @@ void ImGui::TabItemBackground(ImDrawList* draw_list, const ImRect& bb, ImGuiTabI
     draw_list->PathClear();
 }
 
-// Render text label (with clipping + alpha gradient) + unsaved marker + Close Button logic
+// Render text label (with custom clipping) + Unsaved Document marker + Close Button logic
 bool ImGui::TabItemLabelAndCloseButton(ImDrawList* draw_list, const ImRect& bb, ImGuiTabItemFlags flags, const char* label, ImGuiID tab_id, ImGuiID close_button_id)
 {
     ImGuiContext& g = *GImGui;
@@ -6666,7 +6685,7 @@ bool ImGui::TabItemLabelAndCloseButton(ImDrawList* draw_list, const ImRect& bb, 
     }
 
     // Label with ellipsis
-    // FIXME: This could be extracted into a helper but or use of text_pixel_clip_bb and !close_button_visible makes it tricky to abstract at the moment
+    // FIXME: This should be extracted into a helper but the use of text_pixel_clip_bb and !close_button_visible makes it tricky to abstract at the moment
     const char* label_display_end = FindRenderedTextEnd(label);
     if (label_size.x > text_ellipsis_clip_bb.GetWidth())
     {

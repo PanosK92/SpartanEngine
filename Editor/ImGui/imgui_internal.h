@@ -330,6 +330,14 @@ enum ImGuiItemStatusFlags_
     ImGuiItemStatusFlags_HoveredRect        = 1 << 0,
     ImGuiItemStatusFlags_HasDisplayRect     = 1 << 1,
     ImGuiItemStatusFlags_Edited             = 1 << 2    // Value exposed by item was edited in the current frame (should match the bool return value of most widgets)
+
+#ifdef IMGUI_ENABLE_TEST_ENGINE
+    , // [imgui-test only]
+    ImGuiItemStatusFlags_Openable           = 1 << 10,  // 
+    ImGuiItemStatusFlags_Opened             = 1 << 11,  // 
+    ImGuiItemStatusFlags_Checkable          = 1 << 12,  // 
+    ImGuiItemStatusFlags_Checked            = 1 << 13   //
+#endif
 };
 
 // FIXME: this is in development, not exposed/functional as a generic feature yet.
@@ -682,10 +690,11 @@ struct ImGuiViewportP : public ImGuiViewport
     ImVec2              LastPlatformSize;
     ImVec2              LastRendererSize;
 
-    ImGuiViewportP()         { Idx = -1; LastFrameActive = LastFrameOverlayDrawList = LastFrontMostStampCount = -1; LastNameHash = 0; Alpha = LastAlpha = 1.0f; PlatformMonitor = -1; PlatformWindowCreated = PlatformWindowMinimized = false; Window = NULL; OverlayDrawList = NULL; LastPlatformPos = LastPlatformSize = LastRendererSize = ImVec2(FLT_MAX, FLT_MAX); }
-    ~ImGuiViewportP()        { if (OverlayDrawList) IM_DELETE(OverlayDrawList); }
-    ImRect  GetRect() const  { return ImRect(Pos.x, Pos.y, Pos.x + Size.x, Pos.y + Size.y); }
-    ImVec2  GetCenter() const{ return ImVec2(Pos.x + Size.x * 0.5f, Pos.y + Size.y * 0.5f); }
+    ImGuiViewportP()            { Idx = -1; LastFrameActive = LastFrameOverlayDrawList = LastFrontMostStampCount = -1; LastNameHash = 0; Alpha = LastAlpha = 1.0f; PlatformMonitor = -1; PlatformWindowCreated = PlatformWindowMinimized = false; Window = NULL; OverlayDrawList = NULL; LastPlatformPos = LastPlatformSize = LastRendererSize = ImVec2(FLT_MAX, FLT_MAX); }
+    ~ImGuiViewportP()           { if (OverlayDrawList) IM_DELETE(OverlayDrawList); }
+    ImRect  GetRect() const     { return ImRect(Pos.x, Pos.y, Pos.x + Size.x, Pos.y + Size.y); }
+    ImVec2  GetCenter() const   { return ImVec2(Pos.x + Size.x * 0.5f, Pos.y + Size.y * 0.5f); }
+    void    ClearRequestFlags() { PlatformRequestClose = PlatformRequestMove = PlatformRequestResize = false; }
 };
 
 struct ImGuiNavMoveResult
@@ -868,7 +877,7 @@ struct ImGuiContext
     ImVector<ImGuiStyleMod> StyleModifiers;                     // Stack for PushStyleVar()/PopStyleVar()
     ImVector<ImFont*>       FontStack;                          // Stack for PushFont()/PopFont()
     ImVector<ImGuiPopupRef> OpenPopupStack;                     // Which popups are open (persistent)
-    ImVector<ImGuiPopupRef> CurrentPopupStack;                  // Which level of BeginPopup() we are in (reset every frame)
+    ImVector<ImGuiPopupRef> BeginPopupStack;                    // Which level of BeginPopup() we are in (reset every frame)
     ImGuiNextWindowData     NextWindowData;                     // Storage for SetNextWindow** functions
     bool                    NextTreeNodeOpenVal;                // Storage for SetNextTreeNode** functions
     ImGuiCond               NextTreeNodeOpenCond;
@@ -1326,17 +1335,17 @@ struct ImGuiItemHoveredDataBackup
 
 enum ImGuiTabBarFlagsPrivate_
 {
-    ImGuiTabBarFlags_DockNode                       = 1 << 20,  // Part of a dock node
-    ImGuiTabBarFlags_DockNodeIsDockSpace            = 1 << 21,  // Part of an explicit dockspace node node
-    ImGuiTabBarFlags_IsFocused                      = 1 << 22,
-    ImGuiTabBarFlags_SaveSettings                   = 1 << 23   // FIXME: Settings are handled by the docking system, this only request the tab bar to mark settings dirty when reordering tabs
+    ImGuiTabBarFlags_DockNode                   = 1 << 20,  // Part of a dock node
+    ImGuiTabBarFlags_DockNodeIsDockSpace        = 1 << 21,  // Part of an explicit dockspace node node
+    ImGuiTabBarFlags_IsFocused                  = 1 << 22,
+    ImGuiTabBarFlags_SaveSettings               = 1 << 23   // FIXME: Settings are handled by the docking system, this only request the tab bar to mark settings dirty when reordering tabs
 };
 
 enum ImGuiTabItemFlagsPrivate_
 {
-    ImGuiTabItemFlags_DockedWindow                  = 1 << 20,  // [Docking]
-    ImGuiTabItemFlags_Unsorted                      = 1 << 22,  // [Docking] Trailing tabs with the _Unsorted flag will be sorted based on the DockOrder of their Window.
-    ImGuiTabItemFlags_Preview                       = 1 << 21   // [Docking] Display tab shape for docking preview (height is adjusted slightly to compensate for the yet missing tab bar)
+    ImGuiTabItemFlags_DockedWindow              = 1 << 20,  // [Docking]
+    ImGuiTabItemFlags_Unsorted                  = 1 << 22,  // [Docking] Trailing tabs with the _Unsorted flag will be sorted based on the DockOrder of their Window.
+    ImGuiTabItemFlags_Preview                   = 1 << 21   // [Docking] Display tab shape for docking preview (height is adjusted slightly to compensate for the yet missing tab bar)
 };
 
 // Storage for one active tab item (sizeof() 32~40 bytes)
@@ -1344,14 +1353,14 @@ struct ImGuiTabItem
 {
     ImGuiID             ID;
     ImGuiTabItemFlags   Flags;
-    ImGuiWindow*        Window;             // When TabItem is part of a DockNode's TabBar, we hold on to a window.
+    ImGuiWindow*        Window;                 // When TabItem is part of a DockNode's TabBar, we hold on to a window.
     int                 LastFrameVisible;
-    int                 LastFrameSelected;  // This allows us to infer an ordered list of the last activated tabs with little maintenance
-    float               Offset;             // Position relative to beginning of tab
-    float               Width;              // Width currently displayed
-    float               WidthContents;      // Width of actual contents, stored during BeginTabItem() call
+    int                 LastFrameSelected;      // This allows us to infer an ordered list of the last activated tabs with little maintenance
+    float               Offset;                 // Position relative to beginning of tab
+    float               Width;                  // Width currently displayed
+    float               WidthContents;          // Width of actual contents, stored during BeginTabItem() call
 
-    ImGuiTabItem()      { ID = Flags = 0; Window = NULL; LastFrameVisible = LastFrameSelected = -1; Offset = Width = WidthContents = 0.0f; }
+    ImGuiTabItem()      { ID = Flags = 0; Window = NULL;  LastFrameVisible = LastFrameSelected = -1; Offset = Width = WidthContents = 0.0f; }
 };
 
 // Storage for a tab bar (sizeof() 92~96 bytes)
@@ -1466,10 +1475,9 @@ namespace ImGui
 
     // Popups, Modals, Tooltips
     IMGUI_API void          OpenPopupEx(ImGuiID id);
-    IMGUI_API void          ClosePopup(ImGuiID id);
-    IMGUI_API void          ClosePopupToLevel(int remaining);
+    IMGUI_API void          ClosePopupToLevel(int remaining, bool apply_focus_to_window_under);
     IMGUI_API void          ClosePopupsOverWindow(ImGuiWindow* ref_window);
-    IMGUI_API bool          IsPopupOpen(ImGuiID id);
+    IMGUI_API bool          IsPopupOpen(ImGuiID id); // Test for id within current popup stack level (currently begin-ed into); this doesn't scan the whole popup stack!
     IMGUI_API bool          BeginPopupEx(ImGuiID id, ImGuiWindowFlags extra_flags);
     IMGUI_API void          BeginTooltipEx(ImGuiWindowFlags extra_flags, bool override_previous_tooltip = true);
     IMGUI_API ImGuiWindow*  GetFrontMostPopupModal();
@@ -1540,7 +1548,7 @@ namespace ImGui
     // Tab Bars
     IMGUI_API bool          BeginTabBarEx(ImGuiTabBar* tab_bar, const ImRect& bb, ImGuiTabBarFlags flags, ImGuiDockNode* dock_node);
     IMGUI_API ImGuiTabItem* TabBarFindTabByID(ImGuiTabBar* tab_bar, ImGuiID tab_id);
-    IMGUI_API void          TabBarAddTab(ImGuiTabBar* tab_bar, ImGuiWindow* window, ImGuiTabItemFlags tab_flags = ImGuiTabItemFlags_None);
+    IMGUI_API void          TabBarAddTab(ImGuiTabBar* tab_bar, ImGuiTabItemFlags tab_flags, ImGuiWindow* window);
     IMGUI_API void          TabBarRemoveTab(ImGuiTabBar* tab_bar, ImGuiID tab_id);
     IMGUI_API void          TabBarCloseTab(ImGuiTabBar* tab_bar, ImGuiTabItem* tab);
     IMGUI_API void          TabBarQueueChangeTabOrder(ImGuiTabBar* tab_bar, const ImGuiTabItem* tab, int dir);
@@ -1625,6 +1633,18 @@ IMGUI_API void              ImFontAtlasBuildPackCustomRects(ImFontAtlas* atlas, 
 IMGUI_API void              ImFontAtlasBuildFinish(ImFontAtlas* atlas);
 IMGUI_API void              ImFontAtlasBuildMultiplyCalcLookupTable(unsigned char out_table[256], float in_multiply_factor);
 IMGUI_API void              ImFontAtlasBuildMultiplyRectAlpha8(const unsigned char table[256], unsigned char* pixels, int x, int y, int w, int h, int stride);
+
+// Test engine hooks (imgui-test)
+//#define IMGUI_ENABLE_TEST_ENGINE
+#ifdef IMGUI_ENABLE_TEST_ENGINE
+extern void                 ImGuiTestEngineHook_PreNewFrame();
+extern void                 ImGuiTestEngineHook_PostNewFrame();
+extern void                 ImGuiTestEngineHook_ItemAdd(const ImRect& bb, ImGuiID id);
+extern void                 ImGuiTestEngineHook_ItemInfo(ImGuiID id, const char* label, int flags);
+#define IMGUI_TEST_ENGINE_ITEM_INFO(_ID, _LABEL, _FLAGS)  ImGuiTestEngineHook_ItemInfo(_ID, _LABEL, _FLAGS)   // Register status flags
+#else
+#define IMGUI_TEST_ENGINE_ITEM_INFO(_ID, _LABEL, _FLAGS)  do { } while (0)
+#endif
 
 #ifdef __clang__
 #pragma clang diagnostic pop

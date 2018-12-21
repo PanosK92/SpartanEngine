@@ -97,6 +97,8 @@ namespace Directus
 	enum Texture_Sampler_Filter
 	{
 		Texture_Sampler_Comparison_Point,
+		Texture_Sampler_Comparison_Bilinear,
+		Texture_Sampler_Comparison_Trilinear,
 		Texture_Sampler_Point,
 		Texture_Sampler_Bilinear,
 		Texture_Sampler_Trilinear,
