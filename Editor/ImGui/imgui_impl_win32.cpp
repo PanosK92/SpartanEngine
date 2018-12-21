@@ -20,6 +20,7 @@
 // CHANGELOG
 // (minor and older changes stripped away, please see git history for details)
 //  2018-XX-XX: Platform: Added support for multiple windows via the ImGuiPlatformIO interface.
+//  2018-11-30: Misc: Setting up io.BackendPlatformName so it can be displayed in the About Window.
 //  2018-06-29: Inputs: Added support for the ImGuiMouseCursor_Hand cursor.
 //  2018-06-10: Inputs: Fixed handling of mouse wheel messages to support fine position messages (typically sent by track-pads).
 //  2018-06-08: Misc: Extracted imgui_impl_win32.cpp/.h away from the old combined DX9/DX10/DX11/DX12 examples.
@@ -61,6 +62,7 @@ bool    ImGui_ImplWin32_Init(void* hwnd)
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;          // We can honor io.WantSetMousePos requests (optional, rarely used)
     io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;    // We can create multi-viewports on the Platform side (optional)
     io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport; // We can set io.MouseHoveredViewport correctly (optional, not easy)
+    io.BackendPlatformName = "imgui_impl_win32";
 
     // Our mouse update function expect PlatformHandle to be filled for the main viewport
     g_hWnd = (HWND)hwnd;
@@ -133,21 +135,14 @@ static bool ImGui_ImplWin32_UpdateMouseCursor()
     return true;
 }
 
-// This code supports multiple OS Windows mapped into different ImGui viewports, 
-// Because of that, it is a little more complicated than your typical single-viewport binding code.
-// A) In Single-viewport mode imgui needs:
-//   - io.MousePos ............... mouse position, in client window coordinates (what you'd get from GetCursorPos+ScreenToClient() or from WM_MOUSEMOVE) 
-//                                 io.MousePos is (0,0) when the mouse is on the upper-left corner of the application window.
-// B) In Multi-viewport mode imgui needs: (when ImGuiConfigFlags_ViewportsEnable is set)
-//   - io.MousePos ............... mouse position, in OS absolute coordinates (what you'd get from GetCursorPos(), or from WM_MOUSEMOVE+viewport->Pos). 
-//                                 io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor.
-//   - io.MouseHoveredViewport ... [optional] viewport which mouse is hovering, with _VERY_ specific and strict conditions (Read comments next to io.MouseHoveredViewport. This is _NOT_ easy to provide in many high-level engine because of how we use the ImGuiViewportFlags_NoInputs flag)
+// This code supports multi-viewports (multiple OS Windows mapped into different Dear ImGui viewports)
+// Because of that, it is a little more complicated than your typical single-viewport binding code!
 static void ImGui_ImplWin32_UpdateMousePos()
 {
     ImGuiIO& io = ImGui::GetIO();
 
     // Set OS mouse position if requested (rarely used, only when ImGuiConfigFlags_NavEnableSetMousePos is enabled by user)
-    // (When multi-viewports are enabled, all imgui positions are same as OS positions.)
+    // (When multi-viewports are enabled, all imgui positions are same as OS positions)
     if (io.WantSetMousePos)
     {
         POINT pos = { (int)io.MousePos.x, (int)io.MousePos.y };
@@ -159,21 +154,39 @@ static void ImGui_ImplWin32_UpdateMousePos()
     io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
     io.MouseHoveredViewport = 0;
 
-    // Set mouse position and viewport
-    // (Note that ScreenToClient() and adding +viewport->Pos are mutually cancelling each others when we have multi-viewport enabled. In single-viewport mode, viewport->Pos will be zero)
-    POINT pos;
-    if (!::GetCursorPos(&pos))
+    // Set imgui mouse position
+    POINT mouse_screen_pos;
+    if (!::GetCursorPos(&mouse_screen_pos))
         return;
     if (HWND focused_hwnd = ::GetActiveWindow())
-        if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)focused_hwnd))
+    {
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
-            POINT client_pos = pos;
-            ::ScreenToClient(focused_hwnd, &client_pos);
-            io.MousePos = ImVec2(viewport->Pos.x + (float)client_pos.x, viewport->Pos.y + (float)client_pos.y);
+            // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
+            // This is the position you can get with GetCursorPos(). In theory adding viewport->Pos is also the reverse operation of doing ScreenToClient().
+            if (ImGui::FindViewportByPlatformHandle((void*)focused_hwnd) != NULL)
+                io.MousePos = ImVec2((float)mouse_screen_pos.x, (float)mouse_screen_pos.y);
         }
+        else
+        {
+            // Single viewport mode: mouse position in client window coordinates (io.MousePos is (0,0) when the mouse is on the upper-left corner of the app window.)
+            // This is the position you can get with GetCursorPos() + ScreenToClient() or from WM_MOUSEMOVE.
+            if (focused_hwnd == g_hWnd)
+            {
+                POINT mouse_client_pos = mouse_screen_pos;
+                ::ScreenToClient(focused_hwnd, &mouse_client_pos);
+                io.MousePos = ImVec2((float)mouse_client_pos.x, (float)mouse_client_pos.y);
+            }
+        }
+    }
 
-    // Our back-end can tell which window is under the mouse cursor (not every back-end can), so pass that info to imgui
-    if (HWND hovered_hwnd = ::WindowFromPoint(pos))
+    // (Optional) When using multiple viewports: set io.MouseHoveredViewport to the viewport the OS mouse cursor is hovering.
+    // Important: this information is not easy to provide and many high-level windowing library won't be able to provide it correctly, because
+    // - This is _ignoring_ viewports with the ImGuiViewportFlags_NoInputs flag (pass-through windows).
+    // - This is _regardless_ of whether another viewport is focused or being dragged from.
+    // If ImGuiBackendFlags_HasMouseHoveredViewport is not set by the back-end, imgui will ignore this field and infer the information by relying on the
+    // rectangles and last focused time of every viewports it knows about. It will be unaware of other windows that may be sitting between or over your windows.
+    if (HWND hovered_hwnd = ::WindowFromPoint(mouse_screen_pos))
         if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)hovered_hwnd))
             io.MouseHoveredViewport = viewport->ID;
 }
@@ -353,7 +366,7 @@ void ImGui_ImplWin32_EnableDpiAwareness()
 float ImGui_ImplWin32_GetDpiScaleForMonitor(void* monitor)
 {
     UINT xdpi = 96, ydpi = 96;
-    if (IsWindows8Point1OrGreater())
+    if (::IsWindows8Point1OrGreater())
     {
         static HINSTANCE shcore_dll = ::LoadLibraryA("shcore.dll"); // Reference counted per-process
         if (PFN_GetDpiForMonitor GetDpiForMonitorFn = (PFN_GetDpiForMonitor)::GetProcAddress(shcore_dll, "GetDpiForMonitor"))
@@ -373,13 +386,6 @@ float ImGui_ImplWin32_GetDpiScaleForMonitor(void* monitor)
 float ImGui_ImplWin32_GetDpiScaleForHwnd(void* hwnd)
 {
     HMONITOR monitor = ::MonitorFromWindow((HWND)hwnd, MONITOR_DEFAULTTONEAREST);
-    return ImGui_ImplWin32_GetDpiScaleForMonitor(monitor);
-}
-
-float ImGui_ImplWin32_GetDpiScaleForRect(int x1, int y1, int x2, int y2)
-{
-    RECT viewport_rect = { (LONG)x1, (LONG)y1, (LONG)x2, (LONG)y2 };
-    HMONITOR monitor = ::MonitorFromRect(&viewport_rect, MONITOR_DEFAULTTONEAREST);
     return ImGui_ImplWin32_GetDpiScaleForMonitor(monitor);
 }
 
@@ -576,13 +582,8 @@ static void ImGui_ImplWin32_SetWindowAlpha(ImGuiViewport* viewport, float alpha)
 static float ImGui_ImplWin32_GetWindowDpiScale(ImGuiViewport* viewport)
 {
     ImGuiViewportDataWin32* data = (ImGuiViewportDataWin32*)viewport->PlatformUserData;
-    if (data && data->Hwnd)
-        return ImGui_ImplWin32_GetDpiScaleForHwnd(data->Hwnd);
-
-    // The first frame a viewport is created we don't have a window yet
-    return ImGui_ImplWin32_GetDpiScaleForRect(
-        (int)(viewport->Pos.x), (int)(viewport->Pos.y),
-        (int)(viewport->Pos.x + viewport->Size.x), (int)(viewport->Pos.y + viewport->Size.y));
+    IM_ASSERT(data->Hwnd != 0);
+    return ImGui_ImplWin32_GetDpiScaleForHwnd(data->Hwnd);
 }
 
 // FIXME-DPI: Testing DPI related ideas
@@ -693,7 +694,7 @@ static void ImGui_ImplWin32_InitPlatformInterface()
     platform_io.Platform_GetWindowMinimized = ImGui_ImplWin32_GetWindowMinimized;
     platform_io.Platform_SetWindowTitle = ImGui_ImplWin32_SetWindowTitle;
     platform_io.Platform_SetWindowAlpha = ImGui_ImplWin32_SetWindowAlpha;
-    platform_io.Platform_GetWindowDpiScale = ImGui_ImplWin32_GetWindowDpiScale;
+    platform_io.Platform_GetWindowDpiScale = ImGui_ImplWin32_GetWindowDpiScale; // FIXME-DPI
     platform_io.Platform_OnChangedViewport = ImGui_ImplWin32_OnChangedViewport; // FIXME-DPI
 #if HAS_WIN32_IME
     platform_io.Platform_SetImeInputPos = ImGui_ImplWin32_SetImeInputPos;

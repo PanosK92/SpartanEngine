@@ -87,8 +87,8 @@ bool Editor::Initialize(Context* context, void* windowHandle)
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsNoTaskBarIcon;
-	io.ConfigResizeWindowsFromEdges = true;
-	
+	io.ConfigWindowsResizeFromEdges = true;
+
 	// ImGui backend setup
 	ImGui_ImplWin32_Init(windowHandle);
 	ImGui_ImplDX11_Init(m_rhiDevice->GetDevice<ID3D11Device>(), m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>());

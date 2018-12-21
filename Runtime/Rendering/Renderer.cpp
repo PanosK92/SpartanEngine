@@ -298,12 +298,12 @@ namespace Directus
 
 	void Renderer::CreateSamplers()
 	{
-		m_samplerCompareDepth		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Comparison_Point,	Texture_Address_Clamp,	Texture_Comparison_GreaterEqual);
-		m_samplerPointClamp			= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,				Texture_Address_Clamp,	Texture_Comparison_Always);
-		m_samplerBilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,			Texture_Address_Clamp,	Texture_Comparison_Always);
-		m_samplerBilinearWrap		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,			Texture_Address_Wrap,	Texture_Comparison_Always);
-		m_samplerTrilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Trilinear,			Texture_Address_Clamp,	Texture_Comparison_Always);
-		m_samplerAnisotropicWrap	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,		Texture_Address_Wrap,	Texture_Comparison_Always);
+		m_samplerCompareDepth		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Comparison_Bilinear,	Texture_Address_Clamp,	Texture_Comparison_Greater);
+		m_samplerPointClamp			= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,					Texture_Address_Clamp,	Texture_Comparison_Always);
+		m_samplerBilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,				Texture_Address_Clamp,	Texture_Comparison_Always);
+		m_samplerBilinearWrap		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,				Texture_Address_Wrap,	Texture_Comparison_Always);
+		m_samplerTrilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Trilinear,				Texture_Address_Clamp,	Texture_Comparison_Always);
+		m_samplerAnisotropicWrap	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,			Texture_Address_Wrap,	Texture_Comparison_Always);
 	}
 
 	void Renderer::SetBackBufferAsRenderTarget(bool clear /*= true*/)

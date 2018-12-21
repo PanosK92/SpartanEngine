@@ -18,8 +18,8 @@ Architectual quality is prioritized over development speed.
 - 30+ image file formats support.
 - 40+ 3D file formats support.
 - Cascaded shadow mapping.
-- Component-based game object system.
-- Cross-Platform state of the art editor.
+- Entity-component system.
+- Engine rendered editor.
 - D3D11 rendering backend
 - Deferred rendering.
 - Frustum culling.

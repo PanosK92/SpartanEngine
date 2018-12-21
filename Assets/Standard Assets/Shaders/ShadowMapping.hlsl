@@ -40,32 +40,9 @@ struct PixelInputType
 };
 //==================================
 
-float2 texOffset(float2 shadowMapSize, int x, int y)
-{
-    return float2(x * 1.0f / shadowMapSize.x, y * 1.0f / shadowMapSize.y);
-}
-
 float depthTest(float slice, float2 texCoords, float compare)
 {
    return lightDepthTex.SampleCmpLevelZero(sampler_cmp_depth, float3(texCoords, slice), compare).r;
-}
-
-float sampleShadowMap(int cascadeIndex, float2 size, float2 texCoords, float compare)
-{
-    float2 texelSize 	= float2(1.0f, 1.0f) / size;
-    float2 f 			= frac(texCoords * size + 0.5f);
-    float2 centroidUV 	= floor(texCoords * size + 0.5f) / size;
-
-    float lb 	= depthTest(cascadeIndex, centroidUV + texelSize * float2(0.0f, 0.0f), compare);
-    float lt 	= depthTest(cascadeIndex, centroidUV + texelSize * float2(0.0f, 1.0f), compare);
-    float rb 	= depthTest(cascadeIndex, centroidUV + texelSize * float2(1.0f, 0.0f), compare);
-    float rt 	= depthTest(cascadeIndex, centroidUV + texelSize * float2(1.0f, 1.0f), compare);
-
-    float a 	= lerp(lb, lt, f.y);
-    float b 	= lerp(rb, rt, f.y);
-    float c 	= lerp(a, b, f.x);
-	
-    return c;
 }
 
 float random(float2 seed2) 
@@ -75,7 +52,7 @@ float random(float2 seed2)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float Technique_PCF(int cascadeIndex, float2 size, float2 texCoords, float compare)
+float Technique_PCF(int cascadeIndex, float texel, float2 texCoords, float compare)
 {
 	float amountLit = 0.0f;
 	float count 	= 0.0f;
@@ -86,7 +63,8 @@ float Technique_PCF(int cascadeIndex, float2 size, float2 texCoords, float compa
 		[unroll]
 		for (float x = -PCF_DIM; x <= PCF_DIM; ++x)
 		{
-			amountLit += sampleShadowMap(cascadeIndex, size, texCoords + texOffset(size, x, y), compare);
+			float2 offset 	= float2(x, y) * texel;
+			amountLit 		+= depthTest(cascadeIndex, texCoords + offset, compare);
 			count++;			
 		}
 	}
@@ -121,7 +99,7 @@ float Technique_Poisson(int cascade, float2 texCoords, float compareDepth)
 	return amountLit;
 }
 
-float ShadowMapping(int cascade, float4 positionCS, float shadowMapResolution, float3 normal, float3 lightDir, float bias)
+float ShadowMapping(int cascade, float4 positionCS, float texel, float3 normal, float3 lightDir, float bias)
 {	
 	// If the cascade is not covering this pixel, don't sample anything
 	if( positionCS.x < -1.0f || positionCS.x > 1.0f || 
@@ -131,7 +109,7 @@ float ShadowMapping(int cascade, float4 positionCS, float shadowMapResolution, f
 	float2 texCoord 	= Project(positionCS);
 	float compareDepth	= positionCS.z + bias;
 
-	return Technique_PCF(cascade, shadowMapResolution, texCoord, compareDepth);
+	return Technique_PCF(cascade, texel, texCoord, compareDepth);
 }
 
 PixelInputType mainVS(Vertex_PosUv input)
@@ -154,10 +132,10 @@ float mainPS(PixelInputType input) : SV_TARGET
     float depth_cs      		= depthSample.g; 
 	float bias					= biases.x;
 	float normalBias			= biases.y;
-	float shadowTexel           = 1.0f / shadowMapResolution;
+	float texel          		= 1.0f / shadowMapResolution;
     float NdotL                 = dot(normal, lightDir);
     float cosAngle              = saturate(1.0f - NdotL);
-    float3 scaledNormalOffset   = normal * normalBias * cosAngle * shadowTexel;
+    float3 scaledNormalOffset   = normal * normalBias * cosAngle * texel;
 	float3 positionWS   		= ReconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
 	float4 worldPos 			= float4(positionWS + scaledNormalOffset, 1.0f);
 	
@@ -190,12 +168,12 @@ float mainPS(PixelInputType input) : SV_TARGET
 		float3 shadows[2] 	= { float3(1.0f, 1.0f, 1.0f), float3(1.0f, 1.0f, 1.0f) };
 
 		// Sample the main cascade	
-		shadows[0] = ShadowMapping(cascades[0], positonCS[cascades[0]], shadowMapResolution, normal, lightDir, bias);
+		shadows[0] = ShadowMapping(cascades[0], positonCS[cascades[0]], texel, normal, lightDir, bias);
 		
 		[branch]
 		if (cascades[1] <= 2)
 		{
-			shadows[1] = ShadowMapping(cascades[1], positonCS[cascades[1]], shadowMapResolution, normal, lightDir, bias);
+			shadows[1] = ShadowMapping(cascades[1], positonCS[cascades[1]], texel, normal, lightDir, bias);
 		}
 
 		// Blend cascades		

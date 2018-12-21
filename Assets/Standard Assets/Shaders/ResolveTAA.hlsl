@@ -1,7 +1,7 @@
 // Based on "Temporal Antialiasing In Uncharted 4" by Ke XU - Naughty Dog.
 
-static const float g_blendMin = 0.05f;
-static const float g_blendMax = 0.8f;
+static const float g_blendMin = 0.01f;
+static const float g_blendMax = 0.2f;
 
 float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, Texture2D tex_depth, SamplerState sampler_bilinear)
 {
