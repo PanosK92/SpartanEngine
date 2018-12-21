@@ -1,4 +1,34 @@
 static const float tex_maxMip = 11.0f;
+static const float2 environmentMipSize[12] =
+{
+    float2(4096, 2048),
+	float2(2048, 1024),
+	float2(1024, 512),
+	float2(512, 256),
+	float2(256, 128),
+	float2(128, 64),
+	float2(64, 32),
+	float2(32, 16),
+	float2(16, 8),
+	float2(8, 4),
+	float2(4, 2),
+	float2(2, 1),
+};
+
+float3 SampleEnvironment(SamplerState sampler_linear, Texture2D tex_environment, float2 uv, float mipLevel)
+{
+	float2 texelSize	= environmentMipSize[mipLevel];
+	float dx 			= 1.0f * texelSize.x;
+	float dy 			= 1.0f * texelSize.y;
+
+	float3 tl 			= tex_environment.SampleLevel(sampler_linear, uv + float2(-dx, -dy), mipLevel).rgb;
+	float3 tr			= tex_environment.SampleLevel(sampler_linear, uv + float2(dx, -dy), mipLevel).rgb;
+	float3 bl			= tex_environment.SampleLevel(sampler_linear, uv + float2(-dx, dy), mipLevel).rgb;
+	float3 br 			= tex_environment.SampleLevel(sampler_linear, uv + float2(dx, dy), mipLevel).rgb;
+	float3 ce 			= tex_environment.SampleLevel(sampler_linear, uv, mipLevel).rgb;
+
+	return (tl + tr + bl + br + ce) / 5.0f;
+}
 
 float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 {
@@ -38,12 +68,12 @@ float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pix
 	kD 			*= 1.0f - material.metallic;	
 
 	// Diffuse
-	float3 irradiance	= tex_environment.SampleLevel(samplerLinear, DirectionToSphereUV(normal), tex_maxMip).rgb;
+	float3 irradiance	= SampleEnvironment(samplerLinear, tex_environment, DirectionToSphereUV(normal), 7);
 	float3 cDiffuse		= irradiance * material.albedo;
 
 	// Specular
-	float mipSelect 		= material.alpha * tex_maxMip;
-	float3 prefilteredColor	= tex_environment.SampleLevel(samplerLinear, DirectionToSphereUV(reflection), mipSelect).rgb;
+	float mipLevel 			= material.alpha * tex_maxMip;
+	float3 prefilteredColor	= SampleEnvironment(samplerLinear, tex_environment, DirectionToSphereUV(reflection), mipLevel);
 	float2 envBRDF  		= tex_lutIBL.Sample(samplerLinear, float2(NdV, material.roughness)).xy;
 	float3 cSpecular 		= prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
