@@ -77,7 +77,7 @@ namespace Directus
 		m_flags			|= Render_Gizmo_Physics;	
 		m_flags			|= Render_PostProcess_ToneMapping;
 		m_flags			|= Render_PostProcess_Bloom;
-		m_flags			|= Render_PostProcess_FXAA;
+		//m_flags			|= Render_PostProcess_FXAA;
 		m_flags			|= Render_PostProcess_SSAO;
 		m_flags			|= Render_PostProcess_SSR;
 		m_flags			|= Render_PostProcess_MotionBlur;

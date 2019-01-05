@@ -71,12 +71,13 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float2 texCoord     = input.uv;
     float3 finalColor   = float3(0, 0, 0);
 	
-	// Sample from G-Buffer
+	// Sample from textures
     float4 albedo       	= Degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
     float4 normalSample 	= texNormal.Sample(sampler_linear_clamp, texCoord);
 	float3 normal			= Normal_Decode(normalSample.xyz);
     float occlusion_texture = normalSample.w;
     float4 materialSample   = texMaterial.Sample(sampler_linear_clamp, texCoord);
+	float ssao				= texSSAO.Sample(sampler_linear_clamp, texCoord).r;
 
 	// Create material
     Material material;
@@ -99,15 +100,24 @@ float4 mainPS(PixelInputType input) : SV_TARGET
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }
+
+	//= AMBIENT LIGHT =========================================================
+	float ambient_min		= 0.01f;
+	float ambient_ssao		= 1.0f - ssao;
+	float ambient_material	= 1.0f - occlusion_texture;
+	float ambient_factors	= 1.0f - saturate(ambient_ssao + ambient_material);
+	float ambient_light		= max(ambient_min, ambient_factors);
+	//=========================================================================
 	
 	//= DIRECTIONAL LIGHT ==================================================
 	Light directionalLight;
 	float dirShadow	= texShadows.Sample(sampler_linear_clamp, texCoord).r;
-
+	
 	// Compute
-    directionalLight.color      = dirLightColor.rgb;
-    directionalLight.intensity  = dirLightIntensity.r * dirShadow;
+    directionalLight.color      = dirLightColor.rgb; 
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
+	dirShadow					= ApplyMicroShadow(ambient_light, normal, directionalLight.direction, dirShadow);
+	directionalLight.intensity  = dirLightIntensity.r * dirShadow;
 
 	// Compute illumination
     finalColor += BRDF(material, directionalLight, normal, camera_to_pixel);
@@ -168,14 +178,6 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     }
 	//=======================================================================================================================
 
-	//= AMBIENT LIGHT ================================================================
-	float ambient_min		= 0.01f;
-	float ambient_ssao		= 1.0f - texSSAO.Sample(sampler_linear_clamp, texCoord).r;
-	float ambient_material	= 1.0f - occlusion_texture;
-	float ambient_factors	= 1.0f - saturate(ambient_ssao + ambient_material);
-	float ambient_light		= max(ambient_min, ambient_factors);
-	//================================================================================
-	
 	//= SSR =========================================================================
 	if (padding2.x != 0.0f)
 	{
