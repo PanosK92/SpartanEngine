@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2018 Panos Karabelas
+Copyright(c) 2016-2019 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -174,6 +174,29 @@ namespace Directus
 		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
 	}
 
+	void Renderer::CreateRenderTextures(unsigned int width, unsigned int height)
+	{
+		// Resize everything
+		m_gbuffer	= make_unique<GBuffer>(m_rhiDevice, width, height);
+		m_quad		= make_unique<Rectangle>(m_context);
+		m_quad->Create(0, 0, (float)width, (float)height);
+
+		// Full res
+		m_renderTexFull_HDR_Light	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R32G32B32A32_FLOAT);
+		m_renderTexFull_HDR_Light2	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R32G32B32A32_FLOAT);
+		m_renderTexFull_TAA_Current = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexFull_TAA_History = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
+
+		// Half res
+		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R8_UNORM);
+		m_renderTexHalf_SSAO	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R8_UNORM);
+		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R8_UNORM);
+
+		// Quarter res
+		m_renderTexQuarter_Blur1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexQuarter_Blur2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
+	}
+
 	void Renderer::CreateShaders()
 	{
 		// Get standard shader directory
@@ -185,7 +208,7 @@ namespace Directus
 
 		// Light
 		m_shaderLight = make_shared<LightShader>(m_rhiDevice);
-		m_shaderLight->Compile(shaderDirectory + "Light.hlsl", m_context);
+		m_shaderLight->CompileVertexPixel(shaderDirectory + "Light.hlsl", Input_PositionTexture);
 
 		// Transparent
 		m_shaderTransparent = make_shared<RHI_Shader>(m_rhiDevice);
@@ -485,29 +508,6 @@ namespace Directus
 	{
 		m_lineVertices.emplace_back(from, colorFrom);
 		m_lineVertices.emplace_back(to, colorTo);
-	}
-
-	void Renderer::CreateRenderTextures(unsigned int width, unsigned int height)
-	{
-		// Resize everything
-		m_gbuffer = make_unique<GBuffer>(m_rhiDevice, width, height);
-		m_quad = make_unique<Rectangle>(m_context);
-		m_quad->Create(0, 0, (float)width, (float)height);
-
-		// Full res
-		m_renderTexFull_HDR_Light	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R32G32B32A32_FLOAT);
-		m_renderTexFull_HDR_Light2	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R32G32B32A32_FLOAT);
-		m_renderTexFull_TAA_Current	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexFull_TAA_History	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
-		
-		// Half res
-		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexHalf_SSAO	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R16G16B16A16_FLOAT);
-
-		// Quarter res
-		m_renderTexQuarter_Blur1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexQuarter_Blur2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
 	}
 
 	void Renderer::SetGlobalBuffer(const Matrix& mMVP, unsigned int resolutionWidth, unsigned int resolutionHeight, float blur_sigma, const Math::Vector2& blur_direction)
@@ -848,7 +848,7 @@ namespace Directus
 		if (m_flags & Render_PostProcess_SSAO)
 		{
 			Pass_SSAO(texIn_Spare);
-			float sigma = 3.0f;
+			float sigma = 2.0f;
 			float pixelStride = 2.0f;
 			Pass_BlurBilateralGaussian(texIn_Spare, texOut_SSAO, sigma, pixelStride);
 		}
@@ -882,8 +882,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Material));
 		m_rhiPipeline->SetTexture(texShadows);
-		if (Flags_IsSet(Render_PostProcess_SSAO)) { m_rhiPipeline->SetTexture(texSSAO); }
-		else { m_rhiPipeline->SetTexture(m_texBlack); }
+		if (Flags_IsSet(Render_PostProcess_SSAO)) { m_rhiPipeline->SetTexture(texSSAO); } else { m_rhiPipeline->SetTexture(m_texWhite); }
 		m_rhiPipeline->SetTexture(m_renderTexFull_HDR_Light2); // SSR
 		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
 		m_rhiPipeline->SetTexture(m_tex_lutIBL);
@@ -1070,7 +1069,6 @@ namespace Directus
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetShader(m_shaderSSAO);
-		m_rhiPipeline->SetTexture(m_renderTexFull_HDR_Light2);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_texNoiseNormal);

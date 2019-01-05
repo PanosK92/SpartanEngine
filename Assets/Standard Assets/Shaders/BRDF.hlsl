@@ -59,14 +59,13 @@ float3 BRDF(Material material, Light light, float3 normal, float3 camera_to_pixe
     float NdotL = saturate(dot(normal, light.direction));   
     float NdotH = saturate(dot(normal, h));
     float VdotH = saturate(dot(-camera_to_pixel, h));
-	
 	// BRDF Diffuse
     float3 cDiffuse 	= Diffuse_OrenNayar(material.albedo, material.roughness, NdotV, NdotL, VdotH);
 	
 	// BRDF Specular	
 	float3 F 			= F_FresnelSchlick(VdotH, material.F0);
     float G 			= GeometrySmith(NdotV, NdotL, material.roughness);
-    float D 			= DistributionGGX(NdotH, material.alpha);
+    float D 			= DistributionGGX(NdotH, material.roughness_alpha);
 	float3 nominator 	= F * G * D;
 	float denominator 	= 4.0f * NdotL * NdotV;
 	float3 cSpecular 	= nominator / max(0.00001f, denominator);

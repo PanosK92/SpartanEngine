@@ -75,23 +75,24 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float4 albedo       	= Degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
     float4 normalSample 	= texNormal.Sample(sampler_linear_clamp, texCoord);
 	float3 normal			= Normal_Decode(normalSample.xyz);
-    float occlusionTex  	= normalSample.w;
+    float occlusion_texture = normalSample.w;
     float4 materialSample   = texMaterial.Sample(sampler_linear_clamp, texCoord);
 
 	// Create material
     Material material;
-    material.albedo     	= albedo.rgb;
-    material.roughness  	= materialSample.r;
-    material.metallic   	= materialSample.g;
-    material.emission   	= materialSample.b;
-	material.F0 			= lerp(0.04f, material.albedo, material.metallic); // Aka F0
-	material.alpha 			= max(0.001f, material.roughness * material.roughness);	
-	
+    material.albedo     		= albedo.rgb;
+    material.roughness  		= materialSample.r;
+    material.metallic   		= materialSample.g;
+    material.emission   		= materialSample.b;
+	material.F0 				= lerp(0.04f, material.albedo, material.metallic);
+	material.roughness_alpha 	= max(0.001f, material.roughness * material.roughness);
+
 	// Compute common values
     float2 depth  			= texDepth.Sample(sampler_linear_clamp, texCoord).rg;
     float3 worldPos 		= ReconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
+	[branch]
     if (materialSample.a == 0.0f) // Render technique
     {
         finalColor = texEnvironment.Sample(sampler_linear_clamp, DirectionToSphereUV(camera_to_pixel)).rgb;
@@ -99,27 +100,9 @@ float4 mainPS(PixelInputType input) : SV_TARGET
         return float4(finalColor, 1.0f);
     }
 	
-	//= OCCLUSION =========================================================
-	float dirShadow			= texShadows.Sample(sampler_linear_clamp, texCoord).r;
-	
-	// SSAO
-	float4 ssao				= texSSAO.Sample(sampler_linear_clamp, texCoord);
-    float ssao_occlusion	= ssao.a;
-	float3 ssao_color		= ssao.rgb;
-	
-	// Accumulate everything
-	float occlusion_total	= 1.0f;
-	occlusion_total			-= (1.0f - dirShadow);
-	occlusion_total			-= (1.0f - occlusionTex);
-	occlusion_total			-= (1.0f - ssao_occlusion);
-	occlusion_total 		= max(0.1f, saturate(occlusion_total) * dirLightIntensity.r);
-	
-	// Cheap, dirty and pretty light bleeding from ssao
-	finalColor += ssao_color * occlusion_total;
-	//=====================================================================
-	
 	//= DIRECTIONAL LIGHT ==================================================
 	Light directionalLight;
+	float dirShadow	= texShadows.Sample(sampler_linear_clamp, texCoord).r;
 
 	// Compute
     directionalLight.color      = dirLightColor.rgb;
@@ -185,19 +168,30 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     }
 	//=======================================================================================================================
 
-	// SSR - screen space reflections
+	//= AMBIENT LIGHT ================================================================
+	float ambient_min		= 0.01f;
+	float ambient_ssao		= 1.0f - texSSAO.Sample(sampler_linear_clamp, texCoord).r;
+	float ambient_material	= 1.0f - occlusion_texture;
+	float ambient_factors	= 1.0f - saturate(ambient_ssao + ambient_material);
+	float ambient_light		= max(ambient_min, ambient_factors);
+	//================================================================================
+	
+	//= SSR =========================================================================
 	if (padding2.x != 0.0f)
 	{
 		float4 ssr	= SSR(worldPos, normal, texFrame, texDepth, sampler_point_clamp);
-		finalColor += ssr.xyz * (1.0f - material.roughness)  * occlusion_total;
+		finalColor += ssr.xyz * (1.0f - material.roughness) * ambient_light;
 	}
+	//===============================================================================
 	
-	// IBL - Image based lighting
-    finalColor 	+= ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, sampler_linear_clamp, occlusion_total);
+	//= IBL =============================================================================================================================
+    finalColor += ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, sampler_linear_clamp) * ambient_light;
+	//===================================================================================================================================
 
-	// Emission
+	//= Emission ============================================
     float3 emission = material.emission * albedo.rgb * 20.0f;
     finalColor 		+= emission;
+	//=======================================================
 
     return float4(finalColor, 1.0f);
 }

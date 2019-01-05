@@ -48,7 +48,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 	
 -- Includes
 	includedirs { "C:/VulkanSDK/1.1.85.0/Include" }
-	includedirs { "../ThirdParty/AngelScript_2.32.0" }
+	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
 	includedirs { "../ThirdParty/Bullet_2.87" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }

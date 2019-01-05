@@ -28,9 +28,14 @@
 //
 //  0 = off
 //  1 = on
-
 #ifndef AS_USE_STLNAMES
 #define AS_USE_STLNAMES 0
+#endif
+
+// Some prefer to use property accessors to get/set the length of the string
+// This option registers the accessors instead of the method length()
+#ifndef AS_USE_ACCESSORS
+#define AS_USE_ACCESSORS 0
 #endif
 
 BEGIN_AS_NAMESPACE

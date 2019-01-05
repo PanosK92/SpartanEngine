@@ -165,7 +165,7 @@ float mainPS(PixelInputType input) : SV_TARGET
 	{
 		float3 cascadeBlend = abs(texCoords[cascade] * 2 - 1);
 		int2 cascades 		= int2(cascade, cascade + 1);
-		float3 shadows[2] 	= { float3(1.0f, 1.0f, 1.0f), float3(1.0f, 1.0f, 1.0f) };
+		float shadows[2] 	= { 1.0f, 1.0f };
 
 		// Sample the main cascade	
 		shadows[0] = ShadowMapping(cascades[0], positonCS[cascades[0]], texel, normal, lightDir, bias);

@@ -84,7 +84,45 @@ public:
 	map_t stringCache;
 };
 
-static CStdStringFactory stringFactory;
+static CStdStringFactory *stringFactory = 0;
+
+// TODO: Make this public so the application can also use the string 
+//       factory and share the string constants if so desired, or to
+//       monitor the size of the string factory cache.
+CStdStringFactory *GetStdStringFactorySingleton()
+{
+	if( stringFactory == 0 )
+	{
+		// The following instance will be destroyed by the global 
+		// CStdStringFactoryCleaner instance upon application shutdown
+		stringFactory = new CStdStringFactory();
+	}
+	return stringFactory;
+}
+
+class CStdStringFactoryCleaner
+{
+public:
+	~CStdStringFactoryCleaner()
+	{
+		if (stringFactory)
+		{
+			// Only delete the string factory if the stringCache is empty
+			// If it is not empty, it means that someone might still attempt
+			// to release string constants, so if we delete the string factory
+			// the application might crash. Not deleting the cache would
+			// lead to a memory leak, but since this is only happens when the
+			// application is shutting down anyway, it is not important.
+			if (stringFactory->stringCache.empty())
+			{
+				delete stringFactory;
+				stringFactory = 0;
+			}
+		}
+	}
+};
+
+static CStdStringFactoryCleaner cleaner;
 
 
 static void ConstructString(string *thisPointer)
@@ -353,7 +391,7 @@ static int StringFindFirstNotOf(const string &sub, asUINT start, const string &s
 static int StringFindLastNotOf(const string &sub, asUINT start, const string &str)
 {
 	// We don't register the method directly because the argument types change between 32bit and 64bit platforms
-	return (int)str.find_last_of(sub, (size_t)(start < 0 ? string::npos : start));
+	return (int)str.find_last_not_of(sub, (size_t)(start < 0 ? string::npos : start));
 }
 
 // This function returns the index of the last position where the substring
@@ -638,7 +676,8 @@ double parseFloat(const string &val, asUINT *byteCount)
 	// locale is ",".
 #if !defined(_WIN32_WCE) && !defined(ANDROID) && !defined(__psp2__)
 	// Set the locale to C so that we are guaranteed to parse the float value correctly
-	char *orig = setlocale(LC_NUMERIC, 0);
+	char *tmp = setlocale(LC_NUMERIC, 0);
+	string orig = tmp ? tmp : "C";
 	setlocale(LC_NUMERIC, "C");
 #endif
 
@@ -646,7 +685,7 @@ double parseFloat(const string &val, asUINT *byteCount)
 
 #if !defined(_WIN32_WCE) && !defined(ANDROID) && !defined(__psp2__)
 	// Restore the locale
-	setlocale(LC_NUMERIC, orig);
+	setlocale(LC_NUMERIC, orig.c_str());
 #endif
 
 	if( byteCount )
@@ -694,7 +733,7 @@ void RegisterStdString_Native(asIScriptEngine *engine)
 	r = engine->RegisterObjectType("string", sizeof(string), asOBJ_VALUE | asOBJ_APP_CLASS_CDAK); assert( r >= 0 );
 #endif
 
-	r = engine->RegisterStringFactory("string", &stringFactory);
+	r = engine->RegisterStringFactory("string", GetStdStringFactorySingleton());
 
 	// Register the object operator overloads
 	r = engine->RegisterObjectBehaviour("string", asBEHAVE_CONSTRUCT,  "void f()",                    asFUNCTION(ConstructString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
@@ -711,10 +750,16 @@ void RegisterStdString_Native(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("string", "string opAdd(const string &in) const", asFUNCTIONPR(operator +, (const string &, const string &), string), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
 
 	// The string length can be accessed through methods or through virtual property
+	// TODO: Register as size() for consistency with other types
+#if AS_USE_ACCESSORS != 1
 	r = engine->RegisterObjectMethod("string", "uint length() const", asFUNCTION(StringLength), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+#endif
 	r = engine->RegisterObjectMethod("string", "void resize(uint)", asFUNCTION(StringResize), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+#if AS_USE_STLNAMES != 1 && AS_USE_ACCESSORS == 1
+	// Don't register these if STL names is used, as they conflict with the method size()
 	r = engine->RegisterObjectMethod("string", "uint get_length() const", asFUNCTION(StringLength), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "void set_length(uint)", asFUNCTION(StringResize), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+#endif
 	// Need to use a wrapper on Mac OS X 10.7/XCode 4.3 and CLang/LLVM, otherwise the linker fails
 //	r = engine->RegisterObjectMethod("string", "bool isEmpty() const", asMETHOD(string, empty), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "bool isEmpty() const", asFUNCTION(StringIsEmpty), asCALL_CDECL_OBJLAST); assert( r >= 0 );
@@ -1214,7 +1259,7 @@ void RegisterStdString_Generic(asIScriptEngine *engine)
 	// Register the string type
 	r = engine->RegisterObjectType("string", sizeof(string), asOBJ_VALUE | asOBJ_APP_CLASS_CDAK); assert( r >= 0 );
 
-	r = engine->RegisterStringFactory("string", &stringFactory);
+	r = engine->RegisterStringFactory("string", GetStdStringFactorySingleton());
 
 	// Register the object operator overloads
 	r = engine->RegisterObjectBehaviour("string", asBEHAVE_CONSTRUCT,  "void f()",                    asFUNCTION(ConstructStringGeneric), asCALL_GENERIC); assert( r >= 0 );
@@ -1228,10 +1273,14 @@ void RegisterStdString_Generic(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("string", "string opAdd(const string &in) const", asFUNCTION(StringAddGeneric), asCALL_GENERIC); assert( r >= 0 );
 
 	// Register the object methods
+#if AS_USE_ACCESSORS != 1
 	r = engine->RegisterObjectMethod("string", "uint length() const", asFUNCTION(StringLengthGeneric), asCALL_GENERIC); assert( r >= 0 );
+#endif
 	r = engine->RegisterObjectMethod("string", "void resize(uint)",   asFUNCTION(StringResizeGeneric), asCALL_GENERIC); assert( r >= 0 );
+#if AS_USE_STLNAMES != 1 && AS_USE_ACCESSORS == 1
 	r = engine->RegisterObjectMethod("string", "uint get_length() const", asFUNCTION(StringLengthGeneric), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "void set_length(uint)", asFUNCTION(StringResizeGeneric), asCALL_GENERIC); assert( r >= 0 );
+#endif
 	r = engine->RegisterObjectMethod("string", "bool isEmpty() const", asFUNCTION(StringIsEmptyGeneric), asCALL_GENERIC); assert( r >= 0 );
 
 	// Register the index operator, both as a mutator and as an inspector
