@@ -99,9 +99,9 @@ static const float3 sampleKernel[64] =
 };
 
 static const int sample_count		= 16;
-static const float radius			= 0.5f;
-static const float intensity    	= 3.0f;
-static const float bias         	= 0.01f;
+static const float radius			= 0.25f;
+static const float intensity    	= 1.5f;
+static const float bias         	= 0.1f;
 static const float2 noiseScale  	= float2(g_resolution.x / 64.0f, g_resolution.y / 64.0f);
 
 float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_linear, out float depth_cs)
@@ -130,7 +130,6 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float depth_cs      		= 0.0f;
     float3 center_pos        	= GetWorldPosition(texCoord, samplerLinear_clamp, depth_linear, depth_cs); 
     float3 center_normal     	= Normal_Decode(texNormal.Sample(samplerLinear_clamp, texCoord).xyz); 
-	float radius_depth			= radius / depth_linear;
     float occlusion         	= 0.0f;
     float3 color            	= float3(0.0f, 0.0f, 0.0f);
 		
@@ -142,7 +141,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv
-		float3 sampleDir        			= reflect(sampleKernel[i], rvec) * radius_depth;
+		float3 sampleDir        			= reflect(sampleKernel[i], rvec) * radius;
         float2 uv               			= texCoord + sampleDir.xy;
 		
 		// Acquire/Compute sample data
@@ -154,9 +153,8 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		
 		// Accumulate
 		float NdotDir		= dot(center_normal, center_to_sample_normalized) - bias;
-		float attunation	= (1.0f / (1.0f + center_to_sample_distance));
-		float rangeCheck	= center_to_sample_distance < radius ? 1.0f : 0.0f;
-		occlusion 			+= saturate(NdotDir) * attunation * rangeCheck * intensity;
+		float rangeCheck	= smoothstep(0.0, 1.0f, radius / center_to_sample_distance);
+		occlusion 			+= (NdotDir >= 0.0f ? 1.0 : 0.0) * rangeCheck * intensity;
     }
     occlusion 	/= (float)sample_count;
     occlusion 	= saturate(1.0f - occlusion);
