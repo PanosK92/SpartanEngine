@@ -1164,15 +1164,16 @@ namespace Directus
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_blur_gaussianBilateral);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
 		direction = Vector2(0.0f, pixelStride);
 		SetGlobalBuffer(m_viewProjection_Orthographic, texIn->GetWidth(), texIn->GetHeight(), sigma, direction);
 		m_rhiPipeline->SetRenderTarget(texIn);
-		m_rhiPipeline->SetPixelShader(m_shaderQuad_blur_gaussianBilateral);
 		m_rhiPipeline->SetTexture(texOut);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		texIn.swap(texOut);
