@@ -88,12 +88,12 @@ float4 mainPS(VS_Output input) : SV_TARGET
 
 #if PASS_BLUR_GAUSSIAN
 	// Requirements: Bilinear sampler
-	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_resolution, g_blur_direction, g_blur_sigma);
+	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_texelSize, g_blur_direction, g_blur_sigma);
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN
 	// Requirements: Bilinear sampler
-	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, samplerState, g_resolution, g_blur_direction, g_blur_sigma);
+	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, samplerState, g_texelSize, g_blur_direction, g_blur_sigma);
 #endif
 
 #if PASS_BRIGHT

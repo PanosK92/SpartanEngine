@@ -47,7 +47,7 @@ namespace Directus
 		const static UINT swapchainBufferCount		= 2;
 		const static auto swapEffect				= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		const static auto swapchainFlags			= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-		const static bool multithreadProtection		= true;		
+		const static bool multithreadProtection		= false;		
 #ifdef DEBUG
 		const static UINT deviceFlags = D3D11_CREATE_DEVICE_DEBUG; // Debug layer
 #else

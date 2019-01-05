@@ -25,7 +25,7 @@ float CalcGaussianWeight(int sampleDist, float sigma)
 }
 
 // Performs a gaussian blur in one direction
-float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSampler, float2 resolution, float2 direction, float sigma)
+float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSampler, float2 texelSize, float2 direction, float sigma)
 {
 	// https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
 	float weightSum = 0.0f;
@@ -35,7 +35,7 @@ float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSa
         float weight 	= CalcGaussianWeight(i, sigma);
         weightSum 		+= weight;
         float2 texCoord = uv;
-        texCoord 		+= (i / resolution) * direction;
+        texCoord 		+= i * texelSize * direction;
         float4 sample 	= sourceTexture.SampleLevel(bilinearSampler, texCoord, 0);
         color 			+= sample * weight;
     }
@@ -46,19 +46,21 @@ float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSa
 }
 
 // Performs a bilateral gaussian blur (depth aware) in one direction
-float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D depthTexture, SamplerState bilinearSampler, float2 resolution, float2 direction, float sigma)
+float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D depthTexture, SamplerState bilinearSampler, float2 texelSize, float2 direction, float sigma)
 {
 	float weightSum 	= 0.0f;
     float4 color 		= 0;
-	float origin_depth	= depthTexture.SampleLevel(bilinearSampler, uv, 0).r;
-	float threshold		= 0.00005f;
+	float origin_depth	= depthTexture.SampleLevel(bilinearSampler, uv, 0).g;
+	float threshold		= 0.002f;
 	
     for (int i = -7; i < 7; i++)
     {
 		float2 texCoord 	= uv;	
-        texCoord 			+= (i / resolution) * direction;    
-		float sampleDepth 	= depthTexture.SampleLevel(bilinearSampler, texCoord, 0).r;
+        texCoord 			+= i * texelSize * direction;    
+		float sampleDepth 	= depthTexture.SampleLevel(bilinearSampler, texCoord, 0).g;
 		float depthDelta	= abs(origin_depth - sampleDepth);
+		
+		[branch]
 		if (depthDelta < threshold)
 		{
 			float weight 		= CalcGaussianWeight(i, sigma);
