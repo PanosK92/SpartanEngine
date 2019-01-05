@@ -244,7 +244,7 @@ float2 DirectionToSphereUV(float3 direction)
 ------------------------------------------------------------------------------*/
 float ApplyMicroShadow(float ao, float3 N, float3 L, float shadow)
 {
-	float aparture = 2.0f * ao * ao;
-	float microShadow = saturate(abs(dot(L, N)) + aparture - 1.0f);
+	float aperture = 2.0f * ao * ao;
+	float microShadow = saturate(abs(dot(L, N)) + aperture - 1.0f);
 	return shadow * microShadow;
 }

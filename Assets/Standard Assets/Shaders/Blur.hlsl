@@ -30,14 +30,12 @@ float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSa
 	// https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
 	float weightSum = 0.0f;
     float4 color 	= 0;
-    for (int i = -7; i < 7; i++)
+    for (int i = -5; i < 5; i++)
     {
-        float weight 	= CalcGaussianWeight(i, sigma);
-        weightSum 		+= weight;
-        float2 texCoord = uv;
-        texCoord 		+= i * texelSize * direction;
-        float4 sample 	= sourceTexture.SampleLevel(bilinearSampler, texCoord, 0);
-        color 			+= sample * weight;
+        float2 texCoord = uv + (i * texelSize * direction);    
+		float weight 	= CalcGaussianWeight(i, sigma);
+        color 			+= sourceTexture.SampleLevel(bilinearSampler, texCoord, 0) * weight;
+		weightSum 		+= weight;
     }
 
     color /= weightSum;
@@ -46,30 +44,24 @@ float4 Blur_Gaussian(float2 uv, Texture2D sourceTexture, SamplerState bilinearSa
 }
 
 // Performs a bilateral gaussian blur (depth aware) in one direction
-float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D depthTexture, SamplerState bilinearSampler, float2 texelSize, float2 direction, float sigma)
+float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D depthTexture, Texture2D normalTexture, SamplerState bilinearSampler, float2 texelSize, float2 direction, float sigma)
 {
-	float weightSum 	= 0.0f;
-    float4 color 		= 0;
-	float origin_depth	= depthTexture.SampleLevel(bilinearSampler, uv, 0).g;
-	float threshold		= 0.002f;
+	float weightSum 		= 0.0f;
+    float4 color 			= 0.0f;
+	float center_depth		= depthTexture.SampleLevel(bilinearSampler, uv, 0).r;
+	float3 center_normal	= Normal_Decode(normalTexture.SampleLevel(bilinearSampler, uv, 0).xyz);
 	
-    for (int i = -7; i < 7; i++)
+    for (int i = -5; i < 5; i++)
     {
-		float2 texCoord 	= uv;	
-        texCoord 			+= i * texelSize * direction;    
-		float sampleDepth 	= depthTexture.SampleLevel(bilinearSampler, texCoord, 0).g;
-		float depthDelta	= abs(origin_depth - sampleDepth);
+        float2 texCoord 		= uv + (i * texelSize * direction);    
+		float sample_depth 		= depthTexture.SampleLevel(bilinearSampler, texCoord, 0).r;
+		float3 sample_normal	= Normal_Decode(normalTexture.SampleLevel(bilinearSampler, texCoord, 0).xyz);
 		
-		[branch]
-		if (depthDelta < threshold)
-		{
-			float weight 		= CalcGaussianWeight(i, sigma);
-			float4 sample 		= sourceTexture.SampleLevel(bilinearSampler, texCoord, 0);
-			weightSum 			+= weight; 
-			color 				+= sample * weight;
-		}
+		float depthCheck 	= saturate(dot(center_normal, sample_normal) - abs(center_depth - sample_depth));
+		float weight 		= CalcGaussianWeight(i, sigma) * depthCheck;
+		color 				+= sourceTexture.SampleLevel(bilinearSampler, texCoord, 0) * weight;
+		weightSum 			+= weight; 
     }
-
     color /= weightSum;
 
 	return color;
