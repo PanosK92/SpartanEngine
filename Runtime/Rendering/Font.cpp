@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2018 Panos Karabelas
+Copyright(c) 2016-2019 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -150,14 +150,15 @@ namespace Directus
 			// Update the x location for drawing by the size of the letter and one pixel.
 			pen.x = pen.x + glyph.width;
 		}
-
+		m_vertices.shrink_to_fit();		
+		
 		m_indices.clear();
-		m_indices.shrink_to_fit();
-
 		for (unsigned int i = 0; i < m_vertices.size(); i++)
 		{
 			m_indices.emplace_back(i);
 		}
+		m_indices.shrink_to_fit();
+
 		UpdateBuffers(m_vertices, m_indices);
 	}
 

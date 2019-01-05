@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2018 Panos Karabelas
+Copyright(c) 2016-2019 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,6 @@ namespace Directus
 		LightShader(std::shared_ptr<RHI_Device> rhiDevice);
 		~LightShader() {}
 
-		void Compile(const std::string& filePath, Context* context);
 		void UpdateConstantBuffer(
 			const Math::Matrix& mViewProjection_Orthographic,
 			const Math::Matrix& mView,

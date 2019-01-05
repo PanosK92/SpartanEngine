@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2018 Panos Karabelas
+Copyright(c) 2016-2019 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -40,12 +40,6 @@ namespace Directus
 		// Create constant buffer
 		m_cbuffer = make_shared<RHI_ConstantBuffer>(rhiDevice);
 		m_cbuffer->Create(sizeof(LightBuffer));
-	}
-
-	void LightShader::Compile(const string& filePath, Context* context)
-	{
-		// Compile the vertex and the pixel shader
-		CompileVertexPixel_Async(filePath, Input_PositionTextureTBN, context);
 	}
 
 	void LightShader::UpdateConstantBuffer(

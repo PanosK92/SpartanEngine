@@ -54,7 +54,7 @@ float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
     return specColor * AB.x + AB.y;
 }
 
-float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, SamplerState samplerLinear, float ambientTerm)
+float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pixel, Texture2D tex_environment, Texture2D tex_lutIBL, SamplerState samplerLinear)
 {
 	float3 reflection 	= reflect(camera_to_pixel, normal);
 	// From Sebastien Lagarde Moving Frostbite to PBR page 69
@@ -68,14 +68,14 @@ float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pix
 	kD 			*= 1.0f - material.metallic;	
 
 	// Diffuse
-	float3 irradiance	= SampleEnvironment(samplerLinear, tex_environment, DirectionToSphereUV(normal), 7);
+	float3 irradiance	= SampleEnvironment(samplerLinear, tex_environment, DirectionToSphereUV(normal), 8);
 	float3 cDiffuse		= irradiance * material.albedo;
 
 	// Specular
-	float mipLevel 			= material.alpha * tex_maxMip;
+	float mipLevel 			= material.roughness_alpha * tex_maxMip;
 	float3 prefilteredColor	= SampleEnvironment(samplerLinear, tex_environment, DirectionToSphereUV(reflection), mipLevel);
 	float2 envBRDF  		= tex_lutIBL.Sample(samplerLinear, float2(NdV, material.roughness)).xy;
 	float3 cSpecular 		= prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
-	return (kD * cDiffuse + cSpecular) * ambientTerm; 
+	return kD * cDiffuse + cSpecular; 
 }

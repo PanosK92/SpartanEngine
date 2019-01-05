@@ -12,10 +12,9 @@ struct PixelInputType
 //==================================
 
 //= TEXTURES ======================
-Texture2D texColor  : register(t0);
-Texture2D texNormal : register(t1);
-Texture2D texDepth  : register(t2);
-Texture2D texNoise  : register(t3);
+Texture2D texNormal : register(t0);
+Texture2D texDepth  : register(t1);
+Texture2D texNoise  : register(t2);
 //=================================
 
 //= SAMPLERS ===================================
@@ -100,8 +99,8 @@ static const float3 sampleKernel[64] =
 };
 
 static const int sample_count		= 16;
-static const float radius			= 1.0f;
-static const float intensity    	= 5.0f;
+static const float radius			= 0.5f;
+static const float intensity    	= 3.0f;
 static const float bias         	= 0.01f;
 static const float2 noiseScale  	= float2(g_resolution.x / 64.0f, g_resolution.y / 64.0f);
 
@@ -148,22 +147,19 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		
 		// Acquire/Compute sample data
         float3 sample_pos      				= GetWorldPosition(uv, samplerLinear_clamp, depth_linear, depth_cs);
-        float3 sample_color     			= texColor.Sample(samplerLinear_clamp, uv).rgb;
         float3 sampled_normal   			= Normal_Decode(texNormal.Sample(samplerLinear_clamp, uv).xyz);  
         float3 center_to_sample				= sample_pos - center_pos;
 		float center_to_sample_distance		= length(center_to_sample);
 		float3 center_to_sample_normalized 	= normalize(center_to_sample);
 		
 		// Accumulate
-		float NdotDir						= dot(center_normal, center_to_sample_normalized) - bias;
-		float attunation					= (1.0f / (1.0f + center_to_sample_distance));
-		float rangeCheck    				= center_to_sample_distance < radius_depth ? 1.0f : 0.0f;
-		occlusion 							+= saturate(NdotDir) * attunation * rangeCheck * intensity;
-        color                   			+= sample_color * saturate(NdotDir) * rangeCheck;
+		float NdotDir		= dot(center_normal, center_to_sample_normalized) - bias;
+		float attunation	= (1.0f / (1.0f + center_to_sample_distance));
+		float rangeCheck	= center_to_sample_distance < radius ? 1.0f : 0.0f;
+		occlusion 			+= saturate(NdotDir) * attunation * rangeCheck * intensity;
     }
     occlusion 	/= (float)sample_count;
     occlusion 	= saturate(1.0f - occlusion);
-	color 		/= (float)sample_count;
 
-    return float4(color, occlusion);
+    return occlusion;
 }

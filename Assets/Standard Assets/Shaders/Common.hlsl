@@ -48,7 +48,7 @@ struct Material
 	float3 padding;
 	float emission;
 	float3 F0;
-	float alpha;
+	float roughness_alpha;
 };
 
 struct Light
