@@ -62,8 +62,6 @@ void Widget_Profiler::Tick(float deltaTime)
 	if (!m_isVisible)
 		return;
 
-	Widget::Begin();
-
 	// Get CPU & GPU timings
 	auto& cpuBlocks			= Profiler::Get().GetTimeBlocks_CPU();
 	auto gpuBlocks			= Profiler::Get().GetTimeBlocks_GPU();
@@ -138,6 +136,4 @@ void Widget_Profiler::Tick(float deltaTime)
 		ImGui::Text("Avg:%.2f, Min:%.2f, Max:%.2f", m_metric_gpu.m_avg, m_metric_gpu.m_min, m_metric_gpu.m_max);
 		ImGui::PlotLines("", m_gpuTimes.data(), (int)m_gpuTimes.size(), 0, "", m_metric_gpu.m_min, m_metric_gpu.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
 	}
-
-	Widget::End();
 }

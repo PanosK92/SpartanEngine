@@ -37,15 +37,13 @@ public:
 
 	virtual bool Begin()
 	{
-		if (!m_isWindow)
-			return false;
-
-		if (!m_isVisible)
+		if (!m_isWindow || !m_isVisible)
 			return false;
 
 		ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowSizeConstraints(ImVec2(m_xMin, m_yMin), ImVec2(m_xMax, m_yMax));
 		ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
+		m_windowBegun = true;
 
 		return true;
 	}
@@ -54,15 +52,15 @@ public:
 
 	virtual bool End()
 	{
-		if (!m_isWindow)
-			return false;
-
-		if (!m_isVisible)
+		// Sometimes a window can become invisible during it's lifetime (e.g. clicking the x button).
+		// In these cases, m_windowBegun will be true and we have to call ImGui::End() anyway.
+		if ((!m_isWindow || !m_isVisible) && !m_windowBegun)
 			return false;
 
 		m_window = ImGui::GetCurrentWindow();
 		m_height = ImGui::GetWindowHeight();
 		ImGui::End();
+		m_windowBegun = false;
 
 		return true;
 	}
@@ -87,4 +85,7 @@ protected:
 	Directus::Context* m_context = nullptr;
 	std::string m_title;
 	ImGuiWindow* m_window;
+
+private:
+	bool m_windowBegun = false;
 };
