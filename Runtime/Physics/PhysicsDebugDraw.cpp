@@ -52,6 +52,6 @@ namespace Directus
 
 	void PhysicsDebugDraw::reportErrorWarning(const char* error_warning)
 	{
-		LOGF_WARNING("Physics: %s", error_warning);
+		LOGF_WARNING("%s", error_warning);
 	}
 }

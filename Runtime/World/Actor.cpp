@@ -200,7 +200,7 @@ namespace Directus
 			}
 			else
 			{
-				LOG_ERROR("Aborting actor serialization, child actor is nullptr.");
+				LOG_ERROR("Aborting , child actor is nullptr.");
 				break;
 			}
 		}

@@ -75,7 +75,7 @@ namespace Directus
 		unsigned int texAtlasHeight = 0;
 		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()->LoadFromFile(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
 		{
-			LOGF_ERROR("Font::LoadFromFile Failed to load font \"%s\"", filePath.c_str());
+			LOGF_ERROR("Failed to load font \"%s\"", filePath.c_str());
 			atlasBuffer.clear();
 			return false;
 		}
@@ -92,9 +92,9 @@ namespace Directus
 		bool needsMipChain = false;
 		if (!m_textureAtlas->ShaderResource_Create2D(texAtlasWidth, texAtlasHeight, 1, Texture_Format_R8_UNORM, atlasBuffer, needsMipChain))
 		{
-			LOG_ERROR("Font: Failed to create shader resource.");
+			LOG_ERROR("Failed to create shader resource.");
 		}
-		LOG_INFO("Font: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
+		LOG_INFO("Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
 
 		return true;
 	}
@@ -178,7 +178,7 @@ namespace Directus
 			m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
 			if (!m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosUV), (unsigned int)vertices.size()))
 			{
-				LOG_ERROR("Font: Failed to create vertex buffer.");
+				LOG_ERROR("Failed to create vertex buffer.");
 				return false;
 			}	
 		}
@@ -192,7 +192,7 @@ namespace Directus
 			m_indexBuffer = make_shared<RHI_IndexBuffer>(m_rhiDevice);
 			if (!m_indexBuffer->CreateDynamic((unsigned int)indices.size()))
 			{
-				LOG_ERROR("Font: Failed to create index buffer.");
+				LOG_ERROR("Failed to create index buffer.");
 				return false;
 			}
 		}

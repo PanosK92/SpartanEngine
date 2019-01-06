@@ -175,7 +175,7 @@ namespace Directus
 
 		if (!bodyOther.expired() && bodyOther.lock()->GetID() == m_actor->GetID())
 		{
-			LOG_WARNING("Constraint::SetBodyOther: You can't connect a body to itself.");
+			LOG_WARNING("You can't connect a body to itself.");
 			return;
 		}
 
@@ -285,13 +285,13 @@ namespace Directus
 		RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
 		if (!rigidBodyOwn || !rigidBodyOther)
 		{
-			LOG_INFO("Constraint::Construct: A RigidBody component is still initializing, deferring construction...");
+			LOG_INFO("A RigidBody component is still initializing, deferring construction...");
 			m_deferredConstruction = true;
 			return;
 		}
 		else if (m_deferredConstruction)
 		{
-			LOG_INFO("Constraint::Construct: Deferred construction has succeeded");
+			LOG_INFO("Deferred construction has succeeded");
 			m_deferredConstruction = false;
 		}
 

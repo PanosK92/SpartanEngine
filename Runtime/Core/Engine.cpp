@@ -63,7 +63,6 @@ namespace Directus
 		m_context->RegisterSubsystem(this);
 
 		// Initialize global/static subsystems 
-		Log::Initialize();
 		FileSystem::Initialize();
 		Settings::Get().Initialize();
 
@@ -85,63 +84,63 @@ namespace Directus
 		m_timer = m_context->GetSubsystem<Timer>();
 		if (!m_timer->Initialize())
 		{
-			LOG_ERROR("Engine::Initialize: Failed to initialize");
+			LOG_ERROR("Failed to initialize");
 			return false;
 		}
 	
 		// Input
 		if (!m_context->GetSubsystem<Input>()->Initialize())
 		{
-			LOG_ERROR("Engine::Initialize: Failed to initialize Input");
+			LOG_ERROR("Failed to initialize Input");
 			return false;
 		}
 
 		// Threading
 		if (!m_context->GetSubsystem<Threading>()->Initialize())
 		{
-			LOG_ERROR("Engine::Initialize: Failed to initialize Multithreading");
+			LOG_ERROR("Failed to initialize Multithreading");
 			return false;
 		}
 
 		// ResourceManager
 		if (!m_context->GetSubsystem<ResourceManager>()->Initialize())
 		{
-			LOG_ERROR("Engine::Initialize: Failed to initialize ResourceManager");
+			LOG_ERROR("Failed to initialize ResourceManager");
 			return false;
 		}
 
 		// Renderer
 		if (!m_context->GetSubsystem<Renderer>()->Initialize())
 		{
-			LOG_ERROR("Engine::Initialize: Failed to initialize Renderer");
+			LOG_ERROR("Failed to initialize Renderer");
 			return false;
 		}
 
 		// Audio
 		if (!m_context->GetSubsystem<Audio>()->Initialize())
 		{
-			LOG_ERROR("Engine::Initialize: Failed to initialize Audio");
+			LOG_ERROR("Failed to initialize Audio");
 			return false;
 		}
 
 		// Physics
 		if (!m_context->GetSubsystem<Physics>()->Initialize())
 		{
-			LOG_ERROR("Engine::Initialize: Failed to initialize Physics");
+			LOG_ERROR("Failed to initialize Physics");
 			return false;
 		}
 
 		// Scripting
 		if (!m_context->GetSubsystem<Scripting>()->Initialize())
 		{
-			LOG_ERROR("Engine::Initialize: Failed to initialize Scripting");
+			LOG_ERROR("Failed to initialize Scripting");
 			return false;
 		}
 
 		// Scene
 		if (!m_context->GetSubsystem<World>()->Initialize())
 		{
-			LOG_ERROR("Engine::Initialize: Failed to initialize Scene");
+			LOG_ERROR("Failed to initialize Scene");
 			return false;
 		}
 
@@ -174,9 +173,6 @@ namespace Directus
 		// The context will deallocate the subsystems
 		// in the reverse order in which they were registered.
 		SafeDelete(m_context);
-
-		// Release Log singleton
-		Log::Release();
 	}
 
 	void Engine::SetHandles(void* drawHandle, void* windowHandle, void* windowInstance)

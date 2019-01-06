@@ -51,7 +51,7 @@ namespace Directus
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{
-			LOG_ERROR("RHI_ConstantBuffer::Create: Invalid RHI device");
+			LOG_ERROR("Invalid RHI device");
 			return false;
 		}
 
@@ -67,7 +67,7 @@ namespace Directus
 		HRESULT result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, (ID3D11Buffer**)&m_buffer);
 		if FAILED(result)
 		{
-			LOG_ERROR("RHI_ConstantBuffer::Create: Failed to create constant buffer");
+			LOG_ERROR("Failed to create constant buffer");
 			return false;
 		}
 
@@ -78,13 +78,13 @@ namespace Directus
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 		{
-			LOG_ERROR("RHI_ConstantBuffer::Map: Invalid RHI device");
+			LOG_ERROR("Invalid RHI device");
 			return nullptr;
 		}
 
 		if (!m_buffer)
 		{
-			LOG_ERROR("RHI_ConstantBuffer::Map: Invalid buffer");
+			LOG_ERROR("Invalid buffer");
 			return nullptr;
 		}
 
@@ -92,7 +92,7 @@ namespace Directus
 		HRESULT result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map((ID3D11Buffer*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_ConstantBuffer::Map: Failed to map constant buffer.");
+			LOG_ERROR("Failed to map constant buffer.");
 			return nullptr;
 		}
 
@@ -103,13 +103,13 @@ namespace Directus
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 		{
-			LOG_ERROR("RHI_ConstantBuffer::Unmap: Invalid RHI device");
+			LOG_ERROR("Invalid RHI device");
 			return false;
 		}
 
 		if (!m_buffer)
 		{
-			LOG_ERROR("RHI_ConstantBuffer::Unmap: Invalid buffer");
+			LOG_ERROR("Invalid buffer");
 			return false;
 		}
 

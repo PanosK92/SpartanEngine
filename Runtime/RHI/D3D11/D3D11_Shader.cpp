@@ -39,26 +39,6 @@ namespace Directus
 {
 	namespace D3D11_Shader
 	{
-		inline void LogErrorBlob(ID3D10Blob* errorMessage)
-		{
-			stringstream ss((char*)errorMessage->GetBufferPointer());
-			string line;
-
-			// Split into lines
-			while (getline(ss, line, '\n'))
-			{
-				// Determine if it's a true error or just a warning
-				if (line.find("error") != string::npos)
-				{
-					LOG_ERROR(line);
-				}
-				else
-				{
-					LOG_WARNING(line);
-				}
-			}
-		}
-
 		inline bool CompileShader(const string& filePath, D3D_SHADER_MACRO* macros, const char* entryPoint, const char* shaderModel, ID3DBlob** shaderBlobOut)
 		{
 			unsigned compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
@@ -84,7 +64,14 @@ namespace Directus
 			// Log any compilation possible warnings and/or errors
 			if (errorBlob)
 			{
-				LogErrorBlob(errorBlob);
+				stringstream ss((char*)errorBlob->GetBufferPointer());
+				string line;
+				while (getline(ss, line, '\n'))
+				{
+					bool isError = line.find("error") != string::npos;
+					if (isError) LOG_ERROR(line) else LOG_WARNING(line);
+				}
+
 				SafeRelease(errorBlob);
 			}
 
@@ -94,11 +81,11 @@ namespace Directus
 				string shaderName = FileSystem::GetFileNameFromFilePath(filePath);
 				if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 				{
-					LOGF_ERROR("D3D11_Shader::CompileShader: Failed to find shader \"%s\" with path \"%s\".", shaderName.c_str(), filePath.c_str());
+					LOGF_ERROR("Failed to find shader \"%s\" with path \"%s\".", shaderName.c_str(), filePath.c_str());
 				}
 				else
 				{
-					LOGF_ERROR("D3D11_Shader::CompileShader: An error occured when trying to load and compile \"%s\"", shaderName.c_str());
+					LOGF_ERROR("An error occurred when trying to load and compile \"%s\"", shaderName.c_str());
 				}
 			}
 
@@ -112,7 +99,7 @@ namespace Directus
 		{
 			if (!device)
 			{
-				LOG_ERROR("D3D11_Shader::CompileVertexShader: Invalid device.");
+				LOG_ERROR("Invalid device.");
 				return false;
 			}
 			// Compile shader
@@ -123,7 +110,7 @@ namespace Directus
 			ID3D10Blob* vsb = *vsBlob;
 			if (FAILED(device->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader)))
 			{
-				LOG_ERROR("D3D11_Shader::CompileVertexShader: Failed to create vertex shader.");
+				LOG_ERROR("Failed to create vertex shader.");
 				return false;
 			}
 
@@ -134,7 +121,7 @@ namespace Directus
 		{
 			if (!device)
 			{
-				LOG_ERROR("D3D11_Shader::CompilePixelShader: Invalid device.");
+				LOG_ERROR("Invalid device.");
 				return false;
 			}
 
@@ -146,7 +133,7 @@ namespace Directus
 			ID3D10Blob* psb = *psBlob;
 			if (FAILED(device->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader)))
 			{
-				LOG_ERROR("D3D11_Shader::CompilePixelShader: Failed to create pixel shader.");
+				LOG_ERROR("Failed to create pixel shader.");
 				return false;
 			}
 
@@ -204,7 +191,7 @@ namespace Directus
 			// Create input layout
 			if (!m_inputLayout->Create(blobVS, inputLayout))
 			{
-				LOGF_ERROR("D3D11_Shader::SetInputLayout: Failed to create vertex input layout for %s", FileSystem::GetFileNameFromFilePath(m_filePath).c_str());
+				LOGF_ERROR("Failed to create vertex input layout for %s", FileSystem::GetFileNameFromFilePath(m_filePath).c_str());
 			}
 
 			SafeRelease(blobVS);

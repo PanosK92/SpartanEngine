@@ -56,16 +56,14 @@ namespace Directus
 		~RHI_Shader();
 		//================================================
 
-		void HandleResult(Shader_State state, const std::string& filePath)
-		{
-			if (state == Shader_Built)
-			{
-				LOGF_INFO("RHI_Shader::Compile: Successfully compiled %s", filePath.c_str());
-			}
-			else if (state == Shader_Failed)
-			{
-				LOGF_ERROR("RHI_Shader::Compile: Failed to compile %s", filePath.c_str());
-			}
+		#define LOG_STATE(state, filePath)								\
+		if (state == Shader_Built)										\
+		{																\
+			LOGF_INFO("Successfully compiled %s", filePath.c_str());	\
+		}																\
+		else if (state == Shader_Failed)								\
+		{																\
+			LOGF_ERROR("Failed to compile %s", filePath.c_str());		\
 		}
 
 		virtual void CompileVertex(const std::string& filePath, Input_Layout inputLayout)
@@ -74,7 +72,7 @@ namespace Directus
 			bool vertex		= API_CompileVertex(filePath, inputLayout);
 
 			m_shaderState = (vertex) ? Shader_Built : Shader_Failed;
-			HandleResult(m_shaderState, filePath);
+			LOG_STATE(m_shaderState, filePath);
 		}
 
 		virtual void CompileVertex_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
@@ -91,7 +89,7 @@ namespace Directus
 			bool pixel		= API_CompilePixel(filePath);
 
 			m_shaderState= (pixel) ? Shader_Built : Shader_Failed;
-			HandleResult(m_shaderState, filePath);
+			LOG_STATE(m_shaderState, filePath);
 		}
 
 
@@ -110,7 +108,7 @@ namespace Directus
 			bool pixel		= API_CompilePixel(filePath);
 
 			m_shaderState = (vertex && pixel) ? Shader_Built : Shader_Failed;
-			HandleResult(m_shaderState, filePath);		
+			LOG_STATE(m_shaderState, filePath);
 		}
 
 		virtual void CompileVertexPixel_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)

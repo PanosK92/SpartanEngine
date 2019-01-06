@@ -85,7 +85,7 @@ namespace Directus
 	{
 		if (!shader)
 		{
-			LOG_WARNING("RHI_PipelineState::SetVertexShader: Invalid parameter");
+			LOG_WARNING("Invalid parameter");
 			return false;
 		}
 
@@ -104,7 +104,7 @@ namespace Directus
 	{
 		if (!shader)
 		{
-			LOG_WARNING("RHI_PipelineState::SetPixelShader: Invalid parameter");
+			LOG_WARNING("Invalid parameter");
 			return false;
 		}
 
@@ -122,7 +122,7 @@ namespace Directus
 	{
 		if (!indexBuffer)
 		{
-			LOG_WARNING("RHI_PipelineState::SetIndexBuffer: Invalid parameter");
+			LOG_WARNING("Invalid parameter");
 			return false;
 		}
 
@@ -136,7 +136,7 @@ namespace Directus
 	{
 		if (!vertexBuffer)
 		{
-			LOG_WARNING("RHI_PipelineState::SetVertexBuffer: Invalid parameter");
+			LOG_WARNING("Invalid parameter");
 			return false;
 		}
 
@@ -150,7 +150,7 @@ namespace Directus
 	{
 		if (!sampler)
 		{
-			LOG_WARNING("RHI_PipelineState::SetSampler: Invalid parameter");
+			LOG_WARNING("Invalid parameter");
 			return false;
 		}
 
@@ -241,7 +241,7 @@ namespace Directus
 	{
 		if (!constantBuffer)
 		{
-			LOG_WARNING("RHI_PipelineState::SetConstantBuffer: Invalid parameter");
+			LOG_WARNING("Invalid parameter");
 			return false;
 		}
 
@@ -318,7 +318,7 @@ namespace Directus
 	{
 		if (!m_rhiDevice)
 		{
-			LOG_ERROR("RHI_PipelineState::Bind: Invalid RHI_Device");
+			LOG_ERROR("Invalid RHI_Device");
 			return false;
 		}
 
@@ -327,7 +327,7 @@ namespace Directus
 		{
 			if (m_renderTargetViews.empty())
 			{
-				LOG_ERROR("RHI_PipelineState::Bind: Invalid render target(s)");
+				LOG_ERROR("Invalid render target(s)");
 				return false;
 			}
 

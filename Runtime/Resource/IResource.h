@@ -134,7 +134,7 @@ namespace Directus
 		unsigned int m_resourceID			= NOT_ASSIGNED_HASH;
 		std::string m_resourceName			= NOT_ASSIGNED;
 		std::string m_resourceFilePath		= NOT_ASSIGNED;
-		Resource_Type m_resourceType			= Resource_Unknown;
+		Resource_Type m_resourceType		= Resource_Unknown;
 		LoadState m_loadState				= LoadState_Idle;
 		Context* m_context					= nullptr;
 		ResourceManager* m_resourceManager	= nullptr;

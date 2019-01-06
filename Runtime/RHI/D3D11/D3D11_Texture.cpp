@@ -37,13 +37,13 @@ namespace Directus
 	{
 		if (!m_rhiDevice->GetDevice<ID3D11Device>())
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_Create2D: Invalid device.");
+			LOG_ERROR("Invalid device.");
 			return false;
 		}
 
 		if (mipChain.empty())
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_Create2D: Invalid data.");
+			LOG_ERROR("Invalid data.");
 			return false;
 		}
 
@@ -70,7 +70,7 @@ namespace Directus
 		{
 			if (mipChain[i].empty())
 			{
-				LOGF_ERROR("RHI_Texture::ShaderResource_Create2D: Mip level %d has invalid data.", i);
+				LOGF_ERROR("Mip level %d has invalid data.", i);
 				continue;
 			}
 
@@ -101,7 +101,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&textureDesc, vec_subresourceData.data(), &texture);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_Create2D: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
 
@@ -110,7 +110,7 @@ namespace Directus
 		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &shaderResourceDesc, &shaderResourceView);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_Create2D: Failed to create the ID3D11ShaderResourceView.");
+			LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
 
@@ -122,13 +122,13 @@ namespace Directus
 	{
 		if (!m_rhiDevice->GetDevice<ID3D11Device>())
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_Create2D: Invalid device.");
+			LOG_ERROR("Invalid device.");
 			return false;
 		}
 
 		if (data.empty())
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_Create2D: Invalid data.");
+			LOG_ERROR("Invalid data.");
 			return false;
 		}
 
@@ -136,7 +136,7 @@ namespace Directus
 		{
 			if (width < 4 || height < 4)
 			{
-				LOGF_WARNING("RHI_Texture::ShaderResource_Create2D: Mipchain won't be generated as dimension %dx%d is too small", width, height);
+				LOGF_WARNING("Mipchain won't be generated as dimension %dx%d is too small", width, height);
 				generateMipChain = false;
 			}
 		}
@@ -180,7 +180,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&textureDesc, generateMipChain ? nullptr : &subresourceData, &texture);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_Create2D: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
 
@@ -189,7 +189,7 @@ namespace Directus
 		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(texture, &shaderResourceDesc, &shaderResourceView);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_Create2D: Failed to create the ID3D11ShaderResourceView.");
+			LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
 
@@ -208,7 +208,7 @@ namespace Directus
 	{
 		if (data.empty())
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_CreateCubemap: Invalid data.");
+			LOG_ERROR("Invalid data.");
 			return false;
 		}
 
@@ -222,7 +222,7 @@ namespace Directus
 		{
 			if (side.empty())
 			{
-				LOG_ERROR("RHI_Texture::ShaderResource_CreateCubemap: A side containts invalid data.");
+				LOG_ERROR("A side contains invalid data.");
 				continue;
 			}
 
@@ -247,7 +247,7 @@ namespace Directus
 			{
 				if (mip.empty())
 				{
-					LOG_ERROR("RHI_Texture::ShaderResource_CreateCubemap: A mip-map containts invalid data.");
+					LOG_ERROR("A mip-map contains invalid data.");
 					continue;
 				}
 
@@ -280,7 +280,7 @@ namespace Directus
 		// Validate device before usage
 		if (!m_rhiDevice->GetDevice<ID3D11Device>())
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_CreateCubemap: Invalid RHI device.");
+			LOG_ERROR("Invalid RHI device.");
 			return false;
 		}
 
@@ -288,7 +288,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(vec_textureDesc.data(), vec_subresourceData.data(), &cubeTexture);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_CreateCubemap: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
 
@@ -296,7 +296,7 @@ namespace Directus
 		result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView(cubeTexture, &shaderResourceDesc, &shaderResourceView);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Texture::ShaderResource_CreateCubemap: Failed to create the ID3D11ShaderResourceView.");
+			LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
 

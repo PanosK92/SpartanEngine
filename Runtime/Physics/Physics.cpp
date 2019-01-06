@@ -50,9 +50,9 @@ namespace Directus
 { 
 	Physics::Physics(Context* context) : Subsystem(context)
 	{
-		m_maxSubSteps = 1;
-		m_simulating = false;
-		m_renderer = context->GetSubsystem<Renderer>();
+		m_maxSubSteps	= 1;
+		m_simulating	= false;
+		m_renderer		= context->GetSubsystem<Renderer>();
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER_VARIANT(Step));

@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Log.h"
-#include <fstream>
 #include "ILogger.h"
+#include <fstream>
+#include <stdarg.h>
 #include "../World/Actor.h"
 #include "../FileSystem/FileSystem.h"
-#include <stdarg.h>
 //===================================
 
 //= NAMESPACES ================
@@ -33,35 +33,18 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-#define LOG_FILE "log.txt"
-
 namespace Directus
 {
 	weak_ptr<ILogger> Log::m_logger;
 	ofstream Log::m_fout;
-	bool Log::m_firstLog = true;
 	mutex Log::m_mutex;
-
-	void Log::Initialize()
-	{
-
-	}
-
-	void Log::Release()
-	{
-
-	}
+	string Log::m_callerName;
+	string Log::m_logFileName	= "log.txt";
+	bool Log::m_firstLog		= true;
 
 	void Log::SetLogger(const weak_ptr<ILogger>& logger)
 	{
 		m_logger = logger;
-	}
-
-	//= LOGGING ==========================================================================
-	void Log::Write(const char* text, Log_Type type) // all functions resolve to that one
-	{
-		// if a logger is available use it, if not, write to file
-		!m_logger.expired() ? LogString(text, type) : LogToFile(text, type);
 	}
 
 	void Log::WriteFInfo(const char* text, ...)
@@ -97,64 +80,34 @@ namespace Directus
 		Write(buffer, Log_Error);
 	}
 
-	void Log::Write(const string& text, Log_Type type) 
-	{
-		Write(text.c_str(), type);
-	}
-
-	void Log::Write(const Vector2& vector, Log_Type type)
-	{
-		Write(vector.ToString(), type);
-	}
-
-	void Log::Write(const Vector3& vector, Log_Type type)
-	{
-		Write(vector.ToString(), type);
-	}
-
-	void Log::Write(const Vector4& vector, Log_Type type)
-	{
-		Write(vector.ToString(), type);
-	}
-
-	void Log::Write(const Quaternion& quaternion, Log_Type type)
-	{
-		Write(quaternion.ToString(), type);
-	}
-
-	void Log::Write(float value, Log_Type type)
-	{
-		Write(to_string(value), type);
-	}
-
-	void Log::Write(double value, Log_Type type)
-	{
-		Write(to_string(value), type);
-	}
-
-	void Log::Write(int value, Log_Type type)
-	{
-		Write(to_string(value), type);
-	}
-
-	void Log::Write(unsigned int value, Log_Type type)
-	{
-		Write(to_string(value), type);
-	}
-
-	void Log::Write(size_t value, Log_Type type)
-	{
-		Write(to_string(value), type);
-	}
-
-	void Log::Write(bool value, Log_Type type)
-	{
-		value ? Write("True", type) : Write("False", type);
-	}
-
 	void Log::Write(const weak_ptr<Actor>& actor, Log_Type type)
 	{
 		actor.expired() ? Write("Null", type) : Write(actor.lock()->GetName(), type);
+	}
+
+	void Log::Write(const Math::Vector2& value, Log_Type type)
+	{
+		Write(value.ToString(), type);
+	}
+
+	void Log::Write(const Math::Vector3& value, Log_Type type)
+	{
+		Write(value.ToString(), type);
+	}
+
+	void Log::Write(const Math::Vector4& value, Log_Type type)
+	{
+		Write(value.ToString(), type);
+	}
+
+	void Log::Write(const Math::Quaternion& value, Log_Type type)
+	{
+		Write(value.ToString(), type);
+	}
+
+	void Log::Write(const Math::Matrix& value, Log_Type type)
+	{
+		Write(value.ToString(), type);
 	}
 
 	void Log::LogString(const char* text, Log_Type type)
@@ -167,18 +120,18 @@ namespace Directus
 	{
 		lock_guard<mutex> guard(m_mutex);
 
-		string prefix = (type == Log_Info) ? "Info:" : (type == Log_Warning) ? "Warning:" : "Error:";
-		string finalText = prefix + " " + text;
+		string prefix		= (type == Log_Info) ? "Info:" : (type == Log_Warning) ? "Warning:" : "Error:";
+		string finalText	= prefix + " " + text;
 
 		// Delete the previous log file (if it exists)
 		if (m_firstLog)
 		{
-			FileSystem::DeleteFile_(LOG_FILE);
+			FileSystem::DeleteFile_(m_logFileName);
 			m_firstLog = false;
 		}
 
 		// Open/Create a log file to write the error message to.
-		m_fout.open(LOG_FILE, ofstream::out | ofstream::app);
+		m_fout.open(m_logFileName, ofstream::out | ofstream::app);
 
 		// Write out the error message.
 		m_fout << finalText << endl;
@@ -186,6 +139,4 @@ namespace Directus
 		// Close the file.
 		m_fout.close();
 	}
-
-	//=================================================================================
 }
