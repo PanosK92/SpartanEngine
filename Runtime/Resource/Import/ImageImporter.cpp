@@ -80,7 +80,7 @@ namespace Directus
 
 		if (!FileSystem::FileExists(filePath))
 		{
-			LOGF_ERROR("ImageImporter::Load: Cant' load image. File path \"%s\" is invalid.", filePath.c_str());
+			LOGF_ERROR("Cant' load image. File path \"%s\" is invalid.", filePath.c_str());
 			return false;
 		}
 
@@ -91,17 +91,17 @@ namespace Directus
 		if (format == FIF_UNKNOWN)
 		{
 			// Try getting the format from the file extension
-			LOGF_WARNING("ImageImporter::Load: Failed to determine image format for \"%s\", attempting to detect it from the file's extension...", filePath.c_str());
+			LOGF_WARNING("Failed to determine image format for \"%s\", attempting to detect it from the file's extension...", filePath.c_str());
 			format = FreeImage_GetFIFFromFilename(filePath.c_str());
 
 			// If the format is still unknown, give up
 			if (!FreeImage_FIFSupportsReading(format))
 			{
-				LOGF_ERROR("ImageImporter::Load: Failed to detect the image format.");
+				LOGF_ERROR("Failed to detect the image format.");
 				return false;
 			}
 
-			LOG_INFO("ImageImporter::Load: The image format has been detected succesfully.");
+			LOG_INFO("The image format has been detected successfully.");
 		}
 
 		// Load the image
@@ -156,7 +156,7 @@ namespace Directus
 	{
 		if (!data || width == 0 || height == 0 || channels == 0)
 		{
-			LOG_ERROR("ImageImporter::GetBitsFromFIBITMAP: Invalid parameters");
+			LOG_ERROR("Invalid parameters");
 			return false;
 		}
 
@@ -212,7 +212,7 @@ namespace Directus
 				FIBITMAP* bitmapScaled = FreeImage_Rescale(bitmap, job.width, job.height, _ImagImporter::rescaleFilter);
 				if (!GetBitsFromFIBITMAP(job.data, bitmapScaled, job.width, job.height, job.channels))
 				{
-					LOGF_ERROR("ImageImporter:GenerateMipmapsFromFIBITMAP: Failed to create mip level %dx%d", job.width, job.height);
+					LOGF_ERROR("Failed to create mip level %dx%d", job.width, job.height);
 				}
 				FreeImage_Unload(bitmapScaled);
 				job.done = true;
@@ -238,7 +238,7 @@ namespace Directus
 	{	
 		if (!bitmap)
 		{
-			LOGF_ERROR("ImageImporter::ComputeChannelCount: Invalid parameter");
+			LOGF_ERROR("Invalid parameter");
 			return 0;
 		}
 
@@ -285,7 +285,7 @@ namespace Directus
 				return Texture_Format_R8G8B8A8_UNORM;
 		}
 		
-		LOG_ERROR("ImageImporter::ComputeTextureFormat: Failed to deduce channel count");
+		LOG_ERROR("Failed to deduce channel count");
 		return Texture_Format_R8G8B8A8_UNORM;
 	}
 
@@ -319,7 +319,7 @@ namespace Directus
 	{
 		if (!bitmap)
 		{
-			LOGF_ERROR("ImageImporter::ApplyBitmapCorrections: Invalid parameter");
+			LOGF_ERROR("Invalid parameter");
 			return nullptr;
 		}
 
@@ -337,7 +337,7 @@ namespace Directus
 				bool swapped = SwapRedBlue32(bitmap);
 				if (!swapped)
 				{
-					LOG_WARNING("ImageImporter::ApplyBitmapCorrections: Failed to swap red with blue channel");
+					LOG_WARNING("Failed to swap red with blue channel");
 				}
 			}
 		}

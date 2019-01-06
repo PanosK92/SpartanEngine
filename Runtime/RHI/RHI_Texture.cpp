@@ -49,7 +49,7 @@ namespace Directus
 	{
 		if (!FileSystem::FileExists(rawFilePath))
 		{
-			LOGF_ERROR("RHI_Texture::LoadFromFile: File path \"%s\" is invalid.", rawFilePath.c_str());
+			LOGF_ERROR("File path \"%s\" is invalid.", rawFilePath.c_str());
 			return false;
 		}
 
@@ -76,7 +76,7 @@ namespace Directus
 
 			if (!loaded)
 			{
-				LOGF_ERROR("RI_Texture::LoadFromFile: Failed to load \"%s\".", filePath.c_str());
+				LOGF_ERROR("Failed to load \"%s\".", filePath.c_str());
 				SetLoadState(LoadState_Failed);
 				return false;
 			}
@@ -85,7 +85,7 @@ namespace Directus
 		// Validate loaded data
 		if (m_mipChain.empty())
 		{
-			LOGF_WARNING("RHI_Texture::LoadFromFile: \"%s\" contains no data, it will be ignored.", filePath.c_str());
+			LOGF_WARNING("\"%s\" contains no data, it will be ignored.", filePath.c_str());
 			SetLoadState(LoadState_Failed);
 			return false;
 		}
@@ -114,7 +114,7 @@ namespace Directus
 		}
 		else
 		{
-			LOGF_ERROR("RHI_Texture::LoadFromFile: Failed to create shader resource for \"%s\".", m_resourceFilePath.c_str());
+			LOGF_ERROR("Failed to create shader resource for \"%s\".", m_resourceFilePath.c_str());
 		}
 
 		SetLoadState(LoadState_Completed);
@@ -138,7 +138,7 @@ namespace Directus
 	{
 		if (index >= m_mipChain.size())
 		{
-			LOG_WARNING("RHI_Texture::Data_GetMip: Index out of range");
+			LOG_WARNING("Index out of range");
 			return nullptr;
 		}
 

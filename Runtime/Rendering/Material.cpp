@@ -196,7 +196,7 @@ namespace Directus
 		// Validate texture
 		if (!texture)
 		{
-			LOG_WARNING("Material::SetTexture: Invalid parameter");
+			LOG_WARNING("Invalid parameter");
 			return;
 		}
 
@@ -274,7 +274,7 @@ namespace Directus
 	{
 		if (!m_context)
 		{
-			LOG_ERROR("Material::AcquireShader(): Context is null, can't execute function");
+			LOG_ERROR("Context is null, can't execute function");
 			return;
 		}
 
@@ -299,7 +299,7 @@ namespace Directus
 	{
 		if (!m_context)
 		{
-			LOG_ERROR("Material::GetOrCreateShader(): Context is null, can't execute function");
+			LOG_ERROR("Context is null, can't execute function");
 			return nullptr;
 		}
 

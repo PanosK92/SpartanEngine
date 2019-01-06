@@ -49,7 +49,7 @@ namespace Directus
 			out.open(path, ios::out | ios::binary);
 			if (out.fail())
 			{
-				LOGF_ERROR("StreamIO: Failed to open \"%s\" for writing", path.c_str());
+				LOGF_ERROR("Failed to open \"%s\" for writing", path.c_str());
 				return;
 			}
 		}
@@ -58,7 +58,7 @@ namespace Directus
 			in.open(path, ios::in | ios::binary);
 			if(in.fail())
 			{
-				LOGF_ERROR("StreamIO: Failed to open \"%s\" for reading", path.c_str());
+				LOGF_ERROR("Failed to open \"%s\" for reading", path.c_str());
 				return;
 			}
 		}

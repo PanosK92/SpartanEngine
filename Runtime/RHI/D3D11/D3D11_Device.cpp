@@ -137,7 +137,7 @@ namespace Directus
 			auto result = device->CreateTexture2D(&depthBufferDesc, nullptr, &depthStencilBuffer);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::CreateDepthStencilView: Failed to create depth stencil buffer, %s.", DxgiErrorToString(result));
+				LOGF_ERROR("Failed to create depth stencil buffer, %s.", DxgiErrorToString(result));
 				return false;
 			}
 
@@ -151,7 +151,7 @@ namespace Directus
 			result = device->CreateDepthStencilView(depthStencilBuffer, &depthStencilViewDesc, &depthStencilView);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::CreateDepthStencilView: Failed to create depth stencil view, %s.", DxgiErrorToString(result));
+				LOGF_ERROR("Failed to create depth stencil view, %s.", DxgiErrorToString(result));
 				return false;
 			}
 
@@ -182,7 +182,7 @@ namespace Directus
 
 		if (!IsWindow((HWND)drawHandle))
 		{
-			LOG_ERROR("RHI_Device::Initialize: Invalid draw handle.");
+			LOG_ERROR("Invalid draw handle.");
 			return;
 		}
 
@@ -191,7 +191,7 @@ namespace Directus
 		HRESULT result = CreateDXGIFactory(IID_PPV_ARGS(&factory));
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Device::Initialize: Failed to create a DirectX graphics interface factory.");
+			LOG_ERROR("Failed to create a DirectX graphics interface factory.");
 			return;
 		}
 
@@ -200,7 +200,7 @@ namespace Directus
 		SafeRelease(factory);
 		if (adapters.empty())
 		{
-			LOG_ERROR("RHI_Device::RHI_Device: Couldn't find any adapters.");
+			LOG_ERROR("Couldn't find any adapters.");
 			return;
 		}
 
@@ -210,7 +210,7 @@ namespace Directus
 		{
 			if (FAILED(displayAdapter->GetDesc(&adapterDesc)))
 			{
-				LOG_ERROR("RHI_Device::RHI_Device: Failed to get adapter description");
+				LOG_ERROR("Failed to get adapter description");
 				continue;
 			}
 
@@ -253,7 +253,7 @@ namespace Directus
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::RHI_Device: Failed to get display modes (%s)", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to get display modes (%s)", _D3D11_Device::DxgiErrorToString(result));
 				return false;
 			}
 
@@ -309,7 +309,7 @@ namespace Directus
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::RHI_Device: Failed to create device and swapchain, %s.", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to create device and swapchain, %s.", _D3D11_Device::DxgiErrorToString(result));
 				return;
 			}
 		}
@@ -325,7 +325,7 @@ namespace Directus
 			}
 			else 
 			{
-				LOGF_ERROR("RHI_Device::RHI_Device: Failed to enable multithreaded protection");
+				LOGF_ERROR("Failed to enable multithreaded protection");
 			}
 		}
 
@@ -336,7 +336,7 @@ namespace Directus
 			result = _D3D11_Device::swapChain->GetBuffer(0, IID_PPV_ARGS(&backBufferPtr));
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::RHI_Device: Failed to get swapchain buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
 				return;
 			}
 
@@ -345,7 +345,7 @@ namespace Directus
 			SafeRelease(backBufferPtr);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("RHI_Device::RHI_Device: Failed to create swapchain render target, %s.", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to create swapchain render target, %s.", _D3D11_Device::DxgiErrorToString(result));
 				return;
 			}
 		}
@@ -363,21 +363,21 @@ namespace Directus
 		#endif
 		if (FAILED(_D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateEnabled)))
 		{
-			LOG_ERROR("RHI_Device::RHI_Device: Failed to create depth stencil enabled state.");
+			LOG_ERROR("Failed to create depth stencil enabled state.");
 			return;
 		}
 
 		desc = Desc_DepthDisabled();
 		if (FAILED(_D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateDisabled)))
 		{
-			LOG_ERROR("RHI_Device::RHI_Device: Failed to create depth stencil disabled state.");
+			LOG_ERROR("Failed to create depth stencil disabled state.");
 			return;
 		}
 
 		// DEPTH STENCIL VIEW
 		if (!_D3D11_Device::CreateDepthStencilView((UINT)Settings::Get().Resolution_GetWidth(), (UINT)Settings::Get().Resolution_GetHeight()))
 		{
-			LOG_ERROR("RHI_Device::RHI_Device: Failed to create depth stencil view.");
+			LOG_ERROR("Failed to create depth stencil view.");
 			return;
 		}
 
@@ -386,21 +386,21 @@ namespace Directus
 			auto desc = Desc_RasterizerCullBack();
 			if (FAILED(_D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullBack)))
 			{
-				LOG_ERROR("RHI_Device::RHI_Device: Failed to create the rasterizer cull back state.");
+				LOG_ERROR("Failed to create the rasterizer cull back state.");
 				return;
 			}
 
 			desc = Desc_RasterizerCullFront();
 			if (FAILED(_D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullFront)))
 			{
-				LOG_ERROR("RHI_Device::RHI_Device: Failed to create the rasterizer cull front state.");
+				LOG_ERROR("Failed to create the rasterizer cull front state.");
 				return;
 			}
 
 			desc = Desc_RasterizerCullNone();
 			if (FAILED(_D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullNone)))
 			{
-				LOG_ERROR("RHI_Device::RHI_Device: Failed to create the rasterizer cull non state.");
+				LOG_ERROR("Failed to create the rasterizer cull non state.");
 				return;
 			}
 
@@ -414,7 +414,7 @@ namespace Directus
 			auto desc = Desc_BlendAlpha();
 			if (FAILED(_D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaEnabled)))
 			{
-				LOG_ERROR("RHI_Device::RHI_Device: Failed to create blend alpha state.");
+				LOG_ERROR("Failed to create blend alpha state.");
 				return;
 			}
 
@@ -422,7 +422,7 @@ namespace Directus
 			desc = Desc_BlendDisabled();
 			if (FAILED(_D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaDisabled)))
 			{
-				LOG_ERROR("RHI_Device::RHI_Device: Failed to create blend disabled state.");
+				LOG_ERROR("Failed to create blend disabled state.");
 				return;
 			}
 		}
@@ -432,7 +432,7 @@ namespace Directus
 		result = _D3D11_Device::deviceContext->QueryInterface(IID_PPV_ARGS(&_D3D11_Device::eventReporter));
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Device::RHI_Device: Failed to create ID3DUserDefinedAnnotation for event reporting");
+			LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting");
 			return;
 		}
 
@@ -663,7 +663,7 @@ namespace Directus
 		auto result = _D3D11_Device::swapChain->ResizeTarget(&dxgiModeDesc);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("RHI_Device::SetResolution: Failed to resize swapchain target, %s.", _D3D11_Device::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to resize swapchain target, %s.", _D3D11_Device::DxgiErrorToString(result));
 			return false;
 		}
 
@@ -677,7 +677,7 @@ namespace Directus
 		);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("RHI_Device::SetResolution: Failed to resize swapchain buffers, %s.", _D3D11_Device::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to resize swapchain buffers, %s.", _D3D11_Device::DxgiErrorToString(result));
 			return false;
 		}
 
@@ -686,7 +686,7 @@ namespace Directus
 		result = _D3D11_Device::swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("RHI_Device::SetResolution: Failed to get pointer to the swapchain's back buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to get pointer to the swapchain's back buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
 			return false;
 		}
 		SafeRelease(backBuffer);
@@ -695,7 +695,7 @@ namespace Directus
 		result = _D3D11_Device::device->CreateRenderTargetView(backBuffer, nullptr, &_D3D11_Device::renderTargetView);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("RHI_Device::SetResolution:  Failed to create render target view, %s.", _D3D11_Device::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to create render target view, %s.", _D3D11_Device::DxgiErrorToString(result));
 			return false;
 		}
 
@@ -709,7 +709,7 @@ namespace Directus
 	{
 		if (!viewport)
 		{
-			LOG_WARNING("RHI_Device::Set_Viewport: Invalid parameter");
+			LOG_WARNING("Invalid parameter");
 			return;
 		}
 
@@ -730,7 +730,7 @@ namespace Directus
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_WARNING("RHI_Device::EnableDepth: Device context is uninitialized.");
+			LOG_WARNING("Device context is uninitialized.");
 			return false;
 		}
 
@@ -747,7 +747,7 @@ namespace Directus
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_WARNING("RHI_Device::EnableAlphaBlending: Device context is uninitialized.");
+			LOG_WARNING("Device context is uninitialized.");
 			return false;
 		}
 
@@ -796,7 +796,7 @@ namespace Directus
 		auto result		= _D3D11_Device::device->CreateQuery(&desc, (ID3D11Query**)query);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_Device::Profiling_CreateQuery: Failed to create ID3D11Query");
+			LOG_ERROR("Failed to create ID3D11Query");
 			return false;
 		}
 
@@ -858,7 +858,7 @@ namespace Directus
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_ERROR("D3D11_Device::Set_InputLayout: Invalid device context");
+			LOG_ERROR("Invalid device context");
 			return false;
 		}
 
@@ -876,7 +876,7 @@ namespace Directus
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_ERROR("D3D11_Device::Set_InputLayout: Invalid device context");
+			LOG_ERROR("Invalid device context");
 			return false;
 		}
 
@@ -888,7 +888,7 @@ namespace Directus
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_WARNING("D3D11_Device::SetCullMode: Device context is uninitialized.");
+			LOG_WARNING("Device context is uninitialized.");
 			return false;
 		}
 

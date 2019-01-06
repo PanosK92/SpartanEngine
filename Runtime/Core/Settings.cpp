@@ -130,11 +130,11 @@ namespace Directus
 			SettingsIO::fout.close();
 		}
 
-		LOGF_INFO("Settings::Initialize: Resolution: %dx%d",		(int)m_resolution.x, (int)m_resolution.y);
-		LOGF_INFO("Settings::Initialize: Shadow resolution: %d",	m_shadowMapResolution);
-		LOGF_INFO("Settings::Initialize: Anisotropy: %d",			m_anisotropy);
-		LOGF_INFO("Settings::Initialize: Max fps: %f",				m_fpsLimit);
-		LOGF_INFO("Settings::Initialize: Max threads: %d",			m_maxThreadCount);
+		LOGF_INFO("Resolution: %dx%d",		(int)m_resolution.x, (int)m_resolution.y);
+		LOGF_INFO("Shadow resolution: %d",	m_shadowMapResolution);
+		LOGF_INFO("Anisotropy: %d",			m_anisotropy);
+		LOGF_INFO("Max fps: %f",			m_fpsLimit);
+		LOGF_INFO("Max threads: %d",		m_maxThreadCount);
 	}
 
 	void Settings::DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator)
@@ -177,14 +177,14 @@ namespace Directus
 			return;
 
 		m_primaryAdapter = primaryAdapter;
-		LOGF_INFO("Settings::DisplayAdapter_SetPrimary: %s (%d MB)", primaryAdapter->name.c_str(), primaryAdapter->memory);
+		LOGF_INFO("%s (%d MB)", primaryAdapter->name.c_str(), primaryAdapter->memory);
 	}
 
 	void Settings::FPS_SetLimit(float fps)
 	{
 		if (m_fpsLimit != fps)
 		{
-			LOGF_INFO("Settings::SetFPSLimit: FPS limit set to %f", fps);
+			LOGF_INFO("FPS limit set to %f", fps);
 		}
 
 		m_fpsLimit = fps;

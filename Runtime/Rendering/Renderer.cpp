@@ -456,7 +456,7 @@ namespace Directus
 		// Return if resolution is invalid
 		if (width == 0 || height == 0)
 		{
-			LOG_WARNING("Renderer::SetResolutionInternal: Invalid resolution");
+			LOG_WARNING("Invalid resolution");
 			return;
 		}
 
@@ -470,7 +470,7 @@ namespace Directus
 
 		Settings::Get().Resolution_Set(Vector2((float)width, (float)height));
 		CreateRenderTextures(width, height);
-		LOGF_INFO("Renderer::SetResolution: Resolution was set to %dx%d", width, height);
+		LOGF_INFO("Resolution set to %dx%d", width, height);
 	}
 
 	void Renderer::AddBoundigBox(const BoundingBox& box, const Vector4& color)

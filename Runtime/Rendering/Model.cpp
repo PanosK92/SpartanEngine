@@ -80,7 +80,7 @@ namespace Directus
 			}
 			else // abort
 			{
-				LOG_WARNING("Model: Failed to load model. Unable to find supported file in \"" + FileSystem::GetDirectoryFromFilePath(filePath) + "\".");
+				LOG_WARNING("Failed to load model. Unable to find supported file in \"" + FileSystem::GetDirectoryFromFilePath(filePath) + "\".");
 				return false;
 			}
 		}
@@ -89,7 +89,7 @@ namespace Directus
 		bool success = engineFormat ? LoadFromEngineFormat(modelFilePath) : LoadFromForeignFormat(modelFilePath);
 
 		Geometry_ComputeMemoryUsage();
-		LOGF_INFO("Model::LoadFromFile: Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(filePath).c_str(), (int)timer.GetElapsedTimeMs());
+		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(filePath).c_str(), (int)timer.GetElapsedTimeMs());
 
 		return success;
 	}
@@ -134,7 +134,7 @@ namespace Directus
 	{
 		if (!material)
 		{
-			LOG_WARNING("Model::AddMaterial: Invalid parameters");
+			LOG_WARNING("Invalid parameters");
 			return;
 		}
 
@@ -184,7 +184,7 @@ namespace Directus
 		// Validate texture file path
 		if (filePath == NOT_ASSIGNED)
 		{
-			LOG_WARNING("Model::AddTexture(): Provided texture file path hasn't been provided. Can't execute function");
+			LOG_WARNING("Provided texture file path hasn't been provided. Can't execute function");
 			return;
 		}
 
@@ -286,13 +286,13 @@ namespace Directus
 			m_indexBuffer = make_shared<RHI_IndexBuffer>(m_rhiDevice);
 			if (!m_indexBuffer->Create(indices))
 			{
-				LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create index buffer for \"%s\".", m_resourceName.c_str());
+				LOGF_ERROR("Failed to create index buffer for \"%s\".", m_resourceName.c_str());
 				success = false;
 			}
 		}
 		else
 		{
-			LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create index buffer for \"%s\". Provided indices are empty", m_resourceName.c_str());
+			LOGF_ERROR("Failed to create index buffer for \"%s\". Provided indices are empty", m_resourceName.c_str());
 			success = false;
 		}
 
@@ -301,13 +301,13 @@ namespace Directus
 			m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
 			if (!m_vertexBuffer->Create(vertices))
 			{
-				LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create vertex buffer for \"%s\".", m_resourceName.c_str());
+				LOGF_ERROR("Failed to create vertex buffer for \"%s\".", m_resourceName.c_str());
 				success = false;
 			}
 		}
 		else
 		{
-			LOGF_ERROR("Model::Geometry_CreateBuffers: Failed to create vertex buffer for \"%s\". Provided veritces are empty", m_resourceName.c_str());
+			LOGF_ERROR("Failed to create vertex buffer for \"%s\". Provided vertices are empty", m_resourceName.c_str());
 			success = false;
 		}
 

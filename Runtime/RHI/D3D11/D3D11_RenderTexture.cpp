@@ -46,7 +46,7 @@ namespace Directus
 
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{
-			LOG_ERROR("D3D11_RenderTexture::RHI_RenderTexture: Invalid device.");
+			LOG_ERROR("Invalid device.");
 			return;
 		}
 
@@ -69,7 +69,7 @@ namespace Directus
 			auto ptr = (ID3D11Texture2D**)&m_renderTargetTexture;
 			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&textureDesc, nullptr, ptr)))
 			{
-				LOG_ERROR("D3D11_RenderTexture::Construct: CreateTexture2D() failed.");
+				LOG_ERROR("CreateTexture2D() failed.");
 				return;
 			}
 		}
@@ -86,7 +86,7 @@ namespace Directus
 				auto ptr = (ID3D11RenderTargetView**)&m_renderTargetViews.emplace_back(nullptr);
 				if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateRenderTargetView((ID3D11Resource*)m_renderTargetTexture, &viewDesc, ptr)))
 				{
-					LOG_ERROR("D3D11_RenderTexture::Construct: CreateRenderTargetView() failed.");
+					LOG_ERROR("CreateRenderTargetView() failed.");
 					return;
 				}
 			}
@@ -103,7 +103,7 @@ namespace Directus
 					auto ptr = (ID3D11RenderTargetView**)&m_renderTargetViews[i];
 					if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateRenderTargetView((ID3D11Resource*)m_renderTargetTexture, &viewDesc, ptr)))
 					{
-						LOG_ERROR("D3D11_RenderTexture::Construct: CreateRenderTargetView() failed.");
+						LOG_ERROR("CreateRenderTargetView() failed.");
 						return;
 					}
 				}
@@ -113,7 +113,7 @@ namespace Directus
 		// SHADER RESOURCE VIEW
 		{
 			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-			shaderResourceViewDesc.Format						= d3d11_dxgi_format[m_format];
+			shaderResourceViewDesc.Format = d3d11_dxgi_format[m_format];
 			if (arraySize == 1)
 			{
 				shaderResourceViewDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -132,7 +132,7 @@ namespace Directus
 			auto ptr = (ID3D11ShaderResourceView**)&m_shaderResourceView;
 			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView((ID3D11Texture2D*)m_renderTargetTexture, &shaderResourceViewDesc, ptr)))
 			{
-				LOG_ERROR("D3D11_RenderTexture::Construct: CreateShaderResourceView() failed.");
+				LOG_ERROR("CreateShaderResourceView() failed.");
 				return;
 			}
 		}
@@ -159,7 +159,7 @@ namespace Directus
 			auto ptr = (ID3D11Texture2D**)&m_depthStencilBuffer;
 			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&depthTexDesc, nullptr, ptr)))
 			{
-				LOG_ERROR("D3D11_RenderTexture::Construct: CreateTexture2D() failed.");
+				LOG_ERROR("CreateTexture2D() failed.");
 				return;
 			}
 		}
@@ -176,7 +176,7 @@ namespace Directus
 			auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateDepthStencilView((ID3D11Texture2D*)m_depthStencilBuffer, &depthStencilViewDesc, ptr);
 			if (FAILED(result))
 			{
-				LOG_ERROR("D3D11_RenderTexture::Construct: CreateDepthStencilView() failed.");
+				LOG_ERROR("CreateDepthStencilView() failed.");
 				return;
 			}
 		}

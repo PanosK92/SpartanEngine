@@ -40,7 +40,7 @@ namespace Directus
 	{
 		if (!m_constantBuffer)
 		{
-			LOG_WARNING("IRHI_Shader::Bind_Buffer: Uninitialized buffer.");
+			LOG_WARNING("Uninitialized buffer.");
 			return;
 		}
 

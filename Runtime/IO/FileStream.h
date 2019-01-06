@@ -55,14 +55,18 @@ namespace Directus
 
 		//= WRITING ==================================================
 		template <class T, class = typename std::enable_if<
-			std::is_same<T, int>::value || 
-			std::is_same<T, unsigned int>::value ||
-			std::is_same<T, unsigned long>::value ||
+			std::is_same<T, bool>::value ||
 			std::is_same<T, unsigned char>::value ||
 			std::is_same<T, std::byte>::value ||
+			std::is_same<T, int>::value ||
+			std::is_same<T, long>::value ||
+			std::is_same<T, long long>::value ||
+			std::is_same<T, unsigned>::value ||
+			std::is_same<T, unsigned long>::value ||
+			std::is_same<T, unsigned long long>::value ||
 			std::is_same<T, float>::value ||
-			std::is_same<T, bool>::value ||
-			std::is_same<T, double>::value 
+			std::is_same<T, double>::value ||
+			std::is_same<T, long double>::value
 		>::type>
 		void Write(T value)
 		{
@@ -84,14 +88,18 @@ namespace Directus
 		
 		//= READING ================================================
 		template <class T, class = typename std::enable_if<
-			std::is_same<T, int>::value ||
-			std::is_same<T, unsigned int>::value ||
-			std::is_same<T, unsigned long>::value ||
+			std::is_same<T, bool>::value ||
 			std::is_same<T, unsigned char>::value ||
 			std::is_same<T, std::byte>::value ||
+			std::is_same<T, int>::value ||
+			std::is_same<T, long>::value ||
+			std::is_same<T, long long>::value ||
+			std::is_same<T, unsigned>::value ||
+			std::is_same<T, unsigned long>::value ||
+			std::is_same<T, unsigned long long>::value ||
 			std::is_same<T, float>::value ||
-			std::is_same<T, bool>::value ||
-			std::is_same<T, double>::value
+			std::is_same<T, double>::value ||
+			std::is_same<T, long double>::value
 		>::type>
 			void Read(T* value)
 		{

@@ -66,7 +66,7 @@ namespace Directus
 		{
 			m_threads.emplace_back(thread(&Threading::Invoke, this));
 		}
-		LOGF_INFO("Threading::Initialize: %d threads have been created", m_threadCount);
+		LOGF_INFO("%d threads have been created", m_threadCount);
 
 		return true;
 	}

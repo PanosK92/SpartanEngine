@@ -185,7 +185,7 @@ namespace Directus
 		//==============================================
 
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
-		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
+		LOG_INFO("Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
 		FIRE_EVENT(EVENT_WORLD_SAVED);
 
 		return true;
@@ -267,7 +267,7 @@ namespace Directus
 		m_isDirty	= true;
 		m_state		= Ticking;
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);	
-		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
+		LOG_INFO("Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
 
 		FIRE_EVENT(EVENT_WORLD_LOADED);
 		return true;
