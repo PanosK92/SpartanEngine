@@ -5,15 +5,16 @@ static const float g_blendMax = 0.1f;
 
 float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, Texture2D tex_depth, SamplerState sampler_bilinear)
 {
-	// Get velocity for nearest depth (and the depth)
-	float depth 	= 1.0f;
-	float2 velocity	= GetVelocity_Dilate_Depth3X3(texCoord, tex_velocity, tex_depth, sampler_bilinear, depth) * g_texelSize;
-	
-	float4 color_current 	= tex_current.Sample(sampler_bilinear, texCoord);
+	// Reproject
+	float depth 			= 1.0f;
+	float2 velocity			= GetVelocity_Dilate_Depth3X3(texCoord, tex_velocity, tex_depth, sampler_bilinear, depth) * g_texelSize;
 	float2 texCoord_history = texCoord - velocity;
+	
+	// Get current and history colors
+	float4 color_current 	= tex_current.Sample(sampler_bilinear, texCoord);
 	float4 color_history 	= tex_history.Sample(sampler_bilinear, texCoord_history);
 
-	//= Clamp out too different history colors - For non-existing and lighting change cases ==========
+	//= Clamp out too different history colors (for non-existing and lighting change cases) ===============
 	float2 du = float2(g_texelSize.x, 0.0f);
 	float2 dv = float2(0.0f, g_texelSize.y);
 
@@ -31,14 +32,14 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float4 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
 	
 	color_history = clamp(color_history, color_min, color_max);
-	//================================================================================================
+	//=====================================================================================================
 	
-	//= Compute blend factor based on the amount of subpixel velocity =========================================================
+	//= Compute blend factor ==================================================================================================
 	float factor_velocity 	= abs(sin(frac(length(velocity)) * PI) - 1.0f); 		// Decrease when pixel motion gets subpixel
-	float factor_clampMin 	= saturate(length(color_history - color_min)); 			// Decrease when history is near min clamp
-	float factor_clampMax 	= saturate(length(color_history - color_max)); 			// Decrease when history is near max clamp
+	float factor_colorMin 	= saturate(length(color_history - color_min)); 			// Decrease when history is near min color
+	float factor_colorMax	= saturate(length(color_history - color_max)); 			// Decrease when history is near max color
 	float factor_contrast	= 1.0f - saturate(Luminance(color_max - color_min)); 	// Increase when local contrast is low
-	float alpha				= factor_velocity * factor_clampMin * factor_clampMax * factor_contrast;
+	float alpha				= factor_velocity * factor_colorMin * factor_colorMax * factor_contrast;
 	float blendfactor 		= lerp(g_blendMin, g_blendMax, alpha);
 	//=========================================================================================================================
 	
