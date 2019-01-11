@@ -101,15 +101,14 @@ float4 mainPS(PixelInputType input) : SV_TARGET
         return float4(finalColor, 1.0f);
     }
 
-	//= AMBIENT LIGHT =========================================================
-	float ambient_min		= 0.01f;
-	float ambient_ssao		= 1.0f - ssao;
-	float ambient_material	= 1.0f - occlusion_texture;
-	float ambient_factors	= 1.0f - saturate(ambient_ssao + ambient_material);
-	float ambient_light		= max(ambient_min, ambient_factors);
-	//=========================================================================
+	//= AMBIENT LIGHT ========================================================
+	float ambient_min		= 0.1f;
+	float ambient_light		= saturate(max(ambient_min, dirLightIntensity.r));
+	float ambient_occlusion = ssao * occlusion_texture;
+	ambient_light			*= ambient_occlusion;
+	//========================================================================
 	
-	//= DIRECTIONAL LIGHT ==================================================
+	//= DIRECTIONAL LIGHT =======================================================================================
 	Light directionalLight;
 	float dirShadow	= texShadows.Sample(sampler_linear_clamp, texCoord).r;
 	
@@ -121,7 +120,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 
 	// Compute illumination
     finalColor += BRDF(material, directionalLight, normal, camera_to_pixel);
-	//======================================================================
+	//===========================================================================================================
 	
 	//= POINT LIGHTS =========================================================
     Light pointLight;
@@ -186,9 +185,9 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	}
 	//===============================================================================
 	
-	//= IBL =============================================================================================================================
+	//= IBL =================================================================================================================================
     finalColor += ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, sampler_linear_clamp) * ambient_light;
-	//===================================================================================================================================
+	//=======================================================================================================================================
 
 	//= Emission ============================================
     float3 emission = material.emission * albedo.rgb * 20.0f;
