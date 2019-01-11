@@ -99,7 +99,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #if PASS_BRIGHT
 	color 				= sourceTexture.Sample(samplerState, texCoord);
     float luminance 	= Luminance(color.rgb);
-	color 				= luminance > 1.0f ? color : float4(0.0f, 0.0f, 0.0f, color.a);
+	color 				= luminance * color;
 #endif
 
 #if PASS_BLEND_ADDITIVE

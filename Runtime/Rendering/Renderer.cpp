@@ -977,6 +977,13 @@ namespace Directus
 		// Render target swapping
 		auto SwapTargets = [&texIn, &texOut]() { texOut.swap(texIn); };
 
+		// TAA	
+		if (Flags_IsSet(Render_PostProcess_TAA))
+		{
+			Pass_TAA(texIn, texOut);
+			SwapTargets();
+		}
+
 		// Bloom
 		if (Flags_IsSet(Render_PostProcess_Bloom))
 		{
@@ -995,13 +1002,6 @@ namespace Directus
 		if (Flags_IsSet(Render_PostProcess_ToneMapping))
 		{
 			Pass_ToneMapping(texIn, texOut);
-			SwapTargets();
-		}
-
-		// TAA	
-		if (Flags_IsSet(Render_PostProcess_TAA))
-		{
-			Pass_TAA(texIn, texOut);
 			SwapTargets();
 		}
 
