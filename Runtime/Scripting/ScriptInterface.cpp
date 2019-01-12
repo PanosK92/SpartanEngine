@@ -58,7 +58,7 @@ namespace Directus
 		RegisterCamera();
 		RegisterRigidBody();
 		Registeractor();
-		RegisterDebug();
+		RegisterLog();
 	}
 
 	void ScriptInterface::RegisterEnumerations()
@@ -463,19 +463,19 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void ScriptInterface::RegisterMath()
 	{
-		//m_scriptEngine->RegisterGlobalFunction("float Math_Clamp(float, float, float)", asFUNCTIONPR(Clamp, (float, float, float), float), asCALL_CDECL);
+		//m_scriptEngine->RegisterGlobalFunction("float Math_Clamp<class T>(float, float, float)", asFUNCTIONPR(Clamp, (float, float, float), float), asCALL_CDECL);
 	}
 
 	/*------------------------------------------------------------------------------
 										[LOG]
 	------------------------------------------------------------------------------*/
-	void ScriptInterface::RegisterDebug()
+	void ScriptInterface::RegisterLog()
 	{
-		m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)", asFUNCTIONPR(Log::Write, (const string&, Log_Type), void), asCALL_CDECL);
-		m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)", asFUNCTIONPR(Log::Write, (int, Log_Type), void), asCALL_CDECL);
-		m_scriptEngine->RegisterGlobalFunction("void Log(bool, LogType)", asFUNCTIONPR(Log::Write, (bool, Log_Type), void), asCALL_CDECL);
-		m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)", asFUNCTIONPR(Log::Write, (float, Log_Type), void), asCALL_CDECL);
-		m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)", asFUNCTIONPR(Log::Write, (const Vector3&, Log_Type), void), asCALL_CDECL);
-		m_scriptEngine->RegisterGlobalFunction("void Log(const Quaternion& in, LogType)", asFUNCTIONPR(Log::Write, (const Quaternion&, Log_Type), void), asCALL_CDECL);
+		m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)",		asFUNCTIONPR(Log::Write, (const string&, Log_Type), void), asCALL_CDECL);
+		m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)",					asFUNCTIONPR(Log::Write, (int, Log_Type), void), asCALL_CDECL);
+		m_scriptEngine->RegisterGlobalFunction("void Log(bool, LogType)",					asFUNCTIONPR(Log::Write, (bool, Log_Type), void), asCALL_CDECL);
+		m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)",					asFUNCTIONPR(Log::Write, (float, Log_Type), void), asCALL_CDECL);
+		m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)",		asFUNCTIONPR(Log::Write, (const Vector3&, Log_Type), void), asCALL_CDECL);
+		m_scriptEngine->RegisterGlobalFunction("void Log(const Quaternion& in, LogType)",	asFUNCTIONPR(Log::Write, (const Quaternion&, Log_Type), void), asCALL_CDECL);
 	}
 }

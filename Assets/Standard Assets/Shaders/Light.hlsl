@@ -66,6 +66,13 @@ PixelInputType mainVS(Vertex_PosUv input)
     return output;
 }
 
+float ApplyMicroShadow(float ao, float3 N, float3 L, float shadow)
+{
+	float aperture 		= 2.0f * ao * ao;
+	float microShadow 	= saturate(abs(dot(L, N)) + aperture - 1.0f);
+	return shadow * microShadow;
+}
+
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
     float2 texCoord     = input.uv;
@@ -75,9 +82,10 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float4 albedo       	= Degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
     float4 normalSample 	= texNormal.Sample(sampler_linear_clamp, texCoord);
 	float3 normal			= Normal_Decode(normalSample.xyz);
+	float4 materialSample   = texMaterial.Sample(sampler_linear_clamp, texCoord);
     float occlusion_texture = normalSample.w;
-    float4 materialSample   = texMaterial.Sample(sampler_linear_clamp, texCoord);
-	float ssao				= texSSAO.Sample(sampler_linear_clamp, texCoord).r;
+	float occlusion_ssao	= texSSAO.Sample(sampler_linear_clamp, texCoord).r; 
+	float occlusion			= occlusion_ssao * occlusion_texture;
 
 	// Create material
     Material material;
@@ -101,26 +109,25 @@ float4 mainPS(PixelInputType input) : SV_TARGET
         return float4(finalColor, 1.0f);
     }
 
-	//= AMBIENT LIGHT ========================================================
-	float ambient_min		= 0.1f;
-	float ambient_light		= saturate(max(ambient_min, dirLightIntensity.r));
-	float ambient_occlusion = ssao * occlusion_texture;
-	ambient_light			*= ambient_occlusion;
-	//========================================================================
-	
-	//= DIRECTIONAL LIGHT =======================================================================================
+	//= DIRECTIONAL LIGHT ===================================================================================
 	Light directionalLight;
 	float dirShadow	= texShadows.Sample(sampler_linear_clamp, texCoord).r;
 	
 	// Compute
     directionalLight.color      = dirLightColor.rgb; 
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
-	dirShadow					= ApplyMicroShadow(ambient_light, normal, directionalLight.direction, dirShadow);
-	directionalLight.intensity  = dirLightIntensity.r * dirShadow;
+	float microShadow			= ApplyMicroShadow(occlusion, normal, directionalLight.direction, dirShadow);
+	directionalLight.intensity  = dirLightIntensity.r * microShadow;
 
 	// Compute illumination
     finalColor += BRDF(material, directionalLight, normal, camera_to_pixel);
-	//===========================================================================================================
+	//=======================================================================================================
+	
+	//= AMBIENT LIGHT ====================================================
+	float ambient_min		= 0.1f;
+	float ambient_factors 	= dirLightIntensity.r * dirShadow * occlusion;
+	float ambient_light		= saturate(max(ambient_min, ambient_factors));
+	//====================================================================
 	
 	//= POINT LIGHTS =========================================================
     Light pointLight;

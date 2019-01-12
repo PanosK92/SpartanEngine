@@ -26,13 +26,13 @@ cbuffer GlobalBuffer : register(b0)
 	float g_sharpen_strength;
 	float g_sharpen_clamp;
 	
-	float2 g_taa_jitter;
-	float2 g_taa_jitterPrevious;
-	
 	float g_motionBlur_strength;
 	float g_fps_current;		
 	float g_fps_target;
 	float g_gamma;
+	
+	float2 g_taa_jitterOffset;
+	float2 padding;
 };
 
 #define g_texelSize float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
@@ -237,14 +237,4 @@ float2 DirectionToSphereUV(float3 direction)
     uv.x 		= 1.0 - uv.x;
 	
     return uv;
-}
-
-/*------------------------------------------------------------------------------
-								[MISC]
-------------------------------------------------------------------------------*/
-float ApplyMicroShadow(float ao, float3 N, float3 L, float shadow)
-{
-	float aperture = 2.0f * ao * ao;
-	float microShadow = saturate(abs(dot(L, N)) + aperture - 1.0f);
-	return shadow * microShadow;
 }

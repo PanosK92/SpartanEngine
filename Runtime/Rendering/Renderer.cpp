@@ -529,8 +529,7 @@ namespace Directus
 		buffer->bloom_intensity				= m_bloomIntensity;
 		buffer->sharpen_strength			= m_sharpenStrength;
 		buffer->sharpen_clamp				= m_sharpenClamp;
-		buffer->taa_jitter					= m_taa_jitter;
-		buffer->taa_jitterPrevious			= m_taa_jitterPrevious;
+		buffer->taa_jitterOffset			= m_taa_jitter - m_taa_jitterPrevious;
 		buffer->motionBlur_strength			= m_motionBlurStrength;
 		buffer->fps_current					= Profiler::Get().GetFPS();
 		buffer->fps_target					= Settings::Get().FPS_GetTarget();

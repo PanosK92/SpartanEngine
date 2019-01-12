@@ -94,11 +94,12 @@ PixelOutputType mainPS(PixelInputType input)
 	// 0.0 = CubeMap 		-> texture mapping
 	//=========================================
 	
-	//= VELOCITY ========================================================================================================================
-	float2 position_current 	= input.positionCS_Current.xy / input.positionCS_Current.w;
-	float2 position_previous 	= input.positionCS_Previous.xy / input.positionCS_Previous.w;
-    float2 velocity 			= ((position_current - g_taa_jitter) - (position_previous - g_taa_jitterPrevious)) * float2(0.5f, -0.5f);
-	//===================================================================================================================================
+	//= VELOCITY ==============================================================================
+	float2 position_current 	= (input.positionCS_Current.xy / input.positionCS_Current.w);
+	float2 position_previous 	= (input.positionCS_Previous.xy / input.positionCS_Previous.w);
+	float2 position_delta		= position_current - position_previous;
+    float2 velocity 			= (position_delta - g_taa_jitterOffset) * float2(0.5f, -0.5f);
+	//=========================================================================================
 
 	//= HEIGHT ==================================================================================
 	#if HEIGHT_MAP
