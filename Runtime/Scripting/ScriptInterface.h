@@ -51,7 +51,7 @@ namespace Directus
 		void RegisterVector3();
 		void RegisterQuaternion();
 		void RegisterMath();
-		void RegisterDebug();
+		void RegisterLog();
 
 		asIScriptEngine* m_scriptEngine;
 		Context* m_context;

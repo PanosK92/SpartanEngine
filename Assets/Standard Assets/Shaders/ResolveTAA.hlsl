@@ -21,14 +21,14 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 {
 	// Reproject
 	float depth 			= 1.0f;
-	float2 velocity			= GetVelocity_Dilate_Depth3X3(texCoord, tex_velocity, tex_depth, sampler_bilinear, depth) * g_texelSize;
+	float2 velocity			= GetVelocity_Dilate_Depth3X3(texCoord, tex_velocity, tex_depth, sampler_bilinear, depth);
 	float2 texCoord_history = texCoord - velocity;
 	
 	// Get current and history colors
 	float4 color_current 	= Reinhard(tex_current.Sample(sampler_bilinear, texCoord));
 	float4 color_history 	= Reinhard(tex_history.Sample(sampler_bilinear, texCoord_history));
 
-	//= Clamp out too different history colors (for non-existing and lighting change cases) ===============
+	//= Clamp out too different history colors (for non-existing and lighting change cases) =========================
 	float2 du = float2(g_texelSize.x, 0.0f);
 	float2 dv = float2(0.0f, g_texelSize.y);
 
@@ -46,16 +46,18 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float4 color_max = Reinhard(max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr)))))))));
 	
 	color_history = clamp(color_history, color_min, color_max);
-	//=====================================================================================================
+	//===============================================================================================================
 	
-	//= Compute blend factor ==================================================================================================
-	float factor_velocity 	= abs(sin(frac(length(velocity)) * PI) - 1.0f); 		// Decrease when pixel motion gets subpixel
-	float factor_colorMin 	= saturate(length(color_history - color_min)); 			// Decrease when history is near min color
-	float factor_colorMax	= saturate(length(color_history - color_max)); 			// Decrease when history is near max color
-	float factor_contrast	= 1.0f - saturate(Luminance(color_max - color_min)); 	// Increase when local contrast is low
-	float alpha				= factor_velocity * factor_colorMin * factor_colorMax * factor_contrast;
-	float blendfactor 		= lerp(g_blendMin, g_blendMax, alpha);
-	//=========================================================================================================================
+	//= Compute blend factor ===============================================================================================================================================
+	float velocity_length  			= length(velocity);
+	float factor_velocityPixel		= step(velocity_length, 2);								// Discard when velocity is more than 2 pixels/fram - Assassins Creed Black Flag
+	float factor_velocitySubpixel 	= abs(sin(frac(velocity_length) * PI) - 1.0f); 			// Decrease when pixel motion gets subpixel
+	float factor_colorMin 			= saturate(length(color_history - color_min)); 			// Decrease when history is near min color
+	float factor_colorMax			= saturate(length(color_history - color_max)); 			// Decrease when history is near max color
+	float factor_contrast			= 1.0f - saturate(Luminance(color_max - color_min)); 	// Increase when local contrast is low
+	float alpha						= ((factor_velocitySubpixel + factor_colorMin + factor_colorMax + factor_contrast) / 4.0f);
+	float blendfactor 				= lerp(g_blendMin, g_blendMax, alpha);
+	//======================================================================================================================================================================
 	
 	float4 resolved_tonemapped 	= lerp(color_history, color_current, blendfactor);
 	float4 resolved 			= ReinhardInverse(resolved_tonemapped);
