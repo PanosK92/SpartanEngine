@@ -60,7 +60,16 @@ Editor::Editor()
 
 Editor::~Editor()
 {
-	Shutdown();
+	if (!m_initialized)
+		return;
+
+	m_widgets.clear();
+	m_widgets.shrink_to_fit();
+
+	// ImGui implementation - shutdown
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }
 
 bool Editor::Initialize(Context* context, void* windowHandle)
@@ -136,20 +145,6 @@ void Editor::Tick(float deltaTime)
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
 	}
-}
-
-void Editor::Shutdown()
-{
-	if (!m_initialized)
-		return;
-
-	m_widgets.clear();
-	m_widgets.shrink_to_fit();
-
-	// ImGui implementation - shutdown
-	ImGui_ImplDX11_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
 }
 
 void Editor::Widgets_Create()

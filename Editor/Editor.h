@@ -39,7 +39,6 @@ public:
 	bool Initialize(Directus::Context* context, void* windowHandle);
 	void Resize();
 	void Tick(float deltaTime);
-	void Shutdown();
 
 private:
 	void Widgets_Create();

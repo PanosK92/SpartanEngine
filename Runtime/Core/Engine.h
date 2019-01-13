@@ -37,7 +37,7 @@ namespace Directus
 	{
 	public:
 		Engine(Context* context);
-		~Engine() { Shutdown(); }
+		~Engine();
 
 		//= SUBSYSTEM =============
 		bool Initialize() override;
@@ -45,8 +45,6 @@ namespace Directus
 
 		// Performs a complete simulation cycle
 		void Tick();
-		// Shuts down the engine
-		void Shutdown();
 
 		//= ENGINE MODE FLAGS  =====================================================================================================
 		// Returns all engine mode flags

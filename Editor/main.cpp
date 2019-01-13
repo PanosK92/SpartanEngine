@@ -95,14 +95,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		g_renderer->Present();
 	}
 
-	// Shutdown
-	{
-		g_editor->Shutdown();
-		g_editor.release();
-
-		g_engine->Shutdown();
-		g_engine.release();
-	}
-
     return 0;
 }
