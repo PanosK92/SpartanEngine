@@ -40,10 +40,14 @@ namespace Directus
 {
 	Skybox::Skybox(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
 	{
+		m_skyboxType		= Skybox_Sphere;
 		m_cubemapTexture	= make_shared<RHI_Texture>(GetContext());
 		m_matSkybox			= make_shared<Material>(GetContext());
-		m_skyboxType		= Skybox_Sphere;
-
+		m_matSkybox->SetCullMode(Cull_Front);
+		m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		m_matSkybox->SetIsEditable(false);
+		m_matSkybox->SetShadingMode(Material::Shading_Sky);
+		
 		// Texture paths
 		auto cubemapDirectory = GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
 		if (m_skyboxType == Skybox_Array)
@@ -128,10 +132,7 @@ namespace Directus
 		// Material
 		{
 			m_matSkybox->SetResourceName("Standard_Skybox");
-			m_matSkybox->SetCullMode(Cull_Front);
-			m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-			m_matSkybox->SetIsEditable(false);
-			m_matSkybox->SetTextureSlot(TextureType_CubeMap, m_cubemapTexture, false); // assign cubmap texture
+			m_matSkybox->SetTextureSlot(TextureType_Albedo, m_cubemapTexture, false);
 		}
 
 		// Renderable
@@ -159,10 +160,7 @@ namespace Directus
 		// Material
 		{
 			m_matSkybox->SetResourceName("Standard_Skysphere");
-			m_matSkybox->SetCullMode(Cull_Front);
-			m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-			m_matSkybox->SetIsEditable(false);
-			m_matSkybox->SetTextureSlot(TextureType_CubeMap, m_cubemapTexture, false); // assign cubemap texture
+			m_matSkybox->SetTextureSlot(TextureType_Albedo, m_cubemapTexture, false);
 		}
 
 		// Renderable

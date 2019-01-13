@@ -54,6 +54,7 @@ Optimize & Debug				| 0% | Feature freeze, optimize and debug (once all tasks ar
 # Roadmap
 - C# scripting.
 - Vulkan rendering backend.
+- DirectX 12 rendering backend.
 - Dynamic resolution scaling.
 - Real-time ray tracing (experimental).
 - Draw call batching (static & dynamic).

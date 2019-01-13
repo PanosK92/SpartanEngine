@@ -53,8 +53,8 @@ namespace Directus
 
 	ShaderVariation::ShaderVariation(shared_ptr<RHI_Device> device, Context* context) : RHI_Shader(device)
 	{
-		m_context		= context;
-		m_shaderFlags	= 0;
+		m_context			= context;
+		m_variationFlags	= 0;
 	}
 
 	ShaderVariation::~ShaderVariation()
@@ -64,7 +64,7 @@ namespace Directus
 
 	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
 	{
-		m_shaderFlags = shaderFlags;
+		m_variationFlags = shaderFlags;
 
 		// Load and compile the pixel shader
 		AddDefinesBasedOnMaterial();
@@ -137,6 +137,5 @@ namespace Directus
 		AddDefine("OCCLUSION_MAP",	HasOcclusionTexture()	? "1" : "0");
 		AddDefine("EMISSION_MAP",	HasEmissionTexture()	? "1" : "0");
 		AddDefine("MASK_MAP",		HasMaskTexture()		? "1" : "0");
-		AddDefine("CUBE_MAP",		HasCubeMapTexture()		? "1" : "0");
 	}
 }

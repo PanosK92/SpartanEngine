@@ -574,7 +574,7 @@ namespace Directus
 
 			if (skybox)
 			{
-				m_actors[Renderable_Skybox].emplace_back(actor);
+				m_skybox = skybox.get();
 			}
 
 			if (camera)
@@ -595,54 +595,44 @@ namespace Directus
 		if (renderables->size() <= 2)
 			return;
 
-		sort(renderables->begin(), renderables->end(),[](Actor* a, Actor* b)
+		// Sort by depth (front to back)
+		sort(renderables->begin(), renderables->end(), [this](Actor* a, Actor* b)
 		{
 			// Get renderable component
 			auto a_renderable = a->GetRenderable_PtrRaw();
 			auto b_renderable = b->GetRenderable_PtrRaw();
-
-			// Validate renderable components
 			if (!a_renderable || !b_renderable)
-				return false;
-
-			// Get geometry parents
-			auto a_geometryModel = a_renderable->Geometry_Model();
-			auto b_geometryModel = b_renderable->Geometry_Model();
-
-			// Validate geometry parents
-			if (!a_geometryModel || !b_geometryModel)
 				return false;
 
 			// Get materials
 			auto a_material = a_renderable->Material_Ptr();
 			auto b_material = b_renderable->Material_Ptr();
-
 			if (!a_material || !b_material)
 				return false;
 
-			// Get key for models
-			auto a_keyModel = a_geometryModel->Resource_GetID();
-			auto b_keyModel = b_geometryModel->Resource_GetID();
+			float a_depth = (a_renderable->Geometry_AABB().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+			float b_depth = (b_renderable->Geometry_AABB().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
 
-			// Get key for shaders
-			auto a_keyShader = a_material->GetShader()->RHI_GetID();
-			auto b_keyShader = b_material->GetShader()->RHI_GetID();
+			return a_depth < b_depth;
+		});
 
-			// Get key for materials
-			auto a_keyMaterial = a_material->Resource_GetID();
-			auto b_keyMaterial = b_material->Resource_GetID();
+		// Sort by material
+		sort(renderables->begin(), renderables->end(), [](Actor* a, Actor* b)
+		{
+			// Get renderable component
+			auto a_renderable = a->GetRenderable_PtrRaw();
+			auto b_renderable = b->GetRenderable_PtrRaw();
+			if (!a_renderable || !b_renderable)
+				return false;
 
-			auto a_key = 
-				(((unsigned long long)a_keyModel)		<< 48u)	| 
-				(((unsigned long long)a_keyShader)		<< 32u)	|
-				(((unsigned long long)a_keyMaterial)	<< 16u);
+			// Get materials
+			auto a_material = a_renderable->Material_Ptr();
+			auto b_material = b_renderable->Material_Ptr();
+			if (!a_material || !b_material)
+				return false;
 
-			auto b_key = 
-				(((unsigned long long)b_keyModel)		<< 48u)	|
-				(((unsigned long long)b_keyShader)		<< 32u)	|
-				(((unsigned long long)b_keyMaterial)	<< 16u);
-	
-			return a_key < b_key;
+			// Order doesn't matter, as long as they are not mixed
+			return a_material->Resource_GetID() < b_material->Resource_GetID();
 		});
 	}
 	//==========================================================================================================
@@ -883,7 +873,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(texShadows);
 		if (Flags_IsSet(Render_PostProcess_SSAO)) { m_rhiPipeline->SetTexture(texSSAO); } else { m_rhiPipeline->SetTexture(m_texWhite); }
 		m_rhiPipeline->SetTexture(m_renderTexFull_HDR_Light2); // SSR
-		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : m_texWhite);
+		m_rhiPipeline->SetTexture(m_skybox ? m_skybox->GetTexture() : m_texWhite);
 		m_rhiPipeline->SetTexture(m_tex_lutIBL);
 		m_rhiPipeline->SetSampler(m_samplerTrilinearClamp);
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);
@@ -910,7 +900,7 @@ namespace Directus
 		m_rhiPipeline->SetShader(m_shaderTransparent);
 		m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-		m_rhiPipeline->SetTexture(GetSkybox() ? GetSkybox()->GetTexture() : nullptr);
+		m_rhiPipeline->SetTexture(m_skybox ? m_skybox->GetTexture() : nullptr);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 
 		for (auto& actor : actors_transparent)
@@ -1400,7 +1390,7 @@ namespace Directus
 				{
 					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
-						AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						AddBoundigBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 
@@ -1408,7 +1398,7 @@ namespace Directus
 				{
 					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
-						AddBoundigBox(renderable->Geometry_BB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						AddBoundigBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 			}
@@ -1637,15 +1627,5 @@ namespace Directus
 		}
 
 		return nullptr;
-	}
-
-	Skybox* Renderer::GetSkybox()
-	{
-		auto actors = m_actors[Renderable_Skybox];
-		if (actors.empty())
-			return nullptr;
-
-		auto skyboxActor = actors.front();
-		return skyboxActor ? skyboxActor->GetComponent<Skybox>().get() : nullptr;
 	}
 }

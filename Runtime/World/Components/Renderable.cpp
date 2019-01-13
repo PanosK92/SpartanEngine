@@ -207,7 +207,7 @@ namespace Directus
 		m_model->Geometry_Get(m_geometryIndexOffset, m_geometryIndexCount, m_geometryVertexOffset, m_geometryVertexCount, indices, vertices);
 	}
 
-	BoundingBox Renderable::Geometry_BB()
+	BoundingBox Renderable::Geometry_AABB()
 	{
 		return m_geometryAABB.Transformed(GetTransform()->GetMatrix());
 	}
