@@ -78,6 +78,13 @@ namespace Directus
 		m_context->RegisterSubsystem(new World(m_context));
 	}
 
+	Engine::~Engine()
+	{
+		// The context will deallocate the subsystems
+		// in the reverse order in which they were registered.
+		SafeDelete(m_context);
+	}
+
 	bool Engine::Initialize()
 	{
 		// Timer
@@ -166,13 +173,6 @@ namespace Directus
 		}
 
 		FIRE_EVENT(EVENT_FRAME_END);
-	}
-
-	void Engine::Shutdown()
-	{
-		// The context will deallocate the subsystems
-		// in the reverse order in which they were registered.
-		SafeDelete(m_context);
 	}
 
 	void Engine::SetHandles(void* drawHandle, void* windowHandle, void* windowInstance)
