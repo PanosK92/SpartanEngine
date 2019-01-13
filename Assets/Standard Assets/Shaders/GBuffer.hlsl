@@ -88,11 +88,6 @@ PixelOutputType mainPS(PixelInputType input)
 	float normalIntensity	= clamp(materialNormalStrength, 0.012f, materialNormalStrength);
 	float emission			= 0.0f;
 	float occlusion			= 1.0f;	
-	float type				= 1.0f; // default
-	//= TYPE CODES ============================
-	// 1.0 = Default mesh 	-> PBR
-	// 0.0 = CubeMap 		-> texture mapping
-	//=========================================
 	
 	//= VELOCITY ==============================================================================
 	float2 position_current 	= (input.positionCS_Current.xy / input.positionCS_Current.w);
@@ -153,19 +148,13 @@ PixelOutputType mainPS(PixelInputType input)
 	#if EMISSION_MAP
 		emission = texEmission.Sample(samplerAniso, texCoords).r;
 	#endif
-		
-	//= CUBEMAP ==================================================================================
-	#if CUBE_MAP
-		type = 0.0f;
-	#endif
-	//============================================================================================
 
 	// Write to G-Buffer
 	g_buffer.albedo		= albedo;
 	g_buffer.normal 	= float4(Normal_Encode(normal), occlusion);
-	g_buffer.material	= float4(roughness, metallic, emission, type);
+	g_buffer.material	= float4(roughness, metallic, emission, materialShadingMode);
 	g_buffer.velocity	= velocity;
-    g_buffer.depth      = float2(depth_linear, depth_cs);
+	g_buffer.depth      = float2(depth_linear, depth_cs);
 
     return g_buffer;
 }

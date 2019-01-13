@@ -145,7 +145,7 @@ namespace Directus
 
 	bool Camera::IsInViewFrustrum(Renderable* renderable)
 	{
-		BoundingBox box = renderable->Geometry_BB();
+		BoundingBox box = renderable->Geometry_AABB();
 		Vector3 center	= box.GetCenter();
 		Vector3 extents = box.GetExtents();
 
@@ -175,7 +175,7 @@ namespace Directus
 				continue;
 
 			// Get bounding box
-			BoundingBox bb = actor->GetComponent<Renderable>()->Geometry_BB();
+			BoundingBox bb = actor->GetComponent<Renderable>()->Geometry_AABB();
 
 			// Compute hit distance
 			float hitDistance = m_ray.HitDistance(bb);

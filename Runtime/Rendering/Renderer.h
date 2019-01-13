@@ -81,8 +81,7 @@ namespace Directus
 		Renderable_ObjectOpaque,
 		Renderable_ObjectTransparent,
 		Renderable_Light,
-		Renderable_Camera,
-		Renderable_Skybox
+		Renderable_Camera
 	};
 
 	class ENGINE_CLASS Renderer : public Subsystem
@@ -263,7 +262,6 @@ namespace Directus
 
 		//= MISC ========================================================
 		Light* GetLightDirectional();
-		Skybox* GetSkybox();
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
 		std::unique_ptr<GBuffer> m_gbuffer;
@@ -279,6 +277,7 @@ namespace Directus
 		float m_nearPlane;
 		float m_farPlane;
 		Camera* m_camera;
+		Skybox* m_skybox;
 		static bool m_isRendering;
 		std::unique_ptr<Font> m_font;	
 		unsigned long m_flags;

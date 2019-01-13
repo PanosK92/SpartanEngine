@@ -282,15 +282,14 @@ namespace Directus
 		// matching shader already exists, it will be returned.
 		unsigned long shaderFlags = 0;
 
-		if (HasTexture(TextureType_Albedo))		shaderFlags	|= Variaton_Albedo;
-		if (HasTexture(TextureType_Roughness))	shaderFlags	|= Variaton_Roughness;
-		if (HasTexture(TextureType_Metallic))	shaderFlags	|= Variaton_Metallic;
-		if (HasTexture(TextureType_Normal))		shaderFlags	|= Variaton_Normal;
-		if (HasTexture(TextureType_Height))		shaderFlags	|= Variaton_Height;
-		if (HasTexture(TextureType_Occlusion))	shaderFlags	|= Variaton_Occlusion;
-		if (HasTexture(TextureType_Emission))	shaderFlags	|= Variaton_Emission;
-		if (HasTexture(TextureType_Mask))		shaderFlags	|= Variaton_Mask;
-		if (HasTexture(TextureType_CubeMap))	shaderFlags	|= Variaton_Cubemap;
+		if (HasTexture(TextureType_Albedo))		shaderFlags	|= Variation_Albedo;
+		if (HasTexture(TextureType_Roughness))	shaderFlags	|= Variation_Roughness;
+		if (HasTexture(TextureType_Metallic))	shaderFlags	|= Variation_Metallic;
+		if (HasTexture(TextureType_Normal))		shaderFlags	|= Variation_Normal;
+		if (HasTexture(TextureType_Height))		shaderFlags	|= Variation_Height;
+		if (HasTexture(TextureType_Occlusion))	shaderFlags	|= Variation_Occlusion;
+		if (HasTexture(TextureType_Emission))	shaderFlags	|= Variation_Emission;
+		if (HasTexture(TextureType_Mask))		shaderFlags	|= Variation_Mask;
 
 		m_shader = GetOrCreateShader(shaderFlags);
 	}
@@ -367,7 +366,6 @@ namespace Directus
 		if (type == "Occlusion")	return TextureType_Occlusion;
 		if (type == "Emission")		return TextureType_Emission;
 		if (type == "Mask")			return TextureType_Mask;
-		if (type == "CubeMap")		return TextureType_CubeMap;
 
 		return TextureType_Unknown;
 	}

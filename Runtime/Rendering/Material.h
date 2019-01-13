@@ -46,8 +46,7 @@ namespace Directus
 		TextureType_Height,
 		TextureType_Occlusion,
 		TextureType_Emission,
-		TextureType_Mask,
-		TextureType_CubeMap,
+		TextureType_Mask
 	};
 
 	struct TextureSlot
@@ -73,8 +72,7 @@ namespace Directus
 		enum ShadingMode
 		{
 			Shading_PBR,
-			Shading_Unlit,
-			Shading_Skybox
+			Shading_Sky
 		};
 
 		Material(Context* context);

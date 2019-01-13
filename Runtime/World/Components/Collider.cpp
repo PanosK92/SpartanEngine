@@ -70,7 +70,7 @@ namespace Directus
 		if (auto renderable = GetActor_PtrRaw()->GetRenderable_PtrRaw())
 		{
 			m_center	= Vector3::Zero;
-			m_size		= renderable->Geometry_BB().GetSize();
+			m_size		= renderable->Geometry_AABB().GetSize();
 		}
 
 		Shape_Update();

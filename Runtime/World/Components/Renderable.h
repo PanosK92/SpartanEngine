@@ -79,7 +79,7 @@ namespace Directus
 		const std::string& Geometry_Name()				{ return m_geometryName; }
 		std::shared_ptr<Model> Geometry_Model()			{ return m_model; }
 		const Math::BoundingBox& Geometry_AABB() const	{ return m_geometryAABB; }
-		Math::BoundingBox Geometry_BB();
+		Math::BoundingBox Geometry_AABB();
 		//===============================================================================================
 
 		//= MATERIAL ===========================================================================

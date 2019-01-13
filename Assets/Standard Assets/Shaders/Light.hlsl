@@ -66,6 +66,7 @@ PixelInputType mainVS(Vertex_PosUv input)
     return output;
 }
 
+// The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
 float ApplyMicroShadow(float ao, float3 N, float3 L, float shadow)
 {
 	float aperture 		= 2.0f * ao * ao;
@@ -79,13 +80,14 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 finalColor   = float3(0, 0, 0);
 	
 	// Sample from textures
-    float4 albedo       	= Degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
-    float4 normalSample 	= texNormal.Sample(sampler_linear_clamp, texCoord);
-	float3 normal			= Normal_Decode(normalSample.xyz);
-	float4 materialSample   = texMaterial.Sample(sampler_linear_clamp, texCoord);
-    float occlusion_texture = normalSample.w;
-	float occlusion_ssao	= texSSAO.Sample(sampler_linear_clamp, texCoord).r; 
-	float occlusion			= occlusion_ssao * occlusion_texture;
+    float4 albedo       		= Degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
+    float4 normalSample 		= texNormal.Sample(sampler_linear_clamp, texCoord);
+	float3 normal				= Normal_Decode(normalSample.xyz);
+	float4 materialSample   	= texMaterial.Sample(sampler_linear_clamp, texCoord);
+    float occlusion_texture 	= normalSample.w;
+	float occlusion_ssao		= texSSAO.Sample(sampler_linear_clamp, texCoord).r; 
+	float occlusion				= occlusion_ssao * occlusion_texture;
+	float shadow_directional	= texShadows.Sample(sampler_linear_clamp, texCoord).r;
 
 	// Create material
     Material material;
@@ -102,33 +104,32 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
 	[branch]
-    if (materialSample.a == 0.0f) // Render technique
+    if (materialSample.a == 1.0f) // Sky
     {
         finalColor = texEnvironment.Sample(sampler_linear_clamp, DirectionToSphereUV(camera_to_pixel)).rgb;
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }
 
-	//= DIRECTIONAL LIGHT ===================================================================================
+	//= AMBIENT LIGHT ====================================================
+	float ambient_min		= 0.05f;
+	float ambient_factors 	= dirLightIntensity.r * occlusion;
+	float ambient_light		= saturate(max(ambient_min, ambient_factors));
+	//====================================================================
+	
+	//= DIRECTIONAL LIGHT ============================================================================================
 	Light directionalLight;
-	float dirShadow	= texShadows.Sample(sampler_linear_clamp, texCoord).r;
 	
 	// Compute
     directionalLight.color      = dirLightColor.rgb; 
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
-	float microShadow			= ApplyMicroShadow(occlusion, normal, directionalLight.direction, dirShadow);
+	float microShadow			= ApplyMicroShadow(occlusion, normal, directionalLight.direction, shadow_directional);
 	directionalLight.intensity  = dirLightIntensity.r * microShadow;
 
 	// Compute illumination
     finalColor += BRDF(material, directionalLight, normal, camera_to_pixel);
-	//=======================================================================================================
-	
-	//= AMBIENT LIGHT ====================================================
-	float ambient_min		= 0.1f;
-	float ambient_factors 	= dirLightIntensity.r * dirShadow * occlusion;
-	float ambient_light		= saturate(max(ambient_min, ambient_factors));
-	//====================================================================
-	
+	//================================================================================================================
+		
 	//= POINT LIGHTS =========================================================
     Light pointLight;
     for (int i = 0; i < pointlightCount; i++)
