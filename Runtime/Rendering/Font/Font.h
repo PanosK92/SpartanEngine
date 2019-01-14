@@ -21,14 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include <memory>
 #include <map>
-#include "../RHI/RHI_Definition.h"
-#include "../Core/EngineDefs.h"
-#include "../Resource/IResource.h"
-#include "../Math/Vector4.h"
-//================================
+#include "Glyph.h"
+#include "../../RHI/RHI_Definition.h"
+#include "../../Core/EngineDefs.h"
+#include "../../Resource/IResource.h"
+#include "../../Math/Vector4.h"
+//===================================
 
 namespace Directus
 {
@@ -36,8 +37,6 @@ namespace Directus
 	{
 		class Vector2;
 	}
-
-	struct Glyph;
 
 	class ENGINE_CLASS Font : IResource
 	{

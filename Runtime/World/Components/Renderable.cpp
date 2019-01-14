@@ -215,31 +215,14 @@ namespace Directus
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
-	void Renderable::Material_Set(const shared_ptr<Material>& material, bool autoCache /* true */)
+	void Renderable::Material_Set(const shared_ptr<Material>& material)
 	{
-		// Validate material
 		if (!material)
 		{
-			LOG_WARNING("Renderable::SetMaterialFromMemory(): Provided material is null, can't execute function");
+			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
-
-		if (autoCache) // Cache it
-		{
-			if (auto matCached = material->Cache<Material>())
-			{
-				m_material = matCached;
-				if (m_material->HasFilePath())
-				{
-					m_material->SaveToFile(material->GetResourceFilePath());
-					m_materialDefault = false;
-				}
-			}
-		}
-		else
-		{
-			m_material = material;
-		}
+		m_material = material;
 	}
 
 	shared_ptr<Material> Renderable::Material_Set(const string& filePath)
@@ -248,7 +231,7 @@ namespace Directus
 		auto material = make_shared<Material>(GetContext());
 		if (!material->LoadFromFile(filePath))
 		{
-			LOGF_WARNING("Renderable::SetMaterialFromFile(): Failed to load material from \"%s\"", filePath.c_str());
+			LOGF_WARNING("Failed to load material from \"%s\"", filePath.c_str());
 			return nullptr;
 		}
 
@@ -270,7 +253,7 @@ namespace Directus
 		materialStandard->SetCullMode(Cull_Back);
 		materialStandard->SetColorAlbedo(Vector4(0.6f, 0.6f, 0.6f, 1.0f));
 		materialStandard->SetIsEditable(false);		
-		Material_Set(materialStandard->Cache<Material>(), false);
+		Material_Set(materialStandard);
 	}
 
 	const string& Renderable::Material_Name()

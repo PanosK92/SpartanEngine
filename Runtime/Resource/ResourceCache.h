@@ -38,7 +38,7 @@ namespace Directus
 		~ResourceCache() { Clear(); }
 
 		// Adds a resource
-		void Add(const std::shared_ptr<IResource>& resource)
+		void Cache(const std::shared_ptr<IResource>& resource)
 		{
 			if (!resource)
 				return;

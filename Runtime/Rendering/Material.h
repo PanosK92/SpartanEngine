@@ -84,14 +84,14 @@ namespace Directus
 		unsigned int GetMemoryUsage() override;
 		//==============================================================
 
-		//= TEXTURE SLOTS  ===========================================================================================
+		//= TEXTURE SLOTS  ====================================================================
 		const TextureSlot& GetTextureSlotByType(TextureType type);
-		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& textureWeak, bool autoCache = true);	
+		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& textureWeak);
 		bool HasTexture(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//===========================================================================================================
+		//=====================================================================================
 
 		//= SHADER ====================================================================
 		void AcquireShader();

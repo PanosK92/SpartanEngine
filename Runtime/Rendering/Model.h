@@ -77,7 +77,7 @@ namespace Directus
 		//=========================================================
 
 		// Adds a new material
-		void AddMaterial(const std::shared_ptr<Material>& material, const std::shared_ptr<Actor>& actor, bool autoCache = true);
+		void AddMaterial(const std::shared_ptr<Material>& material, const std::shared_ptr<Actor>& actor);
 
 		// Adds a new animation
 		std::shared_ptr<Animation> AddAnimation(const std::shared_ptr<Animation>& animation);
@@ -114,10 +114,10 @@ namespace Directus
 		unsigned int meshCount;
 
 		// Material
-		std::vector<std::weak_ptr<Material>> m_materials;
+		std::vector<std::shared_ptr<Material>> m_materials;
 
 		// Animations
-		std::vector<std::weak_ptr<Animation>> m_animations;
+		std::vector<std::shared_ptr<Animation>> m_animations;
 
 		// Directories relative to this model
 		std::string m_modelDirectoryModel;

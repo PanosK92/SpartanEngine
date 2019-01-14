@@ -77,7 +77,7 @@ namespace Directus
 			typed->SetResourceFilePath(filePathRelative);
 
 			// Cache it now so LoadFromFile() can safely pass around a reference to the resource from the ResourceManager
-			Add<T>(typed);
+			Cache<T>(typed);
 
 			// Load
 			if (!typed->LoadFromFile(filePathRelative))
@@ -92,7 +92,7 @@ namespace Directus
 
 		// Adds a resource into the cache and returns the derived resource as a weak reference
 		template <class T>
-		std::shared_ptr<T> Add(std::shared_ptr<IResource> resource)
+		std::shared_ptr<T> Cache(std::shared_ptr<IResource> resource)
 		{
 			if (!resource)
 				return nullptr;
@@ -103,18 +103,18 @@ namespace Directus
 				return GetResourceByName<T>(FileSystem::GetFileNameNoExtensionFromFilePath(resource->GetResourceFilePath()));
 			}
 
-			Add(resource);
+			Cache(resource);
 			return std::dynamic_pointer_cast<T>(resource);
 		}
 
 		// Adds a resource into the cache (if it's not already cached)
-		void Add(std::shared_ptr<IResource> resource)
+		void Cache(std::shared_ptr<IResource> resource)
 		{
 			if (!resource || m_resourceCache->IsCached(resource))
 				return;
 
 			// Add the resource
-			m_resourceCache->Add(resource);
+			m_resourceCache->Cache(resource);
 		}
 
 		// Returns cached resource by name

@@ -47,8 +47,8 @@ namespace Directus
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= PROPERTIES ==============================================================
-		bool SetAudioClip(const std::weak_ptr<AudioClip>& audioClip, bool autoCache = true);
+		//= PROPERTIES =========================================================
+		void SetAudioClip(const std::shared_ptr<AudioClip>& audioClip);
 		const std::string& GetAudioClipName();
 
 		bool Play();
@@ -57,10 +57,10 @@ namespace Directus
 		bool GetMute() { return m_mute; }
 		void SetMute(bool mute);
 
-		bool GetPlayOnStart() { return m_playOnStart; }
-		void SetPlayOnStart(bool playOnStart) { m_playOnStart = playOnStart; }
+		bool GetPlayOnStart()					{ return m_playOnStart; }
+		void SetPlayOnStart(bool playOnStart)	{ m_playOnStart = playOnStart; }
 
-		bool GetLoop() { return m_loop; }
+		bool GetLoop()			{ return m_loop; }
 		void SetLoop(bool loop) { m_loop = loop; }
 
 		int GetPriority() { return m_priority; }
@@ -74,10 +74,10 @@ namespace Directus
 
 		float GetPan() { return m_pan; }
 		void SetPan(float pan);
-		//===========================================================================
+		//======================================================================
 
 	private:
-		std::weak_ptr<AudioClip> m_audioClip;
+		std::shared_ptr<AudioClip> m_audioClip;
 		std::string m_filePath;
 		bool m_mute;
 		bool m_playOnStart;

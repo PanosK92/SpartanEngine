@@ -32,22 +32,7 @@ struct FT_FaceRec_;
 namespace Directus
 {
 	class Context;
-
-	struct Glyph
-	{
-		int xLeft;
-		int xRight;
-		int yTop;
-		int yBottom;
-		int width;
-		int height;
-		float uvXLeft;
-		float uvXRight;
-		float uvYTop;
-		float uvYBottom;
-		int descent;
-		int horizontalOffset;
-	};
+	struct Glyph;
 
 	class ENGINE_CLASS FontImporter
 	{

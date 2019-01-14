@@ -102,13 +102,13 @@ public:
 		m_scene				= m_context->GetSubsystem<Directus::World>();
 	}
 
-	std::weak_ptr<Directus::RHI_Texture> GetOrLoadTexture(const std::string& filePath, bool async = false)
+	std::shared_ptr<Directus::RHI_Texture> GetOrLoadTexture(const std::string& filePath, bool async = false)
 	{
-		// Validate file path
 		if (Directus::FileSystem::IsDirectory(filePath))
-			return std::weak_ptr<Directus::RHI_Texture>();
+			return nullptr;
+
 		if (!Directus::FileSystem::IsSupportedImageFile(filePath) && !Directus::FileSystem::IsEngineTextureFile(filePath))
-			return std::weak_ptr<Directus::RHI_Texture>();
+			return nullptr;
 
 		// Compute some useful information
 		auto path = Directus::FileSystem::GetRelativeFilePath(filePath);
@@ -135,7 +135,7 @@ public:
 			});
 		}
 
-		return texture->Cache<Directus::RHI_Texture>();
+		return texture;
 	}
 
 	void LoadModel(const std::string& filePath)
