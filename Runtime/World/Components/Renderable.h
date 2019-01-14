@@ -82,9 +82,9 @@ namespace Directus
 		Math::BoundingBox Geometry_AABB();
 		//===============================================================================================
 
-		//= MATERIAL ===========================================================================
+		//= MATERIAL ============================================================
 		// Sets a material from memory (adds it to the resource cache by default)
-		void Material_Set(const std::shared_ptr<Material>& materialWeak, bool autoCache = true);
+		void Material_Set(const std::shared_ptr<Material>& material);
 
 		// Loads a material and the sets it
 		std::shared_ptr<Material> Material_Set(const std::string& filePath);
@@ -93,7 +93,7 @@ namespace Directus
 		const std::string& Material_Name();
 		auto Material_Ptr()		{ return m_material; }
 		bool Material_Exists()	{ return m_material != nullptr; }
-		//=====================================================================================
+		//=======================================================================
 
 		//= PROPERTIES ===================================================================
 		void SetCastShadows(bool castShadows)		{ m_castShadows = castShadows; }
@@ -114,9 +114,9 @@ namespace Directus
 		GeometryType m_geometryType;
 		//==================================
 
-		//= MATERIAL =======================
+		//= MATERIAL ========================
 		std::shared_ptr<Material> m_material;
-		//==================================
+		//===================================
 
 		// Misc
 		bool m_castShadows;

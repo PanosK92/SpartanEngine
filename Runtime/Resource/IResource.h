@@ -31,8 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ResourceManager;
-	
 	enum Resource_Type
 	{
 		Resource_Unknown,
@@ -82,33 +80,6 @@ namespace Directus
 		std::string GetResourceDirectory()	{ return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath); }
 		//================================================================================================================
 
-		//= CACHE =========================================================
-		// Checks whether this resource is cached or not
-		bool IsCached()
-		{
-			if (!m_context)
-			{
-				LOG_ERROR(std::string(GetResourceType_cstr()) + "::IsCached(): Context is null, can't execute function");
-				return false;
-			}
-
-			return _IsCached();
-		}
-
-		// Caches the resource (if not cached) and returns a weak reference
-		template <typename T>
-		std::shared_ptr<T> Cache()
-		{
-			if (!m_context)
-			{
-				LOGF_ERROR("%s::Cache(): Context is null, can't execute function", GetResourceType_cstr());
-				return nullptr;
-			}
-
-			return std::static_pointer_cast<T>(_Cache());
-		}
-		//=================================================================
-
 		//= IO =================================================================
 		virtual bool SaveToFile(const std::string& filePath)	{ return true; }
 		virtual bool LoadFromFile(const std::string& filePath)	{ return true; }
@@ -128,15 +99,11 @@ namespace Directus
 		void SetLoadState(LoadState state)	{ m_loadState = state; }
 
 	protected:
-		std::shared_ptr<IResource> _Cache();
-		bool _IsCached();
-
 		unsigned int m_resourceID			= NOT_ASSIGNED_HASH;
 		std::string m_resourceName			= NOT_ASSIGNED;
 		std::string m_resourceFilePath		= NOT_ASSIGNED;
 		Resource_Type m_resourceType		= Resource_Unknown;
 		LoadState m_loadState				= LoadState_Idle;
 		Context* m_context					= nullptr;
-		ResourceManager* m_resourceManager	= nullptr;
 	};
 }

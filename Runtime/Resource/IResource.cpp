@@ -21,10 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================================
 #include "IResource.h"
-#include "ResourceManager.h"
-#include "../Rendering/Font.h"
 #include "../Rendering/Deferred/ShaderVariation.h"
 #include "../Rendering/Animation.h"
+#include "../Audio/AudioClip.h"
+#include "../Rendering/Mesh.h"
+#include "../Rendering/Model.h"
+#include "../Rendering/Font/Font.h"
 //================================================
 
 //= NAMESPACES ==========
@@ -48,25 +50,7 @@ INSTANTIATE_ToResourceType(Font,			Resource_Font)
 IResource::IResource(Context* context, Resource_Type type)
 {
 	m_context			= context;
-	m_resourceManager	= m_context->GetSubsystem<ResourceManager>();
 	m_resourceType		= type;
 	m_resourceID		= GENERATE_GUID;
 	m_loadState			= LoadState_Idle;
-}
-
-shared_ptr<IResource> IResource::_Cache()
-{
-	auto resource = m_resourceManager->GetResourceByName(GetResourceName(), m_resourceType);
-	if (!resource)
-	{
-		m_resourceManager->Add(GetSharedPtr());
-		resource = m_resourceManager->GetResourceByName(GetResourceName(), m_resourceType);
-	}
-
-	return resource;
-}
-
-bool IResource::_IsCached()
-{
-	return m_resourceManager->ExistsByName(GetResourceName(), m_resourceType);
 }

@@ -130,11 +130,11 @@ namespace Directus
 		m_aabb				= BoundingBox(m_mesh->Vertices_Get());
 	}
 
-	void Model::AddMaterial(const shared_ptr<Material>& material, const shared_ptr<Actor>& actor, bool autoCache /* true */)
+	void Model::AddMaterial(const shared_ptr<Material>& material, const shared_ptr<Actor>& actor)
 	{
 		if (!material)
 		{
-			LOG_WARNING("Invalid parameters");
+			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
 
@@ -144,17 +144,15 @@ namespace Directus
 		// Save the material in the model directory		
 		material->SaveToFile(material->GetResourceFilePath());
 
-		// Cache it or use the provided reference as is
-		auto matRef = autoCache ? material->Cache<Material>() : material;
-
 		// Keep a reference to it
-		m_materials.push_back(matRef);
+		m_materials.push_back(material);
+		m_resourceManager->Cache(material);
 
 		// Create a Renderable and pass the material to it
 		if (actor)
 		{
 			auto renderable = actor->AddComponent<Renderable>();
-			renderable->Material_Set(matRef, false);
+			renderable->Material_Set(material);
 		}
 	}
 
@@ -164,7 +162,7 @@ namespace Directus
 			return animation;
 
 		// Add it to our resources
-		auto sharedAnim = m_context->GetSubsystem<ResourceManager>()->Add<Animation>(animation);
+		auto sharedAnim = m_context->GetSubsystem<ResourceManager>()->Cache<Animation>(animation);
 
 		// Keep a reference to it
 		m_animations.emplace_back(sharedAnim);
@@ -193,7 +191,7 @@ namespace Directus
 		auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
 		if (texture)
 		{
-			material->SetTextureSlot(textureType, texture, false);
+			material->SetTextureSlot(textureType, texture);
 		}
 		// If we didn't get a texture, it's not cached, hence we have to load it and cache it now
 		else if (!texture)
@@ -211,8 +209,8 @@ namespace Directus
 			texture->ClearTextureBytes();
 
 			// Set the texture to the provided material
-			auto texWeak = texture->Cache<RHI_Texture>();
-			material->SetTextureSlot(textureType, texWeak, false);
+			m_resourceManager->Cache(texture);
+			material->SetTextureSlot(textureType, texture);
 		}
 	}
 

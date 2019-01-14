@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "Rectangle.h"
 #include "Grid.h"
-#include "Font.h"
 #include "TransformGizmo.h"
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/LightShader.h"
 #include "Deferred/GBuffer.h"
 #include "Utilities/Sampling.h"
+#include "Font/Font.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommonBuffers.h"
 #include "../RHI/RHI_VertexBuffer.h"
@@ -63,8 +63,7 @@ namespace Directus
 	bool Renderer::m_isRendering = false;
 
 	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
-	{
-		
+	{	
 		m_nearPlane		= 0.0f;
 		m_farPlane		= 0.0f;
 		m_camera		= nullptr;
@@ -76,13 +75,13 @@ namespace Directus
 		m_flags			|= Render_Gizmo_Lights;
 		m_flags			|= Render_Gizmo_Physics;	
 		m_flags			|= Render_PostProcess_ToneMapping;
-		m_flags			|= Render_PostProcess_Bloom;
-		//m_flags			|= Render_PostProcess_FXAA;
+		m_flags			|= Render_PostProcess_Bloom;	
 		m_flags			|= Render_PostProcess_SSAO;
 		m_flags			|= Render_PostProcess_SSR;
 		m_flags			|= Render_PostProcess_MotionBlur;
 		m_flags			|= Render_PostProcess_TAA;
 		m_flags			|= Render_PostProcess_Sharpening;
+		//m_flags			|= Render_PostProcess_FXAA;
 		//m_flags			|= Render_ChromaticAberration;
 
 		// Create RHI device

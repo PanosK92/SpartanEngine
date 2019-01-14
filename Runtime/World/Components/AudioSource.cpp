@@ -25,11 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceManager.h"
 //=========================================
 
-//= NAMESPACES ========================
+//= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
 using namespace Helper;
-//=====================================
+//=============================
 
 namespace Directus
 {
@@ -53,11 +53,11 @@ namespace Directus
 	
 	void AudioSource::OnInitialize()
 	{
-		if (m_audioClip.expired())
+		if (!m_audioClip)
 			return;
 		
 		// Set the transform
-		m_audioClip.lock()->SetTransform(GetTransform());
+		m_audioClip->SetTransform(GetTransform());
 	}
 	
 	void AudioSource::OnStart()
@@ -75,18 +75,18 @@ namespace Directus
 	
 	void AudioSource::OnRemove()
 	{
-		if (m_audioClip.expired())
+		if (!m_audioClip)
 			return;
 	
-		m_audioClip.lock()->Stop();
+		m_audioClip->Stop();
 	}
 	
 	void AudioSource::OnTick()
 	{
-		if (m_audioClip.expired())
+		if (!m_audioClip)
 			return;
 	
-		m_audioClip.lock()->Update();
+		m_audioClip->Update();
 	}
 	
 	void AudioSource::Serialize(FileStream* stream)
@@ -116,92 +116,89 @@ namespace Directus
 		m_audioClip = m_context->GetSubsystem<ResourceManager>()->Load<AudioClip>(m_filePath);
 	}
 
-	bool AudioSource::SetAudioClip(const weak_ptr<AudioClip>& audioClip, bool autoCache)
+	void AudioSource::SetAudioClip(const shared_ptr<AudioClip>& audioClip)
 	{
-		if (audioClip.expired())
+		if (!audioClip)
 		{
-			m_audioClip = audioClip;
-			return true;
-
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
 		}
-		m_audioClip = !autoCache ? audioClip : audioClip.lock()->Cache<AudioClip>();
-		return true;
+		m_audioClip = audioClip;
 	}
 
 	const string& AudioSource::GetAudioClipName()
 	{
-		return !m_audioClip.expired() ? m_audioClip.lock()->GetResourceName() : NOT_ASSIGNED;
+		return m_audioClip ? m_audioClip->GetResourceName() : NOT_ASSIGNED;
 	}
 	
 	bool AudioSource::Play()
 	{
-		if (m_audioClip.expired())
+		if (!m_audioClip)
 			return false;
 	
-		auto audioClip = m_audioClip.lock();
-		audioClip->Play();
-		audioClip->SetMute(m_mute);
-		audioClip->SetVolume(m_volume);
-		audioClip->SetLoop(m_loop);
-		audioClip->SetPriority(m_priority);
-		audioClip->SetPan(m_pan);
+		m_audioClip->Play();
+		m_audioClip->SetMute(m_mute);
+		m_audioClip->SetVolume(m_volume);
+		m_audioClip->SetLoop(m_loop);
+		m_audioClip->SetPriority(m_priority);
+		m_audioClip->SetPan(m_pan);
 	
 		return true;
 	}
 	
 	bool AudioSource::Stop()
 	{
-		if (m_audioClip.expired())
+		if (!m_audioClip)
 			return false;
 	
-		return m_audioClip.lock()->Stop();
+		return m_audioClip->Stop();
 	}
 	
 	void AudioSource::SetMute(bool mute)
 	{
-		if (m_mute == mute || m_audioClip.expired())
+		if (m_mute == mute || !m_audioClip)
 			return;
 	
 		m_mute = mute;
-		m_audioClip.lock()->SetMute(mute);
+		m_audioClip->SetMute(mute);
 	}
 	
 	void AudioSource::SetPriority(int priority)
 	{
-		if (m_audioClip.expired())
+		if (!m_audioClip)
 			return;
 	
 		// Priority for the channel, from 0 (most important) 
 		// to 256 (least important), default = 128.
 		m_priority = (int)Clamp(priority, 0, 255);
-		m_audioClip.lock()->SetPriority(m_priority);
+		m_audioClip->SetPriority(m_priority);
 	}
 	
 	void AudioSource::SetVolume(float volume)
 	{
-		if (m_audioClip.expired())
+		if (!m_audioClip)
 			return;
 	
 		m_volume = Clamp(volume, 0.0f, 1.0f);
-		m_audioClip.lock()->SetVolume(m_volume);
+		m_audioClip->SetVolume(m_volume);
 	}
 	
 	void AudioSource::SetPitch(float pitch)
 	{
-		if (m_audioClip.expired())
+		if (!m_audioClip)
 			return;
 	
 		m_pitch = Clamp(pitch, 0.0f, 3.0f);
-		m_audioClip.lock()->SetPitch(m_pitch);
+		m_audioClip->SetPitch(m_pitch);
 	}
 	
 	void AudioSource::SetPan(float pan)
 	{
-		if (m_audioClip.expired())
+		if (!m_audioClip)
 			return;
 	
 		// Pan level, from -1.0 (left) to 1.0 (right).
 		m_pan = Clamp(pan, -1.0f, 1.0f);
-		m_audioClip.lock()->SetPan(m_pan);
+		m_audioClip->SetPan(m_pan);
 	}
 }

@@ -191,23 +191,19 @@ namespace Directus
 	}
 
 	// Set texture from an existing texture
-	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_Texture>& texture, bool autoCache /* true */)
+	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_Texture>& texture)
 	{
-		// Validate texture
 		if (!texture)
 		{
-			LOG_WARNING("Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
-
-		// Cache it or use the provided reference as is
-		auto texCached = autoCache ? texture->Cache<RHI_Texture>() : texture;
 
 		// Some models (or Assimp) pass a normal map as a height map
 		// and others pass a height map as a normal map, we try to fix that.
 		type = 
-			(type == TextureType_Normal && texCached->GetGrayscale()) ? TextureType_Height :
-			(type == TextureType_Height && !texCached->GetGrayscale()) ? TextureType_Normal : type;
+			(type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height :
+			(type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : type;
 
 		// Assign - As a replacement (if there is a previous one)
 		bool replaced = false;
@@ -215,7 +211,7 @@ namespace Directus
 		{
 			if (textureSlot.type == type)
 			{
-				textureSlot.ptr	= texCached;
+				textureSlot.ptr	= texture;
 				replaced = true;
 				break;
 			}
@@ -223,7 +219,7 @@ namespace Directus
 		// Assign - Add a new one (in case it's the first time the slot is assigned)
 		if (!replaced)
 		{
-			m_textureSlots.emplace_back(type, texCached);
+			m_textureSlots.emplace_back(type, texture);
 		}
 
 		TextureBasedMultiplierAdjustment();

@@ -38,6 +38,9 @@ namespace Directus
 	#define LOGF_WARNING(text, ...)	{ Log::m_callerName = __FUNCTION__; Log::WriteFWarning(text, __VA_ARGS__); }
 	#define LOGF_ERROR(text, ...)	{ Log::m_callerName = __FUNCTION__; Log::WriteFError(text, __VA_ARGS__); }
 
+	// Pre-Made
+	#define LOG_ERROR_INVALID_PARAMETER() LOG_ERROR("Invalid parameter.")
+
 	// Forward declarations
 	class Actor;
 	namespace Math

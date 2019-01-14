@@ -918,7 +918,7 @@ void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audioSource)
 		{
 			audioClipName	= FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data));
 			auto audioClip	= _Widget_Properties::resourceManager->Load<AudioClip>(get<const char*>(payload->data));
-			audioSource->SetAudioClip(audioClip, false);
+			audioSource->SetAudioClip(audioClip);
 		}
 
 		// Mute

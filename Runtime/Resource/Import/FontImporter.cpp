@@ -19,20 +19,21 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ==========================
 #include "FontImporter.h"
 #include "ft2build.h"
 #include FT_FREETYPE_H 
 #include "../../Logging/Log.h"
 #include "../../Math/MathHelper.h"
 #include "../../Core/Settings.h"
-//================================
+#include "../../Rendering/Font/Glyph.h"
+//=====================================
 
-//= NAMESPACES ========================
+//= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
 using namespace Helper;
-//=====================================
+//=============================
 
 // A minimum size for a texture holding all visible ASCII characters
 #define GLYPH_START 32
@@ -67,38 +68,6 @@ namespace Directus
 		FT_Library_Version(m_library, &major, &minor, &rev);
 		Settings::Get().m_versionFreeType = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
 	}
-
-	// Glyph metrics:
-	// --------------
-	//
-	//                       xmin                     xmax
-	//                        |                         |
-	//                        |<-------- width -------->|
-	//                        |                         |
-	//              |         +-------------------------+----------------- ymax
-	//              |         |    ggggggggg   ggggg    |     ^        ^
-	//              |         |   g:::::::::ggg::::g    |     |        |
-	//              |         |  g:::::::::::::::::g    |     |        |
-	//              |         | g::::::ggggg::::::gg    |     |        |
-	//              |         | g:::::g     g:::::g     |     |        |
-	//    offsetX  -|-------->| g:::::g     g:::::g     |  offsetY     |
-	//              |         | g:::::g     g:::::g     |     |        |
-	//              |         | g::::::g    g:::::g     |     |        |
-	//              |         | g:::::::ggggg:::::g     |     |        |
-	//              |         |  g::::::::::::::::g     |     |      height
-	//              |         |   gg::::::::::::::g     |     |        |
-	//  baseline ---*---------|---- gggggggg::::::g-----*--------      |
-	//            / |         |             g:::::g     |              |
-	//     origin   |         | gggggg      g:::::g     |              |
-	//              |         | g:::::gg   gg:::::g     |              |
-	//              |         |  g::::::ggg:::::::g     |              |
-	//              |         |   gg:::::::::::::g      |              |
-	//              |         |     ggg::::::ggg        |              |
-	//              |         |         gggggg          |              v
-	//              |         +-------------------------+----------------- ymin
-	//              |                                   |
-	//              |------------- advanceX ----------->|
-
 
 	bool FontImporter::LoadFromFile(const string& filePath, int size, vector<std::byte>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, map<unsigned int, Glyph>& glyphs)
 	{

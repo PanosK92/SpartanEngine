@@ -132,7 +132,7 @@ namespace Directus
 		// Material
 		{
 			m_matSkybox->SetResourceName("Standard_Skybox");
-			m_matSkybox->SetTextureSlot(TextureType_Albedo, m_cubemapTexture, false);
+			m_matSkybox->SetTextureSlot(TextureType_Albedo, m_cubemapTexture);
 		}
 
 		// Renderable
@@ -141,7 +141,7 @@ namespace Directus
 			renderable->Geometry_Set(Geometry_Default_Cube);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
-			renderable->Material_Set(m_matSkybox, true);
+			renderable->Material_Set(m_matSkybox);
 		}
 
 		// Make the skybox big enough
@@ -160,7 +160,7 @@ namespace Directus
 		// Material
 		{
 			m_matSkybox->SetResourceName("Standard_Skysphere");
-			m_matSkybox->SetTextureSlot(TextureType_Albedo, m_cubemapTexture, false);
+			m_matSkybox->SetTextureSlot(TextureType_Albedo, m_cubemapTexture);
 		}
 
 		// Renderable
@@ -169,7 +169,7 @@ namespace Directus
 			renderable->Geometry_Set(Geometry_Default_Sphere);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
-			renderable->Material_Set(m_matSkybox, true);
+			renderable->Material_Set(m_matSkybox);
 		}
 
 		// Make the skybox big enough
