@@ -130,7 +130,7 @@ namespace Directus
 		m_aabb				= BoundingBox(m_mesh->Vertices_Get());
 	}
 
-	void Model::AddMaterial(const shared_ptr<Material>& material, const shared_ptr<Actor>& actor)
+	void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Actor>& actor)
 	{
 		if (!material)
 		{
@@ -145,8 +145,8 @@ namespace Directus
 		material->SaveToFile(material->GetResourceFilePath());
 
 		// Keep a reference to it
-		m_materials.push_back(material);
 		m_resourceManager->Cache(material);
+		m_materials.emplace_back(material);
 
 		// Create a Renderable and pass the material to it
 		if (actor)
@@ -156,28 +156,26 @@ namespace Directus
 		}
 	}
 
-	shared_ptr<Animation> Model::AddAnimation(const shared_ptr<Animation>& animation)
+	void Model::AddAnimation(shared_ptr<Animation>& animation)
 	{
 		if (!animation)
-			return animation;
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
 
-		// Add it to our resources
-		auto sharedAnim = m_context->GetSubsystem<ResourceManager>()->Cache<Animation>(animation);
-
-		// Keep a reference to it
-		m_animations.emplace_back(sharedAnim);
-
+		m_context->GetSubsystem<ResourceManager>()->Cache<Animation>(animation);
+		m_animations.emplace_back(animation);
 		m_isAnimated = true;
-
-		// Return it
-		return sharedAnim;
 	}
 
-	void Model::AddTexture(const shared_ptr<Material>& material, TextureType textureType, const string& filePath)
+	void Model::AddTexture(shared_ptr<Material>& material, TextureType textureType, const string& filePath)
 	{
-		// Validate material
 		if (!material)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
 			return;
+		}
 
 		// Validate texture file path
 		if (filePath == NOT_ASSIGNED)
@@ -204,9 +202,8 @@ namespace Directus
 			string modelRelativeTexPath = m_modelDirectoryTextures + texName + EXTENSION_TEXTURE;
 			texture->SetResourceFilePath(modelRelativeTexPath);
 			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
-			texture->SaveToFile(modelRelativeTexPath);
-			// Now that the texture is saved, free up it's memory since we already have a shader resource
-			texture->ClearTextureBytes();
+			texture->SaveToFile(modelRelativeTexPath);		
+			texture->ClearTextureBytes(); // Now that the texture is saved, free up it's memory since we already have a shader resource
 
 			// Set the texture to the provided material
 			m_resourceManager->Cache(texture);

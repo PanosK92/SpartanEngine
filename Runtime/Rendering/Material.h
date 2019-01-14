@@ -102,9 +102,6 @@ namespace Directus
 		//=============================================================================
 
 		//= PROPERTIES =======================================================================
-		unsigned int GetModelID()						{ return m_modelID; }
-		void SetModelID(unsigned int ID)				{ m_modelID = ID; }
-
 		Cull_Mode GetCullMode()							{ return m_cullMode; }
 		void SetCullMode(Cull_Mode cullMode)			{ m_cullMode = cullMode; }
 
@@ -141,7 +138,6 @@ namespace Directus
 	private:
 		void TextureBasedMultiplierAdjustment();
 
-		unsigned int m_modelID;	
 		Cull_Mode m_cullMode;
 		ShadingMode m_shadingMode;
 		Math::Vector4 m_colorAlbedo;
