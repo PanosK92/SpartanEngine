@@ -813,15 +813,15 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, ImGuiInputTextFlags_CharsDecimal);
 		}
 
-		//= MAP =====================================================================================================================================
-		if (roughness != material->GetRoughnessMultiplier())												material->SetRoughnessMultiplier(roughness);
-		if (metallic != material->GetMetallicMultiplier())													material->SetMetallicMultiplier(metallic);
-		if (normal != material->GetNormalMultiplier())														material->SetNormalMultiplier(normal);
-		if (height != material->GetHeightMultiplier())														material->SetHeightMultiplier(height);
-		if (tiling != material->GetTiling())																material->SetTiling(tiling);
-		if (offset != material->GetOffset())																material->SetOffset(offset);
-		if (_Widget_Properties::materialButtonColorPicker->GetColor() != material->GetColorAlbedo()) material->SetColorAlbedo(_Widget_Properties::materialButtonColorPicker->GetColor());
-		//===========================================================================================================================================
+		//= MAP ============================================================================================================================================================================
+		if (roughness != material->GetRoughnessMultiplier())											material->SetRoughnessMultiplier(roughness);
+		if (metallic != material->GetMetallicMultiplier())												material->SetMetallicMultiplier(metallic);
+		if (normal != material->GetNormalMultiplier())													material->SetNormalMultiplier(normal);
+		if (height != material->GetHeightMultiplier())													material->SetHeightMultiplier(height);
+		if (tiling != material->GetTiling())															material->SetTiling(tiling);
+		if (offset != material->GetOffset())															material->SetOffset(offset);
+		if (_Widget_Properties::materialButtonColorPicker->GetColor() != material->GetColorAlbedo())	material->SetColorAlbedo(_Widget_Properties::materialButtonColorPicker->GetColor());
+		//==================================================================================================================================================================================
 	}
 	ComponentProperty::End();
 }

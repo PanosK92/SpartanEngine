@@ -53,7 +53,6 @@ namespace Directus
 	Material::Material(Context* context) : IResource(context, Resource_Material)
 	{
 		// Material
-		m_modelID				= NOT_ASSIGNED_HASH;
 		m_cullMode				= Cull_Back;
 		m_shadingMode			= Shading_PBR;
 		m_colorAlbedo			= Vector4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -87,7 +86,6 @@ namespace Directus
 
 		SetResourceName(xml->GetAttributeAs<string>("Material", "Name"));
 		SetResourceFilePath(xml->GetAttributeAs<string>("Material", "Path"));
-		xml->GetAttribute("Material", "Model_ID",				&m_modelID);
 		xml->GetAttribute("Material", "Roughness_Multiplier",	&m_roughnessMultiplier);
 		xml->GetAttribute("Material", "Metallic_Multiplier",	&m_metallicMultiplier);
 		xml->GetAttribute("Material", "Normal_Multiplier",		&m_normalMultiplier);
@@ -137,7 +135,6 @@ namespace Directus
 		xml->AddNode("Material");
 		xml->AddAttribute("Material", "Name",					GetResourceName());
 		xml->AddAttribute("Material", "Path",					GetResourceFilePath());
-		xml->AddAttribute("Material", "Model_ID",				m_modelID);
 		xml->AddAttribute("Material", "Cull_Mode",				unsigned int(m_cullMode));	
 		xml->AddAttribute("Material", "Shading_Mode",			unsigned int(m_shadingMode));
 		xml->AddAttribute("Material", "Color",					m_colorAlbedo);

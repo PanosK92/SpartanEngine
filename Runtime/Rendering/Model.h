@@ -76,14 +76,10 @@ namespace Directus
 		const Math::BoundingBox& Geometry_AABB() { return m_aabb; }
 		//=========================================================
 
-		// Adds a new material
-		void AddMaterial(const std::shared_ptr<Material>& material, const std::shared_ptr<Actor>& actor);
-
-		// Adds a new animation
-		std::shared_ptr<Animation> AddAnimation(const std::shared_ptr<Animation>& animation);
-
-		// Adds a texture (the material that uses this texture must be passed as well)
-		void AddTexture(const std::shared_ptr<Material>& material, TextureType textureType, const std::string& filePath);
+		// Add resources to the model
+		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Actor>& actor);
+		void AddAnimation(std::shared_ptr<Animation>& animation);
+		void AddTexture(std::shared_ptr<Material>& material, TextureType textureType, const std::string& filePath);
 
 		bool IsAnimated() { return m_isAnimated; }
 		void SetAnimated(bool isAnimated) { m_isAnimated = isAnimated; }

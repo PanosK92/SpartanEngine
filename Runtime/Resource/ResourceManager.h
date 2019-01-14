@@ -90,30 +90,21 @@ namespace Directus
 			return typed;
 		}
 
-		// Adds a resource into the cache and returns the derived resource as a weak reference
+		// Caches resource, or replaces with existing cached resource
 		template <class T>
-		std::shared_ptr<T> Cache(std::shared_ptr<IResource> resource)
+		void Cache(std::shared_ptr<T>& resource)
 		{
 			if (!resource)
-				return nullptr;
-
-			// If the resource is already loaded, return the existing one
-			if (m_resourceCache->IsCached(resource))
-			{
-				return GetResourceByName<T>(FileSystem::GetFileNameNoExtensionFromFilePath(resource->GetResourceFilePath()));
-			}
-
-			Cache(resource);
-			return std::dynamic_pointer_cast<T>(resource);
-		}
-
-		// Adds a resource into the cache (if it's not already cached)
-		void Cache(std::shared_ptr<IResource> resource)
-		{
-			if (!resource || m_resourceCache->IsCached(resource))
 				return;
 
-			// Add the resource
+			// If the resource is already loaded, replace it with the existing one, then early exit
+			if (m_resourceCache->IsCached(resource))
+			{
+				resource = GetResourceByName<T>(FileSystem::GetFileNameNoExtensionFromFilePath(resource->GetResourceFilePath()));
+				return;
+			}
+
+			// Cache the resource
 			m_resourceCache->Cache(resource);
 		}
 
