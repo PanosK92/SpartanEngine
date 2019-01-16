@@ -61,8 +61,19 @@ namespace Directus
 {
 	ImageImporter::ImageImporter(Context* context)
 	{
+		// Initialize
 		m_context = context;
 		FreeImage_Initialise(true);
+
+		// Register error handler
+		auto FreeImageErrorHandler = [](FREE_IMAGE_FORMAT fif, const char* message)
+		{
+			const char* text	= (message != nullptr) ? message : "Unknown error";
+			const char* format	= (fif != FIF_UNKNOWN) ? FreeImage_GetFormatFromFIF(fif) : "Unknown";
+			
+			LOGF_ERROR("%s, Format: %s", text, format);
+		};
+		FreeImage_SetOutputMessage(FreeImageErrorHandler);
 
 		// Get version
 		Settings::Get().m_versionFreeImage = FreeImage_GetVersion();
@@ -80,7 +91,7 @@ namespace Directus
 
 		if (!FileSystem::FileExists(filePath))
 		{
-			LOGF_ERROR("Cant' load image. File path \"%s\" is invalid.", filePath.c_str());
+			LOGF_ERROR("Path \"%s\" is invalid.", filePath.c_str());
 			return false;
 		}
 
@@ -238,7 +249,7 @@ namespace Directus
 	{	
 		if (!bitmap)
 		{
-			LOGF_ERROR("Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return 0;
 		}
 
@@ -319,12 +330,13 @@ namespace Directus
 	{
 		if (!bitmap)
 		{
-			LOGF_ERROR("Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return nullptr;
 		}
 
 		// Convert it to 32 bits (if lower)
-		if (FreeImage_GetBPP(bitmap) < 32)
+		int bpp = FreeImage_GetBPP(bitmap);
+		if (bpp < 32)
 		{
 			bitmap = _FreeImage_ConvertTo32Bits(bitmap);
 		}
@@ -337,7 +349,7 @@ namespace Directus
 				bool swapped = SwapRedBlue32(bitmap);
 				if (!swapped)
 				{
-					LOG_WARNING("Failed to swap red with blue channel");
+					LOG_ERROR("Failed to swap red with blue channel");
 				}
 			}
 		}
@@ -350,19 +362,41 @@ namespace Directus
 
 	FIBITMAP* ImageImporter::_FreeImage_ConvertTo32Bits(FIBITMAP* bitmap)
 	{
-		FIBITMAP* previousBitmap = bitmap;
-		bitmap = FreeImage_ConvertTo32Bits(previousBitmap);
-		FreeImage_Unload(previousBitmap);
+		if (!bitmap)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return nullptr;
+		}
 
+		FIBITMAP* previousBitmap	= bitmap;
+		bitmap						= FreeImage_ConvertTo32Bits(previousBitmap);
+		if (!bitmap)
+		{
+			LOGF_ERROR("Failed, input bitmap was %d bpp.", FreeImage_GetBPP(previousBitmap));
+			return previousBitmap;
+		}
+
+		FreeImage_Unload(previousBitmap);
 		return bitmap;
 	}
 
 	FIBITMAP* ImageImporter::_FreeImage_Rescale(FIBITMAP* bitmap, unsigned int width, unsigned int height)
 	{
-		FIBITMAP* previousBitmap = bitmap;
-		bitmap = FreeImage_Rescale(previousBitmap, width, height, _ImagImporter::rescaleFilter);
-		FreeImage_Unload(previousBitmap);
+		if (!bitmap || width == 0 || height == 0)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return nullptr;
+		}
 
+		FIBITMAP* previousBitmap	= bitmap;
+		bitmap						= FreeImage_Rescale(previousBitmap, width, height, _ImagImporter::rescaleFilter);
+		if (!bitmap)
+		{
+			LOG_ERROR("Failed");
+			return previousBitmap;
+		}
+
+		FreeImage_Unload(previousBitmap);
 		return bitmap;
 	}
 }
