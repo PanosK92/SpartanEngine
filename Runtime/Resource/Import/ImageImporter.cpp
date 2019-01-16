@@ -63,7 +63,7 @@ namespace Directus
 	{
 		// Initialize
 		m_context = context;
-		FreeImage_Initialise(true);
+		FreeImage_Initialise();
 
 		// Register error handler
 		auto FreeImageErrorHandler = [](FREE_IMAGE_FORMAT fif, const char* message)
@@ -87,7 +87,10 @@ namespace Directus
 	bool ImageImporter::Load(const string& filePath, RHI_Texture* texture)
 	{
 		if (!texture)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
+		}
 
 		if (!FileSystem::FileExists(filePath))
 		{
@@ -95,24 +98,13 @@ namespace Directus
 			return false;
 		}
 
-		// Get image format
-		FREE_IMAGE_FORMAT format = FreeImage_GetFileType(filePath.c_str(), 0);
-
-		// If the format is unknown
-		if (format == FIF_UNKNOWN)
+		// Acquire image format
+		FREE_IMAGE_FORMAT format	= FreeImage_GetFileType(filePath.c_str(), 0);
+		format						= (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(filePath.c_str()) : format;  // If the format is unknown, try to get it from the the filename	
+		if (!FreeImage_FIFSupportsReading(format)) // If the format is still unknown, give up
 		{
-			// Try getting the format from the file extension
-			LOGF_WARNING("Failed to determine image format for \"%s\", attempting to detect it from the file's extension...", filePath.c_str());
-			format = FreeImage_GetFIFFromFilename(filePath.c_str());
-
-			// If the format is still unknown, give up
-			if (!FreeImage_FIFSupportsReading(format))
-			{
-				LOGF_ERROR("Failed to detect the image format.");
-				return false;
-			}
-
-			LOG_INFO("The image format has been detected successfully.");
+			LOGF_ERROR("Unknown or unsupported format.");
+			return false;
 		}
 
 		// Load the image
@@ -120,6 +112,8 @@ namespace Directus
 	
 		// Perform some fix ups
 		bitmap = ApplyBitmapCorrections(bitmap);
+		if (!bitmap)
+			return false;
 
 		// Perform any scaling (if necessary)
 		bool userDefineDimensions	= (texture->GetWidth() != 0 && texture->GetHeight() != 0);
@@ -132,7 +126,7 @@ namespace Directus
 		unsigned int image_width			= FreeImage_GetWidth(bitmap);
 		unsigned int image_height			= FreeImage_GetHeight(bitmap);
 		unsigned int image_bpp				= FreeImage_GetBPP(bitmap);
-		unsigned int image_bpc				= ComputeBytesPerChannel(bitmap);
+		unsigned int image_byesPerChannel	= ComputeBytesPerChannel(bitmap);
 		unsigned int image_channels			= ComputeChannelCount(bitmap);
 		Texture_Format image_format			= ComputeTextureFormat(image_bpp, image_channels);
 		bool image_grayscale				= IsVisuallyGrayscale(bitmap);
@@ -152,7 +146,7 @@ namespace Directus
 
 		// Fill RHI_Texture with image properties
 		texture->SetBPP(image_bpp);
-		texture->SetBPC(image_bpc);
+		texture->SetBPC(image_byesPerChannel);
 		texture->SetWidth(image_width);
 		texture->SetHeight(image_height);
 		texture->SetChannels(image_channels);
@@ -167,7 +161,7 @@ namespace Directus
 	{
 		if (!data || width == 0 || height == 0 || channels == 0)
 		{
-			LOG_ERROR("Invalid parameters");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
@@ -190,7 +184,10 @@ namespace Directus
 	void ImageImporter::GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, unsigned int width, unsigned int height, unsigned int channels)
 	{
 		if (!texture)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
 			return;
+		}
 	
 		// Create a RescaleJob for every mip that we need
 		vector<_ImagImporter::RescaleJob> jobs;
@@ -264,6 +261,12 @@ namespace Directus
 
 	unsigned int ImageImporter::ComputeBytesPerChannel(FIBITMAP* bitmap)
 	{
+		if (!bitmap)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return 0;
+		}
+
 		FREE_IMAGE_TYPE type	= FreeImage_GetImageType(bitmap);
 		unsigned int size		= 0;
 
@@ -285,23 +288,46 @@ namespace Directus
 
 	Texture_Format ImageImporter::ComputeTextureFormat(unsigned int bpp, unsigned int channels)
 	{
-		if (channels == 3)
+		if (bpp < 32)
 		{
-			if (bpp == 96)
-				return Texture_Format_R32G32B32_FLOAT;
+			LOGF_WARNING("BPP is %d, consider using higher quality textures", bpp);
+		}
+
+		if (channels == 1)
+		{
+			if (bpp = 8)	return Texture_Format_R8_UNORM;
+			if (bpp = 16)	return Texture_Format_R16_FLOAT;
+			if (bpp = 32)	return Texture_Format_R32_FLOAT;
+		}
+		else if (channels == 2)
+		{
+			if (bpp == 16)	return Texture_Format_R8G8_UNORM;
+			if (bpp == 32)	return Texture_Format_R16G16_FLOAT;
+			if (bpp == 64)	return Texture_Format_R32G32_FLOAT;
+		}
+		else if (channels == 3)
+		{
+			if (bpp == 96) return Texture_Format_R32G32B32_FLOAT;
 		}
 		else if (channels == 4)
 		{
-			if (bpp == 32)
-				return Texture_Format_R8G8B8A8_UNORM;
+			if (bpp == 32)	return Texture_Format_R8G8B8A8_UNORM;
+			if (bpp == 64)	return Texture_Format_R16G16B16A16_FLOAT;
+			if (bpp == 128) return Texture_Format_R32G32B32A32_FLOAT;
 		}
 		
 		LOG_ERROR("Failed to deduce channel count");
-		return Texture_Format_R8G8B8A8_UNORM;
+		return Texture_Format_R8_UNORM;
 	}
 
 	bool ImageImporter::IsVisuallyGrayscale(FIBITMAP* bitmap)
 	{
+		if (!bitmap)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+
 		switch (FreeImage_GetBPP(bitmap))
 		{
 			case 1:
@@ -335,15 +361,14 @@ namespace Directus
 		}
 
 		// Convert it to 32 bits (if lower)
-		int bpp = FreeImage_GetBPP(bitmap);
-		if (bpp < 32)
+		if (FreeImage_GetBPP(bitmap) < 32)
 		{
 			bitmap = _FreeImage_ConvertTo32Bits(bitmap);
 		}
 
 		// Swap red with blue channel (if needed)
 		if (FreeImage_GetBPP(bitmap) == 32)
-		{		
+		{
 			if (FreeImage_GetRedMask(bitmap) == 0xff0000)
 			{
 				bool swapped = SwapRedBlue32(bitmap);
@@ -353,6 +378,7 @@ namespace Directus
 				}
 			}
 		}
+		
 		
 		// Flip it vertically
 		FreeImage_FlipVertical(bitmap);
@@ -373,7 +399,7 @@ namespace Directus
 		if (!bitmap)
 		{
 			LOGF_ERROR("Failed, input bitmap was %d bpp.", FreeImage_GetBPP(previousBitmap));
-			return previousBitmap;
+			return nullptr;
 		}
 
 		FreeImage_Unload(previousBitmap);
