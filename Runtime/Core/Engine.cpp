@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =========================
 #include "Engine.h"
 #include "Timer.h"
 #include "Settings.h"
@@ -28,14 +28,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EventSystem.h"
 #include "../Logging/Log.h"
 #include "../Threading/Threading.h"
-#include "../Resource/ResourceManager.h"
+#include "../Resource/ResourceCache.h"
 #include "../Scripting/Scripting.h"
 #include "../Audio/Audio.h"
 #include "../Physics/Physics.h"
 #include "../World/World.h"
 #include "../Profiling/Profiler.h"
 #include "../Input/Input.h"
-//======================================
+//====================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -70,7 +70,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Timer(m_context));
 		m_context->RegisterSubsystem(new Input(m_context));
 		m_context->RegisterSubsystem(new Threading(m_context));
-		m_context->RegisterSubsystem(new ResourceManager(m_context));
+		m_context->RegisterSubsystem(new ResourceCache(m_context));
 		m_context->RegisterSubsystem(new Renderer(m_context, m_drawHandle));
 		m_context->RegisterSubsystem(new Audio(m_context));
 		m_context->RegisterSubsystem(new Physics(m_context));
@@ -110,7 +110,7 @@ namespace Directus
 		}
 
 		// ResourceManager
-		if (!m_context->GetSubsystem<ResourceManager>()->Initialize())
+		if (!m_context->GetSubsystem<ResourceCache>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize ResourceManager");
 			return false;

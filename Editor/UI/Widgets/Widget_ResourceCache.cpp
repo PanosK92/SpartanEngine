@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ======================
 #include "Widget_ResourceCache.h"
-#include "Resource/ResourceManager.h"
+#include "Resource/ResourceCache.h"
 #include "../../ImGui/imgui.h"
-//===================================
+//=================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -40,9 +40,9 @@ Widget_ResourceCache::Widget_ResourceCache(Context* context) : Widget(context)
 
 void Widget_ResourceCache::Tick(float deltaTime)
 {
-	ResourceManager* resourceMng	= m_context->GetSubsystem<ResourceManager>();
-	auto resources					= resourceMng->GetResourceAll();
-	auto totalMemoryUsage			= resourceMng->GetMemoryUsage() / 1000.0f / 1000.0f;
+	ResourceCache* resourceCache	= m_context->GetSubsystem<ResourceCache>();
+	auto resources					= resourceCache->GetByType();
+	auto totalMemoryUsage			= resourceCache->GetMemoryUsage() / 1000.0f / 1000.0f;
 
 	ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Resource Cache Viewer", &m_isVisible, ImGuiWindowFlags_HorizontalScrollbar);

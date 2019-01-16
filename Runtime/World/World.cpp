@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ==========================
 #include "World.h"
 #include "Actor.h"
 #include "Components/Transform.h"
@@ -31,12 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Renderable.h"
 #include "../Core/Engine.h"
 #include "../Core/Stopwatch.h"
-#include "../Resource/ResourceManager.h"
+#include "../Resource/ResourceCache.h"
 #include "../Resource/ProgressReport.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
-//======================================
+//=====================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -149,7 +149,7 @@ namespace Directus
 		}
 
 		// Save any in-memory changes done to resources while running.
-		m_context->GetSubsystem<ResourceManager>()->SaveResourcesToFiles();
+		m_context->GetSubsystem<ResourceCache>()->SaveResourcesToFiles();
 
 		// Create a prefab file
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
@@ -160,7 +160,7 @@ namespace Directus
 
 		// Save currently loaded resource paths
 		vector<string> filePaths;
-		m_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths(filePaths);
+		m_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths(filePaths);
 		file->Write(filePaths);
 
 		//= Save actors ============================
@@ -221,7 +221,7 @@ namespace Directus
 		ProgressReport::Get().SetJobCount(g_progress_Scene, (int)resourcePaths.size());
 
 		// Load all the resources
-		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
+		auto resourceMng = m_context->GetSubsystem<ResourceCache>();
 		for (const auto& resourcePath : resourcePaths)
 		{
 			if (FileSystem::IsEngineModelFile(resourcePath))
@@ -386,7 +386,7 @@ namespace Directus
 
 	shared_ptr<Actor>& World::CreateCamera()
 	{
-		auto resourceMng		= m_context->GetSubsystem<ResourceManager>();
+		auto resourceMng		= m_context->GetSubsystem<ResourceCache>();
 		string scriptDirectory	= resourceMng->GetStandardResourceDirectory(Resource_Script);
 
 		shared_ptr<Actor>& camera = Actor_Create();

@@ -50,7 +50,7 @@ namespace _Widget_Properties
 {
 	static std::weak_ptr<Actor> actorInspected;
 	static std::weak_ptr<Material> inspectedMaterial;
-	static ResourceManager* resourceManager;
+	static ResourceCache* resourceCache;
 	static World* scene;
 	static Vector3 rotationHint;
 
@@ -148,7 +148,7 @@ Widget_Properties::Widget_Properties(Context* context) : Widget(context)
 	_Widget_Properties::materialButtonColorPicker	= make_unique<ButtonColorPicker>("Material Color Picker");
 	_Widget_Properties::cameraButtonColorPicker		= make_unique<ButtonColorPicker>("Camera Color Picker");
 
-	_Widget_Properties::resourceManager = m_context->GetSubsystem<ResourceManager>();
+	_Widget_Properties::resourceCache	= m_context->GetSubsystem<ResourceCache>();
 	_Widget_Properties::scene			= m_context->GetSubsystem<World>();
 	m_xMin								= 500; // min width
 }
@@ -760,7 +760,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 				{
 					try
 					{
-						if (auto texture = _Widget_Properties::resourceManager->Load<RHI_Texture>(get<const char*>(payload->data)))
+						if (auto texture = _Widget_Properties::resourceCache->Load<RHI_Texture>(get<const char*>(payload->data)))
 						{
 							material->SetTextureSlot(textureType, texture);
 						}
@@ -917,7 +917,7 @@ void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audioSource)
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Audio))
 		{
 			audioClipName	= FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data));
-			auto audioClip	= _Widget_Properties::resourceManager->Load<AudioClip>(get<const char*>(payload->data));
+			auto audioClip	= _Widget_Properties::resourceCache->Load<AudioClip>(get<const char*>(payload->data));
 			audioSource->SetAudioClip(audioClip);
 		}
 

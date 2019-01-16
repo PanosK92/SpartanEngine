@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =========================
 #include "Material.h"
 #include "Renderer.h"
 #include "Deferred/ShaderVariation.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../Resource/ResourceManager.h"
+#include "../Resource/ResourceCache.h"
 #include "../IO/XmlDocument.h"
 #include "../RHI/RHI_Texture.h"
-//======================================
+//====================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -106,11 +106,11 @@ namespace Directus
 			auto texPath		= xml->GetAttributeAs<string>(nodeName, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
-			auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
+			auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture>(texName);
 			// If there is not texture (it's not loaded yet), load it
 			if (!texture)
 			{
-				texture = m_context->GetSubsystem<ResourceManager>()->Load<RHI_Texture>(texPath);
+				texture = m_context->GetSubsystem<ResourceCache>()->Load<RHI_Texture>(texPath);
 			}
 			SetTextureSlot(texType, texture);
 		}
@@ -301,7 +301,7 @@ namespace Directus
 
 		// Create and compile shader
 		auto shader = make_shared<ShaderVariation>(m_rhiDevice, m_context);
-		shader->Compile(m_context->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shaderFlags);
+		shader->Compile(m_context->GetSubsystem<ResourceCache>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shaderFlags);
 
 		return shader;
 	}

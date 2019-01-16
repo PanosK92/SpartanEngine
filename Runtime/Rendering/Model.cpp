@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_Texture.h"
-#include "../Resource/ResourceManager.h"
+#include "../Resource/ResourceCache.h"
 //=========================================
 
 //= NAMESPACES ================
@@ -48,7 +48,7 @@ namespace Directus
 	{
 		m_normalizedScale	= 1.0f;
 		m_isAnimated		= false;
-		m_resourceManager	= m_context->GetSubsystem<ResourceManager>();
+		m_resourceManager	= m_context->GetSubsystem<ResourceCache>();
 		m_rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 		m_memoryUsage		= 0;
 		m_mesh				= make_unique<Mesh>();
@@ -164,7 +164,7 @@ namespace Directus
 			return;
 		}
 
-		m_context->GetSubsystem<ResourceManager>()->Cache<Animation>(animation);
+		m_context->GetSubsystem<ResourceCache>()->Cache<Animation>(animation);
 		m_animations.emplace_back(animation);
 		m_isAnimated = true;
 	}
@@ -186,7 +186,7 @@ namespace Directus
 
 		// Try to get the texture
 		auto texName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
-		auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<RHI_Texture>(texName);
+		auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture>(texName);
 		if (texture)
 		{
 			material->SetTextureSlot(textureType, texture);
@@ -247,7 +247,7 @@ namespace Directus
 	bool Model::LoadFromForeignFormat(const string& filePath)
 	{
 		// Set some crucial data (Required by ModelImporter)
-		SetWorkingDirectory(m_context->GetSubsystem<ResourceManager>()->GetProjectDirectory() + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"); // Assets/Sponza/
+		SetWorkingDirectory(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory() + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"); // Assets/Sponza/
 		SetResourceFilePath(m_modelDirectoryModel + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + EXTENSION_MODEL); // Assets/Sponza/Sponza.model
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath)); // Sponza
 

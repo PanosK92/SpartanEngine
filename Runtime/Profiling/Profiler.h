@@ -44,7 +44,7 @@ namespace Directus
 	class Context;
 	class World;
 	class Timer;
-	class ResourceManager;
+	class ResourceCache;
 	class RHI_Device;
 	class Variant;
 
@@ -167,7 +167,7 @@ namespace Directus
 		// Dependencies
 		World* m_scene;
 		Timer* m_timer;
-		ResourceManager* m_resourceManager;
+		ResourceCache* m_resourceManager;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

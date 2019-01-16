@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "Transform.h"
 #include "../../IO/FileStream.h"
-#include "../../Resource/ResourceManager.h"
+#include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Utilities/Geometry.h"
 #include "../../Rendering/Material.h"
 #include "../../Rendering/Model.h"
@@ -149,7 +149,7 @@ namespace Directus
 		stream->Read(&m_geometryAABB);
 		string modelName;
 		stream->Read(&modelName);
-		m_model = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Model>(modelName);
+		m_model = m_context->GetSubsystem<ResourceCache>()->GetByName<Model>(modelName);
 
 		// If it was a default mesh, we have to reconstruct it
 		if (m_geometryType != Geometry_Custom) 
@@ -169,7 +169,7 @@ namespace Directus
 		{
 			string materialName;
 			stream->Read(&materialName);
-			m_material = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Material>(materialName);
+			m_material = m_context->GetSubsystem<ResourceCache>()->GetByName<Material>(materialName);
 		}
 	}
 	//==============================================================================
@@ -246,7 +246,7 @@ namespace Directus
 	{
 		m_materialDefault = true;
 
-		auto projectStandardAssetDir = GetContext()->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
+		auto projectStandardAssetDir = GetContext()->GetSubsystem<ResourceCache>()->GetProjectStandardAssetsDirectory();
 		FileSystem::CreateDirectory_(projectStandardAssetDir);
 		auto materialStandard = make_shared<Material>(GetContext());
 		materialStandard->SetResourceName("Standard");

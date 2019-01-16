@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ============================
 #include "Skybox.h"
 #include "Transform.h"
 #include "Renderable.h"
 #include "../Actor.h"
-#include "../../Resource/ResourceManager.h"
+#include "../../Resource/ResourceCache.h"
 #include "../../RHI/RHI_Texture.h"
 #include "../../Math/MathHelper.h"
 #include "../../Rendering/Material.h"
-//=========================================
+//=======================================
 
 //= NAMESPACES ========================
 using namespace std;
@@ -49,7 +49,7 @@ namespace Directus
 		m_matSkybox->SetShadingMode(Material::Shading_Sky);
 		
 		// Texture paths
-		auto cubemapDirectory = GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
+		auto cubemapDirectory = GetContext()->GetSubsystem<ResourceCache>()->GetStandardResourceDirectory(Resource_Cubemap);
 		if (m_skyboxType == Skybox_Array)
 		{
 			m_texturePaths =

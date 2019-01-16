@@ -21,19 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ======================
 #include <string>
 #include "../ImGui/imgui.h"
 #include "Math/Vector4.h"
 #include "Math/Vector2.h"
 #include "RHI/RHI_Implementation.h"
-#include "Resource/ResourceManager.h"
+#include "Resource/ResourceCache.h"
 #include "Core/Engine.h"
 #include "FileSystem/FileSystem.h"
 #include "Threading/Threading.h"
 #include "World/World.h"
 #include "RHI/RHI_Texture.h"
-//===================================
+//=================================
 
 // An icon shader resource pointer by thumbnail
 #define SHADER_RESOURCE_BY_THUMBNAIL(thumbnail)			IconProvider::Get().GetShaderResourceByThumbnail(thumbnail)
@@ -81,10 +81,10 @@ class EditorHelper
 public:
 	EditorHelper()
 	{
-		m_context			= nullptr;	
-		m_engine			= nullptr;
-		m_resourceManager	= nullptr;
-		m_scene				= nullptr;
+		m_context		= nullptr;	
+		m_engine		= nullptr;
+		m_resourceCache	= nullptr;
+		m_scene			= nullptr;
 	}
 	~EditorHelper(){}
 
@@ -96,10 +96,10 @@ public:
 
 	void Initialize(Directus::Context* context)
 	{
-		m_context			= context;
-		m_engine			= m_context->GetSubsystem<Directus::Engine>();
-		m_resourceManager	= m_context->GetSubsystem<Directus::ResourceManager>();
-		m_scene				= m_context->GetSubsystem<Directus::World>();
+		m_context		= context;
+		m_engine		= m_context->GetSubsystem<Directus::Engine>();
+		m_resourceCache	= m_context->GetSubsystem<Directus::ResourceCache>();
+		m_scene			= m_context->GetSubsystem<Directus::World>();
 	}
 
 	std::shared_ptr<Directus::RHI_Texture> GetOrLoadTexture(const std::string& filePath, bool async = false)
@@ -115,8 +115,7 @@ public:
 		auto name = Directus::FileSystem::GetFileNameNoExtensionFromFilePath(path);
 
 		// Check if this texture is already cached, if so return the cached one
-		auto resourceManager = m_context->GetSubsystem<Directus::ResourceManager>();	
-		if (auto cached = resourceManager->GetResourceByName<Directus::RHI_Texture>(name))		
+		if (auto cached = m_resourceCache->GetByName<Directus::RHI_Texture>(name))
 			return cached;
 
 		// Since the texture is not cached, load it and returned a cached ref
@@ -143,7 +142,7 @@ public:
 		// Load the model asynchronously
 		m_context->GetSubsystem<Directus::Threading>()->AddTask([this, filePath]()
 		{
-			m_resourceManager->Load<Directus::Model>(filePath);
+			m_resourceCache->Load<Directus::Model>(filePath);
 		});
 	}
 
@@ -173,6 +172,6 @@ public:
 private:
 	Directus::Context* m_context;
 	Directus::Engine* m_engine;
-	Directus::ResourceManager* m_resourceManager;
+	Directus::ResourceCache* m_resourceCache;
 	Directus::World* m_scene;
 };

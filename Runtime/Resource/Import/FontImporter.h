@@ -40,7 +40,6 @@ namespace Directus
 		FontImporter(Context* context);
 		~FontImporter();
 
-		void Initialize();
 		bool LoadFromFile(const std::string& filePath, int fontSize, std::vector<std::byte>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, std::map<unsigned int, Glyph>& characterInfo);
 
 	private:

@@ -76,7 +76,7 @@ void Widget_Assets::OnPathClicked(const std::string& path)
 {
 	if (FileSystem::IsEngineMaterialFile(path))
 	{
-		auto material = m_context->GetSubsystem<ResourceManager>()->Load<Material>(path);
+		auto material = m_context->GetSubsystem<ResourceCache>()->Load<Material>(path);
 		Widget_Properties::Inspect(material);
 	}
 }
