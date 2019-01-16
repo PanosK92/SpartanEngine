@@ -36,12 +36,12 @@ namespace _Widget_MenuBar
 {
 	static bool g_showAboutWindow	= false;
 	static bool g_fileDialogVisible	= false;
-	static bool imgui_metrics = false;
-	static bool imgui_style	= false;
-	static bool imgui_demo	= false;
+	static bool imgui_metrics		= false;
+	static bool imgui_style			= false;
+	static bool imgui_demo			= false;
 
-	ResourceManager* g_resourceManager	= nullptr;
-	World* g_scene						= nullptr;
+	ResourceCache* g_resourceCache	= nullptr;
+	World* g_scene					= nullptr;
 	static string g_fileDialogSelection;
 }
 
@@ -53,7 +53,7 @@ Widget_MenuBar::Widget_MenuBar(Directus::Context* context) : Widget(context)
 	m_resourceCache = make_unique<Widget_ResourceCache>(context);
 	m_fileDialog	= make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
 
-	_Widget_MenuBar::g_resourceManager	= m_context->GetSubsystem<ResourceManager>();
+	_Widget_MenuBar::g_resourceCache	= m_context->GetSubsystem<ResourceCache>();
 	_Widget_MenuBar::g_scene			= m_context->GetSubsystem<World>();
 }
 

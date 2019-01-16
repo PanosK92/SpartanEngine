@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =========================
 #include "RHI_Texture.h"
 #include "RHI_Device.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
-#include "../Resource/ResourceManager.h"
-//======================================
+#include "../Resource/ResourceCache.h"
+//====================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -179,7 +179,7 @@ namespace Directus
 	bool RHI_Texture::LoadFromForeignFormat(const string& filePath)
 	{
 		// Load texture
-		ImageImporter* imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();	
+		ImageImporter* imageImp = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();	
 		if (!imageImp->Load(filePath, this))
 			return false;
 

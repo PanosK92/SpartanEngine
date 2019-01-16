@@ -59,8 +59,8 @@ using namespace Helper;
 
 namespace Directus
 {
-	static ResourceManager* g_resourceMng = nullptr;
-	bool Renderer::m_isRendering = false;
+	static ResourceCache* g_resourceCache	= nullptr;
+	bool Renderer::m_isRendering			= false;
 
 	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
 	{	
@@ -102,7 +102,7 @@ namespace Directus
 	bool Renderer::Initialize()
 	{
 		// Create/Get required systems		
-		g_resourceMng	= m_context->GetSubsystem<ResourceManager>();
+		g_resourceCache	= m_context->GetSubsystem<ResourceCache>();
 		m_viewport		= make_shared<RHI_Viewport>();
 
 		// Editor specific
@@ -135,7 +135,7 @@ namespace Directus
 	void Renderer::CreateFonts()
 	{
 		// Get standard font directory
-		string fontDir = g_resourceMng->GetStandardResourceDirectory(Resource_Font);
+		string fontDir = g_resourceCache->GetStandardResourceDirectory(Resource_Font);
 
 		// Load a font (used for performance metrics)
 		m_font = make_unique<Font>(m_context, fontDir + "CalibriBold.ttf", 12, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
@@ -144,7 +144,7 @@ namespace Directus
 	void Renderer::CreateTextures()
 	{
 		// Get standard texture directory
-		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
+		string textureDirectory = g_resourceCache->GetStandardResourceDirectory(Resource_Texture);
 
 		// Noise texture (used by SSAO shader)
 		m_texNoiseNormal = make_shared<RHI_Texture>(m_context);
@@ -199,7 +199,7 @@ namespace Directus
 	void Renderer::CreateShaders()
 	{
 		// Get standard shader directory
-		string shaderDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
+		string shaderDirectory = g_resourceCache->GetStandardResourceDirectory(Resource_Shader);
 
 		// G-Buffer
 		m_shaderGBuffer = make_shared<RHI_Shader>(m_rhiDevice);

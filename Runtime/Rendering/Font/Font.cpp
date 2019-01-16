@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ============================
 #include "Font.h"
 #include "Glyph.h"
 #include "../Renderer.h"
@@ -29,8 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_IndexBuffer.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../RHI/RHI_Texture.h"
-#include "../../Resource/ResourceManager.h"
-//=========================================
+#include "../../Resource/ResourceCache.h"
+//=======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -74,7 +74,7 @@ namespace Directus
 		vector<std::byte> atlasBuffer;
 		unsigned int texAtlasWidth = 0;
 		unsigned int texAtlasHeight = 0;
-		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()->LoadFromFile(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
+		if (!m_context->GetSubsystem<ResourceCache>()->GetFontImporter()->LoadFromFile(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
 		{
 			LOGF_ERROR("Failed to load font \"%s\"", filePath.c_str());
 			atlasBuffer.clear();

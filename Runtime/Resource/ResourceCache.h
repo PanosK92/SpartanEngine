@@ -21,169 +21,153 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include <vector>
+//= INCLUDES =====================
 #include <memory>
-#include "IResource.h"
-#include "../Logging/Log.h"
-#include <mutex>
-//========================
+#include <map>
+#include "Import/ModelImporter.h"
+#include "Import/ImageImporter.h"
+#include "Import/FontImporter.h"
+#include "../Core/SubSystem.h"
+#include "../Audio/AudioClip.h"
+#include "../RHI/RHI_Texture.h"
+#include "../Rendering/Model.h"
+#include "../Rendering/Material.h"
+//================================
 
 namespace Directus
 {
-	class ENGINE_CLASS ResourceCache
+	class ENGINE_CLASS ResourceCache : public Subsystem
 	{
 	public:
-		ResourceCache() {}
-		~ResourceCache() { Clear(); }
+		ResourceCache(Context* context);
+		~ResourceCache();
 
-		// Adds a resource
-		void Cache(const std::shared_ptr<IResource>& resource)
-		{
-			if (!resource)
-				return;
+		//= GET BY ==================================================================================
+		// NAME
+		std::shared_ptr<IResource>& GetByName(const std::string& name, Resource_Type type);
+		template <class T> std::shared_ptr<T> GetByName(const std::string& name) 
+		{ return std::dynamic_pointer_cast<T>(GetByName(name, IResource::DeduceResourceType<T>())); }
 
-			std::lock_guard<std::mutex> guard(m_mutex);
-			m_resourceGroups[resource->GetResourceType()].push_back(resource);
-		}
-
-		// Returns the file paths of all the resources
-		void GetResourceFilePaths(std::vector<std::string>& filePaths)
-		{
-			for (const auto& resourceGroup : m_resourceGroups)
-			{
-				for (const auto& resource : resourceGroup.second)
-				{
-					filePaths.push_back(resource->GetResourceFilePath());
-				}
-			}
-		}
-
-		// Makes the resources save their metadata
-		void SaveResourcesToFiles()
-		{
-			for (const auto& resourceGroup : m_resourceGroups)
-			{
-				for (const auto& resource : resourceGroup.second)
-				{
-					if (!resource->HasFilePath())
-						continue;
-
-					resource->SaveToFile(resource->GetResourceFilePath());
-				}
-			}
-		}
-
-		// Returns all the resources
-		std::vector<std::shared_ptr<IResource>> GetAll()
-		{
-			std::vector<std::shared_ptr<IResource>> resources;
-			for (const auto& resourceGroup : m_resourceGroups)
-			{
-				resources.insert(resources.end(), resourceGroup.second.begin(), resourceGroup.second.end());
-			}
-
-			return resources;
-		}
-
-		// Returns a resource by name
+		// TYPE
+		std::vector<std::shared_ptr<IResource>> GetByType(Resource_Type type = Resource_Unknown);
+		// PATH
 		template <class T>
-		std::shared_ptr<IResource> GetByName(const std::string& name)
+		std::shared_ptr<IResource>& GetByPath(const std::string& path)
 		{
-			for (const auto& resource : m_resourceGroups[IResource::DeduceResourceType<T>()])
-			{
-				if (name == resource->GetResourceName())
-					return resource;
-			}
-
-			return std::shared_ptr<IResource>();
-		}
-
-		// Returns a resource by name
-		std::shared_ptr<IResource> GetByName(const std::string& name, Resource_Type type)
-		{
-			for (const auto& resource : m_resourceGroups[type])
-			{
-				if (name == resource->GetResourceName())
-					return resource;
-			}
-
-			return std::shared_ptr<IResource>();
-		}
-
-		// Returns a resource by path
-		template <class T>
-		std::shared_ptr<IResource> GetByPath(const std::string& path)
-		{
-			for (const auto& resource : m_resourceGroups[IResource::DeduceResourceType<T>()])
+			for (auto& resource : m_resourceGroups[IResource::DeduceResourceType<T>()])
 			{
 				if (path == resource->GetResourceFilePath())
 					return resource;
 			}
 
-			return std::shared_ptr<IResource>();
+			return m_emptyResource;
 		}
-
-		// Checks whether a resource is already cached
-		bool IsCached(const std::shared_ptr<IResource>& resourceIn)
+		//===========================================================================================
+	
+		//= LOADING/CACHING =============================================================================================
+		// Caches resource, or replaces with existing cached resource
+		template <class T>
+		void Cache(std::shared_ptr<T>& resource)
 		{
-			return IsCached(resourceIn->GetResourceName(), resourceIn->GetResourceType());
-		}
+			if (!resource)
+				return;
 
-		// Checks whether a resource is already cached
-		bool IsCached(const std::string& resourceName, Resource_Type resourceType)
-		{
-			if (resourceName == NOT_ASSIGNED)
+			// If the resource is already loaded, replace it with the existing one, then early exit
+			if (IsCached(resource->GetResourceName(), resource->GetResourceType()))
 			{
-				LOG_WARNING("ResourceCache:IsCached: Can't check if resource \"" + resourceName + "\" is cached as it has no name assigned to it.");
-				return false;
+				resource = GetByName<T>(FileSystem::GetFileNameNoExtensionFromFilePath(resource->GetResourceFilePath()));
+				return;
 			}
 
-			for (const auto& resource : m_resourceGroups[resourceType])
-			{
-				if (resourceName == resource->GetResourceName())
-					return true;
-			}
-
-			return false;
+			// Cache the resource
+			lock_guard<mutex> guard(m_mutex);
+			m_resourceGroups[resource->GetResourceType()].emplace_back(resource);
 		}
+		bool IsCached(const std::string& resourceName, Resource_Type resourceType);
 
-		unsigned int GetMemoryUsage()
+		// Loads a resource and adds it to the resource cache
+		template <class T>
+		std::shared_ptr<T> Load(const std::string& filePath)
 		{
-			unsigned int size = 0;
-			for (const auto& group : m_resourceGroups)
+			if (filePath == NOT_ASSIGNED)
 			{
-				for (const auto& resource : group.second)
-				{
-					if (!resource)
-						continue;
-
-					size += resource->GetMemoryUsage();
-				}
+				LOGF_WARNING("Can't load resource of type \"%s\", filepath \"%s\" is unassigned.", typeid(T).name(), filePath.c_str());
+				return nullptr;
 			}
 
-			return size;
-		}
+			// Try to make the path relative to the engine (in case it isn't)
+			std::string filePathRelative	= FileSystem::GetRelativeFilePath(filePath);
+			std::string name				= FileSystem::GetFileNameNoExtensionFromFilePath(filePathRelative);
 
-		unsigned int GetMemoryUsage(Resource_Type type)
-		{
-			unsigned int size = 0;
-			for (const auto& resource : m_resourceGroups[type])
+			// Check if the resource is already loaded
+			if (IsCached(name, IResource::DeduceResourceType<T>()))
 			{
-				size += resource->GetMemoryUsage();
+				return GetByName<T>(name);
 			}
 
-			return size;
+			// Create new resource
+			auto typed = std::make_shared<T>(m_context);
+			// Set a default name and a default filepath in case it's not overridden by LoadFromFile()
+			typed->SetResourceName(name);
+			typed->SetResourceFilePath(filePathRelative);
+
+			// Cache it now so LoadFromFile() can safely pass around a reference to the resource from the ResourceManager
+			Cache<T>(typed);
+
+			// Load
+			if (!typed->LoadFromFile(filePathRelative))
+			{
+				LOGF_WARNING("Resource \"%s\" failed to load", filePathRelative.c_str());
+				return nullptr;
+			}
+
+			// Cache it and cast it
+			return typed;
 		}
+		//===============================================================================================================
 
-		// Returns all resources of a given type
-		const std::vector<std::shared_ptr<IResource>>& GetByType(Resource_Type type) { return m_resourceGroups[type]; }
+		//= I/O =======================================================
+		void GetResourceFilePaths(std::vector<std::string>& filePaths);
+		void SaveResourcesToFiles();
+		//=============================================================
 
+		//= MISC ==========================================================
+		// Memory
+		unsigned int GetMemoryUsage(Resource_Type type = Resource_Unknown);
 		// Unloads all resources
 		void Clear() { m_resourceGroups.clear(); }
+		// Returns all resources of a given type
+		unsigned int GetResourceCountByType(Resource_Type type);
+		//=================================================================
+
+		//= DIRECTORIES ====================================================================================
+		void AddStandardResourceDirectory(Resource_Type type, const std::string& directory);
+		const std::string& GetStandardResourceDirectory(Resource_Type type);
+		void SetProjectDirectory(const std::string& directory);
+		std::string GetProjectDirectoryAbsolute();
+		const std::string& GetProjectDirectory()		{ return m_projectDirectory; }	
+		std::string GetProjectStandardAssetsDirectory() { return m_projectDirectory + "Standard_Assets//"; }
+		//==================================================================================================
+
+		// Importers
+		ModelImporter* GetModelImporter()	{ return m_modelImporter.get(); }
+		ImageImporter* GetImageImporter()	{ return m_imageImporter.get(); }
+		FontImporter* GetFontImporter()		{ return m_fontImporter.get(); }
 
 	private:
+		// Cache
 		std::map<Resource_Type, std::vector<std::shared_ptr<IResource>>> m_resourceGroups;
 		std::mutex m_mutex;
+
+		// Directories
+		std::map<Resource_Type, std::string> m_standardResourceDirectories;
+		std::string m_projectDirectory;
+
+		// Importers
+		std::shared_ptr<ModelImporter> m_modelImporter;
+		std::shared_ptr<ImageImporter> m_imageImporter;
+		std::shared_ptr<FontImporter> m_fontImporter;
+
+		std::shared_ptr<IResource> m_emptyResource = nullptr;
 	};
 }

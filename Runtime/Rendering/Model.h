@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ResourceManager;
+	class ResourceCache;
 	class Actor;
 	class Mesh;
 	class Animation;
@@ -124,7 +124,7 @@ namespace Directus
 		float m_normalizedScale;
 		unsigned int m_memoryUsage;		
 		bool m_isAnimated;
-		ResourceManager* m_resourceManager;
+		ResourceCache* m_resourceManager;
 		std::shared_ptr<RHI_Device> m_rhiDevice;	
 	};
 }

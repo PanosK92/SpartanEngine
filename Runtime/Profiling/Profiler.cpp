@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =========================
 #include "Profiler.h"
 #include "../Core/Timer.h"
 #include "../Core/Settings.h"
@@ -30,8 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include "../RHI/RHI_Device.h"
 #include "../Core/Variant.h"
-#include "../Resource/ResourceManager.h"
-//======================================
+#include "../Resource/ResourceCache.h"
+//====================================
 
 //= NAMESPACES =============
 using namespace std;
@@ -59,7 +59,7 @@ namespace Directus
 	{
 		m_scene						= context->GetSubsystem<World>();
 		m_timer						= context->GetSubsystem<Timer>();
-		m_resourceManager			= context->GetSubsystem<ResourceManager>();
+		m_resourceManager			= context->GetSubsystem<ResourceCache>();
 		m_rhiDevice					= context->GetSubsystem<Renderer>()->GetRHIDevice();
 		m_profilingFrequencySec		= 0.35f;
 		m_profilingLastUpdateTime	= m_profilingFrequencySec;

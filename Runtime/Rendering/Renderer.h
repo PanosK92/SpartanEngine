@@ -40,7 +40,7 @@ namespace Directus
 	class GBuffer;
 	class Rectangle;
 	class LightShader;
-	class ResourceManager;
+	class ResourceCache;
 	class Font;
 	class Variant;
 	class Grid;

@@ -47,15 +47,7 @@ namespace Directus
 	FontImporter::FontImporter(Context* context)
 	{
 		m_context = context;
-	}
 
-	FontImporter::~FontImporter()
-	{
-		FT_Done_FreeType(m_library);
-	}
-
-	void FontImporter::Initialize()
-	{
 		if (FT_Init_FreeType(&m_library))
 		{
 			LOG_ERROR("FreeType: Failed to initialize.");
@@ -67,6 +59,11 @@ namespace Directus
 		FT_Int rev;
 		FT_Library_Version(m_library, &major, &minor, &rev);
 		Settings::Get().m_versionFreeType = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
+	}
+
+	FontImporter::~FontImporter()
+	{
+		FT_Done_FreeType(m_library);
 	}
 
 	bool FontImporter::LoadFromFile(const string& filePath, int size, vector<std::byte>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, map<unsigned int, Glyph>& glyphs)

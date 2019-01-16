@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES =============================
 #include "../../RHI/RHI_Definition.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Vector4.h"
 #include "../../World/Components/Camera.h"
 #include "../../World/Components/Light.h"
-#include "../../Resource/ResourceManager.h"
+#include "../../Resource/ResourceCache.h"
 #include "../../RHI/RHI_Shader.h"
-//=========================================
+//========================================
 
 namespace Directus
 {

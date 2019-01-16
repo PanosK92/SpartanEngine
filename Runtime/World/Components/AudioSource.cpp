@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ============================
 #include "AudioSource.h"
 #include "../../IO/FileStream.h"
-#include "../../Resource/ResourceManager.h"
-//=========================================
+#include "../../Resource/ResourceCache.h"
+//=======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -113,7 +113,7 @@ namespace Directus
 		stream->Read(&m_pan);
 	
 		// ResourceManager will return cached audio clip if it's already loaded
-		m_audioClip = m_context->GetSubsystem<ResourceManager>()->Load<AudioClip>(m_filePath);
+		m_audioClip = m_context->GetSubsystem<ResourceCache>()->Load<AudioClip>(m_filePath);
 	}
 
 	void AudioSource::SetAudioClip(const shared_ptr<AudioClip>& audioClip)
