@@ -1,7 +1,6 @@
 static const int g_steps 					= 16;
-static const int g_binarySearchSteps 		= 16;
-static const float g_binarySearchThreshold 	= 0.01f;
-static const float g_ray_step 				= 1.15f;
+static const int g_binarySearchSteps 		= 20;
+static const float g_binarySearchThreshold 	= 0.0035f;
 static const float2 g_failed				= float2(-1.0f, -1.0f);
 
 float2 Project(float3 viewPosition)
@@ -56,8 +55,6 @@ float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir, Texture2D tex_depth, Sampler
 		[branch]
 		if (depth_delta > 0.0f)
 			return SSR_BinarySearch(ray_dir, ray_pos, tex_depth, sampler_point_clamp);
-
-		ray_dir *= g_ray_step;
 	}
 
 	return g_failed;

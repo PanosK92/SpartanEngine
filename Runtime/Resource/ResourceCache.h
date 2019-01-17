@@ -89,10 +89,10 @@ namespace Directus
 		template <class T>
 		std::shared_ptr<T> Load(const std::string& filePath)
 		{
-			if (filePath == NOT_ASSIGNED)
+			if (!FileSystem::FileExists(filePath))
 			{
-				LOGF_WARNING("Can't load resource of type \"%s\", filepath \"%s\" is unassigned.", typeid(T).name(), filePath.c_str());
-				return nullptr;
+				LOGF_ERROR("Path \"%s\" is invalid.", filePath.c_str());
+				return false;
 			}
 
 			// Try to make the path relative to the engine (in case it isn't)
@@ -117,7 +117,7 @@ namespace Directus
 			// Load
 			if (!typed->LoadFromFile(filePathRelative))
 			{
-				LOGF_WARNING("Resource \"%s\" failed to load", filePathRelative.c_str());
+				LOGF_ERROR("Failed to load \"%s\".", filePathRelative.c_str());
 				return nullptr;
 			}
 
