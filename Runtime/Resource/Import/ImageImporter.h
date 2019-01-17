@@ -83,7 +83,7 @@ namespace Directus
 		void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, unsigned int width, unsigned int height, unsigned int channels);
 
 		unsigned int ComputeChannelCount(FIBITMAP* bitmap);
-		unsigned int ComputeBytesPerChannel(FIBITMAP* bitmap);
+		unsigned int ComputeBitsPerChannel(FIBITMAP* bitmap);
 		Texture_Format ComputeTextureFormat(unsigned int bpp, unsigned int channels);
 		bool IsVisuallyGrayscale(FIBITMAP* bitmap);
 		FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap);

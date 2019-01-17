@@ -126,7 +126,7 @@ namespace Directus
 		unsigned int image_width			= FreeImage_GetWidth(bitmap);
 		unsigned int image_height			= FreeImage_GetHeight(bitmap);
 		unsigned int image_bpp				= FreeImage_GetBPP(bitmap);
-		unsigned int image_byesPerChannel	= ComputeBytesPerChannel(bitmap);
+		unsigned int image_byesPerChannel	= ComputeBitsPerChannel(bitmap);
 		unsigned int image_channels			= ComputeChannelCount(bitmap);
 		Texture_Format image_format			= ComputeTextureFormat(image_bpp, image_channels);
 		bool image_grayscale				= IsVisuallyGrayscale(bitmap);
@@ -166,7 +166,7 @@ namespace Directus
 		}
 
 		// Compute expected data size and reserve enough memory
-		unsigned int size = width * height * channels *  ComputeBytesPerChannel(bitmap);
+		unsigned int size = width * height * channels *  (ComputeBitsPerChannel(bitmap) / 8);
 		if (size != data->size())
 		{
 			data->clear();
@@ -254,12 +254,12 @@ namespace Directus
 		unsigned int bytespp = FreeImage_GetLine(bitmap) / FreeImage_GetWidth(bitmap);
 
 		// Compute the number of samples per pixel
-		unsigned int channels = bytespp / ComputeBytesPerChannel(bitmap);
+		unsigned int channels = bytespp / (ComputeBitsPerChannel(bitmap) / 8);
 
 		return channels;
 	}
 
-	unsigned int ImageImporter::ComputeBytesPerChannel(FIBITMAP* bitmap)
+	unsigned int ImageImporter::ComputeBitsPerChannel(FIBITMAP* bitmap)
 	{
 		if (!bitmap)
 		{
@@ -283,7 +283,7 @@ namespace Directus
 			size = sizeof(float);
 		}
 
-		return size;
+		return size * 8;
 	}
 
 	Texture_Format ImageImporter::ComputeTextureFormat(unsigned int bpp, unsigned int channels)
@@ -348,7 +348,7 @@ namespace Directus
 		unsigned int channels = ComputeChannelCount(bitmap);
 		if (channels == 1)
 		{
-			int bpp	= ComputeBytesPerChannel(bitmap) * 8;
+			int bpp	= ComputeBitsPerChannel(bitmap);
 			if (bpp == 16)
 			{
 				FIBITMAP* previousBitmap = bitmap;
