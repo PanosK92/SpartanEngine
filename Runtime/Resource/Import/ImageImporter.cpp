@@ -288,24 +288,7 @@ namespace Directus
 
 	Texture_Format ImageImporter::ComputeTextureFormat(unsigned int bpp, unsigned int channels)
 	{
-		if (bpp < 32)
-		{
-			LOGF_WARNING("BPP is %d, consider using higher quality textures", bpp);
-		}
-
-		if (channels == 1)
-		{
-			if (bpp = 8)	return Texture_Format_R8_UNORM;
-			if (bpp = 16)	return Texture_Format_R16_FLOAT;
-			if (bpp = 32)	return Texture_Format_R32_FLOAT;
-		}
-		else if (channels == 2)
-		{
-			if (bpp == 16)	return Texture_Format_R8G8_UNORM;
-			if (bpp == 32)	return Texture_Format_R16G16_FLOAT;
-			if (bpp == 64)	return Texture_Format_R32G32_FLOAT;
-		}
-		else if (channels == 3)
+		if (channels == 3)
 		{
 			if (bpp == 96) return Texture_Format_R32G32B32_FLOAT;
 		}
@@ -316,7 +299,7 @@ namespace Directus
 			if (bpp == 128) return Texture_Format_R32G32B32A32_FLOAT;
 		}
 		
-		LOG_ERROR("Failed to deduce channel count");
+		LOG_ERROR_INVALID_PARAMETER();
 		return Texture_Format_R8_UNORM;
 	}
 
@@ -360,6 +343,20 @@ namespace Directus
 			return nullptr;
 		}
 
+		// Converting a 1 channel, 16-bit texture to a 32-bit texture, seems to fail.
+		// BUt converting it down to a 8-bit texture, then up to a 32-bit one, seems to work. FreeImage bug?
+		unsigned int channels = ComputeChannelCount(bitmap);
+		if (channels == 1)
+		{
+			int bpp	= ComputeBytesPerChannel(bitmap) * 8;
+			if (bpp == 16)
+			{
+				FIBITMAP* previousBitmap = bitmap;
+				bitmap = FreeImage_ConvertTo8Bits(bitmap);
+				FreeImage_Unload(previousBitmap);
+			}
+		}
+
 		// Convert it to 32 bits (if lower)
 		if (FreeImage_GetBPP(bitmap) < 32)
 		{
@@ -369,7 +366,7 @@ namespace Directus
 		// Swap red with blue channel (if needed)
 		if (FreeImage_GetBPP(bitmap) == 32)
 		{
-			if (FreeImage_GetRedMask(bitmap) == 0xff0000)
+			if (FreeImage_GetRedMask(bitmap) == 0xff0000 && ComputeChannelCount(bitmap) >= 2)
 			{
 				bool swapped = SwapRedBlue32(bitmap);
 				if (!swapped)
@@ -378,8 +375,7 @@ namespace Directus
 				}
 			}
 		}
-		
-		
+			
 		// Flip it vertically
 		FreeImage_FlipVertical(bitmap);
 
@@ -398,7 +394,7 @@ namespace Directus
 		bitmap						= FreeImage_ConvertTo32Bits(previousBitmap);
 		if (!bitmap)
 		{
-			LOGF_ERROR("Failed, input bitmap was %d bpp.", FreeImage_GetBPP(previousBitmap));
+			LOGF_ERROR("Failed (%d bpp, %d channels).", FreeImage_GetBPP(previousBitmap), ComputeChannelCount(previousBitmap));
 			return nullptr;
 		}
 
