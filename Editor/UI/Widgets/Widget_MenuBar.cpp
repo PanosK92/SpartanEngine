@@ -123,18 +123,18 @@ void Widget_MenuBar::Tick(float deltaTime)
 	if (_Widget_MenuBar::g_fileDialogVisible)	{ ImGui::SetNextWindowFocus(); ShowFileDialog(); }
 	if (_Widget_MenuBar::g_showAboutWindow)		{ ImGui::SetNextWindowFocus(); ShowAboutWindow(); }
 
-	if (m_profiler->GetVisible())
-	{
-		m_profiler->Begin();
-		m_profiler->Tick(deltaTime);
-		m_profiler->End();
-	}
-
 	if (m_resourceCache->GetVisible())
 	{
 		m_resourceCache->Begin();
 		m_resourceCache->Tick(deltaTime);
 		m_resourceCache->End();
+	}
+
+	if (m_profiler->GetVisible())
+	{
+		m_profiler->Begin();
+		m_profiler->Tick(deltaTime);
+		m_profiler->End();
 	}
 }
 
@@ -167,7 +167,7 @@ void Widget_MenuBar::ShowFileDialog()
 
 void Widget_MenuBar::ShowAboutWindow()
 {
-	ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
+	ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
 
 	ImGui::Text("Directus3D %s", ENGINE_VERSION);
 	ImGui::Text("Author: Panos Karabelas");

@@ -41,7 +41,7 @@ Widget_ProgressDialog::Widget_ProgressDialog(Context* contex) : Widget(contex)
 	m_progress		= 0.0f;
 	m_xMin			= _Widget_ProgressDialog::width;
 	m_yMin			= 83.0f;
-	m_windowFlags	|= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar;
+	m_windowFlags	|= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
 }
 
 bool Widget_ProgressDialog::Begin()
