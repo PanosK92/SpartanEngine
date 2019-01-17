@@ -68,7 +68,7 @@ namespace Directus
 				continue;
 			}
 
-			UINT rowBytes = mipWidth * channels * m_bpc;
+			UINT rowBytes = mipWidth * channels * (m_bpc / 8);
 
 			D3D11_SUBRESOURCE_DATA& subresourceData = vec_subresourceData.emplace_back(D3D11_SUBRESOURCE_DATA{});
 			subresourceData.pSysMem				= mipChain[i].data();	// Data pointer		
@@ -80,7 +80,7 @@ namespace Directus
 			mipHeight	= Max(mipHeight / 2, (unsigned int)1);
 
 			// Compute memory usage (rough estimation)
-			m_memoryUsage += (unsigned int)mipChain[i].size() * m_bpc;
+			m_memoryUsage += (unsigned int)mipChain[i].size() * (m_bpc / 8);
 		}
 
 		// Describe shader resource view
@@ -152,9 +152,9 @@ namespace Directus
 		}
 
 		D3D11_SUBRESOURCE_DATA subresourceData;
-		subresourceData.pSysMem				= data.data();					// Data pointer		
-		subresourceData.SysMemPitch			= width * channels * m_bpc;		// Line width in bytes
-		subresourceData.SysMemSlicePitch	= 0;							// This is only used for 3D textures
+		subresourceData.pSysMem				= data.data();						// Data pointer		
+		subresourceData.SysMemPitch			= width * channels * (m_bpc / 8);	// Line width in bytes
+		subresourceData.SysMemSlicePitch	= 0;								// This is only used for 3D textures
 
 		// Describe shader resource view
 		D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceDesc;
@@ -184,7 +184,7 @@ namespace Directus
 		// Generate mip-maps
 		if (generateMipChain)
 		{
-			m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->UpdateSubresource(texture, 0, nullptr, data.data(), width * channels * m_bpc, 0);
+			m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->UpdateSubresource(texture, 0, nullptr, data.data(), width * channels * (m_bpc / 8), 0);
 			m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->GenerateMips(shaderResourceView);
 		}
 
@@ -239,7 +239,7 @@ namespace Directus
 					continue;
 				}
 
-				UINT rowBytes = mipWidth * channels * m_bpc;
+				UINT rowBytes = mipWidth * channels * (m_bpc / 8);
 
 				// D3D11_SUBRESOURCE_DATA
 				D3D11_SUBRESOURCE_DATA& subresourceData = vec_subresourceData.emplace_back(D3D11_SUBRESOURCE_DATA{});
@@ -252,7 +252,7 @@ namespace Directus
 				mipHeight	= Max(mipHeight / 2, (unsigned int)1);
 
 				// Compute memory usage (rough estimation)
-				m_memoryUsage += (unsigned int)mip.size() * m_bpc;
+				m_memoryUsage += (unsigned int)mip.size() * (m_bpc / 8);
 			}
 
 			vec_textureDesc.emplace_back(textureDesc);
