@@ -112,7 +112,7 @@ void Widget_Toolbar::Tick(float deltaTime)
 
 void Widget_Toolbar::ShowRendererOptions()
 {
-	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_showRendererOptions, ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_showRendererOptions, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
 
 	if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
 	{	
