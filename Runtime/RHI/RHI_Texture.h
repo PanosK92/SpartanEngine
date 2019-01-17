@@ -111,7 +111,7 @@ namespace Directus
 		
 		//= DATA ========================
 		unsigned int m_bpp		= 0;
-		unsigned int m_bpc		= 1;
+		unsigned int m_bpc		= 0;
 		unsigned int m_width	= 0;
 		unsigned int m_height	= 0;
 		unsigned int m_channels = 0;
