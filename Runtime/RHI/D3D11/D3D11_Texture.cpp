@@ -35,15 +35,9 @@ namespace Directus
 {
 	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const vector<vector<std::byte>>& mipChain)
 	{
-		if (!m_rhiDevice->GetDevice<ID3D11Device>())
+		if (!m_rhiDevice->GetDevice<ID3D11Device>() || mipChain.empty())
 		{
-			LOG_ERROR("Invalid device.");
-			return false;
-		}
-
-		if (mipChain.empty())
-		{
-			LOG_ERROR("Invalid data.");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
@@ -101,7 +95,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&textureDesc, vec_subresourceData.data(), &texture);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			LOG_ERROR("Invalid parameters, failed to create ID3D11Texture2D.");
 			return false;
 		}
 
@@ -120,15 +114,9 @@ namespace Directus
 
 	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const vector<std::byte>& data, bool generateMipChain /*= false*/)
 	{
-		if (!m_rhiDevice->GetDevice<ID3D11Device>())
+		if (!m_rhiDevice->GetDevice<ID3D11Device>() || data.empty())
 		{
-			LOG_ERROR("Invalid device.");
-			return false;
-		}
-
-		if (data.empty())
-		{
-			LOG_ERROR("Invalid data.");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
@@ -208,7 +196,7 @@ namespace Directus
 	{
 		if (data.empty())
 		{
-			LOG_ERROR("Invalid data.");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
