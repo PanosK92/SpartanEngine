@@ -44,7 +44,7 @@ namespace Directus
 	class ENGINE_CLASS GBuffer
 	{
 	public:
-		GBuffer(const std::shared_ptr<RHI_Device>& rhiDevice, int width = Settings::Get().Resolution_GetWidth(), int height = Settings::Get().Resolution_GetHeight());
+		GBuffer(const std::shared_ptr<RHI_Device>& rhiDevice, unsigned int width = Settings::Get().Resolution_GetWidth(), unsigned int height = Settings::Get().Resolution_GetHeight());
 		~GBuffer();
 
 		void SetAsRenderTarget(const std::shared_ptr<RHI_Pipeline>& pipelineState);

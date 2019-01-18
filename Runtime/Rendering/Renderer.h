@@ -125,10 +125,11 @@ namespace Directus
 		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& colorFrom, const Math::Vector4& colorTo);
 		//===============================================================================================================================
 
-		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
-		static bool IsRendering()	{ return m_isRendering; }
-		uint64_t GetFrameNum()		{ return m_frameNum; }
-		Camera* GetCamera()			{ return m_camera; }
+		const std::shared_ptr<RHI_Device>& GetRHIDevice()	{ return m_rhiDevice; }
+		static bool IsRendering()							{ return m_isRendering; }
+		uint64_t GetFrameNum()								{ return m_frameNum; }
+		Camera* GetCamera()									{ return m_camera; }
+		static unsigned int GetMaxResolution()				{ return m_maxResolution; }
 
 		//= Settings =============================================================================================================================================================
 		float m_gamma					= 2.2f;
@@ -254,11 +255,11 @@ namespace Directus
 		std::vector<RHI_Vertex_PosCol> m_lineVertices;
 		//===================================================
 
-		//= EDITOR ===========================================
+		//= EDITOR ======================================
 		std::unique_ptr<TransformGizmo> m_transformGizmo;
 		std::unique_ptr<Grid> m_grid;
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
-		//====================================================
+		//===============================================
 
 		//= MISC ========================================================
 		Light* GetLightDirectional();
@@ -285,6 +286,7 @@ namespace Directus
 		bool m_isOddFrame;
 		Math::Vector2 m_taa_jitter;
 		Math::Vector2 m_taa_jitterPrevious;
+		static unsigned int m_maxResolution;
 		//===============================================================
 		
 		// Global buffer (holds what is needed by almost every shader)
