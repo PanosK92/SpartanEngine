@@ -61,6 +61,7 @@ namespace Directus
 {
 	static ResourceCache* g_resourceCache	= nullptr;
 	bool Renderer::m_isRendering			= false;
+	unsigned int Renderer::m_maxResolution	= 16384;
 
 	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
 	{	
@@ -175,6 +176,12 @@ namespace Directus
 
 	void Renderer::CreateRenderTextures(unsigned int width, unsigned int height)
 	{
+		if ((width / 4) == 0 || (height / 4) == 0)
+		{
+			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
+			return;
+		}
+
 		// Resize everything
 		m_gbuffer	= make_unique<GBuffer>(m_rhiDevice, width, height);
 		m_quad		= make_unique<Rectangle>(m_context);
@@ -441,8 +448,12 @@ namespace Directus
 
 	void Renderer::SetBackBufferSize(unsigned int width, unsigned int height)
 	{
-		if (width == 0 || height == 0)
+		// Return if resolution is invalid
+		if (width == 0 || width > m_maxResolution || height == 0 || height > m_maxResolution)
+		{
+			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
 			return;
+		}
 
 		m_rhiDevice->Set_Resolution(width, height);
 		m_viewport->SetWidth((float)width);
@@ -453,9 +464,9 @@ namespace Directus
 	void Renderer::SetResolution(unsigned int width, unsigned int height)
 	{
 		// Return if resolution is invalid
-		if (width == 0 || height == 0)
+		if (width == 0 || width > m_maxResolution || height == 0 || height > m_maxResolution)
 		{
-			LOG_WARNING("Invalid resolution");
+			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
 			return;
 		}
 

@@ -74,10 +74,13 @@ void Widget_Viewport::Tick(float deltaTime)
 
 void Widget_Viewport::ShowFrame(float deltaTime)
 {
-	int width	= (int)(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-	int height	= (int)(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+	// Get current frame window resolution
+	unsigned int width	= (unsigned int)(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+	unsigned int height = (unsigned int)(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+	if (width > Renderer::GetMaxResolution() || height > Renderer::GetMaxResolution())
+		return;
 
-	// Make sure we are pixel perfect
+	// Make pixel perfect
 	width	-= (width	% 2 != 0) ? 1 : 0;
 	height	-= (height	% 2 != 0) ? 1 : 0;
 
@@ -92,7 +95,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 		ImColor(50, 127, 166, 255)
 	);
 
-	// Adjust resolution if necessary
+	// Adjust resolution if required
 	if (Settings::Get().Resolution_GetWidth() != width || Settings::Get().Resolution_GetHeight() != height)
 	{
 		if (m_timeSinceLastResChange >= 0.250f) // Don't stress the GPU too much

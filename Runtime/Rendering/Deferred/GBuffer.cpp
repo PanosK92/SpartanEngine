@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Device.h"
 #include "../../RHI/RHI_Pipeline.h"
 #include "../../RHI/RHI_RenderTexture.h"
+#include "../../Logging/Log.h"
 //======================================
 
 //= NAMESPACES ================
@@ -33,8 +34,14 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	GBuffer::GBuffer(const shared_ptr<RHI_Device>& rhiDevice, int width, int height)
+	GBuffer::GBuffer(const shared_ptr<RHI_Device>& rhiDevice, unsigned int width, unsigned int height)
 	{
+		if (width == 0 || height == 0)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,		false);
 		m_renderTargets[GBuffer_Target_Normal]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT,	false); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
 		m_renderTargets[GBuffer_Target_Material]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,		false);
