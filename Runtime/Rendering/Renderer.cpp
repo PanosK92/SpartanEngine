@@ -149,7 +149,7 @@ namespace Directus
 
 		// Noise texture (used by SSAO shader)
 		m_texNoiseNormal = make_shared<RHI_Texture>(m_context);
-		m_texNoiseNormal->LoadFromFile(textureDirectory + "noise.png");
+		m_texNoiseNormal->LoadFromFile(textureDirectory + "noise.jpg");
 
 		m_texWhite = make_shared<RHI_Texture>(m_context);
 		m_texWhite->SetNeedsMipChain(false);
@@ -527,6 +527,7 @@ namespace Directus
 		buffer->mMVP						= mMVP;
 		buffer->mView						= m_view;
 		buffer->mProjection					= m_projection;
+		buffer->mProjectionOrtho			= m_projectionOrthographic;
 		buffer->camera_position				= m_camera->GetTransform()->GetPosition();
 		buffer->camera_near					= m_camera->GetNearPlane();
 		buffer->camera_far					= m_camera->GetFarPlane();
@@ -833,8 +834,8 @@ namespace Directus
 			if (lightDir->GetCastShadows())
 			{
 				Pass_ShadowMapping(texIn_Spare, GetLightDirectional());
-				float sigma = 1.0f;
-				float pixelStride = 1.0f;
+				float sigma			= 1.0f;
+				float pixelStride	= 1.0f;
 				Pass_BlurBilateralGaussian(texIn_Spare, texOut_Shadows, sigma, pixelStride);
 			}
 			else
@@ -847,8 +848,8 @@ namespace Directus
 		if (m_flags & Render_PostProcess_SSAO)
 		{
 			Pass_SSAO(texIn_Spare);
-			float sigma = 2.0f;
-			float pixelStride = 2.0f;
+			float sigma			= 2.0f;
+			float pixelStride	= 2.0f;
 			Pass_BlurBilateralGaussian(texIn_Spare, texOut_SSAO, sigma, pixelStride);
 		}
 

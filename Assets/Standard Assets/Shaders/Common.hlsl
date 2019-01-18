@@ -8,7 +8,8 @@ cbuffer GlobalBuffer : register(b0)
 {	
 	matrix g_mvp;
 	matrix g_view;
-	matrix g_projection;	
+	matrix g_projection;
+	matrix g_projectionOrtho;
 	
 	float g_camera_near;
     float g_camera_far;
@@ -88,6 +89,15 @@ float3 Gamma(float3 color)
 float2 Project(float4 value)
 {
 	return (value.xy / value.w) * float2(0.5f, -0.5f) + 0.5f;
+}
+
+float2 Project(float3 position, matrix transform)
+{
+	float4 projectedCoords 	= mul(float4(position, 1.0f), transform);
+	projectedCoords.xy 		/= projectedCoords.w;
+	projectedCoords.xy 		= projectedCoords.xy * float2(0.5f, -0.5f) + 0.5f;
+
+	return projectedCoords.xy;
 }
 
 /*------------------------------------------------------------------------------

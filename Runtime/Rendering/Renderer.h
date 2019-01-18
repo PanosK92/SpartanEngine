@@ -294,7 +294,8 @@ namespace Directus
 		{
 			Math::Matrix mMVP;
 			Math::Matrix mView;
-			Math::Matrix mProjection;	
+			Math::Matrix mProjection;
+			Math::Matrix mProjectionOrtho;
 
 			float camera_near;
 			float camera_far;
