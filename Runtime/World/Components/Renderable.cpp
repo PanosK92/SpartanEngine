@@ -39,7 +39,7 @@ namespace Directus
 	inline void Build(GeometryType type, Renderable* renderable)
 	{	
 		auto model = make_shared<Model>(renderable->GetContext());
-		vector<RHI_Vertex_PosUVTBN> vertices;
+		vector<RHI_Vertex_PosUvNorTan> vertices;
 		vector<unsigned int> indices;
 
 		// Construct geometry
@@ -196,7 +196,7 @@ namespace Directus
 		}
 	}
 
-	void Renderable::Geometry_Get(vector<unsigned int>* indices, vector<RHI_Vertex_PosUVTBN>* vertices)
+	void Renderable::Geometry_Get(vector<unsigned int>* indices, vector<RHI_Vertex_PosUvNorTan>* vertices)
 	{
 		if (!m_model)
 		{

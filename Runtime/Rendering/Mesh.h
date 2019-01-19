@@ -42,16 +42,16 @@ namespace Directus
 			unsigned int vertexOffset,
 			unsigned vertexCount,
 			std::vector<unsigned int>* indices,
-			std::vector<RHI_Vertex_PosUVTBN>* vertices
+			std::vector<RHI_Vertex_PosUvNorTan>* vertices
 		);
 		unsigned int Geometry_MemoryUsage();
 
 		// Vertices
-		void Vertex_Add(const RHI_Vertex_PosUVTBN& vertex);
-		void Vertices_Append(const std::vector<RHI_Vertex_PosUVTBN>& vertices, unsigned int* vertexOffset);	
+		void Vertex_Add(const RHI_Vertex_PosUvNorTan& vertex);
+		void Vertices_Append(const std::vector<RHI_Vertex_PosUvNorTan>& vertices, unsigned int* vertexOffset);	
 		unsigned int Vertices_Count() const;
-		std::vector<RHI_Vertex_PosUVTBN>& Vertices_Get()						{ return m_vertices; }
-		void Vertices_Set(const std::vector<RHI_Vertex_PosUVTBN>& vertices)	{ m_vertices = vertices; }
+		std::vector<RHI_Vertex_PosUvNorTan>& Vertices_Get()						{ return m_vertices; }
+		void Vertices_Set(const std::vector<RHI_Vertex_PosUvNorTan>& vertices)	{ m_vertices = vertices; }
 
 		// Indices
 		void Index_Add(unsigned int index)							{ m_indices.emplace_back(index); }
@@ -64,7 +64,7 @@ namespace Directus
 		unsigned int GetTriangleCount() const { return Indices_Count() / 3; }	
 		
 	private:
-		std::vector<RHI_Vertex_PosUVTBN> m_vertices;
+		std::vector<RHI_Vertex_PosUvNorTan> m_vertices;
 		std::vector<unsigned int> m_indices;
 	};
 }

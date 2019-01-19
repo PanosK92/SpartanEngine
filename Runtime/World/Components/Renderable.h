@@ -69,7 +69,7 @@ namespace Directus
 			const Math::BoundingBox& AABB, 
 			std::shared_ptr<Model>& model
 		);
-		void Geometry_Get(std::vector<unsigned int>* indices, std::vector<RHI_Vertex_PosUVTBN>* vertices);
+		void Geometry_Get(std::vector<unsigned int>* indices, std::vector<RHI_Vertex_PosUvNorTan>* vertices);
 		void Geometry_Set(GeometryType type);
 		unsigned int Geometry_IndexOffset()				{ return m_geometryIndexOffset; }
 		unsigned int Geometry_IndexCount()				{ return m_geometryIndexCount; }		

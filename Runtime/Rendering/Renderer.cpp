@@ -210,7 +210,7 @@ namespace Directus
 
 		// G-Buffer
 		m_shaderGBuffer = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shaderGBuffer->CompileVertex(shaderDirectory + "GBuffer.hlsl", Input_PositionTextureTBN);
+		m_shaderGBuffer->CompileVertex(shaderDirectory + "GBuffer.hlsl", Input_PositionTextureNormalTangent);
 
 		// Light
 		m_shaderLight = make_shared<LightShader>(m_rhiDevice);
@@ -218,7 +218,7 @@ namespace Directus
 
 		// Transparent
 		m_shaderTransparent = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shaderTransparent->CompileVertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureTBN);
+		m_shaderTransparent->CompileVertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureNormalTangent);
 		m_shaderTransparent->AddBuffer<Struct_Transparency>();
 
 		// Depth
@@ -232,7 +232,7 @@ namespace Directus
 
 		// Transform gizmo
 		m_shaderTransformGizmo = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shaderTransformGizmo->CompileVertexPixel(shaderDirectory + "TransformGizmo.hlsl", Input_PositionTextureTBN);
+		m_shaderTransformGizmo->CompileVertexPixel(shaderDirectory + "TransformGizmo.hlsl", Input_PositionTextureNormalTangent);
 		m_shaderTransformGizmo->AddBuffer<Struct_Matrix_Vector3>();
 
 		// SSAO
@@ -524,27 +524,28 @@ namespace Directus
 	{
 		auto buffer = (ConstantBuffer_Global*)m_bufferGlobal->Map();
 
-		buffer->mMVP						= mMVP;
-		buffer->mView						= m_view;
-		buffer->mProjection					= m_projection;
-		buffer->mProjectionOrtho			= m_projectionOrthographic;
-		buffer->camera_position				= m_camera->GetTransform()->GetPosition();
-		buffer->camera_near					= m_camera->GetNearPlane();
-		buffer->camera_far					= m_camera->GetFarPlane();
-		buffer->resolution					= Vector2((float)resolutionWidth, (float)resolutionHeight);
-		buffer->fxaa_subPixel				= m_fxaaSubPixel;
-		buffer->fxaa_edgeThreshold			= m_fxaaEdgeThreshold;
-		buffer->fxaa_edgeThresholdMin		= m_fxaaEdgeThresholdMin;
-		buffer->blur_direction				= blur_direction;
-		buffer->blur_sigma					= blur_sigma;
-		buffer->bloom_intensity				= m_bloomIntensity;
-		buffer->sharpen_strength			= m_sharpenStrength;
-		buffer->sharpen_clamp				= m_sharpenClamp;
-		buffer->taa_jitterOffset			= m_taa_jitter - m_taa_jitterPrevious;
-		buffer->motionBlur_strength			= m_motionBlurStrength;
-		buffer->fps_current					= Profiler::Get().GetFPS();
-		buffer->fps_target					= Settings::Get().FPS_GetTarget();
-		buffer->gamma						= m_gamma;
+		buffer->mMVP					= mMVP;
+		buffer->mView					= m_view;
+		buffer->mProjection				= m_projection;
+		buffer->mProjectionOrtho		= m_projectionOrthographic;
+		buffer->mViewProjection			= m_viewProjection;
+		buffer->camera_position			= m_camera->GetTransform()->GetPosition();
+		buffer->camera_near				= m_camera->GetNearPlane();
+		buffer->camera_far				= m_camera->GetFarPlane();
+		buffer->resolution				= Vector2((float)resolutionWidth, (float)resolutionHeight);
+		buffer->fxaa_subPixel			= m_fxaaSubPixel;
+		buffer->fxaa_edgeThreshold		= m_fxaaEdgeThreshold;
+		buffer->fxaa_edgeThresholdMin	= m_fxaaEdgeThresholdMin;
+		buffer->blur_direction			= blur_direction;
+		buffer->blur_sigma				= blur_sigma;
+		buffer->bloom_intensity			= m_bloomIntensity;
+		buffer->sharpen_strength		= m_sharpenStrength;
+		buffer->sharpen_clamp			= m_sharpenClamp;
+		buffer->taa_jitterOffset		= m_taa_jitter - m_taa_jitterPrevious;
+		buffer->motionBlur_strength		= m_motionBlurStrength;
+		buffer->fps_current				= Profiler::Get().GetFPS();
+		buffer->fps_target				= Settings::Get().FPS_GetTarget();
+		buffer->gamma					= m_gamma;
 
 		m_bufferGlobal->Unmap();
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);

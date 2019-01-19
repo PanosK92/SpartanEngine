@@ -56,7 +56,7 @@ namespace Directus
 		void ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, std::shared_ptr<Model>& model, Actor* parentNode = nullptr, Actor* newNode = nullptr);
 		void ReadAnimations(const aiScene* scene, std::shared_ptr<Model>& model);
 		void LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, std::shared_ptr<Model>& model, Actor* parentActor);
-		void AssimpMesh_ExtractVertices(aiMesh* assimpMesh, std::vector<RHI_Vertex_PosUVTBN>* vertices);
+		void AssimpMesh_ExtractVertices(aiMesh* assimpMesh, std::vector<RHI_Vertex_PosUvNorTan>* vertices);
 		void AssimpMesh_ExtractIndices(aiMesh* assimpMesh, std::vector<unsigned int>* indices);
 		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimpMaterial, std::shared_ptr<Model>& model);
 

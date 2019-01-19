@@ -16,11 +16,10 @@ struct Vertex_PosColor
 };
 
 
-struct Vertex_PosUvTbn
+struct Vertex_PosUvNorTan
 {
 	float4 position 	: POSITION0;
     float2 uv 			: TEXCOORD0;
     float3 normal 		: NORMAL;
     float3 tangent		: TANGENT;
-	float3 bitangent 	: BITANGENT;
 };

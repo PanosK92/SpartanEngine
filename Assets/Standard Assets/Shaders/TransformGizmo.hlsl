@@ -15,7 +15,7 @@ struct PixelInputType
     float2 uv 			: TEXCOORD;
 };
 
-PixelInputType mainVS(Vertex_PosUvTbn input)
+PixelInputType mainVS(Vertex_PosUvNorTan input)
 {
     PixelInputType output;
     	
@@ -28,8 +28,8 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
 
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
-	float4 color = float4(0, 0, 0, 1.0f);
-	color.rgb = axis.xyz;
+	float4 color 	= float4(0, 0, 0, 1.0f);
+	color.rgb 		= axis.xyz;
 	
 	return color;
 }

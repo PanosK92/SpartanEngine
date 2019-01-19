@@ -28,45 +28,45 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus::Utility::Geometry
 {
-	static void CreateCube(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices)
+	static void CreateCube(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices)
 	{
 		using namespace Math;
 
 		// front
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-		vertices->emplace_back(Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-		vertices->emplace_back(Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
+		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0));
 
 		// bottom
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
+		vertices->emplace_back(Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0));
+		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0));
+		vertices->emplace_back(Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0));
+		vertices->emplace_back(Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0));
 
 		// back
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-		vertices->emplace_back(Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-		vertices->emplace_back(Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0));
+		vertices->emplace_back(Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0));
 
 		// top
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
+		vertices->emplace_back(Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0));
+		vertices->emplace_back(Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0));
+		vertices->emplace_back(Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0));
+		vertices->emplace_back(Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0));
 
 		// left
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+		vertices->emplace_back(Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0));
 
 		// right
-		vertices->emplace_back(Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+		vertices->emplace_back(Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0));
+		vertices->emplace_back(Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0));
 
 		// front
 		indices->emplace_back(0); indices->emplace_back(1); indices->emplace_back(2);
@@ -93,14 +93,14 @@ namespace Directus::Utility::Geometry
 		indices->emplace_back(23); indices->emplace_back(21); indices->emplace_back(22);
 	}
 
-	static void CreateQuad(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices)
+	static void CreateQuad(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices)
 	{
 		using namespace Math;
 
-		vertices->emplace_back(Vector3(-0.5f, 0.0f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 0 top-left
-		vertices->emplace_back(Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 1 top-right
-		vertices->emplace_back(Vector3(-0.5f, 0.0f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 2 bottom-left
-		vertices->emplace_back(Vector3(0.5f, 0.0f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 3 bottom-right
+		vertices->emplace_back(Vector3(-0.5f, 0.0f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)); // 0 top-left
+		vertices->emplace_back(Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)); // 1 top-right
+		vertices->emplace_back(Vector3(-0.5f, 0.0f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); // 2 bottom-left
+		vertices->emplace_back(Vector3(0.5f, 0.0f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); // 3 bottom-right
 
 		indices->emplace_back(3);
 		indices->emplace_back(2);
@@ -110,14 +110,13 @@ namespace Directus::Utility::Geometry
 		indices->emplace_back(1);
 	}
 
-	static void CreateSphere(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, int slices = 15, int stacks = 15)
+	static void CreateSphere(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, int slices = 15, int stacks = 15)
 	{
 		using namespace Math;
 
 		Vector3 normal = Vector3(0, 1, 0);
 		Vector3 tangent = Vector3(1, 0, 0);
-		Vector3 bitangent = Vector3::Cross(normal, tangent);
-		vertices->emplace_back(Vector3(0, radius, 0), Vector2::Zero, normal, tangent, bitangent);
+		vertices->emplace_back(Vector3(0, radius, 0), Vector2::Zero, normal, tangent);
 
 		float phiStep = PI / stacks;
 		float thetaStep = 2.0f * PI / slices;
@@ -137,14 +136,13 @@ namespace Directus::Utility::Geometry
 				Vector3 t = Vector3(-radius * sin(phi) * sin(theta), 0, radius * sin(phi) * cos(theta)).Normalized();
 				Vector3 n = p.Normalized();
 				Vector2 uv = Vector2(theta / (PI * 2), phi / PI);
-				vertices->emplace_back(p, uv, n, t, Vector3::Cross(n, t));
+				vertices->emplace_back(p, uv, n, t);
 			}
 		}
 
 		normal = Vector3(0, -1, 0);
 		tangent = Vector3(1, 0, 0);
-		bitangent = Vector3::Cross(normal, tangent);
-		vertices->emplace_back(Vector3(0, -radius, 0), Vector2(0, 1), normal, tangent, bitangent);
+		vertices->emplace_back(Vector3(0, -radius, 0), Vector2(0, 1), normal, tangent);
 
 		for (int i = 1; i <= slices; i++)
 		{
@@ -177,7 +175,7 @@ namespace Directus::Utility::Geometry
 		}
 	}
 
-	static void CreateCylinder(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15)
+	static void CreateCylinder(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15)
 	{
 		using namespace Math;
 
@@ -203,7 +201,7 @@ namespace Directus::Utility::Geometry
 				Vector3 bitangent = Vector3(dr*c, -height, dr*s);
 
 				Vector3 n = Vector3::Cross(t, bitangent).Normalized();
-				vertices->emplace_back(v, uv, n, t, Vector3::Cross(n, t));
+				vertices->emplace_back(v, uv, n, t);
 
 			}
 		}
@@ -230,7 +228,6 @@ namespace Directus::Utility::Geometry
 
 		Vector3 normal;
 		Vector3 tangent;
-		Vector3 bitangent;
 
 		for (int i = 0; i <= slices; i++)
 		{
@@ -241,14 +238,12 @@ namespace Directus::Utility::Geometry
 
 			normal = Vector3(0, 1, 0);
 			tangent = Vector3(1, 0, 0);
-			bitangent = Vector3::Cross(normal, tangent);
-			vertices->emplace_back(Vector3(x, y, z), Vector2(u, v), normal, tangent, bitangent);
+			vertices->emplace_back(Vector3(x, y, z), Vector2(u, v), normal, tangent);
 		}
 
 		normal = Vector3(0, 1, 0);
 		tangent = Vector3(1, 0, 0);
-		bitangent = Vector3::Cross(normal, tangent);
-		vertices->emplace_back(Vector3(0, y, 0), Vector2(0.5f, 0.5f), normal, tangent, bitangent);
+		vertices->emplace_back(Vector3(0, y, 0), Vector2(0.5f, 0.5f), normal, tangent);
 
 		int centerIndex = (int)vertices->size() - 1;
 		for (int i = 0; i < slices; i++)
@@ -271,14 +266,12 @@ namespace Directus::Utility::Geometry
 
 			normal =	 Vector3(0, -1, 0);
 			tangent		= Vector3(1, 0, 0);
-			bitangent	= Vector3::Cross(normal, tangent);
-			vertices->emplace_back(Vector3(x, y, z), Vector2(u, v), normal, tangent, bitangent);
+			vertices->emplace_back(Vector3(x, y, z), Vector2(u, v), normal, tangent);
 		}
 
 		normal		= Vector3(0, -1, 0);
 		tangent		= Vector3(1, 0, 0);
-		bitangent	= Vector3::Cross(normal, tangent);
-		vertices->emplace_back(Vector3(0, y, 0), Vector2(0.5f, 0.5f), normal, tangent, bitangent);
+		vertices->emplace_back(Vector3(0, y, 0), Vector2(0.5f, 0.5f), normal, tangent);
 
 		centerIndex = (int)vertices->size() - 1;
 		for (int i = 0; i < slices; i++)
@@ -289,7 +282,7 @@ namespace Directus::Utility::Geometry
 		}
 	}
 
-	static void CreateCone(std::vector<RHI_Vertex_PosUVTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, float height = 2.0f)
+	static void CreateCone(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, float height = 2.0f)
 	{
 		CreateCylinder(vertices, indices, 0.0f, radius, height);
 	}

@@ -196,7 +196,7 @@ namespace Directus
 
 			// Get geometry
 			vector<unsigned int> indices;
-			vector<RHI_Vertex_PosUVTBN> vertices;
+			vector<RHI_Vertex_PosUvNorTan> vertices;
 			renderable->Geometry_Get(&indices, &vertices);
 
 			if (vertices.empty())
@@ -209,7 +209,7 @@ namespace Directus
 			m_shape = new btConvexHullShape(
 				(btScalar*)&vertices[0],					// points
 				renderable->Geometry_VertexCount(),			// point count
-				(unsigned int)sizeof(RHI_Vertex_PosUVTBN));	// stride
+				(unsigned int)sizeof(RHI_Vertex_PosUvNorTan));	// stride
 
 			// Scaling has to be done before (potential) optimization
 			m_shape->setLocalScaling(ToBtVector3(worldScale));

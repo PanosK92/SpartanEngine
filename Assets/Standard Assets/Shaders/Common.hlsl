@@ -10,6 +10,7 @@ cbuffer GlobalBuffer : register(b0)
 	matrix g_view;
 	matrix g_projection;
 	matrix g_projectionOrtho;
+	matrix g_viewProjection;
 	
 	float g_camera_near;
     float g_camera_far;
@@ -126,21 +127,10 @@ float2 Pack(float2 value)
 /*------------------------------------------------------------------------------
 								[NORMALS]
 ------------------------------------------------------------------------------*/
-float3 TangentToWorld(float3 normalMapSample, float3 normalW, float3 tangentW, float3 bitangentW, float intensity)
+float3x3 MakeTBN(float3 n, float3 t)
 {
-	// normal intensity
-	intensity			= clamp(intensity, 0.01f, 1.0f);
-	normalMapSample.r 	*= intensity;
-	normalMapSample.g 	*= intensity;
-	
-	// construct TBN matrix
-	float3 N 		= normalW;
-	float3 T 		= tangentW;
-	float3 B 		= bitangentW;
-	float3x3 TBN 	= float3x3(T, B, N); 
-	
-	// Transform from tangent space to world space
-    return normalize(mul(normalMapSample, TBN));
+	float3 b = cross(n, t);
+	return float3x3(t, b, n); 
 }
 
 float3 Normal_Decode(float3 normal)

@@ -106,7 +106,7 @@ namespace Directus
 			layout->emplace_back(texCoordDesc);
 		}
 
-		inline void CreatePosTBNDesc(ID3D10Blob* VSBlob, vector<any>* layout)
+		inline void CreatePosNTDesc(ID3D10Blob* VSBlob, vector<any>* layout)
 		{
 			D3D11_INPUT_ELEMENT_DESC positionDesc;
 			positionDesc.SemanticName			= "POSITION";
@@ -147,16 +147,6 @@ namespace Directus
 			tangentDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
 			tangentDesc.InstanceDataStepRate	= 0;
 			layout->emplace_back(tangentDesc);
-
-			D3D11_INPUT_ELEMENT_DESC bitangentDesc;
-			bitangentDesc.SemanticName			= "BITANGENT";
-			bitangentDesc.SemanticIndex			= 0;
-			bitangentDesc.Format				= DXGI_FORMAT_R32G32B32_FLOAT;
-			bitangentDesc.InputSlot				= 0;
-			bitangentDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
-			bitangentDesc.InputSlotClass		= D3D11_INPUT_PER_VERTEX_DATA;
-			bitangentDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(bitangentDesc);
 		}
 	}
 
@@ -164,7 +154,7 @@ namespace Directus
 	{
 		m_rhiDevice		= rhiDevice;
 		m_buffer		= nullptr;
-		m_inputLayout	= Input_PositionTextureTBN;
+		m_inputLayout	= Input_PositionTextureNormalTangent;
 	}
 
 	RHI_InputLayout::~RHI_InputLayout()
@@ -197,9 +187,9 @@ namespace Directus
 			D3D11_InputLayout::CreatePosTexDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
 		}
 
-		if (m_inputLayout == Input_PositionTextureTBN)
+		if (m_inputLayout == Input_PositionTextureNormalTangent)
 		{
-			D3D11_InputLayout::CreatePosTBNDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
+			D3D11_InputLayout::CreatePosNTDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
 		}
 
 		std::vector<D3D11_INPUT_ELEMENT_DESC> layoutDesc;

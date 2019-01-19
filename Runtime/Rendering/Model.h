@@ -60,7 +60,7 @@ namespace Directus
 		//= GEOMTETRY =============================================
 		void Geometry_Append(
 			std::vector<unsigned int>& indices,
-			std::vector<RHI_Vertex_PosUVTBN>& vertices,
+			std::vector<RHI_Vertex_PosUvNorTan>& vertices,
 			unsigned int* indexOffset = nullptr,
 			unsigned int* vertexOffset = nullptr
 		);
@@ -70,7 +70,7 @@ namespace Directus
 			unsigned int vertexOffset, 
 			unsigned int vertexCount,
 			std::vector<unsigned int>* indices,
-			std::vector<RHI_Vertex_PosUVTBN>* vertices
+			std::vector<RHI_Vertex_PosUvNorTan>* vertices
 		);
 		void Geometry_Update();
 		const Math::BoundingBox& Geometry_AABB() { return m_aabb; }

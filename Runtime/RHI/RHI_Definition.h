@@ -39,7 +39,7 @@ namespace Directus
 	class RHI_Texture;
 	class RHI_Shader;
 	class RHI_InputLayout;
-	struct RHI_Vertex_PosUVTBN;
+	struct RHI_Vertex_PosUvNorTan;
 	struct RHI_Vertex_PosUVNor;
 	struct RHI_Vertex_PosUV;
 	struct RHI_Vertex_PosCol;
@@ -75,7 +75,7 @@ namespace Directus
 		Input_Position,
 		Input_PositionColor,
 		Input_PositionTexture,
-		Input_PositionTextureTBN,
+		Input_PositionTextureNormalTangent,
 		Input_NotAssigned
 	};
 

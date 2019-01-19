@@ -99,9 +99,8 @@ static const float3 sampleKernel[64] =
 };
 
 static const int sample_count		= 32;
-static const float radius			= 0.25f;
-static const float intensity    	= 1.f;
-static const float bias         	= 0.25f;
+static const float radius			= 0.15f;
+static const float intensity    	= 1.5f;
 static const float2 noiseScale  	= float2(g_resolution.x / 128.0f, g_resolution.y / 128.0f);
 
 float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_linear, out float depth_cs)
@@ -131,18 +130,22 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 center_pos       = GetWorldPosition(texCoord, samplerLinear_clamp, depth_linear, depth_cs);
     float3 center_normal    = Normal_Decode(texNormal.Sample(samplerLinear_clamp, texCoord).xyz);
 	float3 randomVector		= Unpack(texNoise.Sample(samplerLinear_wrap, texCoord * noiseScale).xyz);
+	float radius_depth		= depth_linear / (1.0f / radius);
 	float occlusion_acc     = 0.0f;
-    float3 color            = float3(0.0f, 0.0f, 0.0f);
+    float3 color            = float3(0.0f, 0.0f, 0.0f);	
+	
+	// Construct TBN
+	float3 tangent	= normalize(randomVector - center_normal * dot(randomVector, center_normal));
+	float3x3 TBN	= MakeTBN(center_normal, tangent);
 
     // Occlusion
 	[unroll]
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv
-		float3 offset		= reflect(sampleKernel[i], randomVector);	// Rotate kernel sample by random vector
-		float flip			= sign(dot(offset, center_normal));			// Flip offset vector if it is behind the plane defined by (center_pos, center_normal).
-		float3 samplePos	= offset * radius * flip;					// Adjust sample's size and direction (if needed)
-		float2 uv 			= texCoord + samplePos.xy;
+		float3 offset		= mul(sampleKernel[i], TBN);
+		float3 samplePosWS	= center_pos + offset * radius_depth;
+		float2 uv			= Project(samplePosWS, g_viewProjection);
 		
 		// Acquire/Compute sample data
         float3 sample_pos      			= GetWorldPosition(uv, samplerLinear_clamp, depth_linear, depth_cs);
@@ -152,13 +155,11 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		
 		// Accumulate
 		float3 sampled_normal   = Normal_Decode(texNormal.Sample(samplerLinear_clamp, uv).xyz);  
-		float nDotDir			= dot(center_normal, center_to_sample_dir);
-		float occlusion			= (nDotDir - bias) >= 0.0f ? 1.0 : 0.0;
-		float rangeCheck		= center_to_sample_distance < radius;
+		float occlusion			= dot(center_normal, center_to_sample_dir);
+		float rangeCheck		= center_to_sample_distance <= radius_depth;
 		occlusion_acc 			+= occlusion * rangeCheck * intensity;
     }
-    occlusion_acc 	/= (float)sample_count;
-    occlusion_acc 	= saturate(1.0f - occlusion_acc);
+    occlusion_acc /= (float)sample_count;
 
-    return occlusion_acc;
+    return saturate(1.0f - occlusion_acc);
 }
