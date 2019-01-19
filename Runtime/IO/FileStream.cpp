@@ -124,11 +124,11 @@ namespace Directus
 		out.write(reinterpret_cast<const char*>(&value), sizeof(BoundingBox));
 	}
 
-	void FileStream::Write(const vector<RHI_Vertex_PosUVTBN>& value)
+	void FileStream::Write(const vector<RHI_Vertex_PosUvNorTan>& value)
 	{
 		auto length = (unsigned int)value.size();
 		Write(length);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RHI_Vertex_PosUVTBN) * length);
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RHI_Vertex_PosUvNorTan) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned int>& value)
@@ -205,7 +205,7 @@ namespace Directus
 		}
 	}
 
-	void FileStream::Read(vector<RHI_Vertex_PosUVTBN>* vec)
+	void FileStream::Read(vector<RHI_Vertex_PosUvNorTan>* vec)
 	{
 		if (!vec)
 			return;
@@ -218,7 +218,7 @@ namespace Directus
 		vec->reserve(length);
 		vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(vec->data()), sizeof(RHI_Vertex_PosUVTBN) * length);
+		in.read(reinterpret_cast<char*>(vec->data()), sizeof(RHI_Vertex_PosUvNorTan) * length);
 	}
 
 	void FileStream::Read(vector<unsigned int>* vec)

@@ -40,7 +40,6 @@ struct PixelInputType
     float2 uv 					: TEXCOORD;
     float3 normal 				: NORMAL;
     float3 tangent 				: TANGENT;
-	float3 bitangent 			: BITANGENT;
 	float4 positionVS 			: POSITIONT0;
     float4 positionWS 			: POSITIONT1;
 	float4 positionCS_Current 	: SCREEN_POS;
@@ -56,7 +55,7 @@ struct PixelOutputType
 	float2 depth	: SV_Target4;
 };
 
-PixelInputType mainVS(Vertex_PosUvTbn input)
+PixelInputType mainVS(Vertex_PosUvNorTan input)
 {
     PixelInputType output;
     
@@ -66,9 +65,8 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
     output.positionCS   		= mul(output.positionVS, g_projection);
 	output.positionCS_Current 	= mul(input.position, mMVP_current);
 	output.positionCS_Previous 	= mul(input.position, mMVP_previous);
-	output.normal 				= normalize(mul(input.normal, 		(float3x3)mModel)).xyz;	
-	output.tangent 				= normalize(mul(input.tangent, 		(float3x3)mModel)).xyz;
-	output.bitangent 			= normalize(mul(input.bitangent, 	(float3x3)mModel)).xyz;
+	output.normal 				= normalize(mul(input.normal, (float3x3)mModel)).xyz;	
+	output.tangent 				= normalize(mul(input.tangent, (float3x3)mModel)).xyz;
     output.uv 					= input.uv;
 	
 	return output;
@@ -132,12 +130,21 @@ PixelOutputType mainPS(PixelInputType input)
 		metallic *= texMetallic.Sample(samplerAniso, texCoords).r;
 	#endif
 	
-	//= NORMAL ==================================================================================
+	//= NORMAL ================================================================================
 	#if NORMAL_MAP
+		// Make TBN
+		float3x3 TBN = MakeTBN(input.normal, input.tangent);
+	
+		// Get tangent space normal and apply intensity
 		float3 normalSample = normalize(Unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
-		normal = TangentToWorld(normalSample, input.normal.xyz, input.tangent.xyz, input.bitangent.xyz, normalIntensity);
+		normalIntensity		= clamp(normalIntensity, 0.01f, 1.0f);
+		normalSample.x 		*= normalIntensity;
+		normalSample.y 		*= normalIntensity;
+		
+		// Transform to world space
+		normal = normalize(mul(normalSample, TBN).xyz);
 	#endif
-	//============================================================================================
+	//=========================================================================================
 	
 	//= OCCLUSION ================================================================================
 	#if OCCLUSION_MAP

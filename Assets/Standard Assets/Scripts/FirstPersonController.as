@@ -4,9 +4,9 @@ class FirstPersonController
 	Transform @transform;
 	
 	// wasd movement
-	float acceleration = 1.0f;
-	float drag = 0.8f;
-	Vector3 movementSpeed = Vector3(0,0,0);
+	float acceleration 		= 1.0f;
+	float drag 				= acceleration * 0.8f;
+	Vector3 movementSpeed 	= Vector3(0,0,0);
 
 	// Constructor
 	FirstPersonController(Actor @actorIn)

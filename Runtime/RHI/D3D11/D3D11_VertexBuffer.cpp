@@ -142,12 +142,12 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUVTBN>& vertices)
+	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUvNorTan>& vertices)
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>() || vertices.empty())
 			return false;
 
-		m_stride = sizeof(RHI_Vertex_PosUVTBN);
+		m_stride = sizeof(RHI_Vertex_PosUvNorTan);
 		unsigned int size		= (unsigned int)vertices.size();
 		unsigned int byteWidth	= m_stride * size;
 
@@ -168,7 +168,7 @@ namespace Directus
 		initData.SysMemSlicePitch	= 0;
 
 		// Compute memory usage
-		m_memoryUsage = (unsigned int)(sizeof(RHI_Vertex_PosUVTBN) * vertices.size());
+		m_memoryUsage = (unsigned int)(sizeof(RHI_Vertex_PosUvNorTan) * vertices.size());
 
 		auto ptr = (ID3D11Buffer**)&m_buffer;
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);

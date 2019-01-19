@@ -110,14 +110,14 @@ namespace Directus
 	}
 	//=======================================================
 
-	void Model::Geometry_Append(std::vector<unsigned int>& indices, std::vector<RHI_Vertex_PosUVTBN>& vertices, unsigned int* indexOffset, unsigned int* vertexOffset)
+	void Model::Geometry_Append(std::vector<unsigned int>& indices, std::vector<RHI_Vertex_PosUvNorTan>& vertices, unsigned int* indexOffset, unsigned int* vertexOffset)
 	{
 		// Append indices and vertices to the main mesh
 		m_mesh->Indices_Append(indices, indexOffset);
 		m_mesh->Vertices_Append(vertices, vertexOffset);
 	}
 
-	void Model::Geometry_Get(unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, vector<unsigned int>* indices, vector<RHI_Vertex_PosUVTBN>* vertices)
+	void Model::Geometry_Get(unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, vector<unsigned int>* indices, vector<RHI_Vertex_PosUvNorTan>* vertices)
 	{
 		m_mesh->Geometry_Get(indexOffset, indexCount, vertexOffset, vertexCount, indices, vertices);
 	}
@@ -274,7 +274,7 @@ namespace Directus
 
 		// Get geometry
 		vector<unsigned int> indices			= m_mesh->Indices_Get();
-		vector<RHI_Vertex_PosUVTBN> vertices	= m_mesh->Vertices_Get();
+		vector<RHI_Vertex_PosUvNorTan> vertices	= m_mesh->Vertices_Get();
 
 		if (!indices.empty())
 		{

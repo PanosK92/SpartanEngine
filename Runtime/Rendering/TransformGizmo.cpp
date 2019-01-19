@@ -49,7 +49,7 @@ namespace Directus
 		m_scale			= Matrix::CreateScale(Vector3(0.2f));
 	
 		// Create position model
-		vector<RHI_Vertex_PosUVTBN> vertices;
+		vector<RHI_Vertex_PosUvNorTan> vertices;
 		vector<unsigned int> indices;
 		Utility::Geometry::CreateCone(&vertices, &indices);
 		m_positionModel = make_unique<Model>(m_context);

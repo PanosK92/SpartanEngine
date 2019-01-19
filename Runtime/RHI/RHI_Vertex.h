@@ -29,15 +29,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	struct RHI_Vertex_PosUVTBN
+	struct RHI_Vertex_PosUvNorTan
 	{
-		RHI_Vertex_PosUVTBN(){}
-		RHI_Vertex_PosUVTBN(
+		RHI_Vertex_PosUvNorTan(){}
+		RHI_Vertex_PosUvNorTan(
 			const Math::Vector3& position,
 			const Math::Vector2& uv,
 			const Math::Vector3& normal,
-			const Math::Vector3& tangent,
-			const Math::Vector3& bitangent)
+			const Math::Vector3& tangent)
 		{
 			this->pos[0]	= position.x;
 			this->pos[1]	= position.y;
@@ -53,17 +52,12 @@ namespace Directus
 			this->tangent[0]	= tangent.x;
 			this->tangent[1]	= tangent.y;
 			this->tangent[2]	= tangent.z;
-
-			this->bitangent[0]	= bitangent.x;
-			this->bitangent[1]	= bitangent.y;
-			this->bitangent[2]	= bitangent.z;
 		}
 
 		float pos[3]		= { 0 };
 		float uv[2]			= { 0 };
 		float normal[3]		= { 0 };
 		float tangent[3]	= { 0 };
-		float bitangent[3]	= { 0 };
 	};
 
 	struct RHI_Vertex_PosUVNor
@@ -135,7 +129,7 @@ namespace Directus
 		float color[4]	= {0};
 	};
 
-	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUVTBN>::value,	"RI_Vertex_PosUVTBN is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUvNorTan>::value,	"RI_Vertex_PosUVTBN is not trivially copyable");
 	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUVNor>::value,	"RI_Vertex_PosUVNor is not trivially copyable");
 	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUV>::value,		"RI_Vertex_PosUV is not trivially copyable");
 	static_assert(std::is_trivially_copyable<RHI_Vertex_PosCol>::value,		"RI_Vertex_PosCol is not trivially copyable");

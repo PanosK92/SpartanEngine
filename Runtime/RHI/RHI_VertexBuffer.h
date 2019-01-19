@@ -37,7 +37,7 @@ namespace Directus
 
 		bool Create(const std::vector<RHI_Vertex_PosCol>& vertices);
 		bool Create(const std::vector<RHI_Vertex_PosUV>& vertices);
-		bool Create(const std::vector<RHI_Vertex_PosUVTBN>& vertices);
+		bool Create(const std::vector<RHI_Vertex_PosUvNorTan>& vertices);
 		bool CreateDynamic(unsigned int stride, unsigned int initialSize);
 		void* Map();
 		bool Unmap();

@@ -24,12 +24,11 @@ struct PixelInputType
     float2 uv 			: TEXCOORD;
     float3 normal 		: NORMAL;
     float3 tangent 		: TANGENT;
-	float3 bitangent 	: BITANGENT;
 	float4 positionWS 	: POSITIONT0;
 	float4 gridPos 		: POSITIONT1;
 };
 
-PixelInputType mainVS(Vertex_PosUvTbn input)
+PixelInputType mainVS(Vertex_PosUvNorTan input)
 {
     PixelInputType output;
     	
@@ -41,8 +40,7 @@ PixelInputType mainVS(Vertex_PosUvTbn input)
 	output.gridPos 		= output.position;
 	output.normal 		= normalize(mul(input.normal, 		(float3x3)mWorld)).xyz;
 	output.tangent 		= normalize(mul(input.tangent, 		(float3x3)mWorld)).xyz;
-	output.bitangent 	= normalize(mul(input.bitangent,	(float3x3)mWorld)).xyz;
-		
+
 	return output;
 }
 

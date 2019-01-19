@@ -291,7 +291,7 @@ namespace Directus
 			return;
 
 		//= MESH ======================================================================
-		vector<RHI_Vertex_PosUVTBN> vertices;
+		vector<RHI_Vertex_PosUvNorTan> vertices;
 		AssimpMesh_ExtractVertices(assimpMesh, &vertices);
 
 		vector<unsigned int> indices;
@@ -336,13 +336,12 @@ namespace Directus
 		//==============================================================================
 	}
 
-	void ModelImporter::AssimpMesh_ExtractVertices(aiMesh* assimpMesh, vector<RHI_Vertex_PosUVTBN>* vertices)
+	void ModelImporter::AssimpMesh_ExtractVertices(aiMesh* assimpMesh, vector<RHI_Vertex_PosUvNorTan>* vertices)
 	{
 		Vector3 position;
 		Vector2 uv;
 		Vector3 normal;
 		Vector3 tangent;
-		Vector3 bitangent;
 
 		vertices->reserve(assimpMesh->mNumVertices);
 
@@ -363,12 +362,6 @@ namespace Directus
 				tangent = AssimpHelper::ToVector3(assimpMesh->mTangents[vertexIndex]);
 			}
 
-			// Bitagent
-			if (assimpMesh->mBitangents)
-			{
-				bitangent = AssimpHelper::ToVector3(assimpMesh->mBitangents[vertexIndex]);
-			}
-
 			// Texture Coordinates
 			if (assimpMesh->HasTextureCoords(0))
 			{
@@ -376,13 +369,12 @@ namespace Directus
 			}
 
 			// save the vertex
-			vertices->emplace_back(position, uv, normal, tangent, bitangent);
+			vertices->emplace_back(position, uv, normal, tangent);
 
 			// reset the vertex for use in the next loop
 			uv			= Vector2::Zero;
 			normal		= Vector3::Zero;
 			tangent		= Vector3::Zero;
-			bitangent	= Vector3::Zero;
 		}
 	}
 

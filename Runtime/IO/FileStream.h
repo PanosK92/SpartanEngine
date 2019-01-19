@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class Actor;
-	struct RHI_Vertex_PosUVTBN;
+	struct RHI_Vertex_PosUvNorTan;
 	namespace Math
 	{
 		class Vector2;
@@ -80,7 +80,7 @@ namespace Directus
 		void Write(const Math::Quaternion& value);
 		void Write(const Math::BoundingBox& value);
 		void Write(const std::vector<std::string>& value);
-		void Write(const std::vector<RHI_Vertex_PosUVTBN>& value);
+		void Write(const std::vector<RHI_Vertex_PosUvNorTan>& value);
 		void Write(const std::vector<unsigned int>& value);
 		void Write(const std::vector<unsigned char>& value);
 		void Write(const std::vector<std::byte>& value);
@@ -113,7 +113,7 @@ namespace Directus
 		void Read(Math::Quaternion* value);
 		void Read(Math::BoundingBox* value);
 		void Read(std::vector<std::string>* vec);
-		void Read(std::vector<RHI_Vertex_PosUVTBN>* vec);
+		void Read(std::vector<RHI_Vertex_PosUvNorTan>* vec);
 		void Read(std::vector<unsigned int>* vec);
 		void Read(std::vector<unsigned char>* vec);
 		void Read(std::vector<std::byte>* vec);
