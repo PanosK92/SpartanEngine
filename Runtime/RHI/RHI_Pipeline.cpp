@@ -461,7 +461,8 @@ namespace Directus
 		bool resultAlphaBlending = false;
 		if (m_alphaBlendingDirty)
 		{
-			m_rhiDevice->Set_AlphaBlendingEnabled(m_alphaBlending);
+			resultAlphaBlending = m_rhiDevice->Set_AlphaBlendingEnabled(m_alphaBlending);
+			m_alphaBlendingDirty = false;
 		}
 
 		return resultIndexBuffer && resultVertexBuffer && resultAlphaBlending;

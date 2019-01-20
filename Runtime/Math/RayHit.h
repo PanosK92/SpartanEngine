@@ -19,46 +19,32 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "RHI_Shader.h"
-#include "RHI_ConstantBuffer.h"
-#include "..\Logging\Log.h"
-//=============================
+#pragma once
 
-//= NAMESPACES =====
-using namespace std;
-//==================
+//= INCLUDES ==================
+#include <memory>
+#include "../Core/EngineDefs.h"
+//=============================
 
 namespace Directus
 {
-	void RHI_Shader::AddDefine(const std::string& define, const std::string& value /*= "1"*/)
-	{
-		m_macros[define] = value;
-	}
+	class Actor;
 
-	void RHI_Shader::UpdateBuffer(void* data)
+	namespace Math
 	{
-		if (!data)
+		class ENGINE_CLASS RayHit
 		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
+		public:
+			RayHit(std::shared_ptr<Actor> actor, float distance, bool inside)
+			{
+				m_actor		= actor;
+				m_distance	= distance;
+				m_inside	= inside;
+			};
 
-		if (!m_constantBuffer)
-		{
-			LOG_WARNING("Uninitialized buffer.");
-			return;
-		}
-
-		// Get a pointer of the buffer
-		auto buffer = m_constantBuffer->Map();	// Get buffer pointer
-		memcpy(buffer, data, m_bufferSize);		// Copy data
-		m_constantBuffer->Unmap();				// Unmap buffer
-	}
-
-	void RHI_Shader::CreateConstantBuffer(unsigned int size)
-	{
-		m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
-		m_constantBuffer->Create(size);
+			std::shared_ptr<Actor> m_actor;
+			float m_distance;
+			bool m_inside;
+		};
 	}
 }

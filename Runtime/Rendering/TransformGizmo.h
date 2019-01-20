@@ -21,11 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ===================
 #include <memory>
+#include <vector>
 #include "../Core/EngineDefs.h"
 #include "../Math/Matrix.h"
-//=============================
+#include "../Math/BoundingBox.h"
+#include "../Math/Ray.h"
+//==============================
 
 namespace Directus
 {
@@ -35,17 +38,33 @@ namespace Directus
 	class RHI_IndexBuffer;
 	class RHI_VertexBuffer;
 
-	enum TransformGizmo_Type
+	enum TransformHandle_Type
 	{
-		TransformGizmo_Position,
-		TransformGizmo_Rotation,
-		TransformGizmo_Scale
+		TransformHandle_Position,
+		TransformHandle_Rotation,
+		TransformHandle_Scale
 	};
 
-	enum TransformGizmo_Space
+	enum TransformHandle_Space
 	{
-		TransformGizmo_Local,
-		TransformGizmo_World
+		TransformHandle_Local,
+		TransformHandle_World
+	};
+
+	class ENGINE_CLASS GizmoHandle
+	{
+	public:
+		GizmoHandle() {}
+		GizmoHandle(Context* context, const std::vector<RHI_Vertex_PosUvNorTan>& vertices);
+		~GizmoHandle() {}
+
+		void Update();
+
+		Math::Matrix transform;
+		Math::Vector3 position;
+		Math::Quaternion rotation;
+		Math::Vector3 scale;
+		Math::BoundingBox box;
 	};
 
 	class ENGINE_CLASS TransformGizmo
@@ -54,23 +73,23 @@ namespace Directus
 		TransformGizmo(Context* context);
 		~TransformGizmo();
 
-		void Pick(std::shared_ptr<Actor> actor);
-		const Math::Matrix& GetTransformX() { return m_transformX; }
-		const Math::Matrix& GetTransformY() { return m_transformY; }
-		const Math::Matrix& GetTransformZ() { return m_transformZ; }
+		void Pick(const std::shared_ptr<Actor>& actor);
+		const Math::Matrix& GetMatrix_Position_X()	{ return m_handle_position_x.transform; }
+		const Math::Matrix& GetMatrix_Position_Y()	{ return m_handle_position_y.transform; }
+		const Math::Matrix& Get_Matrix_Position_Z()	{ return m_handle_position_z.transform; }
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
 
 	private:
-		Math::Matrix m_transformX;
-		Math::Matrix m_transformY;
-		Math::Matrix m_transformZ;
-		Math::Matrix m_scale;
-		TransformGizmo_Type m_type;
-		TransformGizmo_Space m_space;
-		std::unique_ptr<Model> m_positionModel;
-		std::unique_ptr<Model> m_scaleModel;
+		GizmoHandle m_handle_position_x;
+		GizmoHandle m_handle_position_y;
+		GizmoHandle m_handle_position_z;
+
+		TransformHandle_Type m_activeHandle;
+		TransformHandle_Space m_space;
+		std::unique_ptr<Model> m_handle_position_model;
+		std::unique_ptr<Model> m_handle_scale_model;
 		Context* m_context;
 	};
 }

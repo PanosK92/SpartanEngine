@@ -21,36 +21,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======
+//= INCLUDES ==================
+#include "../Core/EngineDefs.h"
+#include <vector>
 #include "Vector3.h"
-//==================
+//=============================
 
-namespace Directus::Math
+namespace Directus
 {
-	class BoundingBox;
+	class Context;
 
-	class ENGINE_CLASS Ray
+	namespace Math
 	{
-	public:
-		// Constructs a ray with zero origin and direction
-		Ray();
+		class RayHit;
+		class BoundingBox;
 
-		// Construct from origin and direction. The direction will be normalized.
-		Ray(const Vector3& origin, const Vector3& end);
+		class ENGINE_CLASS Ray
+		{
+		public:
+			Ray();
+			~Ray();
 
-		// Empty destructor
-		~Ray() {}
+			// Traces a ray against all actors in the world, returns all hits in a vector.
+			std::vector<RayHit> Trace(Context* context, const Vector3& start, const Vector3& end);
 
-		// Returns hit distance to a bounding box, or infinity if there is no hit.
-		float HitDistance(const BoundingBox& box);
+			// Returns hit distance to a bounding box, or infinity if there is no hit.
+			float HitDistance(const Vector3& start, const Vector3& direction, const BoundingBox& box);
 
-		const Vector3& GetOrigin() const	{ return m_origin; }
-		const Vector3& GetEnd()	const		{ return m_end; }
-		const Vector3& GetDirection() const	{ return m_direction; }
+			const Vector3& GetStart() const		{ return m_start; }
+			const Vector3& GetEnd()	const		{ return m_end; }
+			const Vector3& GetDirection() const { return m_direction; }
 
-	private:
-		Vector3 m_origin;
-		Vector3 m_end;
-		Vector3 m_direction;
-	};
+		private:
+			Vector3 m_start;
+			Vector3 m_end;
+			Vector3 m_direction;
+		};
+	}
 }

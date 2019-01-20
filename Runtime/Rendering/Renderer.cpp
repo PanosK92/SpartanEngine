@@ -77,13 +77,14 @@ namespace Directus
 		m_flags			|= Render_Gizmo_Physics;	
 		m_flags			|= Render_PostProcess_ToneMapping;
 		m_flags			|= Render_PostProcess_Bloom;	
-		m_flags			|= Render_PostProcess_SSAO;
-		m_flags			|= Render_PostProcess_SSR;
+		m_flags			|= Render_PostProcess_SSAO;	
 		m_flags			|= Render_PostProcess_MotionBlur;
 		m_flags			|= Render_PostProcess_TAA;
 		m_flags			|= Render_PostProcess_Sharpening;
-		//m_flags			|= Render_PostProcess_FXAA;
-		//m_flags			|= Render_ChromaticAberration;
+		//m_flags		|= Render_PostProcess_ChromaticAberration;
+		//m_flags		|= Render_PostProcess_SSR;	// Disabled by default: Only plays nice if it has environmental probes for fallback
+		//m_flags		|= Render_PostProcess_FXAA; // Disabled by default: TAA is superior
+		
 
 		// Create RHI device
 		m_rhiDevice		= make_shared<RHI_Device>(drawHandle);
@@ -608,25 +609,28 @@ namespace Directus
 			return;
 
 		// Sort by depth (front to back)
-		sort(renderables->begin(), renderables->end(), [this](Actor* a, Actor* b)
+		if (m_camera)
 		{
-			// Get renderable component
-			auto a_renderable = a->GetRenderable_PtrRaw();
-			auto b_renderable = b->GetRenderable_PtrRaw();
-			if (!a_renderable || !b_renderable)
-				return false;
+			sort(renderables->begin(), renderables->end(), [this](Actor* a, Actor* b)
+			{
+				// Get renderable component
+				auto a_renderable = a->GetRenderable_PtrRaw();
+				auto b_renderable = b->GetRenderable_PtrRaw();
+				if (!a_renderable || !b_renderable)
+					return false;
 
-			// Get materials
-			auto a_material = a_renderable->Material_Ptr();
-			auto b_material = b_renderable->Material_Ptr();
-			if (!a_material || !b_material)
-				return false;
+				// Get materials
+				auto a_material = a_renderable->Material_Ptr();
+				auto b_material = b_renderable->Material_Ptr();
+				if (!a_material || !b_material)
+					return false;
 
-			float a_depth = (a_renderable->Geometry_AABB().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
-			float b_depth = (b_renderable->Geometry_AABB().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+				float a_depth = (a_renderable->Geometry_AABB().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+				float b_depth = (b_renderable->Geometry_AABB().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
 
-			return a_depth < b_depth;
-		});
+				return a_depth < b_depth;
+			});
+		}
 
 		// Sort by material
 		sort(renderables->begin(), renderables->end(), [](Actor* a, Actor* b)
@@ -1392,7 +1396,7 @@ namespace Directus
 			if (drawPickingRay)
 			{
 				const Ray& ray = m_camera->GetPickingRay();
-				AddLine(ray.GetOrigin(), ray.GetEnd(), Vector4(0, 1, 0, 1));
+				AddLine(ray.GetStart(), ray.GetEnd(), Vector4(0, 1, 0, 1));
 			}
 
 			// bounding boxes
@@ -1522,7 +1526,7 @@ namespace Directus
 		}
 
 		// Transform
-		/*if (shared_ptr<Actor> pickedActor = m_camera->GetPickedActor().lock())
+		/*if (const shared_ptr<Actor>& pickedActor = m_camera->GetPickedActor().lock())
 		{
 			m_rhiDevice->EventBegin("Gizmo_Transform");
 
@@ -1530,21 +1534,25 @@ namespace Directus
 
 			m_rhiPipeline->SetShader(m_shaderTransformGizmo);
 			m_rhiPipeline->SetIndexBuffer(m_transformGizmo->GetIndexBuffer());
-			m_rhiPipeline->SetVertexBuffer(m_transformGizmo->GetVertexBuffer());		
+			m_rhiPipeline->SetVertexBuffer(m_transformGizmo->GetVertexBuffer());	
+			SetGlobalBuffer();
 
 			// X - Axis		
-			auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetTransformX() * m_viewProjection, Vector3::Right);
+			auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetMatrix_Position_X(), Vector3::Right);
 			m_shaderTransformGizmo->UpdateBuffer(&buffer);
+			m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1 , Buffer_Global);
 			m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
 			// Y - Axis		
-			buffer = Struct_Matrix_Vector3(m_transformGizmo->GetTransformY() * m_viewProjection, Vector3::Up);
+			buffer = Struct_Matrix_Vector3(m_transformGizmo->GetMatrix_Position_Y(), Vector3::Up);
 			m_shaderTransformGizmo->UpdateBuffer(&buffer);
+			m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
 			m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
 			// Z - Axis		
-			buffer = Struct_Matrix_Vector3(m_transformGizmo->GetTransformZ() * m_viewProjection, Vector3::Forward);
+			buffer = Struct_Matrix_Vector3(m_transformGizmo->Get_Matrix_Position_Z(), Vector3::Forward);
 			m_shaderTransformGizmo->UpdateBuffer(&buffer);
+			m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
 			m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
 			m_rhiDevice->EventEnd();

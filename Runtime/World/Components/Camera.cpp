@@ -22,11 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Camera.h"
 #include "Transform.h"
+#include "Renderable.h"
+#include "../Actor.h"
 #include "../../IO/FileStream.h"
 #include "../../Core/Settings.h"
 #include "../../Rendering/Renderer.h"
-#include "../Actor.h"
-#include "Renderable.h"
+#include "../../Math/RayHit.h"
 //===================================
 
 //= NAMESPACES ================
@@ -161,39 +162,24 @@ namespace Directus
 	shared_ptr<Actor> Camera::Pick(const Vector2& mousePos)
 	{
 		// Compute ray given the origin and end
-		m_ray = Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mousePos));
+		std::vector<RayHit> hits = m_ray.Trace(m_context, GetTransform()->GetPosition(), ScreenToWorldPoint(mousePos));
 
-		// Hits <Distance, actor>
-		map<float, shared_ptr<Actor>> hits;
-
-		// Find all the actors that the ray hits
-		const vector<shared_ptr<Actor>>& actors = GetContext()->GetSubsystem<World>()->Actors_GetAll();
-		for (const auto& actor : actors)
+		// Get closest hit that doesn't start inside an actor
+		shared_ptr<Actor> actor;
+		for (const auto& hit : hits)
 		{
-			// Make sure there actor has a mesh and exclude the SkyBox
-			if (!actor->HasComponent<Renderable>() || actor->HasComponent<Skybox>())
+			if (hit.m_inside)
 				continue;
 
-			// Get bounding box
-			BoundingBox bb = actor->GetComponent<Renderable>()->Geometry_AABB();
-
-			// Compute hit distance
-			float hitDistance = m_ray.HitDistance(bb);
-
-			// Don't store hit data if we are inside the bounding box (0.0f) or there was no hit (INFINITY)
-			if (hitDistance == 0.0f || hitDistance == INFINITY)
-				continue;
-
-			hits[hitDistance] = actor;
+			actor = hit.m_actor;
+			break;
 		}
 
-		// Get closest hit
-		shared_ptr<Actor> hit = !hits.empty() ? hits.begin()->second : nullptr;
+		// Keep weak reference
+		m_pickedActor = actor;
 
-		// Save closest hit
-		m_pickedActor = hit;
-
-		return hit;
+		// Return closest hit
+		return actor;
 	}
 
 	Vector2 Camera::WorldToScreenPoint(const Vector3& position_world)

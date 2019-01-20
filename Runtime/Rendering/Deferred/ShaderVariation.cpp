@@ -81,7 +81,7 @@ namespace Directus
 	{
 		if (!material)
 		{
-			LOG_ERROR("ShaderVariation::UpdatePerObjectBuffer: Invalid parameters.");
+			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
 
