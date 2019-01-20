@@ -37,6 +37,8 @@ using namespace Directus::Math;
 using namespace Helper;
 //=============================
 
+// TODO: DirectInput is ancient and unsupported, also lacks a couple of features. Must replace with simple Windows input.
+
 namespace Directus
 {
 	IDirectInput8*			g_directInput;
@@ -85,12 +87,12 @@ namespace Directus
 
 	bool Input::Initialize()
 	{
-		if (!Engine::GetWindowHandle() || !Engine::GetWindowInstance())
-			return false;
-
 		bool success		= true;
-		auto windowHandle	= (HWND)Engine::GetWindowHandle();
-		auto windowInstance = (HINSTANCE)Engine::GetWindowInstance();
+		auto windowHandle	= (HWND)Settings::Get().GetWindowHandle();
+		auto windowInstance = (HINSTANCE)Settings::Get().GetWindowInstance();
+
+		if (!windowHandle || !windowInstance)
+			return false;
 
 		// Make sure the window has focus, otherwise the mouse and keyboard won't be able to be acquired.
 		SetForegroundWindow(windowHandle);
@@ -101,11 +103,11 @@ namespace Directus
 		{
 			switch (result)
 			{
-				case DIERR_INVALIDPARAM:			LOG_ERROR("DInput: DirectInput8Create() Failed, invalid parameters.");			break;
-				case DIERR_BETADIRECTINPUTVERSION:	LOG_ERROR("DInput: DirectInput8Create() Failed, beta direct input version.");	break;
-				case DIERR_OLDDIRECTINPUTVERSION:	LOG_ERROR("DInput: DirectInput8Create() Failed, old direct input version.");	break;
-				case DIERR_OUTOFMEMORY:				LOG_ERROR("DInput: DirectInput8Create() Failed, out of memory.");				break;
-				default:							LOG_ERROR("DInput: Failed to initialize the DirectInput interface.");
+				case DIERR_INVALIDPARAM:			LOG_ERROR("DirectInput8Create() Failed, invalid parameters.");			break;
+				case DIERR_BETADIRECTINPUTVERSION:	LOG_ERROR("DirectInput8Create() Failed, beta direct input version.");	break;
+				case DIERR_OLDDIRECTINPUTVERSION:	LOG_ERROR("DirectInput8Create() Failed, old direct input version.");	break;
+				case DIERR_OUTOFMEMORY:				LOG_ERROR("DirectInput8Create() Failed, out of memory.");				break;
+				default:							LOG_ERROR("Failed to initialize the DirectInput interface.");
 			}
 			return false;
 		}
@@ -118,25 +120,25 @@ namespace Directus
 			result = g_keyboard->SetDataFormat(&c_dfDIKeyboard);
 			if (FAILED(result))
 			{
-				LOG_ERROR("DInput: Failed to initialize DirectInput keyboard data format.");
+				LOG_ERROR("Failed to initialize DirectInput keyboard data format.");
 			}
 
 			// Set the cooperative level of the keyboard to share with other programs.
 			result = g_keyboard->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 			if (FAILED(result))
 			{
-				LOG_ERROR("DInput: Failed to set DirectInput keyboard's cooperative level.");
+				LOG_ERROR("Failed to set DirectInput keyboard's cooperative level.");
 			}
 
 			// Acquire the keyboard.
 			if (!SUCCEEDED(g_keyboard->Acquire()))
 			{
-				LOG_ERROR("DInput: Failed to aquire the keyboard.");
+				LOG_ERROR("Failed to acquire the keyboard.");
 			}		
 		}
 		else
 		{
-			LOG_ERROR("DInput: Failed to initialize a DirectInput keyboard.");
+			LOG_ERROR("Failed to initialize a DirectInput keyboard.");
 			success = false;
 		}
 
@@ -148,25 +150,25 @@ namespace Directus
 			result = g_mouse->SetDataFormat(&c_dfDIMouse);
 			if (FAILED(result))
 			{
-				LOG_ERROR("DInput: Failed to initialize a DirectInput mouse.");
+				LOG_ERROR("Failed to initialize a DirectInput mouse.");
 			}
 		
 			// Set the cooperative level of the mouse to share with other programs.
 			result = g_mouse->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 			if (FAILED(result))
 			{
-				LOG_ERROR("DInput: Failed to set DirectInput mouse's cooperative level.");
+				LOG_ERROR("Failed to set DirectInput mouse's cooperative level.");
 			}
 		
 			// Acquire the mouse.
 			if (!SUCCEEDED(g_mouse->Acquire()))
 			{
-				LOG_ERROR("DInput: Failed to aquire the mouse.");
+				LOG_ERROR("Failed to aquire the mouse.");
 			}
 		}
 		else
 		{
-			LOG_ERROR("DInput: Failed to initialize a DirectInput mouse.");
+			LOG_ERROR("Failed to initialize a DirectInput mouse.");
 			success = false;
 		}
 
@@ -183,17 +185,33 @@ namespace Directus
 
 	void Input::Tick()
 	{
+		HWND windowHandle = (HWND)Settings::Get().GetWindowHandle();
+
 		if (ReadMouse())
 		{
-			// COMPUTE DELTA
+			// Get mouse position and scroll wheel delta
 			m_mouseDelta.x		= (float)g_mouseState.lX; // lX = x
 			m_mouseDelta.y		= (float)g_mouseState.lY; // lY = y
 			m_mouseWheelDelta	= (float)g_mouseState.lZ; // lZ = wheel
 
-			// COMPUTE POSITION
-			m_mousePos.x = Clamp(m_mousePos.x + m_mouseDelta.x, 0.0f, (float)Settings::Get().Viewport_GetWidth());
-			m_mousePos.y = Clamp(m_mousePos.y + m_mouseDelta.y, 0.0f, (float)Settings::Get().Viewport_GetHeight());
-			m_mouseWheel += m_mouseWheelDelta;
+			// Get mouse position
+			POINT mouse_screen_pos;
+			if (::GetCursorPos(&mouse_screen_pos))
+			{
+				m_mouse_position_screen = Vector2((float)mouse_screen_pos.x, (float)mouse_screen_pos.y);
+				if (HWND focused_hwnd = ::GetActiveWindow())
+				{
+					if (focused_hwnd == windowHandle)
+					{
+						POINT mouse_client_pos = mouse_screen_pos;
+						::ScreenToClient(focused_hwnd, &mouse_client_pos);
+						m_mouse_position_client = Vector2((float)mouse_client_pos.x, (float)mouse_client_pos.y);
+					}
+				}
+			}
+
+			// Get scroll wheel position
+			m_mouseWheel = ::GetScrollPos(windowHandle, SB_VERT);
 
 			// COMPUTE BUTTON STATE
 			m_mouseButtons[0] = g_mouseState.rgbButtons[0] & 0x80; // Left Button

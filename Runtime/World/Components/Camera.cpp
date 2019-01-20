@@ -159,10 +159,14 @@ namespace Directus
 	}
 
 	//= RAYCASTING =======================================================================
-	shared_ptr<Actor> Camera::Pick(const Vector2& mousePos)
+	shared_ptr<Actor> Camera::Pick(const Vector2& mouse_position)
 	{
-		// Compute ray given the origin and end
-		std::vector<RayHit> hits = m_ray.Trace(m_context, GetTransform()->GetPosition(), ScreenToWorldPoint(mousePos));
+		Vector2 viewport_topLeft		= Settings::Get().Viewport_GetTopLeft();
+		Vector2 mouse_position_relative = mouse_position - viewport_topLeft;
+
+		// Trace ray
+		m_ray = Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mouse_position_relative));
+		std::vector<RayHit> hits = m_ray.Trace(m_context);
 
 		// Get closest hit that doesn't start inside an actor
 		shared_ptr<Actor> actor;
@@ -184,29 +188,29 @@ namespace Directus
 
 	Vector2 Camera::WorldToScreenPoint(const Vector3& position_world)
 	{
-		Vector2 viewport = Settings::Get().Viewport_Get();
+		RHI_Viewport viewport = Settings::Get().Viewport_Get();
 
 		// Convert world space position to clip space position
-		float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.y / viewport.x));
-		Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_nearPlane, m_farPlane); // compute non reverse z projection
-		Vector3 position_clip = position_world * m_mView * projection;
+		float vfovRad			= 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
+		Matrix projection		= Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_nearPlane, m_farPlane); // compute non reverse z projection
+		Vector3 position_clip	= position_world * m_mView * projection;
 
 		// Convert clip space position to screen space position
 		Vector2 position_screen;
-		position_screen.x = (position_clip.x / position_clip.z) * (0.5f * viewport.x) + (0.5f * viewport.x);
-		position_screen.y = (position_clip.y / position_clip.z) * -(0.5f * viewport.y) + (0.5f * viewport.y);
+		position_screen.x = (position_clip.x / position_clip.z) * (0.5f * viewport.GetWidth()) + (0.5f * viewport.GetWidth());
+		position_screen.y = (position_clip.y / position_clip.z) * -(0.5f * viewport.GetHeight()) + (0.5f * viewport.GetHeight());
 
 		return position_screen;
 	}
 
 	Vector3 Camera::ScreenToWorldPoint(const Vector2& position_screen)
 	{
-		Vector2 viewport = Settings::Get().Viewport_Get();
+		RHI_Viewport viewport = Settings::Get().Viewport_Get();
 
 		// Convert screen space position to clip space position
 		Vector3 position_clip;
-		position_clip.x = (position_screen.x / viewport.x) * 2.0f - 1.0f;
-		position_clip.y = (position_screen.y / viewport.y) * -2.0f + 1.0f;
+		position_clip.x = (position_screen.x / viewport.GetWidth()) * 2.0f - 1.0f;
+		position_clip.y = (position_screen.y / viewport.GetHeight()) * -2.0f + 1.0f;
 		position_clip.z = 1.0f;
 
 		// Compute world space position
@@ -239,18 +243,16 @@ namespace Directus
 
 	void Camera::ComputeProjection()
 	{
-		Vector2 viewport	= Settings::Get().Viewport_Get();
-		float width			= viewport.x;
-		float height		= viewport.y;
+		RHI_Viewport viewport = Settings::Get().Viewport_Get();
 
 		if (m_projectionType == Projection_Perspective)
 		{
-			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.y / viewport.x)); 
+			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
 			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_farPlane, m_nearPlane);
 		}
 		else if (m_projectionType == Projection_Orthographic)
 		{
-			m_mProjection = Matrix::CreateOrthographicLH(viewport.x, viewport.y, m_farPlane, m_nearPlane);
+			m_mProjection = Matrix::CreateOrthographicLH(viewport.GetWidth(), viewport.GetHeight(), m_farPlane, m_nearPlane);
 		}
 	}
 }

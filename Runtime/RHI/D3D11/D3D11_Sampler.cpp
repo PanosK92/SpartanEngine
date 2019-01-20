@@ -20,11 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
+#include <winerror.h>
 #include "../RHI_Implementation.h"
 #include "../RHI_Sampler.h"
-#include <winerror.h>
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
+#include "../../Core/Settings.h"
 //================================
 
 namespace Directus

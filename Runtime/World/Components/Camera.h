@@ -21,16 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES ========================
 #include "IComponent.h"
 #include <memory>
 #include <vector>
 #include "../../RHI/RHI_Definition.h"
+#include "../../RHI/RHI_Viewport.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Ray.h"
 #include "../../Math/Frustum.h"
 #include "../../Math/Vector2.h"
-//=========================================
+//===================================
 
 namespace Directus
 {
@@ -63,8 +64,8 @@ namespace Directus
 		const Math::Matrix& GetBaseViewMatrix()		{ return m_mBaseView; }
 		//===================================================================
 
-		//= RAYCASTING ====================================================
-		// Returns a the picking ray as vertices (can be used to render it)
+		//= RAYCASTING ===================================================
+		// Returns the ray the camera uses to do picking
 		const Math::Ray& GetPickingRay() { return m_ray; }
 
 		// Returns the nearest actor under the cursor
@@ -76,7 +77,7 @@ namespace Directus
 
 		// Converts a screen point to a world point
 		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& point);
-		//=================================================================
+		//================================================================
 
 		//= PLANES/PROJECTION ================================================================
 		void SetNearPlane(float nearPlane);		
@@ -117,7 +118,7 @@ namespace Directus
 		Math::Vector3 m_position;
 		Math::Quaternion m_rotation;
 		bool m_isDirty;
-		Math::Vector2 m_lastKnownViewport;
+		RHI_Viewport m_lastKnownViewport;
 		std::weak_ptr<Actor> m_pickedActor;
 	};
 }

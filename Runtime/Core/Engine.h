@@ -63,8 +63,6 @@ namespace Directus
 
 		//= WINDOW ========================================================================
 		static void SetHandles(void* drawHandle, void* windowHandle, void* windowInstance);
-		static void* GetWindowHandle() { return m_windowHandle; }
-		static void* GetWindowInstance() { return m_windowInstance; }
 		//=================================================================================
 
 		float GetDeltaTime();
@@ -73,9 +71,6 @@ namespace Directus
 		Context* GetContext() { return m_context; }
 
 	private:
-		static void* m_drawHandle;	
-		static void* m_windowHandle;
-		static void* m_windowInstance;
 		static unsigned long m_flags;
 		Timer* m_timer;
 	};

@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "Renderer.h"
 #include "Rectangle.h"
-#include "Grid.h"
-#include "TransformGizmo.h"
+#include "Gizmos/Grid.h"
+#include "Gizmos/TransformGizmo.h"
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/LightShader.h"
 #include "Deferred/GBuffer.h"
@@ -1396,7 +1396,7 @@ namespace Directus
 			if (drawPickingRay)
 			{
 				const Ray& ray = m_camera->GetPickingRay();
-				AddLine(ray.GetStart(), ray.GetEnd(), Vector4(0, 1, 0, 1));
+				AddLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
 			}
 
 			// bounding boxes
@@ -1526,11 +1526,10 @@ namespace Directus
 		}
 
 		// Transform
-		/*if (const shared_ptr<Actor>& pickedActor = m_camera->GetPickedActor().lock())
+		/*m_transformGizmo->Update(m_camera->GetPickedActor().lock(), m_camera);
+		if (m_transformGizmo->IsEditing())
 		{
 			m_rhiDevice->EventBegin("Gizmo_Transform");
-
-			m_transformGizmo->Pick(pickedActor);
 
 			m_rhiPipeline->SetShader(m_shaderTransformGizmo);
 			m_rhiPipeline->SetIndexBuffer(m_transformGizmo->GetIndexBuffer());

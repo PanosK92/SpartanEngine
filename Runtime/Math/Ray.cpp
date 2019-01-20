@@ -39,17 +39,20 @@ namespace Directus::Math
 
 	}
 
+	Ray::Ray(const Vector3& start, const Vector3& end)
+	{
+		m_start		= start;
+		m_end		= end;
+		m_direction = (end - start).Normalized();
+	}
+
 	Ray::~Ray()
 	{
 
 	}
 
-	vector<RayHit> Ray::Trace(Context* context, const Vector3& start, const Vector3& end)
+	vector<RayHit> Ray::Trace(Context* context)
 	{
-		m_start		= start;
-		m_end		= end;
-		m_direction = (end - start).Normalized();
-
 		// Find all the actors that the ray hits
 		vector<RayHit> hits;
 		const vector<shared_ptr<Actor>>& actors = context->GetSubsystem<World>()->Actors_GetAll();
@@ -63,7 +66,7 @@ namespace Directus::Math
 			BoundingBox aabb = actor->GetComponent<Renderable>()->Geometry_AABB();
 
 			// Compute hit distance
-			float hitDistance = HitDistance(m_start, m_direction, aabb);
+			float hitDistance = HitDistance(aabb);
 
 			// Don't store hit data if there was no hit
 			if (hitDistance == INFINITY)
@@ -82,37 +85,37 @@ namespace Directus::Math
 		return hits;
 	}
 
-	float Ray::HitDistance(const Vector3& start, const Vector3& direction, const BoundingBox& box)
+	float Ray::HitDistance(const BoundingBox& box)
 	{
 		// If undefined, no hit (infinite distance)
 		if (!box.Defined())
 			return INFINITY;
 		
 		// Check for ray origin being inside the box
-		if (box.IsInside(start))
+		if (box.IsInside(m_start))
 			return 0.0f;
 
 		float dist = INFINITY;
 
 		// Check for intersecting in the X-direction
-		if (start.x < box.GetMin().x && direction.x > 0.0f)
+		if (m_start.x < box.GetMin().x && m_direction.x > 0.0f)
 		{
-			float x = (box.GetMin().x - start.x) / direction.x;
+			float x = (box.GetMin().x - m_start.x) / m_direction.x;
 			if (x < dist)
 			{
-				Vector3 point = start + x * direction;
+				Vector3 point = m_start + x * m_direction;
 				if (point.y >= box.GetMin().y && point.y <= box.GetMax().y && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
 				}
 			}
 		}
-		if (start.x > box.GetMax().x && direction.x < 0.0f)
+		if (m_start.x > box.GetMax().x && m_direction.x < 0.0f)
 		{
-			float x = (box.GetMax().x - start.x) / direction.x;
+			float x = (box.GetMax().x - m_start.x) / m_direction.x;
 			if (x < dist)
 			{
-				Vector3 point = start + x * direction;
+				Vector3 point = m_start + x * m_direction;
 				if (point.y >= box.GetMin().y && point.y <= box.GetMax().y && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
@@ -121,24 +124,24 @@ namespace Directus::Math
 		}
 
 		// Check for intersecting in the Y-direction
-		if (start.y < box.GetMin().y && direction.y > 0.0f)
+		if (m_start.y < box.GetMin().y && m_direction.y > 0.0f)
 		{
-			float x = (box.GetMin().y - start.y) / direction.y;
+			float x = (box.GetMin().y - m_start.y) / m_direction.y;
 			if (x < dist)
 			{
-				Vector3 point = start + x * direction;
+				Vector3 point = m_start + x * m_direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
 				}
 			}
 		}
-		if (start.y > box.GetMax().y && direction.y < 0.0f)
+		if (m_start.y > box.GetMax().y && m_direction.y < 0.0f)
 		{
-			float x = (box.GetMax().y - start.y) / direction.y;
+			float x = (box.GetMax().y - m_start.y) / m_direction.y;
 			if (x < dist)
 			{
-				Vector3 point = start + x * direction;
+				Vector3 point = m_start + x * m_direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
@@ -147,24 +150,24 @@ namespace Directus::Math
 		}
 
 		// Check for intersecting in the Z-direction
-		if (start.z < box.GetMin().z && direction.z > 0.0f)
+		if (m_start.z < box.GetMin().z && m_direction.z > 0.0f)
 		{
-			float x = (box.GetMin().z - start.z) / direction.z;
+			float x = (box.GetMin().z - m_start.z) / m_direction.z;
 			if (x < dist)
 			{
-				Vector3 point = start + x * direction;
+				Vector3 point = m_start + x * m_direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.y >= box.GetMin().y && point.y <= box.GetMax().y)
 				{
 					dist = x;
 				}
 			}
 		}
-		if (start.z > box.GetMax().z && direction.z < 0.0f)
+		if (m_start.z > box.GetMax().z && m_direction.z < 0.0f)
 		{
-			float x = (box.GetMax().z - start.z) / direction.z;
+			float x = (box.GetMax().z - m_start.z) / m_direction.z;
 			if (x < dist)
 			{
-				Vector3 point = start + x * direction;
+				Vector3 point = m_start + x * m_direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.y >= box.GetMin().y && point.y <= box.GetMax().y)
 				{
 					dist = x;

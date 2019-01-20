@@ -97,7 +97,7 @@ namespace Directus
 		
 		bool GetButtonKeyboard(Button_Keyboard button)	{ return m_keyboardButtons[(int)button]; }
 		bool GetButtonMouse(Button_Mouse button)		{ return m_mouseButtons[(int)button]; }
-		const Math::Vector2& GetMousePosition()			{ return m_mousePos; }
+		const Math::Vector2& GetMousePosition()			{ return m_mouse_position_client; }
 		const Math::Vector2& GetMouseDelta()			{ return m_mouseDelta; }
 
 	private:
@@ -111,11 +111,12 @@ namespace Directus
 		bool VibrateGamepad(float leftMotorSpeed, float rightMotorSpeed);
 
 		// Mouse
-		bool m_mouseButtons[3]		= { false };
-		Math::Vector2 m_mousePos	= Math::Vector2::Zero;
-		Math::Vector2 m_mouseDelta	= Math::Vector2::Zero;
-		float m_mouseWheel			= 0;
-		float m_mouseWheelDelta		= 0;
+		bool m_mouseButtons[3]					= { false };
+		Math::Vector2 m_mouse_position_screen	= Math::Vector2::Zero;
+		Math::Vector2 m_mouse_position_client	= Math::Vector2::Zero;
+		Math::Vector2 m_mouseDelta				= Math::Vector2::Zero;
+		float m_mouseWheel						= 0;
+		float m_mouseWheelDelta					= 0;
 
 		// Keyboard
 		bool m_keyboardButtons[83] = { false };

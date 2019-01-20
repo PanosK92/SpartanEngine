@@ -35,7 +35,7 @@ using namespace Directus;
 using namespace Math;
 //=======================
 
-namespace Widget_Viewport_Properties
+namespace _Widget_Viewport
 {
 	static Renderer* g_renderer	= nullptr;
 	static World* g_scene		= nullptr;
@@ -48,8 +48,8 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
 	m_timeSinceLastResChange	= 0.0f;
 
 	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
-	Widget_Viewport_Properties::g_renderer	= m_context->GetSubsystem<Renderer>();
-	Widget_Viewport_Properties::g_scene		= m_context->GetSubsystem<World>();
+	_Widget_Viewport::g_renderer	= m_context->GetSubsystem<Renderer>();
+	_Widget_Viewport::g_scene		= m_context->GetSubsystem<World>();
 	m_xMin = 400;
 	m_yMin = 250;
 }
@@ -65,7 +65,7 @@ bool Widget_Viewport::Begin()
 
 void Widget_Viewport::Tick(float deltaTime)
 {
-	if (!Widget_Viewport_Properties::g_renderer)
+	if (!_Widget_Viewport::g_renderer)
 		return;
 	
 	ShowFrame(deltaTime);
@@ -85,9 +85,10 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	height	-= (height	% 2 != 0) ? 1 : 0;
 
 	// Display frame
-	Widget_Viewport_Properties::g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
+	_Widget_Viewport::g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
+	
 	ImGui::Image(
-		Widget_Viewport_Properties::g_renderer->GetFrameShaderResource(),
+		_Widget_Viewport::g_renderer->GetFrameShaderResource(),
 		ImVec2((float)width, (float)height),
 		ImVec2(0, 0),
 		ImVec2(1, 1),
@@ -95,12 +96,15 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 		ImColor(50, 127, 166, 255)
 	);
 
+	// Adjust viewport to fit this very frame
+	Settings::Get().Viewport_Set(_Widget_Viewport::g_framePos.x, _Widget_Viewport::g_framePos.y, width, height);
+
 	// Adjust resolution if required
 	if (Settings::Get().Resolution_GetWidth() != width || Settings::Get().Resolution_GetHeight() != height)
 	{
 		if (m_timeSinceLastResChange >= 0.250f) // Don't stress the GPU too much
 		{
-			Widget_Viewport_Properties::g_renderer->SetResolution(width, height);
+			_Widget_Viewport::g_renderer->SetResolution(width, height);
 			m_timeSinceLastResChange = 0;
 		}
 	}
@@ -120,10 +124,9 @@ void Widget_Viewport::MousePicking()
 	if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) || !ImGui::IsMouseClicked(0))
 		return;
 
-	if (auto camera = Widget_Viewport_Properties::g_renderer->GetCamera())
+	if (auto camera = _Widget_Viewport::g_renderer->GetCamera())
 	{
-		Vector2 mousePosRelative = EditorHelper::ToVector2(ImGui::GetMousePos()) - Widget_Viewport_Properties::g_framePos;
-		if (auto picked = camera->Pick(mousePosRelative))
+		if (auto picked = camera->Pick(EditorHelper::ToVector2(ImGui::GetMousePos())))
 		{
 			Widget_World::SetSelectedActor(picked);
 			return;
