@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ================================
 #include "Grid.h"
-#include "../Logging/Log.h"
-#include "../World/Components/Transform.h"
-#include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_IndexBuffer.h"
-#include "../RHI/RHI_Vertex.h"
-//========================================
+#include "../../Logging/Log.h"
+#include "../../World/Components/Transform.h"
+#include "../../RHI/RHI_VertexBuffer.h"
+#include "../../RHI/RHI_IndexBuffer.h"
+#include "../../RHI/RHI_Vertex.h"
+//===========================================
 
 //= NAMESPACES ================
 using namespace std;

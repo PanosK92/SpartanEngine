@@ -43,9 +43,6 @@ using namespace std;
 
 namespace Directus
 {
-	void* Engine::m_drawHandle		= nullptr;
-	void* Engine::m_windowHandle	= nullptr;
-	void* Engine::m_windowInstance	= nullptr;
 	unsigned long Engine::m_flags	= 0;
 	static unique_ptr<Stopwatch> g_stopwatch;
 
@@ -71,7 +68,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Input(m_context));
 		m_context->RegisterSubsystem(new Threading(m_context));
 		m_context->RegisterSubsystem(new ResourceCache(m_context));
-		m_context->RegisterSubsystem(new Renderer(m_context, m_drawHandle));
+		m_context->RegisterSubsystem(new Renderer(m_context, Settings::Get().GetWindowHandle()));
 		m_context->RegisterSubsystem(new Audio(m_context));
 		m_context->RegisterSubsystem(new Physics(m_context));
 		m_context->RegisterSubsystem(new Scripting(m_context));
@@ -177,9 +174,7 @@ namespace Directus
 
 	void Engine::SetHandles(void* drawHandle, void* windowHandle, void* windowInstance)
 	{
-		m_drawHandle		= drawHandle;
-		m_windowHandle		= windowHandle;
-		m_windowInstance	= windowInstance;
+		Settings::Get().SetHandles(drawHandle, windowHandle, windowInstance);
 	}
 
 	float Engine::GetDeltaTime()

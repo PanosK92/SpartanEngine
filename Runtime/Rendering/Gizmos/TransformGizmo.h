@@ -21,22 +21,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES =====================
 #include <memory>
 #include <vector>
-#include "../Core/EngineDefs.h"
-#include "../Math/Matrix.h"
-#include "../Math/BoundingBox.h"
-#include "../Math/Ray.h"
-//==============================
+#include "TransformHandle.h"
+#include "../../Core/EngineDefs.h"
+//================================
 
 namespace Directus
 {
+	class Camera;
 	class Model;
 	class Context;
 	class Actor;
 	class RHI_IndexBuffer;
 	class RHI_VertexBuffer;
+
+	namespace Math
+	{
+		class Matrix;
+	}
 
 	enum TransformHandle_Type
 	{
@@ -51,43 +55,36 @@ namespace Directus
 		TransformHandle_World
 	};
 
-	class ENGINE_CLASS GizmoHandle
-	{
-	public:
-		GizmoHandle() {}
-		GizmoHandle(Context* context, const std::vector<RHI_Vertex_PosUvNorTan>& vertices);
-		~GizmoHandle() {}
-
-		void Update();
-
-		Math::Matrix transform;
-		Math::Vector3 position;
-		Math::Quaternion rotation;
-		Math::Vector3 scale;
-		Math::BoundingBox box;
-	};
-
 	class ENGINE_CLASS TransformGizmo
 	{
 	public:
 		TransformGizmo(Context* context);
 		~TransformGizmo();
 
-		void Pick(const std::shared_ptr<Actor>& actor);
-		const Math::Matrix& GetMatrix_Position_X()	{ return m_handle_position_x.transform; }
-		const Math::Matrix& GetMatrix_Position_Y()	{ return m_handle_position_y.transform; }
-		const Math::Matrix& Get_Matrix_Position_Z()	{ return m_handle_position_z.transform; }
+		void Update(const std::shared_ptr<Actor>& actor, Camera* camera);
+		const Math::Matrix& GetMatrix_Position_X()	{ return m_handle_position_x.m_mTransform; }
+		const Math::Matrix& GetMatrix_Position_Y()	{ return m_handle_position_y.m_mTransform; }
+		const Math::Matrix& Get_Matrix_Position_Z()	{ return m_handle_position_z.m_mTransform; }
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
+		bool IsEditing() { return m_isEditing; }
 
 	private:
-		GizmoHandle m_handle_position_x;
-		GizmoHandle m_handle_position_y;
-		GizmoHandle m_handle_position_z;
+		bool m_isEditing;
+		bool m_isEditing_handle_x;
+		bool m_isEditing_handle_y;
+		bool m_isEditing_handle_z;
+
+		TransformHandle m_handle_position_x;
+		TransformHandle m_handle_position_y;
+		TransformHandle m_handle_position_z;
+
+		std::shared_ptr<Actor> m_pickedActor;
 
 		TransformHandle_Type m_activeHandle;
 		TransformHandle_Space m_space;
+
 		std::unique_ptr<Model> m_handle_position_model;
 		std::unique_ptr<Model> m_handle_scale_model;
 		Context* m_context;

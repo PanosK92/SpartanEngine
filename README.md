@@ -46,6 +46,7 @@ Per-Pixel motion blur			| 100% |
 Velocity Buffer					| 100% | Required for TAA and Motion Blur.
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 Point light support             | 100% | -
+Xbox controller support         | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Higher quality codebase, allowing for future development.
 Font importing and rendering    | 100% | Ability to load any font file.

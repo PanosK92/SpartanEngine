@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES ================
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
 #include "RHI_Object.h"
 #include "..\Math\Matrix.h"
-//=========================
+#include "..\Core\Settings.h"
+//===========================
 
 namespace Directus
 {
@@ -35,12 +36,12 @@ namespace Directus
 	public:
 		RHI_RenderTexture(
 			std::shared_ptr<RHI_Device> rhiDevice,
-			unsigned int width = Settings::Get().Resolution_GetWidth(),
-			unsigned int height = Settings::Get().Resolution_GetHeight(),
-			Texture_Format textureFormat = Texture_Format_R8G8B8A8_UNORM,
-			bool depth = false,
-			Texture_Format depthFormat = Texture_Format_D32_FLOAT,
-			unsigned int arraySize = 1
+			unsigned int width				= Settings::Get().Resolution_GetWidth(),
+			unsigned int height				= Settings::Get().Resolution_GetHeight(),
+			Texture_Format textureFormat	= Texture_Format_R8G8B8A8_UNORM,
+			bool depth						= false,
+			Texture_Format depthFormat		= Texture_Format_D32_FLOAT,
+			unsigned int arraySize			= 1
 		);
 		~RHI_RenderTexture();
 

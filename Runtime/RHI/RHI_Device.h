@@ -28,6 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	namespace Math
+	{
+		class Vector4;
+	}
+
 	class ENGINE_CLASS RHI_Device
 	{
 	public:

@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ===================
+#include <vector>
 #include "EngineDefs.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
-#include <vector>
-//==========================
+#include "../RHI/RHI_Viewport.h"
+//==============================
 
 namespace Directus
 {
@@ -97,12 +98,30 @@ namespace Directus
 
 		void Initialize();
 
-		//= VIEWPORT =================================================================================
-		float Viewport_GetWidth()						{ return m_viewport.x; }
-		float Viewport_GetHeight()						{ return m_viewport.y; }
-		const Math::Vector2& Viewport_Get()				{ return m_viewport; }
-		void Viewport_Set(float width, float height)	{ m_viewport = Math::Vector2(width, height); }
-		//============================================================================================
+		//= WINDOW ================================================================
+		void SetHandles(void* drawHandle, void* windowHandle, void* windowInstance)
+		{
+			m_drawHandle = drawHandle;
+			m_windowHandle = windowHandle;
+			m_windowInstance = windowInstance;
+		}
+		void* GetWindowHandle()		{ return m_windowHandle; }
+		void* GetWindowInstance()	 { return m_windowInstance; }
+		//=========================================================================
+
+		//= VIEWPORT ====================================================================================================
+		float Viewport_GetWidth()			{ return m_viewport.GetWidth(); }
+		float Viewport_GetHeight()			{ return m_viewport.GetHeight(); }
+		Math::Vector2 Viewport_GetTopLeft()	{ return Math::Vector2(m_viewport.GetTopLeftX(), m_viewport.GetTopLeftY()); }
+		const RHI_Viewport& Viewport_Get()	{ return m_viewport; }
+		void Viewport_Set(float x, float y, float width, float height)	
+		{ 
+			m_viewport.SetPosX(x);
+			m_viewport.SetPosY(y);
+			m_viewport.SetWidth(width);
+			m_viewport.SetHeight(height);
+		}
+		//===============================================================================================================
 
 		//= RESOLUTION =================================================================================================================
 		void Resolution_Set(int width, int height)				{ m_resolution = Math::Vector2((float)width, (float)height); }
@@ -130,17 +149,17 @@ namespace Directus
 		float FPS_GetTarget() { return m_fpsTarget; }
 		//===========================================
 
-		//= MISC =========================================================================================
-		bool FullScreen_Get()										{ return m_isFullScreen; }
-		bool MousVisible_Get()										{ return m_isMouseVisible; }
-		VSync VSync_Get()											{ return (VSync)m_vsync; }	
-		unsigned int Shadows_GetResolution()						{ return m_shadowMapResolution; }
-		unsigned int Anisotropy_Get()								{ return m_anisotropy; }
-		void ThreadCountMax_Set(unsigned int maxThreadCount)		{ m_maxThreadCount = maxThreadCount; }
-		unsigned int ThreadCountMax_Get()							{ return m_maxThreadCount; }	
-		const std::string& Gpu_GetName()							{ return m_primaryAdapter->name; }
-		unsigned int Gpu_GetMemory()								{ return m_primaryAdapter->memory; }
-		//================================================================================================
+		//= MISC =====================================================================================
+		bool FullScreen_Get()									{ return m_isFullScreen; }
+		bool MousVisible_Get()									{ return m_isMouseVisible; }
+		VSync VSync_Get()										{ return (VSync)m_vsync; }	
+		unsigned int Shadows_GetResolution()					{ return m_shadowMapResolution; }
+		unsigned int Anisotropy_Get()							{ return m_anisotropy; }
+		void ThreadCountMax_Set(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
+		unsigned int ThreadCountMax_Get()						{ return m_maxThreadCount; }	
+		const std::string& Gpu_GetName()						{ return m_primaryAdapter->name; }
+		unsigned int Gpu_GetMemory()							{ return m_primaryAdapter->memory; }
+		//============================================================================================
 
 		// Third party lib versions
 		std::string m_versionAngelScript;
@@ -154,19 +173,22 @@ namespace Directus
 		std::string m_versionVulkan;
 
 	private:
-		Math::Vector2 m_viewport;
-		Math::Vector2 m_resolution				= Math::Vector2(1920, 1080);
-		unsigned int m_vsync					= (int)Off;
-		bool m_isFullScreen						= false;
-		bool m_isMouseVisible					= true;
-		unsigned int m_shadowMapResolution		= 4096;
-		unsigned int m_anisotropy				= 16;
-		unsigned int m_maxThreadCount			= 0;
-		float m_fpsLimit						= -1.0f;
-		float m_fpsTarget						= 165.0f;
-		FPS_Policy m_fpsPolicy					= FPS_MonitorMatch;
+		void* m_drawHandle					= nullptr;
+		void* m_windowHandle				= nullptr;
+		void* m_windowInstance				= nullptr;
+		Math::Vector2 m_resolution			= Math::Vector2(1920, 1080);
+		RHI_Viewport m_viewport				= RHI_Viewport(0, 0, 1920, 1080, 0.0f, 1.0f);
+		unsigned int m_vsync				= (int)Off;
+		bool m_isFullScreen					= false;
+		bool m_isMouseVisible				= true;
+		unsigned int m_shadowMapResolution	= 4096;
+		unsigned int m_anisotropy			= 16;
+		unsigned int m_maxThreadCount		= 0;
+		float m_fpsLimit					= -1.0f;
+		float m_fpsTarget					= 165.0f;
+		FPS_Policy m_fpsPolicy				= FPS_MonitorMatch;
 
-		const DisplayAdapter* m_primaryAdapter	= nullptr;
+		const DisplayAdapter* m_primaryAdapter = nullptr;
 		std::vector<DisplayMode> m_displayModes;
 		std::vector<DisplayAdapter> m_displayAdapters;	
 	};

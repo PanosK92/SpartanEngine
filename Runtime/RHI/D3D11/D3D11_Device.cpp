@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../Profiling/Profiler.h"
+#include "../../Core/Settings.h"
 //======================================
 
 //= NAMESPACES ================

@@ -21,42 +21,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include "../Core/EngineDefs.h"
+//= INCLUDES ========================
 #include <vector>
-#include "Vector3.h"
-//=============================
+#include <memory>
+#include "../../Math/Matrix.h"
+#include "../../Core/EngineDefs.h"
+#include "../../RHI/RHI_Definition.h"
+//===================================
 
 namespace Directus
 {
 	class Context;
+	class Transform;
 
-	namespace Math
+	class ENGINE_CLASS Grid
 	{
-		class RayHit;
-		class BoundingBox;
+	public:
+		Grid(std::shared_ptr<RHI_Device> rhiDevice);
+		~Grid(){}
+		
+		const Math::Matrix& ComputeWorldMatrix(Transform* camera);
+		
+		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
+		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
+		unsigned int GetIndexCount()						{ return m_indexCount; }
 
-		class ENGINE_CLASS Ray
-		{
-		public:
-			Ray();
-			Ray(const Vector3& start, const Vector3& end);
-			~Ray();
+	private:
+		void BuildGrid(std::vector<RHI_Vertex_PosCol>* vertices, std::vector<unsigned int>* indices);
+		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices, std::shared_ptr<RHI_Device> rhiDevice);
 
-			// Traces a ray against all actors in the world, returns all hits in a vector.
-			std::vector<RayHit> Trace(Context* context);
-
-			// Returns hit distance to a bounding box, or infinity if there is no hit.
-			float HitDistance(const BoundingBox& box);
-
-			const Vector3& GetStart() const		{ return m_start; }
-			const Vector3& GetEnd()	const		{ return m_end; }
-			const Vector3& GetDirection() const { return m_direction; }
-
-		private:
-			Vector3 m_start;
-			Vector3 m_end;
-			Vector3 m_direction;
-		};
-	}
+		unsigned int m_indexCount;
+		unsigned int m_terrainHeight;
+		unsigned int m_terrainWidth;
+		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
+		Math::Matrix m_world;
+	};
 }

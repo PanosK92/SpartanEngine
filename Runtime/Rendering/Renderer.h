@@ -25,10 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <vector>
 #include <unordered_map>
-#include "../Math/Matrix.h"
 #include "../Core/SubSystem.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Pipeline.h"
+#include "../Math/Matrix.h"
+#include "../Math/Vector2.h"
+#include "../Core/Settings.h"
 //================================
 
 namespace Directus

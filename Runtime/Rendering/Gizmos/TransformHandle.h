@@ -23,38 +23,50 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include <vector>
-#include <memory>
-#include "../Math/Matrix.h"
-#include "../Core/EngineDefs.h"
-#include "../RHI/RHI_Definition.h"
-//================================
+#include "../../Core/EngineDefs.h"
+#include "../../Math/Matrix.h"
+#include "../../Math/BoundingBox.h"
+#include "../../Math/Ray.h"
+//=================================
 
 namespace Directus
 {
-	class Context;
 	class Transform;
+	class Camera;
 
-	class ENGINE_CLASS Grid
+	enum TransformHandle_Axis
+	{
+		TransformHandle_X,
+		TransformHandle_Y,
+		TransformHandle_Z
+	};
+
+	class ENGINE_CLASS TransformHandle
 	{
 	public:
-		Grid(std::shared_ptr<RHI_Device> rhiDevice);
-		~Grid(){}
-		
-		const Math::Matrix& ComputeWorldMatrix(Transform* camera);
-		
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
-		unsigned int GetIndexCount()						{ return m_indexCount; }
+		TransformHandle() {}
+		TransformHandle(TransformHandle_Axis axis, const std::vector<RHI_Vertex_PosUvNorTan>& vertices, Context* context);
+		~TransformHandle() {}
 
+		bool Update(Transform* transform, Camera* camera);
+		bool IsHeld() { return m_isHeld; }
+
+		Math::Matrix m_mTransform;
+		Math::Vector3 m_position;
+		Math::Quaternion m_rotation;
+		Math::Vector3 m_scale;
+		Math::BoundingBox m_box;
+		Math::BoundingBox m_box_transforemd;	
+		
 	private:
-		void BuildGrid(std::vector<RHI_Vertex_PosCol>* vertices, std::vector<unsigned int>* indices);
-		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices, std::shared_ptr<RHI_Device> rhiDevice);
+		bool IsHeld(Camera* camera);
+		bool EditTransform(Transform* transform);
 
-		unsigned int m_indexCount;
-		unsigned int m_terrainHeight;
-		unsigned int m_terrainWidth;
-		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
-		Math::Matrix m_world;
+		bool m_isHeld;
+		TransformHandle_Axis m_axis_type;
+		Math::Vector3 m_axis_delta;
+		Math::Vector3 m_axis_previous;
+		Math::Vector3 m_axis_current;
+		Context* m_context;
 	};
 }
