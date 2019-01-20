@@ -200,7 +200,7 @@ namespace Directus
 	{
 		if (!m_model)
 		{
-			LOG_ERROR("Renderable::Geometry_Get: Invalid model");
+			LOG_ERROR("Invalid model");
 			return;
 		}
 

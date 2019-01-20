@@ -117,7 +117,7 @@ namespace Directus
 		Math::Vector3 m_position;
 		Math::Quaternion m_rotation;
 		bool m_isDirty;
-		Math::Vector2 m_lastKnownViewport;	
+		Math::Vector2 m_lastKnownViewport;
 		std::weak_ptr<Actor> m_pickedActor;
 	};
 }

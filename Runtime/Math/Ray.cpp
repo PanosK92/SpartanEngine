@@ -19,108 +19,152 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========
+//= INCLUDES ==============================
 #include "Ray.h"
+#include "RayHit.h"
 #include "BoundingBox.h"
-//======================
+#include "../World/Actor.h"
+#include "../World/Components/Renderable.h"
+#include "../World/Components/Skybox.h"
+//=========================================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Directus::Math
 {
 	Ray::Ray()
 	{
-		m_origin	= Vector3::Zero;
-		m_end		= Vector3::Zero;
-		m_direction = Vector3::Zero;
+
 	}
 
-	Ray::Ray(const Vector3& origin, const Vector3& end)
+	Ray::~Ray()
 	{
-		m_origin	= origin;
-		m_end		= end;
-		m_direction = (end - origin).Normalized();
+
 	}
 
-	float Ray::HitDistance(const BoundingBox& box)
+	vector<RayHit> Ray::Trace(Context* context, const Vector3& start, const Vector3& end)
+	{
+		m_start		= start;
+		m_end		= end;
+		m_direction = (end - start).Normalized();
+
+		// Find all the actors that the ray hits
+		vector<RayHit> hits;
+		const vector<shared_ptr<Actor>>& actors = context->GetSubsystem<World>()->Actors_GetAll();
+		for (const auto& actor : actors)
+		{
+			// Make sure there actor has a mesh and exclude the SkyBox
+			if (!actor->HasComponent<Renderable>() || actor->HasComponent<Skybox>())
+				continue;
+
+			// Get bounding box
+			BoundingBox aabb = actor->GetComponent<Renderable>()->Geometry_AABB();
+
+			// Compute hit distance
+			float hitDistance = HitDistance(m_start, m_direction, aabb);
+
+			// Don't store hit data if there was no hit
+			if (hitDistance == INFINITY)
+				continue;
+
+			bool inside	= (hitDistance == 0.0f);
+			hits.emplace_back(actor, hitDistance, inside);
+		}
+
+		// Sort by distance (ascending)
+		sort(hits.begin(), hits.end(), [](const RayHit& a, const RayHit& b)
+		{
+			return a.m_distance < b.m_distance;
+		});
+
+		return hits;
+	}
+
+	float Ray::HitDistance(const Vector3& start, const Vector3& direction, const BoundingBox& box)
 	{
 		// If undefined, no hit (infinite distance)
 		if (!box.Defined())
 			return INFINITY;
 		
 		// Check for ray origin being inside the box
-		if (box.IsInside(m_origin))
+		if (box.IsInside(start))
 			return 0.0f;
 
 		float dist = INFINITY;
 
 		// Check for intersecting in the X-direction
-		if (m_origin.x < box.GetMin().x && m_direction.x > 0.0f)
+		if (start.x < box.GetMin().x && direction.x > 0.0f)
 		{
-			float x = (box.GetMin().x - m_origin.x) / m_direction.x;
+			float x = (box.GetMin().x - start.x) / direction.x;
 			if (x < dist)
 			{
-				Vector3 point = m_origin + x * m_direction;
+				Vector3 point = start + x * direction;
 				if (point.y >= box.GetMin().y && point.y <= box.GetMax().y && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
 				}
 			}
 		}
-		if (m_origin.x > box.GetMax().x && m_direction.x < 0.0f)
+		if (start.x > box.GetMax().x && direction.x < 0.0f)
 		{
-			float x = (box.GetMax().x - m_origin.x) / m_direction.x;
+			float x = (box.GetMax().x - start.x) / direction.x;
 			if (x < dist)
 			{
-				Vector3 point = m_origin + x * m_direction;
+				Vector3 point = start + x * direction;
 				if (point.y >= box.GetMin().y && point.y <= box.GetMax().y && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
 				}
 			}
 		}
+
 		// Check for intersecting in the Y-direction
-		if (m_origin.y < box.GetMin().y && m_direction.y > 0.0f)
+		if (start.y < box.GetMin().y && direction.y > 0.0f)
 		{
-			float x = (box.GetMin().y - m_origin.y) / m_direction.y;
+			float x = (box.GetMin().y - start.y) / direction.y;
 			if (x < dist)
 			{
-				Vector3 point = m_origin + x * m_direction;
+				Vector3 point = start + x * direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
 				}
 			}
 		}
-		if (m_origin.y > box.GetMax().y && m_direction.y < 0.0f)
+		if (start.y > box.GetMax().y && direction.y < 0.0f)
 		{
-			float x = (box.GetMax().y - m_origin.y) / m_direction.y;
+			float x = (box.GetMax().y - start.y) / direction.y;
 			if (x < dist)
 			{
-				Vector3 point = m_origin + x * m_direction;
+				Vector3 point = start + x * direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
 				}
 			}
 		}
+
 		// Check for intersecting in the Z-direction
-		if (m_origin.z < box.GetMin().z && m_direction.z > 0.0f)
+		if (start.z < box.GetMin().z && direction.z > 0.0f)
 		{
-			float x = (box.GetMin().z - m_origin.z) / m_direction.z;
+			float x = (box.GetMin().z - start.z) / direction.z;
 			if (x < dist)
 			{
-				Vector3 point = m_origin + x * m_direction;
+				Vector3 point = start + x * direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.y >= box.GetMin().y && point.y <= box.GetMax().y)
 				{
 					dist = x;
 				}
 			}
 		}
-		if (m_origin.z > box.GetMax().z && m_direction.z < 0.0f)
+		if (start.z > box.GetMax().z && direction.z < 0.0f)
 		{
-			float x = (box.GetMax().z - m_origin.z) / m_direction.z;
+			float x = (box.GetMax().z - start.z) / direction.z;
 			if (x < dist)
 			{
-				Vector3 point = m_origin + x * m_direction;
+				Vector3 point = start + x * direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.y >= box.GetMin().y && point.y <= box.GetMax().y)
 				{
 					dist = x;

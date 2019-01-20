@@ -52,16 +52,18 @@ Font importing and rendering    | 100% | Ability to load any font file.
 Optimize & Debug				| 0% | Feature freeze, optimize and debug (once all tasks are done).
 
 # Roadmap
+- Eye Adaptation.
+- Subsurface Scattering.
+- Volumetric Lighting.
+- Dynamic resolution scaling.
+- Real-time ray tracing (experimental).
+- Global Illumination.
 - C# scripting.
 - Vulkan rendering backend.
 - DirectX 12 rendering backend.
-- Dynamic resolution scaling.
-- Real-time ray tracing (experimental).
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Skeletal Animation.
-- Volumetric Lighting.
-- Global Illumination.
 - UI components.
 
 ### Download

@@ -209,32 +209,33 @@ namespace Directus
 
 		vector<float> extents =
 		{
-			5,
+			10,
 			40,
-			camera_far
+			camera_far * 0.5f
 		};
 		float extent = extents[index];
 
-		Vector3 center	= m_lastPosCamera * camera_view;
-		Vector3 min		= center - Vector3(extent, extent, extent);
-		Vector3 max		= center + Vector3(extent, extent, extent);
+		Vector3 box_center	= m_lastPosCamera * GetViewMatrix();						// Follow the camera
+		Vector3 box_extent	= Vector3(extents[index]) * GetTransform()->GetRotation();	// Rotate towards light direction
+		Vector3 box_min		= box_center - box_extent;
+		Vector3 box_max		= box_center + box_extent;
 
-		//= Shadow shimmering remedy based on ============================================
+		//= Prevent shadow shimmering  ===================================================
+		// Shadow shimmering remedy based on
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
-		float fWorldUnitsPerTexel = (extent * 2.0f) / m_shadowMap->GetWidth();
-
-		min /= fWorldUnitsPerTexel;
-		min.Floor();
-		min *= fWorldUnitsPerTexel;
-		max /= fWorldUnitsPerTexel;
-		max.Floor();
-		max *= fWorldUnitsPerTexel;
+		float worldUnitsPerTexel = (extent * 2.0f) / m_shadowMap->GetWidth();
+		box_min /= worldUnitsPerTexel;
+		box_min.Floor();
+		box_min *= worldUnitsPerTexel;
+		box_max /= worldUnitsPerTexel;
+		box_max.Floor();
+		box_max *= worldUnitsPerTexel;
 		//================================================================================
 
 #if REVERSE_Z == 1
-		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, max.z, min.z);
+		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_max.z, box_min.z);
 #else
-		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);
+		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_min.z, box_max.z);
 		#endif
 
 		return true;

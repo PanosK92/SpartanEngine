@@ -46,26 +46,26 @@ namespace Directus
 
 		void UpdateTransform();
 
-		//= POSITION ============================================================
-		Math::Vector3 GetPosition() { return m_matrix.GetTranslation(); }
+		//= POSITION ================================================================
+		Math::Vector3 GetPosition()				{ return m_matrix.GetTranslation(); }
 		const Math::Vector3& GetPositionLocal() { return m_positionLocal; }
 		void SetPosition(const Math::Vector3& position);
 		void SetPositionLocal(const Math::Vector3& position);
-		//=======================================================================
+		//===========================================================================
 
-		//= ROTATION ============================================================
+		//= ROTATION =================================================================
 		Math::Quaternion GetRotation() { return m_matrix.GetRotation(); }
 		const Math::Quaternion& GetRotationLocal() { return m_rotationLocal; }
 		void SetRotation(const Math::Quaternion& rotation);
 		void SetRotationLocal(const Math::Quaternion& rotation);
-		//=======================================================================
+		//============================================================================
 
-		//= SCALE ======================================================
+		//= SCALE ===================================================
 		Math::Vector3 GetScale() { return m_matrix.GetScale(); }
 		const Math::Vector3& GetScaleLocal() { return m_scaleLocal; }
 		void SetScale(const Math::Vector3& scale);
 		void SetScaleLocal(const Math::Vector3& scale);
-		//==============================================================
+		//===========================================================
 
 		//= TRANSLATION/ROTATION ==================
 		void Translate(const Math::Vector3& delta);

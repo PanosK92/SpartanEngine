@@ -1,7 +1,7 @@
 float3 ChromaticAberration(float2 texCoord, float2 texelSize, Texture2D sourceTexture, SamplerState bilinearSampler)
 {
-	float2 shift 	= float2(2.5f, -0.5f);	// 	[-10, 10]
-	float strength 	= 0.5f;  				//	[0, 1]
+	float2 shift 	= float2(2.5f, -2.5f);	// 	[-10, 10]
+	float strength 	= 0.75f;  				//	[0, 1]
 	
 	// supposedly, lens effect
 	shift.x *= abs(texCoord.x * 2.0f - 1.0f);
