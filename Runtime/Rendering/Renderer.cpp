@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "Rectangle.h"
 #include "Gizmos/Grid.h"
-#include "Gizmos/TransformGizmo.h"
+#include "Gizmos/Transform_Gizmo.h"
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/LightShader.h"
 #include "Deferred/GBuffer.h"
@@ -109,7 +109,7 @@ namespace Directus
 
 		// Editor specific
 		m_grid				= make_unique<Grid>(m_rhiDevice);
-		m_transformGizmo	= make_unique<TransformGizmo>(m_context);
+		m_transformGizmo	= make_unique<Transform_Gizmo>(m_context);
 		m_gizmoRectLight	= make_unique<Rectangle>(m_context);
 
 		// Create a constant buffer that will be used for most shaders
@@ -126,9 +126,9 @@ namespace Directus
 		m_pipelineLine.primitiveTopology	= PrimitiveTopology_LineList;
 		m_pipelineLine.cullMode				= Cull_Back;
 		m_pipelineLine.fillMode				= Fill_Solid;
-		m_pipelineLine.vertexShader			= m_shaderLine;
-		m_pipelineLine.pixelShader			= m_shaderLine;
-		m_pipelineLine.constantBuffer		= m_shaderLine->GetConstantBuffer();
+		m_pipelineLine.vertexShader			= m_shaderColor;
+		m_pipelineLine.pixelShader			= m_shaderColor;
+		m_pipelineLine.constantBuffer		= m_shaderColor->GetConstantBuffer();
 		m_pipelineLine.sampler				= m_samplerPointClamp;
 
 		return true;
@@ -246,14 +246,14 @@ namespace Directus
 		m_shaderShadowMapping->CompileVertexPixel(shaderDirectory + "ShadowMapping.hlsl", Input_PositionTexture);
 		m_shaderShadowMapping->AddBuffer<Struct_ShadowMapping>();
 
-		// Line
-		m_shaderLine = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shaderLine->CompileVertexPixel(shaderDirectory + "Line.hlsl", Input_PositionColor);
-		m_shaderLine->AddBuffer<Struct_Matrix_Matrix>();
+		// Color
+		m_shaderColor = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderColor->CompileVertexPixel(shaderDirectory + "Color.hlsl", Input_PositionColor);
+		m_shaderColor->AddBuffer<Struct_Matrix_Matrix>();
 
 		// Quad
 		m_shaderQuad = make_shared<RHI_Shader>(m_rhiDevice);
-		m_shaderQuad->CompileVertex(shaderDirectory + "Quad.hlsl", Input_PositionTexture);
+		m_shaderQuad->CompileVertexPixel(shaderDirectory + "Quad.hlsl", Input_PositionTexture);
 
 		// Texture
 		m_shaderQuad_texture = make_shared<RHI_Shader>(m_rhiDevice);
@@ -431,16 +431,15 @@ namespace Directus
 		);
 
 		Pass_Transparent(m_renderTexFull_HDR_Light);
-		
 		Pass_Lines(m_renderTexFull_HDR_Light);
+		Pass_Gizmos(m_renderTexFull_HDR_Light);
 
 		Pass_PostLight(
 			m_renderTexFull_HDR_Light,	// IN:	Light pass result
 			m_renderTexFull_HDR_Light2	// OUT: Result
 		);
 	
-		Pass_GBufferVisualize(m_renderTexFull_HDR_Light2);
-		Pass_Gizmos(m_renderTexFull_HDR_Light2);
+		Pass_GBufferVisualize(m_renderTexFull_HDR_Light2);	
 		Pass_PerformanceMetrics(m_renderTexFull_HDR_Light2);
 
 		m_isRendering = false;
@@ -1436,8 +1435,7 @@ namespace Directus
 
 				// Set pipeline state
 				m_rhiPipeline->SetVertexBuffer(m_lineVertexBuffer);
-				auto buffer = Struct_Matrix_Matrix(m_view, m_projection);
-				m_shaderLine->UpdateBuffer(&buffer);
+				SetGlobalBuffer(m_viewProjection);
 				m_rhiPipeline->Draw(lineVertexBufferSize);
 
 				m_lineVertices.clear();
@@ -1449,8 +1447,7 @@ namespace Directus
 		{
 			m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
-			auto buffer = Struct_Matrix_Matrix(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_view, m_projection);
-			m_shaderLine->UpdateBuffer(&buffer);
+			SetGlobalBuffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_viewProjection);
 			m_rhiPipeline->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
 		}
 
@@ -1473,6 +1470,8 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_Gizmos");
 
 		// Set shared states
+		m_rhiPipeline->SetAlphaBlending(true);
+		m_rhiPipeline->SetRenderTarget(texOut, nullptr);
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->SetCullMode(Cull_Back);
 		m_rhiPipeline->SetFillMode(Fill_Solid);
@@ -1483,7 +1482,6 @@ namespace Directus
 			m_rhiDevice->EventBegin("Gizmo_Lights");
 			m_rhiPipeline->SetShader(m_shaderQuad_texture);
 			m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
-			m_rhiPipeline->SetAlphaBlending(true);
 
 			for (const auto& actor : lights)
 			{
@@ -1510,26 +1508,24 @@ namespace Directus
 				else if (type == LightType_Spot)	lightTex = m_gizmoTexLightSpot;
 
 				// Construct appropriate rectangle
-				float texWidth	= lightTex->GetWidth() * scale;
-				float texHeight = lightTex->GetHeight() * scale;
+				float texWidth	= lightTex->GetWidth()	* scale;
+				float texHeight = lightTex->GetHeight()	* scale;
 				m_gizmoRectLight->Create(position_light_screen.x - texWidth * 0.5f, position_light_screen.y - texHeight * 0.5f, texWidth, texHeight);
 			
-				SetGlobalBuffer(m_viewProjection_Orthographic, texOut->GetWidth(), texOut->GetHeight());
+				SetGlobalBuffer(m_viewProjection_Orthographic);
 				m_rhiPipeline->SetTexture(lightTex);
 				m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
 				m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());		
-				m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-				
+				m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);		
 			}
-			m_rhiPipeline->SetAlphaBlending(false);		
+			
 			m_rhiDevice->EventEnd();
 		}
 
 		// Transform
 		if (render_transform)
 		{
-			m_transformGizmo->Update(m_camera->GetPickedActor().lock(), m_camera);
-			if (m_transformGizmo->IsInspecting())
+			if (m_transformGizmo->Update(m_camera->GetPickedActor().lock(), m_camera))
 			{
 				m_rhiDevice->EventBegin("Gizmo_Transform");
 
@@ -1539,19 +1535,19 @@ namespace Directus
 				SetGlobalBuffer();
 
 				// X - Axis		
-				auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle_Pos_X().GetTransform(), m_transformGizmo->GetHandle_Pos_X().GetColor());
+				auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle_Position().GetTransform(Vector3::Right), m_transformGizmo->GetHandle_Position().GetColor(Vector3::Right));
 				m_shaderTransformGizmo->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
 				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
 				// Y - Axis		
-				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle_Pos_Y().GetTransform(), m_transformGizmo->GetHandle_Pos_Y().GetColor());
+				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle_Position().GetTransform(Vector3::Up), m_transformGizmo->GetHandle_Position().GetColor(Vector3::Up));
 				m_shaderTransformGizmo->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
 				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
 				// Z - Axis		
-				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle_Pos_Z().GetTransform(), m_transformGizmo->GetHandle_Pos_Z().GetColor());
+				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle_Position().GetTransform(Vector3::Forward), m_transformGizmo->GetHandle_Position().GetColor(Vector3::Forward));
 				m_shaderTransformGizmo->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
 				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
@@ -1560,6 +1556,7 @@ namespace Directus
 			}
 		}
 
+		m_rhiPipeline->SetAlphaBlending(false);
 		m_rhiPipeline->ClearPendingStates();
 
 		m_rhiDevice->EventEnd();

@@ -46,7 +46,7 @@ namespace Directus
 	class Font;
 	class Variant;
 	class Grid;
-	class TransformGizmo;
+	class Transform_Gizmo;
 	namespace Math
 	{
 		class BoundingBox;
@@ -205,7 +205,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderGBuffer;
 		std::shared_ptr<LightShader> m_shaderLight;
 		std::shared_ptr<RHI_Shader> m_shaderLightDepth;
-		std::shared_ptr<RHI_Shader> m_shaderLine;
+		std::shared_ptr<RHI_Shader> m_shaderColor;
 		std::shared_ptr<RHI_Shader> m_shaderFont;
 		std::shared_ptr<RHI_Shader> m_shaderShadowMapping;
 		std::shared_ptr<RHI_Shader> m_shaderSSAO;
@@ -258,7 +258,7 @@ namespace Directus
 		//===================================================
 
 		//= EDITOR ======================================
-		std::unique_ptr<TransformGizmo> m_transformGizmo;
+		std::unique_ptr<Transform_Gizmo> m_transformGizmo;
 		std::unique_ptr<Grid> m_grid;
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
 		//===============================================

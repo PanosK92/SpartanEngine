@@ -97,7 +97,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	);
 
 	// Adjust viewport to fit this very frame
-	Settings::Get().Viewport_Set(_Widget_Viewport::g_framePos.x, _Widget_Viewport::g_framePos.y, width, height);
+	Settings::Get().Viewport_Set(_Widget_Viewport::g_framePos.x, _Widget_Viewport::g_framePos.y, (float)width, (float)height);
 
 	// Adjust resolution if required
 	if (Settings::Get().Resolution_GetWidth() != width || Settings::Get().Resolution_GetHeight() != height)
