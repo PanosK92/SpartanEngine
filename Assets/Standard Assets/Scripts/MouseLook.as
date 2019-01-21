@@ -24,7 +24,7 @@ class MouseLook
 	// Update is called once per frame
 	void Update()
 	{	
-		if (input.GetButtonMouse(Right))
+		if (input.GetKey(Click_Right))
 		{
 			FreeLook();
 		}	

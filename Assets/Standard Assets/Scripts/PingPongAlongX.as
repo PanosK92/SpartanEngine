@@ -14,25 +14,24 @@ class PingPongAlongX
 	// Constructor
 	PingPongAlongX(Actor @actorIn)
 	{
-		@actor = actorIn;
-		@transform = actor.GetTransform();	
+		@actor		= actorIn;
+		@transform	= actor.GetTransform();	
 	}
 	
 	// Use this for initialization
 	void Start()	
 	{
-		m_currentPos = transform.GetPositionLocal();
-		m_currentRot = transform.GetRotationLocal();
-		m_distance = m_maxDistance * 0.5f;
+		m_currentPos	= transform.GetPositionLocal();
+		m_currentRot	= transform.GetRotationLocal();
+		m_distance		= m_maxDistance * 0.5f;
 	}
 
 	// Update is called once per frame
 	void Update()
 	{	
-		float speed =  m_speed * time.GetDeltaTime();
-		
-		m_currentPos += transform.GetForward() * speed;	
-		m_distance += speed;
+		float speed		= m_speed * time.GetDeltaTime();	
+		m_currentPos	+= transform.GetForward() * speed;	
+		m_distance		+= speed;
 		
 		if (m_distance > m_maxDistance || m_distance < -m_maxDistance)
 		{

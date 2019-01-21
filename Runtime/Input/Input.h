@@ -22,33 +22,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
+#include <array>
 #include "../Math/Vector2.h"
 #include "../Core/SubSystem.h"
 //============================
 
 namespace Directus
 {
-	enum Button_Mouse
+	enum KeyCode
 	{
-		Click_Left,
-		Click_Middle,
-		Click_Right
-	};
-
-	enum Button_Keyboard
-	{
-		// FUNCTION
-		F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,
-		// NUMBERS
-		Alpha0, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9,
-		// NUMPAD
-		Keypad0, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9,
-		// LETTERS
-		Q, W, E, R, T, Y, U, I, O, P,
+		// Keyboard
+		F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,/*Function*/ 
+		Alpha0, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9,/*Numbers*/
+		Keypad0, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9,/*Numpad*/
+		Q, W, E, R, T, Y, U, I, O, P,/*Letters*/
 		A, S, D, F, G, H, J, K, L,
 		Z, X, C, V, B, N, M,
-		// CONTROLS
-		Esc,
+		Esc,/*Controls*/ 
 		Tab,
 		Shift_Left, Shift_Right,
 		Ctrl_Left, Ctrl_Right,
@@ -62,11 +52,14 @@ namespace Directus
 		Page_Up, Page_Down,
 		Home,
 		End,
-		Insert
-	};
+		Insert,
 
-	enum Button_Gamepad
-	{
+		// Mouse
+		Click_Left,
+		Click_Middle,
+		Click_Right,
+
+		// Gamepad
 		DPad_Up,
 		DPad_Down,
 		DPad_Left,
@@ -80,7 +73,7 @@ namespace Directus
 		Left_Thumb,
 		Right_Thumb,
 		Left_Shoulder,
-		Right_Shoulder	
+		Right_Shoulder
 	};
 
 	class ENGINE_CLASS Input : public Subsystem
@@ -92,41 +85,50 @@ namespace Directus
 		// SUBSYSTEM ==============
 		bool Initialize() override;
 		//=========================
-
 		void Tick();
 		
-		bool GetButtonKeyboard(Button_Keyboard button)	{ return m_keyboardButtons[(int)button]; }
-		bool GetButtonMouse(Button_Mouse button)		{ return m_mouseButtons[(int)button]; }
-		const Math::Vector2& GetMousePosition()			{ return m_mouse_position_client; }
-		const Math::Vector2& GetMouseDelta()			{ return m_mouseDelta; }
+		// Keys
+		bool GetKey(KeyCode key)		{ return m_keys[(unsigned int)key]; }							// Returns true while the button identified by KeyCode is held down.
+		bool GetKeyDown(KeyCode key)	{ return GetKey(key) && !m_keys_previous[(unsigned int)key]; }	// Returns true during the frame the user pressed down the button identified by KeyCode.
+		bool GetKeyUp(KeyCode key)		{ return !GetKey(key) && m_keys_previous[(unsigned int)key]; }	// Returns true the first frame the user releases the button identified by KeyCode.
+
+		// Mouse
+		const Math::Vector2& GetMousePosition()	{ return m_mouse_position; }
+		const Math::Vector2& GetMouseDelta()	{ return m_mouse_delta; }
+
+		// Gamepad
+		bool GamepadIsConnected()							{ return m_gamepad_connected; }
+		const Math::Vector2& GetGamepadThumbStickLeft()		{ return m_gamepad_thumb_left; }
+		const Math::Vector2& GetGamepadThumbStickRight()	{ return m_gamepad_thumb_right; }
+		float GetGamepadTriggerLeft()						{ return m_gamepad_trigger_left; }
+		float GetGamepadTriggerRight()						{ return m_gamepad_trigger_right; }
+		// Vibrate the gamepad. Motor speed range is from 0.0 to 1.0f
+		// The left motor is the low-frequency rumble motor. The right motor is the high-frequency rumble motor. 
+		// The two motors are not the same, and they create different vibration effects.
+		bool GamepadVibrate(float leftMotorSpeed, float rightMotorSpeed);
 
 	private:
 		bool ReadMouse();
 		bool ReadKeyboard();
 		bool ReadGamepad();
 
-		// Vibrate the gamepad. Motor speed range is from 0.0 to 1.0f
-		// The left motor is the low-frequency rumble motor. The right motor is the high-frequency rumble motor. 
-		// The two motors are not the same, and they create different vibration effects.
-		bool VibrateGamepad(float leftMotorSpeed, float rightMotorSpeed);
+		// Keys
+		std::array<bool, 99> m_keys				= { false };
+		std::array<bool, 99> m_keys_previous	= { false }; // A copy of m_keys, as it was during the previous frame
+		unsigned int start_index_mouse			= 83;
+		unsigned int start_index_gamepad		= 86;
 
 		// Mouse
-		bool m_mouseButtons[3]					= { false };
-		Math::Vector2 m_mouse_position_screen	= Math::Vector2::Zero;
-		Math::Vector2 m_mouse_position_client	= Math::Vector2::Zero;
-		Math::Vector2 m_mouseDelta				= Math::Vector2::Zero;
-		float m_mouseWheel						= 0;
-		float m_mouseWheelDelta					= 0;
-
-		// Keyboard
-		bool m_keyboardButtons[83] = { false };
+		Math::Vector2 m_mouse_position	= Math::Vector2::Zero;
+		Math::Vector2 m_mouse_delta		= Math::Vector2::Zero;
+		int m_mouseWheel				= 0;
+		float m_mouseWheelDelta			= 0;
 
 		// Gamepad
-		bool m_isGamepadConnected;
-		bool m_gamepadButtons[13] = { false };
-		Math::Vector2 m_thumbstickLeft;
-		Math::Vector2 m_thumbstickRight;
-		float m_triggerLeft;
-		float m_triggerRight;
+		bool m_gamepad_connected;
+		Math::Vector2 m_gamepad_thumb_left;
+		Math::Vector2 m_gamepad_thumb_right;
+		float m_gamepad_trigger_left;
+		float m_gamepad_trigger_right;
 	};
 }

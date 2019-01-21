@@ -83,41 +83,38 @@ namespace Directus
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Skybox",		int(ComponentType_Skybox));
 		m_scriptEngine->RegisterEnumValue("ComponentType", "Transform",		int(ComponentType_Transform));
 
-		// Button_Keyboard
-		m_scriptEngine->RegisterEnum("Button_Keyboard");
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "Space",	int(Space));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "Q",		int(Q));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "W",		int(W));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "E",		int(E));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "R",		int(R));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "T",		int(T));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "Y",		int(Y));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "U",		int(U));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "I",		int(I));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "O",		int(O));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "P",		int(P));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "A",		int(A));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "S",		int(S));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "D",		int(D));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "F",		int(F));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "G",		int(G));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "H",		int(H));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "J",		int(J));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "K",		int(K));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "L",		int(L));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "Z",		int(Z));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "X",		int(X));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "C",		int(C));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "V",		int(V));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "B",		int(B));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "N",		int(N));
-		m_scriptEngine->RegisterEnumValue("Button_Keyboard", "M",		int(M));
-
-		// Button_Mouse
-		m_scriptEngine->RegisterEnum("Button_Mouse");
-		m_scriptEngine->RegisterEnumValue("Button_Mouse", "Left",	int(Click_Left));
-		m_scriptEngine->RegisterEnumValue("Button_Mouse", "Middle",	int(Click_Middle));
-		m_scriptEngine->RegisterEnumValue("Button_Mouse", "Right",	int(Click_Right));
+		// KeyCode
+		m_scriptEngine->RegisterEnum("KeyCode");
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Space",			int(Space));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Q",				int(Q));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "W",				int(W));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "E",				int(E));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "R",				int(R));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "T",				int(T));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Y",				int(Y));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "U",				int(U));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "I",				int(I));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "O",				int(O));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "P",				int(P));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "A",				int(A));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "S",				int(S));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "D",				int(D));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "F",				int(F));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "G",				int(G));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "H",				int(H));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "J",				int(J));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "K",				int(K));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "L",				int(L));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Z",				int(Z));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "X",				int(X));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "C",				int(C));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "V",				int(V));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "B",				int(B));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "N",				int(N));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "M",				int(M));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Click_Left",		int(Click_Left));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Click_Middle",	int(Click_Middle));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Click_Right",		int(Click_Right));
 
 		// ForceMode
 		m_scriptEngine->RegisterEnum("ForceMode");
@@ -160,8 +157,9 @@ namespace Directus
 		m_scriptEngine->RegisterGlobalProperty("Input input", m_context->GetSubsystem<Input>());
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMousePosition()", asMETHOD(Input, GetMousePosition), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMouseDelta()", asMETHOD(Input, GetMouseDelta), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Input", "bool GetButtonKeyboard(Button_Keyboard key)", asMETHOD(Input, GetButtonKeyboard), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Input", "bool GetButtonMouse(Button_Mouse key)", asMETHOD(Input, GetButtonMouse), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Input", "bool GetKey(KeyCode key)", asMETHOD(Input, GetKey), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Input", "bool GetKeyDown(KeyCode key)", asMETHOD(Input, GetKeyDown), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Input", "bool GetKeyUp(KeyCode key)", asMETHOD(Input, GetKeyUp), asCALL_THISCALL);
 	}
 
 	/*------------------------------------------------------------------------------

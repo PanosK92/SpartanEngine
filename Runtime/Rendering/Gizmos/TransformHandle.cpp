@@ -53,55 +53,84 @@ namespace Directus
 	{
 		m_mTransform		= Matrix(m_position, m_rotation, m_scale);
 		m_box_transforemd	= m_box.Transformed(m_mTransform);
-		m_isHeld			= IsHeld(camera);
 
-		return EditTransform(transform);
-	}
-
-	bool TransformHandle::IsHeld(Camera* camera)
-	{
-		if (!camera)
+		// Do hit test
+		if (camera)
 		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
+			Input* input		= m_context->GetSubsystem<Input>();
+			Vector2	mousePos	= input->GetMousePosition();
+			mousePos			-= Settings::Get().Viewport_GetTopLeft(); // compute relative mouse position
+
+			Vector3 ray_start	= camera->GetTransform()->GetPosition();
+			Vector3 ray_end		= camera->ScreenToWorldPoint(mousePos);
+
+			Ray ray		= Ray(ray_start, ray_end);
+			m_isHovered = ray.HitDistance(m_box_transforemd) != INFINITY;
+
+			// First press
+			if (m_isHovered && input->GetKeyDown(Click_Left))
+			{
+				m_isPressed = true;
+			}
+
+			// During drag
+			if (m_isPressed && input->GetKey(Click_Left))
+			{
+				m_axis_previous = m_axis_current;
+				m_axis_current	= ray_end;
+
+				if (m_axis_type == TransformHandle_X)
+				{
+					m_axis_delta = (m_axis_current - m_axis_previous) * Vector3::Right;
+				}
+				else if (m_axis_type == TransformHandle_Y)
+				{
+					m_axis_delta = (m_axis_current - m_axis_previous) * Vector3::Up;
+				}
+				else if (m_axis_type == TransformHandle_Z)
+				{
+					m_axis_delta = (m_axis_current - m_axis_previous) * Vector3::Forward;
+				}
+
+				EditTransform(transform);
+			}
+
+			// Last press (on release)
+			if (m_isPressed && input->GetKeyUp(Click_Left))
+			{
+				m_isPressed = false;
+			}
 		}
 
-		Input* input		= m_context->GetSubsystem<Input>();
-		Vector2	mousePos	= input->GetMousePosition();
-		mousePos			-= Settings::Get().Viewport_GetTopLeft(); // compute relative mouse position
+		return m_isPressed;
+	}
 
-		if (!input->GetButtonMouse(Click_Left))
-			return false;
+	const Vector3& TransformHandle::GetColor() const
+	{
+		if (m_isHovered || m_isPressed)
+			return m_color_pressed;
 
-		Vector3 ray_start	= camera->GetTransform()->GetPosition();
-		Vector3 ray_end		= camera->ScreenToWorldPoint(mousePos);
-
-		Ray ray	= Ray(ray_start, ray_end);
-		if (m_isHeld = ray.HitDistance(m_box_transforemd) != INFINITY)
+		if (m_axis_type == TransformHandle_X)
 		{
-			m_axis_previous	= m_axis_current;
-			m_axis_current	= ray_end;
-			m_axis_delta	= m_axis_previous - m_axis_current;
+			return m_color_released_x;
+		}
+		else if (m_axis_type == TransformHandle_Y)
+		{
+			return m_color_released_y;
 		}
 		else
 		{
-			m_axis_previous = Vector3::Zero;
-			m_axis_current	= Vector3::Zero;
-			m_axis_delta	= Vector3::Zero;
+			return m_color_released_z;
 		}
-		return m_isHeld;
 	}
 
-	bool TransformHandle::EditTransform(Transform* transform)
+	void TransformHandle::EditTransform(Transform* transform)
 	{
 		if (!transform)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
-			return false;
+			return;
 		}
-
-		if (!m_isHeld)
-			return false;
 
 		Vector3 position = transform->GetPosition();
 
@@ -119,6 +148,5 @@ namespace Directus
 		}
 
 		transform->SetPosition(position);
-		return true;
 	}
 }

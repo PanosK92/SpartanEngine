@@ -34,7 +34,7 @@ class FirstPersonControllerPhysics
 	// Update is called once per frame
 	void Update()
 	{
-		if (input.GetButtonMouse(Right))
+		if (input.GetKey(Click_Right))
 		{
 			FreeLook();
 		}	
@@ -45,23 +45,23 @@ class FirstPersonControllerPhysics
 	void Movement()
 	{
 		// forward
-		if (input.GetButtonKeyboard(W))
+		if (input.GetKey(W))
 			rigidbody.ApplyForce(movementSpeed * cameraTransform.GetForward(), Force);
 			
 		// backward
-		if (input.GetButtonKeyboard(S))
+		if (input.GetKey(S))
 			rigidbody.ApplyForce(-movementSpeed * cameraTransform.GetForward(), Force);
 		
 		// right
-		if (input.GetButtonKeyboard(D))
+		if (input.GetKey(D))
 			rigidbody.ApplyForce(movementSpeed * cameraTransform.GetRight(), Force);
 		
 		// left
-		if (input.GetButtonKeyboard(A))
+		if (input.GetKey(A))
 			rigidbody.ApplyForce(-movementSpeed * cameraTransform.GetRight(), Force);
 			
 		// jump
-		if (input.GetButtonKeyboard(Space))
+		if (input.GetKey(Space))
 			rigidbody.ApplyForce(jumpForce * Vector3(0,1,0), Impulse);
 	}
 	
