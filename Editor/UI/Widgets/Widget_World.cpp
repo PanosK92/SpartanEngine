@@ -427,7 +427,7 @@ void Widget_World::Popup_ActorRename()
 
 void Widget_World::HandleKeyShortcuts()
 {
-	if (SceneHelper::g_input->GetButtonKeyboard(Delete))
+	if (SceneHelper::g_input->GetKey(Delete))
 	{
 		Action_Actor_Delete(m_actorSelected);
 	}

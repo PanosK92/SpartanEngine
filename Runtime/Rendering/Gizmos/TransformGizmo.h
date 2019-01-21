@@ -62,9 +62,9 @@ namespace Directus
 		~TransformGizmo();
 
 		void Update(const std::shared_ptr<Actor>& actor, Camera* camera);
-		const Math::Matrix& GetMatrix_Position_X()	{ return m_handle_position_x.m_mTransform; }
-		const Math::Matrix& GetMatrix_Position_Y()	{ return m_handle_position_y.m_mTransform; }
-		const Math::Matrix& Get_Matrix_Position_Z()	{ return m_handle_position_z.m_mTransform; }
+		const TransformHandle& GetHandle_Pos_X() const { return m_handle_position_x; }
+		const TransformHandle& GetHandle_Pos_Y() const { return m_handle_position_y; }
+		const TransformHandle& GetHandle_Pos_Z() const { return m_handle_position_z; }
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();

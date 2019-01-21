@@ -48,10 +48,12 @@ namespace Directus
 		TransformHandle(TransformHandle_Axis axis, const std::vector<RHI_Vertex_PosUvNorTan>& vertices, Context* context);
 		~TransformHandle() {}
 
-		bool Update(Transform* transform, Camera* camera);
-		bool IsHeld() { return m_isHeld; }
+		bool Update(Transform* transform, Camera* camera);		
+		bool IsPressed()							{ return m_isPressed; }
+		bool IsHovered()							{ return m_isHovered; }
+		const Math::Matrix& GetTransform() const	{ return m_mTransform; }
+		const Math::Vector3& GetColor() const;
 
-		Math::Matrix m_mTransform;
 		Math::Vector3 m_position;
 		Math::Quaternion m_rotation;
 		Math::Vector3 m_scale;
@@ -59,14 +61,20 @@ namespace Directus
 		Math::BoundingBox m_box_transforemd;	
 		
 	private:
-		bool IsHeld(Camera* camera);
-		bool EditTransform(Transform* transform);
+		void EditTransform(Transform* transform);
 
-		bool m_isHeld;
+		bool m_isPressed;
+		bool m_isHovered;
+
+		Math::Matrix m_mTransform;
 		TransformHandle_Axis m_axis_type;
 		Math::Vector3 m_axis_delta;
 		Math::Vector3 m_axis_previous;
 		Math::Vector3 m_axis_current;
+		Math::Vector3 m_color_released_x	= Math::Vector3::Right;
+		Math::Vector3 m_color_released_y	= Math::Vector3::Up;
+		Math::Vector3 m_color_released_z	= Math::Vector3::Forward;
+		Math::Vector3 m_color_pressed		= Math::Vector3(1.0f, 1.0f, 0.0f);
 		Context* m_context;
 	};
 }

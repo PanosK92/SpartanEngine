@@ -78,13 +78,31 @@ namespace Directus
 
 	void TransformGizmo::Update(const shared_ptr<Actor>& actor, Camera* camera)
 	{
-		if (actor && camera)
-		{	
-			m_pickedActor = actor;
+		bool firstFrameAfterSelection = false;
 
+		// If there is no camera, don't even bother
+		if (!camera)
+			return;
+
+		// Updated picked actor
+		if (!actor)
+		{
+			m_pickedActor = m_isEditing ? m_pickedActor : nullptr;
+		}
+		else
+		{
+			firstFrameAfterSelection	= (m_pickedActor == nullptr);
+			m_pickedActor				= actor;
+		}
+		if (!m_pickedActor)
+			return;
+
+		// On the first frame, snap to the actor
+		if (firstFrameAfterSelection)
+		{ 
 			// Get actor's components
-			Transform* actor_transform				= actor->GetTransform_PtrRaw();			// Transform alone is not enough
-			shared_ptr<Renderable> actor_renderable = actor->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
+			Transform* actor_transform				= m_pickedActor->GetTransform_PtrRaw();			// Transform alone is not enough
+			shared_ptr<Renderable> actor_renderable = m_pickedActor->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
 
 			// Acquire actor's transformation data (local or world space)
 			Vector3 aabb_center			= actor_renderable ? actor_renderable->Geometry_AABB().GetCenter() : Vector3::Zero;
@@ -116,13 +134,13 @@ namespace Directus
 		}
 
 		// Update all the handles
-		if (m_pickedActor && camera)
+		if (!firstFrameAfterSelection)
 		{
-			m_isEditing_handle_x	= m_handle_position_x.Update(m_pickedActor->GetTransform_PtrRaw(), camera);
-			m_isEditing_handle_y	= m_handle_position_y.Update(m_pickedActor->GetTransform_PtrRaw(), camera);
-			m_isEditing_handle_z	= m_handle_position_z.Update(m_pickedActor->GetTransform_PtrRaw(), camera);
-			m_isEditing				= (m_isEditing_handle_x || m_isEditing_handle_y || m_isEditing_handle_z) && actor == nullptr;
+			m_isEditing_handle_x = m_handle_position_x.Update(m_pickedActor->GetTransform_PtrRaw(), camera);
+			m_isEditing_handle_y = m_handle_position_y.Update(m_pickedActor->GetTransform_PtrRaw(), camera);
+			m_isEditing_handle_z = m_handle_position_z.Update(m_pickedActor->GetTransform_PtrRaw(), camera);
 		}
+		m_isEditing	= m_isEditing_handle_x || m_isEditing_handle_y || m_isEditing_handle_z || actor;
 	}
 
 	unsigned int TransformGizmo::GetIndexCount()

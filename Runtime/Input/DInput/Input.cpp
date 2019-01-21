@@ -185,186 +185,191 @@ namespace Directus
 
 	void Input::Tick()
 	{
+		m_keys_previous = m_keys;
 		HWND windowHandle = (HWND)Settings::Get().GetWindowHandle();
+
+		if(ReadKeyboard())
+		{
+			// FUNCTION
+			m_keys[0] = g_keyboardState[DIK_F1] & 0x80;
+			m_keys[1] = g_keyboardState[DIK_F2] & 0x80;
+			m_keys[2] = g_keyboardState[DIK_F3] & 0x80;
+			m_keys[3] = g_keyboardState[DIK_F4] & 0x80;
+			m_keys[4] = g_keyboardState[DIK_F5] & 0x80;
+			m_keys[5] = g_keyboardState[DIK_F6] & 0x80;
+			m_keys[6] = g_keyboardState[DIK_F7] & 0x80;
+			m_keys[7] = g_keyboardState[DIK_F8] & 0x80;
+			m_keys[8] = g_keyboardState[DIK_F9] & 0x80;
+			m_keys[9] = g_keyboardState[DIK_F10] & 0x80;
+			m_keys[10] = g_keyboardState[DIK_F11] & 0x80;
+			m_keys[11] = g_keyboardState[DIK_F12] & 0x80;
+			m_keys[12] = g_keyboardState[DIK_F13] & 0x80;
+			m_keys[13] = g_keyboardState[DIK_F14] & 0x80;
+			m_keys[14] = g_keyboardState[DIK_F15] & 0x80;
+			// NUMBERS
+			m_keys[15] = g_keyboardState[DIK_0] & 0x80;
+			m_keys[16] = g_keyboardState[DIK_1] & 0x80;
+			m_keys[17] = g_keyboardState[DIK_2] & 0x80;
+			m_keys[18] = g_keyboardState[DIK_3] & 0x80;
+			m_keys[19] = g_keyboardState[DIK_4] & 0x80;
+			m_keys[20] = g_keyboardState[DIK_5] & 0x80;
+			m_keys[21] = g_keyboardState[DIK_6] & 0x80;
+			m_keys[22] = g_keyboardState[DIK_7] & 0x80;
+			m_keys[23] = g_keyboardState[DIK_8] & 0x80;
+			m_keys[24] = g_keyboardState[DIK_9] & 0x80;
+			// KEYPAD
+			m_keys[25] = g_keyboardState[DIK_NUMPAD0] & 0x80;
+			m_keys[26] = g_keyboardState[DIK_NUMPAD1] & 0x80;
+			m_keys[27] = g_keyboardState[DIK_NUMPAD2] & 0x80;
+			m_keys[28] = g_keyboardState[DIK_NUMPAD3] & 0x80;
+			m_keys[29] = g_keyboardState[DIK_NUMPAD4] & 0x80;
+			m_keys[30] = g_keyboardState[DIK_NUMPAD5] & 0x80;
+			m_keys[31] = g_keyboardState[DIK_NUMPAD6] & 0x80;
+			m_keys[32] = g_keyboardState[DIK_NUMPAD7] & 0x80;
+			m_keys[33] = g_keyboardState[DIK_NUMPAD8] & 0x80;
+			m_keys[34] = g_keyboardState[DIK_NUMPAD9] & 0x80;
+			// LETTERS
+			m_keys[35] = g_keyboardState[DIK_Q] & 0x80;
+			m_keys[36] = g_keyboardState[DIK_W] & 0x80;
+			m_keys[37] = g_keyboardState[DIK_E] & 0x80;
+			m_keys[38] = g_keyboardState[DIK_R] & 0x80;
+			m_keys[39] = g_keyboardState[DIK_T] & 0x80;
+			m_keys[40] = g_keyboardState[DIK_Y] & 0x80;
+			m_keys[41] = g_keyboardState[DIK_U] & 0x80;
+			m_keys[42] = g_keyboardState[DIK_I] & 0x80;
+			m_keys[43] = g_keyboardState[DIK_O] & 0x80;
+			m_keys[44] = g_keyboardState[DIK_P] & 0x80;
+			m_keys[45] = g_keyboardState[DIK_A] & 0x80;
+			m_keys[46] = g_keyboardState[DIK_S] & 0x80;
+			m_keys[47] = g_keyboardState[DIK_D] & 0x80;
+			m_keys[48] = g_keyboardState[DIK_F] & 0x80;
+			m_keys[49] = g_keyboardState[DIK_G] & 0x80;
+			m_keys[50] = g_keyboardState[DIK_H] & 0x80;
+			m_keys[51] = g_keyboardState[DIK_J] & 0x80;
+			m_keys[52] = g_keyboardState[DIK_K] & 0x80;
+			m_keys[53] = g_keyboardState[DIK_L] & 0x80;
+			m_keys[54] = g_keyboardState[DIK_Z] & 0x80;
+			m_keys[55] = g_keyboardState[DIK_X] & 0x80;
+			m_keys[56] = g_keyboardState[DIK_C] & 0x80;
+			m_keys[57] = g_keyboardState[DIK_V] & 0x80;
+			m_keys[58] = g_keyboardState[DIK_B] & 0x80;
+			m_keys[59] = g_keyboardState[DIK_N] & 0x80;
+			m_keys[60] = g_keyboardState[DIK_M] & 0x80;
+			// CONTROLS
+			m_keys[61] = g_keyboardState[DIK_ESCAPE] & 0x80;
+			m_keys[62] = g_keyboardState[DIK_TAB] & 0x80;
+			m_keys[63] = g_keyboardState[DIK_LSHIFT] & 0x80;
+			m_keys[64] = g_keyboardState[DIK_RSHIFT] & 0x80;
+			m_keys[65] = g_keyboardState[DIK_LCONTROL] & 0x80;
+			m_keys[66] = g_keyboardState[DIK_RCONTROL] & 0x80;
+			m_keys[67] = g_keyboardState[DIK_LALT] & 0x80;
+			m_keys[68] = g_keyboardState[DIK_RALT] & 0x80;
+			m_keys[69] = g_keyboardState[DIK_SPACE] & 0x80;
+			m_keys[70] = g_keyboardState[DIK_CAPSLOCK] & 0x80;
+			m_keys[71] = g_keyboardState[DIK_BACKSPACE] & 0x80;
+			m_keys[72] = g_keyboardState[DIK_RETURN] & 0x80;
+			m_keys[73] = g_keyboardState[DIK_DELETE] & 0x80;
+			m_keys[74] = g_keyboardState[DIK_LEFTARROW] & 0x80;
+			m_keys[75] = g_keyboardState[DIK_RIGHTARROW] & 0x80;
+			m_keys[76] = g_keyboardState[DIK_UPARROW] & 0x80;
+			m_keys[77] = g_keyboardState[DIK_DOWNARROW] & 0x80;
+			m_keys[78] = g_keyboardState[DIK_PGUP] & 0x80;
+			m_keys[79] = g_keyboardState[DIK_PGDN] & 0x80;
+			m_keys[80] = g_keyboardState[DIK_HOME] & 0x80;
+			m_keys[81] = g_keyboardState[DIK_END] & 0x80;
+			m_keys[82] = g_keyboardState[DIK_INSERT] & 0x80;
+		}
+		else
+		{
+			for (unsigned int i = 0; i <= 82; i++)
+			{
+				m_keys[i] = false;
+			}
+		}
 
 		if (ReadMouse())
 		{
+			// Keys
+			m_keys[start_index_mouse]		= g_mouseState.rgbButtons[0] & 0x80; // Left Button
+			m_keys[start_index_mouse + 1]	= g_mouseState.rgbButtons[3] & 0x80; // Middle Button
+			m_keys[start_index_mouse + 2]	= g_mouseState.rgbButtons[1] & 0x80; // Right Button
+
 			// Get mouse position and scroll wheel delta
-			m_mouseDelta.x		= (float)g_mouseState.lX; // lX = x
-			m_mouseDelta.y		= (float)g_mouseState.lY; // lY = y
+			m_mouse_delta.x		= (float)g_mouseState.lX; // lX = x
+			m_mouse_delta.y		= (float)g_mouseState.lY; // lY = y
 			m_mouseWheelDelta	= (float)g_mouseState.lZ; // lZ = wheel
 
-			// Get mouse position
+			// Mouse position
 			POINT mouse_screen_pos;
 			if (::GetCursorPos(&mouse_screen_pos))
 			{
-				m_mouse_position_screen = Vector2((float)mouse_screen_pos.x, (float)mouse_screen_pos.y);
 				if (HWND focused_hwnd = ::GetActiveWindow())
 				{
 					if (focused_hwnd == windowHandle)
 					{
 						POINT mouse_client_pos = mouse_screen_pos;
 						::ScreenToClient(focused_hwnd, &mouse_client_pos);
-						m_mouse_position_client = Vector2((float)mouse_client_pos.x, (float)mouse_client_pos.y);
+						m_mouse_position = Vector2((float)mouse_client_pos.x, (float)mouse_client_pos.y);
 					}
 				}
 			}
 
-			// Get scroll wheel position
+			// Scroll wheel position
 			m_mouseWheel = ::GetScrollPos(windowHandle, SB_VERT);
-
-			// COMPUTE BUTTON STATE
-			m_mouseButtons[0] = g_mouseState.rgbButtons[0] & 0x80; // Left Button
-			m_mouseButtons[1] = g_mouseState.rgbButtons[3] & 0x80; // Middle Button
-			m_mouseButtons[2] = g_mouseState.rgbButtons[1] & 0x80; // Right Button
-			// DInput: [4,7] -> Side buttons
 		}
 		else
 		{
-			m_mouseDelta.x		= 0;
-			m_mouseDelta.y		= 0;
+			m_keys[start_index_mouse]		= false;
+			m_keys[start_index_mouse + 1]	= false;
+			m_keys[start_index_mouse + 2]	= false;
+
+			m_mouse_delta.x		= 0;
+			m_mouse_delta.y		= 0;
 			m_mouseWheelDelta	= 0;
-
-			m_mouseButtons[0] = false;
-			m_mouseButtons[1] = false;
-			m_mouseButtons[2] = false;
-		}	
-			
-		if(ReadKeyboard())
-		{
-			// FUNCTION
-			m_keyboardButtons[0] = g_keyboardState[DIK_F1] & 0x80;
-			m_keyboardButtons[1] = g_keyboardState[DIK_F2] & 0x80;
-			m_keyboardButtons[2] = g_keyboardState[DIK_F3] & 0x80;
-			m_keyboardButtons[3] = g_keyboardState[DIK_F4] & 0x80;
-			m_keyboardButtons[4] = g_keyboardState[DIK_F5] & 0x80;
-			m_keyboardButtons[5] = g_keyboardState[DIK_F6] & 0x80;
-			m_keyboardButtons[6] = g_keyboardState[DIK_F7] & 0x80;
-			m_keyboardButtons[7] = g_keyboardState[DIK_F8] & 0x80;
-			m_keyboardButtons[8] = g_keyboardState[DIK_F9] & 0x80;
-			m_keyboardButtons[9] = g_keyboardState[DIK_F10] & 0x80;
-			m_keyboardButtons[10] = g_keyboardState[DIK_F11] & 0x80;
-			m_keyboardButtons[11] = g_keyboardState[DIK_F12] & 0x80;
-			m_keyboardButtons[12] = g_keyboardState[DIK_F13] & 0x80;
-			m_keyboardButtons[13] = g_keyboardState[DIK_F14] & 0x80;
-			m_keyboardButtons[14] = g_keyboardState[DIK_F15] & 0x80;
-			// NUMBERS
-			m_keyboardButtons[15] = g_keyboardState[DIK_0] & 0x80;
-			m_keyboardButtons[16] = g_keyboardState[DIK_1] & 0x80;
-			m_keyboardButtons[17] = g_keyboardState[DIK_2] & 0x80;
-			m_keyboardButtons[18] = g_keyboardState[DIK_3] & 0x80;
-			m_keyboardButtons[19] = g_keyboardState[DIK_4] & 0x80;
-			m_keyboardButtons[20] = g_keyboardState[DIK_5] & 0x80;
-			m_keyboardButtons[21] = g_keyboardState[DIK_6] & 0x80;
-			m_keyboardButtons[22] = g_keyboardState[DIK_7] & 0x80;
-			m_keyboardButtons[23] = g_keyboardState[DIK_8] & 0x80;
-			m_keyboardButtons[24] = g_keyboardState[DIK_9] & 0x80;
-			// KEYPAD
-			m_keyboardButtons[25] = g_keyboardState[DIK_NUMPAD0] & 0x80;
-			m_keyboardButtons[26] = g_keyboardState[DIK_NUMPAD1] & 0x80;
-			m_keyboardButtons[27] = g_keyboardState[DIK_NUMPAD2] & 0x80;
-			m_keyboardButtons[28] = g_keyboardState[DIK_NUMPAD3] & 0x80;
-			m_keyboardButtons[29] = g_keyboardState[DIK_NUMPAD4] & 0x80;
-			m_keyboardButtons[30] = g_keyboardState[DIK_NUMPAD5] & 0x80;
-			m_keyboardButtons[31] = g_keyboardState[DIK_NUMPAD6] & 0x80;
-			m_keyboardButtons[32] = g_keyboardState[DIK_NUMPAD7] & 0x80;
-			m_keyboardButtons[33] = g_keyboardState[DIK_NUMPAD8] & 0x80;
-			m_keyboardButtons[34] = g_keyboardState[DIK_NUMPAD9] & 0x80;
-			// LETTERS
-			m_keyboardButtons[35] = g_keyboardState[DIK_Q] & 0x80;
-			m_keyboardButtons[36] = g_keyboardState[DIK_W] & 0x80;
-			m_keyboardButtons[37] = g_keyboardState[DIK_E] & 0x80;
-			m_keyboardButtons[38] = g_keyboardState[DIK_R] & 0x80;
-			m_keyboardButtons[39] = g_keyboardState[DIK_T] & 0x80;
-			m_keyboardButtons[40] = g_keyboardState[DIK_Y] & 0x80;
-			m_keyboardButtons[41] = g_keyboardState[DIK_U] & 0x80;
-			m_keyboardButtons[42] = g_keyboardState[DIK_I] & 0x80;
-			m_keyboardButtons[43] = g_keyboardState[DIK_O] & 0x80;
-			m_keyboardButtons[44] = g_keyboardState[DIK_P] & 0x80;
-			m_keyboardButtons[45] = g_keyboardState[DIK_A] & 0x80;
-			m_keyboardButtons[46] = g_keyboardState[DIK_S] & 0x80;
-			m_keyboardButtons[47] = g_keyboardState[DIK_D] & 0x80;
-			m_keyboardButtons[48] = g_keyboardState[DIK_F] & 0x80;
-			m_keyboardButtons[49] = g_keyboardState[DIK_G] & 0x80;
-			m_keyboardButtons[50] = g_keyboardState[DIK_H] & 0x80;
-			m_keyboardButtons[51] = g_keyboardState[DIK_J] & 0x80;
-			m_keyboardButtons[52] = g_keyboardState[DIK_K] & 0x80;
-			m_keyboardButtons[53] = g_keyboardState[DIK_L] & 0x80;
-			m_keyboardButtons[54] = g_keyboardState[DIK_Z] & 0x80;
-			m_keyboardButtons[55] = g_keyboardState[DIK_X] & 0x80;
-			m_keyboardButtons[56] = g_keyboardState[DIK_C] & 0x80;
-			m_keyboardButtons[57] = g_keyboardState[DIK_V] & 0x80;
-			m_keyboardButtons[58] = g_keyboardState[DIK_B] & 0x80;
-			m_keyboardButtons[59] = g_keyboardState[DIK_N] & 0x80;
-			m_keyboardButtons[60] = g_keyboardState[DIK_M] & 0x80;
-			// CONTROLS
-			m_keyboardButtons[61] = g_keyboardState[DIK_ESCAPE] & 0x80;
-			m_keyboardButtons[62] = g_keyboardState[DIK_TAB] & 0x80;
-			m_keyboardButtons[63] = g_keyboardState[DIK_LSHIFT] & 0x80;
-			m_keyboardButtons[64] = g_keyboardState[DIK_RSHIFT] & 0x80;
-			m_keyboardButtons[65] = g_keyboardState[DIK_LCONTROL] & 0x80;
-			m_keyboardButtons[66] = g_keyboardState[DIK_RCONTROL] & 0x80;
-			m_keyboardButtons[67] = g_keyboardState[DIK_LALT] & 0x80;
-			m_keyboardButtons[68] = g_keyboardState[DIK_RALT] & 0x80;
-			m_keyboardButtons[69] = g_keyboardState[DIK_SPACE] & 0x80;
-			m_keyboardButtons[70] = g_keyboardState[DIK_CAPSLOCK] & 0x80;
-			m_keyboardButtons[71] = g_keyboardState[DIK_BACKSPACE] & 0x80;
-			m_keyboardButtons[72] = g_keyboardState[DIK_RETURN] & 0x80;
-			m_keyboardButtons[73] = g_keyboardState[DIK_DELETE] & 0x80;
-			m_keyboardButtons[74] = g_keyboardState[DIK_LEFTARROW] & 0x80;
-			m_keyboardButtons[75] = g_keyboardState[DIK_RIGHTARROW] & 0x80;
-			m_keyboardButtons[76] = g_keyboardState[DIK_UPARROW] & 0x80;
-			m_keyboardButtons[77] = g_keyboardState[DIK_DOWNARROW] & 0x80;
-			m_keyboardButtons[78] = g_keyboardState[DIK_PGUP] & 0x80;
-			m_keyboardButtons[79] = g_keyboardState[DIK_PGDN] & 0x80;
-			m_keyboardButtons[80] = g_keyboardState[DIK_HOME] & 0x80;
-			m_keyboardButtons[81] = g_keyboardState[DIK_END] & 0x80;
-			m_keyboardButtons[82] = g_keyboardState[DIK_INSERT] & 0x80;
-		}
-		else
-		{
-			for (bool& i : m_keyboardButtons)
-			{
-				i = false;
-			}
 		}
 
 		if (ReadGamepad())
 		{
-			m_gamepadButtons[0]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP;
-			m_gamepadButtons[1]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
-			m_gamepadButtons[2]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
-			m_gamepadButtons[3]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
-			m_gamepadButtons[4]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_A;
-			m_gamepadButtons[5]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_B;
-			m_gamepadButtons[6]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_X;
-			m_gamepadButtons[7]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_Y;
-			m_gamepadButtons[6]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_START;
-			m_gamepadButtons[7]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_BACK;
-			m_gamepadButtons[8]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB;
-			m_gamepadButtons[9]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB;
-			m_gamepadButtons[10]	= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER;
-			m_gamepadButtons[11]	= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER;
-			m_triggerLeft			= (float)g_gamepad.Gamepad.bLeftTrigger;
-			m_triggerRight			= (float)g_gamepad.Gamepad.bRightTrigger;
-			m_thumbstickLeft.x		= (float)g_gamepad.Gamepad.sThumbLX;
-			m_thumbstickLeft.y		= (float)g_gamepad.Gamepad.sThumbLY;
-			m_thumbstickRight.x		= (float)g_gamepad.Gamepad.sThumbRX;
-			m_thumbstickRight.y		= (float)g_gamepad.Gamepad.sThumbRY;
+			m_keys[start_index_gamepad]			= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP;
+			m_keys[start_index_gamepad + 1]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN;
+			m_keys[start_index_gamepad + 2]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT;
+			m_keys[start_index_gamepad + 3]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT;
+			m_keys[start_index_gamepad + 4]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_A;
+			m_keys[start_index_gamepad + 5]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_B;
+			m_keys[start_index_gamepad + 6]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_X;
+			m_keys[start_index_gamepad + 7]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_Y;
+			m_keys[start_index_gamepad + 6]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_START;
+			m_keys[start_index_gamepad + 7]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_BACK;
+			m_keys[start_index_gamepad + 8]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB;
+			m_keys[start_index_gamepad + 9]		= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB;
+			m_keys[start_index_gamepad + 10]	= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER;
+			m_keys[start_index_gamepad + 11]	= g_gamepad.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER;
 
-			if (m_triggerLeft != 0)			m_triggerLeft	/= 255.0f;	// Convert [0, 255] to [0, 1]
-			if (m_triggerRight != 0)		m_triggerRight	/= 255.0f;	// Convert [0, 255] to [0, 1]
-			if (m_thumbstickLeft.x != 0)	m_thumbstickLeft.x	= m_thumbstickLeft.x	< 0 ? m_thumbstickLeft.x	/ 32768.0f : m_thumbstickLeft.x		/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
-			if (m_thumbstickLeft.y != 0)	m_thumbstickLeft.y	= m_thumbstickLeft.y	< 0 ? m_thumbstickLeft.y	/ 32768.0f : m_thumbstickLeft.y		/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
-			if (m_thumbstickRight.x != 0)	m_thumbstickRight.x = m_thumbstickRight.x	< 0 ? m_thumbstickRight.x	/ 32768.0f : m_thumbstickRight.x	/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
-			if (m_thumbstickRight.y != 0)	m_thumbstickRight.y = m_thumbstickRight.y	< 0 ? m_thumbstickRight.y	/ 32768.0f : m_thumbstickRight.y	/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+			m_gamepad_trigger_left	= (float)g_gamepad.Gamepad.bLeftTrigger;
+			m_gamepad_trigger_right	= (float)g_gamepad.Gamepad.bRightTrigger;
+			m_gamepad_thumb_left.x	= (float)g_gamepad.Gamepad.sThumbLX;
+			m_gamepad_thumb_left.y	= (float)g_gamepad.Gamepad.sThumbLY;
+			m_gamepad_thumb_right.x	= (float)g_gamepad.Gamepad.sThumbRX;
+			m_gamepad_thumb_right.y	= (float)g_gamepad.Gamepad.sThumbRY;
 
-			m_isGamepadConnected	= true;
+			if (m_gamepad_trigger_left != 0)	m_gamepad_trigger_left	/= 255.0f;	// Convert [0, 255] to [0, 1]
+			if (m_gamepad_trigger_right != 0)	m_gamepad_trigger_right	/= 255.0f;	// Convert [0, 255] to [0, 1]
+			if (m_gamepad_thumb_left.x != 0)	m_gamepad_thumb_left.x	= m_gamepad_thumb_left.x	< 0 ? m_gamepad_thumb_left.x	/ 32768.0f : m_gamepad_thumb_left.x		/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+			if (m_gamepad_thumb_left.y != 0)	m_gamepad_thumb_left.y	= m_gamepad_thumb_left.y	< 0 ? m_gamepad_thumb_left.y	/ 32768.0f : m_gamepad_thumb_left.y		/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+			if (m_gamepad_thumb_right.x != 0)	m_gamepad_thumb_right.x = m_gamepad_thumb_right.x	< 0 ? m_gamepad_thumb_right.x	/ 32768.0f : m_gamepad_thumb_right.x	/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+			if (m_gamepad_thumb_right.y != 0)	m_gamepad_thumb_right.y = m_gamepad_thumb_right.y	< 0 ? m_gamepad_thumb_right.y	/ 32768.0f : m_gamepad_thumb_right.y	/ 32767.0f; // Convert [-32768, 32767] to [-1, 1]
+
+			m_gamepad_connected	= true;
 
 		}
 		else
 		{
-			m_isGamepadConnected = false;
+			for (unsigned int i = start_index_gamepad; i <= start_index_gamepad + 11; i++)
+			{
+				m_keys[i] = false;
+			}
+
+			m_gamepad_connected = false;
 		}
 	}
 
@@ -406,9 +411,9 @@ namespace Directus
 		return XInputGetState(g_gamepadNum, &g_gamepad) == ERROR_SUCCESS;
 	}
 
-	bool Input::VibrateGamepad(float leftMotorSpeed, float rightMotorSpeed)
+	bool Input::GamepadVibrate(float leftMotorSpeed, float rightMotorSpeed)
 	{
-		if (!m_isGamepadConnected)
+		if (!m_gamepad_connected)
 			return false;
 
 		XINPUT_VIBRATION vibration;

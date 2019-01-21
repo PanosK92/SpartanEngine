@@ -24,7 +24,7 @@ class FirstPersonController
 	// Update is called once per frame
 	void Update()
 	{
-		if (input.GetButtonMouse(Right))
+		if (input.GetKey(Click_Right))
 		{
 			FPSMovement();
 		}	
@@ -33,22 +33,22 @@ class FirstPersonController
 	void FPSMovement()
 	{
 		// Move forward
-		if (input.GetButtonKeyboard(W))
+		if (input.GetKey(W))
 		{
 			movementSpeed += acceleration * transform.GetForward() * time.GetDeltaTime();
 		}		
 		// Move backward
-		if (input.GetButtonKeyboard(S))
+		if (input.GetKey(S))
 		{
 			movementSpeed -= acceleration * transform.GetForward() * time.GetDeltaTime();
 		}
 		// Move right
-		if (input.GetButtonKeyboard(D))
+		if (input.GetKey(D))
 		{
 			movementSpeed += acceleration * transform.GetRight() * time.GetDeltaTime();
 		}
 		// Move left
-		if (input.GetButtonKeyboard(A))
+		if (input.GetKey(A))
 		{
 			movementSpeed -= acceleration * transform.GetRight() * time.GetDeltaTime();
 		}

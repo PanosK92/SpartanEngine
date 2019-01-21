@@ -71,7 +71,7 @@ namespace Directus
 		m_rhiDevice		= nullptr;
 		m_frameNum		= 0;
 		m_flags			= 0;
-		m_flags			|= Render_Gizmo_Transform;
+		//m_flags			|= Render_Gizmo_Transform;
 		m_flags			|= Render_Gizmo_Grid;
 		m_flags			|= Render_Gizmo_Lights;
 		m_flags			|= Render_Gizmo_Physics;	
@@ -1526,36 +1526,39 @@ namespace Directus
 		}
 
 		// Transform
-		/*m_transformGizmo->Update(m_camera->GetPickedActor().lock(), m_camera);
-		if (m_transformGizmo->IsEditing())
+		if (render_transform)
 		{
-			m_rhiDevice->EventBegin("Gizmo_Transform");
+			m_transformGizmo->Update(m_camera->GetPickedActor().lock(), m_camera);
+			if (m_transformGizmo->IsEditing())
+			{
+				m_rhiDevice->EventBegin("Gizmo_Transform");
 
-			m_rhiPipeline->SetShader(m_shaderTransformGizmo);
-			m_rhiPipeline->SetIndexBuffer(m_transformGizmo->GetIndexBuffer());
-			m_rhiPipeline->SetVertexBuffer(m_transformGizmo->GetVertexBuffer());	
-			SetGlobalBuffer();
+				m_rhiPipeline->SetShader(m_shaderTransformGizmo);
+				m_rhiPipeline->SetIndexBuffer(m_transformGizmo->GetIndexBuffer());
+				m_rhiPipeline->SetVertexBuffer(m_transformGizmo->GetVertexBuffer());
+				SetGlobalBuffer();
 
-			// X - Axis		
-			auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetMatrix_Position_X(), Vector3::Right);
-			m_shaderTransformGizmo->UpdateBuffer(&buffer);
-			m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1 , Buffer_Global);
-			m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+				// X - Axis		
+				auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle_Pos_X().GetTransform(), m_transformGizmo->GetHandle_Pos_X().GetColor());
+				m_shaderTransformGizmo->UpdateBuffer(&buffer);
+				m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
+				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
-			// Y - Axis		
-			buffer = Struct_Matrix_Vector3(m_transformGizmo->GetMatrix_Position_Y(), Vector3::Up);
-			m_shaderTransformGizmo->UpdateBuffer(&buffer);
-			m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
-			m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+				// Y - Axis		
+				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle_Pos_Y().GetTransform(), m_transformGizmo->GetHandle_Pos_Y().GetColor());
+				m_shaderTransformGizmo->UpdateBuffer(&buffer);
+				m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
+				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
-			// Z - Axis		
-			buffer = Struct_Matrix_Vector3(m_transformGizmo->Get_Matrix_Position_Z(), Vector3::Forward);
-			m_shaderTransformGizmo->UpdateBuffer(&buffer);
-			m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
-			m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+				// Z - Axis		
+				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle_Pos_Z().GetTransform(), m_transformGizmo->GetHandle_Pos_Z().GetColor());
+				m_shaderTransformGizmo->UpdateBuffer(&buffer);
+				m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
+				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
-			m_rhiDevice->EventEnd();
-		}*/
+				m_rhiDevice->EventEnd();
+			}
+		}
 
 		m_rhiPipeline->ClearPendingStates();
 

@@ -42,6 +42,7 @@ namespace _Widget_Toolbar
 	static bool g_gizmo_physics				= true;
 	static bool g_gizmo_aabb				= false;
 	static bool g_gizmo_light				= true;
+	static bool g_gizmo_transform			= true;
 	static bool g_gizmo_pickingRay			= false;
 	static bool g_gizmo_grid				= true;
 	static bool g_gizmo_performanceMetrics	= false;
@@ -244,13 +245,15 @@ void Widget_Toolbar::ShowRendererOptions()
 
 	if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		ImGui::Checkbox("Transform", &_Widget_Toolbar::g_gizmo_transform);
 		ImGui::Checkbox("Physics", &_Widget_Toolbar::g_gizmo_physics);
 		ImGui::Checkbox("AABB", &_Widget_Toolbar::g_gizmo_aabb);
-		ImGui::Checkbox("Lights", &_Widget_Toolbar::g_gizmo_light);
+		ImGui::Checkbox("Lights", &_Widget_Toolbar::g_gizmo_light);	
 		ImGui::Checkbox("Picking Ray", &_Widget_Toolbar::g_gizmo_pickingRay);
 		ImGui::Checkbox("Grid", &_Widget_Toolbar::g_gizmo_grid);
 		ImGui::Checkbox("Performance Metrics", &_Widget_Toolbar::g_gizmo_performanceMetrics);
 
+		_Widget_Toolbar::g_gizmo_transform			? m_renderer->Flags_Enable(Render_Gizmo_Transform)			: m_renderer->Flags_Disable(Render_Gizmo_Transform);
 		_Widget_Toolbar::g_gizmo_physics			? m_renderer->Flags_Enable(Render_Gizmo_Physics)			: m_renderer->Flags_Disable(Render_Gizmo_Physics);
 		_Widget_Toolbar::g_gizmo_aabb				? m_renderer->Flags_Enable(Render_Gizmo_AABB)				: m_renderer->Flags_Disable(Render_Gizmo_AABB);
 		_Widget_Toolbar::g_gizmo_light				? m_renderer->Flags_Enable(Render_Gizmo_Lights)				: m_renderer->Flags_Disable(Render_Gizmo_Lights);
