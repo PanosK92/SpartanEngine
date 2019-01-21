@@ -113,7 +113,7 @@ namespace Directus
 			m_handle_z.isHovered	= ray.HitDistance(m_handle_z.box_transformed) != INFINITY;
 
 			// Track delta
-			m_position_previous = m_position_current;
+			m_position_previous = m_position_current != Vector3::Zero ? m_position_current : ray_end; // avoid big delta in the first run
 			m_position_current	= ray_end;
 			m_position_delta	= (m_position_current - m_position_previous);
 			
