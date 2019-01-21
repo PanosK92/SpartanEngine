@@ -406,8 +406,10 @@ namespace Directus
 		// Sampler
 		if (m_samplersDirty)
 		{
-			unsigned int startSlot = 0;
-			m_rhiDevice->Set_Samplers(startSlot, (unsigned int)m_samplers.size(), &m_samplers[0]);
+			unsigned int startSlot		= 0;
+			unsigned int samplerCount	= (unsigned int)m_samplers.size();
+			void* const* samplers		= samplerCount != 0 ? &m_samplers[0] : nullptr;
+			m_rhiDevice->Set_Samplers(startSlot, samplerCount, samplers);
 			Profiler::Get().m_rhiBindingsSampler++;
 			m_samplers.clear();
 			m_samplersDirty = false;
@@ -416,8 +418,10 @@ namespace Directus
 		// Textures
 		if (m_texturesDirty)
 		{
-			unsigned int startSlot = 0;
-			m_rhiDevice->Set_Textures(startSlot, (unsigned int)m_textures.size(), &m_textures[0]);
+			unsigned int startSlot		= 0;
+			unsigned int textureCount	= (unsigned int)m_textures.size();
+			void* const* textures		= textureCount != 0 ? &m_textures[0] : nullptr;
+			m_rhiDevice->Set_Textures(startSlot, textureCount, textures);
 			m_textures.clear();
 			Profiler::Get().m_rhiBindingsTexture++;
 			m_texturesDirty = false;
@@ -467,41 +471,55 @@ namespace Directus
 
 	void RHI_Pipeline::ClearPendingStates()
 	{
-		m_primitiveTopology	= PrimitiveTopology_NotAssigned;
-		m_primitiveTopologyDirty = false;
+		// Primitive topology
+		m_primitiveTopology			= PrimitiveTopology_NotAssigned;
+		m_primitiveTopologyDirty	= true;
 
-		m_fillMode = Fill_NotAssigned;
-		m_fillModeDirty = false;
+		// Fill mode
+		m_fillMode		= Fill_NotAssigned;
+		m_fillModeDirty = true;
 
+		// Input layout
 		m_inputLayout		= Input_NotAssigned;
-		m_inputLayoutDirty	= false;
+		m_inputLayoutDirty	= true;
 
+		// Cull mode
 		m_cullMode			= Cull_NotAssigned;
-		m_cullModeDirty		= false;
+		m_cullModeDirty		= true;
 
-		m_inputLayoutBuffer	= nullptr;
-
-		m_viewportDirty	= false;
-
+		// Vertex & Pixel shaders
 		m_vertexShader			= nullptr;	
 		m_pixelShader			= nullptr;	
 		m_vertexShaderDirty		= false;
 		m_pixelShaderDirty		= false;
 
-		m_indexBufferDirty	= false;
-		m_vertexBufferDirty	= false;
+		// Vertex & Index buffers
+		m_indexBufferDirty	= true;
+		m_vertexBufferDirty	= true;
 		
+		// Render targets + Depth
 		m_renderTargetsClear	= false;
-		m_renderTargetsDirty	= false;
+		m_renderTargetsDirty	= true;
 		m_depthStencil			= nullptr;
 
+		// Samplers
 		m_samplers.clear();
-		m_samplersDirty	= false;
+		m_samplersDirty	= true;
 
+		// Textures
 		m_textures.clear();
-		m_texturesDirty = false;
+		m_texturesDirty = true;
 
+		// Constant buffers
 		m_constantBuffers.clear();
-		m_constantBufferDirty = false;
+		m_constantBufferDirty = true;
+
+		// Alpha blending
+		m_alphaBlending			= false;
+		m_alphaBlendingDirty	= true;
+
+		// Misc
+		m_inputLayoutBuffer = nullptr;
+		m_viewportDirty = false;
 	}
 }

@@ -54,6 +54,7 @@ Optimize & Debug				| 0% | Feature freeze, optimize and debug (once all tasks ar
 
 # Roadmap
 - Eye Adaptation.
+- Depth-of-field (Based on Doom approach).
 - Subsurface Scattering.
 - Volumetric Lighting.
 - Dynamic resolution scaling.

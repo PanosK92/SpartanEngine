@@ -959,7 +959,6 @@ namespace Directus
 
 		} // Actor/MESH ITERATION
 
-		m_rhiPipeline->SetAlphaBlending(false);
 		m_rhiPipeline->ClearPendingStates();
 
 		m_rhiDevice->EventEnd();
@@ -1451,7 +1450,6 @@ namespace Directus
 			m_rhiPipeline->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
 		}
 
-		m_rhiPipeline->SetAlphaBlending(false);
 		m_rhiPipeline->ClearPendingStates();
 
 		m_rhiDevice->EventEnd();
@@ -1556,7 +1554,6 @@ namespace Directus
 			}
 		}
 
-		m_rhiPipeline->SetAlphaBlending(false);
 		m_rhiPipeline->ClearPendingStates();
 
 		m_rhiDevice->EventEnd();
@@ -1589,7 +1586,7 @@ namespace Directus
 		m_shaderFont->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderFont->GetConstantBuffer(), 0, Buffer_Global);
 		m_rhiPipeline->DrawIndexed(m_font->GetIndexCount(), 0, 0);
-		m_rhiPipeline->SetAlphaBlending(false);
+
 		m_rhiPipeline->ClearPendingStates();
 
 		m_rhiDevice->EventEnd();
