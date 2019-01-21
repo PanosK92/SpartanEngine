@@ -68,9 +68,10 @@ namespace Directus
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
-		bool IsEditing() { return m_isEditing; }
+		bool IsInspecting() { return m_isInspecting; }
 
 	private:
+		bool m_isInspecting;
 		bool m_isEditing;
 		bool m_isEditing_handle_x;
 		bool m_isEditing_handle_y;
@@ -80,7 +81,7 @@ namespace Directus
 		TransformHandle m_handle_position_y;
 		TransformHandle m_handle_position_z;
 
-		std::shared_ptr<Actor> m_pickedActor;
+		std::shared_ptr<Actor> m_selectedActor;
 
 		TransformHandle_Type m_activeHandle;
 		TransformHandle_Space m_space;
