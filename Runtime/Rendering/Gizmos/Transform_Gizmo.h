@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES =======================
 #include <memory>
 #include <vector>
-#include "TransformHandle.h"
+#include "Transform_PositionHandle.h"
 #include "../../Core/EngineDefs.h"
-//================================
+//==================================
 
 namespace Directus
 {
@@ -36,57 +36,31 @@ namespace Directus
 	class Actor;
 	class RHI_IndexBuffer;
 	class RHI_VertexBuffer;
-
 	namespace Math
 	{
 		class Matrix;
 	}
 
-	enum TransformHandle_Type
-	{
-		TransformHandle_Position,
-		TransformHandle_Rotation,
-		TransformHandle_Scale
-	};
-
-	enum TransformHandle_Space
-	{
-		TransformHandle_Local,
-		TransformHandle_World
-	};
-
-	class ENGINE_CLASS TransformGizmo
+	class ENGINE_CLASS Transform_Gizmo
 	{
 	public:
-		TransformGizmo(Context* context);
-		~TransformGizmo();
+		Transform_Gizmo(Context* context);
+		~Transform_Gizmo();
 
-		void Update(const std::shared_ptr<Actor>& actor, Camera* camera);
-		const TransformHandle& GetHandle_Pos_X() const { return m_handle_position_x; }
-		const TransformHandle& GetHandle_Pos_Y() const { return m_handle_position_y; }
-		const TransformHandle& GetHandle_Pos_Z() const { return m_handle_position_z; }
+		bool Update(const std::shared_ptr<Actor>& actor, Camera* camera);	
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
-		bool IsInspecting() { return m_isInspecting; }
+		const Transform_PositionHandle& GetHandle_Position() const { return m_handle_position; }
 
 	private:
 		bool m_isInspecting;
 		bool m_isEditing;
-		bool m_isEditing_handle_x;
-		bool m_isEditing_handle_y;
-		bool m_isEditing_handle_z;
 
-		TransformHandle m_handle_position_x;
-		TransformHandle m_handle_position_y;
-		TransformHandle m_handle_position_z;
-
+		Transform_PositionHandle m_handle_position;
 		std::shared_ptr<Actor> m_selectedActor;
-
 		TransformHandle_Type m_activeHandle;
 		TransformHandle_Space m_space;
-
-		std::unique_ptr<Model> m_handle_position_model;
 		std::unique_ptr<Model> m_handle_scale_model;
 		Context* m_context;
 	};

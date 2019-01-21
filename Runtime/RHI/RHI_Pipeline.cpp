@@ -331,9 +331,7 @@ namespace Directus
 				return false;
 			}
 
-			// Enable or disable depth
 			m_rhiDevice->Set_DepthEnabled(m_depthStencil != nullptr);
-
 			m_rhiDevice->Set_RenderTargets((unsigned int)m_renderTargetViews.size(), &m_renderTargetViews[0], m_depthStencil);
 			Profiler::Get().m_rhiBindingsRenderTarget++;
 
