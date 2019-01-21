@@ -78,69 +78,64 @@ namespace Directus
 
 	void TransformGizmo::Update(const shared_ptr<Actor>& actor, Camera* camera)
 	{
-		bool firstFrameAfterSelection = false;
-
 		// If there is no camera, don't even bother
 		if (!camera)
 			return;
 
-		// Updated picked actor
+		// Don't erase picked actor if it's currently being edited
 		if (!actor)
 		{
-			m_pickedActor = m_isEditing ? m_pickedActor : nullptr;
+			m_selectedActor = m_isEditing ? m_selectedActor : nullptr;
 		}
-		else
+
+		// Updated picked actor only if it's not being edited
+		if (!m_isEditing)
 		{
-			firstFrameAfterSelection	= (m_pickedActor == nullptr);
-			m_pickedActor				= actor;
+			m_selectedActor = actor;
 		}
-		if (!m_pickedActor)
+
+		if (!m_selectedActor)
 			return;
 
-		// On the first frame, snap to the actor
-		if (firstFrameAfterSelection)
-		{ 
-			// Get actor's components
-			Transform* actor_transform				= m_pickedActor->GetTransform_PtrRaw();			// Transform alone is not enough
-			shared_ptr<Renderable> actor_renderable = m_pickedActor->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
+		// Get actor's components
+		Transform* actor_transform				= m_selectedActor->GetTransform_PtrRaw();		// Transform alone is not enough
+		shared_ptr<Renderable> actor_renderable = m_selectedActor->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
 
-			// Acquire actor's transformation data (local or world space)
-			Vector3 aabb_center			= actor_renderable ? actor_renderable->Geometry_AABB().GetCenter() : Vector3::Zero;
-			Vector3 actor_position		= (m_space == TransformHandle_World) ? actor_transform->GetPosition() : actor_transform->GetPositionLocal();
-			Quaternion actor_rotation	= (m_space == TransformHandle_World) ? actor_transform->GetRotation() : actor_transform->GetRotationLocal();
-			Vector3 actor_scale			= (m_space == TransformHandle_World) ? actor_transform->GetScale() : actor_transform->GetScaleLocal();
-			Vector3 right				= (m_space == TransformHandle_World) ? Vector3::Right : actor_rotation * Vector3::Right;
-			Vector3 up					= (m_space == TransformHandle_World) ? Vector3::Up : actor_rotation * Vector3::Up;
-			Vector3 forward				= (m_space == TransformHandle_World) ? Vector3::Forward : actor_rotation * Vector3::Forward;
+		// Acquire actor's transformation data (local or world space)
+		Vector3 aabb_center			= actor_renderable ? actor_renderable->Geometry_AABB().GetCenter() : Vector3::Zero;
+		Vector3 actor_position		= (m_space == TransformHandle_World) ? actor_transform->GetPosition() : actor_transform->GetPositionLocal();
+		Quaternion actor_rotation	= (m_space == TransformHandle_World) ? actor_transform->GetRotation() : actor_transform->GetRotationLocal();
+		Vector3 actor_scale			= (m_space == TransformHandle_World) ? actor_transform->GetScale() : actor_transform->GetScaleLocal();
+		Vector3 right				= (m_space == TransformHandle_World) ? Vector3::Right : actor_rotation * Vector3::Right;
+		Vector3 up					= (m_space == TransformHandle_World) ? Vector3::Up : actor_rotation * Vector3::Up;
+		Vector3 forward				= (m_space == TransformHandle_World) ? Vector3::Forward : actor_rotation * Vector3::Forward;
 
-			// Compute scale
-			float distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length() : 0.0f;
-			float distance_to_camera_x	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - right)).Length() : 0.0f;
-			float distance_to_camera_y	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - up)).Length() : 0.0f;
-			float distance_to_camera_z	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - forward)).Length() : 0.0f;
-			float handle_size			= 0.025f;
-			float handle_distance		= distance_to_camera / (1.0f / 0.1f);
+		// Compute scale
+		float distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length() : 0.0f;
+		float distance_to_camera_x	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - right)).Length() : 0.0f;
+		float distance_to_camera_y	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - up)).Length() : 0.0f;
+		float distance_to_camera_z	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - forward)).Length() : 0.0f;
+		float handle_size			= 0.025f;
+		float handle_distance		= distance_to_camera / (1.0f / 0.1f);
 
-			// Compute transform for the handles
-			m_handle_position_x.m_position	= aabb_center + right * handle_distance;
-			m_handle_position_y.m_position	= aabb_center + up * handle_distance;
-			m_handle_position_z.m_position	= aabb_center + forward * handle_distance;
-			m_handle_position_x.m_rotation	= Quaternion::FromEulerAngles(0.0f, 0.0f, -90.0f);
-			m_handle_position_y.m_rotation	= Quaternion::FromLookRotation(up, up);
-			m_handle_position_z.m_rotation	= Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);
-			m_handle_position_x.m_scale		= distance_to_camera_x / (1.0f / handle_size);
-			m_handle_position_y.m_scale		= distance_to_camera_y / (1.0f / handle_size);
-			m_handle_position_z.m_scale		= distance_to_camera_z / (1.0f / handle_size);
-		}
+		// Compute transform for the handles
+		m_handle_position_x.m_position	= aabb_center + right * handle_distance;
+		m_handle_position_y.m_position	= aabb_center + up * handle_distance;
+		m_handle_position_z.m_position	= aabb_center + forward * handle_distance;
+		m_handle_position_x.m_rotation	= Quaternion::FromEulerAngles(0.0f, 0.0f, -90.0f);
+		m_handle_position_y.m_rotation	= Quaternion::FromLookRotation(up, up);
+		m_handle_position_z.m_rotation	= Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);
+		m_handle_position_x.m_scale		= distance_to_camera_x / (1.0f / handle_size);
+		m_handle_position_y.m_scale		= distance_to_camera_y / (1.0f / handle_size);
+		m_handle_position_z.m_scale		= distance_to_camera_z / (1.0f / handle_size);
 
 		// Update all the handles
-		if (!firstFrameAfterSelection)
-		{
-			m_isEditing_handle_x = m_handle_position_x.Update(m_pickedActor->GetTransform_PtrRaw(), camera);
-			m_isEditing_handle_y = m_handle_position_y.Update(m_pickedActor->GetTransform_PtrRaw(), camera);
-			m_isEditing_handle_z = m_handle_position_z.Update(m_pickedActor->GetTransform_PtrRaw(), camera);
-		}
-		m_isEditing	= m_isEditing_handle_x || m_isEditing_handle_y || m_isEditing_handle_z || actor;
+		m_isEditing_handle_x = m_handle_position_x.Update(m_selectedActor->GetTransform_PtrRaw(), camera);
+		m_isEditing_handle_y = m_handle_position_y.Update(m_selectedActor->GetTransform_PtrRaw(), camera);
+		m_isEditing_handle_z = m_handle_position_z.Update(m_selectedActor->GetTransform_PtrRaw(), camera);
+
+		m_isEditing		= m_isEditing_handle_x || m_isEditing_handle_y || m_isEditing_handle_z;
+		m_isInspecting	= m_isEditing || actor;
 	}
 
 	unsigned int TransformGizmo::GetIndexCount()

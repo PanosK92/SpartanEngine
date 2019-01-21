@@ -67,31 +67,31 @@ namespace Directus
 			Ray ray		= Ray(ray_start, ray_end);
 			m_isHovered = ray.HitDistance(m_box_transforemd) != INFINITY;
 
+			// Track delta
+			m_axis_previous = m_axis_current;
+			m_axis_current	= ray_end;
+			if (m_axis_type == TransformHandle_X)
+			{
+				m_axis_delta = (m_axis_current - m_axis_previous) * Vector3::Right;
+			}
+			else if (m_axis_type == TransformHandle_Y)
+			{
+				m_axis_delta = (m_axis_current - m_axis_previous) * Vector3::Up;
+			}
+			else if (m_axis_type == TransformHandle_Z)
+			{
+				m_axis_delta = (m_axis_current - m_axis_previous) * Vector3::Forward;
+			}
+
 			// First press
 			if (m_isHovered && input->GetKeyDown(Click_Left))
 			{
 				m_isPressed = true;
 			}
 
-			// During drag
+			// Editing can happen here
 			if (m_isPressed && input->GetKey(Click_Left))
 			{
-				m_axis_previous = m_axis_current;
-				m_axis_current	= ray_end;
-
-				if (m_axis_type == TransformHandle_X)
-				{
-					m_axis_delta = (m_axis_current - m_axis_previous) * Vector3::Right;
-				}
-				else if (m_axis_type == TransformHandle_Y)
-				{
-					m_axis_delta = (m_axis_current - m_axis_previous) * Vector3::Up;
-				}
-				else if (m_axis_type == TransformHandle_Z)
-				{
-					m_axis_delta = (m_axis_current - m_axis_previous) * Vector3::Forward;
-				}
-
 				EditTransform(transform);
 			}
 
@@ -133,18 +133,19 @@ namespace Directus
 		}
 
 		Vector3 position = transform->GetPosition();
+		float speed = 12.0f;
 
 		if (m_axis_type == TransformHandle_X)
 		{
-			position.x = m_axis_delta.x;
+			position.x += m_axis_delta.x * speed;
 		}
 		else if (m_axis_type == TransformHandle_Y)
 		{
-			position.y = m_axis_delta.y;
+			position.y += m_axis_delta.y * speed;
 		}
 		else if (m_axis_type == TransformHandle_Z)
 		{
-			position.z = m_axis_delta.z;
+			position.z += m_axis_delta.z * speed;
 		}
 
 		transform->SetPosition(position);

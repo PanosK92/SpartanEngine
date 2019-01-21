@@ -71,7 +71,7 @@ namespace Directus
 		m_rhiDevice		= nullptr;
 		m_frameNum		= 0;
 		m_flags			= 0;
-		//m_flags			|= Render_Gizmo_Transform;
+		m_flags			|= Render_Gizmo_Transform;
 		m_flags			|= Render_Gizmo_Grid;
 		m_flags			|= Render_Gizmo_Lights;
 		m_flags			|= Render_Gizmo_Physics;	
@@ -1529,7 +1529,7 @@ namespace Directus
 		if (render_transform)
 		{
 			m_transformGizmo->Update(m_camera->GetPickedActor().lock(), m_camera);
-			if (m_transformGizmo->IsEditing())
+			if (m_transformGizmo->IsInspecting())
 			{
 				m_rhiDevice->EventBegin("Gizmo_Transform");
 
