@@ -110,9 +110,9 @@ namespace Directus
 		TransformHandleAxis m_handle_y = TransformHandleAxis(Math::Vector3::Up);
 		TransformHandleAxis m_handle_z = TransformHandleAxis(Math::Vector3::Forward);
 
-		Math::Vector3 m_position_delta;
-		Math::Vector3 m_position_previous;
-		Math::Vector3 m_position_current;
+		Math::Vector3 m_ray_delta;
+		Math::Vector3 m_ray_previous;
+		Math::Vector3 m_ray_current;
 		std::unique_ptr<Model> m_model;
 		Context* m_context;
 		Renderer* m_renderer;

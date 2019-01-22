@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class World;
+	class Input;
 	class Camera;
 	class Context;
 	class Actor;
@@ -58,5 +60,7 @@ namespace Directus
 		TransformHandle_Type m_type;
 		TransformHandle_Space m_space;
 		Context* m_context;
+		Input* m_input;
+		World* m_world;
 	};
 }
