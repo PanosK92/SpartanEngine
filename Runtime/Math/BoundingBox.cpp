@@ -113,11 +113,11 @@ namespace Directus::Math
 
 	void BoundingBox::Merge(const BoundingBox& box)
 	{
-		if (box.m_min.x < m_min.x) m_min.x = box.m_min.x;
-		if (box.m_min.y < m_min.y) m_min.y = box.m_min.y;
-		if (box.m_min.z < m_min.z) m_min.z = box.m_min.z;
-		if (box.m_max.x > m_max.x) m_max.x = box.m_max.x;
-		if (box.m_max.y > m_max.y) m_max.y = box.m_max.y;
-		if (box.m_max.z > m_max.z) m_max.z = box.m_max.z;
+		m_min.x = Min(m_min.x, box.m_min.x);
+		m_min.y = Min(m_min.y, box.m_min.y);
+		m_min.z = Min(m_min.z, box.m_min.z);
+		m_max.x = Max(m_max.x, box.m_max.x);
+		m_max.y = Max(m_max.x, box.m_max.x);
+		m_max.z = Max(m_max.x, box.m_max.x);
 	}
 }

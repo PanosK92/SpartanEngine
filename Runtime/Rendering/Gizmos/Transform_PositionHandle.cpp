@@ -47,21 +47,21 @@ namespace Directus
 		// First press
 		if (isHovered && input->GetKeyDown(Click_Left))
 		{
-			isPressed = true;
+			isEditing = true;
 		}
 
 		// Editing can happen here
-		if (isPressed && input->GetKey(Click_Left))
+		if (isEditing && input->GetKey(Click_Left))
 		{
 			Vector3 position = transform->GetPosition();
-			position += isPressed ? delta * axis : 0;
+			position += isEditing ? delta * axis : 0;
 			transform->SetPosition(position);
 		}
 
 		// Last press (on release)
-		if (isPressed && input->GetKeyUp(Click_Left))
+		if (isEditing && input->GetKeyUp(Click_Left))
 		{
-			isPressed = false;
+			isEditing = false;
 		}
 	}
 
@@ -101,16 +101,28 @@ namespace Directus
 		if (camera)
 		{
 			// Create ray starting from camera position and pointing towards where the mouse is pointing
-			Input* input		= m_context->GetSubsystem<Input>();
-			Vector2	mousePos	= input->GetMousePosition();
-			mousePos			-= Settings::Get().Viewport_GetTopLeft();
-			Vector3 ray_start	= camera->GetTransform()->GetPosition();
-			Vector3 ray_end		= camera->ScreenToWorldPoint(mousePos);
-			Ray ray				= Ray(ray_start, ray_end);
+			Input* input				= m_context->GetSubsystem<Input>();
+			Vector2	mouse_pos			= input->GetMousePosition();
+			Vector2 viewport_offset		= Settings::Get().Viewport_GetTopLeft();
+			Vector2 mouse_pos_relative	= mouse_pos - viewport_offset;
+			Vector3 ray_start			= camera->GetTransform()->GetPosition();
+			Vector3 ray_end				= camera->ScreenToWorldPoint(mouse_pos_relative);
+			Ray ray						= Ray(ray_start, ray_end);
 
-			m_handle_x.isHovered	= ray.HitDistance(m_handle_x.box_transformed) != INFINITY;
-			m_handle_y.isHovered	= ray.HitDistance(m_handle_y.box_transformed) != INFINITY;
-			m_handle_z.isHovered	= ray.HitDistance(m_handle_z.box_transformed) != INFINITY;
+			// Test if ray intersects any of the handles
+			bool hovered_x = ray.HitDistance(m_handle_x.box_transformed) != INFINITY;
+			bool hovered_y = ray.HitDistance(m_handle_y.box_transformed) != INFINITY;
+			bool hovered_z = ray.HitDistance(m_handle_z.box_transformed) != INFINITY;
+
+			// Mark a handle as hovered, only if it's the only hovered handle (during the previous frame
+			m_handle_x.isHovered = hovered_x && !m_handle_y.isHovered && !m_handle_z.isHovered;
+			m_handle_y.isHovered = hovered_y && !m_handle_x.isHovered && !m_handle_z.isHovered;
+			m_handle_z.isHovered = hovered_z && !m_handle_x.isHovered && !m_handle_y.isHovered;
+
+			// Disable handle if one of the other two is active (affects the color)
+			m_handle_x.isDisabled = !m_handle_x.isEditing && (m_handle_y.isEditing || m_handle_z.isEditing);
+			m_handle_y.isDisabled = !m_handle_y.isEditing && (m_handle_x.isEditing || m_handle_z.isEditing);
+			m_handle_z.isDisabled = !m_handle_z.isEditing && (m_handle_x.isEditing || m_handle_y.isEditing);
 
 			// Track delta
 			m_position_previous = m_position_current != Vector3::Zero ? m_position_current : ray_end; // avoid big delta in the first run
@@ -129,7 +141,7 @@ namespace Directus
 			m_handle_z.UpdateInput(actor->GetTransform_PtrRaw(), input);
 		}
 
-		return m_handle_x.isPressed ||  m_handle_y.isPressed || m_handle_z.isPressed;
+		return m_handle_x.isEditing ||  m_handle_y.isEditing || m_handle_z.isEditing;
 	}
 
 	const Matrix& Transform_PositionHandle::GetTransform(const Vector3& axis) const
