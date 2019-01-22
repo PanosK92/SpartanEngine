@@ -88,9 +88,9 @@ namespace Directus
 		m_renderer	= context->GetSubsystem<Renderer>();
 		m_input		= context->GetSubsystem<Input>();
 
-		m_position_previous = Vector3::Zero;
-		m_position_current	= Vector3::Zero;
-		m_position_delta	= Vector3::Zero;
+		m_ray_previous	= Vector3::Zero;
+		m_ray_current	= Vector3::Zero;
+		m_ray_delta		= Vector3::Zero;
 
 		// Create position controller
 		vector<RHI_Vertex_PosUvNorTan> vertices;
@@ -156,15 +156,15 @@ namespace Directus
 			m_handle_z.isDisabled = !m_handle_z.isEditing && (m_handle_x.isEditing || m_handle_y.isEditing);
 
 			// Track delta
-			m_position_previous = m_position_current != Vector3::Zero ? m_position_current : ray_end; // avoid big delta in the first run
-			m_position_current	= ray_end;
-			m_position_delta	= (m_position_current - m_position_previous);
+			m_ray_previous	= m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // avoid big delta in the first run
+			m_ray_current	= ray_end;
+			m_ray_delta		= (m_ray_current - m_ray_previous);
 			
 			// Updated handles with delta
 			float speed = 12.0f;
-			m_handle_x.delta = m_position_delta * speed;
-			m_handle_y.delta = m_position_delta * speed;
-			m_handle_z.delta = m_position_delta * speed;
+			m_handle_x.delta = m_ray_delta * speed;
+			m_handle_y.delta = m_ray_delta * speed;
+			m_handle_z.delta = m_ray_delta * speed;
 
 			// Update input
 			m_handle_x.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);

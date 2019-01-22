@@ -40,6 +40,8 @@ namespace Directus
 	Transform_Gizmo::Transform_Gizmo(Context* context)
 	{
 		m_context	= context;
+		m_input		= m_context->GetSubsystem<Input>();
+		m_world		= m_context->GetSubsystem<World>();
 		m_type		= TransformHandle_Position;
 		m_space		= TransformHandle_World;
 		m_isEditing	= false;
@@ -58,16 +60,15 @@ namespace Directus
 	bool Transform_Gizmo::Update(const shared_ptr<Actor>& actor, Camera* camera)
 	{
 		// Switch between handles with W, E and R
-		Input* input = m_context->GetSubsystem<Input>();
-		if (input->GetKeyDown(W))
+		if (m_input->GetKeyDown(W))
 		{
 			m_type = TransformHandle_Position;
 		}
-		else if(input->GetKeyDown(E))
+		else if(m_input->GetKeyDown(E))
 		{
 			m_type = TransformHandle_Scale;
 		}
-		else if (input->GetKeyDown(R))
+		else if (m_input->GetKeyDown(R))
 		{
 			m_type = TransformHandle_Rotation;
 		}
@@ -103,6 +104,12 @@ namespace Directus
 			{
 				m_isEditing = m_handle_rotation.Update(m_space, m_selectedActor, camera);
 			}
+		}
+
+		// If the actor is being edited, set as selected actor in the world (because it can be overwritten during dragging, and that should be ignored)
+		if (m_isEditing)
+		{
+			m_world->SetSelectedActor(m_selectedActor);
 		}
 
 		m_isInspecting = m_isEditing || actor;
