@@ -43,7 +43,7 @@ namespace Directus
 		Transform_Gizmo(Context* context);
 		~Transform_Gizmo();
 
-		bool Update(const std::shared_ptr<Actor>& actor, Camera* camera);	
+		bool Update(const std::shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed);
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();

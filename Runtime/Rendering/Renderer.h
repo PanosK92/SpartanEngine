@@ -133,8 +133,11 @@ namespace Directus
 		Camera* GetCamera()									{ return m_camera; }
 		static unsigned int GetMaxResolution()				{ return m_maxResolution; }
 
-		//= Settings =============================================================================================================================================================
+		//= Graphics Settings ====================================================================================================================================================
 		float m_gamma					= 2.2f;
+		// TAA
+		float m_taa_alphaMin			= 0.05f;
+		float m_taa_alphaMax			= 0.8f;
 		// FXAA
 		float m_fxaaSubPixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
 		float m_fxaaEdgeThreshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
@@ -147,6 +150,11 @@ namespace Directus
 		// Motion Blur
 		float m_motionBlurStrength		= 4.0f;		// Strength of the motion blur
 		//========================================================================================================================================================================
+
+		//= Gizmo Settings ======================
+		float m_gizmo_transform_size	= 0.015f;
+		float m_gizmo_transform_speed	= 12.0f;
+		//=======================================
 
 	private:
 		void CreateRenderTextures(unsigned int width, unsigned int height);
