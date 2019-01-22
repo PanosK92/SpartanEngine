@@ -22,12 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================
-#include <vector>
 #include "Transform_Enums.h"
 #include "../../Core/EngineDefs.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
-#include "../../Math/Ray.h"
 //=================================
 
 namespace Directus
@@ -42,9 +40,9 @@ namespace Directus
 	class Transform;
 	class Camera;
 
-	struct PositionHandle_Axis
+	struct TransformHandleAxis
 	{
-		PositionHandle_Axis(const Math::Vector3& axis)
+		TransformHandleAxis(const Math::Vector3& axis)
 		{
 			this->axis		= axis;
 			transform		= Math::Matrix::Identity;
@@ -65,7 +63,7 @@ namespace Directus
 			box_transformed	= box.Transformed(transform);
 		}
 
-		void UpdateInput(Transform* transform, Input* input);
+		void UpdateInput(TransformHandle_Type type, Transform* transform, Input* input);
 		const Math::Vector3& GetColor() const
 		{
 			if (isDisabled)
@@ -92,13 +90,13 @@ namespace Directus
 		Math::Vector3 m_color_disabled	= Math::Vector3(0.5f, 0.5f, 0.5f);
 	};
 
-	class ENGINE_CLASS Transform_PositionHandle
+	class ENGINE_CLASS TransformHandle
 	{
 	public:
-		Transform_PositionHandle() {}	
-		~Transform_PositionHandle() {}
+		TransformHandle() {}	
+		~TransformHandle() {}
 
-		void Initialize(Context* context);
+		void Initialize(TransformHandle_Type type, Context* context);
 		bool Update(TransformHandle_Space space, const std::shared_ptr<Actor>& actor, Camera* camera);
 		const Math::Matrix& GetTransform(const Math::Vector3& axis) const;
 		const Math::Vector3& GetColor(const Math::Vector3& axis) const;
@@ -108,9 +106,9 @@ namespace Directus
 	private:
 		void SnapToTransform(TransformHandle_Space space, const std::shared_ptr<Actor>& actor, Camera* camera);
 
-		PositionHandle_Axis m_handle_x = PositionHandle_Axis(Math::Vector3::Right);
-		PositionHandle_Axis m_handle_y = PositionHandle_Axis(Math::Vector3::Up);
-		PositionHandle_Axis m_handle_z = PositionHandle_Axis(Math::Vector3::Forward);
+		TransformHandleAxis m_handle_x = TransformHandleAxis(Math::Vector3::Right);
+		TransformHandleAxis m_handle_y = TransformHandleAxis(Math::Vector3::Up);
+		TransformHandleAxis m_handle_z = TransformHandleAxis(Math::Vector3::Forward);
 
 		Math::Vector3 m_position_delta;
 		Math::Vector3 m_position_previous;
@@ -118,5 +116,7 @@ namespace Directus
 		std::unique_ptr<Model> m_model;
 		Context* m_context;
 		Renderer* m_renderer;
+		Input* m_input;
+		TransformHandle_Type m_type;
 	};
 }

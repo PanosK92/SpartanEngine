@@ -21,16 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================================
+//= INCLUDES =========================
 #include "Transform_Gizmo.h"
-#include "..\Renderer.h"
+#include "..\Model.h"
 #include "..\..\RHI\RHI_Vertex.h"
 #include "..\..\RHI\RHI_IndexBuffer.h"
-#include "..\..\Rendering\Utilities\Geometry.h"
-#include "..\..\Rendering\Model.h"
 #include "..\..\World\Actor.h"
-#include "..\..\World\Components\Transform.h"
-//=============================================
+#include "..\..\Input\Input.h"
+//====================================
 
 //=============================
 using namespace std;
@@ -41,21 +39,15 @@ namespace Directus
 {
 	Transform_Gizmo::Transform_Gizmo(Context* context)
 	{
-		m_context		= context;
-		m_activeHandle	= TransformHandle_Position;
-		m_space			= TransformHandle_World;
-		m_isEditing		= false;
+		m_context	= context;
+		m_type		= TransformHandle_Position;
+		m_space		= TransformHandle_World;
+		m_isEditing	= false;
 
-		// Position handle
-		m_handle_position.Initialize(context);
-
-		// Create scale model
-		vector<RHI_Vertex_PosUvNorTan> vertices;
-		vector<unsigned int> indices;
-		Utility::Geometry::CreateCube(&vertices, &indices);
-		m_handle_scale_model = make_unique<Model>(m_context);
-		m_handle_scale_model->Geometry_Append(indices, vertices);
-		m_handle_scale_model->Geometry_Update();
+		// Handles
+		m_handle_position.Initialize(TransformHandle_Position, context);
+		m_handle_rotation.Initialize(TransformHandle_Rotation, context);
+		m_handle_scale.Initialize(TransformHandle_Scale, context);
 	}
 
 	Transform_Gizmo::~Transform_Gizmo()
@@ -65,6 +57,21 @@ namespace Directus
 
 	bool Transform_Gizmo::Update(const shared_ptr<Actor>& actor, Camera* camera)
 	{
+		// Switch between handles with W, E and R
+		Input* input = m_context->GetSubsystem<Input>();
+		if (input->GetKeyDown(W))
+		{
+			m_type = TransformHandle_Position;
+		}
+		else if(input->GetKeyDown(E))
+		{
+			m_type = TransformHandle_Scale;
+		}
+		else if (input->GetKeyDown(R))
+		{
+			m_type = TransformHandle_Rotation;
+		}
+
 		// If there is no camera, don't even bother
 		if (!camera)
 			return false;
@@ -84,9 +91,17 @@ namespace Directus
 		// If there is a valid actor, update the handle
 		if (m_selectedActor)
 		{
-			if (m_activeHandle == TransformHandle_Position)
+			if (m_type == TransformHandle_Position)
 			{
 				m_isEditing = m_handle_position.Update(m_space, m_selectedActor, camera);
+			}
+			else if (m_type == TransformHandle_Scale)
+			{
+				m_isEditing = m_handle_scale.Update(m_space, m_selectedActor, camera);
+			}
+			else if (m_type == TransformHandle_Rotation)
+			{
+				m_isEditing = m_handle_rotation.Update(m_space, m_selectedActor, camera);
 			}
 		}
 
@@ -97,43 +112,57 @@ namespace Directus
 
 	unsigned int Transform_Gizmo::GetIndexCount()
 	{
-		if (m_activeHandle == TransformHandle_Position)
+		if (m_type == TransformHandle_Position)
 		{
 			return m_handle_position.GetIndexBuffer()->GetIndexCount();
 		}
-		else if (m_activeHandle == TransformHandle_Scale)
+		else if (m_type == TransformHandle_Scale)
 		{
-			return m_handle_scale_model->GetIndexBuffer()->GetIndexCount();
+			return m_handle_scale.GetIndexBuffer()->GetIndexCount();
 		}
 
-		return 0;
+		return m_handle_rotation.GetIndexBuffer()->GetIndexCount();
 	}
 
 	shared_ptr<RHI_VertexBuffer> Transform_Gizmo::GetVertexBuffer()
 	{
-		if (m_activeHandle == TransformHandle_Position)
+		if (m_type == TransformHandle_Position)
 		{
 			return m_handle_position.GetVertexBuffer();
 		}
-		else if (m_activeHandle == TransformHandle_Scale)
+		else if (m_type == TransformHandle_Scale)
 		{
-			return m_handle_scale_model->GetVertexBuffer();
+			return m_handle_scale.GetVertexBuffer();
 		}
 
-		return nullptr;
+		return m_handle_rotation.GetVertexBuffer();
 	}
 
-	 shared_ptr<RHI_IndexBuffer> Transform_Gizmo::GetIndexBuffer()
+	shared_ptr<RHI_IndexBuffer> Transform_Gizmo::GetIndexBuffer()
 	{
-		if (m_activeHandle == TransformHandle_Position)
+		if (m_type == TransformHandle_Position)
 		{
 			return m_handle_position.GetIndexBuffer();
 		}
-		else if (m_activeHandle == TransformHandle_Scale)
+		else if (m_type == TransformHandle_Scale)
 		{
-			return m_handle_scale_model->GetIndexBuffer();
+			return m_handle_scale.GetIndexBuffer();
 		}
 
-		return nullptr;
+		return m_handle_rotation.GetIndexBuffer();
 	}
+
+	 const TransformHandle& Transform_Gizmo::GetHandle() const
+	 {
+		 if (m_type == TransformHandle_Position)
+		 {
+			 return m_handle_position;
+		 }
+		 else if (m_type == TransformHandle_Scale)
+		 {
+			 return m_handle_scale;
+		 }
+
+		 return m_handle_rotation;
+	 }
 }

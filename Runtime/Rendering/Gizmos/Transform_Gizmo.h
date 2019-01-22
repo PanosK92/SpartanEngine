@@ -21,25 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES =====================
 #include <memory>
-#include <vector>
-#include "Transform_PositionHandle.h"
+#include "TransformHandle.h"
 #include "../../Core/EngineDefs.h"
-//==================================
+//================================
 
 namespace Directus
 {
 	class Camera;
-	class Model;
 	class Context;
 	class Actor;
 	class RHI_IndexBuffer;
 	class RHI_VertexBuffer;
-	namespace Math
-	{
-		class Matrix;
-	}
 
 	class ENGINE_CLASS Transform_Gizmo
 	{
@@ -51,17 +45,18 @@ namespace Directus
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
-		const Transform_PositionHandle& GetHandle_Position() const { return m_handle_position; }
+		const TransformHandle& GetHandle() const;
 
 	private:
 		bool m_isInspecting;
 		bool m_isEditing;
 
-		Transform_PositionHandle m_handle_position;
 		std::shared_ptr<Actor> m_selectedActor;
-		TransformHandle_Type m_activeHandle;
+		TransformHandle m_handle_position;
+		TransformHandle m_handle_rotation;
+		TransformHandle m_handle_scale;
+		TransformHandle_Type m_type;
 		TransformHandle_Space m_space;
-		std::unique_ptr<Model> m_handle_scale_model;
 		Context* m_context;
 	};
 }

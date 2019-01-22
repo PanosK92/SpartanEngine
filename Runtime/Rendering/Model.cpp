@@ -112,6 +112,12 @@ namespace Directus
 
 	void Model::Geometry_Append(std::vector<unsigned int>& indices, std::vector<RHI_Vertex_PosUvNorTan>& vertices, unsigned int* indexOffset, unsigned int* vertexOffset)
 	{
+		if (indices.empty() || vertices.empty())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		// Append indices and vertices to the main mesh
 		m_mesh->Indices_Append(indices, indexOffset);
 		m_mesh->Vertices_Append(vertices, vertexOffset);
@@ -124,6 +130,12 @@ namespace Directus
 
 	void Model::Geometry_Update()
 	{
+		if (m_mesh->Indices_Count() == 0 || m_mesh->Vertices_Count() == 0)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		Geometry_CreateBuffers();
 		m_normalizedScale	= Geometry_ComputeNormalizedScale();
 		m_memoryUsage		= Geometry_ComputeMemoryUsage();

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================================
-#include "Transform_PositionHandle.h"
+#include "TransformHandle.h"
 #include "..\Model.h"
 #include "..\Renderer.h"
 #include "..\Utilities\Geometry.h"
@@ -43,7 +43,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	void PositionHandle_Axis::UpdateInput(Transform* transform, Input* input)
+	void TransformHandleAxis::UpdateInput(TransformHandle_Type type, Transform* transform, Input* input)
 	{
 		// First press
 		if (isHovered && input->GetKeyDown(Click_Left))
@@ -54,9 +54,24 @@ namespace Directus
 		// Editing can happen here
 		if (isEditing && input->GetKey(Click_Left))
 		{
-			Vector3 position = transform->GetPosition();
-			position += isEditing ? delta * axis : 0;
-			transform->SetPosition(position);
+			if (type == TransformHandle_Position)
+			{
+				Vector3 position = transform->GetPosition();
+				position += isEditing ? delta * axis : 0;
+				transform->SetPosition(position);
+			}
+			else if (type == TransformHandle_Scale)
+			{
+				Vector3 scale = transform->GetScale();
+				scale += isEditing ? delta * axis : 0;
+				transform->SetScale(scale);
+			}
+			else if (type == TransformHandle_Rotation)
+			{
+				Vector3 rotation = transform->GetRotation().ToEulerAngles();
+				rotation += isEditing ? delta * axis : 0;
+				transform->SetRotation(Quaternion::FromEulerAngles(rotation));
+			}
 		}
 
 		// Last press (on release)
@@ -66,10 +81,12 @@ namespace Directus
 		}
 	}
 
-	void Transform_PositionHandle::Initialize(Context* context)
+	void TransformHandle::Initialize(TransformHandle_Type type, Context* context)
 	{
-		m_context			= context;
-		m_renderer			= context->GetSubsystem<Renderer>();
+		m_type		= type;
+		m_context	= context;
+		m_renderer	= context->GetSubsystem<Renderer>();
+		m_input		= context->GetSubsystem<Input>();
 
 		m_position_previous = Vector3::Zero;
 		m_position_current	= Vector3::Zero;
@@ -78,7 +95,19 @@ namespace Directus
 		// Create position controller
 		vector<RHI_Vertex_PosUvNorTan> vertices;
 		vector<unsigned int> indices;
-		Utility::Geometry::CreateCone(&vertices, &indices);
+		if (m_type == TransformHandle_Position)
+		{
+			Utility::Geometry::CreateCone(&vertices, &indices);
+		}
+		else if (m_type == TransformHandle_Scale)
+		{
+			Utility::Geometry::CreateCube(&vertices, &indices);
+		}
+		else if (m_type == TransformHandle_Rotation)
+		{
+			// I can feel the pain coming with this one, but my body is ready.
+			Utility::Geometry::CreateSphere(&vertices, &indices); // this is temp, whatever
+		}
 		m_model = make_unique<Model>(m_context);
 		m_model->Geometry_Append(indices, vertices);
 		m_model->Geometry_Update();
@@ -89,7 +118,7 @@ namespace Directus
 		m_handle_z.box = m_handle_x.box;
 	}
 
-	bool Transform_PositionHandle::Update(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera)
+	bool TransformHandle::Update(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera)
 	{
 		if (!actor || !camera)
 		{
@@ -104,8 +133,7 @@ namespace Directus
 		if (camera)
 		{
 			// Create ray starting from camera position and pointing towards where the mouse is pointing
-			Input* input				= m_context->GetSubsystem<Input>();
-			Vector2	mouse_pos			= input->GetMousePosition();
+			Vector2	mouse_pos			= m_input->GetMousePosition();
 			Vector2 viewport_offset		= Settings::Get().Viewport_GetTopLeft();
 			Vector2 mouse_pos_relative	= mouse_pos - viewport_offset;
 			Vector3 ray_start			= camera->GetTransform()->GetPosition();
@@ -139,15 +167,15 @@ namespace Directus
 			m_handle_z.delta = m_position_delta * speed;
 
 			// Update input
-			m_handle_x.UpdateInput(actor->GetTransform_PtrRaw(), input);
-			m_handle_y.UpdateInput(actor->GetTransform_PtrRaw(), input);
-			m_handle_z.UpdateInput(actor->GetTransform_PtrRaw(), input);
+			m_handle_x.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
+			m_handle_y.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
+			m_handle_z.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
 		}
 
 		return m_handle_x.isEditing ||  m_handle_y.isEditing || m_handle_z.isEditing;
 	}
 
-	const Matrix& Transform_PositionHandle::GetTransform(const Vector3& axis) const
+	const Matrix& TransformHandle::GetTransform(const Vector3& axis) const
 	{
 		if (axis == Vector3::Right)
 		{
@@ -161,7 +189,7 @@ namespace Directus
 		return m_handle_z.transform;
 	}
 
-	const Vector3& Transform_PositionHandle::GetColor(const Vector3& axis) const
+	const Vector3& TransformHandle::GetColor(const Vector3& axis) const
 	{
 		if (axis == Vector3::Right)
 		{
@@ -175,17 +203,17 @@ namespace Directus
 		return m_handle_z.GetColor();
 	}
 
-	shared_ptr<RHI_VertexBuffer> Transform_PositionHandle::GetVertexBuffer()
+	shared_ptr<RHI_VertexBuffer> TransformHandle::GetVertexBuffer()
 	{
 		return m_model->GetVertexBuffer();
 	}
 
-	shared_ptr<RHI_IndexBuffer> Transform_PositionHandle::GetIndexBuffer()
+	shared_ptr<RHI_IndexBuffer> TransformHandle::GetIndexBuffer()
 	{
 		return m_model->GetIndexBuffer();
 	}
 
-	void Transform_PositionHandle::SnapToTransform(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera)
+	void TransformHandle::SnapToTransform(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera)
 	{
 		// Get actor's components
 		Transform* actor_transform				= actor->GetTransform_PtrRaw();			// Transform alone is not enough
