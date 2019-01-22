@@ -118,7 +118,7 @@ namespace Directus
 		m_handle_z.box = m_handle_x.box;
 	}
 
-	bool TransformHandle::Update(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera)
+	bool TransformHandle::Update(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed)
 	{
 		if (!actor || !camera)
 		{
@@ -127,7 +127,7 @@ namespace Directus
 		}
 
 		// Snap to actor position
-		SnapToTransform(space, actor, camera);
+		SnapToTransform(space, actor, camera, handle_size);
 
 		// Do hit test
 		if (camera)
@@ -161,10 +161,9 @@ namespace Directus
 			m_ray_delta		= (m_ray_current - m_ray_previous);
 			
 			// Updated handles with delta
-			float speed = 12.0f;
-			m_handle_x.delta = m_ray_delta * speed;
-			m_handle_y.delta = m_ray_delta * speed;
-			m_handle_z.delta = m_ray_delta * speed;
+			m_handle_x.delta = m_ray_delta * handle_speed;
+			m_handle_y.delta = m_ray_delta * handle_speed;
+			m_handle_z.delta = m_ray_delta * handle_speed;
 
 			// Update input
 			m_handle_x.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
@@ -213,7 +212,7 @@ namespace Directus
 		return m_model->GetIndexBuffer();
 	}
 
-	void TransformHandle::SnapToTransform(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera)
+	void TransformHandle::SnapToTransform(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera, float handle_size)
 	{
 		// Get actor's components
 		Transform* actor_transform				= actor->GetTransform_PtrRaw();			// Transform alone is not enough
@@ -238,7 +237,6 @@ namespace Directus
 		float distance_to_camera_x	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - right)).Length()		: 0.0f;
 		float distance_to_camera_y	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - up)).Length()		: 0.0f;
 		float distance_to_camera_z	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - forward)).Length()	: 0.0f;
-		float handle_size			= 0.015f;
 		float handle_distance		= distance_to_camera / (1.0f / 0.1f);
 
 		// Compute transform for the handles

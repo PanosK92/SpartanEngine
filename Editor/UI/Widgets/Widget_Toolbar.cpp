@@ -245,12 +245,21 @@ void Widget_Toolbar::ShowRendererOptions()
 
 	if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Checkbox("Transform", &_Widget_Toolbar::g_gizmo_transform);
+		// Transform
+		ImGui::Checkbox("Transform", &_Widget_Toolbar::g_gizmo_transform); 
+		ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
+		ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
+		// Physics
 		ImGui::Checkbox("Physics", &_Widget_Toolbar::g_gizmo_physics);
+		// AABB
 		ImGui::Checkbox("AABB", &_Widget_Toolbar::g_gizmo_aabb);
+		// Lights
 		ImGui::Checkbox("Lights", &_Widget_Toolbar::g_gizmo_light);	
+		// Picking Ray
 		ImGui::Checkbox("Picking Ray", &_Widget_Toolbar::g_gizmo_pickingRay);
+		// Grid
 		ImGui::Checkbox("Grid", &_Widget_Toolbar::g_gizmo_grid);
+		// Performance metrics
 		ImGui::Checkbox("Performance Metrics", &_Widget_Toolbar::g_gizmo_performanceMetrics);
 
 		_Widget_Toolbar::g_gizmo_transform			? m_renderer->Flags_Enable(Render_Gizmo_Transform)			: m_renderer->Flags_Disable(Render_Gizmo_Transform);

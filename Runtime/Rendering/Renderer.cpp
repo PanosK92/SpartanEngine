@@ -1523,7 +1523,7 @@ namespace Directus
 		// Transform
 		if (render_transform)
 		{
-			if (m_transformGizmo->Update(m_context->GetSubsystem<World>()->GetSelectedActor().lock(), m_camera))
+			if (m_transformGizmo->Update(m_context->GetSubsystem<World>()->GetSelectedActor().lock(), m_camera, m_gizmo_transform_size, m_gizmo_transform_speed))
 			{
 				m_rhiDevice->EventBegin("Gizmo_Transform");
 

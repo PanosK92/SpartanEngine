@@ -57,7 +57,7 @@ namespace Directus
 
 	}
 
-	bool Transform_Gizmo::Update(const shared_ptr<Actor>& actor, Camera* camera)
+	bool Transform_Gizmo::Update(const shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed)
 	{
 		// Switch between handles with W, E and R
 		if (m_input->GetKeyDown(W))
@@ -94,15 +94,15 @@ namespace Directus
 		{
 			if (m_type == TransformHandle_Position)
 			{
-				m_isEditing = m_handle_position.Update(m_space, m_selectedActor, camera);
+				m_isEditing = m_handle_position.Update(m_space, m_selectedActor, camera, handle_size, handle_speed);
 			}
 			else if (m_type == TransformHandle_Scale)
 			{
-				m_isEditing = m_handle_scale.Update(m_space, m_selectedActor, camera);
+				m_isEditing = m_handle_scale.Update(m_space, m_selectedActor, camera, handle_size, handle_speed);
 			}
 			else if (m_type == TransformHandle_Rotation)
 			{
-				m_isEditing = m_handle_rotation.Update(m_space, m_selectedActor, camera);
+				m_isEditing = m_handle_rotation.Update(m_space, m_selectedActor, camera, handle_size, handle_speed);
 			}
 		}
 

@@ -1,7 +1,7 @@
 // Based on "Temporal Antialiasing In Uncharted 4" by Ke XU - Naughty Dog.
 
-static const float g_blendMin = 0.01f;
-static const float g_blendMax = 0.1f;
+static const float g_blendMin = 0.05f;
+static const float g_blendMax = 0.8f;
 
 // TODO: This can be improved further by weighting the blend factor from unbiased luminance diff
 
@@ -48,14 +48,10 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	color_history = clamp(color_history, color_min, color_max);
 	//===============================================================================================================
 	
-	//= Compute blend factor ==================================================================================================
-	float factor_velocity 	= abs(sin(frac(length(velocity)) * PI) - 1.0f); 		// Decrease when pixel motion gets subpixel
-	float factor_colorMin 	= saturate(length(color_history - color_min)); 			// Decrease when history is near min color
-	float factor_colorMax	= saturate(length(color_history - color_max)); 			// Decrease when history is near max color
-	float factor_contrast	= 1.0f - saturate(Luminance(color_max - color_min)); 	// Increase when local contrast is low
-	float alpha				= (factor_velocity + factor_colorMin + factor_colorMax + factor_contrast) / 4.0f;
-	float blendfactor 		= lerp(g_blendMin, g_blendMax, alpha);
-	//=========================================================================================================================
+	//= Compute blend factor ==========================================================================
+	float factor_subpixel	= abs(sin(frac(length(velocity)) * PI)); // Decrease if motion is sub-pixel
+	float blendfactor 		= lerp(g_blendMin, g_blendMax, saturate(factor_subpixel));
+	//=================================================================================================
 	
 	float4 resolved_tonemapped 	= lerp(color_history, color_current, blendfactor);
 	float4 resolved 			= ReinhardInverse(resolved_tonemapped);
