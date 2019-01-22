@@ -46,19 +46,14 @@ using namespace Math;
 using namespace Helper;
 //=======================
 
+weak_ptr<Actor> Widget_Properties::m_inspectedActor;
+weak_ptr<Material> Widget_Properties::m_inspectedMaterial;
+
 namespace _Widget_Properties
 {
-	static std::weak_ptr<Actor> actorInspected;
-	static std::weak_ptr<Material> inspectedMaterial;
 	static ResourceCache* resourceCache;
 	static World* scene;
 	static Vector3 rotationHint;
-
-	//= COLOR PICKERS =============================================
-	static unique_ptr<ButtonColorPicker> materialButtonColorPicker;
-	static unique_ptr<ButtonColorPicker> lightButtonColorPicker;
-	static unique_ptr<ButtonColorPicker> cameraButtonColorPicker;
-	//=============================================================
 }
 
 namespace ComponentProperty
@@ -143,10 +138,10 @@ namespace ComponentProperty
 
 Widget_Properties::Widget_Properties(Context* context) : Widget(context)
 {
-	m_title = "Properties";
-	_Widget_Properties::lightButtonColorPicker		= make_unique<ButtonColorPicker>("Light Color Picker");
-	_Widget_Properties::materialButtonColorPicker	= make_unique<ButtonColorPicker>("Material Color Picker");
-	_Widget_Properties::cameraButtonColorPicker		= make_unique<ButtonColorPicker>("Camera Color Picker");
+	m_title					= "Properties";
+	m_colorPicker_light		= make_unique<ButtonColorPicker>("Light Color Picker");
+	m_colorPicker_material	= make_unique<ButtonColorPicker>("Material Color Picker");
+	m_colorPicker_camera	= make_unique<ButtonColorPicker>("Camera Color Picker");
 
 	_Widget_Properties::resourceCache	= m_context->GetSubsystem<ResourceCache>();
 	_Widget_Properties::scene			= m_context->GetSubsystem<World>();
@@ -157,9 +152,9 @@ void Widget_Properties::Tick(float deltaTime)
 {
 	ImGui::PushItemWidth(ComponentProperty::g_maxWidth);
 
-	if (!_Widget_Properties::actorInspected.expired())
+	if (!m_inspectedActor.expired())
 	{
-		auto actorPtr = _Widget_Properties::actorInspected.lock().get();
+		auto actorPtr = m_inspectedActor.lock().get();
 
 		auto transform		= actorPtr->GetComponent<Transform>();
 		auto light			= actorPtr->GetComponent<Light>();
@@ -191,9 +186,9 @@ void Widget_Properties::Tick(float deltaTime)
 		ShowAddComponentButton();
 		Drop_AutoAddComponents();
 	}
-	else if (!_Widget_Properties::inspectedMaterial.expired())
+	else if (!m_inspectedMaterial.expired())
 	{
-		ShowMaterial(_Widget_Properties::inspectedMaterial.lock());
+		ShowMaterial(m_inspectedMaterial.lock());
 	}
 
 	ImGui::PopItemWidth();
@@ -201,7 +196,7 @@ void Widget_Properties::Tick(float deltaTime)
 
 void Widget_Properties::Inspect(weak_ptr<Actor> actor)
 {
-	_Widget_Properties::actorInspected = actor;
+	m_inspectedActor = actor;
 
 	if (auto sharedPtr = actor.lock())
 	{
@@ -213,17 +208,17 @@ void Widget_Properties::Inspect(weak_ptr<Actor> actor)
 	}
 
 	// If we were previously inspecting a material, save the changes
-	if (!_Widget_Properties::inspectedMaterial.expired())
+	if (!m_inspectedMaterial.expired())
 	{
-		_Widget_Properties::inspectedMaterial.lock()->SaveToFile(_Widget_Properties::inspectedMaterial.lock()->GetResourceFilePath());
+		m_inspectedMaterial.lock()->SaveToFile(m_inspectedMaterial.lock()->GetResourceFilePath());
 	}
-	_Widget_Properties::inspectedMaterial.reset();
+	m_inspectedMaterial.reset();
 }
 
 void Widget_Properties::Inspect(weak_ptr<Material> material)
 {
-	_Widget_Properties::actorInspected.reset();
-	_Widget_Properties::inspectedMaterial = material;
+	m_inspectedActor.reset();
+	m_inspectedMaterial = material;
 }
 
 void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform)
@@ -297,7 +292,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 
 	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
 	{
-		//= REFLECT ============================================================
+		//= REFLECT =====================================================
 		static vector<char*> types	= { "Directional", "Point", "Spot" };
 		int typeInt					= (int)light->GetLightType();
 		const char* typeCharPtr		= types[typeInt];
@@ -307,8 +302,8 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		float bias					= light->GetBias();
 		float normalBias			= light->GetNormalBias();
 		float range					= light->GetRange();
-		_Widget_Properties::lightButtonColorPicker->SetColor(light->GetColor());
-		//======================================================================
+		m_colorPicker_light->SetColor(light->GetColor());
+		//===============================================================
 
 		// Type
 		ImGui::Text("Type");
@@ -334,7 +329,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 
 		// Color
 		ImGui::Text("Color");
-		ImGui::SameLine(ComponentProperty::g_column); _Widget_Properties::lightButtonColorPicker->Update();
+		ImGui::SameLine(ComponentProperty::g_column); m_colorPicker_light->Update();
 
 		// Intensity
 		ImGui::Text("Intensity");
@@ -375,16 +370,16 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightAngle", &angle, 1.0f, 179.0f); ImGui::PopItemWidth();
 		}
 
-		//= MAP ====================================================================================================================================================
-		if ((LightType)typeInt != light->GetLightType())									light->SetLightType((LightType)typeInt);
-		if (intensity != light->GetIntensity())												light->SetIntensity(intensity);
-		if (castsShadows != light->GetCastShadows())										light->SetCastShadows(castsShadows);
-		if (bias != light->GetBias())														light->SetBias(bias);
-		if (normalBias != light->GetNormalBias())											light->SetNormalBias(normalBias);
-		if (angle / 179.0f != light->GetAngle())											light->SetAngle(angle / 179.0f);
-		if (range != light->GetRange())														light->SetRange(range);
-		if (_Widget_Properties::lightButtonColorPicker->GetColor() != light->GetColor())	light->SetColor(_Widget_Properties::lightButtonColorPicker->GetColor());
-		//==========================================================================================================================================================
+		//= MAP ============================================================================================================
+		if ((LightType)typeInt != light->GetLightType())				light->SetLightType((LightType)typeInt);
+		if (intensity != light->GetIntensity())							light->SetIntensity(intensity);
+		if (castsShadows != light->GetCastShadows())					light->SetCastShadows(castsShadows);
+		if (bias != light->GetBias())									light->SetBias(bias);
+		if (normalBias != light->GetNormalBias())						light->SetNormalBias(normalBias);
+		if (angle / 179.0f != light->GetAngle())						light->SetAngle(angle / 179.0f);
+		if (range != light->GetRange())									light->SetRange(range);
+		if (m_colorPicker_light->GetColor() != light->GetColor())	light->SetColor(m_colorPicker_light->GetColor());
+		//==================================================================================================================
 	}
 	ComponentProperty::End();
 }
@@ -717,15 +712,15 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 
 	if (ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false))
 	{
-		//= REFLECT ===============================================================================
+		//= REFLECT ====================================================
 		float roughness = material->GetRoughnessMultiplier();
 		float metallic	= material->GetMetallicMultiplier();
 		float normal	= material->GetNormalMultiplier();
 		float height	= material->GetHeightMultiplier();
 		Vector2 tiling	= material->GetTiling();
 		Vector2 offset	= material->GetOffset();
-		_Widget_Properties::materialButtonColorPicker->SetColor(material->GetColorAlbedo());
-		//=========================================================================================
+		m_colorPicker_material->SetColor(material->GetColorAlbedo());
+		//==============================================================
 
 		static const ImVec2 materialTextSize = ImVec2(80, 80);
 
@@ -771,7 +766,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 
 			// Albedo
 			DisplayTextureSlot(texAlbedo, "Albedo", TextureType_Albedo);
-			ImGui::SameLine(); _Widget_Properties::materialButtonColorPicker->Update();
+			ImGui::SameLine(); m_colorPicker_material->Update();
 
 			// Roughness
 			DisplayTextureSlot(texRoughness, "Roughness", TextureType_Roughness);
@@ -813,15 +808,15 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, ImGuiInputTextFlags_CharsDecimal);
 		}
 
-		//= MAP ============================================================================================================================================================================
-		if (roughness != material->GetRoughnessMultiplier())											material->SetRoughnessMultiplier(roughness);
-		if (metallic != material->GetMetallicMultiplier())												material->SetMetallicMultiplier(metallic);
-		if (normal != material->GetNormalMultiplier())													material->SetNormalMultiplier(normal);
-		if (height != material->GetHeightMultiplier())													material->SetHeightMultiplier(height);
-		if (tiling != material->GetTiling())															material->SetTiling(tiling);
-		if (offset != material->GetOffset())															material->SetOffset(offset);
-		if (_Widget_Properties::materialButtonColorPicker->GetColor() != material->GetColorAlbedo())	material->SetColorAlbedo(_Widget_Properties::materialButtonColorPicker->GetColor());
-		//==================================================================================================================================================================================
+		//= MAP ====================================================================================================================================
+		if (roughness != material->GetRoughnessMultiplier())						material->SetRoughnessMultiplier(roughness);
+		if (metallic != material->GetMetallicMultiplier())							material->SetMetallicMultiplier(metallic);
+		if (normal != material->GetNormalMultiplier())								material->SetNormalMultiplier(normal);
+		if (height != material->GetHeightMultiplier())								material->SetHeightMultiplier(height);
+		if (tiling != material->GetTiling())										material->SetTiling(tiling);
+		if (offset != material->GetOffset())										material->SetOffset(offset);
+		if (m_colorPicker_material->GetColor() != material->GetColorAlbedo())	material->SetColorAlbedo(m_colorPicker_material->GetColor());
+		//==========================================================================================================================================
 	}
 	ComponentProperty::End();
 }
@@ -833,21 +828,21 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 
 	if (ComponentProperty::Begin("Camera", Icon_Component_Camera, camera))
 	{
-		//= REFLECT ==========================================================================
+		//= REFLECT =============================================================
 		static const char* projectionTypes[] = { "Perspective", "Orthographic" };
 		auto projectionInt = (int)camera->GetProjectionType();
 		const char* projectionCharPtr = projectionTypes[projectionInt];
 		float fov = camera->GetFOV_Horizontal_Deg();
 		float nearPlane = camera->GetNearPlane();
 		float farPlane = camera->GetFarPlane();
-		_Widget_Properties::cameraButtonColorPicker->SetColor(camera->GetClearColor());
-		//====================================================================================
+		m_colorPicker_camera->SetColor(camera->GetClearColor());
+		//=======================================================================
 
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 		// Background
 		ImGui::Text("Background");
-		ImGui::SameLine(ComponentProperty::g_column); _Widget_Properties::cameraButtonColorPicker->Update();
+		ImGui::SameLine(ComponentProperty::g_column); m_colorPicker_camera->Update();
 
 		// Projection
 		ImGui::Text("Projection");
@@ -880,13 +875,13 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 		ImGui::SameLine(ComponentProperty::g_column);		ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &nearPlane, 0.1f, 0.1f, "%.3f", inputTextFlags); ImGui::PopItemWidth();
 		ImGui::SetCursorPosX(ComponentProperty::g_column);	ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &farPlane, 0.1f, 0.1f, "%.3f", inputTextFlags); ImGui::PopItemWidth();
 
-		//= MAP =====================================================================================================================================
-		if ((ProjectionType)projectionInt != camera->GetProjectionType())									camera->SetProjection((ProjectionType)projectionInt);
-		if (fov != camera->GetFOV_Horizontal_Deg())														camera->SetFOV_Horizontal_Deg(fov);
-		if (nearPlane != camera->GetNearPlane())														camera->SetNearPlane(nearPlane);
-		if (farPlane != camera->GetFarPlane())															camera->SetFarPlane(farPlane);
-		if (_Widget_Properties::cameraButtonColorPicker->GetColor() != camera->GetClearColor())	camera->SetClearColor(_Widget_Properties::cameraButtonColorPicker->GetColor());
-		//===========================================================================================================================================
+		//= MAP =======================================================================================================================
+		if ((ProjectionType)projectionInt != camera->GetProjectionType())	camera->SetProjection((ProjectionType)projectionInt);
+		if (fov != camera->GetFOV_Horizontal_Deg())							camera->SetFOV_Horizontal_Deg(fov);
+		if (nearPlane != camera->GetNearPlane())							camera->SetNearPlane(nearPlane);
+		if (farPlane != camera->GetFarPlane())								camera->SetFarPlane(farPlane);
+		if (m_colorPicker_camera->GetColor() != camera->GetClearColor())	camera->SetClearColor(m_colorPicker_camera->GetColor());
+		//=============================================================================================================================
 	}
 	ComponentProperty::End();
 }
@@ -1081,7 +1076,7 @@ void Widget_Properties::Drop_AutoAddComponents()
 {
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
 	{
-		if (auto scriptComponent = _Widget_Properties::actorInspected.lock()->AddComponent<Script>())
+		if (auto scriptComponent = m_inspectedActor.lock()->AddComponent<Script>())
 		{
 			scriptComponent->SetScript(get<const char*>(payload->data));
 		}

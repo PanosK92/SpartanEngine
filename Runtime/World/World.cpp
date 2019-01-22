@@ -285,7 +285,7 @@ namespace Directus
 	shared_ptr<Actor>& World::Actor_Add(const shared_ptr<Actor>& actor)
 	{
 		if (!actor)
-			return m_actorEmpty;
+			return m_actor_empty;
 
 		return m_actorsPrimary.emplace_back(actor);
 	}
