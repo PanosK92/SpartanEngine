@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================================
+//= INCLUDES =================================
 #include "Transform_PositionHandle.h"
 #include "..\Model.h"
+#include "..\Renderer.h"
 #include "..\Utilities\Geometry.h"
 #include "..\..\Logging\Log.h"
 #include "..\..\Input\Input.h"
@@ -33,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\..\Core\Context.h"
 #include "..\..\Core\Settings.h"
 #include "..\..\World\Components\Renderable.h"
-//===========================================
+//============================================
 
 //=============================
 using namespace std;
@@ -68,6 +69,8 @@ namespace Directus
 	void Transform_PositionHandle::Initialize(Context* context)
 	{
 		m_context			= context;
+		m_renderer			= context->GetSubsystem<Renderer>();
+
 		m_position_previous = Vector3::Zero;
 		m_position_current	= Vector3::Zero;
 		m_position_delta	= Vector3::Zero;
@@ -197,12 +200,17 @@ namespace Directus
 		Vector3 up					= (space == TransformHandle_World) ? Vector3::Up					: actor_rotation * Vector3::Up;
 		Vector3 forward				= (space == TransformHandle_World) ? Vector3::Forward				: actor_rotation * Vector3::Forward;
 
+		// Draw lines that connect the handles - TODO: Load handles that are proper arrows (e.g. a line starting from the origin), this is an ugly hack
+		m_renderer->DrawLine(aabb_center, m_handle_x.position, Vector4(m_handle_x.GetColor(), 1.0f));
+		m_renderer->DrawLine(aabb_center, m_handle_y.position, Vector4(m_handle_y.GetColor(), 1.0f));
+		m_renderer->DrawLine(aabb_center, m_handle_z.position, Vector4(m_handle_z.GetColor(), 1.0f));
+
 		// Compute scale
 		float distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length()				: 0.0f;
 		float distance_to_camera_x	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - right)).Length()		: 0.0f;
 		float distance_to_camera_y	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - up)).Length()		: 0.0f;
 		float distance_to_camera_z	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - forward)).Length()	: 0.0f;
-		float handle_size			= 0.025f;
+		float handle_size			= 0.015f;
 		float handle_distance		= distance_to_camera / (1.0f / 0.1f);
 
 		// Compute transform for the handles

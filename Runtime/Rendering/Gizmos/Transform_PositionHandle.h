@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class Renderer;
 	class Context;
 	class RHI_VertexBuffer;
 	class RHI_IndexBuffer;
@@ -116,5 +117,6 @@ namespace Directus
 		Math::Vector3 m_position_current;
 		std::unique_ptr<Model> m_model;
 		Context* m_context;
+		Renderer* m_renderer;
 	};
 }
