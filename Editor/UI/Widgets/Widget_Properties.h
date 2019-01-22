@@ -43,6 +43,8 @@ namespace Directus
 	class IComponent;
 }
 
+class ButtonColorPicker;
+
 class Widget_Properties : public Widget
 {
 public:
@@ -68,4 +70,13 @@ private:
 	void ShowAddComponentButton();
 	void ComponentContextMenu_Add();
 	void Drop_AutoAddComponents();
+
+	// Inspected resources
+	static std::weak_ptr<Directus::Actor> m_inspectedActor;
+	static std::weak_ptr<Directus::Material> m_inspectedMaterial;
+
+	// Color pickers
+	std::unique_ptr<ButtonColorPicker> m_colorPicker_material;
+	std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
+	std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
 };

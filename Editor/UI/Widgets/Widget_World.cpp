@@ -49,7 +49,7 @@ weak_ptr<Actor> g_actorEmpty;
 namespace _Widget_World
 {
 	static Engine* g_engine			= nullptr;
-	static World* g_scene			= nullptr;
+	static World* g_world			= nullptr;
 	static Input* g_input			= nullptr;
 	static bool g_popupRenameActor	= false;
 	static DragDropPayload g_payload;
@@ -63,10 +63,8 @@ namespace _Widget_World
 Widget_World::Widget_World(Context* context) : Widget(context)
 {
 	m_title					= "World";
-	_Widget_World::g_scene	= nullptr;
-
 	_Widget_World::g_engine	= m_context->GetSubsystem<Engine>();
-	_Widget_World::g_scene	= m_context->GetSubsystem<World>();
+	_Widget_World::g_world	= m_context->GetSubsystem<World>();
 	_Widget_World::g_input	= m_context->GetSubsystem<Input>();
 
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
@@ -99,6 +97,7 @@ void Widget_World::Tick(float deltaTime)
 void Widget_World::SetSelectedActor(weak_ptr<Actor> actor)
 {
 	m_actorSelected = actor;
+	_Widget_World::g_world->SetSelectedActor(m_actorSelected);
 	_Widget_World::g_selectionExpandPending = true;
 	Widget_Properties::Inspect(m_actorSelected);
 }
@@ -113,13 +112,13 @@ void Widget_World::Tree_Show()
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 		{
 			auto actorID = get<unsigned int>(payload->data);
-			if (auto droppedActor = _Widget_World::g_scene->Actor_GetByID(actorID))
+			if (auto droppedActor = _Widget_World::g_world->Actor_GetByID(actorID))
 			{
 				droppedActor->GetTransform_PtrRaw()->SetParent(nullptr);
 			}
 		}
 
-		auto rootActors = _Widget_World::g_scene->Actors_GetRoots();
+		auto rootActors = _Widget_World::g_world->Actors_GetRoots();
 		for (const auto& actor : rootActors)
 		{
 			Tree_AddActor(actor.get());
@@ -273,7 +272,7 @@ void Widget_World::Actor_HandleDragDrop(Actor* actorPtr)
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
 	{
 		auto actorID = get<unsigned int>(payload->data);
-		if (auto droppedActor = _Widget_World::g_scene->Actor_GetByID(actorID))
+		if (auto droppedActor = _Widget_World::g_world->Actor_GetByID(actorID))
 		{
 			if (droppedActor->GetID() != actorPtr->GetID())
 			{
@@ -460,12 +459,12 @@ void Widget_World::HandleKeyShortcuts()
 
 void Widget_World::Action_Actor_Delete(weak_ptr<Actor> actor)
 {
-	_Widget_World::g_scene->Actor_Remove(actor);
+	_Widget_World::g_world->Actor_Remove(actor);
 }
 
 Actor* Widget_World::Action_Actor_CreateEmpty()
 {
-	auto actor = _Widget_World::g_scene->Actor_Create().get();
+	auto actor = _Widget_World::g_world->Actor_Create().get();
 	if (auto selected = m_actorSelected.lock())
 	{
 		actor->GetTransform_PtrRaw()->SetParent(selected->GetTransform_PtrRaw());

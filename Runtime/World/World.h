@@ -58,7 +58,7 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= Actor HELPER FUNCTIONS ====================================================
+		//= Actor HELPER FUNCTIONS ===========================================================
 		std::shared_ptr<Actor>& Actor_Create();
 		std::shared_ptr<Actor>& Actor_Add(const std::shared_ptr<Actor>& actor);
 		bool Actor_Exists(const std::weak_ptr<Actor>& actor);
@@ -68,7 +68,12 @@ namespace Directus
 		const std::shared_ptr<Actor>& Actor_GetByName(const std::string& name);
 		const std::shared_ptr<Actor>& Actor_GetByID(unsigned int ID);
 		int Actor_GetCount() { return (int)m_actorsPrimary.size(); }
-		//=============================================================================
+		//====================================================================================
+
+		//= SELECTED ACTOR ===============================================================
+		std::weak_ptr<Actor> GetSelectedActor()				{ return m_actor_selected; }
+		void SetSelectedActor(std::weak_ptr<Actor> actor)	{ m_actor_selected = actor; }
+		//===============================================================================
 
 	private:
 		//= COMMON ACTOR CREATION =======================
@@ -81,8 +86,9 @@ namespace Directus
 		std::vector<std::shared_ptr<Actor>> m_actorsPrimary;
 		std::vector<std::shared_ptr<Actor>> m_actorsSecondry;
 
-		std::shared_ptr<Actor> m_actorEmpty;
-		std::weak_ptr<Actor> m_skybox;
+		std::shared_ptr<Actor> m_actor_empty;
+		std::weak_ptr<Actor> m_actor_skybox;
+		std::weak_ptr<Actor> m_actor_selected;
 		bool m_wasInEditorMode;
 		bool m_isDirty;
 		Scene_State m_state;

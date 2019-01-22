@@ -70,7 +70,6 @@ namespace Directus
 
 		// Returns the nearest actor under the cursor
 		std::shared_ptr<Actor> Pick(const Math::Vector2& mousePos);
-		std::weak_ptr<Actor> GetPickedActor() { return m_pickedActor; }
 
 		// Converts a world point to a screen point
 		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);
@@ -119,6 +118,5 @@ namespace Directus
 		Math::Quaternion m_rotation;
 		bool m_isDirty;
 		RHI_Viewport m_lastKnownViewport;
-		std::weak_ptr<Actor> m_pickedActor;
 	};
 }

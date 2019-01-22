@@ -179,9 +179,6 @@ namespace Directus
 			break;
 		}
 
-		// Keep weak reference
-		m_pickedActor = actor;
-
 		// Return closest hit
 		return actor;
 	}
