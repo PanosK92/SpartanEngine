@@ -121,11 +121,11 @@ namespace Directus
 		bool Flags_IsSet(RenderMode flag)		{ return m_flags & flag; }
 		//================================================================
 
-		//= LINE RENDERING ==============================================================================================================
-		void AddBoundigBox(const Math::BoundingBox& box, const Math::Vector4& color);
-		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color) { AddLine(from, to, color, color); }
-		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& colorFrom, const Math::Vector4& colorTo);
-		//===============================================================================================================================
+		//= LINE RENDERING ==========================================================================================================================================================
+		void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+		void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color = Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)) { DrawLine(from, to, color, color); }
+		void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& colorFrom, const Math::Vector4& colorTo);
+		//===========================================================================================================================================================================
 
 		const std::shared_ptr<RHI_Device>& GetRHIDevice()	{ return m_rhiDevice; }
 		static bool IsRendering()							{ return m_isRendering; }
@@ -142,7 +142,7 @@ namespace Directus
 		// Bloom
 		float m_bloomIntensity			= 0.02f;	// The intensity of the bloom
 		// Sharpening
-		float m_sharpenStrength			= 1.5f;		// Strength of the sharpening
+		float m_sharpenStrength			= 1.0f;		// Strength of the sharpening
 		float m_sharpenClamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
 		// Motion Blur
 		float m_motionBlurStrength		= 4.0f;		// Strength of the motion blur

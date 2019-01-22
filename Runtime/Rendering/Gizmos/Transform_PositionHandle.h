@@ -45,16 +45,17 @@ namespace Directus
 	{
 		PositionHandle_Axis(const Math::Vector3& axis)
 		{
-			this->axis			= axis;
-			transform			= Math::Matrix::Identity;
-			position			= Math::Vector3::Zero;
-			rotation			= Math::Quaternion::Identity;
-			scale				= Math::Vector3::One;
-			box					= Math::BoundingBox::Zero;
-			box_transformed		= Math::BoundingBox::Zero;
-			delta				= Math::Vector3::Zero;
-			bool isPressed		= false;
-			bool isHovered		= false;
+			this->axis		= axis;
+			transform		= Math::Matrix::Identity;
+			position		= Math::Vector3::Zero;
+			rotation		= Math::Quaternion::Identity;
+			scale			= Math::Vector3::One;
+			box				= Math::BoundingBox::Zero;
+			box_transformed	= Math::BoundingBox::Zero;
+			delta			= Math::Vector3::Zero;
+			isEditing		= false;
+			isHovered		= false;
+			isDisabled		= false;
 		}
 
 		void UpdateTransform()
@@ -66,8 +67,11 @@ namespace Directus
 		void UpdateInput(Transform* transform, Input* input);
 		const Math::Vector3& GetColor() const
 		{
-			if (isHovered || isPressed)
-				return m_color_hovered;
+			if (isDisabled)
+				return m_color_disabled;
+
+			if (isHovered || isEditing)
+				return m_color_active;
 
 			return axis;
 		}
@@ -80,9 +84,11 @@ namespace Directus
 		Math::BoundingBox box;
 		Math::BoundingBox box_transformed;
 		Math::Vector3 delta;
-		bool isPressed;
+		bool isEditing;
 		bool isHovered;
-		Math::Vector3 m_color_hovered = Math::Vector3(1.0f, 1.0f, 0.0f);
+		bool isDisabled;
+		Math::Vector3 m_color_active	= Math::Vector3(1.0f, 1.0f, 0.0f);
+		Math::Vector3 m_color_disabled	= Math::Vector3(0.5f, 0.5f, 0.5f);
 	};
 
 	class ENGINE_CLASS Transform_PositionHandle

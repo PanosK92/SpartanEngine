@@ -483,7 +483,7 @@ namespace Directus
 		LOGF_INFO("Resolution set to %dx%d", width, height);
 	}
 
-	void Renderer::AddBoundigBox(const BoundingBox& box, const Vector4& color)
+	void Renderer::DrawBox(const BoundingBox& box, const Vector4& color)
 	{
 		// Compute points from min and max
 		Vector3 boundPoint1 = box.GetMin();
@@ -496,25 +496,25 @@ namespace Directus
 		Vector3 boundPoint8 = Vector3(boundPoint2.x, boundPoint2.y, boundPoint1.z);
 
 		// top of rectangular cuboid (6-2-8-4)
-		AddLine(boundPoint6, boundPoint2, color);
-		AddLine(boundPoint2, boundPoint8, color);
-		AddLine(boundPoint8, boundPoint4, color);
-		AddLine(boundPoint4, boundPoint6, color);
+		DrawLine(boundPoint6, boundPoint2, color);
+		DrawLine(boundPoint2, boundPoint8, color);
+		DrawLine(boundPoint8, boundPoint4, color);
+		DrawLine(boundPoint4, boundPoint6, color);
 
 		// bottom of rectangular cuboid (3-7-5-1)
-		AddLine(boundPoint3, boundPoint7, color);
-		AddLine(boundPoint7, boundPoint5, color);
-		AddLine(boundPoint5, boundPoint1, color);
-		AddLine(boundPoint1, boundPoint3, color);
+		DrawLine(boundPoint3, boundPoint7, color);
+		DrawLine(boundPoint7, boundPoint5, color);
+		DrawLine(boundPoint5, boundPoint1, color);
+		DrawLine(boundPoint1, boundPoint3, color);
 
 		// legs (6-3, 2-7, 8-5, 4-1)
-		AddLine(boundPoint6, boundPoint3, color);
-		AddLine(boundPoint2, boundPoint7, color);
-		AddLine(boundPoint8, boundPoint5, color);
-		AddLine(boundPoint4, boundPoint1, color);
+		DrawLine(boundPoint6, boundPoint3, color);
+		DrawLine(boundPoint2, boundPoint7, color);
+		DrawLine(boundPoint8, boundPoint5, color);
+		DrawLine(boundPoint4, boundPoint1, color);
 	}
 
-	void Renderer::AddLine(const Vector3& from, const Vector3& to, const Vector4& colorFrom, const Vector4& colorTo)
+	void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& colorFrom, const Vector4& colorTo)
 	{
 		m_lineVertices.emplace_back(from, colorFrom);
 		m_lineVertices.emplace_back(to, colorTo);
@@ -1394,7 +1394,7 @@ namespace Directus
 			if (drawPickingRay)
 			{
 				const Ray& ray = m_camera->GetPickingRay();
-				AddLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
+				DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
 			}
 
 			// bounding boxes
@@ -1404,7 +1404,7 @@ namespace Directus
 				{
 					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
-						AddBoundigBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						DrawBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 
@@ -1412,7 +1412,7 @@ namespace Directus
 				{
 					if (auto renderable = actor->GetRenderable_PtrRaw())
 					{
-						AddBoundigBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						DrawBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 			}

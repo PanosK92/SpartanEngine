@@ -40,7 +40,7 @@ namespace Directus
 
 	void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor)
 	{
-		m_renderer->AddLine(ToVector3(from), ToVector3(to), ToVector4(fromColor), ToVector4(toColor));
+		m_renderer->DrawLine(ToVector3(from), ToVector3(to), ToVector4(fromColor), ToVector4(toColor));
 	}
 
 	void PhysicsDebugDraw::drawContactPoint(const btVector3& PointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color)
