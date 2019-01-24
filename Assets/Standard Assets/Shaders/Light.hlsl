@@ -104,7 +104,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
 	[branch]
-    if (materialSample.a == 1.0f) // Sky
+    if (materialSample.a == 0.0f) // Sky
     {
         finalColor = texEnvironment.Sample(sampler_linear_clamp, DirectionToSphereUV(camera_to_pixel)).rgb;
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	

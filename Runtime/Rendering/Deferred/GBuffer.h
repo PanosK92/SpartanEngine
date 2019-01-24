@@ -49,6 +49,7 @@ namespace Directus
 
 		void SetAsRenderTarget(const std::shared_ptr<RHI_Pipeline>& pipelineState);
 		const std::shared_ptr<RHI_RenderTexture>& GetTexture(GBuffer_Texture_Type type);
+		void Clear();
 
 	private:
 		std::map<GBuffer_Texture_Type, std::shared_ptr<RHI_RenderTexture>> m_renderTargets;
