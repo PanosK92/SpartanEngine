@@ -71,18 +71,18 @@ namespace Directus
 	public:
 		enum ShadingMode
 		{
-			Shading_PBR,
-			Shading_Sky
+			Shading_Sky,
+			Shading_PBR	
 		};
 
 		Material(Context* context);
 		~Material();
 
-		//= IResource ==================================================
+		//= IResource ==========================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
 		unsigned int GetMemoryUsage() override;
-		//==============================================================
+		//======================================================
 
 		//= TEXTURE SLOTS  ====================================================================
 		const TextureSlot& GetTextureSlotByType(TextureType type);

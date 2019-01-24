@@ -339,7 +339,7 @@ namespace Directus
 			{
 				for (const auto& renderTargetView : m_renderTargetViews)
 				{
-					m_rhiDevice->ClearRenderTarget(renderTargetView, Vector4(0, 0, 0, 1));
+					m_rhiDevice->ClearRenderTarget(renderTargetView, Vector4(0, 0, 0, 0));
 				}
 
 				if (m_depthStencil)

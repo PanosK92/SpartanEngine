@@ -73,4 +73,13 @@ namespace Directus
 	{
 		return m_renderTargets[type];
 	}
+
+	void GBuffer::Clear()
+	{
+		m_renderTargets[GBuffer_Target_Albedo]->Clear(0, 0, 0, 0);
+		m_renderTargets[GBuffer_Target_Normal]->Clear(0, 0, 0, 0);
+		m_renderTargets[GBuffer_Target_Material]->Clear(0, 0, 0, 0);
+		m_renderTargets[GBuffer_Target_Velocity]->Clear(0, 0, 0, 0);
+		m_renderTargets[GBuffer_Target_Depth]->Clear(0, 0, 0, 0);
+	}
 }

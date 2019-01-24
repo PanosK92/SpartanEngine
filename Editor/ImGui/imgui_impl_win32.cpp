@@ -5,9 +5,8 @@
 //  [X] Platform: Clipboard support (for Win32 this is actually part of core imgui)
 //  [X] Platform: Mouse cursor shape and visibility. Disable with 'io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange'.
 //  [X] Platform: Keyboard arrays indexed using VK_* Virtual Key Codes, e.g. ImGui::IsKeyPressed(VK_SPACE).
+//  [X] Platform: Gamepad support. Enabled with 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad'.
 //  [X] Platform: Multi-viewport support (multiple windows). Enable with 'io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable'.
-// Missing features:
-//  [ ] Platform: Gamepad support (best leaving it to user application to fill io.NavInputs[] with gamepad inputs from their source of choice).
 
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -15,11 +14,15 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#include <XInput.h>
 #include <tchar.h>
 
 // CHANGELOG
 // (minor and older changes stripped away, please see git history for details)
 //  2018-XX-XX: Platform: Added support for multiple windows via the ImGuiPlatformIO interface.
+//  2019-01-17: Misc: Using GetForegroundWindow()+IsChild() instead of GetActiveWindow() to be compatible with windows created in a different thread or parent.
+//  2019-01-17: Inputs: Added support for mouse buttons 4 and 5 via WM_XBUTTON* messages.
+//  2019-01-15: Inputs: Added support for XInput gamepads (if ImGuiConfigFlags_NavEnableGamepad is set by user application).
 //  2018-11-30: Misc: Setting up io.BackendPlatformName so it can be displayed in the About Window.
 //  2018-06-29: Inputs: Added support for the ImGuiMouseCursor_Hand cursor.
 //  2018-06-10: Inputs: Fixed handling of mouse wheel messages to support fine position messages (typically sent by track-pads).
@@ -33,7 +36,7 @@
 //  2018-01-08: Inputs: Added mapping for ImGuiKey_Insert.
 //  2018-01-05: Inputs: Added WM_LBUTTONDBLCLK double-click handlers for window classes with the CS_DBLCLKS flag.
 //  2017-10-23: Inputs: Added WM_SYSKEYDOWN / WM_SYSKEYUP handlers so e.g. the VK_MENU key can be read.
-//  2017-10-23: Inputs: Using Win32 ::SetCapture/::GetCapture() to retrieve mouse positions outside the client area when dragging. 
+//  2017-10-23: Inputs: Using Win32 ::SetCapture/::GetCapture() to retrieve mouse positions outside the client area when dragging.
 //  2016-11-12: Inputs: Only call Win32 ::SetCursor(NULL) when io.MouseDrawCursor is set.
 
 // Win32 Data
@@ -41,6 +44,8 @@ static HWND                 g_hWnd = 0;
 static INT64                g_Time = 0;
 static INT64                g_TicksPerSecond = 0;
 static ImGuiMouseCursor     g_LastMouseCursor = ImGuiMouseCursor_COUNT;
+static bool                 g_HasGamepad = false;
+static bool                 g_WantUpdateHasGamepad = true;
 static bool                 g_WantUpdateMonitors = true;
 
 // Forward Declarations
@@ -158,8 +163,10 @@ static void ImGui_ImplWin32_UpdateMousePos()
     POINT mouse_screen_pos;
     if (!::GetCursorPos(&mouse_screen_pos))
         return;
-    if (HWND focused_hwnd = ::GetActiveWindow())
+    if (HWND focused_hwnd = ::GetForegroundWindow())
     {
+        if (::IsChild(focused_hwnd, g_hWnd))
+            focused_hwnd = g_hWnd;
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
@@ -190,6 +197,65 @@ static void ImGui_ImplWin32_UpdateMousePos()
         if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)hovered_hwnd))
             if ((viewport->Flags & ImGuiViewportFlags_NoInputs) == 0) // FIXME: We still get our NoInputs window with WM_NCHITTEST/HTTRANSPARENT code when decorated?
                 io.MouseHoveredViewport = viewport->ID;
+
+#if 0
+    POINT pos;
+    if (HWND active_window = ::GetForegroundWindow())
+        if (active_window == g_hWnd || ::IsChild(active_window, g_hWnd))
+            if (::GetCursorPos(&pos) && ::ScreenToClient(g_hWnd, &pos))
+                io.MousePos = ImVec2((float)pos.x, (float)pos.y);
+#endif
+}
+
+#ifdef _MSC_VER
+#pragma comment(lib, "xinput")
+#endif
+
+// Gamepad navigation mapping
+void    ImGui_ImplWin32_UpdateGameControllers()
+{
+    ImGuiIO& io = ImGui::GetIO();
+    memset(io.NavInputs, 0, sizeof(io.NavInputs));
+    if ((io.ConfigFlags & ImGuiConfigFlags_NavEnableGamepad) == 0)
+        return;
+
+    // Calling XInputGetState() every frame on disconnected gamepads is unfortunately too slow.
+    // Instead we refresh gamepad availability by calling XInputGetCapabilities() _only_ after receiving WM_DEVICECHANGE.
+    if (g_WantUpdateHasGamepad)
+    {
+        XINPUT_CAPABILITIES caps;
+        g_HasGamepad = (XInputGetCapabilities(0, XINPUT_FLAG_GAMEPAD, &caps) == ERROR_SUCCESS);
+        g_WantUpdateHasGamepad = false;
+    }
+
+    XINPUT_STATE xinput_state;
+    io.BackendFlags &= ~ImGuiBackendFlags_HasGamepad;
+    if (g_HasGamepad && XInputGetState(0, &xinput_state) == ERROR_SUCCESS)
+    {
+        const XINPUT_GAMEPAD& gamepad = xinput_state.Gamepad;
+        io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
+
+        #define MAP_BUTTON(NAV_NO, BUTTON_ENUM)     { io.NavInputs[NAV_NO] = (gamepad.wButtons & BUTTON_ENUM) ? 1.0f : 0.0f; }
+        #define MAP_ANALOG(NAV_NO, VALUE, V0, V1)   { float vn = (float)(VALUE - V0) / (float)(V1 - V0); if (vn > 1.0f) vn = 1.0f; if (vn > 0.0f && io.NavInputs[NAV_NO] < vn) io.NavInputs[NAV_NO] = vn; }
+        MAP_BUTTON(ImGuiNavInput_Activate,      XINPUT_GAMEPAD_A);              // Cross / A
+        MAP_BUTTON(ImGuiNavInput_Cancel,        XINPUT_GAMEPAD_B);              // Circle / B
+        MAP_BUTTON(ImGuiNavInput_Menu,          XINPUT_GAMEPAD_X);              // Square / X
+        MAP_BUTTON(ImGuiNavInput_Input,         XINPUT_GAMEPAD_Y);              // Triangle / Y
+        MAP_BUTTON(ImGuiNavInput_DpadLeft,      XINPUT_GAMEPAD_DPAD_LEFT);      // D-Pad Left
+        MAP_BUTTON(ImGuiNavInput_DpadRight,     XINPUT_GAMEPAD_DPAD_RIGHT);     // D-Pad Right
+        MAP_BUTTON(ImGuiNavInput_DpadUp,        XINPUT_GAMEPAD_DPAD_UP);        // D-Pad Up
+        MAP_BUTTON(ImGuiNavInput_DpadDown,      XINPUT_GAMEPAD_DPAD_DOWN);      // D-Pad Down
+        MAP_BUTTON(ImGuiNavInput_FocusPrev,     XINPUT_GAMEPAD_LEFT_SHOULDER);  // L1 / LB
+        MAP_BUTTON(ImGuiNavInput_FocusNext,     XINPUT_GAMEPAD_RIGHT_SHOULDER); // R1 / RB
+        MAP_BUTTON(ImGuiNavInput_TweakSlow,     XINPUT_GAMEPAD_LEFT_SHOULDER);  // L1 / LB
+        MAP_BUTTON(ImGuiNavInput_TweakFast,     XINPUT_GAMEPAD_RIGHT_SHOULDER); // R1 / RB
+        MAP_ANALOG(ImGuiNavInput_LStickLeft,    gamepad.sThumbLX,  -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE, -32768);
+        MAP_ANALOG(ImGuiNavInput_LStickRight,   gamepad.sThumbLX,  +XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE, +32767);
+        MAP_ANALOG(ImGuiNavInput_LStickUp,      gamepad.sThumbLY,  +XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE, +32767);
+        MAP_ANALOG(ImGuiNavInput_LStickDown,    gamepad.sThumbLY,  -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE, -32767);
+        #undef MAP_BUTTON
+        #undef MAP_ANALOG
+    }
 }
 
 void    ImGui_ImplWin32_NewFrame()
@@ -227,14 +293,20 @@ void    ImGui_ImplWin32_NewFrame()
         g_LastMouseCursor = mouse_cursor;
         ImGui_ImplWin32_UpdateMouseCursor();
     }
+
+    // Update game controllers (if available)
+    ImGui_ImplWin32_UpdateGameControllers();
 }
 
 // Allow compilation with old Windows SDK. MinGW doesn't have default _WIN32_WINNT/WINVER versions.
 #ifndef WM_MOUSEHWHEEL
 #define WM_MOUSEHWHEEL 0x020E
 #endif
+#ifndef DBT_DEVNODES_CHANGED
+#define DBT_DEVNODES_CHANGED 0x0007
+#endif
 
-// Process Win32 mouse/keyboard inputs. 
+// Process Win32 mouse/keyboard inputs.
 // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
 // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
 // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
@@ -252,11 +324,13 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARA
     case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK:
     case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK:
     case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK:
+    case WM_XBUTTONDOWN: case WM_XBUTTONDBLCLK:
     {
         int button = 0;
-        if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDBLCLK) button = 0;
-        if (msg == WM_RBUTTONDOWN || msg == WM_RBUTTONDBLCLK) button = 1;
-        if (msg == WM_MBUTTONDOWN || msg == WM_MBUTTONDBLCLK) button = 2;
+        if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDBLCLK) { button = 0; }
+        if (msg == WM_RBUTTONDOWN || msg == WM_RBUTTONDBLCLK) { button = 1; }
+        if (msg == WM_MBUTTONDOWN || msg == WM_MBUTTONDBLCLK) { button = 2; }
+        if (msg == WM_XBUTTONDOWN || msg == WM_XBUTTONDBLCLK) { button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1) ? 3 : 4; }
         if (!ImGui::IsAnyMouseDown() && ::GetCapture() == NULL)
             ::SetCapture(hwnd);
         io.MouseDown[button] = true;
@@ -265,11 +339,13 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARA
     case WM_LBUTTONUP:
     case WM_RBUTTONUP:
     case WM_MBUTTONUP:
+    case WM_XBUTTONUP:
     {
         int button = 0;
-        if (msg == WM_LBUTTONUP) button = 0;
-        if (msg == WM_RBUTTONUP) button = 1;
-        if (msg == WM_MBUTTONUP) button = 2;
+        if (msg == WM_LBUTTONUP) { button = 0; }
+        if (msg == WM_RBUTTONUP) { button = 1; }
+        if (msg == WM_MBUTTONUP) { button = 2; }
+        if (msg == WM_XBUTTONUP) { button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1) ? 3 : 4; }
         io.MouseDown[button] = false;
         if (!ImGui::IsAnyMouseDown() && ::GetCapture() == hwnd)
             ::ReleaseCapture();
@@ -299,6 +375,10 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARA
     case WM_SETCURSOR:
         if (LOWORD(lParam) == HTCLIENT && ImGui_ImplWin32_UpdateMouseCursor())
             return 1;
+        return 0;
+    case WM_DEVICECHANGE:
+        if ((UINT)wParam == DBT_DEVNODES_CHANGED)
+            g_WantUpdateHasGamepad = true;
         return 0;
     case WM_DISPLAYCHANGE:
         g_WantUpdateMonitors = true;
@@ -336,6 +416,8 @@ typedef enum { MDT_EFFECTIVE_DPI = 0, MDT_ANGULAR_DPI = 1, MDT_RAW_DPI = 2, MDT_
 #ifndef _DPI_AWARENESS_CONTEXTS_
 DECLARE_HANDLE(DPI_AWARENESS_CONTEXT);
 #define DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE    (DPI_AWARENESS_CONTEXT)-3
+#endif
+#ifndef DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 #define DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 (DPI_AWARENESS_CONTEXT)-4
 #endif
 typedef HRESULT(WINAPI * PFN_SetProcessDpiAwareness)(PROCESS_DPI_AWARENESS);                     // Shcore.lib+dll, Windows 8.1
@@ -574,7 +656,7 @@ static bool ImGui_ImplWin32_GetWindowFocus(ImGuiViewport* viewport)
 {
     ImGuiViewportDataWin32* data = (ImGuiViewportDataWin32*)viewport->PlatformUserData;
     IM_ASSERT(data->Hwnd != 0);
-    return ::GetActiveWindow() == data->Hwnd;
+    return ::GetForegroundWindow() == data->Hwnd;
 }
 
 static bool ImGui_ImplWin32_GetWindowMinimized(ImGuiViewport* viewport)

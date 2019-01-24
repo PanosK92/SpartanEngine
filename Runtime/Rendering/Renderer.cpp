@@ -576,7 +576,10 @@ namespace Directus
 			if (renderable)
 			{
 				bool isTransparent = !renderable->Material_Exists() ? false : renderable->Material_Ptr()->GetColorAlbedo().w < 1.0f;
-				m_actors[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(actor);
+				if (!skybox) // Ignore skybox
+				{
+					m_actors[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(actor);
+				}
 			}
 
 			if (light)
@@ -733,7 +736,9 @@ namespace Directus
 			return;
 
 		if (m_actors[Renderable_ObjectOpaque].empty())
-			return;
+		{
+			m_gbuffer->Clear(); // zeroed out material buffer causes skysphere to render
+		}
 
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_GBuffer");

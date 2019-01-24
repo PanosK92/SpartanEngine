@@ -1,4 +1,4 @@
-// dear imgui, v1.67 WIP
+// dear imgui, v1.68 WIP
 // (internal structures/api)
 
 // You may use this file to debug, understand or extend ImGui features but we don't provide any guarantee of forward compatibility!
@@ -6,7 +6,26 @@
 //   #define IMGUI_DEFINE_MATH_OPERATORS
 // To implement maths operators for ImVec2 (disabled by default to not collide with using IM_VEC2_CLASS_EXTRA along with your own math types+operators)
 
+/*
+
+Index of this file:
+// Header mess
+// Forward declarations
+// STB libraries includes
+// Context pointer
+// Generic helpers
+// Misc data structures
+// Main imgui context
+// Tab bar, tab item
+// Internal API
+
+*/
+
 #pragma once
+
+//-----------------------------------------------------------------------------
+// Header mess
+//-----------------------------------------------------------------------------
 
 #ifndef IMGUI_VERSION
 #error Must include imgui.h before imgui_internal.h
@@ -24,13 +43,19 @@
 
 #ifdef __clang__
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"        // for stb_textedit.h
-#pragma clang diagnostic ignored "-Wmissing-prototypes"     // for stb_textedit.h
+#pragma clang diagnostic ignored "-Wunused-function"                // for stb_textedit.h
+#pragma clang diagnostic ignored "-Wmissing-prototypes"             // for stb_textedit.h
 #pragma clang diagnostic ignored "-Wold-style-cast"
+#if __has_warning("-Wzero-as-null-pointer-constant")
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+#if __has_warning("-Wdouble-promotion")
+#pragma clang diagnostic ignored "-Wdouble-promotion"
+#endif
 #endif
 
 //-----------------------------------------------------------------------------
-// Forward Declarations
+// Forward declarations
 //-----------------------------------------------------------------------------
 
 struct ImRect;                      // An axis-aligned rectangle (2 points)
@@ -71,7 +96,7 @@ typedef int ImGuiSliderFlags;       // -> enum ImGuiSliderFlags_       // Flags:
 typedef int ImGuiDragFlags;         // -> enum ImGuiDragFlags_         // Flags: for DragBehavior()
 
 //-------------------------------------------------------------------------
-// STB libraries
+// STB libraries includes
 //-------------------------------------------------------------------------
 
 namespace ImGuiStb
@@ -87,7 +112,7 @@ namespace ImGuiStb
 } // namespace ImGuiStb
 
 //-----------------------------------------------------------------------------
-// Context
+// Context pointer
 //-----------------------------------------------------------------------------
 
 #ifndef GImGui
@@ -98,7 +123,7 @@ extern IMGUI_API ImGuiContext* GImGui;  // Current implicit ImGui context pointe
 #define IMGUI_PAYLOAD_TYPE_WINDOW       "_IMWINDOW"     // Payload == ImGuiWindow*
 
 //-----------------------------------------------------------------------------
-// Helpers
+// Generic helpers
 //-----------------------------------------------------------------------------
 
 #define IM_PI           3.14159265358979323846f
@@ -108,7 +133,7 @@ extern IMGUI_API ImGuiContext* GImGui;  // Current implicit ImGui context pointe
 #define IM_NEWLINE      "\n"
 #endif
 
-#define IMGUI_DEBUG_LOG(FMT,...)        printf("[%05d] " FMT, GImGui->FrameCount, __VA_ARGS__)
+#define IMGUI_DEBUG_LOG(_FMT,...)       printf("[%05d] " _FMT, GImGui->FrameCount, __VA_ARGS__)
 #define IM_STATIC_ASSERT(_COND)         typedef char static_assertion_##__line__[(_COND)?1:-1]
 #define IM_F32_TO_INT8_UNBOUND(_VAL)    ((int)((_VAL) * 255.0f + ((_VAL)>=0 ? 0.5f : -0.5f)))   // Unsaturated, for display purpose
 #define IM_F32_TO_INT8_SAT(_VAL)        ((int)(ImSaturate(_VAL) * 255.0f + 0.5f))               // Saturated, always output 0..255
@@ -129,7 +154,8 @@ IMGUI_API int           ImTextCountUtf8BytesFromChar(const char* in_text, const 
 IMGUI_API int           ImTextCountUtf8BytesFromStr(const ImWchar* in_text, const ImWchar* in_text_end);                   // return number of bytes to express string in UTF-8
 
 // Helpers: Misc
-IMGUI_API ImU32         ImHash(const void* data, int data_size, ImU32 seed = 0);    // Pass data_size==0 for zero-terminated strings
+IMGUI_API ImU32         ImHashData(const void* data, size_t data_size, ImU32 seed = 0);
+IMGUI_API ImU32         ImHashStr(const char* data, size_t data_size, ImU32 seed = 0);
 IMGUI_API void*         ImFileLoadToMemory(const char* filename, const char* file_open_mode, size_t* out_file_size = NULL, int padding_bytes = 0);
 IMGUI_API FILE*         ImFileOpen(const char* filename, const char* file_open_mode);
 static inline bool      ImCharIsBlankA(char c)          { return c == ' ' || c == '\t'; }
@@ -137,6 +163,9 @@ static inline bool      ImCharIsBlankW(unsigned int c)  { return c == ' ' || c =
 static inline bool      ImIsPowerOfTwo(int v)           { return v != 0 && (v & (v - 1)) == 0; }
 static inline int       ImUpperPowerOfTwo(int v)        { v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v++; return v; }
 #define ImQsort         qsort
+#ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
+static inline ImU32     ImHash(const void* data, int size, ImU32 seed = 0) { return size ? ImHashData(data, (size_t)size, seed) : ImHashStr((const char*)data, 0, seed); } // [moved to ImHashStr/ImHashData in 1.68]
+#endif
 
 // Helpers: Geometry
 IMGUI_API ImVec2        ImLineClosestPoint(const ImVec2& a, const ImVec2& b, const ImVec2& p);
@@ -150,6 +179,7 @@ IMGUI_API int           ImStricmp(const char* str1, const char* str2);
 IMGUI_API int           ImStrnicmp(const char* str1, const char* str2, size_t count);
 IMGUI_API void          ImStrncpy(char* dst, const char* src, size_t count);
 IMGUI_API char*         ImStrdup(const char* str);
+IMGUI_API char*         ImStrdupcpy(char* dst, size_t* p_dst_size, const char* str);
 IMGUI_API const char*   ImStrchrRange(const char* str_begin, const char* str_end, char c);
 IMGUI_API int           ImStrlenW(const ImWchar* str);
 IMGUI_API const char*   ImStreolRange(const char* str, const char* str_end);                // End end-of-line
@@ -224,6 +254,18 @@ static inline ImVec2 ImRotate(const ImVec2& v, float cos_a, float sin_a)        
 static inline float  ImLinearSweep(float current, float target, float speed)    { if (current < target) return ImMin(current + speed, target); if (current > target) return ImMax(current - speed, target); return current; }
 static inline ImVec2 ImMul(const ImVec2& lhs, const ImVec2& rhs)                { return ImVec2(lhs.x * rhs.x, lhs.y * rhs.y); }
 
+// Helper: ImBoolVector. Store 1-bit per value.
+// Note that Resize() currently clears the whole vector.
+struct ImBoolVector
+{
+    ImVector<int>   Storage;
+    ImBoolVector()  { }
+    void            Resize(int sz)          { Storage.resize((sz + 31) >> 5); memset(Storage.Data, 0, (size_t)Storage.Size * sizeof(Storage.Data[0])); }
+    void            Clear()                 { Storage.clear(); }
+    bool            GetBit(int n) const     { int off = (n >> 5); int mask = 1 << (n & 31); return (Storage[off] & mask) != 0; }
+    void            SetBit(int n, bool v)   { int off = (n >> 5); int mask = 1 << (n & 31); if (v) Storage[off] |= mask; else Storage[off] &= ~mask; }
+};
+
 // Helper: ImPool<>. Basic keyed storage for contiguous instances, slow/amortized insertion, O(1) indexable, O(Log N) queries by ID over a dense/hot buffer,
 // Honor constructor/destructor. Add/remove invalidate all pointers. Indexes have the same lifetime as the associated object.
 typedef int ImPoolIdx;
@@ -249,7 +291,7 @@ struct IMGUI_API ImPool
 };
 
 //-----------------------------------------------------------------------------
-// Types
+// Misc data structures
 //-----------------------------------------------------------------------------
 
 enum ImGuiButtonFlags_
@@ -333,20 +375,22 @@ enum ImGuiItemStatusFlags_
 
 #ifdef IMGUI_ENABLE_TEST_ENGINE
     , // [imgui-test only]
-    ImGuiItemStatusFlags_Openable           = 1 << 10,  // 
-    ImGuiItemStatusFlags_Opened             = 1 << 11,  // 
-    ImGuiItemStatusFlags_Checkable          = 1 << 12,  // 
+    ImGuiItemStatusFlags_Openable           = 1 << 10,  //
+    ImGuiItemStatusFlags_Opened             = 1 << 11,  //
+    ImGuiItemStatusFlags_Checkable          = 1 << 12,  //
     ImGuiItemStatusFlags_Checked            = 1 << 13   //
 #endif
 };
 
 // FIXME: this is in development, not exposed/functional as a generic feature yet.
+// Horizontal/Vertical enums are fixed to 0/1 so they may be used to index ImVec2
 enum ImGuiLayoutType_
 {
-    ImGuiLayoutType_Vertical,
-    ImGuiLayoutType_Horizontal
+    ImGuiLayoutType_Horizontal = 0,
+    ImGuiLayoutType_Vertical = 1
 };
 
+// X/Y enums are fixed to 0/1 so they may be used to index ImVec2
 enum ImGuiAxis
 {
     ImGuiAxis_None = -1,
@@ -576,7 +620,7 @@ struct ImGuiWindowSettings
 struct ImGuiSettingsHandler
 {
     const char* TypeName;       // Short description stored in .ini file. Disallowed characters: '[' ']'
-    ImGuiID     TypeHash;       // == ImHash(TypeName, 0, 0)
+    ImGuiID     TypeHash;       // == ImHashStr(TypeName, 0, 0)
     void*       (*ReadOpenFn)(ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);              // Read: Called when entering into a new ini entry e.g. "[Window][Name]"
     void        (*ReadLineFn)(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line); // Read: Called for every line of text within an ini entry
     void        (*WriteAllFn)(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf);      // Write: Output every entries into 'out_buf'
@@ -769,6 +813,11 @@ struct ImGuiTabBarSortItem
     float       Width;
 };
 
+enum ImGuiDockNodeFlagsPrivate_
+{
+    ImGuiDockNodeFlags_Dockspace  = 1 << 10
+};
+
 // sizeof() 116~160
 struct ImGuiDockNode
 {
@@ -785,20 +834,19 @@ struct ImGuiDockNode
     ImGuiWindowClass        WindowClass;
 
     ImGuiWindow*            HostWindow;
-    ImGuiWindow*            VisibleWindow;
+    ImGuiWindow*            VisibleWindow;              // Generally point to window which is ID is == SelectedTabID, but when CTRL+Tabbing this can be a different window.
     ImGuiDockNode*          CentralNode;                // [Root node only] Pointer to central node.
     ImGuiDockNode*          OnlyNodeWithWindows;        // [Root node only] Set when there is a single visible node within the hierarchy.
     int                     LastFrameAlive;             // Last frame number the node was updated or kept alive explicitly with DockSpace() + ImGuiDockNodeFlags_KeepAliveOnly
     int                     LastFrameActive;            // Last frame number the node was updated.
     int                     LastFrameFocused;           // Last frame number the node was focused.
-    ImGuiID                 LastFocusedNodeID;          // [Root node only] Which of our child node (any ancestor in the hierarchy) was last focused.
+    ImGuiID                 LastFocusedNodeID;          // [Root node only] Which of our child docking node (any ancestor in the hierarchy) was last focused.
     ImGuiID                 SelectedTabID;              // [Tab node only] Which of our tab is selected.
     ImGuiID                 WantCloseTabID;             // [Tab node only] Set when closing a specific tab.
     bool                    InitFromFirstWindowPosSize  :1;
     bool                    InitFromFirstWindowViewport :1;
     bool                    IsVisible               :1; // Set to false when the node is hidden (usually disabled as it has no active window)
     bool                    IsFocused               :1;
-    bool                    IsDockSpace             :1; // Root node was created by a DockSpace() call.
     bool                    IsCentralNode           :1;
     bool                    IsHiddenTabBar          :1;
     bool                    HasCloseButton          :1;
@@ -811,6 +859,7 @@ struct ImGuiDockNode
     ImGuiDockNode(ImGuiID id);
     ~ImGuiDockNode();
     bool                    IsRootNode() const  { return ParentNode == NULL; }
+    bool                    IsDockSpace() const { return (Flags & ImGuiDockNodeFlags_Dockspace) != 0; }
     bool                    IsSplitNode() const { return ChildNodes[0] != NULL; }
     bool                    IsLeafNode() const  { return ChildNodes[0] == NULL; }
     bool                    IsEmpty() const     { return ChildNodes[0] == NULL && Windows.Size == 0; }
@@ -1019,6 +1068,7 @@ struct ImGuiContext
         CurrentWindow = NULL;
         HoveredWindow = NULL;
         HoveredRootWindow = NULL;
+        HoveredWindowUnderMovingWindow = NULL;
         HoveredId = 0;
         HoveredIdAllowOverlap = false;
         HoveredIdPreviousFrame = 0;
@@ -1201,7 +1251,7 @@ struct IMGUI_API ImGuiWindowTempData
 struct IMGUI_API ImGuiWindow
 {
     char*                   Name;
-    ImGuiID                 ID;                                 // == ImHash(Name)
+    ImGuiID                 ID;                                 // == ImHashStr(Name)
     ImGuiWindowFlags        Flags, FlagsPreviousFrame;          // See enum ImGuiWindowFlags_
     ImGuiWindowClass        WindowClass;                        // Advanced users only. Set with SetNextWindowClass()
     ImGuiViewportP*         Viewport;                           // Always set in Begin(), only inactive windows may have a NULL value here
@@ -1217,6 +1267,7 @@ struct IMGUI_API ImGuiWindow
     ImVec2                  WindowPadding;                      // Window padding at the time of begin.
     float                   WindowRounding;                     // Window rounding at the time of begin.
     float                   WindowBorderSize;                   // Window border size at the time of begin.
+    int                     NameBufLen;                         // Size of buffer storing Name. May be larger than strlen(Name)!
     ImGuiID                 MoveId;                             // == window->GetID("#MOVE")
     ImGuiID                 ChildId;                            // ID of corresponding item in parent window (for navigation to return from child window to parent window)
     ImVec2                  Scroll;
@@ -1234,6 +1285,7 @@ struct IMGUI_API ImGuiWindow
     bool                    Appearing;                          // Set during the frame where the window is appearing (or re-appearing)
     bool                    Hidden;                             // Do not display (== (HiddenFramesForResize > 0) ||
     bool                    HasCloseButton;                     // Set when the window has a close button (p_open != NULL)
+    signed char             ResizeBorderHeld;                   // Current border being held for resize (-1: none, otherwise 0-3)
     short                   BeginCount;                         // Number of Begin() during the current frame (generally 0 or 1, 1+ if appending via multiple Begin/End pairs)
     short                   BeginOrderWithinParent;             // Order within immediate parent window, if we are a child window. Otherwise 0.
     short                   BeginOrderWithinContext;            // Order within entire imgui context. This is mostly used for debugging submission order related issues.
@@ -1332,15 +1384,14 @@ struct ImGuiItemHoveredDataBackup
 };
 
 //-----------------------------------------------------------------------------
-// Tab Bar, Tab Item
+// Tab bar, tab item
 //-----------------------------------------------------------------------------
 
 enum ImGuiTabBarFlagsPrivate_
 {
     ImGuiTabBarFlags_DockNode                   = 1 << 20,  // Part of a dock node
-    ImGuiTabBarFlags_DockNodeIsDockSpace        = 1 << 21,  // Part of an explicit dockspace node node
-    ImGuiTabBarFlags_IsFocused                  = 1 << 22,
-    ImGuiTabBarFlags_SaveSettings               = 1 << 23   // FIXME: Settings are handled by the docking system, this only request the tab bar to mark settings dirty when reordering tabs
+    ImGuiTabBarFlags_IsFocused                  = 1 << 21,
+    ImGuiTabBarFlags_SaveSettings               = 1 << 22   // FIXME: Settings are handled by the docking system, this only request the tab bar to mark settings dirty when reordering tabs
 };
 
 enum ImGuiTabItemFlagsPrivate_
@@ -1389,7 +1440,7 @@ struct ImGuiTabBar
     short               LastTabItemIdx;         // For BeginTabItem()/EndTabItem()
 
     ImGuiTabBar();
-    int                 GetTabOrder(const ImGuiTabItem* tab) const { return Tabs.index_from_pointer(tab); }
+    int                 GetTabOrder(const ImGuiTabItem* tab) const { return Tabs.index_from_ptr(tab); }
 };
 
 //-----------------------------------------------------------------------------
@@ -1581,7 +1632,7 @@ namespace ImGui
     IMGUI_API void          RenderArrowDockMenu(ImDrawList* draw_list, ImVec2 p_min, float sz, ImU32 col);
     IMGUI_API void          RenderRectFilledRangeH(ImDrawList* draw_list, const ImRect& rect, ImU32 col, float x_start_norm, float x_end_norm, float rounding);
     IMGUI_API void          RenderRectFilledWithHole(ImDrawList* draw_list, ImRect outer, ImRect inner, ImU32 col, float rounding);
-    IMGUI_API void          RenderPixelEllipsis(ImDrawList* draw_list, ImFont* font, ImVec2 pos, int count, ImU32 col);
+    IMGUI_API void          RenderPixelEllipsis(ImDrawList* draw_list, ImVec2 pos, int count, ImU32 col);
 
     // Widgets
     IMGUI_API bool          ButtonEx(const char* label, const ImVec2& size_arg = ImVec2(0,0), ImGuiButtonFlags flags = 0);
@@ -1600,7 +1651,7 @@ namespace ImGui
     IMGUI_API bool          TreeNodeBehaviorIsOpen(ImGuiID id, ImGuiTreeNodeFlags flags = 0);                     // Consume previous SetNextTreeNodeOpened() data, if any. May return true when logging
     IMGUI_API void          TreePushRawID(ImGuiID id);
 
-    // Template functions are instantiated in imgui_widgets.cpp for a finite number of types. 
+    // Template functions are instantiated in imgui_widgets.cpp for a finite number of types.
     // To use them externally (for custom widget) you may need an "extern template" statement in your code in order to link to existing instances and silence Clang warnings (see #2036).
     // e.g. " extern template IMGUI_API float RoundScalarWithFormatT<float, float>(const char* format, ImGuiDataType data_type, float v); "
     template<typename T, typename SIGNED_T, typename FLOAT_T>   IMGUI_API bool  DragBehaviorT(ImGuiDataType data_type, T* v, float v_speed, const T v_min, const T v_max, const char* format, float power, ImGuiDragFlags flags);
@@ -1630,7 +1681,7 @@ namespace ImGui
 IMGUI_API bool              ImFontAtlasBuildWithStbTruetype(ImFontAtlas* atlas);
 IMGUI_API void              ImFontAtlasBuildRegisterDefaultCustomRects(ImFontAtlas* atlas);
 IMGUI_API void              ImFontAtlasBuildSetupFont(ImFontAtlas* atlas, ImFont* font, ImFontConfig* font_config, float ascent, float descent);
-IMGUI_API void              ImFontAtlasBuildPackCustomRects(ImFontAtlas* atlas, void* spc);
+IMGUI_API void              ImFontAtlasBuildPackCustomRects(ImFontAtlas* atlas, void* stbrp_context_opaque);
 IMGUI_API void              ImFontAtlasBuildFinish(ImFontAtlas* atlas);
 IMGUI_API void              ImFontAtlasBuildMultiplyCalcLookupTable(unsigned char out_table[256], float in_multiply_factor);
 IMGUI_API void              ImFontAtlasBuildMultiplyRectAlpha8(const unsigned char table[256], unsigned char* pixels, int x, int y, int w, int h, int stride);
@@ -1638,11 +1689,11 @@ IMGUI_API void              ImFontAtlasBuildMultiplyRectAlpha8(const unsigned ch
 // Test engine hooks (imgui-test)
 //#define IMGUI_ENABLE_TEST_ENGINE
 #ifdef IMGUI_ENABLE_TEST_ENGINE
-extern void                 ImGuiTestEngineHook_PreNewFrame();
-extern void                 ImGuiTestEngineHook_PostNewFrame();
-extern void                 ImGuiTestEngineHook_ItemAdd(const ImRect& bb, ImGuiID id);
-extern void                 ImGuiTestEngineHook_ItemInfo(ImGuiID id, const char* label, int flags);
-#define IMGUI_TEST_ENGINE_ITEM_INFO(_ID, _LABEL, _FLAGS)  ImGuiTestEngineHook_ItemInfo(_ID, _LABEL, _FLAGS)   // Register status flags
+extern void                 ImGuiTestEngineHook_PreNewFrame(ImGuiContext* ctx);
+extern void                 ImGuiTestEngineHook_PostNewFrame(ImGuiContext* ctx);
+extern void                 ImGuiTestEngineHook_ItemAdd(ImGuiContext* ctx, const ImRect& bb, ImGuiID id);
+extern void                 ImGuiTestEngineHook_ItemInfo(ImGuiContext* ctx, ImGuiID id, const char* label, int flags);
+#define IMGUI_TEST_ENGINE_ITEM_INFO(_ID, _LABEL, _FLAGS)  ImGuiTestEngineHook_ItemInfo(&g, _ID, _LABEL, _FLAGS)   // Register status flags
 #else
 #define IMGUI_TEST_ENGINE_ITEM_INFO(_ID, _LABEL, _FLAGS)  do { } while (0)
 #endif
