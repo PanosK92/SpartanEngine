@@ -140,7 +140,7 @@ void Widget_MenuBar::Tick(float deltaTime)
 
 void Widget_MenuBar::ShowFileDialog()
 {
-	if (m_fileDialog->Show(&_Widget_MenuBar::g_fileDialogVisible, &_Widget_MenuBar::g_fileDialogSelection))
+	if (m_fileDialog->Show(&_Widget_MenuBar::g_fileDialogVisible, nullptr, &_Widget_MenuBar::g_fileDialogSelection))
 	{
 		// LOAD
 		if (m_fileDialog->GetOperation() == FileDialog_Op_Open || m_fileDialog->GetOperation() == FileDialog_Op_Load)
