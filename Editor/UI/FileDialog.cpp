@@ -59,8 +59,8 @@ FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Type 
 	m_itemSize						= 100.0f;
 	m_isDirty						= true;
 	m_selectionMade					= false;
-	m_callback_OnPathClicked		= nullptr;
-	m_callback_OnPathDoubleClicked	= nullptr;
+	m_callback_OnItemClicked		= nullptr;
+	m_callback_OnItemDoubleClicked	= nullptr;
 }
 
 void FileDialog::SetOperation(FileDialog_Operation operation)
@@ -131,8 +131,7 @@ bool FileDialog::Show(bool* isVisible, string* itemPath)
 		}
 	}
 
-	Dialog_ContextMenu();
-	Dialog_Click();
+	EmptyArea_ContextMenu();
 
 	return m_selectionMade;
 }
@@ -167,7 +166,7 @@ void FileDialog::Show_Middle()
 	auto PushStyle = []()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);				// Remove border
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.0f, 18.0f));	// Remove item spacing (because it clips the thumbnails)
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.0f, 5.0f));		// Remove item spacing (because it clips the thumbnails)
 	};
 
 	auto PopStyle = []() { ImGui::PopStyleVar(2); };
@@ -189,72 +188,60 @@ void FileDialog::Show_Middle()
 		ImGui::Columns(columns, nullptr, false);
 		for (auto& item : m_items)
 		{
-			// IMAGE BUTTON
+			ImGui::BeginGroup();
 			{
-				ImGui::PushID(index);
-				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0)); // Remove button's border
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0)); // Remove button's background
-
-				if (ImGui::ImageButton(item.GetShaderResource(), ImVec2(m_itemSize, m_itemSize - 23.0f)))
+				// THUMBNAIL
 				{
-					item.Clicked();
+					ImGui::PushID(index);
+					ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
-					if (m_currentPathID != item.GetID()) // Single click
-					{		
-						m_currentPath	= item.GetPath();
-						m_currentPathID = item.GetID();
-						m_inputBox		= item.GetLabel();
-
-						// Callback
-						if (m_callback_OnPathClicked) m_callback_OnPathClicked(item.GetPath());
-					}
-					else if (item.GetTimeSinceLastClickMs() <= 500) // Double click
+					if (ImGui::ImageButton(item.GetShaderResource(), ImVec2(m_itemSize, m_itemSize - 23.0f)))
 					{
-						if (item.IsDirectory())
+						// Determine type of click
+						item.Clicked();
+						bool isSingleClick = item.GetTimeSinceLastClickMs() > 500;
+
+						if (isSingleClick)
 						{
-							Dialog_SetCurrentPath(item.GetPath());
-							m_isDirty = true;
+							// Updated input box
+							m_inputBox = item.GetLabel();
+							// Callback
+							if (m_callback_OnItemClicked) m_callback_OnItemClicked(item.GetPath());
 						}
-						m_selectionMade = !item.IsDirectory();
+						else // Double Click
+						{
+							m_isDirty		= Dialog_SetCurrentPath(item.GetPath());
+							m_selectionMade = !item.IsDirectory();
 
-						// Callback
-						if (m_callback_OnPathDoubleClicked) m_callback_OnPathDoubleClicked(m_currentPath);
+							// Callback
+							if (m_callback_OnItemDoubleClicked) m_callback_OnItemDoubleClicked(m_currentPath);				
+						}
 					}
-				}
-				ImGui::PopStyleColor(2);
-				ImGui::PopID();						
-			}
 
-			// Manually detect some useful states
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
-			{
-				FileDialog_Options::g_isHoveringItem	= true;
-				FileDialog_Options::g_hoveredItemPath	= item.GetPath();
+					ImGui::PopStyleColor(2);
+					ImGui::PopID();
+				}
+
+				// LABEL
+				{
+					ImGui::Text(item.GetLabel().c_str());
+				}			
 			}
+			ImGui::EndGroup();
 
 			// Item functionality
 			{
-				PopStyle();
+				// Manually detect some useful states
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
+				{
+					FileDialog_Options::g_isHoveringItem = true;
+					FileDialog_Options::g_hoveredItemPath = item.GetPath();
+				}
 
 				Item_Click(&item);
 				Item_ContextMenu(&item);
 				Item_Drag(&item);
-
-				PushStyle();
-			}
-
-			// LABEL
-			{
-				ImGui::SameLine();
-				ImGui::SetCursorPosX(ImGui::GetCursorPosX() - m_itemSize);		// move to the left of the thumbnail
-				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 13);	// move to the bottom of the thumbnail
-				ImGui::PushItemWidth(m_itemSize + 8.5f);
-
-				ImGui::TextWrapped(item.GetLabel().c_str());
-
-				ImGui::PopItemWidth();
-				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize);		// move to the right of the thumbnail
-				ImGui::SetCursorPosY(ImGui::GetCursorPosY() - m_itemSize + 13);	// move to the top of the thumbnail
 			}
 
 			// COLUMN END
@@ -303,7 +290,7 @@ void FileDialog::Item_Drag(FileDialog_Item* item)
 	if (!item || m_type != FileDialog_Type_Browser)
 		return;
 
-	if (DragDrop::Get().DragBegin())
+	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
 	{
 		auto SetPayload = [this](DragPayloadType type, const std::string& path)
 		{
@@ -318,7 +305,7 @@ void FileDialog::Item_Drag(FileDialog_Item* item)
 		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ SetPayload(DragPayload_Script,	item->GetPath()); }
 
 		THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(item->GetShaderResource(), 50);
-		DragDrop::Get().DragEnd();
+		ImGui::EndDragDropSource();
 	}
 }
 
@@ -332,12 +319,6 @@ void FileDialog::Item_Click(FileDialog_Item* item)
 	{
 		FileDialog_Options::g_contextMenuID = item->GetID();
 		ImGui::OpenPopup("##FileDialogContextMenu");
-	}
-
-	// Current path change on right click
-	if (ImGui::IsMouseClicked(1) && FileDialog_Options::g_isHoveringItem)
-	{
-		Dialog_SetCurrentPath(item->GetPath());
 	}
 }
 
@@ -381,7 +362,7 @@ bool FileDialog::Dialog_UpdateFromDirectory(const char* path /*= nullptr*/)
 
 	if (!FileSystem::IsDirectory(path))
 	{
-		LOG_WARNING("FileDialog::UpdateFromDirectory: Invalid parameter.");
+		LOG_ERROR_INVALID_PARAMETER();
 		return false;
 	}
 
@@ -425,18 +406,16 @@ bool FileDialog::Dialog_UpdateFromDirectory(const char* path /*= nullptr*/)
 	return true;
 }
 
-void FileDialog::Dialog_Click()
+bool FileDialog::Dialog_SetCurrentPath(const std::string& path)
 {
-	if (!FileDialog_Options::g_isHoveringWindow || FileDialog_Options::g_isHoveringItem)
-		return;
+	if (!FileSystem::IsDirectory(path))
+		return false;
 
-	if (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1))
-	{
-		Dialog_SetCurrentPath(FileSystem::GetDirectoryFromFilePath(m_currentPath));
-	}
+	m_currentPath = path;
+	return true;
 }
 
-void FileDialog::Dialog_ContextMenu()
+void FileDialog::EmptyArea_ContextMenu()
 {
 	if (ImGui::IsMouseClicked(1) && FileDialog_Options::g_isHoveringWindow && !FileDialog_Options::g_isHoveringItem)
 	{
@@ -458,13 +437,4 @@ void FileDialog::Dialog_ContextMenu()
 	}
 
 	ImGui::EndPopup();
-}
-
-bool FileDialog::Dialog_SetCurrentPath(const std::string& path)
-{
-	if (!FileSystem::IsDirectory(path))
-		return false;
-
-	m_currentPath = path;
-	return true;
 }

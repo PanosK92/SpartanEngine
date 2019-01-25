@@ -45,7 +45,7 @@ Widget_Assets::Widget_Assets(Context* context) : Widget(context)
 	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
 
 	// Just clicked, not selected (double clicked, end of dialog)
-	m_fileDialogView->SetCallback_OnPathClicked([this](const string& str) { OnPathClicked(str); });
+	m_fileDialogView->SetCallback_OnItemClicked([this](const string& str) { OnPathClicked(str); });
 }
 
 void Widget_Assets::Tick(float deltaTime)

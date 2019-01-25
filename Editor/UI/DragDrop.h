@@ -62,11 +62,6 @@ public:
 		return instance;
 	}
 
-	bool DragBegin() 
-	{ 
-		return ImGui::BeginDragDropSource(); 
-	}
-
 	void DragPayload(const DragDropPayload& payload, void* thumbnailShaderResource = nullptr)
 	{
 		ImGui::SetDragDropPayload((const char*)&payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
@@ -74,11 +69,6 @@ public:
 		{
 			THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(thumbnailShaderResource, 50);
 		}
-	}
-
-	void DragEnd() 
-	{ 
-		ImGui::EndDragDropSource(); 
 	}
 
 	DragDropPayload* GetPayload(DragPayloadType type)
