@@ -98,7 +98,7 @@ public:
 	void SetOperation(FileDialog_Operation operation);
 
 	// Shows the dialog and returns true if a a selection was made
-	bool Show(bool* isVisible, std::string* pathDoubleClicked = nullptr);
+	bool Show(bool* isVisible, std::string* directory = nullptr, std::string* filePath = nullptr);
 
 	void SetCallback_OnItemClicked(const std::function<void(const std::string&)>& callback)			{ m_callback_OnItemClicked = callback; }
 	void SetCallback_OnItemDoubleClicked(const std::function<void(const std::string&)>& callback)	{ m_callback_OnItemDoubleClicked = callback; }
@@ -113,9 +113,9 @@ private:
 	void Item_Click(FileDialog_Item* item);
 	void Item_ContextMenu(FileDialog_Item* item);
 
-	// Misc
-	bool Dialog_UpdateFromDirectory(const char* path = nullptr);
+	// Misc	
 	bool Dialog_SetCurrentPath(const std::string& path);
+	bool Dialog_UpdateFromDirectory(const std::string& path);
 	void EmptyArea_ContextMenu();
 
 	FileDialog_Type m_type;
@@ -123,7 +123,7 @@ private:
 	FileDialog_Filter m_filter;
 
 	std::string m_title;
-	std::string m_currentPath;
+	std::string m_currentDirectory;
 	std::string m_inputBox;
 	std::vector<FileDialog_Item> m_items;
 	bool m_isWindow;

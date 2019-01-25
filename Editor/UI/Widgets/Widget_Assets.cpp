@@ -61,7 +61,7 @@ void Widget_Assets::Tick(float deltaTime)
 	m_fileDialogView->Show(&Widget_Assets_Statics::g_showFileDialogView);
 
 	// IMPORT
-	if (m_fileDialogLoad->Show(&Widget_Assets_Statics::g_showFileDialogLoad, &Widget_Assets_Statics::g_doubleClickedPath_ImportDialog))
+	if (m_fileDialogLoad->Show(&Widget_Assets_Statics::g_showFileDialogLoad, nullptr, &Widget_Assets_Statics::g_doubleClickedPath_ImportDialog))
 	{
 		// Model
 		if (FileSystem::IsSupportedModelFile(Widget_Assets_Statics::g_doubleClickedPath_ImportDialog))
