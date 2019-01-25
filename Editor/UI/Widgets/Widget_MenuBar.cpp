@@ -102,9 +102,9 @@ void Widget_MenuBar::Tick(float deltaTime)
 
 		if (ImGui::BeginMenu("View"))
 		{
-			ImGui::MenuItem("Metrics",	nullptr, &_Widget_MenuBar::imgui_metrics);
-			ImGui::MenuItem("Style",	nullptr, &_Widget_MenuBar::imgui_style);
-			ImGui::MenuItem("Demo",		nullptr, &_Widget_MenuBar::imgui_demo);
+			ImGui::MenuItem("ImGui Metrics",	nullptr, &_Widget_MenuBar::imgui_metrics);
+			ImGui::MenuItem("ImGui Style",		nullptr, &_Widget_MenuBar::imgui_style);
+			ImGui::MenuItem("ImGui Demo",		nullptr, &_Widget_MenuBar::imgui_demo);
 			ImGui::EndMenu();
 		}
 
@@ -118,7 +118,7 @@ void Widget_MenuBar::Tick(float deltaTime)
 	}
 
 	if (_Widget_MenuBar::imgui_metrics)			{ ImGui::ShowMetricsWindow(); }
-	if (_Widget_MenuBar::imgui_style)			{ ImGui::Begin("Style Editor"); ImGui::ShowStyleEditor(); ImGui::End(); }
+	if (_Widget_MenuBar::imgui_style)			{ ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking); ImGui::ShowStyleEditor(); ImGui::End(); }
 	if (_Widget_MenuBar::imgui_demo)			{ ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo); }
 	if (_Widget_MenuBar::g_fileDialogVisible)	{ ImGui::SetNextWindowFocus(); ShowFileDialog(); }
 	if (_Widget_MenuBar::g_showAboutWindow)		{ ImGui::SetNextWindowFocus(); ShowAboutWindow(); }

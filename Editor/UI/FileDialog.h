@@ -100,8 +100,8 @@ public:
 	// Shows the dialog and returns true if a a selection was made
 	bool Show(bool* isVisible, std::string* pathDoubleClicked = nullptr);
 
-	void SetCallback_OnPathClicked(const std::function<void(const std::string&)>& callback)			{ m_callback_OnPathClicked = callback; }
-	void SetCallback_OnPathDoubleClicked(const std::function<void(const std::string&)>& callback)	{ m_callback_OnPathDoubleClicked = callback; }
+	void SetCallback_OnItemClicked(const std::function<void(const std::string&)>& callback)			{ m_callback_OnItemClicked = callback; }
+	void SetCallback_OnItemDoubleClicked(const std::function<void(const std::string&)>& callback)	{ m_callback_OnItemDoubleClicked = callback; }
 
 private:
 	void Show_Top(bool* isVisible);
@@ -115,9 +115,8 @@ private:
 
 	// Misc
 	bool Dialog_UpdateFromDirectory(const char* path = nullptr);
-	void Dialog_Click();
-	void Dialog_ContextMenu();
 	bool Dialog_SetCurrentPath(const std::string& path);
+	void EmptyArea_ContextMenu();
 
 	FileDialog_Type m_type;
 	FileDialog_Operation m_operation;
@@ -125,7 +124,6 @@ private:
 
 	std::string m_title;
 	std::string m_currentPath;
-	unsigned int m_currentPathID;
 	std::string m_inputBox;
 	std::vector<FileDialog_Item> m_items;
 	bool m_isWindow;
@@ -136,6 +134,6 @@ private:
 	Directus::Context* m_context;
 
 	// Callbacks
-	std::function<void(const std::string&)> m_callback_OnPathClicked;
-	std::function<void(const std::string&)> m_callback_OnPathDoubleClicked;
+	std::function<void(const std::string&)> m_callback_OnItemClicked;
+	std::function<void(const std::string&)> m_callback_OnItemDoubleClicked;
 };

@@ -261,12 +261,12 @@ void Widget_World::HandleClicking()
 void Widget_World::Actor_HandleDragDrop(Actor* actorPtr)
 {
 	// Drag
-	if (DragDrop::Get().DragBegin())
+	if (ImGui::BeginDragDropSource())
 	{
 		_Widget_World::g_payload.data = actorPtr->GetID();
 		_Widget_World::g_payload.type = DragPayload_Actor;
 		DragDrop::Get().DragPayload(_Widget_World::g_payload);
-		DragDrop::Get().DragEnd();
+		ImGui::EndDragDropSource();
 	}
 	// Drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
