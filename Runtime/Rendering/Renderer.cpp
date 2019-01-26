@@ -81,9 +81,10 @@ namespace Directus
 		m_flags			|= Render_PostProcess_MotionBlur;
 		m_flags			|= Render_PostProcess_TAA;
 		m_flags			|= Render_PostProcess_Sharpening;
-		//m_flags		|= Render_PostProcess_ChromaticAberration;
-		//m_flags		|= Render_PostProcess_SSR;	// Disabled by default: Only plays nice if it has environmental probes for fallback
-		//m_flags		|= Render_PostProcess_FXAA; // Disabled by default: TAA is superior
+		m_flags			|= Render_PostProcess_Dithering;
+		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect
+		//m_flags		|= Render_PostProcess_SSR;					// Disabled by default: Only plays nice if it has environmental probes for fallback
+		//m_flags		|= Render_PostProcess_FXAA;					// Disabled by default: TAA is superior
 		
 
 		// Create RHI device
@@ -324,6 +325,11 @@ namespace Directus
 		m_shaderQuad_motionBlur = make_shared<RHI_Shader>(m_rhiDevice);
 		m_shaderQuad_motionBlur->AddDefine("PASS_MOTION_BLUR");
 		m_shaderQuad_motionBlur->CompilePixel(shaderDirectory + "Quad.hlsl");
+
+		// Dithering
+		m_shaderQuad_dithering = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderQuad_dithering->AddDefine("PASS_DITHERING");
+		m_shaderQuad_dithering->CompilePixel(shaderDirectory + "Quad.hlsl");
 	}
 
 	void Renderer::CreateSamplers()
@@ -1006,6 +1012,13 @@ namespace Directus
 			SwapTargets();
 		}
 
+		// Dithering
+		if (Flags_IsSet(Render_PostProcess_Dithering))
+		{
+			Pass_Dithering(texIn, texOut);
+			SwapTargets();
+		}
+
 		// Tone-Mapping
 		if (Flags_IsSet(Render_PostProcess_ToneMapping))
 		{
@@ -1353,6 +1366,24 @@ namespace Directus
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_motionBlur);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
+		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
+	}
+
+	void Renderer::Pass_Dithering(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
+	{
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_Dithering");
+
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetSampler(m_samplerPointClamp);
+		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetViewport(texOut->GetViewport());
+		m_rhiPipeline->SetPixelShader(m_shaderQuad_dithering);
+		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();

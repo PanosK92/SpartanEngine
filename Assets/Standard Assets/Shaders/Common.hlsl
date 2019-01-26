@@ -160,50 +160,6 @@ float3 ReconstructPositionWorld(float depth, matrix viewProjectionInverse, float
 }
 
 /*------------------------------------------------------------------------------
-								[VELOCITY]
-------------------------------------------------------------------------------*/
-
-// Return average velocity
-float2 GetVelocity_Dilate_Average(float2 texCoord, Texture2D texture_velocity, SamplerState sampler_bilinear)
-{
-	float dx = 2.0f * g_texelSize.x;
-	float dy = 2.0f * g_texelSize.y;
-	
-	float2 velocity_tl 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-dx, -dy)).xy;
-	float2 velocity_tr	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(dx, -dy)).xy;
-	float2 velocity_bl	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-dx, dy)).xy;
-	float2 velocity_br 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(dx, dy)).xy;
-	float2 velocity_ce 	= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
-	float2 velocity 	= (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;	
-	
-	return velocity;
-}
-
-// Returns velocity with closest depth
-float2 GetVelocity_Dilate_Depth3X3(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear, out float closestDepth)
-{	
-	closestDepth			= 1.0f;
-	float2 closestTexCoord 	= texCoord;
-	[unroll]
-    for(int y = -1; y <= 1; ++y)
-    {
-		[unroll]
-        for(int x = -1; x <= 1; ++x)
-        {
-			float2 offset 	= float2(x, y) * g_texelSize;
-			float depth		= texture_depth.Sample(sampler_bilinear, texCoord + offset).r;
-			if(depth < closestDepth)
-			{
-				closestDepth	= depth;
-				closestTexCoord	= texCoord + offset;
-			}
-        }
-	}
-
-	return texture_velocity.Sample(sampler_bilinear, closestTexCoord).xy;
-}
-
-/*------------------------------------------------------------------------------
 								[DEPTH]
 ------------------------------------------------------------------------------*/
 float LinerizeDepth(float depth, float near, float far)
@@ -214,14 +170,21 @@ float LinerizeDepth(float depth, float near, float far)
 /*------------------------------------------------------------------------------
 								[LUMINANCE]
 ------------------------------------------------------------------------------*/
+static const float3 lumCoeff = float3(0.299f, 0.587f, 0.114f);
+
 float Luminance(float3 color)
 {
-    return dot(color, float3(0.299f, 0.587f, 0.114f));
+    return dot(color, lumCoeff);
 }
 
 float Luminance(float4 color)
 {
-    return dot(color.rgb, float3(0.299f, 0.587f, 0.114f));
+    return dot(color.rgb, lumCoeff);
+}
+
+float Luminance_Average(float3 color)
+{
+    return sqrt(dot(color * color, lumCoeff));
 }
 
 /*------------------------------------------------------------------------------
@@ -237,4 +200,16 @@ float2 DirectionToSphereUV(float3 direction)
     uv.x 		= 1.0 - uv.x;
 	
     return uv;
+}
+
+/*------------------------------------------------------------------------------
+								[RANDOM]
+------------------------------------------------------------------------------*/
+float Randomize(float2 texcoord)
+{
+    float seed		= dot(texcoord, float2(12.9898, 78.233));
+    float sine		= sin(seed);
+    float noise		= frac(sine * 43758.5453);
+
+    return noise;
 }

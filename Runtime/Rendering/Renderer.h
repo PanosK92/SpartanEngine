@@ -75,7 +75,8 @@ namespace Directus
 		Render_PostProcess_MotionBlur			= 1UL << 17,
 		Render_PostProcess_Sharpening			= 1UL << 18,
 		Render_PostProcess_ChromaticAberration	= 1UL << 19,
-		Render_PostProcess_ToneMapping			= 1UL << 20
+		Render_PostProcess_Dithering			= 1UL << 20,
+		Render_PostProcess_ToneMapping			= 1UL << 21
 	};
 
 	enum RenderableType
@@ -183,6 +184,7 @@ namespace Directus
 		void Pass_Sharpening(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ChromaticAberration(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_MotionBlur(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
+		void Pass_Dithering(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_BlurBox(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
@@ -234,6 +236,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderQuad_bloomBLend;
 		std::shared_ptr<RHI_Shader> m_shaderQuad_toneMapping;
 		std::shared_ptr<RHI_Shader> m_shaderQuad_gammaCorrection;
+		std::shared_ptr<RHI_Shader> m_shaderQuad_dithering;
 		//==============================================================
 
 		//= SAMPLERS =========================================

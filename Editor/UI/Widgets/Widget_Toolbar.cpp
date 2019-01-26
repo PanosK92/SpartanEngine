@@ -122,37 +122,39 @@ void Widget_Toolbar::ShowRendererOptions()
 	if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
 	{	
 		// Read from engine
-		bool bloom					= m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
-		bool tonemapping			= m_renderer->Flags_IsSet(Render_PostProcess_ToneMapping);
-		bool fxaa					= m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
-		bool ssao					= m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
-		bool ssr					= m_renderer->Flags_IsSet(Render_PostProcess_SSR);
-		bool taa					= m_renderer->Flags_IsSet(Render_PostProcess_TAA);
-		bool motionBlur				= m_renderer->Flags_IsSet(Render_PostProcess_MotionBlur);
-		bool sharpening				= m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
-		bool chromaticAberration	= m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
+		bool do_bloom				= m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
+		bool do_tonemapping			= m_renderer->Flags_IsSet(Render_PostProcess_ToneMapping);
+		bool do_fxaa				= m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
+		bool do_ssao				= m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
+		bool do_ssr					= m_renderer->Flags_IsSet(Render_PostProcess_SSR);
+		bool do_taa					= m_renderer->Flags_IsSet(Render_PostProcess_TAA);
+		bool do_motionBlur			= m_renderer->Flags_IsSet(Render_PostProcess_MotionBlur);
+		bool do_sharperning			= m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
+		bool do_chromaticAberration	= m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
+		bool do_dithering			= m_renderer->Flags_IsSet(Render_PostProcess_Dithering);
 		
 		// Display
 		{
 			auto tooltip = [this](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
 
 			ImGui::InputFloat("Gamma", &m_renderer->m_gamma, 0.1f);
-			ImGui::Checkbox("Tone-mapping", &tonemapping);												tooltip("ACES Filmic");
-			ImGui::Checkbox("Bloom", &bloom);
+			ImGui::Checkbox("Tone-mapping", &do_tonemapping);												tooltip("ACES Filmic");
+			ImGui::Checkbox("Bloom", &do_bloom);
 			ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloomIntensity, 0.1f);		
-			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &ssao);
-			ImGui::Checkbox("SSR - Screen Space Reflections", &ssr);
-			ImGui::Checkbox("Motion Blur", &motionBlur);
+			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
+			ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
+			ImGui::Checkbox("Motion Blur", &do_motionBlur);
 			ImGui::InputFloat("Motion Blur Strength", &m_renderer->m_motionBlurStrength, 0.1f);
-			ImGui::Checkbox("Chromatic Aberration", &chromaticAberration);
-			ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &taa);
-			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &fxaa);
+			ImGui::Checkbox("Chromatic Aberration", &do_chromaticAberration);
+			ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
+			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &do_fxaa);
 			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f);						tooltip("The amount of sub-pixel aliasing removal");
 			ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaaEdgeThreshold, 0.1f);			tooltip("The minimum amount of local contrast required to apply algorithm");
 			ImGui::InputFloat("FXAA Edge Threshold Min", &m_renderer->m_fxaaEdgeThresholdMin, 0.1f);	tooltip("Trims the algorithm from processing darks");
-			ImGui::Checkbox("Sharpen", &sharpening);
+			ImGui::Checkbox("Sharpen", &do_sharperning);
 			ImGui::InputFloat("Sharpen Strength", &m_renderer->m_sharpenStrength, 0.1f);
 			ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpenClamp, 0.1f);						tooltip("Limits maximum amount of sharpening a pixel receives");
+			ImGui::Checkbox("Dithering", &do_dithering);
 		}
 
 		// Filter input
@@ -165,15 +167,17 @@ void Widget_Toolbar::ShowRendererOptions()
 		m_renderer->m_motionBlurStrength	= Abs(m_renderer->m_motionBlurStrength);
 
 		// Map back to engine
-		bloom				? m_renderer->Flags_Enable(Render_PostProcess_Bloom)				: m_renderer->Flags_Disable(Render_PostProcess_Bloom);
-		tonemapping			? m_renderer->Flags_Enable(Render_PostProcess_ToneMapping)			: m_renderer->Flags_Disable(Render_PostProcess_ToneMapping);
-		fxaa				? m_renderer->Flags_Enable(Render_PostProcess_FXAA)					: m_renderer->Flags_Disable(Render_PostProcess_FXAA);
-		ssao				? m_renderer->Flags_Enable(Render_PostProcess_SSAO)					: m_renderer->Flags_Disable(Render_PostProcess_SSAO);
-		ssr					? m_renderer->Flags_Enable(Render_PostProcess_SSR)					: m_renderer->Flags_Disable(Render_PostProcess_SSR);
-		taa					? m_renderer->Flags_Enable(Render_PostProcess_TAA)					: m_renderer->Flags_Disable(Render_PostProcess_TAA);
-		motionBlur			? m_renderer->Flags_Enable(Render_PostProcess_MotionBlur)			: m_renderer->Flags_Disable(Render_PostProcess_MotionBlur);
-		sharpening			? m_renderer->Flags_Enable(Render_PostProcess_Sharpening)			: m_renderer->Flags_Disable(Render_PostProcess_Sharpening);
-		chromaticAberration	? m_renderer->Flags_Enable(Render_PostProcess_ChromaticAberration)	: m_renderer->Flags_Disable(Render_PostProcess_ChromaticAberration);	
+		#define SET_FLAG_IF(flag, value) value	? m_renderer->Flags_Enable(flag) : m_renderer->Flags_Disable(flag)
+		SET_FLAG_IF(Render_PostProcess_Bloom, do_bloom);
+		SET_FLAG_IF(Render_PostProcess_ToneMapping, do_tonemapping);
+		SET_FLAG_IF(Render_PostProcess_FXAA, do_fxaa);
+		SET_FLAG_IF(Render_PostProcess_SSAO, do_ssao);
+		SET_FLAG_IF(Render_PostProcess_SSR, do_ssr);
+		SET_FLAG_IF(Render_PostProcess_TAA, do_taa);
+		SET_FLAG_IF(Render_PostProcess_MotionBlur, do_motionBlur);
+		SET_FLAG_IF(Render_PostProcess_Sharpening, do_sharperning);
+		SET_FLAG_IF(Render_PostProcess_ChromaticAberration, do_chromaticAberration);
+		SET_FLAG_IF(Render_PostProcess_Dithering, do_dithering);
 	}
 
 	if (ImGui::CollapsingHeader("G-Buffer Visualization", ImGuiTreeNodeFlags_DefaultOpen))
