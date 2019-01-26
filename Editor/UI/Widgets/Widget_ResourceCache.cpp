@@ -34,7 +34,7 @@ using namespace Directus;
 
 Widget_ResourceCache::Widget_ResourceCache(Context* context) : Widget(context)
 {
-	m_title			= "Profiler";
+	m_title			= "Resource Cache";
 	m_isVisible		= false;
 }
 

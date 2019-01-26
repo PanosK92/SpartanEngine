@@ -38,7 +38,8 @@ using namespace Math;
 namespace _Widget_Toolbar
 {
 	static float g_buttonSize				= 20.0f;
-	static bool g_showRendererOptions		= false;
+	static bool g_renderererOptions_visible	= false;
+	static float g_rendererOptions_alpha	= 1.0f;
 	static bool g_gizmo_physics				= true;
 	static bool g_gizmo_aabb				= false;
 	static bool g_gizmo_light				= true;
@@ -98,22 +99,25 @@ void Widget_Toolbar::Tick(float deltaTime)
 
 	// Renderer options button
 	ImGui::SameLine();
-	ImGui::PushStyleColor(ImGuiCol_Button, _Widget_Toolbar::g_showRendererOptions ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+	ImGui::PushStyleColor(ImGuiCol_Button, _Widget_Toolbar::g_renderererOptions_visible ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
 	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Component_Options, _Widget_Toolbar::g_buttonSize))
 	{
-		_Widget_Toolbar::g_showRendererOptions = true;
+		_Widget_Toolbar::g_renderererOptions_visible = true;
 	}
 	ImGui::PopStyleColor();
 
 	ImGui::PopStyleVar();
 
 	// Visibility
-	if (_Widget_Toolbar::g_showRendererOptions) ShowRendererOptions();
+	if (_Widget_Toolbar::g_renderererOptions_visible) ShowRendererOptions();
 }
 
 void Widget_Toolbar::ShowRendererOptions()
 {
-	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_showRendererOptions, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
+	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, _Widget_Toolbar::g_rendererOptions_alpha);
+	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_renderererOptions_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
+
+	ImGui::SliderFloat("Opacity", &_Widget_Toolbar::g_rendererOptions_alpha, 0.1f, 1.0f, "%.1f");
 
 	if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
 	{	
@@ -149,7 +153,6 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::Checkbox("Sharpen", &sharpening);
 			ImGui::InputFloat("Sharpen Strength", &m_renderer->m_sharpenStrength, 0.1f);
 			ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpenClamp, 0.1f);						tooltip("Limits maximum amount of sharpening a pixel receives");
-			ImGui::Separator();
 		}
 
 		// Filter input
@@ -272,4 +275,5 @@ void Widget_Toolbar::ShowRendererOptions()
 	}
 
 	ImGui::End();
+	ImGui::PopStyleVar();
 }
