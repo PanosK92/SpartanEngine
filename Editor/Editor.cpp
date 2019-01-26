@@ -247,8 +247,9 @@ void Editor::ApplyStyle()
 
 	float fontSize				= 15.0f;
 	float roundness				= 2.0f;
-	ImVec4 white				= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+	
 	ImVec4 text					= ImVec4(0.76f, 0.77f, 0.8f, 1.0f);
+	ImVec4 white				= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 	ImVec4 black				= ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
 	ImVec4 backgroundVeryDark	= ImVec4(0.08f, 0.086f, 0.094f, 1.00f);
 	ImVec4 backgroundDark		= ImVec4(0.117f, 0.121f, 0.145f, 1.00f);
@@ -264,7 +265,7 @@ void Editor::ApplyStyle()
 
 	// Spatial
 	style.WindowBorderSize		= 1.0f;
-	style.FrameBorderSize		= 1.0f;
+	style.FrameBorderSize		= 0.0f;
 	//style.WindowMinSize		= ImVec2(160, 20);
 	style.FramePadding			= ImVec2(5, 5);
 	style.ItemSpacing			= ImVec2(6, 5);
@@ -299,9 +300,9 @@ void Editor::ApplyStyle()
 	style.Colors[ImGuiCol_ScrollbarGrab]			= bar;
 	style.Colors[ImGuiCol_ScrollbarGrabHovered]		= barHovered;
 	style.Colors[ImGuiCol_ScrollbarGrabActive]		= barActive;
-	style.Colors[ImGuiCol_CheckMark]				= white;
-	style.Colors[ImGuiCol_SliderGrab]				= highlightBlue;
-	style.Colors[ImGuiCol_SliderGrabActive]			= highlightBlueHovered;
+	style.Colors[ImGuiCol_CheckMark]				= highlightBlueHovered;
+	style.Colors[ImGuiCol_SliderGrab]				= highlightBlueHovered;
+	style.Colors[ImGuiCol_SliderGrabActive]			= highlightBlueActive;
 	style.Colors[ImGuiCol_Button]					= barActive;
 	style.Colors[ImGuiCol_ButtonHovered]			= highlightBlue;
 	style.Colors[ImGuiCol_ButtonActive]				= highlightBlueActive;
@@ -319,7 +320,7 @@ void Editor::ApplyStyle()
 	style.Colors[ImGuiCol_PlotHistogram]			= highlightBlue; // Also used for progress bar
 	style.Colors[ImGuiCol_PlotHistogramHovered]		= highlightBlueHovered;
 	style.Colors[ImGuiCol_TextSelectedBg]			= highlightBlue;
-	style.Colors[ImGuiCol_PopupBg]					= backgroundVeryDark;
+	style.Colors[ImGuiCol_PopupBg]					= backgroundDark;
 	style.Colors[ImGuiCol_DragDropTarget]			= backgroundLight;
 	//style.Colors[ImGuiCol_ModalWindowDarkening]	= ImVec4(0.20f, 0.22f, 0.27f, 0.73f);
 

@@ -50,7 +50,7 @@ Xbox controller support         | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Higher quality codebase, allowing for future development.
 Font importing and rendering    | 100% | Ability to load any font file.
-Optimize & Debug				| 0% | Feature freeze, optimize and debug (once all tasks are done).
+Optimize & Debug				| 15% | Feature freeze, optimize and debug (once all tasks are done).
 
 # Roadmap
 - Eye Adaptation.
@@ -68,14 +68,14 @@ Optimize & Debug				| 0% | Feature freeze, optimize and debug (once all tasks ar
 - Skeletal Animation.
 - UI components.
 
-### Download
+# Download
 - [Binaries](https://ci.appveyor.com/api/projects/PanosK92/directus3d/artifacts/Binaries/Release.zip?branch=master) - Binaries from last successful build
 - [Compiling](https://github.com/PanosK92/Directus3D/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile from source
 
-### Dependencies
+# Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109).
 - [Visual C++ 2017 (x64) runtime package](https://go.microsoft.com/fwlink/?LinkId=746572).
 - Windows 10.
 
-### License
+# License
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
