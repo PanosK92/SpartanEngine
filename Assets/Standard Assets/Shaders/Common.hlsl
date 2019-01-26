@@ -182,11 +182,6 @@ float Luminance(float4 color)
     return dot(color.rgb, lumCoeff);
 }
 
-float Luminance_Average(float3 color)
-{
-    return sqrt(dot(color * color, lumCoeff));
-}
-
 /*------------------------------------------------------------------------------
 								[SKY SPHERE]
 ------------------------------------------------------------------------------*/

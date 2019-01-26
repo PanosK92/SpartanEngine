@@ -11,7 +11,5 @@ float4 Dither_Ordered(float4 color, float2 texcoord)
 
     color.rgb += RGBShift;
 
-	color.a = Luminance_Average(color.rgb);
-
     return color;
 }
