@@ -1,5 +1,7 @@
 // Based on "Temporal Antialiasing In Uncharted 4" by Ke XU - Naughty Dog.
 
+#include "Velocity.hlsl"
+
 static const float g_blendMin = 0.05f;
 static const float g_blendMax = 0.8f;
 

@@ -7,6 +7,7 @@
 #include "ACES.hlsl"
 #include "ResolveTAA.hlsl"
 #include "MotionBlur.hlsl"
+#include "Dithering.hlsl"
 #define FXAA_PC 1
 #define FXAA_HLSL_5 1
 #define FXAA_QUALITY__PRESET 39
@@ -109,9 +110,13 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_LUMA
-	// Compute luminance for FXAA
 	color 		= sourceTexture.Sample(samplerState, texCoord);
     color.a 	= Luminance(color.rgb);
+#endif
+
+#if PASS_DITHERING
+	color 	= sourceTexture.Sample(samplerState, texCoord);
+    color 	= Dither_Ordered(color, texCoord);
 #endif
 
 #if PASS_TAA_RESOLVE

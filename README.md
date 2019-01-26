@@ -44,6 +44,7 @@ SSR								| 100% | Screen space reflections.
 TAA								| 100% | Temporal Anti-Aliasing (Based on Uncharted 4).
 Per-Pixel motion blur			| 100% |
 Velocity Buffer					| 100% | Required for TAA and Motion Blur.
+Dithering						| 100% | Removes color banding.
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 Point light support             | 100% | -
 Xbox controller support         | 100% | -
