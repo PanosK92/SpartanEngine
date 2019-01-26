@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Core\EngineDefs.h"
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
-#include "RHI_PipelineState.h"
 //=============================
 
 namespace Directus
@@ -51,9 +50,6 @@ namespace Directus
 	public:
 		RHI_Pipeline(std::shared_ptr<RHI_Device> rhiDevice);
 		~RHI_Pipeline(){}
-
-		// Experimental
-		bool SetState(RHI_PipelineState& pipelineState);
 
 		// Draw
 		bool Draw(unsigned int vertexCount);
@@ -101,7 +97,7 @@ namespace Directus
 		void SetViewport(const std::shared_ptr<RHI_Viewport>& viewport);
 
 		// Clears all currently set settings
-		void ClearPendingStates();
+		void Reset();
 
 	private:
 		// Bind to the GPU

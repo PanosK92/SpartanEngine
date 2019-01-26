@@ -45,7 +45,7 @@ namespace Directus
 	RHI_Pipeline::RHI_Pipeline(shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice	= rhiDevice;
-		ClearPendingStates();
+		Reset();
 	}
 
 	bool RHI_Pipeline::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
@@ -60,19 +60,6 @@ namespace Directus
 		bool bindResult = Bind();
 		m_rhiDevice->Draw(vertexCount);
 		return bindResult;
-	}
-
-	bool RHI_Pipeline::SetState(RHI_PipelineState& pipelineState)
-	{
-		SetPrimitiveTopology(pipelineState.primitiveTopology);
-		SetCullMode(pipelineState.cullMode);
-		SetFillMode(pipelineState.fillMode);
-		if (pipelineState.vertexShader)		SetVertexShader(pipelineState.vertexShader);
-		if (pipelineState.pixelShader)		SetPixelShader(pipelineState.pixelShader);
-		if (pipelineState.constantBuffer)	SetConstantBuffer(pipelineState.constantBuffer, 0, Buffer_Global);
-		if (pipelineState.sampler)			SetSampler(pipelineState.sampler);
-
-		return true;
 	}
 
 	void RHI_Pipeline::SetShader(shared_ptr<RHI_Shader>& shader)
@@ -352,6 +339,47 @@ namespace Directus
 			m_renderTargetsDirty = false;
 		}
 
+		// Textures
+		if (m_texturesDirty)
+		{
+			unsigned int startSlot		= 0;
+			unsigned int textureCount	= (unsigned int)m_textures.size();
+			void* const* textures		= textureCount != 0 ? &m_textures[0] : nullptr;
+
+			m_rhiDevice->Set_Textures(startSlot, textureCount, textures);
+			Profiler::Get().m_rhiBindingsTexture++;
+
+			m_textures.clear();		
+			m_texturesDirty = false;
+		}
+
+		// Sampler
+		if (m_samplersDirty)
+		{
+			unsigned int startSlot		= 0;
+			unsigned int samplerCount	= (unsigned int)m_samplers.size();
+			void* const* samplers		= samplerCount != 0 ? &m_samplers[0] : nullptr;
+
+			m_rhiDevice->Set_Samplers(startSlot, samplerCount, samplers);
+			Profiler::Get().m_rhiBindingsSampler++;
+
+			m_samplers.clear();
+			m_samplersDirty = false;
+		}
+
+		// Constant buffers
+		if (m_constantBufferDirty)
+		{
+			for (const auto& constantBuffer : m_constantBuffers)
+			{
+				m_rhiDevice->Set_ConstantBuffers(constantBuffer.slot, 1, constantBuffer.scope, (void*const*)&constantBuffer.buffer);
+				Profiler::Get().m_rhiBindingsBufferConstant += (constantBuffer.scope == Buffer_Global) ? 2 : 1;
+			}
+
+			m_constantBuffers.clear();
+			m_constantBufferDirty = false;
+		}
+
 		// Vertex shader
 		if (m_vertexShaderDirty)
 		{
@@ -403,30 +431,6 @@ namespace Directus
 			m_fillModeDirty = false;
 		}
 
-		// Sampler
-		if (m_samplersDirty)
-		{
-			unsigned int startSlot		= 0;
-			unsigned int samplerCount	= (unsigned int)m_samplers.size();
-			void* const* samplers		= samplerCount != 0 ? &m_samplers[0] : nullptr;
-			m_rhiDevice->Set_Samplers(startSlot, samplerCount, samplers);
-			Profiler::Get().m_rhiBindingsSampler++;
-			m_samplers.clear();
-			m_samplersDirty = false;
-		}
-
-		// Textures
-		if (m_texturesDirty)
-		{
-			unsigned int startSlot		= 0;
-			unsigned int textureCount	= (unsigned int)m_textures.size();
-			void* const* textures		= textureCount != 0 ? &m_textures[0] : nullptr;
-			m_rhiDevice->Set_Textures(startSlot, textureCount, textures);
-			m_textures.clear();
-			Profiler::Get().m_rhiBindingsTexture++;
-			m_texturesDirty = false;
-		}
-
 		// Index buffer
 		bool resultIndexBuffer = false;
 		if (m_indexBufferDirty)
@@ -445,19 +449,6 @@ namespace Directus
 			m_vertexBufferDirty = false;
 		}
 
-		// Constant buffer
-		if (m_constantBufferDirty)
-		{
-			for (const auto& constantBuffer : m_constantBuffers)
-			{
-				m_rhiDevice->Set_ConstantBuffers(constantBuffer.slot, 1, constantBuffer.scope, (void*const*)&constantBuffer.buffer);
-				Profiler::Get().m_rhiBindingsBufferConstant += (constantBuffer.scope == Buffer_Global) ? 2 : 1;
-			}
-
-			m_constantBuffers.clear();
-			m_constantBufferDirty = false;
-		}
-
 		// Alpha blending
 		bool resultAlphaBlending = false;
 		if (m_alphaBlendingDirty)
@@ -469,57 +460,57 @@ namespace Directus
 		return resultIndexBuffer && resultVertexBuffer && resultAlphaBlending;
 	}
 
-	void RHI_Pipeline::ClearPendingStates()
+	void RHI_Pipeline::Reset()
 	{
-		// Primitive topology
-		m_primitiveTopology			= PrimitiveTopology_NotAssigned;
-		m_primitiveTopologyDirty	= true;
-
-		// Fill mode
-		m_fillMode		= Fill_NotAssigned;
-		m_fillModeDirty = true;
-
-		// Input layout
-		m_inputLayout		= Input_NotAssigned;
-		m_inputLayoutDirty	= true;
-
-		// Cull mode
-		m_cullMode			= Cull_NotAssigned;
-		m_cullModeDirty		= true;
-
-		// Vertex & Pixel shaders
-		m_vertexShader			= nullptr;	
-		m_pixelShader			= nullptr;	
-		m_vertexShaderDirty		= false;
-		m_pixelShaderDirty		= false;
-
-		// Vertex & Index buffers
-		m_indexBufferDirty	= true;
-		m_vertexBufferDirty	= true;
-		
-		// Render targets + Depth
-		m_renderTargetsClear	= false;
-		m_renderTargetsDirty	= true;
-		m_depthStencil			= nullptr;
-
-		// Samplers
-		m_samplers.clear();
-		m_samplersDirty	= true;
+		vector<void*> empty(10);
+		auto empty_count		= (unsigned int)empty.size();
+		void* const* empty_ptr	= &empty[0];
 
 		// Textures
+		m_rhiDevice->Set_Textures(0, empty_count, empty_ptr);
 		m_textures.clear();
-		m_texturesDirty = true;
+		m_texturesDirty = false;
+
+		// Samplers
+		m_rhiDevice->Set_Samplers(0, empty_count, empty_ptr);
+		m_samplers.clear();
+		m_samplersDirty = false;
 
 		// Constant buffers
+		m_rhiDevice->Set_ConstantBuffers(0, empty_count, Buffer_Global, empty_ptr);
 		m_constantBuffers.clear();
-		m_constantBufferDirty = true;
+		m_constantBufferDirty = false;
+
+		// Fill mode
+		if (m_fillMode != Fill_Solid)
+		{
+			m_fillMode = Fill_Solid;
+			m_rhiDevice->Set_FillMode(m_fillMode);
+			m_fillModeDirty = false;
+		}
+
+		// Cull mode
+		if (m_cullMode != Cull_Back)
+		{
+			m_cullMode = Cull_Back;
+			m_rhiDevice->Set_CullMode(m_cullMode);
+			m_cullModeDirty = false;
+		}
+
+		// Primitive topology
+		if (m_primitiveTopology != PrimitiveTopology_TriangleList)
+		{
+			m_primitiveTopology = PrimitiveTopology_TriangleList;
+			m_rhiDevice->Set_PrimitiveTopology(m_primitiveTopology);
+			m_primitiveTopologyDirty = false;
+		}
 
 		// Alpha blending
-		m_alphaBlending			= false;
-		m_alphaBlendingDirty	= true;
-
-		// Misc
-		m_inputLayoutBuffer = nullptr;
-		m_viewportDirty = false;
+		if (m_alphaBlending == true)
+		{
+			m_alphaBlending = false;
+			m_rhiDevice->Set_AlphaBlendingEnabled(m_alphaBlending);
+			m_alphaBlendingDirty = false;
+		}
 	}
 }
