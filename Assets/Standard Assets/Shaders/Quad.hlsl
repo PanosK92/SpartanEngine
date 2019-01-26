@@ -31,7 +31,7 @@ VS_Output mainVS(Vertex_PosUv input)
     VS_Output output;
 	
     input.position.w 	= 1.0f;
-    output.position 	= mul(input.position, g_mvp);
+    output.position 	= mul(input.position, g_viewProjectionOrtho);
     output.uv 			= input.uv;
 	
     return output;

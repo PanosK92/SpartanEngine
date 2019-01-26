@@ -11,6 +11,7 @@ cbuffer GlobalBuffer : register(b0)
 	matrix g_projection;
 	matrix g_projectionOrtho;
 	matrix g_viewProjection;
+	matrix g_viewProjectionOrtho;
 	
 	float g_camera_near;
     float g_camera_far;

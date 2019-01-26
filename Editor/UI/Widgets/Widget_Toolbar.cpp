@@ -145,7 +145,7 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
 			ImGui::Checkbox("Motion Blur", &do_motionBlur);
 			ImGui::InputFloat("Motion Blur Strength", &m_renderer->m_motionBlurStrength, 0.1f);
-			ImGui::Checkbox("Chromatic Aberration", &do_chromaticAberration);
+			ImGui::Checkbox("Chromatic Aberration", &do_chromaticAberration);							tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
 			ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
 			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &do_fxaa);
 			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f);						tooltip("The amount of sub-pixel aliasing removal");
@@ -154,7 +154,7 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::Checkbox("Sharpen", &do_sharperning);
 			ImGui::InputFloat("Sharpen Strength", &m_renderer->m_sharpenStrength, 0.1f);
 			ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpenClamp, 0.1f);						tooltip("Limits maximum amount of sharpening a pixel receives");
-			ImGui::Checkbox("Dithering", &do_dithering);
+			ImGui::Checkbox("Dithering", &do_dithering);												tooltip("Reduces color banding");
 		}
 
 		// Filter input
@@ -180,7 +180,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		SET_FLAG_IF(Render_PostProcess_Dithering, do_dithering);
 	}
 
-	if (ImGui::CollapsingHeader("G-Buffer Visualization", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("G-Buffer Visualization", ImGuiTreeNodeFlags_None))
 	{
 		if (ImGui::BeginCombo("Buffer", _Widget_Toolbar::gbufferSelectedTexture.c_str()))
 		{
@@ -250,7 +250,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		}
 	}
 
-	if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_None))
 	{
 		// Transform
 		ImGui::Checkbox("Transform", &_Widget_Toolbar::g_gizmo_transform); 

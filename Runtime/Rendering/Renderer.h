@@ -248,10 +248,6 @@ namespace Directus
 		std::shared_ptr<RHI_Sampler> m_samplerAnisotropicWrap;
 		//====================================================
 
-		//= PIPELINE STATES =============
-		RHI_PipelineState m_pipelineLine;
-		//===============================
-
 		//= STANDARD TEXTURES ==================================
 		std::shared_ptr<RHI_Texture> m_texNoiseNormal;
 		std::shared_ptr<RHI_Texture> m_texWhite;
@@ -310,6 +306,7 @@ namespace Directus
 			Math::Matrix mProjection;
 			Math::Matrix mProjectionOrtho;
 			Math::Matrix mViewProjection;
+			Math::Matrix mViewProjectionOrtho;
 
 			float camera_near;
 			float camera_far;
