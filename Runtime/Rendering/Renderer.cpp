@@ -1571,23 +1571,32 @@ namespace Directus
 				m_rhiPipeline->SetVertexBuffer(m_transformGizmo->GetVertexBuffer());
 				SetGlobalBuffer();
 
-				// X - Axis		
+				// Axis - X
 				auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle().GetTransform(Vector3::Right), m_transformGizmo->GetHandle().GetColor(Vector3::Right));
 				m_shaderTransformGizmo->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
 				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
-				// Y - Axis		
+				// Axis - Y
 				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle().GetTransform(Vector3::Up), m_transformGizmo->GetHandle().GetColor(Vector3::Up));
 				m_shaderTransformGizmo->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
 				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
 
-				// Z - Axis		
+				// Axis - Z
 				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle().GetTransform(Vector3::Forward), m_transformGizmo->GetHandle().GetColor(Vector3::Forward));
 				m_shaderTransformGizmo->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
 				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+
+				// Axes - XYZ
+				if (m_transformGizmo->DrawXYZ())
+				{
+					buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle().GetTransform(Vector3::One), m_transformGizmo->GetHandle().GetColor(Vector3::One));
+					m_shaderTransformGizmo->UpdateBuffer(&buffer);
+					m_rhiPipeline->SetConstantBuffer(m_shaderTransformGizmo->GetConstantBuffer(), 1, Buffer_Global);
+					m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+				}
 
 				m_rhiDevice->EventEnd();
 			}

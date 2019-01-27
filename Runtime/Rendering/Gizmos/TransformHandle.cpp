@@ -90,7 +90,6 @@ namespace Directus
 
 		m_ray_previous	= Vector3::Zero;
 		m_ray_current	= Vector3::Zero;
-		m_ray_delta		= Vector3::Zero;
 
 		// Create position controller
 		vector<RHI_Vertex_PosUvNorTan> vertices;
@@ -113,9 +112,10 @@ namespace Directus
 		m_model->Geometry_Update();
 
 		// Create bounding boxes for the handles, based on the vertices used
-		m_handle_x.box = vertices;
-		m_handle_y.box = m_handle_x.box;
-		m_handle_z.box = m_handle_x.box;
+		m_handle_x.box		= vertices;
+		m_handle_y.box		= m_handle_x.box;
+		m_handle_z.box		= m_handle_x.box;
+		m_handle_xyz.box	= m_handle_x.box;
 	}
 
 	bool TransformHandle::Update(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed)
@@ -141,37 +141,43 @@ namespace Directus
 			Ray ray						= Ray(ray_start, ray_end);
 
 			// Test if ray intersects any of the handles
-			bool hovered_x = ray.HitDistance(m_handle_x.box_transformed) != INFINITY;
-			bool hovered_y = ray.HitDistance(m_handle_y.box_transformed) != INFINITY;
-			bool hovered_z = ray.HitDistance(m_handle_z.box_transformed) != INFINITY;
+			bool hovered_x		= ray.HitDistance(m_handle_x.box_transformed) != INFINITY;
+			bool hovered_y		= ray.HitDistance(m_handle_y.box_transformed) != INFINITY;
+			bool hovered_z		= ray.HitDistance(m_handle_z.box_transformed) != INFINITY;
+			bool hovered_xyz	= ray.HitDistance(m_handle_xyz.box_transformed) != INFINITY;
 
 			// Mark a handle as hovered, only if it's the only hovered handle (during the previous frame
-			m_handle_x.isHovered = hovered_x && !m_handle_y.isHovered && !m_handle_z.isHovered;
-			m_handle_y.isHovered = hovered_y && !m_handle_x.isHovered && !m_handle_z.isHovered;
-			m_handle_z.isHovered = hovered_z && !m_handle_x.isHovered && !m_handle_y.isHovered;
+			m_handle_x.isHovered		= hovered_x && !(m_handle_y.isHovered || m_handle_z.isHovered);
+			m_handle_y.isHovered		= hovered_y && !(m_handle_x.isHovered || m_handle_z.isHovered);
+			m_handle_z.isHovered		= hovered_z && !(m_handle_x.isHovered || m_handle_y.isHovered);
+			m_handle_xyz.isHovered		= hovered_xyz && !(m_handle_x.isHovered || m_handle_y.isHovered || m_handle_z.isHovered);
 
 			// Disable handle if one of the other two is active (affects the color)
-			m_handle_x.isDisabled = !m_handle_x.isEditing && (m_handle_y.isEditing || m_handle_z.isEditing);
-			m_handle_y.isDisabled = !m_handle_y.isEditing && (m_handle_x.isEditing || m_handle_z.isEditing);
-			m_handle_z.isDisabled = !m_handle_z.isEditing && (m_handle_x.isEditing || m_handle_y.isEditing);
+			m_handle_x.isDisabled	= !m_handle_x.isEditing		&& (m_handle_y.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing);
+			m_handle_y.isDisabled	= !m_handle_y.isEditing		&& (m_handle_x.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing);
+			m_handle_z.isDisabled	= !m_handle_z.isEditing		&& (m_handle_x.isEditing || m_handle_y.isEditing || m_handle_xyz.isEditing);
+			m_handle_xyz.isDisabled = !m_handle_xyz.isEditing	&& (m_handle_x.isEditing || m_handle_y.isEditing || m_handle_z.isEditing);
 
 			// Track delta
 			m_ray_previous	= m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // avoid big delta in the first run
 			m_ray_current	= ray_end;
-			m_ray_delta		= (m_ray_current - m_ray_previous);
-			
+			Vector3 delta	= m_ray_current - m_ray_previous;
+			float delta_xyz = delta.Length();
+
 			// Updated handles with delta
-			m_handle_x.delta = m_ray_delta * handle_speed;
-			m_handle_y.delta = m_ray_delta * handle_speed;
-			m_handle_z.delta = m_ray_delta * handle_speed;
+			m_handle_x.delta	= delta_xyz * Sign(delta.x) * handle_speed;
+			m_handle_y.delta	= delta_xyz * Sign(delta.y) * handle_speed;
+			m_handle_z.delta	= delta_xyz * Sign(delta.z) * handle_speed;
+			m_handle_xyz.delta	= m_handle_x.delta + m_handle_y.delta + m_handle_z.delta;
 
 			// Update input
 			m_handle_x.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
 			m_handle_y.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
 			m_handle_z.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
+			m_handle_xyz.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
 		}
 
-		return m_handle_x.isEditing ||  m_handle_y.isEditing || m_handle_z.isEditing;
+		return m_handle_x.isEditing ||  m_handle_y.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing;
 	}
 
 	const Matrix& TransformHandle::GetTransform(const Vector3& axis) const
@@ -184,8 +190,12 @@ namespace Directus
 		{
 			return m_handle_y.transform;
 		}
+		else if (axis == Vector3::Forward)
+		{
+			return m_handle_z.transform;
+		}
 
-		return m_handle_z.transform;
+		return m_handle_xyz.transform;
 	}
 
 	const Vector3& TransformHandle::GetColor(const Vector3& axis) const
@@ -198,8 +208,12 @@ namespace Directus
 		{
 			return m_handle_y.GetColor();
 		}
+		else if (axis == Vector3::Forward)
+		{
+			return m_handle_z.GetColor();
+		}
 
-		return m_handle_z.GetColor();
+		return m_handle_xyz.GetColor();
 	}
 
 	shared_ptr<RHI_VertexBuffer> TransformHandle::GetVertexBuffer()
@@ -240,19 +254,22 @@ namespace Directus
 		float handle_distance		= distance_to_camera / (1.0f / 0.1f);
 
 		// Compute transform for the handles
-		m_handle_x.position = aabb_center + right	* handle_distance;
-		m_handle_y.position = aabb_center + up		* handle_distance;
-		m_handle_z.position = aabb_center + forward * handle_distance;
-		m_handle_x.rotation = Quaternion::FromEulerAngles(0.0f, 0.0f, -90.0f);
-		m_handle_y.rotation = Quaternion::FromLookRotation(up, up);
-		m_handle_z.rotation = Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);
-		m_handle_x.scale	= distance_to_camera_x / (1.0f / handle_size);
-		m_handle_y.scale	= distance_to_camera_y / (1.0f / handle_size);
-		m_handle_z.scale	= distance_to_camera_z / (1.0f / handle_size);
+		m_handle_xyz.position	= aabb_center;
+		m_handle_x.position		= aabb_center + right	* handle_distance;
+		m_handle_y.position		= aabb_center + up		* handle_distance;
+		m_handle_z.position		= aabb_center + forward * handle_distance;
+		m_handle_x.rotation		= Quaternion::FromEulerAngles(0.0f, 0.0f, -90.0f);
+		m_handle_y.rotation		= Quaternion::FromLookRotation(up, up);
+		m_handle_z.rotation		= Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);
+		m_handle_xyz.scale		= distance_to_camera / (1.0f / handle_size);
+		m_handle_x.scale		= distance_to_camera_x / (1.0f / handle_size);
+		m_handle_y.scale		= distance_to_camera_y / (1.0f / handle_size);
+		m_handle_z.scale		= distance_to_camera_z / (1.0f / handle_size);
 
 		// Update transforms
 		m_handle_x.UpdateTransform();
 		m_handle_y.UpdateTransform();
 		m_handle_z.UpdateTransform();
+		m_handle_xyz.UpdateTransform();
 	}
 }

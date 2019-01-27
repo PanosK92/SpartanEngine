@@ -51,7 +51,7 @@ namespace Directus
 			scale			= Math::Vector3::One;
 			box				= Math::BoundingBox::Zero;
 			box_transformed	= Math::BoundingBox::Zero;
-			delta			= Math::Vector3::Zero;
+			delta			= 0.0f;
 			isEditing		= false;
 			isHovered		= false;
 			isDisabled		= false;
@@ -82,7 +82,7 @@ namespace Directus
 		Math::Vector3 scale;
 		Math::BoundingBox box;
 		Math::BoundingBox box_transformed;
-		Math::Vector3 delta;
+		float delta;
 		bool isEditing;
 		bool isHovered;
 		bool isDisabled;
@@ -106,11 +106,11 @@ namespace Directus
 	private:
 		void SnapToTransform(TransformHandle_Space space, const std::shared_ptr<Actor>& actor, Camera* camera, float handle_size);
 
-		TransformHandleAxis m_handle_x = TransformHandleAxis(Math::Vector3::Right);
-		TransformHandleAxis m_handle_y = TransformHandleAxis(Math::Vector3::Up);
-		TransformHandleAxis m_handle_z = TransformHandleAxis(Math::Vector3::Forward);
+		TransformHandleAxis m_handle_x		= TransformHandleAxis(Math::Vector3::Right);
+		TransformHandleAxis m_handle_y		= TransformHandleAxis(Math::Vector3::Up);
+		TransformHandleAxis m_handle_z		= TransformHandleAxis(Math::Vector3::Forward);
+		TransformHandleAxis m_handle_xyz	= TransformHandleAxis(Math::Vector3::One);
 
-		Math::Vector3 m_ray_delta;
 		Math::Vector3 m_ray_previous;
 		Math::Vector3 m_ray_current;
 		std::unique_ptr<Model> m_model;

@@ -309,7 +309,7 @@ namespace Directus
 			return false;
 		}
 
-		// Render Texture
+		// Render Targets
 		if (m_renderTargetsDirty)
 		{
 			if (m_renderTargetViews.empty())
@@ -342,18 +342,18 @@ namespace Directus
 		// Textures
 		if (m_texturesDirty)
 		{
-			unsigned int startSlot		= 0;
-			unsigned int textureCount	= (unsigned int)m_textures.size();
-			void* const* textures		= textureCount != 0 ? &m_textures[0] : nullptr;
+			unsigned int startSlot = 0;
+			unsigned int textureCount = (unsigned int)m_textures.size();
+			void* const* textures = textureCount != 0 ? &m_textures[0] : nullptr;
 
 			m_rhiDevice->Set_Textures(startSlot, textureCount, textures);
 			Profiler::Get().m_rhiBindingsTexture++;
 
-			m_textures.clear();		
+			m_textures.clear();
 			m_texturesDirty = false;
 		}
 
-		// Sampler
+		// Samplers
 		if (m_samplersDirty)
 		{
 			unsigned int startSlot		= 0;
