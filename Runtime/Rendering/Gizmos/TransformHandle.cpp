@@ -247,24 +247,22 @@ namespace Directus
 		m_renderer->DrawLine(aabb_center, m_handle_z.position, Vector4(m_handle_z.GetColor(), 1.0f));
 
 		// Compute scale
-		float distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length()				: 0.0f;
-		float distance_to_camera_x	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - right)).Length()		: 0.0f;
-		float distance_to_camera_y	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - up)).Length()		: 0.0f;
-		float distance_to_camera_z	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center - forward)).Length()	: 0.0f;
+		float distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length()	: 0.0f;
+		float handle_scale			= distance_to_camera / (1.0f / handle_size);
 		float handle_distance		= distance_to_camera / (1.0f / 0.1f);
 
 		// Compute transform for the handles
-		m_handle_xyz.position	= aabb_center;
 		m_handle_x.position		= aabb_center + right	* handle_distance;
 		m_handle_y.position		= aabb_center + up		* handle_distance;
 		m_handle_z.position		= aabb_center + forward * handle_distance;
+		m_handle_xyz.position	= aabb_center;
 		m_handle_x.rotation		= Quaternion::FromEulerAngles(0.0f, 0.0f, -90.0f);
 		m_handle_y.rotation		= Quaternion::FromLookRotation(up, up);
-		m_handle_z.rotation		= Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);
-		m_handle_xyz.scale		= distance_to_camera / (1.0f / handle_size);
-		m_handle_x.scale		= distance_to_camera_x / (1.0f / handle_size);
-		m_handle_y.scale		= distance_to_camera_y / (1.0f / handle_size);
-		m_handle_z.scale		= distance_to_camera_z / (1.0f / handle_size);
+		m_handle_z.rotation		= Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f);	
+		m_handle_x.scale		= handle_scale;
+		m_handle_y.scale		= handle_scale;
+		m_handle_z.scale		= handle_scale;
+		m_handle_xyz.scale		= handle_scale;
 
 		// Update transforms
 		m_handle_x.UpdateTransform();
