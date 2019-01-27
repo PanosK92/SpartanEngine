@@ -48,6 +48,7 @@ namespace Directus
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
 		const TransformHandle& GetHandle() const;
+		bool DrawXYZ() { return m_type == TransformHandle_Scale; }
 
 	private:
 		bool m_isInspecting;
