@@ -82,8 +82,8 @@ namespace Directus
 		m_flags			|= Render_PostProcess_TAA;
 		m_flags			|= Render_PostProcess_Sharpening;
 		m_flags			|= Render_PostProcess_Dithering;
-		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect
-		//m_flags		|= Render_PostProcess_SSR;					// Disabled by default: Only plays nice if it has environmental probes for fallback
+		m_flags			|= Render_PostProcess_SSR;
+		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect		
 		//m_flags		|= Render_PostProcess_FXAA;					// Disabled by default: TAA is superior
 		
 		// Create RHI device
