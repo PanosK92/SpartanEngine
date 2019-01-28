@@ -51,7 +51,7 @@ namespace Directus
 		// Add project directory
 		SetProjectDirectory("Project//");
 
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_UNLOAD, EVENT_HANDLER(Clear));
+		SUBSCRIBE_TO_EVENT(Event_World_Unload, EVENT_HANDLER(Clear));
 	}
 
 	ResourceCache::~ResourceCache()

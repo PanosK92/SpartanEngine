@@ -91,8 +91,8 @@ namespace Directus
 		m_rhiPipeline	= make_shared<RHI_Pipeline>(m_rhiDevice);
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_SUBMIT, EVENT_HANDLER_VARIANT(Renderables_Acquire));
+		SUBSCRIBE_TO_EVENT(Event_Render, EVENT_HANDLER(Render));
+		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(Renderables_Acquire));
 	}
 
 	Renderer::~Renderer()
@@ -586,13 +586,13 @@ namespace Directus
 
 			if (skybox)
 			{
-				m_skybox = skybox.get();
+				m_skybox = skybox;
 			}
 
 			if (camera)
 			{
 				m_actors[Renderable_Camera].emplace_back(actor);
-				m_camera = camera.get();
+				m_camera = camera;
 			}
 		}
 
@@ -1064,7 +1064,7 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerCompareDepth);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		SetGlobalBuffer(m_viewProjection_Orthographic, texOut->GetWidth(), texOut->GetHeight());
-		auto buffer = Struct_ShadowMapping((m_viewProjection).Inverted(), inDirectionalLight, m_camera);
+		auto buffer = Struct_ShadowMapping((m_viewProjection).Inverted(), inDirectionalLight, m_camera.get());
 		m_shaderShadowMapping->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderShadowMapping->GetConstantBuffer(), 1, Buffer_Global);
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
@@ -1562,7 +1562,7 @@ namespace Directus
 		// Transform
 		if (render_transform)
 		{
-			if (m_transformGizmo->Update(m_context->GetSubsystem<World>()->GetSelectedActor().lock(), m_camera, m_gizmo_transform_size, m_gizmo_transform_speed))
+			if (m_transformGizmo->Update(m_context->GetSubsystem<World>()->GetSelectedActor(), m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 			{
 				m_rhiDevice->EventBegin("Gizmo_Transform");
 

@@ -71,7 +71,7 @@ namespace ComponentProperty
 			{
 				if (ImGui::MenuItem("Remove"))
 				{
-					if (auto actor = Widget_World::GetActorSelected().lock())
+					if (auto actor = Widget_Properties::m_inspectedActor.lock())
 					{
 						if (component)
 						{
@@ -1006,7 +1006,7 @@ void Widget_Properties::ComponentContextMenu_Add()
 {
 	if (ImGui::BeginPopup("##ComponentContextMenu_Add"))
 	{
-		if (auto actor = Widget_World::GetActorSelected().lock())
+		if (auto actor = m_inspectedActor.lock())
 		{
 			// CAMERA
 			if (ImGui::MenuItem("Camera"))

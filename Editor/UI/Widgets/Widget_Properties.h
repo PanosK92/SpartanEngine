@@ -54,6 +54,10 @@ public:
 	static void Inspect(std::weak_ptr<Directus::Actor> actor);
 	static void Inspect(std::weak_ptr<Directus::Material> material);
 
+	// Inspected resources
+	static std::weak_ptr<Directus::Actor> m_inspectedActor;
+	static std::weak_ptr<Directus::Material> m_inspectedMaterial;
+
 private:
 	void ShowTransform(std::shared_ptr<Directus::Transform>& transform);
 	void ShowLight(std::shared_ptr<Directus::Light>& light);
@@ -70,10 +74,6 @@ private:
 	void ShowAddComponentButton();
 	void ComponentContextMenu_Add();
 	void Drop_AutoAddComponents();
-
-	// Inspected resources
-	static std::weak_ptr<Directus::Actor> m_inspectedActor;
-	static std::weak_ptr<Directus::Material> m_inspectedMaterial;
 
 	// Color pickers
 	std::unique_ptr<ButtonColorPicker> m_colorPicker_material;

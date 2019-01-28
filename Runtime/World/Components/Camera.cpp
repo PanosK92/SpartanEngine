@@ -159,28 +159,33 @@ namespace Directus
 	}
 
 	//= RAYCASTING =======================================================================
-	shared_ptr<Actor> Camera::Pick(const Vector2& mouse_position)
+	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Actor>& actor)
 	{
-		Vector2 viewport_topLeft		= Settings::Get().Viewport_GetTopLeft();
-		Vector2 mouse_position_relative = mouse_position - viewport_topLeft;
+		const RHI_Viewport& viewport	= Settings::Get().Viewport_Get();
+		Vector2 mouse_position_relative = mouse_position - Vector2(viewport.GetTopLeftX(), viewport.GetTopLeftY());
+
+		// Ensure the ray is inside the viewport
+		bool x_outside = (mouse_position_relative.x < viewport.GetTopLeftX()) || (mouse_position_relative.x > viewport.GetTopLeftX() + viewport.GetWidth());
+		bool y_outside = (mouse_position_relative.y < viewport.GetTopLeftY()) || (mouse_position_relative.y > viewport.GetTopLeftY() + viewport.GetHeight());
+		if (x_outside || y_outside)
+			return false;
 
 		// Trace ray
 		m_ray = Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mouse_position_relative));
 		std::vector<RayHit> hits = m_ray.Trace(m_context);
 
 		// Get closest hit that doesn't start inside an actor
-		shared_ptr<Actor> actor;
 		for (const auto& hit : hits)
 		{
 			if (hit.m_inside)
 				continue;
 
 			actor = hit.m_actor;
-			break;
+			return true;
 		}
 
-		// Return closest hit
-		return actor;
+		actor = nullptr;
+		return true;
 	}
 
 	Vector2 Camera::WorldToScreenPoint(const Vector3& position_world)

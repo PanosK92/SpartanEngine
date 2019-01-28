@@ -55,7 +55,7 @@ namespace Directus
 		m_renderer		= context->GetSubsystem<Renderer>();
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER_VARIANT(Step));
+		SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER_VARIANT(Step));
 	}
 
 	Physics::~Physics()

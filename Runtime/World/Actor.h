@@ -99,7 +99,7 @@ namespace Directus
 			}
 
 			// Make the scene resolve
-			FIRE_EVENT(EVENT_WORLD_RESOLVE);
+			FIRE_EVENT(Event_World_Resolve);
 
 			return newComponent;
 		}
@@ -178,7 +178,7 @@ namespace Directus
 			}
 
 			// Make the scene resolve
-			FIRE_EVENT(EVENT_WORLD_RESOLVE);
+			FIRE_EVENT(Event_World_Resolve);
 		}
 
 		void RemoveComponentByID(unsigned int id);

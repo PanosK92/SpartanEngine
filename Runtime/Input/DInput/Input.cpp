@@ -56,7 +56,7 @@ namespace Directus
 		g_mouse				= nullptr;
 		g_gamepadNum		= 0;
 
-		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Tick));
+		SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER(Tick));
 	}
 
 	Input::~Input()

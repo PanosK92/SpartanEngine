@@ -141,13 +141,13 @@ namespace Directus
 		// Read the 3D model file from disk
 		if (const aiScene* scene = importer.ReadFile(m_modelPath, _ModelImporter::flags))
 		{
-			FIRE_EVENT(EVENT_WORLD_STOP);
+			FIRE_EVENT(Event_World_Stop);
 
 			ReadNodeHierarchy(scene, scene->mRootNode, model);
 			ReadAnimations(scene, model);
 			model->Geometry_Update();
 
-			FIRE_EVENT(EVENT_WORLD_START);
+			FIRE_EVENT(Event_World_Start);
 		}
 		else
 		{

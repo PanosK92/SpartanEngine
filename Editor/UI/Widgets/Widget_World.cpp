@@ -43,9 +43,6 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-weak_ptr<Actor> Widget_World::m_actorSelected;
-weak_ptr<Actor> g_actorEmpty;
-
 namespace _Widget_World
 {
 	static Engine* g_engine			= nullptr;
@@ -57,7 +54,6 @@ namespace _Widget_World
 	static Actor* g_actorCopied		= nullptr;
 	static Actor* g_actorHovered	= nullptr;
 	static Actor* g_actorClicked	= nullptr;
-	bool g_selectionExpandPending	= false;
 }
 
 Widget_World::Widget_World(Context* context) : Widget(context)
@@ -68,6 +64,9 @@ Widget_World::Widget_World(Context* context) : Widget(context)
 	_Widget_World::g_input	= m_context->GetSubsystem<Input>();
 
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
+
+	// Subscribe to actor clicked engine event
+	SUBSCRIBE_TO_EVENT(Event_World_ActorSelected, [this](Variant data) { SetSelectedActor(data.Get<shared_ptr<Actor>>(), false); });
 }
 
 void Widget_World::Tick(float deltaTime)
@@ -92,14 +91,6 @@ void Widget_World::Tick(float deltaTime)
 		}
 		_Widget_World::g_actorClicked = nullptr;
 	}
-}
-
-void Widget_World::SetSelectedActor(weak_ptr<Actor> actor)
-{
-	m_actorSelected = actor;
-	_Widget_World::g_world->SetSelectedActor(m_actorSelected);
-	_Widget_World::g_selectionExpandPending = true;
-	Widget_Properties::Inspect(m_actorSelected);
 }
 
 void Widget_World::Tree_Show()
@@ -173,23 +164,23 @@ void Widget_World::Tree_AddActor(Actor* actor)
 	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
 
 	// Flag - Is selected?
-	if (!m_actorSelected.expired())
+	if (auto selectedActor = _Widget_World::g_world->GetSelectedActor())
 	{
-		bool isSelectedActor = m_actorSelected.lock()->GetID() == actor->GetID();
+		bool isSelectedActor = selectedActor->GetID() == actor->GetID();
 		node_flags |= isSelectedActor ? ImGuiTreeNodeFlags_Selected : 0;
 
 		// Expand to show actor, if it was clicked during this frame
-		if (_Widget_World::g_selectionExpandPending)
+		if (m_expandToShowActor)
 		{
 			// If the selected actor is a descendant of the this actor, start expanding (this can happen if the user clicks on something in the 3D scene)
-			if (m_actorSelected.lock()->GetTransform_PtrRaw()->IsDescendantOf(actor->GetTransform_PtrRaw()))
+			if (selectedActor->GetTransform_PtrRaw()->IsDescendantOf(actor->GetTransform_PtrRaw()))
 			{
 				ImGui::SetNextTreeNodeOpen(true);
 
 				// Stop expanding when we have reached the selected actor (it's visible to the user)
 				if (isSelectedActor)
 				{
-					_Widget_World::g_selectionExpandPending = false;
+					m_expandToShowActor = false;
 				}
 			}
 		}
@@ -254,7 +245,7 @@ void Widget_World::HandleClicking()
 	// Clicking on empty space - Clear selection
 	if ((leftClick || rightClick) && !_Widget_World::g_actorHovered)
 	{
-		SetSelectedActor(g_actorEmpty);
+		SetSelectedActor(m_actor_empty);
 	}
 }
 
@@ -282,6 +273,19 @@ void Widget_World::Actor_HandleDragDrop(Actor* actorPtr)
 	}
 }
 
+void Widget_World::SetSelectedActor(std::shared_ptr<Directus::Actor> actor, bool fromEditor /*= true*/)
+{
+	m_expandToShowActor = true;
+
+	// If the updated comes from this widget, let the engine know about it
+	if (fromEditor)
+	{
+		_Widget_World::g_world->SetSelectedActor(actor);
+	}
+
+	Widget_Properties::Inspect(actor);
+}
+
 void Widget_World::Popups()
 {
 	Popup_ContextMenu();
@@ -293,11 +297,12 @@ void Widget_World::Popup_ContextMenu()
 	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
 		return;
 
-	bool onActor = !m_actorSelected.expired();
+	auto selectedActor	= _Widget_World::g_world->GetSelectedActor();
+	bool onActor		= selectedActor != nullptr;
 
 	if (onActor) if (ImGui::MenuItem("Copy"))
 	{
-		_Widget_World::g_actorCopied = m_actorSelected.lock().get();
+		_Widget_World::g_actorCopied = selectedActor.get();
 	}
 
 	if (ImGui::MenuItem("Paste"))
@@ -315,7 +320,7 @@ void Widget_World::Popup_ContextMenu()
 
 	if (onActor) if (ImGui::MenuItem("Delete", "Delete"))
 	{
-		Action_Actor_Delete(m_actorSelected);
+		Action_Actor_Delete(selectedActor);
 	}
 	ImGui::Separator();
 
@@ -424,19 +429,19 @@ void Widget_World::Popup_ActorRename()
 
 	if (ImGui::BeginPopup("##RenameActor"))
 	{
-		auto actor = m_actorSelected.lock();
-		if (!actor)
+		auto selectedActor = _Widget_World::g_world->GetSelectedActor();
+		if (!selectedActor)
 		{
 			ImGui::CloseCurrentPopup();
 			ImGui::EndPopup();
 			return;
 		}
 
-		string name = actor->GetName();
+		string name = selectedActor->GetName();
 
 		ImGui::Text("Name:");
 		ImGui::InputText("##edit", &name);
-		actor->SetName(string(name));
+		selectedActor->SetName(string(name));
 
 		if (ImGui::Button("Ok")) 
 		{ 
@@ -453,11 +458,11 @@ void Widget_World::HandleKeyShortcuts()
 {
 	if (_Widget_World::g_input->GetKey(Delete))
 	{
-		Action_Actor_Delete(m_actorSelected);
+		Action_Actor_Delete(_Widget_World::g_world->GetSelectedActor());
 	}
 }
 
-void Widget_World::Action_Actor_Delete(weak_ptr<Actor> actor)
+void Widget_World::Action_Actor_Delete(shared_ptr<Actor> actor)
 {
 	_Widget_World::g_world->Actor_Remove(actor);
 }
@@ -465,9 +470,9 @@ void Widget_World::Action_Actor_Delete(weak_ptr<Actor> actor)
 Actor* Widget_World::Action_Actor_CreateEmpty()
 {
 	auto actor = _Widget_World::g_world->Actor_Create().get();
-	if (auto selected = m_actorSelected.lock())
+	if (auto selectedActor = _Widget_World::g_world->GetSelectedActor())
 	{
-		actor->GetTransform_PtrRaw()->SetParent(selected->GetTransform_PtrRaw());
+		actor->GetTransform_PtrRaw()->SetParent(selectedActor->GetTransform_PtrRaw());
 	}
 
 	return actor;

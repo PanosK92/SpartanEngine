@@ -65,8 +65,8 @@ namespace Directus
 		m_profilingLastUpdateTime	= m_profilingFrequencySec;
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(EVENT_FRAME_START, EVENT_HANDLER(OnFrameStart));
-		SUBSCRIBE_TO_EVENT(EVENT_FRAME_END, EVENT_HANDLER(OnFrameEnd));
+		SUBSCRIBE_TO_EVENT(Event_Frame_Start, EVENT_HANDLER(OnFrameStart));
+		SUBSCRIBE_TO_EVENT(Event_Frame_End, EVENT_HANDLER(OnFrameEnd));
 	}
 
 	void Profiler::TimeBlockStart_CPU(const char* funcName)

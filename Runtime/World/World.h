@@ -21,16 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ==================
 #include <vector>
-#include "../Math/Vector3.h"
-#include "../Threading/Threading.h"
-//=================================
+#include <memory>
+#include "../Core/EngineDefs.h"
+#include "../Core/SubSystem.h"
+//=============================
 
 namespace Directus
 {
 	class Actor;
 	class Light;
+	class Input;
 
 	enum Scene_State
 	{
@@ -61,8 +63,8 @@ namespace Directus
 		//= Actor HELPER FUNCTIONS ===========================================================
 		std::shared_ptr<Actor>& Actor_Create();
 		std::shared_ptr<Actor>& Actor_Add(const std::shared_ptr<Actor>& actor);
-		bool Actor_Exists(const std::weak_ptr<Actor>& actor);
-		void Actor_Remove(const std::weak_ptr<Actor>& actor);
+		bool Actor_Exists(const std::shared_ptr<Actor>& actor);
+		void Actor_Remove(const std::shared_ptr<Actor>& actor);
 		const std::vector<std::shared_ptr<Actor>>& Actors_GetAll() { return m_actorsPrimary; }
 		std::vector<std::shared_ptr<Actor>> Actors_GetRoots();
 		const std::shared_ptr<Actor>& Actor_GetByName(const std::string& name);
@@ -70,25 +72,25 @@ namespace Directus
 		int Actor_GetCount() { return (int)m_actorsPrimary.size(); }
 		//====================================================================================
 
-		//= SELECTED ACTOR ===============================================================
-		std::weak_ptr<Actor> GetSelectedActor()				{ return m_actor_selected; }
-		void SetSelectedActor(std::weak_ptr<Actor> actor)	{ m_actor_selected = actor; }
+		//= SELECTED ACTOR ==============================================================
+		std::shared_ptr<Actor> GetSelectedActor()			{ return m_actor_selected; }
+		void SetSelectedActor(std::shared_ptr<Actor> actor)	{ m_actor_selected = actor; }
 		//===============================================================================
 
 	private:
 		//= COMMON ACTOR CREATION =======================
 		std::shared_ptr<Actor>& CreateSkybox();
-		std::shared_ptr<Actor>& CreateCamera();
+		std::shared_ptr<Actor> CreateCamera();
 		std::shared_ptr<Actor>& CreateDirectionalLight();
 		//===============================================
 
 		// Double-buffered actors
 		std::vector<std::shared_ptr<Actor>> m_actorsPrimary;
-		std::vector<std::shared_ptr<Actor>> m_actorsSecondry;
+		std::vector<std::shared_ptr<Actor>> m_actorsSecondary;
 
 		std::shared_ptr<Actor> m_actor_empty;
-		std::weak_ptr<Actor> m_actor_skybox;
-		std::weak_ptr<Actor> m_actor_selected;
+		std::shared_ptr<Actor> m_actor_selected;
+		Input* m_input;
 		bool m_wasInEditorMode;
 		bool m_isDirty;
 		Scene_State m_state;
