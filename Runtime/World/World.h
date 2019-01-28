@@ -77,6 +77,9 @@ namespace Directus
 		void SetSelectedActor(std::shared_ptr<Actor> actor)	{ m_actor_selected = actor; }
 		//===============================================================================
 
+		// Picks the closest actor under the mouse cursor
+		void PickActor();
+
 	private:
 		//= COMMON ACTOR CREATION =======================
 		std::shared_ptr<Actor>& CreateSkybox();

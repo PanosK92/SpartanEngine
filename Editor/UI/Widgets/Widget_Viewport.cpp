@@ -38,7 +38,7 @@ using namespace Math;
 namespace _Widget_Viewport
 {
 	static Renderer* g_renderer	= nullptr;
-	static World* g_scene		= nullptr;
+	static World* g_world		= nullptr;
 	float g_windowPadding		= 4.0f;
 }
 
@@ -49,7 +49,7 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
 
 	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
 	_Widget_Viewport::g_renderer	= m_context->GetSubsystem<Renderer>();
-	_Widget_Viewport::g_scene		= m_context->GetSubsystem<World>();
+	_Widget_Viewport::g_world		= m_context->GetSubsystem<World>();
 	m_xMin = 400;
 	m_yMin = 250;
 }
@@ -104,12 +104,12 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 		_Widget_Viewport::g_renderer->SetResolution(width, height);
 		m_timeSinceLastResChange = 0;
 	}
-
 	m_timeSinceLastResChange += deltaTime;
 
+	// If this widget was clicked, make the engine pick an actor
 	if (ImGui::IsItemClicked(0))
 	{
-		LOG_ERROR("Viewport clicked");
+		_Widget_Viewport::g_world->PickActor();
 	}
 
 	// Handle model drop

@@ -115,18 +115,6 @@ namespace Directus
 			}
 		}
 
-		// Viewport picking (On left click)
-		if (m_input->GetKeyDown(Click_Left))
-		{
-			if (auto camera = m_context->GetSubsystem<Renderer>()->GetCamera())
-			{
-				if (camera->Pick(m_input->GetMousePosition(), m_actor_selected))
-				{
-					FIRE_EVENT_DATA(Event_World_ActorSelected, m_actor_selected);
-				}
-			}
-		}
-
 		TIME_BLOCK_END_CPU();
 
 		if (m_isDirty)
@@ -394,6 +382,19 @@ namespace Directus
 
 		return m_actor_empty;
 	}
+
+	void World::PickActor()
+	{
+		auto camera = m_context->GetSubsystem<Renderer>()->GetCamera();
+		if (!camera)
+			return;
+
+		if (camera->Pick(m_input->GetMousePosition(), m_actor_selected))
+		{
+			FIRE_EVENT_DATA(Event_World_ActorSelected, m_actor_selected);
+		}
+	}
+
 	//===================================================================================================
 
 	//= COMMON ACTOR CREATION ========================================================================
