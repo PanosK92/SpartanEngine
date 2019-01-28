@@ -106,12 +106,6 @@ namespace Directus
 			}
 		}
 
-		// If the actor is being edited, set as selected actor in the world (because it can be overwritten during dragging, and that should be ignored)
-		if (m_isEditing)
-		{
-			m_world->SetSelectedActor(m_selectedActor);
-		}
-
 		m_isInspecting = m_isEditing || actor;
 
 		return m_isInspecting;

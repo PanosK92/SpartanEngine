@@ -48,8 +48,8 @@ namespace Directus
 		m_initialized		= false;
 		m_listener			= nullptr;
 
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_UNLOAD, [this](Variant) { m_listener = nullptr; });
-		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Update));
+		SUBSCRIBE_TO_EVENT(Event_World_Unload, [this](Variant) { m_listener = nullptr; });
+		SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER(Update));
 	}
 
 	Audio::~Audio()

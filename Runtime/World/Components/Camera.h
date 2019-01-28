@@ -64,19 +64,19 @@ namespace Directus
 		const Math::Matrix& GetBaseViewMatrix()		{ return m_mBaseView; }
 		//===================================================================
 
-		//= RAYCASTING ===================================================
+		//= RAYCASTING =========================================================
 		// Returns the ray the camera uses to do picking
 		const Math::Ray& GetPickingRay() { return m_ray; }
 
-		// Returns the nearest actor under the cursor
-		std::shared_ptr<Actor> Pick(const Math::Vector2& mousePos);
+		// Picks the nearest actor under the mouse cursor
+		bool Pick(const Math::Vector2& mousePos, std::shared_ptr<Actor>& actor);
 
 		// Converts a world point to a screen point
 		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);
 
 		// Converts a screen point to a world point
 		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& point);
-		//================================================================
+		//======================================================================
 
 		//= PLANES/PROJECTION ================================================================
 		void SetNearPlane(float nearPlane);		

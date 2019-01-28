@@ -39,7 +39,7 @@ namespace _Widget_Viewport
 {
 	static Renderer* g_renderer	= nullptr;
 	static World* g_scene		= nullptr;
-	static Vector2 g_framePos;
+	float g_windowPadding		= 4.0f;
 }
 
 Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
@@ -57,7 +57,7 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
 bool Widget_Viewport::Begin()
 {
 	ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(_Widget_Viewport::g_windowPadding, _Widget_Viewport::g_windowPadding));
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 
 	return true;
@@ -84,8 +84,9 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	width	-= (width	% 2 != 0) ? 1 : 0;
 	height	-= (height	% 2 != 0) ? 1 : 0;
 
-	// Display frame
-	_Widget_Viewport::g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
+	// Let the engine know about the position as well as the size of this widget
+	Vector2 windowPos = EditorHelper::ToVector2(ImGui::GetWindowPos()) + Vector2(_Widget_Viewport::g_windowPadding);
+	Settings::Get().Viewport_Set(windowPos.x, windowPos.y, (float)width, (float)height);
 	
 	ImGui::Image(
 		_Widget_Viewport::g_renderer->GetFrameShaderResource(),
@@ -95,9 +96,6 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 		ImColor(255, 255, 255, 255),
 		ImColor(50, 127, 166, 255)
 	);
-
-	// Adjust viewport to fit this very frame
-	Settings::Get().Viewport_Set(_Widget_Viewport::g_framePos.x, _Widget_Viewport::g_framePos.y, (float)width, (float)height);
 
 	// Adjust resolution if required
 	if (Settings::Get().Resolution_GetWidth() != width || Settings::Get().Resolution_GetHeight() != height)
@@ -115,23 +113,4 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	{
 		EditorHelper::Get().LoadModel(get<const char*>(payload->data));
 	}
-
-	MousePicking();
-}
-
-void Widget_Viewport::MousePicking()
-{
-	if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) || !ImGui::IsMouseClicked(0))
-		return;
-
-	if (auto camera = _Widget_Viewport::g_renderer->GetCamera())
-	{
-		if (auto picked = camera->Pick(EditorHelper::ToVector2(ImGui::GetMousePos())))
-		{
-			Widget_World::SetSelectedActor(picked);
-			return;
-		}
-	}
-
-	Widget_World::SetSelectedActor(weak_ptr<Actor>());
 }

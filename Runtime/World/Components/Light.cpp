@@ -88,7 +88,7 @@ namespace Directus
 		}
 
 		// Acquire camera
-		if (Camera* camera = m_renderer->GetCamera())
+		if (auto camera = m_renderer->GetCamera())
 		{
 			if (m_lastPosCamera != camera->GetTransform()->GetPosition())
 			{

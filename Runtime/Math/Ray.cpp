@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Ray.h"
+#include <algorithm>
 #include "RayHit.h"
 #include "BoundingBox.h"
 #include "../World/Actor.h"

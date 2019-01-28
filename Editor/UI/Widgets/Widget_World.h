@@ -34,9 +34,6 @@ public:
 	Widget_World(Directus::Context* context);
 	void Tick(float deltaTime) override;
 
-	static std::weak_ptr<Directus::Actor> GetActorSelected() { return m_actorSelected; }
-	static void SetSelectedActor(std::weak_ptr<Directus::Actor> actor) ;
-
 private:
 	// Tree
 	void Tree_Show();
@@ -45,6 +42,7 @@ private:
 	void Tree_AddActor(Directus::Actor* actor);
 	void HandleClicking();
 	void Actor_HandleDragDrop(Directus::Actor* actorPtr);
+	void SetSelectedActor(std::shared_ptr<Directus::Actor> actor, bool fromEditor = true);
 
 	// Misc
 	void Popups();
@@ -53,7 +51,7 @@ private:
 	void HandleKeyShortcuts();
 
 	// Context menu actions
-	void Action_Actor_Delete(std::weak_ptr<Directus::Actor> actor);
+	void Action_Actor_Delete(std::shared_ptr<Directus::Actor> actor);
 	Directus::Actor* Action_Actor_CreateEmpty();
 	void Action_Actor_CreateCube();
 	void Action_Actor_CreateQuad();
@@ -70,5 +68,6 @@ private:
 	void Action_actor_CreateAudioSource();
 	void Action_actor_CreateAudioListener();
 	
-	static std::weak_ptr<Directus::Actor> m_actorSelected;
+	std::shared_ptr<Directus::Actor> m_actor_empty;
+	bool m_expandToShowActor = false;
 };

@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
+#include "../Input/Input.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -45,18 +46,14 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	namespace _World
-	{
-		shared_ptr<Actor> emptyActor;
-	}
-
 	World::World(Context* context) : Subsystem(context)
 	{
-		m_state = Ticking;
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_RESOLVE, [this](Variant) { m_isDirty = true; });
-		SUBSCRIBE_TO_EVENT(EVENT_TICK, EVENT_HANDLER(Tick));
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_STOP, [this](Variant)	{ m_state = Idle; });
-		SUBSCRIBE_TO_EVENT(EVENT_WORLD_START, [this](Variant)	{ m_state = Ticking; });
+		m_state		= Ticking;
+		m_input		= context->GetSubsystem<Input>();
+		SUBSCRIBE_TO_EVENT(Event_World_Resolve, [this](Variant) { m_isDirty = true; });
+		SUBSCRIBE_TO_EVENT(Event_Tick,			EVENT_HANDLER(Tick));
+		SUBSCRIBE_TO_EVENT(Event_World_Stop,	[this](Variant)	{ m_state = Idle; });
+		SUBSCRIBE_TO_EVENT(Event_World_Start,	[this](Variant)	{ m_state = Ticking; });
 	}
 
 	World::~World()
@@ -67,6 +64,7 @@ namespace Directus
 	bool World::Initialize()
 	{
 		m_isDirty = true;
+
 		CreateCamera();
 		CreateSkybox();
 		CreateDirectionalLight();
@@ -87,49 +85,69 @@ namespace Directus
 
 		TIME_BLOCK_START_CPU();
 		
-		// Detect game toggling
-		bool started		= Engine::EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
-		bool stopped		= !Engine::EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
-		m_wasInEditorMode	= !Engine::EngineMode_IsSet(Engine_Game);
-
-		// ACTOR START
-		if (started)
-		{			
-			for (const auto& actor : m_actorsPrimary)
-			{
-				actor->Start();
-			}
-		}
-		// ACTOR STOP
-		if (stopped)
-		{		
-			for (const auto& actor : m_actorsPrimary)
-			{
-				actor->Stop();
-			}
-		}
-		// ACTOR TICK
-		for (const auto& actor : m_actorsPrimary)
+		// Tick actors
 		{
-			actor->Tick();
+			// Detect game toggling
+			bool started		= Engine::EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
+			bool stopped		= !Engine::EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
+			m_wasInEditorMode	= !Engine::EngineMode_IsSet(Engine_Game);
+
+			// Start
+			if (started)
+			{
+				for (const auto& actor : m_actorsPrimary)
+				{
+					actor->Start();
+				}
+			}
+			// Stop
+			if (stopped)
+			{
+				for (const auto& actor : m_actorsPrimary)
+				{
+					actor->Stop();
+				}
+			}
+			// Tick
+			for (const auto& actor : m_actorsPrimary)
+			{
+				actor->Tick();
+			}
+		}
+
+		// Viewport picking (On left click)
+		if (m_input->GetKeyDown(Click_Left))
+		{
+			if (auto camera = m_context->GetSubsystem<Renderer>()->GetCamera())
+			{
+				if (camera->Pick(m_input->GetMousePosition(), m_actor_selected))
+				{
+					FIRE_EVENT_DATA(Event_World_ActorSelected, m_actor_selected);
+				}
+			}
 		}
 
 		TIME_BLOCK_END_CPU();
 
 		if (m_isDirty)
 		{
-			m_actorsSecondry = m_actorsPrimary;
+			m_actorsSecondary = m_actorsPrimary;
 			// Submit to the Renderer
-			FIRE_EVENT_DATA(EVENT_WORLD_SUBMIT, m_actorsSecondry);
+			FIRE_EVENT_DATA(Event_World_Submit, m_actorsSecondary);
 			m_isDirty = false;
 		}
 	}
 
 	void World::Unload()
 	{
-		FIRE_EVENT(EVENT_WORLD_UNLOAD);
+		FIRE_EVENT(Event_World_Unload);
+
 		m_actorsPrimary.clear();
 		m_actorsPrimary.shrink_to_fit();
+		
+		m_actor_selected.reset();
+
+		// Don't clear secondary m_actorsSecondary as they might be used by the renderer
 	}
 	//=========================================================================================================
 
@@ -186,7 +204,7 @@ namespace Directus
 
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
 		LOG_INFO("Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
-		FIRE_EVENT(EVENT_WORLD_SAVED);
+		FIRE_EVENT(Event_World_Saved);
 
 		return true;
 	}
@@ -269,7 +287,7 @@ namespace Directus
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);	
 		LOG_INFO("Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
 
-		FIRE_EVENT(EVENT_WORLD_LOADED);
+		FIRE_EVENT(Event_World_Loaded);
 		return true;
 	}
 	//===================================================================================================
@@ -290,36 +308,41 @@ namespace Directus
 		return m_actorsPrimary.emplace_back(actor);
 	}
 
-	bool World::Actor_Exists(const weak_ptr<Actor>& actor)
+	bool World::Actor_Exists(const shared_ptr<Actor>& actor)
 	{
-		if (actor.expired())
+		if (!actor)
 			return false;
 
-		return Actor_GetByID(actor.lock()->GetID()) != nullptr;
+		return Actor_GetByID(actor->GetID()) != nullptr;
 	}
 
 	// Removes an actor and all of it's children
-	void World::Actor_Remove(const weak_ptr<Actor>& actor)
+	void World::Actor_Remove(const shared_ptr<Actor>& actor)
 	{
-		Actor* actorPtr = actor.lock().get();
-		if (!actorPtr)
+		if (!actor)
 			return;
 
+		// If the actor to be removed is the actor that is currently selected, make sure to lose the reference
+		if (actor->GetID() == m_actor_selected->GetID())
+		{
+			m_actor_selected = nullptr;
+		}
+
 		// remove any descendants
-		vector<Transform*> children = actorPtr->GetTransform_PtrRaw()->GetChildren();
+		vector<Transform*> children = actor->GetTransform_PtrRaw()->GetChildren();
 		for (const auto& child : children)
 		{
-			Actor_Remove(child->GetActor_PtrWeak());
+			Actor_Remove(child->GetActor_PtrShared());
 		}
 
 		// Keep a reference to it's parent (in case it has one)
-		Transform* parent = actorPtr->GetTransform_PtrRaw()->GetParent();
+		Transform* parent = actor->GetTransform_PtrRaw()->GetParent();
 
 		// Remove this actor
 		for (auto it = m_actorsPrimary.begin(); it < m_actorsPrimary.end();)
 		{
 			shared_ptr<Actor> temp = *it;
-			if (temp->GetID() == actorPtr->GetID())
+			if (temp->GetID() == actor->GetID())
 			{
 				it = m_actorsPrimary.erase(it);
 				break;
@@ -358,7 +381,7 @@ namespace Directus
 				return actor;
 		}
 
-		return _World::emptyActor;
+		return m_actor_empty;
 	}
 
 	const shared_ptr<Actor>& World::Actor_GetByID(unsigned int ID)
@@ -369,7 +392,7 @@ namespace Directus
 				return actor;
 		}
 
-		return _World::emptyActor;
+		return m_actor_empty;
 	}
 	//===================================================================================================
 
@@ -384,20 +407,20 @@ namespace Directus
 		return skybox;
 	}
 
-	shared_ptr<Actor>& World::CreateCamera()
+	shared_ptr<Actor> World::CreateCamera()
 	{
 		auto resourceMng		= m_context->GetSubsystem<ResourceCache>();
 		string scriptDirectory	= resourceMng->GetStandardResourceDirectory(Resource_Script);
 
-		shared_ptr<Actor>& camera = Actor_Create();
-		camera->SetName("Camera");
-		camera->AddComponent<Camera>();
-		camera->AddComponent<AudioListener>();
-		camera->AddComponent<Script>()->SetScript(scriptDirectory + "MouseLook.as");
-		camera->AddComponent<Script>()->SetScript(scriptDirectory + "FirstPersonController.as");
-		camera->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+		auto actor = Actor_Create();
+		actor->SetName("Camera");
+		actor->AddComponent<Camera>();
+		actor->AddComponent<AudioListener>();
+		actor->AddComponent<Script>()->SetScript(scriptDirectory + "MouseLook.as");
+		actor->AddComponent<Script>()->SetScript(scriptDirectory + "FirstPersonController.as");
+		actor->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
-		return camera;
+		return actor;
 	}
 
 	shared_ptr<Actor>& World::CreateDirectionalLight()

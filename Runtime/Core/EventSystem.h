@@ -34,23 +34,26 @@ HOW TO USE
 To subscribe a function to an event	-> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
 To fire an event					-> FIRE_EVENT(EVENT_ID);
 To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
+
+Note: Currently, this is an blocking event system
 =============================================================================
 */
 
-//= EVENTS =============================================================================================
-#define EVENT_FRAME_START			0	// Signifies that a frame begins
-#define EVENT_FRAME_END				1	// Signifies that that a frame ends
-#define EVENT_TICK					2	// Signifies that subsystems should tick
-#define EVENT_RENDER				3	// Signifies that Renderer should output a frame
-
-#define EVENT_WORLD_SAVED			4	// Signifies that the World finished saving to file
-#define EVENT_WORLD_LOADED			5	// Signifies that the World finished loading from file
-#define EVENT_WORLD_UNLOAD			6	// Signifies that the World should clear everything
-#define EVENT_WORLD_RESOLVE			7	// Signifies that the World should resolve
-#define EVENT_WORLD_SUBMIT			8	// Signifies that the World is submitting actors to the Renderer
-#define EVENT_WORLD_STOP			9	// Signifies that The World should stop ticking
-#define EVENT_WORLD_START			10	// Signifies that The World should start ticking
-//======================================================================================================
+enum Event_Type
+{
+	Event_Tick,					// Subsystems should tick
+	Event_Render,				// Renderer should output a frame
+	Event_Frame_Start,			// A frame begins
+	Event_Frame_End,			// A frame ends
+	Event_World_Saved,			// The world finished saving to file
+	Event_World_Loaded,			// The world finished loading from file
+	Event_World_Unload,			// The world should clear everything
+	Event_World_Resolve,		// The world should resolve
+	Event_World_Submit,			// The world is submitting actors to the renderer
+	Event_World_Stop,			// The world should stop ticking
+	Event_World_Start,			// The world should start ticking
+	Event_World_ActorSelected	// An actor was clicked in the viewport
+};
 
 //= MACROS ===============================================================================================
 #define EVENT_HANDLER_STATIC(function)			[](Directus::Variant var)		{ function(); }
@@ -75,12 +78,12 @@ namespace Directus
 
 		typedef std::function<void(Variant)> subscriber;
 
-		void Subscribe(int eventID, subscriber&& func)
+		void Subscribe(Event_Type eventID, subscriber&& func)
 		{
 			m_subscribers[eventID].push_back(std::forward<subscriber>(func));
 		}
 
-		void Fire(int eventID, const Variant& data = 0)
+		void Fire(Event_Type eventID, const Variant& data = 0)
 		{
 			if (m_subscribers.find(eventID) == m_subscribers.end())
 				return;
@@ -93,6 +96,6 @@ namespace Directus
 		void Clear() { m_subscribers.clear(); }
 
 	private:
-		std::map<uint8_t, std::vector<subscriber>> m_subscribers;
+		std::map<Event_Type, std::vector<subscriber>> m_subscribers;
 	};
 }

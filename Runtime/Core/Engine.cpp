@@ -157,19 +157,19 @@ namespace Directus
 	void Engine::Tick()
 	{
 		m_timer->Tick();
-		FIRE_EVENT(EVENT_FRAME_START);
+		FIRE_EVENT(Event_Frame_Start);
 
 		if (EngineMode_IsSet(Engine_Update))
 		{
-			FIRE_EVENT_DATA(EVENT_TICK, m_timer->GetDeltaTimeSec());
+			FIRE_EVENT_DATA(Event_Tick, m_timer->GetDeltaTimeSec());
 		}
 
 		if (EngineMode_IsSet(Engine_Render))
 		{
-			FIRE_EVENT(EVENT_RENDER);
+			FIRE_EVENT(Event_Render);
 		}
 
-		FIRE_EVENT(EVENT_FRAME_END);
+		FIRE_EVENT(Event_Frame_End);
 	}
 
 	void Engine::SetHandles(void* drawHandle, void* windowHandle, void* windowInstance)

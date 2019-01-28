@@ -34,6 +34,5 @@ public:
 
 private:
 	void ShowFrame(float deltaTime);
-	void MousePicking();
 	float m_timeSinceLastResChange;
 };

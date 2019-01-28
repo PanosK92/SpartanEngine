@@ -131,7 +131,7 @@ namespace Directus
 		const std::shared_ptr<RHI_Device>& GetRHIDevice()	{ return m_rhiDevice; }
 		static bool IsRendering()							{ return m_isRendering; }
 		uint64_t GetFrameNum()								{ return m_frameNum; }
-		Camera* GetCamera()									{ return m_camera; }
+		std::shared_ptr<Camera> GetCamera()					{ return m_camera; }
 		static unsigned int GetMaxResolution()				{ return m_maxResolution; }
 
 		//= Graphics Settings ====================================================================================================================================================
@@ -286,8 +286,8 @@ namespace Directus
 		Math::Matrix m_viewProjection_Orthographic;
 		float m_nearPlane;
 		float m_farPlane;
-		Camera* m_camera;
-		Skybox* m_skybox;
+		std::shared_ptr<Camera> m_camera;
+		std::shared_ptr<Skybox> m_skybox;
 		static bool m_isRendering;
 		std::unique_ptr<Font> m_font;	
 		unsigned long m_flags;

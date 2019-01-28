@@ -48,6 +48,7 @@ namespace Directus
 	double,											\
 	void*,											\
 	Directus::Actor*,								\
+	std::shared_ptr<Directus::Actor>,				\
 	std::weak_ptr<Directus::Actor>,					\
 	std::vector<std::weak_ptr<Directus::Actor>>,	\
 	std::vector<std::shared_ptr<Directus::Actor>>,	\
