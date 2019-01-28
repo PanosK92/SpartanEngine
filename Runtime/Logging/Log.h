@@ -40,6 +40,7 @@ namespace Directus
 
 	// Pre-Made
 	#define LOG_ERROR_INVALID_PARAMETER() LOG_ERROR("Invalid parameter.")
+	#define LOG_ERROR_INVALID_INTERNALS() LOG_ERROR("Invalid internals.")
 
 	// Forward declarations
 	class Actor;

@@ -76,10 +76,15 @@ namespace Directus
 
 	void GBuffer::Clear()
 	{
+		float depth = 1.0f;
+		#if REVERSE_Z == 1
+		depth = 0.0f;
+		#endif
+
 		m_renderTargets[GBuffer_Target_Albedo]->Clear(0, 0, 0, 0);
 		m_renderTargets[GBuffer_Target_Normal]->Clear(0, 0, 0, 0);
 		m_renderTargets[GBuffer_Target_Material]->Clear(0, 0, 0, 0);
 		m_renderTargets[GBuffer_Target_Velocity]->Clear(0, 0, 0, 0);
-		m_renderTargets[GBuffer_Target_Depth]->Clear(0, 0, 0, 0);
+		m_renderTargets[GBuffer_Target_Depth]->Clear(depth, depth, 0, 0);
 	}
 }

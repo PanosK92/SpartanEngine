@@ -71,10 +71,8 @@ namespace Directus
 		ID3D11DeviceContext* deviceContext;
 		IDXGISwapChain* swapChain;
 		ID3D11RenderTargetView* renderTargetView;
-		ID3D11Texture2D* depthStencilBuffer;
 		ID3D11DepthStencilState* depthStencilStateEnabled;
 		ID3D11DepthStencilState* depthStencilStateDisabled;
-		ID3D11DepthStencilView* depthStencilView;
 		ID3D11RasterizerState* rasterStateCullFront;
 		ID3D11RasterizerState* rasterStateCullBack;
 		ID3D11RasterizerState* rasterStateCullNone;
@@ -82,82 +80,6 @@ namespace Directus
 		ID3D11BlendState* blendStateAlphaDisabled;
 		ID3DUserDefinedAnnotation* eventReporter;	
 		D3D11_VIEWPORT viewport;
-
-		inline const char* DxgiErrorToString(HRESULT errorCode)
-		{
-			switch (errorCode)
-			{
-			case DXGI_ERROR_DEVICE_HUNG:                    return "DXGI_ERROR_DEVICE_HUNG";                  // The application's device failed due to badly formed commands sent by the application. This is an design-time issue that should be investigated and fixed.
-			case DXGI_ERROR_DEVICE_REMOVED:                 return "DXGI_ERROR_DEVICE_REMOVED";               // The video card has been physically removed from the system, or a driver upgrade for the video card has occurred. The application should destroy and recreate the device. For help debugging the problem, call ID3D10Device::GetDeviceRemovedReason.
-			case DXGI_ERROR_DEVICE_RESET:                   return "DXGI_ERROR_DEVICE_RESET";                 // The device failed due to a badly formed command. This is a run-time issue; The application should destroy and recreate the device.
-			case DXGI_ERROR_DRIVER_INTERNAL_ERROR:          return "DXGI_ERROR_DRIVER_INTERNAL_ERROR";        // The driver encountered a problem and was put into the device removed state.
-			case DXGI_ERROR_FRAME_STATISTICS_DISJOINT:      return "DXGI_ERROR_FRAME_STATISTICS_DISJOINT";    // An event (for example, a power cycle) interrupted the gathering of presentation statistics.
-			case DXGI_ERROR_GRAPHICS_VIDPN_SOURCE_IN_USE:   return "DXGI_ERROR_GRAPHICS_VIDPN_SOURCE_IN_USE"; // The application attempted to acquire exclusive ownership of an output, but failed because some other application (or device within the application) already acquired ownership.
-			case DXGI_ERROR_INVALID_CALL:                   return "DXGI_ERROR_INVALID_CALL";                 // The application provided invalid parameter data; this must be debugged and fixed before the application is released.
-			case DXGI_ERROR_MORE_DATA:                      return "DXGI_ERROR_MORE_DATA";                    // The buffer supplied by the application is not big enough to hold the requested data.
-			case DXGI_ERROR_NONEXCLUSIVE:                   return "DXGI_ERROR_NONEXCLUSIVE";                 // A global counter resource is in use, and the Direct3D device can't currently use the counter resource.
-			case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE:        return "DXGI_ERROR_NOT_CURRENTLY_AVAILABLE";      // The resource or request is not currently available, but it might become available later.
-			case DXGI_ERROR_NOT_FOUND:                      return "DXGI_ERROR_NOT_FOUND";                    // When calling IDXGIObject::GetPrivateData, the GUID passed in is not recognized as one previously passed to IDXGIObject::SetPrivateData or IDXGIObject::SetPrivateDataInterface. When calling IDXGIFactory::EnumAdapters or IDXGIAdapter::EnumOutputs, the enumerated ordinal is out of range.
-			case DXGI_ERROR_REMOTE_CLIENT_DISCONNECTED:     return "DXGI_ERROR_REMOTE_CLIENT_DISCONNECTED";   // Reserved
-			case DXGI_ERROR_REMOTE_OUTOFMEMORY:             return "DXGI_ERROR_REMOTE_OUTOFMEMORY";           // Reserved
-			case DXGI_ERROR_WAS_STILL_DRAWING:              return "DXGI_ERROR_WAS_STILL_DRAWING";            // The GPU was busy at the moment when a call was made to perform an operation, and did not execute or schedule the operation.
-			case DXGI_ERROR_UNSUPPORTED:                    return "DXGI_ERROR_UNSUPPORTED";                  // The requested functionality is not supported by the device or the driver.
-			case DXGI_ERROR_ACCESS_LOST:                    return "DXGI_ERROR_ACCESS_LOST";                  // The desktop duplication interface is invalid. The desktop duplication interface typically becomes invalid when a different type of image is displayed on the desktop.
-			case DXGI_ERROR_WAIT_TIMEOUT:                   return "DXGI_ERROR_WAIT_TIMEOUT";                 // The time-out interval elapsed before the next desktop frame was available.
-			case DXGI_ERROR_SESSION_DISCONNECTED:           return "DXGI_ERROR_SESSION_DISCONNECTED";         // The Remote Desktop Services session is currently disconnected.
-			case DXGI_ERROR_RESTRICT_TO_OUTPUT_STALE:       return "DXGI_ERROR_RESTRICT_TO_OUTPUT_STALE";     // The DXGI output (monitor) to which the swap chain content was restricted is now disconnected or changed.
-			case DXGI_ERROR_CANNOT_PROTECT_CONTENT:         return "DXGI_ERROR_CANNOT_PROTECT_CONTENT";       // DXGI can't provide content protection on the swap chain. This error is typically caused by an older driver, or when you use a swap chain that is incompatible with content protection.
-			case DXGI_ERROR_ACCESS_DENIED:                  return "DXGI_ERROR_ACCESS_DENIED";                // You tried to use a resource to which you did not have the required access privileges. This error is most typically caused when you write to a shared resource with read-only access.
-			case DXGI_ERROR_NAME_ALREADY_EXISTS:            return "DXGI_ERROR_NAME_ALREADY_EXISTS";          // The supplied name of a resource in a call to IDXGIResource1::CreateSharedHandle is already associated with some other resource.
-			case DXGI_ERROR_SDK_COMPONENT_MISSING:          return "DXGI_ERROR_SDK_COMPONENT_MISSING";        // The operation depends on an SDK component that is missing or mismatched.
-			}
-
-			return "Unknown error code";
-		}
-
-		inline bool CreateDepthStencilView(UINT width, UINT height)
-		{
-			if (!device)
-				return false;
-
-			D3D11_TEXTURE2D_DESC depthBufferDesc;
-			ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-			depthBufferDesc.Width				= width;
-			depthBufferDesc.Height				= height;
-			depthBufferDesc.MipLevels			= 1;
-			depthBufferDesc.ArraySize			= 1;
-			depthBufferDesc.Format				= DXGI_FORMAT_D24_UNORM_S8_UINT;
-			depthBufferDesc.SampleDesc.Count	= 1;
-			depthBufferDesc.SampleDesc.Quality	= 0;
-			depthBufferDesc.Usage				= D3D11_USAGE_DEFAULT;
-			depthBufferDesc.BindFlags			= D3D11_BIND_DEPTH_STENCIL;
-			depthBufferDesc.CPUAccessFlags		= 0;
-			depthBufferDesc.MiscFlags			= 0;
-
-			// Create the texture for the depth buffer using the filled out description.
-			auto result = device->CreateTexture2D(&depthBufferDesc, nullptr, &depthStencilBuffer);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to create depth stencil buffer, %s.", DxgiErrorToString(result));
-				return false;
-			}
-
-			D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-			ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-			depthStencilViewDesc.Format				= DXGI_FORMAT_D24_UNORM_S8_UINT;
-			depthStencilViewDesc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
-			depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-			// Create the depth stencil view.
-			result = device->CreateDepthStencilView(depthStencilBuffer, &depthStencilViewDesc, &depthStencilView);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to create depth stencil view, %s.", DxgiErrorToString(result));
-				return false;
-			}
-
-			return true;
-		}
 
 		inline vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory)
 		{
@@ -177,13 +99,12 @@ namespace Directus
 	RHI_Device::RHI_Device(void* drawHandle)
 	{
 		m_format				= Texture_Format_R8G8B8A8_UNORM;
-		m_depthEnabled			= true;
 		m_alphaBlendingEnabled	= false;
 		m_initialized			= false;
 
 		if (!IsWindow((HWND)drawHandle))
 		{
-			LOG_ERROR("Invalid draw handle.");
+			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
 
@@ -192,7 +113,7 @@ namespace Directus
 		HRESULT result = CreateDXGIFactory(IID_PPV_ARGS(&factory));
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create a DirectX graphics interface factory.");
+			LOGF_ERROR("Failed to create a DirectX graphics interface factory, %s.", D3D11_Common::DxgiErrorToString(result));
 			return;
 		}
 
@@ -254,7 +175,7 @@ namespace Directus
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("Failed to get display modes (%s)", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to get display modes (%s)", D3D11_Common::DxgiErrorToString(result));
 				return false;
 			}
 
@@ -279,8 +200,8 @@ namespace Directus
 			ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
 
 			swapChainDesc.BufferCount					= _D3D11_Device::swapchainBufferCount;
-			swapChainDesc.BufferDesc.Width				= Settings::Get().Resolution_GetWidth();
-			swapChainDesc.BufferDesc.Height				= Settings::Get().Resolution_GetHeight();
+			swapChainDesc.BufferDesc.Width				= Settings::Get().GetWindowWidth();
+			swapChainDesc.BufferDesc.Height				= Settings::Get().GetWindowHeight();
 			swapChainDesc.BufferDesc.Format				= d3d11_dxgi_format[m_format];
 			swapChainDesc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 			swapChainDesc.OutputWindow					= (HWND)drawHandle;
@@ -310,7 +231,7 @@ namespace Directus
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("Failed to create device and swapchain, %s.", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to create device and swapchain, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 		}
@@ -337,7 +258,7 @@ namespace Directus
 			result = _D3D11_Device::swapChain->GetBuffer(0, IID_PPV_ARGS(&backBufferPtr));
 			if (FAILED(result))
 			{
-				LOGF_ERROR("buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("buffer, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 
@@ -346,62 +267,63 @@ namespace Directus
 			SafeRelease(backBufferPtr);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("Failed to create swapchain render target, %s.", _D3D11_Device::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to create swapchain render target, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 		}
 
 		// VIEWPORT
-		m_viewport = make_shared<RHI_Viewport>();
 		ZeroMemory(&_D3D11_Device::viewport, sizeof(D3D11_VIEWPORT));
-		Set_Viewport(m_viewport);
+		Set_Viewport(RHI_Viewport());
 
 		// DEPTH STATES
-		#if REVERSE_Z == 1
-		auto desc = Desc_DepthReverseEnabled();
-		#else
-		auto desc = Desc_DepthEnabled();
-		#endif
-		if (FAILED(_D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateEnabled)))
 		{
-			LOG_ERROR("Failed to create depth stencil enabled state.");
-			return;
-		}
+			#if REVERSE_Z == 1
+			auto desc = D3D11_Common::Desc_DepthReverseEnabled();
+			#else
+			auto desc = D3D11_Common::Desc_DepthEnabled();
+			#endif
 
-		desc = Desc_DepthDisabled();
-		if (FAILED(_D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateDisabled)))
-		{
-			LOG_ERROR("Failed to create depth stencil disabled state.");
-			return;
-		}
+			result = _D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateEnabled);
+			if (FAILED(result))
+			{
+				LOGF_ERROR("Failed to create depth stencil enabled state, %s.", D3D11_Common::DxgiErrorToString(result));
+				return;
+			}
 
-		// DEPTH STENCIL VIEW
-		if (!_D3D11_Device::CreateDepthStencilView((UINT)Settings::Get().Resolution_GetWidth(), (UINT)Settings::Get().Resolution_GetHeight()))
-		{
-			LOG_ERROR("Failed to create depth stencil view.");
-			return;
+			desc = D3D11_Common::Desc_DepthDisabled();
+			result = _D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateDisabled);
+			if (FAILED(result))
+			{
+				LOGF_ERROR("Failed to create depth stencil disabled state, %s.", D3D11_Common::DxgiErrorToString(result));
+				return;
+			}
+
 		}
 
 		// RASTERIZER STATES
 		{
-			auto desc = Desc_RasterizerCullBack();
-			if (FAILED(_D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullBack)))
+			auto desc = D3D11_Common::Desc_RasterizerCullBack();
+			result = _D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullBack);
+			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to create the rasterizer cull back state.");
+				LOGF_ERROR("Failed to create the rasterizer cull back state, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 
-			desc = Desc_RasterizerCullFront();
-			if (FAILED(_D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullFront)))
+			desc = D3D11_Common::Desc_RasterizerCullFront();
+			result = _D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullFront);
+			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to create the rasterizer cull front state.");
+				LOGF_ERROR("Failed to create the rasterizer cull front state, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 
-			desc = Desc_RasterizerCullNone();
-			if (FAILED(_D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullNone)))
+			desc = D3D11_Common::Desc_RasterizerCullNone();
+			result = _D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullNone);
+			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to create the rasterizer cull non state.");
+				LOGF_ERROR("Failed to create the rasterizer cull none state, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 
@@ -412,18 +334,20 @@ namespace Directus
 		// BLEND STATES
 		{
 			// Create a blending state with alpha blending enabled
-			auto desc = Desc_BlendAlpha();
-			if (FAILED(_D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaEnabled)))
+			auto desc = D3D11_Common::Desc_BlendAlpha();
+			result = _D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaEnabled);
+			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to create blend alpha state.");
+				LOGF_ERROR("Failed to create alpha blend enabled state, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 
 			// Create a blending state with alpha blending disabled
-			desc = Desc_BlendDisabled();
-			if (FAILED(_D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaDisabled)))
+			desc = D3D11_Common::Desc_BlendDisabled();
+			result = _D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaDisabled);
+			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to create blend disabled state.");
+				LOGF_ERROR("Failed to create alpha blend disabled state, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 		}
@@ -433,7 +357,7 @@ namespace Directus
 		result = _D3D11_Device::deviceContext->QueryInterface(IID_PPV_ARGS(&_D3D11_Device::eventReporter));
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting");
+			LOGF_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", D3D11_Common::DxgiErrorToString(result));
 			return;
 		}
 
@@ -487,13 +411,11 @@ namespace Directus
 
 		SafeRelease(_D3D11_Device::blendStateAlphaEnabled);
 		SafeRelease(_D3D11_Device::blendStateAlphaDisabled);
+		SafeRelease(_D3D11_Device::depthStencilStateEnabled);
+		SafeRelease(_D3D11_Device::depthStencilStateDisabled);
 		SafeRelease(_D3D11_Device::rasterStateCullFront);
 		SafeRelease(_D3D11_Device::rasterStateCullBack);
 		SafeRelease(_D3D11_Device::rasterStateCullNone);
-		SafeRelease(_D3D11_Device::depthStencilView);
-		SafeRelease(_D3D11_Device::depthStencilStateEnabled);
-		SafeRelease(_D3D11_Device::depthStencilStateDisabled);
-		SafeRelease(_D3D11_Device::depthStencilBuffer);
 		SafeRelease(_D3D11_Device::renderTargetView);
 		SafeRelease(_D3D11_Device::deviceContext);
 		SafeRelease(_D3D11_Device::device);
@@ -523,15 +445,7 @@ namespace Directus
 		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::deviceContext->ClearRenderTargetView(_D3D11_Device::renderTargetView, color.Data()); // back buffer
-		if (m_depthEnabled)
-		{
-			float depth = _D3D11_Device::viewport.MaxDepth;
-			#if REVERSE_Z == 1
-			depth = 1.0f - depth;
-			#endif
-			_D3D11_Device::deviceContext->ClearDepthStencilView(_D3D11_Device::depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, depth, 0); // depth buffer
-		}
+		_D3D11_Device::deviceContext->ClearRenderTargetView(_D3D11_Device::renderTargetView, color.Data());
 	}
 
 	void RHI_Device::ClearRenderTarget(void* renderTarget, const Math::Vector4& color)
@@ -546,10 +460,6 @@ namespace Directus
 	{
 		if (!_D3D11_Device::deviceContext)
 			return;
-
-		#if REVERSE_Z == 1
-		depth = 1.0f - depth;
-		#endif
 
 		unsigned int clearFlags = 0;
 		clearFlags |= flags & Clear_Depth ? D3D11_CLEAR_DEPTH : 0;
@@ -570,7 +480,8 @@ namespace Directus
 		if (!_D3D11_Device::deviceContext)
 			return;
 
-		_D3D11_Device::deviceContext->OMSetRenderTargets(1, &_D3D11_Device::renderTargetView, m_depthEnabled ? _D3D11_Device::depthStencilView : nullptr);
+		ID3D11DepthStencilView* depthStencil = nullptr;
+		_D3D11_Device::deviceContext->OMSetRenderTargets(1, &_D3D11_Device::renderTargetView, depthStencil);
 	}
 
 	void RHI_Device::Set_VertexShader(void* buffer)
@@ -648,8 +559,6 @@ namespace Directus
 
 		// Release resolution based stuff
 		SafeRelease(_D3D11_Device::renderTargetView);
-		SafeRelease(_D3D11_Device::depthStencilBuffer);
-		SafeRelease(_D3D11_Device::depthStencilView);
 
 		// Resize swapchain target
 		DXGI_MODE_DESC dxgiModeDesc;
@@ -664,7 +573,7 @@ namespace Directus
 		auto result = _D3D11_Device::swapChain->ResizeTarget(&dxgiModeDesc);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to resize swapchain target, %s.", _D3D11_Device::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Common::DxgiErrorToString(result));
 			return false;
 		}
 
@@ -678,7 +587,7 @@ namespace Directus
 		);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to resize swapchain buffers, %s.", _D3D11_Device::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to resize swapchain buffers, %s.", D3D11_Common::DxgiErrorToString(result));
 			return false;
 		}
 
@@ -687,7 +596,7 @@ namespace Directus
 		result = _D3D11_Device::swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to get pointer to the swapchain's back buffer, %s.", _D3D11_Device::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to get pointer to the swapchain's back buffer, %s.", D3D11_Common::DxgiErrorToString(result));
 			return false;
 		}
 		SafeRelease(backBuffer);
@@ -696,34 +605,24 @@ namespace Directus
 		result = _D3D11_Device::device->CreateRenderTargetView(backBuffer, nullptr, &_D3D11_Device::renderTargetView);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create render target view, %s.", _D3D11_Device::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to create render target view, %s.", D3D11_Common::DxgiErrorToString(result));
 			return false;
 		}
-
-		// Re-create depth stencil view
-		_D3D11_Device::CreateDepthStencilView(width, height);
 
 		return true;
 	}
 
-	void RHI_Device::Set_Viewport(const shared_ptr<RHI_Viewport>& viewport)
+	void RHI_Device::Set_Viewport(const RHI_Viewport& viewport)
 	{
-		if (!viewport)
-		{
-			LOG_WARNING("Invalid parameter");
-			return;
-		}
-
 		if (!_D3D11_Device::deviceContext)
 			return;
 
-		m_viewport = viewport;
-		_D3D11_Device::viewport.TopLeftX	= viewport->GetTopLeftX();
-		_D3D11_Device::viewport.TopLeftY	= viewport->GetTopLeftY();
-		_D3D11_Device::viewport.Width		= viewport->GetWidth();
-		_D3D11_Device::viewport.Height		= viewport->GetHeight();
-		_D3D11_Device::viewport.MinDepth	= viewport->GetMinDepth();
-		_D3D11_Device::viewport.MaxDepth	= viewport->GetMaxDepth();
+		_D3D11_Device::viewport.TopLeftX	= viewport.GetX();
+		_D3D11_Device::viewport.TopLeftY	= viewport.GetY();
+		_D3D11_Device::viewport.Width		= viewport.GetWidth();
+		_D3D11_Device::viewport.Height		= viewport.GetHeight();
+		_D3D11_Device::viewport.MinDepth	= viewport.GetMinDepth();
+		_D3D11_Device::viewport.MaxDepth	= viewport.GetMaxDepth();
 		_D3D11_Device::deviceContext->RSSetViewports(1, &_D3D11_Device::viewport);
 	}
 
@@ -731,7 +630,7 @@ namespace Directus
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_WARNING("Device context is uninitialized.");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 

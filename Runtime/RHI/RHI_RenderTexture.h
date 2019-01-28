@@ -36,8 +36,8 @@ namespace Directus
 	public:
 		RHI_RenderTexture(
 			std::shared_ptr<RHI_Device> rhiDevice,
-			unsigned int width				= Settings::Get().Resolution_GetWidth(),
-			unsigned int height				= Settings::Get().Resolution_GetHeight(),
+			unsigned int width,
+			unsigned int height,
 			Texture_Format textureFormat	= Texture_Format_R8G8B8A8_UNORM,
 			bool depth						= false,
 			Texture_Format depthFormat		= Texture_Format_D32_FLOAT,
@@ -47,21 +47,21 @@ namespace Directus
 
 		bool Clear(const Math::Vector4& clearColor);
 		bool Clear(float red, float green, float blue, float alpha);
-		void* GetRenderTargetView(unsigned int index = 0)		{ return index < m_renderTargetViews.size() ? m_renderTargetViews[index] : nullptr; }
-		void* GetShaderResource()								{ return m_shaderResourceView; }
-		void* GetDepthStencilView()								{ return m_depthStencilView; }
-		const std::shared_ptr<RHI_Viewport> GetViewport()		{ return m_viewport; }
-		bool GetDepthEnabled()									{ return m_depthEnabled; }
-		unsigned int GetWidth()									{ return m_width; }
-		unsigned int GetHeight()								{ return m_height; }
-		unsigned int GetArraySize()								{ return m_arraySize; }
-		Texture_Format GetFormat()								{ return m_format; }
+		void* GetRenderTargetView(unsigned int index = 0)	{ return index < m_renderTargetViews.size() ? m_renderTargetViews[index] : nullptr; }
+		void* GetShaderResource()							{ return m_shaderResourceView; }
+		void* GetDepthStencilView()							{ return m_depthStencilView; }
+		const RHI_Viewport& GetViewport()					{ return m_viewport; }
+		bool GetDepthEnabled()								{ return m_depthEnabled; }
+		unsigned int GetWidth()								{ return m_width; }
+		unsigned int GetHeight()							{ return m_height; }
+		unsigned int GetArraySize()							{ return m_arraySize; }
+		Texture_Format GetFormat()							{ return m_format; }
 
 	protected:
 		bool m_depthEnabled	= false;
 		float m_nearPlane	= 0;
 		float m_farPlane	= 0;
-		std::shared_ptr<RHI_Viewport> m_viewport;
+		RHI_Viewport m_viewport;
 		Texture_Format m_format;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		unsigned int m_width;

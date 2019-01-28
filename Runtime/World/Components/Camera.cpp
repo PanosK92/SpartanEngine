@@ -62,10 +62,11 @@ namespace Directus
 
 	void Camera::OnTick()
 	{
-		if (m_lastKnownViewport != Settings::Get().Viewport_Get())
+		const RHI_Viewport& currentViewport = m_context->GetSubsystem<Renderer>()->GetViewport();
+		if (m_lastKnownViewport != currentViewport)
 		{
-			m_lastKnownViewport = Settings::Get().Viewport_Get();
-			m_isDirty = true;
+			m_lastKnownViewport = currentViewport;
+			m_isDirty			= true;
 		}
 
 		// DIRTY CHECK
@@ -161,12 +162,12 @@ namespace Directus
 	//= RAYCASTING =======================================================================
 	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Actor>& actor)
 	{
-		const RHI_Viewport& viewport	= Settings::Get().Viewport_Get();
-		Vector2 mouse_position_relative = mouse_position - Vector2(viewport.GetTopLeftX(), viewport.GetTopLeftY());
+		const RHI_Viewport& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
+		Vector2 mouse_position_relative = mouse_position - Vector2(viewport.GetX(), viewport.GetY());
 
 		// Ensure the ray is inside the viewport
-		bool x_outside = (mouse_position_relative.x < viewport.GetTopLeftX()) || (mouse_position_relative.x > viewport.GetTopLeftX() + viewport.GetWidth());
-		bool y_outside = (mouse_position_relative.y < viewport.GetTopLeftY()) || (mouse_position_relative.y > viewport.GetTopLeftY() + viewport.GetHeight());
+		bool x_outside = (mouse_position_relative.x < viewport.GetX()) || (mouse_position_relative.x > viewport.GetX() + viewport.GetWidth());
+		bool y_outside = (mouse_position_relative.y < viewport.GetY()) || (mouse_position_relative.y > viewport.GetY() + viewport.GetHeight());
 		if (x_outside || y_outside)
 			return false;
 
@@ -190,11 +191,11 @@ namespace Directus
 
 	Vector2 Camera::WorldToScreenPoint(const Vector3& position_world)
 	{
-		RHI_Viewport viewport = Settings::Get().Viewport_Get();
+		const RHI_Viewport& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 
 		// Convert world space position to clip space position
 		float vfovRad			= 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
-		Matrix projection		= Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_nearPlane, m_farPlane); // compute non reverse z projection
+		Matrix projection		= Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, viewport.GetAspectRatio(), m_nearPlane, m_farPlane); // compute non reverse z projection
 		Vector3 position_clip	= position_world * m_mView * projection;
 
 		// Convert clip space position to screen space position
@@ -207,7 +208,7 @@ namespace Directus
 
 	Vector3 Camera::ScreenToWorldPoint(const Vector2& position_screen)
 	{
-		RHI_Viewport viewport = Settings::Get().Viewport_Get();
+		const RHI_Viewport& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 
 		// Convert screen space position to clip space position
 		Vector3 position_clip;
@@ -245,12 +246,12 @@ namespace Directus
 
 	void Camera::ComputeProjection()
 	{
-		RHI_Viewport viewport = Settings::Get().Viewport_Get();
+		const RHI_Viewport& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 
 		if (m_projectionType == Projection_Perspective)
 		{
 			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, Settings::Get().AspectRatio_Get(), m_farPlane, m_nearPlane);
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, viewport.GetAspectRatio(), m_farPlane, m_nearPlane);
 		}
 		else if (m_projectionType == Projection_Orthographic)
 		{

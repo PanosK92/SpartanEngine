@@ -61,7 +61,6 @@ namespace Directus
 {
 	static ResourceCache* g_resourceCache	= nullptr;
 	bool Renderer::m_isRendering			= false;
-	unsigned int Renderer::m_maxResolution	= 16384;
 
 	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
 	{	
@@ -105,7 +104,6 @@ namespace Directus
 	{
 		// Create/Get required systems		
 		g_resourceCache	= m_context->GetSubsystem<ResourceCache>();
-		m_viewport		= make_shared<RHI_Viewport>();
 
 		// Editor specific
 		m_grid				= make_unique<Grid>(m_rhiDevice);
@@ -116,7 +114,7 @@ namespace Directus
 		m_bufferGlobal = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 		m_bufferGlobal->Create(sizeof(ConstantBuffer_Global));
 	
-		CreateRenderTextures(Settings::Get().Resolution_GetWidth(), Settings::Get().Resolution_GetHeight());
+		CreateRenderTextures();
 		CreateFonts();
 		CreateShaders();
 		CreateSamplers();
@@ -166,8 +164,11 @@ namespace Directus
 		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
 	}
 
-	void Renderer::CreateRenderTextures(unsigned int width, unsigned int height)
+	void Renderer::CreateRenderTextures()
 	{
+		auto width	= (unsigned int)m_resolution.x;
+		auto height	= (unsigned int)m_resolution.y;
+
 		if ((width / 4) == 0 || (height / 4) == 0)
 		{
 			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
@@ -335,9 +336,6 @@ namespace Directus
 	void Renderer::SetBackBufferAsRenderTarget(bool clear /*= true*/)
 	{
 		m_rhiDevice->Set_BackBufferAsRenderTarget();
-		m_viewport->SetWidth((float)Settings::Get().Resolution_GetWidth());
-		m_viewport->SetHeight((float)Settings::Get().Resolution_GetHeight());
-		m_rhiPipeline->SetViewport(m_viewport);
 		if (clear) m_rhiDevice->ClearBackBuffer(m_camera ? m_camera->GetClearColor() : Vector4(0, 0, 0, 1));
 	}
 
@@ -395,8 +393,8 @@ namespace Directus
 				uint64_t samples	= 16;
 				uint64_t index		= m_frameNum % samples;
 				m_taa_jitter		= Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-				m_taa_jitter.x		= m_taa_jitter.x / (float)Settings::Get().Resolution_GetWidth();
-				m_taa_jitter.y		= m_taa_jitter.y / (float)Settings::Get().Resolution_GetHeight();
+				m_taa_jitter.x		= m_taa_jitter.x / m_resolution.x;
+				m_taa_jitter.y		= m_taa_jitter.y / m_resolution.y;
 				m_projection		*= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
 			}
 			else
@@ -406,7 +404,7 @@ namespace Directus
 			}
 
 			m_viewProjection				= m_view * m_projection;
-			m_projectionOrthographic		= Matrix::CreateOrthographicLH((float)Settings::Get().Resolution_GetWidth(), (float)Settings::Get().Resolution_GetHeight(), m_nearPlane, m_farPlane);		
+			m_projectionOrthographic		= Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_nearPlane, m_farPlane);
 			m_viewProjection_Orthographic	= m_viewBase * m_projectionOrthographic;
 		}
 
@@ -452,9 +450,6 @@ namespace Directus
 		}
 
 		m_rhiDevice->Set_Resolution(width, height);
-		m_viewport->SetWidth((float)width);
-		m_viewport->SetHeight((float)height);
-		m_rhiPipeline->SetViewport(m_viewport);
 	}
 
 	void Renderer::SetResolution(unsigned int width, unsigned int height)
@@ -467,15 +462,21 @@ namespace Directus
 		}
 
 		// Return if resolution already set
-		if (Settings::Get().Resolution_Get().x == width && Settings::Get().Resolution_Get().y == height)
+		if (m_resolution.x == width && m_resolution.y == height)
 			return;
 
 		// Make sure we are pixel perfect
 		width	-= (width	% 2 != 0) ? 1 : 0;
 		height	-= (height	% 2 != 0) ? 1 : 0;
 
-		Settings::Get().Resolution_Set(Vector2((float)width, (float)height));
-		CreateRenderTextures(width, height);
+		// Set resolution
+		m_resolution.x = (float)width;
+		m_resolution.y = (float)height;
+
+		// Re-create render textures
+		CreateRenderTextures();
+
+		// Log
 		LOGF_INFO("Resolution set to %dx%d", width, height);
 	}
 
@@ -516,7 +517,7 @@ namespace Directus
 		m_lineVertices.emplace_back(to, colorTo);
 	}
 
-	void Renderer::SetGlobalBuffer(const Matrix& mMVP, unsigned int resolutionWidth, unsigned int resolutionHeight, float blur_sigma, const Math::Vector2& blur_direction)
+	void Renderer::SetGlobalBuffer(unsigned int resolutionWidth, unsigned int resolutionHeight, const Matrix& mMVP, float blur_sigma, const Math::Vector2& blur_direction)
 	{
 		auto buffer = (ConstantBuffer_Global*)m_bufferGlobal->Map();
 
@@ -717,7 +718,7 @@ namespace Directus
 					currentlyBoundGeometry = geometry->Resource_GetID();
 				}
 
-				SetGlobalBuffer(actor->GetTransform_PtrRaw()->GetMatrix() * light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i));
+				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, actor->GetTransform_PtrRaw()->GetMatrix() * light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i));
 				m_rhiPipeline->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
 			}
 			m_rhiDevice->EventEnd();
@@ -734,7 +735,7 @@ namespace Directus
 
 		if (m_actors[Renderable_ObjectOpaque].empty())
 		{
-			m_gbuffer->Clear(); // zeroed out material buffer causes skysphere to render
+			m_gbuffer->Clear(); // zeroed material buffer causes sky sphere to render
 		}
 
 		TIME_BLOCK_START_MULTI();
@@ -747,7 +748,7 @@ namespace Directus
 		m_rhiPipeline->SetFillMode(Fill_Solid);
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->SetVertexShader(m_shaderGBuffer);
-		SetGlobalBuffer();
+		SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y);
 
 		// Variables that help reduce state changes
 		unsigned int currentlyBoundGeometry = 0;
@@ -881,7 +882,7 @@ namespace Directus
 		);
 
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer();
+		SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetShader(shared_ptr<RHI_Shader>(m_shaderLight));
 		m_rhiPipeline->SetRenderTarget(texOut);
@@ -1063,7 +1064,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(inDirectionalLight->GetShadowMap()); // Texture2DArray
 		m_rhiPipeline->SetSampler(m_samplerCompareDepth);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
-		SetGlobalBuffer(m_viewProjection_Orthographic, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight(), m_viewProjection_Orthographic);
 		auto buffer = Struct_ShadowMapping((m_viewProjection).Inverted(), inDirectionalLight, m_camera.get());
 		m_shaderShadowMapping->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderShadowMapping->GetConstantBuffer(), 1, Buffer_Global);
@@ -1079,7 +1080,7 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_SSAO");
 
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
@@ -1106,7 +1107,7 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_Blur");
 
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight(), sigma);
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight(), Matrix::Identity, sigma);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetVertexShader(m_shaderQuad);
@@ -1133,11 +1134,12 @@ namespace Directus
 		// Set common states
 		m_rhiPipeline->SetViewport(texIn->GetViewport());
 		m_rhiPipeline->SetShader(m_shaderQuad);
+		m_rhiPipeline->SetPixelShader(m_shaderQuad_blur_gaussian);
 
 		// Horizontal Gaussian blur
 		m_rhiPipeline->Reset();
 		auto direction = Vector2(1.0f, 0.0f);
-		SetGlobalBuffer(Matrix::Identity, texIn->GetWidth(), texIn->GetHeight(), sigma, direction);
+		SetGlobalBuffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetTexture(texIn);	
@@ -1146,7 +1148,7 @@ namespace Directus
 		// Vertical Gaussian blur
 		m_rhiPipeline->Reset();
 		direction = Vector2(0.0f, 1.0f);
-		SetGlobalBuffer(Matrix::Identity, texIn->GetWidth(), texIn->GetHeight(), sigma, direction);
+		SetGlobalBuffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetRenderTarget(texIn);
 		m_rhiPipeline->SetTexture(texOut);
@@ -1183,7 +1185,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		auto direction = Vector2(pixelStride, 0.0f);
-		SetGlobalBuffer(Matrix::Identity, texIn->GetWidth(), texIn->GetHeight(), sigma, direction);
+		SetGlobalBuffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
@@ -1194,7 +1196,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		direction = Vector2(0.0f, pixelStride);
-		SetGlobalBuffer(Matrix::Identity, texIn->GetWidth(), texIn->GetHeight(), sigma, direction);	
+		SetGlobalBuffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		texIn.swap(texOut);
@@ -1209,7 +1211,7 @@ namespace Directus
 		m_rhiPipeline->Reset();
 
 		// Resolve
-		SetGlobalBuffer(Matrix::Identity, m_renderTexFull_TAA_Current->GetWidth(), m_renderTexFull_TAA_Current->GetHeight());
+		SetGlobalBuffer(m_renderTexFull_TAA_Current->GetWidth(), m_renderTexFull_TAA_Current->GetHeight());
 		m_rhiPipeline->SetRenderTarget(m_renderTexFull_TAA_Current);
 		m_rhiPipeline->SetViewport(m_renderTexFull_TAA_Current->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_taa);
@@ -1221,7 +1223,7 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Output to texOut
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_texture);
@@ -1243,7 +1245,7 @@ namespace Directus
 
 		// Bright pass
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, m_renderTexQuarter_Blur1->GetWidth(), m_renderTexQuarter_Blur1->GetHeight());
+		SetGlobalBuffer(m_renderTexQuarter_Blur1->GetWidth(), m_renderTexQuarter_Blur1->GetHeight());
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetRenderTarget(m_renderTexQuarter_Blur1);
 		m_rhiPipeline->SetTexture(texIn);
@@ -1256,7 +1258,7 @@ namespace Directus
 
 		// Additive blending
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetTexture(texIn);
@@ -1275,7 +1277,7 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_ToneMapping");
 
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);	
@@ -1293,7 +1295,7 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_GammaCorrection");
 
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);	
@@ -1312,7 +1314,7 @@ namespace Directus
 
 		// Common states
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 
 		// Luma
@@ -1342,7 +1344,7 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_ChromaticAberration");
 
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
@@ -1360,7 +1362,7 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_MotionBlur");
 
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
@@ -1379,7 +1381,7 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_Dithering");
 
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
@@ -1397,7 +1399,7 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_Sharpening");
 
 		m_rhiPipeline->Reset();
-		SetGlobalBuffer(Matrix::Identity, texOut->GetWidth(), texOut->GetHeight());
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight());
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
@@ -1428,7 +1430,6 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);
 		m_rhiPipeline->SetAlphaBlending(true);
 		m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
-		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		{
 			// Picking ray
 			if (drawPickingRay)
@@ -1474,7 +1475,7 @@ namespace Directus
 
 				// Set pipeline state
 				m_rhiPipeline->SetVertexBuffer(m_lineVertexBuffer);
-				SetGlobalBuffer(m_viewProjection);
+				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_viewProjection);
 				m_rhiPipeline->Draw(lineVertexBufferSize);
 
 				m_lineVertices.clear();
@@ -1486,7 +1487,7 @@ namespace Directus
 		{
 			m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
 			m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
-			SetGlobalBuffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_viewProjection);
+			SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_viewProjection);
 			m_rhiPipeline->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
 		}
 
@@ -1548,7 +1549,7 @@ namespace Directus
 					float texHeight = lightTex->GetHeight()	* scale;
 					m_gizmoRectLight->Create(position_light_screen.x - texWidth * 0.5f, position_light_screen.y - texHeight * 0.5f, texWidth, texHeight);
 
-					SetGlobalBuffer(m_viewProjection_Orthographic);
+					SetGlobalBuffer((unsigned int)texWidth, (unsigned int)texWidth, m_viewProjection_Orthographic);
 					m_rhiPipeline->SetTexture(lightTex);
 					m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
 					m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
@@ -1569,7 +1570,7 @@ namespace Directus
 				m_rhiPipeline->SetShader(m_shaderTransformGizmo);
 				m_rhiPipeline->SetIndexBuffer(m_transformGizmo->GetIndexBuffer());
 				m_rhiPipeline->SetVertexBuffer(m_transformGizmo->GetVertexBuffer());
-				SetGlobalBuffer();
+				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y);
 
 				// Axis - X
 				auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle().GetTransform(Vector3::Right), m_transformGizmo->GetHandle().GetColor(Vector3::Right));
@@ -1616,7 +1617,8 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_PerformanceMetrics");
 		m_rhiPipeline->Reset();
 
-		Vector2 textPos = Vector2(-(int)Settings::Get().Viewport_GetWidth() * 0.5f + 1.0f, (int)Settings::Get().Viewport_GetHeight() * 0.5f);
+		const RHI_Viewport& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
+		Vector2 textPos = Vector2(-(int)viewport.GetWidth() * 0.5f + 1.0f, (int)viewport.GetHeight() * 0.5f);
 		m_font->SetText(Profiler::Get().GetMetrics(), textPos);
 
 		m_rhiPipeline->SetAlphaBlending(true);
@@ -1650,7 +1652,7 @@ namespace Directus
 			m_rhiDevice->EventBegin("Pass_GBufferVisualize");
 			m_rhiPipeline->Reset();
 
-			SetGlobalBuffer(m_viewProjection_Orthographic, texOut->GetWidth(), texOut->GetHeight());
+			SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight(), m_viewProjection_Orthographic);
 			m_rhiPipeline->SetRenderTarget(texOut);
 			m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
 			m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());

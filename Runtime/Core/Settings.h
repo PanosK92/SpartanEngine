@@ -101,36 +101,21 @@ namespace Directus
 		//= WINDOW ================================================================
 		void SetHandles(void* drawHandle, void* windowHandle, void* windowInstance)
 		{
-			m_drawHandle = drawHandle;
-			m_windowHandle = windowHandle;
-			m_windowInstance = windowInstance;
+			m_drawHandle		= drawHandle;
+			m_windowHandle		= windowHandle;
+			m_windowInstance	= windowInstance;
 		}
 		void* GetWindowHandle()		{ return m_windowHandle; }
-		void* GetWindowInstance()	 { return m_windowInstance; }
+		void* GetWindowInstance()	{ return m_windowInstance; }
 		//=========================================================================
 
-		//= VIEWPORT ====================================================================================================
-		float Viewport_GetWidth()			{ return m_viewport.GetWidth(); }
-		float Viewport_GetHeight()			{ return m_viewport.GetHeight(); }
-		Math::Vector2 Viewport_GetTopLeft()	{ return Math::Vector2(m_viewport.GetTopLeftX(), m_viewport.GetTopLeftY()); }
-		const RHI_Viewport& Viewport_Get()	{ return m_viewport; }
-		void Viewport_Set(float x, float y, float width, float height)	
-		{ 
-			m_viewport.SetPosX(x);
-			m_viewport.SetPosY(y);
-			m_viewport.SetWidth(width);
-			m_viewport.SetHeight(height);
-		}
-		//===============================================================================================================
-
-		//= RESOLUTION =================================================================================================================
-		void Resolution_Set(int width, int height)				{ m_resolution = Math::Vector2((float)width, (float)height); }
-		void Resolution_Set(const Math::Vector2& resolution)	{ m_resolution = resolution; }
-		const Math::Vector2& Resolution_Get()					{ return m_resolution; }
-		unsigned int Resolution_GetWidth()						{ return (unsigned int)m_resolution.x; }
-		unsigned int Resolution_GetHeight()						{ return (unsigned int)m_resolution.y; }
-		float AspectRatio_Get()									{ return (float)Resolution_GetWidth() / (float)Resolution_GetHeight(); }
-		//==============================================================================================================================
+		//= WINDOW SIZE ==========================================================================================================
+		void SetWindowSize(unsigned int width, unsigned int height)	{ m_windowSize = Math::Vector2((float)width, (float)height); }
+		void SetWindowSize(const Math::Vector2& size)				{ m_windowSize = size; }
+		const Math::Vector2& GetWindowSize()						{ return m_windowSize; }
+		unsigned int GetWindowWidth()								{ return (unsigned int)m_windowSize.x; }
+		unsigned int GetWindowHeight()								{ return (unsigned int)m_windowSize.y; }
+		//========================================================================================================================
 
 		//= DISPLAY ==========================================================================================================================
 		void DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator);
@@ -176,8 +161,7 @@ namespace Directus
 		void* m_drawHandle					= nullptr;
 		void* m_windowHandle				= nullptr;
 		void* m_windowInstance				= nullptr;
-		Math::Vector2 m_resolution			= Math::Vector2(1920, 1080);
-		RHI_Viewport m_viewport				= RHI_Viewport(0, 0, 1920, 1080, 0.0f, 1.0f);
+		Math::Vector2 m_windowSize			= Math::Vector2(1920, 1080);
 		unsigned int m_vsync				= (int)Off;
 		bool m_isFullScreen					= false;
 		bool m_isMouseVisible				= true;

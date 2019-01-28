@@ -313,11 +313,6 @@ namespace Directus
 		
 	}
 
-	bool RHI_Device::Set_DepthEnabled(bool enable)
-	{
-		return true;
-	}
-
 	bool RHI_Device::Set_AlphaBlendingEnabled(bool enable)
 	{
 		return true;

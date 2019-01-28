@@ -48,7 +48,7 @@ namespace Directus
 		void Present();
 		//===============================================================================================
 
-		//= BIND ============================================================================================================
+		//= BIND ============================================================================================================	
 		void Set_BackBufferAsRenderTarget();
 		void Set_VertexShader(void* buffer);
 		void Set_PixelShader(void* buffer);
@@ -62,10 +62,9 @@ namespace Directus
 		bool Set_Resolution(unsigned int width, unsigned int height);
 		//===========================================================
 
-		//= VIEWPORT ======================================================
-		std::shared_ptr<RHI_Viewport> Get_Viewport() { return m_viewport; }
-		void Set_Viewport(const std::shared_ptr<RHI_Viewport>& viewport);
-		//=================================================================
+		//= VIEWPORT ===================================
+		void Set_Viewport(const RHI_Viewport& viewport);
+		//==============================================
 
 		//= MISC ============================================================
 		bool Set_DepthEnabled(bool enable);
@@ -98,9 +97,8 @@ namespace Directus
 
 	private:
 		Texture_Format m_format;
-		std::shared_ptr<RHI_Viewport> m_viewport;
-		bool m_depthEnabled;
 		bool m_alphaBlendingEnabled;
+		bool m_depthEnabled;
 		bool m_initialized		= false;
 		void* m_device			= nullptr;
 		void* m_deviceContext	= nullptr;

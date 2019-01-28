@@ -60,7 +60,7 @@ namespace Directus
 		m_scene						= context->GetSubsystem<World>();
 		m_timer						= context->GetSubsystem<Timer>();
 		m_resourceManager			= context->GetSubsystem<ResourceCache>();
-		m_rhiDevice					= context->GetSubsystem<Renderer>()->GetRHIDevice();
+		m_renderer					= context->GetSubsystem<Renderer>();
 		m_profilingFrequencySec		= 0.35f;
 		m_profilingLastUpdateTime	= m_profilingFrequencySec;
 
@@ -98,14 +98,14 @@ namespace Directus
 
 		if (!timeBlock->initialized)
 		{
-			m_rhiDevice->Profiling_CreateQuery(&timeBlock->query,		Query_Timestamp_Disjoint);
-			m_rhiDevice->Profiling_CreateQuery(&timeBlock->time_start,	Query_Timestamp);
-			m_rhiDevice->Profiling_CreateQuery(&timeBlock->time_end,	Query_Timestamp);
+			m_renderer->GetRHIDevice()->Profiling_CreateQuery(&timeBlock->query,		Query_Timestamp_Disjoint);
+			m_renderer->GetRHIDevice()->Profiling_CreateQuery(&timeBlock->time_start,	Query_Timestamp);
+			m_renderer->GetRHIDevice()->Profiling_CreateQuery(&timeBlock->time_end,		Query_Timestamp);
 			timeBlock->initialized = true;
 		}
 
-		m_rhiDevice->Profiling_QueryStart(timeBlock->query);
-		m_rhiDevice->Profiling_GetTimeStamp(timeBlock->time_start);
+		m_renderer->GetRHIDevice()->Profiling_QueryStart(timeBlock->query);
+		m_renderer->GetRHIDevice()->Profiling_GetTimeStamp(timeBlock->time_start);
 		timeBlock->started = true;
 	}
 
@@ -116,8 +116,8 @@ namespace Directus
 
 		auto timeBlock = &m_timeBlocks_gpu[funcName];
 
-		m_rhiDevice->Profiling_GetTimeStamp(timeBlock->time_end);
-		m_rhiDevice->Profiling_QueryEnd(timeBlock->query);
+		m_renderer->GetRHIDevice()->Profiling_GetTimeStamp(timeBlock->time_end);
+		m_renderer->GetRHIDevice()->Profiling_QueryEnd(timeBlock->query);
 	}
 
 	void Profiler::TimeBlockStart_Multi(const char* funcName)
@@ -166,7 +166,7 @@ namespace Directus
 
 			if (timeBlock.started)
 			{
-				timeBlock.duration = m_rhiDevice->Profiling_GetDuration(timeBlock.query, timeBlock.time_start, timeBlock.time_end);
+				timeBlock.duration = m_renderer->GetRHIDevice()->Profiling_GetDuration(timeBlock.query, timeBlock.time_start, timeBlock.time_end);
 			}
 			timeBlock.started = false;
 		}
@@ -190,7 +190,7 @@ namespace Directus
 			"VRAM:\t\t\t\t\t\t\t"	+ to_string(Settings::Get().Gpu_GetMemory()) + " MB\n"
 
 			// Renderer
-			"Resolution:\t\t\t\t\t"				+ to_string(int(Settings::Get().Resolution_GetWidth())) + "x" + to_string(int(Settings::Get().Resolution_GetHeight())) + "\n"
+			"Resolution:\t\t\t\t\t"				+ to_string((int)m_renderer->GetResolution().x) + "x" + to_string((int)m_renderer->GetResolution().y) + "\n"
 			"Meshes rendered:\t\t\t\t"			+ to_string(m_rendererMeshesRendered) + "\n"
 			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
 			"Materials:\t\t\t\t\t\t"			+ to_string(materials) + "\n"

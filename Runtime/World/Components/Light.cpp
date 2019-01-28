@@ -232,9 +232,9 @@ namespace Directus
 		box_max *= worldUnitsPerTexel;
 		//================================================================================
 
-#if REVERSE_Z == 1
+		#if REVERSE_Z == 1
 		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_max.z, box_min.z);
-#else
+		#else
 		m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_min.z, box_max.z);
 		#endif
 
