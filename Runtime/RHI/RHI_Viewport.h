@@ -31,10 +31,10 @@ namespace Directus
 	class ENGINE_CLASS RHI_Viewport : public RHI_Object
 	{
 	public:
-		RHI_Viewport(float topLeftX = 0.0f, float topLeftY = 0.0f, float width = 0.0f, float height = 0.0f, float minDepth = 0.0f, float maxDepth = 1.0f)
+		RHI_Viewport(float x = 0.0f, float y = 0.0f, float width = 0.0f, float height = 0.0f, float minDepth = 0.0f, float maxDepth = 1.0f)
 		{
-			m_topLeftX	= topLeftX;
-			m_topLeftY	= topLeftY;
+			m_x			= x;
+			m_y			= y;
 			m_width		= width;
 			m_height	= height;
 			m_minDepth	= minDepth;
@@ -46,7 +46,7 @@ namespace Directus
 		bool operator==(const RHI_Viewport& rhs) const
 		{
 			return 
-				m_topLeftX	== rhs.m_topLeftX	&& m_topLeftY	== rhs.m_topLeftY && 
+				m_x			== rhs.m_x			&& m_y			== rhs.m_y && 
 				m_width		== rhs.m_width		&& m_height		== rhs.m_height && 
 				m_minDepth	== rhs.m_minDepth	&& m_maxDepth	== rhs.m_maxDepth;
 		}
@@ -56,21 +56,22 @@ namespace Directus
 			return !(*this == rhs);
 		}
 
-		float GetTopLeftX() const	{ return m_topLeftX; }
-		float GetTopLeftY() const	{ return m_topLeftY; }
-		float GetWidth() const		{ return m_width; }
-		float GetHeight() const		{ return m_height; }
-		float GetMinDepth() const	{ return m_minDepth; }
-		float GetMaxDepth() const	{ return m_maxDepth; }
+		float GetX() const				{ return m_x; }
+		float GetY() const				{ return m_y; }
+		float GetWidth() const			{ return m_width; }
+		float GetHeight() const			{ return m_height; }
+		float GetMinDepth() const		{ return m_minDepth; }
+		float GetMaxDepth() const		{ return m_maxDepth; }
+		float GetAspectRatio() const	{ return m_width / m_height; }
 
-		void SetPosX(float x)			{ m_topLeftX = x; }
-		void SetPosY(float y)			{ m_topLeftY = y; }
+		void SetPosX(float x)			{ m_x = x; }
+		void SetPosY(float y)			{ m_y = y; }
 		void SetWidth(float width)		{ m_width	= width; }
 		void SetHeight(float height)	{ m_height	= height; }
 
 	private:
-		float m_topLeftX;
-		float m_topLeftY;
+		float m_x;
+		float m_y;
 		float m_width;
 		float m_height;
 		float m_minDepth;

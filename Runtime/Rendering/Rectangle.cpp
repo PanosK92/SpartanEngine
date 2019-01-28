@@ -39,13 +39,13 @@ namespace Directus
 {
 	Rectangle::Rectangle(Context* context)
 	{
-		m_rhiDevice			= context->GetSubsystem<Renderer>()->GetRHIDevice();
+		m_renderer			= context->GetSubsystem<Renderer>();
 		m_x					= 0;
 		m_y					= 0;
 		m_width				= 0;
 		m_height			= 0;
-		m_resolutionWidth	= Settings::Get().Resolution_GetWidth();
-		m_resolutionHeight	= Settings::Get().Resolution_GetHeight();
+		m_resolutionWidth	= (unsigned int)m_renderer->GetResolution().x;
+		m_resolutionHeight	= (unsigned int)m_renderer->GetResolution().y;
 	}
 
 	Rectangle::~Rectangle()
@@ -56,27 +56,27 @@ namespace Directus
 	bool Rectangle::Create(float x, float y, float width, float height)
 	{
 		// Don't update if it's not needed
-		if (m_x == x && 
-			m_y == y && 
-			m_width == width && 
-			m_height == height && 
-			m_resolutionWidth == Settings::Get().Resolution_GetWidth() && 
-			m_resolutionHeight == Settings::Get().Resolution_GetHeight()
+		if (m_x					== x && 
+			m_y					== y && 
+			m_width				== width && 
+			m_height			== height && 
+			m_resolutionWidth	== m_renderer->GetResolution().x &&
+			m_resolutionHeight	== m_renderer->GetResolution().y
 			)
 			return true;
 
-		m_x = x;
-		m_y = y;
-		m_width = width;
-		m_height = height;
-		m_resolutionWidth = Settings::Get().Resolution_GetWidth();
-		m_resolutionHeight = Settings::Get().Resolution_GetHeight();
+		m_x					= x;
+		m_y					= y;
+		m_width				= width;
+		m_height			= height;
+		m_resolutionWidth	= m_renderer->GetResolution().x;
+		m_resolutionHeight	= m_renderer->GetResolution().y;
 
 		// Compute screen coordinates
-		float left = -m_resolutionWidth * 0.5f + m_x;
-		float right = left + m_width;
-		float top = m_resolutionHeight * 0.5f - m_y;
-		float bottom = top - m_height;
+		float left		= -m_resolutionWidth * 0.5f + m_x;
+		float right		= left + m_width;
+		float top		= m_resolutionHeight * 0.5f - m_y;
+		float bottom	= top - m_height;
 
 		// Create index and vertex arrays
 		vector<RHI_Vertex_PosUV> vertices;
@@ -108,14 +108,14 @@ namespace Directus
 			indices.push_back(i);
 		}
 
-		m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
+		m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_renderer->GetRHIDevice());
 		if (!m_vertexBuffer->Create(vertices))
 		{
 			LOG_ERROR("Rectangle: Failed to create vertex buffer.");
 			return false;
 		}
 
-		m_indexBuffer = make_shared<RHI_IndexBuffer>(m_rhiDevice);
+		m_indexBuffer = make_shared<RHI_IndexBuffer>(m_renderer->GetRHIDevice());
 		if (!m_indexBuffer->Create(indices))
 		{
 			LOG_ERROR("Rectangle: Failed to create index buffer.");

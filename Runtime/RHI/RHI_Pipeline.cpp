@@ -286,16 +286,10 @@ namespace Directus
 		m_alphaBlendingDirty	= true;
 	}
 
-	void RHI_Pipeline::SetViewport(const shared_ptr<RHI_Viewport>& viewport)
+	void RHI_Pipeline::SetViewport(const RHI_Viewport& viewport)
 	{
-		if (!viewport)
+		if (viewport == m_viewport)
 			return;
-
-		if (m_viewport)
-		{
-			if (*m_viewport.get() == *viewport.get())
-				return;
-		}
 
 		m_viewport		= viewport;
 		m_viewportDirty = true;
@@ -317,7 +311,6 @@ namespace Directus
 				LOG_ERROR("Invalid render target(s)");
 				return false;
 			}
-
 			m_rhiDevice->Set_DepthEnabled(m_depthStencil != nullptr);
 			m_rhiDevice->Set_RenderTargets((unsigned int)m_renderTargetViews.size(), &m_renderTargetViews[0], m_depthStencil);
 			Profiler::Get().m_rhiBindingsRenderTarget++;
@@ -331,7 +324,12 @@ namespace Directus
 
 				if (m_depthStencil)
 				{
-					m_rhiDevice->ClearDepthStencil(m_depthStencil, Clear_Depth, m_viewport->GetMaxDepth(), 0);
+					float depth = m_viewport.GetMaxDepth();
+					#if REVERSE_Z == 1
+					depth = 1.0f - depth;
+					#endif
+
+					m_rhiDevice->ClearDepthStencil(m_depthStencil, Clear_Depth, depth, 0);
 				}
 			}
 

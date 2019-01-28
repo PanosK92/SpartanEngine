@@ -77,17 +77,14 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	// Get current frame window resolution
 	unsigned int width	= (unsigned int)(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
 	unsigned int height = (unsigned int)(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
-	if (width > Renderer::GetMaxResolution() || height > Renderer::GetMaxResolution())
+	unsigned int maxRes = _Widget_Viewport::g_renderer->GetMaxResolution();
+	if (width > maxRes || height > maxRes)
 		return;
 
 	// Make pixel perfect
 	width	-= (width	% 2 != 0) ? 1 : 0;
 	height	-= (height	% 2 != 0) ? 1 : 0;
 
-	// Let the engine know about the position as well as the size of this widget
-	Vector2 windowPos = EditorHelper::ToVector2(ImGui::GetWindowPos()) + Vector2(_Widget_Viewport::g_windowPadding);
-	Settings::Get().Viewport_Set(windowPos.x, windowPos.y, (float)width, (float)height);
-	
 	ImGui::Image(
 		_Widget_Viewport::g_renderer->GetFrameShaderResource(),
 		ImVec2((float)width, (float)height),
@@ -97,16 +94,23 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 		ImColor(50, 127, 166, 255)
 	);
 
-	// Adjust resolution if required
-	if (Settings::Get().Resolution_GetWidth() != width || Settings::Get().Resolution_GetHeight() != height)
+	// Update engine's viewport
+	Vector2 windowPos = EditorHelper::ToVector2(ImGui::GetWindowPos()) + Vector2(_Widget_Viewport::g_windowPadding);
+	_Widget_Viewport::g_renderer->SetViewport(RHI_Viewport(windowPos.x, windowPos.y, (float)width, (float)height));
+
+	// Update engine's resolution
+	if (m_timeSinceLastResChange >= 0.250f) // Don't stress the GPU too much
 	{
-		if (m_timeSinceLastResChange >= 0.250f) // Don't stress the GPU too much
-		{
-			_Widget_Viewport::g_renderer->SetResolution(width, height);
-			m_timeSinceLastResChange = 0;
-		}
+		_Widget_Viewport::g_renderer->SetResolution(width, height);
+		m_timeSinceLastResChange = 0;
 	}
+
 	m_timeSinceLastResChange += deltaTime;
+
+	if (ImGui::IsItemClicked(0))
+	{
+		LOG_ERROR("Viewport clicked");
+	}
 
 	// Handle model drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Model))

@@ -94,7 +94,7 @@ namespace Directus
 		void SetAlphaBlending(bool enabled);
 
 		// Viewport
-		void SetViewport(const std::shared_ptr<RHI_Viewport>& viewport);
+		void SetViewport(const RHI_Viewport& viewport);
 
 		// Clears all currently set settings
 		void Reset();
@@ -149,7 +149,7 @@ namespace Directus
 		bool m_pixelShaderDirty;
 
 		// Viewport
-		std::shared_ptr<RHI_Viewport> m_viewport;
+		RHI_Viewport m_viewport;
 		bool m_viewportDirty;
 
 		// Alpha blending

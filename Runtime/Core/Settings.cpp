@@ -91,7 +91,7 @@ namespace Directus
 			ReadSetting(SettingsIO::fin, "fFPSLimit",				m_fpsLimit);
 			ReadSetting(SettingsIO::fin, "iMaxThreadCount",			m_maxThreadCount);
 
-			m_resolution = Vector2(resolutionX, resolutionY);
+			m_windowSize = Vector2(resolutionX, resolutionY);
 
 			if (m_fpsLimit == 0.0f)
 			{
@@ -119,8 +119,8 @@ namespace Directus
 			WriteSetting(SettingsIO::fout, "bFullScreen",			m_isFullScreen);
 			WriteSetting(SettingsIO::fout, "iVSync",				m_vsync);
 			WriteSetting(SettingsIO::fout, "bIsMouseVisible",		m_isMouseVisible);
-			WriteSetting(SettingsIO::fout, "fResolutionWidth",		m_resolution.x);
-			WriteSetting(SettingsIO::fout, "fResolutionHeight",		m_resolution.y);
+			WriteSetting(SettingsIO::fout, "fResolutionWidth",		m_windowSize.x);
+			WriteSetting(SettingsIO::fout, "fResolutionHeight",		m_windowSize.y);
 			WriteSetting(SettingsIO::fout, "iShadowMapResolution",	m_shadowMapResolution);
 			WriteSetting(SettingsIO::fout, "iAnisotropy",			m_anisotropy);
 			WriteSetting(SettingsIO::fout, "fFPSLimit",				m_fpsLimit);
@@ -130,7 +130,7 @@ namespace Directus
 			SettingsIO::fout.close();
 		}
 
-		LOGF_INFO("Resolution: %dx%d",		(int)m_resolution.x, (int)m_resolution.y);
+		LOGF_INFO("Resolution: %dx%d",		(int)m_windowSize.x, (int)m_windowSize.y);
 		LOGF_INFO("Shadow resolution: %d",	m_shadowMapResolution);
 		LOGF_INFO("Anisotropy: %d",			m_anisotropy);
 		LOGF_INFO("Max fps: %f",			m_fpsLimit);

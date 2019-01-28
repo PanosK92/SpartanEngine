@@ -45,7 +45,7 @@ namespace Directus
 	class World;
 	class Timer;
 	class ResourceCache;
-	class RHI_Device;
+	class Renderer;
 	class Variant;
 
 	struct TimeBlock_CPU
@@ -168,6 +168,6 @@ namespace Directus
 		World* m_scene;
 		Timer* m_timer;
 		ResourceCache* m_resourceManager;
-		std::shared_ptr<RHI_Device> m_rhiDevice;
+		Renderer* m_renderer;
 	};
 }

@@ -108,11 +108,7 @@ namespace Directus
 		void Present();
 		void Render();
 
-		// The back-buffer is the final output (should match the display/window size)
-		void SetBackBufferSize(unsigned int width, unsigned int height);
-		// The actual frame that all rendering takes place (or the viewport window in the editor)
-		void SetResolution(unsigned int width, unsigned int height);
-
+	
 		//= RENDER MODE ==================================================
 		// Enables an render mode flag
 		void Flags_Enable(RenderMode flag)		{ m_flags |= flag; }
@@ -128,11 +124,23 @@ namespace Directus
 		void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& colorFrom, const Math::Vector4& colorTo);
 		//===========================================================================================================================================================================
 
+		//= RESOLUTION & VIEWPORT (Independent of window size) ======================
+		// The back-buffer is the final output (should match the display/window size)
+		// In other words, it won't affect the internal rendering resolution
+		void SetBackBufferSize(unsigned int width, unsigned int height);
+		
+		const Math::Vector2& GetResolution() { return m_resolution; }
+		void SetResolution(unsigned int width, unsigned int height);
+
+		const RHI_Viewport& GetViewport()				{ return m_viewport; }
+		void SetViewport(const RHI_Viewport& viewport)	{ m_viewport = viewport; }
+		//===========================================================================
+
 		const std::shared_ptr<RHI_Device>& GetRHIDevice()	{ return m_rhiDevice; }
 		static bool IsRendering()							{ return m_isRendering; }
 		uint64_t GetFrameNum()								{ return m_frameNum; }
 		std::shared_ptr<Camera> GetCamera()					{ return m_camera; }
-		static unsigned int GetMaxResolution()				{ return m_maxResolution; }
+		unsigned int GetMaxResolution()						{ return m_maxResolution; }
 
 		//= Graphics Settings ====================================================================================================================================================
 		float m_gamma					= 2.2f;
@@ -158,11 +166,11 @@ namespace Directus
 		//=======================================
 
 	private:
-		void CreateRenderTextures(unsigned int width, unsigned int height);
-		void SetGlobalBuffer(
+		void CreateRenderTextures();
+		void SetGlobalBuffer(	
+			unsigned int resolutionWidth,
+			unsigned int resolutionHeight,
 			const Math::Matrix& mMVP			= Math::Matrix::Identity,
-			unsigned int resolutionWidth		= Settings::Get().Resolution_GetWidth(),
-			unsigned int resolutionHeight		= Settings::Get().Resolution_GetHeight(),
 			float blur_sigma					= 0.0f,
 			const Math::Vector2& blur_direction	= Math::Vector2::Zero
 		);
@@ -195,6 +203,12 @@ namespace Directus
 		void Pass_Gizmos(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_PerformanceMetrics(std::shared_ptr<RHI_RenderTexture>& texOut);
 		//=======================================================================================================================================================
+
+		//= RESOLUTION & VIEWPORT =======================================
+		Math::Vector2 m_resolution		= Math::Vector2(1920, 1080);
+		RHI_Viewport m_viewport			= RHI_Viewport(0, 0, 1920, 1080);
+		unsigned int m_maxResolution	= 16384;
+		//===============================================================
 
 		//= RENDER TEXTURES ===========================================
 		// 1/1
@@ -274,8 +288,7 @@ namespace Directus
 		Light* GetLightDirectional();
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
-		std::unique_ptr<GBuffer> m_gbuffer;
-		std::shared_ptr<RHI_Viewport> m_viewport;		
+		std::unique_ptr<GBuffer> m_gbuffer;	
 		std::unique_ptr<Rectangle> m_quad;
 		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
 		Math::Matrix m_view;
@@ -295,7 +308,6 @@ namespace Directus
 		bool m_isOddFrame;
 		Math::Vector2 m_taa_jitter;
 		Math::Vector2 m_taa_jitterPrevious;
-		static unsigned int m_maxResolution;
 		//===============================================================
 		
 		// Global buffer (holds what is needed by almost every shader)
