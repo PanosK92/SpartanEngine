@@ -73,8 +73,7 @@ namespace Directus
 		m_flags			|= Render_Gizmo_Transform;
 		m_flags			|= Render_Gizmo_Grid;
 		m_flags			|= Render_Gizmo_Lights;
-		m_flags			|= Render_Gizmo_Physics;	
-		m_flags			|= Render_PostProcess_ToneMapping;
+		m_flags			|= Render_Gizmo_Physics;
 		m_flags			|= Render_PostProcess_Bloom;	
 		m_flags			|= Render_PostProcess_SSAO;	
 		m_flags			|= Render_PostProcess_MotionBlur;
@@ -544,6 +543,7 @@ namespace Directus
 		buffer->fps_current				= Profiler::Get().GetFPS();
 		buffer->fps_target				= Settings::Get().FPS_GetTarget();
 		buffer->gamma					= m_gamma;
+		buffer->tonemapping				= (int)m_tonemapping;
 
 		m_bufferGlobal->Unmap();
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);
@@ -1011,7 +1011,7 @@ namespace Directus
 		}
 
 		// Tone-Mapping
-		if (Flags_IsSet(Render_PostProcess_ToneMapping))
+		if (m_tonemapping != ToneMapping_Off)
 		{
 			Pass_ToneMapping(texIn, texOut);
 			SwapTargets();

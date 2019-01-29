@@ -51,7 +51,7 @@ namespace Directus
 		float m_y;
 		float m_width;
 		float m_height;
-		int m_resolutionWidth;
-		int m_resolutionHeight;
+		unsigned int m_resolutionWidth;
+		unsigned int m_resolutionHeight;
 	};
 }

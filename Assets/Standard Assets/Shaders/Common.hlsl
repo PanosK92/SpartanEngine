@@ -35,7 +35,8 @@ cbuffer GlobalBuffer : register(b0)
 	float g_gamma;
 	
 	float2 g_taa_jitterOffset;
-	float2 padding;
+	float g_toneMapping;
+	float padding;
 };
 
 #define g_texelSize float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
@@ -175,12 +176,12 @@ static const float3 lumCoeff = float3(0.299f, 0.587f, 0.114f);
 
 float Luminance(float3 color)
 {
-    return dot(color, lumCoeff);
+    return max(dot(color, lumCoeff), 0.0001f);
 }
 
 float Luminance(float4 color)
 {
-    return dot(color.rgb, lumCoeff);
+    return max(dot(color.rgb, lumCoeff), 0.0001f);
 }
 
 /*------------------------------------------------------------------------------

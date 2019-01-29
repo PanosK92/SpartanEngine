@@ -4,7 +4,7 @@
 #include "Sharpening.hlsl"
 #include "ChromaticAberration.hlsl"
 #include "Blur.hlsl"
-#include "ACES.hlsl"
+#include "ToneMapping.hlsl"
 #include "ResolveTAA.hlsl"
 #include "MotionBlur.hlsl"
 #include "Dithering.hlsl"
@@ -49,7 +49,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 
 #if PASS_TONEMAPPING
 	color 		= sourceTexture.Sample(samplerState, texCoord);
-	color.rgb 	= ACESFitted(color.rgb);
+	color.rgb 	= ToneMap(color.rgb);
 #endif
 
 #if PASS_TEXTURE

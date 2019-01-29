@@ -1,15 +1,26 @@
-//=================================================================================================
-//
+float3 ToneMapReinhard(float3 color)
+{
+	return color / (1 + color);
+}
+
+float3 Uncharted2(float3 x)
+{
+    float A = 0.15;
+	float B = 0.50;
+	float C = 0.10;
+	float D = 0.20;
+	float E = 0.02;
+	float F = 0.30;
+	float W = 11.2;
+    return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
+}
+
+//== ACESFitted ===========================
 //  Baking Lab
 //  by MJP and David Neubelt
 //  http://mynameismjp.wordpress.com/
-//
 //  All code licensed under the MIT license
-//
-//=================================================================================================
-
-// The code in this file was originally written by Stephen Hill (@self_shadow), who deserves all
-// credit for coming up with this fit and implementing it. Buy him a beer next time you see him. :)
+//=========================================
 
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
 static const float3x3 ACESInputMat =
@@ -47,4 +58,27 @@ float3 ACESFitted(float3 color)
     color = saturate(color);
 
     return color;
+}
+
+float3 ToneMap(float3 color)
+{
+	[branch]
+    if (g_toneMapping == 0) // OFF
+    {
+		// Do nothing
+    }
+	else if (g_toneMapping == 1) // ACES
+	{
+		color = ACESFitted(color);
+	}
+	else if (g_toneMapping == 2) // REINHARD
+	{
+		color = ToneMapReinhard(color);
+	}
+	else if (g_toneMapping == 3) // UNCHARTED 2
+	{
+		color = Uncharted2(color);
+	}
+	
+	return color;
 }

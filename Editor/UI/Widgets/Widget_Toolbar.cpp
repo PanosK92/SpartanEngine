@@ -122,8 +122,10 @@ void Widget_Toolbar::ShowRendererOptions()
 	if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
 	{	
 		// Read from engine
+		static vector<char*> types	= { "Off", "ACES", "Reinhard", "Uncharted 2" };
+		const char* typeCharPtr		= types[(int)m_renderer->m_tonemapping];
+
 		bool do_bloom				= m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
-		bool do_tonemapping			= m_renderer->Flags_IsSet(Render_PostProcess_ToneMapping);
 		bool do_fxaa				= m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
 		bool do_ssao				= m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
 		bool do_ssr					= m_renderer->Flags_IsSet(Render_PostProcess_SSR);
@@ -137,8 +139,24 @@ void Widget_Toolbar::ShowRendererOptions()
 		{
 			auto tooltip = [this](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
 
+			if (ImGui::BeginCombo("Tonemapping", typeCharPtr))
+			{
+				for (unsigned int i = 0; i < (unsigned int)types.size(); i++)
+				{
+					bool is_selected = (typeCharPtr == types[i]);
+					if (ImGui::Selectable(types[i], is_selected))
+					{
+						typeCharPtr = types[i];
+						m_renderer->m_tonemapping = (ToneMapping_Type)i;
+					}
+					if (is_selected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+				}
+				ImGui::EndCombo();
+			}
 			ImGui::InputFloat("Gamma", &m_renderer->m_gamma, 0.1f);
-			ImGui::Checkbox("Tone-mapping", &do_tonemapping);												tooltip("ACES Filmic");
 			ImGui::Checkbox("Bloom", &do_bloom);
 			ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloomIntensity, 0.1f);		
 			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
@@ -169,7 +187,6 @@ void Widget_Toolbar::ShowRendererOptions()
 		// Map back to engine
 		#define SET_FLAG_IF(flag, value) value	? m_renderer->Flags_Enable(flag) : m_renderer->Flags_Disable(flag)
 		SET_FLAG_IF(Render_PostProcess_Bloom, do_bloom);
-		SET_FLAG_IF(Render_PostProcess_ToneMapping, do_tonemapping);
 		SET_FLAG_IF(Render_PostProcess_FXAA, do_fxaa);
 		SET_FLAG_IF(Render_PostProcess_SSAO, do_ssao);
 		SET_FLAG_IF(Render_PostProcess_SSR, do_ssr);

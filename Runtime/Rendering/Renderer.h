@@ -75,8 +75,15 @@ namespace Directus
 		Render_PostProcess_MotionBlur			= 1UL << 17,
 		Render_PostProcess_Sharpening			= 1UL << 18,
 		Render_PostProcess_ChromaticAberration	= 1UL << 19,
-		Render_PostProcess_Dithering			= 1UL << 20,
-		Render_PostProcess_ToneMapping			= 1UL << 21
+		Render_PostProcess_Dithering			= 1UL << 20
+	};
+
+	enum ToneMapping_Type
+	{
+		ToneMapping_Off,
+		ToneMapping_ACES,
+		ToneMapping_Reinhard,
+		ToneMapping_Uncharted2
 	};
 
 	enum RenderableType
@@ -143,6 +150,7 @@ namespace Directus
 		unsigned int GetMaxResolution()						{ return m_maxResolution; }
 
 		//= Graphics Settings ====================================================================================================================================================
+		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;
 		float m_gamma					= 2.2f;
 		// TAA
 		float m_taa_alphaMin			= 0.05f;
@@ -342,7 +350,8 @@ namespace Directus
 			float gamma;
 
 			Math::Vector2 taa_jitterOffset;
-			Math::Vector2 padding;
+			float tonemapping;
+			float padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_bufferGlobal;
 	};
