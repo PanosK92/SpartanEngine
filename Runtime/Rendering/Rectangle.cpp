@@ -69,11 +69,11 @@ namespace Directus
 		m_y					= y;
 		m_width				= width;
 		m_height			= height;
-		m_resolutionWidth	= m_renderer->GetResolution().x;
-		m_resolutionHeight	= m_renderer->GetResolution().y;
+		m_resolutionWidth	= (unsigned int)m_renderer->GetResolution().x;
+		m_resolutionHeight	= (unsigned int)m_renderer->GetResolution().y;
 
 		// Compute screen coordinates
-		float left		= -m_resolutionWidth * 0.5f + m_x;
+		float left		= -float(m_resolutionWidth * 0.5f) + m_x;
 		float right		= left + m_width;
 		float top		= m_resolutionHeight * 0.5f - m_y;
 		float bottom	= top - m_height;

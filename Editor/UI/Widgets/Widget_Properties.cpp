@@ -294,8 +294,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 	{
 		//= REFLECT =====================================================
 		static vector<char*> types	= { "Directional", "Point", "Spot" };
-		int typeInt					= (int)light->GetLightType();
-		const char* typeCharPtr		= types[typeInt];
+		const char* typeCharPtr		= types[(int)light->GetLightType()];
 		float intensity				= light->GetIntensity();
 		float angle					= light->GetAngle() * 179.0f;
 		bool castsShadows			= light->GetCastShadows();
@@ -316,7 +315,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 				if (ImGui::Selectable(types[i], is_selected))
 				{
 					typeCharPtr = types[i];
-					typeInt = i;
+					light->SetLightType((LightType)i);
 				}
 				if (is_selected)
 				{
@@ -341,7 +340,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##lightShadows", &castsShadows);
 
 		// Cascade splits
-		if (typeInt == (int)LightType_Directional)
+		if (light->GetLightType() == LightType_Directional)
 		{
 			// Bias
 			ImGui::Text("Bias");
@@ -355,7 +354,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		}
 
 		// Range
-		if (typeInt != (int)LightType_Directional)
+		if (light->GetLightType() != LightType_Directional)
 		{
 			ImGui::Text("Range");
 			ImGui::SameLine(ComponentProperty::g_column);
@@ -363,15 +362,14 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		}
 
 		// Angle
-		if (typeInt == (int)LightType_Spot)
+		if (light->GetLightType() == LightType_Spot)
 		{
 			ImGui::Text("Angle");
 			ImGui::SameLine(ComponentProperty::g_column);
 			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightAngle", &angle, 1.0f, 179.0f); ImGui::PopItemWidth();
 		}
 
-		//= MAP ============================================================================================================
-		if ((LightType)typeInt != light->GetLightType())				light->SetLightType((LightType)typeInt);
+		//= MAP =====================================================================================================
 		if (intensity != light->GetIntensity())							light->SetIntensity(intensity);
 		if (castsShadows != light->GetCastShadows())					light->SetCastShadows(castsShadows);
 		if (bias != light->GetBias())									light->SetBias(bias);
@@ -379,7 +377,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light)
 		if (angle / 179.0f != light->GetAngle())						light->SetAngle(angle / 179.0f);
 		if (range != light->GetRange())									light->SetRange(range);
 		if (m_colorPicker_light->GetColor() != light->GetColor())	light->SetColor(m_colorPicker_light->GetColor());
-		//==================================================================================================================
+		//===========================================================================================================
 	}
 	ComponentProperty::End();
 }
@@ -517,7 +515,7 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 
 	if (ComponentProperty::Begin("Collider", Icon_Component_Collider, collider))
 	{
-		//= REFLECT ================================================
+		//= REFLECT ======================================================
 		static vector<char*> type = {
 			"Box",
 			"Sphere",
@@ -527,12 +525,11 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 			"Cone",
 			"Mesh"
 		};
-		auto shapeInt				= (int)collider->GetShapeType();
-		const char* shapeCharPtr	= type[shapeInt];
+		const char* shapeCharPtr	= type[(int)collider->GetShapeType()];
 		bool optimize				= collider->GetOptimize();
 		Vector3 colliderCenter		= collider->GetCenter();
 		Vector3 colliderBoundingBox = collider->GetBoundingBox();
-		//==========================================================
+		//================================================================
 
 		auto inputTextFlags		= ImGuiInputTextFlags_CharsDecimal;
 		float step				= 0.1f;
@@ -550,7 +547,7 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 				if (ImGui::Selectable(type[i], is_selected))
 				{
 					shapeCharPtr = type[i];
-					shapeInt = i;
+					collider->SetShapeType((ColliderShape)i);
 				}
 				if (is_selected)
 				{
@@ -574,18 +571,17 @@ void Widget_Properties::ShowCollider(shared_ptr<Collider>& collider)
 		ImGui::SameLine();								ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &colliderBoundingBox.z, step, step_fast, precision, inputTextFlags); ImGui::PopID();
 
 		// Optimize
-		if (shapeInt == (int)ColliderShape_Mesh)
+		if (collider->GetShapeType() == ColliderShape_Mesh)
 		{
 			ImGui::Text("Optimize");
 			ImGui::SameLine(ComponentProperty::g_column); ImGui::Checkbox("##colliderOptimize", &optimize);
 		}
 
-		//= MAP ====================================================================================================
-		if ((ColliderShape)shapeInt != collider->GetShapeType())	collider->SetShapeType((ColliderShape)shapeInt);
+		//= MAP ==================================================================================================
 		if (colliderCenter != collider->GetCenter())				collider->SetCenter(colliderCenter);
 		if (colliderBoundingBox != collider->GetBoundingBox())		collider->SetBoundingBox(colliderBoundingBox);
 		if (optimize != collider->GetOptimize())					collider->SetOptimize(optimize);
-		//==========================================================================================================
+		//========================================================================================================
 	}
 	ComponentProperty::End();
 }
@@ -598,15 +594,8 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 	if (ComponentProperty::Begin("Constraint", Icon_Component_AudioSource, constraint))
 	{
 		//= REFLECT ============================================================================
-		static vector<char*> types = 
-		{
-			"Point",
-			"Hinge",
-			"Slider",
-			"ConeTwist"
-		};
-		auto typeInt = (int)constraint->GetConstraintType();
-		const char* typeStr			= types[typeInt];
+		static vector<char*> types	= {"Point", "Hinge", "Slider", "ConeTwist" };
+		const char* typeStr			= types[(int)constraint->GetConstraintType()];
 		weak_ptr<Actor>	otherBody	= constraint->GetBodyOther();
 		bool otherBodyDirty			= false;
 		Vector3 position			= constraint->GetPosition();
@@ -631,7 +620,7 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 				if (ImGui::Selectable(types[i], is_selected))
 				{
 					typeStr = types[i];
-					typeInt = i;
+					constraint->SetConstraintType((ConstraintType)i);
 				}
 				if (is_selected)
 				{
@@ -694,7 +683,6 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 		}
 
 		//= MAP ========================================================================================================================
-		if ((ConstraintType)typeInt != constraint->GetConstraintType())	constraint->SetConstraintType((ConstraintType)typeInt);
 		if (otherBodyDirty)												{ constraint->SetBodyOther(otherBody); otherBodyDirty = false; }
 		if (position != constraint->GetPosition())						constraint->SetPosition(position);
 		if (rotation != constraint->GetRotation().ToEulerAngles())		constraint->SetRotation(Quaternion::FromEulerAngles(rotation));
@@ -828,15 +816,14 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 
 	if (ComponentProperty::Begin("Camera", Icon_Component_Camera, camera))
 	{
-		//= REFLECT =============================================================
-		static const char* projectionTypes[] = { "Perspective", "Orthographic" };
-		auto projectionInt = (int)camera->GetProjectionType();
-		const char* projectionCharPtr = projectionTypes[projectionInt];
-		float fov = camera->GetFOV_Horizontal_Deg();
-		float nearPlane = camera->GetNearPlane();
-		float farPlane = camera->GetFarPlane();
+		//= REFLECT ================================================================================
+		static const char* projectionTypes[]	= { "Perspective", "Orthographic" };
+		const char* projectionCharPtr			= projectionTypes[(int)camera->GetProjectionType()];
+		float fov								= camera->GetFOV_Horizontal_Deg();
+		float nearPlane							= camera->GetNearPlane();
+		float farPlane							= camera->GetFarPlane();
 		m_colorPicker_camera->SetColor(camera->GetClearColor());
-		//=======================================================================
+		//==========================================================================================
 
 		auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -856,7 +843,7 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 				if (ImGui::Selectable(projectionTypes[i], is_selected))
 				{
 					projectionCharPtr = projectionTypes[i];
-					projectionInt = i;
+					camera->SetProjection((ProjectionType)i);
 				}
 				if (is_selected)
 				{
@@ -875,13 +862,12 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera)
 		ImGui::SameLine(ComponentProperty::g_column);		ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &nearPlane, 0.1f, 0.1f, "%.3f", inputTextFlags); ImGui::PopItemWidth();
 		ImGui::SetCursorPosX(ComponentProperty::g_column);	ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &farPlane, 0.1f, 0.1f, "%.3f", inputTextFlags); ImGui::PopItemWidth();
 
-		//= MAP =======================================================================================================================
-		if ((ProjectionType)projectionInt != camera->GetProjectionType())	camera->SetProjection((ProjectionType)projectionInt);
+		//= MAP ====================================================================================================================
 		if (fov != camera->GetFOV_Horizontal_Deg())							camera->SetFOV_Horizontal_Deg(fov);
 		if (nearPlane != camera->GetNearPlane())							camera->SetNearPlane(nearPlane);
 		if (farPlane != camera->GetFarPlane())								camera->SetFarPlane(farPlane);
 		if (m_colorPicker_camera->GetColor() != camera->GetClearColor())	camera->SetClearColor(m_colorPicker_camera->GetColor());
-		//=============================================================================================================================
+		//==========================================================================================================================
 	}
 	ComponentProperty::End();
 }
