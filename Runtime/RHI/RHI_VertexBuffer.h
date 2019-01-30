@@ -42,7 +42,8 @@ namespace Directus
 		void* Map();
 		bool Unmap();
 		bool Bind();
-
+	
+		unsigned int GetVertexCount() { return m_vertexCount; }
 		unsigned int GetMemoryUsage() { return m_memoryUsage; }
 
 	protected:
@@ -52,5 +53,6 @@ namespace Directus
 		// D3D11
 		void* m_buffer;
 		unsigned int m_stride;
+		unsigned int m_vertexCount;
 	};
 }

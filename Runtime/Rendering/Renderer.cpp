@@ -112,6 +112,9 @@ namespace Directus
 		// Create a constant buffer that will be used for most shaders
 		m_bufferGlobal = make_shared<RHI_ConstantBuffer>(m_rhiDevice);
 		m_bufferGlobal->Create(sizeof(ConstantBuffer_Global));
+
+		// Line buffer
+		m_vertexBufferLines = make_shared<RHI_VertexBuffer>(m_rhiDevice);
 	
 		CreateRenderTextures();
 		CreateFonts();
@@ -479,41 +482,37 @@ namespace Directus
 		LOGF_INFO("Resolution set to %dx%d", width, height);
 	}
 
-	void Renderer::DrawBox(const BoundingBox& box, const Vector4& color)
+	void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& color_from, const Vector4& color_to, bool depth /*= true*/)
 	{
-		// Compute points from min and max
-		Vector3 boundPoint1 = box.GetMin();
-		Vector3 boundPoint2 = box.GetMax();
-		Vector3 boundPoint3 = Vector3(boundPoint1.x, boundPoint1.y, boundPoint2.z);
-		Vector3 boundPoint4 = Vector3(boundPoint1.x, boundPoint2.y, boundPoint1.z);
-		Vector3 boundPoint5 = Vector3(boundPoint2.x, boundPoint1.y, boundPoint1.z);
-		Vector3 boundPoint6 = Vector3(boundPoint1.x, boundPoint2.y, boundPoint2.z);
-		Vector3 boundPoint7 = Vector3(boundPoint2.x, boundPoint1.y, boundPoint2.z);
-		Vector3 boundPoint8 = Vector3(boundPoint2.x, boundPoint2.y, boundPoint1.z);
-
-		// top of rectangular cuboid (6-2-8-4)
-		DrawLine(boundPoint6, boundPoint2, color);
-		DrawLine(boundPoint2, boundPoint8, color);
-		DrawLine(boundPoint8, boundPoint4, color);
-		DrawLine(boundPoint4, boundPoint6, color);
-
-		// bottom of rectangular cuboid (3-7-5-1)
-		DrawLine(boundPoint3, boundPoint7, color);
-		DrawLine(boundPoint7, boundPoint5, color);
-		DrawLine(boundPoint5, boundPoint1, color);
-		DrawLine(boundPoint1, boundPoint3, color);
-
-		// legs (6-3, 2-7, 8-5, 4-1)
-		DrawLine(boundPoint6, boundPoint3, color);
-		DrawLine(boundPoint2, boundPoint7, color);
-		DrawLine(boundPoint8, boundPoint5, color);
-		DrawLine(boundPoint4, boundPoint1, color);
+		if (depth)
+		{
+			m_linesList_depthEnabled.emplace_back(from, color_from);
+			m_linesList_depthEnabled.emplace_back(to, color_to);
+		}
+		else
+		{
+			m_linesList_depthDisabled.emplace_back(from, color_from);
+			m_linesList_depthDisabled.emplace_back(to, color_to);
+		}
 	}
 
-	void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& colorFrom, const Vector4& colorTo)
+	void Renderer::DrawBox(const BoundingBox& box, const Vector4& color, bool depth /*= true*/)
 	{
-		m_lineVertices.emplace_back(from, colorFrom);
-		m_lineVertices.emplace_back(to, colorTo);
+		Vector3 min = box.GetMin();
+		Vector3 max = box.GetMax();
+	
+		DrawLine(Vector3(min.x, min.y, min.z), Vector3(max.x, min.y, min.z), color, depth);
+		DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, max.y, min.z), color, depth);
+		DrawLine(Vector3(max.x, max.y, min.z), Vector3(min.x, max.y, min.z), color, depth);
+		DrawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, min.y, min.z), color, depth);
+		DrawLine(Vector3(min.x, min.y, min.z), Vector3(min.x, min.y, max.z), color, depth);
+		DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, min.y, max.z), color, depth);
+		DrawLine(Vector3(max.x, max.y, min.z), Vector3(max.x, max.y, max.z), color, depth);
+		DrawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, max.y, max.z), color, depth);
+		DrawLine(Vector3(min.x, min.y, max.z), Vector3(max.x, min.y, max.z), color, depth);
+		DrawLine(Vector3(max.x, min.y, max.z), Vector3(max.x, max.y, max.z), color, depth);
+		DrawLine(Vector3(max.x, max.y, max.z), Vector3(min.x, max.y, max.z), color, depth);
+		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
 	void Renderer::SetGlobalBuffer(unsigned int resolutionWidth, unsigned int resolutionHeight, const Matrix& mMVP, float blur_sigma, const Math::Vector2& blur_direction)
@@ -1412,24 +1411,19 @@ namespace Directus
 	}
 
 	void Renderer::Pass_Lines(shared_ptr<RHI_RenderTexture>& texOut)
-	{
-		bool drawPhysics	= m_flags & Render_Gizmo_Physics;
+	{	
 		bool drawPickingRay = m_flags & Render_Gizmo_PickingRay;
 		bool drawAABBs		= m_flags & Render_Gizmo_AABB;
 		bool drawGrid		= m_flags & Render_Gizmo_Grid;
-		bool draw			= drawPhysics | drawPickingRay | drawAABBs | drawGrid;
+		bool drawLines		= !m_linesList_depthEnabled.empty() || !m_linesList_depthDisabled.empty(); // Any kind of lines, physics, user debug, etc.
+		bool draw			= drawPickingRay || drawAABBs || drawGrid || drawLines;
 		if (!draw)
 			return;
 
 		TIME_BLOCK_START_MULTI();
 		m_rhiDevice->EventBegin("Pass_Lines");
 
-		m_rhiPipeline->Reset();
-		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_LineList);
-		m_rhiPipeline->SetShader(m_shaderColor);
-		m_rhiPipeline->SetSampler(m_samplerPointClamp);
-		m_rhiPipeline->SetAlphaBlending(true);
-		m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
+		// Generate lines for debug primitives offered by the renderer
 		{
 			// Picking ray
 			if (drawPickingRay)
@@ -1438,7 +1432,7 @@ namespace Directus
 				DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
 			}
 
-			// bounding boxes
+			// AABBs
 			if (drawAABBs)
 			{
 				for (const auto& actor : m_actors[Renderable_ObjectOpaque])
@@ -1457,38 +1451,76 @@ namespace Directus
 					}
 				}
 			}
+		}
 
-			auto lineVertexBufferSize = (unsigned int)m_lineVertices.size();
+		// Set common states
+		m_rhiPipeline->Reset();
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_LineList);
+		m_rhiPipeline->SetShader(m_shaderColor);
+		m_rhiPipeline->SetSampler(m_samplerPointClamp);
+		m_rhiPipeline->SetAlphaBlending(true);
+
+		// Draw lines that require depth
+		m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
+		{
+			// Grid
+			if (drawGrid)
+			{
+				m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
+				m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
+				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_viewProjection);
+				m_rhiPipeline->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
+			}
+
+			// Lines
+			auto lineVertexBufferSize = (unsigned int)m_linesList_depthEnabled.size();
 			if (lineVertexBufferSize != 0)
 			{
-				if (lineVertexBufferSize > m_lineVertexCount)
+				// Grow vertex buffer (if needed)
+				if (lineVertexBufferSize > m_vertexBufferLines->GetVertexCount())
 				{
-					m_lineVertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
-					m_lineVertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosCol), lineVertexBufferSize);
-					m_lineVertexCount = lineVertexBufferSize;
+					m_vertexBufferLines->CreateDynamic(sizeof(RHI_Vertex_PosCol), lineVertexBufferSize);
 				}
 
-				// Update line vertex buffer
-				void* data = m_lineVertexBuffer->Map();
-				memcpy(data, &m_lineVertices[0], sizeof(RHI_Vertex_PosCol) * lineVertexBufferSize);
-				m_lineVertexBuffer->Unmap();
+				// Update vertex buffer
+				auto buffer = (RHI_Vertex_PosCol*)m_vertexBufferLines->Map();
+				copy(m_linesList_depthEnabled.begin(), m_linesList_depthEnabled.end(), buffer);
+				m_vertexBufferLines->Unmap();
 
 				// Set pipeline state
-				m_rhiPipeline->SetVertexBuffer(m_lineVertexBuffer);
+				m_rhiPipeline->SetVertexBuffer(m_vertexBufferLines);
 				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_viewProjection);
 				m_rhiPipeline->Draw(lineVertexBufferSize);
 
-				m_lineVertices.clear();
+				m_linesList_depthEnabled.clear();
 			}
 		}
 		
-		// Grid
-		if (drawGrid)
+		// Draw lines that don't require depth
+		m_rhiPipeline->SetRenderTarget(texOut, nullptr);
 		{
-			m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
-			m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
-			SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_viewProjection);
-			m_rhiPipeline->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
+			// Lines
+			auto lineVertexBufferSize = (unsigned int)m_linesList_depthDisabled.size();
+			if (lineVertexBufferSize != 0)
+			{
+				// Grow vertex buffer (if needed)
+				if (lineVertexBufferSize > m_vertexBufferLines->GetVertexCount())
+				{
+					m_vertexBufferLines->CreateDynamic(sizeof(RHI_Vertex_PosCol), lineVertexBufferSize);
+				}
+
+				// Update vertex buffer
+				auto buffer = (RHI_Vertex_PosCol*)m_vertexBufferLines->Map();
+				copy(m_linesList_depthDisabled.begin(), m_linesList_depthDisabled.end(), buffer);
+				m_vertexBufferLines->Unmap();
+
+				// Set pipeline state
+				m_rhiPipeline->SetVertexBuffer(m_vertexBufferLines);
+				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_viewProjection);
+				m_rhiPipeline->Draw(lineVertexBufferSize);
+
+				m_linesList_depthDisabled.clear();
+			}
 		}
 
 		m_rhiDevice->EventEnd();

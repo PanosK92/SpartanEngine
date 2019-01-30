@@ -81,6 +81,13 @@ namespace Directus
 		}
 	}
 
+	void TransformHandleAxis::DrawExtra(Renderer* renderer, const Vector3& transformCenter)
+	{
+		// Draw axis line (connect the handle with the origin of the transform)
+		Vector4 color = Vector4(GetColor(), 1.0f);
+		renderer->DrawLine(box_transformed.GetCenter(), transformCenter, color, color, false);
+	}
+
 	void TransformHandle::Initialize(TransformHandle_Type type, Context* context)
 	{
 		m_type		= type;
@@ -242,11 +249,6 @@ namespace Directus
 		Vector3 up					= (space == TransformHandle_World) ? Vector3::Up					: actor_rotation * Vector3::Up;
 		Vector3 forward				= (space == TransformHandle_World) ? Vector3::Forward				: actor_rotation * Vector3::Forward;
 
-		// Draw lines that connect the handles - TODO: Load handles that are proper arrows (e.g. a line starting from the origin), this is an ugly hack
-		m_renderer->DrawLine(aabb_center, m_handle_x.position, Vector4(m_handle_x.GetColor(), 1.0f));
-		m_renderer->DrawLine(aabb_center, m_handle_y.position, Vector4(m_handle_y.GetColor(), 1.0f));
-		m_renderer->DrawLine(aabb_center, m_handle_z.position, Vector4(m_handle_z.GetColor(), 1.0f));
-
 		// Compute scale
 		float distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length()	: 0.0f;
 		float handle_scale			= distance_to_camera / (1.0f / handle_size);
@@ -270,5 +272,11 @@ namespace Directus
 		m_handle_y.UpdateTransform();
 		m_handle_z.UpdateTransform();
 		m_handle_xyz.UpdateTransform();
+
+		// Allow the handles to draw anything else they need
+		m_handle_x.DrawExtra(m_renderer, aabb_center);
+		m_handle_y.DrawExtra(m_renderer, aabb_center);
+		m_handle_z.DrawExtra(m_renderer, aabb_center);
+		m_handle_xyz.DrawExtra(m_renderer, aabb_center);
 	}
 }
