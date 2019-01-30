@@ -115,7 +115,6 @@ namespace Directus
 		void Present();
 		void Render();
 
-	
 		//= RENDER MODE ==================================================
 		// Enables an render mode flag
 		void Flags_Enable(RenderMode flag)		{ m_flags |= flag; }
@@ -125,11 +124,11 @@ namespace Directus
 		bool Flags_IsSet(RenderMode flag)		{ return m_flags & flag; }
 		//================================================================
 
-		//= LINE RENDERING ==========================================================================================================================================================
-		void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f));
-		void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color = Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)) { DrawLine(from, to, color, color); }
-		void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& colorFrom, const Math::Vector4& colorTo);
-		//===========================================================================================================================================================================
+		//= LINE RENDERING ============================================================================================================================================================
+		#define DebugColor Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+		void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DebugColor, const Math::Vector4& color_to = DebugColor, bool depth = true);
+		void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = DebugColor, bool depth = true);
+		//=============================================================================================================================================================================
 
 		//= RESOLUTION & VIEWPORT (Independent of window size) ======================
 		// The back-buffer is the final output (should match the display/window size)
@@ -280,17 +279,17 @@ namespace Directus
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightSpot;
 		//======================================================
 
-		//= LINE RENDERING ==================================
-		std::shared_ptr<RHI_VertexBuffer> m_lineVertexBuffer;
-		unsigned int m_lineVertexCount = 0;
-		std::vector<RHI_Vertex_PosCol> m_lineVertices;
-		//===================================================
+		//= LINE RENDERING ======================================
+		std::shared_ptr<RHI_VertexBuffer> m_vertexBufferLines;
+		std::vector<RHI_Vertex_PosCol> m_linesList_depthEnabled;
+		std::vector<RHI_Vertex_PosCol> m_linesList_depthDisabled;
+		//=======================================================
 
-		//= EDITOR ======================================
+		//= EDITOR =======================================
 		std::unique_ptr<Transform_Gizmo> m_transformGizmo;
 		std::unique_ptr<Grid> m_grid;
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
-		//===============================================
+		//================================================
 
 		//= MISC ========================================================
 		Light* GetLightDirectional();

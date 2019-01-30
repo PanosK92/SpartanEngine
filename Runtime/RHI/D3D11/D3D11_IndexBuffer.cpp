@@ -37,6 +37,7 @@ namespace Directus
 		m_rhiDevice		= rhiDevice;
 		m_buffer		= nullptr;
 		m_memoryUsage	= 0;
+		m_indexCount	= 0;
 	}
 
 	RHI_IndexBuffer::~RHI_IndexBuffer()
@@ -46,24 +47,26 @@ namespace Directus
 
 	bool RHI_IndexBuffer::Create(const vector<unsigned int>& indices)
 	{
+		SafeRelease((ID3D11Buffer*)m_buffer);
+
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{
-			LOG_ERROR("RHI_IndexBuffer::Create: Invalid RHI device");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		if (indices.empty())
 		{
-			LOG_ERROR("RHI_IndexBuffer::Create: Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
 		m_indexCount			= (unsigned int)indices.size();
-		unsigned int finalSize	= sizeof(unsigned int) * m_indexCount;
+		unsigned int byteWidth	= sizeof(unsigned int) * m_indexCount;
 
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= finalSize;
+		bufferDesc.ByteWidth			= byteWidth;
 		bufferDesc.Usage				= D3D11_USAGE_IMMUTABLE;
 		bufferDesc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
 		bufferDesc.CPUAccessFlags		= 0;
@@ -71,15 +74,15 @@ namespace Directus
 		bufferDesc.StructureByteStride	= 0;
 
 		D3D11_SUBRESOURCE_DATA initData;
-		initData.pSysMem = indices.data();
-		initData.SysMemPitch = 0;
-		initData.SysMemSlicePitch = 0;
+		initData.pSysMem			= indices.data();
+		initData.SysMemPitch		= 0;
+		initData.SysMemSlicePitch	= 0;
 
 		auto ptr = (ID3D11Buffer**)&m_buffer;
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
 		if FAILED(result)
 		{
-			LOG_ERROR("D3D11IndexBuffer: Failed to create index buffer");
+			LOG_ERROR(" Failed to create index buffer");
 			return false;
 		}
 
@@ -91,17 +94,20 @@ namespace Directus
 
 	bool RHI_IndexBuffer::CreateDynamic(unsigned int indexCount)
 	{
+		SafeRelease((ID3D11Buffer*)m_buffer);
+
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{
-			LOG_ERROR("RHI_IndexBuffer::Unmap: Invalid RHI device");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_indexCount = sizeof(unsigned int) * indexCount;
+		m_indexCount			= indexCount;
+		unsigned int byteWidth	= sizeof(unsigned int) * indexCount;
 
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= m_indexCount;
+		bufferDesc.ByteWidth			= byteWidth;
 		bufferDesc.Usage				= D3D11_USAGE_DYNAMIC;
 		bufferDesc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
 		bufferDesc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
@@ -112,7 +118,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, ptr);
 		if FAILED(result)
 		{
-			LOG_ERROR("D3D11IndexBuffer: Failed to create dynamic index buffer");
+			LOG_ERROR("Failed to create dynamic index buffer");
 			return false;
 		}
 
@@ -121,15 +127,9 @@ namespace Directus
 
 	void* RHI_IndexBuffer::Map()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("RHI_IndexBuffer::Unmap: Invalid RHI device");
-			return false;
-		}
-
-		if (!m_buffer)
-		{
-			LOG_ERROR("RHI_IndexBuffer::Map: Invalid buffer.");
+			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
 		}
 
@@ -137,7 +137,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map((ID3D11Resource*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_IndexBuffer: Failed to map index buffer.");
+			LOG_ERROR("Failed to map index buffer.");
 			return nullptr;
 		}
 
@@ -146,16 +146,10 @@ namespace Directus
 
 	bool RHI_IndexBuffer::Unmap()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("RHI_IndexBuffer::Unmap: Invalid RHI device");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
-		}
-
-		if (!m_buffer)
-		{
-			LOG_ERROR("RHI_IndexBuffer::Unmap: Invalid buffer");
-			return nullptr;
 		}
 
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Resource*)m_buffer, 0);
@@ -165,16 +159,10 @@ namespace Directus
 
 	bool RHI_IndexBuffer::Bind()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("RHI_IndexBuffer::Bind: Invalid device context");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
-		}
-
-		if (!m_buffer)
-		{
-			LOG_ERROR("RHI_IndexBuffer::Bind: Invalid buffer");
-			return nullptr;
 		}
 
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->IASetIndexBuffer((ID3D11Buffer*)m_buffer, DXGI_FORMAT_R32_UINT, 0);

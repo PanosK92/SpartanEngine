@@ -45,10 +45,12 @@ namespace Directus
 {
 	Font::Font(Context* context, const string& filePath, int fontSize, const Vector4& color) : IResource(context, Resource_Font)
 	{
-		m_rhiDevice		= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
-		m_charMaxWidth	= 0;
-		m_charMaxHeight = 0;
-		m_fontColor		= color;
+		m_rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
+		m_vertexBuffer		= make_shared<RHI_VertexBuffer>(m_rhiDevice);
+		m_indexBuffer		= make_shared<RHI_IndexBuffer>(m_rhiDevice);
+		m_charMaxWidth		= 0;
+		m_charMaxHeight		= 0;
+		m_fontColor			= color;
 		
 		SetSize(fontSize);
 		LoadFromFile(filePath);
@@ -108,8 +110,7 @@ namespace Directus
 		Vector2 pen = position;
 		m_currentText = text;
 		m_vertices.clear();
-		m_vertices.shrink_to_fit();
-		
+	
 		// Draw each letter onto a quad.
 		for (char textChar : m_currentText)
 		{
@@ -158,7 +159,6 @@ namespace Directus
 		{
 			m_indices.emplace_back(i);
 		}
-		m_indices.shrink_to_fit();
 
 		UpdateBuffers(m_vertices, m_indices);
 	}
@@ -170,35 +170,36 @@ namespace Directus
 
 	bool Font::UpdateBuffers(vector<RHI_Vertex_PosUV>& vertices, vector<unsigned int>& indices)
 	{
-		if (!m_context)
-			return false;
-
-		// Vertex buffer
-		if (!m_vertexBuffer)
+		if (!m_context || !m_vertexBuffer || !m_indexBuffer)
 		{
-			m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		// Grow buffers (if needed)
+		if (vertices.size() > m_vertexBuffer->GetVertexCount())
+		{
+			// Vertex buffer
 			if (!m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosUV), (unsigned int)vertices.size()))
 			{
-				LOG_ERROR("Failed to create vertex buffer.");
+				LOG_ERROR("Failed to update vertex buffer.");
 				return false;
-			}	
-		}
-		void* data = m_vertexBuffer->Map();
-		memcpy(data, &vertices[0], sizeof(RHI_Vertex_PosUV) * vertices.size());
-		m_vertexBuffer->Unmap();
+			}
 
-		// Index buffer
-		if (!m_indexBuffer)
-		{
-			m_indexBuffer = make_shared<RHI_IndexBuffer>(m_rhiDevice);
+			// Index buffer
 			if (!m_indexBuffer->CreateDynamic((unsigned int)indices.size()))
 			{
-				LOG_ERROR("Failed to create index buffer.");
+				LOG_ERROR("Failed to update index buffer.");
 				return false;
 			}
 		}
-		data = m_indexBuffer->Map();
-		memcpy(data, &indices[0], sizeof(unsigned int) * indices.size());
+
+		auto vertexBuffer = (RHI_Vertex_PosUV*)m_vertexBuffer->Map();
+		copy(vertices.begin(), vertices.end(), vertexBuffer);
+		m_vertexBuffer->Unmap();
+
+		auto indexBuffer = (unsigned int*)m_indexBuffer->Map();
+		copy(indices.begin(), indices.end(), indexBuffer);
 		m_indexBuffer->Unmap();
 
 		return true;

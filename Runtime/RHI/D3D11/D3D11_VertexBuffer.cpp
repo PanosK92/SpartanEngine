@@ -38,6 +38,7 @@ namespace Directus
 		m_rhiDevice		= rhiDevice;
 		m_buffer		= nullptr;
 		m_stride		= 0;
+		m_vertexCount	= 0;
 		m_memoryUsage	= 0;
 	}
 
@@ -48,26 +49,27 @@ namespace Directus
 
 	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosCol>& vertices)
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
+		SafeRelease((ID3D11Buffer*)m_buffer);
+
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 		{
-			LOG_ERROR("RHI_VertexBuffer::Create: Invalid RHI device");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		if (vertices.empty())
 		{
-			LOG_ERROR("RHI_VertexBuffer::Create: Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		m_stride				= sizeof(RHI_Vertex_PosCol);
-		auto size				= (unsigned int)vertices.size();
-		unsigned int byteWidth	= m_stride * size;
+		m_stride		= sizeof(RHI_Vertex_PosCol);
+		m_vertexCount	= (unsigned int)vertices.size();
 
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= byteWidth;
+		bufferDesc.ByteWidth			= m_stride * m_vertexCount;
 		bufferDesc.Usage				= D3D11_USAGE_IMMUTABLE;
 		bufferDesc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
 		bufferDesc.CPUAccessFlags		= 0;
@@ -76,9 +78,9 @@ namespace Directus
 
 		// fill in the subresource data.
 		D3D11_SUBRESOURCE_DATA initData;
-		initData.pSysMem = vertices.data();
-		initData.SysMemPitch = 0;
-		initData.SysMemSlicePitch = 0;
+		initData.pSysMem			= vertices.data();
+		initData.SysMemPitch		= 0;
+		initData.SysMemSlicePitch	= 0;
 
 		// Compute memory usage
 		m_memoryUsage = (unsigned int)(sizeof(RHI_Vertex_PosCol) * vertices.size());
@@ -87,7 +89,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_VertexBuffer::Create: Failed to create vertex buffer");
+			LOG_ERROR("Failed to create vertex buffer");
 			return false;
 		}
 
@@ -96,26 +98,27 @@ namespace Directus
 
 	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUV>& vertices)
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
+		SafeRelease((ID3D11Buffer*)m_buffer);
+
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 		{
-			LOG_ERROR("RHI_VertexBuffer::Create: Invalid RHI device");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		if (vertices.empty())
 		{
-			LOG_ERROR("RHI_VertexBuffer::Create: Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		m_stride				= sizeof(RHI_Vertex_PosUV);
-		auto size				= (unsigned int)vertices.size();
-		unsigned int byteWidth	= m_stride * size;
+		m_stride		= sizeof(RHI_Vertex_PosUV);
+		m_vertexCount	= (unsigned int)vertices.size();
 
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= byteWidth;
+		bufferDesc.ByteWidth			= m_stride * m_vertexCount;
 		bufferDesc.Usage				= D3D11_USAGE_IMMUTABLE;
 		bufferDesc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
 		bufferDesc.CPUAccessFlags		= 0;
@@ -135,7 +138,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_VertexBuffer::Create: Failed to create vertex buffer");
+			LOG_ERROR("Failed to create vertex buffer");
 			return false;
 		}
 
@@ -144,17 +147,27 @@ namespace Directus
 
 	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUvNorTan>& vertices)
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>() || vertices.empty())
-			return false;
+		SafeRelease((ID3D11Buffer*)m_buffer);
 
-		m_stride = sizeof(RHI_Vertex_PosUvNorTan);
-		unsigned int size		= (unsigned int)vertices.size();
-		unsigned int byteWidth	= m_stride * size;
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		if (vertices.empty())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+
+		m_stride		= sizeof(RHI_Vertex_PosUvNorTan);
+		m_vertexCount	= (unsigned int)vertices.size();
 
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= byteWidth;
+		bufferDesc.ByteWidth			= m_stride * m_vertexCount;
 		bufferDesc.Usage				= D3D11_USAGE_IMMUTABLE;
 		bufferDesc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
 		bufferDesc.CPUAccessFlags		= 0;
@@ -174,28 +187,30 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_VertexBuffer::Create: Failed to create vertex buffer");
+			LOG_ERROR("Failed to create vertex buffer");
 			return false;
 		}
 
 		return true;
 	}
 
-	bool RHI_VertexBuffer::CreateDynamic(unsigned int stride, unsigned int initialSize)
+	bool RHI_VertexBuffer::CreateDynamic(unsigned int stride, unsigned int vertexCount)
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11Device>())
+		SafeRelease((ID3D11Buffer*)m_buffer);
+
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
 		{
-			LOG_ERROR("RHI_VertexBuffer::CreateDynamic: Invalid RHI device");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_stride = stride;
-		unsigned int byteWidth = m_stride * initialSize;
+		m_stride		= stride;
+		m_vertexCount	= vertexCount;
 
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= byteWidth;
+		bufferDesc.ByteWidth			= stride * vertexCount;
 		bufferDesc.Usage				= D3D11_USAGE_DYNAMIC;
 		bufferDesc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
 		bufferDesc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
@@ -206,7 +221,7 @@ namespace Directus
 		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, ptr);
 		if FAILED(result)
 		{
-			LOG_ERROR("RHI_VertexBuffer::Bind: Failed to create dynamic vertex buffer");
+			LOG_ERROR("Failed to create dynamic vertex buffer");
 			return false;
 		}
 
@@ -215,24 +230,18 @@ namespace Directus
 
 	void* RHI_VertexBuffer::Map()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("RHI_VertexBuffer::Map: Invalid RHI device");
-			return false;
+			LOG_ERROR_INVALID_INTERNALS();
+			return nullptr;
 		}
 
-		if (!m_buffer)
-		{
-			LOG_ERROR("RHI_IndexBuffer::Map: Invalid buffer");
-			return false;
-		}
-
-		// disable GPU access to the vertex buffer data.
+		// Disable GPU access to the vertex buffer data.
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
 		HRESULT result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map((ID3D11Resource*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
-			LOG_ERROR("RHI_VertexBuffer::Map: Failed to map vertex buffer");
+			LOG_ERROR("Failed to map vertex buffer");
 			return nullptr;
 		}
 
@@ -241,19 +250,13 @@ namespace Directus
 
 	bool RHI_VertexBuffer::Unmap()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("RHI_VertexBuffer::Unmap: Invalid RHI device");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		if (!m_buffer)
-		{
-			LOG_ERROR("RHI_IndexBuffer::Unmap: Invalid buffer");
-			return false;
-		}
-
-		// re-enable GPU access to the vertex buffer data.
+		// Re-enable GPU access to the vertex buffer data.
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Resource*)m_buffer, 0);
 
 		return true;
@@ -261,15 +264,9 @@ namespace Directus
 
 	bool RHI_VertexBuffer::Bind()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("RHI_VertexBuffer::Bind: Invalid RHI device");
-			return false;
-		}
-
-		if (!m_buffer)
-		{
-			LOG_ERROR("RHI_IndexBuffer::Bind: Invalid buffer");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 

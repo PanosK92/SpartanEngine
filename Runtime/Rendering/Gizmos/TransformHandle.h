@@ -64,6 +64,8 @@ namespace Directus
 		}
 
 		void UpdateInput(TransformHandle_Type type, Transform* transform, Input* input);
+		void DrawExtra(Renderer* renderer, const Math::Vector3& transformCenter);
+
 		const Math::Vector3& GetColor() const
 		{
 			if (isDisabled)
