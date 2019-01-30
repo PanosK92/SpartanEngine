@@ -69,7 +69,8 @@ namespace Directus
 			else if (type == TransformHandle_Rotation)
 			{
 				Vector3 rotation = transform->GetRotation().ToEulerAngles();
-				rotation += isEditing ? delta * axis : 0;
+				float speedMultiplier = 10.0f;
+				rotation += isEditing ? delta * axis * speedMultiplier : 0;
 				transform->SetRotation(Quaternion::FromEulerAngles(rotation));
 			}
 		}
@@ -111,8 +112,8 @@ namespace Directus
 		}
 		else if (m_type == TransformHandle_Rotation)
 		{
-			// I can feel the pain coming with this one, but my body is ready.
-			Utility::Geometry::CreateSphere(&vertices, &indices); // this is temp, whatever
+			// I am super lazy at this very moment, let's just use a cylinder for now...
+			Utility::Geometry::CreateCylinder(&vertices, &indices);
 		}
 		m_model = make_unique<Model>(m_context);
 		m_model->Geometry_Append(indices, vertices);

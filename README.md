@@ -36,7 +36,7 @@ Feature       		            | Completion | Notes
 ------------- 		            | :--: | -
 Easy to build               	| 100% | Single click project generation which includes editor and runtime.
 New editor               		| 100% | Replace Qt editor with ImGui editor.
-Debug rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
+Debug rendering    				| 95% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
 Improved shadows         		| 100% | Sharper shadows with smoother edges and no shimmering.
 SSAO         					| 100% | Screen space ambient occlusion.
 Bloom         					| 100% | -
@@ -51,7 +51,7 @@ Xbox controller support         | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Higher quality codebase, allowing for future development.
 Font importing and rendering    | 100% | Ability to load any font file.
-Optimize & Debug				| 35% | Feature freeze, optimize and debug (once all tasks are done).
+Optimize & Debug				| 40% | Feature freeze, optimize and debug (once all tasks are done).
 
 # Roadmap
 - Eye Adaptation.
