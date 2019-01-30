@@ -545,17 +545,22 @@ namespace Directus
 	{
 		if (width == 0 || height == 0)
 		{
-			LOGF_ERROR("RHI_Device::SetResolution: Resolution %fx%f is invalid", width, height);
+			LOGF_ERROR("Resolution %fx%f is invalid.", width, height);
 			return false;
 		}
 
 		if (!_D3D11_Device::swapChain)
 		{
-			LOG_ERROR("RHI_Device::SetResolution: Invalid swapchain");
+			LOG_ERROR("Invalid swapchain.");
 			return false;
 		}
 
-		const DisplayMode& displayMode = Settings::Get().DisplayMode_GetFastest();
+		DisplayMode displayMode;
+		if (!Settings::Get().DisplayMode_GetFastest(&displayMode))
+		{
+			LOG_ERROR("Failed to get a display mode.");
+			return false;
+		}
 
 		// Release resolution based stuff
 		SafeRelease(_D3D11_Device::renderTargetView);
