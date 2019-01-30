@@ -148,18 +148,21 @@ namespace Directus
 		}
 	}
 
-	const Directus::DisplayMode& Settings::DisplayMode_GetFastest()
+	bool Settings::DisplayMode_GetFastest(DisplayMode* displayMode)
 	{
-		DisplayMode& fastestMode = m_displayModes.front();
-		for (const auto& mode : m_displayModes)
+		if (m_displayModes.empty())
+			return false;
+
+		displayMode = &m_displayModes[0];
+		for (auto& mode : m_displayModes)
 		{
-			if (fastestMode.refreshRate < mode.refreshRate)
+			if (displayMode->refreshRate < mode.refreshRate)
 			{
-				fastestMode = mode;
+				displayMode = &mode;
 			}
 		}
 
-		return fastestMode;
+		return true;
 	}
 
 	void Settings::DisplayAdapter_Add(const string& name, unsigned int memory, unsigned int vendorID, void* data)

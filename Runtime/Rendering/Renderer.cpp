@@ -543,7 +543,7 @@ namespace Directus
 		buffer->fps_current				= Profiler::Get().GetFPS();
 		buffer->fps_target				= Settings::Get().FPS_GetTarget();
 		buffer->gamma					= m_gamma;
-		buffer->tonemapping				= (int)m_tonemapping;
+		buffer->tonemapping				= (float)m_tonemapping;
 
 		m_bufferGlobal->Unmap();
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);

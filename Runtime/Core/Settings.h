@@ -42,6 +42,7 @@ namespace Directus
 
 	struct DisplayMode
 	{
+		DisplayMode() {}
 		DisplayMode(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator)
 		{
 			this->width						= width;
@@ -119,7 +120,7 @@ namespace Directus
 
 		//= DISPLAY ==========================================================================================================================
 		void DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator);
-		const DisplayMode& DisplayMode_GetFastest();
+		bool DisplayMode_GetFastest(DisplayMode* displayMode);
 		//====================================================================================================================================
 
 		//= ADAPTERS ===============================================================================================
@@ -134,7 +135,7 @@ namespace Directus
 		float FPS_GetTarget() { return m_fpsTarget; }
 		//===========================================
 
-		//= MISC =====================================================================================
+		//= MISC ====================================================================================================================
 		bool FullScreen_Get()									{ return m_isFullScreen; }
 		bool MousVisible_Get()									{ return m_isMouseVisible; }
 		VSync VSync_Get()										{ return (VSync)m_vsync; }	
@@ -142,9 +143,9 @@ namespace Directus
 		unsigned int Anisotropy_Get()							{ return m_anisotropy; }
 		void ThreadCountMax_Set(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
 		unsigned int ThreadCountMax_Get()						{ return m_maxThreadCount; }	
-		const std::string& Gpu_GetName()						{ return m_primaryAdapter->name; }
-		unsigned int Gpu_GetMemory()							{ return m_primaryAdapter->memory; }
-		//============================================================================================
+		const std::string& Gpu_GetName()						{ return m_primaryAdapter ? m_primaryAdapter->name : m_emptyString; }
+		unsigned int Gpu_GetMemory()							{ return m_primaryAdapter ? m_primaryAdapter->memory : 0; }
+		//===========================================================================================================================
 
 		// Third party lib versions
 		std::string m_versionAngelScript;
@@ -175,5 +176,6 @@ namespace Directus
 		const DisplayAdapter* m_primaryAdapter = nullptr;
 		std::vector<DisplayMode> m_displayModes;
 		std::vector<DisplayAdapter> m_displayAdapters;	
+		std::string m_emptyString = "N/A";
 	};
 }
