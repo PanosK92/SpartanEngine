@@ -82,9 +82,6 @@ namespace Directus
 		Input(Context* context);
 		~Input();
 
-		// SUBSYSTEM ==============
-		bool Initialize() override;
-		//=========================
 		void Tick();
 		
 		// Keys

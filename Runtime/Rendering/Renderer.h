@@ -97,7 +97,7 @@ namespace Directus
 	class ENGINE_CLASS Renderer : public Subsystem
 	{
 	public:
-		Renderer(Context* context, void* drawHandle);
+		Renderer(Context* context);
 		~Renderer();
 
 		//= Subsystem =============
@@ -151,9 +151,6 @@ namespace Directus
 		//= Graphics Settings ====================================================================================================================================================
 		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;
 		float m_gamma					= 2.2f;
-		// TAA
-		float m_taa_alphaMin			= 0.05f;
-		float m_taa_alphaMax			= 0.8f;
 		// FXAA
 		float m_fxaaSubPixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
 		float m_fxaaEdgeThreshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
@@ -315,6 +312,7 @@ namespace Directus
 		bool m_isOddFrame;
 		Math::Vector2 m_taa_jitter;
 		Math::Vector2 m_taa_jitterPrevious;
+		Profiler* m_profiler;
 		//===============================================================
 		
 		// Global buffer (holds what is needed by almost every shader)

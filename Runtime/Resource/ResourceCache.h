@@ -42,6 +42,10 @@ namespace Directus
 		ResourceCache(Context* context);
 		~ResourceCache();
 
+		//= Subsystem =============
+		bool Initialize() override;
+		//=========================
+
 		//= GET BY ==================================================================================
 		// NAME
 		std::shared_ptr<IResource>& GetByName(const std::string& name, Resource_Type type);

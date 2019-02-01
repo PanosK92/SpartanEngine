@@ -43,8 +43,7 @@ using namespace std;
 
 namespace Directus
 {
-	unsigned long Engine::m_flags	= 0;
-	static unique_ptr<Stopwatch> g_stopwatch;
+	unsigned long Engine::m_flags = 0;
 
 	Engine::Engine(Context* context) : Subsystem(context)
 	{
@@ -53,105 +52,31 @@ namespace Directus
 		m_flags |= Engine_Physics;
 		m_flags |= Engine_Game;
 
-		m_timer			= nullptr;
-		g_stopwatch		= make_unique<Stopwatch>();
-
-		// Register self as a subsystem
-		m_context->RegisterSubsystem(this);
-
 		// Initialize global/static subsystems 
 		FileSystem::Initialize();
 		Settings::Get().Initialize();
 
 		// Register subsystems
-		m_context->RegisterSubsystem(new Timer(m_context));
-		m_context->RegisterSubsystem(new Input(m_context));
-		m_context->RegisterSubsystem(new Threading(m_context));
-		m_context->RegisterSubsystem(new ResourceCache(m_context));
-		m_context->RegisterSubsystem(new Renderer(m_context, Settings::Get().GetWindowHandle()));
-		m_context->RegisterSubsystem(new Audio(m_context));
-		m_context->RegisterSubsystem(new Physics(m_context));
-		m_context->RegisterSubsystem(new Scripting(m_context));
-		m_context->RegisterSubsystem(new World(m_context));
+		m_timer = m_context->RegisterSubsystem<Timer>();
+		m_context->RegisterSubsystem<Threading>();	
+		m_context->RegisterSubsystem<Input>();
+		m_context->RegisterSubsystem<Audio>();
+		m_context->RegisterSubsystem<ResourceCache>();
+		m_context->RegisterSubsystem<Scripting>();
+		m_context->RegisterSubsystem<Physics>();
+		m_context->RegisterSubsystem<Profiler>();
+		m_context->RegisterSubsystem<World>();	
+		m_context->RegisterSubsystem<Renderer>();		
 	}
 
 	Engine::~Engine()
 	{
-		// The context will deallocate the subsystems
-		// in the reverse order in which they were registered.
 		SafeDelete(m_context);
 	}
 
 	bool Engine::Initialize()
 	{
-		// Timer
-		m_timer = m_context->GetSubsystem<Timer>();
-		if (!m_timer->Initialize())
-		{
-			LOG_ERROR("Failed to initialize");
-			return false;
-		}
-	
-		// Input
-		if (!m_context->GetSubsystem<Input>()->Initialize())
-		{
-			LOG_ERROR("Failed to initialize Input");
-			return false;
-		}
-
-		// Threading
-		if (!m_context->GetSubsystem<Threading>()->Initialize())
-		{
-			LOG_ERROR("Failed to initialize Multithreading");
-			return false;
-		}
-
-		// ResourceManager
-		if (!m_context->GetSubsystem<ResourceCache>()->Initialize())
-		{
-			LOG_ERROR("Failed to initialize ResourceManager");
-			return false;
-		}
-
-		// Renderer
-		if (!m_context->GetSubsystem<Renderer>()->Initialize())
-		{
-			LOG_ERROR("Failed to initialize Renderer");
-			return false;
-		}
-
-		// Audio
-		if (!m_context->GetSubsystem<Audio>()->Initialize())
-		{
-			LOG_ERROR("Failed to initialize Audio");
-			return false;
-		}
-
-		// Physics
-		if (!m_context->GetSubsystem<Physics>()->Initialize())
-		{
-			LOG_ERROR("Failed to initialize Physics");
-			return false;
-		}
-
-		// Scripting
-		if (!m_context->GetSubsystem<Scripting>()->Initialize())
-		{
-			LOG_ERROR("Failed to initialize Scripting");
-			return false;
-		}
-
-		// Scene
-		if (!m_context->GetSubsystem<World>()->Initialize())
-		{
-			LOG_ERROR("Failed to initialize Scene");
-			return false;
-		}
-
-		Profiler::Get().Initialize(m_context);
-		g_stopwatch->Start();
-
-		return true;
+		return m_context->InitializeSubsystems();
 	}
 
 	void Engine::Tick()

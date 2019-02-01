@@ -22,22 +22,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "../Core/EngineDefs.h"
 #include <string>
 #include <map>
 #include <chrono>
 #include <memory>
+#include "../Core/EngineDefs.h"
+#include "../Core/SubSystem.h"
 //=============================
 
 // Multi (CPU + GPU)
-#define TIME_BLOCK_START_MULTI()	Directus::Profiler::Get().TimeBlockStart_Multi(__FUNCTION__);
-#define TIME_BLOCK_END_MULTI()		Directus::Profiler::Get().TimeBlockEnd_Multi(__FUNCTION__);
+#define TIME_BLOCK_START_MULTI()	m_context->GetSubsystem<Directus::Profiler>()->TimeBlockStart_Multi(__FUNCTION__);
+#define TIME_BLOCK_END_MULTI()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockEnd_Multi(__FUNCTION__);
 // CPU
-#define TIME_BLOCK_START_CPU()		Directus::Profiler::Get().TimeBlockStart_CPU(__FUNCTION__);
-#define TIME_BLOCK_END_CPU()		Directus::Profiler::Get().TimeBlockEnd_CPU(__FUNCTION__);
+#define TIME_BLOCK_START_CPU()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockStart_CPU(__FUNCTION__);
+#define TIME_BLOCK_END_CPU()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockEnd_CPU(__FUNCTION__);
 // GPU
-#define TIME_BLOCK_START_GPU()		Directus::Profiler::Get().TimeBlockStart_CPU(__FUNCTION__);
-#define TIME_BLOCK_END_GPU()		Directus::Profiler::Get().TimeBlockEnd_GPU(__FUNCTION__);
+#define TIME_BLOCK_START_GPU()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockStart_CPU(__FUNCTION__);
+#define TIME_BLOCK_END_GPU()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockEnd_GPU(__FUNCTION__);
 
 namespace Directus
 {
@@ -65,18 +66,14 @@ namespace Directus
 		bool started		= false;
 	};
 
-	class ENGINE_CLASS Profiler
+	class ENGINE_CLASS Profiler : public Subsystem
 	{
 	public:
-		static Profiler& Get()
-		{
-			static Profiler instance;
-			return instance;
-		}
+		Profiler(Context* context);
 
-		Profiler();
-
-		void Initialize(Context* context);
+		//= Subsystem =============
+		bool Initialize() override;
+		//=========================
 
 		// Multi-timing
 		void TimeBlockStart_Multi(const char* funcName);

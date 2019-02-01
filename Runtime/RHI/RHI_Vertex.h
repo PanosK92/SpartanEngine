@@ -129,8 +129,8 @@ namespace Directus
 		float color[4]	= {0};
 	};
 
-	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUvNorTan>::value,	"RI_Vertex_PosUVTBN is not trivially copyable");
-	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUVNor>::value,	"RI_Vertex_PosUVNor is not trivially copyable");
-	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUV>::value,		"RI_Vertex_PosUV is not trivially copyable");
-	static_assert(std::is_trivially_copyable<RHI_Vertex_PosCol>::value,		"RI_Vertex_PosCol is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUvNorTan>::value,	"RHI_Vertex_PosUVTBN is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUVNor>::value,		"RHI_Vertex_PosUVNor is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUV>::value,			"RHI_Vertex_PosUV is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RHI_Vertex_PosCol>::value,			"RHI_Vertex_PosCol is not trivially copyable");
 }

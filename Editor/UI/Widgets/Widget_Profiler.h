@@ -70,4 +70,5 @@ private:
 	float m_plotTimeSinceLastUpdate;
 	Metric m_metric_cpu;
 	Metric m_metric_gpu;
+	Directus::Profiler* m_profiler;
 };

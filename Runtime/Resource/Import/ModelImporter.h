@@ -42,6 +42,7 @@ namespace Directus
 	class Actor;
 	class Model;
 	class Transform;
+	class World;
 
 	class ENGINE_CLASS ModelImporter
 	{
@@ -60,12 +61,7 @@ namespace Directus
 		void AssimpMesh_ExtractIndices(aiMesh* assimpMesh, std::vector<unsigned int>* indices);
 		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimpMaterial, std::shared_ptr<Model>& model);
 
-		// HELPER FUNCTIONS
-		std::string ValidateTexturePath(const std::string& texturePath);
-		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
-		void ComputeNodeCount(aiNode* node, int* count);
-	
-		std::string m_modelPath;
 		Context* m_context;
+		World* m_world;
 	};
 }

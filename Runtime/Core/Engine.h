@@ -66,8 +66,6 @@ namespace Directus
 		//=================================================================================
 
 		float GetDeltaTime();
-
-		// Returns the engine's context
 		Context* GetContext() { return m_context; }
 
 	private:

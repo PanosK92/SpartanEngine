@@ -40,7 +40,7 @@ using namespace std::chrono;
 
 namespace Directus
 {
-	Profiler::Profiler()
+	Profiler::Profiler(Context* context) : Subsystem(context)
 	{
 		m_metrics					= NOT_ASSIGNED;
 		m_scene						= nullptr;
@@ -53,20 +53,21 @@ namespace Directus
 		m_fps						= 0.0f;
 		m_timePassed				= 0.0f;
 		m_frameCount				= 0;
-	}
-
-	void Profiler::Initialize(Context* context)
-	{
-		m_scene						= context->GetSubsystem<World>();
-		m_timer						= context->GetSubsystem<Timer>();
-		m_resourceManager			= context->GetSubsystem<ResourceCache>();
-		m_renderer					= context->GetSubsystem<Renderer>();
 		m_profilingFrequencySec		= 0.35f;
 		m_profilingLastUpdateTime	= m_profilingFrequencySec;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_Frame_Start, EVENT_HANDLER(OnFrameStart));
 		SUBSCRIBE_TO_EVENT(Event_Frame_End, EVENT_HANDLER(OnFrameEnd));
+	}
+
+	bool Profiler::Initialize()
+	{
+		m_scene				= m_context->GetSubsystem<World>();
+		m_timer				= m_context->GetSubsystem<Timer>();
+		m_resourceManager	= m_context->GetSubsystem<ResourceCache>();
+		m_renderer			= m_context->GetSubsystem<Renderer>();
+		return true;
 	}
 
 	void Profiler::TimeBlockStart_CPU(const char* funcName)

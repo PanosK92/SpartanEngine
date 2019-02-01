@@ -44,6 +44,7 @@ Widget_Profiler::Widget_Profiler(Directus::Context* context) : Widget(context)
 	m_yMin						= 715;
 	m_xMax						= FLT_MAX;
 	m_yMax						= FLT_MAX;
+	m_profiler					= m_context->GetSubsystem <Profiler>();
 
 	// Fill with dummy values so that the plot can progress immediately
 	if (m_cpuTimes.empty() && m_gpuTimes.empty())
@@ -56,18 +57,18 @@ Widget_Profiler::Widget_Profiler(Directus::Context* context) : Widget(context)
 void Widget_Profiler::Tick(float deltaTime)
 {
 	// Only profile when user is observing (because it can be expensive)
-	Profiler::Get().SetProfilingEnabled_CPU(m_isVisible);
-	Profiler::Get().SetProfilingEnabled_GPU(m_isVisible);
+	m_profiler->SetProfilingEnabled_CPU(m_isVisible);
+	m_profiler->SetProfilingEnabled_GPU(m_isVisible);
 
 	if (!m_isVisible)
 		return;
 
 	// Get CPU & GPU timings
-	auto& cpuBlocks			= Profiler::Get().GetTimeBlocks_CPU();
-	auto gpuBlocks			= Profiler::Get().GetTimeBlocks_GPU();
-	float renderTimeCPU		= Profiler::Get().GetRenderTime_CPU();
-	float renderTimeGPU		= Profiler::Get().GetRenderTime_GPU();
-	float renderTimeTotal	= Profiler::Get().GetRenderTime_CPU() + Profiler::Get().GetRenderTime_GPU();
+	auto& cpuBlocks			= m_profiler->GetTimeBlocks_CPU();
+	auto gpuBlocks			= m_profiler->GetTimeBlocks_GPU();
+	float renderTimeCPU		= m_profiler->GetRenderTime_CPU();
+	float renderTimeGPU		= m_profiler->GetRenderTime_GPU();
+	float renderTimeTotal	= m_profiler->GetRenderTime_CPU() + m_profiler->GetRenderTime_GPU();
 
 	m_plotTimeSinceLastUpdate	+= deltaTime;
 	bool plot_update			= m_plotTimeSinceLastUpdate >= m_updateFrequency;
