@@ -31,12 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	// Macros
-	#define LOG_INFO(text)			{ Log::m_callerName = __FUNCTION__; Log::Write(text, Log_Type::Log_Info); }
-	#define LOG_WARNING(text)		{ Log::m_callerName = __FUNCTION__; Log::Write(text, Log_Type::Log_Warning); }
-	#define LOG_ERROR(text)			{ Log::m_callerName = __FUNCTION__; Log::Write(text, Log_Type::Log_Error); }
-	#define LOGF_INFO(text, ...)	{ Log::m_callerName = __FUNCTION__; Log::WriteFInfo(text, __VA_ARGS__); }
-	#define LOGF_WARNING(text, ...)	{ Log::m_callerName = __FUNCTION__; Log::WriteFWarning(text, __VA_ARGS__); }
-	#define LOGF_ERROR(text, ...)	{ Log::m_callerName = __FUNCTION__; Log::WriteFError(text, __VA_ARGS__); }
+#define LOG_INFO(text)			{ Directus::Log::m_callerName = __FUNCTION__; Directus::Log::Write(text, Directus::Log_Type::Log_Info); }
+#define LOG_WARNING(text)		{ Directus::Log::m_callerName = __FUNCTION__; Directus::Log::Write(text, Directus::Log_Type::Log_Warning); }
+#define LOG_ERROR(text)			{ Directus::Log::m_callerName = __FUNCTION__; Directus::Log::Write(text, Directus::Log_Type::Log_Error); }
+#define LOGF_INFO(text, ...)	{ Directus::Log::m_callerName = __FUNCTION__; Directus::Log::WriteFInfo(text, __VA_ARGS__); }
+#define LOGF_WARNING(text, ...)	{ Directus::Log::m_callerName = __FUNCTION__; Directus::Log::WriteFWarning(text, __VA_ARGS__); }
+#define LOGF_ERROR(text, ...)	{ Directus::Log::m_callerName = __FUNCTION__; Directus::Log::WriteFError(text, __VA_ARGS__); }
 
 	// Pre-Made
 	#define LOG_ERROR_INVALID_PARAMETER() LOG_ERROR("Invalid parameter.")
