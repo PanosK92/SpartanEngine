@@ -161,7 +161,7 @@ namespace Directus
 		float m_sharpenStrength			= 1.0f;		// Strength of the sharpening
 		float m_sharpenClamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
 		// Motion Blur
-		float m_motionBlurStrength		= 4.0f;		// Strength of the motion blur
+		float m_motionBlurStrength		= 2.0f;		// Strength of the motion blur
 		//========================================================================================================================================================================
 
 		//= Gizmo Settings ======================

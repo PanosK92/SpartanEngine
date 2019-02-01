@@ -24,14 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/version.h>
+#include <assimp/DefaultLogger.hpp>
 #include <assimp/ProgressHandler.hpp>
 #include "AssimpHelper.h"
+#include "../ProgressReport.h"
 #include "../../Core/Settings.h"
 #include "../../Rendering/Model.h"
 #include "../../Rendering/Animation.h"
 #include "../../Rendering/Material.h"
 #include "../../World/Components/Renderable.h"
-#include "../ProgressReport.h"
 //============================================
 
 //= NAMESPACES ================
@@ -40,11 +41,46 @@ using namespace Directus::Math;
 using namespace Assimp;
 //=============================
 
-// Implement Assimp::ProgressHandler so the engine can track the loading/proccesing progress
-class _ProgressHandler : public ProgressHandler
+// Implement Assimp:Logger
+class AssimpLogger : public Assimp::Logger
 {
 public:
-	_ProgressHandler(const string& filePath)
+	bool attachStream(LogStream* pStream, unsigned int severity) override	{ return true; }
+	bool detatchStream(LogStream* pStream, unsigned int severity) override	{ return true; }
+
+private:
+	void OnDebug(const char* message) override
+	{
+		#ifdef DEBUG
+		Directus::Log::m_callerName = "Directus::ModelImporter"; 
+		Directus::Log::Write(message, Directus::Log_Type::Log_Info);
+		#endif
+	}
+
+	void OnInfo(const char* message) override
+	{
+		Directus::Log::m_callerName = "Directus::ModelImporter";
+		Directus::Log::Write(message, Directus::Log_Type::Log_Info);
+	}
+
+	void OnWarn(const char* message) override
+	{
+		Directus::Log::m_callerName = "Directus::ModelImporter";
+		Directus::Log::Write(message, Directus::Log_Type::Log_Warning);
+	}
+
+	void OnError(const char* message) override
+	{
+		Directus::Log::m_callerName = "Directus::ModelImporter";
+		Directus::Log::Write(message, Directus::Log_Type::Log_Error);
+	}
+};
+
+// Implement Assimp::ProgressHandler
+class AssimpProgress : public Assimp::ProgressHandler
+{
+public:
+	AssimpProgress(const string& filePath)
 	{
 		m_filePath = filePath;
 		m_fileName = Directus::FileSystem::GetFileNameFromFilePath(filePath);
@@ -55,12 +91,12 @@ public:
 		progress.SetIsLoading(Directus::g_progress_ModelImporter, true);
 	}
 
-	~_ProgressHandler() 
+	~AssimpProgress() 
 	{
 		Directus::ProgressReport::Get().SetIsLoading(Directus::g_progress_ModelImporter, false);
 	}
 
-	bool Update(float percentage) { return true; }
+	bool Update(float percentage) override { return true; }
 
 	void UpdateFileRead(int currentStep, int numberOfSteps) override
 	{
@@ -218,30 +254,31 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);	
 		// Remove cameras and lights
 		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);		
-		// Progress tracking
+		// Enable progress tracking
 		importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
-		importer.SetProgressHandler(new _ProgressHandler(filePath)); 
+		importer.SetProgressHandler(new AssimpProgress(filePath));
+		// Enable logging
+		DefaultLogger::set(new AssimpLogger());
 
 		// Read the 3D model file from disk
-		if (const aiScene* scene = importer.ReadFile(_ModelImporter::m_modelPath, _ModelImporter::flags))
+		const aiScene* scene = importer.ReadFile(_ModelImporter::m_modelPath, _ModelImporter::flags);
+		bool result = scene != nullptr;
+		if (result)
 		{
 			FIRE_EVENT(Event_World_Stop);
-
 			ReadNodeHierarchy(scene, scene->mRootNode, model);
 			ReadAnimations(scene, model);
 			model->Geometry_Update();
-
 			FIRE_EVENT(Event_World_Start);
 		}
 		else
 		{
 			LOGF_ERROR("%s", importer.GetErrorString());
-			return false;
 		}
 
 		importer.FreeScene();
 
-		return true;
+		return result;
 	}
 
 	void ModelImporter::ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, shared_ptr<Model>& model, Actor* parentNode, Actor* newNode)
