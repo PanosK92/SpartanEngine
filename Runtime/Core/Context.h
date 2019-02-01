@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ==============
 #include <vector>
 #include "EngineDefs.h"
 #include "SubSystem.h"
-//=====================
+#include "../Logging/Log.h"
+//=========================
 
 namespace Directus
 {
@@ -33,42 +34,57 @@ namespace Directus
 	{
 	public:
 		Context() {}
+		~Context() { RemoveSubsystems(); }
 
-		~Context()
+		// Remove subsystems
+		void RemoveSubsystems()
 		{
-			for (auto i = m_subsystems.size() - 1; i > 0; i--)
-				delete m_subsystems[i];
-
-			// Index 0 is the actual Engine instance, which is the instance
-			// that called this destructor in the first place. A deletion
-			// will result in a crash.
+			// Deconstruct in reverse order (to avoid dependency crashes)
+			for (auto i = m_subsystems.size() - 1; i >= 0; i--)
+			{
+				SafeDelete(m_subsystems[i]);
+			}
 		}
 
 		// Register a subsystem
-		void RegisterSubsystem(Subsystem* subsystem)
+		template <class T>
+		T* RegisterSubsystem()
 		{
-			if (!subsystem)
-				return;
+			static_assert(std::is_base_of<Subsystem, T>::value, "Provided type does not implemented Subsystem");
+			return static_cast<T*>(m_subsystems.emplace_back(new T(this)));
+		}
 
-			m_subsystems.emplace_back(subsystem);
+		// Initialize subsystems
+		bool InitializeSubsystems()
+		{
+			bool result = true;
+
+			for (const auto& subsystem : m_subsystems)
+			{
+				if (!subsystem->Initialize())
+				{
+					LOGF_ERROR("Failed to initialize %s", typeid(*subsystem).name());
+					result = false;
+				}
+			}
+
+			return result;
 		}
 
 		// Get a subsystem
-		template <class T> T* GetSubsystem();
+		template <class T> 
+		T* GetSubsystem()
+		{
+			for (const auto& subsystem : m_subsystems)
+			{
+				if (typeid(T) == typeid(*subsystem))
+					return static_cast<T*>(subsystem);
+			}
+
+			return nullptr;
+		}
+
 	private:
 		std::vector<Subsystem*> m_subsystems;
 	};
-
-	template <class T>
-	T* Context::GetSubsystem()
-	{
-		// Compare T with subsystem types
-		for (const auto& subsystem : m_subsystems)
-		{
-			if (typeid(T) == typeid(*subsystem))
-				return static_cast<T*>(subsystem);
-		}
-
-		return nullptr;
-	}
 }

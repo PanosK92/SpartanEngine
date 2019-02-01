@@ -87,6 +87,10 @@ namespace Directus
 {
 	namespace _ModelImporter
 	{
+		static float maxNormalSmoothingAngle	= 80.0f;	// Normals exceeding this limit are not smoothed.
+		static float maxTangentSmoothingAngle	= 80.0f;	// Tangents exceeding this limit are not smoothed. Default is 45, max is 175
+		std::string m_modelPath;
+
 		// Things for Assimp to do
 		static auto flags =
 			aiProcess_CalcTangentSpace |
@@ -106,12 +110,86 @@ namespace Directus
 			aiProcess_Debone |
 			aiProcess_ConvertToLeftHanded;
 
-		static float normalSmoothAngle = 90.0f; // Default is 45, max is 175
+		inline string TryPathWithMultipleExtensions(const string& filePath)
+		{
+			// Remove extension
+			string filePathNoExt = FileSystem::GetFilePathWithoutExtension(filePath);
+
+			// Check if the file exists using all engine supported extensions
+			auto supportedFormats = FileSystem::GetSupportedImageFormats();
+			for (unsigned int i = 0; i < supportedFormats.size(); i++)
+			{
+				string newFilePath = filePathNoExt + supportedFormats[i];
+				string newFilePathUpper = filePathNoExt + FileSystem::ConvertToUppercase(supportedFormats[i]);
+
+				if (FileSystem::FileExists(newFilePath))
+				{
+					return newFilePath;
+				}
+
+				if (FileSystem::FileExists(newFilePathUpper))
+				{
+					return newFilePathUpper;
+				}
+			}
+
+			return filePath;
+		}
+
+		inline string ValidateTexturePath(const string& originalTexturePath)
+		{
+			// Models usually return a texture path which is relative to the model's directory.
+			// However, to load anything, we'll need an absolute path, so we construct it here.
+			string modelDir = FileSystem::GetDirectoryFromFilePath(m_modelPath);
+			string fullTexturePath = modelDir + originalTexturePath;
+
+			// 1. Check if the texture path is valid
+			if (FileSystem::FileExists(fullTexturePath))
+				return fullTexturePath;
+
+			// 2. Check the same texture path as previously but 
+			// this time with different file extensions (jpg, png and so on).
+			fullTexturePath = TryPathWithMultipleExtensions(fullTexturePath);
+			if (FileSystem::FileExists(fullTexturePath))
+				return fullTexturePath;
+
+			// At this point we know the provided path is wrong, we will make a few guesses.
+			// The most common mistake is that the artist provided a path which is absolute to his computer.
+
+			// 3. Check if the texture is in the same folder as the model
+			fullTexturePath = modelDir + FileSystem::GetFileNameFromFilePath(fullTexturePath);
+			if (FileSystem::FileExists(fullTexturePath))
+				return fullTexturePath;
+
+			// 4. Check the same texture path as previously but 
+			// this time with different file extensions (jpg, png and so on).
+			fullTexturePath = TryPathWithMultipleExtensions(fullTexturePath);
+			if (FileSystem::FileExists(fullTexturePath))
+				return fullTexturePath;
+
+			// Give up, no valid texture path was found
+			return NOT_ASSIGNED;
+		}
+
+		inline void ComputeNodeCount(aiNode* node, int* count)
+		{
+			if (!node)
+				return;
+
+			(*count)++;
+
+			// Process children
+			for (unsigned int i = 0; i < node->mNumChildren; i++)
+			{
+				ComputeNodeCount(node->mChildren[i], count);
+			}
+		}
 	}
 
 	ModelImporter::ModelImporter(Context* context)
 	{
 		m_context	= context;
+		m_world		= context->GetSubsystem<World>();
 
 		// Get version
 		int major	= aiGetVersionMajor();
@@ -124,22 +202,28 @@ namespace Directus
 	{
 		if (!m_context)
 		{
-			LOG_ERROR("ModelImporter::Load: Uninitialized context");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_modelPath = filePath;
+		_ModelImporter::m_modelPath = filePath;
 
 		// Set up an Assimp importer
-		Importer importer;
-		//importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64);										// Optimize mesh
-		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);	// Remove points and lines.
-		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);		// Remove cameras and lights
-		importer.SetPropertyFloat(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, _ModelImporter::normalSmoothAngle);	// Normal smoothing angle
-		importer.SetProgressHandler(new _ProgressHandler(filePath));										// Progress tracking
+		Importer importer;	
+		// Set normal smoothing angle
+		importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, _ModelImporter::maxNormalSmoothingAngle);
+		// Set tangent smoothing angle
+		importer.SetPropertyFloat(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, _ModelImporter::maxTangentSmoothingAngle);	
+		// Remove points and lines.
+		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);	
+		// Remove cameras and lights
+		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);		
+		// Progress tracking
+		importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
+		importer.SetProgressHandler(new _ProgressHandler(filePath)); 
 
 		// Read the 3D model file from disk
-		if (const aiScene* scene = importer.ReadFile(m_modelPath, _ModelImporter::flags))
+		if (const aiScene* scene = importer.ReadFile(_ModelImporter::m_modelPath, _ModelImporter::flags))
 		{
 			FIRE_EVENT(Event_World_Stop);
 
@@ -151,7 +235,7 @@ namespace Directus
 		}
 		else
 		{
-			LOGF_ERROR("ModelImporter::Load: %s", importer.GetErrorString());
+			LOGF_ERROR("%s", importer.GetErrorString());
 			return false;
 		}
 
@@ -162,16 +246,14 @@ namespace Directus
 
 	void ModelImporter::ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, shared_ptr<Model>& model, Actor* parentNode, Actor* newNode)
 	{
-		auto scene = m_context->GetSubsystem<World>();
-
 		// Is this the root node?
 		if (!assimpNode->mParent || !newNode)
 		{
-			newNode = scene->Actor_Create().get();
+			newNode = m_world->Actor_Create().get();
 			model->SetRootActor(newNode->GetPtrShared());
 
 			int jobCount;
-			ComputeNodeCount(assimpNode, &jobCount);
+			_ModelImporter::ComputeNodeCount(assimpNode, &jobCount);
 			ProgressReport::Get().SetJobCount(g_progress_ModelImporter, jobCount);
 		}
 
@@ -187,7 +269,7 @@ namespace Directus
 		}
 		else
 		{
-			string name = FileSystem::GetFileNameNoExtensionFromFilePath(m_modelPath);
+			string name = FileSystem::GetFileNameNoExtensionFromFilePath(_ModelImporter::m_modelPath);
 			newNode->SetName(name);
 
 			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for " + name);
@@ -211,7 +293,7 @@ namespace Directus
 			// if this node has many meshes, then assign a new actor for each one of them
 			if (assimpNode->mNumMeshes > 1)
 			{
-				actor = scene->Actor_Create().get(); // create
+				actor = m_world->Actor_Create().get(); // create
 				actor->GetTransform_PtrRaw()->SetParent(newNode->GetTransform_PtrRaw()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
@@ -226,7 +308,7 @@ namespace Directus
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			shared_ptr<Actor> child = scene->Actor_Create();
+			shared_ptr<Actor> child = m_world->Actor_Create();
 			ReadNodeHierarchy(assimpScene, assimpNode->mChildren[i], model, newNode, child.get());
 		}
 
@@ -401,7 +483,7 @@ namespace Directus
 	{
 		if (!model || !assimpMaterial)
 		{
-			LOG_WARNING("ModelImporter::AiMaterialToMaterial(): One of the provided materials is null, can't execute function");
+			LOG_WARNING("One of the provided materials is null, can't execute function");
 			return nullptr;
 		}
 
@@ -440,15 +522,15 @@ namespace Directus
 			{
 				if (assimpMaterial->GetTexture(assimpTex, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 				{
-					auto deducedPath = ValidateTexturePath(texturePath.data);
+					auto deducedPath = _ModelImporter::ValidateTexturePath(texturePath.data);
 					if (FileSystem::IsSupportedImageFile(deducedPath))
 					{
-						model->AddTexture(material, engineTex, ValidateTexturePath(texturePath.data));
+						model->AddTexture(material, engineTex, _ModelImporter::ValidateTexturePath(texturePath.data));
 					}
 
 					if (assimpTex == aiTextureType_DIFFUSE)
 					{
-						// FIX: materials that have a diffuse texture should not be tinted black/grey
+						// FIX: materials that have a diffuse texture should not be tinted black/gray
 						material->SetColorAlbedo(Vector4::One);
 					}
 				}
@@ -466,80 +548,5 @@ namespace Directus
 		LoadMatTex(aiTextureType_OPACITY,	TextureType_Mask);
 
 		return material;
-	}
-
-	string ModelImporter::ValidateTexturePath(const string& originalTexturePath)
-	{
-		// Models usually return a texture path which is relative to the model's directory.
-		// However, to load anything, we'll need an absolute path, so we construct it here.
-		string modelDir = FileSystem::GetDirectoryFromFilePath(m_modelPath);
-		string fullTexturePath = modelDir + originalTexturePath;
-
-		// 1. Check if the texture path is valid
-		if (FileSystem::FileExists(fullTexturePath))
-			return fullTexturePath;
-
-		// 2. Check the same texture path as previously but 
-		// this time with different file extensions (jpg, png and so on).
-		fullTexturePath = TryPathWithMultipleExtensions(fullTexturePath);
-		if (FileSystem::FileExists(fullTexturePath))
-			return fullTexturePath;
-
-		// At this point we know the provided path is wrong, we will make a few guesses.
-		// The most common mistake is that the artist provided a path which is absolute to his computer.
-
-		// 3. Check if the texture is in the same folder as the model
-		fullTexturePath = modelDir + FileSystem::GetFileNameFromFilePath(fullTexturePath);
-		if (FileSystem::FileExists(fullTexturePath))
-			return fullTexturePath;
-
-		// 4. Check the same texture path as previously but 
-		// this time with different file extensions (jpg, png and so on).
-		fullTexturePath = TryPathWithMultipleExtensions(fullTexturePath);
-		if (FileSystem::FileExists(fullTexturePath))
-			return fullTexturePath;
-
-		// Give up, no valid texture path was found
-		return NOT_ASSIGNED;
-	}
-
-	string ModelImporter::TryPathWithMultipleExtensions(const string& filePath)
-	{
-		// Remove extension
-		string filePathNoExt = FileSystem::GetFilePathWithoutExtension(filePath);
-
-		// Check if the file exists using all engine supported extensions
-		auto supportedFormats = FileSystem::GetSupportedImageFormats();
-		for (unsigned int i = 0; i < supportedFormats.size(); i++)
-		{
-			string newFilePath = filePathNoExt + supportedFormats[i];
-			string newFilePathUpper = filePathNoExt + FileSystem::ConvertToUppercase(supportedFormats[i]);
-
-			if (FileSystem::FileExists(newFilePath))
-			{
-				return newFilePath;
-			}
-
-			if (FileSystem::FileExists(newFilePathUpper))
-			{
-				return newFilePathUpper;
-			}
-		}
-
-		return filePath;
-	}
-
-	void ModelImporter::ComputeNodeCount(aiNode* node, int* count)
-	{
-		if (!node)
-			return;
-
-		(*count)++;
-
-		// Process children
-		for (unsigned int i = 0; i < node->mNumChildren; i++)
-		{
-			ComputeNodeCount(node->mChildren[i], count);
-		}
 	}
 }

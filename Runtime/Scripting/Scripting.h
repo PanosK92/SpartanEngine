@@ -45,10 +45,6 @@ namespace Directus
 		Scripting(Context* context);
 		~Scripting();
 
-		// SUBSYSTEM =============
-		bool Initialize() override;
-		//========================
-
 		void Clear();
 		asIScriptEngine* GetAsIScriptEngine();
 

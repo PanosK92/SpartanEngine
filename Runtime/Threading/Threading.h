@@ -52,10 +52,6 @@ namespace Directus
 		Threading(Context* context);
 		~Threading();
 
-		//= Subsystem ============
-		bool Initialize() override;
-		//========================
-
 		// This function is invoked by the threads
 		void Invoke();
 

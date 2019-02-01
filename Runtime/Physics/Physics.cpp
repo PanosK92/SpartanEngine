@@ -52,7 +52,26 @@ namespace Directus
 	{
 		m_maxSubSteps	= 1;
 		m_simulating	= false;
-		m_renderer		= context->GetSubsystem<Renderer>();
+		
+		// Create physics objects
+		m_broadphase				= new btDbvtBroadphase();
+		m_collisionConfiguration	= new btDefaultCollisionConfiguration();
+		m_dispatcher				= new btCollisionDispatcher(m_collisionConfiguration);
+		m_constraintSolver			= new btSequentialImpulseConstraintSolver();
+		m_debugDraw					= new PhysicsDebugDraw(m_context->GetSubsystem<Renderer>());
+		m_world						= new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraintSolver, m_collisionConfiguration);
+
+		// Setup world
+		m_world->setGravity(ToBtVector3(GRAVITY));
+		m_world->getDispatchInfo().m_useContinuous = true;
+		m_world->getSolverInfo().m_splitImpulse = false;
+		m_world->getSolverInfo().m_numIterations = MAX_SOLVER_ITERATIONS;
+		m_world->setDebugDrawer(m_debugDraw);
+
+		// Get version
+		string major = to_string(btGetVersion() / 100);
+		string minor = to_string(btGetVersion()).erase(0, 1);
+		Settings::Get().m_versionBullet = major + "." + minor;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER_VARIANT(Step));
@@ -70,25 +89,7 @@ namespace Directus
 
 	bool Physics::Initialize()
 	{
-		m_broadphase				= new btDbvtBroadphase();
-		m_collisionConfiguration	= new btDefaultCollisionConfiguration();
-		m_dispatcher				= new btCollisionDispatcher(m_collisionConfiguration);
-		m_constraintSolver			= new btSequentialImpulseConstraintSolver();
-		m_debugDraw					= new PhysicsDebugDraw(m_context->GetSubsystem<Renderer>());
-		m_world						= new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraintSolver, m_collisionConfiguration);
-
-		// Setup world
-		m_world->setGravity(ToBtVector3(GRAVITY));
-		m_world->getDispatchInfo().m_useContinuous	= true;
-		m_world->getSolverInfo().m_splitImpulse		= false;
-		m_world->getSolverInfo().m_numIterations	= MAX_SOLVER_ITERATIONS;
-		m_world->setDebugDrawer(m_debugDraw);
-
-		// Get version
-		string major = to_string(btGetVersion() / 100);
-		string minor = to_string(btGetVersion()).erase(0, 1);
-		Settings::Get().m_versionBullet = major + "." + minor;
-
+		m_renderer = m_context->GetSubsystem<Renderer>();
 		return true;
 	}
 

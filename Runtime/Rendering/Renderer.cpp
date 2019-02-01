@@ -62,7 +62,7 @@ namespace Directus
 	static ResourceCache* g_resourceCache	= nullptr;
 	bool Renderer::m_isRendering			= false;
 
-	Renderer::Renderer(Context* context, void* drawHandle) : Subsystem(context)
+	Renderer::Renderer(Context* context) : Subsystem(context)
 	{	
 		m_nearPlane		= 0.0f;
 		m_farPlane		= 0.0f;
@@ -85,8 +85,8 @@ namespace Directus
 		//m_flags		|= Render_PostProcess_FXAA;					// Disabled by default: TAA is superior
 		
 		// Create RHI device
-		m_rhiDevice		= make_shared<RHI_Device>(drawHandle);
-		m_rhiPipeline	= make_shared<RHI_Pipeline>(m_rhiDevice);
+		m_rhiDevice		= make_shared<RHI_Device>(Settings::Get().GetWindowHandle());
+		m_rhiPipeline	= make_shared<RHI_Pipeline>(m_context, m_rhiDevice);
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_Render, EVENT_HANDLER(Render));
@@ -103,6 +103,7 @@ namespace Directus
 	{
 		// Create/Get required systems		
 		g_resourceCache	= m_context->GetSubsystem<ResourceCache>();
+		m_profiler		= m_context->GetSubsystem<Profiler>();
 
 		// Editor specific
 		m_grid				= make_unique<Grid>(m_rhiDevice);
@@ -373,7 +374,7 @@ namespace Directus
 		}
 
 		TIME_BLOCK_START_MULTI();
-		Profiler::Get().Reset();
+		m_profiler->Reset();
 		m_isRendering = true;
 		m_frameNum++;
 		m_isOddFrame = (m_frameNum % 2) == 1;
@@ -539,7 +540,7 @@ namespace Directus
 		buffer->sharpen_clamp			= m_sharpenClamp;
 		buffer->taa_jitterOffset		= m_taa_jitter - m_taa_jitterPrevious;
 		buffer->motionBlur_strength		= m_motionBlurStrength;
-		buffer->fps_current				= Profiler::Get().GetFPS();
+		buffer->fps_current				= m_profiler->GetFPS();
 		buffer->fps_target				= Settings::Get().FPS_GetTarget();
 		buffer->gamma					= m_gamma;
 		buffer->tonemapping				= (float)m_tonemapping;
@@ -818,7 +819,7 @@ namespace Directus
 
 			// Render	
 			m_rhiPipeline->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
-			Profiler::Get().m_rendererMeshesRendered++;
+			m_profiler->m_rendererMeshesRendered++;
 
 		} // Actor/MESH ITERATION
 
@@ -960,7 +961,7 @@ namespace Directus
 			m_rhiPipeline->SetConstantBuffer(m_shaderTransparent->GetConstantBuffer(), 1, Buffer_Global);
 			m_rhiPipeline->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
 
-			Profiler::Get().m_rendererMeshesRendered++;
+			m_profiler->m_rendererMeshesRendered++;
 
 		} // Actor/MESH ITERATION
 
@@ -1651,7 +1652,7 @@ namespace Directus
 
 		const RHI_Viewport& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 		Vector2 textPos = Vector2(-(int)viewport.GetWidth() * 0.5f + 1.0f, (int)viewport.GetHeight() * 0.5f);
-		m_font->SetText(Profiler::Get().GetMetrics(), textPos);
+		m_font->SetText(m_profiler->GetMetrics(), textPos);
 
 		m_rhiPipeline->SetAlphaBlending(true);
 		m_rhiPipeline->SetIndexBuffer(m_font->GetIndexBuffer());

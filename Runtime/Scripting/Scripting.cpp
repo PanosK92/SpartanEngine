@@ -33,28 +33,11 @@ namespace Directus
 {
 	Scripting::Scripting(Context* context) : Subsystem(context)
 	{
-		m_scriptEngine = nullptr;
-		SUBSCRIBE_TO_EVENT(Event_World_Unload, EVENT_HANDLER(Clear));
-	}
-
-	Scripting::~Scripting()
-	{
-		Clear();
-
-		if (m_scriptEngine)
-		{
-			m_scriptEngine->ShutDownAndRelease();
-			m_scriptEngine = nullptr;
-		}
-	}
-
-	bool Scripting::Initialize()
-	{
 		m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		if (!m_scriptEngine)
 		{
-			LOG_ERROR("Failed to create AngelScript engine.");
-			return false;
+			LOG_ERROR("Failed to create AngelScript engine");
+			return;
 		}
 
 		// Register the string type
@@ -75,7 +58,19 @@ namespace Directus
 		string rev		= to_string(ANGELSCRIPT_VERSION).erase(0, 3);
 		Settings::Get().m_versionAngelScript = major + "." + minor + "." + rev;
 
-		return true;
+		// Subscribe to events
+		SUBSCRIBE_TO_EVENT(Event_World_Unload, EVENT_HANDLER(Clear));
+	}
+
+	Scripting::~Scripting()
+	{
+		Clear();
+
+		if (m_scriptEngine)
+		{
+			m_scriptEngine->ShutDownAndRelease();
+			m_scriptEngine = nullptr;
+		}
 	}
 
 	void Scripting::Clear()

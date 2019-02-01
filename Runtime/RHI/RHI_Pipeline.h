@@ -31,6 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class Context;
+	class Profiler;
+
 	struct ConstantBuffer
 	{
 		ConstantBuffer(void* buffer, unsigned int slot, Buffer_Scope scope)
@@ -48,7 +51,7 @@ namespace Directus
 	class ENGINE_CLASS RHI_Pipeline
 	{
 	public:
-		RHI_Pipeline(std::shared_ptr<RHI_Device> rhiDevice);
+		RHI_Pipeline(Context* context, std::shared_ptr<RHI_Device> rhiDevice);
 		~RHI_Pipeline(){}
 
 		// Draw
@@ -168,5 +171,8 @@ namespace Directus
 		// IDs
 		unsigned int m_boundVertexShaderID;
 		unsigned int m_boundPixelShaderID;
+
+		// Profiler
+		Profiler* m_profiler;
 	};
 }

@@ -34,11 +34,6 @@ namespace Directus
 {
 	ResourceCache::ResourceCache(Context* context) : Subsystem(context)
 	{
-		// Importers
-		m_imageImporter		= make_shared<ImageImporter>(m_context);
-		m_modelImporter		= make_shared<ModelImporter>(m_context);
-		m_fontImporter		= make_shared<FontImporter>(m_context);
-
 		// Add engine standard resource directories
 		AddStandardResourceDirectory(Resource_Texture, "Standard Assets//Textures//");
 		AddStandardResourceDirectory(Resource_Font,		"Standard Assets//Fonts//");
@@ -57,6 +52,15 @@ namespace Directus
 	ResourceCache::~ResourceCache()
 	{
 		Clear();
+	}
+
+	bool ResourceCache::Initialize()
+	{
+		// Importers
+		m_imageImporter = make_shared<ImageImporter>(m_context);
+		m_modelImporter = make_shared<ModelImporter>(m_context);
+		m_fontImporter	= make_shared<FontImporter>(m_context);
+		return true;
 	}
 
 	bool ResourceCache::IsCached(const string& resourceName, Resource_Type resourceType /*= Resource_Unknown*/)

@@ -51,12 +51,102 @@ namespace Directus
 
 	Input::Input(Context* context) : Subsystem(context)
 	{
-		g_directInput		= nullptr;
-		g_keyboard			= nullptr;
-		g_mouse				= nullptr;
 		g_gamepadNum		= 0;
+		bool result			= true;
+		auto windowHandle	= (HWND)Settings::Get().GetWindowHandle();
+		auto windowInstance = (HINSTANCE)Settings::Get().GetWindowInstance();
 
-		SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER(Tick));
+		if (!windowHandle || !windowInstance)
+			return;
+
+		// Make sure the window has focus, otherwise the mouse and keyboard won't be able to be acquired.
+		SetForegroundWindow(windowHandle);
+
+		// Initialize the main direct input interface.
+		auto hresult = DirectInput8Create(windowInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&g_directInput, nullptr);
+		if (FAILED(hresult))
+		{
+			switch (hresult)
+			{
+				case DIERR_INVALIDPARAM:			LOG_ERROR("DirectInput8Create() Failed, invalid parameters.");			break;
+				case DIERR_BETADIRECTINPUTVERSION:	LOG_ERROR("DirectInput8Create() Failed, beta direct input version.");	break;
+				case DIERR_OLDDIRECTINPUTVERSION:	LOG_ERROR("DirectInput8Create() Failed, old direct input version.");	break;
+				case DIERR_OUTOFMEMORY:				LOG_ERROR("DirectInput8Create() Failed, out of memory.");				break;
+				default:							LOG_ERROR("Failed to initialize the DirectInput interface.");
+			}
+			return;
+		}
+
+		// Initialize the direct input interface for the keyboard.
+		hresult = g_directInput->CreateDevice(GUID_SysKeyboard, &g_keyboard, nullptr);
+		if (SUCCEEDED(hresult))
+		{
+			// Set the data format. In this case since it is a keyboard we can use the predefined data format.
+			hresult = g_keyboard->SetDataFormat(&c_dfDIKeyboard);
+			if (FAILED(hresult))
+			{
+				LOG_ERROR("Failed to initialize DirectInput keyboard data format.");
+			}
+
+			// Set the cooperative level of the keyboard to share with other programs.
+			hresult = g_keyboard->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+			if (FAILED(hresult))
+			{
+				LOG_ERROR("Failed to set DirectInput keyboard's cooperative level.");
+			}
+
+			// Acquire the keyboard.
+			if (!SUCCEEDED(g_keyboard->Acquire()))
+			{
+				LOG_ERROR("Failed to acquire the keyboard.");
+			}
+		}
+		else
+		{
+			LOG_ERROR("Failed to initialize a DirectInput keyboard.");
+			result = false;
+		}
+
+		// Initialize the direct input interface for the mouse.
+		hresult = g_directInput->CreateDevice(GUID_SysMouse, &g_mouse, nullptr);
+		if (SUCCEEDED(hresult))
+		{
+			// Set the data format for the mouse using the pre-defined mouse data format.
+			hresult = g_mouse->SetDataFormat(&c_dfDIMouse);
+			if (FAILED(hresult))
+			{
+				LOG_ERROR("Failed to initialize a DirectInput mouse.");
+			}
+
+			// Set the cooperative level of the mouse to share with other programs.
+			hresult = g_mouse->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+			if (FAILED(hresult))
+			{
+				LOG_ERROR("Failed to set DirectInput mouse's cooperative level.");
+			}
+
+			// Acquire the mouse.
+			if (!SUCCEEDED(g_mouse->Acquire()))
+			{
+				LOG_ERROR("Failed to aquire the mouse.");
+			}
+		}
+		else
+		{
+			LOG_ERROR("Failed to initialize a DirectInput mouse.");
+			result = false;
+		}
+
+		if (result)
+		{
+			// Subscribe to events
+			SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER(Tick));
+
+			stringstream ss;
+			ss << hex << DIRECTINPUT_VERSION;
+			auto major = ss.str().erase(1, 2);
+			auto minor = ss.str().erase(0, 1);
+		}
 	}
 
 	Input::~Input()
@@ -83,104 +173,6 @@ namespace Directus
 			g_directInput->Release();
 			g_directInput = nullptr;
 		}
-	}
-
-	bool Input::Initialize()
-	{
-		bool success		= true;
-		auto windowHandle	= (HWND)Settings::Get().GetWindowHandle();
-		auto windowInstance = (HINSTANCE)Settings::Get().GetWindowInstance();
-
-		if (!windowHandle || !windowInstance)
-			return false;
-
-		// Make sure the window has focus, otherwise the mouse and keyboard won't be able to be acquired.
-		SetForegroundWindow(windowHandle);
-
-		// Initialize the main direct input interface.
-		auto result = DirectInput8Create(windowInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&g_directInput, nullptr);
-		if (FAILED(result))
-		{
-			switch (result)
-			{
-				case DIERR_INVALIDPARAM:			LOG_ERROR("DirectInput8Create() Failed, invalid parameters.");			break;
-				case DIERR_BETADIRECTINPUTVERSION:	LOG_ERROR("DirectInput8Create() Failed, beta direct input version.");	break;
-				case DIERR_OLDDIRECTINPUTVERSION:	LOG_ERROR("DirectInput8Create() Failed, old direct input version.");	break;
-				case DIERR_OUTOFMEMORY:				LOG_ERROR("DirectInput8Create() Failed, out of memory.");				break;
-				default:							LOG_ERROR("Failed to initialize the DirectInput interface.");
-			}
-			return false;
-		}
-
-		// Initialize the direct input interface for the keyboard.
-		result = g_directInput->CreateDevice(GUID_SysKeyboard, &g_keyboard, nullptr);
-		if (SUCCEEDED(result))
-		{
-			// Set the data format. In this case since it is a keyboard we can use the predefined data format.
-			result = g_keyboard->SetDataFormat(&c_dfDIKeyboard);
-			if (FAILED(result))
-			{
-				LOG_ERROR("Failed to initialize DirectInput keyboard data format.");
-			}
-
-			// Set the cooperative level of the keyboard to share with other programs.
-			result = g_keyboard->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
-			if (FAILED(result))
-			{
-				LOG_ERROR("Failed to set DirectInput keyboard's cooperative level.");
-			}
-
-			// Acquire the keyboard.
-			if (!SUCCEEDED(g_keyboard->Acquire()))
-			{
-				LOG_ERROR("Failed to acquire the keyboard.");
-			}		
-		}
-		else
-		{
-			LOG_ERROR("Failed to initialize a DirectInput keyboard.");
-			success = false;
-		}
-
-		// Initialize the direct input interface for the mouse.
-		result = g_directInput->CreateDevice(GUID_SysMouse, &g_mouse, nullptr);
-		if (SUCCEEDED(result))
-		{
-			// Set the data format for the mouse using the pre-defined mouse data format.
-			result = g_mouse->SetDataFormat(&c_dfDIMouse);
-			if (FAILED(result))
-			{
-				LOG_ERROR("Failed to initialize a DirectInput mouse.");
-			}
-		
-			// Set the cooperative level of the mouse to share with other programs.
-			result = g_mouse->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
-			if (FAILED(result))
-			{
-				LOG_ERROR("Failed to set DirectInput mouse's cooperative level.");
-			}
-		
-			// Acquire the mouse.
-			if (!SUCCEEDED(g_mouse->Acquire()))
-			{
-				LOG_ERROR("Failed to aquire the mouse.");
-			}
-		}
-		else
-		{
-			LOG_ERROR("Failed to initialize a DirectInput mouse.");
-			success = false;
-		}
-
-		if (success)
-		{
-			stringstream ss;
-			ss << hex << DIRECTINPUT_VERSION;
-			auto major = ss.str().erase(1, 2);
-			auto minor = ss.str().erase(0, 1);
-		}
-
-		return success;
 	}
 
 	void Input::Tick()

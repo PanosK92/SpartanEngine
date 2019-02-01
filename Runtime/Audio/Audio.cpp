@@ -45,9 +45,67 @@ namespace Directus
 		m_systemFMOD		= nullptr;
 		m_maxChannels		= 32;
 		m_distanceFactor	= 1.0f;
-		m_initialized		= false;
 		m_listener			= nullptr;
 
+		// Create FMOD instance
+		m_resultFMOD = System_Create(&m_systemFMOD);
+		if (m_resultFMOD != FMOD_OK)
+		{
+			LogErrorFMOD(m_resultFMOD);
+			return;
+		}
+
+		// Check FMOD version
+		unsigned int version;
+		m_resultFMOD = m_systemFMOD->getVersion(&version);
+		if (m_resultFMOD != FMOD_OK)
+		{
+			LogErrorFMOD(m_resultFMOD);
+			return;
+		}
+
+		if (version < FMOD_VERSION)
+		{
+			LogErrorFMOD(m_resultFMOD);
+			return;
+		}
+
+		// Make sure there is a sound card devices on the machine
+		int driverCount = 0;
+		m_resultFMOD = m_systemFMOD->getNumDrivers(&driverCount);
+		if (m_resultFMOD != FMOD_OK)
+		{
+			LogErrorFMOD(m_resultFMOD);
+			return;
+		}
+
+		// Initialize FMOD
+		m_resultFMOD = m_systemFMOD->init(m_maxChannels, FMOD_INIT_NORMAL, nullptr);
+		if (m_resultFMOD != FMOD_OK)
+		{
+			LogErrorFMOD(m_resultFMOD);
+			return;
+		}
+
+		// Set 3D settings
+		m_resultFMOD = m_systemFMOD->set3DSettings(1.0, m_distanceFactor, 0.0f);
+		if (m_resultFMOD != FMOD_OK)
+		{
+			LogErrorFMOD(m_resultFMOD);
+			return;
+		}
+
+		m_initialized = true;
+
+		// Get version
+		stringstream ss;
+		ss << hex << version;
+		string major	= ss.str().erase(1, 4);
+		string minor	= ss.str().erase(0, 1).erase(2, 2);
+		string rev		= ss.str().erase(0, 3);
+		Settings::Get().m_versionFMOD = major + "." + minor + "." + rev;
+
+		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Unload, [this](Variant) { m_listener = nullptr; });
 		SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER(Update));
 	}
@@ -71,68 +129,6 @@ namespace Directus
 		{
 			LogErrorFMOD(m_resultFMOD);
 		}
-	}
-
-	bool Audio::Initialize()
-	{
-		// Create FMOD instance
-		m_resultFMOD = System_Create(&m_systemFMOD);
-		if (m_resultFMOD != FMOD_OK)
-		{
-			LogErrorFMOD(m_resultFMOD);
-			return false;
-		}
-
-		// Check FMOD version
-		unsigned int version;
-		m_resultFMOD = m_systemFMOD->getVersion(&version);
-		if (m_resultFMOD != FMOD_OK)
-		{
-			LogErrorFMOD(m_resultFMOD);
-			return false;
-		}
-
-		if (version < FMOD_VERSION)
-		{
-			LogErrorFMOD(m_resultFMOD);
-			return false;
-		}
-
-		// Make sure there is a sound card devices on the machine
-		int driverCount = 0;
-		m_resultFMOD = m_systemFMOD->getNumDrivers(&driverCount);
-		if (m_resultFMOD != FMOD_OK)
-		{
-			LogErrorFMOD(m_resultFMOD);
-			return false;
-		}
-
-		// Initialize FMOD
-		m_resultFMOD = m_systemFMOD->init(m_maxChannels, FMOD_INIT_NORMAL, nullptr);
-		if (m_resultFMOD != FMOD_OK)
-		{
-			LogErrorFMOD(m_resultFMOD);
-			return false;
-		}
-
-		// Set 3D settings
-		m_resultFMOD = m_systemFMOD->set3DSettings(1.0, m_distanceFactor, 0.0f);
-		if (m_resultFMOD != FMOD_OK)
-		{
-			LogErrorFMOD(m_resultFMOD);
-			return false;
-		}
-
-		// Get version
-		stringstream ss;
-		ss << hex << version;
-		string major	= ss.str().erase(1, 4);
-		string minor	= ss.str().erase(0, 1).erase(2, 2);
-		string rev		= ss.str().erase(0, 3);
-		Settings::Get().m_versionFMOD = major + "." + minor + "." + rev;
-
-		m_initialized = true;
-		return true;
 	}
 
 	bool Audio::Update()

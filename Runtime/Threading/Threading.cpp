@@ -34,6 +34,12 @@ namespace Directus
 	{
 		m_stopping		= false;
 		m_threadCount	= Settings::Get().ThreadCountMax_Get() - 1;
+
+		for (unsigned int i = 0; i < m_threadCount; i++)
+		{
+			m_threads.emplace_back(thread(&Threading::Invoke, this));
+		}
+		LOGF_INFO("%d threads have been created", m_threadCount);
 	}
 
 	Threading::~Threading()
@@ -58,17 +64,6 @@ namespace Directus
 
 		// Empty worker threads.
 		m_threads.clear();
-	}
-
-	bool Threading::Initialize()
-	{
-		for (unsigned int i = 0; i < m_threadCount; i++)
-		{
-			m_threads.emplace_back(thread(&Threading::Invoke, this));
-		}
-		LOGF_INFO("%d threads have been created", m_threadCount);
-
-		return true;
 	}
 
 	void Threading::Invoke()

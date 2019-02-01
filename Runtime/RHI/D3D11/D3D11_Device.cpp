@@ -428,7 +428,6 @@ namespace Directus
 			return;
 
 		_D3D11_Device::deviceContext->Draw(vertexCount, 0);
-		Profiler::Get().m_rhiDrawCalls++;
 	}
 
 	void RHI_Device::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
@@ -437,7 +436,6 @@ namespace Directus
 			return;
 
 		_D3D11_Device::deviceContext->DrawIndexed(indexCount, indexOffset, vertexOffset);
-		Profiler::Get().m_rhiDrawCalls++;
 	}
 
 	void RHI_Device::ClearBackBuffer(const Vector4& color)
