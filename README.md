@@ -36,7 +36,7 @@ Feature       		            | Completion | Notes
 ------------- 		            | :--: | -
 Easy to build               	| 100% | Single click project generation which includes editor and runtime.
 New editor               		| 100% | Replace Qt editor with ImGui editor.
-Debug rendering    				| 100% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
+Debug rendering    				| 100% | Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
 Improved shadows         		| 100% | Sharper shadows with smoother edges and no shimmering.
 SSAO         					| 100% | Screen space ambient occlusion.
 Bloom         					| 100% | -
@@ -46,7 +46,7 @@ Per-Pixel motion blur			| 100% |
 Velocity Buffer					| 100% | Required for TAA and Motion Blur.
 Dithering						| 100% | Removes color banding.
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
-Point light support             | 100% | -
+Point & spot lights             | 100% | -
 Xbox controller support         | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Higher quality codebase, allowing for future development.
