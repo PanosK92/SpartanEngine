@@ -132,6 +132,7 @@ namespace Directus
 			aiProcess_CalcTangentSpace |
 			aiProcess_GenSmoothNormals |
 			aiProcess_JoinIdenticalVertices |
+			aiProcess_OptimizeMeshes |
 			aiProcess_ImproveCacheLocality |
 			aiProcess_LimitBoneWeights |
 			aiProcess_SplitLargeMeshes |
@@ -142,7 +143,6 @@ namespace Directus
 			aiProcess_FindInvalidData |
 			aiProcess_FindInstances |
 			aiProcess_ValidateDataStructure |
-			aiProcess_OptimizeMeshes |
 			aiProcess_Debone |
 			aiProcess_ConvertToLeftHanded;
 
@@ -250,6 +250,12 @@ namespace Directus
 		importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, _ModelImporter::maxNormalSmoothingAngle);
 		// Set tangent smoothing angle
 		importer.SetPropertyFloat(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, _ModelImporter::maxTangentSmoothingAngle);	
+		// Maximum number of triangles in a mesh (before splitting)
+		unsigned int triangleLimit = 1000000;
+		importer.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, triangleLimit);
+		// Maximum number of vertices in a mesh (before splitting)
+		unsigned int vertexLimit = 1000000;
+		importer.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, vertexLimit);
 		// Remove points and lines.
 		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);	
 		// Remove cameras and lights
