@@ -36,7 +36,7 @@ Feature       		            | Completion | Notes
 ------------- 		            | :--: | -
 Easy to build               	| 100% | Single click project generation which includes editor and runtime.
 New editor               		| 100% | Replace Qt editor with ImGui editor.
-Debug rendering    				| 95% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
+Debug rendering    				| 100% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
 Improved shadows         		| 100% | Sharper shadows with smoother edges and no shimmering.
 SSAO         					| 100% | Screen space ambient occlusion.
 Bloom         					| 100% | -

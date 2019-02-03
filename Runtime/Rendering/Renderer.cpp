@@ -324,6 +324,26 @@ namespace Directus
 		m_shaderQuad_dithering = make_shared<RHI_Shader>(m_rhiDevice);
 		m_shaderQuad_dithering->AddDefine("PASS_DITHERING");
 		m_shaderQuad_dithering->CompilePixel(shaderDirectory + "Quad.hlsl");
+
+		// Debug Normal
+		m_shaderDebug_normal = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderDebug_normal->AddDefine("DEBUG_NORMAL");
+		m_shaderDebug_normal->CompilePixel(shaderDirectory + "Debug.hlsl");
+
+		// Debug velocity
+		m_shaderDebug_velocity = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderDebug_velocity->AddDefine("DEBUG_VELOCITY");
+		m_shaderDebug_velocity->CompilePixel(shaderDirectory + "Debug.hlsl");
+
+		// Debug depth
+		m_shaderDebug_depth = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderDebug_depth->AddDefine("DEBUG_DEPTH");
+		m_shaderDebug_depth->CompilePixel(shaderDirectory + "Debug.hlsl");
+
+		// Debug ssao
+		m_shaderDebug_ssao = make_shared<RHI_Shader>(m_rhiDevice);
+		m_shaderDebug_ssao->AddDefine("DEBUG_SSAO");
+		m_shaderDebug_ssao->CompilePixel(shaderDirectory + "Debug.hlsl");
 	}
 
 	void Renderer::CreateSamplers()
@@ -428,15 +448,15 @@ namespace Directus
 		);
 
 		Pass_Transparent(m_renderTexFull_HDR_Light);
-		Pass_Lines(m_renderTexFull_HDR_Light);
-		Pass_Gizmos(m_renderTexFull_HDR_Light);
 
 		Pass_PostLight(
 			m_renderTexFull_HDR_Light,	// IN:	Light pass result
 			m_renderTexFull_HDR_Light2	// OUT: Result
 		);
 	
-		Pass_GBufferVisualize(m_renderTexFull_HDR_Light2);	
+		Pass_Lines(m_renderTexFull_HDR_Light2);
+		Pass_Gizmos(m_renderTexFull_HDR_Light2);
+		Pass_DebugBuffer(m_renderTexFull_HDR_Light2);	
 		Pass_PerformanceMetrics(m_renderTexFull_HDR_Light2);
 
 		m_isRendering = false;
@@ -1460,6 +1480,8 @@ namespace Directus
 		m_rhiPipeline->SetShader(m_shaderColor);
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);
 		m_rhiPipeline->SetAlphaBlending(true);
+		// unjittered matrix to avoid TAA jitter due to lack of motion vectors (line rendering is anti-aliased by D3D11, decently)
+		Matrix viewProjection_unjittered = m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix();
 
 		// Draw lines that require depth
 		m_rhiPipeline->SetRenderTarget(texOut, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
@@ -1469,7 +1491,7 @@ namespace Directus
 			{
 				m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
 				m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
-				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_viewProjection);
+				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * viewProjection_unjittered);
 				m_rhiPipeline->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
 			}
 
@@ -1490,7 +1512,7 @@ namespace Directus
 
 				// Set pipeline state
 				m_rhiPipeline->SetVertexBuffer(m_vertexBufferLines);
-				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_viewProjection);
+				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, viewProjection_unjittered);
 				m_rhiPipeline->Draw(lineVertexBufferSize);
 
 				m_linesList_depthEnabled.clear();
@@ -1517,7 +1539,7 @@ namespace Directus
 
 				// Set pipeline state
 				m_rhiPipeline->SetVertexBuffer(m_vertexBufferLines);
-				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_viewProjection);
+				SetGlobalBuffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, viewProjection_unjittered);
 				m_rhiPipeline->Draw(lineVertexBufferSize);
 
 				m_linesList_depthDisabled.clear();
@@ -1670,38 +1692,73 @@ namespace Directus
 		TIME_BLOCK_END_MULTI();
 	}
 
-	bool Renderer::Pass_GBufferVisualize(shared_ptr<RHI_RenderTexture>& texOut)
+	bool Renderer::Pass_DebugBuffer(shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
-		texType	= Flags_IsSet(Render_GBuffer_Albedo)	? GBuffer_Target_Albedo		: texType;
-		texType = Flags_IsSet(Render_GBuffer_Normal)	? GBuffer_Target_Normal		: texType;
-		texType = Flags_IsSet(Render_GBuffer_Material)	? GBuffer_Target_Material	: texType;
-		texType = Flags_IsSet(Render_GBuffer_Velocity)	? GBuffer_Target_Velocity	: texType;
-		texType = Flags_IsSet(Render_GBuffer_Depth)		? GBuffer_Target_Depth		: texType;
+		if (m_debugBuffer == RendererDebug_None)
+			return true;
 
-		if (texType != GBuffer_Target_Unknown)
+		TIME_BLOCK_START_MULTI();
+		m_rhiDevice->EventBegin("Pass_DebugBuffer");
+		m_rhiPipeline->Reset();
+		SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight(), m_viewProjection_Orthographic);
+
+		// Bind correct texture & shader pass
+		if (m_debugBuffer == RendererDebug_Albedo)
 		{
-			TIME_BLOCK_START_MULTI();
-			m_rhiDevice->EventBegin("Pass_GBufferVisualize");
-			m_rhiPipeline->Reset();
-
-			SetGlobalBuffer(texOut->GetWidth(), texOut->GetHeight(), m_viewProjection_Orthographic);
-			m_rhiPipeline->SetRenderTarget(texOut);
-			m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
-			m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
-			m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-			m_rhiPipeline->SetFillMode(Fill_Solid);
-			m_rhiPipeline->SetCullMode(Cull_Back);
-			m_rhiPipeline->SetInputLayout(m_shaderQuad_texture->GetInputLayout());
+			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Albedo));
 			m_rhiPipeline->SetShader(m_shaderQuad_texture);
-			m_rhiPipeline->SetViewport(m_gbuffer->GetTexture(texType)->GetViewport());
-			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(texType));
-			m_rhiPipeline->SetSampler(m_samplerTrilinearClamp);
-			m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
-
-			m_rhiDevice->EventEnd();
-			TIME_BLOCK_END_MULTI();
 		}
+
+		if (m_debugBuffer == RendererDebug_Normal)
+		{
+			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
+			m_rhiPipeline->SetShader(m_shaderDebug_normal);
+		}
+
+		if (m_debugBuffer == RendererDebug_Material)
+		{
+			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Material));
+			m_rhiPipeline->SetShader(m_shaderQuad_texture);
+		}
+
+		if (m_debugBuffer == RendererDebug_Velocity)
+		{
+			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
+			m_rhiPipeline->SetShader(m_shaderDebug_velocity);
+		}
+
+		if (m_debugBuffer == RendererDebug_Depth)
+		{
+			m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+			m_rhiPipeline->SetShader(m_shaderDebug_depth);
+		}
+
+		if ((m_debugBuffer == RendererDebug_SSAO))
+		{
+			if (Flags_IsSet(Render_PostProcess_SSAO))
+			{
+				m_rhiPipeline->SetTexture(m_renderTexHalf_SSAO);
+			}
+			else
+			{
+				m_rhiPipeline->SetTexture(m_texWhite);
+			}
+			m_rhiPipeline->SetShader(m_shaderDebug_ssao);
+		}
+
+		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetViewport(texOut->GetViewport());
+		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
+		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
+		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhiPipeline->SetFillMode(Fill_Solid);
+		m_rhiPipeline->SetCullMode(Cull_Back);
+		m_rhiPipeline->SetInputLayout(m_shaderQuad_texture->GetInputLayout());		
+		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
+		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+
+		m_rhiDevice->EventEnd();
+		TIME_BLOCK_END_MULTI();
 
 		return true;
 	}

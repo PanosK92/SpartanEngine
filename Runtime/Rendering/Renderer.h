@@ -53,7 +53,7 @@ namespace Directus
 		class Frustum;
 	}
 
-	enum RenderMode : unsigned long
+	enum Renderer_Option : unsigned long
 	{
 		Render_Gizmo_AABB						= 1UL << 0,
 		Render_Gizmo_PickingRay					= 1UL << 1,
@@ -62,20 +62,26 @@ namespace Directus
 		Render_Gizmo_Lights						= 1UL << 4,
 		Render_Gizmo_PerformanceMetrics			= 1UL << 5,
 		Render_Gizmo_Physics					= 1UL << 6,
-		Render_GBuffer_Albedo					= 1UL << 7,
-		Render_GBuffer_Normal					= 1UL << 8,
-		Render_GBuffer_Material					= 1UL << 9,
-		Render_GBuffer_Velocity					= 1UL << 10,
-		Render_GBuffer_Depth					= 1UL << 11,		
-		Render_PostProcess_Bloom				= 1UL << 12,
-		Render_PostProcess_FXAA					= 1UL << 13,
-		Render_PostProcess_SSAO					= 1UL << 14,
-		Render_PostProcess_SSR					= 1UL << 15,
-		Render_PostProcess_TAA					= 1UL << 16,
-		Render_PostProcess_MotionBlur			= 1UL << 17,
-		Render_PostProcess_Sharpening			= 1UL << 18,
-		Render_PostProcess_ChromaticAberration	= 1UL << 19,
-		Render_PostProcess_Dithering			= 1UL << 20
+		Render_PostProcess_Bloom				= 1UL << 7,
+		Render_PostProcess_FXAA					= 1UL << 8,
+		Render_PostProcess_SSAO					= 1UL << 9,
+		Render_PostProcess_SSR					= 1UL << 10,
+		Render_PostProcess_TAA					= 1UL << 11,
+		Render_PostProcess_MotionBlur			= 1UL << 12,
+		Render_PostProcess_Sharpening			= 1UL << 13,
+		Render_PostProcess_ChromaticAberration	= 1UL << 14,
+		Render_PostProcess_Dithering			= 1UL << 15
+	};
+
+	enum RendererDebug_Buffer
+	{
+		RendererDebug_None,
+		RendererDebug_Albedo,
+		RendererDebug_Normal,
+		RendererDebug_Material,
+		RendererDebug_Velocity,
+		RendererDebug_Depth,
+		RendererDebug_SSAO
 	};
 
 	enum ToneMapping_Type
@@ -115,14 +121,14 @@ namespace Directus
 		void Present();
 		void Render();
 
-		//= RENDER MODE ==================================================
+		//= RENDER MODE ======================================================
 		// Enables an render mode flag
-		void Flags_Enable(RenderMode flag)		{ m_flags |= flag; }
+		void Flags_Enable(Renderer_Option flag)		{ m_flags |= flag; }
 		// Removes an render mode flag
-		void Flags_Disable(RenderMode flag)		{ m_flags &= ~flag; }
+		void Flags_Disable(Renderer_Option flag)	{ m_flags &= ~flag; }
 		// Returns whether render mode flag is set
-		bool Flags_IsSet(RenderMode flag)		{ return m_flags & flag; }
-		//================================================================
+		bool Flags_IsSet(Renderer_Option flag)		{ return m_flags & flag; }
+		//====================================================================
 
 		//= LINE RENDERING ============================================================================================================================================================
 		#define DebugColor Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
@@ -168,6 +174,11 @@ namespace Directus
 		float m_gizmo_transform_size	= 0.015f;
 		float m_gizmo_transform_speed	= 12.0f;
 		//=======================================
+		
+		// DEBUG BUFFER ===============================================================
+		void SetDebugBuffer(RendererDebug_Buffer buffer)	{ m_debugBuffer = buffer; }
+		RendererDebug_Buffer GetDebugBuffer()				{ return m_debugBuffer; }
+		//=============================================================================
 
 	private:
 		void CreateRenderTextures();
@@ -189,7 +200,7 @@ namespace Directus
 		void Pass_PostLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_TAA(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& texOut);
-		bool Pass_GBufferVisualize(std::shared_ptr<RHI_RenderTexture>& texOut);
+		bool Pass_DebugBuffer(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ToneMapping(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_GammaCorrection(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_FXAA(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
@@ -255,6 +266,10 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderQuad_toneMapping;
 		std::shared_ptr<RHI_Shader> m_shaderQuad_gammaCorrection;
 		std::shared_ptr<RHI_Shader> m_shaderQuad_dithering;
+		std::shared_ptr<RHI_Shader> m_shaderDebug_normal;
+		std::shared_ptr<RHI_Shader> m_shaderDebug_velocity;
+		std::shared_ptr<RHI_Shader> m_shaderDebug_depth;
+		std::shared_ptr<RHI_Shader> m_shaderDebug_ssao;
 		//==============================================================
 
 		//= SAMPLERS =========================================
@@ -313,6 +328,7 @@ namespace Directus
 		Math::Vector2 m_taa_jitter;
 		Math::Vector2 m_taa_jitterPrevious;
 		Profiler* m_profiler;
+		RendererDebug_Buffer m_debugBuffer = RendererDebug_None;
 		//===============================================================
 		
 		// Global buffer (holds what is needed by almost every shader)

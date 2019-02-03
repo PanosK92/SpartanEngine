@@ -49,12 +49,13 @@ namespace _Widget_Toolbar
 	static bool g_gizmo_performanceMetrics	= false;
 	static vector<string> gbufferTextures =
 	{
-		"Light",
+		"None",
 		"Albedo",
 		"Normal",
 		"Material",
 		"Velocity",
-		"Depth"
+		"Depth",
+		"SSAO"
 	};
 	static int gbufferSelectedTextureIndex	= 0;
 	static string gbufferSelectedTexture	= gbufferTextures[0];
@@ -197,7 +198,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		SET_FLAG_IF(Render_PostProcess_Dithering, do_dithering);
 	}
 
-	if (ImGui::CollapsingHeader("G-Buffer Visualization", ImGuiTreeNodeFlags_None))
+	if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))
 	{
 		if (ImGui::BeginCombo("Buffer", _Widget_Toolbar::gbufferSelectedTexture.c_str()))
 		{
@@ -217,54 +218,7 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::EndCombo();
 		}
 
-		if (_Widget_Toolbar::gbufferSelectedTextureIndex == 0) // Combined
-		{
-			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
-			m_renderer->Flags_Disable(Render_GBuffer_Normal);
-			m_renderer->Flags_Disable(Render_GBuffer_Material);
-			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
-			m_renderer->Flags_Disable(Render_GBuffer_Depth);
-		}
-		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 1) // Albedo
-		{
-			m_renderer->Flags_Enable(Render_GBuffer_Albedo);
-			m_renderer->Flags_Disable(Render_GBuffer_Normal);
-			m_renderer->Flags_Disable(Render_GBuffer_Material);
-			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
-			m_renderer->Flags_Disable(Render_GBuffer_Depth);
-		}
-		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 2) // Normal
-		{
-			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
-			m_renderer->Flags_Enable(Render_GBuffer_Normal);
-			m_renderer->Flags_Disable(Render_GBuffer_Material);
-			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
-			m_renderer->Flags_Disable(Render_GBuffer_Depth);
-		}
-		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 3) // Material
-		{
-			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
-			m_renderer->Flags_Disable(Render_GBuffer_Normal);
-			m_renderer->Flags_Enable(Render_GBuffer_Material);
-			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
-			m_renderer->Flags_Disable(Render_GBuffer_Depth);
-		}
-		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 4) // Velocity
-		{
-			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
-			m_renderer->Flags_Disable(Render_GBuffer_Normal);
-			m_renderer->Flags_Disable(Render_GBuffer_Material);
-			m_renderer->Flags_Enable(Render_GBuffer_Velocity);
-			m_renderer->Flags_Disable(Render_GBuffer_Depth);
-		}
-		else if (_Widget_Toolbar::gbufferSelectedTextureIndex == 5) // Depth
-		{
-			m_renderer->Flags_Disable(Render_GBuffer_Albedo);
-			m_renderer->Flags_Disable(Render_GBuffer_Normal);
-			m_renderer->Flags_Disable(Render_GBuffer_Material);
-			m_renderer->Flags_Disable(Render_GBuffer_Velocity);
-			m_renderer->Flags_Enable(Render_GBuffer_Depth);
-		}
+		m_renderer->SetDebugBuffer((RendererDebug_Buffer)_Widget_Toolbar::gbufferSelectedTextureIndex);
 	}
 
 	if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_None))
