@@ -92,7 +92,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_IndexBuffer::CreateDynamic(unsigned int indexCount)
+	bool RHI_IndexBuffer::CreateDynamic(unsigned int stride, unsigned int indexCount)
 	{
 		SafeRelease((ID3D11Buffer*)m_buffer);
 
@@ -102,12 +102,11 @@ namespace Directus
 			return false;
 		}
 
-		m_indexCount			= indexCount;
-		unsigned int byteWidth	= sizeof(unsigned int) * indexCount;
+		m_indexCount = indexCount;
 
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= byteWidth;
+		bufferDesc.ByteWidth			= indexCount * stride;
 		bufferDesc.Usage				= D3D11_USAGE_DYNAMIC;
 		bufferDesc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
 		bufferDesc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;

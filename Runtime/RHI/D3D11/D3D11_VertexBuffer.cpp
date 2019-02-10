@@ -210,7 +210,7 @@ namespace Directus
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= stride * vertexCount;
+		bufferDesc.ByteWidth			= vertexCount * stride;
 		bufferDesc.Usage				= D3D11_USAGE_DYNAMIC;
 		bufferDesc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
 		bufferDesc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
@@ -258,7 +258,6 @@ namespace Directus
 
 		// Re-enable GPU access to the vertex buffer data.
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Resource*)m_buffer, 0);
-
 		return true;
 	}
 

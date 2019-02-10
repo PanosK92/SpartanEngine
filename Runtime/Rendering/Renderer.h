@@ -110,11 +110,6 @@ namespace Directus
 		bool Initialize() override;
 		//=========================
 
-		void CreateFonts();
-		void CreateTextures();
-		void CreateShaders();
-		void CreateSamplers();
-
 		// Rendering
 		void SetBackBufferAsRenderTarget(bool clear = true);
 		void* GetFrameShaderResource();
@@ -146,6 +141,7 @@ namespace Directus
 
 		const RHI_Viewport& GetViewport()				{ return m_viewport; }
 		void SetViewport(const RHI_Viewport& viewport)	{ m_viewport = viewport; }
+		Math::Vector2 viewport_editorOffset;
 		//===========================================================================
 
 		const std::shared_ptr<RHI_Device>& GetRHIDevice()	{ return m_rhiDevice; }
@@ -181,8 +177,16 @@ namespace Directus
 		//=============================================================================
 
 	private:
+		void CreateDepthStencilStates();
+		void CreateRasterizerStates();
+		void CreateBlendStates();
+		void CreateFonts();
+		void CreateTextures();
+		void CreateShaders();
+		void CreateSamplers();
 		void CreateRenderTextures();
-		void SetGlobalBuffer(	
+		void SetDefault_Pipeline_State();
+		void SetDefault_Buffer(	
 			unsigned int resolutionWidth,
 			unsigned int resolutionHeight,
 			const Math::Matrix& mMVP			= Math::Matrix::Identity,
@@ -191,6 +195,7 @@ namespace Directus
 		);
 		void Renderables_Acquire(const Variant& renderables);
 		void Renderables_Sort(std::vector<Actor*>* renderables);
+		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(Cull_Mode cullMode, Fill_Mode fillMode);
 
 		//= PASSES ==============================================================================================================================================
 		void Pass_DepthDirectionalLight(Light* directionalLight);
@@ -272,6 +277,25 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_shaderDebug_ssao;
 		//==============================================================
 
+		//= DEPTH-STENCIL STATES ======================================
+		std::shared_ptr<RHI_DepthStencilState> m_depthStencil_enabled;
+		std::shared_ptr<RHI_DepthStencilState> m_depthStencil_disabled;
+		//=============================================================
+
+		//= BLEND STATES ================================
+		std::shared_ptr<RHI_BlendState> m_blend_enabled;
+		std::shared_ptr<RHI_BlendState> m_blend_disabled;
+		//===============================================
+
+		//= RASTERIZER STATES ================================================
+		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cullBack_solid;
+		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cullFront_solid;
+		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cullNone_solid;
+		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cullBack_wireframe;
+		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cullFront_wireframe;
+		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cullNone_wireframe;
+		//====================================================================
+
 		//= SAMPLERS =========================================
 		std::shared_ptr<RHI_Sampler> m_samplerCompareDepth;
 		std::shared_ptr<RHI_Sampler> m_samplerPointClamp;
@@ -285,7 +309,7 @@ namespace Directus
 		std::shared_ptr<RHI_Texture> m_texNoiseNormal;
 		std::shared_ptr<RHI_Texture> m_texWhite;
 		std::shared_ptr<RHI_Texture> m_texBlack;
-		std::shared_ptr<RHI_Texture> m_tex_lutIBL;
+		std::shared_ptr<RHI_Texture> m_texLUT_IBL;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightDirectional;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightPoint;
 		std::shared_ptr<RHI_Texture> m_gizmoTexLightSpot;

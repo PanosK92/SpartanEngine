@@ -143,8 +143,8 @@ namespace Directus
 			// Create ray starting from camera position and pointing towards where the mouse is pointing
 			Vector2	mouse_pos				= m_input->GetMousePosition();
 			const RHI_Viewport& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
-			Vector2 viewport_offset			= Vector2(viewport.GetX(), viewport.GetY());
-			Vector2 mouse_pos_relative		= mouse_pos - viewport_offset;
+			Vector2 editor_offset			= m_context->GetSubsystem<Renderer>()->viewport_editorOffset;
+			Vector2 mouse_pos_relative		= mouse_pos - editor_offset;
 			Vector3 ray_start				= camera->GetTransform()->GetPosition();
 			Vector3 ray_end					= camera->ScreenToWorldPoint(mouse_pos_relative);
 			Ray ray							= Ray(ray_start, ray_end);

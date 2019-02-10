@@ -60,41 +60,41 @@ namespace Directus
 		void* GetShaderResource() const { return m_shaderResource; }
 		//====================================================================================================================================================================================
 		
-		//= PROPERTIES =================================================================================
-		unsigned int GetWidth()								{ return m_width; }
-		void SetWidth(unsigned int width)					{ m_width = width; }
+		//= PROPERTIES ===================================================================
+		unsigned int GetWidth()						{ return m_width; }
+		void SetWidth(unsigned int width)			{ m_width = width; }
 
-		unsigned int GetHeight()							{ return m_height; }
-		void SetHeight(unsigned int height)					{ m_height = height; }
+		unsigned int GetHeight()					{ return m_height; }
+		void SetHeight(unsigned int height)			{ m_height = height; }
 
-		bool GetGrayscale()									{ return m_isGrayscale; }
-		void SetGrayscale(bool isGrayscale)					{ m_isGrayscale = isGrayscale; }
+		bool GetGrayscale()							{ return m_isGrayscale; }
+		void SetGrayscale(bool isGrayscale)			{ m_isGrayscale = isGrayscale; }
 
-		bool GetTransparency()								{ return m_isTransparent; }
-		void SetTransparency(bool isTransparent)			{ m_isTransparent = isTransparent; }
+		bool GetTransparency()						{ return m_isTransparent; }
+		void SetTransparency(bool isTransparent)	{ m_isTransparent = isTransparent; }
 
-		unsigned int GetBPP()								{ return m_bpp; }
-		void SetBPP(unsigned int bpp)						{ m_bpp = bpp; }
+		unsigned int GetBPP()						{ return m_bpp; }
+		void SetBPP(unsigned int bpp)				{ m_bpp = bpp; }
 
-		unsigned int GetBPC()								{ return m_bpc; }
-		void SetBPC(unsigned int bpc)						{ m_bpc = bpc; }
+		unsigned int GetBPC()						{ return m_bpc; }
+		void SetBPC(unsigned int bpc)				{ m_bpc = bpc; }
 
-		unsigned int GetChannels()							{ return m_channels; }
-		void SetChannels(unsigned int channels)				{ m_channels = channels; }
+		unsigned int GetChannels()					{ return m_channels; }
+		void SetChannels(unsigned int channels)		{ m_channels = channels; }
 
-		Texture_Format GetFormat()							{ return m_format; }
-		void SetFormat(Texture_Format format)				{ m_format = format; }
+		Texture_Format GetFormat()					{ return m_format; }
+		void SetFormat(Texture_Format format)		{ m_format = format; }
 
-		bool HasMipChain()									{ return m_mipChain.size() > 1; }
+		bool HasMipChain()							{ return m_mipChain.size() > 1; }
 
-		bool GetNeedsMipChain()								{ return m_needsMipChain; }
-		void SetNeedsMipChain(bool needsMipChain)			{ m_needsMipChain = needsMipChain; }
+		bool GetNeedsMipChain()						{ return m_needsMipChain; }
+		void SetNeedsMipChain(bool needsMipChain)	{ m_needsMipChain = needsMipChain; }
 
 		const std::vector<MipLevel>& Data_Get()					{ return m_mipChain; }
 		void Data_Set(const std::vector<MipLevel>& dataRGBA)	{ m_mipChain = dataRGBA; }
 		MipLevel* Data_AddMipLevel() { return &m_mipChain.emplace_back(MipLevel()); }
 		MipLevel* Data_GetMipLevel(unsigned int index);
-		//==============================================================================================
+		//================================================================================
 
 		//= TEXTURE BITS =======================================
 		void ClearTextureBytes();

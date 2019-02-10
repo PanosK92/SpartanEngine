@@ -41,7 +41,7 @@ static const D3D11_CULL_MODE d3d11_cull_mode[] =
 	D3D11_CULL_BACK
 };
 
-static const D3D11_FILL_MODE d3d11_fill_Mode[]
+static const D3D11_FILL_MODE d3d11_fill_Mode[] =
 {
 	D3D11_FILL_SOLID,
 	D3D11_FILL_WIREFRAME

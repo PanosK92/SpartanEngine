@@ -21,17 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES ==================
 #include "RHI_Definition.h"
-#include "RHI_Viewport.h"
-//=========================
+#include "../Core/EngineDefs.h"
+#include <memory>
+#include <string>
+//=============================
 
 namespace Directus
 {
-	namespace Math
-	{
-		class Vector4;
-	}
+	namespace Math { class Vector4; }
 
 	class ENGINE_CLASS RHI_Device
 	{
@@ -39,41 +38,35 @@ namespace Directus
 		RHI_Device(void* drawHandle);
 		~RHI_Device();
 
-		//= DRAW ========================================================================================
-		void Draw(unsigned int vertexCount);
-		void DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset);
-		void ClearBackBuffer(const Math::Vector4& color);
-		void ClearRenderTarget(void* renderTarget, const Math::Vector4& color);
-		void ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, uint8_t stencil = 0);
-		void Present();
-		//===============================================================================================
+		//= DRAW/PRESENT ==============================================================================
+		bool Draw(unsigned int vertexCount);
+		bool DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset);
+		bool Present();
+		//=============================================================================================
 
-		//= BIND ============================================================================================================	
-		void Set_BackBufferAsRenderTarget();
-		void Set_VertexShader(void* buffer);
-		void Set_PixelShader(void* buffer);
-		void Set_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer);
-		void Set_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers);
-		void Set_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil);
-		void Set_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources);
-		//===================================================================================================================
+		//= CLEAR ============================================================================================
+		bool ClearBackBuffer(const Math::Vector4& color);
+		bool ClearRenderTarget(void* renderTarget, const Math::Vector4& color);
+		bool ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, unsigned int stencil = 0);
+		//====================================================================================================
 
-		//= RESOLUTION ==============================================
-		bool Set_Resolution(unsigned int width, unsigned int height);
-		//===========================================================
-
-		//= VIEWPORT ===================================
-		void Set_Viewport(const RHI_Viewport& viewport);
-		//==============================================
-
-		//= MISC ============================================================
-		bool Set_DepthEnabled(bool enable);
-		bool Set_AlphaBlendingEnabled(bool enable);
-		bool Set_CullMode(Cull_Mode cullMode);
-		bool Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
-		bool Set_FillMode(Fill_Mode fillMode);
-		bool Set_InputLayout(void* inputLayout);
-		//===================================================================
+		//= SET ====================================================================================================
+		bool SetVertexShader(void* buffer);
+		bool SetPixelShader(void* buffer);
+		bool SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* buffer);
+		bool SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* samplers);
+		bool SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources);
+		bool SetBackBufferAsRenderTarget();
+		bool SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil);
+		bool SetResolution(unsigned int width, unsigned int height);
+		bool SetViewport(const RHI_Viewport& viewport);
+		bool SetClippingRectangle(int left, int top, int right, int bottom);
+		bool SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState);
+		bool SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState);
+		bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
+		bool SetInputLayout(void* inputLayout);
+		bool SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState);
+		//==========================================================================================================
 
 		//= EVENTS ==============================
 		void EventBegin(const std::string& name);
@@ -88,17 +81,16 @@ namespace Directus
 		float Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd);
 		//=================================================================================
 
+		//= MISC ==============================================
 		bool IsInitialized()	{ return m_initialized; }
-
 		template <typename T>
 		T* GetDevice()			{ return (T*)m_device; }
 		template <typename T>
 		T* GetDeviceContext()	{ return (T*)m_deviceContext; }
+		//=====================================================
 
 	private:
-		Texture_Format m_format;
-		bool m_alphaBlendingEnabled;
-		bool m_depthEnabled;
+		Texture_Format m_backBufferFormat;
 		bool m_initialized		= false;
 		void* m_device			= nullptr;
 		void* m_deviceContext	= nullptr;

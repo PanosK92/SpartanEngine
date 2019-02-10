@@ -38,6 +38,9 @@ namespace Directus
 	class RHI_RenderTexture;
 	class RHI_Texture;
 	class RHI_Shader;
+	class RHI_RasterizerState;
+	class RHI_BlendState;
+	class RHI_DepthStencilState;
 	class RHI_InputLayout;
 	struct RHI_Vertex_PosUvNorTan;
 	struct RHI_Vertex_PosUVNor;
@@ -83,15 +86,13 @@ namespace Directus
 	{
 		Cull_None,
 		Cull_Front,
-		Cull_Back,
-		Cull_NotAssigned
+		Cull_Back
 	};
 
 	enum Fill_Mode
 	{
 		Fill_Solid,
-		Fill_Wireframe,
-		Fill_NotAssigned
+		Fill_Wireframe
 	};
 
 	enum Texture_Sampler_Filter

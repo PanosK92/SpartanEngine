@@ -163,11 +163,12 @@ namespace Directus
 	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Actor>& actor)
 	{
 		const RHI_Viewport& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
-		Vector2 mouse_position_relative = mouse_position - Vector2(viewport.GetX(), viewport.GetY());
+		const Vector2& offset			= m_context->GetSubsystem<Renderer>()->viewport_editorOffset;
+		Vector2 mouse_position_relative = mouse_position - offset;
 
 		// Ensure the ray is inside the viewport
-		bool x_outside = (mouse_position_relative.x < viewport.GetX()) || (mouse_position_relative.x > viewport.GetX() + viewport.GetWidth());
-		bool y_outside = (mouse_position_relative.y < viewport.GetY()) || (mouse_position_relative.y > viewport.GetY() + viewport.GetHeight());
+		bool x_outside = (mouse_position.x < offset.x) || (mouse_position.x > offset.x + viewport.GetWidth());
+		bool y_outside = (mouse_position.y < offset.y) || (mouse_position.y > offset.y + viewport.GetHeight());
 		if (x_outside || y_outside)
 			return false;
 

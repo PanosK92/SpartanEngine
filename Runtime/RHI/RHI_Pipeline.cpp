@@ -31,6 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Shader.h"
 #include "RHI_ConstantBuffer.h"
 #include "RHI_InputLayout.h"
+#include "RHI_DepthStencilState.h"
+#include "RHI_RasterizerState.h"
+#include "RHI_BlendState.h"
 #include "..\Logging\Log.h"
 #include "../Profiling/Profiler.h"
 //================================
@@ -46,7 +49,6 @@ namespace Directus
 	{
 		m_rhiDevice	= rhiDevice;
 		m_profiler	= context->GetSubsystem<Profiler>();
-		Reset();
 	}
 
 	bool RHI_Pipeline::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
@@ -75,7 +77,7 @@ namespace Directus
 	{
 		if (!shader)
 		{
-			LOG_WARNING("Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
@@ -94,7 +96,7 @@ namespace Directus
 	{
 		if (!shader)
 		{
-			LOG_WARNING("Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
@@ -112,7 +114,7 @@ namespace Directus
 	{
 		if (!indexBuffer)
 		{
-			LOG_WARNING("Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
@@ -126,7 +128,7 @@ namespace Directus
 	{
 		if (!vertexBuffer)
 		{
-			LOG_WARNING("Invalid parameter");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
@@ -138,13 +140,7 @@ namespace Directus
 
 	bool RHI_Pipeline::SetSampler(const shared_ptr<RHI_Sampler>& sampler)
 	{
-		if (!sampler)
-		{
-			LOG_WARNING("Invalid parameter");
-			return false;
-		}
-
-		m_samplers.emplace_back(sampler->GetBuffer());
+		m_samplers.emplace_back(sampler ? sampler->GetBuffer() : nullptr);
 		m_samplersDirty = true;
 
 		return true;
@@ -184,7 +180,7 @@ namespace Directus
 
 		m_renderTargetViews.clear();
 		m_renderTargetViews.emplace_back(renderTarget->GetRenderTargetView());
-		m_depthStencil			= depthStencilView;
+		m_depthStencilView		= depthStencilView;
 		m_renderTargetsClear	= clear;
 		m_renderTargetsDirty	= true;
 
@@ -199,7 +195,7 @@ namespace Directus
 		m_renderTargetViews.clear();
 		m_renderTargetViews.emplace_back(renderTargetView);
 
-		m_depthStencil			= depthStencilView;
+		m_depthStencilView			= depthStencilView;
 		m_renderTargetsClear	= clear;
 		m_renderTargetsDirty	= true;
 
@@ -220,7 +216,7 @@ namespace Directus
 			m_renderTargetViews.emplace_back(renderTarget);
 		}
 
-		m_depthStencil			= depthStencilView;
+		m_depthStencilView		= depthStencilView;
 		m_renderTargetsClear	= clear;
 		m_renderTargetsDirty	= true;
 
@@ -229,13 +225,8 @@ namespace Directus
 
 	bool RHI_Pipeline::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
 	{
-		if (!constantBuffer)
-		{
-			LOG_WARNING("Invalid parameter");
-			return false;
-		}
-
-		m_constantBuffers.emplace_back(constantBuffer->GetBuffer(), slot, scope);
+		auto bufferPtr = constantBuffer ? constantBuffer->GetBuffer() : nullptr;
+		m_constantBuffers.emplace_back(bufferPtr, slot, scope);
 		m_constantBufferDirty = true;
 
 		return true;
@@ -262,31 +253,69 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_Pipeline::SetCullMode(Cull_Mode cullMode)
+	bool RHI_Pipeline::SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState)
 	{
-		if (m_cullMode == cullMode)
-			return;
+		if (!depthStencilState)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
 
-		m_cullMode		= cullMode;
-		m_cullModeDirty = true;
+		if (m_depthStencilState)
+		{
+			if (m_depthStencilState->GetDepthEnabled() == depthStencilState->GetDepthEnabled())
+				return true;
+		}
+
+		m_depthStencilState			= depthStencilState;
+		m_depthStencilStateDirty	= true;
+		return true;
 	}
 
-	void RHI_Pipeline::SetFillMode(Fill_Mode fillMode)
+	bool RHI_Pipeline::SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState)
 	{
-		if (m_fillMode == fillMode)
-			return;
+		if (!rasterizerState)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
 
-		m_fillMode		= fillMode;
-		m_fillModeDirty = true;
+		if (m_rasterizerState)
+		{
+			bool equal =
+				m_rasterizerState->GetCullMode()				== rasterizerState->GetCullMode()			&&
+				m_rasterizerState->GetFillMode()				== rasterizerState->GetFillMode()			&&
+				m_rasterizerState->GetDepthClipEnabled()		== rasterizerState->GetDepthClipEnabled()	&&
+				m_rasterizerState->GetClippingEnabled()			== rasterizerState->GetClippingEnabled()	&&
+				m_rasterizerState->GetMultiSampleEnabled()		== rasterizerState->GetMultiSampleEnabled() &&
+				m_rasterizerState->GetAntialisedLineEnabled()	== rasterizerState->GetAntialisedLineEnabled();
+
+			if (equal)
+				return true;
+		}
+
+		m_rasterizerState		= rasterizerState;
+		m_raterizerStateDirty	= true;
+		return true;
 	}
 
-	void RHI_Pipeline::SetAlphaBlending(bool enabled)
+	bool RHI_Pipeline::SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState)
 	{
-		if (m_alphaBlending == enabled)
-			return;
+		if (!blendState)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
 
-		m_alphaBlending			= enabled;
-		m_alphaBlendingDirty	= true;
+		if (m_blendState)
+		{
+			if (m_blendState->BlendEnabled() == blendState->BlendEnabled())
+				return true;
+		}
+
+		m_blendState		= blendState;
+		m_blendStateDirty	= true;
+		return true;
 	}
 
 	void RHI_Pipeline::SetViewport(const RHI_Viewport& viewport)
@@ -302,7 +331,7 @@ namespace Directus
 	{
 		if (!m_rhiDevice)
 		{
-			LOG_ERROR("Invalid RHI_Device");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
@@ -314,8 +343,8 @@ namespace Directus
 				LOG_ERROR("Invalid render target(s)");
 				return false;
 			}
-			m_rhiDevice->Set_DepthEnabled(m_depthStencil != nullptr);
-			m_rhiDevice->Set_RenderTargets((unsigned int)m_renderTargetViews.size(), &m_renderTargetViews[0], m_depthStencil);
+
+			m_rhiDevice->SetRenderTargets((unsigned int)m_renderTargetViews.size(), &m_renderTargetViews[0], m_depthStencilView);
 			m_profiler->m_rhiBindingsRenderTarget++;
 
 			if (m_renderTargetsClear)
@@ -325,14 +354,14 @@ namespace Directus
 					m_rhiDevice->ClearRenderTarget(renderTargetView, Vector4(0, 0, 0, 0));
 				}
 
-				if (m_depthStencil)
+				if (m_depthStencilView)
 				{
 					float depth = m_viewport.GetMaxDepth();
 					#if REVERSE_Z == 1
 					depth = 1.0f - depth;
 					#endif
 
-					m_rhiDevice->ClearDepthStencil(m_depthStencil, Clear_Depth, depth, 0);
+					m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, depth, 0);
 				}
 			}
 
@@ -345,9 +374,9 @@ namespace Directus
 		{
 			unsigned int startSlot = 0;
 			unsigned int textureCount = (unsigned int)m_textures.size();
-			void* const* textures = textureCount != 0 ? &m_textures[0] : nullptr;
+			void* textures = textureCount != 0 ? &m_textures[0] : nullptr;
 
-			m_rhiDevice->Set_Textures(startSlot, textureCount, textures);
+			m_rhiDevice->SetTextures(startSlot, textureCount, textures);
 			m_profiler->m_rhiBindingsTexture++;
 
 			m_textures.clear();
@@ -359,9 +388,9 @@ namespace Directus
 		{
 			unsigned int startSlot		= 0;
 			unsigned int samplerCount	= (unsigned int)m_samplers.size();
-			void* const* samplers		= samplerCount != 0 ? &m_samplers[0] : nullptr;
+			void* samplers				= samplerCount != 0 ? &m_samplers[0] : nullptr;
 
-			m_rhiDevice->Set_Samplers(startSlot, samplerCount, samplers);
+			m_rhiDevice->SetSamplers(startSlot, samplerCount, samplers);
 			m_profiler->m_rhiBindingsSampler++;
 
 			m_samplers.clear();
@@ -373,7 +402,7 @@ namespace Directus
 		{
 			for (const auto& constantBuffer : m_constantBuffers)
 			{
-				m_rhiDevice->Set_ConstantBuffers(constantBuffer.slot, 1, constantBuffer.scope, (void*const*)&constantBuffer.buffer);
+				m_rhiDevice->SetConstantBuffers(constantBuffer.slot, 1, constantBuffer.scope, (void*)&constantBuffer.buffer);
 				m_profiler->m_rhiBindingsBufferConstant += (constantBuffer.scope == Buffer_Global) ? 2 : 1;
 			}
 
@@ -384,7 +413,7 @@ namespace Directus
 		// Vertex shader
 		if (m_vertexShaderDirty)
 		{
-			m_rhiDevice->Set_VertexShader(m_vertexShader->GetVertexShaderBuffer());
+			m_rhiDevice->SetVertexShader(m_vertexShader->GetVertexShaderBuffer());
 			m_profiler->m_rhiBindingsVertexShader++;
 			m_vertexShaderDirty = false;
 		}
@@ -392,7 +421,7 @@ namespace Directus
 		// Pixel shader
 		if (m_pixelShaderDirty)
 		{
-			m_rhiDevice->Set_PixelShader(m_pixelShader->GetPixelShaderBuffer());
+			m_rhiDevice->SetPixelShader(m_pixelShader->GetPixelShaderBuffer());
 			m_profiler->m_rhiBindingsPixelShader++;
 			m_pixelShaderDirty = false;
 		}
@@ -400,36 +429,35 @@ namespace Directus
 		// Input layout
 		if (m_inputLayoutDirty)
 		{
-			m_rhiDevice->Set_InputLayout(m_inputLayoutBuffer);
+			m_rhiDevice->SetInputLayout(m_inputLayoutBuffer);
 			m_inputLayoutDirty = false;
 		}
 
 		// Viewport
 		if (m_viewportDirty)
 		{
-			m_rhiDevice->Set_Viewport(m_viewport);
+			m_rhiDevice->SetViewport(m_viewport);
 			m_viewportDirty = false;
 		}
 
 		// Primitive topology
 		if (m_primitiveTopologyDirty)
 		{
-			m_rhiDevice->Set_PrimitiveTopology(m_primitiveTopology);
+			m_rhiDevice->SetPrimitiveTopology(m_primitiveTopology);
 			m_primitiveTopologyDirty = false;
 		}
 
-		// Cull mode
-		if (m_cullModeDirty)
+		// Depth-Stencil state
+		if (m_depthStencilStateDirty)
 		{
-			m_rhiDevice->Set_CullMode(m_cullMode);
-			m_cullModeDirty = false;
+			m_rhiDevice->SetDepthStencilState(m_depthStencilState);
+			m_depthStencilStateDirty = false;
 		}
-
-		// Fill mode
-		if (m_fillModeDirty)
+		// Rasterizer state
+		if (m_raterizerStateDirty)
 		{
-			m_rhiDevice->Set_FillMode(m_fillMode);
-			m_fillModeDirty = false;
+			m_rhiDevice->SetRasterizerState(m_rasterizerState);
+			m_raterizerStateDirty = false;
 		}
 
 		// Index buffer
@@ -450,68 +478,47 @@ namespace Directus
 			m_vertexBufferDirty = false;
 		}
 
-		// Alpha blending
-		bool resultAlphaBlending = false;
-		if (m_alphaBlendingDirty)
+		// Blend state
+		bool result_blendState = false;
+		if (m_blendStateDirty)
 		{
-			resultAlphaBlending = m_rhiDevice->Set_AlphaBlendingEnabled(m_alphaBlending);
-			m_alphaBlendingDirty = false;
+			result_blendState = m_rhiDevice->SetBlendState(m_blendState);
+			m_blendStateDirty = false;
 		}
 
-		return resultIndexBuffer && resultVertexBuffer && resultAlphaBlending;
+		return resultIndexBuffer && resultVertexBuffer && result_blendState;
 	}
 
-	void RHI_Pipeline::Reset()
+	void RHI_Pipeline::Clear()
 	{
-		vector<void*> empty(10);
-		auto empty_count		= (unsigned int)empty.size();
-		void* const* empty_ptr	= &empty[0];
+		vector<void*> empty5(5);
+		auto empty5_count = (unsigned int)empty5.size();
+		void* empty5_ptr = &empty5[0];
+
+		vector<void*> empty14(14);
+		auto empty14_count = (unsigned int)empty14.size();
+		void* empty14_ptr = &empty14[0];
+		
+		// Render targets
+		m_rhiDevice->SetRenderTargets(empty5_count, empty5_ptr, nullptr);
+		m_renderTargetViews.clear();
+		m_depthStencilView		= nullptr;
+		m_renderTargetsClear = false;
+		m_renderTargetsDirty = false;
 
 		// Textures
-		m_rhiDevice->Set_Textures(0, empty_count, empty_ptr);
+		m_rhiDevice->SetTextures(0, empty14_count, empty14_ptr);
 		m_textures.clear();
 		m_texturesDirty = false;
 
 		// Samplers
-		m_rhiDevice->Set_Samplers(0, empty_count, empty_ptr);
+		m_rhiDevice->SetSamplers(0, empty14_count, empty14_ptr);
 		m_samplers.clear();
 		m_samplersDirty = false;
 
 		// Constant buffers
-		m_rhiDevice->Set_ConstantBuffers(0, empty_count, Buffer_Global, empty_ptr);
+		m_rhiDevice->SetConstantBuffers(0, empty14_count, Buffer_Global, empty14_ptr);
 		m_constantBuffers.clear();
 		m_constantBufferDirty = false;
-
-		// Fill mode
-		if (m_fillMode != Fill_Solid)
-		{
-			m_fillMode = Fill_Solid;
-			m_rhiDevice->Set_FillMode(m_fillMode);
-			m_fillModeDirty = false;
-		}
-
-		// Cull mode
-		if (m_cullMode != Cull_Back)
-		{
-			m_cullMode = Cull_Back;
-			m_rhiDevice->Set_CullMode(m_cullMode);
-			m_cullModeDirty = false;
-		}
-
-		// Primitive topology
-		if (m_primitiveTopology != PrimitiveTopology_TriangleList)
-		{
-			m_primitiveTopology = PrimitiveTopology_TriangleList;
-			m_rhiDevice->Set_PrimitiveTopology(m_primitiveTopology);
-			m_primitiveTopologyDirty = false;
-		}
-
-		// Alpha blending
-		if (m_alphaBlending == true)
-		{
-			m_alphaBlending = false;
-			m_rhiDevice->Set_AlphaBlendingEnabled(m_alphaBlending);
-			m_alphaBlendingDirty = false;
-		}
 	}
 }

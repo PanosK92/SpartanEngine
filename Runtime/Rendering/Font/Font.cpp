@@ -187,7 +187,7 @@ namespace Directus
 			}
 
 			// Index buffer
-			if (!m_indexBuffer->CreateDynamic((unsigned int)indices.size()))
+			if (!m_indexBuffer->CreateDynamic(sizeof(unsigned int), (unsigned int)indices.size()))
 			{
 				LOG_ERROR("Failed to update index buffer.");
 				return false;

@@ -27,6 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "D3D11_Common.h"
 #include "../RHI_Device.h"
+#include "../RHI_BlendState.h"
+#include "../RHI_RasterizerState.h"
+#include "../RHI_DepthStencilState.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../Profiling/Profiler.h"
@@ -49,11 +52,11 @@ namespace Directus
 		const static auto swapEffect				= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		const static auto swapchainFlags			= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		const static bool multithreadProtection		= false;		
-#ifdef DEBUG
+	#ifdef DEBUG
 		const static UINT deviceFlags = D3D11_CREATE_DEVICE_DEBUG; // Debug layer
-#else
+	#else
 		const static UINT deviceFlags = 0;
-#endif
+	#endif
 
 		// The order of the feature levels that we'll try to create a device from
 		const static D3D_FEATURE_LEVEL featureLevels[] =
@@ -71,15 +74,7 @@ namespace Directus
 		ID3D11DeviceContext* deviceContext;
 		IDXGISwapChain* swapChain;
 		ID3D11RenderTargetView* renderTargetView;
-		ID3D11DepthStencilState* depthStencilStateEnabled;
-		ID3D11DepthStencilState* depthStencilStateDisabled;
-		ID3D11RasterizerState* rasterStateCullFront;
-		ID3D11RasterizerState* rasterStateCullBack;
-		ID3D11RasterizerState* rasterStateCullNone;
-		ID3D11BlendState* blendStateAlphaEnabled;
-		ID3D11BlendState* blendStateAlphaDisabled;
 		ID3DUserDefinedAnnotation* eventReporter;	
-		D3D11_VIEWPORT viewport;
 
 		inline vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory)
 		{
@@ -98,8 +93,7 @@ namespace Directus
 
 	RHI_Device::RHI_Device(void* drawHandle)
 	{
-		m_format				= Texture_Format_R8G8B8A8_UNORM;
-		m_alphaBlendingEnabled	= false;
+		m_backBufferFormat		= Texture_Format_R8G8B8A8_UNORM;
 		m_initialized			= false;
 
 		if (!IsWindow((HWND)drawHandle))
@@ -154,13 +148,13 @@ namespace Directus
 			{
 				// Get supported display mode count
 				UINT displayModeCount;
-				result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_format], DXGI_ENUM_MODES_INTERLACED, &displayModeCount, nullptr);
+				result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_backBufferFormat], DXGI_ENUM_MODES_INTERLACED, &displayModeCount, nullptr);
 				if (SUCCEEDED(result))
 				{
 					// Get display modes
 					vector<DXGI_MODE_DESC> displayModes;			
 					displayModes.resize(displayModeCount);
-					result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_format], DXGI_ENUM_MODES_INTERLACED, &displayModeCount, &displayModes[0]);
+					result = adapterOutput->GetDisplayModeList(d3d11_dxgi_format[m_backBufferFormat], DXGI_ENUM_MODES_INTERLACED, &displayModeCount, &displayModes[0]);
 					if (SUCCEEDED(result))
 					{
 						// Save all the display modes
@@ -202,7 +196,7 @@ namespace Directus
 			swapChainDesc.BufferCount					= _D3D11_Device::swapchainBufferCount;
 			swapChainDesc.BufferDesc.Width				= Settings::Get().GetWindowWidth();
 			swapChainDesc.BufferDesc.Height				= Settings::Get().GetWindowHeight();
-			swapChainDesc.BufferDesc.Format				= d3d11_dxgi_format[m_format];
+			swapChainDesc.BufferDesc.Format				= d3d11_dxgi_format[m_backBufferFormat];
 			swapChainDesc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 			swapChainDesc.OutputWindow					= (HWND)drawHandle;
 			swapChainDesc.SampleDesc.Count				= 1;
@@ -247,7 +241,7 @@ namespace Directus
 			}
 			else 
 			{
-				LOGF_ERROR("Failed to enable multithreaded protection");
+				LOGF_ERROR("Failed to enable multi-threaded protection");
 			}
 		}
 
@@ -268,86 +262,6 @@ namespace Directus
 			if (FAILED(result))
 			{
 				LOGF_ERROR("Failed to create swapchain render target, %s.", D3D11_Common::DxgiErrorToString(result));
-				return;
-			}
-		}
-
-		// VIEWPORT
-		ZeroMemory(&_D3D11_Device::viewport, sizeof(D3D11_VIEWPORT));
-		Set_Viewport(RHI_Viewport());
-
-		// DEPTH STATES
-		{
-			#if REVERSE_Z == 1
-			auto desc = D3D11_Common::Desc_DepthReverseEnabled();
-			#else
-			auto desc = D3D11_Common::Desc_DepthEnabled();
-			#endif
-
-			result = _D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateEnabled);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to create depth stencil enabled state, %s.", D3D11_Common::DxgiErrorToString(result));
-				return;
-			}
-
-			desc = D3D11_Common::Desc_DepthDisabled();
-			result = _D3D11_Device::device->CreateDepthStencilState(&desc, &_D3D11_Device::depthStencilStateDisabled);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to create depth stencil disabled state, %s.", D3D11_Common::DxgiErrorToString(result));
-				return;
-			}
-
-		}
-
-		// RASTERIZER STATES
-		{
-			auto desc = D3D11_Common::Desc_RasterizerCullBack();
-			result = _D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullBack);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to create the rasterizer cull back state, %s.", D3D11_Common::DxgiErrorToString(result));
-				return;
-			}
-
-			desc = D3D11_Common::Desc_RasterizerCullFront();
-			result = _D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullFront);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to create the rasterizer cull front state, %s.", D3D11_Common::DxgiErrorToString(result));
-				return;
-			}
-
-			desc = D3D11_Common::Desc_RasterizerCullNone();
-			result = _D3D11_Device::device->CreateRasterizerState(&desc, &_D3D11_Device::rasterStateCullNone);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to create the rasterizer cull none state, %s.", D3D11_Common::DxgiErrorToString(result));
-				return;
-			}
-
-			// Set default rasterizer state
-			_D3D11_Device::deviceContext->RSSetState(_D3D11_Device::rasterStateCullBack);
-		}
-
-		// BLEND STATES
-		{
-			// Create a blending state with alpha blending enabled
-			auto desc = D3D11_Common::Desc_BlendAlpha();
-			result = _D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaEnabled);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to create alpha blend enabled state, %s.", D3D11_Common::DxgiErrorToString(result));
-				return;
-			}
-
-			// Create a blending state with alpha blending disabled
-			desc = D3D11_Common::Desc_BlendDisabled();
-			result = _D3D11_Device::device->CreateBlendState(&desc, &_D3D11_Device::blendStateAlphaDisabled);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to create alpha blend disabled state, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 		}
@@ -409,99 +323,131 @@ namespace Directus
 			_D3D11_Device::swapChain->SetFullscreenState(false, nullptr);
 		}
 
-		SafeRelease(_D3D11_Device::blendStateAlphaEnabled);
-		SafeRelease(_D3D11_Device::blendStateAlphaDisabled);
-		SafeRelease(_D3D11_Device::depthStencilStateEnabled);
-		SafeRelease(_D3D11_Device::depthStencilStateDisabled);
-		SafeRelease(_D3D11_Device::rasterStateCullFront);
-		SafeRelease(_D3D11_Device::rasterStateCullBack);
-		SafeRelease(_D3D11_Device::rasterStateCullNone);
-		SafeRelease(_D3D11_Device::renderTargetView);
+		SafeRelease(_D3D11_Device::renderTargetView);	
+		SafeRelease(_D3D11_Device::swapChain);
 		SafeRelease(_D3D11_Device::deviceContext);
 		SafeRelease(_D3D11_Device::device);
-		SafeRelease(_D3D11_Device::swapChain);
 	}
 
-	void RHI_Device::Draw(unsigned int vertexCount)
+	bool RHI_Device::Draw(unsigned int vertexCount)
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		_D3D11_Device::deviceContext->Draw(vertexCount, 0);
+		return true;
 	}
 
-	void RHI_Device::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
+	bool RHI_Device::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		_D3D11_Device::deviceContext->DrawIndexed(indexCount, indexOffset, vertexOffset);
+		return true;
 	}
 
-	void RHI_Device::ClearBackBuffer(const Vector4& color)
+	bool RHI_Device::Present()
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
-
-		_D3D11_Device::deviceContext->ClearRenderTargetView(_D3D11_Device::renderTargetView, color.Data());
-	}
-
-	void RHI_Device::ClearRenderTarget(void* renderTarget, const Math::Vector4& color)
-	{
-		if (!_D3D11_Device::deviceContext)
-			return;
-
-		_D3D11_Device::deviceContext->ClearRenderTargetView((ID3D11RenderTargetView*)renderTarget, color.Data());
-	}
-
-	void RHI_Device::ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, uint8_t stencil)
-	{
-		if (!_D3D11_Device::deviceContext)
-			return;
-
-		unsigned int clearFlags = 0;
-		clearFlags |= flags & Clear_Depth ? D3D11_CLEAR_DEPTH : 0;
-		clearFlags |= flags & Clear_Stencil ? D3D11_CLEAR_STENCIL : 0;
-		_D3D11_Device::deviceContext->ClearDepthStencilView((ID3D11DepthStencilView*)depthStencil, clearFlags, depth, stencil);
-	}
-
-	void RHI_Device::Present()
-	{
-		if (!_D3D11_Device::swapChain)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		_D3D11_Device::swapChain->Present(Settings::Get().VSync_Get(), 0);
+		return true;
 	}
 
-	void RHI_Device::Set_BackBufferAsRenderTarget()
+	bool RHI_Device::ClearBackBuffer(const Vector4& color)
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		_D3D11_Device::deviceContext->ClearRenderTargetView(_D3D11_Device::renderTargetView, color.Data());
+		return true;
+	}
+
+	bool RHI_Device::ClearRenderTarget(void* renderTarget, const Math::Vector4& color)
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		_D3D11_Device::deviceContext->ClearRenderTargetView((ID3D11RenderTargetView*)renderTarget, color.Data());
+		return true;
+	}
+
+	bool RHI_Device::ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, unsigned int stencil)
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		unsigned int clearFlags = 0;
+		clearFlags |= flags & Clear_Depth	? D3D11_CLEAR_DEPTH		: 0;
+		clearFlags |= flags & Clear_Stencil ? D3D11_CLEAR_STENCIL	: 0;
+		_D3D11_Device::deviceContext->ClearDepthStencilView((ID3D11DepthStencilView*)depthStencil, clearFlags, depth, stencil);
+		return true;
+	}
+
+	bool RHI_Device::SetBackBufferAsRenderTarget()
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		ID3D11DepthStencilView* depthStencil = nullptr;
 		_D3D11_Device::deviceContext->OMSetRenderTargets(1, &_D3D11_Device::renderTargetView, depthStencil);
+		return true;
 	}
 
-	void RHI_Device::Set_VertexShader(void* buffer)
+	bool RHI_Device::SetVertexShader(void* buffer)
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		_D3D11_Device::deviceContext->VSSetShader((ID3D11VertexShader*)buffer, nullptr, 0);
+		return true;
 	}
 
-	void RHI_Device::Set_PixelShader(void* buffer)
+	bool RHI_Device::SetPixelShader(void* buffer)
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		_D3D11_Device::deviceContext->PSSetShader((ID3D11PixelShader*)buffer, nullptr, 0);
+		return true;
 	}
 
-	void RHI_Device::Set_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer)
+	bool RHI_Device::SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* buffer)
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		auto d3d11buffer = (ID3D11Buffer*const*)buffer;
 		if (scope == Buffer_VertexShader || scope == Buffer_Global)
@@ -513,33 +459,47 @@ namespace Directus
 		{
 			_D3D11_Device::deviceContext->PSSetConstantBuffers(startSlot, bufferCount, d3d11buffer);
 		}
+
+		return true;
 	}
 
-	void RHI_Device::Set_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers)
+	bool RHI_Device::SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* samplers)
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		_D3D11_Device::deviceContext->PSSetSamplers(startSlot, samplerCount, (ID3D11SamplerState* const*)samplers);
+		return true;
 	}
 
-	void RHI_Device::Set_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
+	bool RHI_Device::SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil)
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		_D3D11_Device::deviceContext->OMSetRenderTargets(renderTargetCount, (ID3D11RenderTargetView* const*)renderTargets, (ID3D11DepthStencilView*)depthStencil);
+		return true;
 	}
 
-	void RHI_Device::Set_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
+	bool RHI_Device::SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources)
 	{
 		if (!_D3D11_Device::deviceContext)
-			return;
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
 
 		_D3D11_Device::deviceContext->PSSetShaderResources(startSlot, resourceCount, (ID3D11ShaderResourceView* const*)shaderResources);
+		return true;
 	}
 
-	bool RHI_Device::Set_Resolution(unsigned int width, unsigned int height)
+	bool RHI_Device::SetResolution(unsigned int width, unsigned int height)
 	{
 		if (width == 0 || height == 0)
 		{
@@ -568,7 +528,7 @@ namespace Directus
 		ZeroMemory(&dxgiModeDesc, sizeof(dxgiModeDesc));
 		dxgiModeDesc.Width				= width;
 		dxgiModeDesc.Height				= height;
-		dxgiModeDesc.Format				= d3d11_dxgi_format[m_format];
+		dxgiModeDesc.Format				= d3d11_dxgi_format[m_backBufferFormat];
 		dxgiModeDesc.RefreshRate		= DXGI_RATIONAL{ displayMode.refreshRateNumerator, displayMode.refreshRateDenominator };
 		dxgiModeDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
 		dxgiModeDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -615,21 +575,7 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_Device::Set_Viewport(const RHI_Viewport& viewport)
-	{
-		if (!_D3D11_Device::deviceContext)
-			return;
-
-		_D3D11_Device::viewport.TopLeftX	= viewport.GetX();
-		_D3D11_Device::viewport.TopLeftY	= viewport.GetY();
-		_D3D11_Device::viewport.Width		= viewport.GetWidth();
-		_D3D11_Device::viewport.Height		= viewport.GetHeight();
-		_D3D11_Device::viewport.MinDepth	= viewport.GetMinDepth();
-		_D3D11_Device::viewport.MaxDepth	= viewport.GetMaxDepth();
-		_D3D11_Device::deviceContext->RSSetViewports(1, &_D3D11_Device::viewport);
-	}
-
-	bool RHI_Device::Set_DepthEnabled(bool enable)
+	bool RHI_Device::SetViewport(const RHI_Viewport& viewport)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
@@ -637,26 +583,63 @@ namespace Directus
 			return false;
 		}
 
-		if (m_depthEnabled == enable)
-			return true;
-
-		_D3D11_Device::deviceContext->OMSetDepthStencilState(enable ? _D3D11_Device::depthStencilStateEnabled : _D3D11_Device::depthStencilStateDisabled, 1);
-		m_depthEnabled = enable;
+		D3D11_VIEWPORT dx_viewport;
+		dx_viewport.TopLeftX	= viewport.GetX();
+		dx_viewport.TopLeftY	= viewport.GetY();
+		dx_viewport.Width		= viewport.GetWidth();
+		dx_viewport.Height		= viewport.GetHeight();
+		dx_viewport.MinDepth	= viewport.GetMinDepth();
+		dx_viewport.MaxDepth	= viewport.GetMaxDepth();
+		_D3D11_Device::deviceContext->RSSetViewports(1, &dx_viewport);
 
 		return true;
 	}
 
-	bool RHI_Device::Set_AlphaBlendingEnabled(bool enable)
+	bool RHI_Device::SetClippingRectangle(int left, int top, int right, int bottom)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_WARNING("Device context is uninitialized.");
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		const D3D11_RECT rectangle = { (LONG)left, (LONG)top, (LONG)right, (LONG)bottom };
+		_D3D11_Device::deviceContext->RSSetScissorRects(1, &rectangle);
+
+		return true;
+	}
+
+	bool RHI_Device::SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState)
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		auto ptr = (ID3D11DepthStencilState*)depthStencilState->GetBuffer();
+		_D3D11_Device::deviceContext->OMSetDepthStencilState(ptr, 1);
+		return true;
+	}
+
+	bool RHI_Device::SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState)
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		if (!blendState)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
 		// Set blend state
+		auto ptr = (ID3D11BlendState*)blendState->GetBuffer();
 		float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		_D3D11_Device::deviceContext->OMSetBlendState(enable ? _D3D11_Device::blendStateAlphaEnabled : _D3D11_Device::blendStateAlphaDisabled, blendFactor, 0xffffffff);
+		_D3D11_Device::deviceContext->OMSetBlendState(ptr, blendFactor, 0xffffffff);
 
 		return true;
 	}
@@ -757,7 +740,7 @@ namespace Directus
 		return durationMs;
 	}
 
-	bool RHI_Device::Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	bool RHI_Device::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
@@ -770,12 +753,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::Set_FillMode(Fill_Mode fillMode)
-	{
-		return true;
-	}
-
-	bool RHI_Device::Set_InputLayout(void* inputLayout)
+	bool RHI_Device::SetInputLayout(void* inputLayout)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
@@ -787,27 +765,22 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::Set_CullMode(Cull_Mode cullMode)
+	bool RHI_Device::SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_WARNING("Device context is uninitialized.");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		if (cullMode == Cull_Mode::Cull_None)
+		if (!rasterizerState)
 		{
-			_D3D11_Device::deviceContext->RSSetState(_D3D11_Device::rasterStateCullNone);
-		}
-		else if (cullMode == Cull_Mode::Cull_Front)
-		{
-			_D3D11_Device::deviceContext->RSSetState(_D3D11_Device::rasterStateCullFront);
-		}
-		else if (cullMode == Cull_Mode::Cull_Back)
-		{
-			_D3D11_Device::deviceContext->RSSetState(_D3D11_Device::rasterStateCullBack);
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
 		}
 
+		auto ptr = (ID3D11RasterizerState*)rasterizerState->GetBuffer();
+		_D3D11_Device::deviceContext->RSSetState(ptr);
 		return true;
 	}
 }

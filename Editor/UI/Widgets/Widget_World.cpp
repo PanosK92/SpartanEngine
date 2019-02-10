@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ===============================
 #include "Widget_World.h"
 #include "Widget_Properties.h"
 #include "../DragDrop.h"
-#include "../../ImGui/imgui_stdlib.h"
+#include "../../ImGui/Source/imgui_stdlib.h"
 #include "Input/Input.h"
 #include "Resource/ProgressReport.h"
 #include "World/Actor.h"
@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Renderable.h"
-//=========================================
+//==========================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -277,7 +277,7 @@ void Widget_World::SetSelectedActor(std::shared_ptr<Directus::Actor> actor, bool
 {
 	m_expandToShowActor = true;
 
-	// If the updated comes from this widget, let the engine know about it
+	// If the update comes from this widget, let the engine know about it
 	if (fromEditor)
 	{
 		_Widget_World::g_world->SetSelectedActor(actor);

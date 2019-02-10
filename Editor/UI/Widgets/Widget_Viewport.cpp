@@ -95,8 +95,8 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	);
 
 	// Update engine's viewport
-	Vector2 windowPos = EditorHelper::ToVector2(ImGui::GetWindowPos()) + Vector2(_Widget_Viewport::g_windowPadding);
-	_Widget_Viewport::g_renderer->SetViewport(RHI_Viewport(windowPos.x, windowPos.y, (float)width, (float)height));
+	_Widget_Viewport::g_renderer->viewport_editorOffset = EditorHelper::ToVector2(ImGui::GetWindowPos()) + Vector2(_Widget_Viewport::g_windowPadding);
+	_Widget_Viewport::g_renderer->SetViewport(RHI_Viewport(0.0f, 0.0f, (float)width, (float)height));
 
 	// Update engine's resolution
 	if (m_timeSinceLastResChange >= 0.250f) // Don't stress the GPU too much
@@ -107,7 +107,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	m_timeSinceLastResChange += deltaTime;
 
 	// If this widget was clicked, make the engine pick an actor
-	if (ImGui::IsItemClicked(0))
+	if (ImGui::IsMouseClicked(0))
 	{
 		_Widget_Viewport::g_world->PickActor();
 	}

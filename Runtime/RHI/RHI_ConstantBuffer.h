@@ -39,7 +39,7 @@ namespace Directus
 		bool Create(unsigned int size);
 		void* Map();
 		bool Unmap();
-		void* GetBuffer()		{ return m_buffer; }
+		void* GetBuffer() { return m_buffer; }
 
 	private:
 		std::shared_ptr<RHI_Device> m_rhiDevice;

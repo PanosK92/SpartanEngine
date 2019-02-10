@@ -31,8 +31,8 @@ namespace Directus
 	class ENGINE_CLASS RHI_Object
 	{
 	public:
-		RHI_Object() { m_ID = GENERATE_GUID; }
-		unsigned int RHI_GetID() const { return m_ID; }
+		RHI_Object()					{ m_ID = GENERATE_GUID; }
+		unsigned int RHI_GetID() const	{ return m_ID; }
 	private:
 		unsigned int m_ID = 0;
 	};

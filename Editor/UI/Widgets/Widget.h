@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========================
+//= INCLUDES =================================
 #include <string>
-#include "../../ImGui/imgui.h"
-#include "../../ImGui/imgui_internal.h"
-//=====================================
+#include "../../ImGui/Source/imgui.h"
+#include "../../ImGui/Source/imgui_internal.h"
+//============================================
 
 namespace Directus	{ class Context; }
 
