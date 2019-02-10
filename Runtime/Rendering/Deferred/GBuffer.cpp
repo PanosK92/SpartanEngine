@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "GBuffer.h"
 #include "../../RHI/RHI_Device.h"
-#include "../../RHI/RHI_Pipeline.h"
 #include "../../RHI/RHI_RenderTexture.h"
 #include "../../Logging/Log.h"
 //======================================
@@ -47,26 +46,11 @@ namespace Directus
 		m_renderTargets[GBuffer_Target_Material]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,		false);
 		m_renderTargets[GBuffer_Target_Velocity]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R16G16_FLOAT,			false);
 		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R32G32_FLOAT,			true, Texture_Format_D32_FLOAT);
-
-		for (const auto& renderTarget : m_renderTargets)
-		{
-			m_renderTargetViews.emplace_back(renderTarget.second->GetRenderTargetView());
-		}
 	}
 
 	GBuffer::~GBuffer()
 	{
 		m_renderTargets.clear();
-		m_renderTargetViews.clear();
-	}
-
-	void GBuffer::SetAsRenderTarget(const std::shared_ptr<RHI_Pipeline>& pipelineState)
-	{
-		bool clear = true;
-		pipelineState->SetRenderTarget(m_renderTargetViews, m_renderTargets[GBuffer_Target_Depth]->GetDepthStencilView(), clear);
-
-		// Grab the viewport from one of the render targets and set it
-		pipelineState->SetViewport(m_renderTargets[GBuffer_Target_Albedo]->GetViewport());
 	}
 
 	const shared_ptr<RHI_RenderTexture>& GBuffer::GetTexture(GBuffer_Texture_Type type)

@@ -21,46 +21,50 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
+#include "RHI_Object.h"
+#include "RHI_Definition.h"
 #include <memory>
-#include "TransformHandle.h"
-#include "../../Core/EngineDefs.h"
-//================================
+//=========================
 
 namespace Directus
 {
-	class World;
-	class Input;
-	class Camera;
-	class Context;
-	class Actor;
-	class RHI_IndexBuffer;
-	class RHI_VertexBuffer;
-
-	class ENGINE_CLASS Transform_Gizmo
+	class ENGINE_CLASS RHI_RasterizerState : public RHI_Object
 	{
 	public:
-		Transform_Gizmo(Context* context);
-		~Transform_Gizmo();
+		RHI_RasterizerState(
+			std::shared_ptr<RHI_Device> device,
+			Cull_Mode cullMode,
+			Fill_Mode fillMode,
+			bool depthClipEnabled,
+			bool clippingEnabled,
+			bool multiSampleEnabled, 
+			bool antialisedLineEnabled
+		);
+		~RHI_RasterizerState();
 
-		bool Update(const std::shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed);
-		unsigned int GetIndexCount();
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
-		const TransformHandle& GetHandle() const;
-		bool DrawXYZ() { return m_type == TransformHandle_Scale; }
+		Cull_Mode GetCullMode()			{ return m_cullMode; }
+		Fill_Mode GetFillMode()			{ return m_fillMode; }
+		bool GetDepthClipEnabled()		{ return m_depthClipEnabled; }
+		bool GetClippingEnabled()		{ return m_clippingEnabled; }
+		bool GetMultiSampleEnabled()	{ return m_multiSampleEnabled; }
+		bool GetAntialisedLineEnabled()	{ return m_antialisedLineEnabled; }
+		bool IsInitialized()			{ return m_initialized; }
+		void* GetBuffer()				{ return m_buffer; }
 
 	private:
-		bool m_isEditing;
+		// Properties
+		Cull_Mode m_cullMode;
+		Fill_Mode m_fillMode;
+		bool m_depthClipEnabled;
+		bool m_clippingEnabled;
+		bool m_multiSampleEnabled;
+		bool m_antialisedLineEnabled;
 
-		std::shared_ptr<Actor> m_selectedActor;
-		TransformHandle m_handle_position;
-		TransformHandle m_handle_rotation;
-		TransformHandle m_handle_scale;
-		TransformHandle_Type m_type;
-		TransformHandle_Space m_space;
-		Context* m_context;
-		Input* m_input;
-		World* m_world;
+		// Initialized
+		bool m_initialized = false;
+
+		// Rasterizer state view
+		void* m_buffer = nullptr;
 	};
 }

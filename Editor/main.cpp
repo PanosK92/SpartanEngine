@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =====================================
 #include "Window.h"
 #include "Editor.h"
-#include "ImGui/imgui_impl_win32.h"
+#include "ImGui/Implementation/imgui_impl_win32.h"
 #include "Core/Engine.h"
 #include "Rendering/Renderer.h"
 #include "Input/Input.h"
-//=================================
+//================================================
 
 //= NAMESPACES ==========
 using namespace std;

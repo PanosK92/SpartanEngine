@@ -133,8 +133,13 @@ namespace Directus
 			auto ptr = (ID3D11ShaderResourceView**)&m_shaderResourceView;
 			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView((ID3D11Texture2D*)m_renderTargetTexture, &shaderResourceViewDesc, ptr)))
 			{
+				SafeRelease((ID3D11Texture2D*)m_renderTargetTexture);
 				LOG_ERROR("CreateShaderResourceView() failed.");
 				return;
+			}
+			else
+			{
+				SafeRelease((ID3D11Texture2D*)m_renderTargetTexture);
 			}
 		}
 
@@ -142,8 +147,8 @@ namespace Directus
 		if (m_depthEnabled)
 		{
 			// DEPTH STENCIL VIEW
-			auto depthStencilBuffer = (ID3D11Texture2D**)&m_depthStencilBuffer;
-			auto depthStencilView	= (ID3D11DepthStencilView**)&m_depthStencilView;
+			auto depthStencilTexture	= (ID3D11Texture2D**)&m_depthStencilTexture;
+			auto depthStencilView		= (ID3D11DepthStencilView**)&m_depthStencilView;
 
 			// Depth-stencil buffer
 			D3D11_TEXTURE2D_DESC depthBufferDesc;
@@ -160,8 +165,8 @@ namespace Directus
 			depthBufferDesc.CPUAccessFlags		= 0;
 			depthBufferDesc.MiscFlags			= 0;
 
-			auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&depthBufferDesc, nullptr, depthStencilBuffer);
-			if (FAILED(result))
+			bool result = SUCCEEDED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&depthBufferDesc, nullptr, depthStencilTexture));
+			if (!result)
 			{
 				LOGF_ERROR("Failed to create depth stencil buffer, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
@@ -174,21 +179,24 @@ namespace Directus
 			depthStencilViewDesc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
 			depthStencilViewDesc.Texture2D.MipSlice = 0;
 
-			result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateDepthStencilView(*depthStencilBuffer, &depthStencilViewDesc, depthStencilView);
-			if (FAILED(result))
+			result = SUCCEEDED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateDepthStencilView(*depthStencilTexture, &depthStencilViewDesc, depthStencilView));
+			if (!result)
 			{
+				SafeRelease((ID3D11Texture2D*)m_depthStencilTexture);
 				LOGF_ERROR("Failed to create depth stencil view, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
+			}
+			else
+			{
+				SafeRelease((ID3D11Texture2D*)m_depthStencilTexture);
 			}
 		}
 	}
 
 	RHI_RenderTexture::~RHI_RenderTexture()
 	{
-		SafeRelease((ID3D11Texture2D*)m_renderTargetTexture);
 		for (unsigned int i = 0; i < m_renderTargetViews.size(); i++) { SafeRelease((ID3D11RenderTargetView*)m_renderTargetViews[i]); }
 		SafeRelease((ID3D11ShaderResourceView*)m_shaderResourceView);
-		SafeRelease((ID3D11Texture2D*)m_depthStencilBuffer);
 		SafeRelease((ID3D11DepthStencilView*)m_depthStencilView);
 	}
 

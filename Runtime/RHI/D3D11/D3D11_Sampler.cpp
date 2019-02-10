@@ -45,7 +45,7 @@ namespace Directus
 
 		if (!rhiDevice || !rhiDevice->GetDevice<ID3D11Device>())
 		{
-			LOG_ERROR("D3D11_Sampler::RHI_Sampler: Invalid device.");
+			LOG_ERROR("Invalid device.");
 			return;
 		}
 		
@@ -67,16 +67,12 @@ namespace Directus
 		// Create sampler state.
 		if (FAILED(rhiDevice->GetDevice<ID3D11Device>()->CreateSamplerState(&samplerDesc, (ID3D11SamplerState**)&m_buffer)))
 		{
-			LOG_ERROR("RHI_Sampler::RHI_Sampler: Failed to create sampler state");
+			LOG_ERROR("Failed to create sampler state");
 		}
 	}
 
 	RHI_Sampler::~RHI_Sampler()
 	{
-		if (m_buffer)
-		{
-			((ID3D11SamplerState*)m_buffer)->Release();
-			m_buffer = nullptr;
-		}
+		SafeRelease((ID3D11SamplerState*)m_buffer);
 	}
 }

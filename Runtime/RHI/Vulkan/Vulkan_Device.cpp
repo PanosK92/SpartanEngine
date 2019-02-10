@@ -119,7 +119,7 @@ namespace Directus
 
 	RHI_Device::RHI_Device(void* drawHandle)
 	{
-		m_format				= Texture_Format_R8G8B8A8_UNORM;
+		m_backBufferFormat				= Texture_Format_R8G8B8A8_UNORM;
 		m_depthEnabled			= true;
 		m_alphaBlendingEnabled	= false;
 		m_initialized			= false;
@@ -268,52 +268,52 @@ namespace Directus
 		
 	}
 
-	void RHI_Device::Set_BackBufferAsRenderTarget()
+	void RHI_Device::SetBackBufferAsRenderTarget()
 	{
 		
 	}
 
-	void RHI_Device::Set_VertexShader(void* buffer)
+	void RHI_Device::SetVertexShader(void* buffer)
 	{
 		
 	}
 
-	void RHI_Device::Set_PixelShader(void* buffer)
+	void RHI_Device::SetPixelShader(void* buffer)
 	{
 		
 	}
 
-	void RHI_Device::Set_ConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer)
+	void RHI_Device::SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer)
 	{
 		
 	}
 
-	void RHI_Device::Set_Samplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers)
+	void RHI_Device::SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers)
 	{
 		
 	}
 
-	void RHI_Device::Set_RenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
+	void RHI_Device::SetRenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
 	{
 		
 	}
 
-	void RHI_Device::Set_Textures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
+	void RHI_Device::SetTextures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
 	{
 		
 	}
 
-	bool RHI_Device::Set_Resolution(int width, int height)
+	bool RHI_Device::SetResolution(int width, int height)
 	{
 		return true;
 	}
 
-	void RHI_Device::Set_Viewport(const RHI_Viewport& viewport)
+	void RHI_Device::SetViewport(const RHI_Viewport& viewport)
 	{
 		
 	}
 
-	bool RHI_Device::Set_AlphaBlendingEnabled(bool enable)
+	bool RHI_Device::SetAlphaBlendingEnabled(bool enable)
 	{
 		return true;
 	}
@@ -353,22 +353,12 @@ namespace Directus
 		return 0.0f;
 	}
 
-	bool RHI_Device::Set_PrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	bool RHI_Device::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
 	{
 		return true;
 	}
 
-	bool RHI_Device::Set_FillMode(Fill_Mode fillMode)
-	{
-		return true;
-	}
-
-	bool RHI_Device::Set_InputLayout(void* inputLayout)
-	{
-		return true;
-	}
-
-	bool RHI_Device::Set_CullMode(Cull_Mode cullMode)
+	bool RHI_Device::SetInputLayout(void* inputLayout)
 	{
 		return true;
 	}

@@ -106,9 +106,7 @@ namespace Directus
 			}
 		}
 
-		m_isInspecting = m_isEditing || actor;
-
-		return m_isInspecting;
+		return m_selectedActor != nullptr;
 	}
 
 	unsigned int Transform_Gizmo::GetIndexCount()

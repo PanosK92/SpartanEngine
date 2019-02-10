@@ -72,7 +72,7 @@ namespace Directus
 		std::vector<void*> m_renderTargetViews;
 		void* m_renderTargetTexture = nullptr;
 		void* m_shaderResourceView	= nullptr;
-		void* m_depthStencilBuffer	= nullptr;
+		void* m_depthStencilTexture	= nullptr;
 		void* m_depthStencilView	= nullptr;
 	};
 }

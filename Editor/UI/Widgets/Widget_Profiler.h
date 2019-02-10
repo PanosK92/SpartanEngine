@@ -23,10 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "Widget.h"
-#include "..\..\ImGui\imgui.h"
-#include "Profiling\Profiler.h"
-#include "Math\MathHelper.h"
-#include "Core\Timer.h"
+#include "Profiling/Profiler.h"
+#include "Math/MathHelper.h"
+#include "Core/Timer.h"
 #include <vector>
 //=============================
 

@@ -19,10 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES =====================================
 #include "Editor.h"
-#include "ImGui/imgui_impl_win32.h"
-#include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/Implementation/imgui_impl_win32.h"
+#include "ImGui/Implementation/imgui_impl_dx11.h"
 #include "UI/Widgets/Widget_MenuBar.h"
 #include "UI/Widgets/Widget_Properties.h"
 #include "UI/Widgets/Widget_Console.h"
@@ -35,8 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/EditorHelper.h"
 #include "RHI/RHI_Device.h"
 #include "Rendering/Renderer.h"
-#include "ImGui/imgui_internal.h"
-//===========================================
+#include "ImGui/Source/imgui_internal.h"
+//================================================
 
 //= NAMESPACES ==========
 using namespace std;

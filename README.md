@@ -51,7 +51,7 @@ Xbox controller support         | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Higher quality codebase, allowing for future development.
 Font importing and rendering    | 100% | Ability to load any font file.
-Optimize & Debug				| 40% | Feature freeze, optimize and debug (once all tasks are done).
+Optimize & Debug				| 50% | Feature freeze, optimize and debug (once all tasks are done).
 
 [![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 

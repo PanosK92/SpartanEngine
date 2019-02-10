@@ -36,7 +36,7 @@ namespace Directus
 		~RHI_IndexBuffer();
 	
 		bool Create(const std::vector<unsigned int>& indices);
-		bool CreateDynamic(unsigned int indexCount);
+		bool CreateDynamic(unsigned int stride, unsigned int indexCount);
 		void* Map();
 		bool Unmap();
 		bool Bind();

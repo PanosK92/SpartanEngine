@@ -21,46 +21,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
+#include "RHI_Object.h"
+#include "RHI_Definition.h"
 #include <memory>
-#include "TransformHandle.h"
-#include "../../Core/EngineDefs.h"
-//================================
+//=========================
 
 namespace Directus
 {
-	class World;
-	class Input;
-	class Camera;
-	class Context;
-	class Actor;
-	class RHI_IndexBuffer;
-	class RHI_VertexBuffer;
-
-	class ENGINE_CLASS Transform_Gizmo
+	class ENGINE_CLASS RHI_BlendState : public RHI_Object
 	{
 	public:
-		Transform_Gizmo(Context* context);
-		~Transform_Gizmo();
+		RHI_BlendState(std::shared_ptr<RHI_Device> device, bool blendEnabled);
+		~RHI_BlendState();
 
-		bool Update(const std::shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed);
-		unsigned int GetIndexCount();
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
-		const TransformHandle& GetHandle() const;
-		bool DrawXYZ() { return m_type == TransformHandle_Scale; }
+		bool BlendEnabled() { return m_blendEnabled; }
+		void* GetBuffer()	{ return m_buffer; }
 
 	private:
-		bool m_isEditing;
-
-		std::shared_ptr<Actor> m_selectedActor;
-		TransformHandle m_handle_position;
-		TransformHandle m_handle_rotation;
-		TransformHandle m_handle_scale;
-		TransformHandle_Type m_type;
-		TransformHandle_Space m_space;
-		Context* m_context;
-		Input* m_input;
-		World* m_world;
+		bool m_blendEnabled = false;
+		bool m_initialized	= false;
+		void* m_buffer		= nullptr;
 	};
 }
