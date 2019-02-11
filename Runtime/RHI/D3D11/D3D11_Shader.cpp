@@ -39,27 +39,39 @@ namespace Directus
 {
 	namespace D3D11_Shader
 	{
-		inline bool CompileShader(const string& filePath, D3D_SHADER_MACRO* macros, const char* entryPoint, const char* shaderModel, ID3DBlob** shaderBlobOut)
+		inline bool CompileShader(const string& shader, D3D_SHADER_MACRO* macros, const char* entryPoint, const char* shaderModel, ID3DBlob** shaderBlobOut)
 		{
+			ID3DBlob* errorBlob		= nullptr;
+			ID3DBlob* shaderBlob	= nullptr;
+
 			unsigned compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
 			#ifdef DEBUG
 			compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
 			#endif
 
-			// Load and compile from file
-			ID3DBlob* errorBlob		= nullptr;
-			ID3DBlob* shaderBlob	= nullptr;
-			auto result = D3DCompileFromFile(
-				FileSystem::StringToWString(filePath).c_str(),
-				macros,
-				D3D_COMPILE_STANDARD_FILE_INCLUDE,
-				entryPoint,
-				shaderModel,
-				compileFlags,
-				0,
-				&shaderBlob,
-				&errorBlob
-			);
+			// Deduce weather we should compile from memory
+			bool isFile = FileSystem::IsSupportedShaderFile(shader);
+
+			// Compile from file
+			HRESULT result;
+			if (isFile)
+			{
+				result = D3DCompileFromFile(
+					FileSystem::StringToWString(shader).c_str(),
+					macros,
+					D3D_COMPILE_STANDARD_FILE_INCLUDE,
+					entryPoint,
+					shaderModel,
+					compileFlags,
+					0,
+					&shaderBlob,
+					&errorBlob
+				);
+			}
+			else // Compile from memory
+			{
+				result = D3DCompile(shader.c_str(), shader.size(), nullptr, nullptr, nullptr, entryPoint, shaderModel, 0, 0, &shaderBlob, &errorBlob);
+			}
 
 			// Log any compilation possible warnings and/or errors
 			if (errorBlob)
@@ -78,10 +90,10 @@ namespace Directus
 			// Log compilation failure
 			if (FAILED(result))
 			{
-				string shaderName = FileSystem::GetFileNameFromFilePath(filePath);
+				string shaderName = FileSystem::GetFileNameFromFilePath(shader);
 				if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 				{
-					LOGF_ERROR("Failed to find shader \"%s\" with path \"%s\".", shaderName.c_str(), filePath.c_str());
+					LOGF_ERROR("Failed to find shader \"%s\" with path \"%s\".", shaderName.c_str(), shader.c_str());
 				}
 				else
 				{
@@ -156,8 +168,8 @@ namespace Directus
 
 	RHI_Shader::RHI_Shader(shared_ptr<RHI_Device> rhiDevice)
 	{
-		m_rhiDevice			= rhiDevice;
-		m_inputLayout		= make_shared<RHI_InputLayout>(m_rhiDevice);
+		m_rhiDevice		= rhiDevice;
+		m_inputLayout	= make_shared<RHI_InputLayout>(m_rhiDevice);
 	}
 
 	RHI_Shader::~RHI_Shader()
@@ -168,7 +180,10 @@ namespace Directus
 
 	bool RHI_Shader::API_CompileVertex(const string& filePath, RHI_Input_Layout inputLayout)
 	{
-		m_filePath = filePath;
+		if (FileSystem::IsSupportedShaderFile(filePath))
+		{
+			m_filePath = filePath;
+		}
 
 		vector<D3D_SHADER_MACRO> vsMacros = D3D11_Shader::GetD3DMacros(m_macros);
 		vsMacros.push_back(D3D_SHADER_MACRO{ "COMPILE_VS", "1" });
@@ -207,7 +222,10 @@ namespace Directus
 
 	bool RHI_Shader::API_CompilePixel(const string& filePath)
 	{
-		m_filePath = filePath;
+		if (FileSystem::IsSupportedShaderFile(filePath))
+		{
+			m_filePath = filePath;
+		}
 
 		vector<D3D_SHADER_MACRO> psMacros = D3D11_Shader::GetD3DMacros(m_macros);
 		psMacros.push_back(D3D_SHADER_MACRO{ "COMPILE_VS", "0" });

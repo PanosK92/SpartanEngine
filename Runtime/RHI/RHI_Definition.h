@@ -78,6 +78,7 @@ namespace Directus
 		Input_Position,
 		Input_PositionColor,
 		Input_PositionTexture,
+		Input_Position2DTextureColor,
 		Input_PositionTextureNormalTangent,
 		Input_NotAssigned
 	};

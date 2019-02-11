@@ -106,6 +106,39 @@ namespace Directus
 			layout->emplace_back(texCoordDesc);
 		}
 
+		inline void CreatePos2DTexColorDesc(ID3D10Blob* VSBlob, vector<any>* layout)
+		{
+			D3D11_INPUT_ELEMENT_DESC positionDesc;
+			positionDesc.SemanticName			= "POSITION";
+			positionDesc.SemanticIndex			= 0;
+			positionDesc.Format					= DXGI_FORMAT_R32G32_FLOAT;
+			positionDesc.InputSlot				= 0;
+			positionDesc.AlignedByteOffset		= 0;
+			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			positionDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(positionDesc);
+
+			D3D11_INPUT_ELEMENT_DESC texCoordDesc;
+			texCoordDesc.SemanticName			= "TEXCOORD";
+			texCoordDesc.SemanticIndex			= 0;
+			texCoordDesc.Format					= DXGI_FORMAT_R32G32_FLOAT;
+			texCoordDesc.InputSlot				= 0;
+			texCoordDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
+			texCoordDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			texCoordDesc.InstanceDataStepRate	= 0;
+			layout->emplace_back(texCoordDesc);
+
+			D3D11_INPUT_ELEMENT_DESC colorDesc;
+			colorDesc.SemanticName				= "COLOR";
+			colorDesc.SemanticIndex				= 0;
+			colorDesc.Format					= DXGI_FORMAT_R8G8B8A8_UNORM;
+			colorDesc.InputSlot					= 0;
+			colorDesc.AlignedByteOffset			= D3D11_APPEND_ALIGNED_ELEMENT;
+			colorDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
+			colorDesc.InstanceDataStepRate		= 0;
+			layout->emplace_back(colorDesc);
+		}
+
 		inline void CreatePosNTDesc(ID3D10Blob* VSBlob, vector<any>* layout)
 		{
 			D3D11_INPUT_ELEMENT_DESC positionDesc;
@@ -185,6 +218,11 @@ namespace Directus
 		if (m_inputLayout == Input_PositionTexture)
 		{
 			D3D11_InputLayout::CreatePosTexDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
+		}
+
+		if (m_inputLayout == Input_Position2DTextureColor)
+		{
+			D3D11_InputLayout::CreatePos2DTexColorDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
 		}
 
 		if (m_inputLayout == Input_PositionTextureNormalTangent)

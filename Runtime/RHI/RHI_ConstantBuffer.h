@@ -33,16 +33,15 @@ namespace Directus
 	class ENGINE_CLASS RHI_ConstantBuffer : public RHI_Object
 	{
 	public:
-		RHI_ConstantBuffer(std::shared_ptr<RHI_Device> rhiDevice);
+		RHI_ConstantBuffer(std::shared_ptr<RHI_Device> rhiDevice, unsigned int size);
 		~RHI_ConstantBuffer();
 
-		bool Create(unsigned int size);
 		void* Map();
 		bool Unmap();
 		void* GetBuffer() { return m_buffer; }
 
 	private:
 		std::shared_ptr<RHI_Device> m_rhiDevice;
-		void* m_buffer;
+		void* m_buffer = nullptr;
 	};
 }

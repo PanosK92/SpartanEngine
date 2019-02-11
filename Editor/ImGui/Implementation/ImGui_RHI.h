@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus { class Context; }
 struct ImDrawData;
 
-inline bool ImGui_RHI_Init(Directus::Context* context);
-inline void ImGui_RHI_Shutdown();
-inline void ImGui_RHI_RenderDrawData(ImDrawData* draw_data);
+bool ImGui_RHI_Initialize(Directus::Context* context);
+void ImGui_RHI_NewFrame();
+void ImGui_RHI_Shutdown();
+void ImGui_RHI_RenderDrawData(ImDrawData* draw_data);

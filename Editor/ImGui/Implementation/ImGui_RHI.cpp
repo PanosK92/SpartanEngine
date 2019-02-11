@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_DepthStencilState.h"
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_BlendState.h"
+#include "RHI/RHI_Shader.h"
 //====================================
 
 //= NAMESPACES ==========
@@ -55,28 +56,32 @@ shared_ptr<RHI_VertexBuffer>		g_vertexBuffer;
 shared_ptr<RHI_IndexBuffer>			g_indexBuffer;
 shared_ptr<RHI_BlendState>			g_blendState;
 shared_ptr<RHI_RasterizerState>		g_rasterizerState;
-shared_ptr<RHI_DepthStencilState>	g_depthStencilState;;
+shared_ptr<RHI_DepthStencilState>	g_depthStencilState;
+shared_ptr<RHI_Shader>				g_shader;
 
 struct VertexConstantBuffer { Matrix mvp; };
 static int	g_vertexBufferSize	= 0;
 static int	g_indexBufferSize	= 0;
 
-bool ImGui_RHI_Init(Context* context)
+bool ImGui_RHI_Initialize(Context* context)
 {
+	g_context = context;
 	g_device = context->GetSubsystem<Renderer>()->GetRHIDevice();
 
-	// Setup back-end capabilities flags
-	ImGuiIO& io = ImGui::GetIO();
-	io.BackendFlags			|= ImGuiBackendFlags_RendererHasViewports;
-	io.BackendRendererName	= "RHI";
-
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	if (!g_device->IsInitialized())
 	{
-		ImGui_RHI_InitPlatformInterface();
+		LOG_ERROR("Uninitialized RHI device.");
+		return false;
 	}
 
+	// Font atlas texture
+	g_fontTexture = make_shared<RHI_Texture>(g_context);
+
+	// Font atlas sampler
+	g_fontSampler = make_shared<RHI_Sampler>(g_device, Texture_Filter_Bilinear, Texture_Address_Wrap, Comparison_Always);
+
 	// Constant buffer
-	g_constantBuffer = make_shared<RHI_ConstantBuffer>(g_device);
+	g_constantBuffer = make_shared<RHI_ConstantBuffer>(g_device, sizeof(VertexConstantBuffer));
 
 	// Vertex buffer
 	g_vertexBuffer = make_shared<RHI_VertexBuffer>(g_device);
@@ -89,119 +94,111 @@ bool ImGui_RHI_Init(Context* context)
 
 	// Rasterizer state
 	g_rasterizerState = make_shared<RHI_RasterizerState>
-	(
-		g_device,
-		Cull_Back,
-		Fill_Solid,
-		true,	// depth clip
-		true,	// scissor
-		false,	// multi-sample
-		false	// anti-aliased lines
-	);
+		(
+			g_device,
+			Cull_Back,
+			Fill_Solid,
+			true,	// depth clip
+			true,	// scissor
+			false,	// multi-sample
+			false	// anti-aliased lines
+			);
 
 	// Blend state
 	g_blendState = make_shared<RHI_BlendState>
-	(	
-		g_device,
-		true,
-		Blend_Src_Alpha,		// source blend
-		Blend_Inv_Src_Alpha,	// dest blend
-		Blend_Operation_Add,	// blend op
-		Blend_Inv_Src_Alpha,	// source blend alpha
-		Blend_Zero,				// dest blend alpha
-		Blend_Operation_Add		// dest op alpha
-	);
+		(
+			g_device,
+			true,
+			Blend_Src_Alpha,		// source blend
+			Blend_Inv_Src_Alpha,	// dest blend
+			Blend_Operation_Add,	// blend op
+			Blend_Inv_Src_Alpha,	// source blend alpha
+			Blend_Zero,				// dest blend alpha
+			Blend_Operation_Add		// dest op alpha
+			);
+
+	// Shader
+	static string shader =
+		"cbuffer vertexBuffer : register(b0)									\
+		{																		\
+		float4x4 ProjectionMatrix;												\
+		};																		\
+																				\
+		sampler sampler0;														\
+		Texture2D texture0;														\
+																				\
+		struct VS_INPUT															\
+		{																		\
+		float2 pos : POSITION;													\
+		float4 col : COLOR0;													\
+		float2 uv  : TEXCOORD0;													\
+		};																		\
+																				\
+		struct PS_INPUT															\
+		{																		\
+		float4 pos : SV_POSITION;												\
+		float4 col : COLOR0;													\
+		float2 uv  : TEXCOORD0;													\
+		};																		\
+																				\
+		PS_INPUT mainVS(VS_INPUT input)											\
+		{																		\
+		PS_INPUT output;														\
+		output.pos = mul( ProjectionMatrix, float4(input.pos.xy, 0.f, 1.f));	\
+		output.col = input.col;													\
+		output.uv  = input.uv;													\
+		return output;															\
+		}																		\
+																				\
+		float4 mainPS(PS_INPUT input) : SV_Target								\
+		{																		\
+		float4 out_col = input.col * texture0.Sample(sampler0, input.uv);		\
+		return out_col;															\
+		}";
+	g_shader = make_shared<RHI_Shader>(g_device);
+	g_shader->CompileVertexPixel(shader, Input_Position2DTextureColor);
+
+	return true;
+}
+
+void ImGui_RHI_NewFrame()
+{
+	ImGuiIO& io = ImGui::GetIO();
+
+	if (io.Fonts->TexID)
+		return;
+
+	// Setup back-end capabilities flags
+	io.BackendFlags			|= ImGuiBackendFlags_RendererHasViewports;
+	io.BackendRendererName	= "RHI";
+
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		ImGui_RHI_InitPlatformInterface();
+	}
 
 	// Font atlas
 	{
-		ImGuiIO& io = ImGui::GetIO();
-		vector<byte> pixels;
-		unsigned int width, height;
-		io.Fonts->GetTexDataAsRGBA32((unsigned char**)&pixels[0], (int*)&width, (int*)&height);
+		unsigned char* pixels;
+		int width, height, bpp;
+		io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bpp);
+
+		// Copy pixel data
+		unsigned int size = width * height * bpp;
+		vector<byte> data(size);
+		data.reserve(size);
+		memcpy(&data[0], (byte*)pixels, size);
 
 		// Upload texture to graphics system
-		g_fontTexture = make_shared<RHI_Texture>(g_context);
-		g_fontTexture->ShaderResource_Create2D(width, height, 4, Format_R8G8B8A8_UNORM, pixels, false);
-
-		// Store our identifier
-		io.Fonts->TexID = (ImTextureID)g_fontTexture->GetShaderResource();
-
-		// Create texture sampler
-		g_fontSampler = make_shared<RHI_Sampler>(g_device, Texture_Filter_Bilinear, Texture_Address_Wrap, Comparison_Always);
+		if (g_fontTexture->ShaderResource_Create2D(width, height, 4, Format_R8G8B8A8_UNORM, data, false))
+		{
+			io.Fonts->TexID = (ImTextureID)g_fontTexture->GetShaderResource();
+		}
+		else
+		{
+			LOG_ERROR("Failed to build font atlas");
+		}
 	}
-
-	//// Create the vertex shader
-	//{
-	//	static const char* vertexShader =
-	//		"cbuffer vertexBuffer : register(b0) \
-	 //           {\
-	 //           float4x4 ProjectionMatrix; \
-	 //           };\
-	 //           struct VS_INPUT\
-	 //           {\
-	 //           float2 pos : POSITION;\
-	 //           float4 col : COLOR0;\
-	 //           float2 uv  : TEXCOORD0;\
-	 //           };\
-	 //           \
-	 //           struct PS_INPUT\
-	 //           {\
-	 //           float4 pos : SV_POSITION;\
-	 //           float4 col : COLOR0;\
-	 //           float2 uv  : TEXCOORD0;\
-	 //           };\
-	 //           \
-	 //           PS_INPUT main(VS_INPUT input)\
-	 //           {\
-	 //           PS_INPUT output;\
-	 //           output.pos = mul( ProjectionMatrix, float4(input.pos.xy, 0.f, 1.f));\
-	 //           output.col = input.col;\
-	 //           output.uv  = input.uv;\
-	 //           return output;\
-	 //           }";
-	
-	//	D3DCompile(vertexShader, strlen(vertexShader), NULL, NULL, NULL, "main", "vs_4_0", 0, 0, &g_pVertexShaderBlob, NULL);
-	//	if (g_pVertexShaderBlob == NULL) // NB: Pass ID3D10Blob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
-	//		return false;
-	//	if (g_pd3dDevice->CreateVertexShader((DWORD*)g_pVertexShaderBlob->GetBufferPointer(), g_pVertexShaderBlob->GetBufferSize(), NULL, &g_pVertexShader) != S_OK)
-	//		return false;
-
-	//	// Create the input layout
-	//	D3D11_INPUT_ELEMENT_DESC local_layout[] =
-	//	{
-	//		{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (size_t)(&((ImDrawVert*)0)->pos), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	//		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, (size_t)(&((ImDrawVert*)0)->uv),  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	//		{ "COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, (size_t)(&((ImDrawVert*)0)->col), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	//	};
-	//	if (g_pd3dDevice->CreateInputLayout(local_layout, 3, g_pVertexShaderBlob->GetBufferPointer(), g_pVertexShaderBlob->GetBufferSize(), &g_pInputLayout) != S_OK)
-	//		return false;
-
-	//// Create the pixel shader
-	//{
-	//	static const char* pixelShader =
-	//		"struct PS_INPUT\
-	//           {\
-	//           float4 pos : SV_POSITION;\
-	//           float4 col : COLOR0;\
-	//           float2 uv  : TEXCOORD0;\
-	//           };\
-	//           sampler sampler0;\
-	//           Texture2D texture0;\
-	//           \
-	//           float4 main(PS_INPUT input) : SV_Target\
-	//           {\
-	//           float4 out_col = input.col * texture0.Sample(sampler0, input.uv); \
-	//           return out_col; \
-	//           }";
-
-	//	D3DCompile(pixelShader, strlen(pixelShader), NULL, NULL, NULL, "main", "ps_4_0", 0, 0, &g_pPixelShaderBlob, NULL);
-	//	if (g_pPixelShaderBlob == NULL)  // NB: Pass ID3D10Blob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
-	//		return false;
-	//	if (g_pd3dDevice->CreatePixelShader((DWORD*)g_pPixelShaderBlob->GetBufferPointer(), g_pPixelShaderBlob->GetBufferSize(), NULL, &g_pPixelShader) != S_OK)
-	//		return false;
-	//}
-
-	return true;
 }
 
 void ImGui_RHI_Shutdown()
@@ -262,20 +259,24 @@ void ImGui_RHI_RenderDrawData(ImDrawData* draw_data)
 	}
 
 	// Setup render state
-	//ctx->VSSetShader(g_pVertexShader, NULL, 0);
-	//ctx->PSSetShader(g_pPixelShader, NULL, 0);
-	//ctx->IASetInputLayout(g_pInputLayout);
-	g_device->SetVertexBuffer(g_vertexBuffer);
-	g_device->SetIndexBuffer(g_indexBuffer);
+	RHI_Viewport viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 	g_device->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-	g_device->SetConstantBuffers(0, 1, g_constantBuffer->GetBuffer(), Buffer_VertexShader);
-	g_device->SetSamplers(0, 1, g_fontSampler->GetBuffer());
 	g_device->SetBlendState(g_blendState);
 	g_device->SetDepthStencilState(g_depthStencilState);
 	g_device->SetRasterizerState(g_rasterizerState);
-	RHI_Viewport viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 	g_device->SetViewport(viewport);
-
+	g_device->SetVertexShader(g_shader);
+	g_device->SetPixelShader(g_shader);
+	g_device->SetVertexBuffer(g_vertexBuffer);
+	g_device->SetIndexBuffer(g_indexBuffer);
+	auto mustFix = g_constantBuffer->GetBuffer();
+	g_device->SetConstantBuffers(0, 1, (void*)&mustFix, Buffer_VertexShader);
+	auto mustFix2 = g_fontSampler->GetBuffer();
+	g_device->SetSamplers(0, 1, (void*)&mustFix2);
+	vector<void*> textures { g_fontTexture->GetShaderResource() };
+	auto mustFix3 = &textures[0];
+	g_device->SetTextures(0, 1, (void*)mustFix3);
+	
 	// Render command lists
 	int vtx_offset = 0;
 	int idx_offset = 0;
@@ -293,7 +294,7 @@ void ImGui_RHI_RenderDrawData(ImDrawData* draw_data)
 			}
 			else
 			{
-				// Apply scissor/clipping rectangle
+				// Apply scissor rectangle
 				g_device->SetScissorRectangle((int)(pcmd->ClipRect.x - pos.x), (int)(pcmd->ClipRect.y - pos.y), (int)(pcmd->ClipRect.z - pos.x), (int)(pcmd->ClipRect.w - pos.y));
 
 				// Bind texture, Draw
