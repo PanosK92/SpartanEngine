@@ -667,7 +667,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetClippingRectangle(int left, int top, int right, int bottom)
+	bool RHI_Device::SetScissorRectangle(int left, int top, int right, int bottom)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{

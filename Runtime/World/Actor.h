@@ -33,6 +33,7 @@ namespace Directus
 {
 	class Transform;
 	class Renderable;
+	#define ValidateComponentType(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
 
 	class ENGINE_CLASS Actor : public std::enable_shared_from_this<Actor>
 	{
@@ -71,6 +72,7 @@ namespace Directus
 		template <class T>
 		std::shared_ptr<T> AddComponent()
 		{
+			ValidateComponentType(T);
 			ComponentType type = IComponent::Type_To_Enum<T>();
 
 			// Return component in case it already exists while ignoring Script components (they can exist multiple times)
@@ -110,7 +112,9 @@ namespace Directus
 		template <class T>
 		std::shared_ptr<T> GetComponent()
 		{
+			ValidateComponentType(T);
 			ComponentType type = IComponent::Type_To_Enum<T>();
+
 			for (const auto& component : m_components)
 			{
 				if (component->GetType() == type)
@@ -124,9 +128,10 @@ namespace Directus
 		template <class T>
 		std::vector<std::shared_ptr<T>> GetComponents()
 		{
-			std::vector<std::shared_ptr<T>> components;
-
+			ValidateComponentType(T);
 			ComponentType type = IComponent::Type_To_Enum<T>();
+
+			std::vector<std::shared_ptr<T>> components;
 			for (const auto& component : m_components)
 			{
 				if (component->GetType() != type)
@@ -154,6 +159,7 @@ namespace Directus
 		template <class T>
 		bool HasComponent() 
 		{ 
+			ValidateComponentType(T);
 			return HasComponent(IComponent::Type_To_Enum<T>()); 
 		}
 
@@ -161,7 +167,9 @@ namespace Directus
 		template <class T>
 		void RemoveComponent()
 		{
+			ValidateComponentType(T);
 			ComponentType type = IComponent::Type_To_Enum<T>();
+
 			for (auto it = m_components.begin(); it != m_components.end();)
 			{
 				auto component = *it;

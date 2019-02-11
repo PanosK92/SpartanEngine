@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <vector>
 #include <unordered_map>
-#include "../Core/SubSystem.h"
+#include "../Core/ISubsystem.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Pipeline.h"
 #include "../Math/Matrix.h"
@@ -100,7 +100,7 @@ namespace Directus
 		Renderable_Camera
 	};
 
-	class ENGINE_CLASS Renderer : public Subsystem
+	class ENGINE_CLASS Renderer : public ISubsystem
 	{
 	public:
 		Renderer(Context* context);

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Import/ModelImporter.h"
 #include "Import/ImageImporter.h"
 #include "Import/FontImporter.h"
-#include "../Core/SubSystem.h"
+#include "../Core/ISubsystem.h"
 #include "../Audio/AudioClip.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Model.h"
@@ -36,7 +36,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ENGINE_CLASS ResourceCache : public Subsystem
+	#define ValidateResourceType(T) static_assert(std::is_base_of<IResource, T>::value, "Provided type does not implement IResource")
+
+	class ENGINE_CLASS ResourceCache : public ISubsystem
 	{
 	public:
 		ResourceCache(Context* context);
@@ -50,7 +52,10 @@ namespace Directus
 		// NAME
 		std::shared_ptr<IResource>& GetByName(const std::string& name, Resource_Type type);
 		template <class T> std::shared_ptr<T> GetByName(const std::string& name) 
-		{ return std::dynamic_pointer_cast<T>(GetByName(name, IResource::DeduceResourceType<T>())); }
+		{ 
+			ValidateResourceType(T);
+			return std::dynamic_pointer_cast<T>(GetByName(name, IResource::DeduceResourceType<T>())); 
+		}
 
 		// TYPE
 		std::vector<std::shared_ptr<IResource>> GetByType(Resource_Type type = Resource_Unknown);
@@ -58,6 +63,8 @@ namespace Directus
 		template <class T>
 		std::shared_ptr<IResource>& GetByPath(const std::string& path)
 		{
+			ValidateResourceType(T);
+
 			for (auto& resource : m_resourceGroups[IResource::DeduceResourceType<T>()])
 			{
 				if (path == resource->GetResourceFilePath())
@@ -73,6 +80,8 @@ namespace Directus
 		template <class T>
 		void Cache(std::shared_ptr<T>& resource)
 		{
+			ValidateResourceType(T);
+
 			if (!resource)
 				return;
 
@@ -93,6 +102,8 @@ namespace Directus
 		template <class T>
 		std::shared_ptr<T> Load(const std::string& filePath)
 		{
+			ValidateResourceType(T);
+
 			if (!FileSystem::FileExists(filePath))
 			{
 				LOGF_ERROR("Path \"%s\" is invalid.", filePath.c_str());

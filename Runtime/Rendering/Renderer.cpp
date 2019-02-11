@@ -54,7 +54,7 @@ namespace Directus
 	static ResourceCache* g_resourceCache	= nullptr;
 	bool Renderer::m_isRendering			= false;
 
-	Renderer::Renderer(Context* context) : Subsystem(context)
+	Renderer::Renderer(Context* context) : ISubsystem(context)
 	{	
 		m_nearPlane		= 0.0f;
 		m_farPlane		= 0.0f;

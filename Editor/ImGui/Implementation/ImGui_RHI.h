@@ -30,5 +30,4 @@ struct ImDrawData;
 
 inline bool ImGui_RHI_Init(Directus::Context* context);
 inline void ImGui_RHI_Shutdown();
-inline void ImGui_RHI_NewFrame();
 inline void ImGui_RHI_RenderDrawData(ImDrawData* draw_data);

@@ -297,7 +297,7 @@ namespace Directus
 				m_rasterizerState->GetCullMode()				== rasterizerState->GetCullMode()			&&
 				m_rasterizerState->GetFillMode()				== rasterizerState->GetFillMode()			&&
 				m_rasterizerState->GetDepthClipEnabled()		== rasterizerState->GetDepthClipEnabled()	&&
-				m_rasterizerState->GetClippingEnabled()			== rasterizerState->GetClippingEnabled()	&&
+				m_rasterizerState->GetScissorEnabled()			== rasterizerState->GetScissorEnabled()	&&
 				m_rasterizerState->GetMultiSampleEnabled()		== rasterizerState->GetMultiSampleEnabled() &&
 				m_rasterizerState->GetAntialisedLineEnabled()	== rasterizerState->GetAntialisedLineEnabled();
 

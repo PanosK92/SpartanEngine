@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =========================
 #include "ImGui_RHI.h"
 #include "../Source/imgui.h"
 #include <vector>
@@ -30,7 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_VertexBuffer.h"
 #include "RHI/RHI_IndexBuffer.h"
 #include "RHI/RHI_ConstantBuffer.h"
-//=================================
+#include "RHI/RHI_DepthStencilState.h"
+#include "RHI/RHI_RasterizerState.h"
+#include "RHI/RHI_BlendState.h"
+//====================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -41,20 +44,22 @@ using namespace Math;
 // Forward Declarations
 static void ImGui_RHI_InitPlatformInterface();
 static void ImGui_RHI_ShutdownPlatformInterface();
-static void ImGui_RHI_CreateFontsTexture();
 
 // RHI Data
-Context* g_context;
-shared_ptr<RHI_Device> g_device;
-shared_ptr<RHI_Texture> g_fontTexture;
-shared_ptr<RHI_Sampler> g_fontSampler;
-shared_ptr<RHI_ConstantBuffer> g_constantBuffer;
-shared_ptr<RHI_VertexBuffer> g_vertexBuffer;
-shared_ptr<RHI_IndexBuffer> g_indexBuffer;
+Context*							g_context;
+shared_ptr<RHI_Device>				g_device;
+shared_ptr<RHI_Texture>				g_fontTexture;
+shared_ptr<RHI_Sampler>				g_fontSampler;
+shared_ptr<RHI_ConstantBuffer>		g_constantBuffer;
+shared_ptr<RHI_VertexBuffer>		g_vertexBuffer;
+shared_ptr<RHI_IndexBuffer>			g_indexBuffer;
+shared_ptr<RHI_BlendState>			g_blendState;
+shared_ptr<RHI_RasterizerState>		g_rasterizerState;
+shared_ptr<RHI_DepthStencilState>	g_depthStencilState;;
 
 struct VertexConstantBuffer { Matrix mvp; };
-static int	g_vertexBufferSize = 5000;
-static int	g_indexBufferSize = 10000;
+static int	g_vertexBufferSize	= 0;
+static int	g_indexBufferSize	= 0;
 
 bool ImGui_RHI_Init(Context* context)
 {
@@ -70,10 +75,42 @@ bool ImGui_RHI_Init(Context* context)
 		ImGui_RHI_InitPlatformInterface();
 	}
 
-	// Buffers
-	g_constantBuffer	= make_shared<RHI_ConstantBuffer>(g_device);
-	g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_device);
-	g_indexBuffer		= make_shared<RHI_IndexBuffer>(g_device);
+	// Constant buffer
+	g_constantBuffer = make_shared<RHI_ConstantBuffer>(g_device);
+
+	// Vertex buffer
+	g_vertexBuffer = make_shared<RHI_VertexBuffer>(g_device);
+
+	// Index buffer
+	g_indexBuffer = make_shared<RHI_IndexBuffer>(g_device, sizeof(ImDrawIdx) == 2 ? Format_R16_UINT : Format_R32_UINT);
+
+	// Create depth-stencil State
+	g_depthStencilState = make_shared<RHI_DepthStencilState>(g_device, false);
+
+	// Rasterizer state
+	g_rasterizerState = make_shared<RHI_RasterizerState>
+	(
+		g_device,
+		Cull_Back,
+		Fill_Solid,
+		true,	// depth clip
+		true,	// scissor
+		false,	// multi-sample
+		false	// anti-aliased lines
+	);
+
+	// Blend state
+	g_blendState = make_shared<RHI_BlendState>
+	(	
+		g_device,
+		true,
+		Blend_Src_Alpha,		// source blend
+		Blend_Inv_Src_Alpha,	// dest blend
+		Blend_Operation_Add,	// blend op
+		Blend_Inv_Src_Alpha,	// source blend alpha
+		Blend_Zero,				// dest blend alpha
+		Blend_Operation_Add		// dest op alpha
+	);
 
 	// Font atlas
 	{
@@ -97,32 +134,32 @@ bool ImGui_RHI_Init(Context* context)
 	//{
 	//	static const char* vertexShader =
 	//		"cbuffer vertexBuffer : register(b0) \
- //           {\
- //           float4x4 ProjectionMatrix; \
- //           };\
- //           struct VS_INPUT\
- //           {\
- //           float2 pos : POSITION;\
- //           float4 col : COLOR0;\
- //           float2 uv  : TEXCOORD0;\
- //           };\
- //           \
- //           struct PS_INPUT\
- //           {\
- //           float4 pos : SV_POSITION;\
- //           float4 col : COLOR0;\
- //           float2 uv  : TEXCOORD0;\
- //           };\
- //           \
- //           PS_INPUT main(VS_INPUT input)\
- //           {\
- //           PS_INPUT output;\
- //           output.pos = mul( ProjectionMatrix, float4(input.pos.xy, 0.f, 1.f));\
- //           output.col = input.col;\
- //           output.uv  = input.uv;\
- //           return output;\
- //           }";
-
+	 //           {\
+	 //           float4x4 ProjectionMatrix; \
+	 //           };\
+	 //           struct VS_INPUT\
+	 //           {\
+	 //           float2 pos : POSITION;\
+	 //           float4 col : COLOR0;\
+	 //           float2 uv  : TEXCOORD0;\
+	 //           };\
+	 //           \
+	 //           struct PS_INPUT\
+	 //           {\
+	 //           float4 pos : SV_POSITION;\
+	 //           float4 col : COLOR0;\
+	 //           float2 uv  : TEXCOORD0;\
+	 //           };\
+	 //           \
+	 //           PS_INPUT main(VS_INPUT input)\
+	 //           {\
+	 //           PS_INPUT output;\
+	 //           output.pos = mul( ProjectionMatrix, float4(input.pos.xy, 0.f, 1.f));\
+	 //           output.col = input.col;\
+	 //           output.uv  = input.uv;\
+	 //           return output;\
+	 //           }";
+	
 	//	D3DCompile(vertexShader, strlen(vertexShader), NULL, NULL, NULL, "main", "vs_4_0", 0, 0, &g_pVertexShaderBlob, NULL);
 	//	if (g_pVertexShaderBlob == NULL) // NB: Pass ID3D10Blob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
 	//		return false;
@@ -139,35 +176,23 @@ bool ImGui_RHI_Init(Context* context)
 	//	if (g_pd3dDevice->CreateInputLayout(local_layout, 3, g_pVertexShaderBlob->GetBufferPointer(), g_pVertexShaderBlob->GetBufferSize(), &g_pInputLayout) != S_OK)
 	//		return false;
 
-	//	// Create the constant buffer
-	//	{
-	//		D3D11_BUFFER_DESC desc;
-	//		desc.ByteWidth = sizeof(VERTEX_CONSTANT_BUFFER);
-	//		desc.Usage = D3D11_USAGE_DYNAMIC;
-	//		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	//		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	//		desc.MiscFlags = 0;
-	//		g_pd3dDevice->CreateBuffer(&desc, NULL, &g_pVertexConstantBuffer);
-	//	}
-	//}
-
 	//// Create the pixel shader
 	//{
 	//	static const char* pixelShader =
 	//		"struct PS_INPUT\
- //           {\
- //           float4 pos : SV_POSITION;\
- //           float4 col : COLOR0;\
- //           float2 uv  : TEXCOORD0;\
- //           };\
- //           sampler sampler0;\
- //           Texture2D texture0;\
- //           \
- //           float4 main(PS_INPUT input) : SV_Target\
- //           {\
- //           float4 out_col = input.col * texture0.Sample(sampler0, input.uv); \
- //           return out_col; \
- //           }";
+	//           {\
+	//           float4 pos : SV_POSITION;\
+	//           float4 col : COLOR0;\
+	//           float2 uv  : TEXCOORD0;\
+	//           };\
+	//           sampler sampler0;\
+	//           Texture2D texture0;\
+	//           \
+	//           float4 main(PS_INPUT input) : SV_Target\
+	//           {\
+	//           float4 out_col = input.col * texture0.Sample(sampler0, input.uv); \
+	//           return out_col; \
+	//           }";
 
 	//	D3DCompile(pixelShader, strlen(pixelShader), NULL, NULL, NULL, "main", "ps_4_0", 0, 0, &g_pPixelShaderBlob, NULL);
 	//	if (g_pPixelShaderBlob == NULL)  // NB: Pass ID3D10Blob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
@@ -176,56 +201,12 @@ bool ImGui_RHI_Init(Context* context)
 	//		return false;
 	//}
 
-	//// Create the blending setup
-	//{
-	//	D3D11_BLEND_DESC desc;
-	//	ZeroMemory(&desc, sizeof(desc));
-	//	desc.AlphaToCoverageEnable = false;
-	//	desc.RenderTarget[0].BlendEnable = true;
-	//	desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-	//	desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-	//	desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-	//	desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-	//	desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-	//	desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-	//	desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-	//	g_pd3dDevice->CreateBlendState(&desc, &g_pBlendState);
-	//}
-
-	//// Create the rasterizer state
-	//{
-	//	D3D11_RASTERIZER_DESC desc;
-	//	ZeroMemory(&desc, sizeof(desc));
-	//	desc.FillMode = D3D11_FILL_SOLID;
-	//	desc.CullMode = D3D11_CULL_NONE;
-	//	desc.ScissorEnable = true;
-	//	desc.DepthClipEnable = true;
-	//	g_pd3dDevice->CreateRasterizerState(&desc, &g_pRasterizerState);
-	//}
-
-	//// Create depth-stencil State
-	//{
-	//	D3D11_DEPTH_STENCIL_DESC desc;
-	//	ZeroMemory(&desc, sizeof(desc));
-	//	desc.DepthEnable = false;
-	//	desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	//	desc.DepthFunc = D3D11_COMPARISON_ALWAYS;
-	//	desc.StencilEnable = false;
-	//	desc.FrontFace.StencilFailOp = desc.FrontFace.StencilDepthFailOp = desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-	//	desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-	//	desc.BackFace = desc.FrontFace;
-	//	g_pd3dDevice->CreateDepthStencilState(&desc, &g_pDepthStencilState);
-	//}
-
 	return true;
 }
 
 void ImGui_RHI_Shutdown()
 {
 	ImGui_RHI_ShutdownPlatformInterface();
-	//if (g_pFactory) { g_pFactory->Release(); g_pFactory = NULL; }
-	//g_pd3dDevice = NULL;
-	//g_pd3dDeviceContext = NULL;
 }
 
 void ImGui_RHI_RenderDrawData(ImDrawData* draw_data)
@@ -239,7 +220,7 @@ void ImGui_RHI_RenderDrawData(ImDrawData* draw_data)
 	}
 
 	// Grow index buffer as needed
-	if (!g_indexBuffer || g_indexBufferSize < draw_data->TotalIdxCount)
+	if (g_indexBufferSize < draw_data->TotalIdxCount)
 	{
 		g_indexBufferSize = draw_data->TotalIdxCount + 10000;
 		if (!g_indexBuffer->CreateDynamic(sizeof(ImDrawIdx), g_indexBufferSize))
@@ -261,7 +242,7 @@ void ImGui_RHI_RenderDrawData(ImDrawData* draw_data)
 	g_indexBuffer->Unmap();
 	
 	// Setup orthographic projection matrix into our constant buffer
-	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
+	// Our visible ImGui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
 	{
 		float L = draw_data->DisplayPos.x;
 		float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
@@ -280,29 +261,20 @@ void ImGui_RHI_RenderDrawData(ImDrawData* draw_data)
 		g_constantBuffer->Unmap();
 	}
 
-	// Setup viewport
+	// Setup render state
+	//ctx->VSSetShader(g_pVertexShader, NULL, 0);
+	//ctx->PSSetShader(g_pPixelShader, NULL, 0);
+	//ctx->IASetInputLayout(g_pInputLayout);
+	g_device->SetVertexBuffer(g_vertexBuffer);
+	g_device->SetIndexBuffer(g_indexBuffer);
+	g_device->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+	g_device->SetConstantBuffers(0, 1, g_constantBuffer->GetBuffer(), Buffer_VertexShader);
+	g_device->SetSamplers(0, 1, g_fontSampler->GetBuffer());
+	g_device->SetBlendState(g_blendState);
+	g_device->SetDepthStencilState(g_depthStencilState);
+	g_device->SetRasterizerState(g_rasterizerState);
 	RHI_Viewport viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 	g_device->SetViewport(viewport);
-
-	/*
-	// Bind shader and vertex buffers
-	unsigned int stride = sizeof(ImDrawVert);
-	unsigned int offset = 0;
-	ctx->IASetInputLayout(g_pInputLayout);
-	ctx->IASetVertexBuffers(0, 1, &g_pVB, &stride, &offset);
-	ctx->IASetIndexBuffer(g_pIB, sizeof(ImDrawIdx) == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT, 0);
-	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ctx->VSSetShader(g_pVertexShader, NULL, 0);
-	ctx->VSSetConstantBuffers(0, 1, &g_pVertexConstantBuffer);
-	ctx->PSSetShader(g_pPixelShader, NULL, 0);
-	ctx->PSSetSamplers(0, 1, &g_pFontSampler);
-
-	// Setup render state
-	const float blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
-	ctx->OMSetBlendState(g_pBlendState, blend_factor, 0xffffffff);
-	ctx->OMSetDepthStencilState(g_pDepthStencilState, 0);
-	ctx->RSSetState(g_pRasterizerState);
-	*/
 
 	// Render command lists
 	int vtx_offset = 0;
@@ -322,7 +294,7 @@ void ImGui_RHI_RenderDrawData(ImDrawData* draw_data)
 			else
 			{
 				// Apply scissor/clipping rectangle
-				g_device->SetClippingRectangle((int)(pcmd->ClipRect.x - pos.x), (int)(pcmd->ClipRect.y - pos.y), (int)(pcmd->ClipRect.z - pos.x), (int)(pcmd->ClipRect.w - pos.y));
+				g_device->SetScissorRectangle((int)(pcmd->ClipRect.x - pos.x), (int)(pcmd->ClipRect.y - pos.y), (int)(pcmd->ClipRect.z - pos.x), (int)(pcmd->ClipRect.w - pos.y));
 
 				// Bind texture, Draw
 				auto texture_srv = (void*)pcmd->TextureId;
@@ -440,7 +412,7 @@ static void ImGui_RHI_SwapBuffers(ImGuiViewport* viewport, void*)
 
 static void ImGui_RHI_InitPlatformInterface()
 {
-	ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+	ImGuiPlatformIO& platform_io		= ImGui::GetPlatformIO();
 	platform_io.Renderer_CreateWindow	= ImGui_RHI_CreateWindow;
 	platform_io.Renderer_DestroyWindow	= ImGui_RHI_DestroyWindow;
 	platform_io.Renderer_SetWindowSize	= ImGui_RHI_SetWindowSize;

@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	Scripting::Scripting(Context* context) : Subsystem(context)
+	Scripting::Scripting(Context* context) : ISubsystem(context)
 	{
 		m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		if (!m_scriptEngine)

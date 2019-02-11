@@ -39,7 +39,7 @@ using namespace FMOD;
 
 namespace Directus
 {
-	Audio::Audio(Context* context) : Subsystem(context)
+	Audio::Audio(Context* context) : ISubsystem(context)
 	{
 		m_resultFMOD		= FMOD_OK;
 		m_systemFMOD		= nullptr;

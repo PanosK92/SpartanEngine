@@ -45,7 +45,7 @@ namespace Directus
 {
 	unsigned long Engine::m_flags = 0;
 
-	Engine::Engine(Context* context) : Subsystem(context)
+	Engine::Engine(Context* context) : ISubsystem(context)
 	{
 		m_flags |= Engine_Update;
 		m_flags |= Engine_Render;

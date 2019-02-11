@@ -40,7 +40,7 @@ using namespace std::chrono;
 
 namespace Directus
 {
-	Profiler::Profiler(Context* context) : Subsystem(context)
+	Profiler::Profiler(Context* context) : ISubsystem(context)
 	{
 		m_metrics					= NOT_ASSIGNED;
 		m_scene						= nullptr;

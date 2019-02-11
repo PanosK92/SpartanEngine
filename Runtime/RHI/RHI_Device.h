@@ -66,7 +66,7 @@ namespace Directus
 		bool SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources);	
 		bool SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil);
 		bool SetResolution(unsigned int width, unsigned int height);		
-		bool SetClippingRectangle(int left, int top, int right, int bottom);
+		bool SetScissorRectangle(int left, int top, int right, int bottom);
 		bool SetBackBufferAsRenderTarget();
 		//==========================================================================================================
 

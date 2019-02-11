@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include <vector>
-#include "../Core/SubSystem.h"
+#include "../Core/ISubsystem.h"
 //============================
 
 class asIScriptObject;
@@ -39,7 +39,7 @@ namespace Directus
 {
 	class Module;
 
-	class Scripting : public Subsystem
+	class Scripting : public ISubsystem
 	{
 	public:
 		Scripting(Context* context);

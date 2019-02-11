@@ -30,7 +30,7 @@ using namespace std;
 
 namespace Directus
 {
-	Threading::Threading(Context* context) : Subsystem(context)
+	Threading::Threading(Context* context) : ISubsystem(context)
 	{
 		m_stopping		= false;
 		m_threadCount	= Settings::Get().ThreadCountMax_Get() - 1;

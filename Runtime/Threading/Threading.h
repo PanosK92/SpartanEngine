@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include <mutex>
 #include <queue>
-#include "../Core/SubSystem.h"
+#include "../Core/ISubsystem.h"
 #include "../Logging/Log.h"
 //============================
 
@@ -46,7 +46,7 @@ namespace Directus
 	};
 	//======================================================================================
 
-	class Threading : public Subsystem
+	class Threading : public ISubsystem
 	{
 	public:
 		Threading(Context* context);

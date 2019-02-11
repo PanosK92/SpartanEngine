@@ -33,7 +33,7 @@ using namespace chrono;
 
 namespace Directus
 {
-	Timer::Timer(Context* context) : Subsystem(context)
+	Timer::Timer(Context* context) : ISubsystem(context)
 	{
 		time_a			= high_resolution_clock::now();
 		time_b			= high_resolution_clock::now();
