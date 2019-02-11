@@ -35,17 +35,15 @@ using namespace Directus;
 Widget_ResourceCache::Widget_ResourceCache(Context* context) : Widget(context)
 {
 	m_title			= "Resource Cache";
+	m_windowFlags	= ImGuiWindowFlags_HorizontalScrollbar;
 	m_isVisible		= false;
 }
 
 void Widget_ResourceCache::Tick(float deltaTime)
 {
-	ResourceCache* resourceCache	= m_context->GetSubsystem<ResourceCache>();
-	auto resources					= resourceCache->GetByType();
-	auto totalMemoryUsage			= resourceCache->GetMemoryUsage() / 1000.0f / 1000.0f;
-
-	ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Resource Cache Viewer", &m_isVisible, ImGuiWindowFlags_HorizontalScrollbar);
+	auto resourceCache		= m_context->GetSubsystem<ResourceCache>();
+	auto resources			= resourceCache->GetByType();
+	auto totalMemoryUsage	= resourceCache->GetMemoryUsage() / 1000.0f / 1000.0f;
 
 	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", (int)resources.size(), (int)totalMemoryUsage);
 	ImGui::Separator();
@@ -86,5 +84,4 @@ void Widget_ResourceCache::Tick(float deltaTime)
 		}
 	}
 	ImGui::Columns(1);
-	ImGui::End();
 }

@@ -38,15 +38,15 @@ namespace Directus
 		~RHI_InputLayout();
 
 		//= GRAPHICS API ==============================
-		bool Create(void* VSBlob, Input_Layout layout);
+		bool Create(void* VSBlob, RHI_Input_Layout layout);
 		//=============================================
 
-		Input_Layout GetInputLayout()	{ return m_inputLayout; }
+		RHI_Input_Layout GetInputLayout()	{ return m_inputLayout; }
 		void* GetBuffer()				{ return m_buffer; }
 
 	private:
 		std::shared_ptr<RHI_Device> m_rhiDevice;
-		Input_Layout m_inputLayout;
+		RHI_Input_Layout m_inputLayout;
 		void* m_buffer;
 		std::vector<std::any> m_layoutDesc;
 	};

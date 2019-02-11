@@ -66,7 +66,7 @@ namespace Directus
 			LOGF_ERROR("Failed to compile %s", filePath.c_str());		\
 		}
 
-		virtual void CompileVertex(const std::string& filePath, Input_Layout inputLayout)
+		virtual void CompileVertex(const std::string& filePath, RHI_Input_Layout inputLayout)
 		{
 			m_shaderState	= Shader_Compiling;
 			bool vertex		= API_CompileVertex(filePath, inputLayout);
@@ -75,7 +75,7 @@ namespace Directus
 			LOG_STATE(m_shaderState, filePath);
 		}
 
-		virtual void CompileVertex_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
+		virtual void CompileVertex_Async(const std::string& filePath, RHI_Input_Layout inputLayout, Context* context)
 		{
 			context->GetSubsystem<Threading>()->AddTask([this, filePath, inputLayout]()
 			{
@@ -101,7 +101,7 @@ namespace Directus
 			});
 		}
 
-		virtual void CompileVertexPixel(const std::string& filePath, Input_Layout inputLayout)
+		virtual void CompileVertexPixel(const std::string& filePath, RHI_Input_Layout inputLayout)
 		{
 			m_shaderState	= Shader_Compiling;
 			bool vertex		= API_CompileVertex(filePath, inputLayout);
@@ -111,7 +111,7 @@ namespace Directus
 			LOG_STATE(m_shaderState, filePath);
 		}
 
-		virtual void CompileVertexPixel_Async(const std::string& filePath, Input_Layout inputLayout, Context* context)
+		virtual void CompileVertexPixel_Async(const std::string& filePath, RHI_Input_Layout inputLayout, Context* context)
 		{
 			context->GetSubsystem<Threading>()->AddTask([this, filePath, inputLayout]()
 			{
@@ -142,7 +142,7 @@ namespace Directus
 
 	private:
 		//= API ==============================================================================
-		virtual bool API_CompileVertex(const std::string& filePath, Input_Layout inputLayout);
+		virtual bool API_CompileVertex(const std::string& filePath, RHI_Input_Layout inputLayout);
 		virtual bool API_CompilePixel(const std::string& filePath);
 		//====================================================================================
 		void CreateConstantBuffer(unsigned int size);

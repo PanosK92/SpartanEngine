@@ -38,9 +38,9 @@ namespace Directus
 			std::shared_ptr<RHI_Device> rhiDevice,
 			unsigned int width,
 			unsigned int height,
-			Texture_Format textureFormat	= Texture_Format_R8G8B8A8_UNORM,
+			RHI_Format textureFormat	= Format_R8G8B8A8_UNORM,
 			bool depth						= false,
-			Texture_Format depthFormat		= Texture_Format_D32_FLOAT,
+			RHI_Format depthFormat		= Format_D32_FLOAT,
 			unsigned int arraySize			= 1
 		);
 		~RHI_RenderTexture();
@@ -55,14 +55,14 @@ namespace Directus
 		unsigned int GetWidth()								{ return m_width; }
 		unsigned int GetHeight()							{ return m_height; }
 		unsigned int GetArraySize()							{ return m_arraySize; }
-		Texture_Format GetFormat()							{ return m_format; }
+		RHI_Format GetFormat()							{ return m_format; }
 
 	protected:
 		bool m_depthEnabled	= false;
 		float m_nearPlane	= 0;
 		float m_farPlane	= 0;
 		RHI_Viewport m_viewport;
-		Texture_Format m_format;
+		RHI_Format m_format;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		unsigned int m_width;
 		unsigned int m_height;

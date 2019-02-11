@@ -32,9 +32,9 @@ namespace Directus
 {
 	RHI_Sampler::RHI_Sampler(
 		std::shared_ptr<RHI_Device> rhiDevice,
-		Texture_Sampler_Filter filter					/*= Texture_Sampler_Anisotropic*/,
-		Texture_Address_Mode textureAddressMode			/*= Texture_Address_Wrap*/, 
-		Texture_Comparison_Function comparisonFunction	/*= Texture_Comparison_Always*/
+		RHI_Texture_Filter filter						/*= Texture_Sampler_Anisotropic*/,
+		RHI_Texture_Address_Mode textureAddressMode		/*= Texture_Address_Wrap*/, 
+		RHI_Comparison_Function comparisonFunction		/*= Texture_Comparison_Always*/
 	)
 	{	
 		m_buffer				= nullptr;

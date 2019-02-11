@@ -41,11 +41,11 @@ namespace Directus
 			return;
 		}
 
-		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,		false);
-		m_renderTargets[GBuffer_Target_Normal]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT,	false); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
-		m_renderTargets[GBuffer_Target_Material]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R8G8B8A8_UNORM,		false);
-		m_renderTargets[GBuffer_Target_Velocity]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R16G16_FLOAT,			false);
-		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Texture_Format_R32G32_FLOAT,			true, Texture_Format_D32_FLOAT);
+		m_renderTargets[GBuffer_Target_Albedo]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Format_R8G8B8A8_UNORM,		false);
+		m_renderTargets[GBuffer_Target_Normal]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Format_R16G16B16A16_FLOAT,	false); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
+		m_renderTargets[GBuffer_Target_Material]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Format_R8G8B8A8_UNORM,		false);
+		m_renderTargets[GBuffer_Target_Velocity]	= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Format_R16G16_FLOAT,			false);
+		m_renderTargets[GBuffer_Target_Depth]		= make_shared<RHI_RenderTexture>(rhiDevice, width, height, Format_R32G32_FLOAT,			true, Format_D32_FLOAT);
 	}
 
 	GBuffer::~GBuffer()

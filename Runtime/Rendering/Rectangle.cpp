@@ -111,14 +111,14 @@ namespace Directus
 		m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_renderer->GetRHIDevice());
 		if (!m_vertexBuffer->Create(vertices))
 		{
-			LOG_ERROR("Rectangle: Failed to create vertex buffer.");
+			LOG_ERROR("Failed to create vertex buffer.");
 			return false;
 		}
 
 		m_indexBuffer = make_shared<RHI_IndexBuffer>(m_renderer->GetRHIDevice());
 		if (!m_indexBuffer->Create(indices))
 		{
-			LOG_ERROR("Rectangle: Failed to create index buffer.");
+			LOG_ERROR("Failed to create index buffer.");
 			return false;
 		}
 

@@ -30,6 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_BlendState.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
+#include "../RHI_Shader.h"
+#include "../RHI_InputLayout.h"
+#include "../RHI_VertexBuffer.h"
+#include "../RHI_IndexBuffer.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../Profiling/Profiler.h"
@@ -93,7 +97,7 @@ namespace Directus
 
 	RHI_Device::RHI_Device(void* drawHandle)
 	{
-		m_backBufferFormat		= Texture_Format_R8G8B8A8_UNORM;
+		m_backBufferFormat		= Format_R8G8B8A8_UNORM;
 		m_initialized			= false;
 
 		if (!IsWindow((HWND)drawHandle))
@@ -337,6 +341,12 @@ namespace Directus
 			return false;
 		}
 
+		if (vertexCount == 0)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+
 		_D3D11_Device::deviceContext->Draw(vertexCount, 0);
 		return true;
 	}
@@ -346,6 +356,12 @@ namespace Directus
 		if (!_D3D11_Device::deviceContext)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		if (indexCount == 0)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
@@ -417,7 +433,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetVertexShader(void* buffer)
+	bool RHI_Device::SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
@@ -425,11 +441,20 @@ namespace Directus
 			return false;
 		}
 
-		_D3D11_Device::deviceContext->VSSetShader((ID3D11VertexShader*)buffer, nullptr, 0);
+		if (!buffer)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+
+		auto ptr			= (ID3D11Buffer*)buffer->GetBuffer();
+		unsigned int stride = buffer->GetStride();
+		unsigned int offset = 0;
+		_D3D11_Device::deviceContext->IASetVertexBuffers(0, 1, &ptr, &stride, &offset);
 		return true;
 	}
 
-	bool RHI_Device::SetPixelShader(void* buffer)
+	bool RHI_Device::SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
@@ -437,11 +462,58 @@ namespace Directus
 			return false;
 		}
 
-		_D3D11_Device::deviceContext->PSSetShader((ID3D11PixelShader*)buffer, nullptr, 0);
+		if (!buffer)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+
+		auto ptr	= (ID3D11Buffer*)buffer->GetBuffer();
+		auto format = d3d11_dxgi_format[buffer->GetFormat()];
+		_D3D11_Device::deviceContext->IASetIndexBuffer(ptr, format, 0);
+
 		return true;
 	}
 
-	bool RHI_Device::SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* buffer)
+	bool RHI_Device::SetVertexShader(const std::shared_ptr<RHI_Shader>& shader)
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		if (!shader)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+
+		auto ptr = (ID3D11VertexShader*)shader->GetVertexShaderBuffer();
+		_D3D11_Device::deviceContext->VSSetShader(ptr, nullptr, 0);
+		return true;
+	}
+
+	bool RHI_Device::SetPixelShader(const std::shared_ptr<RHI_Shader>& shader)
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		if (!shader)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+
+		auto ptr = (ID3D11PixelShader*)shader->GetPixelShaderBuffer();
+		_D3D11_Device::deviceContext->PSSetShader(ptr, nullptr, 0);
+		return true;
+	}
+
+	bool RHI_Device::SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, void* buffer, RHI_Buffer_Scope scope)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
@@ -644,107 +716,11 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_Device::EventBegin(const std::string& name)
-	{
-		#ifdef DEBUG
-		auto s2ws = [](const std::string& s)
-		{
-			int len;
-			int slength = (int)s.length() + 1;
-			len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
-			auto buf = new wchar_t[len];
-			MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
-			std::wstring r(buf);
-			delete[] buf;
-			return r;
-		};
-
-		_D3D11_Device::eventReporter->BeginEvent(s2ws(name).c_str());
-		#endif
-	}
-
-	void RHI_Device::EventEnd()
-	{
-		#ifdef DEBUG
-		_D3D11_Device::eventReporter->EndEvent();
-		#endif
-	}
-
-	bool RHI_Device::Profiling_CreateQuery(void** query, Query_Type type)
-	{
-		if (!_D3D11_Device::device)
-			return false;
-
-		D3D11_QUERY_DESC desc;
-		ZeroMemory(&desc, sizeof(desc));
-		desc.Query		= (type == Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
-		desc.MiscFlags	= 0;
-		auto result		= _D3D11_Device::device->CreateQuery(&desc, (ID3D11Query**)query);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create ID3D11Query");
-			return false;
-		}
-
-		return true;
-	}
-
-	void RHI_Device::Profiling_QueryStart(void* queryObject)
-	{
-		if (!_D3D11_Device::deviceContext)
-			return;
-
-		_D3D11_Device::deviceContext->Begin((ID3D11Query*)queryObject);
-	}
-
-	void RHI_Device::Profiling_QueryEnd(void* queryObject)
-	{ 
-		if (!_D3D11_Device::deviceContext)
-			return;
-
-		_D3D11_Device::deviceContext->End((ID3D11Query*)queryObject);
-	}
-
-	void RHI_Device::Profiling_GetTimeStamp(void* queryObject)
-	{
-		if (!_D3D11_Device::deviceContext)
-			return;
-
-		_D3D11_Device::deviceContext->End((ID3D11Query*)queryObject);
-	}
-
-	float RHI_Device::Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd)
-	{
-		if (!_D3D11_Device::deviceContext)
-			return 0.0f;
-
-		// Wait for data to be available	
-		while (_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryDisjoint, NULL, 0, 0) == S_FALSE){}
-
-		// Check whether timestamps were disjoint during the last frame
-		D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
-		_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryDisjoint, &disjointData, sizeof(disjointData), 0);
-		if (disjointData.Disjoint)
-			return 0.0f;
-
-		// Get the query data		
-		UINT64 startTime	= 0;
-		UINT64 endTime		= 0;
-		_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryStart, &startTime, sizeof(startTime), 0);
-		_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryEnd,	&endTime, sizeof(endTime), 0);
-
-		// Compute delta in milliseconds
-		UINT64 delta		= endTime - startTime;
-		float durationMs	= (delta * 1000.0f) / (float)disjointData.Frequency;
-
-		return durationMs;
-	}
-
-	bool RHI_Device::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	bool RHI_Device::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_ERROR("Invalid device context");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
@@ -753,15 +729,22 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetInputLayout(void* inputLayout)
+	bool RHI_Device::SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
-			LOG_ERROR("Invalid device context");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		_D3D11_Device::deviceContext->IASetInputLayout((ID3D11InputLayout*)inputLayout);
+		if (!inputLayout)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+
+		auto ptr = (ID3D11InputLayout*)inputLayout->GetBuffer();
+		_D3D11_Device::deviceContext->IASetInputLayout(ptr);
 		return true;
 	}
 
@@ -782,6 +765,117 @@ namespace Directus
 		auto ptr = (ID3D11RasterizerState*)rasterizerState->GetBuffer();
 		_D3D11_Device::deviceContext->RSSetState(ptr);
 		return true;
+	}
+
+	void RHI_Device::EventBegin(const std::string& name)
+	{
+	#ifdef DEBUG
+		auto s2ws = [](const std::string& s)
+		{
+			int len;
+			int slength = (int)s.length() + 1;
+			len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
+			auto buf = new wchar_t[len];
+			MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
+			std::wstring r(buf);
+			delete[] buf;
+			return r;
+		};
+
+		_D3D11_Device::eventReporter->BeginEvent(s2ws(name).c_str());
+	#endif
+	}
+
+	void RHI_Device::EventEnd()
+	{
+	#ifdef DEBUG
+		_D3D11_Device::eventReporter->EndEvent();
+	#endif
+	}
+
+	bool RHI_Device::Profiling_CreateQuery(void** query, RHI_Query_Type type)
+	{
+		if (!_D3D11_Device::device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		D3D11_QUERY_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+		desc.Query = (type == Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
+		desc.MiscFlags = 0;
+		auto result = _D3D11_Device::device->CreateQuery(&desc, (ID3D11Query**)query);
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to create ID3D11Query");
+			return false;
+		}
+
+		return true;
+	}
+
+	bool RHI_Device::Profiling_QueryStart(void* queryObject)
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		_D3D11_Device::deviceContext->Begin((ID3D11Query*)queryObject);
+		return true;
+	}
+
+	bool RHI_Device::Profiling_QueryEnd(void* queryObject)
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		_D3D11_Device::deviceContext->End((ID3D11Query*)queryObject);
+		return true;
+	}
+
+	bool RHI_Device::Profiling_GetTimeStamp(void* queryObject)
+	{
+		if (!_D3D11_Device::deviceContext)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		_D3D11_Device::deviceContext->End((ID3D11Query*)queryObject);
+		return true;
+	}
+
+	float RHI_Device::Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd)
+	{
+		if (!_D3D11_Device::deviceContext)
+			return 0.0f;
+
+		// Wait for data to be available	
+		while (_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryDisjoint, NULL, 0, 0) == S_FALSE) {}
+
+		// Check whether timestamps were disjoint during the last frame
+		D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
+		_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryDisjoint, &disjointData, sizeof(disjointData), 0);
+		if (disjointData.Disjoint)
+			return 0.0f;
+
+		// Get the query data		
+		UINT64 startTime = 0;
+		UINT64 endTime = 0;
+		_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryStart, &startTime, sizeof(startTime), 0);
+		_D3D11_Device::deviceContext->GetData((ID3D11Query*)queryEnd, &endTime, sizeof(endTime), 0);
+
+		// Compute delta in milliseconds
+		UINT64 delta		= endTime - startTime;
+		float durationMs	= (delta * 1000.0f) / (float)disjointData.Frequency;
+
+		return durationMs;
 	}
 }
 #endif

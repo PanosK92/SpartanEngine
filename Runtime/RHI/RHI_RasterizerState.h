@@ -34,8 +34,8 @@ namespace Directus
 	public:
 		RHI_RasterizerState(
 			std::shared_ptr<RHI_Device> device,
-			Cull_Mode cullMode,
-			Fill_Mode fillMode,
+			RHI_Cull_Mode cullMode,
+			RHI_Fill_Mode fillMode,
 			bool depthClipEnabled,
 			bool clippingEnabled,
 			bool multiSampleEnabled, 
@@ -43,8 +43,8 @@ namespace Directus
 		);
 		~RHI_RasterizerState();
 
-		Cull_Mode GetCullMode()			{ return m_cullMode; }
-		Fill_Mode GetFillMode()			{ return m_fillMode; }
+		RHI_Cull_Mode GetCullMode()			{ return m_cullMode; }
+		RHI_Fill_Mode GetFillMode()			{ return m_fillMode; }
 		bool GetDepthClipEnabled()		{ return m_depthClipEnabled; }
 		bool GetClippingEnabled()		{ return m_clippingEnabled; }
 		bool GetMultiSampleEnabled()	{ return m_multiSampleEnabled; }
@@ -54,8 +54,8 @@ namespace Directus
 
 	private:
 		// Properties
-		Cull_Mode m_cullMode;
-		Fill_Mode m_fillMode;
+		RHI_Cull_Mode m_cullMode;
+		RHI_Fill_Mode m_fillMode;
 		bool m_depthClipEnabled;
 		bool m_clippingEnabled;
 		bool m_multiSampleEnabled;

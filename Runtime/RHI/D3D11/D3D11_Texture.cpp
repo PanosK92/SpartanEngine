@@ -33,7 +33,7 @@ using namespace Directus::Math::Helper;
 
 namespace Directus
 {
-	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const vector<vector<std::byte>>& mipChain)
+	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mipChain)
 	{
 		if (!m_rhiDevice->GetDevice<ID3D11Device>() || mipChain.empty())
 		{
@@ -112,7 +112,7 @@ namespace Directus
 		return result;
 	}
 
-	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const vector<std::byte>& data, bool generateMipChain /*= false*/)
+	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<std::byte>& data, bool generateMipChain /*= false*/)
 	{
 		if (!m_rhiDevice->GetDevice<ID3D11Device>() || data.empty())
 		{
@@ -194,7 +194,7 @@ namespace Directus
 		return result;
 	}
 
-	bool RHI_Texture::ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const vector<vector<vector<std::byte>>>& data)
+	bool RHI_Texture::ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<vector<std::byte>>>& data)
 	{
 		if (data.empty())
 		{

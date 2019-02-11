@@ -102,8 +102,8 @@ namespace Directus
 		//=============================================================================
 
 		//= PROPERTIES =======================================================================
-		Cull_Mode GetCullMode()							{ return m_cullMode; }
-		void SetCullMode(Cull_Mode cullMode)			{ m_cullMode = cullMode; }
+		RHI_Cull_Mode GetCullMode()						{ return m_cullMode; }
+		void SetCullMode(RHI_Cull_Mode cullMode)		{ m_cullMode = cullMode; }
 
 		float& GetRoughnessMultiplier()					{ return m_roughnessMultiplier; }
 		void SetRoughnessMultiplier(float roughness)	{ m_roughnessMultiplier = roughness; }
@@ -138,7 +138,7 @@ namespace Directus
 	private:
 		void TextureBasedMultiplierAdjustment();
 
-		Cull_Mode m_cullMode;
+		RHI_Cull_Mode m_cullMode;
 		ShadingMode m_shadingMode;
 		Math::Vector4 m_colorAlbedo;
 		float m_roughnessMultiplier;

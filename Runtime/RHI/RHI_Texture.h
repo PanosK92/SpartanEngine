@@ -50,11 +50,11 @@ namespace Directus
 
 		//= GRAPHICS API  ====================================================================================================================================================================
 		// Generates a shader resource from a pre-made mip chain
-		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<std::byte>>& data);
+		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::vector<std::byte>>& data);
 		// Generates a shader resource and auto-creates mip-chain (if requested)
-		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::byte>& data, bool generateMipChain = false);
+		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::byte>& data, bool generateMipChain = false);
 		// Generates a cube-map shader resource. 6 textures containing mip-levels have to be provided (vector<textures<mip>>).
-		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, Texture_Format format, const std::vector<std::vector<MipLevel>>& data);
+		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::vector<MipLevel>>& data);
 		
 		void ShaderResource_Release();
 		void* GetShaderResource() const { return m_shaderResource; }
@@ -82,8 +82,8 @@ namespace Directus
 		unsigned int GetChannels()					{ return m_channels; }
 		void SetChannels(unsigned int channels)		{ m_channels = channels; }
 
-		Texture_Format GetFormat()					{ return m_format; }
-		void SetFormat(Texture_Format format)		{ m_format = format; }
+		RHI_Format GetFormat()					{ return m_format; }
+		void SetFormat(RHI_Format format)		{ m_format = format; }
 
 		bool HasMipChain()							{ return m_mipChain.size() > 1; }
 
@@ -118,7 +118,7 @@ namespace Directus
 		bool m_isGrayscale		= false;
 		bool m_isTransparent	= false;
 		bool m_needsMipChain	= true;
-		Texture_Format m_format;
+		RHI_Format m_format;
 		std::vector<MipLevel> m_mipChain;
 		//===============================
 

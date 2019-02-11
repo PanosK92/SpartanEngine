@@ -33,7 +33,17 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_BlendState::RHI_BlendState(shared_ptr<RHI_Device> device, bool blendEnabled)
+	RHI_BlendState::RHI_BlendState
+	(
+		std::shared_ptr<RHI_Device> device,
+		bool blendEnabled					/*= false*/,
+		RHI_Blend sourceBlend				/*= Blend_Src_Alpha*/,
+		RHI_Blend destBlend					/*= Blend_Inv_Src_Alpha*/,
+		RHI_Blend_Operation blendOp			/*= Blend_Operation_Add*/,
+		RHI_Blend sourceBlendAlpha			/*= Blend_One*/,
+		RHI_Blend destBlendAlpha			/*= Blend_One*/,
+		RHI_Blend_Operation blendOpAlpha	/*= Blend_Operation_Add*/
+	)
 	{
 		// Save properties
 		m_blendEnabled = blendEnabled;
@@ -45,13 +55,13 @@ namespace Directus
 		for (UINT i = 0; i < 8; ++i)
 		{
 			desc.RenderTarget[i].BlendEnable			= blendEnabled;
-			desc.RenderTarget[i].BlendOp				= D3D11_BLEND_OP_ADD;
-			desc.RenderTarget[i].BlendOpAlpha			= D3D11_BLEND_OP_ADD;
-			desc.RenderTarget[i].DestBlend				= D3D11_BLEND_INV_SRC_ALPHA;
-			desc.RenderTarget[i].DestBlendAlpha			= D3D11_BLEND_ONE;
+			desc.RenderTarget[i].SrcBlend				= d3d11_blend[sourceBlend];
+			desc.RenderTarget[i].DestBlend				= d3d11_blend[destBlend];
+			desc.RenderTarget[i].BlendOp				= d3d11_blend_op[blendOp];
+			desc.RenderTarget[i].SrcBlendAlpha			= d3d11_blend[sourceBlendAlpha];
+			desc.RenderTarget[i].DestBlendAlpha			= d3d11_blend[destBlendAlpha];
+			desc.RenderTarget[i].BlendOpAlpha			= d3d11_blend_op[blendOpAlpha];
 			desc.RenderTarget[i].RenderTargetWriteMask	= D3D11_COLOR_WRITE_ENABLE_ALL;
-			desc.RenderTarget[i].SrcBlend				= D3D11_BLEND_SRC_ALPHA;
-			desc.RenderTarget[i].SrcBlendAlpha			= D3D11_BLEND_ONE;
 		}
 		desc.RenderTarget[0].BlendEnable = blendEnabled;
 

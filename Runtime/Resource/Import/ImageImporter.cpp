@@ -128,7 +128,7 @@ namespace Directus
 		unsigned int image_bpp				= FreeImage_GetBPP(bitmap);
 		unsigned int image_byesPerChannel	= ComputeBitsPerChannel(bitmap);
 		unsigned int image_channels			= ComputeChannelCount(bitmap);
-		Texture_Format image_format			= ComputeTextureFormat(image_bpp, image_channels);
+		RHI_Format image_format			= ComputeTextureFormat(image_bpp, image_channels);
 		bool image_grayscale				= IsVisuallyGrayscale(bitmap);
 
 		// Fill RGBA vector with the data from the FIBITMAP
@@ -286,21 +286,21 @@ namespace Directus
 		return size * 8;
 	}
 
-	Texture_Format ImageImporter::ComputeTextureFormat(unsigned int bpp, unsigned int channels)
+	RHI_Format ImageImporter::ComputeTextureFormat(unsigned int bpp, unsigned int channels)
 	{
 		if (channels == 3)
 		{
-			if (bpp == 96) return Texture_Format_R32G32B32_FLOAT;
+			if (bpp == 96) return Format_R32G32B32_FLOAT;
 		}
 		else if (channels == 4)
 		{
-			if (bpp == 32)	return Texture_Format_R8G8B8A8_UNORM;
-			if (bpp == 64)	return Texture_Format_R16G16B16A16_FLOAT;
-			if (bpp == 128) return Texture_Format_R32G32B32A32_FLOAT;
+			if (bpp == 32)	return Format_R8G8B8A8_UNORM;
+			if (bpp == 64)	return Format_R16G16B16A16_FLOAT;
+			if (bpp == 128) return Format_R32G32B32A32_FLOAT;
 		}
 		
 		LOG_ERROR_INVALID_PARAMETER();
-		return Texture_Format_R8_UNORM;
+		return Format_R8_UNORM;
 	}
 
 	bool ImageImporter::IsVisuallyGrayscale(FIBITMAP* bitmap)

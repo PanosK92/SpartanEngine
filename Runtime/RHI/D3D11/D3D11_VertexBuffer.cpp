@@ -260,18 +260,4 @@ namespace Directus
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Resource*)m_buffer, 0);
 		return true;
 	}
-
-	bool RHI_VertexBuffer::Bind()
-	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		unsigned int offset = 0;
-		auto ptr = (ID3D11Buffer*const*)&m_buffer;
-		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->IASetVertexBuffers(0, 1, ptr, &m_stride, &offset);
-		return true;
-	}
 }

@@ -539,23 +539,26 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_BlurGaussian");
 
 		// Set common states
-		SetDefault_Pipeline_State();
-		m_rhiPipeline->SetViewport(texIn->GetViewport());
 		m_rhiPipeline->SetShader(m_shaderQuad);
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_blur_gaussian);
 
 		// Horizontal Gaussian blur	
 		auto direction = Vector2(1.0f, 0.0f);
+		SetDefault_Pipeline_State();	
 		SetDefault_Buffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
-		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetViewport(texOut->GetViewport());
+		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
 		direction = Vector2(0.0f, 1.0f);
+		SetDefault_Pipeline_State();
 		SetDefault_Buffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhiPipeline->SetRenderTarget(texIn);
+		m_rhiPipeline->SetViewport(texIn->GetViewport());
+		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetTexture(texOut);
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
@@ -578,13 +581,13 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_BlurBilateralGaussian");
 
 		// Set common states
-		SetDefault_Pipeline_State();
-		m_rhiPipeline->SetViewport(texIn->GetViewport());
 		m_rhiPipeline->SetVertexShader(m_shaderQuad);
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_blur_gaussianBilateral);
 
 		// Horizontal Gaussian blur
+		SetDefault_Pipeline_State();	
 		m_rhiPipeline->SetRenderTarget(texOut);
+		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
@@ -594,7 +597,9 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
+		SetDefault_Pipeline_State();
 		m_rhiPipeline->SetRenderTarget(texIn);
+		m_rhiPipeline->SetViewport(texIn->GetViewport());
 		m_rhiPipeline->SetTexture(texOut);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
@@ -960,7 +965,8 @@ namespace Directus
 			if (lights.size() != 0)
 			{
 				m_rhiDevice->EventBegin("Gizmo_Lights");
-				m_rhiPipeline->SetShader(m_shaderQuad_texture);
+				m_rhiPipeline->SetVertexShader(m_shaderQuad);
+				m_rhiPipeline->SetPixelShader(m_shaderQuad_texture);
 				m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 
 				for (const auto& actor : lights)

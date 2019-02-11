@@ -32,10 +32,11 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_IndexBuffer::RHI_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice)
+	RHI_IndexBuffer::RHI_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice, RHI_Format format)
 	{
 		m_rhiDevice		= rhiDevice;
 		m_buffer		= nullptr;
+		m_bufferFormat	= format;
 		m_memoryUsage	= 0;
 		m_indexCount	= 0;
 	}
@@ -153,18 +154,6 @@ namespace Directus
 
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Resource*)m_buffer, 0);
 
-		return true;
-	}
-
-	bool RHI_IndexBuffer::Bind()
-	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->IASetIndexBuffer((ID3D11Buffer*)m_buffer, DXGI_FORMAT_R32_UINT, 0);
 		return true;
 	}
 }

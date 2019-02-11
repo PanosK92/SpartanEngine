@@ -84,13 +84,13 @@ bool ImGui_RHI_Init(Context* context)
 
 		// Upload texture to graphics system
 		g_fontTexture = make_shared<RHI_Texture>(g_context);
-		g_fontTexture->ShaderResource_Create2D(width, height, 4, Texture_Format_R8G8B8A8_UNORM, pixels, false);
+		g_fontTexture->ShaderResource_Create2D(width, height, 4, Format_R8G8B8A8_UNORM, pixels, false);
 
 		// Store our identifier
 		io.Fonts->TexID = (ImTextureID)g_fontTexture->GetShaderResource();
 
 		// Create texture sampler
-		g_fontSampler = make_shared<RHI_Sampler>(g_device, Texture_Sampler_Bilinear, Texture_Address_Wrap, Texture_Comparison_Always);
+		g_fontSampler = make_shared<RHI_Sampler>(g_device, Texture_Filter_Bilinear, Texture_Address_Wrap, Comparison_Always);
 	}
 
 	//// Create the vertex shader
@@ -322,7 +322,7 @@ void ImGui_RHI_RenderDrawData(ImDrawData* draw_data)
 			else
 			{
 				// Apply scissor/clipping rectangle
-				g_device->SetClippingRectangle((int)pcmd->ClipRect.x - pos.x, (int)(pcmd->ClipRect.y - pos.y), (int)(pcmd->ClipRect.z - pos.x), (int)(pcmd->ClipRect.w - pos.y));
+				g_device->SetClippingRectangle((int)(pcmd->ClipRect.x - pos.x), (int)(pcmd->ClipRect.y - pos.y), (int)(pcmd->ClipRect.z - pos.x), (int)(pcmd->ClipRect.w - pos.y));
 
 				// Bind texture, Draw
 				auto texture_srv = (void*)pcmd->TextureId;

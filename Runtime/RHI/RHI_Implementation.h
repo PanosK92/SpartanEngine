@@ -53,10 +53,12 @@ static const D3D11_PRIMITIVE_TOPOLOGY d3d11_primitive_topology[] =
 	D3D11_PRIMITIVE_TOPOLOGY_LINELIST
 };
 
-static const DXGI_FORMAT d3d11_dxgi_format[]
+static const DXGI_FORMAT d3d11_dxgi_format[] =
 {
 	DXGI_FORMAT_R8_UNORM,
+	DXGI_FORMAT_R16_UINT,
 	DXGI_FORMAT_R16_FLOAT,
+	DXGI_FORMAT_R32_UINT,
 	DXGI_FORMAT_R32_FLOAT,
 	DXGI_FORMAT_D32_FLOAT,
 
@@ -71,7 +73,7 @@ static const DXGI_FORMAT d3d11_dxgi_format[]
 	DXGI_FORMAT_R32G32B32A32_FLOAT
 };
 
-static const D3D11_TEXTURE_ADDRESS_MODE d3d11_texture_address_mode[]
+static const D3D11_TEXTURE_ADDRESS_MODE d3d11_texture_address_mode[] =
 {
 	D3D11_TEXTURE_ADDRESS_WRAP,
 	D3D11_TEXTURE_ADDRESS_MIRROR,
@@ -101,6 +103,25 @@ static const D3D11_FILTER d3d11_filter[] =
 	D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,	// Use linear interpolation for minification and magnification, use point sampling for mip-level sampling.
 	D3D11_FILTER_MIN_MAG_MIP_LINEAR,		// Use linear interpolation for minification, magnification, and mip-level sampling.
 	D3D11_FILTER_ANISOTROPIC
+};
+
+static const D3D11_BLEND d3d11_blend[] =
+{
+	D3D11_BLEND_ZERO,
+	D3D11_BLEND_ONE,
+	D3D11_BLEND_SRC_COLOR,
+	D3D11_BLEND_INV_SRC_COLOR,
+	D3D11_BLEND_SRC_ALPHA,
+	D3D11_BLEND_INV_SRC_ALPHA
+};
+
+static const D3D11_BLEND_OP d3d11_blend_op[] =
+{
+	D3D11_BLEND_OP_ADD,
+	D3D11_BLEND_OP_SUBTRACT,
+	D3D11_BLEND_OP_REV_SUBTRACT,
+	D3D11_BLEND_OP_MIN,
+	D3D11_BLEND_OP_MAX
 };
 //#endif
 

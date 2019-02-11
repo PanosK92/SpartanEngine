@@ -32,7 +32,15 @@ namespace Directus
 	class ENGINE_CLASS RHI_BlendState : public RHI_Object
 	{
 	public:
-		RHI_BlendState(std::shared_ptr<RHI_Device> device, bool blendEnabled);
+		RHI_BlendState(std::shared_ptr<RHI_Device> device,
+			bool blendEnabled					= false,
+			RHI_Blend sourceBlend				= Blend_Src_Alpha,
+			RHI_Blend destBlend					= Blend_Inv_Src_Alpha,
+			RHI_Blend_Operation blendOp			= Blend_Operation_Add,
+			RHI_Blend sourceBlendAlpha			= Blend_One,
+			RHI_Blend destBlendAlpha			= Blend_One,
+			RHI_Blend_Operation blendOpAlpha	= Blend_Operation_Add
+		);
 		~RHI_BlendState();
 
 		bool BlendEnabled() { return m_blendEnabled; }

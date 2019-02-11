@@ -51,21 +51,23 @@ namespace Directus
 		//====================================================================================================
 
 		//= SET ====================================================================================================
-		bool SetVertexShader(void* buffer);
-		bool SetPixelShader(void* buffer);
-		bool SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* buffer);
-		bool SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* samplers);
-		bool SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources);
-		bool SetBackBufferAsRenderTarget();
-		bool SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil);
-		bool SetResolution(unsigned int width, unsigned int height);
-		bool SetViewport(const RHI_Viewport& viewport);
-		bool SetClippingRectangle(int left, int top, int right, int bottom);
+		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer);
+		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer);
+		bool SetVertexShader(const std::shared_ptr<RHI_Shader>& shader);
+		bool SetPixelShader(const std::shared_ptr<RHI_Shader>& shader);
 		bool SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState);
-		bool SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState);
-		bool SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
-		bool SetInputLayout(void* inputLayout);
 		bool SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState);
+		bool SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState);
+		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout);
+		bool SetViewport(const RHI_Viewport& viewport);
+		bool SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology);
+		bool SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, void* buffer, RHI_Buffer_Scope scope);
+		bool SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* samplers);
+		bool SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources);	
+		bool SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil);
+		bool SetResolution(unsigned int width, unsigned int height);		
+		bool SetClippingRectangle(int left, int top, int right, int bottom);
+		bool SetBackBufferAsRenderTarget();
 		//==========================================================================================================
 
 		//= EVENTS ==============================
@@ -74,10 +76,10 @@ namespace Directus
 		//=======================================
 
 		//= PROFILING ====================================================================
-		bool Profiling_CreateQuery(void** buffer, Query_Type type);
-		void Profiling_QueryStart(void* queryObject);
-		void Profiling_QueryEnd(void* queryObject);
-		void Profiling_GetTimeStamp(void* queryDisjoint);
+		bool Profiling_CreateQuery(void** buffer, RHI_Query_Type type);
+		bool Profiling_QueryStart(void* queryObject);
+		bool Profiling_QueryEnd(void* queryObject);
+		bool Profiling_GetTimeStamp(void* queryDisjoint);
 		float Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd);
 		//=================================================================================
 
@@ -90,7 +92,7 @@ namespace Directus
 		//=====================================================
 
 	private:
-		Texture_Format m_backBufferFormat;
+		RHI_Format m_backBufferFormat;
 		bool m_initialized		= false;
 		void* m_device			= nullptr;
 		void* m_deviceContext	= nullptr;
