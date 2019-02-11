@@ -148,7 +148,7 @@ namespace Directus
 		m_indexBuffer = make_shared<RHI_IndexBuffer>(rhiDevice);
 		if (!m_indexBuffer->Create(indices))
 		{
-			LOG_ERROR("Grid::CreateBuffers: Failed to create index buffer.");
+			LOG_ERROR("Failed to create index buffer.");
 			return false;
 		}
 

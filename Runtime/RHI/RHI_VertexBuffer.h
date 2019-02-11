@@ -41,10 +41,11 @@ namespace Directus
 		bool CreateDynamic(unsigned int stride, unsigned int initialSize);
 		void* Map();
 		bool Unmap();
-		bool Bind();
 	
-		unsigned int GetVertexCount() { return m_vertexCount; }
-		unsigned int GetMemoryUsage() { return m_memoryUsage; }
+		void* GetBuffer()				{ return m_buffer; }
+		unsigned int GetStride()		{ return m_stride; }
+		unsigned int GetVertexCount()	{ return m_vertexCount; }
+		unsigned int GetMemoryUsage()	{ return m_memoryUsage; }
 
 	protected:
 		unsigned int m_memoryUsage;

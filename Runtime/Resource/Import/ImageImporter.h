@@ -84,7 +84,7 @@ namespace Directus
 
 		unsigned int ComputeChannelCount(FIBITMAP* bitmap);
 		unsigned int ComputeBitsPerChannel(FIBITMAP* bitmap);
-		Texture_Format ComputeTextureFormat(unsigned int bpp, unsigned int channels);
+		RHI_Format ComputeTextureFormat(unsigned int bpp, unsigned int channels);
 		bool IsVisuallyGrayscale(FIBITMAP* bitmap);
 		FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap);
 		FIBITMAP* _FreeImage_ConvertTo32Bits(FIBITMAP* bitmap);

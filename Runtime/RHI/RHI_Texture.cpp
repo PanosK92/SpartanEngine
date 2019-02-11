@@ -35,7 +35,7 @@ namespace Directus
 {
 	RHI_Texture::RHI_Texture(Context* context) : IResource(context, Resource_Texture)
 	{
-		m_format	= Texture_Format_R8G8B8A8_UNORM;
+		m_format	= Format_R8G8B8A8_UNORM;
 		m_rhiDevice	= context->GetSubsystem<Renderer>()->GetRHIDevice();
 	}
 

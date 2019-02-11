@@ -47,33 +47,33 @@ namespace Directus
 	struct RHI_Vertex_PosUV;
 	struct RHI_Vertex_PosCol;
 
-	enum Query_Type
+	enum RHI_Query_Type
 	{
 		Query_Timestamp,
 		Query_Timestamp_Disjoint
 	};
 
-	enum Clear_Buffer
+	enum RHI_Clear_Buffer
 	{
 		Clear_Depth		= 1 << 0,
 		Clear_Stencil	= 1 << 1
 	};
 
-	enum Buffer_Scope
+	enum RHI_Buffer_Scope
 	{
 		Buffer_VertexShader,
 		Buffer_PixelShader,
 		Buffer_Global
 	};
 
-	enum PrimitiveTopology_Mode
+	enum RHI_PrimitiveTopology_Mode
 	{
 		PrimitiveTopology_TriangleList,
 		PrimitiveTopology_LineList,
 		PrimitiveTopology_NotAssigned
 	};
 
-	enum Input_Layout
+	enum RHI_Input_Layout
 	{
 		Input_Position,
 		Input_PositionColor,
@@ -82,31 +82,31 @@ namespace Directus
 		Input_NotAssigned
 	};
 
-	enum Cull_Mode
+	enum RHI_Cull_Mode
 	{
 		Cull_None,
 		Cull_Front,
 		Cull_Back
 	};
 
-	enum Fill_Mode
+	enum RHI_Fill_Mode
 	{
 		Fill_Solid,
 		Fill_Wireframe
 	};
 
-	enum Texture_Sampler_Filter
+	enum RHI_Texture_Filter
 	{
-		Texture_Sampler_Comparison_Point,
-		Texture_Sampler_Comparison_Bilinear,
-		Texture_Sampler_Comparison_Trilinear,
-		Texture_Sampler_Point,
-		Texture_Sampler_Bilinear,
-		Texture_Sampler_Trilinear,
-		Texture_Sampler_Anisotropic
+		Texture_Filter_Comparison_Point,
+		Texture_Filter_Comparison_Bilinear,
+		Texture_Filter_Comparison_Trilinear,
+		Texture_Filter_Point,
+		Texture_Filter_Bilinear,
+		Texture_Filter_Trilinear,
+		Texture_Filter_Anisotropic
 	};
 
-	enum Texture_Address_Mode
+	enum RHI_Texture_Address_Mode
 	{
 		Texture_Address_Wrap,
 		Texture_Address_Mirror,
@@ -115,33 +115,55 @@ namespace Directus
 		Texture_Address_MirrorOnce,
 	};
 
-	enum Texture_Comparison_Function
+	enum RHI_Comparison_Function
 	{
-		Texture_Comparison_Never,
-		Texture_Comparison_Less,
-		Texture_Comparison_Equal,
-		Texture_Comparison_LessEqual,
-		Texture_Comparison_Greater,
-		Texture_Comparison_NotEqual,
-		Texture_Comparison_GreaterEqual,
-		Texture_Comparison_Always
+		Comparison_Never,
+		Comparison_Less,
+		Comparison_Equal,
+		Comparison_LessEqual,
+		Comparison_Greater,
+		Comparison_NotEqual,
+		Comparison_GreaterEqual,
+		Comparison_Always
 	};
 
-	enum Texture_Format
+	enum RHI_Format
 	{
-		Texture_Format_R8_UNORM,	
-		Texture_Format_R16_FLOAT,
-		Texture_Format_R32_FLOAT,
-		Texture_Format_D32_FLOAT,
+		// R
+		Format_R8_UNORM,
+		Format_R16_UINT,
+		Format_R16_FLOAT,
+		Format_R32_UINT,
+		Format_R32_FLOAT,
+		Format_D32_FLOAT,
+		// RG
+		Format_R8G8_UNORM,
+		Format_R16G16_FLOAT,
+		Format_R32G32_FLOAT,	
+		// RGB
+		Format_R32G32B32_FLOAT,
+		// RGBA
+		Format_R8G8B8A8_UNORM,
+		Format_R16G16B16A16_FLOAT,
+		Format_R32G32B32A32_FLOAT
+	};
 
-		Texture_Format_R8G8_UNORM,
-		Texture_Format_R16G16_FLOAT,
-		Texture_Format_R32G32_FLOAT,	
+	enum RHI_Blend
+	{
+		Blend_Zero,
+		Blend_One,
+		Blend_Src_Color,
+		Blend_Inv_Src_Color,
+		Blend_Src_Alpha,
+		Blend_Inv_Src_Alpha
+	};
 
-		Texture_Format_R32G32B32_FLOAT,
-
-		Texture_Format_R8G8B8A8_UNORM,
-		Texture_Format_R16G16B16A16_FLOAT,
-		Texture_Format_R32G32B32A32_FLOAT
+	enum RHI_Blend_Operation
+	{
+		Blend_Operation_Add,
+		Blend_Operation_Subtract,
+		Blend_Operation_Rev_Subtract,
+		Blend_Operation_Min,
+		Blend_Operation_Max
 	};
 }

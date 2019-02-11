@@ -36,8 +36,8 @@ namespace Directus
 	RHI_RasterizerState::RHI_RasterizerState
 	(
 		shared_ptr<RHI_Device> device,
-		Cull_Mode cullMode,
-		Fill_Mode fillMode,
+		RHI_Cull_Mode cullMode,
+		RHI_Fill_Mode fillMode,
 		bool depthClipEnabled,
 		bool clippingEnabled,
 		bool multiSampleEnabled,

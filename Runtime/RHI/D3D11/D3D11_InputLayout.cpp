@@ -162,7 +162,7 @@ namespace Directus
 		SafeRelease((ID3D11InputLayout*)m_buffer);
 	}
 
-	bool RHI_InputLayout::Create(void* vsBlob, Input_Layout layout)
+	bool RHI_InputLayout::Create(void* vsBlob, RHI_Input_Layout layout)
 	{
 		if (!vsBlob || layout == Input_NotAssigned)
 		{

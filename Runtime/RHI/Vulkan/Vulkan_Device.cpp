@@ -119,7 +119,7 @@ namespace Directus
 
 	RHI_Device::RHI_Device(void* drawHandle)
 	{
-		m_backBufferFormat				= Texture_Format_R8G8B8A8_UNORM;
+		m_backBufferFormat				= Format_R8G8B8A8_UNORM;
 		m_depthEnabled			= true;
 		m_alphaBlendingEnabled	= false;
 		m_initialized			= false;
@@ -283,7 +283,7 @@ namespace Directus
 		
 	}
 
-	void RHI_Device::SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, Buffer_Scope scope, void* const* buffer)
+	void RHI_Device::SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, RHI_Buffer_Scope scope, void* const* buffer)
 	{
 		
 	}
@@ -328,7 +328,7 @@ namespace Directus
 		
 	}
 
-	bool RHI_Device::Profiling_CreateQuery(void** query, Query_Type type)
+	bool RHI_Device::Profiling_CreateQuery(void** query, RHI_Query_Type type)
 	{
 		return true;
 	}
@@ -353,7 +353,7 @@ namespace Directus
 		return 0.0f;
 	}
 
-	bool RHI_Device::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	bool RHI_Device::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology)
 	{
 		return true;
 	}

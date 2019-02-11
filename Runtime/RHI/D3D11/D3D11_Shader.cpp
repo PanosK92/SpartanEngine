@@ -166,7 +166,7 @@ namespace Directus
 		SafeRelease((ID3D11PixelShader*)m_pixelShader);
 	}
 
-	bool RHI_Shader::API_CompileVertex(const string& filePath, Input_Layout inputLayout)
+	bool RHI_Shader::API_CompileVertex(const string& filePath, RHI_Input_Layout inputLayout)
 	{
 		m_filePath = filePath;
 

@@ -67,45 +67,48 @@ namespace Directus
 		return bindResult;
 	}
 
-	void RHI_Pipeline::SetShader(shared_ptr<RHI_Shader>& shader)
+	bool RHI_Pipeline::SetShader(const shared_ptr<RHI_Shader>& shader)
 	{
-		SetVertexShader(shader);
-		SetPixelShader(shader);	
+		return SetVertexShader(shader) && SetPixelShader(shader);
 	}
 
-	bool RHI_Pipeline::SetVertexShader(shared_ptr<RHI_Shader>& shader)
+	bool RHI_Pipeline::SetVertexShader(const shared_ptr<RHI_Shader>& shader)
 	{
-		if (!shader)
+		if (!shader || !shader->HasVertexShader())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		if (shader->HasVertexShader() && m_boundVertexShaderID != shader->RHI_GetID())
+		if (m_vertexShader)
 		{
-			SetInputLayout(shader->GetInputLayout()); // TODO: this has to be done outside of this function 
-			m_vertexShader			= shader;
-			m_boundVertexShaderID	= m_vertexShader->RHI_GetID();
-			m_vertexShaderDirty		= true;
+			if (m_vertexShader->RHI_GetID() == shader->RHI_GetID())
+				return true;
 		}
+
+		SetInputLayout(shader->GetInputLayout()); // TODO: this has to be done outside of this function 
+		m_vertexShader		= shader;
+		m_vertexShaderDirty = true;
 
 		return true;
 	}
 
-	bool RHI_Pipeline::SetPixelShader(shared_ptr<RHI_Shader>& shader)
+	bool RHI_Pipeline::SetPixelShader(const shared_ptr<RHI_Shader>& shader)
 	{
-		if (!shader)
+		if (!shader || !shader->HasPixelShader())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		if (shader->HasPixelShader() && m_boundPixelShaderID != shader->RHI_GetID())
+		if (m_pixelShader)
 		{
-			m_pixelShader			= shader;
-			m_boundPixelShaderID	= m_pixelShader->RHI_GetID();
-			m_pixelShaderDirty		= true;
+			if (m_pixelShader->RHI_GetID() == shader->RHI_GetID())
+				return true;
 		}
+
+		m_pixelShader		= shader;
+		m_pixelShaderDirty	= true;
 
 		return true;
 	}
@@ -223,7 +226,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Pipeline::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope)
+	bool RHI_Pipeline::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, RHI_Buffer_Scope scope)
 	{
 		auto bufferPtr = constantBuffer ? constantBuffer->GetBuffer() : nullptr;
 		m_constantBuffers.emplace_back(bufferPtr, slot, scope);
@@ -232,7 +235,7 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_Pipeline::SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology)
+	void RHI_Pipeline::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology)
 	{
 		if (m_primitiveTopology == primitiveTopology)
 			return;
@@ -243,11 +246,19 @@ namespace Directus
 
 	bool RHI_Pipeline::SetInputLayout(const shared_ptr<RHI_InputLayout>& inputLayout)
 	{
-		if (m_inputLayout == inputLayout->GetInputLayout())
+		if (!inputLayout)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
+		}
 
-		m_inputLayout		= inputLayout->GetInputLayout();
-		m_inputLayoutBuffer	= inputLayout->GetBuffer();
+		if (m_inputLayout)
+		{
+			if (m_inputLayout->GetInputLayout() == inputLayout->GetInputLayout())
+				return true;
+		}
+
+		m_inputLayout		= inputLayout;
 		m_inputLayoutDirty	= true;
 
 		return true;
@@ -402,7 +413,7 @@ namespace Directus
 		{
 			for (const auto& constantBuffer : m_constantBuffers)
 			{
-				m_rhiDevice->SetConstantBuffers(constantBuffer.slot, 1, constantBuffer.scope, (void*)&constantBuffer.buffer);
+				m_rhiDevice->SetConstantBuffers(constantBuffer.slot, 1, (void*)&constantBuffer.buffer, constantBuffer.scope);
 				m_profiler->m_rhiBindingsBufferConstant += (constantBuffer.scope == Buffer_Global) ? 2 : 1;
 			}
 
@@ -413,7 +424,7 @@ namespace Directus
 		// Vertex shader
 		if (m_vertexShaderDirty)
 		{
-			m_rhiDevice->SetVertexShader(m_vertexShader->GetVertexShaderBuffer());
+			m_rhiDevice->SetVertexShader(m_vertexShader);
 			m_profiler->m_rhiBindingsVertexShader++;
 			m_vertexShaderDirty = false;
 		}
@@ -421,7 +432,7 @@ namespace Directus
 		// Pixel shader
 		if (m_pixelShaderDirty)
 		{
-			m_rhiDevice->SetPixelShader(m_pixelShader->GetPixelShaderBuffer());
+			m_rhiDevice->SetPixelShader(m_pixelShader);
 			m_profiler->m_rhiBindingsPixelShader++;
 			m_pixelShaderDirty = false;
 		}
@@ -429,7 +440,7 @@ namespace Directus
 		// Input layout
 		if (m_inputLayoutDirty)
 		{
-			m_rhiDevice->SetInputLayout(m_inputLayoutBuffer);
+			m_rhiDevice->SetInputLayout(m_inputLayout);
 			m_inputLayoutDirty = false;
 		}
 
@@ -453,6 +464,7 @@ namespace Directus
 			m_rhiDevice->SetDepthStencilState(m_depthStencilState);
 			m_depthStencilStateDirty = false;
 		}
+
 		// Rasterizer state
 		if (m_raterizerStateDirty)
 		{
@@ -464,7 +476,7 @@ namespace Directus
 		bool resultIndexBuffer = false;
 		if (m_indexBufferDirty)
 		{
-			resultIndexBuffer = m_indexBuffer->Bind();
+			resultIndexBuffer = m_rhiDevice->SetIndexBuffer(m_indexBuffer);
 			m_profiler->m_rhiBindingsBufferIndex++;
 			m_indexBufferDirty = false;
 		}
@@ -473,7 +485,7 @@ namespace Directus
 		bool resultVertexBuffer = false;
 		if (m_vertexBufferDirty)
 		{
-			resultVertexBuffer = m_vertexBuffer->Bind();
+			resultVertexBuffer = m_rhiDevice->SetVertexBuffer(m_vertexBuffer);
 			m_profiler->m_rhiBindingsBufferVertex++;
 			m_vertexBufferDirty = false;
 		}
@@ -491,33 +503,28 @@ namespace Directus
 
 	void RHI_Pipeline::Clear()
 	{
-		vector<void*> empty5(5);
-		auto empty5_count = (unsigned int)empty5.size();
-		void* empty5_ptr = &empty5[0];
-
-		vector<void*> empty14(14);
-		auto empty14_count = (unsigned int)empty14.size();
-		void* empty14_ptr = &empty14[0];
+		vector<void*> empty(30);
+		void* empyt_ptr	= &empty[0];
 		
 		// Render targets
-		m_rhiDevice->SetRenderTargets(empty5_count, empty5_ptr, nullptr);
+		m_rhiDevice->SetRenderTargets(8, empyt_ptr, nullptr);
 		m_renderTargetViews.clear();
 		m_depthStencilView		= nullptr;
-		m_renderTargetsClear = false;
-		m_renderTargetsDirty = false;
+		m_renderTargetsClear	= false;
+		m_renderTargetsDirty	= false;
 
 		// Textures
-		m_rhiDevice->SetTextures(0, empty14_count, empty14_ptr);
+		m_rhiDevice->SetTextures(0, 20, empyt_ptr);
 		m_textures.clear();
 		m_texturesDirty = false;
 
 		// Samplers
-		m_rhiDevice->SetSamplers(0, empty14_count, empty14_ptr);
+		m_rhiDevice->SetSamplers(0, 10, empyt_ptr);
 		m_samplers.clear();
 		m_samplersDirty = false;
 
 		// Constant buffers
-		m_rhiDevice->SetConstantBuffers(0, empty14_count, Buffer_Global, empty14_ptr);
+		m_rhiDevice->SetConstantBuffers(0, 10, empyt_ptr, Buffer_Global);
 		m_constantBuffers.clear();
 		m_constantBufferDirty = false;
 	}

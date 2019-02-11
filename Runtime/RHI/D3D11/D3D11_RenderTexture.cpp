@@ -35,7 +35,7 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_RenderTexture::RHI_RenderTexture(shared_ptr<RHI_Device> rhiDevice, unsigned int width, unsigned int height, Texture_Format textureFormat, bool depth, Texture_Format depthFormat, unsigned int arraySize)
+	RHI_RenderTexture::RHI_RenderTexture(shared_ptr<RHI_Device> rhiDevice, unsigned int width, unsigned int height, RHI_Format textureFormat, bool depth, RHI_Format depthFormat, unsigned int arraySize)
 	{
 		m_rhiDevice		= rhiDevice;
 		m_depthEnabled	= depth;

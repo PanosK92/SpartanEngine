@@ -202,19 +202,19 @@ namespace Directus
 		m_quad->Create(0, 0, (float)width, (float)height);
 
 		// Full res
-		m_renderTexFull_HDR_Light	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R32G32B32A32_FLOAT);
-		m_renderTexFull_HDR_Light2	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R32G32B32A32_FLOAT);
-		m_renderTexFull_TAA_Current = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexFull_TAA_History = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexFull_HDR_Light	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Format_R32G32B32A32_FLOAT);
+		m_renderTexFull_HDR_Light2	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Format_R32G32B32A32_FLOAT);
+		m_renderTexFull_TAA_Current = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Format_R16G16B16A16_FLOAT);
+		m_renderTexFull_TAA_History = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Format_R16G16B16A16_FLOAT);
 
 		// Half res
-		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R8_UNORM);
-		m_renderTexHalf_SSAO	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R8_UNORM);
-		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Texture_Format_R8_UNORM);
+		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Format_R8_UNORM);
+		m_renderTexHalf_SSAO	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Format_R8_UNORM);
+		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Format_R8_UNORM);
 
 		// Quarter res
-		m_renderTexQuarter_Blur1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
-		m_renderTexQuarter_Blur2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Texture_Format_R16G16B16A16_FLOAT);
+		m_renderTexQuarter_Blur1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
+		m_renderTexQuarter_Blur2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
 	}
 
 	void Renderer::CreateShaders()
@@ -366,12 +366,12 @@ namespace Directus
 
 	void Renderer::CreateSamplers()
 	{
-		m_samplerCompareDepth		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Comparison_Bilinear,	Texture_Address_Clamp,	Texture_Comparison_Greater);
-		m_samplerPointClamp			= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Point,					Texture_Address_Clamp,	Texture_Comparison_Always);
-		m_samplerBilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,				Texture_Address_Clamp,	Texture_Comparison_Always);
-		m_samplerBilinearWrap		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Bilinear,				Texture_Address_Wrap,	Texture_Comparison_Always);
-		m_samplerTrilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Trilinear,				Texture_Address_Clamp,	Texture_Comparison_Always);
-		m_samplerAnisotropicWrap	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Sampler_Anisotropic,			Texture_Address_Wrap,	Texture_Comparison_Always);
+		m_samplerCompareDepth		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Comparison_Bilinear,	Texture_Address_Clamp,	Comparison_Greater);
+		m_samplerPointClamp			= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Point,					Texture_Address_Clamp,	Comparison_Always);
+		m_samplerBilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Bilinear,				Texture_Address_Clamp,	Comparison_Always);
+		m_samplerBilinearWrap		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Bilinear,				Texture_Address_Wrap,	Comparison_Always);
+		m_samplerTrilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Trilinear,				Texture_Address_Clamp,	Comparison_Always);
+		m_samplerAnisotropicWrap	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Anisotropic,			Texture_Address_Wrap,	Comparison_Always);
 	}
 
 	void Renderer::SetDefault_Pipeline_State()
@@ -700,7 +700,7 @@ namespace Directus
 		});
 	}
 
-	shared_ptr<RHI_RasterizerState>& Renderer::GetRasterizerState(Cull_Mode cullMode, Fill_Mode fillMode)
+	shared_ptr<RHI_RasterizerState>& Renderer::GetRasterizerState(RHI_Cull_Mode cullMode, RHI_Fill_Mode fillMode)
 	{
 		if		(cullMode == Cull_Back)		return (fillMode == Fill_Solid) ? m_rasterizer_cullBack_solid	: m_rasterizer_cullBack_wireframe;
 		else if (cullMode == Cull_Front)	return (fillMode == Fill_Solid) ? m_rasterizer_cullFront_solid : m_rasterizer_cullFront_wireframe;

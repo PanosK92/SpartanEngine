@@ -36,7 +36,7 @@ namespace Directus
 
 	struct ConstantBuffer
 	{
-		ConstantBuffer(void* buffer, unsigned int slot, Buffer_Scope scope)
+		ConstantBuffer(void* buffer, unsigned int slot, RHI_Buffer_Scope scope)
 		{
 			this->buffer	= buffer;
 			this->slot		= slot;
@@ -45,7 +45,7 @@ namespace Directus
 
 		void* buffer;
 		unsigned int slot;
-		Buffer_Scope scope;
+		RHI_Buffer_Scope scope;
 	};
 
 	class ENGINE_CLASS RHI_Pipeline
@@ -60,25 +60,25 @@ namespace Directus
 		//=============================================================================================
 
 		//= SET ===========================================================================================================================
-		void SetShader(std::shared_ptr<RHI_Shader>& shader);
-		bool SetVertexShader(std::shared_ptr<RHI_Shader>& shader);
-		bool SetPixelShader(std::shared_ptr<RHI_Shader>& shader);
+		bool SetShader(const std::shared_ptr<RHI_Shader>& shader);
+		bool SetVertexShader(const std::shared_ptr<RHI_Shader>& shader);
+		bool SetPixelShader(const std::shared_ptr<RHI_Shader>& shader);
 		bool SetTexture(const std::shared_ptr<RHI_RenderTexture>& texture);
 		bool SetTexture(const std::shared_ptr<RHI_Texture>& texture);
-		bool SetTexture(const RHI_Texture* texture);
-		bool SetRenderTarget(const std::shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView = nullptr, bool clear = false);
-		bool SetRenderTarget(const std::vector<void*>& renderTargetViews, void* depthStencilView = nullptr, bool clear = false);
-		bool SetRenderTarget(void* renderTargetView, void* depthStencilView = nullptr, bool clear = false);
-		bool SetConstantBuffer(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, Buffer_Scope scope);
-		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
-		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
-		bool SetSampler(const std::shared_ptr<RHI_Sampler>& sampler);
-		void SetPrimitiveTopology(PrimitiveTopology_Mode primitiveTopology);
-		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout);
 		bool SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState);
 		bool SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState);
 		bool SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState);
+		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout);
+		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
+		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
+		bool SetSampler(const std::shared_ptr<RHI_Sampler>& sampler);
+		bool SetTexture(const RHI_Texture* texture);
 		void SetViewport(const RHI_Viewport& viewport);
+		bool SetRenderTarget(const std::shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView = nullptr, bool clear = false);
+		bool SetRenderTarget(const std::vector<void*>& renderTargetViews, void* depthStencilView = nullptr, bool clear = false);
+		bool SetRenderTarget(void* renderTargetView, void* depthStencilView = nullptr, bool clear = false);
+		bool SetConstantBuffer(const std::shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, RHI_Buffer_Scope scope);
+		void SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology);		
 		//=================================================================================================================================
 
 		//= STATES ==
@@ -87,21 +87,20 @@ namespace Directus
 		//===========
 
 	private:
-		// Pipeline
-		PrimitiveTopology_Mode m_primitiveTopology;
-		Input_Layout m_inputLayout;
-		void* m_inputLayoutBuffer = nullptr;
+		// Pipeline	
+		std::shared_ptr<RHI_InputLayout> m_inputLayout;
 		std::shared_ptr<RHI_DepthStencilState> m_depthStencilState;
 		std::shared_ptr<RHI_RasterizerState> m_rasterizerState;
 		std::shared_ptr<RHI_BlendState> m_blendState;
-		std::vector<void*> m_samplers;
-		std::vector<void*> m_textures;
 		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
 		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
-		std::vector<ConstantBuffer> m_constantBuffers;
 		std::shared_ptr<RHI_Shader> m_vertexShader;
 		std::shared_ptr<RHI_Shader> m_pixelShader;
 		RHI_Viewport m_viewport;
+		RHI_PrimitiveTopology_Mode m_primitiveTopology;
+		std::vector<ConstantBuffer> m_constantBuffers;
+		std::vector<void*> m_samplers;
+		std::vector<void*> m_textures;
 		std::vector<void*> m_renderTargetViews;	
 		void* m_depthStencilView = nullptr;
 		bool m_renderTargetsClear;
@@ -123,8 +122,6 @@ namespace Directus
 		bool m_renderTargetsDirty		= false;
 
 		// Misc
-		unsigned int m_boundVertexShaderID;
-		unsigned int m_boundPixelShaderID;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		Profiler* m_profiler;
 	};

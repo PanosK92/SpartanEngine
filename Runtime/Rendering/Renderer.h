@@ -195,7 +195,7 @@ namespace Directus
 		);
 		void Renderables_Acquire(const Variant& renderables);
 		void Renderables_Sort(std::vector<Actor*>* renderables);
-		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(Cull_Mode cullMode, Fill_Mode fillMode);
+		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cullMode, RHI_Fill_Mode fillMode);
 
 		//= PASSES ==============================================================================================================================================
 		void Pass_DepthDirectionalLight(Light* directionalLight);
