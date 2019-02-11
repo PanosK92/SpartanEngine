@@ -32,27 +32,13 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_ConstantBuffer::RHI_ConstantBuffer(shared_ptr<RHI_Device> rhiDevice)
+	RHI_ConstantBuffer::RHI_ConstantBuffer(shared_ptr<RHI_Device> rhiDevice, unsigned int size)
 	{
 		m_rhiDevice = rhiDevice;
-		m_buffer	= nullptr;
-	}
-
-	RHI_ConstantBuffer::~RHI_ConstantBuffer()
-	{
-		if (m_buffer)
-		{
-			((ID3D11Buffer*)m_buffer)->Release();
-			m_buffer = nullptr;
-		}
-	}
-
-	bool RHI_ConstantBuffer::Create(unsigned int size)
-	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{
-			LOG_ERROR("Invalid RHI device");
-			return false;
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
 		}
 
 		D3D11_BUFFER_DESC bufferDesc;
@@ -64,27 +50,24 @@ namespace Directus
 		bufferDesc.MiscFlags			= 0;
 		bufferDesc.StructureByteStride	= 0;
 
-		HRESULT result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, (ID3D11Buffer**)&m_buffer);
-		if FAILED(result)
+		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, (ID3D11Buffer**)&m_buffer);
+		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create constant buffer");
-			return false;
+			return;
 		}
+	}
 
-		return true;
+	RHI_ConstantBuffer::~RHI_ConstantBuffer()
+	{
+		SafeRelease((ID3D11Buffer*)m_buffer);
 	}
 
 	void* RHI_ConstantBuffer::Map()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("Invalid RHI device");
-			return nullptr;
-		}
-
-		if (!m_buffer)
-		{
-			LOG_ERROR("Invalid buffer");
+			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
 		}
 
@@ -101,20 +84,13 @@ namespace Directus
 
 	bool RHI_ConstantBuffer::Unmap()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
-			LOG_ERROR("Invalid RHI device");
-			return false;
-		}
-
-		if (!m_buffer)
-		{
-			LOG_ERROR("Invalid buffer");
+			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Buffer*)m_buffer, 0);
-
 		return true;
 	}
 }
