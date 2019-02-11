@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include <array>
 #include "../Math/Vector2.h"
-#include "../Core/SubSystem.h"
+#include "../Core/ISubsystem.h"
 //============================
 
 namespace Directus
@@ -76,7 +76,7 @@ namespace Directus
 		Right_Shoulder
 	};
 
-	class ENGINE_CLASS Input : public Subsystem
+	class ENGINE_CLASS Input : public ISubsystem
 	{
 	public:
 		Input(Context* context);

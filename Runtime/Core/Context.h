@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include <vector>
 #include "EngineDefs.h"
-#include "SubSystem.h"
+#include "ISubsystem.h"
 #include "../Logging/Log.h"
 //=========================
 
@@ -39,7 +39,7 @@ namespace Directus
 		// Remove subsystems
 		void RemoveSubsystems()
 		{
-			// Deconstruct in reverse order (to avoid dependency crashes)
+			// Deconstruct in reverse order (to avoid dependencies)
 			for (auto i = m_subsystems.size() - 1; i >= 0; i--)
 			{
 				SafeDelete(m_subsystems[i]);
@@ -50,7 +50,7 @@ namespace Directus
 		template <class T>
 		T* RegisterSubsystem()
 		{
-			static_assert(std::is_base_of<Subsystem, T>::value, "Provided type does not implemented Subsystem");
+			static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem");
 			return static_cast<T*>(m_subsystems.emplace_back(new T(this)));
 		}
 
@@ -85,6 +85,6 @@ namespace Directus
 		}
 
 	private:
-		std::vector<Subsystem*> m_subsystems;
+		std::vector<ISubsystem*> m_subsystems;
 	};
 }

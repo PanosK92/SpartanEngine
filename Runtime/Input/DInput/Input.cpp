@@ -49,7 +49,7 @@ namespace Directus
 	DIMOUSESTATE			g_mouseState;
 	unsigned char			g_keyboardState[256];
 
-	Input::Input(Context* context) : Subsystem(context)
+	Input::Input(Context* context) : ISubsystem(context)
 	{
 		g_gamepadNum		= 0;
 		bool result			= true;

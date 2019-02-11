@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "../Core/SubSystem.h"
+#include "../Core/ISubsystem.h"
 //============================
 
 class btBroadphaseInterface;
@@ -42,7 +42,7 @@ namespace Directus
 		class Vector3;
 	}	
 
-	class Physics : public Subsystem
+	class Physics : public ISubsystem
 	{
 	public:
 		Physics(Context* context);

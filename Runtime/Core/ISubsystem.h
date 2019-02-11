@@ -24,11 +24,11 @@ namespace Directus
 {
 	class Context;
 
-	class ENGINE_CLASS Subsystem
+	class ENGINE_CLASS ISubsystem
 	{		
 	public:
-		Subsystem(Context* context)	{ m_context = context; }
-		virtual ~Subsystem()		{}
+		ISubsystem(Context* context)	{ m_context = context; }
+		virtual ~ISubsystem()		{}
 		virtual bool Initialize()	{ return true; }
 
 	protected:

@@ -32,7 +32,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	ResourceCache::ResourceCache(Context* context) : Subsystem(context)
+	ResourceCache::ResourceCache(Context* context) : ISubsystem(context)
 	{
 		// Add engine standard resource directories
 		AddStandardResourceDirectory(Resource_Texture, "Standard Assets//Textures//");

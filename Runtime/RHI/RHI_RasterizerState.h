@@ -37,16 +37,16 @@ namespace Directus
 			RHI_Cull_Mode cullMode,
 			RHI_Fill_Mode fillMode,
 			bool depthClipEnabled,
-			bool clippingEnabled,
+			bool scissorEnabled,
 			bool multiSampleEnabled, 
 			bool antialisedLineEnabled
 		);
 		~RHI_RasterizerState();
 
-		RHI_Cull_Mode GetCullMode()			{ return m_cullMode; }
-		RHI_Fill_Mode GetFillMode()			{ return m_fillMode; }
+		RHI_Cull_Mode GetCullMode()		{ return m_cullMode; }
+		RHI_Fill_Mode GetFillMode()		{ return m_fillMode; }
 		bool GetDepthClipEnabled()		{ return m_depthClipEnabled; }
-		bool GetClippingEnabled()		{ return m_clippingEnabled; }
+		bool GetScissorEnabled()		{ return m_scissorEnabled; }
 		bool GetMultiSampleEnabled()	{ return m_multiSampleEnabled; }
 		bool GetAntialisedLineEnabled()	{ return m_antialisedLineEnabled; }
 		bool IsInitialized()			{ return m_initialized; }
@@ -57,7 +57,7 @@ namespace Directus
 		RHI_Cull_Mode m_cullMode;
 		RHI_Fill_Mode m_fillMode;
 		bool m_depthClipEnabled;
-		bool m_clippingEnabled;
+		bool m_scissorEnabled;
 		bool m_multiSampleEnabled;
 		bool m_antialisedLineEnabled;
 

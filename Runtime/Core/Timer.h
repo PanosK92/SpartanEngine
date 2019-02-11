@@ -22,13 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =========
-#include "SubSystem.h"
+#include "ISubsystem.h"
 #include <chrono>
 //====================
 
 namespace Directus
 {
-	class ENGINE_CLASS Timer : public Subsystem
+	class ENGINE_CLASS Timer : public ISubsystem
 	{
 	public:
 		Timer(Context* context);

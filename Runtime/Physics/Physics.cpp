@@ -48,7 +48,7 @@ static const Vector3 GRAVITY			= Vector3(0.0f, -9.81f, 0.0f);
 
 namespace Directus
 { 
-	Physics::Physics(Context* context) : Subsystem(context)
+	Physics::Physics(Context* context) : ISubsystem(context)
 	{
 		m_maxSubSteps	= 1;
 		m_simulating	= false;

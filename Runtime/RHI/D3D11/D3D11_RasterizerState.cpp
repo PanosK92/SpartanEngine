@@ -39,7 +39,7 @@ namespace Directus
 		RHI_Cull_Mode cullMode,
 		RHI_Fill_Mode fillMode,
 		bool depthClipEnabled,
-		bool clippingEnabled,
+		bool scissorEnabled,
 		bool multiSampleEnabled,
 		bool antialisedLineEnabled)
 	{
@@ -47,7 +47,7 @@ namespace Directus
 		m_cullMode					= cullMode;
 		m_fillMode					= fillMode;
 		m_depthClipEnabled			= depthClipEnabled;
-		m_clippingEnabled			= clippingEnabled;
+		m_scissorEnabled			= scissorEnabled;
 		m_multiSampleEnabled		= multiSampleEnabled;
 		m_antialisedLineEnabled		= antialisedLineEnabled;
 
@@ -62,7 +62,7 @@ namespace Directus
 		desc.DepthClipEnable		= depthClipEnabled;	
 		desc.MultisampleEnable		= multiSampleEnabled;
 		desc.AntialiasedLineEnable	= antialisedLineEnabled;
-		desc.ScissorEnable			= clippingEnabled;
+		desc.ScissorEnable			= scissorEnabled;
 
 		// Create rasterizer state
 		auto rasterizerState	= (ID3D11RasterizerState*)m_buffer;

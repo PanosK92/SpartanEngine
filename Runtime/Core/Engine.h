@@ -18,7 +18,7 @@ DEALINGS IN THE SOFTWARE. */
 
 //= INCLUDES =========
 #include "Context.h"
-#include "SubSystem.h"
+#include "ISubsystem.h"
 //====================
 
 namespace Directus
@@ -33,7 +33,7 @@ namespace Directus
 
 	class Timer;
 
-	class ENGINE_CLASS Engine : public Subsystem
+	class ENGINE_CLASS Engine : public ISubsystem
 	{
 	public:
 		Engine(Context* context);

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "../Core/SubSystem.h"
+#include "../Core/ISubsystem.h"
 //============================
 
 //= FORWARD DECLARATIONS =
@@ -36,7 +36,7 @@ namespace Directus
 {
 	class Transform;
 
-	class Audio : public Subsystem
+	class Audio : public ISubsystem
 	{
 	public:
 		Audio(Context* context);

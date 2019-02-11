@@ -46,7 +46,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	World::World(Context* context) : Subsystem(context)
+	World::World(Context* context) : ISubsystem(context)
 	{
 		m_isDirty	= true;
 		m_state		= Ticking;

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <memory>
 #include "../Core/EngineDefs.h"
-#include "../Core/SubSystem.h"
+#include "../Core/ISubsystem.h"
 //=============================
 
 namespace Directus
@@ -42,7 +42,7 @@ namespace Directus
 		Loading
 	};
 
-	class ENGINE_CLASS World : public Subsystem
+	class ENGINE_CLASS World : public ISubsystem
 	{
 	public:
 		World(Context* context);

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <chrono>
 #include <memory>
 #include "../Core/EngineDefs.h"
-#include "../Core/SubSystem.h"
+#include "../Core/ISubsystem.h"
 //=============================
 
 // Multi (CPU + GPU)
@@ -66,7 +66,7 @@ namespace Directus
 		bool started		= false;
 	};
 
-	class ENGINE_CLASS Profiler : public Subsystem
+	class ENGINE_CLASS Profiler : public ISubsystem
 	{
 	public:
 		Profiler(Context* context);
