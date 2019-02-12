@@ -45,7 +45,6 @@ using namespace Directus;
 
 namespace _Widget_World
 {
-	static Engine* g_engine			= nullptr;
 	static World* g_world			= nullptr;
 	static Input* g_input			= nullptr;
 	static bool g_popupRenameActor	= false;
@@ -59,7 +58,6 @@ namespace _Widget_World
 Widget_World::Widget_World(Context* context) : Widget(context)
 {
 	m_title					= "World";
-	_Widget_World::g_engine	= m_context->GetSubsystem<Engine>();
 	_Widget_World::g_world	= m_context->GetSubsystem<World>();
 	_Widget_World::g_input	= m_context->GetSubsystem<Input>();
 

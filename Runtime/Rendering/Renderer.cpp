@@ -103,7 +103,7 @@ namespace Directus
 		m_gizmoRectLight	= make_unique<Rectangle>(m_context);
 
 		// Create a constant buffer that will be used for most shaders
-		m_bufferGlobal = make_shared<RHI_ConstantBuffer>(m_rhiDevice, sizeof(ConstantBuffer_Global));
+		m_bufferGlobal = make_shared<RHI_ConstantBuffer>(m_rhiDevice, static_cast<unsigned int>(sizeof(ConstantBuffer_Global)));
 
 		// Line buffer
 		m_vertexBufferLines = make_shared<RHI_VertexBuffer>(m_rhiDevice);

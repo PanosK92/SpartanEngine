@@ -16,13 +16,15 @@ DEALINGS IN THE SOFTWARE. */
 
 #pragma once
 
-//= INCLUDES =========
-#include "Context.h"
-#include "ISubsystem.h"
-//====================
+
+//= INCLUDES ==========
+#include "EngineDefs.h"
+//=====================
 
 namespace Directus
 {
+	class Context;
+
 	enum Engine_Mode : unsigned long
 	{
 		Engine_Update	= 1UL << 0,	// Should the engine update?
@@ -33,15 +35,11 @@ namespace Directus
 
 	class Timer;
 
-	class ENGINE_CLASS Engine : public ISubsystem
+	class ENGINE_CLASS Engine
 	{
 	public:
 		Engine(Context* context);
 		~Engine();
-
-		//= SUBSYSTEM =============
-		bool Initialize() override;
-		//=========================
 
 		// Performs a complete simulation cycle
 		void Tick();
@@ -71,5 +69,6 @@ namespace Directus
 	private:
 		static unsigned long m_flags;
 		Timer* m_timer;
+		Context* m_context;
 	};
 }

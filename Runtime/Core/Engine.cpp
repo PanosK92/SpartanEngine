@@ -21,20 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "Engine.h"
+#include "EventSystem.h"
 #include "Timer.h"
-#include "Settings.h"
-#include "Stopwatch.h"
+#include "../Audio/Audio.h"
+#include "../Input/Input.h"
+#include "../Physics/Physics.h"
+#include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
-#include "../Core/EventSystem.h"
-#include "../Logging/Log.h"
-#include "../Threading/Threading.h"
 #include "../Resource/ResourceCache.h"
 #include "../Scripting/Scripting.h"
-#include "../Audio/Audio.h"
-#include "../Physics/Physics.h"
+#include "../Threading/Threading.h"
 #include "../World/World.h"
-#include "../Profiling/Profiler.h"
-#include "../Input/Input.h"
 //====================================
 
 //= NAMESPACES =====
@@ -45,8 +42,10 @@ namespace Directus
 {
 	unsigned long Engine::m_flags = 0;
 
-	Engine::Engine(Context* context) : ISubsystem(context)
+	Engine::Engine(Context* context)
 	{
+		m_context = context;
+
 		m_flags |= Engine_Update;
 		m_flags |= Engine_Render;
 		m_flags |= Engine_Physics;
@@ -66,17 +65,15 @@ namespace Directus
 		m_context->RegisterSubsystem<Physics>();
 		m_context->RegisterSubsystem<Profiler>();
 		m_context->RegisterSubsystem<World>();	
-		m_context->RegisterSubsystem<Renderer>();		
+		m_context->RegisterSubsystem<Renderer>();
+
+		// Initialize above subsystems
+		m_context->InitializeSubsystems();
 	}
 
 	Engine::~Engine()
 	{
 		SafeDelete(m_context);
-	}
-
-	bool Engine::Initialize()
-	{
-		return m_context->InitializeSubsystems();
 	}
 
 	void Engine::Tick()

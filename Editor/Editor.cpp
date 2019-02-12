@@ -21,21 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================================
 #include "Editor.h"
-#include "ImGui/Implementation/imgui_impl_win32.h"
 #include "ImGui/Implementation/imgui_impl_dx11.h"
-#include "UI/Widgets/Widget_MenuBar.h"
-#include "UI/Widgets/Widget_Properties.h"
-#include "UI/Widgets/Widget_Console.h"
-#include "UI/Widgets/Widget_World.h"
-#include "UI/Widgets/Widget_Assets.h"
-#include "UI/Widgets/Widget_Viewport.h"
-#include "UI/Widgets/Widget_Toolbar.h"
-#include "UI/Widgets/Widget_ProgressDialog.h"
-#include "UI/IconProvider.h"
-#include "UI/EditorHelper.h"
-#include "RHI/RHI_Device.h"
+#include "ImGui/Implementation/imgui_impl_win32.h"
 #include "Rendering/Renderer.h"
-#include "ImGui/Source/imgui_internal.h"
+#include "RHI/RHI_Device.h"
+#include "UI/EditorHelper.h"
+#include "UI/IconProvider.h"
+#include "UI/Widgets/Widget_Assets.h"
+#include "UI/Widgets/Widget_Console.h"
+#include "UI/Widgets/Widget_MenuBar.h"
+#include "UI/Widgets/Widget_ProgressDialog.h"
+#include "UI/Widgets/Widget_Properties.h"
+#include "UI/Widgets/Widget_Toolbar.h"
+#include "UI/Widgets/Widget_Viewport.h"
+#include "UI/Widgets/Widget_World.h"
 //================================================
 
 //= NAMESPACES ==========
@@ -52,10 +51,50 @@ namespace _Editor
 	const char* dockspaceName	= "EditorDockspace";
 }
 
-Editor::Editor()
+Editor::Editor(void* windowHandle, void* windowInstance, int windowWidth, int windowHeight)
 {
-	// Add console widget early so it picks up the engine's initialization output
+	// Add console widget first so it picks up the engine's initialization output
 	m_widgets.emplace_back(make_unique<Widget_Console>(nullptr));
+
+	// Create engine
+	Engine::SetHandles(windowHandle, windowHandle, windowInstance);
+	m_engine = make_unique<Engine>(new Context);
+	
+	// Acquire useful engine subsystems
+	m_context	= m_engine->GetContext();
+	m_renderer	= m_context->GetSubsystem<Renderer>();
+	m_rhiDevice = m_renderer->GetRHIDevice();
+
+	Resize(windowWidth, windowHeight);
+
+	// ImGui version validation
+	IMGUI_CHECKVERSION();
+	Settings::Get().m_versionImGui = IMGUI_VERSION;
+
+	// ImGui context creation
+	ImGui::CreateContext();
+
+	// ImGui configuration
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	io.ConfigWindowsResizeFromEdges = true;
+	io.ConfigViewportsNoTaskBarIcon = true;
+	ApplyStyle();
+
+	// ImGui backend setup
+	ImGui_ImplWin32_Init(windowHandle);
+	ImGui_ImplDX11_Init(m_rhiDevice->GetDevice<ID3D11Device>(), m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>());
+
+	// Initialization of misc custom systems
+	IconProvider::Get().Initialize(m_context);
+	EditorHelper::Get().Initialize(m_context);
+
+	// Create all ImGui widgets
+	Widgets_Create();
+
+	m_initialized = true;
 }
 
 Editor::~Editor()
@@ -72,57 +111,23 @@ Editor::~Editor()
 	ImGui::DestroyContext();
 }
 
-bool Editor::Initialize(Context* context, void* windowHandle)
+void Editor::Resize(unsigned int width, unsigned int height)
 {
-	m_context	= context;
-	m_rhiDevice	= context->GetSubsystem<Renderer>()->GetRHIDevice();
-
-	Widgets_Create();
-
-	if (!m_rhiDevice->GetDevice<ID3D11Device>() || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>())
-	{
-		LOG_ERROR("Editor::Initialize: Invalid RHI device.");
-		return false;
-	}
-
-	// ImGui context creation
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	Settings::Get().m_versionImGui = IMGUI_VERSION;
-
-	// ImGui configuration
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-	io.ConfigWindowsResizeFromEdges = true;
-	io.ConfigViewportsNoTaskBarIcon = true;
-
-	// ImGui backend setup
-	ImGui_ImplWin32_Init(windowHandle);
-	ImGui_ImplDX11_Init(m_rhiDevice->GetDevice<ID3D11Device>(), m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>());
-
-	// Initialization of misc custom systems
-	IconProvider::Get().Initialize(context);
-	EditorHelper::Get().Initialize(context);
-
-	// Apply style
-	ApplyStyle();
-
-	m_initialized = true;
-	return true;
-}
-
-void Editor::Resize()
-{
+	m_renderer->SetBackBufferSize(width, height);
 	ImGui_ImplDX11_InvalidateDeviceObjects();
 	ImGui_ImplDX11_CreateDeviceObjects();
 }
 
-void Editor::Tick(float deltaTime)
+void Editor::Tick()
 {	
 	if (!m_initialized)
 		return;
+
+	// Update engine (will simulate and render)
+	m_engine->Tick();
+
+	// Set back buffer as render target (for ImGui to render on)
+	m_renderer->SetBackBufferAsRenderTarget();
 
 	// ImGui implementation - start frame
 	ImGui_ImplDX11_NewFrame();
@@ -130,7 +135,7 @@ void Editor::Tick(float deltaTime)
 	ImGui::NewFrame();
 
 	// Editor update
-	Widgets_Tick(deltaTime);
+	Widgets_Tick(m_engine->GetDeltaTime());
 
 	// ImGui implementation - end frame
 	ImGui::Render();
@@ -145,6 +150,9 @@ void Editor::Tick(float deltaTime)
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
 	}
+
+	// Present back-buffer (ImGui result)
+	m_renderer->Present();
 }
 
 void Editor::Widgets_Create()

@@ -204,7 +204,7 @@ namespace Directus
 
 		vector<D3D11_SUBRESOURCE_DATA> vec_subresourceData;
 		vector<D3D11_TEXTURE2D_DESC> vec_textureDesc;
-		ID3D11Texture2D* texture					= nullptr;
+		ID3D11Texture2D* texture						= nullptr;
 		ID3D11ShaderResourceView* shaderResourceView	= nullptr;
 		UINT mipLevels									= (UINT)data[0].size();
 

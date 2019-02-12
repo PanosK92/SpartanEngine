@@ -82,7 +82,6 @@ public:
 	EditorHelper()
 	{
 		m_context		= nullptr;	
-		m_engine		= nullptr;
 		m_resourceCache	= nullptr;
 		m_scene			= nullptr;
 	}
@@ -97,7 +96,6 @@ public:
 	void Initialize(Directus::Context* context)
 	{
 		m_context		= context;
-		m_engine		= m_context->GetSubsystem<Directus::Engine>();
 		m_resourceCache	= m_context->GetSubsystem<Directus::ResourceCache>();
 		m_scene			= m_context->GetSubsystem<Directus::World>();
 	}
@@ -171,7 +169,6 @@ public:
 
 private:
 	Directus::Context* m_context;
-	Directus::Engine* m_engine;
 	Directus::ResourceCache* m_resourceCache;
 	Directus::World* m_scene;
 };
