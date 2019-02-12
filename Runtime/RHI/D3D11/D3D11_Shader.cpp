@@ -56,7 +56,8 @@ namespace Directus
 			HRESULT result;
 			if (isFile)
 			{
-				result = D3DCompileFromFile(
+				result = D3DCompileFromFile
+				(
 					FileSystem::StringToWString(shader).c_str(),
 					macros,
 					D3D_COMPILE_STANDARD_FILE_INCLUDE,
@@ -70,7 +71,20 @@ namespace Directus
 			}
 			else // Compile from memory
 			{
-				result = D3DCompile(shader.c_str(), shader.size(), nullptr, nullptr, nullptr, entryPoint, shaderModel, 0, 0, &shaderBlob, &errorBlob);
+				result = D3DCompile
+				(
+					shader.c_str(),
+					shader.size(),
+					nullptr,
+					macros,
+					nullptr,
+					entryPoint,
+					shaderModel,
+					compileFlags,
+					0,
+					&shaderBlob,
+					&errorBlob
+				);
 			}
 
 			// Log any compilation possible warnings and/or errors
@@ -178,11 +192,11 @@ namespace Directus
 		SafeRelease((ID3D11PixelShader*)m_pixelShader);
 	}
 
-	bool RHI_Shader::API_CompileVertex(const string& filePath, RHI_Input_Layout inputLayout)
+	bool RHI_Shader::API_CompileVertex(const string& shader, RHI_Input_Layout inputLayout)
 	{
-		if (FileSystem::IsSupportedShaderFile(filePath))
+		if (FileSystem::IsSupportedShaderFile(shader))
 		{
-			m_filePath = filePath;
+			m_filePath = shader;
 		}
 
 		vector<D3D_SHADER_MACRO> vsMacros = D3D11_Shader::GetD3DMacros(m_macros);
@@ -198,7 +212,7 @@ namespace Directus
 			m_rhiDevice->GetDevice<ID3D11Device>(),
 			&blobVS,
 			shaderPtr,
-			m_filePath,
+			shader,
 			VERTEX_SHADER_ENTRYPOINT,
 			VERTEX_SHADER_MODEL,
 			&vsMacros.front()))
@@ -220,11 +234,11 @@ namespace Directus
 		return m_hasVertexShader;
 	}
 
-	bool RHI_Shader::API_CompilePixel(const string& filePath)
+	bool RHI_Shader::API_CompilePixel(const string& shader)
 	{
-		if (FileSystem::IsSupportedShaderFile(filePath))
+		if (FileSystem::IsSupportedShaderFile(shader))
 		{
-			m_filePath = filePath;
+			m_filePath = shader;
 		}
 
 		vector<D3D_SHADER_MACRO> psMacros = D3D11_Shader::GetD3DMacros(m_macros);
@@ -239,7 +253,7 @@ namespace Directus
 			m_rhiDevice->GetDevice<ID3D11Device>(),
 			&blobPS,
 			shaderPtr,
-			m_filePath,
+			shader,
 			PIXEL_SHADER_ENTRYPOINT,
 			PIXEL_SHADER_MODEL,
 			&psMacros.front()
