@@ -27,30 +27,39 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Definition.h"
 //=============================
 
+//= FORWARD DECLARATIONS =
 class Widget;
-namespace Directus { class Context; }
+namespace Directus 
+{
+	class Context; 
+	class Engine;
+	class Renderer;
+}
+//========================
 
 class Editor
 {
 public:
-	Editor();
+	Editor(void* windowHandle, void* windowInstance, int windowWidth, int windowHeight);
 	~Editor();
 
-	bool Initialize(Directus::Context* context, void* windowHandle);
-	void Resize();
-	void Tick(float deltaTime);
+	void Resize(unsigned int width, unsigned int height);
+	void Tick();
 
 private:
 	void Widgets_Create();
 	void Widgets_Tick(float deltaTime);
-
 	void DockSpace_Begin();
-	void DockSpace_End();
-	
+	void DockSpace_End();	
 	void ApplyStyle();
 
+	// Editor
 	std::vector<std::unique_ptr<Widget>> m_widgets;
+	bool m_initialized = false;
+
+	// Engine
+	std::unique_ptr<Directus::Engine> m_engine;
 	std::shared_ptr<Directus::RHI_Device> m_rhiDevice;
 	Directus::Context* m_context	= nullptr;
-	bool m_initialized				= false;
+	Directus::Renderer* m_renderer	= nullptr;	
 };

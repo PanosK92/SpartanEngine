@@ -75,6 +75,7 @@ namespace Directus
 		template <class T> 
 		T* GetSubsystem()
 		{
+			static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem");
 			for (const auto& subsystem : m_subsystems)
 			{
 				if (typeid(T) == typeid(*subsystem))

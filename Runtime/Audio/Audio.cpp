@@ -24,12 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fmod.hpp>
 #include <fmod_errors.h>
 #include <sstream>
-#include "../Logging/Log.h"
 #include "../Core/Engine.h"
 #include "../Core/EventSystem.h"
 #include "../Core/Settings.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Components/Transform.h"
+#include "../Core/Context.h"
 //========================================
 
 //= NAMESPACES ======
