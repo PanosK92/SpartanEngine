@@ -125,40 +125,40 @@ namespace ImGui::RHI
 
 		// Shader
 		static string shader =
-		"SamplerState sampler0;												\
-		Texture2D texture0;													\
-																			\
-		cbuffer vertexBuffer : register(b0)									\
-		{																	\
-			float4x4 transform;												\
-		};																	\
-																			\
-		struct VS_INPUT														\
-		{																	\
-			float2 pos : POSITION;											\
-			float4 col : COLOR0;											\
-			float2 uv  : TEXCOORD0;											\
-		};																	\
-																			\
-		struct PS_INPUT														\
-		{																	\
-			float4 pos : SV_POSITION;										\
-			float4 col : COLOR0;											\
-			float2 uv  : TEXCOORD0;											\
-		};																	\
-																			\
-		PS_INPUT mainVS(VS_INPUT input)										\
-		{																	\
-			PS_INPUT output;												\
-			output.pos = mul(transform, float4(input.pos.xy, 0.f, 1.f));	\
-			output.col = input.col;											\
-			output.uv  = input.uv;											\
-			return output;													\
-		}																	\
-																			\
-		float4 mainPS(PS_INPUT input) : SV_Target							\
-		{																	\
-			return input.col * texture0.Sample(sampler0, input.uv);			\
+		"SamplerState sampler0;\
+		Texture2D texture0;\
+		\
+		cbuffer vertexBuffer : register(b0)\
+		{\
+			float4x4 transform;\
+		};\
+		\
+		struct VS_INPUT\
+		{\
+			float2 pos : POSITION;\
+			float4 col : COLOR0;\
+			float2 uv  : TEXCOORD0;\
+		};\
+		\
+		struct PS_INPUT\
+		{\
+			float4 pos : SV_POSITION;\
+			float4 col : COLOR0;\
+			float2 uv  : TEXCOORD0;\
+		};\
+		\
+		PS_INPUT mainVS(VS_INPUT input)\
+		{\
+			PS_INPUT output;\
+			output.pos = mul(transform, float4(input.pos.xy, 0.f, 1.f));\
+			output.col = input.col;\
+			output.uv  = input.uv;\
+			return output;\
+		}\
+		\
+		float4 mainPS(PS_INPUT input) : SV_Target\
+		{\
+			return input.col * texture0.Sample(sampler0, input.uv);	\
 		}";
 		g_shader = make_shared<RHI_Shader>(g_device);
 		g_shader->CompileVertexPixel(shader, Input_Position2DTextureColor);
@@ -253,13 +253,13 @@ namespace ImGui::RHI
 
 		// Setup render state
 		RHI_Viewport viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
-		g_device->SetViewport(viewport);
-		g_renderer->SetBackBufferAsRenderTarget(); // set back-buffer as render target
+		g_device->SetViewport(viewport);	
 		g_device->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		g_device->SetBlendState(g_blendState);
 		g_device->SetDepthStencilState(g_depthStencilState);
 		g_device->SetRasterizerState(g_rasterizerState);	
 		g_device->SetVertexShader(g_shader);
+		g_device->SetInputLayout(g_shader->GetInputLayout());
 		g_device->SetPixelShader(g_shader);
 		g_device->SetVertexBuffer(g_vertexBuffer);
 		g_device->SetIndexBuffer(g_indexBuffer);
@@ -297,9 +297,6 @@ namespace ImGui::RHI
 			}
 			vtx_offset += cmd_list->VtxBuffer.Size;
 		}
-
-		// Present back-buffer
-		g_renderer->Present();
 	}
 
 	inline void OnResize(unsigned int width, unsigned int height)
