@@ -30,7 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	namespace Math { class Vector4; }
+	namespace Math
+	{ 
+		class Vector4;
+		class Rectangle;
+	}
 
 	class ENGINE_CLASS RHI_Device
 	{
@@ -50,7 +54,7 @@ namespace Directus
 		bool ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, unsigned int stencil = 0);
 		//====================================================================================================
 
-		//= SET ====================================================================================================
+		//= SET ========================================================================================================
 		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer);
 		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer);
 		bool SetVertexShader(const std::shared_ptr<RHI_Shader>& shader);
@@ -58,17 +62,17 @@ namespace Directus
 		bool SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState);
 		bool SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState);
 		bool SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState);
-		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout);
-		bool SetViewport(const RHI_Viewport& viewport);
+		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout);	
 		bool SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology);
 		bool SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, void* buffer, RHI_Buffer_Scope scope);
 		bool SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* samplers);
 		bool SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources);	
 		bool SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil);
-		bool SetResolution(unsigned int width, unsigned int height);		
-		bool SetScissorRectangle(int left, int top, int right, int bottom);
+		bool SetResolution(unsigned int width, unsigned int height);	
+		bool SetViewport(const RHI_Viewport& viewport);
+		bool SetScissorRectangle(const Math::Rectangle& rectangle);
 		bool SetBackBufferAsRenderTarget();
-		//==========================================================================================================
+		//==============================================================================================================
 
 		//= EVENTS ==============================
 		void EventBegin(const std::string& name);

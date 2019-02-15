@@ -38,7 +38,7 @@ namespace Directus
 	LightShader::LightShader(std::shared_ptr<RHI_Device> rhiDevice) : RHI_Shader(rhiDevice)
 	{
 		// Create constant buffer
-		m_cbuffer = make_shared<RHI_ConstantBuffer>(rhiDevice, sizeof(LightBuffer));
+		m_cbuffer = make_shared<RHI_ConstantBuffer>(rhiDevice, (unsigned int)sizeof(LightBuffer));
 	}
 
 	void LightShader::UpdateConstantBuffer(

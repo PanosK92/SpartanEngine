@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Pipeline.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector2.h"
+#include "../Math/Rectangle.h"
 #include "../Core/Settings.h"
 //================================
 
@@ -40,7 +41,6 @@ namespace Directus
 	class Skybox;
 	class Light;
 	class GBuffer;
-	class Rectangle;
 	class LightShader;
 	class ResourceCache;
 	class Font;
@@ -324,7 +324,7 @@ namespace Directus
 		//= EDITOR =======================================
 		std::unique_ptr<Transform_Gizmo> m_transformGizmo;
 		std::unique_ptr<Grid> m_grid;
-		std::unique_ptr<Rectangle> m_gizmoRectLight;
+		Math::Rectangle m_gizmoRectLight;
 		//================================================
 
 		//= MISC ========================================================
@@ -332,7 +332,7 @@ namespace Directus
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
 		std::unique_ptr<GBuffer> m_gbuffer;	
-		std::unique_ptr<Rectangle> m_quad;
+		Math::Rectangle m_quad;
 		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
 		Math::Matrix m_view;
 		Math::Matrix m_viewBase;

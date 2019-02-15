@@ -71,7 +71,7 @@ namespace Directus
 		CompilePixel_Async(filePath, m_context);
 
 		// Object Buffer (has to match GBuffer.hlsl)
-		m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice, sizeof(PerObjectBufferType));
+		m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice, (unsigned int)sizeof(PerObjectBufferType));
 
 		m_variations.emplace_back(shared_from_this());
 	}
