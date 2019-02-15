@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Renderer.h"
-#include "Rectangle.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
 #include "Deferred/LightShader.h"
@@ -100,7 +99,6 @@ namespace Directus
 		// Editor specific
 		m_grid				= make_unique<Grid>(m_rhiDevice);
 		m_transformGizmo	= make_unique<Transform_Gizmo>(m_context);
-		m_gizmoRectLight	= make_unique<Rectangle>(m_context);
 
 		// Create a constant buffer that will be used for most shaders
 		m_bufferGlobal = make_shared<RHI_ConstantBuffer>(m_rhiDevice, static_cast<unsigned int>(sizeof(ConstantBuffer_Global)));
@@ -196,9 +194,9 @@ namespace Directus
 		}
 
 		// Resize everything
-		m_gbuffer	= make_unique<GBuffer>(m_rhiDevice, width, height);
-		m_quad		= make_unique<Rectangle>(m_context);
-		m_quad->Create(0, 0, (float)width, (float)height);
+		m_gbuffer = make_unique<GBuffer>(m_rhiDevice, width, height);
+		m_quad = Rectangle(0, 0, m_resolution.x, m_resolution.y);
+		m_quad.CreateBuffers(this);
 
 		// Full res
 		m_renderTexFull_HDR_Light	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Format_R32G32B32A32_FLOAT);

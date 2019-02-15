@@ -28,30 +28,63 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class Context;
 	class Renderer;
 
-	class Rectangle
+	namespace Math
 	{
-	public:
-		Rectangle(Context* context);
-		~Rectangle();
+		class Rectangle
+		{
+		public:
+			Rectangle()
+			{
+				x		= 0;
+				y		= 0;
+				width	= 0;
+				height	= 0;
+			}
 
-		bool Create(float x, float y, float width, float height);
-		int GetIndexCount() { return 6; }
+			Rectangle(float x, float y, float width, float height)
+			{
+				this->x			= x;
+				this->y			= y;
+				this->width		= width;
+				this->height	= height;
+			}
 
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
 
-	private:
-		Renderer* m_renderer;
-		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
-		float m_x;
-		float m_y;
-		float m_width;
-		float m_height;
-		unsigned int m_resolutionWidth;
-		unsigned int m_resolutionHeight;
-	};
+			~Rectangle() {}
+			
+			bool operator==(const Rectangle& rhs) const
+			{
+				return
+					x		== rhs.x &&
+					y		== rhs.y &&
+					width	== rhs.width &&
+					height	== rhs.height;
+			}
+
+			bool operator!=(const Rectangle& rhs) const
+			{
+				return
+					x		!= rhs.x ||
+					y		!= rhs.y ||
+					width	!= rhs.width ||
+					height	!= rhs.height;
+			}
+
+			bool CreateBuffers(Renderer* renderer);
+			int GetIndexCount()									{ return 6; }
+			std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
+			std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() { return m_vertexBuffer; }
+
+			float x;
+			float y;
+			float width;
+			float height;
+
+		private:
+			std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
+			std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
+		};
+	}
 }

@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../FileSystem/FileSystem.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Core/Settings.h"
+#include "../../Math/Rectangle.h"
 //======================================
 
 //= NAMESPACES ================
@@ -667,7 +668,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetScissorRectangle(int left, int top, int right, int bottom)
+	bool RHI_Device::SetScissorRectangle(const Math::Rectangle& rectangle)
 	{
 		if (!_D3D11_Device::deviceContext)
 		{
@@ -675,8 +676,13 @@ namespace Directus
 			return false;
 		}
 
-		const D3D11_RECT rectangle = { (LONG)left, (LONG)top, (LONG)right, (LONG)bottom };
-		_D3D11_Device::deviceContext->RSSetScissorRects(1, &rectangle);
+		float left							= rectangle.x;
+		float top							= rectangle.y;
+		float right							= rectangle.x + rectangle.width;
+		float bottom						= rectangle.y + rectangle.height;
+		const D3D11_RECT d3d11_rectangle	= { (LONG)left, (LONG)top, (LONG)right, (LONG)bottom };
+
+		_D3D11_Device::deviceContext->RSSetScissorRects(1, &d3d11_rectangle);
 
 		return true;
 	}

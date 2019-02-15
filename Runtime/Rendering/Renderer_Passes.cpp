@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Renderer.h"
-#include "Rectangle.h"
 #include "Deferred/GBuffer.h"
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/LightShader.h"
@@ -237,8 +236,8 @@ namespace Directus
 		m_rhiDevice->EventBegin("Pass_PreLight");
 
 		SetDefault_Pipeline_State();
-		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
-		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
+		m_rhiPipeline->SetIndexBuffer(m_quad.GetIndexBuffer());
+		m_rhiPipeline->SetVertexBuffer(m_quad.GetVertexBuffer());
 
 		// Shadow mapping + Blur
 		if (auto lightDir = GetLightDirectional())
@@ -304,7 +303,7 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerTrilinearClamp);
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);
 		m_rhiPipeline->SetConstantBuffer(m_shaderLight->GetConstantBuffer(), 1, Buffer_Global);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -382,8 +381,8 @@ namespace Directus
 
 		// All post-process passes share the following, so set them once here
 		SetDefault_Pipeline_State();
-		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
-		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
+		m_rhiPipeline->SetVertexBuffer(m_quad.GetVertexBuffer());
+		m_rhiPipeline->SetIndexBuffer(m_quad.GetIndexBuffer());
 		m_rhiPipeline->SetVertexShader(m_shaderQuad);
 
 		// Render target swapping
@@ -475,7 +474,7 @@ namespace Directus
 		auto buffer = Struct_ShadowMapping((m_viewProjection).Inverted(), inDirectionalLight, m_camera.get());
 		m_shaderShadowMapping->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderShadowMapping->GetConstantBuffer(), 1, Buffer_Global);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -503,7 +502,7 @@ namespace Directus
 		);
 		m_shaderSSAO->UpdateBuffer(&buffer);
 		m_rhiPipeline->SetConstantBuffer(m_shaderSSAO->GetConstantBuffer(), 1, Buffer_Global);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -521,7 +520,7 @@ namespace Directus
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_blur_box);
 		m_rhiPipeline->SetTexture(texIn); // Shadows are in the alpha channel
 		m_rhiPipeline->SetSampler(m_samplerTrilinearClamp);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 	}
@@ -532,7 +531,7 @@ namespace Directus
 			texIn->GetHeight() != texOut->GetHeight() ||
 			texIn->GetFormat() != texOut->GetFormat())
 		{
-			LOG_ERROR("Renderer::Pass_BlurGaussian: Invalid parameters, textures must match because they will get swapped");
+			LOG_ERROR("Invalid parameters, textures must match because they will get swapped");
 			return;
 		}
 
@@ -550,7 +549,7 @@ namespace Directus
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetTexture(texIn);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
 		direction = Vector2(0.0f, 1.0f);
@@ -560,7 +559,7 @@ namespace Directus
 		m_rhiPipeline->SetViewport(texIn->GetViewport());
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetTexture(texOut);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		// Swap textures
 		texIn.swap(texOut);
@@ -594,7 +593,7 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		auto direction = Vector2(pixelStride, 0.0f);
 		SetDefault_Buffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
 		SetDefault_Pipeline_State();
@@ -606,7 +605,7 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		direction = Vector2(0.0f, pixelStride);
 		SetDefault_Buffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		texIn.swap(texOut);
 
@@ -629,7 +628,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		// Output to texOut
 		SetDefault_Buffer(texOut->GetWidth(), texOut->GetHeight());
@@ -638,7 +637,7 @@ namespace Directus
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_texture);
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);
 		m_rhiPipeline->SetTexture(m_renderTexFull_TAA_Current);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		// Swap textures so current becomes history
 		m_renderTexFull_TAA_Current.swap(m_renderTexFull_TAA_History);
@@ -660,7 +659,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_bloomBright);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		float sigma = 2.0f;
 		Pass_BlurGaussian(m_renderTexQuarter_Blur1, m_renderTexQuarter_Blur2, sigma);
@@ -674,7 +673,7 @@ namespace Directus
 		m_rhiPipeline->SetTexture(m_renderTexQuarter_Blur2);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_bloomBLend);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -692,7 +691,7 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_toneMapping);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -710,7 +709,7 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerPointClamp);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_gammaCorrection);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -731,14 +730,14 @@ namespace Directus
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_luma);
 		m_rhiPipeline->SetTexture(texIn);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		// FXAA
 		m_rhiPipeline->SetRenderTarget(texIn);
 		m_rhiPipeline->SetViewport(texIn->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_fxaa);
 		m_rhiPipeline->SetTexture(texOut);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		// Swap the textures
 		texIn.swap(texOut);
@@ -759,7 +758,7 @@ namespace Directus
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_chromaticAberration);
 		m_rhiPipeline->SetTexture(texIn);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -778,7 +777,7 @@ namespace Directus
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_motionBlur);
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -796,7 +795,7 @@ namespace Directus
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_dithering);
 		m_rhiPipeline->SetTexture(texIn);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -814,7 +813,7 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetPixelShader(m_shaderQuad_sharpening);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -996,13 +995,18 @@ namespace Directus
 					// Construct appropriate rectangle
 					float texWidth = lightTex->GetWidth()	* scale;
 					float texHeight = lightTex->GetHeight()	* scale;
-					m_gizmoRectLight->Create(position_light_screen.x - texWidth * 0.5f, position_light_screen.y - texHeight * 0.5f, texWidth, texHeight);
+					Rectangle rectangle = Rectangle(position_light_screen.x - texWidth * 0.5f, position_light_screen.y - texHeight * 0.5f, texWidth, texHeight);
+					if (rectangle != m_gizmoRectLight)
+					{
+						m_gizmoRectLight = rectangle;
+						m_gizmoRectLight.CreateBuffers(this);
+					}
 
 					SetDefault_Buffer((unsigned int)texWidth, (unsigned int)texWidth, m_viewProjection_Orthographic);
 					m_rhiPipeline->SetTexture(lightTex);
-					m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight->GetIndexBuffer());
-					m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight->GetVertexBuffer());
-					m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+					m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight.GetIndexBuffer());
+					m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight.GetVertexBuffer());
+					m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 				}
 
 				m_rhiDevice->EventEnd();
@@ -1143,13 +1147,13 @@ namespace Directus
 
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
-		m_rhiPipeline->SetVertexBuffer(m_quad->GetVertexBuffer());
-		m_rhiPipeline->SetIndexBuffer(m_quad->GetIndexBuffer());
+		m_rhiPipeline->SetVertexBuffer(m_quad.GetVertexBuffer());
+		m_rhiPipeline->SetIndexBuffer(m_quad.GetIndexBuffer());
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->SetRasterizerState(m_rasterizer_cullBack_solid);
 		m_rhiPipeline->SetInputLayout(m_shaderQuad_texture->GetInputLayout());
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
-		m_rhiPipeline->DrawIndexed(m_quad->GetIndexCount(), 0, 0);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
