@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
 #include "../../ImGui/Source/imgui_stdlib.h"
-#include "World/Actor.h"
+#include "World/Entity.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"
 #include "World/Components/RigidBody.h"
@@ -46,7 +46,7 @@ using namespace Math;
 using namespace Helper;
 //=======================
 
-weak_ptr<Actor> Widget_Properties::m_inspectedActor;
+weak_ptr<Entity> Widget_Properties::m_inspectedentity;
 weak_ptr<Material> Widget_Properties::m_inspectedMaterial;
 
 namespace _Widget_Properties
@@ -71,11 +71,11 @@ namespace ComponentProperty
 			{
 				if (ImGui::MenuItem("Remove"))
 				{
-					if (auto actor = Widget_Properties::m_inspectedActor.lock())
+					if (auto entity = Widget_Properties::m_inspectedentity.lock())
 					{
 						if (component)
 						{
-							actor->RemoveComponentByID(component->GetID());
+							entity->RemoveComponentByID(component->GetID());
 						}
 					}
 				}
@@ -152,21 +152,21 @@ void Widget_Properties::Tick(float deltaTime)
 {
 	ImGui::PushItemWidth(ComponentProperty::g_maxWidth);
 
-	if (!m_inspectedActor.expired())
+	if (!m_inspectedentity.expired())
 	{
-		auto actorPtr = m_inspectedActor.lock().get();
+		auto entityPtr = m_inspectedentity.lock().get();
 
-		auto transform		= actorPtr->GetComponent<Transform>();
-		auto light			= actorPtr->GetComponent<Light>();
-		auto camera			= actorPtr->GetComponent<Camera>();
-		auto audioSource	= actorPtr->GetComponent<AudioSource>();
-		auto audioListener	= actorPtr->GetComponent<AudioListener>();
-		auto renderable		= actorPtr->GetComponent<Renderable>();
+		auto transform		= entityPtr->GetComponent<Transform>();
+		auto light			= entityPtr->GetComponent<Light>();
+		auto camera			= entityPtr->GetComponent<Camera>();
+		auto audioSource	= entityPtr->GetComponent<AudioSource>();
+		auto audioListener	= entityPtr->GetComponent<AudioListener>();
+		auto renderable		= entityPtr->GetComponent<Renderable>();
 		auto material		= renderable ? renderable->Material_Ptr() : nullptr;
-		auto rigidBody		= actorPtr->GetComponent<RigidBody>();
-		auto collider		= actorPtr->GetComponent<Collider>();
-		auto constraint		= actorPtr->GetComponent<Constraint>();
-		auto scripts		= actorPtr->GetComponents<Script>();
+		auto rigidBody		= entityPtr->GetComponent<RigidBody>();
+		auto collider		= entityPtr->GetComponent<Collider>();
+		auto constraint		= entityPtr->GetComponent<Constraint>();
+		auto scripts		= entityPtr->GetComponents<Script>();
 
 		ShowTransform(transform);
 		ShowLight(light);
@@ -194,11 +194,11 @@ void Widget_Properties::Tick(float deltaTime)
 	ImGui::PopItemWidth();
 }
 
-void Widget_Properties::Inspect(weak_ptr<Actor> actor)
+void Widget_Properties::Inspect(weak_ptr<Entity> entity)
 {
-	m_inspectedActor = actor;
+	m_inspectedentity = entity;
 
-	if (auto sharedPtr = actor.lock())
+	if (auto sharedPtr = entity.lock())
 	{
 		_Widget_Properties::rotationHint = sharedPtr->GetTransform_PtrRaw()->GetRotationLocal().ToEulerAngles();
 	}
@@ -217,7 +217,7 @@ void Widget_Properties::Inspect(weak_ptr<Actor> actor)
 
 void Widget_Properties::Inspect(weak_ptr<Material> material)
 {
-	m_inspectedActor.reset();
+	m_inspectedentity.reset();
 	m_inspectedMaterial = material;
 }
 
@@ -596,7 +596,7 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 		//= REFLECT ============================================================================
 		static vector<char*> types	= {"Point", "Hinge", "Slider", "ConeTwist" };
 		const char* typeStr			= types[(int)constraint->GetConstraintType()];
-		weak_ptr<Actor>	otherBody	= constraint->GetBodyOther();
+		weak_ptr<Entity>	otherBody	= constraint->GetBodyOther();
 		bool otherBodyDirty			= false;
 		Vector3 position			= constraint->GetPosition();
 		Vector3 rotation			= constraint->GetRotation().ToEulerAngles();
@@ -635,10 +635,10 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint)
 		ImGui::PushID("##OtherBodyName");
 		ImGui::PushItemWidth(200.0f);
 		ImGui::InputText("", &otherBodyName, ImGuiInputTextFlags_ReadOnly);
-		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Actor))
+		if (auto payload = DragDrop::Get().GetPayload(DragPayload_entity))
 		{
-			auto actorID	= get<unsigned int>(payload->data);
-			otherBody		= _Widget_Properties::scene->Actor_GetByID(actorID);
+			auto entityID	= get<unsigned int>(payload->data);
+			otherBody		= _Widget_Properties::scene->Entity_GetByID(entityID);
 			otherBodyDirty	= true;
 		}
 		ImGui::PopItemWidth();
@@ -992,12 +992,12 @@ void Widget_Properties::ComponentContextMenu_Add()
 {
 	if (ImGui::BeginPopup("##ComponentContextMenu_Add"))
 	{
-		if (auto actor = m_inspectedActor.lock())
+		if (auto entity = m_inspectedentity.lock())
 		{
 			// CAMERA
 			if (ImGui::MenuItem("Camera"))
 			{
-				actor->AddComponent<Camera>();
+				entity->AddComponent<Camera>();
 			}
 
 			// LIGHT
@@ -1005,15 +1005,15 @@ void Widget_Properties::ComponentContextMenu_Add()
 			{
 				if (ImGui::MenuItem("Directional"))
 				{
-					actor->AddComponent<Light>()->SetLightType(LightType_Directional);
+					entity->AddComponent<Light>()->SetLightType(LightType_Directional);
 				}
 				else if (ImGui::MenuItem("Point"))
 				{
-					actor->AddComponent<Light>()->SetLightType(LightType_Point);
+					entity->AddComponent<Light>()->SetLightType(LightType_Point);
 				}
 				else if (ImGui::MenuItem("Spot"))
 				{
-					actor->AddComponent<Light>()->SetLightType(LightType_Spot);
+					entity->AddComponent<Light>()->SetLightType(LightType_Spot);
 				}
 
 				ImGui::EndMenu();
@@ -1024,15 +1024,15 @@ void Widget_Properties::ComponentContextMenu_Add()
 			{
 				if (ImGui::MenuItem("Rigid Body"))
 				{
-					actor->AddComponent<RigidBody>();
+					entity->AddComponent<RigidBody>();
 				}
 				else if (ImGui::MenuItem("Collider"))
 				{
-					actor->AddComponent<Collider>();
+					entity->AddComponent<Collider>();
 				}
 				else if (ImGui::MenuItem("Constraint"))
 				{
-					actor->AddComponent<Constraint>();
+					entity->AddComponent<Constraint>();
 				}
 
 				ImGui::EndMenu();
@@ -1043,11 +1043,11 @@ void Widget_Properties::ComponentContextMenu_Add()
 			{
 				if (ImGui::MenuItem("Audio Source"))
 				{
-					actor->AddComponent<AudioSource>();
+					entity->AddComponent<AudioSource>();
 				}
 				else if (ImGui::MenuItem("Audio Listener"))
 				{
-					actor->AddComponent<AudioListener>();
+					entity->AddComponent<AudioListener>();
 				}
 
 				ImGui::EndMenu();
@@ -1062,7 +1062,7 @@ void Widget_Properties::Drop_AutoAddComponents()
 {
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
 	{
-		if (auto scriptComponent = m_inspectedActor.lock()->AddComponent<Script>())
+		if (auto scriptComponent = m_inspectedentity.lock()->AddComponent<Script>())
 		{
 			scriptComponent->SetScript(get<const char*>(payload->data));
 		}

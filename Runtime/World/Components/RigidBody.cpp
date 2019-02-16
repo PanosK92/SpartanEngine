@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Collider.h"
 #include "Constraint.h"
-#include "../Actor.h"
+#include "../Entity.h"
 #include "../../Core/Engine.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
@@ -80,7 +80,7 @@ namespace Directus
 		}
 	};
 
-	RigidBody::RigidBody(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	RigidBody::RigidBody(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		m_inWorld			= false;
 		m_mass				= DEFAULT_MASS;
@@ -598,7 +598,7 @@ namespace Directus
 
 	void RigidBody::Body_AcquireShape()
 	{
-		if (const auto& collider = m_actor->GetComponent<Collider>())
+		if (const auto& collider = m_entity->GetComponent<Collider>())
 		{
 			m_collisionShape	= collider->GetShape();
 			m_centerOfMass		= collider->GetCenter();

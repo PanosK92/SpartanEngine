@@ -67,18 +67,18 @@ namespace Directus::Math
 		//= NORMALIZATION ===================================================
 		Vector3 Normalized() const
 		{
-			float factor = Length();
-			factor = 1.0f / factor;
-			return Vector3(x * factor, y * factor, z * factor);
+			float fentity = Length();
+			fentity = 1.0f / fentity;
+			return Vector3(x * fentity, y * fentity, z * fentity);
 		}
 
 		void Normalize()
 		{
-			float factor = Length();
-			factor = 1.0f / factor;
-			x *= factor;
-			y *= factor;
-			z *= factor;
+			float fentity = Length();
+			fentity = 1.0f / fentity;
+			x *= fentity;
+			y *= fentity;
+			z *= fentity;
 		};
 		static Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
 		//===================================================================

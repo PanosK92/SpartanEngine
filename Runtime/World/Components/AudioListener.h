@@ -32,7 +32,7 @@ namespace Directus
 	class ENGINE_CLASS AudioListener : public IComponent
 	{
 	public:
-		AudioListener(Context* context, Actor* actor, Transform* transform);
+		AudioListener(Context* context, Entity* entity, Transform* transform);
 		~AudioListener();
 
 		//= COMPONENT ===============

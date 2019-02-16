@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "World.h"
-#include "Actor.h"
+#include "Entity.h"
 #include "Components/Transform.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
@@ -87,7 +87,7 @@ namespace Directus
 
 		TIME_BLOCK_START_CPU();
 		
-		// Tick actors
+		// Tick entities
 		{
 			// Detect game toggling
 			bool started		= Engine::EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
@@ -97,23 +97,23 @@ namespace Directus
 			// Start
 			if (started)
 			{
-				for (const auto& actor : m_actorsPrimary)
+				for (const auto& entity : m_entitiesPrimary)
 				{
-					actor->Start();
+					entity->Start();
 				}
 			}
 			// Stop
 			if (stopped)
 			{
-				for (const auto& actor : m_actorsPrimary)
+				for (const auto& entity : m_entitiesPrimary)
 				{
-					actor->Stop();
+					entity->Stop();
 				}
 			}
 			// Tick
-			for (const auto& actor : m_actorsPrimary)
+			for (const auto& entity : m_entitiesPrimary)
 			{
-				actor->Tick();
+				entity->Tick();
 			}
 		}
 
@@ -121,9 +121,9 @@ namespace Directus
 
 		if (m_isDirty)
 		{
-			m_actorsSecondary = m_actorsPrimary;
+			m_entitiesSecondary = m_entitiesPrimary;
 			// Submit to the Renderer
-			FIRE_EVENT_DATA(Event_World_Submit, m_actorsSecondary);
+			FIRE_EVENT_DATA(Event_World_Submit, m_entitiesSecondary);
 			m_isDirty = false;
 		}
 	}
@@ -132,12 +132,12 @@ namespace Directus
 	{
 		FIRE_EVENT(Event_World_Unload);
 
-		m_actorsPrimary.clear();
-		m_actorsPrimary.shrink_to_fit();
+		m_entitiesPrimary.clear();
+		m_entitiesPrimary.shrink_to_fit();
 		
-		m_actor_selected.reset();
+		m_entity_selected.reset();
 
-		// Don't clear secondary m_actorsSecondary as they might be used by the renderer
+		// Don't clear secondary m_entitiesSecondary as they might be used by the renderer
 	}
 	//=========================================================================================================
 
@@ -171,22 +171,22 @@ namespace Directus
 		m_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths(filePaths);
 		file->Write(filePaths);
 
-		//= Save actors ============================
-		// Only save root actors as they will also save their descendants
-		vector<shared_ptr<Actor>> rootActors = Actors_GetRoots();
+		//= Save entities ============================
+		// Only save root entities as they will also save their descendants
+		vector<shared_ptr<Entity>> rootentities = Entities_GetRoots();
 
-		// 1st - actor count
-		auto rootActorCount = (int)rootActors.size();
-		file->Write(rootActorCount);
+		// 1st - entity count
+		auto rootentityCount = (int)rootentities.size();
+		file->Write(rootentityCount);
 
-		// 2nd - actor IDs
-		for (const auto& root : rootActors)
+		// 2nd - entity IDs
+		for (const auto& root : rootentities)
 		{
 			file->Write(root->GetID());
 		}
 
-		// 3rd - actors
-		for (const auto& root : rootActors)
+		// 3rd - entities
+		for (const auto& root : rootentities)
 		{
 			root->Serialize(file.get());
 		}
@@ -207,7 +207,7 @@ namespace Directus
 			return false;
 		}
 
-		// Thread safety: Wait for scene and the renderer to stop the actors (could do double buffering in the future)
+		// Thread safety: Wait for scene and the renderer to stop the entities (could do double buffering in the future)
 		while (m_state != Loading || Renderer::IsRendering()) { m_state = Request_Loading; this_thread::sleep_for(chrono::milliseconds(16)); }
 
 		ProgressReport::Get().Reset(g_progress_Scene);
@@ -250,25 +250,25 @@ namespace Directus
 			ProgressReport::Get().IncrementJobsDone(g_progress_Scene);
 		}
 
-		//= Load actors ============================	
-		// 1st - Root actor count
-		int rootactorCount = file->ReadInt();
+		//= Load entities ============================	
+		// 1st - Root entity count
+		int rootentityCount = file->ReadInt();
 
-		// 2nd - Root actor IDs
-		for (int i = 0; i < rootactorCount; i++)
+		// 2nd - Root entity IDs
+		for (int i = 0; i < rootentityCount; i++)
 		{
-			auto& actor = Actor_Create();
-			actor->SetID(file->ReadInt());
+			auto& entity = Entity_Create();
+			entity->SetID(file->ReadInt());
 		}
 
-		// 3rd - actors
-		// It's important to loop with rootactorCount
+		// 3rd - entities
+		// It's important to loop with rootentityCount
 		// as the vector size will increase as we deserialize
-		// actors. This is because a actor will also
+		// entities. This is because a entity will also
 		// deserialize their descendants.
-		for (int i = 0; i < rootactorCount; i++)
+		for (int i = 0; i < rootentityCount; i++)
 		{
-			m_actorsPrimary[i]->Deserialize(file.get(), nullptr);
+			m_entitiesPrimary[i]->Deserialize(file.get(), nullptr);
 		}
 		//==============================================
 
@@ -282,59 +282,59 @@ namespace Directus
 	}
 	//===================================================================================================
 
-	//= Actor HELPER FUNCTIONS  ====================================================================
-	shared_ptr<Actor>& World::Actor_Create()
+	//= entity HELPER FUNCTIONS  ====================================================================
+	shared_ptr<Entity>& World::Entity_Create()
 	{
-		auto actor = make_shared<Actor>(m_context);
-		actor->Initialize(actor->AddComponent<Transform>().get());
-		return m_actorsPrimary.emplace_back(actor);
+		auto entity = make_shared<Entity>(m_context);
+		entity->Initialize(entity->AddComponent<Transform>().get());
+		return m_entitiesPrimary.emplace_back(entity);
 	}
 
-	shared_ptr<Actor>& World::Actor_Add(const shared_ptr<Actor>& actor)
+	shared_ptr<Entity>& World::Entity_Add(const shared_ptr<Entity>& entity)
 	{
-		if (!actor)
-			return m_actor_empty;
+		if (!entity)
+			return m_entity_empty;
 
-		return m_actorsPrimary.emplace_back(actor);
+		return m_entitiesPrimary.emplace_back(entity);
 	}
 
-	bool World::Actor_Exists(const shared_ptr<Actor>& actor)
+	bool World::entity_Exists(const shared_ptr<Entity>& entity)
 	{
-		if (!actor)
+		if (!entity)
 			return false;
 
-		return Actor_GetByID(actor->GetID()) != nullptr;
+		return Entity_GetByID(entity->GetID()) != nullptr;
 	}
 
-	// Removes an actor and all of it's children
-	void World::Actor_Remove(const shared_ptr<Actor>& actor)
+	// Removes an entity and all of it's children
+	void World::Entity_Remove(const shared_ptr<Entity>& entity)
 	{
-		if (!actor)
+		if (!entity)
 			return;
 
-		// If the actor to be removed is the actor that is currently selected, make sure to lose the reference
-		if (actor->GetID() == m_actor_selected->GetID())
+		// If the entity to be removed is the entity that is currently selected, make sure to lose the reference
+		if (entity->GetID() == m_entity_selected->GetID())
 		{
-			m_actor_selected = nullptr;
+			m_entity_selected = nullptr;
 		}
 
 		// remove any descendants
-		vector<Transform*> children = actor->GetTransform_PtrRaw()->GetChildren();
+		vector<Transform*> children = entity->GetTransform_PtrRaw()->GetChildren();
 		for (const auto& child : children)
 		{
-			Actor_Remove(child->GetActor_PtrShared());
+			Entity_Remove(child->GetEntity_PtrShared());
 		}
 
 		// Keep a reference to it's parent (in case it has one)
-		Transform* parent = actor->GetTransform_PtrRaw()->GetParent();
+		Transform* parent = entity->GetTransform_PtrRaw()->GetParent();
 
-		// Remove this actor
-		for (auto it = m_actorsPrimary.begin(); it < m_actorsPrimary.end();)
+		// Remove this entity
+		for (auto it = m_entitiesPrimary.begin(); it < m_entitiesPrimary.end();)
 		{
-			shared_ptr<Actor> temp = *it;
-			if (temp->GetID() == actor->GetID())
+			shared_ptr<Entity> temp = *it;
+			if (temp->GetID() == entity->GetID())
 			{
-				it = m_actorsPrimary.erase(it);
+				it = m_entitiesPrimary.erase(it);
 				break;
 			}
 			++it;
@@ -349,60 +349,60 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	vector<shared_ptr<Actor>> World::Actors_GetRoots()
+	vector<shared_ptr<Entity>> World::Entities_GetRoots()
 	{
-		vector<shared_ptr<Actor>> rootActors;
-		for (const auto& actor : m_actorsPrimary)
+		vector<shared_ptr<Entity>> rootentities;
+		for (const auto& entity : m_entitiesPrimary)
 		{
-			if (actor->GetTransform_PtrRaw()->IsRoot())
+			if (entity->GetTransform_PtrRaw()->IsRoot())
 			{
-				rootActors.emplace_back(actor);
+				rootentities.emplace_back(entity);
 			}
 		}
 
-		return rootActors;
+		return rootentities;
 	}
 
-	const shared_ptr<Actor>& World::Actor_GetByName(const string& name)
+	const shared_ptr<Entity>& World::Entity_GetByName(const string& name)
 	{
-		for (const auto& actor : m_actorsPrimary)
+		for (const auto& entity : m_entitiesPrimary)
 		{
-			if (actor->GetName() == name)
-				return actor;
+			if (entity->GetName() == name)
+				return entity;
 		}
 
-		return m_actor_empty;
+		return m_entity_empty;
 	}
 
-	const shared_ptr<Actor>& World::Actor_GetByID(unsigned int ID)
+	const shared_ptr<Entity>& World::Entity_GetByID(unsigned int ID)
 	{
-		for (const auto& actor : m_actorsPrimary)
+		for (const auto& entity : m_entitiesPrimary)
 		{
-			if (actor->GetID() == ID)
-				return actor;
+			if (entity->GetID() == ID)
+				return entity;
 		}
 
-		return m_actor_empty;
+		return m_entity_empty;
 	}
 
-	void World::PickActor()
+	void World::Pickentity()
 	{
 		auto camera = m_context->GetSubsystem<Renderer>()->GetCamera();
 		if (!camera)
 			return;
 
-		if (camera->Pick(m_input->GetMousePosition(), m_actor_selected))
+		if (camera->Pick(m_input->GetMousePosition(), m_entity_selected))
 		{
-			FIRE_EVENT_DATA(Event_World_ActorSelected, m_actor_selected);
+			FIRE_EVENT_DATA(Event_World_EntitySelected, m_entity_selected);
 		}
 	}
 
 	//===================================================================================================
 
-	//= COMMON ACTOR CREATION ========================================================================
-	shared_ptr<Actor>& World::CreateSkybox()
+	//= COMMON entity CREATION ========================================================================
+	shared_ptr<Entity>& World::CreateSkybox()
 	{
-		shared_ptr<Actor>& skybox = Actor_Create();
+		shared_ptr<Entity>& skybox = Entity_Create();
 		skybox->SetName("Skybox");
 		skybox->SetHierarchyVisibility(false);
 		skybox->AddComponent<Skybox>();	
@@ -410,25 +410,25 @@ namespace Directus
 		return skybox;
 	}
 
-	shared_ptr<Actor> World::CreateCamera()
+	shared_ptr<Entity> World::CreateCamera()
 	{
 		auto resourceMng		= m_context->GetSubsystem<ResourceCache>();
 		string scriptDirectory	= resourceMng->GetStandardResourceDirectory(Resource_Script);
 
-		auto actor = Actor_Create();
-		actor->SetName("Camera");
-		actor->AddComponent<Camera>();
-		actor->AddComponent<AudioListener>();
-		actor->AddComponent<Script>()->SetScript(scriptDirectory + "MouseLook.as");
-		actor->AddComponent<Script>()->SetScript(scriptDirectory + "FirstPersonController.as");
-		actor->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+		auto entity = Entity_Create();
+		entity->SetName("Camera");
+		entity->AddComponent<Camera>();
+		entity->AddComponent<AudioListener>();
+		entity->AddComponent<Script>()->SetScript(scriptDirectory + "MouseLook.as");
+		entity->AddComponent<Script>()->SetScript(scriptDirectory + "FirstPersonController.as");
+		entity->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
-		return actor;
+		return entity;
 	}
 
-	shared_ptr<Actor>& World::CreateDirectionalLight()
+	shared_ptr<Entity>& World::CreateDirectionalLight()
 	{
-		shared_ptr<Actor>& light = Actor_Create();
+		shared_ptr<Entity>& light = Entity_Create();
 		light->SetName("DirectionalLight");
 		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
 		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));

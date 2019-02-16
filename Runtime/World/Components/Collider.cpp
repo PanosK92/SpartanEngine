@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "RigidBody.h"
 #include "Renderable.h"
-#include "../Actor.h"
+#include "../Entity.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../Logging/Log.h"
@@ -45,7 +45,7 @@ using namespace std;
 
 namespace Directus
 {
-	Collider::Collider(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	Collider::Collider(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		m_shapeType = ColliderShape_Box;
 		m_center	= Vector3::Zero;
@@ -67,7 +67,7 @@ namespace Directus
 	void Collider::OnInitialize()
 	{
 		// If there is a mesh, use it's bounding box
-		if (auto renderable = GetActor_PtrRaw()->GetRenderable_PtrRaw())
+		if (auto renderable = GetEntity_PtrRaw()->GetRenderable_PtrRaw())
 		{
 			m_center	= Vector3::Zero;
 			m_size		= renderable->Geometry_AABB().GetSize();
@@ -180,7 +180,7 @@ namespace Directus
 
 		case ColliderShape_Mesh:
 			// Get Renderable
-			Renderable* renderable = GetActor_PtrRaw()->GetComponent<Renderable>().get();
+			Renderable* renderable = GetEntity_PtrRaw()->GetComponent<Renderable>().get();
 			if (!renderable)
 			{
 				LOG_WARNING("Collider::Shape_Update: Can't construct mesh shape, there is no Renderable component attached.");
@@ -238,7 +238,7 @@ namespace Directus
 
 	void Collider::RigidBody_SetShape(btCollisionShape* shape)
 	{
-		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>())
+		if (const auto& rigidBody = m_entity->GetComponent<RigidBody>())
 		{
 			rigidBody->SetShape(shape);
 		}
@@ -246,7 +246,7 @@ namespace Directus
 
 	void Collider::RigidBody_SetCenterOfMass(const Vector3& center)
 	{
-		if (const auto& rigidBody = m_actor->GetComponent<RigidBody>())
+		if (const auto& rigidBody = m_entity->GetComponent<RigidBody>())
 		{
 			rigidBody->SetCenterOfMass(center);
 		}

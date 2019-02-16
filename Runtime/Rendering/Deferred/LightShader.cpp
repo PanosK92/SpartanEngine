@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "LightShader.h"
 #include "../../World/Components/Transform.h"
-#include "../../World/Actor.h"
+#include "../../World/Entity.h"
 #include "../../Core/Settings.h"
 #include "../../RHI/RHI_Shader.h"
 #include "../../RHI/RHI_ConstantBuffer.h"
@@ -45,7 +45,7 @@ namespace Directus
 		const Matrix& mViewProjection_Orthographic,
 		const Matrix& mView,
 		const Matrix& mProjection,
-		const vector<Actor*>& lights,
+		const vector<Entity*>& lights,
 		bool doSSR
 	)
 	{

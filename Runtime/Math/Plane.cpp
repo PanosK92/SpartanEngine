@@ -57,8 +57,8 @@ namespace Directus::Math
 		result.normal = Vector3::Normalize(this->normal);
 		float nominator = sqrtf(result.normal.x * result.normal.x + result.normal.y * result.normal.y + result.normal.z * result.normal.z);
 		float denominator = sqrtf(this->normal.x * this->normal.x + this->normal.y * this->normal.y + this->normal.z * this->normal.z);
-		float factor = nominator / denominator;
-		result.d = this->d * factor;
+		float fentity = nominator / denominator;
+		result.d = this->d * fentity;
 
 		this->normal = result.normal;
 		this->d = result.d;

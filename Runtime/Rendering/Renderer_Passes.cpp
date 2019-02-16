@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommonBuffers.h"
 #include "../RHI/RHI_VertexBuffer.h"
-#include "../World/Actor.h"
+#include "../World/Entity.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Skybox.h"
@@ -59,9 +59,9 @@ namespace Directus
 		if (!shadowMap)
 			return;
 
-		// Validate actors
-		auto& actors = m_actors[Renderable_ObjectOpaque];
-		if (actors.empty())
+		// Validate entities
+		auto& entities = m_entities[Renderable_ObjectOpaque];
+		if (entities.empty())
 			return;
 
 		TIME_BLOCK_START_MULTI();
@@ -79,10 +79,10 @@ namespace Directus
 			m_rhiDevice->EventBegin(("Pass_DepthDirectionalLight " + to_string(i)).c_str());
 			m_rhiPipeline->SetRenderTarget(shadowMap->GetRenderTargetView(i), shadowMap->GetDepthStencilView(), true);
 
-			for (const auto& actor : actors)
+			for (const auto& entity : entities)
 			{
 				// Acquire renderable component
-				auto renderable = actor->GetRenderable_PtrRaw();
+				auto renderable = entity->GetRenderable_PtrRaw();
 				if (!renderable)
 					continue;
 	
@@ -112,7 +112,7 @@ namespace Directus
 					currentlyBoundGeometry = geometry->Resource_GetID();
 				}
 
-				SetDefault_Buffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, actor->GetTransform_PtrRaw()->GetMatrix() * light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i));
+				SetDefault_Buffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, entity->GetTransform_PtrRaw()->GetMatrix() * light->GetViewMatrix() * light->ShadowMap_GetProjectionMatrix(i));
 				m_rhiPipeline->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
 			}
 			m_rhiDevice->EventEnd();
@@ -127,7 +127,7 @@ namespace Directus
 		if (!m_rhiDevice)
 			return;
 
-		if (m_actors[Renderable_ObjectOpaque].empty())
+		if (m_entities[Renderable_ObjectOpaque].empty())
 		{
 			m_gbuffer->Clear(); // zeroed material buffer causes sky sphere to render
 		}
@@ -159,10 +159,10 @@ namespace Directus
 		unsigned int currentlyBoundShader = 0;
 		unsigned int currentlyBoundMaterial = 0;
 
-		for (auto actor : m_actors[Renderable_ObjectOpaque])
+		for (auto entity : m_entities[Renderable_ObjectOpaque])
 		{
 			// Get renderable and material
-			Renderable* renderable = actor->GetRenderable_PtrRaw();
+			Renderable* renderable = entity->GetRenderable_PtrRaw();
 			Material* material = renderable ? renderable->Material_Ptr().get() : nullptr;
 
 			if (!renderable || !material)
@@ -218,14 +218,14 @@ namespace Directus
 			}
 
 			// UPDATE PER OBJECT BUFFER
-			shader->UpdatePerObjectBuffer(actor->GetTransform_PtrRaw(), material, m_view, m_projection);
+			shader->UpdatePerObjectBuffer(entity->GetTransform_PtrRaw(), material, m_view, m_projection);
 			m_rhiPipeline->SetConstantBuffer(shader->GetPerObjectBuffer(), 1, Buffer_Global);
 
 			// Render	
 			m_rhiPipeline->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
 			m_profiler->m_rendererMeshesRendered++;
 
-		} // Actor/MESH ITERATION
+		} // entity/MESH ITERATION
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -281,7 +281,7 @@ namespace Directus
 			m_viewProjection_Orthographic,
 			m_view,
 			m_projection,
-			m_actors[Renderable_Light],
+			m_entities[Renderable_Light],
 			Flags_IsSet(Render_PostProcess_SSR)
 		);
 
@@ -314,8 +314,8 @@ namespace Directus
 		if (!GetLightDirectional())
 			return;
 
-		auto& actors_transparent = m_actors[Renderable_ObjectTransparent];
-		if (actors_transparent.empty())
+		auto& entities_transparent = m_entities[Renderable_ObjectTransparent];
+		if (entities_transparent.empty())
 			return;
 
 		TIME_BLOCK_START_MULTI();
@@ -330,10 +330,10 @@ namespace Directus
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetShader(m_vps_transparent);
 
-		for (auto& actor : actors_transparent)
+		for (auto& entity : entities_transparent)
 		{
 			// Get renderable and material
-			Renderable* renderable = actor->GetRenderable_PtrRaw();
+			Renderable* renderable = entity->GetRenderable_PtrRaw();
 			Material* material = renderable ? renderable->Material_Ptr().get() : nullptr;
 
 			if (!renderable || !material)
@@ -355,7 +355,7 @@ namespace Directus
 
 			// Constant buffer
 			auto buffer = Struct_Transparency(
-				actor->GetTransform_PtrRaw()->GetMatrix(),
+				entity->GetTransform_PtrRaw()->GetMatrix(),
 				m_view,
 				m_projection,
 				material->GetColorAlbedo(),
@@ -369,7 +369,7 @@ namespace Directus
 
 			m_profiler->m_rendererMeshesRendered++;
 
-		} // Actor/MESH ITERATION
+		} // entity/MESH ITERATION
 
 		m_rhiDevice->EventEnd();
 		TIME_BLOCK_END_MULTI();
@@ -844,17 +844,17 @@ namespace Directus
 			// AABBs
 			if (drawAABBs)
 			{
-				for (const auto& actor : m_actors[Renderable_ObjectOpaque])
+				for (const auto& entity : m_entities[Renderable_ObjectOpaque])
 				{
-					if (auto renderable = actor->GetRenderable_PtrRaw())
+					if (auto renderable = entity->GetRenderable_PtrRaw())
 					{
 						DrawBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 
-				for (const auto& actor : m_actors[Renderable_ObjectTransparent])
+				for (const auto& entity : m_entities[Renderable_ObjectTransparent])
 				{
-					if (auto renderable = actor->GetRenderable_PtrRaw())
+					if (auto renderable = entity->GetRenderable_PtrRaw())
 					{
 						DrawBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
@@ -960,7 +960,7 @@ namespace Directus
 
 		if (render_lights)
 		{
-			auto& lights = m_actors[Renderable_Light];
+			auto& lights = m_entities[Renderable_Light];
 			if (lights.size() != 0)
 			{
 				m_rhiDevice->EventBegin("Gizmo_Lights");
@@ -968,9 +968,9 @@ namespace Directus
 				m_rhiPipeline->SetPixelShader(m_ps_texture);
 				m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 
-				for (const auto& actor : lights)
+				for (const auto& entity : lights)
 				{
-					Vector3 position_light_world = actor->GetTransform_PtrRaw()->GetPosition();
+					Vector3 position_light_world = entity->GetTransform_PtrRaw()->GetPosition();
 					Vector3 position_camera_world = m_camera->GetTransform()->GetPosition();
 					Vector3 direction_camera_to_light = (position_light_world - position_camera_world).Normalized();
 					float VdL = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
@@ -987,7 +987,7 @@ namespace Directus
 
 					// Choose texture based on light type
 					shared_ptr<RHI_Texture> lightTex = nullptr;
-					LightType type = actor->GetComponent<Light>()->GetLightType();
+					LightType type = entity->GetComponent<Light>()->GetLightType();
 					if (type == LightType_Directional)	lightTex = m_gizmoTexLightDirectional;
 					else if (type == LightType_Point)	lightTex = m_gizmoTexLightPoint;
 					else if (type == LightType_Spot)	lightTex = m_gizmoTexLightSpot;
@@ -1016,7 +1016,7 @@ namespace Directus
 		// Transform
 		if (render_transform)
 		{
-			if (m_transformGizmo->Update(m_context->GetSubsystem<World>()->GetSelectedActor(), m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
+			if (m_transformGizmo->Update(m_context->GetSubsystem<World>()->GetSelectedentity(), m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 			{
 				m_rhiDevice->EventBegin("Gizmo_Transform");
 

@@ -31,7 +31,7 @@ namespace Directus
 	class ENGINE_CLASS Script : public IComponent
 	{
 	public:
-		Script(Context* context, Actor* actor, Transform* transform);
+		Script(Context* context, Entity* entity, Transform* transform);
 		~Script();
 
 		//= ICOMPONENT ===============================

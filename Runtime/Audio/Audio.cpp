@@ -44,7 +44,7 @@ namespace Directus
 		m_resultFMOD		= FMOD_OK;
 		m_systemFMOD		= nullptr;
 		m_maxChannels		= 32;
-		m_distanceFactor	= 1.0f;
+		m_distanceFentity	= 1.0f;
 		m_listener			= nullptr;
 
 		// Create FMOD instance
@@ -88,7 +88,7 @@ namespace Directus
 		}
 
 		// Set 3D settings
-		m_resultFMOD = m_systemFMOD->set3DSettings(1.0, m_distanceFactor, 0.0f);
+		m_resultFMOD = m_systemFMOD->set3DSettings(1.0, m_distanceFentity, 0.0f);
 		if (m_resultFMOD != FMOD_OK)
 		{
 			LogErrorFMOD(m_resultFMOD);

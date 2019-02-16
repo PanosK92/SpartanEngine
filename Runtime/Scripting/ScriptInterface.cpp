@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Timer.h"
 #include "../Rendering/Material.h"
 #include "../Input/Input.h"
-#include "../World/Actor.h"
+#include "../World/Entity.h"
 #include "../World/Components/RigidBody.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Transform.h"
@@ -57,7 +57,7 @@ namespace Directus
 		RegisterMaterial();
 		RegisterCamera();
 		RegisterRigidBody();
-		Registeractor();
+		RegisterEntity();
 		RegisterLog();
 	}
 
@@ -129,7 +129,7 @@ namespace Directus
 		m_scriptEngine->RegisterObjectType("Settings", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Input", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Time", 0, asOBJ_REF | asOBJ_NOCOUNT);
-		m_scriptEngine->RegisterObjectType("Actor", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		m_scriptEngine->RegisterObjectType("Entity", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Transform", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Renderable", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		m_scriptEngine->RegisterObjectType("Material", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -172,21 +172,21 @@ namespace Directus
 	}
 
 	/*------------------------------------------------------------------------------
-										[actor]
+										[Entity]
 	------------------------------------------------------------------------------*/
 
-	void ScriptInterface::Registeractor()
+	void ScriptInterface::RegisterEntity()
 	{
-		m_scriptEngine->RegisterObjectMethod("Actor", "Actor &opAssign(const Actor &in)", asMETHODPR(Actor, operator =, (const Actor&), Actor&), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Actor", "int GetID()", asMETHOD(Actor, GetID), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Actor", "string GetName()", asMETHOD(Actor, GetName), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Actor", "void SetName(string)", asMETHOD(Actor, SetName), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Actor", "bool IsActive()", asMETHOD(Actor, IsActive), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Actor", "void SetActive(bool)", asMETHOD(Actor, SetActive), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Actor", "Transform &GetTransform()", asMETHOD(Actor, GetTransform_PtrRaw), asCALL_THISCALL);	
-		m_scriptEngine->RegisterObjectMethod("Actor", "Camera &GetCamera()", asMETHOD(Actor, GetComponent<Camera>), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Actor", "RigidBody &GetRigidBody()", asMETHOD(Actor, GetComponent<RigidBody>), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Actor", "Renderable &GetRenderable()", asMETHOD(Actor, GetComponent<Renderable>), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "Entity &opAssign(const Entity &in)", asMETHODPR(Entity, operator =, (const Entity&), Entity&), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "int GetID()", asMETHOD(Entity, GetID), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "string GetName()", asMETHOD(Entity, GetName), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "void SetName(string)", asMETHOD(Entity, SetName), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "bool IsActive()", asMETHOD(Entity, IsActive), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "void SetActive(bool)", asMETHOD(Entity, SetActive), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "Transform &GetTransform()", asMETHOD(Entity, GetTransform_PtrRaw), asCALL_THISCALL);	
+		m_scriptEngine->RegisterObjectMethod("Entity", "Camera &GetCamera()", asMETHOD(Entity, GetComponent<Camera>), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "RigidBody &GetRigidBody()", asMETHOD(Entity, GetComponent<RigidBody>), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "Renderable &GetRenderable()", asMETHOD(Entity, GetComponent<Renderable>), asCALL_THISCALL);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -214,24 +214,26 @@ namespace Directus
 		m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetParent()", asMETHOD(Transform, GetParent), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByIndex(int)", asMETHOD(Transform, GetChildByIndex), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByName(string)", asMETHOD(Transform, GetChildByName), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Transform", "Actor &GetActor()", asMETHOD(Transform, GetActor_PtrRaw), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Transform", "Entity &GetEntity()", asMETHOD(Transform, GetEntity_PtrRaw), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void Translate(const Vector3& in)", asMETHOD(Transform, Translate), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in)", asMETHOD(Transform, Rotate), asCALL_THISCALL);
 	}
 
-	//= MATERIAL ====================================================================
+	/*------------------------------------------------------------------------------
+								[MATERIAL]
+	------------------------------------------------------------------------------*/
 	void ScriptInterface::RegisterMaterial()
 	{
 		m_scriptEngine->RegisterObjectMethod("Material", "void SetOffsetUV(Vector2)", asMETHOD(Material, SetOffset), asCALL_THISCALL);
 	}
-	//===============================================================================
 
-	//= CAMERA ======================================================================
+	/*------------------------------------------------------------------------------
+									[CAMERA]
+	------------------------------------------------------------------------------*/
 	void ScriptInterface::RegisterCamera()
 	{
 
 	}
-	//===============================================================================
 
 	/*------------------------------------------------------------------------------
 									[RIGIDBODY]

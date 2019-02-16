@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class Actor;
+	class Entity;
 	class Model;
 	class Renderable;
 
@@ -48,7 +48,7 @@ namespace Directus
 	class ENGINE_CLASS Camera : public IComponent
 	{
 	public:
-		Camera(Context* context, Actor* actor, Transform* transform);
+		Camera(Context* context, Entity* entity, Transform* transform);
 		~Camera();
 
 		//= ICOMPONENT ===============================
@@ -68,8 +68,8 @@ namespace Directus
 		// Returns the ray the camera uses to do picking
 		const Math::Ray& GetPickingRay() { return m_ray; }
 
-		// Picks the nearest actor under the mouse cursor
-		bool Pick(const Math::Vector2& mousePos, std::shared_ptr<Actor>& actor);
+		// Picks the nearest entity under the mouse cursor
+		bool Pick(const Math::Vector2& mousePos, std::shared_ptr<Entity>& entity);
 
 		// Converts a world point to a screen point
 		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);

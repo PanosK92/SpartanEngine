@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "ResourceCache.h"
-#include "../World/Actor.h"
+#include "../World/Entity.h"
 #include "../Core/EventSystem.h"
 //==============================
 

@@ -35,7 +35,7 @@ namespace Directus
 	class ENGINE_CLASS Transform : public IComponent
 	{
 	public:
-		Transform(Context* context, Actor* actor, Transform* transform);
+		Transform(Context* context, Entity* entity, Transform* transform);
 		~Transform();
 
 		//= ICOMPONENT ===============================
@@ -53,12 +53,12 @@ namespace Directus
 		void SetPositionLocal(const Math::Vector3& position);
 		//===========================================================================
 
-		//= ROTATION =================================================================
+		//= ROTATION =========================================================
 		Math::Quaternion GetRotation() { return m_matrix.GetRotation(); }
 		const Math::Quaternion& GetRotationLocal() { return m_rotationLocal; }
 		void SetRotation(const Math::Quaternion& rotation);
 		void SetRotationLocal(const Math::Quaternion& rotation);
-		//============================================================================
+		//====================================================================
 
 		//= SCALE ===================================================
 		Math::Vector3 GetScale() { return m_matrix.GetScale(); }
@@ -105,6 +105,8 @@ namespace Directus
 		void SetWVP_Previous(Math::Matrix& matrix)	{ m_wvp_previous = matrix; }
 
 	private:
+		Math::Matrix GetParentTransformMatrix();
+
 		// local
 		Math::Vector3 m_positionLocal;
 		Math::Quaternion m_rotationLocal;
@@ -119,8 +121,5 @@ namespace Directus
 
 		// Velocity tracking
 		Math::Matrix m_wvp_previous;
-
-		//= HELPER FUNCTIONS ================================================================
-		Math::Matrix GetParentTransformMatrix();
 	};
 }

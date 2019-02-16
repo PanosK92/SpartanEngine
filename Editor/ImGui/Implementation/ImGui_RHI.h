@@ -343,7 +343,7 @@ namespace ImGui::RHI
 		//sd.Flags = 0;
 
 		//IM_ASSERT(data->SwapChain == NULL && data->RTView == NULL);
-		//g_pFactory->CreateSwapChain(g_pd3dDevice, &sd, &data->SwapChain);
+		//g_pFentityy->CreateSwapChain(g_pd3dDevice, &sd, &data->SwapChain);
 
 		//// Create the render target
 		//if (data->SwapChain)

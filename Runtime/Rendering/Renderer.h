@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class Actor;
+	class Entity;
 	class Camera;
 	class Skybox;
 	class Light;
@@ -194,7 +194,7 @@ namespace Directus
 			const Math::Vector2& blur_direction	= Math::Vector2::Zero
 		);
 		void Renderables_Acquire(const Variant& renderables);
-		void Renderables_Sort(std::vector<Actor*>* renderables);
+		void Renderables_Sort(std::vector<Entity*>* renderables);
 		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cullMode, RHI_Fill_Mode fillMode);
 
 		//= PASSES ==============================================================================================================================================
@@ -333,7 +333,7 @@ namespace Directus
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
 		std::unique_ptr<GBuffer> m_gbuffer;	
 		Math::Rectangle m_quad;
-		std::unordered_map<RenderableType, std::vector<Actor*>> m_actors;
+		std::unordered_map<RenderableType, std::vector<Entity*>> m_entities;
 		Math::Matrix m_view;
 		Math::Matrix m_viewBase;
 		Math::Matrix m_projection;

@@ -34,7 +34,7 @@ namespace Directus
 	class ENGINE_CLASS AudioSource : public IComponent
 	{
 	public:
-		AudioSource(Context* context, Actor* actor, Transform* transform);
+		AudioSource(Context* context, Entity* entity, Transform* transform);
 		~AudioSource();
 
 		//= INTERFACE ================================

@@ -1,6 +1,6 @@
 class RotateAroundSelf
 {
-	Actor @actor;
+	Entity @entity;
 	Transform @transform;
 	
 	//= MISC ===============
@@ -10,10 +10,10 @@ class RotateAroundSelf
 	//======================
 	
 	// Constructor
-	RotateAroundSelf(Actor @actorIn)
+	RotateAroundSelf(Entity @entityIn)
 	{
-		@actor		= actorIn;
-		@transform	= actor.GetTransform();	
+		@entity		= entityIn;
+		@transform	= entity.GetTransform();	
 	}
 	
 	// Use this for initialization

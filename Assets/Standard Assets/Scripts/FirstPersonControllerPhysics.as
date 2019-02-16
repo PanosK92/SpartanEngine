@@ -1,6 +1,6 @@
 class FirstPersonControllerPhysics
 {
-	Actor @actor;
+	Entity @entity;
 	Transform @transform;
 	RigidBody @rigidbody;
 	
@@ -16,18 +16,18 @@ class FirstPersonControllerPhysics
 	Vector3 currentRotation;
 	
 	// Constructor
-	FirstPersonControllerPhysics(Actor @actorIn)
+	FirstPersonControllerPhysics(Entity @entityIn)
 	{
-		@actor = actorIn;
+		@entity = entityIn;
 	}
 	
 	// Use this for initialization
 	void Start()
 	{
-		@transform = actor.GetTransform();
-		@rigidbody = actor.GetRigidBody();
+		@transform = entity.GetTransform();
+		@rigidbody = entity.GetRigidBody();
 		
-		// Assuming that the camera Actor is named "Camera"
+		// Assuming that the camera Entity is named "Camera"
 		@cameraTransform = transform.GetChildByName("Camera");
 	}
 

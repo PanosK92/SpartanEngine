@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "Widget_Viewport.h"
 #include "Rendering/Renderer.h"
-#include "World/Actor.h"
+#include "World/Entity.h"
 #include "World/Components/Camera.h"
 #include "Widget_World.h"
 #include "Core/Settings.h"
@@ -106,10 +106,10 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	}
 	m_timeSinceLastResChange += deltaTime;
 
-	// If this widget was clicked, make the engine pick an actor
+	// If this widget was clicked, make the engine pick an entity
 	if (ImGui::IsItemClicked(0))
 	{
-		_Widget_Viewport::g_world->PickActor();
+		_Widget_Viewport::g_world->Pickentity();
 	}
 
 	// Handle model drop

@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class Actor;
+	class Entity;
 	class Transform;
 	class Context;
 	class FileStream;
@@ -62,7 +62,7 @@ namespace Directus
 	class ENGINE_CLASS IComponent
 	{
 	public:
-		IComponent(Context* context, Actor* actor, Transform* transform);
+		IComponent(Context* context, Entity* entity, Transform* transform);
 		virtual ~IComponent() {}
 
 		// Runs when the component gets added
@@ -80,16 +80,16 @@ namespace Directus
 		// Runs every frame
 		virtual void OnTick() {}
 
-		// Runs when the actor is being saved
+		// Runs when the entity is being saved
 		virtual void Serialize(FileStream* stream) {}
 
-		// Runs when the actor is being loaded
+		// Runs when the entity is being loaded
 		virtual void Deserialize(FileStream* stream) {}
 
 		//= PROPERTIES ==========================================================================
-		Actor*					GetActor_PtrRaw()		{ return m_actor; }	
-		std::weak_ptr<Actor>	GetActor_PtrWeak()		{ return GetActor_PtrShared(); }
-		std::shared_ptr<Actor>  GetActor_PtrShared();
+		Entity*						GetEntity_PtrRaw()		{ return m_entity; }	
+		std::weak_ptr<Entity>		GetEntity_PtrWeak()		{ return GetEntity_PtrShared(); }
+		std::shared_ptr<Entity>		GetEntity_PtrShared();
 
 		Transform* GetTransform()			{ return m_transform; }
 		Context* GetContext()				{ return m_context; }
@@ -98,7 +98,7 @@ namespace Directus
 		ComponentType GetType()				{ return m_type; }
 		void SetType(ComponentType type)	{ m_type = type; }
 
-		const std::string& GetActorName();
+		const std::string& GetentityName();
 
 		template <typename T>
 		static ComponentType Type_To_Enum();
@@ -142,7 +142,7 @@ namespace Directus
 		// The state of the component
 		bool m_enabled				= false;
 		// The owner of the component
-		Actor* m_actor				= nullptr;
+		Entity* m_entity				= nullptr;
 		// The transform of the component (always exists)
 		Transform* m_transform		= nullptr;
 		// The context of the engine

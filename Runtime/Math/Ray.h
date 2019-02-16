@@ -43,7 +43,7 @@ namespace Directus
 			Ray(const Vector3& start, const Vector3& end);
 			~Ray();
 
-			// Traces a ray against all actors in the world, returns all hits in a vector.
+			// Traces a ray against all entities in the world, returns all hits in a vector.
 			std::vector<RayHit> Trace(Context* context);
 
 			// Returns hit distance to a bounding box, or infinity if there is no hit.

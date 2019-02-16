@@ -43,7 +43,7 @@ namespace Directus
 	#define LOG_ERROR_INVALID_INTERNALS() LOG_ERROR("Invalid internals.")
 
 	// Forward declarations
-	class Actor;
+	class Entity;
 	namespace Math
 	{
 		class Quaternion;
@@ -109,7 +109,7 @@ namespace Directus
 		static void Log::Write(bool value, Log_Type type)								{ Write(value ? "True" : "False", type); }
 		template<typename T> static void Write(std::weak_ptr<T> ptr, Log_Type type)		{ Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
 		template<typename T> static void Write(std::shared_ptr<T> ptr, Log_Type type)	{ Write(ptr ? typeid(ptr).name() : "Null", type); }
-		static void Write(const std::weak_ptr<Actor>& actor, Log_Type type);
+		static void Write(const std::weak_ptr<Entity>& entity, Log_Type type);
 
 		static std::string m_callerName;
 

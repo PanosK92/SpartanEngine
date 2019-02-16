@@ -28,21 +28,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class Actor;
+	class Entity;
 
 	namespace Math
 	{
 		class ENGINE_CLASS RayHit
 		{
 		public:
-			RayHit(std::shared_ptr<Actor> actor, float distance, bool inside)
+			RayHit(std::shared_ptr<Entity> entity, float distance, bool inside)
 			{
-				m_actor		= actor;
+				m_entity		= entity;
 				m_distance	= distance;
 				m_inside	= inside;
 			};
 
-			std::shared_ptr<Actor> m_actor;
+			std::shared_ptr<Entity> m_entity;
 			float m_distance;
 			bool m_inside;
 		};

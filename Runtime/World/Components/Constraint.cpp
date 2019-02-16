@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Constraint.h"
 #include "RigidBody.h"
 #include "Transform.h"
-#include "../Actor.h"
+#include "../Entity.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
@@ -45,7 +45,7 @@ using namespace Helper;
 
 namespace Directus
 {
-	Constraint::Constraint(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	Constraint::Constraint(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		m_constraint				= nullptr;
 		m_enabledEffective			= true;
@@ -118,7 +118,7 @@ namespace Directus
 		stream->Read(&m_lowLimit);
 
 		unsigned int bodyOtherID = stream->ReadUInt();
-		m_bodyOther = GetContext()->GetSubsystem<World>()->Actor_GetByID(bodyOtherID);
+		m_bodyOther = GetContext()->GetSubsystem<World>()->Entity_GetByID(bodyOtherID);
 
 		Construct();
 	}
@@ -168,12 +168,12 @@ namespace Directus
 		}
 	}
 
-	void Constraint::SetBodyOther(std::weak_ptr<Actor> bodyOther)
+	void Constraint::SetBodyOther(std::weak_ptr<Entity> bodyOther)
 	{
 		if (bodyOther.expired())
 			return;
 
-		if (!bodyOther.expired() && bodyOther.lock()->GetID() == m_actor->GetID())
+		if (!bodyOther.expired() && bodyOther.lock()->GetID() == m_entity->GetID())
 		{
 			LOG_WARNING("You can't connect a body to itself.");
 			return;
@@ -205,7 +205,7 @@ namespace Directus
 	{
 		if (m_constraint)
 		{
-			RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().get();
+			RigidBody* rigidBodyOwn		= m_entity->GetComponent<RigidBody>().get();
 			RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
 
 			// Make both bodies aware of the removal of this constraint
@@ -223,7 +223,7 @@ namespace Directus
 		if (!m_constraint || m_bodyOther.expired())
 			return;
 
-		RigidBody* rigidBodyOwn			= m_actor->GetComponent<RigidBody>().get();
+		RigidBody* rigidBodyOwn			= m_entity->GetComponent<RigidBody>().get();
 		RigidBody* rigidBodyOther		= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
 		btRigidBody* btOwnBody			= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
 		btRigidBody* btOtherBody		= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
@@ -281,7 +281,7 @@ namespace Directus
 		ReleaseConstraint();
 
 		// Make sure we have two bodies
-		RigidBody* rigidBodyOwn		= m_actor->GetComponent<RigidBody>().get();
+		RigidBody* rigidBodyOwn		= m_entity->GetComponent<RigidBody>().get();
 		RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
 		if (!rigidBodyOwn || !rigidBodyOther)
 		{

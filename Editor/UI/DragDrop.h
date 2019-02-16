@@ -32,7 +32,7 @@ enum DragPayloadType
 {
 	DragPayload_Unknown,
 	DragPayload_Texture,
-	DragPayload_Actor,
+	DragPayload_entity,
 	DragPayload_Model,
 	DragPayload_Audio,
 	DragPayload_Script

@@ -33,7 +33,7 @@ class btTypedConstraint;
 namespace Directus
 {
 	class RigidBody;
-	class Actor;
+	class Entity;
 	class Physics;
 
 	enum ConstraintType
@@ -47,7 +47,7 @@ namespace Directus
 	class ENGINE_CLASS Constraint : public IComponent
 	{
 	public:
-		Constraint(Context* context, Actor* actor, Transform* transform);
+		Constraint(Context* context, Entity* entity, Transform* transform);
 		~Constraint();
 
 		//= COMPONENT ================================
@@ -87,8 +87,8 @@ namespace Directus
 		// Set constraint rotation relative to other body.
 		void SetRotationOther(const Math::Quaternion& rotation);
 		
-		std::weak_ptr<Actor> GetBodyOther() { return m_bodyOther; }
-		void SetBodyOther(std::weak_ptr<Actor> bodyOther);
+		std::weak_ptr<Entity> GetBodyOther() { return m_bodyOther; }
+		void SetBodyOther(std::weak_ptr<Entity> bodyOther);
 
 		void ReleaseConstraint();
 		void ApplyFrames();
@@ -105,7 +105,7 @@ namespace Directus
 		Math::Vector2 m_highLimit;
 		Math::Vector2 m_lowLimit;
 
-		std::weak_ptr<Actor> m_bodyOther;
+		std::weak_ptr<Entity> m_bodyOther;
 		Math::Vector3 m_positionOther;
 		Math::Quaternion m_rotationOther;
 	

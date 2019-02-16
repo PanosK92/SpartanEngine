@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class Actor;
+	class Entity;
 	class Light;
 	class Input;
 
@@ -60,39 +60,39 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= Actor HELPER FUNCTIONS ===========================================================
-		std::shared_ptr<Actor>& Actor_Create();
-		std::shared_ptr<Actor>& Actor_Add(const std::shared_ptr<Actor>& actor);
-		bool Actor_Exists(const std::shared_ptr<Actor>& actor);
-		void Actor_Remove(const std::shared_ptr<Actor>& actor);
-		const std::vector<std::shared_ptr<Actor>>& Actors_GetAll() { return m_actorsPrimary; }
-		std::vector<std::shared_ptr<Actor>> Actors_GetRoots();
-		const std::shared_ptr<Actor>& Actor_GetByName(const std::string& name);
-		const std::shared_ptr<Actor>& Actor_GetByID(unsigned int ID);
-		int Actor_GetCount() { return (int)m_actorsPrimary.size(); }
+		//= entity HELPER FUNCTIONS ===========================================================
+		std::shared_ptr<Entity>& Entity_Create();
+		std::shared_ptr<Entity>& Entity_Add(const std::shared_ptr<Entity>& entity);
+		bool entity_Exists(const std::shared_ptr<Entity>& entity);
+		void Entity_Remove(const std::shared_ptr<Entity>& entity);
+		const std::vector<std::shared_ptr<Entity>>& Entities_GetAll() { return m_entitiesPrimary; }
+		std::vector<std::shared_ptr<Entity>> Entities_GetRoots();
+		const std::shared_ptr<Entity>& Entity_GetByName(const std::string& name);
+		const std::shared_ptr<Entity>& Entity_GetByID(unsigned int ID);
+		int Entity_GetCount() { return (int)m_entitiesPrimary.size(); }
 		//====================================================================================
 
-		//= SELECTED ACTOR ==============================================================
-		std::shared_ptr<Actor> GetSelectedActor()			{ return m_actor_selected; }
-		void SetSelectedActor(std::shared_ptr<Actor> actor)	{ m_actor_selected = actor; }
-		//===============================================================================
+		//= SELECTED ENTITY ===================================================================
+		std::shared_ptr<Entity> GetSelectedentity()				{ return m_entity_selected; }
+		void SetSelectedentity(std::shared_ptr<Entity> entity)	{ m_entity_selected = entity; }
+		//=====================================================================================
 
-		// Picks the closest actor under the mouse cursor
-		void PickActor();
+		// Picks the closest entity under the mouse cursor
+		void Pickentity();
 
 	private:
-		//= COMMON ACTOR CREATION =======================
-		std::shared_ptr<Actor>& CreateSkybox();
-		std::shared_ptr<Actor> CreateCamera();
-		std::shared_ptr<Actor>& CreateDirectionalLight();
+		//= COMMON entity CREATION =======================
+		std::shared_ptr<Entity>& CreateSkybox();
+		std::shared_ptr<Entity> CreateCamera();
+		std::shared_ptr<Entity>& CreateDirectionalLight();
 		//===============================================
 
-		// Double-buffered actors
-		std::vector<std::shared_ptr<Actor>> m_actorsPrimary;
-		std::vector<std::shared_ptr<Actor>> m_actorsSecondary;
+		// Double-buffered entities
+		std::vector<std::shared_ptr<Entity>> m_entitiesPrimary;
+		std::vector<std::shared_ptr<Entity>> m_entitiesSecondary;
 
-		std::shared_ptr<Actor> m_actor_empty;
-		std::shared_ptr<Actor> m_actor_selected;
+		std::shared_ptr<Entity> m_entity_empty;
+		std::shared_ptr<Entity> m_entity_selected;
 		Input* m_input;
 		bool m_wasInEditorMode;
 		bool m_isDirty;

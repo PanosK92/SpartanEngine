@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ILogger.h"
 #include <fstream>
 #include <stdarg.h>
-#include "../World/Actor.h"
+#include "../World/Entity.h"
 #include "../FileSystem/FileSystem.h"
 //===================================
 
@@ -80,9 +80,9 @@ namespace Directus
 		Write(buffer, Log_Error);
 	}
 
-	void Log::Write(const weak_ptr<Actor>& actor, Log_Type type)
+	void Log::Write(const weak_ptr<Entity>& entity, Log_Type type)
 	{
-		actor.expired() ? Write("Null", type) : Write(actor.lock()->GetName(), type);
+		entity.expired() ? Write("Null", type) : Write(entity.lock()->GetName(), type);
 	}
 
 	void Log::Write(const Math::Vector2& value, Log_Type type)
