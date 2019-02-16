@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=================
 
-namespace Directus { class Actor; }
+namespace Directus { class Entity; }
 
 class Widget_World : public Widget
 {
@@ -39,35 +39,35 @@ private:
 	void Tree_Show();
 	void OnTreeBegin();
 	void OnTreeEnd();
-	void Tree_AddActor(Directus::Actor* actor);
+	void Tree_AddEntity(Directus::Entity* entity);
 	void HandleClicking();
-	void Actor_HandleDragDrop(Directus::Actor* actorPtr);
-	void SetSelectedActor(std::shared_ptr<Directus::Actor> actor, bool fromEditor = true);
+	void Entity_HandleDragDrop(Directus::Entity* entityPtr);
+	void SetSelectedEntity(std::shared_ptr<Directus::Entity> entity, bool fromEditor = true);
 
 	// Misc
 	void Popups();
 	void Popup_ContextMenu();	
-	void Popup_ActorRename();
+	void Popup_EntityRename();
 	void HandleKeyShortcuts();
 
 	// Context menu actions
-	void Action_Actor_Delete(std::shared_ptr<Directus::Actor> actor);
-	Directus::Actor* Action_Actor_CreateEmpty();
-	void Action_Actor_CreateCube();
-	void Action_Actor_CreateQuad();
-	void Action_Actor_CreateSphere();
-	void Action_Actor_CreateCylinder();
-	void Action_Actor_CreateCone();
-	void Action_actor_CreateCamera();
-	void Action_actor_CreateLightDirectional();
-	void Action_actor_CreateLightPoint();
-	void Action_actor_CreateLightSpot();
-	void Action_actor_CreateRigidBody();
-	void Action_actor_CreateCollider();
-	void Action_actor_CreateConstraint();
-	void Action_actor_CreateAudioSource();
-	void Action_actor_CreateAudioListener();
+	void Action_Entity_Delete(std::shared_ptr<Directus::Entity> entity);
+	Directus::Entity* Action_Entity_CreateEmpty();
+	void Action_Entity_CreateCube();
+	void Action_Entity_CreateQuad();
+	void Action_Entity_CreateSphere();
+	void Action_Entity_CreateCylinder();
+	void Action_Entity_CreateCone();
+	void Action_Entity_CreateCamera();
+	void Action_Entity_CreateLightDirectional();
+	void Action_Entity_CreateLightPoint();
+	void Action_Entity_CreateLightSpot();
+	void Action_Entity_CreateRigidBody();
+	void Action_Entity_CreateCollider();
+	void Action_Entity_CreateConstraint();
+	void Action_Entity_CreateAudioSource();
+	void Action_Entity_CreateAudioListener();
 	
-	std::shared_ptr<Directus::Actor> m_actor_empty;
-	bool m_expandToShowActor = false;
+	std::shared_ptr<Directus::Entity> m_entity_empty;
+	bool m_expandToShowentity = false;
 };

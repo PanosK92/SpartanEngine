@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= FORWARD DECLARATIONS =
 namespace Directus
 {
-	class Actor;
+	class Entity;
 }
 //========================
 
@@ -47,11 +47,11 @@ namespace Directus
 	float,											\
 	double,											\
 	void*,											\
-	Directus::Actor*,								\
-	std::shared_ptr<Directus::Actor>,				\
-	std::weak_ptr<Directus::Actor>,					\
-	std::vector<std::weak_ptr<Directus::Actor>>,	\
-	std::vector<std::shared_ptr<Directus::Actor>>,	\
+	Directus::Entity*,								\
+	std::shared_ptr<Directus::Entity>,				\
+	std::weak_ptr<Directus::Entity>,				\
+	std::vector<std::weak_ptr<Directus::Entity>>,	\
+	std::vector<std::shared_ptr<Directus::Entity>>,	\
 	Directus::Math::Vector2,						\
 	Directus::Math::Vector3,						\
 	Directus::Math::Vector4,						\

@@ -43,7 +43,7 @@ namespace Directus
 			const Math::Matrix& mViewProjection_Orthographic,
 			const Math::Matrix& mView,
 			const Math::Matrix& mProjection,
-			const std::vector<Actor*>& lights,
+			const std::vector<Entity*>& lights,
 			bool doSSR
 		);
 

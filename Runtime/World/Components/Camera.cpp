@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "Transform.h"
 #include "Renderable.h"
-#include "../Actor.h"
+#include "../Entity.h"
 #include "../../IO/FileStream.h"
 #include "../../Core/Settings.h"
 #include "../../Rendering/Renderer.h"
@@ -37,7 +37,7 @@ using namespace std;
 
 namespace Directus
 {
-	Camera::Camera(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	Camera::Camera(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		m_nearPlane			= 0.3f;
 		m_farPlane			= 1000.0f;
@@ -160,7 +160,7 @@ namespace Directus
 	}
 
 	//= RAYCASTING =======================================================================
-	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Actor>& actor)
+	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Entity>& entity)
 	{
 		const RHI_Viewport& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
 		const Vector2& offset			= m_context->GetSubsystem<Renderer>()->viewport_editorOffset;
@@ -176,17 +176,17 @@ namespace Directus
 		m_ray = Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mouse_position_relative));
 		std::vector<RayHit> hits = m_ray.Trace(m_context);
 
-		// Get closest hit that doesn't start inside an actor
+		// Get closest hit that doesn't start inside an entity
 		for (const auto& hit : hits)
 		{
 			if (hit.m_inside)
 				continue;
 
-			actor = hit.m_actor;
+			entity = hit.m_entity;
 			return true;
 		}
 
-		actor = nullptr;
+		entity = nullptr;
 		return true;
 	}
 

@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "AudioSource.h"
 #include "AudioListener.h"
-#include "../Actor.h"
+#include "../Entity.h"
 #include "../../Core/GUIDGenerator.h"
 #include "../../FileSystem/FileSystem.h"
 //======================================
@@ -39,26 +39,26 @@ using namespace std;
 
 namespace Directus
 {
-	IComponent::IComponent(Context* context, Actor* actor, Transform* transform)
+	IComponent::IComponent(Context* context, Entity* entity, Transform* transform)
 	{
 		m_context		= context;
-		m_actor			= actor;
+		m_entity			= entity;
 		m_transform		= transform;
 		m_enabled		= true;
 		m_ID			= GENERATE_GUID;
 	}
 
-	shared_ptr<Actor> IComponent::GetActor_PtrShared()
+	shared_ptr<Entity> IComponent::GetEntity_PtrShared()
 	{
-		return m_actor->GetPtrShared();
+		return m_entity->GetPtrShared();
 	}
 
-	const string& IComponent::GetActorName()
+	const string& IComponent::GetentityName()
 	{
-		if (!m_actor)
+		if (!m_entity)
 			return NOT_ASSIGNED;
 
-		return m_actor->GetName();
+		return m_entity->GetName();
 	}
 
 	template <typename T>

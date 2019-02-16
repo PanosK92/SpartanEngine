@@ -1,6 +1,6 @@
 class PingPongAlongX
 {
-	Actor @actor;
+	Entity @entity;
 	Transform @transform;
 	
 	//= MISC ===================
@@ -12,10 +12,10 @@ class PingPongAlongX
 	//==========================
 	
 	// Constructor
-	PingPongAlongX(Actor @actorIn)
+	PingPongAlongX(Entity @entityIn)
 	{
-		@actor		= actorIn;
-		@transform	= actor.GetTransform();	
+		@entity		= entityIn;
+		@transform	= entity.GetTransform();	
 	}
 	
 	// Use this for initialization

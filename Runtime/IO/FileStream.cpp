@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
 #include "../Math/BoundingBox.h"
-#include "../World/Actor.h"
+#include "../World/Entity.h"
 #include "../Logging/Log.h"
 #include "../RHI/RHI_Vertex.h"
 //==============================

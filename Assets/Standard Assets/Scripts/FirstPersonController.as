@@ -1,6 +1,6 @@
 class FirstPersonController
 {
-	Actor @actor;
+	Entity @entity;
 	Transform @transform;
 	
 	// wasd movement
@@ -9,10 +9,10 @@ class FirstPersonController
 	Vector3 movementSpeed 	= Vector3(0,0,0);
 
 	// Constructor
-	FirstPersonController(Actor @actorIn)
+	FirstPersonController(Entity @entityIn)
 	{
-		@actor = actorIn;
-		@transform = actor.GetTransform();
+		@entity 	= entityIn;
+		@transform 	= entity.GetTransform();
 	}
 	
 	// Use this for initialization

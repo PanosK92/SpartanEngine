@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
-#include "../World/Actor.h"
+#include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
 #include "../RHI/RHI_Implementation.h"
@@ -142,7 +142,7 @@ namespace Directus
 		m_aabb				= BoundingBox(m_mesh->Vertices_Get());
 	}
 
-	void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Actor>& actor)
+	void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Entity>& entity)
 	{
 		if (!material)
 		{
@@ -161,9 +161,9 @@ namespace Directus
 		m_materials.emplace_back(material);
 
 		// Create a Renderable and pass the material to it
-		if (actor)
+		if (entity)
 		{
-			auto renderable = actor->AddComponent<Renderable>();
+			auto renderable = entity->AddComponent<Renderable>();
 			renderable->Material_Set(material);
 		}
 	}
@@ -266,10 +266,10 @@ namespace Directus
 		// Load the model
 		if (m_resourceManager->GetModelImporter()->Load(std::dynamic_pointer_cast<Model>(GetSharedPtr()), filePath))
 		{
-			// Set the normalized scale to the root actor's transform
+			// Set the normalized scale to the root entity's transform
 			m_normalizedScale = Geometry_ComputeNormalizedScale();
-			m_rootActor.lock()->GetComponent<Transform>()->SetScale(m_normalizedScale);
-			m_rootActor.lock()->GetComponent<Transform>()->UpdateTransform();
+			m_rootentity.lock()->GetComponent<Transform>()->SetScale(m_normalizedScale);
+			m_rootentity.lock()->GetComponent<Transform>()->UpdateTransform();
 
 			// Save the model in our custom format.
 			SaveToFile(GetResourceFilePath());

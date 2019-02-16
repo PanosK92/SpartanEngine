@@ -49,10 +49,10 @@ enum Event_Type
 	Event_World_Loaded,			// The world finished loading from file
 	Event_World_Unload,			// The world should clear everything
 	Event_World_Resolve,		// The world should resolve
-	Event_World_Submit,			// The world is submitting actors to the renderer
+	Event_World_Submit,			// The world is submitting entities to the renderer
 	Event_World_Stop,			// The world should stop ticking
 	Event_World_Start,			// The world should start ticking
-	Event_World_ActorSelected	// An actor was clicked in the viewport
+	Event_World_EntitySelected	// An entity was clicked in the viewport
 };
 
 //= MACROS ===============================================================================================

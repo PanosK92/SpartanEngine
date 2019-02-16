@@ -86,7 +86,7 @@ namespace Directus
 		);
 	}
 
-	Renderable::Renderable(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	Renderable::Renderable(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		m_geometryType			= Geometry_Custom;	
 		m_geometryIndexOffset	= 0;

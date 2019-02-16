@@ -107,12 +107,12 @@ namespace Directus
 			return;
 		}
 
-		// Create DirectX graphics interface factory
+		// Create DirectX graphics interface fentityy
 		IDXGIFactory* factory;
 		HRESULT result = CreateDXGIFactory(IID_PPV_ARGS(&factory));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create a DirectX graphics interface factory, %s.", D3D11_Common::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to create a DirectX graphics interface fentityy, %s.", D3D11_Common::DxgiErrorToString(result));
 			return;
 		}
 
@@ -716,8 +716,8 @@ namespace Directus
 
 		// Set blend state
 		auto ptr = (ID3D11BlendState*)blendState->GetBuffer();
-		float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		_D3D11_Device::deviceContext->OMSetBlendState(ptr, blendFactor, 0xffffffff);
+		float blendFentity[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		_D3D11_Device::deviceContext->OMSetBlendState(ptr, blendFentity, 0xffffffff);
 
 		return true;
 	}

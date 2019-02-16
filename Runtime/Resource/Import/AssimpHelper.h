@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
-#include "../../World/Actor.h"
+#include "../../World/Entity.h"
 #include "../../World/Components/Transform.h"
 //===========================================
 
@@ -46,18 +46,18 @@ namespace Directus
 			);
 		}
 
-		static void SetActorTransform(aiNode* node, Actor* actor)
+		static void SetentityTransform(aiNode* node, Entity* entity)
 		{
-			if (!actor)
+			if (!entity)
 				return;
 
 			// Convert to engine matrix
 			Math::Matrix mEngine = aiMatrix4x4ToMatrix(node->mTransformation);
 
 			// Apply position, rotation and scale
-			actor->GetTransform_PtrRaw()->SetPositionLocal(mEngine.GetTranslation());
-			actor->GetTransform_PtrRaw()->SetRotationLocal(mEngine.GetRotation());
-			actor->GetTransform_PtrRaw()->SetScaleLocal(mEngine.GetScale());
+			entity->GetTransform_PtrRaw()->SetPositionLocal(mEngine.GetTranslation());
+			entity->GetTransform_PtrRaw()->SetRotationLocal(mEngine.GetRotation());
+			entity->GetTransform_PtrRaw()->SetScaleLocal(mEngine.GetScale());
 		}
 
 		static Math::Vector4 ToVector4(const aiColor4D& aiColor)

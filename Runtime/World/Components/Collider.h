@@ -47,7 +47,7 @@ namespace Directus
 	class ENGINE_CLASS Collider : public IComponent
 	{
 	public:
-		Collider(Context* context, Actor* actor, Transform* transform);
+		Collider(Context* context, Entity* entity, Transform* transform);
 		~Collider();
 
 		//= ICOMPONENT ===============================

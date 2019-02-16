@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Camera.h"
 #include "Renderable.h"
-#include "../../World/Actor.h"
+#include "../../World/Entity.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_RenderTexture.h"
@@ -37,7 +37,7 @@ using namespace std;
 
 namespace Directus
 {
-	Light::Light(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	Light::Light(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows, bool);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);

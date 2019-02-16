@@ -1,6 +1,6 @@
 class MouseLook
 {
-	Actor @actor;
+	Entity @entity;
 	Transform @transform;
 	
 	// mouse look settings
@@ -8,10 +8,10 @@ class MouseLook
 	Vector3 rotation;
 	
 	// Constructor
-	MouseLook(Actor @actorIn)
+	MouseLook(Entity @entityIn)
 	{
-		@actor 		= actorIn;
-		@transform 	= actor.GetTransform();
+		@entity 	= entityIn;
+		@transform 	= entity.GetTransform();
 	}
 	
 	// Use this for initialization

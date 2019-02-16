@@ -31,7 +31,7 @@ class asIScriptFunction;
 
 namespace Directus
 {
-	class Actor;
+	class Entity;
 
 	// Allows creation of a script instance and execution of it's class functions.
 	class ScriptInstance
@@ -40,7 +40,7 @@ namespace Directus
 		ScriptInstance();
 		~ScriptInstance();
 
-		bool Instantiate(const std::string& path, std::weak_ptr<Actor> actor, Scripting* scriptEngine);
+		bool Instantiate(const std::string& path, std::weak_ptr<Entity> entity, Scripting* scriptEngine);
 		bool IsInstantiated() { return m_isInstantiated; }
 		std::string GetScriptPath() { return m_scriptPath; }
 
@@ -54,13 +54,13 @@ namespace Directus
 		std::string m_className;
 		std::string m_constructorDeclaration;
 		std::string m_moduleName;
-		std::weak_ptr<Actor> m_actor;
+		std::weak_ptr<Entity> m_entity;
 		std::shared_ptr<Module> m_module;
-		asIScriptObject* m_scriptObject;
-		asIScriptFunction* m_constructorFunction;
-		asIScriptFunction* m_startFunction;
-		asIScriptFunction* m_updateFunction;
-		bool m_isInstantiated;
-		Scripting* m_scriptEngine;
+		asIScriptObject* m_scriptObject				= nullptr;
+		asIScriptFunction* m_constructorFunction	= nullptr;
+		asIScriptFunction* m_startFunction			= nullptr;
+		asIScriptFunction* m_updateFunction			= nullptr;
+		Scripting* m_scriptEngine					= nullptr;
+		bool m_isInstantiated						= false;
 	};
 }

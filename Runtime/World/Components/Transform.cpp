@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Transform.h"
-#include "../Actor.h"
+#include "../Entity.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 #include "../../FileSystem/FileSystem.h"
@@ -36,7 +36,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Transform::Transform(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	Transform::Transform(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		m_positionLocal		= Vector3::Zero;
 		m_rotationLocal		= Quaternion(0, 0, 0, 1);
@@ -71,7 +71,7 @@ namespace Directus
 		stream->Write(m_rotationLocal);
 		stream->Write(m_scaleLocal);
 		stream->Write(m_lookAt);
-		stream->Write(m_parent ? m_parent->GetActor_PtrRaw()->GetID() : NOT_ASSIGNED_HASH);
+		stream->Write(m_parent ? m_parent->GetEntity_PtrRaw()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
 	void Transform::Deserialize(FileStream* stream)
@@ -80,12 +80,12 @@ namespace Directus
 		stream->Read(&m_rotationLocal);
 		stream->Read(&m_scaleLocal);
 		stream->Read(&m_lookAt);
-		unsigned int parentActorID = 0;
-		stream->Read(&parentActorID);
+		unsigned int parententityID = 0;
+		stream->Read(&parententityID);
 
-		if (parentActorID != NOT_ASSIGNED_HASH)
+		if (parententityID != NOT_ASSIGNED_HASH)
 		{
-			if (auto parent = GetContext()->GetSubsystem<World>()->Actor_GetByID(parentActorID))
+			if (auto parent = GetContext()->GetSubsystem<World>()->Entity_GetByID(parententityID))
 			{
 				parent->GetTransform_PtrRaw()->AddChild(this);
 			}
@@ -298,7 +298,7 @@ namespace Directus
 	{
 		if (!HasChildren())
 		{
-			LOG_WARNING(GetActorName() + " has no children.");
+			LOG_WARNING(GetentityName() + " has no children.");
 			return nullptr;
 		}
 
@@ -316,7 +316,7 @@ namespace Directus
 	{
 		for (const auto& child : m_children)
 		{
-			if (child->GetActorName() == name)
+			if (child->GetentityName() == name)
 				return child;
 		}
 
@@ -330,14 +330,14 @@ namespace Directus
 		m_children.clear();
 		m_children.shrink_to_fit();
 
-		auto actors = GetContext()->GetSubsystem<World>()->Actors_GetAll();
-		for (const auto& actor : actors)
+		auto entities = GetContext()->GetSubsystem<World>()->Entities_GetAll();
+		for (const auto& entity : entities)
 		{
-			if (!actor)
+			if (!entity)
 				continue;
 
 			// get the possible child
-			Transform* possibleChild = actor->GetTransform_PtrRaw();
+			Transform* possibleChild = entity->GetTransform_PtrRaw();
 
 			// if it doesn't have a parent, forget about it.
 			if (!possibleChild->HasParent())

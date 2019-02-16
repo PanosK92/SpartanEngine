@@ -33,7 +33,7 @@ using namespace Helper;
 
 namespace Directus
 {
-	AudioSource::AudioSource(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	AudioSource::AudioSource(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		m_filePath			= NOT_ASSIGNED;
 		m_mute				= false;

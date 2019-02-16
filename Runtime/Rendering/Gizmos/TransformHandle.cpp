@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Utilities\Geometry.h"
 #include "..\..\Logging\Log.h"
 #include "..\..\Input\Input.h"
-#include "..\..\World\Actor.h"
+#include "..\..\World\Entity.h"
 #include "..\..\World\Components\Camera.h"
 #include "..\..\World\Components\Transform.h"
 #include "..\..\Core\Context.h"
@@ -126,16 +126,16 @@ namespace Directus
 		m_handle_xyz.box	= m_handle_x.box;
 	}
 
-	bool TransformHandle::Update(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed)
+	bool TransformHandle::Update(TransformHandle_Space space, const shared_ptr<Entity>& entity, Camera* camera, float handle_size, float handle_speed)
 	{
-		if (!actor || !camera)
+		if (!entity || !camera)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		// Snap to actor position
-		SnapToTransform(space, actor, camera, handle_size);
+		// Snap to entity position
+		SnapToTransform(space, entity, camera, handle_size);
 
 		// Do hit test
 		if (camera)
@@ -180,10 +180,10 @@ namespace Directus
 			m_handle_xyz.delta	= m_handle_x.delta + m_handle_y.delta + m_handle_z.delta;
 
 			// Update input
-			m_handle_x.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
-			m_handle_y.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
-			m_handle_z.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
-			m_handle_xyz.UpdateInput(m_type, actor->GetTransform_PtrRaw(), m_input);
+			m_handle_x.UpdateInput(m_type, entity->GetTransform_PtrRaw(), m_input);
+			m_handle_y.UpdateInput(m_type, entity->GetTransform_PtrRaw(), m_input);
+			m_handle_z.UpdateInput(m_type, entity->GetTransform_PtrRaw(), m_input);
+			m_handle_xyz.UpdateInput(m_type, entity->GetTransform_PtrRaw(), m_input);
 		}
 
 		return m_handle_x.isEditing ||  m_handle_y.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing;
@@ -235,20 +235,20 @@ namespace Directus
 		return m_model->GetIndexBuffer();
 	}
 
-	void TransformHandle::SnapToTransform(TransformHandle_Space space, const shared_ptr<Actor>& actor, Camera* camera, float handle_size)
+	void TransformHandle::SnapToTransform(TransformHandle_Space space, const shared_ptr<Entity>& entity, Camera* camera, float handle_size)
 	{
-		// Get actor's components
-		Transform* actor_transform				= actor->GetTransform_PtrRaw();			// Transform alone is not enough
-		shared_ptr<Renderable> actor_renderable = actor->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
+		// Get entity's components
+		Transform* entity_transform				= entity->GetTransform_PtrRaw();			// Transform alone is not enough
+		shared_ptr<Renderable> entity_renderable = entity->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
 
-		// Acquire actor's transformation data (local or world space)
-		Vector3 aabb_center			= actor_renderable ? actor_renderable->Geometry_AABB().GetCenter()	: Vector3::Zero;
-		Vector3 actor_position		= (space == TransformHandle_World) ? actor_transform->GetPosition() : actor_transform->GetPositionLocal();
-		Quaternion actor_rotation	= (space == TransformHandle_World) ? actor_transform->GetRotation() : actor_transform->GetRotationLocal();
-		Vector3 actor_scale			= (space == TransformHandle_World) ? actor_transform->GetScale()	: actor_transform->GetScaleLocal();
-		Vector3 right				= (space == TransformHandle_World) ? Vector3::Right					: actor_rotation * Vector3::Right;
-		Vector3 up					= (space == TransformHandle_World) ? Vector3::Up					: actor_rotation * Vector3::Up;
-		Vector3 forward				= (space == TransformHandle_World) ? Vector3::Forward				: actor_rotation * Vector3::Forward;
+		// Acquire entity's transformation data (local or world space)
+		Vector3 aabb_center			= entity_renderable ? entity_renderable->Geometry_AABB().GetCenter()	: Vector3::Zero;
+		Vector3 entity_position		= (space == TransformHandle_World) ? entity_transform->GetPosition() : entity_transform->GetPositionLocal();
+		Quaternion entity_rotation	= (space == TransformHandle_World) ? entity_transform->GetRotation() : entity_transform->GetRotationLocal();
+		Vector3 entity_scale			= (space == TransformHandle_World) ? entity_transform->GetScale()	: entity_transform->GetScaleLocal();
+		Vector3 right				= (space == TransformHandle_World) ? Vector3::Right					: entity_rotation * Vector3::Right;
+		Vector3 up					= (space == TransformHandle_World) ? Vector3::Up					: entity_rotation * Vector3::Up;
+		Vector3 forward				= (space == TransformHandle_World) ? Vector3::Forward				: entity_rotation * Vector3::Forward;
 
 		// Compute scale
 		float distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length()	: 0.0f;

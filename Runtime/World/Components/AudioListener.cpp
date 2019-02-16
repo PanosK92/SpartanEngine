@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	AudioListener::AudioListener(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	AudioListener::AudioListener(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		m_audio = nullptr;
 	}

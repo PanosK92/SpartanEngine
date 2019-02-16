@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Skybox.h"
 #include "Transform.h"
 #include "Renderable.h"
-#include "../Actor.h"
+#include "../Entity.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../RHI/RHI_Texture.h"
 #include "../../Math/MathHelper.h"
@@ -38,7 +38,7 @@ using namespace Helper;
 
 namespace Directus
 {
-	Skybox::Skybox(Context* context, Actor* actor, Transform* transform) : IComponent(context, actor, transform)
+	Skybox::Skybox(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
 		m_skyboxType		= Skybox_Sphere;
 		m_cubemapTexture	= make_shared<RHI_Texture>(GetContext());
@@ -137,7 +137,7 @@ namespace Directus
 
 		// Renderable
 		{
-			auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>();
+			auto renderable = GetEntity_PtrRaw()->AddComponent<Renderable>();
 			renderable->Geometry_Set(Geometry_Default_Cube);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
@@ -165,7 +165,7 @@ namespace Directus
 
 		// Renderable
 		{
-			auto renderable = GetActor_PtrRaw()->AddComponent<Renderable>();
+			auto renderable = GetEntity_PtrRaw()->AddComponent<Renderable>();
 			renderable->Geometry_Set(Geometry_Default_Sphere);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);

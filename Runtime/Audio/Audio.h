@@ -52,7 +52,7 @@ namespace Directus
 		int m_resultFMOD;
 		FMOD::System* m_systemFMOD;
 		int m_maxChannels;
-		float m_distanceFactor;
+		float m_distanceFentity;
 		bool m_initialized;
 		Transform* m_listener;
 	};

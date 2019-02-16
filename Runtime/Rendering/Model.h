@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class ResourceCache;
-	class Actor;
+	class Entity;
 	class Mesh;
 	class Animation;
 
@@ -54,8 +54,8 @@ namespace Directus
 		unsigned int GetMemoryUsage() override { return m_memoryUsage; }
 		//==============================================================
 
-		// Sets the actor that represents this model in the scene
-		void SetRootActor(const std::shared_ptr<Actor>& actor) { m_rootActor = actor; }
+		// Sets the entity that represents this model in the scene
+		void SetRootentity(const std::shared_ptr<Entity>& entity) { m_rootentity = entity; }
 
 		//= GEOMTETRY =============================================
 		void Geometry_Append(
@@ -77,7 +77,7 @@ namespace Directus
 		//=========================================================
 
 		// Add resources to the model
-		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Actor>& actor);
+		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity);
 		void AddAnimation(std::shared_ptr<Animation>& animation);
 		void AddTexture(std::shared_ptr<Material>& material, TextureType textureType, const std::string& filePath);
 
@@ -99,8 +99,8 @@ namespace Directus
 		float Geometry_ComputeNormalizedScale();
 		unsigned int Geometry_ComputeMemoryUsage();
 
-		// The root actor that represents this model in the scene
-		std::weak_ptr<Actor> m_rootActor;
+		// The root entity that represents this model in the scene
+		std::weak_ptr<Entity> m_rootentity;
 
 		// Geometry
 		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;

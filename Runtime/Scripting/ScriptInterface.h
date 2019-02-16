@@ -40,9 +40,8 @@ namespace Directus
 		void RegisterSettings();
 		void RegisterInput();
 		void RegisterTime();
-		void Registeractor();
+		void RegisterEntity();
 		void RegisterTransform();
-		void RegisterRenderable();
 		void RegisterMaterial();
 		void RegisterCamera();
 		void RegisterRigidBody();

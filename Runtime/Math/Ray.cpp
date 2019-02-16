@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include "RayHit.h"
 #include "BoundingBox.h"
-#include "../World/Actor.h"
+#include "../World/Entity.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Skybox.h"
 //=========================================
@@ -54,17 +54,17 @@ namespace Directus::Math
 
 	vector<RayHit> Ray::Trace(Context* context)
 	{
-		// Find all the actors that the ray hits
+		// Find all the entities that the ray hits
 		vector<RayHit> hits;
-		const vector<shared_ptr<Actor>>& actors = context->GetSubsystem<World>()->Actors_GetAll();
-		for (const auto& actor : actors)
+		const vector<shared_ptr<Entity>>& entities = context->GetSubsystem<World>()->Entities_GetAll();
+		for (const auto& entity : entities)
 		{
-			// Make sure there actor has a mesh and exclude the SkyBox
-			if (!actor->HasComponent<Renderable>() || actor->HasComponent<Skybox>())
+			// Make sure there entity has a mesh and exclude the SkyBox
+			if (!entity->HasComponent<Renderable>() || entity->HasComponent<Skybox>())
 				continue;
 
 			// Get bounding box
-			BoundingBox aabb = actor->GetComponent<Renderable>()->Geometry_AABB();
+			BoundingBox aabb = entity->GetComponent<Renderable>()->Geometry_AABB();
 
 			// Compute hit distance
 			float hitDistance = HitDistance(aabb);
@@ -74,7 +74,7 @@ namespace Directus::Math
 				continue;
 
 			bool inside	= (hitDistance == 0.0f);
-			hits.emplace_back(actor, hitDistance, inside);
+			hits.emplace_back(entity, hitDistance, inside);
 		}
 
 		// Sort by distance (ascending)

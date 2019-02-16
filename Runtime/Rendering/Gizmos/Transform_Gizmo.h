@@ -33,7 +33,7 @@ namespace Directus
 	class Input;
 	class Camera;
 	class Context;
-	class Actor;
+	class Entity;
 	class RHI_IndexBuffer;
 	class RHI_VertexBuffer;
 
@@ -43,7 +43,7 @@ namespace Directus
 		Transform_Gizmo(Context* context);
 		~Transform_Gizmo();
 
-		bool Update(const std::shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed);
+		bool Update(const std::shared_ptr<Entity>& entity, Camera* camera, float handle_size, float handle_speed);
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
@@ -53,7 +53,7 @@ namespace Directus
 	private:
 		bool m_isEditing;
 
-		std::shared_ptr<Actor> m_selectedActor;
+		std::shared_ptr<Entity> m_selectedentity;
 		TransformHandle m_handle_position;
 		TransformHandle m_handle_rotation;
 		TransformHandle m_handle_scale;

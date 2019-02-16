@@ -35,11 +35,11 @@ namespace Directus
 	class Renderable;
 	#define ValidateComponentType(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
 
-	class ENGINE_CLASS Actor : public std::enable_shared_from_this<Actor>
+	class ENGINE_CLASS Entity : public std::enable_shared_from_this<Entity>
 	{
 	public:
-		Actor(Context* context);
-		~Actor();
+		Entity(Context* context);
+		~Entity();
 
 		void Initialize(Transform* transform);
 		void Clone();
@@ -197,19 +197,22 @@ namespace Directus
 		// Direct access for performance critical usage (not safe)
 		Transform* GetTransform_PtrRaw()		{ return m_transform; }
 		Renderable* GetRenderable_PtrRaw()		{ return m_renderable; }
-		std::shared_ptr<Actor> GetPtrShared()	{ return shared_from_this(); }
+		std::shared_ptr<Entity> GetPtrShared()	{ return shared_from_this(); }
 
 	private:
-		unsigned int m_ID;
-		std::string m_name;
-		bool m_isActive;
-		bool m_hierarchyVisibility;
-		std::vector<std::shared_ptr<IComponent>> m_components;
-		Context* m_context;
-		std::shared_ptr<Actor> m_componentEmpty;
-
+		unsigned int m_ID			= 0;
+		std::string m_name			= "Entity";
+		bool m_isActive				= true;
+		bool m_hierarchyVisibility	= true;
 		// Caching of performance critical components
-		Transform* m_transform;
-		Renderable* m_renderable;
+		Transform* m_transform		= nullptr;
+		Renderable* m_renderable	= nullptr;
+
+		// Components
+		std::vector<std::shared_ptr<IComponent>> m_components;
+		std::shared_ptr<Entity> m_componentEmpty;
+
+		// Misc
+		Context* m_context;
 	};
 }

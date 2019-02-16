@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_BlendState.h"
-#include "../World/Actor.h"
+#include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Skybox.h"
@@ -86,7 +86,7 @@ namespace Directus
 
 	Renderer::~Renderer()
 	{
-		m_actors.clear();
+		m_entities.clear();
 		m_camera = nullptr;
 	}
 
@@ -411,7 +411,7 @@ namespace Directus
 		}
 
 		// If there is nothing to render clear to camera's color and present
-		if (m_actors.empty())
+		if (m_entities.empty())
 		{
 			m_rhiDevice->ClearBackBuffer(m_camera->GetClearColor());
 			m_rhiDevice->Present();
@@ -595,39 +595,39 @@ namespace Directus
 		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);
 	}
 
-	void Renderer::Renderables_Acquire(const Variant& actorsVariant)
+	void Renderer::Renderables_Acquire(const Variant& entitiesVariant)
 	{
 		TIME_BLOCK_START_CPU();
 
 		// Clear previous state
-		m_actors.clear();
+		m_entities.clear();
 		m_camera = nullptr;
 		
-		auto actorsVec = actorsVariant.Get<vector<shared_ptr<Actor>>>();
-		for (const auto& actorShared : actorsVec)
+		auto entitiesVec = entitiesVariant.Get<vector<shared_ptr<Entity>>>();
+		for (const auto& entitieshared : entitiesVec)
 		{
-			auto actor = actorShared.get();
-			if (!actor)
+			auto entity = entitieshared.get();
+			if (!entity)
 				continue;
 
 			// Get all the components we are interested in
-			auto renderable = actor->GetComponent<Renderable>();
-			auto light		= actor->GetComponent<Light>();
-			auto skybox		= actor->GetComponent<Skybox>();
-			auto camera		= actor->GetComponent<Camera>();
+			auto renderable = entity->GetComponent<Renderable>();
+			auto light		= entity->GetComponent<Light>();
+			auto skybox		= entity->GetComponent<Skybox>();
+			auto camera		= entity->GetComponent<Camera>();
 
 			if (renderable)
 			{
 				bool isTransparent = !renderable->Material_Exists() ? false : renderable->Material_Ptr()->GetColorAlbedo().w < 1.0f;
 				if (!skybox) // Ignore skybox
 				{
-					m_actors[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(actor);
+					m_entities[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(entity);
 				}
 			}
 
 			if (light)
 			{
-				m_actors[Renderable_Light].emplace_back(actor);
+				m_entities[Renderable_Light].emplace_back(entity);
 			}
 
 			if (skybox)
@@ -637,18 +637,18 @@ namespace Directus
 
 			if (camera)
 			{
-				m_actors[Renderable_Camera].emplace_back(actor);
+				m_entities[Renderable_Camera].emplace_back(entity);
 				m_camera = camera;
 			}
 		}
 
-		Renderables_Sort(&m_actors[Renderable_ObjectOpaque]);
-		Renderables_Sort(&m_actors[Renderable_ObjectTransparent]);
+		Renderables_Sort(&m_entities[Renderable_ObjectOpaque]);
+		Renderables_Sort(&m_entities[Renderable_ObjectTransparent]);
 
 		TIME_BLOCK_END_CPU();
 	}
 
-	void Renderer::Renderables_Sort(vector<Actor*>* renderables)
+	void Renderer::Renderables_Sort(vector<Entity*>* renderables)
 	{
 		if (renderables->size() <= 2)
 			return;
@@ -656,7 +656,7 @@ namespace Directus
 		// Sort by depth (front to back)
 		if (m_camera)
 		{
-			sort(renderables->begin(), renderables->end(), [this](Actor* a, Actor* b)
+			sort(renderables->begin(), renderables->end(), [this](Entity* a, Entity* b)
 			{
 				// Get renderable component
 				auto a_renderable = a->GetRenderable_PtrRaw();
@@ -678,7 +678,7 @@ namespace Directus
 		}
 
 		// Sort by material
-		sort(renderables->begin(), renderables->end(), [](Actor* a, Actor* b)
+		sort(renderables->begin(), renderables->end(), [](Entity* a, Entity* b)
 		{
 			// Get renderable component
 			auto a_renderable = a->GetRenderable_PtrRaw();
@@ -708,11 +708,11 @@ namespace Directus
 
 	Light* Renderer::GetLightDirectional()
 	{
-		auto actors = m_actors[Renderable_Light];
+		auto entities = m_entities[Renderable_Light];
 
-		for (const auto& actor : actors)
+		for (const auto& entity : entities)
 		{
-			Light* light = actor->GetComponent<Light>().get();
+			Light* light = entity->GetComponent<Light>().get();
 			if (light->GetLightType() == LightType_Directional)
 				return light;
 		}

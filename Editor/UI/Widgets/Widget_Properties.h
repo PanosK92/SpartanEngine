@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class Actor;
+	class Entity;
 	class Transform;
 	class Light;
 	class Renderable;
@@ -51,11 +51,11 @@ public:
 	Widget_Properties(Directus::Context* context);
 	void Tick(float deltaTime) override;
 
-	static void Inspect(std::weak_ptr<Directus::Actor> actor);
+	static void Inspect(std::weak_ptr<Directus::Entity> entity);
 	static void Inspect(std::weak_ptr<Directus::Material> material);
 
 	// Inspected resources
-	static std::weak_ptr<Directus::Actor> m_inspectedActor;
+	static std::weak_ptr<Directus::Entity> m_inspectedentity;
 	static std::weak_ptr<Directus::Material> m_inspectedMaterial;
 
 private:

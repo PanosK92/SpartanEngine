@@ -287,13 +287,13 @@ namespace Directus
 		return result;
 	}
 
-	void ModelImporter::ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, shared_ptr<Model>& model, Actor* parentNode, Actor* newNode)
+	void ModelImporter::ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, shared_ptr<Model>& model, Entity* parentNode, Entity* newNode)
 	{
 		// Is this the root node?
 		if (!assimpNode->mParent || !newNode)
 		{
-			newNode = m_world->Actor_Create().get();
-			model->SetRootActor(newNode->GetPtrShared());
+			newNode = m_world->Entity_Create().get();
+			model->SetRootentity(newNode->GetPtrShared());
 
 			int jobCount;
 			_ModelImporter::ComputeNodeCount(assimpNode, &jobCount);
@@ -308,14 +308,14 @@ namespace Directus
 			string name = assimpNode->mName.C_Str();
 			newNode->SetName(name);
 
-			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for " + name);
+			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating entity for " + name);
 		}
 		else
 		{
 			string name = FileSystem::GetFileNameNoExtensionFromFilePath(_ModelImporter::m_modelPath);
 			newNode->SetName(name);
 
-			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating actor for " + name);
+			ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating entity for " + name);
 		}
 		//============================================================================
 
@@ -324,34 +324,34 @@ namespace Directus
 		newNode->GetTransform_PtrRaw()->SetParent(parentTrans);
 
 		// Set the transformation matrix of the Assimp node to the new node
-		AssimpHelper::SetActorTransform(assimpNode, newNode);
+		AssimpHelper::SetentityTransform(assimpNode, newNode);
 
 		// Process all the node's meshes
 		for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)
 		{
-			Actor* actor		= newNode; // set the current actor
+			Entity* entity		= newNode; // set the current entity
 			aiMesh* assimpMesh	= assimpScene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
 			string name			= assimpNode->mName.C_Str(); // get name
 
-			// if this node has many meshes, then assign a new actor for each one of them
+			// if this node has many meshes, then assign a new entity for each one of them
 			if (assimpNode->mNumMeshes > 1)
 			{
-				actor = m_world->Actor_Create().get(); // create
-				actor->GetTransform_PtrRaw()->SetParent(newNode->GetTransform_PtrRaw()); // set parent
+				entity = m_world->Entity_Create().get(); // create
+				entity->GetTransform_PtrRaw()->SetParent(newNode->GetTransform_PtrRaw()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
 
-			// Set actor name
-			actor->SetName(name);
+			// Set entity name
+			entity->SetName(name);
 
 			// Process mesh
-			LoadMesh(assimpScene, assimpMesh, model, actor);
+			LoadMesh(assimpScene, assimpMesh, model, entity);
 		}
 
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			shared_ptr<Actor> child = m_world->Actor_Create();
+			shared_ptr<Entity> child = m_world->Entity_Create();
 			ReadNodeHierarchy(assimpScene, assimpNode->mChildren[i], model, newNode, child.get());
 		}
 
@@ -410,9 +410,9 @@ namespace Directus
 		}
 	}
 
-	void ModelImporter::LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, shared_ptr<Model>& model, Actor* parentActor)
+	void ModelImporter::LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, shared_ptr<Model>& model, Entity* parententity)
 	{
-		if (!model || !assimpMesh || !assimpScene || !parentActor)
+		if (!model || !assimpMesh || !assimpScene || !parententity)
 			return;
 
 		//= MESH ======================================================================
@@ -427,12 +427,12 @@ namespace Directus
 		unsigned int vertexOffset;
 		model->Geometry_Append(indices, vertices, &indexOffset, &vertexOffset);
 
-		// Add a renderable component to this Actor
-		auto renderable	= parentActor->AddComponent<Renderable>();
+		// Add a renderable component to this entity
+		auto renderable	= parententity->AddComponent<Renderable>();
 
 		// Set the geometry
 		renderable->Geometry_Set(
-			parentActor->GetName(),
+			parententity->GetName(),
 			indexOffset,
 			(unsigned int)indices.size(),
 			vertexOffset,
@@ -449,7 +449,7 @@ namespace Directus
 			// Get aiMaterial
 			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
 			// Convert it and add it to the model
-			model->AddMaterial(AiMaterialToMaterial(assimpMaterial, model), parentActor->GetPtrShared());
+			model->AddMaterial(AiMaterialToMaterial(assimpMaterial, model), parententity->GetPtrShared());
 		}
 		//===================================================================================
 

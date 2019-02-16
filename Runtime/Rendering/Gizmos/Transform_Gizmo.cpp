@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Model.h"
 #include "..\..\RHI\RHI_Vertex.h"
 #include "..\..\RHI\RHI_IndexBuffer.h"
-#include "..\..\World\Actor.h"
+#include "..\..\World\Entity.h"
 #include "..\..\Input\Input.h"
 //====================================
 
@@ -57,7 +57,7 @@ namespace Directus
 
 	}
 
-	bool Transform_Gizmo::Update(const shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed)
+	bool Transform_Gizmo::Update(const shared_ptr<Entity>& entity, Camera* camera, float handle_size, float handle_speed)
 	{
 		// Switch between handles with W, E and R
 		if (m_input->GetKeyDown(W))
@@ -77,36 +77,36 @@ namespace Directus
 		if (!camera)
 			return false;
 
-		// Don't erase picked actor if it's currently being edited
-		if (!actor)
+		// Don't erase picked entity if it's currently being edited
+		if (!entity)
 		{
-			m_selectedActor = m_isEditing ? m_selectedActor : nullptr;
+			m_selectedentity = m_isEditing ? m_selectedentity : nullptr;
 		}
 
-		// Update picked actor only if it's not being edited
+		// Update picked entity only if it's not being edited
 		if (!m_isEditing)
 		{
-			m_selectedActor = actor;
+			m_selectedentity = entity;
 		}
 
-		// If there is a valid actor, update the handle
-		if (m_selectedActor)
+		// If there is a valid entity, update the handle
+		if (m_selectedentity)
 		{
 			if (m_type == TransformHandle_Position)
 			{
-				m_isEditing = m_handle_position.Update(m_space, m_selectedActor, camera, handle_size, handle_speed);
+				m_isEditing = m_handle_position.Update(m_space, m_selectedentity, camera, handle_size, handle_speed);
 			}
 			else if (m_type == TransformHandle_Scale)
 			{
-				m_isEditing = m_handle_scale.Update(m_space, m_selectedActor, camera, handle_size, handle_speed);
+				m_isEditing = m_handle_scale.Update(m_space, m_selectedentity, camera, handle_size, handle_speed);
 			}
 			else if (m_type == TransformHandle_Rotation)
 			{
-				m_isEditing = m_handle_rotation.Update(m_space, m_selectedActor, camera, handle_size, handle_speed);
+				m_isEditing = m_handle_rotation.Update(m_space, m_selectedentity, camera, handle_size, handle_speed);
 			}
 		}
 
-		return m_selectedActor != nullptr;
+		return m_selectedentity != nullptr;
 	}
 
 	unsigned int Transform_Gizmo::GetIndexCount()

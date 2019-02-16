@@ -51,7 +51,7 @@ namespace Directus
 	class ENGINE_CLASS Renderable : public IComponent
 	{
 	public:
-		Renderable(Context* context, Actor* actor, Transform* transform);
+		Renderable(Context* context, Entity* entity, Transform* transform);
 		~Renderable();
 
 		//= ICOMPONENT ===============================

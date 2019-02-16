@@ -34,7 +34,7 @@ namespace Directus
 	class Context;
 	class RHI_VertexBuffer;
 	class RHI_IndexBuffer;
-	class Actor;
+	class Entity;
 	class Model;
 	class Input;
 	class Transform;
@@ -99,14 +99,14 @@ namespace Directus
 		~TransformHandle() {}
 
 		void Initialize(TransformHandle_Type type, Context* context);
-		bool Update(TransformHandle_Space space, const std::shared_ptr<Actor>& actor, Camera* camera, float handle_size, float handle_speed);
+		bool Update(TransformHandle_Space space, const std::shared_ptr<Entity>& entity, Camera* camera, float handle_size, float handle_speed);
 		const Math::Matrix& GetTransform(const Math::Vector3& axis) const;
 		const Math::Vector3& GetColor(const Math::Vector3& axis) const;
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
 	
 	private:
-		void SnapToTransform(TransformHandle_Space space, const std::shared_ptr<Actor>& actor, Camera* camera, float handle_size);
+		void SnapToTransform(TransformHandle_Space space, const std::shared_ptr<Entity>& entity, Camera* camera, float handle_size);
 
 		TransformHandleAxis m_handle_x		= TransformHandleAxis(Math::Vector3::Right);
 		TransformHandleAxis m_handle_y		= TransformHandleAxis(Math::Vector3::Up);
