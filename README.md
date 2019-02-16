@@ -12,6 +12,8 @@ This means that the wisest thing to do is to approach it as study material, with
 Architectual quality is prioritized over development speed.
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4.jpg)
+Video
+[![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
 # Features
 - 20+ audio file formats support.
@@ -52,8 +54,6 @@ XML I/O                         | 100% | -
 Architecture improvements       | 100% | Higher quality codebase, allowing for future development.
 Font importing and rendering    | 100% | Ability to load any font file.
 Optimize & Debug				| 50% | Feature freeze, optimize and debug (once all tasks are done).
-
-[![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
 # Roadmap
 - Eye Adaptation.
