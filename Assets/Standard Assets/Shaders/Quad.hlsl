@@ -40,7 +40,7 @@ VS_Output mainVS(Vertex_PosUv input)
 float4 mainPS(VS_Output input) : SV_TARGET
 {
     float2 texCoord 	= input.uv;
-    float4 color 		= float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float4 color 		= float4(1.0f, 0.0f, 0.0f, 1.0f);
 
 #if PASS_GAMMA_CORRECTION
 	color 		= sourceTexture.Sample(samplerState, texCoord);

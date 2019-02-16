@@ -1,14 +1,14 @@
 
 # Directus3D Game Engine
-<img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20" height="20"/>&nbsp;
-[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)
+Build Status | Platform | :+1:
+-|-|-|
+[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20" height="20"/>|<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top"><input type="hidden" name="cmd" value="_s-xclick" /><input type="hidden" name="hosted_button_id" value="R752JCQWKTYK4"/><input type="image" src="https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button"/> <img alt="" border="0" src="https://www.paypal.com/en_GB/i/scr/pixel.gif" width="1" height="1"/></form>
+
 
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
 The source code aims to be clean, modern and tackles a lot of aspects of engine development.
-
 The project is at an early development stage and there is a lot experimentation going on, regarding what works best.
 This means that the wisest thing to do is to approach it as study material, without expecting to make games with it (yet).
-
 Architectual quality is prioritized over development speed.
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4.jpg)

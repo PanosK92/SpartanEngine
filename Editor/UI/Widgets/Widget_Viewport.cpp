@@ -107,7 +107,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	m_timeSinceLastResChange += deltaTime;
 
 	// If this widget was clicked, make the engine pick an actor
-	if (ImGui::IsMouseClicked(0))
+	if (ImGui::IsItemClicked(0))
 	{
 		_Widget_Viewport::g_world->PickActor();
 	}
