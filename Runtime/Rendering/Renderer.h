@@ -245,37 +245,37 @@ namespace Directus
 		std::shared_ptr<RHI_RenderTexture> m_renderTexQuarter_Blur2;
 		//=============================================================
 
-		//= SHADERS ====================================================
-		std::shared_ptr<RHI_Shader> m_shaderGBuffer;
-		std::shared_ptr<LightShader> m_shaderLight;
-		std::shared_ptr<RHI_Shader> m_shaderLightDepth;
-		std::shared_ptr<RHI_Shader> m_shaderColor;
-		std::shared_ptr<RHI_Shader> m_shaderFont;
-		std::shared_ptr<RHI_Shader> m_shaderShadowMapping;
-		std::shared_ptr<RHI_Shader> m_shaderSSAO;
-		std::shared_ptr<RHI_Shader> m_shaderTransformGizmo;
-		std::shared_ptr<RHI_Shader> m_shaderTransparent;
-		std::shared_ptr<RHI_Shader> m_shaderQuad;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_texture;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_fxaa;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_luma;	
-		std::shared_ptr<RHI_Shader> m_shaderQuad_taa;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_motionBlur;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_sharpening;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_chromaticAberration;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_blur_box;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_blur_gaussian;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_blur_gaussianBilateral;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_bloomBright;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_bloomBLend;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_toneMapping;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_gammaCorrection;
-		std::shared_ptr<RHI_Shader> m_shaderQuad_dithering;
-		std::shared_ptr<RHI_Shader> m_shaderDebug_normal;
-		std::shared_ptr<RHI_Shader> m_shaderDebug_velocity;
-		std::shared_ptr<RHI_Shader> m_shaderDebug_depth;
-		std::shared_ptr<RHI_Shader> m_shaderDebug_ssao;
-		//==============================================================
+		//= SHADERS ===========================================
+		std::shared_ptr<RHI_Shader> m_vs_gbuffer;
+		std::shared_ptr<LightShader> m_vps_light;
+		std::shared_ptr<RHI_Shader> m_vps_depth;
+		std::shared_ptr<RHI_Shader> m_vps_color;
+		std::shared_ptr<RHI_Shader> m_vps_font;
+		std::shared_ptr<RHI_Shader> m_vps_shadowMapping;
+		std::shared_ptr<RHI_Shader> m_vps_ssao;
+		std::shared_ptr<RHI_Shader> m_vps_gizmoTransform;
+		std::shared_ptr<RHI_Shader> m_vps_transparent;
+		std::shared_ptr<RHI_Shader> m_vs_quad;
+		std::shared_ptr<RHI_Shader> m_ps_texture;
+		std::shared_ptr<RHI_Shader> m_ps_fxaa;
+		std::shared_ptr<RHI_Shader> m_ps_luma;	
+		std::shared_ptr<RHI_Shader> m_ps_taa;
+		std::shared_ptr<RHI_Shader> m_ps_motionBlur;
+		std::shared_ptr<RHI_Shader> m_ps_sharpening;
+		std::shared_ptr<RHI_Shader> m_ps_chromaticAberration;
+		std::shared_ptr<RHI_Shader> m_ps_blurBox;
+		std::shared_ptr<RHI_Shader> m_ps_blurGaussian;
+		std::shared_ptr<RHI_Shader> m_ps_blurGaussianBilateral;
+		std::shared_ptr<RHI_Shader> m_ps_bloomBright;
+		std::shared_ptr<RHI_Shader> m_ps_bloomBlend;
+		std::shared_ptr<RHI_Shader> m_ps_toneMapping;
+		std::shared_ptr<RHI_Shader> m_ps_gammaCorrection;
+		std::shared_ptr<RHI_Shader> m_ps_dithering;
+		std::shared_ptr<RHI_Shader> m_ps_debugNormal;
+		std::shared_ptr<RHI_Shader> m_ps_debugVelocity;
+		std::shared_ptr<RHI_Shader> m_ps_debugDepth;
+		std::shared_ptr<RHI_Shader> m_ps_debugSSAO;
+		//=====================================================
 
 		//= DEPTH-STENCIL STATES ======================================
 		std::shared_ptr<RHI_DepthStencilState> m_depthStencil_enabled;
