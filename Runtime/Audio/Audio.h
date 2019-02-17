@@ -35,6 +35,7 @@ namespace FMOD
 namespace Directus
 {
 	class Transform;
+	class Profiler;
 
 	class Audio : public ISubsystem
 	{
@@ -55,5 +56,6 @@ namespace Directus
 		float m_distanceFentity;
 		bool m_initialized;
 		Transform* m_listener;
+		Profiler* m_profiler;
 	};
 }

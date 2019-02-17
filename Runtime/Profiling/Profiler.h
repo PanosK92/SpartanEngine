@@ -31,14 +31,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=============================
 
 // Multi (CPU + GPU)
-#define TIME_BLOCK_START_MULTI()	m_context->GetSubsystem<Directus::Profiler>()->TimeBlockStart_Multi(__FUNCTION__);
-#define TIME_BLOCK_END_MULTI()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockEnd_Multi(__FUNCTION__);
+#define TIME_BLOCK_START_MULTI(profiler)	profiler->TimeBlockStart_Multi(__FUNCTION__);
+#define TIME_BLOCK_END_MULTI(profiler)		profiler->TimeBlockEnd_Multi(__FUNCTION__);
 // CPU
-#define TIME_BLOCK_START_CPU()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockStart_CPU(__FUNCTION__);
-#define TIME_BLOCK_END_CPU()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockEnd_CPU(__FUNCTION__);
+#define TIME_BLOCK_START_CPU(profiler)		profiler->TimeBlockStart_CPU(__FUNCTION__);
+#define TIME_BLOCK_END_CPU(profiler)		profiler->TimeBlockEnd_CPU(__FUNCTION__);
 // GPU
-#define TIME_BLOCK_START_GPU()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockStart_CPU(__FUNCTION__);
-#define TIME_BLOCK_END_GPU()		m_context->GetSubsystem<Directus::Profiler>()->TimeBlockEnd_GPU(__FUNCTION__);
+#define TIME_BLOCK_START_GPU(profiler)		profiler->TimeBlockStart_CPU(__FUNCTION__);
+#define TIME_BLOCK_END_GPU(profiler)		profiler->TimeBlockEnd_GPU(__FUNCTION__);
 
 namespace Directus
 {

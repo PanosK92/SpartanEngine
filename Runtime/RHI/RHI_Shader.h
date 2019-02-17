@@ -66,7 +66,7 @@ namespace Directus
 			LOGF_ERROR("Failed to compile %s", filePath.c_str());		\
 		}
 
-		virtual void CompileVertex(const std::string& shader, RHI_Input_Layout inputLayout)
+		virtual void CompileVertex(const std::string& shader, unsigned long inputLayout)
 		{
 			m_shaderState	= Shader_Compiling;
 			bool vertex		= API_CompileVertex(shader, inputLayout);
@@ -75,7 +75,7 @@ namespace Directus
 			LOG_STATE(m_shaderState, shader);
 		}
 
-		virtual void CompileVertex_Async(const std::string& shader, RHI_Input_Layout inputLayout, Context* context)
+		virtual void CompileVertex_Async(const std::string& shader, unsigned long inputLayout, Context* context)
 		{
 			context->GetSubsystem<Threading>()->AddTask([this, shader, inputLayout]()
 			{
@@ -101,7 +101,7 @@ namespace Directus
 			});
 		}
 
-		virtual void CompileVertexPixel(const std::string& shader, RHI_Input_Layout inputLayout)
+		virtual void CompileVertexPixel(const std::string& shader, unsigned long inputLayout)
 		{
 			m_shaderState	= Shader_Compiling;
 			bool vertex		= API_CompileVertex(shader, inputLayout);
@@ -111,7 +111,7 @@ namespace Directus
 			LOG_STATE(m_shaderState, shader);
 		}
 
-		virtual void CompileVertexPixel_Async(const std::string& shader, RHI_Input_Layout inputLayout, Context* context)
+		virtual void CompileVertexPixel_Async(const std::string& shader, unsigned long inputLayout, Context* context)
 		{
 			context->GetSubsystem<Threading>()->AddTask([this, shader, inputLayout]()
 			{
@@ -141,10 +141,10 @@ namespace Directus
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 
 	private:
-		//= API ================================================================================
-		virtual bool API_CompileVertex(const std::string& shader, RHI_Input_Layout inputLayout);
+		//= API =============================================================================
+		virtual bool API_CompileVertex(const std::string& shader, unsigned long inputLayout);
 		virtual bool API_CompilePixel(const std::string& shader);
-		//======================================================================================
+		//===================================================================================
 		void CreateConstantBuffer(unsigned int size);
 
 		unsigned int m_bufferSize;	

@@ -65,7 +65,8 @@ namespace Directus
 
 	bool World::Initialize()
 	{
-		m_input	= m_context->GetSubsystem<Input>();
+		m_input		= m_context->GetSubsystem<Input>();
+		m_profiler	= m_context->GetSubsystem<Profiler>();
 
 		CreateCamera();
 		CreateSkybox();
@@ -85,7 +86,7 @@ namespace Directus
 		if (m_state != Ticking)
 			return;
 
-		TIME_BLOCK_START_CPU();
+		TIME_BLOCK_START_CPU(m_profiler);
 		
 		// Tick entities
 		{
@@ -117,7 +118,7 @@ namespace Directus
 			}
 		}
 
-		TIME_BLOCK_END_CPU();
+		TIME_BLOCK_END_CPU(m_profiler);
 
 		if (m_isDirty)
 		{

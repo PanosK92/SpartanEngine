@@ -46,6 +46,7 @@ namespace Directus
 		m_maxChannels		= 32;
 		m_distanceFentity	= 1.0f;
 		m_listener			= nullptr;
+		m_profiler			= m_context->GetSubsystem<Profiler>();
 
 		// Create FMOD instance
 		m_resultFMOD = System_Create(&m_systemFMOD);
@@ -140,7 +141,7 @@ namespace Directus
 		if (!m_initialized)
 			return false;
 
-		TIME_BLOCK_START_CPU();
+		TIME_BLOCK_START_CPU(m_profiler);
 
 		// Update FMOD
 		m_resultFMOD = m_systemFMOD->update();
@@ -174,7 +175,7 @@ namespace Directus
 		}
 		//=============================================================
 
-		TIME_BLOCK_END_CPU();
+		TIME_BLOCK_END_CPU(m_profiler);
 
 		return true;
 	}

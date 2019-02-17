@@ -33,6 +33,7 @@ namespace Directus
 	class Entity;
 	class Light;
 	class Input;
+	class Profiler;
 
 	enum Scene_State
 	{
@@ -94,6 +95,7 @@ namespace Directus
 		std::shared_ptr<Entity> m_entity_empty;
 		std::shared_ptr<Entity> m_entity_selected;
 		Input* m_input;
+		Profiler* m_profiler;
 		bool m_wasInEditorMode;
 		bool m_isDirty;
 		Scene_State m_state;
