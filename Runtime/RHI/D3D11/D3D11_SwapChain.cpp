@@ -222,6 +222,12 @@ namespace Directus
 
 	bool RHI_SwapChain::SetAsRenderTarget()
 	{
+		if(!m_device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
 		auto context			= m_device->GetDeviceContext<ID3D11DeviceContext>();
 		auto renderTargetView	= (ID3D11RenderTargetView*)m_renderTargetView;
 		if (!context || !renderTargetView)
