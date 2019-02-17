@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_BlendState.h"
+#include "../RHI/RHI_SwapChain.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
@@ -76,9 +77,22 @@ namespace Directus
 		//m_flags		|= Render_PostProcess_FXAA;					// Disabled by default: TAA is superior
 		
 		// Create RHI device
+		RHI_Format backBufferFormat = Format_R8G8B8A8_UNORM;
 		m_rhiDevice		= make_shared<RHI_Device>(Settings::Get().GetWindowHandle());
+		m_rhiDevice->DetectPrimaryAdapter(backBufferFormat);
 		m_rhiPipeline	= make_shared<RHI_Pipeline>(m_context, m_rhiDevice);
-
+		m_swapChain		= make_unique<RHI_SwapChain>
+		(
+			Settings::Get().GetWindowHandle(),
+			m_rhiDevice,
+			m_resolution.x,
+			m_resolution.y,
+			backBufferFormat,
+			Swap_Flip_Discard,
+			SwapChain_Allow_Tearing | SwapChain_Allow_Mode_Switch,
+			2
+		);
+		
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_Render, EVENT_HANDLER(Render));
 		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(Renderables_Acquire));
@@ -382,20 +396,63 @@ namespace Directus
 		m_rhiPipeline->Bind();
 	}
 
-	void Renderer::SetBackBufferAsRenderTarget(bool clear /*= true*/)
-	{
-		m_rhiDevice->SetBackBufferAsRenderTarget();
-		if (clear) m_rhiDevice->ClearBackBuffer(m_camera ? m_camera->GetClearColor() : Vector4(0, 0, 0, 1));
-	}
-
 	void* Renderer::GetFrameShaderResource()
 	{
 		return m_renderTexFull_HDR_Light2 ? m_renderTexFull_HDR_Light2->GetShaderResource() : nullptr;
 	}
 
-	void Renderer::Present()
+	bool Renderer::SwapChain_Present()
 	{
-		m_rhiDevice->Present();
+		if (!m_swapChain)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		m_swapChain->Present(Present_Off);
+		return true;
+	}
+
+	bool Renderer::SwapChain_SetAsRenderTarget()
+	{
+		if (!m_swapChain)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		m_swapChain->SetAsRenderTarget();		
+		return true;
+	}
+
+	bool Renderer::SwapChain_Clear(const Math::Vector4& color)
+	{
+		if (!m_swapChain)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		m_swapChain->Clear(color);
+		return true;
+	}
+
+	bool Renderer::SwapChain_Resize(unsigned int width, unsigned int height)
+	{
+		if (!m_swapChain)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		// Return if resolution is invalid
+		if (width == 0 || width > m_maxResolution || height == 0 || height > m_maxResolution)
+		{
+			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
+			return false;
+		}
+
+		return m_swapChain->Resize(width, height);
 	}
 
 	void Renderer::Render()
@@ -406,15 +463,15 @@ namespace Directus
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-			m_rhiDevice->ClearBackBuffer(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+			SwapChain_Clear(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			return;
 		}
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-			m_rhiDevice->ClearBackBuffer(m_camera->GetClearColor());
-			m_rhiDevice->Present();
+			SwapChain_Clear(m_camera->GetClearColor());
+			SwapChain_Present();
 			m_isRendering = false;
 			return;
 		}
@@ -487,18 +544,6 @@ namespace Directus
 
 		m_isRendering = false;
 		TIME_BLOCK_END_MULTI(m_profiler);
-	}
-
-	void Renderer::SetBackBufferSize(unsigned int width, unsigned int height)
-	{
-		// Return if resolution is invalid
-		if (width == 0 || width > m_maxResolution || height == 0 || height > m_maxResolution)
-		{
-			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
-			return;
-		}
-
-		m_rhiDevice->SetResolution(width, height);
 	}
 
 	void Renderer::SetResolution(unsigned int width, unsigned int height)

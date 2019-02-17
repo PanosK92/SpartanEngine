@@ -113,7 +113,7 @@ Editor::~Editor()
 
 void Editor::Resize(unsigned int width, unsigned int height)
 {
-	m_renderer->SetBackBufferSize(width, height);
+	m_renderer->SwapChain_Resize(width, height);
 	ImGui_ImplDX11_InvalidateDeviceObjects();
 	ImGui_ImplDX11_CreateDeviceObjects();
 }
@@ -127,7 +127,7 @@ void Editor::Tick()
 	m_engine->Tick();
 
 	// Set back buffer as render target (for ImGui to render on)
-	m_renderer->SetBackBufferAsRenderTarget();
+	m_renderer->SwapChain_SetAsRenderTarget();
 
 	// ImGui implementation - start frame
 	ImGui_ImplDX11_NewFrame();
@@ -152,7 +152,7 @@ void Editor::Tick()
 	}
 
 	// Present back-buffer (ImGui result)
-	m_renderer->Present();
+	m_renderer->SwapChain_Present();
 }
 
 void Editor::Widgets_Create()

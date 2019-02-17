@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class RHI_Device;
+	class RHI_SwapChain;
 	class RHI_VertexBuffer;
 	class RHI_IndexBuffer;
 	class RHI_ConstantBuffer;
@@ -46,6 +47,26 @@ namespace Directus
 	struct RHI_Vertex_PosUVNor;
 	struct RHI_Vertex_PosUV;
 	struct RHI_Vertex_PosCol;
+
+	enum RHI_Present_Mode
+	{
+		Present_Off,
+		Present_VerticalBlank,
+		Present_SecondVerticalBlank
+	};
+	enum RHI_Swap_Effect
+	{
+		Swap_Discard,
+		Swap_Sequential,
+		Swap_Flip_Sequential,
+		Swap_Flip_Discard
+	};
+
+	enum RHI_SwapChain_Flag
+	{
+		SwapChain_Allow_Mode_Switch,
+		SwapChain_Allow_Tearing
+	};
 
 	enum RHI_Query_Type
 	{
@@ -81,9 +102,10 @@ namespace Directus
 		Input_Texture		= 1UL << 3,
 		Input_NormalTangent = 1UL << 4
 	};
-	#define Input_PositionColor					0 | Input_Position | Input_Color
-	#define Input_PositionTexture				0 | Input_Position | Input_Texture
-	#define Input_PositionTextureNormalTangent	0 | Input_Position | Input_Texture | Input_NormalTangent
+	#define Input_PositionColor					0 | Input_Position		| Input_Color
+	#define Input_PositionTexture				0 | Input_Position		| Input_Texture
+	#define Input_Position2DColorTexture		0 | Input_Position2D	| Input_Color	| Input_Texture
+	#define Input_PositionTextureNormalTangent	0 | Input_Position		| Input_Texture | Input_NormalTangent
 
 	enum RHI_Cull_Mode
 	{

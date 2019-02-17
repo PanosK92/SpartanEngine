@@ -82,7 +82,6 @@ namespace Directus
 
 			// Read the settings
 			ReadSetting(SettingsIO::fin, "bFullScreen",				m_isFullScreen);
-			ReadSetting(SettingsIO::fin, "iVSync",					m_vsync);
 			ReadSetting(SettingsIO::fin, "bIsMouseVisible",			m_isMouseVisible);
 			ReadSetting(SettingsIO::fin, "fResolutionWidth",		resolutionX);
 			ReadSetting(SettingsIO::fin, "fResolutionHeight",		resolutionY);
@@ -117,7 +116,6 @@ namespace Directus
 
 			// Write the settings
 			WriteSetting(SettingsIO::fout, "bFullScreen",			m_isFullScreen);
-			WriteSetting(SettingsIO::fout, "iVSync",				m_vsync);
 			WriteSetting(SettingsIO::fout, "bIsMouseVisible",		m_isMouseVisible);
 			WriteSetting(SettingsIO::fout, "fResolutionWidth",		m_windowSize.x);
 			WriteSetting(SettingsIO::fout, "fResolutionHeight",		m_windowSize.y);

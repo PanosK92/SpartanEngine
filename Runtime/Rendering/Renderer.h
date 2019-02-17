@@ -110,12 +110,6 @@ namespace Directus
 		bool Initialize() override;
 		//=========================
 
-		// Rendering
-		void SetBackBufferAsRenderTarget(bool clear = true);
-		void* GetFrameShaderResource();
-		void Present();
-		void Render();
-
 		//= RENDER MODE ======================================================
 		// Enables an render mode flag
 		void Flags_Enable(Renderer_Option flag)		{ m_flags |= flag; }
@@ -131,25 +125,34 @@ namespace Directus
 		void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = DebugColor, bool depth = true);
 		//=============================================================================================================================================================================
 
-		//= RESOLUTION & VIEWPORT (Independent of window size) ======================
-		// The back-buffer is the final output (should match the display/window size)
-		// In other words, it won't affect the internal rendering resolution
-		void SetBackBufferSize(unsigned int width, unsigned int height);
-		
-		const Math::Vector2& GetResolution() { return m_resolution; }
-		void SetResolution(unsigned int width, unsigned int height);
+		//= SWAPCHAIN =================================================
+		bool SwapChain_Resize(unsigned int width, unsigned int height);
+		bool SwapChain_SetAsRenderTarget();
+		bool SwapChain_Clear(const Math::Vector4& color);
+		bool SwapChain_Present();
+		//=============================================================
 
+		//= VIEWPORT =============================================================
 		const RHI_Viewport& GetViewport()				{ return m_viewport; }
 		void SetViewport(const RHI_Viewport& viewport)	{ m_viewport = viewport; }
 		Math::Vector2 viewport_editorOffset;
-		//===========================================================================
+		//========================================================================
 
-		const std::shared_ptr<RHI_Device>& GetRHIDevice()		{ return m_rhiDevice; }
-		const std::shared_ptr<RHI_Pipeline>& GetRHIPipeline()	{ return m_rhiPipeline; }
-		static bool IsRendering()								{ return m_isRendering; }
-		uint64_t GetFrameNum()									{ return m_frameNum; }
-		std::shared_ptr<Camera> GetCamera()						{ return m_camera; }
-		unsigned int GetMaxResolution()							{ return m_maxResolution; }
+		//= RESOLUTION - INTERNAL (Independent of swap chain buffer size) =
+		const Math::Vector2& GetResolution() { return m_resolution; }
+		void SetResolution(unsigned int width, unsigned int height);
+		//=================================================================
+
+		//= MISC ==========================================================================
+		void* GetFrameShaderResource();
+		void Render();
+		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
+		const std::shared_ptr<RHI_Pipeline>& GetRHIPipeline() { return m_rhiPipeline; }
+		static bool IsRendering() { return m_isRendering; }
+		uint64_t GetFrameNum() { return m_frameNum; }
+		std::shared_ptr<Camera> GetCamera() { return m_camera; }
+		unsigned int GetMaxResolution() { return m_maxResolution; }
+		//=================================================================================
 
 		//= Graphics Settings ====================================================================================================================================================
 		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;
@@ -328,10 +331,14 @@ namespace Directus
 		Math::Rectangle m_gizmoRectLight;
 		//================================================
 
-		//= MISC ========================================================
-		Light* GetLightDirectional();
+		//= CORE ===================================
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
+		std::unique_ptr<RHI_SwapChain> m_swapChain;
+		//==========================================
+
+		//= MISC ========================================================
+		Light* GetLightDirectional();
 		std::unique_ptr<GBuffer> m_gbuffer;	
 		Math::Rectangle m_quad;
 		std::unordered_map<RenderableType, std::vector<Entity*>> m_entities;

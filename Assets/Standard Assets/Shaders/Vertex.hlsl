@@ -12,14 +12,13 @@ struct Vertex_PosUv
 struct Vertex_PosColor
 {
     float4 position : POSITION0;
-    float4 color 	: COLOR;
+    float4 color 	: COLOR0;
 };
-
 
 struct Vertex_PosUvNorTan
 {
 	float4 position 	: POSITION0;
     float2 uv 			: TEXCOORD0;
-    float3 normal 		: NORMAL;
-    float3 tangent		: TANGENT;
+    float3 normal 		: NORMAL0;
+    float3 tangent		: TANGENT0;
 };

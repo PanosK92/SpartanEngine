@@ -45,11 +45,9 @@ namespace Directus
 		//= DRAW/PRESENT ==============================================================================
 		bool Draw(unsigned int vertexCount);
 		bool DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset);
-		bool Present();
 		//=============================================================================================
 
 		//= CLEAR ============================================================================================
-		bool ClearBackBuffer(const Math::Vector4& color);
 		bool ClearRenderTarget(void* renderTarget, const Math::Vector4& color);
 		bool ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, unsigned int stencil = 0);
 		//====================================================================================================
@@ -67,11 +65,9 @@ namespace Directus
 		bool SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, void* buffer, RHI_Buffer_Scope scope);
 		bool SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* samplers);
 		bool SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources);	
-		bool SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil);
-		bool SetResolution(unsigned int width, unsigned int height);	
+		bool SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil);	
 		bool SetViewport(const RHI_Viewport& viewport);
 		bool SetScissorRectangle(const Math::Rectangle& rectangle);
-		bool SetBackBufferAsRenderTarget();
 		//==============================================================================================================
 
 		//= EVENTS ==============================
@@ -93,10 +89,10 @@ namespace Directus
 		T* GetDevice()			{ return (T*)m_device; }
 		template <typename T>
 		T* GetDeviceContext()	{ return (T*)m_deviceContext; }
+		void DetectPrimaryAdapter(RHI_Format format);
 		//=====================================================
 
 	private:
-		RHI_Format m_backBufferFormat;
 		bool m_initialized		= false;
 		void* m_device			= nullptr;
 		void* m_deviceContext	= nullptr;

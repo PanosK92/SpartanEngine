@@ -90,6 +90,9 @@ namespace Directus
 		)))
 		{
 			LOG_ERROR("Failed to create input layout");
+			return false;
 		}
+
+		return true;
 	}
 }

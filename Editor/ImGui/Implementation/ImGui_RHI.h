@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_BlendState.h"
 #include "RHI/RHI_Shader.h"
+#include "RHI/RHI_SwapChain.h"
 //====================================
 
 namespace ImGui::RHI
@@ -139,16 +140,16 @@ namespace ImGui::RHI
 		\
 		struct VS_INPUT\
 		{\
-			float2 pos : POSITION;\
-			float4 col : COLOR;\
-			float2 uv  : TEXCOORD;\
+			float2 pos : POSITION0;\
+			float4 col : COLOR0;\
+			float2 uv  : TEXCOORD0;\
 		};\
 		\
 		struct PS_INPUT\
 		{\
 			float4 pos : SV_POSITION;\
-			float4 col : COLOR0;\
-			float2 uv  : TEXCOORD0;\
+			float4 col : COLOR;\
+			float2 uv  : TEXCOORD;\
 		};\
 		\
 		PS_INPUT mainVS(VS_INPUT input)\
@@ -262,7 +263,7 @@ namespace ImGui::RHI
 		g_pipeline->Clear();
 		RHI_Viewport viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 		g_pipeline->SetViewport(viewport);
-		g_renderer->SetBackBufferAsRenderTarget(true);	
+		g_renderer->SwapChain_SetAsRenderTarget(true);	
 		g_pipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		g_pipeline->SetBlendState(g_blendState);
 		g_pipeline->SetDepthStencilState(g_depthStencilState);
@@ -308,7 +309,7 @@ namespace ImGui::RHI
 			vtx_offset += cmd_list->VtxBuffer.Size;
 		}
 
-		g_renderer->Present();
+		g_renderer->SwapChain_Present();
 
 		g_device->EventEnd();
 		TIME_BLOCK_END_MULTI(g_profiler);
@@ -319,119 +320,83 @@ namespace ImGui::RHI
 		if (!g_renderer)
 			return;
 
-		g_renderer->SetBackBufferSize(width, height);
+		g_renderer->SwapChain_Resize(width, height);
 	}
 
 	//--------------------------------------------
 	// MULTI-VIEWPORT / PLATFORM INTERFACE SUPPORT
 	//--------------------------------------------
-	struct ImGuiViewportDataDx11
-	{
-		/*IDXGISwapChain*             SwapChain;
-		ID3D11RenderTargetView*     RTView;
-
-		ImGuiViewportDataDx11() { SwapChain = NULL; RTView = NULL; }
-		~ImGuiViewportDataDx11() { IM_ASSERT(SwapChain == NULL && RTView == NULL); }*/
-	};
-
 	inline void _CreateWindow(ImGuiViewport* viewport)
 	{
-		//ImGuiViewportDataDx11* data = IM_NEW(ImGuiViewportDataDx11)();
-		//viewport->RendererUserData = data;
-
-		//HWND hwnd = (HWND)viewport->PlatformHandle;
-		//IM_ASSERT(hwnd != 0);
-
-		//// Create swap chain
-		//DXGI_SWAP_CHAIN_DESC sd;
-		//ZeroMemory(&sd, sizeof(sd));
-		//sd.BufferDesc.Width = (UINT)viewport->Size.x;
-		//sd.BufferDesc.Height = (UINT)viewport->Size.y;
-		//sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		//sd.SampleDesc.Count = 1;
-		//sd.SampleDesc.Quality = 0;
-		//sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		//sd.BufferCount = 1;
-		//sd.OutputWindow = hwnd;
-		//sd.Windowed = TRUE;
-		//sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-		//sd.Flags = 0;
-
-		//IM_ASSERT(data->SwapChain == NULL && data->RTView == NULL);
-		//g_pFentityy->CreateSwapChain(g_pd3dDevice, &sd, &data->SwapChain);
-
-		//// Create the render target
-		//if (data->SwapChain)
-		//{
-		//	ID3D11Texture2D* pBackBuffer;
-		//	data->SwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
-		//	g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &data->RTView);
-		//	pBackBuffer->Release();
-		//}
+		viewport->RendererUserData = IM_NEW(RHI_SwapChain)
+		(
+			viewport->PlatformHandle,
+			g_device,
+			(unsigned int)viewport->Size.x,
+			(unsigned int)viewport->Size.y,
+			Format_R8G8B8A8_UNORM,
+			Swap_Discard,
+			0
+		);
 	}
 
-	inline void DestroyWindow(ImGuiViewport* viewport)
+	inline void _DestroyWindow(ImGuiViewport* viewport)
 	{
-		//// The main viewport (owned by the application) will always have RendererUserData == NULL since we didn't create the data for it.
-		//if (ImGuiViewportDataDx11* data = (ImGuiViewportDataDx11*)viewport->RendererUserData)
-		//{
-		//	if (data->SwapChain)
-		//		data->SwapChain->Release();
-
-		//	data->SwapChain = NULL;
-
-		//	if (data->RTView)
-		//		data->RTView->Release();
-
-		//	data->RTView = NULL;
-
-		//	IM_DELETE(data);
-		//}
-		//viewport->RendererUserData = NULL;
+		auto swapChain = (RHI_SwapChain*)viewport->RendererUserData;
+		if (swapChain) { IM_DELETE(swapChain); }
+		viewport->RendererUserData = nullptr;
 	}
 
-	inline void SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
+	inline void _SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
 	{
-		/*ImGuiViewportDataDx11* data = (ImGuiViewportDataDx11*)viewport->RendererUserData;
-		if (data->RTView)
+		auto swapChain = (RHI_SwapChain*)viewport->RendererUserData;
+		if (!swapChain)
 		{
-			data->RTView->Release();
-			data->RTView = NULL;
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
 		}
-		if (data->SwapChain)
+		
+		if (!swapChain->Resize((unsigned int)size.x, (unsigned int)size.y))
 		{
-			ID3D11Texture2D* pBackBuffer = NULL;
-			data->SwapChain->ResizeBuffers(0, (UINT)size.x, (UINT)size.y, DXGI_FORMAT_UNKNOWN, 0);
-			data->SwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
-			if (pBackBuffer == NULL) { fprintf(stderr, "ImGui_ImplDX11_SetWindowSize() failed creating buffers.\n"); return; }
-			g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &data->RTView);
-			pBackBuffer->Release();
-		}*/
+			LOG_ERROR("Failed to resize swap chain");
+			return;
+		}
 	}
 
-	inline void RenderWindow(ImGuiViewport* viewport, void*)
+	inline void _RenderWindow(ImGuiViewport* viewport, void*)
 	{
-		/*ImGuiViewportDataDx11* data = (ImGuiViewportDataDx11*)viewport->RendererUserData;
-		ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
-		g_pd3dDeviceContext->OMSetRenderTargets(1, &data->RTView, NULL);
-		if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear))
-			g_pd3dDeviceContext->ClearRenderTargetView(data->RTView, (float*)&clear_color);
-		ImGui_RHI_RenderDrawData(viewport->DrawData);*/
+		auto swapChain = (RHI_SwapChain*)viewport->RendererUserData;
+		if (!swapChain)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
+		bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
+		swapChain->SetAsRenderTarget(clear);
+
+		RenderDrawData(viewport->DrawData);
 	}
 
-	inline void SwapBuffers(ImGuiViewport* viewport, void*)
+	inline void _SwapBuffers(ImGuiViewport* viewport, void*)
 	{
-		//ImGuiViewportDataDx11* data = (ImGuiViewportDataDx11*)viewport->RendererUserData;
-		//data->SwapChain->Present(0, 0); // Present without vsync
+		auto swapChain = (RHI_SwapChain*)viewport->RendererUserData;
+		if (!swapChain)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
+		swapChain->Present();
 	}
 
 	inline void InitializePlatformInterface()
 	{
 		ImGuiPlatformIO& platform_io		= ImGui::GetPlatformIO();
 		platform_io.Renderer_CreateWindow	= _CreateWindow;
-		platform_io.Renderer_DestroyWindow	= DestroyWindow;
-		platform_io.Renderer_SetWindowSize	= SetWindowSize;
-		platform_io.Renderer_RenderWindow	= RenderWindow;
-		platform_io.Renderer_SwapBuffers	= SwapBuffers;
+		platform_io.Renderer_DestroyWindow	= _DestroyWindow;
+		platform_io.Renderer_SetWindowSize	= _SetWindowSize;
+		platform_io.Renderer_RenderWindow	= _RenderWindow;
+		platform_io.Renderer_SwapBuffers	= _SwapBuffers;
 	}
 }
