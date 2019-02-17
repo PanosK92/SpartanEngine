@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <vector>
 #include "..\Core\EngineDefs.h"
+#include "..\Math\Rectangle.h"
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
 //=============================
@@ -33,6 +34,10 @@ namespace Directus
 {
 	class Context;
 	class Profiler;
+	namespace Math
+	{
+		class Rectangle;
+	}
 
 	struct ConstantBuffer
 	{
@@ -63,17 +68,19 @@ namespace Directus
 		bool SetShader(const std::shared_ptr<RHI_Shader>& shader);
 		bool SetVertexShader(const std::shared_ptr<RHI_Shader>& shader);
 		bool SetPixelShader(const std::shared_ptr<RHI_Shader>& shader);
-		bool SetTexture(const std::shared_ptr<RHI_RenderTexture>& texture);
-		bool SetTexture(const std::shared_ptr<RHI_Texture>& texture);
+		void SetTexture(const std::shared_ptr<RHI_RenderTexture>& texture);
+		void SetTexture(const std::shared_ptr<RHI_Texture>& texture);
+		void SetTexture(const RHI_Texture* texture);
+		void SetTexture(void* texture);
 		bool SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState);
 		bool SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState);
 		bool SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState);
 		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout);
 		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& indexBuffer);
 		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& vertexBuffer);
-		bool SetSampler(const std::shared_ptr<RHI_Sampler>& sampler);
-		bool SetTexture(const RHI_Texture* texture);
+		bool SetSampler(const std::shared_ptr<RHI_Sampler>& sampler);	
 		void SetViewport(const RHI_Viewport& viewport);
+		void SetScissorRectangle(const Math::Rectangle& rectangle);
 		bool SetRenderTarget(const std::shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView = nullptr, bool clear = false);
 		bool SetRenderTarget(const std::vector<void*>& renderTargetViews, void* depthStencilView = nullptr, bool clear = false);
 		bool SetRenderTarget(void* renderTargetView, void* depthStencilView = nullptr, bool clear = false);
@@ -97,6 +104,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_vertexShader;
 		std::shared_ptr<RHI_Shader> m_pixelShader;
 		RHI_Viewport m_viewport;
+		Math::Rectangle m_scissorRectangle;
 		RHI_PrimitiveTopology_Mode m_primitiveTopology;
 		std::vector<ConstantBuffer> m_constantBuffers;
 		std::vector<void*> m_samplers;
@@ -120,6 +128,7 @@ namespace Directus
 		bool m_viewportDirty			= false;
 		bool m_blendStateDirty			= false;
 		bool m_renderTargetsDirty		= false;
+		bool m_scissorRectangleDirty	= false;
 
 		// Misc
 		std::shared_ptr<RHI_Device> m_rhiDevice;

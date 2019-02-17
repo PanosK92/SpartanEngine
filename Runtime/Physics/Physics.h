@@ -36,6 +36,7 @@ namespace Directus
 	class Renderer;
 	class Variant;
 	class PhysicsDebugDraw;
+	class Profiler;
 
 	namespace Math
 	{
@@ -72,5 +73,6 @@ namespace Directus
 		//================
 
 		Renderer* m_renderer;
+		Profiler* m_profiler;
 	};
 }

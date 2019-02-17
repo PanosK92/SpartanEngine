@@ -89,6 +89,7 @@ namespace Directus
 	bool Physics::Initialize()
 	{
 		m_renderer = m_context->GetSubsystem<Renderer>();
+		m_profiler = m_context->GetSubsystem<Profiler>();
 		return true;
 	}
 
@@ -107,7 +108,7 @@ namespace Directus
 		if (!Engine::EngineMode_IsSet(Engine_Physics) || !Engine::EngineMode_IsSet(Engine_Game))
 			return;
 
-		TIME_BLOCK_START_CPU();
+		TIME_BLOCK_START_CPU(m_profiler);
 
 		float timeStep = deltaTime.Get<float>();
 
@@ -131,7 +132,7 @@ namespace Directus
 
 		m_simulating = false;
 
-		TIME_BLOCK_END_CPU();
+		TIME_BLOCK_END_CPU(m_profiler);
 	}
 
 	Vector3 Physics::GetGravity()

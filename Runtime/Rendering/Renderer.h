@@ -144,11 +144,12 @@ namespace Directus
 		Math::Vector2 viewport_editorOffset;
 		//===========================================================================
 
-		const std::shared_ptr<RHI_Device>& GetRHIDevice()	{ return m_rhiDevice; }
-		static bool IsRendering()							{ return m_isRendering; }
-		uint64_t GetFrameNum()								{ return m_frameNum; }
-		std::shared_ptr<Camera> GetCamera()					{ return m_camera; }
-		unsigned int GetMaxResolution()						{ return m_maxResolution; }
+		const std::shared_ptr<RHI_Device>& GetRHIDevice()		{ return m_rhiDevice; }
+		const std::shared_ptr<RHI_Pipeline>& GetRHIPipeline()	{ return m_rhiPipeline; }
+		static bool IsRendering()								{ return m_isRendering; }
+		uint64_t GetFrameNum()									{ return m_frameNum; }
+		std::shared_ptr<Camera> GetCamera()						{ return m_camera; }
+		unsigned int GetMaxResolution()							{ return m_maxResolution; }
 
 		//= Graphics Settings ====================================================================================================================================================
 		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;

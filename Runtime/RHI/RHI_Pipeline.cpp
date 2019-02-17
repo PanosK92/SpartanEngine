@@ -149,31 +149,31 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Pipeline::SetTexture(const shared_ptr<RHI_RenderTexture>& texture)
+	void RHI_Pipeline::SetTexture(const shared_ptr<RHI_RenderTexture>& texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
 		m_texturesDirty = true;
-
-		return true;
 	}
 
-	bool RHI_Pipeline::SetTexture(const shared_ptr<RHI_Texture>& texture)
+	void RHI_Pipeline::SetTexture(const shared_ptr<RHI_Texture>& texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
 		m_texturesDirty = true;
-
-		return true;
 	}
 
-	bool RHI_Pipeline::SetTexture(const RHI_Texture* texture)
+	void RHI_Pipeline::SetTexture(const RHI_Texture* texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
 		m_texturesDirty = true;
+	}
 
-		return true;
+	void RHI_Pipeline::SetTexture(void* texture)
+	{
+		m_textures.emplace_back(texture);
+		m_texturesDirty = true;
 	}
 
 	bool RHI_Pipeline::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
@@ -338,6 +338,15 @@ namespace Directus
 		m_viewportDirty = true;
 	}
 
+	void RHI_Pipeline::SetScissorRectangle(const Math::Rectangle& rectangle)
+	{
+		if (m_scissorRectangle == rectangle)
+			return;
+
+		m_scissorRectangle		= rectangle;
+		m_scissorRectangleDirty = true;
+	}
+
 	bool RHI_Pipeline::Bind()
 	{
 		if (!m_rhiDevice)
@@ -449,6 +458,12 @@ namespace Directus
 		{
 			m_rhiDevice->SetViewport(m_viewport);
 			m_viewportDirty = false;
+		}
+
+		if (m_scissorRectangleDirty)
+		{
+			m_rhiDevice->SetScissorRectangle(m_scissorRectangle);
+			m_scissorRectangleDirty = false;
 		}
 
 		// Primitive topology

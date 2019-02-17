@@ -64,7 +64,7 @@ namespace Directus
 		if (entities.empty())
 			return;
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_DepthDirectionalLight");
 
 		// Set common states	
@@ -119,7 +119,7 @@ namespace Directus
 		}
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_GBuffer()
@@ -132,7 +132,7 @@ namespace Directus
 			m_gbuffer->Clear(); // zeroed material buffer causes sky sphere to render
 		}
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_GBuffer");
 
 		// Set common states
@@ -228,7 +228,7 @@ namespace Directus
 		} // entity/MESH ITERATION
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_PreLight(shared_ptr<RHI_RenderTexture>& texIn_Spare, shared_ptr<RHI_RenderTexture>& texOut_Shadows, shared_ptr<RHI_RenderTexture>& texOut_SSAO)
@@ -272,7 +272,7 @@ namespace Directus
 		if (m_vps_light->GetState() != Shader_Built)
 			return;
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_Light");
 
 		// Update constant buffer
@@ -306,7 +306,7 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_Transparent(shared_ptr<RHI_RenderTexture>& texOut)
@@ -318,7 +318,7 @@ namespace Directus
 		if (entities_transparent.empty())
 			return;
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_Transparent");
 		SetDefault_Pipeline_State();
 
@@ -372,7 +372,7 @@ namespace Directus
 		} // entity/MESH ITERATION
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
@@ -458,7 +458,7 @@ namespace Directus
 		if (!inDirectionalLight->GetCastShadows())
 			return;
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_Shadowing");
 
 		SetDefault_Pipeline_State();
@@ -477,12 +477,12 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_SSAO(shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_SSAO");
 
 		SetDefault_Pipeline_State();
@@ -505,7 +505,7 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_BlurBox(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut, float sigma)
@@ -614,7 +614,7 @@ namespace Directus
 
 	void Renderer::Pass_TAA(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_TAA");
 		SetDefault_Pipeline_State();
 
@@ -643,12 +643,12 @@ namespace Directus
 		m_renderTexFull_TAA_Current.swap(m_renderTexFull_TAA_History);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_Bloom(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_Bloom");
 
 		// Bright pass
@@ -676,12 +676,12 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_ToneMapping(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_ToneMapping");
 
 		SetDefault_Pipeline_State();
@@ -694,12 +694,12 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_GammaCorrection(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_GammaCorrection");
 
 		SetDefault_Pipeline_State();
@@ -712,12 +712,12 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_FXAA(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_FXAA");
 
 		// Common states
@@ -743,12 +743,12 @@ namespace Directus
 		texIn.swap(texOut);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_ChromaticAberration(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_ChromaticAberration");
 
 		SetDefault_Pipeline_State();
@@ -761,12 +761,12 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_MotionBlur(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_MotionBlur");
 
 		SetDefault_Pipeline_State();
@@ -780,12 +780,12 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_Dithering(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_Dithering");
 
 		SetDefault_Pipeline_State();
@@ -798,12 +798,12 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_Sharpening(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_Sharpening");
 
 		SetDefault_Pipeline_State();
@@ -816,7 +816,7 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_Lines(shared_ptr<RHI_RenderTexture>& texOut)
@@ -829,7 +829,7 @@ namespace Directus
 		if (!draw)
 			return;
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_Lines");
 
 		// Generate lines for debug primitives offered by the renderer
@@ -938,18 +938,18 @@ namespace Directus
 		}
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_Gizmos(shared_ptr<RHI_RenderTexture>& texOut)
 	{
-		bool render_lights = m_flags & Render_Gizmo_Lights;
-		bool render_transform = m_flags & Render_Gizmo_Transform;
-		bool render = render_lights || render_transform;
+		bool render_lights		= m_flags & Render_Gizmo_Lights;
+		bool render_transform	= m_flags & Render_Gizmo_Transform;
+		bool render				= render_lights || render_transform;
 		if (!render)
 			return;
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_Gizmos");
 
 		// Set shared states
@@ -1057,7 +1057,7 @@ namespace Directus
 		}
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_RenderTexture>& texOut)
@@ -1066,7 +1066,7 @@ namespace Directus
 		if (!draw)
 			return;
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_PerformanceMetrics");
 		SetDefault_Pipeline_State();
 
@@ -1088,7 +1088,7 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_font->GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	bool Renderer::Pass_DebugBuffer(shared_ptr<RHI_RenderTexture>& texOut)
@@ -1096,7 +1096,7 @@ namespace Directus
 		if (m_debugBuffer == RendererDebug_None)
 			return true;
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_DebugBuffer");
 		SetDefault_Pipeline_State();
 		SetDefault_Buffer(texOut->GetWidth(), texOut->GetHeight(), m_viewProjection_Orthographic);
@@ -1157,7 +1157,7 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_rhiDevice->EventEnd();
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 
 		return true;
 	}

@@ -419,7 +419,7 @@ namespace Directus
 			return;
 		}
 
-		TIME_BLOCK_START_MULTI();
+		TIME_BLOCK_START_MULTI(m_profiler);
 		m_profiler->Reset();
 		m_isRendering = true;
 		m_frameNum++;
@@ -486,7 +486,7 @@ namespace Directus
 		Pass_PerformanceMetrics(m_renderTexFull_HDR_Light2);
 
 		m_isRendering = false;
-		TIME_BLOCK_END_MULTI();
+		TIME_BLOCK_END_MULTI(m_profiler);
 	}
 
 	void Renderer::SetBackBufferSize(unsigned int width, unsigned int height)
@@ -597,7 +597,7 @@ namespace Directus
 
 	void Renderer::Renderables_Acquire(const Variant& entitiesVariant)
 	{
-		TIME_BLOCK_START_CPU();
+		TIME_BLOCK_START_CPU(m_profiler);
 
 		// Clear previous state
 		m_entities.clear();
@@ -645,7 +645,7 @@ namespace Directus
 		Renderables_Sort(&m_entities[Renderable_ObjectOpaque]);
 		Renderables_Sort(&m_entities[Renderable_ObjectTransparent]);
 
-		TIME_BLOCK_END_CPU();
+		TIME_BLOCK_END_CPU(m_profiler);
 	}
 
 	void Renderer::Renderables_Sort(vector<Entity*>* renderables)

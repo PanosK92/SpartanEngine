@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui_RHI.h"
 #include "../Source/imgui.h"
 #include <vector>
+#include "Profiling/Profiler.h"
 #include "Rendering/Renderer.h"
 #include "RHI/RHI_Sampler.h"
 #include "RHI/RHI_Texture.h"
@@ -46,11 +47,12 @@ namespace ImGui::RHI
 
 	// Forward Declarations
 	void InitializePlatformInterface();
-	void ShutdownPlatformInterface();
 
 	// Engine subsystems
-	Context*	g_context	= nullptr;
-	Renderer*	g_renderer	= nullptr;
+	Context*	g_context		= nullptr;
+	Renderer*	g_renderer		= nullptr;
+	RHI_Pipeline* g_pipeline	= nullptr;
+	Profiler* g_profiler		= nullptr;
 
 	// RHI Data	
 	shared_ptr<RHI_Device>				g_device;
@@ -71,9 +73,11 @@ namespace ImGui::RHI
 	inline bool Initialize(Context* context)
 	{
 		g_context	= context;
+		g_profiler	= context->GetSubsystem<Profiler>();
 		g_renderer	= context->GetSubsystem<Renderer>();
+		g_pipeline	= g_renderer->GetRHIPipeline().get();
 		g_device	= g_renderer->GetRHIDevice();
-
+		
 		if (!g_context || !g_device || !g_device->IsInitialized())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
@@ -87,7 +91,7 @@ namespace ImGui::RHI
 		g_fontSampler = make_shared<RHI_Sampler>(g_device, Texture_Filter_Bilinear, Texture_Address_Wrap, Comparison_Always);
 
 		// Constant buffer
-		g_constantBuffer = make_shared<RHI_ConstantBuffer>(g_device, sizeof(VertexConstantBuffer));
+		g_constantBuffer = make_shared<RHI_ConstantBuffer>(g_device, (unsigned int)sizeof(VertexConstantBuffer));
 
 		// Vertex buffer
 		g_vertexBuffer = make_shared<RHI_VertexBuffer>(g_device);
@@ -100,28 +104,28 @@ namespace ImGui::RHI
 
 		// Rasterizer state
 		g_rasterizerState = make_shared<RHI_RasterizerState>
-			(
-				g_device,
-				Cull_Back,
-				Fill_Solid,
-				true,	// depth clip
-				true,	// scissor
-				false,	// multi-sample
-				false	// anti-aliased lines
-				);
+		(
+			g_device,
+			Cull_Back,
+			Fill_Solid,
+			true,	// depth clip
+			true,	// scissor
+			false,	// multi-sample
+			false	// anti-aliased lines
+		);
 
 		// Blend state
 		g_blendState = make_shared<RHI_BlendState>
-			(
-				g_device,
-				true,
-				Blend_Src_Alpha,		// source blend
-				Blend_Inv_Src_Alpha,	// dest blend
-				Blend_Operation_Add,	// blend op
-				Blend_Inv_Src_Alpha,	// source blend alpha
-				Blend_Zero,				// dest blend alpha
-				Blend_Operation_Add		// dest op alpha
-				);
+		(
+			g_device,
+			true,
+			Blend_Src_Alpha,		// source blend
+			Blend_Inv_Src_Alpha,	// dest blend
+			Blend_Operation_Add,	// blend op
+			Blend_Inv_Src_Alpha,	// source blend alpha
+			Blend_Zero,				// dest blend alpha
+			Blend_Operation_Add		// dest op alpha
+		);
 
 		// Shader
 		static string shader =
@@ -130,14 +134,14 @@ namespace ImGui::RHI
 		\
 		cbuffer vertexBuffer : register(b0)\
 		{\
-			float4x4 transform;\
+			matrix transform;\
 		};\
 		\
 		struct VS_INPUT\
 		{\
 			float2 pos : POSITION;\
-			float4 col : COLOR0;\
-			float2 uv  : TEXCOORD0;\
+			float4 col : COLOR;\
+			float2 uv  : TEXCOORD;\
 		};\
 		\
 		struct PS_INPUT\
@@ -161,7 +165,7 @@ namespace ImGui::RHI
 			return input.col * texture0.Sample(sampler0, input.uv);	\
 		}";
 		g_shader = make_shared<RHI_Shader>(g_device);
-		g_shader->CompileVertexPixel(shader, Input_Position2DTextureColor);
+		g_shader->CompileVertexPixel(shader, Input_Position2DColorTexture);
 
 		// Setup back-end capabilities flags
 		ImGuiIO& io = ImGui::GetIO();	
@@ -196,11 +200,14 @@ namespace ImGui::RHI
 
 	inline void Shutdown()
 	{
-		ShutdownPlatformInterface();
+		ImGui::DestroyPlatformWindows();
 	}
 
 	inline void RenderDrawData(ImDrawData* draw_data)
 	{
+		TIME_BLOCK_START_MULTI(g_profiler);
+		g_device->EventBegin("Pass_ImGui");
+
 		// Grow vertex buffer as needed
 		if (g_vertexBufferSize < draw_data->TotalVtxCount)
 		{
@@ -252,21 +259,20 @@ namespace ImGui::RHI
 		}
 
 		// Setup render state
+		g_pipeline->Clear();
 		RHI_Viewport viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
-		g_device->SetViewport(viewport);	
-		g_device->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		g_device->SetBlendState(g_blendState);
-		g_device->SetDepthStencilState(g_depthStencilState);
-		g_device->SetRasterizerState(g_rasterizerState);	
-		g_device->SetVertexShader(g_shader);
-		g_device->SetInputLayout(g_shader->GetInputLayout());
-		g_device->SetPixelShader(g_shader);
-		g_device->SetVertexBuffer(g_vertexBuffer);
-		g_device->SetIndexBuffer(g_indexBuffer);
-		auto constantBuffer = g_constantBuffer->GetBuffer();
-		g_device->SetConstantBuffers(0, 1, &constantBuffer, Buffer_VertexShader);
-		auto sampler = g_fontSampler->GetBuffer();
-		g_device->SetSamplers(0, 1, &sampler);
+		g_pipeline->SetViewport(viewport);
+		g_renderer->SetBackBufferAsRenderTarget(true);	
+		g_pipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		g_pipeline->SetBlendState(g_blendState);
+		g_pipeline->SetDepthStencilState(g_depthStencilState);
+		g_pipeline->SetRasterizerState(g_rasterizerState);	
+		g_pipeline->SetVertexShader(g_shader);
+		g_pipeline->SetPixelShader(g_shader);
+		g_pipeline->SetVertexBuffer(g_vertexBuffer);
+		g_pipeline->SetIndexBuffer(g_indexBuffer);
+		g_pipeline->SetConstantBuffer(g_constantBuffer, 0, Buffer_VertexShader);
+		g_pipeline->SetSampler(g_fontSampler);
 
 		// Render command lists
 		int vtx_offset = 0;
@@ -286,17 +292,26 @@ namespace ImGui::RHI
 				else
 				{
 					// Apply scissor rectangle
-					g_device->SetScissorRectangle((int)(pcmd->ClipRect.x - pos.x), (int)(pcmd->ClipRect.y - pos.y), (int)(pcmd->ClipRect.z - pos.x), (int)(pcmd->ClipRect.w - pos.y));
+					Rectangle scissorRect	 = Rectangle(pcmd->ClipRect.x - pos.x, pcmd->ClipRect.y - pos.y, pcmd->ClipRect.z - pos.x, pcmd->ClipRect.w - pos.y);
+					scissorRect.width		-= scissorRect.x;
+					scissorRect.height		-= scissorRect.y;
+					g_pipeline->SetScissorRectangle(scissorRect);
 
 					// Bind texture, Draw
 					auto texture_srv = (void*)pcmd->TextureId;
-					g_device->SetTextures(0, 1, &texture_srv);
-					g_device->DrawIndexed(pcmd->ElemCount, idx_offset, vtx_offset);
+					g_pipeline->SetTexture(texture_srv);
+					g_pipeline->DrawIndexed(pcmd->ElemCount, idx_offset, vtx_offset);
+					g_pipeline->Bind();
 				}
 				idx_offset += pcmd->ElemCount;
 			}
 			vtx_offset += cmd_list->VtxBuffer.Size;
 		}
+
+		g_renderer->Present();
+
+		g_device->EventEnd();
+		TIME_BLOCK_END_MULTI(g_profiler);
 	}
 
 	inline void OnResize(unsigned int width, unsigned int height)
@@ -418,10 +433,5 @@ namespace ImGui::RHI
 		platform_io.Renderer_SetWindowSize	= SetWindowSize;
 		platform_io.Renderer_RenderWindow	= RenderWindow;
 		platform_io.Renderer_SwapBuffers	= SwapBuffers;
-	}
-
-	inline void ShutdownPlatformInterface()
-	{
-		ImGui::DestroyPlatformWindows();
 	}
 }

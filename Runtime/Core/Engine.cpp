@@ -57,13 +57,13 @@ namespace Directus
 
 		// Register subsystems
 		m_timer = m_context->RegisterSubsystem<Timer>();
+		m_context->RegisterSubsystem<Profiler>();
 		m_context->RegisterSubsystem<Threading>();	
 		m_context->RegisterSubsystem<Input>();
 		m_context->RegisterSubsystem<Audio>();
 		m_context->RegisterSubsystem<ResourceCache>();
 		m_context->RegisterSubsystem<Scripting>();
-		m_context->RegisterSubsystem<Physics>();
-		m_context->RegisterSubsystem<Profiler>();
+		m_context->RegisterSubsystem<Physics>();	
 		m_context->RegisterSubsystem<World>();	
 		m_context->RegisterSubsystem<Renderer>();
 

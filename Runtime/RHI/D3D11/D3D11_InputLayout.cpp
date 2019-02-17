@@ -32,162 +32,9 @@ using namespace std;
 
 namespace Directus
 {
-	namespace D3D11_InputLayout
-	{
-		inline bool Create(ID3D11Device* device, ID3D11InputLayout** buffer, ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, unsigned int elementCount)
-		{
-			auto result = device->CreateInputLayout(
-				vertexInputLayout,
-				elementCount,
-				VSBlob->GetBufferPointer(),
-				VSBlob->GetBufferSize(),
-				buffer
-			);
-
-			return SUCCEEDED(result);
-		}
-
-		inline void CreatePosDesc(ID3D10Blob* VSBlob, vector<any>* layout)
-		{
-			D3D11_INPUT_ELEMENT_DESC positionDesc;
-			positionDesc.SemanticName			= "POSITION";
-			positionDesc.SemanticIndex			= 0;
-			positionDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
-			positionDesc.InputSlot				= 0;
-			positionDesc.AlignedByteOffset		= 0;
-			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			positionDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(positionDesc);
-		}
-
-		inline void CreatePosColDesc(ID3D10Blob* VSBlob, vector<any>* layout)
-		{
-			D3D11_INPUT_ELEMENT_DESC positionDesc;
-			positionDesc.SemanticName			= "POSITION";
-			positionDesc.SemanticIndex			= 0;
-			positionDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
-			positionDesc.InputSlot				= 0;
-			positionDesc.AlignedByteOffset		= 0;
-			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			positionDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(positionDesc);
-
-			D3D11_INPUT_ELEMENT_DESC colorDesc;
-			colorDesc.SemanticName			= "COLOR";
-			colorDesc.SemanticIndex			= 0;
-			colorDesc.Format				= DXGI_FORMAT_R32G32B32A32_FLOAT;
-			colorDesc.InputSlot				= 0;
-			colorDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
-			colorDesc.InputSlotClass		= D3D11_INPUT_PER_VERTEX_DATA;
-			colorDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(colorDesc);
-		}
-
-		inline void CreatePosTexDesc(ID3D10Blob* VSBlob, vector<any>* layout)
-		{
-			D3D11_INPUT_ELEMENT_DESC positionDesc;
-			positionDesc.SemanticName			= "POSITION";
-			positionDesc.SemanticIndex			= 0;
-			positionDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
-			positionDesc.InputSlot				= 0;
-			positionDesc.AlignedByteOffset		= 0;
-			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			positionDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(positionDesc);
-
-			D3D11_INPUT_ELEMENT_DESC texCoordDesc;
-			texCoordDesc.SemanticName			= "TEXCOORD";
-			texCoordDesc.SemanticIndex			= 0;
-			texCoordDesc.Format					= DXGI_FORMAT_R32G32_FLOAT;
-			texCoordDesc.InputSlot				= 0;
-			texCoordDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
-			texCoordDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			texCoordDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(texCoordDesc);
-		}
-
-		inline void CreatePos2DTexColorDesc(ID3D10Blob* VSBlob, vector<any>* layout)
-		{
-			D3D11_INPUT_ELEMENT_DESC positionDesc;
-			positionDesc.SemanticName			= "POSITION";
-			positionDesc.SemanticIndex			= 0;
-			positionDesc.Format					= DXGI_FORMAT_R32G32_FLOAT;
-			positionDesc.InputSlot				= 0;
-			positionDesc.AlignedByteOffset		= 0;
-			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			positionDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(positionDesc);
-
-			D3D11_INPUT_ELEMENT_DESC texCoordDesc;
-			texCoordDesc.SemanticName			= "TEXCOORD";
-			texCoordDesc.SemanticIndex			= 0;
-			texCoordDesc.Format					= DXGI_FORMAT_R32G32_FLOAT;
-			texCoordDesc.InputSlot				= 0;
-			texCoordDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
-			texCoordDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			texCoordDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(texCoordDesc);
-
-			D3D11_INPUT_ELEMENT_DESC colorDesc;
-			colorDesc.SemanticName				= "COLOR";
-			colorDesc.SemanticIndex				= 0;
-			colorDesc.Format					= DXGI_FORMAT_R8G8B8A8_UNORM;
-			colorDesc.InputSlot					= 0;
-			colorDesc.AlignedByteOffset			= D3D11_APPEND_ALIGNED_ELEMENT;
-			colorDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			colorDesc.InstanceDataStepRate		= 0;
-			layout->emplace_back(colorDesc);
-		}
-
-		inline void CreatePosNTDesc(ID3D10Blob* VSBlob, vector<any>* layout)
-		{
-			D3D11_INPUT_ELEMENT_DESC positionDesc;
-			positionDesc.SemanticName			= "POSITION";
-			positionDesc.SemanticIndex			= 0;
-			positionDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
-			positionDesc.InputSlot				= 0;
-			positionDesc.AlignedByteOffset		= 0;
-			positionDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			positionDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(positionDesc);
-
-			D3D11_INPUT_ELEMENT_DESC texCoordDesc;
-			texCoordDesc.SemanticName			= "TEXCOORD";
-			texCoordDesc.SemanticIndex			= 0;
-			texCoordDesc.Format					= DXGI_FORMAT_R32G32_FLOAT;
-			texCoordDesc.InputSlot				= 0;
-			texCoordDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
-			texCoordDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			texCoordDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(texCoordDesc);
-
-			D3D11_INPUT_ELEMENT_DESC normalDesc;
-			normalDesc.SemanticName				= "NORMAL";
-			normalDesc.SemanticIndex			= 0;
-			normalDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
-			normalDesc.InputSlot				= 0;
-			normalDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
-			normalDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			normalDesc.InstanceDataStepRate		= 0;
-			layout->emplace_back(normalDesc);
-
-			D3D11_INPUT_ELEMENT_DESC tangentDesc;
-			tangentDesc.SemanticName			= "TANGENT";
-			tangentDesc.SemanticIndex			= 0;
-			tangentDesc.Format					= DXGI_FORMAT_R32G32B32_FLOAT;
-			tangentDesc.InputSlot				= 0;
-			tangentDesc.AlignedByteOffset		= D3D11_APPEND_ALIGNED_ELEMENT;
-			tangentDesc.InputSlotClass			= D3D11_INPUT_PER_VERTEX_DATA;
-			tangentDesc.InstanceDataStepRate	= 0;
-			layout->emplace_back(tangentDesc);
-		}
-	}
-
 	RHI_InputLayout::RHI_InputLayout(shared_ptr<RHI_Device> rhiDevice)
 	{
-		m_rhiDevice		= rhiDevice;
-		m_buffer		= nullptr;
-		m_inputLayout	= Input_PositionTextureNormalTangent;
+		m_rhiDevice = rhiDevice;
 	}
 
 	RHI_InputLayout::~RHI_InputLayout()
@@ -195,53 +42,54 @@ namespace Directus
 		SafeRelease((ID3D11InputLayout*)m_buffer);
 	}
 
-	bool RHI_InputLayout::Create(void* vsBlob, RHI_Input_Layout layout)
+	bool RHI_InputLayout::Create(void* vsBlob, unsigned long input_layout)
 	{
-		if (!vsBlob || layout == Input_NotAssigned)
+		if (!vsBlob)
 		{
-			LOG_ERROR("RHI_InputLayout::Create: Invalid parameters");
+			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		m_inputLayout = layout;
-
-		if (m_inputLayout == Input_Position)
+		m_inputLayout = input_layout;
+		
+		vector<D3D11_INPUT_ELEMENT_DESC> layoutDescs;
+		if (m_inputLayout & Input_Position)
 		{
-			D3D11_InputLayout::CreatePosDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
+			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_inputLayout == Input_PositionColor)
+		if (m_inputLayout & Input_Position2D)
 		{
-			D3D11_InputLayout::CreatePosColDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
+			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_inputLayout == Input_PositionTexture)
+		if (m_inputLayout & Input_Color)
 		{
-			D3D11_InputLayout::CreatePosTexDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
+			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_inputLayout == Input_Position2DTextureColor)
+		if (m_inputLayout & Input_Texture)
 		{
-			D3D11_InputLayout::CreatePos2DTexColorDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
+			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_inputLayout == Input_PositionTextureNormalTangent)
+		if (m_inputLayout & Input_NormalTangent)
 		{
-			D3D11_InputLayout::CreatePosNTDesc((ID3D10Blob*)vsBlob, &m_layoutDesc);
+			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "NORMAL",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		std::vector<D3D11_INPUT_ELEMENT_DESC> layoutDesc;
-		for (const auto& desc : m_layoutDesc)
+		auto buffer = (ID3D10Blob*)vsBlob;
+		if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateInputLayout
+		(
+			layoutDescs.data(),
+			(unsigned int)layoutDescs.size(),
+			buffer->GetBufferPointer(),
+			buffer->GetBufferSize(),
+			(ID3D11InputLayout**)&m_buffer
+		)))
 		{
-			layoutDesc.emplace_back(any_cast<D3D11_INPUT_ELEMENT_DESC>(desc));
+			LOG_ERROR("Failed to create input layout");
 		}
-
-		return D3D11_InputLayout::Create(
-			m_rhiDevice->GetDevice<ID3D11Device>(),
-			(ID3D11InputLayout**)&m_buffer,
-			(ID3D10Blob*)vsBlob,
-			layoutDesc.data(),
-			(unsigned int)m_layoutDesc.size()
-		);
 	}
 }
