@@ -132,16 +132,16 @@ namespace Directus
 		bool SwapChain_Present();
 		//=============================================================
 
-		//= VIEWPORT =============================================================
+		//= VIEWPORT - INTERNAL ==================================================
 		const RHI_Viewport& GetViewport()				{ return m_viewport; }
 		void SetViewport(const RHI_Viewport& viewport)	{ m_viewport = viewport; }
 		Math::Vector2 viewport_editorOffset;
 		//========================================================================
 
-		//= RESOLUTION - INTERNAL (Independent of swap chain buffer size) =
+		//= RESOLUTION - INTERNAL ===================================
 		const Math::Vector2& GetResolution() { return m_resolution; }
 		void SetResolution(unsigned int width, unsigned int height);
-		//=================================================================
+		//===========================================================
 
 		//= MISC ==========================================================================
 		void* GetFrameShaderResource();

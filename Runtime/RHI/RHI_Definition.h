@@ -96,16 +96,18 @@ namespace Directus
 
 	enum RHI_Input_Element : unsigned long
 	{
-		Input_Position		= 1UL << 0,
-		Input_Position2D	= 1UL << 1,
-		Input_Color			= 1UL << 2,
-		Input_Texture		= 1UL << 3,
-		Input_NormalTangent = 1UL << 4
+		Input_Position2D	= 1UL << 0,
+		Input_Position3D	= 1UL << 1,
+		Input_Color8		= 1UL << 2,
+		Input_Color32		= 1UL << 3,
+		Input_Texture		= 1UL << 4,
+		Input_NormalTangent = 1UL << 5,
+		Input_ImGui			= 1UL << 6
 	};
-	#define Input_PositionColor					0 | Input_Position		| Input_Color
-	#define Input_PositionTexture				0 | Input_Position		| Input_Texture
-	#define Input_Position2DColorTexture		0 | Input_Position2D	| Input_Color	| Input_Texture
-	#define Input_PositionTextureNormalTangent	0 | Input_Position		| Input_Texture | Input_NormalTangent
+	#define Input_PositionColor					0 | Input_Position3D	| Input_Color32
+	#define Input_PositionTexture				0 | Input_Position3D	| Input_Texture
+	#define Input_PositionTextureNormalTangent	0 | Input_Position3D	| Input_Texture | Input_NormalTangent
+	#define Input_Position2DTextureColor8		0 | Input_Position2D	| Input_Texture | Input_Color8
 
 	enum RHI_Cull_Mode
 	{

@@ -248,7 +248,7 @@ namespace Directus
 
 		// Depth
 		m_vps_depth = make_shared<RHI_Shader>(m_rhiDevice);
-		m_vps_depth->CompileVertexPixel(shaderDirectory + "ShadowingDepth.hlsl", Input_Position);
+		m_vps_depth->CompileVertexPixel(shaderDirectory + "ShadowingDepth.hlsl", Input_Position3D);
 
 		// Font
 		m_vps_font = make_shared<RHI_Shader>(m_rhiDevice);

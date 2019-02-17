@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================================
 #include "Editor.h"
-#include "ImGui/Implementation/imgui_impl_dx11.h"
+#include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_win32.h"
 #include "Rendering/Renderer.h"
 #include "RHI/RHI_Device.h"
@@ -65,8 +65,6 @@ Editor::Editor(void* windowHandle, void* windowInstance, int windowWidth, int wi
 	m_renderer	= m_context->GetSubsystem<Renderer>();
 	m_rhiDevice = m_renderer->GetRHIDevice();
 
-	Resize(windowWidth, windowHeight);
-
 	// ImGui version validation
 	IMGUI_CHECKVERSION();
 	Settings::Get().m_versionImGui = IMGUI_VERSION;
@@ -85,7 +83,9 @@ Editor::Editor(void* windowHandle, void* windowInstance, int windowWidth, int wi
 
 	// ImGui backend setup
 	ImGui_ImplWin32_Init(windowHandle);
-	ImGui_ImplDX11_Init(m_rhiDevice->GetDevice<ID3D11Device>(), m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>());
+	ImGui::RHI::Initialize(m_context);
+
+	Resize(windowWidth, windowHeight);
 
 	// Initialization of misc custom systems
 	IconProvider::Get().Initialize(m_context);
@@ -106,16 +106,14 @@ Editor::~Editor()
 	m_widgets.shrink_to_fit();
 
 	// ImGui implementation - shutdown
-	ImGui_ImplDX11_Shutdown();
+	ImGui::RHI::Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 }
 
 void Editor::Resize(unsigned int width, unsigned int height)
 {
-	m_renderer->SwapChain_Resize(width, height);
-	ImGui_ImplDX11_InvalidateDeviceObjects();
-	ImGui_ImplDX11_CreateDeviceObjects();
+	ImGui::RHI::OnResize(width, height);
 }
 
 void Editor::Tick()
@@ -126,11 +124,7 @@ void Editor::Tick()
 	// Update engine (will simulate and render)
 	m_engine->Tick();
 
-	// Set back buffer as render target (for ImGui to render on)
-	m_renderer->SwapChain_SetAsRenderTarget();
-
 	// ImGui implementation - start frame
-	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
@@ -139,10 +133,7 @@ void Editor::Tick()
 
 	// ImGui implementation - end frame
 	ImGui::Render();
-
-	m_rhiDevice->EventBegin("Pass_ImGui");
-	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-	m_rhiDevice->EventEnd();
+	ImGui::RHI::RenderDrawData(ImGui::GetDrawData());
 
 	// Update and Render additional Platform Windows
 	if (DOCKING_ENABLED)
@@ -150,9 +141,6 @@ void Editor::Tick()
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
 	}
-
-	// Present back-buffer (ImGui result)
-	m_renderer->SwapChain_Present();
 }
 
 void Editor::Widgets_Create()

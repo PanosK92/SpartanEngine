@@ -45,14 +45,14 @@ namespace Directus
 		if (!depthEnabled)
 		{
 			desc.DepthEnable					= false;
-			desc.DepthWriteMask					= D3D11_DEPTH_WRITE_MASK_ZERO;
-			desc.DepthFunc						= D3D11_COMPARISON_LESS_EQUAL;
+			desc.DepthWriteMask					= D3D11_DEPTH_WRITE_MASK_ALL;
+			desc.DepthFunc						= D3D11_COMPARISON_ALWAYS;
 			desc.StencilEnable					= false;
 			desc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
 			desc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;
 			desc.FrontFace.StencilDepthFailOp	= D3D11_STENCIL_OP_KEEP;
 			desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
-			desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_REPLACE;
+			desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_KEEP;
 			desc.FrontFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
 			desc.BackFace						= desc.FrontFace;
 		}
@@ -72,7 +72,7 @@ namespace Directus
 			desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
 			desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_REPLACE;
 			desc.FrontFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
-			desc.BackFace = desc.FrontFace;
+			desc.BackFace						= desc.FrontFace;
 		
 		}
 
