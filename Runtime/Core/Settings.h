@@ -33,13 +33,6 @@ namespace Directus
 {
 	#define REVERSE_Z 1
 
-	enum VSync
-	{
-		Off,
-		Every_VBlank,
-		Every_Second_VBlank
-	};
-
 	struct DisplayMode
 	{
 		DisplayMode() {}
@@ -138,7 +131,6 @@ namespace Directus
 		//= MISC ====================================================================================================================
 		bool FullScreen_Get()									{ return m_isFullScreen; }
 		bool MousVisible_Get()									{ return m_isMouseVisible; }
-		VSync VSync_Get()										{ return (VSync)m_vsync; }	
 		unsigned int Shadows_GetResolution()					{ return m_shadowMapResolution; }
 		unsigned int Anisotropy_Get()							{ return m_anisotropy; }
 		void ThreadCountMax_Set(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
@@ -163,7 +155,6 @@ namespace Directus
 		void* m_windowHandle				= nullptr;
 		void* m_windowInstance				= nullptr;
 		Math::Vector2 m_windowSize			= Math::Vector2(1920, 1080);
-		unsigned int m_vsync				= (int)Off;
 		bool m_isFullScreen					= false;
 		bool m_isMouseVisible				= true;
 		unsigned int m_shadowMapResolution	= 4096;
