@@ -51,9 +51,9 @@ namespace Directus
 
 		//= Subsystem =============
 		bool Initialize() override;
+		void Tick() override;
 		//=========================
-
-		void Step(const Variant& deltaTime);
+	
 		Math::Vector3 GetGravity();
 		btDiscreteDynamicsWorld* GetWorld()		{ return m_world; }
 		PhysicsDebugDraw* GetPhysicsDebugDraw() { return m_debugDraw; }

@@ -143,8 +143,8 @@ Widget_Properties::Widget_Properties(Context* context) : Widget(context)
 	m_colorPicker_material	= make_unique<ButtonColorPicker>("Material Color Picker");
 	m_colorPicker_camera	= make_unique<ButtonColorPicker>("Camera Color Picker");
 
-	_Widget_Properties::resourceCache	= m_context->GetSubsystem<ResourceCache>();
-	_Widget_Properties::scene			= m_context->GetSubsystem<World>();
+	_Widget_Properties::resourceCache	= m_context->GetSubsystem<ResourceCache>().get();
+	_Widget_Properties::scene			= m_context->GetSubsystem<World>().get();
 	m_xMin								= 500; // min width
 }
 

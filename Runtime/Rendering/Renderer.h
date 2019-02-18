@@ -108,6 +108,7 @@ namespace Directus
 
 		//= Subsystem =============
 		bool Initialize() override;
+		void Tick() override;
 		//=========================
 
 		//= RENDER MODE ======================================================
@@ -145,7 +146,6 @@ namespace Directus
 
 		//= MISC ==========================================================================
 		void* GetFrameShaderResource();
-		void Render();
 		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
 		const std::shared_ptr<RHI_Pipeline>& GetRHIPipeline() { return m_rhiPipeline; }
 		static bool IsRendering() { return m_isRendering; }

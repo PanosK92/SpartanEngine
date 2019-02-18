@@ -56,7 +56,7 @@ namespace Directus
 	Entity::~Entity()
 	{
 		// delete components
-		for (auto it = m_components.begin(); it != m_components.end(); )
+		for (auto it = m_components.begin(); it != m_components.end();)
 		{
 			(*it)->OnRemove();
 			(*it).reset();

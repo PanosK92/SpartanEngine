@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Toolbar.h"
 #include "UI/Widgets/Widget_Viewport.h"
 #include "UI/Widgets/Widget_World.h"
+#include "Core/Timer.h"
 //================================================
 
 //= NAMESPACES ==========
@@ -57,12 +58,13 @@ Editor::Editor(void* windowHandle, void* windowInstance, int windowWidth, int wi
 	m_widgets.emplace_back(make_unique<Widget_Console>(nullptr));
 
 	// Create engine
-	Engine::SetHandles(windowHandle, windowHandle, windowInstance);
-	m_engine = make_unique<Engine>(new Context);
+	Settings::Get().SetHandles(windowHandle, windowHandle, windowInstance);
+	m_engine = make_unique<Engine>(make_shared<Context>());
 	
 	// Acquire useful engine subsystems
 	m_context	= m_engine->GetContext();
-	m_renderer	= m_context->GetSubsystem<Renderer>();
+	m_renderer	= m_context->GetSubsystem<Renderer>().get();
+	m_timer		= m_context->GetSubsystem<Timer>().get();
 	m_rhiDevice = m_renderer->GetRHIDevice();
 
 	// ImGui version validation
@@ -129,7 +131,7 @@ void Editor::Tick()
 	ImGui::NewFrame();
 
 	// Editor update
-	Widgets_Tick(m_engine->GetDeltaTime());
+	Widgets_Tick();
 
 	// ImGui implementation - end frame
 	ImGui::Render();
@@ -160,14 +162,14 @@ void Editor::Widgets_Create()
 	_Editor::widget_world = m_widgets.back().get();
 }
 
-void Editor::Widgets_Tick(float deltaTime)
+void Editor::Widgets_Tick()
 {
 	if (DOCKING_ENABLED) { DockSpace_Begin(); }
 
 	for (auto& widget : m_widgets)
 	{
 		widget->Begin();
-		widget->Tick(deltaTime);
+		widget->Tick(m_timer->GetDeltaTimeSec());
 		widget->End();
 	}
 

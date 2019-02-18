@@ -30,35 +30,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	#define ValidateSubsystemType(T) static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem")
+
 	class ENGINE_CLASS Context
 	{
 	public:
 		Context() {}
-		~Context() { RemoveSubsystems(); }
-
-		// Remove subsystems
-		void RemoveSubsystems()
-		{
-			// Deconstruct in reverse order (to avoid dependencies)
-			for (auto i = m_subsystems.size() - 1; i >= 0; i--)
-			{
-				SafeDelete(m_subsystems[i]);
-			}
-		}
+		~Context() { m_subsystems.clear(); }
 
 		// Register a subsystem
 		template <class T>
-		T* RegisterSubsystem()
+		std::shared_ptr<T> RegisterSubsystem()
 		{
-			static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem");
-			return static_cast<T*>(m_subsystems.emplace_back(new T(this)));
+			ValidateSubsystemType(T);
+			return std::static_pointer_cast<T>(m_subsystems.emplace_back(std::make_shared<T>(this)));
 		}
 
 		// Initialize subsystems
-		bool InitializeSubsystems()
+		bool Initialize()
 		{
 			bool result = true;
-
 			for (const auto& subsystem : m_subsystems)
 			{
 				if (!subsystem->Initialize())
@@ -71,21 +62,30 @@ namespace Directus
 			return result;
 		}
 
+		// Tick subsystems
+		void Tick()
+		{
+			for (const auto& subsystem : m_subsystems)
+			{
+				subsystem->Tick();
+			}
+		}
+
 		// Get a subsystem
 		template <class T> 
-		T* GetSubsystem()
+		std::shared_ptr<T> GetSubsystem()
 		{
-			static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem");
+			ValidateSubsystemType(T);
 			for (const auto& subsystem : m_subsystems)
 			{
 				if (typeid(T) == typeid(*subsystem))
-					return static_cast<T*>(subsystem);
+					return std::static_pointer_cast<T>(subsystem);
 			}
 
 			return nullptr;
 		}
 
 	private:
-		std::vector<ISubsystem*> m_subsystems;
+		std::vector<std::shared_ptr<ISubsystem>> m_subsystems;
 	};
 }

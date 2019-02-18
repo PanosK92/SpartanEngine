@@ -1,4 +1,4 @@
--- Copyright(c) 2016-2018 Panos Karabelas
+-- Copyright(c) 2016-2019 Panos Karabelas
 
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to deal
@@ -19,6 +19,7 @@
 
 WIN_SDK_VERSION 		= "10.0.17763.0"
 CPP_VERSION 			= "C++17"
+DEBUG_FORMAT			= "c7"
 SOLUTION_NAME 			= "Directus"
 EDITOR_NAME 			= "Editor"
 RUNTIME_NAME 			= "Runtime"
@@ -45,6 +46,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		files { "../Runtime/**.h", "../Runtime/**.cpp", "../Runtime/**.hpp", "../Runtime/**.inl" }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect (CPP_VERSION)
+		debugformat (DEBUG_FORMAT)
 	
 -- Includes
 	includedirs { "C:/VulkanSDK/1.1.85.0/Include" }
@@ -106,6 +108,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		dependson { RUNTIME_NAME }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect (CPP_VERSION)
+		debugformat (DEBUG_FORMAT)
 
 -- Includes
 	includedirs { "../Runtime" }

@@ -47,6 +47,8 @@ static const Vector3 GRAVITY			= Vector3(0.0f, -9.81f, 0.0f);
 
 namespace Directus
 { 
+	float ISubsystem::m_deltaTimeSec;
+
 	Physics::Physics(Context* context) : ISubsystem(context)
 	{
 		m_maxSubSteps	= 1;
@@ -57,23 +59,18 @@ namespace Directus
 		m_collisionConfiguration	= new btDefaultCollisionConfiguration();
 		m_dispatcher				= new btCollisionDispatcher(m_collisionConfiguration);
 		m_constraintSolver			= new btSequentialImpulseConstraintSolver();
-		m_debugDraw					= new PhysicsDebugDraw(m_context->GetSubsystem<Renderer>());
 		m_world						= new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraintSolver, m_collisionConfiguration);
 
 		// Setup world
 		m_world->setGravity(ToBtVector3(GRAVITY));
-		m_world->getDispatchInfo().m_useContinuous = true;
-		m_world->getSolverInfo().m_splitImpulse = false;
-		m_world->getSolverInfo().m_numIterations = MAX_SOLVER_ITERATIONS;
-		m_world->setDebugDrawer(m_debugDraw);
-
+		m_world->getDispatchInfo().m_useContinuous	= true;
+		m_world->getSolverInfo().m_splitImpulse		= false;
+		m_world->getSolverInfo().m_numIterations	= MAX_SOLVER_ITERATIONS;
+		
 		// Get version
 		string major = to_string(btGetVersion() / 100);
 		string minor = to_string(btGetVersion()).erase(0, 1);
 		Settings::Get().m_versionBullet = major + "." + minor;
-
-		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER_VARIANT(Step));
 	}
 
 	Physics::~Physics()
@@ -88,16 +85,23 @@ namespace Directus
 
 	bool Physics::Initialize()
 	{
-		m_renderer = m_context->GetSubsystem<Renderer>();
-		m_profiler = m_context->GetSubsystem<Profiler>();
+		m_renderer = m_context->GetSubsystem<Renderer>().get();
+		m_profiler = m_context->GetSubsystem<Profiler>().get();
+
+		// Enabled debug drawing
+		m_debugDraw = new PhysicsDebugDraw(m_renderer);
+		m_world->setDebugDrawer(m_debugDraw);
+
 		return true;
 	}
 
-	void Physics::Step(const Variant& deltaTime)
+	void Physics::Tick()
 	{
 		if (!m_world)
 			return;
 		
+		TIME_BLOCK_START_CPU(m_profiler);
+
 		// Debug draw
 		if (m_renderer->Flags_IsSet(Render_Gizmo_Physics))
 		{
@@ -108,28 +112,22 @@ namespace Directus
 		if (!Engine::EngineMode_IsSet(Engine_Physics) || !Engine::EngineMode_IsSet(Engine_Game))
 			return;
 
-		TIME_BLOCK_START_CPU(m_profiler);
-
-		float timeStep = deltaTime.Get<float>();
-
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
-		float internalTimeStep = 1.0f / INTERNAL_FPS;
-		int maxSubsteps = (int)(timeStep * INTERNAL_FPS) + 1;
+		float internalTimeStep	= 1.0f / INTERNAL_FPS;
+		int maxSubsteps			= (int)(m_deltaTimeSec * INTERNAL_FPS) + 1;
 		if (m_maxSubSteps < 0)
 		{
-			internalTimeStep = timeStep;
-			maxSubsteps = 1;
+			internalTimeStep	= m_deltaTimeSec;
+			maxSubsteps			= 1;
 		}
 		else if (m_maxSubSteps > 0)
 		{
 			maxSubsteps = Min(maxSubsteps, m_maxSubSteps);
 		}
 
-		m_simulating = true;
-
 		// Step the physics world. 
-		m_world->stepSimulation(timeStep, maxSubsteps, internalTimeStep);
-
+		m_simulating = true;
+		m_world->stepSimulation(m_deltaTimeSec, maxSubsteps, internalTimeStep);
 		m_simulating = false;
 
 		TIME_BLOCK_END_CPU(m_profiler);
@@ -137,6 +135,12 @@ namespace Directus
 
 	Vector3 Physics::GetGravity()
 	{
-		return ToVector3(m_world->getGravity());
+		btVector3 gravity = m_world->getGravity();
+		if (!gravity)
+		{
+			LOG_ERROR("Unable to get gravity, ensure physics are properly initialized.");
+			return Vector3::Zero;
+		}
+		return gravity ? ToVector3(gravity) : Vector3::Zero;
 	}
 }

@@ -49,7 +49,7 @@ namespace Directus
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
 		m_color = Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_renderer = m_context->GetSubsystem<Renderer>();
+		m_renderer = m_context->GetSubsystem<Renderer>().get();
 	}
 
 	Light::~Light()

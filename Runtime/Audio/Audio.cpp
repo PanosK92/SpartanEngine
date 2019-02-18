@@ -46,7 +46,7 @@ namespace Directus
 		m_maxChannels		= 32;
 		m_distanceFentity	= 1.0f;
 		m_listener			= nullptr;
-		m_profiler			= m_context->GetSubsystem<Profiler>();
+		m_profiler			= m_context->GetSubsystem<Profiler>().get();
 
 		// Create FMOD instance
 		m_resultFMOD = System_Create(&m_systemFMOD);
@@ -108,11 +108,13 @@ namespace Directus
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Unload, [this](Variant) { m_listener = nullptr; });
-		SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER(Update));
 	}
 
 	Audio::~Audio()
 	{
+		// Unsubscribe from events
+		UNSUBSCRIBE_FROM_EVENT(Event_World_Unload, [this](Variant) { m_listener = nullptr; });
+
 		if (!m_systemFMOD)
 			return;
 
@@ -132,14 +134,14 @@ namespace Directus
 		}
 	}
 
-	bool Audio::Update()
+	void Audio::Tick()
 	{
 		// Don't play audio if the engine is not in game mode
 		if (!Engine::EngineMode_IsSet(Engine_Game))
-			return true;
+			return;
 
 		if (!m_initialized)
-			return false;
+			return;
 
 		TIME_BLOCK_START_CPU(m_profiler);
 
@@ -148,7 +150,7 @@ namespace Directus
 		if (m_resultFMOD != FMOD_OK)
 		{
 			LogErrorFMOD(m_resultFMOD);
-			return false;
+			return;
 		}
 
 		//= 3D Attributes =============================================
@@ -170,14 +172,12 @@ namespace Directus
 			if (m_resultFMOD != FMOD_OK)
 			{
 				LogErrorFMOD(m_resultFMOD);
-				return false;
+				return;
 			}
 		}
 		//=============================================================
 
 		TIME_BLOCK_END_CPU(m_profiler);
-
-		return true;
 	}
 
 	void Audio::SetListenerTransform(Transform* transform)

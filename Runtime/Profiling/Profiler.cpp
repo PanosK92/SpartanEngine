@@ -63,10 +63,10 @@ namespace Directus
 
 	bool Profiler::Initialize()
 	{
-		m_scene				= m_context->GetSubsystem<World>();
-		m_timer				= m_context->GetSubsystem<Timer>();
-		m_resourceManager	= m_context->GetSubsystem<ResourceCache>();
-		m_renderer			= m_context->GetSubsystem<Renderer>();
+		m_scene				= m_context->GetSubsystem<World>().get();
+		m_timer				= m_context->GetSubsystem<Timer>().get();
+		m_resourceManager	= m_context->GetSubsystem<ResourceCache>().get();
+		m_renderer			= m_context->GetSubsystem<Renderer>().get();
 		return true;
 	}
 

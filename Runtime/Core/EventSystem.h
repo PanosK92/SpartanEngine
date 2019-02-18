@@ -35,14 +35,12 @@ To subscribe a function to an event	-> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
 To fire an event					-> FIRE_EVENT(EVENT_ID);
 To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 
-Note: Currently, this is an blocking event system
+Note: Currently, this is a blocking event system
 =============================================================================
 */
 
 enum Event_Type
 {
-	Event_Tick,					// Subsystems should tick
-	Event_Render,				// Renderer should output a frame
 	Event_Frame_Start,			// A frame begins
 	Event_Frame_End,			// A frame ends
 	Event_World_Saved,			// The world finished saving to file
@@ -55,15 +53,16 @@ enum Event_Type
 	Event_World_EntitySelected	// An entity was clicked in the viewport
 };
 
-//= MACROS ===============================================================================================
-#define EVENT_HANDLER_STATIC(function)			[](Directus::Variant var)		{ function(); }
-#define EVENT_HANDLER(function)					[this](Directus::Variant var)	{ function(); }
-#define EVENT_HANDLER_VARIANT(function)			[this](Directus::Variant var)	{ function(var); }
-#define EVENT_HANDLER_VARIANT_STATIC(function)	[](Directus::Variant var)		{ function(var); }
-#define SUBSCRIBE_TO_EVENT(eventID, function)	Directus::EventSystem::Get().Subscribe(eventID, function);
-#define FIRE_EVENT(eventID)						Directus::EventSystem::Get().Fire(eventID)
-#define FIRE_EVENT_DATA(eventID, data)			Directus::EventSystem::Get().Fire(eventID, data)
-//========================================================================================================
+//= MACROS =====================================================================================================
+#define EVENT_HANDLER_STATIC(function)				[](Directus::Variant var)		{ function(); }
+#define EVENT_HANDLER(function)						[this](Directus::Variant var)	{ function(); }
+#define EVENT_HANDLER_VARIANT(function)				[this](Directus::Variant var)	{ function(var); }
+#define EVENT_HANDLER_VARIANT_STATIC(function)		[](Directus::Variant var)		{ function(var); }
+#define SUBSCRIBE_TO_EVENT(eventID, function)		Directus::EventSystem::Get().Subscribe(eventID, function);
+#define UNSUBSCRIBE_FROM_EVENT(eventID, function)	Directus::EventSystem::Get().Unsubscribe(eventID, function);
+#define FIRE_EVENT(eventID)							Directus::EventSystem::Get().Fire(eventID)
+#define FIRE_EVENT_DATA(eventID, data)				Directus::EventSystem::Get().Fire(eventID, data)
+//==============================================================================================================
 
 namespace Directus
 {
@@ -78,9 +77,33 @@ namespace Directus
 
 		typedef std::function<void(Variant)> subscriber;
 
-		void Subscribe(Event_Type eventID, subscriber&& func)
+		void Subscribe(Event_Type eventID, subscriber&& function)
 		{
-			m_subscribers[eventID].push_back(std::forward<subscriber>(func));
+			m_subscribers[eventID].push_back(std::forward<subscriber>(function));
+		}
+
+		template<typename T, typename... U>
+		size_t getAddress(std::function<T(U...)> f)
+		{
+			typedef T(fnType)(U...);
+			fnType** funcPtr = f.template target<fnType*>();
+			return (size_t)*funcPtr;
+		}
+
+		void Unsubscribe(Event_Type eventID, subscriber&& function)
+		{
+			size_t function_adress	= *(long*)(char*)&function;
+			auto& subscribers		= m_subscribers[eventID];
+
+			for (auto it = subscribers.begin(); it != subscribers.end();)
+			{
+				size_t subscriber_adress = *(long*)(char*)&(*it);
+				if (subscriber_adress == function_adress)
+				{
+					it = subscribers.erase(it);
+					return;
+				}
+			}
 		}
 
 		void Fire(Event_Type eventID, const Variant& data = 0)
@@ -93,7 +116,11 @@ namespace Directus
 				subscriber(data);
 			}
 		}
-		void Clear() { m_subscribers.clear(); }
+
+		void Clear() 
+		{
+			m_subscribers.clear(); 
+		}
 
 	private:
 		std::map<Event_Type, std::vector<subscriber>> m_subscribers;

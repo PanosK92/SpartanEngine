@@ -49,11 +49,11 @@ namespace Directus
 		World(Context* context);
 		~World();
 
-		//= Subsystem =============
+		//= ISubsystem ============
 		bool Initialize() override;
+		void Tick() override;
 		//=========================
-
-		void Tick();
+		
 		void Unload();
 
 		//= IO ========================================
@@ -61,7 +61,7 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= entity HELPER FUNCTIONS ===========================================================
+		//= entity HELPER FUNCTIONS ===============================================================
 		std::shared_ptr<Entity>& Entity_Create();
 		std::shared_ptr<Entity>& Entity_Add(const std::shared_ptr<Entity>& entity);
 		bool entity_Exists(const std::shared_ptr<Entity>& entity);
@@ -71,7 +71,7 @@ namespace Directus
 		const std::shared_ptr<Entity>& Entity_GetByName(const std::string& name);
 		const std::shared_ptr<Entity>& Entity_GetByID(unsigned int ID);
 		int Entity_GetCount() { return (int)m_entitiesPrimary.size(); }
-		//====================================================================================
+		//=========================================================================================
 
 		//= SELECTED ENTITY ===================================================================
 		std::shared_ptr<Entity> GetSelectedentity()				{ return m_entity_selected; }

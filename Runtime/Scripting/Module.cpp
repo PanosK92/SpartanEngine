@@ -27,26 +27,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/FileSystem.h"
 //========================================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Directus
 {
-	Module::Module(const string& moduleName, Scripting* scriptEngine)
+	Module::Module(const string& moduleName, weak_ptr<Scripting> scriptEngine)
 	{
-		m_builder = nullptr;
-		m_moduleName = moduleName;
-		m_scriptEngine = scriptEngine;
+		m_moduleName	= moduleName;
+		m_scriptEngine	= scriptEngine;
 	}
 
 	Module::~Module()
 	{
-		m_scriptEngine->DiscardModule(m_moduleName);
-		delete m_builder;
+		if (auto scriptEngine = m_scriptEngine.lock())
+		{
+			scriptEngine->DiscardModule(m_moduleName);
+		}
 	}
 
 	bool Module::LoadScript(const string& filePath)
 	{
+		auto scriptEngine = m_scriptEngine.lock();
+		if (!scriptEngine)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
 		// start new module
-		m_builder = new CScriptBuilder();
-		int result = m_builder->StartNewModule(m_scriptEngine->GetAsIScriptEngine(), m_moduleName.c_str());
+		m_scriptBuilder = make_unique<CScriptBuilder>();
+		int result = m_scriptBuilder->StartNewModule(scriptEngine->GetAsIScriptEngine(), m_moduleName.c_str());
 		if (result < 0)
 		{
 			LOG_ERROR("Failed to start new module, make sure there is enough memory for it to be allocated.");
@@ -54,18 +66,18 @@ namespace Directus
 		}
 
 		// load the script
-		result = m_builder->AddSectionFromFile(filePath.c_str());
+		result = m_scriptBuilder->AddSectionFromFile(filePath.c_str());
 		if (result < 0)
 		{
-			LOG_ERROR("Failed to load script \"" + filePath + "\".");
+			LOGF_ERROR("Failed to load script \"%s\".", filePath);
 			return false;
 		}
 
 		// build the script
-		result = m_builder->BuildModule();
+		result = m_scriptBuilder->BuildModule();
 		if (result < 0)
 		{
-			LOG_ERROR("Failed to compile script \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\". Correct any errors and try again.");
+			LOGF_ERROR("Failed to compile script \"%s\". Correct any errors and try again.", FileSystem::GetFileNameFromFilePath(filePath));
 			return false;
 		}
 
@@ -74,6 +86,12 @@ namespace Directus
 
 	asIScriptModule* Module::GetAsIScriptModule()
 	{
-		return m_builder->GetModule();
+		if (!m_scriptBuilder)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		return m_scriptBuilder->GetModule();
 	}
 }

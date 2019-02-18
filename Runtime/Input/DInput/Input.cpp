@@ -139,9 +139,6 @@ namespace Directus
 
 		if (result)
 		{
-			// Subscribe to events
-			SUBSCRIBE_TO_EVENT(Event_Tick, EVENT_HANDLER(Tick));
-
 			stringstream ss;
 			ss << hex << DIRECTINPUT_VERSION;
 			auto major = ss.str().erase(1, 2);
@@ -177,8 +174,8 @@ namespace Directus
 
 	void Input::Tick()
 	{
-		m_keys_previous = m_keys;
-		HWND windowHandle = (HWND)Settings::Get().GetWindowHandle();
+		m_keys_previous		= m_keys;
+		auto windowHandle	= (HWND)Settings::Get().GetWindowHandle();
 
 		if(ReadKeyboard())
 		{

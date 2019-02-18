@@ -43,7 +43,10 @@ namespace Directus
 		Audio(Context* context);
 		~Audio();
 
-		bool Update();
+		//= ISubsystem ======
+		void Tick() override;
+		//===================
+
 		FMOD::System* GetSystemFMOD() { return m_systemFMOD; }
 		void SetListenerTransform(Transform* transform);
 

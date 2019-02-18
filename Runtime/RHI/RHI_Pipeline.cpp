@@ -48,7 +48,7 @@ namespace Directus
 	RHI_Pipeline::RHI_Pipeline(Context* context, shared_ptr<RHI_Device> rhiDevice)
 	{
 		m_rhiDevice	= rhiDevice;
-		m_profiler	= context->GetSubsystem<Profiler>();
+		m_profiler	= context->GetSubsystem<Profiler>().get();
 	}
 
 	bool RHI_Pipeline::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)

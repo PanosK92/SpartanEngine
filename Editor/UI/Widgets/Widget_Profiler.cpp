@@ -44,7 +44,7 @@ Widget_Profiler::Widget_Profiler(Directus::Context* context) : Widget(context)
 	m_yMin						= 715;
 	m_xMax						= FLT_MAX;
 	m_yMax						= FLT_MAX;
-	m_profiler					= m_context->GetSubsystem <Profiler>();
+	m_profiler					= m_context->GetSubsystem<Profiler>().get();
 
 	// Fill with dummy values so that the plot can progress immediately
 	if (m_cpuTimes.empty() && m_gpuTimes.empty())

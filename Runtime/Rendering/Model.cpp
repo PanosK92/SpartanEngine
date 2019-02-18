@@ -48,7 +48,7 @@ namespace Directus
 	{
 		m_normalizedScale	= 1.0f;
 		m_isAnimated		= false;
-		m_resourceManager	= m_context->GetSubsystem<ResourceCache>();
+		m_resourceManager	= m_context->GetSubsystem<ResourceCache>().get();
 		m_rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
 		m_memoryUsage		= 0;
 		m_mesh				= make_unique<Mesh>();

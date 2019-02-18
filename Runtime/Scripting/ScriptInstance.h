@@ -40,8 +40,8 @@ namespace Directus
 		ScriptInstance();
 		~ScriptInstance();
 
-		bool Instantiate(const std::string& path, std::weak_ptr<Entity> entity, Scripting* scriptEngine);
-		bool IsInstantiated() { return m_isInstantiated; }
+		bool Instantiate(const std::string& path, std::weak_ptr<Entity> entity, std::shared_ptr<Scripting> scriptEngine);
+		bool IsInstantiated()		{ return m_isInstantiated; }
 		std::string GetScriptPath() { return m_scriptPath; }
 
 		void ExecuteStart();
@@ -60,7 +60,7 @@ namespace Directus
 		asIScriptFunction* m_constructorFunction	= nullptr;
 		asIScriptFunction* m_startFunction			= nullptr;
 		asIScriptFunction* m_updateFunction			= nullptr;
-		Scripting* m_scriptEngine					= nullptr;
+		std::shared_ptr<Scripting> m_scriptEngine	= nullptr;
 		bool m_isInstantiated						= false;
 	};
 }
