@@ -40,14 +40,13 @@ using namespace std;
 
 namespace Directus
 {
-	unsigned long Engine::m_flags = 0;
+	unsigned int Engine::m_flags = 0;
 
-	Engine::Engine(Context* context)
+	Engine::Engine(std::shared_ptr<Context> context)
 	{
 		m_context = context;
 
-		m_flags |= Engine_Update;
-		m_flags |= Engine_Render;
+		m_flags |= Engine_Tick;
 		m_flags |= Engine_Physics;
 		m_flags |= Engine_Game;
 
@@ -56,7 +55,7 @@ namespace Directus
 		Settings::Get().Initialize();
 
 		// Register subsystems
-		m_timer = m_context->RegisterSubsystem<Timer>();
+		m_context->RegisterSubsystem<Timer>();
 		m_context->RegisterSubsystem<Profiler>();
 		m_context->RegisterSubsystem<Threading>();	
 		m_context->RegisterSubsystem<Input>();
@@ -68,39 +67,23 @@ namespace Directus
 		m_context->RegisterSubsystem<Renderer>();
 
 		// Initialize above subsystems
-		m_context->InitializeSubsystems();
+		m_context->Initialize();
 	}
 
 	Engine::~Engine()
 	{
-		SafeDelete(m_context);
+		EventSystem::Get().Clear();
 	}
 
 	void Engine::Tick()
 	{
-		m_timer->Tick();
 		FIRE_EVENT(Event_Frame_Start);
 
-		if (EngineMode_IsSet(Engine_Update))
+		if (EngineMode_IsSet(Engine_Tick))
 		{
-			FIRE_EVENT_DATA(Event_Tick, m_timer->GetDeltaTimeSec());
-		}
-
-		if (EngineMode_IsSet(Engine_Render))
-		{
-			FIRE_EVENT(Event_Render);
+			m_context->Tick();
 		}
 
 		FIRE_EVENT(Event_Frame_End);
-	}
-
-	void Engine::SetHandles(void* drawHandle, void* windowHandle, void* windowInstance)
-	{
-		Settings::Get().SetHandles(drawHandle, windowHandle, windowInstance);
-	}
-
-	float Engine::GetDeltaTime()
-	{
-		return m_timer->GetDeltaTimeSec();
 	}
 }

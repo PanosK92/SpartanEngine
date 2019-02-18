@@ -53,8 +53,8 @@ Widget_MenuBar::Widget_MenuBar(Directus::Context* context) : Widget(context)
 	m_resourceCache = make_unique<Widget_ResourceCache>(context);
 	m_fileDialog	= make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
 
-	_Widget_MenuBar::g_resourceCache	= m_context->GetSubsystem<ResourceCache>();
-	_Widget_MenuBar::g_scene			= m_context->GetSubsystem<World>();
+	_Widget_MenuBar::g_resourceCache	= m_context->GetSubsystem<ResourceCache>().get();
+	_Widget_MenuBar::g_scene			= m_context->GetSubsystem<World>().get();
 }
 
 void Widget_MenuBar::Tick(float deltaTime)

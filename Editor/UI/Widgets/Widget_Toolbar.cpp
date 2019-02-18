@@ -69,7 +69,7 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 		ImGuiWindowFlags_NoScrollbar |
 		ImGuiWindowFlags_NoTitleBar;
 
-	m_renderer = context->GetSubsystem<Renderer>();
+	m_renderer = context->GetSubsystem<Renderer>().get();
 	Engine::EngineMode_Disable(Engine_Game);
 }
 

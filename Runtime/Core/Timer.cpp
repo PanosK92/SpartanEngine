@@ -59,5 +59,7 @@ namespace Directus
 		time_b								= high_resolution_clock::now();
 		duration<double, milli> time_sleep	= time_b - time_a;
 		m_deltaTimeMs						= (time_work + time_sleep).count();
+
+		m_deltaTimeSec = GetDeltaTimeSec();
 	}
 }

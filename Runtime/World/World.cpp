@@ -53,7 +53,6 @@ namespace Directus
 		
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Resolve, [this](Variant) { m_isDirty = true; });
-		SUBSCRIBE_TO_EVENT(Event_Tick,			EVENT_HANDLER(Tick));
 		SUBSCRIBE_TO_EVENT(Event_World_Stop,	[this](Variant)	{ m_state = Idle; });
 		SUBSCRIBE_TO_EVENT(Event_World_Start,	[this](Variant)	{ m_state = Ticking; });
 	}
@@ -65,8 +64,8 @@ namespace Directus
 
 	bool World::Initialize()
 	{
-		m_input		= m_context->GetSubsystem<Input>();
-		m_profiler	= m_context->GetSubsystem<Profiler>();
+		m_input		= m_context->GetSubsystem<Input>().get();
+		m_profiler	= m_context->GetSubsystem<Profiler>().get();
 
 		CreateCamera();
 		CreateSkybox();

@@ -58,8 +58,8 @@ namespace _Widget_World
 Widget_World::Widget_World(Context* context) : Widget(context)
 {
 	m_title					= "World";
-	_Widget_World::g_world	= m_context->GetSubsystem<World>();
-	_Widget_World::g_input	= m_context->GetSubsystem<Input>();
+	_Widget_World::g_world	= m_context->GetSubsystem<World>().get();
+	_Widget_World::g_input	= m_context->GetSubsystem<Input>().get();
 
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 

@@ -48,8 +48,8 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
 	m_timeSinceLastResChange	= 0.0f;
 
 	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
-	_Widget_Viewport::g_renderer	= m_context->GetSubsystem<Renderer>();
-	_Widget_Viewport::g_world		= m_context->GetSubsystem<World>();
+	_Widget_Viewport::g_renderer	= m_context->GetSubsystem<Renderer>().get();
+	_Widget_Viewport::g_world		= m_context->GetSubsystem<World>().get();
 	m_xMin = 400;
 	m_yMin = 250;
 }

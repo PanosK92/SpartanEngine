@@ -39,7 +39,7 @@ namespace Directus
 
 	void AudioListener::OnInitialize()
 	{
-		m_audio = GetContext()->GetSubsystem<Audio>();
+		m_audio = GetContext()->GetSubsystem<Audio>().get();
 	}
 
 	void AudioListener::OnTick()

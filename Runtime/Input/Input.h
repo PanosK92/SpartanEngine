@@ -82,7 +82,9 @@ namespace Directus
 		Input(Context* context);
 		~Input();
 
-		void Tick();
+		//= ISubsystem ======
+		void Tick() override;
+		//===================
 		
 		// Keys
 		bool GetKey(KeyCode key)		{ return m_keys[(unsigned int)key]; }							// Returns true while the button identified by KeyCode is held down.

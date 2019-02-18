@@ -53,7 +53,7 @@ namespace Directus
 		m_errorReduction			= 0.0f;
 		m_constraintForceMixing		= 0.0f;
 		m_constraintType			= ConstraintType_Point;
-		m_physics					= GetContext()->GetSubsystem<Physics>();
+		m_physics					= GetContext()->GetSubsystem<Physics>().get();
 
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_errorReduction, float);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_constraintForceMixing, float);

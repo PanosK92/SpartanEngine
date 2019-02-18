@@ -9,10 +9,11 @@
 
 namespace Window
 {
-	inline HINSTANCE g_instance;
-	inline HWND g_handle;
-	inline std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> g_OnMessage;
-	inline std::function<void(int, int)> g_onResize;
+	static HINSTANCE g_instance;
+	static HWND g_handle;
+	static std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> g_OnMessage;
+	static std::function<void(int, int)> g_onResize;
+	static std::function<void()> g_onClose;
 
 	// Window Procedure
 	inline LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -30,6 +31,7 @@ namespace Window
 			break;
 
 			case WM_CLOSE:
+				g_onClose();
 				DestroyWindow(hwnd);
 			break;
 
@@ -47,10 +49,10 @@ namespace Window
 	inline bool Create(HINSTANCE instance, const std::string& title)
 	{
 		g_instance = instance;
-		std::wstring windowTitle = Directus::FileSystem::StringToWString(title);
-		int windowWidth = GetSystemMetrics(SM_CXSCREEN);
-		int windowHeight = GetSystemMetrics(SM_CYSCREEN);
-		LPCWSTR className = L"myWindowClass";
+		std::wstring windowTitle	= Directus::FileSystem::StringToWString(title);
+		int windowWidth				= GetSystemMetrics(SM_CXSCREEN);
+		int windowHeight			= GetSystemMetrics(SM_CYSCREEN);
+		LPCWSTR className			= L"myWindowClass";
 	
 		// Register the Window Class
 		WNDCLASSEX wc;
@@ -74,13 +76,15 @@ namespace Window
 		}
 	
 		// Create the Window
-		g_handle = CreateWindowEx(
+		g_handle = CreateWindowEx
+		(
 			WS_EX_CLIENTEDGE,
 			className,
 			windowTitle.c_str(),
 			WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight,
-			nullptr, nullptr, g_instance, nullptr);
+			nullptr, nullptr, g_instance, nullptr
+		);
 	
 		if(!g_handle)
 		{
@@ -115,7 +119,7 @@ namespace Window
 	{
 		RECT rect;
 		GetClientRect(g_handle, &rect);
-		return  (int)(rect.right - rect.left);
+		return (int)(rect.right - rect.left);
 	}
 
 	inline int GetHeight()
@@ -123,5 +127,5 @@ namespace Window
 		RECT rect;
 		GetClientRect(g_handle, &rect);
 		return (int)(rect.bottom - rect.top);
-	}	
+	}
 }

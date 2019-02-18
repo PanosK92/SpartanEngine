@@ -225,7 +225,7 @@ namespace Directus
 	ModelImporter::ModelImporter(Context* context)
 	{
 		m_context	= context;
-		m_world		= context->GetSubsystem<World>();
+		m_world		= context->GetSubsystem<World>().get();
 
 		// Get version
 		int major	= aiGetVersionMajor();

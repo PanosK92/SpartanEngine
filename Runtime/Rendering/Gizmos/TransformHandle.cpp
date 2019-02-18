@@ -93,8 +93,8 @@ namespace Directus
 	{
 		m_type		= type;
 		m_context	= context;
-		m_renderer	= context->GetSubsystem<Renderer>();
-		m_input		= context->GetSubsystem<Input>();
+		m_renderer	= context->GetSubsystem<Renderer>().get();
+		m_input		= context->GetSubsystem<Input>().get();
 
 		m_ray_previous	= Vector3::Zero;
 		m_ray_current	= Vector3::Zero;

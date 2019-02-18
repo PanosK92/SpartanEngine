@@ -34,6 +34,7 @@ namespace Directus
 	class Context; 
 	class Engine;
 	class Renderer;
+	class Timer;
 }
 //========================
 
@@ -48,7 +49,7 @@ public:
 
 private:
 	void Widgets_Create();
-	void Widgets_Tick(float deltaTime);
+	void Widgets_Tick();
 	void DockSpace_Begin();
 	void DockSpace_End();	
 	void ApplyStyle();
@@ -62,4 +63,5 @@ private:
 	std::shared_ptr<Directus::RHI_Device> m_rhiDevice;
 	Directus::Context* m_context	= nullptr;
 	Directus::Renderer* m_renderer	= nullptr;	
+	Directus::Timer* m_timer		= nullptr;
 };

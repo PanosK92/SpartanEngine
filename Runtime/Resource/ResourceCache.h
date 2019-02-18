@@ -54,7 +54,7 @@ namespace Directus
 		template <class T> std::shared_ptr<T> GetByName(const std::string& name) 
 		{ 
 			ValidateResourceType(T);
-			return std::dynamic_pointer_cast<T>(GetByName(name, IResource::DeduceResourceType<T>())); 
+			return std::static_pointer_cast<T>(GetByName(name, IResource::DeduceResourceType<T>()));
 		}
 
 		// TYPE

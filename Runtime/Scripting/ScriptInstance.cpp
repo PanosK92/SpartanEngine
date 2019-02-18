@@ -54,7 +54,7 @@ namespace Directus
 		m_isInstantiated		= false;
 	}
 
-	bool ScriptInstance::Instantiate(const string& path, std::weak_ptr<Entity> entity, Scripting* scriptEngine)
+	bool ScriptInstance::Instantiate(const string& path, std::weak_ptr<Entity> entity, shared_ptr<Scripting> scriptEngine)
 	{
 		if (entity.expired())
 			return false;
@@ -76,16 +76,34 @@ namespace Directus
 
 	void ScriptInstance::ExecuteStart()
 	{
+		if (!m_scriptEngine)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
 		m_scriptEngine->ExecuteCall(m_startFunction, m_scriptObject);
 	}
 
 	void ScriptInstance::ExecuteUpdate()
 	{
+		if (!m_scriptEngine)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
 		m_scriptEngine->ExecuteCall(m_updateFunction, m_scriptObject);
 	}
 
 	bool ScriptInstance::CreateScriptObject()
 	{
+		if (!m_scriptEngine)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
 		// Create module
 		m_module	= make_shared<Module>(m_moduleName, m_scriptEngine);
 		bool result = m_module->LoadScript(m_scriptPath);

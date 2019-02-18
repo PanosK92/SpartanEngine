@@ -85,8 +85,8 @@ namespace Directus
 		(
 			Settings::Get().GetWindowHandle(),
 			m_rhiDevice,
-			m_resolution.x,
-			m_resolution.y,
+			(unsigned int)m_resolution.x,
+			(unsigned int)m_resolution.y,
 			backBufferFormat,
 			Swap_Flip_Discard,
 			SwapChain_Allow_Tearing | SwapChain_Allow_Mode_Switch,
@@ -94,12 +94,14 @@ namespace Directus
 		);
 		
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_Render, EVENT_HANDLER(Render));
 		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(Renderables_Acquire));
 	}
 
 	Renderer::~Renderer()
 	{
+		// Unsubscribe from events
+		UNSUBSCRIBE_FROM_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(Renderables_Acquire));
+
 		m_entities.clear();
 		m_camera = nullptr;
 	}
@@ -107,8 +109,8 @@ namespace Directus
 	bool Renderer::Initialize()
 	{
 		// Create/Get required systems		
-		g_resourceCache	= m_context->GetSubsystem<ResourceCache>();
-		m_profiler		= m_context->GetSubsystem<Profiler>();
+		g_resourceCache	= m_context->GetSubsystem<ResourceCache>().get();
+		m_profiler		= m_context->GetSubsystem<Profiler>().get();
 
 		// Editor specific
 		m_grid				= make_unique<Grid>(m_rhiDevice);
@@ -455,7 +457,7 @@ namespace Directus
 		return m_swapChain->Resize(width, height);
 	}
 
-	void Renderer::Render()
+	void Renderer::Tick()
 	{
 		if (!m_rhiDevice || !m_rhiDevice->IsInitialized())
 			return;

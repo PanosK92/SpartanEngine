@@ -92,7 +92,7 @@ namespace Directus
 		m_hasSimulated		= false;
 		m_positionLock		= Vector3::Zero;
 		m_rotationLock		= Vector3::Zero;
-		m_physics			= GetContext()->GetSubsystem<Physics>();
+		m_physics			= GetContext()->GetSubsystem<Physics>().get();
 		m_collisionShape	= nullptr;
 		m_rigidBody			= nullptr;
 
@@ -640,7 +640,7 @@ namespace Directus
 
 		if (m_useGravity)
 		{
-			btVector3 gravity = ToBtVector3(GetContext()->GetSubsystem<Physics>()->GetGravity());
+			btVector3 gravity = ToBtVector3(m_physics->GetGravity());
 			m_rigidBody->setGravity(gravity);
 		}
 		else

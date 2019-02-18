@@ -71,8 +71,8 @@ namespace ImGui::RHI
 	inline bool Initialize(Context* context)
 	{
 		g_context	= context;
-		g_profiler	= context->GetSubsystem<Profiler>();
-		g_renderer	= context->GetSubsystem<Renderer>();
+		g_profiler	= context->GetSubsystem<Profiler>().get();
+		g_renderer	= context->GetSubsystem<Renderer>().get();
 		g_pipeline	= g_renderer->GetRHIPipeline().get();
 		g_device	= g_renderer->GetRHIDevice();
 		

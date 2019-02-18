@@ -154,7 +154,7 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void ScriptInterface::RegisterInput()
 	{
-		m_scriptEngine->RegisterGlobalProperty("Input input", m_context->GetSubsystem<Input>());
+		m_scriptEngine->RegisterGlobalProperty("Input input", m_context->GetSubsystem<Input>().get());
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMousePosition()", asMETHOD(Input, GetMousePosition), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "Vector2 &GetMouseDelta()", asMETHOD(Input, GetMouseDelta), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "bool GetKey(KeyCode key)", asMETHOD(Input, GetKey), asCALL_THISCALL);
@@ -167,7 +167,7 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void ScriptInterface::RegisterTime()
 	{
-		m_scriptEngine->RegisterGlobalProperty("Time time", m_context->GetSubsystem<Timer>());
+		m_scriptEngine->RegisterGlobalProperty("Time time", m_context->GetSubsystem<Timer>().get());
 		m_scriptEngine->RegisterObjectMethod("Time", "float GetDeltaTime()", asMETHOD(Timer, GetDeltaTimeSec), asCALL_THISCALL);
 	}
 

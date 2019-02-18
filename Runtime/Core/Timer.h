@@ -34,7 +34,10 @@ namespace Directus
 		Timer(Context* context);
 		~Timer() {}
 
-		void Tick();
+		//= ISubsystem ======
+		void Tick() override;
+		//===================
+
 		float GetDeltaTimeMs()	{ return (float)m_deltaTimeMs; }
 		float GetDeltaTimeSec() { return (float)m_deltaTimeMs / 1000.0f; }
 

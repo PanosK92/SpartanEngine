@@ -96,8 +96,8 @@ public:
 	void Initialize(Directus::Context* context)
 	{
 		m_context		= context;
-		m_resourceCache	= m_context->GetSubsystem<Directus::ResourceCache>();
-		m_scene			= m_context->GetSubsystem<Directus::World>();
+		m_resourceCache	= m_context->GetSubsystem<Directus::ResourceCache>().get();
+		m_scene			= m_context->GetSubsystem<Directus::World>().get();
 	}
 
 	std::shared_ptr<Directus::RHI_Texture> GetOrLoadTexture(const std::string& filePath, bool async = false)

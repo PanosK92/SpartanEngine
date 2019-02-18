@@ -46,11 +46,14 @@ namespace Directus
 		// Add project directory
 		SetProjectDirectory("Project//");
 
+		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Unload, EVENT_HANDLER(Clear));
 	}
 
 	ResourceCache::~ResourceCache()
 	{
+		// Unsubscribe from event
+		UNSUBSCRIBE_FROM_EVENT(Event_World_Unload, EVENT_HANDLER(Clear));
 		Clear();
 	}
 

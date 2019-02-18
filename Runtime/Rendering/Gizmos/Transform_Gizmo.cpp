@@ -40,8 +40,8 @@ namespace Directus
 	Transform_Gizmo::Transform_Gizmo(Context* context)
 	{
 		m_context	= context;
-		m_input		= m_context->GetSubsystem<Input>();
-		m_world		= m_context->GetSubsystem<World>();
+		m_input		= m_context->GetSubsystem<Input>().get();
+		m_world		= m_context->GetSubsystem<World>().get();
 		m_type		= TransformHandle_Position;
 		m_space		= TransformHandle_World;
 		m_isEditing	= false;
