@@ -13,7 +13,6 @@ namespace Window
 	static HWND g_handle;
 	static std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> g_OnMessage;
 	static std::function<void(int, int)> g_onResize;
-	static std::function<void()> g_onClose;
 
 	// Window Procedure
 	inline LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -31,12 +30,7 @@ namespace Window
 			break;
 
 			case WM_CLOSE:
-				g_onClose();
-				DestroyWindow(hwnd);
-			break;
-
-			case WM_DESTROY:
-				PostQuitMessage(0);
+				PostQuitMessage(0);	
 			break;
         
     		default:
@@ -127,5 +121,10 @@ namespace Window
 		RECT rect;
 		GetClientRect(g_handle, &rect);
 		return (int)(rect.bottom - rect.top);
+	}
+
+	inline void Destroy()
+	{
+		DestroyWindow(g_handle);
 	}
 }
