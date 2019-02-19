@@ -67,8 +67,8 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
-		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		symbols "On"
+		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}	
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
 		links { "angelscript_debug" }
@@ -85,6 +85,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
+		symbols "Off"
 		defines { "NDEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		optimize "Full"
 		staticruntime "On"
@@ -121,8 +122,8 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
-		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		symbols "On"
+		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}		
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
 				
@@ -131,6 +132,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
+		symbols "Off"
 		defines { "NDEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		optimize "Full"
 		staticruntime "On"
