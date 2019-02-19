@@ -30,13 +30,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*
 HOW TO USE
-=============================================================================
-To subscribe a function to an event	-> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
-To fire an event					-> FIRE_EVENT(EVENT_ID);
-To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
+=================================================================================
+To subscribe a function to an event		-> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
+To unsubscribe a function from an event	-> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
+To fire an event						-> FIRE_EVENT(EVENT_ID);
+To fire an event with data				-> FIRE_EVENT_DATA(EVENT_ID, Variant);
 
 Note: Currently, this is a blocking event system
-=============================================================================
+=================================================================================
 */
 
 enum Event_Type
@@ -80,14 +81,6 @@ namespace Directus
 		void Subscribe(Event_Type eventID, subscriber&& function)
 		{
 			m_subscribers[eventID].push_back(std::forward<subscriber>(function));
-		}
-
-		template<typename T, typename... U>
-		size_t getAddress(std::function<T(U...)> f)
-		{
-			typedef T(fnType)(U...);
-			fnType** funcPtr = f.template target<fnType*>();
-			return (size_t)*funcPtr;
 		}
 
 		void Unsubscribe(Event_Type eventID, subscriber&& function)
