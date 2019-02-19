@@ -213,7 +213,7 @@ void Editor::DockSpace_Begin()
 	{
 		// Reset/clear current docking state
 		ImGui::DockBuilderRemoveNode(dockspace_id);
-		ImGui::DockBuilderAddNode(dockspace_id, ImGui::GetMainViewport()->Size);
+		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_None);
 
 		// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
 		ImGuiID dock_main_id		= dockspace_id;

@@ -46,8 +46,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		files { "../Runtime/**.h", "../Runtime/**.cpp", "../Runtime/**.hpp", "../Runtime/**.inl" }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect (CPP_VERSION)
-		debugformat (DEBUG_FORMAT)
-	
+
 -- Includes
 	includedirs { "C:/VulkanSDK/1.1.85.0/Include" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
@@ -62,11 +61,12 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 	libdirs { "C:/VulkanSDK/1.1.82.0/Lib" }
 	libdirs { "../ThirdParty/mvsc141_x64" }
 
--- Solution configuration "Debug"
-	configuration "Debug"
+-- 	"Debug"
+	filter "configurations:Debug"
 		targetdir (TARGET_DIR_DEBUG)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_DEBUG)
+		debugformat (DEBUG_FORMAT)
 		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		symbols "On"
 		staticruntime "On"
@@ -79,9 +79,9 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
 		links { "pugixml_debug" }
 		links { "IrrXML_debug" }
-		
--- Solution configuration "Release"
-	configuration "Release"
+			
+-- 	"Release"
+	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
@@ -108,7 +108,6 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		dependson { RUNTIME_NAME }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect (CPP_VERSION)
-		debugformat (DEBUG_FORMAT)
 
 -- Includes
 	includedirs { "../Runtime" }
@@ -116,27 +115,23 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 -- Library directory
 	libdirs { "../ThirdParty/mvsc141_x64" }
 	
--- Debug configuration
+-- "Debug"
 	filter "configurations:Debug"
+		targetdir (TARGET_DIR_DEBUG)
+		objdir (INTERMEDIATE_DIR)
+		debugdir (TARGET_DIR_DEBUG)
+		debugformat (DEBUG_FORMAT)
 		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
 		symbols "On"
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
-
--- Release configuration
+				
+-- "Release"
 	filter "configurations:Release"
-		defines { "NDEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
-		optimize "Full"
-		staticruntime "On"
-		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
-		
--- Output directories	
-	configuration "Debug"
-		targetdir (TARGET_DIR_DEBUG)
-		objdir (INTERMEDIATE_DIR)
-		debugdir (TARGET_DIR_DEBUG)
-
-	configuration "Release"
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
+		defines { "NDEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
+		optimize "Full"
+		staticruntime "On"
+		flags { "MultiProcessorCompile", "LinkTimeOptimization" }		

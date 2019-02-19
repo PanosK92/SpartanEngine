@@ -40,10 +40,10 @@ namespace Directus
 
 		// Register a subsystem
 		template <class T>
-		std::shared_ptr<T> RegisterSubsystem()
+		void RegisterSubsystem()
 		{
 			ValidateSubsystemType(T);
-			return std::static_pointer_cast<T>(m_subsystems.emplace_back(std::make_shared<T>(this)));
+			m_subsystems.emplace_back(std::make_shared<T>(this));
 		}
 
 		// Initialize subsystems

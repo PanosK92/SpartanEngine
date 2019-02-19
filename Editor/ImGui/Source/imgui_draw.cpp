@@ -1,4 +1,4 @@
-// dear imgui, v1.68 WIP
+// dear imgui, v1.68
 // (drawing and font code)
 
 /*
@@ -695,7 +695,7 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
         PrimReserve(idx_count, vtx_count);
 
         // Temporary buffer
-        ImVec2* temp_normals = (ImVec2*)alloca(points_count * (thick_line ? 5 : 3) * sizeof(ImVec2));
+        ImVec2* temp_normals = (ImVec2*)alloca(points_count * (thick_line ? 5 : 3) * sizeof(ImVec2)); //-V630
         ImVec2* temp_points = temp_normals + points_count;
 
         for (int i1 = 0; i1 < count; i1++)
@@ -886,7 +886,7 @@ void ImDrawList::AddConvexPolyFilled(const ImVec2* points, const int points_coun
         }
 
         // Compute normals
-        ImVec2* temp_normals = (ImVec2*)alloca(points_count * sizeof(ImVec2));
+        ImVec2* temp_normals = (ImVec2*)alloca(points_count * sizeof(ImVec2)); //-V630
         for (int i0 = points_count-1, i1 = 0; i1 < points_count; i0 = i1++)
         {
             const ImVec2& p0 = points[i0];
@@ -1293,8 +1293,10 @@ void ImDrawData::DeIndexAllBuffers()
     }
 }
 
-// Helper to scale the ClipRect field of each ImDrawCmd. Use if your final output buffer is at a different scale than ImGui expects, or if there is a difference between your window resolution and framebuffer resolution.
-void ImDrawData::ScaleClipRects(const ImVec2& scale)
+// Helper to scale the ClipRect field of each ImDrawCmd. 
+// Use if your final output buffer is at a different scale than draw_data->DisplaySize, 
+// or if there is a difference between your window resolution and framebuffer resolution.
+void ImDrawData::ScaleClipRects(const ImVec2& fb_scale)
 {
     for (int i = 0; i < CmdListsCount; i++)
     {
@@ -1302,7 +1304,7 @@ void ImDrawData::ScaleClipRects(const ImVec2& scale)
         for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
         {
             ImDrawCmd* cmd = &cmd_list->CmdBuffer[cmd_i];
-            cmd->ClipRect = ImVec4(cmd->ClipRect.x * scale.x, cmd->ClipRect.y * scale.y, cmd->ClipRect.z * scale.x, cmd->ClipRect.w * scale.y);
+            cmd->ClipRect = ImVec4(cmd->ClipRect.x * fb_scale.x, cmd->ClipRect.y * fb_scale.y, cmd->ClipRect.z * fb_scale.x, cmd->ClipRect.w * fb_scale.y);
         }
     }
 }
@@ -1365,7 +1367,7 @@ ImFontConfig::ImFontConfig()
     FontDataOwnedByAtlas = true;
     FontNo = 0;
     SizePixels = 0.0f;
-    OversampleH = 3;
+    OversampleH = 3; // FIXME: 2 may be a better default?
     OversampleV = 1;
     PixelSnapH = false;
     GlyphExtraSpacing = ImVec2(0.0f, 0.0f);
@@ -1598,8 +1600,10 @@ ImFont* ImFontAtlas::AddFontDefault(const ImFontConfig* font_cfg_template)
         font_cfg.OversampleH = font_cfg.OversampleV = 1;
         font_cfg.PixelSnapH = true;
     }
-    if (font_cfg.Name[0] == '\0') strcpy(font_cfg.Name, "ProggyClean.ttf, 13px");
-    if (font_cfg.SizePixels <= 0.0f) font_cfg.SizePixels = 13.0f;
+    if (font_cfg.SizePixels <= 0.0f) 
+        font_cfg.SizePixels = 13.0f * 1.0f;
+    if (font_cfg.Name[0] == '\0') 
+        ImFormatString(font_cfg.Name, IM_ARRAYSIZE(font_cfg.Name), "ProggyClean.ttf, %dpx", (int)font_cfg.SizePixels);
 
     const char* ttf_compressed_base85 = GetDefaultCompressedFontDataTTFBase85();
     const ImWchar* glyph_ranges = font_cfg.GlyphRanges != NULL ? font_cfg.GlyphRanges : GetGlyphRangesDefault();
@@ -1842,15 +1846,14 @@ bool    ImFontAtlasBuildWithStbTruetype(ImFontAtlas* atlas)
     {
         ImFontBuildSrcData& src_tmp = src_tmp_array[src_i];
         ImFontBuildDstData& dst_tmp = dst_tmp_array[src_tmp.DstIndex];
-        ImFontConfig& cfg = atlas->ConfigData[src_i];
         src_tmp.GlyphsSet.Resize(src_tmp.GlyphsHighest + 1);
-        if (dst_tmp.SrcCount > 1 && dst_tmp.GlyphsSet.Storage.empty())
+        if (dst_tmp.GlyphsSet.Storage.empty())
             dst_tmp.GlyphsSet.Resize(dst_tmp.GlyphsHighest + 1);
 
         for (const ImWchar* src_range = src_tmp.SrcRanges; src_range[0] && src_range[1]; src_range += 2)
             for (int codepoint = src_range[0]; codepoint <= src_range[1]; codepoint++)
             {
-                if (cfg.MergeMode && dst_tmp.GlyphsSet.GetBit(codepoint))   // Don't overwrite existing glyphs. We could make this an option (e.g. MergeOverwrite)
+                if (dst_tmp.GlyphsSet.GetBit(codepoint))    // Don't overwrite existing glyphs. We could make this an option for MergeMode (e.g. MergeOverwrite==true)
                     continue;
                 if (!stbtt_FindGlyphIndex(&src_tmp.FontInfo, codepoint))    // It is actually in the font?
                     continue;
@@ -1859,8 +1862,7 @@ bool    ImFontAtlasBuildWithStbTruetype(ImFontAtlas* atlas)
                 src_tmp.GlyphsCount++;
                 dst_tmp.GlyphsCount++;
                 src_tmp.GlyphsSet.SetBit(codepoint, true);
-                if (dst_tmp.SrcCount > 1)
-                    dst_tmp.GlyphsSet.SetBit(codepoint, true);
+                dst_tmp.GlyphsSet.SetBit(codepoint, true);
                 total_glyphs_count++;
             }
     }
@@ -2069,6 +2071,7 @@ void ImFontAtlasBuildSetupFont(ImFontAtlas* atlas, ImFont* font, ImFontConfig* f
 void ImFontAtlasBuildPackCustomRects(ImFontAtlas* atlas, void* stbrp_context_opaque)
 {
     stbrp_context* pack_context = (stbrp_context*)stbrp_context_opaque;
+    IM_ASSERT(pack_context != NULL);
 
     ImVector<ImFontAtlas::CustomRect>& user_rects = atlas->CustomRects;
     IM_ASSERT(user_rects.Size >= 1); // We expect at least the default custom rects to be registered, else something went wrong.
@@ -2393,38 +2396,36 @@ void ImFontGlyphRangesBuilder::BuildRanges(ImVector<ImWchar>* out_ranges)
 
 ImFont::ImFont()
 {
-    Scale = 1.0f;
+    FontSize = 0.0f;
+    FallbackAdvanceX = 0.0f;
     FallbackChar = (ImWchar)'?';
     DisplayOffset = ImVec2(0.0f, 0.0f);
-    ClearOutputData();
+    FallbackGlyph = NULL;
+    ContainerAtlas = NULL;
+    ConfigData = NULL;
+    ConfigDataCount = 0;
+    DirtyLookupTables = false;
+    Scale = 1.0f;
+    Ascent = Descent = 0.0f;
+    MetricsTotalSurface = 0;
 }
 
 ImFont::~ImFont()
 {
-    // Invalidate active font so that the user gets a clear crash instead of a dangling pointer.
-    // If you want to delete fonts you need to do it between Render() and NewFrame().
-    // FIXME-CLEANUP
-    /*
-    ImGuiContext& g = *GImGui;
-    if (g.Font == this)
-        g.Font = NULL;
-    */
     ClearOutputData();
 }
 
 void    ImFont::ClearOutputData()
 {
     FontSize = 0.0f;
+    FallbackAdvanceX = 0.0f;
     Glyphs.clear();
     IndexAdvanceX.clear();
     IndexLookup.clear();
     FallbackGlyph = NULL;
-    FallbackAdvanceX = 0.0f;
-    ConfigDataCount = 0;
-    ConfigData = NULL;
     ContainerAtlas = NULL;
-    Ascent = Descent = 0.0f;
     DirtyLookupTables = true;
+    Ascent = Descent = 0.0f;
     MetricsTotalSurface = 0;
 }
 
@@ -3100,7 +3101,8 @@ void ImGui::RenderRectFilledWithHole(ImDrawList* draw_list, ImRect outer, ImRect
 void ImGui::RenderPixelEllipsis(ImDrawList* draw_list, ImVec2 pos, int count, ImU32 col)
 {
     ImFont* font = draw_list->_Data->Font;
-    pos.y += (float)(int)(font->DisplayOffset.y + font->Ascent + 0.5f - 1.0f);
+    const float font_scale = draw_list->_Data->FontSize / font->FontSize;
+    pos.y += (float)(int)(font->DisplayOffset.y + font->Ascent * font_scale + 0.5f - 1.0f);
     for (int dot_n = 0; dot_n < count; dot_n++)
         draw_list->AddRectFilled(ImVec2(pos.x + dot_n * 2.0f, pos.y), ImVec2(pos.x + dot_n * 2.0f + 1.0f, pos.y + 1.0f), col);
 }

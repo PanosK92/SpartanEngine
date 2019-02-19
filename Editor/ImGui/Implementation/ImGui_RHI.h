@@ -232,7 +232,8 @@ namespace ImGui::RHI
 		g_indexBuffer->Unmap();
 
 		// Setup orthographic projection matrix into our constant buffer
-		// Our visible ImGui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
+		// Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
+		// draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
 		{
 			float L = draw_data->DisplayPos.x;
 			float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
@@ -258,7 +259,7 @@ namespace ImGui::RHI
 			g_renderer->SwapChain_SetAsRenderTarget();
 			g_renderer->SwapChain_Clear(Vector4(0, 0, 0, 1));
 		}	
-		RHI_Viewport viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
+		auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 		g_pipeline->SetViewport(viewport);
 		g_pipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		g_pipeline->SetBlendState(g_blendState);
