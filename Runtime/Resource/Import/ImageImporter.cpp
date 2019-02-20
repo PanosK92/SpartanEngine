@@ -128,7 +128,7 @@ namespace Directus
 		unsigned int image_bpp				= FreeImage_GetBPP(bitmap);
 		unsigned int image_byesPerChannel	= ComputeBitsPerChannel(bitmap);
 		unsigned int image_channels			= ComputeChannelCount(bitmap);
-		RHI_Format image_format			= ComputeTextureFormat(image_bpp, image_channels);
+		RHI_Format image_format				= ComputeTextureFormat(image_bpp, image_channels);
 		bool image_grayscale				= IsVisuallyGrayscale(bitmap);
 
 		// Fill RGBA vector with the data from the FIBITMAP
