@@ -43,17 +43,18 @@ namespace Directus
 		Transform_Gizmo(Context* context);
 		~Transform_Gizmo();
 
-		bool Update(const std::shared_ptr<Entity>& entity, Camera* camera, float handle_size, float handle_speed);
+		std::shared_ptr<Entity>& SetSelectedEntity(std::shared_ptr<Entity>& entity);
+		bool Update(Camera* camera, float handle_size, float handle_speed);
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
 		const TransformHandle& GetHandle() const;
 		bool DrawXYZ() { return m_type == TransformHandle_Scale; }
-
+		
 	private:
 		bool m_isEditing;
 
-		std::shared_ptr<Entity> m_selectedentity;
+		std::shared_ptr<Entity> m_entity_selected;
 		TransformHandle m_handle_position;
 		TransformHandle m_handle_rotation;
 		TransformHandle m_handle_scale;

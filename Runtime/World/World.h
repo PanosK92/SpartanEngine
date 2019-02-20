@@ -61,10 +61,10 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= entity HELPER FUNCTIONS ===============================================================
+		//= Entity HELPER FUNCTIONS ===============================================================
 		std::shared_ptr<Entity>& Entity_Create();
 		std::shared_ptr<Entity>& Entity_Add(const std::shared_ptr<Entity>& entity);
-		bool entity_Exists(const std::shared_ptr<Entity>& entity);
+		bool Entity_Exists(const std::shared_ptr<Entity>& entity);
 		void Entity_Remove(const std::shared_ptr<Entity>& entity);
 		const std::vector<std::shared_ptr<Entity>>& Entities_GetAll() { return m_entitiesPrimary; }
 		std::vector<std::shared_ptr<Entity>> Entities_GetRoots();
@@ -72,14 +72,6 @@ namespace Directus
 		const std::shared_ptr<Entity>& Entity_GetByID(unsigned int ID);
 		int Entity_GetCount() { return (int)m_entitiesPrimary.size(); }
 		//=========================================================================================
-
-		//= SELECTED ENTITY ===================================================================
-		std::shared_ptr<Entity> GetSelectedentity()				{ return m_entity_selected; }
-		void SetSelectedentity(std::shared_ptr<Entity> entity)	{ m_entity_selected = entity; }
-		//=====================================================================================
-
-		// Picks the closest entity under the mouse cursor
-		void Pickentity();
 
 	private:
 		//= COMMON entity CREATION =======================
@@ -93,7 +85,6 @@ namespace Directus
 		std::vector<std::shared_ptr<Entity>> m_entitiesSecondary;
 
 		std::shared_ptr<Entity> m_entity_empty;
-		std::shared_ptr<Entity> m_entity_selected;
 		Input* m_input;
 		Profiler* m_profiler;
 		bool m_wasInEditorMode;

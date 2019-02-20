@@ -64,7 +64,7 @@ Widget_World::Widget_World(Context* context) : Widget(context)
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 
 	// Subscribe to entity clicked engine event
-	SUBSCRIBE_TO_EVENT(Event_World_EntitySelected, [this](Variant data) { SetSelectedEntity(data.Get<shared_ptr<Entity>>(), false); });
+	EditorHelper::Get().g_onEntitySelected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selectedEntity.lock(), false); };
 }
 
 void Widget_World::Tick(float deltaTime)
@@ -162,16 +162,16 @@ void Widget_World::Tree_AddEntity(Entity* entity)
 	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
 
 	// Flag - Is selected?
-	if (auto selectedentity = _Widget_World::g_world->GetSelectedentity())
+	if (auto selectedEntity = EditorHelper::Get().g_selectedEntity.lock())
 	{
-		bool isSelectedentity = selectedentity->GetID() == entity->GetID();
+		bool isSelectedentity = selectedEntity->GetID() == entity->GetID();
 		node_flags |= isSelectedentity ? ImGuiTreeNodeFlags_Selected : 0;
 
 		// Expand to show entity, if it was clicked during this frame
 		if (m_expandToShowentity)
 		{
 			// If the selected entity is a descendant of the this entity, start expanding (this can happen if the user clicks on something in the 3D scene)
-			if (selectedentity->GetTransform_PtrRaw()->IsDescendantOf(entity->GetTransform_PtrRaw()))
+			if (selectedEntity->GetTransform_PtrRaw()->IsDescendantOf(entity->GetTransform_PtrRaw()))
 			{
 				ImGui::SetNextTreeNodeOpen(true);
 
@@ -278,7 +278,7 @@ void Widget_World::SetSelectedEntity(std::shared_ptr<Directus::Entity> entity, b
 	// If the update comes from this widget, let the engine know about it
 	if (fromEditor)
 	{
-		_Widget_World::g_world->SetSelectedentity(entity);
+		EditorHelper::Get().g_selectedEntity = entity;
 	}
 
 	Widget_Properties::Inspect(entity);
@@ -295,7 +295,7 @@ void Widget_World::Popup_ContextMenu()
 	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
 		return;
 
-	auto selectedentity	= _Widget_World::g_world->GetSelectedentity();
+	auto selectedentity = EditorHelper::Get().g_selectedEntity.lock();
 	bool onentity		= selectedentity != nullptr;
 
 	if (onentity) if (ImGui::MenuItem("Copy"))
@@ -427,7 +427,7 @@ void Widget_World::Popup_EntityRename()
 
 	if (ImGui::BeginPopup("##RenameEntity"))
 	{
-		auto selectedentity = _Widget_World::g_world->GetSelectedentity();
+		auto selectedentity = EditorHelper::Get().g_selectedEntity.lock();
 		if (!selectedentity)
 		{
 			ImGui::CloseCurrentPopup();
@@ -456,7 +456,7 @@ void Widget_World::HandleKeyShortcuts()
 {
 	if (_Widget_World::g_input->GetKey(Delete))
 	{
-		Action_Entity_Delete(_Widget_World::g_world->GetSelectedentity());
+		Action_Entity_Delete(EditorHelper::Get().g_selectedEntity.lock());
 	}
 }
 
@@ -468,7 +468,7 @@ void Widget_World::Action_Entity_Delete(shared_ptr<Entity> entity)
 Entity* Widget_World::Action_Entity_CreateEmpty()
 {
 	auto entity = _Widget_World::g_world->Entity_Create().get();
-	if (auto selectedentity = _Widget_World::g_world->GetSelectedentity())
+	if (auto selectedentity = EditorHelper::Get().g_selectedEntity.lock())
 	{
 		entity->GetTransform_PtrRaw()->SetParent(selectedentity->GetTransform_PtrRaw());
 	}

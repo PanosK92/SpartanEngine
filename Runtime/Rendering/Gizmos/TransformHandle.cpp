@@ -186,7 +186,7 @@ namespace Directus
 			m_handle_xyz.UpdateInput(m_type, entity->GetTransform_PtrRaw(), m_input);
 		}
 
-		return m_handle_x.isEditing ||  m_handle_y.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing;
+		return m_handle_x.isEditing || m_handle_y.isEditing || m_handle_z.isEditing || m_handle_xyz.isEditing;
 	}
 
 	const Matrix& TransformHandle::GetTransform(const Vector3& axis) const

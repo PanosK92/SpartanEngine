@@ -144,16 +144,6 @@ namespace Directus
 		void SetResolution(unsigned int width, unsigned int height);
 		//===========================================================
 
-		//= MISC ==========================================================================
-		void* GetFrameShaderResource();
-		const std::shared_ptr<RHI_Device>& GetRHIDevice() { return m_rhiDevice; }
-		const std::shared_ptr<RHI_Pipeline>& GetRHIPipeline() { return m_rhiPipeline; }
-		static bool IsRendering() { return m_isRendering; }
-		uint64_t GetFrameNum() { return m_frameNum; }
-		std::shared_ptr<Camera> GetCamera() { return m_camera; }
-		unsigned int GetMaxResolution() { return m_maxResolution; }
-		//=================================================================================
-
 		//= Graphics Settings ====================================================================================================================================================
 		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;
 		float m_gamma					= 2.2f;
@@ -170,15 +160,27 @@ namespace Directus
 		float m_motionBlurStrength		= 2.0f;		// Strength of the motion blur
 		//========================================================================================================================================================================
 
-		//= Gizmo Settings ======================
+		//= EDITOR ====================================================================
+		// Transform gizmo
 		float m_gizmo_transform_size	= 0.015f;
 		float m_gizmo_transform_speed	= 12.0f;
-		//=======================================
+		std::shared_ptr<Entity>& SnapTransformGizmoTo(std::shared_ptr<Entity>& entity);
+		//=============================================================================
 		
 		// DEBUG BUFFER ===============================================================
 		void SetDebugBuffer(RendererDebug_Buffer buffer)	{ m_debugBuffer = buffer; }
 		RendererDebug_Buffer GetDebugBuffer()				{ return m_debugBuffer; }
 		//=============================================================================
+
+		//= MISC ==========================================================================
+		void* GetFrameShaderResource();
+		const std::shared_ptr<RHI_Device>& GetRHIDevice()		{ return m_rhiDevice; }
+		const std::shared_ptr<RHI_Pipeline>& GetRHIPipeline()	{ return m_rhiPipeline; }
+		static bool IsRendering()								{ return m_isRendering; }
+		uint64_t GetFrameNum()									{ return m_frameNum; }
+		std::shared_ptr<Camera> GetCamera()						{ return m_camera; }
+		unsigned int GetMaxResolution()							{ return m_maxResolution; }
+		//=================================================================================
 
 	private:
 		void CreateDepthStencilStates();
@@ -227,12 +229,6 @@ namespace Directus
 		void Pass_Gizmos(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_PerformanceMetrics(std::shared_ptr<RHI_RenderTexture>& texOut);
 		//=======================================================================================================================================================
-
-		//= RESOLUTION & VIEWPORT =======================================
-		Math::Vector2 m_resolution		= Math::Vector2(1920, 1080);
-		RHI_Viewport m_viewport			= RHI_Viewport(0, 0, 1920, 1080);
-		unsigned int m_maxResolution	= 16384;
-		//===============================================================
 
 		//= RENDER TEXTURES ===========================================
 		// 1/1
@@ -325,43 +321,52 @@ namespace Directus
 		std::vector<RHI_Vertex_PosCol> m_linesList_depthDisabled;
 		//=======================================================
 
-		//= EDITOR =======================================
-		std::unique_ptr<Transform_Gizmo> m_transformGizmo;
-		std::unique_ptr<Grid> m_grid;
-		Math::Rectangle m_gizmoRectLight;
-		//================================================
+		//= GIZMOS ========================================
+		std::unique_ptr<Transform_Gizmo> m_gizmo_transform;
+		std::unique_ptr<Grid> m_gizmo_grid;
+		Math::Rectangle m_gizmo_light_rect;
+		//=================================================
 
-		//= CORE ===================================
+		//= RESOLUTION & VIEWPORT =======================================
+		Math::Vector2 m_resolution		= Math::Vector2(1920, 1080);
+		RHI_Viewport m_viewport			= RHI_Viewport(0, 0, 1920, 1080);
+		unsigned int m_maxResolution	= 16384;
+		//===============================================================
+
+		//= CORE ===============================================
+		Math::Rectangle m_quad;
+		std::unique_ptr<GBuffer> m_gbuffer;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 		std::shared_ptr<RHI_Pipeline> m_rhiPipeline;
 		std::unique_ptr<RHI_SwapChain> m_swapChain;
-		//==========================================
-
-		//= MISC ========================================================
-		Light* GetLightDirectional();
-		std::unique_ptr<GBuffer> m_gbuffer;	
-		Math::Rectangle m_quad;
-		std::unordered_map<RenderableType, std::vector<Entity*>> m_entities;
+		std::unique_ptr<Font> m_font;	
 		Math::Matrix m_view;
 		Math::Matrix m_viewBase;
 		Math::Matrix m_projection;
 		Math::Matrix m_projectionOrthographic;
 		Math::Matrix m_viewProjection;
 		Math::Matrix m_viewProjection_Orthographic;
+		Math::Vector2 m_taa_jitter;
+		Math::Vector2 m_taa_jitterPrevious;
+		RendererDebug_Buffer m_debugBuffer = RendererDebug_None;
+		unsigned long m_flags = 0;
+		//======================================================
+
+		//= ENTITIES/COMPONENTS ============================================
+		Light* GetLightDirectional();
+		std::unordered_map<RenderableType, std::vector<Entity*>> m_entities;
 		float m_nearPlane;
 		float m_farPlane;
 		std::shared_ptr<Camera> m_camera;
 		std::shared_ptr<Skybox> m_skybox;
-		static bool m_isRendering;
-		std::unique_ptr<Font> m_font;	
-		unsigned long m_flags;
+		//==================================================================
+
+		//= STATS/PROFILING ======
+		Profiler* m_profiler;
 		uint64_t m_frameNum;
 		bool m_isOddFrame;
-		Math::Vector2 m_taa_jitter;
-		Math::Vector2 m_taa_jitterPrevious;
-		Profiler* m_profiler;
-		RendererDebug_Buffer m_debugBuffer = RendererDebug_None;
-		//===============================================================
+		static bool m_isRendering;
+		//========================
 		
 		// Global buffer (holds what is needed by almost every shader)
 		struct ConstantBuffer_Global

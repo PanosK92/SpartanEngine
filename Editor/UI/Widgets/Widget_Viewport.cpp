@@ -95,7 +95,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	);
 
 	// Update engine's viewport
-	_Widget_Viewport::g_renderer->viewport_editorOffset = EditorHelper::ToVector2(ImGui::GetWindowPos()) + Vector2(_Widget_Viewport::g_windowPadding);
+	_Widget_Viewport::g_renderer->viewport_editorOffset = Vector2(ImGui::GetWindowPos()) + _Widget_Viewport::g_windowPadding;
 	_Widget_Viewport::g_renderer->SetViewport(RHI_Viewport(0.0f, 0.0f, (float)width, (float)height));
 
 	// Update engine's resolution
@@ -107,9 +107,9 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	m_timeSinceLastResChange += deltaTime;
 
 	// If this widget was clicked, make the engine pick an entity
-	if (ImGui::IsItemClicked(0))
+	if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered())
 	{
-		_Widget_Viewport::g_world->Pickentity();
+		EditorHelper::Get().PickEntity();
 	}
 
 	// Handle model drop

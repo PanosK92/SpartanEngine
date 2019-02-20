@@ -113,8 +113,8 @@ namespace Directus
 		m_profiler		= m_context->GetSubsystem<Profiler>().get();
 
 		// Editor specific
-		m_grid				= make_unique<Grid>(m_rhiDevice);
-		m_transformGizmo	= make_unique<Transform_Gizmo>(m_context);
+		m_gizmo_grid				= make_unique<Grid>(m_rhiDevice);
+		m_gizmo_transform	= make_unique<Transform_Gizmo>(m_context);
 
 		// Create a constant buffer that will be used for most shaders
 		m_bufferGlobal = make_shared<RHI_ConstantBuffer>(m_rhiDevice, static_cast<unsigned int>(sizeof(ConstantBuffer_Global)));
@@ -396,6 +396,11 @@ namespace Directus
 		m_rhiPipeline->SetBlendState(m_blend_disabled);
 		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhiPipeline->Bind();
+	}
+
+	shared_ptr<Entity>& Renderer::SnapTransformGizmoTo(shared_ptr<Entity>& entity)
+	{
+		return m_gizmo_transform->SetSelectedEntity(entity);
 	}
 
 	void* Renderer::GetFrameShaderResource()

@@ -135,8 +135,6 @@ namespace Directus
 		m_entitiesPrimary.clear();
 		m_entitiesPrimary.shrink_to_fit();
 		
-		m_entity_selected.reset();
-
 		// Don't clear secondary m_entitiesSecondary as they might be used by the renderer
 	}
 	//=========================================================================================================
@@ -298,7 +296,7 @@ namespace Directus
 		return m_entitiesPrimary.emplace_back(entity);
 	}
 
-	bool World::entity_Exists(const shared_ptr<Entity>& entity)
+	bool World::Entity_Exists(const shared_ptr<Entity>& entity)
 	{
 		if (!entity)
 			return false;
@@ -311,12 +309,6 @@ namespace Directus
 	{
 		if (!entity)
 			return;
-
-		// If the entity to be removed is the entity that is currently selected, make sure to lose the reference
-		if (entity->GetID() == m_entity_selected->GetID())
-		{
-			m_entity_selected = nullptr;
-		}
 
 		// remove any descendants
 		vector<Transform*> children = entity->GetTransform_PtrRaw()->GetChildren();
@@ -384,22 +376,9 @@ namespace Directus
 
 		return m_entity_empty;
 	}
-
-	void World::Pickentity()
-	{
-		auto camera = m_context->GetSubsystem<Renderer>()->GetCamera();
-		if (!camera)
-			return;
-
-		if (camera->Pick(m_input->GetMousePosition(), m_entity_selected))
-		{
-			FIRE_EVENT_DATA(Event_World_EntitySelected, m_entity_selected);
-		}
-	}
-
 	//===================================================================================================
 
-	//= COMMON entity CREATION ========================================================================
+	//= COMMON ENTITY CREATION ========================================================================
 	shared_ptr<Entity>& World::CreateSkybox()
 	{
 		shared_ptr<Entity>& skybox = Entity_Create();
