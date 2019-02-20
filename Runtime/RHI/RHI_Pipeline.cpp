@@ -376,11 +376,7 @@ namespace Directus
 
 				if (m_depthStencilView)
 				{
-					float depth = m_viewport.GetMaxDepth();
-					#if REVERSE_Z == 1
-					depth = 1.0f - depth;
-					#endif
-
+					float depth = Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
 					m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, depth, 0);
 				}
 			}

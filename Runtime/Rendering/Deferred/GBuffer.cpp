@@ -60,10 +60,7 @@ namespace Directus
 
 	void GBuffer::Clear()
 	{
-		float depth = 1.0f;
-		#if REVERSE_Z == 1
-		depth = 0.0f;
-		#endif
+		float depth = Settings::Get().GetReverseZ() ? 0.0f : 1.0f;
 
 		m_renderTargets[GBuffer_Target_Albedo]->Clear(0, 0, 0, 0);
 		m_renderTargets[GBuffer_Target_Normal]->Clear(0, 0, 0, 0);

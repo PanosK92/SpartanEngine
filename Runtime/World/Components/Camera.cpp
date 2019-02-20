@@ -84,11 +84,7 @@ namespace Directus
 		ComputeViewMatrix();
 		ComputeProjection();
 
-		#if REVERSE_Z == 1
-		m_frustrum.Construct(GetViewMatrix(), GetProjectionMatrix(), GetNearPlane());
-		#else
-		m_frustrum.Construct(GetViewMatrix(), GetProjectionMatrix(), GetFarPlane());
-		#endif
+		m_frustrum.Construct(GetViewMatrix(), GetProjectionMatrix(), Settings::Get().GetReverseZ() ? GetNearPlane() : GetFarPlane());
 
 		m_isDirty = false;
 	}
