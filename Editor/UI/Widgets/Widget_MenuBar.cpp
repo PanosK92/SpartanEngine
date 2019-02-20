@@ -178,6 +178,7 @@ void Widget_MenuBar::ShowAboutWindow()
 
 	ImGui::Separator();
 
+	ImGui::BeginChildFrame(ImGui::GetID("about_license"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 15.5f), ImGuiWindowFlags_NoMove);
 	ImGui::Text("MIT License");
 	ImGui::Text("Permission is hereby granted, free of charge, to any person obtaining a copy");
 	ImGui::Text("of this software and associated documentation files(the \"Software\"), to deal");
@@ -193,45 +194,26 @@ void Widget_MenuBar::ShowAboutWindow()
 	ImGui::Text("COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER");
 	ImGui::Text("IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN");
 	ImGui::Text("CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
+	ImGui::EndChildFrame();
 
 	ImGui::Separator();
 
 	ImGui::Text("Third party libraries");
+	auto Library = [](const char* name, const string& version, const char* url)
+	{
+		ImGui::BulletText(name);
+		ImGui::SameLine(120); ImGui::Text(("v" + version).c_str());
+		ImGui::SameLine(200); ImGui::PushID(url);  if (ImGui::Button("URL")) { FileSystem::OpenDirectoryWindow(url); } ImGui::PopID();
+	};
 
-	static float columnA = 120;
-	static float columnB = 200;
-
-	ImGui::BulletText("AngelScript");
-	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionAngelScript).c_str()); ImGui::SameLine(columnB);
-	ImGui::PushID("Button_AngelScript"); if (ImGui::Button("Website")) { FileSystem::OpenDirectoryWindow("https://www.angelcode.com/angelscript/"); } ImGui::PopID();
-
-	ImGui::BulletText("Assimp");
-	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionAssimp).c_str()); ImGui::SameLine(columnB);
-	ImGui::PushID("Button_Assimp"); if (ImGui::Button("GitHub")) { FileSystem::OpenDirectoryWindow("https://github.com/assimp/assimp"); } ImGui::PopID();
-
-	ImGui::BulletText("Bullet");
-	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionBullet).c_str()); ImGui::SameLine(columnB);
-	ImGui::PushID("Button_Bullet"); if (ImGui::Button("GitHub")) { FileSystem::OpenDirectoryWindow("https://github.com/bulletphysics/bullet3"); } ImGui::PopID();
-
-	ImGui::BulletText("FMOD");
-	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionFMOD).c_str()); ImGui::SameLine(columnB);
-	ImGui::PushID("Button_FMOD"); if (ImGui::Button("Website")) { FileSystem::OpenDirectoryWindow("https://www.fmod.com/"); } ImGui::PopID();
-
-	ImGui::BulletText("FreeImage");
-	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionFreeImage).c_str()); ImGui::SameLine(columnB);
-	ImGui::PushID("Button_FreeImage"); if (ImGui::Button("SourceForge")) { FileSystem::OpenDirectoryWindow("https://sourceforge.net/projects/freeimage/files/Source%20Distribution/"); } ImGui::PopID();
-
-	ImGui::BulletText("FreeType");
-	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionFreeType).c_str()); ImGui::SameLine(columnB);
-	ImGui::PushID("Button_FreeType"); if (ImGui::Button("Website")) { FileSystem::OpenDirectoryWindow("https://www.freetype.org/"); } ImGui::PopID();
-
-	ImGui::BulletText("ImGui");	
-	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionImGui).c_str()); ImGui::SameLine(columnB);
-	ImGui::PushID("Button_ImGui"); if (ImGui::Button("GitHub")) { FileSystem::OpenDirectoryWindow("https://github.com/ocornut/imgui"); } ImGui::PopID();
-
-	ImGui::BulletText("PugiXML");
-	ImGui::SameLine(columnA); ImGui::Text(("v" + Settings::Get().m_versionPugiXML).c_str()); ImGui::SameLine(columnB);
-	ImGui::PushID("Button_PugiXML");  if (ImGui::Button("GitHub")) { FileSystem::OpenDirectoryWindow("https://github.com/zeux/pugixml"); } ImGui::PopID();
+	Library("AngelScript",	Settings::Get().m_versionAngelScript,	"https://www.angelcode.com/angelscript/");
+	Library("Assimp",		Settings::Get().m_versionAssimp,		"https://github.com/assimp/assimp");
+	Library("Bullet",		Settings::Get().m_versionBullet,		"https://github.com/bulletphysics/bullet3");
+	Library("FMOD",			Settings::Get().m_versionFMOD,			"https://www.fmod.com/");
+	Library("FreeImage",	Settings::Get().m_versionFreeImage,		"https://sourceforge.net/projects/freeimage/files/Source%20Distribution/");
+	Library("FreeType",		Settings::Get().m_versionFreeType,		"https://www.freetype.org/");
+	Library("ImGui",		Settings::Get().m_versionImGui,			"https://github.com/ocornut/imgui");
+	Library("PugiXML",		Settings::Get().m_versionPugiXML,		"https://github.com/zeux/pugixml");
 
 	ImGui::End();
 }

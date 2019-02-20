@@ -57,14 +57,32 @@ namespace Directus
 
 	}
 
-	bool Transform_Gizmo::Update(const shared_ptr<Entity>& entity, Camera* camera, float handle_size, float handle_speed)
+	std::shared_ptr<Entity>& Transform_Gizmo::SetSelectedEntity(std::shared_ptr<Entity>& entity)
 	{
-		// Switch between handles with W, E and R
+		// Update picked entity only when it's not being edited
+		if (!m_isEditing)
+		{
+			m_entity_selected = entity;
+		}
+
+		return m_entity_selected;
+	}
+
+	bool Transform_Gizmo::Update(Camera* camera, float handle_size, float handle_speed)
+	{
+		// If there is no camera, don't even bother
+		if (!camera || !m_entity_selected)
+		{
+			m_isEditing = false;
+			return false;
+		}
+
+		// Switch between position, rotation and scale handles, with W, E and R respectively
 		if (m_input->GetKeyDown(W))
 		{
 			m_type = TransformHandle_Position;
 		}
-		else if(m_input->GetKeyDown(E))
+		else if (m_input->GetKeyDown(E))
 		{
 			m_type = TransformHandle_Scale;
 		}
@@ -73,40 +91,21 @@ namespace Directus
 			m_type = TransformHandle_Rotation;
 		}
 
-		// If there is no camera, don't even bother
-		if (!camera)
-			return false;
-
-		// Don't erase picked entity if it's currently being edited
-		if (!entity)
+		// Update appropriate handle
+		if (m_type == TransformHandle_Position)
 		{
-			m_selectedentity = m_isEditing ? m_selectedentity : nullptr;
+			m_isEditing = m_handle_position.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
+		}
+		else if (m_type == TransformHandle_Scale)
+		{
+			m_isEditing = m_handle_scale.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
+		}
+		else if (m_type == TransformHandle_Rotation)
+		{
+			m_isEditing = m_handle_rotation.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
 		}
 
-		// Update picked entity only if it's not being edited
-		if (!m_isEditing)
-		{
-			m_selectedentity = entity;
-		}
-
-		// If there is a valid entity, update the handle
-		if (m_selectedentity)
-		{
-			if (m_type == TransformHandle_Position)
-			{
-				m_isEditing = m_handle_position.Update(m_space, m_selectedentity, camera, handle_size, handle_speed);
-			}
-			else if (m_type == TransformHandle_Scale)
-			{
-				m_isEditing = m_handle_scale.Update(m_space, m_selectedentity, camera, handle_size, handle_speed);
-			}
-			else if (m_type == TransformHandle_Rotation)
-			{
-				m_isEditing = m_handle_rotation.Update(m_space, m_selectedentity, camera, handle_size, handle_speed);
-			}
-		}
-
-		return m_selectedentity != nullptr;
+		return true;
 	}
 
 	unsigned int Transform_Gizmo::GetIndexCount()

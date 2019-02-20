@@ -50,8 +50,7 @@ enum Event_Type
 	Event_World_Resolve,		// The world should resolve
 	Event_World_Submit,			// The world is submitting entities to the renderer
 	Event_World_Stop,			// The world should stop ticking
-	Event_World_Start,			// The world should start ticking
-	Event_World_EntitySelected	// An entity was clicked in the viewport
+	Event_World_Start			// The world should start ticking
 };
 
 //= MACROS =====================================================================================================

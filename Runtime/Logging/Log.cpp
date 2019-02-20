@@ -85,6 +85,11 @@ namespace Directus
 		entity.expired() ? Write("Null", type) : Write(entity.lock()->GetName(), type);
 	}
 
+	void Log::Write(const std::shared_ptr<Entity>& entity, Log_Type type)
+	{
+		entity ? Write(entity->GetName(), type) : Write("Null", type);
+	}
+
 	void Log::Write(const Math::Vector2& value, Log_Type type)
 	{
 		Write(value.ToString(), type);

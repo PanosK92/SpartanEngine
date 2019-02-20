@@ -110,6 +110,7 @@ namespace Directus
 		template<typename T> static void Write(std::weak_ptr<T> ptr, Log_Type type)		{ Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
 		template<typename T> static void Write(std::shared_ptr<T> ptr, Log_Type type)	{ Write(ptr ? typeid(ptr).name() : "Null", type); }
 		static void Write(const std::weak_ptr<Entity>& entity, Log_Type type);
+		static void Write(const std::shared_ptr<Entity>& entity, Log_Type type);
 
 		static std::string m_callerName;
 

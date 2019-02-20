@@ -879,11 +879,11 @@ namespace Directus
 			// Grid
 			if (drawGrid)
 			{
-				m_rhiPipeline->SetIndexBuffer(m_grid->GetIndexBuffer());
-				m_rhiPipeline->SetVertexBuffer(m_grid->GetVertexBuffer());
+				m_rhiPipeline->SetIndexBuffer(m_gizmo_grid->GetIndexBuffer());
+				m_rhiPipeline->SetVertexBuffer(m_gizmo_grid->GetVertexBuffer());
 				m_rhiPipeline->SetBlendState(m_blend_enabled);
-				SetDefault_Buffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_grid->ComputeWorldMatrix(m_camera->GetTransform()) * viewProjection_unjittered);
-				m_rhiPipeline->DrawIndexed(m_grid->GetIndexCount(), 0, 0);
+				SetDefault_Buffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y, m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * viewProjection_unjittered);
+				m_rhiPipeline->DrawIndexed(m_gizmo_grid->GetIndexCount(), 0, 0);
 			}
 
 			// Lines
@@ -996,16 +996,16 @@ namespace Directus
 					float texWidth = lightTex->GetWidth()	* scale;
 					float texHeight = lightTex->GetHeight()	* scale;
 					Rectangle rectangle = Rectangle(position_light_screen.x - texWidth * 0.5f, position_light_screen.y - texHeight * 0.5f, texWidth, texHeight);
-					if (rectangle != m_gizmoRectLight)
+					if (rectangle != m_gizmo_light_rect)
 					{
-						m_gizmoRectLight = rectangle;
-						m_gizmoRectLight.CreateBuffers(this);
+						m_gizmo_light_rect = rectangle;
+						m_gizmo_light_rect.CreateBuffers(this);
 					}
 
 					SetDefault_Buffer((unsigned int)texWidth, (unsigned int)texWidth, m_viewProjection_Orthographic);
 					m_rhiPipeline->SetTexture(lightTex);
-					m_rhiPipeline->SetIndexBuffer(m_gizmoRectLight.GetIndexBuffer());
-					m_rhiPipeline->SetVertexBuffer(m_gizmoRectLight.GetVertexBuffer());
+					m_rhiPipeline->SetIndexBuffer(m_gizmo_light_rect.GetIndexBuffer());
+					m_rhiPipeline->SetVertexBuffer(m_gizmo_light_rect.GetVertexBuffer());
 					m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 				}
 
@@ -1016,40 +1016,40 @@ namespace Directus
 		// Transform
 		if (render_transform)
 		{
-			if (m_transformGizmo->Update(m_context->GetSubsystem<World>()->GetSelectedentity(), m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
+			if (m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 			{
 				m_rhiDevice->EventBegin("Gizmo_Transform");
 
 				m_rhiPipeline->SetShader(m_vps_gizmoTransform);
-				m_rhiPipeline->SetIndexBuffer(m_transformGizmo->GetIndexBuffer());
-				m_rhiPipeline->SetVertexBuffer(m_transformGizmo->GetVertexBuffer());
+				m_rhiPipeline->SetIndexBuffer(m_gizmo_transform->GetIndexBuffer());
+				m_rhiPipeline->SetVertexBuffer(m_gizmo_transform->GetVertexBuffer());
 				SetDefault_Buffer((unsigned int)m_resolution.x, (unsigned int)m_resolution.y);
 
 				// Axis - X
-				auto buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle().GetTransform(Vector3::Right), m_transformGizmo->GetHandle().GetColor(Vector3::Right));
+				auto buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Right), m_gizmo_transform->GetHandle().GetColor(Vector3::Right));
 				m_vps_gizmoTransform->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_vps_gizmoTransform->GetConstantBuffer(), 1, Buffer_Global);
-				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+				m_rhiPipeline->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 
 				// Axis - Y
-				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle().GetTransform(Vector3::Up), m_transformGizmo->GetHandle().GetColor(Vector3::Up));
+				buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Up), m_gizmo_transform->GetHandle().GetColor(Vector3::Up));
 				m_vps_gizmoTransform->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_vps_gizmoTransform->GetConstantBuffer(), 1, Buffer_Global);
-				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+				m_rhiPipeline->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 
 				// Axis - Z
-				buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle().GetTransform(Vector3::Forward), m_transformGizmo->GetHandle().GetColor(Vector3::Forward));
+				buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward), m_gizmo_transform->GetHandle().GetColor(Vector3::Forward));
 				m_vps_gizmoTransform->UpdateBuffer(&buffer);
 				m_rhiPipeline->SetConstantBuffer(m_vps_gizmoTransform->GetConstantBuffer(), 1, Buffer_Global);
-				m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+				m_rhiPipeline->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 
 				// Axes - XYZ
-				if (m_transformGizmo->DrawXYZ())
+				if (m_gizmo_transform->DrawXYZ())
 				{
-					buffer = Struct_Matrix_Vector3(m_transformGizmo->GetHandle().GetTransform(Vector3::One), m_transformGizmo->GetHandle().GetColor(Vector3::One));
+					buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::One), m_gizmo_transform->GetHandle().GetColor(Vector3::One));
 					m_vps_gizmoTransform->UpdateBuffer(&buffer);
 					m_rhiPipeline->SetConstantBuffer(m_vps_gizmoTransform->GetConstantBuffer(), 1, Buffer_Global);
-					m_rhiPipeline->DrawIndexed(m_transformGizmo->GetIndexCount(), 0, 0);
+					m_rhiPipeline->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 				}
 
 				m_rhiDevice->EventEnd();
