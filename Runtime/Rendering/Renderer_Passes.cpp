@@ -71,6 +71,7 @@ namespace Directus
 		SetDefault_Pipeline_State();
 		m_rhiPipeline->SetShader(m_vps_depth);
 		m_rhiPipeline->SetViewport(shadowMap->GetViewport());
+		m_rhiPipeline->SetDepthStencilState(m_depthStencil_enabled);
 
 		// Variables that help reduce state changes
 		unsigned int currentlyBoundGeometry = 0;

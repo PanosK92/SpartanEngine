@@ -31,8 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	#define REVERSE_Z 1
-
 	struct DisplayMode
 	{
 		DisplayMode() {}
@@ -137,6 +135,7 @@ namespace Directus
 		unsigned int ThreadCountMax_Get()						{ return m_maxThreadCount; }	
 		const std::string& Gpu_GetName()						{ return m_primaryAdapter ? m_primaryAdapter->name : m_emptyString; }
 		unsigned int Gpu_GetMemory()							{ return m_primaryAdapter ? m_primaryAdapter->memory : 0; }
+		bool GetReverseZ()										{ return m_reverseZ; }
 		//===========================================================================================================================
 
 		// Third party lib versions
@@ -163,6 +162,7 @@ namespace Directus
 		float m_fpsLimit					= -1.0f;
 		float m_fpsTarget					= 165.0f;
 		FPS_Policy m_fpsPolicy				= FPS_MonitorMatch;
+		bool m_reverseZ						= true;
 
 		const DisplayAdapter* m_primaryAdapter = nullptr;
 		std::vector<DisplayMode> m_displayModes;

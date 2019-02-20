@@ -60,11 +60,7 @@ namespace Directus
 		{
 			desc.DepthEnable					= true;
 			desc.DepthWriteMask					= D3D11_DEPTH_WRITE_MASK_ALL;
-		#if REVERSE_Z == 1
-			desc.DepthFunc						= D3D11_COMPARISON_GREATER_EQUAL;
-		#else
-			desc.DepthFunc						= D3D11_COMPARISON_LESS_EQUAL;
-		#endif
+			desc.DepthFunc						= Settings::Get().GetReverseZ() ? D3D11_COMPARISON_GREATER_EQUAL : D3D11_COMPARISON_LESS_EQUAL;
 			desc.StencilEnable					= false;
 			desc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
 			desc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;
