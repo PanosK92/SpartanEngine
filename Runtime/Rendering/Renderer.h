@@ -152,7 +152,7 @@ namespace Directus
 		float m_fxaaEdgeThreshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
 		float m_fxaaEdgeThresholdMin	= 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Algorithm's default: 0.0833f
 		// Bloom
-		float m_bloomIntensity			= 0.02f;	// The intensity of the bloom
+		float m_bloomIntensity			= 0.4f;	// The intensity of the bloom
 		// Sharpening
 		float m_sharpenStrength			= 1.0f;		// Strength of the sharpening
 		float m_sharpenClamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
@@ -203,7 +203,7 @@ namespace Directus
 		void Renderables_Sort(std::vector<Entity*>* renderables);
 		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cullMode, RHI_Fill_Mode fillMode);
 
-		//= PASSES ==============================================================================================================================================
+		//= PASSES ===================================================================================================================================================
 		void Pass_DepthDirectionalLight(Light* directionalLight);
 		void Pass_GBuffer();
 		void Pass_PreLight(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, std::shared_ptr<RHI_RenderTexture>& texOut2);
@@ -221,14 +221,14 @@ namespace Directus
 		void Pass_Dithering(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_BlurBox(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
-		void Pass_BlurGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma);
-		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma, float pixelStride);
+		void Pass_BlurGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma, float pixelStride = 1.0f);
+		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_RenderTexture>& texIn, std::shared_ptr<RHI_RenderTexture>& texOut, float sigma, float pixelStride = 1.0f);
 		void Pass_SSAO(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_ShadowMapping(std::shared_ptr<RHI_RenderTexture>& texOut, Light* inDirectionalLight);
 		void Pass_Lines(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_Gizmos(std::shared_ptr<RHI_RenderTexture>& texOut);
 		void Pass_PerformanceMetrics(std::shared_ptr<RHI_RenderTexture>& texOut);
-		//=======================================================================================================================================================
+		//============================================================================================================================================================
 
 		//= RENDER TEXTURES ===========================================
 		// 1/1
@@ -271,6 +271,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_ps_toneMapping;
 		std::shared_ptr<RHI_Shader> m_ps_gammaCorrection;
 		std::shared_ptr<RHI_Shader> m_ps_dithering;
+		std::shared_ptr<RHI_Shader> m_ps_downsampleBox;
 		std::shared_ptr<RHI_Shader> m_ps_debugNormal;
 		std::shared_ptr<RHI_Shader> m_ps_debugVelocity;
 		std::shared_ptr<RHI_Shader> m_ps_debugDepth;

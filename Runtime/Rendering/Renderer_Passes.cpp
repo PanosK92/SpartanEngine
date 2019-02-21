@@ -528,7 +528,7 @@ namespace Directus
 		m_rhiDevice->EventEnd();
 	}
 
-	void Renderer::Pass_BlurGaussian(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut, float sigma)
+	void Renderer::Pass_BlurGaussian(shared_ptr<RHI_RenderTexture>& texIn, shared_ptr<RHI_RenderTexture>& texOut, float sigma, float pixelStride)
 	{
 		if (texIn->GetWidth() != texOut->GetWidth() ||
 			texIn->GetHeight() != texOut->GetHeight() ||
@@ -545,7 +545,7 @@ namespace Directus
 		m_rhiPipeline->SetPixelShader(m_ps_blurGaussian);
 
 		// Horizontal Gaussian blur	
-		auto direction = Vector2(1.0f, 0.0f);
+		auto direction = Vector2(pixelStride, 0.0f);
 		SetDefault_Pipeline_State();	
 		SetDefault_Buffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhiPipeline->SetRenderTarget(texOut);
@@ -555,7 +555,7 @@ namespace Directus
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
-		direction = Vector2(0.0f, 1.0f);
+		direction = Vector2(0.0f, pixelStride);
 		SetDefault_Pipeline_State();
 		SetDefault_Buffer(texIn->GetWidth(), texIn->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhiPipeline->SetRenderTarget(texIn);
@@ -654,18 +654,28 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhiDevice->EventBegin("Pass_Bloom");
 
-		// Bright pass
+		// Downsample
 		SetDefault_Pipeline_State();
 		SetDefault_Buffer(m_renderTexQuarter_Blur1->GetWidth(), m_renderTexQuarter_Blur1->GetHeight());
 		m_rhiPipeline->SetRenderTarget(m_renderTexQuarter_Blur1);
 		m_rhiPipeline->SetViewport(m_renderTexQuarter_Blur1->GetViewport());
 		m_rhiPipeline->SetTexture(texIn);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
+		m_rhiPipeline->SetPixelShader(m_ps_downsampleBox);
+		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+
+		// Bright pass
+		SetDefault_Pipeline_State();
+		SetDefault_Buffer(m_renderTexQuarter_Blur2->GetWidth(), m_renderTexQuarter_Blur2->GetHeight());
+		m_rhiPipeline->SetRenderTarget(m_renderTexQuarter_Blur2);
+		m_rhiPipeline->SetViewport(m_renderTexQuarter_Blur2->GetViewport());
+		m_rhiPipeline->SetTexture(m_renderTexQuarter_Blur1);
+		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetPixelShader(m_ps_bloomBright);
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		float sigma = 2.0f;
-		Pass_BlurGaussian(m_renderTexQuarter_Blur1, m_renderTexQuarter_Blur2, sigma);
+		Pass_BlurGaussian(m_renderTexQuarter_Blur2, m_renderTexQuarter_Blur1, sigma);
 
 		// Additive blending
 		SetDefault_Pipeline_State();	
@@ -673,7 +683,7 @@ namespace Directus
 		m_rhiPipeline->SetRenderTarget(texOut);
 		m_rhiPipeline->SetViewport(texOut->GetViewport());
 		m_rhiPipeline->SetTexture(texIn);
-		m_rhiPipeline->SetTexture(m_renderTexQuarter_Blur2);
+		m_rhiPipeline->SetTexture(m_renderTexQuarter_Blur1);
 		m_rhiPipeline->SetSampler(m_samplerBilinearClamp);
 		m_rhiPipeline->SetPixelShader(m_ps_bloomBlend);
 		m_rhiPipeline->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
