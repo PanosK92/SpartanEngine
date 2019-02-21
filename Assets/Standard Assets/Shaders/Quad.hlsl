@@ -8,6 +8,7 @@
 #include "ResolveTAA.hlsl"
 #include "MotionBlur.hlsl"
 #include "Dithering.hlsl"
+#include "Scaling.hlsl"
 #define FXAA_PC 1
 #define FXAA_HLSL_5 1
 #define FXAA_QUALITY__PRESET 39
@@ -82,7 +83,11 @@ float4 mainPS(VS_Output input) : SV_TARGET
 	// Requirements: Bilinear sampler
 	color.rgb = LumaSharpen(texCoord, sourceTexture, samplerState, g_resolution, g_sharpen_strength, g_sharpen_clamp);	
 #endif
-	
+
+#if PASS_DOWNSAMPLE_BOX
+	color = Downsample_BoxAntiFlicker(texCoord, g_texelSize, sourceTexture, samplerState);
+#endif
+
 #if PASS_BLUR_BOX
 	color = Blur_Box(texCoord, g_texelSize, g_blur_sigma, sourceTexture, samplerState);
 #endif

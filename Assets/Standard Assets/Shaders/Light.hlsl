@@ -111,12 +111,12 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     }
 
 	//= AMBIENT LIGHT =======================================================
-	float ambient_lightMin	= 0.2f;
+	float ambient_lightMin	= 0.05f;
 	float ambient_occlusion = occlusion_ssao * occlusion_texture;
 	float ambient_light		= saturate(ambient_lightMin * ambient_occlusion);
 	//=======================================================================
 	
-	//= DIRECTIONAL LIGHT ============================================================================================
+	//= DIRECTIONAL LIGHT ====================================================================================================
 	Light directionalLight;
 	
 	// Compute
@@ -127,7 +127,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 
 	// Compute illumination
     finalColor += BRDF(material, directionalLight, normal, camera_to_pixel);
-	//================================================================================================================
+	//========================================================================================================================
 		
 	//= POINT LIGHTS =========================================================
     Light pointLight;

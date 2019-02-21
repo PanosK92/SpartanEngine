@@ -356,6 +356,11 @@ namespace Directus
 		m_ps_dithering->AddDefine("PASS_DITHERING");
 		m_ps_dithering->CompilePixel(shaderDirectory + "Quad.hlsl");
 
+		// Downsample box
+		m_ps_downsampleBox = make_shared<RHI_Shader>(m_rhiDevice);
+		m_ps_downsampleBox->AddDefine("PASS_DOWNSAMPLE_BOX");
+		m_ps_downsampleBox->CompilePixel(shaderDirectory + "Quad.hlsl");
+
 		// Debug Normal
 		m_ps_debugNormal = make_shared<RHI_Shader>(m_rhiDevice);
 		m_ps_debugNormal->AddDefine("DEBUG_NORMAL");
