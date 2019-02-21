@@ -113,7 +113,7 @@ namespace Directus
 		m_profiler		= m_context->GetSubsystem<Profiler>().get();
 
 		// Editor specific
-		m_gizmo_grid				= make_unique<Grid>(m_rhiDevice);
+		m_gizmo_grid		= make_unique<Grid>(m_rhiDevice);
 		m_gizmo_transform	= make_unique<Transform_Gizmo>(m_context);
 
 		// Create a constant buffer that will be used for most shaders
@@ -121,7 +121,7 @@ namespace Directus
 
 		// Line buffer
 		m_vertexBufferLines = make_shared<RHI_VertexBuffer>(m_rhiDevice);
-	
+
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
 		CreateBlendStates();
@@ -470,15 +470,15 @@ namespace Directus
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-			SwapChain_Clear(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+			m_renderTexFull_HDR_Light2->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+			m_isRendering = false;
 			return;
 		}
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-			SwapChain_Clear(m_camera->GetClearColor());
-			SwapChain_Present();
+			m_renderTexFull_HDR_Light2->Clear(m_camera->GetClearColor());
 			m_isRendering = false;
 			return;
 		}
@@ -654,6 +654,7 @@ namespace Directus
 		// Clear previous state
 		m_entities.clear();
 		m_camera = nullptr;
+		m_skybox = nullptr;
 		
 		auto entitiesVec = entitiesVariant.Get<vector<shared_ptr<Entity>>>();
 		for (const auto& entitieshared : entitiesVec)

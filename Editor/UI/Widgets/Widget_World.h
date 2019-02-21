@@ -67,6 +67,7 @@ private:
 	void Action_Entity_CreateConstraint();
 	void Action_Entity_CreateAudioSource();
 	void Action_Entity_CreateAudioListener();
+	void Action_Entity_CreateSkybox();
 	
 	std::shared_ptr<Directus::Entity> m_entity_empty;
 	bool m_expandToShowentity = false;

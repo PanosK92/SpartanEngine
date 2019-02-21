@@ -55,7 +55,7 @@ public:
 	static void Inspect(std::weak_ptr<Directus::Material> material);
 
 	// Inspected resources
-	static std::weak_ptr<Directus::Entity> m_inspectedentity;
+	static std::weak_ptr<Directus::Entity> m_inspectedEntity;
 	static std::weak_ptr<Directus::Material> m_inspectedMaterial;
 
 private:

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
 #include "../../ImGui/Source/imgui_stdlib.h"
+#include "Rendering/Deferred/ShaderVariation.h"
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"
@@ -36,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioListener.h"
 #include "World/Components/Camera.h"
 #include "World/Components/Script.h"
-#include "Rendering/Deferred/ShaderVariation.h"
+#include "World/Components/Skybox.h"
 //=============================================
 
 //= NAMESPACES ==========
@@ -46,7 +47,7 @@ using namespace Math;
 using namespace Helper;
 //=======================
 
-weak_ptr<Entity> Widget_Properties::m_inspectedentity;
+weak_ptr<Entity> Widget_Properties::m_inspectedEntity;
 weak_ptr<Material> Widget_Properties::m_inspectedMaterial;
 
 namespace _Widget_Properties
@@ -71,7 +72,7 @@ namespace ComponentProperty
 			{
 				if (ImGui::MenuItem("Remove"))
 				{
-					if (auto entity = Widget_Properties::m_inspectedentity.lock())
+					if (auto entity = Widget_Properties::m_inspectedEntity.lock())
 					{
 						if (component)
 						{
@@ -152,9 +153,9 @@ void Widget_Properties::Tick(float deltaTime)
 {
 	ImGui::PushItemWidth(ComponentProperty::g_maxWidth);
 
-	if (!m_inspectedentity.expired())
+	if (!m_inspectedEntity.expired())
 	{
-		auto entityPtr = m_inspectedentity.lock().get();
+		auto entityPtr = m_inspectedEntity.lock().get();
 
 		auto transform		= entityPtr->GetComponent<Transform>();
 		auto light			= entityPtr->GetComponent<Light>();
@@ -196,7 +197,7 @@ void Widget_Properties::Tick(float deltaTime)
 
 void Widget_Properties::Inspect(weak_ptr<Entity> entity)
 {
-	m_inspectedentity = entity;
+	m_inspectedEntity = entity;
 
 	if (auto sharedPtr = entity.lock())
 	{
@@ -217,7 +218,7 @@ void Widget_Properties::Inspect(weak_ptr<Entity> entity)
 
 void Widget_Properties::Inspect(weak_ptr<Material> material)
 {
-	m_inspectedentity.reset();
+	m_inspectedEntity.reset();
 	m_inspectedMaterial = material;
 }
 
@@ -992,7 +993,7 @@ void Widget_Properties::ComponentContextMenu_Add()
 {
 	if (ImGui::BeginPopup("##ComponentContextMenu_Add"))
 	{
-		if (auto entity = m_inspectedentity.lock())
+		if (auto entity = m_inspectedEntity.lock())
 		{
 			// CAMERA
 			if (ImGui::MenuItem("Camera"))
@@ -1052,6 +1053,17 @@ void Widget_Properties::ComponentContextMenu_Add()
 
 				ImGui::EndMenu();
 			}
+
+			// ENVIRONMENT
+			if (ImGui::BeginMenu("Environment"))
+			{
+				if (ImGui::MenuItem("Skybox"))
+				{
+					entity->AddComponent<Skybox>();
+				}
+
+				ImGui::EndMenu();
+			}
 		}
 
 		ImGui::EndPopup();
@@ -1062,7 +1074,7 @@ void Widget_Properties::Drop_AutoAddComponents()
 {
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
 	{
-		if (auto scriptComponent = m_inspectedentity.lock()->AddComponent<Script>())
+		if (auto scriptComponent = m_inspectedEntity.lock()->AddComponent<Script>())
 		{
 			scriptComponent->SetScript(get<const char*>(payload->data));
 		}
