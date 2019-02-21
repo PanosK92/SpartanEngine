@@ -74,7 +74,7 @@ namespace Directus
 		//=========================================================================================
 
 	private:
-		//= COMMON entity CREATION =======================
+		//= COMMON ENTITY CREATION =======================
 		std::shared_ptr<Entity>& CreateSkybox();
 		std::shared_ptr<Entity> CreateCamera();
 		std::shared_ptr<Entity>& CreateDirectionalLight();

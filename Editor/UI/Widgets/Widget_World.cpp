@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Renderable.h"
+#include "World/Components/Skybox.h"
 //==========================================
 
 //= NAMESPACES ==========
@@ -414,6 +415,17 @@ void Widget_World::Popup_ContextMenu()
 		ImGui::EndMenu();
 	}
 
+	// ENVIRONMENT
+	if (ImGui::BeginMenu("Environment"))
+	{
+		if (ImGui::MenuItem("Skybox"))
+		{
+			Action_Entity_CreateSkybox();
+		}
+
+		ImGui::EndMenu();
+	}
+
 	ImGui::EndPopup();
 }
 
@@ -582,4 +594,11 @@ void Widget_World::Action_Entity_CreateAudioListener()
 	auto entity = Action_Entity_CreateEmpty();
 	entity->AddComponent<AudioListener>();
 	entity->SetName("AudioListener");
+}
+
+void Widget_World::Action_Entity_CreateSkybox()
+{
+	auto entity = Action_Entity_CreateEmpty();
+	entity->AddComponent<Skybox>();
+	entity->SetName("Skybox");
 }

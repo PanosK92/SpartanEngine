@@ -134,6 +134,8 @@ namespace Directus
 
 		m_entitiesPrimary.clear();
 		m_entitiesPrimary.shrink_to_fit();
+
+		m_isDirty = true;
 		
 		// Don't clear secondary m_entitiesSecondary as they might be used by the renderer
 	}
@@ -383,12 +385,10 @@ namespace Directus
 	{
 		shared_ptr<Entity>& skybox = Entity_Create();
 		skybox->SetName("Skybox");
-		skybox->SetHierarchyVisibility(false);
-		skybox->AddComponent<Skybox>();	
+		skybox->AddComponent<Skybox>();
 
 		return skybox;
 	}
-
 	shared_ptr<Entity> World::CreateCamera()
 	{
 		auto resourceMng		= m_context->GetSubsystem<ResourceCache>();

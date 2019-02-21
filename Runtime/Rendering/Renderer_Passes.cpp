@@ -241,6 +241,7 @@ namespace Directus
 		m_rhiPipeline->SetVertexBuffer(m_quad.GetVertexBuffer());
 
 		// Shadow mapping + Blur
+		bool shadowMapped = false;
 		if (auto lightDir = GetLightDirectional())
 		{
 			if (lightDir->GetCastShadows())
@@ -249,11 +250,12 @@ namespace Directus
 				float sigma = 1.0f;
 				float pixelStride = 1.0f;
 				Pass_BlurBilateralGaussian(texIn_Spare, texOut_Shadows, sigma, pixelStride);
+				shadowMapped = true;
 			}
-			else
-			{
-				texOut_Shadows->Clear(1, 1, 1, 1);
-			}
+		}
+		if (!shadowMapped)
+		{
+			texOut_Shadows->Clear(1, 1, 1, 1);
 		}
 
 		// SSAO + Blur

@@ -227,8 +227,8 @@ namespace Directus
 		}
 
 		//LOGF_INFO("Vulkan_Device::RHI_Device: Feature level %s - %s", featureLevelStr.data(), D3D11_Device::GetAdapterDescription(adapter).data());
-		device		= nullptr;
-		deviceContext = nullptr;
+		device			 nullptr;
+		deviceContext	= nullptr;
 		m_initialized	= false;
 	}
 
@@ -238,119 +238,84 @@ namespace Directus
 		vkDestroyInstance(Vulkan_Device::instance, nullptr);
 	}
 
-	void RHI_Device::Draw(unsigned int vertexCount)
-	{
-		
-	}
-
-	void RHI_Device::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
-	{
-		
-	}
-
-	void RHI_Device::ClearBackBuffer(const Vector4& color)
-	{
-
-	}
-
-	void RHI_Device::ClearRenderTarget(void* renderTarget, const Math::Vector4& color)
-	{
-		
-	}
-
-	void RHI_Device::ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, uint8_t stencil)
-	{
-		
-	}
-
-	void RHI_Device::Present()
-	{
-		
-	}
-
-	void RHI_Device::SetBackBufferAsRenderTarget()
-	{
-		
-	}
-
-	void RHI_Device::SetVertexShader(void* buffer)
-	{
-		
-	}
-
-	void RHI_Device::SetPixelShader(void* buffer)
-	{
-		
-	}
-
-	void RHI_Device::SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, RHI_Buffer_Scope scope, void* const* buffer)
-	{
-		
-	}
-
-	void RHI_Device::SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* const* samplers)
-	{
-		
-	}
-
-	void RHI_Device::SetRenderTargets(unsigned int renderTargetCount, void* const* renderTargets, void* depthStencil)
-	{
-		
-	}
-
-	void RHI_Device::SetTextures(unsigned int startSlot, unsigned int resourceCount, void* const* shaderResources)
-	{
-		
-	}
-
-	bool RHI_Device::SetResolution(int width, int height)
+	bool RHI_Device::Draw(unsigned int vertexCount)
 	{
 		return true;
 	}
 
-	void RHI_Device::SetViewport(const RHI_Viewport& viewport)
-	{
-		
-	}
-
-	bool RHI_Device::SetAlphaBlendingEnabled(bool enable)
+	bool RHI_Device::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
 	{
 		return true;
 	}
 
-	void RHI_Device::EventBegin(const std::string& name)
-	{
-		
-	}
-
-	void RHI_Device::EventEnd()
-	{
-		
-	}
-
-	bool RHI_Device::Profiling_CreateQuery(void** query, RHI_Query_Type type)
+	bool RHI_Device::ClearRenderTarget(void* renderTarget, const Math::Vector4& color)
 	{
 		return true;
 	}
 
-	void RHI_Device::Profiling_QueryStart(void* queryObject)
+	bool RHI_Device::ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, unsigned int stencil)
 	{
-		
+		return true;
 	}
 
-	void RHI_Device::Profiling_QueryEnd(void* queryObject)
+	bool RHI_Device::SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer)
 	{
-		
+		return true;
 	}
 
-	void RHI_Device::Profiling_GetTimeStamp(void* queryObject)
+	bool RHI_Device::SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer)
 	{
-		
+		return true;
 	}
 
-	float RHI_Device::Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd)
+	bool RHI_Device::SetVertexShader(const std::shared_ptr<RHI_Shader>& shader)
 	{
-		return 0.0f;
+		return true;
+	}
+
+	bool RHI_Device::SetPixelShader(const std::shared_ptr<RHI_Shader>& shader)
+	{
+		return true;
+	}
+
+	bool RHI_Device::SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, void* buffer, RHI_Buffer_Scope scope)
+	{
+		return true;
+	}
+
+	bool RHI_Device::SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* samplers)
+	{
+		return true;
+	}
+
+	bool RHI_Device::SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil)
+	{
+		return true;
+	}
+
+	bool RHI_Device::SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources)
+	{
+		return true;
+	}
+
+	bool RHI_Device::SetViewport(const RHI_Viewport& viewport)
+	{
+		return true;
+	}
+
+	bool RHI_Device::SetScissorRectangle(const Math::Rectangle& rectangle)
+	{
+		return true;
+	}
+
+	bool RHI_Device::SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState)
+	{
+		return true;
+	}
+
+	bool RHI_Device::SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState)
+	{
+		return true;
 	}
 
 	bool RHI_Device::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology)
@@ -358,10 +323,55 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetInputLayout(void* inputLayout)
+	bool RHI_Device::SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout)
 	{
 		return true;
 	}
-}
 
+	bool RHI_Device::SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState)
+	{
+
+		return true;
+	}
+
+	void RHI_Device::EventBegin(const std::string& name)
+	{
+
+	}
+
+	void RHI_Device::EventEnd()
+	{
+
+	}
+
+	bool RHI_Device::Profiling_CreateQuery(void** query, RHI_Query_Type type)
+	{
+		return true;
+	}
+
+	bool RHI_Device::Profiling_QueryStart(void* queryObject)
+	{
+		return true;
+	}
+
+	bool RHI_Device::Profiling_QueryEnd(void* queryObject)
+	{
+		return true;
+	}
+
+	bool RHI_Device::Profiling_GetTimeStamp(void* queryObject)
+	{
+		return true;
+	}
+
+	float RHI_Device::Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd)
+	{
+		return 0.0f;
+	}
+
+	void RHI_Device::DetectPrimaryAdapter(RHI_Format format)
+	{
+		
+	}
+}
 #endif

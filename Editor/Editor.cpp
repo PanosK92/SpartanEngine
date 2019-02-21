@@ -243,7 +243,7 @@ void Editor::ApplyStyle()
 	ImGui::StyleColorsDark();
 	ImGuiStyle& style = ImGui::GetStyle();
 
-	float fontSize				= 15.0f;
+	float fontSize				= 16.0f;
 	float roundness				= 2.0f;
 	
 	ImVec4 text					= ImVec4(0.76f, 0.77f, 0.8f, 1.0f);
