@@ -10,11 +10,10 @@ The project is at an early development stage and there is a lot experimentation 
 This means that the wisest thing to do is to approach it as study material, without expecting to make games with it (yet).
 Architectual quality is prioritized over development speed.
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4.jpg)
 Video
 [![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
-# Features (v0.3)
+# Features
 Category       	| Feature                                  	| Details
 :-              | :-                                        | :-
 Importing       | 10+ font file formats support             | Assimp
@@ -51,10 +50,12 @@ General         | Engine rendered platform agnostic editor  | -
 Scripting       | C/C++                                     | Using AngelScript.
 Platform        | Windows 10                                | -
 
-# Features (v0.31) - WIP
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4.jpg)
+
+#### v0.31 (Work-in-Progress)
 Feature     | Completion    | Notes 
 :-          | :-            | :-
-Vulkan      | 1%            | Implement Vulkan which will become the default backend.
+Vulkan      | 1%            | Will become the default rendering backend.
 
 # Roadmap
 - Eye Adaptation.
