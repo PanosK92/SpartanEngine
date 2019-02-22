@@ -28,6 +28,9 @@ TARGET_DIR_DEBUG 		= "../Binaries/Debug"
 INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
 EDITOR_DIR				= "../" .. EDITOR_NAME
 RUNTIME_DIR				= "../" .. RUNTIME_NAME
+VULKAN_PATH				= "C:/VulkanSDK/1.1.97.0/"
+VULKAN_PATH_INCLUDE		= VULKAN_PATH .. "Include"
+VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 
 -- Solution
 	solution (SOLUTION_NAME)
@@ -48,7 +51,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		cppdialect (CPP_VERSION)
 
 -- Includes
-	includedirs { "C:/VulkanSDK/1.1.85.0/Include" }
+	includedirs { VULKAN_PATH_INCLUDE }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
 	includedirs { "../ThirdParty/Bullet_2.88" }
@@ -58,7 +61,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 	includedirs { "../ThirdParty/pugixml_1.9" }
 	
 -- Library directory
-	libdirs { "C:/VulkanSDK/1.1.82.0/Lib" }
+	libdirs { VULKAN_PATH_LIB }
 	libdirs { "../ThirdParty/mvsc141_x64" }
 
 -- 	"Debug"
@@ -123,7 +126,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
 		symbols "On"
-		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}		
+		defines { "DEBUG", "ENGINE_EDITOR", "LINKING_STATIC"}		
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
 				
@@ -133,7 +136,7 @@ RUNTIME_DIR				= "../" .. RUNTIME_NAME
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
 		symbols "Off"
-		defines { "NDEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
+		defines { "NDEBUG", "ENGINE_EDITOR", "LINKING_STATIC"}
 		optimize "Full"
 		staticruntime "On"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }		

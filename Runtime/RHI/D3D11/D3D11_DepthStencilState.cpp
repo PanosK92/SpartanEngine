@@ -19,10 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_D3D11
+//================================
+
 //= INCLUDES ========================
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_Device.h"
-#include "../RHI_Implementation.h"
 #include "D3D11_Common.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
@@ -94,3 +98,4 @@ namespace Directus
 		SafeRelease((ID3D11DepthStencilState*)m_buffer);
 	}
 }
+#endif

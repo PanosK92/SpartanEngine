@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui.h"
 #include "Math/Vector4.h"
 #include "Math/Vector2.h"
-#include "RHI/RHI_Implementation.h"
 #include "RHI/RHI_Texture.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"

@@ -19,9 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_D3D11
+//================================
+
 //= INCLUDES =====================
 #include <winerror.h>
-#include "../RHI_Implementation.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
@@ -76,3 +80,4 @@ namespace Directus
 		SafeRelease((ID3D11SamplerState*)m_buffer);
 	}
 }
+#endif

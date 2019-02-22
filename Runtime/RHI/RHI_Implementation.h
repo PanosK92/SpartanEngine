@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#ifdef ENGINE_RUNTIME
+
 //= INCLUDES =====================
 #include "../Core/BackendConfig.h"
 //================================
 
-#ifdef ENGINE_RUNTIME // Only compile this for the engine
-
-//#ifdef API_D3D11 // Deactivate this for now as Vulkan is not ready
+#ifdef API_D3D11
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -131,10 +131,11 @@ static const D3D11_BLEND_OP d3d11_blend_op[] =
 	D3D11_BLEND_OP_MIN,
 	D3D11_BLEND_OP_MAX
 };
-//#endif
+#endif
 
 #ifdef API_VULKAN
 #pragma comment(lib, "vulkan-1.lib")
+#include <vulkan/vulkan.h>
 #endif
 
 #endif

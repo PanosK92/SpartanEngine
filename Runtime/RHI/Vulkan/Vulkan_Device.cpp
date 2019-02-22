@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../../Math/Vector4.h"
 #include "../../Logging/Log.h"
-#include <vulkan/vulkan.h>
+#include "../../Core/Settings.h"
 #include <string>
 //=============================
 
@@ -60,7 +60,7 @@ namespace Directus
 				}
 			}
 
-			LOG_ERROR("Vulkan_Device::RHI_Device: Validation layer was requested, but not available.");
+			LOG_ERROR("Validation layer was requested, but not available.");
 			return false;
 		}
 
@@ -119,16 +119,6 @@ namespace Directus
 
 	RHI_Device::RHI_Device(void* drawHandle)
 	{
-		m_backBufferFormat				= Format_R8G8B8A8_UNORM;
-		m_depthEnabled			= true;
-		m_alphaBlendingEnabled	= false;
-		m_initialized			= false;
-		device					= nullptr;
-		deviceContext			= nullptr;
-
-		Settings::Get().m_versionVulkan = to_string(VK_API_VERSION_1_0);
-		LOG_INFO(Settings::Get().m_versionVulkan);
-
 		// Validation layer
 		bool validationLayerAvailable = false;
 		if (Vulkan_Device::validationLayerEnabled)
@@ -164,7 +154,7 @@ namespace Directus
 			auto result = vkCreateInstance(&createInfo, nullptr, &Vulkan_Device::instance);
 			if (result != VK_SUCCESS)
 			{
-				LOG_ERROR("Vulkan_Device::RHI_Device: Failed to create instance.");
+				LOG_ERROR("Failed to create instance.");
 				return;
 			}
 		}
@@ -177,7 +167,7 @@ namespace Directus
 			vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
 			for (const auto& extension : extensions)
 			{
-				LOGF_INFO("Vulkan_Device::RHI_Device: Available extension: %s", extension.extensionName);
+				LOGF_INFO("Available extension: %s", extension.extensionName);
 			}
 		}
 
@@ -193,7 +183,7 @@ namespace Directus
 
 			if (Vulkan_Device::CreateDebugUtilsMessengerEXT(Vulkan_Device::instance, &createInfo, nullptr, &Vulkan_Device::callback) != VK_SUCCESS) 
 			{
-				LOG_ERROR("Vulkan_Device::RHI_Device: Failed to setup callback");
+				LOG_ERROR("Failed to setup debug callback");
 			}
 		}
 
@@ -204,7 +194,7 @@ namespace Directus
 			vkEnumeratePhysicalDevices(Vulkan_Device::instance, &deviceCount, nullptr);
 			if (deviceCount == 0) 
 			{
-				LOG_ERROR("Vulkan_Device::RHI_Device: Failed to enumerate physical devices.");
+				LOG_ERROR("Failed to enumerate physical devices.");
 				return;
 			}
 			std::vector<VkPhysicalDevice> devices(deviceCount);
@@ -221,15 +211,14 @@ namespace Directus
 
 			if (Vulkan_Device::device == VK_NULL_HANDLE) 
 			{
-				LOG_ERROR("Vulkan_Device::RHI_Device: Failed to find a suitable device.");
+				LOG_ERROR("Failed to find a suitable device.");
 				return;
 			}
 		}
 
-		//LOGF_INFO("Vulkan_Device::RHI_Device: Feature level %s - %s", featureLevelStr.data(), D3D11_Device::GetAdapterDescription(adapter).data());
-		device			 nullptr;
-		deviceContext	= nullptr;
-		m_initialized	= false;
+		Settings::Get().m_versionGraphicsAPI = to_string(VK_API_VERSION_1_0);
+		LOG_INFO(Settings::Get().m_versionGraphicsAPI);
+		m_initialized = true;
 	}
 
 	RHI_Device::~RHI_Device()
@@ -258,22 +247,22 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer)
+	bool RHI_Device::SetVertexBuffer(const shared_ptr<RHI_VertexBuffer>& buffer)
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer)
+	bool RHI_Device::SetIndexBuffer(const shared_ptr<RHI_IndexBuffer>& buffer)
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetVertexShader(const std::shared_ptr<RHI_Shader>& shader)
+	bool RHI_Device::SetVertexShader(const shared_ptr<RHI_Shader>& shader)
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetPixelShader(const std::shared_ptr<RHI_Shader>& shader)
+	bool RHI_Device::SetPixelShader(const shared_ptr<RHI_Shader>& shader)
 	{
 		return true;
 	}
@@ -323,18 +312,18 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout)
+	bool RHI_Device::SetInputLayout(const shared_ptr<RHI_InputLayout>& inputLayout)
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState)
+	bool RHI_Device::SetRasterizerState(const shared_ptr<RHI_RasterizerState>& rasterizerState)
 	{
 
 		return true;
 	}
 
-	void RHI_Device::EventBegin(const std::string& name)
+	void RHI_Device::EventBegin(const string& name)
 	{
 
 	}
