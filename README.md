@@ -1,5 +1,6 @@
 
 
+
 # Directus3D Game Engine
 Platform | Status | Binaries| :+1:
 :-:|:-:|:-:|:-:|
@@ -11,7 +12,7 @@ The project is at an early development stage and there is a lot experimentation 
 This means that the wisest thing to do is to approach it as study material, without expecting to make games with it (yet).
 Architectual quality is prioritized over development speed.
 
-Video
+Video[
 ![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
 # Features (v0.3)
@@ -20,7 +21,7 @@ Category       	| Feature                                  	| Details
 Importing       | 10+ font file formats support             | Assimp
 Importing       | 20+ audio file formats support            | FMOD
 Importing       | 30+ image file formats support            | FreeImage
-Importing       | 40+ 3D file formats support               | FreeType
+Importing       | 40+ model file formats support            | FreeType
 Importing       | XML files                                 | -
 Input           | Keyboard                                  | -
 Input           | Mouse                                     | -
