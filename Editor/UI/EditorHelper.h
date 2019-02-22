@@ -36,46 +36,84 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Threading/Threading.h"
 #include "Input/Input.h"
 #include "Core/Engine.h"
+#include "IconProvider.h"
 //==================================
 
-// An icon shader resource pointer by thumbnail
-#define SHADER_RESOURCE_BY_THUMBNAIL(thumbnail)			IconProvider::Get().GetShaderResourceByThumbnail(thumbnail)
-// An icon shader resource pointer by type 
-#define SHADER_RESOURCE_BY_TYPE(type)					IconProvider::Get().GetShaderResourceByType(type)
-// An thumbnail button by enum
-#define THUMBNAIL_BUTTON_BY_TYPE(type, size)			ImGui::ImageButton(SHADER_RESOURCE_BY_TYPE(type), ImVec2(size, size))
-// An thumbnail button by enum, with a specific ID
-#define THUMBNAIL_BUTTON_TYPE_UNIQUE_ID(id, type, size)	IconProvider::Get().ImageButton_enum_id(id, type, size)
+namespace ImGuiEx
+{ 
+	// An icon shader resource pointer by thumbnail
+	#define SHADER_RESOURCE_BY_THUMBNAIL(thumbnail)	IconProvider::Get().GetShaderResourceByThumbnail(thumbnail)
 
-// A thumbnail image
-#define THUMBNAIL_IMAGE(thumbnail, size)							\
-	ImGui::Image(													\
-	IconProvider::Get().GetShaderResourceByThumbnail(thumbnail),	\
-	ImVec2(size, size),												\
-	ImVec2(0, 0),													\
-	ImVec2(1, 1),													\
-	ImColor(255, 255, 255, 255),									\
-	ImColor(255, 255, 255, 0))										\
+	// An thumbnail button by enum
+	inline bool ImageButton(Icon_Type icon, float size)
+	{
+		return ImGui::ImageButton(
+			IconProvider::Get().GetShaderResourceByType(icon), 
+			ImVec2(size, size),
+			ImVec2(0, 0),			// uv0
+			ImVec2(1, 1),			// uv1
+			-1,						// frame padding
+			ImColor(0, 0, 0, 0),	// background
+			ImVec4(1, 1, 1, 1)		// tint
+		);
+	}
 
-// A thumbnail image by shader resource
-#define THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(srv, size)	\
-	ImGui::Image(										\
-	srv,												\
-	ImVec2(size, size),									\
-	ImVec2(0, 0),										\
-	ImVec2(1, 1),										\
-	ImColor(255, 255, 255, 255),						\
-	ImColor(255, 255, 255, 0))							\
+	// An thumbnail button by enum, with a specific ID
+	inline bool ImageButton(const char* id, Icon_Type icon, float size)
+	{
+		ImGui::PushID(id);
+		bool pressed = ImGui::ImageButton(
+			IconProvider::Get().GetShaderResourceByType(icon), 
+			ImVec2(size, size),
+			ImVec2(0, 0),			// uv0
+			ImVec2(1, 1),			// uv1
+			-1,						// frame padding
+			ImColor(0, 0, 0, 0),	// background
+			ImVec4(1, 1, 1, 1)		// tint
+		);
+		ImGui::PopID();
+		return pressed;
+	}
 
-// A thumbnail image by enum
-#define THUMBNAIL_IMAGE_BY_ENUM(type, size)	\
-	ImGui::Image(							\
-	SHADER_RESOURCE_BY_TYPE(type),			\
-	ImVec2(size, size),						\
-	ImVec2(0, 0),							\
-	ImVec2(1, 1),							\
-	ImColor(255, 255, 255, 255),			\
-	ImColor(255, 255, 255, 0))				\
+	// A thumbnail image
+	inline void Image(const Thumbnail& thumbnail, float size)
+	{
+		ImGui::Image(
+			IconProvider::Get().GetShaderResourceByThumbnail(thumbnail),
+			ImVec2(size, size),
+			ImVec2(0, 0),
+			ImVec2(1, 1),
+			ImColor(0, 0, 0, 0),	// tint
+			ImColor(0, 0, 0, 0)		// border
+		);
+	}
+
+	// A thumbnail image by shader resource
+	inline void Image(void* shaderResource, float size)
+	{
+		ImGui::Image(
+			shaderResource,
+			ImVec2(size, size),
+			ImVec2(0, 0),
+			ImVec2(1, 1),
+			ImColor(0, 0, 0, 0),	// tint
+			ImColor(0, 0, 0, 0)		// border
+		);
+	}
+
+	// A thumbnail image by enum
+	inline void Image(Icon_Type icon, float size)
+	{
+		ImGui::Image(
+			IconProvider::Get().GetShaderResourceByType(icon),
+			ImVec2(size, size),
+			ImVec2(0, 0),
+			ImVec2(1, 1),
+			ImColor(0, 0, 0, 0),	// tint
+			ImColor(0, 0, 0, 0)		// border
+		);
+	}
+}
 
 class EditorHelper
 {

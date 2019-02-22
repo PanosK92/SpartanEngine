@@ -78,12 +78,13 @@ namespace Directus
 
 		std::string GetResourceFileName()	{ return FileSystem::GetFileNameNoExtensionFromFilePath(m_resourceFilePath); }
 		std::string GetResourceDirectory()	{ return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath); }
+
+		virtual unsigned int GetMemoryUsage() { return (unsigned int)sizeof(*this); }
 		//================================================================================================================
 
 		//= IO =================================================================
 		virtual bool SaveToFile(const std::string& filePath)	{ return true; }
 		virtual bool LoadFromFile(const std::string& filePath)	{ return true; }
-		virtual unsigned int GetMemoryUsage()					{ return 0; }
 		//======================================================================
 
 		//= TYPE ================================

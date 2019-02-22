@@ -110,13 +110,13 @@ namespace ComponentProperty
 		ImGui::SameLine();
 		float originalPenY = ImGui::GetCursorPosY();
 		ImGui::SetCursorPosY(originalPenY + 5.0f);
-		THUMBNAIL_IMAGE_BY_ENUM(icon_enum, 15);
+		ImGuiEx::Image(icon_enum, 15);
 
 		// Component Options - Top right
 		if (options)
 		{
 			ImGui::SameLine(ImGui::GetWindowContentRegionWidth() * 0.973f); ImGui::SetCursorPosY(originalPenY + 1.5f);
-			if (THUMBNAIL_BUTTON_TYPE_UNIQUE_ID(name.c_str(), Icon_Component_Options, 12))
+			if (ImGuiEx::ImageButton(name.c_str(), Icon_Component_Options, 12))
 			{
 				g_contexMenuID = name;
 				ImGui::OpenPopup(g_contexMenuID.c_str());
@@ -730,6 +730,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 		{
 			auto DisplayTextureSlot = [&material](RHI_Texture* texture, const char* textureName, TextureType textureType)
 			{
+				// Texture
 				ImGui::Text(textureName);
 				ImGui::SameLine(ComponentProperty::g_column); ImGui::Image(
 					texture ? texture->GetShaderResource() : nullptr,
@@ -740,6 +741,18 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material)
 					ImColor(255, 255, 255, 128)
 				);
 
+				// Remove texture button
+				if (material->HasTexture(textureType))
+				{
+					float size = 15.0f;		
+					ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - size * 2.0f);
+					if (ImGuiEx::ImageButton(textureName, Icon_Component_Material_RemoveTexture, size))
+					{
+						material->SetTextureSlot(textureType, nullptr);
+					}
+				}
+
+				// Drop target
 				if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))
 				{
 					try

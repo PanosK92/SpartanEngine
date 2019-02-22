@@ -70,11 +70,6 @@ namespace Directus
 		return m_playMode == Play_Memory ? CreateSound(filePath) : CreateStream(filePath);
 	}
 
-	unsigned int AudioClip::GetMemoryUsage()
-	{
-		return 0; // have to find a way to get that
-	}
-
 	bool AudioClip::Play()
 	{
 		// Check if the sound is playing

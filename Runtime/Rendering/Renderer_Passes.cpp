@@ -262,8 +262,8 @@ namespace Directus
 		if (m_flags & Render_PostProcess_SSAO)
 		{
 			Pass_SSAO(texIn_Spare);
-			float sigma = 2.0f;
-			float pixelStride = 2.0f;
+			float sigma = 1.0f;
+			float pixelStride = 1.0f;
 			Pass_BlurBilateralGaussian(texIn_Spare, texOut_SSAO, sigma, pixelStride);
 		}
 

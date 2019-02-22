@@ -68,7 +68,7 @@ void Widget_Console::Tick(float deltaTime)
 	auto DisplayButton = [](Icon_Type icon, bool* toggle)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, *toggle ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-		if (THUMBNAIL_BUTTON_BY_TYPE(icon, 15.0f))
+		if (ImGuiEx::ImageButton(icon, 15.0f))
 		{
 			*toggle = !(*toggle);
 			_Widget_Console::scrollToBottom = true;

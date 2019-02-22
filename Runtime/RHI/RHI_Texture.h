@@ -45,7 +45,6 @@ namespace Directus
 		//= IResource ==========================================
 		bool SaveToFile(const std::string& filePath) override;
 		bool LoadFromFile(const std::string& filePath) override;
-		unsigned int GetMemoryUsage() override;
 		//======================================================
 
 		//= GRAPHICS API  ====================================================================================================================================================================

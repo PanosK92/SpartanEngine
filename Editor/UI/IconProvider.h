@@ -37,6 +37,7 @@ enum Icon_Type
 	Icon_Component_Collider,
 	Icon_Component_Light,
 	Icon_Component_Material,
+	Icon_Component_Material_RemoveTexture,
 	Icon_Component_MeshCollider,
 	Icon_Component_Renderable,
 	Icon_Component_RigidBody,
@@ -95,10 +96,9 @@ public:
 	void* GetShaderResourceByThumbnail(const Thumbnail& thumbnail);
 	//=============================================================
 
-	//= ImGui::ImageButton =======================================================
-	bool ImageButton_enum_id(const char* id, Icon_Type iconEnum, float size);
+	//= ImGui::ImageButton ============================================
 	bool ImageButton_filepath(const std::string& filepath, float size);
-	//============================================================================
+	//=================================================================
 
 	//= THUMBNAIL ==================================================================================================
 	const Thumbnail& Thumbnail_Load(const std::string& filePath, Icon_Type type = Thumbnail_Custom, int size = 100);

@@ -285,7 +285,7 @@ void FileDialog::Item_Drag(FileDialog_Item* item)
 		if (FileSystem::IsSupportedAudioFile(item->GetPath()))	{ SetPayload(DragPayload_Audio,		item->GetPath()); }
 		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ SetPayload(DragPayload_Script,	item->GetPath()); }
 
-		THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(item->GetShaderResource(), 50);
+		ImGuiEx::Image(item->GetShaderResource(), 50);
 		ImGui::EndDragDropSource();
 	}
 }
