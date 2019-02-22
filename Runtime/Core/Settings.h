@@ -147,7 +147,7 @@ namespace Directus
 		std::string m_versionFreeType;
 		std::string m_versionImGui;
 		std::string m_versionPugiXML = "1.90";
-		std::string m_versionVulkan;
+		std::string m_versionGraphicsAPI;
 
 	private:
 		void* m_drawHandle					= nullptr;

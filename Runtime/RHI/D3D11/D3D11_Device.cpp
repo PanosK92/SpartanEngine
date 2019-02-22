@@ -139,7 +139,8 @@ namespace Directus
 				featureLevelStr = "11.1";
 				break;
 			}
-			LOGF_INFO("DirectX %s", featureLevelStr.c_str());
+			Settings::Get().m_versionGraphicsAPI = "DirectX %s" + featureLevelStr;
+			LOG_INFO(Settings::Get().m_versionGraphicsAPI);
 		}
 
 		// Multi-thread protection

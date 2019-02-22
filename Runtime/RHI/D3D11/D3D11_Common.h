@@ -21,6 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_D3D11
+//================================
+
 namespace D3D11_Common
 { 
 	inline const char* DxgiErrorToString(HRESULT errorCode)
@@ -55,3 +60,5 @@ namespace D3D11_Common
 		return "Unknown error code";
 	}
 }
+
+#endif

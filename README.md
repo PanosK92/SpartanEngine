@@ -1,6 +1,3 @@
-
-
-
 # Directus3D Game Engine
 Platform | Status | Binaries| :+1:
 -|-|-|-|
@@ -16,45 +13,47 @@ Architectual quality is prioritized over development speed.
 Video
 [![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
-# Features
-- 20+ audio file formats support.
-- 30+ image file formats support.
-- 40+ 3D file formats support.
-- Cascaded shadow mapping.
-- Entity-component system.
-- Engine rendered editor.
-- D3D11 rendering backend
-- Deferred rendering.
-- Frustum culling.
-- HDR rendering.
-- Multi-threading.
-- Physically based shading.
-- Physics.
-- Post-process effects like FXAA & LumaSharpen.
-- Scripting (C/C++).
-- Windows support.
+# Features (v0.3)
+Category        | Feature                                   | Details
+-               |-                                          |-
+Importing       | 10+ font file formats support             | Assimp
+Importing       | 20+ audio file formats support            | FMOD
+Importing       | 30+ image file formats support            | FreeImage
+Importing       | 40+ 3D file formats support               | FreeType
+Importing       | XML files                                 |-
+Input           | Keyboard                                  |-
+Input           | Mouse                                     |-
+Input           | Xbox controller                           |-
+Rendering       | Bloom                                     |-
+Rendering       | Shadows                                   | Cascaded shadow mapping with smooth, clean and stable shadows.
+Rendering       | Custom mipchain generation                | Higher texture fidelity using Lanczos3 scaling.
+Rendering       | Debug rendering                           | Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
+Rendering       | Deferred rendering                        |-
+Rendering       | DirectX 11 backend                        |-
+Rendering       | Lights                                    | Directional, point and spot lights.
+Rendering       | Font Rendering                            |-
+Rendering       | Frustrum culing                           |-
+Rendering       | Per-Pixel motion blur                     |-
+Rendering       | Physically based rendering                |-
+Rendering       | Post-process effects                      | Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic abberration etc.
+Rendering       | SSAO                                      | Screen space ambient occlusion.
+Rendering       | SSR                                       | Screen space reflections.
+Rendering       | TAA                                       | Temporal anti-aliasing based on Uncharted 4.
+Physics         | Constraints                               |
+Physics         | Rigid bodies                              |
+Physics         | Colliders                                 |
+General         | Entity-component system                   |
+General         | Event system                              |
+General         | Single click project generation           |
+General         | Thread pool                               |
+General         | Engine rendered paltform agnostic editor  |
+Scripting       | C/C++                                     | Using AngelScript.
+Platform        | Windows 10                                |
 
-# Upcoming features (v0.3)
-Feature       		            | Completion | Notes 
-------------- 		            | :--: | -
-Easy to build               	| 100% | Single click project generation which includes editor and runtime.
-New editor               		| 100% | Replace Qt editor with ImGui editor.
-Debug rendering    				| 100% | Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
-Improved shadows         		| 100% | Sharper shadows with smoother edges and no shimmering.
-SSAO         					| 100% | Screen space ambient occlusion.
-Bloom         					| 100% | -
-SSR								| 100% | Screen space reflections.
-TAA								| 100% | Temporal Anti-Aliasing (Based on Uncharted 4).
-Per-Pixel motion blur			| 100% |
-Velocity Buffer					| 100% | Required for TAA and Motion Blur.
-Dithering						| 100% | Removes color banding.
-Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
-Point & spot lights             | 100% | -
-Xbox controller support         | 100% | -
-XML I/O                         | 100% | -
-Architecture improvements       | 100% | Higher quality codebase, allowing for future development.
-Font importing and rendering    | 100% | Ability to load any font file.
-Optimize & Debug				| 70% | Feature freeze, optimize and debug (once all tasks are done).
+# Features (v0.31) - WIP
+Feature     | Completion    | Notes 
+-           | -             | -
+Vulkan      | 1%            | Implement Vulkan which will become the default backend.
 
 # Roadmap
 - Eye Adaptation.
@@ -64,8 +63,7 @@ Optimize & Debug				| 70% | Feature freeze, optimize and debug (once all tasks a
 - Dynamic resolution scaling.
 - Real-time ray tracing (experimental).
 - Global Illumination.
-- C# scripting.
-- Vulkan rendering backend.
+- C# scripting (replace AngelScript).
 - DirectX 12 rendering backend.
 - Draw call batching (static & dynamic).
 - Export on Windows.

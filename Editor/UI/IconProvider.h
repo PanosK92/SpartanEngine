@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ==================
 #include <string>
 #include <vector>
 #include <memory>
 #include "RHI/RHI_Definition.h"
-//===================================
+//=============================
 
 enum Icon_Type
 {
