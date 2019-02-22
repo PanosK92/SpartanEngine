@@ -1,8 +1,9 @@
 
+
 # Directus3D Game Engine
 Platform | Status | Binaries| :+1:
--|-|-|-|
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20" height="20"/>|[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)| [Download](https://ci.appveyor.com/api/projects/PanosK92/directus3d/artifacts/Binaries/Release.zip?branch=master)|[![](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSP87Y77VNHPG&source=url)
+:-:|:-:|:-:|:-:|
+<img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20" height="20"/>|[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)| [Download](https://ci.appveyor.com/api/projects/PanosK92/directus3d/artifacts/Binaries/Release.zip?branch=master)|[![](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSP87Y77VNHPG&source=url)
 
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
 The source code aims to be clean, modern and tackles a lot of aspects of engine development.
@@ -11,9 +12,9 @@ This means that the wisest thing to do is to approach it as study material, with
 Architectual quality is prioritized over development speed.
 
 Video
-[![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
+![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
-# Features
+# Features (v0.3)
 Category       	| Feature                                  	| Details
 :-              | :-                                        | :-
 Importing       | 10+ font file formats support             | Assimp
@@ -52,15 +53,19 @@ Platform        | Windows 10                                | -
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4.jpg)
 
-#### v0.31 (Work-in-Progress)
+#### v0.31 (WIP)
 Feature     | Completion    | Notes 
 :-          | :-            | :-
 Vulkan      | 1%            | Will become the default rendering backend.
 
+#### v0.32 (Planned)
+Feature                 | Completion    | Notes 
+:-                      | :-            | :-
+Eye Adaptation          | -            	| -
+Depth-of-field          | -           	| Based on Doom approach
+Subsurface Scattering   | -            	| -
+
 # Roadmap
-- Eye Adaptation.
-- Depth-of-field (Based on Doom approach).
-- Subsurface Scattering.
 - Volumetric Lighting.
 - Dynamic resolution scaling.
 - Real-time ray tracing (experimental).
