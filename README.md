@@ -1,3 +1,4 @@
+
 # Directus3D Game Engine
 Platform | Status | Binaries| :+1:
 -|-|-|-|
@@ -15,40 +16,40 @@ Video
 
 # Features (v0.3)
 Category        | Feature                                   | Details
--               |-                                          |-
+-               | -                                         | -
 Importing       | 10+ font file formats support             | Assimp
 Importing       | 20+ audio file formats support            | FMOD
 Importing       | 30+ image file formats support            | FreeImage
 Importing       | 40+ 3D file formats support               | FreeType
-Importing       | XML files                                 |-
-Input           | Keyboard                                  |-
-Input           | Mouse                                     |-
-Input           | Xbox controller                           |-
-Rendering       | Bloom                                     |-
+Importing       | XML files                                 | -
+Input           | Keyboard                                  | -
+Input           | Mouse                                     | -
+Input           | Xbox controller                           | -
+Rendering       | Bloom                                     | -
 Rendering       | Shadows                                   | Cascaded shadow mapping with smooth, clean and stable shadows.
 Rendering       | Custom mipchain generation                | Higher texture fidelity using Lanczos3 scaling.
 Rendering       | Debug rendering                           | Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
-Rendering       | Deferred rendering                        |-
-Rendering       | DirectX 11 backend                        |-
+Rendering       | Deferred rendering                        | -
+Rendering       | DirectX 11 backend                        | -
 Rendering       | Lights                                    | Directional, point and spot lights.
-Rendering       | Font Rendering                            |-
-Rendering       | Frustrum culing                           |-
-Rendering       | Per-Pixel motion blur                     |-
-Rendering       | Physically based rendering                |-
+Rendering       | Font Rendering                            | -
+Rendering       | Frustrum culing                           | -
+Rendering       | Per-Pixel motion blur                     | -
+Rendering       | Physically based rendering                | -
 Rendering       | Post-process effects                      | Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic abberration etc.
 Rendering       | SSAO                                      | Screen space ambient occlusion.
 Rendering       | SSR                                       | Screen space reflections.
 Rendering       | TAA                                       | Temporal anti-aliasing based on Uncharted 4.
-Physics         | Constraints                               |
-Physics         | Rigid bodies                              |
-Physics         | Colliders                                 |
-General         | Entity-component system                   |
-General         | Event system                              |
-General         | Single click project generation           |
-General         | Thread pool                               |
-General         | Engine rendered paltform agnostic editor  |
+Physics         | Constraints                               | -
+Physics         | Rigid bodies                              | -
+Physics         | Colliders                                 | -
+General         | Entity-component system                   | -
+General         | Event system                              | -
+General         | Easy to build                             | Single click project generation which includes editor and runtime.
+General         | Thread pool                               | -
+General         | Engine rendered paltform agnostic editor  | -
 Scripting       | C/C++                                     | Using AngelScript.
-Platform        | Windows 10                                |
+Platform        | Windows 10                                | -
 
 # Features (v0.31) - WIP
 Feature     | Completion    | Notes 
