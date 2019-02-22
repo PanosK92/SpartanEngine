@@ -36,12 +36,10 @@ struct aiMesh;
 
 namespace Directus
 {
-	class Mesh;
 	class Context;
 	class Material;
 	class Entity;
 	class Model;
-	class Transform;
 	class World;
 
 	class ENGINE_CLASS ModelImporter
@@ -57,8 +55,6 @@ namespace Directus
 		void ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, std::shared_ptr<Model>& model, Entity* parentNode = nullptr, Entity* newNode = nullptr);
 		void ReadAnimations(const aiScene* scene, std::shared_ptr<Model>& model);
 		void LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, std::shared_ptr<Model>& model, Entity* parententity);
-		void AssimpMesh_ExtractVertices(aiMesh* assimpMesh, std::vector<RHI_Vertex_PosUvNorTan>* vertices);
-		void AssimpMesh_ExtractIndices(aiMesh* assimpMesh, std::vector<unsigned int>* indices);
 		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimpMaterial, std::shared_ptr<Model>& model);
 
 		Context* m_context;

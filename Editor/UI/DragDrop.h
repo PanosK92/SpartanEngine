@@ -67,7 +67,7 @@ public:
 		ImGui::SetDragDropPayload((const char*)&payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
 		if (thumbnailShaderResource)
 		{
-			THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(thumbnailShaderResource, 50);
+			ImGuiEx::Image(thumbnailShaderResource, 50);
 		}
 	}
 

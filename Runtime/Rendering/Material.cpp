@@ -162,20 +162,6 @@ namespace Directus
 		return xml->Save(GetResourceFilePath());
 	}
 
-	unsigned int Material::GetMemoryUsage()
-	{
-		// Doesn't have to be spot on, just representative
-		unsigned int size = 0;
-		size += sizeof(bool) * 2;
-		size += sizeof(int) * 3;
-		size += sizeof(float) * 5;
-		size += sizeof(Vector2) * 2;
-		size += sizeof(Vector4);
-		size += sizeof(TextureSlot) * (int)m_textureSlots.size();
-
-		return size;
-	}
-
 	const TextureSlot& Material::GetTextureSlotByType(TextureType type)
 	{
 		for (const auto& textureSlot : m_textureSlots)
@@ -187,36 +173,47 @@ namespace Directus
 		return m_emptyTextureSlot;
 	}
 
-	// Set texture from an existing texture
 	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_Texture>& texture)
 	{
-		if (!texture)
+		if (texture)
 		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
+			// Some models (or Assimp) pass a normal map as a height map
+			// and others pass a height map as a normal map, we try to fix that.
+			type =
+				(type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height :
+				(type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : type;
 
-		// Some models (or Assimp) pass a normal map as a height map
-		// and others pass a height map as a normal map, we try to fix that.
-		type = 
-			(type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height :
-			(type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : type;
-
-		// Assign - As a replacement (if there is a previous one)
-		bool replaced = false;
-		for (auto& textureSlot : m_textureSlots)
-		{
-			if (textureSlot.type == type)
+			// Assign - As a replacement (if there is a previous one)
+			bool replaced = false;
+			for (auto& textureSlot : m_textureSlots)
 			{
-				textureSlot.ptr	= texture;
-				replaced = true;
-				break;
+				if (textureSlot.type == type)
+				{
+					textureSlot.ptr = texture;
+					replaced = true;
+					break;
+				}
+			}
+			// Assign - Add a new one (in case it's the first time the slot is assigned)
+			if (!replaced)
+			{
+				m_textureSlots.emplace_back(type, texture);
 			}
 		}
-		// Assign - Add a new one (in case it's the first time the slot is assigned)
-		if (!replaced)
+		else
 		{
-			m_textureSlots.emplace_back(type, texture);
+			for (auto it = m_textureSlots.begin(); it != m_textureSlots.end();)
+			{
+				if ((*it).type == type) 
+				{
+					it = m_textureSlots.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+
 		}
 
 		TextureBasedMultiplierAdjustment();

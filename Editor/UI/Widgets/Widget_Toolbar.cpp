@@ -90,7 +90,7 @@ void Widget_Toolbar::Tick(float deltaTime)
 	// Play button
 	ImGui::SameLine();
 	ImGui::PushStyleColor(ImGuiCol_Button, Engine::EngineMode_IsSet(Engine_Game) ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Button_Play, _Widget_Toolbar::g_buttonSize))
+	if (ImGuiEx::ImageButton(Icon_Button_Play, _Widget_Toolbar::g_buttonSize))
 	{
 		Engine::EngineMode_Toggle(Engine_Game);
 	}
@@ -99,7 +99,7 @@ void Widget_Toolbar::Tick(float deltaTime)
 	// Renderer options button
 	ImGui::SameLine();
 	ImGui::PushStyleColor(ImGuiCol_Button, _Widget_Toolbar::g_renderererOptions_visible ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Component_Options, _Widget_Toolbar::g_buttonSize))
+	if (ImGuiEx::ImageButton(Icon_Component_Options, _Widget_Toolbar::g_buttonSize))
 	{
 		_Widget_Toolbar::g_renderererOptions_visible = true;
 	}

@@ -1,7 +1,7 @@
 // Downsample with a 4x4 box filter
 float4 Downsample_Box(float2 uv, float2 texelSize, Texture2D sourceTexture, SamplerState bilinearSampler)
 {
-	float4 d = texelSize.xyxy * float4(-1.0f, -1.0f, +1.0f, +1.0f);
+	float4 d = texelSize.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
 	
 	float4 s;
 	s  = sourceTexture.Sample(bilinearSampler, uv + d.xy);
@@ -15,7 +15,7 @@ float4 Downsample_Box(float2 uv, float2 texelSize, Texture2D sourceTexture, Samp
 // Downsample with a 4x4 box filter + anti-flicker filter
 float4 Downsample_BoxAntiFlicker(float2 uv, float2 texelSize, Texture2D sourceTexture, SamplerState bilinearSampler)
 {
-	float4 d = texelSize.xyxy * float4(-1.0f, -1.0f, +1.0f, +1.0f);
+	float4 d = texelSize.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
 
 	float4 s1 = Degamma(sourceTexture.Sample(bilinearSampler, uv + d.xy));
 	float4 s2 = Degamma(sourceTexture.Sample(bilinearSampler, uv + d.zy));

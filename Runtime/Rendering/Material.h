@@ -81,7 +81,6 @@ namespace Directus
 		//= IResource ==========================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		unsigned int GetMemoryUsage() override;
 		//======================================================
 
 		//= TEXTURE SLOTS  ====================================================================

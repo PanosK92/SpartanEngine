@@ -48,11 +48,10 @@ namespace Directus
 		Model(Context* context);
 		~Model();
 
-		//= RESOURCE INTERFACE =========================================
+		//= RESOURCE INTERFACE =================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		unsigned int GetMemoryUsage() override { return m_memoryUsage; }
-		//==============================================================
+		//======================================================
 
 		// Sets the entity that represents this model in the scene
 		void SetRootentity(const std::shared_ptr<Entity>& entity) { m_rootentity = entity; }
@@ -122,7 +121,6 @@ namespace Directus
 
 		// Misc
 		float m_normalizedScale;
-		unsigned int m_memoryUsage;		
 		bool m_isAnimated;
 		ResourceCache* m_resourceManager;
 		std::shared_ptr<RHI_Device> m_rhiDevice;	

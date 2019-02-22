@@ -105,18 +105,6 @@ namespace Directus
 		SetLoadState(LoadState_Completed);
 		return true;
 	}
-
-	unsigned int RHI_Texture::GetMemoryUsage()
-	{
-		// Compute texture bits (in case they are loaded)
-		unsigned int size = 0;
-		for (const auto& mip : m_mipChain)
-		{
-			size += (unsigned int)mip.size();
-		}
-
-		return size;
-	}
 	//=====================================================================================
 
 	MipLevel* RHI_Texture::Data_GetMipLevel(unsigned int index)
