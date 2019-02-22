@@ -15,8 +15,8 @@ Video
 [![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
 # Features (v0.3)
-Category        | Feature                                   | Details
--               | -                                         | -
+Category       	| Feature                                  	| Details
+:-              | :-                                        | :-
 Importing       | 10+ font file formats support             | Assimp
 Importing       | 20+ audio file formats support            | FMOD
 Importing       | 30+ image file formats support            | FreeImage
@@ -36,7 +36,7 @@ Rendering       | Font Rendering                            | -
 Rendering       | Frustrum culing                           | -
 Rendering       | Per-Pixel motion blur                     | -
 Rendering       | Physically based rendering                | -
-Rendering       | Post-process effects                      | Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic abberration etc.
+Rendering       | Post-process effects                      | Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic aberration etc.
 Rendering       | SSAO                                      | Screen space ambient occlusion.
 Rendering       | SSR                                       | Screen space reflections.
 Rendering       | TAA                                       | Temporal anti-aliasing based on Uncharted 4.
@@ -47,13 +47,13 @@ General         | Entity-component system                   | -
 General         | Event system                              | -
 General         | Easy to build                             | Single click project generation which includes editor and runtime.
 General         | Thread pool                               | -
-General         | Engine rendered paltform agnostic editor  | -
+General         | Engine rendered platform agnostic editor  | -
 Scripting       | C/C++                                     | Using AngelScript.
 Platform        | Windows 10                                | -
 
 # Features (v0.31) - WIP
 Feature     | Completion    | Notes 
--           | -             | -
+:-          | :-            | :-
 Vulkan      | 1%            | Implement Vulkan which will become the default backend.
 
 # Roadmap
