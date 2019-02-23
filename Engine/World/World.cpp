@@ -182,7 +182,7 @@ namespace Directus
 		// 2nd - entity IDs
 		for (const auto& root : rootentities)
 		{
-			file->Write(root->GetID());
+			file->Write(root->GetId());
 		}
 
 		// 3rd - entities
@@ -258,7 +258,7 @@ namespace Directus
 		for (int i = 0; i < rootentityCount; i++)
 		{
 			auto& entity = Entity_Create();
-			entity->SetID(file->ReadInt());
+			entity->SetId(file->ReadInt());
 		}
 
 		// 3rd - entities
@@ -303,7 +303,7 @@ namespace Directus
 		if (!entity)
 			return false;
 
-		return Entity_GetByID(entity->GetID()) != nullptr;
+		return Entity_GetByID(entity->GetId()) != nullptr;
 	}
 
 	// Removes an entity and all of it's children
@@ -326,7 +326,7 @@ namespace Directus
 		for (auto it = m_entitiesPrimary.begin(); it < m_entitiesPrimary.end();)
 		{
 			shared_ptr<Entity> temp = *it;
-			if (temp->GetID() == entity->GetID())
+			if (temp->GetId() == entity->GetId())
 			{
 				it = m_entitiesPrimary.erase(it);
 				break;
@@ -372,7 +372,7 @@ namespace Directus
 	{
 		for (const auto& entity : m_entitiesPrimary)
 		{
-			if (entity->GetID() == ID)
+			if (entity->GetId() == ID)
 				return entity;
 		}
 

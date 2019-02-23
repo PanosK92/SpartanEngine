@@ -37,36 +37,36 @@ struct Metric
 		m_max			= FLT_MIN;
 		m_avg			= 0.0f;
 		m_sum			= 0.0f;
-		m_sampleCount	= 0;
+		m_sample_count	= 0;
 	}
 
-	void AddSample(float sample)
+	void AddSample(const float sample)
 	{
 		m_min = Directus::Math::Helper::Min(m_min, sample);
 		m_max = Directus::Math::Helper::Max(m_max, sample);
 		m_sum += sample;
-		m_sampleCount++;
-		m_avg = float(m_sum / (float)m_sampleCount);
+		m_sample_count++;
+		m_avg = float(m_sum / static_cast<float>(m_sample_count));
 	}
 
 	float m_min;
 	float m_max;
 	float m_avg;
 	double m_sum;
-	uint64_t m_sampleCount;
+	uint64_t m_sample_count;
 };
 
 class Widget_Profiler : public Widget
 {
 public:
 	Widget_Profiler(Directus::Context* context);
-	void Tick(float deltaTime) override;
+	void Tick(float delta_time) override;
 
 private:
-	std::vector<float> m_cpuTimes;
-	std::vector<float> m_gpuTimes;
-	float m_updateFrequency;
-	float m_plotTimeSinceLastUpdate;
+	std::vector<float> m_cpu_times;
+	std::vector<float> m_gpu_times;
+	float m_update_frequency;
+	float m_plot_time_since_last_update;
 	Metric m_metric_cpu;
 	Metric m_metric_gpu;
 	Directus::Profiler* m_profiler;

@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ====
 #include <cmath>
 #include <limits>
-#include "../Core/EngineDefs.h"
-//=============================
+//===============
 
 namespace Directus::Math::Helper
 {
@@ -45,53 +44,53 @@ namespace Directus::Math::Helper
 	static const float DEG_TO_RAD	= PI / 180.0f;
 	static const float RAD_TO_DEG	= 180.0f / PI;
 
-	inline ENGINE_CLASS double Cot(float x)						{ return cos(x) / sin(x); }
-	inline ENGINE_CLASS float CotF(float x)						{ return cosf(x) / sinf(x); }
-	inline ENGINE_CLASS float DegreesToRadians(float degrees)	{ return degrees * DEG_TO_RAD; }
-	inline ENGINE_CLASS float RadiansToDegrees(float radians)	{ return radians * RAD_TO_DEG; }
+	inline double Cot(float x)								{ return cos(x) / sin(x); }
+	inline float CotF(float x)								{ return cosf(x) / sinf(x); }
+	constexpr float DegreesToRadians(const float degrees)	{ return degrees * DEG_TO_RAD; }
+	constexpr float RadiansToDegrees(const float radians)	{ return radians * RAD_TO_DEG; }
 
 	template <typename T>
-	T Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
+	constexpr T Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
 
 	// Lerp linearly between to values
 	template <class T, class U>
-	T Lerp(T lhs, T rhs, U t) { return lhs * ((U)1.0 - t) + rhs * t; }
+	constexpr T Lerp(T lhs, T rhs, U t) { return lhs * ((U)1.0 - t) + rhs * t; }
 
 	// Returns the absolute value
 	template <class T>
-	T Abs(T value) { return value >= 0.0 ? value : -value; }
+	constexpr T Abs(T value) { return value >= 0.0 ? value : -value; }
 
 	// Check for equality but allow for a small error
 	template <class T>
-	bool Equals(T lhs, T rhs, T error = std::numeric_limits<T>::epsilon()) { return lhs + error >= rhs && lhs - error <= rhs; }
+	constexpr bool Equals(T lhs, T rhs, T error = std::numeric_limits<T>::epsilon()) { return lhs + error >= rhs && lhs - error <= rhs; }
 
 	template <class T>
-	T Max(T a, T b) { return a > b ? a : b; }
+	constexpr T Max(T a, T b) { return a > b ? a : b; }
 
 	template <class T>
-	T Min(T a, T b) { return a < b ? a : b; }
+	constexpr T Min(T a, T b) { return a < b ? a : b; }
 
 	template <class T>
-	T Sqrt(T x) { return sqrt(x); }
+	constexpr T Sqrt(T x) { return sqrt(x); }
 
 	template <class T>
-	T Floor(T x) { return floor(x); }
+	constexpr T Floor(T x) { return floor(x); }
 
 	template <class T>
-	T Ceil(T x) { return ceil(x); }
+	constexpr T Ceil(T x) { return ceil(x); }
 
 	template <class T>
-	T Round(T x) { return round(x); }
+	constexpr T Round(T x) { return round(x); }
 
 	template <typename T>
-	int Sign(T x) { return (T(0) < x) - (x < T(0)); }
+	constexpr int Sign(T x) { return (T(0) < x) - (x < T(0)); }
 
 	template <class T>
-	T Pow(T x, T y) { return pow(x, y); }
+	constexpr T Pow(T x, T y) { return pow(x, y); }
 
 	// Reduces a given angle to a value between PI and -PI
 	// The angle to reduce, in radians
-	inline float WrapAngle(float angle)
+	constexpr  float WrapAngle(float angle)
 	{
 		if ((angle > -PI) && (angle <= PI))
 			return angle;

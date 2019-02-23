@@ -54,23 +54,23 @@ namespace Directus
 		void Tick() override;
 		//=========================
 	
-		Math::Vector3 GetGravity();
-		btDiscreteDynamicsWorld* GetWorld()		{ return m_world; }
-		PhysicsDebugDraw* GetPhysicsDebugDraw() { return m_debugDraw; }
-		bool IsSimulating()						{ return m_simulating; }
+		Math::Vector3 GetGravity() const;
+		btDiscreteDynamicsWorld* GetWorld() const		{ return m_world; }
+		PhysicsDebugDraw* GetPhysicsDebugDraw() const	{ return m_debug_draw; }
+		bool IsSimulating() const						{ return m_simulating; }
 
 	private:
 		btBroadphaseInterface* m_broadphase;
 		btCollisionDispatcher* m_dispatcher;
-		btConstraintSolver* m_constraintSolver;
-		btDefaultCollisionConfiguration* m_collisionConfiguration;
+		btConstraintSolver* m_constraint_solver;
+		btDefaultCollisionConfiguration* m_collision_configuration;
 		btDiscreteDynamicsWorld* m_world;
-		PhysicsDebugDraw* m_debugDraw;
+		PhysicsDebugDraw* m_debug_draw;
 
-		//= PROPERTIES ===
-		int m_maxSubSteps;
+		//= PROPERTIES =====
+		int m_max_sub_steps;
 		bool m_simulating;
-		//================
+		//==================
 
 		Renderer* m_renderer;
 		Profiler* m_profiler;

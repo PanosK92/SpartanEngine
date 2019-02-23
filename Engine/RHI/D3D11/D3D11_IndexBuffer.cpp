@@ -24,11 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_D3D11
 //================================
 
-//= INCLUDES ========================
+//= INCLUDES ==================
 #include "../RHI_Device.h"
 #include "../RHI_IndexBuffer.h"
 #include "../../Logging/Log.h"
-//===================================
+//=============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -36,23 +36,23 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_IndexBuffer::RHI_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice, RHI_Format format)
+	RHI_IndexBuffer::RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_Format format)
 	{
-		m_rhiDevice		= rhiDevice;
+		m_rhiDevice		= rhi_device;
 		m_buffer		= nullptr;
-		m_bufferFormat	= format;
-		m_memoryUsage	= 0;
-		m_indexCount	= 0;
+		m_buffer_format	= format;
+		m_memory_usage	= 0;
+		m_index_count	= 0;
 	}
 
 	RHI_IndexBuffer::~RHI_IndexBuffer()
 	{
-		SafeRelease((ID3D11Buffer*)m_buffer);
+		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 	}
 
 	bool RHI_IndexBuffer::Create(const vector<unsigned int>& indices)
 	{
-		SafeRelease((ID3D11Buffer*)m_buffer);
+		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{
@@ -66,25 +66,25 @@ namespace Directus
 			return false;
 		}
 
-		m_indexCount			= (unsigned int)indices.size();
-		unsigned int byteWidth	= sizeof(unsigned int) * m_indexCount;
+		m_index_count					= static_cast<unsigned int>(indices.size());
+		const unsigned int byte_width	= sizeof(unsigned int) * m_index_count;
 
-		D3D11_BUFFER_DESC bufferDesc;
-		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= byteWidth;
-		bufferDesc.Usage				= D3D11_USAGE_IMMUTABLE;
-		bufferDesc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
-		bufferDesc.CPUAccessFlags		= 0;
-		bufferDesc.MiscFlags			= 0;
-		bufferDesc.StructureByteStride	= 0;
+		D3D11_BUFFER_DESC buffer_desc;
+		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
+		buffer_desc.ByteWidth			= byte_width;
+		buffer_desc.Usage				= D3D11_USAGE_IMMUTABLE;
+		buffer_desc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
+		buffer_desc.CPUAccessFlags		= 0;
+		buffer_desc.MiscFlags			= 0;
+		buffer_desc.StructureByteStride	= 0;
 
-		D3D11_SUBRESOURCE_DATA initData;
-		initData.pSysMem			= indices.data();
-		initData.SysMemPitch		= 0;
-		initData.SysMemSlicePitch	= 0;
+		D3D11_SUBRESOURCE_DATA init_data;
+		init_data.pSysMem			= indices.data();
+		init_data.SysMemPitch		= 0;
+		init_data.SysMemSlicePitch	= 0;
 
-		auto ptr = (ID3D11Buffer**)&m_buffer;
-		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, &initData, ptr);
+		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
+		const auto result	= m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&buffer_desc, &init_data, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR(" Failed to create index buffer");
@@ -92,14 +92,14 @@ namespace Directus
 		}
 
 		// Compute memory usage
-		m_memoryUsage = unsigned int((sizeof(unsigned int) * indices.size()));
+		m_memory_usage = unsigned int((sizeof(unsigned int) * indices.size()));
 
 		return true;
 	}
 
-	bool RHI_IndexBuffer::CreateDynamic(unsigned int stride, unsigned int indexCount)
+	bool RHI_IndexBuffer::CreateDynamic(const unsigned int stride, const unsigned int index_count)
 	{
-		SafeRelease((ID3D11Buffer*)m_buffer);
+		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 
 		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
 		{
@@ -107,19 +107,19 @@ namespace Directus
 			return false;
 		}
 
-		m_indexCount = indexCount;
+		m_index_count = index_count;
 
-		D3D11_BUFFER_DESC bufferDesc;
-		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-		bufferDesc.ByteWidth			= indexCount * stride;
-		bufferDesc.Usage				= D3D11_USAGE_DYNAMIC;
-		bufferDesc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
-		bufferDesc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
-		bufferDesc.MiscFlags			= 0;
-		bufferDesc.StructureByteStride	= 0;
+		D3D11_BUFFER_DESC buffer_desc;
+		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
+		buffer_desc.ByteWidth			= index_count * stride;
+		buffer_desc.Usage				= D3D11_USAGE_DYNAMIC;
+		buffer_desc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
+		buffer_desc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
+		buffer_desc.MiscFlags			= 0;
+		buffer_desc.StructureByteStride	= 0;
 
-		auto ptr = (ID3D11Buffer**)&m_buffer;
-		auto result = m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&bufferDesc, nullptr, ptr);
+		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
+		const auto result	= m_rhiDevice->GetDevice<ID3D11Device>()->CreateBuffer(&buffer_desc, nullptr, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR("Failed to create dynamic index buffer");
@@ -129,7 +129,7 @@ namespace Directus
 		return true;
 	}
 
-	void* RHI_IndexBuffer::Map()
+	void* RHI_IndexBuffer::Map() const
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
@@ -137,18 +137,18 @@ namespace Directus
 			return nullptr;
 		}
 
-		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		auto result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map((ID3D11Resource*)m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		D3D11_MAPPED_SUBRESOURCE mapped_resource;
+		const auto result = m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to map index buffer.");
 			return nullptr;
 		}
 
-		return mappedResource.pData;
+		return mapped_resource.pData;
 	}
 
-	bool RHI_IndexBuffer::Unmap()
+	bool RHI_IndexBuffer::Unmap() const
 	{
 		if (!m_rhiDevice || !m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
 		{
@@ -156,7 +156,7 @@ namespace Directus
 			return false;
 		}
 
-		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap((ID3D11Resource*)m_buffer, 0);
+		m_rhiDevice->GetDeviceContext<ID3D11DeviceContext>()->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
 
 		return true;
 	}

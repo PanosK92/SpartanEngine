@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <memory>
 #include "../Core/Context.h"
-#include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 //===================================
@@ -58,53 +57,45 @@ namespace Directus
 	{
 	public:
 		IResource(Context* context, Resource_Type type);
-		virtual ~IResource() {}
+		virtual ~IResource() = default;
 
-		//= PROPERTIES ===================================================================================================
-		unsigned int Resource_GetID() { return m_resourceID; }
-
-		Resource_Type GetResourceType()				{ return m_resourceType; }
-		void SetResourceType(Resource_Type type)	{ m_resourceType = type; }
-
-		const char* GetResourceType_cstr() { return typeid(*this).name(); }
-
-		const std::string& GetResourceName()			{ return m_resourceName; }
-		void SetResourceName(const std::string& name)	{ m_resourceName = name; }
-
-		const std::string& GetResourceFilePath()				{ return m_resourceFilePath; }
-		void SetResourceFilePath(const std::string& filePath)	{ m_resourceFilePath = filePath; }
-
-		bool HasFilePath() { return m_resourceFilePath != NOT_ASSIGNED; }
-
-		std::string GetResourceFileName()	{ return FileSystem::GetFileNameNoExtensionFromFilePath(m_resourceFilePath); }
-		std::string GetResourceDirectory()	{ return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath); }
-
-		virtual unsigned int GetMemoryUsage() { return (unsigned int)sizeof(*this); }
-		//================================================================================================================
+		//= PROPERTIES =======================================================================================================================
+		unsigned int ResourceGetId() const						{ return m_resource_id; }
+		Resource_Type GetResourceType() const					{ return m_resource_type; }
+		void SetResourceType(Resource_Type type)				{ m_resource_type = type; }
+		const char* GetResourceTypeCstr() const					{ return typeid(*this).name(); }
+		const std::string& GetResourceName() const				{ return m_resource_name; }
+		void SetResourceName(const std::string& name)			{ m_resource_name = name; }
+		const std::string& GetResourceFilePath() const			{ return m_resource_file_path; }
+		void SetResourceFilePath(const std::string& file_path)	{ m_resource_file_path = file_path; }
+		bool HasFilePath() const								{ return m_resource_file_path != NOT_ASSIGNED; }
+		std::string GetResourceFileName() const					{ return FileSystem::GetFileNameNoExtensionFromFilePath(m_resource_file_path); }
+		std::string GetResourceDirectory() const				{ return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }
+		virtual unsigned int GetMemoryUsage()					{ return static_cast<unsigned int>(sizeof(*this)); }
+		LoadState GetLoadState() const				{ return m_load_state; }
+		void SetLoadState(const LoadState state)	{ m_load_state = state; }
+		//====================================================================================================================================
 
 		//= IO =================================================================
-		virtual bool SaveToFile(const std::string& filePath)	{ return true; }
-		virtual bool LoadFromFile(const std::string& filePath)	{ return true; }
+		virtual bool SaveToFile(const std::string& file_path)	{ return true; }
+		virtual bool LoadFromFile(const std::string& file_path)	{ return true; }
 		//======================================================================
 
-		//= TYPE ================================
+		//= TYPE ===================================
 		template <typename T>
-		static Resource_Type DeduceResourceType();
-		//=======================================
+		static constexpr Resource_Type TypeToEnum();
+		//==========================================
 
 		//= PTR ==========================================
 		auto GetSharedPtr() { return shared_from_this(); }
 		//================================================
 
-		LoadState GetLoadState()			{ return m_loadState; }
-		void SetLoadState(LoadState state)	{ m_loadState = state; }
-
 	protected:
-		unsigned int m_resourceID			= NOT_ASSIGNED_HASH;
-		std::string m_resourceName			= NOT_ASSIGNED;
-		std::string m_resourceFilePath		= NOT_ASSIGNED;
-		Resource_Type m_resourceType		= Resource_Unknown;
-		LoadState m_loadState				= LoadState_Idle;
+		unsigned int m_resource_id			= NOT_ASSIGNED_HASH;
+		std::string m_resource_name			= NOT_ASSIGNED;
+		std::string m_resource_file_path	= NOT_ASSIGNED;
+		Resource_Type m_resource_type		= Resource_Unknown;
+		LoadState m_load_state				= LoadState_Idle;
 		Context* m_context					= nullptr;
 	};
 }

@@ -25,20 +25,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <map>
 #include <chrono>
-#include <memory>
 #include "../Core/EngineDefs.h"
 #include "../Core/ISubsystem.h"
 //=============================
 
 // Multi (CPU + GPU)
-#define TIME_BLOCK_START_MULTI(profiler)	profiler->TimeBlockStart_Multi(__FUNCTION__);
-#define TIME_BLOCK_END_MULTI(profiler)		profiler->TimeBlockEnd_Multi(__FUNCTION__);
+#define TIME_BLOCK_START_MULTI(profiler)	profiler->TimeBlockStartMulti(__FUNCTION__);
+#define TIME_BLOCK_END_MULTI(profiler)		profiler->TimeBlockEndMulti(__FUNCTION__);
 // CPU
-#define TIME_BLOCK_START_CPU(profiler)		profiler->TimeBlockStart_CPU(__FUNCTION__);
-#define TIME_BLOCK_END_CPU(profiler)		profiler->TimeBlockEnd_CPU(__FUNCTION__);
+#define TIME_BLOCK_START_CPU(profiler)		profiler->TimeBlockStartCpu(__FUNCTION__);
+#define TIME_BLOCK_END_CPU(profiler)		profiler->TimeBlockEndCpu(__FUNCTION__);
 // GPU
-#define TIME_BLOCK_START_GPU(profiler)		profiler->TimeBlockStart_CPU(__FUNCTION__);
-#define TIME_BLOCK_END_GPU(profiler)		profiler->TimeBlockEnd_GPU(__FUNCTION__);
+#define TIME_BLOCK_START_GPU(profiler)		profiler->TimeBlockStartGpu(__FUNCTION__);
+#define TIME_BLOCK_END_GPU(profiler)		profiler->TimeBlockEndGpu(__FUNCTION__);
 
 namespace Directus
 {
@@ -49,18 +48,18 @@ namespace Directus
 	class Renderer;
 	class Variant;
 
-	struct TimeBlock_CPU
+	struct TimeBlockCpu
 	{
 		std::chrono::steady_clock::time_point start;
 		std::chrono::steady_clock::time_point end;
 		float duration = 0.0f;
 	};
 
-	struct TimeBlock_GPU
+	struct TimeBlockGpu
 	{
-		void* query;
-		void* time_start;
-		void* time_end;
+		void* query			= nullptr;
+		void* time_start	= nullptr;
+		void* time_end		= nullptr;
 		float duration		= 0.0f;
 		bool initialized	= false;
 		bool started		= false;
@@ -76,95 +75,94 @@ namespace Directus
 		//=========================
 
 		// Multi-timing
-		void TimeBlockStart_Multi(const char* funcName);
-		void TimeBlockEnd_Multi(const char* funcName);
+		bool TimeBlockStartMulti(const std::string& func_name);
+		bool TimeBlockEndMulti(const std::string& func_name);
 		// CPU timing
-		void TimeBlockStart_CPU(const char* funcName);
-		void TimeBlockEnd_CPU(const char* funcName);
+		bool TimeBlockStartCpu(const std::string& func_name);
+		bool TimeBlockEndCpu(const std::string& func_name);
 		// GPU timing
-		void TimeBlockStart_GPU(const char* funcName);
-		void TimeBlockEnd_GPU(const char* funcName);
+		bool TimeBlockStartGpu(const std::string& func_name);
+		bool TimeBlockEndGpu(const std::string& func_name);
 
 		// Events
 		void OnFrameStart();
 		void OnFrameEnd();
 
-		void SetProfilingEnabled_CPU(bool enabled)		{ m_cpuProfiling = enabled; }
-		void SetProfilingEnabled_GPU(bool enabled)		{ m_gpuProfiling = enabled; }
-		const std::string& GetMetrics()					{ return m_metrics; }
-		float GetTimeBlockMs_CPU(const char* funcName)	{ return m_timeBlocks_cpu[funcName].duration; }
-		float GetTimeBlockMs_GPU(const char* funcName)	{ return m_timeBlocks_gpu[funcName].duration; }
-		const auto& GetTimeBlocks_CPU()					{ return m_timeBlocks_cpu; }
-		const auto& GetTimeBlocks_GPU()					{ return m_timeBlocks_gpu; }
-		float GetRenderTime_CPU()						{ return m_cpuTime; }
-		float GetRenderTime_GPU()						{ return m_gpuTime; }
-		float GetFPS()									{ return m_fps; }
-		float GetFrameTimeSec()							{ return m_frameTimeSec; }
+		void SetProfilingEnabledCpu(const bool enabled)	{ m_cpu_profiling = enabled; }
+		void SetProfilingEnabledGpu(const bool enabled)	{ m_gpu_profiling = enabled; }
+		const std::string& GetMetrics() const			{ return m_metrics; }
+		float GetTimeBlockMsCpu(const char* func_name)	{ return m_time_blocks_cpu[func_name].duration; }
+		float GetTimeBlockMsGpu(const char* func_name)	{ return m_time_blocks_gpu[func_name].duration; }
+		const auto& GetTimeBlocksCpu() const			{ return m_time_blocks_cpu; }
+		const auto& GetTimeBlocksGpu() const			{ return m_time_blocks_gpu; }
+		float GetRenderTimeCpu() const					{ return m_cpu_time; }
+		float GetRenderTimeGpu() const					{ return m_gpu_time; }
+		float GetFps() const							{ return m_fps; }
+		float GetFrameTimeSec() const					{ return m_frame_time_sec; }
 
 		void Reset()
 		{
-			m_rhiDrawCalls				= 0;
-			m_rendererMeshesRendered	= 0;
-			m_rhiBindingsBufferIndex	= 0;
-			m_rhiBindingsBufferVertex	= 0;
-			m_rhiBindingsBufferConstant	= 0;
-			m_rhiBindingsSampler		= 0;
-			m_rhiBindingsTexture		= 0;
-			m_rhiBindingsVertexShader	= 0;
-			m_rhiBindingsPixelShader	= 0;
-			m_rhiBindingsRenderTarget	= 0;
+			m_rhi_draw_calls				= 0;
+			m_renderer_meshes_rendered		= 0;
+			m_rhi_bindings_buffer_index		= 0;
+			m_rhi_bindings_buffer_vertex	= 0;
+			m_rhi_bindings_buffer_constant	= 0;
+			m_rhi_bindings_sampler			= 0;
+			m_rhi_bindings_texture			= 0;
+			m_rhi_bindings_vertex_shader	= 0;
+			m_rhi_bindings_pixel_shader		= 0;
+			m_rhi_bindings_render_target	= 0;
 		}
 
 		// Metrics - RHI
-		unsigned int m_rhiDrawCalls;
-		unsigned int m_rhiBindingsBufferIndex;
-		unsigned int m_rhiBindingsBufferVertex;
-		unsigned int m_rhiBindingsBufferConstant;
-		unsigned int m_rhiBindingsSampler;
-		unsigned int m_rhiBindingsTexture;
-		unsigned int m_rhiBindingsVertexShader;
-		unsigned int m_rhiBindingsPixelShader;
-		unsigned int m_rhiBindingsRenderTarget;
+		unsigned int m_rhi_draw_calls;
+		unsigned int m_rhi_bindings_buffer_index;
+		unsigned int m_rhi_bindings_buffer_vertex;
+		unsigned int m_rhi_bindings_buffer_constant;
+		unsigned int m_rhi_bindings_sampler;
+		unsigned int m_rhi_bindings_texture;
+		unsigned int m_rhi_bindings_vertex_shader;
+		unsigned int m_rhi_bindings_pixel_shader;
+		unsigned int m_rhi_bindings_render_target;
 
 		// Metrics - Renderer
-		unsigned int m_rendererMeshesRendered;
+		unsigned int m_renderer_meshes_rendered;
 
 		// Metrics - Time
-		float m_frameTimeMs;
-		float m_frameTimeSec;
-		float m_cpuTime;
-		float m_gpuTime;
+		float m_frame_time_ms;
+		float m_frame_time_sec;
+		float m_cpu_time;
+		float m_gpu_time;
 
 	private:
 		void UpdateMetrics(float fps);
-		void ComputeFPS(float deltaTime);
-		// Converts float to string with specified precision
-		std::string to_string_precision(float value, int decimals);
+		void ComputeFps(float delta_time);
+		static std::string ToStringPrecision(float value, unsigned int decimals);
 
 		// Profiling options
-		bool m_gpuProfiling;
-		bool m_cpuProfiling;
-		float m_profilingFrequencySec;
-		float m_profilingLastUpdateTime;
+		bool m_gpu_profiling;
+		bool m_cpu_profiling;
+		float m_profiling_frequency_sec;
+		float m_profiling_last_update_time;
 
 		// Time blocks
-		std::map<const char*, TimeBlock_CPU> m_timeBlocks_cpu;
-		std::map<const char*, TimeBlock_GPU> m_timeBlocks_gpu;
+		std::map<std::string, TimeBlockCpu> m_time_blocks_cpu;
+		std::map<std::string, TimeBlockGpu> m_time_blocks_gpu;
 
 		// Misc
 		std::string m_metrics;
-		bool m_shouldUpdate;
+		bool m_should_update;
 	
-		//= FPS ===========
+		//= FPS ===================
 		float m_fps;
-		float m_timePassed;
-		int m_frameCount;
-		//=================
+		float m_time_passed;
+		unsigned int m_frame_count;
+		//=========================
 
 		// Dependencies
 		World* m_scene;
 		Timer* m_timer;
-		ResourceCache* m_resourceManager;
+		ResourceCache* m_resource_manager;
 		Renderer* m_renderer;
 	};
 }

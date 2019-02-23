@@ -84,7 +84,7 @@ void Widget_World::Tick(float deltaTime)
 	if (ImGui::IsMouseReleased(0) && _Widget_World::g_entityClicked)
 	{
 		// Make sure that the mouse was released while on the same entity
-		if (_Widget_World::g_entityHovered && _Widget_World::g_entityHovered->GetID() == _Widget_World::g_entityClicked->GetID())
+		if (_Widget_World::g_entityHovered && _Widget_World::g_entityHovered->GetId() == _Widget_World::g_entityClicked->GetId())
 		{
 			SetSelectedEntity(_Widget_World::g_entityClicked->GetPtrShared());
 		}
@@ -165,7 +165,7 @@ void Widget_World::Tree_AddEntity(Entity* entity)
 	// Flag - Is selected?
 	if (auto selectedEntity = EditorHelper::Get().g_selectedEntity.lock())
 	{
-		bool isSelectedentity = selectedEntity->GetID() == entity->GetID();
+		bool isSelectedentity = selectedEntity->GetId() == entity->GetId();
 		node_flags |= isSelectedentity ? ImGuiTreeNodeFlags_Selected : 0;
 
 		// Expand to show entity, if it was clicked during this frame
@@ -185,7 +185,7 @@ void Widget_World::Tree_AddEntity(Entity* entity)
 		}
 	}
 	
-	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)entity->GetID(), node_flags, entity->GetName().c_str());
+	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)entity->GetId(), node_flags, entity->GetName().c_str());
 
 	// Manually detect some useful states
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
@@ -253,7 +253,7 @@ void Widget_World::Entity_HandleDragDrop(Entity* entityPtr)
 	// Drag
 	if (ImGui::BeginDragDropSource())
 	{
-		_Widget_World::g_payload.data = entityPtr->GetID();
+		_Widget_World::g_payload.data = entityPtr->GetId();
 		_Widget_World::g_payload.type = DragPayload_entity;
 		DragDrop::Get().DragPayload(_Widget_World::g_payload);
 		ImGui::EndDragDropSource();
@@ -264,7 +264,7 @@ void Widget_World::Entity_HandleDragDrop(Entity* entityPtr)
 		auto entityID = get<unsigned int>(payload->data);
 		if (auto droppedentity = _Widget_World::g_world->Entity_GetByID(entityID))
 		{
-			if (droppedentity->GetID() != entityPtr->GetID())
+			if (droppedentity->GetId() != entityPtr->GetId())
 			{
 				droppedentity->GetTransform_PtrRaw()->SetParent(entityPtr->GetTransform_PtrRaw());
 			}
@@ -272,7 +272,7 @@ void Widget_World::Entity_HandleDragDrop(Entity* entityPtr)
 	}
 }
 
-void Widget_World::SetSelectedEntity(std::shared_ptr<Directus::Entity> entity, bool fromEditor /*= true*/)
+void Widget_World::SetSelectedEntity(std::shared_ptr<Entity> entity, bool fromEditor /*= true*/)
 {
 	m_expandToShowentity = true;
 

@@ -65,7 +65,7 @@ Editor::Editor(void* windowHandle, void* windowInstance, int windowWidth, int wi
 	m_context	= m_engine->GetContext();
 	m_renderer	= m_context->GetSubsystem<Renderer>().get();
 	m_timer		= m_context->GetSubsystem<Timer>().get();
-	m_rhiDevice = m_renderer->GetRHIDevice();
+	m_rhiDevice = m_renderer->GetRhiDevice();
 
 	// ImGui version validation
 	IMGUI_CHECKVERSION();

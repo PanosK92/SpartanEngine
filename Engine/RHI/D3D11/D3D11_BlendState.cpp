@@ -39,44 +39,44 @@ namespace Directus
 {
 	RHI_BlendState::RHI_BlendState
 	(
-		std::shared_ptr<RHI_Device> device,
-		bool blendEnabled					/*= false*/,
-		RHI_Blend sourceBlend				/*= Blend_Src_Alpha*/,
-		RHI_Blend destBlend					/*= Blend_Inv_Src_Alpha*/,
-		RHI_Blend_Operation blendOp			/*= Blend_Operation_Add*/,
-		RHI_Blend sourceBlendAlpha			/*= Blend_One*/,
-		RHI_Blend destBlendAlpha			/*= Blend_One*/,
-		RHI_Blend_Operation blendOpAlpha	/*= Blend_Operation_Add*/
+		const std::shared_ptr<RHI_Device>& device,
+		const bool blend_enabled					/*= false*/,
+		const RHI_Blend source_blend				/*= Blend_Src_Alpha*/,
+		const RHI_Blend dest_blend					/*= Blend_Inv_Src_Alpha*/,
+		const RHI_Blend_Operation blend_op			/*= Blend_Operation_Add*/,
+		const RHI_Blend source_blend_alpha			/*= Blend_One*/,
+		const RHI_Blend dest_blend_alpha			/*= Blend_One*/,
+		const RHI_Blend_Operation blend_op_alpha	/*= Blend_Operation_Add*/
 	)
 	{
 		// Save properties
-		m_blendEnabled = blendEnabled;
+		m_blend_enabled = blend_enabled;
 
 		// Create description
 		D3D11_BLEND_DESC desc;
 		desc.AlphaToCoverageEnable	= false;
-		desc.IndependentBlendEnable = blendEnabled;
-		for (UINT i = 0; i < 8; ++i)
+		desc.IndependentBlendEnable = blend_enabled;
+		for (auto& render_target : desc.RenderTarget)
 		{
-			desc.RenderTarget[i].BlendEnable			= blendEnabled;
-			desc.RenderTarget[i].SrcBlend				= d3d11_blend[sourceBlend];
-			desc.RenderTarget[i].DestBlend				= d3d11_blend[destBlend];
-			desc.RenderTarget[i].BlendOp				= d3d11_blend_op[blendOp];
-			desc.RenderTarget[i].SrcBlendAlpha			= d3d11_blend[sourceBlendAlpha];
-			desc.RenderTarget[i].DestBlendAlpha			= d3d11_blend[destBlendAlpha];
-			desc.RenderTarget[i].BlendOpAlpha			= d3d11_blend_op[blendOpAlpha];
-			desc.RenderTarget[i].RenderTargetWriteMask	= D3D11_COLOR_WRITE_ENABLE_ALL;
+			render_target.BlendEnable			= blend_enabled;
+			render_target.SrcBlend				= d3d11_blend[source_blend];
+			render_target.DestBlend				= d3d11_blend[dest_blend];
+			render_target.BlendOp				= d3d11_blend_op[blend_op];
+			render_target.SrcBlendAlpha			= d3d11_blend[source_blend_alpha];
+			render_target.DestBlendAlpha		= d3d11_blend[dest_blend_alpha];
+			render_target.BlendOpAlpha			= d3d11_blend_op[blend_op_alpha];
+			render_target.RenderTargetWriteMask	= D3D11_COLOR_WRITE_ENABLE_ALL;
 		}
-		desc.RenderTarget[0].BlendEnable = blendEnabled;
+		desc.RenderTarget[0].BlendEnable = blend_enabled;
 
 		// Create blend state
-		auto blendState	= (ID3D11BlendState*)m_buffer;
-		auto result		= device->GetDevice<ID3D11Device>()->CreateBlendState(&desc, &blendState);
+		auto blend_state	= static_cast<ID3D11BlendState*>(m_buffer);
+		const auto result	= device->GetDevice<ID3D11Device>()->CreateBlendState(&desc, &blend_state);
 
 		// Handle result
 		if (SUCCEEDED(result))
 		{
-			m_buffer		= (void*)blendState;
+			m_buffer		= static_cast<void*>(blend_state);
 			m_initialized	= true;	
 		}
 		else
@@ -88,7 +88,7 @@ namespace Directus
 
 	RHI_BlendState::~RHI_BlendState()
 	{
-		SafeRelease((ID3D11BlendState*)m_buffer);
+		safe_release(static_cast<ID3D11BlendState*>(m_buffer));
 	}
 }
 #endif

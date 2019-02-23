@@ -19,15 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES =========================
 #include "Transform_Gizmo.h"
-#include "..\Model.h"
-#include "..\..\RHI\RHI_Vertex.h"
-#include "..\..\RHI\RHI_IndexBuffer.h"
-#include "..\..\World\Entity.h"
-#include "..\..\Input\Input.h"
+#include "../Model.h"
+#include "../../RHI/RHI_IndexBuffer.h"
+#include "../../World/World.h"
+#include "../../World/Entity.h"
+#include "../../Input/Input.h"
 //====================================
 
 //=============================
@@ -39,12 +37,12 @@ namespace Directus
 {
 	Transform_Gizmo::Transform_Gizmo(Context* context)
 	{
-		m_context	= context;
-		m_input		= m_context->GetSubsystem<Input>().get();
-		m_world		= m_context->GetSubsystem<World>().get();
-		m_type		= TransformHandle_Position;
-		m_space		= TransformHandle_World;
-		m_isEditing	= false;
+		m_context		= context;
+		m_input			= m_context->GetSubsystem<Input>().get();
+		m_world			= m_context->GetSubsystem<World>().get();
+		m_type			= TransformHandle_Position;
+		m_space			= TransformHandle_World;
+		m_is_editing	= false;
 
 		// Handles
 		m_handle_position.Initialize(TransformHandle_Position, context);
@@ -52,15 +50,10 @@ namespace Directus
 		m_handle_scale.Initialize(TransformHandle_Scale, context);
 	}
 
-	Transform_Gizmo::~Transform_Gizmo()
-	{
-
-	}
-
 	std::shared_ptr<Entity>& Transform_Gizmo::SetSelectedEntity(std::shared_ptr<Entity>& entity)
 	{
 		// Update picked entity only when it's not being edited
-		if (!m_isEditing)
+		if (!m_is_editing)
 		{
 			m_entity_selected = entity;
 		}
@@ -68,12 +61,12 @@ namespace Directus
 		return m_entity_selected;
 	}
 
-	bool Transform_Gizmo::Update(Camera* camera, float handle_size, float handle_speed)
+	bool Transform_Gizmo::Update(Camera* camera, const float handle_size, const float handle_speed)
 	{
 		// If there is no camera, don't even bother
 		if (!camera || !m_entity_selected)
 		{
-			m_isEditing = false;
+			m_is_editing = false;
 			return false;
 		}
 
@@ -94,15 +87,15 @@ namespace Directus
 		// Update appropriate handle
 		if (m_type == TransformHandle_Position)
 		{
-			m_isEditing = m_handle_position.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
+			m_is_editing = m_handle_position.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
 		}
 		else if (m_type == TransformHandle_Scale)
 		{
-			m_isEditing = m_handle_scale.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
+			m_is_editing = m_handle_scale.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
 		}
 		else if (m_type == TransformHandle_Rotation)
 		{
-			m_isEditing = m_handle_rotation.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
+			m_is_editing = m_handle_rotation.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
 		}
 
 		return true;

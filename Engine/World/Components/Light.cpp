@@ -264,7 +264,7 @@ namespace Directus
 
 		// Create the shadow maps
 		unsigned int resolution	= Settings::Get().Shadows_GetResolution();
-		auto rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
+		auto rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
 		m_shadowMap				= make_unique<RHI_RenderTexture>(rhiDevice, resolution, resolution, Format_R32_FLOAT, true, Format_D32_FLOAT, arraySize); // could use the g-buffers depth which should be same res
 	}
 }

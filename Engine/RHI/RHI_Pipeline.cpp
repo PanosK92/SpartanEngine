@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_DepthStencilState.h"
 #include "RHI_RasterizerState.h"
 #include "RHI_BlendState.h"
-#include "..\Logging\Log.h"
+#include "../Logging/Log.h"
 #include "../Profiling/Profiler.h"
 //================================
 
@@ -45,26 +45,26 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	RHI_Pipeline::RHI_Pipeline(Context* context, shared_ptr<RHI_Device> rhiDevice)
+	RHI_Pipeline::RHI_Pipeline(Context* context, const shared_ptr<RHI_Device>& rhi_device)
 	{
-		m_rhiDevice	= rhiDevice;
+		m_rhi_device	= rhi_device;
 		m_profiler	= context->GetSubsystem<Profiler>().get();
 	}
 
-	bool RHI_Pipeline::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
+	bool RHI_Pipeline::DrawIndexed(const unsigned int index_count, const unsigned int index_offset, const unsigned int vertex_offset)
 	{
-		bool bindResult = Bind();
-		m_rhiDevice->DrawIndexed(indexCount, indexOffset, vertexOffset);
-		m_profiler->m_rhiDrawCalls++;
-		return bindResult;
+		const auto bind = Bind();
+		const auto draw = m_rhi_device->DrawIndexed(index_count, index_offset, vertex_offset);
+		m_profiler->m_rhi_draw_calls++;
+		return bind && draw;
 	}
 
-	bool RHI_Pipeline::Draw(unsigned int vertexCount)
+	bool RHI_Pipeline::Draw(const unsigned int vertex_count)
 	{
-		bool bindResult = Bind();
-		m_rhiDevice->Draw(vertexCount);
-		m_profiler->m_rhiDrawCalls++;
-		return bindResult;
+		const auto bind	= Bind();
+		const auto draw	= m_rhi_device->Draw(vertex_count);
+		m_profiler->m_rhi_draw_calls++;
+		return bind && draw;
 	}
 
 	bool RHI_Pipeline::SetShader(const shared_ptr<RHI_Shader>& shader)
@@ -80,15 +80,15 @@ namespace Directus
 			return false;
 		}
 
-		if (m_vertexShader)
+		if (m_vertex_shader)
 		{
-			if (m_vertexShader->RHI_GetID() == shader->RHI_GetID())
+			if (m_vertex_shader->RHI_GetID() == shader->RHI_GetID())
 				return true;
 		}
 
 		SetInputLayout(shader->GetInputLayout()); // TODO: this has to be done outside of this function 
-		m_vertexShader		= shader;
-		m_vertexShaderDirty = true;
+		m_vertex_shader		= shader;
+		m_vertex_shader_dirty = true;
 
 		return true;
 	}
@@ -101,42 +101,42 @@ namespace Directus
 			return false;
 		}
 
-		if (m_pixelShader)
+		if (m_pixel_shader)
 		{
-			if (m_pixelShader->RHI_GetID() == shader->RHI_GetID())
+			if (m_pixel_shader->RHI_GetID() == shader->RHI_GetID())
 				return true;
 		}
 
-		m_pixelShader		= shader;
-		m_pixelShaderDirty	= true;
+		m_pixel_shader		= shader;
+		m_pixel_shader_dirty	= true;
 
 		return true;
 	}
 
-	bool RHI_Pipeline::SetIndexBuffer(const shared_ptr<RHI_IndexBuffer>& indexBuffer)
+	bool RHI_Pipeline::SetIndexBuffer(const shared_ptr<RHI_IndexBuffer>& index_buffer)
 	{
-		if (!indexBuffer)
+		if (!index_buffer)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		m_indexBuffer		= indexBuffer;
-		m_indexBufferDirty	= true;
+		m_index_buffer		= index_buffer;
+		m_index_buffer_dirty	= true;
 
 		return true;
 	}
 
-	bool RHI_Pipeline::SetVertexBuffer(const shared_ptr<RHI_VertexBuffer>& vertexBuffer)
+	bool RHI_Pipeline::SetVertexBuffer(const shared_ptr<RHI_VertexBuffer>& vertex_buffer)
 	{
-		if (!vertexBuffer)
+		if (!vertex_buffer)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		m_vertexBuffer		= vertexBuffer;
-		m_vertexBufferDirty = true;
+		m_vertex_buffer		= vertex_buffer;
+		m_vertex_buffer_dirty = true;
 
 		return true;
 	}
@@ -144,7 +144,7 @@ namespace Directus
 	bool RHI_Pipeline::SetSampler(const shared_ptr<RHI_Sampler>& sampler)
 	{
 		m_samplers.emplace_back(sampler ? sampler->GetBuffer() : nullptr);
-		m_samplersDirty = true;
+		m_samplers_dirty = true;
 
 		return true;
 	}
@@ -153,179 +153,179 @@ namespace Directus
 	{
 		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
-		m_texturesDirty = true;
+		m_textures_dirty = true;
 	}
 
 	void RHI_Pipeline::SetTexture(const shared_ptr<RHI_Texture>& texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
-		m_texturesDirty = true;
+		m_textures_dirty = true;
 	}
 
 	void RHI_Pipeline::SetTexture(const RHI_Texture* texture)
 	{
 		// allow for null texture to be bound so we can maintain slot order
 		m_textures.emplace_back(texture ? texture->GetShaderResource() : nullptr);
-		m_texturesDirty = true;
+		m_textures_dirty = true;
 	}
 
 	void RHI_Pipeline::SetTexture(void* texture)
 	{
 		m_textures.emplace_back(texture);
-		m_texturesDirty = true;
+		m_textures_dirty = true;
 	}
 
-	bool RHI_Pipeline::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& renderTarget, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
+	bool RHI_Pipeline::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& render_target, void* depth_stencil_view /*= nullptr*/, const bool clear /*= false*/)
 	{
-		if (!renderTarget)
+		if (!render_target)
 			return false;
 
-		m_renderTargetViews.clear();
-		m_renderTargetViews.emplace_back(renderTarget->GetRenderTargetView());
-		m_depthStencilView		= depthStencilView;
-		m_renderTargetsClear	= clear;
-		m_renderTargetsDirty	= true;
+		m_render_target_views.clear();
+		m_render_target_views.emplace_back(render_target->GetRenderTargetView());
+		m_depth_stencil_view		= depth_stencil_view;
+		m_render_targets_clear	= clear;
+		m_render_targets_dirty	= true;
 
 		return true;
 	}
 
-	bool RHI_Pipeline::SetRenderTarget(void* renderTargetView, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
+	bool RHI_Pipeline::SetRenderTarget(void* render_target_view, void* depth_stencil_view /*= nullptr*/, const bool clear /*= false*/)
 	{
-		if (!renderTargetView)
+		if (!render_target_view)
 			return false;
 
-		m_renderTargetViews.clear();
-		m_renderTargetViews.emplace_back(renderTargetView);
+		m_render_target_views.clear();
+		m_render_target_views.emplace_back(render_target_view);
 
-		m_depthStencilView			= depthStencilView;
-		m_renderTargetsClear	= clear;
-		m_renderTargetsDirty	= true;
+		m_depth_stencil_view			= depth_stencil_view;
+		m_render_targets_clear	= clear;
+		m_render_targets_dirty	= true;
 
 		return true;
 	}
 
-	bool RHI_Pipeline::SetRenderTarget(const vector<void*>& renderTargetViews, void* depthStencilView /*= nullptr*/, bool clear /*= false*/)
+	bool RHI_Pipeline::SetRenderTarget(const vector<void*>& render_target_views, void* depth_stencil_view /*= nullptr*/, const bool clear /*= false*/)
 	{
-		if (renderTargetViews.empty())
+		if (render_target_views.empty())
 			return false;
 
-		m_renderTargetViews.clear();
-		for (const auto& renderTarget : renderTargetViews)
+		m_render_target_views.clear();
+		for (const auto& render_target : render_target_views)
 		{
-			if (!renderTarget)
+			if (!render_target)
 				continue;
 
-			m_renderTargetViews.emplace_back(renderTarget);
+			m_render_target_views.emplace_back(render_target);
 		}
 
-		m_depthStencilView		= depthStencilView;
-		m_renderTargetsClear	= clear;
-		m_renderTargetsDirty	= true;
+		m_depth_stencil_view		= depth_stencil_view;
+		m_render_targets_clear	= clear;
+		m_render_targets_dirty	= true;
 
 		return true;
 	}
 
-	bool RHI_Pipeline::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constantBuffer, unsigned int slot, RHI_Buffer_Scope scope)
+	bool RHI_Pipeline::SetConstantBuffer(const shared_ptr<RHI_ConstantBuffer>& constant_buffer, unsigned int slot, RHI_Buffer_Scope scope)
 	{
-		auto bufferPtr = constantBuffer ? constantBuffer->GetBuffer() : nullptr;
-		m_constantBuffers.emplace_back(bufferPtr, slot, scope);
-		m_constantBufferDirty = true;
+		auto buffer_ptr = constant_buffer ? constant_buffer->GetBuffer() : nullptr;
+		m_constant_buffers.emplace_back(buffer_ptr, slot, scope);
+		m_constant_buffer_dirty = true;
 
 		return true;
 	}
 
-	void RHI_Pipeline::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology)
+	void RHI_Pipeline::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology)
 	{
-		if (m_primitiveTopology == primitiveTopology)
+		if (m_primitive_topology == primitive_topology)
 			return;
 	
-		m_primitiveTopology			= primitiveTopology;
-		m_primitiveTopologyDirty	= true;
+		m_primitive_topology			= primitive_topology;
+		m_primitive_topology_dirty	= true;
 	}
 
-	bool RHI_Pipeline::SetInputLayout(const shared_ptr<RHI_InputLayout>& inputLayout)
+	bool RHI_Pipeline::SetInputLayout(const shared_ptr<RHI_InputLayout>& input_layout)
 	{
-		if (!inputLayout)
+		if (!input_layout)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		if (m_inputLayout)
+		if (m_input_layout)
 		{
-			if (m_inputLayout->GetInputLayout() == inputLayout->GetInputLayout())
+			if (m_input_layout->GetInputLayout() == input_layout->GetInputLayout())
 				return true;
 		}
 
-		m_inputLayout		= inputLayout;
-		m_inputLayoutDirty	= true;
+		m_input_layout		= input_layout;
+		m_input_layout_dirty	= true;
 
 		return true;
 	}
 
-	bool RHI_Pipeline::SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState)
+	bool RHI_Pipeline::SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state)
 	{
-		if (!depthStencilState)
+		if (!depth_stencil_state)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		if (m_depthStencilState)
+		if (m_depth_stencil_state)
 		{
-			if (m_depthStencilState->GetDepthEnabled() == depthStencilState->GetDepthEnabled())
+			if (m_depth_stencil_state->GetDepthEnabled() == depth_stencil_state->GetDepthEnabled())
 				return true;
 		}
 
-		m_depthStencilState			= depthStencilState;
-		m_depthStencilStateDirty	= true;
+		m_depth_stencil_state			= depth_stencil_state;
+		m_depth_stencil_state_dirty	= true;
 		return true;
 	}
 
-	bool RHI_Pipeline::SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState)
+	bool RHI_Pipeline::SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state)
 	{
-		if (!rasterizerState)
+		if (!rasterizer_state)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		if (m_rasterizerState)
+		if (m_rasterizer_state)
 		{
-			bool equal =
-				m_rasterizerState->GetCullMode()				== rasterizerState->GetCullMode()			&&
-				m_rasterizerState->GetFillMode()				== rasterizerState->GetFillMode()			&&
-				m_rasterizerState->GetDepthClipEnabled()		== rasterizerState->GetDepthClipEnabled()	&&
-				m_rasterizerState->GetScissorEnabled()			== rasterizerState->GetScissorEnabled()	&&
-				m_rasterizerState->GetMultiSampleEnabled()		== rasterizerState->GetMultiSampleEnabled() &&
-				m_rasterizerState->GetAntialisedLineEnabled()	== rasterizerState->GetAntialisedLineEnabled();
+			const auto equal =
+				m_rasterizer_state->GetCullMode()				== rasterizer_state->GetCullMode()			&&
+				m_rasterizer_state->GetFillMode()				== rasterizer_state->GetFillMode()			&&
+				m_rasterizer_state->GetDepthClipEnabled()		== rasterizer_state->GetDepthClipEnabled()	&&
+				m_rasterizer_state->GetScissorEnabled()			== rasterizer_state->GetScissorEnabled()	&&
+				m_rasterizer_state->GetMultiSampleEnabled()		== rasterizer_state->GetMultiSampleEnabled() &&
+				m_rasterizer_state->GetAntialisedLineEnabled()	== rasterizer_state->GetAntialisedLineEnabled();
 
 			if (equal)
 				return true;
 		}
 
-		m_rasterizerState		= rasterizerState;
-		m_raterizerStateDirty	= true;
+		m_rasterizer_state		= rasterizer_state;
+		m_raterizer_state_dirty	= true;
 		return true;
 	}
 
-	bool RHI_Pipeline::SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState)
+	bool RHI_Pipeline::SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state)
 	{
-		if (!blendState)
+		if (!blend_state)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		if (m_blendState)
+		if (m_blend_state)
 		{
-			if (m_blendState->BlendEnabled() == blendState->BlendEnabled())
+			if (m_blend_state->BlendEnabled() == blend_state->BlendEnabled())
 				return true;
 		}
 
-		m_blendState		= blendState;
-		m_blendStateDirty	= true;
+		m_blend_state		= blend_state;
+		m_blend_state_dirty	= true;
 		return true;
 	}
 
@@ -335,208 +335,227 @@ namespace Directus
 			return;
 
 		m_viewport		= viewport;
-		m_viewportDirty = true;
+		m_viewport_dirty = true;
 	}
 
 	void RHI_Pipeline::SetScissorRectangle(const Math::Rectangle& rectangle)
 	{
-		if (m_scissorRectangle == rectangle)
+		if (m_scissor_rectangle == rectangle)
 			return;
 
-		m_scissorRectangle		= rectangle;
-		m_scissorRectangleDirty = true;
+		m_scissor_rectangle		= rectangle;
+		m_scissor_rectangle_dirty = true;
 	}
 
 	bool RHI_Pipeline::Bind()
 	{
-		if (!m_rhiDevice)
+		if (!m_rhi_device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		// Render Targets
-		if (m_renderTargetsDirty)
+		if (m_render_targets_dirty)
 		{
-			if (m_renderTargetViews.empty())
+			if (m_render_target_views.empty())
 			{
 				LOG_ERROR("Invalid render target(s)");
 				return false;
 			}
 
-			m_rhiDevice->SetRenderTargets((unsigned int)m_renderTargetViews.size(), &m_renderTargetViews[0], m_depthStencilView);
-			m_profiler->m_rhiBindingsRenderTarget++;
+			m_rhi_device->SetRenderTargets(static_cast<unsigned int>(m_render_target_views.size()), &m_render_target_views[0], m_depth_stencil_view);
+			m_profiler->m_rhi_bindings_render_target++;
 
-			if (m_renderTargetsClear)
+			if (m_render_targets_clear)
 			{
-				for (const auto& renderTargetView : m_renderTargetViews)
+				for (const auto& render_target_view : m_render_target_views)
 				{
-					m_rhiDevice->ClearRenderTarget(renderTargetView, Vector4(0, 0, 0, 0));
+					m_rhi_device->ClearRenderTarget(render_target_view, Vector4(0, 0, 0, 0));
 				}
 
-				if (m_depthStencilView)
+				if (m_depth_stencil_view)
 				{
-					float depth = Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
-					m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, depth, 0);
+					const auto depth = Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
+					m_rhi_device->ClearDepthStencil(m_depth_stencil_view, Clear_Depth, depth, 0);
 				}
 			}
 
-			m_renderTargetsClear = false;
-			m_renderTargetsDirty = false;
+			m_render_targets_clear = false;
+			m_render_targets_dirty = false;
 		}
 
 		// Textures
-		if (m_texturesDirty)
+		if (m_textures_dirty)
 		{
-			unsigned int startSlot = 0;
-			unsigned int textureCount = (unsigned int)m_textures.size();
-			void* textures = textureCount != 0 ? &m_textures[0] : nullptr;
+			const unsigned int start_slot	= 0;
+			const auto texture_count		= static_cast<unsigned int>(m_textures.size());
+			void* textures					= texture_count != 0 ? &m_textures[0] : nullptr;
 
-			m_rhiDevice->SetTextures(startSlot, textureCount, textures);
-			m_profiler->m_rhiBindingsTexture++;
+			m_rhi_device->SetTextures(start_slot, texture_count, textures);
+			m_profiler->m_rhi_bindings_texture++;
 
 			m_textures.clear();
-			m_texturesDirty = false;
+			m_textures_dirty = false;
 		}
 
 		// Samplers
-		if (m_samplersDirty)
+		if (m_samplers_dirty)
 		{
-			unsigned int startSlot		= 0;
-			unsigned int samplerCount	= (unsigned int)m_samplers.size();
-			void* samplers				= samplerCount != 0 ? &m_samplers[0] : nullptr;
+			const unsigned int start_slot	= 0;
+			const auto sampler_count		= static_cast<unsigned int>(m_samplers.size());
+			void* samplers					= sampler_count != 0 ? &m_samplers[0] : nullptr;
 
-			m_rhiDevice->SetSamplers(startSlot, samplerCount, samplers);
-			m_profiler->m_rhiBindingsSampler++;
+			m_rhi_device->SetSamplers(start_slot, sampler_count, samplers);
+			m_profiler->m_rhi_bindings_sampler++;
 
 			m_samplers.clear();
-			m_samplersDirty = false;
+			m_samplers_dirty = false;
 		}
 
 		// Constant buffers
-		if (m_constantBufferDirty)
+		if (m_constant_buffer_dirty)
 		{
-			for (const auto& constantBuffer : m_constantBuffers)
+			for (const auto& constant_buffer : m_constant_buffers)
 			{
-				m_rhiDevice->SetConstantBuffers(constantBuffer.slot, 1, (void*)&constantBuffer.buffer, constantBuffer.scope);
-				m_profiler->m_rhiBindingsBufferConstant += (constantBuffer.scope == Buffer_Global) ? 2 : 1;
+				m_rhi_device->SetConstantBuffers(constant_buffer.slot, 1, (void*)&constant_buffer.buffer, constant_buffer.scope);
+				m_profiler->m_rhi_bindings_buffer_constant += (constant_buffer.scope == Buffer_Global) ? 2 : 1;
 			}
 
-			m_constantBuffers.clear();
-			m_constantBufferDirty = false;
+			m_constant_buffers.clear();
+			m_constant_buffer_dirty = false;
 		}
 
 		// Vertex shader
-		if (m_vertexShaderDirty)
+		auto result_vertex_shader = false;
+		if (m_vertex_shader_dirty)
 		{
-			m_rhiDevice->SetVertexShader(m_vertexShader);
-			m_profiler->m_rhiBindingsVertexShader++;
-			m_vertexShaderDirty = false;
+			result_vertex_shader = m_rhi_device->SetVertexShader(m_vertex_shader);
+			m_profiler->m_rhi_bindings_vertex_shader++;
+			m_vertex_shader_dirty = false;
 		}
 
 		// Pixel shader
-		if (m_pixelShaderDirty)
+		auto result_pixel_shader = false;
+		if (m_pixel_shader_dirty)
 		{
-			m_rhiDevice->SetPixelShader(m_pixelShader);
-			m_profiler->m_rhiBindingsPixelShader++;
-			m_pixelShaderDirty = false;
+			result_pixel_shader = m_rhi_device->SetPixelShader(m_pixel_shader);
+			m_profiler->m_rhi_bindings_pixel_shader++;
+			m_pixel_shader_dirty = false;
 		}
 
 		// Input layout
-		if (m_inputLayoutDirty)
+		auto result_input_layout = false;
+		if (m_input_layout_dirty)
 		{
-			m_rhiDevice->SetInputLayout(m_inputLayout);
-			m_inputLayoutDirty = false;
+			result_input_layout = m_rhi_device->SetInputLayout(m_input_layout);
+			m_input_layout_dirty = false;
 		}
 
 		// Viewport
-		if (m_viewportDirty)
+		auto result_viewport = false;
+		if (m_viewport_dirty)
 		{
-			m_rhiDevice->SetViewport(m_viewport);
-			m_viewportDirty = false;
+			result_viewport = m_rhi_device->SetViewport(m_viewport);
+			m_viewport_dirty = false;
 		}
 
-		if (m_scissorRectangleDirty)
+		auto result_scissor_rectangle = false;
+		if (m_scissor_rectangle_dirty)
 		{
-			m_rhiDevice->SetScissorRectangle(m_scissorRectangle);
-			m_scissorRectangleDirty = false;
+			result_scissor_rectangle = m_rhi_device->SetScissorRectangle(m_scissor_rectangle);
+			m_scissor_rectangle_dirty = false;
 		}
 
 		// Primitive topology
-		if (m_primitiveTopologyDirty)
+		auto result_primitive_topology = false;
+		if (m_primitive_topology_dirty)
 		{
-			m_rhiDevice->SetPrimitiveTopology(m_primitiveTopology);
-			m_primitiveTopologyDirty = false;
+			result_primitive_topology = m_rhi_device->SetPrimitiveTopology(m_primitive_topology);
+			m_primitive_topology_dirty = false;
 		}
 
 		// Depth-Stencil state
-		if (m_depthStencilStateDirty)
+		auto result_depth_stencil_state = false;
+		if (m_depth_stencil_state_dirty)
 		{
-			m_rhiDevice->SetDepthStencilState(m_depthStencilState);
-			m_depthStencilStateDirty = false;
+			result_depth_stencil_state = m_rhi_device->SetDepthStencilState(m_depth_stencil_state);
+			m_depth_stencil_state_dirty = false;
 		}
 
 		// Rasterizer state
-		if (m_raterizerStateDirty)
+		auto result_rasterizer_state = false;
+		if (m_raterizer_state_dirty)
 		{
-			m_rhiDevice->SetRasterizerState(m_rasterizerState);
-			m_raterizerStateDirty = false;
+			result_rasterizer_state = m_rhi_device->SetRasterizerState(m_rasterizer_state);
+			m_raterizer_state_dirty = false;
 		}
 
 		// Index buffer
-		bool resultIndexBuffer = false;
-		if (m_indexBufferDirty)
+		auto result_index_buffer = false;
+		if (m_index_buffer_dirty)
 		{
-			resultIndexBuffer = m_rhiDevice->SetIndexBuffer(m_indexBuffer);
-			m_profiler->m_rhiBindingsBufferIndex++;
-			m_indexBufferDirty = false;
+			result_index_buffer = m_rhi_device->SetIndexBuffer(m_index_buffer);
+			m_profiler->m_rhi_bindings_buffer_index++;
+			m_index_buffer_dirty = false;
 		}
 
 		// Vertex buffer
-		bool resultVertexBuffer = false;
-		if (m_vertexBufferDirty)
+		auto result_vertex_buffer = false;
+		if (m_vertex_buffer_dirty)
 		{
-			resultVertexBuffer = m_rhiDevice->SetVertexBuffer(m_vertexBuffer);
-			m_profiler->m_rhiBindingsBufferVertex++;
-			m_vertexBufferDirty = false;
+			result_vertex_buffer = m_rhi_device->SetVertexBuffer(m_vertex_buffer);
+			m_profiler->m_rhi_bindings_buffer_vertex++;
+			m_vertex_buffer_dirty = false;
 		}
 
 		// Blend state
-		bool result_blendState = false;
-		if (m_blendStateDirty)
+		auto result_blend_state = false;
+		if (m_blend_state_dirty)
 		{
-			result_blendState = m_rhiDevice->SetBlendState(m_blendState);
-			m_blendStateDirty = false;
+			result_blend_state = m_rhi_device->SetBlendState(m_blend_state);
+			m_blend_state_dirty = false;
 		}
 
-		return resultIndexBuffer && resultVertexBuffer && result_blendState;
+		return 
+			result_vertex_shader && 
+			result_pixel_shader &&
+			result_input_layout &&
+			result_viewport &&
+			result_scissor_rectangle &&
+			result_primitive_topology &&
+			result_depth_stencil_state &&
+			result_rasterizer_state &&
+			result_index_buffer && 
+			result_vertex_buffer && 
+			result_blend_state;
 	}
 
 	void RHI_Pipeline::Clear()
 	{
 		vector<void*> empty(30);
-		void* empyt_ptr	= &empty[0];
+		void* empty_ptr	= &empty[0];
 		
 		// Render targets
-		m_rhiDevice->SetRenderTargets(8, empyt_ptr, nullptr);
-		m_renderTargetViews.clear();
-		m_depthStencilView		= nullptr;
-		m_renderTargetsClear	= false;
-		m_renderTargetsDirty	= false;
+		m_rhi_device->SetRenderTargets(8, empty_ptr, nullptr);
+		m_render_target_views.clear();
+		m_depth_stencil_view		= nullptr;
+		m_render_targets_clear	= false;
+		m_render_targets_dirty	= false;
 
 		// Textures
-		m_rhiDevice->SetTextures(0, 20, empyt_ptr);
+		m_rhi_device->SetTextures(0, 20, empty_ptr);
 		m_textures.clear();
-		m_texturesDirty = false;
+		m_textures_dirty = false;
 
 		// Samplers
-		m_rhiDevice->SetSamplers(0, 10, empyt_ptr);
+		m_rhi_device->SetSamplers(0, 10, empty_ptr);
 		m_samplers.clear();
-		m_samplersDirty = false;
+		m_samplers_dirty = false;
 
 		// Constant buffers
-		m_rhiDevice->SetConstantBuffers(0, 10, empyt_ptr, Buffer_Global);
-		m_constantBuffers.clear();
-		m_constantBufferDirty = false;
+		m_rhi_device->SetConstantBuffers(0, 10, empty_ptr, Buffer_Global);
+		m_constant_buffers.clear();
+		m_constant_buffer_dirty = false;
 	}
 }

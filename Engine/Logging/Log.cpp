@@ -90,27 +90,27 @@ namespace Directus
 		entity ? Write(entity->GetName(), type) : Write("Null", type);
 	}
 
-	void Log::Write(const Math::Vector2& value, Log_Type type)
+	void Log::Write(const Vector2& value, Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Math::Vector3& value, Log_Type type)
+	void Log::Write(const Vector3& value, Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Math::Vector4& value, Log_Type type)
+	void Log::Write(const Vector4& value, Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Math::Quaternion& value, Log_Type type)
+	void Log::Write(const Quaternion& value, Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Math::Matrix& value, Log_Type type)
+	void Log::Write(const Matrix& value, Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}

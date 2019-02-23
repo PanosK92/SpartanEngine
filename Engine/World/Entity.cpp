@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "Entity.h"
+#include "World.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Collider.h"
 #include "../World/Components/Transform.h"
@@ -47,10 +48,10 @@ namespace Directus
 	Entity::Entity(Context* context)
 	{
 		m_context				= context;
-		m_ID					= GENERATE_GUID;
+		m_id					= GENERATE_GUID;
 		m_name					= "Entity";
-		m_isActive				= true;
-		m_hierarchyVisibility	= true;	
+		m_is_active				= true;
+		m_hierarchy_visibility	= true;	
 	}
 
 	Entity::~Entity()
@@ -65,9 +66,9 @@ namespace Directus
 		m_components.clear();
 
 		m_name.clear();
-		m_ID					= NOT_ASSIGNED_HASH;
-		m_isActive				= true;
-		m_hierarchyVisibility	= true;
+		m_id					= NOT_ASSIGNED_HASH;
+		m_is_active				= true;
+		m_hierarchy_visibility	= true;
 	}
 
 	void Entity::Initialize(Transform* transform)
@@ -81,11 +82,11 @@ namespace Directus
 		vector<Entity*> clones;
 
 		// Creation of new entity and copying of a few properties
-		auto Cloneentity = [&scene, &clones](Entity* entity)
+		auto clone_entity = [&scene, &clones](Entity* entity)
 		{
 			// Clone the name and the ID
-			Entity* clone = scene->Entity_Create().get();
-			clone->SetID(GENERATE_GUID);
+			auto clone = scene->Entity_Create().get();
+			clone->SetId(GENERATE_GUID);
 			clone->SetName(entity->GetName());
 			clone->SetActive(entity->IsActive());
 			clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
@@ -93,9 +94,9 @@ namespace Directus
 			// Clone all the components
 			for (const auto& component : entity->GetAllComponents())
 			{
-				shared_ptr<IComponent> originalComp = component;
-				shared_ptr<IComponent> cloneComp	= clone->AddComponent(component->GetType());
-				cloneComp->SetAttributes(originalComp->GetAttributes());
+				const auto& original_comp	= component;
+				auto clone_comp				= clone->AddComponent(component->GetType());
+				clone_comp->SetAttributes(original_comp->GetAttributes());
 			}
 
 			clones.emplace_back(clone);
@@ -104,24 +105,24 @@ namespace Directus
 		};
 
 		// Cloning of an entity and it's descendants (this is a recursive lambda)
-		function<Entity*(Entity*)> CloneentityAndDescendants = [&CloneentityAndDescendants, &Cloneentity, &clones](Entity* original)
+		function<Entity*(Entity*)> clone_entity_and_descendants = [&clone_entity_and_descendants, &clone_entity](Entity* original)
 		{
 			// clone self
-			Entity* cloneSelf = Cloneentity(original);
+			const auto clone_self = clone_entity(original);
 
 			// clone children make them call this lambda
-			for (const auto& childTransform : original->GetTransform_PtrRaw()->GetChildren())
+			for (const auto& child_transform : original->GetTransform_PtrRaw()->GetChildren())
 			{
-				Entity* cloneChild = CloneentityAndDescendants(childTransform->GetEntity_PtrRaw());
-				cloneChild->GetTransform_PtrRaw()->SetParent(cloneSelf->GetTransform_PtrRaw());
+				const auto clone_child = clone_entity_and_descendants(child_transform->GetEntity_PtrRaw());
+				clone_child->GetTransform_PtrRaw()->SetParent(clone_self->GetTransform_PtrRaw());
 			}
 
 			// return self
-			return cloneSelf;
+			return clone_self;
 		};
 
 		// Clone the entire hierarchy
-		CloneentityAndDescendants(this);
+		clone_entity_and_descendants(this);
 	}
 
 	void Entity::Start()
@@ -144,7 +145,7 @@ namespace Directus
 
 	void Entity::Tick()
 	{
-		if (!m_isActive)
+		if (!m_is_active)
 			return;
 
 		// call component Update()
@@ -157,17 +158,17 @@ namespace Directus
 	void Entity::Serialize(FileStream* stream)
 	{
 		//= BASIC DATA ======================
-		stream->Write(m_isActive);
-		stream->Write(m_hierarchyVisibility);
-		stream->Write(m_ID);
+		stream->Write(m_is_active);
+		stream->Write(m_hierarchy_visibility);
+		stream->Write(m_id);
 		stream->Write(m_name);
 		//===================================
 
 		//= COMPONENTS ================================
-		stream->Write((int)m_components.size());
+		stream->Write(static_cast<unsigned int>(m_components.size()));
 		for (const auto& component : m_components)
 		{
-			stream->Write((unsigned int)component->GetType());
+			stream->Write(static_cast<unsigned int>(component->GetType()));
 			stream->Write(component->GetID());
 		}
 
@@ -178,10 +179,10 @@ namespace Directus
 		//=============================================
 
 		//= CHILDREN ==================================
-		vector<Transform*> children = GetTransform_PtrRaw()->GetChildren();
+		auto children = GetTransform_PtrRaw()->GetChildren();
 
 		// 1st - children count
-		stream->Write((int)children.size());
+		stream->Write(static_cast<unsigned int>(children.size()));
 
 		// 2nd - children IDs
 		for (const auto& child : children)
@@ -208,24 +209,24 @@ namespace Directus
 	void Entity::Deserialize(FileStream* stream, Transform* parent)
 	{
 		//= BASIC DATA =====================
-		stream->Read(&m_isActive);
-		stream->Read(&m_hierarchyVisibility);
-		stream->Read(&m_ID);
+		stream->Read(&m_is_active);
+		stream->Read(&m_hierarchy_visibility);
+		stream->Read(&m_id);
 		stream->Read(&m_name);
 		//==================================
 
 		//= COMPONENTS ================================
-		int componentCount = stream->ReadInt();
-		for (int i = 0; i < componentCount; i++)
+		const auto component_count = stream->ReadUInt();
+		for (unsigned int i = 0; i < component_count; i++)
 		{
 			unsigned int type = ComponentType_Unknown;
 			unsigned int id = 0;
 
-			stream->Read(&type); // load component's type
-			stream->Read(&id); // load component's id
+			stream->Read(&type);	// load component's type
+			stream->Read(&id);		// load component's id
 
-			auto component = AddComponent((ComponentType)type);
-			component->SetID(id);
+			auto component = AddComponent(static_cast<ComponentType>(type));
+			component->SetId(id);
 		}
 		// Sometimes there are component dependencies, e.g. a collider that needs
 		// to set it's shape to a rigibody. So, it's important to first create all 
@@ -244,15 +245,15 @@ namespace Directus
 
 		//= CHILDREN ===================================
 		// 1st - children count
-		int childrenCount = stream->ReadInt();
+		const auto children_count = stream->ReadUInt();
 
 		// 2nd - children IDs
 		auto scene = m_context->GetSubsystem<World>();
 		vector<std::weak_ptr<Entity>> children;
-		for (int i = 0; i < childrenCount; i++)
+		for (unsigned int i = 0; i < children_count; i++)
 		{
-			std::shared_ptr<Entity> child = scene->Entity_Create();
-			child->SetID(stream->ReadUInt());
+			auto child = scene->Entity_Create();
+			child->SetId(stream->ReadUInt());
 			children.emplace_back(child);
 		}
 
@@ -272,7 +273,7 @@ namespace Directus
 		FIRE_EVENT(Event_World_Resolve);
 	}
 
-	shared_ptr<IComponent> Entity::AddComponent(ComponentType type)
+	shared_ptr<IComponent> Entity::AddComponent(const ComponentType type)
 	{
 		// This is the only hardcoded part regarding components. It's 
 		// one function but it would be nice if that gets automated too, somehow...
@@ -300,7 +301,7 @@ namespace Directus
 		return component;
 	}
 
-	void Entity::RemoveComponentByID(unsigned int id)
+	void Entity::RemoveComponentById(const unsigned int id)
 	{
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{

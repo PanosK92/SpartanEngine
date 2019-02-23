@@ -43,7 +43,7 @@ namespace Directus
 				height	= 0;
 			}
 
-			Rectangle(float x, float y, float width, float height)
+			Rectangle(const float x, const float y, const float width, const float height)
 			{
 				this->x			= x;
 				this->y			= y;
@@ -52,8 +52,8 @@ namespace Directus
 			}
 
 
-			~Rectangle() {}
-			
+			~Rectangle() = default;
+
 			bool operator==(const Rectangle& rhs) const
 			{
 				return
@@ -73,9 +73,9 @@ namespace Directus
 			}
 
 			bool CreateBuffers(Renderer* renderer);
-			int GetIndexCount()									{ return 6; }
-			std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
-			std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() { return m_vertexBuffer; }
+			static int GetIndexCount()									{ return 6; }
+			std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer() const		{ return m_indexBuffer; }
+			std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() const	{ return m_vertexBuffer; }
 
 			float x;
 			float y;

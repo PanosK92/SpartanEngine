@@ -36,20 +36,6 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	static const char* textureTypeChar[] =
-	{
-		"Unknown",
-		"Albedo",
-		"Roughness",
-		"Metallic",
-		"Normal",
-		"Height",
-		"Occlusion",
-		"Emission",
-		"Mask",
-		"CubeMap",
-	};
-
 	Material::Material(Context* context) : IResource(context, Resource_Material)
 	{
 		// Material
@@ -63,7 +49,7 @@ namespace Directus
 		m_uvTiling				= Vector2(1.0f, 1.0f);
 		m_uvOffset				= Vector2(0.0f, 0.0f);
 		m_isEditable			= true;
-		m_rhiDevice				= context->GetSubsystem<Renderer>()->GetRHIDevice();
+		m_rhiDevice				= context->GetSubsystem<Renderer>()->GetRhiDevice();
 
 		AcquireShader();
 	}
@@ -75,17 +61,17 @@ namespace Directus
 	}
 
 	//= IResource ==============================================
-	bool Material::LoadFromFile(const string& filePath)
+	bool Material::LoadFromFile(const std::string& file_path)
 	{
 		// Make sure the path is relative
-		SetResourceFilePath(FileSystem::GetRelativeFilePath(filePath));
+		SetResourceFilePath(FileSystem::GetRelativeFilePath(file_path));
 
 		auto xml = make_unique<XmlDocument>();
 		if (!xml->Load(GetResourceFilePath()))
 			return false;
 
-		SetResourceName(xml->GetAttributeAs<string>("Material", "Name"));
-		SetResourceFilePath(xml->GetAttributeAs<string>("Material", "Path"));
+		SetResourceName(xml->GetAttributeAs<string>("Material",	"Name"));
+		SetResourceFilePath(xml->GetAttributeAs<string>("Material",	"Path"));
 		xml->GetAttribute("Material", "Roughness_Multiplier",	&m_roughnessMultiplier);
 		xml->GetAttribute("Material", "Metallic_Multiplier",	&m_metallicMultiplier);
 		xml->GetAttribute("Material", "Normal_Multiplier",		&m_normalMultiplier);
@@ -97,13 +83,13 @@ namespace Directus
 		xml->GetAttribute("Material", "UV_Tiling",				&m_uvTiling);
 		xml->GetAttribute("Material", "UV_Offset",				&m_uvOffset);
 
-		auto textureCount = xml->GetAttributeAs<int>("Textures", "Count");
+		const auto textureCount = xml->GetAttributeAs<int>("Textures", "Count");
 		for (int i = 0; i < textureCount; i++)
 		{
-			string nodeName		= "Texture_" + to_string(i);
-			TextureType texType	= (TextureType)xml->GetAttributeAs<unsigned int>(nodeName, "Texture_Type");
-			auto texName		= xml->GetAttributeAs<string>(nodeName, "Texture_Name");
-			auto texPath		= xml->GetAttributeAs<string>(nodeName, "Texture_Path");
+			string nodeName				= "Texture_" + to_string(i);
+			const TextureType tex_type	= static_cast<TextureType>(xml->GetAttributeAs<unsigned int>(nodeName, "Texture_Type"));
+			auto texName				= xml->GetAttributeAs<string>(nodeName, "Texture_Name");
+			auto texPath				= xml->GetAttributeAs<string>(nodeName, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
 			auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture>(texName);
@@ -112,7 +98,7 @@ namespace Directus
 			{
 				texture = m_context->GetSubsystem<ResourceCache>()->Load<RHI_Texture>(texPath);
 			}
-			SetTextureSlot(texType, texture);
+			SetTextureSlot(tex_type, texture);
 		}
 
 		AcquireShader();
@@ -120,10 +106,10 @@ namespace Directus
 		return true;
 	}
 
-	bool Material::SaveToFile(const string& filePath)
+	bool Material::SaveToFile(const std::string& file_path)
 	{
 		// Make sure the path is relative
-		SetResourceFilePath(FileSystem::GetRelativeFilePath(filePath));
+		SetResourceFilePath(FileSystem::GetRelativeFilePath(file_path));
 
 		// Add material extension if not present
 		if (FileSystem::GetExtensionFromFilePath(GetResourceFilePath()) != EXTENSION_MATERIAL)
@@ -147,27 +133,27 @@ namespace Directus
 		xml->AddAttribute("Material", "IsEditable",				m_isEditable);
 
 		xml->AddChildNode("Material", "Textures");
-		xml->AddAttribute("Textures", "Count", (unsigned int)m_textureSlots.size());
+		xml->AddAttribute("Textures", "Count", static_cast<unsigned int>(m_textureSlots.size()));
 		int i = 0;
-		for (const auto& textureSlot : m_textureSlots)
+		for (const auto& texture_slot : m_textureSlots)
 		{
-			string texNode = "Texture_" + to_string(i);
-			xml->AddChildNode("Textures", texNode);
-			xml->AddAttribute(texNode, "Texture_Type", (unsigned int)textureSlot.type);
-			xml->AddAttribute(texNode, "Texture_Name", textureSlot.ptr ? textureSlot.ptr->GetResourceName() : NOT_ASSIGNED);
-			xml->AddAttribute(texNode, "Texture_Path", textureSlot.ptr ? textureSlot.ptr->GetResourceFilePath() : NOT_ASSIGNED);
+			string tex_node = "Texture_" + to_string(i);
+			xml->AddChildNode("Textures", tex_node);
+			xml->AddAttribute(tex_node, "Texture_Type", static_cast<unsigned int>(texture_slot.type));
+			xml->AddAttribute(tex_node, "Texture_Name", texture_slot.ptr ? texture_slot.ptr->GetResourceName() : NOT_ASSIGNED);
+			xml->AddAttribute(tex_node, "Texture_Path", texture_slot.ptr ? texture_slot.ptr->GetResourceFilePath() : NOT_ASSIGNED);
 			i++;
 		}
 
 		return xml->Save(GetResourceFilePath());
 	}
 
-	const TextureSlot& Material::GetTextureSlotByType(TextureType type)
+	const TextureSlot& Material::GetTextureSlotByType(const TextureType type)
 	{
-		for (const auto& textureSlot : m_textureSlots)
+		for (const auto& texture_slot : m_textureSlots)
 		{
-			if (textureSlot.type == type)
-				return textureSlot;
+			if (texture_slot.type == type)
+				return texture_slot;
 		}
 
 		return m_emptyTextureSlot;
@@ -222,18 +208,18 @@ namespace Directus
 
 	bool Material::HasTexture(TextureType type)
 	{
-		auto textureSlot = GetTextureSlotByType(type);
-		return textureSlot.ptr != nullptr;
+		const auto texture_slot = GetTextureSlotByType(type);
+		return texture_slot.ptr != nullptr;
 	}
 
 	bool Material::HasTexture(const string& path)
 	{
-		for (const auto& textureSlot : m_textureSlots)
+		for (const auto& texture_slot : m_textureSlots)
 		{
-			if (textureSlot.ptr == nullptr)
+			if (!texture_slot.ptr)
 				continue;
 
-			if (textureSlot.ptr->GetResourceFilePath() == path)
+			if (texture_slot.ptr->GetResourceFilePath() == path)
 				return true;
 		}
 
@@ -249,12 +235,12 @@ namespace Directus
 	vector<string> Material::GetTexturePaths()
 	{
 		vector<string> paths;
-		for (const auto& textureSlot : m_textureSlots)
+		for (const auto& texture_slot : m_textureSlots)
 		{
-			if (textureSlot.ptr == nullptr)
+			if (texture_slot.ptr == nullptr)
 				continue;
 
-			paths.emplace_back(textureSlot.ptr->GetResourceFilePath());
+			paths.emplace_back(texture_slot.ptr->GetResourceFilePath());
 		}
 
 		return paths;
@@ -270,21 +256,21 @@ namespace Directus
 
 		// Add a shader to the pool based on this material, if a 
 		// matching shader already exists, it will be returned.
-		unsigned long shaderFlags = 0;
+		unsigned long shader_flags = 0;
 
-		if (HasTexture(TextureType_Albedo))		shaderFlags	|= Variation_Albedo;
-		if (HasTexture(TextureType_Roughness))	shaderFlags	|= Variation_Roughness;
-		if (HasTexture(TextureType_Metallic))	shaderFlags	|= Variation_Metallic;
-		if (HasTexture(TextureType_Normal))		shaderFlags	|= Variation_Normal;
-		if (HasTexture(TextureType_Height))		shaderFlags	|= Variation_Height;
-		if (HasTexture(TextureType_Occlusion))	shaderFlags	|= Variation_Occlusion;
-		if (HasTexture(TextureType_Emission))	shaderFlags	|= Variation_Emission;
-		if (HasTexture(TextureType_Mask))		shaderFlags	|= Variation_Mask;
+		if (HasTexture(TextureType_Albedo))		shader_flags	|= Variation_Albedo;
+		if (HasTexture(TextureType_Roughness))	shader_flags	|= Variation_Roughness;
+		if (HasTexture(TextureType_Metallic))	shader_flags	|= Variation_Metallic;
+		if (HasTexture(TextureType_Normal))		shader_flags	|= Variation_Normal;
+		if (HasTexture(TextureType_Height))		shader_flags	|= Variation_Height;
+		if (HasTexture(TextureType_Occlusion))	shader_flags	|= Variation_Occlusion;
+		if (HasTexture(TextureType_Emission))	shader_flags	|= Variation_Emission;
+		if (HasTexture(TextureType_Mask))		shader_flags	|= Variation_Mask;
 
-		m_shader = GetOrCreateShader(shaderFlags);
+		m_shader = GetOrCreateShader(shader_flags);
 	}
 
-	shared_ptr<ShaderVariation> Material::GetOrCreateShader(unsigned long shaderFlags)
+	shared_ptr<ShaderVariation> Material::GetOrCreateShader(unsigned long shader_flags)
 	{
 		if (!m_context)
 		{
@@ -293,12 +279,12 @@ namespace Directus
 		}
 
 		// If an appropriate shader already exists, return it instead
-		if (auto existingShader = ShaderVariation::GetMatchingShader(shaderFlags))
+		if (auto existingShader = ShaderVariation::GetMatchingShader(shader_flags))
 			return existingShader;
 
 		// Create and compile shader
 		auto shader = make_shared<ShaderVariation>(m_rhiDevice, m_context);
-		shader->Compile(m_context->GetSubsystem<ResourceCache>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shaderFlags);
+		shader->Compile(m_context->GetSubsystem<ResourceCache>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shader_flags);
 
 		return shader;
 	}

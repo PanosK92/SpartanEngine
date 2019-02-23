@@ -43,7 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace ImGui::RHI
 {
 	using namespace Directus;
-	using namespace Directus::Math;
+	using namespace Math;
 	using namespace std;
 
 	// Forward Declarations
@@ -73,8 +73,8 @@ namespace ImGui::RHI
 		g_context	= context;
 		g_profiler	= context->GetSubsystem<Profiler>().get();
 		g_renderer	= context->GetSubsystem<Renderer>().get();
-		g_pipeline	= g_renderer->GetRHIPipeline().get();
-		g_device	= g_renderer->GetRHIDevice();
+		g_pipeline	= g_renderer->GetRhiPipeline().get();
+		g_device	= g_renderer->GetRhiDevice();
 		
 		if (!g_context || !g_device || !g_device->IsInitialized())
 		{
@@ -161,7 +161,7 @@ namespace ImGui::RHI
 		g_shader->CompileVertexPixel(shader, Input_Position2DTextureColor8);
 
 		// Setup back-end capabilities flags
-		ImGuiIO& io = ImGui::GetIO();	
+		ImGuiIO& io = GetIO();	
 		io.BackendFlags			|= ImGuiBackendFlags_RendererHasViewports;
 		io.BackendRendererName	= "RHI";
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -193,7 +193,7 @@ namespace ImGui::RHI
 
 	inline void Shutdown()
 	{
-		ImGui::DestroyPlatformWindows();
+		DestroyPlatformWindows();
 	}
 
 	inline void RenderDrawData(ImDrawData* draw_data, bool isOtherWindow = false)
@@ -401,7 +401,7 @@ namespace ImGui::RHI
 
 	inline void InitializePlatformInterface()
 	{
-		ImGuiPlatformIO& platform_io		= ImGui::GetPlatformIO();
+		ImGuiPlatformIO& platform_io		= GetPlatformIO();
 		platform_io.Renderer_CreateWindow	= _CreateWindow;
 		platform_io.Renderer_DestroyWindow	= _DestroyWindow;
 		platform_io.Renderer_SetWindowSize	= _SetWindowSize;

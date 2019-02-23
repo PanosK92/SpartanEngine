@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector3.h"
 #include "../../Math/Quaternion.h"
 #include "../../Math/Matrix.h"
-#include "../World.h"
 //================================
 
 namespace Directus
@@ -36,7 +35,7 @@ namespace Directus
 	{
 	public:
 		Transform(Context* context, Entity* entity, Transform* transform);
-		~Transform();
+		~Transform() = default;
 
 		//= ICOMPONENT ===============================
 		void OnInitialize() override;
@@ -46,66 +45,67 @@ namespace Directus
 
 		void UpdateTransform();
 
-		//= POSITION ================================================================
-		Math::Vector3 GetPosition()				{ return m_matrix.GetTranslation(); }
-		const Math::Vector3& GetPositionLocal() { return m_positionLocal; }
+		//= POSITION ========================================================================
+		Math::Vector3 GetPosition()						{ return m_matrix.GetTranslation(); }
+		const Math::Vector3& GetPositionLocal() const	{ return m_positionLocal; }
 		void SetPosition(const Math::Vector3& position);
 		void SetPositionLocal(const Math::Vector3& position);
-		//===========================================================================
+		//===================================================================================
 
-		//= ROTATION =========================================================
-		Math::Quaternion GetRotation() { return m_matrix.GetRotation(); }
-		const Math::Quaternion& GetRotationLocal() { return m_rotationLocal; }
+		//= ROTATION =========================================================================
+		Math::Quaternion GetRotation()						{ return m_matrix.GetRotation(); }
+		const Math::Quaternion& GetRotationLocal() const	{ return m_rotationLocal; }
 		void SetRotation(const Math::Quaternion& rotation);
 		void SetRotationLocal(const Math::Quaternion& rotation);
-		//====================================================================
+		//====================================================================================
 
-		//= SCALE ===================================================
-		Math::Vector3 GetScale() { return m_matrix.GetScale(); }
-		const Math::Vector3& GetScaleLocal() { return m_scaleLocal; }
+		//= SCALE =================================================================
+		Math::Vector3 GetScale()					{ return m_matrix.GetScale(); }
+		const Math::Vector3& GetScaleLocal() const	{ return m_scaleLocal; }
 		void SetScale(const Math::Vector3& scale);
 		void SetScaleLocal(const Math::Vector3& scale);
-		//===========================================================
+		//=========================================================================
 
 		//= TRANSLATION/ROTATION ==================
 		void Translate(const Math::Vector3& delta);
 		void Rotate(const Math::Quaternion& delta);
 		//=========================================
 
-		//= DIRECTIONS ============
-		Math::Vector3 GetUp();
-		Math::Vector3 GetForward();
-		Math::Vector3 GetRight();
-		//=========================
+		//= DIRECTIONS ==================
+		Math::Vector3 GetUp() const;
+		Math::Vector3 GetForward() const;
+		Math::Vector3 GetRight() const;
+		//===============================
 
-		//= HIERARCHY =================================================================
-		bool IsRoot()		{ return !HasParent(); }
-		bool HasParent()	{ return m_parent; }
-		void SetParent(Transform* newParent);
+		//= HIERARCHY ==================================================================================
+		bool IsRoot() const		{ return !HasParent(); }
+		bool HasParent() const	{ return m_parent; }
+		void SetParent(Transform* new_parent);
 		void BecomeOrphan();
-		bool HasChildren() { return GetChildrenCount() > 0 ? true : false; }
+		bool HasChildren() const				{ return GetChildrenCount() > 0 ? true : false; }
+		unsigned int GetChildrenCount() const	{ return static_cast<unsigned int>(m_children.size()); }
 		void AddChild(Transform* child);
-		Transform* GetRoot()	{ return HasParent() ? GetParent()->GetRoot() : this; }
-		Transform* GetParent()	{ return m_parent; }
-		Transform* GetChildByIndex(int index);
+		Transform* GetRoot()			{ return HasParent() ? GetParent()->GetRoot() : this; }
+		Transform* GetParent() const	{ return m_parent; }
+		Transform* GetChildByIndex(unsigned int index);
 		Transform* GetChildByName(const std::string& name);
-		const std::vector<Transform*>& GetChildren() { return m_children; }
-		int GetChildrenCount() { return (int)m_children.size(); }
+		const std::vector<Transform*>& GetChildren() const	{ return m_children; }
+	
 		void AcquireChildren();
-		bool IsDescendantOf(Transform* transform);
+		bool IsDescendantOf(Transform* transform) const;
 		void GetDescendants(std::vector<Transform*>* descendants);
-		//=============================================================================
+		//==============================================================================================
 
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
 		Math::Matrix& GetMatrix()			{ return m_matrix; }
 		Math::Matrix& GetLocalMatrix()		{ return m_matrixLocal; }
 
 		// Velocity tracking
-		Math::Matrix& GetWVP_Previous()				{ return m_wvp_previous; }
+		auto& GetWVP_Previous()	const				{ return m_wvp_previous; }
 		void SetWVP_Previous(Math::Matrix& matrix)	{ m_wvp_previous = matrix; }
 
 	private:
-		Math::Matrix GetParentTransformMatrix();
+		Math::Matrix GetParentTransformMatrix() const;
 
 		// local
 		Math::Vector3 m_positionLocal;

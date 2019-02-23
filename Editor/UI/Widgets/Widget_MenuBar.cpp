@@ -45,7 +45,7 @@ namespace _Widget_MenuBar
 	static string g_fileDialogSelection;
 }
 
-Widget_MenuBar::Widget_MenuBar(Directus::Context* context) : Widget(context)
+Widget_MenuBar::Widget_MenuBar(Context* context) : Widget(context)
 {
 	m_isWindow = false;
 
@@ -199,21 +199,21 @@ void Widget_MenuBar::ShowAboutWindow()
 	ImGui::Separator();
 
 	ImGui::Text("Third party libraries");
-	auto Library = [](const char* name, const string& version, const char* url)
+	const auto library = [](const char* name, const string& version, const char* url)
 	{
 		ImGui::BulletText(name);
 		ImGui::SameLine(120); ImGui::Text(("v" + version).c_str());
 		ImGui::SameLine(200); ImGui::PushID(url);  if (ImGui::Button("URL")) { FileSystem::OpenDirectoryWindow(url); } ImGui::PopID();
 	};
 
-	Library("AngelScript",	Settings::Get().m_versionAngelScript,	"https://www.angelcode.com/angelscript/");
-	Library("Assimp",		Settings::Get().m_versionAssimp,		"https://github.com/assimp/assimp");
-	Library("Bullet",		Settings::Get().m_versionBullet,		"https://github.com/bulletphysics/bullet3");
-	Library("FMOD",			Settings::Get().m_versionFMOD,			"https://www.fmod.com/");
-	Library("FreeImage",	Settings::Get().m_versionFreeImage,		"https://sourceforge.net/projects/freeimage/files/Source%20Distribution/");
-	Library("FreeType",		Settings::Get().m_versionFreeType,		"https://www.freetype.org/");
-	Library("ImGui",		Settings::Get().m_versionImGui,			"https://github.com/ocornut/imgui");
-	Library("PugiXML",		Settings::Get().m_versionPugiXML,		"https://github.com/zeux/pugixml");
+	library("AngelScript",	Settings::Get().m_versionAngelScript,	"https://www.angelcode.com/angelscript/");
+	library("Assimp",		Settings::Get().m_versionAssimp,		"https://github.com/assimp/assimp");
+	library("Bullet",		Settings::Get().m_versionBullet,		"https://github.com/bulletphysics/bullet3");
+	library("FMOD",			Settings::Get().m_versionFMOD,			"https://www.fmod.com/");
+	library("FreeImage",	Settings::Get().m_versionFreeImage,		"https://sourceforge.net/projects/freeimage/files/Source%20Distribution/");
+	library("FreeType",		Settings::Get().m_versionFreeType,		"https://www.freetype.org/");
+	library("ImGui",		Settings::Get().m_versionImGui,			"https://github.com/ocornut/imgui");
+	library("PugiXML",		Settings::Get().m_versionPugiXML,		"https://github.com/zeux/pugixml");
 
 	ImGui::End();
 }

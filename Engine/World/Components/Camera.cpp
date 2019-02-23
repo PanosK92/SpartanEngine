@@ -47,11 +47,6 @@ namespace Directus
 		m_fovHorizontalRad	= DegreesToRadians(90.0f);
 	}
 
-	Camera::~Camera()
-	{
-
-	}
-
 	//= ICOMPONENT ============
 	void Camera::OnInitialize()
 	{
@@ -62,10 +57,10 @@ namespace Directus
 
 	void Camera::OnTick()
 	{
-		const RHI_Viewport& currentViewport = m_context->GetSubsystem<Renderer>()->GetViewport();
-		if (m_lastKnownViewport != currentViewport)
+		const RHI_Viewport& current_viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
+		if (m_lastKnownViewport != current_viewport)
 		{
-			m_lastKnownViewport = currentViewport;
+			m_lastKnownViewport = current_viewport;
 			m_isDirty			= true;
 		}
 
@@ -112,15 +107,15 @@ namespace Directus
 	}
 
 	//= PLANES/PROJECTION =====================================================
-	void Camera::SetNearPlane(float nearPlane)
+	void Camera::SetNearPlane(float near_plane)
 	{
-		m_nearPlane = Max(0.01f, nearPlane);
+		m_nearPlane = Max(0.01f, near_plane);
 		m_isDirty = true;
 	}
 
-	void Camera::SetFarPlane(float farPlane)
+	void Camera::SetFarPlane(float far_plane)
 	{
-		m_farPlane = farPlane;
+		m_farPlane = far_plane;
 		m_isDirty = true;
 	}
 
@@ -159,7 +154,7 @@ namespace Directus
 	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Entity>& entity)
 	{
 		const RHI_Viewport& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
-		const Vector2& offset			= m_context->GetSubsystem<Renderer>()->viewport_editorOffset;
+		const Vector2& offset			= m_context->GetSubsystem<Renderer>()->viewport_editor_offset;
 		Vector2 mouse_position_relative = mouse_position - offset;
 
 		// Ensure the ray is inside the viewport

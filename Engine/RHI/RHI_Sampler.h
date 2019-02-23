@@ -33,22 +33,22 @@ namespace Directus
 	{
 	public:
 		RHI_Sampler(
-			std::shared_ptr<RHI_Device> rhiDevice,
+			const std::shared_ptr<RHI_Device>& rhi_device,
 			RHI_Texture_Filter filter						= Texture_Filter_Anisotropic,
-			RHI_Texture_Address_Mode textureAddressMode		= Texture_Address_Wrap,
-			RHI_Comparison_Function comparisonFunction		= Comparison_Always);
+			RHI_Texture_Address_Mode texture_address_mode	= Texture_Address_Wrap,
+			RHI_Comparison_Function comparison_function		= Comparison_Always);
 		~RHI_Sampler();
 
-		RHI_Texture_Filter GetFilter()					{ return m_filter; }
-		RHI_Texture_Address_Mode GetAddressMode()		{ return m_textureAddressMode; }
-		RHI_Comparison_Function GetComparisonFunction() { return m_comparisonFunction; }
-		void* GetBuffer()								{ return m_buffer; }
+		RHI_Texture_Filter GetFilter() const					{ return m_filter; }
+		RHI_Texture_Address_Mode GetAddressMode() const			{ return m_texture_address_mode; }
+		RHI_Comparison_Function GetComparisonFunction() const	{ return m_comparison_function; }
+		void* GetBuffer() const { return m_buffer; }
 
-	private:
-		std::shared_ptr<RHI_Device> m_rhiDevice;
-		void* m_buffer;
+	private:	
 		RHI_Texture_Filter m_filter;
-		RHI_Texture_Address_Mode m_textureAddressMode;
-		RHI_Comparison_Function m_comparisonFunction;
+		RHI_Texture_Address_Mode m_texture_address_mode;
+		RHI_Comparison_Function m_comparison_function;
+		std::shared_ptr<RHI_Device> m_rhi_device;
+		void* m_buffer = nullptr;
 	};
 }

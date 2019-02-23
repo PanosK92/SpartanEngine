@@ -35,41 +35,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	RHI_Sampler::RHI_Sampler(
-		std::shared_ptr<RHI_Device> rhiDevice,
-		RHI_Texture_Filter filter						/*= Texture_Sampler_Anisotropic*/,
-		RHI_Texture_Address_Mode textureAddressMode		/*= Texture_Address_Wrap*/, 
-		RHI_Comparison_Function comparisonFunction		/*= Texture_Comparison_Always*/
+		const std::shared_ptr<RHI_Device>& rhi_device,
+		const RHI_Texture_Filter filter						/*= Texture_Sampler_Anisotropic*/,
+		const RHI_Texture_Address_Mode texture_address_mode	/*= Texture_Address_Wrap*/,
+		const RHI_Comparison_Function comparison_function	/*= Texture_Comparison_Always*/
 	)
 	{	
 		m_buffer				= nullptr;
-		m_rhiDevice				= rhiDevice;
+		m_rhi_device				= rhi_device;
 		m_filter				= filter;
-		m_textureAddressMode	= textureAddressMode;
-		m_comparisonFunction	= comparisonFunction;
+		m_texture_address_mode	= texture_address_mode;
+		m_comparison_function	= comparison_function;
 
-		if (!rhiDevice || !rhiDevice->GetDevice<ID3D11Device>())
+		if (!rhi_device || !rhi_device->GetDevice<ID3D11Device>())
 		{
 			LOG_ERROR("Invalid device.");
 			return;
 		}
 		
-		D3D11_SAMPLER_DESC samplerDesc;
-		samplerDesc.Filter			= d3d11_filter[filter];
-		samplerDesc.AddressU		= d3d11_texture_address_mode[textureAddressMode];
-		samplerDesc.AddressV		= d3d11_texture_address_mode[textureAddressMode];
-		samplerDesc.AddressW		= d3d11_texture_address_mode[textureAddressMode];
-		samplerDesc.MipLODBias		= 0.0f;
-		samplerDesc.MaxAnisotropy	= Settings::Get().Anisotropy_Get();
-		samplerDesc.ComparisonFunc	= d3d11_comparison_func[comparisonFunction];
-		samplerDesc.BorderColor[0]	= 0;
-		samplerDesc.BorderColor[1]	= 0;
-		samplerDesc.BorderColor[2]	= 0;
-		samplerDesc.BorderColor[3]	= 0;
-		samplerDesc.MinLOD			= FLT_MIN;
-		samplerDesc.MaxLOD			= FLT_MAX;
+		D3D11_SAMPLER_DESC sampler_desc;
+		sampler_desc.Filter			= d3d11_filter[filter];
+		sampler_desc.AddressU		= d3d11_texture_address_mode[texture_address_mode];
+		sampler_desc.AddressV		= d3d11_texture_address_mode[texture_address_mode];
+		sampler_desc.AddressW		= d3d11_texture_address_mode[texture_address_mode];
+		sampler_desc.MipLODBias		= 0.0f;
+		sampler_desc.MaxAnisotropy	= Settings::Get().Anisotropy_Get();
+		sampler_desc.ComparisonFunc	= d3d11_comparison_func[comparison_function];
+		sampler_desc.BorderColor[0]	= 0;
+		sampler_desc.BorderColor[1]	= 0;
+		sampler_desc.BorderColor[2]	= 0;
+		sampler_desc.BorderColor[3]	= 0;
+		sampler_desc.MinLOD			= FLT_MIN;
+		sampler_desc.MaxLOD			= FLT_MAX;
 	
 		// Create sampler state.
-		if (FAILED(rhiDevice->GetDevice<ID3D11Device>()->CreateSamplerState(&samplerDesc, (ID3D11SamplerState**)&m_buffer)))
+		if (FAILED(rhi_device->GetDevice<ID3D11Device>()->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_buffer))))
 		{
 			LOG_ERROR("Failed to create sampler state");
 		}
@@ -77,7 +77,7 @@ namespace Directus
 
 	RHI_Sampler::~RHI_Sampler()
 	{
-		SafeRelease((ID3D11SamplerState*)m_buffer);
+		safe_release(static_cast<ID3D11SamplerState*>(m_buffer));
 	}
 }
 #endif

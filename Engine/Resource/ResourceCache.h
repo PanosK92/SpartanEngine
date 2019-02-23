@@ -28,15 +28,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Import/ImageImporter.h"
 #include "Import/FontImporter.h"
 #include "../Core/ISubsystem.h"
-#include "../Audio/AudioClip.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Model.h"
-#include "../Rendering/Material.h"
 //================================
 
 namespace Directus
 {
-	#define ValidateResourceType(T) static_assert(std::is_base_of<IResource, T>::value, "Provided type does not implement IResource")
+	#define VALIDATE_RESOURCE_TYPE(T) static_assert(std::is_base_of<IResource, T>::value, "Provided type does not implement IResource")
 
 	class ENGINE_CLASS ResourceCache : public ISubsystem
 	{
@@ -51,10 +49,11 @@ namespace Directus
 		//= GET BY ==================================================================================
 		// NAME
 		std::shared_ptr<IResource>& GetByName(const std::string& name, Resource_Type type);
-		template <class T> std::shared_ptr<T> GetByName(const std::string& name) 
+		template <class T> 
+		constexpr std::shared_ptr<T> GetByName(const std::string& name) 
 		{ 
-			ValidateResourceType(T);
-			return std::static_pointer_cast<T>(GetByName(name, IResource::DeduceResourceType<T>()));
+			VALIDATE_RESOURCE_TYPE(T);
+			return std::static_pointer_cast<T>(GetByName(name, IResource::TypeToEnum<T>()));
 		}
 
 		// TYPE
@@ -63,15 +62,15 @@ namespace Directus
 		template <class T>
 		std::shared_ptr<IResource>& GetByPath(const std::string& path)
 		{
-			ValidateResourceType(T);
+			VALIDATE_RESOURCE_TYPE(T);
 
-			for (auto& resource : m_resourceGroups[IResource::DeduceResourceType<T>()])
+			for (auto& resource : m_resource_groups[IResource::TypeToEnum<T>()])
 			{
 				if (path == resource->GetResourceFilePath())
 					return resource;
 			}
 
-			return m_emptyResource;
+			return m_empty_resource;
 		}
 		//===========================================================================================
 	
@@ -80,7 +79,7 @@ namespace Directus
 		template <class T>
 		void Cache(std::shared_ptr<T>& resource)
 		{
-			ValidateResourceType(T);
+			VALIDATE_RESOURCE_TYPE(T);
 
 			if (!resource)
 				return;
@@ -93,29 +92,29 @@ namespace Directus
 			}
 
 			// Cache the resource
-			lock_guard<mutex> guard(m_mutex);
-			m_resourceGroups[resource->GetResourceType()].emplace_back(resource);
+			std::lock_guard<mutex> guard(m_mutex);
+			m_resource_groups[resource->GetResourceType()].emplace_back(resource);
 		}
-		bool IsCached(const std::string& resourceName, Resource_Type resourceType);
+		bool IsCached(const std::string& resource_name, Resource_Type resource_type);
 
 		// Loads a resource and adds it to the resource cache
 		template <class T>
-		std::shared_ptr<T> Load(const std::string& filePath)
+		std::shared_ptr<T> Load(const std::string& file_path)
 		{
-			ValidateResourceType(T);
+			VALIDATE_RESOURCE_TYPE(T);
 
-			if (!FileSystem::FileExists(filePath))
+			if (!FileSystem::FileExists(file_path))
 			{
-				LOGF_ERROR("Path \"%s\" is invalid.", filePath.c_str());
+				LOGF_ERROR("Path \"%s\" is invalid.", file_path.c_str());
 				return false;
 			}
 
 			// Try to make the path relative to the engine (in case it isn't)
-			std::string filePathRelative	= FileSystem::GetRelativeFilePath(filePath);
-			std::string name				= FileSystem::GetFileNameNoExtensionFromFilePath(filePathRelative);
+			auto file_path_relative	= FileSystem::GetRelativeFilePath(file_path);
+			auto name				= FileSystem::GetFileNameNoExtensionFromFilePath(file_path_relative);
 
 			// Check if the resource is already loaded
-			if (IsCached(name, IResource::DeduceResourceType<T>()))
+			if (IsCached(name, IResource::TypeToEnum<T>()))
 			{
 				return GetByName<T>(name);
 			}
@@ -124,15 +123,15 @@ namespace Directus
 			auto typed = std::make_shared<T>(m_context);
 			// Set a default name and a default filepath in case it's not overridden by LoadFromFile()
 			typed->SetResourceName(name);
-			typed->SetResourceFilePath(filePathRelative);
+			typed->SetResourceFilePath(file_path_relative);
 
 			// Cache it now so LoadFromFile() can safely pass around a reference to the resource from the ResourceManager
 			Cache<T>(typed);
 
 			// Load
-			if (!typed->LoadFromFile(filePathRelative))
+			if (!typed->LoadFromFile(file_path_relative))
 			{
-				LOGF_ERROR("Failed to load \"%s\".", filePathRelative.c_str());
+				LOGF_ERROR("Failed to load \"%s\".", file_path_relative.c_str());
 				return nullptr;
 			}
 
@@ -141,48 +140,48 @@ namespace Directus
 		}
 		//===============================================================================================================
 
-		//= I/O =======================================================
-		void GetResourceFilePaths(std::vector<std::string>& filePaths);
+		//= I/O ========================================================
+		void GetResourceFilePaths(std::vector<std::string>& file_paths);
 		void SaveResourcesToFiles();
-		//=============================================================
+		//==============================================================
 
 		//= MISC ==========================================================
 		// Memory
 		unsigned int GetMemoryUsage(Resource_Type type = Resource_Unknown);
 		// Unloads all resources
-		void Clear() { m_resourceGroups.clear(); }
+		void Clear() { m_resource_groups.clear(); }
 		// Returns all resources of a given type
 		unsigned int GetResourceCountByType(Resource_Type type);
 		//=================================================================
 
-		//= DIRECTORIES ====================================================================================
+		//= DIRECTORIES ============================================================================================
 		void AddStandardResourceDirectory(Resource_Type type, const std::string& directory);
 		const std::string& GetStandardResourceDirectory(Resource_Type type);
 		void SetProjectDirectory(const std::string& directory);
-		std::string GetProjectDirectoryAbsolute();
-		const std::string& GetProjectDirectory()		{ return m_projectDirectory; }	
-		std::string GetProjectStandardAssetsDirectory() { return m_projectDirectory + "Standard_Assets//"; }
-		//==================================================================================================
+		std::string GetProjectDirectoryAbsolute() const;
+		const std::string& GetProjectDirectory() const			{ return m_project_directory; }	
+		std::string GetProjectStandardAssetsDirectory() const	{ return m_project_directory + "Standard_Assets//"; }
+		//==========================================================================================================
 
 		// Importers
-		ModelImporter* GetModelImporter()	{ return m_modelImporter.get(); }
-		ImageImporter* GetImageImporter()	{ return m_imageImporter.get(); }
-		FontImporter* GetFontImporter()		{ return m_fontImporter.get(); }
+		ModelImporter* GetModelImporter() const { return m_importer_model.get(); }
+		ImageImporter* GetImageImporter() const { return m_importer_image.get(); }
+		FontImporter* GetFontImporter() const	{ return m_importer_font.get(); }
 
 	private:
 		// Cache
-		std::map<Resource_Type, std::vector<std::shared_ptr<IResource>>> m_resourceGroups;
+		std::map<Resource_Type, std::vector<std::shared_ptr<IResource>>> m_resource_groups;
 		std::mutex m_mutex;
 
 		// Directories
-		std::map<Resource_Type, std::string> m_standardResourceDirectories;
-		std::string m_projectDirectory;
+		std::map<Resource_Type, std::string> m_standard_resource_directories;
+		std::string m_project_directory;
 
 		// Importers
-		std::shared_ptr<ModelImporter> m_modelImporter;
-		std::shared_ptr<ImageImporter> m_imageImporter;
-		std::shared_ptr<FontImporter> m_fontImporter;
+		std::shared_ptr<ModelImporter> m_importer_model;
+		std::shared_ptr<ImageImporter> m_importer_image;
+		std::shared_ptr<FontImporter> m_importer_font;
 
-		std::shared_ptr<IResource> m_emptyResource = nullptr;
+		std::shared_ptr<IResource> m_empty_resource = nullptr;
 	};
 }

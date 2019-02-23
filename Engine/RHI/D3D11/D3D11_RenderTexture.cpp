@@ -24,13 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_D3D11
 //================================
 
-//= INCLUDES ========================
+//= INCLUDES ====================
 #include "../RHI_RenderTexture.h"
 #include "../RHI_Device.h"
-#include "D3D11_Common.h"
-#include "../../Core/GUIDGenerator.h"
 #include "../../Logging/Log.h"
-//===================================
+#include "D3D11_Common.h"
+//===============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -39,17 +38,17 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_RenderTexture::RHI_RenderTexture(shared_ptr<RHI_Device> rhiDevice, unsigned int width, unsigned int height, RHI_Format textureFormat, bool depth, RHI_Format depthFormat, unsigned int arraySize)
+	RHI_RenderTexture::RHI_RenderTexture(shared_ptr<RHI_Device> rhi_device, unsigned int width, unsigned int height, RHI_Format texture_format, bool depth, RHI_Format depth_format, unsigned int array_size)
 	{
-		m_rhiDevice		= rhiDevice;
-		m_depthEnabled	= depth;
-		m_format		= textureFormat;
-		m_viewport		= RHI_Viewport(0.0f, 0.0f, (float)width, (float)height);
+		m_rhi_device	= rhi_device;
+		m_depth_enabled	= depth;
+		m_format		= texture_format;
+		m_viewport		= RHI_Viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
 		m_width			= width;
 		m_height		= height;
-		m_arraySize		= arraySize;
+		m_array_size	= array_size;
 
-		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11Device>())
+		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11Device>())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -57,22 +56,22 @@ namespace Directus
 
 		// RENDER TARGET TEXTURE
 		{
-			D3D11_TEXTURE2D_DESC textureDesc;
-			ZeroMemory(&textureDesc, sizeof(textureDesc));
-			textureDesc.Width				= (UINT)m_viewport.GetWidth();
-			textureDesc.Height				= (UINT)m_viewport.GetHeight();
-			textureDesc.MipLevels			= 1;
-			textureDesc.ArraySize			= arraySize;
-			textureDesc.Format				= d3d11_dxgi_format[m_format];
-			textureDesc.SampleDesc.Count	= 1;
-			textureDesc.SampleDesc.Quality	= 0;
-			textureDesc.Usage				= D3D11_USAGE_DEFAULT;
-			textureDesc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-			textureDesc.CPUAccessFlags		= 0;
-			textureDesc.MiscFlags			= 0;
+			D3D11_TEXTURE2D_DESC texture_desc;
+			ZeroMemory(&texture_desc, sizeof(texture_desc));
+			texture_desc.Width				= static_cast<UINT>(m_viewport.GetWidth());
+			texture_desc.Height				= static_cast<UINT>(m_viewport.GetHeight());
+			texture_desc.MipLevels			= 1;
+			texture_desc.ArraySize			= array_size;
+			texture_desc.Format				= d3d11_dxgi_format[m_format];
+			texture_desc.SampleDesc.Count	= 1;
+			texture_desc.SampleDesc.Quality	= 0;
+			texture_desc.Usage				= D3D11_USAGE_DEFAULT;
+			texture_desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+			texture_desc.CPUAccessFlags		= 0;
+			texture_desc.MiscFlags			= 0;
 
-			auto ptr = (ID3D11Texture2D**)&m_renderTargetTexture;
-			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&textureDesc, nullptr, ptr)))
+			auto ptr = reinterpret_cast<ID3D11Texture2D**>(&m_render_target_texture);
+			if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateTexture2D(&texture_desc, nullptr, ptr)))
 			{
 				LOG_ERROR("CreateTexture2D() failed.");
 				return;
@@ -81,15 +80,15 @@ namespace Directus
 
 		// RENDER TARGET VIEW
 		{
-			D3D11_RENDER_TARGET_VIEW_DESC viewDesc;
-			viewDesc.Format	= d3d11_dxgi_format[m_format];
-			if (arraySize == 1)
+			D3D11_RENDER_TARGET_VIEW_DESC view_desc;
+			view_desc.Format	= d3d11_dxgi_format[m_format];
+			if (array_size == 1)
 			{
-				viewDesc.ViewDimension		= D3D11_RTV_DIMENSION_TEXTURE2D;
-				viewDesc.Texture2D.MipSlice = 0;
+				view_desc.ViewDimension		= D3D11_RTV_DIMENSION_TEXTURE2D;
+				view_desc.Texture2D.MipSlice = 0;
 
-				auto ptr = (ID3D11RenderTargetView**)&m_renderTargetViews.emplace_back(nullptr);
-				if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateRenderTargetView((ID3D11Resource*)m_renderTargetTexture, &viewDesc, ptr)))
+				auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_render_target_views.emplace_back(nullptr));
+				if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_texture), &view_desc, ptr)))
 				{
 					LOG_ERROR("CreateRenderTargetView() failed.");
 					return;
@@ -97,16 +96,16 @@ namespace Directus
 			}
 			else
 			{
-				for (unsigned int i = 0; i < arraySize; i++)
+				for (unsigned int i = 0; i < array_size; i++)
 				{
-					viewDesc.ViewDimension					= D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-					viewDesc.Texture2DArray.MipSlice		= 0;
-					viewDesc.Texture2DArray.ArraySize		= 1;
-					viewDesc.Texture2DArray.FirstArraySlice = i;
+					view_desc.ViewDimension					= D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+					view_desc.Texture2DArray.MipSlice		= 0;
+					view_desc.Texture2DArray.ArraySize		= 1;
+					view_desc.Texture2DArray.FirstArraySlice = i;
 
-					m_renderTargetViews.emplace_back(nullptr);
-					auto ptr = (ID3D11RenderTargetView**)&m_renderTargetViews[i];
-					if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateRenderTargetView((ID3D11Resource*)m_renderTargetTexture, &viewDesc, ptr)))
+					m_render_target_views.emplace_back(nullptr);
+					auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_render_target_views[i]);
+					if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_texture), &view_desc, ptr)))
 					{
 						LOG_ERROR("CreateRenderTargetView() failed.");
 						return;
@@ -117,59 +116,59 @@ namespace Directus
 
 		// SHADER RESOURCE VIEW
 		{
-			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-			shaderResourceViewDesc.Format = d3d11_dxgi_format[m_format];
-			if (arraySize == 1)
+			D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc;
+			shader_resource_view_desc.Format = d3d11_dxgi_format[m_format];
+			if (array_size == 1)
 			{
-				shaderResourceViewDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
-				shaderResourceViewDesc.Texture2D.MostDetailedMip	= 0;
-				shaderResourceViewDesc.Texture2D.MipLevels			= 1;
+				shader_resource_view_desc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
+				shader_resource_view_desc.Texture2D.MostDetailedMip	= 0;
+				shader_resource_view_desc.Texture2D.MipLevels		= 1;
 			}
 			else
 			{
-				shaderResourceViewDesc.ViewDimension					= D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-				shaderResourceViewDesc.Texture2DArray.FirstArraySlice	= 0;
-				shaderResourceViewDesc.Texture2DArray.MostDetailedMip	= 0;
-				shaderResourceViewDesc.Texture2DArray.MipLevels			= 1;
-				shaderResourceViewDesc.Texture2DArray.ArraySize			= arraySize;
+				shader_resource_view_desc.ViewDimension						= D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+				shader_resource_view_desc.Texture2DArray.FirstArraySlice	= 0;
+				shader_resource_view_desc.Texture2DArray.MostDetailedMip	= 0;
+				shader_resource_view_desc.Texture2DArray.MipLevels			= 1;
+				shader_resource_view_desc.Texture2DArray.ArraySize			= array_size;
 			}
 			
-			auto ptr = (ID3D11ShaderResourceView**)&m_shaderResourceView;
-			if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateShaderResourceView((ID3D11Texture2D*)m_renderTargetTexture, &shaderResourceViewDesc, ptr)))
+			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&m_shader_resource_view);
+			if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateShaderResourceView(static_cast<ID3D11Texture2D*>(m_render_target_texture), &shader_resource_view_desc, ptr)))
 			{
-				SafeRelease((ID3D11Texture2D*)m_renderTargetTexture);
+				safe_release(static_cast<ID3D11Texture2D*>(m_render_target_texture));
 				LOG_ERROR("CreateShaderResourceView() failed.");
 				return;
 			}
 			else
 			{
-				SafeRelease((ID3D11Texture2D*)m_renderTargetTexture);
+				safe_release(static_cast<ID3D11Texture2D*>(m_render_target_texture));
 			}
 		}
 
 		// DEPTH-STENCIL BUFFER
-		if (m_depthEnabled)
+		if (m_depth_enabled)
 		{
 			// DEPTH STENCIL VIEW
-			auto depthStencilTexture	= (ID3D11Texture2D**)&m_depthStencilTexture;
-			auto depthStencilView		= (ID3D11DepthStencilView**)&m_depthStencilView;
+			auto depth_stencil_texture	= reinterpret_cast<ID3D11Texture2D**>(&m_depth_stencil_texture);
+			auto depth_stencil_view		= reinterpret_cast<ID3D11DepthStencilView**>(&m_depth_stencil_view);
 
 			// Depth-stencil buffer
-			D3D11_TEXTURE2D_DESC depthBufferDesc;
-			ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-			depthBufferDesc.Width				= (UINT)m_viewport.GetWidth();
-			depthBufferDesc.Height				= (UINT)m_viewport.GetHeight();
-			depthBufferDesc.MipLevels			= 1;
-			depthBufferDesc.ArraySize			= 1;
-			depthBufferDesc.Format				= d3d11_dxgi_format[depthFormat];
-			depthBufferDesc.SampleDesc.Count	= 1;
-			depthBufferDesc.SampleDesc.Quality	= 0;
-			depthBufferDesc.Usage				= D3D11_USAGE_DEFAULT;
-			depthBufferDesc.BindFlags			= D3D11_BIND_DEPTH_STENCIL;
-			depthBufferDesc.CPUAccessFlags		= 0;
-			depthBufferDesc.MiscFlags			= 0;
+			D3D11_TEXTURE2D_DESC depth_buffer_desc;
+			ZeroMemory(&depth_buffer_desc, sizeof(depth_buffer_desc));
+			depth_buffer_desc.Width					= static_cast<UINT>(m_viewport.GetWidth());
+			depth_buffer_desc.Height				= static_cast<UINT>(m_viewport.GetHeight());
+			depth_buffer_desc.MipLevels				= 1;
+			depth_buffer_desc.ArraySize				= 1;
+			depth_buffer_desc.Format				= d3d11_dxgi_format[depth_format];
+			depth_buffer_desc.SampleDesc.Count		= 1;
+			depth_buffer_desc.SampleDesc.Quality	= 0;
+			depth_buffer_desc.Usage					= D3D11_USAGE_DEFAULT;
+			depth_buffer_desc.BindFlags				= D3D11_BIND_DEPTH_STENCIL;
+			depth_buffer_desc.CPUAccessFlags		= 0;
+			depth_buffer_desc.MiscFlags				= 0;
 
-			bool result = SUCCEEDED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateTexture2D(&depthBufferDesc, nullptr, depthStencilTexture));
+			auto result = SUCCEEDED(m_rhi_device->GetDevice<ID3D11Device>()->CreateTexture2D(&depth_buffer_desc, nullptr, depth_stencil_texture));
 			if (!result)
 			{
 				LOGF_ERROR("Failed to create depth stencil buffer, %s.", D3D11_Common::DxgiErrorToString(result));
@@ -177,64 +176,67 @@ namespace Directus
 			}
 
 			// Depth-stencil view
-			D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-			ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-			depthStencilViewDesc.Format				= d3d11_dxgi_format[depthFormat];
-			depthStencilViewDesc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
-			depthStencilViewDesc.Texture2D.MipSlice = 0;
+			D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc;
+			ZeroMemory(&depth_stencil_view_desc, sizeof(depth_stencil_view_desc));
+			depth_stencil_view_desc.Format				= d3d11_dxgi_format[depth_format];
+			depth_stencil_view_desc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
+			depth_stencil_view_desc.Texture2D.MipSlice	= 0;
 
-			result = SUCCEEDED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateDepthStencilView(*depthStencilTexture, &depthStencilViewDesc, depthStencilView));
+			result = SUCCEEDED(m_rhi_device->GetDevice<ID3D11Device>()->CreateDepthStencilView(*depth_stencil_texture, &depth_stencil_view_desc, depth_stencil_view));
 			if (!result)
 			{
-				SafeRelease((ID3D11Texture2D*)m_depthStencilTexture);
+				safe_release(static_cast<ID3D11Texture2D*>(m_depth_stencil_texture));
 				LOGF_ERROR("Failed to create depth stencil view, %s.", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 			else
 			{
-				SafeRelease((ID3D11Texture2D*)m_depthStencilTexture);
+				safe_release(static_cast<ID3D11Texture2D*>(m_depth_stencil_texture));
 			}
 		}
 	}
 
 	RHI_RenderTexture::~RHI_RenderTexture()
 	{
-		for (unsigned int i = 0; i < m_renderTargetViews.size(); i++) { SafeRelease((ID3D11RenderTargetView*)m_renderTargetViews[i]); }
-		SafeRelease((ID3D11ShaderResourceView*)m_shaderResourceView);
-		SafeRelease((ID3D11DepthStencilView*)m_depthStencilView);
+		for (auto& render_target_view : m_render_target_views)
+		{
+			safe_release(static_cast<ID3D11RenderTargetView*>(render_target_view));
+		}
+		safe_release(static_cast<ID3D11ShaderResourceView*>(m_shader_resource_view));
+		safe_release(static_cast<ID3D11DepthStencilView*>(m_depth_stencil_view));
 	}
 
-	bool RHI_RenderTexture::Clear(const Vector4& clearColor)
+	bool RHI_RenderTexture::Clear(const Vector4& clear_color)
 	{
-		if (!m_rhiDevice)
+		if (!m_rhi_device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		// Clear back buffer
-		for (unsigned int i = 0; i < m_renderTargetViews.size(); i++) 
+		for (auto& render_target_view : m_render_target_views)
 		{ 
-			m_rhiDevice->ClearRenderTarget(m_renderTargetViews[i], clearColor); 
+			m_rhi_device->ClearRenderTarget(render_target_view, clear_color); 
 		}
 
 		// Clear depth buffer
-		if (m_depthEnabled)
+		if (m_depth_enabled)
 		{
-			if (!m_depthStencilView)
+			if (!m_depth_stencil_view)
 			{
 				LOG_ERROR_INVALID_INTERNALS();
 				return false;
 			}
 
-			float depth = Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
-			m_rhiDevice->ClearDepthStencil(m_depthStencilView, Clear_Depth, depth, 0);
+			const auto depth = Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
+			m_rhi_device->ClearDepthStencil(m_depth_stencil_view, Clear_Depth, depth, 0);
 		}
 
 		return true;
 	}
 
-	bool RHI_RenderTexture::Clear(float red, float green, float blue, float alpha)
+	bool RHI_RenderTexture::Clear(const float red, const float green, const float blue, const float alpha)
 	{
 		return Clear(Vector4(red, green, blue, alpha));
 	}

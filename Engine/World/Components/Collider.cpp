@@ -233,7 +233,7 @@ namespace Directus
 	void Collider::Shape_Release()
 	{
 		RigidBody_SetShape(nullptr);
-		SafeDelete(m_shape);
+		safe_delete(m_shape);
 	}
 
 	void Collider::RigidBody_SetShape(btCollisionShape* shape)

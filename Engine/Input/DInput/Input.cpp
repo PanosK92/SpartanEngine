@@ -290,21 +290,21 @@ namespace Directus
 
 			// Mouse position
 			POINT mouse_screen_pos;
-			if (::GetCursorPos(&mouse_screen_pos))
+			if (GetCursorPos(&mouse_screen_pos))
 			{
-				if (HWND focused_hwnd = ::GetActiveWindow())
+				if (HWND focused_hwnd = GetActiveWindow())
 				{
 					if (focused_hwnd == windowHandle)
 					{
 						POINT mouse_client_pos = mouse_screen_pos;
-						::ScreenToClient(focused_hwnd, &mouse_client_pos);
+						ScreenToClient(focused_hwnd, &mouse_client_pos);
 						m_mouse_position = Vector2((float)mouse_client_pos.x, (float)mouse_client_pos.y);
 					}
 				}
 			}
 
 			// Scroll wheel position
-			m_mouseWheel = ::GetScrollPos(windowHandle, SB_VERT);
+			m_mouseWheel = GetScrollPos(windowHandle, SB_VERT);
 		}
 		else
 		{

@@ -79,13 +79,13 @@ namespace Directus
 		~Material();
 
 		//= IResource ==========================================
-		bool LoadFromFile(const std::string& filePath) override;
-		bool SaveToFile(const std::string& filePath) override;
+		bool LoadFromFile(const std::string& file_path) override;
+		bool SaveToFile(const std::string& file_path) override;
 		//======================================================
 
 		//= TEXTURE SLOTS  ====================================================================
 		const TextureSlot& GetTextureSlotByType(TextureType type);
-		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& textureWeak);
+		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& texture);
 		bool HasTexture(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
@@ -94,7 +94,7 @@ namespace Directus
 
 		//= SHADER ====================================================================
 		void AcquireShader();
-		std::shared_ptr<ShaderVariation> GetOrCreateShader(unsigned long shaderFlags);
+		std::shared_ptr<ShaderVariation> GetOrCreateShader(unsigned long shader_flags);
 		std::shared_ptr<ShaderVariation> GetShader() { return m_shader; }
 		bool HasShader() { return GetShader() != nullptr; }
 		void SetMultiplier(TextureType type, float value);
@@ -132,7 +132,7 @@ namespace Directus
 		void SetIsEditable(bool isEditable)				{ m_isEditable = isEditable; }
 		//====================================================================================
 
-		TextureType TextureTypeFromString(const std::string& type);
+		static TextureType TextureTypeFromString(const std::string& type);
 
 	private:
 		void TextureBasedMultiplierAdjustment();

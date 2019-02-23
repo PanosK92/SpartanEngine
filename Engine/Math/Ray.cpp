@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include "RayHit.h"
 #include "BoundingBox.h"
+#include "../World/World.h"
 #include "../World/Entity.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Skybox.h"
@@ -35,11 +36,6 @@ using namespace std;
 
 namespace Directus::Math
 {
-	Ray::Ray()
-	{
-
-	}
-
 	Ray::Ray(const Vector3& start, const Vector3& end)
 	{
 		m_start		= start;
@@ -47,16 +43,11 @@ namespace Directus::Math
 		m_direction = (end - start).Normalized();
 	}
 
-	Ray::~Ray()
-	{
-
-	}
-
-	vector<RayHit> Ray::Trace(Context* context)
+	vector<RayHit> Ray::Trace(Context* context) const
 	{
 		// Find all the entities that the ray hits
 		vector<RayHit> hits;
-		const vector<shared_ptr<Entity>>& entities = context->GetSubsystem<World>()->Entities_GetAll();
+		const auto& entities = context->GetSubsystem<World>()->Entities_GetAll();
 		for (const auto& entity : entities)
 		{
 			// Make sure there entity has a mesh and exclude the SkyBox
@@ -64,17 +55,17 @@ namespace Directus::Math
 				continue;
 
 			// Get bounding box
-			BoundingBox aabb = entity->GetComponent<Renderable>()->Geometry_AABB();
+			auto aabb = entity->GetComponent<Renderable>()->Geometry_AABB();
 
 			// Compute hit distance
-			float hitDistance = HitDistance(aabb);
+			auto hit_distance = HitDistance(aabb);
 
 			// Don't store hit data if there was no hit
-			if (hitDistance == INFINITY)
+			if (hit_distance == INFINITY)
 				continue;
 
-			bool inside	= (hitDistance == 0.0f);
-			hits.emplace_back(entity, hitDistance, inside);
+			auto inside	= (hit_distance == 0.0f);
+			hits.emplace_back(entity, hit_distance, inside);
 		}
 
 		// Sort by distance (ascending)
@@ -86,7 +77,7 @@ namespace Directus::Math
 		return hits;
 	}
 
-	float Ray::HitDistance(const BoundingBox& box)
+	float Ray::HitDistance(const BoundingBox& box) const
 	{
 		// If undefined, no hit (infinite distance)
 		if (!box.Defined())
@@ -96,15 +87,15 @@ namespace Directus::Math
 		if (box.IsInside(m_start))
 			return 0.0f;
 
-		float dist = INFINITY;
+		auto dist = INFINITY;
 
 		// Check for intersecting in the X-direction
 		if (m_start.x < box.GetMin().x && m_direction.x > 0.0f)
 		{
-			float x = (box.GetMin().x - m_start.x) / m_direction.x;
+			auto x = (box.GetMin().x - m_start.x) / m_direction.x;
 			if (x < dist)
 			{
-				Vector3 point = m_start + x * m_direction;
+				const auto point = m_start + x * m_direction;
 				if (point.y >= box.GetMin().y && point.y <= box.GetMax().y && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
@@ -113,10 +104,10 @@ namespace Directus::Math
 		}
 		if (m_start.x > box.GetMax().x && m_direction.x < 0.0f)
 		{
-			float x = (box.GetMax().x - m_start.x) / m_direction.x;
+			const auto x = (box.GetMax().x - m_start.x) / m_direction.x;
 			if (x < dist)
 			{
-				Vector3 point = m_start + x * m_direction;
+				const auto point = m_start + x * m_direction;
 				if (point.y >= box.GetMin().y && point.y <= box.GetMax().y && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
@@ -127,10 +118,10 @@ namespace Directus::Math
 		// Check for intersecting in the Y-direction
 		if (m_start.y < box.GetMin().y && m_direction.y > 0.0f)
 		{
-			float x = (box.GetMin().y - m_start.y) / m_direction.y;
+			const auto x = (box.GetMin().y - m_start.y) / m_direction.y;
 			if (x < dist)
 			{
-				Vector3 point = m_start + x * m_direction;
+				const auto point = m_start + x * m_direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
@@ -139,10 +130,10 @@ namespace Directus::Math
 		}
 		if (m_start.y > box.GetMax().y && m_direction.y < 0.0f)
 		{
-			float x = (box.GetMax().y - m_start.y) / m_direction.y;
+			const auto x = (box.GetMax().y - m_start.y) / m_direction.y;
 			if (x < dist)
 			{
-				Vector3 point = m_start + x * m_direction;
+				const auto point = m_start + x * m_direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
 				{
 					dist = x;
@@ -153,10 +144,10 @@ namespace Directus::Math
 		// Check for intersecting in the Z-direction
 		if (m_start.z < box.GetMin().z && m_direction.z > 0.0f)
 		{
-			float x = (box.GetMin().z - m_start.z) / m_direction.z;
+			const auto x = (box.GetMin().z - m_start.z) / m_direction.z;
 			if (x < dist)
 			{
-				Vector3 point = m_start + x * m_direction;
+				const auto point = m_start + x * m_direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.y >= box.GetMin().y && point.y <= box.GetMax().y)
 				{
 					dist = x;
@@ -165,10 +156,10 @@ namespace Directus::Math
 		}
 		if (m_start.z > box.GetMax().z && m_direction.z < 0.0f)
 		{
-			float x = (box.GetMax().z - m_start.z) / m_direction.z;
+			const auto x = (box.GetMax().z - m_start.z) / m_direction.z;
 			if (x < dist)
 			{
-				Vector3 point = m_start + x * m_direction;
+				const auto point = m_start + x * m_direction;
 				if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.y >= box.GetMin().y && point.y <= box.GetMax().y)
 				{
 					dist = x;

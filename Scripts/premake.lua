@@ -46,9 +46,22 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		location (ENGINE_DIR)
 		kind "StaticLib"	
 		language "C++"
-		files { "../" .. ENGINE_NAME .. "/**.h", "../" .. ENGINE_NAME .. "/**.cpp", "../" .. ENGINE_NAME .. "/**.hpp", "../" .. ENGINE_NAME .. "/**.inl" }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect (CPP_VERSION)
+		files 
+		{ 
+			"../" .. ENGINE_NAME .. "/**.h", 
+			"../" .. ENGINE_NAME .. "/**.cpp", 
+			"../" .. ENGINE_NAME .. "/**.hpp", 
+			"../" .. ENGINE_NAME .. "/**.inl" 
+		}
+		
+		defines
+		{
+			"ENGINE",
+			"STATIC_LIB=1"
+			"SHARED_LIB=0"
+		}
 
 -- Includes
 	includedirs { VULKAN_PATH_INCLUDE }
@@ -71,7 +84,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
 		symbols "On"
-		defines { "DEBUG", "ENGINE", "LINKING_STATIC"}	
+		defines { "DEBUG" }	
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
 		links { "angelscript_debug" }
@@ -89,7 +102,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
 		symbols "Off"
-		defines { "NDEBUG", "ENGINE", "LINKING_STATIC"}
+		defines { "NDEBUG" }
 		optimize "Full"
 		staticruntime "On"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
@@ -107,11 +120,24 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		location (EDITOR_DIR)
 		kind "WindowedApp"	
 		language "C++"
-		files { "../Editor/**.h", "../Editor/**.cpp", "../Editor/**.hpp", "../Editor/**.inl" }
 		links { ENGINE_NAME }
 		dependson { ENGINE_NAME }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect (CPP_VERSION)
+		files 
+		{ 
+			"../Editor/**.h",
+			"../Editor/**.cpp",
+			"../Editor/**.hpp",
+			"../Editor/**.inl" 
+		}
+		
+		defines
+		{
+			"EDITOR",
+			"STATIC_LIB=1"
+			"SHARED_LIB=0"
+		}
 
 -- Includes
 	includedirs { "../" .. ENGINE_NAME }
@@ -126,8 +152,8 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
 		symbols "On"
-		defines { "DEBUG", "EDITOR", "LINKING_STATIC"}		
 		staticruntime "On"
+		defines { "DEBUG"}
 		flags { "MultiProcessorCompile" }
 				
 -- "Release"
@@ -135,8 +161,8 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		targetdir (TARGET_DIR_RELEASE)
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
-		symbols "Off"
-		defines { "NDEBUG", "EDITOR", "LINKING_STATIC"}
+		symbols "Off"	
 		optimize "Full"
 		staticruntime "On"
+		defines { "NDEBUG" }
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }		

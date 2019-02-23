@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Transform.h"
+#include "../World.h"
 #include "../Entity.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 #include "../../FileSystem/FileSystem.h"
-#include "../../Core/Engine.h"
 #include "../../Math/Vector3.h"
 //======================================
 
@@ -54,11 +54,6 @@ namespace Directus
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_lookAt, Vector3);
 	}
 
-	Transform::~Transform()
-	{
-
-	}
-
 	//= ICOMPONENT ==================================================================================
 	void Transform::OnInitialize()
 	{
@@ -71,7 +66,7 @@ namespace Directus
 		stream->Write(m_rotationLocal);
 		stream->Write(m_scaleLocal);
 		stream->Write(m_lookAt);
-		stream->Write(m_parent ? m_parent->GetEntity_PtrRaw()->GetID() : NOT_ASSIGNED_HASH);
+		stream->Write(m_parent ? m_parent->GetEntity_PtrRaw()->GetId() : NOT_ASSIGNED_HASH);
 	}
 
 	void Transform::Deserialize(FileStream* stream)
@@ -80,12 +75,12 @@ namespace Directus
 		stream->Read(&m_rotationLocal);
 		stream->Read(&m_scaleLocal);
 		stream->Read(&m_lookAt);
-		unsigned int parententityID = 0;
-		stream->Read(&parententityID);
+		unsigned int parententity_id = 0;
+		stream->Read(&parententity_id);
 
-		if (parententityID != NOT_ASSIGNED_HASH)
+		if (parententity_id != NOT_ASSIGNED_HASH)
 		{
-			if (auto parent = GetContext()->GetSubsystem<World>()->Entity_GetByID(parententityID))
+			if (const auto parent = GetContext()->GetSubsystem<World>()->Entity_GetByID(parententity_id))
 			{
 				parent->GetTransform_PtrRaw()->AddChild(this);
 			}
@@ -205,17 +200,17 @@ namespace Directus
 		}	
 	}
 
-	Vector3 Transform::GetUp()
+	Vector3 Transform::GetUp() const
 	{
 		return GetRotationLocal() * Vector3::Up;
 	}
 
-	Vector3 Transform::GetForward()
+	Vector3 Transform::GetForward() const
 	{
 		return GetRotationLocal() * Vector3::Forward;
 	}
 
-	Vector3 Transform::GetRight()
+	Vector3 Transform::GetRight() const
 	{
 		return GetRotationLocal() * Vector3::Right;
 	}
@@ -223,31 +218,31 @@ namespace Directus
 
 	//= HIERARCHY ====================================================================================
 	// Sets a parent for this transform
-	void Transform::SetParent(Transform* newParent)
+	void Transform::SetParent(Transform* new_parent)
 	{
 		// This is the most complex function 
 		// in this script, tweak it with great caution.
 
 		// if the new parent is null, it means that this should become a root transform
-		if (!newParent)
+		if (!new_parent)
 		{
 			BecomeOrphan();
 			return;
 		}
 
 		// make sure the new parent is not this transform
-		if (GetID() == newParent->GetID())
+		if (GetID() == new_parent->GetID())
 			return;
 
 		// make sure the new parent is different from the existing parent
 		if (HasParent())
 		{
-			if (GetParent()->GetID() == newParent->GetID())
+			if (GetParent()->GetID() == new_parent->GetID())
 				return;
 		}
 
 		// if the new parent is a descendant of this transform
-		if (newParent->IsDescendantOf(this))
+		if (new_parent->IsDescendantOf(this))
 		{
 			// if this transform already has a parent
 			if (this->HasParent())
@@ -269,9 +264,9 @@ namespace Directus
 		}
 
 		// Switch parent but keep a pointer to the old one
-		auto parentOld = m_parent;
-		m_parent = newParent;
-		if (parentOld) parentOld->AcquireChildren(); // update the old parent (so it removes this child)
+		auto parent_old = m_parent;
+		m_parent = new_parent;
+		if (parent_old) parent_old->AcquireChildren(); // update the old parent (so it removes this child)
 
 		// make the new parent "aware" of this transform/child
 		if (m_parent)
@@ -294,11 +289,11 @@ namespace Directus
 	}
 
 	// Returns a child with the given index
-	Transform* Transform::GetChildByIndex(int index)
+	Transform* Transform::GetChildByIndex(const unsigned int index)
 	{
 		if (!HasChildren())
 		{
-			LOG_WARNING(GetentityName() + " has no children.");
+			LOG_WARNING(GetEntityName() + " has no children.");
 			return nullptr;
 		}
 
@@ -316,7 +311,7 @@ namespace Directus
 	{
 		for (const auto& child : m_children)
 		{
-			if (child->GetentityName() == name)
+			if (child->GetEntityName() == name)
 				return child;
 		}
 
@@ -337,33 +332,33 @@ namespace Directus
 				continue;
 
 			// get the possible child
-			Transform* possibleChild = entity->GetTransform_PtrRaw();
+			auto possible_child = entity->GetTransform_PtrRaw();
 
 			// if it doesn't have a parent, forget about it.
-			if (!possibleChild->HasParent())
+			if (!possible_child->HasParent())
 				continue;
 
 			// if it's parent matches this transform
-			if (possibleChild->GetParent()->GetID() == m_ID)
+			if (possible_child->GetParent()->GetID() == m_id)
 			{
 				// welcome home son
-				m_children.emplace_back(possibleChild);
+				m_children.emplace_back(possible_child);
 
 				// make the child do the same thing all over, essentialy
 				// resolving the entire hierarchy.
-				possibleChild->AcquireChildren();
+				possible_child->AcquireChildren();
 			}
 		}
 	}
 
-	bool Transform::IsDescendantOf(Transform* transform)
+	bool Transform::IsDescendantOf(Transform* transform) const
 	{
 		vector<Transform*> descendants;
 		transform->GetDescendants(&descendants);
 
 		for (const auto& descendant : descendants)
 		{
-			if (descendant->GetID() == m_ID)
+			if (descendant->GetID() == m_id)
 				return true;
 		}
 
@@ -380,7 +375,7 @@ namespace Directus
 		}
 	}
 
-	Matrix Transform::GetParentTransformMatrix()
+	Matrix Transform::GetParentTransformMatrix() const
 	{
 		return HasParent() ? GetParent()->GetMatrix() : Matrix::Identity;
 	}
@@ -393,7 +388,7 @@ namespace Directus
 			return;
 
 		// create a temporary reference to the parent
-		Transform* tempRef = m_parent;
+		auto temp_ref = m_parent;
 
 		// delete the original reference
 		m_parent = nullptr;
@@ -404,9 +399,9 @@ namespace Directus
 		// make the parent search for children,
 		// that's indirect way of making tha parent "forget"
 		// about this child, since it won't be able to find it
-		if (tempRef)
+		if (temp_ref)
 		{
-			tempRef->AcquireChildren();
+			temp_ref->AcquireChildren();
 		}
 	}
 }

@@ -41,58 +41,57 @@ namespace Directus
 {
 	Audio::Audio(Context* context) : ISubsystem(context)
 	{
-		m_resultFMOD		= FMOD_OK;
-		m_systemFMOD		= nullptr;
-		m_maxChannels		= 32;
-		m_distanceFentity	= 1.0f;
+		m_system_fmod		= nullptr;
+		m_max_channels		= 32;
+		m_distance_entity	= 1.0f;
 		m_listener			= nullptr;
 		m_profiler			= m_context->GetSubsystem<Profiler>().get();
 
 		// Create FMOD instance
-		m_resultFMOD = System_Create(&m_systemFMOD);
-		if (m_resultFMOD != FMOD_OK)
+		m_result_fmod = System_Create(&m_system_fmod);
+		if (m_result_fmod != FMOD_OK)
 		{
-			LogErrorFMOD(m_resultFMOD);
+			LogErrorFmod(m_result_fmod);
 			return;
 		}
 
 		// Check FMOD version
 		unsigned int version;
-		m_resultFMOD = m_systemFMOD->getVersion(&version);
-		if (m_resultFMOD != FMOD_OK)
+		m_result_fmod = m_system_fmod->getVersion(&version);
+		if (m_result_fmod != FMOD_OK)
 		{
-			LogErrorFMOD(m_resultFMOD);
+			LogErrorFmod(m_result_fmod);
 			return;
 		}
 
 		if (version < FMOD_VERSION)
 		{
-			LogErrorFMOD(m_resultFMOD);
+			LogErrorFmod(m_result_fmod);
 			return;
 		}
 
 		// Make sure there is a sound card devices on the machine
-		int driverCount = 0;
-		m_resultFMOD = m_systemFMOD->getNumDrivers(&driverCount);
-		if (m_resultFMOD != FMOD_OK)
+		auto driver_count = 0;
+		m_result_fmod = m_system_fmod->getNumDrivers(&driver_count);
+		if (m_result_fmod != FMOD_OK)
 		{
-			LogErrorFMOD(m_resultFMOD);
+			LogErrorFmod(m_result_fmod);
 			return;
 		}
 
 		// Initialize FMOD
-		m_resultFMOD = m_systemFMOD->init(m_maxChannels, FMOD_INIT_NORMAL, nullptr);
-		if (m_resultFMOD != FMOD_OK)
+		m_result_fmod = m_system_fmod->init(m_max_channels, FMOD_INIT_NORMAL, nullptr);
+		if (m_result_fmod != FMOD_OK)
 		{
-			LogErrorFMOD(m_resultFMOD);
+			LogErrorFmod(m_result_fmod);
 			return;
 		}
 
 		// Set 3D settings
-		m_resultFMOD = m_systemFMOD->set3DSettings(1.0, m_distanceFentity, 0.0f);
-		if (m_resultFMOD != FMOD_OK)
+		m_result_fmod = m_system_fmod->set3DSettings(1.0, m_distance_entity, 0.0f);
+		if (m_result_fmod != FMOD_OK)
 		{
-			LogErrorFMOD(m_resultFMOD);
+			LogErrorFmod(m_result_fmod);
 			return;
 		}
 
@@ -101,9 +100,9 @@ namespace Directus
 		// Get version
 		stringstream ss;
 		ss << hex << version;
-		string major	= ss.str().erase(1, 4);
-		string minor	= ss.str().erase(0, 1).erase(2, 2);
-		string rev		= ss.str().erase(0, 3);
+		const auto major	= ss.str().erase(1, 4);
+		const auto minor	= ss.str().erase(0, 1).erase(2, 2);
+		const auto rev		= ss.str().erase(0, 3);
 		Settings::Get().m_versionFMOD = major + "." + minor + "." + rev;
 
 		// Subscribe to events
@@ -115,22 +114,22 @@ namespace Directus
 		// Unsubscribe from events
 		UNSUBSCRIBE_FROM_EVENT(Event_World_Unload, [this](Variant) { m_listener = nullptr; });
 
-		if (!m_systemFMOD)
+		if (!m_system_fmod)
 			return;
 
 		// Close FMOD
-		m_resultFMOD = m_systemFMOD->close();
-		if (m_resultFMOD != FMOD_OK)
+		m_result_fmod = m_system_fmod->close();
+		if (m_result_fmod != FMOD_OK)
 		{
-			LogErrorFMOD(m_resultFMOD);
+			LogErrorFmod(m_result_fmod);
 			return;
 		}
 
 		// Release FMOD
-		m_resultFMOD = m_systemFMOD->release();
-		if (m_resultFMOD != FMOD_OK)
+		m_result_fmod = m_system_fmod->release();
+		if (m_result_fmod != FMOD_OK)
 		{
-			LogErrorFMOD(m_resultFMOD);
+			LogErrorFmod(m_result_fmod);
 		}
 	}
 
@@ -146,32 +145,32 @@ namespace Directus
 		TIME_BLOCK_START_CPU(m_profiler);
 
 		// Update FMOD
-		m_resultFMOD = m_systemFMOD->update();
-		if (m_resultFMOD != FMOD_OK)
+		m_result_fmod = m_system_fmod->update();
+		if (m_result_fmod != FMOD_OK)
 		{
-			LogErrorFMOD(m_resultFMOD);
+			LogErrorFmod(m_result_fmod);
 			return;
 		}
 
 		//= 3D Attributes =============================================
 		if (m_listener)
 		{
-			Math::Vector3 position = m_listener->GetPosition();
-			Math::Vector3 velocity = Math::Vector3::Zero;
-			Math::Vector3 forward = m_listener->GetForward();
-			Math::Vector3 up = m_listener->GetUp();
+			auto position = m_listener->GetPosition();
+			auto velocity = Math::Vector3::Zero;
+			auto forward = m_listener->GetForward();
+			auto up = m_listener->GetUp();
 
 			// Set 3D attributes
-			m_resultFMOD = m_systemFMOD->set3DListenerAttributes(
+			m_result_fmod = m_system_fmod->set3DListenerAttributes(
 				0, 
-				(FMOD_VECTOR*)&position, 
-				(FMOD_VECTOR*)&velocity, 
-				(FMOD_VECTOR*)&forward, 
-				(FMOD_VECTOR*)&up
+				reinterpret_cast<FMOD_VECTOR*>(&position), 
+				reinterpret_cast<FMOD_VECTOR*>(&velocity), 
+				reinterpret_cast<FMOD_VECTOR*>(&forward), 
+				reinterpret_cast<FMOD_VECTOR*>(&up)
 			);
-			if (m_resultFMOD != FMOD_OK)
+			if (m_result_fmod != FMOD_OK)
 			{
-				LogErrorFMOD(m_resultFMOD);
+				LogErrorFmod(m_result_fmod);
 				return;
 			}
 		}
@@ -185,8 +184,8 @@ namespace Directus
 		m_listener = transform;
 	}
 
-	void Audio::LogErrorFMOD(int error)
+	void Audio::LogErrorFmod(int error) const
 	{
-		LOG_ERROR("Audio::FMOD: " + string(FMOD_ErrorString((FMOD_RESULT)error)));
+		LOG_ERROR("Audio::FMOD: " + string(FMOD_ErrorString(static_cast<FMOD_RESULT>(error))));
 	}
 }

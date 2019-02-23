@@ -32,15 +32,15 @@ namespace Directus
 	class ENGINE_CLASS RHI_DepthStencilState : public RHI_Object
 	{
 	public:
-		RHI_DepthStencilState(std::shared_ptr<RHI_Device> device, bool depthEnabled);
+		RHI_DepthStencilState(const std::shared_ptr<RHI_Device>& rhi_device, bool depth_enabled);
 		~RHI_DepthStencilState();
 
-		bool GetDepthEnabled()	{ return m_depthEnabled; }
-		void* GetBuffer()		{ return m_buffer; }
+		bool GetDepthEnabled() const	{ return m_depth_enabled; }
+		void* GetBuffer() const			{ return m_buffer; }
 
 	private:
-		bool m_depthEnabled;
-		bool m_initialized = false;
-		void* m_buffer = nullptr;
+		bool m_depth_enabled	= false;
+		bool m_initialized		= false;
+		void* m_buffer			= nullptr;
 	};
 }

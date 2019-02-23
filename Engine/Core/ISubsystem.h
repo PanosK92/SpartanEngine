@@ -36,12 +36,12 @@ namespace Directus
 		{ 
 			m_context = context;
 		}
-		virtual ~ISubsystem() {}
+		virtual ~ISubsystem() = default;
 		virtual bool Initialize() { return true; }
 		virtual void Tick() {}
 
 	protected:
 		Context* m_context;
-		static float m_deltaTimeSec;
+		static float m_delta_time_sec;
 	};
 }

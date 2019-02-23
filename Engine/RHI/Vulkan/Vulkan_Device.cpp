@@ -227,140 +227,134 @@ namespace Directus
 		vkDestroyInstance(Vulkan_Device::instance, nullptr);
 	}
 
-	bool RHI_Device::Draw(unsigned int vertexCount)
+	bool RHI_Device::Draw(unsigned int vertex_count) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset)
+	bool RHI_Device::DrawIndexed(const unsigned int index_count, const unsigned int index_offset, const unsigned int vertex_offset) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::ClearRenderTarget(void* renderTarget, const Math::Vector4& color)
+	bool RHI_Device::ClearRenderTarget(void* render_target, const Vector4& color) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, unsigned int stencil)
+	bool RHI_Device::ClearDepthStencil(void* depth_stencil, const unsigned int flags, const float depth, const unsigned int stencil) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetVertexBuffer(const shared_ptr<RHI_VertexBuffer>& buffer)
+	bool RHI_Device::SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetIndexBuffer(const shared_ptr<RHI_IndexBuffer>& buffer)
+	bool RHI_Device::SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetVertexShader(const shared_ptr<RHI_Shader>& shader)
+	bool RHI_Device::SetVertexShader(const std::shared_ptr<RHI_Shader>& shader) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetPixelShader(const shared_ptr<RHI_Shader>& shader)
+	bool RHI_Device::SetPixelShader(const std::shared_ptr<RHI_Shader>& shader) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, void* buffer, RHI_Buffer_Scope scope)
+	bool RHI_Device::SetConstantBuffers(const unsigned int start_slot, const unsigned int buffer_count, void* buffer, const RHI_Buffer_Scope scope) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* samplers)
+	bool RHI_Device::SetSamplers(const unsigned int start_slot, const unsigned int sampler_count, void* samplers) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil)
+	bool RHI_Device::SetRenderTargets(const unsigned int render_target_count, void* render_targets, void* depth_stencil) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources)
+	bool RHI_Device::SetTextures(const unsigned int start_slot, const unsigned int resource_count, void* shader_resources) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetViewport(const RHI_Viewport& viewport)
+	bool RHI_Device::SetViewport(const RHI_Viewport& viewport) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetScissorRectangle(const Math::Rectangle& rectangle)
+	bool RHI_Device::SetScissorRectangle(const Math::Rectangle& rectangle) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState)
+	bool RHI_Device::SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState)
+	bool RHI_Device::SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology)
+	bool RHI_Device::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetInputLayout(const shared_ptr<RHI_InputLayout>& inputLayout)
+	bool RHI_Device::SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetRasterizerState(const shared_ptr<RHI_RasterizerState>& rasterizerState)
-	{
-
-		return true;
-	}
-
-	void RHI_Device::EventBegin(const string& name)
-	{
-
-	}
-
-	void RHI_Device::EventEnd()
-	{
-
-	}
-
-	bool RHI_Device::Profiling_CreateQuery(void** query, RHI_Query_Type type)
+	bool RHI_Device::SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::Profiling_QueryStart(void* queryObject)
+	void RHI_Device::EventBegin(const std::string& name)
+	{
+
+	}
+
+	bool RHI_Device::Profiling_CreateQuery(void** query, RHI_Query_Type type) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::Profiling_QueryEnd(void* queryObject)
+	bool RHI_Device::Profiling_QueryStart(void* query_object) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::Profiling_GetTimeStamp(void* queryObject)
+	bool RHI_Device::Profiling_QueryEnd(void* query_object) const
 	{
 		return true;
 	}
 
-	float RHI_Device::Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd)
+	bool RHI_Device::Profiling_GetTimeStamp(void* query_disjoint) const
+	{
+		return true;
+	}
+
+	float RHI_Device::Profiling_GetDuration(void* query_disjoint, void* query_start, void* query_end) const
 	{
 		return 0.0f;
 	}
 
-	void RHI_Device::DetectPrimaryAdapter(RHI_Format format)
+	void RHI_Device::DetectPrimaryAdapter(RHI_Format format) const
 	{
-		
+
 	}
 }
 #endif

@@ -39,62 +39,62 @@ namespace Directus
 	class ENGINE_CLASS RHI_Device
 	{
 	public:
-		RHI_Device(void* drawHandle);
+		RHI_Device(void* draw_handle);
 		~RHI_Device();
 
-		//= DRAW/PRESENT ==============================================================================
-		bool Draw(unsigned int vertexCount);
-		bool DrawIndexed(unsigned int indexCount, unsigned int indexOffset, unsigned int vertexOffset);
-		//=============================================================================================
+		//= DRAW/PRESENT =======================================================================================
+		bool Draw(unsigned int vertex_count) const;
+		bool DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset) const;
+		//======================================================================================================
 
-		//= CLEAR ============================================================================================
-		bool ClearRenderTarget(void* renderTarget, const Math::Vector4& color);
-		bool ClearDepthStencil(void* depthStencil, unsigned int flags, float depth, unsigned int stencil = 0);
-		//====================================================================================================
+		//= CLEAR ===================================================================================================
+		bool ClearRenderTarget(void* render_target, const Math::Vector4& color) const;
+		bool ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0) const;
+		//===========================================================================================================
 
-		//= SET ========================================================================================================
-		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer);
-		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer);
-		bool SetVertexShader(const std::shared_ptr<RHI_Shader>& shader);
-		bool SetPixelShader(const std::shared_ptr<RHI_Shader>& shader);
-		bool SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depthStencilState);
-		bool SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizerState);
-		bool SetBlendState(const std::shared_ptr<RHI_BlendState>& blendState);
-		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& inputLayout);	
-		bool SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitiveTopology);
-		bool SetConstantBuffers(unsigned int startSlot, unsigned int bufferCount, void* buffer, RHI_Buffer_Scope scope);
-		bool SetSamplers(unsigned int startSlot, unsigned int samplerCount, void* samplers);
-		bool SetTextures(unsigned int startSlot, unsigned int resourceCount, void* shaderResources);	
-		bool SetRenderTargets(unsigned int renderTargetCount, void* renderTargets, void* depthStencil);	
-		bool SetViewport(const RHI_Viewport& viewport);
-		bool SetScissorRectangle(const Math::Rectangle& rectangle);
-		//==============================================================================================================
+		//= SET ================================================================================================================
+		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer) const;
+		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer) const;
+		bool SetVertexShader(const std::shared_ptr<RHI_Shader>& shader) const;
+		bool SetPixelShader(const std::shared_ptr<RHI_Shader>& shader) const;
+		bool SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state) const;
+		bool SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state) const;
+		bool SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state) const;
+		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout) const;	
+		bool SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology) const;
+		bool SetConstantBuffers(unsigned int start_slot, unsigned int buffer_count, void* buffer, RHI_Buffer_Scope scope) const;
+		bool SetSamplers(unsigned int start_slot, unsigned int sampler_count, void* samplers) const;
+		bool SetTextures(unsigned int start_slot, unsigned int resource_count, void* shader_resources) const;	
+		bool SetRenderTargets(unsigned int render_target_count, void* render_targets, void* depth_stencil) const;	
+		bool SetViewport(const RHI_Viewport& viewport) const;
+		bool SetScissorRectangle(const Math::Rectangle& rectangle) const;
+		//======================================================================================================================
 
-		//= EVENTS ==============================
-		void EventBegin(const std::string& name);
-		void EventEnd();
-		//=======================================
+		//= EVENTS =====================================
+		static void EventBegin(const std::string& name);
+		static void EventEnd();
+		//==============================================
 
-		//= PROFILING ====================================================================
-		bool Profiling_CreateQuery(void** buffer, RHI_Query_Type type);
-		bool Profiling_QueryStart(void* queryObject);
-		bool Profiling_QueryEnd(void* queryObject);
-		bool Profiling_GetTimeStamp(void* queryDisjoint);
-		float Profiling_GetDuration(void* queryDisjoint, void* queryStart, void* queryEnd);
-		//=================================================================================
+		//= PROFILING =============================================================================
+		bool ProfilingCreateQuery(void** query, RHI_Query_Type type) const;
+		bool ProfilingQueryStart(void* query_object) const;
+		bool ProfilingQueryEnd(void* query_object) const;
+		bool ProfilingGetTimeStamp(void* query_disjoint) const;
+		float ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const;
+		//=========================================================================================
 
-		//= MISC ==============================================
-		bool IsInitialized()	{ return m_initialized; }
+		//= MISC ====================================================================
+		bool IsInitialized() const		{ return m_initialized; }
 		template <typename T>
-		T* GetDevice()			{ return (T*)m_device; }
+		constexpr T* GetDevice()		{ return static_cast<T*>(m_device); }
 		template <typename T>
-		T* GetDeviceContext()	{ return (T*)m_deviceContext; }
-		void DetectPrimaryAdapter(RHI_Format format);
-		//=====================================================
+		constexpr T* GetDeviceContext()	{ return static_cast<T*>(m_device_context); }
+		void DetectPrimaryAdapter(RHI_Format format) const;
+		//===========================================================================
 
 	private:
 		bool m_initialized		= false;
 		void* m_device			= nullptr;
-		void* m_deviceContext	= nullptr;
+		void* m_device_context	= nullptr;
 	};
 }

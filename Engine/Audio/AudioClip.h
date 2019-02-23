@@ -57,10 +57,10 @@ namespace Directus
 		AudioClip(Context* context);
 		~AudioClip();
 
-		//= IResource ========================================================
-		bool LoadFromFile(const std::string& filePath) override;
-		bool SaveToFile(const std::string& filePath) override { return true; }
-		//====================================================================
+		//= IResource =========================================================
+		bool LoadFromFile(const std::string& file_path) override;
+		bool SaveToFile(const std::string& file_path) override { return true; }
+		//=====================================================================
 
 		bool Play();
 		bool Pause();
@@ -85,7 +85,7 @@ namespace Directus
 		bool SetPan(float pan);
 
 		// Sets the rolloff
-		bool SetRolloff(std::vector<Math::Vector3> curvePoints);
+		bool SetRolloff(std::vector<Math::Vector3> curve_points);
 		bool SetRolloff(Rolloff rolloff);
 
 		// Makes the audio use the 3D attributes of the transform
@@ -97,13 +97,13 @@ namespace Directus
 		bool IsPlaying();
 
 	private:
-		//= CREATION ==================================
-		bool CreateSound(const std::string& filePath);
-		bool CreateStream(const std::string& filePath);
-		//=============================================
-		int GetSoundMode();
-		void LogErrorFMOD(int error);
-		bool IsChannelValid();
+		//= CREATION ===================================
+		bool CreateSound(const std::string& file_path);
+		bool CreateStream(const std::string& file_path);
+		//==============================================
+		int GetSoundMode() const;
+		void LogErrorFmod(int error) const;
+		bool IsChannelValid() const;
 
 		Transform* m_transform;
 		FMOD::System* m_systemFMOD;

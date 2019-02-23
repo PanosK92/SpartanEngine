@@ -77,19 +77,19 @@ namespace Directus
 
 		typedef std::function<void(Variant)> subscriber;
 
-		void Subscribe(Event_Type eventID, subscriber&& function)
+		void Subscribe(const Event_Type event_id, subscriber&& function)
 		{
-			m_subscribers[eventID].push_back(std::forward<subscriber>(function));
+			m_subscribers[event_id].push_back(std::forward<subscriber>(function));
 		}
 
-		void Unsubscribe(Event_Type eventID, subscriber&& function)
+		void Unsubscribe(const Event_Type event_id, subscriber&& function)
 		{
-			size_t function_adress	= *(long*)(char*)&function;
-			auto& subscribers		= m_subscribers[eventID];
+			const size_t function_adress	= *reinterpret_cast<long*>(reinterpret_cast<char*>(&function));
+			auto& subscribers				= m_subscribers[event_id];
 
 			for (auto it = subscribers.begin(); it != subscribers.end();)
 			{
-				size_t subscriber_adress = *(long*)(char*)&(*it);
+				const size_t subscriber_adress = *reinterpret_cast<long*>(reinterpret_cast<char*>(&(*it)));
 				if (subscriber_adress == function_adress)
 				{
 					it = subscribers.erase(it);
@@ -98,12 +98,12 @@ namespace Directus
 			}
 		}
 
-		void Fire(Event_Type eventID, const Variant& data = 0)
+		void Fire(const Event_Type event_id, const Variant& data = 0)
 		{
-			if (m_subscribers.find(eventID) == m_subscribers.end())
+			if (m_subscribers.find(event_id) == m_subscribers.end())
 				return;
 
-			for (const auto& subscriber : m_subscribers[eventID])
+			for (const auto& subscriber : m_subscribers[event_id])
 			{
 				subscriber(data);
 			}

@@ -36,13 +36,13 @@ namespace Directus
 	RHI_Texture::RHI_Texture(Context* context) : IResource(context, Resource_Texture)
 	{
 		m_format	= Format_R8G8B8A8_UNORM;
-		m_rhiDevice	= context->GetSubsystem<Renderer>()->GetRHIDevice();
+		m_rhi_device	= context->GetSubsystem<Renderer>()->GetRhiDevice();
 	}
 
 	//= RESOURCE INTERFACE =====================================================================
-	bool RHI_Texture::SaveToFile(const string& filePath)
+	bool RHI_Texture::SaveToFile(const string& file_path)
 	{
-		return Serialize(filePath);
+		return Serialize(file_path);
 	}
 
 	bool RHI_Texture::LoadFromFile(const string& rawFilePath)
@@ -55,8 +55,8 @@ namespace Directus
 			return false;
 		}
 
-		m_mipChain.clear();
-		m_mipChain.shrink_to_fit();
+		m_mip_chain.clear();
+		m_mip_chain.shrink_to_fit();
 		SetLoadState(LoadState_Started);
 
 		// Load from disk
@@ -80,7 +80,7 @@ namespace Directus
 		}
 
 		// Validate loaded data
-		if (m_width == 0 || m_height == 0 || m_channels == 0 || m_mipChain.empty() || m_mipChain.front().empty())
+		if (m_width == 0 || m_height == 0 || m_channels == 0 || m_mip_chain.empty() || m_mip_chain.front().empty())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			SetLoadState(LoadState_Failed);
@@ -89,15 +89,15 @@ namespace Directus
 
 		// Create shader resource
 		bool srvCreated = HasMipChain() ?
-			ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain) :
-			ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipChain.front(), m_needsMipChain);
+			ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mip_chain) :
+			ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mip_chain.front(), m_needs_mip_chain);
 
 		// Only clear texture bytes if that's an engine texture, if not, they are not serialized yet.
 		if (FileSystem::IsEngineTextureFile(filePath)) { ClearTextureBytes(); }
 
 		if (!srvCreated) 
 		{ 
-			LOGF_ERROR("Failed to create shader resource for \"%s\".", m_resourceFilePath.c_str()); 
+			LOGF_ERROR("Failed to create shader resource for \"%s\".", m_resource_file_path.c_str()); 
 			SetLoadState(LoadState_Failed);
 			return false;
 		}
@@ -107,76 +107,76 @@ namespace Directus
 	}
 	//=====================================================================================
 
-	MipLevel* RHI_Texture::Data_GetMipLevel(unsigned int index)
+	mip_level* RHI_Texture::Data_GetMipLevel(unsigned int index)
 	{
-		if (index >= m_mipChain.size())
+		if (index >= m_mip_chain.size())
 		{
 			LOG_WARNING("Index out of range");
 			return nullptr;
 		}
 
-		return &m_mipChain[index];
+		return &m_mip_chain[index];
 	}
 
 	void RHI_Texture::ClearTextureBytes()
 	{
-		for (auto& mip : m_mipChain)
+		for (auto& mip : m_mip_chain)
 		{
 			mip.clear();
 			mip.shrink_to_fit();
 		}
-		m_mipChain.clear();
-		m_mipChain.shrink_to_fit();
+		m_mip_chain.clear();
+		m_mip_chain.shrink_to_fit();
 	}
 
-	void RHI_Texture::GetTextureBytes(vector<vector<std::byte>>* textureBytes)
+	void RHI_Texture::GetTextureBytes(vector<vector<std::byte>>* texture_bytes)
 	{
-		if (!m_mipChain.empty())
+		if (!m_mip_chain.empty())
 		{
-			textureBytes = &m_mipChain;
+			texture_bytes = &m_mip_chain;
 			return;
 		}
 
-		auto file = make_unique<FileStream>(m_resourceFilePath, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(m_resource_file_path, FileStreamMode_Read);
 		if (!file->IsOpen())
 			return;
 
 		unsigned int mipCount = file->ReadUInt();
 		for (unsigned int i = 0; i < mipCount; i++)
 		{
-			textureBytes->emplace_back(vector<std::byte>());
-			file->Read(&m_mipChain[i]);
+			texture_bytes->emplace_back(vector<std::byte>());
+			file->Read(&m_mip_chain[i]);
 		}
 	}
 
-	bool RHI_Texture::LoadFromForeignFormat(const string& filePath)
+	bool RHI_Texture::LoadFromForeignFormat(const string& file_path)
 	{
 		// Load texture
 		ImageImporter* imageImp = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();	
-		if (!imageImp->Load(filePath, this))
+		if (!imageImp->Load(file_path, this))
 			return false;
 
 		// Change texture extension to an engine texture
-		SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(filePath) + EXTENSION_TEXTURE);
+		SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(file_path) + EXTENSION_TEXTURE);
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(GetResourceFilePath()));
 
 		return true;
 	}
 
-	bool RHI_Texture::Serialize(const string& filePath)
+	bool RHI_Texture::Serialize(const string& file_path)
 	{
 		// If the texture bits has been cleared, load it again
 		// as we don't want to replaced existing data with nothing.
 		// If the texture bits are not cleared, no loading will take place.
-		GetTextureBytes(&m_mipChain);
+		GetTextureBytes(&m_mip_chain);
 
-		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
+		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
 		if (!file->IsOpen())
 			return false;
 
 		// Write texture bits
-		file->Write((unsigned int)m_mipChain.size());
-		for (auto& mip : m_mipChain)
+		file->Write((unsigned int)m_mip_chain.size());
+		for (auto& mip : m_mip_chain)
 		{
 			file->Write(mip);
 		}
@@ -186,27 +186,27 @@ namespace Directus
 		file->Write(m_width);
 		file->Write(m_height);
 		file->Write(m_channels);
-		file->Write(m_isGrayscale);
-		file->Write(m_isTransparent);
-		file->Write(m_resourceID);
-		file->Write(m_resourceName);
-		file->Write(m_resourceFilePath);
+		file->Write(m_is_grayscale);
+		file->Write(m_is_transparent);
+		file->Write(m_resource_id);
+		file->Write(m_resource_name);
+		file->Write(m_resource_file_path);
 
 		ClearTextureBytes();
 
 		return true;
 	}
 
-	bool RHI_Texture::Deserialize(const string& filePath)
+	bool RHI_Texture::Deserialize(const string& file_path)
 	{
-		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
 		if (!file->IsOpen())
 			return false;
 
 		// Read texture bits
 		ClearTextureBytes();
-		m_mipChain.resize(file->ReadUInt());
-		for (auto& mip : m_mipChain)
+		m_mip_chain.resize(file->ReadUInt());
+		for (auto& mip : m_mip_chain)
 		{
 			file->Read(&mip);
 		}
@@ -216,11 +216,11 @@ namespace Directus
 		file->Read(&m_width);
 		file->Read(&m_height);
 		file->Read(&m_channels);
-		file->Read(&m_isGrayscale);
-		file->Read(&m_isTransparent);
-		file->Read(&m_resourceID);
-		file->Read(&m_resourceName);
-		file->Read(&m_resourceFilePath);
+		file->Read(&m_is_grayscale);
+		file->Read(&m_is_transparent);
+		file->Read(&m_resource_id);
+		file->Read(&m_resource_name);
+		file->Read(&m_resource_file_path);
 
 		return true;
 	}

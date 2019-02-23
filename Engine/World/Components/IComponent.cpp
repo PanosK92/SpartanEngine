@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "IComponent.h"
+#include "Light.h"
 #include "Skybox.h"
 #include "Script.h"
 #include "RigidBody.h"
@@ -29,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AudioSource.h"
 #include "AudioListener.h"
 #include "../Entity.h"
-#include "../../Core/GUIDGenerator.h"
 #include "../../FileSystem/FileSystem.h"
 //======================================
 
@@ -42,18 +42,18 @@ namespace Directus
 	IComponent::IComponent(Context* context, Entity* entity, Transform* transform)
 	{
 		m_context		= context;
-		m_entity			= entity;
+		m_entity		= entity;
 		m_transform		= transform;
 		m_enabled		= true;
-		m_ID			= GENERATE_GUID;
+		m_id			= GENERATE_GUID;
 	}
 
-	shared_ptr<Entity> IComponent::GetEntity_PtrShared()
+	shared_ptr<Entity> IComponent::GetEntity_PtrShared() const
 	{
 		return m_entity->GetPtrShared();
 	}
 
-	const string& IComponent::GetentityName()
+	const string& IComponent::GetEntityName() const
 	{
 		if (!m_entity)
 			return NOT_ASSIGNED;
@@ -62,9 +62,11 @@ namespace Directus
 	}
 
 	template <typename T>
-	ComponentType IComponent::Type_To_Enum() { return ComponentType_Unknown; }
+	constexpr ComponentType IComponent::TypeToEnum() { return ComponentType_Unknown; }
+
 	// Explicit template instantiation
-	#define REGISTER_COMPONENT(T, enumT) template<> ENGINE_CLASS ComponentType IComponent::Type_To_Enum<T>() { return enumT; }
+	#define REGISTER_COMPONENT(T, enumT) template<> ENGINE_CLASS ComponentType IComponent::TypeToEnum<T>() { return enumT; }
+
 	// To add a new component to the engine, simply register it here
 	REGISTER_COMPONENT(AudioListener,	ComponentType_AudioListener)
 	REGISTER_COMPONENT(AudioSource,		ComponentType_AudioSource)

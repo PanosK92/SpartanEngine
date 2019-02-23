@@ -25,11 +25,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ENGINE_VERSION "v0.31 WIP"
 
 // Class
-#ifdef ENGINE
-#define ENGINE_CLASS __declspec(dllexport)
-#elif EDITOR
-#define ENGINE_CLASS __declspec(dllimport)
+#if SHARED_LIB == 1
+	#ifdef ENGINE
+		#define ENGINE_CLASS __declspec(dllexport)
+	#elif EDITOR
+		#define ENGINE_CLASS __declspec(dllimport)
+	#endif
+#elif STATIC_LIB == 1
+	#define ENGINE_CLASS
 #endif
+
 
 // Graphics API
 #define API_D3D11
@@ -41,17 +46,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Misc
 #define WIN32_LEAN_AND_MEAN
 
-//= DISABLED WARNINGS ===========================================================================
+//= DISABLED WARNINGS =============================================================================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
 #pragma warning(disable: 4251) // https://msdn.microsoft.com/en-us/library/esew7y1w.aspx
 // non – DLL-interface classkey 'identifier' used as base for DLL-interface classkey 'identifier'
 #pragma warning(disable: 4275) // https://msdn.microsoft.com/en-us/library/3tdb471s.aspx
-//===============================================================================================
+// no definition for inline function 'function'
+#pragma warning(disable: 4506) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4506?view=vs-2017
+//=================================================================================================================================================
 
 namespace Directus
 {
 	template <typename T>
-	void SafeRelease(T& ptr)
+	constexpr void safe_release(T& ptr)
 	{
 		if (ptr)
 		{
@@ -61,7 +68,7 @@ namespace Directus
 	}
 
 	template <typename T>
-	void SafeRelease(T* ptr)
+	constexpr void safe_release(T* ptr)
 	{
 		if (ptr)
 		{
@@ -71,7 +78,7 @@ namespace Directus
 	}
 
 	template <typename T>
-	void SafeDelete(T& ptr)
+	constexpr void safe_delete(T& ptr)
 	{
 		if (ptr)
 		{

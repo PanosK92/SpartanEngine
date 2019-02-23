@@ -63,7 +63,7 @@ namespace Directus
 	{
 	public:
 		IComponent(Context* context, Entity* entity, Transform* transform);
-		virtual ~IComponent() {}
+		virtual ~IComponent() = default;
 
 		// Runs when the component gets added
 		virtual void OnInitialize() {}
@@ -86,27 +86,28 @@ namespace Directus
 		// Runs when the entity is being loaded
 		virtual void Deserialize(FileStream* stream) {}
 
-		//= PROPERTIES ==========================================================================
-		Entity*						GetEntity_PtrRaw()		{ return m_entity; }	
-		std::weak_ptr<Entity>		GetEntity_PtrWeak()		{ return GetEntity_PtrShared(); }
-		std::shared_ptr<Entity>		GetEntity_PtrShared();
-
-		Transform* GetTransform()			{ return m_transform; }
-		Context* GetContext()				{ return m_context; }
-		unsigned int GetID()				{ return m_ID; }
-		void SetID(unsigned int id)			{ m_ID = id; }
-		ComponentType GetType()				{ return m_type; }
-		void SetType(ComponentType type)	{ m_type = type; }
-
-		const std::string& GetentityName();
-
+		//= TYPE ===================================
 		template <typename T>
-		static ComponentType Type_To_Enum();
+		static constexpr ComponentType TypeToEnum();
+		//==========================================
 
-		const auto& GetAttributes()	{ return m_attributes; }
+		//= PROPERTIES ==========================================================================
+		Entity*						GetEntity_PtrRaw() const	{ return m_entity; }	
+		std::weak_ptr<Entity>		GetEntity_PtrWeak()			{ return GetEntity_PtrShared(); }
+		std::shared_ptr<Entity>		GetEntity_PtrShared() const;
+		const std::string& GetEntityName() const;
+
+		Transform* GetTransform() const			{ return m_transform; }
+		Context* GetContext() const				{ return m_context; }
+		unsigned int GetID() const				{ return m_id; }
+		void SetId(const unsigned int id)		{ m_id = id; }
+		constexpr ComponentType GetType() const	{ return m_type; }
+		void SetType(const ComponentType type)	{ m_type = type; }
+
+		const auto& GetAttributes() const { return m_attributes; }
 		void SetAttributes(const std::vector<Attribute>& attributes)
 		{ 
-			for (unsigned int i = 0; i < (unsigned int)m_attributes.size(); i++)
+			for (unsigned int i = 0; i < static_cast<unsigned int>(m_attributes.size()); i++)
 			{
 				m_attributes[i].setter(attributes[i].getter());
 			}
@@ -138,11 +139,11 @@ namespace Directus
 		// The type of the component
 		ComponentType m_type		= ComponentType_Unknown;
 		// The id of the component
-		unsigned int m_ID			= 0;
+		unsigned int m_id			= 0;
 		// The state of the component
 		bool m_enabled				= false;
 		// The owner of the component
-		Entity* m_entity				= nullptr;
+		Entity* m_entity			= nullptr;
 		// The transform of the component (always exists)
 		Transform* m_transform		= nullptr;
 		// The context of the engine

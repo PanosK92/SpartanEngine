@@ -60,54 +60,54 @@ namespace Directus
 	bool ResourceCache::Initialize()
 	{
 		// Importers
-		m_imageImporter = make_shared<ImageImporter>(m_context);
-		m_modelImporter = make_shared<ModelImporter>(m_context);
-		m_fontImporter	= make_shared<FontImporter>(m_context);
+		m_importer_image = make_shared<ImageImporter>(m_context);
+		m_importer_model = make_shared<ModelImporter>(m_context);
+		m_importer_font	= make_shared<FontImporter>(m_context);
 		return true;
 	}
 
-	bool ResourceCache::IsCached(const string& resourceName, Resource_Type resourceType /*= Resource_Unknown*/)
+	bool ResourceCache::IsCached(const string& resource_name, const Resource_Type resource_type /*= Resource_Unknown*/)
 	{
-		if (resourceName == NOT_ASSIGNED)
+		if (resource_name == NOT_ASSIGNED)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		for (const auto& resource : m_resourceGroups[resourceType])
+		for (const auto& resource : m_resource_groups[resource_type])
 		{
-			if (resourceName == resource->GetResourceName())
+			if (resource_name == resource->GetResourceName())
 				return true;
 		}
 
 		return false;
 	}
 
-	shared_ptr<IResource>& ResourceCache::GetByName(const string& name, Resource_Type type)
+	shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const Resource_Type type)
 	{
-		for (auto& resource : m_resourceGroups[type])
+		for (auto& resource : m_resource_groups[type])
 		{
 			if (name == resource->GetResourceName())
 				return resource;
 		}
 
-		return m_emptyResource;
+		return m_empty_resource;
 	}
 
-	vector<shared_ptr<IResource>> ResourceCache::GetByType(Resource_Type type /*= Resource_Unknown*/)
+	vector<shared_ptr<IResource>> ResourceCache::GetByType(const Resource_Type type /*= Resource_Unknown*/)
 	{
 		vector<shared_ptr<IResource>> resources;
 
 		if (type == Resource_Unknown)
 		{
-			for (const auto& resourceGroup : m_resourceGroups)
+			for (const auto& resource_group : m_resource_groups)
 			{
-				resources.insert(resources.end(), resourceGroup.second.begin(), resourceGroup.second.end());
+				resources.insert(resources.end(), resource_group.second.begin(), resource_group.second.end());
 			}
 		}
 		else
 		{
-			resources = m_resourceGroups[type];
+			resources = m_resource_groups[type];
 		}
 
 		return resources;
@@ -119,7 +119,7 @@ namespace Directus
 
 		if (type = Resource_Unknown)
 		{
-			for (const auto& group : m_resourceGroups)
+			for (const auto& group : m_resource_groups)
 			{
 				for (const auto& resource : group.second)
 				{
@@ -132,7 +132,7 @@ namespace Directus
 		}
 		else
 		{
-			for (const auto& resource : m_resourceGroups[type])
+			for (const auto& resource : m_resource_groups[type])
 			{
 				size += resource->GetMemoryUsage();
 			}
@@ -141,22 +141,22 @@ namespace Directus
 		return size;
 	}
 
-	void ResourceCache::GetResourceFilePaths(std::vector<std::string>& filePaths)
+	void ResourceCache::GetResourceFilePaths(std::vector<std::string>& file_paths)
 	{
-		for (const auto& resourceGroup : m_resourceGroups)
+		for (const auto& resource_group : m_resource_groups)
 		{
-			for (const auto& resource : resourceGroup.second)
+			for (const auto& resource : resource_group.second)
 			{
-				filePaths.emplace_back(resource->GetResourceFilePath());
+				file_paths.emplace_back(resource->GetResourceFilePath());
 			}
 		}
 	}
 
 	void ResourceCache::SaveResourcesToFiles()
 	{
-		for (const auto& resourceGroup : m_resourceGroups)
+		for (const auto& resource_group : m_resource_groups)
 		{
-			for (const auto& resource : resourceGroup.second)
+			for (const auto& resource : resource_group.second)
 			{
 				if (!resource->HasFilePath())
 					continue;
@@ -166,19 +166,19 @@ namespace Directus
 		}
 	}
 
-	unsigned int ResourceCache::GetResourceCountByType(Resource_Type type)
+	unsigned int ResourceCache::GetResourceCountByType(const Resource_Type type)
 	{
-		return (unsigned int)GetByType(type).size();
+		return static_cast<unsigned int>(GetByType(type).size());
 	}
 
-	void ResourceCache::AddStandardResourceDirectory(Resource_Type type, const string& directory)
+	void ResourceCache::AddStandardResourceDirectory(const Resource_Type type, const string& directory)
 	{
-		m_standardResourceDirectories[type] = directory;
+		m_standard_resource_directories[type] = directory;
 	}
 
-	const string& ResourceCache::GetStandardResourceDirectory(Resource_Type type)
+	const string& ResourceCache::GetStandardResourceDirectory(const Resource_Type type)
 	{
-		for (auto& directory : m_standardResourceDirectories)
+		for (auto& directory : m_standard_resource_directories)
 		{
 			if (directory.first == type)
 				return directory.second;
@@ -194,11 +194,11 @@ namespace Directus
 			FileSystem::CreateDirectory_(directory);
 		}
 
-		m_projectDirectory = directory;
+		m_project_directory = directory;
 	}
 
-	string ResourceCache::GetProjectDirectoryAbsolute()
+	string ResourceCache::GetProjectDirectoryAbsolute() const
 	{
-		return FileSystem::GetWorkingDirectory() + m_projectDirectory;
+		return FileSystem::GetWorkingDirectory() + m_project_directory;
 	}
 }

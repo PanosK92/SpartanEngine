@@ -47,19 +47,19 @@ static const Vector3 GRAVITY			= Vector3(0.0f, -9.81f, 0.0f);
 
 namespace Directus
 { 
-	float ISubsystem::m_deltaTimeSec;
+	float ISubsystem::m_delta_time_sec;
 
 	Physics::Physics(Context* context) : ISubsystem(context)
 	{
-		m_maxSubSteps	= 1;
+		m_max_sub_steps	= 1;
 		m_simulating	= false;
 		
 		// Create physics objects
 		m_broadphase				= new btDbvtBroadphase();
-		m_collisionConfiguration	= new btDefaultCollisionConfiguration();
-		m_dispatcher				= new btCollisionDispatcher(m_collisionConfiguration);
-		m_constraintSolver			= new btSequentialImpulseConstraintSolver();
-		m_world						= new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraintSolver, m_collisionConfiguration);
+		m_collision_configuration	= new btDefaultCollisionConfiguration();
+		m_dispatcher				= new btCollisionDispatcher(m_collision_configuration);
+		m_constraint_solver			= new btSequentialImpulseConstraintSolver();
+		m_world						= new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
 
 		// Setup world
 		m_world->setGravity(ToBtVector3(GRAVITY));
@@ -68,19 +68,19 @@ namespace Directus
 		m_world->getSolverInfo().m_numIterations	= MAX_SOLVER_ITERATIONS;
 		
 		// Get version
-		string major = to_string(btGetVersion() / 100);
-		string minor = to_string(btGetVersion()).erase(0, 1);
+		const auto major = to_string(btGetVersion() / 100);
+		const auto minor = to_string(btGetVersion()).erase(0, 1);
 		Settings::Get().m_versionBullet = major + "." + minor;
 	}
 
 	Physics::~Physics()
 	{
-		SafeDelete(m_world);
-		SafeDelete(m_constraintSolver);
-		SafeDelete(m_dispatcher);
-		SafeDelete(m_collisionConfiguration);
-		SafeDelete(m_broadphase);
-		SafeDelete(m_debugDraw);
+		safe_delete(m_world);
+		safe_delete(m_constraint_solver);
+		safe_delete(m_dispatcher);
+		safe_delete(m_collision_configuration);
+		safe_delete(m_broadphase);
+		safe_delete(m_debug_draw);
 	}
 
 	bool Physics::Initialize()
@@ -89,8 +89,8 @@ namespace Directus
 		m_profiler = m_context->GetSubsystem<Profiler>().get();
 
 		// Enabled debug drawing
-		m_debugDraw = new PhysicsDebugDraw(m_renderer);
-		m_world->setDebugDrawer(m_debugDraw);
+		m_debug_draw = new PhysicsDebugDraw(m_renderer);
+		m_world->setDebugDrawer(m_debug_draw);
 
 		return true;
 	}
@@ -113,29 +113,29 @@ namespace Directus
 			return;
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
-		float internalTimeStep	= 1.0f / INTERNAL_FPS;
-		int maxSubsteps			= (int)(m_deltaTimeSec * INTERNAL_FPS) + 1;
-		if (m_maxSubSteps < 0)
+		auto internal_time_step	= 1.0f / INTERNAL_FPS;
+		auto max_substeps		= static_cast<int>(m_delta_time_sec * INTERNAL_FPS) + 1;
+		if (m_max_sub_steps < 0)
 		{
-			internalTimeStep	= m_deltaTimeSec;
-			maxSubsteps			= 1;
+			internal_time_step	= m_delta_time_sec;
+			max_substeps			= 1;
 		}
-		else if (m_maxSubSteps > 0)
+		else if (m_max_sub_steps > 0)
 		{
-			maxSubsteps = Min(maxSubsteps, m_maxSubSteps);
+			max_substeps = Min(max_substeps, m_max_sub_steps);
 		}
 
 		// Step the physics world. 
 		m_simulating = true;
-		m_world->stepSimulation(m_deltaTimeSec, maxSubsteps, internalTimeStep);
+		m_world->stepSimulation(m_delta_time_sec, max_substeps, internal_time_step);
 		m_simulating = false;
 
 		TIME_BLOCK_END_CPU(m_profiler);
 	}
 
-	Vector3 Physics::GetGravity()
+	Vector3 Physics::GetGravity() const
 	{
-		btVector3 gravity = m_world->getGravity();
+		auto gravity = m_world->getGravity();
 		if (!gravity)
 		{
 			LOG_ERROR("Unable to get gravity, ensure physics are properly initialized.");

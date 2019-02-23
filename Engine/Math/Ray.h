@@ -39,15 +39,15 @@ namespace Directus
 		class ENGINE_CLASS Ray
 		{
 		public:
-			Ray();
+			Ray() = default;
 			Ray(const Vector3& start, const Vector3& end);
-			~Ray();
+			~Ray() = default;
 
 			// Traces a ray against all entities in the world, returns all hits in a vector.
-			std::vector<RayHit> Trace(Context* context);
+			std::vector<RayHit> Trace(Context* context) const;
 
 			// Returns hit distance to a bounding box, or infinity if there is no hit.
-			float HitDistance(const BoundingBox& box);
+			float HitDistance(const BoundingBox& box) const;
 
 			const Vector3& GetStart() const		{ return m_start; }
 			const Vector3& GetEnd()	const		{ return m_end; }

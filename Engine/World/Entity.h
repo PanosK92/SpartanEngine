@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <vector>
-#include "World.h"
 #include "Components/IComponent.h"
 #include "../Core/Context.h"
 #include "../Core/EventSystem.h"
@@ -33,7 +32,7 @@ namespace Directus
 {
 	class Transform;
 	class Renderable;
-	#define ValidateComponentType(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
+	#define VALIDATE_COMPONENT_TYPE(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
 
 	class ENGINE_CLASS Entity : public std::enable_shared_from_this<Entity>
 	{
@@ -44,36 +43,38 @@ namespace Directus
 		void Initialize(Transform* transform);
 		void Clone();
 
-		//============
+		//===========
 		void Start();
 		void Stop();
 		void Tick();
-		//============
+		//===========
 
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);
 
-		//= PROPERTIES =========================================================================================
-		const std::string& GetName()			{ return m_name; }
-		void SetName(const std::string& name)	{ m_name = name; }
+		//= PROPERTIES ===================================================================================================
+		const std::string& GetName() const								{ return m_name; }
+		void SetName(const std::string& name)							{ m_name = name; }
 
-		unsigned int GetID()		{ return m_ID; }
-		void SetID(unsigned int ID) { m_ID = ID; }
+		unsigned int GetId() const										{ return m_id; }
+		void SetId(const unsigned int id)								{ m_id = id; }
 
-		bool IsActive()				{ return m_isActive; }
-		void SetActive(bool active) { m_isActive = active; }
+		bool IsActive() const											{ return m_is_active; }
+		void SetActive(const bool active)								{ m_is_active = active; }
 
-		bool IsVisibleInHierarchy()								{ return m_hierarchyVisibility; }
-		void SetHierarchyVisibility(bool hierarchyVisibility)	{ m_hierarchyVisibility = hierarchyVisibility; }
-		//======================================================================================================
+		bool IsVisibleInHierarchy() const								{ return m_hierarchy_visibility; }
+		void SetHierarchyVisibility(const bool hierarchy_visibility)	{ m_hierarchy_visibility = hierarchy_visibility; }
+		//================================================================================================================
 
-		//= COMPONENTS =========================================================================================
+		// Adds a component of ComponentType 
+		std::shared_ptr<IComponent> AddComponent(ComponentType type);
+
 		// Adds a component of type T
 		template <class T>
-		std::shared_ptr<T> AddComponent()
+		constexpr std::shared_ptr<T> AddComponent()
 		{
-			ValidateComponentType(T);
-			ComponentType type = IComponent::Type_To_Enum<T>();
+			VALIDATE_COMPONENT_TYPE(T);
+			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			// Return component in case it already exists while ignoring Script components (they can exist multiple times)
 			if (HasComponent(type) && type != ComponentType_Script)
@@ -90,30 +91,28 @@ namespace Directus
 				)
 			);
 
-			auto newComponent = std::static_pointer_cast<T>(m_components.back());
-			newComponent->SetType(IComponent::Type_To_Enum<T>());
-			newComponent->OnInitialize();
+			auto new_component = std::static_pointer_cast<T>(m_components.back());
+			new_component->SetType(IComponent::TypeToEnum<T>());
+			new_component->OnInitialize();
 
 			// Caching of rendering performance critical components
-			if (newComponent->GetType() == ComponentType_Renderable)
+			if constexpr (std::is_same<T, Renderable>::value)
 			{
-				m_renderable = (Renderable*)newComponent.get();
+				m_renderable = static_cast<Renderable*>(new_component.get());
 			}
 
 			// Make the scene resolve
 			FIRE_EVENT(Event_World_Resolve);
 
-			return newComponent;
+			return new_component;
 		}
-
-		std::shared_ptr<IComponent> AddComponent(ComponentType type);
 
 		// Returns a component of type T (if it exists)
 		template <class T>
-		std::shared_ptr<T> GetComponent()
+		constexpr std::shared_ptr<T> GetComponent()
 		{
-			ValidateComponentType(T);
-			ComponentType type = IComponent::Type_To_Enum<T>();
+			VALIDATE_COMPONENT_TYPE(T);
+			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			for (const auto& component : m_components)
 			{
@@ -126,10 +125,10 @@ namespace Directus
 
 		// Returns any components of type T (if they exist)
 		template <class T>
-		std::vector<std::shared_ptr<T>> GetComponents()
+		constexpr std::vector<std::shared_ptr<T>> GetComponents()
 		{
-			ValidateComponentType(T);
-			ComponentType type = IComponent::Type_To_Enum<T>();
+			VALIDATE_COMPONENT_TYPE(T);
+			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			std::vector<std::shared_ptr<T>> components;
 			for (const auto& component : m_components)
@@ -144,7 +143,7 @@ namespace Directus
 		}
 		
 		// Checks if a component of ComponentType exists
-		bool HasComponent(ComponentType type) 
+		bool HasComponent(const ComponentType type) 
 		{ 
 			for (const auto& component : m_components)
 			{
@@ -157,18 +156,18 @@ namespace Directus
 
 		// Checks if a component of type T exists
 		template <class T>
-		bool HasComponent() 
+		constexpr bool HasComponent() 
 		{ 
-			ValidateComponentType(T);
-			return HasComponent(IComponent::Type_To_Enum<T>()); 
+			VALIDATE_COMPONENT_TYPE(T);
+			return HasComponent(IComponent::TypeToEnum<T>()); 
 		}
 
 		// Removes a component of type T (if it exists)
 		template <class T>
-		void RemoveComponent()
+		constexpr void RemoveComponent()
 		{
-			ValidateComponentType(T);
-			ComponentType type = IComponent::Type_To_Enum<T>();
+			VALIDATE_COMPONENT_TYPE(T);
+			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			for (auto it = m_components.begin(); it != m_components.end();)
 			{
@@ -189,28 +188,26 @@ namespace Directus
 			FIRE_EVENT(Event_World_Resolve);
 		}
 
-		void RemoveComponentByID(unsigned int id);
-
-		const auto& GetAllComponents() { return m_components; }
-		//======================================================================================================
+		void RemoveComponentById(unsigned int id);
+		const auto& GetAllComponents() const { return m_components; }
 
 		// Direct access for performance critical usage (not safe)
-		Transform* GetTransform_PtrRaw()		{ return m_transform; }
-		Renderable* GetRenderable_PtrRaw()		{ return m_renderable; }
-		std::shared_ptr<Entity> GetPtrShared()	{ return shared_from_this(); }
+		Transform* GetTransform_PtrRaw() const		{ return m_transform; }
+		Renderable* GetRenderable_PtrRaw() const	{ return m_renderable; }
+		std::shared_ptr<Entity> GetPtrShared()		{ return shared_from_this(); }
 
 	private:
-		unsigned int m_ID			= 0;
+		unsigned int m_id			= 0;
 		std::string m_name			= "Entity";
-		bool m_isActive				= true;
-		bool m_hierarchyVisibility	= true;
+		bool m_is_active			= true;
+		bool m_hierarchy_visibility	= true;
 		// Caching of performance critical components
 		Transform* m_transform		= nullptr;
 		Renderable* m_renderable	= nullptr;
 
 		// Components
 		std::vector<std::shared_ptr<IComponent>> m_components;
-		std::shared_ptr<Entity> m_componentEmpty;
+		std::shared_ptr<Entity> m_component_empty;
 
 		// Misc
 		Context* m_context;

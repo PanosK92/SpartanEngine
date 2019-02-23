@@ -49,7 +49,7 @@ namespace Directus
 	{
 	public:
 		Camera(Context* context, Entity* entity, Transform* transform);
-		~Camera();
+		~Camera() = default;
 
 		//= ICOMPONENT ===============================
 		void OnInitialize() override;
@@ -58,32 +58,32 @@ namespace Directus
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= MATRICES ========================================================
-		const Math::Matrix& GetViewMatrix()			{ return m_mView; }
-		const Math::Matrix& GetProjectionMatrix()	{ return m_mProjection; }
-		const Math::Matrix& GetBaseViewMatrix()		{ return m_mBaseView; }
-		//===================================================================
+		//= MATRICES ============================================================
+		const Math::Matrix& GetViewMatrix() const		{ return m_mView; }
+		const Math::Matrix& GetProjectionMatrix() const { return m_mProjection; }
+		const Math::Matrix& GetBaseViewMatrix() const	{ return m_mBaseView; }
+		//=======================================================================
 
-		//= RAYCASTING =========================================================
+		//= RAYCASTING =================================================================
 		// Returns the ray the camera uses to do picking
-		const Math::Ray& GetPickingRay() { return m_ray; }
+		const Math::Ray& GetPickingRay() const { return m_ray; }
 
 		// Picks the nearest entity under the mouse cursor
-		bool Pick(const Math::Vector2& mousePos, std::shared_ptr<Entity>& entity);
+		bool Pick(const Math::Vector2& mouse_position, std::shared_ptr<Entity>& entity);
 
 		// Converts a world point to a screen point
-		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);
+		Math::Vector2 WorldToScreenPoint(const Math::Vector3& position_world);
 
 		// Converts a screen point to a world point
-		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& point);
-		//======================================================================
+		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& position_screen);
+		//==============================================================================
 
 		//= PLANES/PROJECTION ================================================================
-		void SetNearPlane(float nearPlane);		
-		void SetFarPlane(float farPlane);	
+		void SetNearPlane(float near_plane);		
+		void SetFarPlane(float far_plane);	
 		void SetProjection(ProjectionType projection);
-		float GetNearPlane()				{ return m_nearPlane; }
-		float GetFarPlane()					{ return m_farPlane; }
+		float GetNearPlane() const			{ return m_nearPlane; }
+		float GetFarPlane() const			{ return m_farPlane; }
 		ProjectionType GetProjectionType()	{ ComputeProjection();  return m_projectionType; }
 		//====================================================================================
 
@@ -95,8 +95,8 @@ namespace Directus
 		//= MISC ========================================================================
 		bool IsInViewFrustrum(Renderable* renderable);
 		bool IsInViewFrustrum(const Math::Vector3& center, const Math::Vector3& extents);
-		const Math::Vector4& GetClearColor() { return m_clearColor; }
-		void SetClearColor(const Math::Vector4& color) { m_clearColor = color; }
+		const Math::Vector4& GetClearColor() const		{ return m_clearColor; }
+		void SetClearColor(const Math::Vector4& color)	{ m_clearColor = color; }
 		//===============================================================================
 
 	private:

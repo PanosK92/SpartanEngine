@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletDynamics/ConstraintSolver/btSliderConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btConeTwistConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
+#include "../World.h"
 #pragma warning(pop)
 //==================================================================
 
@@ -101,29 +102,31 @@ namespace Directus
 
 	void Constraint::Serialize(FileStream* stream)
 	{
-		stream->Write((int)m_constraintType);
+		stream->Write(static_cast<unsigned int>(m_constraintType));
 		stream->Write(m_position);
 		stream->Write(m_rotation);
 		stream->Write(m_highLimit);
 		stream->Write(m_lowLimit);
-		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetID() : (unsigned int)0);
+		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetId() : static_cast<unsigned int>(0));
 	}
 
 	void Constraint::Deserialize(FileStream* stream)
 	{
-		stream->Read(&((int)m_constraintType));
+		unsigned int constraint_type = 0;
+		stream->Read(&constraint_type);
+		m_constraintType = static_cast<ConstraintType>(constraint_type);
 		stream->Read(&m_position);
 		stream->Read(&m_rotation);
 		stream->Read(&m_highLimit);
 		stream->Read(&m_lowLimit);
 
-		unsigned int bodyOtherID = stream->ReadUInt();
-		m_bodyOther = GetContext()->GetSubsystem<World>()->Entity_GetByID(bodyOtherID);
+		const auto body_other_id = stream->ReadUInt();
+		m_bodyOther = GetContext()->GetSubsystem<World>()->Entity_GetByID(body_other_id);
 
 		Construct();
 	}
 
-	void Constraint::SetConstraintType(ConstraintType type)
+	void Constraint::SetConstraintType(const ConstraintType type)
 	{
 		if (m_type != type || !m_constraint)
 		{
@@ -168,18 +171,18 @@ namespace Directus
 		}
 	}
 
-	void Constraint::SetBodyOther(std::weak_ptr<Entity> bodyOther)
+	void Constraint::SetBodyOther(const std::weak_ptr<Entity>& body_other)
 	{
-		if (bodyOther.expired())
+		if (body_other.expired())
 			return;
 
-		if (!bodyOther.expired() && bodyOther.lock()->GetID() == m_entity->GetID())
+		if (!body_other.expired() && body_other.lock()->GetId() == m_entity->GetId())
 		{
 			LOG_WARNING("You can't connect a body to itself.");
 			return;
 		}
 
-		m_bodyOther = bodyOther;
+		m_bodyOther = body_other;
 		Construct();
 	}
 
@@ -205,12 +208,12 @@ namespace Directus
 	{
 		if (m_constraint)
 		{
-			RigidBody* rigidBodyOwn		= m_entity->GetComponent<RigidBody>().get();
-			RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
+			RigidBody* rigid_body_own	= m_entity->GetComponent<RigidBody>().get();
+			RigidBody* rigid_body_other	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
 
 			// Make both bodies aware of the removal of this constraint
-			if (rigidBodyOwn)	rigidBodyOwn->RemoveConstraint(this);
-			if (rigidBodyOther) rigidBodyOther->RemoveConstraint(this);
+			if (rigid_body_own)	rigid_body_own->RemoveConstraint(this);
+			if (rigid_body_other) rigid_body_other->RemoveConstraint(this);
 
 			m_physics->GetWorld()->removeConstraint(m_constraint);
 			delete m_constraint;
@@ -218,53 +221,53 @@ namespace Directus
 		}
 	}
 
-	void Constraint::ApplyFrames()
+	void Constraint::ApplyFrames() const
 	{
 		if (!m_constraint || m_bodyOther.expired())
 			return;
 
-		RigidBody* rigidBodyOwn			= m_entity->GetComponent<RigidBody>().get();
-		RigidBody* rigidBodyOther		= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
-		btRigidBody* btOwnBody			= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
-		btRigidBody* btOtherBody		= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
+		RigidBody* rigid_body_own			= m_entity->GetComponent<RigidBody>().get();
+		RigidBody* rigid_body_other		= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
+		btRigidBody* bt_own_body			= rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
+		btRigidBody* bt_other_body		= rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
 
-		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - rigidBodyOwn->GetCenterOfMass();
-		Vector3 otherBodyScaledPosition = !m_bodyOther.expired() ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetCenterOfMass() : m_positionOther;
+		Vector3 own_body_scaled_position	= m_position * m_transform->GetScale() - rigid_body_own->GetCenterOfMass();
+		Vector3 other_body_scaled_position = !m_bodyOther.expired() ? m_positionOther * rigid_body_other->GetTransform()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
 
 		switch (m_constraint->getConstraintType())
 		{
 		case POINT2POINT_CONSTRAINT_TYPE:
 		{
-			auto* pointConstraint = static_cast<btPoint2PointConstraint*>(m_constraint);
-			pointConstraint->setPivotA(ToBtVector3(ownBodyScaledPosition));
-			pointConstraint->setPivotB(ToBtVector3(otherBodyScaledPosition));
+			auto* point_constraint = dynamic_cast<btPoint2PointConstraint*>(m_constraint);
+			point_constraint->setPivotA(ToBtVector3(own_body_scaled_position));
+			point_constraint->setPivotB(ToBtVector3(other_body_scaled_position));
 		}
 		break;
 
 		case HINGE_CONSTRAINT_TYPE:
 		{
-			auto* hingeConstraint = static_cast<btHingeConstraint*>(m_constraint);
-			btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			hingeConstraint->setFrames(ownFrame, otherFrame);
+			auto* hinge_constraint = dynamic_cast<btHingeConstraint*>(m_constraint);
+			btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
+			btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+			hinge_constraint->setFrames(own_frame, other_frame);
 		}
 		break;
 
 		case SLIDER_CONSTRAINT_TYPE:
 		{
-			auto* sliderConstraint = static_cast<btSliderConstraint*>(m_constraint);
-			btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			sliderConstraint->setFrames(ownFrame, otherFrame);
+			auto* slider_constraint = dynamic_cast<btSliderConstraint*>(m_constraint);
+			btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
+			btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+			slider_constraint->setFrames(own_frame, other_frame);
 		}
 		break;
 
 		case CONETWIST_CONSTRAINT_TYPE:
 		{
-			auto* coneTwistConstraint = static_cast<btConeTwistConstraint*>(m_constraint);
-			btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			coneTwistConstraint->setFrames(ownFrame, otherFrame);
+			auto* cone_twist_constraint = dynamic_cast<btConeTwistConstraint*>(m_constraint);
+			btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
+			btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+			cone_twist_constraint->setFrames(own_frame, other_frame);
 		}
 		break;
 
@@ -281,9 +284,9 @@ namespace Directus
 		ReleaseConstraint();
 
 		// Make sure we have two bodies
-		RigidBody* rigidBodyOwn		= m_entity->GetComponent<RigidBody>().get();
-		RigidBody* rigidBodyOther	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
-		if (!rigidBodyOwn || !rigidBodyOther)
+		RigidBody* rigid_body_own	= m_entity->GetComponent<RigidBody>().get();
+		RigidBody* rigid_body_other	= !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>().get() : nullptr;
+		if (!rigid_body_own || !rigid_body_other)
 		{
 			LOG_INFO("A RigidBody component is still initializing, deferring construction...");
 			m_deferredConstruction = true;
@@ -295,49 +298,49 @@ namespace Directus
 			m_deferredConstruction = false;
 		}
 
-		btRigidBody* btOwnBody		= rigidBodyOwn ? rigidBodyOwn->GetBtRigidBody() : nullptr;
-		btRigidBody* btOtherBody	= rigidBodyOther ? rigidBodyOther->GetBtRigidBody() : nullptr;
+		btRigidBody* bt_own_body	= rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
+		btRigidBody* bt_other_body	= rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
 
-		if (!btOwnBody)
+		if (!bt_own_body)
 		    return;
 
-		if (!btOtherBody)
+		if (!bt_other_body)
 		{
-		    btOtherBody = &btTypedConstraint::getFixedBody();
+		    bt_other_body = &btTypedConstraint::getFixedBody();
 		}	
 		
-		Vector3 ownBodyScaledPosition	= m_position * m_transform->GetScale() - rigidBodyOwn->GetCenterOfMass();
-		Vector3 otherBodyScaledPosition = rigidBodyOther ? m_positionOther * rigidBodyOther->GetTransform()->GetScale() - rigidBodyOther->GetCenterOfMass() : m_positionOther;
+		Vector3 own_body_scaled_position	= m_position * m_transform->GetScale() - rigid_body_own->GetCenterOfMass();
+		Vector3 other_body_scaled_position	= rigid_body_other ? m_positionOther * rigid_body_other->GetTransform()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
 
 		switch (m_constraintType)
 		{
 			case ConstraintType_Point:
 			    {
-			        m_constraint = new btPoint2PointConstraint(*btOwnBody, *btOtherBody, ToBtVector3(ownBodyScaledPosition), ToBtVector3(otherBodyScaledPosition));
+			        m_constraint = new btPoint2PointConstraint(*bt_own_body, *bt_other_body, ToBtVector3(own_body_scaled_position), ToBtVector3(other_body_scaled_position));
 			    }
 			    break;
 
 			case ConstraintType_Hinge:
 			    {
-			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			        m_constraint = new btHingeConstraint(*btOwnBody, *btOtherBody, ownFrame, otherFrame);
+			        btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
+			        btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+			        m_constraint = new btHingeConstraint(*bt_own_body, *bt_other_body, own_frame, other_frame);
 			    }
 			    break;
 
 			case ConstraintType_Slider:
 			    {
-			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			        m_constraint = new btSliderConstraint(*btOwnBody, *btOtherBody, ownFrame, otherFrame, false);
+			        btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
+			        btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+			        m_constraint = new btSliderConstraint(*bt_own_body, *bt_other_body, own_frame, other_frame, false);
 			    }
 			    break;
 
 			case ConstraintType_ConeTwist:
 			    {
-			        btTransform ownFrame(ToBtQuaternion(m_rotation), ToBtVector3(ownBodyScaledPosition));
-			        btTransform otherFrame(ToBtQuaternion(m_rotationOther), ToBtVector3(otherBodyScaledPosition));
-			        m_constraint = new btConeTwistConstraint(*btOwnBody, *btOtherBody, ownFrame, otherFrame);
+			        btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
+			        btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+			        m_constraint = new btConeTwistConstraint(*bt_own_body, *bt_other_body, own_frame, other_frame);
 			    }
 			    break;
 
@@ -351,10 +354,10 @@ namespace Directus
 		    m_constraint->setEnabled(m_enabledEffective);
 
 			// Make both bodies aware of this constraint
-			rigidBodyOwn->AddConstraint(this);
-			if (rigidBodyOther)
+			rigid_body_own->AddConstraint(this);
+			if (rigid_body_other)
 			{
-				rigidBodyOther->AddConstraint(this);
+				rigid_body_other->AddConstraint(this);
 			}
 
 		    ApplyLimits();
@@ -362,7 +365,7 @@ namespace Directus
 		}
 	}
 
-	void Constraint::ApplyLimits()
+	void Constraint::ApplyLimits() const
 	{
 		if (!m_constraint)
 			return;
@@ -371,25 +374,25 @@ namespace Directus
 		{
 			case HINGE_CONSTRAINT_TYPE:
 			    {
-			        auto* hingeConstraint = static_cast<btHingeConstraint*>(m_constraint);
-			        hingeConstraint->setLimit(m_lowLimit.x * DEG_TO_RAD, m_highLimit.x * DEG_TO_RAD);
+			        auto* hinge_constraint = dynamic_cast<btHingeConstraint*>(m_constraint);
+			        hinge_constraint->setLimit(m_lowLimit.x * DEG_TO_RAD, m_highLimit.x * DEG_TO_RAD);
 			    }
 			    break;
 
 			case SLIDER_CONSTRAINT_TYPE:
 			    {
-			        auto* sliderConstraint = static_cast<btSliderConstraint*>(m_constraint);
-			        sliderConstraint->setUpperLinLimit(m_highLimit.x);
-			        sliderConstraint->setUpperAngLimit(m_highLimit.y * DEG_TO_RAD);
-			        sliderConstraint->setLowerLinLimit(m_lowLimit.x);
-			        sliderConstraint->setLowerAngLimit(m_lowLimit.y * DEG_TO_RAD);
+			        auto* slider_constraint = dynamic_cast<btSliderConstraint*>(m_constraint);
+			        slider_constraint->setUpperLinLimit(m_highLimit.x);
+			        slider_constraint->setUpperAngLimit(m_highLimit.y * DEG_TO_RAD);
+			        slider_constraint->setLowerLinLimit(m_lowLimit.x);
+			        slider_constraint->setLowerAngLimit(m_lowLimit.y * DEG_TO_RAD);
 			    }
 			    break;
 
 			case CONETWIST_CONSTRAINT_TYPE:
 			    {
-			        auto* coneTwistConstraint = static_cast<btConeTwistConstraint*>(m_constraint);
-			        coneTwistConstraint->setLimit(m_highLimit.y * DEG_TO_RAD, m_highLimit.y * DEG_TO_RAD, m_highLimit.x * DEG_TO_RAD);
+			        auto* cone_twist_constraint = dynamic_cast<btConeTwistConstraint*>(m_constraint);
+			        cone_twist_constraint->setLimit(m_highLimit.y * DEG_TO_RAD, m_highLimit.y * DEG_TO_RAD, m_highLimit.x * DEG_TO_RAD);
 			    }
 			    break;
 

@@ -21,12 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================================
 #include "IResource.h"
-#include "../Rendering/Deferred/ShaderVariation.h"
-#include "../Rendering/Animation.h"
 #include "../Audio/AudioClip.h"
-#include "../Rendering/Mesh.h"
 #include "../Rendering/Model.h"
 #include "../Rendering/Font/Font.h"
+#include "../Rendering/Deferred/ShaderVariation.h"
 //================================================
 
 //= NAMESPACES ==========
@@ -34,23 +32,26 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-template <typename T>
-Resource_Type IResource::DeduceResourceType() { return Resource_Unknown; }
-#define INSTANTIATE_ToResourceType(T, enumT) template<> ENGINE_CLASS Resource_Type IResource::DeduceResourceType<T>() { return enumT; }
-// Explicit template instantiation
-INSTANTIATE_ToResourceType(RHI_Texture,		Resource_Texture)
-INSTANTIATE_ToResourceType(AudioClip,		Resource_Audio)
-INSTANTIATE_ToResourceType(Material,		Resource_Material)
-INSTANTIATE_ToResourceType(ShaderVariation, Resource_Shader)
-INSTANTIATE_ToResourceType(Mesh,			Resource_Mesh)
-INSTANTIATE_ToResourceType(Model,			Resource_Model)
-INSTANTIATE_ToResourceType(Animation,		Resource_Animation)
-INSTANTIATE_ToResourceType(Font,			Resource_Font)
-
-IResource::IResource(Context* context, Resource_Type type)
+IResource::IResource(Context* context, const Resource_Type type)
 {
 	m_context			= context;
-	m_resourceType		= type;
-	m_resourceID		= GENERATE_GUID;
-	m_loadState			= LoadState_Idle;
+	m_resource_type		= type;
+	m_resource_id		= GENERATE_GUID;
+	m_load_state		= LoadState_Idle;
 }
+
+template <typename T>
+constexpr Resource_Type IResource::TypeToEnum() { return Resource_Unknown; }
+
+// Explicit template instantiation
+#define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT) template<> ENGINE_CLASS Resource_Type IResource::TypeToEnum<T>() { return enumT; }
+
+// To add a new component to the engine, simply register it here
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture,		Resource_Texture)
+INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,			Resource_Audio)
+INSTANTIATE_TO_RESOURCE_TYPE(Material,			Resource_Material)
+INSTANTIATE_TO_RESOURCE_TYPE(ShaderVariation,	Resource_Shader)
+INSTANTIATE_TO_RESOURCE_TYPE(Mesh,				Resource_Mesh)
+INSTANTIATE_TO_RESOURCE_TYPE(Model,				Resource_Model)
+INSTANTIATE_TO_RESOURCE_TYPE(Animation,			Resource_Animation)
+INSTANTIATE_TO_RESOURCE_TYPE(Font,				Resource_Font)
