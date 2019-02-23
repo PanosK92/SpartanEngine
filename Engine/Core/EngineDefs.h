@@ -21,7 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#define ENGINE_VERSION "v0.3"
+// Version
+#define ENGINE_VERSION "v0.31 WIP"
+
+// Class
+#ifdef ENGINE
+#define ENGINE_CLASS __declspec(dllexport)
+#elif EDITOR
+#define ENGINE_CLASS __declspec(dllimport)
+#endif
+
+// Graphics API
+#define API_D3D11
+//#define API_VULKAN
+
+// Input API
+#define API_DInput
+
+// Misc
 #define WIN32_LEAN_AND_MEAN
 
 //= DISABLED WARNINGS ===========================================================================
@@ -30,12 +47,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // non – DLL-interface classkey 'identifier' used as base for DLL-interface classkey 'identifier'
 #pragma warning(disable: 4275) // https://msdn.microsoft.com/en-us/library/3tdb471s.aspx
 //===============================================================================================
-
-#ifdef ENGINE_RUNTIME
-#define ENGINE_CLASS __declspec(dllexport)
-#elif ENGINE_EDITOR
-#define ENGINE_CLASS __declspec(dllimport)
-#endif
 
 namespace Directus
 {

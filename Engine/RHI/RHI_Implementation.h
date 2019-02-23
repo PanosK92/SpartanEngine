@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#ifdef ENGINE_RUNTIME
+#ifdef ENGINE
 
-//= INCLUDES =====================
-#include "../Core/BackendConfig.h"
-//================================
+//= INCLUDES ==================
+#include "../Core/EngineDefs.h"
+//=============================
 
 #ifdef API_D3D11
 #pragma comment(lib, "d3d11.lib")

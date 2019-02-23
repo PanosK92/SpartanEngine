@@ -21,13 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= RENDERING ======
-#define API_D3D11
-//#define API_VULKAN
-//==================
+//= INCLUDES ==================
+#include "../Core/EngineDefs.h"
+//=============================
 
-//= INPUT ========
-#define API_DInput
-//================
-
-// Note: In the future, the above could be implicitly defined via the platform
+#ifdef API_DInput
+	#pragma comment(lib, "dinput8.lib")
+	#pragma comment(lib, "XInput.lib")
+	#ifndef DIRECTINPUT_VERSION
+	#define DIRECTINPUT_VERSION 0x0800
+	#endif
+#endif

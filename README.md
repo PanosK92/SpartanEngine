@@ -18,10 +18,10 @@ Video[
 # Features (v0.3)
 Category       	| Feature                                  	| Details
 :-              | :-                                        | :-
-Importing       | 10+ font file formats support             | Assimp
+Importing       | 10+ font file formats support             | FreeType
 Importing       | 20+ audio file formats support            | FMOD
 Importing       | 30+ image file formats support            | FreeImage
-Importing       | 40+ model file formats support            | FreeType
+Importing       | 40+ model file formats support            | Assimp
 Importing       | XML files                                 | -
 Input           | Keyboard                                  | -
 Input           | Mouse                                     | -
@@ -49,6 +49,7 @@ General         | Event system                              | -
 General         | Easy to build                             | Single click project generation which includes editor and runtime.
 General         | Thread pool                               | -
 General         | Engine rendered platform agnostic editor  | -
+General         | Profiling  								| CPU & GPU.
 Scripting       | C/C++                                     | Using AngelScript.
 Platform        | Windows 10                                | -
 
@@ -60,11 +61,12 @@ Feature     | Completion    | Notes
 Vulkan      | 1%            | Will become the default rendering backend.
 
 #### v0.32 (Planned)
-Feature                 | Completion    | Notes 
-:-                      | :-            | :-
-Eye Adaptation          | -            	| -
-Depth-of-field          | -           	| Based on Doom approach
-Subsurface Scattering   | -            	| -
+Feature                 	| Completion    | Notes 
+:-                      	| :-            | :-
+Eye Adaptation          	| -            	| -
+Depth-of-field          	| -           	| Based on Doom approach
+Subsurface Scattering   	| -            	| -
+Point & Spot light shadows	| -            	| -
 
 # Roadmap
 - Volumetric Lighting.
