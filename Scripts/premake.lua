@@ -22,12 +22,12 @@ CPP_VERSION 			= "C++17"
 DEBUG_FORMAT			= "c7"
 SOLUTION_NAME 			= "Directus"
 EDITOR_NAME 			= "Editor"
-RUNTIME_NAME 			= "Runtime"
+ENGINE_NAME 			= "Engine"
 TARGET_DIR_RELEASE 		= "../Binaries/Release"
 TARGET_DIR_DEBUG 		= "../Binaries/Debug"
 INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
 EDITOR_DIR				= "../" .. EDITOR_NAME
-RUNTIME_DIR				= "../" .. RUNTIME_NAME
+ENGINE_DIR				= "../" .. ENGINE_NAME
 VULKAN_PATH				= "C:/VulkanSDK/1.1.97.0/"
 VULKAN_PATH_INCLUDE		= VULKAN_PATH .. "Include"
 VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
@@ -42,11 +42,11 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 			architecture "x64"
  
  -- Runtime -------------------------------------------------------------------------------------------------
-	project (RUNTIME_NAME)
-		location (RUNTIME_DIR)
+	project (ENGINE_NAME)
+		location (ENGINE_DIR)
 		kind "StaticLib"	
 		language "C++"
-		files { "../Runtime/**.h", "../Runtime/**.cpp", "../Runtime/**.hpp", "../Runtime/**.inl" }
+		files { "../" .. ENGINE_NAME .. "/**.h", "../" .. ENGINE_NAME .. "/**.cpp", "../" .. ENGINE_NAME .. "/**.hpp", "../" .. ENGINE_NAME .. "/**.inl" }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect (CPP_VERSION)
 
@@ -71,7 +71,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
 		symbols "On"
-		defines { "DEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}	
+		defines { "DEBUG", "ENGINE", "LINKING_STATIC"}	
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
 		links { "angelscript_debug" }
@@ -89,7 +89,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
 		symbols "Off"
-		defines { "NDEBUG", "ENGINE_RUNTIME", "LINKING_STATIC"}
+		defines { "NDEBUG", "ENGINE", "LINKING_STATIC"}
 		optimize "Full"
 		staticruntime "On"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
@@ -108,13 +108,13 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		kind "WindowedApp"	
 		language "C++"
 		files { "../Editor/**.h", "../Editor/**.cpp", "../Editor/**.hpp", "../Editor/**.inl" }
-		links { RUNTIME_NAME }
-		dependson { RUNTIME_NAME }
+		links { ENGINE_NAME }
+		dependson { ENGINE_NAME }
 		systemversion(WIN_SDK_VERSION)
 		cppdialect (CPP_VERSION)
 
 -- Includes
-	includedirs { "../Runtime" }
+	includedirs { "../" .. ENGINE_NAME }
 
 -- Library directory
 	libdirs { "../ThirdParty/mvsc141_x64" }
@@ -126,7 +126,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
 		symbols "On"
-		defines { "DEBUG", "ENGINE_EDITOR", "LINKING_STATIC"}		
+		defines { "DEBUG", "EDITOR", "LINKING_STATIC"}		
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
 				
@@ -136,7 +136,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
 		symbols "Off"
-		defines { "NDEBUG", "ENGINE_EDITOR", "LINKING_STATIC"}
+		defines { "NDEBUG", "EDITOR", "LINKING_STATIC"}
 		optimize "Full"
 		staticruntime "On"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }		
