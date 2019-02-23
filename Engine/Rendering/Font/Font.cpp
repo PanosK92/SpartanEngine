@@ -45,7 +45,7 @@ namespace Directus
 {
 	Font::Font(Context* context, const string& filePath, int fontSize, const Vector4& color) : IResource(context, Resource_Font)
 	{
-		m_rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRHIDevice();
+		m_rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
 		m_vertexBuffer		= make_shared<RHI_VertexBuffer>(m_rhiDevice);
 		m_indexBuffer		= make_shared<RHI_IndexBuffer>(m_rhiDevice);
 		m_charMaxWidth		= 0;

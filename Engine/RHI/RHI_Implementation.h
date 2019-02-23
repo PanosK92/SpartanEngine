@@ -21,17 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#ifdef ENGINE
+#if defined(ENGINE)
 
 //= INCLUDES ==================
 #include "../Core/EngineDefs.h"
 //=============================
 
-#ifdef API_D3D11
+#if defined(API_D3D11)
+// DirectX 11
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
-#pragma comment(lib, "dxguid.lib")	
+#pragma comment(lib, "dxguid.lib")
 #include <d3d11_4.h>
 
 static const DXGI_SWAP_EFFECT d3d11_swap_effect[] =
@@ -73,7 +74,7 @@ static const DXGI_FORMAT d3d11_dxgi_format[] =
 	DXGI_FORMAT_R8G8_UNORM,
 	DXGI_FORMAT_R16G16_FLOAT,
 	DXGI_FORMAT_R32G32_FLOAT,
-	
+
 	DXGI_FORMAT_R32G32B32_FLOAT,
 
 	DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -131,11 +132,12 @@ static const D3D11_BLEND_OP d3d11_blend_op[] =
 	D3D11_BLEND_OP_MIN,
 	D3D11_BLEND_OP_MAX
 };
-#endif
 
-#ifdef API_VULKAN
+#elif defined(API_VULKAN)
+// VULKAN
 #pragma comment(lib, "vulkan-1.lib")
 #include <vulkan/vulkan.h>
+
 #endif
 
 #endif

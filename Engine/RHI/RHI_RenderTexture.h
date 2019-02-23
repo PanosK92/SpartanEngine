@@ -25,8 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
 #include "RHI_Object.h"
-#include "..\Math\Matrix.h"
-#include "..\Core\Settings.h"
+#include "../Core/Settings.h"
 //===========================
 
 namespace Directus
@@ -35,44 +34,44 @@ namespace Directus
 	{
 	public:
 		RHI_RenderTexture(
-			std::shared_ptr<RHI_Device> rhiDevice,
+			std::shared_ptr<RHI_Device> rhi_device,
 			unsigned int width,
 			unsigned int height,
-			RHI_Format textureFormat	= Format_R8G8B8A8_UNORM,
+			RHI_Format texture_format	= Format_R8G8B8A8_UNORM,
 			bool depth						= false,
-			RHI_Format depthFormat		= Format_D32_FLOAT,
-			unsigned int arraySize			= 1
+			RHI_Format depth_format		= Format_D32_FLOAT,
+			unsigned int array_size			= 1
 		);
 		~RHI_RenderTexture();
 
-		bool Clear(const Math::Vector4& clearColor);
+		bool Clear(const Math::Vector4& clear_color);
 		bool Clear(float red, float green, float blue, float alpha);
-		void* GetRenderTargetView(unsigned int index = 0)	{ return index < m_renderTargetViews.size() ? m_renderTargetViews[index] : nullptr; }
-		void* GetShaderResource()							{ return m_shaderResourceView; }
-		void* GetDepthStencilView()							{ return m_depthStencilView; }
-		const RHI_Viewport& GetViewport()					{ return m_viewport; }
-		bool GetDepthEnabled()								{ return m_depthEnabled; }
-		unsigned int GetWidth()								{ return m_width; }
-		unsigned int GetHeight()							{ return m_height; }
-		unsigned int GetArraySize()							{ return m_arraySize; }
-		RHI_Format GetFormat()							{ return m_format; }
+		void* GetRenderTargetView(const unsigned int index = 0)	{ return index < m_render_target_views.size() ? m_render_target_views[index] : nullptr; }
+		void* GetShaderResource() const							{ return m_shader_resource_view; }
+		void* GetDepthStencilView() const						{ return m_depth_stencil_view; }
+		const RHI_Viewport& GetViewport() const					{ return m_viewport; }
+		bool GetDepthEnabled() const							{ return m_depth_enabled; }
+		unsigned int GetWidth() const							{ return m_width; }
+		unsigned int GetHeight() const							{ return m_height; }
+		unsigned int GetArraySize() const						{ return m_array_size; }
+		RHI_Format GetFormat() const							{ return m_format; }
 
 	protected:
-		bool m_depthEnabled	= false;
-		float m_nearPlane	= 0;
-		float m_farPlane	= 0;
+		bool m_depth_enabled		= false;
+		float m_near_plane			= 0;
+		float m_far_plane			= 0;
+		unsigned int m_width		= 0;
+		unsigned int m_height		= 0;
+		unsigned int m_array_size	= 0;
 		RHI_Viewport m_viewport;
 		RHI_Format m_format;
-		std::shared_ptr<RHI_Device> m_rhiDevice;
-		unsigned int m_width;
-		unsigned int m_height;
-		unsigned int m_arraySize;
-
+		std::shared_ptr<RHI_Device> m_rhi_device;
+		
 		// D3D11
-		std::vector<void*> m_renderTargetViews;
-		void* m_renderTargetTexture = nullptr;
-		void* m_shaderResourceView	= nullptr;
-		void* m_depthStencilTexture	= nullptr;
-		void* m_depthStencilView	= nullptr;
+		std::vector<void*> m_render_target_views;
+		void* m_render_target_texture	= nullptr;
+		void* m_shader_resource_view	= nullptr;
+		void* m_depth_stencil_texture	= nullptr;
+		void* m_depth_stencil_view		= nullptr;
 	};
 }

@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
+#include <memory>
 #include "RHI_Object.h"
 #include "RHI_Definition.h"
-#include <memory>
 //=========================
 
 namespace Directus
@@ -33,33 +33,33 @@ namespace Directus
 	{
 	public:
 		RHI_RasterizerState(
-			std::shared_ptr<RHI_Device> device,
-			RHI_Cull_Mode cullMode,
-			RHI_Fill_Mode fillMode,
-			bool depthClipEnabled,
-			bool scissorEnabled,
-			bool multiSampleEnabled, 
-			bool antialisedLineEnabled
+			const std::shared_ptr<RHI_Device>& rhi_device,
+			RHI_Cull_Mode cull_mode,
+			RHI_Fill_Mode fill_mode,
+			bool depth_clip_enabled,
+			bool scissor_enabled,
+			bool multi_sample_enabled, 
+			bool antialised_line_enabled
 		);
 		~RHI_RasterizerState();
 
-		RHI_Cull_Mode GetCullMode()		{ return m_cullMode; }
-		RHI_Fill_Mode GetFillMode()		{ return m_fillMode; }
-		bool GetDepthClipEnabled()		{ return m_depthClipEnabled; }
-		bool GetScissorEnabled()		{ return m_scissorEnabled; }
-		bool GetMultiSampleEnabled()	{ return m_multiSampleEnabled; }
-		bool GetAntialisedLineEnabled()	{ return m_antialisedLineEnabled; }
-		bool IsInitialized()			{ return m_initialized; }
-		void* GetBuffer()				{ return m_buffer; }
+		RHI_Cull_Mode GetCullMode() const		{ return m_cull_mode; }
+		RHI_Fill_Mode GetFillMode() const		{ return m_fill_mode; }
+		bool GetDepthClipEnabled() const		{ return m_depth_clip_enabled; }
+		bool GetScissorEnabled() const			{ return m_scissor_enabled; }
+		bool GetMultiSampleEnabled() const		{ return m_multi_sample_enabled; }
+		bool GetAntialisedLineEnabled() const	{ return m_antialised_line_enabled; }
+		bool IsInitialized() const				{ return m_initialized; }
+		void* GetBuffer() const					{ return m_buffer; }
 
 	private:
 		// Properties
-		RHI_Cull_Mode m_cullMode;
-		RHI_Fill_Mode m_fillMode;
-		bool m_depthClipEnabled;
-		bool m_scissorEnabled;
-		bool m_multiSampleEnabled;
-		bool m_antialisedLineEnabled;
+		RHI_Cull_Mode m_cull_mode;
+		RHI_Fill_Mode m_fill_mode;
+		bool m_depth_clip_enabled;
+		bool m_scissor_enabled;
+		bool m_multi_sample_enabled;
+		bool m_antialised_line_enabled;
 
 		// Initialized
 		bool m_initialized = false;

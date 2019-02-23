@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "../RHI_RasterizerState.h"
 #include "../RHI_Device.h"
-#include "D3D11_Common.h"
 #include "../../Logging/Log.h"
+#include "D3D11_Common.h"
 //=================================
 
 //= NAMESPACES =====
@@ -39,43 +39,43 @@ namespace Directus
 {
 	RHI_RasterizerState::RHI_RasterizerState
 	(
-		shared_ptr<RHI_Device> device,
-		RHI_Cull_Mode cullMode,
-		RHI_Fill_Mode fillMode,
-		bool depthClipEnabled,
-		bool scissorEnabled,
-		bool multiSampleEnabled,
-		bool antialisedLineEnabled)
+		const shared_ptr<RHI_Device>& rhi_device,
+		const RHI_Cull_Mode cull_mode,
+		const RHI_Fill_Mode fill_mode,
+		const bool depth_clip_enabled,
+		const bool scissor_enabled,
+		const bool multi_sample_enabled,
+		const bool antialised_line_enabled)
 	{
 		// Save properties
-		m_cullMode					= cullMode;
-		m_fillMode					= fillMode;
-		m_depthClipEnabled			= depthClipEnabled;
-		m_scissorEnabled			= scissorEnabled;
-		m_multiSampleEnabled		= multiSampleEnabled;
-		m_antialisedLineEnabled		= antialisedLineEnabled;
+		m_cull_mode					= cull_mode;
+		m_fill_mode					= fill_mode;
+		m_depth_clip_enabled			= depth_clip_enabled;
+		m_scissor_enabled			= scissor_enabled;
+		m_multi_sample_enabled		= multi_sample_enabled;
+		m_antialised_line_enabled		= antialised_line_enabled;
 
 		// Create rasterizer description
 		D3D11_RASTERIZER_DESC desc;
-		desc.CullMode				= d3d11_cull_mode[cullMode];
-		desc.FillMode				= d3d11_fill_Mode[fillMode];	
+		desc.CullMode				= d3d11_cull_mode[cull_mode];
+		desc.FillMode				= d3d11_fill_Mode[fill_mode];	
 		desc.FrontCounterClockwise	= false;
 		desc.DepthBias				= 0;
 		desc.DepthBiasClamp			= 0.0f;
 		desc.SlopeScaledDepthBias	= 0.0f;
-		desc.DepthClipEnable		= depthClipEnabled;	
-		desc.MultisampleEnable		= multiSampleEnabled;
-		desc.AntialiasedLineEnable	= antialisedLineEnabled;
-		desc.ScissorEnable			= scissorEnabled;
+		desc.DepthClipEnable		= depth_clip_enabled;	
+		desc.MultisampleEnable		= multi_sample_enabled;
+		desc.AntialiasedLineEnable	= antialised_line_enabled;
+		desc.ScissorEnable			= scissor_enabled;
 
 		// Create rasterizer state
-		auto rasterizerState	= (ID3D11RasterizerState*)m_buffer;
-		auto result				= device->GetDevice<ID3D11Device>()->CreateRasterizerState(&desc, &rasterizerState);
+		auto rasterizer_state	= static_cast<ID3D11RasterizerState*>(m_buffer);
+		const auto result		= rhi_device->GetDevice<ID3D11Device>()->CreateRasterizerState(&desc, &rasterizer_state);
 	
 		// Handle result
 		if (SUCCEEDED(result))
 		{
-			m_buffer		= (void*)rasterizerState;
+			m_buffer		= static_cast<void*>(rasterizer_state);
 			m_initialized	= true;
 		}
 		else
@@ -87,7 +87,7 @@ namespace Directus
 
 	RHI_RasterizerState::~RHI_RasterizerState()
 	{
-		SafeRelease((ID3D11RasterizerState*)m_buffer);
+		safe_release(static_cast<ID3D11RasterizerState*>(m_buffer));
 	}
 }
 #endif

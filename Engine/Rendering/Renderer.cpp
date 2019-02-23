@@ -56,11 +56,11 @@ namespace Directus
 
 	Renderer::Renderer(Context* context) : ISubsystem(context)
 	{	
-		m_nearPlane		= 0.0f;
-		m_farPlane		= 0.0f;
+		m_near_plane		= 0.0f;
+		m_far_plane		= 0.0f;
 		m_camera		= nullptr;
-		m_rhiDevice		= nullptr;
-		m_frameNum		= 0;
+		m_rhi_device		= nullptr;
+		m_frame_num		= 0;
 		m_flags			= 0;
 		m_flags			|= Render_Gizmo_Transform;
 		m_flags			|= Render_Gizmo_Grid;
@@ -77,16 +77,16 @@ namespace Directus
 		//m_flags		|= Render_PostProcess_FXAA;					// Disabled by default: TAA is superior
 		
 		// Create RHI device
-		RHI_Format backBufferFormat = Format_R8G8B8A8_UNORM;
-		m_rhiDevice		= make_shared<RHI_Device>(Settings::Get().GetWindowHandle());
-		m_rhiDevice->DetectPrimaryAdapter(backBufferFormat);
-		m_rhiPipeline	= make_shared<RHI_Pipeline>(m_context, m_rhiDevice);
-		m_swapChain		= make_unique<RHI_SwapChain>
+		auto backBufferFormat	= Format_R8G8B8A8_UNORM;
+		m_rhi_device				= make_shared<RHI_Device>(Settings::Get().GetWindowHandle());
+		m_rhi_device->DetectPrimaryAdapter(backBufferFormat);
+		m_rhi_pipeline			= make_shared<RHI_Pipeline>(m_context, m_rhi_device);
+		m_swap_chain				= make_unique<RHI_SwapChain>
 		(
 			Settings::Get().GetWindowHandle(),
-			m_rhiDevice,
-			(unsigned int)m_resolution.x,
-			(unsigned int)m_resolution.y,
+			m_rhi_device,
+			static_cast<unsigned int>(m_resolution.x),
+			static_cast<unsigned int>(m_resolution.y),
 			backBufferFormat,
 			Swap_Flip_Discard,
 			SwapChain_Allow_Tearing | SwapChain_Allow_Mode_Switch,
@@ -113,14 +113,14 @@ namespace Directus
 		m_profiler		= m_context->GetSubsystem<Profiler>().get();
 
 		// Editor specific
-		m_gizmo_grid		= make_unique<Grid>(m_rhiDevice);
+		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
 		m_gizmo_transform	= make_unique<Transform_Gizmo>(m_context);
 
 		// Create a constant buffer that will be used for most shaders
-		m_bufferGlobal = make_shared<RHI_ConstantBuffer>(m_rhiDevice, static_cast<unsigned int>(sizeof(ConstantBuffer_Global)));
+		m_buffer_global_ = make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferGlobal)));
 
 		// Line buffer
-		m_vertexBufferLines = make_shared<RHI_VertexBuffer>(m_rhiDevice);
+		m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
 
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
@@ -137,30 +137,30 @@ namespace Directus
 
 	void Renderer::CreateDepthStencilStates()
 	{
-		m_depthStencil_enabled	= make_shared<RHI_DepthStencilState>(m_rhiDevice, true);
-		m_depthStencil_disabled	= make_shared<RHI_DepthStencilState>(m_rhiDevice, false);
+		m_depth_stencil_enabled	= make_shared<RHI_DepthStencilState>(m_rhi_device, true);
+		m_depth_stencil_disabled	= make_shared<RHI_DepthStencilState>(m_rhi_device, false);
 	}
 
 	void Renderer::CreateRasterizerStates()
 	{
-		m_rasterizer_cullBack_solid			= make_shared<RHI_RasterizerState>(m_rhiDevice, Cull_Back,	Fill_Solid,		true, false, false, false);
-		m_rasterizer_cullFront_solid		= make_shared<RHI_RasterizerState>(m_rhiDevice, Cull_Front, Fill_Solid,		true, false, false, false);
-		m_rasterizer_cullNone_solid			= make_shared<RHI_RasterizerState>(m_rhiDevice, Cull_None,	Fill_Solid,		true, false, false, false);
-		m_rasterizer_cullBack_wireframe		= make_shared<RHI_RasterizerState>(m_rhiDevice, Cull_Back,	Fill_Wireframe, true, false, false, true);
-		m_rasterizer_cullFront_wireframe	= make_shared<RHI_RasterizerState>(m_rhiDevice, Cull_Front, Fill_Wireframe, true, false, false, true);
-		m_rasterizer_cullNone_wireframe		= make_shared<RHI_RasterizerState>(m_rhiDevice, Cull_None,	Fill_Wireframe,	true, false, false, true);
+		m_rasterizer_cull_back_solid			= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,	Fill_Solid,		true, false, false, false);
+		m_rasterizer_cull_front_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front, Fill_Solid,		true, false, false, false);
+		m_rasterizer_cull_none_solid			= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,	Fill_Solid,		true, false, false, false);
+		m_rasterizer_cull_back_wireframe		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,	Fill_Wireframe, true, false, false, true);
+		m_rasterizer_cull_front_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front, Fill_Wireframe, true, false, false, true);
+		m_rasterizer_cull_none_wireframe		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,	Fill_Wireframe,	true, false, false, true);
 	}
 
 	void Renderer::CreateBlendStates()
 	{
-		m_blend_enabled		= make_shared<RHI_BlendState>(m_rhiDevice, true);
-		m_blend_disabled	= make_shared<RHI_BlendState>(m_rhiDevice, false);
+		m_blend_enabled		= make_shared<RHI_BlendState>(m_rhi_device, true);
+		m_blend_disabled	= make_shared<RHI_BlendState>(m_rhi_device, false);
 	}
 
 	void Renderer::CreateFonts()
 	{
 		// Get standard font directory
-		string fontDir = g_resourceCache->GetStandardResourceDirectory(Resource_Font);
+		const string fontDir = g_resourceCache->GetStandardResourceDirectory(Resource_Font);
 
 		// Load a font (used for performance metrics)
 		m_font = make_unique<Font>(m_context, fontDir + "CalibriBold.ttf", 12, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
@@ -169,39 +169,39 @@ namespace Directus
 	void Renderer::CreateTextures()
 	{
 		// Get standard texture directory
-		string textureDirectory = g_resourceCache->GetStandardResourceDirectory(Resource_Texture);
+		const string textureDirectory = g_resourceCache->GetStandardResourceDirectory(Resource_Texture);
 
 		// Noise texture (used by SSAO shader)
-		m_texNoiseNormal = make_shared<RHI_Texture>(m_context);
-		m_texNoiseNormal->LoadFromFile(textureDirectory + "noise.jpg");
+		m_tex_noise_normal = make_shared<RHI_Texture>(m_context);
+		m_tex_noise_normal->LoadFromFile(textureDirectory + "noise.jpg");
 
-		m_texWhite = make_shared<RHI_Texture>(m_context);
-		m_texWhite->SetNeedsMipChain(false);
-		m_texWhite->LoadFromFile(textureDirectory + "white.png");
+		m_tex_white = make_shared<RHI_Texture>(m_context);
+		m_tex_white->SetNeedsMipChain(false);
+		m_tex_white->LoadFromFile(textureDirectory + "white.png");
 
-		m_texBlack = make_shared<RHI_Texture>(m_context);
-		m_texBlack->SetNeedsMipChain(false);
-		m_texBlack->LoadFromFile(textureDirectory + "black.png");
+		m_tex_black = make_shared<RHI_Texture>(m_context);
+		m_tex_black->SetNeedsMipChain(false);
+		m_tex_black->LoadFromFile(textureDirectory + "black.png");
 
-		m_texLUT_IBL = make_shared<RHI_Texture>(m_context);
-		m_texLUT_IBL->SetNeedsMipChain(false);
-		m_texLUT_IBL->LoadFromFile(textureDirectory + "ibl_brdf_lut.png");
+		m_tex_lut_ibl = make_shared<RHI_Texture>(m_context);
+		m_tex_lut_ibl->SetNeedsMipChain(false);
+		m_tex_lut_ibl->LoadFromFile(textureDirectory + "ibl_brdf_lut.png");
 
 		// Gizmo icons
-		m_gizmoTexLightDirectional = make_shared<RHI_Texture>(m_context);
-		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
+		m_gizmo_tex_light_directional = make_shared<RHI_Texture>(m_context);
+		m_gizmo_tex_light_directional->LoadFromFile(textureDirectory + "sun.png");
 
-		m_gizmoTexLightPoint = make_shared<RHI_Texture>(m_context);
-		m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
+		m_gizmo_tex_light_point = make_shared<RHI_Texture>(m_context);
+		m_gizmo_tex_light_point->LoadFromFile(textureDirectory + "light_bulb.png");
 
-		m_gizmoTexLightSpot = make_shared<RHI_Texture>(m_context);
-		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
+		m_gizmo_tex_light_spot = make_shared<RHI_Texture>(m_context);
+		m_gizmo_tex_light_spot->LoadFromFile(textureDirectory + "flashlight.png");
 	}
 
 	void Renderer::CreateRenderTextures()
 	{
-		auto width	= (unsigned int)m_resolution.x;
-		auto height	= (unsigned int)m_resolution.y;
+		auto width	= static_cast<unsigned int>(m_resolution.x);
+		auto height	= static_cast<unsigned int>(m_resolution.y);
 
 		if ((width / 4) == 0 || (height / 4) == 0)
 		{
@@ -210,197 +210,197 @@ namespace Directus
 		}
 
 		// Resize everything
-		m_gbuffer = make_unique<GBuffer>(m_rhiDevice, width, height);
+		m_gbuffer = make_unique<GBuffer>(m_rhi_device, width, height);
 		m_quad = Rectangle(0, 0, m_resolution.x, m_resolution.y);
 		m_quad.CreateBuffers(this);
 
 		// Full res
-		m_renderTexFull_HDR_Light	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Format_R32G32B32A32_FLOAT);
-		m_renderTexFull_HDR_Light2	= make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Format_R32G32B32A32_FLOAT);
-		m_renderTexFull_TAA_Current = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Format_R16G16B16A16_FLOAT);
-		m_renderTexFull_TAA_History = make_unique<RHI_RenderTexture>(m_rhiDevice, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_full_hdr_light	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32B32A32_FLOAT);
+		m_render_tex_full_hdr_light2	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32B32A32_FLOAT);
+		m_render_tex_full_taa_current = make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_full_taa_history = make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
 
 		// Half res
-		m_renderTexHalf_Shadows = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Format_R8_UNORM);
-		m_renderTexHalf_SSAO	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Format_R8_UNORM);
-		m_renderTexHalf_Spare	= make_unique<RHI_RenderTexture>(m_rhiDevice, width / 2, height / 2, Format_R8_UNORM);
+		m_render_tex_half_shadows = make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
+		m_render_tex_half_ssao	= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
+		m_render_tex_half_spare	= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
 
 		// Quarter res
-		m_renderTexQuarter_Blur1 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
-		m_renderTexQuarter_Blur2 = make_unique<RHI_RenderTexture>(m_rhiDevice, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
+		m_render_tex_quarter_blur1 = make_unique<RHI_RenderTexture>(m_rhi_device, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
+		m_render_tex_quarter_blur2 = make_unique<RHI_RenderTexture>(m_rhi_device, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
 	}
 
 	void Renderer::CreateShaders()
 	{
 		// Get standard shader directory
-		string shaderDirectory = g_resourceCache->GetStandardResourceDirectory(Resource_Shader);
+		const string shaderDirectory = g_resourceCache->GetStandardResourceDirectory(Resource_Shader);
 
 		// G-Buffer
-		m_vs_gbuffer = make_shared<RHI_Shader>(m_rhiDevice);
+		m_vs_gbuffer = make_shared<RHI_Shader>(m_rhi_device);
 		m_vs_gbuffer->CompileVertex(shaderDirectory + "GBuffer.hlsl", Input_PositionTextureNormalTangent);
 
 		// Light
-		m_vps_light = make_shared<LightShader>(m_rhiDevice);
+		m_vps_light = make_shared<LightShader>(m_rhi_device);
 		m_vps_light->CompileVertexPixel(shaderDirectory + "Light.hlsl", Input_PositionTexture);
 
 		// Transparent
-		m_vps_transparent = make_shared<RHI_Shader>(m_rhiDevice);
+		m_vps_transparent = make_shared<RHI_Shader>(m_rhi_device);
 		m_vps_transparent->CompileVertexPixel(shaderDirectory + "Transparent.hlsl", Input_PositionTextureNormalTangent);
 		m_vps_transparent->AddBuffer<Struct_Transparency>();
 
 		// Depth
-		m_vps_depth = make_shared<RHI_Shader>(m_rhiDevice);
+		m_vps_depth = make_shared<RHI_Shader>(m_rhi_device);
 		m_vps_depth->CompileVertexPixel(shaderDirectory + "ShadowingDepth.hlsl", Input_Position3D);
 
 		// Font
-		m_vps_font = make_shared<RHI_Shader>(m_rhiDevice);
+		m_vps_font = make_shared<RHI_Shader>(m_rhi_device);
 		m_vps_font->CompileVertexPixel(shaderDirectory + "Font.hlsl", Input_PositionTexture);
 		m_vps_font->AddBuffer<Struct_Matrix_Vector4>();
 
 		// Transform gizmo
-		m_vps_gizmoTransform = make_shared<RHI_Shader>(m_rhiDevice);
-		m_vps_gizmoTransform->CompileVertexPixel(shaderDirectory + "TransformGizmo.hlsl", Input_PositionTextureNormalTangent);
-		m_vps_gizmoTransform->AddBuffer<Struct_Matrix_Vector3>();
+		m_vps_gizmo_transform = make_shared<RHI_Shader>(m_rhi_device);
+		m_vps_gizmo_transform->CompileVertexPixel(shaderDirectory + "TransformGizmo.hlsl", Input_PositionTextureNormalTangent);
+		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
 
 		// SSAO
-		m_vps_ssao = make_shared<RHI_Shader>(m_rhiDevice);
+		m_vps_ssao = make_shared<RHI_Shader>(m_rhi_device);
 		m_vps_ssao->CompileVertexPixel(shaderDirectory + "SSAO.hlsl", Input_PositionTexture);
 		m_vps_ssao->AddBuffer<Struct_Matrix_Matrix>();
 
 		// Shadow mapping
-		m_vps_shadowMapping = make_shared<RHI_Shader>(m_rhiDevice);
-		m_vps_shadowMapping->CompileVertexPixel(shaderDirectory + "ShadowMapping.hlsl", Input_PositionTexture);
-		m_vps_shadowMapping->AddBuffer<Struct_ShadowMapping>();
+		m_vps_shadow_mapping = make_shared<RHI_Shader>(m_rhi_device);
+		m_vps_shadow_mapping->CompileVertexPixel(shaderDirectory + "ShadowMapping.hlsl", Input_PositionTexture);
+		m_vps_shadow_mapping->AddBuffer<Struct_ShadowMapping>();
 
 		// Color
-		m_vps_color = make_shared<RHI_Shader>(m_rhiDevice);
+		m_vps_color = make_shared<RHI_Shader>(m_rhi_device);
 		m_vps_color->CompileVertexPixel(shaderDirectory + "Color.hlsl", Input_PositionColor);
 		m_vps_color->AddBuffer<Struct_Matrix_Matrix>();
 
 		// Quad
-		m_vs_quad = make_shared<RHI_Shader>(m_rhiDevice);
+		m_vs_quad = make_shared<RHI_Shader>(m_rhi_device);
 		m_vs_quad->CompileVertex(shaderDirectory + "Quad.hlsl", Input_PositionTexture);
 
 		// Texture
-		m_ps_texture = make_shared<RHI_Shader>(m_rhiDevice);
+		m_ps_texture = make_shared<RHI_Shader>(m_rhi_device);
 		m_ps_texture->AddDefine("PASS_TEXTURE");
 		m_ps_texture->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// FXAA
-		m_ps_fxaa = make_shared<RHI_Shader>(m_rhiDevice);
+		m_ps_fxaa = make_shared<RHI_Shader>(m_rhi_device);
 		m_ps_fxaa->AddDefine("PASS_FXAA");
 		m_ps_fxaa->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Luma
-		m_ps_luma = make_shared<RHI_Shader>(m_rhiDevice);
+		m_ps_luma = make_shared<RHI_Shader>(m_rhi_device);
 		m_ps_luma->AddDefine("PASS_LUMA");
 		m_ps_luma->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Sharpening
-		m_ps_sharpening = make_shared<RHI_Shader>(m_rhiDevice);
+		m_ps_sharpening = make_shared<RHI_Shader>(m_rhi_device);
 		m_ps_sharpening->AddDefine("PASS_SHARPENING");
 		m_ps_sharpening->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Chromatic aberration
-		m_ps_chromaticAberration = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_chromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
-		m_ps_chromaticAberration->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_chromatic_aberration = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_chromatic_aberration->AddDefine("PASS_CHROMATIC_ABERRATION");
+		m_ps_chromatic_aberration->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Blur Box
-		m_ps_blurBox = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_blurBox->AddDefine("PASS_BLUR_BOX");
-		m_ps_blurBox->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_blur_box = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_blur_box->AddDefine("PASS_BLUR_BOX");
+		m_ps_blur_box->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Blur Gaussian Horizontal
-		m_ps_blurGaussian = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_blurGaussian->AddDefine("PASS_BLUR_GAUSSIAN");
-		m_ps_blurGaussian->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_blur_gaussian = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_blur_gaussian->AddDefine("PASS_BLUR_GAUSSIAN");
+		m_ps_blur_gaussian->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Blur Bilateral Gaussian Horizontal
-		m_ps_blurGaussianBilateral = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_blurGaussianBilateral->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
-		m_ps_blurGaussianBilateral->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_blur_gaussian_bilateral = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_blur_gaussian_bilateral->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
+		m_ps_blur_gaussian_bilateral->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Bloom - bright
-		m_ps_bloomBright = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_bloomBright->AddDefine("PASS_BRIGHT");
-		m_ps_bloomBright->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_bloom_bright = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_bloom_bright->AddDefine("PASS_BRIGHT");
+		m_ps_bloom_bright->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Bloom - blend
-		m_ps_bloomBlend = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_bloomBlend->AddDefine("PASS_BLEND_ADDITIVE");
-		m_ps_bloomBlend->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_bloom_blend = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_bloom_blend->AddDefine("PASS_BLEND_ADDITIVE");
+		m_ps_bloom_blend->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Tone-mapping
-		m_ps_toneMapping = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_toneMapping->AddDefine("PASS_TONEMAPPING");
-		m_ps_toneMapping->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_tone_mapping = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_tone_mapping->AddDefine("PASS_TONEMAPPING");
+		m_ps_tone_mapping->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Gamma correction
-		m_ps_gammaCorrection = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_gammaCorrection->AddDefine("PASS_GAMMA_CORRECTION");
-		m_ps_gammaCorrection->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_gamma_correction = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_gamma_correction->AddDefine("PASS_GAMMA_CORRECTION");
+		m_ps_gamma_correction->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// TAA
-		m_ps_taa = make_shared<RHI_Shader>(m_rhiDevice);
+		m_ps_taa = make_shared<RHI_Shader>(m_rhi_device);
 		m_ps_taa->AddDefine("PASS_TAA_RESOLVE");
 		m_ps_taa->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Motion Blur
-		m_ps_motionBlur = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_motionBlur->AddDefine("PASS_MOTION_BLUR");
-		m_ps_motionBlur->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_motion_blur = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_motion_blur->AddDefine("PASS_MOTION_BLUR");
+		m_ps_motion_blur->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Dithering
-		m_ps_dithering = make_shared<RHI_Shader>(m_rhiDevice);
+		m_ps_dithering = make_shared<RHI_Shader>(m_rhi_device);
 		m_ps_dithering->AddDefine("PASS_DITHERING");
 		m_ps_dithering->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Downsample box
-		m_ps_downsampleBox = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_downsampleBox->AddDefine("PASS_DOWNSAMPLE_BOX");
-		m_ps_downsampleBox->CompilePixel(shaderDirectory + "Quad.hlsl");
+		m_ps_downsample_box = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_downsample_box->AddDefine("PASS_DOWNSAMPLE_BOX");
+		m_ps_downsample_box->CompilePixel(shaderDirectory + "Quad.hlsl");
 
 		// Debug Normal
-		m_ps_debugNormal = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_debugNormal->AddDefine("DEBUG_NORMAL");
-		m_ps_debugNormal->CompilePixel(shaderDirectory + "Debug.hlsl");
+		m_ps_debug_normal_ = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_debug_normal_->AddDefine("DEBUG_NORMAL");
+		m_ps_debug_normal_->CompilePixel(shaderDirectory + "Debug.hlsl");
 
 		// Debug velocity
-		m_ps_debugVelocity = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_debugVelocity->AddDefine("DEBUG_VELOCITY");
-		m_ps_debugVelocity->CompilePixel(shaderDirectory + "Debug.hlsl");
+		m_ps_debug_velocity = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_debug_velocity->AddDefine("DEBUG_VELOCITY");
+		m_ps_debug_velocity->CompilePixel(shaderDirectory + "Debug.hlsl");
 
 		// Debug depth
-		m_ps_debugDepth = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_debugDepth->AddDefine("DEBUG_DEPTH");
-		m_ps_debugDepth->CompilePixel(shaderDirectory + "Debug.hlsl");
+		m_ps_debug_depth = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_debug_depth->AddDefine("DEBUG_DEPTH");
+		m_ps_debug_depth->CompilePixel(shaderDirectory + "Debug.hlsl");
 
 		// Debug ssao
-		m_ps_debugSSAO = make_shared<RHI_Shader>(m_rhiDevice);
-		m_ps_debugSSAO->AddDefine("DEBUG_SSAO");
-		m_ps_debugSSAO->CompilePixel(shaderDirectory + "Debug.hlsl");
+		m_ps_debug_ssao = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_debug_ssao->AddDefine("DEBUG_SSAO");
+		m_ps_debug_ssao->CompilePixel(shaderDirectory + "Debug.hlsl");
 	}
 
 	void Renderer::CreateSamplers()
 	{
-		m_samplerCompareDepth		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Comparison_Bilinear,	Texture_Address_Clamp,	Comparison_Greater);
-		m_samplerPointClamp			= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Point,				Texture_Address_Clamp,	Comparison_Always);
-		m_samplerBilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Bilinear,			Texture_Address_Clamp,	Comparison_Always);
-		m_samplerBilinearWrap		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Bilinear,			Texture_Address_Wrap,	Comparison_Always);
-		m_samplerTrilinearClamp		= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Trilinear,			Texture_Address_Clamp,	Comparison_Always);
-		m_samplerAnisotropicWrap	= make_shared<RHI_Sampler>(m_rhiDevice, Texture_Filter_Anisotropic,			Texture_Address_Wrap,	Comparison_Always);
+		m_sampler_compare_depth		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Comparison_Bilinear,	Texture_Address_Clamp,	Comparison_Greater);
+		m_sampler_point_clamp			= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Point,				Texture_Address_Clamp,	Comparison_Always);
+		m_sampler_bilinear_clamp		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Bilinear,			Texture_Address_Clamp,	Comparison_Always);
+		m_sampler_bilinear_wrap		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Bilinear,			Texture_Address_Wrap,	Comparison_Always);
+		m_sampler_trilinear_clamp		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Trilinear,			Texture_Address_Clamp,	Comparison_Always);
+		m_sampler_anisotropic_wrap	= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Anisotropic,			Texture_Address_Wrap,	Comparison_Always);
 	}
 
 	void Renderer::SetDefault_Pipeline_State()
 	{
-		m_rhiPipeline->Clear();
-		m_rhiPipeline->SetViewport(m_viewport);
-		m_rhiPipeline->SetDepthStencilState(m_depthStencil_disabled);
-		m_rhiPipeline->SetRasterizerState(m_rasterizer_cullBack_solid);
-		m_rhiPipeline->SetBlendState(m_blend_disabled);
-		m_rhiPipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		m_rhiPipeline->Bind();
+		m_rhi_pipeline->Clear();
+		m_rhi_pipeline->SetViewport(m_viewport);
+		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_disabled);
+		m_rhi_pipeline->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_rhi_pipeline->SetBlendState(m_blend_disabled);
+		m_rhi_pipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_rhi_pipeline->Bind();
 	}
 
 	shared_ptr<Entity>& Renderer::SnapTransformGizmoTo(shared_ptr<Entity>& entity)
@@ -410,72 +410,72 @@ namespace Directus
 
 	void* Renderer::GetFrameShaderResource()
 	{
-		return m_renderTexFull_HDR_Light2 ? m_renderTexFull_HDR_Light2->GetShaderResource() : nullptr;
+		return m_render_tex_full_hdr_light2 ? m_render_tex_full_hdr_light2->GetShaderResource() : nullptr;
 	}
 
 	bool Renderer::SwapChain_Present()
 	{
-		if (!m_swapChain)
+		if (!m_swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_swapChain->Present(Present_Off);
+		m_swap_chain->Present(Present_Off);
 		return true;
 	}
 
 	bool Renderer::SwapChain_SetAsRenderTarget()
 	{
-		if (!m_swapChain)
+		if (!m_swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_swapChain->SetAsRenderTarget();		
+		m_swap_chain->SetAsRenderTarget();		
 		return true;
 	}
 
-	bool Renderer::SwapChain_Clear(const Math::Vector4& color)
+	bool Renderer::SwapChain_Clear(const Vector4& color)
 	{
-		if (!m_swapChain)
+		if (!m_swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_swapChain->Clear(color);
+		m_swap_chain->Clear(color);
 		return true;
 	}
 
-	bool Renderer::SwapChain_Resize(unsigned int width, unsigned int height)
+	bool Renderer::SwapChain_Resize(const unsigned int width, const unsigned int height)
 	{
-		if (!m_swapChain)
+		if (!m_swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		// Return if resolution is invalid
-		if (width == 0 || width > m_maxResolution || height == 0 || height > m_maxResolution)
+		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
 		{
 			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
 			return false;
 		}
 
-		return m_swapChain->Resize(width, height);
+		return m_swap_chain->Resize(width, height);
 	}
 
 	void Renderer::Tick()
 	{
-		if (!m_rhiDevice || !m_rhiDevice->IsInitialized())
+		if (!m_rhi_device || !m_rhi_device->IsInitialized())
 			return;
 
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-			m_renderTexFull_HDR_Light2->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+			m_render_tex_full_hdr_light2->Clear(0.0f, 0.0f, 0.0f, 1.0f);
 			m_isRendering = false;
 			return;
 		}
@@ -483,7 +483,7 @@ namespace Directus
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-			m_renderTexFull_HDR_Light2->Clear(m_camera->GetClearColor());
+			m_render_tex_full_hdr_light2->Clear(m_camera->GetClearColor());
 			m_isRendering = false;
 			return;
 		}
@@ -491,39 +491,39 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_profiler->Reset();
 		m_isRendering = true;
-		m_frameNum++;
-		m_isOddFrame = (m_frameNum % 2) == 1;
+		m_frame_num++;
+		m_is_odd_frame = (m_frame_num % 2) == 1;
 
 		// Get camera matrices
 		{
-			m_nearPlane		= m_camera->GetNearPlane();
-			m_farPlane		= m_camera->GetFarPlane();
+			m_near_plane		= m_camera->GetNearPlane();
+			m_far_plane		= m_camera->GetFarPlane();
 			m_view			= m_camera->GetViewMatrix();
-			m_viewBase		= m_camera->GetBaseViewMatrix();
+			m_view_base		= m_camera->GetBaseViewMatrix();
 			m_projection	= m_camera->GetProjectionMatrix();
 
 			// TAA - Generate jitter
 			if (Flags_IsSet(Render_PostProcess_TAA))
 			{
-				m_taa_jitterPrevious = m_taa_jitter;
+				m_taa_jitter_previous = m_taa_jitter;
 
 				// Halton(2, 3) * 16 seems to work nice
-				uint64_t samples	= 16;
-				uint64_t index		= m_frameNum % samples;
-				m_taa_jitter		= Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-				m_taa_jitter.x		= m_taa_jitter.x / m_resolution.x;
-				m_taa_jitter.y		= m_taa_jitter.y / m_resolution.y;
-				m_projection		*= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
+				const uint64_t samples	= 16;
+				const uint64_t index	= m_frame_num % samples;
+				m_taa_jitter			= Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+				m_taa_jitter.x			= m_taa_jitter.x / m_resolution.x;
+				m_taa_jitter.y			= m_taa_jitter.y / m_resolution.y;
+				m_projection			*= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
 			}
 			else
 			{
 				m_taa_jitter			= Vector2::Zero;
-				m_taa_jitterPrevious	= Vector2::Zero;		
+				m_taa_jitter_previous	= Vector2::Zero;		
 			}
 
-			m_viewProjection				= m_view * m_projection;
-			m_projectionOrthographic		= Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_nearPlane, m_farPlane);
-			m_viewProjection_Orthographic	= m_viewBase * m_projectionOrthographic;
+			m_view_projection				= m_view * m_projection;
+			m_projection_orthographic		= Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_near_plane, m_far_plane);
+			m_view_projection_orthographic	= m_view_base * m_projection_orthographic;
 		}
 
 		Pass_DepthDirectionalLight(GetLightDirectional());
@@ -531,28 +531,28 @@ namespace Directus
 		Pass_GBuffer();
 
 		Pass_PreLight(
-			m_renderTexHalf_Spare,		// IN:	
-			m_renderTexHalf_Shadows,	// OUT: Shadows
-			m_renderTexHalf_SSAO		// OUT: DO
+			m_render_tex_half_spare,		// IN:	
+			m_render_tex_half_shadows,	// OUT: Shadows
+			m_render_tex_half_ssao		// OUT: DO
 		);
 
 		Pass_Light(
-			m_renderTexHalf_Shadows,	// IN:	Shadows
-			m_renderTexHalf_SSAO,		// IN:	SSAO
-			m_renderTexFull_HDR_Light	// Out: Result
+			m_render_tex_half_shadows,	// IN:	Shadows
+			m_render_tex_half_ssao,		// IN:	SSAO
+			m_render_tex_full_hdr_light	// Out: Result
 		);
 
-		Pass_Transparent(m_renderTexFull_HDR_Light);
+		Pass_Transparent(m_render_tex_full_hdr_light);
 
 		Pass_PostLight(
-			m_renderTexFull_HDR_Light,	// IN:	Light pass result
-			m_renderTexFull_HDR_Light2	// OUT: Result
+			m_render_tex_full_hdr_light,	// IN:	Light pass result
+			m_render_tex_full_hdr_light2	// OUT: Result
 		);
 	
-		Pass_Lines(m_renderTexFull_HDR_Light2);
-		Pass_Gizmos(m_renderTexFull_HDR_Light2);
-		Pass_DebugBuffer(m_renderTexFull_HDR_Light2);	
-		Pass_PerformanceMetrics(m_renderTexFull_HDR_Light2);
+		Pass_Lines(m_render_tex_full_hdr_light2);
+		Pass_Gizmos(m_render_tex_full_hdr_light2);
+		Pass_DebugBuffer(m_render_tex_full_hdr_light2);	
+		Pass_PerformanceMetrics(m_render_tex_full_hdr_light2);
 
 		m_isRendering = false;
 		TIME_BLOCK_END_MULTI(m_profiler);
@@ -561,7 +561,7 @@ namespace Directus
 	void Renderer::SetResolution(unsigned int width, unsigned int height)
 	{
 		// Return if resolution is invalid
-		if (width == 0 || width > m_maxResolution || height == 0 || height > m_maxResolution)
+		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
 		{
 			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
 			return;
@@ -576,8 +576,8 @@ namespace Directus
 		height	-= (height	% 2 != 0) ? 1 : 0;
 
 		// Set resolution
-		m_resolution.x = (float)width;
-		m_resolution.y = (float)height;
+		m_resolution.x = static_cast<float>(width);
+		m_resolution.y = static_cast<float>(height);
 
 		// Re-create render textures
 		CreateRenderTextures();
@@ -590,20 +590,20 @@ namespace Directus
 	{
 		if (depth)
 		{
-			m_linesList_depthEnabled.emplace_back(from, color_from);
-			m_linesList_depthEnabled.emplace_back(to, color_to);
+			m_lines_list_depth_enabled.emplace_back(from, color_from);
+			m_lines_list_depth_enabled.emplace_back(to, color_to);
 		}
 		else
 		{
-			m_linesList_depthDisabled.emplace_back(from, color_from);
-			m_linesList_depthDisabled.emplace_back(to, color_to);
+			m_lines_list_depth_disabled.emplace_back(from, color_from);
+			m_lines_list_depth_disabled.emplace_back(to, color_to);
 		}
 	}
 
 	void Renderer::DrawBox(const BoundingBox& box, const Vector4& color, bool depth /*= true*/)
 	{
-		Vector3 min = box.GetMin();
-		Vector3 max = box.GetMax();
+		const Vector3 min = box.GetMin();
+		const Vector3 max = box.GetMax();
 	
 		DrawLine(Vector3(min.x, min.y, min.z), Vector3(max.x, min.y, min.z), color, depth);
 		DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, max.y, min.z), color, depth);
@@ -619,37 +619,37 @@ namespace Directus
 		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
-	void Renderer::SetDefault_Buffer(unsigned int resolutionWidth, unsigned int resolutionHeight, const Matrix& mMVP, float blur_sigma, const Math::Vector2& blur_direction)
+	void Renderer::SetDefault_Buffer(unsigned int resolutionWidth, unsigned int resolutionHeight, const Matrix& mMVP, float blur_sigma, const Vector2& blur_direction)
 	{
-		auto buffer = (ConstantBuffer_Global*)m_bufferGlobal->Map();
+		auto buffer = static_cast<ConstantBufferGlobal*>(m_buffer_global_->Map());
 
-		buffer->mMVP					= mMVP;
-		buffer->mView					= m_view;
-		buffer->mProjection				= m_projection;
-		buffer->mProjectionOrtho		= m_projectionOrthographic;
-		buffer->mViewProjection			= m_viewProjection;
-		buffer->mViewProjectionOrtho	= m_viewProjection_Orthographic;
+		buffer->m_mvp					= mMVP;
+		buffer->m_view					= m_view;
+		buffer->m_projection				= m_projection;
+		buffer->m_projection_ortho		= m_projection_orthographic;
+		buffer->m_view_projection			= m_view_projection;
+		buffer->m_view_projection_ortho	= m_view_projection_orthographic;
 		buffer->camera_position			= m_camera->GetTransform()->GetPosition();
 		buffer->camera_near				= m_camera->GetNearPlane();
 		buffer->camera_far				= m_camera->GetFarPlane();
-		buffer->resolution				= Vector2((float)resolutionWidth, (float)resolutionHeight);
-		buffer->fxaa_subPixel			= m_fxaaSubPixel;
-		buffer->fxaa_edgeThreshold		= m_fxaaEdgeThreshold;
-		buffer->fxaa_edgeThresholdMin	= m_fxaaEdgeThresholdMin;
+		buffer->resolution				= Vector2(static_cast<float>(resolutionWidth), static_cast<float>(resolutionHeight));
+		buffer->fxaa_sub_pixel			= m_fxaa_sub_pixel;
+		buffer->fxaa_edge_threshold		= m_fxaa_edge_threshold;
+		buffer->fxaa_edge_threshold_min	= m_fxaa_edge_threshold_min;
 		buffer->blur_direction			= blur_direction;
 		buffer->blur_sigma				= blur_sigma;
-		buffer->bloom_intensity			= m_bloomIntensity;
-		buffer->sharpen_strength		= m_sharpenStrength;
-		buffer->sharpen_clamp			= m_sharpenClamp;
-		buffer->taa_jitterOffset		= m_taa_jitter - m_taa_jitterPrevious;
-		buffer->motionBlur_strength		= m_motionBlurStrength;
-		buffer->fps_current				= m_profiler->GetFPS();
+		buffer->bloom_intensity			= m_bloom_intensity;
+		buffer->sharpen_strength		= m_sharpen_strength;
+		buffer->sharpen_clamp			= m_sharpen_clamp;
+		buffer->taa_jitter_offset		= m_taa_jitter - m_taa_jitter_previous;
+		buffer->motion_blur_strength		= m_motion_blur_strength;
+		buffer->fps_current				= m_profiler->GetFps();
 		buffer->fps_target				= Settings::Get().FPS_GetTarget();
 		buffer->gamma					= m_gamma;
-		buffer->tonemapping				= (float)m_tonemapping;
+		buffer->tonemapping				= static_cast<float>(m_tonemapping);
 
-		m_bufferGlobal->Unmap();
-		m_rhiPipeline->SetConstantBuffer(m_bufferGlobal, 0, Buffer_Global);
+		m_buffer_global_->Unmap();
+		m_rhi_pipeline->SetConstantBuffer(m_buffer_global_, 0, Buffer_Global);
 	}
 
 	void Renderer::Renderables_Acquire(const Variant& entitiesVariant)
@@ -676,7 +676,7 @@ namespace Directus
 
 			if (renderable)
 			{
-				bool isTransparent = !renderable->Material_Exists() ? false : renderable->Material_Ptr()->GetColorAlbedo().w < 1.0f;
+				const bool isTransparent = !renderable->Material_Exists() ? false : renderable->Material_Ptr()->GetColorAlbedo().w < 1.0f;
 				if (!skybox) // Ignore skybox
 				{
 					m_entities[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(entity);
@@ -751,17 +751,17 @@ namespace Directus
 				return false;
 
 			// Order doesn't matter, as long as they are not mixed
-			return a_material->Resource_GetID() < b_material->Resource_GetID();
+			return a_material->ResourceGetId() < b_material->ResourceGetId();
 		});
 	}
 
-	shared_ptr<RHI_RasterizerState>& Renderer::GetRasterizerState(RHI_Cull_Mode cullMode, RHI_Fill_Mode fillMode)
+	shared_ptr<RHI_RasterizerState>& Renderer::GetRasterizerState(const RHI_Cull_Mode cull_mode, const RHI_Fill_Mode fill_mode)
 	{
-		if		(cullMode == Cull_Back)		return (fillMode == Fill_Solid) ? m_rasterizer_cullBack_solid	: m_rasterizer_cullBack_wireframe;
-		else if (cullMode == Cull_Front)	return (fillMode == Fill_Solid) ? m_rasterizer_cullFront_solid : m_rasterizer_cullFront_wireframe;
-		else if (cullMode == Cull_None)		return (fillMode == Fill_Solid) ? m_rasterizer_cullNone_solid	: m_rasterizer_cullNone_wireframe;
+		if		(cull_mode == Cull_Back)		return (fill_mode == Fill_Solid) ? m_rasterizer_cull_back_solid	: m_rasterizer_cull_back_wireframe;
+		else if (cull_mode == Cull_Front)	return (fill_mode == Fill_Solid) ? m_rasterizer_cull_front_solid : m_rasterizer_cull_front_wireframe;
+		else if (cull_mode == Cull_None)		return (fill_mode == Fill_Solid) ? m_rasterizer_cull_none_solid	: m_rasterizer_cull_none_wireframe;
 
-		return m_rasterizer_cullBack_solid;
+		return m_rasterizer_cull_back_solid;
 	}
 
 	Light* Renderer::GetLightDirectional()

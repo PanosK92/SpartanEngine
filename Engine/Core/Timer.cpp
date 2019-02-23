@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========
 #include "Timer.h"
-#include "Engine.h"
 #include "Settings.h"
 #include <thread>
 //===================
@@ -37,7 +36,7 @@ namespace Directus
 	{
 		time_a			= high_resolution_clock::now();
 		time_b			= high_resolution_clock::now();
-		m_deltaTimeMs	= 0.0f;
+		m_delta_time_ms	= 0.0f;
 	}
 
 	void Timer::Tick()
@@ -47,19 +46,19 @@ namespace Directus
 		duration<double, milli> time_work	= time_a - time_b;
 		
 		// Compute sleep time (fps limiting)
-		double maxFPS		= Settings::Get().FPS_GetLimit();
-		double minDt		= 1000.0 / maxFPS;
-		double dtRemaining	= minDt - time_work.count();
-		if (dtRemaining >  0)
+		const double max_fps		= Settings::Get().FPS_GetLimit();
+		const double min_dt			= 1000.0 / max_fps;
+		const double dt_remaining	= min_dt - time_work.count();
+		if (dt_remaining >  0)
 		{
-			this_thread::sleep_for(milliseconds((int64_t)dtRemaining));
+			this_thread::sleep_for(milliseconds(static_cast<int64_t>(dt_remaining)));
 		}
 
 		// Compute delta
-		time_b								= high_resolution_clock::now();
-		duration<double, milli> time_sleep	= time_b - time_a;
-		m_deltaTimeMs						= (time_work + time_sleep).count();
+		time_b										= high_resolution_clock::now();
+		const duration<double, milli> time_sleep	= time_b - time_a;
+		m_delta_time_ms								= (time_work + time_sleep).count();
 
-		m_deltaTimeSec = GetDeltaTimeSec();
+		m_delta_time_sec = GetDeltaTimeSec();
 	}
 }

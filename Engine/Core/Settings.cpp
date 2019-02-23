@@ -54,12 +54,12 @@ namespace Directus
 	{
 		for (string line; getline(fin, line); )
 		{
-			auto firstIndex = line.find_first_of('=');
-			if (name == line.substr(0, firstIndex))
+			const auto first_index = line.find_first_of('=');
+			if (name == line.substr(0, first_index))
 			{
-				auto lastindex = line.find_last_of('=');
-				string readValue = line.substr(lastindex + 1, line.length());
-				value = (T)stof(readValue);
+				const auto lastindex = line.find_last_of('=');
+				const auto readValue = line.substr(lastindex + 1, line.length());
+				value = static_cast<T>(stof(readValue));
 				return;
 			}
 		}
@@ -77,20 +77,20 @@ namespace Directus
 			// Create a settings file
 			SettingsIO::fin.open(SettingsIO::fileName, ifstream::in);
 
-			float resolutionX = 0;
-			float resolutionY = 0;
+			float resolution_x = 0;
+			float resolution_y = 0;
 
 			// Read the settings
 			ReadSetting(SettingsIO::fin, "bFullScreen",				m_isFullScreen);
 			ReadSetting(SettingsIO::fin, "bIsMouseVisible",			m_isMouseVisible);
-			ReadSetting(SettingsIO::fin, "fResolutionWidth",		resolutionX);
-			ReadSetting(SettingsIO::fin, "fResolutionHeight",		resolutionY);
+			ReadSetting(SettingsIO::fin, "fResolutionWidth",		resolution_x);
+			ReadSetting(SettingsIO::fin, "fResolutionHeight",		resolution_y);
 			ReadSetting(SettingsIO::fin, "iShadowMapResolution",	m_shadowMapResolution);
 			ReadSetting(SettingsIO::fin, "iAnisotropy",				m_anisotropy);
 			ReadSetting(SettingsIO::fin, "fFPSLimit",				m_fpsLimit);
 			ReadSetting(SettingsIO::fin, "iMaxThreadCount",			m_maxThreadCount);
 
-			m_windowSize = Vector2(resolutionX, resolutionY);
+			m_windowSize = Vector2(resolution_x, resolution_y);
 
 			if (m_fpsLimit == 0.0f)
 			{
@@ -128,7 +128,7 @@ namespace Directus
 			SettingsIO::fout.close();
 		}
 
-		LOGF_INFO("Resolution: %dx%d",		(int)m_windowSize.x, (int)m_windowSize.y);
+		LOGF_INFO("Resolution: %dx%d",		static_cast<int>(m_windowSize.x), static_cast<int>(m_windowSize.y));
 		LOGF_INFO("Shadow resolution: %d",	m_shadowMapResolution);
 		LOGF_INFO("Anisotropy: %d",			m_anisotropy);
 		LOGF_INFO("Max fps: %f",			m_fpsLimit);
@@ -137,51 +137,51 @@ namespace Directus
 
 	void Settings::DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator)
 	{
-		DisplayMode& mode = m_displayModes.emplace_back(width, height, refreshRateNumerator, refreshRateDenominator);
+		auto& mode = m_displayModes.emplace_back(width, height, refreshRateNumerator, refreshRateDenominator);
 
 		// Try to deduce the maximum frame rate based on how fast is the monitor
 		if (m_fpsPolicy == FPS_MonitorMatch)
 		{
-			FPS_SetLimit(Math::Helper::Max(m_fpsLimit, mode.refreshRate));
+			FPS_SetLimit(Helper::Max(m_fpsLimit, mode.refreshRate));
 		}
 	}
 
-	bool Settings::DisplayMode_GetFastest(DisplayMode* displayMode)
+	bool Settings::DisplayMode_GetFastest(DisplayMode* display_mode)
 	{
 		if (m_displayModes.empty())
 			return false;
 
-		displayMode = &m_displayModes[0];
+		display_mode = &m_displayModes[0];
 		for (auto& mode : m_displayModes)
 		{
-			if (displayMode->refreshRate < mode.refreshRate)
+			if (display_mode->refreshRate < mode.refreshRate)
 			{
-				displayMode = &mode;
+				display_mode = &mode;
 			}
 		}
 
 		return true;
 	}
 
-	void Settings::DisplayAdapter_Add(const string& name, unsigned int memory, unsigned int vendorID, void* data)
+	void Settings::DisplayAdapter_Add(const string& name, unsigned int memory, unsigned int vendor_id, void* adapter)
 	{
-		m_displayAdapters.emplace_back(name, memory, vendorID, data);
+		m_displayAdapters.emplace_back(name, memory, vendor_id, adapter);
 		sort(m_displayAdapters.begin(), m_displayAdapters.end(), [](const DisplayAdapter& adapter1, const DisplayAdapter& adapter2)
 		{
 			return adapter1.memory > adapter2.memory;
 		});		
 	}
 
-	void Settings::DisplayAdapter_SetPrimary(const DisplayAdapter* primaryAdapter)
+	void Settings::DisplayAdapter_SetPrimary(const DisplayAdapter* primary_adapter)
 	{
-		if (!primaryAdapter)
+		if (!primary_adapter)
 			return;
 
-		m_primaryAdapter = primaryAdapter;
-		LOGF_INFO("%s (%d MB)", primaryAdapter->name.c_str(), primaryAdapter->memory);
+		m_primaryAdapter = primary_adapter;
+		LOGF_INFO("%s (%d MB)", primary_adapter->name.c_str(), primary_adapter->memory);
 	}
 
-	void Settings::FPS_SetLimit(float fps)
+	void Settings::FPS_SetLimit(const float fps)
 	{
 		if (m_fpsLimit != fps)
 		{

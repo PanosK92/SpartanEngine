@@ -32,18 +32,18 @@ namespace Directus
 	{
 	public:
 		Timer(Context* context);
-		~Timer() {}
+		~Timer() = default;
 
 		//= ISubsystem ======
 		void Tick() override;
 		//===================
 
-		float GetDeltaTimeMs()	{ return (float)m_deltaTimeMs; }
-		float GetDeltaTimeSec() { return (float)m_deltaTimeMs / 1000.0f; }
+		float GetDeltaTimeMs() const	{ return static_cast<float>(m_delta_time_ms); }
+		float GetDeltaTimeSec() const	{ return static_cast<float>(m_delta_time_ms) / 1000.0f; }
 
 	private:		
 		std::chrono::high_resolution_clock::time_point time_a;
 		std::chrono::high_resolution_clock::time_point time_b;
-		double m_deltaTimeMs;
+		double m_delta_time_ms;
 	};
 }

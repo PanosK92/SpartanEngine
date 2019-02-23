@@ -32,24 +32,24 @@ namespace Directus
 	class RHI_IndexBuffer : public RHI_Object
 	{
 	public:
-		RHI_IndexBuffer(std::shared_ptr<RHI_Device> rhiDevice, RHI_Format format = Format_R32_UINT);
+		RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, RHI_Format format = Format_R32_UINT);
 		~RHI_IndexBuffer();
 	
 		bool Create(const std::vector<unsigned int>& indices);
-		bool CreateDynamic(unsigned int stride, unsigned int indexCount);
-		void* Map();
-		bool Unmap();
+		bool CreateDynamic(unsigned int stride, unsigned int index_count);
+		void* Map() const;
+		bool Unmap() const;
 
-		void* GetBuffer()				{ return m_buffer; }
-		RHI_Format GetFormat()			{ return m_bufferFormat; }
-		unsigned int GetMemoryUsage()	{ return m_memoryUsage; }
-		unsigned int GetIndexCount()	{ return m_indexCount; }
+		void* GetBuffer() const				{ return m_buffer; }
+		RHI_Format GetFormat() const		{ return m_buffer_format; }
+		unsigned int GetMemoryUsage() const { return m_memory_usage; }
+		unsigned int GetIndexCount() const	{ return m_index_count; }
 
 	protected:
-		unsigned int m_indexCount	= 0;
-		unsigned int m_memoryUsage	= 0;
-		RHI_Format m_bufferFormat;
+		unsigned int m_index_count	= 0;
+		unsigned int m_memory_usage	= 0;	
 		void* m_buffer				= nullptr;
+		RHI_Format m_buffer_format;
 		std::shared_ptr<RHI_Device> m_rhiDevice;
 	};
 }

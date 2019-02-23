@@ -41,27 +41,27 @@ using namespace Directus::Math;
 namespace Directus
 {
 	RHI_SwapChain::RHI_SwapChain(
-		void* windowHandle,
+		void* window_handle,
 		std::shared_ptr<RHI_Device> device,
 		unsigned int width,
 		unsigned int height,
 		RHI_Format format			/*= Format_R8G8B8A8_UNORM*/,
-		RHI_Swap_Effect swapEffect	/*= Swap_Discard*/,
+		RHI_Swap_Effect swap_effect	/*= Swap_Discard*/,
 		unsigned long flags			/*= 0 */,
-		unsigned int bufferCount	/*= 1 */
+		unsigned int buffer_count	/*= 1 */
 	)
 	{
-		if (!windowHandle || !device)
+		if (!window_handle || !device)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
 
-		auto hwnd		= (HWND)windowHandle;
+		const auto hwnd	= static_cast<HWND>(window_handle);
 		m_format		= format;
 		m_device		= device;
 		m_flags			= flags;
-		m_bufferCount	= bufferCount;
+		m_buffer_count	= buffer_count;
 
 		// Get factory from device
 		IDXGIDevice* dxgi_device	= nullptr;
@@ -74,14 +74,14 @@ namespace Directus
 				dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
 			}
 		}
-		SafeRelease(dxgi_device);
-		SafeRelease(dxgi_adapter);
+		safe_release(dxgi_device);
+		safe_release(dxgi_adapter);
 
 		// Create swap chain
 		{
 			DXGI_SWAP_CHAIN_DESC desc;
 			ZeroMemory(&desc, sizeof(desc));
-			desc.BufferCount					= bufferCount;
+			desc.BufferCount					= buffer_count;
 			desc.BufferDesc.Width				= width;
 			desc.BufferDesc.Height				= height;
 			desc.BufferDesc.Format				= d3d11_dxgi_format[format];
@@ -92,59 +92,59 @@ namespace Directus
 			desc.Windowed						= TRUE;
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
-			desc.SwapEffect						= d3d11_swap_effect[swapEffect];
+			desc.SwapEffect						= d3d11_swap_effect[swap_effect];
 			unsigned int d3d11_flags			= 0;
 			d3d11_flags							|= flags & SwapChain_Allow_Mode_Switch	? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
 			d3d11_flags							|= flags & SwapChain_Allow_Tearing		? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 			desc.Flags							= d3d11_flags;
 
-			auto swapChain = (IDXGISwapChain*)m_swapChain;
-			auto result = dxgi_factory->CreateSwapChain(m_device->GetDevice<ID3D11Device>(), &desc, &swapChain);
+			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
+			const auto result	= dxgi_factory->CreateSwapChain(m_device->GetDevice<ID3D11Device>(), &desc, &swap_chain);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("%s", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
-			m_swapChain = (void*)swapChain;
+			m_swap_chain = static_cast<void*>(swap_chain);
 		}
 
 		// Create the render target
-		if (auto swapChain = (IDXGISwapChain*)m_swapChain)
+		if (auto swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain))
 		{
-			ID3D11Texture2D* ptr_backBuffer = nullptr;
-			auto result = swapChain->GetBuffer(0, IID_PPV_ARGS(&ptr_backBuffer));
+			ID3D11Texture2D* backbuffer = nullptr;
+			auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 			if (FAILED(result))
 			{
 				LOGF_ERROR("%s", D3D11_Common::DxgiErrorToString(result));
 				return;
 			}
 
-			auto renderTargetView = (ID3D11RenderTargetView*)m_renderTargetView;
-			result = m_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(ptr_backBuffer, nullptr, &renderTargetView);
-			ptr_backBuffer->Release();
+			auto render_target_view = static_cast<ID3D11RenderTargetView*>(m_render_target_view);
+			result = m_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+			backbuffer->Release();
 			if (FAILED(result))
 			{
 				LOGF_ERROR("%s", D3D11_Common::DxgiErrorToString(result));
 			}
-			m_renderTargetView = (void*)renderTargetView;
+			m_render_target_view = static_cast<void*>(render_target_view);
 		}
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
-		auto swapChain = (IDXGISwapChain*)m_swapChain;
+		auto swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain);
 
 		// Before shutting down set to windowed mode to avoid swap chain exception
-		if (swapChain)
+		if (swap_chain)
 		{
-			swapChain->SetFullscreenState(false, nullptr);
+			swap_chain->SetFullscreenState(false, nullptr);
 		}
 
-		SafeRelease(swapChain);
-		SafeRelease((ID3D11RenderTargetView*)m_renderTargetView);
+		safe_release(swap_chain);
+		safe_release(static_cast<ID3D11RenderTargetView*>(m_render_target_view));
 	}
 
-	bool RHI_SwapChain::Resize(unsigned int width, unsigned int height)
+	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
 	{	
 		if (width == 0 || height == 0)
 		{
@@ -152,37 +152,37 @@ namespace Directus
 			return false;
 		}
 
-		if (!m_swapChain)
+		if (!m_swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		auto swapChain			= (IDXGISwapChain*)m_swapChain;
-		auto renderTargetView	= (ID3D11RenderTargetView*)m_renderTargetView;
+		auto swap_chain			= static_cast<IDXGISwapChain*>(m_swap_chain);
+		auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_render_target_view);
 
 		// Release previous stuff
-		SafeRelease(renderTargetView);
+		safe_release(render_target_view);
 	
-		DisplayMode displayMode;
-		if (!Settings::Get().DisplayMode_GetFastest(&displayMode))
+		DisplayMode display_mode;
+		if (!Settings::Get().DisplayMode_GetFastest(&display_mode))
 		{
 			LOG_ERROR("Failed to get a display mode");
 			return false;
 		}
 
 		// Resize swapchain target
-		DXGI_MODE_DESC dxgiModeDesc;
-		ZeroMemory(&dxgiModeDesc, sizeof(dxgiModeDesc));
-		dxgiModeDesc.Width				= width;
-		dxgiModeDesc.Height				= height;
-		dxgiModeDesc.Format				= d3d11_dxgi_format[m_format];
-		dxgiModeDesc.RefreshRate		= DXGI_RATIONAL{ displayMode.refreshRateNumerator, displayMode.refreshRateDenominator };
-		dxgiModeDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
-		dxgiModeDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		DXGI_MODE_DESC dxgi_mode_desc;
+		ZeroMemory(&dxgi_mode_desc, sizeof(dxgi_mode_desc));
+		dxgi_mode_desc.Width			= width;
+		dxgi_mode_desc.Height			= height;
+		dxgi_mode_desc.Format			= d3d11_dxgi_format[m_format];
+		dxgi_mode_desc.RefreshRate		= DXGI_RATIONAL{ display_mode.refreshRateNumerator, display_mode.refreshRateDenominator };
+		dxgi_mode_desc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
+		dxgi_mode_desc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 
 		// Resize swapchain target
-		auto result = swapChain->ResizeTarget(&dxgiModeDesc);
+		auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Common::DxgiErrorToString(result));
@@ -193,7 +193,7 @@ namespace Directus
 		unsigned int d3d11_flags = 0;
 		d3d11_flags |= m_flags & SwapChain_Allow_Mode_Switch ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
 		d3d11_flags |= m_flags & SwapChain_Allow_Tearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
-		result = swapChain->ResizeBuffers(m_bufferCount, (UINT)width, (UINT)height, dxgiModeDesc.Format, d3d11_flags);
+		result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), dxgi_mode_desc.Format, d3d11_flags);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to resize swapchain buffers, %s.", D3D11_Common::DxgiErrorToString(result));
@@ -201,8 +201,8 @@ namespace Directus
 		}
 
 		// Get swapchain back-buffer
-		ID3D11Texture2D* pBackBuffer = nullptr;
-		result = swapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
+		ID3D11Texture2D* backbuffer = nullptr;
+		result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to get swapchain buffer, %s.", D3D11_Common::DxgiErrorToString(result));
@@ -210,19 +210,19 @@ namespace Directus
 		}
 
 		// Create render target view
-		result = m_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(pBackBuffer, nullptr, &renderTargetView);
-		SafeRelease(pBackBuffer);
+		result = m_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+		safe_release(backbuffer);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to create render target view, %s.", D3D11_Common::DxgiErrorToString(result));
 			return false;
 		}
-		m_renderTargetView = (void*)renderTargetView;
+		m_render_target_view = static_cast<void*>(render_target_view);
 
 		return true;
 	}
 
-	bool RHI_SwapChain::SetAsRenderTarget()
+	bool RHI_SwapChain::SetAsRenderTarget() const
 	{
 		if(!m_device)
 		{
@@ -231,42 +231,42 @@ namespace Directus
 		}
 
 		auto context			= m_device->GetDeviceContext<ID3D11DeviceContext>();
-		auto renderTargetView	= (ID3D11RenderTargetView*)m_renderTargetView;
-		if (!context || !renderTargetView)
+		auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_render_target_view);
+		if (!context || !render_target_view)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		ID3D11DepthStencilView* depthStencil = nullptr;
-		context->OMSetRenderTargets(1, &renderTargetView, depthStencil);
+		ID3D11DepthStencilView* depth_stencil = nullptr;
+		context->OMSetRenderTargets(1, &render_target_view, depth_stencil);
 		return true;
 	}
 
-	bool RHI_SwapChain::Clear(const Vector4& color)
+	bool RHI_SwapChain::Clear(const Vector4& color) const
 	{
-		auto context			= m_device->GetDeviceContext<ID3D11DeviceContext>();
-		auto renderTargetView	= (ID3D11RenderTargetView*)m_renderTargetView;
-		if (!context || !renderTargetView)
+		auto context					= m_device->GetDeviceContext<ID3D11DeviceContext>();
+		const auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_render_target_view);
+		if (!context || !render_target_view)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		context->ClearRenderTargetView(renderTargetView, color.Data());
+		context->ClearRenderTargetView(render_target_view, color.Data());
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(RHI_Present_Mode mode)
+	bool RHI_SwapChain::Present(const RHI_Present_Mode mode) const
 	{
-		if (!m_swapChain)
+		if (!m_swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		auto ptr_swapChain = (IDXGISwapChain*)m_swapChain;
-		ptr_swapChain->Present((UINT)mode, 0);
+		auto ptr_swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain);
+		ptr_swap_chain->Present(static_cast<UINT>(mode), 0);
 		return true;
 	}
 }

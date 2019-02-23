@@ -35,7 +35,7 @@ namespace Directus
 	{
 	public:
 		AudioSource(Context* context, Entity* entity, Transform* transform);
-		~AudioSource();
+		~AudioSource() = default;
 
 		//= INTERFACE ================================
 		void OnInitialize() override;
@@ -47,45 +47,45 @@ namespace Directus
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= PROPERTIES =========================================================
-		void SetAudioClip(const std::shared_ptr<AudioClip>& audioClip);
+		//= PROPERTIES ===================================================================
+		void SetAudioClip(const std::shared_ptr<AudioClip>& audio_clip);
 		const std::string& GetAudioClipName();
 
 		bool Play();
 		bool Stop();
 
-		bool GetMute() { return m_mute; }
+		bool GetMute() const { return m_mute; }
 		void SetMute(bool mute);
 
-		bool GetPlayOnStart()					{ return m_playOnStart; }
-		void SetPlayOnStart(bool playOnStart)	{ m_playOnStart = playOnStart; }
+		bool GetPlayOnStart() const						{ return m_play_on_start; }
+		void SetPlayOnStart(const bool play_on_start)	{ m_play_on_start = play_on_start; }
 
-		bool GetLoop()			{ return m_loop; }
-		void SetLoop(bool loop) { m_loop = loop; }
+		bool GetLoop() const			{ return m_loop; }
+		void SetLoop(const bool loop)	{ m_loop = loop; }
 
-		int GetPriority() { return m_priority; }
+		int GetPriority() const { return m_priority; }
 		void SetPriority(int priority);
 
-		float GetVolume() { return m_volume; }
+		float GetVolume() const { return m_volume; }
 		void SetVolume(float volume);
 
-		float GetPitch() { return m_pitch; }
+		float GetPitch() const { return m_pitch; }
 		void SetPitch(float pitch);
 
-		float GetPan() { return m_pan; }
+		float GetPan() const { return m_pan; }
 		void SetPan(float pan);
-		//======================================================================
+		//================================================================================
 
 	private:
-		std::shared_ptr<AudioClip> m_audioClip;
-		std::string m_filePath;
+		std::shared_ptr<AudioClip> m_audio_clip;
+		std::string m_file_path;
 		bool m_mute;
-		bool m_playOnStart;
+		bool m_play_on_start;
 		bool m_loop;
 		int m_priority;
 		float m_volume;
 		float m_pitch;
 		float m_pan;
-		bool m_audioClipLoaded;
+		bool m_audio_clip_loaded;
 	};
 }

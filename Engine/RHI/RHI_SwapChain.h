@@ -35,27 +35,27 @@ namespace Directus
 	{
 	public:
 		RHI_SwapChain(
-			void* windowHandle,
+			void* window_handle,
 			std::shared_ptr<RHI_Device> device,
 			unsigned int width,
 			unsigned int height,
 			RHI_Format format			= Format_R8G8B8A8_UNORM,
-			RHI_Swap_Effect swapEffect	= Swap_Discard,
+			RHI_Swap_Effect swap_effect	= Swap_Discard,
 			unsigned long flags			= 0,
-			unsigned int bufferCount	= 1
+			unsigned int buffer_count	= 1
 		);
 		~RHI_SwapChain();
 
 		bool Resize(unsigned int width, unsigned int height);
-		bool SetAsRenderTarget();
-		bool Present(RHI_Present_Mode mode);
-		bool Clear(const Math::Vector4& color);
+		bool SetAsRenderTarget() const;
+		bool Present(RHI_Present_Mode mode) const;
+		bool Clear(const Math::Vector4& color) const;
 
 	private:
-		void* m_swapChain			= nullptr;
-		void* m_renderTargetView	= nullptr;
+		void* m_swap_chain			= nullptr;
+		void* m_render_target_view	= nullptr;
 		unsigned long m_flags		= 0;
-		unsigned int m_bufferCount	= 0;
+		unsigned int m_buffer_count	= 0;
 		RHI_Format m_format;
 		std::shared_ptr<RHI_Device> m_device;
 	};

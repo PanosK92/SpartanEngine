@@ -49,31 +49,31 @@ class Widget_Properties : public Widget
 {
 public:
 	Widget_Properties(Directus::Context* context);
-	void Tick(float deltaTime) override;
+	void Tick(float delta_time) override;
 
-	static void Inspect(std::weak_ptr<Directus::Entity> entity);
+	static void Inspect(const std::weak_ptr<Directus::Entity>& entity);
 	static void Inspect(std::weak_ptr<Directus::Material> material);
 
 	// Inspected resources
-	static std::weak_ptr<Directus::Entity> m_inspectedEntity;
-	static std::weak_ptr<Directus::Material> m_inspectedMaterial;
+	static std::weak_ptr<Directus::Entity> m_inspected_entity;
+	static std::weak_ptr<Directus::Material> m_inspected_material;
 
 private:
-	void ShowTransform(std::shared_ptr<Directus::Transform>& transform);
-	void ShowLight(std::shared_ptr<Directus::Light>& light);
-	void ShowRenderable(std::shared_ptr<Directus::Renderable>& renderable);
-	void ShowRigidBody(std::shared_ptr<Directus::RigidBody>& rigidBody);
-	void ShowCollider(std::shared_ptr<Directus::Collider>& collider);
-	void ShowConstraint(std::shared_ptr<Directus::Constraint>& constraint);
-	void ShowMaterial(std::shared_ptr<Directus::Material>& material);
-	void ShowCamera(std::shared_ptr<Directus::Camera>& camera);
-	void ShowAudioSource(std::shared_ptr<Directus::AudioSource>& audioSource);
-	void ShowAudioListener(std::shared_ptr<Directus::AudioListener>& audioListener);
-	void ShowScript(std::shared_ptr<Directus::Script>& script);
+	void ShowTransform(std::shared_ptr<Directus::Transform>& transform) const;
+	void ShowLight(std::shared_ptr<Directus::Light>& light) const;
+	void ShowRenderable(std::shared_ptr<Directus::Renderable>& renderable) const;
+	void ShowRigidBody(std::shared_ptr<Directus::RigidBody>& rigid_body) const;
+	void ShowCollider(std::shared_ptr<Directus::Collider>& collider) const;
+	void ShowConstraint(std::shared_ptr<Directus::Constraint>& constraint) const;
+	void ShowMaterial(std::shared_ptr<Directus::Material>& material) const;
+	void ShowCamera(std::shared_ptr<Directus::Camera>& camera) const;
+	void ShowAudioSource(std::shared_ptr<Directus::AudioSource>& audio_source) const;
+	void ShowAudioListener(std::shared_ptr<Directus::AudioListener>& audio_listener) const;
+	void ShowScript(std::shared_ptr<Directus::Script>& script) const;
 
-	void ShowAddComponentButton();
-	void ComponentContextMenu_Add();
-	void Drop_AutoAddComponents();
+	void ShowAddComponentButton() const;
+	void ComponentContextMenu_Add() const;
+	void Drop_AutoAddComponents() const;
 
 	// Color pickers
 	std::unique_ptr<ButtonColorPicker> m_colorPicker_material;

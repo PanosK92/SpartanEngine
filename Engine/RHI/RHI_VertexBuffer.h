@@ -32,28 +32,28 @@ namespace Directus
 	class RHI_VertexBuffer : public RHI_Object
 	{
 	public:
-		RHI_VertexBuffer(std::shared_ptr<RHI_Device> rhiDevice);
+		RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device);
 		~RHI_VertexBuffer();
 
 		bool Create(const std::vector<RHI_Vertex_PosCol>& vertices);
 		bool Create(const std::vector<RHI_Vertex_PosUV>& vertices);
 		bool Create(const std::vector<RHI_Vertex_PosUvNorTan>& vertices);
-		bool CreateDynamic(unsigned int stride, unsigned int vertexCount);
-		void* Map();
-		bool Unmap();
+		bool CreateDynamic(unsigned int stride, unsigned int vertex_count);
+		void* Map() const;
+		bool Unmap() const;
 	
-		void* GetBuffer()				{ return m_buffer; }
-		unsigned int GetStride()		{ return m_stride; }
-		unsigned int GetVertexCount()	{ return m_vertexCount; }
-		unsigned int GetMemoryUsage()	{ return m_memoryUsage; }
+		void* GetBuffer() const				{ return m_buffer; }
+		unsigned int GetStride() const		{ return m_stride; }
+		unsigned int GetVertexCount() const	{ return m_vertex_count; }
+		unsigned int GetMemoryUsage() const	{ return m_memory_usage; }
 
 	protected:
-		unsigned int m_memoryUsage;
-		std::shared_ptr<RHI_Device> m_rhiDevice;
+		unsigned int m_memory_usage;
+		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// D3D11
 		void* m_buffer;
 		unsigned int m_stride;
-		unsigned int m_vertexCount;
+		unsigned int m_vertex_count;
 	};
 }

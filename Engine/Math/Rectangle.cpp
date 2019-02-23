@@ -65,14 +65,14 @@ namespace Directus::Math
 		// Create indices
 		vector<unsigned int> indices = { 0, 1, 2, 3, 4, 5 };
 
-		m_vertexBuffer = make_shared<RHI_VertexBuffer>(renderer->GetRHIDevice());
+		m_vertexBuffer = make_shared<RHI_VertexBuffer>(renderer->GetRhiDevice());
 		if (!m_vertexBuffer->Create(vertices))
 		{
 			LOG_ERROR("Failed to create vertex buffer.");
 			return false;
 		}
 
-		m_indexBuffer = make_shared<RHI_IndexBuffer>(renderer->GetRHIDevice());
+		m_indexBuffer = make_shared<RHI_IndexBuffer>(renderer->GetRhiDevice());
 		if (!m_indexBuffer->Create(indices))
 		{
 			LOG_ERROR("Failed to create index buffer.");

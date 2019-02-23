@@ -50,23 +50,23 @@ namespace Directus
 	class ShaderVariation : public RHI_Shader, public std::enable_shared_from_this<ShaderVariation>
 	{
 	public:
-		ShaderVariation(std::shared_ptr<RHI_Device> device, Context* context);
-		~ShaderVariation();
+		ShaderVariation(const std::shared_ptr<RHI_Device>& rhi_device, Context* context);
+		~ShaderVariation() = default;
 
-		void Compile(const std::string& filePath, unsigned long shaderFlags);
-		void UpdatePerObjectBuffer(Transform* transform, Material* material, const Math::Matrix& mView, const Math::Matrix mProjection);
+		void Compile(const std::string& file_path, unsigned long shader_flags);
+		void UpdatePerObjectBuffer(Transform* transform, Material* material, const Math::Matrix& m_view, const Math::Matrix& mProjection);
 
-		unsigned long GetShaderFlags()	{ return m_variationFlags; }
-		bool HasAlbedoTexture()			{ return m_variationFlags & Variation_Albedo; }
-		bool HasRoughnessTexture()		{ return m_variationFlags & Variation_Roughness; }
-		bool HasMetallicTexture()		{ return m_variationFlags & Variation_Metallic; }
-		bool HasNormalTexture()			{ return m_variationFlags & Variation_Normal; }
-		bool HasHeightTexture()			{ return m_variationFlags & Variation_Height; }
-		bool HasOcclusionTexture()		{ return m_variationFlags & Variation_Occlusion; }
-		bool HasEmissionTexture()		{ return m_variationFlags & Variation_Emission; }
-		bool HasMaskTexture()			{ return m_variationFlags & Variation_Mask; }
+		unsigned long GetShaderFlags() const	{ return m_variationFlags; }
+		bool HasAlbedoTexture() const			{ return m_variationFlags & Variation_Albedo; }
+		bool HasRoughnessTexture() const		{ return m_variationFlags & Variation_Roughness; }
+		bool HasMetallicTexture() const			{ return m_variationFlags & Variation_Metallic; }
+		bool HasNormalTexture() const			{ return m_variationFlags & Variation_Normal; }
+		bool HasHeightTexture() const			{ return m_variationFlags & Variation_Height; }
+		bool HasOcclusionTexture() const		{ return m_variationFlags & Variation_Occlusion; }
+		bool HasEmissionTexture() const			{ return m_variationFlags & Variation_Emission; }
+		bool HasMaskTexture() const				{ return m_variationFlags & Variation_Mask; }
 
-		std::shared_ptr<RHI_ConstantBuffer>& GetPerObjectBuffer()	{ return m_constantBuffer; }
+		std::shared_ptr<RHI_ConstantBuffer>& GetPerObjectBuffer()	{ return m_constant_buffer; }
 
 		// Variation cache
 		static std::shared_ptr<ShaderVariation> GetMatchingShader(unsigned long flags);
@@ -83,20 +83,20 @@ namespace Directus
 		// BUFFER
 		struct PerObjectBufferType
 		{
-			Math::Vector4 matAlbedo;
-			Math::Vector2 matTilingUV;
-			Math::Vector2 matOffsetUV;
-			float matRoughnessMul;
-			float matMetallicMul;
-			float matNormalMul;
-			float matHeightMul;		
-			float matShadingMode;
+			Math::Vector4 mat_albedo;
+			Math::Vector2 mat_tiling_uv;
+			Math::Vector2 mat_offset_uv;
+			float mat_roughness_mul;
+			float mat_metallic_mul;
+			float mat_normal_mul;
+			float mat_height_mul;		
+			float mat_shading_mode;
 			Math::Vector3 padding;
-			Math::Matrix mModel;
-			Math::Matrix mMVP_current;
-			Math::Matrix mMVP_previous;
+			Math::Matrix model;
+			Math::Matrix mvp_current;
+			Math::Matrix mvp_previous;
 		};
-		PerObjectBufferType perObjectBufferCPU;
-		std::shared_ptr<RHI_ConstantBuffer> m_constantBuffer;
+		PerObjectBufferType per_object_buffer_cpu;
+		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer;
 	};
 }

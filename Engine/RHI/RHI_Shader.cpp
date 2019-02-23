@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "RHI_Shader.h"
 #include "RHI_ConstantBuffer.h"
-#include "..\Logging\Log.h"
+#include "../Logging/Log.h"
 //=============================
 
 //= NAMESPACES =====
@@ -44,20 +44,20 @@ namespace Directus
 			return;
 		}
 
-		if (!m_constantBuffer)
+		if (!m_constant_buffer)
 		{
 			LOG_WARNING("Uninitialized buffer.");
 			return;
 		}
 
 		// Get a pointer of the buffer
-		auto buffer = m_constantBuffer->Map();	// Get buffer pointer
-		memcpy(buffer, data, m_bufferSize);		// Copy data
-		m_constantBuffer->Unmap();				// Unmap buffer
+		auto buffer = m_constant_buffer->Map();	// Get buffer pointer
+		memcpy(buffer, data, m_buffer_size);		// Copy data
+		m_constant_buffer->Unmap();				// Unmap buffer
 	}
 
 	void RHI_Shader::CreateConstantBuffer(unsigned int size)
 	{
-		m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice, size);
+		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, size);
 	}
 }

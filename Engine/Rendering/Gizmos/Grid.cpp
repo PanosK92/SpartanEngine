@@ -75,10 +75,10 @@ namespace Directus
 			for (int i = -halfSizeW; i < halfSizeW; i++)
 			{
 				// Become more transparent, the further out we go
-				float alphaWidth	= 1.0f - ((float)Math::Helper::Abs(j) / (float)halfSizeH);
-				float alphaHeight	= 1.0f - ((float)Math::Helper::Abs(i) / (float)halfSizeW);
+				float alphaWidth	= 1.0f - ((float)Abs(j) / (float)halfSizeH);
+				float alphaHeight	= 1.0f - ((float)Abs(i) / (float)halfSizeW);
 				float alpha			= (alphaWidth + alphaHeight) * 0.5f;
-				alpha				= Math::Helper::Pow(alpha, 10.0f);
+				alpha				= Pow(alpha, 10.0f);
 
 				// LINE 1
 				// Upper left.

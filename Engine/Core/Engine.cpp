@@ -42,7 +42,7 @@ namespace Directus
 {
 	unsigned int Engine::m_flags = 0;
 
-	Engine::Engine(std::shared_ptr<Context> context)
+	Engine::Engine(const std::shared_ptr<Context>& context)
 	{
 		m_context = context;
 
@@ -75,7 +75,7 @@ namespace Directus
 		EventSystem::Get().Clear();
 	}
 
-	void Engine::Tick()
+	void Engine::Tick() const
 	{
 		FIRE_EVENT(Event_Frame_Start);
 

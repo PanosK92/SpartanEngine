@@ -65,7 +65,7 @@ namespace Directus
 		m_scriptPath				= path;
 		m_entity					= entity;
 		m_className					= FileSystem::GetFileNameNoExtensionFromFilePath(m_scriptPath);
-		m_moduleName				= m_className + to_string(m_entity.lock()->GetID());
+		m_moduleName				= m_className + to_string(m_entity.lock()->GetId());
 		m_constructorDeclaration	= m_className + " @" + m_className + "(Entity @)";
 
 		// Instantiate the script

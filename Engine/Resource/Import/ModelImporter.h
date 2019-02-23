@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =====================
 #include "../../Core/EngineDefs.h"
-#include "../../RHI/RHI_Definition.h"
 #include <memory>
 #include <string>
 #include <vector>
-//===================================
+//================================
 
 struct aiNode;
 struct aiScene;
@@ -46,16 +45,16 @@ namespace Directus
 	{
 	public:
 		ModelImporter(Context* context);
-		~ModelImporter() {}
+		~ModelImporter() = default;
 
-		bool Load(std::shared_ptr<Model> model, const std::string& filePath);
+		bool Load(std::shared_ptr<Model> model, const std::string& file_path);
 
 	private:
 		// PROCESSING
-		void ReadNodeHierarchy(const aiScene* assimpScene, aiNode* assimpNode, std::shared_ptr<Model>& model, Entity* parentNode = nullptr, Entity* newNode = nullptr);
+		void ReadNodeHierarchy(const aiScene* assimp_scene, aiNode* assimp_node, std::shared_ptr<Model>& model, Entity* parent_node = nullptr, Entity* new_entity = nullptr);
 		void ReadAnimations(const aiScene* scene, std::shared_ptr<Model>& model);
-		void LoadMesh(const aiScene* assimpScene, aiMesh* assimpMesh, std::shared_ptr<Model>& model, Entity* parententity);
-		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimpMaterial, std::shared_ptr<Model>& model);
+		void LoadMesh(const aiScene* assimp_scene, aiMesh* assimp_mesh, std::shared_ptr<Model>& model, Entity* entity_parent);
+		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimp_material, std::shared_ptr<Model>& model);
 
 		Context* m_context;
 		World* m_world;

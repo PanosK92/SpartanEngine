@@ -55,13 +55,13 @@ bool Widget_ProgressDialog::Begin()
 	// Acquire progress
 	if (isLoadingModel)
 	{
-		m_progress = progressReport.GetPercentage(Directus::g_progress_ModelImporter);
-		m_progressStatus = progressReport.GetStatus(Directus::g_progress_ModelImporter);
+		m_progress = progressReport.GetPercentage(g_progress_ModelImporter);
+		m_progressStatus = progressReport.GetStatus(g_progress_ModelImporter);
 	}
 	else if (isLoadingScene)
 	{
-		m_progress = progressReport.GetPercentage(Directus::g_progress_Scene);
-		m_progressStatus = progressReport.GetStatus(Directus::g_progress_Scene);
+		m_progress = progressReport.GetPercentage(g_progress_Scene);
+		m_progressStatus = progressReport.GetStatus(g_progress_Scene);
 	}
 
 	// Show only if an operation is in progress

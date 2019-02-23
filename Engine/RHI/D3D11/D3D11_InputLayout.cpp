@@ -36,17 +36,17 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_InputLayout::RHI_InputLayout(shared_ptr<RHI_Device> rhiDevice)
+	RHI_InputLayout::RHI_InputLayout(const shared_ptr<RHI_Device>& rhi_device)
 	{
-		m_rhiDevice = rhiDevice;
+		m_rhi_device = rhi_device;
 	}
 
 	RHI_InputLayout::~RHI_InputLayout()
 	{
-		SafeRelease((ID3D11InputLayout*)m_buffer);
+		safe_release(static_cast<ID3D11InputLayout*>(m_buffer));
 	}
 
-	bool RHI_InputLayout::Create(void* vsBlob, unsigned long input_layout)
+	bool RHI_InputLayout::Create(void* vsBlob, const unsigned long input_layout)
 	{
 		if (!vsBlob)
 		{
@@ -54,48 +54,48 @@ namespace Directus
 			return false;
 		}
 
-		m_inputLayout = input_layout;
+		m_input_layout = input_layout;
 		
-		vector<D3D11_INPUT_ELEMENT_DESC> layoutDescs;
-		if (m_inputLayout & Input_Position2D)
+		vector<D3D11_INPUT_ELEMENT_DESC> layout_descs;
+		if (m_input_layout & Input_Position2D)
 		{
-			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_inputLayout & Input_Position3D)
+		if (m_input_layout & Input_Position3D)
 		{
-			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_inputLayout & Input_Texture)
+		if (m_input_layout & Input_Texture)
 		{
-			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_inputLayout & Input_Color8)
+		if (m_input_layout & Input_Color8)
 		{
-			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_inputLayout & Input_Color32)
+		if (m_input_layout & Input_Color32)
 		{
-			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_inputLayout & Input_NormalTangent)
+		if (m_input_layout & Input_NormalTangent)
 		{
-			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "NORMAL",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
-			layoutDescs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "NORMAL",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		auto buffer = (ID3D10Blob*)vsBlob;
-		if (FAILED(m_rhiDevice->GetDevice<ID3D11Device>()->CreateInputLayout
+		auto buffer = static_cast<ID3D10Blob*>(vsBlob);
+		if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateInputLayout
 		(
-			layoutDescs.data(),
-			(unsigned int)layoutDescs.size(),
+			layout_descs.data(),
+			static_cast<unsigned int>(layout_descs.size()),
 			buffer->GetBufferPointer(),
 			buffer->GetBufferSize(),
-			(ID3D11InputLayout**)&m_buffer
+			reinterpret_cast<ID3D11InputLayout**>(&m_buffer)
 		)))
 		{
 			LOG_ERROR("Failed to create input layout");

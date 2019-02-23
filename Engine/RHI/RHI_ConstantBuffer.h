@@ -22,10 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
+#include <memory>
 #include "RHI_Object.h"
 #include "RHI_Definition.h"
-#include <memory>
-#include "..\Core\EngineDefs.h"
+#include "../Core/EngineDefs.h"
 //=============================
 
 namespace Directus
@@ -33,15 +33,15 @@ namespace Directus
 	class ENGINE_CLASS RHI_ConstantBuffer : public RHI_Object
 	{
 	public:
-		RHI_ConstantBuffer(std::shared_ptr<RHI_Device> rhiDevice, unsigned int size);
+		RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, unsigned int size);
 		~RHI_ConstantBuffer();
 
-		void* Map();
-		bool Unmap();
-		void* GetBuffer() { return m_buffer; }
+		void* Map() const;
+		bool Unmap() const;
+		void* GetBuffer() const { return m_buffer; }
 
 	private:
-		std::shared_ptr<RHI_Device> m_rhiDevice;
 		void* m_buffer = nullptr;
+		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

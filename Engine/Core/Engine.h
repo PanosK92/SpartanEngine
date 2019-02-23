@@ -42,21 +42,21 @@ namespace Directus
 	class ENGINE_CLASS Engine
 	{
 	public:
-		Engine(std::shared_ptr<Context> context);
+		Engine(const std::shared_ptr<Context>& context);
 		~Engine();
 
 		// Performs a simulation cycle
-		void Tick();
+		void Tick() const;
 
 		//  Flag helpers
-		static unsigned int EngineMode_GetAll()				{ return m_flags; }
-		static void EngineMode_SetAll(unsigned int flags)	{ m_flags = flags; }
-		static void EngineMode_Enable(Engine_Mode flag)		{ m_flags |= flag; }
-		static void EngineMode_Disable(Engine_Mode flag)	{ m_flags &= ~flag; }
-		static void EngineMode_Toggle(Engine_Mode flag)		{ m_flags = !EngineMode_IsSet(flag) ? m_flags | flag : m_flags & ~flag;}
-		static bool EngineMode_IsSet(Engine_Mode flag)		{ return m_flags & flag; }
+		static unsigned int EngineMode_GetAll()					{ return m_flags; }
+		static void EngineMode_SetAll(const unsigned int flags)	{ m_flags = flags; }
+		static void EngineMode_Enable(const Engine_Mode flag)	{ m_flags |= flag; }
+		static void EngineMode_Disable(const Engine_Mode flag)	{ m_flags &= ~flag; }
+		static void EngineMode_Toggle(const Engine_Mode flag)	{ m_flags = !EngineMode_IsSet(flag) ? m_flags | flag : m_flags & ~flag;}
+		static bool EngineMode_IsSet(const Engine_Mode flag)	{ return m_flags & flag; }
 
-		Context* GetContext() { return m_context.get(); }
+		Context* GetContext() const { return m_context.get(); }
 
 	private:
 		static unsigned int m_flags;

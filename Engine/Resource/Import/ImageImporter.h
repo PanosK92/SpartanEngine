@@ -76,16 +76,16 @@ namespace Directus
 		ImageImporter(Context* context);
 		~ImageImporter();
 
-		bool Load(const std::string& filePath, RHI_Texture* texture);
+		bool Load(const std::string& file_path, RHI_Texture* texture);
 
 	private:	
-		bool GetBitsFromFIBITMAP(std::vector<std::byte>* data, FIBITMAP* bitmap, unsigned int width, unsigned int height, unsigned int channels);
+		bool GetBitsFromFibitmap(std::vector<std::byte>* data, FIBITMAP* bitmap, unsigned int width, unsigned int height, unsigned int channels);
 		void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, unsigned int width, unsigned int height, unsigned int channels);
 
 		unsigned int ComputeChannelCount(FIBITMAP* bitmap);
-		unsigned int ComputeBitsPerChannel(FIBITMAP* bitmap);
-		RHI_Format ComputeTextureFormat(unsigned int bpp, unsigned int channels);
-		bool IsVisuallyGrayscale(FIBITMAP* bitmap);
+		unsigned int ComputeBitsPerChannel(FIBITMAP* bitmap) const;
+		RHI_Format ComputeTextureFormat(unsigned int bpp, unsigned int channels) const;
+		bool IsVisuallyGrayscale(FIBITMAP* bitmap) const;
 		FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap);
 		FIBITMAP* _FreeImage_ConvertTo32Bits(FIBITMAP* bitmap);
 		FIBITMAP* _FreeImage_Rescale(FIBITMAP* bitmap, unsigned int width, unsigned int height);

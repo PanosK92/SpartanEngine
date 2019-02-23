@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_ConstantBuffer.h"
 #include "../../World/Components/Transform.h"
 #include "../../World/Components/Camera.h"
-#include "../../Core/Settings.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -40,7 +39,7 @@ namespace Directus
 {
 	vector<shared_ptr<ShaderVariation>> ShaderVariation::m_variations;
 
-	shared_ptr<ShaderVariation> ShaderVariation::GetMatchingShader(unsigned long flags)
+	shared_ptr<ShaderVariation> ShaderVariation::GetMatchingShader(const unsigned long flags)
 	{
 		for (const auto& shader : m_variations)
 		{
@@ -51,32 +50,27 @@ namespace Directus
 		return nullptr;
 	}
 
-	ShaderVariation::ShaderVariation(shared_ptr<RHI_Device> device, Context* context) : RHI_Shader(device)
+	ShaderVariation::ShaderVariation(const shared_ptr<RHI_Device>& rhi_device, Context* context) : RHI_Shader(rhi_device)
 	{
 		m_context			= context;
 		m_variationFlags	= 0;
 	}
 
-	ShaderVariation::~ShaderVariation()
+	void ShaderVariation::Compile(const string& file_path, const unsigned long shader_flags)
 	{
-
-	}
-
-	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
-	{
-		m_variationFlags = shaderFlags;
+		m_variationFlags = shader_flags;
 
 		// Load and compile the pixel shader
 		AddDefinesBasedOnMaterial();
-		CompilePixel_Async(filePath, m_context);
+		CompilePixel_Async(file_path, m_context);
 
 		// Object Buffer (has to match GBuffer.hlsl)
-		m_constantBuffer = make_shared<RHI_ConstantBuffer>(m_rhiDevice, (unsigned int)sizeof(PerObjectBufferType));
+		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(PerObjectBufferType)));
 
 		m_variations.emplace_back(shared_from_this());
 	}
 
-	void ShaderVariation::UpdatePerObjectBuffer(Transform* transform, Material* material, const Matrix& mView, const Matrix mProjection)
+	void ShaderVariation::UpdatePerObjectBuffer(Transform* transform, Material* material, const Matrix& m_view, const Matrix& mProjection)
 	{
 		if (!material)
 		{
@@ -87,42 +81,42 @@ namespace Directus
 		if (GetState() != Shader_Built)
 			return;
 
-		Matrix mMVP_current = transform->GetMatrix() * mView * mProjection;
+		auto m_mvp_current = transform->GetMatrix() * m_view * mProjection;
 
 		// Determine if the material buffer needs to update
-		bool update = false;
-		update = perObjectBufferCPU.matAlbedo		!= material->GetColorAlbedo()				? true : update;
-		update = perObjectBufferCPU.matTilingUV		!= material->GetTiling()					? true : update;
-		update = perObjectBufferCPU.matOffsetUV		!= material->GetOffset()					? true : update;
-		update = perObjectBufferCPU.matRoughnessMul	!= material->GetRoughnessMultiplier()		? true : update;
-		update = perObjectBufferCPU.matMetallicMul	!= material->GetMetallicMultiplier()		? true : update;
-		update = perObjectBufferCPU.matNormalMul	!= material->GetNormalMultiplier()			? true : update;
-		update = perObjectBufferCPU.matShadingMode	!= float(material->GetShadingMode())		? true : update;
-		update = perObjectBufferCPU.mModel			!= transform->GetMatrix()					? true : update;
-		update = perObjectBufferCPU.mMVP_current	!= mMVP_current								? true : update;
-		update = perObjectBufferCPU.mMVP_previous	!= transform->GetWVP_Previous()				? true : update;
+		auto update = false;
+		update = per_object_buffer_cpu.mat_albedo		!= material->GetColorAlbedo()				? true : update;
+		update = per_object_buffer_cpu.mat_tiling_uv		!= material->GetTiling()					? true : update;
+		update = per_object_buffer_cpu.mat_offset_uv		!= material->GetOffset()					? true : update;
+		update = per_object_buffer_cpu.mat_roughness_mul	!= material->GetRoughnessMultiplier()		? true : update;
+		update = per_object_buffer_cpu.mat_metallic_mul	!= material->GetMetallicMultiplier()		? true : update;
+		update = per_object_buffer_cpu.mat_normal_mul	!= material->GetNormalMultiplier()			? true : update;
+		update = per_object_buffer_cpu.mat_shading_mode	!= float(material->GetShadingMode())		? true : update;
+		update = per_object_buffer_cpu.model			!= transform->GetMatrix()					? true : update;
+		update = per_object_buffer_cpu.mvp_current	!= m_mvp_current							? true : update;
+		update = per_object_buffer_cpu.mvp_previous	!= transform->GetWVP_Previous()				? true : update;
 
 		if (!update)
 			return;
 
-		auto buffer = (PerObjectBufferType*)m_constantBuffer->Map();
+		auto buffer = static_cast<PerObjectBufferType*>(m_constant_buffer->Map());
 		
-		buffer->matAlbedo		= perObjectBufferCPU.matAlbedo			= material->GetColorAlbedo();
-		buffer->matTilingUV		= perObjectBufferCPU.matTilingUV		= material->GetTiling();
-		buffer->matOffsetUV		= perObjectBufferCPU.matOffsetUV		= material->GetOffset();
-		buffer->matRoughnessMul = perObjectBufferCPU.matRoughnessMul	= material->GetRoughnessMultiplier();
-		buffer->matMetallicMul	= perObjectBufferCPU.matMetallicMul		= material->GetMetallicMultiplier();
-		buffer->matNormalMul	= perObjectBufferCPU.matNormalMul		= material->GetNormalMultiplier();
-		buffer->matHeightMul	= perObjectBufferCPU.matNormalMul		= material->GetHeightMultiplier();
-		buffer->matShadingMode	= perObjectBufferCPU.matShadingMode		= float(material->GetShadingMode());
-		buffer->padding			= perObjectBufferCPU.padding			= Vector3::Zero;
-		buffer->mModel			= perObjectBufferCPU.mModel				= transform->GetMatrix();
-		buffer->mMVP_current	= perObjectBufferCPU.mMVP_current		= mMVP_current;
-		buffer->mMVP_previous	= perObjectBufferCPU.mMVP_previous		= transform->GetWVP_Previous();
+		buffer->mat_albedo		= per_object_buffer_cpu.mat_albedo			= material->GetColorAlbedo();
+		buffer->mat_tiling_uv		= per_object_buffer_cpu.mat_tiling_uv		= material->GetTiling();
+		buffer->mat_offset_uv		= per_object_buffer_cpu.mat_offset_uv		= material->GetOffset();
+		buffer->mat_roughness_mul = per_object_buffer_cpu.mat_roughness_mul	= material->GetRoughnessMultiplier();
+		buffer->mat_metallic_mul	= per_object_buffer_cpu.mat_metallic_mul		= material->GetMetallicMultiplier();
+		buffer->mat_normal_mul	= per_object_buffer_cpu.mat_normal_mul		= material->GetNormalMultiplier();
+		buffer->mat_height_mul	= per_object_buffer_cpu.mat_normal_mul		= material->GetHeightMultiplier();
+		buffer->mat_shading_mode	= per_object_buffer_cpu.mat_shading_mode		= float(material->GetShadingMode());
+		buffer->padding			= per_object_buffer_cpu.padding			= Vector3::Zero;
+		buffer->model			= per_object_buffer_cpu.model				= transform->GetMatrix();
+		buffer->mvp_current	= per_object_buffer_cpu.mvp_current		= m_mvp_current;
+		buffer->mvp_previous	= per_object_buffer_cpu.mvp_previous		= transform->GetWVP_Previous();
 		
-		m_constantBuffer->Unmap();
+		m_constant_buffer->Unmap();
 
-		transform->SetWVP_Previous(mMVP_current);
+		transform->SetWVP_Previous(m_mvp_current);
 	}
 
 	void ShaderVariation::AddDefinesBasedOnMaterial()

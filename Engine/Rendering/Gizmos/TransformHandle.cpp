@@ -23,17 +23,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "TransformHandle.h"
-#include "..\Model.h"
-#include "..\Renderer.h"
-#include "..\Utilities\Geometry.h"
-#include "..\..\Logging\Log.h"
-#include "..\..\Input\Input.h"
-#include "..\..\World\Entity.h"
-#include "..\..\World\Components\Camera.h"
-#include "..\..\World\Components\Transform.h"
-#include "..\..\Core\Context.h"
-#include "..\..\Core\Settings.h"
-#include "..\..\World\Components\Renderable.h"
+#include "../Model.h"
+#include "../Renderer.h"
+#include "../Utilities/Geometry.h"
+#include "../../Logging/Log.h"
+#include "../../Input/Input.h"
+#include "../../World/Entity.h"
+#include "../../World/Components/Camera.h"
+#include "../../World/Components/Transform.h"
+#include "../../Core/Context.h"
+#include "../../Core/Settings.h"
+#include "../../World/Components/Renderable.h"
 //============================================
 
 //=============================
@@ -143,7 +143,7 @@ namespace Directus
 			// Create ray starting from camera position and pointing towards where the mouse is pointing
 			Vector2	mouse_pos				= m_input->GetMousePosition();
 			const RHI_Viewport& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
-			Vector2 editor_offset			= m_context->GetSubsystem<Renderer>()->viewport_editorOffset;
+			Vector2 editor_offset			= m_context->GetSubsystem<Renderer>()->viewport_editor_offset;
 			Vector2 mouse_pos_relative		= mouse_pos - editor_offset;
 			Vector3 ray_start				= camera->GetTransform()->GetPosition();
 			Vector3 ray_end					= camera->ScreenToWorldPoint(mouse_pos_relative);

@@ -22,10 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "RHI_Definition.h"
 #include <memory>
-#include <vector>
-#include <any>
+#include "RHI_Definition.h"
 #include "../Core/EngineDefs.h"
 //=============================
 
@@ -34,19 +32,19 @@ namespace Directus
 	class ENGINE_CLASS RHI_InputLayout
 	{
 	public:
-		RHI_InputLayout(std::shared_ptr<RHI_Device> rhiDevice);
+		RHI_InputLayout(const std::shared_ptr<RHI_Device>& rhi_device);
 		~RHI_InputLayout();
 
-		//= GRAPHICS API =====================================
-		bool Create(void* VSBlob, unsigned long input_layout);
-		//====================================================
+		//= GRAPHICS API ======================================
+		bool Create(void* vs_blob, unsigned long input_layout);
+		//=====================================================
 
-		unsigned long GetInputLayout()	{ return m_inputLayout; }
-		void* GetBuffer()				{ return m_buffer; }
+		unsigned long GetInputLayout() const	{ return m_input_layout; }
+		void* GetBuffer() const					{ return m_buffer; }
 
-	private:
-		std::shared_ptr<RHI_Device> m_rhiDevice;
-		unsigned long m_inputLayout = 0;
-		void* m_buffer				= nullptr;
+	private:		
+		unsigned long m_input_layout	= 0;
+		void* m_buffer					= nullptr;
+		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

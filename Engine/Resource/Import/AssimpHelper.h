@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ================================
-#include <memory>
 #include <assimp/scene.h>
 #include <assimp/DefaultLogger.hpp>
 #include <assimp/ProgressHandler.hpp>
@@ -37,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus::AssimpHelper
 {
-	inline Math::Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
+	inline Math::Matrix ai_matrix4_x4_to_matrix(const aiMatrix4x4& transform)
 	{
 		return Math::Matrix
 		(
@@ -48,21 +47,21 @@ namespace Directus::AssimpHelper
 		);
 	}
 
-	inline void SetentityTransform(aiNode* node, Entity* entity)
+	constexpr void set_entity_transform(aiNode* node, Entity* entity)
 	{
 		if (!entity)
 			return;
 
 		// Convert to engine matrix
-		Math::Matrix mEngine = aiMatrix4x4ToMatrix(node->mTransformation);
+		auto matrix_engine = ai_matrix4_x4_to_matrix(node->mTransformation);
 
 		// Apply position, rotation and scale
-		entity->GetTransform_PtrRaw()->SetPositionLocal(mEngine.GetTranslation());
-		entity->GetTransform_PtrRaw()->SetRotationLocal(mEngine.GetRotation());
-		entity->GetTransform_PtrRaw()->SetScaleLocal(mEngine.GetScale());
+		entity->GetTransform_PtrRaw()->SetPositionLocal(matrix_engine.GetTranslation());
+		entity->GetTransform_PtrRaw()->SetRotationLocal(matrix_engine.GetRotation());
+		entity->GetTransform_PtrRaw()->SetScaleLocal(matrix_engine.GetScale());
 	}
 
-	inline void ComputeNodeCount(aiNode* node, int* count)
+	constexpr void compute_node_count(aiNode* node, int* count)
 	{
 		if (!node)
 			return;
@@ -72,28 +71,28 @@ namespace Directus::AssimpHelper
 		// Process children
 		for (unsigned int i = 0; i < node->mNumChildren; i++)
 		{
-			ComputeNodeCount(node->mChildren[i], count);
+			compute_node_count(node->mChildren[i], count);
 		}
 	}
 
-	inline Math::Vector4 ToVector4(const aiColor4D& aiColor)
+	inline Math::Vector4 to_vector4(const aiColor4D& ai_color)
 	{
-		return Math::Vector4(aiColor.r, aiColor.g, aiColor.b, aiColor.a);
+		return Math::Vector4(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
 	}
 
-	inline Math::Vector3 ToVector3(const aiVector3D& aiVector)
+	inline Math::Vector3 to_vector3(const aiVector3D& ai_vector)
 	{
-		return Math::Vector3(aiVector.x, aiVector.y, aiVector.z);
+		return Math::Vector3(ai_vector.x, ai_vector.y, ai_vector.z);
 	}
 
-	inline Math::Vector2 ToVector2(const aiVector2D& aiVector)
+	inline Math::Vector2 to_vector2(const aiVector2D& ai_vector)
 	{
-		return Math::Vector2(aiVector.x, aiVector.y);
+		return Math::Vector2(ai_vector.x, ai_vector.y);
 	}
 
-	inline Math::Quaternion ToQuaternion(const aiQuaternion& aiQuaternion)
+	inline Math::Quaternion to_quaternion(const aiQuaternion& ai_quaternion)
 	{
-		return Math::Quaternion(aiQuaternion.x, aiQuaternion.y, aiQuaternion.z, aiQuaternion.w);
+		return Math::Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
 	}
 
 	// Implement Assimp:Logger
@@ -108,26 +107,26 @@ namespace Directus::AssimpHelper
 		{
 #ifdef DEBUG
 			Log::m_callerName = "Directus::ModelImporter";
-			Log::Write(message, Log_Type::Log_Info);
+			Log::Write(message, Log_Info);
 #endif
 		}
 
 		void OnInfo(const char* message) override
 		{
 			Log::m_callerName = "Directus::ModelImporter";
-			Log::Write(message, Log_Type::Log_Info);
+			Log::Write(message, Log_Info);
 		}
 
 		void OnWarn(const char* message) override
 		{
 			Log::m_callerName = "Directus::ModelImporter";
-			Log::Write(message, Log_Type::Log_Warning);
+			Log::Write(message, Log_Warning);
 		}
 
 		void OnError(const char* message) override
 		{
 			Log::m_callerName = "Directus::ModelImporter";
-			Log::Write(message, Log_Type::Log_Error);
+			Log::Write(message, Log_Error);
 		}
 	};
 
@@ -135,101 +134,101 @@ namespace Directus::AssimpHelper
 	class AssimpProgress : public Assimp::ProgressHandler
 	{
 	public:
-		AssimpProgress(const std::string& filePath)
+		AssimpProgress(const std::string& file_path)
 		{
-			m_filePath = filePath;
-			m_fileName = FileSystem::GetFileNameFromFilePath(filePath);
+			m_file_path = file_path;
+			m_file_name = FileSystem::GetFileNameFromFilePath(file_path);
 
 			// Start progress tracking
-			ProgressReport& progress = ProgressReport::Get();
-			progress.Reset(Directus::g_progress_ModelImporter);
-			progress.SetIsLoading(Directus::g_progress_ModelImporter, true);
+			auto& progress = ProgressReport::Get();
+			progress.Reset(g_progress_ModelImporter);
+			progress.SetIsLoading(g_progress_ModelImporter, true);
 		}
 
 		~AssimpProgress()
 		{
-			ProgressReport::Get().SetIsLoading(Directus::g_progress_ModelImporter, false);
+			ProgressReport::Get().SetIsLoading(g_progress_ModelImporter, false);
 		}
 
 		bool Update(float percentage) override { return true; }
 
-		void UpdateFileRead(int currentStep, int numberOfSteps) override
+		void UpdateFileRead(int current_step, int number_of_steps) override
 		{
-			ProgressReport& progress = ProgressReport::Get();
-			progress.SetStatus(Directus::g_progress_ModelImporter, "Loading \"" + m_fileName + "\" from disk...");
-			progress.SetJobsDone(Directus::g_progress_ModelImporter, currentStep);
-			progress.SetJobCount(Directus::g_progress_ModelImporter, numberOfSteps);
+			auto& progress = ProgressReport::Get();
+			progress.SetStatus(g_progress_ModelImporter, "Loading \"" + m_file_name + "\" from disk...");
+			progress.SetJobsDone(g_progress_ModelImporter, current_step);
+			progress.SetJobCount(g_progress_ModelImporter, number_of_steps);
 		}
 
-		void UpdatePostProcess(int currentStep, int numberOfSteps) override
+		void UpdatePostProcess(int current_step, int number_of_steps) override
 		{
-			ProgressReport& progress = ProgressReport::Get();
-			progress.SetStatus(Directus::g_progress_ModelImporter, "Post-Processing \"" + m_fileName + "\"");
-			progress.SetJobsDone(Directus::g_progress_ModelImporter, currentStep);
-			progress.SetJobCount(Directus::g_progress_ModelImporter, numberOfSteps);
+			auto& progress = ProgressReport::Get();
+			progress.SetStatus(g_progress_ModelImporter, "Post-Processing \"" + m_file_name + "\"");
+			progress.SetJobsDone(g_progress_ModelImporter, current_step);
+			progress.SetJobCount(g_progress_ModelImporter, number_of_steps);
 		}
 
 	private:
-		std::string m_filePath;
-		std::string m_fileName;
+		std::string m_file_path;
+		std::string m_file_name;
 	};
 
-	inline std::string Texture_TryMultipleExtensions(const std::string& filePath)
+	inline std::string texture_try_multiple_extensions(const std::string& file_path)
 	{
 		// Remove extension
-		std::string filePathNoExt = FileSystem::GetFilePathWithoutExtension(filePath);
+		const auto file_path_no_ext = FileSystem::GetFilePathWithoutExtension(file_path);
 
 		// Check if the file exists using all engine supported extensions
-		auto supportedFormats = FileSystem::GetSupportedImageFormats();
-		for (unsigned int i = 0; i < supportedFormats.size(); i++)
+		auto supported_formats = FileSystem::GetSupportedImageFormats();
+		for (const auto& supported_format : supported_formats)
 		{
-			std::string newFilePath			= filePathNoExt + supportedFormats[i];
-			std::string newFilePathUpper	= filePathNoExt + FileSystem::ConvertToUppercase(supportedFormats[i]);
+			auto new_file_path			= file_path_no_ext + supported_format;
+			auto new_file_path_upper	= file_path_no_ext + FileSystem::ConvertToUppercase(supported_format);
 
-			if (FileSystem::FileExists(newFilePath))
+			if (FileSystem::FileExists(new_file_path))
 			{
-				return newFilePath;
+				return new_file_path;
 			}
 
-			if (FileSystem::FileExists(newFilePathUpper))
+			if (FileSystem::FileExists(new_file_path_upper))
 			{
-				return newFilePathUpper;
+				return new_file_path_upper;
 			}
 		}
 
-		return filePath;
+		return file_path;
 	}
 
-	inline std::string Texture_ValidatePath(const std::string& originalTexturePath, const std::string& modelPath)
+	inline std::string texture_validate_path(const std::string& original_texture_path, const std::string& model_path)
 	{
 		// Models usually return a texture path which is relative to the model's directory.
 		// However, to load anything, we'll need an absolute path, so we construct it here.
-		std::string modelDir		= FileSystem::GetDirectoryFromFilePath(modelPath);
-		std::string fullTexturePath = modelDir + originalTexturePath;
+		const auto model_dir	= FileSystem::GetDirectoryFromFilePath(model_path);
+		auto full_texture_path	= model_dir + original_texture_path;
 
 		// 1. Check if the texture path is valid
-		if (FileSystem::FileExists(fullTexturePath))
-			return fullTexturePath;
+		if (FileSystem::FileExists(full_texture_path))
+			return full_texture_path;
 
 		// 2. Check the same texture path as previously but 
 		// this time with different file extensions (jpg, png and so on).
-		fullTexturePath = Texture_TryMultipleExtensions(fullTexturePath);
-		if (FileSystem::FileExists(fullTexturePath))
-			return fullTexturePath;
+		full_texture_path = texture_try_multiple_extensions(full_texture_path);
+		if (FileSystem::FileExists(full_texture_path))
+			return full_texture_path;
 
 		// At this point we know the provided path is wrong, we will make a few guesses.
 		// The most common mistake is that the artist provided a path which is absolute to his computer.
 
 		// 3. Check if the texture is in the same folder as the model
-		fullTexturePath = modelDir + FileSystem::GetFileNameFromFilePath(fullTexturePath);
-		if (FileSystem::FileExists(fullTexturePath))
-			return fullTexturePath;
+		full_texture_path = model_dir + FileSystem::GetFileNameFromFilePath(full_texture_path);
+		if (FileSystem::FileExists(full_texture_path))
+			return full_texture_path;
 
 		// 4. Check the same texture path as previously but 
 		// this time with different file extensions (jpg, png and so on).
-		fullTexturePath = Texture_TryMultipleExtensions(fullTexturePath);
-		if (FileSystem::FileExists(fullTexturePath))
-			return fullTexturePath;
+		full_texture_path = texture_try_multiple_extensions(full_texture_path);
+		if (FileSystem::FileExists(full_texture_path))
+			return full_texture_path;
 
 		// Give up, no valid texture path was found
 		return NOT_ASSIGNED;

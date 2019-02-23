@@ -30,26 +30,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	#define ValidateSubsystemType(T) static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem")
+	#define VALIDATE_SUBSYSTEM_TYPE(T) static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem")
 
 	class ENGINE_CLASS Context
 	{
 	public:
-		Context() {}
+		Context() = default;
 		~Context() { m_subsystems.clear(); }
 
 		// Register a subsystem
 		template <class T>
 		void RegisterSubsystem()
 		{
-			ValidateSubsystemType(T);
+			VALIDATE_SUBSYSTEM_TYPE(T);
 			m_subsystems.emplace_back(std::make_shared<T>(this));
 		}
 
 		// Initialize subsystems
 		bool Initialize()
 		{
-			bool result = true;
+			auto result = true;
 			for (const auto& subsystem : m_subsystems)
 			{
 				if (!subsystem->Initialize())
@@ -75,7 +75,7 @@ namespace Directus
 		template <class T> 
 		std::shared_ptr<T> GetSubsystem()
 		{
-			ValidateSubsystemType(T);
+			VALIDATE_SUBSYSTEM_TYPE(T);
 			for (const auto& subsystem : m_subsystems)
 			{
 				if (typeid(T) == typeid(*subsystem))

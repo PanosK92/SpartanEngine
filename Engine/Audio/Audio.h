@@ -47,16 +47,16 @@ namespace Directus
 		void Tick() override;
 		//===================
 
-		FMOD::System* GetSystemFMOD() { return m_systemFMOD; }
+		auto GetSystemFMOD() const { return m_system_fmod; }
 		void SetListenerTransform(Transform* transform);
 
 	private:
-		void LogErrorFMOD(int error);
+		void LogErrorFmod(int error) const;
 
-		int m_resultFMOD;
-		FMOD::System* m_systemFMOD;
-		int m_maxChannels;
-		float m_distanceFentity;
+		unsigned int m_result_fmod;
+		FMOD::System* m_system_fmod;
+		unsigned int m_max_channels;
+		float m_distance_entity;
 		bool m_initialized;
 		Transform* m_listener;
 		Profiler* m_profiler;

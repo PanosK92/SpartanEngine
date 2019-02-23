@@ -38,15 +38,15 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_DepthStencilState::RHI_DepthStencilState(shared_ptr<RHI_Device> device, bool depthEnabled)
+	RHI_DepthStencilState::RHI_DepthStencilState(const shared_ptr<RHI_Device>& rhi_device, const bool depth_enabled)
 	{
 		// Save properties
-		m_depthEnabled = depthEnabled;
+		m_depth_enabled = depth_enabled;
 
 		// Create description
 		D3D11_DEPTH_STENCIL_DESC desc;
 
-		if (!depthEnabled)
+		if (!depth_enabled)
 		{
 			desc.DepthEnable					= false;
 			desc.DepthWriteMask					= D3D11_DEPTH_WRITE_MASK_ALL;
@@ -77,13 +77,13 @@ namespace Directus
 		}
 
 		// Create depth-stencil state
-		auto depthStencilState	= (ID3D11DepthStencilState*)m_buffer;
-		auto result				= device->GetDevice<ID3D11Device>()->CreateDepthStencilState(&desc, &depthStencilState);
+		auto depth_stencil_state	= static_cast<ID3D11DepthStencilState*>(m_buffer);
+		const auto result			= rhi_device->GetDevice<ID3D11Device>()->CreateDepthStencilState(&desc, &depth_stencil_state);
 
 		// Handle result
 		if (SUCCEEDED(result))
 		{
-			m_buffer		= (void*)depthStencilState;
+			m_buffer		= static_cast<void*>(depth_stencil_state);
 			m_initialized	= true;
 		}
 		else
@@ -95,7 +95,7 @@ namespace Directus
 
 	RHI_DepthStencilState::~RHI_DepthStencilState()
 	{
-		SafeRelease((ID3D11DepthStencilState*)m_buffer);
+		safe_release(static_cast<ID3D11DepthStencilState*>(m_buffer));
 	}
 }
 #endif

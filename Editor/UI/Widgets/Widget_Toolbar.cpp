@@ -157,31 +157,31 @@ void Widget_Toolbar::ShowRendererOptions()
 			}
 			ImGui::InputFloat("Gamma", &m_renderer->m_gamma, 0.1f);
 			ImGui::Checkbox("Bloom", &do_bloom);
-			ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloomIntensity, 0.1f);		
+			ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloom_intensity, 0.1f);		
 			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
 			ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
 			ImGui::Checkbox("Motion Blur", &do_motionBlur);
-			ImGui::InputFloat("Motion Blur Strength", &m_renderer->m_motionBlurStrength, 0.1f);
+			ImGui::InputFloat("Motion Blur Strength", &m_renderer->m_motion_blur_strength, 0.1f);
 			ImGui::Checkbox("Chromatic Aberration", &do_chromaticAberration);							tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
 			ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
 			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &do_fxaa);
-			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaaSubPixel, 0.1f);						tooltip("The amount of sub-pixel aliasing removal");
-			ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaaEdgeThreshold, 0.1f);			tooltip("The minimum amount of local contrast required to apply algorithm");
-			ImGui::InputFloat("FXAA Edge Threshold Min", &m_renderer->m_fxaaEdgeThresholdMin, 0.1f);	tooltip("Trims the algorithm from processing darks");
+			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaa_sub_pixel, 0.1f);						tooltip("The amount of sub-pixel aliasing removal");
+			ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaa_edge_threshold, 0.1f);			tooltip("The minimum amount of local contrast required to apply algorithm");
+			ImGui::InputFloat("FXAA Edge Threshold Min", &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
 			ImGui::Checkbox("Sharpen", &do_sharperning);
-			ImGui::InputFloat("Sharpen Strength", &m_renderer->m_sharpenStrength, 0.1f);
-			ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpenClamp, 0.1f);						tooltip("Limits maximum amount of sharpening a pixel receives");
+			ImGui::InputFloat("Sharpen Strength", &m_renderer->m_sharpen_strength, 0.1f);
+			ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpen_clamp, 0.1f);						tooltip("Limits maximum amount of sharpening a pixel receives");
 			ImGui::Checkbox("Dithering", &do_dithering);												tooltip("Reduces color banding");
 		}
 
 		// Filter input
-		m_renderer->m_bloomIntensity		= Abs(m_renderer->m_bloomIntensity);
-		m_renderer->m_fxaaSubPixel			= Abs(m_renderer->m_fxaaSubPixel);
-		m_renderer->m_fxaaEdgeThreshold		= Abs(m_renderer->m_fxaaEdgeThreshold);
-		m_renderer->m_fxaaEdgeThresholdMin	= Abs(m_renderer->m_fxaaEdgeThresholdMin);
-		m_renderer->m_sharpenStrength		= Abs(m_renderer->m_sharpenStrength);
-		m_renderer->m_sharpenClamp			= Abs(m_renderer->m_sharpenClamp);
-		m_renderer->m_motionBlurStrength	= Abs(m_renderer->m_motionBlurStrength);
+		m_renderer->m_bloom_intensity		= Abs(m_renderer->m_bloom_intensity);
+		m_renderer->m_fxaa_sub_pixel			= Abs(m_renderer->m_fxaa_sub_pixel);
+		m_renderer->m_fxaa_edge_threshold		= Abs(m_renderer->m_fxaa_edge_threshold);
+		m_renderer->m_fxaa_edge_threshold_min	= Abs(m_renderer->m_fxaa_edge_threshold_min);
+		m_renderer->m_sharpen_strength		= Abs(m_renderer->m_sharpen_strength);
+		m_renderer->m_sharpen_clamp			= Abs(m_renderer->m_sharpen_clamp);
+		m_renderer->m_motion_blur_strength	= Abs(m_renderer->m_motion_blur_strength);
 
 		// Map back to engine
 		#define SET_FLAG_IF(flag, value) value	? m_renderer->Flags_Enable(flag) : m_renderer->Flags_Disable(flag)

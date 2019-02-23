@@ -88,14 +88,14 @@ namespace Directus
 		void SetRotationOther(const Math::Quaternion& rotation);
 		
 		std::weak_ptr<Entity> GetBodyOther() { return m_bodyOther; }
-		void SetBodyOther(std::weak_ptr<Entity> bodyOther);
+		void SetBodyOther(const std::weak_ptr<Entity>& body_other);
 
 		void ReleaseConstraint();
-		void ApplyFrames();
+		void ApplyFrames() const;
 
 	private:
 		void Construct();
-		void ApplyLimits();
+		void ApplyLimits() const;
 		
 		btTypedConstraint* m_constraint;
 

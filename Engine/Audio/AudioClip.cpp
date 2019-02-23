@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AudioClip.h"
 #include <fmod.hpp>
 #include <fmod_errors.h>
-#include "../World/Components/Transform.h"
 #include "Audio.h"
+#include "../World/Components/Transform.h"
 //========================================
 
 //= NAMESPACES ================
@@ -39,7 +39,7 @@ namespace Directus
 	{
 		// AudioClip
 		m_transform		= nullptr;
-		m_systemFMOD	= (System*)context->GetSubsystem<Audio>()->GetSystemFMOD();
+		m_systemFMOD	= static_cast<System*>(context->GetSubsystem<Audio>()->GetSystemFMOD());
 		m_result		= FMOD_OK;
 		m_soundFMOD		= nullptr;
 		m_channelFMOD	= nullptr;
@@ -58,16 +58,16 @@ namespace Directus
 		m_result = m_soundFMOD->release();
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 		}
 	}
 
-	bool AudioClip::LoadFromFile(const std::string& filePath)
+	bool AudioClip::LoadFromFile(const std::string& file_path)
 	{
 		m_soundFMOD = nullptr;
 		m_channelFMOD = nullptr;
 
-		return m_playMode == Play_Memory ? CreateSound(filePath) : CreateStream(filePath);
+		return m_playMode == Play_Memory ? CreateSound(file_path) : CreateStream(file_path);
 	}
 
 	bool AudioClip::Play()
@@ -75,16 +75,16 @@ namespace Directus
 		// Check if the sound is playing
 		if (IsChannelValid())
 		{
-			bool isPlaying = false;
-			m_result = m_channelFMOD->isPlaying(&isPlaying);
+			auto is_playing = false;
+			m_result = m_channelFMOD->isPlaying(&is_playing);
 			if (m_result != FMOD_OK)
 			{
-				LogErrorFMOD(m_result);
+				LogErrorFmod(m_result);
 				return false;
 			}
 	
 			// If it's already playing, don't bother
-			if (isPlaying)
+			if (is_playing)
 				return true;
 		}
 
@@ -92,7 +92,7 @@ namespace Directus
 		m_result = m_systemFMOD->playSound(m_soundFMOD, nullptr, false, &m_channelFMOD);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
@@ -105,23 +105,23 @@ namespace Directus
 			return true;
 
 		// Get sound paused state
-		bool isPaused = false;
-		m_result = m_channelFMOD->getPaused(&isPaused);
+		auto is_paused = false;
+		m_result = m_channelFMOD->getPaused(&is_paused);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
 		// If it's already paused, don't bother
-		if (!isPaused)
+		if (!is_paused)
 			return true;
 
 		// Pause the sound
 		m_result = m_channelFMOD->setPaused(true);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
@@ -142,7 +142,7 @@ namespace Directus
 		if (m_result != FMOD_OK)
 		{
 			m_channelFMOD = nullptr;
-			LogErrorFMOD(m_result); // spams a lot
+			LogErrorFmod(m_result); // spams a lot
 			return false;
 		}
 
@@ -151,14 +151,14 @@ namespace Directus
 		return true;
 	}
 
-	bool AudioClip::SetLoop(bool loop)
+	bool AudioClip::SetLoop(const bool loop)
 	{
 		m_modeLoop = loop ? FMOD_LOOP_NORMAL : FMOD_LOOP_OFF;
 
 		if (!m_soundFMOD)
 			return false;
 
-		// Infite loops
+		// Infinite loops
 		if (loop)
 		{
 			m_soundFMOD->setLoopCount(-1);
@@ -168,7 +168,7 @@ namespace Directus
 		m_result = m_soundFMOD->setMode(GetSoundMode());
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
@@ -183,14 +183,14 @@ namespace Directus
 		m_result = m_channelFMOD->setVolume(volume);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
 		return true;
 	}
 
-	bool AudioClip::SetMute(bool mute)
+	bool AudioClip::SetMute(const bool mute)
 	{
 		if (!IsChannelValid())
 			return false;
@@ -198,14 +198,14 @@ namespace Directus
 		m_result = m_channelFMOD->setMute(mute);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
 		return true;
 	}
 
-	bool AudioClip::SetPriority(int priority)
+	bool AudioClip::SetPriority(const int priority)
 	{
 		if (!IsChannelValid())
 			return false;
@@ -213,14 +213,14 @@ namespace Directus
 		m_result = m_channelFMOD->setPriority(priority);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
 		return true;
 	}
 
-	bool AudioClip::SetPitch(float pitch)
+	bool AudioClip::SetPitch(const float pitch)
 	{
 		if (!IsChannelValid())
 			return false;
@@ -228,14 +228,14 @@ namespace Directus
 		m_result = m_channelFMOD->setPitch(pitch);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
 		return true;
 	}
 
-	bool AudioClip::SetPan(float pan)
+	bool AudioClip::SetPan(const float pan)
 	{
 		if (!IsChannelValid())
 			return false;
@@ -243,14 +243,14 @@ namespace Directus
 		m_result = m_channelFMOD->setPan(pan);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
 		return true;
 	}
 
-	bool AudioClip::SetRolloff(vector<Vector3> curvePoints)
+	bool AudioClip::SetRolloff(vector<Vector3> curve_points)
 	{
 		if (!IsChannelValid())
 			return false;
@@ -258,23 +258,23 @@ namespace Directus
 		SetRolloff(Custom);
 
 		// Convert Vector3 to FMOD_VECTOR
-		vector<FMOD_VECTOR> fmodCurve;
-		for (const auto& point : curvePoints)
+		vector<FMOD_VECTOR> fmod_curve;
+		for (const auto& point : curve_points)
 		{
-			fmodCurve.push_back(FMOD_VECTOR{ point.x, point.y, point.z });
+			fmod_curve.push_back(FMOD_VECTOR{ point.x, point.y, point.z });
 		}
 
-		m_result = m_channelFMOD->set3DCustomRolloff(&fmodCurve.front(), (int)fmodCurve.size());
+		m_result = m_channelFMOD->set3DCustomRolloff(&fmod_curve.front(), static_cast<int>(fmod_curve.size()));
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
 		return true;
 	}
 
-	bool AudioClip::SetRolloff(Rolloff rolloff)
+	bool AudioClip::SetRolloff(const Rolloff rolloff)
 	{
 		switch (rolloff)
 		{
@@ -296,17 +296,17 @@ namespace Directus
 		if (!IsChannelValid() || !m_transform)
 			return true;
 
-		Vector3 pos = m_transform->GetPosition();
+		const auto pos = m_transform->GetPosition();
 
-		FMOD_VECTOR fModPos = { pos.x, pos.y, pos.z };
-		FMOD_VECTOR fModVel = { 0, 0, 0 };
+		FMOD_VECTOR f_mod_pos = { pos.x, pos.y, pos.z };
+		FMOD_VECTOR f_mod_vel = { 0, 0, 0 };
 
 		// Set 3D attributes
-		m_result = m_channelFMOD->set3DAttributes(&fModPos, &fModVel);
+		m_result = m_channelFMOD->set3DAttributes(&f_mod_pos, &f_mod_vel);
 		if (m_result != FMOD_OK)
 		{
 			m_channelFMOD = nullptr;
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
@@ -318,71 +318,71 @@ namespace Directus
 		if (!IsChannelValid())
 			return false;
 
-		bool isPlaying = false;
-		m_result = m_channelFMOD->isPlaying(&isPlaying);
+		auto is_playing = false;
+		m_result = m_channelFMOD->isPlaying(&is_playing);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
-		return isPlaying;
+		return is_playing;
 	}
 
 	//= CREATION ================================================
-	bool AudioClip::CreateSound(const string& filePath)
+	bool AudioClip::CreateSound(const string& file_path)
 	{
 		// Create sound
-		m_result = m_systemFMOD->createSound(filePath.c_str(), GetSoundMode(), nullptr, &m_soundFMOD);
+		m_result = m_systemFMOD->createSound(file_path.c_str(), GetSoundMode(), nullptr, &m_soundFMOD);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
-		// Set 3D min max disance
+		// Set 3D min max distance
 		m_result = m_soundFMOD->set3DMinMaxDistance(m_minDistance, m_maxDistance);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
 		return true;
 	}
 
-	bool AudioClip::CreateStream(const string& filePath)
+	bool AudioClip::CreateStream(const string& file_path)
 	{
 		// Create sound
-		m_result = m_systemFMOD->createStream(filePath.c_str(), GetSoundMode(), nullptr, &m_soundFMOD);
+		m_result = m_systemFMOD->createStream(file_path.c_str(), GetSoundMode(), nullptr, &m_soundFMOD);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
-		// Set 3D min max disance
+		// Set 3D min max distance
 		m_result = m_soundFMOD->set3DMinMaxDistance(m_minDistance, m_maxDistance);
 		if (m_result != FMOD_OK)
 		{
-			LogErrorFMOD(m_result);
+			LogErrorFmod(m_result);
 			return false;
 		}
 
 		return true;
 	}
 
-	int AudioClip::GetSoundMode()
+	int AudioClip::GetSoundMode() const
 	{
 		return FMOD_3D | m_modeLoop | m_modeRolloff;
 	}
 
-	void AudioClip::LogErrorFMOD(int error)
+	void AudioClip::LogErrorFmod(int error) const
 	{
-		LOG_ERROR("AudioClip::FMOD: " + string(FMOD_ErrorString((FMOD_RESULT)error)));
+		LOG_ERROR("AudioClip::FMOD: " + string(FMOD_ErrorString(static_cast<FMOD_RESULT>(error))));
 	}
 
-	bool AudioClip::IsChannelValid()
+	bool AudioClip::IsChannelValid() const
 	{
 		if (!m_channelFMOD)
 			return false;

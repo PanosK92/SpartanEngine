@@ -32,23 +32,23 @@ namespace Directus
 	class ENGINE_CLASS RHI_BlendState : public RHI_Object
 	{
 	public:
-		RHI_BlendState(std::shared_ptr<RHI_Device> device,
-			bool blendEnabled					= false,
-			RHI_Blend sourceBlend				= Blend_Src_Alpha,
-			RHI_Blend destBlend					= Blend_Inv_Src_Alpha,
-			RHI_Blend_Operation blendOp			= Blend_Operation_Add,
-			RHI_Blend sourceBlendAlpha			= Blend_One,
-			RHI_Blend destBlendAlpha			= Blend_One,
-			RHI_Blend_Operation blendOpAlpha	= Blend_Operation_Add
+		RHI_BlendState(const std::shared_ptr<RHI_Device>& device,
+			bool blend_enabled					= false,
+			RHI_Blend source_blend				= Blend_Src_Alpha,
+			RHI_Blend dest_blend				= Blend_Inv_Src_Alpha,
+			RHI_Blend_Operation blend_op		= Blend_Operation_Add,
+			RHI_Blend source_blend_alpha		= Blend_One,
+			RHI_Blend dest_blend_alpha			= Blend_One,
+			RHI_Blend_Operation blend_op_alpha	= Blend_Operation_Add
 		);
 		~RHI_BlendState();
 
-		bool BlendEnabled() { return m_blendEnabled; }
-		void* GetBuffer()	{ return m_buffer; }
+		bool BlendEnabled() const	{ return m_blend_enabled; }
+		void* GetBuffer() const		{ return m_buffer; }
 
 	private:
-		bool m_blendEnabled = false;
-		bool m_initialized	= false;
-		void* m_buffer		= nullptr;
+		bool m_blend_enabled	= false;
+		bool m_initialized		= false;
+		void* m_buffer			= nullptr;
 	};
 }

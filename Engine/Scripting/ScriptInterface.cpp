@@ -178,7 +178,7 @@ namespace Directus
 	void ScriptInterface::RegisterEntity()
 	{
 		m_scriptEngine->RegisterObjectMethod("Entity", "Entity &opAssign(const Entity &in)", asMETHODPR(Entity, operator =, (const Entity&), Entity&), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Entity", "int GetID()", asMETHOD(Entity, GetID), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Entity", "int GetID()", asMETHOD(Entity, GetId), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Entity", "string GetName()", asMETHOD(Entity, GetName), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Entity", "void SetName(string)", asMETHOD(Entity, SetName), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Entity", "bool IsActive()", asMETHOD(Entity, IsActive), asCALL_THISCALL);
