@@ -59,7 +59,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		defines
 		{
 			"ENGINE",
-			"STATIC_LIB=1"
+			"STATIC_LIB=1",
 			"SHARED_LIB=0"
 		}
 
@@ -135,7 +135,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		defines
 		{
 			"EDITOR",
-			"STATIC_LIB=1"
+			"STATIC_LIB=1",
 			"SHARED_LIB=0"
 		}
 
