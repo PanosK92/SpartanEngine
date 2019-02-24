@@ -106,7 +106,7 @@ namespace Directus::AssimpHelper
 		void OnDebug(const char* message) override
 		{
 #ifdef DEBUG
-			Log::m_callerName = "Directus::ModelImporter";
+			Log::m_caller_name = "Directus::ModelImporter";
 			Log::Write(message, Log_Info);
 #endif
 		}

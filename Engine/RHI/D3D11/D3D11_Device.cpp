@@ -142,7 +142,7 @@ namespace Directus
 			case D3D_FEATURE_LEVEL_12_1: break;
 			default: ;
 			}
-			Settings::Get().m_versionGraphicsAPI = "DirectX %s" + feature_level_str;
+			Settings::Get().m_versionGraphicsAPI = "DirectX " + feature_level_str;
 			LOG_INFO(Settings::Get().m_versionGraphicsAPI);
 		}
 
@@ -170,9 +170,9 @@ namespace Directus
 			return;
 		}
 
-		m_device		= static_cast<void*>(_D3D11_Device::device);
+		m_device			= static_cast<void*>(_D3D11_Device::device);
 		m_device_context	= static_cast<void*>(_D3D11_Device::device_context);
-		m_initialized	= true;
+		m_initialized		= true;
 	}
 
 	RHI_Device::~RHI_Device()
@@ -182,7 +182,7 @@ namespace Directus
 		safe_release(_D3D11_Device::annotation);
 	}
 
-	bool RHI_Device::Draw(unsigned int vertex_count) const
+	bool RHI_Device::Draw(const unsigned int vertex_count) const
 	{
 		if (!_D3D11_Device::device_context)
 		{
