@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-#if defined(API_D3D11)
+#if defined(API_GRAPHICS_D3D11)
 // DirectX 11
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -133,7 +133,7 @@ static const D3D11_BLEND_OP d3d11_blend_op[] =
 	D3D11_BLEND_OP_MAX
 };
 
-#elif defined(API_VULKAN)
+#elif defined(API_GRAPHICS_VULKAN)
 // VULKAN
 #pragma comment(lib, "vulkan-1.lib")
 #include <vulkan/vulkan.h>

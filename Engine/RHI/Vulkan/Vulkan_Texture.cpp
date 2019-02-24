@@ -19,54 +19,42 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "RHI_Shader.h"
-#include "RHI_ConstantBuffer.h"
-#include "../Logging/Log.h"
-//=============================
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_GRAPHICS_VULKAN
+//================================
 
-//= NAMESPACES =====
+//= INCLUDES =====================
+#include "../RHI_Device.h"
+#include "../RHI_Texture.h"
+#include "../../Math/MathHelper.h"
+//================================
+
+//= NAMESPAECES =======================
 using namespace std;
-//==================
+using namespace Directus::Math::Helper;
+//=====================================
 
 namespace Directus
 {
-	void RHI_Shader::AddDefine(const std::string& define, const std::string& value /*= "1"*/)
+	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mip_chain)
 	{
-		m_macros[define] = value;
+		return true;
 	}
 
-	bool RHI_Shader::UpdateBuffer(void* data) const
+	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<std::byte>& data, bool generate_mip_chain /*= false*/)
 	{
-		if (!data)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		if (!m_constant_buffer)
-		{
-			LOG_WARNING("Uninitialized buffer.");
-			return false;
-		}
-
-		// Get a pointer of the buffer
-		auto result = false;
-		if (const auto buffer = m_constant_buffer->Map())	// Get buffer pointer
-		{
-			memcpy(buffer, data, m_buffer_size);			// Copy data
-			result = m_constant_buffer->Unmap();			// Unmap buffer
-		}
-
-		if (!result)
-		{
-			LOG_ERROR("Failed to map buffer");
-		}
-		return result;
+		return true;
 	}
 
-	void RHI_Shader::CreateConstantBuffer(unsigned int size)
+	bool RHI_Texture::ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<vector<std::byte>>>& data)
 	{
-		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, size);
+		return true;
+	}
+
+	void RHI_Texture::ShaderResource_Release() const
+	{
+		
 	}
 }
+#endif

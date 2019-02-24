@@ -19,54 +19,41 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "RHI_Shader.h"
-#include "RHI_ConstantBuffer.h"
-#include "../Logging/Log.h"
-//=============================
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_GRAPHICS_VULKAN
+//================================
 
-//= NAMESPACES =====
+//= INCLUDES ====================
+#include "../RHI_RenderTexture.h"
+#include "../RHI_Device.h"
+//===============================
+
+//= NAMESPACES ================
+using namespace Directus::Math;
 using namespace std;
-//==================
+//=============================
 
 namespace Directus
 {
-	void RHI_Shader::AddDefine(const std::string& define, const std::string& value /*= "1"*/)
+	RHI_RenderTexture::RHI_RenderTexture(const shared_ptr<RHI_Device>& rhi_device, unsigned int width, unsigned int height, RHI_Format texture_format, bool depth, RHI_Format depth_format, unsigned int array_size)
 	{
-		m_macros[define] = value;
+		
 	}
 
-	bool RHI_Shader::UpdateBuffer(void* data) const
+	RHI_RenderTexture::~RHI_RenderTexture()
 	{
-		if (!data)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		if (!m_constant_buffer)
-		{
-			LOG_WARNING("Uninitialized buffer.");
-			return false;
-		}
-
-		// Get a pointer of the buffer
-		auto result = false;
-		if (const auto buffer = m_constant_buffer->Map())	// Get buffer pointer
-		{
-			memcpy(buffer, data, m_buffer_size);			// Copy data
-			result = m_constant_buffer->Unmap();			// Unmap buffer
-		}
-
-		if (!result)
-		{
-			LOG_ERROR("Failed to map buffer");
-		}
-		return result;
+		
 	}
 
-	void RHI_Shader::CreateConstantBuffer(unsigned int size)
+	bool RHI_RenderTexture::Clear(const Vector4& clear_color)
 	{
-		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, size);
+		return true;
+	}
+
+	bool RHI_RenderTexture::Clear(const float red, const float green, const float blue, const float alpha)
+	{
+		return true;
 	}
 }
+#endif

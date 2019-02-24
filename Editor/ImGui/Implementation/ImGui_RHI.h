@@ -218,18 +218,26 @@ namespace ImGui::RHI
 		}
 
 		// Copy and convert all vertices into a single contiguous buffer
-		auto vtx_dst	= static_cast<ImDrawVert*>(g_vertexBuffer->Map());
-		auto* idx_dst	= static_cast<ImDrawIdx*>(g_indexBuffer->Map());
-		for (auto i = 0; i < draw_data->CmdListsCount; i++)
+		auto vtx_dst = static_cast<ImDrawVert*>(g_vertexBuffer->Map());
+		auto idx_dst = static_cast<ImDrawIdx*>(g_indexBuffer->Map());
+		if (vtx_dst && idx_dst)
 		{
-			const ImDrawList* cmd_list = draw_data->CmdLists[i];
-			memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
-			memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
-			vtx_dst += cmd_list->VtxBuffer.Size;
-			idx_dst += cmd_list->IdxBuffer.Size;
+			for (auto i = 0; i < draw_data->CmdListsCount; i++)
+			{
+				const ImDrawList* cmd_list = draw_data->CmdLists[i];
+				memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
+				memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+				vtx_dst += cmd_list->VtxBuffer.Size;
+				idx_dst += cmd_list->IdxBuffer.Size;
+			}
+			g_vertexBuffer->Unmap();
+			g_indexBuffer->Unmap();
 		}
-		g_vertexBuffer->Unmap();
-		g_indexBuffer->Unmap();
+		else
+		{
+			LOG_ERROR("Failed to map buffers");
+			return;
+		}
 
 		// Setup orthographic projection matrix into our constant buffer
 		// Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
@@ -256,8 +264,8 @@ namespace ImGui::RHI
 		if (!is_other_window)
 		{
 			g_pipeline->Clear();
-			g_renderer->SwapChain_SetAsRenderTarget();
-			g_renderer->SwapChain_Clear(Vector4(0, 0, 0, 1));
+			g_renderer->SwapChainSetAsRenderTarget();
+			g_renderer->SwapChainClear(Vector4(0, 0, 0, 1));
 		}
 		const auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 		g_pipeline->SetViewport(viewport);
@@ -308,7 +316,7 @@ namespace ImGui::RHI
 
 		if (!is_other_window)
 		{
-			g_renderer->SwapChain_Present();
+			g_renderer->SwapChainPresent();
 		}
 
 		g_device->EventEnd();
@@ -320,7 +328,7 @@ namespace ImGui::RHI
 		if (!g_renderer)
 			return;
 
-		g_renderer->SwapChain_Resize(width, height);
+		g_renderer->SwapChainResize(width, height);
 	}
 
 	//--------------------------------------------

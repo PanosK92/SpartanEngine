@@ -34,7 +34,7 @@ namespace Directus
 	{
 	public:
 		RHI_RenderTexture(
-			std::shared_ptr<RHI_Device> rhi_device,
+			const std::shared_ptr<RHI_Device>& rhi_device,
 			unsigned int width,
 			unsigned int height,
 			RHI_Format texture_format	= Format_R8G8B8A8_UNORM,

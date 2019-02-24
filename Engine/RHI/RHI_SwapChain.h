@@ -36,7 +36,7 @@ namespace Directus
 	public:
 		RHI_SwapChain(
 			void* window_handle,
-			std::shared_ptr<RHI_Device> device,
+			const std::shared_ptr<RHI_Device>& device,
 			unsigned int width,
 			unsigned int height,
 			RHI_Format format			= Format_R8G8B8A8_UNORM,

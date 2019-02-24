@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Version
 #define ENGINE_VERSION "v0.31 WIP"
+// Misc
+#define WIN32_LEAN_AND_MEAN
 
 // Class
 #if SHARED_LIB == 1
@@ -35,15 +37,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	#define ENGINE_CLASS
 #endif
 
-// Graphics API
-#define API_D3D11
-//#define API_VULKAN
-
-// Input API
-#define API_DInput
-
-// Misc
-#define WIN32_LEAN_AND_MEAN
+// APIS
+#define API_GRAPHICS_D3D11
+//#define API_GRAPHICS_VULKAN
+#define API_INPUT_WINDOWS
 
 //= DISABLED WARNINGS =============================================================================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'

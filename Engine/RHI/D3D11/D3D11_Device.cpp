@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
 #include "../RHI_Viewport.h"
-#ifdef API_D3D11
+#ifdef API_GRAPHICS_D3D11
 //================================
 
 //= INCLUDES ========================
-#include "D3D11_Common.h"
+#include "D3D11_Helper.h"
 #include "../RHI_Device.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_RasterizerState.h"
@@ -100,7 +100,7 @@ namespace Directus
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("Failed to create device, %s.", D3D11_Common::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to create device, %s.", D3D11_Helper::dxgi_error_to_string(result));
 				return;
 			}
 		}
@@ -166,7 +166,7 @@ namespace Directus
 		const auto result			= _D3D11_Device::device_context->QueryInterface(IID_PPV_ARGS(&_D3D11_Device::annotation));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", D3D11_Common::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", D3D11_Helper::dxgi_error_to_string(result));
 			return;
 		}
 
@@ -646,7 +646,7 @@ namespace Directus
 		const auto result = CreateDXGIFactory(IID_PPV_ARGS(&factory));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create a DirectX graphics interface factory, %s.", D3D11_Common::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to create a DirectX graphics interface factory, %s.", D3D11_Helper::dxgi_error_to_string(result));
 			return;
 		}
 
@@ -722,7 +722,7 @@ namespace Directus
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("Failed to get display modes (%s)", D3D11_Common::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to get display modes (%s)", D3D11_Helper::dxgi_error_to_string(result));
 				return false;
 			}
 

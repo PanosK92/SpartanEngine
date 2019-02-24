@@ -68,7 +68,7 @@ namespace Directus
 		m_rhi_device->EventBegin("Pass_DepthDirectionalLight");
 
 		// Set common states	
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 		m_rhi_pipeline->SetShader(m_vps_depth);
 		m_rhi_pipeline->SetViewport(shadow_map->GetViewport());
 		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_enabled);
@@ -113,7 +113,7 @@ namespace Directus
 					currently_bound_geometry = geometry->ResourceGetId();
 				}
 
-				SetDefault_Buffer(
+				SetDefaultBuffer(
 					static_cast<unsigned int>(m_resolution.x),
 					static_cast<unsigned int>(m_resolution.y),
 					entity->GetTransform_PtrRaw()->GetMatrix() * light_directional->GetViewMatrix() * light_directional->ShadowMap_GetProjectionMatrix(i)
@@ -141,7 +141,7 @@ namespace Directus
 		m_rhi_device->EventBegin("Pass_GBuffer");
 
 		// Set common states
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_enabled);
 		const auto clear = true;
 		const vector<void*> views
@@ -157,7 +157,7 @@ namespace Directus
 		m_rhi_pipeline->SetSampler(m_sampler_anisotropic_wrap);
 		m_rhi_pipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_rhi_pipeline->SetVertexShader(m_vs_gbuffer);
-		SetDefault_Buffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
+		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
 
 		// Variables that help reduce state changes
 		unsigned int currently_bound_geometry	= 0;
@@ -240,7 +240,7 @@ namespace Directus
 	{
 		m_rhi_device->EventBegin("Pass_PreLight");
 
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 		m_rhi_pipeline->SetIndexBuffer(m_quad.GetIndexBuffer());
 		m_rhi_pipeline->SetVertexBuffer(m_quad.GetVertexBuffer());
 
@@ -292,8 +292,8 @@ namespace Directus
 			Flags_IsSet(Render_PostProcess_SSR)
 		);
 
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
+		SetDefaultPipelineState();
+		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetShader(shared_ptr<RHI_Shader>(m_vps_light));
 		m_rhi_pipeline->SetRenderTarget(tex_out);
@@ -327,7 +327,7 @@ namespace Directus
 
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_Transparent");
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 
 		m_rhi_pipeline->SetBlendState(m_blend_enabled);	
 		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_enabled);
@@ -387,7 +387,7 @@ namespace Directus
 		m_rhi_device->EventBegin("Pass_PostLight");
 
 		// All post-process passes share the following, so set them once here
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 		m_rhi_pipeline->SetVertexBuffer(m_quad.GetVertexBuffer());
 		m_rhi_pipeline->SetIndexBuffer(m_quad.GetIndexBuffer());
 		m_rhi_pipeline->SetVertexShader(m_vs_quad);
@@ -468,7 +468,7 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_Shadowing");
 
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetShader(m_vps_shadow_mapping);
@@ -477,7 +477,7 @@ namespace Directus
 		m_rhi_pipeline->SetTexture(light_directional_in->GetShadowMap()); // Texture2DArray
 		m_rhi_pipeline->SetSampler(m_sampler_compare_depth);
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
 		auto buffer = Struct_ShadowMapping((m_view_projection).Inverted(), light_directional_in, m_camera.get());
 		m_vps_shadow_mapping->UpdateBuffer(&buffer);
 		m_rhi_pipeline->SetConstantBuffer(m_vps_shadow_mapping->GetConstantBuffer(), 1, Buffer_Global);
@@ -492,8 +492,8 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_SSAO");
 
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
@@ -519,8 +519,8 @@ namespace Directus
 	{
 		m_rhi_device->EventBegin("Pass_Blur");
 
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, sigma);
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, sigma);
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetVertexShader(m_vs_quad);
@@ -550,8 +550,8 @@ namespace Directus
 
 		// Horizontal Gaussian blur	
 		auto direction = Vector2(pixel_stride, 0.0f);
-		SetDefault_Pipeline_State();	
-		SetDefault_Buffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
+		SetDefaultPipelineState();	
+		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
@@ -560,8 +560,8 @@ namespace Directus
 
 		// Vertical Gaussian blur
 		direction = Vector2(0.0f, pixel_stride);
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhi_pipeline->SetRenderTarget(tex_in);
 		m_rhi_pipeline->SetViewport(tex_in->GetViewport());
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
@@ -591,7 +591,7 @@ namespace Directus
 		m_rhi_pipeline->SetPixelShader(m_ps_blur_gaussian_bilateral);
 
 		// Horizontal Gaussian blur
-		SetDefault_Pipeline_State();	
+		SetDefaultPipelineState();	
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetTexture(tex_in);
@@ -599,11 +599,11 @@ namespace Directus
 		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
 		auto direction = Vector2(pixel_stride, 0.0f);
-		SetDefault_Buffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
+		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
 		// Vertical Gaussian blur
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 		m_rhi_pipeline->SetRenderTarget(tex_in);
 		m_rhi_pipeline->SetViewport(tex_in->GetViewport());
 		m_rhi_pipeline->SetTexture(tex_out);
@@ -611,7 +611,7 @@ namespace Directus
 		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
 		direction = Vector2(0.0f, pixel_stride);
-		SetDefault_Buffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
+		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
 		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
 		tex_in.swap(tex_out);
@@ -623,10 +623,10 @@ namespace Directus
 	{
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_TAA");
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 
 		// Resolve
-		SetDefault_Buffer(m_render_tex_full_taa_current->GetWidth(), m_render_tex_full_taa_current->GetHeight());
+		SetDefaultBuffer(m_render_tex_full_taa_current->GetWidth(), m_render_tex_full_taa_current->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(m_render_tex_full_taa_current);
 		m_rhi_pipeline->SetViewport(m_render_tex_full_taa_current->GetViewport());
 		m_rhi_pipeline->SetPixelShader(m_ps_taa);
@@ -638,7 +638,7 @@ namespace Directus
 		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
 		// Output to texOut
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetPixelShader(m_ps_texture);
@@ -659,8 +659,8 @@ namespace Directus
 		m_rhi_device->EventBegin("Pass_Bloom");
 
 		// Downsample
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(m_render_tex_quarter_blur1->GetWidth(), m_render_tex_quarter_blur1->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(m_render_tex_quarter_blur1->GetWidth(), m_render_tex_quarter_blur1->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(m_render_tex_quarter_blur1);
 		m_rhi_pipeline->SetViewport(m_render_tex_quarter_blur1->GetViewport());
 		m_rhi_pipeline->SetTexture(tex_in);
@@ -669,8 +669,8 @@ namespace Directus
 		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
 		// Bright pass
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(m_render_tex_quarter_blur2->GetWidth(), m_render_tex_quarter_blur2->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(m_render_tex_quarter_blur2->GetWidth(), m_render_tex_quarter_blur2->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(m_render_tex_quarter_blur2);
 		m_rhi_pipeline->SetViewport(m_render_tex_quarter_blur2->GetViewport());
 		m_rhi_pipeline->SetTexture(m_render_tex_quarter_blur1);
@@ -682,8 +682,8 @@ namespace Directus
 		Pass_BlurGaussian(m_render_tex_quarter_blur2, m_render_tex_quarter_blur1, sigma);
 
 		// Additive blending
-		SetDefault_Pipeline_State();	
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultPipelineState();	
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetTexture(tex_in);
@@ -701,8 +701,8 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_ToneMapping");
 
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetTexture(tex_in);
 		m_rhi_pipeline->SetSampler(m_sampler_point_clamp);
@@ -719,8 +719,8 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_GammaCorrection");
 
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetTexture(tex_in);
 		m_rhi_pipeline->SetSampler(m_sampler_point_clamp);
@@ -738,8 +738,8 @@ namespace Directus
 		m_rhi_device->EventBegin("Pass_FXAA");
 
 		// Common states
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
 
 		// Luma
@@ -768,8 +768,8 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_ChromaticAberration");
 
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
@@ -786,8 +786,8 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_MotionBlur");
 
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
@@ -805,8 +805,8 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_Dithering");
 
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetSampler(m_sampler_point_clamp);
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
@@ -823,8 +823,8 @@ namespace Directus
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_Sharpening");
 
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight());
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetTexture(tex_in);
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
@@ -880,7 +880,7 @@ namespace Directus
 		}
 
 		// Set common states
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 		m_rhi_pipeline->SetPrimitiveTopology(PrimitiveTopology_LineList);
 		m_rhi_pipeline->SetShader(m_vps_color);
 		m_rhi_pipeline->SetSampler(m_sampler_point_clamp);
@@ -899,7 +899,7 @@ namespace Directus
 				m_rhi_pipeline->SetIndexBuffer(m_gizmo_grid->GetIndexBuffer());
 				m_rhi_pipeline->SetVertexBuffer(m_gizmo_grid->GetVertexBuffer());
 				m_rhi_pipeline->SetBlendState(m_blend_enabled);
-				SetDefault_Buffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * view_projection_unjittered);
+				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * view_projection_unjittered);
 				m_rhi_pipeline->DrawIndexed(m_gizmo_grid->GetIndexCount(), 0, 0);
 			}
 
@@ -920,7 +920,7 @@ namespace Directus
 
 				// Set pipeline state
 				m_rhi_pipeline->SetVertexBuffer(m_vertex_buffer_lines);
-				SetDefault_Buffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), view_projection_unjittered);
+				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), view_projection_unjittered);
 				m_rhi_pipeline->Draw(line_vertex_buffer_size);
 
 				m_lines_list_depth_enabled.clear();
@@ -947,7 +947,7 @@ namespace Directus
 
 				// Set pipeline state
 				m_rhi_pipeline->SetVertexBuffer(m_vertex_buffer_lines);
-				SetDefault_Buffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), view_projection_unjittered);
+				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), view_projection_unjittered);
 				m_rhi_pipeline->Draw(line_vertex_buffer_size);
 
 				m_lines_list_depth_disabled.clear();
@@ -970,7 +970,7 @@ namespace Directus
 		m_rhi_device->EventBegin("Pass_Gizmos");
 
 		// Set shared states
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 		m_rhi_pipeline->SetRasterizerState(m_rasterizer_cull_back_solid);
 		m_rhi_pipeline->SetBlendState(m_blend_enabled);
 		m_rhi_pipeline->SetRenderTarget(tex_out, nullptr);
@@ -1019,7 +1019,7 @@ namespace Directus
 						m_gizmo_light_rect.CreateBuffers(this);
 					}
 
-					SetDefault_Buffer(static_cast<unsigned int>(tex_width), static_cast<unsigned int>(tex_width), m_view_projection_orthographic);
+					SetDefaultBuffer(static_cast<unsigned int>(tex_width), static_cast<unsigned int>(tex_width), m_view_projection_orthographic);
 					m_rhi_pipeline->SetTexture(light_tex);
 					m_rhi_pipeline->SetIndexBuffer(m_gizmo_light_rect.GetIndexBuffer());
 					m_rhi_pipeline->SetVertexBuffer(m_gizmo_light_rect.GetVertexBuffer());
@@ -1040,7 +1040,7 @@ namespace Directus
 				m_rhi_pipeline->SetShader(m_vps_gizmo_transform);
 				m_rhi_pipeline->SetIndexBuffer(m_gizmo_transform->GetIndexBuffer());
 				m_rhi_pipeline->SetVertexBuffer(m_gizmo_transform->GetVertexBuffer());
-				SetDefault_Buffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
+				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
 
 				// Axis - X
 				auto buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Right), m_gizmo_transform->GetHandle().GetColor(Vector3::Right));
@@ -1085,7 +1085,7 @@ namespace Directus
 
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_PerformanceMetrics");
-		SetDefault_Pipeline_State();
+		SetDefaultPipelineState();
 
 		// Updated text
 		const auto text_pos = Vector2(-static_cast<int>(m_viewport.GetWidth()) * 0.5f + 1.0f, static_cast<int>(m_viewport.GetHeight()) * 0.5f);
@@ -1115,8 +1115,8 @@ namespace Directus
 
 		TIME_BLOCK_START_MULTI(m_profiler);
 		m_rhi_device->EventBegin("Pass_DebugBuffer");
-		SetDefault_Pipeline_State();
-		SetDefault_Buffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
+		SetDefaultPipelineState();
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
 		m_rhi_pipeline->SetVertexShader(m_vs_quad);
 
 		// Bind correct texture & shader pass

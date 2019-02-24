@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#ifdef API_D3D11
+#ifdef API_GRAPHICS_D3D11
 //================================
 
 //= INCLUDES =====================
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
-#include "D3D11_Common.h"
+#include "D3D11_Helper.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
 #include "../../Core/Settings.h"
@@ -42,7 +42,7 @@ namespace Directus
 {
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
-		std::shared_ptr<RHI_Device> device,
+		const std::shared_ptr<RHI_Device>& device,
 		unsigned int width,
 		unsigned int height,
 		RHI_Format format			/*= Format_R8G8B8A8_UNORM*/,
@@ -102,7 +102,7 @@ namespace Directus
 			const auto result	= dxgi_factory->CreateSwapChain(m_device->GetDevice<ID3D11Device>(), &desc, &swap_chain);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("%s", D3D11_Common::DxgiErrorToString(result));
+				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
 				return;
 			}
 			m_swap_chain = static_cast<void*>(swap_chain);
@@ -115,7 +115,7 @@ namespace Directus
 			auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 			if (FAILED(result))
 			{
-				LOGF_ERROR("%s", D3D11_Common::DxgiErrorToString(result));
+				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
 				return;
 			}
 
@@ -124,7 +124,7 @@ namespace Directus
 			backbuffer->Release();
 			if (FAILED(result))
 			{
-				LOGF_ERROR("%s", D3D11_Common::DxgiErrorToString(result));
+				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
 			}
 			m_render_target_view = static_cast<void*>(render_target_view);
 		}
@@ -185,7 +185,7 @@ namespace Directus
 		auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Common::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Helper::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -196,7 +196,7 @@ namespace Directus
 		result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), dxgi_mode_desc.Format, d3d11_flags);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to resize swapchain buffers, %s.", D3D11_Common::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to resize swapchain buffers, %s.", D3D11_Helper::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -205,7 +205,7 @@ namespace Directus
 		result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to get swapchain buffer, %s.", D3D11_Common::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to get swapchain buffer, %s.", D3D11_Helper::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -214,7 +214,7 @@ namespace Directus
 		safe_release(backbuffer);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create render target view, %s.", D3D11_Common::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to create render target view, %s.", D3D11_Helper::dxgi_error_to_string(result));
 			return false;
 		}
 		m_render_target_view = static_cast<void*>(render_target_view);

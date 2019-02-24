@@ -143,6 +143,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 	includedirs { "../" .. ENGINE_NAME }
 
 -- Library directory
+	libdirs { VULKAN_PATH_LIB }
 	libdirs { "../ThirdParty/mvsc141_x64" }
 	
 -- "Debug"

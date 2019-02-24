@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#ifdef API_D3D11
+#ifdef API_GRAPHICS_D3D11
 //================================
 
 //= INCLUDES ======================
 #include "../RHI_RasterizerState.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "D3D11_Common.h"
+#include "D3D11_Helper.h"
 //=================================
 
 //= NAMESPACES =====
@@ -50,10 +50,10 @@ namespace Directus
 		// Save properties
 		m_cull_mode					= cull_mode;
 		m_fill_mode					= fill_mode;
-		m_depth_clip_enabled			= depth_clip_enabled;
+		m_depth_clip_enabled		= depth_clip_enabled;
 		m_scissor_enabled			= scissor_enabled;
 		m_multi_sample_enabled		= multi_sample_enabled;
-		m_antialised_line_enabled		= antialised_line_enabled;
+		m_antialised_line_enabled	= antialised_line_enabled;
 
 		// Create rasterizer description
 		D3D11_RASTERIZER_DESC desc;
@@ -80,7 +80,7 @@ namespace Directus
 		}
 		else
 		{
-			LOGF_ERROR("Failed to create the rasterizer state, %s.", D3D11_Common::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to create the rasterizer state, %s.", D3D11_Helper::dxgi_error_to_string(result));
 			m_initialized = false;
 		}
 	}

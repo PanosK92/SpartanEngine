@@ -19,11 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "RHI_Shader.h"
-#include "RHI_ConstantBuffer.h"
-#include "../Logging/Log.h"
-//=============================
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_GRAPHICS_VULKAN
+//================================
+
+//= INCLUDES =====================
+#include "../RHI_Device.h"
+#include "../RHI_VertexBuffer.h"
+#include "../RHI_Vertex.h"
+#include "../../Logging/Log.h"
+//================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -31,42 +37,44 @@ using namespace std;
 
 namespace Directus
 {
-	void RHI_Shader::AddDefine(const std::string& define, const std::string& value /*= "1"*/)
+	RHI_VertexBuffer::RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device)
 	{
-		m_macros[define] = value;
+		m_rhi_device = rhi_device;
 	}
 
-	bool RHI_Shader::UpdateBuffer(void* data) const
+	RHI_VertexBuffer::~RHI_VertexBuffer()
 	{
-		if (!data)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
 
-		if (!m_constant_buffer)
-		{
-			LOG_WARNING("Uninitialized buffer.");
-			return false;
-		}
-
-		// Get a pointer of the buffer
-		auto result = false;
-		if (const auto buffer = m_constant_buffer->Map())	// Get buffer pointer
-		{
-			memcpy(buffer, data, m_buffer_size);			// Copy data
-			result = m_constant_buffer->Unmap();			// Unmap buffer
-		}
-
-		if (!result)
-		{
-			LOG_ERROR("Failed to map buffer");
-		}
-		return result;
 	}
 
-	void RHI_Shader::CreateConstantBuffer(unsigned int size)
+	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosCol>& vertices)
 	{
-		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, size);
+		return true;
+	}
+
+	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUV>& vertices)
+	{
+		return true;
+	}
+
+	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUvNorTan>& vertices)
+	{
+		return true;
+	}
+
+	bool RHI_VertexBuffer::CreateDynamic(const unsigned int stride, const unsigned int vertex_count)
+	{
+		return true;
+	}
+
+	void* RHI_VertexBuffer::Map() const
+	{
+		return nullptr;
+	}
+
+	bool RHI_VertexBuffer::Unmap() const
+	{
+		return true;
 	}
 }
+#endif
