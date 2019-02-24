@@ -120,7 +120,7 @@ namespace Directus
 			FIRE_EVENT(Event_World_Stop);
 			ReadNodeHierarchy(scene, scene->mRootNode, model);
 			ReadAnimations(scene, model);
-			model->Geometry_Update();
+			model->GeometryUpdate();
 			FIRE_EVENT(Event_World_Start);
 		}
 		else
@@ -138,7 +138,7 @@ namespace Directus
 		// Is this the root node?
 		if (!assimp_node->mParent || !new_entity)
 		{
-			new_entity = m_world->Entity_Create().get();
+			new_entity = m_world->EntityCreate().get();
 			model->SetRootentity(new_entity->GetPtrShared());
 
 			int job_count;
@@ -171,7 +171,7 @@ namespace Directus
 			// if this node has many meshes, then assign a new entity for each one of them
 			if (assimp_node->mNumMeshes > 1)
 			{
-				entity = m_world->Entity_Create().get(); // create
+				entity = m_world->EntityCreate().get(); // create
 				entity->GetTransform_PtrRaw()->SetParent(new_entity->GetTransform_PtrRaw()); // set parent
 				_name += "_" + to_string(i + 1); // set name
 			}
@@ -186,7 +186,7 @@ namespace Directus
 		// Process children
 		for (unsigned int i = 0; i < assimp_node->mNumChildren; i++)
 		{
-			auto child = m_world->Entity_Create();
+			auto child = m_world->EntityCreate();
 			ReadNodeHierarchy(assimp_scene, assimp_node->mChildren[i], model, new_entity, child.get());
 		}
 
@@ -326,13 +326,13 @@ namespace Directus
 		// Add the mesh to the model
 		unsigned int index_offset;
 		unsigned int vertex_offset;
-		model->Geometry_Append(move(indices), move(vertices), &index_offset, &vertex_offset);
+		model->GeometryAppend(move(indices), move(vertices), &index_offset, &vertex_offset);
 
 		// Add a renderable component to this entity
 		auto renderable	= entity_parent->AddComponent<Renderable>();
 
 		// Set the geometry
-		renderable->Geometry_Set(
+		renderable->GeometrySet(
 			entity_parent->GetName(),
 			index_offset,
 			static_cast<unsigned int>(indices.size()),

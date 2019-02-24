@@ -108,10 +108,10 @@ namespace Directus
 		unsigned int GetWindowHeight() const									{ return static_cast<unsigned int>(m_windowSize.y); }
 		//==============================================================================================================================================================
 
-		//= DISPLAY ==========================================================================================================================
-		void DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator);
+		//= DISPLAY ==============================================================================================================================
+		void DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator);
 		bool DisplayMode_GetFastest(DisplayMode* display_mode);
-		//====================================================================================================================================
+		//========================================================================================================================================
 
 		//= ADAPTERS ===============================================================================================
 		void DisplayAdapter_Add(const std::string& name, unsigned int memory, unsigned int vendor_id, void* adapter);

@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <fstream>
 #include <algorithm>
-#include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 #include "../Math/MathHelper.h"
+#include "../FileSystem/FileSystem.h"
 //===================================
 
 //= NAMESPACES ================
@@ -38,19 +38,19 @@ namespace SettingsIO
 {
 	ofstream fout;
 	ifstream fin;
-	string fileName = "Directus.ini";
+	string file_name = "Directus.ini";
 }
 
 namespace Directus
 {
 	template <class T>
-	void WriteSetting(ofstream& fout, const string& name, T value)
+	void write_setting(ofstream& fout, const string& name, T value)
 	{
 		fout << name << "=" << value << endl;
 	}
 
 	template <class T>
-	void ReadSetting(ifstream& fin, const string& name, T& value)
+	void read_setting(ifstream& fin, const string& name, T& value)
 	{
 		for (string line; getline(fin, line); )
 		{
@@ -58,8 +58,8 @@ namespace Directus
 			if (name == line.substr(0, first_index))
 			{
 				const auto lastindex = line.find_last_of('=');
-				const auto readValue = line.substr(lastindex + 1, line.length());
-				value = static_cast<T>(stof(readValue));
+				const auto read_value = line.substr(lastindex + 1, line.length());
+				value = static_cast<T>(stof(read_value));
 				return;
 			}
 		}
@@ -72,23 +72,23 @@ namespace Directus
 
 	void Settings::Initialize()
 	{
-		if (FileSystem::FileExists(SettingsIO::fileName))
+		if (FileSystem::FileExists(SettingsIO::file_name))
 		{
 			// Create a settings file
-			SettingsIO::fin.open(SettingsIO::fileName, ifstream::in);
+			SettingsIO::fin.open(SettingsIO::file_name, ifstream::in);
 
 			float resolution_x = 0;
 			float resolution_y = 0;
 
 			// Read the settings
-			ReadSetting(SettingsIO::fin, "bFullScreen",				m_isFullScreen);
-			ReadSetting(SettingsIO::fin, "bIsMouseVisible",			m_isMouseVisible);
-			ReadSetting(SettingsIO::fin, "fResolutionWidth",		resolution_x);
-			ReadSetting(SettingsIO::fin, "fResolutionHeight",		resolution_y);
-			ReadSetting(SettingsIO::fin, "iShadowMapResolution",	m_shadowMapResolution);
-			ReadSetting(SettingsIO::fin, "iAnisotropy",				m_anisotropy);
-			ReadSetting(SettingsIO::fin, "fFPSLimit",				m_fpsLimit);
-			ReadSetting(SettingsIO::fin, "iMaxThreadCount",			m_maxThreadCount);
+			read_setting(SettingsIO::fin, "bFullScreen",			m_isFullScreen);
+			read_setting(SettingsIO::fin, "bIsMouseVisible",		m_isMouseVisible);
+			read_setting(SettingsIO::fin, "fResolutionWidth",		resolution_x);
+			read_setting(SettingsIO::fin, "fResolutionHeight",		resolution_y);
+			read_setting(SettingsIO::fin, "iShadowMapResolution",	m_shadowMapResolution);
+			read_setting(SettingsIO::fin, "iAnisotropy",			m_anisotropy);
+			read_setting(SettingsIO::fin, "fFPSLimit",				m_fpsLimit);
+			read_setting(SettingsIO::fin, "iMaxThreadCount",		m_maxThreadCount);
 
 			m_windowSize = Vector2(resolution_x, resolution_y);
 
@@ -112,17 +112,17 @@ namespace Directus
 		else
 		{
 			// Create a settings file
-			SettingsIO::fout.open(SettingsIO::fileName, ofstream::out);
+			SettingsIO::fout.open(SettingsIO::file_name, ofstream::out);
 
 			// Write the settings
-			WriteSetting(SettingsIO::fout, "bFullScreen",			m_isFullScreen);
-			WriteSetting(SettingsIO::fout, "bIsMouseVisible",		m_isMouseVisible);
-			WriteSetting(SettingsIO::fout, "fResolutionWidth",		m_windowSize.x);
-			WriteSetting(SettingsIO::fout, "fResolutionHeight",		m_windowSize.y);
-			WriteSetting(SettingsIO::fout, "iShadowMapResolution",	m_shadowMapResolution);
-			WriteSetting(SettingsIO::fout, "iAnisotropy",			m_anisotropy);
-			WriteSetting(SettingsIO::fout, "fFPSLimit",				m_fpsLimit);
-			WriteSetting(SettingsIO::fout, "iMaxThreadCount",		m_maxThreadCount);
+			write_setting(SettingsIO::fout, "bFullScreen",			m_isFullScreen);
+			write_setting(SettingsIO::fout, "bIsMouseVisible",		m_isMouseVisible);
+			write_setting(SettingsIO::fout, "fResolutionWidth",		m_windowSize.x);
+			write_setting(SettingsIO::fout, "fResolutionHeight",	m_windowSize.y);
+			write_setting(SettingsIO::fout, "iShadowMapResolution",	m_shadowMapResolution);
+			write_setting(SettingsIO::fout, "iAnisotropy",			m_anisotropy);
+			write_setting(SettingsIO::fout, "fFPSLimit",			m_fpsLimit);
+			write_setting(SettingsIO::fout, "iMaxThreadCount",		m_maxThreadCount);
 
 			// Close the file.
 			SettingsIO::fout.close();
@@ -135,9 +135,9 @@ namespace Directus
 		LOGF_INFO("Max threads: %d",		m_maxThreadCount);
 	}
 
-	void Settings::DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refreshRateNumerator, unsigned int refreshRateDenominator)
+	void Settings::DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator)
 	{
-		auto& mode = m_displayModes.emplace_back(width, height, refreshRateNumerator, refreshRateDenominator);
+		auto& mode = m_displayModes.emplace_back(width, height, refresh_rate_numerator, refresh_rate_denominator);
 
 		// Try to deduce the maximum frame rate based on how fast is the monitor
 		if (m_fpsPolicy == FPS_MonitorMatch)

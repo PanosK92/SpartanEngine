@@ -32,43 +32,43 @@ class Widget_World : public Widget
 {
 public:
 	Widget_World(Directus::Context* context);
-	void Tick(float deltaTime) override;
+	void Tick(float delta_time) override;
 
 private:
 	// Tree
-	void Tree_Show();
+	void TreeShow();
 	void OnTreeBegin();
 	void OnTreeEnd();
-	void Tree_AddEntity(Directus::Entity* entity);
+	void TreeAddEntity(Directus::Entity* entity);
 	void HandleClicking();
-	void Entity_HandleDragDrop(Directus::Entity* entityPtr);
-	void SetSelectedEntity(std::shared_ptr<Directus::Entity> entity, bool fromEditor = true);
+	void EntityHandleDragDrop(Directus::Entity* entity_ptr) const;
+	void SetSelectedEntity(const std::shared_ptr<Directus::Entity>& entity, bool from_editor = true);
 
 	// Misc
 	void Popups();
-	void Popup_ContextMenu();	
-	void Popup_EntityRename();
-	void HandleKeyShortcuts();
+	void PopupContextMenu();	
+	void PopupEntityRename() const;
+	static void HandleKeyShortcuts();
 
 	// Context menu actions
-	void Action_Entity_Delete(std::shared_ptr<Directus::Entity> entity);
-	Directus::Entity* Action_Entity_CreateEmpty();
-	void Action_Entity_CreateCube();
-	void Action_Entity_CreateQuad();
-	void Action_Entity_CreateSphere();
-	void Action_Entity_CreateCylinder();
-	void Action_Entity_CreateCone();
-	void Action_Entity_CreateCamera();
-	void Action_Entity_CreateLightDirectional();
-	void Action_Entity_CreateLightPoint();
-	void Action_Entity_CreateLightSpot();
-	void Action_Entity_CreateRigidBody();
-	void Action_Entity_CreateCollider();
-	void Action_Entity_CreateConstraint();
-	void Action_Entity_CreateAudioSource();
-	void Action_Entity_CreateAudioListener();
-	void Action_Entity_CreateSkybox();
+	static void ActionEntityDelete(const std::shared_ptr<Directus::Entity>& entity);
+	static Directus::Entity* ActionEntityCreateEmpty();
+	static void ActionEntityCreateCube();
+	static void ActionEntityCreateQuad();
+	static void ActionEntityCreateSphere();
+	static void ActionEntityCreateCylinder();
+	static void ActionEntityCreateCone();
+	static void ActionEntityCreateCamera();
+	static void ActionEntityCreateLightDirectional();
+	static void ActionEntityCreateLightPoint();
+	static void ActionEntityCreateLightSpot();
+	static void ActionEntityCreateRigidBody();
+	static void ActionEntityCreateCollider();
+	static void ActionEntityCreateConstraint();
+	static void ActionEntityCreateAudioSource();
+	static void ActionEntityCreateAudioListener();
+	static void ActionEntityCreateSkybox();
 	
 	std::shared_ptr<Directus::Entity> m_entity_empty;
-	bool m_expandToShowentity = false;
+	bool m_expand_to_showentity = false;
 };

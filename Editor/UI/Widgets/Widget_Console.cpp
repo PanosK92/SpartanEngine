@@ -33,14 +33,14 @@ using namespace Math;
 
 namespace _Widget_Console
 {
-	static bool scrollToBottom = false;
+	static bool scroll_to_bottom = false;
 	static const vector<Vector4> colors =
 	{
 		Vector4(0.76f, 0.77f, 0.8f, 1.0f),	// Info
 		Vector4(0.75f, 0.75f, 0.0f, 1.0f),	// Warning
 		Vector4(0.75f, 0.0f, 0.0f, 1.0f)	// Error
 	};
-	static ImGuiTextFilter logFilter;
+	static ImGuiTextFilter log_filter;
 }
 
 Widget_Console::Widget_Console(Context* context) : Widget(context)
@@ -49,76 +49,76 @@ Widget_Console::Widget_Console(Context* context) : Widget(context)
 
 	// Create an implementation of EngineLogger
 	m_logger = make_shared<EngineLogger>();
-	m_logger->SetCallback([this](LogPackage package) { AddLogPackage(package); });
+	m_logger->SetCallback([this](const LogPackage package) { AddLogPackage(package); });
 
 	// Set the logger implementation for the engine to use
 	Log::SetLogger(m_logger);
 
-	m_showInfo		= true;
-	m_showWarnings	= true;
-	m_showErrors	= true;
+	m_show_info		= true;
+	m_show_warnings	= true;
+	m_show_errors	= true;
 }
 
-void Widget_Console::Tick(float deltaTime)
+void Widget_Console::Tick(float delta_time)
 {
 	// Clear Button
 	if (ImGui::Button("Clear"))	{ Clear();} ImGui::SameLine();
 
 	// Lambda for info, warning, error filter button
-	auto DisplayButton = [](Icon_Type icon, bool* toggle)
+	const auto display_button = [](const Icon_Type icon, bool* toggle)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, *toggle ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
 		if (ImGuiEx::ImageButton(icon, 15.0f))
 		{
 			*toggle = !(*toggle);
-			_Widget_Console::scrollToBottom = true;
+			_Widget_Console::scroll_to_bottom = true;
 		}
 		ImGui::PopStyleColor();
 		ImGui::SameLine();
 	};
 
 	// Log category visibility buttons
-	DisplayButton(Icon_Console_Info, &m_showInfo);
-	DisplayButton(Icon_Console_Warning, &m_showWarnings);
-	DisplayButton(Icon_Console_Error, &m_showErrors);
+	display_button(Icon_Console_Info, &m_show_info);
+	display_button(Icon_Console_Warning, &m_show_warnings);
+	display_button(Icon_Console_Error, &m_show_errors);
 
 	// Text filter
-	_Widget_Console::logFilter.Draw("Filter", -100.0f);
+	_Widget_Console::log_filter.Draw("Filter", -100.0f);
 	ImGui::Separator();
 
 	// Content
 	ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 	for (auto& log : m_logs)
 	{
-		if (!_Widget_Console::logFilter.PassFilter(log.text.c_str()))
+		if (!_Widget_Console::log_filter.PassFilter(log.text.c_str()))
 			continue;
 
-		if ((log.errorLevel == 0 && m_showInfo) || (log.errorLevel == 1 && m_showWarnings) || (log.errorLevel == 2 && m_showErrors))
+		if ((log.error_level == 0 && m_show_info) || (log.error_level == 1 && m_show_warnings) || (log.error_level == 2 && m_show_errors))
 		{
-			ImGui::PushStyleColor(ImGuiCol_Text, _Widget_Console::colors[log.errorLevel]);	// text
+			ImGui::PushStyleColor(ImGuiCol_Text, _Widget_Console::colors[log.error_level]);	// text
 			ImGui::TextUnformatted(log.text.c_str());
 			ImGui::PopStyleColor();
 		}
 	}
 
-	if (_Widget_Console::scrollToBottom)
+	if (_Widget_Console::scroll_to_bottom)
 	{
 		ImGui::SetScrollHereY();
-		_Widget_Console::scrollToBottom = false;
+		_Widget_Console::scroll_to_bottom = false;
 	}
 
 	ImGui::EndChild();
 }
 
-void Widget_Console::AddLogPackage(LogPackage package)
+void Widget_Console::AddLogPackage(const LogPackage& package)
 {
 	m_logs.push_back(package);
-	if ((unsigned int)m_logs.size() > m_maxLogEntries)
+	if (static_cast<unsigned int>(m_logs.size()) > m_max_log_entries)
 	{
 		m_logs.pop_front();
 	}
 
-	_Widget_Console::scrollToBottom = true;
+	_Widget_Console::scroll_to_bottom = true;
 }
 
 void Widget_Console::Clear()

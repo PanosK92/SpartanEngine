@@ -39,7 +39,7 @@ namespace _Widget_Viewport
 {
 	static Renderer* g_renderer	= nullptr;
 	static World* g_world		= nullptr;
-	float g_windowPadding		= 4.0f;
+	float g_window_padding		= 4.0f;
 }
 
 Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
@@ -57,28 +57,28 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
 bool Widget_Viewport::Begin()
 {
 	ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(_Widget_Viewport::g_windowPadding, _Widget_Viewport::g_windowPadding));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(_Widget_Viewport::g_window_padding, _Widget_Viewport::g_window_padding));
 	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
 
 	return true;
 }
 
-void Widget_Viewport::Tick(float deltaTime)
+void Widget_Viewport::Tick(const float delta_time)
 {
 	if (!_Widget_Viewport::g_renderer)
 		return;
 	
-	ShowFrame(deltaTime);
+	ShowFrame(delta_time);
 	ImGui::PopStyleVar();
 }
 
-void Widget_Viewport::ShowFrame(float deltaTime)
+void Widget_Viewport::ShowFrame(const float delta_time)
 {
 	// Get current frame window resolution
-	unsigned int width	= (unsigned int)(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-	unsigned int height = (unsigned int)(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
-	unsigned int maxRes = _Widget_Viewport::g_renderer->GetMaxResolution();
-	if (width > maxRes || height > maxRes)
+	auto width			= static_cast<unsigned int>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+	auto height			= static_cast<unsigned int>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+	const auto max_res	= _Widget_Viewport::g_renderer->GetMaxResolution();
+	if (width > max_res || height > max_res)
 		return;
 
 	// Make pixel perfect
@@ -87,7 +87,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 
 	ImGui::Image(
 		_Widget_Viewport::g_renderer->GetFrameShaderResource(),
-		ImVec2((float)width, (float)height),
+		ImVec2(static_cast<float>(width), static_cast<float>(height)),
 		ImVec2(0, 0),
 		ImVec2(1, 1),
 		ImColor(255, 255, 255, 255),
@@ -95,8 +95,8 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 	);
 
 	// Update engine's viewport
-	_Widget_Viewport::g_renderer->viewport_editor_offset = Vector2(ImGui::GetWindowPos()) + _Widget_Viewport::g_windowPadding;
-	_Widget_Viewport::g_renderer->SetViewport(RHI_Viewport(0.0f, 0.0f, (float)width, (float)height));
+	_Widget_Viewport::g_renderer->viewport_editor_offset = Vector2(ImGui::GetWindowPos()) + _Widget_Viewport::g_window_padding;
+	_Widget_Viewport::g_renderer->SetViewport(RHI_Viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)));
 
 	// Update engine's resolution
 	if (m_timeSinceLastResChange >= 0.250f) // Don't stress the GPU too much
@@ -104,7 +104,7 @@ void Widget_Viewport::ShowFrame(float deltaTime)
 		_Widget_Viewport::g_renderer->SetResolution(width, height);
 		m_timeSinceLastResChange = 0;
 	}
-	m_timeSinceLastResChange += deltaTime;
+	m_timeSinceLastResChange += delta_time;
 
 	// If this widget was clicked, make the engine pick an entity
 	if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered())

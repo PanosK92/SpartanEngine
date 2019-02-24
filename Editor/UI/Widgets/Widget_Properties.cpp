@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Script.h"
 #include "World/Components/Skybox.h"
 #include "Audio/AudioClip.h"
+#include "Core/Engine.h"
 //=============================================
 
 //= NAMESPACES ==========
@@ -164,7 +165,7 @@ void Widget_Properties::Tick(float delta_time)
 		auto audio_source	= entity_ptr->GetComponent<AudioSource>();
 		auto audio_listener	= entity_ptr->GetComponent<AudioListener>();
 		auto renderable		= entity_ptr->GetComponent<Renderable>();
-		auto material		= renderable ? renderable->Material_Ptr() : nullptr;
+		auto material		= renderable ? renderable->MaterialPtr() : nullptr;
 		auto rigid_body		= entity_ptr->GetComponent<RigidBody>();
 		auto collider		= entity_ptr->GetComponent<Collider>();
 		auto constraint		= entity_ptr->GetComponent<Constraint>();
@@ -200,7 +201,7 @@ void Widget_Properties::Inspect(const weak_ptr<Entity>& entity)
 {
 	m_inspected_entity = entity;
 
-	if (auto shared_ptr = entity.lock())
+	if (const auto shared_ptr = entity.lock())
 	{
 		_Widget_Properties::rotation_hint = shared_ptr->GetTransform_PtrRaw()->GetRotationLocal().ToEulerAngles();
 	}
@@ -217,7 +218,7 @@ void Widget_Properties::Inspect(const weak_ptr<Entity>& entity)
 	m_inspected_material.reset();
 }
 
-void Widget_Properties::Inspect(weak_ptr<Material> material)
+void Widget_Properties::Inspect(const weak_ptr<Material>& material)
 {
 	m_inspected_entity.reset();
 	m_inspected_material = material;
@@ -229,11 +230,11 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 	{
 		const auto is_playing = Engine::EngineMode_IsSet(Engine_Game);
 
-		//= REFLECT =========================================================================================================
-		Vector3 position	= transform->GetPositionLocal();
-		Vector3 rotation	= !is_playing ? _Widget_Properties::rotation_hint : transform->GetRotationLocal().ToEulerAngles();
-		Vector3 scale		= transform->GetScaleLocal();
-		//===================================================================================================================
+		//= REFLECT ======================================================================================================
+		auto position	= transform->GetPositionLocal();
+		auto rotation	= !is_playing ? _Widget_Properties::rotation_hint : transform->GetRotationLocal().ToEulerAngles();
+		auto scale		= transform->GetScaleLocal();
+		//================================================================================================================
 
 		const auto start_column = ComponentProperty::g_column - 70.0f;
 
@@ -391,8 +392,8 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable) const
 	if (ComponentProperty::Begin("Renderable", Icon_Component_Renderable, renderable))
 	{
 		//= REFLECT ====================================================================
-		auto mesh_name			= renderable->Geometry_Name();
-		auto material			= renderable->Material_Ptr();
+		auto mesh_name			= renderable->GeometryName();
+		auto material			= renderable->MaterialPtr();
 		auto material_name		= material ? material->GetResourceName() : NOT_ASSIGNED;
 		auto cast_shadows		= renderable->GetCastShadows();
 		auto receive_shadows	=	 renderable->GetReceiveShadows();
@@ -639,7 +640,7 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint) const
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_entity))
 		{
 			const auto entity_id	= get<unsigned int>(payload->data);
-			other_body				= _Widget_Properties::scene->Entity_GetByID(entity_id);
+			other_body				= _Widget_Properties::scene->EntityGetById(entity_id);
 			other_body_dirty			= true;
 		}
 		ImGui::PopItemWidth();
@@ -833,7 +834,7 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera) const
 		//= REFLECT ==============================================================================================
 		vector<const char*> projection_types	= { "Perspective", "Orthographic" };
 		auto projection_char_ptr				= projection_types[static_cast<int>(camera->GetProjectionType())];
-		float fov								= camera->GetFOV_Horizontal_Deg();
+		float fov								= camera->GetFovHorizontalDeg();
 		float near_plane						= camera->GetNearPlane();
 		float far_plane							= camera->GetFarPlane();
 		m_colorPicker_camera->SetColor(camera->GetClearColor());
@@ -877,7 +878,7 @@ void Widget_Properties::ShowCamera(shared_ptr<Camera>& camera) const
 		ImGui::SetCursorPosX(ComponentProperty::g_column);	ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.1f, 0.1f, "%.3f", input_text_flags); ImGui::PopItemWidth();
 
 		//= MAP ====================================================================================================================
-		if (fov != camera->GetFOV_Horizontal_Deg())							camera->SetFOV_Horizontal_Deg(fov);
+		if (fov != camera->GetFovHorizontalDeg())							camera->SetFovHorizontalDeg(fov);
 		if (near_plane != camera->GetNearPlane())							camera->SetNearPlane(near_plane);
 		if (far_plane != camera->GetFarPlane())								camera->SetFarPlane(far_plane);
 		if (m_colorPicker_camera->GetColor() != camera->GetClearColor())	camera->SetClearColor(m_colorPicker_camera->GetColor());

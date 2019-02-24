@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Script.h"
 #include "Components/Skybox.h"
 #include "Components/AudioListener.h"
-#include "Components/Renderable.h"
 #include "../Core/Engine.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceCache.h"
@@ -90,8 +89,8 @@ namespace Directus
 		// Tick entities
 		{
 			// Detect game toggling
-			bool started		= Engine::EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
-			bool stopped		= !Engine::EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
+			const auto started	= Engine::EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
+			const auto stopped	= !Engine::EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
 			m_wasInEditorMode	= !Engine::EngineMode_IsSet(Engine_Game);
 
 			// Start
@@ -150,34 +149,34 @@ namespace Directus
 		Stopwatch timer;
 	
 		// Add scene file extension to the filepath if it's missing
-		string filePath = filePathIn;
-		if (FileSystem::GetExtensionFromFilePath(filePath) != EXTENSION_WORLD)
+		auto file_path = filePathIn;
+		if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
 		{
-			filePath += EXTENSION_WORLD;
+			file_path += EXTENSION_WORLD;
 		}
 
 		// Save any in-memory changes done to resources while running.
 		m_context->GetSubsystem<ResourceCache>()->SaveResourcesToFiles();
 
 		// Create a prefab file
-		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
+		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
 		if (!file->IsOpen())
 		{
 			return false;
 		}
 
 		// Save currently loaded resource paths
-		vector<string> filePaths;
-		m_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths(filePaths);
-		file->Write(filePaths);
+		vector<string> file_paths;
+		m_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths(file_paths);
+		file->Write(file_paths);
 
 		//= Save entities ============================
 		// Only save root entities as they will also save their descendants
-		vector<shared_ptr<Entity>> rootentities = Entities_GetRoots();
+		auto rootentities = EntitiesGetRoots();
 
 		// 1st - entity count
-		auto rootentityCount = (int)rootentities.size();
-		file->Write(rootentityCount);
+		const auto root_entity_count = static_cast<unsigned int>(rootentities.size());
+		file->Write(root_entity_count);
 
 		// 2nd - entity IDs
 		for (const auto& root : rootentities)
@@ -193,17 +192,17 @@ namespace Directus
 		//==============================================
 
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
-		LOG_INFO("Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
+		LOG_INFO("Saving took " + to_string(static_cast<int>(timer.GetElapsedTimeMs())) + " ms");	
 		FIRE_EVENT(Event_World_Saved);
 
 		return true;
 	}
 
-	bool World::LoadFromFile(const string& filePath)
+	bool World::LoadFromFile(const string& file_path)
 	{
-		if (!FileSystem::FileExists(filePath))
+		if (!FileSystem::FileExists(file_path))
 		{
-			LOG_ERROR(filePath + " was not found.");
+			LOG_ERROR(file_path + " was not found.");
 			return false;
 		}
 
@@ -217,34 +216,34 @@ namespace Directus
 		Unload();
 
 		// Read all the resource file paths
-		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
 		if (!file->IsOpen())
 			return false;
 
 		Stopwatch timer;
 
-		vector<string> resourcePaths;
-		file->Read(&resourcePaths);
+		vector<string> resource_paths;
+		file->Read(&resource_paths);
 
-		ProgressReport::Get().SetJobCount(g_progress_Scene, (int)resourcePaths.size());
+		ProgressReport::Get().SetJobCount(g_progress_Scene, static_cast<unsigned int>(resource_paths.size()));
 
 		// Load all the resources
-		auto resourceMng = m_context->GetSubsystem<ResourceCache>();
-		for (const auto& resourcePath : resourcePaths)
+		auto resource_mng = m_context->GetSubsystem<ResourceCache>();
+		for (const auto& resource_path : resource_paths)
 		{
-			if (FileSystem::IsEngineModelFile(resourcePath))
+			if (FileSystem::IsEngineModelFile(resource_path))
 			{
-				resourceMng->Load<Model>(resourcePath);
+				resource_mng->Load<Model>(resource_path);
 			}
 
-			if (FileSystem::IsEngineMaterialFile(resourcePath))
+			if (FileSystem::IsEngineMaterialFile(resource_path))
 			{
-				resourceMng->Load<Material>(resourcePath);
+				resource_mng->Load<Material>(resource_path);
 			}
 
-			if (FileSystem::IsEngineTextureFile(resourcePath))
+			if (FileSystem::IsEngineTextureFile(resource_path))
 			{
-				resourceMng->Load<RHI_Texture>(resourcePath);
+				resource_mng->Load<RHI_Texture>(resource_path);
 			}
 
 			ProgressReport::Get().IncrementJobsDone(g_progress_Scene);
@@ -252,21 +251,21 @@ namespace Directus
 
 		//= Load entities ============================	
 		// 1st - Root entity count
-		int rootentityCount = file->ReadInt();
+		const int root_entity_count = file->ReadUInt();
 
 		// 2nd - Root entity IDs
-		for (int i = 0; i < rootentityCount; i++)
+		for (auto i = 0; i < root_entity_count; i++)
 		{
-			auto& entity = Entity_Create();
+			auto& entity = EntityCreate();
 			entity->SetId(file->ReadInt());
 		}
 
 		// 3rd - entities
-		// It's important to loop with rootentityCount
+		// It's important to loop with root_entity_count
 		// as the vector size will increase as we deserialize
 		// entities. This is because a entity will also
 		// deserialize their descendants.
-		for (int i = 0; i < rootentityCount; i++)
+		for (auto i = 0; i < root_entity_count; i++)
 		{
 			m_entitiesPrimary[i]->Deserialize(file.get(), nullptr);
 		}
@@ -275,7 +274,7 @@ namespace Directus
 		m_isDirty	= true;
 		m_state		= Ticking;
 		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);	
-		LOG_INFO("Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");	
+		LOG_INFO("Loading took " + to_string(static_cast<int>(timer.GetElapsedTimeMs())) + " ms");	
 
 		FIRE_EVENT(Event_World_Loaded);
 		return true;
@@ -283,14 +282,14 @@ namespace Directus
 	//===================================================================================================
 
 	//= entity HELPER FUNCTIONS  ====================================================================
-	shared_ptr<Entity>& World::Entity_Create()
+	shared_ptr<Entity>& World::EntityCreate()
 	{
 		auto entity = make_shared<Entity>(m_context);
 		entity->Initialize(entity->AddComponent<Transform>().get());
 		return m_entitiesPrimary.emplace_back(entity);
 	}
 
-	shared_ptr<Entity>& World::Entity_Add(const shared_ptr<Entity>& entity)
+	shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
 	{
 		if (!entity)
 			return m_entity_empty;
@@ -298,34 +297,34 @@ namespace Directus
 		return m_entitiesPrimary.emplace_back(entity);
 	}
 
-	bool World::Entity_Exists(const shared_ptr<Entity>& entity)
+	bool World::EntityExists(const shared_ptr<Entity>& entity)
 	{
 		if (!entity)
 			return false;
 
-		return Entity_GetByID(entity->GetId()) != nullptr;
+		return EntityGetById(entity->GetId()) != nullptr;
 	}
 
 	// Removes an entity and all of it's children
-	void World::Entity_Remove(const shared_ptr<Entity>& entity)
+	void World::EntityRemove(const shared_ptr<Entity>& entity)
 	{
 		if (!entity)
 			return;
 
 		// remove any descendants
-		vector<Transform*> children = entity->GetTransform_PtrRaw()->GetChildren();
+		auto children = entity->GetTransform_PtrRaw()->GetChildren();
 		for (const auto& child : children)
 		{
-			Entity_Remove(child->GetEntity_PtrShared());
+			EntityRemove(child->GetEntity_PtrShared());
 		}
 
 		// Keep a reference to it's parent (in case it has one)
-		Transform* parent = entity->GetTransform_PtrRaw()->GetParent();
+		auto parent = entity->GetTransform_PtrRaw()->GetParent();
 
 		// Remove this entity
 		for (auto it = m_entitiesPrimary.begin(); it < m_entitiesPrimary.end();)
 		{
-			shared_ptr<Entity> temp = *it;
+			const auto temp = *it;
 			if (temp->GetId() == entity->GetId())
 			{
 				it = m_entitiesPrimary.erase(it);
@@ -343,21 +342,21 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	vector<shared_ptr<Entity>> World::Entities_GetRoots()
+	vector<shared_ptr<Entity>> World::EntitiesGetRoots()
 	{
-		vector<shared_ptr<Entity>> rootentities;
+		vector<shared_ptr<Entity>> rootEntities;
 		for (const auto& entity : m_entitiesPrimary)
 		{
 			if (entity->GetTransform_PtrRaw()->IsRoot())
 			{
-				rootentities.emplace_back(entity);
+				rootEntities.emplace_back(entity);
 			}
 		}
 
-		return rootentities;
+		return rootEntities;
 	}
 
-	const shared_ptr<Entity>& World::Entity_GetByName(const string& name)
+	const shared_ptr<Entity>& World::EntityGetByName(const string& name)
 	{
 		for (const auto& entity : m_entitiesPrimary)
 		{
@@ -368,11 +367,11 @@ namespace Directus
 		return m_entity_empty;
 	}
 
-	const shared_ptr<Entity>& World::Entity_GetByID(unsigned int ID)
+	const shared_ptr<Entity>& World::EntityGetById(const unsigned int id)
 	{
 		for (const auto& entity : m_entitiesPrimary)
 		{
-			if (entity->GetId() == ID)
+			if (entity->GetId() == id)
 				return entity;
 		}
 
@@ -383,7 +382,7 @@ namespace Directus
 	//= COMMON ENTITY CREATION ========================================================================
 	shared_ptr<Entity>& World::CreateSkybox()
 	{
-		shared_ptr<Entity>& skybox = Entity_Create();
+		auto& skybox = EntityCreate();
 		skybox->SetName("Skybox");
 		skybox->AddComponent<Skybox>();
 
@@ -391,15 +390,15 @@ namespace Directus
 	}
 	shared_ptr<Entity> World::CreateCamera()
 	{
-		auto resourceMng		= m_context->GetSubsystem<ResourceCache>();
-		string scriptDirectory	= resourceMng->GetStandardResourceDirectory(Resource_Script);
+		auto resource_mng			= m_context->GetSubsystem<ResourceCache>();
+		const auto script_directory	= resource_mng->GetStandardResourceDirectory(Resource_Script);
 
-		auto entity = Entity_Create();
+		auto entity = EntityCreate();
 		entity->SetName("Camera");
 		entity->AddComponent<Camera>();
 		entity->AddComponent<AudioListener>();
-		entity->AddComponent<Script>()->SetScript(scriptDirectory + "MouseLook.as");
-		entity->AddComponent<Script>()->SetScript(scriptDirectory + "FirstPersonController.as");
+		entity->AddComponent<Script>()->SetScript(script_directory + "MouseLook.as");
+		entity->AddComponent<Script>()->SetScript(script_directory + "FirstPersonController.as");
 		entity->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
 		return entity;
@@ -407,14 +406,14 @@ namespace Directus
 
 	shared_ptr<Entity>& World::CreateDirectionalLight()
 	{
-		shared_ptr<Entity>& light = Entity_Create();
+		auto& light = EntityCreate();
 		light->SetName("DirectionalLight");
 		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
 		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
-		Light* lightComp = light->AddComponent<Light>().get();
-		lightComp->SetLightType(LightType_Directional);
-		lightComp->SetIntensity(1.5f);
+		auto light_comp = light->AddComponent<Light>().get();
+		light_comp->SetLightType(LightType_Directional);
+		light_comp->SetIntensity(1.5f);
 
 		return light;
 	}

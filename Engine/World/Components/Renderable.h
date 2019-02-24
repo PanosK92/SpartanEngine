@@ -38,7 +38,7 @@ namespace Directus
 		class Vector3;
 	}
 
-	enum GeometryType
+	enum Geometry_Type
 	{
 		Geometry_Custom,
 		Geometry_Default_Cube,
@@ -52,55 +52,55 @@ namespace Directus
 	{
 	public:
 		Renderable(Context* context, Entity* entity, Transform* transform);
-		~Renderable();
+		~Renderable() = default;
 
 		//= ICOMPONENT ===============================
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= GEOMETRY ====================================================================================
-		void Geometry_Set(
+		//= GEOMETRY =============================================================================================
+		void GeometrySet(
 			const std::string& name,
-			unsigned int indexOffset,
-			unsigned int indexCount,
-			unsigned int vertexOffset,
-			unsigned int vertexCount,
-			const Math::BoundingBox& AABB, 
+			unsigned int index_offset,
+			unsigned int index_count,
+			unsigned int vertex_offset,
+			unsigned int vertex_count,
+			const Math::BoundingBox& aabb, 
 			std::shared_ptr<Model>& model
 		);
-		void Geometry_Get(std::vector<unsigned int>* indices, std::vector<RHI_Vertex_PosUvNorTan>* vertices);
-		void Geometry_Set(GeometryType type);
-		unsigned int Geometry_IndexOffset()				{ return m_geometryIndexOffset; }
-		unsigned int Geometry_IndexCount()				{ return m_geometryIndexCount; }		
-		unsigned int Geometry_VertexOffset()			{ return m_geometryVertexOffset; }
-		unsigned int Geometry_VertexCount()				{ return m_geometryVertexCount; }
-		GeometryType Geometry_Type()					{ return m_geometryType; }
-		const std::string& Geometry_Name()				{ return m_geometryName; }
-		std::shared_ptr<Model> Geometry_Model()			{ return m_model; }
-		const Math::BoundingBox& Geometry_AABB() const	{ return m_geometryAABB; }
-		Math::BoundingBox Geometry_AABB();
-		//===============================================================================================
+		void GeometryGet(std::vector<unsigned int>* indices, std::vector<RHI_Vertex_PosUvNorTan>* vertices) const;
+		void GeometrySet(Geometry_Type type);
+		unsigned int GeometryIndexOffset() const		{ return m_geometryIndexOffset; }
+		unsigned int GeometryIndexCount() const			{ return m_geometryIndexCount; }		
+		unsigned int GeometryVertexOffset() const		{ return m_geometryVertexOffset; }
+		unsigned int GeometryVertexCount() const		{ return m_geometryVertexCount; }
+		Geometry_Type GeometryType() const				{ return m_geometry_type; }
+		const std::string& GeometryName() const			{ return m_geometryName; }
+		std::shared_ptr<Model> GeometryModel() const	{ return m_model; }
+		const Math::BoundingBox& GeometryAabb() const	{ return m_geometryAABB; }
+		Math::BoundingBox GeometryAabb();
+		//========================================================================================================
 
 		//= MATERIAL ============================================================
 		// Sets a material from memory (adds it to the resource cache by default)
-		void Material_Set(const std::shared_ptr<Material>& material);
+		void MaterialSet(const std::shared_ptr<Material>& material);
 
 		// Loads a material and the sets it
-		std::shared_ptr<Material> Material_Set(const std::string& filePath);
+		std::shared_ptr<Material> MaterialSet(const std::string& file_path);
 
-		void Material_UseDefault();
-		const std::string& Material_Name();
-		auto Material_Ptr()		{ return m_material; }
-		bool Material_Exists()	{ return m_material != nullptr; }
+		void MaterialUseDefault();
+		const std::string& MaterialName();
+		auto MaterialPtr() const	{ return m_material; }
+		bool MaterialExists() const { return m_material != nullptr; }
 		//=======================================================================
 
-		//= PROPERTIES ===================================================================
-		void SetCastShadows(bool castShadows)		{ m_castShadows = castShadows; }
-		bool GetCastShadows()						{ return m_castShadows; }
-		void SetReceiveShadows(bool receiveShadows) { m_receiveShadows = receiveShadows; }
-		bool GetReceiveShadows()					{ return m_receiveShadows; }
-		//================================================================================
+		//= PROPERTIES ============================================================================
+		void SetCastShadows(const bool cast_shadows)		{ m_castShadows = cast_shadows; }
+		bool GetCastShadows() const							{ return m_castShadows; }
+		void SetReceiveShadows(const bool receive_shadows)	{ m_receiveShadows = receive_shadows; }
+		bool GetReceiveShadows() const						{ return m_receiveShadows; }
+		//=========================================================================================
 
 	private:
 		//= GEOMETRY =======================
@@ -111,7 +111,7 @@ namespace Directus
 		unsigned int m_geometryVertexCount;
 		Math::BoundingBox m_geometryAABB;
 		std::shared_ptr<Model> m_model;
-		GeometryType m_geometryType;
+		Geometry_Type m_geometry_type;
 		//==================================
 
 		//= MATERIAL ========================

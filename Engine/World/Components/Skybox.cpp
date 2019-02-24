@@ -138,10 +138,10 @@ namespace Directus
 		// Renderable
 		{
 			auto renderable = GetEntity_PtrRaw()->AddComponent<Renderable>();
-			renderable->Geometry_Set(Geometry_Default_Cube);
+			renderable->GeometrySet(Geometry_Default_Cube);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
-			renderable->Material_Set(m_matSkybox);
+			renderable->MaterialSet(m_matSkybox);
 		}
 
 		// Make the skybox big enough
@@ -166,10 +166,10 @@ namespace Directus
 		// Renderable
 		{
 			auto renderable = GetEntity_PtrRaw()->AddComponent<Renderable>();
-			renderable->Geometry_Set(Geometry_Default_Sphere);
+			renderable->GeometrySet(Geometry_Default_Sphere);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
-			renderable->Material_Set(m_matSkybox);
+			renderable->MaterialSet(m_matSkybox);
 		}
 
 		// Make the skybox big enough

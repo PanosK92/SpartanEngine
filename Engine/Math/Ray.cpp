@@ -55,7 +55,7 @@ namespace Directus::Math
 				continue;
 
 			// Get bounding box
-			auto aabb = entity->GetComponent<Renderable>()->Geometry_AABB();
+			auto aabb = entity->GetComponent<Renderable>()->GeometryAabb();
 
 			// Compute hit distance
 			auto hit_distance = HitDistance(aabb);

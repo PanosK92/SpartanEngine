@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EditorHelper.h"
 #include "Rendering/Renderer.h"
 #include "Widget_Profiler.h"
+#include "Core/Engine.h"
 //=============================
 
 //= NAMESPACES ==========
@@ -35,17 +36,17 @@ using namespace Math;
 
 namespace _Widget_Toolbar
 {
-	static float g_buttonSize				= 20.0f;
-	static bool g_renderererOptions_visible	= false;
-	static float g_rendererOptions_alpha	= 1.0f;
-	static bool g_gizmo_physics				= true;
-	static bool g_gizmo_aabb				= false;
-	static bool g_gizmo_light				= true;
-	static bool g_gizmo_transform			= true;
-	static bool g_gizmo_pickingRay			= false;
-	static bool g_gizmo_grid				= true;
-	static bool g_gizmo_performanceMetrics	= false;
-	static vector<string> gbufferTextures =
+	static float g_button_size					= 20.0f;
+	static bool g_rendererer_options_visible	= false;
+	static float g_renderer_options_alpha		= 1.0f;
+	static bool g_gizmo_physics					= true;
+	static bool g_gizmo_aabb					= false;
+	static bool g_gizmo_light					= true;
+	static bool g_gizmo_transform				= true;
+	static bool g_gizmo_picking_ray				= false;
+	static bool g_gizmo_grid					= true;
+	static bool g_gizmo_performance_metrics		= false;
+	static vector<string> gbuffer_textures =
 	{
 		"None",
 		"Albedo",
@@ -55,8 +56,8 @@ namespace _Widget_Toolbar
 		"Depth",
 		"SSAO"
 	};
-	static int gbufferSelectedTextureIndex	= 0;
-	static string gbufferSelectedTexture	= gbufferTextures[0];
+	static int gbuffer_selected_texture_index	= 0;
+	static string gbuffer_selected_texture	= gbuffer_textures[0];
 }
 
 Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
@@ -75,7 +76,7 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 
 bool Widget_Toolbar::Begin()
 {
-	ImGuiContext& g = *GImGui;
+	auto& g = *GImGui;
 	g.NextWindowData.MenuBarOffsetMinVal = ImVec2(g.Style.DisplaySafeAreaPadding.x, ImMax(g.Style.DisplaySafeAreaPadding.y - g.Style.FramePadding.y, 0.0f));
 	ImGui::SetNextWindowPos(ImVec2(g.Viewports[0]->Pos.x, g.Viewports[0]->Pos.y + 25.0f));
 	ImGui::SetNextWindowSize(ImVec2(g.Viewports[0]->Size.x, g.NextWindowData.MenuBarOffsetMinVal.y + g.FontBaseSize + g.Style.FramePadding.y + 20.0f));
@@ -85,12 +86,12 @@ bool Widget_Toolbar::Begin()
 	return true;
 }
 
-void Widget_Toolbar::Tick(float deltaTime)
+void Widget_Toolbar::Tick(float delta_time)
 {
 	// Play button
 	ImGui::SameLine();
 	ImGui::PushStyleColor(ImGuiCol_Button, Engine::EngineMode_IsSet(Engine_Game) ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (ImGuiEx::ImageButton(Icon_Button_Play, _Widget_Toolbar::g_buttonSize))
+	if (ImGuiEx::ImageButton(Icon_Button_Play, _Widget_Toolbar::g_button_size))
 	{
 		Engine::EngineMode_Toggle(Engine_Game);
 	}
@@ -98,55 +99,55 @@ void Widget_Toolbar::Tick(float deltaTime)
 
 	// Renderer options button
 	ImGui::SameLine();
-	ImGui::PushStyleColor(ImGuiCol_Button, _Widget_Toolbar::g_renderererOptions_visible ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (ImGuiEx::ImageButton(Icon_Component_Options, _Widget_Toolbar::g_buttonSize))
+	ImGui::PushStyleColor(ImGuiCol_Button, _Widget_Toolbar::g_rendererer_options_visible ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+	if (ImGuiEx::ImageButton(Icon_Component_Options, _Widget_Toolbar::g_button_size))
 	{
-		_Widget_Toolbar::g_renderererOptions_visible = true;
+		_Widget_Toolbar::g_rendererer_options_visible = true;
 	}
 	ImGui::PopStyleColor();
 
 	ImGui::PopStyleVar();
 
 	// Visibility
-	if (_Widget_Toolbar::g_renderererOptions_visible) ShowRendererOptions();
+	if (_Widget_Toolbar::g_rendererer_options_visible) ShowRendererOptions();
 }
 
 void Widget_Toolbar::ShowRendererOptions()
 {
-	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, _Widget_Toolbar::g_rendererOptions_alpha);
-	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_renderererOptions_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
+	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, _Widget_Toolbar::g_renderer_options_alpha);
+	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_rendererer_options_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
 
-	ImGui::SliderFloat("Opacity", &_Widget_Toolbar::g_rendererOptions_alpha, 0.1f, 1.0f, "%.1f");
+	ImGui::SliderFloat("Opacity", &_Widget_Toolbar::g_renderer_options_alpha, 0.1f, 1.0f, "%.1f");
 
 	if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
 	{	
 		// Read from engine
 		static vector<char*> types	= { "Off", "ACES", "Reinhard", "Uncharted 2" };
-		const char* typeCharPtr		= types[(int)m_renderer->m_tonemapping];
+		const char* type_char_ptr	= types[static_cast<unsigned int>(m_renderer->m_tonemapping)];
 
-		bool do_bloom				= m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
-		bool do_fxaa				= m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
-		bool do_ssao				= m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
-		bool do_ssr					= m_renderer->Flags_IsSet(Render_PostProcess_SSR);
-		bool do_taa					= m_renderer->Flags_IsSet(Render_PostProcess_TAA);
-		bool do_motionBlur			= m_renderer->Flags_IsSet(Render_PostProcess_MotionBlur);
-		bool do_sharperning			= m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
-		bool do_chromaticAberration	= m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
-		bool do_dithering			= m_renderer->Flags_IsSet(Render_PostProcess_Dithering);
+		auto do_bloom					= m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
+		auto do_fxaa					= m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
+		auto do_ssao					= m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
+		auto do_ssr						= m_renderer->Flags_IsSet(Render_PostProcess_SSR);
+		auto do_taa						= m_renderer->Flags_IsSet(Render_PostProcess_TAA);
+		auto do_motion_blur				= m_renderer->Flags_IsSet(Render_PostProcess_MotionBlur);
+		auto do_sharperning				= m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
+		auto do_chromatic_aberration	= m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
+		auto do_dithering				= m_renderer->Flags_IsSet(Render_PostProcess_Dithering);
 		
 		// Display
 		{
-			auto tooltip = [this](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
+			const auto tooltip = [](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
 
-			if (ImGui::BeginCombo("Tonemapping", typeCharPtr))
+			if (ImGui::BeginCombo("Tonemapping", type_char_ptr))
 			{
-				for (unsigned int i = 0; i < (unsigned int)types.size(); i++)
+				for (unsigned int i = 0; i < static_cast<unsigned int>(types.size()); i++)
 				{
-					bool is_selected = (typeCharPtr == types[i]);
+					const auto is_selected = (type_char_ptr == types[i]);
 					if (ImGui::Selectable(types[i], is_selected))
 					{
-						typeCharPtr = types[i];
-						m_renderer->m_tonemapping = (ToneMapping_Type)i;
+						type_char_ptr = types[i];
+						m_renderer->m_tonemapping = static_cast<ToneMapping_Type>(i);
 					}
 					if (is_selected)
 					{
@@ -160,12 +161,12 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloom_intensity, 0.1f);		
 			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
 			ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
-			ImGui::Checkbox("Motion Blur", &do_motionBlur);
+			ImGui::Checkbox("Motion Blur", &do_motion_blur);
 			ImGui::InputFloat("Motion Blur Strength", &m_renderer->m_motion_blur_strength, 0.1f);
-			ImGui::Checkbox("Chromatic Aberration", &do_chromaticAberration);							tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
+			ImGui::Checkbox("Chromatic Aberration", &do_chromatic_aberration);							tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
 			ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
 			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &do_fxaa);
-			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaa_sub_pixel, 0.1f);						tooltip("The amount of sub-pixel aliasing removal");
+			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaa_sub_pixel, 0.1f);					tooltip("The amount of sub-pixel aliasing removal");
 			ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaa_edge_threshold, 0.1f);			tooltip("The minimum amount of local contrast required to apply algorithm");
 			ImGui::InputFloat("FXAA Edge Threshold Min", &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
 			ImGui::Checkbox("Sharpen", &do_sharperning);
@@ -175,13 +176,13 @@ void Widget_Toolbar::ShowRendererOptions()
 		}
 
 		// Filter input
-		m_renderer->m_bloom_intensity		= Abs(m_renderer->m_bloom_intensity);
+		m_renderer->m_bloom_intensity			= Abs(m_renderer->m_bloom_intensity);
 		m_renderer->m_fxaa_sub_pixel			= Abs(m_renderer->m_fxaa_sub_pixel);
 		m_renderer->m_fxaa_edge_threshold		= Abs(m_renderer->m_fxaa_edge_threshold);
 		m_renderer->m_fxaa_edge_threshold_min	= Abs(m_renderer->m_fxaa_edge_threshold_min);
-		m_renderer->m_sharpen_strength		= Abs(m_renderer->m_sharpen_strength);
-		m_renderer->m_sharpen_clamp			= Abs(m_renderer->m_sharpen_clamp);
-		m_renderer->m_motion_blur_strength	= Abs(m_renderer->m_motion_blur_strength);
+		m_renderer->m_sharpen_strength			= Abs(m_renderer->m_sharpen_strength);
+		m_renderer->m_sharpen_clamp				= Abs(m_renderer->m_sharpen_clamp);
+		m_renderer->m_motion_blur_strength		= Abs(m_renderer->m_motion_blur_strength);
 
 		// Map back to engine
 		#define SET_FLAG_IF(flag, value) value	? m_renderer->Flags_Enable(flag) : m_renderer->Flags_Disable(flag)
@@ -190,23 +191,23 @@ void Widget_Toolbar::ShowRendererOptions()
 		SET_FLAG_IF(Render_PostProcess_SSAO, do_ssao);
 		SET_FLAG_IF(Render_PostProcess_SSR, do_ssr);
 		SET_FLAG_IF(Render_PostProcess_TAA, do_taa);
-		SET_FLAG_IF(Render_PostProcess_MotionBlur, do_motionBlur);
+		SET_FLAG_IF(Render_PostProcess_MotionBlur, do_motion_blur);
 		SET_FLAG_IF(Render_PostProcess_Sharpening, do_sharperning);
-		SET_FLAG_IF(Render_PostProcess_ChromaticAberration, do_chromaticAberration);
+		SET_FLAG_IF(Render_PostProcess_ChromaticAberration, do_chromatic_aberration);
 		SET_FLAG_IF(Render_PostProcess_Dithering, do_dithering);
 	}
 
 	if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))
 	{
-		if (ImGui::BeginCombo("Buffer", _Widget_Toolbar::gbufferSelectedTexture.c_str()))
+		if (ImGui::BeginCombo("Buffer", _Widget_Toolbar::gbuffer_selected_texture.c_str()))
 		{
-			for (int i = 0; i < _Widget_Toolbar::gbufferTextures.size(); i++)
+			for (auto i = 0; i < _Widget_Toolbar::gbuffer_textures.size(); i++)
 			{
-				bool is_selected = (_Widget_Toolbar::gbufferSelectedTexture == _Widget_Toolbar::gbufferTextures[i]);
-				if (ImGui::Selectable(_Widget_Toolbar::gbufferTextures[i].c_str(), is_selected))
+				const auto is_selected = (_Widget_Toolbar::gbuffer_selected_texture == _Widget_Toolbar::gbuffer_textures[i]);
+				if (ImGui::Selectable(_Widget_Toolbar::gbuffer_textures[i].c_str(), is_selected))
 				{
-					_Widget_Toolbar::gbufferSelectedTexture = _Widget_Toolbar::gbufferTextures[i].data();
-					_Widget_Toolbar::gbufferSelectedTextureIndex = i;
+					_Widget_Toolbar::gbuffer_selected_texture = _Widget_Toolbar::gbuffer_textures[i];
+					_Widget_Toolbar::gbuffer_selected_texture_index = i;
 				}
 				if (is_selected)
 				{
@@ -216,7 +217,7 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::EndCombo();
 		}
 
-		m_renderer->SetDebugBuffer((RendererDebug_Buffer)_Widget_Toolbar::gbufferSelectedTextureIndex);
+		m_renderer->SetDebugBuffer(static_cast<RendererDebug_Buffer>(_Widget_Toolbar::gbuffer_selected_texture_index));
 	}
 
 	if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_None))
@@ -232,19 +233,19 @@ void Widget_Toolbar::ShowRendererOptions()
 		// Lights
 		ImGui::Checkbox("Lights", &_Widget_Toolbar::g_gizmo_light);	
 		// Picking Ray
-		ImGui::Checkbox("Picking Ray", &_Widget_Toolbar::g_gizmo_pickingRay);
+		ImGui::Checkbox("Picking Ray", &_Widget_Toolbar::g_gizmo_picking_ray);
 		// Grid
 		ImGui::Checkbox("Grid", &_Widget_Toolbar::g_gizmo_grid);
 		// Performance metrics
-		ImGui::Checkbox("Performance Metrics", &_Widget_Toolbar::g_gizmo_performanceMetrics);
+		ImGui::Checkbox("Performance Metrics", &_Widget_Toolbar::g_gizmo_performance_metrics);
 
-		_Widget_Toolbar::g_gizmo_transform			? m_renderer->Flags_Enable(Render_Gizmo_Transform)			: m_renderer->Flags_Disable(Render_Gizmo_Transform);
-		_Widget_Toolbar::g_gizmo_physics			? m_renderer->Flags_Enable(Render_Gizmo_Physics)			: m_renderer->Flags_Disable(Render_Gizmo_Physics);
-		_Widget_Toolbar::g_gizmo_aabb				? m_renderer->Flags_Enable(Render_Gizmo_AABB)				: m_renderer->Flags_Disable(Render_Gizmo_AABB);
-		_Widget_Toolbar::g_gizmo_light				? m_renderer->Flags_Enable(Render_Gizmo_Lights)				: m_renderer->Flags_Disable(Render_Gizmo_Lights);
-		_Widget_Toolbar::g_gizmo_pickingRay			? m_renderer->Flags_Enable(Render_Gizmo_PickingRay)			: m_renderer->Flags_Disable(Render_Gizmo_PickingRay);
-		_Widget_Toolbar::g_gizmo_grid				? m_renderer->Flags_Enable(Render_Gizmo_Grid)				: m_renderer->Flags_Disable(Render_Gizmo_Grid);
-		_Widget_Toolbar::g_gizmo_performanceMetrics	? m_renderer->Flags_Enable(Render_Gizmo_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_Gizmo_PerformanceMetrics);
+		_Widget_Toolbar::g_gizmo_transform				? m_renderer->Flags_Enable(Render_Gizmo_Transform)			: m_renderer->Flags_Disable(Render_Gizmo_Transform);
+		_Widget_Toolbar::g_gizmo_physics				? m_renderer->Flags_Enable(Render_Gizmo_Physics)			: m_renderer->Flags_Disable(Render_Gizmo_Physics);
+		_Widget_Toolbar::g_gizmo_aabb					? m_renderer->Flags_Enable(Render_Gizmo_AABB)				: m_renderer->Flags_Disable(Render_Gizmo_AABB);
+		_Widget_Toolbar::g_gizmo_light					? m_renderer->Flags_Enable(Render_Gizmo_Lights)				: m_renderer->Flags_Disable(Render_Gizmo_Lights);
+		_Widget_Toolbar::g_gizmo_picking_ray			? m_renderer->Flags_Enable(Render_Gizmo_PickingRay)			: m_renderer->Flags_Disable(Render_Gizmo_PickingRay);
+		_Widget_Toolbar::g_gizmo_grid					? m_renderer->Flags_Enable(Render_Gizmo_Grid)				: m_renderer->Flags_Disable(Render_Gizmo_Grid);
+		_Widget_Toolbar::g_gizmo_performance_metrics	? m_renderer->Flags_Enable(Render_Gizmo_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_Gizmo_PerformanceMetrics);
 	}
 
 	ImGui::End();

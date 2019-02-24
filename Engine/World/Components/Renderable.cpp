@@ -36,7 +36,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	inline void Build(GeometryType type, Renderable* renderable)
+	inline void build(const Geometry_Type type, Renderable* renderable)
 	{	
 		auto model = make_shared<Model>(renderable->GetContext());
 		vector<RHI_Vertex_PosUvNorTan> vertices;
@@ -72,15 +72,15 @@ namespace Directus
 		if (vertices.empty() || indices.empty())
 			return;
 
-		model->Geometry_Append(indices, vertices, nullptr, nullptr);
-		model->Geometry_Update();
+		model->GeometryAppend(indices, vertices, nullptr, nullptr);
+		model->GeometryUpdate();
 
-		renderable->Geometry_Set(
+		renderable->GeometrySet(
 			"Default_Geometry",
 			0,
-			(unsigned int)indices.size(),
+			static_cast<unsigned int>(indices.size()),
 			0,
-			(unsigned int)vertices.size(),
+			static_cast<unsigned int>(vertices.size()),
 			BoundingBox(vertices),
 			model
 		);
@@ -88,7 +88,7 @@ namespace Directus
 
 	Renderable::Renderable(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
-		m_geometryType			= Geometry_Custom;	
+		m_geometry_type			= Geometry_Custom;	
 		m_geometryIndexOffset	= 0;
 		m_geometryIndexCount	= 0;
 		m_geometryVertexOffset	= 0;
@@ -108,19 +108,14 @@ namespace Directus
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName, string);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_model, shared_ptr<Model>);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryAABB, BoundingBox);
-		REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, Geometry_Set, GeometryType);
-	}
-
-	Renderable::~Renderable()
-	{
-
+		REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet, Geometry_Type);
 	}
 
 	//= ICOMPONENT ===============================================================
 	void Renderable::Serialize(FileStream* stream)
 	{
 		// Mesh
-		stream->Write((int)m_geometryType);
+		stream->Write(static_cast<unsigned int>(m_geometry_type));
 		stream->Write(m_geometryIndexOffset);
 		stream->Write(m_geometryIndexCount);
 		stream->Write(m_geometryVertexOffset);
@@ -141,20 +136,20 @@ namespace Directus
 	void Renderable::Deserialize(FileStream* stream)
 	{
 		// Geometry
-		m_geometryType			= (GeometryType)stream->ReadInt();
+		m_geometry_type			= static_cast<Geometry_Type>(stream->ReadUInt());
 		m_geometryIndexOffset	= stream->ReadUInt();
 		m_geometryIndexCount	= stream->ReadUInt();	
 		m_geometryVertexOffset	= stream->ReadUInt();
 		m_geometryVertexCount	= stream->ReadUInt();
 		stream->Read(&m_geometryAABB);
-		string modelName;
-		stream->Read(&modelName);
-		m_model = m_context->GetSubsystem<ResourceCache>()->GetByName<Model>(modelName);
+		string model_name;
+		stream->Read(&model_name);
+		m_model = m_context->GetSubsystem<ResourceCache>()->GetByName<Model>(model_name);
 
 		// If it was a default mesh, we have to reconstruct it
-		if (m_geometryType != Geometry_Custom) 
+		if (m_geometry_type != Geometry_Custom) 
 		{
-			Geometry_Set(m_geometryType);
+			GeometrySet(m_geometry_type);
 		}
 
 		// Material
@@ -163,40 +158,40 @@ namespace Directus
 		stream->Read(&m_materialDefault);
 		if (m_materialDefault)
 		{
-			Material_UseDefault();		
+			MaterialUseDefault();		
 		}
 		else
 		{
-			string materialName;
-			stream->Read(&materialName);
-			m_material = m_context->GetSubsystem<ResourceCache>()->GetByName<Material>(materialName);
+			string material_name;
+			stream->Read(&material_name);
+			m_material = m_context->GetSubsystem<ResourceCache>()->GetByName<Material>(material_name);
 		}
 	}
 	//==============================================================================
 
 	//= GEOMETRY =====================================================================================
-	void Renderable::Geometry_Set(const string& name, unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, const BoundingBox& AABB, shared_ptr<Model>& model)
+	void Renderable::GeometrySet(const string& name, const unsigned int index_offset, const unsigned int index_count, const unsigned int vertex_offset, const unsigned int vertex_count, const BoundingBox& aabb, shared_ptr<Model>& model)
 	{	
 		m_geometryName			= name;
-		m_geometryIndexOffset	= indexOffset;
-		m_geometryIndexCount	= indexCount;
-		m_geometryVertexOffset	= vertexOffset;
-		m_geometryVertexCount	= vertexCount;
-		m_geometryAABB			= AABB;
+		m_geometryIndexOffset	= index_offset;
+		m_geometryIndexCount	= index_count;
+		m_geometryVertexOffset	= vertex_offset;
+		m_geometryVertexCount	= vertex_count;
+		m_geometryAABB			= aabb;
 		m_model					= model;
 	}
 
-	void Renderable::Geometry_Set(GeometryType type)
+	void Renderable::GeometrySet(const Geometry_Type type)
 	{
-		m_geometryType = type;
+		m_geometry_type = type;
 
 		if (type != Geometry_Custom)
 		{
-			Build(type, this);
+			build(type, this);
 		}
 	}
 
-	void Renderable::Geometry_Get(vector<unsigned int>* indices, vector<RHI_Vertex_PosUvNorTan>* vertices)
+	void Renderable::GeometryGet(vector<unsigned int>* indices, vector<RHI_Vertex_PosUvNorTan>* vertices) const
 	{
 		if (!m_model)
 		{
@@ -204,10 +199,10 @@ namespace Directus
 			return;
 		}
 
-		m_model->Geometry_Get(m_geometryIndexOffset, m_geometryIndexCount, m_geometryVertexOffset, m_geometryVertexCount, indices, vertices);
+		m_model->GeometryGet(m_geometryIndexOffset, m_geometryIndexCount, m_geometryVertexOffset, m_geometryVertexCount, indices, vertices);
 	}
 
-	BoundingBox Renderable::Geometry_AABB()
+	BoundingBox Renderable::GeometryAabb()
 	{
 		return m_geometryAABB.Transformed(GetTransform()->GetMatrix());
 	}
@@ -215,7 +210,7 @@ namespace Directus
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
-	void Renderable::Material_Set(const shared_ptr<Material>& material)
+	void Renderable::MaterialSet(const shared_ptr<Material>& material)
 	{
 		if (!material)
 		{
@@ -225,24 +220,24 @@ namespace Directus
 		m_material = material;
 	}
 
-	shared_ptr<Material> Renderable::Material_Set(const string& filePath)
+	shared_ptr<Material> Renderable::MaterialSet(const string& file_path)
 	{
 		// Load the material
 		auto material = make_shared<Material>(GetContext());
-		if (!material->LoadFromFile(filePath))
+		if (!material->LoadFromFile(file_path))
 		{
-			LOGF_WARNING("Failed to load material from \"%s\"", filePath.c_str());
+			LOGF_WARNING("Failed to load material from \"%s\"", file_path.c_str());
 			return nullptr;
 		}
 
 		// Set it as the current material
-		Material_Set(material);
+		MaterialSet(material);
 
 		// Return it
 		return material;
 	}
 
-	void Renderable::Material_UseDefault()
+	void Renderable::MaterialUseDefault()
 	{
 		m_materialDefault = true;
 
@@ -253,10 +248,10 @@ namespace Directus
 		materialStandard->SetCullMode(Cull_Back);
 		materialStandard->SetColorAlbedo(Vector4(0.6f, 0.6f, 0.6f, 1.0f));
 		materialStandard->SetIsEditable(false);		
-		Material_Set(materialStandard);
+		MaterialSet(materialStandard);
 	}
 
-	const string& Renderable::Material_Name()
+	const string& Renderable::MaterialName()
 	{
 		return m_material ? m_material->GetResourceName() : NOT_ASSIGNED;
 	}

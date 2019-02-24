@@ -85,7 +85,7 @@ namespace Directus
 		auto clone_entity = [&scene, &clones](Entity* entity)
 		{
 			// Clone the name and the ID
-			auto clone = scene->Entity_Create().get();
+			auto clone = scene->EntityCreate().get();
 			clone->SetId(GENERATE_GUID);
 			clone->SetName(entity->GetName());
 			clone->SetActive(entity->IsActive());
@@ -252,7 +252,7 @@ namespace Directus
 		vector<std::weak_ptr<Entity>> children;
 		for (unsigned int i = 0; i < children_count; i++)
 		{
-			auto child = scene->Entity_Create();
+			auto child = scene->EntityCreate();
 			child->SetId(stream->ReadUInt());
 			children.emplace_back(child);
 		}

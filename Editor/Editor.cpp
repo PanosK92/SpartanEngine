@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================================
 #include "Editor.h"
+#include "Core/Engine.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_win32.h"
 #include "Rendering/Renderer.h"
-#include "RHI/RHI_Device.h"
 #include "UI/EditorHelper.h"
 #include "UI/IconProvider.h"
 #include "UI/Widgets/Widget_Assets.h"
@@ -42,23 +42,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 using namespace Directus;
 //=======================
-
+ 
 #define DOCKING_ENABLED ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable
 namespace _Editor
 {
-	Widget* widget_menuBar		= nullptr;
+	Widget* widget_menu_bar		= nullptr;
 	Widget* widget_toolbar		= nullptr;
 	Widget* widget_world		= nullptr;
-	const char* dockspaceName	= "EditorDockspace";
+	const char* dockspace_name	= "EditorDockspace";
 }
 
-Editor::Editor(void* windowHandle, void* windowInstance, int windowWidth, int windowHeight)
+Editor::Editor(void* window_handle, void* window_instance, const unsigned int window_width, const unsigned int window_height)
 {
 	// Add console widget first so it picks up the engine's initialization output
 	m_widgets.emplace_back(make_unique<Widget_Console>(nullptr));
 
 	// Create engine
-	Settings::Get().SetHandles(windowHandle, windowHandle, windowInstance);
+	Settings::Get().SetHandles(window_handle, window_handle, window_instance);
 	m_engine = make_unique<Engine>(make_shared<Context>());
 	
 	// Acquire useful engine subsystems
@@ -75,7 +75,7 @@ Editor::Editor(void* windowHandle, void* windowInstance, int windowWidth, int wi
 	ImGui::CreateContext();
 
 	// ImGui configuration
-	ImGuiIO& io = ImGui::GetIO();
+	auto& io		= ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
@@ -84,10 +84,10 @@ Editor::Editor(void* windowHandle, void* windowInstance, int windowWidth, int wi
 	ApplyStyle();
 
 	// ImGui backend setup
-	ImGui_ImplWin32_Init(windowHandle);
+	ImGui_ImplWin32_Init(window_handle);
 	ImGui::RHI::Initialize(m_context);
 
-	Resize(windowWidth, windowHeight);
+	Resize(window_width, window_height);
 
 	// Initialization of misc custom systems
 	IconProvider::Get().Initialize(m_context);
@@ -113,7 +113,7 @@ Editor::~Editor()
 	ImGui::DestroyContext();
 }
 
-void Editor::Resize(unsigned int width, unsigned int height)
+void Editor::Resize(const unsigned int width, const unsigned int height)
 {
 	ImGui::RHI::OnResize(width, height);
 }
@@ -153,7 +153,7 @@ void Editor::Widgets_Create()
 	m_widgets.emplace_back(make_unique<Widget_Properties>(m_context));
 
 	m_widgets.emplace_back(make_unique<Widget_MenuBar>(m_context));
-	_Editor::widget_menuBar = m_widgets.back().get();
+	_Editor::widget_menu_bar = m_widgets.back().get();
 
 	m_widgets.emplace_back(make_unique<Widget_Toolbar>(m_context));
 	_Editor::widget_toolbar = m_widgets.back().get();
@@ -178,10 +178,10 @@ void Editor::Widgets_Tick()
 
 void Editor::DockSpace_Begin()
 {
-	bool open = true;
+	auto open = true;
 
 	// Flags
-	ImGuiWindowFlags window_flags =
+	const auto window_flags =
 		ImGuiWindowFlags_MenuBar |
 		ImGuiWindowFlags_NoDocking |
 		ImGuiWindowFlags_NoTitleBar |
@@ -192,10 +192,10 @@ void Editor::DockSpace_Begin()
 		ImGuiWindowFlags_NoNavFocus;
 
 	// Size, Pos
-	float offsetY = _Editor::widget_menuBar->GetHeight() + _Editor::widget_toolbar->GetHeight();
-	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offsetY));
-	ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offsetY));
+	const auto offset_y = _Editor::widget_menu_bar->GetHeight() + _Editor::widget_toolbar->GetHeight();
+	const auto viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
+	ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
 	ImGui::SetNextWindowViewport(viewport->ID);
 
 	// Style
@@ -203,12 +203,12 @@ void Editor::DockSpace_Begin()
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::SetNextWindowBgAlpha(0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::Begin(_Editor::dockspaceName, &open, window_flags);
+	ImGui::Begin(_Editor::dockspace_name, &open, window_flags);
 	ImGui::PopStyleVar();
 	ImGui::PopStyleVar(2);
 
 	// Dock space
-	ImGuiID dockspace_id = ImGui::GetID(_Editor::dockspaceName);
+	const auto dockspace_id = ImGui::GetID(_Editor::dockspace_name);
 	if (!ImGui::DockBuilderGetNode(dockspace_id))
 	{
 		// Reset/clear current docking state
@@ -216,17 +216,17 @@ void Editor::DockSpace_Begin()
 		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_None);
 
 		// DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
-		ImGuiID dock_main_id		= dockspace_id;
-		ImGuiID dock_right_id		= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Right, 0.2f, nullptr, &dock_main_id);
-		ImGuiID dock_rightDown_id	= ImGui::DockBuilderSplitNode(dock_right_id,	ImGuiDir_Down,	0.6f, nullptr, &dock_right_id);
-		ImGuiID dock_down_id		= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Down,	0.3f, nullptr, &dock_main_id);
-		ImGuiID dock_downRight_id	= ImGui::DockBuilderSplitNode(dock_down_id,		ImGuiDir_Right, 0.6f, nullptr, &dock_down_id);
+		auto dock_main_id		= dockspace_id;
+		auto dock_right_id						= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Right, 0.2f, nullptr, &dock_main_id);
+		const auto dock_right_down_id	= ImGui::DockBuilderSplitNode(dock_right_id,	ImGuiDir_Down,	0.6f, nullptr, &dock_right_id);
+		auto dock_down_id				= ImGui::DockBuilderSplitNode(dock_main_id,		ImGuiDir_Down,	0.3f, nullptr, &dock_main_id);
+		const auto dock_down_right_id	= ImGui::DockBuilderSplitNode(dock_down_id,		ImGuiDir_Right, 0.6f, nullptr, &dock_down_id);
 
 		// Dock windows	
 		ImGui::DockBuilderDockWindow("World",		dock_right_id);
-		ImGui::DockBuilderDockWindow("Properties",	dock_rightDown_id);
+		ImGui::DockBuilderDockWindow("Properties",	dock_right_down_id);
 		ImGui::DockBuilderDockWindow("Console",		dock_down_id);
-		ImGui::DockBuilderDockWindow("Assets",		dock_downRight_id);
+		ImGui::DockBuilderDockWindow("Assets",		dock_down_right_id);
 		ImGui::DockBuilderDockWindow("Viewport",	dock_main_id);
 		ImGui::DockBuilderFinish(dock_main_id);
 	}
@@ -238,28 +238,28 @@ void Editor::DockSpace_End()
 	ImGui::End();
 }
 
-void Editor::ApplyStyle()
+void Editor::ApplyStyle() const
 {
 	ImGui::StyleColorsDark();
-	ImGuiStyle& style = ImGui::GetStyle();
+	auto& style = ImGui::GetStyle();
 
-	float fontSize				= 16.0f;
-	float roundness				= 2.0f;
+	const auto font_size	= 16.0f;
+	const auto roundness	= 2.0f;
 	
-	ImVec4 text					= ImVec4(0.76f, 0.77f, 0.8f, 1.0f);
-	ImVec4 white				= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-	ImVec4 black				= ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
-	ImVec4 backgroundVeryDark	= ImVec4(0.08f, 0.086f, 0.094f, 1.00f);
-	ImVec4 backgroundDark		= ImVec4(0.117f, 0.121f, 0.145f, 1.00f);
-	ImVec4 backgroundMedium		= ImVec4(0.26f, 0.26f, 0.27f, 1.0f);
-	ImVec4 backgroundLight		= ImVec4(0.37f, 0.38f, 0.39f, 1.0f);
-	ImVec4 highlightBlue		= ImVec4(0.172f, 0.239f, 0.341f, 1.0f);	
-	ImVec4 highlightBlueHovered	= ImVec4(0.202f, 0.269f, 0.391f, 1.0f); 
-	ImVec4 highlightBlueActive	= ImVec4(0.382f, 0.449f, 0.561f, 1.0f);
-	ImVec4 barBackground		= ImVec4(0.078f, 0.082f, 0.09f, 1.0f);
-	ImVec4 bar					= ImVec4(0.164f, 0.180f, 0.231f, 1.0f);
-	ImVec4 barHovered			= ImVec4(0.411f, 0.411f, 0.411f, 1.0f);
-	ImVec4 barActive			= ImVec4(0.337f, 0.337f, 0.368f, 1.0f);
+	const auto text						= ImVec4(0.76f, 0.77f, 0.8f, 1.0f);
+	const auto white					= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+	const auto black					= ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+	const auto background_very_dark		= ImVec4(0.08f, 0.086f, 0.094f, 1.00f);
+	const auto background_dark			= ImVec4(0.117f, 0.121f, 0.145f, 1.00f);
+	const auto background_medium		= ImVec4(0.26f, 0.26f, 0.27f, 1.0f);
+	const auto background_light			= ImVec4(0.37f, 0.38f, 0.39f, 1.0f);
+	const auto highlight_blue			= ImVec4(0.172f, 0.239f, 0.341f, 1.0f);	
+	const auto highlight_blue_hovered	= ImVec4(0.202f, 0.269f, 0.391f, 1.0f); 
+	const auto highlight_blue_active	= ImVec4(0.382f, 0.449f, 0.561f, 1.0f);
+	const auto bar_background			= ImVec4(0.078f, 0.082f, 0.09f, 1.0f);
+	const auto bar						= ImVec4(0.164f, 0.180f, 0.231f, 1.0f);
+	const auto bar_hovered				= ImVec4(0.411f, 0.411f, 0.411f, 1.0f);
+	const auto bar_active				= ImVec4(0.337f, 0.337f, 0.368f, 1.0f);
 
 	// Spatial
 	style.WindowBorderSize		= 1.0f;
@@ -283,45 +283,45 @@ void Editor::ApplyStyle()
 	// Colors
 	style.Colors[ImGuiCol_Text]						= text;
 	//style.Colors[ImGuiCol_TextDisabled]			= ImVec4(0.86f, 0.93f, 0.89f, 0.28f);
-	style.Colors[ImGuiCol_WindowBg]					= backgroundDark;
+	style.Colors[ImGuiCol_WindowBg]					= background_dark;
 	//style.Colors[ImGuiCol_ChildBg]				= ImVec4(0.20f, 0.22f, 0.27f, 0.58f);
 	style.Colors[ImGuiCol_Border]					= black;
 	//style.Colors[ImGuiCol_BorderShadow]			= ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
 	style.Colors[ImGuiCol_FrameBg]					= bar;
-	style.Colors[ImGuiCol_FrameBgHovered]			= highlightBlue;
-	style.Colors[ImGuiCol_FrameBgActive]			= highlightBlueHovered;
-	style.Colors[ImGuiCol_TitleBg]					= backgroundVeryDark;
+	style.Colors[ImGuiCol_FrameBgHovered]			= highlight_blue;
+	style.Colors[ImGuiCol_FrameBgActive]			= highlight_blue_hovered;
+	style.Colors[ImGuiCol_TitleBg]					= background_very_dark;
 	//style.Colors[ImGuiCol_TitleBgCollapsed]		= ImVec4(0.20f, 0.22f, 0.27f, 0.75f);
 	style.Colors[ImGuiCol_TitleBgActive]			= bar;
-	style.Colors[ImGuiCol_MenuBarBg]				= backgroundVeryDark;
-	style.Colors[ImGuiCol_ScrollbarBg]				= barBackground;
+	style.Colors[ImGuiCol_MenuBarBg]				= background_very_dark;
+	style.Colors[ImGuiCol_ScrollbarBg]				= bar_background;
 	style.Colors[ImGuiCol_ScrollbarGrab]			= bar;
-	style.Colors[ImGuiCol_ScrollbarGrabHovered]		= barHovered;
-	style.Colors[ImGuiCol_ScrollbarGrabActive]		= barActive;
-	style.Colors[ImGuiCol_CheckMark]				= highlightBlueHovered;
-	style.Colors[ImGuiCol_SliderGrab]				= highlightBlueHovered;
-	style.Colors[ImGuiCol_SliderGrabActive]			= highlightBlueActive;
-	style.Colors[ImGuiCol_Button]					= barActive;
-	style.Colors[ImGuiCol_ButtonHovered]			= highlightBlue;
-	style.Colors[ImGuiCol_ButtonActive]				= highlightBlueActive;
-	style.Colors[ImGuiCol_Header]					= highlightBlue; // selected items (tree, menu bar etc.)
-	style.Colors[ImGuiCol_HeaderHovered]			= highlightBlueHovered; // hovered items (tree, menu bar etc.)
-	style.Colors[ImGuiCol_HeaderActive]				= highlightBlueActive;
-	style.Colors[ImGuiCol_Separator]				= backgroundLight;
+	style.Colors[ImGuiCol_ScrollbarGrabHovered]		= bar_hovered;
+	style.Colors[ImGuiCol_ScrollbarGrabActive]		= bar_active;
+	style.Colors[ImGuiCol_CheckMark]				= highlight_blue_hovered;
+	style.Colors[ImGuiCol_SliderGrab]				= highlight_blue_hovered;
+	style.Colors[ImGuiCol_SliderGrabActive]			= highlight_blue_active;
+	style.Colors[ImGuiCol_Button]					= bar_active;
+	style.Colors[ImGuiCol_ButtonHovered]			= highlight_blue;
+	style.Colors[ImGuiCol_ButtonActive]				= highlight_blue_active;
+	style.Colors[ImGuiCol_Header]					= highlight_blue; // selected items (tree, menu bar etc.)
+	style.Colors[ImGuiCol_HeaderHovered]			= highlight_blue_hovered; // hovered items (tree, menu bar etc.)
+	style.Colors[ImGuiCol_HeaderActive]				= highlight_blue_active;
+	style.Colors[ImGuiCol_Separator]				= background_light;
 	//style.Colors[ImGuiCol_SeparatorHovered]		= ImVec4(0.92f, 0.18f, 0.29f, 0.78f);
 	//style.Colors[ImGuiCol_SeparatorActive]		= ImVec4(0.92f, 0.18f, 0.29f, 1.00f);
-	style.Colors[ImGuiCol_ResizeGrip]				= backgroundMedium;
-	style.Colors[ImGuiCol_ResizeGripHovered]		= highlightBlue;
-	style.Colors[ImGuiCol_ResizeGripActive]			= highlightBlueHovered;
+	style.Colors[ImGuiCol_ResizeGrip]				= background_medium;
+	style.Colors[ImGuiCol_ResizeGripHovered]		= highlight_blue;
+	style.Colors[ImGuiCol_ResizeGripActive]			= highlight_blue_hovered;
 	style.Colors[ImGuiCol_PlotLines]				= ImVec4(0.0f, 0.7f, 0.77f, 1.0f);
 	//style.Colors[ImGuiCol_PlotLinesHovered]		= ImVec4(0.92f, 0.18f, 0.29f, 1.00f);
-	style.Colors[ImGuiCol_PlotHistogram]			= highlightBlue; // Also used for progress bar
-	style.Colors[ImGuiCol_PlotHistogramHovered]		= highlightBlueHovered;
-	style.Colors[ImGuiCol_TextSelectedBg]			= highlightBlue;
-	style.Colors[ImGuiCol_PopupBg]					= backgroundDark;
-	style.Colors[ImGuiCol_DragDropTarget]			= backgroundLight;
+	style.Colors[ImGuiCol_PlotHistogram]			= highlight_blue; // Also used for progress bar
+	style.Colors[ImGuiCol_PlotHistogramHovered]		= highlight_blue_hovered;
+	style.Colors[ImGuiCol_TextSelectedBg]			= highlight_blue;
+	style.Colors[ImGuiCol_PopupBg]					= background_dark;
+	style.Colors[ImGuiCol_DragDropTarget]			= background_light;
 	//style.Colors[ImGuiCol_ModalWindowDarkening]	= ImVec4(0.20f, 0.22f, 0.27f, 0.73f);
 
-	ImGuiIO& io = ImGui::GetIO();
-	io.Fonts->AddFontFromFileTTF("Standard Assets\\Fonts\\CalibriBold.ttf", fontSize);
+	auto& io = ImGui::GetIO();
+	io.Fonts->AddFontFromFileTTF("Standard Assets\\Fonts\\CalibriBold.ttf", font_size);
 }

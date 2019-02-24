@@ -39,25 +39,25 @@ namespace Directus
 	Material::Material(Context* context) : IResource(context, Resource_Material)
 	{
 		// Material
-		m_cullMode				= Cull_Back;
-		m_shadingMode			= Shading_PBR;
-		m_colorAlbedo			= Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-		m_roughnessMultiplier	= 1.0f;
-		m_metallicMultiplier	= 0.0f;
-		m_normalMultiplier		= 0.0f;
-		m_heightMultiplier		= 0.0f;
-		m_uvTiling				= Vector2(1.0f, 1.0f);
-		m_uvOffset				= Vector2(0.0f, 0.0f);
-		m_isEditable			= true;
-		m_rhiDevice				= context->GetSubsystem<Renderer>()->GetRhiDevice();
+		m_cull_mode				= Cull_Back;
+		m_shading_mode			= Shading_PBR;
+		m_color_albedo			= Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+		m_roughness_multiplier	= 1.0f;
+		m_metallic_multiplier	= 0.0f;
+		m_normal_multiplier		= 0.0f;
+		m_height_multiplier		= 0.0f;
+		m_uv_tiling				= Vector2(1.0f, 1.0f);
+		m_uv_offset				= Vector2(0.0f, 0.0f);
+		m_is_editable			= true;
+		m_rhi_device				= context->GetSubsystem<Renderer>()->GetRhiDevice();
 
 		AcquireShader();
 	}
 
 	Material::~Material()
 	{
-		m_textureSlots.clear();
-		m_textureSlots.shrink_to_fit();
+		m_texture_slots.clear();
+		m_texture_slots.shrink_to_fit();
 	}
 
 	//= IResource ==============================================
@@ -72,31 +72,31 @@ namespace Directus
 
 		SetResourceName(xml->GetAttributeAs<string>("Material",	"Name"));
 		SetResourceFilePath(xml->GetAttributeAs<string>("Material",	"Path"));
-		xml->GetAttribute("Material", "Roughness_Multiplier",	&m_roughnessMultiplier);
-		xml->GetAttribute("Material", "Metallic_Multiplier",	&m_metallicMultiplier);
-		xml->GetAttribute("Material", "Normal_Multiplier",		&m_normalMultiplier);
-		xml->GetAttribute("Material", "Height_Multiplier",		&m_heightMultiplier);
-		xml->GetAttribute("Material", "IsEditable",				&m_isEditable);
-		xml->GetAttribute("Material", "Cull_Mode",				(unsigned int*)&m_cullMode);
-		xml->GetAttribute("Material", "Shading_Mode",			(unsigned int*)&m_shadingMode);
-		xml->GetAttribute("Material", "Color",					&m_colorAlbedo);
-		xml->GetAttribute("Material", "UV_Tiling",				&m_uvTiling);
-		xml->GetAttribute("Material", "UV_Offset",				&m_uvOffset);
+		xml->GetAttribute("Material", "Roughness_Multiplier",	&m_roughness_multiplier);
+		xml->GetAttribute("Material", "Metallic_Multiplier",	&m_metallic_multiplier);
+		xml->GetAttribute("Material", "Normal_Multiplier",		&m_normal_multiplier);
+		xml->GetAttribute("Material", "Height_Multiplier",		&m_height_multiplier);
+		xml->GetAttribute("Material", "IsEditable",				&m_is_editable);
+		xml->GetAttribute("Material", "Cull_Mode",				(unsigned int*)&m_cull_mode);
+		xml->GetAttribute("Material", "Shading_Mode",			(unsigned int*)&m_shading_mode);
+		xml->GetAttribute("Material", "Color",					&m_color_albedo);
+		xml->GetAttribute("Material", "UV_Tiling",				&m_uv_tiling);
+		xml->GetAttribute("Material", "UV_Offset",				&m_uv_offset);
 
-		const auto textureCount = xml->GetAttributeAs<int>("Textures", "Count");
-		for (int i = 0; i < textureCount; i++)
+		const auto texture_count = xml->GetAttributeAs<int>("Textures", "Count");
+		for (auto i = 0; i < texture_count; i++)
 		{
-			string nodeName				= "Texture_" + to_string(i);
-			const TextureType tex_type	= static_cast<TextureType>(xml->GetAttributeAs<unsigned int>(nodeName, "Texture_Type"));
-			auto texName				= xml->GetAttributeAs<string>(nodeName, "Texture_Name");
-			auto texPath				= xml->GetAttributeAs<string>(nodeName, "Texture_Path");
+			auto node_name		= "Texture_" + to_string(i);
+			const auto tex_type	= static_cast<TextureType>(xml->GetAttributeAs<unsigned int>(node_name, "Texture_Type"));
+			auto tex_name		= xml->GetAttributeAs<string>(node_name, "Texture_Name");
+			auto tex_path		= xml->GetAttributeAs<string>(node_name, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
-			auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture>(texName);
+			auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture>(tex_name);
 			// If there is not texture (it's not loaded yet), load it
 			if (!texture)
 			{
-				texture = m_context->GetSubsystem<ResourceCache>()->Load<RHI_Texture>(texPath);
+				texture = m_context->GetSubsystem<ResourceCache>()->Load<RHI_Texture>(tex_path);
 			}
 			SetTextureSlot(tex_type, texture);
 		}
@@ -121,23 +121,23 @@ namespace Directus
 		xml->AddNode("Material");
 		xml->AddAttribute("Material", "Name",					GetResourceName());
 		xml->AddAttribute("Material", "Path",					GetResourceFilePath());
-		xml->AddAttribute("Material", "Cull_Mode",				unsigned int(m_cullMode));	
-		xml->AddAttribute("Material", "Shading_Mode",			unsigned int(m_shadingMode));
-		xml->AddAttribute("Material", "Color",					m_colorAlbedo);
-		xml->AddAttribute("Material", "Roughness_Multiplier",	m_roughnessMultiplier);
-		xml->AddAttribute("Material", "Metallic_Multiplier",	m_metallicMultiplier);
-		xml->AddAttribute("Material", "Normal_Multiplier",		m_normalMultiplier);
-		xml->AddAttribute("Material", "Height_Multiplier",		m_heightMultiplier);
-		xml->AddAttribute("Material", "UV_Tiling",				m_uvTiling);
-		xml->AddAttribute("Material", "UV_Offset",				m_uvOffset);
-		xml->AddAttribute("Material", "IsEditable",				m_isEditable);
+		xml->AddAttribute("Material", "Cull_Mode",				unsigned int(m_cull_mode));	
+		xml->AddAttribute("Material", "Shading_Mode",			unsigned int(m_shading_mode));
+		xml->AddAttribute("Material", "Color",					m_color_albedo);
+		xml->AddAttribute("Material", "Roughness_Multiplier",	m_roughness_multiplier);
+		xml->AddAttribute("Material", "Metallic_Multiplier",	m_metallic_multiplier);
+		xml->AddAttribute("Material", "Normal_Multiplier",		m_normal_multiplier);
+		xml->AddAttribute("Material", "Height_Multiplier",		m_height_multiplier);
+		xml->AddAttribute("Material", "UV_Tiling",				m_uv_tiling);
+		xml->AddAttribute("Material", "UV_Offset",				m_uv_offset);
+		xml->AddAttribute("Material", "IsEditable",				m_is_editable);
 
 		xml->AddChildNode("Material", "Textures");
-		xml->AddAttribute("Textures", "Count", static_cast<unsigned int>(m_textureSlots.size()));
-		int i = 0;
-		for (const auto& texture_slot : m_textureSlots)
+		xml->AddAttribute("Textures", "Count", static_cast<unsigned int>(m_texture_slots.size()));
+		auto i = 0;
+		for (const auto& texture_slot : m_texture_slots)
 		{
-			string tex_node = "Texture_" + to_string(i);
+			auto tex_node = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", tex_node);
 			xml->AddAttribute(tex_node, "Texture_Type", static_cast<unsigned int>(texture_slot.type));
 			xml->AddAttribute(tex_node, "Texture_Name", texture_slot.ptr ? texture_slot.ptr->GetResourceName() : NOT_ASSIGNED);
@@ -150,13 +150,13 @@ namespace Directus
 
 	const TextureSlot& Material::GetTextureSlotByType(const TextureType type)
 	{
-		for (const auto& texture_slot : m_textureSlots)
+		for (const auto& texture_slot : m_texture_slots)
 		{
 			if (texture_slot.type == type)
 				return texture_slot;
 		}
 
-		return m_emptyTextureSlot;
+		return m_empty_texture_slot;
 	}
 
 	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_Texture>& texture)
@@ -170,12 +170,12 @@ namespace Directus
 				(type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : type;
 
 			// Assign - As a replacement (if there is a previous one)
-			bool replaced = false;
-			for (auto& textureSlot : m_textureSlots)
+			auto replaced = false;
+			for (auto& texture_slot : m_texture_slots)
 			{
-				if (textureSlot.type == type)
+				if (texture_slot.type == type)
 				{
-					textureSlot.ptr = texture;
+					texture_slot.ptr = texture;
 					replaced = true;
 					break;
 				}
@@ -183,16 +183,16 @@ namespace Directus
 			// Assign - Add a new one (in case it's the first time the slot is assigned)
 			if (!replaced)
 			{
-				m_textureSlots.emplace_back(type, texture);
+				m_texture_slots.emplace_back(type, texture);
 			}
 		}
 		else
 		{
-			for (auto it = m_textureSlots.begin(); it != m_textureSlots.end();)
+			for (auto it = m_texture_slots.begin(); it != m_texture_slots.end();)
 			{
 				if ((*it).type == type) 
 				{
-					it = m_textureSlots.erase(it);
+					it = m_texture_slots.erase(it);
 				}
 				else
 				{
@@ -206,7 +206,7 @@ namespace Directus
 		AcquireShader();
 	}
 
-	bool Material::HasTexture(TextureType type)
+	bool Material::HasTexture(const TextureType type)
 	{
 		const auto texture_slot = GetTextureSlotByType(type);
 		return texture_slot.ptr != nullptr;
@@ -214,7 +214,7 @@ namespace Directus
 
 	bool Material::HasTexture(const string& path)
 	{
-		for (const auto& texture_slot : m_textureSlots)
+		for (const auto& texture_slot : m_texture_slots)
 		{
 			if (!texture_slot.ptr)
 				continue;
@@ -226,16 +226,16 @@ namespace Directus
 		return false;
 	}
 
-	string Material::GetTexturePathByType(TextureType type)
+	string Material::GetTexturePathByType(const TextureType type)
 	{
-		auto textureSlot = GetTextureSlotByType(type);
-		return textureSlot.ptr == nullptr ? NOT_ASSIGNED : textureSlot.ptr->GetResourceFilePath();
+		const auto texture_slot = GetTextureSlotByType(type);
+		return texture_slot.ptr == nullptr ? NOT_ASSIGNED : texture_slot.ptr->GetResourceFilePath();
 	}
 
 	vector<string> Material::GetTexturePaths()
 	{
 		vector<string> paths;
-		for (const auto& texture_slot : m_textureSlots)
+		for (const auto& texture_slot : m_texture_slots)
 		{
 			if (texture_slot.ptr == nullptr)
 				continue;
@@ -270,7 +270,7 @@ namespace Directus
 		m_shader = GetOrCreateShader(shader_flags);
 	}
 
-	shared_ptr<ShaderVariation> Material::GetOrCreateShader(unsigned long shader_flags)
+	shared_ptr<ShaderVariation> Material::GetOrCreateShader(const unsigned long shader_flags)
 	{
 		if (!m_context)
 		{
@@ -279,33 +279,33 @@ namespace Directus
 		}
 
 		// If an appropriate shader already exists, return it instead
-		if (auto existingShader = ShaderVariation::GetMatchingShader(shader_flags))
-			return existingShader;
+		if (auto existing_shader = ShaderVariation::GetMatchingShader(shader_flags))
+			return existing_shader;
 
 		// Create and compile shader
-		auto shader = make_shared<ShaderVariation>(m_rhiDevice, m_context);
+		auto shader = make_shared<ShaderVariation>(m_rhi_device, m_context);
 		shader->Compile(m_context->GetSubsystem<ResourceCache>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shader_flags);
 
 		return shader;
 	}
 
-	void Material::SetMultiplier(TextureType type, float value)
+	void Material::SetMultiplier(const TextureType type, const float value)
 	{
 		if (type == TextureType_Roughness)
 		{
-			m_roughnessMultiplier = value;
+			m_roughness_multiplier = value;
 		}
 		else if (type == TextureType_Metallic)
 		{
-			m_metallicMultiplier = value;
+			m_metallic_multiplier = value;
 		}
 		else if (type == TextureType_Normal)
 		{
-			m_normalMultiplier = value;
+			m_normal_multiplier = value;
 		}
 		else if (type == TextureType_Height)
 		{
-			m_heightMultiplier = value;
+			m_height_multiplier = value;
 		}
 	}
 

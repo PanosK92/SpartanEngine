@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include <vector>
+#include "Material.h"
 #include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
-#include "Material.h"
 //================================
 
 namespace Directus
@@ -49,64 +49,64 @@ namespace Directus
 		~Model();
 
 		//= RESOURCE INTERFACE =================================
-		bool LoadFromFile(const std::string& filePath) override;
-		bool SaveToFile(const std::string& filePath) override;
+		bool LoadFromFile(const std::string& file_path) override;
+		bool SaveToFile(const std::string& file_path) override;
 		//======================================================
 
 		// Sets the entity that represents this model in the scene
-		void SetRootentity(const std::shared_ptr<Entity>& entity) { m_rootentity = entity; }
-
-		//= GEOMTETRY =============================================
-		void Geometry_Append(
+		void SetRootentity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
+		
+		//= GEOMTETRY ==================================================
+		void GeometryAppend(
 			std::vector<unsigned int>& indices,
 			std::vector<RHI_Vertex_PosUvNorTan>& vertices,
-			unsigned int* indexOffset = nullptr,
-			unsigned int* vertexOffset = nullptr
-		);
-		void Geometry_Get(
-			unsigned int indexOffset,
-			unsigned int indexCount,
-			unsigned int vertexOffset, 
-			unsigned int vertexCount,
+			unsigned int* index_offset = nullptr,
+			unsigned int* vertex_offset = nullptr
+		) const;
+		void GeometryGet(
+			unsigned int index_offset,
+			unsigned int index_count,
+			unsigned int vertex_offset, 
+			unsigned int vertex_count,
 			std::vector<unsigned int>* indices,
 			std::vector<RHI_Vertex_PosUvNorTan>* vertices
-		);
-		void Geometry_Update();
-		const Math::BoundingBox& Geometry_AABB() { return m_aabb; }
-		//=========================================================
+		) const;
+		void GeometryUpdate();
+		const Math::BoundingBox& GeometryAabb() const { return m_aabb; }
+		//==============================================================
 
 		// Add resources to the model
 		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity);
 		void AddAnimation(std::shared_ptr<Animation>& animation);
-		void AddTexture(std::shared_ptr<Material>& material, TextureType textureType, const std::string& filePath);
+		void AddTexture(std::shared_ptr<Material>& material, TextureType texture_type, const std::string& file_path);
 
-		bool IsAnimated() { return m_isAnimated; }
-		void SetAnimated(bool isAnimated) { m_isAnimated = isAnimated; }
+		bool IsAnimated() const						{ return m_is_animated; }
+		void SetAnimated(const bool is_animated)	{ m_is_animated = is_animated; }
 
 		void SetWorkingDirectory(const std::string& directory);
 
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() { return m_vertexBuffer; }
+		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer() const		{ return m_index_buffer; }
+		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() const	{ return m_vertex_buffer; }
 
 	private:
 		// Load the model from disk
-		bool LoadFromEngineFormat(const std::string& filePath);
-		bool LoadFromForeignFormat(const std::string& filePath);
+		bool LoadFromEngineFormat(const std::string& file_path);
+		bool LoadFromForeignFormat(const std::string& file_path);
 
 		// Geometry
-		bool Geometry_CreateBuffers();
-		float Geometry_ComputeNormalizedScale();
-		unsigned int Geometry_ComputeMemoryUsage();
+		bool GeometryCreateBuffers();
+		float GeometryComputeNormalizedScale() const;
+		unsigned int GeometryComputeMemoryUsage() const;
 
 		// The root entity that represents this model in the scene
-		std::weak_ptr<Entity> m_rootentity;
+		std::weak_ptr<Entity> m_root_entity;
 
 		// Geometry
-		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
+		std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
+		std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
 		std::shared_ptr<Mesh> m_mesh;
 		Math::BoundingBox m_aabb;
-		unsigned int meshCount;
+		unsigned int mesh_count;
 
 		// Material
 		std::vector<std::shared_ptr<Material>> m_materials;
@@ -115,14 +115,14 @@ namespace Directus
 		std::vector<std::shared_ptr<Animation>> m_animations;
 
 		// Directories relative to this model
-		std::string m_modelDirectoryModel;
-		std::string m_modelDirectoryMaterials;
-		std::string m_modelDirectoryTextures;
+		std::string m_model_directory_model;
+		std::string m_model_directory_materials;
+		std::string m_model_directory_textures;
 
 		// Misc
-		float m_normalizedScale;
-		bool m_isAnimated;
-		ResourceCache* m_resourceManager;
-		std::shared_ptr<RHI_Device> m_rhiDevice;	
+		float m_normalized_scale;
+		bool m_is_animated;
+		ResourceCache* m_resource_manager;
+		std::shared_ptr<RHI_Device> m_rhi_device;	
 	};
 }

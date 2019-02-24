@@ -52,7 +52,7 @@ public:
 	void Tick(float delta_time) override;
 
 	static void Inspect(const std::weak_ptr<Directus::Entity>& entity);
-	static void Inspect(std::weak_ptr<Directus::Material> material);
+	static void Inspect(const std::weak_ptr<Directus::Material>& material);
 
 	// Inspected resources
 	static std::weak_ptr<Directus::Entity> m_inspected_entity;
