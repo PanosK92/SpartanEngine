@@ -56,7 +56,7 @@ namespace Directus
 			type = TextureType_Unknown;
 		}
 
-		TextureSlot(TextureType type, std::shared_ptr<RHI_Texture> ptr)
+		TextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture>& ptr)
 		{
 			this->ptr	= ptr;
 			this->type	= type;
@@ -78,78 +78,78 @@ namespace Directus
 		Material(Context* context);
 		~Material();
 
-		//= IResource ==========================================
+		//= IResource ===========================================
 		bool LoadFromFile(const std::string& file_path) override;
 		bool SaveToFile(const std::string& file_path) override;
-		//======================================================
+		//=======================================================
 
-		//= TEXTURE SLOTS  ====================================================================
+		//= TEXTURE SLOTS  ================================================================
 		const TextureSlot& GetTextureSlotByType(TextureType type);
 		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& texture);
 		bool HasTexture(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//=====================================================================================
+		//=================================================================================
 
 		//= SHADER ====================================================================
 		void AcquireShader();
 		std::shared_ptr<ShaderVariation> GetOrCreateShader(unsigned long shader_flags);
-		std::shared_ptr<ShaderVariation> GetShader() { return m_shader; }
-		bool HasShader() { return GetShader() != nullptr; }
+		std::shared_ptr<ShaderVariation> GetShader() const { return m_shader; }
+		bool HasShader() const { return GetShader() != nullptr; }
 		void SetMultiplier(TextureType type, float value);
 		//=============================================================================
 
-		//= PROPERTIES =======================================================================
-		RHI_Cull_Mode GetCullMode()						{ return m_cullMode; }
-		void SetCullMode(RHI_Cull_Mode cullMode)		{ m_cullMode = cullMode; }
+		//= PROPERTIES ============================================================================
+		RHI_Cull_Mode GetCullMode() const					{ return m_cull_mode; }
+		void SetCullMode(const RHI_Cull_Mode cull_mode)		{ m_cull_mode = cull_mode; }
 
-		float& GetRoughnessMultiplier()					{ return m_roughnessMultiplier; }
-		void SetRoughnessMultiplier(float roughness)	{ m_roughnessMultiplier = roughness; }
+		float& GetRoughnessMultiplier()						{ return m_roughness_multiplier; }
+		void SetRoughnessMultiplier(const float roughness)	{ m_roughness_multiplier = roughness; }
 
-		float GetMetallicMultiplier()					{ return m_metallicMultiplier; }
-		void SetMetallicMultiplier(float metallic)		{ m_metallicMultiplier = metallic; }
+		float GetMetallicMultiplier() const					{ return m_metallic_multiplier; }
+		void SetMetallicMultiplier(const float metallic)	{ m_metallic_multiplier = metallic; }
 
-		float GetNormalMultiplier()						{ return m_normalMultiplier; }
-		void SetNormalMultiplier(float normal)			{ m_normalMultiplier = normal; }
+		float GetNormalMultiplier() const					{ return m_normal_multiplier; }
+		void SetNormalMultiplier(const float normal)		{ m_normal_multiplier = normal; }
 
-		float GetHeightMultiplier()						{ return m_heightMultiplier; }
-		void SetHeightMultiplier(float height)			{ m_heightMultiplier = height; }
+		float GetHeightMultiplier() const					{ return m_height_multiplier; }
+		void SetHeightMultiplier(const float height)		{ m_height_multiplier = height; }
 
-		ShadingMode GetShadingMode()					{ return m_shadingMode; }
-		void SetShadingMode(ShadingMode shadingMode)	{ m_shadingMode = shadingMode; }
+		ShadingMode GetShadingMode() const					{ return m_shading_mode; }
+		void SetShadingMode(const ShadingMode shading_mode)	{ m_shading_mode = shading_mode; }
 
-		const Math::Vector4& GetColorAlbedo()			{ return m_colorAlbedo; }
-		void SetColorAlbedo(const Math::Vector4& color) { m_colorAlbedo = color; }
+		const Math::Vector4& GetColorAlbedo() const			{ return m_color_albedo; }
+		void SetColorAlbedo(const Math::Vector4& color)		{ m_color_albedo = color; }
 
-		const Math::Vector2& GetTiling()				{ return m_uvTiling; }
-		void SetTiling(const Math::Vector2& tiling)		{ m_uvTiling = tiling; }
+		const Math::Vector2& GetTiling() const				{ return m_uv_tiling; }
+		void SetTiling(const Math::Vector2& tiling)			{ m_uv_tiling = tiling; }
 
-		const Math::Vector2& GetOffset()				{ return m_uvOffset; }
-		void SetOffset(const Math::Vector2& offset)		{ m_uvOffset = offset; }
+		const Math::Vector2& GetOffset() const				{ return m_uv_offset; }
+		void SetOffset(const Math::Vector2& offset)			{ m_uv_offset = offset; }
 
-		bool IsEditable()								{ return m_isEditable; }
-		void SetIsEditable(bool isEditable)				{ m_isEditable = isEditable; }
-		//====================================================================================
+		bool IsEditable() const { return m_is_editable; }
+		void SetIsEditable(const bool is_editable)			{ m_is_editable = is_editable; }
+		//=========================================================================================
 
 		static TextureType TextureTypeFromString(const std::string& type);
 
 	private:
 		void TextureBasedMultiplierAdjustment();
 
-		RHI_Cull_Mode m_cullMode;
-		ShadingMode m_shadingMode;
-		Math::Vector4 m_colorAlbedo;
-		float m_roughnessMultiplier;
-		float m_metallicMultiplier;
-		float m_normalMultiplier;
-		float m_heightMultiplier;
-		Math::Vector2 m_uvTiling;
-		Math::Vector2 m_uvOffset;	
-		bool m_isEditable;
+		RHI_Cull_Mode m_cull_mode;
+		ShadingMode m_shading_mode;
+		Math::Vector4 m_color_albedo;
+		float m_roughness_multiplier;
+		float m_metallic_multiplier;
+		float m_normal_multiplier;
+		float m_height_multiplier;
+		Math::Vector2 m_uv_tiling;
+		Math::Vector2 m_uv_offset;	
+		bool m_is_editable;
 		std::shared_ptr<ShaderVariation> m_shader;
-		std::vector<TextureSlot> m_textureSlots;
-		TextureSlot m_emptyTextureSlot;
-		std::shared_ptr<RHI_Device> m_rhiDevice;
+		std::vector<TextureSlot> m_texture_slots;
+		TextureSlot m_empty_texture_slot;
+		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

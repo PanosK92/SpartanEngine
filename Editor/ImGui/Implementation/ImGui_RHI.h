@@ -89,7 +89,7 @@ namespace ImGui::RHI
 		g_fontSampler = make_shared<RHI_Sampler>(g_device, Texture_Filter_Bilinear, Texture_Address_Wrap, Comparison_Always);
 
 		// Constant buffer
-		g_constantBuffer = make_shared<RHI_ConstantBuffer>(g_device, (unsigned int)sizeof(VertexConstantBuffer));
+		g_constantBuffer = make_shared<RHI_ConstantBuffer>(g_device, static_cast<unsigned int>(sizeof(VertexConstantBuffer)));
 
 		// Vertex buffer
 		g_vertexBuffer = make_shared<RHI_VertexBuffer>(g_device);
@@ -161,7 +161,7 @@ namespace ImGui::RHI
 		g_shader->CompileVertexPixel(shader, Input_Position2DTextureColor8);
 
 		// Setup back-end capabilities flags
-		ImGuiIO& io = GetIO();	
+		auto& io = GetIO();	
 		io.BackendFlags			|= ImGuiBackendFlags_RendererHasViewports;
 		io.BackendRendererName	= "RHI";
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -176,15 +176,15 @@ namespace ImGui::RHI
 			io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bpp);
 
 			// Copy pixel data
-			unsigned int size = width * height * bpp;
+			const unsigned int size = width * height * bpp;
 			vector<std::byte> data(size);
 			data.reserve(size);
-			memcpy(&data[0], (std::byte*)pixels, size);
+			memcpy(&data[0], reinterpret_cast<std::byte*>(pixels), size);
 
 			// Upload texture to graphics system
 			if (g_fontTexture->ShaderResource_Create2D(width, height, 4, Format_R8G8B8A8_UNORM, data, false))
 			{
-				io.Fonts->TexID = (ImTextureID)g_fontTexture->GetShaderResource();
+				io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetShaderResource());
 			}
 		}
 
@@ -196,31 +196,31 @@ namespace ImGui::RHI
 		DestroyPlatformWindows();
 	}
 
-	inline void RenderDrawData(ImDrawData* draw_data, bool isOtherWindow = false)
+	inline void RenderDrawData(ImDrawData* draw_data, const bool is_other_window = false)
 	{
 		TIME_BLOCK_START_MULTI(g_profiler);
 		g_device->EventBegin("Pass_ImGui");
 
 		// Grow vertex buffer as needed
-		if (g_vertexBuffer->GetVertexCount() < (unsigned int)draw_data->TotalVtxCount)
+		if (g_vertexBuffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
 		{
-			unsigned int newSize = draw_data->TotalVtxCount + 5000;
-			if (!g_vertexBuffer->CreateDynamic(sizeof(ImDrawVert), newSize))
+			const unsigned int new_size = draw_data->TotalVtxCount + 5000;
+			if (!g_vertexBuffer->CreateDynamic(sizeof(ImDrawVert), new_size))
 				return;
 		}
 
 		// Grow index buffer as needed
-		if (g_indexBuffer->GetIndexCount() < (unsigned int)draw_data->TotalIdxCount)
+		if (g_indexBuffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
 		{
-			unsigned int newSize = draw_data->TotalIdxCount + 10000;
-			if (!g_indexBuffer->CreateDynamic(sizeof(ImDrawIdx), newSize))
+			const unsigned int new_size = draw_data->TotalIdxCount + 10000;
+			if (!g_indexBuffer->CreateDynamic(sizeof(ImDrawIdx), new_size))
 				return;
 		}
 
 		// Copy and convert all vertices into a single contiguous buffer
-		auto vtx_dst	= (ImDrawVert*)g_vertexBuffer->Map();
-		auto* idx_dst	= (ImDrawIdx*)g_indexBuffer->Map();
-		for (int i = 0; i < draw_data->CmdListsCount; i++)
+		auto vtx_dst	= static_cast<ImDrawVert*>(g_vertexBuffer->Map());
+		auto* idx_dst	= static_cast<ImDrawIdx*>(g_indexBuffer->Map());
+		for (auto i = 0; i < draw_data->CmdListsCount; i++)
 		{
 			const ImDrawList* cmd_list = draw_data->CmdLists[i];
 			memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
@@ -235,11 +235,11 @@ namespace ImGui::RHI
 		// Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
 		// draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
 		{
-			float L = draw_data->DisplayPos.x;
-			float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-			float T = draw_data->DisplayPos.y;
-			float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-			Matrix mvp = Matrix
+			const auto L = draw_data->DisplayPos.x;
+			const auto R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+			const auto T = draw_data->DisplayPos.y;
+			const auto B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+			const auto mvp = Matrix
 			(
 				2.0f / (R - L),	0.0f,			0.0f,	(R + L) / (L - R),
 				0.0f,			2.0f / (T - B), 0.0f,	(T + B) / (B - T),
@@ -247,19 +247,19 @@ namespace ImGui::RHI
 				0.0f,			0.0f,			0.0f,	1.0f
 			);
 
-			auto buffer = (VertexConstantBuffer*)g_constantBuffer->Map();
+			auto buffer = static_cast<VertexConstantBuffer*>(g_constantBuffer->Map());
 			buffer->mvp = mvp;
 			g_constantBuffer->Unmap();
 		}
 
 		// Setup render state
-		if (!isOtherWindow)
+		if (!is_other_window)
 		{
 			g_pipeline->Clear();
 			g_renderer->SwapChain_SetAsRenderTarget();
 			g_renderer->SwapChain_Clear(Vector4(0, 0, 0, 1));
-		}	
-		auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
+		}
+		const auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 		g_pipeline->SetViewport(viewport);
 		g_pipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		g_pipeline->SetBlendState(g_blendState);
@@ -273,15 +273,15 @@ namespace ImGui::RHI
 		g_pipeline->SetSampler(g_fontSampler);
 
 		// Render command lists
-		int vtx_offset = 0;
-		int idx_offset = 0;
-		ImVec2 pos = draw_data->DisplayPos;
-		for (int i = 0; i < draw_data->CmdListsCount; i++)
+		auto vtx_offset = 0;
+		auto idx_offset = 0;
+		const auto pos = draw_data->DisplayPos;
+		for (auto i = 0; i < draw_data->CmdListsCount; i++)
 		{
 			const ImDrawList* cmd_list = draw_data->CmdLists[i];
-			for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
+			for (auto cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
 			{
-				const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+				const auto pcmd = &cmd_list->CmdBuffer[cmd_i];
 				if (pcmd->UserCallback)
 				{
 					// User callback (registered via ImDrawList::AddCallback)
@@ -290,13 +290,13 @@ namespace ImGui::RHI
 				else
 				{
 					// Apply scissor rectangle
-					Rectangle scissorRect	 = Rectangle(pcmd->ClipRect.x - pos.x, pcmd->ClipRect.y - pos.y, pcmd->ClipRect.z - pos.x, pcmd->ClipRect.w - pos.y);
-					scissorRect.width		-= scissorRect.x;
-					scissorRect.height		-= scissorRect.y;
-					g_pipeline->SetScissorRectangle(scissorRect);
+					auto scissor_rect	 = Rectangle(pcmd->ClipRect.x - pos.x, pcmd->ClipRect.y - pos.y, pcmd->ClipRect.z - pos.x, pcmd->ClipRect.w - pos.y);
+					scissor_rect.width	-= scissor_rect.x;
+					scissor_rect.height	-= scissor_rect.y;
+					g_pipeline->SetScissorRectangle(scissor_rect);
 
 					// Bind texture, Draw
-					auto texture_srv = (void*)pcmd->TextureId;
+					const auto texture_srv = static_cast<void*>(pcmd->TextureId);
 					g_pipeline->SetTexture(texture_srv);
 					g_pipeline->DrawIndexed(pcmd->ElemCount, idx_offset, vtx_offset);
 					g_pipeline->Bind();
@@ -306,7 +306,7 @@ namespace ImGui::RHI
 			vtx_offset += cmd_list->VtxBuffer.Size;
 		}
 
-		if (!isOtherWindow)
+		if (!is_other_window)
 		{
 			g_renderer->SwapChain_Present();
 		}
@@ -315,7 +315,7 @@ namespace ImGui::RHI
 		TIME_BLOCK_END_MULTI(g_profiler);
 	}
 
-	inline void OnResize(unsigned int width, unsigned int height)
+	inline void OnResize(const unsigned int width, const unsigned int height)
 	{
 		if (!g_renderer)
 			return;
@@ -328,20 +328,20 @@ namespace ImGui::RHI
 	//--------------------------------------------
 	struct RHI_Window
 	{
-		std::shared_ptr<RHI_SwapChain> swapChain;
+		std::shared_ptr<RHI_SwapChain> swap_chain;
 	};
 
 	inline void _CreateWindow(ImGuiViewport* viewport)
 	{
-		RHI_Window* data = IM_NEW(RHI_Window)();
+		auto data = IM_NEW(RHI_Window)();
 		viewport->RendererUserData = data;
 
-		data->swapChain = make_shared<RHI_SwapChain>
+		data->swap_chain = make_shared<RHI_SwapChain>
 		(
 			viewport->PlatformHandle,
 			g_device,
-			(unsigned int)viewport->Size.x,
-			(unsigned int)viewport->Size.y,
+			static_cast<unsigned int>(viewport->Size.x),
+			static_cast<unsigned int>(viewport->Size.y),
 			Format_R8G8B8A8_UNORM,
 			Swap_Discard,
 			0
@@ -350,58 +350,57 @@ namespace ImGui::RHI
 
 	inline void _DestroyWindow(ImGuiViewport* viewport)
 	{
-		auto window = (RHI_Window*)viewport->RendererUserData;
+		const auto window = static_cast<RHI_Window*>(viewport->RendererUserData);
 		if (window) { IM_DELETE(window); }
 		viewport->RendererUserData = nullptr;
 	}
 
-	inline void _SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
+	inline void _SetWindowSize(ImGuiViewport* viewport, const ImVec2 size)
 	{
-		auto window = (RHI_Window*)viewport->RendererUserData;
-		if (!window || !window->swapChain)
+		auto window = static_cast<RHI_Window*>(viewport->RendererUserData);
+		if (!window || !window->swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return;
 		}
 		
-		if (!window->swapChain->Resize((unsigned int)size.x, (unsigned int)size.y))
+		if (!window->swap_chain->Resize(static_cast<unsigned int>(size.x), static_cast<unsigned int>(size.y)))
 		{
 			LOG_ERROR("Failed to resize swap chain");
-			return;
 		}
 	}
 
 	inline void _RenderWindow(ImGuiViewport* viewport, void*)
 	{
-		auto window = (RHI_Window*)viewport->RendererUserData;
-		if (!window || !window->swapChain)
+		const auto window = static_cast<RHI_Window*>(viewport->RendererUserData);
+		if (!window || !window->swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return;
 		}
 
-		bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
-		window->swapChain->SetAsRenderTarget();
-		if (clear) window->swapChain->Clear(Vector4(0, 0, 0, 1));
+		const auto clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
+		window->swap_chain->SetAsRenderTarget();
+		if (clear) window->swap_chain->Clear(Vector4(0, 0, 0, 1));
 
 		RenderDrawData(viewport->DrawData, true);
 	}
 
 	inline void _SwapBuffers(ImGuiViewport* viewport, void*)
 	{
-		auto window = (RHI_Window*)viewport->RendererUserData;
-		if (!window || !window->swapChain)
+		const auto window = static_cast<RHI_Window*>(viewport->RendererUserData);
+		if (!window || !window->swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return;
 		}
 
-		window->swapChain->Present(Present_Off);
+		window->swap_chain->Present(Present_Off);
 	}
 
 	inline void InitializePlatformInterface()
 	{
-		ImGuiPlatformIO& platform_io		= GetPlatformIO();
+		auto& platform_io					= GetPlatformIO();
 		platform_io.Renderer_CreateWindow	= _CreateWindow;
 		platform_io.Renderer_DestroyWindow	= _DestroyWindow;
 		platform_io.Renderer_SetWindowSize	= _SetWindowSize;

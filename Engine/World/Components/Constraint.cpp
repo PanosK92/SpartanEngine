@@ -121,7 +121,7 @@ namespace Directus
 		stream->Read(&m_lowLimit);
 
 		const auto body_other_id = stream->ReadUInt();
-		m_bodyOther = GetContext()->GetSubsystem<World>()->Entity_GetByID(body_other_id);
+		m_bodyOther = GetContext()->GetSubsystem<World>()->EntityGetById(body_other_id);
 
 		Construct();
 	}

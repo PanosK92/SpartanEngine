@@ -70,7 +70,7 @@ namespace Directus
 		if (auto renderable = GetEntity_PtrRaw()->GetRenderable_PtrRaw())
 		{
 			m_center	= Vector3::Zero;
-			m_size		= renderable->Geometry_AABB().GetSize();
+			m_size		= renderable->GeometryAabb().GetSize();
 		}
 
 		Shape_Update();
@@ -188,7 +188,7 @@ namespace Directus
 			}
 
 			// Validate vertex count
-			if (renderable->Geometry_VertexCount() >= m_vertexLimit)
+			if (renderable->GeometryVertexCount() >= m_vertexLimit)
 			{
 				LOG_WARNING("Collider::Shape_Update: No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
 				return;
@@ -197,7 +197,7 @@ namespace Directus
 			// Get geometry
 			vector<unsigned int> indices;
 			vector<RHI_Vertex_PosUvNorTan> vertices;
-			renderable->Geometry_Get(&indices, &vertices);
+			renderable->GeometryGet(&indices, &vertices);
 
 			if (vertices.empty())
 			{
@@ -208,7 +208,7 @@ namespace Directus
 			// Construct hull approximation
 			m_shape = new btConvexHullShape(
 				(btScalar*)&vertices[0],					// points
-				renderable->Geometry_VertexCount(),			// point count
+				renderable->GeometryVertexCount(),			// point count
 				(unsigned int)sizeof(RHI_Vertex_PosUvNorTan));	// stride
 
 			// Scaling has to be done before (potential) optimization

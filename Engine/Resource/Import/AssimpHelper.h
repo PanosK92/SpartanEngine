@@ -113,19 +113,19 @@ namespace Directus::AssimpHelper
 
 		void OnInfo(const char* message) override
 		{
-			Log::m_callerName = "Directus::ModelImporter";
+			Log::m_caller_name = "Directus::ModelImporter";
 			Log::Write(message, Log_Info);
 		}
 
 		void OnWarn(const char* message) override
 		{
-			Log::m_callerName = "Directus::ModelImporter";
+			Log::m_caller_name = "Directus::ModelImporter";
 			Log::Write(message, Log_Warning);
 		}
 
 		void OnError(const char* message) override
 		{
-			Log::m_callerName = "Directus::ModelImporter";
+			Log::m_caller_name = "Directus::ModelImporter";
 			Log::Write(message, Log_Error);
 		}
 	};

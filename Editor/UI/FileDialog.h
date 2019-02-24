@@ -48,10 +48,10 @@ enum FileDialog_Filter
 	FileDialog_Filter_Model
 };
 
-class FileDialog_Item
+class FileDialogItem
 {
 public:
-	FileDialog_Item(const std::string& path, const Thumbnail& thumbnail)
+	FileDialogItem(const std::string& path, const Thumbnail& thumbnail)
 	{
 		m_path			= path;
 		m_thumbnail		= thumbnail;
@@ -60,18 +60,18 @@ public:
 		m_label			= Directus::FileSystem::GetFileNameFromFilePath(path);
 	}
 
-	const std::string& GetPath() const	{ return m_path; }
-	const std::string& GetLabel() const	{ return m_label; }
-	unsigned int GetID() const			{ return m_id; }
-	void* GetShaderResource() const		{ return SHADER_RESOURCE_BY_THUMBNAIL(m_thumbnail); }
-	bool IsDirectory()					{ return m_isDirectory; }
-	float GetTimeSinceLastClickMs()		{ return (float)m_timeSinceLastClick.count(); }
+	const std::string& GetPath() const		{ return m_path; }
+	const std::string& GetLabel() const		{ return m_label; }
+	unsigned int GetId() const				{ return m_id; }
+	void* GetShaderResource() const			{ return SHADER_RESOURCE_BY_THUMBNAIL(m_thumbnail); }
+	bool IsDirectory() const				{ return m_isDirectory; }
+	float GetTimeSinceLastClickMs() const	{ return static_cast<float>(m_time_since_last_click.count()); }
 
 	void Clicked()	
-	{ 
-		auto now				= std::chrono::high_resolution_clock::now();
-		m_timeSinceLastClick	= now - m_lastClickTime;
-		m_lastClickTime			= now;
+	{
+		const auto now			= std::chrono::high_resolution_clock::now();
+		m_time_since_last_click	= now - m_last_click_time;
+		m_last_click_time			= now;
 	}
 	
 private:
@@ -80,60 +80,60 @@ private:
 	std::string m_path;
 	std::string m_label;
 	bool m_isDirectory;
-	std::chrono::duration<double, std::milli> m_timeSinceLastClick;
-	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastClickTime;
+	std::chrono::duration<double, std::milli> m_time_since_last_click;
+	std::chrono::time_point<std::chrono::high_resolution_clock> m_last_click_time;
 };
 
 class FileDialog
 {
 public:
-	FileDialog(Directus::Context* context, bool standaloneWindow, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
+	FileDialog(Directus::Context* context, bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
 
 	// Type & Filter
-	FileDialog_Type GetType()		{ return m_type; }
-	FileDialog_Filter GetFilter()	{ return m_filter; }
+	FileDialog_Type GetType() const		{ return m_type; }
+	FileDialog_Filter GetFilter() const { return m_filter; }
 
 	// Operation
-	FileDialog_Operation GetOperation() { return m_operation; }
+	FileDialog_Operation GetOperation() const { return m_operation; }
 	void SetOperation(FileDialog_Operation operation);
 
 	// Shows the dialog and returns true if a a selection was made
-	bool Show(bool* isVisible, std::string* directory = nullptr, std::string* filePath = nullptr);
+	bool Show(bool* is_visible, std::string* directory = nullptr, std::string* file_path = nullptr);
 
-	void SetCallback_OnItemClicked(const std::function<void(const std::string&)>& callback)			{ m_callback_OnItemClicked = callback; }
-	void SetCallback_OnItemDoubleClicked(const std::function<void(const std::string&)>& callback)	{ m_callback_OnItemDoubleClicked = callback; }
+	void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback)			{ m_callback_on_item_clicked = callback; }
+	void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback)	{ m_callback_on_item_double_clicked = callback; }
 
 private:
-	void Show_Top(bool* isVisible);
-	void Show_Middle();
-	void Show_Bottom(bool* isVisible);
+	void ShowTop(bool* is_visible);
+	void ShowMiddle();
+	void ShowBottom(bool* is_visible);
 
 	// Item functionality handling
-	void Item_Drag(FileDialog_Item* item);
-	void Item_Click(FileDialog_Item* item);
-	void Item_ContextMenu(FileDialog_Item* item);
+	void ItemDrag(FileDialogItem* item) const;
+	void ItemClick(FileDialogItem* item) const;
+	void ItemContextMenu(FileDialogItem* item);
 
 	// Misc	
-	bool Dialog_SetCurrentPath(const std::string& path);
-	bool Dialog_UpdateFromDirectory(const std::string& path);
-	void EmptyArea_ContextMenu();
+	bool DialogSetCurrentPath(const std::string& path);
+	bool DialogUpdateFromDirectory(const std::string& path);
+	void EmptyAreaContextMenu();
 
 	FileDialog_Type m_type;
 	FileDialog_Operation m_operation;
 	FileDialog_Filter m_filter;
 
 	std::string m_title;
-	std::string m_currentDirectory;
-	std::string m_inputBox;
-	std::vector<FileDialog_Item> m_items;
-	bool m_isWindow;
-	float m_itemSize;
-	bool m_selectionMade;
+	std::string m_current_directory;
+	std::string m_input_box;
+	std::vector<FileDialogItem> m_items;
+	bool m_is_window;
+	float m_item_size;
+	bool m_selection_made;
 	bool m_isDirty;
-	bool m_wasVisible;
+	bool m_wasVisible{};
 	Directus::Context* m_context;
 
 	// Callbacks
-	std::function<void(const std::string&)> m_callback_OnItemClicked;
-	std::function<void(const std::string&)> m_callback_OnItemDoubleClicked;
+	std::function<void(const std::string&)> m_callback_on_item_clicked;
+	std::function<void(const std::string&)> m_callback_on_item_double_clicked;
 };

@@ -41,7 +41,7 @@ namespace Directus
 class Editor
 {
 public:
-	Editor(void* windowHandle, void* windowInstance, int windowWidth, int windowHeight);
+	Editor(void* window_handle, void* window_instance, unsigned int window_width, unsigned int window_height);
 	~Editor();
 
 	void Resize(unsigned int width, unsigned int height);
@@ -52,7 +52,7 @@ private:
 	void Widgets_Tick();
 	void DockSpace_Begin();
 	void DockSpace_End();	
-	void ApplyStyle();
+	void ApplyStyle() const;
 
 	// Editor
 	std::vector<std::unique_ptr<Widget>> m_widgets;

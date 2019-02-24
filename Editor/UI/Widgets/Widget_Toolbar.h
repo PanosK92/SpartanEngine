@@ -35,7 +35,7 @@ class Widget_Toolbar : public Widget
 public:
 	Widget_Toolbar(Directus::Context* context);
 	bool Begin() override;
-	void Tick(float deltaTime) override;
+	void Tick(float delta_time) override;
 
 private:
 	void ShowRendererOptions();

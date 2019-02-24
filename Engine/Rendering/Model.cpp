@@ -46,10 +46,10 @@ namespace Directus
 {
 	Model::Model(Context* context) : IResource(context, Resource_Model)
 	{
-		m_normalizedScale	= 1.0f;
-		m_isAnimated		= false;
-		m_resourceManager	= m_context->GetSubsystem<ResourceCache>().get();
-		m_rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
+		m_normalized_scale	= 1.0f;
+		m_is_animated		= false;
+		m_resource_manager	= m_context->GetSubsystem<ResourceCache>().get();
+		m_rhi_device		= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
 		m_mesh				= make_unique<Mesh>();
 	}
 
@@ -63,45 +63,45 @@ namespace Directus
 	}
 
 	//= RESOURCE ============================================
-	bool Model::LoadFromFile(const string& filePath)
+	bool Model::LoadFromFile(const string& file_path)
 	{
 		Stopwatch timer;
-		string modelFilePath = filePath;
+		auto model_file_path = file_path;
 
 		// Check if this is a directory instead of a model file path
-		if (FileSystem::IsDirectory(filePath))
+		if (FileSystem::IsDirectory(file_path))
 		{
 			// If it is, try to find a model file in it
-			vector<string> modelFilePaths = FileSystem::GetSupportedModelFilesInDirectory(filePath);
-			if (!modelFilePaths.empty())
+			auto model_file_paths = FileSystem::GetSupportedModelFilesInDirectory(file_path);
+			if (!model_file_paths.empty())
 			{
-				modelFilePath = modelFilePaths.front();
+				model_file_path = model_file_paths.front();
 			}
 			else // abort
 			{
-				LOG_WARNING("Failed to load model. Unable to find supported file in \"" + FileSystem::GetDirectoryFromFilePath(filePath) + "\".");
+				LOG_WARNING("Failed to load model. Unable to find supported file in \"" + FileSystem::GetDirectoryFromFilePath(file_path) + "\".");
 				return false;
 			}
 		}
 
-		bool engineFormat = FileSystem::GetExtensionFromFilePath(modelFilePath) == EXTENSION_MODEL;
-		bool success = engineFormat ? LoadFromEngineFormat(modelFilePath) : LoadFromForeignFormat(modelFilePath);
+		const auto engine_format = FileSystem::GetExtensionFromFilePath(model_file_path) == EXTENSION_MODEL;
+		const auto success = engine_format ? LoadFromEngineFormat(model_file_path) : LoadFromForeignFormat(model_file_path);
 
-		Geometry_ComputeMemoryUsage();
-		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(filePath).c_str(), (int)timer.GetElapsedTimeMs());
+		GeometryComputeMemoryUsage();
+		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
 
 		return success;
 	}
 
-	bool Model::SaveToFile(const string& filePath)
+	bool Model::SaveToFile(const string& file_path)
 	{
-		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
+		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
 		if (!file->IsOpen())
 			return false;
 
 		file->Write(GetResourceName());
 		file->Write(GetResourceFilePath());
-		file->Write(m_normalizedScale);
+		file->Write(m_normalized_scale);
 		file->Write(m_mesh->Indices_Get());
 		file->Write(m_mesh->Vertices_Get());	
 
@@ -109,7 +109,7 @@ namespace Directus
 	}
 	//=======================================================
 
-	void Model::Geometry_Append(std::vector<unsigned int>& indices, std::vector<RHI_Vertex_PosUvNorTan>& vertices, unsigned int* indexOffset, unsigned int* vertexOffset)
+	void Model::GeometryAppend(std::vector<unsigned int>& indices, std::vector<RHI_Vertex_PosUvNorTan>& vertices, unsigned int* index_offset, unsigned int* vertex_offset) const
 	{
 		if (indices.empty() || vertices.empty())
 		{
@@ -118,16 +118,16 @@ namespace Directus
 		}
 
 		// Append indices and vertices to the main mesh
-		m_mesh->Indices_Append(indices, indexOffset);
-		m_mesh->Vertices_Append(vertices, vertexOffset);
+		m_mesh->Indices_Append(indices, index_offset);
+		m_mesh->Vertices_Append(vertices, vertex_offset);
 	}
 
-	void Model::Geometry_Get(unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned int vertexCount, vector<unsigned int>* indices, vector<RHI_Vertex_PosUvNorTan>* vertices)
+	void Model::GeometryGet(const unsigned int index_offset, const unsigned int index_count, const unsigned int vertex_offset, const unsigned int vertex_count, vector<unsigned int>* indices, vector<RHI_Vertex_PosUvNorTan>* vertices) const
 	{
-		m_mesh->Geometry_Get(indexOffset, indexCount, vertexOffset, vertexCount, indices, vertices);
+		m_mesh->Geometry_Get(index_offset, index_count, vertex_offset, vertex_count, indices, vertices);
 	}
 
-	void Model::Geometry_Update()
+	void Model::GeometryUpdate()
 	{
 		if (m_mesh->Indices_Count() == 0 || m_mesh->Vertices_Count() == 0)
 		{
@@ -135,8 +135,8 @@ namespace Directus
 			return;
 		}
 
-		Geometry_CreateBuffers();
-		m_normalizedScale	= Geometry_ComputeNormalizedScale();
+		GeometryCreateBuffers();
+		m_normalized_scale	= GeometryComputeNormalizedScale();
 		m_aabb				= BoundingBox(m_mesh->Vertices_Get());
 	}
 
@@ -149,20 +149,20 @@ namespace Directus
 		}
 
 		// Create a file path for this material
-		material->SetResourceFilePath(m_modelDirectoryMaterials + material->GetResourceName() + EXTENSION_MATERIAL);
+		material->SetResourceFilePath(m_model_directory_materials + material->GetResourceName() + EXTENSION_MATERIAL);
 
 		// Save the material in the model directory		
 		material->SaveToFile(material->GetResourceFilePath());
 
 		// Keep a reference to it
-		m_resourceManager->Cache(material);
+		m_resource_manager->Cache(material);
 		m_materials.emplace_back(material);
 
 		// Create a Renderable and pass the material to it
 		if (entity)
 		{
 			auto renderable = entity->AddComponent<Renderable>();
-			renderable->Material_Set(material);
+			renderable->MaterialSet(material);
 		}
 	}
 
@@ -176,10 +176,10 @@ namespace Directus
 
 		m_context->GetSubsystem<ResourceCache>()->Cache<Animation>(animation);
 		m_animations.emplace_back(animation);
-		m_isAnimated = true;
+		m_is_animated = true;
 	}
 
-	void Model::AddTexture(shared_ptr<Material>& material, TextureType textureType, const string& filePath)
+	void Model::AddTexture(shared_ptr<Material>& material, const TextureType texture_type, const string& file_path)
 	{
 		if (!material)
 		{
@@ -188,86 +188,84 @@ namespace Directus
 		}
 
 		// Validate texture file path
-		if (filePath == NOT_ASSIGNED)
+		if (file_path == NOT_ASSIGNED)
 		{
 			LOG_WARNING("Provided texture file path hasn't been provided. Can't execute function");
 			return;
 		}
 
 		// Try to get the texture
-		auto texName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
-		auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture>(texName);
+		const auto tex_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+		auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture>(tex_name);
 		if (texture)
 		{
-			material->SetTextureSlot(textureType, texture);
+			material->SetTextureSlot(texture_type, texture);
 		}
 		// If we didn't get a texture, it's not cached, hence we have to load it and cache it now
 		else if (!texture)
 		{
 			// Load texture
 			texture = make_shared<RHI_Texture>(m_context);
-			texture->LoadFromFile(filePath);
+			texture->LoadFromFile(file_path);
 
 			// Update the texture with Model directory relative file path. Then save it to this directory
-			string modelRelativeTexPath = m_modelDirectoryTextures + texName + EXTENSION_TEXTURE;
-			texture->SetResourceFilePath(modelRelativeTexPath);
-			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
-			texture->SaveToFile(modelRelativeTexPath);		
+			const auto model_relative_tex_path = m_model_directory_textures + tex_name + EXTENSION_TEXTURE;
+			texture->SetResourceFilePath(model_relative_tex_path);
+			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(model_relative_tex_path));
+			texture->SaveToFile(model_relative_tex_path);		
 			texture->ClearTextureBytes(); // Now that the texture is saved, free up it's memory since we already have a shader resource
 
 			// Set the texture to the provided material
-			m_resourceManager->Cache(texture);
-			material->SetTextureSlot(textureType, texture);
+			m_resource_manager->Cache(texture);
+			material->SetTextureSlot(texture_type, texture);
 		}
 	}
 
 	void Model::SetWorkingDirectory(const string& directory)
 	{
 		// Set directories based on new directory
-		m_modelDirectoryModel		= directory;
-		m_modelDirectoryMaterials	= m_modelDirectoryModel + "Materials//";
-		m_modelDirectoryTextures	= m_modelDirectoryModel + "Textures//";
+		m_model_directory_model		= directory;
+		m_model_directory_materials	= m_model_directory_model + "Materials//";
+		m_model_directory_textures	= m_model_directory_model + "Textures//";
 
 		// Create directories
 		FileSystem::CreateDirectory_(directory);
-		FileSystem::CreateDirectory_(m_modelDirectoryMaterials);
-		FileSystem::CreateDirectory_(m_modelDirectoryTextures);
+		FileSystem::CreateDirectory_(m_model_directory_materials);
+		FileSystem::CreateDirectory_(m_model_directory_textures);
 	}
 
-	bool Model::LoadFromEngineFormat(const string& filePath)
+	bool Model::LoadFromEngineFormat(const string& file_path)
 	{
 		// Deserialize
-		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
 		if (!file->IsOpen())
 			return false;
 
-		int meshCount = 0;
-
 		file->Read(&m_resource_name);
 		file->Read(&m_resource_file_path);
-		file->Read(&m_normalizedScale);
+		file->Read(&m_normalized_scale);
 		file->Read(&m_mesh->Indices_Get());
 		file->Read(&m_mesh->Vertices_Get());
 
-		Geometry_Update();
+		GeometryUpdate();
 
 		return true;
 	}
 
-	bool Model::LoadFromForeignFormat(const string& filePath)
+	bool Model::LoadFromForeignFormat(const string& file_path)
 	{
 		// Set some crucial data (Required by ModelImporter)
-		SetWorkingDirectory(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory() + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"); // Assets/Sponza/
-		SetResourceFilePath(m_modelDirectoryModel + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + EXTENSION_MODEL); // Assets/Sponza/Sponza.model
-		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath)); // Sponza
+		SetWorkingDirectory(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory() + FileSystem::GetFileNameNoExtensionFromFilePath(file_path) + "//"); // Assets/Sponza/
+		SetResourceFilePath(m_model_directory_model + FileSystem::GetFileNameNoExtensionFromFilePath(file_path) + EXTENSION_MODEL); // Assets/Sponza/Sponza.model
+		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(file_path)); // Sponza
 
 		// Load the model
-		if (m_resourceManager->GetModelImporter()->Load(std::dynamic_pointer_cast<Model>(GetSharedPtr()), filePath))
+		if (m_resource_manager->GetModelImporter()->Load(std::dynamic_pointer_cast<Model>(GetSharedPtr()), file_path))
 		{
 			// Set the normalized scale to the root entity's transform
-			m_normalizedScale = Geometry_ComputeNormalizedScale();
-			m_rootentity.lock()->GetComponent<Transform>()->SetScale(m_normalizedScale);
-			m_rootentity.lock()->GetComponent<Transform>()->UpdateTransform();
+			m_normalized_scale = GeometryComputeNormalizedScale();
+			m_root_entity.lock()->GetComponent<Transform>()->SetScale(m_normalized_scale);
+			m_root_entity.lock()->GetComponent<Transform>()->UpdateTransform();
 
 			// Save the model in our custom format.
 			SaveToFile(GetResourceFilePath());
@@ -278,18 +276,18 @@ namespace Directus
 		return false;
 	}
 
-	bool Model::Geometry_CreateBuffers()
+	bool Model::GeometryCreateBuffers()
 	{
-		bool success = true;
+		auto success = true;
 
 		// Get geometry
-		vector<unsigned int> indices			= m_mesh->Indices_Get();
-		vector<RHI_Vertex_PosUvNorTan> vertices	= m_mesh->Vertices_Get();
+		auto indices	= m_mesh->Indices_Get();
+		auto vertices	= m_mesh->Vertices_Get();
 
 		if (!indices.empty())
 		{
-			m_indexBuffer = make_shared<RHI_IndexBuffer>(m_rhiDevice);
-			if (!m_indexBuffer->Create(indices))
+			m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device);
+			if (!m_index_buffer->Create(indices))
 			{
 				LOGF_ERROR("Failed to create index buffer for \"%s\".", m_resource_name.c_str());
 				success = false;
@@ -303,8 +301,8 @@ namespace Directus
 
 		if (!vertices.empty())
 		{
-			m_vertexBuffer = make_shared<RHI_VertexBuffer>(m_rhiDevice);
-			if (!m_vertexBuffer->Create(vertices))
+			m_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device);
+			if (!m_vertex_buffer->Create(vertices))
 			{
 				LOGF_ERROR("Failed to create vertex buffer for \"%s\".", m_resource_name.c_str());
 				success = false;
@@ -319,23 +317,23 @@ namespace Directus
 		return success;
 	}
 
-	float Model::Geometry_ComputeNormalizedScale()
+	float Model::GeometryComputeNormalizedScale() const
 	{
 		// Compute scale offset
-		float scaleOffset = m_aabb.GetExtents().Length();
+		const auto scale_offset = m_aabb.GetExtents().Length();
 
 		// Return normalized scale
-		return 1.0f / scaleOffset;
+		return 1.0f / scale_offset;
 	}
 
-	unsigned int Model::Geometry_ComputeMemoryUsage()
+	unsigned int Model::GeometryComputeMemoryUsage() const
 	{
 		// Vertices & Indices
-		unsigned int size = !m_mesh ? 0 : m_mesh->Geometry_MemoryUsage();
+		auto size = !m_mesh ? 0 : m_mesh->Geometry_MemoryUsage();
 
 		// Buffers
-		size += m_vertexBuffer->GetMemoryUsage();
-		size += m_indexBuffer->GetMemoryUsage();
+		size += m_vertex_buffer->GetMemoryUsage();
+		size += m_index_buffer->GetMemoryUsage();
 
 		return size;
 	}

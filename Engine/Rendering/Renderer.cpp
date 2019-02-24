@@ -676,7 +676,7 @@ namespace Directus
 
 			if (renderable)
 			{
-				const bool isTransparent = !renderable->Material_Exists() ? false : renderable->Material_Ptr()->GetColorAlbedo().w < 1.0f;
+				const bool isTransparent = !renderable->MaterialExists() ? false : renderable->MaterialPtr()->GetColorAlbedo().w < 1.0f;
 				if (!skybox) // Ignore skybox
 				{
 					m_entities[isTransparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(entity);
@@ -723,13 +723,13 @@ namespace Directus
 					return false;
 
 				// Get materials
-				auto a_material = a_renderable->Material_Ptr();
-				auto b_material = b_renderable->Material_Ptr();
+				auto a_material = a_renderable->MaterialPtr();
+				auto b_material = b_renderable->MaterialPtr();
 				if (!a_material || !b_material)
 					return false;
 
-				float a_depth = (a_renderable->Geometry_AABB().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
-				float b_depth = (b_renderable->Geometry_AABB().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+				float a_depth = (a_renderable->GeometryAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+				float b_depth = (b_renderable->GeometryAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
 
 				return a_depth < b_depth;
 			});
@@ -745,8 +745,8 @@ namespace Directus
 				return false;
 
 			// Get materials
-			auto a_material = a_renderable->Material_Ptr();
-			auto b_material = b_renderable->Material_Ptr();
+			auto a_material = a_renderable->MaterialPtr();
+			auto b_material = b_renderable->MaterialPtr();
 			if (!a_material || !b_material)
 				return false;
 

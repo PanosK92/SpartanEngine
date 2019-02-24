@@ -32,9 +32,9 @@ using namespace Directus;
 
 namespace Widget_Assets_Statics
 {
-	static bool g_showFileDialogView = true;
-	static bool g_showFileDialogLoad = false;
-	static string g_doubleClickedPath_ImportDialog;
+	static bool g_show_file_dialog_view = true;
+	static bool g_show_file_dialog_load = false;
+	static string g_double_clicked_path_import_dialog;
 }
 
 Widget_Assets::Widget_Assets(Context* context) : Widget(context)
@@ -45,29 +45,29 @@ Widget_Assets::Widget_Assets(Context* context) : Widget(context)
 	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
 
 	// Just clicked, not selected (double clicked, end of dialog)
-	m_fileDialogView->SetCallback_OnItemClicked([this](const string& str) { OnPathClicked(str); });
+	m_fileDialogView->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
 }
 
-void Widget_Assets::Tick(float deltaTime)
+void Widget_Assets::Tick(float delta_time)
 {	
 	if (ImGui::Button("Import"))
 	{
-		Widget_Assets_Statics::g_showFileDialogLoad = true;
+		Widget_Assets_Statics::g_show_file_dialog_load = true;
 	}
 
 	ImGui::SameLine();
 	
 	// VIEW
-	m_fileDialogView->Show(&Widget_Assets_Statics::g_showFileDialogView);
+	m_fileDialogView->Show(&Widget_Assets_Statics::g_show_file_dialog_view);
 
 	// IMPORT
-	if (m_fileDialogLoad->Show(&Widget_Assets_Statics::g_showFileDialogLoad, nullptr, &Widget_Assets_Statics::g_doubleClickedPath_ImportDialog))
+	if (m_fileDialogLoad->Show(&Widget_Assets_Statics::g_show_file_dialog_load, nullptr, &Widget_Assets_Statics::g_double_clicked_path_import_dialog))
 	{
 		// Model
-		if (FileSystem::IsSupportedModelFile(Widget_Assets_Statics::g_doubleClickedPath_ImportDialog))
+		if (FileSystem::IsSupportedModelFile(Widget_Assets_Statics::g_double_clicked_path_import_dialog))
 		{
-			EditorHelper::Get().LoadModel(Widget_Assets_Statics::g_doubleClickedPath_ImportDialog);
-			Widget_Assets_Statics::g_showFileDialogLoad = false;
+			EditorHelper::Get().LoadModel(Widget_Assets_Statics::g_double_clicked_path_import_dialog);
+			Widget_Assets_Statics::g_show_file_dialog_load = false;
 		}
 	}
 }
@@ -76,7 +76,7 @@ void Widget_Assets::OnPathClicked(const std::string& path)
 {
 	if (FileSystem::IsEngineMaterialFile(path))
 	{
-		auto material = m_context->GetSubsystem<ResourceCache>()->Load<Material>(path);
+		const auto material = m_context->GetSubsystem<ResourceCache>()->Load<Material>(path);
 		Widget_Properties::Inspect(material);
 	}
 }

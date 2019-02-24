@@ -51,9 +51,9 @@ namespace _Widget_World
 	static bool g_popupRenameentity	= false;
 	static DragDropPayload g_payload;
 	// entities in relation to mouse events
-	static Entity* g_entityCopied	= nullptr;
-	static Entity* g_entityHovered	= nullptr;
-	static Entity* g_entityClicked	= nullptr;
+	static Entity* g_entity_copied	= nullptr;
+	static Entity* g_entity_hovered	= nullptr;
+	static Entity* g_entity_clicked	= nullptr;
 }
 
 Widget_World::Widget_World(Context* context) : Widget(context)
@@ -65,34 +65,34 @@ Widget_World::Widget_World(Context* context) : Widget(context)
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 
 	// Subscribe to entity clicked engine event
-	EditorHelper::Get().g_onEntitySelected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selectedEntity.lock(), false); };
+	EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };
 }
 
-void Widget_World::Tick(float deltaTime)
+void Widget_World::Tick(float delta_time)
 {
 	// If something is being loaded, don't parse the hierarchy
-	ProgressReport& progressReport	= ProgressReport::Get();
-	bool isLoadingModel				= progressReport.GetIsLoading(g_progress_ModelImporter);
-	bool isLoadingScene				= progressReport.GetIsLoading(g_progress_Scene);
-	bool isLoading					= isLoadingModel || isLoadingScene;
-	if (isLoading)
+	auto& progress_report	= ProgressReport::Get();
+	const auto is_loading_model		= progress_report.GetIsLoading(g_progress_ModelImporter);
+	const auto is_loading_scene		= progress_report.GetIsLoading(g_progress_Scene);
+	const auto is_loading			= is_loading_model || is_loading_scene;
+	if (is_loading)
 		return;
 	
-	Tree_Show();
+	TreeShow();
 
 	// On left click, select entity but only on release
-	if (ImGui::IsMouseReleased(0) && _Widget_World::g_entityClicked)
+	if (ImGui::IsMouseReleased(0) && _Widget_World::g_entity_clicked)
 	{
 		// Make sure that the mouse was released while on the same entity
-		if (_Widget_World::g_entityHovered && _Widget_World::g_entityHovered->GetId() == _Widget_World::g_entityClicked->GetId())
+		if (_Widget_World::g_entity_hovered && _Widget_World::g_entity_hovered->GetId() == _Widget_World::g_entity_clicked->GetId())
 		{
-			SetSelectedEntity(_Widget_World::g_entityClicked->GetPtrShared());
+			SetSelectedEntity(_Widget_World::g_entity_clicked->GetPtrShared());
 		}
-		_Widget_World::g_entityClicked = nullptr;
+		_Widget_World::g_entity_clicked = nullptr;
 	}
 }
 
-void Widget_World::Tree_Show()
+void Widget_World::TreeShow()
 {
 	OnTreeBegin();
 
@@ -101,17 +101,17 @@ void Widget_World::Tree_Show()
 		// Dropping on the scene node should unparent the entity
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_entity))
 		{
-			auto entityID = get<unsigned int>(payload->data);
-			if (auto droppedentity = _Widget_World::g_world->Entity_GetByID(entityID))
+			const auto entity_id = get<unsigned int>(payload->data);
+			if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
 			{
-				droppedentity->GetTransform_PtrRaw()->SetParent(nullptr);
+				dropped_entity->GetTransform_PtrRaw()->SetParent(nullptr);
 			}
 		}
 
-		auto rootentities = _Widget_World::g_world->Entities_GetRoots();
+		auto rootentities = _Widget_World::g_world->EntitiesGetRoots();
 		for (const auto& entity : rootentities)
 		{
-			Tree_AddEntity(entity.get());
+			TreeAddEntity(entity.get());
 		}
 
 		ImGui::TreePop();
@@ -122,7 +122,7 @@ void Widget_World::Tree_Show()
 
 void Widget_World::OnTreeBegin()
 {
-	_Widget_World::g_entityHovered = nullptr;
+	_Widget_World::g_entity_hovered = nullptr;
 }
 
 void Widget_World::OnTreeEnd()
@@ -132,17 +132,16 @@ void Widget_World::OnTreeEnd()
 	Popups();
 }
 
-void Widget_World::Tree_AddEntity(Entity* entity)
+void Widget_World::TreeAddEntity(Entity* entity)
 {
 	if (!entity)
 		return;
 
-	bool isVisibleInHierarchy	= entity->IsVisibleInHierarchy();
-	bool hasParent				= entity->GetTransform_PtrRaw()->HasParent();
-	bool hasVisibleChildren		= false;
+	const auto is_visible_in_hierarchy	= entity->IsVisibleInHierarchy();
+	auto has_visible_children			= false;
 
 	// Don't draw invisible entities
-	if (!isVisibleInHierarchy)
+	if (!is_visible_in_hierarchy)
 		return;
 
 	// Determine children visibility
@@ -151,7 +150,7 @@ void Widget_World::Tree_AddEntity(Entity* entity)
 	{
 		if (child->GetEntity_PtrRaw()->IsVisibleInHierarchy())
 		{
-			hasVisibleChildren = true;
+			has_visible_children = true;
 			break;
 		}
 	}
@@ -160,52 +159,52 @@ void Widget_World::Tree_AddEntity(Entity* entity)
 	ImGuiTreeNodeFlags node_flags	= ImGuiTreeNodeFlags_AllowItemOverlap;
 
 	// Flag - Is expandable (has children) ?
-	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
+	node_flags |= has_visible_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
 
 	// Flag - Is selected?
-	if (auto selectedEntity = EditorHelper::Get().g_selectedEntity.lock())
+	if (const auto selected_entity = EditorHelper::Get().g_selected_entity.lock())
 	{
-		bool isSelectedentity = selectedEntity->GetId() == entity->GetId();
-		node_flags |= isSelectedentity ? ImGuiTreeNodeFlags_Selected : 0;
+		const auto is_selectedentity = selected_entity->GetId() == entity->GetId();
+		node_flags |= is_selectedentity ? ImGuiTreeNodeFlags_Selected : 0;
 
 		// Expand to show entity, if it was clicked during this frame
-		if (m_expandToShowentity)
+		if (m_expand_to_showentity)
 		{
 			// If the selected entity is a descendant of the this entity, start expanding (this can happen if the user clicks on something in the 3D scene)
-			if (selectedEntity->GetTransform_PtrRaw()->IsDescendantOf(entity->GetTransform_PtrRaw()))
+			if (selected_entity->GetTransform_PtrRaw()->IsDescendantOf(entity->GetTransform_PtrRaw()))
 			{
 				ImGui::SetNextTreeNodeOpen(true);
 
 				// Stop expanding when we have reached the selected entity (it's visible to the user)
-				if (isSelectedentity)
+				if (is_selectedentity)
 				{
-					m_expandToShowentity = false;
+					m_expand_to_showentity = false;
 				}
 			}
 		}
 	}
-	
-	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)entity->GetId(), node_flags, entity->GetName().c_str());
+
+	const auto is_node_open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(entity->GetId())), node_flags, entity->GetName().c_str());
 
 	// Manually detect some useful states
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
 	{
-		_Widget_World::g_entityHovered = entity;
+		_Widget_World::g_entity_hovered = entity;
 	}
 
-	Entity_HandleDragDrop(entity);	
+	EntityHandleDragDrop(entity);	
 
 	// Recursively show all child nodes
-	if (isNodeOpen)
+	if (is_node_open)
 	{
-		if (hasVisibleChildren)
+		if (has_visible_children)
 		{
 			for (const auto& child : children)
 			{
 				if (!child->GetEntity_PtrRaw()->IsVisibleInHierarchy())
 					continue;
 
-				Tree_AddEntity(child->GetEntity_PtrRaw());
+				TreeAddEntity(child->GetEntity_PtrRaw());
 			}
 		}
 
@@ -216,44 +215,44 @@ void Widget_World::Tree_AddEntity(Entity* entity)
 
 void Widget_World::HandleClicking()
 {
-	bool isWindowHovered	= ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-	bool leftClick			= ImGui::IsMouseClicked(0);
-	bool rightClick			= ImGui::IsMouseClicked(1);
+	const auto is_window_hovered	= ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+	const auto left_click			= ImGui::IsMouseClicked(0);
+	const auto right_click			= ImGui::IsMouseClicked(1);
 
 	// Since we are handling clicking manually, we must ensure we are inside the window
-	if (!isWindowHovered)
+	if (!is_window_hovered)
 		return;	
 
 	// Left click on item - Don't select yet
-	if (leftClick && _Widget_World::g_entityHovered)
+	if (left_click && _Widget_World::g_entity_hovered)
 	{
-		_Widget_World::g_entityClicked	= _Widget_World::g_entityHovered;
+		_Widget_World::g_entity_clicked	= _Widget_World::g_entity_hovered;
 	}
 
 	// Right click on item - Select and show context menu
 	if (ImGui::IsMouseClicked(1))
 	{
-		if (_Widget_World::g_entityHovered)
+		if (_Widget_World::g_entity_hovered)
 		{			
-			SetSelectedEntity(_Widget_World::g_entityHovered->GetPtrShared());
+			SetSelectedEntity(_Widget_World::g_entity_hovered->GetPtrShared());
 		}
 
 		ImGui::OpenPopup("##HierarchyContextMenu");
 	}
 
 	// Clicking on empty space - Clear selection
-	if ((leftClick || rightClick) && !_Widget_World::g_entityHovered)
+	if ((left_click || right_click) && !_Widget_World::g_entity_hovered)
 	{
 		SetSelectedEntity(m_entity_empty);
 	}
 }
 
-void Widget_World::Entity_HandleDragDrop(Entity* entityPtr)
+void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
 {
 	// Drag
 	if (ImGui::BeginDragDropSource())
 	{
-		_Widget_World::g_payload.data = entityPtr->GetId();
+		_Widget_World::g_payload.data = entity_ptr->GetId();
 		_Widget_World::g_payload.type = DragPayload_entity;
 		DragDrop::Get().DragPayload(_Widget_World::g_payload);
 		ImGui::EndDragDropSource();
@@ -261,25 +260,25 @@ void Widget_World::Entity_HandleDragDrop(Entity* entityPtr)
 	// Drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_entity))
 	{
-		auto entityID = get<unsigned int>(payload->data);
-		if (auto droppedentity = _Widget_World::g_world->Entity_GetByID(entityID))
+		const auto entity_id = get<unsigned int>(payload->data);
+		if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
 		{
-			if (droppedentity->GetId() != entityPtr->GetId())
+			if (dropped_entity->GetId() != entity_ptr->GetId())
 			{
-				droppedentity->GetTransform_PtrRaw()->SetParent(entityPtr->GetTransform_PtrRaw());
+				dropped_entity->GetTransform_PtrRaw()->SetParent(entity_ptr->GetTransform_PtrRaw());
 			}
 		}
 	}
 }
 
-void Widget_World::SetSelectedEntity(std::shared_ptr<Entity> entity, bool fromEditor /*= true*/)
+void Widget_World::SetSelectedEntity(const std::shared_ptr<Entity>& entity, const bool from_editor /*= true*/)
 {
-	m_expandToShowentity = true;
+	m_expand_to_showentity = true;
 
 	// If the update comes from this widget, let the engine know about it
-	if (fromEditor)
+	if (from_editor)
 	{
-		EditorHelper::Get().g_selectedEntity = entity;
+		EditorHelper::Get().g_selected_entity = entity;
 	}
 
 	Widget_Properties::Inspect(entity);
@@ -287,70 +286,70 @@ void Widget_World::SetSelectedEntity(std::shared_ptr<Entity> entity, bool fromEd
 
 void Widget_World::Popups()
 {
-	Popup_ContextMenu();
-	Popup_EntityRename();
+	PopupContextMenu();
+	PopupEntityRename();
 }
 
-void Widget_World::Popup_ContextMenu()
+void Widget_World::PopupContextMenu()
 {
 	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
 		return;
 
-	auto selectedentity = EditorHelper::Get().g_selectedEntity.lock();
-	bool onentity		= selectedentity != nullptr;
+	auto selected_entity	= EditorHelper::Get().g_selected_entity.lock();
+	const auto on_entity	= selected_entity != nullptr;
 
-	if (onentity) if (ImGui::MenuItem("Copy"))
+	if (on_entity) if (ImGui::MenuItem("Copy"))
 	{
-		_Widget_World::g_entityCopied = selectedentity.get();
+		_Widget_World::g_entity_copied = selected_entity.get();
 	}
 
 	if (ImGui::MenuItem("Paste"))
 	{
-		if (_Widget_World::g_entityCopied)
+		if (_Widget_World::g_entity_copied)
 		{
-			_Widget_World::g_entityCopied->Clone();
+			_Widget_World::g_entity_copied->Clone();
 		}
 	}
 
-	if (onentity) if (ImGui::MenuItem("Rename"))
+	if (on_entity) if (ImGui::MenuItem("Rename"))
 	{
 		_Widget_World::g_popupRenameentity = true;
 	}
 
-	if (onentity) if (ImGui::MenuItem("Delete", "Delete"))
+	if (on_entity) if (ImGui::MenuItem("Delete", "Delete"))
 	{
-		Action_Entity_Delete(selectedentity);
+		ActionEntityDelete(selected_entity);
 	}
 	ImGui::Separator();
 
 	// EMPTY
 	if (ImGui::MenuItem("Create Empty"))
 	{
-		Action_Entity_CreateEmpty();
+		ActionEntityCreateEmpty();
 	}
 
-	// 3D OBJECCTS
+	// 3D OBJECTS
 	if (ImGui::BeginMenu("3D Objects"))
 	{
 		if (ImGui::MenuItem("Cube"))
 		{
-			Action_Entity_CreateCube();
+			ActionEntityCreateCube();
 		}
 		else if (ImGui::MenuItem("Quad"))
 		{
-			Action_Entity_CreateQuad();
+			ActionEntityCreateQuad();
 		}
 		else if (ImGui::MenuItem("Sphere"))
 		{
-			Action_Entity_CreateSphere();
+			ActionEntityCreateSphere();
 		}
 		else if (ImGui::MenuItem("Cylinder"))
 		{
-			Action_Entity_CreateCylinder();
+			ActionEntityCreateCylinder();
 		}
 		else if (ImGui::MenuItem("Cone"))
 		{
-			Action_Entity_CreateCone();
+			ActionEntityCreateCone();
 		}
 
 		ImGui::EndMenu();
@@ -359,7 +358,7 @@ void Widget_World::Popup_ContextMenu()
 	// CAMERA
 	if (ImGui::MenuItem("Camera"))
 	{
-		Action_Entity_CreateCamera();
+		ActionEntityCreateCamera();
 	}
 
 	// LIGHT
@@ -367,15 +366,15 @@ void Widget_World::Popup_ContextMenu()
 	{
 		if (ImGui::MenuItem("Directional"))
 		{
-			Action_Entity_CreateLightDirectional();
+			ActionEntityCreateLightDirectional();
 		}
 		else if (ImGui::MenuItem("Point"))
 		{
-			Action_Entity_CreateLightPoint();
+			ActionEntityCreateLightPoint();
 		}
 		else if (ImGui::MenuItem("Spot"))
 		{
-			Action_Entity_CreateLightSpot();
+			ActionEntityCreateLightSpot();
 		}
 
 		ImGui::EndMenu();
@@ -386,15 +385,15 @@ void Widget_World::Popup_ContextMenu()
 	{
 		if (ImGui::MenuItem("Rigid Body"))
 		{
-			Action_Entity_CreateRigidBody();
+			ActionEntityCreateRigidBody();
 		}
 		else if (ImGui::MenuItem("Collider"))
 		{
-			Action_Entity_CreateCollider();
+			ActionEntityCreateCollider();
 		}
 		else if (ImGui::MenuItem("Constraint"))
 		{
-			Action_Entity_CreateConstraint();
+			ActionEntityCreateConstraint();
 		}
 
 		ImGui::EndMenu();
@@ -405,11 +404,11 @@ void Widget_World::Popup_ContextMenu()
 	{
 		if (ImGui::MenuItem("Audio Source"))
 		{
-			Action_Entity_CreateAudioSource();
+			ActionEntityCreateAudioSource();
 		}
 		else if (ImGui::MenuItem("Audio Listener"))
 		{
-			Action_Entity_CreateAudioListener();
+			ActionEntityCreateAudioListener();
 		}
 
 		ImGui::EndMenu();
@@ -420,7 +419,7 @@ void Widget_World::Popup_ContextMenu()
 	{
 		if (ImGui::MenuItem("Skybox"))
 		{
-			Action_Entity_CreateSkybox();
+			ActionEntityCreateSkybox();
 		}
 
 		ImGui::EndMenu();
@@ -429,7 +428,7 @@ void Widget_World::Popup_ContextMenu()
 	ImGui::EndPopup();
 }
 
-void Widget_World::Popup_EntityRename()
+void Widget_World::PopupEntityRename() const
 {
 	if (_Widget_World::g_popupRenameentity)
 	{
@@ -439,7 +438,7 @@ void Widget_World::Popup_EntityRename()
 
 	if (ImGui::BeginPopup("##RenameEntity"))
 	{
-		auto selectedentity = EditorHelper::Get().g_selectedEntity.lock();
+		auto selectedentity = EditorHelper::Get().g_selected_entity.lock();
 		if (!selectedentity)
 		{
 			ImGui::CloseCurrentPopup();
@@ -447,7 +446,7 @@ void Widget_World::Popup_EntityRename()
 			return;
 		}
 
-		string name = selectedentity->GetName();
+		auto name = selectedentity->GetName();
 
 		ImGui::Text("Name:");
 		ImGui::InputText("##edit", &name);
@@ -468,137 +467,137 @@ void Widget_World::HandleKeyShortcuts()
 {
 	if (_Widget_World::g_input->GetKey(Delete))
 	{
-		Action_Entity_Delete(EditorHelper::Get().g_selectedEntity.lock());
+		ActionEntityDelete(EditorHelper::Get().g_selected_entity.lock());
 	}
 }
 
-void Widget_World::Action_Entity_Delete(shared_ptr<Entity> entity)
+void Widget_World::ActionEntityDelete(const shared_ptr<Entity>& entity)
 {
-	_Widget_World::g_world->Entity_Remove(entity);
+	_Widget_World::g_world->EntityRemove(entity);
 }
 
-Entity* Widget_World::Action_Entity_CreateEmpty()
+Entity* Widget_World::ActionEntityCreateEmpty()
 {
-	auto entity = _Widget_World::g_world->Entity_Create().get();
-	if (auto selectedentity = EditorHelper::Get().g_selectedEntity.lock())
+	const auto entity = _Widget_World::g_world->EntityCreate().get();
+	if (const auto selected_entity = EditorHelper::Get().g_selected_entity.lock())
 	{
-		entity->GetTransform_PtrRaw()->SetParent(selectedentity->GetTransform_PtrRaw());
+		entity->GetTransform_PtrRaw()->SetParent(selected_entity->GetTransform_PtrRaw());
 	}
 
 	return entity;
 }
 
-void Widget_World::Action_Entity_CreateCube()
+void Widget_World::ActionEntityCreateCube()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
-	renderable->Geometry_Set(Geometry_Default_Cube);
-	renderable->Material_UseDefault();
+	renderable->GeometrySet(Geometry_Default_Cube);
+	renderable->MaterialUseDefault();
 	entity->SetName("Cube");
 }
 
-void Widget_World::Action_Entity_CreateQuad()
+void Widget_World::ActionEntityCreateQuad()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
-	renderable->Geometry_Set(Geometry_Default_Quad);
-	renderable->Material_UseDefault();
+	renderable->GeometrySet(Geometry_Default_Quad);
+	renderable->MaterialUseDefault();
 	entity->SetName("Quad");
 }
 
-void Widget_World::Action_Entity_CreateSphere()
+void Widget_World::ActionEntityCreateSphere()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
-	renderable->Geometry_Set(Geometry_Default_Sphere);
-	renderable->Material_UseDefault();
+	renderable->GeometrySet(Geometry_Default_Sphere);
+	renderable->MaterialUseDefault();
 	entity->SetName("Sphere");
 }
 
-void Widget_World::Action_Entity_CreateCylinder()
+void Widget_World::ActionEntityCreateCylinder()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
-	renderable->Geometry_Set(Geometry_Default_Cylinder);
-	renderable->Material_UseDefault();
+	renderable->GeometrySet(Geometry_Default_Cylinder);
+	renderable->MaterialUseDefault();
 	entity->SetName("Cylinder");
 }
 
-void Widget_World::Action_Entity_CreateCone()
+void Widget_World::ActionEntityCreateCone()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
-	renderable->Geometry_Set(Geometry_Default_Cone);
-	renderable->Material_UseDefault();
+	renderable->GeometrySet(Geometry_Default_Cone);
+	renderable->MaterialUseDefault();
 	entity->SetName("Cone");
 }
 
-void Widget_World::Action_Entity_CreateCamera()
+void Widget_World::ActionEntityCreateCamera()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<Camera>();
 	entity->SetName("Camera");
 }
 
-void Widget_World::Action_Entity_CreateLightDirectional()
+void Widget_World::ActionEntityCreateLightDirectional()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<Light>()->SetLightType(LightType_Directional);
 	entity->SetName("Directional");
 }
 
-void Widget_World::Action_Entity_CreateLightPoint()
+void Widget_World::ActionEntityCreateLightPoint()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<Light>()->SetLightType(LightType_Point);
 	entity->SetName("Point");
 }
 
-void Widget_World::Action_Entity_CreateLightSpot()
+void Widget_World::ActionEntityCreateLightSpot()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<Light>()->SetLightType(LightType_Spot);
 	entity->SetName("Spot");
 }
 
-void Widget_World::Action_Entity_CreateRigidBody()
+void Widget_World::ActionEntityCreateRigidBody()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<RigidBody>();
 	entity->SetName("RigidBody");
 }
 
-void Widget_World::Action_Entity_CreateCollider()
+void Widget_World::ActionEntityCreateCollider()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<Collider>();
 	entity->SetName("Collider");
 }
 
-void Widget_World::Action_Entity_CreateConstraint()
+void Widget_World::ActionEntityCreateConstraint()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<Constraint>();
 	entity->SetName("Constraint");
 }
 
-void Widget_World::Action_Entity_CreateAudioSource()
+void Widget_World::ActionEntityCreateAudioSource()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<AudioSource>();
 	entity->SetName("AudioSource");
 }
 
-void Widget_World::Action_Entity_CreateAudioListener()
+void Widget_World::ActionEntityCreateAudioListener()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<AudioListener>();
 	entity->SetName("AudioListener");
 }
 
-void Widget_World::Action_Entity_CreateSkybox()
+void Widget_World::ActionEntityCreateSkybox()
 {
-	auto entity = Action_Entity_CreateEmpty();
+	auto entity = ActionEntityCreateEmpty();
 	entity->AddComponent<Skybox>();
 	entity->SetName("Skybox");
 }

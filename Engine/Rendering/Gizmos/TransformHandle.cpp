@@ -43,7 +43,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	void TransformHandleAxis::UpdateInput(TransformHandle_Type type, Transform* transform, Input* input)
+	void TransformHandleAxis::UpdateInput(const TransformHandle_Type type, Transform* transform, Input* input)
 	{
 		// First press
 		if (isHovered && input->GetKeyDown(Click_Left))
@@ -56,21 +56,21 @@ namespace Directus
 		{
 			if (type == TransformHandle_Position)
 			{
-				Vector3 position = transform->GetPosition();
+				auto position = transform->GetPosition();
 				position += isEditing ? delta * axis : 0;
 				transform->SetPosition(position);
 			}
 			else if (type == TransformHandle_Scale)
 			{
-				Vector3 scale = transform->GetScale();
+				auto scale = transform->GetScale();
 				scale += isEditing ? delta * axis : 0;
 				transform->SetScale(scale);
 			}
 			else if (type == TransformHandle_Rotation)
 			{
-				Vector3 rotation = transform->GetRotation().ToEulerAngles();
-				float speedMultiplier = 10.0f;
-				rotation += isEditing ? delta * axis * speedMultiplier : 0;
+				auto rotation = transform->GetRotation().ToEulerAngles();
+				const auto speed_multiplier = 10.0f;
+				rotation += isEditing ? delta * axis * speed_multiplier : 0;
 				transform->SetRotation(Quaternion::FromEulerAngles(rotation));
 			}
 		}
@@ -82,14 +82,14 @@ namespace Directus
 		}
 	}
 
-	void TransformHandleAxis::DrawExtra(Renderer* renderer, const Vector3& transformCenter)
+	void TransformHandleAxis::DrawExtra(Renderer* renderer, const Vector3& transform_center) const
 	{
 		// Draw axis line (connect the handle with the origin of the transform)
-		Vector4 color = Vector4(GetColor(), 1.0f);
-		renderer->DrawLine(box_transformed.GetCenter(), transformCenter, color, color, false);
+		const auto color = Vector4(GetColor(), 1.0f);
+		renderer->DrawLine(box_transformed.GetCenter(), transform_center, color, color, false);
 	}
 
-	void TransformHandle::Initialize(TransformHandle_Type type, Context* context)
+	void TransformHandle::Initialize(const TransformHandle_Type type, Context* context)
 	{
 		m_type		= type;
 		m_context	= context;
@@ -116,8 +116,8 @@ namespace Directus
 			Utility::Geometry::CreateCylinder(&vertices, &indices);
 		}
 		m_model = make_unique<Model>(m_context);
-		m_model->Geometry_Append(indices, vertices);
-		m_model->Geometry_Update();
+		m_model->GeometryAppend(indices, vertices);
+		m_model->GeometryUpdate();
 
 		// Create bounding boxes for the handles, based on the vertices used
 		m_handle_x.box		= vertices;
@@ -126,7 +126,7 @@ namespace Directus
 		m_handle_xyz.box	= m_handle_x.box;
 	}
 
-	bool TransformHandle::Update(TransformHandle_Space space, const shared_ptr<Entity>& entity, Camera* camera, float handle_size, float handle_speed)
+	bool TransformHandle::Update(const TransformHandle_Space space, const shared_ptr<Entity>& entity, Camera* camera, const float handle_size, const float handle_speed)
 	{
 		if (!entity || !camera)
 		{
@@ -141,19 +141,19 @@ namespace Directus
 		if (camera)
 		{
 			// Create ray starting from camera position and pointing towards where the mouse is pointing
-			Vector2	mouse_pos				= m_input->GetMousePosition();
-			const RHI_Viewport& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
-			Vector2 editor_offset			= m_context->GetSubsystem<Renderer>()->viewport_editor_offset;
-			Vector2 mouse_pos_relative		= mouse_pos - editor_offset;
-			Vector3 ray_start				= camera->GetTransform()->GetPosition();
-			Vector3 ray_end					= camera->ScreenToWorldPoint(mouse_pos_relative);
-			Ray ray							= Ray(ray_start, ray_end);
+			const auto mouse_pos			= m_input->GetMousePosition();
+			const auto& viewport			= m_context->GetSubsystem<Renderer>()->GetViewport();
+			const auto editor_offset		= m_context->GetSubsystem<Renderer>()->viewport_editor_offset;
+			const auto mouse_pos_relative	= mouse_pos - editor_offset;
+			const auto ray_start			= camera->GetTransform()->GetPosition();
+			auto ray_end					= camera->ScreenToWorldPoint(mouse_pos_relative);
+			auto ray						= Ray(ray_start, ray_end);
 
 			// Test if ray intersects any of the handles
-			bool hovered_x		= ray.HitDistance(m_handle_x.box_transformed) != INFINITY;
-			bool hovered_y		= ray.HitDistance(m_handle_y.box_transformed) != INFINITY;
-			bool hovered_z		= ray.HitDistance(m_handle_z.box_transformed) != INFINITY;
-			bool hovered_xyz	= ray.HitDistance(m_handle_xyz.box_transformed) != INFINITY;
+			const auto hovered_x	= ray.HitDistance(m_handle_x.box_transformed) != INFINITY;
+			const auto hovered_y	= ray.HitDistance(m_handle_y.box_transformed) != INFINITY;
+			const auto hovered_z	= ray.HitDistance(m_handle_z.box_transformed) != INFINITY;
+			const auto hovered_xyz	= ray.HitDistance(m_handle_xyz.box_transformed) != INFINITY;
 
 			// Mark a handle as hovered, only if it's the only hovered handle (during the previous frame
 			m_handle_x.isHovered		= hovered_x && !(m_handle_y.isHovered || m_handle_z.isHovered);
@@ -168,10 +168,10 @@ namespace Directus
 			m_handle_xyz.isDisabled = !m_handle_xyz.isEditing	&& (m_handle_x.isEditing || m_handle_y.isEditing || m_handle_z.isEditing);
 
 			// Track delta
-			m_ray_previous	= m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // avoid big delta in the first run
-			m_ray_current	= ray_end;
-			Vector3 delta	= m_ray_current - m_ray_previous;
-			float delta_xyz = delta.Length();
+			m_ray_previous			= m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // avoid big delta in the first run
+			m_ray_current			= ray_end;
+			auto delta				= m_ray_current - m_ray_previous;
+			const auto delta_xyz	= delta.Length();
 
 			// Updated handles with delta
 			m_handle_x.delta	= delta_xyz * Sign(delta.x) * handle_speed;
@@ -225,35 +225,33 @@ namespace Directus
 		return m_handle_xyz.GetColor();
 	}
 
-	shared_ptr<RHI_VertexBuffer> TransformHandle::GetVertexBuffer()
+	shared_ptr<RHI_VertexBuffer> TransformHandle::GetVertexBuffer() const
 	{
 		return m_model->GetVertexBuffer();
 	}
 
-	shared_ptr<RHI_IndexBuffer> TransformHandle::GetIndexBuffer()
+	shared_ptr<RHI_IndexBuffer> TransformHandle::GetIndexBuffer() const
 	{
 		return m_model->GetIndexBuffer();
 	}
 
-	void TransformHandle::SnapToTransform(TransformHandle_Space space, const shared_ptr<Entity>& entity, Camera* camera, float handle_size)
+	void TransformHandle::SnapToTransform(const TransformHandle_Space space, const shared_ptr<Entity>& entity, Camera* camera, const float handle_size)
 	{
 		// Get entity's components
-		Transform* entity_transform				= entity->GetTransform_PtrRaw();			// Transform alone is not enough
-		shared_ptr<Renderable> entity_renderable = entity->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
+		auto entity_transform	= entity->GetTransform_PtrRaw();			// Transform alone is not enough
+		auto entity_renderable = entity->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
 
 		// Acquire entity's transformation data (local or world space)
-		Vector3 aabb_center			= entity_renderable ? entity_renderable->Geometry_AABB().GetCenter()	: Vector3::Zero;
-		Vector3 entity_position		= (space == TransformHandle_World) ? entity_transform->GetPosition() : entity_transform->GetPositionLocal();
-		Quaternion entity_rotation	= (space == TransformHandle_World) ? entity_transform->GetRotation() : entity_transform->GetRotationLocal();
-		Vector3 entity_scale			= (space == TransformHandle_World) ? entity_transform->GetScale()	: entity_transform->GetScaleLocal();
-		Vector3 right				= (space == TransformHandle_World) ? Vector3::Right					: entity_rotation * Vector3::Right;
-		Vector3 up					= (space == TransformHandle_World) ? Vector3::Up					: entity_rotation * Vector3::Up;
-		Vector3 forward				= (space == TransformHandle_World) ? Vector3::Forward				: entity_rotation * Vector3::Forward;
+		const auto aabb_center		= entity_renderable ? entity_renderable->GeometryAabb().GetCenter()	: Vector3::Zero;	
+		const auto entity_rotation	= (space == TransformHandle_World) ? entity_transform->GetRotation() : entity_transform->GetRotationLocal();
+		const auto right			= (space == TransformHandle_World) ? Vector3::Right					: entity_rotation * Vector3::Right;
+		const auto up				= (space == TransformHandle_World) ? Vector3::Up					: entity_rotation * Vector3::Up;
+		const auto forward			= (space == TransformHandle_World) ? Vector3::Forward				: entity_rotation * Vector3::Forward;
 
 		// Compute scale
-		float distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length()	: 0.0f;
-		float handle_scale			= distance_to_camera / (1.0f / handle_size);
-		float handle_distance		= distance_to_camera / (1.0f / 0.1f);
+		const auto distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length()	: 0.0f;
+		const auto handle_scale			= distance_to_camera / (1.0f / handle_size);
+		const auto handle_distance		= distance_to_camera / (1.0f / 0.1f);
 
 		// Compute transform for the handles
 		m_handle_x.position		= aabb_center + right	* handle_distance;

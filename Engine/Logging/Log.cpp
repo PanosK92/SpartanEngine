@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Log.h"
 #include "ILogger.h"
 #include <fstream>
-#include <stdarg.h>
+#include <cstdarg>
 #include "../World/Entity.h"
 #include "../FileSystem/FileSystem.h"
 //===================================
@@ -38,9 +38,9 @@ namespace Directus
 	weak_ptr<ILogger> Log::m_logger;
 	ofstream Log::m_fout;
 	mutex Log::m_mutex;
-	string Log::m_callerName;
-	string Log::m_logFileName	= "log.txt";
-	bool Log::m_firstLog		= true;
+	string Log::m_caller_name;
+	string Log::m_log_file_name	= "log.txt";
+	bool Log::m_first_log		= true;
 
 	void Log::SetLogger(const weak_ptr<ILogger>& logger)
 	{
@@ -52,7 +52,7 @@ namespace Directus
 		char buffer[1024];
 		va_list args;
 		va_start(args, text);
-		int w = vsnprintf(buffer, sizeof(buffer), text, args);
+		auto w = vsnprintf(buffer, sizeof(buffer), text, args);
 		va_end(args);
 
 		Write(buffer, Log_Info);
@@ -63,7 +63,7 @@ namespace Directus
 		char buffer[1024];
 		va_list args;
 		va_start(args, text);
-		int w = vsnprintf(buffer, sizeof(buffer), text, args);
+		auto w = vsnprintf(buffer, sizeof(buffer), text, args);
 		va_end(args);
 
 		Write(buffer, Log_Warning);
@@ -74,72 +74,72 @@ namespace Directus
 		char buffer[1024];
 		va_list args;
 		va_start(args, text);
-		int w = vsnprintf(buffer, sizeof(buffer), text, args);
+		auto w = vsnprintf(buffer, sizeof(buffer), text, args);
 		va_end(args);
 
 		Write(buffer, Log_Error);
 	}
 
-	void Log::Write(const weak_ptr<Entity>& entity, Log_Type type)
+	void Log::Write(const weak_ptr<Entity>& entity, const Log_Type type)
 	{
 		entity.expired() ? Write("Null", type) : Write(entity.lock()->GetName(), type);
 	}
 
-	void Log::Write(const std::shared_ptr<Entity>& entity, Log_Type type)
+	void Log::Write(const std::shared_ptr<Entity>& entity, const Log_Type type)
 	{
 		entity ? Write(entity->GetName(), type) : Write("Null", type);
 	}
 
-	void Log::Write(const Vector2& value, Log_Type type)
+	void Log::Write(const Vector2& value, const Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Vector3& value, Log_Type type)
+	void Log::Write(const Vector3& value, const Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Vector4& value, Log_Type type)
+	void Log::Write(const Vector4& value, const Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Quaternion& value, Log_Type type)
+	void Log::Write(const Quaternion& value, const Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::Write(const Matrix& value, Log_Type type)
+	void Log::Write(const Matrix& value, const Log_Type type)
 	{
 		Write(value.ToString(), type);
 	}
 
-	void Log::LogString(const char* text, Log_Type type)
+	void Log::LogString(const char* text, const Log_Type type)
 	{
 		lock_guard<mutex> guard(m_mutex);
 		m_logger.lock()->Log(string(text), type);
 	}
 
-	void Log::LogToFile(const char* text, Log_Type type)
+	void Log::LogToFile(const char* text, const Log_Type type)
 	{
 		lock_guard<mutex> guard(m_mutex);
 
-		string prefix		= (type == Log_Info) ? "Info:" : (type == Log_Warning) ? "Warning:" : "Error:";
-		string finalText	= prefix + " " + text;
+		const string prefix		= (type == Log_Info) ? "Info:" : (type == Log_Warning) ? "Warning:" : "Error:";
+		const auto final_text	= prefix + " " + text;
 
 		// Delete the previous log file (if it exists)
-		if (m_firstLog)
+		if (m_first_log)
 		{
-			FileSystem::DeleteFile_(m_logFileName);
-			m_firstLog = false;
+			FileSystem::DeleteFile_(m_log_file_name);
+			m_first_log = false;
 		}
 
 		// Open/Create a log file to write the error message to.
-		m_fout.open(m_logFileName, ofstream::out | ofstream::app);
+		m_fout.open(m_log_file_name, ofstream::out | ofstream::app);
 
 		// Write out the error message.
-		m_fout << finalText << endl;
+		m_fout << final_text << endl;
 
 		// Close the file.
 		m_fout.close();

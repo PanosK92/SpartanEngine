@@ -39,12 +39,12 @@ namespace Directus
 {
 	Camera::Camera(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
-		m_nearPlane			= 0.3f;
-		m_farPlane			= 1000.0f;
-		m_projectionType	= Projection_Perspective;
-		m_clearColor		= Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
-		m_isDirty			= false;
-		m_fovHorizontalRad	= DegreesToRadians(90.0f);
+		m_near_plane			= 0.3f;
+		m_far_plane				= 1000.0f;
+		m_projection_type		= Projection_Perspective;
+		m_clear_color			= Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
+		m_isDirty				= false;
+		m_fov_horizontal_rad	= DegreesToRadians(90.0f);
 	}
 
 	//= ICOMPONENT ============
@@ -57,10 +57,10 @@ namespace Directus
 
 	void Camera::OnTick()
 	{
-		const RHI_Viewport& current_viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
-		if (m_lastKnownViewport != current_viewport)
+		const auto& current_viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
+		if (m_last_known_viewport != current_viewport)
 		{
-			m_lastKnownViewport = current_viewport;
+			m_last_known_viewport = current_viewport;
 			m_isDirty			= true;
 		}
 
@@ -86,20 +86,20 @@ namespace Directus
 
 	void Camera::Serialize(FileStream* stream)
 	{
-		stream->Write(m_clearColor);
-		stream->Write(int(m_projectionType));
-		stream->Write(m_fovHorizontalRad);
-		stream->Write(m_nearPlane);
-		stream->Write(m_farPlane);
+		stream->Write(m_clear_color);
+		stream->Write(int(m_projection_type));
+		stream->Write(m_fov_horizontal_rad);
+		stream->Write(m_near_plane);
+		stream->Write(m_far_plane);
 	}
 
 	void Camera::Deserialize(FileStream* stream)
 	{
-		stream->Read(&m_clearColor);
-		m_projectionType = ProjectionType(stream->ReadInt());
-		stream->Read(&m_fovHorizontalRad);
-		stream->Read(&m_nearPlane);
-		stream->Read(&m_farPlane);
+		stream->Read(&m_clear_color);
+		m_projection_type = ProjectionType(stream->ReadInt());
+		stream->Read(&m_fov_horizontal_rad);
+		stream->Read(&m_near_plane);
+		stream->Read(&m_far_plane);
 
 		ComputeBaseView();
 		ComputeViewMatrix();
@@ -107,40 +107,40 @@ namespace Directus
 	}
 
 	//= PLANES/PROJECTION =====================================================
-	void Camera::SetNearPlane(float near_plane)
+	void Camera::SetNearPlane(const float near_plane)
 	{
-		m_nearPlane = Max(0.01f, near_plane);
+		m_near_plane = Max(0.01f, near_plane);
 		m_isDirty = true;
 	}
 
-	void Camera::SetFarPlane(float far_plane)
+	void Camera::SetFarPlane(const float far_plane)
 	{
-		m_farPlane = far_plane;
+		m_far_plane = far_plane;
 		m_isDirty = true;
 	}
 
-	void Camera::SetProjection(ProjectionType projection)
+	void Camera::SetProjection(const ProjectionType projection)
 	{
-		m_projectionType = projection;
+		m_projection_type = projection;
 		m_isDirty = true;
 	}
 
-	float Camera::GetFOV_Horizontal_Deg()
+	float Camera::GetFovHorizontalDeg() const
 	{
-		return RadiansToDegrees(m_fovHorizontalRad);
+		return RadiansToDegrees(m_fov_horizontal_rad);
 	}
 
-	void Camera::SetFOV_Horizontal_Deg(float fov)
+	void Camera::SetFovHorizontalDeg(const float fov)
 	{
-		m_fovHorizontalRad = DegreesToRadians(fov);
+		m_fov_horizontal_rad = DegreesToRadians(fov);
 		m_isDirty = true;
 	}
 
 	bool Camera::IsInViewFrustrum(Renderable* renderable)
 	{
-		BoundingBox box = renderable->Geometry_AABB();
-		Vector3 center	= box.GetCenter();
-		Vector3 extents = box.GetExtents();
+		auto box			= renderable->GeometryAabb();
+		const auto center	= box.GetCenter();
+		const auto extents	= box.GetExtents();
 
 		return m_frustrum.CheckCube(center, extents) != Outside;
 	}
@@ -153,19 +153,19 @@ namespace Directus
 	//= RAYCASTING =======================================================================
 	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Entity>& entity)
 	{
-		const RHI_Viewport& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
-		const Vector2& offset			= m_context->GetSubsystem<Renderer>()->viewport_editor_offset;
-		Vector2 mouse_position_relative = mouse_position - offset;
+		const auto& viewport				= m_context->GetSubsystem<Renderer>()->GetViewport();
+		const auto& offset					= m_context->GetSubsystem<Renderer>()->viewport_editor_offset;
+		const auto mouse_position_relative	= mouse_position - offset;
 
 		// Ensure the ray is inside the viewport
-		bool x_outside = (mouse_position.x < offset.x) || (mouse_position.x > offset.x + viewport.GetWidth());
-		bool y_outside = (mouse_position.y < offset.y) || (mouse_position.y > offset.y + viewport.GetHeight());
+		const auto x_outside = (mouse_position.x < offset.x) || (mouse_position.x > offset.x + viewport.GetWidth());
+		const auto y_outside = (mouse_position.y < offset.y) || (mouse_position.y > offset.y + viewport.GetHeight());
 		if (x_outside || y_outside)
 			return false;
 
 		// Trace ray
-		m_ray = Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mouse_position_relative));
-		std::vector<RayHit> hits = m_ray.Trace(m_context);
+		m_ray		= Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mouse_position_relative));
+		auto hits	= m_ray.Trace(m_context);
 
 		// Get closest hit that doesn't start inside an entity
 		for (const auto& hit : hits)
@@ -181,14 +181,14 @@ namespace Directus
 		return true;
 	}
 
-	Vector2 Camera::WorldToScreenPoint(const Vector3& position_world)
+	Vector2 Camera::WorldToScreenPoint(const Vector3& position_world) const
 	{
-		const RHI_Viewport& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
+		const auto& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 
 		// Convert world space position to clip space position
-		float vfovRad			= 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
-		Matrix projection		= Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, viewport.GetAspectRatio(), m_nearPlane, m_farPlane); // compute non reverse z projection
-		Vector3 position_clip	= position_world * m_mView * projection;
+		const auto vfov_rad			= 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
+		const auto projection		= Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.GetAspectRatio(), m_near_plane, m_far_plane); // compute non reverse z projection
+		const auto position_clip	= position_world * m_mView * projection;
 
 		// Convert clip space position to screen space position
 		Vector2 position_screen;
@@ -198,9 +198,9 @@ namespace Directus
 		return position_screen;
 	}
 
-	Vector3 Camera::ScreenToWorldPoint(const Vector2& position_screen)
+	Vector3 Camera::ScreenToWorldPoint(const Vector2& position_screen) const
 	{
-		const RHI_Viewport& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
+		const auto& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 
 		// Convert screen space position to clip space position
 		Vector3 position_clip;
@@ -209,8 +209,8 @@ namespace Directus
 		position_clip.z = 1.0f;
 
 		// Compute world space position
-		Matrix viewProjectionInverted	= (m_mView * m_mProjection).Inverted();
-		Vector3 position_world			= position_clip * viewProjectionInverted;
+		const auto view_projection_inverted	= (m_mView * m_mProjection).Inverted();
+		auto position_world					= position_clip * view_projection_inverted;
 
 		return position_world;
 	}
@@ -218,36 +218,36 @@ namespace Directus
 	//= PRIVATE =======================================================================
 	void Camera::ComputeViewMatrix()
 	{
-		Vector3 position	= GetTransform()->GetPosition();
-		Vector3 lookAt		= GetTransform()->GetRotation() * Vector3::Forward;
-		Vector3 up			= GetTransform()->GetRotation() * Vector3::Up;
+		const auto position	= GetTransform()->GetPosition();
+		auto look_at		= GetTransform()->GetRotation() * Vector3::Forward;
+		const auto up		= GetTransform()->GetRotation() * Vector3::Up;
 
 		// offset lookAt by current position
-		lookAt = position + lookAt;
+		look_at = position + look_at;
 
 		// calculate view matrix
-		m_mView = Matrix::CreateLookAtLH(position, lookAt, up);
+		m_mView = Matrix::CreateLookAtLH(position, look_at, up);
 	}
 
 	void Camera::ComputeBaseView()
 	{
-		Vector3 cameraPos	= Vector3(0, 0, -0.3f);
-		Vector3 lookAt		= (Vector3::Forward * Matrix::Identity).Normalized();
-		m_mBaseView			= Matrix::CreateLookAtLH(cameraPos, lookAt, Vector3::Up);
+		const auto camera_pos	= Vector3(0, 0, -0.3f);
+		const auto look_at		= (Vector3::Forward * Matrix::Identity).Normalized();
+		m_mBaseView				= Matrix::CreateLookAtLH(camera_pos, look_at, Vector3::Up);
 	}
 
 	void Camera::ComputeProjection()
 	{
-		const RHI_Viewport& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
+		const auto& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 
-		if (m_projectionType == Projection_Perspective)
+		if (m_projection_type == Projection_Perspective)
 		{
-			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, viewport.GetAspectRatio(), m_farPlane, m_nearPlane);
+			const auto vfov_rad = 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.GetAspectRatio(), m_far_plane, m_near_plane);
 		}
-		else if (m_projectionType == Projection_Orthographic)
+		else if (m_projection_type == Projection_Orthographic)
 		{
-			m_mProjection = Matrix::CreateOrthographicLH(viewport.GetWidth(), viewport.GetHeight(), m_farPlane, m_nearPlane);
+			m_mProjection = Matrix::CreateOrthographicLH(viewport.GetWidth(), viewport.GetHeight(), m_far_plane, m_near_plane);
 		}
 	}
 }

@@ -80,7 +80,7 @@ namespace Directus
 
 		if (parententity_id != NOT_ASSIGNED_HASH)
 		{
-			if (const auto parent = GetContext()->GetSubsystem<World>()->Entity_GetByID(parententity_id))
+			if (const auto parent = GetContext()->GetSubsystem<World>()->EntityGetById(parententity_id))
 			{
 				parent->GetTransform_PtrRaw()->AddChild(this);
 			}

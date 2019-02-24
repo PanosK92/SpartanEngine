@@ -34,44 +34,44 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 struct LogPackage
 {
 	std::string text;
-	int errorLevel;
+	unsigned int error_level = 0;
 };
 
 // Implementation of Directus::ILogger so the engine can log into the editor
 class EngineLogger : public Directus::ILogger
 {
 public:
-	typedef std::function<void(LogPackage)> logFunc;
-	void SetCallback(logFunc&& func)
+	typedef std::function<void(LogPackage)> log_func;
+	void SetCallback(log_func&& func)
 	{
-		m_logFunc = std::forward<logFunc>(func);
+		m_log_func = std::forward<log_func>(func);
 	}
 
-	void Log(const std::string& text, int errorLevel) override
+	void Log(const std::string& text, const unsigned int error_level) override
 	{
 		LogPackage package;
 		package.text = text;
-		package.errorLevel = errorLevel;
-		m_logFunc(package);
+		package.error_level = error_level;
+		m_log_func(package);
 	}
 
 private:
-	logFunc m_logFunc;
+	log_func m_log_func;
 };
 
 class Widget_Console : public Widget
 {
 public:
 	Widget_Console(Directus::Context* context);
-	void Tick(float deltaTime) override;
-	void AddLogPackage(LogPackage package);
+	void Tick(float delta_time) override;
+	void AddLogPackage(const LogPackage& package);
 	void Clear();
 
 private:
 	std::shared_ptr<EngineLogger> m_logger;
 	std::deque<LogPackage> m_logs;
-	unsigned int m_maxLogEntries = 500;
-	bool m_showInfo;
-	bool m_showWarnings;
-	bool m_showErrors;
+	unsigned int m_max_log_entries = 500;
+	bool m_show_info;
+	bool m_show_warnings;
+	bool m_show_errors;
 };

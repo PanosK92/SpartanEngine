@@ -58,18 +58,18 @@ namespace Directus
 
 		//= IO ========================================
 		bool SaveToFile(const std::string& filePath);
-		bool LoadFromFile(const std::string& filePath);
+		bool LoadFromFile(const std::string& file_path);
 		//=============================================
 
 		//= Entity HELPER FUNCTIONS ===============================================================
-		std::shared_ptr<Entity>& Entity_Create();
-		std::shared_ptr<Entity>& Entity_Add(const std::shared_ptr<Entity>& entity);
-		bool Entity_Exists(const std::shared_ptr<Entity>& entity);
-		void Entity_Remove(const std::shared_ptr<Entity>& entity);
+		std::shared_ptr<Entity>& EntityCreate();
+		std::shared_ptr<Entity>& EntityAdd(const std::shared_ptr<Entity>& entity);
+		bool EntityExists(const std::shared_ptr<Entity>& entity);
+		void EntityRemove(const std::shared_ptr<Entity>& entity);
 		const std::vector<std::shared_ptr<Entity>>& Entities_GetAll() { return m_entitiesPrimary; }
-		std::vector<std::shared_ptr<Entity>> Entities_GetRoots();
-		const std::shared_ptr<Entity>& Entity_GetByName(const std::string& name);
-		const std::shared_ptr<Entity>& Entity_GetByID(unsigned int ID);
+		std::vector<std::shared_ptr<Entity>> EntitiesGetRoots();
+		const std::shared_ptr<Entity>& EntityGetByName(const std::string& name);
+		const std::shared_ptr<Entity>& EntityGetById(unsigned int id);
 		int Entity_GetCount() { return (int)m_entitiesPrimary.size(); }
 		//=========================================================================================
 

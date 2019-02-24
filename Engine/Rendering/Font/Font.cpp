@@ -43,29 +43,25 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Font::Font(Context* context, const string& filePath, int fontSize, const Vector4& color) : IResource(context, Resource_Font)
+	Font::Font(Context* context, const string& file_path, const int font_size, const Vector4& color) : IResource(context, Resource_Font)
 	{
-		m_rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
-		m_vertexBuffer		= make_shared<RHI_VertexBuffer>(m_rhiDevice);
-		m_indexBuffer		= make_shared<RHI_IndexBuffer>(m_rhiDevice);
-		m_charMaxWidth		= 0;
-		m_charMaxHeight		= 0;
+		m_rhi_device		= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
+		m_vertex_buffer		= make_shared<RHI_VertexBuffer>(m_rhi_device);
+		m_index_buffer_		= make_shared<RHI_IndexBuffer>(m_rhi_device);
+		m_char_max_width	= 0;
+		m_char_max_height	= 0;
 		m_fontColor			= color;
 		
-		SetSize(fontSize);
-		LoadFromFile(filePath);
+		SetSize(font_size);
+		Font::LoadFromFile(file_path);
 	}
 
-	Font::~Font()
-	{
-	}
-
-	bool Font::SaveToFile(const string& filePath)
+	bool Font::SaveToFile(const string& file_path)
 	{
 		return true;
 	}
 
-	bool Font::LoadFromFile(const string& filePath)
+	bool Font::LoadFromFile(const string& file_path)
 	{
 		if (!m_context)
 			return false;
@@ -73,68 +69,68 @@ namespace Directus
 		Stopwatch timer;
 
 		// Load font
-		vector<std::byte> atlasBuffer;
-		unsigned int texAtlasWidth = 0;
-		unsigned int texAtlasHeight = 0;
-		if (!m_context->GetSubsystem<ResourceCache>()->GetFontImporter()->LoadFromFile(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
+		vector<std::byte> atlas_buffer;
+		unsigned int tex_atlas_width	= 0;
+		unsigned int tex_atlas_height	= 0;
+		if (!m_context->GetSubsystem<ResourceCache>()->GetFontImporter()->LoadFromFile(file_path, m_font_size, atlas_buffer, tex_atlas_width, tex_atlas_height, m_glyphs))
 		{
-			LOGF_ERROR("Failed to load font \"%s\"", filePath.c_str());
-			atlasBuffer.clear();
+			LOGF_ERROR("Failed to load font \"%s\"", file_path.c_str());
+			atlas_buffer.clear();
 			return false;
 		}
 
 		// Find max character height (todo, actually get spacing from FreeType)
-		for (const auto& charInfo : m_glyphs)
+		for (const auto& char_info : m_glyphs)
 		{
-			m_charMaxWidth	= Max<int>(charInfo.second.width, m_charMaxWidth);
-			m_charMaxHeight = Max<int>(charInfo.second.height, m_charMaxHeight);
+			m_char_max_width	= Max<int>(char_info.second.width, m_char_max_width);
+			m_char_max_height = Max<int>(char_info.second.height, m_char_max_height);
 		}
 
 		// Create a font texture atlas form the provided data
-		m_textureAtlas = make_shared<RHI_Texture>(m_context);
-		bool needsMipChain = false;
-		if (!m_textureAtlas->ShaderResource_Create2D(texAtlasWidth, texAtlasHeight, 1, Format_R8_UNORM, atlasBuffer, needsMipChain))
+		m_texture_atlas = make_shared<RHI_Texture>(m_context);
+		const auto needs_mip_chain = false;
+		if (!m_texture_atlas->ShaderResource_Create2D(tex_atlas_width, tex_atlas_height, 1, Format_R8_UNORM, atlas_buffer, needs_mip_chain))
 		{
 			LOG_ERROR("Failed to create shader resource.");
 		}
-		LOG_INFO("Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
+		LOG_INFO("Loading \"" + FileSystem::GetFileNameFromFilePath(file_path) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
 
 		return true;
 	}
 
 	void Font::SetText(const string& text, const Vector2& position)
 	{
-		if (text == m_currentText)
+		if (text == m_current_text)
 			return;
 
-		Vector2 pen = position;
-		m_currentText = text;
+		auto pen = position;
+		m_current_text = text;
 		m_vertices.clear();
 	
 		// Draw each letter onto a quad.
-		for (char textChar : m_currentText)
+		for (auto text_char : m_current_text)
 		{
-			auto glyph = m_glyphs[textChar];
+			auto glyph = m_glyphs[text_char];
 
-			if (textChar == ASCII_TAB)
+			if (text_char == ASCII_TAB)
 			{
-				int spaceOffset = m_glyphs[ASCII_SPACE].horizontalOffset;
-				int spaceCount = 8; // spaces in a typical terminal
-				int tabSpacing = spaceOffset * spaceCount;
-				int columnHeader = int(pen.x - position.x); // -position.x because it has to be zero based so we can do the mod below
-				int offsetToNextTabStop = tabSpacing - (columnHeader % (tabSpacing != 0 ? tabSpacing : 1));
-				pen.x += offsetToNextTabStop;
+				const auto space_offset		= m_glyphs[ASCII_SPACE].horizontalOffset;
+				const auto space_count		= 8; // spaces in a typical terminal
+				const auto tab_spacing		= space_offset * space_count;
+				const auto column_header	= int(pen.x - position.x); // -position.x because it has to be zero based so we can do the mod below
+				const auto offset_to_next_tab_stop = tab_spacing - (column_header % (tab_spacing != 0 ? tab_spacing : 1));
+				pen.x += offset_to_next_tab_stop;
 				continue;
 			}
 
-			if (textChar == ASCII_NEW_LINE)
+			if (text_char == ASCII_NEW_LINE)
 			{
-				pen.y = pen.y - m_charMaxHeight;
+				pen.y = pen.y - m_char_max_height;
 				pen.x = position.x;
 				continue;
 			}
 
-			if (textChar == ASCII_SPACE)
+			if (text_char == ASCII_SPACE)
 			{
 				pen.x += glyph.horizontalOffset;
 				continue;
@@ -163,45 +159,45 @@ namespace Directus
 		UpdateBuffers(m_vertices, m_indices);
 	}
 
-	void Font::SetSize(int size)
+	void Font::SetSize(const unsigned int size)
 	{
-		m_fontSize = Clamp<int>(size, 8, 50);
+		m_font_size = Clamp<unsigned int>(size, 8, 50);
 	}
 
-	bool Font::UpdateBuffers(vector<RHI_Vertex_PosUV>& vertices, vector<unsigned int>& indices)
+	bool Font::UpdateBuffers(vector<RHI_Vertex_PosUV>& vertices, vector<unsigned int>& indices) const
 	{
-		if (!m_context || !m_vertexBuffer || !m_indexBuffer)
+		if (!m_context || !m_vertex_buffer || !m_index_buffer_)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		// Grow buffers (if needed)
-		if (vertices.size() > m_vertexBuffer->GetVertexCount())
+		if (vertices.size() > m_vertex_buffer->GetVertexCount())
 		{
 			// Vertex buffer
-			if (!m_vertexBuffer->CreateDynamic(sizeof(RHI_Vertex_PosUV), (unsigned int)vertices.size()))
+			if (!m_vertex_buffer->CreateDynamic(sizeof(RHI_Vertex_PosUV), static_cast<unsigned int>(vertices.size())))
 			{
 				LOG_ERROR("Failed to update vertex buffer.");
 				return false;
 			}
 
 			// Index buffer
-			if (!m_indexBuffer->CreateDynamic(sizeof(unsigned int), (unsigned int)indices.size()))
+			if (!m_index_buffer_->CreateDynamic(sizeof(unsigned int), static_cast<unsigned int>(indices.size())))
 			{
 				LOG_ERROR("Failed to update index buffer.");
 				return false;
 			}
 		}
 
-		auto vertexBuffer = (RHI_Vertex_PosUV*)m_vertexBuffer->Map();
-		copy(vertices.begin(), vertices.end(), vertexBuffer);
-		m_vertexBuffer->Unmap();
+		const auto vertex_buffer = static_cast<RHI_Vertex_PosUV*>(m_vertex_buffer->Map());
+		copy(vertices.begin(), vertices.end(), vertex_buffer);
+		const auto vertex = m_vertex_buffer->Unmap();
 
-		auto indexBuffer = (unsigned int*)m_indexBuffer->Map();
-		copy(indices.begin(), indices.end(), indexBuffer);
-		m_indexBuffer->Unmap();
+		const auto index_buffer = static_cast<unsigned int*>(m_index_buffer_->Map());
+		copy(indices.begin(), indices.end(), index_buffer);
+		const auto index = m_index_buffer_->Unmap();
 
-		return true;
+		return vertex && index;
 	}
 }

@@ -24,8 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include <string>
 #include "../ImGui/Source/imgui.h"
-#include "Math/Vector4.h"
-#include "Math/Vector2.h"
 #include "RHI/RHI_Texture.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"
@@ -34,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "Threading/Threading.h"
 #include "Input/Input.h"
-#include "Core/Engine.h"
 #include "IconProvider.h"
 //==================================
 
@@ -44,7 +41,7 @@ namespace ImGuiEx
 	#define SHADER_RESOURCE_BY_THUMBNAIL(thumbnail)	IconProvider::Get().GetShaderResourceByThumbnail(thumbnail)
 
 	// An thumbnail button by enum
-	inline bool ImageButton(Icon_Type icon, float size)
+	inline bool ImageButton(const Icon_Type icon, const float size)
 	{
 		return ImGui::ImageButton(
 			IconProvider::Get().GetShaderResourceByType(icon), 
@@ -58,10 +55,10 @@ namespace ImGuiEx
 	}
 
 	// An thumbnail button by enum, with a specific ID
-	inline bool ImageButton(const char* id, Icon_Type icon, float size)
+	inline bool ImageButton(const char* id, const Icon_Type icon, const float size)
 	{
 		ImGui::PushID(id);
-		bool pressed = ImGui::ImageButton(
+		const auto pressed = ImGui::ImageButton(
 			IconProvider::Get().GetShaderResourceByType(icon), 
 			ImVec2(size, size),
 			ImVec2(0, 0),			// uv0
@@ -75,7 +72,7 @@ namespace ImGuiEx
 	}
 
 	// A thumbnail image
-	inline void Image(const Thumbnail& thumbnail, float size)
+	inline void Image(const Thumbnail& thumbnail, const float size)
 	{
 		ImGui::Image(
 			IconProvider::Get().GetShaderResourceByThumbnail(thumbnail),
@@ -88,10 +85,10 @@ namespace ImGuiEx
 	}
 
 	// A thumbnail image by shader resource
-	inline void Image(void* shaderResource, float size)
+	inline void Image(void* shader_resource, const float size)
 	{
 		ImGui::Image(
-			shaderResource,
+			shader_resource,
 			ImVec2(size, size),
 			ImVec2(0, 0),
 			ImVec2(1, 1),
@@ -101,7 +98,7 @@ namespace ImGuiEx
 	}
 
 	// A thumbnail image by enum
-	inline void Image(Icon_Type icon, float size)
+	inline void Image(const Icon_Type icon, const float size)
 	{
 		ImGui::Image(
 			IconProvider::Get().GetShaderResourceByType(icon),
@@ -127,27 +124,27 @@ public:
 	void Initialize(Directus::Context* context)
 	{
 		g_context		= context;
-		g_resourceCache	= context->GetSubsystem<Directus::ResourceCache>().get();
+		g_resource_cache	= context->GetSubsystem<Directus::ResourceCache>().get();
 		g_world			= context->GetSubsystem<Directus::World>().get();
 		g_threading		= context->GetSubsystem<Directus::Threading>().get();
 		g_renderer		= context->GetSubsystem<Directus::Renderer>().get();
 		g_input			= context->GetSubsystem<Directus::Input>().get();
 	}
 
-	std::shared_ptr<Directus::RHI_Texture> GetOrLoadTexture(const std::string& filePath, bool async = false)
+	std::shared_ptr<Directus::RHI_Texture> GetOrLoadTexture(const std::string& file_path, const bool async = false)
 	{
-		if (Directus::FileSystem::IsDirectory(filePath))
+		if (Directus::FileSystem::IsDirectory(file_path))
 			return nullptr;
 
-		if (!Directus::FileSystem::IsSupportedImageFile(filePath) && !Directus::FileSystem::IsEngineTextureFile(filePath))
+		if (!Directus::FileSystem::IsSupportedImageFile(file_path) && !Directus::FileSystem::IsEngineTextureFile(file_path))
 			return nullptr;
 
 		// Compute some useful information
-		auto path = Directus::FileSystem::GetRelativeFilePath(filePath);
-		auto name = Directus::FileSystem::GetFileNameNoExtensionFromFilePath(path);
+		const auto path = Directus::FileSystem::GetRelativeFilePath(file_path);
+		const auto name = Directus::FileSystem::GetFileNameNoExtensionFromFilePath(path);
 
 		// Check if this texture is already cached, if so return the cached one
-		if (auto cached = g_resourceCache->GetByName<Directus::RHI_Texture>(name))
+		if (auto cached = g_resource_cache->GetByName<Directus::RHI_Texture>(name))
 			return cached;
 
 		// Since the texture is not cached, load it and returned a cached ref
@@ -160,45 +157,45 @@ public:
 		}
 		else
 		{
-			g_threading->AddTask([texture, filePath]()
+			g_threading->AddTask([texture, file_path]()
 			{
-				texture->LoadFromFile(filePath);
+				texture->LoadFromFile(file_path);
 			});
 		}
 
 		return texture;
 	}
 
-	void LoadModel(const std::string& filePath)
+	void LoadModel(const std::string& file_path) const
 	{
-		auto _resourceCache = g_resourceCache;
+		auto resource_cache = g_resource_cache;
 
 		// Load the model asynchronously
-		g_threading->AddTask([_resourceCache, filePath]()
+		g_threading->AddTask([resource_cache, file_path]()
 		{
-			_resourceCache->Load<Directus::Model>(filePath);
+			resource_cache->Load<Directus::Model>(file_path);
 		});
 	}
 
-	void LoadScene(const std::string& filePath)
+	void LoadScene(const std::string& file_path) const
 	{
-		auto _world = g_world;
+		auto world = g_world;
 
 		// Load the scene asynchronously
-		g_threading->AddTask([_world, filePath]()
+		g_threading->AddTask([world, file_path]()
 		{
-			_world->LoadFromFile(filePath);
+			world->LoadFromFile(file_path);
 		});
 	}
 
-	void SaveScene(const std::string& filePath)
+	void SaveScene(const std::string& file_path) const
 	{
-		auto _world = g_world;
+		auto world = g_world;
 
 		// Save the scene asynchronously
-		g_threading->AddTask([_world, filePath]()
+		g_threading->AddTask([world, file_path]()
 		{
-			_world->SaveToFile(filePath);
+			world->SaveToFile(file_path);
 		});
 	}
 
@@ -214,18 +211,18 @@ public:
 		camera->Pick(g_input->GetMousePosition(), entity);
 
 		// Set the transform gizmo to the selected entity and keep returned entity instead (gizmo can decide to reject)
-		g_selectedEntity = g_renderer->SnapTransformGizmoTo(entity);
+		g_selected_entity = g_renderer->SnapTransformGizmoTo(entity);
 
 		// Fire callback
-		g_onEntitySelected();
+		g_on_entity_selected();
 	}
 
 	Directus::Context*				g_context;
-	Directus::ResourceCache*		g_resourceCache;
+	Directus::ResourceCache*		g_resource_cache;
 	Directus::World*				g_world;
 	Directus::Threading*			g_threading;
 	Directus::Renderer*				g_renderer;
 	Directus::Input*				g_input;
-	std::weak_ptr<Directus::Entity> g_selectedEntity;
-	std::function<void()>			g_onEntitySelected;
+	std::weak_ptr<Directus::Entity> g_selected_entity;
+	std::function<void()>			g_on_entity_selected;
 };

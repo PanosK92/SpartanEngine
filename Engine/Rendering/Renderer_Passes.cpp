@@ -88,12 +88,12 @@ namespace Directus
 					continue;
 	
 				// Acquire material
-				auto material = renderable->Material_Ptr();
+				auto material = renderable->MaterialPtr();
 				if (!material)
 					continue;
 
 				// Acquire geometry
-				auto geometry = renderable->Geometry_Model();
+				auto geometry = renderable->GeometryModel();
 				if (!geometry || !geometry->GetVertexBuffer() || !geometry->GetIndexBuffer())
 					continue;
 
@@ -118,7 +118,7 @@ namespace Directus
 					static_cast<unsigned int>(m_resolution.y),
 					entity->GetTransform_PtrRaw()->GetMatrix() * light_directional->GetViewMatrix() * light_directional->ShadowMap_GetProjectionMatrix(i)
 				);
-				m_rhi_pipeline->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
+				m_rhi_pipeline->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 			}
 			m_rhi_device->EventEnd();
 		}
@@ -168,14 +168,14 @@ namespace Directus
 		{
 			// Get renderable and material
 			auto renderable = entity->GetRenderable_PtrRaw();
-			auto material = renderable ? renderable->Material_Ptr().get() : nullptr;
+			auto material = renderable ? renderable->MaterialPtr().get() : nullptr;
 
 			if (!renderable || !material)
 				continue;
 
 			// Get shader and geometry
 			auto shader = material->GetShader();
-			auto model = renderable->Geometry_Model();
+			auto model = renderable->GeometryModel();
 
 			// Validate shader
 			if (!shader || shader->GetState() != Shader_Built)
@@ -227,7 +227,7 @@ namespace Directus
 			m_rhi_pipeline->SetConstantBuffer(shader->GetPerObjectBuffer(), 1, Buffer_Global);
 
 			// Render	
-			m_rhi_pipeline->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
+			m_rhi_pipeline->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 			m_profiler->m_renderer_meshes_rendered++;
 
 		} // entity/MESH ITERATION
@@ -341,13 +341,13 @@ namespace Directus
 		{
 			// Get renderable and material
 			auto renderable	= entity->GetRenderable_PtrRaw();
-			auto material	= renderable ? renderable->Material_Ptr().get() : nullptr;
+			auto material	= renderable ? renderable->MaterialPtr().get() : nullptr;
 
 			if (!renderable || !material)
 				continue;
 
 			// Get geometry
-			auto model = renderable->Geometry_Model();
+			auto model = renderable->GeometryModel();
 			if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
 				continue;
 
@@ -372,7 +372,7 @@ namespace Directus
 			);
 			m_vps_transparent->UpdateBuffer(&buffer);
 			m_rhi_pipeline->SetConstantBuffer(m_vps_transparent->GetConstantBuffer(), 1, Buffer_Global);
-			m_rhi_pipeline->DrawIndexed(renderable->Geometry_IndexCount(), renderable->Geometry_IndexOffset(), renderable->Geometry_VertexOffset());
+			m_rhi_pipeline->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 
 			m_profiler->m_renderer_meshes_rendered++;
 
@@ -865,7 +865,7 @@ namespace Directus
 				{
 					if (auto renderable = entity->GetRenderable_PtrRaw())
 					{
-						DrawBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						DrawBox(renderable->GeometryAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 
@@ -873,7 +873,7 @@ namespace Directus
 				{
 					if (auto renderable = entity->GetRenderable_PtrRaw())
 					{
-						DrawBox(renderable->Geometry_AABB(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						DrawBox(renderable->GeometryAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 			}

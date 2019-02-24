@@ -35,7 +35,7 @@ namespace Directus
 	ResourceCache::ResourceCache(Context* context) : ISubsystem(context)
 	{
 		// Add engine standard resource directories
-		AddStandardResourceDirectory(Resource_Texture, "Standard Assets//Textures//");
+		AddStandardResourceDirectory(Resource_Texture,	"Standard Assets//Textures//");
 		AddStandardResourceDirectory(Resource_Font,		"Standard Assets//Fonts//");
 		AddStandardResourceDirectory(Resource_Shader,	"Standard Assets//Shaders//");
 		AddStandardResourceDirectory(Resource_Cubemap,	"Standard Assets//Cubemaps//");

@@ -327,27 +327,27 @@ namespace Directus
 
 	}
 
-	bool RHI_Device::Profiling_CreateQuery(void** query, RHI_Query_Type type) const
+	bool RHI_Device::ProfilingCreateQuery(void** query, const RHI_Query_Type type) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::Profiling_QueryStart(void* query_object) const
+	bool RHI_Device::ProfilingQueryStart(void* query_object) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::Profiling_QueryEnd(void* query_object) const
+	bool RHI_Device::ProfilingQueryEnd(void* query_object) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::Profiling_GetTimeStamp(void* query_disjoint) const
+	bool RHI_Device::ProfilingGetTimeStamp(void* query_disjoint) const
 	{
 		return true;
 	}
 
-	float RHI_Device::Profiling_GetDuration(void* query_disjoint, void* query_start, void* query_end) const
+	float RHI_Device::ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const
 	{
 		return 0.0f;
 	}

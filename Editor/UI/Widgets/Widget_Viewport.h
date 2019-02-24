@@ -30,9 +30,9 @@ class Widget_Viewport : public Widget
 public:
 	Widget_Viewport(Directus::Context* context);
 	bool Begin() override;
-	void Tick(float deltaTime) override;
+	void Tick(float delta_time) override;
 
 private:
-	void ShowFrame(float deltaTime);
+	void ShowFrame(float delta_time);
 	float m_timeSinceLastResChange;
 };
