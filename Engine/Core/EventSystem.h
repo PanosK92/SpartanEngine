@@ -66,6 +66,8 @@ enum Event_Type
 
 namespace Directus
 {
+	typedef std::function<void(Variant)> subscriber;
+
 	class ENGINE_CLASS EventSystem
 	{
 	public:
@@ -74,8 +76,6 @@ namespace Directus
 			static EventSystem instance;
 			return instance;
 		}
-
-		typedef std::function<void(Variant)> subscriber;
 
 		void Subscribe(const Event_Type event_id, subscriber&& function)
 		{
