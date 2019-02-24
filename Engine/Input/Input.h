@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ==================
 #include <array>
 #include "../Math/Vector2.h"
 #include "../Core/ISubsystem.h"
-//============================
+//=============================
 
 namespace Directus
 {
@@ -87,29 +87,29 @@ namespace Directus
 		//===================
 		
 		// Keys
-		bool GetKey(KeyCode key)		{ return m_keys[(unsigned int)key]; }							// Returns true while the button identified by KeyCode is held down.
-		bool GetKeyDown(KeyCode key)	{ return GetKey(key) && !m_keys_previous[(unsigned int)key]; }	// Returns true during the frame the user pressed down the button identified by KeyCode.
-		bool GetKeyUp(KeyCode key)		{ return !GetKey(key) && m_keys_previous[(unsigned int)key]; }	// Returns true the first frame the user releases the button identified by KeyCode.
+		bool GetKey(const KeyCode key)		{ return m_keys[static_cast<unsigned int>(key)]; }							// Returns true while the button identified by KeyCode is held down.
+		bool GetKeyDown(const KeyCode key)	{ return GetKey(key) && !m_keys_previous[static_cast<unsigned int>(key)]; }	// Returns true during the frame the user pressed down the button identified by KeyCode.
+		bool GetKeyUp(const KeyCode key)	{ return !GetKey(key) && m_keys_previous[static_cast<unsigned int>(key)]; }	// Returns true the first frame the user releases the button identified by KeyCode.
 
 		// Mouse
-		const Math::Vector2& GetMousePosition()	{ return m_mouse_position; }
-		const Math::Vector2& GetMouseDelta()	{ return m_mouse_delta; }
+		const Math::Vector2& GetMousePosition() const	{ return m_mouse_position; }
+		const Math::Vector2& GetMouseDelta() const		{ return m_mouse_delta; }
 
 		// Gamepad
-		bool GamepadIsConnected()							{ return m_gamepad_connected; }
-		const Math::Vector2& GetGamepadThumbStickLeft()		{ return m_gamepad_thumb_left; }
-		const Math::Vector2& GetGamepadThumbStickRight()	{ return m_gamepad_thumb_right; }
-		float GetGamepadTriggerLeft()						{ return m_gamepad_trigger_left; }
-		float GetGamepadTriggerRight()						{ return m_gamepad_trigger_right; }
+		bool GamepadIsConnected() const							{ return m_gamepad_connected; }
+		const Math::Vector2& GetGamepadThumbStickLeft() const	{ return m_gamepad_thumb_left; }
+		const Math::Vector2& GetGamepadThumbStickRight() const	{ return m_gamepad_thumb_right; }
+		float GetGamepadTriggerLeft() const						{ return m_gamepad_trigger_left; }
+		float GetGamepadTriggerRight() const					{ return m_gamepad_trigger_right; }
 		// Vibrate the gamepad. Motor speed range is from 0.0 to 1.0f
 		// The left motor is the low-frequency rumble motor. The right motor is the high-frequency rumble motor. 
 		// The two motors are not the same, and they create different vibration effects.
-		bool GamepadVibrate(float leftMotorSpeed, float rightMotorSpeed);
+		bool GamepadVibrate(float left_motor_speed, float right_motor_speed) const;
 
 	private:
-		bool ReadMouse();
-		bool ReadKeyboard();
-		bool ReadGamepad();
+		bool ReadMouse() const;
+		bool ReadKeyboard() const;
+		bool ReadGamepad() const;
 
 		// Keys
 		std::array<bool, 99> m_keys;
@@ -120,8 +120,8 @@ namespace Directus
 		// Mouse
 		Math::Vector2 m_mouse_position	= Math::Vector2::Zero;
 		Math::Vector2 m_mouse_delta		= Math::Vector2::Zero;
-		int m_mouseWheel				= 0;
-		float m_mouseWheelDelta			= 0;
+		int m_mouse_wheel				= 0;
+		float m_mouse_wheel_delta		= 0;
 
 		// Gamepad
 		bool m_gamepad_connected;

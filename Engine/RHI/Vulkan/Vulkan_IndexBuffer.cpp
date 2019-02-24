@@ -19,10 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_GRAPHICS_VULKAN
+//================================
+
 //= INCLUDES ==================
-#include "RHI_Shader.h"
-#include "RHI_ConstantBuffer.h"
-#include "../Logging/Log.h"
+#include "../RHI_Device.h"
+#include "../RHI_IndexBuffer.h"
+#include "../../Logging/Log.h"
 //=============================
 
 //= NAMESPACES =====
@@ -31,42 +36,38 @@ using namespace std;
 
 namespace Directus
 {
-	void RHI_Shader::AddDefine(const std::string& define, const std::string& value /*= "1"*/)
+	RHI_IndexBuffer::RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_Format format)
 	{
-		m_macros[define] = value;
+		m_rhiDevice		= rhi_device;
+		m_buffer		= nullptr;
+		m_buffer_format	= format;
+		m_memory_usage	= 0;
+		m_index_count	= 0;
 	}
 
-	bool RHI_Shader::UpdateBuffer(void* data) const
+	RHI_IndexBuffer::~RHI_IndexBuffer()
 	{
-		if (!data)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		if (!m_constant_buffer)
-		{
-			LOG_WARNING("Uninitialized buffer.");
-			return false;
-		}
-
-		// Get a pointer of the buffer
-		auto result = false;
-		if (const auto buffer = m_constant_buffer->Map())	// Get buffer pointer
-		{
-			memcpy(buffer, data, m_buffer_size);			// Copy data
-			result = m_constant_buffer->Unmap();			// Unmap buffer
-		}
-
-		if (!result)
-		{
-			LOG_ERROR("Failed to map buffer");
-		}
-		return result;
+		
 	}
 
-	void RHI_Shader::CreateConstantBuffer(unsigned int size)
+	bool RHI_IndexBuffer::Create(const vector<unsigned int>& indices)
 	{
-		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, size);
+		return true;
+	}
+
+	bool RHI_IndexBuffer::CreateDynamic(const unsigned int stride, const unsigned int index_count)
+	{
+		return true;
+	}
+
+	void* RHI_IndexBuffer::Map() const
+	{
+		return nullptr;
+	}
+
+	bool RHI_IndexBuffer::Unmap() const
+	{
+		return true;
 	}
 }
+#endif

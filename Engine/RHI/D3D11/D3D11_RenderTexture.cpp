@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#ifdef API_D3D11
+#ifdef API_GRAPHICS_D3D11
 //================================
 
 //= INCLUDES ====================
 #include "../RHI_RenderTexture.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "D3D11_Common.h"
+#include "D3D11_Helper.h"
 //===============================
 
 //= NAMESPACES ================
@@ -38,7 +38,7 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_RenderTexture::RHI_RenderTexture(shared_ptr<RHI_Device> rhi_device, unsigned int width, unsigned int height, RHI_Format texture_format, bool depth, RHI_Format depth_format, unsigned int array_size)
+	RHI_RenderTexture::RHI_RenderTexture(const shared_ptr<RHI_Device>& rhi_device, unsigned int width, unsigned int height, RHI_Format texture_format, bool depth, RHI_Format depth_format, unsigned int array_size)
 	{
 		m_rhi_device	= rhi_device;
 		m_depth_enabled	= depth;
@@ -171,7 +171,7 @@ namespace Directus
 			auto result = SUCCEEDED(m_rhi_device->GetDevice<ID3D11Device>()->CreateTexture2D(&depth_buffer_desc, nullptr, depth_stencil_texture));
 			if (!result)
 			{
-				LOGF_ERROR("Failed to create depth stencil buffer, %s.", D3D11_Common::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to create depth stencil buffer, %s.", D3D11_Helper::dxgi_error_to_string(result));
 				return;
 			}
 
@@ -186,7 +186,7 @@ namespace Directus
 			if (!result)
 			{
 				safe_release(static_cast<ID3D11Texture2D*>(m_depth_stencil_texture));
-				LOGF_ERROR("Failed to create depth stencil view, %s.", D3D11_Common::DxgiErrorToString(result));
+				LOGF_ERROR("Failed to create depth stencil view, %s.", D3D11_Helper::dxgi_error_to_string(result));
 				return;
 			}
 			else

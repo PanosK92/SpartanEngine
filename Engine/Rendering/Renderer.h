@@ -127,10 +127,10 @@ namespace Directus
 		//=============================================================================================================================================================================
 
 		//= SWAPCHAIN =================================================
-		bool SwapChain_Resize(unsigned int width, unsigned int height);
-		bool SwapChain_SetAsRenderTarget();
-		bool SwapChain_Clear(const Math::Vector4& color);
-		bool SwapChain_Present();
+		bool SwapChainResize(unsigned int width, unsigned int height) const;
+		bool SwapChainSetAsRenderTarget() const;
+		bool SwapChainClear(const Math::Vector4& color) const;
+		bool SwapChainPresent() const;
 		//=============================================================
 
 		//= VIEWPORT - INTERNAL ==================================================
@@ -164,7 +164,7 @@ namespace Directus
 		// Transform gizmo
 		float m_gizmo_transform_size	= 0.015f;
 		float m_gizmo_transform_speed	= 12.0f;
-		std::shared_ptr<Entity>& SnapTransformGizmoTo(std::shared_ptr<Entity>& entity);
+		std::shared_ptr<Entity>& SnapTransformGizmoTo(std::shared_ptr<Entity>& entity) const;
 		//=============================================================================
 		
 		// DEBUG BUFFER ===================================================================
@@ -173,10 +173,10 @@ namespace Directus
 		//=================================================================================
 
 		//= MISC ==============================================================================
-		void* GetFrameShaderResource();
+		void* GetFrameShaderResource() const;
 		const std::shared_ptr<RHI_Device>& GetRhiDevice() const		{ return m_rhi_device; }
 		const std::shared_ptr<RHI_Pipeline>& GetRhiPipeline() const { return m_rhi_pipeline; }
-		static bool IsRendering()									{ return m_isRendering; }
+		static bool IsRendering()									{ return m_is_rendering; }
 		uint64_t GetFrameNum() const								{ return m_frame_num; }
 		std::shared_ptr<Camera> GetCamera() const					{ return m_camera; }
 		unsigned int GetMaxResolution() const						{ return m_max_resolution; }
@@ -191,16 +191,16 @@ namespace Directus
 		void CreateShaders();
 		void CreateSamplers();
 		void CreateRenderTextures();
-		void SetDefault_Pipeline_State();
-		void SetDefault_Buffer(	
-			unsigned int resolutionWidth,
-			unsigned int resolutionHeight,
+		void SetDefaultPipelineState() const;
+		void SetDefaultBuffer(	
+			unsigned int resolution_width,
+			unsigned int resolution_height,
 			const Math::Matrix& mMVP			= Math::Matrix::Identity,
 			float blur_sigma					= 0.0f,
 			const Math::Vector2& blur_direction	= Math::Vector2::Zero
-		);
-		void Renderables_Acquire(const Variant& renderables);
-		void Renderables_Sort(std::vector<Entity*>* renderables);
+		) const;
+		void RenderablesAcquire(const Variant& renderables);
+		void RenderablesSort(std::vector<Entity*>* renderables);
 		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
 
 		//= PASSES ===========================================================================================================================================================================
@@ -366,7 +366,7 @@ namespace Directus
 		Profiler* m_profiler;
 		uint64_t m_frame_num;
 		bool m_is_odd_frame;
-		static bool m_isRendering;
+		static bool m_is_rendering;
 		//========================
 		
 		// Global buffer (holds what is needed by almost every shader)

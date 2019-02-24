@@ -127,7 +127,7 @@ namespace Directus
 			m_buffer_size = sizeof(T);
 			CreateConstantBuffer(m_buffer_size);
 		}
-		void UpdateBuffer(void* data);
+		bool UpdateBuffer(void* data) const;
 		void* GetVertexShaderBuffer() const								{ return m_vertex_shader; }
 		void* GetPixelShaderBuffer() const								{ return m_pixel_shader; }
 		const std::shared_ptr<RHI_ConstantBuffer>& GetConstantBuffer()	{ return m_constant_buffer; }

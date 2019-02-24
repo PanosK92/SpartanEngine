@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#ifdef API_D3D11
+#ifdef API_GRAPHICS_D3D11
 //================================
 
-//= INCLUDES ======================
+//= INCLUDES =================
 #include "../RHI_BlendState.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "D3D11_Common.h"
-//=================================
+#include "D3D11_Helper.h"
+//============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -82,7 +82,7 @@ namespace Directus
 		else
 		{
 			m_initialized = false;
-			LOGF_ERROR("Failed to create blend state %s.", D3D11_Common::DxgiErrorToString(result));
+			LOGF_ERROR("Failed to create blend state %s.", D3D11_Helper::dxgi_error_to_string(result));
 		}
 	}
 

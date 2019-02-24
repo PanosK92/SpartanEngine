@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#ifdef API_VULKAN 
+#ifdef API_GRAPHICS_VULKAN 
 //================================
 
 //= INCLUDES ==================
@@ -323,6 +323,11 @@ namespace Directus
 	}
 
 	void RHI_Device::EventBegin(const std::string& name)
+	{
+
+	}
+
+	void RHI_Device::EventEnd()
 	{
 
 	}

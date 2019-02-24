@@ -25,10 +25,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-#ifdef API_DInput
+#ifdef API_INPUT_WINDOWS
 	#pragma comment(lib, "dinput8.lib")
+	#pragma comment(lib, "dxguid.lib")
 	#pragma comment(lib, "XInput.lib")
 	#ifndef DIRECTINPUT_VERSION
 	#define DIRECTINPUT_VERSION 0x0800
+	#include <dinput.h>
+	#include <xinput.h>
 	#endif
 #endif

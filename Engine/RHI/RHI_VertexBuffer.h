@@ -48,12 +48,10 @@ namespace Directus
 		unsigned int GetMemoryUsage() const	{ return m_memory_usage; }
 
 	protected:
-		unsigned int m_memory_usage;
+		unsigned int m_memory_usage	= 0;	
+		void* m_buffer				= nullptr;
+		unsigned int m_stride		= 0;
+		unsigned int m_vertex_count = 0;
 		std::shared_ptr<RHI_Device> m_rhi_device;
-
-		// D3D11
-		void* m_buffer;
-		unsigned int m_stride;
-		unsigned int m_vertex_count;
 	};
 }

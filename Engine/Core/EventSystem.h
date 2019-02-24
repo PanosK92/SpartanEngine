@@ -54,10 +54,10 @@ enum Event_Type
 };
 
 //= MACROS =====================================================================================================
-#define EVENT_HANDLER_STATIC(function)				[](Directus::Variant var)		{ function(); }
-#define EVENT_HANDLER(function)						[this](Directus::Variant var)	{ function(); }
-#define EVENT_HANDLER_VARIANT(function)				[this](Directus::Variant var)	{ function(var); }
-#define EVENT_HANDLER_VARIANT_STATIC(function)		[](Directus::Variant var)		{ function(var); }
+#define EVENT_HANDLER_STATIC(function)				[](const Directus::Variant& var)		{ function(); }
+#define EVENT_HANDLER(function)						[this](const Directus::Variant& var)	{ function(); }
+#define EVENT_HANDLER_VARIANT(function)				[this](const Directus::Variant& var)	{ function(var); }
+#define EVENT_HANDLER_VARIANT_STATIC(function)		[](const Directus::Variant& var)		{ function(var); }
 #define SUBSCRIBE_TO_EVENT(eventID, function)		Directus::EventSystem::Get().Subscribe(eventID, function);
 #define UNSUBSCRIBE_FROM_EVENT(eventID, function)	Directus::EventSystem::Get().Unsubscribe(eventID, function);
 #define FIRE_EVENT(eventID)							Directus::EventSystem::Get().Fire(eventID)
@@ -66,7 +66,7 @@ enum Event_Type
 
 namespace Directus
 {
-	typedef std::function<void(Variant)> subscriber;
+	using subscriber = std::function<void(const Variant&)>;
 
 	class ENGINE_CLASS EventSystem
 	{

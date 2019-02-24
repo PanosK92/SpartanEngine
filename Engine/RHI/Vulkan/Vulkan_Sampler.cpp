@@ -19,54 +19,31 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "RHI_Shader.h"
-#include "RHI_ConstantBuffer.h"
-#include "../Logging/Log.h"
-//=============================
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_GRAPHICS_VULKAN
+//================================
 
-//= NAMESPACES =====
-using namespace std;
-//==================
+//= INCLUDES ==============
+#include "../RHI_Sampler.h"
+#include "../RHI_Device.h"
+//=========================
 
 namespace Directus
 {
-	void RHI_Shader::AddDefine(const std::string& define, const std::string& value /*= "1"*/)
-	{
-		m_macros[define] = value;
+	RHI_Sampler::RHI_Sampler(
+		const std::shared_ptr<RHI_Device>& rhi_device,
+		const RHI_Texture_Filter filter						/*= Texture_Sampler_Anisotropic*/,
+		const RHI_Texture_Address_Mode texture_address_mode	/*= Texture_Address_Wrap*/,
+		const RHI_Comparison_Function comparison_function	/*= Texture_Comparison_Always*/
+	)
+	{	
+		
 	}
 
-	bool RHI_Shader::UpdateBuffer(void* data) const
+	RHI_Sampler::~RHI_Sampler()
 	{
-		if (!data)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		if (!m_constant_buffer)
-		{
-			LOG_WARNING("Uninitialized buffer.");
-			return false;
-		}
-
-		// Get a pointer of the buffer
-		auto result = false;
-		if (const auto buffer = m_constant_buffer->Map())	// Get buffer pointer
-		{
-			memcpy(buffer, data, m_buffer_size);			// Copy data
-			result = m_constant_buffer->Unmap();			// Unmap buffer
-		}
-
-		if (!result)
-		{
-			LOG_ERROR("Failed to map buffer");
-		}
-		return result;
-	}
-
-	void RHI_Shader::CreateConstantBuffer(unsigned int size)
-	{
-		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, size);
+		
 	}
 }
+#endif
