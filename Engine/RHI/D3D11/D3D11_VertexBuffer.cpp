@@ -55,7 +55,7 @@ namespace Directus
 	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 
-		if (!m_rhi_device || !m_rhi_device->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11DeviceContext>())
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -90,7 +90,7 @@ namespace Directus
 		m_memory_usage = static_cast<unsigned int>(sizeof(RHI_Vertex_PosCol) * vertices.size());
 
 		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result = m_rhi_device->GetDevice<ID3D11Device>()->CreateBuffer(&buffer_desc, &init_data, ptr);
+		const auto result = m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateBuffer(&buffer_desc, &init_data, ptr);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create vertex buffer");
@@ -104,7 +104,7 @@ namespace Directus
 	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 
-		if (!m_rhi_device || !m_rhi_device->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11DeviceContext>())
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -139,7 +139,7 @@ namespace Directus
 		m_memory_usage = static_cast<unsigned int>(sizeof(RHI_Vertex_PosUV) * vertices.size());
 
 		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result	= m_rhi_device->GetDevice<ID3D11Device>()->CreateBuffer(&buffer_desc, &init_data, ptr);
+		const auto result	= m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateBuffer(&buffer_desc, &init_data, ptr);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create vertex buffer");
@@ -153,7 +153,7 @@ namespace Directus
 	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 
-		if (!m_rhi_device || !m_rhi_device->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11DeviceContext>())
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -188,7 +188,7 @@ namespace Directus
 		m_memory_usage = static_cast<unsigned int>(sizeof(RHI_Vertex_PosUvNorTan) * vertices.size());
 
 		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result = m_rhi_device->GetDevice<ID3D11Device>()->CreateBuffer(&buffer_desc, &init_data, ptr);
+		const auto result = m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateBuffer(&buffer_desc, &init_data, ptr);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create vertex buffer");
@@ -202,7 +202,7 @@ namespace Directus
 	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 
-		if (!m_rhi_device || !m_rhi_device->GetDeviceContext<ID3D11DeviceContext>())
+		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11DeviceContext>())
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -222,7 +222,7 @@ namespace Directus
 		buffer_desc.StructureByteStride	= 0;
 
 		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result = m_rhi_device->GetDevice<ID3D11Device>()->CreateBuffer(&buffer_desc, nullptr, ptr);
+		const auto result = m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateBuffer(&buffer_desc, nullptr, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR("Failed to create dynamic vertex buffer");
@@ -234,7 +234,7 @@ namespace Directus
 
 	void* RHI_VertexBuffer::Map() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11DeviceContext>() || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
@@ -242,7 +242,7 @@ namespace Directus
 
 		// Disable GPU access to the vertex buffer data.
 		D3D11_MAPPED_SUBRESOURCE mapped_resource;
-		const auto result = m_rhi_device->GetDeviceContext<ID3D11DeviceContext>()->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+		const auto result = m_rhi_device->GetDevice<ID3D11DeviceContext>()->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to map vertex buffer");
@@ -254,14 +254,14 @@ namespace Directus
 
 	bool RHI_VertexBuffer::Unmap() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11DeviceContext>() || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		// Re-enable GPU access to the vertex buffer data.
-		m_rhi_device->GetDeviceContext<ID3D11DeviceContext>()->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
+		m_rhi_device->GetDevice<ID3D11DeviceContext>()->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
 		return true;
 	}
 }

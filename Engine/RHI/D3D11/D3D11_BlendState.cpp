@@ -71,7 +71,7 @@ namespace Directus
 
 		// Create blend state
 		auto blend_state	= static_cast<ID3D11BlendState*>(m_buffer);
-		const auto result	= device->GetDevice<ID3D11Device>()->CreateBlendState(&desc, &blend_state);
+		const auto result	= device->GetDevicePhysical<ID3D11Device>()->CreateBlendState(&desc, &blend_state);
 
 		// Handle result
 		if (SUCCEEDED(result))

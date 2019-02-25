@@ -29,7 +29,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 
 namespace VulkanHelper
-{ 
+{
+	static std::vector<const char*> validation_layers	= { "VK_LAYER_LUNARG_standard_validation" };
+	static std::vector<const char*> extensions			= 
+	{ 
+		"VK_KHR_win32_surface"
+		#ifdef DEBUG
+		, VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+		#endif
+	};
+
+	#ifdef DEBUG
+	static bool validation_layer_enabled = true;
+	#else
+	static bool validation_layer_enabled = false;
+	#endif
+
 	inline bool acquire_validation_layers(const std::vector<const char*>& validation_layers)
 	{
 		uint32_t layer_count;
@@ -44,6 +59,7 @@ namespace VulkanHelper
 			{
 				if (strcmp(layer_name, layer_properties.layerName) == 0)
 				{
+
 					return true;
 				}
 			}
@@ -78,8 +94,15 @@ namespace VulkanHelper
 		auto type		= Directus::Log_Info;
 		type			= message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT	? Directus::Log_Warning	: type;
 		type			= message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT		? Directus::Log_Error	: type;
-		Directus::Log::Write("Vulkan: " + std::string(p_callback_data->pMessage), type);
-	
+
+		Directus::Log::m_log_to_file = true;
+		Directus::Log::m_caller_name = "Vulkan";
+
+		Directus::Log::Write(p_callback_data->pMessage, type);
+
+		Directus::Log::m_caller_name = "";
+		Directus::Log::m_log_to_file = false;
+
 		return VK_FALSE;
 	}
 
@@ -103,17 +126,25 @@ namespace VulkanHelper
 		auto i = 0;
 		for (const auto& queue_family : queue_families) 
 		{
-			 if (queue_family.queueCount > 0 && queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) 
-			 {
-			     indices.graphics_family = i;
-			 }
+			// Graphics support
+			if (queue_family.queueCount > 0 && queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) 
+			{
+			    indices.graphics_family = i;
+			}
 
-			 if (indices.IsComplete()) 
-			 {
-			     break;
-			 }
-
-			 i++;
+			// Present support - TODO FIX THIS TO WORK NICE WITH SEPARATE SWAPCHAIN CREATION
+			//VkBool32 present_support = false;
+			//vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
+			//if (queue_family.queueCount > 0 && present_support) 
+			{
+				indices.present_family = i;
+			}
+			
+			if (indices.IsComplete()) 
+			{
+			    break;
+			}		
+			i++;
 		}
 
 		return indices;
@@ -121,7 +152,8 @@ namespace VulkanHelper
 
 	inline bool is_device_suitable(const VkPhysicalDevice device) 
 	{
-		auto indices = find_queue_families(device);		return indices.IsComplete();
+		auto indices = find_queue_families(device);
+		return indices.IsComplete();
 	}
 }
 #endif

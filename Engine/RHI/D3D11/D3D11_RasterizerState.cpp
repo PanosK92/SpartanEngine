@@ -70,7 +70,7 @@ namespace Directus
 
 		// Create rasterizer state
 		auto rasterizer_state	= static_cast<ID3D11RasterizerState*>(m_buffer);
-		const auto result		= rhi_device->GetDevice<ID3D11Device>()->CreateRasterizerState(&desc, &rasterizer_state);
+		const auto result		= rhi_device->GetDevicePhysical<ID3D11Device>()->CreateRasterizerState(&desc, &rasterizer_state);
 	
 		// Handle result
 		if (SUCCEEDED(result))

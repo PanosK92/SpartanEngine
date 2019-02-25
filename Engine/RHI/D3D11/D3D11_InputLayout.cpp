@@ -89,7 +89,7 @@ namespace Directus
 		}
 
 		auto buffer = static_cast<ID3D10Blob*>(vsBlob);
-		if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateInputLayout
+		if (FAILED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateInputLayout
 		(
 			layout_descs.data(),
 			static_cast<unsigned int>(layout_descs.size()),

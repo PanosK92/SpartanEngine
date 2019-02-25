@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
 #include "Vulkan_Helper.h"
-#include <set>
 #ifdef API_GRAPHICS_VULKAN
 //================================
 
@@ -45,8 +44,8 @@ namespace Directus
 		const std::shared_ptr<RHI_Device>& rhi_device,
 		unsigned int width,
 		unsigned int height,
-		const RHI_Format format			/*= Format_R8G8B8A8_UNORM*/,
-		RHI_Swap_Effect swap_effect		/*= Swap_Discard*/,
+		const RHI_Format format			/*= Format_R8G8B8A8_UNORM */,
+		RHI_Swap_Effect swap_effect		/*= Swap_Discard */,
 		const unsigned long flags		/*= 0 */,
 		const unsigned int buffer_count	/*= 1 */
 	)
@@ -78,34 +77,8 @@ namespace Directus
 				LOG_ERROR("Failed to create surface.");
 			}
 		}
-
-		// Present Queue
-		VkQueue_T* present_queue = nullptr;
-		{
-			const auto device	= m_rhi_device->GetDevice<VkPhysicalDevice_T>();
-			auto indices		= VulkanHelper::find_queue_families(device);
-
-			vector<VkDeviceQueueCreateInfo> queue_create_infos;
-			set<uint32_t> unique_queue_families = { indices.graphics_family.value(), indices.present_family.value() };
-
-			auto queue_priority = 1.0f;
-			for (auto queue_family : unique_queue_families) 
-			{
-				 VkDeviceQueueCreateInfo queue_create_info = {};
-				 queue_create_info.sType				= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				 queue_create_info.queueFamilyIndex		= queue_family;
-				 queue_create_info.queueCount			= 1;
-				 queue_create_info.pQueuePriorities		= &queue_priority;
-				 queue_create_infos.push_back(queue_create_info);
-			}
-
-			VkDeviceCreateInfo create_info;
-			create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
-			create_info.pQueueCreateInfos		= queue_create_infos.data();
-			vkGetDeviceQueue(device, indices.present_family.value(), 0, &present_queue);
-		}
-		m_surface		= static_cast<void*>(surface);
-		m_presentQueue	= static_cast<void*>(present_queue);
+		
+		m_surface = static_cast<void*>(surface);
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
