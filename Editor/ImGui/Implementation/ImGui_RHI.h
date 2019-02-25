@@ -233,11 +233,6 @@ namespace ImGui::RHI
 			g_vertexBuffer->Unmap();
 			g_indexBuffer->Unmap();
 		}
-		else
-		{
-			LOG_ERROR("Failed to map buffers");
-			return;
-		}
 
 		// Setup orthographic projection matrix into our constant buffer
 		// Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
@@ -256,8 +251,11 @@ namespace ImGui::RHI
 			);
 
 			auto buffer = static_cast<VertexConstantBuffer*>(g_constantBuffer->Map());
-			buffer->mvp = mvp;
-			g_constantBuffer->Unmap();
+			if (buffer)
+			{
+				buffer->mvp = mvp;
+				g_constantBuffer->Unmap();
+			}
 		}
 
 		// Setup render state

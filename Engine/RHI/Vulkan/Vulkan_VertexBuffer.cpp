@@ -49,22 +49,22 @@ namespace Directus
 
 	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosCol>& vertices)
 	{
-		return true;
+		return false;
 	}
 
 	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUV>& vertices)
 	{
-		return true;
+		return false;
 	}
 
 	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUvNorTan>& vertices)
 	{
-		return true;
+		return false;
 	}
 
 	bool RHI_VertexBuffer::CreateDynamic(const unsigned int stride, const unsigned int vertex_count)
 	{
-		return true;
+		return false;
 	}
 
 	void* RHI_VertexBuffer::Map() const
@@ -74,7 +74,7 @@ namespace Directus
 
 	bool RHI_VertexBuffer::Unmap() const
 	{
-		return true;
+		return false;
 	}
 }
 #endif

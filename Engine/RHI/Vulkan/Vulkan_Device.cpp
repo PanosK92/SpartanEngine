@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
+#include "Vulkan_Helper.h"
 #ifdef API_GRAPHICS_VULKAN 
 //================================
 
@@ -39,119 +40,57 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	namespace Vulkan_Device
+	namespace _Vulkan
 	{
-		inline bool AcquireValidationLayers(const std::vector<const char*>& validationLayers)
-		{
-			uint32_t layerCount;
-			vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-			std::vector<VkLayerProperties> availableLayers(layerCount);
-			vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-			for (const char* layerName : validationLayers)
-			{
-				for (const auto& layerProperties : availableLayers)
-				{
-					if (strcmp(layerName, layerProperties.layerName) == 0)
-					{
-						return true;
-					}
-				}
-			}
-
-			LOG_ERROR("Validation layer was requested, but not available.");
-			return false;
-		}
-
-		inline VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pCallback)
-		{
-			if (auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"))
-				return func(instance, pCreateInfo, pAllocator, pCallback);
-
-			return VK_ERROR_EXTENSION_NOT_PRESENT;
-		}
-
-		inline void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT callback, const VkAllocationCallbacks* pAllocator) 
-		{
-			if (auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")) 
-			{
-				func(instance, callback, pAllocator);
-			}
-		}
-
-		static inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-			VkDebugUtilsMessageTypeFlagsEXT messageType,
-			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-			void* pUserData) 
-		{
-			Log_Type type	= Log_Info;
-			type			= messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT	? Log_Warning	: type;
-			type			= messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT		? Log_Error		: type;
-			Log::Write("Vulkan: " + string(pCallbackData->pMessage), type);
-
-			return VK_FALSE;
-		}
-
-		inline bool isDeviceSuitable(VkPhysicalDevice device) 
-		{
-			VkPhysicalDeviceProperties deviceProperties;
-			VkPhysicalDeviceFeatures deviceFeatures;
-			vkGetPhysicalDeviceProperties(device, &deviceProperties);
-			vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-			return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU || VK_PHYSICAL_DEVICE_TYPE_CPU;
-		}
-
-		VkInstance instance;
-		VkPhysicalDevice device;
-		vector<const char*> validationLayers	= { "VK_LAYER_LUNARG_standard_validation" };
+		vector<const char*> validation_layers	= { "VK_LAYER_LUNARG_standard_validation" };
 		#ifdef DEBUG
-		const bool validationLayerEnabled		= true;
+		const bool validation_layer_enabled		= true;
 		vector<const char*> extensions			= { "VK_KHR_win32_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
 		#else
-		const bool validationLayerEnabled = false;
+		const bool validationLayerEnabled		= false;
 		vector<const char*> extensions			= { "VK_KHR_win32_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
 		#endif
+		
 		VkDebugUtilsMessengerEXT callback;
+		VkInstance_T* instance;
+		VkPhysicalDevice_T* device;
 	}
 
-	RHI_Device::RHI_Device(void* drawHandle)
+	RHI_Device::RHI_Device()
 	{
 		// Validation layer
-		bool validationLayerAvailable = false;
-		if (Vulkan_Device::validationLayerEnabled)
+		auto validation_layer_available = false;
+		if (_Vulkan::validation_layer_enabled)
 		{
-			validationLayerAvailable = Vulkan_Device::AcquireValidationLayers(Vulkan_Device::validationLayers);
+			validation_layer_available = VulkanHelper::acquire_validation_layers(_Vulkan::validation_layers);
 		}
 		
 		// Create instance
 		{
-			VkApplicationInfo appInfo	= {};
-			appInfo.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
-			appInfo.pApplicationName	= ENGINE_VERSION;
-			appInfo.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
-			appInfo.pEngineName			= ENGINE_VERSION;
-			appInfo.engineVersion		= VK_MAKE_VERSION(1, 0, 0);
-			appInfo.apiVersion			= VK_API_VERSION_1_1;
+			VkApplicationInfo app_info	= {};
+			app_info.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
+			app_info.pApplicationName	= ENGINE_VERSION;
+			app_info.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
+			app_info.pEngineName		= ENGINE_VERSION;
+			app_info.engineVersion		= VK_MAKE_VERSION(1, 0, 0);
+			app_info.apiVersion			= VK_API_VERSION_1_1;
 
-			VkInstanceCreateInfo createInfo		= {};
-			createInfo.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-			createInfo.pApplicationInfo			= &appInfo;
-			createInfo.enabledExtensionCount	= (uint32_t)Vulkan_Device::extensions.size();
-			createInfo.ppEnabledExtensionNames	= Vulkan_Device::extensions.data();
-			if (validationLayerAvailable) 
+			VkInstanceCreateInfo create_info	= {};
+			create_info.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+			create_info.pApplicationInfo		= &app_info;
+			create_info.enabledExtensionCount	= static_cast<uint32_t>(_Vulkan::extensions.size());
+			create_info.ppEnabledExtensionNames	= _Vulkan::extensions.data();
+			if (validation_layer_available) 
 			{
-				createInfo.enabledLayerCount	= (uint32_t)Vulkan_Device::validationLayers.size();
-				createInfo.ppEnabledLayerNames	= Vulkan_Device::validationLayers.data();
+				create_info.enabledLayerCount	= static_cast<uint32_t>(_Vulkan::validation_layers.size());
+				create_info.ppEnabledLayerNames	= _Vulkan::validation_layers.data();
 			}
 			else 
 			{
-				createInfo.enabledLayerCount = 0;
+				create_info.enabledLayerCount = 0;
 			}
 
-			auto result = vkCreateInstance(&createInfo, nullptr, &Vulkan_Device::instance);
+			const auto result = vkCreateInstance(&create_info, nullptr, &_Vulkan::instance);
 			if (result != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to create instance.");
@@ -161,10 +100,10 @@ namespace Directus
 		
 		// Get available extensions
 		{
-			uint32_t extensionCount = 0;
-			vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-			std::vector<VkExtensionProperties> extensions(extensionCount);
-			vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+			uint32_t extension_count = 0;
+			vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+			std::vector<VkExtensionProperties> extensions(extension_count);
+			vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
 			for (const auto& extension : extensions)
 			{
 				LOGF_INFO("Available extension: %s", extension.extensionName);
@@ -172,16 +111,16 @@ namespace Directus
 		}
 
 		// Callback
-		if (Vulkan_Device::validationLayerEnabled)
+		if (_Vulkan::validation_layer_enabled)
 		{
-			VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
-			createInfo.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-			createInfo.messageSeverity	= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-			createInfo.messageType		= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			createInfo.pfnUserCallback	= Vulkan_Device::debugCallback;
-			createInfo.pUserData		= nullptr; // Optional
+			VkDebugUtilsMessengerCreateInfoEXT create_info = {};
+			create_info.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+			create_info.messageSeverity	= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+			create_info.messageType		= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+			create_info.pfnUserCallback	= VulkanHelper::debugCallback;
+			create_info.pUserData		= nullptr; // Optional
 
-			if (Vulkan_Device::CreateDebugUtilsMessengerEXT(Vulkan_Device::instance, &createInfo, nullptr, &Vulkan_Device::callback) != VK_SUCCESS) 
+			if (VulkanHelper::create_debug_utils_messenger_ext(_Vulkan::instance, &create_info, nullptr, &_Vulkan::callback) != VK_SUCCESS) 
 			{
 				LOG_ERROR("Failed to setup debug callback");
 			}
@@ -189,32 +128,35 @@ namespace Directus
 
 		// Device
 		{
-			Vulkan_Device::device	= VK_NULL_HANDLE;
-			uint32_t deviceCount	= 0;
-			vkEnumeratePhysicalDevices(Vulkan_Device::instance, &deviceCount, nullptr);
-			if (deviceCount == 0) 
+			_Vulkan::device	= nullptr;
+			uint32_t device_count	= 0;
+			vkEnumeratePhysicalDevices(_Vulkan::instance, &device_count, nullptr);
+			if (device_count == 0) 
 			{
 				LOG_ERROR("Failed to enumerate physical devices.");
 				return;
 			}
-			std::vector<VkPhysicalDevice> devices(deviceCount);
-			vkEnumeratePhysicalDevices(Vulkan_Device::instance, &deviceCount, devices.data());
+			std::vector<VkPhysicalDevice> devices(device_count);
+			vkEnumeratePhysicalDevices(_Vulkan::instance, &device_count, devices.data());
 			
 			for (const auto& device : devices) 
 			{
-				if (Vulkan_Device::isDeviceSuitable(device))
+				if (VulkanHelper::is_device_suitable(device))
 				{
-					Vulkan_Device::device = device;
+					_Vulkan::device = device;
 					break;
 				}
 			}
 
-			if (Vulkan_Device::device == VK_NULL_HANDLE) 
+			if (_Vulkan::device == nullptr) 
 			{
 				LOG_ERROR("Failed to find a suitable device.");
 				return;
 			}
 		}
+
+		m_device	= static_cast<void*>(_Vulkan::device);
+		m_instance	= static_cast<void*>(_Vulkan::instance);
 
 		Settings::Get().m_versionGraphicsAPI = to_string(VK_API_VERSION_1_0);
 		LOG_INFO(Settings::Get().m_versionGraphicsAPI);
@@ -223,8 +165,11 @@ namespace Directus
 
 	RHI_Device::~RHI_Device()
 	{	
-		if (Vulkan_Device::validationLayerEnabled) Vulkan_Device::DestroyDebugUtilsMessengerEXT(Vulkan_Device::instance, Vulkan_Device::callback, nullptr);
-		vkDestroyInstance(Vulkan_Device::instance, nullptr);
+		if (_Vulkan::validation_layer_enabled)
+		{
+			VulkanHelper::destroy_debug_utils_messenger_ext(_Vulkan::instance, _Vulkan::callback, nullptr);
+		}
+		vkDestroyInstance(_Vulkan::instance, nullptr);
 	}
 
 	bool RHI_Device::Draw(unsigned int vertex_count) const

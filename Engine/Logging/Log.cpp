@@ -40,11 +40,23 @@ namespace Directus
 	mutex Log::m_mutex;
 	string Log::m_caller_name;
 	string Log::m_log_file_name	= "log.txt";
+	bool Log::m_log_to_file		= false;
 	bool Log::m_first_log		= true;
 
 	void Log::SetLogger(const weak_ptr<ILogger>& logger)
 	{
 		m_logger = logger;
+	}
+
+	// Everything resolves to this
+	void Log::Write(const char* text, const Log_Type type)
+	{
+		auto formated_text = !m_caller_name.empty() ? m_caller_name + ": " + std::string(text) : std::string(text);
+
+		const auto log_to_file = m_logger.expired() || m_log_to_file;
+		log_to_file ? LogToFile(formated_text.c_str(), type) : LogString(formated_text.c_str(), type);
+
+		m_caller_name.clear();
 	}
 
 	void Log::WriteFInfo(const char* text, ...)
@@ -120,7 +132,6 @@ namespace Directus
 		lock_guard<mutex> guard(m_mutex);
 		m_logger.lock()->Log(string(text), type);
 	}
-
 	void Log::LogToFile(const char* text, const Log_Type type)
 	{
 		lock_guard<mutex> guard(m_mutex);

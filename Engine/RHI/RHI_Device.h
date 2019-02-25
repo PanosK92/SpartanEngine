@@ -39,7 +39,7 @@ namespace Directus
 	class ENGINE_CLASS RHI_Device
 	{
 	public:
-		RHI_Device(void* draw_handle);
+		RHI_Device();
 		~RHI_Device();
 
 		//= DRAW/PRESENT =======================================================================================
@@ -83,18 +83,22 @@ namespace Directus
 		float ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const;
 		//=========================================================================================
 
-		//= MISC ====================================================================
+		void DetectPrimaryAdapter(RHI_Format format) const;
+
+		//= API ACCESS ==============================================================
 		bool IsInitialized() const		{ return m_initialized; }
 		template <typename T>
 		constexpr T* GetDevice()		{ return static_cast<T*>(m_device); }
 		template <typename T>
 		constexpr T* GetDeviceContext()	{ return static_cast<T*>(m_device_context); }
-		void DetectPrimaryAdapter(RHI_Format format) const;
+		template <typename T>
+		constexpr T* GetInstance()		{ return static_cast<T*>(m_instance); }
 		//===========================================================================
 
 	private:
 		bool m_initialized		= false;
 		void* m_device			= nullptr;
 		void* m_device_context	= nullptr;
+		void* m_instance		= nullptr;
 	};
 }

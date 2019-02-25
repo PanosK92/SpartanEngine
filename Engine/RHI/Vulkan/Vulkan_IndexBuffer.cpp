@@ -52,12 +52,12 @@ namespace Directus
 
 	bool RHI_IndexBuffer::Create(const vector<unsigned int>& indices)
 	{
-		return true;
+		return false;
 	}
 
 	bool RHI_IndexBuffer::CreateDynamic(const unsigned int stride, const unsigned int index_count)
 	{
-		return true;
+		return false;
 	}
 
 	void* RHI_IndexBuffer::Map() const
@@ -67,7 +67,7 @@ namespace Directus
 
 	bool RHI_IndexBuffer::Unmap() const
 	{
-		return true;
+		return false;
 	}
 }
 #endif

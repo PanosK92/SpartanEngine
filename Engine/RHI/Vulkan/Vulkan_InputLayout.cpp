@@ -47,7 +47,7 @@ namespace Directus
 
 	bool RHI_InputLayout::Create(void* vsBlob, const unsigned long input_layout)
 	{
-		return true;
+		return false;
 	}
 }
 #endif

@@ -48,12 +48,12 @@ namespace Directus
 
 	bool RHI_RenderTexture::Clear(const Vector4& clear_color)
 	{
-		return true;
+		return false;
 	}
 
 	bool RHI_RenderTexture::Clear(const float red, const float green, const float blue, const float alpha)
 	{
-		return true;
+		return false;
 	}
 }
 #endif

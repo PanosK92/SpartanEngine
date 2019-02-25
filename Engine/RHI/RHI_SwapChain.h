@@ -36,7 +36,7 @@ namespace Directus
 	public:
 		RHI_SwapChain(
 			void* window_handle,
-			const std::shared_ptr<RHI_Device>& device,
+			const std::shared_ptr<RHI_Device>& rhi_device,
 			unsigned int width,
 			unsigned int height,
 			RHI_Format format			= Format_R8G8B8A8_UNORM,
@@ -57,6 +57,12 @@ namespace Directus
 		unsigned long m_flags		= 0;
 		unsigned int m_buffer_count	= 0;
 		RHI_Format m_format;
-		std::shared_ptr<RHI_Device> m_device;
+		
+		// Low-level (only used by Vulkan)
+		void* m_surface			= nullptr;
+		void* m_presentQueue	= nullptr;
+
+		// Dependencies
+		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }
