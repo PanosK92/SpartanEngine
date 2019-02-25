@@ -59,8 +59,7 @@ namespace Directus
 		RHI_Format m_format;
 		
 		// Low-level (only used by Vulkan)
-		void* m_surface			= nullptr;
-		void* m_presentQueue	= nullptr;
+		void* m_surface	= nullptr;
 
 		// Dependencies
 		std::shared_ptr<RHI_Device> m_rhi_device;

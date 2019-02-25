@@ -48,7 +48,7 @@ namespace Directus
 		m_height		= height;
 		m_array_size	= array_size;
 
-		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11Device>())
+		if (!m_rhi_device || !m_rhi_device->GetDevicePhysical<ID3D11Device>())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -71,7 +71,7 @@ namespace Directus
 			texture_desc.MiscFlags			= 0;
 
 			auto ptr = reinterpret_cast<ID3D11Texture2D**>(&m_render_target_texture);
-			if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateTexture2D(&texture_desc, nullptr, ptr)))
+			if (FAILED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateTexture2D(&texture_desc, nullptr, ptr)))
 			{
 				LOG_ERROR("CreateTexture2D() failed.");
 				return;
@@ -88,7 +88,7 @@ namespace Directus
 				view_desc.Texture2D.MipSlice = 0;
 
 				auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_render_target_views.emplace_back(nullptr));
-				if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_texture), &view_desc, ptr)))
+				if (FAILED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_texture), &view_desc, ptr)))
 				{
 					LOG_ERROR("CreateRenderTargetView() failed.");
 					return;
@@ -105,7 +105,7 @@ namespace Directus
 
 					m_render_target_views.emplace_back(nullptr);
 					auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_render_target_views[i]);
-					if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_texture), &view_desc, ptr)))
+					if (FAILED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_texture), &view_desc, ptr)))
 					{
 						LOG_ERROR("CreateRenderTargetView() failed.");
 						return;
@@ -134,7 +134,7 @@ namespace Directus
 			}
 			
 			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&m_shader_resource_view);
-			if (FAILED(m_rhi_device->GetDevice<ID3D11Device>()->CreateShaderResourceView(static_cast<ID3D11Texture2D*>(m_render_target_texture), &shader_resource_view_desc, ptr)))
+			if (FAILED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateShaderResourceView(static_cast<ID3D11Texture2D*>(m_render_target_texture), &shader_resource_view_desc, ptr)))
 			{
 				safe_release(static_cast<ID3D11Texture2D*>(m_render_target_texture));
 				LOG_ERROR("CreateShaderResourceView() failed.");
@@ -168,7 +168,7 @@ namespace Directus
 			depth_buffer_desc.CPUAccessFlags		= 0;
 			depth_buffer_desc.MiscFlags				= 0;
 
-			auto result = SUCCEEDED(m_rhi_device->GetDevice<ID3D11Device>()->CreateTexture2D(&depth_buffer_desc, nullptr, depth_stencil_texture));
+			auto result = SUCCEEDED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateTexture2D(&depth_buffer_desc, nullptr, depth_stencil_texture));
 			if (!result)
 			{
 				LOGF_ERROR("Failed to create depth stencil buffer, %s.", D3D11_Helper::dxgi_error_to_string(result));
@@ -182,7 +182,7 @@ namespace Directus
 			depth_stencil_view_desc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
 			depth_stencil_view_desc.Texture2D.MipSlice	= 0;
 
-			result = SUCCEEDED(m_rhi_device->GetDevice<ID3D11Device>()->CreateDepthStencilView(*depth_stencil_texture, &depth_stencil_view_desc, depth_stencil_view));
+			result = SUCCEEDED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateDepthStencilView(*depth_stencil_texture, &depth_stencil_view_desc, depth_stencil_view));
 			if (!result)
 			{
 				safe_release(static_cast<ID3D11Texture2D*>(m_depth_stencil_texture));

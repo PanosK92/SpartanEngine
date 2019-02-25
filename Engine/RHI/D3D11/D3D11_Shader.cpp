@@ -212,7 +212,7 @@ namespace Directus
 
 		// Compile the shader
 		if (D3D11_Shader::compile_vertex_shader(
-			m_rhi_device->GetDevice<ID3D11Device>(),
+			m_rhi_device->GetDevicePhysical<ID3D11Device>(),
 			&blob_vs,
 			shader_ptr,
 			shader,
@@ -253,7 +253,7 @@ namespace Directus
 		const auto shader_ptr	= reinterpret_cast<ID3D11PixelShader**>(&m_pixel_shader);	
 
 		if (D3D11_Shader::compile_pixel_shader(
-			m_rhi_device->GetDevice<ID3D11Device>(),
+			m_rhi_device->GetDevicePhysical<ID3D11Device>(),
 			&blob_ps,
 			shader_ptr,
 			shader,

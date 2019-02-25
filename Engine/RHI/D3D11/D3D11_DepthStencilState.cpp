@@ -78,7 +78,7 @@ namespace Directus
 
 		// Create depth-stencil state
 		auto depth_stencil_state	= static_cast<ID3D11DepthStencilState*>(m_buffer);
-		const auto result			= rhi_device->GetDevice<ID3D11Device>()->CreateDepthStencilState(&desc, &depth_stencil_state);
+		const auto result			= rhi_device->GetDevicePhysical<ID3D11Device>()->CreateDepthStencilState(&desc, &depth_stencil_state);
 
 		// Handle result
 		if (SUCCEEDED(result))

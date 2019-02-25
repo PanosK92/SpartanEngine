@@ -68,7 +68,7 @@ namespace Directus
 		IDXGIDevice* dxgi_device	= nullptr;
 		IDXGIAdapter* dxgi_adapter	= nullptr;
 		IDXGIFactory* dxgi_factory	= nullptr;
-		if (m_rhi_device->GetDevice<ID3D11Device>()->QueryInterface(IID_PPV_ARGS(&dxgi_device)) == S_OK)
+		if (m_rhi_device->GetDevicePhysical<ID3D11Device>()->QueryInterface(IID_PPV_ARGS(&dxgi_device)) == S_OK)
 		{
 			if (dxgi_device->GetParent(IID_PPV_ARGS(&dxgi_adapter)) == S_OK)
 			{
@@ -100,7 +100,7 @@ namespace Directus
 			desc.Flags							= d3d11_flags;
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
-			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetDevice<ID3D11Device>(), &desc, &swap_chain);
+			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetDevicePhysical<ID3D11Device>(), &desc, &swap_chain);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
@@ -121,7 +121,7 @@ namespace Directus
 			}
 
 			auto render_target_view = static_cast<ID3D11RenderTargetView*>(m_render_target_view);
-			result = m_rhi_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+			result = m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
 			backbuffer->Release();
 			if (FAILED(result))
 			{
@@ -211,7 +211,7 @@ namespace Directus
 		}
 
 		// Create render target view
-		result = m_rhi_device->GetDevice<ID3D11Device>()->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+		result = m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
 		safe_release(backbuffer);
 		if (FAILED(result))
 		{
@@ -231,7 +231,7 @@ namespace Directus
 			return false;
 		}
 
-		auto context			= m_rhi_device->GetDeviceContext<ID3D11DeviceContext>();
+		auto context			= m_rhi_device->GetDevice<ID3D11DeviceContext>();
 		auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_render_target_view);
 		if (!context || !render_target_view)
 		{
@@ -246,7 +246,7 @@ namespace Directus
 
 	bool RHI_SwapChain::Clear(const Vector4& color) const
 	{
-		auto context					= m_rhi_device->GetDeviceContext<ID3D11DeviceContext>();
+		auto context					= m_rhi_device->GetDevice<ID3D11DeviceContext>();
 		const auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_render_target_view);
 		if (!context || !render_target_view)
 		{

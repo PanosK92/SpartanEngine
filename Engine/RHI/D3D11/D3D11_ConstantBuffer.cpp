@@ -39,7 +39,7 @@ namespace Directus
 	RHI_ConstantBuffer::RHI_ConstantBuffer(const shared_ptr<RHI_Device>& rhi_device, const unsigned int size)
 	{
 		m_rhi_device = rhi_device;
-		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11Device>())
+		if (!m_rhi_device || !m_rhi_device->GetDevicePhysical<ID3D11Device>())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -54,7 +54,7 @@ namespace Directus
 		buffer_desc.MiscFlags			= 0;
 		buffer_desc.StructureByteStride	= 0;
 
-		const auto result = m_rhi_device->GetDevice<ID3D11Device>()->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+		const auto result = m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create constant buffer");
@@ -69,14 +69,14 @@ namespace Directus
 
 	void* RHI_ConstantBuffer::Map() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11DeviceContext>() || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
 		}
 
 		D3D11_MAPPED_SUBRESOURCE mapped_resource;
-		const auto result = m_rhi_device->GetDeviceContext<ID3D11DeviceContext>()->Map(static_cast<ID3D11Buffer*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+		const auto result = m_rhi_device->GetDevice<ID3D11DeviceContext>()->Map(static_cast<ID3D11Buffer*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to map constant buffer.");
@@ -88,13 +88,13 @@ namespace Directus
 
 	bool RHI_ConstantBuffer::Unmap() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetDeviceContext<ID3D11DeviceContext>() || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetDevice<ID3D11DeviceContext>() || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_rhi_device->GetDeviceContext<ID3D11DeviceContext>()->Unmap(static_cast<ID3D11Buffer*>(m_buffer), 0);
+		m_rhi_device->GetDevice<ID3D11DeviceContext>()->Unmap(static_cast<ID3D11Buffer*>(m_buffer), 0);
 		return true;
 	}
 }

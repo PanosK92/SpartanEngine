@@ -85,20 +85,23 @@ namespace Directus
 
 		void DetectPrimaryAdapter(RHI_Format format) const;
 
-		//= API ACCESS ==============================================================
-		bool IsInitialized() const		{ return m_initialized; }
+		//= API ACCESS ===================================================================
+		bool IsInitialized() const			{ return m_initialized; }
 		template <typename T>
-		constexpr T* GetDevice()		{ return static_cast<T*>(m_device); }
+		constexpr T* GetDevicePhysical()	{ return static_cast<T*>(m_device_physical); }
 		template <typename T>
-		constexpr T* GetDeviceContext()	{ return static_cast<T*>(m_device_context); }
+		constexpr T* GetDevice()			{ return static_cast<T*>(m_device); }
 		template <typename T>
-		constexpr T* GetInstance()		{ return static_cast<T*>(m_instance); }
-		//===========================================================================
+		constexpr T* GetInstance()			{ return static_cast<T*>(m_instance); }
+		//================================================================================
 
 	private:
 		bool m_initialized		= false;
+		void* m_device_physical	= nullptr;
 		void* m_device			= nullptr;
-		void* m_device_context	= nullptr;
+
+		// Low-level (used by Vulkan)
 		void* m_instance		= nullptr;
+		void* m_present_queue	= nullptr;
 	};
 }
