@@ -1,6 +1,3 @@
-
-
-
 # Directus3D Game Engine
 Platform | Status | Binaries| :+1:
 :-:|:-:|:-:|:-:|
@@ -58,7 +55,7 @@ Platform        | Windows 10                                | -
 #### v0.31 (WIP)
 Feature     | Completion    | Notes 
 :-          | :-            | :-
-Vulkan      | 1%            | Will become the default rendering backend.
+Vulkan      | 4%            | Will become the default rendering backend.
 
 #### v0.32 (Planned)
 Feature                 	| Completion    | Notes 

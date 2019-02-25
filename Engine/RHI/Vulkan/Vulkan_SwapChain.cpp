@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include <windows.h>
 //=============================
 
 //= NAMESPACES ================
@@ -50,7 +49,7 @@ namespace Directus
 		const unsigned int buffer_count	/*= 1 */
 	)
 	{
-		const auto hwnd	= static_cast<HWND>(window_handle);
+		const auto hwnd = static_cast<HWND>(window_handle);
 
 		if (!hwnd || !rhi_device || !IsWindow(hwnd))
 		{
@@ -58,34 +57,149 @@ namespace Directus
 			return;
 		}
 
+		// Copy parameters
 		m_format		= format;
 		m_rhi_device	= rhi_device;
 		m_flags			= flags;
 		m_buffer_count	= buffer_count;
 
+		// Get internals
+		const auto instance			= m_rhi_device->GetInstance<VkInstance>();
+		const auto device_physical	= m_rhi_device->GetDevicePhysical<VkPhysicalDevice>();
+		const auto device			= m_rhi_device->GetDevice<VkDevice>();
+
 		// Surface
-		VkSurfaceKHR_T* surface = nullptr;
-		{	
+		VkSurfaceKHR surface = nullptr;
+		{
 			VkWin32SurfaceCreateInfoKHR create_info = {};
-			create_info.sType		= VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-			create_info.hwnd		= hwnd;
-			create_info.hinstance	= GetModuleHandle(nullptr);
-		
-			const auto instance_ptr = m_rhi_device->GetInstance<VkInstance_T>();
-			if (vkCreateWin32SurfaceKHR(instance_ptr, &create_info, nullptr, &surface) != VK_SUCCESS)
+			create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+			create_info.hwnd = hwnd;
+			create_info.hinstance = GetModuleHandle(nullptr);
+	
+			if (vkCreateWin32SurfaceKHR(instance, &create_info, nullptr, &surface) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to create surface.");
+				return;
 			}
 		}
-		
-		m_surface = static_cast<void*>(surface);
+
+		// Ensure the device is compatible with the surface
+		if (!VulkanHelper::is_device_surface_compatible(device_physical, surface))
+		{
+			LOG_ERROR("Device is not surface compatible.");
+			return;
+		}
+
+		// Swap chain
+		auto swapchain_support = VulkanHelper::query_swap_chain_support(device_physical, surface);
+		auto surface_format = VulkanHelper::choose_swap_surface_format(swapchain_support.formats); // TODO: Format must be chosen by parameter
+		VkSwapchainKHR swapChain;
+		{
+			auto present_mode	= VulkanHelper::choose_swap_present_mode(swapchain_support.present_modes);
+			auto extent			= VulkanHelper::choose_swap_extent(swapchain_support.capabilities);
+
+			uint32_t image_count = buffer_count;//swapChainSupport.capabilities.minImageCount + 1;
+			if (swapchain_support.capabilities.maxImageCount > 0 && image_count > swapchain_support.capabilities.maxImageCount)
+			{
+				image_count = swapchain_support.capabilities.maxImageCount;
+			}
+
+			VkSwapchainCreateInfoKHR create_info = {};
+			create_info.sType	= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+			create_info.surface	= surface;
+
+			create_info.minImageCount		= image_count;
+			create_info.imageFormat			= surface_format.format;
+			create_info.imageColorSpace		= surface_format.colorSpace;
+			create_info.imageExtent			= extent;
+			create_info.imageArrayLayers	= 1;
+			create_info.imageUsage			= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+			VulkanHelper::QueueFamilyIndices indices	= VulkanHelper::find_queue_families(device_physical);
+			uint32_t queueFamilyIndices[]				= { indices.graphics_family.value(), indices.present_family.value() };
+			if (indices.graphics_family != indices.present_family)
+			{
+				create_info.imageSharingMode		= VK_SHARING_MODE_CONCURRENT;
+				create_info.queueFamilyIndexCount	= 2;
+				create_info.pQueueFamilyIndices		= queueFamilyIndices;
+			}
+			else
+			{
+				create_info.imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE;
+				create_info.queueFamilyIndexCount	= 0;		// Optional
+				create_info.pQueueFamilyIndices		= nullptr;	// Optional
+			}
+
+			create_info.preTransform	= swapchain_support.capabilities.currentTransform;
+			create_info.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+			create_info.presentMode		= present_mode;
+			create_info.clipped			= VK_TRUE;
+			create_info.oldSwapchain	= VK_NULL_HANDLE;
+
+			if (vkCreateSwapchainKHR(device, &create_info, nullptr, &swapChain) != VK_SUCCESS)
+			{
+				LOG_ERROR("Failed to create swap chain.");
+			}
+		}
+
+		// Swap chain images
+		std::vector<VkImage> swap_chain_images;
+		{
+			uint32_t image_count;			
+			vkGetSwapchainImagesKHR(device, swapChain, &image_count, nullptr);
+			swap_chain_images.resize(image_count);
+			vkGetSwapchainImagesKHR(device, swapChain, &image_count, swap_chain_images.data());
+		}
+
+		// Swap chain image views
+		std::vector<VkImageView> swap_chain_image_views;
+		{
+			swap_chain_image_views.resize(swap_chain_images.size());
+			for (size_t i = 0; i < swap_chain_image_views.size(); i++)
+			{
+				VkImageViewCreateInfo createInfo = {};
+				createInfo.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+				createInfo.image							= swap_chain_images[i];
+				createInfo.viewType							= VK_IMAGE_VIEW_TYPE_2D;
+				createInfo.format							= swapChainImageFormat;
+				createInfo.components.r						= VK_COMPONENT_SWIZZLE_IDENTITY;
+				createInfo.components.g						= VK_COMPONENT_SWIZZLE_IDENTITY;
+				createInfo.components.b						= VK_COMPONENT_SWIZZLE_IDENTITY;
+				createInfo.components.a						= VK_COMPONENT_SWIZZLE_IDENTITY;
+				createInfo.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+				createInfo.subresourceRange.baseMipLevel	= 0;
+				createInfo.subresourceRange.levelCount		= 1;
+				createInfo.subresourceRange.baseArrayLayer	= 0;
+				createInfo.subresourceRange.layerCount		= 1;
+
+				if (vkCreateImageView(device, &createInfo, nullptr, &swap_chain_image_views[i]) != VK_SUCCESS) 
+				{
+					LOG_ERROR("Failed to create image views");
+				}
+			}
+		}
+
+		m_surface					= static_cast<void*>(surface);
+		m_swap_chain				= static_cast<void*>(swapChain);
+		m_swap_chain_images			= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
+		m_swap_chain_image_views	= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
-		const auto instance	= m_rhi_device->GetInstance<VkInstance_T>();
-		const auto surface	= static_cast<VkSurfaceKHR_T*>(m_surface);
+		const auto instance	= m_rhi_device->GetInstance<VkInstance>();
+		const auto device	= m_rhi_device->GetDevice<VkDevice>();
+
+		auto surface	= static_cast<VkSurfaceKHR>(m_surface);
+		auto swapchain	= static_cast<VkSwapchainKHR>(m_swap_chain);
+
 		vkDestroySurfaceKHR(instance, surface, nullptr);
+		vkDestroySwapchainKHR(device, swapchain, nullptr);
+		for (auto& image_view : m_swap_chain_image_views) 
+		{
+			vkDestroyImageView(device, (VkImageView)image_view, nullptr);
+		}
+
 	}
 
 	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
