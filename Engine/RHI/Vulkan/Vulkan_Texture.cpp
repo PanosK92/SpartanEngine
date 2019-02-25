@@ -39,17 +39,17 @@ namespace Directus
 {
 	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mip_chain)
 	{
-		return true;
+		return false;
 	}
 
 	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<std::byte>& data, bool generate_mip_chain /*= false*/)
 	{
-		return true;
+		return false;
 	}
 
 	bool RHI_Texture::ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<vector<std::byte>>>& data)
 	{
-		return true;
+		return false;
 	}
 
 	void RHI_Texture::ShaderResource_Release() const

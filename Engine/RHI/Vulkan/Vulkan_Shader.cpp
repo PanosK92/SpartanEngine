@@ -48,12 +48,12 @@ namespace Directus
 
 	bool RHI_Shader::API_CompileVertex(const string& shader, const unsigned long input_layout)
 	{
-		return true;
+		return false;
 	}
 
 	bool RHI_Shader::API_CompilePixel(const string& shader)
 	{
-		return true;
+		return false;
 	}
 }
 #endif

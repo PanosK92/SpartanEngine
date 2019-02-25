@@ -50,20 +50,14 @@ namespace Directus
 {
 	namespace _D3D11_Device
 	{
-		const static bool multithread_protection = false;
-		// All the pointers that we need
 		ID3D11Device* device;
 		ID3D11DeviceContext* device_context;
 		ID3DUserDefinedAnnotation* annotation;
 	}
 
-	RHI_Device::RHI_Device(void* draw_handle)
+	RHI_Device::RHI_Device()
 	{
-		if (!IsWindow(static_cast<HWND>(draw_handle)))
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
+		const static auto multithread_protection = false;
 
 		// Create device
 		{
@@ -147,7 +141,7 @@ namespace Directus
 		}
 
 		// Multi-thread protection
-		if (_D3D11_Device::multithread_protection)
+		if (multithread_protection)
 		{
 			ID3D11Multithread* multithread = nullptr;
 			if (SUCCEEDED(_D3D11_Device::device_context->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithread))))

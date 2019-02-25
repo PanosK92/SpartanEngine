@@ -52,7 +52,7 @@ namespace Directus
 
 	bool RHI_ConstantBuffer::Unmap() const
 	{
-		return true;
+		return false;
 	}
 }
 #endif

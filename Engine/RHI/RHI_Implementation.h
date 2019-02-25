@@ -136,6 +136,7 @@ static const D3D11_BLEND_OP d3d11_blend_op[] =
 #elif defined(API_GRAPHICS_VULKAN)
 // VULKAN
 #pragma comment(lib, "vulkan-1.lib")
+#define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 
 #endif

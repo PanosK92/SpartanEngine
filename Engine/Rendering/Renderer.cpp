@@ -77,22 +77,31 @@ namespace Directus
 		//m_flags		|= Render_PostProcess_FXAA;					// Disabled by default: TAA is superior
 		
 		// Create RHI device
-		auto back_buffer_format	= Format_R8G8B8A8_UNORM;
-		m_rhi_device			= make_shared<RHI_Device>(Settings::Get().GetWindowHandle());
-		m_rhi_device->DetectPrimaryAdapter(back_buffer_format);
-		m_rhi_pipeline			= make_shared<RHI_Pipeline>(m_context, m_rhi_device);
-		m_swap_chain			= make_unique<RHI_SwapChain>
-		(
-			Settings::Get().GetWindowHandle(),
-			m_rhi_device,
-			static_cast<unsigned int>(m_resolution.x),
-			static_cast<unsigned int>(m_resolution.y),
-			back_buffer_format,
-			Swap_Flip_Discard,
-			SwapChain_Allow_Tearing | SwapChain_Allow_Mode_Switch,
-			2
-		);
-		
+		m_rhi_device = make_shared<RHI_Device>();
+		if (m_rhi_device->IsInitialized())
+		{
+			// Detect primary adapter, create pipeline and swap-chain
+			auto back_buffer_format	= Format_R8G8B8A8_UNORM;
+			m_rhi_device->DetectPrimaryAdapter(back_buffer_format);
+			m_rhi_pipeline	= make_shared<RHI_Pipeline>(m_context, m_rhi_device);
+			m_swap_chain	= make_unique<RHI_SwapChain>
+			(
+				Settings::Get().GetWindowHandle(),
+				m_rhi_device,
+				static_cast<unsigned int>(m_resolution.x),
+				static_cast<unsigned int>(m_resolution.y),
+				back_buffer_format,
+				Swap_Flip_Discard,
+				SwapChain_Allow_Tearing | SwapChain_Allow_Mode_Switch,
+				2
+			);
+		}
+		else
+		{
+			LOG_TO_FILE(true); // if we can't render, we switch to file output
+			LOG_ERROR("Failed to create RHI_Device");
+		}
+
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(RenderablesAcquire));
 	}
@@ -394,6 +403,9 @@ namespace Directus
 
 	void Renderer::SetDefaultPipelineState() const
 	{
+		if (!m_rhi_pipeline)
+			return;
+
 		m_rhi_pipeline->Clear();
 		m_rhi_pipeline->SetViewport(m_viewport);
 		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_disabled);
