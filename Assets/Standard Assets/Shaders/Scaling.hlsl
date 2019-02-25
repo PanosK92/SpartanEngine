@@ -17,17 +17,17 @@ float4 Downsample_BoxAntiFlicker(float2 uv, float2 texelSize, Texture2D sourceTe
 {
 	float4 d = texelSize.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f);
 
-	float4 s1 = Degamma(sourceTexture.Sample(bilinearSampler, uv + d.xy));
-	float4 s2 = Degamma(sourceTexture.Sample(bilinearSampler, uv + d.zy));
-	float4 s3 = Degamma(sourceTexture.Sample(bilinearSampler, uv + d.xw));
-	float4 s4 = Degamma(sourceTexture.Sample(bilinearSampler, uv + d.zw));
+	float4 s1 = degamma(sourceTexture.Sample(bilinearSampler, uv + d.xy));
+	float4 s2 = degamma(sourceTexture.Sample(bilinearSampler, uv + d.zy));
+	float4 s3 = degamma(sourceTexture.Sample(bilinearSampler, uv + d.xw));
+	float4 s4 = degamma(sourceTexture.Sample(bilinearSampler, uv + d.zw));
 	
 	// Karis's luma weighted average
-	float s1w = 1 / (Luminance(s1) + 1);
-	float s2w = 1 / (Luminance(s2) + 1);
-	float s3w = 1 / (Luminance(s3) + 1);
-	float s4w = 1 / (Luminance(s4) + 1);
+	float s1w = 1 / (luminance(s1) + 1);
+	float s2w = 1 / (luminance(s2) + 1);
+	float s3w = 1 / (luminance(s3) + 1);
+	float s4w = 1 / (luminance(s4) + 1);
 	float one_div_wsum = 1.0 / (s1w + s2w + s3w + s4w);
 	
-	return Gamma((s1 * s1w + s2 * s2w + s3 * s3w + s4 * s4w) * one_div_wsum);
+	return gamma((s1 * s1w + s2 * s2w + s3 * s3w + s4 * s4w) * one_div_wsum);
 }

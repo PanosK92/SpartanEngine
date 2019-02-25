@@ -53,6 +53,8 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	//= Compute blend factor ==========================================================================
 	float factor_subpixel	= abs(sin(frac(length(velocity)) * PI)); // Decrease if motion is sub-pixel
 	float blendfactor 		= lerp(g_blendMin, g_blendMax, saturate(factor_subpixel));
+	// Don't resolve when re-projected texcoord is out of screen
+	blendfactor 			= is_saturated(texCoord_history) ? blendfactor : g_blendMax;
 	//=================================================================================================
 	
 	float4 resolved_tonemapped 	= lerp(color_history, color_current, blendfactor);

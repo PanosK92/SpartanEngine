@@ -12,7 +12,7 @@ float2 SSR_BinarySearch(float3 ray_dir, inout float3 ray_pos, Texture2D tex_dept
 {
 	for (int i = 0; i < g_binarySearchSteps; i++)
 	{	
-		float2 ray_uv 		= Project(ray_pos, g_projection);
+		float2 ray_uv 		= project(ray_pos, g_projection);
 		float depth 		= GetLinearDepth(tex_depth, sampler_point_clamp, ray_uv);
 		float depth_delta 	= ray_pos.z - depth;
 
@@ -23,11 +23,11 @@ float2 SSR_BinarySearch(float3 ray_dir, inout float3 ray_pos, Texture2D tex_dept
 		ray_pos -= ray_dir;
 	}
 
-	float2 ray_uv 		= Project(ray_pos, g_projection);
+	float2 ray_uv 		= project(ray_pos, g_projection);
 	float depth_sample 	= GetLinearDepth(tex_depth, sampler_point_clamp, ray_uv);
 	float depth_delta 	= ray_pos.z - depth_sample;
 
-	return abs(depth_delta) < g_binarySearchThreshold ? Project(ray_pos, g_projection) : g_failed;
+	return abs(depth_delta) < g_binarySearchThreshold ? project(ray_pos, g_projection) : g_failed;
 }
 
 float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir, Texture2D tex_depth, SamplerState sampler_point_clamp)
@@ -36,7 +36,7 @@ float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir, Texture2D tex_depth, Sampler
 	{
 		// Step ray
 		ray_pos 		+= ray_dir;
-		float2 ray_uv 	= Project(ray_pos, g_projection);
+		float2 ray_uv 	= project(ray_pos, g_projection);
 
 		// Compute depth
 		float depth_current = ray_pos.z;

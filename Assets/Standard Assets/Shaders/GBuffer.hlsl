@@ -133,10 +133,10 @@ PixelOutputType mainPS(PixelInputType input)
 	//= NORMAL ================================================================================
 	#if NORMAL_MAP
 		// Make TBN
-		float3x3 TBN = MakeTBN(input.normal, input.tangent);
+		float3x3 TBN = makeTBN(input.normal, input.tangent);
 	
 		// Get tangent space normal and apply intensity
-		float3 normalSample = normalize(Unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
+		float3 normalSample = normalize(unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
 		normalIntensity		= clamp(normalIntensity, 0.01f, 1.0f);
 		normalSample.x 		*= normalIntensity;
 		normalSample.y 		*= normalIntensity;
@@ -158,7 +158,7 @@ PixelOutputType mainPS(PixelInputType input)
 
 	// Write to G-Buffer
 	g_buffer.albedo		= albedo;
-	g_buffer.normal 	= float4(Normal_Encode(normal), occlusion);
+	g_buffer.normal 	= float4(normal_Encode(normal), occlusion);
 	g_buffer.material	= float4(roughness, metallic, emission, materialShadingMode);
 	g_buffer.velocity	= velocity;
 	g_buffer.depth      = float2(depth_linear, depth_cs);

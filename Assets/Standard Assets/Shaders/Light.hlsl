@@ -66,23 +66,15 @@ PixelInputType mainVS(Vertex_PosUv input)
     return output;
 }
 
-// The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
-float ApplyMicroShadow(float ao, float3 N, float3 L, float shadow)
-{
-	float aperture 		= 2.0f * ao * ao;
-	float microShadow 	= saturate(abs(dot(L, N)) + aperture - 1.0f);
-	return shadow * microShadow;
-}
-
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
     float2 texCoord     = input.uv;
     float3 finalColor   = float3(0, 0, 0);
 	
 	// Sample from textures
-    float4 albedo       		= Degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
+    float4 albedo       		= degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
     float4 normalSample 		= texNormal.Sample(sampler_linear_clamp, texCoord);
-	float3 normal				= Normal_Decode(normalSample.xyz);
+	float3 normal				= normal_Decode(normalSample.xyz);
 	float4 materialSample   	= texMaterial.Sample(sampler_linear_clamp, texCoord);
     float occlusion_texture 	= normalSample.w;
 	float occlusion_ssao		= texSSAO.Sample(sampler_linear_clamp, texCoord).r; 
@@ -99,13 +91,13 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 
 	// Compute common values
     float2 depth  			= texDepth.Sample(sampler_linear_clamp, texCoord).rg;
-    float3 worldPos 		= ReconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
+    float3 worldPos 		= reconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
 	[branch]
     if (materialSample.a == 0.0f) // Sky
     {
-        finalColor = texEnvironment.Sample(sampler_linear_clamp, DirectionToSphereUV(camera_to_pixel)).rgb;
+        finalColor = texEnvironment.Sample(sampler_linear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
         finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
         return float4(finalColor, 1.0f);
     }
@@ -116,7 +108,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
 		
 	float ambient_occlusion 	= occlusion_ssao * occlusion_texture;
-	float directional_shadow	= ApplyMicroShadow(ambient_occlusion, normal, directionalLight.direction, shadow_directional);
+	float directional_shadow	= micro_shadow(ambient_occlusion, normal, directionalLight.direction, shadow_directional);
 	float ambient_ligth_min		= 0.05f;
 	float ambient_light_max		= dirLightIntensity.r;
 	float ambient_light 		= clamp(ambient_occlusion * directional_shadow, ambient_ligth_min, ambient_light_max);

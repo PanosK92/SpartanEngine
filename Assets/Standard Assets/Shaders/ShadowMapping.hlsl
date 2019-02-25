@@ -106,7 +106,7 @@ float ShadowMapping(int cascade, float4 positionCS, float texel, float3 normal, 
 		positionCS.y < -1.0f || positionCS.y > 1.0f || 
 		positionCS.z < 0.0f || positionCS.z > 1.0f ) return 1.0f;
 
-	float2 texCoord 	= Project(positionCS);
+	float2 texCoord 	= project(positionCS);
 	float compareDepth	= positionCS.z + bias;
 
 	return Technique_PCF(cascade, texel, texCoord, compareDepth);
@@ -136,7 +136,7 @@ float mainPS(PixelInputType input) : SV_TARGET
     float NdotL                 = dot(normal, lightDir);
     float cosAngle              = saturate(1.0f - NdotL);
     float3 scaledNormalOffset   = normal * normalBias * cosAngle * texel;
-	float3 positionWS   		= ReconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
+	float3 positionWS   		= reconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
 	float4 worldPos 			= float4(positionWS + scaledNormalOffset, 1.0f);
 	
 	// Compute clip space positions for each cascade
