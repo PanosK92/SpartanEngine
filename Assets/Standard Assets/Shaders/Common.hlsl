@@ -2,8 +2,34 @@
 								[GLOBALS]
 ------------------------------------------------------------------------------*/
 #define PI 3.1415926535897932384626433832795
+#define INV_PI 1.0 / PI;
 #define EPSILON 0.00000001
 
+/*------------------------------------------------------------------------------
+							[STRUCTS]
+------------------------------------------------------------------------------*/
+struct Material
+{
+	float3 albedo;
+	float roughness;
+	float metallic;
+	float3 padding;
+	float emission;
+	float3 F0;
+	float roughness_alpha;
+};
+
+struct Light
+{
+	float3 color;
+	float intensity;
+	float3 direction;
+	float padding;
+};
+
+/*------------------------------------------------------------------------------
+							[BUFFER]
+------------------------------------------------------------------------------*/
 cbuffer GlobalBuffer : register(b0)
 {	
 	matrix g_mvp;
@@ -42,59 +68,18 @@ cbuffer GlobalBuffer : register(b0)
 #define g_texelSize float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
 
 /*------------------------------------------------------------------------------
-							[STRUCTS]
-------------------------------------------------------------------------------*/
-struct Material
-{
-	float3 albedo;
-	float roughness;
-	float metallic;
-	float3 padding;
-	float emission;
-	float3 F0;
-	float roughness_alpha;
-};
-
-struct Light
-{
-	float3 color;
-	float intensity;
-	float3 direction;
-	float padding;
-};
-
-/*------------------------------------------------------------------------------
 							[GAMMA CORRECTION]
 ------------------------------------------------------------------------------*/
-float4 Degamma(float4 color)
-{
-	return pow(abs(color), g_gamma);
-}
-
-float3 Degamma(float3 color)
-{
-	return pow(abs(color), g_gamma);
-}
-
-float4 Gamma(float4 color)
-{
-	return pow(abs(color), 1.0f / g_gamma); 
-}
-
-float3 Gamma(float3 color)
-{
-	return pow(abs(color), 1.0f / g_gamma); 
-}
+inline float4 degamma(float4 color)	{ return pow(abs(color), g_gamma); }
+inline float3 degamma(float3 color)	{ return pow(abs(color), g_gamma); }
+inline float4 gamma(float4 color)	{ return pow(abs(color), 1.0f / g_gamma); }
+inline float3 gamma(float3 color)	{ return pow(abs(color), 1.0f / g_gamma); }
 
 /*------------------------------------------------------------------------------
 								[PROJECT]
 ------------------------------------------------------------------------------*/
-float2 Project(float4 value)
-{
-	return (value.xy / value.w) * float2(0.5f, -0.5f) + 0.5f;
-}
-
-float2 Project(float3 position, matrix transform)
+inline float2 project(float4 value)	{ return (value.xy / value.w) * float2(0.5f, -0.5f) + 0.5f; }
+inline float2 project(float3 position, matrix transform)
 {
 	float4 projectedCoords 	= mul(float4(position, 1.0f), transform);
 	projectedCoords.xy 		/= projectedCoords.w;
@@ -106,51 +91,28 @@ float2 Project(float3 position, matrix transform)
 /*------------------------------------------------------------------------------
 								[PACKING]
 ------------------------------------------------------------------------------*/
-float3 Unpack(float3 value)
-{
-	return value * 2.0f - 1.0f;
-}
-
-float3 Pack(float3 value)
-{
-	return value * 0.5f + 0.5f;
-}
-
-float2 Unpack(float2 value)
-{
-	return value * 2.0f - 1.0f;
-}
-
-float2 Pack(float2 value)
-{
-	return value * 0.5f + 0.5f;
-}
+inline float3 unpack(float3 value)	{ return value * 2.0f - 1.0f; }
+inline float3 pack(float3 value)	{ return value * 0.5f + 0.5f; }
+inline float2 unpack(float2 value)	{ return value * 2.0f - 1.0f; }
+inline float2 pack(float2 value)	{ return value * 0.5f + 0.5f; }
 
 /*------------------------------------------------------------------------------
 								[NORMALS]
 ------------------------------------------------------------------------------*/
-float3x3 MakeTBN(float3 n, float3 t)
+inline float3x3 makeTBN(float3 n, float3 t)
 {
 	float3 b = cross(n, t);
 	return float3x3(t, b, n); 
 }
-
-float3 Normal_Decode(float3 normal)
-{
-	// No decoding required
-	return normalize(normal);
-}
-
-float3 Normal_Encode(float3 normal)
-{
-	// No encoding required
-	return normalize(normal);
-}
+// No decoding required
+inline float3 normal_Decode(float3 normal)	{ return normalize(normal); }
+// No encoding required
+inline float3 normal_Encode(float3 normal)	{ return normalize(normal); }
 
 /*------------------------------------------------------------------------------
 						[POSITION RECONSTRUCTION]
 ------------------------------------------------------------------------------*/
-float3 ReconstructPositionWorld(float depth, matrix viewProjectionInverse, float2 texCoord)
+inline float3 reconstructPositionWorld(float depth, matrix viewProjectionInverse, float2 texCoord)
 {	
 	float x 			= texCoord.x * 2.0f - 1.0f;
 	float y 			= (1.0f - texCoord.y) * 2.0f - 1.0f;
@@ -164,7 +126,7 @@ float3 ReconstructPositionWorld(float depth, matrix viewProjectionInverse, float
 /*------------------------------------------------------------------------------
 								[DEPTH]
 ------------------------------------------------------------------------------*/
-float LinerizeDepth(float depth, float near, float far)
+inline float linerizeDepth(float depth, float near, float far)
 {
 	return (far / (far - near)) * (1.0f - (near / depth));
 }
@@ -174,12 +136,12 @@ float LinerizeDepth(float depth, float near, float far)
 ------------------------------------------------------------------------------*/
 static const float3 lumCoeff = float3(0.299f, 0.587f, 0.114f);
 
-float Luminance(float3 color)
+inline float luminance(float3 color)
 {
     return max(dot(color, lumCoeff), 0.0001f);
 }
 
-float Luminance(float4 color)
+inline float luminance(float4 color)
 {
     return max(dot(color.rgb, lumCoeff), 0.0001f);
 }
@@ -187,8 +149,7 @@ float Luminance(float4 color)
 /*------------------------------------------------------------------------------
 								[SKY SPHERE]
 ------------------------------------------------------------------------------*/
-#define INV_PI 1.0 / PI;
-float2 DirectionToSphereUV(float3 direction)
+inline float2 directionToSphereUV(float3 direction)
 {
     float n 	= length(direction.xz);
     float2 uv 	= float2((n > 0.0000001) ? direction.x / n : 0.0, direction.y);
@@ -202,7 +163,7 @@ float2 DirectionToSphereUV(float3 direction)
 /*------------------------------------------------------------------------------
 								[RANDOM]
 ------------------------------------------------------------------------------*/
-float Randomize(float2 texcoord)
+inline float randomize(float2 texcoord)
 {
     float seed		= dot(texcoord, float2(12.9898, 78.233));
     float sine		= sin(seed);
@@ -210,3 +171,16 @@ float Randomize(float2 texcoord)
 
     return noise;
 }
+
+/*------------------------------------------------------------------------------
+								[MISC]
+------------------------------------------------------------------------------*/
+// The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
+inline float micro_shadow(float ao, float3 N, float3 L, float shadow)
+{
+	float aperture 		= 2.0f * ao * ao;
+	float microShadow 	= saturate(abs(dot(L, N)) + aperture - 1.0f);
+	return shadow * microShadow;
+}
+inline bool is_saturated(float value) 	{ return value == saturate(value); }
+inline bool is_saturated(float2 value) 	{ return is_saturated(value.x) && is_saturated(value.y); }

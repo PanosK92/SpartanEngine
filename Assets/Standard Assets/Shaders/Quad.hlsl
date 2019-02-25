@@ -45,7 +45,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 
 #if PASS_GAMMA_CORRECTION
 	color 		= sourceTexture.Sample(samplerState, texCoord);
-	color 		= Gamma(color);
+	color 		= gamma(color);
 #endif
 
 #if PASS_TONEMAPPING
@@ -103,9 +103,8 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 
 #if PASS_BRIGHT
-	color 				= sourceTexture.Sample(samplerState, texCoord);
-    float luminance 	= Luminance(color.rgb);
-	color 				= luminance * color;
+	color 	= sourceTexture.Sample(samplerState, texCoord);
+	color 	= luminance(color.rgb) * color;
 #endif
 
 #if PASS_BLEND_ADDITIVE
@@ -116,7 +115,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 
 #if PASS_LUMA
 	color 		= sourceTexture.Sample(samplerState, texCoord);
-    color.a 	= Luminance(color.rgb);
+    color.a 	= luminance(color.rgb);
 #endif
 
 #if PASS_DITHERING

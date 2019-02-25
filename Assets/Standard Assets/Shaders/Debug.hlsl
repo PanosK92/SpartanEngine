@@ -28,7 +28,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 	float3 color = sourceTexture.Sample(samplerState, input.uv).rgb;
 	
 #if DEBUG_NORMAL
-	color = Pack(color);
+	color = pack(color);
 #endif
 
 #if DEBUG_VELOCITY

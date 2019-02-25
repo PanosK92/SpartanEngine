@@ -49,14 +49,14 @@ float4 Blur_GaussianBilateral(float2 uv, Texture2D sourceTexture, Texture2D dept
 	float weightSum 		= 0.0f;
     float4 color 			= 0.0f;
 	float center_depth		= depthTexture.SampleLevel(bilinearSampler, uv, 0).r;
-	float3 center_normal	= Normal_Decode(normalTexture.SampleLevel(bilinearSampler, uv, 0).xyz);
+	float3 center_normal	= normal_Decode(normalTexture.SampleLevel(bilinearSampler, uv, 0).xyz);
 	float threshold 		= 0.0001f;
 
     for (int i = -5; i < 5; i++)
     {
         float2 texCoord 		= uv + (i * texelSize * direction);    
 		float sample_depth 		= depthTexture.SampleLevel(bilinearSampler, texCoord, 0).r;
-		float3 sample_normal	= Normal_Decode(normalTexture.SampleLevel(bilinearSampler, texCoord, 0).xyz);
+		float3 sample_normal	= normal_Decode(normalTexture.SampleLevel(bilinearSampler, texCoord, 0).xyz);
 		
 		// Awareness
 		float awareness_depth	= saturate(threshold - abs(center_depth - sample_depth));

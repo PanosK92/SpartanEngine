@@ -49,14 +49,14 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	float3 camera_to_pixel 		= input.positionWS.xyz - cameraPos;
 	float distance_transparent	= length(camera_to_pixel);
 	camera_to_pixel 			= normalize(camera_to_pixel);
-	float distance_opaque 		= depthTexture.Sample(samplerLinear, Project(input.gridPos)).g;
+	float distance_opaque 		= depthTexture.Sample(samplerLinear, project(input.gridPos)).g;
 	
 	if (distance_opaque > distance_transparent)
 		discard;
 	
 	float3 normal				= normalize(input.normal);
 	float3 reflection 			= reflect(camera_to_pixel, normal);
-	float3 environmentColor 	= environmentTex.Sample(samplerLinear, DirectionToSphereUV(reflection)).rgb;
+	float3 environmentColor 	= environmentTex.Sample(samplerLinear, directionToSphereUV(reflection)).rgb;
 
 	// Intensity of the specular light
 	float specularHardness 	= 0;
