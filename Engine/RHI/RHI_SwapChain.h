@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include "RHI_Object.h"
 #include <memory>
+#include <vector>
 //=========================
 
 namespace Directus
@@ -60,6 +61,8 @@ namespace Directus
 		
 		// Low-level (only used by Vulkan)
 		void* m_surface	= nullptr;
+		std::vector<void*> m_swap_chain_images;
+		std::vector<void*> m_swap_chain_image_views;
 
 		// Dependencies
 		std::shared_ptr<RHI_Device> m_rhi_device;

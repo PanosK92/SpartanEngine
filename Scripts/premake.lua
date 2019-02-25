@@ -28,9 +28,6 @@ TARGET_DIR_DEBUG 		= "../Binaries/Debug"
 INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
 EDITOR_DIR				= "../" .. EDITOR_NAME
 ENGINE_DIR				= "../" .. ENGINE_NAME
-VULKAN_PATH				= "C:/VulkanSDK/1.1.97.0/"
-VULKAN_PATH_INCLUDE		= VULKAN_PATH .. "Include"
-VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 
 -- Solution
 	solution (SOLUTION_NAME)
@@ -64,7 +61,7 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 		}
 
 -- Includes
-	includedirs { VULKAN_PATH_INCLUDE }
+	includedirs { "../ThirdParty/Vulkan_1.1.97.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
 	includedirs { "../ThirdParty/Bullet_2.88" }
@@ -74,7 +71,6 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 	includedirs { "../ThirdParty/pugixml_1.9" }
 	
 -- Library directory
-	libdirs { VULKAN_PATH_LIB }
 	libdirs { "../ThirdParty/mvsc141_x64" }
 
 -- 	"Debug"
@@ -143,7 +139,6 @@ VULKAN_PATH_LIB			= VULKAN_PATH .. "Lib"
 	includedirs { "../" .. ENGINE_NAME }
 
 -- Library directory
-	libdirs { VULKAN_PATH_LIB }
 	libdirs { "../ThirdParty/mvsc141_x64" }
 	
 -- "Debug"

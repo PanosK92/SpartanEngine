@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
 #include "Vulkan_Helper.h"
-#include <set>
 #ifdef API_GRAPHICS_VULKAN 
 //================================
 
@@ -43,14 +42,17 @@ namespace Directus
 {
 	namespace VulkanInstance
 	{
-		VkDebugUtilsMessengerEXT_T* callback	= nullptr;
-		VkInstance_T* instance					= nullptr;
-		VkPhysicalDevice_T* device_physical		= nullptr;
-		VkDevice_T* device						= nullptr;
+		VkDebugUtilsMessengerEXT callback	= nullptr;
+		VkInstance instance					= nullptr;
+		VkPhysicalDevice device_physical	= nullptr;
+		VkDevice device						= nullptr;
+		VkQueue present_queue				= nullptr;
 	}
 
 	RHI_Device::RHI_Device()
 	{
+		Directus::Log::m_log_to_file = true;
+
 		// Validation layer
 		auto validation_layer_available = false;
 		if (VulkanHelper::validation_layer_enabled)
@@ -71,8 +73,8 @@ namespace Directus
 			VkInstanceCreateInfo create_info	= {};
 			create_info.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			create_info.pApplicationInfo		= &app_info;
-			create_info.enabledExtensionCount	= static_cast<uint32_t>(VulkanHelper::extensions.size());
-			create_info.ppEnabledExtensionNames	= VulkanHelper::extensions.data();
+			create_info.enabledExtensionCount	= static_cast<uint32_t>(VulkanHelper::extensions_device_physical.size());
+			create_info.ppEnabledExtensionNames	= VulkanHelper::extensions_device_physical.data();
 			if (validation_layer_available) 
 			{
 				create_info.enabledLayerCount	= static_cast<uint32_t>(VulkanHelper::validation_layers.size());
@@ -147,7 +149,7 @@ namespace Directus
 			}
 		}
 
-		// Device Logical
+		// Device
 		VkPhysicalDeviceFeatures device_features = {};
 		VkDeviceCreateInfo create_info = {};
 		{
@@ -165,7 +167,8 @@ namespace Directus
 			create_info.pQueueCreateInfos		= &queue_create_info;
 			create_info.queueCreateInfoCount	= 1;
 			create_info.pEnabledFeatures		= &device_features;
-			create_info.enabledExtensionCount	= 0;
+			create_info.enabledExtensionCount	= static_cast<uint32_t>(VulkanHelper::extensions_device.size());
+			create_info.ppEnabledExtensionNames = VulkanHelper::extensions_device.data();
 
 			if (VulkanHelper::validation_layer_enabled)
 			{
@@ -179,12 +182,11 @@ namespace Directus
 
 			if (vkCreateDevice(VulkanInstance::device_physical, &create_info, nullptr, &VulkanInstance::device) != VK_SUCCESS) 
 			{
-				LOG_ERROR("Failed to create logical device.");
+				LOG_ERROR("Failed to create device.");
 			}
 		}
 
 		// Present Queue
-		VkQueue_T* present_queue = nullptr;
 		{
 			auto indices = VulkanHelper::find_queue_families(VulkanInstance::device_physical);
 
@@ -206,13 +208,13 @@ namespace Directus
 			create_info.pQueueCreateInfos		= queue_create_infos.data();
 
 			const auto device = VulkanInstance::device;
-			vkGetDeviceQueue(device, indices.present_family.value(), 0, &present_queue);	
+			vkGetDeviceQueue(device, indices.present_family.value(), 0, &VulkanInstance::present_queue);
 		}
 
 		m_instance			= static_cast<void*>(VulkanInstance::instance);
 		m_device_physical	= static_cast<void*>(VulkanInstance::device_physical);
 		m_device			= static_cast<void*>(VulkanInstance::device);
-		m_present_queue		= static_cast<void*>(present_queue);
+		m_present_queue		= static_cast<void*>(VulkanInstance::present_queue);
 		
 		Settings::Get().m_versionGraphicsAPI = to_string(VK_API_VERSION_1_0);
 		LOG_INFO(Settings::Get().m_versionGraphicsAPI);

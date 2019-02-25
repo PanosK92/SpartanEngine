@@ -86,13 +86,20 @@ namespace Directus
 		void DetectPrimaryAdapter(RHI_Format format) const;
 
 		//= API ACCESS ===================================================================
-		bool IsInitialized() const			{ return m_initialized; }
+		bool IsInitialized() const { return m_initialized; }
+		#if defined(API_GRAPHICS_D3D11)
 		template <typename T>
 		constexpr T* GetDevicePhysical()	{ return static_cast<T*>(m_device_physical); }
 		template <typename T>
 		constexpr T* GetDevice()			{ return static_cast<T*>(m_device); }
+		#elif defined(API_GRAPHICS_VULKAN)
 		template <typename T>
-		constexpr T* GetInstance()			{ return static_cast<T*>(m_instance); }
+		constexpr T GetDevicePhysical()	{ return static_cast<T>(m_device_physical); }
+		template <typename T>
+		constexpr T GetDevice()			{ return static_cast<T>(m_device); }
+		template <typename T>
+		constexpr T GetInstance()		{ return static_cast<T>(m_instance); }
+		#endif
 		//================================================================================
 
 	private:
