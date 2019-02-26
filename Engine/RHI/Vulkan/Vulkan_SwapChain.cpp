@@ -91,8 +91,8 @@ namespace Directus
 		}
 
 		// Swap chain
-		auto swapchain_support = VulkanHelper::query_swap_chain_support(device_physical, surface);
-		auto surface_format = VulkanHelper::choose_swap_surface_format(swapchain_support.formats); // TODO: Format must be chosen by parameter
+		auto swapchain_support	= VulkanHelper::query_swap_chain_support(device_physical, surface);
+		auto surface_format		= VulkanHelper::choose_swap_surface_format(vulkan_format[m_format], swapchain_support.formats);
 		VkSwapchainKHR swapChain;
 		{
 			auto present_mode	= VulkanHelper::choose_swap_present_mode(swapchain_support.present_modes);
@@ -157,11 +157,11 @@ namespace Directus
 			swap_chain_image_views.resize(swap_chain_images.size());
 			for (size_t i = 0; i < swap_chain_image_views.size(); i++)
 			{
-				VkImageViewCreateInfo createInfo = {};
+				VkImageViewCreateInfo createInfo			= {};
 				createInfo.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 				createInfo.image							= swap_chain_images[i];
 				createInfo.viewType							= VK_IMAGE_VIEW_TYPE_2D;
-				createInfo.format							= swapChainImageFormat;
+				createInfo.format							= vulkan_format[m_format];
 				createInfo.components.r						= VK_COMPONENT_SWIZZLE_IDENTITY;
 				createInfo.components.g						= VK_COMPONENT_SWIZZLE_IDENTITY;
 				createInfo.components.b						= VK_COMPONENT_SWIZZLE_IDENTITY;

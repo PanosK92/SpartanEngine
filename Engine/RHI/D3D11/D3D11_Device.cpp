@@ -275,7 +275,7 @@ namespace Directus
 		}
 
 		const auto ptr		= static_cast<ID3D11Buffer*>(buffer->GetBuffer());
-		const auto format	= d3d11_dxgi_format[buffer->GetFormat()];
+		const auto format	= d3d11_format[buffer->GetFormat()];
 		D3D11Instance::device->IASetIndexBuffer(ptr, format, 0);
 
 		return true;
@@ -695,13 +695,13 @@ namespace Directus
 			{
 				// Get supported display mode count
 				UINT display_mode_count;
-				result = adapter_output->GetDisplayModeList(d3d11_dxgi_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr);
+				result = adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr);
 				if (SUCCEEDED(result))
 				{
 					// Get display modes
 					vector<DXGI_MODE_DESC> display_modes;
 					display_modes.resize(display_mode_count);
-					result = adapter_output->GetDisplayModeList(d3d11_dxgi_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0]);
+					result = adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0]);
 					if (SUCCEEDED(result))
 					{
 						// Save all the display modes

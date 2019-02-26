@@ -51,7 +51,7 @@ namespace Directus
 		texture_desc.Height				= height;
 		texture_desc.MipLevels			= static_cast<UINT>(mip_chain.size());
 		texture_desc.ArraySize			= 1;
-		texture_desc.Format				= d3d11_dxgi_format[format];
+		texture_desc.Format				= d3d11_format[format];
 		texture_desc.SampleDesc.Count	= 1;
 		texture_desc.SampleDesc.Quality	= 0;
 		texture_desc.Usage				= D3D11_USAGE_IMMUTABLE;
@@ -89,7 +89,7 @@ namespace Directus
 
 		// Describe shader resource view
 		D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_desc;
-		shader_resource_desc.Format						= d3d11_dxgi_format[format];
+		shader_resource_desc.Format						= d3d11_format[format];
 		shader_resource_desc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
 		shader_resource_desc.Texture2D.MostDetailedMip	= 0;
 		shader_resource_desc.Texture2D.MipLevels		= texture_desc.MipLevels;
@@ -139,7 +139,7 @@ namespace Directus
 		texture_desc.Height				= height;
 		texture_desc.MipLevels			= generate_mip_chain ? 7 : 1;
 		texture_desc.ArraySize			= 1;
-		texture_desc.Format				= d3d11_dxgi_format[format];
+		texture_desc.Format				= d3d11_format[format];
 		texture_desc.SampleDesc.Count	= 1;
 		texture_desc.SampleDesc.Quality	= 0;
 		texture_desc.Usage				= D3D11_USAGE_IMMUTABLE;
@@ -162,7 +162,7 @@ namespace Directus
 
 		// Describe shader resource view
 		D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_desc;
-		shader_resource_desc.Format						= d3d11_dxgi_format[format];
+		shader_resource_desc.Format						= d3d11_format[format];
 		shader_resource_desc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
 		shader_resource_desc.Texture2D.MostDetailedMip	= 0;
 		shader_resource_desc.Texture2D.MipLevels		= texture_desc.MipLevels;
@@ -226,7 +226,7 @@ namespace Directus
 			texture_desc.Height				= height;
 			texture_desc.MipLevels			= mip_levels;
 			texture_desc.ArraySize			= 6;
-			texture_desc.Format				= d3d11_dxgi_format[format];
+			texture_desc.Format				= d3d11_format[format];
 			texture_desc.SampleDesc.Count	= 1;
 			texture_desc.SampleDesc.Quality	= 0;
 			texture_desc.Usage				= D3D11_USAGE_IMMUTABLE;
@@ -266,7 +266,7 @@ namespace Directus
 
 		// The Shader Resource view description
 		D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_desc;
-		shader_resource_desc.Format							= d3d11_dxgi_format[format];
+		shader_resource_desc.Format							= d3d11_format[format];
 		shader_resource_desc.ViewDimension					= D3D11_SRV_DIMENSION_TEXTURECUBE;
 		shader_resource_desc.TextureCube.MipLevels			= mip_levels;
 		shader_resource_desc.TextureCube.MostDetailedMip	= 0;

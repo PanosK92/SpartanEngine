@@ -133,13 +133,13 @@ namespace Directus
 		Texture_Filter_Anisotropic
 	};
 
-	enum RHI_Texture_Address_Mode
+	enum RHI_Sampler_Address_Mode
 	{
-		Texture_Address_Wrap,
-		Texture_Address_Mirror,
-		Texture_Address_Clamp,
-		Texture_Address_Border,
-		Texture_Address_MirrorOnce,
+		Sampler_Address_Wrap,
+		Sampler_Address_Mirror,
+		Sampler_Address_Clamp,
+		Sampler_Address_Border,
+		Sampler_Address_MirrorOnce,
 	};
 
 	enum RHI_Comparison_Function

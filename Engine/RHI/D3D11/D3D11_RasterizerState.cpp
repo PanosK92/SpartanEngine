@@ -58,7 +58,7 @@ namespace Directus
 		// Create rasterizer description
 		D3D11_RASTERIZER_DESC desc;
 		desc.CullMode				= d3d11_cull_mode[cull_mode];
-		desc.FillMode				= d3d11_fill_Mode[fill_mode];	
+		desc.FillMode				= d3d11_polygon_mode[fill_mode];	
 		desc.FrontCounterClockwise	= false;
 		desc.DepthBias				= 0;
 		desc.DepthBiasClamp			= 0.0f;

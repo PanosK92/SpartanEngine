@@ -35,18 +35,18 @@ namespace Directus
 		RHI_Sampler(
 			const std::shared_ptr<RHI_Device>& rhi_device,
 			RHI_Texture_Filter filter						= Texture_Filter_Anisotropic,
-			RHI_Texture_Address_Mode texture_address_mode	= Texture_Address_Wrap,
+			RHI_Sampler_Address_Mode sampler_address_mode	= Sampler_Address_Wrap,
 			RHI_Comparison_Function comparison_function		= Comparison_Always);
 		~RHI_Sampler();
 
 		RHI_Texture_Filter GetFilter() const					{ return m_filter; }
-		RHI_Texture_Address_Mode GetAddressMode() const			{ return m_texture_address_mode; }
+		RHI_Sampler_Address_Mode GetAddressMode() const			{ return m_sampler_address_mode; }
 		RHI_Comparison_Function GetComparisonFunction() const	{ return m_comparison_function; }
-		void* GetBuffer() const { return m_buffer; }
+		void* GetBuffer() const									{ return m_buffer; }
 
 	private:	
 		RHI_Texture_Filter m_filter;
-		RHI_Texture_Address_Mode m_texture_address_mode;
+		RHI_Sampler_Address_Mode m_sampler_address_mode;
 		RHI_Comparison_Function m_comparison_function;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		void* m_buffer = nullptr;

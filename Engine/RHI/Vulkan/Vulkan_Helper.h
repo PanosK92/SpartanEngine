@@ -212,16 +212,19 @@ namespace VulkanHelper
 		return !swap_chain_support.formats.empty() && !swap_chain_support.present_modes.empty();
 	}
 
-	inline VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR>& availableFormats) 
+	inline VkSurfaceFormatKHR choose_swap_surface_format(const VkFormat prefered_format, const std::vector<VkSurfaceFormatKHR>& availableFormats) 
 	{
+		VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
 		if (availableFormats.size() == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED) 
 		{
-			return { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+			LOG_ERROR("Failed to find format");
+			return { prefered_format, color_space };
 		}
 
 		for (const auto& availableFormat : availableFormats) 
 		{
-			if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			if (availableFormat.format == prefered_format && availableFormat.colorSpace == color_space)
 			{
 				return availableFormat;
 			}

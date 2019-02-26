@@ -50,7 +50,7 @@ static const D3D11_CULL_MODE d3d11_cull_mode[] =
 	D3D11_CULL_BACK
 };
 
-static const D3D11_FILL_MODE d3d11_fill_Mode[] =
+static const D3D11_FILL_MODE d3d11_polygon_mode[] =
 {
 	D3D11_FILL_SOLID,
 	D3D11_FILL_WIREFRAME
@@ -62,7 +62,7 @@ static const D3D11_PRIMITIVE_TOPOLOGY d3d11_primitive_topology[] =
 	D3D11_PRIMITIVE_TOPOLOGY_LINELIST
 };
 
-static const DXGI_FORMAT d3d11_dxgi_format[] =
+static const DXGI_FORMAT d3d11_format[] =
 {
 	DXGI_FORMAT_R8_UNORM,
 	DXGI_FORMAT_R16_UINT,
@@ -82,7 +82,7 @@ static const DXGI_FORMAT d3d11_dxgi_format[] =
 	DXGI_FORMAT_R32G32B32A32_FLOAT
 };
 
-static const D3D11_TEXTURE_ADDRESS_MODE d3d11_texture_address_mode[] =
+static const D3D11_TEXTURE_ADDRESS_MODE d3d11_sampler_address_mode[] =
 {
 	D3D11_TEXTURE_ADDRESS_WRAP,
 	D3D11_TEXTURE_ADDRESS_MIRROR,
@@ -91,7 +91,7 @@ static const D3D11_TEXTURE_ADDRESS_MODE d3d11_texture_address_mode[] =
 	D3D11_TEXTURE_ADDRESS_MIRROR_ONCE
 };
 
-static const D3D11_COMPARISON_FUNC d3d11_comparison_func[] =
+static const D3D11_COMPARISON_FUNC d3d11_compare_operator[] =
 {
 	D3D11_COMPARISON_NEVER,
 	D3D11_COMPARISON_LESS,
@@ -109,12 +109,12 @@ static const D3D11_FILTER d3d11_filter[] =
 	D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
 	D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR,
 	D3D11_FILTER_MIN_MAG_MIP_POINT,
-	D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,	// Use linear interpolation for minification and magnification, use point sampling for mip-level sampling.
-	D3D11_FILTER_MIN_MAG_MIP_LINEAR,		// Use linear interpolation for minification, magnification, and mip-level sampling.
+	D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,
+	D3D11_FILTER_MIN_MAG_MIP_LINEAR,
 	D3D11_FILTER_ANISOTROPIC
 };
 
-static const D3D11_BLEND d3d11_blend[] =
+static const D3D11_BLEND d3d11_blend_factor[] =
 {
 	D3D11_BLEND_ZERO,
 	D3D11_BLEND_ONE,
@@ -124,7 +124,7 @@ static const D3D11_BLEND d3d11_blend[] =
 	D3D11_BLEND_INV_SRC_ALPHA
 };
 
-static const D3D11_BLEND_OP d3d11_blend_op[] =
+static const D3D11_BLEND_OP d3d11_blend_operation[] =
 {
 	D3D11_BLEND_OP_ADD,
 	D3D11_BLEND_OP_SUBTRACT,
@@ -133,11 +133,85 @@ static const D3D11_BLEND_OP d3d11_blend_op[] =
 	D3D11_BLEND_OP_MAX
 };
 
+
 #elif defined(API_GRAPHICS_VULKAN)
+
 // VULKAN
 #pragma comment(lib, "vulkan-1.lib")
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
+
+static const VkPolygonMode vulkan_polygon_Mode[] =
+{
+	VK_POLYGON_MODE_FILL,
+	VK_POLYGON_MODE_LINE
+};
+
+static const VkPrimitiveTopology vulkan_primitive_topology[] =
+{
+	VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+};
+
+static const VkFormat vulkan_format[] =
+{
+	VK_FORMAT_R8_UNORM,	
+	VK_FORMAT_R16_UINT,	
+	VK_FORMAT_R16_SFLOAT,	
+	VK_FORMAT_R32_UINT,	
+	VK_FORMAT_R32_SFLOAT,	
+	VK_FORMAT_D32_SFLOAT,	
+	
+	VK_FORMAT_R8G8_UNORM,
+	VK_FORMAT_R16G16_SFLOAT,
+	VK_FORMAT_R32G32_SFLOAT,
+
+	VK_FORMAT_R32G32B32_SFLOAT,
+
+	VK_FORMAT_R8G8B8A8_UNORM,
+	VK_FORMAT_R16G16B16A16_SFLOAT,
+	VK_FORMAT_R32G32B32A32_SFLOAT
+};
+
+static const VkSamplerAddressMode vulkan_sampler_address_mode[] =
+{
+	VK_SAMPLER_ADDRESS_MODE_REPEAT,
+	VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+	VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+	VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+	VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
+};
+
+static const VkCompareOp vulkan_compare_operator[] =
+{
+	VK_COMPARE_OP_NEVER,
+	VK_COMPARE_OP_LESS,
+	VK_COMPARE_OP_EQUAL,
+	VK_COMPARE_OP_LESS_OR_EQUAL,
+	VK_COMPARE_OP_GREATER,
+	VK_COMPARE_OP_NOT_EQUAL,
+	VK_COMPARE_OP_GREATER_OR_EQUAL,
+	VK_COMPARE_OP_ALWAYS
+};
+
+static const VkBlendFactor vulkan_blend_factor[] =
+{
+	VK_BLEND_FACTOR_ZERO,
+	VK_BLEND_FACTOR_ONE,
+	VK_BLEND_FACTOR_SRC_COLOR,
+	VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+	VK_BLEND_FACTOR_SRC_ALPHA,
+	VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+};
+
+static const VkBlendOp vulkan_blend_operation[] =
+{
+	VK_BLEND_OP_ADD,
+	VK_BLEND_OP_SUBTRACT,
+	VK_BLEND_OP_REVERSE_SUBTRACT,
+	VK_BLEND_OP_MIN,
+	VK_BLEND_OP_MAX
+};
 
 #endif
 
