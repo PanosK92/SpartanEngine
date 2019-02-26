@@ -146,6 +146,7 @@ namespace Directus
 		virtual bool API_CompilePixel(const std::string& shader);
 		//====================================================================================
 		void CreateConstantBuffer(unsigned int size);
+		void Compile(const std::string& shader);
 		
 		std::string m_name;
 		std::string m_file_path;

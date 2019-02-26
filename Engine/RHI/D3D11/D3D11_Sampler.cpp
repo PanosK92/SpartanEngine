@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 
 //= INCLUDES =====================
-#include <winerror.h>
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
@@ -37,30 +36,30 @@ namespace Directus
 	RHI_Sampler::RHI_Sampler(
 		const std::shared_ptr<RHI_Device>& rhi_device,
 		const RHI_Texture_Filter filter						/*= Texture_Sampler_Anisotropic*/,
-		const RHI_Texture_Address_Mode texture_address_mode	/*= Texture_Address_Wrap*/,
+		const RHI_Sampler_Address_Mode sampler_address_mode	/*= Texture_Address_Wrap*/,
 		const RHI_Comparison_Function comparison_function	/*= Texture_Comparison_Always*/
 	)
 	{	
 		m_buffer				= nullptr;
-		m_rhi_device				= rhi_device;
+		m_rhi_device			= rhi_device;
 		m_filter				= filter;
-		m_texture_address_mode	= texture_address_mode;
+		m_sampler_address_mode	= sampler_address_mode;
 		m_comparison_function	= comparison_function;
 
 		if (!rhi_device || !rhi_device->GetDevicePhysical<ID3D11Device>())
 		{
-			LOG_ERROR("Invalid device.");
+			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
 		
 		D3D11_SAMPLER_DESC sampler_desc;
 		sampler_desc.Filter			= d3d11_filter[filter];
-		sampler_desc.AddressU		= d3d11_texture_address_mode[texture_address_mode];
-		sampler_desc.AddressV		= d3d11_texture_address_mode[texture_address_mode];
-		sampler_desc.AddressW		= d3d11_texture_address_mode[texture_address_mode];
+		sampler_desc.AddressU		= d3d11_sampler_address_mode[sampler_address_mode];
+		sampler_desc.AddressV		= d3d11_sampler_address_mode[sampler_address_mode];
+		sampler_desc.AddressW		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.MipLODBias		= 0.0f;
 		sampler_desc.MaxAnisotropy	= Settings::Get().Anisotropy_Get();
-		sampler_desc.ComparisonFunc	= d3d11_comparison_func[comparison_function];
+		sampler_desc.ComparisonFunc	= d3d11_compare_operator[comparison_function];
 		sampler_desc.BorderColor[0]	= 0;
 		sampler_desc.BorderColor[1]	= 0;
 		sampler_desc.BorderColor[2]	= 0;
@@ -78,6 +77,7 @@ namespace Directus
 	RHI_Sampler::~RHI_Sampler()
 	{
 		safe_release(static_cast<ID3D11SamplerState*>(m_buffer));
+		m_buffer = nullptr;
 	}
 }
 #endif

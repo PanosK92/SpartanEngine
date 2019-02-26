@@ -85,7 +85,7 @@ namespace Directus
 			desc.BufferCount					= buffer_count;
 			desc.BufferDesc.Width				= width;
 			desc.BufferDesc.Height				= height;
-			desc.BufferDesc.Format				= d3d11_dxgi_format[format];
+			desc.BufferDesc.Format				= d3d11_format[format];
 			desc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 			desc.OutputWindow					= hwnd;
 			desc.SampleDesc.Count				= 1;
@@ -177,7 +177,7 @@ namespace Directus
 		ZeroMemory(&dxgi_mode_desc, sizeof(dxgi_mode_desc));
 		dxgi_mode_desc.Width			= width;
 		dxgi_mode_desc.Height			= height;
-		dxgi_mode_desc.Format			= d3d11_dxgi_format[m_format];
+		dxgi_mode_desc.Format			= d3d11_format[m_format];
 		dxgi_mode_desc.RefreshRate		= DXGI_RATIONAL{ display_mode.refreshRateNumerator, display_mode.refreshRateDenominator };
 		dxgi_mode_desc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
 		dxgi_mode_desc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;

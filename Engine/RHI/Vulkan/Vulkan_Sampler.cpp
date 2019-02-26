@@ -34,7 +34,7 @@ namespace Directus
 	RHI_Sampler::RHI_Sampler(
 		const std::shared_ptr<RHI_Device>& rhi_device,
 		const RHI_Texture_Filter filter						/*= Texture_Sampler_Anisotropic*/,
-		const RHI_Texture_Address_Mode texture_address_mode	/*= Texture_Address_Wrap*/,
+		const RHI_Sampler_Address_Mode sampler_address_mode	/*= Sampler_Address_Wrap*/,
 		const RHI_Comparison_Function comparison_function	/*= Texture_Comparison_Always*/
 	)
 	{	

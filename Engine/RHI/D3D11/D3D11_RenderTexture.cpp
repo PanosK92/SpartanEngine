@@ -62,7 +62,7 @@ namespace Directus
 			texture_desc.Height				= static_cast<UINT>(m_viewport.GetHeight());
 			texture_desc.MipLevels			= 1;
 			texture_desc.ArraySize			= array_size;
-			texture_desc.Format				= d3d11_dxgi_format[m_format];
+			texture_desc.Format				= d3d11_format[m_format];
 			texture_desc.SampleDesc.Count	= 1;
 			texture_desc.SampleDesc.Quality	= 0;
 			texture_desc.Usage				= D3D11_USAGE_DEFAULT;
@@ -81,7 +81,7 @@ namespace Directus
 		// RENDER TARGET VIEW
 		{
 			D3D11_RENDER_TARGET_VIEW_DESC view_desc;
-			view_desc.Format	= d3d11_dxgi_format[m_format];
+			view_desc.Format	= d3d11_format[m_format];
 			if (array_size == 1)
 			{
 				view_desc.ViewDimension		= D3D11_RTV_DIMENSION_TEXTURE2D;
@@ -117,7 +117,7 @@ namespace Directus
 		// SHADER RESOURCE VIEW
 		{
 			D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc;
-			shader_resource_view_desc.Format = d3d11_dxgi_format[m_format];
+			shader_resource_view_desc.Format = d3d11_format[m_format];
 			if (array_size == 1)
 			{
 				shader_resource_view_desc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -160,7 +160,7 @@ namespace Directus
 			depth_buffer_desc.Height				= static_cast<UINT>(m_viewport.GetHeight());
 			depth_buffer_desc.MipLevels				= 1;
 			depth_buffer_desc.ArraySize				= 1;
-			depth_buffer_desc.Format				= d3d11_dxgi_format[depth_format];
+			depth_buffer_desc.Format				= d3d11_format[depth_format];
 			depth_buffer_desc.SampleDesc.Count		= 1;
 			depth_buffer_desc.SampleDesc.Quality	= 0;
 			depth_buffer_desc.Usage					= D3D11_USAGE_DEFAULT;
@@ -178,7 +178,7 @@ namespace Directus
 			// Depth-stencil view
 			D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc;
 			ZeroMemory(&depth_stencil_view_desc, sizeof(depth_stencil_view_desc));
-			depth_stencil_view_desc.Format				= d3d11_dxgi_format[depth_format];
+			depth_stencil_view_desc.Format				= d3d11_format[depth_format];
 			depth_stencil_view_desc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
 			depth_stencil_view_desc.Texture2D.MipSlice	= 0;
 

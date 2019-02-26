@@ -86,7 +86,7 @@ namespace ImGui::RHI
 		g_fontTexture = make_shared<RHI_Texture>(g_context);
 
 		// Font atlas sampler
-		g_fontSampler = make_shared<RHI_Sampler>(g_device, Texture_Filter_Bilinear, Texture_Address_Wrap, Comparison_Always);
+		g_fontSampler = make_shared<RHI_Sampler>(g_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
 
 		// Constant buffer
 		g_constantBuffer = make_shared<RHI_ConstantBuffer>(g_device, static_cast<unsigned int>(sizeof(VertexConstantBuffer)));

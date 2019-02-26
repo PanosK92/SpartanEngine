@@ -59,12 +59,12 @@ namespace Directus
 		for (auto& render_target : desc.RenderTarget)
 		{
 			render_target.BlendEnable			= blend_enabled;
-			render_target.SrcBlend				= d3d11_blend[source_blend];
-			render_target.DestBlend				= d3d11_blend[dest_blend];
-			render_target.BlendOp				= d3d11_blend_op[blend_op];
-			render_target.SrcBlendAlpha			= d3d11_blend[source_blend_alpha];
-			render_target.DestBlendAlpha		= d3d11_blend[dest_blend_alpha];
-			render_target.BlendOpAlpha			= d3d11_blend_op[blend_op_alpha];
+			render_target.SrcBlend				= d3d11_blend_factor[source_blend];
+			render_target.DestBlend				= d3d11_blend_factor[dest_blend];
+			render_target.BlendOp				= d3d11_blend_operation[blend_op];
+			render_target.SrcBlendAlpha			= d3d11_blend_factor[source_blend_alpha];
+			render_target.DestBlendAlpha		= d3d11_blend_factor[dest_blend_alpha];
+			render_target.BlendOpAlpha			= d3d11_blend_operation[blend_op_alpha];
 			render_target.RenderTargetWriteMask	= D3D11_COLOR_WRITE_ENABLE_ALL;
 		}
 		desc.RenderTarget[0].BlendEnable = blend_enabled;
