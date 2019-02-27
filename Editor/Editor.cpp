@@ -323,5 +323,6 @@ void Editor::ApplyStyle() const
 	//style.Colors[ImGuiCol_ModalWindowDarkening]	= ImVec4(0.20f, 0.22f, 0.27f, 0.73f);
 
 	auto& io = ImGui::GetIO();
-	io.Fonts->AddFontFromFileTTF("Standard Assets\\Fonts\\CalibriBold.ttf", font_size);
+	string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Fonts);
+	io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), font_size);
 }

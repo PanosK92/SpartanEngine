@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_D3D11
 //================================
 
-//= INCLUDES ========================
+//= INCLUDES ===========================
 #include "D3D11_Helper.h"
 #include "../RHI_Device.h"
 #include "../RHI_BlendState.h"
@@ -39,7 +39,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Profiling/Profiler.h"
 #include "../../Core/Settings.h"
 #include "../../Math/Rectangle.h"
-//===================================
+#include "../../FileSystem/FileSystem.h"
+//======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -505,18 +506,7 @@ namespace Directus
 	void RHI_Device::EventBegin(const std::string& name)
 	{
 	#ifdef DEBUG
-		const auto s2ws = [](const std::string& s)
-		{
-			const auto slength = static_cast<int>(s.length()) + 1;
-			const auto len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, nullptr, 0);
-			const auto buf = new wchar_t[len];
-			MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
-			std::wstring r(buf);
-			delete[] buf;
-			return r;
-		};
-
-		D3D11Instance::annotation->BeginEvent(s2ws(name).c_str());
+		D3D11Instance::annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
 	#endif
 	}
 

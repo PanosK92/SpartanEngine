@@ -46,12 +46,12 @@ namespace Directus
 		
 	}
 
-	bool RHI_Shader::API_CompileVertex(const string& shader, const unsigned long input_layout)
+	bool RHI_Shader::Compile_Vertex(const string& shader, const unsigned long input_layout)
 	{
 		return false;
 	}
 
-	bool RHI_Shader::API_CompilePixel(const string& shader)
+	bool RHI_Shader::Compile_Pixel(const string& shader)
 	{
 		return false;
 	}

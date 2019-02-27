@@ -284,7 +284,8 @@ namespace Directus
 
 		// Create and compile shader
 		auto shader = make_shared<ShaderVariation>(m_rhi_device, m_context);
-		shader->Compile(m_context->GetSubsystem<ResourceCache>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shader_flags);
+		const auto dir_shaders = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders);
+		shader->Compile(dir_shaders + "GBuffer.hlsl", shader_flags);
 
 		return shader;
 	}

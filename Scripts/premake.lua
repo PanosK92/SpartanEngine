@@ -61,6 +61,7 @@ ENGINE_DIR				= "../" .. ENGINE_NAME
 		}
 
 -- Includes
+	includedirs { "../ThirdParty/DirectXShaderCompiler" }
 	includedirs { "../ThirdParty/Vulkan_1.1.97.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
@@ -83,6 +84,8 @@ ENGINE_DIR				= "../" .. ENGINE_NAME
 		defines { "DEBUG" }	
 		staticruntime "On"
 		flags { "MultiProcessorCompile" }
+		links { "dxclib.lib" }
+		links { "dxcompiler.lib" }
 		links { "angelscript_debug" }
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
@@ -102,6 +105,8 @@ ENGINE_DIR				= "../" .. ENGINE_NAME
 		optimize "Full"
 		staticruntime "On"
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
+		links { "dxclib.lib" }
+		links { "dxcompiler.lib" }
 		links { "angelscript" }
 		links { "assimp" }
 		links { "fmod64_vc" }

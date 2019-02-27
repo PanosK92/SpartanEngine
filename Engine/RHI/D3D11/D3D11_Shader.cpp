@@ -61,7 +61,7 @@ namespace Directus
 			{
 				result = D3DCompileFromFile
 				(
-					FileSystem::StringToWString(shader).c_str(),
+					FileSystem::StringToWstring(shader).c_str(),
 					macros,
 					D3D_COMPILE_STANDARD_FILE_INCLUDE,
 					entry_point,
@@ -131,6 +131,7 @@ namespace Directus
 				LOG_ERROR("Invalid device.");
 				return false;
 			}
+
 			// Compile shader
 			if (!compile_shader(path, macros, entry_point, shader_model, vs_blob))
 				return false;
@@ -169,24 +170,18 @@ namespace Directus
 			return true;
 		}
 
-		inline vector<D3D_SHADER_MACRO> get_d3d_macros(const map<string, string>& macros)
+		inline vector<D3D_SHADER_MACRO> get_d3d_macros(const map<string, string>& defines)
 		{
-			vector<D3D_SHADER_MACRO> d3_d_macros;	
-			for (const auto& macro : macros)
+			vector<D3D_SHADER_MACRO> d3d_defines;	
+			for (const auto& define : defines)
 			{
-				D3D_SHADER_MACRO d3_d_macro;
-				d3_d_macro.Name			= macro.first.c_str();
-				d3_d_macro.Definition	= macro.second.c_str();
-				d3_d_macros.emplace_back(d3_d_macro);
+				D3D_SHADER_MACRO d3d_define;
+				d3d_define.Name			= define.first.c_str();
+				d3d_define.Definition	= define.second.c_str();
+				d3d_defines.emplace_back(d3d_define);
 			}
-			return d3_d_macros;
+			return d3d_defines;
 		}
-	}
-
-	RHI_Shader::RHI_Shader(const shared_ptr<RHI_Device> rhi_device)
-	{
-		m_rhi_device		= rhi_device;
-		m_input_layout	= make_shared<RHI_InputLayout>(m_rhi_device);
 	}
 
 	RHI_Shader::~RHI_Shader()
@@ -195,17 +190,17 @@ namespace Directus
 		safe_release(static_cast<ID3D11PixelShader*>(m_pixel_shader));
 	}
 
-	bool RHI_Shader::API_CompileVertex(const string& shader, const unsigned long input_layout)
+	bool RHI_Shader::Compile_Vertex(const string& shader, const unsigned long input_layout)
 	{
 		if (FileSystem::IsSupportedShaderFile(shader))
 		{
 			m_file_path = shader;
 		}
 
-		auto vs_macros = D3D11_Shader::get_d3d_macros(m_macros);
-		vs_macros.push_back(D3D_SHADER_MACRO{ "COMPILE_VS", "1" });
-		vs_macros.push_back(D3D_SHADER_MACRO{ "COMPILE_PS", "0" });
-		vs_macros.push_back(D3D_SHADER_MACRO{ nullptr, nullptr });
+		auto vs_defines = D3D11_Shader::get_d3d_macros(m_defines);
+		vs_defines.push_back(D3D_SHADER_MACRO{ "COMPILE_VS", "1" });
+		vs_defines.push_back(D3D_SHADER_MACRO{ "COMPILE_PS", "0" });
+		vs_defines.push_back(D3D_SHADER_MACRO{ nullptr, nullptr });
 
 		ID3D10Blob* blob_vs		= nullptr;
 		const auto shader_ptr	= reinterpret_cast<ID3D11VertexShader**>(&m_vertex_shader);
@@ -216,9 +211,9 @@ namespace Directus
 			&blob_vs,
 			shader_ptr,
 			shader,
-			VERTEX_SHADER_ENTRYPOINT,
-			VERTEX_SHADER_MODEL,
-			&vs_macros.front()))
+			_RHI_Shader::entry_point_vertex.c_str(),
+			("vs_" + _RHI_Shader::shader_model).c_str(),
+			&vs_defines.front()))
 		{
 			// Create input layout
 			if (!m_input_layout->Create(blob_vs, input_layout))
@@ -227,24 +222,19 @@ namespace Directus
 			}
 
 			safe_release(blob_vs);
-			m_hasVertexShader	= true;
+			return true;
 		}
-		else
-		{
-			m_hasVertexShader	= false;
-		}
-
-		return m_hasVertexShader;
+		return false;
 	}
 
-	bool RHI_Shader::API_CompilePixel(const string& shader)
+	bool RHI_Shader::Compile_Pixel(const string& shader)
 	{
 		if (FileSystem::IsSupportedShaderFile(shader))
 		{
 			m_file_path = shader;
 		}
 
-		auto ps_macros = D3D11_Shader::get_d3d_macros(m_macros);
+		auto ps_macros = D3D11_Shader::get_d3d_macros(m_defines);
 		ps_macros.push_back(D3D_SHADER_MACRO{ "COMPILE_VS", "0" });
 		ps_macros.push_back(D3D_SHADER_MACRO{ "COMPILE_PS", "1" });
 		ps_macros.push_back(D3D_SHADER_MACRO{ nullptr, nullptr });
@@ -257,20 +247,15 @@ namespace Directus
 			&blob_ps,
 			shader_ptr,
 			shader,
-			PIXEL_SHADER_ENTRYPOINT,
-			PIXEL_SHADER_MODEL,
+			_RHI_Shader::entry_point_pixel.c_str(),
+			("ps_" + _RHI_Shader::shader_model).c_str(),
 			&ps_macros.front()
 		))
 		{
 			safe_release(blob_ps);
-			m_hasPixelShader = true;
+			return true;
 		}
-		else
-		{
-			m_hasPixelShader = false;
-		}
-
-		return m_hasPixelShader;
+		return false;
 	}
 }
 #endif

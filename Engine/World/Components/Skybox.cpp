@@ -49,22 +49,22 @@ namespace Directus
 		m_matSkybox->SetShadingMode(Material::Shading_Sky);
 		
 		// Texture paths
-		auto cubemapDirectory = GetContext()->GetSubsystem<ResourceCache>()->GetStandardResourceDirectory(Resource_Cubemap);
+		auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Cubemaps);
 		if (m_skyboxType == Skybox_Array)
 		{
 			m_texturePaths =
 			{
-				cubemapDirectory + "array/X+.tga",	// right
-				cubemapDirectory + "array/X-.tga",	// left
-				cubemapDirectory + "array/Y+.tga",	// up
-				cubemapDirectory + "array/Y-.tga",	// down
-				cubemapDirectory + "array/Z-.tga",	// back
-				cubemapDirectory + "array/Z+.tga"	// front
+				dir_cubemaps + "array/X+.tga",	// right
+				dir_cubemaps + "array/X-.tga",	// left
+				dir_cubemaps + "array/Y+.tga",	// up
+				dir_cubemaps + "array/Y-.tga",	// down
+				dir_cubemaps + "array/Z-.tga",	// back
+				dir_cubemaps + "array/Z+.tga"	// front
 			};
 		}
 		else if (m_skyboxType == Skybox_Sphere)
 		{
-			m_texturePaths = { cubemapDirectory + "sphere/syferfontein_0d_clear_4k.hdr" };
+			m_texturePaths = { dir_cubemaps + "sphere/syferfontein_0d_clear_4k.hdr" };
 		}
 	}
 

@@ -34,16 +34,18 @@ namespace Directus
 {
 	ResourceCache::ResourceCache(Context* context) : ISubsystem(context)
 	{
-		// Add engine standard resource directories
-		AddStandardResourceDirectory(Resource_Texture,	"Standard Assets//Textures//");
-		AddStandardResourceDirectory(Resource_Font,		"Standard Assets//Fonts//");
-		AddStandardResourceDirectory(Resource_Shader,	"Standard Assets//Shaders//");
-		AddStandardResourceDirectory(Resource_Cubemap,	"Standard Assets//Cubemaps//");
-		AddStandardResourceDirectory(Resource_Script,	"Standard Assets//Scripts//");
-		AddStandardResourceDirectory(Resource_Model,	"Standard Assets//Models//");
-		AddStandardResourceDirectory(Resource_Material, "Standard Assets//Materials//");
+		string data_dir = GetDataDirectory();
 
-		// Add project directory
+		// Add engine standard resource directories
+		AddDataDirectory(Asset_Cubemaps,		data_dir + "cubemaps//");
+		AddDataDirectory(Asset_Fonts,			data_dir + "fonts//");
+		AddDataDirectory(Asset_Icons,			data_dir + "icons//");
+		AddDataDirectory(Asset_Scripts,			data_dir + "scripts//");
+		AddDataDirectory(Asset_ShaderCompiler,	data_dir + "shader_compiler//");	
+		AddDataDirectory(Asset_Shaders,			data_dir + "shaders//");
+		AddDataDirectory(Asset_Textures,		data_dir + "textures//");
+
+		// Create project directory
 		SetProjectDirectory("Project//");
 
 		// Subscribe to events
@@ -60,9 +62,9 @@ namespace Directus
 	bool ResourceCache::Initialize()
 	{
 		// Importers
-		m_importer_image = make_shared<ImageImporter>(m_context);
-		m_importer_model = make_shared<ModelImporter>(m_context);
-		m_importer_font	= make_shared<FontImporter>(m_context);
+		m_importer_image	= make_shared<ImageImporter>(m_context);
+		m_importer_model	= make_shared<ModelImporter>(m_context);
+		m_importer_font		= make_shared<FontImporter>(m_context);
 		return true;
 	}
 
@@ -171,12 +173,12 @@ namespace Directus
 		return static_cast<unsigned int>(GetByType(type).size());
 	}
 
-	void ResourceCache::AddStandardResourceDirectory(const Resource_Type type, const string& directory)
+	void ResourceCache::AddDataDirectory(const Asset_Type type, const string& directory)
 	{
 		m_standard_resource_directories[type] = directory;
 	}
 
-	const string& ResourceCache::GetStandardResourceDirectory(const Resource_Type type)
+	const string& ResourceCache::GetDataDirectory(const Asset_Type type)
 	{
 		for (auto& directory : m_standard_resource_directories)
 		{
