@@ -41,8 +41,7 @@ namespace Directus
 		Resource_Cubemap,	
 		Resource_Animation,
 		Resource_Font,
-		Resource_Shader, // not an actual resource, just a memory resource, enum is here just so we can get a standard path
-		Resource_Script	 // not an actual resource, just a memory resource, enum is here just so we can get a standard path
+		Resource_Shader
 	};
 
 	enum LoadState
@@ -59,7 +58,7 @@ namespace Directus
 		IResource(Context* context, Resource_Type type);
 		virtual ~IResource() = default;
 
-		//= PROPERTIES =======================================================================================================================
+		//= PROPERTIES =========================================================================================================================
 		unsigned int ResourceGetId() const						{ return m_resource_id; }
 		Resource_Type GetResourceType() const					{ return m_resource_type; }
 		void SetResourceType(Resource_Type type)				{ m_resource_type = type; }
@@ -74,7 +73,7 @@ namespace Directus
 		virtual unsigned int GetMemoryUsage()					{ return static_cast<unsigned int>(sizeof(*this)); }
 		LoadState GetLoadState() const				{ return m_load_state; }
 		void SetLoadState(const LoadState state)	{ m_load_state = state; }
-		//====================================================================================================================================
+		//======================================================================================================================================
 
 		//= IO =================================================================
 		virtual bool SaveToFile(const std::string& file_path)	{ return true; }

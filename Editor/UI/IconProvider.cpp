@@ -44,41 +44,41 @@ IconProvider::~IconProvider()
 void IconProvider::Initialize(Context* context)
 {
 	m_context = context;
+	string data_dir = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory();
 
 	// Load standard some standard icons
-	Thumbnail_Load("Standard Assets\\Icons\\component_componentOptions.png",		Icon_Component_Options);	
-	Thumbnail_Load("Standard Assets\\Icons\\component_audioListener.png",			Icon_Component_AudioListener);
-	Thumbnail_Load("Standard Assets\\Icons\\component_audioSource.png",				Icon_Component_AudioSource);	
-	Thumbnail_Load("Standard Assets\\Icons\\component_camera.png",					Icon_Component_Camera);	
-	Thumbnail_Load("Standard Assets\\Icons\\component_collider.png",				Icon_Component_Collider);	
-	Thumbnail_Load("Standard Assets\\Icons\\component_light.png",					Icon_Component_Light);
-	Thumbnail_Load("Standard Assets\\Icons\\component_material.png",				Icon_Component_Material);
-	Thumbnail_Load("Standard Assets\\Icons\\component_material_removeTexture.png",	Icon_Component_Material_RemoveTexture);
-	Thumbnail_Load("Standard Assets\\Icons\\component_meshCollider.png",			Icon_Component_MeshCollider);	
-	Thumbnail_Load("Standard Assets\\Icons\\component_renderable.png",				Icon_Component_Renderable);	
-	Thumbnail_Load("Standard Assets\\Icons\\component_rigidBody.png",				Icon_Component_RigidBody);
-	Thumbnail_Load("Standard Assets\\Icons\\component_script.png",					Icon_Component_Script);	
-	Thumbnail_Load("Standard Assets\\Icons\\component_transform.png",				Icon_Component_Transform);
-	Thumbnail_Load("Standard Assets\\Icons\\console_info.png",						Icon_Console_Info);	
-	Thumbnail_Load("Standard Assets\\Icons\\console_warning.png",					Icon_Console_Warning);
-	Thumbnail_Load("Standard Assets\\Icons\\console_error.png",						Icon_Console_Error);	
-	Thumbnail_Load("Standard Assets\\Icons\\button_play.png",						Icon_Button_Play);
-	Thumbnail_Load("Standard Assets\\Icons\\profiler.png",							Icon_Profiler);
-	Thumbnail_Load("Standard Assets\\Icons\\file.png",								Thumbnail_File_Default);	
-	Thumbnail_Load("Standard Assets\\Icons\\folder.png",							Thumbnail_Folder);	
-	Thumbnail_Load("Standard Assets\\Icons\\audio.png",								Thumbnail_File_Audio);	
-	Thumbnail_Load("Standard Assets\\Icons\\model.png",								Thumbnail_File_Model);	
-	Thumbnail_Load("Standard Assets\\Icons\\scene.png",								Thumbnail_File_Scene);	
-	Thumbnail_Load("Standard Assets\\Icons\\material.png",							Thumbnail_File_Material);
-	Thumbnail_Load("Standard Assets\\Icons\\shader.png",							Thumbnail_File_Shader);
-	Thumbnail_Load("Standard Assets\\Icons\\xml.png",								Thumbnail_File_Xml);
-	Thumbnail_Load("Standard Assets\\Icons\\dll.png",								Thumbnail_File_Dll);
-	Thumbnail_Load("Standard Assets\\Icons\\txt.png",								Thumbnail_File_Txt);
-	Thumbnail_Load("Standard Assets\\Icons\\ini.png",								Thumbnail_File_Ini);
-	Thumbnail_Load("Standard Assets\\Icons\\exe.png",								Thumbnail_File_Exe);
-	Thumbnail_Load("Standard Assets\\Icons\\script.png",							Thumbnail_File_Script);
-	Thumbnail_Load("Standard Assets\\Icons\\font.png",								Thumbnail_File_Font);
-	
+	Thumbnail_Load(data_dir + "Icons\\component_componentOptions.png",		Icon_Component_Options);	
+	Thumbnail_Load(data_dir + "Icons\\component_audioListener.png",			Icon_Component_AudioListener);
+	Thumbnail_Load(data_dir + "Icons\\component_audioSource.png",			Icon_Component_AudioSource);	
+	Thumbnail_Load(data_dir + "Icons\\component_camera.png",				Icon_Component_Camera);	
+	Thumbnail_Load(data_dir + "Icons\\component_collider.png",				Icon_Component_Collider);	
+	Thumbnail_Load(data_dir + "Icons\\component_light.png",					Icon_Component_Light);
+	Thumbnail_Load(data_dir + "Icons\\component_material.png",				Icon_Component_Material);
+	Thumbnail_Load(data_dir + "Icons\\component_material_removeTexture.png",Icon_Component_Material_RemoveTexture);
+	Thumbnail_Load(data_dir + "Icons\\component_meshCollider.png",			Icon_Component_MeshCollider);	
+	Thumbnail_Load(data_dir + "Icons\\component_renderable.png",			Icon_Component_Renderable);	
+	Thumbnail_Load(data_dir + "Icons\\component_rigidBody.png",				Icon_Component_RigidBody);
+	Thumbnail_Load(data_dir + "Icons\\component_script.png",				Icon_Component_Script);	
+	Thumbnail_Load(data_dir + "Icons\\component_transform.png",				Icon_Component_Transform);
+	Thumbnail_Load(data_dir + "Icons\\console_info.png",					Icon_Console_Info);	
+	Thumbnail_Load(data_dir + "Icons\\console_warning.png",					Icon_Console_Warning);
+	Thumbnail_Load(data_dir + "Icons\\console_error.png",					Icon_Console_Error);	
+	Thumbnail_Load(data_dir + "Icons\\button_play.png",						Icon_Button_Play);
+	Thumbnail_Load(data_dir + "Icons\\profiler.png",						Icon_Profiler);
+	Thumbnail_Load(data_dir + "Icons\\file.png",							Thumbnail_File_Default);	
+	Thumbnail_Load(data_dir + "Icons\\folder.png",							Thumbnail_Folder);	
+	Thumbnail_Load(data_dir + "Icons\\audio.png",							Thumbnail_File_Audio);	
+	Thumbnail_Load(data_dir + "Icons\\model.png",							Thumbnail_File_Model);	
+	Thumbnail_Load(data_dir + "Icons\\scene.png",							Thumbnail_File_Scene);	
+	Thumbnail_Load(data_dir + "Icons\\material.png",						Thumbnail_File_Material);
+	Thumbnail_Load(data_dir + "Icons\\shader.png",							Thumbnail_File_Shader);
+	Thumbnail_Load(data_dir + "Icons\\xml.png",								Thumbnail_File_Xml);
+	Thumbnail_Load(data_dir + "Icons\\dll.png",								Thumbnail_File_Dll);
+	Thumbnail_Load(data_dir + "Icons\\txt.png",								Thumbnail_File_Txt);
+	Thumbnail_Load(data_dir + "Icons\\ini.png",								Thumbnail_File_Ini);
+	Thumbnail_Load(data_dir + "Icons\\exe.png",								Thumbnail_File_Exe);
+	Thumbnail_Load(data_dir + "Icons\\script.png",							Thumbnail_File_Script);
+	Thumbnail_Load(data_dir + "Icons\\font.png",							Thumbnail_File_Font);
 }
 
 void* IconProvider::GetShaderResourceByType(Icon_Type type)

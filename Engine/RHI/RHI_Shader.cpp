@@ -19,11 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ========================
 #include "RHI_Shader.h"
+#include "RHI_InputLayout.h"
 #include "RHI_ConstantBuffer.h"
 #include "../Logging/Log.h"
-//=============================
+#include "../FileSystem/FileSystem.h"
+#include "../Core/Context.h"
+#include "../Threading/Threading.h"
+#include <dxc/Support/WinIncludes.h>
+#include <dxc/dxcapi.h>
+#include <sstream> 
+//===================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -31,9 +38,57 @@ using namespace std;
 
 namespace Directus
 {
-	void RHI_Shader::AddDefine(const std::string& define, const std::string& value /*= "1"*/)
+	RHI_Shader::RHI_Shader(const shared_ptr<RHI_Device> rhi_device)
 	{
-		m_macros[define] = value;
+		m_rhi_device	= rhi_device;
+		m_input_layout	= make_shared<RHI_InputLayout>(rhi_device);
+	}
+
+	void RHI_Shader::Compile(Shader_Type type, const string& shader, const unsigned long input_layout /*= 0*/)
+	{
+		// Compile
+		if (type == Shader_Vertex)
+		{
+			m_compilation_state = Shader_Compiling;
+			m_has_shader_vertex = Compile_Vertex(shader, input_layout);
+			m_compilation_state = m_has_shader_vertex ? Shader_Built : Shader_Failed;
+		}
+		else if (type == Shader_Pixel)
+		{
+			m_compilation_state = Shader_Compiling;
+			m_has_shader_pixel	= Compile_Pixel(shader);
+			m_compilation_state = m_has_shader_pixel ? Shader_Built : Shader_Failed;
+		}
+		else if (type == Shader_VertexPixel)
+		{
+			m_compilation_state = Shader_Compiling;
+			m_has_shader_vertex = Compile_Vertex(shader, input_layout);
+			m_has_shader_pixel	= Compile_Pixel(shader);
+			m_compilation_state = (m_has_shader_vertex && m_has_shader_pixel) ? Shader_Built : Shader_Failed;
+		}
+
+		// Log result
+		if (m_compilation_state == Shader_Built)
+		{
+			LOGF_INFO("Successfully compiled %s", shader.c_str());
+		}
+		else if (m_compilation_state == Shader_Failed)
+		{
+			LOGF_ERROR("Failed to compile %s", shader.c_str());
+		}
+	}
+
+	void RHI_Shader::Compile_Async(Context* context, Shader_Type type, const string& shader, unsigned long input_layout /*= 0*/)
+	{
+		context->GetSubsystem<Threading>()->AddTask([this, type, shader, input_layout]()
+		{
+			Compile(type, shader, input_layout);
+		});
+	}
+
+	void RHI_Shader::AddDefine(const string& define, const string& value /*= "1"*/)
+	{
+		m_defines[define] = value;
 	}
 
 	bool RHI_Shader::UpdateBuffer(void* data) const
@@ -70,131 +125,98 @@ namespace Directus
 		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, size);
 	}
 
-	void RHI_Shader::Compile(const std::string& shader)
+	void* RHI_Shader::CompileDXC(Shader_Type type, const string& shader)
 	{
-		// Invoke the compiler from here.
-		// Have to find a way to capture compilation errors and display them in the editor.
+		// Arguments
+		vector<LPCWSTR> arguments =
+		{
+			FileSystem::StringToWstring("-T " + (type == Shader_Vertex) ? "vs_" + _RHI_Shader::shader_model : "ps_" + _RHI_Shader::shader_model).c_str(),	// shader model
+			FileSystem::StringToWstring("-E " + (type == Shader_Vertex) ? _RHI_Shader::entry_point_vertex : _RHI_Shader::entry_point_pixel).c_str(),		// entry point
+			#ifdef DEBUG
+			L"-Zi"
+			#endif
+		};
 
-		/*
-		OVERVIEW: HLSL Compiler
-		
-		Version: dxcompiler.dll: 1.4(dev;1976-7f7a2f1c)
-		
-		USAGE: dxc.exe [options] <inputs>
-		
-		Common Options:
-		  -help              Display available options
-		  -nologo            Suppress copyright message
-		  -Qunused-arguments Don't emit warning for unused driver arguments
-		
-		Compilation Options:
-		  -all_resources_bound    Enables agressive flattening
-		  -auto-binding-space <value>
-								  Set auto binding space - enables auto resource binding in libraries
-		  -Cc                     Output color coded assembly listings
-		  -default-linkage <value>
-								  Set default linkage for non-shader functions when compiling or linking to a library target (internal, external)
-		  -denorm <value>         select denormal value options (any, preserve, ftz). any is the default.
-		  -D <value>              Define macro
-		  -enable-16bit-types     Enable 16bit types and disable min precision types. Available in HLSL 2018 and shader model 6.2
-		  -export-shaders-only    Only export shaders when compiling a library
-		  -exports <value>        Specify exports when compiling a library: export1[[,export1_clone,...]=internal_name][;...]
-		  -E <value>              Entry point name
-		  -Fc <file>              Output assembly code listing file
-		  -Fd <file>              Write debug information to the given file or directory; trail \ to auto-generate and imply Qstrip_priv
-		  -Fe <file>              Output warnings and errors to the given file
-		  -Fh <file>              Output header file containing object code
-		  -flegacy-macro-expansion
-								  Expand the operands before performing token-pasting operation (fxc behavior)
-		  -flegacy-resource-reservation
-								  Reserve unused explicit register assignments for compatibility with shader model 5.0 and below
-		  -force_rootsig_ver <profile>
-								  force root signature version (rootsig_1_1 if omitted)
-		  -Fo <file>              Output object file
-		  -Gec                    Enable backward compatibility mode
-		  -Ges                    Enable strict mode
-		  -Gfa                    Avoid flow control constructs
-		  -Gfp                    Prefer flow control constructs
-		  -Gis                    Force IEEE strictness
-		  -HV <value>             HLSL version (2016, 2017, 2018). Default is 2018
-		  -H                      Show header includes and nesting depth
-		  -ignore-line-directives Ignore line directives
-		  -I <value>              Add directory to include search path
-		  -Lx                     Output hexadecimal literals
-		  -Ni                     Output instruction numbers in assembly listings
-		  -no-warnings            Suppress warnings
-		  -not_use_legacy_cbuf_load
-								  Do not use legacy cbuffer load
-		  -No                     Output instruction byte offsets in assembly listings
-		  -Odump                  Print the optimizer commands.
-		  -Od                     Disable optimizations
-		  -pack_optimized         Optimize signature packing assuming identical signature provided for each connecting stage
-		  -pack_prefix_stable     (default) Pack signatures preserving prefix-stable property - appended elements will not disturb placement of prior elements
-		  -recompile              recompile from DXIL container with Debug Info or Debug Info bitcode file
-		  -res_may_alias          Assume that UAVs/SRVs may alias
-		  -rootsig-define <value> Read root signature from a #define
-		  -T <profile>            Set target profile.
-				<profile>: ps_6_0, ps_6_1, ps_6_2, ps_6_3, ps_6_4,
-						 vs_6_0, vs_6_1, vs_6_2, vs_6_3, vs_6_4,
-						 cs_6_0, cs_6_1, cs_6_2, cs_6_3, cs_6_4,
-						 gs_6_0, gs_6_1, gs_6_2, gs_6_3, gs_6_4,
-						 ds_6_0, ds_6_1, ds_6_2, ds_6_3, ds_6_4,
-						 hs_6_0, hs_6_1, hs_6_2, hs_6_3, hs_6_4,
-						 lib_6_3, lib_6_4
-		  -Vd                     Disable validation
-		  -Vi                     Display details about the include process.
-		  -Vn <name>              Use <name> as variable name in header file
-		  -WX                     Treat warnings as errors
-		  -Zi                     Enable debug information
-		  -Zpc                    Pack matrices in column-major order
-		  -Zpr                    Pack matrices in row-major order
-		  -Zsb                    Build debug name considering only output binary
-		  -Zss                    Build debug name considering source information
-		
-		Optimization Options:
-		  -O0 Optimization Level 0
-		  -O1 Optimization Level 1
-		  -O2 Optimization Level 2
-		  -O3 Optimization Level 3 (Default)
-		
-		SPIR-V CodeGen Options:
-		  -fspv-debug=<value>     Specify whitelist of debug info category (file -> source -> line, tool)
-		  -fspv-extension=<value> Specify SPIR-V extension permitted to use
-		  -fspv-reflect           Emit additional SPIR-V instructions to aid reflection
-		  -fspv-target-env=<value>
-								  Specify the target environment: vulkan1.0 (default) or vulkan1.1
-		  -fvk-b-shift <shift> <space>
-								  Specify Vulkan binding number shift for b-type register
-		  -fvk-bind-register <type-number> <space> <binding> <set>
-								  Specify Vulkan descriptor set and binding for a specific register
-		  -fvk-invert-y           Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
-		  -fvk-s-shift <shift> <space>
-								  Specify Vulkan binding number shift for s-type register
-		  -fvk-t-shift <shift> <space>
-								  Specify Vulkan binding number shift for t-type register
-		  -fvk-u-shift <shift> <space>
-								  Specify Vulkan binding number shift for u-type register
-		  -fvk-use-dx-layout      Use DirectX memory layout for Vulkan resources
-		  -fvk-use-dx-position-w  Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
-		  -fvk-use-gl-layout      Use strict OpenGL std140/std430 memory layout for Vulkan resources
-		  -fvk-use-scalar-layout  Use scalar memory layout for Vulkan resources
-		  -Oconfig=<value>        Specify a comma-separated list of SPIRV-Tools passes to customize optimization configuration (see http://khr.io/hlsl2spirv#optimization)
-		  -spirv                  Generate SPIR-V code
-		
-		Utility Options:
-		  -dumpbin              Load a binary file rather than compiling
-		  -extractrootsignature Extract root signature from shader bytecode (must be used with /Fo <file>)
-		  -getprivate <file>    Save private data from shader blob
-		  -P <value>            Preprocess to file (must be used alone)
-		  -Qstrip_debug         Strip debug information from 4_0+ shader bytecode  (must be used with /Fo <file>)
-		  -Qstrip_priv          Strip private data from shader bytecode  (must be used with /Fo <file>)
-		  -Qstrip_reflect       Strip reflection data from shader bytecode  (must be used with /Fo <file>)
-		  -Qstrip_rootsignature Strip root signature data from shader bytecode  (must be used with /Fo <file>)
-		  -setprivate <file>    Private data to add to compiled shader blob
-		  -setrootsignature <file>
-								Attach root signature to shader bytecode
-		  -verifyrootsignature <file>
-						Verify shader bytecode with root signature
-		*/
+		// Defines
+		vector<DxcDefine> defines;
+		for (const auto& define : m_defines)
+		{
+			defines.emplace_back(DxcDefine{ FileSystem::StringToWstring(define.first).c_str(), FileSystem::StringToWstring(define.second).c_str() } );
+		}
+		if (type == Shader_Vertex)
+		{
+			defines.emplace_back(DxcDefine{ L"COMPILE_VS", L"1" });
+			defines.emplace_back(DxcDefine{ L"COMPILE_PS", L"0" });
+		}
+		else if(type == Shader_Pixel)
+		{
+			defines.emplace_back(DxcDefine{ L"COMPILE_VS", L"0" });
+			defines.emplace_back(DxcDefine{ L"COMPILE_PS", L"1" });
+		}
+		defines.emplace_back(DxcDefine{ nullptr, nullptr });
+
+		IDxcLibrary* library;
+		IDxcBlobEncoding* source;
+		DxcCreateInstance(CLSID_DxcLibrary, __uuidof(IDxcLibrary), (void**)&library);
+		library->CreateBlobWithEncodingFromPinned(shader.c_str(), (UINT32)shader.size(), CP_UTF8, &source);
+
+		LPCWSTR ppArgs[] = { L"/Zi" }; // debug info
+		IDxcCompiler* compiler;
+		DxcCreateInstance(CLSID_DxcCompiler, __uuidof(IDxcCompiler), (void**)&compiler);
+	
+		// Compile
+		IDxcOperationResult* compilation_result;
+		compiler->Compile(
+			source,						// program text
+			nullptr,					// file name, mostly for error messages
+			nullptr,					// entry point function
+			nullptr,					// target profile
+			arguments.data(),			// compilation arguments
+			(UINT32)arguments.size(),	// number of compilation arguments
+			nullptr, 0,					// name/value defines and their count
+			nullptr,					// handler for #include directives
+			&compilation_result
+		);
+
+		// Get compilation status
+		HRESULT compilation_status;
+		compilation_result->GetStatus(&compilation_status);
+		void* blob_out = nullptr;
+
+		// Check compilation status
+		if (SUCCEEDED(compilation_status)) 
+		{
+			IDxcBlob* result_buffer;
+			compilation_result->GetResult(&result_buffer);
+			blob_out = static_cast<void*>(result_buffer);
+		}
+		else // Failure
+		{
+			// Get error buffer
+			IDxcBlobEncoding* error_buffer = nullptr;
+			compilation_result->GetErrorBuffer(&error_buffer);
+
+			// Get error buffer in preferred encoding
+			IDxcBlobEncoding* error_buffer_16 = nullptr;
+			library->GetBlobAsUtf16(error_buffer, &error_buffer_16);
+
+			// Log warnings and errors
+			if (error_buffer_16)
+			{
+				stringstream ss(static_cast<char*>(error_buffer_16->GetBufferPointer()));
+				string line;
+				while (getline(ss, line, '\n'))
+				{
+					const auto is_error = line.find("error") != string::npos;
+					if (is_error) LOG_ERROR(line) else LOG_WARNING(line);
+				}
+			}
+
+			safe_release(error_buffer);
+			safe_release(error_buffer_16);
+		}
+		safe_release(compilation_result);
+
+		return blob_out;
 	}
 }

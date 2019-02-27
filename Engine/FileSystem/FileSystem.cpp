@@ -235,7 +235,7 @@ namespace Directus
 
 	void FileSystem::OpenDirectoryWindow(const std::string& directory)
 	{
-		ShellExecute(nullptr, nullptr, StringToWString(directory).c_str(), nullptr, nullptr, SW_SHOW);
+		ShellExecute(nullptr, nullptr, StringToWstring(directory).c_str(), nullptr, nullptr, SW_SHOW);
 	}
 
 	bool FileSystem::FileExists(const string& filePath)
@@ -723,13 +723,13 @@ namespace Directus
 		return regex_replace(str, regex(from), to);
 	}
 
-	wstring FileSystem::StringToWString(const string& str)
+	wstring FileSystem::StringToWstring(const string& str)
 	{
-		auto slength	= int(str.length()) + 1;
-		auto len		= MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
-		auto buf		= new wchar_t[len];
+		const auto slength =	 static_cast<int>(str.length()) + 1;
+		const auto len		= MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
+		const auto buf		= new wchar_t[len];
 		MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
-		wstring result(buf);
+		std::wstring result(buf);
 		delete[] buf;
 		return result;
 	}

@@ -50,7 +50,7 @@ General         | Profiling  								| CPU & GPU.
 Scripting       | C/C++                                     | Using AngelScript.
 Platform        | Windows 10                                | -
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview4.jpg)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/screenshot-v0.3_preview4.jpg)
 
 #### v0.31 (WIP)
 Feature     | Completion    | Notes 

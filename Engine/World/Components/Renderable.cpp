@@ -241,8 +241,8 @@ namespace Directus
 	{
 		m_materialDefault = true;
 
-		auto projectStandardAssetDir = GetContext()->GetSubsystem<ResourceCache>()->GetProjectStandardAssetsDirectory();
-		FileSystem::CreateDirectory_(projectStandardAssetDir);
+		auto data_dir = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory();
+		FileSystem::CreateDirectory_(data_dir);
 		auto materialStandard = make_shared<Material>(GetContext());
 		materialStandard->SetResourceName("Standard");
 		materialStandard->SetCullMode(Cull_Back);

@@ -390,15 +390,15 @@ namespace Directus
 	}
 	shared_ptr<Entity> World::CreateCamera()
 	{
-		auto resource_mng			= m_context->GetSubsystem<ResourceCache>();
-		const auto script_directory	= resource_mng->GetStandardResourceDirectory(Resource_Script);
+		auto resource_mng		= m_context->GetSubsystem<ResourceCache>();
+		const auto dir_scripts	= resource_mng->GetDataDirectory(Asset_Scripts);
 
 		auto entity = EntityCreate();
 		entity->SetName("Camera");
 		entity->AddComponent<Camera>();
 		entity->AddComponent<AudioListener>();
-		entity->AddComponent<Script>()->SetScript(script_directory + "MouseLook.as");
-		entity->AddComponent<Script>()->SetScript(script_directory + "FirstPersonController.as");
+		entity->AddComponent<Script>()->SetScript(dir_scripts + "MouseLook.as");
+		entity->AddComponent<Script>()->SetScript(dir_scripts + "FirstPersonController.as");
 		entity->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
 		return entity;

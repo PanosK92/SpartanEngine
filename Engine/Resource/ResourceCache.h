@@ -36,6 +36,17 @@ namespace Directus
 {
 	#define VALIDATE_RESOURCE_TYPE(T) static_assert(std::is_base_of<IResource, T>::value, "Provided type does not implement IResource")
 
+	enum Asset_Type
+	{
+		Asset_Cubemaps,
+		Asset_Fonts,
+		Asset_Icons,
+		Asset_Scripts,
+		Asset_ShaderCompiler,
+		Asset_Shaders,
+		Asset_Textures
+	};
+
 	class ENGINE_CLASS ResourceCache : public ISubsystem
 	{
 	public:
@@ -154,14 +165,14 @@ namespace Directus
 		unsigned int GetResourceCountByType(Resource_Type type);
 		//=================================================================
 
-		//= DIRECTORIES ============================================================================================
-		void AddStandardResourceDirectory(Resource_Type type, const std::string& directory);
-		const std::string& GetStandardResourceDirectory(Resource_Type type);
+		//= DIRECTORIES ===============================================================
+		void AddDataDirectory(Asset_Type type, const std::string& directory);
+		const std::string& GetDataDirectory(Asset_Type type);
 		void SetProjectDirectory(const std::string& directory);
 		std::string GetProjectDirectoryAbsolute() const;
-		const std::string& GetProjectDirectory() const			{ return m_project_directory; }	
-		std::string GetProjectStandardAssetsDirectory() const	{ return m_project_directory + "Standard_Assets//"; }
-		//==========================================================================================================
+		const std::string& GetProjectDirectory() const	{ return m_project_directory; }
+		std::string GetDataDirectory() const			{ return "Data//"; }
+		//=============================================================================
 
 		// Importers
 		ModelImporter* GetModelImporter() const { return m_importer_model.get(); }
@@ -174,7 +185,7 @@ namespace Directus
 		std::mutex m_mutex;
 
 		// Directories
-		std::map<Resource_Type, std::string> m_standard_resource_directories;
+		std::map<Asset_Type, std::string> m_standard_resource_directories;
 		std::string m_project_directory;
 
 		// Importers
