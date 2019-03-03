@@ -21,20 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Renderer.h"
+#include "Material.h"
+#include "Model.h"
+#include "ShaderBuffered.h"
 #include "Deferred/GBuffer.h"
 #include "Deferred/ShaderVariation.h"
-#include "Deferred/LightShader.h"
+#include "Deferred/ShaderLight.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
+#include "../Resource/IResource.h"
 #include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_CommonBuffers.h"
 #include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_RenderTexture.h"
+#include "../RHI/RHI_Texture.h"
 #include "../World/Entity.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Skybox.h"
+#include "../World/Components/Light.h"
+#include "../World/Components/Camera.h"
 //=========================================
 
 //= NAMESPACES ================
@@ -93,8 +100,8 @@ namespace Directus
 					continue;
 
 				// Acquire geometry
-				auto geometry = renderable->GeometryModel();
-				if (!geometry || !geometry->GetVertexBuffer() || !geometry->GetIndexBuffer())
+				auto model = renderable->GeometryModel();
+				if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
 					continue;
 
 				// Skip meshes that don't cast shadows
@@ -106,11 +113,11 @@ namespace Directus
 					continue;
 
 				// Bind geometry
-				if (currently_bound_geometry != geometry->ResourceGetId())
+				if (currently_bound_geometry != model->ResourceGetId())
 				{
-					m_rhi_pipeline->SetIndexBuffer(geometry->GetIndexBuffer());
-					m_rhi_pipeline->SetVertexBuffer(geometry->GetVertexBuffer());
-					currently_bound_geometry = geometry->ResourceGetId();
+					m_rhi_pipeline->SetIndexBuffer(model->GetIndexBuffer());
+					m_rhi_pipeline->SetVertexBuffer(model->GetVertexBuffer());
+					currently_bound_geometry = model->ResourceGetId();
 				}
 
 				SetDefaultBuffer(
@@ -224,7 +231,7 @@ namespace Directus
 
 			// UPDATE PER OBJECT BUFFER
 			shader->UpdatePerObjectBuffer(entity->GetTransform_PtrRaw(), material, m_view, m_projection);
-			m_rhi_pipeline->SetConstantBuffer(shader->GetPerObjectBuffer(), 1, Buffer_Global);
+			m_rhi_pipeline->SetConstantBuffer(shader->GetConstantBuffer(), 1, Buffer_Global);
 
 			// Render	
 			m_rhi_pipeline->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
@@ -1010,8 +1017,8 @@ namespace Directus
 					else if (type == LightType_Spot)	light_tex = m_gizmo_tex_light_spot;
 
 					// Construct appropriate rectangle
-					auto tex_width = light_tex->GetWidth()	* scale;
-					auto tex_height = light_tex->GetHeight()	* scale;
+					auto tex_width = light_tex->GetWidth() * scale;
+					auto tex_height = light_tex->GetHeight() * scale;
 					auto rectangle = Rectangle(position_light_screen.x - tex_width * 0.5f, position_light_screen.y - tex_height * 0.5f, tex_width, tex_height);
 					if (rectangle != m_gizmo_light_rect)
 					{

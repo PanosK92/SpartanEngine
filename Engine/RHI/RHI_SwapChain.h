@@ -51,8 +51,10 @@ namespace Directus
 		bool SetAsRenderTarget() const;
 		bool Present(RHI_Present_Mode mode) const;
 		bool Clear(const Math::Vector4& color) const;
+		bool IsInitialized() { return m_initialized; }
 
 	private:
+		bool m_initialized			= false;
 		void* m_swap_chain			= nullptr;
 		void* m_render_target_view	= nullptr;
 		unsigned long m_flags		= 0;

@@ -126,9 +126,12 @@ namespace Directus
 			if (FAILED(result))
 			{
 				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
+				return;
 			}
 			m_render_target_view = static_cast<void*>(render_target_view);
 		}
+
+		m_initialized = true;
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()

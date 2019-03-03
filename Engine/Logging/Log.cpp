@@ -40,7 +40,7 @@ namespace Directus
 	mutex Log::m_mutex;
 	string Log::m_caller_name;
 	string Log::m_log_file_name	= "log.txt";
-	bool Log::m_log_to_file		= false;
+	bool Log::m_log_to_file		= true; // start logging to file (unless changed by the user, e.g. Renderer initialization was succesfull, so logging can happen on screen)
 	bool Log::m_first_log		= true;
 
 	void Log::SetLogger(const weak_ptr<ILogger>& logger)

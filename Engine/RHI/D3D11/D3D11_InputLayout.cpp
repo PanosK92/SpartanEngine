@@ -46,9 +46,9 @@ namespace Directus
 		safe_release(static_cast<ID3D11InputLayout*>(m_buffer));
 	}
 
-	bool RHI_InputLayout::Create(void* vsBlob, const unsigned long input_layout)
+	bool RHI_InputLayout::Create(void* vertex_shader_blob, const unsigned long input_layout)
 	{
-		if (!vsBlob)
+		if (!vertex_shader_blob)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
@@ -88,13 +88,13 @@ namespace Directus
 			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		auto buffer = static_cast<ID3D10Blob*>(vsBlob);
+		auto d3d_blob = static_cast<ID3D10Blob*>(vertex_shader_blob);
 		if (FAILED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateInputLayout
 		(
 			layout_descs.data(),
-			static_cast<unsigned int>(layout_descs.size()),
-			buffer->GetBufferPointer(),
-			buffer->GetBufferSize(),
+			static_cast<UINT>(layout_descs.size()),
+			d3d_blob->GetBufferPointer(),
+			d3d_blob->GetBufferSize(),
 			reinterpret_cast<ID3D11InputLayout**>(&m_buffer)
 		)))
 		{

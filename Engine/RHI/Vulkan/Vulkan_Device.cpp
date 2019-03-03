@@ -51,8 +51,6 @@ namespace Directus
 
 	RHI_Device::RHI_Device()
 	{
-		Directus::Log::m_log_to_file = true;
-
 		// Validation layer
 		auto validation_layer_available = false;
 		if (VulkanHelper::validation_layer_enabled)

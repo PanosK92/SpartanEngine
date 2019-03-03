@@ -49,7 +49,7 @@ namespace Directus
 		m_uv_tiling				= Vector2(1.0f, 1.0f);
 		m_uv_offset				= Vector2(0.0f, 0.0f);
 		m_is_editable			= true;
-		m_rhi_device				= context->GetSubsystem<Renderer>()->GetRhiDevice();
+		m_rhi_device			= context->GetSubsystem<Renderer>()->GetRhiDevice();
 
 		AcquireShader();
 	}
