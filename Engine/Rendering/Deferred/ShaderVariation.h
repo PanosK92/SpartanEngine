@@ -54,19 +54,19 @@ namespace Directus
 		~ShaderVariation() = default;
 
 		void Compile(const std::string& file_path, unsigned long shader_flags);
+
 		void UpdatePerObjectBuffer(Transform* transform, Material* material, const Math::Matrix& m_view, const Math::Matrix& mProjection);
+		const auto& GetConstantBuffer() { return m_constant_buffer; }
 
-		unsigned long GetShaderFlags() const	{ return m_variationFlags; }
-		bool HasAlbedoTexture() const			{ return m_variationFlags & Variation_Albedo; }
-		bool HasRoughnessTexture() const		{ return m_variationFlags & Variation_Roughness; }
-		bool HasMetallicTexture() const			{ return m_variationFlags & Variation_Metallic; }
-		bool HasNormalTexture() const			{ return m_variationFlags & Variation_Normal; }
-		bool HasHeightTexture() const			{ return m_variationFlags & Variation_Height; }
-		bool HasOcclusionTexture() const		{ return m_variationFlags & Variation_Occlusion; }
-		bool HasEmissionTexture() const			{ return m_variationFlags & Variation_Emission; }
-		bool HasMaskTexture() const				{ return m_variationFlags & Variation_Mask; }
-
-		std::shared_ptr<RHI_ConstantBuffer>& GetPerObjectBuffer()	{ return m_constant_buffer; }
+		unsigned long GetShaderFlags() const	{ return m_flags; }
+		bool HasAlbedoTexture() const			{ return m_flags & Variation_Albedo; }
+		bool HasRoughnessTexture() const		{ return m_flags & Variation_Roughness; }
+		bool HasMetallicTexture() const			{ return m_flags & Variation_Metallic; }
+		bool HasNormalTexture() const			{ return m_flags & Variation_Normal; }
+		bool HasHeightTexture() const			{ return m_flags & Variation_Height; }
+		bool HasOcclusionTexture() const		{ return m_flags & Variation_Occlusion; }
+		bool HasEmissionTexture() const			{ return m_flags & Variation_Emission; }
+		bool HasMaskTexture() const				{ return m_flags & Variation_Mask; }
 
 		// Variation cache
 		static std::shared_ptr<ShaderVariation> GetMatchingShader(unsigned long flags);
@@ -75,9 +75,8 @@ namespace Directus
 		void AddDefinesBasedOnMaterial();
 		
 		Context* m_context;
-		unsigned long m_variationFlags;
-
-		// Variation cache
+		unsigned long m_flags;
+		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer;
 		static std::vector<std::shared_ptr<ShaderVariation>> m_variations;
 		
 		// BUFFER
@@ -97,6 +96,5 @@ namespace Directus
 			Math::Matrix mvp_previous;
 		};
 		PerObjectBufferType per_object_buffer_cpu;
-		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer;
 	};
 }

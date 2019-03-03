@@ -41,12 +41,13 @@ namespace Directus
 	class Skybox;
 	class Light;
 	class GBuffer;
-	class LightShader;
 	class ResourceCache;
 	class Font;
 	class Variant;
 	class Grid;
 	class Transform_Gizmo;
+	class ShaderLight;
+	class ShaderBuffered;
 	namespace Math
 	{
 		class BoundingBox;
@@ -247,14 +248,14 @@ namespace Directus
 		
 		//= SHADERS =============================================
 		std::shared_ptr<RHI_Shader> m_vs_gbuffer;
-		std::shared_ptr<LightShader> m_vps_light;
+		std::shared_ptr<ShaderLight> m_vps_light;		
+		std::shared_ptr<ShaderBuffered> m_vps_color;
+		std::shared_ptr<ShaderBuffered> m_vps_font;
+		std::shared_ptr<ShaderBuffered> m_vps_shadow_mapping;
+		std::shared_ptr<ShaderBuffered> m_vps_ssao;
+		std::shared_ptr<ShaderBuffered> m_vps_gizmo_transform;
+		std::shared_ptr<ShaderBuffered> m_vps_transparent;
 		std::shared_ptr<RHI_Shader> m_vps_depth;
-		std::shared_ptr<RHI_Shader> m_vps_color;
-		std::shared_ptr<RHI_Shader> m_vps_font;
-		std::shared_ptr<RHI_Shader> m_vps_shadow_mapping;
-		std::shared_ptr<RHI_Shader> m_vps_ssao;
-		std::shared_ptr<RHI_Shader> m_vps_gizmo_transform;
-		std::shared_ptr<RHI_Shader> m_vps_transparent;
 		std::shared_ptr<RHI_Shader> m_vs_quad;
 		std::shared_ptr<RHI_Shader> m_ps_texture;
 		std::shared_ptr<RHI_Shader> m_ps_fxaa;

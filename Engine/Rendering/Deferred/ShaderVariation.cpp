@@ -52,17 +52,17 @@ namespace Directus
 
 	ShaderVariation::ShaderVariation(const shared_ptr<RHI_Device>& rhi_device, Context* context) : RHI_Shader(rhi_device)
 	{
-		m_context			= context;
-		m_variationFlags	= 0;
+		m_context	= context;
+		m_flags		= 0;
 	}
 
 	void ShaderVariation::Compile(const string& file_path, const unsigned long shader_flags)
 	{
-		m_variationFlags = shader_flags;
+		m_flags = shader_flags;
 
 		// Load and compile the pixel shader
 		AddDefinesBasedOnMaterial();
-		Compile_Async(m_context, Shader_Pixel, file_path);
+		CompileAsync(m_context, Shader_Pixel, file_path);
 
 		// Object Buffer (has to match GBuffer.hlsl)
 		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(PerObjectBufferType)));

@@ -21,15 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Renderer.h"
+#include "ShaderBuffered.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
-#include "Deferred/LightShader.h"
+#include "Deferred/ShaderLight.h"
 #include "Deferred/GBuffer.h"
 #include "Utilities/Sampling.h"
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
+#include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_CommonBuffers.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_ConstantBuffer.h"
@@ -37,10 +38,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_BlendState.h"
 #include "../RHI/RHI_SwapChain.h"
+#include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_RenderTexture.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Skybox.h"
+#include "../World/Components/Camera.h"
 #include <algorithm>
 //=========================================
 
@@ -79,13 +83,22 @@ namespace Directus
 		
 		// Create RHI device
 		m_rhi_device = make_shared<RHI_Device>();
-		if (m_rhi_device->IsInitialized())
+		if (!m_rhi_device->IsInitialized())
 		{
-			// Detect primary adapter, create pipeline and swap-chain
-			auto back_buffer_format	= Format_R8G8B8A8_UNORM;
-			m_rhi_device->DetectPrimaryAdapter(back_buffer_format);
-			m_rhi_pipeline	= make_shared<RHI_Pipeline>(m_context, m_rhi_device);
-			m_swap_chain	= make_unique<RHI_SwapChain>
+			LOG_ERROR("Failed to create device");
+			return;
+		}
+
+		// Detect primary adapter
+		auto back_buffer_format	= Format_R8G8B8A8_UNORM;
+		m_rhi_device->DetectPrimaryAdapter(back_buffer_format);
+
+		// Create pipeline
+		m_rhi_pipeline = make_shared<RHI_Pipeline>(m_context, m_rhi_device);
+
+		// Create swap chain
+		{
+			m_swap_chain = make_unique<RHI_SwapChain>
 			(
 				Settings::Get().GetWindowHandle(),
 				m_rhi_device,
@@ -96,12 +109,16 @@ namespace Directus
 				SwapChain_Allow_Tearing | SwapChain_Allow_Mode_Switch,
 				2
 			);
+
+			if (!m_swap_chain->IsInitialized())
+			{
+				LOG_ERROR("Failed to create swap chain");
+				return;
+			}
 		}
-		else
-		{
-			LOG_TO_FILE(true); // if we can't render, we switch to file output
-			LOG_ERROR("Failed to create RHI_Device");
-		}
+
+		// Log on-screen as the renderer is ready
+		LOG_TO_FILE(false);
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -114,13 +131,16 @@ namespace Directus
 
 		m_entities.clear();
 		m_camera = nullptr;
+
+		// Log to file as the renderer is no more
+		LOG_TO_FILE(true);
 	}
 
 	bool Renderer::Initialize()
 	{
 		// Create/Get required systems		
 		g_resource_cache	= m_context->GetSubsystem<ResourceCache>().get();
-		m_profiler		= m_context->GetSubsystem<Profiler>().get();
+		m_profiler			= m_context->GetSubsystem<Profiler>().get();
 
 		// Editor specific
 		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
@@ -153,12 +173,12 @@ namespace Directus
 
 	void Renderer::CreateRasterizerStates()
 	{
-		m_rasterizer_cull_back_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,	Fill_Solid,		true, false, false, false);
+		m_rasterizer_cull_back_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,	Fill_Solid,			true, false, false, false);
 		m_rasterizer_cull_front_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front, Fill_Solid,		true, false, false, false);
-		m_rasterizer_cull_none_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,	Fill_Solid,		true, false, false, false);
-		m_rasterizer_cull_back_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,	Fill_Wireframe, true, false, false, true);
-		m_rasterizer_cull_front_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front, Fill_Wireframe, true, false, false, true);
-		m_rasterizer_cull_none_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,	Fill_Wireframe,	true, false, false, true);
+		m_rasterizer_cull_none_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,	Fill_Solid,			true, false, false, false);
+		m_rasterizer_cull_back_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,	Fill_Wireframe,		true, false, false, true);
+		m_rasterizer_cull_front_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front, Fill_Wireframe,	true, false, false, true);
+		m_rasterizer_cull_none_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,	Fill_Wireframe,		true, false, false, true);
 	}
 
 	void Renderer::CreateBlendStates()
@@ -228,7 +248,7 @@ namespace Directus
 		m_render_tex_full_hdr_light		= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32B32A32_FLOAT);
 		m_render_tex_full_hdr_light2	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32B32A32_FLOAT);
 		m_render_tex_full_taa_current	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
-		m_render_tex_full_taa_history =	 make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_full_taa_history	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
 
 		// Half res
 		m_render_tex_half_shadows	= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
@@ -245,47 +265,47 @@ namespace Directus
 		// Get standard shader directory
 		const auto dir_shaders = g_resource_cache->GetDataDirectory(Asset_Shaders);
 
-		// G-Buffer
-		m_vs_gbuffer = make_shared<RHI_Shader>(m_rhi_device);
-		m_vs_gbuffer->Compile(Shader_Vertex, dir_shaders + "GBuffer.hlsl", Input_PositionTextureNormalTangent);
-
 		// Light
-		m_vps_light = make_shared<LightShader>(m_rhi_device);
+		m_vps_light = make_shared<ShaderLight>(m_rhi_device);
 		m_vps_light->Compile(Shader_VertexPixel, dir_shaders + "Light.hlsl", Input_PositionTexture);
 
 		// Transparent
-		m_vps_transparent = make_shared<RHI_Shader>(m_rhi_device);
+		m_vps_transparent = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_transparent->Compile(Shader_VertexPixel, dir_shaders + "Transparent.hlsl", Input_PositionTextureNormalTangent);
 		m_vps_transparent->AddBuffer<Struct_Transparency>();
 
-		// Depth
-		m_vps_depth = make_shared<RHI_Shader>(m_rhi_device);
-		m_vps_depth->Compile(Shader_VertexPixel, dir_shaders + "ShadowingDepth.hlsl", Input_Position3D);
-
 		// Font
-		m_vps_font = make_shared<RHI_Shader>(m_rhi_device);
+		m_vps_font = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_font->Compile(Shader_VertexPixel, dir_shaders + "Font.hlsl", Input_PositionTexture);
 		m_vps_font->AddBuffer<Struct_Matrix_Vector4>();
 
 		// Transform gizmo
-		m_vps_gizmo_transform = make_shared<RHI_Shader>(m_rhi_device);
+		m_vps_gizmo_transform = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_gizmo_transform->Compile(Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl", Input_PositionTextureNormalTangent);
 		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
 
 		// SSAO
-		m_vps_ssao = make_shared<RHI_Shader>(m_rhi_device);
+		m_vps_ssao = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_ssao->Compile(Shader_VertexPixel, dir_shaders + "SSAO.hlsl", Input_PositionTexture);
 		m_vps_ssao->AddBuffer<Struct_Matrix_Matrix>();
 
 		// Shadow mapping
-		m_vps_shadow_mapping = make_shared<RHI_Shader>(m_rhi_device);
+		m_vps_shadow_mapping = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_shadow_mapping->Compile(Shader_VertexPixel, dir_shaders + "ShadowMapping.hlsl", Input_PositionTexture);
 		m_vps_shadow_mapping->AddBuffer<Struct_ShadowMapping>();
 
 		// Color
-		m_vps_color = make_shared<RHI_Shader>(m_rhi_device);
+		m_vps_color = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_color->Compile(Shader_VertexPixel, dir_shaders + "Color.hlsl", Input_PositionColor);
 		m_vps_color->AddBuffer<Struct_Matrix_Matrix>();
+
+		// G-Buffer
+		m_vs_gbuffer = make_shared<RHI_Shader>(m_rhi_device);
+		m_vs_gbuffer->Compile(Shader_Vertex, dir_shaders + "GBuffer.hlsl", Input_PositionTextureNormalTangent);
+
+		// Depth
+		m_vps_depth = make_shared<RHI_Shader>(m_rhi_device);
+		m_vps_depth->Compile(Shader_VertexPixel, dir_shaders + "ShadowingDepth.hlsl", Input_Position3D);
 
 		// Quad
 		m_vs_quad = make_shared<RHI_Shader>(m_rhi_device);

@@ -88,9 +88,9 @@ namespace Directus
 				feature_levels.data(),						// pFeatureLevels
 				static_cast<UINT>(feature_levels.size()),	// FeatureLevels
 				D3D11_SDK_VERSION,							// SDKVersion
-				&D3D11Instance::device_physical,						// ppDevice
+				&D3D11Instance::device_physical,			// ppDevice
 				nullptr,									// pFeatureLevel
-				&D3D11Instance::device				// ppImmediateContext
+				&D3D11Instance::device						// ppImmediateContext
 			);
 
 			if (FAILED(result))
@@ -165,8 +165,8 @@ namespace Directus
 			return;
 		}
 
-		m_device_physical			= static_cast<void*>(D3D11Instance::device_physical);
-		m_device	= static_cast<void*>(D3D11Instance::device);
+		m_device_physical	= static_cast<void*>(D3D11Instance::device_physical);
+		m_device			= static_cast<void*>(D3D11Instance::device);
 		m_initialized		= true;
 	}
 

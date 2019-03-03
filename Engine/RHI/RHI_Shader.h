@@ -53,59 +53,53 @@ namespace Directus
 	{
 		static const std::string entry_point_vertex	= "mainVS";
 		static const std::string entry_point_pixel	= "mainPS";
+		#if defined(API_GRAPHICS_D3D11)
 		static const std::string shader_model		= "5_0";
+		#elif defined(API_GRAPHICS_VULKAN)
+		static const std::string shader_model		= "6_0";
+		#endif
 	}
 
 	class ENGINE_CLASS RHI_Shader : public RHI_Object
 	{
 	public:
 
-		RHI_Shader(std::shared_ptr<RHI_Device> rhi_device);
+		RHI_Shader(const std::shared_ptr<RHI_Device>& rhi_device);
 		~RHI_Shader();
 
-		void Compile(Shader_Type type, const std::string& shader, const unsigned long input_layout = 0);
-		void Compile_Async(Context* context, Shader_Type type, const std::string& shader, unsigned long input_layout = 0);
+		// Compilation
+		void Compile(const Shader_Type type, const std::string& shader, unsigned long input_layout_type = 0);
+		void CompileAsync(Context* context, const Shader_Type type, const std::string& shader, unsigned long input_layout_type = 0);
+	
+		// Vertex & Pixel shaders
+		void* GetVertexShaderBuffer() const	{ return m_vertex_shader; }
+		void* GetPixelShaderBuffer() const	{ return m_pixel_shader; }
+		bool HasVertexShader() const		{ return m_vertex_shader != nullptr; }
+		bool HasPixelShader() const			{ return m_pixel_shader != nullptr; }
 
-		void AddDefine(const std::string& define, const std::string& value = "1");
-
-		template <typename T>
-		void AddBuffer()
-		{
-			m_buffer_size = sizeof(T);
-			CreateConstantBuffer(m_buffer_size);
-		}
-		bool UpdateBuffer(void* data) const;
-		void* GetVertexShaderBuffer() const						{ return m_vertex_shader; }
-		void* GetPixelShaderBuffer() const						{ return m_pixel_shader; }
-		const auto& GetConstantBuffer()							{ return m_constant_buffer; }
-		void SetName(const std::string& name)					{ m_name = name; }
-		bool HasVertexShader() const							{ return m_has_shader_vertex; }
-		bool HasPixelShader() const								{ return m_has_shader_pixel; }
-		std::shared_ptr<RHI_InputLayout> GetInputLayout() const	{ return m_input_layout; }
-		Shader_State GetState() const							{ return m_compilation_state; }
+		// Misc
+		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
+		void SetName(const std::string& name)										{ m_name = name; }		
+		const auto& GetInputLayout() const											{ return m_input_layout; }
+		Shader_State GetState() const												{ return m_compilation_state; }
 
 	protected:
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 	private:
-		void CreateConstantBuffer(unsigned int size);
-		virtual bool Compile_Vertex(const std::string& shader, unsigned long input_layout);
-		virtual bool Compile_Pixel(const std::string& shader);
-		void* CompileDXC(Shader_Type type, const std::string& shader);
+		bool CreateInputLayout(void* vertex_shader);
+		void* _Compile(Shader_Type type, const std::string& shader);
 			
 		std::string m_name;
 		std::string m_file_path;
-		std::string m_entry_point;
-		std::string m_profile;
-		std::map<std::string, std::string> m_defines;
-		std::shared_ptr<RHI_InputLayout> m_input_layout;
-		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer;
-		bool m_has_shader_vertex			= false;
-		bool m_has_shader_pixel				= false;
-		unsigned int m_buffer_size			= 0;
-		Shader_State m_compilation_state	= Shader_Uninitialized;
+		std::map<std::string, std::string> m_defines;	
+		Shader_State m_compilation_state = Shader_Uninitialized;
 
-		// D3D11
+		// Input layout
+		std::shared_ptr<RHI_InputLayout> m_input_layout;
+		unsigned long m_inputLayoutType;
+
+		// Shader buffers
 		void* m_vertex_shader	= nullptr;
 		void* m_pixel_shader	= nullptr;
 	};
