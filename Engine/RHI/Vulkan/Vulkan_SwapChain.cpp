@@ -183,6 +183,8 @@ namespace Directus
 		m_swap_chain				= static_cast<void*>(swapChain);
 		m_swap_chain_images			= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
 		m_swap_chain_image_views	= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
+
+		m_initialized = true;
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
