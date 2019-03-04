@@ -45,7 +45,26 @@ namespace Directus
 		const bool multi_sample_enabled,
 		const bool antialised_line_enabled)
 	{
-		
+		// Save properties
+		m_cull_mode					= cull_mode;
+		m_fill_mode					= fill_mode;
+		m_depth_clip_enabled		= depth_clip_enabled;
+		m_scissor_enabled			= scissor_enabled;
+		m_multi_sample_enabled		= multi_sample_enabled;
+		m_antialised_line_enabled	= antialised_line_enabled;
+
+		VkPipelineRasterizationStateCreateInfo rasterizer_State = {};
+		rasterizer_State.sType						= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterizer_State.depthClampEnable			= VK_FALSE;
+		rasterizer_State.rasterizerDiscardEnable	= VK_FALSE;
+		rasterizer_State.polygonMode				= vulkan_polygon_Mode[fill_mode];
+		rasterizer_State.lineWidth					= 1.0f;
+		rasterizer_State.cullMode					= VK_CULL_MODE_BACK_BIT;
+		rasterizer_State.frontFace					= vulkan_cull_Mode[cull_mode];
+		rasterizer_State.depthBiasEnable			= VK_FALSE;
+		rasterizer_State.depthBiasConstantFactor	= 0.0f;
+		rasterizer_State.depthBiasClamp				= 0.0f;
+		rasterizer_State.depthBiasSlopeFactor		= 0.0f;
 	}
 
 	RHI_RasterizerState::~RHI_RasterizerState()

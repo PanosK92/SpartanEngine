@@ -112,7 +112,7 @@ namespace Directus
 
 	void Light::Serialize(FileStream* stream)
 	{
-		stream->Write(int(m_lightType));
+		stream->Write(unsigned int(m_lightType));
 		stream->Write(m_castShadows);
 		stream->Write(m_color);
 		stream->Write(m_range);
@@ -124,7 +124,7 @@ namespace Directus
 
 	void Light::Deserialize(FileStream* stream)
 	{
-		SetLightType(LightType(stream->ReadInt()));
+		SetLightType(LightType(stream->ReadAs<unsigned int>()));
 		stream->Read(&m_castShadows);
 		stream->Read(&m_color);
 		stream->Read(&m_range);

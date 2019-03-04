@@ -216,7 +216,7 @@ namespace Directus
 		//==================================
 
 		//= COMPONENTS ================================
-		const auto component_count = stream->ReadUInt();
+		const auto component_count = stream->ReadAs<unsigned int>();
 		for (unsigned int i = 0; i < component_count; i++)
 		{
 			unsigned int type = ComponentType_Unknown;
@@ -245,7 +245,7 @@ namespace Directus
 
 		//= CHILDREN ===================================
 		// 1st - children count
-		const auto children_count = stream->ReadUInt();
+		const auto children_count = stream->ReadAs<unsigned int>();
 
 		// 2nd - children IDs
 		auto scene = m_context->GetSubsystem<World>();
@@ -253,7 +253,7 @@ namespace Directus
 		for (unsigned int i = 0; i < children_count; i++)
 		{
 			auto child = scene->EntityCreate();
-			child->SetId(stream->ReadUInt());
+			child->SetId(stream->ReadAs<unsigned int>());
 			children.emplace_back(child);
 		}
 

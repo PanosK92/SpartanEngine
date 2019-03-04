@@ -100,7 +100,7 @@ static const float3 sampleKernel[64] =
 
 static const int sample_count		= 32;
 static const float radius			= 0.15f;
-static const float intensity    	= 1.5f;
+static const float intensity    	= 1.0f;
 static const float2 noiseScale  	= float2(g_resolution.x / 128.0f, g_resolution.y / 128.0f);
 
 float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_linear, out float depth_cs)

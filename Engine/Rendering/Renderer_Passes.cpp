@@ -113,11 +113,11 @@ namespace Directus
 					continue;
 
 				// Bind geometry
-				if (currently_bound_geometry != model->ResourceGetId())
+				if (currently_bound_geometry != model->GetResourceId())
 				{
 					m_rhi_pipeline->SetIndexBuffer(model->GetIndexBuffer());
 					m_rhi_pipeline->SetVertexBuffer(model->GetVertexBuffer());
-					currently_bound_geometry = model->ResourceGetId();
+					currently_bound_geometry = model->GetResourceId();
 				}
 
 				SetDefaultBuffer(
@@ -200,11 +200,11 @@ namespace Directus
 			m_rhi_pipeline->SetRasterizerState(GetRasterizerState(material->GetCullMode(), Fill_Solid));
 
 			// Bind geometry
-			if (currently_bound_geometry != model->ResourceGetId())
+			if (currently_bound_geometry != model->GetResourceId())
 			{
 				m_rhi_pipeline->SetIndexBuffer(model->GetIndexBuffer());
 				m_rhi_pipeline->SetVertexBuffer(model->GetVertexBuffer());
-				currently_bound_geometry = model->ResourceGetId();
+				currently_bound_geometry = model->GetResourceId();
 			}
 
 			// Bind shader
@@ -215,7 +215,7 @@ namespace Directus
 			}
 
 			// Bind textures
-			if (currently_bound_material != material->ResourceGetId())
+			if (currently_bound_material != material->GetResourceId())
 			{
 				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Albedo).ptr);
 				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Roughness).ptr);
@@ -226,7 +226,7 @@ namespace Directus
 				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Emission).ptr);
 				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Mask).ptr);
 
-				currently_bound_material = material->ResourceGetId();
+				currently_bound_material = material->GetResourceId();
 			}
 
 			// UPDATE PER OBJECT BUFFER

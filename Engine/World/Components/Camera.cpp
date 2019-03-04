@@ -87,7 +87,7 @@ namespace Directus
 	void Camera::Serialize(FileStream* stream)
 	{
 		stream->Write(m_clear_color);
-		stream->Write(int(m_projection_type));
+		stream->Write(unsigned int(m_projection_type));
 		stream->Write(m_fov_horizontal_rad);
 		stream->Write(m_near_plane);
 		stream->Write(m_far_plane);
@@ -96,7 +96,7 @@ namespace Directus
 	void Camera::Deserialize(FileStream* stream)
 	{
 		stream->Read(&m_clear_color);
-		m_projection_type = ProjectionType(stream->ReadInt());
+		m_projection_type = ProjectionType(stream->ReadAs<unsigned int>());
 		stream->Read(&m_fov_horizontal_rad);
 		stream->Read(&m_near_plane);
 		stream->Read(&m_far_plane);

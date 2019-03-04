@@ -251,13 +251,13 @@ namespace Directus
 
 		//= Load entities ============================	
 		// 1st - Root entity count
-		const int root_entity_count = file->ReadUInt();
+		const int root_entity_count = file->ReadAs<unsigned int>();
 
 		// 2nd - Root entity IDs
 		for (auto i = 0; i < root_entity_count; i++)
 		{
 			auto& entity = EntityCreate();
-			entity->SetId(file->ReadInt());
+			entity->SetId(file->ReadAs<unsigned int>());
 		}
 
 		// 3rd - entities

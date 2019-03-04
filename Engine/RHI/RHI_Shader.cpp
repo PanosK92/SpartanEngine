@@ -78,13 +78,14 @@ namespace Directus
 		}
 
 		// Log result
+		string shader_type = (type == Shader_Vertex) ? "vertex shader" : (type == Shader_Pixel) ? "pixel shader" : "vertex and pixel shader";
 		if (m_compilation_state == Shader_Built)
 		{
-			LOGF_INFO("Successfully compiled %s", shader.c_str());
+			LOGF_INFO("Successfully compiled %s from \"%s\"", shader_type.c_str(), shader.c_str());
 		}
 		else if (m_compilation_state == Shader_Failed)
 		{
-			LOGF_ERROR("Failed to compile %s", shader.c_str());
+			LOGF_ERROR("Failed to compile %s from \"%s\"", shader_type.c_str(), shader.c_str());
 		}
 	}
 

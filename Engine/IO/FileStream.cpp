@@ -19,23 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES =================
 #include "FileStream.h"
 #include <iostream>
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-#include "../Math/Quaternion.h"
-#include "../Math/BoundingBox.h"
 #include "../World/Entity.h"
 #include "../Logging/Log.h"
 #include "../RHI/RHI_Vertex.h"
-//==============================
+//============================
 
-//= NAMESPACES ================
+//= NAMESPACES =====
 using namespace std;
-using namespace Directus::Math;
-//=============================
+//==================
 
 namespace Directus
 {
@@ -99,31 +93,6 @@ namespace Directus
 		}
 	}
 
-	void FileStream::Write(const Vector2& value)
-	{
-		out.write(reinterpret_cast<const char*>(&value), sizeof(Vector2));
-	}
-
-	void FileStream::Write(const Vector3& value)
-	{
-		out.write(reinterpret_cast<const char*>(&value), sizeof(Vector3));
-	}
-
-	void FileStream::Write(const Vector4& value)
-	{
-		out.write(reinterpret_cast<const char*>(&value), sizeof(Vector4));
-	}
-
-	void FileStream::Write(const Quaternion& value)
-	{
-		out.write(reinterpret_cast<const char*>(&value), sizeof(Quaternion));
-	}
-
-	void FileStream::Write(const BoundingBox& value)
-	{
-		out.write(reinterpret_cast<const char*>(&value), sizeof(BoundingBox));
-	}
-
 	void FileStream::Write(const vector<RHI_Vertex_PosUvNorTan>& value)
 	{
 		auto length = (unsigned int)value.size();
@@ -161,31 +130,6 @@ namespace Directus
 		in.read(const_cast<char*>(value->c_str()), length);
 	}
 
-	void FileStream::Read(Vector2* value)
-	{
-		in.read(reinterpret_cast<char*>(value), sizeof(Vector2));
-	}
-
-	void FileStream::Read(Vector3* value)
-	{
-		in.read(reinterpret_cast<char*>(value), sizeof(Vector3));
-	}
-
-	void FileStream::Read(Vector4* value)
-	{
-		in.read(reinterpret_cast<char*>(value), sizeof(Vector4));
-	}
-
-	void FileStream::Read(Quaternion* value)
-	{
-		in.read(reinterpret_cast<char*>(value), sizeof(Quaternion));
-	}
-
-	void FileStream::Read(BoundingBox* value)
-	{
-		in.read(reinterpret_cast<char*>(value), sizeof(BoundingBox));
-	}
-
 	void FileStream::Read(vector<string>* vec)
 	{
 		if (!vec)
@@ -213,7 +157,7 @@ namespace Directus
 		vec->clear();
 		vec->shrink_to_fit();
 
-		unsigned int length = ReadUInt();
+		auto length = ReadAs<unsigned int>();
 
 		vec->reserve(length);
 		vec->resize(length);
@@ -229,7 +173,7 @@ namespace Directus
 		vec->clear();
 		vec->shrink_to_fit();
 
-		unsigned int length = ReadUInt();
+		auto length = ReadAs<unsigned int>();
 
 		vec->reserve(length);
 		vec->resize(length);
@@ -245,7 +189,7 @@ namespace Directus
 		vec->clear();
 		vec->shrink_to_fit();
 
-		unsigned int length = ReadUInt();
+		auto length = ReadAs<unsigned int>();
 
 		vec->reserve(length);
 		vec->resize(length);
@@ -261,7 +205,7 @@ namespace Directus
 		vec->clear();
 		vec->shrink_to_fit();
 
-		unsigned int length = ReadUInt();
+		auto length = ReadAs<unsigned int>();
 
 		vec->reserve(length);
 		vec->resize(length);
