@@ -63,7 +63,7 @@ void Widget_ResourceCache::Tick(float deltaTime)
 		ImGui::Text(resource->GetResourceTypeCstr());					ImGui::NextColumn();
 
 		// ID
-		ImGui::Text(to_string(resource->ResourceGetId()).c_str());		ImGui::NextColumn();
+		ImGui::Text(to_string(resource->GetResourceId()).c_str());		ImGui::NextColumn();
 
 		// Name
 		ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();

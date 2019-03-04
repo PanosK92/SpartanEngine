@@ -12,7 +12,7 @@ Architectual quality is prioritized over development speed.
 Video[
 ![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
-# Features (v0.3)
+## Features (v0.3)
 Category       	| Feature                                  	| Details
 :-              | :-                                        | :-
 Importing       | 10+ font file formats support             | FreeType
@@ -55,7 +55,7 @@ Platform        | Windows 10                                | -
 #### v0.31 (WIP)
 Feature     | Completion    | Notes 
 :-          | :-            | :-
-Vulkan      | 4%            | Will become the default rendering backend.
+Vulkan      | 15%           | Will become the default rendering backend.
 
 #### v0.32 (Planned)
 Feature                 	| Completion    | Notes 
@@ -64,6 +64,8 @@ Eye Adaptation          	| -            	| -
 Depth-of-field          	| -           	| Based on Doom approach
 Subsurface Scattering   	| -            	| -
 Point & Spot light shadows	| -            	| -
+Improve editor appearance	| -            	| -
+Bug fixes and improvements	| -            	| Fix TAA shaking on some objects, improve bloom quality, etc.
 
 # Roadmap
 - Volumetric Lighting.

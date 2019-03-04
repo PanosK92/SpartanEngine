@@ -241,8 +241,8 @@ namespace Directus
 		if (!file->IsOpen())
 			return false;
 
-		file->Read(&m_resource_name);
-		file->Read(&m_resource_file_path);
+		SetResourceName(file->ReadAs<string>());
+		SetResourceFilePath(file->ReadAs<string>());
 		file->Read(&m_normalized_scale);
 		file->Read(&m_mesh->Indices_Get());
 		file->Read(&m_mesh->Vertices_Get());
@@ -289,13 +289,13 @@ namespace Directus
 			m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device);
 			if (!m_index_buffer->Create(indices))
 			{
-				LOGF_ERROR("Failed to create index buffer for \"%s\".", m_resource_name.c_str());
+				LOGF_ERROR("Failed to create index buffer for \"%s\".", GetResourceName().c_str());
 				success = false;
 			}
 		}
 		else
 		{
-			LOGF_ERROR("Failed to create index buffer for \"%s\". Provided indices are empty", m_resource_name.c_str());
+			LOGF_ERROR("Failed to create index buffer for \"%s\". Provided indices are empty", GetResourceName().c_str());
 			success = false;
 		}
 
@@ -304,13 +304,13 @@ namespace Directus
 			m_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device);
 			if (!m_vertex_buffer->Create(vertices))
 			{
-				LOGF_ERROR("Failed to create vertex buffer for \"%s\".", m_resource_name.c_str());
+				LOGF_ERROR("Failed to create vertex buffer for \"%s\".", GetResourceName().c_str());
 				success = false;
 			}
 		}
 		else
 		{
-			LOGF_ERROR("Failed to create vertex buffer for \"%s\". Provided vertices are empty", m_resource_name.c_str());
+			LOGF_ERROR("Failed to create vertex buffer for \"%s\". Provided vertices are empty", GetResourceName().c_str());
 			success = false;
 		}
 

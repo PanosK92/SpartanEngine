@@ -5,7 +5,7 @@ class RotateAroundSelf
 	
 	//= MISC ===============
 	Vector3 m_startingRot;
-	float m_speed = 30.0f;
+	float m_speed = 15.0f;
 	float m_rotation = 0.0f;
 	//======================
 	

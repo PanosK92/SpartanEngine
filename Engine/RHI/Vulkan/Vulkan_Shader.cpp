@@ -43,7 +43,9 @@ namespace Directus
 
 	RHI_Shader::~RHI_Shader()
 	{
-		
+		auto device = m_rhi_device->GetDevice<VkDevice>();
+		if (HasVertexShader())	vkDestroyShaderModule(device, static_cast<VkShaderModule>(m_vertex_shader), nullptr);
+		if (HasPixelShader())	vkDestroyShaderModule(device, static_cast<VkShaderModule>(m_pixel_shader), nullptr);
 	}
 
 	/*
@@ -203,8 +205,8 @@ namespace Directus
 		LOG_TO_FILE(true);
 
 		// Deduce some things
-		bool is_file						= FileSystem::IsSupportedShaderFile(shader);
-		wstring file_name					= is_file ? FileSystem::StringToWstring(FileSystem::GetFileNameFromFilePath(shader)) : wstring(L"shader");
+		bool is_file		= FileSystem::IsSupportedShaderFile(shader);
+		wstring file_name	= is_file ? FileSystem::StringToWstring(FileSystem::GetFileNameFromFilePath(shader)) : wstring(L"shader");
 		wstring file_directory;
 		if (is_file)
 		{
@@ -231,21 +233,24 @@ namespace Directus
 			#endif
 		}
 
-		// Defines
+		// Create standard defines
 		vector<DxcDefine> defines =
 		{
 			DxcDefine{ L"COMPILE_VS", type == Shader_Vertex ? L"1" : L"0" },
 			DxcDefine{ L"COMPILE_PS", type == Shader_Pixel ? L"1" : L"0" }
 		};
+		// Convert defines to wstring...
+		map<wstring, wstring> defines_wstring;
 		for (const auto& define : m_defines)
 		{
-			defines.emplace_back
-			(	DxcDefine
-				{ 
-					FileSystem::StringToWstring(define.first).c_str(), 
-					FileSystem::StringToWstring(define.second).c_str() 
-				} 
-			);
+			auto first	= FileSystem::StringToWstring(define.first);
+			auto second = FileSystem::StringToWstring(define.second);
+			defines_wstring[first] = second;
+		}
+		// ... and add them to our defines
+		for (const auto& define : defines_wstring)
+		{
+			defines.emplace_back(DxcDefine{ define.first.c_str(), define.second.c_str() });
 		}
 
 		// Create compiler instance
@@ -256,21 +261,18 @@ namespace Directus
 		IDxcLibrary* library = nullptr;
 		DxcCreateInstance(CLSID_DxcLibrary, __uuidof(IDxcLibrary), reinterpret_cast<void**>(&library));	
 
-		IDxcValidator* validator = nullptr;
-		DxcCreateInstance(CLSID_DxcValidator, __uuidof(IDxcValidator), reinterpret_cast<void**>(&validator));	
-
 		// Get shader source as a buffer
-		IDxcBlobEncoding* blob_source = nullptr;
+		IDxcBlobEncoding* shader_source = nullptr;
 		{
 			HRESULT result;
 			if (is_file)
 			{
 				auto file_path = FileSystem::StringToWstring(shader);
-				result = library->CreateBlobFromFile(file_path.c_str(), nullptr, &blob_source);
+				result = library->CreateBlobFromFile(file_path.c_str(), nullptr, &shader_source);
 			}
 			else // Source
 			{
-				result = library->CreateBlobWithEncodingFromPinned(shader.c_str(), static_cast<UINT32>(shader.size()), CP_UTF8, &blob_source);
+				result = library->CreateBlobWithEncodingFromPinned(shader.c_str(), static_cast<UINT32>(shader.size()), CP_UTF8, &shader_source);
 			}
 
 			if (FAILED(result))
@@ -279,12 +281,6 @@ namespace Directus
 				return nullptr;
 			}
 		}
-
-		// Validate
-		/*IDxcOperationResult* operation_result = nullptr;
-		validator->Validate(blob_source, 0, &operation_result);
-		if (!ValidateOperationResult(operation_result))
-			return nullptr;*/
 
 		// Create include handler
 		IDxcIncludeHandler* include_handler = nullptr;
@@ -296,43 +292,54 @@ namespace Directus
 			}
 		}
 
+		IDxcOperationResult* compilation_result = nullptr;
+		IDxcBlob* shader_compiled				= nullptr;
+		VkShaderModule shader_module			= nullptr;
+
 		// Compile
 		{
-			IDxcOperationResult* operation_result = nullptr;
 			compiler->Compile(
-				blob_source,												// program text
+				shader_source,												// program text
 				file_name.c_str(),											// file name, for warnings and errors
 				entry_point.c_str(),										// entry point function
 				target_profile.c_str(),										// target profile
 				arguments.data(), static_cast<UINT32>(arguments.size()),	// compilation arguments
 				defines.data(), static_cast<UINT32>(defines.size()),		// shader defines
 				include_handler,											// handler for #include directives
-				&operation_result
+				&compilation_result
 			);
-			
-			if (!operation_result)
+
+			if (!compilation_result)
 			{
 				LOG_ERROR("Failed to invoke compiler. The provided source was most likely invalid.");
 				return nullptr;
 			}
-
-			// Get shader blob
-			void* shader_blob = nullptr;
-			if (ValidateOperationResult(operation_result))
-			{
-				IDxcBlob* result_blob;
-				operation_result->GetResult(&result_blob);
-				shader_blob = static_cast<void*>(result_blob);
-			}
-
-			safe_release(operation_result);
-			return shader_blob;
 		}
 
-		// temp
-		LOG_TO_FILE(false);
+		// Create shader module
+		if (ValidateOperationResult(compilation_result))
+		{
+			compilation_result->GetResult(&shader_compiled);			
+			if (shader_compiled)
+			{
+				VkShaderModuleCreateInfo create_info = {};
+				create_info.sType		= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				create_info.codeSize	= static_cast<size_t>(shader_compiled->GetBufferSize());
+				create_info.pCode		= reinterpret_cast<const uint32_t*>(shader_compiled->GetBufferPointer());
+	
+				if (vkCreateShaderModule(m_rhi_device->GetDevice<VkDevice>(), &create_info, nullptr, &shader_module) != VK_SUCCESS)
+				{
+					LOG_ERROR("Failed to create shader module.");
+				}			
+			}	
+		}
 
-		return nullptr;
+		safe_release(compilation_result);
+		safe_release(shader_source);
+		safe_release(shader_compiled);
+		safe_release(compiler);
+		safe_release(library);
+		return static_cast<void*>(shader_module);
 	}
 }
 #endif

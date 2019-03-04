@@ -98,7 +98,7 @@ void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
 		if (thumbnailTemp.texture->GetLoadState() != LoadState_Completed)
 			continue;
 
-		if (thumbnailTemp.texture->ResourceGetId() == thumbnail.texture->ResourceGetId())
+		if (thumbnailTemp.texture->GetResourceId() == thumbnail.texture->GetResourceId())
 		{
 			return thumbnailTemp.texture->GetShaderResource();
 		}

@@ -35,7 +35,7 @@ namespace Directus
 {
 	RHI_Texture::RHI_Texture(Context* context) : IResource(context, Resource_Texture)
 	{
-		m_format	= Format_R8G8B8A8_UNORM;
+		m_format		= Format_R8G8B8A8_UNORM;
 		m_rhi_device	= context->GetSubsystem<Renderer>()->GetRhiDevice();
 	}
 
@@ -97,7 +97,7 @@ namespace Directus
 
 		if (!srvCreated) 
 		{ 
-			LOGF_ERROR("Failed to create shader resource for \"%s\".", m_resource_file_path.c_str()); 
+			LOGF_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePath().c_str()); 
 			SetLoadState(LoadState_Failed);
 			return false;
 		}
@@ -137,11 +137,11 @@ namespace Directus
 			return;
 		}
 
-		auto file = make_unique<FileStream>(m_resource_file_path, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(GetResourceFilePath(), FileStreamMode_Read);
 		if (!file->IsOpen())
 			return;
 
-		unsigned int mipCount = file->ReadUInt();
+		unsigned int mipCount = file->ReadAs<unsigned int>();
 		for (unsigned int i = 0; i < mipCount; i++)
 		{
 			texture_bytes->emplace_back(vector<std::byte>());
@@ -188,9 +188,9 @@ namespace Directus
 		file->Write(m_channels);
 		file->Write(m_is_grayscale);
 		file->Write(m_is_transparent);
-		file->Write(m_resource_id);
-		file->Write(m_resource_name);
-		file->Write(m_resource_file_path);
+		file->Write(GetResourceId());
+		file->Write(GetResourceName());
+		file->Write(GetResourceFilePath());
 
 		ClearTextureBytes();
 
@@ -205,7 +205,7 @@ namespace Directus
 
 		// Read texture bits
 		ClearTextureBytes();
-		m_mip_chain.resize(file->ReadUInt());
+		m_mip_chain.resize(file->ReadAs<unsigned int>());
 		for (auto& mip : m_mip_chain)
 		{
 			file->Read(&mip);
@@ -218,9 +218,9 @@ namespace Directus
 		file->Read(&m_channels);
 		file->Read(&m_is_grayscale);
 		file->Read(&m_is_transparent);
-		file->Read(&m_resource_id);
-		file->Read(&m_resource_name);
-		file->Read(&m_resource_file_path);
+		SetResourceID(file->ReadAs<unsigned int>());
+		SetResourceName(file->ReadAs<string>());
+		SetResourceFilePath(file->ReadAs<string>());
 
 		return true;
 	}

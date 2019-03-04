@@ -21,23 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====
+//= INCLUDES ===================
 #include <vector>
 #include <fstream>
-//================
+#include "../Math/Vector2.h"
+#include "../Math/Vector3.h"
+#include "../Math/Vector4.h"
+#include "../Math/Quaternion.h"
+#include "../Math/BoundingBox.h"
+//==============================
 
 namespace Directus
 {
 	class Entity;
 	struct RHI_Vertex_PosUvNorTan;
-	namespace Math
-	{
-		class Vector2;
-		class Vector3;
-		class Vector4;
-		class Quaternion;
-		class BoundingBox;
-	}
 
 	enum FileStreamMode
 	{
@@ -45,7 +42,7 @@ namespace Directus
 		FileStreamMode_Write
 	};
 
-	class FileStream
+	class ENGINE_CLASS FileStream
 	{
 	public:
 		FileStream(const std::string& path, FileStreamMode mode);
@@ -55,18 +52,23 @@ namespace Directus
 
 		//= WRITING ==================================================
 		template <class T, class = typename std::enable_if<
-			std::is_same<T, bool>::value ||
-			std::is_same<T, unsigned char>::value ||
-			std::is_same<T, std::byte>::value ||
-			std::is_same<T, int>::value ||
-			std::is_same<T, long>::value ||
-			std::is_same<T, long long>::value ||
-			std::is_same<T, unsigned>::value ||
-			std::is_same<T, unsigned long>::value ||
-			std::is_same<T, unsigned long long>::value ||
-			std::is_same<T, float>::value ||
-			std::is_same<T, double>::value ||
-			std::is_same<T, long double>::value
+			std::is_same<T, bool>::value				||
+			std::is_same<T, unsigned char>::value		||		
+			std::is_same<T, int>::value					||
+			std::is_same<T, long>::value				||
+			std::is_same<T, long long>::value			||
+			std::is_same<T, unsigned>::value			||
+			std::is_same<T, unsigned long>::value		||
+			std::is_same<T, unsigned long long>::value	||
+			std::is_same<T, float>::value				||
+			std::is_same<T, double>::value				||
+			std::is_same<T, long double>::value			||
+			std::is_same<T, std::byte>::value			||
+			std::is_same<T, Math::Vector2>::value		||
+			std::is_same<T, Math::Vector3>::value		||
+			std::is_same<T, Math::Vector4>::value		||
+			std::is_same<T, Math::Quaternion>::value	||
+			std::is_same<T, Math::BoundingBox>::value
 		>::type>
 		void Write(T value)
 		{
@@ -74,11 +76,6 @@ namespace Directus
 		}
 
 		void Write(const std::string& value);
-		void Write(const Math::Vector2& value);
-		void Write(const Math::Vector3& value);
-		void Write(const Math::Vector4& value);	
-		void Write(const Math::Quaternion& value);
-		void Write(const Math::BoundingBox& value);
 		void Write(const std::vector<std::string>& value);
 		void Write(const std::vector<RHI_Vertex_PosUvNorTan>& value);
 		void Write(const std::vector<unsigned int>& value);
@@ -86,53 +83,62 @@ namespace Directus
 		void Write(const std::vector<std::byte>& value);
 		//===========================================================
 		
-		//= READING ================================================
-		template <class T, class = typename std::enable_if<
-			std::is_same<T, bool>::value ||
-			std::is_same<T, unsigned char>::value ||
-			std::is_same<T, std::byte>::value ||
-			std::is_same<T, int>::value ||
-			std::is_same<T, long>::value ||
-			std::is_same<T, long long>::value ||
-			std::is_same<T, unsigned>::value ||
-			std::is_same<T, unsigned long>::value ||
-			std::is_same<T, unsigned long long>::value ||
-			std::is_same<T, float>::value ||
-			std::is_same<T, double>::value ||
-			std::is_same<T, long double>::value
+		//= READING ===========================================
+		template <class T, class = typename std::enable_if
+		<
+			std::is_same<T, bool>::value				||
+			std::is_same<T, unsigned char>::value		||
+			std::is_same<T, int>::value					||
+			std::is_same<T, long>::value				||
+			std::is_same<T, long long>::value			||
+			std::is_same<T, unsigned>::value			||
+			std::is_same<T, unsigned long>::value		||
+			std::is_same<T, unsigned long long>::value	||
+			std::is_same<T, float>::value				||
+			std::is_same<T, double>::value				||
+			std::is_same<T, long double>::value			||
+			std::is_same<T, std::byte>::value			||
+			std::is_same<T, Math::Vector2>::value		||
+			std::is_same<T, Math::Vector3>::value		||
+			std::is_same<T, Math::Vector4>::value		||
+			std::is_same<T, Math::Quaternion>::value	||
+			std::is_same<T, Math::BoundingBox>::value
 		>::type>
-			void Read(T* value)
+		void Read(T* value)
 		{
 			in.read(reinterpret_cast<char*>(value), sizeof(T));
 		}
-
-		void Read(std::string* value);	
-		void Read(Math::Vector2* value);
-		void Read(Math::Vector3* value);
-		void Read(Math::Vector4* value);
-		void Read(Math::Quaternion* value);
-		void Read(Math::BoundingBox* value);
+		void Read(std::string* value);
 		void Read(std::vector<std::string>* vec);
 		void Read(std::vector<RHI_Vertex_PosUvNorTan>* vec);
 		void Read(std::vector<unsigned int>* vec);
 		void Read(std::vector<unsigned char>* vec);
 		void Read(std::vector<std::byte>* vec);
 
-		// Helps when reading enums
-		int ReadInt()
+		// Reading with explicit type definition
+		template <class T, class = typename std::enable_if
+		<
+			std::is_same<T, bool>::value				||
+			std::is_same<T, unsigned char>::value		||		
+			std::is_same<T, int>::value					||
+			std::is_same<T, long>::value				||
+			std::is_same<T, long long>::value			||
+			std::is_same<T, unsigned int>::value		||
+			std::is_same<T, unsigned long>::value		||
+			std::is_same<T, unsigned long long>::value	||
+			std::is_same<T, float>::value				||
+			std::is_same<T, double>::value				||
+			std::is_same<T, long double>::value			||
+			std::is_same<T, std::byte>::value			||
+			std::is_same<T, std::string>::value
+		>::type> 
+		T ReadAs()
 		{
-			int value = 0;
+			T value;
 			Read(&value);
 			return value;
 		}
-
-		unsigned int ReadUInt()
-		{
-			unsigned int value = 0;
-			Read(&value);
-			return value;
-		}
-		//==========================================================
+		//=====================================================
 
 	private:
 		std::ofstream out;

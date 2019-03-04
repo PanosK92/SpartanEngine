@@ -107,7 +107,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     directionalLight.color      = dirLightColor.rgb; 
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
 		
-	float ambient_occlusion 	= occlusion_ssao * occlusion_texture;
+	float ambient_occlusion 	= occlusion_texture == 1.0f ? occlusion_ssao : occlusion_texture;
 	float directional_shadow	= micro_shadow(ambient_occlusion, normal, directionalLight.direction, shadow_directional);
 	float ambient_ligth_min		= 0.05f;
 	float ambient_light_max		= dirLightIntensity.r;

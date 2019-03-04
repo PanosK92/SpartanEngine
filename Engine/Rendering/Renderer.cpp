@@ -786,7 +786,7 @@ namespace Directus
 				return false;
 
 			// Order doesn't matter, as long as they are not mixed
-			return a_material->ResourceGetId() < b_material->ResourceGetId();
+			return a_material->GetResourceId() < b_material->GetResourceId();
 		});
 	}
 

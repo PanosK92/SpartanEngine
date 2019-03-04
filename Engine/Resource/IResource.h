@@ -59,7 +59,8 @@ namespace Directus
 		virtual ~IResource() = default;
 
 		//= PROPERTIES =========================================================================================================================
-		unsigned int ResourceGetId() const						{ return m_resource_id; }
+		unsigned int GetResourceId() const						{ return m_resource_id; }
+		void SetResourceID(unsigned int id)						{ m_resource_id = id; }
 		Resource_Type GetResourceType() const					{ return m_resource_type; }
 		void SetResourceType(Resource_Type type)				{ m_resource_type = type; }
 		const char* GetResourceTypeCstr() const					{ return typeid(*this).name(); }
@@ -90,11 +91,13 @@ namespace Directus
 		//================================================
 
 	protected:
+		Resource_Type m_resource_type = Resource_Unknown;
+		LoadState m_load_state			= LoadState_Idle;
+		Context* m_context				= nullptr;
+
+	private:
 		unsigned int m_resource_id			= NOT_ASSIGNED_HASH;
 		std::string m_resource_name			= NOT_ASSIGNED;
 		std::string m_resource_file_path	= NOT_ASSIGNED;
-		Resource_Type m_resource_type		= Resource_Unknown;
-		LoadState m_load_state				= LoadState_Idle;
-		Context* m_context					= nullptr;
 	};
 }

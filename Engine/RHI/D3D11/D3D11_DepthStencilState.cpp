@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "D3D11_Helper.h"
 #include "../../Logging/Log.h"
-#include "../../Core/Settings.h"
 //===================================
 
 //= NAMESPACES =====
@@ -38,7 +37,7 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_DepthStencilState::RHI_DepthStencilState(const shared_ptr<RHI_Device>& rhi_device, const bool depth_enabled)
+	RHI_DepthStencilState::RHI_DepthStencilState(const shared_ptr<RHI_Device>& rhi_device, const bool depth_enabled, const RHI_Comparison_Function comparison)
 	{
 		// Save properties
 		m_depth_enabled = depth_enabled;
@@ -50,7 +49,7 @@ namespace Directus
 		{
 			desc.DepthEnable					= false;
 			desc.DepthWriteMask					= D3D11_DEPTH_WRITE_MASK_ALL;
-			desc.DepthFunc						= D3D11_COMPARISON_ALWAYS;
+			desc.DepthFunc						= d3d11_compare_operator[comparison];
 			desc.StencilEnable					= false;
 			desc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
 			desc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;
@@ -64,7 +63,7 @@ namespace Directus
 		{
 			desc.DepthEnable					= true;
 			desc.DepthWriteMask					= D3D11_DEPTH_WRITE_MASK_ALL;
-			desc.DepthFunc						= Settings::Get().GetReverseZ() ? D3D11_COMPARISON_GREATER_EQUAL : D3D11_COMPARISON_LESS_EQUAL;
+			desc.DepthFunc						= d3d11_compare_operator[comparison];
 			desc.StencilEnable					= false;
 			desc.StencilReadMask				= D3D11_DEFAULT_STENCIL_READ_MASK;
 			desc.StencilWriteMask				= D3D11_DEFAULT_STENCIL_WRITE_MASK;

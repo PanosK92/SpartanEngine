@@ -136,11 +136,11 @@ namespace Directus
 	void Renderable::Deserialize(FileStream* stream)
 	{
 		// Geometry
-		m_geometry_type			= static_cast<Geometry_Type>(stream->ReadUInt());
-		m_geometryIndexOffset	= stream->ReadUInt();
-		m_geometryIndexCount	= stream->ReadUInt();	
-		m_geometryVertexOffset	= stream->ReadUInt();
-		m_geometryVertexCount	= stream->ReadUInt();
+		m_geometry_type			= static_cast<Geometry_Type>(stream->ReadAs<unsigned int>());
+		m_geometryIndexOffset	= stream->ReadAs<unsigned int>();
+		m_geometryIndexCount	= stream->ReadAs<unsigned int>();
+		m_geometryVertexOffset	= stream->ReadAs<unsigned int>();
+		m_geometryVertexCount	= stream->ReadAs<unsigned int>();
 		stream->Read(&m_geometryAABB);
 		string model_name;
 		stream->Read(&model_name);

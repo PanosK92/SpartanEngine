@@ -88,14 +88,14 @@ namespace Directus
 
 	void Collider::Serialize(FileStream* stream)
 	{
-		stream->Write(int(m_shapeType));
+		stream->Write(unsigned int(m_shapeType));
 		stream->Write(m_size);
 		stream->Write(m_center);
 	}
 
 	void Collider::Deserialize(FileStream* stream)
 	{
-		m_shapeType = ColliderShape(stream->ReadInt());
+		m_shapeType = ColliderShape(stream->ReadAs<unsigned int>());
 		stream->Read(&m_size);
 		stream->Read(&m_center);
 
