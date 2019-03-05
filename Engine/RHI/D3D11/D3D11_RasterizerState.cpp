@@ -47,6 +47,19 @@ namespace Directus
 		const bool multi_sample_enabled,
 		const bool antialised_line_enabled)
 	{
+		if (!rhi_device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
+		auto d3d11_device = rhi_device->GetDevicePhysical<ID3D11Device>();
+		if (!d3d11_device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
 		// Save properties
 		m_cull_mode					= cull_mode;
 		m_fill_mode					= fill_mode;
@@ -70,7 +83,7 @@ namespace Directus
 
 		// Create rasterizer state
 		auto rasterizer_state	= static_cast<ID3D11RasterizerState*>(m_buffer);
-		const auto result		= rhi_device->GetDevicePhysical<ID3D11Device>()->CreateRasterizerState(&desc, &rasterizer_state);
+		const auto result		= d3d11_device->CreateRasterizerState(&desc, &rasterizer_state);
 	
 		// Handle result
 		if (SUCCEEDED(result))

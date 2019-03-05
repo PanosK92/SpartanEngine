@@ -23,9 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Settings.h"
 #include <string>
 #include <fstream>
-#include <algorithm>
+#include <thread>
 #include "../Logging/Log.h"
-#include "../Math/MathHelper.h"
 #include "../FileSystem/FileSystem.h"
 //===================================
 
@@ -135,56 +134,7 @@ namespace Directus
 		LOGF_INFO("Max threads: %d",		m_maxThreadCount);
 	}
 
-	void Settings::DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator)
-	{
-		auto& mode = m_displayModes.emplace_back(width, height, refresh_rate_numerator, refresh_rate_denominator);
-
-		// Try to deduce the maximum frame rate based on how fast is the monitor
-		if (m_fpsPolicy == FPS_MonitorMatch)
-		{
-			FPS_SetLimit(Helper::Max(m_fpsLimit, mode.refreshRate));
-		}
-	}
-
-	bool Settings::DisplayMode_GetFastest(DisplayMode* display_mode)
-	{
-		if (m_displayModes.empty())
-			return false;
-
-		display_mode = &m_displayModes[0];
-		for (auto& mode : m_displayModes)
-		{
-			if (display_mode->refreshRate < mode.refreshRate)
-			{
-				display_mode = &mode;
-			}
-		}
-
-		return true;
-	}
-
-	void Settings::DisplayAdapter_Add(const string& name, unsigned int memory, unsigned int vendor_id, void* adapter)
-	{
-		
-		LOGF_INFO("%s (%d MB)", name.c_str(), memory);
-
-		m_displayAdapters.emplace_back(name, memory, vendor_id, adapter);
-		sort(m_displayAdapters.begin(), m_displayAdapters.end(), [](const DisplayAdapter& adapter1, const DisplayAdapter& adapter2)
-		{
-			return adapter1.memory > adapter2.memory;
-		});
-	}
-
-	void Settings::DisplayAdapter_SetPrimary(const DisplayAdapter* primary_adapter)
-	{
-		if (!primary_adapter)
-			return;
-
-		m_primaryAdapter = primary_adapter;
-		LOGF_INFO("%s (%d MB)", primary_adapter->name.c_str(), primary_adapter->memory);
-	}
-
-	void Settings::FPS_SetLimit(const float fps)
+	void Settings::SetFpsLimit(const float fps)
 	{
 		if (m_fpsLimit != fps)
 		{

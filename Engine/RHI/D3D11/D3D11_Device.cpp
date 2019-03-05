@@ -60,6 +60,9 @@ namespace Directus
 	{
 		const static auto multithread_protection = false;
 
+		// Detect adapters
+		D3D11_Helper::DetectAdapters(this);
+
 		// Create device
 		{
 			// Flags
@@ -80,10 +83,13 @@ namespace Directus
 				D3D_FEATURE_LEVEL_9_1
 			};
 
+			auto adapter		= static_cast<IDXGIAdapter*>(m_primaryAdapter->data);
+			auto driver_type	= adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
+
 			// Create the swap chain, Direct3D device, and Direct3D device context.
 			const auto result = D3D11CreateDevice(
-				nullptr,									// pAdapter: nullptr to use the default adapter
-				D3D_DRIVER_TYPE_HARDWARE,					// DriverType
+				adapter,									// pAdapter: If nullptr, the default adapter will be used
+				driver_type,								// DriverType
 				nullptr,									// HMODULE: nullptr because DriverType = D3D_DRIVER_TYPE_HARDWARE
 				device_flags,								// Flags
 				feature_levels.data(),						// pFeatureLevels
@@ -622,109 +628,6 @@ namespace Directus
 		const auto duration_ms	= (delta * 1000.0f) / static_cast<float>(disjoint_data.Frequency);
 
 		return duration_ms;
-	}
-
-	void RHI_Device::DetectPrimaryAdapter(RHI_Format format) const
-	{
-		// Create DirectX graphics interface factory
-		IDXGIFactory* factory;
-		const auto result = CreateDXGIFactory(IID_PPV_ARGS(&factory));
-		if (FAILED(result))
-		{
-			LOGF_ERROR("Failed to create a DirectX graphics interface factory, %s.", D3D11_Helper::dxgi_error_to_string(result));
-			return;
-		}
-
-		const auto get_available_adapters = [](IDXGIFactory* factory)
-		{
-			unsigned int i = 0;
-			IDXGIAdapter* adapter;
-			vector<IDXGIAdapter*> adapters;
-			while (factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
-			{
-				adapters.emplace_back(adapter);
-				++i;
-			}
-
-			return adapters;
-		};
-
-		// Get all available adapters
-		auto adapters = get_available_adapters(factory);
-		safe_release(factory);
-		if (adapters.empty())
-		{
-			LOG_ERROR("Couldn't find any adapters");
-			return;
-		}
-
-		// Save all available adapters
-		DXGI_ADAPTER_DESC adapter_desc;
-		for (auto display_adapter : adapters)
-		{
-			if (FAILED(display_adapter->GetDesc(&adapter_desc)))
-			{
-				LOG_ERROR("Failed to get adapter description");
-				continue;
-			}
-
-			const auto memory_mb = static_cast<unsigned int>(adapter_desc.DedicatedVideoMemory / 1024 / 1024);
-			char name[128];
-			auto def_char = ' ';
-			WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
-
-
-			Settings::Get().DisplayAdapter_Add(name, memory_mb, adapter_desc.VendorId, static_cast<void*>(display_adapter));
-		}
-
-		// DISPLAY MODES
-		const auto get_display_modes = [format](IDXGIAdapter* adapter)
-		{
-			// Enumerate the primary adapter output (monitor).
-			IDXGIOutput* adapter_output;
-			bool result = SUCCEEDED(adapter->EnumOutputs(0, &adapter_output));
-			if (result)
-			{
-				// Get supported display mode count
-				UINT display_mode_count;
-				result = SUCCEEDED(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr));
-				if (result)
-				{
-					// Get display modes
-					vector<DXGI_MODE_DESC> display_modes;
-					display_modes.resize(display_mode_count);
-					result = SUCCEEDED(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0]));
-					if (result)
-					{
-						// Save all the display modes
-						for (const auto& mode : display_modes)
-						{
-							Settings::Get().DisplayMode_Add(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator);
-						}
-					}
-				}
-				adapter_output->Release();
-			}
-
-			return result;
-		};
-
-		// Get display modes and set primary adapter
-		for (const auto& display_adapter : Settings::Get().DisplayAdapters_Get())
-		{
-			const auto adapter = static_cast<IDXGIAdapter*>(display_adapter.data);
-
-			// Adapters are ordered by memory (descending), so stop on the first success
-			if (get_display_modes(adapter))
-			{
-				Settings::Get().DisplayAdapter_SetPrimary(&display_adapter);
-				break;
-			}
-			else
-			{
-				LOGF_ERROR("Failed to get display modes for \"%s\". Ignoring adapter.", display_adapter.name.c_str());
-			}
-		}
 	}
 }
 #endif

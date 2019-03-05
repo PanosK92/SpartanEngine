@@ -48,6 +48,19 @@ namespace Directus
 
 	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
 	{
+		if (!m_rhi_device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return nullptr;
+		}
+
+		auto d3d11_device = m_rhi_device->GetDevicePhysical<ID3D11Device>();
+		if (!d3d11_device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return nullptr;
+		}
+
 		// Compile flags
 		unsigned int compile_flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
 		#ifdef DEBUG
@@ -144,7 +157,7 @@ namespace Directus
 		if (type == Shader_Vertex)
 		{
 			ID3D11VertexShader* buffer_vertex = nullptr;
-			if (FAILED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateVertexShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_vertex)))
+			if (FAILED(d3d11_device->CreateVertexShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_vertex)))
 			{
 				LOG_ERROR("Failed to create vertex shader.");
 			}
@@ -154,7 +167,7 @@ namespace Directus
 		else if (type == Shader_Pixel)
 		{
 			ID3D11PixelShader* buffer_pixel = nullptr;
-			if (FAILED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreatePixelShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_pixel)))
+			if (FAILED(d3d11_device->CreatePixelShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_pixel)))
 			{
 				LOG_ERROR("Failed to create pixel shader.");
 			}

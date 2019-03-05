@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 #include <memory>
 #include <string>
+#include <vector>
 //=============================
 
 namespace Directus
@@ -35,6 +36,45 @@ namespace Directus
 		class Vector4;
 		class Rectangle;
 	}
+
+	struct DisplayMode
+	{
+		DisplayMode() = default;
+		DisplayMode(const unsigned int width, const unsigned int height, const unsigned int refresh_rate_numerator, const unsigned int refresh_rate_denominator)
+		{
+			this->width						= width;
+			this->height					= height;
+			this->refreshRateNumerator		= refresh_rate_numerator;
+			this->refreshRateDenominator	= refresh_rate_denominator;
+			this->refreshRate				= static_cast<float>(refresh_rate_numerator) / static_cast<float>(refresh_rate_denominator);
+		}
+
+		unsigned int width					= 0;
+		unsigned int height					= 0;
+		unsigned int refreshRateNumerator	= 0;
+		unsigned int refreshRateDenominator = 0;
+		float refreshRate					= 0;
+	};
+
+	struct DisplayAdapter
+	{
+		DisplayAdapter(const std::string& name, const unsigned int memory, const unsigned int vendor_id, void* data)
+		{
+			this->name		= name;
+			this->memory	= memory;
+			this->vendorID	= vendor_id;
+			this->data		= data;
+		}
+
+		std::string name		= "Unknown";
+		unsigned int vendorID	= 0;
+		unsigned int memory		= 0;
+		void* data				= nullptr;
+
+		//Nvidia: 0x10DE
+		//AMD	: 0x1002, 0x1022
+		//Intel : 0x163C, 0x8086, 0x8087
+	};
 
 	class ENGINE_CLASS RHI_Device
 	{
@@ -83,7 +123,14 @@ namespace Directus
 		float ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const;
 		//=========================================================================================
 
-		void DetectPrimaryAdapter(RHI_Format format) const;
+		//= ADAPTERS ============================================================================================================================		
+		void AddDisplayMode(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator);
+		bool GetDidsplayModeFastest(DisplayMode* display_mode);
+		void AddAdapter(const std::string& name, unsigned int memory, unsigned int vendor_id, void* adapter);
+		void SetPrimaryAdapter(const DisplayAdapter* primary_adapter);
+		const std::vector<DisplayAdapter>& DisplayAdapters_Get() const	{ return m_displayAdapters; }
+		RHI_Format GetBackBufferFormat()								{ return m_back_buffer_format; }
+		//=======================================================================================================================================
 
 		//= API ACCESS ===================================================================
 		bool IsInitialized() const { return m_initialized; }
@@ -103,6 +150,11 @@ namespace Directus
 		//================================================================================
 
 	private:
+		std::vector<DisplayMode> m_displayModes;
+		std::vector<DisplayAdapter> m_displayAdapters;
+		const DisplayAdapter* m_primaryAdapter = nullptr;
+		RHI_Format m_back_buffer_format = Format_R8G8B8A8_UNORM;
+
 		bool m_initialized		= false;
 		void* m_device_physical	= nullptr;
 		void* m_device			= nullptr;

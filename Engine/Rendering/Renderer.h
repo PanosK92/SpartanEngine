@@ -181,6 +181,7 @@ namespace Directus
 		uint64_t GetFrameNum() const								{ return m_frame_num; }
 		std::shared_ptr<Camera> GetCamera() const					{ return m_camera; }
 		unsigned int GetMaxResolution() const						{ return m_max_resolution; }
+		bool IsInitialized() const									{ return m_initialized; }
 		//=====================================================================================
 
 	private:
@@ -352,6 +353,7 @@ namespace Directus
 		Math::Vector2 m_taa_jitter_previous;
 		RendererDebug_Buffer m_debug_buffer = RendererDebug_None;
 		unsigned long m_flags = 0;
+		bool m_initialized = false;
 		//=======================================================
 
 		//= ENTITIES/COMPONENTS ============================================

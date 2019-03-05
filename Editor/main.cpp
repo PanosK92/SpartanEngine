@@ -31,12 +31,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// Create window
 	Window::g_OnMessage = ImGui_ImplWin32_WndProcHandler;
-	Window::g_onResize	= [&editor](unsigned int width, unsigned int height) { editor->Resize(width, height); };
+	Window::g_onResize	= [&editor](unsigned int width, unsigned int height) { if (editor) editor->Resize(width, height); };
 	Window::Create(hInstance, "Directus " + std::string(ENGINE_VERSION));	
-	Window::Show();
 
 	// Create editor
-	editor = std::make_unique<Editor>(Window::g_handle, hInstance, Window::GetWidth(), Window::GetHeight());
+	editor = std::make_unique<Editor>(Window::g_handle, hInstance);
+
+	// Show window
+	Window::Show();
 
     // Tick
 	while (Window::Tick()) 

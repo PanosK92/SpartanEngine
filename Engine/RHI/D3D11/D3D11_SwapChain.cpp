@@ -96,8 +96,19 @@ namespace Directus
 			desc.SwapEffect						= d3d11_swap_effect[swap_effect];
 			unsigned int d3d11_flags			= 0;
 			d3d11_flags							|= flags & SwapChain_Allow_Mode_Switch	? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
-			d3d11_flags							|= flags & SwapChain_Allow_Tearing		? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
-			desc.Flags							= d3d11_flags;
+			// If SwapChain_Allow_Tearing is requested, also check if the adapter supports it (tends to fail with Intel adapters)
+			if (flags & SwapChain_Allow_Tearing)
+			{
+				if (D3D11_Helper::CheckTearingSupport())
+				{
+					d3d11_flags	|= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+				}
+				else
+				{
+					LOG_WARNING("SwapChain_Allow_Tearing was requested but it's not supported by the adapter.");
+				}
+			}
+			desc.Flags = d3d11_flags;
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
 			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetDevicePhysical<ID3D11Device>(), &desc, &swap_chain);
@@ -169,7 +180,7 @@ namespace Directus
 		safe_release(render_target_view);
 	
 		DisplayMode display_mode;
-		if (!Settings::Get().DisplayMode_GetFastest(&display_mode))
+		if (!m_rhi_device->GetDidsplayModeFastest(&display_mode))
 		{
 			LOG_ERROR("Failed to get a display mode");
 			return false;

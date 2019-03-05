@@ -209,8 +209,8 @@ namespace Directus
 			"Frame time:\t\t\t\t\t" + ToStringPrecision(m_frame_time_ms, 2) + " ms\n"
 			"CPU time:\t\t\t\t\t\t" + ToStringPrecision(m_cpu_time, 2) + " ms\n"
 			"GPU time:\t\t\t\t\t\t" + ToStringPrecision(m_gpu_time, 2) + " ms\n"
-			"GPU:\t\t\t\t\t\t\t"	+ Settings::Get().Gpu_GetName() + "\n"
-			"VRAM:\t\t\t\t\t\t\t"	+ to_string(Settings::Get().Gpu_GetMemory()) + " MB\n"
+			"GPU:\t\t\t\t\t\t\t"	+ Settings::Get().GpuGetName() + "\n"
+			"VRAM:\t\t\t\t\t\t\t"	+ to_string(Settings::Get().GpuGetMemory()) + " MB\n"
 
 			// Renderer
 			"Resolution:\t\t\t\t\t"				+ to_string(static_cast<int>(m_renderer->GetResolution().x)) + "x" + to_string(static_cast<int>(m_renderer->GetResolution().y)) + "\n"

@@ -26,7 +26,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_D3D11
 //================================
 
-namespace D3D11_Helper
+//= INCLUDES =====================
+#include "../RHI_Device.h"
+#include <vector>
+#include <wrl/client.h>
+#include "../../Logging/Log.h"
+#include "../../Core/EngineDefs.h"
+//================================
+
+namespace Directus::D3D11_Helper
 { 
 	inline const char* dxgi_error_to_string(const HRESULT error_code)
 	{
@@ -59,6 +67,131 @@ namespace D3D11_Helper
 		}
 	
 		return "Unknown error code";
+	}
+
+	inline void DetectAdapters(RHI_Device* device)
+	{
+		// Create DirectX graphics interface factory
+		IDXGIFactory1* factory;
+		const auto result = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
+		if (FAILED(result))
+		{
+			LOGF_ERROR("Failed to create a DirectX graphics interface factory, %s.", dxgi_error_to_string(result));
+			return;
+		}
+
+		const auto get_available_adapters = [](IDXGIFactory1* factory)
+		{
+			unsigned int i = 0;
+			IDXGIAdapter* adapter;
+			std::vector<IDXGIAdapter*> adapters;
+			while (factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
+			{
+				adapters.emplace_back(adapter);
+				++i;
+			}
+
+			return adapters;
+		};
+
+		// Get all available adapters
+		auto adapters = get_available_adapters(factory);
+		safe_release(factory);
+		if (adapters.empty())
+		{
+			LOG_ERROR("Couldn't find any adapters");
+			return;
+		}
+
+		// Save all available adapters
+		DXGI_ADAPTER_DESC adapter_desc;
+		for (auto display_adapter : adapters)
+		{
+			if (FAILED(display_adapter->GetDesc(&adapter_desc)))
+			{
+				LOG_ERROR("Failed to get adapter description");
+				continue;
+			}
+
+			const auto memory_mb = static_cast<unsigned int>(adapter_desc.DedicatedVideoMemory / 1024 / 1024);
+			char name[128];
+			auto def_char = ' ';
+			WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
+
+			device->AddAdapter(name, memory_mb, adapter_desc.VendorId, static_cast<void*>(display_adapter));
+		}
+
+		// DISPLAY MODES
+		const auto get_display_modes = [device](IDXGIAdapter* adapter)
+		{
+			auto backBufferFormat = d3d11_format[device->GetBackBufferFormat()];
+
+			// Enumerate the primary adapter output (monitor).
+			IDXGIOutput* adapter_output;
+			bool result = SUCCEEDED(adapter->EnumOutputs(0, &adapter_output));
+			if (result)
+			{
+				// Get supported display mode count
+				UINT display_mode_count;
+				result = SUCCEEDED(adapter_output->GetDisplayModeList(backBufferFormat, DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr));
+				if (result)
+				{
+					// Get display modes
+					std::vector<DXGI_MODE_DESC> display_modes;
+					display_modes.resize(display_mode_count);
+					result = SUCCEEDED(adapter_output->GetDisplayModeList(backBufferFormat, DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0]));
+					if (result)
+					{
+						// Save all the display modes
+						for (const auto& mode : display_modes)
+						{
+							device->AddDisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator);
+						}
+					}
+				}
+				adapter_output->Release();
+			}
+
+			return result;
+		};
+
+		// Get display modes and set primary adapter
+		for (const auto& display_adapter : device->DisplayAdapters_Get())
+		{
+			const auto adapter = static_cast<IDXGIAdapter*>(display_adapter.data);
+
+			// Adapters are ordered by memory (descending), so stop on the first success
+			if (get_display_modes(adapter))
+			{
+				device->SetPrimaryAdapter(&display_adapter);
+				break;
+			}
+			else
+			{
+				LOGF_ERROR("Failed to get display modes for \"%s\". Ignoring adapter.", display_adapter.name.c_str());
+			}
+		}
+	}
+
+	inline bool CheckTearingSupport()
+	{
+		// Rather than create the 1.5 factory interface directly, we create the 1.4
+		// interface and query for the 1.5 interface. This will enable the graphics
+		// debugging tools which might not support the 1.5 factory interface.
+
+		Microsoft::WRL::ComPtr<IDXGIFactory4> factory4;
+		HRESULT resut		= CreateDXGIFactory1(IID_PPV_ARGS(&factory4));
+		BOOL allowTearing	= FALSE;
+		if (SUCCEEDED(resut))
+		{
+			Microsoft::WRL::ComPtr<IDXGIFactory5> factory5;
+			resut = factory4.As(&factory5);
+			if (SUCCEEDED(resut))
+			{
+				resut = factory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
+			}
+		}
+		return SUCCEEDED(resut) && allowTearing;
 	}
 }
 

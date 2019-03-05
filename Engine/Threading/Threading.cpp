@@ -33,7 +33,7 @@ namespace Directus
 	Threading::Threading(Context* context) : ISubsystem(context)
 	{
 		m_stopping		= false;
-		m_threadCount	= Settings::Get().ThreadCountMax_Get() - 1;
+		m_threadCount	= Settings::Get().GetMaxThreadCount() - 1;
 
 		for (unsigned int i = 0; i < m_threadCount; i++)
 		{

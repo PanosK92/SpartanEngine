@@ -89,10 +89,6 @@ namespace Directus
 			return;
 		}
 
-		// Detect primary adapter
-		auto back_buffer_format	= Format_R8G8B8A8_UNORM;
-		m_rhi_device->DetectPrimaryAdapter(back_buffer_format);
-
 		// Create pipeline
 		m_rhi_pipeline = make_shared<RHI_Pipeline>(m_context, m_rhi_device);
 
@@ -104,7 +100,7 @@ namespace Directus
 				m_rhi_device,
 				static_cast<unsigned int>(m_resolution.x),
 				static_cast<unsigned int>(m_resolution.y),
-				back_buffer_format,
+				m_rhi_device->GetBackBufferFormat(),
 				Swap_Flip_Discard,
 				SwapChain_Allow_Tearing | SwapChain_Allow_Mode_Switch,
 				2
@@ -119,6 +115,7 @@ namespace Directus
 
 		// Log on-screen as the renderer is ready
 		LOG_TO_FILE(false);
+		m_initialized = true;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -679,7 +676,7 @@ namespace Directus
 		buffer->taa_jitter_offset		= m_taa_jitter - m_taa_jitter_previous;
 		buffer->motion_blur_strength	= m_motion_blur_strength;
 		buffer->fps_current				= m_profiler->GetFps();
-		buffer->fps_target				= Settings::Get().FPS_GetTarget();
+		buffer->fps_target				= Settings::Get().GetFpsTarget();
 		buffer->gamma					= m_gamma;
 		buffer->tonemapping				= static_cast<float>(m_tonemapping);
 

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Viewport.h"
 #include "RHI_Object.h"
 #include "../Core/Settings.h"
+#include <vector>
 //===========================
 
 namespace Directus
@@ -38,9 +39,9 @@ namespace Directus
 			unsigned int width,
 			unsigned int height,
 			RHI_Format texture_format	= Format_R8G8B8A8_UNORM,
-			bool depth						= false,
+			bool depth					= false,
 			RHI_Format depth_format		= Format_D32_FLOAT,
-			unsigned int array_size			= 1
+			unsigned int array_size		= 1
 		);
 		~RHI_RenderTexture();
 

@@ -58,7 +58,7 @@ namespace Directus
 		sampler_desc.AddressV		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.AddressW		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.MipLODBias		= 0.0f;
-		sampler_desc.MaxAnisotropy	= Settings::Get().Anisotropy_Get();
+		sampler_desc.MaxAnisotropy	= Settings::Get().GetAnisotropy();
 		sampler_desc.ComparisonFunc	= d3d11_compare_operator[comparison_function];
 		sampler_desc.BorderColor[0]	= 0;
 		sampler_desc.BorderColor[1]	= 0;
