@@ -128,8 +128,9 @@ namespace Directus
 		bool GetDidsplayModeFastest(DisplayMode* display_mode);
 		void AddAdapter(const std::string& name, unsigned int memory, unsigned int vendor_id, void* adapter);
 		void SetPrimaryAdapter(const DisplayAdapter* primary_adapter);
-		const std::vector<DisplayAdapter>& DisplayAdapters_Get() const	{ return m_displayAdapters; }
-		RHI_Format GetBackBufferFormat()								{ return m_back_buffer_format; }
+		const std::vector<DisplayAdapter>& GetAdapters() const	{ return m_displayAdapters; }
+		const DisplayAdapter* GetPrimaryAdapter()				{ return m_primaryAdapter; }
+		RHI_Format GetBackBufferFormat()						{ return m_back_buffer_format; }
 		//=======================================================================================================================================
 
 		//= API ACCESS ===================================================================

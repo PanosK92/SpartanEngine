@@ -64,19 +64,24 @@ namespace Directus
 		m_flags			= flags;
 		m_buffer_count	= buffer_count;
 
-		// Get factory from device
-		IDXGIDevice* dxgi_device	= nullptr;
-		IDXGIAdapter* dxgi_adapter	= nullptr;
+		// Get factory
 		IDXGIFactory* dxgi_factory	= nullptr;
-		if (m_rhi_device->GetDevicePhysical<ID3D11Device>()->QueryInterface(IID_PPV_ARGS(&dxgi_device)) == S_OK)
+		if (const auto& adapter = m_rhi_device->GetPrimaryAdapter())
 		{
-			if (dxgi_device->GetParent(IID_PPV_ARGS(&dxgi_adapter)) == S_OK)
+			auto dxgi_adapter = static_cast<IDXGIAdapter*>(adapter->data);
+			dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
+
+			if (!dxgi_factory)
 			{
-				dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
+				LOG_ERROR("Failed to get adapter's factory");
+				return;
 			}
 		}
-		safe_release(dxgi_device);
-		safe_release(dxgi_adapter);
+		else
+		{
+			LOG_ERROR("Invalid primary adapter");
+			return;
+		}
 
 		// Create swap chain
 		{

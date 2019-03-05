@@ -156,7 +156,7 @@ namespace Directus::D3D11_Helper
 		};
 
 		// Get display modes and set primary adapter
-		for (const auto& display_adapter : device->DisplayAdapters_Get())
+		for (const auto& display_adapter : device->GetAdapters())
 		{
 			const auto adapter = static_cast<IDXGIAdapter*>(display_adapter.data);
 
