@@ -52,21 +52,23 @@ namespace Directus
 	)
 	{
 		const auto hwnd	= static_cast<HWND>(window_handle);
-
 		if (!hwnd || !device || !IsWindow(hwnd))
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
-	
-		m_format		= format;
-		m_rhi_device	= device;
-		m_flags			= flags;
-		m_buffer_count	= buffer_count;
+
+		// Get device
+		auto* d3d11_device = device->GetDevicePhysical<ID3D11Device>();
+		if (!d3d11_device)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
 
 		// Get factory
-		IDXGIFactory* dxgi_factory	= nullptr;
-		if (const auto& adapter = m_rhi_device->GetPrimaryAdapter())
+		IDXGIFactory* dxgi_factory = nullptr;
+		if (const auto& adapter = device->GetPrimaryAdapter())
 		{
 			auto dxgi_adapter = static_cast<IDXGIAdapter*>(adapter->data);
 			dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory));
@@ -82,6 +84,12 @@ namespace Directus
 			LOG_ERROR("Invalid primary adapter");
 			return;
 		}
+
+		// Save parameters
+		m_format		= format;
+		m_rhi_device	= device;
+		m_flags			= flags;
+		m_buffer_count	= buffer_count;
 
 		// Create swap chain
 		{
@@ -102,7 +110,7 @@ namespace Directus
 			desc.Flags							= D3D11_Helper::GetSwapChainFlags(flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
-			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetDevicePhysical<ID3D11Device>(), &desc, &swap_chain);
+			const auto result	= dxgi_factory->CreateSwapChain(d3d11_device, &desc, &swap_chain);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
