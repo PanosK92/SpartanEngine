@@ -52,7 +52,7 @@ namespace _Editor
 	const char* dockspace_name	= "EditorDockspace";
 }
 
-Editor::Editor(void* window_handle, void* window_instance, const unsigned int window_width, const unsigned int window_height)
+Editor::Editor(void* window_handle, void* window_instance)
 {
 	// Add console widget first so it picks up the engine's initialization output
 	m_widgets.emplace_back(make_unique<Widget_Console>(nullptr));
@@ -66,6 +66,12 @@ Editor::Editor(void* window_handle, void* window_instance, const unsigned int wi
 	m_renderer	= m_context->GetSubsystem<Renderer>().get();
 	m_timer		= m_context->GetSubsystem<Timer>().get();
 	m_rhiDevice = m_renderer->GetRhiDevice();
+
+	if (!m_renderer->IsInitialized())
+	{
+		LOG_ERROR("The engine failed to initialize the renderer subsystem, aborting editor creation.");
+		return;
+	}
 
 	// ImGui version validation
 	IMGUI_CHECKVERSION();
@@ -86,8 +92,6 @@ Editor::Editor(void* window_handle, void* window_instance, const unsigned int wi
 	// ImGui backend setup
 	ImGui_ImplWin32_Init(window_handle);
 	ImGui::RHI::Initialize(m_context);
-
-	Resize(window_width, window_height);
 
 	// Initialization of misc custom systems
 	IconProvider::Get().Initialize(m_context);
@@ -115,6 +119,9 @@ Editor::~Editor()
 
 void Editor::Resize(const unsigned int width, const unsigned int height)
 {
+	if (!m_initialized)
+		return;
+
 	ImGui::RHI::OnResize(width, height);
 }
 

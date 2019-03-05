@@ -39,7 +39,7 @@ namespace Directus
 {
 	RHI_BlendState::RHI_BlendState
 	(
-		const std::shared_ptr<RHI_Device>& device,
+		const std::shared_ptr<RHI_Device>& rhi_device,
 		const bool blend_enabled					/*= false*/,
 		const RHI_Blend source_blend				/*= Blend_Src_Alpha*/,
 		const RHI_Blend dest_blend					/*= Blend_Inv_Src_Alpha*/,
@@ -49,6 +49,19 @@ namespace Directus
 		const RHI_Blend_Operation blend_op_alpha	/*= Blend_Operation_Add*/
 	)
 	{
+		if (!rhi_device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
+		auto d3d11_device = rhi_device->GetDevicePhysical<ID3D11Device>();
+		if (!d3d11_device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
 		// Save properties
 		m_blend_enabled = blend_enabled;
 
@@ -71,7 +84,7 @@ namespace Directus
 
 		// Create blend state
 		auto blend_state	= static_cast<ID3D11BlendState*>(m_buffer);
-		const auto result	= device->GetDevicePhysical<ID3D11Device>()->CreateBlendState(&desc, &blend_state);
+		const auto result	= d3d11_device->CreateBlendState(&desc, &blend_state);
 
 		// Handle result
 		if (SUCCEEDED(result))

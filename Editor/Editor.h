@@ -41,7 +41,7 @@ namespace Directus
 class Editor
 {
 public:
-	Editor(void* window_handle, void* window_instance, unsigned int window_width, unsigned int window_height);
+	Editor(void* window_handle, void* window_instance);
 	~Editor();
 
 	void Resize(unsigned int width, unsigned int height);

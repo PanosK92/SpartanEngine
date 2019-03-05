@@ -22,11 +22,11 @@ namespace Window
 		switch(msg)
 		{
 			case WM_DISPLAYCHANGE:
-				g_onResize(lParam & 0xffff, (lParam >> 16) & 0xffff);
+				if (g_onResize) g_onResize(lParam & 0xffff, (lParam >> 16) & 0xffff);
 			break;
 
 			case WM_SIZE:
-				g_onResize(lParam & 0xffff, (lParam >> 16) & 0xffff);
+				if (g_onResize) g_onResize(lParam & 0xffff, (lParam >> 16) & 0xffff);
 			break;
 
 			case WM_CLOSE:

@@ -46,7 +46,7 @@ namespace Directus
 		duration<double, milli> time_work	= time_a - time_b;
 		
 		// Compute sleep time (fps limiting)
-		const double max_fps		= Settings::Get().FPS_GetLimit();
+		const double max_fps		= Settings::Get().GetFpsLimit();
 		const double min_dt			= 1000.0 / max_fps;
 		const double dt_remaining	= min_dt - time_work.count();
 		if (dt_remaining >  0)

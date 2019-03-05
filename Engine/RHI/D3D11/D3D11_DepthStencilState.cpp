@@ -39,6 +39,19 @@ namespace Directus
 {
 	RHI_DepthStencilState::RHI_DepthStencilState(const shared_ptr<RHI_Device>& rhi_device, const bool depth_enabled, const RHI_Comparison_Function comparison)
 	{
+		if (!rhi_device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
+		auto d3d11_device = rhi_device->GetDevicePhysical<ID3D11Device>();
+		if (!d3d11_device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return;
+		}
+
 		// Save properties
 		m_depth_enabled = depth_enabled;
 
@@ -77,7 +90,7 @@ namespace Directus
 
 		// Create depth-stencil state
 		auto depth_stencil_state	= static_cast<ID3D11DepthStencilState*>(m_buffer);
-		const auto result			= rhi_device->GetDevicePhysical<ID3D11Device>()->CreateDepthStencilState(&desc, &depth_stencil_state);
+		const auto result			= d3d11_device->CreateDepthStencilState(&desc, &depth_stencil_state);
 
 		// Handle result
 		if (SUCCEEDED(result))

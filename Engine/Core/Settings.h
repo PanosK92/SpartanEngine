@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include <vector>
 #include "EngineDefs.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
@@ -30,45 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	struct DisplayMode
-	{
-		DisplayMode() = default;
-		DisplayMode(const unsigned int width, const unsigned int height, const unsigned int refresh_rate_numerator, const unsigned int refresh_rate_denominator)
-		{
-			this->width						= width;
-			this->height					= height;
-			this->refreshRateNumerator		= refresh_rate_numerator;
-			this->refreshRateDenominator	= refresh_rate_denominator;
-			this->refreshRate				= static_cast<float>(refresh_rate_numerator) / static_cast<float>(refresh_rate_denominator);
-		}
-
-		unsigned int width					= 0;
-		unsigned int height					= 0;
-		unsigned int refreshRateNumerator	= 0;
-		unsigned int refreshRateDenominator = 0;
-		float refreshRate					= 0;
-	};
-
-	struct DisplayAdapter
-	{
-		DisplayAdapter(const std::string& name, const unsigned int memory, const unsigned int vendor_id, void* data)
-		{
-			this->name		= name;
-			this->memory	= memory;
-			this->vendorID	= vendor_id;
-			this->data		= data;
-		}
-
-		std::string name		= "Unknown";
-		unsigned int vendorID	= 0;
-		unsigned int memory		= 0;
-		void* data				= nullptr;
-
-		//Nvidia: 0x10DE
-		//AMD	: 0x1002, 0x1022
-		//Intel : 0x163C, 0x8086, 0x8087
-	};
-
 	enum FPS_Policy
 	{
 		FPS_Unlocked,
@@ -108,34 +68,26 @@ namespace Directus
 		unsigned int GetWindowHeight() const									{ return static_cast<unsigned int>(m_windowSize.y); }
 		//==============================================================================================================================================================
 
-		//= DISPLAY ==============================================================================================================================
-		void DisplayMode_Add(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator);
-		bool DisplayMode_GetFastest(DisplayMode* display_mode);
-		//========================================================================================================================================
-
-		//= ADAPTERS ===============================================================================================
-		void DisplayAdapter_Add(const std::string& name, unsigned int memory, unsigned int vendor_id, void* adapter);
-		void DisplayAdapter_SetPrimary(const DisplayAdapter* primary_adapter);
-		const std::vector<DisplayAdapter>& DisplayAdapters_Get() const { return m_displayAdapters; }
-		//==========================================================================================================
-
 		//= FPS ===========================================
-		void FPS_SetLimit(float fps);
-		float FPS_GetLimit() const	{ return m_fpsLimit; }
-		float FPS_GetTarget() const { return m_fpsTarget; }
+		void SetFpsLimit(float fps);
+		float GetFpsLimit() const	{ return m_fpsLimit; }
+		float GetFpsTarget() const	{ return m_fpsTarget; }
+		FPS_Policy GetFpsPolicy()	{ return m_fpsPolicy; }
 		//=================================================
 
-		//= MISC ====================================================================================================================
-		bool FullScreen_Get() const								{ return m_isFullScreen; }
-		bool MousVisible_Get() const							{ return m_isMouseVisible; }
-		unsigned int Shadows_GetResolution() const				{ return m_shadowMapResolution; }
-		unsigned int Anisotropy_Get() const						{ return m_anisotropy; }
-		void ThreadCountMax_Set(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
-		unsigned int ThreadCountMax_Get() const					{ return m_maxThreadCount; }	
-		const std::string& Gpu_GetName()						{ return m_primaryAdapter ? m_primaryAdapter->name : m_emptyString; }
-		unsigned int Gpu_GetMemory() const						{ return m_primaryAdapter ? m_primaryAdapter->memory : 0; }
-		bool GetReverseZ() const								{ return m_reverseZ; }
-		//===========================================================================================================================
+		//= MISC =================================================================================
+		bool GetIsFullScreen() const						{ return m_isFullScreen; }
+		bool GetIsMouseVisible() const						{ return m_isMouseVisible; }
+		unsigned int GetShadowResolution() const			{ return m_shadowMapResolution; }
+		unsigned int GetAnisotropy() const					{ return m_anisotropy; }
+		void SetMaxThreadCount(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
+		unsigned int GetMaxThreadCount() const				{ return m_maxThreadCount; }	
+		const std::string& GpuGetName()						{ return m_gpu_name; }
+		void SetGpuName(const std::string& name)			{ m_gpu_name = name; }
+		unsigned int GpuGetMemory() const					{ return m_gpu_memory; }
+		void SetGpuMemory(unsigned int memory)				{ m_gpu_memory = memory;}
+		bool GetReverseZ() const							{ return m_reverseZ; }
+		//========================================================================================
 
 		// Third party lib versions
 		std::string m_versionAngelScript;
@@ -162,10 +114,7 @@ namespace Directus
 		float m_fpsTarget					= 165.0f;
 		FPS_Policy m_fpsPolicy				= FPS_MonitorMatch;
 		bool m_reverseZ						= true;
-
-		const DisplayAdapter* m_primaryAdapter = nullptr;
-		std::vector<DisplayMode> m_displayModes;
-		std::vector<DisplayAdapter> m_displayAdapters;	
-		std::string m_emptyString = "N/A";
+		std::string m_gpu_name				= "Unknown";
+		unsigned int m_gpu_memory			= 0;
 	};
 }
