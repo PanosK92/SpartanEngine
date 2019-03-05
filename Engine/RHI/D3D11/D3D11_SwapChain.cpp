@@ -45,10 +45,10 @@ namespace Directus
 		const std::shared_ptr<RHI_Device>& device,
 		unsigned int width,
 		unsigned int height,
-		const  RHI_Format format			/*= Format_R8G8B8A8_UNORM*/,
-		RHI_Swap_Effect swap_effect			/*= Swap_Discard*/,
-		const  unsigned long flags			/*= 0 */,
-		const  unsigned int buffer_count	/*= 1 */
+		const  RHI_Format format		/*= Format_R8G8B8A8_UNORM*/,
+		RHI_Swap_Effect swap_effect		/*= Swap_Discard*/,
+		const unsigned long flags		/*= 0 */,
+		const unsigned int buffer_count	/*= 1 */
 	)
 	{
 		const auto hwnd	= static_cast<HWND>(window_handle);
@@ -99,21 +99,7 @@ namespace Directus
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
 			desc.SwapEffect						= d3d11_swap_effect[swap_effect];
-			unsigned int d3d11_flags			= 0;
-			d3d11_flags							|= flags & SwapChain_Allow_Mode_Switch	? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
-			// If SwapChain_Allow_Tearing is requested, also check if the adapter supports it (tends to fail with Intel adapters)
-			if (flags & SwapChain_Allow_Tearing)
-			{
-				if (D3D11_Helper::CheckTearingSupport())
-				{
-					d3d11_flags	|= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-				}
-				else
-				{
-					LOG_WARNING("SwapChain_Allow_Tearing was requested but it's not supported by the adapter.");
-				}
-			}
-			desc.Flags = d3d11_flags;
+			desc.Flags							= D3D11_Helper::GetSwapChainFlags(flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
 			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetDevicePhysical<ID3D11Device>(), &desc, &swap_chain);
@@ -210,9 +196,7 @@ namespace Directus
 		}
 
 		// Resize swapchain buffers
-		unsigned int d3d11_flags = 0;
-		d3d11_flags |= m_flags & SwapChain_Allow_Mode_Switch ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
-		d3d11_flags |= m_flags & SwapChain_Allow_Tearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+		unsigned int d3d11_flags = D3D11_Helper::GetSwapChainFlags(m_flags);
 		result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), dxgi_mode_desc.Format, d3d11_flags);
 		if (FAILED(result))
 		{

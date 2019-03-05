@@ -193,6 +193,30 @@ namespace Directus::D3D11_Helper
 		}
 		return SUCCEEDED(resut) && allowTearing;
 	}
+
+	inline unsigned int GetSwapChainFlags(unsigned long flags)
+	{
+		unsigned int d3d11_flags = 0;
+
+		// SwapChain_Allow_Mode_Switch
+		d3d11_flags |= flags & SwapChain_Allow_Mode_Switch ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
+
+		// SwapChain_Allow_Tearing is requested
+		if (flags & SwapChain_Allow_Tearing)
+		{
+			// Check if the adapter supports it (tends to fail with Intel adapters)
+			if (D3D11_Helper::CheckTearingSupport())
+			{
+				d3d11_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+			}
+			else
+			{
+				LOG_WARNING("SwapChain_Allow_Tearing was requested but it's not supported by the adapter.");
+			}
+		}
+
+		return d3d11_flags;
+	}
 }
 
 #endif
