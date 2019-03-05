@@ -76,6 +76,7 @@ namespace Directus
 				D3D_FEATURE_LEVEL_10_1,
 				D3D_FEATURE_LEVEL_10_0,
 				D3D_FEATURE_LEVEL_9_3,
+				D3D_FEATURE_LEVEL_9_2,
 				D3D_FEATURE_LEVEL_9_1
 			};
 
@@ -672,6 +673,7 @@ namespace Directus
 			auto def_char = ' ';
 			WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
 
+
 			Settings::Get().DisplayAdapter_Add(name, memory_mb, adapter_desc.VendorId, static_cast<void*>(display_adapter));
 		}
 
@@ -680,19 +682,19 @@ namespace Directus
 		{
 			// Enumerate the primary adapter output (monitor).
 			IDXGIOutput* adapter_output;
-			auto result = adapter->EnumOutputs(0, &adapter_output);
-			if (SUCCEEDED(result))
+			bool result = SUCCEEDED(adapter->EnumOutputs(0, &adapter_output));
+			if (result)
 			{
 				// Get supported display mode count
 				UINT display_mode_count;
-				result = adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr);
-				if (SUCCEEDED(result))
+				result = SUCCEEDED(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr));
+				if (result)
 				{
 					// Get display modes
 					vector<DXGI_MODE_DESC> display_modes;
 					display_modes.resize(display_mode_count);
-					result = adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0]);
-					if (SUCCEEDED(result))
+					result = SUCCEEDED(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0]));
+					if (result)
 					{
 						// Save all the display modes
 						for (const auto& mode : display_modes)
@@ -704,24 +706,23 @@ namespace Directus
 				adapter_output->Release();
 			}
 
-			if (FAILED(result))
-			{
-				LOGF_ERROR("Failed to get display modes (%s)", D3D11_Helper::dxgi_error_to_string(result));
-				return false;
-			}
-
-			return true;
+			return result;
 		};
 
 		// Get display modes and set primary adapter
 		for (const auto& display_adapter : Settings::Get().DisplayAdapters_Get())
 		{
 			const auto adapter = static_cast<IDXGIAdapter*>(display_adapter.data);
+
 			// Adapters are ordered by memory (descending), so stop on the first success
 			if (get_display_modes(adapter))
 			{
 				Settings::Get().DisplayAdapter_SetPrimary(&display_adapter);
 				break;
+			}
+			else
+			{
+				LOGF_ERROR("Failed to get display modes for \"%s\". Ignoring adapter.", display_adapter.name.c_str());
 			}
 		}
 	}

@@ -165,11 +165,14 @@ namespace Directus
 
 	void Settings::DisplayAdapter_Add(const string& name, unsigned int memory, unsigned int vendor_id, void* adapter)
 	{
+		
+		LOGF_INFO("%s (%d MB)", name.c_str(), memory);
+
 		m_displayAdapters.emplace_back(name, memory, vendor_id, adapter);
 		sort(m_displayAdapters.begin(), m_displayAdapters.end(), [](const DisplayAdapter& adapter1, const DisplayAdapter& adapter2)
 		{
 			return adapter1.memory > adapter2.memory;
-		});		
+		});
 	}
 
 	void Settings::DisplayAdapter_SetPrimary(const DisplayAdapter* primary_adapter)
