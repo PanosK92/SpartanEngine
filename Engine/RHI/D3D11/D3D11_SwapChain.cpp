@@ -108,7 +108,7 @@ namespace Directus
 			desc.Windowed						= m_windowed ? TRUE : FALSE;
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
-			desc.SwapEffect						= D3D11_Helper::FilterSwapEffect(swap_effect);
+			desc.SwapEffect						= D3D11_Helper::FilterSwapEffect(m_rhi_device.get(), swap_effect);
 			desc.Flags							= D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
