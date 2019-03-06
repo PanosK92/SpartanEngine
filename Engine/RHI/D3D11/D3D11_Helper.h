@@ -193,7 +193,7 @@ namespace Directus::D3D11_Helper
 		}
 
 		bool fullscreen_borderless_support	= SUCCEEDED(resut) && allowTearing;
-		bool vendor_support					= !device->GetPrimaryAdapter()->IsIntel(); // intel, bad
+		bool vendor_support					= !device->GetPrimaryAdapter()->IsIntel(); // Intel, bad
 
 		return fullscreen_borderless_support && vendor_support;
 	}
@@ -222,14 +222,21 @@ namespace Directus::D3D11_Helper
 		return d3d11_flags;
 	}
 
-	inline DXGI_SWAP_EFFECT FilterSwapEffect(RHI_Swap_Effect swap_effect)
+	inline DXGI_SWAP_EFFECT FilterSwapEffect(RHI_Device* device, RHI_Swap_Effect swap_effect)
 	{
 		#if !defined(_WIN32_WINNT_WIN10)
-		if (swap_effect == Swap_Flip_Discard) // This enumeration value is supported starting with Windows 10
+		if (swap_effect == Swap_Flip_Discard)
 		{
-			swap_effect == Swap_Discard
+			LOG_WARNING("Swap_Flip_Discard was requested but it's only support in Windows 10, using Swap_Discard instead.");
+			swap_effect = Swap_Discard;
 		}
 		#endif
+
+		if (swap_effect == Swap_Flip_Discard && device->GetPrimaryAdapter()->IsIntel())
+		{
+			LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
+			swap_effect = Swap_Discard;
+		}
 
 		return d3d11_swap_effect[swap_effect];
 	}
