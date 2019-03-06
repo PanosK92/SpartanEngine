@@ -193,7 +193,7 @@ namespace Directus::D3D11_Helper
 		}
 
 		bool fullscreen_borderless_support	= SUCCEEDED(resut) && allowTearing;
-		bool vendor_support					= device->GetPrimaryAdapter()->IsIntel();
+		bool vendor_support					= !device->GetPrimaryAdapter()->IsIntel(); // intel, bad
 
 		return fullscreen_borderless_support && vendor_support;
 	}

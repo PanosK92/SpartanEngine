@@ -66,16 +66,14 @@ namespace Directus
 			this->data		= data;
 		}
 
-		bool IsIntel() const { return vendorID == 0x163C || vendorID == 0x8086 || vendorID == 0x8087; }
+		bool IsNvidia() const	{ return vendorID == 0x10DE || name.find("NVIDIA") != std::string::npos; }
+		bool IsAmd() const		{ return vendorID == 0x1002 || vendorID == 0x1022 || name.find("AMD") != std::string::npos; }
+		bool IsIntel() const	{ return vendorID == 0x163C || vendorID == 0x8086 || vendorID == 0x8087 || name.find("Intel") != std::string::npos;}
 
 		std::string name		= "Unknown";
 		unsigned int vendorID	= 0;
 		unsigned int memory		= 0;
 		void* data				= nullptr;
-
-		//Nvidia: 0x10DE
-		//AMD	: 0x1002, 0x1022
-		//Intel : 0x163C, 0x8086, 0x8087
 	};
 
 	class ENGINE_CLASS RHI_Device
