@@ -55,6 +55,8 @@ namespace Directus
 
 	private:
 		bool m_initialized			= false;
+		bool m_windowed				= false;
+		bool m_tearing				= false;
 		void* m_swap_chain			= nullptr;
 		void* m_render_target_view	= nullptr;
 		unsigned long m_flags		= 0;

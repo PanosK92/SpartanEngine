@@ -194,7 +194,7 @@ namespace Directus::D3D11_Helper
 		return SUCCEEDED(resut) && allowTearing;
 	}
 
-	inline unsigned int GetSwapChainFlags(unsigned long flags)
+	inline unsigned int FilterSwapChainFlags(unsigned long flags)
 	{
 		unsigned int d3d11_flags = 0;
 
@@ -216,6 +216,18 @@ namespace Directus::D3D11_Helper
 		}
 
 		return d3d11_flags;
+	}
+
+	inline DXGI_SWAP_EFFECT FilterSwapEffect(RHI_Swap_Effect swap_effect)
+	{
+		#if !defined(_WIN32_WINNT_WIN10)
+		if (swap_effect == Swap_Flip_Discard) // This enumeration value is supported starting with Windows 10
+		{
+			swap_effect == Swap_Discard
+		}
+		#endif
+
+		return d3d11_swap_effect[swap_effect];
 	}
 }
 

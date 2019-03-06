@@ -62,7 +62,7 @@ namespace Directus
 		auto* d3d11_device = device->GetDevicePhysical<ID3D11Device>();
 		if (!d3d11_device)
 		{
-			LOG_ERROR_INVALID_PARAMETER();
+			LOG_ERROR("Invalid device.");
 			return;
 		}
 
@@ -90,6 +90,8 @@ namespace Directus
 		m_rhi_device	= device;
 		m_flags			= flags;
 		m_buffer_count	= buffer_count;
+		m_windowed		= true;
+		m_tearing		= flags & SwapChain_Allow_Mode_Switch;
 
 		// Create swap chain
 		{
@@ -103,11 +105,11 @@ namespace Directus
 			desc.OutputWindow					= hwnd;
 			desc.SampleDesc.Count				= 1;
 			desc.SampleDesc.Quality				= 0;
-			desc.Windowed						= TRUE;
+			desc.Windowed						= m_windowed ? TRUE : FALSE;
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
-			desc.SwapEffect						= d3d11_swap_effect[swap_effect];
-			desc.Flags							= D3D11_Helper::GetSwapChainFlags(flags);
+			desc.SwapEffect						= D3D11_Helper::FilterSwapEffect(swap_effect);
+			desc.Flags							= D3D11_Helper::FilterSwapChainFlags(flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
 			const auto result	= dxgi_factory->CreateSwapChain(d3d11_device, &desc, &swap_chain);
@@ -117,6 +119,8 @@ namespace Directus
 				return;
 			}
 			m_swap_chain = static_cast<void*>(swap_chain);
+
+
 		}
 
 		// Create the render target
@@ -204,7 +208,7 @@ namespace Directus
 		}
 
 		// Resize swapchain buffers
-		unsigned int d3d11_flags = D3D11_Helper::GetSwapChainFlags(m_flags);
+		unsigned int d3d11_flags = D3D11_Helper::FilterSwapChainFlags(m_flags);
 		result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), dxgi_mode_desc.Format, d3d11_flags);
 		if (FAILED(result))
 		{
@@ -277,8 +281,9 @@ namespace Directus
 			return false;
 		}
 
+		UINT flags = (m_tearing && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 		auto ptr_swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain);
-		ptr_swap_chain->Present(static_cast<UINT>(mode), 0);
+		ptr_swap_chain->Present(static_cast<UINT>(mode), flags);
 		return true;
 	}
 }
