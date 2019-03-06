@@ -66,6 +66,8 @@ namespace Directus
 			this->data		= data;
 		}
 
+		bool IsIntel() const { return vendorID == 0x163C || vendorID == 0x8086 || vendorID == 0x8087; }
+
 		std::string name		= "Unknown";
 		unsigned int vendorID	= 0;
 		unsigned int memory		= 0;

@@ -173,12 +173,12 @@ namespace Directus::D3D11_Helper
 		}
 	}
 
-	inline bool CheckTearingSupport()
+	// Determines whether tearing support is available for fullscreen borderless windows.
+	inline bool CheckTearingSupport(RHI_Device* device)
 	{
 		// Rather than create the 1.5 factory interface directly, we create the 1.4
 		// interface and query for the 1.5 interface. This will enable the graphics
-		// debugging tools which might not support the 1.5 factory interface.
-
+		// debugging tools which might not support the 1.5 factory interface
 		Microsoft::WRL::ComPtr<IDXGIFactory4> factory4;
 		HRESULT resut		= CreateDXGIFactory1(IID_PPV_ARGS(&factory4));
 		BOOL allowTearing	= FALSE;
@@ -191,10 +191,14 @@ namespace Directus::D3D11_Helper
 				resut = factory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
 			}
 		}
-		return SUCCEEDED(resut) && allowTearing;
+
+		bool fullscreen_borderless_support	= SUCCEEDED(resut) && allowTearing;
+		bool vendor_support					= device->GetPrimaryAdapter()->IsIntel();
+
+		return fullscreen_borderless_support && vendor_support;
 	}
 
-	inline unsigned int FilterSwapChainFlags(unsigned long flags)
+	inline unsigned int FilterSwapChainFlags(RHI_Device* device, unsigned long flags)
 	{
 		unsigned int d3d11_flags = 0;
 
@@ -205,7 +209,7 @@ namespace Directus::D3D11_Helper
 		if (flags & SwapChain_Allow_Tearing)
 		{
 			// Check if the adapter supports it (tends to fail with Intel adapters)
-			if (D3D11_Helper::CheckTearingSupport())
+			if (D3D11_Helper::CheckTearingSupport(device))
 			{
 				d3d11_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 			}

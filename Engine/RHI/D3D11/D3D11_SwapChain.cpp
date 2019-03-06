@@ -109,7 +109,7 @@ namespace Directus
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
 			desc.SwapEffect						= D3D11_Helper::FilterSwapEffect(swap_effect);
-			desc.Flags							= D3D11_Helper::FilterSwapChainFlags(flags);
+			desc.Flags							= D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
 			const auto result	= dxgi_factory->CreateSwapChain(d3d11_device, &desc, &swap_chain);
@@ -119,8 +119,6 @@ namespace Directus
 				return;
 			}
 			m_swap_chain = static_cast<void*>(swap_chain);
-
-
 		}
 
 		// Create the render target
@@ -208,7 +206,7 @@ namespace Directus
 		}
 
 		// Resize swapchain buffers
-		unsigned int d3d11_flags = D3D11_Helper::FilterSwapChainFlags(m_flags);
+		unsigned int d3d11_flags = D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), m_flags);
 		result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), dxgi_mode_desc.Format, d3d11_flags);
 		if (FAILED(result))
 		{
