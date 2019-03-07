@@ -33,7 +33,7 @@ Rendering       | Deferred rendering                        | -
 Rendering       | DirectX 11 backend                        | -
 Rendering       | Lights                                    | Directional, point and spot lights.
 Rendering       | Font Rendering                            | -
-Rendering       | Frustrum culing                           | -
+Rendering       | Frustum culling                           | -
 Rendering       | Per-Pixel motion blur                     | -
 Rendering       | Physically based rendering                | -
 Rendering       | Post-process effects                      | Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic aberration etc.
@@ -50,7 +50,7 @@ General         | Thread pool                               | -
 General         | Engine rendered platform agnostic editor  | -
 General         | Profiling  								| CPU & GPU.
 Scripting       | C/C++                                     | Using AngelScript.
-Platform        | Windows 10                                | -
+Support        	| Windows 10 and a modern/dedicated GPU		| This engine targets high-end machines, old setups or mobiles devices are not officially supported.
 
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/screenshot-v0.3_preview4.jpg">
 
