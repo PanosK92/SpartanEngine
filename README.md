@@ -1,3 +1,4 @@
+
 # Directus3D Game Engine
 Platform | Status | Binaries| :+1:
 :-:|:-:|:-:|:-:|
@@ -8,11 +9,11 @@ The source code aims to be clean, modern and tackles a lot of aspects of engine 
 The project is at an early development stage and there is a lot experimentation going on, regarding what works best.
 This means that the wisest thing to do is to approach it as study material, without expecting to make games with it (yet).
 Architectual quality is prioritized over development speed.</p>
+<p>
+<img align="left" width="546" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/screenshot-v0.3_preview4.jpg">
+<img align="left" width="426" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/rotating_gun.gif">
 
-<img align="left" width="625" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/screenshot-v0.3_preview4.jpg">
-<img align="right" width="488" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/rotating_gun.gif">
-
-Video[
+[
 ![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
 ## Features (v0.3)
