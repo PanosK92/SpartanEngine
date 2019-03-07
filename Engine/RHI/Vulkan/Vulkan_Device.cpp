@@ -358,10 +358,5 @@ namespace Directus
 	{
 		return 0.0f;
 	}
-
-	void RHI_Device::DetectPrimaryAdapter(RHI_Format format) const
-	{
-
-	}
 }
 #endif
