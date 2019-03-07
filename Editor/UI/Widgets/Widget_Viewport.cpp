@@ -85,15 +85,6 @@ void Widget_Viewport::ShowFrame(const float delta_time)
 	width	-= (width	% 2 != 0) ? 1 : 0;
 	height	-= (height	% 2 != 0) ? 1 : 0;
 
-	ImGui::Image(
-		_Widget_Viewport::g_renderer->GetFrameShaderResource(),
-		ImVec2(static_cast<float>(width), static_cast<float>(height)),
-		ImVec2(0, 0),
-		ImVec2(1, 1),
-		ImColor(255, 255, 255, 255),
-		ImColor(50, 127, 166, 255)
-	);
-
 	// Update engine's viewport
 	_Widget_Viewport::g_renderer->viewport_editor_offset = Vector2(ImGui::GetWindowPos()) + _Widget_Viewport::g_window_padding;
 	_Widget_Viewport::g_renderer->SetViewport(RHI_Viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)));
@@ -105,6 +96,16 @@ void Widget_Viewport::ShowFrame(const float delta_time)
 		m_timeSinceLastResChange = 0;
 	}
 	m_timeSinceLastResChange += delta_time;
+
+	// Draw the image after a potential Renderer::SetResolution() call has been made
+	ImGui::Image(
+		_Widget_Viewport::g_renderer->GetFrameShaderResource(),
+		ImVec2(static_cast<float>(width), static_cast<float>(height)),
+		ImVec2(0, 0),
+		ImVec2(1, 1),
+		ImColor(255, 255, 255, 255),
+		ImColor(50, 127, 166, 255)
+	);
 
 	// If this widget was clicked, make the engine pick an entity
 	if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered())
