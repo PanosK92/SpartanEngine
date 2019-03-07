@@ -91,7 +91,6 @@ namespace Directus
 		m_flags			= flags;
 		m_buffer_count	= buffer_count;
 		m_windowed		= true;
-		m_tearing		= flags & SwapChain_Allow_Mode_Switch;
 
 		// Create swap chain
 		{
@@ -110,6 +109,9 @@ namespace Directus
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
 			desc.SwapEffect						= D3D11_Helper::FilterSwapEffect(m_rhi_device.get(), swap_effect);
 			desc.Flags							= D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), flags);
+
+			// Updated tearing usage
+			m_tearing = desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
 			const auto result	= dxgi_factory->CreateSwapChain(d3d11_device, &desc, &swap_chain);

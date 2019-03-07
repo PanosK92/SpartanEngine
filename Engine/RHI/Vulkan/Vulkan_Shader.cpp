@@ -327,10 +327,18 @@ namespace Directus
 				create_info.codeSize	= static_cast<size_t>(shader_compiled->GetBufferSize());
 				create_info.pCode		= reinterpret_cast<const uint32_t*>(shader_compiled->GetBufferPointer());
 	
-				if (vkCreateShaderModule(m_rhi_device->GetDevice<VkDevice>(), &create_info, nullptr, &shader_module) != VK_SUCCESS)
+				if (vkCreateShaderModule(m_rhi_device->GetDevice<VkDevice>(), &create_info, nullptr, &shader_module) == VK_SUCCESS)
+				{
+					/*VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
+					fragShaderStageInfo.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+					fragShaderStageInfo.stage	= type == Shader_Vertex ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+					fragShaderStageInfo.module	= shader_module;
+					fragShaderStageInfo.pName	= "main";*/
+				}	
+				else
 				{
 					LOG_ERROR("Failed to create shader module.");
-				}			
+				}
 			}	
 		}
 
