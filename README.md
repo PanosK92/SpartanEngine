@@ -3,13 +3,14 @@ Platform | Status | Binaries| :+1:
 :-:|:-:|:-:|:-:|
 <img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20" height="20"/>|[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)| [Download](https://ci.appveyor.com/api/projects/PanosK92/directus3d/artifacts/Binaries/Release.zip?branch=master)|[![](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSP87Y77VNHPG&source=url)
 
-<img align="right" width="300" margin="20" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/rotating_gun.gif">
-
 <p align="left">Directus3D is a game engine that started as a hobby project and evolved into something greater.
 The source code aims to be clean, modern and tackles a lot of aspects of engine development.
 The project is at an early development stage and there is a lot experimentation going on, regarding what works best.
 This means that the wisest thing to do is to approach it as study material, without expecting to make games with it (yet).
 Architectual quality is prioritized over development speed.</p>
+
+<img align="left" width="625" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/screenshot-v0.3_preview4.jpg">
+<img align="right" width="488" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/rotating_gun.gif">
 
 Video[
 ![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
@@ -51,8 +52,6 @@ General         | Engine rendered platform agnostic editor  | -
 General         | Profiling  								| CPU & GPU.
 Scripting       | C/C++                                     | Using AngelScript.
 Support        	| Windows 10 and a modern/dedicated GPU		| This engine targets high-end machines, old setups or mobiles devices are not officially supported.
-
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/screenshot-v0.3_preview4.jpg">
 
 #### v0.31 (WIP)
 Feature     | Completion    | Notes 
