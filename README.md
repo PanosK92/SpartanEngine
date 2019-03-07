@@ -10,7 +10,7 @@ The project is at an early development stage and there is a lot experimentation 
 This means that the wisest thing to do is to approach it as study material, without expecting to make games with it (yet).
 Architectual quality is prioritized over development speed.</p>
 <p>
-<img align="left" width="546" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/screenshot-v0.3_preview4.jpg">
+<img align="left" width="540" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/screenshot-v0.3_preview4.jpg">
 <img align="left" width="426" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/rotating_gun.gif">
 
 [
