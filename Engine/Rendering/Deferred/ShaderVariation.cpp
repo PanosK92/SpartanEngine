@@ -93,8 +93,10 @@ namespace Directus
 		update = per_object_buffer_cpu.mat_normal_mul		!= material->GetNormalMultiplier()		? true : update;
 		update = per_object_buffer_cpu.mat_shading_mode		!= float(material->GetShadingMode())	? true : update;
 		update = per_object_buffer_cpu.model				!= transform->GetMatrix()				? true : update;
-		update = per_object_buffer_cpu.mvp_current			!= m_mvp_current						? true : update;
-		update = per_object_buffer_cpu.mvp_previous			!= transform->GetWVP_Previous()			? true : update;
+
+		bool new_input		= per_object_buffer_cpu.mvp_current != m_mvp_current;
+		bool non_zero_delta = per_object_buffer_cpu.mvp_current != per_object_buffer_cpu.mvp_previous;
+		update = new_input || non_zero_delta ? true : update;
 
 		if (!update)
 			return;

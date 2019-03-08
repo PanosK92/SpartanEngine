@@ -66,7 +66,7 @@ Depth-of-field          	| -           	| Based on Doom approach
 Subsurface Scattering   	| -            	| -
 Point & Spot light shadows	| -            	| -
 Improve editor appearance	| -            	| -
-Bug fixes and improvements	| -            	| Fix TAA shaking on some objects, improve bloom quality, etc.
+Bug fixes and improvements	| -            	| Improve bloom quality, reduce render time, etc.
 
 # Roadmap
 - Volumetric Lighting.
