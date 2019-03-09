@@ -742,17 +742,6 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 					ImColor(255, 255, 255, 128)
 				);
 
-				// Remove texture button
-				if (material->HasTexture(textureType))
-				{
-					const auto size = 15.0f;		
-					ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - size * 2.0f);
-					if (ImGuiEx::ImageButton(texture_name, Icon_Component_Material_RemoveTexture, size))
-					{
-						material->SetTextureSlot(textureType, nullptr);
-					}
-				}
-
 				// Drop target
 				if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))
 				{
@@ -764,6 +753,17 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 						}
 					}
 					catch (const std::bad_variant_access& e) { LOGF_ERROR("Widget_Properties::ShowMaterial: %s", e.what()); }
+				}
+
+				// Remove texture button
+				if (material->HasTexture(textureType))
+				{
+					const auto size = 15.0f;
+					ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - size * 2.0f);
+					if (ImGuiEx::ImageButton(texture_name, Icon_Component_Material_RemoveTexture, size))
+					{
+						material->SetTextureSlot(textureType, nullptr);
+					}
 				}
 			};
 
