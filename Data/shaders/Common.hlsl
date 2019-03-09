@@ -62,7 +62,7 @@ cbuffer GlobalBuffer : register(b0)
 	
 	float2 g_taa_jitterOffset;
 	float g_toneMapping;
-	float padding;
+	float g_exposure;
 };
 
 #define g_texelSize float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)

@@ -75,9 +75,9 @@ namespace Directus
 		m_flags			|= Render_PostProcess_SSAO;	
 		m_flags			|= Render_PostProcess_MotionBlur;
 		m_flags			|= Render_PostProcess_TAA;
-		m_flags			|= Render_PostProcess_Sharpening;
-		m_flags			|= Render_PostProcess_Dithering;
+		m_flags			|= Render_PostProcess_Sharpening;	
 		m_flags			|= Render_PostProcess_SSR;
+		//m_flags		|= Render_PostProcess_Dithering;			// Diasbled by default: It's only needed in very dark scenes to fix smooth color gradients
 		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect		
 		//m_flags		|= Render_PostProcess_FXAA;					// Disabled by default: TAA is superior
 		
@@ -676,9 +676,10 @@ namespace Directus
 		buffer->taa_jitter_offset		= m_taa_jitter - m_taa_jitter_previous;
 		buffer->motion_blur_strength	= m_motion_blur_strength;
 		buffer->fps_current				= m_profiler->GetFps();
-		buffer->fps_target				= Settings::Get().GetFpsTarget();
-		buffer->gamma					= m_gamma;
+		buffer->fps_target				= Settings::Get().GetFpsTarget();	
 		buffer->tonemapping				= static_cast<float>(m_tonemapping);
+		buffer->exposure				= m_exposure;
+		buffer->gamma					= m_gamma;
 
 		m_buffer_global_->Unmap();
 		m_rhi_pipeline->SetConstantBuffer(m_buffer_global_, 0, Buffer_Global);

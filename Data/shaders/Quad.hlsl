@@ -50,7 +50,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 
 #if PASS_TONEMAPPING
 	color 		= sourceTexture.Sample(samplerState, texCoord);
-	color.rgb 	= ToneMap(color.rgb);
+	color.rgb 	= ToneMap(color.rgb * exp(g_exposure));
 #endif
 
 #if PASS_TEXTURE

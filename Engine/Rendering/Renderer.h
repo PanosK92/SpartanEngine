@@ -147,6 +147,7 @@ namespace Directus
 
 		//= Graphics Settings ====================================================================================================================================================
 		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;
+		float m_exposure				= 0.0f;
 		float m_gamma					= 2.2f;
 		// FXAA
 		float m_fxaa_sub_pixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
@@ -405,7 +406,7 @@ namespace Directus
 
 			Math::Vector2 taa_jitter_offset;
 			float tonemapping;
-			float padding;
+			float exposure;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_buffer_global_;
 	};

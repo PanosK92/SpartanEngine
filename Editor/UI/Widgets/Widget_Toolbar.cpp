@@ -156,6 +156,7 @@ void Widget_Toolbar::ShowRendererOptions()
 				}
 				ImGui::EndCombo();
 			}
+			ImGui::InputFloat("Exposure", &m_renderer->m_exposure, 0.1f);
 			ImGui::InputFloat("Gamma", &m_renderer->m_gamma, 0.1f);
 			ImGui::Checkbox("Bloom", &do_bloom);
 			ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloom_intensity, 0.1f);		
@@ -176,6 +177,7 @@ void Widget_Toolbar::ShowRendererOptions()
 		}
 
 		// Filter input
+		m_renderer->m_exposure					= Abs(m_renderer->m_exposure);
 		m_renderer->m_bloom_intensity			= Abs(m_renderer->m_bloom_intensity);
 		m_renderer->m_fxaa_sub_pixel			= Abs(m_renderer->m_fxaa_sub_pixel);
 		m_renderer->m_fxaa_edge_threshold		= Abs(m_renderer->m_fxaa_edge_threshold);
