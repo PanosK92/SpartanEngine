@@ -78,7 +78,7 @@ namespace Directus
 			return;
 		}
 
-		if (GetState() != Shader_Built)
+		if (GetCompilationState() != Shader_Compiled)
 			return;
 
 		auto m_mvp_current = transform->GetMatrix() * m_view * mProjection;
