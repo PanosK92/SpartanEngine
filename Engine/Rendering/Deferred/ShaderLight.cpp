@@ -49,7 +49,7 @@ namespace Directus
 		bool doSSR
 	) const
 	{
-		if (GetState() != Shader_Built)
+		if (GetCompilationState() != Shader_Compiled)
 			return;
 
 		if (lights.empty())

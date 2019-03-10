@@ -61,25 +61,25 @@ namespace Directus
 		{
 			m_compilation_state = Shader_Compiling;
 			m_vertex_shader		= _Compile(type, shader);		
-			m_compilation_state = m_vertex_shader ? Shader_Built : Shader_Failed;
+			m_compilation_state = m_vertex_shader ? Shader_Compiled : Shader_Failed;
 		}
 		else if (type == Shader_Pixel)
 		{
 			m_compilation_state = Shader_Compiling;
 			m_pixel_shader		= _Compile(type, shader);
-			m_compilation_state = m_pixel_shader ? Shader_Built : Shader_Failed;
+			m_compilation_state = m_pixel_shader ? Shader_Compiled : Shader_Failed;
 		}
 		else if (type == Shader_VertexPixel)
 		{
 			m_compilation_state = Shader_Compiling;
 			m_vertex_shader		= _Compile(Shader_Vertex, shader);
 			m_pixel_shader		= _Compile(Shader_Pixel, shader);
-			m_compilation_state = (m_vertex_shader && m_pixel_shader) ? Shader_Built : Shader_Failed;
+			m_compilation_state = (m_vertex_shader && m_pixel_shader) ? Shader_Compiled : Shader_Failed;
 		}
 
 		// Log result
 		string shader_type = (type == Shader_Vertex) ? "vertex shader" : (type == Shader_Pixel) ? "pixel shader" : "vertex and pixel shader";
-		if (m_compilation_state == Shader_Built)
+		if (m_compilation_state == Shader_Compiled)
 		{
 			LOGF_INFO("Successfully compiled %s from \"%s\"", shader_type.c_str(), shader.c_str());
 		}

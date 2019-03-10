@@ -185,7 +185,7 @@ namespace Directus
 			auto model = renderable->GeometryModel();
 
 			// Validate shader
-			if (!shader || shader->GetState() != Shader_Built)
+			if (!shader || shader->GetCompilationState() != Shader_Compiled)
 				continue;
 
 			// Validate geometry
@@ -210,7 +210,7 @@ namespace Directus
 			// Bind shader
 			if (currently_bound_shader != shader->RHI_GetID())
 			{
-				m_rhi_pipeline->SetPixelShader(shared_ptr<RHI_Shader>(shader));
+				m_rhi_pipeline->SetPixelShader(static_pointer_cast<RHI_Shader>(shader));
 				currently_bound_shader = shader->RHI_GetID();
 			}
 
@@ -283,7 +283,7 @@ namespace Directus
 
 	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& tex_shadows, shared_ptr<RHI_RenderTexture>& tex_ssao, shared_ptr<RHI_RenderTexture>& tex_out)
 	{
-		if (m_vps_light->GetState() != Shader_Built)
+		if (m_vps_light->GetCompilationState() != Shader_Compiled)
 			return;
 
 		TIME_BLOCK_START_MULTI(m_profiler);

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Texture.h"
 #include "../../Math/MathHelper.h"
 #include "../../Rendering/Material.h"
+#include "../../Threading/Threading.h"
 //=======================================
 
 //= NAMESPACES ========================
@@ -75,14 +76,17 @@ namespace Directus
 
 	void Skybox::OnInitialize()
 	{
-		if (m_skyboxType == Skybox_Array)
-		{
-			CreateFromArray(m_texturePaths);
-		}
-		else if (m_skyboxType == Skybox_Sphere)
-		{
-			CreateFromSphere(m_texturePaths.front());
-		}
+		m_context->GetSubsystem<Threading>()->AddTask([this]
+		{		
+			if (m_skyboxType == Skybox_Array)
+			{
+				CreateFromArray(m_texturePaths);
+			}
+			else if (m_skyboxType == Skybox_Sphere)
+			{
+				CreateFromSphere(m_texturePaths.front());
+			}
+		});
 	}
 
 	void Skybox::OnTick()
@@ -150,6 +154,8 @@ namespace Directus
 
 	void Skybox::CreateFromSphere(const string& texturePath)
 	{
+		LOG_INFO("Creating HDR sky sphere...");
+
 		// Texture
 		{
 			m_cubemapTexture = make_shared<RHI_Texture>(GetContext());
@@ -174,5 +180,7 @@ namespace Directus
 
 		// Make the skybox big enough
 		GetTransform()->SetScale(Vector3(980, 980, 980));
+
+		LOG_INFO("Sky sphere has been created successfully");
 	}
 }

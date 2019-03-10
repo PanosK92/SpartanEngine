@@ -41,11 +41,11 @@ namespace Directus
 		Shader_VertexPixel
 	};
 
-	enum Shader_State
+	enum Compilation_State
 	{
 		Shader_Uninitialized,
 		Shader_Compiling,
-		Shader_Built,
+		Shader_Compiled,
 		Shader_Failed
 	};
 
@@ -79,9 +79,10 @@ namespace Directus
 
 		// Misc
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
-		void SetName(const std::string& name)										{ m_name = name; }		
+		const std::string& GetName()												{ return m_name;}
+		void SetName(const std::string& name)										{ m_name = name; }
 		const auto& GetInputLayout() const											{ return m_input_layout; }
-		Shader_State GetState() const												{ return m_compilation_state; }
+		Compilation_State GetCompilationState() const								{ return m_compilation_state; }
 
 	protected:
 		std::shared_ptr<RHI_Device> m_rhi_device;
@@ -93,7 +94,7 @@ namespace Directus
 		std::string m_name;
 		std::string m_file_path;
 		std::map<std::string, std::string> m_defines;	
-		Shader_State m_compilation_state = Shader_Uninitialized;
+		Compilation_State m_compilation_state = Shader_Uninitialized;
 
 		// Input layout
 		std::shared_ptr<RHI_InputLayout> m_input_layout;

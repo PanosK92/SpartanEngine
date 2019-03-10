@@ -74,12 +74,19 @@ namespace Directus
 
 	bool RHI_Pipeline::SetVertexShader(const shared_ptr<RHI_Shader>& shader)
 	{
-		if (!shader || !shader->HasVertexShader())
+		// Validate
+		if (!shader)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
+		// Return silently if the shader isn't compiled (due to error or because it's still compiling) 
+		// as it will be logged by other systems
+		if (shader->GetCompilationState() != Shader_Compiled)
+			return false;
+
+		// Check if already set
 		if (m_vertex_shader)
 		{
 			if (m_vertex_shader->RHI_GetID() == shader->RHI_GetID())
@@ -95,19 +102,26 @@ namespace Directus
 
 	bool RHI_Pipeline::SetPixelShader(const shared_ptr<RHI_Shader>& shader)
 	{
-		if (!shader || !shader->HasPixelShader())
+		// Validate
+		if (!shader)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
+		// Return silently if the shader isn't compiled (due to error or because it's still compiling)
+		// as it will be logged by other systems
+		if (shader->GetCompilationState() != Shader_Compiled)
+			return false;
+
+		// Check if already set
 		if (m_pixel_shader)
 		{
 			if (m_pixel_shader->RHI_GetID() == shader->RHI_GetID())
 				return true;
 		}
 
-		m_pixel_shader		= shader;
+		m_pixel_shader			= shader;
 		m_pixel_shader_dirty	= true;
 
 		return true;
@@ -121,7 +135,7 @@ namespace Directus
 			return false;
 		}
 
-		m_index_buffer		= index_buffer;
+		m_index_buffer			= index_buffer;
 		m_index_buffer_dirty	= true;
 
 		return true;
