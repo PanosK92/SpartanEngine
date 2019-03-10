@@ -34,15 +34,15 @@ using namespace Helper;
 
 Widget_Profiler::Widget_Profiler(Context* context) : Widget(context)
 {
-	m_title						= "Profiler";
-	m_isVisible					= false;
-	m_update_frequency			= 0.05f;
+	m_title							= "Profiler";
+	m_isVisible						= false;
+	m_update_frequency				= 0.05f;
 	m_plot_time_since_last_update	= m_update_frequency;
-	m_xMin						= 1000;
-	m_yMin						= 715;
-	m_xMax						= FLT_MAX;
-	m_yMax						= FLT_MAX;
-	m_profiler					= m_context->GetSubsystem<Profiler>().get();
+	m_xMin							= 1000;
+	m_yMin							= 715;
+	m_xMax							= FLT_MAX;
+	m_yMax							= FLT_MAX;
+	m_profiler						= m_context->GetSubsystem<Profiler>().get();
 
 	// Fill with dummy values so that the plot can progress immediately
 	if (m_cpu_times.empty() && m_gpu_times.empty())
@@ -54,10 +54,6 @@ Widget_Profiler::Widget_Profiler(Context* context) : Widget(context)
 
 void Widget_Profiler::Tick(float delta_time)
 {
-	// Only profile when user is observing (because it can be expensive)
-	m_profiler->SetProfilingEnabledCpu(m_isVisible);
-	m_profiler->SetProfilingEnabledGpu(m_isVisible);
-
 	if (!m_isVisible)
 		return;
 

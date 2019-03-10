@@ -45,9 +45,9 @@ namespace Directus
 		m_metrics						= NOT_ASSIGNED;
 		m_scene							= nullptr;
 		m_timer							= nullptr;
-		m_resource_manager				= nullptr;
-		m_gpu_profiling					= false; // expensive
-		m_cpu_profiling					= false; // cheap
+		m_resource_manager				= nullptr;	
+		m_cpu_profiling					= true; // cheap
+		m_gpu_profiling					= true; // expensive
 		m_profiling_frequency_sec		= 0.0f;
 		m_profiling_last_update_time	= 0;
 		m_fps							= 0.0f;
@@ -158,7 +158,7 @@ namespace Directus
 	void Profiler::OnFrameStart()
 	{
 		// Get delta time
-		m_frame_time_ms	= m_timer->GetDeltaTimeMs();
+		m_frame_time_ms		= m_timer->GetDeltaTimeMs();
 		m_frame_time_sec	= m_timer->GetDeltaTimeSec();
 
 		// Compute FPS
