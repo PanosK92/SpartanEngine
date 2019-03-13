@@ -16,10 +16,8 @@ At this point we have taken care of all the environment dependencies and we are 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS.png)
 2. We then open the Visual Studio solution file named **"Directus.sln"**
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS2.png)
-3. Next, we switch the solution configuration to **"Release"** and build the entire solution. This will generate **"Editor.exe"** and **"Runtime.dll"** at **"Directus3D\Binaries\Release"**.
+3. Next, we switch the solution configuration to **"Release"** and build the entire solution. This will generate **"Editor.exe"** at **"Binaries\Release"**.
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS3.png)
 
-### Notes
-- We built everything in "Release" configuration as all of the statically linked dependencies have been pre-compiled in "Release" mode and are located at **"Directus3D\ThirdParty\mvsc141_x64\"**. The pre-compiled "Debug" version libraries are compressed in debug.7z in the same folder.
-- Ideally, the projects of the dependencies could be part of the **"Directus"** solution but for the time being any dependencies have to be built by the user.
-- Pre-compiled libraries are provided for convenience (because of the above bullet), however, don't rely on them. If you get any linking errors, it is advised that you download and compile the dependency. 
-- All sorts of build scripts can be written in order to automate even more things. Feel free to contribute if you think you can help :-)
+### Note
+- The pre-compiled libraries (**ThirdParty\mvsc141_x64**) are provided for convenience. If you get any linking errors due to version incompatibilities, it is advised that you download and compile the dependency.
