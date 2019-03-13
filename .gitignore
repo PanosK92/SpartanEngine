@@ -251,9 +251,8 @@ ModelManifest.xml
 /Runtime/Runtime.vcxproj.filters
 /Runtime/Runtime.vcxproj
 /Runtime/Runtime.sln
-*_debug.lib
 /Binaries
 /Runtime/log.txt
 /Runtime/Directus3D.ini
-/ThirdParty/mvsc141_x64/fmodL64.dll
-/ThirdParty/mvsc141_x64/fmodL64_vc.lib
+/ThirdParty/mvsc141_x64/*.lib
+/ThirdParty/mvsc141_x64/*.dll
