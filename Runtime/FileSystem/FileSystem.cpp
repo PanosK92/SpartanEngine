@@ -238,35 +238,35 @@ namespace Directus
 		ShellExecute(nullptr, nullptr, StringToWstring(directory).c_str(), nullptr, nullptr, SW_SHOW);
 	}
 
-	bool FileSystem::FileExists(const string& filePath)
+	bool FileSystem::FileExists(const string& file_path)
 	{
-		bool result;
+		bool result = false;
 		try
 		{
-			result = exists(filePath);
+			result = exists(file_path);
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("FileSystem::FileExists: %s, %s", e.what(), filePath.c_str());
+			LOGF_ERROR("FileSystem::FileExists: %s, %s", e.what(), file_path.c_str());
 		}
 
 		return result;
 	}
 
-	bool FileSystem::DeleteFile_(const string& filePath)
+	bool FileSystem::DeleteFile_(const string& file_path)
 	{
 		// If this is a directory path, return
-		if (is_directory(filePath))
+		if (is_directory(file_path))
 			return false;
 
 		bool result = false;
 		try
 		{
-			result = remove(filePath.c_str()) == 0;
+			result = remove(file_path.c_str()) == 0;
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("FileSystem::DeleteFile: %s, %s", e.what(), filePath.c_str());
+			LOGF_ERROR("FileSystem::DeleteFile: %s, %s", e.what(), file_path.c_str());
 		}
 
 		return result;
