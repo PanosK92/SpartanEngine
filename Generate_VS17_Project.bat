@@ -6,7 +6,7 @@ echo 1. Deleting intermediate folder and lib files (from the binary directory)..
 call "Scripts\clean.bat"
 echo:
 
-echo 2. Exctracting third-party dependencies...
+echo 2. Extracting third-party dependencies...
 call Scripts\7z.exe e ThirdParty\mvsc141_x64\mvsc141_x64.7z -oThirdParty\mvsc141_x64\ -aoa
 echo:
 
