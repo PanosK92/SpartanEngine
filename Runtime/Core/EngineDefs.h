@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Class
 #if SHARED_LIB == 1
-	#ifdef ENGINE
+	#ifdef RUNTIME
 		#define ENGINE_CLASS __declspec(dllexport)
 	#elif EDITOR
 		#define ENGINE_CLASS __declspec(dllimport)

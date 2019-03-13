@@ -147,7 +147,7 @@ namespace Directus
 
 		//= Graphics Settings ====================================================================================================================================================
 		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;
-		float m_exposure				= 0.0f;
+		float m_exposure				= 0.5f;
 		float m_gamma					= 2.2f;
 		// FXAA
 		float m_fxaa_sub_pixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
@@ -156,7 +156,7 @@ namespace Directus
 		// Bloom
 		float m_bloom_intensity			= 0.4f;		// The intensity of the bloom
 		// Sharpening
-		float m_sharpen_strength		= 1.0f;		// Strength of the sharpening
+		float m_sharpen_strength		= 1.25f;	// Strength of the sharpening
 		float m_sharpen_clamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
 		// Motion Blur
 		float m_motion_blur_strength	= 3.0f;		// Strength of the motion blur
@@ -169,10 +169,10 @@ namespace Directus
 		std::shared_ptr<Entity>& SnapTransformGizmoTo(std::shared_ptr<Entity>& entity) const;
 		//=============================================================================
 		
-		// DEBUG BUFFER ===================================================================
+		// DEBUG BUFFER ====================================================================
 		void SetDebugBuffer(const RendererDebug_Buffer buffer)	{ m_debug_buffer = buffer; }
 		RendererDebug_Buffer GetDebugBuffer() const				{ return m_debug_buffer; }
-		//=================================================================================
+		//==================================================================================
 
 		//= MISC ==============================================================================
 		void* GetFrameShaderResource() const;
