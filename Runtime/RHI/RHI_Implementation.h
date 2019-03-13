@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#if defined(ENGINE)
+#if defined(RUNTIME)
 
 //= INCLUDES ==================
 #include "../Core/EngineDefs.h"

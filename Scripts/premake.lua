@@ -22,7 +22,7 @@ CPP_VERSION 			= "C++17"
 DEBUG_FORMAT			= "c7"
 SOLUTION_NAME 			= "Directus"
 EDITOR_NAME 			= "Editor"
-ENGINE_NAME 			= "Engine"
+ENGINE_NAME 			= "Runtime"
 TARGET_DIR_RELEASE 		= "../Binaries/Release"
 TARGET_DIR_DEBUG 		= "../Binaries/Debug"
 INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
@@ -55,7 +55,7 @@ ENGINE_DIR				= "../" .. ENGINE_NAME
 		
 		defines
 		{
-			"ENGINE",
+			"RUNTIME",
 			"STATIC_LIB=1",
 			"SHARED_LIB=0"
 		}

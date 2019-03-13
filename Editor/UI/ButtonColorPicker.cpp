@@ -85,9 +85,9 @@ void ButtonColorPicker::ShowColorPicker()
 	if (!ButtonColorPicker_Settings::showPreview)	flags |= ImGuiColorEditFlags_NoSidePreview;
 													flags |= ImGuiColorEditFlags_PickerHueBar;
 	if (ButtonColorPicker_Settings::showWheel)		flags |= ImGuiColorEditFlags_PickerHueWheel;
-	if (ButtonColorPicker_Settings::showRGB)		flags |= ImGuiColorEditFlags_RGB;
-	if (ButtonColorPicker_Settings::showHSV)		flags |= ImGuiColorEditFlags_HSV;
-	if (ButtonColorPicker_Settings::showHex)		flags |= ImGuiColorEditFlags_HEX;
+	if (ButtonColorPicker_Settings::showRGB)		flags |= ImGuiColorEditFlags_DisplayRGB;
+	if (ButtonColorPicker_Settings::showHSV)		flags |= ImGuiColorEditFlags_DisplayHSV;
+	if (ButtonColorPicker_Settings::showHex)		flags |= ImGuiColorEditFlags_DisplayHex;
 
 	ImGui::ColorPicker4(ButtonColorPicker_Settings::g_colorPickerLabel.c_str(), (float*)&m_color, flags);
 
