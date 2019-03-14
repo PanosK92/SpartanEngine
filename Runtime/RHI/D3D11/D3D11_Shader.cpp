@@ -138,7 +138,7 @@ namespace Directus
 			safe_release(blob_error);
 		}
 
-		// Exit on compilation failure
+		// Log compilation failure
 		if (FAILED(result) || !blob_shader)
 		{
 			auto shader_name = FileSystem::GetFileNameFromFilePath(shader);
@@ -154,24 +154,27 @@ namespace Directus
 
 		// Create shader
 		void* buffer_shader = nullptr;
-		if (type == Shader_Vertex)
+		if (blob_shader)
 		{
-			ID3D11VertexShader* buffer_vertex = nullptr;
-			if (FAILED(d3d11_device->CreateVertexShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_vertex)))
+			if (type == Shader_Vertex)
 			{
-				LOG_ERROR("Failed to create vertex shader.");
+				ID3D11VertexShader* buffer_vertex = nullptr;
+				if (FAILED(d3d11_device->CreateVertexShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_vertex)))
+				{
+					LOG_ERROR("Failed to create vertex shader.");
+				}
+				buffer_shader = static_cast<void*>(buffer_vertex);
+				CreateInputLayout(blob_shader);
 			}
-			buffer_shader = static_cast<void*>(buffer_vertex);
-			CreateInputLayout(blob_shader);
-		}
-		else if (type == Shader_Pixel)
-		{
-			ID3D11PixelShader* buffer_pixel = nullptr;
-			if (FAILED(d3d11_device->CreatePixelShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_pixel)))
+			else if (type == Shader_Pixel)
 			{
-				LOG_ERROR("Failed to create pixel shader.");
+				ID3D11PixelShader* buffer_pixel = nullptr;
+				if (FAILED(d3d11_device->CreatePixelShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_pixel)))
+				{
+					LOG_ERROR("Failed to create pixel shader.");
+				}
+				buffer_shader = static_cast<void*>(buffer_pixel);
 			}
-			buffer_shader = static_cast<void*>(buffer_pixel);
 		}
 
 		// Release blob and return shader
