@@ -68,8 +68,8 @@ PixelInputType mainVS(Vertex_PosUv input)
 
 float4 mainPS(PixelInputType input) : SV_TARGET
 {
-    float2 texCoord     = input.uv;
-    float3 finalColor   = float3(0, 0, 0);
+    float2 texCoord	= input.uv;
+    float3 color	= float3(0, 0, 0);
 	
 	// Sample from textures
     float4 albedo       		= degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
@@ -93,32 +93,49 @@ float4 mainPS(PixelInputType input) : SV_TARGET
     float2 depth  			= texDepth.Sample(sampler_linear_clamp, texCoord).rg;
     float3 worldPos 		= reconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
-
-	[branch]
-    if (materialSample.a == 0.0f) // Sky
+	
+	//= Ambient light =======================================================================
+	float factor_occlusion 	= occlusion_texture == 1.0f ? occlusion_ssao : occlusion_texture;
+	float factor_sky_light	= clamp(dirLightIntensity.r * shadow_directional, 0.05f, 1.0f);
+	float ambient_light 	= factor_sky_light * factor_occlusion;
+	//=======================================================================================
+	
+	// Sky
+    if (materialSample.a == 0.0f)
     {
-        finalColor = texEnvironment.Sample(sampler_linear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
-        finalColor *= clamp(dirLightIntensity.r, 0.01f, 1.0f); // some totally fake day/night effect	
-        return float4(finalColor, 1.0f);
+        color = texEnvironment.Sample(sampler_linear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
+        color *= clamp(dirLightIntensity.r, 0.01f, 1.0f);
+        return float4(color, 1.0f);
     }
 
-	//= DIRECTIONAL & AMBIENT LIGHT ==========================================================================================
+	//= IBL - Image-based lighting =================================================================================================
+    color += ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, sampler_linear_clamp) * ambient_light;
+	//==============================================================================================================================
+	
+	//= SSR - Screen space reflections ==============================================
+	if (padding2.x != 0.0f)
+	{
+		float4 ssr	= SSR(worldPos, normal, texFrame, texDepth, sampler_point_clamp);
+		color += ssr.xyz * (1.0f - material.roughness) * ambient_light;
+	}
+	//===============================================================================
+	
+	//= Emission ============================================
+    float3 emission = material.emission * albedo.rgb * 80.0f;
+    color += emission;
+	//=======================================================
+
+	//= Directional Light ================================================================================================
 	Light directionalLight;
     directionalLight.color      = dirLightColor.rgb; 
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
-		
-	float ambient_occlusion 	= occlusion_texture == 1.0f ? occlusion_ssao : occlusion_texture;
-	float directional_shadow	= micro_shadow(ambient_occlusion, normal, directionalLight.direction, shadow_directional);
-	float ambient_ligth_min		= 0.05f;
-	float ambient_light_max		= dirLightIntensity.r;
-	float ambient_light 		= clamp(ambient_occlusion * directional_shadow, ambient_ligth_min, ambient_light_max);
+	float directional_shadow	= micro_shadow(factor_occlusion, normal, directionalLight.direction, shadow_directional);
+	directionalLight.intensity  = dirLightIntensity.r * directional_shadow;	
+	// Compute illumination
+	color += BRDF(material, directionalLight, normal, camera_to_pixel);
+	//====================================================================================================================
 	
-	// Compute direct illumination
-	directionalLight.intensity  = dirLightIntensity.r * directional_shadow;
-    finalColor += BRDF(material, directionalLight, normal, camera_to_pixel);
-	//========================================================================================================================
-	
-	//= POINT LIGHTS =========================================================
+	//= Point lights ====================================================
     Light pointLight;
     for (int i = 0; i < pointlightCount; i++)
     {
@@ -138,12 +155,12 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		// Compute illumination
         if (dist < range)
         {
-            finalColor += BRDF(material, pointLight, normal, camera_to_pixel);
+            color += BRDF(material, pointLight, normal, camera_to_pixel);
         }
     }
-	//========================================================================
+	//===================================================================
 
-	//= SPOT LIGHTS =========================================================================================================
+	//= Spot Lights =========================================================================================================
     Light spotLight;
     for (int j = 0; j < spotlightCount; j++)
     {
@@ -168,27 +185,10 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 		// Compute illumination
         if (theta > cutoffAngle)
         {
-            finalColor += BRDF(material, spotLight, normal, camera_to_pixel);
+            color += BRDF(material, spotLight, normal, camera_to_pixel);
         }
     }
 	//=======================================================================================================================
 
-	//= SSR =========================================================================
-	if (padding2.x != 0.0f)
-	{
-		float4 ssr	= SSR(worldPos, normal, texFrame, texDepth, sampler_point_clamp);
-		finalColor += ssr.xyz * (1.0f - material.roughness) * ambient_light;
-	}
-	//===============================================================================
-	
-	//= IBL =============================================================================================================================
-    finalColor += ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, sampler_linear_clamp) * ambient_light;
-	//===================================================================================================================================
-
-	//= Emission ============================================
-    float3 emission = material.emission * albedo.rgb * 80.0f;
-    finalColor 		+= emission;
-	//=======================================================
-
-    return float4(finalColor, 1.0f);
+    return float4(color, 1.0f);
 }
