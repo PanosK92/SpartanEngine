@@ -24,19 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iomanip>
 #include <sstream>
 #include "../Core/Timer.h"
-#include "../Core/Settings.h"
 #include "../Core/EventSystem.h"
 #include "../World/World.h"
 #include "../Rendering/Renderer.h"
-#include "../RHI/RHI_Device.h"
-#include "../Core/Variant.h"
 #include "../Resource/ResourceCache.h"
 //====================================
 
-//= NAMESPACES =============
+//= NAMESPACES =====
 using namespace std;
-using namespace std::chrono;
-//==========================
+//==================
 
 namespace Directus
 {
@@ -75,8 +71,8 @@ namespace Directus
 		if (!m_cpu_profiling || !m_should_update)
 			return false;
 
-		m_time_blocks_cpu[func_name].start = high_resolution_clock::now();
-		return true;
+		bool result = m_time_blocks[func_name].Start(true);
+		return result;
 	}
 
 	bool Profiler::TimeBlockEndCpu(const string& func_name)
@@ -84,17 +80,14 @@ namespace Directus
 		if (!m_cpu_profiling || !m_should_update)
 			return false;
 
-		if (m_time_blocks_cpu.find(func_name) == m_time_blocks_cpu.end() )
+		if (m_time_blocks.find(func_name) == m_time_blocks.end() )
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		auto time_block				= &m_time_blocks_cpu[func_name];
-		time_block->end				= high_resolution_clock::now();
-		duration<double, milli> ms	= time_block->end - time_block->start;
-		time_block->duration		= static_cast<float>(ms.count());
-		return true;
+		bool result = m_time_blocks[func_name].End(true);
+		return result;
 	}
 
 	bool Profiler::TimeBlockStartGpu(const string& func_name)
@@ -102,20 +95,8 @@ namespace Directus
 		if (!m_gpu_profiling || !m_should_update)
 			return false;
 
-		auto time_block = &m_time_blocks_gpu[func_name];
-
-		if (!time_block->initialized)
-		{
-			m_renderer->GetRhiDevice()->ProfilingCreateQuery(&time_block->query,		Query_Timestamp_Disjoint);
-			m_renderer->GetRhiDevice()->ProfilingCreateQuery(&time_block->time_start,	Query_Timestamp);
-			m_renderer->GetRhiDevice()->ProfilingCreateQuery(&time_block->time_end,		Query_Timestamp);
-			time_block->initialized = true;
-		}
-
-		m_renderer->GetRhiDevice()->ProfilingQueryStart(time_block->query);
-		m_renderer->GetRhiDevice()->ProfilingGetTimeStamp(time_block->time_start);
-		time_block->started = true;
-		return true;
+		bool result = m_time_blocks[func_name].Start(false, true, m_renderer->GetRhiDevice());
+		return result;
 	}
 
 	bool Profiler::TimeBlockEndGpu(const string& func_name)
@@ -123,58 +104,43 @@ namespace Directus
 		if (!m_gpu_profiling || !m_should_update)
 			return false;
 
-		if (m_time_blocks_gpu.find(func_name) == m_time_blocks_gpu.end() )
+		if (m_time_blocks.find(func_name) == m_time_blocks.end() )
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		const auto time_block = &m_time_blocks_gpu[func_name];
-		if (!time_block->initialized)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		m_renderer->GetRhiDevice()->ProfilingGetTimeStamp(time_block->time_end);
-		m_renderer->GetRhiDevice()->ProfilingQueryEnd(time_block->query);
-		return true;
-	}
-
-	bool Profiler::TimeBlockStartMulti(const string& func_name)
-	{
-		const auto cpu = TimeBlockStartCpu(func_name);
-		const auto gpu = TimeBlockStartGpu(func_name);
-		return cpu && gpu;
-	}
-
-	bool Profiler::TimeBlockEndMulti(const string& func_name)
-	{
-		const auto cpu = TimeBlockEndCpu(func_name);
-		const auto gpu = TimeBlockEndGpu(func_name);
-		return cpu && gpu;
+		bool result = m_time_blocks[func_name].End(false, true, m_renderer->GetRhiDevice());
+		return result;
 	}
 
 	void Profiler::OnFrameStart()
 	{
 		// Get delta time
-		m_frame_time_ms		= m_timer->GetDeltaTimeMs();
-		m_frame_time_sec	= m_timer->GetDeltaTimeSec();
+		m_time_frame_ms		= m_timer->GetDeltaTimeMs();
+		m_time_frame_sec	= m_timer->GetDeltaTimeSec();
+
+		// Get CPU & GPU render time
+		auto& time_block	= m_time_blocks["Directus::Renderer::Tick"];
+		m_time_gpu_ms		= time_block.duration_gpu;
+		m_time_cpu_ms		= m_time_frame_ms - m_time_gpu_ms;
 
 		// Compute FPS
-		ComputeFps(m_frame_time_sec);
-		// Get GPU render time
-		m_cpu_time = GetTimeBlockMsCpu("Directus::Renderer::Tick");
-		// Get CPU render time
-		m_gpu_time = GetTimeBlockMsGpu("Directus::Renderer::Tick");
-
-		// Below this point, update every m_profilingFrequencyMs
-		m_profiling_last_update_time += m_frame_time_sec;
+		ComputeFps(m_time_frame_sec);
+		
+		// Below this point, updating every m_profilingFrequencyMs
+		m_profiling_last_update_time += m_time_frame_sec;
 		if (m_profiling_last_update_time >= m_profiling_frequency_sec)
 		{
 			UpdateMetrics(m_fps);
 			m_should_update					= true;
 			m_profiling_last_update_time	= 0.0f;
+
+			// Clear old timings
+			for (auto& entry : m_time_blocks)
+			{
+				entry.second.Clear();
+			}
 		}
 	}
 
@@ -183,15 +149,12 @@ namespace Directus
 		if (!m_should_update)
 			return;
 
-		for (auto& entry : m_time_blocks_gpu)
+		for (auto& entry : m_time_blocks)
 		{
-			auto& time_block = entry.second;
+			if (!entry.second.TrackingGpu())
+				continue;
 
-			if (time_block.started)
-			{
-				time_block.duration = m_renderer->GetRhiDevice()->ProfilingGetDuration(time_block.query, time_block.time_start, time_block.time_end);
-			}
-			time_block.started = false;
+			entry.second.OnFrameEnd(m_renderer->GetRhiDevice());
 		}
 
 		m_should_update = false;
@@ -206,9 +169,9 @@ namespace Directus
 		m_metrics =
 			// Performance
 			"FPS:\t\t\t\t\t\t\t"	+ ToStringPrecision(fps, 2) + "\n"
-			"Frame time:\t\t\t\t\t" + ToStringPrecision(m_frame_time_ms, 2) + " ms\n"
-			"CPU time:\t\t\t\t\t\t" + ToStringPrecision(m_cpu_time, 2) + " ms\n"
-			"GPU time:\t\t\t\t\t\t" + ToStringPrecision(m_gpu_time, 2) + " ms\n"
+			"Frame time:\t\t\t\t\t" + ToStringPrecision(m_time_frame_ms, 2) + " ms\n"
+			"CPU time:\t\t\t\t\t\t" + ToStringPrecision(m_time_cpu_ms, 2) + " ms\n"
+			"GPU time:\t\t\t\t\t\t" + ToStringPrecision(m_time_gpu_ms, 2) + " ms\n"
 			"GPU:\t\t\t\t\t\t\t"	+ Settings::Get().GpuGetName() + "\n"
 			"VRAM:\t\t\t\t\t\t\t"	+ to_string(Settings::Get().GpuGetMemory()) + " MB\n"
 

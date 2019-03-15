@@ -11,6 +11,9 @@
 *.sln.docstates
 *.VC.opendb
 *.VC.db
+/Binaries
+/ThirdParty/mvsc141_x64/*.lib
+/ThirdParty/mvsc141_x64/*.dll
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -248,11 +251,3 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
-/Runtime/Runtime.vcxproj.filters
-/Runtime/Runtime.vcxproj
-/Runtime/Runtime.sln
-/Binaries
-/Runtime/log.txt
-/Runtime/Directus3D.ini
-/ThirdParty/mvsc141_x64/*.lib
-/ThirdParty/mvsc141_x64/*.dll

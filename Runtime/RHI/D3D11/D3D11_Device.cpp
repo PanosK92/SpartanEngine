@@ -564,7 +564,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::ProfilingQueryEnd(void* query_object) const
+	bool RHI_Device::ProfilingGetTimeStamp(void* query_object) const
 	{
 		if (!query_object)
 		{
@@ -579,24 +579,6 @@ namespace Directus
 		}
 
 		D3D11Instance::device->End(static_cast<ID3D11Query*>(query_object));
-		return true;
-	}
-
-	bool RHI_Device::ProfilingGetTimeStamp(void* query_disjoint) const
-	{
-		if (!query_disjoint)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		if (!D3D11Instance::device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		D3D11Instance::device->End(static_cast<ID3D11Query*>(query_disjoint));
 		return true;
 	}
 

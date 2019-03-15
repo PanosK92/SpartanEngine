@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <string>
 #include <map>
-#include <chrono>
+#include "TimeBlock.h"
 #include "../Core/EngineDefs.h"
 #include "../Core/ISubsystem.h"
 //=============================
@@ -46,24 +46,6 @@ namespace Directus
 	class Timer;
 	class ResourceCache;
 	class Renderer;
-	class Variant;
-
-	struct TimeBlockCpu
-	{
-		std::chrono::steady_clock::time_point start;
-		std::chrono::steady_clock::time_point end;
-		float duration = 0.0f;
-	};
-
-	struct TimeBlockGpu
-	{
-		void* query			= nullptr;
-		void* time_start	= nullptr;
-		void* time_end		= nullptr;
-		float duration		= 0.0f;
-		bool initialized	= false;
-		bool started		= false;
-	};
 
 	class ENGINE_CLASS Profiler : public ISubsystem
 	{
@@ -74,15 +56,15 @@ namespace Directus
 		bool Initialize() override;
 		//=========================
 
-		// Multi-timing
-		bool TimeBlockStartMulti(const std::string& func_name);
-		bool TimeBlockEndMulti(const std::string& func_name);
 		// CPU timing
 		bool TimeBlockStartCpu(const std::string& func_name);
 		bool TimeBlockEndCpu(const std::string& func_name);
 		// GPU timing
 		bool TimeBlockStartGpu(const std::string& func_name);
 		bool TimeBlockEndGpu(const std::string& func_name);
+		// Multi-timing
+		bool TimeBlockStartMulti(const std::string& func_name)	{ return TimeBlockStartCpu(func_name) && TimeBlockStartGpu(func_name); }
+		bool TimeBlockEndMulti(const std::string& func_name)	{ return TimeBlockEndCpu(func_name) && TimeBlockEndGpu(func_name); }
 
 		// Events
 		void OnFrameStart();
@@ -91,15 +73,12 @@ namespace Directus
 		void SetProfilingEnabledCpu(const bool enabled)	{ m_cpu_profiling = enabled; }
 		void SetProfilingEnabledGpu(const bool enabled)	{ m_gpu_profiling = enabled; }
 		const std::string& GetMetrics() const			{ return m_metrics; }
-		float GetTimeBlockMsCpu(const char* func_name)	{ return m_time_blocks_cpu[func_name].duration; }
-		float GetTimeBlockMsGpu(const char* func_name)	{ return m_time_blocks_gpu[func_name].duration; }
-		const auto& GetTimeBlocksCpu() const			{ return m_time_blocks_cpu; }
-		const auto& GetTimeBlocksGpu() const			{ return m_time_blocks_gpu; }
-		float GetRenderTimeCpu() const					{ return m_cpu_time; }
-		float GetRenderTimeGpu() const					{ return m_gpu_time; }
+		const auto& GetTimeBlocks() const				{ return m_time_blocks; }
+		float GetTimeCpu() const						{ return m_time_cpu_ms; }
+		float GetTimeGpu() const						{ return m_time_gpu_ms; }
+		float GetTimeFrame() const						{ return m_time_frame_ms; }
 		float GetFps() const							{ return m_fps; }
-		float GetFrameTimeSec() const					{ return m_frame_time_sec; }
-
+		
 		void Reset()
 		{
 			m_rhi_draw_calls				= 0;
@@ -129,10 +108,10 @@ namespace Directus
 		unsigned int m_renderer_meshes_rendered;
 
 		// Metrics - Time
-		float m_frame_time_ms;
-		float m_frame_time_sec;
-		float m_cpu_time;
-		float m_gpu_time;
+		float m_time_frame_ms;
+		float m_time_frame_sec;
+		float m_time_cpu_ms;
+		float m_time_gpu_ms;
 
 	private:
 		void UpdateMetrics(float fps);
@@ -146,8 +125,7 @@ namespace Directus
 		float m_profiling_last_update_time;
 
 		// Time blocks
-		std::map<std::string, TimeBlockCpu> m_time_blocks_cpu;
-		std::map<std::string, TimeBlockGpu> m_time_blocks_gpu;
+		std::map<std::string, TimeBlock> m_time_blocks;
 
 		// Misc
 		std::string m_metrics;

@@ -58,11 +58,10 @@ void Widget_Profiler::Tick(float delta_time)
 		return;
 
 	// Get CPU & GPU timings
-	auto& cpu_blocks		= m_profiler->GetTimeBlocksCpu();
-	auto gpu_blocks			= m_profiler->GetTimeBlocksGpu();
-	auto render_time_cpu	= m_profiler->GetRenderTimeCpu();
-	auto render_time_gpu	= m_profiler->GetRenderTimeGpu();
-	auto render_time_total	= m_profiler->GetRenderTimeCpu() + m_profiler->GetRenderTimeGpu();
+	auto& time_blocks	= m_profiler->GetTimeBlocks();
+	auto time_cpu		= m_profiler->GetTimeCpu();
+	auto time_gpu		= m_profiler->GetTimeGpu();
+	auto time_frame		= m_profiler->GetTimeFrame();
 
 	m_plot_time_since_last_update	+= delta_time;
 	const auto plot_update			= m_plot_time_since_last_update >= m_update_frequency;
@@ -71,16 +70,19 @@ void Widget_Profiler::Tick(float delta_time)
 	ImGui::Text("CPU");
 	{
 		// Functions
-		for (const auto& cpu_block : cpu_blocks)
+		for (const auto& time_block : time_blocks)
 		{
-			ImGui::Text("%s - %f ms", cpu_block.first.c_str(), cpu_block.second.duration);
+			if (!time_block.second.TrackingCpu())
+				continue;
+
+			ImGui::Text("%s - %f ms", time_block.first.c_str(), time_block.second.duration_cpu);
 		}
 
 		// Plot
 		if (plot_update)
 		{
-			m_metric_cpu.AddSample(render_time_cpu);
-			m_cpu_times.emplace_back(render_time_cpu);
+			m_metric_cpu.AddSample(time_cpu);
+			m_cpu_times.emplace_back(time_cpu);
 			if (m_cpu_times.size() >= 200)
 			{
 				m_cpu_times.erase(m_cpu_times.begin());
@@ -100,11 +102,14 @@ void Widget_Profiler::Tick(float delta_time)
 		const auto padding_x	= ImGui::GetStyle().WindowPadding.x;
 		const auto spacing_y	= ImGui::GetStyle().FramePadding.y;
 		auto& style		= ImGui::GetStyle();
-		for (const auto& gpu_block : gpu_blocks)
+		for (const auto& time_block : time_blocks)
 		{
-			auto name			= gpu_block.first;
-			const auto duration	= gpu_block.second.duration;
-			const auto fraction	= duration / render_time_gpu;
+			if (!time_block.second.TrackingGpu())
+				continue;
+
+			auto name			= time_block.first;
+			const auto duration	= time_block.second.duration_gpu;
+			const auto fraction	= duration / time_gpu;
 			const auto width	= fraction * ImGui::GetWindowContentRegionWidth();
 			const auto color	= style.Colors[ImGuiCol_FrameBgActive];
 
@@ -120,8 +125,8 @@ void Widget_Profiler::Tick(float delta_time)
 		// Plot
 		if (plot_update)
 		{
-			m_metric_gpu.AddSample(render_time_gpu);
-			m_gpu_times.emplace_back(render_time_gpu);
+			m_metric_gpu.AddSample(time_gpu);
+			m_gpu_times.emplace_back(time_gpu);
 
 			if (m_gpu_times.size() >= 200)
 			{
