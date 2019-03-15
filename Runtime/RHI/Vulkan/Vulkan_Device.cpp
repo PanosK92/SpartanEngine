@@ -344,12 +344,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::ProfilingQueryEnd(void* query_object) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::ProfilingGetTimeStamp(void* query_disjoint) const
+	bool RHI_Device::ProfilingGetTimeStamp(void* query_object) const
 	{
 		return true;
 	}

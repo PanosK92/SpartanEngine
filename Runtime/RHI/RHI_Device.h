@@ -118,8 +118,7 @@ namespace Directus
 		//= PROFILING =============================================================================
 		bool ProfilingCreateQuery(void** query, RHI_Query_Type type) const;
 		bool ProfilingQueryStart(void* query_object) const;
-		bool ProfilingQueryEnd(void* query_object) const;
-		bool ProfilingGetTimeStamp(void* query_disjoint) const;
+		bool ProfilingGetTimeStamp(void* query_object) const;
 		float ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const;
 		//=========================================================================================
 
