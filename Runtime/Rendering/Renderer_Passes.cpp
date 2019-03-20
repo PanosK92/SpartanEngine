@@ -35,7 +35,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_RenderTexture.h"
+#include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_Sampler.h"
+#include "../RHI/RHI_CommandList.h"
 #include "../World/Entity.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Transform.h"
@@ -321,6 +324,69 @@ namespace Directus
 
 		m_rhi_device->EventEnd();
 		TIME_BLOCK_END_MULTI(m_profiler);
+
+		/*
+		m_cmd_list->Begin("Pass_Light");
+
+		// Textures
+		vector<void*> textures =
+		{
+			m_gbuffer->GetTexture(GBuffer_Target_Albedo)->GetShaderResource(),											// Albedo/			
+			m_gbuffer->GetTexture(GBuffer_Target_Normal)->GetShaderResource(),											// Normal
+			m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetShaderResource(),											// Depth
+			m_gbuffer->GetTexture(GBuffer_Target_Material)->GetShaderResource(),										// Material
+			tex_shadows->GetShaderResource(),																			// Shadows
+			Flags_IsSet(Render_PostProcess_SSAO) ? tex_ssao->GetShaderResource() : m_tex_white->GetShaderResource(),	// SSAO
+			m_render_tex_full_hdr_light2->GetShaderResource(),															// Previous frame
+			m_skybox ? m_skybox->GetTexture()->GetShaderResource() : m_tex_white->GetShaderResource(),					// Environment
+			m_tex_lut_ibl->GetShaderResource()																			// LutIBL
+		};
+		unsigned int textures_start_slot = 0;
+		m_cmd_list->SetTextures(textures_start_slot, textures);
+
+		// Samplers
+		vector<void*> samplers = 
+		{
+			m_sampler_trilinear_clamp->GetBuffer(),
+			m_sampler_point_clamp->GetBuffer()
+		};
+		unsigned int samplers_start_slot = 0;
+		m_cmd_list->SetSamplers(samplers_start_slot, samplers);
+
+		// Shaders
+		auto shader = static_pointer_cast<RHI_Shader>(m_vps_light);
+		m_cmd_list->SetShaderVertex(shader.get());
+		m_cmd_list->SetShaderPixel(shader.get());
+
+		// Render target
+		vector<void*> render_targets = { tex_out->GetRenderTargetView() };
+		m_cmd_list->SetRenderTargets(render_targets);
+
+		// Constant buffers
+		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		m_vps_light->UpdateConstantBuffer
+		(
+			m_view_projection_orthographic,
+			m_view,
+			m_projection,
+			m_entities[Renderable_Light],
+			Flags_IsSet(Render_PostProcess_SSR)
+		);
+		unsigned int constant_buffers_start_slot = 0;
+		vector<void*> constant_buffers = { m_buffer_global->GetBuffer(),  m_vps_light->GetConstantBuffer()->GetBuffer() };
+		m_cmd_list->SetConstantBuffers(constant_buffers_start_slot, constant_buffers, Buffer_Global);
+
+		// Rest
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled.get());
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid.get());
+		m_cmd_list->SetBlendState(m_blend_disabled.get());
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetViewport(&tex_out->GetViewport());
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
+		*/
 	}
 
 	void Renderer::Pass_Transparent(shared_ptr<RHI_RenderTexture>& tex_out)
