@@ -247,7 +247,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer) const
+	bool RHI_Device::SetVertexBuffer(const RHI_VertexBuffer* buffer) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -268,7 +268,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer) const
+	bool RHI_Device::SetIndexBuffer(const RHI_IndexBuffer* buffer) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -289,7 +289,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetVertexShader(const std::shared_ptr<RHI_Shader>& shader) const
+	bool RHI_Device::SetVertexShader(const RHI_Shader* shader) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -308,7 +308,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetPixelShader(const std::shared_ptr<RHI_Shader>& shader) const
+	bool RHI_Device::SetPixelShader(const RHI_Shader* shader) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -327,7 +327,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetConstantBuffers(const unsigned int start_slot, const unsigned int buffer_count, void* buffer, const RHI_Buffer_Scope scope) const
+	bool RHI_Device::SetConstantBuffers(const unsigned int start_slot, const unsigned int buffer_count, const void* buffer, const RHI_Buffer_Scope scope) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -349,7 +349,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetSamplers(const unsigned int start_slot, const unsigned int sampler_count, void* samplers) const
+	bool RHI_Device::SetSamplers(const unsigned int start_slot, const unsigned int sampler_count, const void* samplers) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -361,7 +361,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetRenderTargets(const unsigned int render_target_count, void* render_targets, void* depth_stencil) const
+	bool RHI_Device::SetRenderTargets(const unsigned int render_target_count, const void* render_targets, void* depth_stencil) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -373,7 +373,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetTextures(const unsigned int start_slot, const unsigned int resource_count, void* shader_resources) const
+	bool RHI_Device::SetTextures(const unsigned int start_slot, const unsigned int resource_count, const void* textures) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -381,11 +381,11 @@ namespace Directus
 			return false;
 		}
 
-		D3D11Instance::device->PSSetShaderResources(start_slot, resource_count, static_cast<ID3D11ShaderResourceView* const*>(shader_resources));
+		D3D11Instance::device->PSSetShaderResources(start_slot, resource_count, static_cast<ID3D11ShaderResourceView* const*>(textures));
 		return true;
 	}
 
-	bool RHI_Device::SetViewport(const RHI_Viewport& viewport) const
+	bool RHI_Device::SetViewport(const RHI_Viewport* viewport) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -394,18 +394,18 @@ namespace Directus
 		}
 
 		D3D11_VIEWPORT dx_viewport;
-		dx_viewport.TopLeftX	= viewport.GetX();
-		dx_viewport.TopLeftY	= viewport.GetY();
-		dx_viewport.Width		= viewport.GetWidth();
-		dx_viewport.Height		= viewport.GetHeight();
-		dx_viewport.MinDepth	= viewport.GetMinDepth();
-		dx_viewport.MaxDepth	= viewport.GetMaxDepth();
+		dx_viewport.TopLeftX	= viewport->GetX();
+		dx_viewport.TopLeftY	= viewport->GetY();
+		dx_viewport.Width		= viewport->GetWidth();
+		dx_viewport.Height		= viewport->GetHeight();
+		dx_viewport.MinDepth	= viewport->GetMinDepth();
+		dx_viewport.MaxDepth	= viewport->GetMaxDepth();
 		D3D11Instance::device->RSSetViewports(1, &dx_viewport);
 
 		return true;
 	}
 
-	bool RHI_Device::SetScissorRectangle(const Math::Rectangle& rectangle) const
+	bool RHI_Device::SetScissorRectangle(const Math::Rectangle* rectangle) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -413,10 +413,10 @@ namespace Directus
 			return false;
 		}
 
-		const auto left						= rectangle.x;
-		const auto top						= rectangle.y;
-		const auto right					= rectangle.x + rectangle.width;
-		const auto bottom					= rectangle.y + rectangle.height;
+		const auto left						= rectangle->x;
+		const auto top						= rectangle->y;
+		const auto right					= rectangle->x + rectangle->width;
+		const auto bottom					= rectangle->y + rectangle->height;
 		const D3D11_RECT d3d11_rectangle	= { static_cast<LONG>(left), static_cast<LONG>(top), static_cast<LONG>(right), static_cast<LONG>(bottom) };
 
 		D3D11Instance::device->RSSetScissorRects(1, &d3d11_rectangle);
@@ -424,7 +424,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state) const
+	bool RHI_Device::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -437,7 +437,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state) const
+	bool RHI_Device::SetBlendState(const RHI_BlendState* blend_state) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -472,7 +472,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout) const
+	bool RHI_Device::SetInputLayout(const RHI_InputLayout* input_layout) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -491,7 +491,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state) const
+	bool RHI_Device::SetRasterizerState(const RHI_RasterizerState* rasterizer_state) const
 	{
 		if (!D3D11Instance::device)
 		{

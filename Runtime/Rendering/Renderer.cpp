@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_RenderTexture.h"
+#include "../RHI/RHI_CommandList.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
@@ -91,6 +92,9 @@ namespace Directus
 
 		// Create pipeline
 		m_rhi_pipeline = make_shared<RHI_Pipeline>(m_context, m_rhi_device);
+
+		// Create command list
+		m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device.get(), m_context->GetSubsystem<Profiler>().get());
 
 		// Create swap chain
 		{
@@ -144,7 +148,7 @@ namespace Directus
 		m_gizmo_transform	= make_unique<Transform_Gizmo>(m_context);
 
 		// Create a constant buffer that will be used for most shaders
-		m_buffer_global_ = make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferGlobal)));
+		m_buffer_global = make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferGlobal)));
 
 		// Line buffer
 		m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
@@ -646,9 +650,9 @@ namespace Directus
 		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
-	void Renderer::SetDefaultBuffer(const unsigned int resolution_width, const unsigned int resolution_height, const Matrix& mMVP, const float blur_sigma, const Vector2& blur_direction) const
+	void Renderer::SetDefaultBuffer(const unsigned int resolution_width, const unsigned int resolution_height, const Matrix& mMVP, const float blur_sigma, const Vector2& blur_direction, bool bind) const
 	{
-		auto buffer = static_cast<ConstantBufferGlobal*>(m_buffer_global_->Map());
+		auto buffer = static_cast<ConstantBufferGlobal*>(m_buffer_global->Map());
 		if (!buffer)
 		{
 			LOGF_ERROR("Failed to map buffer");
@@ -681,8 +685,11 @@ namespace Directus
 		buffer->exposure				= m_exposure;
 		buffer->gamma					= m_gamma;
 
-		m_buffer_global_->Unmap();
-		m_rhi_pipeline->SetConstantBuffer(m_buffer_global_, 0, Buffer_Global);
+		m_buffer_global->Unmap();
+		if (bind)
+		{
+			m_rhi_pipeline->SetConstantBuffer(m_buffer_global, 0, Buffer_Global);
+		}
 	}
 
 	void Renderer::RenderablesAcquire(const Variant& entities_variant)

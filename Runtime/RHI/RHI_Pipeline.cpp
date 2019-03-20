@@ -444,7 +444,7 @@ namespace Directus
 		auto result_vertex_shader = false;
 		if (m_vertex_shader_dirty)
 		{
-			result_vertex_shader = m_rhi_device->SetVertexShader(m_vertex_shader);
+			result_vertex_shader = m_rhi_device->SetVertexShader(m_vertex_shader.get());
 			m_profiler->m_rhi_bindings_vertex_shader++;
 			m_vertex_shader_dirty = false;
 		}
@@ -453,7 +453,7 @@ namespace Directus
 		auto result_pixel_shader = false;
 		if (m_pixel_shader_dirty)
 		{
-			result_pixel_shader = m_rhi_device->SetPixelShader(m_pixel_shader);
+			result_pixel_shader = m_rhi_device->SetPixelShader(m_pixel_shader.get());
 			m_profiler->m_rhi_bindings_pixel_shader++;
 			m_pixel_shader_dirty = false;
 		}
@@ -462,7 +462,7 @@ namespace Directus
 		auto result_input_layout = false;
 		if (m_input_layout_dirty)
 		{
-			result_input_layout = m_rhi_device->SetInputLayout(m_input_layout);
+			result_input_layout = m_rhi_device->SetInputLayout(m_input_layout.get());
 			m_input_layout_dirty = false;
 		}
 
@@ -470,14 +470,14 @@ namespace Directus
 		auto result_viewport = false;
 		if (m_viewport_dirty)
 		{
-			result_viewport = m_rhi_device->SetViewport(m_viewport);
+			result_viewport = m_rhi_device->SetViewport(&m_viewport);
 			m_viewport_dirty = false;
 		}
 
 		auto result_scissor_rectangle = false;
 		if (m_scissor_rectangle_dirty)
 		{
-			result_scissor_rectangle = m_rhi_device->SetScissorRectangle(m_scissor_rectangle);
+			result_scissor_rectangle = m_rhi_device->SetScissorRectangle(&m_scissor_rectangle);
 			m_scissor_rectangle_dirty = false;
 		}
 
@@ -493,7 +493,7 @@ namespace Directus
 		auto result_depth_stencil_state = false;
 		if (m_depth_stencil_state_dirty)
 		{
-			result_depth_stencil_state = m_rhi_device->SetDepthStencilState(m_depth_stencil_state);
+			result_depth_stencil_state = m_rhi_device->SetDepthStencilState(m_depth_stencil_state.get());
 			m_depth_stencil_state_dirty = false;
 		}
 
@@ -501,7 +501,7 @@ namespace Directus
 		auto result_rasterizer_state = false;
 		if (m_raterizer_state_dirty)
 		{
-			result_rasterizer_state = m_rhi_device->SetRasterizerState(m_rasterizer_state);
+			result_rasterizer_state = m_rhi_device->SetRasterizerState(m_rasterizer_state.get());
 			m_raterizer_state_dirty = false;
 		}
 
@@ -509,7 +509,7 @@ namespace Directus
 		auto result_index_buffer = false;
 		if (m_index_buffer_dirty)
 		{
-			result_index_buffer = m_rhi_device->SetIndexBuffer(m_index_buffer);
+			result_index_buffer = m_rhi_device->SetIndexBuffer(m_index_buffer.get());
 			m_profiler->m_rhi_bindings_buffer_index++;
 			m_index_buffer_dirty = false;
 		}
@@ -518,7 +518,7 @@ namespace Directus
 		auto result_vertex_buffer = false;
 		if (m_vertex_buffer_dirty)
 		{
-			result_vertex_buffer = m_rhi_device->SetVertexBuffer(m_vertex_buffer);
+			result_vertex_buffer = m_rhi_device->SetVertexBuffer(m_vertex_buffer.get());
 			m_profiler->m_rhi_bindings_buffer_vertex++;
 			m_vertex_buffer_dirty = false;
 		}
@@ -527,7 +527,7 @@ namespace Directus
 		auto result_blend_state = false;
 		if (m_blend_state_dirty)
 		{
-			result_blend_state = m_rhi_device->SetBlendState(m_blend_state);
+			result_blend_state = m_rhi_device->SetBlendState(m_blend_state.get());
 			m_blend_state_dirty = false;
 		}
 
@@ -553,7 +553,7 @@ namespace Directus
 		// Render targets
 		m_rhi_device->SetRenderTargets(8, empty_ptr, nullptr);
 		m_render_target_views.clear();
-		m_depth_stencil_view		= nullptr;
+		m_depth_stencil_view	= nullptr;
 		m_render_targets_clear	= false;
 		m_render_targets_dirty	= false;
 

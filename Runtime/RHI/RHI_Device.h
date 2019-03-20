@@ -92,23 +92,23 @@ namespace Directus
 		bool ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0) const;
 		//===========================================================================================================
 
-		//= SET ================================================================================================================
-		bool SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer) const;
-		bool SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer) const;
-		bool SetVertexShader(const std::shared_ptr<RHI_Shader>& shader) const;
-		bool SetPixelShader(const std::shared_ptr<RHI_Shader>& shader) const;
-		bool SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state) const;
-		bool SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state) const;
-		bool SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state) const;
-		bool SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout) const;	
+		//= SET ======================================================================================================================
+		bool SetVertexBuffer(const RHI_VertexBuffer* buffer) const;
+		bool SetIndexBuffer(const RHI_IndexBuffer* buffer) const;
+		bool SetVertexShader(const RHI_Shader* shader) const;
+		bool SetPixelShader(const RHI_Shader* shader) const;
+		bool SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state) const;
+		bool SetRasterizerState(const RHI_RasterizerState* rasterizer_state) const;
+		bool SetBlendState(const RHI_BlendState* blend_state) const;
+		bool SetInputLayout(const RHI_InputLayout* input_layout) const;
 		bool SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology) const;
-		bool SetConstantBuffers(unsigned int start_slot, unsigned int buffer_count, void* buffer, RHI_Buffer_Scope scope) const;
-		bool SetSamplers(unsigned int start_slot, unsigned int sampler_count, void* samplers) const;
-		bool SetTextures(unsigned int start_slot, unsigned int resource_count, void* shader_resources) const;	
-		bool SetRenderTargets(unsigned int render_target_count, void* render_targets, void* depth_stencil) const;	
-		bool SetViewport(const RHI_Viewport& viewport) const;
-		bool SetScissorRectangle(const Math::Rectangle& rectangle) const;
-		//======================================================================================================================
+		bool SetConstantBuffers(unsigned int start_slot, unsigned int buffer_count, const void* buffer, RHI_Buffer_Scope scope) const;
+		bool SetSamplers(unsigned int start_slot, unsigned int sampler_count, const void* samplers) const;
+		bool SetTextures(unsigned int start_slot, unsigned int resource_count, const void* textures) const;
+		bool SetRenderTargets(unsigned int render_target_count, const void* render_targets, void* depth_stencil) const;
+		bool SetViewport(const RHI_Viewport* viewport) const;
+		bool SetScissorRectangle(const Math::Rectangle* rectangle) const;
+		//============================================================================================================================
 
 		//= EVENTS =====================================
 		static void EventBegin(const std::string& name);

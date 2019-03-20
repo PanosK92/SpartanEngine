@@ -35,6 +35,7 @@ namespace Directus
 	class RHI_ConstantBuffer;
 	class RHI_Sampler;
 	class RHI_Pipeline;
+	class RHI_CommandList;
 	class RHI_Viewport;
 	class RHI_RenderTexture;
 	class RHI_Texture;
@@ -84,7 +85,8 @@ namespace Directus
 	{
 		Buffer_VertexShader,
 		Buffer_PixelShader,
-		Buffer_Global
+		Buffer_Global,
+		Buffer_NotAssigned
 	};
 
 	enum RHI_PrimitiveTopology_Mode

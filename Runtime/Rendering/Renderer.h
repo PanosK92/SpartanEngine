@@ -200,7 +200,8 @@ namespace Directus
 			unsigned int resolution_height,
 			const Math::Matrix& mMVP			= Math::Matrix::Identity,
 			float blur_sigma					= 0.0f,
-			const Math::Vector2& blur_direction	= Math::Vector2::Zero
+			const Math::Vector2& blur_direction	= Math::Vector2::Zero,
+			bool bind							= true
 		) const;
 		void RenderablesAcquire(const Variant& renderables);
 		void RenderablesSort(std::vector<Entity*>* renderables);
@@ -342,6 +343,7 @@ namespace Directus
 		std::unique_ptr<GBuffer> m_gbuffer;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_Pipeline> m_rhi_pipeline;
+		std::shared_ptr<RHI_CommandList> m_cmd_list;
 		std::unique_ptr<RHI_SwapChain> m_swap_chain;
 		std::unique_ptr<Font> m_font;	
 		Math::Matrix m_view;
@@ -408,6 +410,6 @@ namespace Directus
 			float tonemapping;
 			float exposure;
 		};
-		std::shared_ptr<RHI_ConstantBuffer> m_buffer_global_;
+		std::shared_ptr<RHI_ConstantBuffer> m_buffer_global;
 	};
 }
