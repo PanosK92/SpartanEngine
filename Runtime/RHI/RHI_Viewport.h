@@ -41,6 +41,16 @@ namespace Directus
 			m_maxDepth	= maxDepth;
 		}
 
+		RHI_Viewport(const RHI_Viewport& viewport)
+		{
+			m_x			= viewport.GetX();
+			m_y			= viewport.GetY();
+			m_width		= viewport.GetWidth();
+			m_height	= viewport.GetHeight();
+			m_minDepth	= viewport.GetMinDepth();
+			m_maxDepth	= viewport.GetMaxDepth();
+		}
+
 		~RHI_Viewport(){}
 
 		bool operator==(const RHI_Viewport& rhs) const

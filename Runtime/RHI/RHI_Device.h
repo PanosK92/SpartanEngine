@@ -106,8 +106,8 @@ namespace Directus
 		bool SetSamplers(unsigned int start_slot, unsigned int sampler_count, const void* samplers) const;
 		bool SetTextures(unsigned int start_slot, unsigned int resource_count, const void* textures) const;
 		bool SetRenderTargets(unsigned int render_target_count, const void* render_targets, void* depth_stencil) const;
-		bool SetViewport(const RHI_Viewport* viewport) const;
-		bool SetScissorRectangle(const Math::Rectangle* rectangle) const;
+		bool SetViewport(const RHI_Viewport& viewport) const;
+		bool SetScissorRectangle(const Math::Rectangle& rectangle) const;
 		//============================================================================================================================
 
 		//= EVENTS =====================================

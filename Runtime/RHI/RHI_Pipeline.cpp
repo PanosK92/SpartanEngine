@@ -86,13 +86,6 @@ namespace Directus
 		if (shader->GetCompilationState() != Shader_Compiled)
 			return false;
 
-		// Check if already set
-		if (m_vertex_shader)
-		{
-			if (m_vertex_shader->RHI_GetID() == shader->RHI_GetID())
-				return true;
-		}
-
 		SetInputLayout(shader->GetInputLayout()); // TODO: this has to be done outside of this function 
 		m_vertex_shader		= shader;
 		m_vertex_shader_dirty = true;
@@ -113,13 +106,6 @@ namespace Directus
 		// as it will be logged by other systems
 		if (shader->GetCompilationState() != Shader_Compiled)
 			return false;
-
-		// Check if already set
-		if (m_pixel_shader)
-		{
-			if (m_pixel_shader->RHI_GetID() == shader->RHI_GetID())
-				return true;
-		}
 
 		m_pixel_shader			= shader;
 		m_pixel_shader_dirty	= true;
@@ -197,7 +183,7 @@ namespace Directus
 
 		m_render_target_views.clear();
 		m_render_target_views.emplace_back(render_target->GetRenderTargetView());
-		m_depth_stencil_view		= depth_stencil_view;
+		m_depth_stencil_view	= depth_stencil_view;
 		m_render_targets_clear	= clear;
 		m_render_targets_dirty	= true;
 
@@ -212,7 +198,7 @@ namespace Directus
 		m_render_target_views.clear();
 		m_render_target_views.emplace_back(render_target_view);
 
-		m_depth_stencil_view			= depth_stencil_view;
+		m_depth_stencil_view		= depth_stencil_view;
 		m_render_targets_clear	= clear;
 		m_render_targets_dirty	= true;
 
@@ -233,7 +219,7 @@ namespace Directus
 			m_render_target_views.emplace_back(render_target);
 		}
 
-		m_depth_stencil_view		= depth_stencil_view;
+		m_depth_stencil_view	= depth_stencil_view;
 		m_render_targets_clear	= clear;
 		m_render_targets_dirty	= true;
 
@@ -254,7 +240,7 @@ namespace Directus
 		if (m_primitive_topology == primitive_topology)
 			return;
 	
-		m_primitive_topology			= primitive_topology;
+		m_primitive_topology		= primitive_topology;
 		m_primitive_topology_dirty	= true;
 	}
 
@@ -266,13 +252,7 @@ namespace Directus
 			return false;
 		}
 
-		if (m_input_layout)
-		{
-			if (m_input_layout->GetInputLayout() == input_layout->GetInputLayout())
-				return true;
-		}
-
-		m_input_layout		= input_layout;
+		m_input_layout			= input_layout;
 		m_input_layout_dirty	= true;
 
 		return true;
@@ -284,12 +264,6 @@ namespace Directus
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
-		}
-
-		if (m_depth_stencil_state)
-		{
-			if (m_depth_stencil_state->GetDepthEnabled() == depth_stencil_state->GetDepthEnabled())
-				return true;
 		}
 
 		m_depth_stencil_state			= depth_stencil_state;
@@ -305,20 +279,6 @@ namespace Directus
 			return false;
 		}
 
-		if (m_rasterizer_state)
-		{
-			const auto equal =
-				m_rasterizer_state->GetCullMode()				== rasterizer_state->GetCullMode()			&&
-				m_rasterizer_state->GetFillMode()				== rasterizer_state->GetFillMode()			&&
-				m_rasterizer_state->GetDepthClipEnabled()		== rasterizer_state->GetDepthClipEnabled()	&&
-				m_rasterizer_state->GetScissorEnabled()			== rasterizer_state->GetScissorEnabled()	&&
-				m_rasterizer_state->GetMultiSampleEnabled()		== rasterizer_state->GetMultiSampleEnabled() &&
-				m_rasterizer_state->GetAntialisedLineEnabled()	== rasterizer_state->GetAntialisedLineEnabled();
-
-			if (equal)
-				return true;
-		}
-
 		m_rasterizer_state		= rasterizer_state;
 		m_raterizer_state_dirty	= true;
 		return true;
@@ -330,12 +290,6 @@ namespace Directus
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
-		}
-
-		if (m_blend_state)
-		{
-			if (m_blend_state->BlendEnabled() == blend_state->BlendEnabled())
-				return true;
 		}
 
 		m_blend_state		= blend_state;
@@ -354,9 +308,6 @@ namespace Directus
 
 	void RHI_Pipeline::SetScissorRectangle(const Math::Rectangle& rectangle)
 	{
-		if (m_scissor_rectangle == rectangle)
-			return;
-
 		m_scissor_rectangle		= rectangle;
 		m_scissor_rectangle_dirty = true;
 	}
@@ -470,14 +421,14 @@ namespace Directus
 		auto result_viewport = false;
 		if (m_viewport_dirty)
 		{
-			result_viewport = m_rhi_device->SetViewport(&m_viewport);
+			result_viewport = m_rhi_device->SetViewport(m_viewport);
 			m_viewport_dirty = false;
 		}
 
 		auto result_scissor_rectangle = false;
 		if (m_scissor_rectangle_dirty)
 		{
-			result_scissor_rectangle = m_rhi_device->SetScissorRectangle(&m_scissor_rectangle);
+			result_scissor_rectangle = m_rhi_device->SetScissorRectangle(m_scissor_rectangle);
 			m_scissor_rectangle_dirty = false;
 		}
 
