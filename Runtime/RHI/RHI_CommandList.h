@@ -21,23 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "RHI_Definition.h"
+//= INCLUDES =================
 #include <vector>
+#include "RHI_Definition.h"
+#include "RHI_Viewport.h"
+#include "../Math/Rectangle.h"
 #include "../Math/Vector4.h"
-//==========================
+//============================
 
 namespace Directus
 {
 	class Profiler;
-	namespace Math { class Rectangle; }
 
 	enum RHI_Cmd_Type
 	{
 		RHI_Cmd_Begin,
 		RHI_Cmd_End,
 		RHI_Cmd_Draw,
-		RHI_Cmd_DrawIndex,
+		RHI_Cmd_DrawIndexed,
 		RHI_Cmd_ClearRenderTarget,
 		RHI_Cmd_ClearDepthStencil,
 		RHI_Cmd_SetViewport,
@@ -93,8 +94,8 @@ namespace Directus
 		unsigned int vertex_offset							= 0;
 		unsigned int index_count							= 0;
 		unsigned int index_offset							= 0;	
-		const RHI_Viewport* viewport						= nullptr;
-		const Math::Rectangle* scissor_rectangle			= nullptr;		
+		RHI_Viewport viewport;
+		Math::Rectangle scissor_rectangle;
 		const RHI_InputLayout* input_layout					= nullptr;	
 		const RHI_RasterizerState* rasterizer_state			= nullptr;
 		const RHI_BlendState* blend_state					= nullptr;
@@ -116,17 +117,34 @@ namespace Directus
 		void DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset);
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0);
-		void SetViewport(const RHI_Viewport* viewport);
-		void SetScissorRectangle(const Math::Rectangle* scissor_rectangle);
+		void SetViewport(const RHI_Viewport& viewport);
+		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle);
 		void SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology);
+
 		void SetInputLayout(const RHI_InputLayout* input_layout);
+		void SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout);
+
 		void SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state);
+		void SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state);
+
 		void SetRasterizerState(const RHI_RasterizerState* rasterizer_state);
+		void SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state);
+
 		void SetBlendState(const RHI_BlendState* blend_state);
+		void SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state);
+
 		void SetBufferVertex(const RHI_VertexBuffer* buffer);
+		void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer);
+
 		void SetBufferIndex(const RHI_IndexBuffer* buffer);
+		void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer);
+
 		void SetShaderVertex(const RHI_Shader* shader);
+		void SetShaderVertex(const std::shared_ptr<RHI_Shader>& shader);
+
 		void SetShaderPixel(const RHI_Shader* shader);
+		void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader);
+
 		void SetConstantBuffers(unsigned int start_slot, const std::vector<void*>& constant_buffers, RHI_Buffer_Scope scope);
 		void SetSamplers(unsigned int start_slot, const std::vector<void*>& samplers);
 		void SetTextures(unsigned int start_slot, const std::vector<void*>& textures);

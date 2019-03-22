@@ -385,7 +385,7 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetViewport(const RHI_Viewport* viewport) const
+	bool RHI_Device::SetViewport(const RHI_Viewport& viewport) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -394,18 +394,18 @@ namespace Directus
 		}
 
 		D3D11_VIEWPORT dx_viewport;
-		dx_viewport.TopLeftX	= viewport->GetX();
-		dx_viewport.TopLeftY	= viewport->GetY();
-		dx_viewport.Width		= viewport->GetWidth();
-		dx_viewport.Height		= viewport->GetHeight();
-		dx_viewport.MinDepth	= viewport->GetMinDepth();
-		dx_viewport.MaxDepth	= viewport->GetMaxDepth();
+		dx_viewport.TopLeftX	= viewport.GetX();
+		dx_viewport.TopLeftY	= viewport.GetY();
+		dx_viewport.Width		= viewport.GetWidth();
+		dx_viewport.Height		= viewport.GetHeight();
+		dx_viewport.MinDepth	= viewport.GetMinDepth();
+		dx_viewport.MaxDepth	= viewport.GetMaxDepth();
 		D3D11Instance::device->RSSetViewports(1, &dx_viewport);
 
 		return true;
 	}
 
-	bool RHI_Device::SetScissorRectangle(const Math::Rectangle* rectangle) const
+	bool RHI_Device::SetScissorRectangle(const Math::Rectangle& rectangle) const
 	{
 		if (!D3D11Instance::device)
 		{
@@ -413,10 +413,10 @@ namespace Directus
 			return false;
 		}
 
-		const auto left						= rectangle->x;
-		const auto top						= rectangle->y;
-		const auto right					= rectangle->x + rectangle->width;
-		const auto bottom					= rectangle->y + rectangle->height;
+		const auto left						= rectangle.x;
+		const auto top						= rectangle.y;
+		const auto right					= rectangle.x + rectangle.width;
+		const auto bottom					= rectangle.y + rectangle.height;
 		const D3D11_RECT d3d11_rectangle	= { static_cast<LONG>(left), static_cast<LONG>(top), static_cast<LONG>(right), static_cast<LONG>(bottom) };
 
 		D3D11Instance::device->RSSetScissorRects(1, &d3d11_rectangle);

@@ -69,7 +69,7 @@ namespace Directus
 	void RHI_CommandList::DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset)
 	{
 		RHI_Command cmd;
-		cmd.type			= RHI_Cmd_DrawIndex;
+		cmd.type			= RHI_Cmd_DrawIndexed;
 		cmd.index_count		= index_count;
 		cmd.index_offset	= index_offset;
 		cmd.vertex_offset	= vertex_offset;
@@ -99,7 +99,7 @@ namespace Directus
 		m_commands.emplace_back(cmd);
 	}
 
-	void RHI_CommandList::SetViewport(const RHI_Viewport* viewport)
+	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
 	{
 		RHI_Command cmd;
 		cmd.type		= RHI_Cmd_SetViewport;
@@ -108,7 +108,7 @@ namespace Directus
 		m_commands.emplace_back(cmd);
 	}
 
-	void RHI_CommandList::SetScissorRectangle(const Rectangle* scissor_rectangle)
+	void RHI_CommandList::SetScissorRectangle(const Rectangle& scissor_rectangle)
 	{
 		RHI_Command cmd;
 		cmd.type				= RHI_Cmd_SetScissorRectangle;
@@ -135,6 +135,11 @@ namespace Directus
 		m_commands.emplace_back(cmd);
 	}
 
+	void RHI_CommandList::SetInputLayout(const shared_ptr<RHI_InputLayout>& input_layout)
+	{
+		SetInputLayout(input_layout.get());
+	}
+
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
 	{
 		RHI_Command cmd;
@@ -142,6 +147,11 @@ namespace Directus
 		cmd.depth_stencil_state = depth_stencil_state;
 		
 		m_commands.emplace_back(cmd);
+	}
+
+	void RHI_CommandList::SetDepthStencilState(const shared_ptr<RHI_DepthStencilState>& depth_stencil_state)
+	{
+		SetDepthStencilState(depth_stencil_state.get());
 	}
 
 	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
@@ -153,6 +163,11 @@ namespace Directus
 		m_commands.emplace_back(cmd);
 	}
 
+	void RHI_CommandList::SetRasterizerState(const shared_ptr<RHI_RasterizerState>& rasterizer_state)
+	{
+		SetRasterizerState(rasterizer_state.get());
+	}
+
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
 	{
 		RHI_Command cmd;
@@ -160,6 +175,11 @@ namespace Directus
 		cmd.blend_state = blend_state;
 
 		m_commands.emplace_back(cmd);
+	}
+
+	void RHI_CommandList::SetBlendState(const shared_ptr<RHI_BlendState>& blend_state)
+	{
+		SetBlendState(blend_state.get());
 	}
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
@@ -171,6 +191,11 @@ namespace Directus
 		m_commands.emplace_back(cmd);
 	}
 
+	void RHI_CommandList::SetBufferVertex(const shared_ptr<RHI_VertexBuffer>& buffer)
+	{
+		SetBufferVertex(buffer.get());
+	}
+
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
 	{
 		RHI_Command cmd;
@@ -178,6 +203,11 @@ namespace Directus
 		cmd.buffer_index	= buffer;
 
 		m_commands.emplace_back(cmd);
+	}
+
+	void RHI_CommandList::SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer)
+	{
+		SetBufferIndex(buffer.get());
 	}
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
@@ -189,6 +219,11 @@ namespace Directus
 		m_commands.emplace_back(cmd);
 	}
 
+	void RHI_CommandList::SetShaderVertex(const std::shared_ptr<RHI_Shader>& shader)
+	{
+		SetShaderVertex(shader.get());
+	}
+
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
 		RHI_Command cmd;
@@ -196,6 +231,11 @@ namespace Directus
 		cmd.shader_pixel	= shader;
 
 		m_commands.emplace_back(cmd);
+	}
+
+	void RHI_CommandList::SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader)
+	{
+		SetShaderPixel(shader.get());
 	}
 
 	void RHI_CommandList::SetConstantBuffers(unsigned int start_slot, const vector<void*>& constant_buffers, RHI_Buffer_Scope scope)
@@ -268,7 +308,7 @@ namespace Directus
 				m_profiler->m_rhi_draw_calls++;
 				break;
 
-			case RHI_Cmd_DrawIndex:
+			case RHI_Cmd_DrawIndexed:
 				m_rhi_device->DrawIndexed(cmd.index_count, cmd.index_offset, cmd.vertex_offset);
 				m_profiler->m_rhi_draw_calls++;
 				break;

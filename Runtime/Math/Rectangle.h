@@ -51,6 +51,13 @@ namespace Directus
 				this->height	= height;
 			}
 
+			Rectangle(const Rectangle& rectangle)
+			{
+				x		= rectangle.x;
+				y		= rectangle.y;
+				width	= rectangle.width;
+				height	= rectangle.height;
+			}
 
 			~Rectangle() = default;
 

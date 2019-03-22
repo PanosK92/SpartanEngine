@@ -174,7 +174,7 @@ namespace Directus
 		RendererDebug_Buffer GetDebugBuffer() const				{ return m_debug_buffer; }
 		//==================================================================================
 
-		//= MISC ==============================================================================
+		//= MISC ===============================================================================
 		void* GetFrameShaderResource() const;
 		const std::shared_ptr<RHI_Device>& GetRhiDevice() const		{ return m_rhi_device; }
 		const std::shared_ptr<RHI_Pipeline>& GetRhiPipeline() const { return m_rhi_pipeline; }
@@ -183,7 +183,7 @@ namespace Directus
 		std::shared_ptr<Camera> GetCamera() const					{ return m_camera; }
 		unsigned int GetMaxResolution() const						{ return m_max_resolution; }
 		bool IsInitialized() const									{ return m_initialized; }
-		//=====================================================================================
+		//======================================================================================
 
 	private:
 		void CreateDepthStencilStates();
