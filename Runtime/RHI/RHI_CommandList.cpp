@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Sampler.h"
 #include "RHI_ConstantBuffer.h"
 #include "../Profiling/Profiler.h"
+#include "../Logging/Log.h"
 //================================
 
 //= NAMESPACES ================
@@ -287,8 +288,6 @@ namespace Directus
 
 	void RHI_CommandList::Submit()
 	{
-		string pass_name = "N/A";
-
 		for (unsigned int cmd_index = 0; cmd_index < m_command_count; cmd_index++)
 		{
 			RHI_Command& cmd = m_commands[cmd_index];
@@ -296,14 +295,13 @@ namespace Directus
 			switch (cmd.type)
 			{
 			case RHI_Cmd_Begin:
-				pass_name = cmd.pass_name;
-				m_profiler->TimeBlockStartGpu(pass_name);
-				m_rhi_device->EventBegin(pass_name);
+				m_profiler->TimeBlockStart(cmd.pass_name, true, true);
+				m_rhi_device->EventBegin(cmd.pass_name);
 				break;
 
 			case RHI_Cmd_End:
 				m_rhi_device->EventEnd();
-				m_profiler->TimeBlockEndGpu(pass_name);
+				m_profiler->TimeBlockEnd();
 				break;
 
 			case RHI_Cmd_Draw:
@@ -403,7 +401,7 @@ namespace Directus
 			unsigned int new_size = m_command_count + 100;
 			m_commands.reserve(new_size);
 			m_commands.resize(new_size);
-			LOGF_WARNING("Command list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_command_count);
+			LOGF_WARNING("Command list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_command_count + 1);
 		}
 
 		m_command_count++;

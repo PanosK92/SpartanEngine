@@ -34,7 +34,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	void RHI_Device::AddDisplayMode(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator)
+void RHI_Device::AddDisplayMode(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator)
 	{
 		auto& mode = m_displayModes.emplace_back(width, height, refresh_rate_numerator, refresh_rate_denominator);
 

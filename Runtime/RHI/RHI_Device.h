@@ -120,6 +120,7 @@ namespace Directus
 		bool ProfilingQueryStart(void* query_object) const;
 		bool ProfilingGetTimeStamp(void* query_object) const;
 		float ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const;
+		void ProfilingReleaseQuery(void* query_object);
 		//=========================================================================================
 
 		//= ADAPTERS ============================================================================================================================		
