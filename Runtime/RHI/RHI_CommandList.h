@@ -39,8 +39,6 @@ namespace Directus
 		RHI_Cmd_End,
 		RHI_Cmd_Draw,
 		RHI_Cmd_DrawIndexed,
-		RHI_Cmd_ClearRenderTarget,
-		RHI_Cmd_ClearDepthStencil,
 		RHI_Cmd_SetViewport,
 		RHI_Cmd_SetScissorRectangle,
 		RHI_Cmd_SetPrimitiveTopology,
@@ -55,30 +53,94 @@ namespace Directus
 		RHI_Cmd_SetConstantBuffers,
 		RHI_Cmd_SetSamplers,
 		RHI_Cmd_SetTextures,
-		RHI_Cmd_SetRenderTargets
+		RHI_Cmd_SetRenderTargets,
+		RHI_Cmd_ClearRenderTarget,
+		RHI_Cmd_ClearDepthStencil
 	};
 
 	struct RHI_Command
 	{
+		RHI_Command()
+		{
+			// Render targets
+			render_targets.reserve(10);
+			render_targets.resize(10);
+			// Textures
+			textures.reserve(10);
+			textures.resize(10);
+			// Samplers
+			samplers.reserve(10);
+			samplers.resize(10);
+			// Constant buffers
+			constant_buffers.reserve(10);
+			constant_buffers.resize(10);
+
+			Clear();
+		}
+
+		void Clear()
+		{
+			// Render targets
+			render_target_count = 0;
+			render_targets.clear();
+			// Textures
+			textures_start_slot = 0;
+			texture_count		= 0;
+			textures.clear();
+			// Samplers
+			samplers_start_slot = 0;
+			sampler_count		= 0;
+			samplers.clear();
+			// Constant buffers
+			constant_buffers_start_slot		= 0;
+			constant_buffer_count			= 0;
+			constant_buffers_scope			= Buffer_NotAssigned;
+			constant_buffers.clear();
+			// Depth-stencil
+			RHI_DepthStencilState* depth_stencil_state	= nullptr;
+			depth_stencil								= nullptr;
+			depth_clear									= 0;
+			depth_clear_stencil							= 0;
+			depth_clear_flags							= 0;
+			// Misc
+			pass_name = "N/A";
+			primitive_topology = PrimitiveTopology_NotAssigned;
+			vertex_count = 0;
+			vertex_offset = 0;
+			index_count = 0;
+			index_offset = 0;
+			input_layout = nullptr;
+			rasterizer_state = nullptr;
+			blend_state = nullptr;
+			buffer_index = nullptr;
+			buffer_vertex = nullptr;
+			shader_vertex = nullptr;
+			shader_pixel = nullptr;
+		}
+
 		RHI_Cmd_Type type;
 
 		// Render targets
+		unsigned int render_target_count;
 		std::vector<void*> render_targets;
-		std::vector<void*> render_targets_clear;
-		std::vector<Math::Vector4> render_target_clear_color;
+		void* render_target_clear;
+		Math::Vector4 render_target_clear_color;
 
 		// Texture
+		unsigned int textures_start_slot;
+		unsigned int texture_count;
 		std::vector<void*> textures;
-		unsigned textures_start_slot = 0;
 
 		// Samplers
+		unsigned int samplers_start_slot;
+		unsigned int sampler_count;
 		std::vector<void*> samplers;
-		unsigned samplers_start_slot = 0;
 
 		// Constant buffers
-		std::vector<void*> constant_buffers;
-		unsigned constant_buffers_start_slot	= 0;
-		RHI_Buffer_Scope constant_buffers_scope = Buffer_NotAssigned;
+		unsigned int constant_buffers_start_slot;
+		unsigned int constant_buffer_count;
+		RHI_Buffer_Scope constant_buffers_scope;
+		std::vector<void*> constant_buffers;	
 
 		// Depth
 		const RHI_DepthStencilState* depth_stencil_state	= nullptr;
@@ -110,13 +172,15 @@ namespace Directus
 	public:
 		RHI_CommandList(RHI_Device* rhi_device, Profiler* profiler);
 		~RHI_CommandList() = default;
+
+		void Clear();
 	
 		void Begin(const std::string& pass_name);
 		void End();
+
 		void Draw(unsigned int vertex_count);
 		void DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset);
-		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
-		void ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0);
+
 		void SetViewport(const RHI_Viewport& viewport);
 		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle);
 		void SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology);
@@ -145,16 +209,28 @@ namespace Directus
 		void SetShaderPixel(const RHI_Shader* shader);
 		void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader);
 
-		void SetConstantBuffers(unsigned int start_slot, const std::vector<void*>& constant_buffers, RHI_Buffer_Scope scope);
+		void SetConstantBuffers(unsigned int start_slot, RHI_Buffer_Scope scope, const std::vector<void*>& constant_buffers);
+		void SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, void* constant_buffer);
+			
 		void SetSamplers(unsigned int start_slot, const std::vector<void*>& samplers);
+		void SetSampler(unsigned int start_slot, void* sampler);
+		
 		void SetTextures(unsigned int start_slot, const std::vector<void*>& textures);
-		void SetRenderTargets(const std::vector<void*>& render_targets, void* depth_stencil = nullptr);
+		void SetTexture(unsigned int start_slot, void* texture);
 
-		void Clear();
+		void SetRenderTargets(const std::vector<void*>& render_targets, void* depth_stencil = nullptr);
+		void SetRenderTarget(void* render_target, void* depth_stencil = nullptr);
+
+		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
+		void ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0);
+
 		void Submit();
 
 	private:
+		RHI_Command& GetCmd();
 		std::vector<RHI_Command> m_commands;
+		unsigned int m_initial_capacity = 200;
+		unsigned int m_command_count	= 0;
 		RHI_Device* m_rhi_device	= nullptr;
 		Profiler* m_profiler		= nullptr;
 	};

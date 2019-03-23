@@ -305,7 +305,6 @@ namespace Directus
 		// Prepare resources
 		auto shader						= static_pointer_cast<RHI_Shader>(m_vps_light);
 		vector<void*> samplers			= { m_sampler_trilinear_clamp->GetBuffer(), m_sampler_point_clamp->GetBuffer() };
-		vector<void*> render_targets	= { tex_out->GetRenderTargetView() };
 		vector<void*> constant_buffers	= { m_buffer_global->GetBuffer(),  m_vps_light->GetConstantBuffer()->GetBuffer() };
 		vector<void*> textures =
 		{
@@ -326,13 +325,13 @@ namespace Directus
 		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetRenderTargets(render_targets);
+		m_cmd_list->SetRenderTarget(tex_out->GetRenderTargetView());
 		m_cmd_list->SetShaderVertex(shader);
 		m_cmd_list->SetShaderPixel(shader);
 		m_cmd_list->SetInputLayout(shader->GetInputLayout());
 		m_cmd_list->SetSamplers(0, samplers);
 		m_cmd_list->SetTextures(0, textures);
-		m_cmd_list->SetConstantBuffers(0, constant_buffers, Buffer_Global);
+		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();

@@ -127,13 +127,6 @@ namespace Directus
 		void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = DebugColor, bool depth = true);
 		//=============================================================================================================================================================================
 
-		//= SWAPCHAIN =================================================
-		bool SwapChainResize(unsigned int width, unsigned int height) const;
-		bool SwapChainSetAsRenderTarget() const;
-		bool SwapChainClear(const Math::Vector4& color) const;
-		bool SwapChainPresent() const;
-		//=============================================================
-
 		//= VIEWPORT - INTERNAL ==================================================
 		const RHI_Viewport& GetViewport() const			{ return m_viewport; }
 		void SetViewport(const RHI_Viewport& viewport)	{ m_viewport = viewport; }
@@ -162,28 +155,32 @@ namespace Directus
 		float m_motion_blur_strength	= 3.0f;		// Strength of the motion blur
 		//========================================================================================================================================================================
 
-		//= EDITOR ====================================================================
+		//= EDITOR ==========================================================================
 		// Transform gizmo
 		float m_gizmo_transform_size	= 0.015f;
 		float m_gizmo_transform_speed	= 12.0f;
 		std::shared_ptr<Entity>& SnapTransformGizmoTo(std::shared_ptr<Entity>& entity) const;
-		//=============================================================================
+		//===================================================================================
 		
 		// DEBUG BUFFER ====================================================================
 		void SetDebugBuffer(const RendererDebug_Buffer buffer)	{ m_debug_buffer = buffer; }
 		RendererDebug_Buffer GetDebugBuffer() const				{ return m_debug_buffer; }
 		//==================================================================================
 
-		//= MISC ===============================================================================
-		void* GetFrameShaderResource() const;
+		//= RHI INTERNALS ==================================================================
 		const std::shared_ptr<RHI_Device>& GetRhiDevice() const		{ return m_rhi_device; }
-		const std::shared_ptr<RHI_Pipeline>& GetRhiPipeline() const { return m_rhi_pipeline; }
-		static bool IsRendering()									{ return m_is_rendering; }
-		uint64_t GetFrameNum() const								{ return m_frame_num; }
-		std::shared_ptr<Camera> GetCamera() const					{ return m_camera; }
-		unsigned int GetMaxResolution() const						{ return m_max_resolution; }
-		bool IsInitialized() const									{ return m_initialized; }
-		//======================================================================================
+		const std::shared_ptr<RHI_CommandList>& GetCmdList() const	{ return m_cmd_list; }
+		const std::shared_ptr<RHI_SwapChain>& GetSwapChain() const	{ return m_swap_chain; }
+		//==================================================================================
+
+		//= MISC ===============================================================
+		void* GetFrameShaderResource() const;
+		static bool IsRendering()					{ return m_is_rendering; }
+		uint64_t GetFrameNum() const				{ return m_frame_num; }
+		std::shared_ptr<Camera> GetCamera() const	{ return m_camera; }
+		unsigned int GetMaxResolution() const		{ return m_max_resolution; }
+		bool IsInitialized() const					{ return m_initialized; }
+		//======================================================================
 
 	private:
 		void CreateDepthStencilStates();
@@ -344,7 +341,7 @@ namespace Directus
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_Pipeline> m_rhi_pipeline;
 		std::shared_ptr<RHI_CommandList> m_cmd_list;
-		std::unique_ptr<RHI_SwapChain> m_swap_chain;
+		std::shared_ptr<RHI_SwapChain> m_swap_chain;
 		std::unique_ptr<Font> m_font;	
 		Math::Matrix m_view;
 		Math::Matrix m_view_base;
