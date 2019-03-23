@@ -611,5 +611,15 @@ namespace Directus
 
 		return duration_ms;
 	}
+
+
+	void RHI_Device::ProfilingReleaseQuery(void* query_object)
+	{
+		if (!query_object)
+			return;
+
+		auto query = static_cast<ID3D11Query*>(query_object);
+		query->Release();
+	}
 }
 #endif

@@ -176,7 +176,7 @@ namespace Directus
 		}
 		//=============================================================
 
-		TIME_BLOCK_END_CPU(m_profiler);
+		TIME_BLOCK_END(m_profiler);
 	}
 
 	void Audio::SetListenerTransform(Transform* transform)

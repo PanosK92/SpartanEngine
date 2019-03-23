@@ -55,7 +55,7 @@ namespace Directus
 
 		void Compile(const std::string& file_path, unsigned long shader_flags);
 
-		void UpdatePerObjectBuffer(Transform* transform, Material* material, const Math::Matrix& m_view, const Math::Matrix& mProjection);
+		void UpdatePerObjectBuffer(Transform* transform, Material* material, const Math::Matrix& m_view_projection);
 		const auto& GetConstantBuffer() { return m_constant_buffer; }
 
 		unsigned long GetShaderFlags() const	{ return m_flags; }

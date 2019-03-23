@@ -473,11 +473,11 @@ namespace Directus
 			return;
 		}
 
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_profiler->Reset();
 		m_is_rendering = true;
 		m_frame_num++;
 		m_is_odd_frame = (m_frame_num % 2) == 1;
+		m_profiler->Reset();
+		TIME_BLOCK_START_MULTI(m_profiler);
 
 		// Get camera matrices
 		{
@@ -516,7 +516,7 @@ namespace Directus
 		Pass_GBuffer();
 
 		Pass_PreLight(
-			m_render_tex_half_spare,		// IN:	
+			m_render_tex_half_spare,	// IN:	
 			m_render_tex_half_shadows,	// OUT: Shadows
 			m_render_tex_half_ssao		// OUT: DO
 		);
@@ -540,7 +540,7 @@ namespace Directus
 		Pass_PerformanceMetrics(m_render_tex_full_hdr_light2);
 
 		m_is_rendering = false;
-		TIME_BLOCK_END_MULTI(m_profiler);
+		TIME_BLOCK_END(m_profiler);
 	}
 
 	void Renderer::SetResolution(unsigned int width, unsigned int height)
@@ -697,7 +697,7 @@ namespace Directus
 		RenderablesSort(&m_entities[Renderable_ObjectOpaque]);
 		RenderablesSort(&m_entities[Renderable_ObjectTransparent]);
 
-		TIME_BLOCK_END_CPU(m_profiler);
+		TIME_BLOCK_END(m_profiler);
 	}
 
 	void Renderer::RenderablesSort(vector<Entity*>* renderables)

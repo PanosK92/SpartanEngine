@@ -72,10 +72,10 @@ void Widget_Profiler::Tick(float delta_time)
 		// Functions
 		for (const auto& time_block : time_blocks)
 		{
-			if (!time_block.second.TrackingCpu())
+			if (!time_block.IsProfilingCpu())
 				continue;
 
-			ImGui::Text("%s - %f ms", time_block.first.c_str(), time_block.second.duration_cpu);
+			ImGui::Text("%s - %f ms", time_block.GetName().c_str(), time_block.GetDurationCpu());
 		}
 
 		// Plot
@@ -104,11 +104,11 @@ void Widget_Profiler::Tick(float delta_time)
 		auto& style		= ImGui::GetStyle();
 		for (const auto& time_block : time_blocks)
 		{
-			if (!time_block.second.TrackingGpu())
+			if (!time_block.IsProfilingGpu())
 				continue;
 
-			auto name			= time_block.first;
-			const auto duration	= time_block.second.duration_gpu;
+			const auto& name	= time_block.GetName();
+			const auto duration	= time_block.GetDurationGpu();
 			const auto fraction	= duration / time_gpu;
 			const auto width	= fraction * ImGui::GetWindowContentRegionWidth();
 			const auto color	= style.Colors[ImGuiCol_FrameBgActive];

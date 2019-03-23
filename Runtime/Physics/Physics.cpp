@@ -100,8 +100,6 @@ namespace Directus
 		if (!m_world)
 			return;
 		
-		TIME_BLOCK_START_CPU(m_profiler);
-
 		// Debug draw
 		if (m_renderer->Flags_IsSet(Render_Gizmo_Physics))
 		{
@@ -111,6 +109,8 @@ namespace Directus
 		// Don't simulate physics if they are turned off or the we are in editor mode
 		if (!Engine::EngineMode_IsSet(Engine_Physics) || !Engine::EngineMode_IsSet(Engine_Game))
 			return;
+
+		TIME_BLOCK_START_CPU(m_profiler);
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
 		auto internal_time_step	= 1.0f / INTERNAL_FPS;
@@ -130,7 +130,7 @@ namespace Directus
 		m_world->stepSimulation(m_delta_time_sec, max_substeps, internal_time_step);
 		m_simulating = false;
 
-		TIME_BLOCK_END_CPU(m_profiler);
+		TIME_BLOCK_END(m_profiler);
 	}
 
 	Vector3 Physics::GetGravity() const

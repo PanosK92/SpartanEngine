@@ -70,7 +70,7 @@ namespace Directus
 		m_variations.emplace_back(shared_from_this());
 	}
 
-	void ShaderVariation::UpdatePerObjectBuffer(Transform* transform, Material* material, const Matrix& m_view, const Matrix& mProjection)
+	void ShaderVariation::UpdatePerObjectBuffer(Transform* transform, Material* material, const Matrix& m_view_projection)
 	{
 		if (!material)
 		{
@@ -81,7 +81,7 @@ namespace Directus
 		if (GetCompilationState() != Shader_Compiled)
 			return;
 
-		auto m_mvp_current = transform->GetMatrix() * m_view * mProjection;
+		auto m_mvp_current = transform->GetMatrix() * m_view_projection;
 
 		// Determine if the material buffer needs to update
 		auto update = false;

@@ -21,102 +21,51 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-
-//= INCLUDES =================
+//= INCLUDES ====
 #include <chrono>
-#include "../Logging/Log.h"
-#include "../RHI/RHI_Device.h"
-//============================
+#include <memory>
+#include <string>
+//===============
 
 namespace Directus
 {
-	struct TimeBlock
+	class RHI_Device;
+
+	class TimeBlock
 	{
-		bool Start(bool m_time_cpu = false, bool m_time_gpu = false, const std::shared_ptr<RHI_Device>& rhi_device = nullptr)
-		{
-			if (m_time_cpu)
-			{
-				start = std::chrono::high_resolution_clock::now();
-				m_tracking_cpu = true;
-			}
-	
-			if (m_time_gpu)
-			{
-				// Create required queries
-				if (!query)
-				{
-					rhi_device->ProfilingCreateQuery(&query,		Query_Timestamp_Disjoint);
-					rhi_device->ProfilingCreateQuery(&query_start,	Query_Timestamp);
-					rhi_device->ProfilingCreateQuery(&query_end,	Query_Timestamp);
-				}
+	public:
+		TimeBlock() = default;
+		~TimeBlock();
 
-				// Get time stamp
-				rhi_device->ProfilingQueryStart(query);
-				rhi_device->ProfilingGetTimeStamp(query_start);
+		void Start(const std::string& name, bool profile_cpu = false, bool profile_gpu = false, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
+		void End(const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
+		void OnFrameEnd(const std::shared_ptr<RHI_Device>& rhi_device);
+		void Clear();
 
-				m_tracking_gpu = true;
-			}
+		const bool IsProfilingCpu() const	{ return m_profiling_cpu; }
+		const bool IsProfilingGpu() const	{ return m_profiling_gpu; }
+		const bool IsComplete() const		{ return m_is_complete; }
+		const std::string& GetName() const	{return m_name; }
+		float GetDurationCpu() const		{ return m_duration_cpu; }
+		float GetDurationGpu() const		{ return m_duration_gpu; }
 
-			return true;
-		}
-	
-		bool End(bool m_time_cpu = false, bool time_gpu = false, const std::shared_ptr<RHI_Device>& rhi_device = nullptr)
-		{
-			if (m_time_cpu)
-			{
-				end = std::chrono::high_resolution_clock::now();
-				std::chrono::duration<double, std::milli> ms = end - start;
-				duration_cpu = static_cast<float>(ms.count());
-			}
-	
-			if (time_gpu)
-			{
-				if (query)
-				{
-					// Get time stamp
-					rhi_device->ProfilingGetTimeStamp(query_end);
-					rhi_device->ProfilingGetTimeStamp(query);
-				}
-				else
-				{
-					LOG_ERROR_INVALID_INTERNALS();
-					return false;
-				}
-			}
-
-			return true;
-		}
-
-		void OnFrameEnd(const std::shared_ptr<RHI_Device>& rhi_device)
-		{
-			if (!query)
-				return;
-
-			duration_gpu = rhi_device->ProfilingGetDuration(query, query_start, query_end);
-		}
-
-		void Clear()
-		{
-			duration_cpu	= 0.0f;
-			duration_gpu	= 0.0f;
-			m_tracking_cpu	= false;
-			m_tracking_gpu	= false;
-		}
-
-		const bool TrackingCpu() const { return m_tracking_cpu; }
-		const bool TrackingGpu() const { return m_tracking_gpu; }
+	private:
+		std::string m_name;
+		RHI_Device* m_rhi_device;
+		bool m_has_started = false;
+		bool m_is_complete = false;
 
 		// CPU timing
-		bool m_tracking_cpu	= false;
-		float duration_cpu	= 0.0f;
+		bool m_profiling_cpu	= false;
+		float m_duration_cpu	= 0.0f;
 		std::chrono::steady_clock::time_point start;
 		std::chrono::steady_clock::time_point end;
 	
 		// GPU timing
-		bool m_tracking_gpu	= false;
-		float duration_gpu	= 0.0f;
-		void* query			= nullptr;
-		void* query_start	= nullptr;
-		void* query_end		= nullptr;
+		bool m_profiling_gpu	= false;
+		float m_duration_gpu	= 0.0f;
+		void* m_query			= nullptr;
+		void* m_query_start		= nullptr;
+		void* m_query_end		= nullptr;
 	};
 }
