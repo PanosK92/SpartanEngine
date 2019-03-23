@@ -273,8 +273,8 @@ namespace ImGui::RHI
 		g_cmd_list->SetInputLayout(g_shader->GetInputLayout());
 		g_cmd_list->SetBufferVertex(g_vertexBuffer);
 		g_cmd_list->SetBufferIndex(g_indexBuffer);
-		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constantBuffer->GetBuffer());
-		g_cmd_list->SetSampler(0, g_fontSampler->GetBuffer());
+		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constantBuffer);
+		g_cmd_list->SetSampler(0, g_fontSampler);
 
 		// Render command lists
 		auto vtx_offset = 0;

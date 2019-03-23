@@ -210,10 +210,10 @@ namespace Directus
 		void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader);
 
 		void SetConstantBuffers(unsigned int start_slot, RHI_Buffer_Scope scope, const std::vector<void*>& constant_buffers);
-		void SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, void* constant_buffer);
+		void SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer);
 			
 		void SetSamplers(unsigned int start_slot, const std::vector<void*>& samplers);
-		void SetSampler(unsigned int start_slot, void* sampler);
+		void SetSampler(unsigned int start_slot, const std::shared_ptr<RHI_Sampler>& sampler);
 		
 		void SetTextures(unsigned int start_slot, const std::vector<void*>& textures);
 		void SetTexture(unsigned int start_slot, void* texture);
@@ -229,7 +229,7 @@ namespace Directus
 	private:
 		RHI_Command& GetCmd();
 		std::vector<RHI_Command> m_commands;
-		unsigned int m_initial_capacity = 200;
+		unsigned int m_initial_capacity = 1000;
 		unsigned int m_command_count	= 0;
 		RHI_Device* m_rhi_device	= nullptr;
 		Profiler* m_profiler		= nullptr;

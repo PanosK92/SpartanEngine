@@ -40,7 +40,6 @@ namespace Directus
 	class Camera;
 	class Skybox;
 	class Light;
-	class GBuffer;
 	class ResourceCache;
 	class Font;
 	class Variant;
@@ -232,6 +231,12 @@ namespace Directus
 		//====================================================================================================================================================================================
 
 		//= RENDER TEXTURES =============================================
+		// G-Buffer
+		std::shared_ptr<RHI_RenderTexture> m_g_buffer_albedo;
+		std::shared_ptr<RHI_RenderTexture> m_g_buffer_normal;
+		std::shared_ptr<RHI_RenderTexture> m_g_buffer_material;
+		std::shared_ptr<RHI_RenderTexture> m_g_buffer_velocity;
+		std::shared_ptr<RHI_RenderTexture> m_g_buffer_depth;
 		// 1/1
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_hdr_light;
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_hdr_light2;
@@ -337,7 +342,6 @@ namespace Directus
 
 		//= CORE ================================================
 		Math::Rectangle m_quad;
-		std::unique_ptr<GBuffer> m_gbuffer;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_Pipeline> m_rhi_pipeline;
 		std::shared_ptr<RHI_CommandList> m_cmd_list;

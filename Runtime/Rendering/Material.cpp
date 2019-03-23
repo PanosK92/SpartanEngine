@@ -159,6 +159,17 @@ namespace Directus
 		return m_empty_texture_slot;
 	}
 
+	void* Material::GetTextureShaderResourceByType(TextureType type)
+	{
+		for (const auto& texture_slot : m_texture_slots)
+		{
+			if (texture_slot.type == type)
+				return texture_slot.ptr ? texture_slot.ptr->GetShaderResource() : nullptr;
+		}
+
+		return nullptr;
+	}
+
 	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_Texture>& texture)
 	{
 		if (texture)

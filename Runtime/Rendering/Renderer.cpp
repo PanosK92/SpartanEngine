@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
 #include "Deferred/ShaderLight.h"
-#include "Deferred/GBuffer.h"
 #include "Utilities/Sampling.h"
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
@@ -240,10 +239,16 @@ namespace Directus
 			return;
 		}
 
-		// Resize everything
-		m_gbuffer = make_unique<GBuffer>(m_rhi_device, width, height);
+		// Full-screen quad
 		m_quad = Rectangle(0, 0, m_resolution.x, m_resolution.y);
 		m_quad.CreateBuffers(this);
+
+		// G-Buffer
+		m_g_buffer_albedo	= make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R8G8B8A8_UNORM, false);
+		m_g_buffer_normal	= make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT, false); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
+		m_g_buffer_material = make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R8G8B8A8_UNORM, false);
+		m_g_buffer_velocity = make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16_FLOAT, false);
+		m_g_buffer_depth	= make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32_FLOAT, true, Format_D32_FLOAT);
 
 		// Full res
 		m_render_tex_full_hdr_light		= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32B32A32_FLOAT);
@@ -476,7 +481,7 @@ namespace Directus
 
 		// Get camera matrices
 		{
-			m_near_plane		= m_camera->GetNearPlane();
+			m_near_plane	= m_camera->GetNearPlane();
 			m_far_plane		= m_camera->GetFarPlane();
 			m_view			= m_camera->GetViewMatrix();
 			m_view_base		= m_camera->GetBaseViewMatrix();

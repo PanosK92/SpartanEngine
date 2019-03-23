@@ -85,6 +85,7 @@ namespace Directus
 
 		//= TEXTURE SLOTS  ================================================================
 		const TextureSlot& GetTextureSlotByType(TextureType type);
+		void* GetTextureShaderResourceByType(TextureType type);
 		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& texture);
 		bool HasTexture(TextureType type);
 		bool HasTexture(const std::string& path);
@@ -95,7 +96,7 @@ namespace Directus
 		//= SHADER ====================================================================
 		void AcquireShader();
 		std::shared_ptr<ShaderVariation> GetOrCreateShader(unsigned long shader_flags);
-		std::shared_ptr<ShaderVariation> GetShader() const { return m_shader; }
+		const std::shared_ptr<ShaderVariation>& GetShader() const { return m_shader; }
 		bool HasShader() const { return GetShader() != nullptr; }
 		void SetMultiplier(TextureType type, float value);
 		//=============================================================================

@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "RHI_CommandList.h"
 #include "RHI_Device.h"
+#include "RHI_Sampler.h"
+#include "RHI_ConstantBuffer.h"
 #include "../Profiling/Profiler.h"
 //================================
 
@@ -208,13 +210,13 @@ namespace Directus
 		cmd.constant_buffers			= constant_buffers;
 	}
 
-	void RHI_CommandList::SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, void* constant_buffer)
+	void RHI_CommandList::SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
 	{
 		RHI_Command& cmd				= GetCmd();
 		cmd.type						= RHI_Cmd_SetConstantBuffers;
 		cmd.constant_buffers_start_slot = start_slot;
 		cmd.constant_buffers_scope		= scope;
-		cmd.constant_buffers.emplace_back(constant_buffer);
+		cmd.constant_buffers.emplace_back(constant_buffer->GetBuffer());
 	}
 
 	void RHI_CommandList::SetSamplers(unsigned int start_slot, const vector<void*>& samplers)
@@ -225,12 +227,12 @@ namespace Directus
 		cmd.samplers			= samplers;
 	}
 
-	void RHI_CommandList::SetSampler(unsigned int start_slot, void* sampler)
+	void RHI_CommandList::SetSampler(unsigned int start_slot, const shared_ptr<RHI_Sampler>& sampler)
 	{
 		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetSamplers;
 		cmd.samplers_start_slot = start_slot;
-		cmd.samplers.emplace_back(sampler);
+		cmd.samplers.emplace_back(sampler->GetBuffer());
 	}
 
 	void RHI_CommandList::SetTextures(unsigned int start_slot, const vector<void*>& textures)
@@ -401,7 +403,7 @@ namespace Directus
 			unsigned int new_size = m_command_count + 100;
 			m_commands.reserve(new_size);
 			m_commands.resize(new_size);
-			LOG_WARNING("Command list has been re-allocated to fit commands. Consider making this command list larger by default.");
+			LOGF_WARNING("Command list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_command_count);
 		}
 
 		m_command_count++;
