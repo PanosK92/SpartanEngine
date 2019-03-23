@@ -36,103 +36,78 @@ namespace Directus
 {
 	RHI_CommandList::RHI_CommandList(RHI_Device* rhi_device, Profiler* profiler)
 	{
+		m_commands.reserve(m_initial_capacity);
+		m_commands.resize(m_initial_capacity);
 		m_rhi_device	= rhi_device;
 		m_profiler		= profiler;
 	}
 
+	void RHI_CommandList::Clear()
+	{
+		for (unsigned int cmd_index = 0; cmd_index < m_command_count; cmd_index++)
+		{
+			RHI_Command& cmd = m_commands[cmd_index];
+			cmd.Clear();
+		}
+
+		m_command_count = 0;
+	}
+
 	void RHI_CommandList::Begin(const string& pass_name)
 	{
-		RHI_Command cmd;
-		cmd.type		= RHI_Cmd_Begin;
-		cmd.pass_name	= pass_name;
-
-		m_commands.emplace_back(cmd);
+		RHI_Command& cmd	= GetCmd();
+		cmd.type			= RHI_Cmd_Begin;
+		cmd.pass_name		= pass_name;
 	}
 
 	void RHI_CommandList::End()
 	{
-		RHI_Command cmd;
-		cmd.type = RHI_Cmd_End;
-
-		m_commands.emplace_back(cmd);
+		RHI_Command& cmd	= GetCmd();
+		cmd.type			= RHI_Cmd_End;
 	}
 
 	void RHI_CommandList::Draw(unsigned int vertex_count)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_Draw;
 		cmd.vertex_count	= vertex_count;
-
-		m_commands.emplace_back(cmd);
 	}
 
 	void RHI_CommandList::DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_DrawIndexed;
 		cmd.index_count		= index_count;
 		cmd.index_offset	= index_offset;
 		cmd.vertex_offset	= vertex_offset;
-		
-		m_commands.emplace_back(cmd);
-	}
-
-	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
-	{
-		RHI_Command cmd;
-		cmd.type = RHI_Cmd_ClearRenderTarget;
-		cmd.render_targets_clear.emplace_back(render_target);
-		cmd.render_target_clear_color.emplace_back(color);
-
-		m_commands.emplace_back(cmd);
-	}
-
-	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil /*= 0*/)
-	{
-		RHI_Command cmd;
-		cmd.type				= RHI_Cmd_ClearDepthStencil;
-		cmd.depth_stencil		= depth_stencil;
-		cmd.depth_clear_flags	= flags;
-		cmd.depth_clear			= depth;
-		cmd.depth_clear_stencil	= stencil;
-			
-		m_commands.emplace_back(cmd);
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
 	{
-		RHI_Command cmd;
-		cmd.type		= RHI_Cmd_SetViewport;
-		cmd.viewport	= viewport;
-
-		m_commands.emplace_back(cmd);
+		RHI_Command& cmd	= GetCmd();
+		cmd.type			= RHI_Cmd_SetViewport;
+		cmd.viewport		= viewport;
 	}
 
 	void RHI_CommandList::SetScissorRectangle(const Rectangle& scissor_rectangle)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetScissorRectangle;
 		cmd.scissor_rectangle	= scissor_rectangle;
-
-		m_commands.emplace_back(cmd);
 	}
 
 	void RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetPrimitiveTopology;
 		cmd.primitive_topology	= primitive_topology;
-
-		m_commands.emplace_back(cmd);
 	}
 
 	void RHI_CommandList::SetInputLayout(const RHI_InputLayout* input_layout)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_SetInputLayout;
 		cmd.input_layout	= input_layout;
-
-		m_commands.emplace_back(cmd);
 	}
 
 	void RHI_CommandList::SetInputLayout(const shared_ptr<RHI_InputLayout>& input_layout)
@@ -142,11 +117,9 @@ namespace Directus
 
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetDepthStencilState;
 		cmd.depth_stencil_state = depth_stencil_state;
-		
-		m_commands.emplace_back(cmd);
 	}
 
 	void RHI_CommandList::SetDepthStencilState(const shared_ptr<RHI_DepthStencilState>& depth_stencil_state)
@@ -156,11 +129,9 @@ namespace Directus
 
 	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetRasterizerState;
 		cmd.rasterizer_state	= rasterizer_state;
-
-		m_commands.emplace_back(cmd);
 	}
 
 	void RHI_CommandList::SetRasterizerState(const shared_ptr<RHI_RasterizerState>& rasterizer_state)
@@ -170,11 +141,9 @@ namespace Directus
 
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
 	{
-		RHI_Command cmd;
-		cmd.type		= RHI_Cmd_SetBlendState;
-		cmd.blend_state = blend_state;
-
-		m_commands.emplace_back(cmd);
+		RHI_Command& cmd	= GetCmd();
+		cmd.type			= RHI_Cmd_SetBlendState;
+		cmd.blend_state		= blend_state;
 	}
 
 	void RHI_CommandList::SetBlendState(const shared_ptr<RHI_BlendState>& blend_state)
@@ -184,11 +153,9 @@ namespace Directus
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_SetVertexBuffer;
 		cmd.buffer_vertex	= buffer;
-
-		m_commands.emplace_back(cmd);
 	}
 
 	void RHI_CommandList::SetBufferVertex(const shared_ptr<RHI_VertexBuffer>& buffer)
@@ -198,98 +165,132 @@ namespace Directus
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_SetIndexBuffer;
 		cmd.buffer_index	= buffer;
-
-		m_commands.emplace_back(cmd);
 	}
 
-	void RHI_CommandList::SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer)
+	void RHI_CommandList::SetBufferIndex(const shared_ptr<RHI_IndexBuffer>& buffer)
 	{
 		SetBufferIndex(buffer.get());
 	}
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_SetVertexShader;
 		cmd.shader_vertex	= shader;
-
-		m_commands.emplace_back(cmd);
 	}
 
-	void RHI_CommandList::SetShaderVertex(const std::shared_ptr<RHI_Shader>& shader)
+	void RHI_CommandList::SetShaderVertex(const shared_ptr<RHI_Shader>& shader)
 	{
 		SetShaderVertex(shader.get());
 	}
 
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_SetPixelShader;
 		cmd.shader_pixel	= shader;
-
-		m_commands.emplace_back(cmd);
 	}
 
-	void RHI_CommandList::SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader)
+	void RHI_CommandList::SetShaderPixel(const shared_ptr<RHI_Shader>& shader)
 	{
 		SetShaderPixel(shader.get());
 	}
 
-	void RHI_CommandList::SetConstantBuffers(unsigned int start_slot, const vector<void*>& constant_buffers, RHI_Buffer_Scope scope)
+	void RHI_CommandList::SetConstantBuffers(unsigned int start_slot, RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd				= GetCmd();
 		cmd.type						= RHI_Cmd_SetConstantBuffers;
-		cmd.constant_buffers			= constant_buffers;
-		cmd.constant_buffers_start_slot	= start_slot;
+		cmd.constant_buffers_start_slot = start_slot;
 		cmd.constant_buffers_scope		= scope;
+		cmd.constant_buffers			= constant_buffers;
+	}
 
-		m_commands.emplace_back(cmd);
+	void RHI_CommandList::SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, void* constant_buffer)
+	{
+		RHI_Command& cmd				= GetCmd();
+		cmd.type						= RHI_Cmd_SetConstantBuffers;
+		cmd.constant_buffers_start_slot = start_slot;
+		cmd.constant_buffers_scope		= scope;
+		cmd.constant_buffers.emplace_back(constant_buffer);
 	}
 
 	void RHI_CommandList::SetSamplers(unsigned int start_slot, const vector<void*>& samplers)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetSamplers;
-		cmd.samplers			= samplers;
 		cmd.samplers_start_slot = start_slot;
+		cmd.samplers			= samplers;
+	}
 
-		m_commands.emplace_back(cmd);
+	void RHI_CommandList::SetSampler(unsigned int start_slot, void* sampler)
+	{
+		RHI_Command& cmd		= GetCmd();
+		cmd.type				= RHI_Cmd_SetSamplers;
+		cmd.samplers_start_slot = start_slot;
+		cmd.samplers.emplace_back(sampler);
 	}
 
 	void RHI_CommandList::SetTextures(unsigned int start_slot, const vector<void*>& textures)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetTextures;
-		cmd.textures			= textures;
 		cmd.textures_start_slot = start_slot;
+		cmd.textures			= textures;
+	}
 
-		m_commands.emplace_back(cmd);
+	void RHI_CommandList::SetTexture(unsigned int start_slot, void* texture)
+	{
+		RHI_Command& cmd		= GetCmd();
+		cmd.type				= RHI_Cmd_SetTextures;
+		cmd.textures_start_slot = start_slot;
+		cmd.textures.emplace_back(texture);
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
 	{
-		RHI_Command cmd;
+		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_SetRenderTargets;
 		cmd.render_targets	= render_targets;
 		cmd.depth_stencil	= depth_stencil;
-
-		m_commands.emplace_back(cmd);
 	}
 
-	void RHI_CommandList::Clear()
+	void RHI_CommandList::SetRenderTarget(void* render_target, void* depth_stencil /*= nullptr*/)
 	{
-		m_commands.clear();
+		RHI_Command& cmd	= GetCmd();
+		cmd.type			= RHI_Cmd_SetRenderTargets;	
+		cmd.depth_stencil	= depth_stencil;
+		cmd.render_targets.emplace_back(render_target);
+	}
+
+	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
+	{
+		RHI_Command& cmd				= GetCmd();
+		cmd.type						= RHI_Cmd_ClearRenderTarget;
+		cmd.render_target_clear			= render_target;
+		cmd.render_target_clear_color	= color;
+	}
+
+	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil /*= 0*/)
+	{
+		RHI_Command& cmd		= GetCmd();
+		cmd.type				= RHI_Cmd_ClearDepthStencil;
+		cmd.depth_stencil		= depth_stencil;
+		cmd.depth_clear_flags	= flags;
+		cmd.depth_clear			= depth;
+		cmd.depth_clear_stencil = stencil;
 	}
 
 	void RHI_CommandList::Submit()
 	{
 		string pass_name = "N/A";
 
-		for (const auto& cmd : m_commands)
+		for (unsigned int cmd_index = 0; cmd_index < m_command_count; cmd_index++)
 		{
+			RHI_Command& cmd = m_commands[cmd_index];
+
 			switch (cmd.type)
 			{
 			case RHI_Cmd_Begin:
@@ -311,17 +312,6 @@ namespace Directus
 			case RHI_Cmd_DrawIndexed:
 				m_rhi_device->DrawIndexed(cmd.index_count, cmd.index_offset, cmd.vertex_offset);
 				m_profiler->m_rhi_draw_calls++;
-				break;
-
-			case RHI_Cmd_ClearRenderTarget:
-				for (unsigned int i = 0; i < cmd.render_targets_clear.size(); i++)
-				{
-					m_rhi_device->ClearRenderTarget(cmd.render_targets_clear[i], cmd.render_target_clear_color[i]);
-				}
-				break;
-
-			case RHI_Cmd_ClearDepthStencil:
-				m_rhi_device->ClearDepthStencil(cmd.depth_stencil, cmd.depth_clear_flags, cmd.depth_clear, cmd.depth_clear_stencil);
 				break;
 
 			case RHI_Cmd_SetViewport:
@@ -373,46 +363,48 @@ namespace Directus
 				break;
 
 			case RHI_Cmd_SetConstantBuffers:
-				{
-					auto count		= static_cast<unsigned int>(cmd.constant_buffers.size());
-					const void* ptr = count != 0 ? &cmd.constant_buffers[0] : nullptr;
-					auto scope		= cmd.constant_buffers_scope;
-
-					m_rhi_device->SetConstantBuffers(cmd.constant_buffers_start_slot, count, ptr, scope);
-					m_profiler->m_rhi_bindings_buffer_constant += (scope == Buffer_Global) ? 2 : 1;
-				}
+				m_rhi_device->SetConstantBuffers(cmd.constant_buffers_start_slot, static_cast<unsigned int>(cmd.constant_buffers.size()), cmd.constant_buffers.data(), cmd.constant_buffers_scope);
+				m_profiler->m_rhi_bindings_buffer_constant += (cmd.constant_buffers_scope == Buffer_Global) ? 2 : 1;
 				break;
 
 			case RHI_Cmd_SetSamplers:
-				{
-					auto count		= static_cast<unsigned int>(cmd.samplers.size());
-					const void* ptr	= count != 0 ? &cmd.samplers[0] : nullptr;
-
-					m_rhi_device->SetSamplers(cmd.samplers_start_slot, count, ptr);
-					m_profiler->m_rhi_bindings_sampler++;
-				}
+				m_rhi_device->SetSamplers(cmd.samplers_start_slot, static_cast<unsigned int>(cmd.samplers.size()), cmd.samplers.data());
+				m_profiler->m_rhi_bindings_sampler++;
 				break;
 
 			case RHI_Cmd_SetTextures:
-				{
-					auto count		= static_cast<unsigned int>(cmd.textures.size());
-					const void* ptr	= count != 0 ? &cmd.textures[0] : nullptr;
-
-					m_rhi_device->SetTextures(cmd.textures_start_slot, count, ptr);
-					m_profiler->m_rhi_bindings_texture++;
-				}
+				m_rhi_device->SetTextures(cmd.textures_start_slot, static_cast<unsigned int>(cmd.textures.size()), cmd.textures.data());
+				m_profiler->m_rhi_bindings_texture++;
 				break;
 
 			case RHI_Cmd_SetRenderTargets:
-				{
-					auto count		= static_cast<unsigned int>(cmd.render_targets.size());
-					const auto ptr	= &cmd.render_targets[0];
+				m_rhi_device->SetRenderTargets(static_cast<unsigned int>(cmd.render_targets.size()), cmd.render_targets.data(), cmd.depth_stencil);
+				m_profiler->m_rhi_bindings_render_target++;
+				break;
 
-					m_rhi_device->SetRenderTargets(count, ptr, cmd.depth_stencil);
-					m_profiler->m_rhi_bindings_render_target++;
-				}
+			case RHI_Cmd_ClearRenderTarget:
+				m_rhi_device->ClearRenderTarget(cmd.render_target_clear, cmd.render_target_clear_color);
+				break;
+
+			case RHI_Cmd_ClearDepthStencil:
+				m_rhi_device->ClearDepthStencil(cmd.depth_stencil, cmd.depth_clear_flags, cmd.depth_clear, cmd.depth_clear_stencil);
 				break;
 			}
 		}
+	}
+
+	RHI_Command& RHI_CommandList::GetCmd()
+	{
+		// Grow capacity if needed
+		if (m_command_count >= m_commands.size())
+		{
+			unsigned int new_size = m_command_count + 100;
+			m_commands.reserve(new_size);
+			m_commands.resize(new_size);
+			LOG_WARNING("Command list has been re-allocated to fit commands. Consider making this command list larger by default.");
+		}
+
+		m_command_count++;
+		return m_commands[m_command_count - 1];	
 	}
 }

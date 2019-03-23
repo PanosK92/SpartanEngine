@@ -48,10 +48,11 @@ namespace Directus
 		~RHI_SwapChain();
 
 		bool Resize(unsigned int width, unsigned int height);
-		bool SetAsRenderTarget() const;
 		bool Present(RHI_Present_Mode mode) const;
-		bool Clear(const Math::Vector4& color) const;
-		bool IsInitialized() { return m_initialized; }
+
+		bool IsInitialized()		{ return m_initialized; }
+		void* GetSwapChainView()	{ return m_swap_chain; }
+		void* GetRenderTargetView()	{ return m_render_target_view; }
 
 	private:
 		bool m_initialized			= false;
@@ -62,6 +63,7 @@ namespace Directus
 		unsigned long m_flags		= 0;
 		unsigned int m_buffer_count	= 0;
 		RHI_Format m_format;
+		unsigned int m_max_resolution = 16384;
 		
 		// Low-level (only used by Vulkan)
 		void* m_surface	= nullptr;

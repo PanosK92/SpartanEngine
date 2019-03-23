@@ -164,15 +164,16 @@ namespace Directus
 
 	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
 	{	
-		if (width == 0 || height == 0)
-		{
-			LOGF_ERROR("Size %fx%f is invalid.", width, height);
-			return false;
-		}
-
 		if (!m_swap_chain)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		// Return if resolution is invalid
+		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
+		{
+			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
 			return false;
 		}
 
@@ -235,41 +236,6 @@ namespace Directus
 		}
 		m_render_target_view = static_cast<void*>(render_target_view);
 
-		return true;
-	}
-
-	bool RHI_SwapChain::SetAsRenderTarget() const
-	{
-		if(!m_rhi_device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		auto context			= m_rhi_device->GetDevice<ID3D11DeviceContext>();
-		auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_render_target_view);
-		if (!context || !render_target_view)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		ID3D11DepthStencilView* depth_stencil = nullptr;
-		context->OMSetRenderTargets(1, &render_target_view, depth_stencil);
-		return true;
-	}
-
-	bool RHI_SwapChain::Clear(const Vector4& color) const
-	{
-		auto context					= m_rhi_device->GetDevice<ID3D11DeviceContext>();
-		const auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_render_target_view);
-		if (!context || !render_target_view)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		context->ClearRenderTargetView(render_target_view, color.Data());
 		return true;
 	}
 

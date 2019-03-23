@@ -98,7 +98,7 @@ namespace Directus
 
 		// Create swap chain
 		{
-			m_swap_chain = make_unique<RHI_SwapChain>
+			m_swap_chain = make_shared<RHI_SwapChain>
 			(
 				Settings::Get().GetWindowHandle(),
 				m_rhi_device,
@@ -445,57 +445,6 @@ namespace Directus
 	void* Renderer::GetFrameShaderResource() const
 	{
 		return m_render_tex_full_hdr_light2 ? m_render_tex_full_hdr_light2->GetShaderResource() : nullptr;
-	}
-
-	bool Renderer::SwapChainPresent() const
-	{
-		if (!m_swap_chain)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		return m_swap_chain->Present(Present_Off);
-	}
-
-	bool Renderer::SwapChainSetAsRenderTarget() const
-	{
-		if (!m_swap_chain)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		return m_swap_chain->SetAsRenderTarget();		
-	}
-
-	bool Renderer::SwapChainClear(const Vector4& color) const
-	{
-		if (!m_swap_chain)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		return m_swap_chain->Clear(color);
-	}
-
-	bool Renderer::SwapChainResize(const unsigned int width, const unsigned int height) const
-	{
-		if (!m_swap_chain)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		// Return if resolution is invalid
-		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
-		{
-			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
-			return false;
-		}
-
-		return m_swap_chain->Resize(width, height);
 	}
 
 	void Renderer::Tick()
