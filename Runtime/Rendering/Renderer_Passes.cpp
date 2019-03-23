@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Model.h"
 #include "ShaderBuffered.h"
-#include "Deferred/GBuffer.h"
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/ShaderLight.h"
 #include "Gizmos/Grid.h"
@@ -142,33 +141,56 @@ namespace Directus
 		if (!m_rhi_device)
 			return;
 
+		m_cmd_list->Begin("Pass_GBuffer");
+
+		auto& viewport		= m_g_buffer_albedo->GetViewport();
+		const auto depth	= Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
+		Vector4 clear_color = Vector4(0, 0, 0, 0);
+		Vector4 clear_depth = Vector4(depth, depth, 0, 0);
+		
+		// If there is nothing to render, just clear
 		if (m_entities[Renderable_ObjectOpaque].empty())
 		{
-			m_gbuffer->Clear(); // zeroed material buffer causes sky sphere to render
+			m_cmd_list->ClearRenderTarget(m_g_buffer_albedo->GetRenderTargetView(), clear_color);
+			m_cmd_list->ClearRenderTarget(m_g_buffer_normal->GetRenderTargetView(), clear_color);
+			m_cmd_list->ClearRenderTarget(m_g_buffer_material->GetRenderTargetView(), clear_color); // zeroed material buffer causes sky sphere to render
+			m_cmd_list->ClearRenderTarget(m_g_buffer_velocity->GetRenderTargetView(), clear_color);
+			m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);
+			m_cmd_list->End();
+			m_cmd_list->Submit();
+			m_cmd_list->Clear();
+			return;
 		}
 
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_rhi_device->EventBegin("Pass_GBuffer");
-
-		// Set common states
-		SetDefaultPipelineState();
-		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_enabled);
-		const auto clear = true;
-		const vector<void*> views
+		// Prepare resources
+		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		vector<void*> textures(8);
+		vector<void*> render_targets
 		{
-			m_gbuffer->GetTexture(GBuffer_Target_Albedo)->GetRenderTargetView(),
-			m_gbuffer->GetTexture(GBuffer_Target_Normal)->GetRenderTargetView(),
-			m_gbuffer->GetTexture(GBuffer_Target_Material)->GetRenderTargetView(),
-			m_gbuffer->GetTexture(GBuffer_Target_Velocity)->GetRenderTargetView(),
-			m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetRenderTargetView()
+			m_g_buffer_albedo->GetRenderTargetView(),
+			m_g_buffer_normal->GetRenderTargetView(),
+			m_g_buffer_material->GetRenderTargetView(),
+			m_g_buffer_velocity->GetRenderTargetView(),
+			m_g_buffer_depth->GetRenderTargetView(),
 		};
-		m_rhi_pipeline->SetRenderTarget(views, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView(), clear);
-		m_rhi_pipeline->SetViewport(m_gbuffer->GetTexture(GBuffer_Target_Albedo)->GetViewport());
-		m_rhi_pipeline->SetSampler(m_sampler_anisotropic_wrap);
-		m_rhi_pipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		m_rhi_pipeline->SetVertexShader(m_vs_gbuffer);
-		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
-
+	
+		// Star command list
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
+		m_cmd_list->SetRenderTargets(render_targets, m_g_buffer_depth->GetDepthStencilView());
+		m_cmd_list->ClearRenderTarget(render_targets[0], clear_color);
+		m_cmd_list->ClearRenderTarget(render_targets[1], clear_color);
+		m_cmd_list->ClearRenderTarget(render_targets[2], clear_color);
+		m_cmd_list->ClearRenderTarget(render_targets[3], clear_color);
+		m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);
+		m_cmd_list->SetViewport(viewport);
+		m_cmd_list->SetShaderVertex(m_vs_gbuffer);
+		m_cmd_list->SetInputLayout(m_vs_gbuffer->GetInputLayout());
+		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+		m_cmd_list->SetSampler(0, m_sampler_anisotropic_wrap);	
+		
 		// Variables that help reduce state changes
 		unsigned int currently_bound_geometry	= 0;
 		unsigned int currently_bound_shader		= 0;
@@ -178,14 +200,14 @@ namespace Directus
 		{
 			// Get renderable and material
 			auto renderable = entity->GetRenderable_PtrRaw();
-			auto material = renderable ? renderable->MaterialPtr().get() : nullptr;
+			auto material	= renderable ? renderable->MaterialPtr().get() : nullptr;
 
 			if (!renderable || !material)
 				continue;
 
 			// Get shader and geometry
 			auto shader = material->GetShader();
-			auto model = renderable->GeometryModel();
+			auto model	= renderable->GeometryModel();
 
 			// Validate shader
 			if (!shader || shader->GetCompilationState() != Shader_Compiled)
@@ -200,50 +222,52 @@ namespace Directus
 				continue;
 
 			// Set face culling (changes only if required)
-			m_rhi_pipeline->SetRasterizerState(GetRasterizerState(material->GetCullMode(), Fill_Solid));
+			m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), Fill_Solid));
 
 			// Bind geometry
 			if (currently_bound_geometry != model->GetResourceId())
 			{
-				m_rhi_pipeline->SetIndexBuffer(model->GetIndexBuffer());
-				m_rhi_pipeline->SetVertexBuffer(model->GetVertexBuffer());
+				m_cmd_list->SetBufferIndex(model->GetIndexBuffer());
+				m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
 				currently_bound_geometry = model->GetResourceId();
 			}
 
 			// Bind shader
 			if (currently_bound_shader != shader->RHI_GetID())
 			{
-				m_rhi_pipeline->SetPixelShader(static_pointer_cast<RHI_Shader>(shader));
+				m_cmd_list->SetShaderPixel(static_pointer_cast<RHI_Shader>(shader));
 				currently_bound_shader = shader->RHI_GetID();
 			}
 
 			// Bind textures
 			if (currently_bound_material != material->GetResourceId())
 			{
-				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Albedo).ptr);
-				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Roughness).ptr);
-				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Metallic).ptr);
-				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Normal).ptr);
-				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Height).ptr);
-				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Occlusion).ptr);
-				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Emission).ptr);
-				m_rhi_pipeline->SetTexture(material->GetTextureSlotByType(TextureType_Mask).ptr);
+				textures[0] = material->GetTextureShaderResourceByType(TextureType_Albedo);
+				textures[1] = material->GetTextureShaderResourceByType(TextureType_Roughness);
+				textures[2] = material->GetTextureShaderResourceByType(TextureType_Metallic);
+				textures[3] = material->GetTextureShaderResourceByType(TextureType_Normal);
+				textures[4] = material->GetTextureShaderResourceByType(TextureType_Height);
+				textures[5] = material->GetTextureShaderResourceByType(TextureType_Occlusion);
+				textures[6] = material->GetTextureShaderResourceByType(TextureType_Emission);
+				textures[7] = material->GetTextureShaderResourceByType(TextureType_Mask);
 
+				m_cmd_list->SetTextures(0, textures);
 				currently_bound_material = material->GetResourceId();
 			}
 
 			// UPDATE PER OBJECT BUFFER
 			shader->UpdatePerObjectBuffer(entity->GetTransform_PtrRaw(), material, m_view, m_projection);
-			m_rhi_pipeline->SetConstantBuffer(shader->GetConstantBuffer(), 1, Buffer_Global);
+			m_cmd_list->SetConstantBuffer(1, Buffer_Global, shader->GetConstantBuffer());
 
 			// Render	
-			m_rhi_pipeline->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+			m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 			m_profiler->m_renderer_meshes_rendered++;
 
-		} // entity/MESH ITERATION
+		} // ENTITY/MESH ITERATION
 
-		m_rhi_device->EventEnd();
-		TIME_BLOCK_END_MULTI(m_profiler);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_PreLight(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_shadows_out, shared_ptr<RHI_RenderTexture>& tex_ssao_out)
@@ -308,10 +332,10 @@ namespace Directus
 		vector<void*> constant_buffers	= { m_buffer_global->GetBuffer(),  m_vps_light->GetConstantBuffer()->GetBuffer() };
 		vector<void*> textures =
 		{
-			m_gbuffer->GetTexture(GBuffer_Target_Albedo)->GetShaderResource(),											// Albedo	
-			m_gbuffer->GetTexture(GBuffer_Target_Normal)->GetShaderResource(),											// Normal
-			m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetShaderResource(),											// Depth
-			m_gbuffer->GetTexture(GBuffer_Target_Material)->GetShaderResource(),										// Material
+			m_g_buffer_albedo->GetShaderResource(),																		// Albedo	
+			m_g_buffer_normal->GetShaderResource(),																		// Normal
+			m_g_buffer_depth->GetShaderResource(),																		// Depth
+			m_g_buffer_material->GetShaderResource(),																	// Material
 			tex_shadows->GetShaderResource(),																			// Shadows
 			Flags_IsSet(Render_PostProcess_SSAO) ? tex_ssao->GetShaderResource() : m_tex_white->GetShaderResource(),	// SSAO
 			m_render_tex_full_hdr_light2->GetShaderResource(),															// Previous frame
@@ -353,8 +377,8 @@ namespace Directus
 
 		m_rhi_pipeline->SetBlendState(m_blend_enabled);	
 		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_enabled);
-		m_rhi_pipeline->SetRenderTarget(tex_out, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhi_pipeline->SetRenderTarget(tex_out, m_g_buffer_depth->GetDepthStencilView());
+		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
 		m_rhi_pipeline->SetTexture(m_skybox ? m_skybox->GetTexture() : nullptr);
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
 		m_rhi_pipeline->SetShader(m_vps_transparent);
@@ -494,8 +518,8 @@ namespace Directus
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetShader(m_vps_shadow_mapping);
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhi_pipeline->SetTexture(m_g_buffer_normal);
+		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
 		m_rhi_pipeline->SetTexture(light_directional_in->GetShadowMap()); // Texture2DArray
 		m_rhi_pipeline->SetSampler(m_sampler_compare_depth);
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
@@ -517,8 +541,8 @@ namespace Directus
 		SetDefaultPipelineState();
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 		m_rhi_pipeline->SetRenderTarget(tex_out);
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhi_pipeline->SetTexture(m_g_buffer_normal);
+		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
 		m_rhi_pipeline->SetTexture(m_tex_noise_normal);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetShader(m_vps_ssao);
@@ -617,8 +641,8 @@ namespace Directus
 		m_rhi_pipeline->SetRenderTarget(tex_out);
 		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
 		m_rhi_pipeline->SetTexture(tex_in);
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
+		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
+		m_rhi_pipeline->SetTexture(m_g_buffer_normal);
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
 		auto direction = Vector2(pixel_stride, 0.0f);
 		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
@@ -629,8 +653,8 @@ namespace Directus
 		m_rhi_pipeline->SetRenderTarget(tex_in);
 		m_rhi_pipeline->SetViewport(tex_in->GetViewport());
 		m_rhi_pipeline->SetTexture(tex_out);
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
+		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
+		m_rhi_pipeline->SetTexture(m_g_buffer_normal);
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
 		direction = Vector2(0.0f, pixel_stride);
 		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
@@ -655,8 +679,8 @@ namespace Directus
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
 		m_rhi_pipeline->SetTexture(m_render_tex_full_taa_history);
 		m_rhi_pipeline->SetTexture(tex_in);
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+		m_rhi_pipeline->SetTexture(m_g_buffer_velocity);
+		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
 		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
 		// Output to texOut
@@ -815,7 +839,7 @@ namespace Directus
 		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
 		m_rhi_pipeline->SetPixelShader(m_ps_motion_blur);
 		m_rhi_pipeline->SetTexture(tex_in);
-		m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
+		m_rhi_pipeline->SetTexture(m_g_buffer_velocity);
 		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
 		m_rhi_device->EventEnd();
@@ -913,7 +937,7 @@ namespace Directus
 
 		// Draw lines that require depth
 		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_enabled);
-		m_rhi_pipeline->SetRenderTarget(tex_out, m_gbuffer->GetTexture(GBuffer_Target_Depth)->GetDepthStencilView());
+		m_rhi_pipeline->SetRenderTarget(tex_out, m_g_buffer_depth->GetDepthStencilView());
 		{
 			// Grid
 			if (draw_grid)
@@ -1144,31 +1168,31 @@ namespace Directus
 		// Bind correct texture & shader pass
 		if (m_debug_buffer == RendererDebug_Albedo)
 		{
-			m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Albedo));
+			m_rhi_pipeline->SetTexture(m_g_buffer_albedo);
 			m_rhi_pipeline->SetPixelShader(m_ps_texture);
 		}
 
 		if (m_debug_buffer == RendererDebug_Normal)
 		{
-			m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Normal));
+			m_rhi_pipeline->SetTexture(m_g_buffer_normal);
 			m_rhi_pipeline->SetPixelShader(m_ps_debug_normal_);
 		}
 
 		if (m_debug_buffer == RendererDebug_Material)
 		{
-			m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Material));
+			m_rhi_pipeline->SetTexture(m_g_buffer_material);
 			m_rhi_pipeline->SetPixelShader(m_ps_texture);
 		}
 
 		if (m_debug_buffer == RendererDebug_Velocity)
 		{
-			m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Velocity));
+			m_rhi_pipeline->SetTexture(m_g_buffer_velocity);
 			m_rhi_pipeline->SetPixelShader(m_ps_debug_velocity);
 		}
 
 		if (m_debug_buffer == RendererDebug_Depth)
 		{
-			m_rhi_pipeline->SetTexture(m_gbuffer->GetTexture(GBuffer_Target_Depth));
+			m_rhi_pipeline->SetTexture(m_g_buffer_depth);
 			m_rhi_pipeline->SetPixelShader(m_ps_debug_depth);
 		}
 
