@@ -344,15 +344,19 @@ namespace Directus
 		m_ps_blur_box->AddDefine("PASS_BLUR_BOX");
 		m_ps_blur_box->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 
-		// Blur Gaussian Horizontal
-		m_ps_blur_gaussian = make_shared<RHI_Shader>(m_rhi_device);
+		// Blur Gaussian
+		m_ps_blur_gaussian = make_shared<ShaderBuffered>(m_rhi_device);
 		m_ps_blur_gaussian->AddDefine("PASS_BLUR_GAUSSIAN");
 		m_ps_blur_gaussian->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_ps_blur_gaussian->AddBuffer<Struct_Blur>();
+		m_ps_blur_gaussian->AddBuffer<Struct_Blur>();
 
-		// Blur Bilateral Gaussian Horizontal
-		m_ps_blur_gaussian_bilateral = make_shared<RHI_Shader>(m_rhi_device);
+		// Blur Bilateral Gaussian
+		m_ps_blur_gaussian_bilateral = make_shared<ShaderBuffered>(m_rhi_device);
 		m_ps_blur_gaussian_bilateral->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
 		m_ps_blur_gaussian_bilateral->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_ps_blur_gaussian_bilateral->AddBuffer<Struct_Blur>();
+		m_ps_blur_gaussian_bilateral->AddBuffer<Struct_Blur>();
 
 		// Bloom - bright
 		m_ps_bloom_bright = make_shared<RHI_Shader>(m_rhi_device);
@@ -602,7 +606,7 @@ namespace Directus
 		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
-	void Renderer::SetDefaultBuffer(const unsigned int resolution_width, const unsigned int resolution_height, const Matrix& mMVP, const float blur_sigma, const Vector2& blur_direction, bool bind) const
+	void Renderer::SetDefaultBuffer(const unsigned int resolution_width, const unsigned int resolution_height, const Matrix& mMVP, bool bind) const
 	{
 		auto buffer = static_cast<ConstantBufferGlobal*>(m_buffer_global->Map());
 		if (!buffer)
@@ -625,8 +629,6 @@ namespace Directus
 		buffer->fxaa_sub_pixel			= m_fxaa_sub_pixel;
 		buffer->fxaa_edge_threshold		= m_fxaa_edge_threshold;
 		buffer->fxaa_edge_threshold_min	= m_fxaa_edge_threshold_min;
-		buffer->blur_direction			= blur_direction;
-		buffer->blur_sigma				= blur_sigma;
 		buffer->bloom_intensity			= m_bloom_intensity;
 		buffer->sharpen_strength		= m_sharpen_strength;
 		buffer->sharpen_clamp			= m_sharpen_clamp;

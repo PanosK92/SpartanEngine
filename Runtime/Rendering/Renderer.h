@@ -191,14 +191,7 @@ namespace Directus
 		void CreateSamplers();
 		void CreateRenderTextures();
 		void SetDefaultPipelineState() const;
-		void SetDefaultBuffer(	
-			unsigned int resolution_width,
-			unsigned int resolution_height,
-			const Math::Matrix& mMVP			= Math::Matrix::Identity,
-			float blur_sigma					= 0.0f,
-			const Math::Vector2& blur_direction	= Math::Vector2::Zero,
-			bool bind							= true
-		) const;
+		void SetDefaultBuffer(unsigned int resolution_width, unsigned int resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity, bool bind = true) const;
 		void RenderablesAcquire(const Variant& renderables);
 		void RenderablesSort(std::vector<Entity*>* renderables);
 		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
@@ -251,7 +244,7 @@ namespace Directus
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_quarter_blur2;
 		//===============================================================
 		
-		//= SHADERS =============================================
+		//= SHADERS =================================================
 		std::shared_ptr<RHI_Shader> m_vs_gbuffer;
 		std::shared_ptr<ShaderLight> m_vps_light;		
 		std::shared_ptr<ShaderBuffered> m_vps_color;
@@ -270,8 +263,8 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_ps_sharpening;
 		std::shared_ptr<RHI_Shader> m_ps_chromatic_aberration;
 		std::shared_ptr<RHI_Shader> m_ps_blur_box;
-		std::shared_ptr<RHI_Shader> m_ps_blur_gaussian;
-		std::shared_ptr<RHI_Shader> m_ps_blur_gaussian_bilateral;
+		std::shared_ptr<ShaderBuffered> m_ps_blur_gaussian;
+		std::shared_ptr<ShaderBuffered> m_ps_blur_gaussian_bilateral;
 		std::shared_ptr<RHI_Shader> m_ps_bloom_bright;
 		std::shared_ptr<RHI_Shader> m_ps_bloom_blend;
 		std::shared_ptr<RHI_Shader> m_ps_tone_mapping;
@@ -282,7 +275,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_ps_debug_velocity;
 		std::shared_ptr<RHI_Shader> m_ps_debug_depth;
 		std::shared_ptr<RHI_Shader> m_ps_debug_ssao;
-		//=======================================================
+		//===========================================================
 
 		//= DEPTH-STENCIL STATES =======================================
 		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled;
@@ -397,21 +390,20 @@ namespace Directus
 
 			float fxaa_edge_threshold;
 			float fxaa_edge_threshold_min;
-			Math::Vector2 blur_direction;
-
-			float blur_sigma;
 			float bloom_intensity;
 			float sharpen_strength;
-			float sharpen_clamp;
 
+			float sharpen_clamp;
 			float motion_blur_strength;
 			float fps_current;
 			float fps_target;
-			float gamma;
 
+			float gamma;
 			Math::Vector2 taa_jitter_offset;
 			float tonemapping;
+
 			float exposure;
+			Math::Vector3 padding;
 		};
 		std::shared_ptr<RHI_ConstantBuffer> m_buffer_global;
 	};

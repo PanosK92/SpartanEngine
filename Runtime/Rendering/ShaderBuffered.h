@@ -31,6 +31,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	struct Struct_Blur
+	{
+		Struct_Blur(const Math::Vector2& direction, float sigma)
+		{
+			m_direction = direction;
+			m_sigma = sigma;
+		};
+
+		Math::Vector2 m_direction;
+		float m_sigma;
+		float m_padding;
+	};
+
 	struct Struct_Matrix
 	{
 		Struct_Matrix(const Math::Matrix& matrix)

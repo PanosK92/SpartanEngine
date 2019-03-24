@@ -171,7 +171,7 @@ namespace Directus
 		}
 
 		// Prepare resources
-		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), Matrix::Identity, false);
 		vector<void*> textures(8);
 		vector<void*> render_targets
 		{
@@ -330,7 +330,7 @@ namespace Directus
 		m_cmd_list->Begin("Pass_Light");
 
 		// Update constant buffers
-		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), Matrix::Identity, false);
 		m_vps_light->UpdateConstantBuffer
 		(
 			m_view_projection_orthographic,
@@ -444,6 +444,41 @@ namespace Directus
 		TIME_BLOCK_END(m_profiler);
 	}
 
+	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_RenderTexture>& tex_out, Light* light_directional_in)
+	{
+		if (!light_directional_in || !light_directional_in->GetCastShadows())
+			return;
+
+		m_cmd_list->Begin("Pass_Shadowing");
+
+		// Prepare resources
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic, false);
+		auto buffer = Struct_ShadowMapping((m_view_projection).Inverted(), light_directional_in, m_camera.get());
+		m_vps_shadow_mapping->UpdateBuffer(&buffer);
+		vector<void*> constant_buffers = { m_buffer_global->GetBuffer(),  m_vps_shadow_mapping->GetConstantBuffer()->GetBuffer() };
+		vector<void*> textures = { m_g_buffer_normal->GetShaderResource(), m_g_buffer_depth->GetShaderResource(), light_directional_in->GetShadowMap()->GetShaderResource() };
+		vector<void*> samplers = { m_sampler_compare_depth->GetBuffer(), m_sampler_bilinear_clamp->GetBuffer() };
+
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetRenderTarget(tex_out);
+		m_cmd_list->SetViewport(tex_out->GetViewport());
+		m_cmd_list->SetShaderVertex(m_vps_shadow_mapping);
+		m_cmd_list->SetShaderPixel(m_vps_shadow_mapping);
+		m_cmd_list->SetInputLayout(m_vps_shadow_mapping->GetInputLayout());
+		m_cmd_list->SetTextures(0, textures);
+		m_cmd_list->SetSamplers(0, samplers);
+		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
+		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
+	}
+
 	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
 	{
 		m_rhi_device->EventBegin("Pass_PostLight");
@@ -519,41 +554,6 @@ namespace Directus
 		m_rhi_device->EventEnd();
 	}
 
-	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_RenderTexture>& tex_out, Light* light_directional_in)
-	{
-		if (!light_directional_in || !light_directional_in->GetCastShadows())
-			return;
-
-		m_cmd_list->Begin("Pass_Shadowing");
-
-		// Prepare resources
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic, 0.0f, Vector2::Zero, false);
-		auto buffer = Struct_ShadowMapping((m_view_projection).Inverted(), light_directional_in, m_camera.get());
-		m_vps_shadow_mapping->UpdateBuffer(&buffer);
-		vector<void*> constant_buffers	= { m_buffer_global->GetBuffer(),  m_vps_shadow_mapping->GetConstantBuffer()->GetBuffer() };
-		vector<void*> textures			= { m_g_buffer_normal->GetShaderResource(), m_g_buffer_depth->GetShaderResource(), light_directional_in->GetShadowMap()->GetShaderResource() };
-		vector<void*> samplers			= { m_sampler_compare_depth->GetBuffer(), m_sampler_bilinear_clamp->GetBuffer() };
-
-		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
-		m_cmd_list->SetBlendState(m_blend_disabled);
-		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		m_cmd_list->SetRenderTarget(tex_out);
-		m_cmd_list->SetViewport(tex_out->GetViewport());	
-		m_cmd_list->SetShaderVertex(m_vps_shadow_mapping);
-		m_cmd_list->SetShaderPixel(m_vps_shadow_mapping);
-		m_cmd_list->SetInputLayout(m_vps_shadow_mapping->GetInputLayout());
-		m_cmd_list->SetTextures(0, textures);
-		m_cmd_list->SetSamplers(0, samplers);
-		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
-		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
-		m_cmd_list->End();
-		m_cmd_list->Submit();
-		m_cmd_list->Clear();
-	}
-
 	void Renderer::Pass_SSAO(shared_ptr<RHI_RenderTexture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_SSAO");
@@ -561,7 +561,7 @@ namespace Directus
 		// Prepare resources
 		vector<void*> textures = { m_g_buffer_normal->GetShaderResource(), m_g_buffer_depth->GetShaderResource(), m_tex_noise_normal->GetShaderResource() };
 		vector<void*> samplers = { m_sampler_bilinear_clamp->GetBuffer() /*SSAO (clamp) */, m_sampler_bilinear_wrap->GetBuffer() /*SSAO noise texture (wrap)*/};
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, false);
 
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -583,106 +583,147 @@ namespace Directus
 
 	void Renderer::Pass_BlurBox(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out, const float sigma)
 	{
-		m_rhi_device->EventBegin("Pass_Blur");
+		m_cmd_list->Begin("Pass_BlurBox");
 
-		SetDefaultPipelineState();
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, sigma);
-		m_rhi_pipeline->SetRenderTarget(tex_out);
-		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
-		m_rhi_pipeline->SetVertexShader(m_vs_quad);
-		m_rhi_pipeline->SetPixelShader(m_ps_blur_box);
-		m_rhi_pipeline->SetTexture(tex_in); // Shadows are in the alpha channel
-		m_rhi_pipeline->SetSampler(m_sampler_trilinear_clamp);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, false);
 
-		m_rhi_device->EventEnd();
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetRenderTarget(tex_out);
+		m_cmd_list->SetViewport(tex_out->GetViewport());
+		m_cmd_list->SetShaderVertex(m_vs_quad);
+		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+		m_cmd_list->SetShaderPixel(m_ps_blur_box);
+		m_cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
+		m_cmd_list->SetSampler(0, m_sampler_trilinear_clamp);
+		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_BlurGaussian(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out, const float sigma, const float pixel_stride)
 	{
-		if (tex_in->GetWidth() != tex_out->GetWidth() ||
-			tex_in->GetHeight() != tex_out->GetHeight() ||
-			tex_in->GetFormat() != tex_out->GetFormat())
+		if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
 		{
 			LOG_ERROR("Invalid parameters, textures must match because they will get swapped");
 			return;
 		}
 
-		m_rhi_device->EventBegin("Pass_BlurGaussian");
+		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, false);
 
-		// Set common states
-		m_rhi_pipeline->SetVertexShader(m_vs_quad);
-		m_rhi_pipeline->SetPixelShader(m_ps_blur_gaussian);
+		// Start command list
+		m_cmd_list->Begin("Pass_BlurBilateralGaussian");
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetViewport(tex_out->GetViewport());
+		m_cmd_list->SetShaderVertex(m_vs_quad);
+		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+		m_cmd_list->SetShaderPixel(m_ps_blur_gaussian);
+		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 
 		// Horizontal Gaussian blur	
-		auto direction = Vector2(pixel_stride, 0.0f);
-		SetDefaultPipelineState();	
-		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
-		m_rhi_pipeline->SetRenderTarget(tex_out);
-		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
-		m_rhi_pipeline->SetTexture(tex_in);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Horizontal");
+		{
+			auto direction	= Vector2(pixel_stride, 0.0f);
+			auto buffer		= Struct_Blur(direction, sigma);
+			m_ps_blur_gaussian->UpdateBuffer(&buffer, 0);
+
+			m_cmd_list->SetRenderTarget(tex_out);
+			m_cmd_list->SetTexture(0, tex_in);
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(0));
+			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		}
+		m_cmd_list->End();
 
 		// Vertical Gaussian blur
-		direction = Vector2(0.0f, pixel_stride);
-		SetDefaultPipelineState();
-		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
-		m_rhi_pipeline->SetRenderTarget(tex_in);
-		m_rhi_pipeline->SetViewport(tex_in->GetViewport());
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
-		m_rhi_pipeline->SetTexture(tex_out);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Horizontal");
+		{
+			auto direction	= Vector2(0.0f, pixel_stride);
+			auto buffer		= Struct_Blur(direction, sigma);
+			m_ps_blur_gaussian->UpdateBuffer(&buffer, 1);
+
+			m_cmd_list->SetRenderTarget(tex_in);
+			m_cmd_list->SetTexture(0, tex_out);
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(1));
+			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		}
+		m_cmd_list->End();
+
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 
 		// Swap textures
 		tex_in.swap(tex_out);
-
-		m_rhi_device->EventEnd();
 	}
 
 	void Renderer::Pass_BlurBilateralGaussian(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out, const float sigma, const float pixel_stride)
 	{
-		if (tex_in->GetWidth() != tex_out->GetWidth() ||
-			tex_in->GetHeight() != tex_out->GetHeight() ||
-			tex_in->GetFormat() != tex_out->GetFormat())
+		if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
 		{
 			LOG_ERROR("Invalid parameters, textures must match because they will get swapped.");
 			return;
 		}
 
-		m_rhi_device->EventBegin("Pass_BlurBilateralGaussian");
+		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, false);
 
-		// Set common states
-		m_rhi_pipeline->SetVertexShader(m_vs_quad);
-		m_rhi_pipeline->SetPixelShader(m_ps_blur_gaussian_bilateral);
+		// Start command list
+		m_cmd_list->Begin("Pass_BlurBilateralGaussian");
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetViewport(tex_out->GetViewport());	
+		m_cmd_list->SetShaderVertex(m_vs_quad);
+		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+		m_cmd_list->SetShaderPixel(m_ps_blur_gaussian_bilateral);	
+		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 
 		// Horizontal Gaussian blur
-		SetDefaultPipelineState();	
-		m_rhi_pipeline->SetRenderTarget(tex_out);
-		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
-		m_rhi_pipeline->SetTexture(tex_in);
-		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
-		m_rhi_pipeline->SetTexture(m_g_buffer_normal);
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
-		auto direction = Vector2(pixel_stride, 0.0f);
-		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Horizontal");
+		{
+			// Prepare resources
+			auto direction	= Vector2(pixel_stride, 0.0f);
+			auto buffer		= Struct_Blur(direction, sigma);
+			m_ps_blur_gaussian_bilateral->UpdateBuffer(&buffer, 0);
+			vector<void*> textures = { tex_in->GetShaderResource(), m_g_buffer_depth->GetShaderResource(), m_g_buffer_normal->GetShaderResource() };
+
+			m_cmd_list->SetRenderTarget(tex_out);	
+			m_cmd_list->SetTextures(0, textures);
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(0));
+			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		}
+		m_cmd_list->End();
 
 		// Vertical Gaussian blur
-		SetDefaultPipelineState();
-		m_rhi_pipeline->SetRenderTarget(tex_in);
-		m_rhi_pipeline->SetViewport(tex_in->GetViewport());
-		m_rhi_pipeline->SetTexture(tex_out);
-		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
-		m_rhi_pipeline->SetTexture(m_g_buffer_normal);
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
-		direction = Vector2(0.0f, pixel_stride);
-		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight(), Matrix::Identity, sigma, direction);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Vertical");
+		{
+			// Prepare resources
+			auto direction	= Vector2(0.0f, pixel_stride);
+			auto buffer		= Struct_Blur(direction, sigma);
+			m_ps_blur_gaussian_bilateral->UpdateBuffer(&buffer, 1);
+			vector<void*> textures = { tex_out->GetShaderResource(), m_g_buffer_depth->GetShaderResource(), m_g_buffer_normal->GetShaderResource() };
+
+			m_cmd_list->SetRenderTarget(tex_in);
+			m_cmd_list->SetTextures(0, textures);			
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(1));
+			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		}
+		m_cmd_list->End();
+
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 
 		tex_in.swap(tex_out);
-
-		m_rhi_device->EventEnd();
 	}
 
 	void Renderer::Pass_TAA(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
@@ -767,7 +808,7 @@ namespace Directus
 		m_cmd_list->Begin("Pass_ToneMapping");
 
 		// Prepare resources
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, false);
 
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -792,7 +833,7 @@ namespace Directus
 		m_cmd_list->Begin("Pass_GammaCorrection");
 
 		// Prepare resources
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, false);
 
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -817,7 +858,7 @@ namespace Directus
 		m_cmd_list->Begin("Pass_FXAA");
 
 		// Prepare resources
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, false);
 
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -855,7 +896,7 @@ namespace Directus
 		m_cmd_list->Begin("Pass_ChromaticAberration");
 
 		// Prepare resources
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, false);
 
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -881,7 +922,7 @@ namespace Directus
 
 		// Prepare resources
 		vector<void*> textures = { tex_in->GetShaderResource(), m_g_buffer_velocity->GetShaderResource() };
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, false);
 
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -906,7 +947,7 @@ namespace Directus
 		m_cmd_list->Begin("Pass_Dithering");
 
 		// Prepare resources
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, false);
 		
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -931,7 +972,7 @@ namespace Directus
 		m_cmd_list->Begin("Pass_Sharpening");
 
 		// Prepare resources
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, false);
 	
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -1018,7 +1059,7 @@ namespace Directus
 					static_cast<unsigned int>(m_resolution.x),
 					static_cast<unsigned int>(m_resolution.y),
 					m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * view_projection_unjittered, 
-					0.0f, Vector2::Zero, false
+					false
 				);
 				m_cmd_list->SetBufferIndex(m_gizmo_grid->GetIndexBuffer());
 				m_cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer());
@@ -1047,7 +1088,7 @@ namespace Directus
 					static_cast<unsigned int>(m_resolution.x),
 					static_cast<unsigned int>(m_resolution.y),
 					view_projection_unjittered,
-					0.0f, Vector2::Zero, false
+					false
 				);
 				m_cmd_list->SetBufferVertex(m_vertex_buffer_lines);
 				m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -1151,7 +1192,7 @@ namespace Directus
 						m_gizmo_light_rect.CreateBuffers(this);
 					}
 
-					SetDefaultBuffer(static_cast<unsigned int>(tex_width), static_cast<unsigned int>(tex_width), m_view_projection_orthographic, 0.0f, Vector2::Zero, false);
+					SetDefaultBuffer(static_cast<unsigned int>(tex_width), static_cast<unsigned int>(tex_width), m_view_projection_orthographic, false);
 					m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 					m_cmd_list->SetTexture(0, light_tex);
 					m_cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
@@ -1168,7 +1209,7 @@ namespace Directus
 		{
 			if (m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 			{
-				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), m_view_projection_orthographic, 0.0f, Vector2::Zero, false);
+				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), m_view_projection_orthographic, false);
 
 				m_cmd_list->Begin("Gizmo_Transform");
 				m_cmd_list->SetShaderVertex(m_vps_gizmo_transform);
@@ -1255,7 +1296,7 @@ namespace Directus
 
 		m_cmd_list->Begin("Pass_DebugBuffer");
 
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic, 0.0f, Vector2::Zero, false);
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic, false);
 
 		// Bind correct texture & shader pass
 		if (m_debug_buffer == RendererDebug_Albedo)
