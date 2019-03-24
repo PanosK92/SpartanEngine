@@ -814,33 +814,40 @@ namespace Directus
 
 	void Renderer::Pass_FXAA(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
 	{
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_rhi_device->EventBegin("Pass_FXAA");
+		m_cmd_list->Begin("Pass_FXAA");
 
-		// Common states
-		SetDefaultPipelineState();
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
+		// Prepare resources
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
+
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetRenderTarget(tex_out);
+		m_cmd_list->SetViewport(tex_out->GetViewport());
+		m_cmd_list->SetShaderVertex(m_vs_quad);
+		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 
 		// Luma
-		m_rhi_pipeline->SetRenderTarget(tex_out);
-		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
-		m_rhi_pipeline->SetPixelShader(m_ps_luma);
-		m_rhi_pipeline->SetTexture(tex_in);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		m_cmd_list->SetRenderTarget(tex_out);	
+		m_cmd_list->SetShaderPixel(m_ps_luma);
+		m_cmd_list->SetTexture(0, tex_in);
+		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		// FXAA
-		m_rhi_pipeline->SetRenderTarget(tex_in);
-		m_rhi_pipeline->SetViewport(tex_in->GetViewport());
-		m_rhi_pipeline->SetPixelShader(m_ps_fxaa);
-		m_rhi_pipeline->SetTexture(tex_out);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		m_cmd_list->SetRenderTarget(tex_in);
+		m_cmd_list->SetShaderPixel(m_ps_fxaa);
+		m_cmd_list->SetTexture(0, tex_out);
+		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 
 		// Swap the textures
 		tex_in.swap(tex_out);
-
-		m_rhi_device->EventEnd();
-		TIME_BLOCK_END(m_profiler);
 	}
 
 	void Renderer::Pass_ChromaticAberration(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
