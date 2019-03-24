@@ -1,16 +1,10 @@
 // = INCLUDES ========
 #include "Common.hlsl"
-#include "Vertex.hlsl"
 //====================
 
-struct VS_Output
+Pixel_Pos mainVS(Vertex_Pos input)
 {
-    float4 position	: SV_POSITION;
-};
-
-VS_Output mainVS(Vertex_Pos input)
-{
-	VS_Output output;
+	Pixel_Pos output;
 
 	input.position.w 	= 1.0f;	
     output.position 	= mul(input.position, g_mvp);
@@ -18,7 +12,7 @@ VS_Output mainVS(Vertex_Pos input)
 	return output;
 }
 
-float mainPS(VS_Output input) : SV_TARGET
+float mainPS(Pixel_Pos input) : SV_TARGET
 {
 	return input.position.z / input.position.w;
 }

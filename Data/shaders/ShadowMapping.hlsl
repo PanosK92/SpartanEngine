@@ -6,7 +6,6 @@
 
 // = INCLUDES ========
 #include "Common.hlsl"
-#include "Vertex.hlsl"
 //====================
 
 //= TEXTURES ==================================
@@ -31,14 +30,6 @@ cbuffer DefaultBuffer : register(b1)
 	float2 padding2;
 };
 //========================================
-
-//= STRUCTS ========================
-struct PixelInputType
-{
-    float4 position : SV_POSITION;
-    float2 uv : TEXCOORD;
-};
-//==================================
 
 float depthTest(float slice, float2 texCoords, float compare)
 {
@@ -112,9 +103,9 @@ float ShadowMapping(int cascade, float4 positionCS, float texel, float3 normal, 
 	return Technique_PCF(cascade, texel, texCoord, compareDepth);
 }
 
-PixelInputType mainVS(Vertex_PosUv input)
+Pixel_PosUv mainVS(Vertex_PosUv input)
 {
-    PixelInputType output;
+    Pixel_PosUv output;
 	
     input.position.w 	= 1.0f;
     output.position 	= mul(input.position, g_mvp);
@@ -123,7 +114,7 @@ PixelInputType mainVS(Vertex_PosUv input)
     return output;
 }
 
-float mainPS(PixelInputType input) : SV_TARGET
+float mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	// Compute some useful values
     float2 texCoord     		= input.uv;

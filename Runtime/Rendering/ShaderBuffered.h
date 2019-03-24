@@ -250,15 +250,13 @@ namespace Directus
 		template <typename T>
 		void AddBuffer()
 		{
-			m_buffer_size = sizeof(T);
-			CreateConstantBuffer(m_buffer_size);
+			m_buffers.emplace_back(std::make_shared<RHI_ConstantBuffer>(m_rhi_device, sizeof(T)));
 		}
-		void CreateConstantBuffer(unsigned int size);
-		bool UpdateBuffer(void* data) const;
-		const auto& GetConstantBuffer() { return m_constant_buffer; }
+		
+		bool UpdateBuffer(void* data, unsigned int index = 0) const;
+		const auto& GetConstantBuffer(unsigned int index = 0) { return m_buffers[index]; }
 
 	private:
-		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer;
-		unsigned int m_buffer_size = 0;
+		std::vector<std::shared_ptr<RHI_ConstantBuffer>> m_buffers;
 	};
 }

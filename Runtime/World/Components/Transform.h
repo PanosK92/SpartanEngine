@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "IComponent.h"
 #include <vector>
+#include <memory>
 #include "../../Math/Vector3.h"
 #include "../../Math/Quaternion.h"
 #include "../../Math/Matrix.h"
@@ -31,6 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class RHI_Device;
+	class RHI_ConstantBuffer;
+
 	class ENGINE_CLASS Transform : public IComponent
 	{
 	public:
@@ -100,9 +104,9 @@ namespace Directus
 		Math::Matrix& GetMatrix()			{ return m_matrix; }
 		Math::Matrix& GetLocalMatrix()		{ return m_matrixLocal; }
 
-		// Velocity tracking
-		auto& GetWVP_Previous()	const				{ return m_wvp_previous; }
-		void SetWVP_Previous(Math::Matrix& matrix)	{ m_wvp_previous = matrix; }
+		// Constant buffer
+		void UpdateConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& m_view_projection);
+		const auto& GetConstantBuffer() { return m_constant_buffer_gpu; }
 
 	private:
 		Math::Matrix GetParentTransformMatrix() const;
@@ -119,7 +123,15 @@ namespace Directus
 		Transform* m_parent; // the parent of this transform
 		std::vector<Transform*> m_children; // the children of this transform
 
-		// Velocity tracking
+		// Constant buffer
+		struct ConstantBufferData
+		{
+			Math::Matrix model;
+			Math::Matrix mvp_current;
+			Math::Matrix mvp_previous;
+		};
+		ConstantBufferData m_constant_buffer_cpu;
+		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer_gpu;
 		Math::Matrix m_wvp_previous;
 	};
 }

@@ -1,15 +1,6 @@
 // = INCLUDES ========
 #include "Common.hlsl"
-#include "Vertex.hlsl"
 //====================
-
-//= STRUCTS ========================
-struct PixelInputType
-{
-    float4 position : SV_POSITION;
-    float2 uv : TEXCOORD;
-};
-//==================================
 
 //= TEXTURES ======================
 Texture2D texNormal : register(t0);
@@ -111,9 +102,9 @@ float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_li
     return reconstructPositionWorld(depth_cs, mViewProjectionInverse, uv);
 }
 
-PixelInputType mainVS(Vertex_PosUv input)
+Pixel_PosUv mainVS(Vertex_PosUv input)
 {
-    PixelInputType output;
+    Pixel_PosUv output;
 	
     input.position.w 	= 1.0f;
     output.position 	= mul(input.position, mWorldViewProjection);
@@ -122,7 +113,7 @@ PixelInputType mainVS(Vertex_PosUv input)
     return output;
 }
 
-float4 mainPS(PixelInputType input) : SV_TARGET
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	float2 texCoord			= input.uv;   
     float depth_linear  	= 0.0f;

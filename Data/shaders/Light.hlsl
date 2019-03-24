@@ -43,21 +43,14 @@ cbuffer MiscBuffer : register(b1)
 
 // = INCLUDES ========
 #include "Common.hlsl"
-#include "Vertex.hlsl"
 #include "BRDF.hlsl"
 #include "IBL.hlsl"
 #include "SSR.hlsl"
 //====================
 
-struct PixelInputType
+Pixel_PosUv mainVS(Vertex_PosUv input)
 {
-    float4 position : SV_POSITION;
-    float2 uv : TEXCOORD;
-};
-
-PixelInputType mainVS(Vertex_PosUv input)
-{
-    PixelInputType output;
+    Pixel_PosUv output;
     
     input.position.w    = 1.0f;
     output.position     = mul(input.position, mWorldViewProjection);
@@ -66,7 +59,7 @@ PixelInputType mainVS(Vertex_PosUv input)
     return output;
 }
 
-float4 mainPS(PixelInputType input) : SV_TARGET
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 texCoord	= input.uv;
     float3 color	= float3(0, 0, 0);

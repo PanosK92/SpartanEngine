@@ -239,9 +239,10 @@ namespace Directus
 				currently_bound_shader = shader->RHI_GetID();
 			}
 
-			// Bind textures
+			// Bind material
 			if (currently_bound_material != material->GetResourceId())
 			{
+				// Textures
 				textures[0] = material->GetTextureShaderResourceByType(TextureType_Albedo);
 				textures[1] = material->GetTextureShaderResourceByType(TextureType_Roughness);
 				textures[2] = material->GetTextureShaderResourceByType(TextureType_Metallic);
@@ -250,14 +251,19 @@ namespace Directus
 				textures[5] = material->GetTextureShaderResourceByType(TextureType_Occlusion);
 				textures[6] = material->GetTextureShaderResourceByType(TextureType_Emission);
 				textures[7] = material->GetTextureShaderResourceByType(TextureType_Mask);
-
 				m_cmd_list->SetTextures(0, textures);
+
+				// Constant buffer
+				material->UpdateConstantBuffer();
+				m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, material->GetConstantBuffer());
+
 				currently_bound_material = material->GetResourceId();
 			}
 
-			// UPDATE PER OBJECT BUFFER
-			shader->UpdatePerObjectBuffer(entity->GetTransform_PtrRaw(), material, m_view_projection);
-			m_cmd_list->SetConstantBuffer(1, Buffer_Global, shader->GetConstantBuffer());
+			// Bind transform
+			Transform* transform = entity->GetTransform_PtrRaw();
+			transform->UpdateConstantBuffer(m_rhi_device, m_view_projection);
+			m_cmd_list->SetConstantBuffer(2, Buffer_VertexShader, transform->GetConstantBuffer());
 
 			// Render	
 			m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
@@ -1012,24 +1018,24 @@ namespace Directus
 		if (!render)
 			return;
 
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_rhi_device->EventBegin("Pass_Gizmos");
-
-		// Set shared states
-		SetDefaultPipelineState();
-		m_rhi_pipeline->SetRasterizerState(m_rasterizer_cull_back_solid);
-		m_rhi_pipeline->SetBlendState(m_blend_enabled);
-		m_rhi_pipeline->SetRenderTarget(tex_out, nullptr);
+		m_cmd_list->Begin("Pass_Gizmos");
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_enabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetViewport(tex_out->GetViewport());	
+		m_cmd_list->SetRenderTarget(tex_out);
 
 		if (render_lights)
 		{
 			auto& lights = m_entities[Renderable_Light];
 			if (!lights.empty())
 			{
-				m_rhi_device->EventBegin("Gizmo_Lights");
-				m_rhi_pipeline->SetVertexShader(m_vs_quad);
-				m_rhi_pipeline->SetPixelShader(m_ps_texture);
-				m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
+				m_cmd_list->Begin("Gizmo_Lights");
+				m_cmd_list->SetShaderVertex(m_vs_quad);
+				m_cmd_list->SetShaderPixel(m_ps_texture);
+				m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+				m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 
 				for (const auto& entity : lights)
 				{
@@ -1065,14 +1071,15 @@ namespace Directus
 						m_gizmo_light_rect.CreateBuffers(this);
 					}
 
-					SetDefaultBuffer(static_cast<unsigned int>(tex_width), static_cast<unsigned int>(tex_width), m_view_projection_orthographic);
-					m_rhi_pipeline->SetTexture(light_tex);
-					m_rhi_pipeline->SetIndexBuffer(m_gizmo_light_rect.GetIndexBuffer());
-					m_rhi_pipeline->SetVertexBuffer(m_gizmo_light_rect.GetVertexBuffer());
-					m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+					SetDefaultBuffer(static_cast<unsigned int>(tex_width), static_cast<unsigned int>(tex_width), m_view_projection_orthographic, 0.0f, Vector2::Zero, false);
+					m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+					m_cmd_list->SetTexture(0, light_tex);
+					m_cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
+					m_cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
+					m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 				}
 
-				m_rhi_device->EventEnd();
+				m_cmd_list->End();
 			}
 		}
 
@@ -1081,46 +1088,50 @@ namespace Directus
 		{
 			if (m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 			{
-				m_rhi_device->EventBegin("Gizmo_Transform");
+				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), m_view_projection_orthographic, 0.0f, Vector2::Zero, false);
 
-				m_rhi_pipeline->SetShader(m_vps_gizmo_transform);
-				m_rhi_pipeline->SetIndexBuffer(m_gizmo_transform->GetIndexBuffer());
-				m_rhi_pipeline->SetVertexBuffer(m_gizmo_transform->GetVertexBuffer());
-				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
+				m_cmd_list->Begin("Gizmo_Transform");
+				m_cmd_list->SetShaderVertex(m_vps_gizmo_transform);
+				m_cmd_list->SetShaderPixel(m_vps_gizmo_transform);
+				m_cmd_list->SetInputLayout(m_vps_gizmo_transform->GetInputLayout());
+				m_cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
+				m_cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
+				m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 
 				// Axis - X
 				auto buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Right), m_gizmo_transform->GetHandle().GetColor(Vector3::Right));
-				m_vps_gizmo_transform->UpdateBuffer(&buffer);
-				m_rhi_pipeline->SetConstantBuffer(m_vps_gizmo_transform->GetConstantBuffer(), 1, Buffer_Global);
-				m_rhi_pipeline->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+				m_vps_gizmo_transform->UpdateBuffer(&buffer, 0);
+				m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(0));
+				m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 
 				// Axis - Y
 				buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Up), m_gizmo_transform->GetHandle().GetColor(Vector3::Up));
-				m_vps_gizmo_transform->UpdateBuffer(&buffer);
-				m_rhi_pipeline->SetConstantBuffer(m_vps_gizmo_transform->GetConstantBuffer(), 1, Buffer_Global);
-				m_rhi_pipeline->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+				m_vps_gizmo_transform->UpdateBuffer(&buffer, 1);
+				m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(1));
+				m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 
 				// Axis - Z
 				buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward), m_gizmo_transform->GetHandle().GetColor(Vector3::Forward));
-				m_vps_gizmo_transform->UpdateBuffer(&buffer);
-				m_rhi_pipeline->SetConstantBuffer(m_vps_gizmo_transform->GetConstantBuffer(), 1, Buffer_Global);
-				m_rhi_pipeline->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+				m_vps_gizmo_transform->UpdateBuffer(&buffer, 2);
+				m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(2));
+				m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 
 				// Axes - XYZ
 				if (m_gizmo_transform->DrawXYZ())
 				{
 					buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::One), m_gizmo_transform->GetHandle().GetColor(Vector3::One));
 					m_vps_gizmo_transform->UpdateBuffer(&buffer);
-					m_rhi_pipeline->SetConstantBuffer(m_vps_gizmo_transform->GetConstantBuffer(), 1, Buffer_Global);
-					m_rhi_pipeline->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+					m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer());
+					m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 				}
 
-				m_rhi_device->EventEnd();
+				m_cmd_list->End();
 			}
 		}
 
-		m_rhi_device->EventEnd();
-		TIME_BLOCK_END(m_profiler);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_RenderTexture>& tex_out)

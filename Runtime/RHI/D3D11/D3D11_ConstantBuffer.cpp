@@ -38,7 +38,9 @@ namespace Directus
 {
 	RHI_ConstantBuffer::RHI_ConstantBuffer(const shared_ptr<RHI_Device>& rhi_device, const unsigned int size)
 	{
-		m_rhi_device = rhi_device;
+		m_rhi_device	= rhi_device;
+		m_size			= size;
+
 		if (!m_rhi_device || !m_rhi_device->GetDevicePhysical<ID3D11Device>())
 		{
 			LOG_ERROR_INVALID_PARAMETER();

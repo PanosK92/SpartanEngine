@@ -24,17 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <memory>
 #include <vector>
-#include "../../Math/Vector2.h"
-#include "../../Math/Matrix.h"
 #include "../../RHI/RHI_Definition.h"
 #include "../../RHI/RHI_Shader.h"
 //===================================
 
 namespace Directus
 {
-	class Material;
-	class Transform;
-
 	enum Variation_Flag : unsigned long
 	{
 		Variation_Albedo	= 1UL << 0,
@@ -55,9 +50,6 @@ namespace Directus
 
 		void Compile(const std::string& file_path, unsigned long shader_flags);
 
-		void UpdatePerObjectBuffer(Transform* transform, Material* material, const Math::Matrix& m_view_projection);
-		const auto& GetConstantBuffer() { return m_constant_buffer; }
-
 		unsigned long GetShaderFlags() const	{ return m_flags; }
 		bool HasAlbedoTexture() const			{ return m_flags & Variation_Albedo; }
 		bool HasRoughnessTexture() const		{ return m_flags & Variation_Roughness; }
@@ -75,26 +67,7 @@ namespace Directus
 		void AddDefinesBasedOnMaterial();
 		
 		Context* m_context;
-		unsigned long m_flags;
-		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer;
+		unsigned long m_flags;	
 		static std::vector<std::shared_ptr<ShaderVariation>> m_variations;
-		
-		// BUFFER
-		struct PerObjectBufferType
-		{
-			Math::Vector4 mat_albedo;
-			Math::Vector2 mat_tiling_uv;
-			Math::Vector2 mat_offset_uv;
-			float mat_roughness_mul;
-			float mat_metallic_mul;
-			float mat_normal_mul;
-			float mat_height_mul;		
-			float mat_shading_mode;
-			Math::Vector3 padding;
-			Math::Matrix model;
-			Math::Matrix mvp_current;
-			Math::Matrix mvp_previous;
-		};
-		PerObjectBufferType per_object_buffer_cpu;
 	};
 }

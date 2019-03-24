@@ -289,6 +289,8 @@ namespace Directus
 		m_vps_gizmo_transform = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_gizmo_transform->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl", Input_PositionTextureNormalTangent);
 		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
+		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
+		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
 
 		// SSAO
 		m_vps_ssao = make_shared<ShaderBuffered>(m_rhi_device);
