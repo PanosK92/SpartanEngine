@@ -1147,29 +1147,32 @@ namespace Directus
 		if (!draw)
 			return;
 
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_rhi_device->EventBegin("Pass_PerformanceMetrics");
-		SetDefaultPipelineState();
+		m_cmd_list->Begin("Pass_PerformanceMetrics");
 
 		// Updated text
 		const auto text_pos = Vector2(-static_cast<int>(m_viewport.GetWidth()) * 0.5f + 1.0f, static_cast<int>(m_viewport.GetHeight()) * 0.5f);
 		m_font->SetText(m_profiler->GetMetrics(), text_pos);
-		// Updated constant buffer
 		auto buffer = Struct_Matrix_Vector4(m_view_projection_orthographic, m_font->GetColor());
 		m_vps_font->UpdateBuffer(&buffer);
-
-		m_rhi_pipeline->SetRenderTarget(tex_out);
-		m_rhi_pipeline->SetTexture(m_font->GetTexture());
-		m_rhi_pipeline->SetBlendState(m_blend_enabled);
-		m_rhi_pipeline->SetIndexBuffer(m_font->GetIndexBuffer());
-		m_rhi_pipeline->SetVertexBuffer(m_font->GetVertexBuffer());	
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
-		m_rhi_pipeline->SetShader(m_vps_font);
-		m_rhi_pipeline->SetConstantBuffer(m_vps_font->GetConstantBuffer(), 0, Buffer_Global);
-		m_rhi_pipeline->DrawIndexed(m_font->GetIndexCount(), 0, 0);
-
-		m_rhi_device->EventEnd();
-		TIME_BLOCK_END(m_profiler);
+	
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetRenderTarget(tex_out);	
+		m_cmd_list->SetViewport(tex_out->GetViewport());
+		m_cmd_list->SetBlendState(m_blend_enabled);	
+		m_cmd_list->SetTexture(0, m_font->GetTexture());
+		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_vps_font->GetConstantBuffer());
+		m_cmd_list->SetShaderVertex(m_vps_font);
+		m_cmd_list->SetShaderPixel(m_vps_font);
+		m_cmd_list->SetInputLayout(m_vps_font->GetInputLayout());	
+		m_cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
+		m_cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
+		m_cmd_list->DrawIndexed(m_font->GetIndexCount(), 0, 0);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 	}
 
 	bool Renderer::Pass_DebugBuffer(shared_ptr<RHI_RenderTexture>& tex_out)
@@ -1177,68 +1180,70 @@ namespace Directus
 		if (m_debug_buffer == RendererDebug_None)
 			return true;
 
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_rhi_device->EventBegin("Pass_DebugBuffer");
-		SetDefaultPipelineState();
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
-		m_rhi_pipeline->SetVertexShader(m_vs_quad);
+		m_cmd_list->Begin("Pass_DebugBuffer");
+
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic, 0.0f, Vector2::Zero, false);
 
 		// Bind correct texture & shader pass
 		if (m_debug_buffer == RendererDebug_Albedo)
 		{
-			m_rhi_pipeline->SetTexture(m_g_buffer_albedo);
-			m_rhi_pipeline->SetPixelShader(m_ps_texture);
+			m_cmd_list->SetTexture(0, m_g_buffer_albedo);
+			m_cmd_list->SetShaderPixel(m_ps_texture);
 		}
 
 		if (m_debug_buffer == RendererDebug_Normal)
 		{
-			m_rhi_pipeline->SetTexture(m_g_buffer_normal);
-			m_rhi_pipeline->SetPixelShader(m_ps_debug_normal_);
+			m_cmd_list->SetTexture(0, m_g_buffer_normal);
+			m_cmd_list->SetShaderPixel(m_ps_debug_normal_);
 		}
 
 		if (m_debug_buffer == RendererDebug_Material)
 		{
-			m_rhi_pipeline->SetTexture(m_g_buffer_material);
-			m_rhi_pipeline->SetPixelShader(m_ps_texture);
+			m_cmd_list->SetTexture(0, m_g_buffer_material);
+			m_cmd_list->SetShaderPixel(m_ps_texture);
 		}
 
 		if (m_debug_buffer == RendererDebug_Velocity)
 		{
-			m_rhi_pipeline->SetTexture(m_g_buffer_velocity);
-			m_rhi_pipeline->SetPixelShader(m_ps_debug_velocity);
+			m_cmd_list->SetTexture(0, m_g_buffer_velocity);
+			m_cmd_list->SetShaderPixel(m_ps_debug_velocity);
 		}
 
 		if (m_debug_buffer == RendererDebug_Depth)
 		{
-			m_rhi_pipeline->SetTexture(m_g_buffer_depth);
-			m_rhi_pipeline->SetPixelShader(m_ps_debug_depth);
+			m_cmd_list->SetTexture(0, m_g_buffer_depth);
+			m_cmd_list->SetShaderPixel(m_ps_debug_depth);
 		}
 
 		if ((m_debug_buffer == RendererDebug_SSAO))
 		{
 			if (Flags_IsSet(Render_PostProcess_SSAO))
 			{
-				m_rhi_pipeline->SetTexture(m_render_tex_half_ssao);
+				m_cmd_list->SetTexture(0, m_render_tex_half_ssao);
 			}
 			else
 			{
-				m_rhi_pipeline->SetTexture(m_tex_white);
+				m_cmd_list->SetTexture(0, m_tex_white);
 			}
-			m_rhi_pipeline->SetPixelShader(m_ps_debug_ssao);
+			m_cmd_list->SetShaderPixel(m_ps_debug_ssao);
 		}
 
-		m_rhi_pipeline->SetRenderTarget(tex_out);
-		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
-		m_rhi_pipeline->SetVertexBuffer(m_quad.GetVertexBuffer());
-		m_rhi_pipeline->SetIndexBuffer(m_quad.GetIndexBuffer());
-		m_rhi_pipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		m_rhi_pipeline->SetRasterizerState(m_rasterizer_cull_back_solid);
-		m_rhi_pipeline->SetInputLayout(m_ps_texture->GetInputLayout());
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-
-		m_rhi_device->EventEnd();
-		TIME_BLOCK_END(m_profiler);
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetRenderTarget(tex_out);
+		m_cmd_list->SetViewport(tex_out->GetViewport());	
+		m_cmd_list->SetShaderVertex(m_vs_quad);
+		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 
 		return true;
 	}
