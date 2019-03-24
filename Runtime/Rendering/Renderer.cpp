@@ -61,8 +61,6 @@ namespace Directus
 	{	
 		m_near_plane	= 0.0f;
 		m_far_plane		= 0.0f;
-		m_camera		= nullptr;
-		m_rhi_device	= nullptr;
 		m_frame_num		= 0;
 		m_flags			= 0;
 		m_flags			|= Render_Gizmo_Transform;
@@ -292,8 +290,7 @@ namespace Directus
 
 		// SSAO
 		m_vps_ssao = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_ssao->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "SSAO.hlsl", Input_PositionTexture);
-		m_vps_ssao->AddBuffer<Struct_Matrix_Matrix>();
+		m_vps_ssao->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSAO.hlsl");
 
 		// Shadow mapping
 		m_vps_shadow_mapping = make_shared<ShaderBuffered>(m_rhi_device);
@@ -507,6 +504,7 @@ namespace Directus
 			}
 
 			m_view_projection				= m_view * m_projection;
+			m_view_projection_inv			= Matrix::Invert(m_view_projection);
 			m_projection_orthographic		= Matrix::CreateOrthographicLH(m_resolution.x, m_resolution.y, m_near_plane, m_far_plane);
 			m_view_projection_orthographic	= m_view_base * m_projection_orthographic;
 		}
@@ -618,6 +616,7 @@ namespace Directus
 		buffer->m_projection			= m_projection;
 		buffer->m_projection_ortho		= m_projection_orthographic;
 		buffer->m_view_projection		= m_view_projection;
+		buffer->m_view_projection_inv	= m_view_projection_inv;
 		buffer->m_view_projection_ortho	= m_view_projection_orthographic;
 		buffer->camera_position			= m_camera->GetTransform()->GetPosition();
 		buffer->camera_near				= m_camera->GetNearPlane();

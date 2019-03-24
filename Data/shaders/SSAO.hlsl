@@ -13,14 +13,6 @@ SamplerState samplerLinear_clamp : register(s0);
 SamplerState samplerLinear_wrap : register(s1);
 //==============================================
 
-//= CONSTANT BUFFERS ===============
-cbuffer DefaultBuffer : register(b1)
-{
-    matrix mWorldViewProjection;
-    matrix mViewProjectionInverse;
-};
-//==================================
-
 static const float3 sampleKernel[64] =
 {
     float3(0.04977, -0.04471, 0.04996),
@@ -99,18 +91,7 @@ float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_li
 	float2 depth	= texDepth.Sample(samplerState, uv).rg;
     depth_linear  	= depth.r * g_camera_far;
     depth_cs      	= depth.g;
-    return reconstructPositionWorld(depth_cs, mViewProjectionInverse, uv);
-}
-
-Pixel_PosUv mainVS(Vertex_PosUv input)
-{
-    Pixel_PosUv output;
-	
-    input.position.w 	= 1.0f;
-    output.position 	= mul(input.position, mWorldViewProjection);
-    output.uv 			= input.uv;
-	
-    return output;
+    return reconstructPositionWorld(depth_cs, g_viewProjectionInv, uv);
 }
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
