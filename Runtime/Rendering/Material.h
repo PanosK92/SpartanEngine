@@ -28,13 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
+#include "../Math/Vector3.h"
 //================================
 
 namespace Directus
 {	
-	class ShaderPool;
 	class ShaderVariation;
-	class TexturePool;
 
 	enum TextureType
 	{
@@ -135,8 +134,13 @@ namespace Directus
 
 		static TextureType TextureTypeFromString(const std::string& type);
 
+		//= CONSTANT BUFFER =============================================
+		void UpdateConstantBuffer();
+		const auto& GetConstantBuffer() { return m_constant_buffer_gpu; }
+		//===============================================================
+
 	private:
-		void TextureBasedMultiplierAdjustment();
+		void TextureBasedMultiplierAdjustment();	
 
 		RHI_Cull_Mode m_cull_mode;
 		ShadingMode m_shading_mode;
@@ -152,5 +156,21 @@ namespace Directus
 		std::vector<TextureSlot> m_texture_slots;
 		TextureSlot m_empty_texture_slot;
 		std::shared_ptr<RHI_Device> m_rhi_device;
+
+		// BUFFER
+		struct ConstantBufferData
+		{
+			Math::Vector4 mat_albedo;
+			Math::Vector2 mat_tiling_uv;
+			Math::Vector2 mat_offset_uv;
+			float mat_roughness_mul;
+			float mat_metallic_mul;
+			float mat_normal_mul;
+			float mat_height_mul;
+			float mat_shading_mode;
+			Math::Vector3 padding;
+		};
+		ConstantBufferData m_constant_buffer_cpu;
+		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer_gpu;
 	};
 }

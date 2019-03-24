@@ -1,6 +1,5 @@
 // = INCLUDES ========
 #include "Common.hlsl"
-#include "Vertex.hlsl"
 //====================
 
 Texture2D sourceTexture 	: register(t0);

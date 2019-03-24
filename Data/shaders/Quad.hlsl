@@ -1,6 +1,5 @@
 // = INCLUDES =====================
 #include "Common.hlsl"
-#include "Vertex.hlsl"
 #include "Sharpening.hlsl"
 #include "ChromaticAberration.hlsl"
 #include "Blur.hlsl"
@@ -21,15 +20,9 @@ Texture2D sourceTexture3 		: register(t2);
 Texture2D sourceTexture4 		: register(t3);
 SamplerState samplerState 		: register(s0);
 
-struct VS_Output
+Pixel_PosUv mainVS(Vertex_PosUv input)
 {
-    float4 position : SV_POSITION;
-    float2 uv 		: TEXCOORD;
-};
-
-VS_Output mainVS(Vertex_PosUv input)
-{
-    VS_Output output;
+    Pixel_PosUv output;
 	
     input.position.w 	= 1.0f;
     output.position 	= mul(input.position, g_viewProjectionOrtho);
@@ -38,7 +31,7 @@ VS_Output mainVS(Vertex_PosUv input)
     return output;
 }
 
-float4 mainPS(VS_Output input) : SV_TARGET
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 texCoord 	= input.uv;
     float4 color 		= float4(1.0f, 0.0f, 0.0f, 1.0f);

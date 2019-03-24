@@ -1,26 +1,25 @@
 // = INCLUDES ========
 #include "Common.hlsl"
-#include "Vertex.hlsl"
 //====================
 
-//= TEXTURES ===============================
-Texture2D texAlbedo 		: register (t0);
-Texture2D texRoughness 		: register (t1);
-Texture2D texMetallic 		: register (t2);
-Texture2D texNormal 		: register (t3);
-Texture2D texHeight 		: register (t4);
-Texture2D texOcclusion 		: register (t5);
-Texture2D texEmission 		: register (t6);
-Texture2D texMask 			: register (t7);
-//==========================================
+//= TEXTURES ===========================
+Texture2D texAlbedo 	: register (t0);
+Texture2D texRoughness 	: register (t1);
+Texture2D texMetallic 	: register (t2);
+Texture2D texNormal 	: register (t3);
+Texture2D texHeight 	: register (t4);
+Texture2D texOcclusion 	: register (t5);
+Texture2D texEmission 	: register (t6);
+Texture2D texMask 		: register (t7);
+//======================================
 
 //= SAMPLERS =============================
 SamplerState samplerAniso : register (s0);
 //========================================
 
-cbuffer PerObjectBuffer : register(b1)
-{		
-    float4 materialAlbedoColor;	
+cbuffer MaterialBuffer : register(b1)
+{
+	float4 materialAlbedoColor;	
 	float2 materialTiling;
 	float2 materialOffset;
     float materialRoughness;
@@ -29,6 +28,10 @@ cbuffer PerObjectBuffer : register(b1)
 	float materialHeight;
 	float materialShadingMode;
 	float3 padding2;
+};
+
+cbuffer ObjectBuffer : register(b2)
+{		
 	matrix mModel;
 	matrix mMVP_current;
 	matrix mMVP_previous;	

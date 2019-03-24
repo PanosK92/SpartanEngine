@@ -13,12 +13,6 @@ cbuffer MiscBuffer : register(b0)
     float4 cameraPosWS;
 };
 
-struct PixelInputType
-{
-    float4 position : SV_POSITION;
-    float2 uv 		: TEXCOORD;
-};
-
 struct PixelOutputType
 {
 	float4 albedo	: SV_Target0;
@@ -28,9 +22,9 @@ struct PixelOutputType
 };
 
 // Vertex Shader
-PixelInputType mainVS(Vertex_PosUv input)
+Pixel_PosUv mainVS(Vertex_PosUv input)
 {
-    PixelInputType output;
+    Pixel_PosUv output;
 	
     input.position.w 	= 1.0f;
     output.position 	= mul(input.position, mTransform);
@@ -40,7 +34,7 @@ PixelInputType mainVS(Vertex_PosUv input)
 }
 
 // Pixel Shader
-PixelOutputType mainPS(PixelInputType input)
+PixelOutputType mainPS(Pixel_PosUv input)
 {
 	PixelOutputType output;
 

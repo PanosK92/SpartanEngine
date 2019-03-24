@@ -1,5 +1,5 @@
 // = INCLUDES ========
-#include "Vertex.hlsl"
+#include "Common.hlsl"
 //====================
 
 Texture2D textureAtlas 	: register(t0);
@@ -11,15 +11,9 @@ cbuffer MiscBuffer : register(b0)
 	float4 color;
 };
 
-struct PixelInputType
+Pixel_PosUv mainVS(Vertex_PosUv input)
 {
-    float4 position : SV_POSITION;
-    float2 uv 		: TEXCOORD;
-};
-
-PixelInputType mainVS(Vertex_PosUv input)
-{
-    PixelInputType output;
+    Pixel_PosUv output;
 	
     input.position.w 	= 1.0f;
     output.position 	= mul(input.position, mTransform);
@@ -28,7 +22,7 @@ PixelInputType mainVS(Vertex_PosUv input)
     return output;
 }
 
-float4 mainPS(PixelInputType input) : SV_TARGET
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	float4 finalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 	

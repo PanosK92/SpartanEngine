@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_CommandList.h"
 #include "RHI_Device.h"
 #include "RHI_Sampler.h"
+#include "RHI_Texture.h"
+#include "RHI_RenderTexture.h"
 #include "RHI_ConstantBuffer.h"
 #include "../Profiling/Profiler.h"
 #include "../Logging/Log.h"
@@ -252,6 +254,16 @@ namespace Directus
 		cmd.textures.emplace_back(texture);
 	}
 
+	void RHI_CommandList::SetTexture(unsigned int start_slot, shared_ptr<RHI_Texture>& texture)
+	{
+		SetTexture(start_slot, texture->GetShaderResource());
+	}
+
+	void RHI_CommandList::SetTexture(unsigned int start_slot, shared_ptr<RHI_RenderTexture>& texture)
+	{
+		SetTexture(start_slot, texture->GetShaderResource());
+	}
+
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
 	{
 		RHI_Command& cmd	= GetCmd();
@@ -266,6 +278,11 @@ namespace Directus
 		cmd.type			= RHI_Cmd_SetRenderTargets;	
 		cmd.depth_stencil	= depth_stencil;
 		cmd.render_targets.emplace_back(render_target);
+	}
+
+	void RHI_CommandList::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& render_target, void* depth_stencil /*= nullptr*/)
+	{
+		SetRenderTarget(render_target->GetRenderTargetView(), depth_stencil);
 	}
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)

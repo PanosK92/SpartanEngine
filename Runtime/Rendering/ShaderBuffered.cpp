@@ -36,12 +36,7 @@ namespace Directus
 
 	}
 
-	void ShaderBuffered::CreateConstantBuffer(unsigned int size)
-	{
-		m_constant_buffer = make_shared<RHI_ConstantBuffer>(m_rhi_device, size);
-	}
-
-	bool ShaderBuffered::UpdateBuffer(void* data) const
+	bool ShaderBuffered::UpdateBuffer(void* data, unsigned int index) const
 	{
 		if (!data)
 		{
@@ -49,7 +44,7 @@ namespace Directus
 			return false;
 		}
 
-		if (!m_constant_buffer)
+		if (!m_buffers[index])
 		{
 			LOG_WARNING("Uninitialized buffer.");
 			return false;
@@ -57,10 +52,10 @@ namespace Directus
 
 		// Get a pointer of the buffer
 		auto result = false;
-		if (const auto buffer = m_constant_buffer->Map())	// Get buffer pointer
+		if (const auto buffer = m_buffers[index]->Map()) // Get buffer pointer
 		{
-			memcpy(buffer, data, m_buffer_size);			// Copy data
-			result = m_constant_buffer->Unmap();			// Unmap buffer
+			memcpy(buffer, data, m_buffers[index]->GetSize());	// Copy data
+			result = m_buffers[index]->Unmap();					// Unmap buffer
 		}
 
 		if (!result)

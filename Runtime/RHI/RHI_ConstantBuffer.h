@@ -38,10 +38,12 @@ namespace Directus
 
 		void* Map() const;
 		bool Unmap() const;
-		void* GetBuffer() const { return m_buffer; }
+		void* GetBuffer() const			{ return m_buffer; }
+		unsigned int GetSize() const	{ return m_size; }
 
 	private:
-		void* m_buffer = nullptr;
+		void* m_buffer		= nullptr;
+		unsigned int m_size = 0;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

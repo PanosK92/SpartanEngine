@@ -25,8 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
-#include "../../FileSystem/FileSystem.h"
 #include "../../Math/Vector3.h"
+#include "../../FileSystem/FileSystem.h"
+#include "../../RHI/RHI_ConstantBuffer.h"
 //======================================
 
 //= NAMESPACES ================
@@ -373,6 +374,38 @@ namespace Directus
 			descendants->push_back(child);
 			child->GetDescendants(descendants);
 		}
+	}
+
+	void Transform::UpdateConstantBuffer(const shared_ptr<RHI_Device>& rhi_device, const Matrix& m_view_projection)
+	{
+		// Has to match GBuffer.hlsl
+		if (!m_constant_buffer_gpu)
+		{
+			m_constant_buffer_gpu = make_shared<RHI_ConstantBuffer>(rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferData)));
+		}
+
+		auto m_mvp_current = m_matrix * m_view_projection;
+
+		// Determine if the material buffer needs to update
+		auto update = false;
+		update		= m_constant_buffer_cpu.model != m_matrix ? true : update;
+
+		bool new_input		= m_constant_buffer_cpu.mvp_current != m_mvp_current;
+		bool non_zero_delta = m_constant_buffer_cpu.mvp_current != m_constant_buffer_cpu.mvp_previous;
+		update				= new_input || non_zero_delta ? true : update;
+
+		if (!update)
+			return;
+
+		auto buffer = static_cast<ConstantBufferData*>(m_constant_buffer_gpu->Map());
+
+		buffer->model			= m_constant_buffer_cpu.model			= m_matrix;
+		buffer->mvp_current		= m_constant_buffer_cpu.mvp_current		= m_mvp_current;
+		buffer->mvp_previous	= m_constant_buffer_cpu.mvp_previous	= m_wvp_previous;
+
+		m_constant_buffer_gpu->Unmap();
+
+		m_wvp_previous = m_mvp_current;
 	}
 
 	Matrix Transform::GetParentTransformMatrix() const

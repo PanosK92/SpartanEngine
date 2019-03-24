@@ -1,6 +1,5 @@
 // = INCLUDES ========
 #include "Common.hlsl"
-#include "Vertex.hlsl"
 //====================
 
 cbuffer defaultBuffer : register(b1)
