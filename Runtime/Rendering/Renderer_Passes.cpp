@@ -912,8 +912,7 @@ namespace Directus
 		if (!draw)
 			return;
 
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_rhi_device->EventBegin("Pass_Lines");
+		m_cmd_list->Begin("Pass_Lines");
 
 		// Generate lines for debug primitives offered by the renderer
 		{
@@ -945,28 +944,38 @@ namespace Directus
 			}
 		}
 
-		// Set common states
-		SetDefaultPipelineState();
-		m_rhi_pipeline->SetPrimitiveTopology(PrimitiveTopology_LineList);
-		m_rhi_pipeline->SetShader(m_vps_color);
-		m_rhi_pipeline->SetSampler(m_sampler_point_clamp);
-		m_rhi_pipeline->SetRasterizerState(m_rasterizer_cull_back_wireframe);
+		// Begin command list
+		m_cmd_list->SetViewport(tex_out->GetViewport());
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_wireframe);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_LineList);
+		m_cmd_list->SetShaderVertex(m_vps_color);
+		m_cmd_list->SetShaderPixel(m_vps_color);
+		m_cmd_list->SetInputLayout(m_vps_color->GetInputLayout());
+		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		
 		// unjittered matrix to avoid TAA jitter due to lack of motion vectors (line rendering is anti-aliased by D3D11, decently)
 		const auto view_projection_unjittered = m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix();
 
 		// Draw lines that require depth
-		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_enabled);
-		m_rhi_pipeline->SetRenderTarget(tex_out, m_g_buffer_depth->GetDepthStencilView());
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
+		m_cmd_list->SetRenderTarget(tex_out, m_g_buffer_depth->GetDepthStencilView());
 		{
 			// Grid
 			if (draw_grid)
 			{
-				m_rhi_pipeline->SetIndexBuffer(m_gizmo_grid->GetIndexBuffer());
-				m_rhi_pipeline->SetVertexBuffer(m_gizmo_grid->GetVertexBuffer());
-				m_rhi_pipeline->SetBlendState(m_blend_enabled);
-				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * view_projection_unjittered);
-				m_rhi_pipeline->DrawIndexed(m_gizmo_grid->GetIndexCount(), 0, 0);
+				SetDefaultBuffer
+				(
+					static_cast<unsigned int>(m_resolution.x),
+					static_cast<unsigned int>(m_resolution.y),
+					m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * view_projection_unjittered, 
+					0.0f, Vector2::Zero, false
+				);
+				m_cmd_list->SetBufferIndex(m_gizmo_grid->GetIndexBuffer());
+				m_cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer());
+				m_cmd_list->SetBlendState(m_blend_enabled);
+				m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+				m_cmd_list->DrawIndexed(m_gizmo_grid->GetIndexCount(), 0, 0);
 			}
 
 			// Lines
@@ -984,17 +993,24 @@ namespace Directus
 				copy(m_lines_list_depth_enabled.begin(), m_lines_list_depth_enabled.end(), buffer);
 				m_vertex_buffer_lines->Unmap();
 
-				// Set pipeline state
-				m_rhi_pipeline->SetVertexBuffer(m_vertex_buffer_lines);
-				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), view_projection_unjittered);
-				m_rhi_pipeline->Draw(line_vertex_buffer_size);
+				SetDefaultBuffer
+				(
+					static_cast<unsigned int>(m_resolution.x),
+					static_cast<unsigned int>(m_resolution.y),
+					view_projection_unjittered,
+					0.0f, Vector2::Zero, false
+				);
+				m_cmd_list->SetBufferVertex(m_vertex_buffer_lines);
+				m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+				m_cmd_list->Draw(line_vertex_buffer_size);
 
 				m_lines_list_depth_enabled.clear();
 			}
 		}
 
 		// Draw lines that don't require depth
-		m_rhi_pipeline->SetRenderTarget(tex_out, nullptr);
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRenderTarget(tex_out);
 		{
 			// Lines
 			const auto line_vertex_buffer_size = static_cast<unsigned int>(m_lines_list_depth_disabled.size());
@@ -1012,16 +1028,17 @@ namespace Directus
 				m_vertex_buffer_lines->Unmap();
 
 				// Set pipeline state
-				m_rhi_pipeline->SetVertexBuffer(m_vertex_buffer_lines);
+				m_cmd_list->SetBufferVertex(m_vertex_buffer_lines);
 				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), view_projection_unjittered);
-				m_rhi_pipeline->Draw(line_vertex_buffer_size);
+				m_cmd_list->Draw(line_vertex_buffer_size);
 
 				m_lines_list_depth_disabled.clear();
 			}
 		}
 
-		m_rhi_device->EventEnd();
-		TIME_BLOCK_END(m_profiler);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_Gizmos(shared_ptr<RHI_RenderTexture>& tex_out)
