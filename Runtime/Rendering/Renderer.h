@@ -352,6 +352,7 @@ namespace Directus
 		Math::Matrix m_projection;
 		Math::Matrix m_projection_orthographic;
 		Math::Matrix m_view_projection;
+		Math::Matrix m_view_projection_inv;
 		Math::Matrix m_view_projection_orthographic;
 		Math::Vector2 m_taa_jitter;
 		Math::Vector2 m_taa_jitter_previous;
@@ -384,6 +385,7 @@ namespace Directus
 			Math::Matrix m_projection;
 			Math::Matrix m_projection_ortho;
 			Math::Matrix m_view_projection;
+			Math::Matrix m_view_projection_inv;
 			Math::Matrix m_view_projection_ortho;
 
 			float camera_near;

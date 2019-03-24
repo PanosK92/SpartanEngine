@@ -556,30 +556,29 @@ namespace Directus
 
 	void Renderer::Pass_SSAO(shared_ptr<RHI_RenderTexture>& tex_out)
 	{
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_rhi_device->EventBegin("Pass_SSAO");
+		m_cmd_list->Begin("Pass_SSAO");
 
-		SetDefaultPipelineState();
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-		m_rhi_pipeline->SetRenderTarget(tex_out);
-		m_rhi_pipeline->SetTexture(m_g_buffer_normal);
-		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
-		m_rhi_pipeline->SetTexture(m_tex_noise_normal);
-		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
-		m_rhi_pipeline->SetShader(m_vps_ssao);
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);	// SSAO (clamp)
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_wrap);	// SSAO noise texture (wrap)
-		auto buffer = Struct_Matrix_Matrix
-		(
-			m_view_projection_orthographic,
-			(m_view_projection).Inverted()
-		);
-		m_vps_ssao->UpdateBuffer(&buffer);
-		m_rhi_pipeline->SetConstantBuffer(m_vps_ssao->GetConstantBuffer(), 1, Buffer_Global);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		// Prepare resources
+		vector<void*> textures = { m_g_buffer_normal->GetShaderResource(), m_g_buffer_depth->GetShaderResource(), m_tex_noise_normal->GetShaderResource() };
+		vector<void*> samplers = { m_sampler_bilinear_clamp->GetBuffer() /*SSAO (clamp) */, m_sampler_bilinear_wrap->GetBuffer() /*SSAO noise texture (wrap)*/};
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), Matrix::Identity, 0.0f, Vector2::Zero, false);
 
-		m_rhi_device->EventEnd();
-		TIME_BLOCK_END(m_profiler);
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetRenderTarget(tex_out);	
+		m_cmd_list->SetViewport(tex_out->GetViewport());
+		m_cmd_list->SetShaderVertex(m_vs_quad);
+		m_cmd_list->SetShaderPixel(m_vps_ssao);
+		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+		m_cmd_list->SetTextures(0, textures);
+		m_cmd_list->SetSamplers(0, samplers);
+		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_BlurBox(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out, const float sigma)

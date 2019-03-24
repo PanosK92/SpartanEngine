@@ -5,6 +5,7 @@ cbuffer GlobalBuffer : register(b0)
 	matrix g_projection;
 	matrix g_projectionOrtho;
 	matrix g_viewProjection;
+	matrix g_viewProjectionInv;
 	matrix g_viewProjectionOrtho;
 	
 	float g_camera_near;
@@ -32,37 +33,5 @@ cbuffer GlobalBuffer : register(b0)
 	float g_toneMapping;
 	float g_exposure;
 };
-
-cbuffer ObjectBuffer : register(b1)
-{		
-	matrix mModel;
-	matrix mMVP_current;
-	matrix mMVP_previous;	
-};
-
-#define MaxLights 64
-cbuffer LightBuffer : register(b2)
-{
-    matrix mWorldViewProjection;
-    matrix mViewProjectionInverse;
-
-    float4 dirLightColor;
-    float4 dirLightIntensity;
-    float4 dirLightDirection;
-
-    float4 pointLightPosition[MaxLights];
-    float4 pointLightColor[MaxLights];
-    float4 pointLightIntenRange[MaxLights];
-	
-    float4 spotLightColor[MaxLights];
-    float4 spotLightPosition[MaxLights];
-    float4 spotLightDirection[MaxLights];
-    float4 spotLightIntenRangeAngle[MaxLights];
-	
-    float pointlightCount;
-    float spotlightCount;
-    float2 padding2;
-};
-//=============================================
 
 #define g_texelSize float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
