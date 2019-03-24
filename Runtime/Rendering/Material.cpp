@@ -23,10 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Renderer.h"
 #include "Deferred/ShaderVariation.h"
-#include "../RHI/RHI_Implementation.h"
 #include "../Resource/ResourceCache.h"
 #include "../IO/XmlDocument.h"
-#include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 //====================================
 

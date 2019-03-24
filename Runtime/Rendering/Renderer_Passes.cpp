@@ -362,6 +362,8 @@ namespace Directus
 		m_cmd_list->SetSamplers(0, samplers);
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
+		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -511,32 +513,37 @@ namespace Directus
 
 	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_RenderTexture>& tex_out, Light* light_directional_in)
 	{
-		if (!light_directional_in)
+		if (!light_directional_in || !light_directional_in->GetCastShadows())
 			return;
 
-		if (!light_directional_in->GetCastShadows())
-			return;
+		m_cmd_list->Begin("Pass_Shadowing");
 
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_rhi_device->EventBegin("Pass_Shadowing");
-
-		SetDefaultPipelineState();
-		m_rhi_pipeline->SetRenderTarget(tex_out);
-		m_rhi_pipeline->SetViewport(tex_out->GetViewport());
-		m_rhi_pipeline->SetShader(m_vps_shadow_mapping);
-		m_rhi_pipeline->SetTexture(m_g_buffer_normal);
-		m_rhi_pipeline->SetTexture(m_g_buffer_depth);
-		m_rhi_pipeline->SetTexture(light_directional_in->GetShadowMap()); // Texture2DArray
-		m_rhi_pipeline->SetSampler(m_sampler_compare_depth);
-		m_rhi_pipeline->SetSampler(m_sampler_bilinear_clamp);
-		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
+		// Prepare resources
+		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic, 0.0f, Vector2::Zero, false);
 		auto buffer = Struct_ShadowMapping((m_view_projection).Inverted(), light_directional_in, m_camera.get());
 		m_vps_shadow_mapping->UpdateBuffer(&buffer);
-		m_rhi_pipeline->SetConstantBuffer(m_vps_shadow_mapping->GetConstantBuffer(), 1, Buffer_Global);
-		m_rhi_pipeline->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		vector<void*> constant_buffers	= { m_buffer_global->GetBuffer(),  m_vps_shadow_mapping->GetConstantBuffer()->GetBuffer() };
+		vector<void*> textures			= { m_g_buffer_normal->GetShaderResource(), m_g_buffer_depth->GetShaderResource(), light_directional_in->GetShadowMap()->GetShaderResource() };
+		vector<void*> samplers			= { m_sampler_compare_depth->GetBuffer(), m_sampler_bilinear_clamp->GetBuffer() };
 
-		m_rhi_device->EventEnd();
-		TIME_BLOCK_END(m_profiler);
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetRenderTarget(tex_out);
+		m_cmd_list->SetViewport(tex_out->GetViewport());	
+		m_cmd_list->SetShaderVertex(m_vps_shadow_mapping);
+		m_cmd_list->SetShaderPixel(m_vps_shadow_mapping);
+		m_cmd_list->SetInputLayout(m_vps_shadow_mapping->GetInputLayout());
+		m_cmd_list->SetTextures(0, textures);
+		m_cmd_list->SetSamplers(0, samplers);
+		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
+		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_SSAO(shared_ptr<RHI_RenderTexture>& tex_out)
