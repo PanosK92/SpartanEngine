@@ -232,9 +232,9 @@ namespace Directus
 	private:
 		RHI_Command& GetCmd();
 		std::vector<RHI_Command> m_commands;
-		unsigned int m_initial_capacity = 1000;
+		unsigned int m_initial_capacity = 2500;
 		unsigned int m_command_count	= 0;
-		RHI_Device* m_rhi_device	= nullptr;
-		Profiler* m_profiler		= nullptr;
+		RHI_Device* m_rhi_device		= nullptr;
+		Profiler* m_profiler			= nullptr;
 	};
 }

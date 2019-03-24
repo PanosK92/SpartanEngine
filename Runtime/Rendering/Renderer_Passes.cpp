@@ -73,21 +73,31 @@ namespace Directus
 		if (entities.empty())
 			return;
 
-		TIME_BLOCK_START_MULTI(m_profiler);
-		m_rhi_device->EventBegin("Pass_DepthDirectionalLight");
-
-		// Set common states	
-		SetDefaultPipelineState();
-		m_rhi_pipeline->SetShader(m_vps_depth);
-		m_rhi_pipeline->SetViewport(shadow_map->GetViewport());
-		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_enabled);
-
+		// Begin command list
+		m_cmd_list->Begin("Pass_DepthDirectionalLight");
+		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
+		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+		m_cmd_list->SetBlendState(m_blend_disabled);
+		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+		m_cmd_list->SetShaderVertex(m_vps_depth);
+		m_cmd_list->SetShaderPixel(m_vps_depth);
+		m_cmd_list->SetInputLayout(m_vps_depth->GetInputLayout());
+		m_cmd_list->SetViewport(shadow_map->GetViewport());		
+		m_cmd_list->ClearRenderTarget(shadow_map->GetRenderTargetView(0), Vector4::Zero);
+		m_cmd_list->ClearRenderTarget(shadow_map->GetRenderTargetView(1), Vector4::Zero);
+		m_cmd_list->ClearRenderTarget(shadow_map->GetRenderTargetView(2), Vector4::Zero);
+		
 		// Variables that help reduce state changes
 		unsigned int currently_bound_geometry = 0;
+
+		auto clear_depth = Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
 		for (unsigned int i = 0; i < light_directional->GetShadowMap()->GetArraySize(); i++)
-		{
-			m_rhi_device->EventBegin("Pass_DepthDirectionalLight " + to_string(i));
-			m_rhi_pipeline->SetRenderTarget(shadow_map->GetRenderTargetView(i), shadow_map->GetDepthStencilView(), true);
+		{	
+			unsigned int cascade_index = i;
+
+			m_cmd_list->Begin("Cascade_" + to_string(cascade_index + 1));
+			m_cmd_list->SetRenderTarget(shadow_map->GetRenderTargetView(i), shadow_map->GetDepthStencilView());
+			m_cmd_list->ClearDepthStencil(shadow_map->GetDepthStencilView(), Clear_Depth, clear_depth);
 
 			for (const auto& entity : entities)
 			{
@@ -117,23 +127,23 @@ namespace Directus
 				// Bind geometry
 				if (currently_bound_geometry != model->GetResourceId())
 				{
-					m_rhi_pipeline->SetIndexBuffer(model->GetIndexBuffer());
-					m_rhi_pipeline->SetVertexBuffer(model->GetVertexBuffer());
+					m_cmd_list->SetBufferIndex(model->GetIndexBuffer());
+					m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
 					currently_bound_geometry = model->GetResourceId();
 				}
 
-				SetDefaultBuffer(
-					static_cast<unsigned int>(m_resolution.x),
-					static_cast<unsigned int>(m_resolution.y),
-					entity->GetTransform_PtrRaw()->GetMatrix() * light_directional->GetViewMatrix() * light_directional->ShadowMap_GetProjectionMatrix(i)
-				);
-				m_rhi_pipeline->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
-			}
-			m_rhi_device->EventEnd();
-		}
+				// Update constant buffer
+				Transform* transform = entity->GetTransform_PtrRaw();
+				transform->UpdateConstantBufferLight(m_rhi_device, light_directional->GetViewMatrix() * light_directional->ShadowMap_GetProjectionMatrix(cascade_index), cascade_index);
+				m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, transform->GetConstantBufferLight(cascade_index));
 
-		m_rhi_device->EventEnd();
-		TIME_BLOCK_END(m_profiler);
+				m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+			}
+			m_cmd_list->End(); // end of cascade
+		}
+		m_cmd_list->End();
+		m_cmd_list->Submit();
+		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_GBuffer()
@@ -143,18 +153,16 @@ namespace Directus
 
 		m_cmd_list->Begin("Pass_GBuffer");
 
-		auto& viewport		= m_g_buffer_albedo->GetViewport();
 		const auto depth	= Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
-		Vector4 clear_color = Vector4(0, 0, 0, 0);
-		Vector4 clear_depth = Vector4(depth, depth, 0, 0);
+		Vector4 clear_color	= Vector4::Zero;
 		
 		// If there is nothing to render, just clear
 		if (m_entities[Renderable_ObjectOpaque].empty())
 		{
-			m_cmd_list->ClearRenderTarget(m_g_buffer_albedo->GetRenderTargetView(), clear_color);
-			m_cmd_list->ClearRenderTarget(m_g_buffer_normal->GetRenderTargetView(), clear_color);
-			m_cmd_list->ClearRenderTarget(m_g_buffer_material->GetRenderTargetView(), clear_color); // zeroed material buffer causes sky sphere to render
-			m_cmd_list->ClearRenderTarget(m_g_buffer_velocity->GetRenderTargetView(), clear_color);
+			m_cmd_list->ClearRenderTarget(m_g_buffer_albedo->GetRenderTargetView(), Vector4::Zero);
+			m_cmd_list->ClearRenderTarget(m_g_buffer_normal->GetRenderTargetView(), Vector4::Zero);
+			m_cmd_list->ClearRenderTarget(m_g_buffer_material->GetRenderTargetView(), Vector4::Zero); // zeroed material buffer causes sky sphere to render
+			m_cmd_list->ClearRenderTarget(m_g_buffer_velocity->GetRenderTargetView(), Vector4::Zero);
 			m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);
 			m_cmd_list->End();
 			m_cmd_list->Submit();
@@ -180,12 +188,12 @@ namespace Directus
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
 		m_cmd_list->SetRenderTargets(render_targets, m_g_buffer_depth->GetDepthStencilView());
+		m_cmd_list->SetViewport(m_g_buffer_albedo->GetViewport());
 		m_cmd_list->ClearRenderTarget(render_targets[0], clear_color);
 		m_cmd_list->ClearRenderTarget(render_targets[1], clear_color);
 		m_cmd_list->ClearRenderTarget(render_targets[2], clear_color);
 		m_cmd_list->ClearRenderTarget(render_targets[3], clear_color);
-		m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);
-		m_cmd_list->SetViewport(viewport);
+		m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);		
 		m_cmd_list->SetShaderVertex(m_vs_gbuffer);
 		m_cmd_list->SetInputLayout(m_vs_gbuffer->GetInputLayout());
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -242,7 +250,7 @@ namespace Directus
 			// Bind material
 			if (currently_bound_material != material->GetResourceId())
 			{
-				// Textures
+				// Bind material textures
 				textures[0] = material->GetTextureShaderResourceByType(TextureType_Albedo);
 				textures[1] = material->GetTextureShaderResourceByType(TextureType_Roughness);
 				textures[2] = material->GetTextureShaderResourceByType(TextureType_Metallic);
@@ -253,14 +261,14 @@ namespace Directus
 				textures[7] = material->GetTextureShaderResourceByType(TextureType_Mask);
 				m_cmd_list->SetTextures(0, textures);
 
-				// Constant buffer
+				// Bind material buffer
 				material->UpdateConstantBuffer();
 				m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, material->GetConstantBuffer());
 
 				currently_bound_material = material->GetResourceId();
 			}
 
-			// Bind transform
+			// Bind object buffer
 			Transform* transform = entity->GetTransform_PtrRaw();
 			transform->UpdateConstantBuffer(m_rhi_device, m_view_projection);
 			m_cmd_list->SetConstantBuffer(2, Buffer_VertexShader, transform->GetConstantBuffer());
@@ -1083,7 +1091,7 @@ namespace Directus
 					m_cmd_list->SetTexture(0, light_tex);
 					m_cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
 					m_cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
-					m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+					m_cmd_list->DrawIndexed(m_gizmo_light_rect.GetIndexCount(), 0, 0);
 				}
 
 				m_cmd_list->End();

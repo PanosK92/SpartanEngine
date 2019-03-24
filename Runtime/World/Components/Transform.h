@@ -104,9 +104,12 @@ namespace Directus
 		Math::Matrix& GetMatrix()			{ return m_matrix; }
 		Math::Matrix& GetLocalMatrix()		{ return m_matrixLocal; }
 
-		// Constant buffer
-		void UpdateConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& m_view_projection);
-		const auto& GetConstantBuffer() { return m_constant_buffer_gpu; }
+		//= CONSTANT BUFFERS ==========================================================================================================================
+		void UpdateConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection);
+		const auto& GetConstantBuffer() { return m_cb_gbuffer_gpu; }
+		void UpdateConstantBufferLight(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection, unsigned int cascade_index);
+		const auto& GetConstantBufferLight(unsigned int cascade_index) { return m_light_cascades[cascade_index].buffer; }
+		//=============================================================================================================================================
 
 	private:
 		Math::Matrix GetParentTransformMatrix() const;
@@ -124,14 +127,22 @@ namespace Directus
 		std::vector<Transform*> m_children; // the children of this transform
 
 		// Constant buffer
-		struct ConstantBufferData
+		struct CB_Gbuffer
 		{
 			Math::Matrix model;
 			Math::Matrix mvp_current;
 			Math::Matrix mvp_previous;
 		};
-		ConstantBufferData m_constant_buffer_cpu;
-		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer_gpu;
+		CB_Gbuffer m_cb_gbuffer_cpu;
+		std::shared_ptr<RHI_ConstantBuffer> m_cb_gbuffer_gpu;
 		Math::Matrix m_wvp_previous;
+
+		// Constant buffer
+		struct LightCascade
+		{
+			Math::Matrix data;
+			std::shared_ptr<RHI_ConstantBuffer> buffer;
+		};
+		std::vector<LightCascade> m_light_cascades;
 	};
 }
