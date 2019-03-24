@@ -17,21 +17,20 @@ cbuffer GlobalBuffer : register(b0)
 	
 	float g_fxaa_edgeThreshold;
     float g_fxaa_edgeThresholdMin;	
-	float2 g_blur_direction;
-	
-	float g_blur_sigma;
 	float g_bloom_intensity;
 	float g_sharpen_strength;
-	float g_sharpen_clamp;
 	
+	float g_sharpen_clamp;	
 	float g_motionBlur_strength;
 	float g_fps_current;		
 	float g_fps_target;
-	float g_gamma;
 	
+	float g_gamma;	
 	float2 g_taa_jitterOffset;
 	float g_toneMapping;
+	
 	float g_exposure;
+	float3 g_padding;
 };
 
 #define g_texelSize float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
