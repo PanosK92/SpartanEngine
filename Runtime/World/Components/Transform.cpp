@@ -374,36 +374,57 @@ namespace Directus
 		}
 	}
 
-	void Transform::UpdateConstantBuffer(const shared_ptr<RHI_Device>& rhi_device, const Matrix& m_view_projection)
+	void Transform::UpdateConstantBuffer(const shared_ptr<RHI_Device>& rhi_device, const Matrix& view_projection)
 	{
 		// Has to match GBuffer.hlsl
-		if (!m_constant_buffer_gpu)
+		if (!m_cb_gbuffer_gpu)
 		{
-			m_constant_buffer_gpu = make_shared<RHI_ConstantBuffer>(rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferData)));
+			m_cb_gbuffer_gpu = make_shared<RHI_ConstantBuffer>(rhi_device, static_cast<unsigned int>(sizeof(CB_Gbuffer)));
 		}
 
-		auto m_mvp_current = m_matrix * m_view_projection;
-
-		// Determine if the material buffer needs to update
-		auto update = false;
-		update		= m_constant_buffer_cpu.model != m_matrix ? true : update;
-
-		bool new_input		= m_constant_buffer_cpu.mvp_current != m_mvp_current;
-		bool non_zero_delta = m_constant_buffer_cpu.mvp_current != m_constant_buffer_cpu.mvp_previous;
+		auto mvp_current = m_matrix * view_projection;
+	
+		// Determine if the buffer needs to update
+		auto update	= false;
+		update				= m_cb_gbuffer_cpu.model		!= m_matrix	? true : update;
+		bool new_input		= m_cb_gbuffer_cpu.mvp_current	!= mvp_current;
+		bool non_zero_delta = m_cb_gbuffer_cpu.mvp_current	!= m_cb_gbuffer_cpu.mvp_previous;
 		update				= new_input || non_zero_delta ? true : update;
-
 		if (!update)
 			return;
 
-		auto buffer = static_cast<ConstantBufferData*>(m_constant_buffer_gpu->Map());
+		// Update buffer
+		auto buffer = static_cast<CB_Gbuffer*>(m_cb_gbuffer_gpu->Map());
 
-		buffer->model			= m_constant_buffer_cpu.model			= m_matrix;
-		buffer->mvp_current		= m_constant_buffer_cpu.mvp_current		= m_mvp_current;
-		buffer->mvp_previous	= m_constant_buffer_cpu.mvp_previous	= m_wvp_previous;
+		buffer->model			= m_cb_gbuffer_cpu.model		= m_matrix;
+		buffer->mvp_current		= m_cb_gbuffer_cpu.mvp_current	= mvp_current;
+		buffer->mvp_previous	= m_cb_gbuffer_cpu.mvp_previous	= m_wvp_previous;
 
-		m_constant_buffer_gpu->Unmap();
+		m_cb_gbuffer_gpu->Unmap();
 
-		m_wvp_previous = m_mvp_current;
+		m_wvp_previous = mvp_current;
+	}
+
+	void Transform::UpdateConstantBufferLight(const shared_ptr<RHI_Device>& rhi_device, const Matrix& view_projection, unsigned int cascade_index)
+	{
+		// Has to match GBuffer.hlsl
+		if (cascade_index >=  static_cast<unsigned int>(m_light_cascades.size()))
+		{
+			LightCascade cb_light;
+			cb_light.buffer = make_shared<RHI_ConstantBuffer>(rhi_device, static_cast<unsigned int>(sizeof(Matrix)));
+			m_light_cascades.emplace_back(cb_light);
+		}
+		auto& cb_light = m_light_cascades[cascade_index];
+
+		// Determine if the buffer needs to update
+		auto mvp = m_matrix * view_projection;
+		if (cb_light.data == mvp)
+			return;
+
+		// Update buffer
+		Matrix& data = *static_cast<Matrix*>(cb_light.buffer->Map());
+		data = mvp;
+		cb_light.buffer->Unmap();
 	}
 
 	Matrix Transform::GetParentTransformMatrix() const

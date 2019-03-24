@@ -67,8 +67,8 @@ namespace Directus
 		void SetLightType(LightType type);
 
 		void SetColor(float r, float g, float b, float a)	{ m_color = Math::Vector4(r, g, b, a); }
-		void SetColor(Math::Vector4 color)					{ m_color = color; }
-		Math::Vector4 GetColor()							{ return m_color; }
+		void SetColor(const Math::Vector4& color)			{ m_color = color; }
+		const Math::Vector4& GetColor()						{ return m_color; }
 
 		void SetIntensity(float value) { m_intensity = value; }
 		float GetIntensity() { return m_intensity; }
@@ -91,7 +91,7 @@ namespace Directus
 		Math::Vector3 GetDirection();
 		void ClampRotation();
 
-		Math::Matrix GetViewMatrix() { return m_viewMatrix; }
+		const Math::Matrix& GetViewMatrix() { return m_viewMatrix; }
 
 		// Shadow maps
 		const Math::Matrix& ShadowMap_GetProjectionMatrix(unsigned int index = 0);	

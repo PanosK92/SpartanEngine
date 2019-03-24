@@ -34,7 +34,7 @@ cbuffer ObjectBuffer : register(b2)
 {		
 	matrix mModel;
 	matrix mMVP_current;
-	matrix mMVP_previous;	
+	matrix mMVP_previous;
 };
 
 struct PixelInputType

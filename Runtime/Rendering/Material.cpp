@@ -351,7 +351,7 @@ namespace Directus
 			m_constant_buffer_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferData)));
 		}
 
-		// Determine if the material buffer needs to update
+		// Determine if the buffer needs to update
 		auto update = false;
 		update = m_constant_buffer_cpu.mat_albedo			!= GetColorAlbedo() 		? true : update;
 		update = m_constant_buffer_cpu.mat_tiling_uv		!= GetTiling()				? true : update;

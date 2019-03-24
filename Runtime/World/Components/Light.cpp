@@ -187,7 +187,7 @@ namespace Directus
 		Vector3 lookAt			= position + lightDirection;
 		Vector3 up				= Vector3::Up;
 
-		// Create the view matrix
+		// Create view matrix
 		m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
 	}
 
@@ -204,8 +204,7 @@ namespace Directus
 		if (!m_renderer->GetCamera() || index >= m_shadowMap->GetArraySize())
 			return false;
 
-		float camera_far			= m_renderer->GetCamera()->GetFarPlane();
-		const Matrix& camera_view	= m_renderer->GetCamera()->GetViewMatrix();
+		float camera_far = m_renderer->GetCamera()->GetFarPlane();
 
 		vector<float> extents =
 		{
