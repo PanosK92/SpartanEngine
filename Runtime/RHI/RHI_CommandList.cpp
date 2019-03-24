@@ -254,12 +254,12 @@ namespace Directus
 		cmd.textures.emplace_back(texture);
 	}
 
-	void RHI_CommandList::SetTexture(unsigned int start_slot, shared_ptr<RHI_Texture>& texture)
+	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_Texture>& texture)
 	{
 		SetTexture(start_slot, texture->GetShaderResource());
 	}
 
-	void RHI_CommandList::SetTexture(unsigned int start_slot, shared_ptr<RHI_RenderTexture>& texture)
+	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_RenderTexture>& texture)
 	{
 		SetTexture(start_slot, texture->GetShaderResource());
 	}

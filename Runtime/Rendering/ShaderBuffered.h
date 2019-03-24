@@ -250,7 +250,7 @@ namespace Directus
 		template <typename T>
 		void AddBuffer()
 		{
-			m_buffers.emplace_back(std::make_shared<RHI_ConstantBuffer>(m_rhi_device, sizeof(T)));
+			m_buffers.emplace_back(std::make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(T))));
 		}
 		
 		bool UpdateBuffer(void* data, unsigned int index = 0) const;
