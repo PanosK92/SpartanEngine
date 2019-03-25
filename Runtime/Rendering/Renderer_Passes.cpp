@@ -327,8 +327,6 @@ namespace Directus
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-		m_cmd_list->SetShaderVertex(m_vs_quad);
-		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
 
 		// Shadow mapping + Blur
 		auto shadow_mapped = false;
@@ -609,6 +607,8 @@ namespace Directus
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
 		m_cmd_list->SetRenderTarget(tex_out);	
 		m_cmd_list->SetViewport(tex_out->GetViewport());
+		m_cmd_list->SetShaderVertex(m_vs_quad);
+		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
 		m_cmd_list->SetShaderPixel(m_vps_ssao);
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetSamplers(0, samplers);
@@ -705,6 +705,8 @@ namespace Directus
 		// Start command list
 		m_cmd_list->Begin("Pass_BlurBilateralGaussian");
 		m_cmd_list->SetViewport(tex_out->GetViewport());	
+		m_cmd_list->SetShaderVertex(m_vs_quad);
+		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
 		m_cmd_list->SetShaderPixel(m_ps_blur_gaussian_bilateral);	
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);

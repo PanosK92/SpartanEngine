@@ -208,8 +208,8 @@ namespace Directus
 
 		vector<float> extents =
 		{
-			10,
-			40,
+			5,
+			20,
 			camera_far * 0.5f
 		};
 		float extent = extents[index];
