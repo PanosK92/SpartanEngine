@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <unordered_map>
 #include "../Core/ISubsystem.h"
-#include "../RHI/RHI_Definition.h"
-#include "../RHI/RHI_Pipeline.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector2.h"
 #include "../Math/Rectangle.h"
 #include "../Core/Settings.h"
+#include "../RHI/RHI_Definition.h"
+#include "../RHI/RHI_Viewport.h"
 //================================
 
 namespace Directus
@@ -47,6 +47,8 @@ namespace Directus
 	class Transform_Gizmo;
 	class ShaderLight;
 	class ShaderBuffered;
+	class Profiler;
+
 	namespace Math
 	{
 		class BoundingBox;
@@ -190,13 +192,13 @@ namespace Directus
 		void CreateShaders();
 		void CreateSamplers();
 		void CreateRenderTextures();
-		void SetDefaultPipelineState() const;
-		void SetDefaultBuffer(unsigned int resolution_width, unsigned int resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity, bool bind = true) const;
+		void SetDefaultBuffer(unsigned int resolution_width, unsigned int resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity) const;
 		void RenderablesAcquire(const Variant& renderables);
 		void RenderablesSort(std::vector<Entity*>* renderables);
 		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
 
 		//= PASSES ===========================================================================================================================================================================
+		void Pass_Main();
 		void Pass_DepthDirectionalLight(Light* light_directional);
 		void Pass_GBuffer();
 		void Pass_PreLight(std::shared_ptr<RHI_RenderTexture>& tex_in,				std::shared_ptr<RHI_RenderTexture>& tex_shadows_out,	std::shared_ptr<RHI_RenderTexture>& tex_ssao_out);
@@ -336,7 +338,6 @@ namespace Directus
 		//= CORE ================================================
 		Math::Rectangle m_quad;
 		std::shared_ptr<RHI_Device> m_rhi_device;
-		std::shared_ptr<RHI_Pipeline> m_rhi_pipeline;
 		std::shared_ptr<RHI_CommandList> m_cmd_list;
 		std::shared_ptr<RHI_SwapChain> m_swap_chain;
 		std::unique_ptr<Font> m_font;	

@@ -83,7 +83,7 @@ namespace Directus
 		// Track the Renderer time block (so we can derive GPU time later)
 		if (!m_time_block_render)
 		{
-			if (func_name == "Directus::Renderer::Tick")
+			if (func_name == "Render")
 			{
 				m_time_block_render = &time_block;
 			}
