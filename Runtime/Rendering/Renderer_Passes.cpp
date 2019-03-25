@@ -1151,107 +1151,105 @@ namespace Directus
 		m_cmd_list->SetViewport(tex_out->GetViewport());	
 		m_cmd_list->SetRenderTarget(tex_out);
 
-		if (render_lights)
+		auto& lights = m_entities[Renderable_Light];
+		if (render_lights && !lights.empty())
 		{
-			auto& lights = m_entities[Renderable_Light];
-			if (!lights.empty())
+			m_cmd_list->Begin("Pass_Gizmos_Lights");
+
+			for (const auto& entity : lights)
 			{
-				m_cmd_list->Begin("Pass_Gizmos_Lights");
+				auto position_light_world		= entity->GetTransform_PtrRaw()->GetPosition();
+				auto position_camera_world		= m_camera->GetTransform()->GetPosition();
+				auto direction_camera_to_light	= (position_light_world - position_camera_world).Normalized();
+				auto v_dot_l					= Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
+
+				// Don't bother drawing if out of view
+				if (v_dot_l <= 0.5f)
+					continue;
+
+				// Compute light screen space position and scale (based on distance from the camera)
+				auto position_light_screen	= m_camera->WorldToScreenPoint(position_light_world);
+				auto distance				= (position_camera_world - position_light_world).Length() + M_EPSILON;
+				auto scale					= GIZMO_MAX_SIZE / distance;
+				scale						= Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
+
+				// Choose texture based on light type
+				shared_ptr<RHI_Texture> light_tex = nullptr;
+				auto type = entity->GetComponent<Light>()->GetLightType();
+				if (type == LightType_Directional)	light_tex = m_gizmo_tex_light_directional;
+				else if (type == LightType_Point)	light_tex = m_gizmo_tex_light_point;
+				else if (type == LightType_Spot)	light_tex = m_gizmo_tex_light_spot;
+
+				// Construct appropriate rectangle
+				auto tex_width = light_tex->GetWidth() * scale;
+				auto tex_height = light_tex->GetHeight() * scale;
+				auto rectangle = Rectangle(position_light_screen.x - tex_width * 0.5f, position_light_screen.y - tex_height * 0.5f, tex_width, tex_height);
+				if (rectangle != m_gizmo_light_rect)
+				{
+					m_gizmo_light_rect = rectangle;
+					m_gizmo_light_rect.CreateBuffers(this);
+				}
+
+				SetDefaultBuffer(static_cast<unsigned int>(tex_width), static_cast<unsigned int>(tex_width), m_view_projection_orthographic);
+
+				
 				m_cmd_list->SetShaderVertex(m_vs_quad);
 				m_cmd_list->SetShaderPixel(m_ps_texture);
 				m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
 				m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-
-				for (const auto& entity : lights)
-				{
-					auto position_light_world		= entity->GetTransform_PtrRaw()->GetPosition();
-					auto position_camera_world		= m_camera->GetTransform()->GetPosition();
-					auto direction_camera_to_light	= (position_light_world - position_camera_world).Normalized();
-					auto v_dot_l					= Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
-
-					// Don't bother drawing if out of view
-					if (v_dot_l <= 0.5f)
-						continue;
-
-					// Compute light screen space position and scale (based on distance from the camera)
-					auto position_light_screen	= m_camera->WorldToScreenPoint(position_light_world);
-					auto distance				= (position_camera_world - position_light_world).Length() + M_EPSILON;
-					auto scale					= GIZMO_MAX_SIZE / distance;
-					scale						= Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
-
-					// Choose texture based on light type
-					shared_ptr<RHI_Texture> light_tex = nullptr;
-					auto type = entity->GetComponent<Light>()->GetLightType();
-					if (type == LightType_Directional)	light_tex = m_gizmo_tex_light_directional;
-					else if (type == LightType_Point)	light_tex = m_gizmo_tex_light_point;
-					else if (type == LightType_Spot)	light_tex = m_gizmo_tex_light_spot;
-
-					// Construct appropriate rectangle
-					auto tex_width = light_tex->GetWidth() * scale;
-					auto tex_height = light_tex->GetHeight() * scale;
-					auto rectangle = Rectangle(position_light_screen.x - tex_width * 0.5f, position_light_screen.y - tex_height * 0.5f, tex_width, tex_height);
-					if (rectangle != m_gizmo_light_rect)
-					{
-						m_gizmo_light_rect = rectangle;
-						m_gizmo_light_rect.CreateBuffers(this);
-					}
-
-					SetDefaultBuffer(static_cast<unsigned int>(tex_width), static_cast<unsigned int>(tex_width), m_view_projection_orthographic);
-					m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-					m_cmd_list->SetTexture(0, light_tex);
-					m_cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
-					m_cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
-					m_cmd_list->DrawIndexed(m_gizmo_light_rect.GetIndexCount(), 0, 0);
-				}
-
-				m_cmd_list->End();
+				m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+				m_cmd_list->SetTexture(0, light_tex);
+				m_cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
+				m_cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
+				m_cmd_list->DrawIndexed(m_gizmo_light_rect.GetIndexCount(), 0, 0);			
+				m_cmd_list->Submit();
+				m_cmd_list->Clear();
 			}
+			m_cmd_list->End();
 		}
 
 		// Transform
-		if (render_transform)
+		if (render_transform && m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
 		{
-			if (m_gizmo_transform->Update(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
+			m_cmd_list->Begin("Pass_Gizmos_Transform");
+
+			SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), m_view_projection_orthographic);
+
+			m_cmd_list->SetShaderVertex(m_vps_gizmo_transform);
+			m_cmd_list->SetShaderPixel(m_vps_gizmo_transform);
+			m_cmd_list->SetInputLayout(m_vps_gizmo_transform->GetInputLayout());
+			m_cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
+			m_cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
+			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+
+			// Axis - X
+			auto buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Right), m_gizmo_transform->GetHandle().GetColor(Vector3::Right));
+			m_vps_gizmo_transform->UpdateBuffer(&buffer, 0);
+			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(0));
+			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+
+			// Axis - Y
+			buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Up), m_gizmo_transform->GetHandle().GetColor(Vector3::Up));
+			m_vps_gizmo_transform->UpdateBuffer(&buffer, 1);
+			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(1));
+			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+
+			// Axis - Z
+			buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward), m_gizmo_transform->GetHandle().GetColor(Vector3::Forward));
+			m_vps_gizmo_transform->UpdateBuffer(&buffer, 2);
+			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(2));
+			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
+
+			// Axes - XYZ
+			if (m_gizmo_transform->DrawXYZ())
 			{
-				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), m_view_projection_orthographic);
-
-				m_cmd_list->Begin("Pass_Gizmos_Transform");
-				m_cmd_list->SetShaderVertex(m_vps_gizmo_transform);
-				m_cmd_list->SetShaderPixel(m_vps_gizmo_transform);
-				m_cmd_list->SetInputLayout(m_vps_gizmo_transform->GetInputLayout());
-				m_cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
-				m_cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
-				m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-
-				// Axis - X
-				auto buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Right), m_gizmo_transform->GetHandle().GetColor(Vector3::Right));
-				m_vps_gizmo_transform->UpdateBuffer(&buffer, 0);
-				m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(0));
+				buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::One), m_gizmo_transform->GetHandle().GetColor(Vector3::One));
+				m_vps_gizmo_transform->UpdateBuffer(&buffer, 3);
+				m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(3));
 				m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
-
-				// Axis - Y
-				buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Up), m_gizmo_transform->GetHandle().GetColor(Vector3::Up));
-				m_vps_gizmo_transform->UpdateBuffer(&buffer, 1);
-				m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(1));
-				m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
-
-				// Axis - Z
-				buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward), m_gizmo_transform->GetHandle().GetColor(Vector3::Forward));
-				m_vps_gizmo_transform->UpdateBuffer(&buffer, 2);
-				m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(2));
-				m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
-
-				// Axes - XYZ
-				if (m_gizmo_transform->DrawXYZ())
-				{
-					buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::One), m_gizmo_transform->GetHandle().GetColor(Vector3::One));
-					m_vps_gizmo_transform->UpdateBuffer(&buffer, 3);
-					m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(3));
-					m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
-				}
-
-				m_cmd_list->End();
 			}
+
+			m_cmd_list->End();
 		}
 
 		m_cmd_list->End();
