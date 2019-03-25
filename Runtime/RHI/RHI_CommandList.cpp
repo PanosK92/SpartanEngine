@@ -264,6 +264,11 @@ namespace Directus
 		SetTexture(start_slot, texture->GetShaderResource());
 	}
 
+	void RHI_CommandList::ClearTextures()
+	{
+		SetTextures(0, m_textures_empty);
+	}
+
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
 	{
 		RHI_Command& cmd	= GetCmd();

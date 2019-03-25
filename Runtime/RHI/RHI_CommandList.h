@@ -219,6 +219,7 @@ namespace Directus
 		void SetTexture(unsigned int start_slot, void* texture);
 		void SetTexture(unsigned int start_slot, const std::shared_ptr<RHI_Texture>& texture);
 		void SetTexture(unsigned int start_slot, const std::shared_ptr<RHI_RenderTexture>& texture);
+		void ClearTextures();
 
 		void SetRenderTargets(const std::vector<void*>& render_targets, void* depth_stencil = nullptr);
 		void SetRenderTarget(void* render_target, void* depth_stencil = nullptr);
@@ -232,9 +233,10 @@ namespace Directus
 	private:
 		RHI_Command& GetCmd();
 		std::vector<RHI_Command> m_commands;
-		unsigned int m_initial_capacity = 2500;
-		unsigned int m_command_count	= 0;
-		RHI_Device* m_rhi_device		= nullptr;
-		Profiler* m_profiler			= nullptr;
+		unsigned int m_initial_capacity		= 2500;
+		unsigned int m_command_count		= 0;
+		std::vector<void*> m_textures_empty = std::vector<void*>(10);
+		RHI_Device* m_rhi_device			= nullptr;
+		Profiler* m_profiler				= nullptr;
 	};
 }

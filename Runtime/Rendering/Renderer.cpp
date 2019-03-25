@@ -85,9 +85,6 @@ namespace Directus
 			return;
 		}
 
-		// Create pipeline
-		m_rhi_pipeline = make_shared<RHI_Pipeline>(m_context, m_rhi_device);
-
 		// Create command list
 		m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device.get(), m_context->GetSubsystem<Profiler>().get());
 
@@ -136,7 +133,8 @@ namespace Directus
 	{
 		// Create/Get required systems		
 		g_resource_cache	= m_context->GetSubsystem<ResourceCache>().get();
-		m_profiler			= m_context->GetSubsystem<Profiler>().get();
+
+		m_profiler = m_context->GetSubsystem<Profiler>().get();
 
 		// Editor specific
 		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
@@ -156,7 +154,6 @@ namespace Directus
 		CreateShaders();
 		CreateSamplers();
 		CreateTextures();
-		SetDefaultPipelineState();
 
 		return true;
 	}
@@ -284,6 +281,7 @@ namespace Directus
 		// Transform gizmo
 		m_vps_gizmo_transform = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_gizmo_transform->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl", Input_PositionTextureNormalTangent);
+		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
 		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
 		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
 		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
@@ -429,20 +427,6 @@ namespace Directus
 		m_sampler_anisotropic_wrap	= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Anisotropic,			Sampler_Address_Wrap,	Comparison_Always);
 	}
 
-	void Renderer::SetDefaultPipelineState() const
-	{
-		if (!m_rhi_pipeline)
-			return;
-
-		m_rhi_pipeline->Clear();
-		m_rhi_pipeline->SetViewport(m_viewport);
-		m_rhi_pipeline->SetDepthStencilState(m_depth_stencil_disabled);
-		m_rhi_pipeline->SetRasterizerState(m_rasterizer_cull_back_solid);
-		m_rhi_pipeline->SetBlendState(m_blend_disabled);
-		m_rhi_pipeline->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		m_rhi_pipeline->Bind();
-	}
-
 	shared_ptr<Entity>& Renderer::SnapTransformGizmoTo(shared_ptr<Entity>& entity) const
 	{
 		return m_gizmo_transform->SetSelectedEntity(entity);
@@ -478,7 +462,6 @@ namespace Directus
 		m_frame_num++;
 		m_is_odd_frame = (m_frame_num % 2) == 1;
 		m_profiler->Reset();
-		TIME_BLOCK_START_MULTI(m_profiler);
 
 		// Get camera matrices
 		{
@@ -513,36 +496,9 @@ namespace Directus
 			m_view_projection_orthographic	= m_view_base * m_projection_orthographic;
 		}
 
-		Pass_DepthDirectionalLight(GetLightDirectional());
-		
-		Pass_GBuffer();
-
-		Pass_PreLight(
-			m_render_tex_half_spare,	// IN:	
-			m_render_tex_half_shadows,	// OUT: Shadows
-			m_render_tex_half_ssao		// OUT: DO
-		);
-
-		Pass_Light(
-			m_render_tex_half_shadows,	// IN:	Shadows
-			m_render_tex_half_ssao,		// IN:	SSAO
-			m_render_tex_full_hdr_light	// Out: Result
-		);
-
-		Pass_Transparent(m_render_tex_full_hdr_light);
-
-		Pass_PostLight(
-			m_render_tex_full_hdr_light,	// IN:	Light pass result
-			m_render_tex_full_hdr_light2	// OUT: Result
-		);
-	
-		Pass_Lines(m_render_tex_full_hdr_light2);
-		Pass_Gizmos(m_render_tex_full_hdr_light2);
-		Pass_DebugBuffer(m_render_tex_full_hdr_light2);	
-		Pass_PerformanceMetrics(m_render_tex_full_hdr_light2);
+		Pass_Main();
 
 		m_is_rendering = false;
-		TIME_BLOCK_END(m_profiler);
 	}
 
 	void Renderer::SetResolution(unsigned int width, unsigned int height)
@@ -606,7 +562,7 @@ namespace Directus
 		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
-	void Renderer::SetDefaultBuffer(const unsigned int resolution_width, const unsigned int resolution_height, const Matrix& mMVP, bool bind) const
+	void Renderer::SetDefaultBuffer(const unsigned int resolution_width, const unsigned int resolution_height, const Matrix& mMVP) const
 	{
 		auto buffer = static_cast<ConstantBufferGlobal*>(m_buffer_global->Map());
 		if (!buffer)
@@ -641,10 +597,6 @@ namespace Directus
 		buffer->gamma					= m_gamma;
 
 		m_buffer_global->Unmap();
-		if (bind)
-		{
-			m_rhi_pipeline->SetConstantBuffer(m_buffer_global, 0, Buffer_Global);
-		}
 	}
 
 	void Renderer::RenderablesAcquire(const Variant& entities_variant)
