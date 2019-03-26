@@ -600,12 +600,12 @@ namespace Directus
 			return 0.0f;
 
 		// Get the query data		
-		UINT64 start_time = 0;
-		UINT64 end_time = 0;
+		UINT64 start_time	= 0;
+		UINT64 end_time		= 0;
 		D3D11Instance::device->GetData(static_cast<ID3D11Query*>(query_start), &start_time, sizeof(start_time), 0);
 		D3D11Instance::device->GetData(static_cast<ID3D11Query*>(query_end), &end_time, sizeof(end_time), 0);
 
-		// Compute delta in milliseconds
+		// Convert to real time
 		const auto delta		= end_time - start_time;
 		const auto duration_ms	= (delta * 1000.0f) / static_cast<float>(disjoint_data.Frequency);
 
