@@ -47,9 +47,10 @@ namespace Directus
 		m_query_end		= nullptr;
 	}
 
-	void TimeBlock::Start(const string& name, bool profile_cpu /*= false*/, bool profile_gpu /*= false*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
+	void TimeBlock::Start(const string& name, bool profile_cpu /*= false*/, bool profile_gpu /*= false*/, const TimeBlock* parent /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
 	{
 		m_name			= name;
+		m_parent		= parent;
 		m_rhi_device	= rhi_device.get();
 
 		if (profile_cpu)
@@ -123,6 +124,7 @@ namespace Directus
 	void TimeBlock::Clear()
 	{
 		m_name.clear();
+		m_parent		= nullptr;
 		m_is_complete	= false;
 		m_has_started	= false;
 		m_duration_cpu	= 0.0f;

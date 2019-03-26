@@ -66,15 +66,18 @@ namespace Directus
 		if (!can_profile_cpu && !can_profile_gpu)
 			return false;
 
-		TimeBlock& time_block = GetTimeBlockForStart();
-		time_block.Start(func_name, can_profile_cpu, can_profile_gpu, m_renderer->GetRhiDevice());
-
-		// Track the Renderer time block (so we can derive GPU time later)
-		if (!m_time_block_render)
+		if (auto time_block = GetTimeBlockEmpty())
 		{
-			if (func_name == "Render")
+			auto time_block_parent = nullptr; //GetTimeBlockIncomplete(); // wrong, fix tonight
+			time_block->Start(func_name, can_profile_cpu, can_profile_gpu, time_block_parent, m_renderer->GetRhiDevice());
+
+			// Track the Renderer time block (so we can derive GPU time later)
+			if (!m_time_block_render)
 			{
-				m_time_block_render = &time_block;
+				if (func_name == "Render")
+				{
+					m_time_block_render = time_block;
+				}
 			}
 		}
 
@@ -86,8 +89,10 @@ namespace Directus
 		if (!m_should_update || m_time_block_count == 0)
 			return false;
 
-		TimeBlock& time_block = GetTimeBlockForEnd();
-		time_block.End(m_renderer->GetRhiDevice());
+		if (auto time_block = GetTimeBlockIncomplete())
+		{
+			time_block->End(m_renderer->GetRhiDevice());
+		}
 
 		return true;
 	}
@@ -150,7 +155,7 @@ namespace Directus
 		m_has_new_data	= true;
 	}
 
-	TimeBlock& Profiler::GetTimeBlockForStart()
+	TimeBlock* Profiler::GetTimeBlockEmpty()
 	{
 		// Grow capacity if needed
 		if (m_time_block_count >= static_cast<unsigned int>(m_time_blocks.size()))
@@ -163,19 +168,19 @@ namespace Directus
 
 		// Return a time block
 		m_time_block_count++;
-		return m_time_blocks[m_time_block_count - 1];
+		return &m_time_blocks[m_time_block_count - 1];
 	}
 
-	TimeBlock& Profiler::GetTimeBlockForEnd()
+	TimeBlock* Profiler::GetTimeBlockIncomplete()
 	{
 		for (unsigned int i = m_time_block_count - 1; i >= 0; i--)
 		{
 			TimeBlock& time_block = m_time_blocks[i];
 			if (!time_block.IsComplete())
-				return time_block;
+				return &time_block;
 		}
 
-		return m_time_block_empty;
+		return nullptr;
 	}
 
 	void Profiler::ComputeFps(const float delta_time)

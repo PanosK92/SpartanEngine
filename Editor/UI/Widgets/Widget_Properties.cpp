@@ -294,7 +294,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 
 	if (ComponentProperty::Begin("Light", Icon_Component_Light, light))
 	{
-		//= REFLECT =====================================================
+		//= REFLECT =================================================================
 		static vector<char*> types	= { "Directional", "Point", "Spot" };
 		const char* type_char_ptr	= types[static_cast<int>(light->GetLightType())];
 		auto intensity				= light->GetIntensity();
@@ -304,7 +304,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		auto normal_bias			= light->GetNormalBias();
 		auto range					= light->GetRange();
 		m_colorPicker_light->SetColor(light->GetColor());
-		//===============================================================
+		//===========================================================================
 
 		// Type
 		ImGui::Text("Type");
@@ -335,7 +335,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		// Intensity
 		ImGui::Text("Intensity");
 		ImGui::SameLine(ComponentProperty::g_column);
-		ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightIntensity", &intensity, 0.0f, 100.0f); ImGui::PopItemWidth();
+		ImGui::PushItemWidth(300); ImGui::DragFloat("##lightIntensity", &intensity, 0.01f, 0.0f, 100.0f); ImGui::PopItemWidth();
 
 		// Cast shadows
 		ImGui::Text("Shadows");
@@ -360,7 +360,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		{
 			ImGui::Text("Range");
 			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightRange", &range, 0.0f, 100.0f); ImGui::PopItemWidth();
+			ImGui::PushItemWidth(300); ImGui::DragFloat("##lightRange", &range, 0.01f, 0.0f, 100.0f); ImGui::PopItemWidth();
 		}
 
 		// Angle
@@ -368,7 +368,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 		{
 			ImGui::Text("Angle");
 			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::SliderFloat("##lightAngle", &angle, 1.0f, 179.0f); ImGui::PopItemWidth();
+			ImGui::PushItemWidth(300); ImGui::DragFloat("##lightAngle", &angle, 0.01f, 1.0f, 179.0f); ImGui::PopItemWidth();
 		}
 
 		//= MAP =====================================================================================================
@@ -774,22 +774,22 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 			// Roughness
 			display_texture_slot(tex_roughness, "Roughness", TextureType_Roughness);
 			roughness = material->GetRoughnessMultiplier();
-			ImGui::SameLine(); ImGui::SliderFloat("##matRoughness", &roughness, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matRoughness", &roughness, 0.001f, 0.0f, 1.0f);
 
 			// Metallic
 			display_texture_slot(tex_metallic, "Metallic", TextureType_Metallic);
 			metallic = material->GetMetallicMultiplier();
-			ImGui::SameLine(); ImGui::SliderFloat("##matMetallic", &metallic, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matMetallic", &metallic, 0.001f, 0.0f, 1.0f);
 
 			// Normal
 			display_texture_slot(tex_normal, "Normal", TextureType_Normal);
 			normal = material->GetNormalMultiplier();
-			ImGui::SameLine(); ImGui::SliderFloat("##matNormal", &normal, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matNormal", &normal, 0.001f, 0.0f, 1.0f);
 
 			// Height
 			display_texture_slot(tex_height, "Height", TextureType_Height);
 			height = material->GetHeightMultiplier();
-			ImGui::SameLine(); ImGui::SliderFloat("##matHeight", &height, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matHeight", &height, 0.001f, 0.0f, 1.0f);
 
 			// Occlusion
 			display_texture_slot(tex_occlusion, "Occlusion", TextureType_Occlusion);
