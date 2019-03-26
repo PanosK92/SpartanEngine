@@ -57,7 +57,7 @@ void Widget_Profiler::Tick(float delta_time)
 	ImGui::RadioButton("GPU", &item_type, 1);
 	ImGui::SameLine();
 	float interval = m_profiler->GetUpdateInterval();
-	ImGui::DragFloat("Update interval (The smaller the interval the higher the performance impact)", &interval, 0.01f, 0.0f, 0.5f);
+	ImGui::DragFloat("Update interval (The smaller the interval the higher the performance impact)", &interval, 0.001f, 0.0f, 0.5f);
 	m_profiler->SetUpdateInterval(interval);
 	ImGui::Separator();
 	bool show_cpu = (item_type == 0);

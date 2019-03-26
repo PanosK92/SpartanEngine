@@ -37,7 +37,7 @@ namespace Directus
 		TimeBlock() = default;
 		~TimeBlock();
 
-		void Start(const std::string& name, bool profile_cpu = false, bool profile_gpu = false, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
+		void Start(const std::string& name, bool profile_cpu = false, bool profile_gpu = false, const TimeBlock* parent = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
 		void End(const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
 		void OnFrameEnd(const std::shared_ptr<RHI_Device>& rhi_device);
 		void Clear();
@@ -45,15 +45,17 @@ namespace Directus
 		const bool IsProfilingCpu() const	{ return m_profiling_cpu; }
 		const bool IsProfilingGpu() const	{ return m_profiling_gpu; }
 		const bool IsComplete() const		{ return m_is_complete; }
-		const std::string& GetName() const	{return m_name; }
+		const std::string& GetName() const	{ return m_name; }
+		const TimeBlock* GetParent() const	{ return m_parent; }
 		float GetDurationCpu() const		{ return m_duration_cpu; }
 		float GetDurationGpu() const		{ return m_duration_gpu; }
 
-	private:
+	private:	
 		std::string m_name;
 		RHI_Device* m_rhi_device;
-		bool m_has_started = false;
-		bool m_is_complete = false;
+		bool m_has_started			= false;
+		bool m_is_complete			= false;
+		const TimeBlock* m_parent	= nullptr;
 
 		// CPU timing
 		bool m_profiling_cpu	= false;

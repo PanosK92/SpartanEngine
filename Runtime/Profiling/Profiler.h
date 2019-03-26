@@ -105,8 +105,8 @@ namespace Directus
 		float m_time_gpu_ms		= 0.0f;
 
 	private:
-		TimeBlock& GetTimeBlockForStart();
-		TimeBlock& GetTimeBlockForEnd();
+		TimeBlock* GetTimeBlockEmpty();
+		TimeBlock* GetTimeBlockIncomplete();
 		void ComputeFps(float delta_time);
 		static std::string ToStringPrecision(float value, unsigned int decimals);
 		void UpdateStringFormatMetrics(float fps);
@@ -122,7 +122,6 @@ namespace Directus
 		unsigned int m_time_block_count		= 0;
 		std::vector<TimeBlock> m_time_blocks;
 		TimeBlock* m_time_block_render = nullptr;
-		TimeBlock m_time_block_empty;
 
 		// Misc
 		std::string m_metrics;
