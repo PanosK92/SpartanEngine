@@ -19,13 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES ==============
 #include "Widget_MenuBar.h"
 #include "../FileDialog.h"
 #include "Core/Settings.h"
-#include "Widget_ResourceCache.h"
-#include "Widget_Profiler.h"
-//===============================
+//=========================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -40,21 +38,15 @@ namespace _Widget_MenuBar
 	static bool imgui_style			= false;
 	static bool imgui_demo			= false;
 
-	ResourceCache* g_resourceCache	= nullptr;
-	World* g_scene					= nullptr;
+	World* world					= nullptr;
 	static string g_fileDialogSelection;
 }
 
 Widget_MenuBar::Widget_MenuBar(Context* context) : Widget(context)
 {
-	m_isWindow = false;
-
-	m_profiler		= make_unique<Widget_Profiler>(context);
-	m_resourceCache = make_unique<Widget_ResourceCache>(context);
-	m_fileDialog	= make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
-
-	_Widget_MenuBar::g_resourceCache	= m_context->GetSubsystem<ResourceCache>().get();
-	_Widget_MenuBar::g_scene			= m_context->GetSubsystem<World>().get();
+	m_isWindow				= false;
+	m_fileDialog			= make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
+	_Widget_MenuBar::world	= m_context->GetSubsystem<World>().get();
 }
 
 void Widget_MenuBar::Tick(float deltaTime)
@@ -93,13 +85,6 @@ void Widget_MenuBar::Tick(float deltaTime)
 			ImGui::EndMenu();
 		}
 
-		if (ImGui::BeginMenu("Tools"))
-		{
-			ImGui::MenuItem("Resource Cache Viewer", nullptr, &m_resourceCache->GetVisible());
-			ImGui::MenuItem("Profiler", nullptr, &m_profiler->GetVisible());
-			ImGui::EndMenu();
-		}
-
 		if (ImGui::BeginMenu("View"))
 		{
 			ImGui::MenuItem("ImGui Metrics",	nullptr, &_Widget_MenuBar::imgui_metrics);
@@ -122,20 +107,6 @@ void Widget_MenuBar::Tick(float deltaTime)
 	if (_Widget_MenuBar::imgui_demo)			{ ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo); }
 	if (_Widget_MenuBar::g_fileDialogVisible)	{ ImGui::SetNextWindowFocus(); ShowFileDialog(); }
 	if (_Widget_MenuBar::g_showAboutWindow)		{ ImGui::SetNextWindowFocus(); ShowAboutWindow(); }
-
-	if (m_resourceCache->GetVisible())
-	{
-		m_resourceCache->Begin();
-		m_resourceCache->Tick(deltaTime);
-		m_resourceCache->End();
-	}
-
-	if (m_profiler->GetVisible())
-	{
-		m_profiler->Begin();
-		m_profiler->Tick(deltaTime);
-		m_profiler->End();
-	}
 }
 
 void Widget_MenuBar::ShowFileDialog()

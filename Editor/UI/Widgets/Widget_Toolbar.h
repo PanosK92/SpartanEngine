@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 //=================
 
+class Widget_Profiler;
+class Widget_ResourceCache;
 namespace Directus
 {
 	class Renderer;
@@ -39,5 +41,11 @@ public:
 
 private:
 	void ShowRendererOptions();
+	void ShowProfiler(float delta_time);
+	void ShowResourceCache(float delta_time);
 	Directus::Renderer* m_renderer;
+
+	// Widgets
+	std::unique_ptr<Widget_Profiler> m_profiler;
+	std::unique_ptr<Widget_ResourceCache> m_resourceCache;
 };

@@ -31,14 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct Metric
 {
-	Metric()
-	{
-		m_min			= FLT_MAX;
-		m_max			= FLT_MIN;
-		m_avg			= 0.0f;
-		m_sum			= 0.0f;
-		m_sample_count	= 0;
-	}
+	Metric() { Clear(); }
 
 	void AddSample(const float sample)
 	{
@@ -47,6 +40,15 @@ struct Metric
 		m_sum += sample;
 		m_sample_count++;
 		m_avg = float(m_sum / static_cast<float>(m_sample_count));
+	}
+
+	void Clear()
+	{
+		m_min			= FLT_MAX;
+		m_max			= FLT_MIN;
+		m_avg			= 0.0f;
+		m_sum			= 0.0f;
+		m_sample_count	= 0;
 	}
 
 	float m_min;
@@ -63,10 +65,13 @@ public:
 	void Tick(float delta_time) override;
 
 private:
-	std::vector<float> m_cpu_times;
-	std::vector<float> m_gpu_times;
-	float m_update_frequency;
-	float m_plot_time_since_last_update;
+	void ShowCPU();
+	void ShowGPU();
+	void ShowPlot(std::vector<float>& data, Metric& metric, float time_value);
+
+	std::vector<float> m_plot_times_cpu;
+	std::vector<float> m_plot_times_gpu;
+	unsigned int m_plot_size = 400;
 	Metric m_metric_cpu;
 	Metric m_metric_gpu;
 	Directus::Profiler* m_profiler;

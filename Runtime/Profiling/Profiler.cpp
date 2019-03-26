@@ -38,18 +38,7 @@ namespace Directus
 {
 	Profiler::Profiler(Context* context) : ISubsystem(context)
 	{
-		m_metrics						= NOT_ASSIGNED;
-		m_timer							= nullptr;
-		m_resource_manager				= nullptr;	
-		m_profile_cpu_enabled			= true; // cheap
-		m_profile_gpu_enabled			= true; // expensive
-		m_profiling_frequency_sec		= 0.0f;
-		m_profiling_last_update_time	= 0;
-		m_fps							= 0.0f;
-		m_time_passed					= 0.0f;
-		m_frame_count					= 0;
-		m_profiling_frequency_sec		= 0.35f;
-		m_profiling_last_update_time	= m_profiling_frequency_sec;
+		m_metrics = NOT_ASSIGNED;
 		m_time_blocks.reserve(m_time_block_capacity);
 		m_time_blocks.resize(m_time_block_capacity);
 
@@ -112,20 +101,20 @@ namespace Directus
 		// Get CPU & GPU render time
 		if (m_time_block_render)
 		{
-			m_time_gpu_ms	= m_time_block_render->GetDurationGpu();
-			m_time_cpu_ms	= m_time_frame_ms - m_time_gpu_ms;
+			m_time_gpu_ms = m_time_block_render->GetDurationGpu();
+			m_time_cpu_ms = m_time_frame_ms - m_time_gpu_ms;
 		}
 
 		// Compute FPS
 		ComputeFps(m_time_frame_sec);
 		
-		// Below this point, updating every m_profilingFrequencyMs
+		m_has_new_data = false;
+
+		// Below this point, updating every m_profiling_interval_sec
 		m_profiling_last_update_time += m_time_frame_sec;
-		if (m_profiling_last_update_time >= m_profiling_frequency_sec)
+		if (m_profiling_last_update_time >= m_profiling_interval_sec)
 		{
 			UpdateStringFormatMetrics(m_fps);
-			m_should_update					= true;
-			m_profiling_last_update_time	= 0.0f;
 
 			// Clear old timings
 			for (unsigned int i = 0; i < m_time_block_count; i++)
@@ -137,7 +126,10 @@ namespace Directus
 				}
 				time_block.Clear();
 			}
-			m_time_block_count = 0;
+
+			m_profiling_last_update_time	= 0.0f;
+			m_should_update					= true;
+			m_time_block_count				= 0;
 		}
 	}
 
@@ -155,6 +147,7 @@ namespace Directus
 		}
 
 		m_should_update = false;
+		m_has_new_data	= true;
 	}
 
 	TimeBlock& Profiler::GetTimeBlockForStart()

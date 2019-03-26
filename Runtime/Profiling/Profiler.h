@@ -66,6 +66,9 @@ namespace Directus
 		float GetTimeGpu() const						{ return m_time_gpu_ms; }
 		float GetTimeFrame() const						{ return m_time_frame_ms; }
 		float GetFps() const							{ return m_fps; }
+		float GetUpdateInterval()						{ return m_profiling_interval_sec; }
+		void SetUpdateInterval(float internval)			{ m_profiling_interval_sec = internval; }
+		bool HasNewData()								{ return m_has_new_data; }
 		
 		void Reset()
 		{
@@ -82,24 +85,24 @@ namespace Directus
 		}
 
 		// Metrics - RHI
-		unsigned int m_rhi_draw_calls;
-		unsigned int m_rhi_bindings_buffer_index;
-		unsigned int m_rhi_bindings_buffer_vertex;
-		unsigned int m_rhi_bindings_buffer_constant;
-		unsigned int m_rhi_bindings_sampler;
-		unsigned int m_rhi_bindings_texture;
-		unsigned int m_rhi_bindings_vertex_shader;
-		unsigned int m_rhi_bindings_pixel_shader;
-		unsigned int m_rhi_bindings_render_target;
+		unsigned int m_rhi_draw_calls				= 0;
+		unsigned int m_rhi_bindings_buffer_index	= 0;
+		unsigned int m_rhi_bindings_buffer_vertex	= 0;
+		unsigned int m_rhi_bindings_buffer_constant = 0;
+		unsigned int m_rhi_bindings_sampler			= 0;
+		unsigned int m_rhi_bindings_texture			= 0;
+		unsigned int m_rhi_bindings_vertex_shader	= 0;
+		unsigned int m_rhi_bindings_pixel_shader	= 0;
+		unsigned int m_rhi_bindings_render_target	= 0;
 
 		// Metrics - Renderer
-		unsigned int m_renderer_meshes_rendered;
+		unsigned int m_renderer_meshes_rendered = 0;
 
 		// Metrics - Time
-		float m_time_frame_ms;
-		float m_time_frame_sec;
-		float m_time_cpu_ms;
-		float m_time_gpu_ms;
+		float m_time_frame_ms	= 0.0f;
+		float m_time_frame_sec	= 0.0f;
+		float m_time_cpu_ms		= 0.0f;
+		float m_time_gpu_ms		= 0.0f;
 
 	private:
 		TimeBlock& GetTimeBlockForStart();
@@ -109,31 +112,32 @@ namespace Directus
 		void UpdateStringFormatMetrics(float fps);
 
 		// Profiling options
-		bool m_profile_gpu_enabled;
-		bool m_profile_cpu_enabled;
-		float m_profiling_frequency_sec;
-		float m_profiling_last_update_time;
+		bool m_profile_cpu_enabled			= true; // cheap
+		bool m_profile_gpu_enabled			= true; // expensive
+		float m_profiling_interval_sec		= 0.3f;
+		float m_profiling_last_update_time	= m_profiling_interval_sec;
 
 		// Time blocks
-		unsigned int m_time_block_capacity = 200;
-		unsigned int m_time_block_count = 0;
+		unsigned int m_time_block_capacity	= 200;
+		unsigned int m_time_block_count		= 0;
 		std::vector<TimeBlock> m_time_blocks;
 		TimeBlock* m_time_block_render = nullptr;
 		TimeBlock m_time_block_empty;
 
 		// Misc
 		std::string m_metrics;
-		bool m_should_update;
+		bool m_should_update	= true;
+		bool m_has_new_data		= false;
 	
-		//= FPS ===================
-		float m_fps;
-		float m_time_passed;
-		unsigned int m_frame_count;
-		//=========================
+		//= FPS ===========================
+		float m_fps					= 0.0f;
+		float m_time_passed			= 0.0f;
+		unsigned int m_frame_count	= 0;
+		//=================================
 
 		// Dependencies
-		Timer* m_timer;
-		ResourceCache* m_resource_manager;
-		Renderer* m_renderer;
+		Timer* m_timer						= nullptr;
+		ResourceCache* m_resource_manager	= nullptr;
+		Renderer* m_renderer				= nullptr;
 	};
 }

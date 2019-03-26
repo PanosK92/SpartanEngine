@@ -27,8 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=================
 
 class FileDialog;
-class Widget_Profiler;
-class Widget_ResourceCache;
 namespace Directus { class Context; }
 
 class Widget_MenuBar : public Widget
@@ -41,10 +39,5 @@ private:
 	void ShowFileDialog();
 	void ShowAboutWindow();
 
-	// WIDGETS
-	std::unique_ptr<Widget_Profiler> m_profiler;
-	std::unique_ptr<Widget_ResourceCache> m_resourceCache;
-
-	// Widget? Have to make it a proper one
 	std::unique_ptr<FileDialog> m_fileDialog;
 };

@@ -19,14 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ====================
 #include "Widget_Toolbar.h"
 #include "../IconProvider.h"
 #include "../EditorHelper.h"
 #include "Rendering/Renderer.h"
-#include "Widget_Profiler.h"
 #include "Core/Engine.h"
-//=============================
+#include "Widget_Profiler.h"
+#include "Widget_ResourceCache.h"
+//===============================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -58,6 +59,7 @@ namespace _Widget_Toolbar
 	};
 	static int gbuffer_selected_texture_index	= 0;
 	static string gbuffer_selected_texture	= gbuffer_textures[0];
+	ResourceCache* g_resourceCache = nullptr;
 }
 
 Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
@@ -70,8 +72,12 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 		ImGuiWindowFlags_NoScrollbar |
 		ImGuiWindowFlags_NoTitleBar;
 
-	m_renderer = context->GetSubsystem<Renderer>().get();
 	Engine::EngineMode_Disable(Engine_Game);
+	m_renderer							= context->GetSubsystem<Renderer>().get();
+	_Widget_Toolbar::g_resourceCache	= context->GetSubsystem<ResourceCache>().get();
+
+	m_profiler		= make_unique<Widget_Profiler>(context);
+	m_resourceCache = make_unique<Widget_ResourceCache>(context);
 }
 
 bool Widget_Toolbar::Begin()
@@ -106,10 +112,30 @@ void Widget_Toolbar::Tick(float delta_time)
 	}
 	ImGui::PopStyleColor();
 
+	// Profiler button
+	ImGui::SameLine();
+	ImGui::PushStyleColor(ImGuiCol_Button, m_profiler->GetVisible() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+	if (ImGuiEx::ImageButton(Icon_Profiler, _Widget_Toolbar::g_button_size))
+	{
+		m_profiler->SetVisible(true);
+	}
+	ImGui::PopStyleColor();
+
+	// Resource cache button
+	ImGui::SameLine();
+	ImGui::PushStyleColor(ImGuiCol_Button, m_resourceCache->GetVisible() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+	if (ImGuiEx::ImageButton(Icon_ResourceCache, _Widget_Toolbar::g_button_size))
+	{
+		m_resourceCache->SetVisible(true);
+	}
+	ImGui::PopStyleColor();
+
 	ImGui::PopStyleVar();
 
 	// Visibility
-	if (_Widget_Toolbar::g_rendererer_options_visible) ShowRendererOptions();
+	if (_Widget_Toolbar::g_rendererer_options_visible)	ShowRendererOptions();
+	if (m_profiler->GetVisible())						ShowProfiler(delta_time);
+	if (m_resourceCache->GetVisible())					ShowResourceCache(delta_time);
 }
 
 void Widget_Toolbar::ShowRendererOptions()
@@ -252,4 +278,18 @@ void Widget_Toolbar::ShowRendererOptions()
 
 	ImGui::End();
 	ImGui::PopStyleVar();
+}
+
+void Widget_Toolbar::ShowProfiler(float delta_time)
+{
+	m_profiler->Begin();
+	m_profiler->Tick(delta_time);
+	m_profiler->End();
+}
+
+void Widget_Toolbar::ShowResourceCache(float delta_time)
+{
+	m_resourceCache->Begin();
+	m_resourceCache->Tick(delta_time);
+	m_resourceCache->End();
 }

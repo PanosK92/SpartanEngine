@@ -65,6 +65,7 @@ void IconProvider::Initialize(Context* context)
 	Thumbnail_Load(data_dir + "Icons\\console_error.png",					Icon_Console_Error);	
 	Thumbnail_Load(data_dir + "Icons\\button_play.png",						Icon_Button_Play);
 	Thumbnail_Load(data_dir + "Icons\\profiler.png",						Icon_Profiler);
+	Thumbnail_Load(data_dir + "Icons\\resource_cache.png",					Icon_ResourceCache);
 	Thumbnail_Load(data_dir + "Icons\\file.png",							Thumbnail_File_Default);	
 	Thumbnail_Load(data_dir + "Icons\\folder.png",							Thumbnail_Folder);	
 	Thumbnail_Load(data_dir + "Icons\\audio.png",							Thumbnail_File_Audio);	
