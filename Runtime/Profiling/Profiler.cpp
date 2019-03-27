@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "Profiler.h"
-#include <iomanip>
-#include <sstream>
 #include "../Core/Timer.h"
 #include "../Core/EventSystem.h"
 #include "../World/World.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
+#include <sstream>
+#include <iomanip>
 //====================================
 
 //= NAMESPACES =====
@@ -66,19 +66,10 @@ namespace Directus
 		if (!can_profile_cpu && !can_profile_gpu)
 			return false;
 
-		if (auto time_block = GetTimeBlockEmpty())
+		if (auto time_block = GetNextTimeBlock())
 		{
-			auto time_block_parent = nullptr; //GetTimeBlockIncomplete(); // wrong, fix tonight
+			auto time_block_parent = GetSecondLastIncompleteTimeBlock();
 			time_block->Start(func_name, can_profile_cpu, can_profile_gpu, time_block_parent, m_renderer->GetRhiDevice());
-
-			// Track the Renderer time block (so we can derive GPU time later)
-			if (!m_time_block_render)
-			{
-				if (func_name == "Render")
-				{
-					m_time_block_render = time_block;
-				}
-			}
 		}
 
 		return true;
@@ -89,7 +80,7 @@ namespace Directus
 		if (!m_should_update || m_time_block_count == 0)
 			return false;
 
-		if (auto time_block = GetTimeBlockIncomplete())
+		if (auto time_block = GetLastIncompleteTimeBlock())
 		{
 			time_block->End(m_renderer->GetRhiDevice());
 		}
@@ -98,30 +89,22 @@ namespace Directus
 	}
 
 	void Profiler::OnFrameStart()
-	{
-		// Get delta time
-		m_time_frame_ms		= m_timer->GetDeltaTimeMs();
-		m_time_frame_sec	= m_timer->GetDeltaTimeSec();
-
-		// Get CPU & GPU render time
-		if (m_time_block_render)
-		{
-			m_time_gpu_ms = m_time_block_render->GetDurationGpu();
-			m_time_cpu_ms = m_time_frame_ms - m_time_gpu_ms;
-		}
-
-		// Compute FPS
-		ComputeFps(m_time_frame_sec);
-		
+	{	
 		m_has_new_data = false;
+		float delta_time_sec = m_timer->GetDeltaTimeSec();
+		ComputeFps(delta_time_sec);
 
 		// Below this point, updating every m_profiling_interval_sec
-		m_profiling_last_update_time += m_time_frame_sec;
+		m_profiling_last_update_time += delta_time_sec;
 		if (m_profiling_last_update_time >= m_profiling_interval_sec)
 		{
+			// Compute stuff before discarding
 			UpdateStringFormatMetrics(m_fps);
+			m_time_cpu_ms = m_time_blocks[0].GetDurationCpu();
+			m_time_gpu_ms = m_time_blocks[0].GetDurationGpu();
+			m_time_frame_ms = m_time_cpu_ms + m_time_gpu_ms;
 
-			// Clear old timings
+			// Discard previous frame data
 			for (unsigned int i = 0; i < m_time_block_count; i++)
 			{
 				TimeBlock& time_block = m_time_blocks[i];
@@ -135,6 +118,10 @@ namespace Directus
 			m_profiling_last_update_time	= 0.0f;
 			m_should_update					= true;
 			m_time_block_count				= 0;
+		
+			TimeBlockStart("Frame", true, true); // measure frame
+			
+			
 		}
 	}
 
@@ -142,6 +129,8 @@ namespace Directus
 	{
 		if (!m_should_update)
 			return;
+
+		TimeBlockEnd(); // measure frame
 
 		for (auto& time_block : m_time_blocks)
 		{
@@ -155,7 +144,7 @@ namespace Directus
 		m_has_new_data	= true;
 	}
 
-	TimeBlock* Profiler::GetTimeBlockEmpty()
+	TimeBlock* Profiler::GetNextTimeBlock()
 	{
 		// Grow capacity if needed
 		if (m_time_block_count >= static_cast<unsigned int>(m_time_blocks.size()))
@@ -171,13 +160,32 @@ namespace Directus
 		return &m_time_blocks[m_time_block_count - 1];
 	}
 
-	TimeBlock* Profiler::GetTimeBlockIncomplete()
+	TimeBlock* Profiler::GetLastIncompleteTimeBlock()
 	{
-		for (unsigned int i = m_time_block_count - 1; i >= 0; i--)
+		for (int i = m_time_block_count - 1; i >= 0; i--)
 		{
 			TimeBlock& time_block = m_time_blocks[i];
 			if (!time_block.IsComplete())
 				return &time_block;
+		}
+
+		return nullptr;
+	}
+
+	TimeBlock* Profiler::GetSecondLastIncompleteTimeBlock()
+	{
+		bool first_found = false;
+		for (int i = m_time_block_count - 1; i >= 0; i--)
+		{
+			TimeBlock& time_block = m_time_blocks[i];
+			if (!time_block.IsComplete())
+			{
+				if (first_found)
+				{
+					return &time_block;
+				}
+				first_found = true;		
+			}
 		}
 
 		return nullptr;
@@ -200,25 +208,25 @@ namespace Directus
 		}
 	}
 
-	string Profiler::ToStringPrecision(const float value, const unsigned int decimals)
-	{
-		ostringstream out;
-		out << fixed << setprecision(decimals) << value;
-		return out.str();
-	}
-
 	void Profiler::UpdateStringFormatMetrics(const float fps)
 	{
 		const auto textures		= m_resource_manager->GetResourceCountByType(Resource_Texture);
 		const auto materials	= m_resource_manager->GetResourceCountByType(Resource_Material);
 		const auto shaders		= m_resource_manager->GetResourceCountByType(Resource_Shader);
 
+		auto to_string_precision = [](float value, unsigned int decimals)
+		{
+			stringstream out;
+			out << fixed << setprecision(decimals) << value;
+			return out.str();
+		};
+
 		m_metrics =
 			// Performance
-			"FPS:\t\t\t\t\t\t\t"	+ ToStringPrecision(fps, 2) + "\n"
-			"Frame time:\t\t\t\t\t" + ToStringPrecision(m_time_frame_ms, 2) + " ms\n"
-			"CPU time:\t\t\t\t\t\t" + ToStringPrecision(m_time_cpu_ms, 2) + " ms\n"
-			"GPU time:\t\t\t\t\t\t" + ToStringPrecision(m_time_gpu_ms, 2) + " ms\n"
+			"FPS:\t\t\t\t\t\t\t"	+ to_string_precision(fps, 2) + "\n"
+			"Frame time:\t\t\t\t\t" + to_string_precision(m_time_frame_ms, 2) + " ms\n"
+			"CPU time:\t\t\t\t\t\t" + to_string_precision(m_time_cpu_ms, 2) + " ms\n"
+			"GPU time:\t\t\t\t\t\t" + to_string_precision(m_time_gpu_ms, 2) + " ms\n"
 			"GPU:\t\t\t\t\t\t\t"	+ Settings::Get().GpuGetName() + "\n"
 			"VRAM:\t\t\t\t\t\t\t"	+ to_string(Settings::Get().GpuGetMemory()) + " MB\n"
 

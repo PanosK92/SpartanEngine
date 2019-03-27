@@ -75,31 +75,37 @@ void Widget_Profiler::Tick(float delta_time)
 void Widget_Profiler::ShowCPU()
 {
 	// Get stuff
-	auto& time_blocks		= m_profiler->GetTimeBlocks();
-	auto time_cpu			= m_profiler->GetTimeCpu();	
-	const auto height		= 20.0f;
-	const auto padding_x	= ImGui::GetStyle().WindowPadding.x;
-	const auto spacing_y	= ImGui::GetStyle().FramePadding.y;
-	const auto& color		= ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
-	auto pos				= ImGui::GetCursorScreenPos();
+	const auto& time_blocks		= m_profiler->GetTimeBlocks();
+	const auto time_block_count = static_cast<unsigned int>(time_blocks.size());
+	const auto time_cpu			= m_profiler->GetTimeCpu();	
+	const auto height			= ImGui::GetCurrentContext()->FontSize;
+	const auto padding_x		= ImGui::GetStyle().WindowPadding.x;
+	const auto spacing_y		= ImGui::GetStyle().FramePadding.y;
+	const auto& color			= ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
+	auto pos					= ImGui::GetCursorScreenPos();
 
 	// Time blocks	
-	for (const auto& time_block : time_blocks)
+	for (unsigned int i = 0; i < time_block_count; i++)
 	{
+		auto& time_block = time_blocks[i];
+
 		if (!time_block.IsProfilingCpu())
 			continue;
 
-		const auto& name	= time_block.GetName();
-		const auto duration = time_block.GetDurationCpu();
-		const auto fraction = duration / time_cpu;
+		const auto name		= string(time_block.GetTreeDepth(), '+') + time_block.GetName();
+		const auto duration	= time_block.GetDurationCpu();
+		const auto fraction	= duration / time_cpu;
 		const auto width	= fraction * ImGui::GetWindowContentRegionWidth();
 
 		// Draw
 		ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(pos.x, pos.y), ImVec2(pos.x + width, pos.y + height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
-		ImGui::GetWindowDrawList()->AddText(ImVec2(pos.x + padding_x, pos.y + 2.0f), IM_COL32(255, 255, 255, 255), (name + " - " + to_string(duration) + " ms").c_str());
+		ImGui::Text("%s - %.2f ms", name.c_str(), duration);
 
 		// New line
-		pos.y += height + spacing_y;
+		if (i < time_block_count - 1)
+		{
+			pos.y += height + spacing_y;
+		}
 	}
 	ImGui::SetCursorScreenPos(pos);
 
@@ -110,32 +116,38 @@ void Widget_Profiler::ShowCPU()
 void Widget_Profiler::ShowGPU()
 {
 	// Get stuff
-	auto& time_blocks		= m_profiler->GetTimeBlocks();
-	auto time_gpu			= m_profiler->GetTimeGpu();
-	auto time_frame			= m_profiler->GetTimeFrame();
-	const auto height		= 20.0f;
-	const auto padding_x	= ImGui::GetStyle().WindowPadding.x;
-	const auto spacing_y	= ImGui::GetStyle().FramePadding.y;
-	const auto& color		= ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
-	auto pos				= ImGui::GetCursorScreenPos();
+	const auto& time_blocks		= m_profiler->GetTimeBlocks();
+	const auto time_block_count	= static_cast<unsigned int>(time_blocks.size());
+	const auto time_gpu			= m_profiler->GetTimeGpu();
+	const auto time_frame		= m_profiler->GetTimeFrame();
+	const auto height			= ImGui::GetCurrentContext()->FontSize;
+	const auto padding_x		= ImGui::GetStyle().WindowPadding.x;
+	const auto spacing_y		= ImGui::GetStyle().FramePadding.y;
+	const auto& color			= ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
+	auto pos					= ImGui::GetCursorScreenPos();
 
 	// Time blocks	
-	for (const auto& time_block : time_blocks)
+	for (unsigned int i = 0; i < time_block_count; i++)
 	{
+		auto& time_block = time_blocks[i];
+
 		if (!time_block.IsProfilingGpu())
 			continue;
 
-		const auto& name	= time_block.GetName();
-		const auto duration = time_block.GetDurationGpu();
-		const auto fraction = duration / time_gpu;
-		const auto width	= fraction * ImGui::GetWindowContentRegionWidth();
-
+		const auto name			= string(time_block.GetTreeDepth(), '+') + time_block.GetName();
+		const auto duration		= time_block.GetDurationGpu();
+		const auto fraction		= duration / time_gpu;
+		const auto width		= fraction * ImGui::GetWindowContentRegionWidth();
+		
 		// Draw
 		ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(pos.x, pos.y), ImVec2(pos.x + width, pos.y + height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
-		ImGui::GetWindowDrawList()->AddText(ImVec2(pos.x + padding_x, pos.y + 2.0f), IM_COL32(255, 255, 255, 255), (name + " - " + to_string(duration) + " ms").c_str());
+		ImGui::Text("%s - %.2f ms", name.c_str(), duration);
 
 		// New line
-		pos.y += height + spacing_y;
+		if (i < time_block_count - 1)
+		{
+			pos.y += height + spacing_y;
+		}
 	}
 	ImGui::SetCursorScreenPos(pos);
 

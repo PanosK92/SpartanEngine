@@ -59,7 +59,7 @@ namespace Directus
 {
 	void Renderer::Pass_Main()
 	{
-		m_cmd_list->Begin("Render");
+		m_cmd_list->Begin("Pass_Main");
 
 		Pass_DepthDirectionalLight(GetLightDirectional());
 		Pass_GBuffer();
