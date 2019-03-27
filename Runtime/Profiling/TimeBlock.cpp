@@ -31,7 +31,6 @@ using namespace std;
 
 namespace Directus
 {
-
 	TimeBlock::~TimeBlock()
 	{
 		if (m_query)
@@ -51,6 +50,7 @@ namespace Directus
 	{
 		m_name			= name;
 		m_parent		= parent;
+		m_tree_depth	= FindTreeDepth(this);
 		m_rhi_device	= rhi_device.get();
 
 		if (profile_cpu)
@@ -125,11 +125,20 @@ namespace Directus
 	{
 		m_name.clear();
 		m_parent		= nullptr;
+		m_tree_depth	= 0;
 		m_is_complete	= false;
 		m_has_started	= false;
 		m_duration_cpu	= 0.0f;
 		m_duration_gpu	= 0.0f;
 		m_profiling_cpu = false;
 		m_profiling_gpu = false;
+	}
+
+	unsigned int TimeBlock::FindTreeDepth(const TimeBlock* time_block, unsigned int depth /*= 0*/)
+	{
+		if (time_block->GetParent())
+			depth =	FindTreeDepth(time_block->GetParent(), ++depth);
+
+		return depth;
 	}
 }

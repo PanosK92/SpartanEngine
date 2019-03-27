@@ -100,15 +100,14 @@ namespace Directus
 
 		// Metrics - Time
 		float m_time_frame_ms	= 0.0f;
-		float m_time_frame_sec	= 0.0f;
 		float m_time_cpu_ms		= 0.0f;
 		float m_time_gpu_ms		= 0.0f;
 
 	private:
-		TimeBlock* GetTimeBlockEmpty();
-		TimeBlock* GetTimeBlockIncomplete();
+		TimeBlock* GetNextTimeBlock();
+		TimeBlock* GetLastIncompleteTimeBlock();
+		TimeBlock* GetSecondLastIncompleteTimeBlock();
 		void ComputeFps(float delta_time);
-		static std::string ToStringPrecision(float value, unsigned int decimals);
 		void UpdateStringFormatMetrics(float fps);
 
 		// Profiling options
@@ -121,7 +120,6 @@ namespace Directus
 		unsigned int m_time_block_capacity	= 200;
 		unsigned int m_time_block_count		= 0;
 		std::vector<TimeBlock> m_time_blocks;
-		TimeBlock* m_time_block_render = nullptr;
 
 		// Misc
 		std::string m_metrics;
