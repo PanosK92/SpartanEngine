@@ -98,7 +98,7 @@ namespace Directus
 				static_cast<unsigned int>(m_resolution.y),
 				m_rhi_device->GetBackBufferFormat(),
 				Swap_Flip_Discard,
-				SwapChain_Allow_Tearing | SwapChain_Allow_Mode_Switch,
+				SwapChain_Allow_Tearing,
 				2
 			);
 

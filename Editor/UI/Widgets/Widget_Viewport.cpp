@@ -90,7 +90,7 @@ void Widget_Viewport::ShowFrame(const float delta_time)
 	_Widget_Viewport::g_renderer->SetViewport(RHI_Viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)));
 
 	// Update engine's resolution
-	if (m_timeSinceLastResChange >= 0.250f) // Don't stress the GPU too much
+	if (m_timeSinceLastResChange >= 0.1f) // Don't stress the GPU too much
 	{
 		_Widget_Viewport::g_renderer->SetResolution(width, height);
 		m_timeSinceLastResChange = 0;

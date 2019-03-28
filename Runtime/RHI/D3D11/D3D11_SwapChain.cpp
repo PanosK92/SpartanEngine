@@ -58,6 +58,13 @@ namespace Directus
 			return;
 		}
 
+		// Return if resolution is invalid
+		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
+		{
+			LOGF_WARNING("%dx%d is an invalid resolution", width, height);
+			return;
+		}
+
 		// Get device
 		auto* d3d11_device = device->GetDevicePhysical<ID3D11Device>();
 		if (!d3d11_device)
@@ -110,9 +117,6 @@ namespace Directus
 			desc.SwapEffect						= D3D11_Helper::FilterSwapEffect(m_rhi_device.get(), swap_effect);
 			desc.Flags							= D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), flags);
 
-			// Updated tearing usage
-			m_tearing = desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
 			const auto result	= dxgi_factory->CreateSwapChain(d3d11_device, &desc, &swap_chain);
 			if (FAILED(result))
@@ -153,7 +157,7 @@ namespace Directus
 		auto swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain);
 
 		// Before shutting down set to windowed mode to avoid swap chain exception
-		if (swap_chain)
+		if (swap_chain && !m_windowed)
 		{
 			swap_chain->SetFullscreenState(false, nullptr);
 		}
@@ -182,35 +186,41 @@ namespace Directus
 
 		// Release previous stuff
 		safe_release(render_target_view);
+
+		if (m_flags & SwapChain_Allow_Mode_Switch)
+		{
+			// Set this flag to enable an application to switch modes by calling IDXGISwapChain::ResizeTarget.
+			// When switching from windowed to full-screen mode, the display mode (or monitor resolution)
+			// will be changed to match the dimensions of the application window.
+			DisplayMode display_mode;
+			if (!m_rhi_device->GetDidsplayModeFastest(&display_mode))
+			{
+				LOG_ERROR("Failed to get a display mode");
+				return false;
+			}
+
+			// Resize swapchain target
+			DXGI_MODE_DESC dxgi_mode_desc;
+			ZeroMemory(&dxgi_mode_desc, sizeof(dxgi_mode_desc));
+			dxgi_mode_desc.Width			= static_cast<UINT>(width);
+			dxgi_mode_desc.Height			= static_cast<UINT>(height);
+			dxgi_mode_desc.Format			= d3d11_format[m_format];
+			dxgi_mode_desc.RefreshRate		= DXGI_RATIONAL{ display_mode.refreshRateNumerator, display_mode.refreshRateDenominator };
+			dxgi_mode_desc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
+			dxgi_mode_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+
+			// Resize swapchain target
+			auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
+			if (FAILED(result))
+			{
+				LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Helper::dxgi_error_to_string(result));
+				return false;
+			}
+		}
 	
-		DisplayMode display_mode;
-		if (!m_rhi_device->GetDidsplayModeFastest(&display_mode))
-		{
-			LOG_ERROR("Failed to get a display mode");
-			return false;
-		}
-
-		// Resize swapchain target
-		DXGI_MODE_DESC dxgi_mode_desc;
-		ZeroMemory(&dxgi_mode_desc, sizeof(dxgi_mode_desc));
-		dxgi_mode_desc.Width			= width;
-		dxgi_mode_desc.Height			= height;
-		dxgi_mode_desc.Format			= d3d11_format[m_format];
-		dxgi_mode_desc.RefreshRate		= DXGI_RATIONAL{ display_mode.refreshRateNumerator, display_mode.refreshRateDenominator };
-		dxgi_mode_desc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
-		dxgi_mode_desc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-
-		// Resize swapchain target
-		auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
-		if (FAILED(result))
-		{
-			LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Helper::dxgi_error_to_string(result));
-			return false;
-		}
-
 		// Resize swapchain buffers
-		unsigned int d3d11_flags = D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), m_flags);
-		result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), dxgi_mode_desc.Format, d3d11_flags);
+		UINT d3d11_flags = D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), m_flags);
+		auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to resize swapchain buffers, %s.", D3D11_Helper::dxgi_error_to_string(result));
@@ -247,8 +257,10 @@ namespace Directus
 			return false;
 		}
 
-		UINT flags = (m_tearing && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
-		auto ptr_swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain);
+		bool tearing_allowed	= m_flags & SwapChain_Allow_Tearing;
+		UINT flags				= (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+		auto ptr_swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
+
 		ptr_swap_chain->Present(static_cast<UINT>(mode), flags);
 		return true;
 	}
