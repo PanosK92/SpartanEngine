@@ -27,7 +27,10 @@ class FirstPersonController
 		if (input.GetKey(Click_Right))
 		{
 			FPSMovement();
-		}	
+		}
+		
+		// Apply drag
+		movementSpeed *= drag * (1.0f - time.GetDeltaTime());
 	}
 	
 	void FPSMovement()
@@ -52,9 +55,6 @@ class FirstPersonController
 		{
 			movementSpeed -= acceleration * transform.GetRight() * time.GetDeltaTime();
 		}
-		
-		// Apply drag
-		movementSpeed *= drag * (1.0f - time.GetDeltaTime());
 		
 		// Update the transform's position
 		transform.Translate(movementSpeed);

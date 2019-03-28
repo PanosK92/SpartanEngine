@@ -198,9 +198,9 @@ namespace Directus::D3D11_Helper
 		return fullscreen_borderless_support && vendor_support;
 	}
 
-	inline unsigned int FilterSwapChainFlags(RHI_Device* device, unsigned long flags)
+	inline UINT FilterSwapChainFlags(RHI_Device* device, unsigned long flags)
 	{
-		unsigned int d3d11_flags = 0;
+		UINT d3d11_flags = 0;
 
 		// SwapChain_Allow_Mode_Switch
 		d3d11_flags |= flags & SwapChain_Allow_Mode_Switch ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
