@@ -62,7 +62,7 @@ ENGINE_DIR				= "../" .. ENGINE_NAME
 
 -- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
-	includedirs { "../ThirdParty/Vulkan_1.1.97.0" }
+	includedirs { "../ThirdParty/Vulkan_1.1.101.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
 	includedirs { "../ThirdParty/Bullet_2.88" }

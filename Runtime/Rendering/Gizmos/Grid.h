@@ -48,7 +48,7 @@ namespace Directus
 
 	private:
 		void BuildGrid(std::vector<RHI_Vertex_PosCol>* vertices, std::vector<unsigned int>* indices);
-		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices, std::shared_ptr<RHI_Device> rhiDevice);
+		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices, std::shared_ptr<RHI_Device>& rhiDevice);
 
 		unsigned int m_indexCount;
 		unsigned int m_terrainHeight;

@@ -53,9 +53,9 @@ namespace Directus
 	{
 		// Validation layer
 		auto validation_layer_available = false;
-		if (VulkanHelper::validation_layer_enabled)
+		if (vulkan_helper::validation_layers::enabled)
 		{
-			validation_layer_available = VulkanHelper::acquire_validation_layers(VulkanHelper::validation_layers);
+			validation_layer_available = vulkan_helper::validation_layers::acquire(vulkan_helper::validation_layers::layers);
 		}
 		
 		// Create instance
@@ -71,12 +71,12 @@ namespace Directus
 			VkInstanceCreateInfo create_info	= {};
 			create_info.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			create_info.pApplicationInfo		= &app_info;
-			create_info.enabledExtensionCount	= static_cast<uint32_t>(VulkanHelper::extensions_device_physical.size());
-			create_info.ppEnabledExtensionNames	= VulkanHelper::extensions_device_physical.data();
+			create_info.enabledExtensionCount	= static_cast<uint32_t>(vulkan_helper::extensions::extensions_device_physical.size());
+			create_info.ppEnabledExtensionNames	= vulkan_helper::extensions::extensions_device_physical.data();
 			if (validation_layer_available) 
 			{
-				create_info.enabledLayerCount	= static_cast<uint32_t>(VulkanHelper::validation_layers.size());
-				create_info.ppEnabledLayerNames	= VulkanHelper::validation_layers.data();
+				create_info.enabledLayerCount	= static_cast<uint32_t>(vulkan_helper::validation_layers::layers.size());
+				create_info.ppEnabledLayerNames	= vulkan_helper::validation_layers::layers.data();
 			}
 			else 
 			{
@@ -104,16 +104,16 @@ namespace Directus
 		}
 
 		// Callback
-		if (VulkanHelper::validation_layer_enabled)
+		if (vulkan_helper::validation_layers::enabled)
 		{
 			VkDebugUtilsMessengerCreateInfoEXT create_info = {};
 			create_info.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 			create_info.messageSeverity	= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 			create_info.messageType		= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			create_info.pfnUserCallback	= VulkanHelper::debugCallback;
+			create_info.pfnUserCallback	= vulkan_helper::debug_callback::callback;
 			create_info.pUserData		= nullptr; // Optional
 
-			if (VulkanHelper::create_debug_utils_messenger_ext(VulkanInstance::instance, &create_info, nullptr, &VulkanInstance::callback) != VK_SUCCESS) 
+			if (vulkan_helper::debug_callback::create(VulkanInstance::instance, &create_info, nullptr, &VulkanInstance::callback) != VK_SUCCESS) 
 			{
 				LOG_ERROR("Failed to setup debug callback");
 			}
@@ -133,7 +133,7 @@ namespace Directus
 			
 			for (const auto& device : devices) 
 			{
-				if (VulkanHelper::is_device_suitable(device))
+				if (vulkan_helper::is_device_suitable(device))
 				{
 					VulkanInstance::device_physical = device;
 					break;
@@ -151,7 +151,7 @@ namespace Directus
 		VkPhysicalDeviceFeatures device_features = {};
 		VkDeviceCreateInfo create_info = {};
 		{
-			auto indices = VulkanHelper::find_queue_families(VulkanInstance::device_physical);
+			auto indices = vulkan_helper::queue_families::get(VulkanInstance::device_physical);
 
 			VkDeviceQueueCreateInfo queue_create_info	= {};
 			queue_create_info.sType						= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -165,13 +165,13 @@ namespace Directus
 			create_info.pQueueCreateInfos		= &queue_create_info;
 			create_info.queueCreateInfoCount	= 1;
 			create_info.pEnabledFeatures		= &device_features;
-			create_info.enabledExtensionCount	= static_cast<uint32_t>(VulkanHelper::extensions_device.size());
-			create_info.ppEnabledExtensionNames = VulkanHelper::extensions_device.data();
+			create_info.enabledExtensionCount	= static_cast<uint32_t>(vulkan_helper::extensions::extensions_device.size());
+			create_info.ppEnabledExtensionNames = vulkan_helper::extensions::extensions_device.data();
 
-			if (VulkanHelper::validation_layer_enabled)
+			if (vulkan_helper::validation_layers::enabled)
 			{
-			    create_info.enabledLayerCount	= static_cast<uint32_t>(VulkanHelper::validation_layers.size());
-			    create_info.ppEnabledLayerNames	= VulkanHelper::validation_layers.data();
+			    create_info.enabledLayerCount	= static_cast<uint32_t>(vulkan_helper::validation_layers::layers.size());
+			    create_info.ppEnabledLayerNames	= vulkan_helper::validation_layers::layers.data();
 			}
 			else 
 			{
@@ -186,7 +186,7 @@ namespace Directus
 
 		// Present Queue
 		{
-			auto indices = VulkanHelper::find_queue_families(VulkanInstance::device_physical);
+			auto indices = vulkan_helper::queue_families::get(VulkanInstance::device_physical);
 
 			vector<VkDeviceQueueCreateInfo> queue_create_infos;
 			set<uint32_t> unique_queue_families = { indices.graphics_family.value(), indices.present_family.value() };
@@ -221,9 +221,9 @@ namespace Directus
 
 	RHI_Device::~RHI_Device()
 	{	
-		if (VulkanHelper::validation_layer_enabled)
+		if (vulkan_helper::validation_layers::enabled)
 		{
-			VulkanHelper::destroy_debug_utils_messenger_ext(VulkanInstance::instance, VulkanInstance::callback, nullptr);
+			vulkan_helper::debug_callback::destroy(VulkanInstance::instance, VulkanInstance::callback, nullptr);
 		}
 		vkDestroyInstance(VulkanInstance::instance, nullptr);
 		vkDestroyDevice(VulkanInstance::device, nullptr);
@@ -249,42 +249,42 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetVertexBuffer(const std::shared_ptr<RHI_VertexBuffer>& buffer) const
+	bool RHI_Device::SetVertexBuffer(const RHI_VertexBuffer* buffer) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetIndexBuffer(const std::shared_ptr<RHI_IndexBuffer>& buffer) const
+	bool RHI_Device::SetIndexBuffer(const RHI_IndexBuffer* buffer) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetVertexShader(const std::shared_ptr<RHI_Shader>& shader) const
+	bool RHI_Device::SetVertexShader(const RHI_Shader* shader) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetPixelShader(const std::shared_ptr<RHI_Shader>& shader) const
+	bool RHI_Device::SetPixelShader(const RHI_Shader* shader) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetConstantBuffers(const unsigned int start_slot, const unsigned int buffer_count, void* buffer, const RHI_Buffer_Scope scope) const
+	bool RHI_Device::SetConstantBuffers(unsigned int start_slot, unsigned int buffer_count, const void* buffer, RHI_Buffer_Scope scope) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetSamplers(const unsigned int start_slot, const unsigned int sampler_count, void* samplers) const
+	bool RHI_Device::SetSamplers(unsigned int start_slot, unsigned int sampler_count, const void* samplers) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetRenderTargets(const unsigned int render_target_count, void* render_targets, void* depth_stencil) const
+	bool RHI_Device::SetRenderTargets(unsigned int render_target_count, const void* render_targets, void* depth_stencil) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetTextures(const unsigned int start_slot, const unsigned int resource_count, void* shader_resources) const
+	bool RHI_Device::SetTextures(unsigned int start_slot, unsigned int resource_count, const void* textures) const
 	{
 		return true;
 	}
@@ -299,12 +299,12 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state) const
+	bool RHI_Device::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state) const
+	bool RHI_Device::SetBlendState(const RHI_BlendState* blend_state) const
 	{
 		return true;
 	}
@@ -314,12 +314,12 @@ namespace Directus
 		return true;
 	}
 
-	bool RHI_Device::SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout) const
+	bool RHI_Device::SetInputLayout(const RHI_InputLayout* input_layout) const
 	{
 		return true;
 	}
 
-	bool RHI_Device::SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state) const
+	bool RHI_Device::SetRasterizerState(const RHI_RasterizerState* rasterizer_state) const
 	{
 		return true;
 	}
@@ -352,6 +352,11 @@ namespace Directus
 	float RHI_Device::ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const
 	{
 		return 0.0f;
+	}
+
+	void RHI_Device::ProfilingReleaseQuery(void* query_object)
+	{
+
 	}
 }
 #endif
