@@ -98,11 +98,16 @@ namespace Directus
 		m_profiling_last_update_time += delta_time_sec;
 		if (m_profiling_last_update_time >= m_profiling_interval_sec)
 		{
-			// Compute stuff before discarding
-			UpdateStringFormatMetrics(m_fps);
+			// Compute some final timings before discarding
 			m_time_cpu_ms = m_time_blocks[0].GetDurationCpu();
 			m_time_gpu_ms = m_time_blocks[0].GetDurationGpu();
 			m_time_frame_ms = m_time_cpu_ms + m_time_gpu_ms;
+
+			// Create string version of metrics only if needed
+			if (m_renderer->Flags_IsSet(Render_Gizmo_PerformanceMetrics))
+			{
+				UpdateStringFormatMetrics(m_fps);
+			}
 
 			// Discard previous frame data
 			for (unsigned int i = 0; i < m_time_block_count; i++)
@@ -120,8 +125,6 @@ namespace Directus
 			m_time_block_count				= 0;
 		
 			TimeBlockStart("Frame", true, true); // measure frame
-			
-			
 		}
 	}
 
@@ -210,42 +213,64 @@ namespace Directus
 
 	void Profiler::UpdateStringFormatMetrics(const float fps)
 	{
-		const auto textures		= m_resource_manager->GetResourceCountByType(Resource_Texture);
-		const auto materials	= m_resource_manager->GetResourceCountByType(Resource_Material);
-		const auto shaders		= m_resource_manager->GetResourceCountByType(Resource_Shader);
+		const auto texture_count	= m_resource_manager->GetResourceCountByType(Resource_Texture);
+		const auto material_count	= m_resource_manager->GetResourceCountByType(Resource_Material);
+		const auto shader_count		= m_resource_manager->GetResourceCountByType(Resource_Shader);
 
-		auto to_string_precision = [](float value, unsigned int decimals)
-		{
-			stringstream out;
-			out << fixed << setprecision(decimals) << value;
-			return out.str();
-		};
+		static char buffer[1000]; // real usage is around 700
+		sprintf_s
+		(
+			buffer,
 
-		m_metrics =
 			// Performance
-			"FPS:\t\t\t\t\t\t\t"	+ to_string_precision(fps, 2) + "\n"
-			"Frame time:\t\t\t\t\t" + to_string_precision(m_time_frame_ms, 2) + " ms\n"
-			"CPU time:\t\t\t\t\t\t" + to_string_precision(m_time_cpu_ms, 2) + " ms\n"
-			"GPU time:\t\t\t\t\t\t" + to_string_precision(m_time_gpu_ms, 2) + " ms\n"
-			"GPU:\t\t\t\t\t\t\t"	+ Settings::Get().GpuGetName() + "\n"
-			"VRAM:\t\t\t\t\t\t\t"	+ to_string(Settings::Get().GpuGetMemory()) + " MB\n"
-
+			"FPS:\t\t\t\t\t\t\t%.2f\n"
+			"Frame time:\t\t\t\t\t%.2f\n"
+			"CPU time:\t\t\t\t\t\t%.2f\n"
+			"GPU time:\t\t\t\t\t\t%.2f\n"
+			"GPU:\t\t\t\t\t\t\t%s\n"
+			"VRAM:\t\t\t\t\t\t\t%d\n"
 			// Renderer
-			"Resolution:\t\t\t\t\t"				+ to_string(static_cast<int>(m_renderer->GetResolution().x)) + "x" + to_string(static_cast<int>(m_renderer->GetResolution().y)) + "\n"
-			"Meshes rendered:\t\t\t\t"			+ to_string(m_renderer_meshes_rendered) + "\n"
-			"Textures:\t\t\t\t\t\t"				+ to_string(textures) + "\n"
-			"Materials:\t\t\t\t\t\t"			+ to_string(materials) + "\n"
-			"Shaders:\t\t\t\t\t\t"				+ to_string(shaders) + "\n"
-
+			"Resolution:\t\t\t\t\t%dx%d\n"
+			"Meshes rendered:\t\t\t\t%d\n"
+			"Textures:\t\t\t\t\t\t%d\n"
+			"Materials:\t\t\t\t\t\t%d\n"
+			"Shaders:\t\t\t\t\t\t%d\n"
 			// RHI
-			"RHI Draw calls:\t\t\t\t\t"			+ to_string(m_rhi_draw_calls) + "\n"
-			"RHI Index buffer bindings:\t\t"	+ to_string(m_rhi_bindings_buffer_index) + "\n"
-			"RHI Vertex buffer bindings:\t"		+ to_string(m_rhi_bindings_buffer_vertex) + "\n"
-			"RHI Constant buffer bindings:\t"	+ to_string(m_rhi_bindings_buffer_constant) + "\n"
-			"RHI Sampler bindings:\t\t\t"		+ to_string(m_rhi_bindings_sampler) + "\n"
-			"RHI Texture bindings:\t\t\t"		+ to_string(m_rhi_bindings_texture) + "\n"
-			"RHI Vertex Shader bindings:\t"		+ to_string(m_rhi_bindings_vertex_shader) + "\n"
-			"RHI Pixel Shader bindings:\t\t"	+ to_string(m_rhi_bindings_pixel_shader) + "\n"
-			"RHI Render Target bindings:\t"		+ to_string(m_rhi_bindings_render_target) + "\n";
+			"RHI Draw calls:\t\t\t\t\t%d\n"
+			"RHI Index buffer bindings:\t\t%d\n"
+			"RHI Vertex buffer bindings:\t%d\n"
+			"RHI Constant buffer bindings:\t%d\n"
+			"RHI Sampler bindings:\t\t\t%d\n"
+			"RHI Texture bindings:\t\t\t%d\n"
+			"RHI Vertex Shader bindings:\t%d\n"
+			"RHI Pixel Shader bindings:\t\t%d\n"
+			"RHI Render Target bindings:\t%d",
+			
+			// Performance
+			fps,
+			m_time_frame_ms,
+			m_time_cpu_ms,
+			m_time_gpu_ms,
+			Settings::Get().GpuGetName().c_str(),
+			Settings::Get().GpuGetMemory(),
+			// Renderer
+			static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),
+			m_renderer_meshes_rendered,
+			texture_count,
+			material_count,
+			shader_count,
+			// RHI
+			m_rhi_draw_calls,
+			m_rhi_bindings_buffer_index,
+			m_rhi_bindings_buffer_vertex,
+			m_rhi_bindings_buffer_constant,
+			m_rhi_bindings_sampler,
+			m_rhi_bindings_texture,
+			m_rhi_bindings_vertex_shader,
+			m_rhi_bindings_pixel_shader,
+			m_rhi_bindings_render_target
+		);
+
+		m_metrics = string(buffer);
 	}
 }
