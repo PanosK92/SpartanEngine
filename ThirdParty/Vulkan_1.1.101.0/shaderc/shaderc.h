@@ -23,24 +23,9 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-// SHADERC_EXPORT tags symbol that will be exposed by the shared library.
-#if defined(SHADERC_SHAREDLIB)
-    #if defined(_WIN32)
-        #if defined(SHADERC_IMPLEMENTATION)
-            #define SHADERC_EXPORT __declspec(dllexport)
-        #else
-            #define SHADERC_EXPORT __declspec(dllimport)
-        #endif
-    #else
-        #if defined(SHADERC_IMPLEMENTATION)
-            #define SHADERC_EXPORT __attribute__((visibility("default")))
-        #else
-            #define SHADERC_EXPORT
-        #endif
-    #endif
-#else
-    #define SHADERC_EXPORT
-#endif
+#include "shaderc/env.h"
+#include "shaderc/status.h"
+#include "shaderc/visibility.h"
 
 // Source language kind.
 typedef enum {
@@ -107,45 +92,12 @@ typedef enum {
 } shaderc_shader_kind;
 
 typedef enum {
-  shaderc_target_env_vulkan,  // create SPIR-V under Vulkan semantics
-  shaderc_target_env_opengl,  // create SPIR-V under OpenGL semantics
-  // NOTE: SPIR-V code generation is not supported for shaders under OpenGL
-  // compatibility profile.
-  shaderc_target_env_opengl_compat,  // create SPIR-V under OpenGL semantics,
-                                     // including compatibility profile
-                                     // functions
-  shaderc_target_env_default = shaderc_target_env_vulkan
-} shaderc_target_env;
-
-typedef enum {
-  // For Vulkan, use Vulkan's mapping of version numbers to integers.
-  // See vulkan.h
-  shaderc_env_version_vulkan_1_0 = (((uint32_t)1 << 22)),
-  shaderc_env_version_vulkan_1_1 = (((uint32_t)1 << 22) | (1 << 12)),
-  // For OpenGL, use the number from #version in shaders.
-  // TODO(dneto): Currently no difference between OpenGL 4.5 and 4.6.
-  // See glslang/Standalone/Standalone.cpp
-  // TODO(dneto): Glslang doesn't accept a OpenGL client version of 460.
-  shaderc_env_version_opengl_4_5 = 450,
-} shaderc_env_version;
-
-typedef enum {
   shaderc_profile_none,  // Used if and only if GLSL version did not specify
                          // profiles.
   shaderc_profile_core,
   shaderc_profile_compatibility,
   shaderc_profile_es,
 } shaderc_profile;
-
-// Indicate the status of a compilation.
-typedef enum {
-  shaderc_compilation_status_success = 0,
-  shaderc_compilation_status_invalid_stage,  // error stage deduction
-  shaderc_compilation_status_compilation_error,
-  shaderc_compilation_status_internal_error,  // unexpected failure
-  shaderc_compilation_status_null_result_object,
-  shaderc_compilation_status_invalid_assembly,
-} shaderc_compilation_status;
 
 // Optimization level.
 typedef enum {

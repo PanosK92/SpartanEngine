@@ -68,7 +68,7 @@ namespace Directus
 		const auto device_physical	= m_rhi_device->GetDevicePhysical<VkPhysicalDevice>();
 		const auto device			= m_rhi_device->GetDevice<VkDevice>();
 
-		// Surface
+		// Create surface
 		VkSurfaceKHR surface = nullptr;
 		{
 			VkWin32SurfaceCreateInfoKHR create_info = {};
@@ -83,20 +83,20 @@ namespace Directus
 			}
 		}
 
-		// Ensure the device is compatible with the surface
-		if (!VulkanHelper::is_device_surface_compatible(device_physical, surface))
+		// Ensure device compatibility
+		if (!vulkan_helper::swap_chain::check_surface_compatibility(device_physical, surface))
 		{
 			LOG_ERROR("Device is not surface compatible.");
 			return;
 		}
 
-		// Swap chain
-		auto swapchain_support	= VulkanHelper::query_swap_chain_support(device_physical, surface);
-		auto surface_format		= VulkanHelper::choose_swap_surface_format(vulkan_format[m_format], swapchain_support.formats);
-		VkSwapchainKHR swapChain;
+		// Create swap chain
+		auto swapchain_support	= vulkan_helper::swap_chain::query_support(device_physical, surface);
+		auto surface_format		= vulkan_helper::swap_chain::choose_format(vulkan_format[m_format], swapchain_support.formats);
+		VkSwapchainKHR swap_chain;
 		{
-			auto present_mode	= VulkanHelper::choose_swap_present_mode(swapchain_support.present_modes);
-			auto extent			= VulkanHelper::choose_swap_extent(swapchain_support.capabilities);
+			auto present_mode	= vulkan_helper::swap_chain::choose_present_mode(swapchain_support.present_modes);
+			auto extent			= vulkan_helper::swap_chain::choose_extent(swapchain_support.capabilities);
 
 			uint32_t image_count = buffer_count;//swapChainSupport.capabilities.minImageCount + 1;
 			if (swapchain_support.capabilities.maxImageCount > 0 && image_count > swapchain_support.capabilities.maxImageCount)
@@ -115,8 +115,8 @@ namespace Directus
 			create_info.imageArrayLayers	= 1;
 			create_info.imageUsage			= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-			VulkanHelper::QueueFamilyIndices indices	= VulkanHelper::find_queue_families(device_physical);
-			uint32_t queueFamilyIndices[]				= { indices.graphics_family.value(), indices.present_family.value() };
+			vulkan_helper::queue_families::QueueFamilyIndices indices	= vulkan_helper::queue_families::get(device_physical);
+			uint32_t queueFamilyIndices[]								= { indices.graphics_family.value(), indices.present_family.value() };
 			if (indices.graphics_family != indices.present_family)
 			{
 				create_info.imageSharingMode		= VK_SHARING_MODE_CONCURRENT;
@@ -136,7 +136,7 @@ namespace Directus
 			create_info.clipped			= VK_TRUE;
 			create_info.oldSwapchain	= VK_NULL_HANDLE;
 
-			if (vkCreateSwapchainKHR(device, &create_info, nullptr, &swapChain) != VK_SUCCESS)
+			if (vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to create swap chain.");
 			}
@@ -146,9 +146,9 @@ namespace Directus
 		std::vector<VkImage> swap_chain_images;
 		{
 			uint32_t image_count;			
-			vkGetSwapchainImagesKHR(device, swapChain, &image_count, nullptr);
+			vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
 			swap_chain_images.resize(image_count);
-			vkGetSwapchainImagesKHR(device, swapChain, &image_count, swap_chain_images.data());
+			vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swap_chain_images.data());
 		}
 
 		// Swap chain image views
@@ -180,7 +180,7 @@ namespace Directus
 		}
 
 		m_surface					= static_cast<void*>(surface);
-		m_swap_chain				= static_cast<void*>(swapChain);
+		m_swap_chain				= static_cast<void*>(swap_chain);
 		m_swap_chain_images			= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
 		m_swap_chain_image_views	= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
 
@@ -206,16 +206,6 @@ namespace Directus
 
 	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
 	{	
-		return false;
-	}
-
-	bool RHI_SwapChain::SetAsRenderTarget() const
-	{
-		return false;
-	}
-
-	bool RHI_SwapChain::Clear(const Vector4& color) const
-	{
 		return false;
 	}
 
