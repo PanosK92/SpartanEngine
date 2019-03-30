@@ -66,8 +66,7 @@ namespace Directus
 		}
 
 		// Get device
-		auto* d3d11_device = device->GetDevicePhysical<ID3D11Device>();
-		if (!d3d11_device)
+		if (!device->GetContext()->device)
 		{
 			LOG_ERROR("Invalid device.");
 			return;
@@ -118,7 +117,7 @@ namespace Directus
 			desc.Flags							= D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
-			const auto result	= dxgi_factory->CreateSwapChain(d3d11_device, &desc, &swap_chain);
+			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContext()->device, &desc, &swap_chain);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
@@ -139,7 +138,7 @@ namespace Directus
 			}
 
 			auto render_target_view = static_cast<ID3D11RenderTargetView*>(m_render_target_view);
-			result = m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+			result = m_rhi_device->GetContext()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
 			backbuffer->Release();
 			if (FAILED(result))
 			{
@@ -237,7 +236,7 @@ namespace Directus
 		}
 
 		// Create render target view
-		result = m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+		result = m_rhi_device->GetContext()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
 		safe_release(backbuffer);
 		if (FAILED(result))
 		{

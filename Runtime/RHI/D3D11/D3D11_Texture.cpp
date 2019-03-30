@@ -39,7 +39,7 @@ namespace Directus
 {
 	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mip_chain)
 	{
-		if (!m_rhi_device->GetDevicePhysical<ID3D11Device>() || mip_chain.empty())
+		if (!m_rhi_device->GetContext()->device || mip_chain.empty())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
@@ -96,7 +96,7 @@ namespace Directus
 
 		// Create texture
 		ID3D11Texture2D* texture = nullptr;
-		auto result = SUCCEEDED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateTexture2D(&texture_desc, vec_subresource_data.data(), &texture));
+		auto result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, vec_subresource_data.data(), &texture));
 		if (!result)
 		{
 			LOG_ERROR("Invalid parameters, failed to create ID3D11Texture2D.");
@@ -105,7 +105,7 @@ namespace Directus
 
 		// Create shader resource
 		ID3D11ShaderResourceView* shader_resource_view = nullptr;
-		result = SUCCEEDED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateShaderResourceView(texture, &shader_resource_desc, &shader_resource_view));
+		result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateShaderResourceView(texture, &shader_resource_desc, &shader_resource_view));
 		if (!result)
 		{
 			LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
@@ -118,7 +118,7 @@ namespace Directus
 
 	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<std::byte>& data, bool generate_mip_chain /*= false*/)
 	{
-		if (!m_rhi_device->GetDevicePhysical<ID3D11Device>() || data.empty())
+		if (!m_rhi_device->GetContext()->device || data.empty())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
@@ -169,7 +169,7 @@ namespace Directus
 
 		// Create texture
 		ID3D11Texture2D* texture = nullptr;
-		auto result = SUCCEEDED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateTexture2D(&texture_desc, generate_mip_chain ? nullptr : &subresource_data, &texture));
+		auto result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, generate_mip_chain ? nullptr : &subresource_data, &texture));
 		if (!result)
 		{
 			LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
@@ -178,14 +178,14 @@ namespace Directus
 
 		// Create shader resource
 		ID3D11ShaderResourceView* shader_resource_view = nullptr;
-		result = SUCCEEDED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateShaderResourceView(texture, &shader_resource_desc, &shader_resource_view));
+		result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateShaderResourceView(texture, &shader_resource_desc, &shader_resource_view));
 		if (result)
 		{
 			// Generate mip-maps
 			if (generate_mip_chain)
 			{
-				m_rhi_device->GetDevice<ID3D11DeviceContext>()->UpdateSubresource(texture, 0, nullptr, data.data(), width * channels * (m_bpc / 8), 0);
-				m_rhi_device->GetDevice<ID3D11DeviceContext>()->GenerateMips(shader_resource_view);
+				m_rhi_device->GetContext()->device_context->UpdateSubresource(texture, 0, nullptr, data.data(), width * channels * (m_bpc / 8), 0);
+				m_rhi_device->GetContext()->device_context->GenerateMips(shader_resource_view);
 			}
 		}
 		else
@@ -272,14 +272,14 @@ namespace Directus
 		shader_resource_desc.TextureCube.MostDetailedMip	= 0;
 
 		// Validate device before usage
-		if (!m_rhi_device->GetDevicePhysical<ID3D11Device>())
+		if (!m_rhi_device->GetContext()->device)
 		{
 			LOG_ERROR("Invalid RHI device.");
 			return false;
 		}
 
 		// Create the Texture Resource
-		auto result = SUCCEEDED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateTexture2D(vec_texture_desc.data(), vec_subresource_data.data(), &texture));
+		auto result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateTexture2D(vec_texture_desc.data(), vec_subresource_data.data(), &texture));
 		if (!result)
 		{
 			LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
@@ -287,7 +287,7 @@ namespace Directus
 		}
 
 		// If we have created the texture resource for the six faces we create the Shader Resource View to use in our shaders.
-		result = SUCCEEDED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateShaderResourceView(texture, &shader_resource_desc, &shader_resource_view));
+		result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateShaderResourceView(texture, &shader_resource_desc, &shader_resource_view));
 		if (!result)
 		{
 			LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");

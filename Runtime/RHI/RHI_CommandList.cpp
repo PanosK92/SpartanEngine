@@ -318,11 +318,11 @@ namespace Directus
 			{
 			case RHI_Cmd_Begin:
 				m_profiler->TimeBlockStart(cmd.pass_name, true, true);
-				m_rhi_device->EventBegin(cmd.pass_name);
+				m_rhi_device->BeginMarker(cmd.pass_name);
 				break;
 
 			case RHI_Cmd_End:
-				m_rhi_device->EventEnd();
+				m_rhi_device->EndMarker();
 				m_profiler->TimeBlockEnd();
 				break;
 

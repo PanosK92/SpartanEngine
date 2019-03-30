@@ -55,8 +55,7 @@ namespace Directus
 			return;
 		}
 
-		auto d3d11_device = rhi_device->GetDevicePhysical<ID3D11Device>();
-		if (!d3d11_device)
+		if (!rhi_device->GetContext()->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return;
@@ -84,7 +83,7 @@ namespace Directus
 
 		// Create blend state
 		auto blend_state	= static_cast<ID3D11BlendState*>(m_buffer);
-		const auto result	= d3d11_device->CreateBlendState(&desc, &blend_state);
+		const auto result	= rhi_device->GetContext()->device->CreateBlendState(&desc, &blend_state);
 
 		// Handle result
 		if (SUCCEEDED(result))

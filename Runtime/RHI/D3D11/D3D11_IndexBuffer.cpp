@@ -54,7 +54,7 @@ namespace Directus
 	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 
-		if (!m_rhiDevice || !m_rhiDevice->GetDevicePhysical<ID3D11Device>())
+		if (!m_rhiDevice || !m_rhiDevice->GetContext()->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -84,7 +84,7 @@ namespace Directus
 		init_data.SysMemSlicePitch	= 0;
 
 		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result	= m_rhiDevice->GetDevicePhysical<ID3D11Device>()->CreateBuffer(&buffer_desc, &init_data, ptr);
+		const auto result	= m_rhiDevice->GetContext()->device->CreateBuffer(&buffer_desc, &init_data, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR(" Failed to create index buffer");
@@ -101,7 +101,7 @@ namespace Directus
 	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
 
-		if (!m_rhiDevice || !m_rhiDevice->GetDevicePhysical<ID3D11Device>())
+		if (!m_rhiDevice || !m_rhiDevice->GetContext()->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -119,7 +119,7 @@ namespace Directus
 		buffer_desc.StructureByteStride	= 0;
 
 		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result	= m_rhiDevice->GetDevicePhysical<ID3D11Device>()->CreateBuffer(&buffer_desc, nullptr, ptr);
+		const auto result	= m_rhiDevice->GetContext()->device->CreateBuffer(&buffer_desc, nullptr, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR("Failed to create dynamic index buffer");
@@ -131,14 +131,14 @@ namespace Directus
 
 	void* RHI_IndexBuffer::Map() const
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11DeviceContext>() || !m_buffer)
+		if (!m_rhiDevice || !m_rhiDevice->GetContext()->device_context || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
 		}
 
 		D3D11_MAPPED_SUBRESOURCE mapped_resource;
-		const auto result = m_rhiDevice->GetDevice<ID3D11DeviceContext>()->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+		const auto result = m_rhiDevice->GetContext()->device_context->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to map index buffer.");
@@ -150,13 +150,13 @@ namespace Directus
 
 	bool RHI_IndexBuffer::Unmap() const
 	{
-		if (!m_rhiDevice || !m_rhiDevice->GetDevice<ID3D11DeviceContext>() || !m_buffer)
+		if (!m_rhiDevice || !m_rhiDevice->GetContext()->device_context || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_rhiDevice->GetDevice<ID3D11DeviceContext>()->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
+		m_rhiDevice->GetContext()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
 
 		return true;
 	}

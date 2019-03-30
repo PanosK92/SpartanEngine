@@ -31,6 +31,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class RHI_Context;
+
 	namespace Math
 	{ 
 		class Vector4;
@@ -110,10 +112,10 @@ namespace Directus
 		bool SetScissorRectangle(const Math::Rectangle& rectangle) const;
 		//============================================================================================================================
 
-		//= EVENTS =====================================
-		static void EventBegin(const std::string& name);
-		static void EventEnd();
-		//==============================================
+		//= EVENTS ===============================
+		void BeginMarker(const std::string& name);
+		void EndMarker();
+		//========================================
 
 		//= PROFILING =============================================================================
 		bool ProfilingCreateQuery(void** query, RHI_Query_Type type) const;
@@ -133,22 +135,10 @@ namespace Directus
 		RHI_Format GetBackBufferFormat()						{ return m_back_buffer_format; }
 		//=======================================================================================================================================
 
-		//= API ACCESS ===================================================================
-		bool IsInitialized() const { return m_initialized; }
-		#if defined(API_GRAPHICS_D3D11)
-		template <typename T>
-		constexpr T* GetDevicePhysical()	{ return static_cast<T*>(m_device_physical); }
-		template <typename T>
-		constexpr T* GetDevice()			{ return static_cast<T*>(m_device); }
-		#elif defined(API_GRAPHICS_VULKAN)
-		template <typename T>
-		constexpr T GetDevicePhysical()	{ return static_cast<T>(m_device_physical); }
-		template <typename T>
-		constexpr T GetDevice()			{ return static_cast<T>(m_device); }
-		template <typename T>
-		constexpr T GetInstance()		{ return static_cast<T>(m_instance); }
-		#endif
-		//================================================================================
+		//= MISC ============================================
+		bool IsInitialized() const	{ return m_initialized; }
+		RHI_Context* GetContext()	{ return m_rhi_context; }
+		//===================================================
 
 	private:
 		std::vector<DisplayMode> m_displayModes;
@@ -157,11 +147,6 @@ namespace Directus
 		RHI_Format m_back_buffer_format = Format_R8G8B8A8_UNORM;
 
 		bool m_initialized		= false;
-		void* m_device_physical	= nullptr;
-		void* m_device			= nullptr;
-
-		// Low-level (used by Vulkan)
-		void* m_instance		= nullptr;
-		void* m_present_queue	= nullptr;
+		RHI_Context* m_rhi_context	= nullptr;
 	};
 }

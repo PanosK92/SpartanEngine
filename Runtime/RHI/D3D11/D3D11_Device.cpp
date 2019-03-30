@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#include "../RHI_Viewport.h"
 #ifdef API_GRAPHICS_D3D11
 //================================
 
@@ -35,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_VertexBuffer.h"
 #include "../RHI_IndexBuffer.h"
+#include "../RHI_Viewport.h"
 #include "../../Logging/Log.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Core/Settings.h"
@@ -49,15 +49,9 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	namespace D3D11Instance
-	{
-		ID3D11Device* device_physical;
-		ID3D11DeviceContext* device;
-		ID3DUserDefinedAnnotation* annotation;
-	}
-
 	RHI_Device::RHI_Device()
 	{
+		m_rhi_context = new RHI_Context();
 		const static auto multithread_protection = false;
 
 		// Detect adapters
@@ -95,9 +89,9 @@ namespace Directus
 				feature_levels.data(),						// pFeatureLevels
 				static_cast<UINT>(feature_levels.size()),	// FeatureLevels
 				D3D11_SDK_VERSION,							// SDKVersion
-				&D3D11Instance::device_physical,			// ppDevice
+				&m_rhi_context->device,				// ppDevice
 				nullptr,									// pFeatureLevel
-				&D3D11Instance::device						// ppImmediateContext
+				&m_rhi_context->device_context							// ppImmediateContext
 			);
 
 			if (FAILED(result))
@@ -109,7 +103,7 @@ namespace Directus
 
 		// Log feature level
 		{
-			const auto feature_level = D3D11Instance::device_physical->GetFeatureLevel();
+			const auto feature_level = m_rhi_context->device->GetFeatureLevel();
 			string feature_level_str;
 			switch (feature_level)
 			{
@@ -152,7 +146,7 @@ namespace Directus
 		if (multithread_protection)
 		{
 			ID3D11Multithread* multithread = nullptr;
-			if (SUCCEEDED(D3D11Instance::device->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithread))))
+			if (SUCCEEDED(m_rhi_context->device_context->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithread))))
 			{		
 				multithread->SetMultithreadProtected(TRUE);
 				multithread->Release();
@@ -164,29 +158,26 @@ namespace Directus
 		}
 
 		// Annotations
-		D3D11Instance::annotation	= nullptr;
-		const auto result			= D3D11Instance::device->QueryInterface(IID_PPV_ARGS(&D3D11Instance::annotation));
+		const auto result = m_rhi_context->device_context->QueryInterface(IID_PPV_ARGS(&m_rhi_context->annotation));
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", D3D11_Helper::dxgi_error_to_string(result));
 			return;
 		}
 
-		m_device_physical	= static_cast<void*>(D3D11Instance::device_physical);
-		m_device			= static_cast<void*>(D3D11Instance::device);
-		m_initialized		= true;
+		m_initialized = true;
 	}
 
 	RHI_Device::~RHI_Device()
 	{
-		safe_release(D3D11Instance::device);
-		safe_release(D3D11Instance::device_physical);
-		safe_release(D3D11Instance::annotation);
+		safe_release(m_rhi_context->device_context);
+		safe_release(m_rhi_context->device);
+		safe_release(m_rhi_context->annotation);
 	}
 
 	bool RHI_Device::Draw(const unsigned int vertex_count) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -198,13 +189,13 @@ namespace Directus
 			return false;
 		}
 
-		D3D11Instance::device->Draw(vertex_count, 0);
+		m_rhi_context->device_context->Draw(vertex_count, 0);
 		return true;
 	}
 
 	bool RHI_Device::DrawIndexed(const unsigned int index_count, const unsigned int index_offset, const unsigned int vertex_offset) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -216,25 +207,25 @@ namespace Directus
 			return false;
 		}
 
-		D3D11Instance::device->DrawIndexed(index_count, index_offset, vertex_offset);
+		m_rhi_context->device_context->DrawIndexed(index_count, index_offset, vertex_offset);
 		return true;
 	}
 
 	bool RHI_Device::ClearRenderTarget(void* render_target, const Vector4& color) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		D3D11Instance::device->ClearRenderTargetView(static_cast<ID3D11RenderTargetView*>(render_target), color.Data());
+		m_rhi_context->device_context->ClearRenderTargetView(static_cast<ID3D11RenderTargetView*>(render_target), color.Data());
 		return true;
 	}
 
 	bool RHI_Device::ClearDepthStencil(void* depth_stencil, const unsigned int flags, const float depth, const unsigned int stencil) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -243,13 +234,13 @@ namespace Directus
 		unsigned int clear_flags = 0;
 		clear_flags |= flags & Clear_Depth	? D3D11_CLEAR_DEPTH		: 0;
 		clear_flags |= flags & Clear_Stencil ? D3D11_CLEAR_STENCIL	: 0;
-		D3D11Instance::device->ClearDepthStencilView(static_cast<ID3D11DepthStencilView*>(depth_stencil), clear_flags, depth, stencil);
+		m_rhi_context->device_context->ClearDepthStencilView(static_cast<ID3D11DepthStencilView*>(depth_stencil), clear_flags, depth, stencil);
 		return true;
 	}
 
 	bool RHI_Device::SetVertexBuffer(const RHI_VertexBuffer* buffer) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -264,13 +255,13 @@ namespace Directus
 		auto ptr			= static_cast<ID3D11Buffer*>(buffer->GetBuffer());
 		auto stride			= buffer->GetStride();
 		unsigned int offset = 0;
-		D3D11Instance::device->IASetVertexBuffers(0, 1, &ptr, &stride, &offset);
+		m_rhi_context->device_context->IASetVertexBuffers(0, 1, &ptr, &stride, &offset);
 		return true;
 	}
 
 	bool RHI_Device::SetIndexBuffer(const RHI_IndexBuffer* buffer) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -284,14 +275,14 @@ namespace Directus
 
 		const auto ptr		= static_cast<ID3D11Buffer*>(buffer->GetBuffer());
 		const auto format	= d3d11_format[buffer->GetFormat()];
-		D3D11Instance::device->IASetIndexBuffer(ptr, format, 0);
+		m_rhi_context->device_context->IASetIndexBuffer(ptr, format, 0);
 
 		return true;
 	}
 
 	bool RHI_Device::SetVertexShader(const RHI_Shader* shader) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -304,13 +295,13 @@ namespace Directus
 		}
 
 		const auto ptr = static_cast<ID3D11VertexShader*>(shader->GetVertexShaderBuffer());
-		D3D11Instance::device->VSSetShader(ptr, nullptr, 0);
+		m_rhi_context->device_context->VSSetShader(ptr, nullptr, 0);
 		return true;
 	}
 
 	bool RHI_Device::SetPixelShader(const RHI_Shader* shader) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -323,13 +314,13 @@ namespace Directus
 		}
 
 		const auto ptr = static_cast<ID3D11PixelShader*>(shader->GetPixelShaderBuffer());
-		D3D11Instance::device->PSSetShader(ptr, nullptr, 0);
+		m_rhi_context->device_context->PSSetShader(ptr, nullptr, 0);
 		return true;
 	}
 
 	bool RHI_Device::SetConstantBuffers(const unsigned int start_slot, const unsigned int buffer_count, const void* buffer, const RHI_Buffer_Scope scope) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -338,12 +329,12 @@ namespace Directus
 		const auto d3_d11_buffer = static_cast<ID3D11Buffer*const*>(buffer);
 		if (scope == Buffer_VertexShader || scope == Buffer_Global)
 		{
-			D3D11Instance::device->VSSetConstantBuffers(start_slot, buffer_count, d3_d11_buffer);
+			m_rhi_context->device_context->VSSetConstantBuffers(start_slot, buffer_count, d3_d11_buffer);
 		}
 
 		if (scope == Buffer_PixelShader || scope == Buffer_Global)
 		{
-			D3D11Instance::device->PSSetConstantBuffers(start_slot, buffer_count, d3_d11_buffer);
+			m_rhi_context->device_context->PSSetConstantBuffers(start_slot, buffer_count, d3_d11_buffer);
 		}
 
 		return true;
@@ -351,43 +342,43 @@ namespace Directus
 
 	bool RHI_Device::SetSamplers(const unsigned int start_slot, const unsigned int sampler_count, const void* samplers) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		D3D11Instance::device->PSSetSamplers(start_slot, sampler_count, static_cast<ID3D11SamplerState* const*>(samplers));
+		m_rhi_context->device_context->PSSetSamplers(start_slot, sampler_count, static_cast<ID3D11SamplerState* const*>(samplers));
 		return true;
 	}
 
 	bool RHI_Device::SetRenderTargets(const unsigned int render_target_count, const void* render_targets, void* depth_stencil) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		D3D11Instance::device->OMSetRenderTargets(render_target_count, static_cast<ID3D11RenderTargetView* const*>(render_targets), static_cast<ID3D11DepthStencilView*>(depth_stencil));
+		m_rhi_context->device_context->OMSetRenderTargets(render_target_count, static_cast<ID3D11RenderTargetView* const*>(render_targets), static_cast<ID3D11DepthStencilView*>(depth_stencil));
 		return true;
 	}
 
 	bool RHI_Device::SetTextures(const unsigned int start_slot, const unsigned int resource_count, const void* textures) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		D3D11Instance::device->PSSetShaderResources(start_slot, resource_count, static_cast<ID3D11ShaderResourceView* const*>(textures));
+		m_rhi_context->device_context->PSSetShaderResources(start_slot, resource_count, static_cast<ID3D11ShaderResourceView* const*>(textures));
 		return true;
 	}
 
 	bool RHI_Device::SetViewport(const RHI_Viewport& viewport) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -400,14 +391,14 @@ namespace Directus
 		dx_viewport.Height		= viewport.GetHeight();
 		dx_viewport.MinDepth	= viewport.GetMinDepth();
 		dx_viewport.MaxDepth	= viewport.GetMaxDepth();
-		D3D11Instance::device->RSSetViewports(1, &dx_viewport);
+		m_rhi_context->device_context->RSSetViewports(1, &dx_viewport);
 
 		return true;
 	}
 
 	bool RHI_Device::SetScissorRectangle(const Math::Rectangle& rectangle) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -419,27 +410,27 @@ namespace Directus
 		const auto bottom					= rectangle.y + rectangle.height;
 		const D3D11_RECT d3d11_rectangle	= { static_cast<LONG>(left), static_cast<LONG>(top), static_cast<LONG>(right), static_cast<LONG>(bottom) };
 
-		D3D11Instance::device->RSSetScissorRects(1, &d3d11_rectangle);
+		m_rhi_context->device_context->RSSetScissorRects(1, &d3d11_rectangle);
 
 		return true;
 	}
 
 	bool RHI_Device::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		auto ptr = static_cast<ID3D11DepthStencilState*>(depth_stencil_state->GetBuffer());
-		D3D11Instance::device->OMSetDepthStencilState(ptr, 1);
+		m_rhi_context->device_context->OMSetDepthStencilState(ptr, 1);
 		return true;
 	}
 
 	bool RHI_Device::SetBlendState(const RHI_BlendState* blend_state) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -454,27 +445,27 @@ namespace Directus
 		// Set blend state
 		const auto ptr			= static_cast<ID3D11BlendState*>(blend_state->GetBuffer());
 		float blend_fentity[4]	= { 0.0f, 0.0f, 0.0f, 0.0f };
-		D3D11Instance::device->OMSetBlendState(ptr, blend_fentity, 0xffffffff);
+		m_rhi_context->device_context->OMSetBlendState(ptr, blend_fentity, 0xffffffff);
 
 		return true;
 	}
 
 	bool RHI_Device::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		// Set primitive topology
-		D3D11Instance::device->IASetPrimitiveTopology(d3d11_primitive_topology[primitive_topology]);
+		m_rhi_context->device_context->IASetPrimitiveTopology(d3d11_primitive_topology[primitive_topology]);
 		return true;
 	}
 
 	bool RHI_Device::SetInputLayout(const RHI_InputLayout* input_layout) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -487,13 +478,13 @@ namespace Directus
 		}
 
 		const auto ptr = static_cast<ID3D11InputLayout*>(input_layout->GetBuffer());
-		D3D11Instance::device->IASetInputLayout(ptr);
+		m_rhi_context->device_context->IASetInputLayout(ptr);
 		return true;
 	}
 
 	bool RHI_Device::SetRasterizerState(const RHI_RasterizerState* rasterizer_state) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -506,27 +497,27 @@ namespace Directus
 		}
 
 		const auto ptr = static_cast<ID3D11RasterizerState*>(rasterizer_state->GetBuffer());
-		D3D11Instance::device->RSSetState(ptr);
+		m_rhi_context->device_context->RSSetState(ptr);
 		return true;
 	}
 
-	void RHI_Device::EventBegin(const std::string& name)
+	void RHI_Device::BeginMarker(const std::string& name)
 	{
 	#ifdef DEBUG
-		D3D11Instance::annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
+		m_rhi_context->annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
 	#endif
 	}
 
-	void RHI_Device::EventEnd()
+	void RHI_Device::EndMarker()
 	{
 	#ifdef DEBUG
-		D3D11Instance::annotation->EndEvent();
+		m_rhi_context->annotation->EndEvent();
 	#endif
 	}
 
 	bool RHI_Device::ProfilingCreateQuery(void** query, const RHI_Query_Type type) const
 	{
-		if (!D3D11Instance::device_physical)
+		if (!m_rhi_context->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -536,7 +527,7 @@ namespace Directus
 		ZeroMemory(&desc, sizeof(desc));
 		desc.Query			= (type == Query_Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
 		desc.MiscFlags		= 0;
-		const auto result	= D3D11Instance::device_physical->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query));
+		const auto result	= m_rhi_context->device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query));
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create ID3D11Query");
@@ -554,13 +545,13 @@ namespace Directus
 			return false;
 		}
 
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		D3D11Instance::device->Begin(static_cast<ID3D11Query*>(query_object));
+		m_rhi_context->device_context->Begin(static_cast<ID3D11Query*>(query_object));
 		return true;
 	}
 
@@ -572,38 +563,38 @@ namespace Directus
 			return false;
 		}
 
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		D3D11Instance::device->End(static_cast<ID3D11Query*>(query_object));
+		m_rhi_context->device_context->End(static_cast<ID3D11Query*>(query_object));
 		return true;
 	}
 
 	float RHI_Device::ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const
 	{
-		if (!D3D11Instance::device)
+		if (!m_rhi_context->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return 0.0f;
 		}
 
 		// Wait for data to be available	
-		while (D3D11Instance::device->GetData(static_cast<ID3D11Query*>(query_disjoint), nullptr, 0, 0) == S_FALSE) {}
+		while (m_rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), nullptr, 0, 0) == S_FALSE) {}
 
 		// Check whether timestamps were disjoint during the last frame
 		D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data;
-		D3D11Instance::device->GetData(static_cast<ID3D11Query*>(query_disjoint), &disjoint_data, sizeof(disjoint_data), 0);
+		m_rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), &disjoint_data, sizeof(disjoint_data), 0);
 		if (disjoint_data.Disjoint)
 			return 0.0f;
 
 		// Get the query data		
 		UINT64 start_time	= 0;
 		UINT64 end_time		= 0;
-		D3D11Instance::device->GetData(static_cast<ID3D11Query*>(query_start), &start_time, sizeof(start_time), 0);
-		D3D11Instance::device->GetData(static_cast<ID3D11Query*>(query_end), &end_time, sizeof(end_time), 0);
+		m_rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_start), &start_time, sizeof(start_time), 0);
+		m_rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_end), &end_time, sizeof(end_time), 0);
 
 		// Convert to real time
 		const auto delta		= end_time - start_time;
