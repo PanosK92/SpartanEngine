@@ -87,7 +87,7 @@ namespace Directus
 		Pass_PerformanceMetrics(m_render_tex_full_hdr_light2);
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -176,7 +176,7 @@ namespace Directus
 			m_cmd_list->End(); // end of cascade
 		}
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -199,7 +199,7 @@ namespace Directus
 			m_cmd_list->ClearRenderTarget(m_g_buffer_velocity->GetRenderTargetView(), Vector4::Zero);
 			m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);
 			m_cmd_list->End();
-			m_cmd_list->Submit();
+			m_cmd_list->Flush();
 			m_cmd_list->Clear();
 			return;
 		}
@@ -314,7 +314,7 @@ namespace Directus
 		} // ENTITY/MESH ITERATION
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -410,7 +410,7 @@ namespace Directus
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -482,7 +482,7 @@ namespace Directus
 		} // ENTITY/MESH ITERATION
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -511,7 +511,7 @@ namespace Directus
 		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -529,7 +529,7 @@ namespace Directus
 		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
 
 		// Render target swapping
-		const auto swap_targets = [this, &tex_in, &tex_out]() { m_cmd_list->Submit(); tex_out.swap(tex_in); };
+		const auto swap_targets = [this, &tex_in, &tex_out]() { m_cmd_list->Flush(); tex_out.swap(tex_in); };
 
 		// TAA	
 		if (Flags_IsSet(Render_PostProcess_TAA))
@@ -591,7 +591,7 @@ namespace Directus
 		Pass_GammaCorrection(tex_in, tex_out);
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -615,7 +615,7 @@ namespace Directus
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -633,7 +633,7 @@ namespace Directus
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -685,7 +685,7 @@ namespace Directus
 		m_cmd_list->End();
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 
 		// Swap textures
@@ -746,7 +746,7 @@ namespace Directus
 		m_cmd_list->End();
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 
 		tex_in.swap(tex_out);
@@ -787,7 +787,7 @@ namespace Directus
 		}
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 
 		// Swap textures so current becomes history
@@ -847,7 +847,7 @@ namespace Directus
 		m_cmd_list->End();
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -867,7 +867,7 @@ namespace Directus
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -887,7 +887,7 @@ namespace Directus
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -917,7 +917,7 @@ namespace Directus
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 
 		// Swap the textures
@@ -940,7 +940,7 @@ namespace Directus
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -961,7 +961,7 @@ namespace Directus
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -981,7 +981,7 @@ namespace Directus
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -1001,7 +1001,7 @@ namespace Directus
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -1133,7 +1133,7 @@ namespace Directus
 		}
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -1204,7 +1204,7 @@ namespace Directus
 				m_cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
 				m_cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
 				m_cmd_list->DrawIndexed(m_gizmo_light_rect.GetIndexCount(), 0, 0);			
-				m_cmd_list->Submit();
+				m_cmd_list->Flush();
 				m_cmd_list->Clear();
 			}
 			m_cmd_list->End();
@@ -1255,7 +1255,7 @@ namespace Directus
 		}
 
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -1289,7 +1289,7 @@ namespace Directus
 		m_cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
 		m_cmd_list->DrawIndexed(m_font->GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 	}
 
@@ -1360,7 +1360,7 @@ namespace Directus
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
-		m_cmd_list->Submit();
+		m_cmd_list->Flush();
 		m_cmd_list->Clear();
 
 		return true;

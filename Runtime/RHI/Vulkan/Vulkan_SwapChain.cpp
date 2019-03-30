@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
+#include "Vulkan_Helper.h"
 //=============================
 
 //= NAMESPACES ================
@@ -76,6 +77,18 @@ namespace Directus
 				LOG_ERROR("Failed to create surface.");
 				return;
 			}
+
+			VkBool32 present_support = false;
+			if (vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support))
+			{
+				LOG_ERROR("Failed to check for surface support by the device.");
+				return;
+			}
+			else if (present_support)
+			{
+				LOG_ERROR("The device does not suport this kind of surface.");
+				return;
+			}
 		}
 
 		// Ensure device compatibility
@@ -85,6 +98,9 @@ namespace Directus
 			LOG_ERROR("Device is not surface compatible.");
 			return;
 		}
+
+		// Choose a suitable format
+		auto format_selection = vulkan_helper::swap_chain::choose_format(vulkan_format[m_format], swap_chain_support.formats);
 
 		// Create swap chain
 		VkSwapchainKHR swap_chain;
@@ -96,8 +112,8 @@ namespace Directus
 			create_info.sType						= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 			create_info.surface						= surface;
 			create_info.minImageCount				= buffer_count;
-			create_info.imageFormat					= vulkan_format[m_format];
-			create_info.imageColorSpace				= VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+			create_info.imageFormat					= format_selection.format;
+			create_info.imageColorSpace				= format_selection.colorSpace;
 			create_info.imageExtent					= extent;
 			create_info.imageArrayLayers			= 1;
 			create_info.imageUsage					= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -122,7 +138,7 @@ namespace Directus
 			create_info.clipped			= VK_TRUE;
 			create_info.oldSwapchain	= VK_NULL_HANDLE;
 
-			if (vkCreateSwapchainKHR(rhi_context->device_context, &create_info, nullptr, &swap_chain) != VK_SUCCESS)
+			if (vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to create swap chain.");
 			}
@@ -132,9 +148,9 @@ namespace Directus
 		std::vector<VkImage> swap_chain_images;
 		{
 			uint32_t image_count;			
-			vkGetSwapchainImagesKHR(rhi_context->device_context, swap_chain, &image_count, nullptr);
+			vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, nullptr);
 			swap_chain_images.resize(image_count);
-			vkGetSwapchainImagesKHR(rhi_context->device_context, swap_chain, &image_count, swap_chain_images.data());
+			vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, swap_chain_images.data());
 		}
 
 		// Swap chain image views
@@ -147,7 +163,7 @@ namespace Directus
 				createInfo.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 				createInfo.image							= swap_chain_images[i];
 				createInfo.viewType							= VK_IMAGE_VIEW_TYPE_2D;
-				createInfo.format							= vulkan_format[m_format];
+				createInfo.format							= format_selection.format;
 				createInfo.components.r						= VK_COMPONENT_SWIZZLE_IDENTITY;
 				createInfo.components.g						= VK_COMPONENT_SWIZZLE_IDENTITY;
 				createInfo.components.b						= VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -158,7 +174,7 @@ namespace Directus
 				createInfo.subresourceRange.baseArrayLayer	= 0;
 				createInfo.subresourceRange.layerCount		= 1;
 
-				if (vkCreateImageView(rhi_context->device_context, &createInfo, nullptr, &swap_chain_image_views[i]) != VK_SUCCESS) 
+				if (vkCreateImageView(rhi_context->device, &createInfo, nullptr, &swap_chain_image_views[i]) != VK_SUCCESS) 
 				{
 					LOG_ERROR("Failed to create image views");
 				}
@@ -179,10 +195,10 @@ namespace Directus
 		auto rhi_context	= m_rhi_device->GetContext();
 
 		vkDestroySurfaceKHR(rhi_context->instance, surface, nullptr);
-		vkDestroySwapchainKHR(rhi_context->device_context, swapchain, nullptr);
+		vkDestroySwapchainKHR(rhi_context->device, swapchain, nullptr);
 		for (auto& image_view : m_swap_chain_image_views) 
 		{
-			vkDestroyImageView(rhi_context->device_context, (VkImageView)image_view, nullptr);
+			vkDestroyImageView(rhi_context->device, (VkImageView)image_view, nullptr);
 		}
 	}
 

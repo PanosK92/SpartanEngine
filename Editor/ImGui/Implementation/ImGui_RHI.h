@@ -210,7 +210,7 @@ namespace ImGui::RHI
 				if (!g_vertexBuffer->CreateDynamic(sizeof(ImDrawVert), new_size))
 				{
 					g_cmd_list->End();
-					g_cmd_list->Submit();
+					g_cmd_list->Flush();
 					g_cmd_list->Clear();
 					return;
 				}
@@ -223,7 +223,7 @@ namespace ImGui::RHI
 				if (!g_indexBuffer->CreateDynamic(sizeof(ImDrawIdx), new_size))
 				{
 					g_cmd_list->End();
-					g_cmd_list->Submit();
+					g_cmd_list->Flush();
 					g_cmd_list->Clear();
 					return;
 				}
@@ -319,7 +319,7 @@ namespace ImGui::RHI
 		}
 
 		g_cmd_list->End();
-		g_cmd_list->Submit();
+		g_cmd_list->Flush();
 		g_cmd_list->Clear();
 
 		if (is_main_viewport)

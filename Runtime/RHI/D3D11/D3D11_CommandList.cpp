@@ -21,16 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include "RHI_CommandList.h"
-#include "RHI_Device.h"
-#include "RHI_Sampler.h"
-#include "RHI_Texture.h"
-#include "RHI_RenderTexture.h"
-#include "RHI_ConstantBuffer.h"
-#include "../Profiling/Profiler.h"
-#include "../Logging/Log.h"
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_GRAPHICS_D3D11
 //================================
+
+//= INCLUDES ========================
+#include "../RHI_CommandList.h"
+#include "../RHI_Device.h"
+#include "../RHI_Sampler.h"
+#include "../RHI_Texture.h"
+#include "../RHI_RenderTexture.h"
+#include "../RHI_ConstantBuffer.h"
+#include "../../Profiling/Profiler.h"
+#include "../../Logging/Log.h"
+//===================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -45,6 +50,11 @@ namespace Directus
 		m_commands.resize(m_initial_capacity);
 		m_rhi_device	= rhi_device;
 		m_profiler		= profiler;
+	}
+
+	RHI_CommandList::~RHI_CommandList()
+	{
+		
 	}
 
 	void RHI_CommandList::Clear()
@@ -94,7 +104,7 @@ namespace Directus
 		cmd.viewport		= viewport;
 	}
 
-	void RHI_CommandList::SetScissorRectangle(const Rectangle& scissor_rectangle)
+	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle)
 	{
 		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetScissorRectangle;
@@ -308,7 +318,7 @@ namespace Directus
 		cmd.depth_clear_stencil = stencil;
 	}
 
-	void RHI_CommandList::Submit()
+	void RHI_CommandList::Flush()
 	{
 		for (unsigned int cmd_index = 0; cmd_index < m_command_count; cmd_index++)
 		{
@@ -430,3 +440,5 @@ namespace Directus
 		return m_commands[m_command_count - 1];	
 	}
 }
+
+#endif
