@@ -53,8 +53,7 @@ namespace Directus
 			return;
 		}
 
-		auto d3d11_device = rhi_device->GetDevicePhysical<ID3D11Device>();
-		if (!d3d11_device)
+		if (!rhi_device->GetContext()->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return;
@@ -83,7 +82,7 @@ namespace Directus
 
 		// Create rasterizer state
 		auto rasterizer_state	= static_cast<ID3D11RasterizerState*>(m_buffer);
-		const auto result		= d3d11_device->CreateRasterizerState(&desc, &rasterizer_state);
+		const auto result		= rhi_device->GetContext()->device->CreateRasterizerState(&desc, &rasterizer_state);
 	
 		// Handle result
 		if (SUCCEEDED(result))

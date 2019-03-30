@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "../RHI_Device.h"
+#include "../RHI_Context.h"
 #include "../../Math/Vector4.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
@@ -40,80 +41,57 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	namespace VulkanInstance
-	{
-		VkDebugUtilsMessengerEXT callback	= nullptr;
-		VkInstance instance					= nullptr;
-		VkPhysicalDevice device_physical	= nullptr;
-		VkDevice device						= nullptr;
-		VkQueue present_queue				= nullptr;
-	}
-
 	RHI_Device::RHI_Device()
 	{
-		// Validation layer
-		auto validation_layer_available = false;
-		if (vulkan_helper::validation_layers::enabled)
-		{
-			validation_layer_available = vulkan_helper::validation_layers::acquire(vulkan_helper::validation_layers::layers);
-		}
-		
+		m_rhi_context = new RHI_Context();
+
 		// Create instance
+		VkApplicationInfo app_info	= {};
 		{
-			VkApplicationInfo app_info	= {};
 			app_info.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
-			app_info.pApplicationName	= ENGINE_VERSION;
-			app_info.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
+			app_info.pApplicationName	= ENGINE_VERSION;		
 			app_info.pEngineName		= ENGINE_VERSION;
 			app_info.engineVersion		= VK_MAKE_VERSION(1, 0, 0);
+			app_info.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
 			app_info.apiVersion			= VK_API_VERSION_1_1;
 
 			VkInstanceCreateInfo create_info	= {};
 			create_info.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			create_info.pApplicationInfo		= &app_info;
-			create_info.enabledExtensionCount	= static_cast<uint32_t>(vulkan_helper::extensions::extensions_device_physical.size());
-			create_info.ppEnabledExtensionNames	= vulkan_helper::extensions::extensions_device_physical.data();
-			if (validation_layer_available) 
+			create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device_physical.size());
+			create_info.ppEnabledExtensionNames	= m_rhi_context->extensions_device_physical.data();
+			create_info.enabledLayerCount		= 0;
+
+			if (m_rhi_context->validation_enabled)
 			{
-				create_info.enabledLayerCount	= static_cast<uint32_t>(vulkan_helper::validation_layers::layers.size());
-				create_info.ppEnabledLayerNames	= vulkan_helper::validation_layers::layers.data();
-			}
-			else 
-			{
-				create_info.enabledLayerCount = 0;
+				if (vulkan_helper::check_validation_layers(m_rhi_context))
+				{
+					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
+					create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
+				}
+				else
+				{
+					LOG_ERROR("Validation layer was requested, but not available.");
+				}
 			}
 
-			const auto result = vkCreateInstance(&create_info, nullptr, &VulkanInstance::instance);
-			if (result != VK_SUCCESS)
+			if (vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to create instance.");
 				return;
 			}
 		}
-		
-		// Get available extensions
-		{
-			uint32_t extension_count = 0;
-			vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
-			std::vector<VkExtensionProperties> extensions(extension_count);
-			vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
-			for (const auto& extension : extensions)
-			{
-				LOGF_INFO("Available extension: %s", extension.extensionName);
-			}
-		}
 
 		// Callback
-		if (vulkan_helper::validation_layers::enabled)
+		if (m_rhi_context->validation_enabled)
 		{
-			VkDebugUtilsMessengerCreateInfoEXT create_info = {};
-			create_info.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-			create_info.messageSeverity	= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-			create_info.messageType		= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			create_info.pfnUserCallback	= vulkan_helper::debug_callback::callback;
-			create_info.pUserData		= nullptr; // Optional
+			VkDebugUtilsMessengerCreateInfoEXT create_info	= {};
+			create_info.sType								= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+			create_info.messageSeverity						= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+			create_info.messageType							= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+			create_info.pfnUserCallback						= vulkan_helper::debug_callback::callback;
 
-			if (vulkan_helper::debug_callback::create(VulkanInstance::instance, &create_info, nullptr, &VulkanInstance::callback) != VK_SUCCESS) 
+			if (vulkan_helper::debug_callback::create(m_rhi_context, &create_info) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to setup debug callback");
 			}
@@ -122,25 +100,16 @@ namespace Directus
 		// Device Physical
 		{
 			uint32_t device_count = 0;
-			vkEnumeratePhysicalDevices(VulkanInstance::instance, &device_count, nullptr);
+			vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, nullptr);
 			if (device_count == 0) 
 			{
 				LOG_ERROR("Failed to enumerate physical devices.");
 				return;
 			}
-			std::vector<VkPhysicalDevice> devices(device_count);
-			vkEnumeratePhysicalDevices(VulkanInstance::instance, &device_count, devices.data());
+			std::vector<VkPhysicalDevice> physical_devices(device_count);
+			vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data());
 			
-			for (const auto& device : devices) 
-			{
-				if (vulkan_helper::is_device_suitable(device))
-				{
-					VulkanInstance::device_physical = device;
-					break;
-				}
-			}
-
-			if (!VulkanInstance::device_physical) 
+			if (!vulkan_helper::physical_device::choose(m_rhi_context, physical_devices)) 
 			{
 				LOG_ERROR("Failed to find a suitable device.");
 				return;
@@ -151,11 +120,9 @@ namespace Directus
 		VkPhysicalDeviceFeatures device_features = {};
 		VkDeviceCreateInfo create_info = {};
 		{
-			auto indices = vulkan_helper::queue_families::get(VulkanInstance::device_physical);
-
 			VkDeviceQueueCreateInfo queue_create_info	= {};
 			queue_create_info.sType						= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queue_create_info.queueFamilyIndex			= indices.graphics_family.value();
+			queue_create_info.queueFamilyIndex			= m_rhi_context->indices.graphics_family.value();
 			queue_create_info.queueCount				= 1;
 
 			auto queue_priority = 1.0f;
@@ -165,20 +132,20 @@ namespace Directus
 			create_info.pQueueCreateInfos		= &queue_create_info;
 			create_info.queueCreateInfoCount	= 1;
 			create_info.pEnabledFeatures		= &device_features;
-			create_info.enabledExtensionCount	= static_cast<uint32_t>(vulkan_helper::extensions::extensions_device.size());
-			create_info.ppEnabledExtensionNames = vulkan_helper::extensions::extensions_device.data();
+			create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device.size());
+			create_info.ppEnabledExtensionNames = m_rhi_context->extensions_device.data();
 
-			if (vulkan_helper::validation_layers::enabled)
+			if (m_rhi_context->validation_enabled)
 			{
-			    create_info.enabledLayerCount	= static_cast<uint32_t>(vulkan_helper::validation_layers::layers.size());
-			    create_info.ppEnabledLayerNames	= vulkan_helper::validation_layers::layers.data();
+			    create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
+			    create_info.ppEnabledLayerNames	= m_rhi_context->validation_layers.data();
 			}
 			else 
 			{
 			    create_info.enabledLayerCount = 0;
 			}
 
-			if (vkCreateDevice(VulkanInstance::device_physical, &create_info, nullptr, &VulkanInstance::device) != VK_SUCCESS) 
+			if (vkCreateDevice(m_rhi_context->device, &create_info, nullptr, &m_rhi_context->device_context) != VK_SUCCESS) 
 			{
 				LOG_ERROR("Failed to create device.");
 			}
@@ -186,11 +153,8 @@ namespace Directus
 
 		// Present Queue
 		{
-			auto indices = vulkan_helper::queue_families::get(VulkanInstance::device_physical);
-
 			vector<VkDeviceQueueCreateInfo> queue_create_infos;
-			set<uint32_t> unique_queue_families = { indices.graphics_family.value(), indices.present_family.value() };
-
+			set<uint32_t> unique_queue_families = { m_rhi_context->indices.graphics_family.value(), m_rhi_context->indices.present_family.value() };
 			auto queue_priority = 1.0f;
 			for (auto queue_family : unique_queue_families) 
 			{
@@ -205,28 +169,26 @@ namespace Directus
 			create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
 			create_info.pQueueCreateInfos		= queue_create_infos.data();
 
-			const auto device = VulkanInstance::device;
-			vkGetDeviceQueue(device, indices.present_family.value(), 0, &VulkanInstance::present_queue);
+			vkGetDeviceQueue(m_rhi_context->device_context, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->present_queue);
 		}
 
-		m_instance			= static_cast<void*>(VulkanInstance::instance);
-		m_device_physical	= static_cast<void*>(VulkanInstance::device_physical);
-		m_device			= static_cast<void*>(VulkanInstance::device);
-		m_present_queue		= static_cast<void*>(VulkanInstance::present_queue);
-		
-		Settings::Get().m_versionGraphicsAPI = to_string(VK_API_VERSION_1_0);
+		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
+		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
+		auto version_path	= to_string(VK_VERSION_PATCH(app_info.apiVersion));
+		Settings::Get().m_versionGraphicsAPI = "Vulkan " + version_major + "." + version_minor + "." + version_path;
 		LOG_INFO(Settings::Get().m_versionGraphicsAPI);
 		m_initialized = true;
 	}
 
 	RHI_Device::~RHI_Device()
 	{	
-		if (vulkan_helper::validation_layers::enabled)
+		if (m_rhi_context->validation_enabled)
 		{
-			vulkan_helper::debug_callback::destroy(VulkanInstance::instance, VulkanInstance::callback, nullptr);
+			vulkan_helper::debug_callback::destroy(m_rhi_context);
 		}
-		vkDestroyInstance(VulkanInstance::instance, nullptr);
-		vkDestroyDevice(VulkanInstance::device, nullptr);
+		vkDestroyInstance(m_rhi_context->instance, nullptr);
+		vkDestroyDevice(m_rhi_context->device_context, nullptr);
+		safe_delete(m_rhi_context);
 	}
 
 	bool RHI_Device::Draw(unsigned int vertex_count) const
@@ -324,12 +286,12 @@ namespace Directus
 		return true;
 	}
 
-	void RHI_Device::EventBegin(const std::string& name)
+	void RHI_Device::BeginMarker(const std::string& name)
 	{
 
 	}
 
-	void RHI_Device::EventEnd()
+	void RHI_Device::EndMarker()
 	{
 
 	}

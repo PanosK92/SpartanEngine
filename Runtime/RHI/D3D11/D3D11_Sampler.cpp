@@ -46,7 +46,7 @@ namespace Directus
 		m_sampler_address_mode	= sampler_address_mode;
 		m_comparison_function	= comparison_function;
 
-		if (!rhi_device || !rhi_device->GetDevicePhysical<ID3D11Device>())
+		if (!rhi_device || !m_rhi_device->GetContext()->device)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -68,7 +68,7 @@ namespace Directus
 		sampler_desc.MaxLOD			= FLT_MAX;
 	
 		// Create sampler state.
-		if (FAILED(rhi_device->GetDevicePhysical<ID3D11Device>()->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_buffer))))
+		if (FAILED(m_rhi_device->GetContext()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_buffer))))
 		{
 			LOG_ERROR("Failed to create sampler state");
 		}

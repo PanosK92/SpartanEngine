@@ -45,7 +45,7 @@ namespace Directus
 			return;
 		}
 
-		auto d3d11_device = rhi_device->GetDevicePhysical<ID3D11Device>();
+		auto d3d11_device = rhi_device->GetContext()->device;
 		if (!d3d11_device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();

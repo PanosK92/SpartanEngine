@@ -89,7 +89,7 @@ namespace Directus
 		}
 
 		auto d3d_blob = static_cast<ID3D10Blob*>(vertex_shader_blob);
-		if (FAILED(m_rhi_device->GetDevicePhysical<ID3D11Device>()->CreateInputLayout
+		if (FAILED(m_rhi_device->GetContext()->device->CreateInputLayout
 		(
 			layout_descs.data(),
 			static_cast<UINT>(layout_descs.size()),
