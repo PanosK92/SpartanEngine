@@ -56,7 +56,7 @@ Support        	| Windows 10 and a modern/dedicated GPU		| This engine targets h
 #### v0.31 (WIP)
 Feature     | Completion    | Notes 
 :-          | :-            | :-
-Vulkan      | 15%           | Will become the default rendering backend.
+Vulkan      | 20%           | Will become the default rendering backend.
 
 #### v0.32 (Planned)
 Feature                 	| Completion    | Notes 

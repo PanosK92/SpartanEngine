@@ -44,8 +44,8 @@ namespace Directus
 	RHI_Shader::~RHI_Shader()
 	{
 		auto rhi_context = m_rhi_device->GetContext();
-		if (HasVertexShader())	vkDestroyShaderModule(rhi_context->device_context, static_cast<VkShaderModule>(m_vertex_shader), nullptr);
-		if (HasPixelShader())	vkDestroyShaderModule(rhi_context->device_context, static_cast<VkShaderModule>(m_pixel_shader), nullptr);
+		if (HasVertexShader())	vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_vertex_shader), nullptr);
+		if (HasPixelShader())	vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_pixel_shader), nullptr);
 	}
 
 	/*
@@ -327,7 +327,7 @@ namespace Directus
 				create_info.codeSize	= static_cast<size_t>(shader_compiled->GetBufferSize());
 				create_info.pCode		= reinterpret_cast<const uint32_t*>(shader_compiled->GetBufferPointer());
 	
-				if (vkCreateShaderModule(m_rhi_device->GetContext()->device_context, &create_info, nullptr, &shader_module) == VK_SUCCESS)
+				if (vkCreateShaderModule(m_rhi_device->GetContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS)
 				{
 					/*VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
 					fragShaderStageInfo.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // RHI (Rendering Hardware Interface) definitions
 namespace Directus
 {
+	struct RHI_Context;
 	class RHI_Device;
 	class RHI_SwapChain;
 	class RHI_VertexBuffer;

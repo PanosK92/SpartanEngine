@@ -29,6 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 //============================
 
+struct VkQueue_T;
+struct VkCommandPool_T;
+struct VkCommandBuffer_T;
+
 namespace Directus
 {
 	class Profiler;
@@ -171,7 +175,7 @@ namespace Directus
 	{
 	public:
 		RHI_CommandList(RHI_Device* rhi_device, Profiler* profiler);
-		~RHI_CommandList() = default;
+		~RHI_CommandList();
 
 		void Clear();
 	
@@ -228,13 +232,22 @@ namespace Directus
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0);
 
-		void Submit();
+		void Flush();
 
 	private:
+		// D3D11
 		RHI_Command& GetCmd();
 		std::vector<RHI_Command> m_commands;
-		unsigned int m_initial_capacity		= 2500;
-		unsigned int m_command_count		= 0;
+		unsigned int m_initial_capacity = 2500;
+		unsigned int m_command_count = 0;
+
+		// Vulkan
+		RHI_Command m_empty_cmd; // for GetCmd()
+		VkQueue_T* m_queue;
+		VkCommandPool_T* m_cmd_pool;
+		VkCommandBuffer_T* m_cmd_buffer;
+
+		// Dependencies
 		std::vector<void*> m_textures_empty = std::vector<void*>(10);
 		RHI_Device* m_rhi_device			= nullptr;
 		Profiler* m_profiler				= nullptr;

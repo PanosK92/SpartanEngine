@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "../RHI_Device.h"
-#include "../RHI_Context.h"
 #include "../../Math/Vector4.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
@@ -145,7 +144,7 @@ namespace Directus
 			    create_info.enabledLayerCount = 0;
 			}
 
-			if (vkCreateDevice(m_rhi_context->device, &create_info, nullptr, &m_rhi_context->device_context) != VK_SUCCESS) 
+			if (vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device) != VK_SUCCESS) 
 			{
 				LOG_ERROR("Failed to create device.");
 			}
@@ -169,7 +168,7 @@ namespace Directus
 			create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
 			create_info.pQueueCreateInfos		= queue_create_infos.data();
 
-			vkGetDeviceQueue(m_rhi_context->device_context, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->present_queue);
+			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->present_queue);
 		}
 
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
@@ -187,7 +186,7 @@ namespace Directus
 			vulkan_helper::debug_callback::destroy(m_rhi_context);
 		}
 		vkDestroyInstance(m_rhi_context->instance, nullptr);
-		vkDestroyDevice(m_rhi_context->device_context, nullptr);
+		vkDestroyDevice(m_rhi_context->device, nullptr);
 		safe_delete(m_rhi_context);
 	}
 

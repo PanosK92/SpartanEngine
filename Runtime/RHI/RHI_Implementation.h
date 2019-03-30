@@ -133,14 +133,13 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 };
 
 #elif defined(API_GRAPHICS_VULKAN)
-
 // VULKAN
 #pragma comment(lib, "vulkan-1.lib")
 #pragma comment(lib, "VkLayer_utils.lib")
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan.hpp>
-#include "Vulkan/Vulkan_Helper.h"
+#include <optional>
 
 static const VkPolygonMode vulkan_polygon_Mode[] =
 {
@@ -222,54 +221,50 @@ static const VkBlendOp vulkan_blend_operation[] =
 };
 #endif // API
 
-
 #endif // RUNTIME
+
+
+#if defined(API_GRAPHICS_VULKAN)
+struct SwapChainSupportDetails
+{
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> present_modes;
+	bool IsCompatible() { return !formats.empty() && !present_modes.empty(); }
+};
+
+struct QueueFamilyIndices
+{
+	std::optional<uint32_t> graphics_family;
+	std::optional<uint32_t> present_family;
+	bool IsComplete() const { return graphics_family.has_value() && present_family.has_value(); }
+};
+#endif
 
 namespace Directus
 {
-#if defined(API_GRAPHICS_VULKAN)
-	struct SwapChainSupportDetails
+	struct RHI_Context
 	{
-		VkSurfaceCapabilitiesKHR capabilities;
-		std::vector<VkSurfaceFormatKHR> formats;
-		std::vector<VkPresentModeKHR> present_modes;
-		bool IsCompatible() { return !formats.empty() && !present_modes.empty(); }
-	};
-
-	struct QueueFamilyIndices
-	{
-		std::optional<uint32_t> graphics_family;
-		std::optional<uint32_t> present_family;
-		bool IsComplete() const { return graphics_family.has_value() && present_family.has_value(); }
-	};
-#endif
-
-	class RHI_Context
-	{
-	public:
-		RHI_Context() = default;
-		~RHI_Context() = default;
-
-#if defined(API_GRAPHICS_D3D11)
-		ID3D11Device* device = nullptr;
-		ID3D11DeviceContext* device_context = nullptr;
-		ID3DUserDefinedAnnotation* annotation = nullptr;
-#elif defined(API_GRAPHICS_VULKAN)
-		VkInstance instance = nullptr;
-		VkPhysicalDevice device = nullptr;
-		VkDevice device_context = nullptr;
-		VkQueue present_queue = nullptr;
-		VkDebugUtilsMessengerEXT callback_handle = nullptr;
+	#if defined(API_GRAPHICS_D3D11)
+		ID3D11Device* device						= nullptr;
+		ID3D11DeviceContext* device_context			= nullptr;
+		ID3DUserDefinedAnnotation* annotation		= nullptr;
+	#elif defined(API_GRAPHICS_VULKAN)
+		VkInstance instance							= nullptr;
+		VkPhysicalDevice device_physical			= nullptr;
+		VkDevice device								= nullptr;
+		VkQueue present_queue						= nullptr;
+		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
 		QueueFamilyIndices indices;
 		std::vector<const char*> validation_layers = { "VK_LAYER_LUNARG_standard_validation" };
 		std::vector<const char*> extensions_device = { "VK_KHR_swapchain" };
-#ifdef DEBUG
-		std::vector<const char*> extensions_device_physical = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_utils" };
-		bool validation_enabled = true;
-#elif
-		std::vector<const char*> extensions_device_physical = { "VK_KHR_surface", "VK_KHR_win32_surface" };
-		bool validation_enabled = false;
-#endif
-#endif
+		#ifdef DEBUG
+			std::vector<const char*> extensions_device_physical = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_utils" };
+			bool validation_enabled = true;
+		#elif
+			std::vector<const char*> extensions_device_physical = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+			 bool validation_enabled = false;
+		#endif
+	#endif
 	};
 }
