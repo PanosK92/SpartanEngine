@@ -101,6 +101,11 @@ namespace Directus
 	void RHI_CommandList::End()
 	{
 		vkCmdEndRenderPass(m_cmd_buffer);
+
+		if (vkEndCommandBuffer(m_cmd_buffer) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to end command buffer.");
+		}
 	}
 
 	void RHI_CommandList::Draw(unsigned int vertex_count)
@@ -115,12 +120,24 @@ namespace Directus
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
 	{
-		
+		VkViewport vk_viewport;
+		vk_viewport.x			= viewport.GetX();
+		vk_viewport.y			= viewport.GetY();
+		vk_viewport.width		= viewport.GetWidth();
+		vk_viewport.height		= viewport.GetHeight();
+		vk_viewport.minDepth	= viewport.GetMinDepth();
+		vk_viewport.maxDepth	= viewport.GetMaxDepth();
+		vkCmdSetViewport(m_cmd_buffer, 0, 1, &vk_viewport);
 	}
 
 	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle)
 	{
-		
+		VkRect2D vk_scissor;
+		vk_scissor.offset.x			= static_cast<int32_t>(scissor_rectangle.x);
+		vk_scissor.offset.y			= static_cast<int32_t>(scissor_rectangle.y);
+		vk_scissor.extent.width		= static_cast<uint32_t>(scissor_rectangle.width * 0.5f);
+		vk_scissor.extent.height	= static_cast<uint32_t>(scissor_rectangle.height * 0.5f);
+		vkCmdSetScissor(m_cmd_buffer, 0, 1, &vk_scissor);
 	}
 
 	void RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology)
@@ -133,17 +150,7 @@ namespace Directus
 		
 	}
 
-	void RHI_CommandList::SetInputLayout(const shared_ptr<RHI_InputLayout>& input_layout)
-	{
-		
-	}
-
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
-	{
-		
-	}
-
-	void RHI_CommandList::SetDepthStencilState(const shared_ptr<RHI_DepthStencilState>& depth_stencil_state)
 	{
 		
 	}
@@ -153,47 +160,24 @@ namespace Directus
 		
 	}
 
-	void RHI_CommandList::SetRasterizerState(const shared_ptr<RHI_RasterizerState>& rasterizer_state)
-	{
-		
-	}
-
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
-	{
-		
-	}
-
-	void RHI_CommandList::SetBlendState(const shared_ptr<RHI_BlendState>& blend_state)
 	{
 		
 	}
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
 	{
-		
+		//vkCmdBindVertexBuffers(m_cmd_buffer, 0, 1, &models.models.vertices.buffer, offsets);
 	}
 
-	void RHI_CommandList::SetBufferVertex(const shared_ptr<RHI_VertexBuffer>& buffer)
-	{
-		
-	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
 	{
-		
+		//vkCmdBindIndexBuffer(m_cmd_buffer, models.models.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
 	}
 
-	void RHI_CommandList::SetBufferIndex(const shared_ptr<RHI_IndexBuffer>& buffer)
-	{
-		
-	}
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
-	{
-		
-	}
-
-	void RHI_CommandList::SetShaderVertex(const shared_ptr<RHI_Shader>& shader)
 	{
 		
 	}
@@ -201,11 +185,6 @@ namespace Directus
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
 
-	}
-
-	void RHI_CommandList::SetShaderPixel(const shared_ptr<RHI_Shader>& shader)
-	{
-		
 	}
 
 	void RHI_CommandList::SetConstantBuffers(unsigned int start_slot, RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
@@ -248,11 +227,6 @@ namespace Directus
 		SetTexture(start_slot, texture->GetShaderResource());
 	}
 
-	void RHI_CommandList::ClearTextures()
-	{
-		SetTextures(0, m_textures_empty);
-	}
-
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
 	{
 		
@@ -280,11 +254,6 @@ namespace Directus
 
 	void RHI_CommandList::Flush()
 	{
-		if (vkEndCommandBuffer(m_cmd_buffer) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to end command buffer.");
-		}
-
 		VkSubmitInfo submitInfo			= {};
 		submitInfo.sType				= VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount	= 1;

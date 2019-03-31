@@ -261,9 +261,9 @@ namespace Directus
 		#ifdef DEBUG
 			std::vector<const char*> extensions_device_physical = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_utils" };
 			bool validation_enabled = true;
-		#elif
+		#else
 			std::vector<const char*> extensions_device_physical = { "VK_KHR_surface", "VK_KHR_win32_surface" };
-			 bool validation_enabled = false;
+			bool validation_enabled = false;
 		#endif
 	#endif
 	};
