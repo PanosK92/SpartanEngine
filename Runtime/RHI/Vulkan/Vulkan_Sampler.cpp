@@ -24,10 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_VULKAN
 //================================
 
-//= INCLUDES ==============
+//= INCLUDES =================
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
-//=========================
+#include "../../Logging/Log.h"
+//============================
 
 namespace Directus
 {
@@ -38,12 +39,30 @@ namespace Directus
 		const RHI_Comparison_Function comparison_function	/*= Texture_Comparison_Always*/
 	)
 	{	
-		
+		m_rhi_device = rhi_device;
+
+		VkSampler sampler				= nullptr;
+		VkSamplerCreateInfo samplerInfo = {};
+
+		samplerInfo.magFilter			= VK_FILTER_LINEAR;
+		samplerInfo.minFilter			= VK_FILTER_LINEAR;
+		samplerInfo.mipmapMode			= VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.addressModeU		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeV		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeW		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.borderColor			= VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+	
+		if (vkCreateSampler(rhi_device->GetContext()->device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to create sampler");
+		}
+
+		m_buffer = static_cast<void*>(sampler);
 	}
 
 	RHI_Sampler::~RHI_Sampler()
 	{
-		
+		vkDestroySampler(m_rhi_device->GetContext()->device, static_cast<VkSampler>(m_buffer), nullptr);
 	}
 }
 #endif

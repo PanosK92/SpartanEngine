@@ -84,7 +84,7 @@ namespace Directus
 				LOG_ERROR("Failed to check for surface support by the device.");
 				return;
 			}
-			else if (present_support)
+			else if (!present_support)
 			{
 				LOG_ERROR("The device does not suport this kind of surface.");
 				return;

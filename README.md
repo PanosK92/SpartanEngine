@@ -70,6 +70,7 @@ Bug fixes and improvements	| -            	| Improve bloom quality, reduce rende
 
 # Roadmap
 - Volumetric Lighting.
+- Atmospheric Scattering.
 - Dynamic resolution scaling.
 - Real-time ray tracing (experimental).
 - Global Illumination.
