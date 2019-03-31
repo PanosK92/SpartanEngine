@@ -50,11 +50,11 @@ namespace Directus
 		m_rhi_device	= rhi_device;
 		m_profiler		= profiler;
 
-		/*if (!vulkan_helper::command_list::create_command_pool(m_rhi_device->GetContext(), m_cmd_pool))
+		if (!vulkan_helper::command_list::create_command_pool(m_rhi_device->GetContext(), &m_cmd_pool))
 		{
 			LOG_ERROR("Failed to create command pool.");
 			return;
-		}*/
+		}
 
 		if (!vulkan_helper::command_list::create_command_buffer(m_rhi_device->GetContext(), &m_cmd_buffer, m_cmd_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
 		{
@@ -65,6 +65,7 @@ namespace Directus
 
 	RHI_CommandList::~RHI_CommandList()
 	{
+		vkFreeCommandBuffers(m_rhi_device->GetContext()->device, m_cmd_pool, 1, &m_cmd_buffer);
 		vkDestroyCommandPool(m_rhi_device->GetContext()->device, m_cmd_pool, nullptr);
 	}
 
@@ -170,12 +171,10 @@ namespace Directus
 		//vkCmdBindVertexBuffers(m_cmd_buffer, 0, 1, &models.models.vertices.buffer, offsets);
 	}
 
-
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
 	{
 		//vkCmdBindIndexBuffer(m_cmd_buffer, models.models.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
 	}
-
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
 	{
@@ -268,11 +267,6 @@ namespace Directus
 		{
 			LOG_ERROR("Failed to wait until idle.");
 		}
-
-		/*if (free)
-		{
-			vkFreeCommandBuffers(m_rhi_device->GetContext()->device, m_cmd_pool, 1, &m_cmd_buffer);
-		}*/
 	}
 
 	RHI_Command& RHI_CommandList::GetCmd()

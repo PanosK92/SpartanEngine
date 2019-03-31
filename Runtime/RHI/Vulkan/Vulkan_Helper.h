@@ -238,27 +238,23 @@ namespace vulkan_helper
 	{
 		inline bool create_command_buffer(Directus::RHI_Context* context, VkCommandBuffer* cmd_buffer, VkCommandPool cmd_pool, VkCommandBufferLevel level)
 		{
-			/*VkCommandBufferAllocateInfo allocInfo = {};
+			VkCommandBufferAllocateInfo allocInfo = {};
 			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocInfo.commandPool = cmd_pool;
-			allocInfo.level = level;
-			allocInfo.commandBufferCount = 1;
+			allocInfo.commandPool			= cmd_pool;
+			allocInfo.level					= level;
+			allocInfo.commandBufferCount	= 1;
 
-			return vkAllocateCommandBuffers(context->device, &allocInfo, cmd_buffer) == VK_SUCCESS;*/
-
-			return false;
+			return vkAllocateCommandBuffers(context->device, &allocInfo, cmd_buffer) == VK_SUCCESS;
 		}
 
 		inline bool create_command_pool(Directus::RHI_Context* context, VkCommandPool* cmd_pool)
 		{
-			/*/VkCommandPoolCreateInfo cmdPoolInfo = {};
-			cmdPoolInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			cmdPoolInfo.queueFamilyIndex		= swapChain.queueNodeIndex;
-			cmdPoolInfo.flags					= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+			VkCommandPoolCreateInfo cmdPoolInfo = {};
+			cmdPoolInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			cmdPoolInfo.queueFamilyIndex	= context->indices.present_family.value();
+			cmdPoolInfo.flags				= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-			return vkCreateCommandPool(context->device_physical, &cmdPoolInfo, nullptr, &cmd_pool) == VK_SUCCESS;*/
-
-			return false;
+			return vkCreateCommandPool(context->device, &cmdPoolInfo, nullptr, cmd_pool) == VK_SUCCESS;
 		}
 	}
 
