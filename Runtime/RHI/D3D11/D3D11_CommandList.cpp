@@ -125,21 +125,11 @@ namespace Directus
 		cmd.input_layout	= input_layout;
 	}
 
-	void RHI_CommandList::SetInputLayout(const shared_ptr<RHI_InputLayout>& input_layout)
-	{
-		SetInputLayout(input_layout.get());
-	}
-
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
 	{
 		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetDepthStencilState;
 		cmd.depth_stencil_state = depth_stencil_state;
-	}
-
-	void RHI_CommandList::SetDepthStencilState(const shared_ptr<RHI_DepthStencilState>& depth_stencil_state)
-	{
-		SetDepthStencilState(depth_stencil_state.get());
 	}
 
 	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
@@ -149,21 +139,11 @@ namespace Directus
 		cmd.rasterizer_state	= rasterizer_state;
 	}
 
-	void RHI_CommandList::SetRasterizerState(const shared_ptr<RHI_RasterizerState>& rasterizer_state)
-	{
-		SetRasterizerState(rasterizer_state.get());
-	}
-
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
 	{
 		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_SetBlendState;
 		cmd.blend_state		= blend_state;
-	}
-
-	void RHI_CommandList::SetBlendState(const shared_ptr<RHI_BlendState>& blend_state)
-	{
-		SetBlendState(blend_state.get());
 	}
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
@@ -173,21 +153,11 @@ namespace Directus
 		cmd.buffer_vertex	= buffer;
 	}
 
-	void RHI_CommandList::SetBufferVertex(const shared_ptr<RHI_VertexBuffer>& buffer)
-	{
-		SetBufferVertex(buffer.get());
-	}
-
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
 	{
 		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_SetIndexBuffer;
 		cmd.buffer_index	= buffer;
-	}
-
-	void RHI_CommandList::SetBufferIndex(const shared_ptr<RHI_IndexBuffer>& buffer)
-	{
-		SetBufferIndex(buffer.get());
 	}
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
@@ -197,21 +167,11 @@ namespace Directus
 		cmd.shader_vertex	= shader;
 	}
 
-	void RHI_CommandList::SetShaderVertex(const shared_ptr<RHI_Shader>& shader)
-	{
-		SetShaderVertex(shader.get());
-	}
-
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
 		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_SetPixelShader;
 		cmd.shader_pixel	= shader;
-	}
-
-	void RHI_CommandList::SetShaderPixel(const shared_ptr<RHI_Shader>& shader)
-	{
-		SetShaderPixel(shader.get());
 	}
 
 	void RHI_CommandList::SetConstantBuffers(unsigned int start_slot, RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
@@ -272,11 +232,6 @@ namespace Directus
 	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_RenderTexture>& texture)
 	{
 		SetTexture(start_slot, texture->GetShaderResource());
-	}
-
-	void RHI_CommandList::ClearTextures()
-	{
-		SetTextures(0, m_textures_empty);
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)

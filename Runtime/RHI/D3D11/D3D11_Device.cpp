@@ -612,5 +612,10 @@ namespace Directus
 		auto query = static_cast<ID3D11Query*>(query_object);
 		query->Release();
 	}
+
+	void RHI_Device::WaitIdle()
+	{
+		
+	}
 }
 #endif

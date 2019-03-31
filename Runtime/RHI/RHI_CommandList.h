@@ -190,28 +190,28 @@ namespace Directus
 		void SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology);
 
 		void SetInputLayout(const RHI_InputLayout* input_layout);
-		void SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout);
+		void SetInputLayout(const std::shared_ptr<RHI_InputLayout>& input_layout) { SetInputLayout(input_layout.get()); }
 
 		void SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state);
-		void SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state);
+		void SetDepthStencilState(const std::shared_ptr<RHI_DepthStencilState>& depth_stencil_state) { SetDepthStencilState(depth_stencil_state.get()); }
 
 		void SetRasterizerState(const RHI_RasterizerState* rasterizer_state);
-		void SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state);
+		void SetRasterizerState(const std::shared_ptr<RHI_RasterizerState>& rasterizer_state) { SetRasterizerState(rasterizer_state.get()); }
 
 		void SetBlendState(const RHI_BlendState* blend_state);
-		void SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state);
+		void SetBlendState(const std::shared_ptr<RHI_BlendState>& blend_state) { SetBlendState(blend_state.get()); }
 
 		void SetBufferVertex(const RHI_VertexBuffer* buffer);
-		void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer);
+		void SetBufferVertex(const std::shared_ptr<RHI_VertexBuffer>& buffer) { SetBufferVertex(buffer.get()); }
 
 		void SetBufferIndex(const RHI_IndexBuffer* buffer);
-		void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer);
+		void SetBufferIndex(const std::shared_ptr<RHI_IndexBuffer>& buffer) { SetBufferIndex(buffer.get()); }
 
 		void SetShaderVertex(const RHI_Shader* shader);
-		void SetShaderVertex(const std::shared_ptr<RHI_Shader>& shader);
+		void SetShaderVertex(const std::shared_ptr<RHI_Shader>& shader) { SetShaderVertex(shader.get()); }
 
 		void SetShaderPixel(const RHI_Shader* shader);
-		void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader);
+		void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader) { SetShaderPixel(shader.get()); }
 
 		void SetConstantBuffers(unsigned int start_slot, RHI_Buffer_Scope scope, const std::vector<void*>& constant_buffers);
 		void SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer);
@@ -223,7 +223,7 @@ namespace Directus
 		void SetTexture(unsigned int start_slot, void* texture);
 		void SetTexture(unsigned int start_slot, const std::shared_ptr<RHI_Texture>& texture);
 		void SetTexture(unsigned int start_slot, const std::shared_ptr<RHI_RenderTexture>& texture);
-		void ClearTextures();
+		void ClearTextures() { SetTextures(0, m_textures_empty); }
 
 		void SetRenderTargets(const std::vector<void*>& render_targets, void* depth_stencil = nullptr);
 		void SetRenderTarget(void* render_target, void* depth_stencil = nullptr);

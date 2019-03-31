@@ -319,5 +319,10 @@ namespace Directus
 	{
 
 	}
+
+	void RHI_Device::WaitIdle()
+	{
+		vkDeviceWaitIdle(m_rhi_context->device);
+	}
 }
 #endif
