@@ -17,8 +17,8 @@ class MouseLook
 	// Use this for initialization
 	void Start()
 	{
-		rotation.y = transform.GetRotation().ToEulerAngles().x;
-		rotation.x = transform.GetRotation().ToEulerAngles().y;
+		rotation	= transform.GetRotation().ToEulerAngles();
+		rotation.z	= 0.0f;
 	}
 
 	// Update is called once per frame
@@ -32,12 +32,18 @@ class MouseLook
 	
 	void FreeLook()
 	{
-		// Get raw mouse input
-		rotation.y += input.GetMouseDelta().x * sensitivity;
-		rotation.x += input.GetMouseDelta().y * sensitivity;
+		// Get raw mouse delta
+		Vector2 mouse_delta = input.GetMouseDelta();
+		
+		// Apply sensitivity
+		mouse_delta *= sensitivity;
+		
+		// Compute rotation
+		rotation.y += mouse_delta.x;
+		rotation.x += mouse_delta.y;
 		
 		// Clamp rotation along the x-axis
-		rotation.x = rotation.x < -90.0f ? -90.0f : (rotation.x > 90.0f ? 90.0f : rotation.x);
+		rotation.x = Clamp(rotation.x, -90.0f, 90.0f);
 	
 		// Rotate
 		transform.SetRotationLocal(Quaternion_FromEulerAngles(rotation));
