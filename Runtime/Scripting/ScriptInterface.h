@@ -37,15 +37,12 @@ namespace Directus
 	private:
 		void RegisterEnumerations();
 		void RegisterTypes();
-		void RegisterSettings();
 		void RegisterInput();
 		void RegisterTime();
 		void RegisterEntity();
 		void RegisterTransform();
 		void RegisterMaterial();
-		void RegisterCamera();
 		void RegisterRigidBody();
-		void RegisterMathHelper();
 		void RegisterVector2();
 		void RegisterVector3();
 		void RegisterQuaternion();

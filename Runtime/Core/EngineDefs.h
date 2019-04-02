@@ -26,13 +26,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Class
 #if SHARED_LIB == 1
-	#ifdef RUNTIME
-		#define ENGINE_CLASS __declspec(dllexport)
-	#elif EDITOR
-		#define ENGINE_CLASS __declspec(dllimport)
-	#endif
+#ifdef RUNTIME
+#define ENGINE_CLASS __declspec(dllexport)
+#elif EDITOR
+#define ENGINE_CLASS __declspec(dllimport)
+#endif
 #elif STATIC_LIB == 1
-	#define ENGINE_CLASS
+#define ENGINE_CLASS
 #endif
 
 // APIs
@@ -48,6 +48,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // no definition for inline function 'function'
 #pragma warning(disable: 4506) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4506?view=vs-2017
 //=================================================================================================================================================
+
+//= INCLUDES ======
+#include <assert.h>
+//=================
 
 namespace Directus
 {
@@ -80,4 +84,6 @@ namespace Directus
 			ptr = nullptr;
 		}
 	}
+
+	#define ENGINE_ASSERT(expression) assert(expression)
 }

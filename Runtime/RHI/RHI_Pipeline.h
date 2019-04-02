@@ -28,7 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class RHI_Pipeline
 {
 public:
-	//RHI_Pipeline(); create vulkan pipeline here - do nothing for d3d11
+	RHI_Pipeline();
+
 private:
 	RHI_Shader* m_shader_vertex;
 	RHI_Shader* m_shader_index;
