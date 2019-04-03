@@ -53,38 +53,40 @@ General         | Profiling  								| CPU & GPU.
 Scripting       | C/C++                                     | Using AngelScript.
 Support        	| Windows 10 and a modern/dedicated GPU		| This engine targets high-end machines, old setups or mobiles devices are not officially supported.
 
-#### v0.31 (WIP)
+# Roadmap
+
+##### v0.31 (WIP)
 Feature     | Completion    | Notes 
 :-          | :-            | :-
 Vulkan      | 20%           | Will become the default rendering backend.
 
-#### v0.32 (Planned)
-Feature     | Completion    | Notes 
-:-          | :-            | :-
-DirectX 12  | -           	|
+###### v0.32
+- DirectX 12
 
+###### v0.33
+- Enable shadows for spot & point lights.
 
-#### v0.33 (Planned)
-Feature                 	| Completion    | Notes 
-:-                      	| :-            | :-
-Eye Adaptation          	| -            	| -
-Depth-of-field          	| -           	| Based on Doom approach
-Subsurface Scattering   	| -            	| -
-Point & Spot light shadows	| -            	| -
-Improve editor appearance	| -            	| -
+###### v0.34
+- Skeletal Animation
 
-# Roadmap
+###### v0.35
+- C# scripting (Replace AngelScript)
+
+###### v0.36
+- Eye Adaptation
+- Depth-of-field (Based on Doom approach)
+- Subsurface Scattering
+
+###### Future
 - Volumetric Lighting.
 - Atmospheric Scattering.
 - Dynamic resolution scaling.
 - Real-time ray tracing (experimental).
 - Global Illumination.
-- C# scripting (replace AngelScript).
-- DirectX 12 rendering backend.
 - Draw call batching (static & dynamic).
 - Export on Windows.
-- Skeletal Animation.
 - UI components.
+- Make editor more stylish.
 
 # Documentation
 - [Compiling](https://github.com/PanosK92/Directus3D/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile from source
