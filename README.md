@@ -59,6 +59,12 @@ Feature     | Completion    | Notes
 Vulkan      | 20%           | Will become the default rendering backend.
 
 #### v0.32 (Planned)
+Feature     | Completion    | Notes 
+:-          | :-            | :-
+DirectX 12  | -           	|
+
+
+#### v0.33 (Planned)
 Feature                 	| Completion    | Notes 
 :-                      	| :-            | :-
 Eye Adaptation          	| -            	| -
@@ -66,7 +72,6 @@ Depth-of-field          	| -           	| Based on Doom approach
 Subsurface Scattering   	| -            	| -
 Point & Spot light shadows	| -            	| -
 Improve editor appearance	| -            	| -
-Bug fixes and improvements	| -            	| Improve bloom quality, reduce render time, etc.
 
 # Roadmap
 - Volumetric Lighting.
