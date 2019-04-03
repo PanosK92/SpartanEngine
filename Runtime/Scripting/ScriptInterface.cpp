@@ -341,23 +341,25 @@ namespace Directus
 
 	void ScriptInterface::RegisterVector3()
 	{
+		auto r = 0;
+
 		// operator overloads http://www.angelcode.com/angelscript/sdk/docs/manual/doc_script_class_ops.html
-		m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f()",						asFUNCTION(ConstructorVector3),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(const Vector3 &in)",		asFUNCTION(CopyConstructorVector3),		asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(float, float, float)",	asFUNCTION(ConstructorVector3Floats),	asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_DESTRUCT, "void f()",						asFUNCTION(DestructVector3),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAssign(const Vector3 &in)",					asFUNCTION(Vector3Assignment),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opAdd(const Vector3 &in)",						asFUNCTION(Vector3AddVector3),			asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAddAssign(const Vector3 &in)",				asFUNCTION(Vector3AddAssignVector3),	asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opSubAssign(const Vector3 &in)",				asFUNCTION(Vector3SubAssignVector3),	asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(const Vector3 &in)",				asFUNCTION(Vector3MulAssignVector3),	asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(float)",							asFUNCTION(Vector3MulAssignFloat),		asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(const Vector3 &in)",						asFUNCTION(Vector3MulVector3),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(float)",									asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul_r(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectProperty("Vector3", "float x", asOFFSET(Vector3, x));	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectProperty("Vector3", "float y", asOFFSET(Vector3, y));	ENGINE_ASSERT(r >= 0);
-		m_scriptEngine->RegisterObjectProperty("Vector3", "float z", asOFFSET(Vector3, z));	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f()",						asFUNCTION(ConstructorVector3),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(const Vector3 &in)",	asFUNCTION(CopyConstructorVector3),		asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(float, float, float)",	asFUNCTION(ConstructorVector3Floats),	asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_DESTRUCT, "void f()",						asFUNCTION(DestructVector3),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAssign(const Vector3 &in)",				asFUNCTION(Vector3Assignment),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opAdd(const Vector3 &in)",					asFUNCTION(Vector3AddVector3),			asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAddAssign(const Vector3 &in)",				asFUNCTION(Vector3AddAssignVector3),	asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opSubAssign(const Vector3 &in)",				asFUNCTION(Vector3SubAssignVector3),	asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(const Vector3 &in)",				asFUNCTION(Vector3MulAssignVector3),	asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(float)",							asFUNCTION(Vector3MulAssignFloat),		asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(const Vector3 &in)",					asFUNCTION(Vector3MulVector3),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul_r(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float x", asOFFSET(Vector3, x));	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float y", asOFFSET(Vector3, y));	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float z", asOFFSET(Vector3, z));	ENGINE_ASSERT(r >= 0);
 	}
 
 	/*------------------------------------------------------------------------------
