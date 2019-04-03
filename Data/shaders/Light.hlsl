@@ -86,13 +86,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float2 depth  			= texDepth.Sample(sampler_linear_clamp, texCoord).rg;
     float3 worldPos 		= reconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
-	
-	//= Ambient light =======================================================================
-	float factor_occlusion 	= occlusion_texture == 1.0f ? occlusion_ssao : occlusion_texture;
-	float factor_sky_light	= clamp(dirLightIntensity.r * shadow_directional, 0.05f, 1.0f);
-	float ambient_light 	= factor_sky_light * factor_occlusion;
-	//=======================================================================================
-	
+
 	// Sky
     if (materialSample.a == 0.0f)
     {
@@ -101,10 +95,17 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         return float4(color, 1.0f);
     }
 
+	//= Ambient light ==========================================================================================
+	float factor_occlusion 		= occlusion_texture == 1.0f ? occlusion_ssao : occlusion_texture;
+	float factor_self_shadowing = shadow_directional * saturate(dot(normal, normalize(-dirLightDirection).xyz));
+	float factor_sky_light		= clamp(dirLightIntensity.r * factor_self_shadowing, 0.2f, 1.0f);
+	float ambient_light 		= factor_sky_light * factor_occlusion;
+	//==========================================================================================================
+
 	//= IBL - Image-based lighting =================================================================================================
     color += ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, sampler_linear_clamp) * ambient_light;
 	//==============================================================================================================================
-	
+
 	//= SSR - Screen space reflections ==============================================
 	if (padding2.x != 0.0f)
 	{
@@ -112,7 +113,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 		color += ssr.xyz * (1.0f - material.roughness) * ambient_light;
 	}
 	//===============================================================================
-	
+
 	//= Emission ============================================
     float3 emission = material.emission * albedo.rgb * 80.0f;
     color += emission;
