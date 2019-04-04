@@ -168,8 +168,16 @@ namespace Directus::D3D11_Helper
 			}
 			else
 			{
-				LOGF_ERROR("Failed to get display modes for \"%s\". Ignoring adapter.", display_adapter.name.c_str());
+				LOGF_ERROR("Failed to get display modes for \"%s\".", display_adapter.name.c_str());
 			}
+		}
+
+		// If we failed to detect any display modes but we have at least one adapter, use it.
+		if (!device->GetPrimaryAdapter() && device->GetAdapters().size() != 0)
+		{
+			auto& adapter = device->GetAdapters().front();
+			LOGF_ERROR("Failed to detect display modes for all adapters, using %s, unexpected results may occur.", adapter.name.c_str());
+			device->SetPrimaryAdapter(&adapter);
 		}
 	}
 
