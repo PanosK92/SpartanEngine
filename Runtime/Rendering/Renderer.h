@@ -148,7 +148,7 @@ namespace Directus
 		float m_fxaa_edge_threshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
 		float m_fxaa_edge_threshold_min	= 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Algorithm's default: 0.0833f
 		// Bloom
-		float m_bloom_intensity			= 0.4f;		// The intensity of the bloom
+		float m_bloom_intensity			= 1.0f;		// The intensity of the bloom
 		// Sharpening
 		float m_sharpen_strength		= 1.25f;	// Strength of the sharpening
 		float m_sharpen_clamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
@@ -237,10 +237,12 @@ namespace Directus
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_hdr_light2;
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_taa_current;
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_taa_history;
+		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_spare;
 		// 1/2
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_half_shadows;
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_half_ssao;
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_half_spare;
+		std::shared_ptr<RHI_RenderTexture> m_render_tex_half_spare2;
 		// 1/4
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_quarter_blur1;
 		std::shared_ptr<RHI_RenderTexture> m_render_tex_quarter_blur2;
@@ -273,6 +275,7 @@ namespace Directus
 		std::shared_ptr<RHI_Shader> m_ps_gamma_correction;
 		std::shared_ptr<RHI_Shader> m_ps_dithering;
 		std::shared_ptr<RHI_Shader> m_ps_downsample_box;
+		std::shared_ptr<RHI_Shader> m_ps_upsample_box;
 		std::shared_ptr<RHI_Shader> m_ps_debug_normal_;
 		std::shared_ptr<RHI_Shader> m_ps_debug_velocity;
 		std::shared_ptr<RHI_Shader> m_ps_debug_depth;

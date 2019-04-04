@@ -88,6 +88,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	color = Downsample_BoxAntiFlicker(texCoord, g_texelSize, sourceTexture, samplerState);
 #endif
 
+#if PASS_UPSAMPLE_BOX
+	color = Upsample_Box(texCoord, g_texelSize, sourceTexture, samplerState, 4.0f);
+#endif
+
 #if PASS_BLUR_BOX
 	color = Blur_Box(texCoord, g_texelSize, blur_sigma, sourceTexture, samplerState);
 #endif

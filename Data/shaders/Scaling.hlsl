@@ -33,7 +33,7 @@ float4 Downsample_BoxAntiFlicker(float2 uv, float2 texelSize, Texture2D sourceTe
 }
 
 // Better, temporally stable box filtering
-// [Jimenez14] http://goo.gl/eomGso
+// [Jimenez14] http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
 // . . . . . . .
 // . A . B . C .
 // . . D . E . .

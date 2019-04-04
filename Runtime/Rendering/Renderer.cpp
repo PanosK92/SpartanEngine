@@ -248,11 +248,13 @@ namespace Directus
 		m_render_tex_full_hdr_light2	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32B32A32_FLOAT);
 		m_render_tex_full_taa_current	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
 		m_render_tex_full_taa_history	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_full_spare			= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
 
 		// Half res
 		m_render_tex_half_shadows	= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
 		m_render_tex_half_ssao		= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
 		m_render_tex_half_spare		= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
+		m_render_tex_half_spare2	= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R16G16B16A16_FLOAT);
 
 		// Quarter res
 		m_render_tex_quarter_blur1 = make_unique<RHI_RenderTexture>(m_rhi_device, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
@@ -395,6 +397,11 @@ namespace Directus
 		m_ps_downsample_box = make_shared<RHI_Shader>(m_rhi_device);
 		m_ps_downsample_box->AddDefine("PASS_DOWNSAMPLE_BOX");
 		m_ps_downsample_box->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+
+		// Upsample box
+		m_ps_upsample_box = make_shared<RHI_Shader>(m_rhi_device);
+		m_ps_upsample_box->AddDefine("PASS_UPSAMPLE_BOX");
+		m_ps_upsample_box->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 
 		// Debug Normal
 		m_ps_debug_normal_ = make_shared<RHI_Shader>(m_rhi_device);

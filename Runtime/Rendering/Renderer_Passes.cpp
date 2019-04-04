@@ -223,10 +223,7 @@ namespace Directus
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
 		m_cmd_list->SetRenderTargets(render_targets, m_g_buffer_depth->GetDepthStencilView());
 		m_cmd_list->SetViewport(m_g_buffer_albedo->GetViewport());
-		m_cmd_list->ClearRenderTarget(render_targets[0], clear_color);
-		m_cmd_list->ClearRenderTarget(render_targets[1], clear_color);
-		m_cmd_list->ClearRenderTarget(render_targets[2], clear_color);
-		m_cmd_list->ClearRenderTarget(render_targets[3], clear_color);
+		m_cmd_list->ClearRenderTargets(render_targets, clear_color);
 		m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);		
 		m_cmd_list->SetShaderVertex(m_vs_gbuffer);
 		m_cmd_list->SetInputLayout(m_vs_gbuffer->GetInputLayout());
@@ -799,7 +796,7 @@ namespace Directus
 		m_cmd_list->Begin("Pass_Bloom");
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 
-		m_cmd_list->Begin("Pass_Bloom_Downsample");
+		m_cmd_list->Begin("Downsample");
 		{
 			// Prepare resources
 			SetDefaultBuffer(m_render_tex_quarter_blur1->GetWidth(), m_render_tex_quarter_blur1->GetHeight());
@@ -813,7 +810,7 @@ namespace Directus
 		}
 		m_cmd_list->End();
 
-		m_cmd_list->Begin("Pass_Bloom_Luminance");
+		m_cmd_list->Begin("Luminance");
 		{
 			// Prepare resources
 			SetDefaultBuffer(m_render_tex_quarter_blur2->GetWidth(), m_render_tex_quarter_blur2->GetHeight());
@@ -831,11 +828,41 @@ namespace Directus
 		const auto sigma = 2.0f;
 		Pass_BlurGaussian(m_render_tex_quarter_blur2, m_render_tex_quarter_blur1, sigma);
 
-		m_cmd_list->Begin("Pass_Bloom_Additive_Blending");
+		// Upsampling progressively yields the best results [Kraus2007]
+
+		m_cmd_list->Begin("Upscale");
+		{
+			// Prepare resources
+			SetDefaultBuffer(m_render_tex_half_spare2->GetWidth(), m_render_tex_half_spare2->GetHeight());
+
+			m_cmd_list->SetRenderTarget(m_render_tex_half_spare2);
+			m_cmd_list->SetViewport(m_render_tex_half_spare2->GetViewport());
+			m_cmd_list->SetShaderPixel(m_ps_upsample_box);
+			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur2);
+			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		}
+		m_cmd_list->End();
+
+		m_cmd_list->Begin("Upscale");
+		{
+			// Prepare resources
+			SetDefaultBuffer(m_render_tex_full_spare->GetWidth(), m_render_tex_full_spare->GetHeight());
+
+			m_cmd_list->SetRenderTarget(m_render_tex_full_spare);
+			m_cmd_list->SetViewport(m_render_tex_full_spare->GetViewport());
+			m_cmd_list->SetShaderPixel(m_ps_upsample_box);
+			m_cmd_list->SetTexture(0, m_render_tex_half_spare2);
+			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		}
+		m_cmd_list->End();
+
+		m_cmd_list->Begin("Additive_Blending");
 		{
 			// Prepare resources
 			SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-			vector<void*> textures = { tex_in->GetShaderResource(), m_render_tex_quarter_blur1->GetShaderResource() };
+			vector<void*> textures = { tex_in->GetShaderResource(), m_render_tex_full_spare->GetShaderResource() };
 
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
