@@ -115,7 +115,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	//===============================================================================
 
 	//= Emission ============================================
-    float3 emission = material.emission * albedo.rgb * 80.0f;
+    float3 emission = material.emission * albedo.rgb * 40.0f;
     color += emission;
 	//=======================================================
 

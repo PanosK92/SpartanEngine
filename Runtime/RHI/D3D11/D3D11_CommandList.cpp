@@ -263,6 +263,14 @@ namespace Directus
 		cmd.render_target_clear_color	= color;
 	}
 
+	void RHI_CommandList::ClearRenderTargets(const vector<void*>& render_targets, const Math::Vector4& color)
+	{
+		for (const auto& render_target : render_targets)
+		{
+			ClearRenderTarget(render_target, color);
+		}
+	}
+
 	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil /*= 0*/)
 	{
 		RHI_Command& cmd		= GetCmd();

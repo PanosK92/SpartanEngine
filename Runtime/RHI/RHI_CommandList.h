@@ -230,6 +230,7 @@ namespace Directus
 		void SetRenderTarget(const std::shared_ptr<RHI_RenderTexture>&, void* depth_stencil = nullptr);
 
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
+		void ClearRenderTargets(const std::vector<void*>& render_targets, const Math::Vector4& color);
 		void ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0);
 
 		void Flush();
