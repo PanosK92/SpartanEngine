@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "ScriptInterface.h"
+#include <angelscript.h>
 #include "../Core/Timer.h"
 #include "../Rendering/Material.h"
 #include "../Input/Input.h"
