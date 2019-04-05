@@ -45,8 +45,8 @@ namespace Directus
 	class RHI_DepthStencilState;
 	class RHI_InputLayout;
 	struct RHI_Vertex_PosUvNorTan;
-	struct RHI_Vertex_PosUVNor;
-	struct RHI_Vertex_PosUV;
+	struct RHI_Vertex_PosUvNor;
+	struct RHI_Vertex_PosUv;
 	struct RHI_Vertex_PosCol;
 
 	enum RHI_Present_Mode

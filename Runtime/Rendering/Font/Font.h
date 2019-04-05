@@ -52,15 +52,15 @@ namespace Directus
 		void SetText(const std::string& text, const Math::Vector2& position);
 		void SetSize(unsigned int size);
 
-		const Math::Vector4& GetColor() const						{ return m_fontColor; }
-		void SetColor(const Math::Vector4& color)					{ m_fontColor = color; }
-		const std::shared_ptr<RHI_Texture>& GetTexture() const		{ return m_texture_atlas; }
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer() const		{ return m_index_buffer_; }
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() const	{ return m_vertex_buffer; }
-		unsigned int GetIndexCount() const							{ return static_cast<unsigned int>(m_indices.size()); }
+		const auto& GetColor() const				{ return m_fontColor; }
+		void SetColor(const Math::Vector4& color)	{ m_fontColor = color; }
+		const auto& GetTexture() const				{ return m_texture_atlas; }
+		const auto& GetIndexBuffer() const			{ return m_index_buffer_; }
+		const auto& GetVertexBuffer() const			{ return m_vertex_buffer; }
+		unsigned int GetIndexCount() const			{ return static_cast<unsigned int>(m_indices.size()); }
 			
 	private:	
-		bool UpdateBuffers(std::vector<RHI_Vertex_PosUV>& vertices, std::vector<unsigned int>& indices) const;
+		bool UpdateBuffers(std::vector<RHI_Vertex_PosUv>& vertices, std::vector<unsigned int>& indices) const;
 
 		std::map<unsigned int, Glyph> m_glyphs;
 		std::shared_ptr<RHI_Texture> m_texture_atlas;
@@ -70,7 +70,7 @@ namespace Directus
 		Math::Vector4 m_fontColor;
 		std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
 		std::shared_ptr<RHI_IndexBuffer> m_index_buffer_;
-		std::vector<RHI_Vertex_PosUV> m_vertices;
+		std::vector<RHI_Vertex_PosUv> m_vertices;
 		std::vector<unsigned int> m_indices;
 		std::string m_current_text;
 		std::shared_ptr<RHI_Device> m_rhi_device;

@@ -50,16 +50,16 @@ namespace Directus::Math
 		float sc_bottom			= sc_top - height;
 
 		// Create vertices
-		vector<RHI_Vertex_PosUV> vertices = 
+		vector<RHI_Vertex_PosUv> vertices = 
 		{
 			// First triangle	
-			RHI_Vertex_PosUV(Vector3(sc_left,	sc_top,		0.0f),	Vector2(0.0f, 0.0f)),	// Top left	
-			RHI_Vertex_PosUV(Vector3(sc_right,	sc_bottom,	0.0f),	Vector2(1.0f, 1.0f)),	// Bottom right	
-			RHI_Vertex_PosUV(Vector3(sc_left,	sc_bottom,	0.0f),	Vector2(0.0f, 1.0f)),	// Bottom left
+			RHI_Vertex_PosUv(Vector3(sc_left,	sc_top,		0.0f),	Vector2(0.0f, 0.0f)),	// Top left	
+			RHI_Vertex_PosUv(Vector3(sc_right,	sc_bottom,	0.0f),	Vector2(1.0f, 1.0f)),	// Bottom right	
+			RHI_Vertex_PosUv(Vector3(sc_left,	sc_bottom,	0.0f),	Vector2(0.0f, 1.0f)),	// Bottom left
 			// Second triangle	
-			RHI_Vertex_PosUV(Vector3(sc_left,	sc_top,		0.0f),	Vector2(0.0f, 0.0f)),	// Top left	
-			RHI_Vertex_PosUV(Vector3(sc_right,	sc_top,		0.0f),	Vector2(1.0f, 0.0f)),	// Top right		
-			RHI_Vertex_PosUV(Vector3(sc_right,	sc_bottom,	0.0f),	Vector2(1.0f, 1.0f))	// Bottom right
+			RHI_Vertex_PosUv(Vector3(sc_left,	sc_top,		0.0f),	Vector2(0.0f, 0.0f)),	// Top left	
+			RHI_Vertex_PosUv(Vector3(sc_right,	sc_top,		0.0f),	Vector2(1.0f, 0.0f)),	// Top right		
+			RHI_Vertex_PosUv(Vector3(sc_right,	sc_bottom,	0.0f),	Vector2(1.0f, 1.0f))	// Bottom right
 		};
 
 		// Create indices

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "RHI_Definition.h"
 #include "RHI_Object.h"
+#include "RHI_Vertex.h"
 #include <vector>
 //=========================
 
@@ -32,26 +33,48 @@ namespace Directus
 	class RHI_VertexBuffer : public RHI_Object
 	{
 	public:
-		RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device);
+		RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device) 
+		{
+			m_rhi_device = rhi_device;
+		}
+
+		template<typename T>
+		bool Create(const std::vector<T>& vector)
+		{
+			m_is_dynamic	= false;
+			m_stride		= static_cast<unsigned int>(sizeof(T));
+			m_vertex_count	= static_cast<unsigned int>(vector.size());
+			m_memory_usage	= m_stride * m_vertex_count;
+			return Create(static_cast<const void*>(vector.data()));
+		}
+
+		template<typename T>
+		bool CreateDynamic(unsigned int vertex_count)
+		{
+			m_is_dynamic	= true;		
+			m_stride		= static_cast<unsigned int>(sizeof(T));
+			m_vertex_count	= vertex_count;
+			m_memory_usage	= m_stride * vertex_count;
+			return Create(nullptr);
+		}
+
 		~RHI_VertexBuffer();
 
-		bool Create(const std::vector<RHI_Vertex_PosCol>& vertices);
-		bool Create(const std::vector<RHI_Vertex_PosUV>& vertices);
-		bool Create(const std::vector<RHI_Vertex_PosUvNorTan>& vertices);
-		bool CreateDynamic(unsigned int stride, unsigned int vertex_count);
 		void* Map() const;
 		bool Unmap() const;
-	
+
 		void* GetBuffer() const				{ return m_buffer; }
 		unsigned int GetStride() const		{ return m_stride; }
 		unsigned int GetVertexCount() const	{ return m_vertex_count; }
 		unsigned int GetMemoryUsage() const	{ return m_memory_usage; }
 
-	protected:
-		unsigned int m_memory_usage	= 0;	
-		void* m_buffer				= nullptr;
+	private:
+		bool Create(const void* vertices);
+
 		unsigned int m_stride		= 0;
 		unsigned int m_vertex_count = 0;
+		unsigned int m_is_dynamic	= false;
+		void* m_buffer				= nullptr;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

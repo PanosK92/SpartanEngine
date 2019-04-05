@@ -37,195 +37,53 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_VertexBuffer::RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device)
-	{
-		m_rhi_device		= rhi_device;
-		m_buffer		= nullptr;
-		m_stride		= 0;
-		m_vertex_count	= 0;
-		m_memory_usage	= 0;
-	}
-
 	RHI_VertexBuffer::~RHI_VertexBuffer()
 	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
+		m_buffer = nullptr;
 	}
 
-	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosCol>& vertices)
+	bool RHI_VertexBuffer::Create(const void* vertices)
 	{
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-
 		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		if (vertices.empty())
+		if (!m_is_dynamic)
 		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
+			if (!vertices || m_vertex_count == 0)
+			{
+				LOG_ERROR_INVALID_PARAMETER();
+				return false;
+			}
 		}
 
-		m_stride		= sizeof(RHI_Vertex_PosCol);
-		m_vertex_count	= static_cast<unsigned int>(vertices.size());
-
-		// fill in a buffer description.
-		D3D11_BUFFER_DESC buffer_desc;
-		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-		buffer_desc.ByteWidth			= m_stride * m_vertex_count;
-		buffer_desc.Usage				= D3D11_USAGE_IMMUTABLE;
-		buffer_desc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
-		buffer_desc.CPUAccessFlags		= 0;
-		buffer_desc.MiscFlags			= 0;
-		buffer_desc.StructureByteStride	= 0;
-
-		// fill in the subresource data.
-		D3D11_SUBRESOURCE_DATA init_data;
-		init_data.pSysMem			= vertices.data();
-		init_data.SysMemPitch		= 0;
-		init_data.SysMemSlicePitch	= 0;
-
-		// Compute memory usage
-		m_memory_usage = static_cast<unsigned int>(sizeof(RHI_Vertex_PosCol) * vertices.size());
-
-		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result = m_rhi_device->GetContext()->device->CreateBuffer(&buffer_desc, &init_data, ptr);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create vertex buffer");
-			return false;
-		}
-
-		return true;
-	}
-
-	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUV>& vertices)
-	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (vertices.empty())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		m_stride		= sizeof(RHI_Vertex_PosUV);
-		m_vertex_count	= static_cast<unsigned int>(vertices.size());
+		m_buffer = nullptr;
 
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
 		buffer_desc.ByteWidth			= m_stride * m_vertex_count;
-		buffer_desc.Usage				= D3D11_USAGE_IMMUTABLE;
-		buffer_desc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
-		buffer_desc.CPUAccessFlags		= 0;
+		buffer_desc.Usage				= m_is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
+		buffer_desc.CPUAccessFlags		= m_is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
+		buffer_desc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;	
 		buffer_desc.MiscFlags			= 0;
-		buffer_desc.StructureByteStride	= 0;
+		buffer_desc.StructureByteStride = 0;
 
 		// fill in the subresource data.
 		D3D11_SUBRESOURCE_DATA init_data;
-		init_data.pSysMem			= vertices.data();
+		init_data.pSysMem			= vertices;
 		init_data.SysMemPitch		= 0;
 		init_data.SysMemSlicePitch	= 0;
-
-		// Compute memory usage
-		m_memory_usage = static_cast<unsigned int>(sizeof(RHI_Vertex_PosUV) * vertices.size());
 
 		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result	= m_rhi_device->GetContext()->device->CreateBuffer(&buffer_desc, &init_data, ptr);
+		const auto result	= m_rhi_device->GetContext()->device->CreateBuffer(&buffer_desc, m_is_dynamic ? nullptr : &init_data, ptr);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create vertex buffer");
-			return false;
-		}
-
-		return true;
-	}
-
-	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUvNorTan>& vertices)
-	{
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (vertices.empty())
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		m_stride		= sizeof(RHI_Vertex_PosUvNorTan);
-		m_vertex_count	= static_cast<unsigned int>(vertices.size());
-
-		// fill in a buffer description.
-		D3D11_BUFFER_DESC buffer_desc;
-		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-		buffer_desc.ByteWidth			= m_stride * m_vertex_count;
-		buffer_desc.Usage				= D3D11_USAGE_IMMUTABLE;
-		buffer_desc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
-		buffer_desc.CPUAccessFlags		= 0;
-		buffer_desc.MiscFlags			= 0;
-		buffer_desc.StructureByteStride	= 0;
-
-		// fill in the subresource data.
-		D3D11_SUBRESOURCE_DATA init_data;
-		init_data.pSysMem			= vertices.data();
-		init_data.SysMemPitch		= 0;
-		init_data.SysMemSlicePitch	= 0;
-
-		// Compute memory usage
-		m_memory_usage = static_cast<unsigned int>(sizeof(RHI_Vertex_PosUvNorTan) * vertices.size());
-
-		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result = m_rhi_device->GetContext()->device->CreateBuffer(&buffer_desc, &init_data, ptr);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create vertex buffer");
-			return false;
-		}
-
-		return true;
-	}
-
-	bool RHI_VertexBuffer::CreateDynamic(const unsigned int stride, const unsigned int vertex_count)
-	{
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		m_stride		= stride;
-		m_vertex_count	= vertex_count;
-
-		// fill in a buffer description.
-		D3D11_BUFFER_DESC buffer_desc;
-		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-		buffer_desc.ByteWidth			= vertex_count * stride;
-		buffer_desc.Usage				= D3D11_USAGE_DYNAMIC;
-		buffer_desc.BindFlags			= D3D11_BIND_VERTEX_BUFFER;
-		buffer_desc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
-		buffer_desc.MiscFlags			= 0;
-		buffer_desc.StructureByteStride	= 0;
-
-		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result = m_rhi_device->GetContext()->device->CreateBuffer(&buffer_desc, nullptr, ptr);
-		if FAILED(result)
-		{
-			LOG_ERROR("Failed to create dynamic vertex buffer");
 			return false;
 		}
 

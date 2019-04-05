@@ -36,93 +36,48 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_IndexBuffer::RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_Format format)
-	{
-		m_rhiDevice		= rhi_device;
-		m_buffer		= nullptr;
-		m_buffer_format	= format;
-		m_memory_usage	= 0;
-		m_index_count	= 0;
-	}
-
 	RHI_IndexBuffer::~RHI_IndexBuffer()
 	{
 		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
+		m_buffer = nullptr;
 	}
 
-	bool RHI_IndexBuffer::Create(const vector<unsigned int>& indices)
+	bool RHI_IndexBuffer::Create(const void* indices)
 	{
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-
 		if (!m_rhiDevice || !m_rhiDevice->GetContext()->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		if (indices.empty())
+		if (!m_is_dynamic && !indices)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		m_index_count					= static_cast<unsigned int>(indices.size());
-		const unsigned int byte_width	= sizeof(unsigned int) * m_index_count;
+		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
+		m_buffer = nullptr;
 
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-		buffer_desc.ByteWidth			= byte_width;
-		buffer_desc.Usage				= D3D11_USAGE_IMMUTABLE;
-		buffer_desc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
-		buffer_desc.CPUAccessFlags		= 0;
+		buffer_desc.ByteWidth			= m_stride * m_index_count;
+		buffer_desc.Usage				= m_is_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
+		buffer_desc.CPUAccessFlags		= m_is_dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
+		buffer_desc.BindFlags			= D3D11_BIND_INDEX_BUFFER;	
 		buffer_desc.MiscFlags			= 0;
-		buffer_desc.StructureByteStride	= 0;
+		buffer_desc.StructureByteStride = 0;
 
 		D3D11_SUBRESOURCE_DATA init_data;
-		init_data.pSysMem			= indices.data();
+		init_data.pSysMem			= indices;
 		init_data.SysMemPitch		= 0;
 		init_data.SysMemSlicePitch	= 0;
 
-		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result	= m_rhiDevice->GetContext()->device->CreateBuffer(&buffer_desc, &init_data, ptr);
+		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
+		const auto result = m_rhiDevice->GetContext()->device->CreateBuffer(&buffer_desc, m_is_dynamic ? nullptr : &init_data, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR(" Failed to create index buffer");
-			return false;
-		}
-
-		// Compute memory usage
-		m_memory_usage = unsigned int((sizeof(unsigned int) * indices.size()));
-
-		return true;
-	}
-
-	bool RHI_IndexBuffer::CreateDynamic(const unsigned int stride, const unsigned int index_count)
-	{
-		safe_release(static_cast<ID3D11Buffer*>(m_buffer));
-
-		if (!m_rhiDevice || !m_rhiDevice->GetContext()->device)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		m_index_count = index_count;
-
-		D3D11_BUFFER_DESC buffer_desc;
-		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-		buffer_desc.ByteWidth			= index_count * stride;
-		buffer_desc.Usage				= D3D11_USAGE_DYNAMIC;
-		buffer_desc.BindFlags			= D3D11_BIND_INDEX_BUFFER;
-		buffer_desc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
-		buffer_desc.MiscFlags			= 0;
-		buffer_desc.StructureByteStride	= 0;
-
-		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result	= m_rhiDevice->GetContext()->device->CreateBuffer(&buffer_desc, nullptr, ptr);
-		if FAILED(result)
-		{
-			LOG_ERROR("Failed to create dynamic index buffer");
 			return false;
 		}
 
@@ -157,7 +112,6 @@ namespace Directus
 		}
 
 		m_rhiDevice->GetContext()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
-
 		return true;
 	}
 }

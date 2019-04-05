@@ -37,32 +37,12 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_VertexBuffer::RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device)
-	{
-		m_rhi_device = rhi_device;
-	}
-
 	RHI_VertexBuffer::~RHI_VertexBuffer()
 	{
-
+		m_buffer = nullptr;
 	}
 
-	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosCol>& vertices)
-	{
-		return false;
-	}
-
-	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUV>& vertices)
-	{
-		return false;
-	}
-
-	bool RHI_VertexBuffer::Create(const vector<RHI_Vertex_PosUvNorTan>& vertices)
-	{
-		return false;
-	}
-
-	bool RHI_VertexBuffer::CreateDynamic(const unsigned int stride, const unsigned int vertex_count)
+	bool RHI_VertexBuffer::Create(const void* vertices)
 	{
 		return false;
 	}

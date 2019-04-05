@@ -1114,7 +1114,7 @@ namespace Directus
 				// Grow vertex buffer (if needed)
 				if (line_vertex_buffer_size > m_vertex_buffer_lines->GetVertexCount())
 				{
-					m_vertex_buffer_lines->CreateDynamic(sizeof(RHI_Vertex_PosCol), line_vertex_buffer_size);
+					m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(line_vertex_buffer_size);
 				}
 
 				// Update vertex buffer
@@ -1142,7 +1142,7 @@ namespace Directus
 				// Grow vertex buffer (if needed)
 				if (line_vertex_buffer_size > m_vertex_buffer_lines->GetVertexCount())
 				{
-					m_vertex_buffer_lines->CreateDynamic(sizeof(RHI_Vertex_PosCol), line_vertex_buffer_size);
+					m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(line_vertex_buffer_size);
 				}
 
 				// Update vertex buffer
