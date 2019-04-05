@@ -207,7 +207,7 @@ namespace ImGui::RHI
 			if (g_vertexBuffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
 			{
 				const unsigned int new_size = draw_data->TotalVtxCount + 5000;
-				if (!g_vertexBuffer->CreateDynamic(sizeof(ImDrawVert), new_size))
+				if (!g_vertexBuffer->CreateDynamic<ImDrawVert>(new_size))
 				{
 					g_cmd_list->End();
 					g_cmd_list->Flush();
@@ -220,7 +220,7 @@ namespace ImGui::RHI
 			if (g_indexBuffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
 			{
 				const unsigned int new_size = draw_data->TotalIdxCount + 10000;
-				if (!g_indexBuffer->CreateDynamic(sizeof(ImDrawIdx), new_size))
+				if (!g_indexBuffer->CreateDynamic<ImDrawIdx>(new_size))
 				{
 					g_cmd_list->End();
 					g_cmd_list->Flush();

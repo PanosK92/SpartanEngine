@@ -36,26 +36,12 @@ using namespace std;
 
 namespace Directus
 {
-	RHI_IndexBuffer::RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_Format format)
-	{
-		m_rhiDevice		= rhi_device;
-		m_buffer		= nullptr;
-		m_buffer_format	= format;
-		m_memory_usage	= 0;
-		m_index_count	= 0;
-	}
-
 	RHI_IndexBuffer::~RHI_IndexBuffer()
 	{
-		
+		m_buffer = nullptr;
 	}
 
-	bool RHI_IndexBuffer::Create(const vector<unsigned int>& indices)
-	{
-		return false;
-	}
-
-	bool RHI_IndexBuffer::CreateDynamic(const unsigned int stride, const unsigned int index_count)
+	bool RHI_IndexBuffer::Create(const void* indices)
 	{
 		return false;
 	}

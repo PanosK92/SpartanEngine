@@ -80,9 +80,9 @@ namespace Directus
 			}
 
 			bool CreateBuffers(Renderer* renderer);
-			static int GetIndexCount()									{ return 6; }
-			std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer() const		{ return m_indexBuffer; }
-			std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() const	{ return m_vertexBuffer; }
+			static int GetIndexCount()			{ return 6; }
+			const auto&	GetIndexBuffer() const	{ return m_indexBuffer; }
+			const auto& GetVertexBuffer() const	{ return m_vertexBuffer; }
 
 			float x;
 			float y;

@@ -33,7 +33,11 @@ namespace Directus
 	public:
 		RHI_Object()					{ m_id = GENERATE_GUID; }
 		unsigned int RHI_GetID() const	{ return m_id; }
+
+	protected:
+		unsigned int m_memory_usage = 0;
+
 	private:
-		unsigned int m_id = 0;
+		unsigned int m_id = 0;	
 	};
 }

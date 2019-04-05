@@ -60,10 +60,10 @@ namespace Directus
 		float tangent[3]	= { 0 };
 	};
 
-	struct RHI_Vertex_PosUVNor
+	struct RHI_Vertex_PosUvNor
 	{
-		RHI_Vertex_PosUVNor(){}
-		RHI_Vertex_PosUVNor(const Math::Vector3& position, const Math::Vector2& uv, const Math::Vector3& normal)
+		RHI_Vertex_PosUvNor(){}
+		RHI_Vertex_PosUvNor(const Math::Vector3& position, const Math::Vector2& uv, const Math::Vector3& normal)
 		{
 			this->pos[0] = position.x;
 			this->pos[1] = position.y;
@@ -82,11 +82,11 @@ namespace Directus
 		float normal[3] = { 0 };
 	};
 
-	struct RHI_Vertex_PosUV
+	struct RHI_Vertex_PosUv
 	{
-		RHI_Vertex_PosUV(){}
+		RHI_Vertex_PosUv(){}
 
-		RHI_Vertex_PosUV(float posX, float posY, float posZ, float uvX, float uvY)
+		RHI_Vertex_PosUv(float posX, float posY, float posZ, float uvX, float uvY)
 		{
 			pos[0] = posX;
 			pos[1] = posY;
@@ -96,7 +96,7 @@ namespace Directus
 			uv[1] = uvY;
 		}
 
-		RHI_Vertex_PosUV(const Math::Vector3& position, const Math::Vector2& uv)
+		RHI_Vertex_PosUv(const Math::Vector3& position, const Math::Vector2& uv)
 		{
 			this->pos[0]	= position.x;
 			this->pos[1]	= position.y;
@@ -130,7 +130,7 @@ namespace Directus
 	};
 
 	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUvNorTan>::value,	"RHI_Vertex_PosUVTBN is not trivially copyable");
-	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUVNor>::value,		"RHI_Vertex_PosUVNor is not trivially copyable");
-	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUV>::value,			"RHI_Vertex_PosUV is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUvNor>::value,		"RHI_Vertex_PosUVNor is not trivially copyable");
+	static_assert(std::is_trivially_copyable<RHI_Vertex_PosUv>::value,			"RHI_Vertex_PosUV is not trivially copyable");
 	static_assert(std::is_trivially_copyable<RHI_Vertex_PosCol>::value,			"RHI_Vertex_PosCol is not trivially copyable");
 }

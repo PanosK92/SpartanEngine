@@ -164,7 +164,7 @@ namespace Directus
 		m_font_size = Clamp<unsigned int>(size, 8, 50);
 	}
 
-	bool Font::UpdateBuffers(vector<RHI_Vertex_PosUV>& vertices, vector<unsigned int>& indices) const
+	bool Font::UpdateBuffers(vector<RHI_Vertex_PosUv>& vertices, vector<unsigned int>& indices) const
 	{
 		if (!m_context || !m_vertex_buffer || !m_index_buffer_)
 		{
@@ -176,21 +176,21 @@ namespace Directus
 		if (vertices.size() > m_vertex_buffer->GetVertexCount())
 		{
 			// Vertex buffer
-			if (!m_vertex_buffer->CreateDynamic(sizeof(RHI_Vertex_PosUV), static_cast<unsigned int>(vertices.size())))
+			if (!m_vertex_buffer->CreateDynamic<RHI_Vertex_PosUv>(static_cast<unsigned int>(vertices.size())))
 			{
 				LOG_ERROR("Failed to update vertex buffer.");
 				return false;
 			}
 
 			// Index buffer
-			if (!m_index_buffer_->CreateDynamic(sizeof(unsigned int), static_cast<unsigned int>(indices.size())))
+			if (!m_index_buffer_->CreateDynamic<unsigned int>(static_cast<unsigned int>(indices.size())))
 			{
 				LOG_ERROR("Failed to update index buffer.");
 				return false;
 			}
 		}
 
-		const auto vertex_buffer = static_cast<RHI_Vertex_PosUV*>(m_vertex_buffer->Map());
+		const auto vertex_buffer = static_cast<RHI_Vertex_PosUv*>(m_vertex_buffer->Map());
 		copy(vertices.begin(), vertices.end(), vertex_buffer);
 		const auto vertex = m_vertex_buffer->Unmap();
 
