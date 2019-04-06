@@ -41,19 +41,109 @@ namespace Directus
 		m_buffer = nullptr;
 	}
 
+	static uint32_t MemoryType(VkPhysicalDevice device, VkMemoryPropertyFlags properties, uint32_t type_bits)
+	{
+		VkPhysicalDeviceMemoryProperties prop;
+		vkGetPhysicalDeviceMemoryProperties(device, &prop);
+		for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
+			if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
+				return i;
+
+		return 0xFFFFFFFF; // Unable to find memoryType
+	}
+
 	bool RHI_IndexBuffer::Create(const void* indices)
 	{
-		return false;
+		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		auto device			= m_rhi_device->GetContext()->device;
+		auto buffer			= static_cast<VkBuffer>(m_buffer);
+		auto buffer_memory	= static_cast<VkDeviceMemory>(m_device_memory);
+
+		if (buffer != VK_NULL_HANDLE)
+		{
+			vkDestroyBuffer(device, buffer, nullptr);
+		}
+
+		if (buffer_memory)
+		{
+			vkFreeMemory(device, buffer_memory, nullptr);
+		}
+
+		auto new_size							= m_stride * m_index_count;
+		VkDeviceSize vertex_buffer_size_aligned = ((new_size - 1) / m_device_size + 1) * m_device_size;
+		VkBufferCreateInfo buffer_info			= {};
+		buffer_info.sType						= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		buffer_info.size						= vertex_buffer_size_aligned;
+		buffer_info.usage						= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		buffer_info.sharingMode					= VK_SHARING_MODE_EXCLUSIVE;
+
+		if (vkCreateBuffer(device, &buffer_info, nullptr, &buffer) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to create buffer.");
+			return false;
+		}
+
+		VkMemoryRequirements memory_requirements;
+		vkGetBufferMemoryRequirements(device, buffer, &memory_requirements);
+		m_device_size = (m_device_size > memory_requirements.alignment) ? m_device_size : memory_requirements.alignment;
+		VkMemoryAllocateInfo alloc_info = {};
+		alloc_info.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		alloc_info.allocationSize		= memory_requirements.size;
+		alloc_info.memoryTypeIndex		= MemoryType(m_rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memory_requirements.memoryTypeBits);
+		if (vkAllocateMemory(device, &alloc_info, nullptr, &buffer_memory) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to allocate memory.");
+			return false;
+		}
+
+		if (vkBindBufferMemory(device, buffer, buffer_memory, 0) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to bind.");
+			return false;
+		}
+
+		m_buffer		= static_cast<void*>(buffer);
+		m_device_memory = static_cast<void*>(buffer_memory);
+		m_device_size	= new_size;
+
+		return true;
 	}
 
 	void* RHI_IndexBuffer::Map() const
 	{
-		return nullptr;
+		auto device_memory = static_cast<VkDeviceMemory>(m_device_memory);
+		void* ptr = nullptr;
+
+		if (vkMapMemory(m_rhi_device->GetContext()->device, device_memory, 0, m_index_count, 0, (void**)(&ptr)) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to map.");
+		}
+
+		return ptr;
 	}
 
 	bool RHI_IndexBuffer::Unmap() const
 	{
-		return false;
+		auto buffer_memory = static_cast<VkDeviceMemory>(m_device_memory);
+
+		VkMappedMemoryRange range[1]	= {};
+		range[0].sType					= VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		range[0].memory					= buffer_memory;
+		range[0].size					= VK_WHOLE_SIZE;
+
+		if (vkFlushMappedMemoryRanges(m_rhi_device->GetContext()->device, 1, range) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to flush.");
+			return false;
+		}
+
+		vkUnmapMemory(m_rhi_device->GetContext()->device, buffer_memory);
+		return true;
 	}
 }
 #endif
