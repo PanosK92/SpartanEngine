@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "../RHI_CommandList.h"
+#include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Texture.h"
@@ -126,7 +127,7 @@ namespace Directus
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
 	{
-		VkViewport vk_viewport;
+		VkViewport vk_viewport	= {};
 		vk_viewport.x			= viewport.GetX();
 		vk_viewport.y			= viewport.GetY();
 		vk_viewport.width		= viewport.GetWidth();

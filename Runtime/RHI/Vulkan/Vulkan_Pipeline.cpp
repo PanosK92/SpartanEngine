@@ -28,30 +28,43 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "../RHI_Pipeline.h"
+#include "../RHI_Device.h"
+#include "../../Logging/Log.h"
+#include "../RHI_Shader.h"
 //==========================
 
-//= NAMESPACES ================
+//= NAMESPACES =====
 using namespace std;
-//using namespace Directus::Math;
-//=============================
+//==================
 
 namespace Directus
 {
+	RHI_Pipeline::~RHI_Pipeline()
+	{	
+		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_graphics_pipeline), nullptr);
+		vkDestroyPipelineLayout(m_rhi_device->GetContext()->device, static_cast<VkPipelineLayout>(m_pipeline_layout), nullptr);
+		vkDestroyRenderPass(m_rhi_device->GetContext()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
+
+		m_graphics_pipeline	= nullptr;
+		m_pipeline_layout	= nullptr;
+		m_render_pass		= nullptr;
+	}
+
 	bool RHI_Pipeline::Create()
 	{
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
 		vertShaderStageInfo.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		vertShaderStageInfo.stage	= VK_SHADER_STAGE_VERTEX_BIT;
 		vertShaderStageInfo.module	= static_cast<VkShaderModule>(m_shader_vertex->GetVertexShaderBuffer());
-		vertShaderStageInfo.pName	= m_shader_vertex->GetVertexEntryPoint();
+		vertShaderStageInfo.pName	= m_shader_vertex->GetVertexEntryPoint().c_str();
 
 		VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
 		fragShaderStageInfo.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		fragShaderStageInfo.stage	= VK_SHADER_STAGE_FRAGMENT_BIT;
 		fragShaderStageInfo.module	= static_cast<VkShaderModule>(m_shader_pixel->GetPixelShaderBuffer());
-		fragShaderStageInfo.pName	= m_shader_pixel->GetPixelEntryPoint();
+		fragShaderStageInfo.pName	= m_shader_pixel->GetPixelEntryPoint().c_str();
 
-		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+		VkPipelineShaderStageCreateInfo shader_stages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
 		VkPipelineVertexInputStateCreateInfo vertex_input_info	= {};
 		vertex_input_info.sType									= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -64,16 +77,17 @@ namespace Directus
 		input_assembly.primitiveRestartEnable					= VK_FALSE;
 
 		VkViewport viewport = {};
-		viewport.x			= 0.0f;
-		viewport.y			= 0.0f;
-		viewport.width		= (float)swapChainExtent.width;
-		viewport.height		= (float)swapChainExtent.height;
-		viewport.minDepth	= 0.0f;
-		viewport.maxDepth	= 1.0f;
+		viewport.x			= m_viewport.GetX();
+		viewport.y			= m_viewport.GetY();
+		viewport.width		= m_viewport.GetWidth();
+		viewport.height		= m_viewport.GetHeight();
+		viewport.minDepth	= m_viewport.GetMinDepth();
+		viewport.maxDepth	= m_viewport.GetMaxDepth();
 
-		VkRect2D scissor	= {};
-		scissor.offset		= { 0, 0 };
-		scissor.extent		= swapChainExtent;
+		VkRect2D scissor		= {};
+		scissor.offset			= { 0, 0 };
+		scissor.extent.width	= static_cast<uint32_t>(viewport.width);
+		scissor.extent.height	= static_cast<uint32_t>(viewport.height);
 
 		VkPipelineViewportStateCreateInfo viewport_state	= {};
 		viewport_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -117,35 +131,38 @@ namespace Directus
 		pipeline_layout_info.setLayoutCount				= 0;
 		pipeline_layout_info.pushConstantRangeCount		= 0;
 
-		if (vkCreatePipelineLayout(m_rhi_device->GetContext()->device, &pipeline_layout_info, nullptr, &pipelineLayout) != VK_SUCCESS) 
+		VkPipelineLayout pipeline_layout;
+		if (vkCreatePipelineLayout(m_rhi_device->GetContext()->device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) 
 		{
 			LOG_ERROR("Failed to create pipeline layout");
 			return false;
 		}
 
+		CreateRenderPass();
+
 		VkGraphicsPipelineCreateInfo pipeline_info	= {};
 		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline_info.stageCount					= 2;
-		pipeline_info.pStages						= shaderStages;
+		pipeline_info.pStages						= shader_stages;
 		pipeline_info.pVertexInputState				= &vertex_input_info;
 		pipeline_info.pInputAssemblyState			= &input_assembly;
 		pipeline_info.pViewportState				= &viewport_state;
 		pipeline_info.pRasterizationState			= &rasterizer;
 		pipeline_info.pMultisampleState				= &multisampling;
 		pipeline_info.pColorBlendState				= &color_blend_info;
-		pipeline_info.layout						= pipelineLayout;
-		pipeline_info.renderPass					= renderPass;
+		pipeline_info.layout						= pipeline_layout;
+		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_render_pass);
 		pipeline_info.subpass						= 0;
 		pipeline_info.basePipelineHandle			= VK_NULL_HANDLE;
 
-		if (vkCreateGraphicsPipelines(m_rhi_device->GetContext()->device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphicsPipeline) != VK_SUCCESS) 
+		VkPipeline graphics_pipeline = nullptr;
+		if (vkCreateGraphicsPipelines(m_rhi_device->GetContext()->device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) 
 		{
 			LOG_ERROR("Failed to create graphics pipeline");
 			return false;
 		}
 
-		//vkDestroyShaderModule(device, fragShaderModule, nullptr);
-		//vkDestroyShaderModule(device, vertShaderModule, nullptr);
+		m_graphics_pipeline = static_cast<void*>(graphics_pipeline);
 
 		return true;
 	}
@@ -153,7 +170,7 @@ namespace Directus
 	bool RHI_Pipeline::CreateRenderPass()
 	{
 		VkAttachmentDescription color_attachment	= {};
-		color_attachment.format						= swapChainImageFormat;
+		color_attachment.format						= vulkan_format[m_format];
 		color_attachment.samples					= VK_SAMPLE_COUNT_1_BIT;
 		color_attachment.loadOp						= VK_ATTACHMENT_LOAD_OP_CLEAR;
 		color_attachment.storeOp					= VK_ATTACHMENT_STORE_OP_STORE;
@@ -188,12 +205,14 @@ namespace Directus
 		render_pass_info.dependencyCount		= 1;
 		render_pass_info.pDependencies			= &dependency;
 
-		if (vkCreateRenderPass(m_rhi_device->GetContext()->device, &render_pass_info, nullptr, &renderPass) != VK_SUCCESS) 
+		VkRenderPass render_pass = nullptr;
+		if (vkCreateRenderPass(m_rhi_device->GetContext()->device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS) 
 		{
 			LOG_ERROR("Failed to create render pass");
 			return false;
 		}
 
+		m_render_pass = static_cast<void*>(render_pass);
 		return true;
 	}
 }

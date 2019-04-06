@@ -32,6 +32,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	RHI_Pipeline::~RHI_Pipeline()
+	{
+
+	}
+
 	bool RHI_Pipeline::Create()
 	{
 		return true;
