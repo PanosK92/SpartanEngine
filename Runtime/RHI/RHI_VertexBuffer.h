@@ -73,8 +73,11 @@ namespace Directus
 
 		unsigned int m_stride		= 0;
 		unsigned int m_vertex_count = 0;
-		unsigned int m_is_dynamic	= false;
-		void* m_buffer				= nullptr;
+		unsigned int m_is_dynamic	= false;	
 		std::shared_ptr<RHI_Device> m_rhi_device;
+
+		void* m_buffer			= nullptr;
+		void* m_device_memory	= nullptr;
+		uint64_t m_device_size	= 256;
 	};
 }
