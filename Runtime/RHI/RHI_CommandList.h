@@ -185,6 +185,8 @@ namespace Directus
 		void Draw(unsigned int vertex_count);
 		void DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset);
 
+		void SetPipeline(const RHI_Pipeline* pipeline);
+
 		void SetViewport(const RHI_Viewport& viewport);
 		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle);
 		void SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology);

@@ -76,6 +76,8 @@ namespace Directus
 		void* GetPixelShaderBuffer() const	{ return m_pixel_shader; }
 		bool HasVertexShader() const		{ return m_vertex_shader != nullptr; }
 		bool HasPixelShader() const			{ return m_pixel_shader != nullptr; }
+		const auto& GetVertexEntryPoint()	{ return _RHI_Shader::entry_point_vertex; }
+		const auto& GetPixelEntryPoint()	{ return _RHI_Shader::entry_point_pixel; }
 
 		// Misc
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }

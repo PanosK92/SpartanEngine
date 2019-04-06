@@ -119,6 +119,11 @@ namespace Directus
 		vkCmdDrawIndexed(m_cmd_buffer, index_count, 1, index_offset, vertex_offset, 0);
 	}
 
+	void RHI_CommandList::SetPipeline(const RHI_Pipeline* pipeline)
+	{
+		vkCmdBindPipeline(m_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetBuffer()));
+	}
+
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
 	{
 		VkViewport vk_viewport;
