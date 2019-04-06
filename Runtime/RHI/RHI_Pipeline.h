@@ -34,9 +34,10 @@ namespace Directus
 	{
 	public:
 		RHI_Pipeline() = default;
+		~RHI_Pipeline();
 	
 		bool Create();
-		void* GetBuffer() { return m_buffer; }
+		void* GetBuffer() const { return m_graphics_pipeline; }
 	
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_Shader> m_shader_vertex;
@@ -47,10 +48,13 @@ namespace Directus
 		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_state;
 		RHI_Viewport m_viewport;
 		Math::Rectangle m_scissor;
+		RHI_Format m_format; // must match swapchain format
 
 	private:
 		bool CreateRenderPass();
 
-		void* m_buffer = nullptr;
+		void* m_graphics_pipeline	= nullptr;
+		void* m_pipeline_layout		= nullptr;
+		void* m_render_pass			= nullptr;
 	};
 }
