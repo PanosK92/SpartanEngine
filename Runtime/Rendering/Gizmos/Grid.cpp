@@ -135,9 +135,6 @@ namespace Directus
 
 	bool Grid::CreateBuffers(vector<RHI_Vertex_PosCol>& vertices, vector<unsigned>& indices, shared_ptr<RHI_Device>& rhi_device)
 	{
-		m_vertexBuffer.reset();
-		m_indexBuffer.reset();
-
 		m_vertexBuffer = make_shared<RHI_VertexBuffer>(rhi_device);
 		if (!m_vertexBuffer->Create(vertices))
 		{

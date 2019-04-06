@@ -25,17 +25,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 //=========================
 
-class RHI_Pipeline
+namespace Directus
 {
-public:
-	RHI_Pipeline();
-
-private:
-	RHI_Shader* m_shader_vertex;
-	RHI_Shader* m_shader_index;
-	RHI_InputLayout* m_input_layout;
-	RHI_Viewport m_viewport;
-	Math::Rectangle m_scissor;
-	RHI_RasterizerState* m_rasterizer_state;
-	RHI_BlendState* m_blend_stat;
-};
+	class RHI_Pipeline
+	{
+	public:
+		RHI_Pipeline();
+	
+	private:
+		/*RHI_Shader* m_shader_vertex;
+		RHI_Shader* m_shader_index;
+		RHI_InputLayout* m_input_layout;
+		RHI_Viewport m_viewport;
+		Math::Rectangle m_scissor;
+		RHI_RasterizerState* m_rasterizer_state;
+		RHI_BlendState* m_blend_stat;*/
+	};
+}
