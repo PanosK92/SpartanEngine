@@ -80,7 +80,6 @@ namespace Directus
 		auto buffer			= static_cast<VkBuffer>(m_buffer);
 		auto buffer_memory	= static_cast<VkDeviceMemory>(m_device_memory);
 
-		VkResult err;
 		if (buffer != VK_NULL_HANDLE)
 		{
 			vkDestroyBuffer(device, buffer, nullptr);
@@ -101,7 +100,7 @@ namespace Directus
 
 		if (vkCreateBuffer(device, &buffer_info, nullptr, &buffer) != VK_SUCCESS)
 		{
-			LOG_ERROR("Failed to create vertex buffer");
+			LOG_ERROR("Failed to create buffer.");
 			return false;
 		}
 
@@ -114,7 +113,7 @@ namespace Directus
 		alloc_info.memoryTypeIndex		= MemoryType(m_rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memory_requirements.memoryTypeBits);
 		if (vkAllocateMemory(device, &alloc_info, nullptr, &buffer_memory) != VK_SUCCESS)
 		{
-			LOG_ERROR("Failed to allocate memory");
+			LOG_ERROR("Failed to allocate memory.");
 			return false;
 		}
 	

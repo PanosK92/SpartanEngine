@@ -34,7 +34,7 @@ namespace Directus
 	public:
 		RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, RHI_Format format = Format_R32_UINT)
 		{
-			m_rhiDevice		= rhi_device;
+			m_rhi_device		= rhi_device;
 			m_buffer_format = format;
 		}
 
@@ -74,9 +74,12 @@ namespace Directus
 		bool m_is_dynamic			= false;
 		unsigned int m_stride		= 0;
 		unsigned int m_index_count	= 0;
-		unsigned int m_memory_usage	= 0;	
-		void* m_buffer				= nullptr;
+		unsigned int m_memory_usage	= 0;		
 		RHI_Format m_buffer_format;
-		std::shared_ptr<RHI_Device> m_rhiDevice;
+		std::shared_ptr<RHI_Device> m_rhi_device;
+
+		void* m_buffer			= nullptr;
+		void* m_device_memory	= nullptr;
+		uint64_t m_device_size	= 256;
 	};
 }
