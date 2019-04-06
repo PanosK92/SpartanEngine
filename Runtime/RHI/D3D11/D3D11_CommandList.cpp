@@ -28,9 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "../RHI_CommandList.h"
+#include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Texture.h"
+#include "../RHI_Shader.h"
 #include "../RHI_RenderTexture.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../../Profiling/Profiler.h"
@@ -95,6 +97,17 @@ namespace Directus
 		cmd.index_count		= index_count;
 		cmd.index_offset	= index_offset;
 		cmd.vertex_offset	= vertex_offset;
+	}
+
+	void RHI_CommandList::SetPipeline(const RHI_Pipeline* pipeline)
+	{
+		SetViewport(pipeline->m_viewport);
+		SetBlendState(pipeline->m_blend_state);
+		SetDepthStencilState(pipeline->m_depth_stencil_state);
+		SetRasterizerState(pipeline->m_rasterizer_state);
+		SetInputLayout(pipeline->m_shader_vertex->GetInputLayout());
+		SetShaderVertex(pipeline->m_shader_vertex);
+		SetShaderPixel(pipeline->m_shader_pixel);	
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)

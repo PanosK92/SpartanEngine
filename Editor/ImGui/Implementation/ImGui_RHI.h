@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Shader.h"
 #include "RHI/RHI_SwapChain.h"
 #include "RHI/RHI_CommandList.h"
+#include "RHI/RHI_Pipeline.h"
 //====================================
 
 namespace ImGui::RHI
@@ -55,107 +56,113 @@ namespace ImGui::RHI
 	RHI_CommandList* g_cmd_list	= nullptr;
 
 	// RHI Data	
-	shared_ptr<RHI_Device>				g_device;
-	shared_ptr<RHI_Texture>				g_fontTexture;
-	shared_ptr<RHI_Sampler>				g_fontSampler;
-	shared_ptr<RHI_ConstantBuffer>		g_constantBuffer;
-	shared_ptr<RHI_VertexBuffer>		g_vertexBuffer;
-	shared_ptr<RHI_IndexBuffer>			g_indexBuffer;
-	shared_ptr<RHI_BlendState>			g_blendState;
-	shared_ptr<RHI_RasterizerState>		g_rasterizerState;
-	shared_ptr<RHI_DepthStencilState>	g_depthStencilState;
-	shared_ptr<RHI_Shader>				g_shader;
-
+	shared_ptr<RHI_Device>			g_rhi_device;
+	RHI_Pipeline					g_pipeline;
+	shared_ptr<RHI_Texture>			g_fontTexture;
+	shared_ptr<RHI_Sampler>			g_fontSampler;
+	shared_ptr<RHI_ConstantBuffer>	g_constantBuffer;
+	shared_ptr<RHI_VertexBuffer>	g_vertexBuffer;
+	shared_ptr<RHI_IndexBuffer>		g_indexBuffer;
+	
 	inline bool Initialize(Context* context)
 	{
-		g_context	= context;
-		g_renderer	= context->GetSubsystem<Renderer>().get();
-		g_cmd_list	= g_renderer->GetCmdList().get();
-		g_device	= g_renderer->GetRhiDevice();
+		g_context		= context;
+		g_renderer		= context->GetSubsystem<Renderer>().get();
+		g_cmd_list		= g_renderer->GetCmdList().get();
+		g_rhi_device	= g_renderer->GetRhiDevice();
 		
-		if (!g_context || !g_device || !g_device->IsInitialized())
+		if (!g_context || !g_rhi_device || !g_rhi_device->IsInitialized())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		// Font atlas texture
-		g_fontTexture = make_shared<RHI_Texture>(g_context);
+		g_fontTexture		= make_shared<RHI_Texture>(g_context);
+		g_fontSampler		= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
+		g_constantBuffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device, static_cast<unsigned int>(sizeof(Matrix)));
+		g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_rhi_device);
+		g_indexBuffer		= make_shared<RHI_IndexBuffer>(g_rhi_device, sizeof(ImDrawIdx) == 2 ? Format_R16_UINT : Format_R32_UINT);
 
-		// Font atlas sampler
-		g_fontSampler = make_shared<RHI_Sampler>(g_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
+		// Create pipeline
+		{
+			// Depth-stencil State
+			auto depth_stencil_state = make_shared<RHI_DepthStencilState>(g_rhi_device, false);
 
-		// Constant buffer
-		g_constantBuffer = make_shared<RHI_ConstantBuffer>(g_device, static_cast<unsigned int>(sizeof(Matrix)));
+			// Rasterizer state
+			auto rasterizer_state = make_shared<RHI_RasterizerState>
+			(
+				g_rhi_device,
+				Cull_None,
+				Fill_Solid,
+				true,	// depth clip
+				true,	// scissor
+				false,	// multi-sample
+				false	// anti-aliased lines
+			);
 
-		// Vertex buffer
-		g_vertexBuffer = make_shared<RHI_VertexBuffer>(g_device);
+			// Blend state
+			auto blend_state = make_shared<RHI_BlendState>
+			(
+				g_rhi_device,
+				true,
+				Blend_Src_Alpha,		// source blend
+				Blend_Inv_Src_Alpha,	// destination blend
+				Blend_Operation_Add,	// blend op
+				Blend_Inv_Src_Alpha,	// source blend alpha
+				Blend_Zero,				// destination blend alpha
+				Blend_Operation_Add		// destination op alpha
+			);
 
-		// Index buffer
-		g_indexBuffer = make_shared<RHI_IndexBuffer>(g_device, sizeof(ImDrawIdx) == 2 ? Format_R16_UINT : Format_R32_UINT);
+			// Shader
+			static string shader_source =
+				"SamplerState sampler0;"
+				"Texture2D texture0;"
+				"cbuffer vertexBuffer : register(b0)"
+				"{"
+				"	matrix transform;"
+				"};"
+				"struct VS_INPUT"
+				"{"
+				"	float2 pos	: POSITION0;"
+				"	float2 uv	: TEXCOORD0;"
+				"	float4 col	: COLOR0;"
+				"};"														
+				"struct PS_INPUT"
+				"{"
+				"	float4 pos : SV_POSITION;"
+				"	float4 col : COLOR;"
+				"	float2 uv  : TEXCOORD;"
+				"};"
+				"PS_INPUT mainVS(VS_INPUT input)"
+				"{"
+				"	PS_INPUT output;"
+				"	output.pos = mul(transform, float4(input.pos.xy, 0.f, 1.f));"
+				"	output.col = input.col;	"
+				"	output.uv  = input.uv;"
+				"	return output;"
+				"}"
+				"float4 mainPS(PS_INPUT input) : SV_Target"
+				"{"
+				"	return input.col * texture0.Sample(sampler0, input.uv);"
+				"}";
+			auto shader = make_shared<RHI_Shader>(g_rhi_device);
+			shader->Compile(Shader_VertexPixel, shader_source, Input_Position2DTextureColor8);
 
-		// Create depth-stencil State
-		g_depthStencilState = make_shared<RHI_DepthStencilState>(g_device, false);
+			// Pipeline
+			g_pipeline.m_rhi_device				= g_rhi_device;
+			g_pipeline.m_shader_vertex			= shader;
+			g_pipeline.m_shader_pixel			= shader;
+			g_pipeline.m_rasterizer_state		= rasterizer_state;
+			g_pipeline.m_blend_state			= blend_state;
+			g_pipeline.m_depth_stencil_state	= depth_stencil_state;
+			g_pipeline.m_input_layout			= shader->GetInputLayout();
 
-		// Rasterizer state
-		g_rasterizerState = make_shared<RHI_RasterizerState>
-		(
-			g_device,
-			Cull_None,
-			Fill_Solid,
-			true,	// depth clip
-			true,	// scissor
-			false,	// multi-sample
-			false	// anti-aliased lines
-		);
-
-		// Blend state
-		g_blendState = make_shared<RHI_BlendState>
-		(
-			g_device,
-			true,
-			Blend_Src_Alpha,		// source blend
-			Blend_Inv_Src_Alpha,	// destination blend
-			Blend_Operation_Add,	// blend op
-			Blend_Inv_Src_Alpha,	// source blend alpha
-			Blend_Zero,				// destination blend alpha
-			Blend_Operation_Add		// destination op alpha
-		);
-
-		// Shader
-		static string shader =
-		"SamplerState sampler0;"
-		"Texture2D texture0;"
-		"cbuffer vertexBuffer : register(b0)"
-		"{"
-		"	matrix transform;"
-		"};"
-		"struct VS_INPUT"
-		"{"
-		"	float2 pos	: POSITION0;"
-		"	float2 uv	: TEXCOORD0;"
-		"	float4 col	: COLOR0;"
-		"};"														
-		"struct PS_INPUT"
-		"{"
-		"	float4 pos : SV_POSITION;"
-		"	float4 col : COLOR;"
-		"	float2 uv  : TEXCOORD;"
-		"};"
-		"PS_INPUT mainVS(VS_INPUT input)"
-		"{"
-		"	PS_INPUT output;"
-		"	output.pos = mul(transform, float4(input.pos.xy, 0.f, 1.f));"
-		"	output.col = input.col;	"
-		"	output.uv  = input.uv;"
-		"	return output;"
-		"}"
-		"float4 mainPS(PS_INPUT input) : SV_Target"
-		"{"
-		"	return input.col * texture0.Sample(sampler0, input.uv);"
-		"}";
-		g_shader = make_shared<RHI_Shader>(g_device);
-		g_shader->Compile(Shader_VertexPixel, shader, Input_Position2DTextureColor8);
+			if (!g_pipeline.Create())
+			{
+				LOG_ERROR("Failed to create pipeline");
+				return false;
+			}
+		}
 
 		// Setup back-end capabilities flags
 		auto& io = GetIO();	
@@ -271,16 +278,11 @@ namespace ImGui::RHI
 			}
 		}
 
-		const auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
+		auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 
+		g_cmd_list->SetPipeline(&g_pipeline);
 		g_cmd_list->SetViewport(viewport);
 		g_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		g_cmd_list->SetBlendState(g_blendState);
-		g_cmd_list->SetDepthStencilState(g_depthStencilState);
-		g_cmd_list->SetRasterizerState(g_rasterizerState);	
-		g_cmd_list->SetShaderVertex(g_shader);
-		g_cmd_list->SetShaderPixel(g_shader);
-		g_cmd_list->SetInputLayout(g_shader->GetInputLayout());
 		g_cmd_list->SetBufferVertex(g_vertexBuffer);
 		g_cmd_list->SetBufferIndex(g_indexBuffer);
 		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constantBuffer);
@@ -350,7 +352,7 @@ namespace ImGui::RHI
 		viewport->RendererUserData = new RHI_SwapChain
 		(
 			viewport->PlatformHandle,
-			g_device,
+			g_rhi_device,
 			static_cast<unsigned int>(viewport->Size.x),
 			static_cast<unsigned int>(viewport->Size.y),
 			Format_R8G8B8A8_UNORM,

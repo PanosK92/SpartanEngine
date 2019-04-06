@@ -21,36 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
-#include "RHI_Definition.h"
-#include <memory>
-#include "RHI_Viewport.h"
-#include "../Math/Rectangle.h"
-//============================
+//= IMPLEMENTATION ===============
+#include "../RHI_Implementation.h"
+#ifdef API_GRAPHICS_D3D11
+//================================
+
+//= INCLUDES ===============
+#include "../RHI_Pipeline.h"
+//==========================
 
 namespace Directus
 {
-	class RHI_Pipeline
+	bool RHI_Pipeline::Create()
 	{
-	public:
-		RHI_Pipeline() = default;
-	
-		bool Create();
-		void* GetBuffer() { return m_buffer; }
-	
-		std::shared_ptr<RHI_Device> m_rhi_device;
-		std::shared_ptr<RHI_Shader> m_shader_vertex;
-		std::shared_ptr<RHI_Shader> m_shader_pixel;
-		std::shared_ptr<RHI_InputLayout> m_input_layout;	
-		std::shared_ptr<RHI_RasterizerState> m_rasterizer_state;
-		std::shared_ptr<RHI_BlendState> m_blend_state;
-		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_state;
-		RHI_Viewport m_viewport;
-		Math::Rectangle m_scissor;
+		return true;
+	}
 
-	private:
-		bool CreateRenderPass();
-
-		void* m_buffer = nullptr;
-	};
+	bool RHI_Pipeline::CreateRenderPass()
+	{
+		return true;
+	}
 }
+#endif
