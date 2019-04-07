@@ -54,11 +54,50 @@ namespace Directus
 
 	bool RHI_Pipeline::Create()
 	{
+		bool dynamic_viewport_scissor = false;
+
+		// State deduction
 		if (!m_viewport.IsDefined())
 		{
-			LOG_WARNING("No viewport has been defined, attempting to guess one.");
-			m_viewport = RHI_Viewport(0.0f, 0.0f, static_cast<float>(Settings::Get().GetWindowWidth()), static_cast<float>(Settings::Get().GetWindowHeight()));
+			dynamic_viewport_scissor = true;
 		}
+
+		// Dynamic viewport and scissor states
+		vector<VkDynamicState> dynamic_states =
+		{
+			VK_DYNAMIC_STATE_VIEWPORT,
+			VK_DYNAMIC_STATE_SCISSOR
+		};
+
+		VkPipelineDynamicStateCreateInfo dynamic_state;
+		dynamic_state.sType				= VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamic_state.pNext				= nullptr;
+		dynamic_state.flags				= 0;
+		dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
+		dynamic_state.pDynamicStates	= dynamic_states.data();
+
+		// Viewport
+		VkViewport vkViewport	= {};
+		vkViewport.x			= m_viewport.GetX();
+		vkViewport.y			= m_viewport.GetY();
+		vkViewport.width		= m_viewport.GetWidth();
+		vkViewport.height		= m_viewport.GetHeight();
+		vkViewport.minDepth		= m_viewport.GetMinDepth();
+		vkViewport.maxDepth		= m_viewport.GetMaxDepth();
+
+		// Scissor
+		VkRect2D scissor		= {};
+		scissor.offset			= { 0, 0 };
+		scissor.extent.width	= static_cast<uint32_t>(vkViewport.width);
+		scissor.extent.height	= static_cast<uint32_t>(vkViewport.height);
+
+		// Viewport state
+		VkPipelineViewportStateCreateInfo viewport_state	= {};
+		viewport_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewport_state.viewportCount						= 1;
+		viewport_state.pViewports							= &vkViewport;
+		viewport_state.scissorCount							= 1;
+		viewport_state.pScissors							= &scissor;
 
 		// Vertex shader
 		VkPipelineShaderStageCreateInfo shader_vertex_stage_info	= {};
@@ -77,40 +116,16 @@ namespace Directus
 		// Shader stages
 		VkPipelineShaderStageCreateInfo shader_stages[] = { shader_vertex_stage_info, shader_pixel_stage_info };
 
-		VkPipelineVertexInputStateCreateInfo vertex_input_state	= {};
+		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
 		vertex_input_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertex_input_state.vertexBindingDescriptionCount		= 0;
 		vertex_input_state.vertexAttributeDescriptionCount		= 0;
 
 		// Input assembly
-		VkPipelineInputAssemblyStateCreateInfo input_assembly_state	= {};
+		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
 		input_assembly_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		input_assembly_state.topology								= vulkan_primitive_topology[m_primitive_topology];
 		input_assembly_state.primitiveRestartEnable					= VK_FALSE;
-
-		// Viewport
-		VkViewport viewport = {};
-		viewport.x			= m_viewport.GetX();
-		viewport.y			= m_viewport.GetY();
-		viewport.width		= m_viewport.GetWidth();
-		viewport.height		= m_viewport.GetHeight();
-		viewport.minDepth	= m_viewport.GetMinDepth();
-		viewport.maxDepth	= m_viewport.GetMaxDepth();
-
-		// Scissor
-		VkRect2D scissor		= {};
-		scissor.offset			= { 0, 0 };
-		scissor.extent.width	= static_cast<uint32_t>(viewport.width);
-		scissor.extent.height	= static_cast<uint32_t>(viewport.height);
-
-		// Viewport state
-		VkPipelineViewportStateCreateInfo viewport_state	= {};
-		viewport_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-		viewport_state.viewportCount						= 1;
-		viewport_state.pViewports							= &viewport;
-		viewport_state.scissorCount							= 1;
-		viewport_state.pScissors							= &scissor;
-
 		// Rasterizer state
 		VkPipelineRasterizationStateCreateInfo rasterizer_state	= {};
 		rasterizer_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -118,8 +133,8 @@ namespace Directus
 		rasterizer_state.rasterizerDiscardEnable				= VK_FALSE;
 		rasterizer_state.polygonMode							= vulkan_polygon_Mode[m_rasterizer_state->GetFillMode()];
 		rasterizer_state.lineWidth								= 1.0f;
-		rasterizer_state.cullMode								= VK_CULL_MODE_BACK_BIT;
-		rasterizer_state.frontFace								= vulkan_cull_Mode[m_rasterizer_state->GetCullMode()];
+		rasterizer_state.cullMode								= vulkan_cull_Mode[m_rasterizer_state->GetCullMode()];
+		rasterizer_state.frontFace								= VK_FRONT_FACE_CLOCKWISE;
 		rasterizer_state.depthBiasEnable						= VK_FALSE;
 		rasterizer_state.depthBiasConstantFactor				= 0.0f;
 		rasterizer_state.depthBiasClamp							= 0.0f;
@@ -173,10 +188,11 @@ namespace Directus
 		pipeline_info.pStages						= shader_stages;
 		pipeline_info.pVertexInputState				= &vertex_input_state;
 		pipeline_info.pInputAssemblyState			= &input_assembly_state;
-		pipeline_info.pViewportState				= &viewport_state;
+		pipeline_info.pDynamicState					= dynamic_viewport_scissor ? &dynamic_state : nullptr;
+		pipeline_info.pViewportState				= dynamic_viewport_scissor ? &viewport_state : nullptr;
 		pipeline_info.pRasterizationState			= &rasterizer_state;
 		pipeline_info.pMultisampleState				= &multisampling_state;
-		pipeline_info.pColorBlendState				= &color_blend_State;
+		pipeline_info.pColorBlendState				= &color_blend_State;	
 		pipeline_info.layout						= pipeline_layout;
 		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_render_pass);
 		pipeline_info.subpass						= 0;

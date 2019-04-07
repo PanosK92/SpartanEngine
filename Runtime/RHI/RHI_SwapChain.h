@@ -43,31 +43,38 @@ namespace Directus
 			RHI_Format format			= Format_R8G8B8A8_UNORM,
 			RHI_Swap_Effect swap_effect	= Swap_Discard,
 			unsigned long flags			= 0,
-			unsigned int buffer_count	= 1
+			unsigned int buffer_count	= 1,
+			void* render_pass			= nullptr
 		);
 		~RHI_SwapChain();
 
 		bool Resize(unsigned int width, unsigned int height);
 		bool Present(RHI_Present_Mode mode) const;
 
-		bool IsInitialized()		{ return m_initialized; }
-		void* GetSwapChainView()	{ return m_swap_chain; }
-		void* GetRenderTargetView()	{ return m_render_target_view; }
+		bool IsInitialized()			{ return m_initialized; }
+		void* GetSwapChainView()		{ return m_swap_chain; }
+		void* GetRenderTargetView()		{ return m_render_target_view; }
+		unsigned int GetWidth()			{ return m_width; }
+		unsigned int GetHeight()		{ return m_height; }
+		const auto& GetFrameBuffers()	 { return m_frame_buffers; }
 
 	private:
-		bool m_initialized			= false;
-		bool m_windowed				= false;
-		void* m_swap_chain			= nullptr;
-		void* m_render_target_view	= nullptr;
-		unsigned long m_flags		= 0;
-		unsigned int m_buffer_count	= 0;
+		bool m_initialized				= false;
+		bool m_windowed					= false;
+		void* m_swap_chain				= nullptr;
+		void* m_render_target_view		= nullptr;
+		unsigned long m_flags			= 0;
+		unsigned int m_buffer_count		= 0;		
+		unsigned int m_max_resolution	= 16384;
+		unsigned int m_width			= 0;
+		unsigned int m_height			= 0;
 		RHI_Format m_format;
-		unsigned int m_max_resolution = 16384;
-		
+
 		// Low-level (only used by Vulkan)
 		void* m_surface	= nullptr;
-		std::vector<void*> m_swap_chain_images;
-		std::vector<void*> m_swap_chain_image_views;
+		std::vector<void*> m_images;
+		std::vector<void*> m_image_views;
+		std::vector<void*> m_frame_buffers;
 
 		// Dependencies
 		std::shared_ptr<RHI_Device> m_rhi_device;
