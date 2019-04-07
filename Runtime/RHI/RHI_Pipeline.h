@@ -37,8 +37,10 @@ namespace Directus
 		~RHI_Pipeline();
 	
 		bool Create();
-		void* GetBuffer() const { return m_graphics_pipeline; }
-	
+		
+		void* GetPipeline() const	{ return m_graphics_pipeline; }
+		void* GetRenderPass() const { return m_render_pass; }
+
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_Shader> m_shader_vertex;
 		std::shared_ptr<RHI_Shader> m_shader_pixel;

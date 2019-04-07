@@ -70,7 +70,7 @@ namespace Directus
 		m_command_count = 0;
 	}
 
-	void RHI_CommandList::Begin(const string& pass_name)
+	void RHI_CommandList::Begin(const string& pass_name, void* render_pass, RHI_SwapChain* swap_chain)
 	{
 		RHI_Command& cmd	= GetCmd();
 		cmd.type			= RHI_Cmd_Begin;

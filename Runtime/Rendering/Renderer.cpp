@@ -88,27 +88,6 @@ namespace Directus
 		// Create command list
 		m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device.get(), m_context->GetSubsystem<Profiler>().get());
 
-		// Create swap chain
-		{
-			m_swap_chain = make_shared<RHI_SwapChain>
-			(
-				Settings::Get().GetWindowHandle(),
-				m_rhi_device,
-				static_cast<unsigned int>(m_resolution.x),
-				static_cast<unsigned int>(m_resolution.y),
-				m_rhi_device->GetBackBufferFormat(),
-				Swap_Flip_Discard,
-				SwapChain_Allow_Tearing,
-				2
-			);
-
-			if (!m_swap_chain->IsInitialized())
-			{
-				LOG_ERROR("Failed to create swap chain");
-				return;
-			}
-		}
-
 		// Log on-screen as the renderer is ready
 		LOG_TO_FILE(false);
 		m_initialized = true;

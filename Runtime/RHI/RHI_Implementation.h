@@ -147,11 +147,11 @@ static const VkPolygonMode vulkan_polygon_Mode[] =
 	VK_POLYGON_MODE_LINE
 };
 
-static const VkFrontFace vulkan_cull_Mode[] =
-{
-	VK_FRONT_FACE_MAX_ENUM, // todo, no culling
-	VK_FRONT_FACE_COUNTER_CLOCKWISE,
-	VK_FRONT_FACE_CLOCKWISE
+static const VkCullModeFlags vulkan_cull_Mode[] =
+{	
+	VK_CULL_MODE_NONE,
+	VK_CULL_MODE_FRONT_BIT,
+	VK_CULL_MODE_BACK_BIT
 };
 
 static const VkPrimitiveTopology vulkan_primitive_topology[] =

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
+#include "../RHI_SwapChain.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Texture.h"
 #include "../RHI_RenderTexture.h"
@@ -75,7 +76,7 @@ namespace Directus
 
 	}
 
-	void RHI_CommandList::Begin(const string& pass_name)
+	void RHI_CommandList::Begin(const string& pass_name, void* render_pass, RHI_SwapChain* swap_chain)
 	{
 		VkCommandBufferBeginInfo beginInfo	= {};
 		beginInfo.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -86,18 +87,19 @@ namespace Directus
 			LOG_ERROR("Failed to begin recording command buffer.");
 		}
 
-		/*VkRenderPassBeginInfo renderPassInfo	= {};
-		renderPassInfo.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass				= renderPass;
-		renderPassInfo.framebuffer				= swapChainFramebuffers[i];
-		renderPassInfo.renderArea.offset		= { 0, 0 };
-		renderPassInfo.renderArea.extent		= swapChainExtent;
+		VkRenderPassBeginInfo render_pass_info		= {};
+		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		render_pass_info.renderPass					= static_cast<VkRenderPass>(render_pass);
+		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(swap_chain->GetFrameBuffers()[0]);
+		render_pass_info.renderArea.offset			= { 0, 0 };
+		render_pass_info.renderArea.extent.width	= swap_chain->GetWidth();
+		render_pass_info.renderArea.extent.height	= swap_chain->GetHeight();
 
-		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		renderPassInfo.clearValueCount = 1;
-		renderPassInfo.pClearValues = &clearColor;
+		VkClearValue clearColor				= { 0.0f, 0.0f, 0.0f, 1.0f };
+		render_pass_info.clearValueCount	= 1;
+		render_pass_info.pClearValues		= &clearColor;
 
-		vkCmdBeginRenderPass(m_cmd_buffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);*/
+		vkCmdBeginRenderPass(m_cmd_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
 
 	void RHI_CommandList::End()
@@ -122,7 +124,7 @@ namespace Directus
 
 	void RHI_CommandList::SetPipeline(const RHI_Pipeline* pipeline)
 	{
-		vkCmdBindPipeline(m_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetBuffer()));
+		vkCmdBindPipeline(m_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetPipeline()));
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)

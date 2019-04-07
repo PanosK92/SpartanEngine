@@ -179,7 +179,7 @@ namespace Directus
 
 		void Clear();
 	
-		void Begin(const std::string& pass_name);
+		void Begin(const std::string& pass_name, void* render_pass = nullptr, RHI_SwapChain* swap_chain = nullptr);
 		void End();
 
 		void Draw(unsigned int vertex_count);

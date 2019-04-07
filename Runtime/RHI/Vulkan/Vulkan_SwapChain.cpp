@@ -46,7 +46,8 @@ namespace Directus
 		const RHI_Format format			/*= Format_R8G8B8A8_UNORM */,
 		RHI_Swap_Effect swap_effect		/*= Swap_Discard */,
 		const unsigned long flags		/*= 0 */,
-		const unsigned int buffer_count	/*= 1 */
+		const unsigned int buffer_count	/*= 1 */,
+		void* render_pass				/*= nullptr */
 	)
 	{
 		const auto hwnd = static_cast<HWND>(window_handle);
@@ -61,6 +62,8 @@ namespace Directus
 		m_rhi_device	= rhi_device;
 		m_flags			= flags;
 		m_buffer_count	= buffer_count;
+		m_width			= width;
+		m_height		= height;
 
 		RHI_Context* rhi_context = rhi_device->GetContext();
 
@@ -102,7 +105,7 @@ namespace Directus
 		// Choose a suitable format
 		auto format_selection = vulkan_helper::swap_chain::choose_format(vulkan_format[m_format], swap_chain_support.formats);
 
-		// Create swap chain
+		// Swap chain
 		VkSwapchainKHR swap_chain;
 		{
 			auto present_mode	= vulkan_helper::swap_chain::choose_present_mode(swap_chain_support.present_modes);
@@ -144,7 +147,7 @@ namespace Directus
 			}
 		}
 
-		// Swap chain images
+		// Images
 		std::vector<VkImage> swap_chain_images;
 		{
 			uint32_t image_count;			
@@ -153,7 +156,7 @@ namespace Directus
 			vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, swap_chain_images.data());
 		}
 
-		// Swap chain image views
+		// Image views
 		std::vector<VkImageView> swap_chain_image_views;
 		{
 			swap_chain_image_views.resize(swap_chain_images.size());
@@ -176,16 +179,39 @@ namespace Directus
 
 				if (vkCreateImageView(rhi_context->device, &createInfo, nullptr, &swap_chain_image_views[i]) != VK_SUCCESS) 
 				{
-					LOG_ERROR("Failed to create image views");
+					LOG_ERROR("Failed to create image view(s).");
 				}
 			}
 		}
 
-		m_surface					= static_cast<void*>(surface);
-		m_swap_chain				= static_cast<void*>(swap_chain);
-		m_swap_chain_images			= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
-		m_swap_chain_image_views	= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
-		m_initialized				= true;
+		// Frame buffers
+		vector<VkFramebuffer> frame_buffers;
+		frame_buffers.resize(swap_chain_image_views.size());
+		for (size_t i = 0; i < swap_chain_image_views.size(); i++) 
+		{
+			VkImageView attachments[] = { swap_chain_image_views[i] };
+
+			VkFramebufferCreateInfo framebufferInfo = {};
+			framebufferInfo.sType					= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass				= static_cast<VkRenderPass>(render_pass);
+			framebufferInfo.attachmentCount			= 1;
+			framebufferInfo.pAttachments			= attachments;
+			framebufferInfo.width					= width;
+			framebufferInfo.height					= height;
+			framebufferInfo.layers					= 1;
+
+			if (vkCreateFramebuffer(rhi_context->device, &framebufferInfo, nullptr, &frame_buffers[i]) != VK_SUCCESS) 
+			{
+				LOG_ERROR("Failed to create frame buffer(s).");
+			}
+		}
+
+		m_surface		= static_cast<void*>(surface);
+		m_swap_chain	= static_cast<void*>(swap_chain);
+		m_images		= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
+		m_image_views	= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
+		m_frame_buffers	= vector<void*>(frame_buffers.begin(), frame_buffers.end());
+		m_initialized	= true;
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
@@ -196,9 +222,15 @@ namespace Directus
 
 		vkDestroySurfaceKHR(rhi_context->instance, surface, nullptr);
 		vkDestroySwapchainKHR(rhi_context->device, swapchain, nullptr);
-		for (auto& image_view : m_swap_chain_image_views) 
+
+		for (auto& image_view : m_image_views) 
 		{
-			vkDestroyImageView(rhi_context->device, (VkImageView)image_view, nullptr);
+			vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+		}
+
+		for (auto frame_buffer : m_frame_buffers) 
+		{
+			vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
 		}
 	}
 

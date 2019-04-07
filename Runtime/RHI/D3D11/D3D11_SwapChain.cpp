@@ -48,7 +48,8 @@ namespace Directus
 		const  RHI_Format format		/*= Format_R8G8B8A8_UNORM*/,
 		RHI_Swap_Effect swap_effect		/*= Swap_Discard*/,
 		const unsigned long flags		/*= 0 */,
-		const unsigned int buffer_count	/*= 1 */
+		const unsigned int buffer_count	/*= 1 */,
+		void* render_pass				/*= nullptr */
 	)
 	{
 		const auto hwnd	= static_cast<HWND>(window_handle);
@@ -97,6 +98,8 @@ namespace Directus
 		m_flags			= flags;
 		m_buffer_count	= buffer_count;
 		m_windowed		= true;
+		m_width			= width;
+		m_height		= height;
 
 		// Create swap chain
 		{

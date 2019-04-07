@@ -56,13 +56,14 @@ namespace ImGui::RHI
 	RHI_CommandList* g_cmd_list	= nullptr;
 
 	// RHI Data	
-	shared_ptr<RHI_Device>			g_rhi_device;
-	RHI_Pipeline					g_pipeline;
-	shared_ptr<RHI_Texture>			g_fontTexture;
-	shared_ptr<RHI_Sampler>			g_fontSampler;
-	shared_ptr<RHI_ConstantBuffer>	g_constantBuffer;
-	shared_ptr<RHI_VertexBuffer>	g_vertexBuffer;
-	shared_ptr<RHI_IndexBuffer>		g_indexBuffer;
+	static shared_ptr<RHI_Device>			g_rhi_device;
+	static shared_ptr<RHI_SwapChain>		g_swap_chain;
+	static RHI_Pipeline						g_pipeline;
+	static shared_ptr<RHI_Texture>			g_fontTexture;
+	static shared_ptr<RHI_Sampler>			g_fontSampler;
+	static shared_ptr<RHI_ConstantBuffer>	g_constantBuffer;
+	static shared_ptr<RHI_VertexBuffer>		g_vertexBuffer;
+	static shared_ptr<RHI_IndexBuffer>		g_indexBuffer;
 	
 	inline bool Initialize(Context* context)
 	{
@@ -76,7 +77,7 @@ namespace ImGui::RHI
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
-
+	
 		g_fontTexture		= make_shared<RHI_Texture>(g_context);
 		g_fontSampler		= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
 		g_constantBuffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device, static_cast<unsigned int>(sizeof(Matrix)));
@@ -165,6 +166,28 @@ namespace ImGui::RHI
 			}
 		}
 
+		// Create swap chain
+		{
+			g_swap_chain = make_shared<RHI_SwapChain>
+			(
+				Settings::Get().GetWindowHandle(),
+				g_rhi_device,
+				static_cast<unsigned int>(g_renderer->GetResolution().x),
+				static_cast<unsigned int>(g_renderer->GetResolution().x),
+				g_rhi_device->GetBackBufferFormat(),
+				Swap_Flip_Discard,
+				SwapChain_Allow_Tearing,
+				2,
+				g_pipeline.GetPipeline()
+			);
+
+			if (!g_swap_chain->IsInitialized())
+			{
+				LOG_ERROR("Failed to create swap chain");
+				return false;
+			}
+		}
+
 		// Setup back-end capabilities flags
 		auto& io = GetIO();	
 		io.BackendFlags			|= ImGuiBackendFlags_RendererHasViewports;
@@ -201,11 +224,12 @@ namespace ImGui::RHI
 		DestroyPlatformWindows();
 	}
 
-	inline void RenderDrawData(ImDrawData* draw_data, void* render_target = nullptr, bool clear = true)
+	inline void RenderDrawData(ImDrawData* draw_data, RHI_SwapChain* swap_chain_other = nullptr, bool clear = true)
 	{
-		bool is_main_viewport	= (render_target == nullptr);
-		void* _render_target	= is_main_viewport ? g_renderer->GetSwapChain()->GetRenderTargetView() : render_target;
-		g_cmd_list->Begin("Pass_ImGui");
+		bool is_main_viewport	= (swap_chain_other == nullptr);
+		void* _render_target	= is_main_viewport ? g_swap_chain->GetRenderTargetView() : swap_chain_other->GetRenderTargetView();
+
+		g_cmd_list->Begin("Pass_ImGui", g_pipeline.GetRenderPass(), g_swap_chain.get());
 		g_cmd_list->SetRenderTarget(_render_target);
 		if (clear) g_cmd_list->ClearRenderTarget(_render_target, Vector4(0, 0, 0, 1));
 
@@ -326,7 +350,7 @@ namespace ImGui::RHI
 
 		if (is_main_viewport)
 		{
-			g_renderer->GetSwapChain()->Present(Present_Off);
+			g_swap_chain->Present(Present_Off);
 		}
 	}
 
@@ -335,7 +359,7 @@ namespace ImGui::RHI
 		if (!g_renderer)
 			return;
 
-		g_renderer->GetSwapChain()->Resize(width, height);
+		g_swap_chain->Resize(width, height);
 	}
 
 	//--------------------------------------------
@@ -358,7 +382,8 @@ namespace ImGui::RHI
 			Format_R8G8B8A8_UNORM,
 			Swap_Flip_Discard,
 			SwapChain_Allow_Tearing,
-			2
+			2,
+			g_pipeline.GetRenderPass()
 		);
 	}
 
@@ -418,7 +443,7 @@ namespace ImGui::RHI
 		}
 
 		const auto clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
-		RenderDrawData(viewport->DrawData, swap_chain->GetRenderTargetView(), clear);
+		RenderDrawData(viewport->DrawData, swap_chain, clear);
 	}
 
 	static void _Present(ImGuiViewport* viewport, void*)

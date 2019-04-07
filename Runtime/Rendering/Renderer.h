@@ -171,7 +171,6 @@ namespace Directus
 		//= RHI INTERNALS ==========================================
 		const auto& GetRhiDevice() const	{ return m_rhi_device; }
 		const auto& GetCmdList() const		{ return m_cmd_list; }
-		const auto& GetSwapChain() const	{ return m_swap_chain; }
 		//==========================================================
 
 		//= MISC ===============================================================
@@ -342,7 +341,6 @@ namespace Directus
 		Math::Rectangle m_quad;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_CommandList> m_cmd_list;
-		std::shared_ptr<RHI_SwapChain> m_swap_chain;
 		std::unique_ptr<Font> m_font;	
 		Math::Matrix m_view;
 		Math::Matrix m_view_base;
