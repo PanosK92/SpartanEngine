@@ -80,7 +80,7 @@ namespace Directus
 			auto adapter		= static_cast<IDXGIAdapter*>(m_primaryAdapter->data);
 			auto driver_type	= adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
 
-			// Create the swap chain, Direct3D device, and Direct3D device context.
+			// Create Direct3D device and Direct3D device context.
 			const auto result = D3D11CreateDevice(
 				adapter,									// pAdapter: If nullptr, the default adapter will be used
 				driver_type,								// DriverType
@@ -89,9 +89,9 @@ namespace Directus
 				feature_levels.data(),						// pFeatureLevels
 				static_cast<UINT>(feature_levels.size()),	// FeatureLevels
 				D3D11_SDK_VERSION,							// SDKVersion
-				&m_rhi_context->device,				// ppDevice
+				&m_rhi_context->device,						// ppDevice
 				nullptr,									// pFeatureLevel
-				&m_rhi_context->device_context							// ppImmediateContext
+				&m_rhi_context->device_context				// ppImmediateContext
 			);
 
 			if (FAILED(result))
@@ -173,6 +173,7 @@ namespace Directus
 		safe_release(m_rhi_context->device_context);
 		safe_release(m_rhi_context->device);
 		safe_release(m_rhi_context->annotation);
+		safe_delete(m_rhi_context);
 	}
 
 	bool RHI_Device::Draw(const unsigned int vertex_count) const
@@ -603,7 +604,6 @@ namespace Directus
 		return duration_ms;
 	}
 
-
 	void RHI_Device::ProfilingReleaseQuery(void* query_object)
 	{
 		if (!query_object)
@@ -611,6 +611,36 @@ namespace Directus
 
 		auto query = static_cast<ID3D11Query*>(query_object);
 		query->Release();
+	}
+
+	unsigned int RHI_Device::ProfilingGetGpuMemory()
+	{
+		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primaryAdapter->data))
+		{
+			DXGI_ADAPTER_DESC adapter_desc;
+			if (FAILED(adapter->GetDesc(&adapter_desc)))
+			{
+				LOG_ERROR("Failed to get adapter description");
+				return 0;
+			}
+			return static_cast<unsigned int>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
+		}
+		return 0;
+	}
+
+	unsigned int RHI_Device::ProfilingGetGpuMemoryUsage()
+	{
+		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primaryAdapter->data))
+		{
+			DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
+			if (FAILED(adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info)))
+			{
+				LOG_ERROR("Failed to get adapter memory info");
+				return 0;
+			}
+			return static_cast<unsigned int>(info.CurrentUsage / 1024 / 1024); // convert to MBs
+		}
+		return 0;
 	}
 
 	void RHI_Device::WaitIdle()

@@ -69,6 +69,9 @@ namespace Directus
 		float GetUpdateInterval()						{ return m_profiling_interval_sec; }
 		void SetUpdateInterval(float internval)			{ m_profiling_interval_sec = internval; }
 		bool HasNewData()								{ return m_has_new_data; }
+		const std::string& GpuGetName()					{ return m_gpu_name; }
+		unsigned int GpuGetMemoryAvailable()			{ return m_gpu_memory_available; }
+		unsigned int GpuGetMemoryUsed()					{ return m_gpu_memory_used; }
 		
 		void Reset()
 		{
@@ -121,17 +124,21 @@ namespace Directus
 		unsigned int m_time_block_count		= 0;
 		std::vector<TimeBlock> m_time_blocks;
 
+		// FPS
+		float m_fps					= 0.0f;
+		float m_time_passed			= 0.0f;
+		unsigned int m_frame_count	= 0;
+
+		// Hardware - GPU
+		std::string m_gpu_name				= "Unknown";
+		unsigned int m_gpu_memory_available	= 0;
+		unsigned int m_gpu_memory_used		= 0;
+
 		// Misc
 		std::string m_metrics;
 		bool m_should_update	= true;
 		bool m_has_new_data		= false;
 	
-		//= FPS ===========================
-		float m_fps					= 0.0f;
-		float m_time_passed			= 0.0f;
-		unsigned int m_frame_count	= 0;
-		//=================================
-
 		// Dependencies
 		Timer* m_timer						= nullptr;
 		ResourceCache* m_resource_manager	= nullptr;

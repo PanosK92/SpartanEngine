@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "RHI_Definition.h"
-#include <memory>
 #include "RHI_Viewport.h"
+#include <memory>
 #include "../Math/Rectangle.h"
 //============================
 
@@ -49,6 +49,7 @@ namespace Directus
 		RHI_Viewport m_viewport;
 		Math::Rectangle m_scissor;
 		RHI_Format m_format; // must match swapchain format
+		RHI_PrimitiveTopology_Mode m_primitive_topology;
 
 	private:
 		bool CreateRenderPass();

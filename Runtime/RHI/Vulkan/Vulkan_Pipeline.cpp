@@ -26,12 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_VULKAN
 //================================
 
-//= INCLUDES ===============
+//= INCLUDES ======================
 #include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
-#include "../../Logging/Log.h"
 #include "../RHI_Shader.h"
-//==========================
+#include "../RHI_BlendState.h"
+#include "../RHI_RasterizerState.h"
+#include "../../Logging/Log.h"
+//=================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -52,30 +54,41 @@ namespace Directus
 
 	bool RHI_Pipeline::Create()
 	{
-		VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
-		vertShaderStageInfo.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		vertShaderStageInfo.stage	= VK_SHADER_STAGE_VERTEX_BIT;
-		vertShaderStageInfo.module	= static_cast<VkShaderModule>(m_shader_vertex->GetVertexShaderBuffer());
-		vertShaderStageInfo.pName	= m_shader_vertex->GetVertexEntryPoint().c_str();
+		if (!m_viewport.IsDefined())
+		{
+			LOG_WARNING("No viewport has been defined, attempting to guess one.");
+			m_viewport = RHI_Viewport(0.0f, 0.0f, static_cast<float>(Settings::Get().GetWindowWidth()), static_cast<float>(Settings::Get().GetWindowHeight()));
+		}
 
-		VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
-		fragShaderStageInfo.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		fragShaderStageInfo.stage	= VK_SHADER_STAGE_FRAGMENT_BIT;
-		fragShaderStageInfo.module	= static_cast<VkShaderModule>(m_shader_pixel->GetPixelShaderBuffer());
-		fragShaderStageInfo.pName	= m_shader_pixel->GetPixelEntryPoint().c_str();
+		// Vertex shader
+		VkPipelineShaderStageCreateInfo shader_vertex_stage_info	= {};
+		shader_vertex_stage_info.sType								= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shader_vertex_stage_info.stage								= VK_SHADER_STAGE_VERTEX_BIT;
+		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_shader_vertex->GetVertexShaderBuffer());
+		shader_vertex_stage_info.pName								= m_shader_vertex->GetVertexEntryPoint().c_str();
 
-		VkPipelineShaderStageCreateInfo shader_stages[] = { vertShaderStageInfo, fragShaderStageInfo };
+		// Pixel shader
+		VkPipelineShaderStageCreateInfo shader_pixel_stage_info = {};
+		shader_pixel_stage_info.sType							= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shader_pixel_stage_info.stage							= VK_SHADER_STAGE_FRAGMENT_BIT;
+		shader_pixel_stage_info.module							= static_cast<VkShaderModule>(m_shader_pixel->GetPixelShaderBuffer());
+		shader_pixel_stage_info.pName							= m_shader_pixel->GetPixelEntryPoint().c_str();
 
-		VkPipelineVertexInputStateCreateInfo vertex_input_info	= {};
-		vertex_input_info.sType									= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_info.vertexBindingDescriptionCount			= 0;
-		vertex_input_info.vertexAttributeDescriptionCount		= 0;
+		// Shader stages
+		VkPipelineShaderStageCreateInfo shader_stages[] = { shader_vertex_stage_info, shader_pixel_stage_info };
 
-		VkPipelineInputAssemblyStateCreateInfo input_assembly	= {};
-		input_assembly.sType									= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		input_assembly.topology									= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		input_assembly.primitiveRestartEnable					= VK_FALSE;
+		VkPipelineVertexInputStateCreateInfo vertex_input_state	= {};
+		vertex_input_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertex_input_state.vertexBindingDescriptionCount		= 0;
+		vertex_input_state.vertexAttributeDescriptionCount		= 0;
 
+		// Input assembly
+		VkPipelineInputAssemblyStateCreateInfo input_assembly_state	= {};
+		input_assembly_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		input_assembly_state.topology								= vulkan_primitive_topology[m_primitive_topology];
+		input_assembly_state.primitiveRestartEnable					= VK_FALSE;
+
+		// Viewport
 		VkViewport viewport = {};
 		viewport.x			= m_viewport.GetX();
 		viewport.y			= m_viewport.GetY();
@@ -84,11 +97,13 @@ namespace Directus
 		viewport.minDepth	= m_viewport.GetMinDepth();
 		viewport.maxDepth	= m_viewport.GetMaxDepth();
 
+		// Scissor
 		VkRect2D scissor		= {};
 		scissor.offset			= { 0, 0 };
 		scissor.extent.width	= static_cast<uint32_t>(viewport.width);
 		scissor.extent.height	= static_cast<uint32_t>(viewport.height);
 
+		// Viewport state
 		VkPipelineViewportStateCreateInfo viewport_state	= {};
 		viewport_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		viewport_state.viewportCount						= 1;
@@ -96,35 +111,47 @@ namespace Directus
 		viewport_state.scissorCount							= 1;
 		viewport_state.pScissors							= &scissor;
 
-		VkPipelineRasterizationStateCreateInfo rasterizer	= {};
-		rasterizer.sType									= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rasterizer.depthClampEnable							= VK_FALSE;
-		rasterizer.rasterizerDiscardEnable					= VK_FALSE;
-		rasterizer.polygonMode								= VK_POLYGON_MODE_FILL;
-		rasterizer.lineWidth								= 1.0f;
-		rasterizer.cullMode									= VK_CULL_MODE_BACK_BIT;
-		rasterizer.frontFace								= VK_FRONT_FACE_CLOCKWISE;
-		rasterizer.depthBiasEnable							= VK_FALSE;
+		// Rasterizer state
+		VkPipelineRasterizationStateCreateInfo rasterizer_state	= {};
+		rasterizer_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterizer_state.depthClampEnable						= VK_FALSE;
+		rasterizer_state.rasterizerDiscardEnable				= VK_FALSE;
+		rasterizer_state.polygonMode							= vulkan_polygon_Mode[m_rasterizer_state->GetFillMode()];
+		rasterizer_state.lineWidth								= 1.0f;
+		rasterizer_state.cullMode								= VK_CULL_MODE_BACK_BIT;
+		rasterizer_state.frontFace								= vulkan_cull_Mode[m_rasterizer_state->GetCullMode()];
+		rasterizer_state.depthBiasEnable						= VK_FALSE;
+		rasterizer_state.depthBiasConstantFactor				= 0.0f;
+		rasterizer_state.depthBiasClamp							= 0.0f;
+		rasterizer_state.depthBiasSlopeFactor					= 0.0f;
 
-		VkPipelineMultisampleStateCreateInfo multisampling	= {};
-		multisampling.sType									= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		multisampling.sampleShadingEnable					= VK_FALSE;
-		multisampling.rasterizationSamples					= VK_SAMPLE_COUNT_1_BIT;
+		// Mutlisampling
+		VkPipelineMultisampleStateCreateInfo multisampling_state	= {};
+		multisampling_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampling_state.sampleShadingEnable						= m_rasterizer_state->GetMultiSampleEnabled() ? VK_TRUE : VK_FALSE;
+		multisampling_state.rasterizationSamples					= VK_SAMPLE_COUNT_1_BIT;
 
-		VkPipelineColorBlendAttachmentState color_blend_attachment	= {};
-		color_blend_attachment.colorWriteMask						= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		color_blend_attachment.blendEnable							= VK_FALSE;
+		// Blend state
+		VkPipelineColorBlendAttachmentState blend_state_attachments = {};
+		blend_state_attachments.colorWriteMask						= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		blend_state_attachments.blendEnable							= VK_FALSE;
+		blend_state_attachments.srcColorBlendFactor					= vulkan_blend_factor[m_blend_state->GetSourceBlend()];
+		blend_state_attachments.dstColorBlendFactor					= vulkan_blend_factor[m_blend_state->GetDestBlend()];
+		blend_state_attachments.colorBlendOp						= vulkan_blend_operation[m_blend_state->GetBlendOp()];
+		blend_state_attachments.srcAlphaBlendFactor					= vulkan_blend_factor[m_blend_state->GetSourceBlendAlpha()];
+		blend_state_attachments.dstAlphaBlendFactor					= vulkan_blend_factor[m_blend_state->GetDestBlendAlpha()];
+		blend_state_attachments.alphaBlendOp						= vulkan_blend_operation[m_blend_state->GetBlendOpAlpha()];
 
-		VkPipelineColorBlendStateCreateInfo color_blend_info	= {};
-		color_blend_info.sType									= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		color_blend_info.logicOpEnable							= VK_FALSE;
-		color_blend_info.logicOp								= VK_LOGIC_OP_COPY;
-		color_blend_info.attachmentCount						= 1;
-		color_blend_info.pAttachments							= &color_blend_attachment;
-		color_blend_info.blendConstants[0]						= 0.0f;
-		color_blend_info.blendConstants[1]						= 0.0f;
-		color_blend_info.blendConstants[2]						= 0.0f;
-		color_blend_info.blendConstants[3]						= 0.0f;
+		VkPipelineColorBlendStateCreateInfo color_blend_State	= {};
+		color_blend_State.sType									= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		color_blend_State.logicOpEnable							= VK_FALSE;
+		color_blend_State.logicOp								= VK_LOGIC_OP_COPY;
+		color_blend_State.attachmentCount						= 1;
+		color_blend_State.pAttachments							= &blend_state_attachments;
+		color_blend_State.blendConstants[0]						= 0.0f;
+		color_blend_State.blendConstants[1]						= 0.0f;
+		color_blend_State.blendConstants[2]						= 0.0f;
+		color_blend_State.blendConstants[3]						= 0.0f;
 
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
 		pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -144,12 +171,12 @@ namespace Directus
 		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline_info.stageCount					= 2;
 		pipeline_info.pStages						= shader_stages;
-		pipeline_info.pVertexInputState				= &vertex_input_info;
-		pipeline_info.pInputAssemblyState			= &input_assembly;
+		pipeline_info.pVertexInputState				= &vertex_input_state;
+		pipeline_info.pInputAssemblyState			= &input_assembly_state;
 		pipeline_info.pViewportState				= &viewport_state;
-		pipeline_info.pRasterizationState			= &rasterizer;
-		pipeline_info.pMultisampleState				= &multisampling;
-		pipeline_info.pColorBlendState				= &color_blend_info;
+		pipeline_info.pRasterizationState			= &rasterizer_state;
+		pipeline_info.pMultisampleState				= &multisampling_state;
+		pipeline_info.pColorBlendState				= &color_blend_State;
 		pipeline_info.layout						= pipeline_layout;
 		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_render_pass);
 		pipeline_info.subpass						= 0;

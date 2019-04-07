@@ -141,7 +141,7 @@ namespace Directus
 
 		//= Graphics Settings ====================================================================================================================================================
 		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;
-		float m_exposure				= 0.5f;
+		float m_exposure				= 1.0f;
 		float m_gamma					= 2.2f;
 		// FXAA
 		float m_fxaa_sub_pixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
@@ -150,7 +150,7 @@ namespace Directus
 		// Bloom
 		float m_bloom_intensity			= 1.0f;		// The intensity of the bloom
 		// Sharpening
-		float m_sharpen_strength		= 1.25f;	// Strength of the sharpening
+		float m_sharpen_strength		= 1.0f;		// Strength of the sharpening
 		float m_sharpen_clamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
 		// Motion Blur
 		float m_motion_blur_strength	= 3.0f;		// Strength of the motion blur
@@ -168,11 +168,11 @@ namespace Directus
 		RendererDebug_Buffer GetDebugBuffer() const				{ return m_debug_buffer; }
 		//==================================================================================
 
-		//= RHI INTERNALS ==================================================================
-		const std::shared_ptr<RHI_Device>& GetRhiDevice() const		{ return m_rhi_device; }
-		const std::shared_ptr<RHI_CommandList>& GetCmdList() const	{ return m_cmd_list; }
-		const std::shared_ptr<RHI_SwapChain>& GetSwapChain() const	{ return m_swap_chain; }
-		//==================================================================================
+		//= RHI INTERNALS ==========================================
+		const auto& GetRhiDevice() const	{ return m_rhi_device; }
+		const auto& GetCmdList() const		{ return m_cmd_list; }
+		const auto& GetSwapChain() const	{ return m_swap_chain; }
+		//==========================================================
 
 		//= MISC ===============================================================
 		void* GetFrameShaderResource() const;
