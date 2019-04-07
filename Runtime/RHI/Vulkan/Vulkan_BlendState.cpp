@@ -47,26 +47,14 @@ namespace Directus
 		const RHI_Blend_Operation blend_op_alpha	/*= Blend_Operation_Add*/
 	)
 	{
-		VkPipelineColorBlendAttachmentState blend_state = {};
-		blend_state.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		blend_state.blendEnable			= VK_FALSE;
-		blend_state.srcColorBlendFactor	= vulkan_blend_factor[source_blend];
-		blend_state.dstColorBlendFactor	= vulkan_blend_factor[dest_blend];
-		blend_state.colorBlendOp		= vulkan_blend_operation[blend_op];
-		blend_state.srcAlphaBlendFactor	= vulkan_blend_factor[source_blend_alpha];
-		blend_state.dstAlphaBlendFactor	= vulkan_blend_factor[dest_blend_alpha];
-		blend_state.alphaBlendOp		= vulkan_blend_operation[blend_op_alpha];
-
-		VkPipelineColorBlendStateCreateInfo color_blending = {};
-		color_blending.sType				= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		color_blending.logicOpEnable		= VK_FALSE;
-		color_blending.logicOp				= VK_LOGIC_OP_COPY;
-		color_blending.attachmentCount		= 1;
-		color_blending.pAttachments			= &blend_state;
-		color_blending.blendConstants[0]	= 0.0f;
-		color_blending.blendConstants[1]	= 0.0f;
-		color_blending.blendConstants[2]	= 0.0f;
-		color_blending.blendConstants[3]	= 0.0f;
+		// Save parameters
+		m_blend_enabled			= blend_enabled;
+		m_source_blend			= source_blend;
+		m_dest_blend			= dest_blend;
+		m_blend_op				= blend_op;
+		m_source_blend_alpha	= source_blend_alpha;
+		m_dest_blend_alpha		= dest_blend_alpha;
+		m_blend_op_alpha		= blend_op_alpha;
 	}
 
 	RHI_BlendState::~RHI_BlendState()

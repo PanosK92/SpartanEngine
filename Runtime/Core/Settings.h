@@ -82,10 +82,6 @@ namespace Directus
 		unsigned int GetAnisotropy() const					{ return m_anisotropy; }
 		void SetMaxThreadCount(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
 		unsigned int GetMaxThreadCount() const				{ return m_maxThreadCount; }	
-		const std::string& GpuGetName()						{ return m_gpu_name; }
-		void SetGpuName(const std::string& name)			{ m_gpu_name = name; }
-		unsigned int GpuGetMemory() const					{ return m_gpu_memory; }
-		void SetGpuMemory(unsigned int memory)				{ m_gpu_memory = memory;}
 		bool GetReverseZ() const							{ return m_reverseZ; }
 		//========================================================================================
 
@@ -114,7 +110,5 @@ namespace Directus
 		float m_fpsTarget					= 165.0f;
 		FPS_Policy m_fpsPolicy				= FPS_MonitorMatch;
 		bool m_reverseZ						= true;
-		std::string m_gpu_name				= "Unknown";
-		unsigned int m_gpu_memory			= 0;
 	};
 }

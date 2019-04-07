@@ -19,13 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES =====================
 #include "RHI_Device.h"
-#include "../Math/MathHelper.h"
+#include "../Core/Context.h"
 #include "../Core/Settings.h"
 #include "../Logging/Log.h"
+#include "../Math/MathHelper.h"
+#include "../Profiling/Profiler.h"
 #include <algorithm>
-//=============================
+//================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -34,7 +36,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-void RHI_Device::AddDisplayMode(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator)
+	void RHI_Device::AddDisplayMode(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator)
 	{
 		auto& mode = m_displayModes.emplace_back(width, height, refresh_rate_numerator, refresh_rate_denominator);
 
@@ -82,9 +84,6 @@ void RHI_Device::AddDisplayMode(unsigned int width, unsigned int height, unsigne
 		}
 
 		m_primaryAdapter = primary_adapter;
-		Settings::Get().SetGpuName(primary_adapter->name);
-		Settings::Get().SetGpuMemory(primary_adapter->memory);
-
 		LOGF_INFO("%s (%d MB)", primary_adapter->name.c_str(), primary_adapter->memory);
 	}
 }

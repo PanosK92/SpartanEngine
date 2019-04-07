@@ -156,6 +156,7 @@ namespace ImGui::RHI
 			g_pipeline.m_blend_state			= blend_state;
 			g_pipeline.m_depth_stencil_state	= depth_stencil_state;
 			g_pipeline.m_input_layout			= shader->GetInputLayout();
+			g_pipeline.m_primitive_topology		= PrimitiveTopology_TriangleList;
 
 			if (!g_pipeline.Create())
 			{
@@ -282,7 +283,6 @@ namespace ImGui::RHI
 
 		g_cmd_list->SetPipeline(&g_pipeline);
 		g_cmd_list->SetViewport(viewport);
-		g_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		g_cmd_list->SetBufferVertex(g_vertexBuffer);
 		g_cmd_list->SetBufferIndex(g_indexBuffer);
 		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constantBuffer);

@@ -320,6 +320,16 @@ namespace Directus
 
 	}
 
+	unsigned int RHI_Device::ProfilingGetGpuMemory()
+	{
+		return 0;
+	}
+
+	unsigned int RHI_Device::ProfilingGetGpuMemoryUsage()
+	{
+		return 0;
+	}
+
 	void RHI_Device::WaitIdle()
 	{
 		vkDeviceWaitIdle(m_rhi_context->device);

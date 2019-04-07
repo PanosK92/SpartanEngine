@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "Profiler.h"
+#include "../RHI/RHI_Device.h"
 #include "../Core/Timer.h"
 #include "../Core/EventSystem.h"
 #include "../World/World.h"
@@ -52,6 +53,14 @@ namespace Directus
 		m_timer				= m_context->GetSubsystem<Timer>().get();
 		m_resource_manager	= m_context->GetSubsystem<ResourceCache>().get();
 		m_renderer			= m_context->GetSubsystem<Renderer>().get();
+
+		// Get available memory
+		if (const DisplayAdapter* adapter = m_renderer->GetRhiDevice()->GetPrimaryAdapter())
+		{
+			m_gpu_name					= adapter->name;
+			m_gpu_memory_available		= m_renderer->GetRhiDevice()->ProfilingGetGpuMemory();
+		}
+
 		return true;
 	}
 
@@ -98,6 +107,9 @@ namespace Directus
 		m_profiling_last_update_time += delta_time_sec;
 		if (m_profiling_last_update_time >= m_profiling_interval_sec)
 		{
+			// Get memory usage
+			m_gpu_memory_used = m_renderer->GetRhiDevice()->ProfilingGetGpuMemoryUsage();
+
 			// Compute some final timings before discarding
 			m_time_cpu_ms = m_time_blocks[0].GetDurationCpu();
 			m_time_gpu_ms = m_time_blocks[0].GetDurationGpu();
@@ -228,7 +240,7 @@ namespace Directus
 			"CPU time:\t\t\t\t\t\t%.2f\n"
 			"GPU time:\t\t\t\t\t\t%.2f\n"
 			"GPU:\t\t\t\t\t\t\t%s\n"
-			"VRAM:\t\t\t\t\t\t\t%d\n"
+			"VRAM:\t\t\t\t\t\t\t%d/%d MB\n"
 			// Renderer
 			"Resolution:\t\t\t\t\t%dx%d\n"
 			"Meshes rendered:\t\t\t\t%d\n"
@@ -251,8 +263,9 @@ namespace Directus
 			m_time_frame_ms,
 			m_time_cpu_ms,
 			m_time_gpu_ms,
-			Settings::Get().GpuGetName().c_str(),
-			Settings::Get().GpuGetMemory(),
+			m_gpu_name.c_str(),
+			m_gpu_memory_used,
+			m_gpu_memory_available,
 			// Renderer
 			static_cast<int>(m_renderer->GetResolution().x), static_cast<int>(m_renderer->GetResolution().y),
 			m_renderer_meshes_rendered,

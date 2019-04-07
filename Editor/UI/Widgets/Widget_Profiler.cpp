@@ -151,8 +151,16 @@ void Widget_Profiler::ShowGPU()
 	}
 	ImGui::SetCursorScreenPos(pos);
 
+	// Plot
 	ImGui::Separator();
 	ShowPlot(m_plot_times_gpu, m_metric_gpu, !m_profiler->HasNewData() ? -1.0f : time_gpu );
+
+	// VRAM	
+	ImGui::Separator();
+	unsigned int memory_used		= m_profiler->GpuGetMemoryUsed();
+	unsigned int memory_available	= m_profiler->GpuGetMemoryAvailable();
+	string overlay					= "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
+	ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());
 }
 
 void Widget_Profiler::ShowPlot(vector<float>& data, Metric& metric, float time_value)

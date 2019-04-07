@@ -121,6 +121,8 @@ namespace Directus
 		bool ProfilingGetTimeStamp(void* query_object) const;
 		float ProfilingGetDuration(void* query_disjoint, void* query_start, void* query_end) const;
 		void ProfilingReleaseQuery(void* query_object);
+		unsigned int ProfilingGetGpuMemory();
+		unsigned int ProfilingGetGpuMemoryUsage();
 		//=========================================================================================
 
 		//= ADAPTERS ============================================================================================================================		
@@ -142,10 +144,10 @@ namespace Directus
 	private:
 		std::vector<DisplayMode> m_displayModes;
 		std::vector<DisplayAdapter> m_displayAdapters;
-		const DisplayAdapter* m_primaryAdapter = nullptr;
-		RHI_Format m_back_buffer_format = Format_R8G8B8A8_UNORM;
+		const DisplayAdapter* m_primaryAdapter	= nullptr;
+		RHI_Format m_back_buffer_format			= Format_R8G8B8A8_UNORM;
 
-		bool m_initialized		= false;
+		bool m_initialized			= false;
 		RHI_Context* m_rhi_context	= nullptr;
 	};
 }

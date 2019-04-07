@@ -66,6 +66,17 @@ namespace Directus
 			return !(*this == rhs);
 		}
 
+		bool IsDefined() const			
+		{
+			return
+				m_x			!= 0.0f && 
+				m_y			!= 0.0f && 
+				m_width		!= 0.0f && 
+				m_height	!= 0.0f && 
+				m_minDepth	!= 0.0f && 
+				m_maxDepth	!= 0.0f;
+		}
+
 		float GetX() const				{ return m_x; }
 		float GetY() const				{ return m_y; }
 		float GetWidth() const			{ return m_width; }
