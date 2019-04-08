@@ -46,10 +46,143 @@ namespace Directus
 		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_graphics_pipeline), nullptr);
 		vkDestroyPipelineLayout(m_rhi_device->GetContext()->device, static_cast<VkPipelineLayout>(m_pipeline_layout), nullptr);
 		vkDestroyRenderPass(m_rhi_device->GetContext()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
+		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
 
-		m_graphics_pipeline	= nullptr;
-		m_pipeline_layout	= nullptr;
-		m_render_pass		= nullptr;
+		m_graphics_pipeline		= nullptr;
+		m_pipeline_layout		= nullptr;
+		m_render_pass			= nullptr;
+		m_descriptor_pool		= nullptr;	
+	}
+
+	inline void CreateDescriptorSet(const VkDevice& device, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
+	{
+		uint32_t fix_this = 1;//static_cast<uint32_t>(swapChainImages.size());
+
+		// Descriptor pool
+		VkDescriptorPoolSize poolSize	= {};
+		poolSize.type					= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSize.descriptorCount		= fix_this;
+
+		VkDescriptorPoolCreateInfo pool_create_info = {};
+		pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		pool_create_info.flags						= VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+		pool_create_info.poolSizeCount				= 1;
+		pool_create_info.pPoolSizes					= &poolSize;
+		pool_create_info.maxSets					= fix_this;
+
+		VkDescriptorPool descriptor_pool = nullptr;
+		if (vkCreateDescriptorPool(device, &pool_create_info, nullptr, &descriptor_pool) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to create descriptor layout");
+			return;
+		}
+		descriptor_pool_out = static_cast<void*>(descriptor_pool);
+
+		// Descriptor set layout - THIS MUST BE AUTOMATED
+		// Create binding and layout for the following, matching contents of shader (this must happen automatically)	
+		//   binding 0 = uniform buffer 
+		//   binding 2 = sampler
+		//   binding 1 = texture2D
+		VkDescriptorSetLayoutBinding layout;
+		vector<VkDescriptorSetLayoutBinding> resource_bindings;
+		
+		layout.binding				= 0;
+		layout.descriptorType		= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		layout.descriptorCount		= 1;
+		layout.stageFlags			= VK_SHADER_STAGE_VERTEX_BIT;
+		layout.pImmutableSamplers	= nullptr;
+		resource_bindings.push_back(layout);
+
+		layout.binding				= 1;
+		layout.descriptorType		= VK_DESCRIPTOR_TYPE_SAMPLER;
+		layout.descriptorCount		= 1;
+		layout.stageFlags			= VK_SHADER_STAGE_FRAGMENT_BIT;
+		layout.pImmutableSamplers	= nullptr;
+		resource_bindings.push_back(layout);
+
+		layout.binding				= 2;
+		layout.descriptorType		= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		layout.descriptorCount		= 1;
+		layout.stageFlags			= VK_SHADER_STAGE_FRAGMENT_BIT;
+		layout.pImmutableSamplers	= nullptr;
+		resource_bindings.push_back(layout);
+
+		VkDescriptorSetLayoutCreateInfo resource_layout_info = {};
+		resource_layout_info.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		resource_layout_info.pNext			= nullptr;
+		resource_layout_info.bindingCount	= static_cast<uint32_t>(resource_bindings.size());
+		resource_layout_info.pBindings		= resource_bindings.data();
+
+		VkDescriptorSetLayout descriptor_set_layout;
+		if (vkCreateDescriptorSetLayout(device, &resource_layout_info, nullptr, &descriptor_set_layout) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to create descriptor layout");
+			return;
+		}
+		descriptor_set_layout_out = static_cast<VkDescriptorSetLayout>(descriptor_set_layout);
+
+		// Descriptor set
+		VkDescriptorSetAllocateInfo allocInfo	= {};
+		allocInfo.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool				= static_cast<VkDescriptorPool>(descriptor_pool);
+		allocInfo.descriptorSetCount			= 1;
+		allocInfo.pSetLayouts					= &descriptor_set_layout;
+
+		VkDescriptorSet descriptor_set = nullptr;
+		if (vkAllocateDescriptorSets(device, &allocInfo, &descriptor_set) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to allocate descriptor set");
+			return;
+		}
+		descriptor_set_out = static_cast<void*>(descriptor_set);
+	}
+
+	inline VkRenderPass CreateRenderPass(const VkDevice& device)
+	{
+		VkAttachmentDescription color_attachment	= {};
+		color_attachment.format						= VkFormat::VK_FORMAT_B8G8R8A8_UNORM; // this has to come from the swapchain
+		color_attachment.samples					= VK_SAMPLE_COUNT_1_BIT;
+		color_attachment.loadOp						= VK_ATTACHMENT_LOAD_OP_CLEAR;
+		color_attachment.storeOp					= VK_ATTACHMENT_STORE_OP_STORE;
+		color_attachment.stencilLoadOp				= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		color_attachment.stencilStoreOp				= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		color_attachment.initialLayout				= VK_IMAGE_LAYOUT_UNDEFINED;
+		color_attachment.finalLayout				= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		VkAttachmentReference color_attachment_ref	= {};
+		color_attachment_ref.attachment				= 0;
+		color_attachment_ref.layout					= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass	= {};
+		subpass.pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount	= 1;
+		subpass.pColorAttachments		= &color_attachment_ref;
+
+		VkSubpassDependency dependency	= {};
+		dependency.srcSubpass			= VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass			= 0;
+		dependency.srcStageMask			= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependency.srcAccessMask		= 0;
+		dependency.dstStageMask			= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependency.dstAccessMask		= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+		VkRenderPassCreateInfo render_pass_info = {};
+		render_pass_info.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		render_pass_info.attachmentCount		= 1;
+		render_pass_info.pAttachments			= &color_attachment;
+		render_pass_info.subpassCount			= 1;
+		render_pass_info.pSubpasses				= &subpass;
+		render_pass_info.dependencyCount		= 1;
+		render_pass_info.pDependencies			= &dependency;
+
+		VkRenderPass render_pass = nullptr;
+		if (vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to create render pass");
+		}
+
+		return render_pass;
 	}
 
 	bool RHI_Pipeline::Create()
@@ -61,6 +194,9 @@ namespace Directus
 		{
 			dynamic_viewport_scissor = true;
 		}
+
+		CreateDescriptorSet(m_rhi_device->GetContext()->device, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);
+		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
 
 		// Dynamic viewport and scissor states
 		vector<VkDynamicState> dynamic_states =
@@ -126,6 +262,7 @@ namespace Directus
 		input_assembly_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		input_assembly_state.topology								= vulkan_primitive_topology[m_primitive_topology];
 		input_assembly_state.primitiveRestartEnable					= VK_FALSE;
+
 		// Rasterizer state
 		VkPipelineRasterizationStateCreateInfo rasterizer_state	= {};
 		rasterizer_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -168,10 +305,12 @@ namespace Directus
 		color_blend_State.blendConstants[2]						= 0.0f;
 		color_blend_State.blendConstants[3]						= 0.0f;
 
+		// Pipeline layout
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
 		pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipeline_layout_info.setLayoutCount				= 0;
 		pipeline_layout_info.pushConstantRangeCount		= 0;
+		pipeline_layout_info.setLayoutCount				= 1;
+		pipeline_layout_info.pSetLayouts				= &static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
 
 		VkPipelineLayout pipeline_layout;
 		if (vkCreatePipelineLayout(m_rhi_device->GetContext()->device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) 
@@ -179,8 +318,7 @@ namespace Directus
 			LOG_ERROR("Failed to create pipeline layout");
 			return false;
 		}
-
-		CreateRenderPass();
+		m_pipeline_layout = static_cast<void*>(pipeline_layout);
 
 		VkGraphicsPipelineCreateInfo pipeline_info	= {};
 		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -192,11 +330,11 @@ namespace Directus
 		pipeline_info.pViewportState				= dynamic_viewport_scissor ? &viewport_state : nullptr;
 		pipeline_info.pRasterizationState			= &rasterizer_state;
 		pipeline_info.pMultisampleState				= &multisampling_state;
-		pipeline_info.pColorBlendState				= &color_blend_State;	
+		pipeline_info.pColorBlendState				= &color_blend_State;
 		pipeline_info.layout						= pipeline_layout;
 		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_render_pass);
 		pipeline_info.subpass						= 0;
-		pipeline_info.basePipelineHandle			= VK_NULL_HANDLE;
+		pipeline_info.basePipelineHandle			= nullptr;
 
 		VkPipeline graphics_pipeline = nullptr;
 		if (vkCreateGraphicsPipelines(m_rhi_device->GetContext()->device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) 
@@ -207,55 +345,6 @@ namespace Directus
 
 		m_graphics_pipeline = static_cast<void*>(graphics_pipeline);
 
-		return true;
-	}
-
-	bool RHI_Pipeline::CreateRenderPass()
-	{
-		VkAttachmentDescription color_attachment	= {};
-		color_attachment.format						= vulkan_format[m_format];
-		color_attachment.samples					= VK_SAMPLE_COUNT_1_BIT;
-		color_attachment.loadOp						= VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment.storeOp					= VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.stencilLoadOp				= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		color_attachment.stencilStoreOp				= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		color_attachment.initialLayout				= VK_IMAGE_LAYOUT_UNDEFINED;
-		color_attachment.finalLayout				= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-		VkAttachmentReference color_attachment_ref	= {};
-		color_attachment_ref.attachment				= 0;
-		color_attachment_ref.layout					= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDescription subpass	= {};
-		subpass.pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount	= 1;
-		subpass.pColorAttachments		= &color_attachment_ref;
-
-		VkSubpassDependency dependency	= {};
-		dependency.srcSubpass			= VK_SUBPASS_EXTERNAL;
-		dependency.dstSubpass			= 0;
-		dependency.srcStageMask			= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependency.srcAccessMask		= 0;
-		dependency.dstStageMask			= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependency.dstAccessMask		= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-		VkRenderPassCreateInfo render_pass_info = {};
-		render_pass_info.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		render_pass_info.attachmentCount		= 1;
-		render_pass_info.pAttachments			= &color_attachment;
-		render_pass_info.subpassCount			= 1;
-		render_pass_info.pSubpasses				= &subpass;
-		render_pass_info.dependencyCount		= 1;
-		render_pass_info.pDependencies			= &dependency;
-
-		VkRenderPass render_pass = nullptr;
-		if (vkCreateRenderPass(m_rhi_device->GetContext()->device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS) 
-		{
-			LOG_ERROR("Failed to create render pass");
-			return false;
-		}
-
-		m_render_pass = static_cast<void*>(render_pass);
 		return true;
 	}
 }

@@ -78,6 +78,12 @@ namespace Directus
 
 	void RHI_CommandList::Begin(const string& pass_name, void* render_pass, RHI_SwapChain* swap_chain)
 	{
+		if (!render_pass || !swap_chain)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		VkCommandBufferBeginInfo beginInfo	= {};
 		beginInfo.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -87,6 +93,8 @@ namespace Directus
 			LOG_ERROR("Failed to begin recording command buffer.");
 		}
 
+		VkClearValue clearColor	= { 0.0f, 0.0f, 0.0f, 1.0f };
+
 		VkRenderPassBeginInfo render_pass_info		= {};
 		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		render_pass_info.renderPass					= static_cast<VkRenderPass>(render_pass);
@@ -94,10 +102,8 @@ namespace Directus
 		render_pass_info.renderArea.offset			= { 0, 0 };
 		render_pass_info.renderArea.extent.width	= swap_chain->GetWidth();
 		render_pass_info.renderArea.extent.height	= swap_chain->GetHeight();
-
-		VkClearValue clearColor				= { 0.0f, 0.0f, 0.0f, 1.0f };
-		render_pass_info.clearValueCount	= 1;
-		render_pass_info.pClearValues		= &clearColor;
+		render_pass_info.clearValueCount			= 1;
+		render_pass_info.pClearValues				= &clearColor;
 
 		vkCmdBeginRenderPass(m_cmd_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
@@ -125,6 +131,19 @@ namespace Directus
 	void RHI_CommandList::SetPipeline(const RHI_Pipeline* pipeline)
 	{
 		vkCmdBindPipeline(m_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetPipeline()));
+
+		VkDescriptorSet descriptor_set = static_cast<VkDescriptorSet>(pipeline->GetDescriptorSet());
+		vkCmdBindDescriptorSets
+		(
+			m_cmd_buffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			static_cast<VkPipelineLayout>(pipeline->GetPipelineLayout()), 
+			0, 
+			1, 
+			&descriptor_set, 
+			0,
+			nullptr
+		);
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
