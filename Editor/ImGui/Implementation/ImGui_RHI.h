@@ -178,7 +178,7 @@ namespace ImGui::RHI
 				Swap_Flip_Discard,
 				SwapChain_Allow_Tearing,
 				2,
-				g_pipeline.GetPipeline()
+				g_pipeline.GetRenderPass()
 			);
 
 			if (!g_swap_chain->IsInitialized())

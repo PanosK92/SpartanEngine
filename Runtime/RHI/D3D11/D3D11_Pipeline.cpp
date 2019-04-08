@@ -41,10 +41,5 @@ namespace Directus
 	{
 		return true;
 	}
-
-	bool RHI_Pipeline::CreateRenderPass()
-	{
-		return true;
-	}
 }
 #endif

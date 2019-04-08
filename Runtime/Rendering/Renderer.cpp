@@ -62,7 +62,6 @@ namespace Directus
 		m_near_plane	= 0.0f;
 		m_far_plane		= 0.0f;
 		m_frame_num		= 0;
-		m_flags			= 0;
 		m_flags			|= Render_Gizmo_Transform;
 		m_flags			|= Render_Gizmo_Grid;
 		m_flags			|= Render_Gizmo_Lights;
@@ -111,19 +110,15 @@ namespace Directus
 	bool Renderer::Initialize()
 	{
 		// Create/Get required systems		
-		g_resource_cache	= m_context->GetSubsystem<ResourceCache>().get();
-
-		m_profiler = m_context->GetSubsystem<Profiler>().get();
-
+		g_resource_cache		= m_context->GetSubsystem<ResourceCache>().get();
+		m_profiler				= m_context->GetSubsystem<Profiler>().get();
 		// Editor specific
-		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
-		m_gizmo_transform	= make_unique<Transform_Gizmo>(m_context);
-
+		m_gizmo_grid			= make_unique<Grid>(m_rhi_device);
+		m_gizmo_transform		= make_unique<Transform_Gizmo>(m_context);
 		// Create a constant buffer that will be used for most shaders
-		m_buffer_global = make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferGlobal)));
-
+		m_buffer_global			= make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferGlobal)));
 		// Line buffer
-		m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
+		m_vertex_buffer_lines	= make_shared<RHI_VertexBuffer>(m_rhi_device);
 
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
@@ -145,12 +140,12 @@ namespace Directus
 
 	void Renderer::CreateRasterizerStates()
 	{
-		m_rasterizer_cull_back_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,	Fill_Solid,			true, false, false, false);
-		m_rasterizer_cull_front_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front, Fill_Solid,		true, false, false, false);
-		m_rasterizer_cull_none_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,	Fill_Solid,			true, false, false, false);
-		m_rasterizer_cull_back_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,	Fill_Wireframe,		true, false, false, true);
-		m_rasterizer_cull_front_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front, Fill_Wireframe,	true, false, false, true);
-		m_rasterizer_cull_none_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,	Fill_Wireframe,		true, false, false, true);
+		m_rasterizer_cull_back_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,		Fill_Solid,		true, false, false, false);
+		m_rasterizer_cull_front_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front,	Fill_Solid,		true, false, false, false);
+		m_rasterizer_cull_none_solid		= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,		Fill_Solid,		true, false, false, false);
+		m_rasterizer_cull_back_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Back,		Fill_Wireframe,	true, false, false, true);
+		m_rasterizer_cull_front_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_Front,	Fill_Wireframe,	true, false, false, true);
+		m_rasterizer_cull_none_wireframe	= make_shared<RHI_RasterizerState>(m_rhi_device, Cull_None,		Fill_Wireframe,	true, false, false, true);
 	}
 
 	void Renderer::CreateBlendStates()
