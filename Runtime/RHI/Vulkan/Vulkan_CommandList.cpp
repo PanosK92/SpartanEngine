@@ -33,6 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Texture.h"
+#include "../RHI_VertexBuffer.h"
+#include "../RHI_IndexBuffer.h"
 #include "../RHI_RenderTexture.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../../Profiling/Profiler.h"
@@ -195,12 +197,14 @@ namespace Directus
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
 	{
-		//vkCmdBindVertexBuffers(m_cmd_buffer, 0, 1, &models.models.vertices.buffer, offsets);
+		auto vk_buffer		= static_cast<VkBuffer>(buffer->GetBuffer());
+		auto vk_device_size = buffer->GetDeviceSize();
+		vkCmdBindVertexBuffers(m_cmd_buffer, 0, 1, &vk_buffer, &vk_device_size);
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
 	{
-		//vkCmdBindIndexBuffer(m_cmd_buffer, models.models.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(m_cmd_buffer, static_cast<VkBuffer>(buffer->GetBuffer()), 0, VK_INDEX_TYPE_UINT32);
 	}
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)

@@ -64,6 +64,7 @@ namespace Directus
 		bool Unmap() const;
 
 		void* GetBuffer() const				{ return m_buffer; }
+		uint64_t GetDeviceSize() const		{ return m_device_size; }
 		unsigned int GetStride() const		{ return m_stride; }
 		unsigned int GetVertexCount() const	{ return m_vertex_count; }
 		unsigned int GetMemoryUsage() const	{ return m_memory_usage; }
