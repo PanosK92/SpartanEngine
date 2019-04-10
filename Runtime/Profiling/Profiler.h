@@ -34,14 +34,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TIME_BLOCK_START_GPU(profiler)		profiler->TimeBlockStart(__FUNCTION__, false, true);
 #define TIME_BLOCK_END(profiler)			profiler->TimeBlockEnd();
 
-namespace Directus
+namespace Spartan
 {
 	class Context;
 	class Timer;
 	class ResourceCache;
 	class Renderer;
 
-	class ENGINE_CLASS Profiler : public ISubsystem
+	class SPARTAN_CLASS Profiler : public ISubsystem
 	{
 	public:
 		Profiler(Context* context);

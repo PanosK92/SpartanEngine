@@ -34,11 +34,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ========================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 using namespace Helper;
 //=====================================
 
-namespace Directus
+namespace Spartan
 {
 	void ScriptInterface::Register(asIScriptEngine* scriptEngine, Context* context)
 	{
@@ -184,29 +184,29 @@ namespace Directus
 	{
 		auto r = 0;
 
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &opAssign(const Transform &in)",	asMETHODPR(Transform, operator =, (const Transform&), Transform&),	asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetPosition()",						asMETHOD(Transform, GetPosition),									asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetPosition(Vector3)",					asMETHOD(Transform, SetPosition),									asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetPositionLocal()",					asMETHOD(Transform, GetPositionLocal),								asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetPositionLocal(Vector3)",				asMETHOD(Transform, SetPositionLocal),								asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetScale()",							asMETHOD(Transform, GetScale),										asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetScale(Vector3)",						asMETHOD(Transform, SetScale),										asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetScaleLocal()",					asMETHOD(Transform, GetScaleLocal),									asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetScaleLocal(Vector3)",				asMETHOD(Transform, SetScaleLocal),									asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Quaternion GetRotation()",					asMETHOD(Transform, GetRotation),									asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetRotation(Quaternion)",				asMETHOD(Transform, SetRotation),									asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Quaternion GetRotationLocal()",				asMETHOD(Transform, GetRotationLocal),								asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetRotationLocal(Quaternion)",			asMETHOD(Transform, SetRotationLocal),								asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetUp()",							asMETHOD(Transform, GetUp),											asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetForward()",						asMETHOD(Transform, GetForward),									asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetRight()",							asMETHOD(Transform, GetRight),										asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetRoot()",						asMETHOD(Transform, GetRoot),										asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetParent()",						asMETHOD(Transform, GetParent),										asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByIndex(int)",			asMETHOD(Transform, GetChildByIndex),								asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByName(string)",			asMETHOD(Transform, GetChildByName),								asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "Entity &GetEntity()",						asMETHOD(Transform, GetEntity_PtrRaw),								asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "void Translate(const Vector3& in)",			asMETHOD(Transform, Translate),										asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in)",			asMETHOD(Transform, Rotate),										asCALL_THISCALL); ENGINE_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &opAssign(const Transform &in)",	asMETHODPR(Transform, operator =, (const Transform&), Transform&),	asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetPosition()",						asMETHOD(Transform, GetPosition),									asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetPosition(Vector3)",					asMETHOD(Transform, SetPosition),									asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetPositionLocal()",					asMETHOD(Transform, GetPositionLocal),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetPositionLocal(Vector3)",				asMETHOD(Transform, SetPositionLocal),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetScale()",							asMETHOD(Transform, GetScale),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetScale(Vector3)",						asMETHOD(Transform, SetScale),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetScaleLocal()",					asMETHOD(Transform, GetScaleLocal),									asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetScaleLocal(Vector3)",				asMETHOD(Transform, SetScaleLocal),									asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Quaternion GetRotation()",					asMETHOD(Transform, GetRotation),									asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetRotation(Quaternion)",				asMETHOD(Transform, SetRotation),									asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Quaternion GetRotationLocal()",				asMETHOD(Transform, GetRotationLocal),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "void SetRotationLocal(Quaternion)",			asMETHOD(Transform, SetRotationLocal),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetUp()",							asMETHOD(Transform, GetUp),											asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetForward()",						asMETHOD(Transform, GetForward),									asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetRight()",							asMETHOD(Transform, GetRight),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetRoot()",						asMETHOD(Transform, GetRoot),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetParent()",						asMETHOD(Transform, GetParent),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByIndex(int)",			asMETHOD(Transform, GetChildByIndex),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByName(string)",			asMETHOD(Transform, GetChildByName),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "Entity &GetEntity()",						asMETHOD(Transform, GetEntity_PtrRaw),								asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "void Translate(const Vector3& in)",			asMETHOD(Transform, Translate),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in)",			asMETHOD(Transform, Rotate),										asCALL_THISCALL); SPARTAN_ASSERT(r >= 0);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -266,15 +266,15 @@ namespace Directus
 	{
 		auto r = 0;
 
-		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_CONSTRUCT, "void f()",					asFUNCTION(ConstructorVector2),								asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_CONSTRUCT, "void f(const Vector2 &in)", asFUNCTION(CopyConstructorVector2),							asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_CONSTRUCT, "void f(float, float)",		asFUNCTION(ConstructorVector2Floats),						asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_DESTRUCT, "void f()",					asFUNCTION(DestructVector2),								asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);	
-		r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 &opAddAssign(const Vector2 &in)",			asFUNCTION(Vector2AddAssignVector2),						asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 &opAssign(const Vector2 &in)",				asMETHODPR(Vector2, operator=, (const Vector2&), Vector2&), asCALL_THISCALL);		ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 &opMulAssign(float)",						asFUNCTION(Vector2MulAssignFloat),							asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectProperty("Vector2", "float x", asOFFSET(Vector2, x));	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterObjectProperty("Vector2", "float y", asOFFSET(Vector2, y));	ENGINE_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_CONSTRUCT, "void f()",					asFUNCTION(ConstructorVector2),								asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_CONSTRUCT, "void f(const Vector2 &in)", asFUNCTION(CopyConstructorVector2),							asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_CONSTRUCT, "void f(float, float)",		asFUNCTION(ConstructorVector2Floats),						asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_DESTRUCT, "void f()",					asFUNCTION(DestructVector2),								asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);	
+		r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 &opAddAssign(const Vector2 &in)",			asFUNCTION(Vector2AddAssignVector2),						asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 &opAssign(const Vector2 &in)",				asMETHODPR(Vector2, operator=, (const Vector2&), Vector2&), asCALL_THISCALL);		SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 &opMulAssign(float)",						asFUNCTION(Vector2MulAssignFloat),							asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectProperty("Vector2", "float x", asOFFSET(Vector2, x));	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectProperty("Vector2", "float y", asOFFSET(Vector2, y));	SPARTAN_ASSERT(r >= 0);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -345,22 +345,22 @@ namespace Directus
 		auto r = 0;
 
 		// operator overloads http://www.angelcode.com/angelscript/sdk/docs/manual/doc_script_class_ops.html
-		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f()",						asFUNCTION(ConstructorVector3),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(const Vector3 &in)",	asFUNCTION(CopyConstructorVector3),		asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(float, float, float)",	asFUNCTION(ConstructorVector3Floats),	asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_DESTRUCT, "void f()",						asFUNCTION(DestructVector3),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAssign(const Vector3 &in)",				asFUNCTION(Vector3Assignment),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opAdd(const Vector3 &in)",					asFUNCTION(Vector3AddVector3),			asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAddAssign(const Vector3 &in)",				asFUNCTION(Vector3AddAssignVector3),	asCALL_CDECL_OBJLAST); 	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opSubAssign(const Vector3 &in)",				asFUNCTION(Vector3SubAssignVector3),	asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(const Vector3 &in)",				asFUNCTION(Vector3MulAssignVector3),	asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(float)",							asFUNCTION(Vector3MulAssignFloat),		asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(const Vector3 &in)",					asFUNCTION(Vector3MulVector3),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul_r(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float x", asOFFSET(Vector3, x));	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float y", asOFFSET(Vector3, y));	ENGINE_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float z", asOFFSET(Vector3, z));	ENGINE_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f()",						asFUNCTION(ConstructorVector3),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(const Vector3 &in)",	asFUNCTION(CopyConstructorVector3),		asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(float, float, float)",	asFUNCTION(ConstructorVector3Floats),	asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_DESTRUCT, "void f()",						asFUNCTION(DestructVector3),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAssign(const Vector3 &in)",				asFUNCTION(Vector3Assignment),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opAdd(const Vector3 &in)",					asFUNCTION(Vector3AddVector3),			asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAddAssign(const Vector3 &in)",				asFUNCTION(Vector3AddAssignVector3),	asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opSubAssign(const Vector3 &in)",				asFUNCTION(Vector3SubAssignVector3),	asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(const Vector3 &in)",				asFUNCTION(Vector3MulAssignVector3),	asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(float)",							asFUNCTION(Vector3MulAssignFloat),		asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(const Vector3 &in)",					asFUNCTION(Vector3MulVector3),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul_r(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float x", asOFFSET(Vector3, x));	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float y", asOFFSET(Vector3, y));	SPARTAN_ASSERT(r >= 0);
+		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float z", asOFFSET(Vector3, z));	SPARTAN_ASSERT(r >= 0);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -435,13 +435,13 @@ namespace Directus
 	{
 		auto r = 0;
 
-		r = m_scriptEngine->RegisterGlobalFunction("float Lerp(float, float, float)",	asFUNCTIONPR(Lerp,				(float, float, float), float),	asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float Abs(float)",					asFUNCTIONPR(Abs,				(float), float),				asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float Clamp(float, float, float)",	asFUNCTIONPR(Clamp,				(float, float, float), float),	asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float Max(float, float)",			asFUNCTIONPR(Max,				(float, float), float),			asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float Min(float, float)",			asFUNCTIONPR(Min,				(float, float), float),			asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float DegreesToRadians(float)",		asFUNCTIONPR(DegreesToRadians,	(float), float),				asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("float RadiansToDegrees(float)",		asFUNCTIONPR(RadiansToDegrees,	(float), float),				asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Lerp(float, float, float)",	asFUNCTIONPR(Lerp,				(float, float, float), float),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Abs(float)",					asFUNCTIONPR(Abs,				(float), float),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Clamp(float, float, float)",	asFUNCTIONPR(Clamp,				(float, float, float), float),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Max(float, float)",			asFUNCTIONPR(Max,				(float, float), float),			asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float Min(float, float)",			asFUNCTIONPR(Min,				(float, float), float),			asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float DegreesToRadians(float)",		asFUNCTIONPR(DegreesToRadians,	(float), float),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("float RadiansToDegrees(float)",		asFUNCTIONPR(RadiansToDegrees,	(float), float),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -451,11 +451,11 @@ namespace Directus
 	{
 		auto r = 0;
 
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)",		asFUNCTIONPR(Log::Write, (const string&, Log_Type), void),		asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)",					asFUNCTIONPR(Log::Write, (int, Log_Type), void),				asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(bool, LogType)",					asFUNCTIONPR(Log::Write, (bool, Log_Type), void),				asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)",					asFUNCTIONPR(Log::Write, (float, Log_Type), void),				asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)",		asFUNCTIONPR(Log::Write, (const Vector3&, Log_Type), void),		asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
-		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Quaternion& in, LogType)",	asFUNCTIONPR(Log::Write, (const Quaternion&, Log_Type), void),	asCALL_CDECL);	ENGINE_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)",		asFUNCTIONPR(Log::Write, (const string&, Log_Type), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)",					asFUNCTIONPR(Log::Write, (int, Log_Type), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(bool, LogType)",					asFUNCTIONPR(Log::Write, (bool, Log_Type), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)",					asFUNCTIONPR(Log::Write, (float, Log_Type), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)",		asFUNCTIONPR(Log::Write, (const Vector3&, Log_Type), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Quaternion& in, LogType)",	asFUNCTIONPR(Log::Write, (const Quaternion&, Log_Type), void),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
 	}
 }

@@ -31,14 +31,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector4.h"
 //===================================
 
-namespace Directus
+namespace Spartan
 {
 	namespace Math
 	{
 		class Vector2;
 	}
 
-	class ENGINE_CLASS Font : IResource
+	class SPARTAN_CLASS Font : IResource
 	{
 	public:
 		Font(Context* context, const std::string& file_path, int font_size, const Math::Vector4& color);

@@ -57,7 +57,7 @@ namespace _ImagImporter
 	};
 }
 
-namespace Directus
+namespace Spartan
 {
 	ImageImporter::ImageImporter(Context* context)
 	{

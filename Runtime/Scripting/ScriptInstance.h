@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class asIScriptObject;
 class asIScriptFunction;
 
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 

@@ -30,10 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	weak_ptr<ILogger> Log::m_logger;
 	ofstream Log::m_fout;

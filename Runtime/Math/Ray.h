@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector3.h"
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	class Context;
 
@@ -36,7 +36,7 @@ namespace Directus
 		class RayHit;
 		class BoundingBox;
 
-		class ENGINE_CLASS Ray
+		class SPARTAN_CLASS Ray
 		{
 		public:
 			Ray() = default;

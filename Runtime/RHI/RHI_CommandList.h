@@ -33,7 +33,7 @@ struct VkQueue_T;
 struct VkCommandPool_T;
 struct VkCommandBuffer_T;
 
-namespace Directus
+namespace Spartan
 {
 	class Profiler;
 
@@ -171,7 +171,7 @@ namespace Directus
 		const RHI_Shader* shader_pixel						= nullptr;
 	};
 
-	class ENGINE_CLASS RHI_CommandList
+	class SPARTAN_CLASS RHI_CommandList
 	{
 	public:
 		RHI_CommandList(RHI_Device* rhi_device, Profiler* profiler);

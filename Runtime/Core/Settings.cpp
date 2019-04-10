@@ -30,17 +30,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 //=============================
 
 namespace SettingsIO
 {
 	ofstream fout;
 	ifstream fin;
-	string file_name = "Directus.ini";
+	string file_name = "Spartan.ini";
 }
 
-namespace Directus
+namespace Spartan
 {
 	template <class T>
 	void write_setting(ofstream& fout, const string& name, T value)

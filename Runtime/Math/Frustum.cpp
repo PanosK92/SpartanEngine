@@ -25,10 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================
 
 //= NAMESPACES ========================
-using namespace Directus::Math::Helper;
+using namespace Spartan::Math::Helper;
 //=====================================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
 	void Frustum::Construct(const Matrix& mView, const Matrix& mProjection, float screenDepth)
 	{

@@ -30,13 +30,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 using namespace Helper;
 //=============================
 
 // TODO: DirectInput is ancient and unsupported, also lacks a couple of features. Must replace with simple Windows input.
 
-namespace Directus
+namespace Spartan
 {
 	IDirectInput8*			g_direct_input;
 	IDirectInputDevice8*	g_keyboard;

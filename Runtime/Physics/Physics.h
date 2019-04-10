@@ -31,7 +31,7 @@ class btConstraintSolver;
 class btDefaultCollisionConfiguration;
 class btDiscreteDynamicsWorld;
 
-namespace Directus
+namespace Spartan
 {
 	class Renderer;
 	class Variant;

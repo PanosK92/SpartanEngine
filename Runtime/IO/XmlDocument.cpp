@@ -32,10 +32,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace std;
 using namespace pugi;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	XmlDocument::XmlDocument()
 	{

@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 //===================================
 
-namespace Directus
+namespace Spartan
 {
 	enum Resource_Type
 	{
@@ -52,7 +52,7 @@ namespace Directus
 		LoadState_Failed
 	};
 
-	class ENGINE_CLASS IResource : public std::enable_shared_from_this<IResource>
+	class SPARTAN_CLASS IResource : public std::enable_shared_from_this<IResource>
 	{
 	public:
 		IResource(Context* context, Resource_Type type);

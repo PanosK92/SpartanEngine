@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=================
 
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 	class Transform;
@@ -48,28 +48,28 @@ class ButtonColorPicker;
 class Widget_Properties : public Widget
 {
 public:
-	Widget_Properties(Directus::Context* context);
+	Widget_Properties(Spartan::Context* context);
 	void Tick(float delta_time) override;
 
-	static void Inspect(const std::weak_ptr<Directus::Entity>& entity);
-	static void Inspect(const std::weak_ptr<Directus::Material>& material);
+	static void Inspect(const std::weak_ptr<Spartan::Entity>& entity);
+	static void Inspect(const std::weak_ptr<Spartan::Material>& material);
 
 	// Inspected resources
-	static std::weak_ptr<Directus::Entity> m_inspected_entity;
-	static std::weak_ptr<Directus::Material> m_inspected_material;
+	static std::weak_ptr<Spartan::Entity> m_inspected_entity;
+	static std::weak_ptr<Spartan::Material> m_inspected_material;
 
 private:
-	void ShowTransform(std::shared_ptr<Directus::Transform>& transform) const;
-	void ShowLight(std::shared_ptr<Directus::Light>& light) const;
-	void ShowRenderable(std::shared_ptr<Directus::Renderable>& renderable) const;
-	void ShowRigidBody(std::shared_ptr<Directus::RigidBody>& rigid_body) const;
-	void ShowCollider(std::shared_ptr<Directus::Collider>& collider) const;
-	void ShowConstraint(std::shared_ptr<Directus::Constraint>& constraint) const;
-	void ShowMaterial(std::shared_ptr<Directus::Material>& material) const;
-	void ShowCamera(std::shared_ptr<Directus::Camera>& camera) const;
-	void ShowAudioSource(std::shared_ptr<Directus::AudioSource>& audio_source) const;
-	void ShowAudioListener(std::shared_ptr<Directus::AudioListener>& audio_listener) const;
-	void ShowScript(std::shared_ptr<Directus::Script>& script) const;
+	void ShowTransform(std::shared_ptr<Spartan::Transform>& transform) const;
+	void ShowLight(std::shared_ptr<Spartan::Light>& light) const;
+	void ShowRenderable(std::shared_ptr<Spartan::Renderable>& renderable) const;
+	void ShowRigidBody(std::shared_ptr<Spartan::RigidBody>& rigid_body) const;
+	void ShowCollider(std::shared_ptr<Spartan::Collider>& collider) const;
+	void ShowConstraint(std::shared_ptr<Spartan::Constraint>& constraint) const;
+	void ShowMaterial(std::shared_ptr<Spartan::Material>& material) const;
+	void ShowCamera(std::shared_ptr<Spartan::Camera>& camera) const;
+	void ShowAudioSource(std::shared_ptr<Spartan::AudioSource>& audio_source) const;
+	void ShowAudioListener(std::shared_ptr<Spartan::AudioListener>& audio_listener) const;
+	void ShowScript(std::shared_ptr<Spartan::Script>& script) const;
 
 	void ShowAddComponentButton() const;
 	void ComponentContextMenu_Add() const;

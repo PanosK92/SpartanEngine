@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/BoundingBox.h"
 //=================================
 
-namespace Directus
+namespace Spartan
 {
 	class Renderer;
 	class Context;
@@ -92,7 +92,7 @@ namespace Directus
 		Math::Vector3 m_color_disabled	= Math::Vector3(0.5f, 0.5f, 0.5f);
 	};
 
-	class ENGINE_CLASS TransformHandle
+	class SPARTAN_CLASS TransformHandle
 	{
 	public:
 		TransformHandle() {}	

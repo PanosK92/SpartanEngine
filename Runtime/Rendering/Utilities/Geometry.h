@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Definition.h"
 //===================================
 
-namespace Directus::Utility::Geometry
+namespace Spartan::Utility::Geometry
 {
 	static void CreateCube(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices)
 	{

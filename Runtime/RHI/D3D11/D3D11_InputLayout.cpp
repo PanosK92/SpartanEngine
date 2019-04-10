@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Directus
+namespace Spartan
 {
 	RHI_InputLayout::RHI_InputLayout(const shared_ptr<RHI_Device>& rhi_device)
 	{

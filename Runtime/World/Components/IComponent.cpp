@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Directus
+namespace Spartan
 {
 	IComponent::IComponent(Context* context, Entity* entity, Transform* transform)
 	{
@@ -65,7 +65,7 @@ namespace Directus
 	constexpr ComponentType IComponent::TypeToEnum() { return ComponentType_Unknown; }
 
 	// Explicit template instantiation
-	#define REGISTER_COMPONENT(T, enumT) template<> ENGINE_CLASS ComponentType IComponent::TypeToEnum<T>() { return enumT; }
+	#define REGISTER_COMPONENT(T, enumT) template<> SPARTAN_CLASS ComponentType IComponent::TypeToEnum<T>() { return enumT; }
 
 	// To add a new component to the engine, simply register it here
 	REGISTER_COMPONENT(AudioListener,	ComponentType_AudioListener)

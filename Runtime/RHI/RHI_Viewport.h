@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Object.h"
 //=============================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS RHI_Viewport : public RHI_Object
+	class SPARTAN_CLASS RHI_Viewport : public RHI_Object
 	{
 	public:
 		RHI_Viewport(float x = 0.0f, float y = 0.0f, float width = 0.0f, float height = 0.0f, float minDepth = 0.0f, float maxDepth = 1.0f)

@@ -28,11 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/IResource.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	typedef std::vector<std::byte> mip_level;
 
-	class ENGINE_CLASS RHI_Texture : public RHI_Object, public IResource
+	class SPARTAN_CLASS RHI_Texture : public RHI_Object, public IResource
 	{
 	public:
 		RHI_Texture(Context* context);

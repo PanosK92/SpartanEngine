@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EngineDefs.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 	class Transform;
@@ -59,7 +59,7 @@ namespace Directus
 		std::function<void(std::any)> setter;
 	};
 
-	class ENGINE_CLASS IComponent
+	class SPARTAN_CLASS IComponent
 	{
 	public:
 		IComponent(Context* context, Entity* entity, Transform* transform);

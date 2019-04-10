@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS RHI_InputLayout
+	class SPARTAN_CLASS RHI_InputLayout
 	{
 	public:
 		RHI_InputLayout(const std::shared_ptr<RHI_Device>& rhi_device);

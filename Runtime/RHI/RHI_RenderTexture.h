@@ -29,9 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //===========================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS RHI_RenderTexture : public RHI_Object
+	class SPARTAN_CLASS RHI_RenderTexture : public RHI_Object
 	{
 	public:
 		RHI_RenderTexture(

@@ -121,34 +121,34 @@ public:
 		return instance;
 	}
 
-	void Initialize(Directus::Context* context)
+	void Initialize(Spartan::Context* context)
 	{
 		g_context		= context;
-		g_resource_cache	= context->GetSubsystem<Directus::ResourceCache>().get();
-		g_world			= context->GetSubsystem<Directus::World>().get();
-		g_threading		= context->GetSubsystem<Directus::Threading>().get();
-		g_renderer		= context->GetSubsystem<Directus::Renderer>().get();
-		g_input			= context->GetSubsystem<Directus::Input>().get();
+		g_resource_cache	= context->GetSubsystem<Spartan::ResourceCache>().get();
+		g_world			= context->GetSubsystem<Spartan::World>().get();
+		g_threading		= context->GetSubsystem<Spartan::Threading>().get();
+		g_renderer		= context->GetSubsystem<Spartan::Renderer>().get();
+		g_input			= context->GetSubsystem<Spartan::Input>().get();
 	}
 
-	std::shared_ptr<Directus::RHI_Texture> GetOrLoadTexture(const std::string& file_path, const bool async = false)
+	std::shared_ptr<Spartan::RHI_Texture> GetOrLoadTexture(const std::string& file_path, const bool async = false)
 	{
-		if (Directus::FileSystem::IsDirectory(file_path))
+		if (Spartan::FileSystem::IsDirectory(file_path))
 			return nullptr;
 
-		if (!Directus::FileSystem::IsSupportedImageFile(file_path) && !Directus::FileSystem::IsEngineTextureFile(file_path))
+		if (!Spartan::FileSystem::IsSupportedImageFile(file_path) && !Spartan::FileSystem::IsEngineTextureFile(file_path))
 			return nullptr;
 
 		// Compute some useful information
-		const auto path = Directus::FileSystem::GetRelativeFilePath(file_path);
-		const auto name = Directus::FileSystem::GetFileNameNoExtensionFromFilePath(path);
+		const auto path = Spartan::FileSystem::GetRelativeFilePath(file_path);
+		const auto name = Spartan::FileSystem::GetFileNameNoExtensionFromFilePath(path);
 
 		// Check if this texture is already cached, if so return the cached one
-		if (auto cached = g_resource_cache->GetByName<Directus::RHI_Texture>(name))
+		if (auto cached = g_resource_cache->GetByName<Spartan::RHI_Texture>(name))
 			return cached;
 
 		// Since the texture is not cached, load it and returned a cached ref
-		auto texture = std::make_shared<Directus::RHI_Texture>(g_context);
+		auto texture = std::make_shared<Spartan::RHI_Texture>(g_context);
 		texture->SetResourceName(name);
 		texture->SetResourceFilePath(path);
 		if (!async)
@@ -173,7 +173,7 @@ public:
 		// Load the model asynchronously
 		g_threading->AddTask([resource_cache, file_path]()
 		{
-			resource_cache->Load<Directus::Model>(file_path);
+			resource_cache->Load<Spartan::Model>(file_path);
 		});
 	}
 
@@ -207,7 +207,7 @@ public:
 			return;
 
 		// Pick the world
-		std::shared_ptr<Directus::Entity> entity;
+		std::shared_ptr<Spartan::Entity> entity;
 		camera->Pick(g_input->GetMousePosition(), entity);
 
 		// Set the transform gizmo to the selected entity and keep returned entity instead (gizmo can decide to reject)
@@ -217,12 +217,12 @@ public:
 		g_on_entity_selected();
 	}
 
-	Directus::Context*				g_context;
-	Directus::ResourceCache*		g_resource_cache;
-	Directus::World*				g_world;
-	Directus::Threading*			g_threading;
-	Directus::Renderer*				g_renderer;
-	Directus::Input*				g_input;
-	std::weak_ptr<Directus::Entity> g_selected_entity;
+	Spartan::Context*				g_context;
+	Spartan::ResourceCache*		g_resource_cache;
+	Spartan::World*				g_world;
+	Spartan::Threading*			g_threading;
+	Spartan::Renderer*				g_renderer;
+	Spartan::Input*				g_input;
+	std::weak_ptr<Spartan::Entity> g_selected_entity;
 	std::function<void()>			g_on_entity_selected;
 };

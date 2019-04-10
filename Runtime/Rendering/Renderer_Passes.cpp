@@ -48,14 +48,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 using namespace Helper;
 //=============================
 
 #define GIZMO_MAX_SIZE 5.0f
 #define GIZMO_MIN_SIZE 0.1f
 
-namespace Directus
+namespace Spartan
 {
 	void Renderer::Pass_Main()
 	{

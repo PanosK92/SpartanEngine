@@ -48,11 +48,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 using namespace Helper;
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	static ResourceCache* g_resource_cache	= nullptr;
 	bool Renderer::m_is_rendering			= false;

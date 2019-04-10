@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 //=========================
 
-namespace Directus
+namespace Spartan
 {
 	// Forward declarations
 	class Context;
@@ -60,7 +60,7 @@ namespace Directus
 		#endif
 	}
 
-	class ENGINE_CLASS RHI_Shader : public RHI_Object
+	class SPARTAN_CLASS RHI_Shader : public RHI_Object
 	{
 	public:
 

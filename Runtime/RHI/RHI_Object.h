@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GUIDGenerator.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS RHI_Object
+	class SPARTAN_CLASS RHI_Object
 	{
 	public:
 		RHI_Object()					{ m_id = GENERATE_GUID; }

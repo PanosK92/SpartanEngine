@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class btTypedConstraint;
 
-namespace Directus
+namespace Spartan
 {
 	class RigidBody;
 	class Entity;
@@ -44,7 +44,7 @@ namespace Directus
 		ConstraintType_ConeTwist
 	};
 
-	class ENGINE_CLASS Constraint : public IComponent
+	class SPARTAN_CLASS Constraint : public IComponent
 	{
 	public:
 		Constraint(Context* context, Entity* entity, Transform* transform);

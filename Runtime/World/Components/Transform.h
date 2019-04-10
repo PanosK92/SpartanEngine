@@ -30,12 +30,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Matrix.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	class RHI_Device;
 	class RHI_ConstantBuffer;
 
-	class ENGINE_CLASS Transform : public IComponent
+	class SPARTAN_CLASS Transform : public IComponent
 	{
 	public:
 		Transform(Context* context, Entity* entity, Transform* transform);

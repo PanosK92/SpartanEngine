@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Widget_Viewport : public Widget
 {
 public:
-	Widget_Viewport(Directus::Context* context);
+	Widget_Viewport(Spartan::Context* context);
 	bool Begin() override;
 	void Tick(float delta_time) override;
 

@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Settings.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	RHI_Sampler::RHI_Sampler(
 		const std::shared_ptr<RHI_Device>& rhi_device,

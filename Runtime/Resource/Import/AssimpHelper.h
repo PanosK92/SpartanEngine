@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ProgressReport.h"
 //===========================================
 
-namespace Directus::AssimpHelper
+namespace Spartan::AssimpHelper
 {
 	inline Math::Matrix ai_matrix4_x4_to_matrix(const aiMatrix4x4& transform)
 	{
@@ -106,26 +106,26 @@ namespace Directus::AssimpHelper
 		void OnDebug(const char* message) override
 		{
 #ifdef DEBUG
-			Log::m_caller_name = "Directus::ModelImporter";
+			Log::m_caller_name = "Spartan::ModelImporter";
 			Log::Write(message, Log_Info);
 #endif
 		}
 
 		void OnInfo(const char* message) override
 		{
-			Log::m_caller_name = "Directus::ModelImporter";
+			Log::m_caller_name = "Spartan::ModelImporter";
 			Log::Write(message, Log_Info);
 		}
 
 		void OnWarn(const char* message) override
 		{
-			Log::m_caller_name = "Directus::ModelImporter";
+			Log::m_caller_name = "Spartan::ModelImporter";
 			Log::Write(message, Log_Warning);
 		}
 
 		void OnError(const char* message) override
 		{
-			Log::m_caller_name = "Directus::ModelImporter";
+			Log::m_caller_name = "Spartan::ModelImporter";
 			Log::Write(message, Log_Error);
 		}
 	};

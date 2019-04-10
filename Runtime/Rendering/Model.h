@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/BoundingBox.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	class ResourceCache;
 	class Entity;
@@ -42,7 +42,7 @@ namespace Directus
 		class BoundingBox;
 	}
 
-	class ENGINE_CLASS Model : public IResource
+	class SPARTAN_CLASS Model : public IResource
 	{
 	public:
 		Model(Context* context);

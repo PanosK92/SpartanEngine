@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //=============================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
-	class ENGINE_CLASS Vector2
+	class SPARTAN_CLASS Vector2
 	{
 	public:
 		Vector2()

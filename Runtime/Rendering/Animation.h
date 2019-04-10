@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	struct VertexWeight
 	{
@@ -61,7 +61,7 @@ namespace Directus
 		std::vector<KeyVector> scaleFrames;
 	};
 
-	class ENGINE_CLASS Animation : public IResource
+	class SPARTAN_CLASS Animation : public IResource
 	{
 	public:
 		Animation(Context* context);

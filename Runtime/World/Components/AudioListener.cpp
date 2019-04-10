@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	AudioListener::AudioListener(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{

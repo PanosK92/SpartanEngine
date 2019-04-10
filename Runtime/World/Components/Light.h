@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Definition.h"
 //====================================
 
-namespace Directus
+namespace Spartan
 {
 	class Camera;
 	class Renderable;
@@ -49,7 +49,7 @@ namespace Directus
 		LightType_Spot
 	};
 
-	class ENGINE_CLASS Light : public IComponent
+	class SPARTAN_CLASS Light : public IComponent
 	{
 	public:
 		Light(Context* context, Entity* entity, Transform* transform);

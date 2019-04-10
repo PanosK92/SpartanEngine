@@ -39,11 +39,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==============================================================
 
 //= NAMESPACES ================
-using namespace Directus::Math;
+using namespace Spartan::Math;
 using namespace std;
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	static const float DEFAULT_MASS = 0.0f;
 	static const float DEFAULT_FRICTION = 0.5f;

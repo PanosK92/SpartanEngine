@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	namespace Math
 	{ 
@@ -76,7 +76,7 @@ namespace Directus
 		void* data				= nullptr;
 	};
 
-	class ENGINE_CLASS RHI_Device
+	class SPARTAN_CLASS RHI_Device
 	{
 	public:
 		RHI_Device();

@@ -43,7 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGui::RHI
 {
-	using namespace Directus;
+	using namespace Spartan;
 	using namespace Math;
 	using namespace std;
 

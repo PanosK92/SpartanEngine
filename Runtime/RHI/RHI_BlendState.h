@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 //=========================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS RHI_BlendState : public RHI_Object
+	class SPARTAN_CLASS RHI_BlendState : public RHI_Object
 	{
 	public:
 		RHI_BlendState(const std::shared_ptr<RHI_Device>& device,

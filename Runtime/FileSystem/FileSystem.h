@@ -43,9 +43,9 @@ static const char* EXTENSION_TEXTURE		= ".texture";
 static const char* EXTENSION_MESH			= ".mesh";
 //=========================================================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS FileSystem
+	class SPARTAN_CLASS FileSystem
 	{
 	public:
 		static void Initialize();

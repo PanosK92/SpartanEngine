@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 //===================================
 
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 	class Model;
@@ -44,7 +44,7 @@ namespace Directus
 		Projection_Orthographic,
 	};
 
-	class ENGINE_CLASS Camera : public IComponent
+	class SPARTAN_CLASS Camera : public IComponent
 	{
 	public:
 		Camera(Context* context, Entity* entity, Transform* transform);

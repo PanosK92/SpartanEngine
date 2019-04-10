@@ -32,10 +32,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPAECES =======================
 using namespace std;
-using namespace Directus::Math::Helper;
+using namespace Spartan::Math::Helper;
 //=====================================
 
-namespace Directus
+namespace Spartan
 {
 	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mip_chain)
 	{

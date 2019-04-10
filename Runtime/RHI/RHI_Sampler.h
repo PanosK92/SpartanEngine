@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=========================
 
-namespace Directus
+namespace Spartan
 {
 	class RHI_Sampler : public RHI_Object
 	{

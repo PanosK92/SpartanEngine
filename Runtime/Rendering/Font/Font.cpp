@@ -34,14 +34,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 //=============================
 
 #define ASCII_TAB		9
 #define ASCII_NEW_LINE	10
 #define ASCII_SPACE		32
 
-namespace Directus
+namespace Spartan
 {
 	Font::Font(Context* context, const string& file_path, const int font_size, const Vector4& color) : IResource(context, Resource_Font)
 	{

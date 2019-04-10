@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Viewport.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 	class Camera;
@@ -102,7 +102,7 @@ namespace Directus
 		Renderable_Camera
 	};
 
-	class ENGINE_CLASS Renderer : public ISubsystem
+	class SPARTAN_CLASS Renderer : public ISubsystem
 	{
 	public:
 		Renderer(Context* context);

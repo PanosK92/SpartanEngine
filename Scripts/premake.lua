@@ -20,7 +20,7 @@
 WIN_SDK_VERSION 		= "10.0.17763.0"
 CPP_VERSION 			= "C++17"
 DEBUG_FORMAT			= "c7"
-SOLUTION_NAME 			= "Directus"
+SOLUTION_NAME 			= "Spartan"
 EDITOR_NAME 			= "Editor"
 ENGINE_NAME 			= "Runtime"
 TARGET_DIR_RELEASE 		= "../Binaries/Release"
@@ -127,10 +127,11 @@ ENGINE_DIR				= "../" .. ENGINE_NAME
 		cppdialect (CPP_VERSION)
 		files 
 		{ 
+			"../Editor/**.rc",
 			"../Editor/**.h",
 			"../Editor/**.cpp",
 			"../Editor/**.hpp",
-			"../Editor/**.inl" 
+			"../Editor/**.inl"
 		}
 		
 		defines

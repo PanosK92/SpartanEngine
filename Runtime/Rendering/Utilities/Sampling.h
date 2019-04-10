@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 //================================
 
-namespace Directus::Utility::Sampling
+namespace Spartan::Utility::Sampling
 {
 	inline float Halton(uint64_t index, uint64_t base)
 	{

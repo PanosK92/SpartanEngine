@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {	
 	class ShaderVariation;
 
@@ -65,7 +65,7 @@ namespace Directus
 		TextureType type;
 	};
 
-	class ENGINE_CLASS Material : public IResource
+	class SPARTAN_CLASS Material : public IResource
 	{
 	public:
 		enum ShadingMode

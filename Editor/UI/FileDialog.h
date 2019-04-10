@@ -56,8 +56,8 @@ public:
 		m_path			= path;
 		m_thumbnail		= thumbnail;
 		m_id			= GENERATE_GUID;
-		m_isDirectory	= Directus::FileSystem::IsDirectory(path);
-		m_label			= Directus::FileSystem::GetFileNameFromFilePath(path);
+		m_isDirectory	= Spartan::FileSystem::IsDirectory(path);
+		m_label			= Spartan::FileSystem::GetFileNameFromFilePath(path);
 	}
 
 	const std::string& GetPath() const		{ return m_path; }
@@ -87,7 +87,7 @@ private:
 class FileDialog
 {
 public:
-	FileDialog(Directus::Context* context, bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
+	FileDialog(Spartan::Context* context, bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
 
 	// Type & Filter
 	FileDialog_Type GetType() const		{ return m_type; }
@@ -131,7 +131,7 @@ private:
 	bool m_selection_made;
 	bool m_isDirty;
 	bool m_wasVisible{};
-	Directus::Context* m_context;
+	Spartan::Context* m_context;
 
 	// Callbacks
 	std::function<void(const std::string&)> m_callback_on_item_clicked;

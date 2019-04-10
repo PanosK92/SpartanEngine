@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class btRigidBody;
 class btCollisionShape;
 
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 	class Constraint;
@@ -44,7 +44,7 @@ namespace Directus
 		Impulse
 	};
 
-	class ENGINE_CLASS RigidBody : public IComponent
+	class SPARTAN_CLASS RigidBody : public IComponent
 	{
 	public:
 		RigidBody(Context* context, Entity* entity, Transform* transform);

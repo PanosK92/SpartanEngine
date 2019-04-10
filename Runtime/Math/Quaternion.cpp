@@ -35,7 +35,7 @@ using namespace std;
 // Bank		-> Roll		-> Z-axis													   //
 //=====================================================================================//
 
-namespace Directus::Math
+namespace Spartan::Math
 {
 	const Quaternion Quaternion::Identity(0.0f, 0.0f, 0.0f, 1.0f);
 

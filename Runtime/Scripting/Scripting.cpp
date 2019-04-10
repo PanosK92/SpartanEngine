@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 //===========================================
 
-namespace Directus
+namespace Spartan
 {
 	Scripting::Scripting(Context* context) : ISubsystem(context)
 	{

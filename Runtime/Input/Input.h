@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ISubsystem.h"
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	enum KeyCode
 	{
@@ -76,7 +76,7 @@ namespace Directus
 		Right_Shoulder
 	};
 
-	class ENGINE_CLASS Input : public ISubsystem
+	class SPARTAN_CLASS Input : public ISubsystem
 	{
 	public:
 		Input(Context* context);

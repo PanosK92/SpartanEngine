@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Shader.h"
 //===================================
 
-namespace Directus
+namespace Spartan
 {
 	enum Variation_Flag : unsigned long
 	{

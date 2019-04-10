@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/BoundingBox.h"
 //==============================
 
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 	struct RHI_Vertex_PosUvNorTan;
@@ -42,7 +42,7 @@ namespace Directus
 		FileStreamMode_Write
 	};
 
-	class ENGINE_CLASS FileStream
+	class SPARTAN_CLASS FileStream
 	{
 	public:
 		FileStream(const std::string& path, FileStreamMode mode);

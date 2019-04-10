@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class Widget_Profiler;
 class Widget_ResourceCache;
-namespace Directus
+namespace Spartan
 {
 	class Renderer;
 }
@@ -35,7 +35,7 @@ namespace Directus
 class Widget_Toolbar : public Widget
 {
 public:
-	Widget_Toolbar(Directus::Context* context);
+	Widget_Toolbar(Spartan::Context* context);
 	bool Begin() override;
 	void Tick(float delta_time) override;
 
@@ -43,7 +43,7 @@ private:
 	void ShowRendererOptions();
 	void ShowProfiler(float delta_time);
 	void ShowResourceCache(float delta_time);
-	Directus::Renderer* m_renderer;
+	Spartan::Renderer* m_renderer;
 
 	// Widgets
 	std::unique_ptr<Widget_Profiler> m_profiler;

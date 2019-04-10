@@ -28,9 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 //===========================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS RHI_DepthStencilState : public RHI_Object
+	class SPARTAN_CLASS RHI_DepthStencilState : public RHI_Object
 	{
 	public:
 		RHI_DepthStencilState(

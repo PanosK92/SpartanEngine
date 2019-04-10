@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=================
 
-namespace Directus { class Entity; }
+namespace Spartan { class Entity; }
 
 class Widget_World : public Widget
 {
 public:
-	Widget_World(Directus::Context* context);
+	Widget_World(Spartan::Context* context);
 	void Tick(float delta_time) override;
 
 private:
@@ -39,10 +39,10 @@ private:
 	void TreeShow();
 	void OnTreeBegin();
 	void OnTreeEnd();
-	void TreeAddEntity(Directus::Entity* entity);
+	void TreeAddEntity(Spartan::Entity* entity);
 	void HandleClicking();
-	void EntityHandleDragDrop(Directus::Entity* entity_ptr) const;
-	void SetSelectedEntity(const std::shared_ptr<Directus::Entity>& entity, bool from_editor = true);
+	void EntityHandleDragDrop(Spartan::Entity* entity_ptr) const;
+	void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity, bool from_editor = true);
 
 	// Misc
 	void Popups();
@@ -51,8 +51,8 @@ private:
 	static void HandleKeyShortcuts();
 
 	// Context menu actions
-	static void ActionEntityDelete(const std::shared_ptr<Directus::Entity>& entity);
-	static Directus::Entity* ActionEntityCreateEmpty();
+	static void ActionEntityDelete(const std::shared_ptr<Spartan::Entity>& entity);
+	static Spartan::Entity* ActionEntityCreateEmpty();
 	static void ActionEntityCreateCube();
 	static void ActionEntityCreateQuad();
 	static void ActionEntityCreateSphere();
@@ -69,6 +69,6 @@ private:
 	static void ActionEntityCreateAudioListener();
 	static void ActionEntityCreateSkybox();
 	
-	std::shared_ptr<Directus::Entity> m_entity_empty;
+	std::shared_ptr<Spartan::Entity> m_entity_empty;
 	bool m_expand_to_showentity = false;
 };

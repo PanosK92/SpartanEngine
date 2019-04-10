@@ -29,12 +29,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct FT_FaceRec_;
 
-namespace Directus
+namespace Spartan
 {
 	class Context;
 	struct Glyph;
 
-	class ENGINE_CLASS FontImporter
+	class SPARTAN_CLASS FontImporter
 	{
 	public:
 		FontImporter(Context* context);

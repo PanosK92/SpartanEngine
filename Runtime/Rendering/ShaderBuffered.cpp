@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Directus
+namespace Spartan
 {
 	ShaderBuffered::ShaderBuffered(const shared_ptr<RHI_Device>& rhi_device) : RHI_Shader(rhi_device)
 	{

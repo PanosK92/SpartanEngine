@@ -43,7 +43,7 @@ namespace Window
 	inline bool Create(HINSTANCE instance, const std::string& title)
 	{
 		g_instance = instance;
-		std::wstring windowTitle	= Directus::FileSystem::StringToWstring(title);
+		std::wstring windowTitle	= Spartan::FileSystem::StringToWstring(title);
 		int windowWidth				= GetSystemMetrics(SM_CXSCREEN);
 		int windowHeight			= GetSystemMetrics(SM_CYSCREEN);
 		LPCWSTR className			= L"myWindowClass";
@@ -56,12 +56,12 @@ namespace Window
 		wc.cbClsExtra    = 0;
 		wc.cbWndExtra    = 0;
 		wc.hInstance     = g_instance;
-		wc.hIcon         = LoadIcon(nullptr, IDI_APPLICATION);
-		wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
+		wc.hIcon         = LoadIcon(instance, IDI_APPLICATION);
+		wc.hCursor       = LoadCursor(instance, IDC_ARROW);
 		wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
 		wc.lpszMenuName  = nullptr;
 		wc.lpszClassName = className;
-		wc.hIconSm       = LoadIcon(nullptr, IDI_APPLICATION);
+		wc.hIconSm       = LoadIcon(instance, IDI_APPLICATION);
 	
 		if(!RegisterClassEx(&wc))
 		{

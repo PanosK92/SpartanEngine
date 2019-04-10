@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS ILogger
+	class SPARTAN_CLASS ILogger
 	{
 	public:
 		virtual ~ILogger() {}

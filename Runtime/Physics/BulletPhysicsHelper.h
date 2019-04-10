@@ -31,27 +31,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning(pop)
 //=====================================
 
-inline Directus::Math::Vector3 ToVector3(const btVector3& vector)
+inline Spartan::Math::Vector3 ToVector3(const btVector3& vector)
 {
-	return Directus::Math::Vector3(vector.getX(), vector.getY(), vector.getZ());
+	return Spartan::Math::Vector3(vector.getX(), vector.getY(), vector.getZ());
 }
 
-inline Directus::Math::Vector4 ToVector4(const btVector3& vector)
+inline Spartan::Math::Vector4 ToVector4(const btVector3& vector)
 {
-	return Directus::Math::Vector4(vector.getX(), vector.getY(), vector.getZ(), 1.0f);
+	return Spartan::Math::Vector4(vector.getX(), vector.getY(), vector.getZ(), 1.0f);
 }
 
-inline btVector3 ToBtVector3(Directus::Math::Vector3 vector)
+inline btVector3 ToBtVector3(Spartan::Math::Vector3 vector)
 {
 	return btVector3(vector.x, vector.y, vector.z);
 }
 
-inline btQuaternion ToBtQuaternion(Directus::Math::Quaternion quaternion)
+inline btQuaternion ToBtQuaternion(Spartan::Math::Quaternion quaternion)
 {
 	return btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
 }
 
-inline Directus::Math::Quaternion ToQuaternion(const btQuaternion& quaternion)
+inline Spartan::Math::Quaternion ToQuaternion(const btQuaternion& quaternion)
 {
-	return Directus::Math::Quaternion(quaternion.getX(), quaternion.getY(), quaternion.getZ(), quaternion.getW());
+	return Spartan::Math::Quaternion(quaternion.getX(), quaternion.getY(), quaternion.getZ(), quaternion.getW());
 }

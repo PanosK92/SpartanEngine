@@ -35,7 +35,7 @@ class CScriptBuilder;
 struct asSFuncPtr;
 struct asSMessageInfo;
 
-namespace Directus
+namespace Spartan
 {
 	class Module;
 

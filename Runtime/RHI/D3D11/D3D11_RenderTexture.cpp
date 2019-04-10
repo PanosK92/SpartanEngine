@@ -32,11 +32,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===============================
 
 //= NAMESPACES ================
-using namespace Directus::Math;
+using namespace Spartan::Math;
 using namespace std;
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	RHI_RenderTexture::RHI_RenderTexture(const shared_ptr<RHI_Device>& rhi_device, unsigned int width, unsigned int height, RHI_Format texture_format, bool depth, RHI_Format depth_format, unsigned int array_size)
 	{

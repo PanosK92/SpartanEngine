@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ==========
 using namespace std;
-using namespace Directus;
+using namespace Spartan;
 //=======================
 
 IResource::IResource(Context* context, const Resource_Type type)
@@ -44,7 +44,7 @@ template <typename T>
 constexpr Resource_Type IResource::TypeToEnum() { return Resource_Unknown; }
 
 // Explicit template instantiation
-#define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT) template<> ENGINE_CLASS Resource_Type IResource::TypeToEnum<T>() { return enumT; }
+#define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT) template<> SPARTAN_CLASS Resource_Type IResource::TypeToEnum<T>() { return enumT; }
 
 // To add a new component to the engine, simply register it here
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture,		Resource_Texture)

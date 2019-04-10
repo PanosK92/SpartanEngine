@@ -1,8 +1,8 @@
 <img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/logo.png"/>
 
-# Directus3D Game Engine
+# Spartan Engine
 
-Directus3D is a game engine that started as a hobby project and evolved into something greater.
+Spartan is a game engine that started as a hobby project and evolved into something greater.
 The source code aims to be clean, modern and tackles a lot of aspects of engine development.
 The project is at an early development stage and there is a lot experimentation going on, regarding what works best.
 This means that the wisest thing to do is to approach it as study material, without expecting to make games with it (yet).
