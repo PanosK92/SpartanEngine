@@ -98,7 +98,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	//= Ambient light ==========================================================================================
 	float factor_occlusion 		= occlusion_texture == 1.0f ? occlusion_ssao : occlusion_texture;
 	float factor_self_shadowing = shadow_directional * saturate(dot(normal, normalize(-dirLightDirection).xyz));
-	float factor_sky_light		= clamp(dirLightIntensity.r * factor_self_shadowing, 0.2f, 1.0f);
+	float factor_sky_light		= clamp(dirLightIntensity.r * factor_self_shadowing, 0.025f, 1.0f);
 	float ambient_light 		= factor_sky_light * factor_occlusion;
 	//==========================================================================================================
 
