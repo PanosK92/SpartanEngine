@@ -1,4 +1,5 @@
-<img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/logo.png">
+<img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/logo.png"/>
+
 # Directus3D Game Engine
 
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
