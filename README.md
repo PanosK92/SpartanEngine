@@ -1,4 +1,4 @@
-<img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/logo.png"/>
+<img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/logo.png"/>
 
 # Spartan Engine
 
@@ -12,8 +12,8 @@ Platform | Status | Quality | Binaries | :+1:
 :-:|:-:|:-:|:-:|:-:|
 <img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20" height="20"/>|[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)|[![Codacy Badge](https://api.codacy.com/project/badge/Grade/da72b4f208284a30b7673abd86e8d8d3)](https://www.codacy.com/app/PanosK92/Directus3D?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PanosK92/Directus3D&amp;utm_campaign=Badge_Grade)|[Download](https://ci.appveyor.com/api/projects/PanosK92/directus3d/artifacts/Binaries/Release.zip?branch=master)|[![](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSP87Y77VNHPG&source=url)
 
-<img align="left" width="468" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/screenshot-v0.3_preview4.jpg"/>
-<img align="left" width="365" src="https://raw.githubusercontent.com/PanosK92/Directus3D/master/Data/rotating_gun.gif"/>
+<img align="left" width="468" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/screenshot-v0.3_preview4.jpg"/>
+<img align="left" width="365" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
 
 [
 ![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
@@ -92,7 +92,7 @@ Vulkan      | 40%           | Will become the default rendering backend.
 - Make editor more stylish.
 
 # Documentation
-- [Compiling](https://github.com/PanosK92/Directus3D/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile from source
+- [Compiling](https://github.com/PanosK92/SpartanEngine/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile from source
 
 # Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109).
@@ -100,4 +100,4 @@ Vulkan      | 40%           | Will become the default rendering backend.
 - Windows 10.
 
 # License
-- Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
+- Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/SpartanEngine/blob/master/LICENSE.txt) for details.
