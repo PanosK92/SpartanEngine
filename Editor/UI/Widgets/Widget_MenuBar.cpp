@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ==========
 using namespace std;
-using namespace Directus;
+using namespace Spartan;
 //=======================
 
 namespace _Widget_MenuBar
@@ -140,7 +140,7 @@ void Widget_MenuBar::ShowAboutWindow()
 {
 	ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
 
-	ImGui::Text("Directus3D %s", ENGINE_VERSION);
+	ImGui::Text("Spartan %s", ENGINE_VERSION);
 	ImGui::Text("Author: Panos Karabelas");
 	ImGui::SameLine(600); ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);  if (ImGui::Button("GitHub"))
 	{

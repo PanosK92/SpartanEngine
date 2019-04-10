@@ -44,19 +44,19 @@ namespace vulkan_helper
 			const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
 			void* p_user_data
 		){
-			auto type = Directus::Log_Info;
-			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? Directus::Log_Warning : type;
-			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? Directus::Log_Error : type;
+			auto type = Spartan::Log_Info;
+			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? Spartan::Log_Warning : type;
+			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? Spartan::Log_Error : type;
 
-			Directus::Log::m_log_to_file = true;
-			Directus::Log::m_caller_name = "Vulkan";
-			Directus::Log::Write(p_callback_data->pMessage, type);
-			Directus::Log::m_caller_name = "";
+			Spartan::Log::m_log_to_file = true;
+			Spartan::Log::m_caller_name = "Vulkan";
+			Spartan::Log::Write(p_callback_data->pMessage, type);
+			Spartan::Log::m_caller_name = "";
 
 			return VK_FALSE;
 		}
 
-		inline VkResult create(Directus::RHI_Context* context, const VkDebugUtilsMessengerCreateInfoEXT* create_info)
+		inline VkResult create(Spartan::RHI_Context* context, const VkDebugUtilsMessengerCreateInfoEXT* create_info)
 		{
 			if (const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(context->instance, "vkCreateDebugUtilsMessengerEXT")))
 				return func(context->instance, create_info, nullptr, &context->callback_handle);
@@ -64,7 +64,7 @@ namespace vulkan_helper
 			return VK_ERROR_EXTENSION_NOT_PRESENT;
 		}
 
-		inline void destroy(Directus::RHI_Context* context)
+		inline void destroy(Spartan::RHI_Context* context)
 		{
 			if (const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(context->instance, "vkDestroyDebugUtilsMessengerEXT")))
 			{
@@ -75,7 +75,7 @@ namespace vulkan_helper
 
 	namespace swap_chain
 	{
-		inline SwapChainSupportDetails check_surface_compatibility(Directus::RHI_Context* context, const VkSurfaceKHR surface)
+		inline SwapChainSupportDetails check_surface_compatibility(Spartan::RHI_Context* context, const VkSurfaceKHR surface)
 		{
 			SwapChainSupportDetails details;
 			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->device_physical, surface, &details.capabilities);
@@ -145,7 +145,7 @@ namespace vulkan_helper
 		inline VkExtent2D choose_extent(const VkSurfaceCapabilitiesKHR& capabilities)
 		{
 			using namespace std;
-			using namespace Directus;
+			using namespace Spartan;
 			using namespace Math::Helper;
 
 			auto max = (numeric_limits<uint32_t>::max)();
@@ -197,7 +197,7 @@ namespace vulkan_helper
 			return _indices;
 		}
 
-		inline bool check_extension_support(Directus::RHI_Context* context, const VkPhysicalDevice device)
+		inline bool check_extension_support(Spartan::RHI_Context* context, const VkPhysicalDevice device)
 		{
 			uint32_t extensionCount;
 			vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
@@ -214,7 +214,7 @@ namespace vulkan_helper
 			return required_extensions.empty();
 		}
 
-		inline bool choose(Directus::RHI_Context* context, const std::vector<VkPhysicalDevice>& physical_devices)
+		inline bool choose(Spartan::RHI_Context* context, const std::vector<VkPhysicalDevice>& physical_devices)
 		{
 			for (const auto& device : physical_devices)
 			{		
@@ -236,7 +236,7 @@ namespace vulkan_helper
 
 	namespace command_list
 	{
-		inline bool create_command_buffer(Directus::RHI_Context* context, VkCommandBuffer* cmd_buffer, VkCommandPool cmd_pool, VkCommandBufferLevel level)
+		inline bool create_command_buffer(Spartan::RHI_Context* context, VkCommandBuffer* cmd_buffer, VkCommandPool cmd_pool, VkCommandBufferLevel level)
 		{
 			VkCommandBufferAllocateInfo allocInfo = {};
 			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -247,7 +247,7 @@ namespace vulkan_helper
 			return vkAllocateCommandBuffers(context->device, &allocInfo, cmd_buffer) == VK_SUCCESS;
 		}
 
-		inline bool create_command_pool(Directus::RHI_Context* context, VkCommandPool* cmd_pool)
+		inline bool create_command_pool(Spartan::RHI_Context* context, VkCommandPool* cmd_pool)
 		{
 			VkCommandPoolCreateInfo cmdPoolInfo = {};
 			cmdPoolInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -270,7 +270,7 @@ namespace vulkan_helper
 		}
 	}
 
-	inline bool check_validation_layers(Directus::RHI_Context* context)
+	inline bool check_validation_layers(Spartan::RHI_Context* context)
 	{
 		uint32_t layer_count;
 		vkEnumerateInstanceLayerProperties(&layer_count, nullptr);

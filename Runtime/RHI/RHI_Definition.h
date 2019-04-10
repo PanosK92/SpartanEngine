@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=============================
 
 // RHI (Rendering Hardware Interface) definitions
-namespace Directus
+namespace Spartan
 {
 	struct RHI_Context;
 	class RHI_Device;

@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EngineDefs.h"
 //================================
 
-namespace Directus::D3D11_Helper
+namespace Spartan::D3D11_Helper
 { 
 	inline const char* dxgi_error_to_string(const HRESULT error_code)
 	{

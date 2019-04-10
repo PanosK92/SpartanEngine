@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class btCollisionShape;
 
-namespace Directus
+namespace Spartan
 {
 	class Mesh;
 
@@ -44,7 +44,7 @@ namespace Directus
 		ColliderShape_Mesh,
 	};
 
-	class ENGINE_CLASS Collider : public IComponent
+	class SPARTAN_CLASS Collider : public IComponent
 	{
 	public:
 		Collider(Context* context, Entity* entity, Transform* transform);

@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EngineDefs.h"
 //=====================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS Stopwatch
+	class SPARTAN_CLASS Stopwatch
 	{
 	public:
 		Stopwatch();

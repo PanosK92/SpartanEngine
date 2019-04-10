@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/BoundingBox.h"
 //===================================
 
-namespace Directus
+namespace Spartan
 {
 	class Model;
 	class Mesh;
@@ -48,7 +48,7 @@ namespace Directus
 		Geometry_Default_Cone
 	};
 
-	class ENGINE_CLASS Renderable : public IComponent
+	class SPARTAN_CLASS Renderable : public IComponent
 	{
 	public:
 		Renderable(Context* context, Entity* entity, Transform* transform);

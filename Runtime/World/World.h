@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ISubsystem.h"
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 	class Light;
@@ -43,7 +43,7 @@ namespace Directus
 		Loading
 	};
 
-	class ENGINE_CLASS World : public ISubsystem
+	class SPARTAN_CLASS World : public ISubsystem
 	{
 	public:
 		World(Context* context);

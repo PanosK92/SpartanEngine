@@ -37,7 +37,7 @@ namespace pugi
 }
 //========================
 
-namespace Directus
+namespace Spartan
 {
 	//= FORWARD DECLARATIONS =
 	namespace Math
@@ -48,7 +48,7 @@ namespace Directus
 	}
 	//========================
 
-	class ENGINE_CLASS XmlDocument
+	class SPARTAN_CLASS XmlDocument
 	{
 	public:
 		XmlDocument();

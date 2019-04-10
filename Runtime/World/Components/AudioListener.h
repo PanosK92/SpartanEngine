@@ -25,11 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 //=====================
 
-namespace Directus
+namespace Spartan
 {
 	class Audio;
 
-	class ENGINE_CLASS AudioListener : public IComponent
+	class SPARTAN_CLASS AudioListener : public IComponent
 	{
 	public:
 		AudioListener(Context* context, Entity* entity, Transform* transform);

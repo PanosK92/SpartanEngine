@@ -29,12 +29,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Definition.h"
 //===================================
 
-namespace Directus
+namespace Spartan
 {
 	class Context;
 	class Transform;
 
-	class ENGINE_CLASS Grid
+	class SPARTAN_CLASS Grid
 	{
 	public:
 		Grid(std::shared_ptr<RHI_Device> rhiDevice);

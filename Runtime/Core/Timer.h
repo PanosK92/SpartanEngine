@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <chrono>
 //====================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS Timer : public ISubsystem
+	class SPARTAN_CLASS Timer : public ISubsystem
 	{
 	public:
 		Timer(Context* context);

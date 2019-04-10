@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Directus
+namespace Spartan
 {
 	ScriptInstance::ScriptInstance()
 	{

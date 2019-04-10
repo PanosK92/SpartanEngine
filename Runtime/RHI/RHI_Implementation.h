@@ -241,7 +241,7 @@ struct QueueFamilyIndices
 };
 #endif
 
-namespace Directus
+namespace Spartan
 {
 	struct RHI_Context
 	{

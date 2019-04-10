@@ -26,11 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EngineDefs.h"
 //=====================
 
-#define GENERATE_GUID Directus::GUIDGenerator::Generate()
+#define GENERATE_GUID Spartan::GUIDGenerator::Generate()
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS GUIDGenerator
+	class SPARTAN_CLASS GUIDGenerator
 	{
 	public:
 		static unsigned int Generate();

@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Model.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	#define VALIDATE_RESOURCE_TYPE(T) static_assert(std::is_base_of<IResource, T>::value, "Provided type does not implement IResource")
 
@@ -47,7 +47,7 @@ namespace Directus
 		Asset_Textures
 	};
 
-	class ENGINE_CLASS ResourceCache : public ISubsystem
+	class SPARTAN_CLASS ResourceCache : public ISubsystem
 	{
 	public:
 		ResourceCache(Context* context);

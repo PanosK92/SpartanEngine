@@ -28,6 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Widget_ResourceCache : public Widget
 {
 public:
-	Widget_ResourceCache(Directus::Context* context);
+	Widget_ResourceCache(Spartan::Context* context);
 	void Tick(float deltaTime) override;
 };

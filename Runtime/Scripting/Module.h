@@ -29,7 +29,7 @@ class asIScriptModule;
 class CScriptBuilder;
 class asIScriptEngine;
 
-namespace Directus
+namespace Spartan
 {
 	class Scripting;
 

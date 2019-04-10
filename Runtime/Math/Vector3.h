@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MathHelper.h"
 //=============================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
-	class ENGINE_CLASS Vector3
+	class SPARTAN_CLASS Vector3
 	{
 	public:
 		// Constructor
@@ -234,5 +234,5 @@ namespace Directus::Math
 	};
 
 	// Reverse order operators
-	inline ENGINE_CLASS Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
+	inline SPARTAN_CLASS Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
 }

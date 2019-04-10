@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector3.h"
 //==================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
-	class ENGINE_CLASS Quaternion
+	class SPARTAN_CLASS Quaternion
 	{
 	public:
 		// Constructs an identity quaternion
@@ -322,6 +322,6 @@ namespace Directus::Math
 	};
 
 	// Reverse order operators
-	inline ENGINE_CLASS Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
-	inline ENGINE_CLASS Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
+	inline SPARTAN_CLASS Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
+	inline SPARTAN_CLASS Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
 }

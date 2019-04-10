@@ -66,12 +66,12 @@ enum Icon_Type
 	Thumbnail_File_Font
 };
 
-namespace Directus {class Context;}
+namespace Spartan {class Context;}
 
 struct Thumbnail
 {
 	Thumbnail(){}
-	Thumbnail(Icon_Type type, std::shared_ptr<Directus::RHI_Texture> texture, const std::string& filePath)
+	Thumbnail(Icon_Type type, std::shared_ptr<Spartan::RHI_Texture> texture, const std::string& filePath)
 	{
 		this->type = type;
 		this->texture = texture;
@@ -79,7 +79,7 @@ struct Thumbnail
 	}
 
 	Icon_Type type;
-	std::shared_ptr<Directus::RHI_Texture> texture;
+	std::shared_ptr<Spartan::RHI_Texture> texture;
 	std::string filePath;
 };
 
@@ -89,7 +89,7 @@ public:
 	IconProvider();
 	~IconProvider();
 
-	void Initialize(Directus::Context* context);
+	void Initialize(Spartan::Context* context);
 
 	//= SHADER RESOURCE ===========================================
 	void* GetShaderResourceByType(Icon_Type type);
@@ -114,5 +114,5 @@ public:
 private:
 	const Thumbnail& GetThumbnailByType(Icon_Type type);
 	std::vector<Thumbnail> m_thumbnails;
-	Directus::Context* m_context;
+	Spartan::Context* m_context;
 };

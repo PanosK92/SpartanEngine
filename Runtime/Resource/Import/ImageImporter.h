@@ -66,11 +66,11 @@ XPM files[reading, writing]
 
 struct FIBITMAP;
 
-namespace Directus
+namespace Spartan
 {
 	class Context;
 
-	class ENGINE_CLASS ImageImporter
+	class SPARTAN_CLASS ImageImporter
 	{
 	public:
 		ImageImporter(Context* context);

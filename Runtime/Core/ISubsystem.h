@@ -25,11 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EngineDefs.h"
 //=====================
 
-namespace Directus
+namespace Spartan
 {
 	class Context;
 
-	class ENGINE_CLASS ISubsystem
+	class SPARTAN_CLASS ISubsystem
 	{		
 	public:
 		ISubsystem(Context* context)

@@ -28,12 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=====================
 
 //= NAMESPACES ========================
-using namespace Directus::Math::Helper;
+using namespace Spartan::Math::Helper;
 //=====================================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
-	class ENGINE_CLASS Matrix
+	class SPARTAN_CLASS Matrix
 	{
 	public:
 		Matrix()
@@ -432,5 +432,5 @@ namespace Directus::Math
 	};
 
 	// Reverse order operators
-	inline ENGINE_CLASS Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
+	inline SPARTAN_CLASS Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
 }

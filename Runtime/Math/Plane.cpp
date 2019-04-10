@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Plane.h"
 //================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
 	Plane::Plane()
 	{

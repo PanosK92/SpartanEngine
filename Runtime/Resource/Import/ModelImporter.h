@@ -33,7 +33,7 @@ struct aiScene;
 struct aiMaterial;
 struct aiMesh;
 
-namespace Directus
+namespace Spartan
 {
 	class Context;
 	class Material;
@@ -41,7 +41,7 @@ namespace Directus
 	class Model;
 	class World;
 
-	class ENGINE_CLASS ModelImporter
+	class SPARTAN_CLASS ModelImporter
 	{
 	public:
 		ModelImporter(Context* context);

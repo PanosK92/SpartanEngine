@@ -28,13 +28,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EventSystem.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	class Transform;
 	class Renderable;
 	#define VALIDATE_COMPONENT_TYPE(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
 
-	class ENGINE_CLASS Entity : public std::enable_shared_from_this<Entity>
+	class SPARTAN_CLASS Entity : public std::enable_shared_from_this<Entity>
 	{
 	public:
 		Entity(Context* context);

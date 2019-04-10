@@ -31,11 +31,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===================================
 
 //= NAMESPACES ================
-using namespace Directus::Math;
+using namespace Spartan::Math;
 using namespace std;
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	Camera::Camera(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{

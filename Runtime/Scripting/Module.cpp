@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Directus
+namespace Spartan
 {
 	Module::Module(const string& moduleName, weak_ptr<Scripting> scriptEngine)
 	{

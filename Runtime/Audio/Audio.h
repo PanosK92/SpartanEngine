@@ -32,7 +32,7 @@ namespace FMOD
 }
 //========================
 
-namespace Directus
+namespace Spartan
 {
 	class Transform;
 	class Profiler;

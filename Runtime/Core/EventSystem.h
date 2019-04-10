@@ -53,22 +53,22 @@ enum Event_Type
 	Event_World_Start			// The world should start ticking
 };
 
-//= MACROS =====================================================================================================
-#define EVENT_HANDLER_STATIC(function)				[](const Directus::Variant& var)		{ function(); }
-#define EVENT_HANDLER(function)						[this](const Directus::Variant& var)	{ function(); }
-#define EVENT_HANDLER_VARIANT(function)				[this](const Directus::Variant& var)	{ function(var); }
-#define EVENT_HANDLER_VARIANT_STATIC(function)		[](const Directus::Variant& var)		{ function(var); }
-#define SUBSCRIBE_TO_EVENT(eventID, function)		Directus::EventSystem::Get().Subscribe(eventID, function);
-#define UNSUBSCRIBE_FROM_EVENT(eventID, function)	Directus::EventSystem::Get().Unsubscribe(eventID, function);
-#define FIRE_EVENT(eventID)							Directus::EventSystem::Get().Fire(eventID)
-#define FIRE_EVENT_DATA(eventID, data)				Directus::EventSystem::Get().Fire(eventID, data)
-//==============================================================================================================
+//= MACROS ====================================================================================================
+#define EVENT_HANDLER_STATIC(function)				[](const Spartan::Variant& var)		{ function(); }
+#define EVENT_HANDLER(function)						[this](const Spartan::Variant& var)	{ function(); }
+#define EVENT_HANDLER_VARIANT(function)				[this](const Spartan::Variant& var)	{ function(var); }
+#define EVENT_HANDLER_VARIANT_STATIC(function)		[](const Spartan::Variant& var)		{ function(var); }
+#define SUBSCRIBE_TO_EVENT(eventID, function)		Spartan::EventSystem::Get().Subscribe(eventID, function);
+#define UNSUBSCRIBE_FROM_EVENT(eventID, function)	Spartan::EventSystem::Get().Unsubscribe(eventID, function);
+#define FIRE_EVENT(eventID)							Spartan::EventSystem::Get().Fire(eventID)
+#define FIRE_EVENT_DATA(eventID, data)				Spartan::EventSystem::Get().Fire(eventID, data)
+//=============================================================================================================
 
-namespace Directus
+namespace Spartan
 {
 	using subscriber = std::function<void(const Variant&)>;
 
-	class ENGINE_CLASS EventSystem
+	class SPARTAN_CLASS EventSystem
 	{
 	public:
 		static EventSystem& Get()

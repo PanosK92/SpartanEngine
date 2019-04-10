@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=============================
 
 //= FORWARD DECLARATIONS =
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 }
@@ -47,23 +47,23 @@ namespace Directus
 	float,											\
 	double,											\
 	void*,											\
-	Directus::Entity*,								\
-	std::shared_ptr<Directus::Entity>,				\
-	std::weak_ptr<Directus::Entity>,				\
-	std::vector<std::weak_ptr<Directus::Entity>>,	\
-	std::vector<std::shared_ptr<Directus::Entity>>,	\
-	Directus::Math::Vector2,						\
-	Directus::Math::Vector3,						\
-	Directus::Math::Vector4,						\
-	Directus::Math::Matrix,							\
-	Directus::Math::Quaternion
+	Spartan::Entity*,								\
+	std::shared_ptr<Spartan::Entity>,				\
+	std::weak_ptr<Spartan::Entity>,					\
+	std::vector<std::weak_ptr<Spartan::Entity>>,	\
+	std::vector<std::shared_ptr<Spartan::Entity>>,	\
+	Spartan::Math::Vector2,							\
+	Spartan::Math::Vector3,							\
+	Spartan::Math::Vector4,							\
+	Spartan::Math::Matrix,							\
+	Spartan::Math::Quaternion
 
 #define VARIANT_TYPES std::variant<_VARIANT_TYPES>
 typedef std::variant<_VARIANT_TYPES, VARIANT_TYPES> VariantInternal;
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS Variant
+	class SPARTAN_CLASS Variant
 	{
 	public:
 		// Default

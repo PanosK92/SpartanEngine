@@ -38,14 +38,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 //=============================
 
 static const int MAX_SOLVER_ITERATIONS	= 256;
 static const float INTERNAL_FPS			= 60.0f;
 static const Vector3 GRAVITY			= Vector3(0.0f, -9.81f, 0.0f);
 
-namespace Directus
+namespace Spartan
 { 
 	float ISubsystem::m_delta_time_sec;
 

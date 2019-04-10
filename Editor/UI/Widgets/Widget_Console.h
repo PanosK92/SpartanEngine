@@ -37,8 +37,8 @@ struct LogPackage
 	unsigned int error_level = 0;
 };
 
-// Implementation of Directus::ILogger so the engine can log into the editor
-class EngineLogger : public Directus::ILogger
+// Implementation of Spartan::ILogger so the engine can log into the editor
+class EngineLogger : public Spartan::ILogger
 {
 public:
 	typedef std::function<void(LogPackage)> log_func;
@@ -62,7 +62,7 @@ private:
 class Widget_Console : public Widget
 {
 public:
-	Widget_Console(Directus::Context* context);
+	Widget_Console(Spartan::Context* context);
 	void Tick(float delta_time) override;
 	void AddLogPackage(const LogPackage& package);
 	void Clear();

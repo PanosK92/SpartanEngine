@@ -30,13 +30,13 @@ class ButtonColorPicker
 public:
 	ButtonColorPicker(const std::string& windowTitle);
 	void Update();
-	void SetColor(const Directus::Math::Vector4& color) { m_color = color; }
-	const Directus::Math::Vector4& GetColor() { return m_color; }
+	void SetColor(const Spartan::Math::Vector4& color) { m_color = color; }
+	const Spartan::Math::Vector4& GetColor() { return m_color; }
 
 private:
 	void ShowColorPicker();
 
 	bool m_isVisible;
-	Directus::Math::Vector4 m_color;
+	Spartan::Math::Vector4 m_color;
 	std::string m_windowTitle;
 };

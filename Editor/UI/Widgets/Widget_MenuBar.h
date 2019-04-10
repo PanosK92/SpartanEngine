@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=================
 
 class FileDialog;
-namespace Directus { class Context; }
+namespace Spartan { class Context; }
 
 class Widget_MenuBar : public Widget
 {
 public:
-	Widget_MenuBar(Directus::Context* context);
+	Widget_MenuBar(Spartan::Context* context);
 	void Tick(float deltaTime) override;
 
 private:

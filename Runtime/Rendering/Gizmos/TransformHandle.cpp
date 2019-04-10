@@ -38,10 +38,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //=============================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	void TransformHandleAxis::UpdateInput(const TransformHandle_Type type, Transform* transform, Input* input)
 	{

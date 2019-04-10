@@ -37,7 +37,7 @@ using namespace std;
 using namespace FMOD;
 //===================
 
-namespace Directus
+namespace Spartan
 {
 	Audio::Audio(Context* context) : ISubsystem(context)
 	{

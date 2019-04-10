@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus::Math;
+using namespace Spartan::Math;
 using namespace Helper;
 //=============================
 
@@ -40,7 +40,7 @@ using namespace Helper;
 #define GLYPH_END 127
 #define ATLAS_MAX_WIDTH 512
 
-namespace Directus
+namespace Spartan
 {
 	FT_Library m_library;
 

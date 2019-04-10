@@ -30,7 +30,7 @@ using namespace std;
 using namespace chrono;
 //=====================
 
-namespace Directus
+namespace Spartan
 {
 	Timer::Timer(Context* context) : ISubsystem(context)
 	{

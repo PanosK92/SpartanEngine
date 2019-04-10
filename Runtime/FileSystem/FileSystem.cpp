@@ -33,7 +33,7 @@ using namespace std;
 using namespace std::filesystem;
 //==============================
 
-namespace Directus
+namespace Spartan
 {
 	vector<string> FileSystem::m_supportedImageFormats;
 	vector<string> FileSystem::m_supportedAudioFormats;

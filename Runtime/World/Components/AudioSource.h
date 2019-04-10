@@ -27,11 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //=====================
 
-namespace Directus
+namespace Spartan
 {
 	class AudioClip;
 
-	class ENGINE_CLASS AudioSource : public IComponent
+	class SPARTAN_CLASS AudioSource : public IComponent
 	{
 	public:
 		AudioSource(Context* context, Entity* entity, Transform* transform);

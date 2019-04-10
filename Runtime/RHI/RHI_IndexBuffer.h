@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //=========================
 
-namespace Directus
+namespace Spartan
 {
 	class RHI_IndexBuffer : public RHI_Object
 	{

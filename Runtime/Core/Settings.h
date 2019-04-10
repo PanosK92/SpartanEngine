@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 //==========================
 
-namespace Directus
+namespace Spartan
 {
 	enum FPS_Policy
 	{
@@ -36,7 +36,7 @@ namespace Directus
 		FPS_MonitorMatch
 	};
 
-	class ENGINE_CLASS Settings
+	class SPARTAN_CLASS Settings
 	{
 	public:
 		static Settings& Get()

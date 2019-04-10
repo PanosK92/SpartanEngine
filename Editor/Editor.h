@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= FORWARD DECLARATIONS =
 class Widget;
-namespace Directus 
+namespace Spartan 
 {
 	class Context; 
 	class Engine;
@@ -59,9 +59,9 @@ private:
 	bool m_initialized = false;
 
 	// Engine
-	std::unique_ptr<Directus::Engine> m_engine;
-	std::shared_ptr<Directus::RHI_Device> m_rhiDevice;
-	Directus::Context* m_context	= nullptr;
-	Directus::Renderer* m_renderer	= nullptr;	
-	Directus::Timer* m_timer		= nullptr;
+	std::unique_ptr<Spartan::Engine> m_engine;
+	std::shared_ptr<Spartan::RHI_Device> m_rhiDevice;
+	Spartan::Context* m_context	= nullptr;
+	Spartan::Renderer* m_renderer	= nullptr;	
+	Spartan::Timer* m_timer		= nullptr;
 };

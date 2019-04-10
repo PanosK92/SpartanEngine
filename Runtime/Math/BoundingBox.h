@@ -28,14 +28,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //============================
 
-namespace Directus
+namespace Spartan
 {
 	class Mesh;
 	namespace Math
 	{
 		class Matrix;
 
-		class ENGINE_CLASS BoundingBox
+		class SPARTAN_CLASS BoundingBox
 		{
 		public:
 			// Construct with zero size.

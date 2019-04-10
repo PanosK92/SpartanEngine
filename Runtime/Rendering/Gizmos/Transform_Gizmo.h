@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EngineDefs.h"
 //================================
 
-namespace Directus
+namespace Spartan
 {
 	class World;
 	class Input;
@@ -37,7 +37,7 @@ namespace Directus
 	class RHI_IndexBuffer;
 	class RHI_VertexBuffer;
 
-	class ENGINE_CLASS Transform_Gizmo
+	class SPARTAN_CLASS Transform_Gizmo
 	{
 	public:
 		Transform_Gizmo(Context* context);

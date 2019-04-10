@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=====================
 
-namespace Directus
+namespace Spartan
 {
 	class Context;
 
@@ -39,7 +39,7 @@ namespace Directus
 
 	class Timer;
 
-	class ENGINE_CLASS Engine
+	class SPARTAN_CLASS Engine
 	{
 	public:
 		Engine(const std::shared_ptr<Context>& context);

@@ -28,11 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 //=========================
 
-namespace Directus
+namespace Spartan
 {
 	#define VALIDATE_SUBSYSTEM_TYPE(T) static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem")
 
-	class ENGINE_CLASS Context
+	class SPARTAN_CLASS Context
 	{
 	public:
 		Context() = default;

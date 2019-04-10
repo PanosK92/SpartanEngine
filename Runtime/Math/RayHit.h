@@ -26,13 +26,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	class Entity;
 
 	namespace Math
 	{
-		class ENGINE_CLASS RayHit
+		class SPARTAN_CLASS RayHit
 		{
 		public:
 			RayHit(std::shared_ptr<Entity> entity, float distance, bool inside)

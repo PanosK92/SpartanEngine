@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 //=============================
 
-namespace Directus
+namespace Spartan
 {
 	static int g_progress_ModelImporter = 0;
 	static int g_progress_Scene			= 1;
@@ -50,7 +50,7 @@ namespace Directus
 		bool isLoading;
 	};
 
-	class ENGINE_CLASS ProgressReport
+	class SPARTAN_CLASS ProgressReport
 	{
 	public:
 		static ProgressReport& Get()

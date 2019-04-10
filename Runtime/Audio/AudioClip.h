@@ -35,7 +35,7 @@ namespace FMOD
 }
 //====================
 
-namespace Directus
+namespace Spartan
 {
 	class Transform;
 
@@ -51,7 +51,7 @@ namespace Directus
 		Custom
 	};
 
-	class ENGINE_CLASS AudioClip : public IResource
+	class SPARTAN_CLASS AudioClip : public IResource
 	{
 	public:
 		AudioClip(Context* context);

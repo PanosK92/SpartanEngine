@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Shader.h"
 //====================================
 
-namespace Directus
+namespace Spartan
 {
 	struct Struct_Blur
 	{
@@ -254,7 +254,7 @@ namespace Directus
 		float m_padding;
 	};
 
-	class ENGINE_CLASS ShaderBuffered : public RHI_Shader
+	class SPARTAN_CLASS ShaderBuffered : public RHI_Shader
 	{
 	public:
 		ShaderBuffered(const std::shared_ptr<RHI_Device>& rhi_device);

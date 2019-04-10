@@ -28,7 +28,7 @@ using namespace std;
 using namespace chrono;
 //=====================
 
-namespace Directus
+namespace Spartan
 {
 	Stopwatch::Stopwatch()
 	{

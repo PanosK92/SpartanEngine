@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Class
 #if SHARED_LIB == 1
 #ifdef RUNTIME
-#define ENGINE_CLASS __declspec(dllexport)
+#define SPARTAN_CLASS __declspec(dllexport)
 #elif EDITOR
-#define ENGINE_CLASS __declspec(dllimport)
+#define SPARTAN_CLASS __declspec(dllimport)
 #endif
 #elif STATIC_LIB == 1
-#define ENGINE_CLASS
+#define SPARTAN_CLASS
 #endif
 
 // APIs
@@ -53,7 +53,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assert.h>
 //=================
 
-namespace Directus
+namespace Spartan
 {
 	template <typename T>
 	constexpr void safe_release(T& ptr)
@@ -85,5 +85,5 @@ namespace Directus
 		}
 	}
 
-	#define ENGINE_ASSERT(expression) assert(expression)
+	#define SPARTAN_ASSERT(expression) assert(expression)
 }

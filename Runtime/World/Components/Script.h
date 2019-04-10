@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Scripting/ScriptInstance.h"
 //=========================================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS Script : public IComponent
+	class SPARTAN_CLASS Script : public IComponent
 	{
 	public:
 		Script(Context* context, Entity* entity, Transform* transform);

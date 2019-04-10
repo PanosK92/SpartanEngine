@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector3.h"
 //========================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
 	class Frustum
 	{

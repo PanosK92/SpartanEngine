@@ -35,8 +35,8 @@ struct Metric
 
 	void AddSample(const float sample)
 	{
-		m_min = Directus::Math::Helper::Min(m_min, sample);
-		m_max = Directus::Math::Helper::Max(m_max, sample);
+		m_min = Spartan::Math::Helper::Min(m_min, sample);
+		m_max = Spartan::Math::Helper::Max(m_max, sample);
 		m_sum += sample;
 		m_sample_count++;
 		m_avg = float(m_sum / static_cast<float>(m_sample_count));
@@ -61,7 +61,7 @@ struct Metric
 class Widget_Profiler : public Widget
 {
 public:
-	Widget_Profiler(Directus::Context* context);
+	Widget_Profiler(Spartan::Context* context);
 	void Tick(float delta_time) override;
 
 private:
@@ -74,5 +74,5 @@ private:
 	unsigned int m_plot_size = 400;
 	Metric m_metric_cpu;
 	Metric m_metric_gpu;
-	Directus::Profiler* m_profiler;
+	Spartan::Profiler* m_profiler;
 };

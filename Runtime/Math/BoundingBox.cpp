@@ -26,10 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //======================
 
 //= NAMESPACES ========================
-using namespace Directus::Math::Helper;
+using namespace Spartan::Math::Helper;
 //=====================================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
 	const BoundingBox BoundingBox::Zero(Vector3::Zero, Vector3::Zero);
 

@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../ImGui/Source/imgui_internal.h"
 //============================================
 
-namespace Directus	{ class Context; }
+namespace Spartan	{ class Context; }
 
 class Widget
 {
 public:
-	Widget(Directus::Context* context) { m_context	= context; }
+	Widget(Spartan::Context* context) { m_context	= context; }
 	virtual ~Widget() {}
 
 	virtual bool Begin()
@@ -82,7 +82,7 @@ protected:
 	float m_yMax		= FLT_MAX;
 	float m_height		= 0;
 
-	Directus::Context* m_context = nullptr;
+	Spartan::Context* m_context = nullptr;
 	std::string m_title;
 	ImGuiWindow* m_window;
 

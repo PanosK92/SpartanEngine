@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
 	bool Rectangle::CreateBuffers(Renderer* renderer)
 	{

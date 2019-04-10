@@ -28,9 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-namespace Directus
+namespace Spartan
 {
-	class ENGINE_CLASS RHI_ConstantBuffer : public RHI_Object
+	class SPARTAN_CLASS RHI_ConstantBuffer : public RHI_Object
 	{
 	public:
 		RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, unsigned int size);

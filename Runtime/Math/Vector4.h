@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //=============================
 
-namespace Directus::Math
+namespace Spartan::Math
 {
 	class Vector3;
 	class Matrix;
 
-	class ENGINE_CLASS Vector4
+	class SPARTAN_CLASS Vector4
 	{
 	public:
 		Vector4()
