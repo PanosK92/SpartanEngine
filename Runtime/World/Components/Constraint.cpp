@@ -24,17 +24,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RigidBody.h"
 #include "Transform.h"
 #include "../Entity.h"
+#include "../World.h"
+#include "../../Core/Context.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
-#include "../../Logging/Log.h"
 #pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btSliderConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btConeTwistConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
-#include "../World.h"
 #pragma warning(pop)
 //==================================================================
 

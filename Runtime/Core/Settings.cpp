@@ -21,9 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Settings.h"
-#include <string>
 #include <fstream>
-#include <thread>
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 //===================================

@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "Entity.h"
 #include "World.h"
+#include "../IO/FileStream.h"
+#include "../FileSystem/FileSystem.h"
+#include "../Core/Context.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Collider.h"
 #include "../World/Components/Transform.h"
@@ -33,10 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Script.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/AudioListener.h"
-#include "../IO/FileStream.h"
-#include "../FileSystem/FileSystem.h"
-#include "../Logging/Log.h"
-#include "../Core/GUIDGenerator.h"
 //============================================
 
 //= NAMESPACES =====

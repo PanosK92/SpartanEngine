@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "TimeBlock.h"
-#include "../RHI/RHI_Device.h"
 #include "../Logging/Log.h"
+#include "../RHI/RHI_Device.h"
 //============================
 
 //= NAMESPACES =====

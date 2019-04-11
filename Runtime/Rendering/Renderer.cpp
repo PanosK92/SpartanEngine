@@ -36,7 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_BlendState.h"
-#include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
