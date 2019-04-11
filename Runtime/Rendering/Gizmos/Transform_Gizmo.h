@@ -53,6 +53,7 @@ namespace Spartan
 		
 	private:
 		bool m_is_editing;
+		bool m_just_finished_editing;
 
 		std::shared_ptr<Entity> m_entity_selected;
 		TransformHandle m_handle_position;

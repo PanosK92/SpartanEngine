@@ -53,7 +53,7 @@ namespace Spartan
 	shared_ptr<Entity>& Transform_Gizmo::SetSelectedEntity(const shared_ptr<Entity>& entity)
 	{
 		// Update picked entity only when it's not being edited
-		if (!m_is_editing)
+		if (!m_is_editing && !m_just_finished_editing)
 		{
 			m_entity_selected = entity;
 		}
@@ -63,6 +63,8 @@ namespace Spartan
 
 	bool Transform_Gizmo::Update(Camera* camera, const float handle_size, const float handle_speed)
 	{
+		m_just_finished_editing = false;
+
 		// If there is no camera, don't even bother
 		if (!camera || !m_entity_selected)
 		{
@@ -84,6 +86,8 @@ namespace Spartan
 			m_type = TransformHandle_Rotation;
 		}
 
+		bool was_editing = m_is_editing;
+
 		// Update appropriate handle
 		if (m_type == TransformHandle_Position)
 		{
@@ -97,6 +101,8 @@ namespace Spartan
 		{
 			m_is_editing = m_handle_rotation.Update(m_space, m_entity_selected, camera, handle_size, handle_speed);
 		}
+
+		m_just_finished_editing = was_editing && !m_is_editing;
 
 		return true;
 	}
