@@ -26,15 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Constraint.h"
 #include "../Entity.h"
 #include "../../Core/Engine.h"
+#include "../../Core/Context.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../IO/FileStream.h"
 #pragma warning(push, 0) // Hide warnings which belong to Bullet
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <BulletCollision/CollisionShapes/btCompoundShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
-#include "BulletDynamics/ConstraintSolver/btTypedConstraint.h"
 #pragma warning(pop)
 //==============================================================
 

@@ -26,13 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Model.h"
 #include "../Renderer.h"
 #include "../Utilities/Geometry.h"
-#include "../../Logging/Log.h"
 #include "../../Input/Input.h"
 #include "../../World/Entity.h"
 #include "../../World/Components/Camera.h"
 #include "../../World/Components/Transform.h"
-#include "../../Core/Context.h"
-#include "../../Core/Settings.h"
 #include "../../World/Components/Renderable.h"
 //============================================
 

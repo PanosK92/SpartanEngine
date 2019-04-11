@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
-#include "../RHI/RHI_Vertex.h"
 #include "../Logging/Log.h"
 //==================================
 

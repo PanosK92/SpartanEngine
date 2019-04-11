@@ -19,16 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ===========================
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
-#include "Renderable.h"
-#include "../../World/Entity.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_RenderTexture.h"
-//========================================
+#include "../../Core/Context.h"
+//======================================
 
 //= NAMESPACES ================
 using namespace Spartan::Math;

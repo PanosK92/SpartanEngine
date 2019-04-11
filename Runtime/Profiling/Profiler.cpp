@@ -24,11 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../Core/Timer.h"
 #include "../Core/EventSystem.h"
-#include "../World/World.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
-#include <sstream>
-#include <iomanip>
 //====================================
 
 //= NAMESPACES =====

@@ -21,12 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "ShaderLight.h"
-#include "../../Core/Settings.h"
-#include "../../RHI/RHI_Shader.h"
 #include "../../RHI/RHI_ConstantBuffer.h"
 #include "../../World/Entity.h"
 #include "../../World/Components/Light.h"
 #include "../../World/Components/Transform.h"
+#include "../../Logging/Log.h"
 //===========================================
 
 //= NAMESPACES ================

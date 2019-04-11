@@ -24,12 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include "Components/IComponent.h"
-#include "../Core/Context.h"
 #include "../Core/EventSystem.h"
 //================================
 
 namespace Spartan
 {
+	class Context;
 	class Transform;
 	class Renderable;
 	#define VALIDATE_COMPONENT_TYPE(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")

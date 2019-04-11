@@ -24,6 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Version
 #define ENGINE_VERSION "v0.31 WIP"
 
+// APIs
+#define API_GRAPHICS_D3D11
+//#define API_GRAPHICS_VULKAN
+#define API_INPUT_WINDOWS
+
 // Class
 #if SHARED_LIB == 1
 #ifdef RUNTIME
@@ -35,19 +40,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_CLASS
 #endif
 
-// APIs
-#define API_GRAPHICS_D3D11
-//#define API_GRAPHICS_VULKAN
-#define API_INPUT_WINDOWS
-
-//= DISABLED WARNINGS =============================================================================================================================
+//= DISABLED WARNINGS ==============================================================================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
-#pragma warning(disable: 4251) // https://msdn.microsoft.com/en-us/library/esew7y1w.aspx
+#pragma warning(disable: 4251) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
 // non – DLL-interface classkey 'identifier' used as base for DLL-interface classkey 'identifier'
-#pragma warning(disable: 4275) // https://msdn.microsoft.com/en-us/library/3tdb471s.aspx
+#pragma warning(disable: 4275) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
 // no definition for inline function 'function'
 #pragma warning(disable: 4506) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4506?view=vs-2017
-//=================================================================================================================================================
+//==================================================================================================================================================
 
 //= INCLUDES ======
 #include <assert.h>

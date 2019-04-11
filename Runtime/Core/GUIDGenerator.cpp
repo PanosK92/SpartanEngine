@@ -23,9 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GUIDGenerator.h"
 #include <iomanip>
 #include <sstream> 
-#include <guiddef.h>
 #include "objbase.h"
-#include <winerror.h>
 //========================
 
 //= NAMESPACES =====

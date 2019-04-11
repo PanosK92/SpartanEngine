@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletPhysicsHelper.h"
 #include "../Core/Engine.h"
 #include "../Core/Context.h"
-#include "../Core/EventSystem.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #pragma warning(push, 0) // Hide warnings which belong to Bullet

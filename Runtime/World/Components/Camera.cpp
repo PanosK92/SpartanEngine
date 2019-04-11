@@ -23,11 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "Transform.h"
 #include "Renderable.h"
-#include "../Entity.h"
-#include "../../IO/FileStream.h"
-#include "../../Core/Settings.h"
-#include "../../Rendering/Renderer.h"
 #include "../../Math/RayHit.h"
+#include "../../Core/Context.h"
+#include "../../IO/FileStream.h"
+#include "../../Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES ================

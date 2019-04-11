@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Engine.h"
 #include "../Core/EventSystem.h"
 #include "../Core/Settings.h"
+#include "../Core/Context.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Components/Transform.h"
-#include "../Core/Context.h"
 //========================================
 
 //= NAMESPACES ======

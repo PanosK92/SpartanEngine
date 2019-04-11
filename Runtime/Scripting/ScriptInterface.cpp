@@ -32,11 +32,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Renderable.h"
 //=========================================
 
-//= NAMESPACES ========================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
 using namespace Helper;
-//=====================================
+//============================
 
 namespace Spartan
 {
