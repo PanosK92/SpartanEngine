@@ -238,15 +238,15 @@ namespace Spartan
 	void TransformHandle::SnapToTransform(const TransformHandle_Space space, const shared_ptr<Entity>& entity, Camera* camera, const float handle_size)
 	{
 		// Get entity's components
-		auto entity_transform	= entity->GetTransform_PtrRaw();			// Transform alone is not enough
-		auto entity_renderable = entity->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
+		auto entity_transform	= entity->GetTransform_PtrRaw();		// Transform alone is not enough
+		auto entity_renderable	= entity->GetComponent<Renderable>();	// Bounding box is also needed as some meshes are not defined around P(0,0,0)	
 
 		// Acquire entity's transformation data (local or world space)
-		const auto aabb_center		= entity_renderable ? entity_renderable->GeometryAabb().GetCenter()	: Vector3::Zero;	
-		const auto entity_rotation	= (space == TransformHandle_World) ? entity_transform->GetRotation() : entity_transform->GetRotationLocal();
-		const auto right			= (space == TransformHandle_World) ? Vector3::Right					: entity_rotation * Vector3::Right;
-		const auto up				= (space == TransformHandle_World) ? Vector3::Up					: entity_rotation * Vector3::Up;
-		const auto forward			= (space == TransformHandle_World) ? Vector3::Forward				: entity_rotation * Vector3::Forward;
+		const auto aabb_center		= entity_renderable ? entity_renderable->GeometryAabb().GetCenter()		: entity_transform->GetPositionLocal();
+		const auto entity_rotation	= (space == TransformHandle_World) ? entity_transform->GetRotation()	: entity_transform->GetRotationLocal();
+		const auto right			= (space == TransformHandle_World) ? Vector3::Right						: entity_rotation * Vector3::Right;
+		const auto up				= (space == TransformHandle_World) ? Vector3::Up						: entity_rotation * Vector3::Up;
+		const auto forward			= (space == TransformHandle_World) ? Vector3::Forward					: entity_rotation * Vector3::Forward;
 
 		// Compute scale
 		const auto distance_to_camera	= camera ? (camera->GetTransform()->GetPosition() - (aabb_center)).Length()	: 0.0f;
