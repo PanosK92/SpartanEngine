@@ -50,7 +50,7 @@ namespace Spartan
 		m_handle_scale.Initialize(TransformHandle_Scale, context);
 	}
 
-	std::shared_ptr<Entity>& Transform_Gizmo::SetSelectedEntity(std::shared_ptr<Entity>& entity)
+	shared_ptr<Entity>& Transform_Gizmo::SetSelectedEntity(const shared_ptr<Entity>& entity)
 	{
 		// Update picked entity only when it's not being edited
 		if (!m_is_editing)

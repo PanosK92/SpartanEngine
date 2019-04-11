@@ -123,12 +123,12 @@ public:
 
 	void Initialize(Spartan::Context* context)
 	{
-		g_context		= context;
+		g_context			= context;
 		g_resource_cache	= context->GetSubsystem<Spartan::ResourceCache>().get();
-		g_world			= context->GetSubsystem<Spartan::World>().get();
-		g_threading		= context->GetSubsystem<Spartan::Threading>().get();
-		g_renderer		= context->GetSubsystem<Spartan::Renderer>().get();
-		g_input			= context->GetSubsystem<Spartan::Input>().get();
+		g_world				= context->GetSubsystem<Spartan::World>().get();
+		g_threading			= context->GetSubsystem<Spartan::Threading>().get();
+		g_renderer			= context->GetSubsystem<Spartan::Renderer>().get();
+		g_input				= context->GetSubsystem<Spartan::Input>().get();
 	}
 
 	std::shared_ptr<Spartan::RHI_Texture> GetOrLoadTexture(const std::string& file_path, const bool async = false)
@@ -210,19 +210,25 @@ public:
 		std::shared_ptr<Spartan::Entity> entity;
 		camera->Pick(g_input->GetMousePosition(), entity);
 
-		// Set the transform gizmo to the selected entity and keep returned entity instead (gizmo can decide to reject)
-		g_selected_entity = g_renderer->SnapTransformGizmoTo(entity);
+		// Set the transform gizmo to the selected entity
+		SetSelectedEntity(entity);
 
 		// Fire callback
 		g_on_entity_selected();
 	}
 
+	void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity)
+	{
+		// keep returned entity instead as the transform gizmo can decide to reject it
+		g_selected_entity = g_renderer->SnapTransformGizmoTo(entity);
+	}
+
 	Spartan::Context*				g_context;
-	Spartan::ResourceCache*		g_resource_cache;
-	Spartan::World*				g_world;
-	Spartan::Threading*			g_threading;
+	Spartan::ResourceCache*			g_resource_cache;
+	Spartan::World*					g_world;
+	Spartan::Threading*				g_threading;
 	Spartan::Renderer*				g_renderer;
-	Spartan::Input*				g_input;
-	std::weak_ptr<Spartan::Entity> g_selected_entity;
+	Spartan::Input*					g_input;
+	std::weak_ptr<Spartan::Entity>	g_selected_entity;
 	std::function<void()>			g_on_entity_selected;
 };

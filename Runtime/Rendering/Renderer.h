@@ -156,12 +156,12 @@ namespace Spartan
 		float m_motion_blur_strength	= 3.0f;		// Strength of the motion blur
 		//========================================================================================================================================================================
 
-		//= EDITOR ==========================================================================
+		//= EDITOR ================================================================================
 		// Transform gizmo
-		float m_gizmo_transform_size	= 0.015f;
-		float m_gizmo_transform_speed	= 12.0f;
-		std::shared_ptr<Entity>& SnapTransformGizmoTo(std::shared_ptr<Entity>& entity) const;
-		//===================================================================================
+		float m_gizmo_transform_size = 0.015f;
+		float m_gizmo_transform_speed = 12.0f;
+		std::shared_ptr<Entity>& SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
+		//=========================================================================================
 		
 		// DEBUG BUFFER ====================================================================
 		void SetDebugBuffer(const RendererDebug_Buffer buffer)	{ m_debug_buffer = buffer; }

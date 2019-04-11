@@ -271,14 +271,14 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
 	}
 }
 
-void Widget_World::SetSelectedEntity(const std::shared_ptr<Entity>& entity, const bool from_editor /*= true*/)
+void Widget_World::SetSelectedEntity(const shared_ptr<Entity>& entity, const bool from_editor /*= true*/)
 {
 	m_expand_to_showentity = true;
 
 	// If the update comes from this widget, let the engine know about it
 	if (from_editor)
 	{
-		EditorHelper::Get().g_selected_entity = entity;
+		EditorHelper::Get().SetSelectedEntity(entity);
 	}
 
 	Widget_Properties::Inspect(entity);

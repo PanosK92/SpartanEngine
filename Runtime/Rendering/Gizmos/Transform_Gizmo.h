@@ -43,7 +43,7 @@ namespace Spartan
 		Transform_Gizmo(Context* context);
 		~Transform_Gizmo() = default;
 
-		std::shared_ptr<Entity>& SetSelectedEntity(std::shared_ptr<Entity>& entity);
+		std::shared_ptr<Entity>& SetSelectedEntity(const std::shared_ptr<Entity>& entity);
 		bool Update(Camera* camera, float handle_size, float handle_speed);
 		unsigned int GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
