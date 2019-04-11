@@ -107,8 +107,9 @@ void Widget_Viewport::ShowFrame(const float delta_time)
 		ImColor(50, 127, 166, 255)
 	);
 
-	// If this widget was clicked, make the engine pick an entity
-	if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered())
+	// If this widget was released, make the engine pick an entity.
+	// Don't do that on mouse down as a mouse down event might also mean that the user is currently transforming the entity.
+	if (ImGui::IsMouseReleased(0) && ImGui::IsItemHovered())
 	{
 		EditorHelper::Get().PickEntity();
 	}
