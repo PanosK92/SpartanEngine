@@ -47,7 +47,7 @@ namespace Spartan
 {
 	// This entire pipeline is temporary just so I can play with Vulkan a bit.
 
-	unique_ptr<RHI_ConstantBuffer> g_constant_buffer;
+	static unique_ptr<RHI_ConstantBuffer> g_constant_buffer;
 
 	RHI_Pipeline::~RHI_Pipeline()
 	{	
@@ -148,20 +148,15 @@ namespace Spartan
 
 		for (size_t i = 0; i < fix_this; i++) 
 		{
-			VkDescriptorBufferInfo bufferInfo = {};
-			bufferInfo.buffer	= static_cast<VkBuffer>(g_constant_buffer->GetBufferView());
-			bufferInfo.offset	= 0;
-			bufferInfo.range	= g_constant_buffer->GetSize();
+			VkDescriptorBufferInfo bufferInfo	= {};
+			bufferInfo.buffer					= static_cast<VkBuffer>(g_constant_buffer->GetBufferView());
+			bufferInfo.offset					= 0;
+			bufferInfo.range					= g_constant_buffer->GetSize();
 
-			VkDescriptorImageInfo samplerInfo	= {};
-			samplerInfo.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			samplerInfo.imageView				= nullptr;
-			samplerInfo.sampler					= static_cast<VkSampler>(sampler);
-
-			VkDescriptorImageInfo imageInfo	= {};
-			samplerInfo.imageLayout			= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			samplerInfo.imageView			= static_cast<VkImageView>(texture);
-			samplerInfo.sampler				= nullptr;
+			VkDescriptorImageInfo image_info	= {};
+			image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			image_info.imageView				= static_cast<VkImageView>(texture);
+			image_info.sampler					= static_cast<VkSampler>(sampler);
 
 			std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
 
@@ -179,7 +174,7 @@ namespace Spartan
 			descriptorWrites[1].dstArrayElement = 0;
 			descriptorWrites[1].descriptorType	= VK_DESCRIPTOR_TYPE_SAMPLER;
 			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo		= &samplerInfo;
+			descriptorWrites[1].pImageInfo		= &image_info;
 
 			descriptorWrites[2].sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites[2].dstSet			= descriptor_set;
@@ -187,7 +182,7 @@ namespace Spartan
 			descriptorWrites[2].dstArrayElement = 0;
 			descriptorWrites[2].descriptorType	= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			descriptorWrites[2].descriptorCount = 1;
-			descriptorWrites[2].pImageInfo		= &imageInfo;
+			descriptorWrites[2].pImageInfo		= &image_info;
 
 			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 		}

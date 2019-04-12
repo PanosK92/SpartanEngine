@@ -60,7 +60,7 @@ namespace Spartan
 		VkCommandBufferBeginInfo beginInfo	= {};
 		beginInfo.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags						= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		if (!vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to begin command buffer.");
 			return nullptr;
@@ -73,7 +73,7 @@ namespace Spartan
 	{
 		vkEndCommandBuffer(command_buffer);
 
-		VkSubmitInfo submit_info			= {};
+		VkSubmitInfo submit_info		= {};
 		submit_info.sType				= VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submit_info.commandBufferCount	= 1;
 		submit_info.pCommandBuffers		= &command_buffer;
@@ -86,7 +86,7 @@ namespace Spartan
 
 	inline bool TransitionImageLayout(VkDevice& device, VkCommandPool& command_pool, VkQueue& queue, VkImage& image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) 
 	{
-		VkCommandBuffer commandBuffer = BeginSingleTimeCommands(device, command_pool);
+		VkCommandBuffer command_buffer = BeginSingleTimeCommands(device, command_pool);
 
 		VkImageMemoryBarrier barrier			= {};
 		barrier.sType							= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -126,7 +126,7 @@ namespace Spartan
 
 		vkCmdPipelineBarrier
 		(
-			commandBuffer,
+			command_buffer,
 			sourceStage, destinationStage,
 			0,
 			0, nullptr,
@@ -134,7 +134,8 @@ namespace Spartan
 			1, &barrier
 		);
 
-		EndSingleTimeCommands(device, command_pool, queue, commandBuffer);
+		EndSingleTimeCommands(device, command_pool, queue, command_buffer);
+		return true;
 	}
 
 	inline bool CreateImage
@@ -142,7 +143,7 @@ namespace Spartan
 		VkDevice& device,
 		VkPhysicalDevice& device_physical, 
 		uint32_t width, uint32_t height,
-		VkFormat format,
+		RHI_Format format,
 		VkImageTiling tiling,
 		VkImageUsageFlags usage,
 		VkMemoryPropertyFlags properties,
@@ -158,7 +159,7 @@ namespace Spartan
 		imageInfo.extent.depth		= 1;
 		imageInfo.mipLevels			= 1;
 		imageInfo.arrayLayers		= 1;
-		imageInfo.format			= format;
+		imageInfo.format			= vulkan_format[format];
 		imageInfo.tiling			= tiling;
 		imageInfo.initialLayout		= VK_IMAGE_LAYOUT_UNDEFINED;
 		imageInfo.usage				= usage;
@@ -186,6 +187,7 @@ namespace Spartan
 		}
 
 		vkBindImageMemory(device, image, image_memory, 0);
+		return true;
 	}
 
 	inline bool CreateBuffer(VkDevice& device, VkPhysicalDevice& device_physical, VkDeviceSize size, VkBuffer& staging_buffer, VkDeviceMemory& staging_buffer_memory)
@@ -205,10 +207,10 @@ namespace Spartan
 		VkMemoryRequirements memory_requirements;
 		vkGetBufferMemoryRequirements(device, staging_buffer, &memory_requirements);
 
-		VkMemoryAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = memory_requirements.size;
-		allocInfo.memoryTypeIndex = vulkan_helper::GetMemoryType(device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
+		VkMemoryAllocateInfo allocInfo	= {};
+		allocInfo.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize		= size;
+		allocInfo.memoryTypeIndex		= vulkan_helper::GetMemoryType(device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
 
 		if (vkAllocateMemory(device, &allocInfo, nullptr, &staging_buffer_memory) != VK_SUCCESS)
 		{
@@ -217,6 +219,7 @@ namespace Spartan
 		}
 
 		vkBindBufferMemory(device, staging_buffer, staging_buffer_memory, 0);
+		return true;
 	}
 
 	inline bool CreateImageView(VkDevice& device, VkImage& image, VkImageView& image_view, RHI_Format format)
@@ -237,6 +240,8 @@ namespace Spartan
 			LOG_ERROR("Failed to create image view");
 			return false;
 		}
+
+		return true;
 	}
 
 	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mipmaps)
@@ -265,7 +270,7 @@ namespace Spartan
 			device_physical,
 			width,
 			height,
-			VK_FORMAT_R8G8B8A8_UNORM,
+			format,
 			VK_IMAGE_TILING_OPTIMAL,
 			VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
