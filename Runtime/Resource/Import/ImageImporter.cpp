@@ -135,8 +135,8 @@ namespace Spartan
 		const auto mip = texture->Data_AddMipLevel();
 		GetBitsFromFibitmap(mip, bitmap, image_width, image_height, image_channels);
 
-		// If the texture requires mip-maps, generate them
-		if (texture->GetNeedsMipChain())
+		// If the texture supports mipmaps, generate them
+		if (texture->GetMipmapSupport())
 		{
 			GenerateMipmaps(bitmap, texture, image_width, image_height, image_channels);
 		}

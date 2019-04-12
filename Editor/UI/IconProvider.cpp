@@ -84,12 +84,12 @@ void IconProvider::Initialize(Context* context)
 
 void* IconProvider::GetShaderResourceByType(Icon_Type type)
 {
-	return Thumbnail_Load(NOT_ASSIGNED, type).texture->GetShaderResource();
+	return Thumbnail_Load(NOT_ASSIGNED, type).texture->GetBufferView();
 }
 
 void* IconProvider::GetShaderResourceByFilePath(const std::string& filePath)
 {
-	return Thumbnail_Load(filePath).texture->GetShaderResource();
+	return Thumbnail_Load(filePath).texture->GetBufferView();
 }
 
 void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
@@ -101,7 +101,7 @@ void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
 
 		if (thumbnailTemp.texture->GetResourceId() == thumbnail.texture->GetResourceId())
 		{
-			return thumbnailTemp.texture->GetShaderResource();
+			return thumbnailTemp.texture->GetBufferView();
 		}
 	}
 
@@ -169,8 +169,7 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type 
 	if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
 	{
 		// Make a cheap texture
-		auto texture = std::make_shared<RHI_Texture>(m_context);
-		texture->SetNeedsMipChain(false);
+		auto texture = std::make_shared<RHI_Texture>(m_context, false);
 		texture->SetWidth(size);
 		texture->SetHeight(size);
 

@@ -54,6 +54,10 @@ namespace Spartan
 		Math::Rectangle m_scissor;
 		RHI_PrimitiveTopology_Mode m_primitive_topology;
 
+		// Temp
+		std::shared_ptr<RHI_Texture> m_texture;
+		std::shared_ptr<RHI_Sampler> m_sampler;
+
 	private:
 		void* m_graphics_pipeline		= nullptr;
 		void* m_pipeline_layout			= nullptr;

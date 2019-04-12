@@ -40,7 +40,7 @@ namespace Spartan
 		const RHI_Comparison_Function comparison_function	/*= Texture_Comparison_Always*/
 	)
 	{	
-		m_buffer				= nullptr;
+		m_buffer_view				= nullptr;
 		m_rhi_device			= rhi_device;
 		m_filter				= filter;
 		m_sampler_address_mode	= sampler_address_mode;
@@ -68,7 +68,7 @@ namespace Spartan
 		sampler_desc.MaxLOD			= FLT_MAX;
 	
 		// Create sampler state.
-		if (FAILED(m_rhi_device->GetContext()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_buffer))))
+		if (FAILED(m_rhi_device->GetContext()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_buffer_view))))
 		{
 			LOG_ERROR("Failed to create sampler state");
 		}
@@ -76,8 +76,8 @@ namespace Spartan
 
 	RHI_Sampler::~RHI_Sampler()
 	{
-		safe_release(static_cast<ID3D11SamplerState*>(m_buffer));
-		m_buffer = nullptr;
+		safe_release(static_cast<ID3D11SamplerState*>(m_buffer_view));
+		m_buffer_view = nullptr;
 	}
 }
 #endif

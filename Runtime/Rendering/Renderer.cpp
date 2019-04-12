@@ -171,16 +171,13 @@ namespace Spartan
 		m_tex_noise_normal = make_shared<RHI_Texture>(m_context);
 		m_tex_noise_normal->LoadFromFile(dir_texture + "noise.jpg");
 
-		m_tex_white = make_shared<RHI_Texture>(m_context);
-		m_tex_white->SetNeedsMipChain(false);
+		m_tex_white = make_shared<RHI_Texture>(m_context, false);
 		m_tex_white->LoadFromFile(dir_texture + "white.png");
 
-		m_tex_black = make_shared<RHI_Texture>(m_context);
-		m_tex_black->SetNeedsMipChain(false);
+		m_tex_black = make_shared<RHI_Texture>(m_context, false);
 		m_tex_black->LoadFromFile(dir_texture + "black.png");
 
-		m_tex_lut_ibl = make_shared<RHI_Texture>(m_context);
-		m_tex_lut_ibl->SetNeedsMipChain(false);
+		m_tex_lut_ibl = make_shared<RHI_Texture>(m_context, false);
 		m_tex_lut_ibl->LoadFromFile(dir_texture + "ibl_brdf_lut.png");
 
 		// Gizmo icons
@@ -414,7 +411,7 @@ namespace Spartan
 
 	void* Renderer::GetFrameShaderResource() const
 	{
-		return m_render_tex_full_hdr_light2 ? m_render_tex_full_hdr_light2->GetShaderResource() : nullptr;
+		return m_render_tex_full_hdr_light2 ? m_render_tex_full_hdr_light2->GetBufferView() : nullptr;
 	}
 
 	void Renderer::Tick()

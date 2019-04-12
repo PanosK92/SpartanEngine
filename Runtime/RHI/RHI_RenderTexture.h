@@ -47,15 +47,15 @@ namespace Spartan
 
 		bool Clear(const Math::Vector4& clear_color);
 		bool Clear(float red, float green, float blue, float alpha);
-		void* GetRenderTargetView(const unsigned int index = 0)	{ return index < m_render_target_views.size() ? m_render_target_views[index] : nullptr; }
-		void* GetShaderResource() const							{ return m_shader_resource_view; }
-		void* GetDepthStencilView() const						{ return m_depth_stencil_view; }
-		const RHI_Viewport& GetViewport() const					{ return m_viewport; }
-		bool GetDepthEnabled() const							{ return m_depth_enabled; }
-		unsigned int GetWidth() const							{ return m_width; }
-		unsigned int GetHeight() const							{ return m_height; }
-		unsigned int GetArraySize() const						{ return m_array_size; }
-		RHI_Format GetFormat() const							{ return m_format; }
+		void* GetBufferRenderTargetView(const unsigned int index = 0)	{ return index < m_buffer_render_target_views.size() ? m_buffer_render_target_views[index] : nullptr; }
+		void* GetBufferView() const										{ return m_texture_view; }
+		void* GetDepthStencilView() const								{ return m_depth_stencil_view; }
+		const RHI_Viewport& GetViewport() const							{ return m_viewport; }
+		bool GetDepthEnabled() const									{ return m_depth_enabled; }
+		unsigned int GetWidth() const									{ return m_width; }
+		unsigned int GetHeight() const									{ return m_height; }
+		unsigned int GetArraySize() const								{ return m_array_size; }
+		RHI_Format GetFormat() const									{ return m_format; }
 
 	protected:
 		bool m_depth_enabled		= false;
@@ -69,10 +69,9 @@ namespace Spartan
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		
 		// D3D11
-		std::vector<void*> m_render_target_views;
-		void* m_render_target_texture	= nullptr;
-		void* m_shader_resource_view	= nullptr;
-		void* m_depth_stencil_texture	= nullptr;
+		std::vector<void*> m_buffer_render_target_views;
+		void* m_render_target_view		= nullptr;
+		void* m_texture_view			= nullptr;
 		void* m_depth_stencil_view		= nullptr;
 	};
 }

@@ -78,11 +78,39 @@ namespace ImGui::RHI
 			return false;
 		}
 	
-		g_fontTexture		= make_shared<RHI_Texture>(g_context);
+		g_fontTexture		= make_shared<RHI_Texture>(g_context, false);
 		g_fontSampler		= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
 		g_constantBuffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device, static_cast<unsigned int>(sizeof(Matrix)));
 		g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_rhi_device);
 		g_indexBuffer		= make_shared<RHI_IndexBuffer>(g_rhi_device, sizeof(ImDrawIdx) == 2 ? Format_R16_UINT : Format_R32_UINT);
+
+		// Setup back-end capabilities flags
+		auto& io = GetIO();
+		io.BackendFlags			|= ImGuiBackendFlags_RendererHasViewports;
+		io.BackendRendererName	= "RHI";
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			InitializePlatformInterface();
+		}
+
+		// Font atlas
+		{
+			unsigned char* pixels;
+			int width, height, bpp;
+			io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bpp);
+
+			// Copy pixel data
+			const unsigned int size = width * height * bpp;
+			vector<std::byte> data(size);
+			data.reserve(size);
+			memcpy(&data[0], reinterpret_cast<std::byte*>(pixels), size);
+
+			// Upload texture to graphics system
+			if (g_fontTexture->ShaderResource_Create2D(width, height, 4, Format_R8G8B8A8_UNORM, data))
+			{
+				io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetBufferView());
+			}
+		}
 
 		// Create pipeline
 		{
@@ -158,6 +186,8 @@ namespace ImGui::RHI
 			g_pipeline.m_depth_stencil_state	= depth_stencil_state;
 			g_pipeline.m_input_layout			= shader->GetInputLayout();
 			g_pipeline.m_primitive_topology		= PrimitiveTopology_TriangleList;
+			g_pipeline.m_texture				= g_fontTexture;
+			g_pipeline.m_sampler				= g_fontSampler;
 
 			if (!g_pipeline.Create())
 			{
@@ -185,34 +215,6 @@ namespace ImGui::RHI
 			{
 				LOG_ERROR("Failed to create swap chain");
 				return false;
-			}
-		}
-
-		// Setup back-end capabilities flags
-		auto& io = GetIO();	
-		io.BackendFlags			|= ImGuiBackendFlags_RendererHasViewports;
-		io.BackendRendererName	= "RHI";
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			InitializePlatformInterface();
-		}
-
-		// Font atlas
-		{
-			unsigned char* pixels;
-			int width, height, bpp;
-			io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bpp);
-
-			// Copy pixel data
-			const unsigned int size = width * height * bpp;
-			vector<std::byte> data(size);
-			data.reserve(size);
-			memcpy(&data[0], reinterpret_cast<std::byte*>(pixels), size);
-
-			// Upload texture to graphics system
-			if (g_fontTexture->ShaderResource_Create2D(width, height, 4, Format_R8G8B8A8_UNORM, data, false))
-			{
-				io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetShaderResource());
 			}
 		}
 

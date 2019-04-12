@@ -35,6 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_ConstantBuffer.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Matrix.h"
+#include "../RHI_Texture.h"
+#include "../RHI_Sampler.h"
 //=================================
 
 //= NAMESPACES =====
@@ -62,7 +64,7 @@ namespace Spartan
 	}
 
 
-	inline void CreateDescriptorSet(const VkDevice& device, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
+	inline void CreateDescriptorSet(void* sampler, void* texture, const VkDevice& device, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
 	{
 		uint32_t fix_this = 1;//static_cast<uint32_t>(swapChainImages.size());
 
@@ -147,39 +149,45 @@ namespace Spartan
 		for (size_t i = 0; i < fix_this; i++) 
 		{
 			VkDescriptorBufferInfo bufferInfo = {};
-			bufferInfo.buffer	= static_cast<VkBuffer>(g_constant_buffer->GetBuffer());
+			bufferInfo.buffer	= static_cast<VkBuffer>(g_constant_buffer->GetBufferView());
 			bufferInfo.offset	= 0;
 			bufferInfo.range	= g_constant_buffer->GetSize();
 
-			VkDescriptorImageInfo imageInfo = {};
-			imageInfo.imageLayout	= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			//imageInfo.imageView		= textureImageView;
-			//imageInfo.sampler		= textureSampler;
+			VkDescriptorImageInfo samplerInfo	= {};
+			samplerInfo.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			samplerInfo.imageView				= nullptr;
+			samplerInfo.sampler					= static_cast<VkSampler>(sampler);
+
+			VkDescriptorImageInfo imageInfo	= {};
+			samplerInfo.imageLayout			= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			samplerInfo.imageView			= static_cast<VkImageView>(texture);
+			samplerInfo.sampler				= nullptr;
 
 			std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
 
-			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = descriptor_set;
-			descriptorWrites[0].dstBinding = 0;
+			descriptorWrites[0].sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[0].dstSet			= descriptor_set;
+			descriptorWrites[0].dstBinding		= 0;
 			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[0].descriptorType	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pBufferInfo = &bufferInfo;
+			descriptorWrites[0].pBufferInfo		= &bufferInfo;
 
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = descriptor_set;
-			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1].dstSet			= descriptor_set;
+			descriptorWrites[1].dstBinding		= 1;
 			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+			descriptorWrites[1].descriptorType	= VK_DESCRIPTOR_TYPE_SAMPLER;
 			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = &imageInfo;
+			descriptorWrites[1].pImageInfo		= &samplerInfo;
 
-			descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[2].dstSet = descriptor_set;
-			descriptorWrites[2].dstBinding = 1;
+			descriptorWrites[2].sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[2].dstSet			= descriptor_set;
+			descriptorWrites[2].dstBinding		= 2;
 			descriptorWrites[2].dstArrayElement = 0;
-			descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			descriptorWrites[2].descriptorType	= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			descriptorWrites[2].descriptorCount = 1;
+			descriptorWrites[2].pImageInfo		= &imageInfo;
 
 			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 		}
@@ -244,7 +252,7 @@ namespace Spartan
 
 		// Uniform buffer
 		g_constant_buffer = make_unique<RHI_ConstantBuffer>(m_rhi_device, sizeof(Math::Matrix));
-		CreateDescriptorSet(m_rhi_device->GetContext()->device, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);
+		CreateDescriptorSet(m_sampler->GetBufferView(), m_texture->GetBufferView(), m_rhi_device->GetContext()->device, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);
 		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
 
 		// Dynamic viewport and scissor states

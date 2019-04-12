@@ -44,6 +44,7 @@ namespace Spartan
 		VkSampler sampler				= nullptr;
 		VkSamplerCreateInfo samplerInfo = {};
 
+		samplerInfo.sType				= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		samplerInfo.magFilter			= VK_FILTER_LINEAR;
 		samplerInfo.minFilter			= VK_FILTER_LINEAR;
 		samplerInfo.mipmapMode			= VK_SAMPLER_MIPMAP_MODE_LINEAR;
@@ -57,12 +58,12 @@ namespace Spartan
 			LOG_ERROR("Failed to create sampler");
 		}
 
-		m_buffer = static_cast<void*>(sampler);
+		m_buffer_view = static_cast<void*>(sampler);
 	}
 
 	RHI_Sampler::~RHI_Sampler()
 	{
-		vkDestroySampler(m_rhi_device->GetContext()->device, static_cast<VkSampler>(m_buffer), nullptr);
+		vkDestroySampler(m_rhi_device->GetContext()->device, static_cast<VkSampler>(m_buffer_view), nullptr);
 	}
 }
 #endif

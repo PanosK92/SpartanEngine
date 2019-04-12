@@ -134,7 +134,7 @@ namespace Spartan
 	{
 		vkCmdBindPipeline(m_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetPipeline()));
 
-		VkDescriptorSet descriptor_set = static_cast<VkDescriptorSet>(pipeline->GetDescriptorSet());
+		auto descriptor_set = static_cast<VkDescriptorSet>(pipeline->GetDescriptorSet());
 		vkCmdBindDescriptorSets
 		(
 			m_cmd_buffer,
@@ -249,12 +249,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_Texture>& texture)
 	{
-		SetTexture(start_slot, texture->GetShaderResource());
+		SetTexture(start_slot, texture->GetBufferView());
 	}
 
 	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_RenderTexture>& texture)
 	{
-		SetTexture(start_slot, texture->GetShaderResource());
+		SetTexture(start_slot, texture->GetBufferView());
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
@@ -289,12 +289,12 @@ namespace Spartan
 		submitInfo.commandBufferCount	= 1;
 		submitInfo.pCommandBuffers		= &m_cmd_buffer;
 
-		if (vkQueueSubmit(m_queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+		if (vkQueueSubmit(m_rhi_device->GetContext()->present_queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to submit command buffer.");
 		}
 
-		if (vkQueueWaitIdle(m_queue) != VK_SUCCESS)
+		if (vkQueueWaitIdle(m_rhi_device->GetContext()->present_queue) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to wait until idle.");
 		}
