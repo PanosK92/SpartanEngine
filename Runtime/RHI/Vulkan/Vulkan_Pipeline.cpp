@@ -32,7 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_RasterizerState.h"
+#include "../RHI_ConstantBuffer.h"
 #include "../../Logging/Log.h"
+#include "../../Math/Matrix.h"
 //=================================
 
 //= NAMESPACES =====
@@ -41,6 +43,10 @@ using namespace std;
 
 namespace Spartan
 {
+	// This entire pipeline is temporary just so I can play with Vulkan a bit.
+
+	unique_ptr<RHI_ConstantBuffer> g_constant_buffer;
+
 	RHI_Pipeline::~RHI_Pipeline()
 	{	
 		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_graphics_pipeline), nullptr);
@@ -54,6 +60,7 @@ namespace Spartan
 		m_render_pass			= nullptr;
 		m_descriptor_pool		= nullptr;	
 	}
+
 
 	inline void CreateDescriptorSet(const VkDevice& device, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
 	{
@@ -139,21 +146,42 @@ namespace Spartan
 
 		for (size_t i = 0; i < fix_this; i++) 
 		{
-			/*VkDescriptorBufferInfo bufferInfo = {};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);*/
+			VkDescriptorBufferInfo bufferInfo = {};
+			bufferInfo.buffer	= static_cast<VkBuffer>(g_constant_buffer->GetBuffer());
+			bufferInfo.offset	= 0;
+			bufferInfo.range	= g_constant_buffer->GetSize();
 
-			VkWriteDescriptorSet descriptorWrite = {};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = descriptor_set;
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = nullptr;
+			VkDescriptorImageInfo imageInfo = {};
+			imageInfo.imageLayout	= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			//imageInfo.imageView		= textureImageView;
+			//imageInfo.sampler		= textureSampler;
 
-			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+			std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
+
+			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[0].dstSet = descriptor_set;
+			descriptorWrites[0].dstBinding = 0;
+			descriptorWrites[0].dstArrayElement = 0;
+			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[0].descriptorCount = 1;
+			descriptorWrites[0].pBufferInfo = &bufferInfo;
+
+			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1].dstSet = descriptor_set;
+			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].dstArrayElement = 0;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+			descriptorWrites[1].descriptorCount = 1;
+			descriptorWrites[1].pImageInfo = &imageInfo;
+
+			descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[2].dstSet = descriptor_set;
+			descriptorWrites[2].dstBinding = 1;
+			descriptorWrites[2].dstArrayElement = 0;
+			descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			descriptorWrites[2].descriptorCount = 1;
+
+			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 		}
 	}
 
@@ -214,6 +242,8 @@ namespace Spartan
 			dynamic_viewport_scissor = true;
 		}
 
+		// Uniform buffer
+		g_constant_buffer = make_unique<RHI_ConstantBuffer>(m_rhi_device, sizeof(Math::Matrix));
 		CreateDescriptorSet(m_rhi_device->GetContext()->device, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);
 		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
 

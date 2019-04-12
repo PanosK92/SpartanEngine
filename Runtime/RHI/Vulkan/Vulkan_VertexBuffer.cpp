@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_VertexBuffer.h"
 #include "../RHI_Vertex.h"
 #include "../../Logging/Log.h"
+#include "Vulkan_Helper.h"
 //================================
 
 //= NAMESPACES =====
@@ -40,7 +41,7 @@ namespace Spartan
 	RHI_VertexBuffer::~RHI_VertexBuffer()
 	{
 		auto buffer			= static_cast<VkBuffer>(m_buffer);
-		auto buffer_memory	= static_cast<VkDeviceMemory>(m_device_memory);
+		auto buffer_memory	= static_cast<VkDeviceMemory>(m_buffer_memory);
 
 		if (buffer != VK_NULL_HANDLE)
 		{
@@ -51,21 +52,8 @@ namespace Spartan
 		if (buffer_memory)
 		{
 			vkFreeMemory( m_rhi_device->GetContext()->device, buffer_memory, nullptr);
-			m_device_memory = nullptr;
+			m_buffer_memory = nullptr;
 		}
-
-		m_buffer = nullptr;
-	}
-
-	static uint32_t MemoryType(VkPhysicalDevice device, VkMemoryPropertyFlags properties, uint32_t type_bits)
-	{
-		VkPhysicalDeviceMemoryProperties prop;
-		vkGetPhysicalDeviceMemoryProperties(device, &prop);
-		for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
-			if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
-				return i;
-
-		return 0xFFFFFFFF; // Unable to find memoryType
 	}
 
 	bool RHI_VertexBuffer::Create(const void* vertices)
@@ -78,7 +66,7 @@ namespace Spartan
 
 		auto device			= m_rhi_device->GetContext()->device;
 		auto buffer			= static_cast<VkBuffer>(m_buffer);
-		auto buffer_memory	= static_cast<VkDeviceMemory>(m_device_memory);
+		auto buffer_memory	= static_cast<VkDeviceMemory>(m_buffer_memory);
 
 		if (buffer != VK_NULL_HANDLE)
 		{
@@ -110,7 +98,7 @@ namespace Spartan
 		VkMemoryAllocateInfo alloc_info = {};
 		alloc_info.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		alloc_info.allocationSize		= memory_requirements.size;
-		alloc_info.memoryTypeIndex		= MemoryType(m_rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memory_requirements.memoryTypeBits);
+		alloc_info.memoryTypeIndex		= vulkan_helper::GetMemoryType(m_rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memory_requirements.memoryTypeBits);
 		if (vkAllocateMemory(device, &alloc_info, nullptr, &buffer_memory) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to allocate memory.");
@@ -124,7 +112,7 @@ namespace Spartan
 		}
 
 		m_buffer		= static_cast<void*>(buffer);
-		m_device_memory	= static_cast<void*>(buffer_memory);
+		m_buffer_memory	= static_cast<void*>(buffer_memory);
 		m_device_size	= new_size;
 
 		return true;
@@ -132,7 +120,7 @@ namespace Spartan
 
 	void* RHI_VertexBuffer::Map() const
 	{
-		auto device_memory	= static_cast<VkDeviceMemory>(m_device_memory);
+		auto device_memory	= static_cast<VkDeviceMemory>(m_buffer_memory);
 		void* ptr			= nullptr;
 
 		if (vkMapMemory(m_rhi_device->GetContext()->device, device_memory, 0, m_vertex_count, 0, (void**)(&ptr)) != VK_SUCCESS)
@@ -145,7 +133,7 @@ namespace Spartan
 
 	bool RHI_VertexBuffer::Unmap() const
 	{
-		auto buffer_memory = static_cast<VkDeviceMemory>(m_device_memory);
+		auto buffer_memory = static_cast<VkDeviceMemory>(m_buffer_memory);
 
 		VkMappedMemoryRange range[1]	= {};
 		range[0].sType					= VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
