@@ -36,7 +36,7 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_ConstantBuffer::RHI_ConstantBuffer(const shared_ptr<RHI_Device>& rhi_device, const unsigned int size)
+	RHI_ConstantBuffer::RHI_ConstantBuffer(const shared_ptr<RHI_Device>& rhi_device, const uint64_t size)
 	{
 		m_rhi_device	= rhi_device;
 		m_size			= size;
@@ -49,7 +49,7 @@ namespace Spartan
 
 		D3D11_BUFFER_DESC buffer_desc;
 		ZeroMemory(&buffer_desc, sizeof(buffer_desc));
-		buffer_desc.ByteWidth			= size;
+		buffer_desc.ByteWidth			= static_cast<UINT>(size);
 		buffer_desc.Usage				= D3D11_USAGE_DYNAMIC;
 		buffer_desc.BindFlags			= D3D11_BIND_CONSTANT_BUFFER;
 		buffer_desc.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;

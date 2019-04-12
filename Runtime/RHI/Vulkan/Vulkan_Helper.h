@@ -289,5 +289,16 @@ namespace vulkan_helper
 
 		return false;
 	}
+
+	inline uint32_t GetMemoryType(VkPhysicalDevice device, VkMemoryPropertyFlags properties, uint32_t type_bits)
+	{
+		VkPhysicalDeviceMemoryProperties prop;
+		vkGetPhysicalDeviceMemoryProperties(device, &prop);
+		for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
+			if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
+				return i;
+
+		return 0xFFFFFFFF; // Unable to find memoryType
+	}
 }
 #endif

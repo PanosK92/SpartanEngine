@@ -79,7 +79,7 @@ namespace Spartan
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		void* m_buffer			= nullptr;
-		void* m_device_memory	= nullptr;
+		void* m_buffer_memory	= nullptr;
 		uint64_t m_device_size	= 256;
 	};
 }
