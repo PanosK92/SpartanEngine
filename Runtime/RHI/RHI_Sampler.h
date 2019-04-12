@@ -42,13 +42,15 @@ namespace Spartan
 		RHI_Texture_Filter GetFilter() const					{ return m_filter; }
 		RHI_Sampler_Address_Mode GetAddressMode() const			{ return m_sampler_address_mode; }
 		RHI_Comparison_Function GetComparisonFunction() const	{ return m_comparison_function; }
-		void* GetBuffer() const									{ return m_buffer; }
+		void* GetBufferView() const								{ return m_buffer_view; }
 
 	private:	
 		RHI_Texture_Filter m_filter;
 		RHI_Sampler_Address_Mode m_sampler_address_mode;
 		RHI_Comparison_Function m_comparison_function;
 		std::shared_ptr<RHI_Device> m_rhi_device;
-		void* m_buffer = nullptr;
+
+		// API
+		void* m_buffer_view = nullptr;
 	};
 }

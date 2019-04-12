@@ -202,7 +202,7 @@ namespace Spartan
 		cmd.type						= RHI_Cmd_SetConstantBuffers;
 		cmd.constant_buffers_start_slot = start_slot;
 		cmd.constant_buffers_scope		= scope;
-		cmd.constant_buffers.emplace_back(constant_buffer->GetBuffer());
+		cmd.constant_buffers.emplace_back(constant_buffer->GetBufferView());
 	}
 
 	void RHI_CommandList::SetSamplers(unsigned int start_slot, const vector<void*>& samplers)
@@ -218,7 +218,7 @@ namespace Spartan
 		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetSamplers;
 		cmd.samplers_start_slot = start_slot;
-		cmd.samplers.emplace_back(sampler->GetBuffer());
+		cmd.samplers.emplace_back(sampler->GetBufferView());
 	}
 
 	void RHI_CommandList::SetTextures(unsigned int start_slot, const vector<void*>& textures)
@@ -239,12 +239,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_Texture>& texture)
 	{
-		SetTexture(start_slot, texture->GetShaderResource());
+		SetTexture(start_slot, texture->GetBufferView());
 	}
 
 	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_RenderTexture>& texture)
 	{
-		SetTexture(start_slot, texture->GetShaderResource());
+		SetTexture(start_slot, texture->GetBufferView());
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
@@ -265,7 +265,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& render_target, void* depth_stencil /*= nullptr*/)
 	{
-		SetRenderTarget(render_target->GetRenderTargetView(), depth_stencil);
+		SetRenderTarget(render_target->GetBufferRenderTargetView(), depth_stencil);
 	}
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)

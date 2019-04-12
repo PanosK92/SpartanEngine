@@ -70,7 +70,7 @@ namespace Spartan
 			texture_desc.CPUAccessFlags		= 0;
 			texture_desc.MiscFlags			= 0;
 
-			auto ptr = reinterpret_cast<ID3D11Texture2D**>(&m_render_target_texture);
+			auto ptr = reinterpret_cast<ID3D11Texture2D**>(&m_render_target_view);
 			if (FAILED(m_rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, nullptr, ptr)))
 			{
 				LOG_ERROR("CreateTexture2D() failed.");
@@ -87,8 +87,8 @@ namespace Spartan
 				view_desc.ViewDimension		= D3D11_RTV_DIMENSION_TEXTURE2D;
 				view_desc.Texture2D.MipSlice = 0;
 
-				auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_render_target_views.emplace_back(nullptr));
-				if (FAILED(m_rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_texture), &view_desc, ptr)))
+				auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_buffer_render_target_views.emplace_back(nullptr));
+				if (FAILED(m_rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_view), &view_desc, ptr)))
 				{
 					LOG_ERROR("CreateRenderTargetView() failed.");
 					return;
@@ -103,9 +103,9 @@ namespace Spartan
 					view_desc.Texture2DArray.ArraySize		= 1;
 					view_desc.Texture2DArray.FirstArraySlice = i;
 
-					m_render_target_views.emplace_back(nullptr);
-					auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_render_target_views[i]);
-					if (FAILED(m_rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_texture), &view_desc, ptr)))
+					m_buffer_render_target_views.emplace_back(nullptr);
+					auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_buffer_render_target_views[i]);
+					if (FAILED(m_rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_view), &view_desc, ptr)))
 					{
 						LOG_ERROR("CreateRenderTargetView() failed.");
 						return;
@@ -133,16 +133,16 @@ namespace Spartan
 				shader_resource_view_desc.Texture2DArray.ArraySize			= array_size;
 			}
 			
-			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&m_shader_resource_view);
-			if (FAILED(m_rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Texture2D*>(m_render_target_texture), &shader_resource_view_desc, ptr)))
+			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&m_texture_view);
+			if (FAILED(m_rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Texture2D*>(m_render_target_view), &shader_resource_view_desc, ptr)))
 			{
-				safe_release(static_cast<ID3D11Texture2D*>(m_render_target_texture));
+				safe_release(static_cast<ID3D11Texture2D*>(m_render_target_view));
 				LOG_ERROR("CreateShaderResourceView() failed.");
 				return;
 			}
 			else
 			{
-				safe_release(static_cast<ID3D11Texture2D*>(m_render_target_texture));
+				safe_release(static_cast<ID3D11Texture2D*>(m_render_target_view));
 			}
 		}
 
@@ -150,8 +150,8 @@ namespace Spartan
 		if (m_depth_enabled)
 		{
 			// DEPTH STENCIL VIEW
-			auto depth_stencil_texture	= reinterpret_cast<ID3D11Texture2D**>(&m_depth_stencil_texture);
-			auto depth_stencil_view		= reinterpret_cast<ID3D11DepthStencilView**>(&m_depth_stencil_view);
+			ID3D11Texture2D* depth_stencil_texture	= nullptr;
+			auto depth_stencil_view					= reinterpret_cast<ID3D11DepthStencilView**>(&m_depth_stencil_view);
 
 			// Depth-stencil buffer
 			D3D11_TEXTURE2D_DESC depth_buffer_desc;
@@ -168,7 +168,7 @@ namespace Spartan
 			depth_buffer_desc.CPUAccessFlags		= 0;
 			depth_buffer_desc.MiscFlags				= 0;
 
-			auto result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateTexture2D(&depth_buffer_desc, nullptr, depth_stencil_texture));
+			auto result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateTexture2D(&depth_buffer_desc, nullptr, &depth_stencil_texture));
 			if (!result)
 			{
 				LOGF_ERROR("Failed to create depth stencil buffer, %s.", D3D11_Helper::dxgi_error_to_string(result));
@@ -182,27 +182,23 @@ namespace Spartan
 			depth_stencil_view_desc.ViewDimension		= D3D11_DSV_DIMENSION_TEXTURE2D;
 			depth_stencil_view_desc.Texture2D.MipSlice	= 0;
 
-			result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateDepthStencilView(*depth_stencil_texture, &depth_stencil_view_desc, depth_stencil_view));
+			result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateDepthStencilView(depth_stencil_texture, &depth_stencil_view_desc, depth_stencil_view));
 			if (!result)
 			{
-				safe_release(static_cast<ID3D11Texture2D*>(m_depth_stencil_texture));
 				LOGF_ERROR("Failed to create depth stencil view, %s.", D3D11_Helper::dxgi_error_to_string(result));
-				return;
 			}
-			else
-			{
-				safe_release(static_cast<ID3D11Texture2D*>(m_depth_stencil_texture));
-			}
+
+			safe_release(depth_stencil_texture);
 		}
 	}
 
 	RHI_RenderTexture::~RHI_RenderTexture()
 	{
-		for (auto& render_target_view : m_render_target_views)
+		for (auto& render_target_view : m_buffer_render_target_views)
 		{
 			safe_release(static_cast<ID3D11RenderTargetView*>(render_target_view));
 		}
-		safe_release(static_cast<ID3D11ShaderResourceView*>(m_shader_resource_view));
+		safe_release(static_cast<ID3D11ShaderResourceView*>(m_texture_view));
 		safe_release(static_cast<ID3D11DepthStencilView*>(m_depth_stencil_view));
 	}
 
@@ -215,7 +211,7 @@ namespace Spartan
 		}
 
 		// Clear back buffer
-		for (auto& render_target_view : m_render_target_views)
+		for (auto& render_target_view : m_buffer_render_target_views)
 		{ 
 			m_rhi_device->ClearRenderTarget(render_target_view, clear_color); 
 		}

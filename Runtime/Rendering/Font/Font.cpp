@@ -83,13 +83,12 @@ namespace Spartan
 		for (const auto& char_info : m_glyphs)
 		{
 			m_char_max_width	= Max<int>(char_info.second.width, m_char_max_width);
-			m_char_max_height = Max<int>(char_info.second.height, m_char_max_height);
+			m_char_max_height	= Max<int>(char_info.second.height, m_char_max_height);
 		}
 
 		// Create a font texture atlas form the provided data
-		m_texture_atlas = make_shared<RHI_Texture>(m_context);
-		const auto needs_mip_chain = false;
-		if (!m_texture_atlas->ShaderResource_Create2D(tex_atlas_width, tex_atlas_height, 1, Format_R8_UNORM, atlas_buffer, needs_mip_chain))
+		m_texture_atlas = make_shared<RHI_Texture>(m_context, false);
+		if (!m_texture_atlas->ShaderResource_Create2D(tex_atlas_width, tex_atlas_height, 1, Format_R8_UNORM, atlas_buffer))
 		{
 			LOG_ERROR("Failed to create shader resource.");
 		}

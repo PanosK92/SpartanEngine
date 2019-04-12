@@ -30,35 +30,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	typedef std::vector<std::byte> mip_level;
-
 	class SPARTAN_CLASS RHI_Texture : public RHI_Object, public IResource
 	{
 	public:
-		RHI_Texture(Context* context);
-		~RHI_Texture()
-		{
-			ClearTextureBytes();
-			ShaderResource_Release();
-		}
+		RHI_Texture(Context* context, bool mipmap_support = true);
+		~RHI_Texture();
 
 		//= IResource ===========================================
 		bool SaveToFile(const std::string& file_path) override;
 		bool LoadFromFile(const std::string& file_path) override;
 		//=======================================================
 
-		//= GRAPHICS API  ===================================================================================================================================================================
-		// Generates a shader resource from a pre-made mip chain
+		//= GRAPHICS API  =================================================================================================================================================================
+		// Generates a shader resource from a mipmaps. If only the first mipmap is available, setting generate_mip_chain to true will auto-generate the rest.
 		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::vector<std::byte>>& data);
-		// Generates a shader resource and auto-creates mip-chain (if requested)
-		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::byte>& data, bool generate_mip_chain = false);
+		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::byte>& data)
+		{
+			m_mipmaps.clear();
+			m_mipmaps.emplace_back(data);
+			return ShaderResource_Create2D(width, height, channels, format, m_mipmaps);
+		}
 		// Generates a cube-map shader resource. 6 textures containing mip-levels have to be provided (vector<textures<mip>>).
-		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::vector<mip_level>>& data);	
-		void ShaderResource_Release() const;
-		void* GetShaderResource() const { return m_shader_resource; }
-		//===================================================================================================================================================================================
-		
-		//= PROPERTIES ==========================================================================================
+		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::vector<std::vector<std::byte>>>& data);
+		//=================================================================================================================================================================================
+
 		unsigned int GetWidth() const						{ return m_width; }
 		void SetWidth(const unsigned int width)				{ m_width = width; }
 
@@ -83,21 +78,15 @@ namespace Spartan
 		RHI_Format GetFormat() const						{ return m_format; }
 		void SetFormat(const RHI_Format format)				{ m_format = format; }
 
-		bool HasMipChain() const							{ return m_mip_chain.size() > 1; }
+		bool GetMipmapSupport()												{ return m_mipmap_support;}
+		const auto& Data_Get() const										{ return m_mipmaps; }
+		void Data_Set(const std::vector<std::vector<std::byte>>& data_rgba)	{ m_mipmaps = data_rgba; }
+		auto Data_AddMipLevel()												{ return &m_mipmaps.emplace_back(std::vector<std::byte>()); }
+		std::vector<std::byte>* Data_GetMipLevel(unsigned int index);
 
-		bool GetNeedsMipChain() const						{ return m_needs_mip_chain; }
-		void SetNeedsMipChain(const bool needs_mip_chain)	{ m_needs_mip_chain = needs_mip_chain; }
-
-		const std::vector<mip_level>& Data_Get() const			{ return m_mip_chain; }
-		void Data_Set(const std::vector<mip_level>& data_rgba)	{ m_mip_chain = data_rgba; }
-		mip_level* Data_AddMipLevel()							{ return &m_mip_chain.emplace_back(mip_level()); }
-		mip_level* Data_GetMipLevel(unsigned int index);
-		//=======================================================================================================
-
-		//= TEXTURE BITS ===========================================
 		void ClearTextureBytes();
-		void GetTextureBytes(std::vector<mip_level>* texture_bytes);
-		//==========================================================
+		void GetTextureBytes(std::vector<std::vector<std::byte>>* texture_bytes);
+		void* GetBufferView() const { return m_texture_view; }
 
 	protected:
 		//= NATIVE TEXTURE HANDLING (BINARY) ==========
@@ -107,22 +96,23 @@ namespace Spartan
 
 		bool LoadFromForeignFormat(const std::string& file_path);
 		
-		//= DATA ==========================
-		unsigned int m_bpp		= 0;
-		unsigned int m_bpc		= 8;
-		unsigned int m_width	= 0;
-		unsigned int m_height	= 0;
+		//= DATA =====================================
+		unsigned int m_bpp = 0;
+		unsigned int m_bpc = 8;
+		unsigned int m_width = 0;
+		unsigned int m_height = 0;
 		unsigned int m_channels = 0;
-		bool m_is_grayscale		= false;
-		bool m_is_transparent	= false;
-		bool m_needs_mip_chain	= true;
+		bool m_is_grayscale = false;
+		bool m_is_transparent = false;
 		RHI_Format m_format;
-		std::vector<mip_level> m_mip_chain;
-		//=================================
+		std::vector<std::vector<std::byte>> m_mipmaps;
+		bool m_mipmap_support = true;
+		//============================================
 
-		// D3D11
+		// API
 		std::shared_ptr<RHI_Device> m_rhi_device;
-		void* m_shader_resource		= nullptr;
-		unsigned int m_memory_usage	= 0;
+		void* m_texture_view	= nullptr;
+		void* m_texture			= nullptr;
+		void* m_texture_memory	= nullptr;
 	};
 }

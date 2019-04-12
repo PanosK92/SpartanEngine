@@ -252,7 +252,6 @@ namespace Spartan
 
 		// Vulkan
 		RHI_Command m_empty_cmd; // for GetCmd()
-		VkQueue_T* m_queue;
 		VkCommandPool_T* m_cmd_pool;
 		VkCommandBuffer_T* m_cmd_buffer;
 

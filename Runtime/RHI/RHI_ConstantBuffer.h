@@ -38,8 +38,8 @@ namespace Spartan
 
 		void* Map() const;
 		bool Unmap() const;
-		auto GetBuffer() const	{ return m_buffer; }
-		auto GetSize() const	{ return m_size; }
+		auto GetBufferView() const	{ return m_buffer; }
+		auto GetSize() const		{ return m_size; }
 
 	private:	
 		uint64_t m_size = 0;
