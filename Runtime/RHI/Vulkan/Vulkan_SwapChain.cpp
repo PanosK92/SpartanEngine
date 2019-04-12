@@ -108,16 +108,13 @@ namespace Spartan
 		// Swap chain
 		VkSwapchainKHR swap_chain;
 		{
-			auto present_mode	= vulkan_helper::swap_chain::choose_present_mode(swap_chain_support.present_modes);
-			auto extent			= vulkan_helper::swap_chain::choose_extent(swap_chain_support.capabilities);
-
 			VkSwapchainCreateInfoKHR create_info	= {};
 			create_info.sType						= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 			create_info.surface						= surface;
 			create_info.minImageCount				= buffer_count;
 			create_info.imageFormat					= format_selection.format;
 			create_info.imageColorSpace				= format_selection.colorSpace;
-			create_info.imageExtent					= extent;
+			create_info.imageExtent					= { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 			create_info.imageArrayLayers			= 1;
 			create_info.imageUsage					= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -137,7 +134,7 @@ namespace Spartan
 
 			create_info.preTransform	= swap_chain_support.capabilities.currentTransform;
 			create_info.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-			create_info.presentMode		= present_mode;
+			create_info.presentMode		= vulkan_helper::swap_chain::choose_present_mode(swap_chain_support.present_modes);
 			create_info.clipped			= VK_TRUE;
 			create_info.oldSwapchain	= VK_NULL_HANDLE;
 

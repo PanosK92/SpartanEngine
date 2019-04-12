@@ -79,25 +79,22 @@ namespace Spartan
 
 		vkBindBufferMemory(m_rhi_device->GetContext()->device, buffer, buffer_memory, 0);
 
-		auto m_buffer			= static_cast<void*>(buffer);
-		auto m_buffer_memory	= static_cast<void*>(buffer_memory);
+		m_buffer		= static_cast<void*>(buffer);
+		m_buffer_memory	= static_cast<void*>(buffer_memory);
 	}
 
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
-		auto buffer			= static_cast<VkBuffer>(m_buffer);
-		auto buffer_memory	= static_cast<VkDeviceMemory>(m_buffer_memory);
-
-		if (buffer != VK_NULL_HANDLE)
+		if (m_buffer != VK_NULL_HANDLE)
 		{
-			vkDestroyBuffer(m_rhi_device->GetContext()->device, buffer, nullptr);
+			vkDestroyBuffer(m_rhi_device->GetContext()->device, static_cast<VkBuffer>(m_buffer), nullptr);
 			m_buffer = nullptr;
 		}
 
-		if (buffer_memory)
+		if (m_buffer_memory)
 		{
-			vkFreeMemory(m_rhi_device->GetContext()->device, buffer_memory, nullptr);
-			buffer_memory = nullptr;
+			vkFreeMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory), nullptr);
+			m_buffer_memory = nullptr;
 		}
 	}
 
