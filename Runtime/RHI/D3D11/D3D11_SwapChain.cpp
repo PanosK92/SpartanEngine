@@ -251,7 +251,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(const RHI_Present_Mode mode)
+	bool RHI_SwapChain::Present(const RHI_Present_Mode mode, void* semaphore_wait)
 	{
 		if (!m_swap_chain_view)
 		{

@@ -206,52 +206,27 @@ namespace Spartan
 				return;
 			}
 		}
-
-		// Semaphores
-		VkSemaphore semaphore_image_get;
-		VkSemaphore semaphore_image_ready;
-		{
-			VkSemaphoreCreateInfo semaphore_info	= {};
-			semaphore_info.sType					= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-			if (vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, &semaphore_image_get) != VK_SUCCESS)
-			{
-				LOG_ERROR("Failed to create semaphore.");
-				return;
-			}
-
-			if (vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, &semaphore_image_ready) != VK_SUCCESS)
-			{
-				LOG_ERROR("Failed to create semaphore.");
-				return;
-			}
-		}
-
-		m_surface				= static_cast<void*>(surface);
-		m_swap_chain_view		= static_cast<void*>(swap_chain);
-		m_semaphore_image_get	= static_cast<void*>(semaphore_image_get);
-		m_semaphore_image_ready	= static_cast<void*>(semaphore_image_ready);
-		m_images				= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
-		m_image_views			= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
-		m_frame_buffers			= vector<void*>(frame_buffers.begin(), frame_buffers.end());
-		m_initialized			= true;
+	
+		m_semaphore_image_acquired	= vulkan_helper::semaphore::create(m_rhi_device->GetContext()->device);
+		m_surface					= static_cast<void*>(surface);
+		m_swap_chain_view			= static_cast<void*>(swap_chain);
+		m_images					= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
+		m_image_views				= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
+		m_frame_buffers				= vector<void*>(frame_buffers.begin(), frame_buffers.end());
+		m_initialized				= true;
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
 		auto device	= m_rhi_device->GetContext()->device;
 
+		vulkan_helper::semaphore::destroy(device, m_semaphore_image_acquired);
+
 		vkDestroySurfaceKHR(m_rhi_device->GetContext()->instance, static_cast<VkSurfaceKHR>(m_surface), nullptr);
 		m_surface = nullptr;
 
 		vkDestroySwapchainKHR(device, static_cast<VkSwapchainKHR>(m_swap_chain_view), nullptr);
 		m_swap_chain_view = nullptr;
-
-		if (m_semaphore_image_get) { vkDestroySemaphore(device, static_cast<VkSemaphore>(m_semaphore_image_get), nullptr); }
-		m_semaphore_image_get = nullptr;
-
-		if (m_semaphore_image_ready) { vkDestroySemaphore(device, static_cast<VkSemaphore>(m_semaphore_image_ready), nullptr); }
-		m_semaphore_image_ready = nullptr;
 
 		for (auto& image_view : m_image_views) { vkDestroyImageView(device, static_cast<VkImageView>(image_view), nullptr); }
 		m_image_views.clear();
@@ -265,24 +240,38 @@ namespace Spartan
 		return false;
 	}
 
-	bool RHI_SwapChain::Present(const RHI_Present_Mode mode)
+	bool RHI_SwapChain::AcquireNextImage()
+	{
+		// Acquire next image
+		if (vkAcquireNextImageKHR(
+			m_rhi_device->GetContext()->device,
+			static_cast<VkSwapchainKHR>(m_swap_chain_view),
+			numeric_limits<uint64_t>::max(),
+			static_cast<VkSemaphore>(m_semaphore_image_acquired),
+			VK_NULL_HANDLE,
+			&m_image_index
+		) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to acquire next image.");
+			return false;
+		}
+
+		return true;
+	}
+
+	bool RHI_SwapChain::Present(const RHI_Present_Mode mode, void* wait_semaphore)
 	{	
 		auto swap_chain							= static_cast<VkSwapchainKHR>(m_swap_chain_view);
 		vector<VkSwapchainKHR> swap_chains		= { swap_chain };
-		vector<VkSemaphore> semaphores_wait		= { static_cast<VkSemaphore>(m_semaphore_image_get) };
-		vector<VkSemaphore> semaphores_ready	= { static_cast<VkSemaphore>(m_semaphore_image_ready) };
-
-		// Acquire next image
-		uint32_t image_index = 0;
-		vkAcquireNextImageKHR(m_rhi_device->GetContext()->device, swap_chain, numeric_limits<uint64_t>::max(), static_cast<VkSemaphore>(m_semaphore_image_get), VK_NULL_HANDLE, &image_index);
+		vector<VkSemaphore> semaphores_wait		= { static_cast<VkSemaphore>(wait_semaphore) };
 
 		VkPresentInfoKHR present_info	= {};
 		present_info.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		//present_info.waitSemaphoreCount = static_cast<uint32_t>(semaphores_wait.size());
-		//present_info.pWaitSemaphores	= semaphores_wait.data();
+		present_info.waitSemaphoreCount = static_cast<uint32_t>(semaphores_wait.size());
+		present_info.pWaitSemaphores	= semaphores_wait.data();
 		present_info.swapchainCount		= static_cast<uint32_t>(swap_chains.size());
 		present_info.pSwapchains		= swap_chains.data();
-		present_info.pImageIndices		= &image_index;		
+		present_info.pImageIndices		= &m_image_index;		
 
 		if (vkQueuePresentKHR(m_rhi_device->GetContext()->queue_present, &present_info) != VK_SUCCESS)
 		{
@@ -296,7 +285,6 @@ namespace Spartan
 			return false;
 		}
 
-		m_image_index = image_index;
 		return true;
 	}
 }

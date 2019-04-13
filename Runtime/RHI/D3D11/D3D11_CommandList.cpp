@@ -286,7 +286,7 @@ namespace Spartan
 		cmd.depth_clear_stencil = stencil;
 	}
 
-	void RHI_CommandList::Flush()
+	void RHI_CommandList::Submit()
 	{
 		for (unsigned int cmd_index = 0; cmd_index < m_command_count; cmd_index++)
 		{

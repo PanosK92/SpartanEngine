@@ -258,6 +258,33 @@ namespace vulkan_helper
 		}
 	}
 
+	namespace semaphore
+	{
+		inline void* create(VkDevice& device)
+		{
+			VkSemaphoreCreateInfo semaphore_info = {};
+			semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+			VkSemaphore semaphore_out;
+			if (vkCreateSemaphore(device, &semaphore_info, nullptr, &semaphore_out) != VK_SUCCESS)
+			{
+				LOG_ERROR("Failed to create semaphore.");
+				return nullptr;
+			}
+
+			return static_cast<void*>(semaphore_out);
+		}
+
+		inline void destroy(VkDevice& device, void*& semaphore_in)
+		{
+			if (!semaphore_in)
+				return;
+
+			if (semaphore_in) { vkDestroySemaphore(device, static_cast<VkSemaphore>(semaphore_in), nullptr); }
+			semaphore_in = nullptr;
+		}
+	}
+
 	inline void log_available_extensions()
 	{
 		uint32_t extension_count = 0;

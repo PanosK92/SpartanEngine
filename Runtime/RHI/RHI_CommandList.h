@@ -241,9 +241,12 @@ namespace Spartan
 		}
 		void ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0);
 
-		void Flush();
+		void Submit();
+		const auto& GetWaitSemaphore() { return m_semaphore_submit; }
 
 	private:
+		RHI_SwapChain* m_swap_chain = nullptr;
+
 		// D3D11
 		RHI_Command& GetCmd();
 		std::vector<RHI_Command> m_commands;
@@ -254,6 +257,7 @@ namespace Spartan
 		RHI_Command m_empty_cmd; // for GetCmd()
 		VkCommandPool_T* m_cmd_pool;
 		VkCommandBuffer_T* m_cmd_buffer;
+		void* m_semaphore_submit = nullptr;
 
 		// Dependencies
 		std::vector<void*> m_textures_empty = std::vector<void*>(10);

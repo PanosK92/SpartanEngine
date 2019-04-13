@@ -65,12 +65,16 @@ namespace Spartan
 			LOG_ERROR("Failed to create command buffer.");
 			return;
 		}
+
+		m_semaphore_submit = vulkan_helper::semaphore::create(m_rhi_device->GetContext()->device);
 	}
 
 	RHI_CommandList::~RHI_CommandList()
 	{
-		vkFreeCommandBuffers(m_rhi_device->GetContext()->device, m_cmd_pool, 1, &m_cmd_buffer);
-		vkDestroyCommandPool(m_rhi_device->GetContext()->device, m_cmd_pool, nullptr);
+		auto device = m_rhi_device->GetContext()->device;
+		vulkan_helper::semaphore::destroy(device, m_semaphore_submit);
+		vkFreeCommandBuffers(device, m_cmd_pool, 1, &m_cmd_buffer);
+		vkDestroyCommandPool(device, m_cmd_pool, nullptr);
 	}
 
 	void RHI_CommandList::Clear()
@@ -85,6 +89,9 @@ namespace Spartan
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
+		m_swap_chain = swap_chain;
+
+		m_swap_chain->AcquireNextImage();
 
 		VkCommandBufferBeginInfo beginInfo	= {};
 		beginInfo.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -282,21 +289,25 @@ namespace Spartan
 		
 	}
 
-	void RHI_CommandList::Flush()
+	void RHI_CommandList::Submit()
 	{
-		VkSubmitInfo submitInfo			= {};
-		submitInfo.sType				= VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount	= 1;
-		submitInfo.pCommandBuffers		= &m_cmd_buffer;
+		vector<VkSemaphore> wait_semaphores		= { static_cast<VkSemaphore>(m_swap_chain->GetWaitSemaphore()) };
+		vector<VkSemaphore> signal_semaphores	= { static_cast<VkSemaphore>(m_semaphore_submit) };
+		VkPipelineStageFlags wait_flags[]		= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-		if (vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+		VkSubmitInfo submit_info			= {};
+		submit_info.sType					= VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submit_info.waitSemaphoreCount		= static_cast<uint32_t>(wait_semaphores.size());
+		submit_info.pWaitSemaphores			= wait_semaphores.data();
+		submit_info.pWaitDstStageMask		= wait_flags;
+		submit_info.commandBufferCount		= 1;
+		submit_info.pCommandBuffers			= &m_cmd_buffer;
+		submit_info.signalSemaphoreCount	= static_cast<uint32_t>(signal_semaphores.size());
+		submit_info.pSignalSemaphores		= signal_semaphores.data();
+
+		if (vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, VK_NULL_HANDLE) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to submit command buffer.");
-		}
-
-		if (vkQueueWaitIdle(m_rhi_device->GetContext()->queue_graphics) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to wait until idle.");
 		}
 	}
 

@@ -64,7 +64,6 @@ namespace Spartan
 		m_descriptor_pool		= nullptr;	
 	}
 
-
 	inline void CreateDescriptorSet(void* sampler, void* texture, const VkDevice& device, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
 	{
 		uint32_t fix_this = 1;//static_cast<uint32_t>(swapChainImages.size());

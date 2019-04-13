@@ -199,7 +199,7 @@ namespace Spartan
 		return false;
 	}
 
-	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
+	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader, RHI_Vertex_Attribute_Type vertex_attributes /*= Vertex_Attribute_None*/)
 	{
 		// temp
 		LOG_TO_FILE(true);
