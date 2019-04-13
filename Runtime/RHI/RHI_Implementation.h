@@ -253,7 +253,8 @@ namespace Spartan
 		VkInstance instance							= nullptr;
 		VkPhysicalDevice device_physical			= nullptr;
 		VkDevice device								= nullptr;
-		VkQueue present_queue						= nullptr;
+		VkQueue queue_graphics						= nullptr;
+		VkQueue queue_present						= nullptr;
 		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
 		QueueFamilyIndices indices;
 		std::vector<const char*> validation_layers = { "VK_LAYER_LUNARG_standard_validation" };

@@ -49,7 +49,8 @@ namespace Spartan
 		~RHI_SwapChain();
 
 		bool Resize(unsigned int width, unsigned int height);
-		bool Present(RHI_Present_Mode mode);
+		bool AcquireNextImage();
+		bool Present(RHI_Present_Mode mode, void* semaphore_wait);
 
 		bool IsInitialized()			{ return m_initialized; }
 		void* GetSwapChainView()		{ return m_swap_chain_view; }
@@ -57,6 +58,7 @@ namespace Spartan
 		unsigned int GetWidth()			{ return m_width; }
 		unsigned int GetHeight()		{ return m_height; }
 		const auto& GetFrameBuffer()	{ return m_frame_buffers[m_image_index]; }
+		auto& GetWaitSemaphore()		{ return m_semaphore_image_acquired;  }
 
 	private:
 		bool m_initialized				= false;
@@ -70,12 +72,11 @@ namespace Spartan
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// API
-		void* m_swap_chain_view			= nullptr;
-		void* m_render_target_view		= nullptr;
-		void* m_surface					= nullptr;		
-		void* m_semaphore_image_ready	= nullptr;
-		void* m_semaphore_image_get		= nullptr;
-		uint32_t m_image_index			= 0;
+		void* m_swap_chain_view				= nullptr;
+		void* m_render_target_view			= nullptr;
+		void* m_surface						= nullptr;	
+		uint32_t m_image_index				= 0;
+		void* m_semaphore_image_acquired	= nullptr;
 		std::vector<void*> m_images;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;
