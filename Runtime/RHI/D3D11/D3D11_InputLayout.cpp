@@ -46,53 +46,54 @@ namespace Spartan
 		safe_release(static_cast<ID3D11InputLayout*>(m_buffer));
 	}
 
-	bool RHI_InputLayout::Create(void* vertex_shader_blob, const unsigned long input_layout)
+	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes)
 	{
 		if (!vertex_shader_blob)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
-
-		m_input_layout = input_layout;
+		m_vertex_attributes = vertex_attributes;
 		
-		vector<D3D11_INPUT_ELEMENT_DESC> layout_descs;
-		if (m_input_layout & Input_Position2D)
+		// Fill in attribute descriptions
+		vector<D3D11_INPUT_ELEMENT_DESC> attribute_desc;
+		if (m_vertex_attributes & Vertex_Attribute_Position2D)
 		{
-			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_input_layout & Input_Position3D)
+		if (m_vertex_attributes & Vertex_Attribute_Position3D)
 		{
-			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_input_layout & Input_Texture)
+		if (m_vertex_attributes & Vertex_Attribute_Texture)
 		{
-			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_input_layout & Input_Color8)
+		if (m_vertex_attributes & Vertex_Attribute_Color8)
 		{
-			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_input_layout & Input_Color32)
+		if (m_vertex_attributes & Vertex_Attribute_Color32)
 		{
-			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_input_layout & Input_NormalTangent)
+		if (m_vertex_attributes & Vertex_Attribute_NormalTangent)
 		{
-			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "NORMAL",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
-			layout_descs.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
+		// Create input layout
 		auto d3d_blob = static_cast<ID3D10Blob*>(vertex_shader_blob);
 		if (FAILED(m_rhi_device->GetContext()->device->CreateInputLayout
 		(
-			layout_descs.data(),
-			static_cast<UINT>(layout_descs.size()),
+			attribute_desc.data(),
+			static_cast<UINT>(attribute_desc.size()),
 			d3d_blob->GetBufferPointer(),
 			d3d_blob->GetBufferSize(),
 			reinterpret_cast<ID3D11InputLayout**>(&m_buffer)

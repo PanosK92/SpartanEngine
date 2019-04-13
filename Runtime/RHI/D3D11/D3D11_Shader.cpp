@@ -46,7 +46,7 @@ namespace Spartan
 		safe_release(static_cast<ID3D11PixelShader*>(m_pixel_shader));
 	}
 
-	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
+	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader, RHI_Vertex_Attribute_Type vertex_attributes /*= Vertex_Attribute_None*/)
 	{
 		if (!m_rhi_device)
 		{
@@ -88,7 +88,7 @@ namespace Spartan
 
 		// Compile from file
 		ID3DBlob* blob_error	= nullptr;
-		ID3DBlob* blob_shader	= nullptr;
+		ID3DBlob* shader_blob	= nullptr;
 		HRESULT result;
 		if (is_file)
 		{
@@ -102,7 +102,7 @@ namespace Spartan
 				target_profile.c_str(),
 				compile_flags,
 				0,
-				&blob_shader,
+				&shader_blob,
 				&blob_error
 			);
 		}
@@ -119,7 +119,7 @@ namespace Spartan
 				target_profile.c_str(),
 				compile_flags,
 				0,
-				&blob_shader,
+				&shader_blob,
 				&blob_error
 			);
 		}
@@ -139,7 +139,7 @@ namespace Spartan
 		}
 
 		// Log compilation failure
-		if (FAILED(result) || !blob_shader)
+		if (FAILED(result) || !shader_blob)
 		{
 			auto shader_name = FileSystem::GetFileNameFromFilePath(shader);
 			if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
@@ -153,33 +153,37 @@ namespace Spartan
 		}
 
 		// Create shader
-		void* buffer_shader = nullptr;
-		if (blob_shader)
+		void* shader_view = nullptr;
+		if (shader_blob)
 		{
 			if (type == Shader_Vertex)
 			{
 				ID3D11VertexShader* buffer_vertex = nullptr;
-				if (FAILED(d3d11_device->CreateVertexShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_vertex)))
+				if (FAILED(d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, &buffer_vertex)))
 				{
 					LOG_ERROR("Failed to create vertex shader.");
 				}
-				buffer_shader = static_cast<void*>(buffer_vertex);
-				CreateInputLayout(blob_shader);
+				shader_view = static_cast<void*>(buffer_vertex);
+
+				// Create input layout
+				if (vertex_attributes != Vertex_Attribute_None)
+				{
+					_CreateInputLayout(shader_blob, vertex_attributes);
+				}
 			}
 			else if (type == Shader_Pixel)
 			{
 				ID3D11PixelShader* buffer_pixel = nullptr;
-				if (FAILED(d3d11_device->CreatePixelShader(blob_shader->GetBufferPointer(), blob_shader->GetBufferSize(), nullptr, &buffer_pixel)))
+				if (FAILED(d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, &buffer_pixel)))
 				{
 					LOG_ERROR("Failed to create pixel shader.");
 				}
-				buffer_shader = static_cast<void*>(buffer_pixel);
+				shader_view = static_cast<void*>(buffer_pixel);
 			}
 		}
 
-		// Release blob and return shader
-		safe_release(blob_shader);		
-		return buffer_shader;
+		safe_release(shader_blob);
+		return shader_view;
 	}
 }
 #endif
