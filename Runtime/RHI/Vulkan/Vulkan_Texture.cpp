@@ -57,10 +57,10 @@ namespace Spartan
 			return nullptr;
 		}
 
-		VkCommandBufferBeginInfo beginInfo	= {};
-		beginInfo.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags						= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+		VkCommandBufferBeginInfo begin_info	= {};
+		begin_info.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		begin_info.flags					= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		if (vkBeginCommandBuffer(commandBuffer, &begin_info) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to begin command buffer.");
 			return nullptr;
@@ -138,6 +138,38 @@ namespace Spartan
 		return true;
 	}
 
+	inline bool CreateBuffer(VkDevice& device, VkPhysicalDevice& device_physical, VkDeviceSize size, VkBuffer& staging_buffer, VkDeviceMemory& staging_buffer_memory)
+	{
+		VkBufferCreateInfo bufferInfo	= {};
+		bufferInfo.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size					= size;
+		bufferInfo.usage				= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		bufferInfo.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+
+		if (vkCreateBuffer(device, &bufferInfo, nullptr, &staging_buffer) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to create buffer");
+			return false;
+		}
+
+		VkMemoryRequirements memory_requirements;
+		vkGetBufferMemoryRequirements(device, staging_buffer, &memory_requirements);
+
+		VkMemoryAllocateInfo allocInfo	= {};
+		allocInfo.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize		= memory_requirements.size;
+		allocInfo.memoryTypeIndex		= vulkan_helper::GetMemoryType(device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
+
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &staging_buffer_memory) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to allocate memory");
+			return false;
+		}
+
+		vkBindBufferMemory(device, staging_buffer, staging_buffer_memory, 0);
+		return true;
+	}
+
 	inline bool CreateImage
 	(
 		VkDevice& device,
@@ -190,38 +222,6 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateBuffer(VkDevice& device, VkPhysicalDevice& device_physical, VkDeviceSize size, VkBuffer& staging_buffer, VkDeviceMemory& staging_buffer_memory)
-	{
-		VkBufferCreateInfo bufferInfo	= {};
-		bufferInfo.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size					= size;
-		bufferInfo.usage				= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		bufferInfo.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
-
-		if (vkCreateBuffer(device, &bufferInfo, nullptr, &staging_buffer) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create buffer");
-			return false;
-		}
-
-		VkMemoryRequirements memory_requirements;
-		vkGetBufferMemoryRequirements(device, staging_buffer, &memory_requirements);
-
-		VkMemoryAllocateInfo allocInfo	= {};
-		allocInfo.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize		= size;
-		allocInfo.memoryTypeIndex		= vulkan_helper::GetMemoryType(device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
-
-		if (vkAllocateMemory(device, &allocInfo, nullptr, &staging_buffer_memory) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to allocate memory");
-			return false;
-		}
-
-		vkBindBufferMemory(device, staging_buffer, staging_buffer_memory, 0);
-		return true;
-	}
-
 	inline bool CreateImageView(VkDevice& device, VkImage& image, VkImageView& image_view, RHI_Format format)
 	{
 		VkImageViewCreateInfo viewInfo				= {};
@@ -251,7 +251,7 @@ namespace Spartan
 		auto image_memory						= static_cast<VkDeviceMemory>(m_texture_memory);
 		auto device								= m_rhi_device->GetContext()->device;
 		auto device_physical					= m_rhi_device->GetContext()->device_physical;
-		auto queue								= m_rhi_device->GetContext()->present_queue;
+		auto queue								= m_rhi_device->GetContext()->queue_graphics;
 		VkDeviceSize size						= width * height * channels;
 		VkBuffer staging_buffer					= nullptr;
 		VkDeviceMemory staging_buffer_memory	= nullptr;

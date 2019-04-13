@@ -49,34 +49,35 @@ namespace Spartan
 		~RHI_SwapChain();
 
 		bool Resize(unsigned int width, unsigned int height);
-		bool Present(RHI_Present_Mode mode) const;
+		bool Present(RHI_Present_Mode mode);
 
 		bool IsInitialized()			{ return m_initialized; }
-		void* GetSwapChainView()		{ return m_swap_chain; }
+		void* GetSwapChainView()		{ return m_swap_chain_view; }
 		void* GetRenderTargetView()		{ return m_render_target_view; }
 		unsigned int GetWidth()			{ return m_width; }
 		unsigned int GetHeight()		{ return m_height; }
-		const auto& GetFrameBuffers()	 { return m_frame_buffers; }
+		const auto& GetFrameBuffer()	{ return m_frame_buffers[m_image_index]; }
 
 	private:
 		bool m_initialized				= false;
 		bool m_windowed					= false;
-		void* m_swap_chain				= nullptr;
-		void* m_render_target_view		= nullptr;
 		unsigned long m_flags			= 0;
 		unsigned int m_buffer_count		= 0;		
 		unsigned int m_max_resolution	= 16384;
 		unsigned int m_width			= 0;
 		unsigned int m_height			= 0;
 		RHI_Format m_format;
+		std::shared_ptr<RHI_Device> m_rhi_device;
 
-		// Low-level (only used by Vulkan)
-		void* m_surface	= nullptr;
+		// API
+		void* m_swap_chain_view			= nullptr;
+		void* m_render_target_view		= nullptr;
+		void* m_surface					= nullptr;		
+		void* m_semaphore_image_ready	= nullptr;
+		void* m_semaphore_image_get		= nullptr;
+		uint32_t m_image_index			= 0;
 		std::vector<void*> m_images;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;
-
-		// Dependencies
-		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

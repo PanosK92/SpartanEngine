@@ -95,15 +95,15 @@ namespace Spartan
 			LOG_ERROR("Failed to begin recording command buffer.");
 		}
 
-		VkClearValue clearColor	= { 0.0f, 0.0f, 0.0f, 1.0f };
+		VkClearValue clearColor	= { 1.0f, 0.0f, 0.0f, 1.0f };
 
 		VkRenderPassBeginInfo render_pass_info		= {};
 		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		render_pass_info.renderPass					= static_cast<VkRenderPass>(render_pass);
-		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(swap_chain->GetFrameBuffers()[0]);
+		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(swap_chain->GetFrameBuffer());
 		render_pass_info.renderArea.offset			= { 0, 0 };
-		render_pass_info.renderArea.extent.width	= swap_chain->GetWidth();
-		render_pass_info.renderArea.extent.height	= swap_chain->GetHeight();
+		render_pass_info.renderArea.extent.width	= static_cast<uint32_t>(swap_chain->GetWidth());
+		render_pass_info.renderArea.extent.height	= static_cast<uint32_t>(swap_chain->GetHeight());
 		render_pass_info.clearValueCount			= 1;
 		render_pass_info.pClearValues				= &clearColor;
 
@@ -289,12 +289,12 @@ namespace Spartan
 		submitInfo.commandBufferCount	= 1;
 		submitInfo.pCommandBuffers		= &m_cmd_buffer;
 
-		if (vkQueueSubmit(m_rhi_device->GetContext()->present_queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+		if (vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to submit command buffer.");
 		}
 
-		if (vkQueueWaitIdle(m_rhi_device->GetContext()->present_queue) != VK_SUCCESS)
+		if (vkQueueWaitIdle(m_rhi_device->GetContext()->queue_graphics) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to wait until idle.");
 		}

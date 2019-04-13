@@ -119,18 +119,18 @@ namespace Spartan
 			desc.SwapEffect						= D3D11_Helper::FilterSwapEffect(m_rhi_device.get(), swap_effect);
 			desc.Flags							= D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), flags);
 
-			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
+			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContext()->device, &desc, &swap_chain);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
 				return;
 			}
-			m_swap_chain = static_cast<void*>(swap_chain);
+			m_swap_chain_view = static_cast<void*>(swap_chain);
 		}
 
 		// Create the render target
-		if (auto swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain))
+		if (auto swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain_view))
 		{
 			ID3D11Texture2D* backbuffer = nullptr;
 			auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
@@ -156,7 +156,7 @@ namespace Spartan
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
-		auto swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain);
+		auto swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain_view);
 
 		// Before shutting down set to windowed mode to avoid swap chain exception
 		if (swap_chain && !m_windowed)
@@ -170,7 +170,7 @@ namespace Spartan
 
 	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
 	{	
-		if (!m_swap_chain)
+		if (!m_swap_chain_view)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -183,7 +183,7 @@ namespace Spartan
 			return false;
 		}
 
-		auto swap_chain			= static_cast<IDXGISwapChain*>(m_swap_chain);
+		auto swap_chain			= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 		auto render_target_view	= static_cast<ID3D11RenderTargetView*>(m_render_target_view);
 
 		// Release previous stuff
@@ -251,9 +251,9 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(const RHI_Present_Mode mode) const
+	bool RHI_SwapChain::Present(const RHI_Present_Mode mode)
 	{
-		if (!m_swap_chain)
+		if (!m_swap_chain_view)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -261,7 +261,7 @@ namespace Spartan
 
 		bool tearing_allowed	= m_flags & SwapChain_Allow_Tearing;
 		UINT flags				= (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
-		auto ptr_swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain);
+		auto ptr_swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 
 		ptr_swap_chain->Present(static_cast<UINT>(mode), flags);
 		return true;

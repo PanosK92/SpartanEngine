@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Matrix.h"
 #include "../RHI_Texture.h"
 #include "../RHI_Sampler.h"
+#include "../RHI_InputLayout.h"
 //=================================
 
 //= NAMESPACES =====
@@ -304,11 +305,6 @@ namespace Spartan
 		// Shader stages
 		VkPipelineShaderStageCreateInfo shader_stages[] = { shader_vertex_stage_info, shader_pixel_stage_info };
 
-		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
-		vertex_input_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_state.vertexBindingDescriptionCount		= 0;
-		vertex_input_state.vertexAttributeDescriptionCount		= 0;
-
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
 		input_assembly_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -376,7 +372,7 @@ namespace Spartan
 		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline_info.stageCount					= 2;
 		pipeline_info.pStages						= shader_stages;
-		pipeline_info.pVertexInputState				= &vertex_input_state;
+		pipeline_info.pVertexInputState				= static_cast<VkPipelineVertexInputStateCreateInfo*>(m_input_layout->GetBuffer());
 		pipeline_info.pInputAssemblyState			= &input_assembly_state;
 		pipeline_info.pDynamicState					= dynamic_viewport_scissor ? &dynamic_state : nullptr;
 		pipeline_info.pViewportState				= dynamic_viewport_scissor ? &viewport_state : nullptr;

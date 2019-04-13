@@ -24,10 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_VULKAN
 //================================
 
-//= INCLUDES ==================
+//= INCLUDES =====================
 #include "../RHI_InputLayout.h"
 #include "../RHI_Device.h"
-//=============================
+#include "../../Logging/Log.h"
+#include "../../Math/Matrix.h"
+#include "../../Core/EngineDefs.h"
+//================================
 
 //==================
 using namespace std;
@@ -42,12 +45,65 @@ namespace Spartan
 
 	RHI_InputLayout::~RHI_InputLayout()
 	{
-		
+		safe_delete(static_cast<VkPipelineVertexInputStateCreateInfo*>(m_buffer));
+		m_buffer = nullptr;
 	}
 
-	bool RHI_InputLayout::Create(void* vsBlob, const unsigned long input_layout)
+	bool RHI_InputLayout::Create(void* vertex_shader_blob, const unsigned long input_layout)
 	{
-		return false;
+		if (!vertex_shader_blob)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+		m_vertex_attributes = input_layout;
+
+		VkVertexInputBindingDescription binding_description = {};
+		binding_description.binding							= 0;
+		binding_description.stride							= sizeof(Math::Matrix); // fix this
+		binding_description.inputRate						= VK_VERTEX_INPUT_RATE_VERTEX;
+
+		vector<VkVertexInputAttributeDescription> attribute_description;
+		if (m_vertex_attributes & Vertex_Attribute_Position2D)
+		{
+			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32_SFLOAT, 0 });
+		}
+
+		if (m_vertex_attributes & Vertex_Attribute_Position3D)
+		{
+			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 });
+		}
+
+		if (m_vertex_attributes & Vertex_Attribute_Texture)
+		{
+			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32_SFLOAT, 0 });
+		}
+
+		if (m_vertex_attributes & Vertex_Attribute_Color8)
+		{
+			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R8G8B8A8_UNORM, 0 });
+		}
+
+		if (m_vertex_attributes & Vertex_Attribute_Color32)
+		{
+			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, 0 });
+		}
+
+		if (m_vertex_attributes & Vertex_Attribute_NormalTangent)
+		{
+			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 });
+			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 });
+		}
+
+		auto vertex_input_info									= new VkPipelineVertexInputStateCreateInfo();
+		vertex_input_info.sType									= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertex_input_info.vertexBindingDescriptionCount			= 1;
+		vertex_input_info.pVertexBindingDescriptions			= &binding_description;
+		vertex_input_info.vertexAttributeDescriptionCount		= static_cast<uint32_t>(attribute_description.size());
+		vertex_input_info.pVertexAttributeDescriptions			= attribute_description.data();
+
+		m_buffer = static_cast<void*>(vertex_input_info);
+		return true;
 	}
 }
 #endif

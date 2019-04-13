@@ -40,6 +40,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_CLASS
 #endif
 
+#define NOMINMAX 
+
 //= DISABLED WARNINGS ==============================================================================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
 #pragma warning(disable: 4251) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
