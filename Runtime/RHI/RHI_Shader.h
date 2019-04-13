@@ -68,39 +68,36 @@ namespace Spartan
 		~RHI_Shader();
 
 		// Compilation
-		void Compile(const Shader_Type type, const std::string& shader, unsigned long input_layout_type = 0);
-		void CompileAsync(Context* context, const Shader_Type type, const std::string& shader, unsigned long input_layout_type = 0);
+		void Compile(const Shader_Type type, const std::string& shader, const RHI_Vertex_Attribute_Type vertex_attributes = Vertex_Attribute_None);
+		void CompileAsync(Context* context, const Shader_Type type, const std::string& shader, const RHI_Vertex_Attribute_Type vertex_attributes = Vertex_Attribute_None);
 	
 		// Vertex & Pixel shaders
-		void* GetVertexShaderBuffer() const	{ return m_vertex_shader; }
-		void* GetPixelShaderBuffer() const	{ return m_pixel_shader; }
-		bool HasVertexShader() const		{ return m_vertex_shader != nullptr; }
-		bool HasPixelShader() const			{ return m_pixel_shader != nullptr; }
-		const auto& GetVertexEntryPoint()	{ return _RHI_Shader::entry_point_vertex; }
-		const auto& GetPixelEntryPoint()	{ return _RHI_Shader::entry_point_pixel; }
+		auto GetVertexShaderBuffer() const		{ return m_vertex_shader; }
+		auto GetPixelShaderBuffer() const		{ return m_pixel_shader; }
+		auto HasVertexShader() const			{ return m_vertex_shader != nullptr; }
+		auto HasPixelShader() const				{ return m_pixel_shader != nullptr; }
+		const auto& GetVertexEntryPoint() const	{ return _RHI_Shader::entry_point_vertex; }
+		const auto& GetPixelEntryPoint() const	{ return _RHI_Shader::entry_point_pixel; }
 
 		// Misc
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
-		const std::string& GetName()												{ return m_name;}
+		const auto& GetName() const													{ return m_name;}
 		void SetName(const std::string& name)										{ m_name = name; }
 		const auto& GetInputLayout() const											{ return m_input_layout; }
-		Compilation_State GetCompilationState() const								{ return m_compilation_state; }
+		auto GetCompilationState() const											{ return m_compilation_state; }
 
 	protected:
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 	private:
-		bool CreateInputLayout(void* vertex_shader);
-		void* _Compile(Shader_Type type, const std::string& shader);
-			
+		void* _Compile(Shader_Type type, const std::string& shader, RHI_Vertex_Attribute_Type vertex_attributes = Vertex_Attribute_None);
+		bool _CreateInputLayout(void* vertex_shader_blob, RHI_Vertex_Attribute_Type vertex_attributes);
+
 		std::string m_name;
 		std::string m_file_path;
 		std::map<std::string, std::string> m_defines;	
 		Compilation_State m_compilation_state = Shader_Uninitialized;
-
-		// Input layout
 		std::shared_ptr<RHI_InputLayout> m_input_layout;
-		unsigned long m_inputLayoutType;
 
 		// Shader buffers
 		void* m_vertex_shader	= nullptr;

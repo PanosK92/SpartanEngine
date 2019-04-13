@@ -63,11 +63,11 @@ namespace Spartan
 		void* Map() const;
 		bool Unmap() const;
 
-		void* GetBuffer() const				{ return m_buffer; }
-		uint64_t GetDeviceSize() const		{ return m_device_size; }
-		unsigned int GetStride() const		{ return m_stride; }
-		unsigned int GetVertexCount() const	{ return m_vertex_count; }
-		unsigned int GetMemoryUsage() const	{ return m_memory_usage; }
+		auto GetBuffer() const		{ return m_buffer; }
+		auto GetDeviceSize() const	{ return m_device_size; }
+		auto GetStride() const		{ return m_stride; }
+		auto GetVertexCount() const	{ return m_vertex_count; }
+		auto GetMemoryUsage() const	{ return m_memory_usage; }
 
 	private:
 		bool Create(const void* vertices);

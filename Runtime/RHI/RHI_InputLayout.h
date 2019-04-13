@@ -35,16 +35,13 @@ namespace Spartan
 		RHI_InputLayout(const std::shared_ptr<RHI_Device>& rhi_device);
 		~RHI_InputLayout();
 
-		//= GRAPHICS API ======================================
-		bool Create(void* vs_blob, unsigned long input_layout);
-		//=====================================================
-
-		unsigned long GetInputLayout() const	{ return m_input_layout; }
-		void* GetBuffer() const					{ return m_buffer; }
+		bool Create(void* vertex_shader_blob, RHI_Vertex_Attribute_Type vertex_attributes);
+		auto GetVertexAttributes() const	{ return m_vertex_attributes; }
+		auto GetBuffer() const				{ return m_buffer; }
 
 	private:		
-		unsigned long m_input_layout	= 0;
-		void* m_buffer					= nullptr;
+		RHI_Vertex_Attribute_Type m_vertex_attributes	= Vertex_Attribute_None;
+		void* m_buffer									= nullptr;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

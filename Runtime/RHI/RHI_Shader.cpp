@@ -41,7 +41,7 @@ namespace Spartan
 		m_input_layout	= make_shared<RHI_InputLayout>(rhi_device);
 	}
 
-	void RHI_Shader::Compile(const Shader_Type type, const string& shader, unsigned long input_layout_type)
+	void RHI_Shader::Compile(const Shader_Type type, const string& shader, const RHI_Vertex_Attribute_Type vertex_attributes)
 	{
 		// Deduce name or file path
 		if (FileSystem::IsDirectory(shader))
@@ -54,13 +54,12 @@ namespace Spartan
 			m_name = FileSystem::GetFileNameFromFilePath(shader);
 			m_file_path.clear();
 		}
-		m_inputLayoutType = input_layout_type;
 
 		// Compile
 		if (type == Shader_Vertex)
 		{
 			m_compilation_state = Shader_Compiling;
-			m_vertex_shader		= _Compile(type, shader);		
+			m_vertex_shader		= _Compile(type, shader, vertex_attributes);		
 			m_compilation_state = m_vertex_shader ? Shader_Compiled : Shader_Failed;
 		}
 		else if (type == Shader_Pixel)
@@ -72,12 +71,12 @@ namespace Spartan
 		else if (type == Shader_VertexPixel)
 		{
 			m_compilation_state = Shader_Compiling;
-			m_vertex_shader		= _Compile(Shader_Vertex, shader);
+			m_vertex_shader		= _Compile(Shader_Vertex, shader, vertex_attributes);
 			m_pixel_shader		= _Compile(Shader_Pixel, shader);
 			m_compilation_state = (m_vertex_shader && m_pixel_shader) ? Shader_Compiled : Shader_Failed;
 		}
 
-		// Log result
+		// Log compilation result
 		string shader_type = (type == Shader_Vertex) ? "vertex shader" : (type == Shader_Pixel) ? "pixel shader" : "vertex and pixel shader";
 		if (m_compilation_state == Shader_Compiled)
 		{
@@ -89,23 +88,23 @@ namespace Spartan
 		}
 	}
 
-	void RHI_Shader::CompileAsync(Context* context, const Shader_Type type, const string& shader, unsigned long input_layout_type)
+	void RHI_Shader::CompileAsync(Context* context, const Shader_Type type, const string& shader, const RHI_Vertex_Attribute_Type vertex_attributes)
 	{
-		context->GetSubsystem<Threading>()->AddTask([this, type, shader, input_layout_type]()
+		context->GetSubsystem<Threading>()->AddTask([this, type, shader, vertex_attributes]()
 		{
-			Compile(type, shader, input_layout_type);
+			Compile(type, shader, vertex_attributes);
 		});
 	}
 
-	bool RHI_Shader::CreateInputLayout(void* vertex_shader)
+	bool RHI_Shader::_CreateInputLayout(void* vertex_shader_blob, RHI_Vertex_Attribute_Type vertex_attributes)
 	{
-		if (!vertex_shader)
+		if (!vertex_shader_blob)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
 
-		if (!m_input_layout->Create(vertex_shader, m_inputLayoutType))
+		if (!m_input_layout->Create(vertex_shader_blob, vertex_attributes))
 		{
 			LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
 			return false;

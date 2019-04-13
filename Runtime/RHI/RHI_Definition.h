@@ -97,20 +97,21 @@ namespace Spartan
 		PrimitiveTopology_NotAssigned
 	};
 
-	enum RHI_Input_Element : unsigned long
+	enum RHI_Vertex_Attribute_Type : unsigned long
 	{
-		Input_Position2D	= 1UL << 0,
-		Input_Position3D	= 1UL << 1,
-		Input_Color8		= 1UL << 2,
-		Input_Color32		= 1UL << 3,
-		Input_Texture		= 1UL << 4,
-		Input_NormalTangent = 1UL << 5,
-		Input_ImGui			= 1UL << 6
+		Vertex_Attribute_None			= 0,
+		Vertex_Attribute_Position2D		= 1UL << 0,
+		Vertex_Attribute_Position3D		= 1UL << 1,
+		Vertex_Attribute_Color8			= 1UL << 2,
+		Vertex_Attribute_Color32		= 1UL << 3,
+		Vertex_Attribute_Texture		= 1UL << 4,
+		Vertex_Attribute_NormalTangent	= 1UL << 5,
+		Vertex_Attribute_ImGui			= 1UL << 6
 	};
-	#define Input_PositionColor					0 | Input_Position3D	| Input_Color32
-	#define Input_PositionTexture				0 | Input_Position3D	| Input_Texture
-	#define Input_PositionTextureNormalTangent	0 | Input_Position3D	| Input_Texture | Input_NormalTangent
-	#define Input_Position2DTextureColor8		0 | Input_Position2D	| Input_Texture | Input_Color8
+	#define Vertex_Attributes_PositionColor					static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3D	| Vertex_Attribute_Color32)
+	#define Vertex_Attributes_PositionTexture				static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3D	| Vertex_Attribute_Texture)
+	#define Vertex_Attributes_PositionTextureNormalTangent	static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3D	| Vertex_Attribute_Texture | Vertex_Attribute_NormalTangent)
+	#define Vertex_Attributes_Position2DTextureColor8		static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position2D	| Vertex_Attribute_Texture | Vertex_Attribute_Color8)
 
 	enum RHI_Cull_Mode
 	{
