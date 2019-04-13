@@ -168,7 +168,8 @@ namespace Spartan
 			create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
 			create_info.pQueueCreateInfos		= queue_create_infos.data();
 
-			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->present_queue);
+			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_graphics);
+			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->queue_present);
 		}
 
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));

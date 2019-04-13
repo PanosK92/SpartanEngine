@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "Vulkan_Helper.h"
+#include <limits>
 //=============================
 
 //= NAMESPACES ================
@@ -141,6 +142,7 @@ namespace Spartan
 			if (vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to create swap chain.");
+				return;
 			}
 		}
 
@@ -177,6 +179,7 @@ namespace Spartan
 				if (vkCreateImageView(rhi_context->device, &createInfo, nullptr, &swap_chain_image_views[i]) != VK_SUCCESS) 
 				{
 					LOG_ERROR("Failed to create image view(s).");
+					return;
 				}
 			}
 		}
@@ -200,35 +203,61 @@ namespace Spartan
 			if (vkCreateFramebuffer(rhi_context->device, &framebufferInfo, nullptr, &frame_buffers[i]) != VK_SUCCESS) 
 			{
 				LOG_ERROR("Failed to create frame buffer(s).");
+				return;
 			}
 		}
 
-		m_surface		= static_cast<void*>(surface);
-		m_swap_chain	= static_cast<void*>(swap_chain);
-		m_images		= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
-		m_image_views	= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
-		m_frame_buffers	= vector<void*>(frame_buffers.begin(), frame_buffers.end());
-		m_initialized	= true;
+		// Semaphores
+		VkSemaphore semaphore_image_get;
+		VkSemaphore semaphore_image_ready;
+		{
+			VkSemaphoreCreateInfo semaphore_info	= {};
+			semaphore_info.sType					= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+			if (vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, &semaphore_image_get) != VK_SUCCESS)
+			{
+				LOG_ERROR("Failed to create semaphore.");
+				return;
+			}
+
+			if (vkCreateSemaphore(rhi_context->device, &semaphore_info, nullptr, &semaphore_image_ready) != VK_SUCCESS)
+			{
+				LOG_ERROR("Failed to create semaphore.");
+				return;
+			}
+		}
+
+		m_surface				= static_cast<void*>(surface);
+		m_swap_chain_view		= static_cast<void*>(swap_chain);
+		m_semaphore_image_get	= static_cast<void*>(semaphore_image_get);
+		m_semaphore_image_ready	= static_cast<void*>(semaphore_image_ready);
+		m_images				= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
+		m_image_views			= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
+		m_frame_buffers			= vector<void*>(frame_buffers.begin(), frame_buffers.end());
+		m_initialized			= true;
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
-		auto surface		= static_cast<VkSurfaceKHR>(m_surface);
-		auto swapchain		= static_cast<VkSwapchainKHR>(m_swap_chain);
-		auto rhi_context	= m_rhi_device->GetContext();
+		auto device	= m_rhi_device->GetContext()->device;
 
-		vkDestroySurfaceKHR(rhi_context->instance, surface, nullptr);
-		vkDestroySwapchainKHR(rhi_context->device, swapchain, nullptr);
+		vkDestroySurfaceKHR(m_rhi_device->GetContext()->instance, static_cast<VkSurfaceKHR>(m_surface), nullptr);
+		m_surface = nullptr;
 
-		for (auto& image_view : m_image_views) 
-		{
-			vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
-		}
+		vkDestroySwapchainKHR(device, static_cast<VkSwapchainKHR>(m_swap_chain_view), nullptr);
+		m_swap_chain_view = nullptr;
 
-		for (auto frame_buffer : m_frame_buffers) 
-		{
-			vkDestroyFramebuffer(rhi_context->device, static_cast<VkFramebuffer>(frame_buffer), nullptr);
-		}
+		if (m_semaphore_image_get) { vkDestroySemaphore(device, static_cast<VkSemaphore>(m_semaphore_image_get), nullptr); }
+		m_semaphore_image_get = nullptr;
+
+		if (m_semaphore_image_ready) { vkDestroySemaphore(device, static_cast<VkSemaphore>(m_semaphore_image_ready), nullptr); }
+		m_semaphore_image_ready = nullptr;
+
+		for (auto& image_view : m_image_views) { vkDestroyImageView(device, static_cast<VkImageView>(image_view), nullptr); }
+		m_image_views.clear();
+
+		for (auto frame_buffer : m_frame_buffers) { vkDestroyFramebuffer(device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
+		m_frame_buffers.clear();
 	}
 
 	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
@@ -236,9 +265,39 @@ namespace Spartan
 		return false;
 	}
 
-	bool RHI_SwapChain::Present(const RHI_Present_Mode mode) const
-	{
-		return false;
+	bool RHI_SwapChain::Present(const RHI_Present_Mode mode)
+	{	
+		auto swap_chain							= static_cast<VkSwapchainKHR>(m_swap_chain_view);
+		vector<VkSwapchainKHR> swap_chains		= { swap_chain };
+		vector<VkSemaphore> semaphores_wait		= { static_cast<VkSemaphore>(m_semaphore_image_get) };
+		vector<VkSemaphore> semaphores_ready	= { static_cast<VkSemaphore>(m_semaphore_image_ready) };
+
+		// Acquire next image
+		uint32_t image_index = 0;
+		vkAcquireNextImageKHR(m_rhi_device->GetContext()->device, swap_chain, numeric_limits<uint64_t>::max(), static_cast<VkSemaphore>(m_semaphore_image_get), VK_NULL_HANDLE, &image_index);
+
+		VkPresentInfoKHR present_info	= {};
+		present_info.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		//present_info.waitSemaphoreCount = static_cast<uint32_t>(semaphores_wait.size());
+		//present_info.pWaitSemaphores	= semaphores_wait.data();
+		present_info.swapchainCount		= static_cast<uint32_t>(swap_chains.size());
+		present_info.pSwapchains		= swap_chains.data();
+		present_info.pImageIndices		= &image_index;		
+
+		if (vkQueuePresentKHR(m_rhi_device->GetContext()->queue_present, &present_info) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to present.");
+			return false;
+		}
+
+		if (vkQueueWaitIdle(m_rhi_device->GetContext()->queue_present) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to wait until idle.");
+			return false;
+		}
+
+		m_image_index = image_index;
+		return true;
 	}
 }
 #endif
