@@ -52,7 +52,7 @@ namespace _Editor
 	const char* dockspace_name	= "EditorDockspace";
 }
 
-Editor::Editor(void* window_handle, void* window_instance)
+Editor::Editor(void* window_handle, void* window_instance, float width, float height)
 {
 	// Add console widget first so it picks up the engine's initialization output
 	m_widgets.emplace_back(make_unique<Widget_Console>(nullptr));
@@ -91,7 +91,7 @@ Editor::Editor(void* window_handle, void* window_instance)
 
 	// ImGui backend setup
 	ImGui_ImplWin32_Init(window_handle);
-	ImGui::RHI::Initialize(m_context);
+	ImGui::RHI::Initialize(m_context, width, height);
 
 	// Initialization of misc custom systems
 	IconProvider::Get().Initialize(m_context);

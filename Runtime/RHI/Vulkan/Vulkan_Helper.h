@@ -143,23 +143,13 @@ namespace vulkan_helper
 
 		inline VkExtent2D choose_extent(const VkSurfaceCapabilitiesKHR& capabilities, uint32_t prefered_width, uint32_t prefered_height)
 		{
-			using namespace std;
-			using namespace Spartan;
-			using namespace Math::Helper;
+			using namespace Spartan::Math::Helper;
 
-			auto max = (numeric_limits<uint32_t>::max)();
-			if (capabilities.currentExtent.width != max)
-			{
-				return capabilities.currentExtent;
-			}
-			else
-			{
-				VkExtent2D actual_extent	= { prefered_width, prefered_height };
-				actual_extent.width			= Max(capabilities.minImageExtent.width, Min(capabilities.maxImageExtent.width, actual_extent.width));
-				actual_extent.height		= Max(capabilities.minImageExtent.height, Min(capabilities.maxImageExtent.height, actual_extent.height));
+			VkExtent2D actual_extent	= { prefered_width, prefered_height };
+			actual_extent.width			= Clamp(prefered_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+			actual_extent.height		= Clamp(prefered_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
-				return actual_extent;
-			}
+			return actual_extent;
 		}
 	}
 
