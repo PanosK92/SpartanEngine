@@ -62,8 +62,6 @@ namespace Spartan
 		auto& GetWaitSemaphore()		{ return m_semaphore_image_acquired;  }
 
 	private:
-		bool _Create();
-
 		bool m_initialized				= false;
 		bool m_windowed					= false;
 		unsigned long m_flags			= 0;
@@ -81,7 +79,7 @@ namespace Spartan
 		uint32_t m_image_index				= 0;
 		void* m_semaphore_image_acquired	= nullptr;
 		void* m_render_pass					= nullptr;
-		void* m_window_handle						= nullptr;
+		void* m_window_handle				= nullptr;
 		std::vector<void*> m_images;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;
