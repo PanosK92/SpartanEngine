@@ -203,7 +203,7 @@ namespace ImGui::RHI
 				Settings::Get().GetWindowHandle(),
 				g_rhi_device,
 				static_cast<unsigned int>(g_renderer->GetResolution().x),
-				static_cast<unsigned int>(g_renderer->GetResolution().x),
+				static_cast<unsigned int>(g_renderer->GetResolution().y),
 				g_rhi_device->GetBackBufferFormat(),
 				Swap_Flip_Discard,
 				SwapChain_Allow_Tearing,

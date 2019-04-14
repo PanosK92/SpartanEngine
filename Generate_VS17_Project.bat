@@ -24,4 +24,3 @@ echo:
 
 echo 5. Generating Visual Studio 2017 solution...
 Scripts\premake5.exe --file=scripts\premake.lua vs2017
-

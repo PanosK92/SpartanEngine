@@ -141,8 +141,7 @@ namespace vulkan_helper
 			return availableFormats[0];
 		}
 
-
-		inline VkExtent2D choose_extent(const VkSurfaceCapabilitiesKHR& capabilities)
+		inline VkExtent2D choose_extent(const VkSurfaceCapabilitiesKHR& capabilities, uint32_t prefered_width, uint32_t prefered_height)
 		{
 			using namespace std;
 			using namespace Spartan;
@@ -155,7 +154,7 @@ namespace vulkan_helper
 			}
 			else
 			{
-				VkExtent2D actual_extent	= { Settings::Get().GetWindowWidth(), Settings::Get().GetWindowHeight() };
+				VkExtent2D actual_extent	= { prefered_width, prefered_height };
 				actual_extent.width			= Max(capabilities.minImageExtent.width, Min(capabilities.maxImageExtent.width, actual_extent.width));
 				actual_extent.height		= Max(capabilities.minImageExtent.height, Min(capabilities.maxImageExtent.height, actual_extent.height));
 
