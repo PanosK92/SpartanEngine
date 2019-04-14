@@ -233,6 +233,10 @@ namespace Spartan
 
 	void Renderer::CreateShaders()
 	{
+#ifdef API_GRAPHICS_VULKAN
+		return;
+#endif
+
 		// Get standard shader directory
 		const auto dir_shaders = g_resource_cache->GetDataDirectory(Asset_Shaders);
 

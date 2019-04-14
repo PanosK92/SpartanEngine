@@ -90,6 +90,9 @@ namespace Spartan
 			return;
 		}
 
+		if (m_state != RHI_CommandList_Idle)
+			return;
+
 		// Acquire next swap chain image
 		m_swap_chain = swap_chain;
 		if (!m_swap_chain->AcquireNextImage())
@@ -119,12 +122,12 @@ namespace Spartan
 		render_pass_info.pClearValues				= &clear_color;
 		vkCmdBeginRenderPass(m_cmd_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
-		m_ready = true;
+		m_state = RHI_CommandList_Begun;
 	}
 
 	void RHI_CommandList::End()
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		vkCmdEndRenderPass(m_cmd_buffer);
@@ -133,12 +136,15 @@ namespace Spartan
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to end command buffer, %s.", vulkan_helper::vk_result_to_string(result));
+			return;
 		}
+
+		m_state = RHI_CommandList_Ended;
 	}
 
 	void RHI_CommandList::Draw(unsigned int vertex_count)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		vkCmdDraw(m_cmd_buffer, vertex_count, 1, 0, 0);
@@ -146,7 +152,7 @@ namespace Spartan
 
 	void RHI_CommandList::DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		vkCmdDrawIndexed(m_cmd_buffer, index_count, 1, index_offset, vertex_offset, 0);
@@ -154,7 +160,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetPipeline(const RHI_Pipeline* pipeline)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		vkCmdBindPipeline(m_cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetPipeline()));
@@ -175,7 +181,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		VkViewport vk_viewport	= {};
@@ -190,7 +196,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		VkRect2D vk_scissor;
@@ -203,37 +209,37 @@ namespace Spartan
 
 	void RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetInputLayout(const RHI_InputLayout* input_layout)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		auto vk_buffer		= static_cast<VkBuffer>(buffer->GetBuffer());
@@ -243,7 +249,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		vkCmdBindIndexBuffer(m_cmd_buffer, static_cast<VkBuffer>(buffer->GetBuffer()), 0, VK_INDEX_TYPE_UINT32);
@@ -251,55 +257,55 @@ namespace Spartan
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetConstantBuffers(unsigned int start_slot, RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetSamplers(unsigned int start_slot, const vector<void*>& samplers)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetSampler(unsigned int start_slot, const shared_ptr<RHI_Sampler>& sampler)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetTextures(unsigned int start_slot, const vector<void*>& textures)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetTexture(unsigned int start_slot, void* texture)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_Texture>& texture)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		SetTexture(start_slot, texture->GetBufferView());
@@ -307,7 +313,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_RenderTexture>& texture)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 
 		SetTexture(start_slot, texture->GetBufferView());
@@ -315,37 +321,37 @@ namespace Spartan
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetRenderTarget(void* render_target, void* depth_stencil /*= nullptr*/)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& render_target, void* depth_stencil /*= nullptr*/)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::ClearRenderTarget(void* render_target, const Vector4& color)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil /*= 0*/)
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Begun)
 			return;
 	}
 
 	void RHI_CommandList::Submit()
 	{
-		if (!m_ready)
+		if (m_state != RHI_CommandList_Ended)
 			return;
 
 		vector<VkSemaphore> wait_semaphores		= { static_cast<VkSemaphore>(m_swap_chain->GetWaitSemaphore()) };
@@ -362,18 +368,14 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= static_cast<uint32_t>(signal_semaphores.size());
 		submit_info.pSignalSemaphores		= signal_semaphores.data();
 
-		if (vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, VK_NULL_HANDLE) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to submit command buffer.");
-		}
-
-		auto result = vkQueueWaitIdle(m_rhi_device->GetContext()->queue_graphics);
+		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, VK_NULL_HANDLE);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to wait idle, %s.", vulkan_helper::vk_result_to_string(result));
+			return;
+			LOGF_ERROR("Failed to submit command buffer, %s.", vulkan_helper::vk_result_to_string(result));
 		}
-
-		m_ready = false;
+		
+		m_state = RHI_CommandList_Idle;
 	}
 
 	RHI_Command& RHI_CommandList::GetCmd()
