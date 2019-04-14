@@ -40,6 +40,13 @@ namespace Window
 		return 0;
 	}
 
+	inline void GetWindowSize(float* width, float* height)
+	{
+		RECT rect;
+		::GetClientRect(g_handle, &rect);
+		(*width)	= (float)(rect.right - rect.left);
+		(*height)	= (float)(rect.bottom - rect.top);
+	}
 	inline bool Create(HINSTANCE instance, const std::string& title)
 	{
 		g_instance = instance;

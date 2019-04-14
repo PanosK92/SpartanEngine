@@ -41,7 +41,7 @@ namespace Spartan
 class Editor
 {
 public:
-	Editor(void* window_handle, void* window_instance);
+	Editor(void* window_handle, void* window_instance, float width, float height);
 	~Editor();
 
 	void Resize(unsigned int width, unsigned int height);

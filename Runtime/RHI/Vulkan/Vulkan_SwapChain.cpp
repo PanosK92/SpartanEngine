@@ -115,7 +115,7 @@ namespace Spartan
 			create_info.minImageCount				= buffer_count;
 			create_info.imageFormat					= format_selection.format;
 			create_info.imageColorSpace				= format_selection.colorSpace;
-			create_info.imageExtent					= vulkan_helper::swap_chain::choose_extent(swap_chain_support.capabilities, width, height);
+			create_info.imageExtent					= { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 			create_info.imageArrayLayers			= 1;
 			create_info.imageUsage					= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 

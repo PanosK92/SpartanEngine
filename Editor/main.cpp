@@ -35,7 +35,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	Window::Create(hInstance, "Spartan " + std::string(ENGINE_VERSION));	
 
 	// Create editor
-	editor = std::make_unique<Editor>(Window::g_handle, hInstance);
+	float width, height; Window::GetWindowSize(&width, &height);
+	editor = std::make_unique<Editor>(Window::g_handle, hInstance, width, height);
 
 	// Show window
 	Window::Show();

@@ -65,7 +65,7 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_VertexBuffer>		g_vertexBuffer;
 	static shared_ptr<RHI_IndexBuffer>		g_indexBuffer;
 	
-	inline bool Initialize(Context* context)
+	inline bool Initialize(Context* context, float width, float height)
 	{
 		g_context		= context;
 		g_renderer		= context->GetSubsystem<Renderer>().get();
@@ -202,8 +202,8 @@ namespace ImGui::RHI
 			(
 				Settings::Get().GetWindowHandle(),
 				g_rhi_device,
-				static_cast<unsigned int>(g_renderer->GetResolution().x),
-				static_cast<unsigned int>(g_renderer->GetResolution().y),
+				static_cast<unsigned int>(width),
+				static_cast<unsigned int>(height),
 				g_rhi_device->GetBackBufferFormat(),
 				Swap_Flip_Discard,
 				SwapChain_Allow_Tearing,
