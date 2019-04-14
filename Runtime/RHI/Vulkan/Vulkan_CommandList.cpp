@@ -67,11 +67,13 @@ namespace Spartan
 		}
 
 		m_semaphore_submit = vulkan_helper::semaphore::create(m_rhi_device->GetContext()->device);
+		m_fence = vulkan_helper::fence::create(m_rhi_device->GetContext()->device);
 	}
 
 	RHI_CommandList::~RHI_CommandList()
 	{
 		auto device = m_rhi_device->GetContext()->device;
+		vulkan_helper::fence::destroy(device, m_fence);
 		vulkan_helper::semaphore::destroy(device, m_semaphore_submit);
 		vkFreeCommandBuffers(device, m_cmd_pool, 1, &m_cmd_buffer);
 		vkDestroyCommandPool(device, m_cmd_pool, nullptr);
@@ -90,6 +92,14 @@ namespace Spartan
 			return;
 		}
 
+		// Wait for fence
+		if (m_state == RHI_CommandList_Submited)
+		{
+			vulkan_helper::fence::wait(m_rhi_device->GetContext()->device, m_fence);
+			m_state = RHI_CommandList_Idle;
+		}
+
+		// Only move ahead if we are at an idle state
 		if (m_state != RHI_CommandList_Idle)
 			return;
 
@@ -368,14 +378,14 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= static_cast<uint32_t>(signal_semaphores.size());
 		submit_info.pSignalSemaphores		= signal_semaphores.data();
 
-		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, VK_NULL_HANDLE);
+		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, static_cast<VkFence>(m_fence));
 		if (result != VK_SUCCESS)
 		{
 			return;
 			LOGF_ERROR("Failed to submit command buffer, %s.", vulkan_helper::vk_result_to_string(result));
 		}
-		
-		m_state = RHI_CommandList_Idle;
+
+		m_state = RHI_CommandList_Submited;
 	}
 
 	RHI_Command& RHI_CommandList::GetCmd()

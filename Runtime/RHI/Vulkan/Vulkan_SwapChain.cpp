@@ -363,13 +363,6 @@ namespace Spartan
 			return false;
 		}
 
-		result = vkQueueWaitIdle(m_rhi_device->GetContext()->queue_present);
-		if (result != VK_SUCCESS)
-		{
-			LOGF_ERROR("Failed to wait idle, %s.", vulkan_helper::vk_result_to_string(result));
-			return false;
-		}
-
 		return true;
 	}
 }

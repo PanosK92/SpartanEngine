@@ -36,6 +36,88 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace vulkan_helper
 {
+	inline void log_available_extensions()
+	{
+		uint32_t extension_count = 0;
+		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+		std::vector<VkExtensionProperties> extensions(extension_count);
+		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
+		for (const auto& extension : extensions)
+		{
+			LOGF_INFO("%s", extension.extensionName);
+		}
+	}
+
+	inline bool check_validation_layers(Spartan::RHI_Context* context)
+	{
+		uint32_t layer_count;
+		vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+
+		std::vector<VkLayerProperties> available_layers(layer_count);
+		vkEnumerateInstanceLayerProperties(&layer_count, available_layers.data());
+
+		for (auto layer_name : context->validation_layers)
+		{
+			for (const auto& layer_properties : available_layers)
+			{
+				if (strcmp(layer_name, layer_properties.layerName) == 0)
+					return true;
+			}
+		}
+
+		return false;
+	}
+
+	inline uint32_t GetMemoryType(VkPhysicalDevice device, VkMemoryPropertyFlags properties, uint32_t type_bits)
+	{
+		VkPhysicalDeviceMemoryProperties prop;
+		vkGetPhysicalDeviceMemoryProperties(device, &prop);
+		for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
+			if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
+				return i;
+
+		return 0xFFFFFFFF; // Unable to find memoryType
+	}
+
+	inline const char* vk_result_to_string(const VkResult result)
+	{
+		switch (result)
+		{
+		case VK_NOT_READY:											return "VK_NOT_READY";
+		case VK_TIMEOUT:											return "VK_TIMEOUT";
+		case VK_EVENT_SET:											return "VK_EVENT_SET";
+		case VK_EVENT_RESET:										return "VK_EVENT_RESET";
+		case VK_INCOMPLETE:											return "VK_INCOMPLETE";
+		case VK_ERROR_OUT_OF_HOST_MEMORY:							return "VK_ERROR_OUT_OF_HOST_MEMORY";
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:							return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+		case VK_ERROR_INITIALIZATION_FAILED:						return "VK_ERROR_INITIALIZATION_FAILED";
+		case VK_ERROR_DEVICE_LOST:									return "VK_ERROR_DEVICE_LOST";
+		case VK_ERROR_MEMORY_MAP_FAILED:							return "VK_ERROR_MEMORY_MAP_FAILED";
+		case VK_ERROR_LAYER_NOT_PRESENT:							return "VK_ERROR_LAYER_NOT_PRESENT";
+		case VK_ERROR_EXTENSION_NOT_PRESENT:						return "VK_ERROR_EXTENSION_NOT_PRESENT";
+		case VK_ERROR_FEATURE_NOT_PRESENT:							return "VK_ERROR_FEATURE_NOT_PRESENT";
+		case VK_ERROR_INCOMPATIBLE_DRIVER:							return "VK_ERROR_INCOMPATIBLE_DRIVER";
+		case VK_ERROR_TOO_MANY_OBJECTS:								return "VK_ERROR_TOO_MANY_OBJECTS";
+		case VK_ERROR_FORMAT_NOT_SUPPORTED:							return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+		case VK_ERROR_FRAGMENTED_POOL:								return "VK_ERROR_FRAGMENTED_POOL";
+		case VK_ERROR_OUT_OF_POOL_MEMORY:							return "VK_ERROR_OUT_OF_POOL_MEMORY";
+		case VK_ERROR_INVALID_EXTERNAL_HANDLE:						return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
+		case VK_ERROR_SURFACE_LOST_KHR:								return "VK_ERROR_SURFACE_LOST_KHR";
+		case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:						return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+		case VK_SUBOPTIMAL_KHR:										return "VK_SUBOPTIMAL_KHR";
+		case VK_ERROR_OUT_OF_DATE_KHR:								return "VK_ERROR_OUT_OF_DATE_KHR";
+		case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:						return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+		case VK_ERROR_VALIDATION_FAILED_EXT:						return "VK_ERROR_VALIDATION_FAILED_EXT";
+		case VK_ERROR_INVALID_SHADER_NV:							return "VK_ERROR_INVALID_SHADER_NV";
+		case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
+		case VK_ERROR_FRAGMENTATION_EXT:							return "VK_ERROR_FRAGMENTATION_EXT";
+		case VK_ERROR_NOT_PERMITTED_EXT:							return "VK_ERROR_NOT_PERMITTED_EXT";
+		case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:					return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
+		}
+
+		return "Unknown error code";
+	}
+
 	namespace debug_callback
 	{
 		static VKAPI_ATTR VkBool32 VKAPI_CALL callback(
@@ -257,9 +339,10 @@ namespace vulkan_helper
 			semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
 			VkSemaphore semaphore_out;
-			if (vkCreateSemaphore(device, &semaphore_info, nullptr, &semaphore_out) != VK_SUCCESS)
+			auto result = vkCreateSemaphore(device, &semaphore_info, nullptr, &semaphore_out);
+			if (result != VK_SUCCESS)
 			{
-				LOG_ERROR("Failed to create semaphore.");
+				LOGF_ERROR("Failed to create semaphore, %s.", vk_result_to_string(result));
 				return nullptr;
 			}
 
@@ -276,87 +359,41 @@ namespace vulkan_helper
 		}
 	}
 
-	inline void log_available_extensions()
+	namespace fence
 	{
-		uint32_t extension_count = 0;
-		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
-		std::vector<VkExtensionProperties> extensions(extension_count);
-		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
-		for (const auto& extension : extensions)
+		inline void* create(VkDevice& device)
 		{
-			LOGF_INFO("%s", extension.extensionName);
-		}
-	}
+			VkFenceCreateInfo fence_info	= {};
+			//fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			//fence_info.flags				= VK_FENCE_CREATE_SIGNALED_BIT;
 
-	inline bool check_validation_layers(Spartan::RHI_Context* context)
-	{
-		uint32_t layer_count;
-		vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-		std::vector<VkLayerProperties> available_layers(layer_count);
-		vkEnumerateInstanceLayerProperties(&layer_count, available_layers.data());
-
-		for (auto layer_name : context->validation_layers)
-		{
-			for (const auto& layer_properties : available_layers)
+			VkFence fence_out;
+			auto result = vkCreateFence(device, &fence_info, nullptr, &fence_out);
+			if (result != VK_SUCCESS)
 			{
-				if (strcmp(layer_name, layer_properties.layerName) == 0)
-					return true;
+				LOGF_ERROR("Failed to create semaphore, %s", vk_result_to_string(result));
+				return nullptr;
 			}
+
+			return static_cast<void*>(fence_out);
 		}
 
-		return false;
-	}
-
-	inline uint32_t GetMemoryType(VkPhysicalDevice device, VkMemoryPropertyFlags properties, uint32_t type_bits)
-	{
-		VkPhysicalDeviceMemoryProperties prop;
-		vkGetPhysicalDeviceMemoryProperties(device, &prop);
-		for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
-			if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
-				return i;
-
-		return 0xFFFFFFFF; // Unable to find memoryType
-	}
-
-	inline const char* vk_result_to_string(const VkResult result)
-	{
-		switch (result)
+		inline void destroy(VkDevice& device, void*& fence_in)
 		{
-			case VK_NOT_READY:											return "VK_NOT_READY";					
-			case VK_TIMEOUT:											return "VK_TIMEOUT";					
-			case VK_EVENT_SET:											return "VK_EVENT_SET";					
-			case VK_EVENT_RESET:										return "VK_EVENT_RESET";				
-			case VK_INCOMPLETE:											return "VK_INCOMPLETE";					
-			case VK_ERROR_OUT_OF_HOST_MEMORY:							return "VK_ERROR_OUT_OF_HOST_MEMORY";	
-			case VK_ERROR_OUT_OF_DEVICE_MEMORY:							return "VK_ERROR_OUT_OF_DEVICE_MEMORY";	
-			case VK_ERROR_INITIALIZATION_FAILED:						return "VK_ERROR_INITIALIZATION_FAILED";
-			case VK_ERROR_DEVICE_LOST:									return "VK_ERROR_DEVICE_LOST";			
-			case VK_ERROR_MEMORY_MAP_FAILED:							return "VK_ERROR_MEMORY_MAP_FAILED";	
-			case VK_ERROR_LAYER_NOT_PRESENT:							return "VK_ERROR_LAYER_NOT_PRESENT";	
-			case VK_ERROR_EXTENSION_NOT_PRESENT:						return "VK_ERROR_EXTENSION_NOT_PRESENT";
-			case VK_ERROR_FEATURE_NOT_PRESENT:							return "VK_ERROR_FEATURE_NOT_PRESENT";	
-			case VK_ERROR_INCOMPATIBLE_DRIVER:							return "VK_ERROR_INCOMPATIBLE_DRIVER";	
-			case VK_ERROR_TOO_MANY_OBJECTS:								return "VK_ERROR_TOO_MANY_OBJECTS";		
-			case VK_ERROR_FORMAT_NOT_SUPPORTED:							return "VK_ERROR_FORMAT_NOT_SUPPORTED";	
-			case VK_ERROR_FRAGMENTED_POOL:								return "VK_ERROR_FRAGMENTED_POOL";		
-			case VK_ERROR_OUT_OF_POOL_MEMORY:							return "VK_ERROR_OUT_OF_POOL_MEMORY";	
-			case VK_ERROR_INVALID_EXTERNAL_HANDLE:						return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
-			case VK_ERROR_SURFACE_LOST_KHR:								return "VK_ERROR_SURFACE_LOST_KHR";		
-			case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:						return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-			case VK_SUBOPTIMAL_KHR:										return "VK_SUBOPTIMAL_KHR";				
-			case VK_ERROR_OUT_OF_DATE_KHR:								return "VK_ERROR_OUT_OF_DATE_KHR";		
-			case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:						return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
-			case VK_ERROR_VALIDATION_FAILED_EXT:						return "VK_ERROR_VALIDATION_FAILED_EXT";
-			case VK_ERROR_INVALID_SHADER_NV:							return "VK_ERROR_INVALID_SHADER_NV";
-			case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
-			case VK_ERROR_FRAGMENTATION_EXT:							return "VK_ERROR_FRAGMENTATION_EXT";
-			case VK_ERROR_NOT_PERMITTED_EXT:							return "VK_ERROR_NOT_PERMITTED_EXT";
-			case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:					return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
+			if (!fence_in)
+				return;
+
+			if (fence_in) { vkDestroyFence(device, static_cast<VkFence>(fence_in), nullptr); }
+			fence_in = nullptr;
 		}
 
-		return "Unknown error code";
+		inline void wait(VkDevice& device, void*& fence_in)
+		{
+			auto fence_temp = static_cast<VkFence>(fence_in);
+			vkWaitForFences(device, 1, &fence_temp, VK_TRUE, std::numeric_limits<uint64_t>::max());
+			vkResetFences(device, 1, &fence_temp);
+			fence_in = static_cast<void*>(fence_temp);
+		}
 	}
-
 }
 #endif

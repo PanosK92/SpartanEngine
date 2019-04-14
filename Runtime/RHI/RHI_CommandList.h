@@ -175,7 +175,8 @@ namespace Spartan
 	{
 		RHI_CommandList_Idle,
 		RHI_CommandList_Begun,
-		RHI_CommandList_Ended
+		RHI_CommandList_Ended,
+		RHI_CommandList_Submited
 	};
 
 	class SPARTAN_CLASS RHI_CommandList
@@ -265,6 +266,7 @@ namespace Spartan
 		VkCommandPool_T* m_cmd_pool;
 		VkCommandBuffer_T* m_cmd_buffer;
 		void* m_semaphore_submit = nullptr;
+		void* m_fence = nullptr;
 		RHI_CommandList_State m_state = RHI_CommandList_Idle;
 
 		// Dependencies
