@@ -258,6 +258,7 @@ namespace Spartan
 		VkCommandPool_T* m_cmd_pool;
 		VkCommandBuffer_T* m_cmd_buffer;
 		void* m_semaphore_submit = nullptr;
+		bool m_ready = false;
 
 		// Dependencies
 		std::vector<void*> m_textures_empty = std::vector<void*>(10);

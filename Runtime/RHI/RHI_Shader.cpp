@@ -95,21 +95,4 @@ namespace Spartan
 			Compile(type, shader, vertex_attributes);
 		});
 	}
-
-	bool RHI_Shader::_CreateInputLayout(void* vertex_shader_blob, RHI_Vertex_Attribute_Type vertex_attributes)
-	{
-		if (!vertex_shader_blob)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		if (!m_input_layout->Create(vertex_shader_blob, vertex_attributes))
-		{
-			LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
-			return false;
-		}
-
-		return true;
-	}
 }

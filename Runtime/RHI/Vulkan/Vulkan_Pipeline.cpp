@@ -209,13 +209,31 @@ namespace Spartan
 		subpass.colorAttachmentCount	= 1;
 		subpass.pColorAttachments		= &color_attachment_ref;
 
-		VkSubpassDependency dependency	= {};
-		dependency.srcSubpass			= VK_SUBPASS_EXTERNAL;
-		dependency.dstSubpass			= 0;
-		dependency.srcStageMask			= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependency.srcAccessMask		= 0;
-		dependency.dstStageMask			= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependency.dstAccessMask		= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		// Sub-pass dependencies for layout transitions
+		std::vector<VkSubpassDependency> dependencies
+		{
+			VkSubpassDependency
+			{
+				VK_SUBPASS_EXTERNAL,																							// uint32_t srcSubpass;
+				0,																												// uint32_t dstSubpass;
+				VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,													// PipelineStageFlags srcStageMask;
+				VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,											// PipelineStageFlags dstStageMask;
+				VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT,																	// AccessFlags srcAccessMask;
+				VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags dstAccessMask;
+				VkDependencyFlagBits::VK_DEPENDENCY_BY_REGION_BIT																// DependencyFlags dependencyFlags;
+			},
+
+			VkSubpassDependency
+			{
+				0,																												// uint32_t srcSubpass;
+				VK_SUBPASS_EXTERNAL,																							// uint32_t dstSubpass;
+				VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,											// PipelineStageFlags srcStageMask;
+				VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,													// PipelineStageFlags dstStageMask;
+				VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags srcAccessMask;
+				VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT,																	// AccessFlags dstAccessMask;
+				VkDependencyFlagBits::VK_DEPENDENCY_BY_REGION_BIT																// DependencyFlags dependencyFlags;
+			},
+		};
 
 		VkRenderPassCreateInfo render_pass_info = {};
 		render_pass_info.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -223,8 +241,8 @@ namespace Spartan
 		render_pass_info.pAttachments			= &color_attachment;
 		render_pass_info.subpassCount			= 1;
 		render_pass_info.pSubpasses				= &subpass;
-		render_pass_info.dependencyCount		= 1;
-		render_pass_info.pDependencies			= &dependency;
+		render_pass_info.dependencyCount		= static_cast<uint32_t>(dependencies.size());
+		render_pass_info.pDependencies			= dependencies.data();
 
 		VkRenderPass render_pass = nullptr;
 		if (vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS)
@@ -302,7 +320,7 @@ namespace Spartan
 		shader_pixel_stage_info.pName							= m_shader_pixel->GetPixelEntryPoint().c_str();
 
 		// Shader stages
-		VkPipelineShaderStageCreateInfo shader_stages[] = { shader_vertex_stage_info, shader_pixel_stage_info };
+		vector<VkPipelineShaderStageCreateInfo> shader_stages = { shader_vertex_stage_info, shader_pixel_stage_info };
 
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
@@ -369,8 +387,8 @@ namespace Spartan
 
 		VkGraphicsPipelineCreateInfo pipeline_info	= {};
 		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipeline_info.stageCount					= 2;
-		pipeline_info.pStages						= shader_stages;
+		pipeline_info.stageCount					= static_cast<uint32_t>(shader_stages.size());
+		pipeline_info.pStages						= shader_stages.data();
 		pipeline_info.pVertexInputState				= static_cast<VkPipelineVertexInputStateCreateInfo*>(m_input_layout->GetBuffer());
 		pipeline_info.pInputAssemblyState			= &input_assembly_state;
 		pipeline_info.pDynamicState					= dynamic_viewport_scissor ? &dynamic_state : nullptr;

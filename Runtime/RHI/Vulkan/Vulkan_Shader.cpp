@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
 #include <sstream> 
+#include "../RHI_InputLayout.h"
 //======================================
 
 //= NAMESPACES =====
@@ -331,6 +332,13 @@ namespace Spartan
 				{
 					LOG_ERROR("Failed to create shader module.");
 				}	
+				else
+				{
+					if (!m_input_layout->Create(nullptr, vertex_attributes))
+					{
+						LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
+					}
+				}
 			}	
 		}
 

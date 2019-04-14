@@ -91,7 +91,6 @@ namespace Spartan
 
 	private:
 		void* _Compile(Shader_Type type, const std::string& shader, RHI_Vertex_Attribute_Type vertex_attributes = Vertex_Attribute_None);
-		bool _CreateInputLayout(void* vertex_shader_blob, RHI_Vertex_Attribute_Type vertex_attributes);
 
 		std::string m_name;
 		std::string m_file_path;
