@@ -100,18 +100,17 @@ namespace Spartan
 	enum RHI_Vertex_Attribute_Type : unsigned long
 	{
 		Vertex_Attribute_None			= 0,
-		Vertex_Attribute_Position2D		= 1UL << 0,
-		Vertex_Attribute_Position3D		= 1UL << 1,
+		Vertex_Attribute_Position2d		= 1UL << 0,
+		Vertex_Attribute_Position3d		= 1UL << 1,
 		Vertex_Attribute_Color8			= 1UL << 2,
 		Vertex_Attribute_Color32		= 1UL << 3,
 		Vertex_Attribute_Texture		= 1UL << 4,
-		Vertex_Attribute_NormalTangent	= 1UL << 5,
-		Vertex_Attribute_ImGui			= 1UL << 6
+		Vertex_Attribute_NormalTangent	= 1UL << 5
 	};
-	#define Vertex_Attributes_PositionColor					static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3D	| Vertex_Attribute_Color32)
-	#define Vertex_Attributes_PositionTexture				static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3D	| Vertex_Attribute_Texture)
-	#define Vertex_Attributes_PositionTextureNormalTangent	static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3D	| Vertex_Attribute_Texture | Vertex_Attribute_NormalTangent)
-	#define Vertex_Attributes_Position2DTextureColor8		static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position2D	| Vertex_Attribute_Texture | Vertex_Attribute_Color8)
+	#define Vertex_Attributes_PositionColor					static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3d	| Vertex_Attribute_Color32)
+	#define Vertex_Attributes_PositionTexture				static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3d	| Vertex_Attribute_Texture)
+	#define Vertex_Attributes_PositionTextureNormalTangent	static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3d	| Vertex_Attribute_Texture | Vertex_Attribute_NormalTangent)
+	#define Vertex_Attributes_Position2dTextureColor8		static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position2d	| Vertex_Attribute_Texture | Vertex_Attribute_Color8)
 
 	enum RHI_Cull_Mode
 	{
