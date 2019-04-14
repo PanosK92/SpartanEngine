@@ -278,7 +278,7 @@ namespace Spartan
 
 		// Depth
 		m_vps_depth = make_shared<RHI_Shader>(m_rhi_device);
-		m_vps_depth->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "ShadowingDepth.hlsl", Vertex_Attribute_Position3D);
+		m_vps_depth->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "ShadowingDepth.hlsl", Vertex_Attribute_Position3d);
 
 		// Quad
 		m_vs_quad = make_shared<RHI_Shader>(m_rhi_device);

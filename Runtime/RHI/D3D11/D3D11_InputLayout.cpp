@@ -57,12 +57,12 @@ namespace Spartan
 		
 		// Fill in attribute descriptions
 		vector<D3D11_INPUT_ELEMENT_DESC> attribute_desc;
-		if (m_vertex_attributes & Vertex_Attribute_Position2D)
+		if (m_vertex_attributes & Vertex_Attribute_Position2d)
 		{
 			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}
 
-		if (m_vertex_attributes & Vertex_Attribute_Position3D)
+		if (m_vertex_attributes & Vertex_Attribute_Position3d)
 		{
 			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
 		}

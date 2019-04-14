@@ -176,7 +176,7 @@ namespace ImGui::RHI
 				"	return input.col * texture0.Sample(sampler0, input.uv);"
 				"}";
 			auto shader = make_shared<RHI_Shader>(g_rhi_device);
-			shader->Compile(Shader_VertexPixel, shader_source, Vertex_Attributes_Position2DTextureColor8);
+			shader->Compile(Shader_VertexPixel, shader_source, Vertex_Attributes_Position2dTextureColor8);
 
 			// Pipeline
 			g_pipeline.m_rhi_device				= g_rhi_device;

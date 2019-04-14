@@ -28,8 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "../../Math/Matrix.h"
 #include "../../Core/EngineDefs.h"
+#include "../../Math/Vector2.h"
+#include "../../Math/Vector4.h"
 //================================
 
 //==================
@@ -50,53 +51,30 @@ namespace Spartan
 		m_buffer = nullptr;
 	}
 
-	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes)
+	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes_flag)
 	{
-		m_vertex_attributes = vertex_attributes;
+		m_vertex_attributes = vertex_attributes_flag;
 
-		vector<VkVertexInputAttributeDescription> attribute_description;
-		if (m_vertex_attributes & Vertex_Attribute_Position2D)
+		vector<VkVertexInputAttributeDescription> vertex_attributes;
+		uint32_t vertex_buffer_bind_id = 0;
+		if (vertex_attributes_flag == Vertex_Attributes_Position2dTextureColor8)
 		{
-			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32_SFLOAT, 0 });
-		}
-
-		if (m_vertex_attributes & Vertex_Attribute_Position3D)
-		{
-			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 });
-		}
-
-		if (m_vertex_attributes & Vertex_Attribute_Texture)
-		{
-			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32_SFLOAT, 0 });
-		}
-
-		if (m_vertex_attributes & Vertex_Attribute_Color8)
-		{
-			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R8G8B8A8_UNORM, 0 });
-		}
-
-		if (m_vertex_attributes & Vertex_Attribute_Color32)
-		{
-			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, 0 });
-		}
-
-		if (m_vertex_attributes & Vertex_Attribute_NormalTangent)
-		{
-			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 });
-			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 });
+			vertex_attributes.emplace_back(VkVertexInputAttributeDescription{ vertex_buffer_bind_id, 0, VK_FORMAT_R32G32_SFLOAT, 0 });
+			vertex_attributes.emplace_back(VkVertexInputAttributeDescription{ vertex_buffer_bind_id, 1, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 2 });
+			vertex_attributes.emplace_back(VkVertexInputAttributeDescription{ vertex_buffer_bind_id, 2, VK_FORMAT_R8G8B8A8_UNORM, sizeof(float) * 4 });
 		}
 
 		VkVertexInputBindingDescription binding_description = {};
-		binding_description.binding		= 1;
-		binding_description.stride		= 256; // fix this;
-		binding_description.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
+		binding_description.binding							= 0;
+		binding_description.stride							= sizeof(float) * 4;
+		binding_description.inputRate						= VK_VERTEX_INPUT_RATE_VERTEX;
 
 		auto vertex_input_info									= new VkPipelineVertexInputStateCreateInfo();
 		vertex_input_info->sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertex_input_info->vertexBindingDescriptionCount		= 1;
 		vertex_input_info->pVertexBindingDescriptions			= &binding_description;
-		vertex_input_info->vertexAttributeDescriptionCount		= static_cast<uint32_t>(attribute_description.size());
-		vertex_input_info->pVertexAttributeDescriptions			= attribute_description.data();
+		vertex_input_info->vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attributes.size());
+		vertex_input_info->pVertexAttributeDescriptions			= vertex_attributes.data();
 
 		m_buffer = static_cast<void*>(vertex_input_info);
 		return true;
