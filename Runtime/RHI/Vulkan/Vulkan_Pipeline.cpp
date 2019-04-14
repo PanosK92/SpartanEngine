@@ -93,7 +93,6 @@ namespace Spartan
 		//   binding 0 = uniform buffer 
 		//   binding 2 = sampler
 		//   binding 1 = texture2D
-		VkDescriptorSetLayoutBinding layout;
 		vector<VkDescriptorSetLayoutBinding> resource_bindings = 
 		{	
 			{ 0,  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	1, VK_SHADER_STAGE_VERTEX_BIT,		nullptr },

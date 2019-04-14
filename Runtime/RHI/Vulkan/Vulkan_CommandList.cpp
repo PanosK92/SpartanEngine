@@ -66,17 +66,16 @@ namespace Spartan
 			return;
 		}
 
-		m_semaphore_submit = vulkan_helper::semaphore::create(m_rhi_device->GetContext()->device);
-		m_fence = vulkan_helper::fence::create(m_rhi_device->GetContext()->device);
+		m_semaphore_submit = vulkan_helper::semaphore::create(rhi_device);
+		m_fence = vulkan_helper::fence::create(rhi_device);
 	}
 
 	RHI_CommandList::~RHI_CommandList()
 	{
-		auto device = m_rhi_device->GetContext()->device;
-		vulkan_helper::fence::destroy(device, m_fence);
-		vulkan_helper::semaphore::destroy(device, m_semaphore_submit);
-		vkFreeCommandBuffers(device, m_cmd_pool, 1, &m_cmd_buffer);
-		vkDestroyCommandPool(device, m_cmd_pool, nullptr);
+		vulkan_helper::fence::destroy(m_rhi_device, m_fence);
+		vulkan_helper::semaphore::destroy(m_rhi_device, m_semaphore_submit);
+		vkFreeCommandBuffers(m_rhi_device->GetContext()->device, m_cmd_pool, 1, &m_cmd_buffer);
+		vkDestroyCommandPool(m_rhi_device->GetContext()->device, m_cmd_pool, nullptr);
 	}
 
 	void RHI_CommandList::Clear()
@@ -95,7 +94,7 @@ namespace Spartan
 		// Wait for fence
 		if (m_state == RHI_CommandList_Submited)
 		{
-			vulkan_helper::fence::wait(m_rhi_device->GetContext()->device, m_fence);
+			vulkan_helper::fence::wait(m_rhi_device, m_fence);
 			m_state = RHI_CommandList_Idle;
 		}
 
@@ -378,6 +377,7 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= static_cast<uint32_t>(signal_semaphores.size());
 		submit_info.pSignalSemaphores		= signal_semaphores.data();
 
+		vulkan_helper::fence::reset(m_rhi_device, m_fence);
 		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, static_cast<VkFence>(m_fence));
 		if (result != VK_SUCCESS)
 		{

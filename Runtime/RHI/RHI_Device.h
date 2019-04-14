@@ -134,11 +134,11 @@ namespace Spartan
 		RHI_Format GetBackBufferFormat()						{ return m_back_buffer_format; }
 		//=======================================================================================================================================
 
-		//= MISC ============================================
+		//= MISC ================================================
 		void WaitIdle();
 		bool IsInitialized() const	{ return m_initialized; }
-		RHI_Context* GetContext()	{ return m_rhi_context; }
-		//===================================================
+		RHI_Context* GetContext() const	{ return m_rhi_context; }
+		//=======================================================
 
 	private:
 		std::vector<DisplayMode> m_displayModes;
