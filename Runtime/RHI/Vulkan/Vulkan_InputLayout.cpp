@@ -52,19 +52,7 @@ namespace Spartan
 
 	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes)
 	{
-		return false;
-
-		if (!vertex_shader_blob)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
 		m_vertex_attributes = vertex_attributes;
-
-		VkVertexInputBindingDescription binding_description = {};
-		binding_description.binding							= 0;
-		binding_description.stride							= sizeof(Math::Matrix); // fix this
-		binding_description.inputRate						= VK_VERTEX_INPUT_RATE_VERTEX;
 
 		vector<VkVertexInputAttributeDescription> attribute_description;
 		if (m_vertex_attributes & Vertex_Attribute_Position2D)
@@ -97,6 +85,11 @@ namespace Spartan
 			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 });
 			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 });
 		}
+
+		VkVertexInputBindingDescription binding_description = {};
+		binding_description.binding		= 1;
+		binding_description.stride		= 256; // fix this;
+		binding_description.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
 
 		auto vertex_input_info									= new VkPipelineVertexInputStateCreateInfo();
 		vertex_input_info->sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

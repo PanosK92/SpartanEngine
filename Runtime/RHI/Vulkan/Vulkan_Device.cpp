@@ -115,25 +115,33 @@ namespace Spartan
 			}
 		}
 
-		// Device
-		VkPhysicalDeviceFeatures device_features = {};
-		VkDeviceCreateInfo create_info = {};
+		// Queue info
+		vector<VkDeviceQueueCreateInfo> queue_create_infos;
 		{
-			VkDeviceQueueCreateInfo queue_create_info	= {};
-			queue_create_info.sType						= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queue_create_info.queueFamilyIndex			= m_rhi_context->indices.graphics_family.value();
-			queue_create_info.queueCount				= 1;
+			set<uint32_t> unique_queue_families = { m_rhi_context->indices.graphics_family.value(), m_rhi_context->indices.present_family.value() };
+			auto queue_priority					= 1.0f;
+			for (auto queue_family : unique_queue_families)
+			{
+				VkDeviceQueueCreateInfo queue_create_info	= {};
+				queue_create_info.sType						= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+				queue_create_info.queueFamilyIndex			= queue_family;
+				queue_create_info.queueCount				= 1;
+				queue_create_info.pQueuePriorities			= &queue_priority;
+				queue_create_infos.push_back(queue_create_info);
+			}
+		}
 
-			auto queue_priority = 1.0f;
-			queue_create_info.pQueuePriorities = &queue_priority;
-
+		// Device create info
+		VkPhysicalDeviceFeatures device_features	= {};
+		device_features.samplerAnisotropy			= Settings::Get().GetAnisotropy() != 0;
+		VkDeviceCreateInfo create_info				= {};
+		{
 			create_info.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-			create_info.pQueueCreateInfos		= &queue_create_info;
-			create_info.queueCreateInfoCount	= 1;
+			create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
+			create_info.pQueueCreateInfos		= queue_create_infos.data();
 			create_info.pEnabledFeatures		= &device_features;
 			create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device.size());
 			create_info.ppEnabledExtensionNames = m_rhi_context->extensions_device.data();
-
 			if (m_rhi_context->validation_enabled)
 			{
 			    create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
@@ -143,34 +151,18 @@ namespace Spartan
 			{
 			    create_info.enabledLayerCount = 0;
 			}
-
-			if (vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device) != VK_SUCCESS) 
-			{
-				LOG_ERROR("Failed to create device.");
-			}
 		}
 
-		// Present Queue
+		// Create device
+		auto result = vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device);
+		if (result != VK_SUCCESS)
 		{
-			vector<VkDeviceQueueCreateInfo> queue_create_infos;
-			set<uint32_t> unique_queue_families = { m_rhi_context->indices.graphics_family.value(), m_rhi_context->indices.present_family.value() };
-			auto queue_priority = 1.0f;
-			for (auto queue_family : unique_queue_families) 
-			{
-				 VkDeviceQueueCreateInfo queue_create_info = {};
-				 queue_create_info.sType				= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				 queue_create_info.queueFamilyIndex		= queue_family;
-				 queue_create_info.queueCount			= 1;
-				 queue_create_info.pQueuePriorities		= &queue_priority;
-				 queue_create_infos.push_back(queue_create_info);
-			}
-
-			create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
-			create_info.pQueueCreateInfos		= queue_create_infos.data();
-
-			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_graphics);
-			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->queue_present);
+			LOGF_ERROR("Failed to create device, %s.", vulkan_helper::vk_result_to_string(result));
+			return;
 		}
+		// Create queues
+		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_graphics);
+		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_present);
 
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));

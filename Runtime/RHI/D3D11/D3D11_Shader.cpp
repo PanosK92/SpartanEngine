@@ -168,7 +168,10 @@ namespace Spartan
 				// Create input layout
 				if (vertex_attributes != Vertex_Attribute_None)
 				{
-					_CreateInputLayout(shader_blob, vertex_attributes);
+					if (!m_input_layout->Create(shader_blob, vertex_attributes))
+					{
+						LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
+					}
 				}
 			}
 			else if (type == Shader_Pixel)
