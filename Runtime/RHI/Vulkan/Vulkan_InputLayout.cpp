@@ -45,7 +45,8 @@ namespace Spartan
 
 	RHI_InputLayout::~RHI_InputLayout()
 	{
-		//safe_delete(static_cast<VkPipelineVertexInputStateCreateInfo*>(m_buffer));
+		auto buffer = static_cast<VkPipelineVertexInputStateCreateInfo*>(m_buffer);
+		safe_delete(buffer);
 		m_buffer = nullptr;
 	}
 
@@ -97,14 +98,14 @@ namespace Spartan
 			attribute_description.emplace_back(VkVertexInputAttributeDescription{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 });
 		}
 
-		/*auto vertex_input_info									= new VkPipelineVertexInputStateCreateInfo();
-		vertex_input_info.sType									= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_info.vertexBindingDescriptionCount			= 1;
-		vertex_input_info.pVertexBindingDescriptions			= &binding_description;
-		vertex_input_info.vertexAttributeDescriptionCount		= static_cast<uint32_t>(attribute_description.size());
-		vertex_input_info.pVertexAttributeDescriptions			= attribute_description.data();
+		auto vertex_input_info									= new VkPipelineVertexInputStateCreateInfo();
+		vertex_input_info->sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertex_input_info->vertexBindingDescriptionCount		= 1;
+		vertex_input_info->pVertexBindingDescriptions			= &binding_description;
+		vertex_input_info->vertexAttributeDescriptionCount		= static_cast<uint32_t>(attribute_description.size());
+		vertex_input_info->pVertexAttributeDescriptions			= attribute_description.data();
 
-		m_buffer = static_cast<void*>(vertex_input_info);*/
+		m_buffer = static_cast<void*>(vertex_input_info);
 		return true;
 	}
 }

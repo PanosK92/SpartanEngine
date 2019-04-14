@@ -66,7 +66,7 @@ namespace Spartan
 
 	inline void CreateDescriptorSet(void* sampler, void* texture, const VkDevice& device, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
 	{
-		uint32_t fix_this = 1;//static_cast<uint32_t>(swapChainImages.size());
+		uint32_t fix_this = 100;//static_cast<uint32_t>(swapChainImages.size());
 
 		// Descriptor pool
 		VkDescriptorPoolSize poolSize	= {};
@@ -75,7 +75,7 @@ namespace Spartan
 
 		VkDescriptorPoolCreateInfo pool_create_info = {};
 		pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_create_info.flags						= VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+		pool_create_info.flags						= VK_NULL_HANDLE; //VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 		pool_create_info.poolSizeCount				= 1;
 		pool_create_info.pPoolSizes					= &poolSize;
 		pool_create_info.maxSets					= fix_this;

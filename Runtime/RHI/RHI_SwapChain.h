@@ -57,6 +57,7 @@ namespace Spartan
 		void* GetRenderTargetView()		{ return m_render_target_view; }
 		unsigned int GetWidth()			{ return m_width; }
 		unsigned int GetHeight()		{ return m_height; }
+		auto GetBufferCount()			{ return m_buffer_count; }
 		const auto& GetFrameBuffer()	{ return m_frame_buffers[m_image_index]; }
 		auto& GetWaitSemaphore()		{ return m_semaphore_image_acquired;  }
 
