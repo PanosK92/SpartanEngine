@@ -32,9 +32,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
 #include "../../Math/MathHelper.h"
+#include "../RHI_Device.h"
 //================================
 
-namespace vulkan_helper
+namespace Spartan::vulkan_helper
 {
 	inline void log_available_extensions()
 	{
@@ -309,7 +310,7 @@ namespace vulkan_helper
 
 	namespace command_list
 	{
-		inline bool create_command_buffer(Spartan::RHI_Context* context, VkCommandBuffer* cmd_buffer, VkCommandPool cmd_pool, VkCommandBufferLevel level)
+		inline bool create_command_buffer(RHI_Context* context, VkCommandBuffer* cmd_buffer, VkCommandPool cmd_pool, VkCommandBufferLevel level)
 		{
 			VkCommandBufferAllocateInfo allocInfo = {};
 			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -320,7 +321,7 @@ namespace vulkan_helper
 			return vkAllocateCommandBuffers(context->device, &allocInfo, cmd_buffer) == VK_SUCCESS;
 		}
 
-		inline bool create_command_pool(Spartan::RHI_Context* context, VkCommandPool* cmd_pool)
+		inline bool create_command_pool(RHI_Context* context, VkCommandPool* cmd_pool)
 		{
 			VkCommandPoolCreateInfo cmdPoolInfo = {};
 			cmdPoolInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -333,13 +334,13 @@ namespace vulkan_helper
 
 	namespace semaphore
 	{
-		inline void* create(VkDevice& device)
+		inline void* create(RHI_Device* rhi_device)
 		{
 			VkSemaphoreCreateInfo semaphore_info = {};
 			semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
 			VkSemaphore semaphore_out;
-			auto result = vkCreateSemaphore(device, &semaphore_info, nullptr, &semaphore_out);
+			auto result = vkCreateSemaphore(rhi_device->GetContext()->device, &semaphore_info, nullptr, &semaphore_out);
 			if (result != VK_SUCCESS)
 			{
 				LOGF_ERROR("Failed to create semaphore, %s.", vk_result_to_string(result));
@@ -349,26 +350,26 @@ namespace vulkan_helper
 			return static_cast<void*>(semaphore_out);
 		}
 
-		inline void destroy(VkDevice& device, void*& semaphore_in)
+		inline void destroy(RHI_Device* rhi_device, void*& semaphore_in)
 		{
 			if (!semaphore_in)
 				return;
 
-			if (semaphore_in) { vkDestroySemaphore(device, static_cast<VkSemaphore>(semaphore_in), nullptr); }
+			if (semaphore_in) { vkDestroySemaphore(rhi_device->GetContext()->device, static_cast<VkSemaphore>(semaphore_in), nullptr); }
 			semaphore_in = nullptr;
 		}
 	}
 
 	namespace fence
 	{
-		inline void* create(VkDevice& device)
+		inline void* create(RHI_Device* rhi_device)
 		{
 			VkFenceCreateInfo fence_info	= {};
-			//fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-			//fence_info.flags				= VK_FENCE_CREATE_SIGNALED_BIT;
+			fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			fence_info.flags				= VK_FENCE_CREATE_SIGNALED_BIT;
 
 			VkFence fence_out;
-			auto result = vkCreateFence(device, &fence_info, nullptr, &fence_out);
+			auto result = vkCreateFence(rhi_device->GetContext()->device, &fence_info, nullptr, &fence_out);
 			if (result != VK_SUCCESS)
 			{
 				LOGF_ERROR("Failed to create semaphore, %s", vk_result_to_string(result));
@@ -378,20 +379,26 @@ namespace vulkan_helper
 			return static_cast<void*>(fence_out);
 		}
 
-		inline void destroy(VkDevice& device, void*& fence_in)
+		inline void destroy(RHI_Device* rhi_device, void*& fence_in)
 		{
 			if (!fence_in)
 				return;
 
-			if (fence_in) { vkDestroyFence(device, static_cast<VkFence>(fence_in), nullptr); }
+			if (fence_in) { vkDestroyFence(rhi_device->GetContext()->device, static_cast<VkFence>(fence_in), nullptr); }
 			fence_in = nullptr;
 		}
 
-		inline void wait(VkDevice& device, void*& fence_in)
+		inline void wait(RHI_Device* rhi_device, void*& fence_in)
 		{
 			auto fence_temp = static_cast<VkFence>(fence_in);
-			vkWaitForFences(device, 1, &fence_temp, VK_TRUE, std::numeric_limits<uint64_t>::max());
-			vkResetFences(device, 1, &fence_temp);
+			vkWaitForFences(rhi_device->GetContext()->device, 1, &fence_temp, VK_TRUE, std::numeric_limits<uint64_t>::max());
+			fence_in = static_cast<void*>(fence_temp);
+		}
+
+		inline void reset(RHI_Device* rhi_device, void*& fence_in)
+		{
+			auto fence_temp = static_cast<VkFence>(fence_in);
+			vkResetFences(rhi_device->GetContext()->device, 1, &fence_temp);
 			fence_in = static_cast<void*>(fence_temp);
 		}
 	}

@@ -206,26 +206,24 @@ namespace Spartan
 		swap_chain_view_out				= static_cast<void*>(swap_chain);
 		image_views_out					= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
 		frame_buffers_out				= vector<void*>(frame_buffers.begin(), frame_buffers.end());
-		semaphore_image_acquired_out	= vulkan_helper::semaphore::create(rhi_device->GetContext()->device);
+		semaphore_image_acquired_out	= vulkan_helper::semaphore::create(rhi_device.get());
 
 		return true;
 	}
 
 	inline void _Destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& surface, void*& swap_chain_view, vector<void*>& image_views, vector<void*>& frame_buffers, void*& semaphore_image_acquired)
 	{
-		auto device = rhi_device->GetContext()->device;
+		vulkan_helper::semaphore::destroy(rhi_device.get(), semaphore_image_acquired);
 
-		vulkan_helper::semaphore::destroy(device, semaphore_image_acquired);
-
-		for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
+		for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_device->GetContext()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
 		frame_buffers.clear();
 
-		for (auto& image_view : image_views) { vkDestroyImageView(device, static_cast<VkImageView>(image_view), nullptr); }
+		for (auto& image_view : image_views) { vkDestroyImageView(rhi_device->GetContext()->device, static_cast<VkImageView>(image_view), nullptr); }
 		image_views.clear();
 
 		if (swap_chain_view)
 		{
-			vkDestroySwapchainKHR(device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
+			vkDestroySwapchainKHR(rhi_device->GetContext()->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
 			swap_chain_view = nullptr;
 		}
 

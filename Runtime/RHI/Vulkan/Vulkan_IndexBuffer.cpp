@@ -77,7 +77,7 @@ namespace Spartan
 			vkFreeMemory(device, buffer_memory, nullptr);
 		}
 
-		auto new_size							= m_stride * m_index_count;
+		auto new_size							= m_stride * m_index_count * 2; // fix me
 		VkDeviceSize vertex_buffer_size_aligned = ((new_size - 1) / m_device_size + 1) * m_device_size;
 		VkBufferCreateInfo buffer_info			= {};
 		buffer_info.sType						= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
