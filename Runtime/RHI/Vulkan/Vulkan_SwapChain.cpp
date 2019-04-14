@@ -50,7 +50,6 @@ namespace Spartan
 		void* render_pass,
 		void*& surface_out,
 		void*& swap_chain_view_out,
-		vector<void*>& images_out,
 		vector<void*>& image_views_out,
 		vector<void*>& frame_buffers_out,
 		void*& semaphore_image_acquired_out
@@ -68,16 +67,18 @@ namespace Spartan
 			create_info.hwnd						= static_cast<HWND>(window_handle);
 			create_info.hinstance					= GetModuleHandle(nullptr);
 
-			if (vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface) != VK_SUCCESS)
+			auto result = vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface);
+			if (result != VK_SUCCESS)
 			{
-				LOG_ERROR("Failed to create surface.");
+				LOGF_ERROR("Failed to create Win32 surface, %s.", vulkan_helper::vk_result_to_string(result));
 				return false;
 			}
 
 			VkBool32 present_support = false;
-			if (vkGetPhysicalDeviceSurfaceSupportKHR(device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support))
+			result = vkGetPhysicalDeviceSurfaceSupportKHR(device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support);
+			if (result != VK_SUCCESS)
 			{
-				LOG_ERROR("Failed to check for surface support by the device.");
+				LOGF_ERROR("Failed to check for surface support by the device, %s.", vulkan_helper::vk_result_to_string(result));
 				return false;
 			}
 			else if (!present_support)
@@ -131,15 +132,16 @@ namespace Spartan
 			create_info.clipped			= VK_TRUE;
 			create_info.oldSwapchain	= VK_NULL_HANDLE;
 
-			if (vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain) != VK_SUCCESS)
+			auto result = vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain);
+			if (result != VK_SUCCESS)
 			{
-				LOG_ERROR("Failed to create swap chain.");
+				LOGF_ERROR("Failed to create swap chain, %s.", vulkan_helper::vk_result_to_string(result));
 				return false;
 			}
 		}
 
 		// Images
-		std::vector<VkImage> swap_chain_images;
+		vector<VkImage> swap_chain_images;
 		{
 			uint32_t image_count;
 			vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
@@ -148,7 +150,7 @@ namespace Spartan
 		}
 
 		// Image views
-		std::vector<VkImageView> swap_chain_image_views;
+		vector<VkImageView> swap_chain_image_views;
 		{
 			swap_chain_image_views.resize(swap_chain_images.size());
 			for (size_t i = 0; i < swap_chain_image_views.size(); i++)
@@ -168,9 +170,10 @@ namespace Spartan
 				createInfo.subresourceRange.baseArrayLayer	= 0;
 				createInfo.subresourceRange.layerCount		= 1;
 
-				if (vkCreateImageView(device, &createInfo, nullptr, &swap_chain_image_views[i]) != VK_SUCCESS)
+				auto result = vkCreateImageView(device, &createInfo, nullptr, &swap_chain_image_views[i]);
+				if (result != VK_SUCCESS)
 				{
-					LOG_ERROR("Failed to create image view(s).");
+					LOGF_ERROR("Failed to create image view, %s.", vulkan_helper::vk_result_to_string(result));
 					return false;
 				}
 			}
@@ -179,28 +182,28 @@ namespace Spartan
 		// Frame buffers
 		vector<VkFramebuffer> frame_buffers;
 		frame_buffers.resize(swap_chain_image_views.size());
-		for (size_t i = 0; i < swap_chain_image_views.size(); i++)
+		for (auto i = 0; i < swap_chain_image_views.size(); i++)
 		{
-			VkImageView attachments[] = { swap_chain_image_views[i] };
+			vector<VkImageView> attachments = { swap_chain_image_views[i] };
 			VkFramebufferCreateInfo framebufferInfo		= {};
 			framebufferInfo.sType						= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferInfo.renderPass					= static_cast<VkRenderPass>(render_pass);
-			framebufferInfo.attachmentCount				= 1;
-			framebufferInfo.pAttachments				= attachments;
+			framebufferInfo.attachmentCount				= static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments				= attachments.data();
 			framebufferInfo.width						= extent.width;
 			framebufferInfo.height						= extent.height;
 			framebufferInfo.layers						= 1;
 
-			if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frame_buffers[i]) != VK_SUCCESS)
+			auto result = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frame_buffers[i]);
+			if (result != VK_SUCCESS)
 			{
-				LOG_ERROR("Failed to create frame buffer(s).");
+				LOGF_ERROR("Failed to create frame buffer(s), %s.", vulkan_helper::vk_result_to_string(result));
 				return false;
 			}
 		}
 	
 		surface_out						= static_cast<void*>(surface);
 		swap_chain_view_out				= static_cast<void*>(swap_chain);
-		images_out						= vector<void*>(swap_chain_images.begin(), swap_chain_images.end());
 		image_views_out					= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
 		frame_buffers_out				= vector<void*>(frame_buffers.begin(), frame_buffers.end());
 		semaphore_image_acquired_out	= vulkan_helper::semaphore::create(rhi_device->GetContext()->device);
@@ -208,26 +211,29 @@ namespace Spartan
 		return true;
 	}
 
-	inline void _Destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& surface, void*& swap_chain_view, vector<void*>& images, vector<void*>& image_views, vector<void*>& frame_buffers, void*& semaphore_image_acquired)
+	inline void _Destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& surface, void*& swap_chain_view, vector<void*>& image_views, vector<void*>& frame_buffers, void*& semaphore_image_acquired)
 	{
 		auto device = rhi_device->GetContext()->device;
 
-		vkDestroySwapchainKHR(device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
-		swap_chain_view = nullptr;
-
-		vkDestroySurfaceKHR(rhi_device->GetContext()->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
-		surface = nullptr;
-
-		//for (auto& image : images) { vkDestroyImage(device, static_cast<VkImage>(image), nullptr); }
-		//images.clear();
-
-		for (auto& image_view : image_views) { vkDestroyImageView(device, static_cast<VkImageView>(image_view), nullptr); }
-		image_views.clear();
+		vulkan_helper::semaphore::destroy(device, semaphore_image_acquired);
 
 		for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
 		frame_buffers.clear();
 
-		vulkan_helper::semaphore::destroy(device, semaphore_image_acquired);
+		for (auto& image_view : image_views) { vkDestroyImageView(device, static_cast<VkImageView>(image_view), nullptr); }
+		image_views.clear();
+
+		if (swap_chain_view)
+		{
+			vkDestroySwapchainKHR(device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
+			swap_chain_view = nullptr;
+		}
+
+		if (surface)
+		{
+			vkDestroySurfaceKHR(rhi_device->GetContext()->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
+			surface = nullptr;	
+		}
 	}
 
 	RHI_SwapChain::RHI_SwapChain(
@@ -270,7 +276,6 @@ namespace Spartan
 			m_render_pass,
 			m_surface,
 			m_swap_chain_view,
-			m_images,
 			m_image_views,
 			m_frame_buffers,
 			m_semaphore_image_acquired
@@ -279,16 +284,23 @@ namespace Spartan
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
-		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_images, m_image_views, m_frame_buffers, m_semaphore_image_acquired);
+		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_image_views, m_frame_buffers, m_semaphore_image_acquired);
 	}
 
 	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
 	{	
+		// Only resize if needed
 		if (m_width == width && m_height == height)
 			return true;
 
-		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_images, m_image_views, m_frame_buffers, m_semaphore_image_acquired);
+		// Save new dimensions
+		m_width		= width;
+		m_height	= height;
 
+		// Destroy previous swap chain
+		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_image_views, m_frame_buffers, m_semaphore_image_acquired);
+
+		// Create the swap chain with the new dimensions
 		m_initialized = _Create
 		(
 			m_rhi_device,
@@ -300,7 +312,6 @@ namespace Spartan
 			m_render_pass,
 			m_surface,
 			m_swap_chain_view,
-			m_images,
 			m_image_views,
 			m_frame_buffers,
 			m_semaphore_image_acquired

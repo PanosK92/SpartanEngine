@@ -171,6 +171,13 @@ namespace Spartan
 		const RHI_Shader* shader_pixel						= nullptr;
 	};
 
+	enum RHI_CommandList_State
+	{
+		RHI_CommandList_Idle,
+		RHI_CommandList_Begun,
+		RHI_CommandList_Ended
+	};
+
 	class SPARTAN_CLASS RHI_CommandList
 	{
 	public:
@@ -258,7 +265,7 @@ namespace Spartan
 		VkCommandPool_T* m_cmd_pool;
 		VkCommandBuffer_T* m_cmd_buffer;
 		void* m_semaphore_submit = nullptr;
-		bool m_ready = false;
+		RHI_CommandList_State m_state = RHI_CommandList_Idle;
 
 		// Dependencies
 		std::vector<void*> m_textures_empty = std::vector<void*>(10);

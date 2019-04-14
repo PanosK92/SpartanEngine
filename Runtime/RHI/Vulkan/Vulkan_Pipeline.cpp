@@ -94,28 +94,12 @@ namespace Spartan
 		//   binding 2 = sampler
 		//   binding 1 = texture2D
 		VkDescriptorSetLayoutBinding layout;
-		vector<VkDescriptorSetLayoutBinding> resource_bindings;
-		
-		layout.binding				= 0;
-		layout.descriptorType		= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		layout.descriptorCount		= 1;
-		layout.stageFlags			= VK_SHADER_STAGE_VERTEX_BIT;
-		layout.pImmutableSamplers	= nullptr;
-		resource_bindings.push_back(layout);
-
-		layout.binding				= 1;
-		layout.descriptorType		= VK_DESCRIPTOR_TYPE_SAMPLER;
-		layout.descriptorCount		= 1;
-		layout.stageFlags			= VK_SHADER_STAGE_FRAGMENT_BIT;
-		layout.pImmutableSamplers	= nullptr;
-		resource_bindings.push_back(layout);
-
-		layout.binding				= 2;
-		layout.descriptorType		= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		layout.descriptorCount		= 1;
-		layout.stageFlags			= VK_SHADER_STAGE_FRAGMENT_BIT;
-		layout.pImmutableSamplers	= nullptr;
-		resource_bindings.push_back(layout);
+		vector<VkDescriptorSetLayoutBinding> resource_bindings = 
+		{	
+			{ 0,  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	1, VK_SHADER_STAGE_VERTEX_BIT,		nullptr },
+			{ 1,  VK_DESCRIPTOR_TYPE_SAMPLER,			1, VK_SHADER_STAGE_FRAGMENT_BIT,	nullptr },
+			{ 2,  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,		1, VK_SHADER_STAGE_FRAGMENT_BIT,	nullptr }
+		};
 
 		VkDescriptorSetLayoutCreateInfo resource_layout_info = {};
 		resource_layout_info.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -328,6 +312,27 @@ namespace Spartan
 		input_assembly_state.topology								= vulkan_primitive_topology[m_primitive_topology];
 		input_assembly_state.primitiveRestartEnable					= VK_FALSE;
 
+		// Binding description
+		VkVertexInputBindingDescription binding_description = {};
+		binding_description.binding							= 0;
+		binding_description.inputRate						= VK_VERTEX_INPUT_RATE_VERTEX;
+		// Vertex attributes description
+		vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
+		uint32_t vertex_buffer_bind_id = 0;
+		//if (vertex_attributes == Vertex_Attributes_Position2dTextureColor8)
+		{
+			vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 0, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, 0 });
+			vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 1, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 2 });
+			vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 2, vertex_buffer_bind_id, VK_FORMAT_R8G8B8A8_UNORM, sizeof(float) * 4 });
+			binding_description.stride = sizeof(float) * 4;
+		}
+		VkPipelineVertexInputStateCreateInfo vertex_input_state	= {};
+		vertex_input_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertex_input_state.vertexBindingDescriptionCount		= 1;
+		vertex_input_state.pVertexBindingDescriptions			= &binding_description;
+		vertex_input_state.vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attribute_descs.size());
+		vertex_input_state.pVertexAttributeDescriptions			= vertex_attribute_descs.data();
+
 		// Rasterizer state
 		VkPipelineRasterizationStateCreateInfo rasterizer_state	= {};
 		rasterizer_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -389,7 +394,7 @@ namespace Spartan
 		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline_info.stageCount					= static_cast<uint32_t>(shader_stages.size());
 		pipeline_info.pStages						= shader_stages.data();
-		pipeline_info.pVertexInputState				= static_cast<VkPipelineVertexInputStateCreateInfo*>(m_input_layout->GetBuffer());
+		pipeline_info.pVertexInputState				= &vertex_input_state;
 		pipeline_info.pInputAssemblyState			= &input_assembly_state;
 		pipeline_info.pDynamicState					= dynamic_viewport_scissor ? &dynamic_state : nullptr;
 		pipeline_info.pViewportState				= dynamic_viewport_scissor ? &viewport_state : nullptr;

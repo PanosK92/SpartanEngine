@@ -52,11 +52,11 @@ namespace Spartan
 		bool AcquireNextImage();
 		bool Present(RHI_Present_Mode mode, void* semaphore_wait);
 
-		bool IsInitialized()			{ return m_initialized; }
-		void* GetSwapChainView()		{ return m_swap_chain_view; }
-		void* GetRenderTargetView()		{ return m_render_target_view; }
-		unsigned int GetWidth()			{ return m_width; }
-		unsigned int GetHeight()		{ return m_height; }
+		auto IsInitialized()			{ return m_initialized; }
+		auto GetSwapChainView()			{ return m_swap_chain_view; }
+		auto GetRenderTargetView()		{ return m_render_target_view; }
+		auto GetWidth()					{ return m_width; }
+		auto GetHeight()				{ return m_height; }
 		auto GetBufferCount()			{ return m_buffer_count; }
 		const auto& GetFrameBuffer()	{ return m_frame_buffers[m_image_index]; }
 		auto& GetWaitSemaphore()		{ return m_semaphore_image_acquired;  }
@@ -80,7 +80,6 @@ namespace Spartan
 		void* m_semaphore_image_acquired	= nullptr;
 		void* m_render_pass					= nullptr;
 		void* m_window_handle				= nullptr;
-		std::vector<void*> m_images;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;
 	};

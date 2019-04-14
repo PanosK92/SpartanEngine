@@ -27,10 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../RHI_InputLayout.h"
 #include "../RHI_Device.h"
-#include "../../Logging/Log.h"
 #include "../../Core/EngineDefs.h"
-#include "../../Math/Vector2.h"
-#include "../../Math/Vector4.h"
 //================================
 
 //==================
@@ -41,42 +38,16 @@ namespace Spartan
 {
 	RHI_InputLayout::RHI_InputLayout(const shared_ptr<RHI_Device>& rhi_device)
 	{
-		m_rhi_device = rhi_device;
+
 	}
 
 	RHI_InputLayout::~RHI_InputLayout()
 	{
-		auto buffer = static_cast<VkPipelineVertexInputStateCreateInfo*>(m_buffer);
-		safe_delete(buffer);
-		m_buffer = nullptr;
+
 	}
 
-	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes_flag)
+	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes)
 	{
-		m_vertex_attributes = vertex_attributes_flag;
-
-		vector<VkVertexInputAttributeDescription> vertex_attributes;
-		uint32_t vertex_buffer_bind_id = 0;
-		if (vertex_attributes_flag == Vertex_Attributes_Position2dTextureColor8)
-		{
-			vertex_attributes.emplace_back(VkVertexInputAttributeDescription{ vertex_buffer_bind_id, 0, VK_FORMAT_R32G32_SFLOAT, 0 });
-			vertex_attributes.emplace_back(VkVertexInputAttributeDescription{ vertex_buffer_bind_id, 1, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 2 });
-			vertex_attributes.emplace_back(VkVertexInputAttributeDescription{ vertex_buffer_bind_id, 2, VK_FORMAT_R8G8B8A8_UNORM, sizeof(float) * 4 });
-		}
-
-		VkVertexInputBindingDescription binding_description = {};
-		binding_description.binding							= 0;
-		binding_description.stride							= sizeof(float) * 4;
-		binding_description.inputRate						= VK_VERTEX_INPUT_RATE_VERTEX;
-
-		auto vertex_input_info									= new VkPipelineVertexInputStateCreateInfo();
-		vertex_input_info->sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_info->vertexBindingDescriptionCount		= 1;
-		vertex_input_info->pVertexBindingDescriptions			= &binding_description;
-		vertex_input_info->vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attributes.size());
-		vertex_input_info->pVertexAttributeDescriptions			= vertex_attributes.data();
-
-		m_buffer = static_cast<void*>(vertex_input_info);
 		return true;
 	}
 }
