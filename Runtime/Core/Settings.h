@@ -100,7 +100,7 @@ namespace Spartan
 		void* m_drawHandle					= nullptr;
 		void* m_windowHandle				= nullptr;
 		void* m_windowInstance				= nullptr;
-		Math::Vector2 m_windowSize			= Math::Vector2(1920, 1080);
+		Math::Vector2 m_windowSize			= Math::Vector2::Zero;
 		bool m_isFullScreen					= false;
 		bool m_isMouseVisible				= true;
 		unsigned int m_shadowMapResolution	= 4096;

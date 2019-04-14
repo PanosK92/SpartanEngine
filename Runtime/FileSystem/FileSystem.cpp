@@ -174,62 +174,54 @@ namespace Spartan
 
 	bool FileSystem::CreateDirectory_(const string& path)
 	{
-		bool result;
 		try
 		{
-			result = create_directories(path);
+			return create_directories(path);
 		}
 		catch (filesystem_error& e)
 		{
 			LOGF_ERROR("FileSystem::CreateDirectory: %s, %s", e.what(), path.c_str());
+			return true;
 		}
-
-		return result;
 	}
 
 	bool FileSystem::DeleteDirectory(const string& directory)
 	{
-		bool result;
 		try
 		{
-			result = remove_all(directory);
+			return remove_all(directory);
 		}
 		catch (filesystem_error& e)
 		{
 			LOGF_ERROR("FileSystem::DeleteDirectory: %s, %s", e.what(), directory.c_str());
+			return true;
 		}
-
-		return result;
 	}
 
 	bool FileSystem::DirectoryExists(const string& directory)
 	{
-		bool result;
 		try
 		{
-			result = exists(directory);
+			return exists(directory);
 		}
 		catch (filesystem_error& e)
 		{
 			LOGF_ERROR("FileSystem::DirectoryExists: %s, %s", e.what(), directory.c_str());
+			return true;
 		}
-
-		return result;
 	}
 
 	bool FileSystem::IsDirectory(const string& directory)
 	{
-		bool result;
 		try
 		{
-			result = is_directory(directory);
+			return is_directory(directory);
 		}
 		catch (filesystem_error& e)
 		{
 			LOGF_ERROR("FileSystem::IsDirectory: %s, %s", e.what(), directory.c_str());
+			return false;
 		}
-
-		return result;
 	}
 
 	void FileSystem::OpenDirectoryWindow(const std::string& directory)
@@ -239,17 +231,15 @@ namespace Spartan
 
 	bool FileSystem::FileExists(const string& file_path)
 	{
-		bool result = false;
 		try
 		{
-			result = exists(file_path);
+			return exists(file_path);
 		}
 		catch (filesystem_error& e)
 		{
 			LOGF_ERROR("FileSystem::FileExists: %s, %s", e.what(), file_path.c_str());
+			return true;
 		}
-
-		return result;
 	}
 
 	bool FileSystem::DeleteFile_(const string& file_path)
@@ -258,17 +248,15 @@ namespace Spartan
 		if (is_directory(file_path))
 			return false;
 
-		bool result = false;
 		try
 		{
-			result = remove(file_path.c_str()) == 0;
+			return remove(file_path.c_str()) == 0;
 		}
 		catch (filesystem_error& e)
 		{
 			LOGF_ERROR("FileSystem::DeleteFile: %s, %s", e.what(), file_path.c_str());
+			return true;
 		}
-
-		return result;
 	}
 
 	bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
@@ -282,17 +270,15 @@ namespace Spartan
 			CreateDirectory_(GetDirectoryFromFilePath(destination));
 		}
 
-		bool result = false;
 		try 
 		{
-			result = copy_file(source, destination, copy_options::overwrite_existing);
+			return copy_file(source, destination, copy_options::overwrite_existing);
 		}
 		catch (filesystem_error& e) 
 		{
 			LOG_ERROR("FileSystem: Could not copy \"" + source + "\". " + string(e.what()));
+			return true;
 		}
-
-		return result;
 	}
 
 	string FileSystem::GetFileNameFromFilePath(const string& path)
