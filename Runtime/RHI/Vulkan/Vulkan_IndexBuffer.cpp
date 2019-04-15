@@ -37,22 +37,24 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_IndexBuffer::~RHI_IndexBuffer()
+	inline void _destroy(shared_ptr<RHI_Device>& rhi_device, void*& buffer, void*& buffer_memory)
 	{
-		auto buffer			= static_cast<VkBuffer>(m_buffer);
-		auto buffer_memory	= static_cast<VkDeviceMemory>(m_buffer_memory);
-
-		if (buffer != VK_NULL_HANDLE)
+		if (buffer)
 		{
-			vkDestroyBuffer(m_rhi_device->GetContext()->device, buffer, nullptr);
-			m_buffer = nullptr;
+			vkDestroyBuffer(rhi_device->GetContext()->device, static_cast<VkBuffer>(buffer), nullptr);
+			buffer = nullptr;
 		}
 
 		if (buffer_memory)
 		{
-			vkFreeMemory(m_rhi_device->GetContext()->device, buffer_memory, nullptr);
-			m_buffer_memory = nullptr;
+			vkFreeMemory(rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(buffer_memory), nullptr);
+			buffer_memory = nullptr;
 		}
+	}
+
+	RHI_IndexBuffer::~RHI_IndexBuffer()
+	{
+		_destroy(m_rhi_device, m_buffer, m_buffer_memory);
 	}
 
 	bool RHI_IndexBuffer::Create(const void* indices)
@@ -63,31 +65,24 @@ namespace Spartan
 			return false;
 		}
 
-		auto device			= m_rhi_device->GetContext()->device;
-		auto buffer			= static_cast<VkBuffer>(m_buffer);
-		auto buffer_memory	= static_cast<VkDeviceMemory>(m_buffer_memory);
+		_destroy(m_rhi_device, m_buffer, m_buffer_memory);
 
-		if (buffer != VK_NULL_HANDLE)
+		auto device						= m_rhi_device->GetContext()->device;
+		VkBuffer buffer					= nullptr;
+		VkDeviceMemory buffer_memory	= nullptr;
+
+		auto size						= m_stride * m_index_count;
+		VkDeviceSize size_aligned		= ((size - 1) / m_device_size + 1) * m_device_size;
+		VkBufferCreateInfo buffer_info	= {};
+		buffer_info.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		buffer_info.size				= size_aligned;
+		buffer_info.usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		buffer_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+
+		auto result = vkCreateBuffer(device, &buffer_info, nullptr, &buffer);
+		if (result != VK_SUCCESS)
 		{
-			vkDestroyBuffer(device, buffer, nullptr);
-		}
-
-		if (buffer_memory)
-		{
-			vkFreeMemory(device, buffer_memory, nullptr);
-		}
-
-		auto new_size							= m_stride * m_index_count * 2; // fix me
-		VkDeviceSize vertex_buffer_size_aligned = ((new_size - 1) / m_device_size + 1) * m_device_size;
-		VkBufferCreateInfo buffer_info			= {};
-		buffer_info.sType						= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		buffer_info.size						= vertex_buffer_size_aligned;
-		buffer_info.usage						= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		buffer_info.sharingMode					= VK_SHARING_MODE_EXCLUSIVE;
-
-		if (vkCreateBuffer(device, &buffer_info, nullptr, &buffer) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create buffer.");
+			LOGF_ERROR("Failed to create buffer, %s.", vulkan_helper::result_to_string(result));
 			return false;
 		}
 
@@ -98,33 +93,36 @@ namespace Spartan
 		alloc_info.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		alloc_info.allocationSize		= memory_requirements.size;
 		alloc_info.memoryTypeIndex		= vulkan_helper::GetMemoryType(m_rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memory_requirements.memoryTypeBits);
-		if (vkAllocateMemory(device, &alloc_info, nullptr, &buffer_memory) != VK_SUCCESS)
+
+		result = vkAllocateMemory(device, &alloc_info, nullptr, &buffer_memory);
+		if (result != VK_SUCCESS)
 		{
-			LOG_ERROR("Failed to allocate memory.");
+			LOGF_ERROR("Failed to allocate memory, %s.", vulkan_helper::result_to_string(result));
 			return false;
 		}
 
-		if (vkBindBufferMemory(device, buffer, buffer_memory, 0) != VK_SUCCESS)
+		result = vkBindBufferMemory(device, buffer, buffer_memory, 0);
+		if (result != VK_SUCCESS)
 		{
-			LOG_ERROR("Failed to bind.");
+			LOGF_ERROR("Failed to bind buffer memory, %s.", vulkan_helper::result_to_string(result));
 			return false;
 		}
 
 		m_buffer		= static_cast<void*>(buffer);
 		m_buffer_memory = static_cast<void*>(buffer_memory);
-		m_device_size	= new_size;
+		m_device_size	= size;
 
 		return true;
 	}
 
 	void* RHI_IndexBuffer::Map() const
 	{
-		auto device_memory = static_cast<VkDeviceMemory>(m_buffer_memory);
 		void* ptr = nullptr;
 
-		if (vkMapMemory(m_rhi_device->GetContext()->device, device_memory, 0, m_index_count, 0, (void**)(&ptr)) != VK_SUCCESS)
+		auto result = vkMapMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_index_count, 0, (void**)(&ptr));
+		if (result != VK_SUCCESS)
 		{
-			LOG_ERROR("Failed to map.");
+			LOGF_ERROR("Failed to map memory, %s.", vulkan_helper::result_to_string(result));
 		}
 
 		return ptr;
@@ -139,9 +137,10 @@ namespace Spartan
 		range[0].memory					= buffer_memory;
 		range[0].size					= VK_WHOLE_SIZE;
 
-		if (vkFlushMappedMemoryRanges(m_rhi_device->GetContext()->device, 1, range) != VK_SUCCESS)
+		auto result = vkFlushMappedMemoryRanges(m_rhi_device->GetContext()->device, 1, range);
+		if (result != VK_SUCCESS)
 		{
-			LOG_ERROR("Failed to flush.");
+			LOGF_ERROR("Failed to flash mapped memory ranges, %s.", vulkan_helper::result_to_string(result));
 			return false;
 		}
 

@@ -85,6 +85,7 @@ namespace Spartan
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
+		m_swap_chain = swap_chain;
 
 		// Wait for fence
 		if (m_state == CommandList_Submission_Succeeded)
@@ -98,8 +99,7 @@ namespace Spartan
 		if (m_state != CommandList_Idle)
 			return;
 
-		// Acquire next swap chain image
-		m_swap_chain = swap_chain;
+		// Acquire next swap chain image	
 		if (!m_swap_chain->AcquireNextImage())
 			return;
 
@@ -110,7 +110,7 @@ namespace Spartan
 		auto result = vkBeginCommandBuffer(m_cmd_buffer, &beginInfo);
 		if (result != VK_SUCCESS) 
 		{
-			LOGF_ERROR("Failed to begin recording command buffer, %s.", vulkan_helper::vk_result_to_string(result));
+			LOGF_ERROR("Failed to begin recording command buffer, %s.", vulkan_helper::result_to_string(result));
 			return;
 		}
 
@@ -140,7 +140,7 @@ namespace Spartan
 		auto result = vkEndCommandBuffer(m_cmd_buffer);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to end command buffer, %s.", vulkan_helper::vk_result_to_string(result));
+			LOGF_ERROR("Failed to end command buffer, %s.", vulkan_helper::result_to_string(result));
 			return;
 		}
 
@@ -376,7 +376,7 @@ namespace Spartan
 		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, static_cast<VkFence>(m_fence));
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to submit command buffer, %s.", vulkan_helper::vk_result_to_string(result));
+			LOGF_ERROR("Failed to submit command buffer, %s.", vulkan_helper::result_to_string(result));
 			m_state = CommandList_Submission_Failed;
 			return false;
 		}

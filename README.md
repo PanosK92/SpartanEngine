@@ -2,21 +2,22 @@
 
 # Spartan Engine
 
-Spartan is a game engine that started as a hobby project and evolved into something greater.
-The source code aims to be clean, modern and tackles a lot of aspects of engine development.
-The project is at an early development stage and there is a lot experimentation going on, regarding what works best.
-This means that the wisest thing to do is to approach it as study material, without expecting to make games with it (yet).
-Architectual quality is prioritized over development speed.</p>
+<p>Spartan is a game engine that started as a hobby project and evolved into something bigger. The goal is to target high-end machines and deliver advanced graphical capabilities at high frame rates with minimum input latency. Then wrap all that in a nice editor.</p>
 
-Platform | Status | Quality | Binaries | :+1:
-:-:|:-:|:-:|:-:|:-:|
-<img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20" height="20"/>|[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)|[![Codacy Badge](https://api.codacy.com/project/badge/Grade/da72b4f208284a30b7673abd86e8d8d3)](https://www.codacy.com/app/PanosK92/Directus3D?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PanosK92/Directus3D&amp;utm_campaign=Badge_Grade)|[Download](https://ci.appveyor.com/api/projects/PanosK92/directus3d/artifacts/Binaries/Release.zip?branch=master)|[![](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSP87Y77VNHPG&source=url)
+<p>The project is at an early development stage and there is a lot experimentation going on, regarding what works best. However a lot of effort is being put into building and maintaining a clean and modern architecture, an architecture that will ensure continuous development over the years. This means that while you shouldn't expect to make games with it yet, you might find it to be a helpful study resource.</p>
+
+<p>Architectual quality is prioritized over development speed.</p>
 
 <img align="left" width="468" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/screenshot-v0.3_preview4.jpg"/>
 <img align="left" width="365" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
 
 [
 ![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
+
+## Download
+Platform | Status | Quality | Binaries | :+1:
+:-:|:-:|:-:|:-:|:-:|
+<img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20" height="20"/>|[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)|[![Codacy Badge](https://api.codacy.com/project/badge/Grade/da72b4f208284a30b7673abd86e8d8d3)](https://www.codacy.com/app/PanosK92/Directus3D?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PanosK92/Directus3D&amp;utm_campaign=Badge_Grade)|[Download](https://ci.appveyor.com/api/projects/PanosK92/directus3d/artifacts/Binaries/Release.zip?branch=master)|[![](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSP87Y77VNHPG&source=url)
 
 ## Features (v0.3)
 Category       	| Feature                                  	| Details
