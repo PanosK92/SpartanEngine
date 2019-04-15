@@ -251,7 +251,7 @@ namespace Spartan
 		auto image_memory						= static_cast<VkDeviceMemory>(m_texture_memory);
 		auto device								= m_rhi_device->GetContext()->device;
 		auto device_physical					= m_rhi_device->GetContext()->device_physical;
-		auto queue								= m_rhi_device->GetContext()->queue_graphics;
+		auto queue								= m_rhi_device->GetContext()->queue_copy;
 		VkDeviceSize size						= width * height * channels;
 		VkBuffer staging_buffer					= nullptr;
 		VkDeviceMemory staging_buffer_memory	= nullptr;

@@ -57,8 +57,8 @@ namespace Spartan
 			VkInstanceCreateInfo create_info	= {};
 			create_info.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			create_info.pApplicationInfo		= &app_info;
-			create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device_physical.size());
-			create_info.ppEnabledExtensionNames	= m_rhi_context->extensions_device_physical.data();
+			create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_instance.size());
+			create_info.ppEnabledExtensionNames	= m_rhi_context->extensions_instance.data();
 			create_info.enabledLayerCount		= 0;
 
 			if (m_rhi_context->validation_enabled)
@@ -119,8 +119,13 @@ namespace Spartan
 		// Queue info
 		vector<VkDeviceQueueCreateInfo> queue_create_infos;
 		{
-			set<uint32_t> unique_queue_families = { m_rhi_context->indices.graphics_family.value(), m_rhi_context->indices.present_family.value() };
-			auto queue_priority					= 1.0f;
+			set<uint32_t> unique_queue_families = 
+			{ 
+				m_rhi_context->indices.graphics_family.value(),
+				m_rhi_context->indices.present_family.value(),
+				m_rhi_context->indices.copy_family.value() 
+			};
+			auto queue_priority	= 1.0f;
 			for (auto queue_family : unique_queue_families)
 			{
 				VkDeviceQueueCreateInfo queue_create_info	= {};
@@ -165,12 +170,15 @@ namespace Spartan
 		// Create queues
 		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_graphics);
 		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->queue_present);
+		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.copy_family.value(), 0, &m_rhi_context->queue_copy);
 
+		// Detect and log version
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
 		auto version_path	= to_string(VK_VERSION_PATCH(app_info.apiVersion));
 		Settings::Get().m_versionGraphicsAPI = "Vulkan " + version_major + "." + version_minor + "." + version_path;
 		LOG_INFO(Settings::Get().m_versionGraphicsAPI);
+
 		m_initialized = true;
 	}
 

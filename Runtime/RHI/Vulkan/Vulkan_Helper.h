@@ -251,16 +251,21 @@ namespace Spartan::vulkan_helper
 			int i = 0;
 			for (const auto& queue_family_property : queue_family_properties)
 			{
-				if (queue_family_property.queueCount > 0 && queue_family_property.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-				{
-					indices.graphics_family = i;
-				}
-
 				VkBool32 present_support = false;
 				vkGetPhysicalDeviceSurfaceSupportKHR(_physical_device, i, surface, &present_support);
 				if (queue_family_property.queueCount > 0)
 				{
 					indices.present_family = i;
+				}
+
+				if (queue_family_property.queueCount > 0 && queue_family_property.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				{
+					indices.graphics_family = i;
+				}
+
+				if (queue_family_property.queueCount > 0 && queue_family_property.queueFlags == VK_QUEUE_TRANSFER_BIT) 
+				{
+					indices.copy_family = i;
 				}
 
 				if (indices.IsComplete())
