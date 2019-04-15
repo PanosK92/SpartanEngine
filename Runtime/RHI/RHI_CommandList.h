@@ -171,12 +171,13 @@ namespace Spartan
 		const RHI_Shader* shader_pixel						= nullptr;
 	};
 
-	enum RHI_CommandList_State
+	enum CommandList_State
 	{
-		RHI_CommandList_Idle,
-		RHI_CommandList_Begun,
-		RHI_CommandList_Ended,
-		RHI_CommandList_Submited
+		CommandList_Idle,
+		CommandList_Ready,
+		CommandList_Ended,
+		CommandList_Submission_Succeeded,
+		CommandList_Submission_Failed
 	};
 
 	class SPARTAN_CLASS RHI_CommandList
@@ -185,8 +186,6 @@ namespace Spartan
 		RHI_CommandList(RHI_Device* rhi_device, Profiler* profiler);
 		~RHI_CommandList();
 
-		void Clear();
-	
 		void Begin(const std::string& pass_name, void* render_pass = nullptr, RHI_SwapChain* swap_chain = nullptr);
 		void End();
 
@@ -249,10 +248,12 @@ namespace Spartan
 		}
 		void ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0);
 
-		void Submit();
-		const auto& GetWaitSemaphore() { return m_semaphore_submit; }
+		bool Submit();
+		const auto& GetExecutionCompleteSemaphore() { return m_semaphore_execution_complete; }
 
 	private:
+		void Clear();
+
 		RHI_SwapChain* m_swap_chain = nullptr;
 
 		// D3D11
@@ -265,9 +266,9 @@ namespace Spartan
 		RHI_Command m_empty_cmd; // for GetCmd()
 		VkCommandPool_T* m_cmd_pool;
 		VkCommandBuffer_T* m_cmd_buffer;
-		void* m_semaphore_submit = nullptr;
+		void* m_semaphore_execution_complete = nullptr;
 		void* m_fence = nullptr;
-		RHI_CommandList_State m_state = RHI_CommandList_Idle;
+		CommandList_State m_state = CommandList_Idle;
 
 		// Dependencies
 		std::vector<void*> m_textures_empty = std::vector<void*>(10);

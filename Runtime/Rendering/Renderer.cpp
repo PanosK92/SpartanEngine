@@ -119,6 +119,10 @@ namespace Spartan
 		// Line buffer
 		m_vertex_buffer_lines	= make_shared<RHI_VertexBuffer>(m_rhi_device);
 
+#ifdef API_GRAPHICS_VULKAN
+		return true;
+#endif
+
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
 		CreateBlendStates();
@@ -233,10 +237,6 @@ namespace Spartan
 
 	void Renderer::CreateShaders()
 	{
-#ifdef API_GRAPHICS_VULKAN
-		return;
-#endif
-
 		// Get standard shader directory
 		const auto dir_shaders = g_resource_cache->GetDataDirectory(Asset_Shaders);
 

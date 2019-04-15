@@ -91,7 +91,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_DepthDirectionalLight(Light* light_directional)
@@ -180,7 +179,6 @@ namespace Spartan
 		}
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_GBuffer()
@@ -203,7 +201,6 @@ namespace Spartan
 			m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);
 			m_cmd_list->End();
 			m_cmd_list->Submit();
-			m_cmd_list->Clear();
 			return;
 		}
 
@@ -315,7 +312,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_PreLight(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_shadows_out, shared_ptr<RHI_RenderTexture>& tex_ssao_out)
@@ -411,7 +407,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_Transparent(shared_ptr<RHI_RenderTexture>& tex_out)
@@ -483,7 +478,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_RenderTexture>& tex_out, Light* light_directional_in)
@@ -512,7 +506,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
@@ -592,7 +585,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_SSAO(shared_ptr<RHI_RenderTexture>& tex_out)
@@ -616,7 +608,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_BlurBox(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out, const float sigma)
@@ -634,7 +625,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_BlurGaussian(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out, const float sigma, const float pixel_stride)
@@ -686,7 +676,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 
 		// Swap textures
 		tex_in.swap(tex_out);
@@ -747,7 +736,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 
 		tex_in.swap(tex_out);
 	}
@@ -788,7 +776,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 
 		// Swap textures so current becomes history
 		m_render_tex_full_taa_current.swap(m_render_tex_full_taa_history);
@@ -878,7 +865,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_ToneMapping(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
@@ -898,7 +884,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_GammaCorrection(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
@@ -918,7 +903,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_FXAA(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
@@ -948,7 +932,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 
 		// Swap the textures
 		tex_in.swap(tex_out);
@@ -971,7 +954,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_MotionBlur(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
@@ -992,7 +974,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_Dithering(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
@@ -1012,7 +993,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_Sharpening(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
@@ -1032,7 +1012,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_Lines(shared_ptr<RHI_RenderTexture>& tex_out)
@@ -1164,7 +1143,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_Gizmos(shared_ptr<RHI_RenderTexture>& tex_out)
@@ -1235,7 +1213,6 @@ namespace Spartan
 				m_cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
 				m_cmd_list->DrawIndexed(m_gizmo_light_rect.GetIndexCount(), 0, 0);			
 				m_cmd_list->Submit();
-				m_cmd_list->Clear();
 			}
 			m_cmd_list->End();
 		}
@@ -1286,7 +1263,6 @@ namespace Spartan
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_RenderTexture>& tex_out)
@@ -1320,7 +1296,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_font->GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 	}
 
 	bool Renderer::Pass_DebugBuffer(shared_ptr<RHI_RenderTexture>& tex_out)
@@ -1391,7 +1366,6 @@ namespace Spartan
 		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
-		m_cmd_list->Clear();
 
 		return true;
 	}

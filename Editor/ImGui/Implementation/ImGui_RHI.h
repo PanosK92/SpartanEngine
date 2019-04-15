@@ -246,7 +246,6 @@ namespace ImGui::RHI
 				{
 					g_cmd_list->End();
 					g_cmd_list->Submit();
-					g_cmd_list->Clear();
 					return;
 				}
 			}
@@ -259,7 +258,6 @@ namespace ImGui::RHI
 				{
 					g_cmd_list->End();
 					g_cmd_list->Submit();
-					g_cmd_list->Clear();
 					return;
 				}
 			}
@@ -348,12 +346,9 @@ namespace ImGui::RHI
 		}
 
 		g_cmd_list->End();
-		g_cmd_list->Submit();
-		g_cmd_list->Clear();
-
-		if (is_main_viewport)
+		if (g_cmd_list->Submit() && is_main_viewport)
 		{
-			g_swap_chain->Present(Present_Off, g_cmd_list->GetWaitSemaphore());
+			g_swap_chain->Present(Present_Off, g_cmd_list->GetExecutionCompleteSemaphore());
 		}
 	}
 

@@ -50,16 +50,16 @@ namespace Spartan
 
 		bool Resize(unsigned int width, unsigned int height);
 		bool AcquireNextImage();
-		bool Present(RHI_Present_Mode mode, void* semaphore_wait);
+		bool Present(RHI_Present_Mode mode, void* semaphore_execution_complete);
 
-		auto IsInitialized()			{ return m_initialized; }
-		auto GetSwapChainView()			{ return m_swap_chain_view; }
-		auto GetRenderTargetView()		{ return m_render_target_view; }
-		auto GetWidth()					{ return m_width; }
-		auto GetHeight()				{ return m_height; }
-		auto GetBufferCount()			{ return m_buffer_count; }
-		const auto& GetFrameBuffer()	{ return m_frame_buffers[m_image_index]; }
-		auto& GetWaitSemaphore()		{ return m_semaphore_image_acquired;  }
+		auto IsInitialized()				{ return m_initialized; }
+		auto GetSwapChainView()				{ return m_swap_chain_view; }
+		auto GetRenderTargetView()			{ return m_render_target_view; }
+		auto GetWidth()						{ return m_width; }
+		auto GetHeight()					{ return m_height; }
+		auto GetBufferCount()				{ return m_buffer_count; }
+		const auto& GetFrameBuffer()		{ return m_frame_buffers[m_image_index]; }
+		auto& GetImageAcquiredSemaphore()	{ return m_semaphore_image_acquired;  }
 
 	private:
 		bool m_initialized				= false;

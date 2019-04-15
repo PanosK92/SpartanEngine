@@ -313,7 +313,7 @@ namespace Spartan::vulkan_helper
 		inline bool create_command_buffer(RHI_Context* context, VkCommandBuffer* cmd_buffer, VkCommandPool cmd_pool, VkCommandBufferLevel level)
 		{
 			VkCommandBufferAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 			allocInfo.commandPool			= cmd_pool;
 			allocInfo.level					= level;
 			allocInfo.commandBufferCount	= 1;
@@ -366,7 +366,7 @@ namespace Spartan::vulkan_helper
 		{
 			VkFenceCreateInfo fence_info	= {};
 			fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-			fence_info.flags				= VK_FENCE_CREATE_SIGNALED_BIT;
+			//fence_info.flags				= VK_FENCE_CREATE_SIGNALED_BIT;
 
 			VkFence fence_out;
 			auto result = vkCreateFence(rhi_device->GetContext()->device, &fence_info, nullptr, &fence_out);
@@ -392,7 +392,6 @@ namespace Spartan::vulkan_helper
 		{
 			auto fence_temp = static_cast<VkFence>(fence_in);
 			vkWaitForFences(rhi_device->GetContext()->device, 1, &fence_temp, VK_TRUE, std::numeric_limits<uint64_t>::max());
-			fence_in = static_cast<void*>(fence_temp);
 		}
 
 		inline void reset(RHI_Device* rhi_device, void*& fence_in)

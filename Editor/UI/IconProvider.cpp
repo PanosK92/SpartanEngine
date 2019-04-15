@@ -46,6 +46,10 @@ void IconProvider::Initialize(Context* context)
 	m_context = context;
 	string data_dir = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory();
 
+#ifdef API_GRAPHICS_VULKAN
+	return;
+#endif
+
 	// Load standard some standard icons
 	Thumbnail_Load(data_dir + "Icons\\component_componentOptions.png",		Icon_Component_Options);	
 	Thumbnail_Load(data_dir + "Icons\\component_audioListener.png",			Icon_Component_AudioListener);
@@ -84,12 +88,14 @@ void IconProvider::Initialize(Context* context)
 
 void* IconProvider::GetShaderResourceByType(Icon_Type type)
 {
-	return Thumbnail_Load(NOT_ASSIGNED, type).texture->GetBufferView();
+	auto texture = Thumbnail_Load(NOT_ASSIGNED, type).texture;
+	return texture ? texture->GetBufferView() : nullptr;
 }
 
 void* IconProvider::GetShaderResourceByFilePath(const std::string& filePath)
 {
-	return Thumbnail_Load(filePath).texture->GetBufferView();
+	auto texture = Thumbnail_Load(filePath).texture;
+	return texture ? texture->GetBufferView() : nullptr;
 }
 
 void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)

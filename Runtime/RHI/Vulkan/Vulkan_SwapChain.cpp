@@ -340,11 +340,11 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(const RHI_Present_Mode mode, void* wait_semaphore)
+	bool RHI_SwapChain::Present(const RHI_Present_Mode mode, void* semaphore_execution_complete)
 	{	
 		auto swap_chain							= static_cast<VkSwapchainKHR>(m_swap_chain_view);
 		vector<VkSwapchainKHR> swap_chains		= { swap_chain };
-		vector<VkSemaphore> semaphores_wait		= { static_cast<VkSemaphore>(wait_semaphore) };
+		vector<VkSemaphore> semaphores_wait		= { static_cast<VkSemaphore>(semaphore_execution_complete) };
 
 		VkPresentInfoKHR present_info	= {};
 		present_info.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
