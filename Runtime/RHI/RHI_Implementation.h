@@ -237,7 +237,8 @@ struct QueueFamilyIndices
 {
 	std::optional<uint32_t> graphics_family;
 	std::optional<uint32_t> present_family;
-	bool IsComplete() const { return graphics_family.has_value() && present_family.has_value(); }
+	std::optional<uint32_t> copy_family;
+	bool IsComplete() const { return graphics_family.has_value() && present_family.has_value() && copy_family.has_value(); }
 };
 #endif
 
@@ -255,15 +256,19 @@ namespace Spartan
 		VkDevice device								= nullptr;
 		VkQueue queue_graphics						= nullptr;
 		VkQueue queue_present						= nullptr;
-		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
+		VkQueue queue_copy							= nullptr;
+		VkDebugUtilsMessengerEXT callback_handle	= nullptr; 
 		QueueFamilyIndices indices;
 		std::vector<const char*> validation_layers = { "VK_LAYER_LUNARG_standard_validation" };
-		std::vector<const char*> extensions_device = { "VK_KHR_swapchain" };
+		std::vector<const char*> extensions_device = { 
+			"VK_KHR_swapchain", 
+			//"VK_KHR_relaxed_block_layout" // Allows implementations to indicate they can support more variation in block offset decorations. For example, placing a vector of three floats at an offset of 16*N + 4
+		};
 		#ifdef DEBUG
-			std::vector<const char*> extensions_device_physical = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_utils" };
+			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_utils" };
 			bool validation_enabled = true;
 		#else
-			std::vector<const char*> extensions_device_physical = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface" };
 			bool validation_enabled = false;
 		#endif
 	#endif

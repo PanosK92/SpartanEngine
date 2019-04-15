@@ -78,7 +78,7 @@ namespace Spartan
 		RHI_Format GetFormat() const						{ return m_format; }
 		void SetFormat(const RHI_Format format)				{ m_format = format; }
 
-		bool GetMipmapSupport()												{ return m_mipmap_support;}
+		auto GetMipmapSupport()												{ return m_mipmap_support;}
 		const auto& Data_Get() const										{ return m_mipmaps; }
 		void Data_Set(const std::vector<std::vector<std::byte>>& data_rgba)	{ m_mipmaps = data_rgba; }
 		auto Data_AddMipLevel()												{ return &m_mipmaps.emplace_back(std::vector<std::byte>()); }
@@ -86,7 +86,7 @@ namespace Spartan
 
 		void ClearTextureBytes();
 		void GetTextureBytes(std::vector<std::vector<std::byte>>* texture_bytes);
-		void* GetBufferView() const { return m_texture_view; }
+		auto GetBufferView() const { return m_texture_view; }
 
 	protected:
 		//= NATIVE TEXTURE HANDLING (BINARY) ==========
