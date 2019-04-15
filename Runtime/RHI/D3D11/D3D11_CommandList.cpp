@@ -59,17 +59,6 @@ namespace Spartan
 		
 	}
 
-	void RHI_CommandList::Clear()
-	{
-		for (unsigned int cmd_index = 0; cmd_index < m_command_count; cmd_index++)
-		{
-			RHI_Command& cmd = m_commands[cmd_index];
-			cmd.Clear();
-		}
-
-		m_command_count = 0;
-	}
-
 	void RHI_CommandList::Begin(const string& pass_name, void* render_pass, RHI_SwapChain* swap_chain)
 	{
 		RHI_Command& cmd	= GetCmd();
@@ -286,7 +275,7 @@ namespace Spartan
 		cmd.depth_clear_stencil = stencil;
 	}
 
-	void RHI_CommandList::Submit()
+	bool RHI_CommandList::Submit()
 	{
 		for (unsigned int cmd_index = 0; cmd_index < m_command_count; cmd_index++)
 		{
@@ -391,6 +380,9 @@ namespace Spartan
 				break;
 			}
 		}
+
+		Clear();
+		return true;
 	}
 
 	RHI_Command& RHI_CommandList::GetCmd()
@@ -406,6 +398,17 @@ namespace Spartan
 
 		m_command_count++;
 		return m_commands[m_command_count - 1];	
+	}
+
+	void RHI_CommandList::Clear()
+	{
+		for (unsigned int cmd_index = 0; cmd_index < m_command_count; cmd_index++)
+		{
+			RHI_Command& cmd = m_commands[cmd_index];
+			cmd.Clear();
+		}
+
+		m_command_count = 0;
 	}
 }
 
