@@ -49,7 +49,7 @@ namespace Spartan::vulkan_helper
 		}
 	}
 
-	inline bool check_validation_layers(Spartan::RHI_Context* context)
+	inline bool check_validation_layers(RHI_Device* rhi_device)
 	{
 		uint32_t layer_count;
 		vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
@@ -57,7 +57,7 @@ namespace Spartan::vulkan_helper
 		std::vector<VkLayerProperties> available_layers(layer_count);
 		vkEnumerateInstanceLayerProperties(&layer_count, available_layers.data());
 
-		for (auto layer_name : context->validation_layers)
+		for (auto layer_name : rhi_device->GetContext()->validation_layers)
 		{
 			for (const auto& layer_properties : available_layers)
 			{
@@ -80,7 +80,7 @@ namespace Spartan::vulkan_helper
 		return 0xFFFFFFFF; // Unable to find memoryType
 	}
 
-	inline const char* vk_result_to_string(const VkResult result)
+	inline const char* result_to_string(const VkResult result)
 	{
 		switch (result)
 		{
@@ -139,10 +139,10 @@ namespace Spartan::vulkan_helper
 			return VK_FALSE;
 		}
 
-		inline VkResult create(Spartan::RHI_Context* context, const VkDebugUtilsMessengerCreateInfoEXT* create_info)
+		inline VkResult create(RHI_Device* rhi_device, const VkDebugUtilsMessengerCreateInfoEXT* create_info)
 		{
-			if (const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(context->instance, "vkCreateDebugUtilsMessengerEXT")))
-				return func(context->instance, create_info, nullptr, &context->callback_handle);
+			if (const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(rhi_device->GetContext()->instance, "vkCreateDebugUtilsMessengerEXT")))
+				return func(rhi_device->GetContext()->instance, create_info, nullptr, &rhi_device->GetContext()->callback_handle);
 
 			return VK_ERROR_EXTENSION_NOT_PRESENT;
 		}
@@ -158,27 +158,27 @@ namespace Spartan::vulkan_helper
 
 	namespace swap_chain
 	{
-		inline SwapChainSupportDetails check_surface_compatibility(Spartan::RHI_Context* context, const VkSurfaceKHR surface)
+		inline SwapChainSupportDetails check_surface_compatibility(RHI_Device* rhi_device, const VkSurfaceKHR surface)
 		{
 			SwapChainSupportDetails details;
-			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->device_physical, surface, &details.capabilities);
+			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(rhi_device->GetContext()->device_physical, surface, &details.capabilities);
 
 			uint32_t format_count;
-			vkGetPhysicalDeviceSurfaceFormatsKHR(context->device_physical, surface, &format_count, nullptr);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContext()->device_physical, surface, &format_count, nullptr);
 
 			if (format_count != 0)
 			{
 				details.formats.resize(format_count);
-				vkGetPhysicalDeviceSurfaceFormatsKHR(context->device_physical, surface, &format_count, details.formats.data());
+				vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContext()->device_physical, surface, &format_count, details.formats.data());
 			}
 
 			uint32_t present_mode_count;
-			vkGetPhysicalDeviceSurfacePresentModesKHR(context->device_physical, surface, &present_mode_count, nullptr);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContext()->device_physical, surface, &present_mode_count, nullptr);
 
 			if (present_mode_count != 0)
 			{
 				details.present_modes.resize(present_mode_count);
-				vkGetPhysicalDeviceSurfacePresentModesKHR(context->device_physical, surface, &present_mode_count, details.present_modes.data());
+				vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContext()->device_physical, surface, &present_mode_count, details.present_modes.data());
 			}
 
 			return details;
@@ -238,40 +238,41 @@ namespace Spartan::vulkan_helper
 
 	namespace physical_device
 	{
-		inline QueueFamilyIndices get_family_indices(const VkPhysicalDevice device, const VkSurfaceKHR surface = nullptr)
+		inline QueueFamilyIndices get_family_indices(RHI_Device* rhi_device, VkSurfaceKHR& surface, const VkPhysicalDevice& _physical_device)
 		{
+			QueueFamilyIndices indices;
+
 			uint32_t queue_family_count = 0;
-			vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
+			vkGetPhysicalDeviceQueueFamilyProperties(_physical_device, &queue_family_count, nullptr);
 
 			std::vector<VkQueueFamilyProperties> queue_family_properties(queue_family_count);
-			vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_family_properties.data());
-
-			QueueFamilyIndices _indices;
+			vkGetPhysicalDeviceQueueFamilyProperties(_physical_device, &queue_family_count, queue_family_properties.data());
+			
 			int i = 0;
 			for (const auto& queue_family_property : queue_family_properties)
 			{
 				if (queue_family_property.queueCount > 0 && queue_family_property.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 				{
-					_indices.graphics_family = i;
+					indices.graphics_family = i;
 				}
 
-				//VkBool32 present_support = false;
-				//vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
+				VkBool32 present_support = false;
+				vkGetPhysicalDeviceSurfaceSupportKHR(_physical_device, i, surface, &present_support);
 				if (queue_family_property.queueCount > 0)
 				{
-					_indices.present_family = i;
+					indices.present_family = i;
 				}
 
-				if (_indices.IsComplete())
+				if (indices.IsComplete())
 					break;
 
 				i++;
 			}
 
-			return _indices;
+			return indices;
 		}
 
-		inline bool check_extension_support(Spartan::RHI_Context* context, const VkPhysicalDevice device)
+		inline bool check_extension_support(RHI_Device* rhi_device, const VkPhysicalDevice device)
 		{
 			uint32_t extensionCount;
 			vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
@@ -279,7 +280,7 @@ namespace Spartan::vulkan_helper
 			std::vector<VkExtensionProperties> available_extensions(extensionCount);
 			vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, available_extensions.data());
 
-			std::set<std::string> required_extensions(context->extensions_device.begin(), context->extensions_device.end());
+			std::set<std::string> required_extensions(rhi_device->GetContext()->extensions_device.begin(), rhi_device->GetContext()->extensions_device.end());
 			for (const auto& extension : available_extensions)
 			{
 				required_extensions.erase(extension.extensionName);
@@ -288,21 +289,40 @@ namespace Spartan::vulkan_helper
 			return required_extensions.empty();
 		}
 
-		inline bool choose(Spartan::RHI_Context* context, const std::vector<VkPhysicalDevice>& physical_devices)
+		inline bool choose(RHI_Device* rhi_device, void* window_handle, const std::vector<VkPhysicalDevice>& physical_devices)
 		{
+			// Temporarily create a surface just to check compatibility
+			VkSurfaceKHR surface_temp = nullptr;
+			{
+				VkWin32SurfaceCreateInfoKHR create_info = {};
+				create_info.sType						= VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+				create_info.hwnd						= static_cast<HWND>(window_handle);
+				create_info.hinstance					= GetModuleHandle(nullptr);
+
+				auto result = vkCreateWin32SurfaceKHR(rhi_device->GetContext()->instance, &create_info, nullptr, &surface_temp);
+				if (result != VK_SUCCESS)
+				{
+					LOGF_ERROR("Failed to create Win32 surface, %s.", vulkan_helper::result_to_string(result));
+					return false;
+				}
+			}
+
 			for (const auto& device : physical_devices)
 			{		
-				bool extensions_supported	= check_extension_support(context, device);		
-				auto _indices				= get_family_indices(device);
+				bool extensions_supported	= check_extension_support(rhi_device, device);
+				auto _indices				= get_family_indices(rhi_device, surface_temp, device);
 
 				bool is_suitable = _indices.IsComplete() && extensions_supported;
 				if (is_suitable)
 				{			
-					context->device_physical	= device;
-					context->indices			= _indices;
+					rhi_device->GetContext()->device_physical	= device;
+					rhi_device->GetContext()->indices			= _indices;
 					return true;
 				}
 			}
+
+			// Destroy the surface
+			vkDestroySurfaceKHR(rhi_device->GetContext()->instance, surface_temp, nullptr);
 
 			return false;
 		}
@@ -343,7 +363,7 @@ namespace Spartan::vulkan_helper
 			auto result = vkCreateSemaphore(rhi_device->GetContext()->device, &semaphore_info, nullptr, &semaphore_out);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to create semaphore, %s.", vk_result_to_string(result));
+				LOGF_ERROR("Failed to create semaphore, %s.", result_to_string(result));
 				return nullptr;
 			}
 
@@ -355,7 +375,7 @@ namespace Spartan::vulkan_helper
 			if (!semaphore_in)
 				return;
 
-			if (semaphore_in) { vkDestroySemaphore(rhi_device->GetContext()->device, static_cast<VkSemaphore>(semaphore_in), nullptr); }
+			vkDestroySemaphore(rhi_device->GetContext()->device, static_cast<VkSemaphore>(semaphore_in), nullptr);
 			semaphore_in = nullptr;
 		}
 	}
@@ -366,13 +386,12 @@ namespace Spartan::vulkan_helper
 		{
 			VkFenceCreateInfo fence_info	= {};
 			fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-			//fence_info.flags				= VK_FENCE_CREATE_SIGNALED_BIT;
-
+	
 			VkFence fence_out;
 			auto result = vkCreateFence(rhi_device->GetContext()->device, &fence_info, nullptr, &fence_out);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to create semaphore, %s", vk_result_to_string(result));
+				LOGF_ERROR("Failed to create semaphore, %s", result_to_string(result));
 				return nullptr;
 			}
 
@@ -390,15 +409,14 @@ namespace Spartan::vulkan_helper
 
 		inline void wait(RHI_Device* rhi_device, void*& fence_in)
 		{
-			auto fence_temp = static_cast<VkFence>(fence_in);
-			vkWaitForFences(rhi_device->GetContext()->device, 1, &fence_temp, VK_TRUE, std::numeric_limits<uint64_t>::max());
+			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
+			vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, VK_TRUE, std::numeric_limits<uint64_t>::max());
 		}
 
 		inline void reset(RHI_Device* rhi_device, void*& fence_in)
 		{
-			auto fence_temp = static_cast<VkFence>(fence_in);
-			vkResetFences(rhi_device->GetContext()->device, 1, &fence_temp);
-			fence_in = static_cast<void*>(fence_temp);
+			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
+			vkResetFences(rhi_device->GetContext()->device, 1, fence_temp);
 		}
 	}
 }

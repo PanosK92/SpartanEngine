@@ -63,7 +63,7 @@ namespace Spartan
 
 			if (m_rhi_context->validation_enabled)
 			{
-				if (vulkan_helper::check_validation_layers(m_rhi_context))
+				if (vulkan_helper::check_validation_layers(this))
 				{
 					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
 					create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
@@ -74,9 +74,10 @@ namespace Spartan
 				}
 			}
 
-			if (vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance) != VK_SUCCESS)
+			auto result = vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance);
+			if (result != VK_SUCCESS)
 			{
-				LOG_ERROR("Failed to create instance.");
+				LOGF_ERROR("Failed to create instance, %s.", vulkan_helper::result_to_string(result));
 				return;
 			}
 		}
@@ -90,7 +91,7 @@ namespace Spartan
 			create_info.messageType							= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 			create_info.pfnUserCallback						= vulkan_helper::debug_callback::callback;
 
-			if (vulkan_helper::debug_callback::create(m_rhi_context, &create_info) != VK_SUCCESS)
+			if (vulkan_helper::debug_callback::create(this, &create_info) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to setup debug callback");
 			}
@@ -108,7 +109,7 @@ namespace Spartan
 			std::vector<VkPhysicalDevice> physical_devices(device_count);
 			vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data());
 			
-			if (!vulkan_helper::physical_device::choose(m_rhi_context, physical_devices)) 
+			if (!vulkan_helper::physical_device::choose(this, Settings::Get().GetWindowHandle(), physical_devices)) 
 			{
 				LOG_ERROR("Failed to find a suitable device.");
 				return;
@@ -157,12 +158,13 @@ namespace Spartan
 		auto result = vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to create device, %s.", vulkan_helper::vk_result_to_string(result));
+			LOGF_ERROR("Failed to create device, %s.", vulkan_helper::result_to_string(result));
 			return;
 		}
+
 		// Create queues
 		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_graphics);
-		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_present);
+		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->queue_present);
 
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
