@@ -80,6 +80,5 @@ namespace Spartan
 
 		void* m_buffer			= nullptr;
 		void* m_buffer_memory	= nullptr;
-		uint64_t m_device_size	= 256;
 	};
 }
