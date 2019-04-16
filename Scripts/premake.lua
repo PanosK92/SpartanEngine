@@ -73,8 +73,8 @@ project (RUNTIME_NAME)
 	defines
 	{
 		"SPARTAN_RUNTIME",
-		"SPARTAN_RUNTIME_STATIC=1"
-		"SPARTAN_RUNTIME_SHARED=0",
+		"SPARTAN_RUNTIME_STATIC=1",
+		"SPARTAN_RUNTIME_SHARED=0"
 	}
 
 	-- Includes
@@ -85,7 +85,7 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/Bullet_2.88" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
-	includedirs { "../ThirdParty/FreeType_2.9.1" }
+	includedirs { "../ThirdParty/FreeType_2.10.0" }
 	includedirs { "../ThirdParty/pugixml_1.9" }
 	
 	-- Libraries
