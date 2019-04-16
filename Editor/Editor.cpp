@@ -58,6 +58,7 @@ Editor::Editor(void* window_handle, void* window_instance, float width, float he
 	m_widgets.emplace_back(make_unique<Widget_Console>(nullptr));
 
 	// Create engine
+	Settings::Get().SetWindowSize(static_cast<unsigned int>(width),  static_cast<unsigned int>(height));
 	Settings::Get().SetHandles(window_handle, window_handle, window_instance);
 	m_engine = make_unique<Engine>(make_shared<Context>());
 	

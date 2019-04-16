@@ -70,12 +70,11 @@ namespace Spartan
 		auto device						= m_rhi_device->GetContext()->device;
 		VkBuffer buffer					= nullptr;
 		VkDeviceMemory buffer_memory	= nullptr;
+		VkDeviceSize size				= m_stride * m_index_count;
 
-		auto size						= m_stride * m_index_count;
-		VkDeviceSize size_aligned		= ((size - 1) / m_device_size + 1) * m_device_size;
 		VkBufferCreateInfo buffer_info	= {};
 		buffer_info.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		buffer_info.size				= size_aligned;
+		buffer_info.size				= size;
 		buffer_info.usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		buffer_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 
@@ -88,7 +87,6 @@ namespace Spartan
 
 		VkMemoryRequirements memory_requirements;
 		vkGetBufferMemoryRequirements(device, buffer, &memory_requirements);
-		m_device_size = (m_device_size > memory_requirements.alignment) ? m_device_size : memory_requirements.alignment;
 		VkMemoryAllocateInfo alloc_info = {};
 		alloc_info.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		alloc_info.allocationSize		= memory_requirements.size;
@@ -110,7 +108,6 @@ namespace Spartan
 
 		m_buffer		= static_cast<void*>(buffer);
 		m_buffer_memory = static_cast<void*>(buffer_memory);
-		m_device_size	= size;
 
 		return true;
 	}

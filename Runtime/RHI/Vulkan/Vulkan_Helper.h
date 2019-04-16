@@ -263,7 +263,7 @@ namespace Spartan::vulkan_helper
 					indices.graphics_family = i;
 				}
 
-				if (queue_family_property.queueCount > 0 && queue_family_property.queueFlags == VK_QUEUE_TRANSFER_BIT) 
+				if (queue_family_property.queueCount > 0 && queue_family_property.queueFlags & VK_QUEUE_TRANSFER_BIT) 
 				{
 					indices.copy_family = i;
 				}
@@ -343,17 +343,29 @@ namespace Spartan::vulkan_helper
 			allocInfo.level					= level;
 			allocInfo.commandBufferCount	= 1;
 
-			return vkAllocateCommandBuffers(context->device, &allocInfo, cmd_buffer) == VK_SUCCESS;
+			auto result = vkAllocateCommandBuffers(context->device, &allocInfo, cmd_buffer);
+			if (result != VK_SUCCESS)
+			{
+				LOGF_ERROR("Failed to allocate command buffer, %s.", result_to_string(result));
+				return false;
+			}
+			return true;
 		}
 
 		inline bool create_command_pool(RHI_Context* context, VkCommandPool* cmd_pool)
 		{
 			VkCommandPoolCreateInfo cmdPoolInfo = {};
 			cmdPoolInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			cmdPoolInfo.queueFamilyIndex	= context->indices.present_family.value();
+			cmdPoolInfo.queueFamilyIndex	= context->indices.graphics_family.value();
 			cmdPoolInfo.flags				= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-			return vkCreateCommandPool(context->device, &cmdPoolInfo, nullptr, cmd_pool) == VK_SUCCESS;
+			auto result = vkCreateCommandPool(context->device, &cmdPoolInfo, nullptr, cmd_pool);
+			if (result != VK_SUCCESS)
+			{
+				LOGF_ERROR("Failed to create command pool, %s.", result_to_string(result));
+				return false;
+			}
+			return true;
 		}
 	}
 

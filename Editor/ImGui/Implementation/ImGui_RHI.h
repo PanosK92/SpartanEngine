@@ -71,7 +71,6 @@ namespace ImGui::RHI
 		g_renderer		= context->GetSubsystem<Renderer>().get();
 		g_cmd_list		= g_renderer->GetCmdList().get();
 		g_rhi_device	= g_renderer->GetRhiDevice();
-		Settings::Get().SetWindowSize(static_cast<unsigned int>(width),  static_cast<unsigned int>(height));
 		
 		if (!g_context || !g_rhi_device || !g_rhi_device->IsInitialized())
 		{
