@@ -30,19 +30,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define API_INPUT_WINDOWS
 
 // Class
-#if SHARED_LIB == 1
-#ifdef RUNTIME
-#define SPARTAN_CLASS __declspec(dllexport)
-#elif EDITOR
-#define SPARTAN_CLASS __declspec(dllimport)
-#endif
-#elif STATIC_LIB == 1
 #define SPARTAN_CLASS
+#if SPARTAN_RUNTIME_SHARED == 1
+	#ifdef SPARTAN_RUNTIME
+	#define SPARTAN_CLASS __declspec(dllexport)
+	#else
+	#define SPARTAN_CLASS __declspec(dllimport)
+	#endif
 #endif
 
-#ifndef NOMINMAX
+// Windows
+#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX 
-#endif
 
 //= DISABLED WARNINGS ==============================================================================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'

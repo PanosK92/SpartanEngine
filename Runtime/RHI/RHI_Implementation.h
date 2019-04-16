@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#if defined(RUNTIME)
-
 //= INCLUDES ==================
 #include "../Core/EngineDefs.h"
 //=============================
+
+#if defined(SPARTAN_RUNTIME)
 
 #if defined(API_GRAPHICS_D3D11)
 // DirectX 11
@@ -222,7 +222,6 @@ static const VkBlendOp vulkan_blend_operation[] =
 #endif // API
 
 #endif // RUNTIME
-
 
 #if defined(API_GRAPHICS_VULKAN)
 struct SwapChainSupportDetails
