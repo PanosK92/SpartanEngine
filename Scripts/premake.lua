@@ -17,50 +17,67 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-WIN_SDK_VERSION 		= "latest"
-CPP_VERSION 			= "C++17"
-DEBUG_FORMAT			= "c7"
 SOLUTION_NAME 			= "Spartan"
 EDITOR_NAME 			= "Editor"
-ENGINE_NAME 			= "Runtime"
+RUNTIME_NAME 			= "Runtime"
+EDITOR_DIR				= "../" .. EDITOR_NAME
+RUNTIME_DIR				= "../" .. RUNTIME_NAME
 TARGET_DIR_RELEASE 		= "../Binaries/Release"
 TARGET_DIR_DEBUG 		= "../Binaries/Debug"
 INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
-EDITOR_DIR				= "../" .. EDITOR_NAME
-ENGINE_DIR				= "../" .. ENGINE_NAME
+DEBUG_FORMAT			= "c7"
 
 -- Solution
-	solution (SOLUTION_NAME)
-		location ".."
-		configurations { "Release", "Debug" }
-		platforms { "x64" }
-		filter { "platforms:x64" }
-			system "Windows"
-			architecture "x64"
- 
- -- Runtime -------------------------------------------------------------------------------------------------
-	project (ENGINE_NAME)
-		location (ENGINE_DIR)
-		kind "StaticLib"	
-		language "C++"
-		systemversion(WIN_SDK_VERSION)
-		cppdialect (CPP_VERSION)
-		files 
-		{ 
-			"../" .. ENGINE_NAME .. "/**.h", 
-			"../" .. ENGINE_NAME .. "/**.cpp", 
-			"../" .. ENGINE_NAME .. "/**.hpp", 
-			"../" .. ENGINE_NAME .. "/**.inl" 
-		}
+solution (SOLUTION_NAME)
+	location ".."
+	systemversion "latest"
+	cppdialect "C++17"
+	language "C++"
+	platforms "x64"
+	configurations { "Release", "Debug" }
+	
+	filter { "platforms:x64" }
+		system "Windows"
+		architecture "x64"
 		
-		defines
-		{
-			"RUNTIME",
-			"STATIC_LIB=1",
-			"SHARED_LIB=0"
-		}
+	-- 	"Debug"
+	filter "configurations:Debug"
+		defines { "DEBUG" }
+		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
+		symbols "On"			
+		
+	-- 	"Release"	
+	filter "configurations:Release"
+		defines { "NDEBUG" }
+		flags { "MultiProcessorCompile" }
+		symbols "Off"	
+		optimize "Full"
 
--- Includes
+-- Runtime -------------------------------------------------------------------------------------------------
+project (RUNTIME_NAME)
+	location (RUNTIME_DIR)
+	objdir (INTERMEDIATE_DIR)
+	kind "StaticLib"
+	staticruntime "On"
+	
+	-- Files
+	files 
+	{ 
+		RUNTIME_DIR .. "/**.h",
+		RUNTIME_DIR .. "/**.cpp",
+		RUNTIME_DIR .. "/**.hpp",
+		RUNTIME_DIR .. "/**.inl"
+	}
+	
+	-- Defines
+	defines
+	{
+		"SPARTAN_RUNTIME",
+		"SPARTAN_RUNTIME_STATIC=1"
+		"SPARTAN_RUNTIME_SHARED=0",
+	}
+
+	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
 	includedirs { "../ThirdParty/Vulkan_1.1.101.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
@@ -71,19 +88,14 @@ ENGINE_DIR				= "../" .. ENGINE_NAME
 	includedirs { "../ThirdParty/FreeType_2.9.1" }
 	includedirs { "../ThirdParty/pugixml_1.9" }
 	
--- Library directory
+	-- Libraries
 	libdirs { "../ThirdParty/mvsc141_x64" }
 
--- 	"Debug"
+	-- 	"Debug"
 	filter "configurations:Debug"
 		targetdir (TARGET_DIR_DEBUG)
-		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
-		symbols "On"
-		defines { "DEBUG" }	
-		staticruntime "On"
-		flags { "MultiProcessorCompile" }
 		links { "dxclib.lib" }
 		links { "dxcompiler.lib" }
 		links { "angelscript_debug" }
@@ -95,16 +107,10 @@ ENGINE_DIR				= "../" .. ENGINE_NAME
 		links { "pugixml_debug" }
 		links { "IrrXML_debug" }
 			
--- 	"Release"
+	-- 	"Release"
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
-		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
-		symbols "Off"
-		defines { "NDEBUG" }
-		optimize "Full"
-		staticruntime "On"
-		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		links { "dxclib.lib" }
 		links { "dxcompiler.lib" }
 		links { "angelscript" }
@@ -116,55 +122,35 @@ ENGINE_DIR				= "../" .. ENGINE_NAME
 		links { "pugixml" }
 		links { "IrrXML" }
 
- -- Editor --------------------------------------------------------------------------------------------------
-	project (EDITOR_NAME)
-		location (EDITOR_DIR)
-		kind "WindowedApp"	
-		language "C++"
-		links { ENGINE_NAME }
-		dependson { ENGINE_NAME }
-		systemversion(WIN_SDK_VERSION)
-		cppdialect (CPP_VERSION)
-		files 
-		{ 
-			"../Editor/**.rc",
-			"../Editor/**.h",
-			"../Editor/**.cpp",
-			"../Editor/**.hpp",
-			"../Editor/**.inl"
-		}
-		
-		defines
-		{
-			"EDITOR",
-			"STATIC_LIB=1",
-			"SHARED_LIB=0"
-		}
+-- Editor --------------------------------------------------------------------------------------------------
+project (EDITOR_NAME)
+	location (EDITOR_DIR)
+	links { RUNTIME_NAME }
+	dependson { RUNTIME_NAME }
+	objdir (INTERMEDIATE_DIR)
+	kind "WindowedApp"
+	staticruntime "On"
 
--- Includes
-	includedirs { "../" .. ENGINE_NAME }
-
--- Library directory
-	libdirs { "../ThirdParty/mvsc141_x64" }
+	-- Files
+	files 
+	{ 
+		EDITOR_DIR .. "/**.rc",
+		EDITOR_DIR .. "/**.h",
+		EDITOR_DIR .. "/**.cpp",
+		EDITOR_DIR .. "/**.hpp",
+		EDITOR_DIR .. "/**.inl"
+	}
 	
--- "Debug"
+	-- Includes
+	includedirs { "../" .. RUNTIME_NAME }
+
+	-- "Debug"
 	filter "configurations:Debug"
-		targetdir (TARGET_DIR_DEBUG)
-		objdir (INTERMEDIATE_DIR)
+		targetdir (TARGET_DIR_DEBUG)	
 		debugdir (TARGET_DIR_DEBUG)
-		debugformat (DEBUG_FORMAT)
-		symbols "On"
-		staticruntime "On"
-		defines { "DEBUG"}
-		flags { "MultiProcessorCompile" }
+		debugformat (DEBUG_FORMAT)		
 				
--- "Release"
+	-- "Release"
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
-		objdir (INTERMEDIATE_DIR)
 		debugdir (TARGET_DIR_RELEASE)
-		symbols "Off"	
-		optimize "Full"
-		staticruntime "On"
-		defines { "NDEBUG" }
-		flags { "MultiProcessorCompile", "LinkTimeOptimization" }		
