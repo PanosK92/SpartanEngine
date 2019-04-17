@@ -116,7 +116,7 @@ namespace Spartan
 	{
 		void* ptr = nullptr;
 
-		auto result = vkMapMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_index_count, 0, (void**)(&ptr));
+		auto result = vkMapMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_index_count, 0, reinterpret_cast<void**>(&ptr));
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to map memory, %s.", vulkan_helper::result_to_string(result));

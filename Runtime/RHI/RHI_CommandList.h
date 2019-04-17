@@ -29,10 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 //============================
 
-struct VkQueue_T;
-struct VkCommandPool_T;
-struct VkCommandBuffer_T;
-
 namespace Spartan
 {
 	class Profiler;
@@ -176,8 +172,7 @@ namespace Spartan
 		CommandList_Idle,
 		CommandList_Ready,
 		CommandList_Ended,
-		CommandList_Submission_Succeeded,
-		CommandList_Submission_Failed
+		CommandList_Render_Finished
 	};
 
 	class SPARTAN_CLASS RHI_CommandList
@@ -249,7 +244,7 @@ namespace Spartan
 		void ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0);
 
 		bool Submit();
-		const auto& GetExecutionCompleteSemaphore() { return m_semaphore_execution_complete; }
+		const auto& GetSemaphoreRenderFinished() { return !m_semaphores_render_finished.empty() ? m_semaphores_render_finished[m_current_frame] : nullptr; }
 
 	private:
 		void Clear();
@@ -260,15 +255,16 @@ namespace Spartan
 		RHI_Command& GetCmd();
 		std::vector<RHI_Command> m_commands;
 		unsigned int m_initial_capacity = 2500;
-		unsigned int m_command_count = 0;
+		unsigned int m_command_count	= 0;
 
 		// Vulkan
 		RHI_Command m_empty_cmd; // for GetCmd()
-		VkCommandPool_T* m_cmd_pool;
-		VkCommandBuffer_T* m_cmd_buffer;
-		void* m_semaphore_execution_complete = nullptr;
-		void* m_fence = nullptr;
-		CommandList_State m_state = CommandList_Idle;
+		void* m_cmd_pool;
+		std::vector<void*> m_cmd_buffers;
+		std::vector<void*> m_semaphores_render_finished;
+		std::vector<void*> m_fences_in_flight;
+		unsigned int m_current_frame	= 0;
+		CommandList_State m_state		= CommandList_Idle;
 
 		// Dependencies
 		std::vector<void*> m_textures_empty = std::vector<void*>(10);

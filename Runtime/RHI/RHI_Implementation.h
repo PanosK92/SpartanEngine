@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
-#if defined(SPARTAN_RUNTIME)
+#if defined(SPARTAN_RUNTIME) || (SPARTAN_RUNTIME_STATIC == 1)
 
 #if defined(API_GRAPHICS_D3D11)
 // DirectX 11
@@ -219,11 +219,7 @@ static const VkBlendOp vulkan_blend_operation[] =
 	VK_BLEND_OP_MIN,
 	VK_BLEND_OP_MAX
 };
-#endif // API
 
-#endif // RUNTIME
-
-#if defined(API_GRAPHICS_VULKAN)
 struct SwapChainSupportDetails
 {
 	VkSurfaceCapabilitiesKHR capabilities;
@@ -239,7 +235,7 @@ struct QueueFamilyIndices
 	std::optional<uint32_t> copy_family;
 	bool IsComplete() const { return graphics_family.has_value() && present_family.has_value() && copy_family.has_value(); }
 };
-#endif
+#endif // DirectX 11/Vulkan
 
 namespace Spartan
 {
@@ -273,3 +269,5 @@ namespace Spartan
 	#endif
 	};
 }
+
+#endif // RUNTIME

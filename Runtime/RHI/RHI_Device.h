@@ -143,10 +143,9 @@ namespace Spartan
 	private:
 		std::vector<DisplayMode> m_displayModes;
 		std::vector<DisplayAdapter> m_displayAdapters;
-		const DisplayAdapter* m_primaryAdapter	= nullptr;
-		RHI_Format m_back_buffer_format			= Format_R8G8B8A8_UNORM;
-
-		bool m_initialized			= false;
-		RHI_Context* m_rhi_context	= nullptr;
+		const DisplayAdapter* m_primaryAdapter		= nullptr;
+		RHI_Format m_back_buffer_format				= Format_R8G8B8A8_UNORM;
+		bool m_initialized							= false;
+		RHI_Context* m_rhi_context					= nullptr;
 	};
 }

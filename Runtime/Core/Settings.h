@@ -49,41 +49,34 @@ namespace Spartan
 
 		void Initialize();
 
-		//= WINDOW ===================================================================
-		void SetHandles(void* draw_handle, void* window_handle, void* window_instance)
+		//= WINDOW ============================================================================================================
+		void SetHandles(void* draw_handle, void* window_handle, void* window_instance, float window_width, float window_height)
 		{
-			m_drawHandle		= draw_handle;
-			m_windowHandle		= window_handle;
+			m_draw_handle		= draw_handle;
+			m_window_handle		= window_handle;
 			m_windowInstance	= window_instance;
+			m_window_size.x		= window_width;
+			m_window_size.y		= window_height;
 		}
-		void* GetWindowHandle() const	{ return m_windowHandle; }
-		void* GetWindowInstance() const { return m_windowInstance; }
-		//============================================================================
+		auto GetWindowHandle() const	{ return m_window_handle; }
+		auto GetWindowInstance() const	{ return m_windowInstance; }
+		//=====================================================================================================================
 
-		//= WINDOW SIZE ================================================================================================================================================
-		void SetWindowSize(const unsigned int width, const unsigned int height)	{ m_windowSize = Math::Vector2(static_cast<float>(width), static_cast<float>(height)); }
-		void SetWindowSize(const Math::Vector2& size)							{ m_windowSize = size; }
-		const Math::Vector2& GetWindowSize() const								{ return m_windowSize; }
-		unsigned int GetWindowWidth() const										{ return static_cast<unsigned int>(m_windowSize.x); }
-		unsigned int GetWindowHeight() const									{ return static_cast<unsigned int>(m_windowSize.y); }
-		//==============================================================================================================================================================
-
-		//= FPS ===========================================
+		//= FPS ============================================
 		void SetFpsLimit(float fps);
-		float GetFpsLimit() const	{ return m_fpsLimit; }
-		float GetFpsTarget() const	{ return m_fpsTarget; }
-		FPS_Policy GetFpsPolicy()	{ return m_fpsPolicy; }
-		//=================================================
+		auto GetFpsLimit() const	{ return m_fps_limit; }
+		auto GetFpsTarget() const	{ return m_fps_target; }
+		auto GetFpsPolicy()			{ return m_fps_policy; }
+		//==================================================
 
-		//= MISC =================================================================================
-		bool GetIsFullScreen() const						{ return m_isFullScreen; }
-		bool GetIsMouseVisible() const						{ return m_isMouseVisible; }
-		unsigned int GetShadowResolution() const			{ return m_shadowMapResolution; }
-		unsigned int GetAnisotropy() const					{ return m_anisotropy; }
-		void SetMaxThreadCount(unsigned int maxThreadCount)	{ m_maxThreadCount = maxThreadCount; }
-		unsigned int GetMaxThreadCount() const				{ return m_maxThreadCount; }	
-		bool GetReverseZ() const							{ return m_reverseZ; }
-		//========================================================================================
+		//= MISC ==============================================================
+		auto GetIsFullScreen() const		{ return m_is_fullscreen; }
+		auto GetIsMouseVisible() const		{ return m_is_mouse_visible; }
+		auto GetShadowResolution() const	{ return m_shadow_map_resolution; }
+		auto GetAnisotropy() const			{ return m_anisotropy; }
+		auto GetMaxThreadCount() const		{ return m_max_thread_count; }	
+		auto GetReverseZ() const			{ return m_reverse_z; }
+		//=====================================================================
 
 		// Third party lib versions
 		std::string m_versionAngelScript;
@@ -97,18 +90,18 @@ namespace Spartan
 		std::string m_versionGraphicsAPI;
 
 	private:
-		void* m_drawHandle					= nullptr;
-		void* m_windowHandle				= nullptr;
-		void* m_windowInstance				= nullptr;
-		Math::Vector2 m_windowSize			= Math::Vector2::Zero;
-		bool m_isFullScreen					= false;
-		bool m_isMouseVisible				= true;
-		unsigned int m_shadowMapResolution	= 4096;
-		unsigned int m_anisotropy			= 16;
-		unsigned int m_maxThreadCount		= 0;
-		float m_fpsLimit					= -1.0f;
-		float m_fpsTarget					= 165.0f;
-		FPS_Policy m_fpsPolicy				= FPS_MonitorMatch;
-		bool m_reverseZ						= true;
+		void* m_draw_handle						= nullptr;
+		void* m_window_handle					= nullptr;
+		void* m_windowInstance					= nullptr;
+		Math::Vector2 m_window_size				= Math::Vector2::Zero;
+		bool m_is_fullscreen					= false;
+		bool m_is_mouse_visible					= true;
+		unsigned int m_shadow_map_resolution	= 4096;
+		unsigned int m_anisotropy				= 16;
+		unsigned int m_max_thread_count			= 0;
+		float m_fps_limit						= -1.0f;
+		float m_fps_target						= 165.0f;
+		FPS_Policy m_fps_policy					= FPS_MonitorMatch;
+		bool m_reverse_z						= true;
 	};
 }

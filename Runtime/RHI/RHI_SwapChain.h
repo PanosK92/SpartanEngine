@@ -50,16 +50,16 @@ namespace Spartan
 
 		bool Resize(unsigned int width, unsigned int height);
 		bool AcquireNextImage();
-		bool Present(RHI_Present_Mode mode, void* semaphore_execution_complete);
+		bool Present(RHI_Present_Mode mode, void* semaphore_render_finished);
 
+		auto GetWidth()						{ return m_width; }
+		auto GetHeight()					{ return m_height; }
 		auto IsInitialized()				{ return m_initialized; }
 		auto GetSwapChainView()				{ return m_swap_chain_view; }
 		auto GetRenderTargetView()			{ return m_render_target_view; }
-		auto GetWidth()						{ return m_width; }
-		auto GetHeight()					{ return m_height; }
 		auto GetBufferCount()				{ return m_buffer_count; }
-		const auto& GetFrameBuffer()		{ return m_frame_buffers[m_image_index]; }
-		auto& GetImageAcquiredSemaphore()	{ return m_semaphore_image_acquired;  }
+		auto& GetFrameBuffer()				{ return m_frame_buffers[m_image_index]; }
+		auto& GetSemaphoreImageAcquired()	{ return m_semaphores_image_acquired[m_image_index]; }
 
 	private:
 		bool m_initialized				= false;
@@ -76,10 +76,10 @@ namespace Spartan
 		void* m_swap_chain_view				= nullptr;
 		void* m_render_target_view			= nullptr;
 		void* m_surface						= nullptr;	
-		uint32_t m_image_index				= 0;
-		void* m_semaphore_image_acquired	= nullptr;
+		uint32_t m_image_index				= 0;	
 		void* m_render_pass					= nullptr;
 		void* m_window_handle				= nullptr;
+		std::vector<void*> m_semaphores_image_acquired;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;
 	};

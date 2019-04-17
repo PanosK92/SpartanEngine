@@ -21,11 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include "../Core/EngineDefs.h"
-//=============================
+// RHI (Rendering Hardware Interface)
 
-// RHI (Rendering Hardware Interface) definitions
+// Settings
+namespace Spartan
+{
+	const unsigned int g_max_frames_in_flight = 1;
+}
+
+// Declarations
 namespace Spartan
 {
 	struct RHI_Context;

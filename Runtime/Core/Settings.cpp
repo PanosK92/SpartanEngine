@@ -64,7 +64,7 @@ namespace Spartan
 
 	Settings::Settings()
 	{
-		m_maxThreadCount = thread::hardware_concurrency();
+		m_max_thread_count = thread::hardware_concurrency();
 	}
 
 	void Settings::Initialize()
@@ -78,29 +78,29 @@ namespace Spartan
 			float resolution_y = 0;
 
 			// Read the settings
-			read_setting(SettingsIO::fin, "bFullScreen",			m_isFullScreen);
-			read_setting(SettingsIO::fin, "bIsMouseVisible",		m_isMouseVisible);
+			read_setting(SettingsIO::fin, "bFullScreen",			m_is_fullscreen);
+			read_setting(SettingsIO::fin, "bIsMouseVisible",		m_is_mouse_visible);
 			read_setting(SettingsIO::fin, "fResolutionWidth",		resolution_x);
 			read_setting(SettingsIO::fin, "fResolutionHeight",		resolution_y);
-			read_setting(SettingsIO::fin, "iShadowMapResolution",	m_shadowMapResolution);
+			read_setting(SettingsIO::fin, "iShadowMapResolution",	m_shadow_map_resolution);
 			read_setting(SettingsIO::fin, "iAnisotropy",			m_anisotropy);
-			read_setting(SettingsIO::fin, "fFPSLimit",				m_fpsLimit);
-			read_setting(SettingsIO::fin, "iMaxThreadCount",		m_maxThreadCount);
+			read_setting(SettingsIO::fin, "fFPSLimit",				m_fps_limit);
+			read_setting(SettingsIO::fin, "iMaxThreadCount",		m_max_thread_count);
 
-			m_windowSize = Vector2(resolution_x, resolution_y);
+			m_window_size = Vector2(resolution_x, resolution_y);
 
-			if (m_fpsLimit == 0.0f)
+			if (m_fps_limit == 0.0f)
 			{
-				m_fpsPolicy = FPS_Unlocked;
-				m_fpsLimit	= FLT_MAX;
+				m_fps_policy = FPS_Unlocked;
+				m_fps_limit	= FLT_MAX;
 			}
-			else if (m_fpsLimit > 0.0f)
+			else if (m_fps_limit > 0.0f)
 			{
-				m_fpsPolicy = FPS_Locked;				
+				m_fps_policy = FPS_Locked;				
 			}
 			else
 			{
-				m_fpsPolicy = FPS_MonitorMatch;
+				m_fps_policy = FPS_MonitorMatch;
 			}
 
 			// Close the file.
@@ -112,33 +112,33 @@ namespace Spartan
 			SettingsIO::fout.open(SettingsIO::file_name, ofstream::out);
 
 			// Write the settings
-			write_setting(SettingsIO::fout, "bFullScreen",			m_isFullScreen);
-			write_setting(SettingsIO::fout, "bIsMouseVisible",		m_isMouseVisible);
-			write_setting(SettingsIO::fout, "fResolutionWidth",		m_windowSize.x);
-			write_setting(SettingsIO::fout, "fResolutionHeight",	m_windowSize.y);
-			write_setting(SettingsIO::fout, "iShadowMapResolution",	m_shadowMapResolution);
+			write_setting(SettingsIO::fout, "bFullScreen",			m_is_fullscreen);
+			write_setting(SettingsIO::fout, "bIsMouseVisible",		m_is_mouse_visible);
+			write_setting(SettingsIO::fout, "fResolutionWidth",		m_window_size.x);
+			write_setting(SettingsIO::fout, "fResolutionHeight",	m_window_size.y);
+			write_setting(SettingsIO::fout, "iShadowMapResolution",	m_shadow_map_resolution);
 			write_setting(SettingsIO::fout, "iAnisotropy",			m_anisotropy);
-			write_setting(SettingsIO::fout, "fFPSLimit",			m_fpsLimit);
-			write_setting(SettingsIO::fout, "iMaxThreadCount",		m_maxThreadCount);
+			write_setting(SettingsIO::fout, "fFPSLimit",			m_fps_limit);
+			write_setting(SettingsIO::fout, "iMaxThreadCount",		m_max_thread_count);
 
 			// Close the file.
 			SettingsIO::fout.close();
 		}
 
-		LOGF_INFO("Resolution: %dx%d",		static_cast<int>(m_windowSize.x), static_cast<int>(m_windowSize.y));
-		LOGF_INFO("Shadow resolution: %d",	m_shadowMapResolution);
+		LOGF_INFO("Resolution: %dx%d",		static_cast<int>(m_window_size.x), static_cast<int>(m_window_size.y));
+		LOGF_INFO("Shadow resolution: %d",	m_shadow_map_resolution);
 		LOGF_INFO("Anisotropy: %d",			m_anisotropy);
-		LOGF_INFO("Max fps: %f",			m_fpsLimit);
-		LOGF_INFO("Max threads: %d",		m_maxThreadCount);
+		LOGF_INFO("Max fps: %f",			m_fps_limit);
+		LOGF_INFO("Max threads: %d",		m_max_thread_count);
 	}
 
 	void Settings::SetFpsLimit(const float fps)
 	{
-		if (m_fpsLimit != fps)
+		if (m_fps_limit != fps)
 		{
 			LOGF_INFO("FPS limit set to %f", fps);
 		}
 
-		m_fpsLimit = fps;
+		m_fps_limit = fps;
 	}
 }

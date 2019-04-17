@@ -335,15 +335,16 @@ namespace Spartan::vulkan_helper
 
 	namespace command_list
 	{
-		inline bool create_command_buffer(RHI_Context* context, VkCommandBuffer* cmd_buffer, VkCommandPool cmd_pool, VkCommandBufferLevel level)
+		inline bool create_command_buffer(RHI_Context* context, void*& cmd_buffer, void*& cmd_pool, VkCommandBufferLevel level)
 		{
 			VkCommandBufferAllocateInfo allocInfo = {};
 			allocInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocInfo.commandPool			= cmd_pool;
+			allocInfo.commandPool			= static_cast<VkCommandPool>(cmd_pool);
 			allocInfo.level					= level;
 			allocInfo.commandBufferCount	= 1;
 
-			auto result = vkAllocateCommandBuffers(context->device, &allocInfo, cmd_buffer);
+			auto cmd_buffer_temp = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+			auto result = vkAllocateCommandBuffers(context->device, &allocInfo, cmd_buffer_temp);
 			if (result != VK_SUCCESS)
 			{
 				LOGF_ERROR("Failed to allocate command buffer, %s.", result_to_string(result));
@@ -352,14 +353,15 @@ namespace Spartan::vulkan_helper
 			return true;
 		}
 
-		inline bool create_command_pool(RHI_Context* context, VkCommandPool* cmd_pool)
+		inline bool create_command_pool(RHI_Context* context, void*& cmd_pool)
 		{
-			VkCommandPoolCreateInfo cmdPoolInfo = {};
-			cmdPoolInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			cmdPoolInfo.queueFamilyIndex	= context->indices.graphics_family.value();
-			cmdPoolInfo.flags				= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+			VkCommandPoolCreateInfo cmd_pool_info	= {};
+			cmd_pool_info.sType						= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			cmd_pool_info.queueFamilyIndex			= context->indices.graphics_family.value();
+			cmd_pool_info.flags						= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-			auto result = vkCreateCommandPool(context->device, &cmdPoolInfo, nullptr, cmd_pool);
+			auto cmd_pool_temp = reinterpret_cast<VkCommandPool*>(&cmd_pool);
+			auto result = vkCreateCommandPool(context->device, &cmd_pool_info, nullptr, cmd_pool_temp);
 			if (result != VK_SUCCESS)
 			{
 				LOGF_ERROR("Failed to create command pool, %s.", result_to_string(result));
@@ -427,13 +429,15 @@ namespace Spartan::vulkan_helper
 		inline void wait(RHI_Device* rhi_device, void*& fence_in)
 		{
 			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
-			vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, VK_TRUE, std::numeric_limits<uint64_t>::max());
+			auto result = vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF);
+			SPARTAN_ASSERT(result == VK_SUCCESS);			
 		}
 
 		inline void reset(RHI_Device* rhi_device, void*& fence_in)
 		{
 			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
-			vkResetFences(rhi_device->GetContext()->device, 1, fence_temp);
+			auto result = vkResetFences(rhi_device->GetContext()->device, 1, fence_temp);
+			SPARTAN_ASSERT(result == VK_SUCCESS);
 		}
 	}
 }
