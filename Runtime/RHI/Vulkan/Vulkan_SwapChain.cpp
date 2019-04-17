@@ -52,7 +52,7 @@ namespace Spartan
 		void*& swap_chain_view_out,
 		vector<void*>& image_views_out,
 		vector<void*>& frame_buffers_out,
-		void*& semaphore_image_acquired_out
+		vector<void*>& semaphores_image_acquired_out
 	)
 	{
 		auto rhi_context		= rhi_device->GetContext();
@@ -206,14 +206,22 @@ namespace Spartan
 		swap_chain_view_out				= static_cast<void*>(swap_chain);
 		image_views_out					= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
 		frame_buffers_out				= vector<void*>(frame_buffers.begin(), frame_buffers.end());
-		semaphore_image_acquired_out	= vulkan_helper::semaphore::create(rhi_device.get());
+
+		for (unsigned int i = 0; i < buffer_count; i++)
+		{
+			semaphores_image_acquired_out.emplace_back(vulkan_helper::semaphore::create(rhi_device.get()));
+		}
 
 		return true;
 	}
 
-	inline void _Destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& surface, void*& swap_chain_view, vector<void*>& image_views, vector<void*>& frame_buffers, void*& semaphore_image_acquired)
+	inline void _Destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& surface, void*& swap_chain_view, vector<void*>& image_views, vector<void*>& frame_buffers, vector<void*>& semaphores_image_acquired)
 	{
-		vulkan_helper::semaphore::destroy(rhi_device.get(), semaphore_image_acquired);
+		for (auto& semaphore : semaphores_image_acquired)
+		{
+			vulkan_helper::semaphore::destroy(rhi_device.get(), semaphore);
+		}
+		semaphores_image_acquired.clear();
 
 		for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_device->GetContext()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
 		frame_buffers.clear();
@@ -276,13 +284,13 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphore_image_acquired
+			m_semaphores_image_acquired
 		);
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
-		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_image_views, m_frame_buffers, m_semaphore_image_acquired);
+		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_image_views, m_frame_buffers, m_semaphores_image_acquired);
 	}
 
 	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
@@ -296,7 +304,7 @@ namespace Spartan
 		m_height	= height;
 
 		// Destroy previous swap chain
-		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_image_views, m_frame_buffers, m_semaphore_image_acquired);
+		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_image_views, m_frame_buffers, m_semaphores_image_acquired);
 
 		// Create the swap chain with the new dimensions
 		m_initialized = _Create
@@ -312,7 +320,7 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphore_image_acquired
+			m_semaphores_image_acquired
 		);
 
 		return m_initialized;
@@ -326,8 +334,8 @@ namespace Spartan
 			m_rhi_device->GetContext()->device,
 			static_cast<VkSwapchainKHR>(m_swap_chain_view),
 			numeric_limits<uint64_t>::max(),
-			static_cast<VkSemaphore>(m_semaphore_image_acquired),
-			VK_NULL_HANDLE,
+			static_cast<VkSemaphore>(m_semaphores_image_acquired[m_image_index]),
+			nullptr,
 			&m_image_index
 		);
 
@@ -340,11 +348,11 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(const RHI_Present_Mode mode, void* semaphore_execution_complete)
+	bool RHI_SwapChain::Present(const RHI_Present_Mode mode, void* semaphore_render_finished)
 	{	
 		auto swap_chain							= static_cast<VkSwapchainKHR>(m_swap_chain_view);
 		vector<VkSwapchainKHR> swap_chains		= { swap_chain };
-		vector<VkSemaphore> semaphores_wait		= { static_cast<VkSemaphore>(semaphore_execution_complete) };
+		vector<VkSemaphore> semaphores_wait		= { static_cast<VkSemaphore>(semaphore_render_finished) };
 
 		VkPresentInfoKHR present_info	= {};
 		present_info.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

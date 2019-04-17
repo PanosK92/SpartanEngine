@@ -36,6 +36,13 @@ solution (SOLUTION_NAME)
 	platforms "x64"
 	configurations { "Release", "Debug" }
 	
+	-- Defines
+	defines
+	{
+		"SPARTAN_RUNTIME_STATIC=1",
+		"SPARTAN_RUNTIME_SHARED=0"
+	}
+	
 	filter { "platforms:x64" }
 		system "Windows"
 		architecture "x64"
@@ -59,6 +66,7 @@ project (RUNTIME_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "StaticLib"
 	staticruntime "On"
+	defines{ "SPARTAN_RUNTIME" }
 	
 	-- Files
 	files 
@@ -67,14 +75,6 @@ project (RUNTIME_NAME)
 		RUNTIME_DIR .. "/**.cpp",
 		RUNTIME_DIR .. "/**.hpp",
 		RUNTIME_DIR .. "/**.inl"
-	}
-	
-	-- Defines
-	defines
-	{
-		"SPARTAN_RUNTIME",
-		"SPARTAN_RUNTIME_STATIC=1",
-		"SPARTAN_RUNTIME_SHARED=0"
 	}
 
 	-- Includes
@@ -130,7 +130,8 @@ project (EDITOR_NAME)
 	objdir (INTERMEDIATE_DIR)
 	kind "WindowedApp"
 	staticruntime "On"
-
+	defines{ "SPARTAN_EDITOR" }
+	
 	-- Files
 	files 
 	{ 
@@ -143,6 +144,9 @@ project (EDITOR_NAME)
 	
 	-- Includes
 	includedirs { "../" .. RUNTIME_NAME }
+	
+	-- Libraries
+	libdirs { "../ThirdParty/mvsc141_x64" }
 
 	-- "Debug"
 	filter "configurations:Debug"

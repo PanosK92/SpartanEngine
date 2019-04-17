@@ -280,12 +280,14 @@ namespace Spartan
 			return false;
 
 		
-		VkCommandPool cmd_pool;
-		if (!vulkan_helper::command_list::create_command_pool(m_rhi_device->GetContext(), &cmd_pool))
+		void* cmd_pool_void;
+		if (!vulkan_helper::command_list::create_command_pool(m_rhi_device->GetContext(), cmd_pool_void))
 		{
 			LOG_ERROR("Failed to create command pool.");
 			return false;
 		}
+		auto cmd_pool = static_cast<VkCommandPool>(cmd_pool_void);
+
 		TransitionImageLayout(device, cmd_pool, queue, image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		// Copy buffer to texture
 		{

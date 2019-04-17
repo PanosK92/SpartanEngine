@@ -347,7 +347,7 @@ namespace ImGui::RHI
 		g_cmd_list->End();
 		if (g_cmd_list->Submit() && is_main_viewport)
 		{
-			g_swap_chain->Present(Present_Off, g_cmd_list->GetExecutionCompleteSemaphore());
+			g_swap_chain->Present(Present_Off, g_cmd_list->GetSemaphoreRenderFinished());
 		}
 	}
 
