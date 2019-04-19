@@ -1285,7 +1285,7 @@ namespace Spartan
 		m_cmd_list->SetRenderTarget(tex_out);	
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetBlendState(m_blend_enabled);	
-		m_cmd_list->SetTexture(0, m_font->GetTexture());
+		m_cmd_list->SetTexture(0, m_font->GetAtlas());
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_vps_font->GetConstantBuffer());
 		m_cmd_list->SetShaderVertex(m_vps_font);

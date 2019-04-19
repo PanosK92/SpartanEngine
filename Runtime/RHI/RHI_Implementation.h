@@ -254,7 +254,7 @@ namespace Spartan
 		VkQueue queue_copy							= nullptr;
 		VkDebugUtilsMessengerEXT callback_handle	= nullptr; 
 		QueueFamilyIndices indices;
-		std::vector<const char*> validation_layers = { "VK_LAYER_LUNARG_standard_validation" };
+		std::vector<const char*> validation_layers = { "VK_LAYER_KHRONOS_validation" };
 		std::vector<const char*> extensions_device = { 
 			"VK_KHR_swapchain", 
 			//"VK_KHR_relaxed_block_layout" // Allows implementations to indicate they can support more variation in block offset decorations. For example, placing a vector of three floats at an offset of 16*N + 4
