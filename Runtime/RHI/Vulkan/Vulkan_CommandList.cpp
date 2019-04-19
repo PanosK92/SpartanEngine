@@ -274,7 +274,12 @@ namespace Spartan
 		if (m_state != CommandList_Ready)
 			return;
 
-		vkCmdBindIndexBuffer(CMD_BUFFER_VK, static_cast<VkBuffer>(buffer->GetBuffer()), 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(
+			CMD_BUFFER_VK,
+			static_cast<VkBuffer>(buffer->GetBuffer()),						// buffer
+			0,																// offset
+			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // index type
+		);
 	}
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)

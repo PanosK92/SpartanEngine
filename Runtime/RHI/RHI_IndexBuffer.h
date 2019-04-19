@@ -67,6 +67,8 @@ namespace Spartan
 		auto GetFormat()		const { return m_buffer_format; }
 		auto GetMemoryUsage()	const { return m_memory_usage; }
 		auto GetIndexCount()	const { return m_index_count; }
+		auto Is16Bit()			const { return sizeof(uint16_t) == m_stride; }
+		auto Is32Bit()			const { return sizeof(uint32_t) == m_stride; }
 
 	protected:
 		bool Create(const void* indices);
