@@ -66,18 +66,16 @@ namespace Spartan
 		}
 
 		_destroy(m_rhi_device, m_buffer, m_buffer_memory);
-
-		auto device						= m_rhi_device->GetContext()->device;
-		VkBuffer buffer					= nullptr;
-		VkDeviceMemory buffer_memory	= nullptr;
-		VkDeviceSize size				= m_stride * m_index_count;
-
+		auto device	= m_rhi_device->GetContext()->device;
+		
+		// Craete buffer
 		VkBufferCreateInfo buffer_info	= {};
 		buffer_info.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		buffer_info.size				= size;
+		buffer_info.size				= m_stride * m_index_count;
 		buffer_info.usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		buffer_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 
+		VkBuffer buffer = nullptr;
 		auto result = vkCreateBuffer(device, &buffer_info, nullptr, &buffer);
 		if (result != VK_SUCCESS)
 		{
@@ -85,6 +83,7 @@ namespace Spartan
 			return false;
 		}
 
+		// Allocate memory
 		VkMemoryRequirements memory_requirements;
 		vkGetBufferMemoryRequirements(device, buffer, &memory_requirements);
 		VkMemoryAllocateInfo alloc_info = {};
@@ -92,6 +91,7 @@ namespace Spartan
 		alloc_info.allocationSize		= memory_requirements.size;
 		alloc_info.memoryTypeIndex		= vulkan_helper::GetMemoryType(m_rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memory_requirements.memoryTypeBits);
 
+		VkDeviceMemory buffer_memory = nullptr;
 		result = vkAllocateMemory(device, &alloc_info, nullptr, &buffer_memory);
 		if (result != VK_SUCCESS)
 		{
@@ -99,6 +99,7 @@ namespace Spartan
 			return false;
 		}
 
+		// Bind memory
 		result = vkBindBufferMemory(device, buffer, buffer_memory, 0);
 		if (result != VK_SUCCESS)
 		{

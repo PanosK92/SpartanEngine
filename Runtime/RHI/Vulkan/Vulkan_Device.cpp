@@ -43,10 +43,9 @@ namespace Spartan
 	RHI_Device::RHI_Device()
 	{
 		m_rhi_context = new RHI_Context();
-		vulkan_helper::log_available_extensions();
 
 		// Create instance
-		VkApplicationInfo app_info	= {};
+		VkApplicationInfo app_info = {};
 		{
 			app_info.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
 			app_info.pApplicationName	= ENGINE_VERSION;		
@@ -82,6 +81,8 @@ namespace Spartan
 				return;
 			}
 		}
+
+		vulkan_helper::log_available_extensions();
 
 		// Callback
 		if (m_rhi_context->validation_enabled)
