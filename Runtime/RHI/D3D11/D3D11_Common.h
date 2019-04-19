@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EngineDefs.h"
 //================================
 
-namespace Spartan::D3D11_Helper
+namespace Spartan::D3D11_Common
 { 
 	inline const char* dxgi_error_to_string(const HRESULT error_code)
 	{
@@ -217,7 +217,7 @@ namespace Spartan::D3D11_Helper
 		if (flags & SwapChain_Allow_Tearing)
 		{
 			// Check if the adapter supports it (tends to fail with Intel adapters)
-			if (D3D11_Helper::CheckTearingSupport(device))
+			if (D3D11_Common::CheckTearingSupport(device))
 			{
 				d3d11_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 			}

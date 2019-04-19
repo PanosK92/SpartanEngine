@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 
 //= INCLUDES ===========================
-#include "D3D11_Helper.h"
 #include "../RHI_Device.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_RasterizerState.h"
@@ -55,7 +54,7 @@ namespace Spartan
 		const static auto multithread_protection = false;
 
 		// Detect adapters
-		D3D11_Helper::DetectAdapters(this);
+		D3D11_Common::DetectAdapters(this);
 
 		// Create device
 		{
@@ -96,7 +95,7 @@ namespace Spartan
 
 			if (FAILED(result))
 			{
-				LOGF_ERROR("Failed to create device, %s.", D3D11_Helper::dxgi_error_to_string(result));
+				LOGF_ERROR("Failed to create device, %s.", D3D11_Common::dxgi_error_to_string(result));
 				return;
 			}
 		}
@@ -161,7 +160,7 @@ namespace Spartan
 		const auto result = m_rhi_context->device_context->QueryInterface(IID_PPV_ARGS(&m_rhi_context->annotation));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", D3D11_Helper::dxgi_error_to_string(result));
+			LOGF_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", D3D11_Common::dxgi_error_to_string(result));
 			return;
 		}
 

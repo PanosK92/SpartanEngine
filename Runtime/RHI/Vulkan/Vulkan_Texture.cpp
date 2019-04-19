@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
-#include "Vulkan_Helper.h"
 #include "../../Math/MathHelper.h"
 //================================
 
@@ -41,6 +40,9 @@ namespace Spartan
 	RHI_Texture::~RHI_Texture()
 	{
 		ClearTextureBytes();
+		Vulkan_Common::image_view::destroy(m_rhi_device.get(), m_texture_view);
+		Vulkan_Common::image::destroy(m_rhi_device.get(), m_texture);
+		Vulkan_Common::memory::free(m_rhi_device.get(), m_texture_memory);
 	}
 
 	VkCommandBuffer BeginSingleTimeCommands(VkDevice& device, VkCommandPool& command_pool) 
@@ -101,22 +103,22 @@ namespace Spartan
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.layerCount		= 1;
 
-		VkPipelineStageFlags sourceStage;
-		VkPipelineStageFlags destinationStage;
+		VkPipelineStageFlags source_stage;
+		VkPipelineStageFlags destination_stage;
 
 		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) 
 		{
 			barrier.srcAccessMask	= 0;
 			barrier.dstAccessMask	= VK_ACCESS_TRANSFER_WRITE_BIT;
-			sourceStage				= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			destinationStage		= VK_PIPELINE_STAGE_TRANSFER_BIT;
+			source_stage			= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			destination_stage		= VK_PIPELINE_STAGE_TRANSFER_BIT;
 		}
 		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) 
 		{
 			barrier.srcAccessMask	= VK_ACCESS_TRANSFER_WRITE_BIT;
 			barrier.dstAccessMask	= VK_ACCESS_SHADER_READ_BIT;
-			sourceStage				= VK_PIPELINE_STAGE_TRANSFER_BIT;
-			destinationStage		= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			source_stage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
+			destination_stage		= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		}
 		else 
 		{
@@ -127,7 +129,7 @@ namespace Spartan
 		vkCmdPipelineBarrier
 		(
 			command_buffer,
-			sourceStage, destinationStage,
+			source_stage, destination_stage,
 			0,
 			0, nullptr,
 			0, nullptr,
@@ -158,7 +160,7 @@ namespace Spartan
 		VkMemoryAllocateInfo allocInfo	= {};
 		allocInfo.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize		= memory_requirements.size;
-		allocInfo.memoryTypeIndex		= vulkan_helper::GetMemoryType(device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
+		allocInfo.memoryTypeIndex		= Vulkan_Common::memory::get_type(device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
 
 		if (vkAllocateMemory(device, &allocInfo, nullptr, &staging_buffer_memory) != VK_SUCCESS)
 		{
@@ -172,10 +174,10 @@ namespace Spartan
 
 	inline bool CreateImage
 	(
-		VkDevice& device,
-		VkPhysicalDevice& device_physical, 
-		uint32_t width, uint32_t height,
-		RHI_Format format,
+		RHI_Device* device,
+		uint32_t width,
+		uint32_t height,
+		VkFormat format,
 		VkImageTiling tiling,
 		VkImageUsageFlags usage,
 		VkMemoryPropertyFlags properties,
@@ -183,113 +185,77 @@ namespace Spartan
 		VkDeviceMemory& image_memory
 	)
 	{
-		VkImageCreateInfo imageInfo = {};
-		imageInfo.sType				= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		imageInfo.imageType			= VK_IMAGE_TYPE_2D;
-		imageInfo.extent.width		= width;
-		imageInfo.extent.height		= height;
-		imageInfo.extent.depth		= 1;
-		imageInfo.mipLevels			= 1;
-		imageInfo.arrayLayers		= 1;
-		imageInfo.format			= vulkan_format[format];
-		imageInfo.tiling			= tiling;
-		imageInfo.initialLayout		= VK_IMAGE_LAYOUT_UNDEFINED;
-		imageInfo.usage				= usage;
-		imageInfo.samples			= VK_SAMPLE_COUNT_1_BIT;
-		imageInfo.sharingMode		= VK_SHARING_MODE_EXCLUSIVE;
-
-		if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) 
+		if (!Vulkan_Common::image::create(device, width, height, format, tiling, usage, image)) 
 		{
 			LOG_ERROR("Failed to create image");
 			return false;
 		}
 
 		VkMemoryRequirements memRequirements;
-		vkGetImageMemoryRequirements(device, image, &memRequirements);
+		vkGetImageMemoryRequirements(device->GetContext()->device, image, &memRequirements);
 
 		VkMemoryAllocateInfo allocInfo	= {};
 		allocInfo.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize		= memRequirements.size;
-		allocInfo.memoryTypeIndex		= vulkan_helper::GetMemoryType(device_physical, properties, memRequirements.memoryTypeBits);
+		allocInfo.memoryTypeIndex		= Vulkan_Common::memory::get_type(device->GetContext()->device_physical, properties, memRequirements.memoryTypeBits);
 
-		if (vkAllocateMemory(device, &allocInfo, nullptr, &image_memory) != VK_SUCCESS) 
+		if (vkAllocateMemory(device->GetContext()->device, &allocInfo, nullptr, &image_memory) != VK_SUCCESS) 
 		{
 			LOG_ERROR("Failed to allocate memory");
 			return false;
 		}
 
-		vkBindImageMemory(device, image, image_memory, 0);
-		return true;
-	}
-
-	inline bool CreateImageView(VkDevice& device, VkImage& image, VkImageView& image_view, RHI_Format format)
-	{
-		VkImageViewCreateInfo viewInfo				= {};
-		viewInfo.sType								= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		viewInfo.image								= image;
-		viewInfo.viewType							= VK_IMAGE_VIEW_TYPE_2D;
-		viewInfo.format								= vulkan_format[format];
-		viewInfo.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
-		viewInfo.subresourceRange.baseMipLevel		= 0;
-		viewInfo.subresourceRange.levelCount		= 1;
-		viewInfo.subresourceRange.baseArrayLayer	= 0;
-		viewInfo.subresourceRange.layerCount		= 1;
-
-		if (vkCreateImageView(device, &viewInfo, nullptr, &image_view) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create image view");
-			return false;
-		}
-
+		vkBindImageMemory(device->GetContext()->device, image, image_memory, 0);
 		return true;
 	}
 
 	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mipmaps)
 	{
-		auto image_view							= static_cast<VkImageView>(m_texture_view);
-		auto image								= static_cast<VkImage>(m_texture);
-		auto image_memory						= static_cast<VkDeviceMemory>(m_texture_memory);
-		auto device								= m_rhi_device->GetContext()->device;
-		auto device_physical					= m_rhi_device->GetContext()->device_physical;
-		auto queue								= m_rhi_device->GetContext()->queue_copy;
-		VkDeviceSize size						= width * height * channels;
-		VkBuffer staging_buffer					= nullptr;
-		VkDeviceMemory staging_buffer_memory	= nullptr;
+		auto device				= m_rhi_device->GetContext()->device;
+		auto device_physical	= m_rhi_device->GetContext()->device_physical;
+		auto queue				= m_rhi_device->GetContext()->queue_copy;
+		VkDeviceSize size		= width * height * channels;
 
+		// Create image memory
+		VkBuffer staging_buffer		= nullptr;
+		VkDeviceMemory staging_buffer_memory	= nullptr;
 		if (!CreateBuffer(device, device_physical, size, staging_buffer, staging_buffer_memory))
 			return false;
 
+		// Copy bytes to image memory
 		void* buffer_ptr = nullptr;
 		vkMapMemory(device, staging_buffer_memory, 0, size, 0, &buffer_ptr);
 		memcpy(buffer_ptr, mipmaps.front().data(), static_cast<size_t>(size));
 		vkUnmapMemory(device, staging_buffer_memory);
 
+		// Create image
+		VkImage image = nullptr;
+		VkDeviceMemory image_memory = nullptr;
 		if (!CreateImage
 		(
-			device,
-			device_physical,
+			m_rhi_device.get(),
 			width,
 			height,
-			format,
-			VK_IMAGE_TILING_OPTIMAL,
+			vulkan_format[format],
+			VK_IMAGE_TILING_LINEAR, // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
 			VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			image,
 			image_memory
 		))
 			return false;
-
 		
+		// Create command pool
 		void* cmd_pool_void;
-		if (!vulkan_helper::command_list::create_command_pool(m_rhi_device->GetContext(), cmd_pool_void))
+		if (!Vulkan_Common::command_list::create_command_pool(m_rhi_device->GetContext(), cmd_pool_void))
 		{
 			LOG_ERROR("Failed to create command pool.");
 			return false;
 		}
 		auto cmd_pool = static_cast<VkCommandPool>(cmd_pool_void);
 
-		TransitionImageLayout(device, cmd_pool, queue, image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		// Copy buffer to texture
+		TransitionImageLayout(device, cmd_pool, queue, image, vulkan_format[format], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);	
 		{
 			auto command_buffer	= BeginSingleTimeCommands(device, cmd_pool);
 
@@ -307,13 +273,18 @@ namespace Spartan
 			vkCmdCopyBufferToImage(command_buffer, staging_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 			EndSingleTimeCommands(device, cmd_pool, queue, command_buffer);
 		}
-		TransitionImageLayout(device, cmd_pool, queue, image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		TransitionImageLayout(device, cmd_pool, queue, image, vulkan_format[format], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		// Create image view
+		VkImageView image_view = nullptr;
+		if (!Vulkan_Common::image_view::create(m_rhi_device.get(), image, image_view, vulkan_format[format]))
+		{
+			LOG_ERROR("Failed to create image view");
+			return false;
+		}
 
 		vkDestroyBuffer(device, staging_buffer, nullptr);
 		vkFreeMemory(device, staging_buffer_memory, nullptr);
-
-		if (!CreateImageView(device, image, image_view, format))
-			return false;
 
 		m_texture_view		= static_cast<void*>(image_view);
 		m_texture			= static_cast<void*>(image);

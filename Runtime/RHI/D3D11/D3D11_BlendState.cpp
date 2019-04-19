@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_BlendState.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "D3D11_Helper.h"
 //============================
 
 //= NAMESPACES =====
@@ -94,7 +93,7 @@ namespace Spartan
 		else
 		{
 			m_initialized = false;
-			LOGF_ERROR("Failed to create blend state %s.", D3D11_Helper::dxgi_error_to_string(result));
+			LOGF_ERROR("Failed to create blend state %s.", D3D11_Common::dxgi_error_to_string(result));
 		}
 	}
 

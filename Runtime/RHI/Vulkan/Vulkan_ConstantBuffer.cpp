@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "Vulkan_Helper.h"
 //================================
 
 //= NAMESPACES =====
@@ -69,7 +68,7 @@ namespace Spartan
 		VkMemoryAllocateInfo allocInfo	= {};
 		allocInfo.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize		= memRequirements.size;
-		allocInfo.memoryTypeIndex		= vulkan_helper::GetMemoryType(m_rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memRequirements.memoryTypeBits);
+		allocInfo.memoryTypeIndex		= Vulkan_Common::memory::get_type(m_rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memRequirements.memoryTypeBits);
 
 		if (vkAllocateMemory(m_rhi_device->GetContext()->device, &allocInfo, nullptr, &buffer_memory) != VK_SUCCESS)
 		{

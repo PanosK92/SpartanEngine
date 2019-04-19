@@ -33,11 +33,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_BlendState.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_ConstantBuffer.h"
-#include "../../Logging/Log.h"
-#include "../../Math/Matrix.h"
 #include "../RHI_Texture.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_InputLayout.h"
+#include "../../Logging/Log.h"
+#include "../../Math/Matrix.h"
 //=================================
 
 //= NAMESPACES =====

@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
+#include "../RHI_InputLayout.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
 #include <sstream> 
-#include "../RHI_InputLayout.h"
 //======================================
 
 //= NAMESPACES =====

@@ -25,10 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/EngineDefs.h"
 //=============================
 
+// RUNTIME
 #if defined(SPARTAN_RUNTIME) || (SPARTAN_RUNTIME_STATIC == 1)
 
-#if defined(API_GRAPHICS_D3D11)
 // DirectX 11
+#if defined(API_GRAPHICS_D3D11)
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -132,8 +133,21 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 	D3D11_BLEND_OP_MAX
 };
 
-#elif defined(API_GRAPHICS_VULKAN)
+namespace Spartan
+{
+	struct RHI_Context
+	{
+		ID3D11Device* device					= nullptr;
+		ID3D11DeviceContext* device_context		= nullptr;
+		ID3DUserDefinedAnnotation* annotation	= nullptr;
+	};
+}
+#include "D3D11/D3D11_Common.h"
+#endif 
+// DIRECTX 11
+
 // VULKAN
+#if defined(API_GRAPHICS_VULKAN) 
 #pragma comment(lib, "vulkan-1.lib")
 #pragma comment(lib, "VkLayer_utils.lib")
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -235,28 +249,23 @@ struct QueueFamilyIndices
 	std::optional<uint32_t> copy_family;
 	bool IsComplete() const { return graphics_family.has_value() && present_family.has_value() && copy_family.has_value(); }
 };
-#endif // DirectX 11/Vulkan
 
 namespace Spartan
 {
 	struct RHI_Context
 	{
-	#if defined(API_GRAPHICS_D3D11)
-		ID3D11Device* device						= nullptr;
-		ID3D11DeviceContext* device_context			= nullptr;
-		ID3DUserDefinedAnnotation* annotation		= nullptr;
-	#elif defined(API_GRAPHICS_VULKAN)
 		VkInstance instance							= nullptr;
 		VkPhysicalDevice device_physical			= nullptr;
 		VkDevice device								= nullptr;
 		VkQueue queue_graphics						= nullptr;
 		VkQueue queue_present						= nullptr;
 		VkQueue queue_copy							= nullptr;
-		VkDebugUtilsMessengerEXT callback_handle	= nullptr; 
+		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
 		QueueFamilyIndices indices;
 		std::vector<const char*> validation_layers = { "VK_LAYER_KHRONOS_validation" };
-		std::vector<const char*> extensions_device = { 
-			"VK_KHR_swapchain", 
+		std::vector<const char*> extensions_device =
+		{
+			"VK_KHR_swapchain",
 			//"VK_KHR_relaxed_block_layout" // Allows implementations to indicate they can support more variation in block offset decorations. For example, placing a vector of three floats at an offset of 16*N + 4
 		};
 		#ifdef DEBUG
@@ -266,8 +275,9 @@ namespace Spartan
 			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface" };
 			bool validation_enabled = false;
 		#endif
-	#endif
 	};
 }
+#include "Vulkan/Vulkan_Common.h"
+#endif // VULKAN
 
 #endif // RUNTIME

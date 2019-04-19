@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_Device.h"
-#include "D3D11_Helper.h"
 #include "../../Logging/Log.h"
 //===================================
 
@@ -101,7 +100,7 @@ namespace Spartan
 		else
 		{
 			m_initialized = false;
-			LOGF_ERROR("Failed to create depth-stencil state %s.", D3D11_Helper::dxgi_error_to_string(result));
+			LOGF_ERROR("Failed to create depth-stencil state %s.", D3D11_Common::dxgi_error_to_string(result));
 		}
 	}
 
