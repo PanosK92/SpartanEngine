@@ -167,14 +167,6 @@ namespace Spartan
 		const RHI_Shader* shader_pixel						= nullptr;
 	};
 
-	enum CommandList_State
-	{
-		CommandList_Idle,
-		CommandList_Ready,
-		CommandList_Ended,
-		CommandList_Render_Finished
-	};
-
 	class SPARTAN_CLASS RHI_CommandList
 	{
 	public:
@@ -259,12 +251,13 @@ namespace Spartan
 
 		// Vulkan
 		RHI_Command m_empty_cmd; // for GetCmd()
-		void* m_cmd_pool;
+		void* m_cmd_pool				= nullptr;
+		unsigned int m_current_frame	= 0;
+		bool m_is_recording				= false;
+		bool m_is_rendering				= false;
 		std::vector<void*> m_cmd_buffers;
 		std::vector<void*> m_semaphores_render_finished;
 		std::vector<void*> m_fences_in_flight;
-		unsigned int m_current_frame	= 0;
-		CommandList_State m_state		= CommandList_Idle;
 
 		// Dependencies
 		std::vector<void*> m_textures_empty = std::vector<void*>(10);

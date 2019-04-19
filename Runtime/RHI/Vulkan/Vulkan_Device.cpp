@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
-#include "Vulkan_Helper.h"
 #ifdef API_GRAPHICS_VULKAN 
 //================================
 
@@ -63,7 +62,7 @@ namespace Spartan
 
 			if (m_rhi_context->validation_enabled)
 			{
-				if (vulkan_helper::check_validation_layers(this))
+				if (Vulkan_Common::check_validation_layers(this))
 				{
 					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
 					create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
@@ -77,12 +76,12 @@ namespace Spartan
 			auto result = vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to create instance, %s.", vulkan_helper::result_to_string(result));
+				LOGF_ERROR("Failed to create instance, %s.", Vulkan_Common::result_to_string(result));
 				return;
 			}
 		}
 
-		vulkan_helper::log_available_extensions();
+		Vulkan_Common::log_available_extensions();
 
 		// Callback
 		if (m_rhi_context->validation_enabled)
@@ -91,9 +90,9 @@ namespace Spartan
 			create_info.sType								= VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 			create_info.messageSeverity						= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 			create_info.messageType							= VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-			create_info.pfnUserCallback						= vulkan_helper::debug_callback::callback;
+			create_info.pfnUserCallback						= Vulkan_Common::debug_callback::callback;
 
-			if (vulkan_helper::debug_callback::create(this, &create_info) != VK_SUCCESS)
+			if (Vulkan_Common::debug_callback::create(this, &create_info) != VK_SUCCESS)
 			{
 				LOG_ERROR("Failed to setup debug callback");
 			}
@@ -111,7 +110,7 @@ namespace Spartan
 			std::vector<VkPhysicalDevice> physical_devices(device_count);
 			vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data());
 			
-			if (!vulkan_helper::physical_device::choose(this, Settings::Get().GetWindowHandle(), physical_devices)) 
+			if (!Vulkan_Common::physical_device::choose(this, Settings::Get().GetWindowHandle(), physical_devices)) 
 			{
 				LOG_ERROR("Failed to find a suitable device.");
 				return;
@@ -165,7 +164,7 @@ namespace Spartan
 		auto result = vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to create device, %s.", vulkan_helper::result_to_string(result));
+			LOGF_ERROR("Failed to create device, %s.", Vulkan_Common::result_to_string(result));
 			return;
 		}
 
@@ -188,7 +187,7 @@ namespace Spartan
 	{	
 		if (m_rhi_context->validation_enabled)
 		{
-			vulkan_helper::debug_callback::destroy(m_rhi_context);
+			Vulkan_Common::debug_callback::destroy(m_rhi_context);
 		}
 		vkDestroyInstance(m_rhi_context->instance, nullptr);
 		vkDestroyDevice(m_rhi_context->device, nullptr);

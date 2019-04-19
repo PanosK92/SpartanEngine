@@ -28,8 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "Vulkan_Helper.h"
-#include <limits>
 //=============================
 
 //= NAMESPACES ================
@@ -52,7 +50,8 @@ namespace Spartan
 		void*& swap_chain_view_out,
 		vector<void*>& image_views_out,
 		vector<void*>& frame_buffers_out,
-		vector<void*>& semaphores_image_acquired_out
+		vector<void*>& semaphores_image_acquired_out,
+		vector<void*>& fences_image_acquired_out
 	)
 	{
 		auto rhi_context		= rhi_device->GetContext();
@@ -70,7 +69,7 @@ namespace Spartan
 			auto result = vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to create Win32 surface, %s.", vulkan_helper::result_to_string(result));
+				LOGF_ERROR("Failed to create Win32 surface, %s.", Vulkan_Common::result_to_string(result));
 				return false;
 			}
 
@@ -78,7 +77,7 @@ namespace Spartan
 			result = vkGetPhysicalDeviceSurfaceSupportKHR(device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to check for surface support by the device, %s.", vulkan_helper::result_to_string(result));
+				LOGF_ERROR("Failed to check for surface support by the device, %s.", Vulkan_Common::result_to_string(result));
 				return false;
 			}
 			else if (!present_support)
@@ -89,15 +88,15 @@ namespace Spartan
 		}
 
 		// Ensure device compatibility
-		auto swap_chain_support = vulkan_helper::swap_chain::check_surface_compatibility(rhi_device.get(), surface);
+		auto swap_chain_support = Vulkan_Common::swap_chain::check_surface_compatibility(rhi_device.get(), surface);
 		if (!swap_chain_support.IsCompatible())
 		{
 			LOG_ERROR("Device is not surface compatible.");
 			return false;
 		}
 
-		auto extent = vulkan_helper::swap_chain::choose_extent(swap_chain_support.capabilities, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-		auto format_selection = vulkan_helper::swap_chain::choose_format(vulkan_format[format], swap_chain_support.formats);
+		auto extent = Vulkan_Common::swap_chain::choose_extent(swap_chain_support.capabilities, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+		auto format_selection = Vulkan_Common::swap_chain::choose_format(vulkan_format[format], swap_chain_support.formats);
 
 		// Swap chain
 		VkSwapchainKHR swap_chain;
@@ -128,14 +127,14 @@ namespace Spartan
 
 			create_info.preTransform	= swap_chain_support.capabilities.currentTransform;
 			create_info.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-			create_info.presentMode		= vulkan_helper::swap_chain::choose_present_mode(swap_chain_support.present_modes);
+			create_info.presentMode		= Vulkan_Common::swap_chain::choose_present_mode(swap_chain_support.present_modes);
 			create_info.clipped			= VK_TRUE;
 			create_info.oldSwapchain	= VK_NULL_HANDLE;
 
 			auto result = vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to create swap chain, %s.", vulkan_helper::result_to_string(result));
+				LOGF_ERROR("Failed to create swap chain, %s.", Vulkan_Common::result_to_string(result));
 				return false;
 			}
 		}
@@ -150,30 +149,15 @@ namespace Spartan
 		}
 
 		// Image views
+		bool swizzle = true;
 		vector<VkImageView> swap_chain_image_views;
 		{
 			swap_chain_image_views.resize(swap_chain_images.size());
 			for (size_t i = 0; i < swap_chain_image_views.size(); i++)
 			{
-				VkImageViewCreateInfo createInfo			= {};
-				createInfo.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-				createInfo.image							= swap_chain_images[i];
-				createInfo.viewType							= VK_IMAGE_VIEW_TYPE_2D;
-				createInfo.format							= format_selection.format;
-				createInfo.components.r						= VK_COMPONENT_SWIZZLE_IDENTITY;
-				createInfo.components.g						= VK_COMPONENT_SWIZZLE_IDENTITY;
-				createInfo.components.b						= VK_COMPONENT_SWIZZLE_IDENTITY;
-				createInfo.components.a						= VK_COMPONENT_SWIZZLE_IDENTITY;
-				createInfo.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
-				createInfo.subresourceRange.baseMipLevel	= 0;
-				createInfo.subresourceRange.levelCount		= 1;
-				createInfo.subresourceRange.baseArrayLayer	= 0;
-				createInfo.subresourceRange.layerCount		= 1;
-
-				auto result = vkCreateImageView(device, &createInfo, nullptr, &swap_chain_image_views[i]);
-				if (result != VK_SUCCESS)
+				if (!Vulkan_Common::image_view::create(rhi_device.get(), swap_chain_images[i], swap_chain_image_views[i], format_selection.format, swizzle))
 				{
-					LOGF_ERROR("Failed to create image view, %s.", vulkan_helper::result_to_string(result));
+					LOG_ERROR("Failed to create image view");
 					return false;
 				}
 			}
@@ -197,31 +181,46 @@ namespace Spartan
 			auto result = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frame_buffers[i]);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to create frame buffer(s), %s.", vulkan_helper::result_to_string(result));
+				LOGF_ERROR("Failed to create frame buffer(s), %s.", Vulkan_Common::result_to_string(result));
 				return false;
 			}
 		}
 	
-		surface_out						= static_cast<void*>(surface);
-		swap_chain_view_out				= static_cast<void*>(swap_chain);
-		image_views_out					= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
-		frame_buffers_out				= vector<void*>(frame_buffers.begin(), frame_buffers.end());
+		surface_out			= static_cast<void*>(surface);
+		swap_chain_view_out	= static_cast<void*>(swap_chain);
+		image_views_out		= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
+		frame_buffers_out	= vector<void*>(frame_buffers.begin(), frame_buffers.end());
 
 		for (unsigned int i = 0; i < buffer_count; i++)
 		{
-			semaphores_image_acquired_out.emplace_back(vulkan_helper::semaphore::create(rhi_device.get()));
+			semaphores_image_acquired_out.emplace_back(Vulkan_Common::semaphore::create(rhi_device.get()));
+			fences_image_acquired_out.emplace_back(Vulkan_Common::fence::create(rhi_device.get()));
 		}
 
 		return true;
 	}
 
-	inline void _Destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& surface, void*& swap_chain_view, vector<void*>& image_views, vector<void*>& frame_buffers, vector<void*>& semaphores_image_acquired)
+	inline void _Destroy(
+		const std::shared_ptr<RHI_Device>& rhi_device,
+		void*& surface,
+		void*& swap_chain_view,
+		vector<void*>& image_views,
+		vector<void*>& frame_buffers,
+		vector<void*>& semaphores_image_acquired,
+		vector<void*>& fences_image_acquired
+	)
 	{
 		for (auto& semaphore : semaphores_image_acquired)
 		{
-			vulkan_helper::semaphore::destroy(rhi_device.get(), semaphore);
+			Vulkan_Common::semaphore::destroy(rhi_device.get(), semaphore);
 		}
 		semaphores_image_acquired.clear();
+
+		for (auto& fence : fences_image_acquired)
+		{
+			Vulkan_Common::fence::destroy(rhi_device.get(), fence);
+		}
+		fences_image_acquired.clear();
 
 		for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_device->GetContext()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
 		frame_buffers.clear();
@@ -284,13 +283,23 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired
+			m_semaphores_image_acquired,
+			m_fences_image_acquired
 		);
 	}
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
-		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_image_views, m_frame_buffers, m_semaphores_image_acquired);
+		_Destroy
+		(
+			m_rhi_device,
+			m_surface,
+			m_swap_chain_view,
+			m_image_views,
+			m_frame_buffers,
+			m_semaphores_image_acquired,
+			m_fences_image_acquired
+		);
 	}
 
 	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
@@ -304,7 +313,16 @@ namespace Spartan
 		m_height	= height;
 
 		// Destroy previous swap chain
-		_Destroy(m_rhi_device, m_surface, m_swap_chain_view, m_image_views, m_frame_buffers, m_semaphores_image_acquired);
+		_Destroy
+		(
+			m_rhi_device,
+			m_surface,
+			m_swap_chain_view,
+			m_image_views,
+			m_frame_buffers,
+			m_semaphores_image_acquired,
+			m_fences_image_acquired
+		);
 
 		// Create the swap chain with the new dimensions
 		m_initialized = _Create
@@ -320,7 +338,8 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired
+			m_semaphores_image_acquired,
+			m_fences_image_acquired
 		);
 
 		return m_initialized;
@@ -328,20 +347,22 @@ namespace Spartan
 
 	bool RHI_SwapChain::AcquireNextImage()
 	{
+		auto index = (m_image_index + 1) % m_buffer_count;
+
 		// Acquire next image
 		auto result = vkAcquireNextImageKHR
 		(
 			m_rhi_device->GetContext()->device,
 			static_cast<VkSwapchainKHR>(m_swap_chain_view),
-			numeric_limits<uint64_t>::max(),
-			static_cast<VkSemaphore>(m_semaphores_image_acquired[m_image_index]),
-			nullptr,
+			0xFFFFFFFFFFFFFFFF,
+			static_cast<VkSemaphore>(m_semaphores_image_acquired[index]),
+			static_cast<VkFence>(m_fences_image_acquired[index]),
 			&m_image_index
 		);
 
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to acquire next image, %s.", vulkan_helper::result_to_string(result));
+			LOGF_ERROR("Failed to acquire next image, %s.", Vulkan_Common::result_to_string(result));
 			return false;
 		}
 
@@ -350,9 +371,8 @@ namespace Spartan
 
 	bool RHI_SwapChain::Present(const RHI_Present_Mode mode, void* semaphore_render_finished)
 	{	
-		auto swap_chain							= static_cast<VkSwapchainKHR>(m_swap_chain_view);
-		vector<VkSwapchainKHR> swap_chains		= { swap_chain };
-		vector<VkSemaphore> semaphores_wait		= { static_cast<VkSemaphore>(semaphore_render_finished) };
+		vector<VkSwapchainKHR> swap_chains	= { static_cast<VkSwapchainKHR>(m_swap_chain_view) };
+		vector<VkSemaphore> semaphores_wait	= { static_cast<VkSemaphore>(semaphore_render_finished) };
 
 		VkPresentInfoKHR present_info	= {};
 		present_info.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -365,11 +385,10 @@ namespace Spartan
 		auto result = vkQueuePresentKHR(m_rhi_device->GetContext()->queue_present, &present_info);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to present, %s.", vulkan_helper::result_to_string(result));
-			return false;
+			LOGF_ERROR("Failed to present, %s.", Vulkan_Common::result_to_string(result));
 		}
 
-		return true;
+		return result == VK_SUCCESS;
 	}
 }
 #endif

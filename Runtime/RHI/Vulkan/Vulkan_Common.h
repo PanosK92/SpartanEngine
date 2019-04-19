@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 //================================
 
-namespace Spartan::vulkan_helper
+namespace Spartan::Vulkan_Common
 {
 	inline void log_available_extensions()
 	{
@@ -67,17 +67,6 @@ namespace Spartan::vulkan_helper
 		}
 
 		return false;
-	}
-
-	inline uint32_t GetMemoryType(VkPhysicalDevice device, VkMemoryPropertyFlags properties, uint32_t type_bits)
-	{
-		VkPhysicalDeviceMemoryProperties prop;
-		vkGetPhysicalDeviceMemoryProperties(device, &prop);
-		for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
-			if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
-				return i;
-
-		return 0xFFFFFFFF; // Unable to find memoryType
 	}
 
 	inline const char* result_to_string(const VkResult result)
@@ -117,6 +106,29 @@ namespace Spartan::vulkan_helper
 		}
 
 		return "Unknown error code";
+	}
+
+	namespace memory
+	{
+		inline uint32_t get_type(VkPhysicalDevice device, VkMemoryPropertyFlags properties, uint32_t type_bits)
+		{
+			VkPhysicalDeviceMemoryProperties prop;
+			vkGetPhysicalDeviceMemoryProperties(device, &prop);
+			for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
+				if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
+					return i;
+
+			return 0xFFFFFFFF; // Unable to find memoryType
+		}
+
+		inline void free(RHI_Device* rhi_device, void*& device_memory)
+		{
+			if (!device_memory)
+				return;
+
+			vkFreeMemory(rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(device_memory), nullptr);
+			device_memory = nullptr;
+		}
 	}
 
 	namespace debug_callback
@@ -307,7 +319,7 @@ namespace Spartan::vulkan_helper
 				auto result = vkCreateWin32SurfaceKHR(rhi_device->GetContext()->instance, &create_info, nullptr, &surface_temp);
 				if (result != VK_SUCCESS)
 				{
-					LOGF_ERROR("Failed to create Win32 surface, %s.", vulkan_helper::result_to_string(result));
+					LOGF_ERROR("Failed to create Win32 surface, %s.", result_to_string(result));
 					return false;
 				}
 			}
@@ -422,22 +434,127 @@ namespace Spartan::vulkan_helper
 			if (!fence_in)
 				return;
 
-			if (fence_in) { vkDestroyFence(rhi_device->GetContext()->device, static_cast<VkFence>(fence_in), nullptr); }
+			vkDestroyFence(rhi_device->GetContext()->device, static_cast<VkFence>(fence_in), nullptr);
 			fence_in = nullptr;
 		}
 
 		inline void wait(RHI_Device* rhi_device, void*& fence_in)
 		{
 			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
-			auto result = vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF);
-			SPARTAN_ASSERT(result == VK_SUCCESS);			
+			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);			
 		}
 
 		inline void reset(RHI_Device* rhi_device, void*& fence_in)
 		{
 			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
-			auto result = vkResetFences(rhi_device->GetContext()->device, 1, fence_temp);
-			SPARTAN_ASSERT(result == VK_SUCCESS);
+			SPARTAN_ASSERT(vkResetFences(rhi_device->GetContext()->device, 1, fence_temp) == VK_SUCCESS);
+		}
+
+		inline void wait_reset(RHI_Device* rhi_device, void*& fence_in)
+		{
+			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
+			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);
+			SPARTAN_ASSERT(vkResetFences(rhi_device->GetContext()->device, 1, fence_temp) == VK_SUCCESS);
+		}
+	}
+
+	namespace image
+	{
+		inline bool create
+		(
+			RHI_Device* rhi_device,
+			uint32_t width, 
+			uint32_t height,
+			VkFormat format,
+			VkImageTiling tiling,
+			VkImageUsageFlags usage,
+			VkImage& _image
+		)
+		{
+			VkImageCreateInfo create_info	= {};
+			create_info.sType				= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+			create_info.imageType			= VK_IMAGE_TYPE_2D;
+			create_info.extent.width		= width;
+			create_info.extent.height		= height;
+			create_info.extent.depth		= 1;
+			create_info.mipLevels			= 1;
+			create_info.arrayLayers			= 1;
+			create_info.format				= format;
+			create_info.tiling				= tiling;
+			create_info.initialLayout		= VK_IMAGE_LAYOUT_UNDEFINED;
+			create_info.usage				= usage;
+			create_info.samples				= VK_SAMPLE_COUNT_1_BIT;
+			create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+
+			auto result = vkCreateImage(rhi_device->GetContext()->device, &create_info, nullptr, &_image);
+			if (result != VK_SUCCESS)
+			{
+				LOG_ERROR(result_to_string(result));
+			}
+
+			return result == VK_SUCCESS;
+		}
+
+		inline void destroy(RHI_Device* rhi_device, void*& _image)
+		{
+			if (!_image)
+				return;
+
+			vkDestroyImage(rhi_device->GetContext()->device, static_cast<VkImage>(_image), nullptr);
+			_image = nullptr;
+		}
+	}
+
+	namespace image_view
+	{
+		inline bool create(RHI_Device* rhi_device, VkImage& _image, VkImageView& image_view, VkFormat format, bool swizzle = false)
+		{
+			VkImageViewCreateInfo create_info			= {};
+			create_info.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			create_info.image							= _image;
+			create_info.viewType						= VK_IMAGE_VIEW_TYPE_2D;
+			create_info.format							= format;
+			create_info.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+			create_info.subresourceRange.baseMipLevel	= 0;
+			create_info.subresourceRange.levelCount		= 1;
+			create_info.subresourceRange.baseArrayLayer	= 0;
+			create_info.subresourceRange.layerCount		= 1;
+			if (swizzle)
+			{
+				create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+				create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+				create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+				create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+			}
+
+			auto result = vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, &image_view);
+			if (result != VK_SUCCESS)
+			{
+				LOG_ERROR(result_to_string(result));
+			}
+
+			return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, &image_view) == VK_SUCCESS;
+		}
+
+		inline void destroy(RHI_Device* rhi_device, void*& view)
+		{
+			if (!view)
+				return;
+
+			vkDestroyImageView(rhi_device->GetContext()->device, static_cast<VkImageView>(view), nullptr);
+			view = nullptr;
+		}
+	}
+
+	namespace buffer
+	{
+		inline void destroy(RHI_Device* rhi_device, void*& _buffer)
+		{
+			if (!_buffer)
+				return;
+
+			vkDestroyBuffer(rhi_device->GetContext()->device, static_cast<VkBuffer>(_buffer), nullptr);
+			_buffer = nullptr;
 		}
 	}
 }

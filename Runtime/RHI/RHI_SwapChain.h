@@ -60,6 +60,7 @@ namespace Spartan
 		auto GetBufferCount()				{ return m_buffer_count; }
 		auto& GetFrameBuffer()				{ return m_frame_buffers[m_image_index]; }
 		auto& GetSemaphoreImageAcquired()	{ return m_semaphores_image_acquired[m_image_index]; }
+		auto& GetFenceImageAcquired()		{ return m_fences_image_acquired[m_image_index]; }
 
 	private:
 		bool m_initialized				= false;
@@ -76,10 +77,11 @@ namespace Spartan
 		void* m_swap_chain_view				= nullptr;
 		void* m_render_target_view			= nullptr;
 		void* m_surface						= nullptr;	
-		uint32_t m_image_index				= 0;	
 		void* m_render_pass					= nullptr;
 		void* m_window_handle				= nullptr;
+		uint32_t m_image_index				= 0;
 		std::vector<void*> m_semaphores_image_acquired;
+		std::vector<void*> m_fences_image_acquired;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;
 	};

@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_RenderTexture.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-#include "D3D11_Helper.h"
 //===============================
 
 //= NAMESPACES ================
@@ -171,7 +170,7 @@ namespace Spartan
 			auto result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateTexture2D(&depth_buffer_desc, nullptr, &depth_stencil_texture));
 			if (!result)
 			{
-				LOGF_ERROR("Failed to create depth stencil buffer, %s.", D3D11_Helper::dxgi_error_to_string(result));
+				LOGF_ERROR("Failed to create depth stencil buffer, %s.", D3D11_Common::dxgi_error_to_string(result));
 				return;
 			}
 
@@ -185,7 +184,7 @@ namespace Spartan
 			result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateDepthStencilView(depth_stencil_texture, &depth_stencil_view_desc, depth_stencil_view));
 			if (!result)
 			{
-				LOGF_ERROR("Failed to create depth stencil view, %s.", D3D11_Helper::dxgi_error_to_string(result));
+				LOGF_ERROR("Failed to create depth stencil view, %s.", D3D11_Common::dxgi_error_to_string(result));
 			}
 
 			safe_release(depth_stencil_texture);

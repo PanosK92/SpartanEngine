@@ -56,14 +56,14 @@ namespace ImGui::RHI
 	RHI_CommandList* g_cmd_list	= nullptr;
 
 	// RHI Data	
-	static shared_ptr<RHI_Device>			g_rhi_device;
-	static shared_ptr<RHI_SwapChain>		g_swap_chain;
 	static RHI_Pipeline						g_pipeline;
+	static shared_ptr<RHI_Device>			g_rhi_device;
+	static shared_ptr<RHI_SwapChain>		g_swap_chain;	
 	static shared_ptr<RHI_Texture>			g_fontTexture;
 	static shared_ptr<RHI_Sampler>			g_fontSampler;
 	static shared_ptr<RHI_ConstantBuffer>	g_constantBuffer;
 	static shared_ptr<RHI_VertexBuffer>		g_vertexBuffer;
-	static shared_ptr<RHI_IndexBuffer>		g_indexBuffer;
+	static shared_ptr<RHI_IndexBuffer>		g_indexBuffer;	
 	
 	inline bool Initialize(Context* context, float width, float height)
 	{
@@ -228,6 +228,12 @@ namespace ImGui::RHI
 
 	inline void RenderDrawData(ImDrawData* draw_data, RHI_SwapChain* swap_chain_other = nullptr, bool clear = true)
 	{
+		// Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
+		auto fb_width	= static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
+		auto fb_height	= static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
+		if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
+			return;
+
 		bool is_main_viewport	= (swap_chain_other == nullptr);
 		void* _render_target	= is_main_viewport ? g_swap_chain->GetRenderTargetView() : swap_chain_other->GetRenderTargetView();
 

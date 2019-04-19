@@ -24,14 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_D3D11
 //================================
 
-//= INCLUDES =====================
+//= INCLUDES ===================
 #include "../RHI_SwapChain.h"
 #include "../RHI_Device.h"
-#include "D3D11_Helper.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
 #include "../../Core/Settings.h"
-//================================
+//==============================
 
 //= NAMESPACES ================
 using namespace std;
@@ -116,14 +115,14 @@ namespace Spartan
 			desc.Windowed						= m_windowed ? TRUE : FALSE;
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
-			desc.SwapEffect						= D3D11_Helper::FilterSwapEffect(m_rhi_device.get(), swap_effect);
-			desc.Flags							= D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), flags);
+			desc.SwapEffect						= D3D11_Common::FilterSwapEffect(m_rhi_device.get(), swap_effect);
+			desc.Flags							= D3D11_Common::FilterSwapChainFlags(m_rhi_device.get(), flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContext()->device, &desc, &swap_chain);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
+				LOGF_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
 				return;
 			}
 			m_swap_chain_view = static_cast<void*>(swap_chain);
@@ -136,7 +135,7 @@ namespace Spartan
 			auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 			if (FAILED(result))
 			{
-				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
+				LOGF_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
 				return;
 			}
 
@@ -145,7 +144,7 @@ namespace Spartan
 			backbuffer->Release();
 			if (FAILED(result))
 			{
-				LOGF_ERROR("%s", D3D11_Helper::dxgi_error_to_string(result));
+				LOGF_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
 				return;
 			}
 			m_render_target_view = static_cast<void*>(render_target_view);
@@ -215,17 +214,17 @@ namespace Spartan
 			auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
 			if (FAILED(result))
 			{
-				LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Helper::dxgi_error_to_string(result));
+				LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Common::dxgi_error_to_string(result));
 				return false;
 			}
 		}
 	
 		// Resize swapchain buffers
-		UINT d3d11_flags = D3D11_Helper::FilterSwapChainFlags(m_rhi_device.get(), m_flags);
+		UINT d3d11_flags = D3D11_Common::FilterSwapChainFlags(m_rhi_device.get(), m_flags);
 		auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to resize swapchain buffers, %s.", D3D11_Helper::dxgi_error_to_string(result));
+			LOGF_ERROR("Failed to resize swapchain buffers, %s.", D3D11_Common::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -234,7 +233,7 @@ namespace Spartan
 		result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to get swapchain buffer, %s.", D3D11_Helper::dxgi_error_to_string(result));
+			LOGF_ERROR("Failed to get swapchain buffer, %s.", D3D11_Common::dxgi_error_to_string(result));
 			return false;
 		}
 
@@ -243,7 +242,7 @@ namespace Spartan
 		safe_release(backbuffer);
 		if (FAILED(result))
 		{
-			LOGF_ERROR("Failed to create render target view, %s.", D3D11_Helper::dxgi_error_to_string(result));
+			LOGF_ERROR("Failed to create render target view, %s.", D3D11_Common::dxgi_error_to_string(result));
 			return false;
 		}
 		m_render_target_view = static_cast<void*>(render_target_view);
