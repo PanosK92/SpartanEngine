@@ -1,5 +1,5 @@
-#ifndef VULKAN_FUCHSIA_H_
-#define VULKAN_FUCHSIA_H_ 1
+#ifndef VULKAN_METAL_H_
+#define VULKAN_METAL_H_ 1
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,26 +27,31 @@ extern "C" {
 */
 
 
-#define VK_FUCHSIA_imagepipe_surface 1
-#define VK_FUCHSIA_IMAGEPIPE_SURFACE_SPEC_VERSION 1
-#define VK_FUCHSIA_IMAGEPIPE_SURFACE_EXTENSION_NAME "VK_FUCHSIA_imagepipe_surface"
 
-typedef VkFlags VkImagePipeSurfaceCreateFlagsFUCHSIA;
+#define VK_EXT_metal_surface 1
 
-typedef struct VkImagePipeSurfaceCreateInfoFUCHSIA {
-    VkStructureType                         sType;
-    const void*                             pNext;
-    VkImagePipeSurfaceCreateFlagsFUCHSIA    flags;
-    zx_handle_t                             imagePipeHandle;
-} VkImagePipeSurfaceCreateInfoFUCHSIA;
+#ifdef __OBJC__
+@class CAMetalLayer;
+#else
+typedef void CAMetalLayer;
+#endif
 
+#define VK_EXT_METAL_SURFACE_SPEC_VERSION 1
+#define VK_EXT_METAL_SURFACE_EXTENSION_NAME "VK_EXT_metal_surface"
+typedef VkFlags VkMetalSurfaceCreateFlagsEXT;
+typedef struct VkMetalSurfaceCreateInfoEXT {
+    VkStructureType                 sType;
+    const void*                     pNext;
+    VkMetalSurfaceCreateFlagsEXT    flags;
+    const CAMetalLayer*             pLayer;
+} VkMetalSurfaceCreateInfoEXT;
 
-typedef VkResult (VKAPI_PTR *PFN_vkCreateImagePipeSurfaceFUCHSIA)(VkInstance instance, const VkImagePipeSurfaceCreateInfoFUCHSIA* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface);
+typedef VkResult (VKAPI_PTR *PFN_vkCreateMetalSurfaceEXT)(VkInstance instance, const VkMetalSurfaceCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface);
 
 #ifndef VK_NO_PROTOTYPES
-VKAPI_ATTR VkResult VKAPI_CALL vkCreateImagePipeSurfaceFUCHSIA(
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateMetalSurfaceEXT(
     VkInstance                                  instance,
-    const VkImagePipeSurfaceCreateInfoFUCHSIA*  pCreateInfo,
+    const VkMetalSurfaceCreateInfoEXT*          pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkSurfaceKHR*                               pSurface);
 #endif

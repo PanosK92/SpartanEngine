@@ -43,6 +43,7 @@ namespace Spartan
 	RHI_Device::RHI_Device()
 	{
 		m_rhi_context = new RHI_Context();
+		vulkan_helper::log_available_extensions();
 
 		// Create instance
 		VkApplicationInfo app_info	= {};

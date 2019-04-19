@@ -68,14 +68,10 @@ namespace Spartan
 
 		Stopwatch timer;
 
-		// Load font
-		vector<std::byte> atlas_buffer;
-		unsigned int tex_atlas_width	= 0;
-		unsigned int tex_atlas_height	= 0;
-		if (!m_context->GetSubsystem<ResourceCache>()->GetFontImporter()->LoadFromFile(file_path, m_font_size, atlas_buffer, tex_atlas_width, tex_atlas_height, m_glyphs))
+		// Load
+		if (!m_context->GetSubsystem<ResourceCache>()->GetFontImporter()->LoadFromFile(this, file_path))
 		{
 			LOGF_ERROR("Failed to load font \"%s\"", file_path.c_str());
-			atlas_buffer.clear();
 			return false;
 		}
 
@@ -85,15 +81,8 @@ namespace Spartan
 			m_char_max_width	= Max<int>(char_info.second.width, m_char_max_width);
 			m_char_max_height	= Max<int>(char_info.second.height, m_char_max_height);
 		}
-
-		// Create a font texture atlas form the provided data
-		m_texture_atlas = make_shared<RHI_Texture>(m_context, false);
-		if (!m_texture_atlas->ShaderResource_Create2D(tex_atlas_width, tex_atlas_height, 1, Format_R8_UNORM, atlas_buffer))
-		{
-			LOG_ERROR("Failed to create shader resource.");
-		}
-		LOG_INFO("Loading \"" + FileSystem::GetFileNameFromFilePath(file_path) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
-
+		
+		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
 		return true;
 	}
 

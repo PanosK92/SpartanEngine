@@ -15,6 +15,8 @@
 #ifndef SHADERC_ENV_H_
 #define SHADERC_ENV_H_
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

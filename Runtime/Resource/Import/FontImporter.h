@@ -23,16 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "../../Core/EngineDefs.h"
-#include <vector>
-#include <map>
+#include <string>
 //================================
 
-struct FT_FaceRec_;
+struct FT_LibraryRec_;
 
 namespace Spartan
 {
 	class Context;
-	struct Glyph;
+	class Font;
 
 	class SPARTAN_CLASS FontImporter
 	{
@@ -40,13 +39,10 @@ namespace Spartan
 		FontImporter(Context* context);
 		~FontImporter();
 
-		bool LoadFromFile(const std::string& filePath, int fontSize, std::vector<std::byte>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, std::map<unsigned int, Glyph>& characterInfo);
+		bool LoadFromFile(Font* font, const std::string& file_path);
 
 	private:
-		void ComputeAtlasTextureDimensions(FT_FaceRec_* face, unsigned int& atlasWidth, unsigned int& atlasHeight, unsigned int& rowHeight);
-		int GetCharacterMaxHeight(FT_FaceRec_* face);
-		bool HandleError(int errorCode);
-
-		Context* m_context;
+		Context* m_context			= nullptr;
+		FT_LibraryRec_* m_library	= nullptr;
 	};
 }

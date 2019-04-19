@@ -234,26 +234,26 @@ namespace Spartan
 			// Performance
 			"FPS:\t\t\t\t\t\t\t%.2f\n"
 			"Frame time:\t\t\t\t\t%.2f\n"
-			"CPU time:\t\t\t\t\t\t%.2f\n"
-			"GPU time:\t\t\t\t\t\t%.2f\n"
+			"CPU time:\t\t\t\t\t%.2f\n"
+			"GPU time:\t\t\t\t\t%.2f\n"
 			"GPU:\t\t\t\t\t\t\t%s\n"
-			"VRAM:\t\t\t\t\t\t\t%d/%d MB\n"
+			"VRAM:\t\t\t\t\t\t%d/%d MB\n"
 			// Renderer
 			"Resolution:\t\t\t\t\t%dx%d\n"
 			"Meshes rendered:\t\t\t\t%d\n"
-			"Textures:\t\t\t\t\t\t%d\n"
-			"Materials:\t\t\t\t\t\t%d\n"
+			"Textures:\t\t\t\t\t%d\n"
+			"Materials:\t\t\t\t\t%d\n"
 			"Shaders:\t\t\t\t\t\t%d\n"
 			// RHI
-			"RHI Draw calls:\t\t\t\t\t%d\n"
+			"RHI Draw calls:\t\t\t\t%d\n"
 			"RHI Index buffer bindings:\t\t%d\n"
-			"RHI Vertex buffer bindings:\t%d\n"
+			"RHI Vertex buffer bindings:\t\t%d\n"
 			"RHI Constant buffer bindings:\t%d\n"
 			"RHI Sampler bindings:\t\t\t%d\n"
 			"RHI Texture bindings:\t\t\t%d\n"
-			"RHI Vertex Shader bindings:\t%d\n"
+			"RHI Vertex Shader bindings:\t\t%d\n"
 			"RHI Pixel Shader bindings:\t\t%d\n"
-			"RHI Render Target bindings:\t%d",
+			"RHI Render Target bindings:\t\t%d",
 			
 			// Performance
 			fps,
