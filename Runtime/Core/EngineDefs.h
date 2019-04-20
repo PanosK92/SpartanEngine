@@ -59,6 +59,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
 	template <typename T>
+	constexpr void safe_delete(T& ptr)
+	{
+		if (ptr)
+		{
+			delete ptr;
+			ptr = nullptr;
+		}
+	}
+
+	template <typename T>
 	constexpr void safe_release(T& ptr)
 	{
 		if (ptr)
@@ -77,16 +87,6 @@ namespace Spartan
 			ptr = nullptr;
 		}
 	}
-
-	template <typename T>
-	constexpr void safe_delete(T& ptr)
-	{
-		if (ptr)
-		{
-			delete ptr;
-			ptr = nullptr;
-		}
-	}
-
-	#define SPARTAN_ASSERT(expression) assert(expression)
 }
+
+#define SPARTAN_ASSERT(expression) assert(expression)

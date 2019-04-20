@@ -332,8 +332,8 @@ namespace Spartan
 		auto size = !m_mesh ? 0 : m_mesh->Geometry_MemoryUsage();
 
 		// Buffers
-		size += m_vertex_buffer->GetMemoryUsage();
-		size += m_index_buffer->GetMemoryUsage();
+		size += static_cast<unsigned int>(m_vertex_buffer->GetSize());
+		size += static_cast<unsigned int>(m_index_buffer->GetSize());
 
 		return size;
 	}

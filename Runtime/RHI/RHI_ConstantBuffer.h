@@ -33,16 +33,27 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_ConstantBuffer : public RHI_Object
 	{
 	public:
-		RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, uint64_t size);
+		RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device)
+		{
+			m_rhi_device = rhi_device;
+		}
 		~RHI_ConstantBuffer();
+
+		template<typename T>
+		bool Create()
+		{
+			m_size = static_cast<unsigned int>(sizeof(T));
+			return _Create();
+		}
 
 		void* Map() const;
 		bool Unmap() const;
 		auto GetBufferView() const	{ return m_buffer; }
-		auto GetSize() const		{ return m_size; }
+		auto GetSize()	const		{ return m_size; }
 
-	private:	
-		uint64_t m_size = 0;
+	private:
+		bool _Create();
+
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// API

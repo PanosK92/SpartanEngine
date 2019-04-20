@@ -121,7 +121,7 @@ namespace Spartan::Vulkan_Common
 			return 0xFFFFFFFF; // Unable to find memoryType
 		}
 
-		inline void free(RHI_Device* rhi_device, void*& device_memory)
+		inline void free(const std::shared_ptr<RHI_Device>& rhi_device, void*& device_memory)
 		{
 			if (!device_memory)
 				return;
@@ -495,7 +495,7 @@ namespace Spartan::Vulkan_Common
 			return result == VK_SUCCESS;
 		}
 
-		inline void destroy(RHI_Device* rhi_device, void*& _image)
+		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& _image)
 		{
 			if (!_image)
 				return;
@@ -536,7 +536,7 @@ namespace Spartan::Vulkan_Common
 			return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, &image_view) == VK_SUCCESS;
 		}
 
-		inline void destroy(RHI_Device* rhi_device, void*& view)
+		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& view)
 		{
 			if (!view)
 				return;
@@ -548,7 +548,46 @@ namespace Spartan::Vulkan_Common
 
 	namespace buffer
 	{
-		inline void destroy(RHI_Device* rhi_device, void*& _buffer)
+		inline bool create(const std::shared_ptr<RHI_Device>& rhi_device, VkBuffer& _buffer, VkDeviceMemory& buffer_memory, VkDeviceSize& size, VkBufferUsageFlags usage)
+		{
+			VkBufferCreateInfo buffer_info	= {};
+			buffer_info.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+			buffer_info.size				= size;
+			buffer_info.usage				= usage;
+			buffer_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+
+			auto result = vkCreateBuffer(rhi_device->GetContext()->device, &buffer_info, nullptr, &_buffer);
+			if (result != VK_SUCCESS)
+			{
+				LOG_ERROR(result_to_string(result));
+				return false;
+			}
+
+			VkMemoryRequirements memory_requirements;
+			vkGetBufferMemoryRequirements(rhi_device->GetContext()->device, _buffer, &memory_requirements);
+			//size = (size > memory_requirements.alignment) ? size : memory_requirements.alignment;
+
+			VkMemoryAllocateInfo alloc_info = {};			
+			alloc_info.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			alloc_info.allocationSize		= memory_requirements.size;
+			alloc_info.memoryTypeIndex		= memory::get_type(rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memory_requirements.memoryTypeBits);
+
+			result = vkAllocateMemory(rhi_device->GetContext()->device, &alloc_info, nullptr, &buffer_memory);
+			if (result != VK_SUCCESS)
+			{
+				LOG_ERROR(result_to_string(result));
+				return false;
+			}
+
+			result = vkBindBufferMemory(rhi_device->GetContext()->device, _buffer, buffer_memory, 0);
+			if (result != VK_SUCCESS)
+			{
+				LOG_ERROR(result_to_string(result));
+			}
+
+			return result == VK_SUCCESS;
+		}
+		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& _buffer)
 		{
 			if (!_buffer)
 				return;

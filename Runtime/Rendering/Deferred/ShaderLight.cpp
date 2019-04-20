@@ -37,7 +37,8 @@ namespace Spartan
 {
 	ShaderLight::ShaderLight(const std::shared_ptr<RHI_Device>& rhi_device) : RHI_Shader(rhi_device)
 	{
-		m_constant_buffer = make_shared<RHI_ConstantBuffer>(rhi_device, static_cast<unsigned int>(sizeof(LightBuffer)));
+		m_constant_buffer = make_shared<RHI_ConstantBuffer>(rhi_device);
+		m_constant_buffer->Create<LightBuffer>();
 	}
 
 	void ShaderLight::UpdateConstantBuffer(

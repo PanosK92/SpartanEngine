@@ -273,9 +273,12 @@ namespace Spartan
 			return false;
 		}
 
-		const auto ptr		= static_cast<ID3D11Buffer*>(buffer->GetBuffer());
-		const auto format	= d3d11_format[buffer->GetFormat()];
-		m_rhi_context->device_context->IASetIndexBuffer(ptr, format, 0);
+		m_rhi_context->device_context->IASetIndexBuffer
+		(
+			static_cast<ID3D11Buffer*>(buffer->GetBuffer()),
+			buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT,
+			0
+		);
 
 		return true;
 	}

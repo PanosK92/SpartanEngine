@@ -32,10 +32,9 @@ namespace Spartan
 	class RHI_IndexBuffer : public RHI_Object
 	{
 	public:
-		RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, RHI_Format format = Format_R32_UINT)
+		RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device)
 		{
-			m_rhi_device		= rhi_device;
-			m_buffer_format = format;
+			m_rhi_device = rhi_device;
 		}
 
 		~RHI_IndexBuffer();
@@ -46,7 +45,7 @@ namespace Spartan
 			m_is_dynamic	= false;
 			m_stride		= sizeof(T);
 			m_index_count	= static_cast<unsigned int>(indices.size());
-			m_memory_usage	= m_stride * m_index_count;
+			m_size			= m_stride * m_index_count;
 			return Create(indices.data());
 		}
 
@@ -56,7 +55,7 @@ namespace Spartan
 			m_is_dynamic	= true;
 			m_stride		= sizeof(T);
 			m_index_count	= index_count;
-			m_memory_usage	= 0;
+			m_size			= m_stride * m_index_count;
 			return Create(nullptr);
 		}
 
@@ -64,8 +63,7 @@ namespace Spartan
 		bool Unmap() const;
 
 		auto GetBuffer()		const { return m_buffer; }
-		auto GetFormat()		const { return m_buffer_format; }
-		auto GetMemoryUsage()	const { return m_memory_usage; }
+		auto GetSize()			const { return m_size; }
 		auto GetIndexCount()	const { return m_index_count; }
 		auto Is16Bit()			const { return sizeof(uint16_t) == m_stride; }
 		auto Is32Bit()			const { return sizeof(uint32_t) == m_stride; }
@@ -76,11 +74,9 @@ namespace Spartan
 		bool m_is_dynamic			= false;
 		unsigned int m_stride		= 0;
 		unsigned int m_index_count	= 0;
-		unsigned int m_memory_usage	= 0;		
-		RHI_Format m_buffer_format;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		void* m_buffer			= nullptr;
-		void* m_buffer_memory	= nullptr;
+		void* m_buffer_memory	= nullptr;		
 	};
 }
