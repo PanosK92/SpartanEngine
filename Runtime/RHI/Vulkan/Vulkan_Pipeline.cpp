@@ -247,7 +247,8 @@ namespace Spartan
 		}
 
 		// Uniform buffer
-		g_constant_buffer = make_unique<RHI_ConstantBuffer>(m_rhi_device, sizeof(Math::Matrix));
+		g_constant_buffer = make_unique<RHI_ConstantBuffer>(m_rhi_device);
+		g_constant_buffer->Create<Math::Matrix>();
 		CreateDescriptorSet(m_sampler->GetBufferView(), m_texture->GetBufferView(), m_rhi_device->GetContext()->device, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);
 		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
 

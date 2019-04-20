@@ -115,7 +115,8 @@ namespace Spartan
 		m_gizmo_grid			= make_unique<Grid>(m_rhi_device);
 		m_gizmo_transform		= make_unique<Transform_Gizmo>(m_context);
 		// Create a constant buffer that will be used for most shaders
-		m_buffer_global			= make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferGlobal)));
+		m_buffer_global	= make_shared<RHI_ConstantBuffer>(m_rhi_device);
+		m_buffer_global->Create<ConstantBufferGlobal>();
 		// Line buffer
 		m_vertex_buffer_lines	= make_shared<RHI_VertexBuffer>(m_rhi_device);
 

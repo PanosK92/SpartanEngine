@@ -36,75 +36,69 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_ConstantBuffer::RHI_ConstantBuffer(const shared_ptr<RHI_Device>& rhi_device, const uint64_t size)
-	{
-		m_rhi_device	= rhi_device;
-		m_size			= size;
-
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return;
-		}
-
-		auto buffer			= static_cast<VkBuffer>(m_buffer);
-		auto buffer_memory	= static_cast<VkDeviceMemory>(m_buffer_memory);
-
-		VkBufferCreateInfo bufferInfo	= {};
-		bufferInfo.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size					= size;
-		bufferInfo.usage				= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		bufferInfo.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
-
-		if (vkCreateBuffer(m_rhi_device->GetContext()->device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create buffer");
-			return;
-		}
-
-		VkMemoryRequirements memRequirements;
-		vkGetBufferMemoryRequirements(m_rhi_device->GetContext()->device, buffer, &memRequirements);
-
-		VkMemoryAllocateInfo allocInfo	= {};
-		allocInfo.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize		= memRequirements.size;
-		allocInfo.memoryTypeIndex		= Vulkan_Common::memory::get_type(m_rhi_device->GetContext()->device_physical, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memRequirements.memoryTypeBits);
-
-		if (vkAllocateMemory(m_rhi_device->GetContext()->device, &allocInfo, nullptr, &buffer_memory) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to allocate memory");
-			return;
-		}
-
-		vkBindBufferMemory(m_rhi_device->GetContext()->device, buffer, buffer_memory, 0);
-
-		m_buffer		= static_cast<void*>(buffer);
-		m_buffer_memory	= static_cast<void*>(buffer_memory);
-	}
-
 	RHI_ConstantBuffer::~RHI_ConstantBuffer()
 	{
-		if (m_buffer != VK_NULL_HANDLE)
-		{
-			vkDestroyBuffer(m_rhi_device->GetContext()->device, static_cast<VkBuffer>(m_buffer), nullptr);
-			m_buffer = nullptr;
-		}
-
-		if (m_buffer_memory)
-		{
-			vkFreeMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory), nullptr);
-			m_buffer_memory = nullptr;
-		}
+		Vulkan_Common::buffer::destroy(m_rhi_device, m_buffer);
+		Vulkan_Common::memory::free(m_rhi_device, m_buffer_memory);
 	}
 
 	void* RHI_ConstantBuffer::Map() const
 	{
-		return nullptr;
+		if (!m_rhi_device || !m_rhi_device->GetContext()->device || !m_buffer_memory)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return nullptr;
+		}
+
+		void* ptr = nullptr;
+		auto result = vkMapMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_size, 0, reinterpret_cast<void**>(&ptr));
+		if (result != VK_SUCCESS)
+		{
+			LOGF_ERROR("Failed to map memory, %s", Vulkan_Common::result_to_string(result));
+			return nullptr;
+		}
+
+		return ptr;
 	}
 
 	bool RHI_ConstantBuffer::Unmap() const
 	{
-		return false;
+		if (!m_rhi_device || !m_rhi_device->GetContext()->device || !m_buffer_memory)
+		{
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
+		}
+
+		vkUnmapMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
+		return true;
+	}
+
+	bool RHI_ConstantBuffer::_Create()
+	{
+		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
+
+		// Clear previous buffer
+		Vulkan_Common::buffer::destroy(m_rhi_device, m_buffer);
+		Vulkan_Common::memory::free(m_rhi_device, m_buffer_memory);
+
+		// Create buffer
+		VkBuffer buffer					= nullptr;
+		VkDeviceMemory buffer_memory	= nullptr;
+		if (!Vulkan_Common::buffer::create(m_rhi_device, buffer, buffer_memory, m_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
+		{
+			LOG_ERROR("Failed to create buffer");
+			return false;
+		}
+
+		// Save
+		m_buffer		= static_cast<void*>(buffer);
+		m_buffer_memory = static_cast<void*>(buffer_memory);
+
+		return true;
 	}
 }
 #endif

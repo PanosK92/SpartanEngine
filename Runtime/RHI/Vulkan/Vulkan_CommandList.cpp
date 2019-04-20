@@ -261,9 +261,9 @@ namespace Spartan
 		if (!m_is_recording)
 			return;
 
-		auto vk_buffer		= static_cast<VkBuffer>(buffer->GetBuffer());
-		auto vk_device_size = buffer->GetDeviceSize();
-		vkCmdBindVertexBuffers(CMD_BUFFER_VK, 0, 1, &vk_buffer, &vk_device_size);
+		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetBuffer()) };
+		VkDeviceSize offsets[]		= { 0 };
+		vkCmdBindVertexBuffers(CMD_BUFFER_VK, 0, 1, vertex_buffers, offsets);
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)

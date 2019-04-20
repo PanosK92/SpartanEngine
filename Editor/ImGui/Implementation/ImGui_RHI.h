@@ -80,9 +80,9 @@ namespace ImGui::RHI
 	
 		g_fontTexture		= make_shared<RHI_Texture>(g_context, false);
 		g_fontSampler		= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
-		g_constantBuffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device, static_cast<unsigned int>(sizeof(Matrix)));
+		g_constantBuffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constantBuffer->Create<Matrix>();
 		g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_rhi_device);
-		g_indexBuffer		= make_shared<RHI_IndexBuffer>(g_rhi_device, sizeof(ImDrawIdx) == 2 ? Format_R16_UINT : Format_R32_UINT);
+		g_indexBuffer		= make_shared<RHI_IndexBuffer>(g_rhi_device);
 
 		// Setup back-end capabilities flags
 		auto& io = GetIO();

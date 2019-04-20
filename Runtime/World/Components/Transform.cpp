@@ -380,7 +380,8 @@ namespace Spartan
 		// Has to match GBuffer.hlsl
 		if (!m_cb_gbuffer_gpu)
 		{
-			m_cb_gbuffer_gpu = make_shared<RHI_ConstantBuffer>(rhi_device, static_cast<unsigned int>(sizeof(CB_Gbuffer)));
+			m_cb_gbuffer_gpu = make_shared<RHI_ConstantBuffer>(rhi_device);
+			m_cb_gbuffer_gpu->Create<CB_Gbuffer>();
 		}
 
 		auto mvp_current = m_matrix * view_projection;
@@ -412,7 +413,8 @@ namespace Spartan
 		if (cascade_index >=  static_cast<unsigned int>(m_light_cascades.size()))
 		{
 			LightCascade cb_light;
-			cb_light.buffer = make_shared<RHI_ConstantBuffer>(rhi_device, static_cast<unsigned int>(sizeof(Matrix)));
+			cb_light.buffer = make_shared<RHI_ConstantBuffer>(rhi_device);
+			cb_light.buffer->Create<Matrix>();
 			m_light_cascades.emplace_back(cb_light);
 		}
 		auto& cb_light = m_light_cascades[cascade_index];

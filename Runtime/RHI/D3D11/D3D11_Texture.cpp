@@ -100,7 +100,7 @@ namespace Spartan
 			mip_height	= Max(mip_height / 2, static_cast<unsigned int>(1));
 
 			// Compute memory usage (rough estimation)
-			m_memory_usage += static_cast<unsigned int>(mipmaps[i].size()) * (m_bpc / 8);
+			m_size += static_cast<unsigned int>(mipmaps[i].size()) * (m_bpc / 8);
 		}
 
 		// Describe shader resource view
@@ -198,7 +198,7 @@ namespace Spartan
 				mip_height	= Max(mip_height / 2, static_cast<unsigned int>(1));
 
 				// Compute memory usage (rough estimation)
-				m_memory_usage += static_cast<unsigned int>(mip.size()) * (m_bpc / 8);
+				m_size += static_cast<unsigned int>(mip.size()) * (m_bpc / 8);
 			}
 
 			vec_texture_desc.emplace_back(texture_desc);

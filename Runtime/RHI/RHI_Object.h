@@ -35,7 +35,7 @@ namespace Spartan
 		unsigned int RHI_GetID() const	{ return m_id; }
 
 	protected:
-		unsigned int m_memory_usage = 0;
+		uint64_t m_size = 0;
 
 	private:
 		unsigned int m_id = 0;	

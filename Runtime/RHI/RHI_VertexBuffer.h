@@ -44,7 +44,7 @@ namespace Spartan
 			m_is_dynamic	= false;
 			m_stride		= static_cast<unsigned int>(sizeof(T));
 			m_vertex_count	= static_cast<unsigned int>(vector.size());
-			m_memory_usage	= m_stride * m_vertex_count;
+			m_size			= m_stride * m_vertex_count;
 			return Create(static_cast<const void*>(vector.data()));
 		}
 
@@ -54,7 +54,7 @@ namespace Spartan
 			m_is_dynamic	= true;		
 			m_stride		= static_cast<unsigned int>(sizeof(T));
 			m_vertex_count	= vertex_count;
-			m_memory_usage	= m_stride * vertex_count;
+			m_size			= m_stride * vertex_count;
 			return Create(nullptr);
 		}
 
@@ -64,10 +64,9 @@ namespace Spartan
 		bool Unmap() const;
 
 		auto GetBuffer() const		{ return m_buffer; }
-		auto GetDeviceSize() const	{ return m_device_size; }
+		auto& GetSize() const		{ return m_size; }
 		auto GetStride() const		{ return m_stride; }
 		auto GetVertexCount() const	{ return m_vertex_count; }
-		auto GetMemoryUsage() const	{ return m_memory_usage; }
 
 	private:
 		bool Create(const void* vertices);
@@ -77,8 +76,8 @@ namespace Spartan
 		unsigned int m_is_dynamic	= false;	
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
+		// API
 		void* m_buffer			= nullptr;
 		void* m_buffer_memory	= nullptr;
-		uint64_t m_device_size	= 256;
 	};
 }

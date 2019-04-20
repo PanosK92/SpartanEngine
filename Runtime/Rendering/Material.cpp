@@ -348,7 +348,8 @@ namespace Spartan
 		// Has to match GBuffer.hlsl
 		if (!m_constant_buffer_gpu)
 		{
-			m_constant_buffer_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, static_cast<unsigned int>(sizeof(ConstantBufferData)));
+			m_constant_buffer_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device);
+			m_constant_buffer_gpu->Create<ConstantBufferData>();
 		}
 
 		// Determine if the buffer needs to update

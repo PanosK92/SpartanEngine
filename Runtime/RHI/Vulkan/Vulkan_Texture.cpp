@@ -40,9 +40,9 @@ namespace Spartan
 	RHI_Texture::~RHI_Texture()
 	{
 		ClearTextureBytes();
-		Vulkan_Common::image_view::destroy(m_rhi_device.get(), m_texture_view);
-		Vulkan_Common::image::destroy(m_rhi_device.get(), m_texture);
-		Vulkan_Common::memory::free(m_rhi_device.get(), m_texture_memory);
+		Vulkan_Common::image_view::destroy(m_rhi_device, m_texture_view);
+		Vulkan_Common::image::destroy(m_rhi_device, m_texture);
+		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}
 
 	VkCommandBuffer BeginSingleTimeCommands(VkDevice& device, VkCommandPool& command_pool) 
