@@ -84,7 +84,7 @@ namespace Spartan
 		}
 
 		// Create command list
-		m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device.get(), m_context->GetSubsystem<Profiler>().get());
+		m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device, m_context->GetSubsystem<Profiler>().get());
 
 		// Log on-screen as the renderer is ready
 		LOG_TO_FILE(false);

@@ -46,7 +46,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(RHI_Device* rhi_device, Profiler* profiler)
+	RHI_CommandList::RHI_CommandList(const std::shared_ptr<RHI_Device>& rhi_device, Profiler* profiler)
 	{
 		m_commands.reserve(m_initial_capacity);
 		m_commands.resize(m_initial_capacity);

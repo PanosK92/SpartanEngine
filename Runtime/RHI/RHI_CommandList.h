@@ -170,7 +170,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_CommandList
 	{
 	public:
-		RHI_CommandList(RHI_Device* rhi_device, Profiler* profiler);
+		RHI_CommandList(const std::shared_ptr<RHI_Device>& rhi_device, Profiler* profiler);
 		~RHI_CommandList();
 
 		void Begin(const std::string& pass_name, void* render_pass = nullptr, RHI_SwapChain* swap_chain = nullptr);
@@ -260,8 +260,8 @@ namespace Spartan
 		std::vector<void*> m_fences_in_flight;
 
 		// Dependencies
-		std::vector<void*> m_textures_empty = std::vector<void*>(10);
-		RHI_Device* m_rhi_device			= nullptr;
+		std::vector<void*> m_textures_empty	= std::vector<void*>(10);
 		Profiler* m_profiler				= nullptr;
+		std::shared_ptr<RHI_Device> m_rhi_device;		
 	};
 }

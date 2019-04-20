@@ -155,7 +155,7 @@ namespace Spartan
 			swap_chain_image_views.resize(swap_chain_images.size());
 			for (size_t i = 0; i < swap_chain_image_views.size(); i++)
 			{
-				if (!Vulkan_Common::image_view::create(rhi_device.get(), swap_chain_images[i], swap_chain_image_views[i], format_selection.format, swizzle))
+				if (!Vulkan_Common::image_view::create(rhi_device, swap_chain_images[i], swap_chain_image_views[i], format_selection.format, swizzle))
 				{
 					LOG_ERROR("Failed to create image view");
 					return false;
@@ -193,8 +193,8 @@ namespace Spartan
 
 		for (unsigned int i = 0; i < buffer_count; i++)
 		{
-			semaphores_image_acquired_out.emplace_back(Vulkan_Common::semaphore::create(rhi_device.get()));
-			fences_image_acquired_out.emplace_back(Vulkan_Common::fence::create(rhi_device.get()));
+			semaphores_image_acquired_out.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
+			fences_image_acquired_out.emplace_back(Vulkan_Common::fence::create(rhi_device));
 		}
 
 		return true;
@@ -212,13 +212,13 @@ namespace Spartan
 	{
 		for (auto& semaphore : semaphores_image_acquired)
 		{
-			Vulkan_Common::semaphore::destroy(rhi_device.get(), semaphore);
+			Vulkan_Common::semaphore::destroy(rhi_device, semaphore);
 		}
 		semaphores_image_acquired.clear();
 
 		for (auto& fence : fences_image_acquired)
 		{
-			Vulkan_Common::fence::destroy(rhi_device.get(), fence);
+			Vulkan_Common::fence::destroy(rhi_device, fence);
 		}
 		fences_image_acquired.clear();
 
@@ -347,7 +347,9 @@ namespace Spartan
 
 	bool RHI_SwapChain::AcquireNextImage()
 	{
-		auto index = (m_image_index + 1) % m_buffer_count;
+		// Make index that always matches the m_image_index after vkAcquireNextImageKHR.
+		// This is so getting semaphores and fences can be done by using m_image_index.
+		auto index = m_first_run ? 0 : (m_image_index + 1) % m_buffer_count;
 
 		// Acquire next image
 		auto result = vkAcquireNextImageKHR
@@ -366,6 +368,7 @@ namespace Spartan
 			return false;
 		}
 
+		m_first_run = false;
 		return true;
 	}
 

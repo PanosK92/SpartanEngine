@@ -345,35 +345,34 @@ namespace Spartan::Vulkan_Common
 		}
 	}
 
-	namespace command_list
+	namespace commands
 	{
-		inline bool create_command_buffer(RHI_Context* context, void*& cmd_buffer, void*& cmd_pool, VkCommandBufferLevel level)
+		inline bool cmd_buffer(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandBuffer& cmd_buffer, VkCommandPool& cmd_pool, VkCommandBufferLevel level)
 		{
-			VkCommandBufferAllocateInfo allocInfo = {};
-			allocInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocInfo.commandPool			= static_cast<VkCommandPool>(cmd_pool);
-			allocInfo.level					= level;
-			allocInfo.commandBufferCount	= 1;
+			VkCommandBufferAllocateInfo allocate_info	= {};
+			allocate_info.sType							= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocate_info.commandPool					= cmd_pool;
+			allocate_info.level							= level;
+			allocate_info.commandBufferCount			= 1;
 
-			auto cmd_buffer_temp = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-			auto result = vkAllocateCommandBuffers(context->device, &allocInfo, cmd_buffer_temp);
+			auto result = vkAllocateCommandBuffers(rhi_device->GetContext()->device, &allocate_info, &cmd_buffer);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to allocate command buffer, %s.", result_to_string(result));
+				LOGF_ERROR(result_to_string(result));
 				return false;
 			}
 			return true;
 		}
 
-		inline bool create_command_pool(RHI_Context* context, void*& cmd_pool)
+		inline bool cmd_pool(const std::shared_ptr<RHI_Device>& rhi_device, void*& cmd_pool)
 		{
 			VkCommandPoolCreateInfo cmd_pool_info	= {};
 			cmd_pool_info.sType						= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			cmd_pool_info.queueFamilyIndex			= context->indices.graphics_family.value();
+			cmd_pool_info.queueFamilyIndex			= rhi_device->GetContext()->indices.graphics_family.value();
 			cmd_pool_info.flags						= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 			auto cmd_pool_temp = reinterpret_cast<VkCommandPool*>(&cmd_pool);
-			auto result = vkCreateCommandPool(context->device, &cmd_pool_info, nullptr, cmd_pool_temp);
+			auto result = vkCreateCommandPool(rhi_device->GetContext()->device, &cmd_pool_info, nullptr, cmd_pool_temp);
 			if (result != VK_SUCCESS)
 			{
 				LOGF_ERROR("Failed to create command pool, %s.", result_to_string(result));
@@ -385,7 +384,7 @@ namespace Spartan::Vulkan_Common
 
 	namespace semaphore
 	{
-		inline void* create(RHI_Device* rhi_device)
+		inline void* create(const std::shared_ptr<RHI_Device>& rhi_device)
 		{
 			VkSemaphoreCreateInfo semaphore_info = {};
 			semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -401,7 +400,7 @@ namespace Spartan::Vulkan_Common
 			return static_cast<void*>(semaphore_out);
 		}
 
-		inline void destroy(RHI_Device* rhi_device, void*& semaphore_in)
+		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& semaphore_in)
 		{
 			if (!semaphore_in)
 				return;
@@ -413,7 +412,7 @@ namespace Spartan::Vulkan_Common
 
 	namespace fence
 	{
-		inline void* create(RHI_Device* rhi_device)
+		inline void* create(const std::shared_ptr<RHI_Device>& rhi_device)
 		{
 			VkFenceCreateInfo fence_info	= {};
 			fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -429,7 +428,7 @@ namespace Spartan::Vulkan_Common
 			return static_cast<void*>(fence_out);
 		}
 
-		inline void destroy(RHI_Device* rhi_device, void*& fence_in)
+		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
 		{
 			if (!fence_in)
 				return;
@@ -438,19 +437,19 @@ namespace Spartan::Vulkan_Common
 			fence_in = nullptr;
 		}
 
-		inline void wait(RHI_Device* rhi_device, void*& fence_in)
+		inline void wait(const std::shared_ptr<RHI_Device>&rhi_device, void*& fence_in)
 		{
 			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
 			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);			
 		}
 
-		inline void reset(RHI_Device* rhi_device, void*& fence_in)
+		inline void reset(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
 		{
 			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
 			SPARTAN_ASSERT(vkResetFences(rhi_device->GetContext()->device, 1, fence_temp) == VK_SUCCESS);
 		}
 
-		inline void wait_reset(RHI_Device* rhi_device, void*& fence_in)
+		inline void wait_reset(const  std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
 		{
 			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
 			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);
@@ -462,13 +461,15 @@ namespace Spartan::Vulkan_Common
 	{
 		inline bool create
 		(
-			RHI_Device* rhi_device,
+			const std::shared_ptr<RHI_Device>& rhi_device,
+			VkImage& _image,
+			VkDeviceMemory& image_memory,
 			uint32_t width, 
 			uint32_t height,
 			VkFormat format,
 			VkImageTiling tiling,
 			VkImageUsageFlags usage,
-			VkImage& _image
+			VkMemoryPropertyFlags properties
 		)
 		{
 			VkImageCreateInfo create_info	= {};
@@ -490,9 +491,32 @@ namespace Spartan::Vulkan_Common
 			if (result != VK_SUCCESS)
 			{
 				LOG_ERROR(result_to_string(result));
+				return false;
 			}
 
-			return result == VK_SUCCESS;
+			VkMemoryRequirements memRequirements;
+			vkGetImageMemoryRequirements(rhi_device->GetContext()->device, _image, &memRequirements);
+
+			VkMemoryAllocateInfo allocate_info	= {};
+			allocate_info.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			allocate_info.allocationSize		= memRequirements.size;
+			allocate_info.memoryTypeIndex		= memory::get_type(rhi_device->GetContext()->device_physical, properties, memRequirements.memoryTypeBits);
+
+			result = vkAllocateMemory(rhi_device->GetContext()->device, &allocate_info, nullptr, &image_memory);
+			if (result != VK_SUCCESS)
+			{
+				LOG_ERROR(result_to_string(result));
+				return false;
+			}
+
+			result = vkBindImageMemory(rhi_device->GetContext()->device, _image, image_memory, 0);
+			if (result != VK_SUCCESS)
+			{
+				LOG_ERROR(result_to_string(result));
+				return false;
+			}
+
+			return true;
 		}
 
 		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& _image)
@@ -507,7 +531,7 @@ namespace Spartan::Vulkan_Common
 
 	namespace image_view
 	{
-		inline bool create(RHI_Device* rhi_device, VkImage& _image, VkImageView& image_view, VkFormat format, bool swizzle = false)
+		inline bool create(const std::shared_ptr<RHI_Device>& rhi_device, VkImage& _image, VkImageView& image_view, VkFormat format, bool swizzle = false)
 		{
 			VkImageViewCreateInfo create_info			= {};
 			create_info.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -565,7 +589,6 @@ namespace Spartan::Vulkan_Common
 
 			VkMemoryRequirements memory_requirements;
 			vkGetBufferMemoryRequirements(rhi_device->GetContext()->device, _buffer, &memory_requirements);
-			//size = (size > memory_requirements.alignment) ? size : memory_requirements.alignment;
 
 			VkMemoryAllocateInfo alloc_info = {};			
 			alloc_info.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -583,10 +606,12 @@ namespace Spartan::Vulkan_Common
 			if (result != VK_SUCCESS)
 			{
 				LOG_ERROR(result_to_string(result));
+				return false;
 			}
 
-			return result == VK_SUCCESS;
+			return true;
 		}
+
 		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& _buffer)
 		{
 			if (!_buffer)
