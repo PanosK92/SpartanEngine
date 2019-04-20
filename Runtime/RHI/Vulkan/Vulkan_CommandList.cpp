@@ -46,18 +46,20 @@ using namespace std;
 using namespace Spartan::Math;
 //=============================
 
-#define CMD_BUFFER_VK		static_cast<VkCommandBuffer>(m_cmd_buffers[m_current_frame])
-#define IN_FLIGHT_FENCE		m_fences_in_flight[m_current_frame]
-#define IN_FLIGHT_FENCE_VK	reinterpret_cast<VkFence>(m_fences_in_flight[m_current_frame])
+static const unsigned int			g_max_frames_in_flight = 2;
+#define CMD_BUFFER_VK				static_cast<VkCommandBuffer>(m_cmd_buffers[m_current_frame])
+#define FENCE_SUBMIT_FINISHED		m_fences_in_flight[m_current_frame]
+#define FENCE_SUBMIT_FINISHED_VK	static_cast<VkFence>(FENCE_SUBMIT_FINISHED)
+#define SEMAPHORE_RENDER_FINISHED	static_cast<VkSemaphore>(m_semaphores_render_finished[m_current_frame])
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(RHI_Device* rhi_device, Profiler* profiler)
+	RHI_CommandList::RHI_CommandList(const std::shared_ptr<RHI_Device>& rhi_device, Profiler* profiler)
 	{
 		m_rhi_device	= rhi_device;
 		m_profiler		= profiler;
 
-		if (!Vulkan_Common::command_list::create_command_pool(m_rhi_device->GetContext(), m_cmd_pool))
+		if (!Vulkan_Common::commands::cmd_pool(m_rhi_device, m_cmd_pool))
 		{
 			LOG_ERROR("Failed to create command pool.");
 			return;
@@ -65,12 +67,15 @@ namespace Spartan
 
 		for (unsigned int i = 0; i < g_max_frames_in_flight; i++)
 		{
-			if (!Vulkan_Common::command_list::create_command_buffer(m_rhi_device->GetContext(), m_cmd_buffers.emplace_back(nullptr), m_cmd_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
+			VkCommandBuffer cmd_buffer;
+			auto cmd_pool = static_cast<VkCommandPool>(m_cmd_pool);
+			if (!Vulkan_Common::commands::cmd_buffer(rhi_device, cmd_buffer, cmd_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
 			{
 				LOG_ERROR("Failed to create command buffer.");
 				return;
 			}
-			m_cmd_buffers.emplace_back();
+			m_cmd_buffers.push_back(static_cast<void*>(cmd_buffer));
+
 			m_semaphores_render_finished.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
 			m_fences_in_flight.emplace_back(Vulkan_Common::fence::create(rhi_device));
 		}
@@ -110,12 +115,11 @@ namespace Spartan
 		// Sync CPU to GPU
 		if (m_is_rendering)
 		{
-			Vulkan_Common::fence::wait_reset(m_rhi_device, IN_FLIGHT_FENCE);
-			m_is_rendering = false;
+			Vulkan_Common::fence::wait_reset(m_rhi_device, FENCE_SUBMIT_FINISHED);
+			SPARTAN_ASSERT(vkResetCommandPool(m_rhi_device->GetContext()->device, static_cast<VkCommandPool>(m_cmd_pool), 0) == VK_SUCCESS);
+			m_current_frame = (m_current_frame + 1) % m_swap_chain->GetBufferCount();
+			m_is_rendering	= false;
 		}
-
-		// Acquire next swap chain image	
-		SPARTAN_ASSERT(m_swap_chain->AcquireNextImage());
 
 		// Begin command buffer
 		VkCommandBufferBeginInfo beginInfo	= {};
@@ -133,7 +137,7 @@ namespace Spartan
 		VkRenderPassBeginInfo render_pass_info		= {};
 		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		render_pass_info.renderPass					= static_cast<VkRenderPass>(render_pass);
-		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(swap_chain->GetFrameBuffer());
+		render_pass_info.framebuffer				= static_cast<VkFramebuffer>(swap_chain->GetFrameBuffer(m_current_frame));
 		render_pass_info.renderArea.offset			= { 0, 0 };
 		render_pass_info.renderArea.extent.width	= static_cast<uint32_t>(swap_chain->GetWidth());
 		render_pass_info.renderArea.extent.height	= static_cast<uint32_t>(swap_chain->GetHeight());
@@ -373,12 +377,14 @@ namespace Spartan
 		if (m_is_recording)
 			return false;
 
-		// Fixes "Error: Vulkan: Queue 0x1f1c2542ee0 is waiting on semaphore 0x3e that has no way to be signaled."
-		//vulkan_helper::fence::wait_reset(m_rhi_device, m_swap_chain->GetFenceImageAcquired());
-	
-		m_current_frame							= (m_current_frame + 1) % g_max_frames_in_flight;
+		// Acquire next swap chain image
+		SPARTAN_ASSERT(m_swap_chain->AcquireNextImage());
+		// Ensure the swap chain buffers are in sync with the command lists
+		SPARTAN_ASSERT(m_current_frame == m_swap_chain->GetImageIndex());
+
+		// Prepare semaphores
 		vector<VkSemaphore> wait_semaphores		= { static_cast<VkSemaphore>(m_swap_chain->GetSemaphoreImageAcquired()) };
-		vector<VkSemaphore> signal_semaphores	= { static_cast<VkSemaphore>(m_semaphores_render_finished[m_current_frame]) };
+		vector<VkSemaphore> signal_semaphores	= { SEMAPHORE_RENDER_FINISHED };
 		VkPipelineStageFlags wait_flags[]		= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 		VkSubmitInfo submit_info			= {};
@@ -391,7 +397,7 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= static_cast<uint32_t>(signal_semaphores.size());
 		submit_info.pSignalSemaphores		= signal_semaphores.data();
 
-		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, IN_FLIGHT_FENCE_VK);
+		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, FENCE_SUBMIT_FINISHED_VK);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::result_to_string(result));

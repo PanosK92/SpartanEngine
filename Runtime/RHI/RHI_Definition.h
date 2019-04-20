@@ -23,12 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // RHI (Rendering Hardware Interface)
 
-// Settings
-namespace Spartan
-{
-	const unsigned int g_max_frames_in_flight = 1;
-}
-
 // Declarations
 namespace Spartan
 {

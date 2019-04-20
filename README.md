@@ -55,7 +55,7 @@ General         | Thread pool                               | -
 General         | Engine rendered platform agnostic editor  | -
 General         | Profiling  								| CPU & GPU.
 Scripting       | C/C++                                     | Using AngelScript.
-Support        	| Windows 10 and a modern/dedicated GPU		| This engine targets high-end machines, old setups or mobiles devices are not officially supported.
+Support        	| Windows 10 and a modern/dedicated GPU		| This engine targets high-end machines, old setups or mobile devices are not officially supported.
 
 # Roadmap
 
