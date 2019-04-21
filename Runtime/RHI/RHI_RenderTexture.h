@@ -45,8 +45,11 @@ namespace Spartan
 		);
 		~RHI_RenderTexture();
 
-		bool Clear(const Math::Vector4& clear_color);
-		bool Clear(float red, float green, float blue, float alpha);
+
+		// TODO: Remove clear functions, they should be done manually by the renderer
+		bool Clear(std::shared_ptr<RHI_CommandList>& cmd_list, const Math::Vector4& clear_color);
+		bool Clear(std::shared_ptr<RHI_CommandList>& cmd_list, float red, float green, float blue, float alpha);
+
 		void* GetBufferRenderTargetView(const unsigned int index = 0)	{ return index < m_buffer_render_target_views.size() ? m_buffer_render_target_views[index] : nullptr; }
 		void* GetBufferView() const										{ return m_texture_view; }
 		void* GetDepthStencilView() const								{ return m_depth_stencil_view; }
@@ -68,7 +71,7 @@ namespace Spartan
 		RHI_Format m_format;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		
-		// D3D11
+		// API
 		std::vector<void*> m_buffer_render_target_views;
 		void* m_render_target_view		= nullptr;
 		void* m_texture_view			= nullptr;

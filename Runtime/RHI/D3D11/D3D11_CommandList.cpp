@@ -37,6 +37,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_ConstantBuffer.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
+#include "../RHI_VertexBuffer.h"
+#include "../RHI_IndexBuffer.h"
+#include "../RHI_BlendState.h"
+#include "../RHI_DepthStencilState.h"
+#include "../RHI_RasterizerState.h"
+#include "../RHI_InputLayout.h"
 //===================================
 
 //= NAMESPACES ================
@@ -277,107 +283,254 @@ namespace Spartan
 
 	bool RHI_CommandList::Submit()
 	{
+		auto context		= m_rhi_device->GetContext();
+		auto device_context	= m_rhi_device->GetContext()->device_context;
+
 		for (unsigned int cmd_index = 0; cmd_index < m_command_count; cmd_index++)
 		{
 			RHI_Command& cmd = m_commands[cmd_index];
 
 			switch (cmd.type)
 			{
-			case RHI_Cmd_Begin:
-				m_profiler->TimeBlockStart(cmd.pass_name, true, true);
-				m_rhi_device->BeginMarker(cmd.pass_name);
-				break;
+				case RHI_Cmd_Begin:
+				{
+					m_profiler->TimeBlockStart(cmd.pass_name, true, true);
+					#ifdef DEBUG
+					context->annotation->BeginEvent(FileSystem::StringToWstring(cmd.pass_name).c_str());
+					#endif
+					break;
+				}
 
-			case RHI_Cmd_End:
-				m_rhi_device->EndMarker();
-				m_profiler->TimeBlockEnd();
-				break;
+				case RHI_Cmd_End:
+				{
+					#ifdef DEBUG
+					context->annotation->EndEvent();
+					#endif
+					m_profiler->TimeBlockEnd();
+					break;
+				}
 
-			case RHI_Cmd_Draw:
-				m_rhi_device->Draw(cmd.vertex_count);
-				m_profiler->m_rhi_draw_calls++;
-				break;
+				case RHI_Cmd_Draw:
+				{
+					device_context->Draw(static_cast<UINT>(cmd.vertex_count), 0);
 
-			case RHI_Cmd_DrawIndexed:
-				m_rhi_device->DrawIndexed(cmd.index_count, cmd.index_offset, cmd.vertex_offset);
-				m_profiler->m_rhi_draw_calls++;
-				break;
+					m_profiler->m_rhi_draw_calls++;
+					break;
+				}
 
-			case RHI_Cmd_SetViewport:
-				m_rhi_device->SetViewport(cmd.viewport);
-				break;
+				case RHI_Cmd_DrawIndexed:
+				{
+					SPARTAN_ASSERT(cmd.index_count != 0);
 
-			case RHI_Cmd_SetScissorRectangle:
-				m_rhi_device->SetScissorRectangle(cmd.scissor_rectangle);
-				break;
+					device_context->DrawIndexed
+					(
+						static_cast<UINT>(cmd.index_count),
+						static_cast<UINT>(cmd.index_offset),
+						static_cast<INT>(cmd.vertex_offset)
+					);
 
-			case RHI_Cmd_SetPrimitiveTopology:
-				m_rhi_device->SetPrimitiveTopology(cmd.primitive_topology);
-				break;
+					m_profiler->m_rhi_draw_calls++;
+					break;
+				}
 
-			case RHI_Cmd_SetInputLayout:
-				m_rhi_device->SetInputLayout(cmd.input_layout);
-				break;
+				case RHI_Cmd_SetViewport:
+				{
+					D3D11_VIEWPORT d3d11_viewport;
+					d3d11_viewport.TopLeftX	= cmd.viewport.GetX();
+					d3d11_viewport.TopLeftY	= cmd.viewport.GetY();
+					d3d11_viewport.Width	= cmd.viewport.GetWidth();
+					d3d11_viewport.Height	= cmd.viewport.GetHeight();
+					d3d11_viewport.MinDepth	= cmd.viewport.GetMinDepth();
+					d3d11_viewport.MaxDepth	= cmd.viewport.GetMaxDepth();
 
-			case RHI_Cmd_SetDepthStencilState:
-				m_rhi_device->SetDepthStencilState(cmd.depth_stencil_state);
-				break;
+					device_context->RSSetViewports(1, &d3d11_viewport);
 
-			case RHI_Cmd_SetRasterizerState:
-				m_rhi_device->SetRasterizerState(cmd.rasterizer_state);
-				break;
+					break;
+				}
 
-			case RHI_Cmd_SetBlendState:
-				m_rhi_device->SetBlendState(cmd.blend_state);
-				break;
+				case RHI_Cmd_SetScissorRectangle:
+				{
+					const auto left		= cmd.scissor_rectangle.x;
+					const auto top		= cmd.scissor_rectangle.y;
+					const auto right	= cmd.scissor_rectangle.x + cmd.scissor_rectangle.width;
+					const auto bottom	= cmd.scissor_rectangle.y + cmd.scissor_rectangle.height;
+					const D3D11_RECT d3d11_rectangle = { static_cast<LONG>(left), static_cast<LONG>(top), static_cast<LONG>(right), static_cast<LONG>(bottom) };
 
-			case RHI_Cmd_SetVertexBuffer:
-				m_rhi_device->SetVertexBuffer(cmd.buffer_vertex);
-				m_profiler->m_rhi_bindings_buffer_vertex++;
-				break;
+					device_context->RSSetScissorRects(1, &d3d11_rectangle);
 
-			case RHI_Cmd_SetIndexBuffer:
-				m_rhi_device->SetIndexBuffer(cmd.buffer_index);
-				m_profiler->m_rhi_bindings_buffer_index++;
-				break;
+					break;
+				}
 
-			case RHI_Cmd_SetVertexShader:
-				m_rhi_device->SetVertexShader(cmd.shader_vertex);
-				m_profiler->m_rhi_bindings_vertex_shader++;
-				break;
+				case RHI_Cmd_SetPrimitiveTopology:
+				{
+					device_context->IASetPrimitiveTopology(d3d11_primitive_topology[cmd.primitive_topology]);
+					break;
+				}
 
-			case RHI_Cmd_SetPixelShader:
-				m_rhi_device->SetPixelShader(cmd.shader_pixel);
-				m_profiler->m_rhi_bindings_pixel_shader++;
-				break;
+				case RHI_Cmd_SetInputLayout:
+				{
+					device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(cmd.input_layout->GetBuffer()));
+					break;
+				}
 
-			case RHI_Cmd_SetConstantBuffers:
-				m_rhi_device->SetConstantBuffers(cmd.constant_buffers_start_slot, static_cast<unsigned int>(cmd.constant_buffers.size()), cmd.constant_buffers.data(), cmd.constant_buffers_scope);
-				m_profiler->m_rhi_bindings_buffer_constant += (cmd.constant_buffers_scope == Buffer_Global) ? 2 : 1;
-				break;
+				case RHI_Cmd_SetDepthStencilState:
+				{
+					device_context->OMSetDepthStencilState(
+						static_cast<ID3D11DepthStencilState*>(cmd.depth_stencil_state->GetBuffer()), 1
+					);
+					break;
+				}
 
-			case RHI_Cmd_SetSamplers:
-				m_rhi_device->SetSamplers(cmd.samplers_start_slot, static_cast<unsigned int>(cmd.samplers.size()), cmd.samplers.data());
-				m_profiler->m_rhi_bindings_sampler++;
-				break;
+				case RHI_Cmd_SetRasterizerState:
+				{
+					device_context->RSSetState(
+						static_cast<ID3D11RasterizerState*>(cmd.rasterizer_state->GetBuffer())
+					);
 
-			case RHI_Cmd_SetTextures:
-				m_rhi_device->SetTextures(cmd.textures_start_slot, static_cast<unsigned int>(cmd.textures.size()), cmd.textures.data());
-				m_profiler->m_rhi_bindings_texture++;
-				break;
+					break;
+				}
 
-			case RHI_Cmd_SetRenderTargets:
-				m_rhi_device->SetRenderTargets(static_cast<unsigned int>(cmd.render_targets.size()), cmd.render_targets.data(), cmd.depth_stencil);
-				m_profiler->m_rhi_bindings_render_target++;
-				break;
+				case RHI_Cmd_SetBlendState:
+				{
+					FLOAT blend_factor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-			case RHI_Cmd_ClearRenderTarget:
-				m_rhi_device->ClearRenderTarget(cmd.render_target_clear, cmd.render_target_clear_color);
-				break;
+					device_context->OMSetBlendState(
+						static_cast<ID3D11BlendState*>(cmd.blend_state->GetBuffer()),
+						blend_factor,
+						0xffffffff
+					);
 
-			case RHI_Cmd_ClearDepthStencil:
-				m_rhi_device->ClearDepthStencil(cmd.depth_stencil, cmd.depth_clear_flags, cmd.depth_clear, cmd.depth_clear_stencil);
-				break;
+					break;
+				}
+
+				case RHI_Cmd_SetVertexBuffer:
+				{
+					auto ptr			= static_cast<ID3D11Buffer*>(cmd.buffer_vertex->GetBuffer());
+					auto stride			= cmd.buffer_vertex->GetStride();
+					unsigned int offset = 0;
+					device_context->IASetVertexBuffers(0, 1, &ptr, &stride, &offset);
+
+					m_profiler->m_rhi_bindings_buffer_vertex++;
+					break;
+				}
+
+				case RHI_Cmd_SetIndexBuffer:
+				{
+					device_context->IASetIndexBuffer
+					(
+						static_cast<ID3D11Buffer*>(cmd.buffer_index->GetBuffer()),
+						cmd.buffer_index->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT,
+						0
+					);
+
+					m_profiler->m_rhi_bindings_buffer_index++;
+					break;
+				}
+
+				case RHI_Cmd_SetVertexShader:
+				{
+					const auto ptr = static_cast<ID3D11VertexShader*>(cmd.shader_vertex->GetVertexShaderBuffer());
+					device_context->VSSetShader(ptr, nullptr, 0);
+
+					m_profiler->m_rhi_bindings_vertex_shader++;
+					break;
+				}
+
+				case RHI_Cmd_SetPixelShader:
+				{
+					const auto ptr = static_cast<ID3D11PixelShader*>(cmd.shader_pixel->GetPixelShaderBuffer());
+					device_context->PSSetShader(ptr, nullptr, 0);
+
+					m_profiler->m_rhi_bindings_pixel_shader++;
+					break;
+				}
+
+				case RHI_Cmd_SetConstantBuffers:
+				{
+					const auto start_slot	= static_cast<UINT>(cmd.constant_buffers_start_slot);
+					const auto buffer_count = static_cast<UINT>(cmd.constant_buffers.size());
+					const auto buffer		= reinterpret_cast<ID3D11Buffer*const*>(cmd.constant_buffers.data());
+					const auto scope		= cmd.constant_buffers_scope;
+
+					if (scope == Buffer_VertexShader || scope == Buffer_Global)
+					{
+						device_context->VSSetConstantBuffers(start_slot, buffer_count, buffer);
+					}
+
+					if (scope == Buffer_PixelShader || scope == Buffer_Global)
+					{
+						device_context->PSSetConstantBuffers(start_slot, buffer_count, buffer);
+					}
+
+					m_profiler->m_rhi_bindings_buffer_constant += (cmd.constant_buffers_scope == Buffer_Global) ? 2 : 1;
+					break;
+				}
+
+				case RHI_Cmd_SetSamplers:
+				{
+					device_context->PSSetSamplers
+					(
+						static_cast<UINT>(cmd.samplers_start_slot),
+						static_cast<UINT>(cmd.samplers.size()),
+						reinterpret_cast<ID3D11SamplerState* const*>(cmd.samplers.data())
+					);
+
+					m_profiler->m_rhi_bindings_sampler++;
+					break;
+				}
+
+				case RHI_Cmd_SetTextures:
+				{
+					device_context->PSSetShaderResources
+					(
+						static_cast<UINT>(cmd.textures_start_slot),
+						static_cast<UINT>(cmd.textures.size()),
+						reinterpret_cast<ID3D11ShaderResourceView* const*>(cmd.textures.data())
+					);
+
+					m_profiler->m_rhi_bindings_texture++;
+					break;
+				}
+
+				case RHI_Cmd_SetRenderTargets:
+				{
+					device_context->OMSetRenderTargets
+					(
+						static_cast<UINT>(cmd.render_targets.size()),
+						reinterpret_cast<ID3D11RenderTargetView* const*>(cmd.render_targets.data()),
+						static_cast<ID3D11DepthStencilView*>(cmd.depth_stencil)
+					);
+
+					m_profiler->m_rhi_bindings_render_target++;
+					break;
+				}
+
+				case RHI_Cmd_ClearRenderTarget:
+				{
+					device_context->ClearRenderTargetView
+					(
+						static_cast<ID3D11RenderTargetView*>(cmd.render_target_clear),
+						cmd.render_target_clear_color.Data()
+					);
+					break;
+				}
+
+				case RHI_Cmd_ClearDepthStencil:
+				{
+					UINT clear_flags = 0;
+					clear_flags |= cmd.depth_clear_flags & Clear_Depth ? D3D11_CLEAR_DEPTH : 0;
+					clear_flags |= cmd.depth_clear_flags & Clear_Stencil ? D3D11_CLEAR_STENCIL : 0;
+
+					device_context->ClearDepthStencilView
+					(
+						static_cast<ID3D11DepthStencilView*>(cmd.depth_stencil),
+						clear_flags,
+						static_cast<FLOAT>(cmd.depth_clear),
+						static_cast<UINT8>(cmd.depth_clear_stencil)
+					);
+
+					break;
+				}
 			}
 		}
 

@@ -81,40 +81,7 @@ namespace Spartan
 		RHI_Device();
 		~RHI_Device();
 
-		//= DRAW/PRESENT =======================================================================================
-		bool Draw(unsigned int vertex_count) const;
-		bool DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset) const;
-		//======================================================================================================
-
-		//= CLEAR ===================================================================================================
-		bool ClearRenderTarget(void* render_target, const Math::Vector4& color) const;
-		bool ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil = 0) const;
-		//===========================================================================================================
-
-		//= SET ======================================================================================================================
-		bool SetVertexBuffer(const RHI_VertexBuffer* buffer) const;
-		bool SetIndexBuffer(const RHI_IndexBuffer* buffer) const;
-		bool SetVertexShader(const RHI_Shader* shader) const;
-		bool SetPixelShader(const RHI_Shader* shader) const;
-		bool SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state) const;
-		bool SetRasterizerState(const RHI_RasterizerState* rasterizer_state) const;
-		bool SetBlendState(const RHI_BlendState* blend_state) const;
-		bool SetInputLayout(const RHI_InputLayout* input_layout) const;
-		bool SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology) const;
-		bool SetConstantBuffers(unsigned int start_slot, unsigned int buffer_count, const void* buffer, RHI_Buffer_Scope scope) const;
-		bool SetSamplers(unsigned int start_slot, unsigned int sampler_count, const void* samplers) const;
-		bool SetTextures(unsigned int start_slot, unsigned int resource_count, const void* textures) const;
-		bool SetRenderTargets(unsigned int render_target_count, const void* render_targets, void* depth_stencil) const;
-		bool SetViewport(const RHI_Viewport& viewport) const;
-		bool SetScissorRectangle(const Math::Rectangle& rectangle) const;
-		//============================================================================================================================
-
-		//= EVENTS ===============================
-		void BeginMarker(const std::string& name);
-		void EndMarker();
-		//========================================
-
-		//= PROFILING =============================================================================
+		//= API ===================================================================================
 		bool ProfilingCreateQuery(void** query, RHI_Query_Type type) const;
 		bool ProfilingQueryStart(void* query_object) const;
 		bool ProfilingGetTimeStamp(void* query_object) const;
@@ -131,21 +98,16 @@ namespace Spartan
 		void SetPrimaryAdapter(const DisplayAdapter* primary_adapter);
 		const std::vector<DisplayAdapter>& GetAdapters() const	{ return m_displayAdapters; }
 		const DisplayAdapter* GetPrimaryAdapter()				{ return m_primaryAdapter; }
-		RHI_Format GetBackBufferFormat()						{ return m_back_buffer_format; }
 		//=======================================================================================================================================
 
-		//= MISC ================================================
-		void WaitIdle();
-		bool IsInitialized() const	{ return m_initialized; }
-		RHI_Context* GetContext() const	{ return m_rhi_context; }
-		//=======================================================
+		auto IsInitialized() const	{ return m_initialized; }
+		auto GetContext() const		{ return m_rhi_context; }
 
-	private:
+	private:	
+		bool m_initialized						= false;
+		RHI_Context* m_rhi_context				= nullptr;
+		const DisplayAdapter* m_primaryAdapter	= nullptr;
 		std::vector<DisplayMode> m_displayModes;
-		std::vector<DisplayAdapter> m_displayAdapters;
-		const DisplayAdapter* m_primaryAdapter		= nullptr;
-		RHI_Format m_back_buffer_format				= Format_R8G8B8A8_UNORM;
-		bool m_initialized							= false;
-		RHI_Context* m_rhi_context					= nullptr;
+		std::vector<DisplayAdapter> m_displayAdapters;	
 	};
 }

@@ -427,7 +427,7 @@ namespace Spartan
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-			m_render_tex_full_hdr_light2->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+			m_render_tex_full_hdr_light2->Clear(m_cmd_list, 0.0f, 0.0f, 0.0f, 1.0f);
 			m_is_rendering = false;
 			return;
 		}
@@ -435,7 +435,7 @@ namespace Spartan
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-			m_render_tex_full_hdr_light2->Clear(m_camera->GetClearColor());
+			m_render_tex_full_hdr_light2->Clear(m_cmd_list, m_camera->GetClearColor());
 			m_is_rendering = false;
 			return;
 		}

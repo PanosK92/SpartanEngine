@@ -102,43 +102,45 @@ namespace Spartan
 
 		// Log feature level
 		{
-			const auto feature_level = m_rhi_context->device->GetFeatureLevel();
-			string feature_level_str;
-			switch (feature_level)
+			auto log_feature_level = [this](const std::string& level)
 			{
-			case D3D_FEATURE_LEVEL_9_1:
-				feature_level_str = "9.1";
-				break;
+				Settings::Get().m_versionGraphicsAPI = "DirectX " + level;
+				LOG_INFO(Settings::Get().m_versionGraphicsAPI);
+			};
 
-			case D3D_FEATURE_LEVEL_9_2:
-				feature_level_str = "9.2";
-				break;
+			switch (m_rhi_context->device->GetFeatureLevel())
+			{
+				case D3D_FEATURE_LEVEL_9_1:
+					log_feature_level("9.1");
+					break;
 
-			case D3D_FEATURE_LEVEL_9_3:
-				feature_level_str = "9.3";
-				break;
+				case D3D_FEATURE_LEVEL_9_2:
+					log_feature_level("9.2");
+					break;
 
-			case D3D_FEATURE_LEVEL_10_0:
-				feature_level_str = "10.0";
-				break;
+				case D3D_FEATURE_LEVEL_9_3:
+					log_feature_level("9.3");
+					break;
 
-			case D3D_FEATURE_LEVEL_10_1:
-				feature_level_str = "10.1";
-				break;
+				case D3D_FEATURE_LEVEL_10_0:
+					log_feature_level("10.0");
+					break;
 
-			case D3D_FEATURE_LEVEL_11_0:
-				feature_level_str = "11.0";
-				break;
+				case D3D_FEATURE_LEVEL_10_1:
+					log_feature_level("10.1");
+					break;
 
-			case D3D_FEATURE_LEVEL_11_1:
-				feature_level_str = "11.1";
-				break;
-			case D3D_FEATURE_LEVEL_12_0: break;
-			case D3D_FEATURE_LEVEL_12_1: break;
-			default: ;
+				case D3D_FEATURE_LEVEL_11_0:
+					log_feature_level("11.0");
+					break;
+
+				case D3D_FEATURE_LEVEL_11_1:
+					log_feature_level("11.1");
+					break;
+				case D3D_FEATURE_LEVEL_12_0: break;
+				case D3D_FEATURE_LEVEL_12_1: break;
+				default: ;
 			}
-			Settings::Get().m_versionGraphicsAPI = "DirectX " + feature_level_str;
-			LOG_INFO(Settings::Get().m_versionGraphicsAPI);
 		}
 
 		// Multi-thread protection
@@ -173,349 +175,6 @@ namespace Spartan
 		safe_release(m_rhi_context->device);
 		safe_release(m_rhi_context->annotation);
 		safe_delete(m_rhi_context);
-	}
-
-	bool RHI_Device::Draw(const unsigned int vertex_count) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (vertex_count == 0)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		m_rhi_context->device_context->Draw(vertex_count, 0);
-		return true;
-	}
-
-	bool RHI_Device::DrawIndexed(const unsigned int index_count, const unsigned int index_offset, const unsigned int vertex_offset) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (index_count == 0)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		m_rhi_context->device_context->DrawIndexed(index_count, index_offset, vertex_offset);
-		return true;
-	}
-
-	bool RHI_Device::ClearRenderTarget(void* render_target, const Vector4& color) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		m_rhi_context->device_context->ClearRenderTargetView(static_cast<ID3D11RenderTargetView*>(render_target), color.Data());
-		return true;
-	}
-
-	bool RHI_Device::ClearDepthStencil(void* depth_stencil, const unsigned int flags, const float depth, const unsigned int stencil) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		unsigned int clear_flags = 0;
-		clear_flags |= flags & Clear_Depth	? D3D11_CLEAR_DEPTH		: 0;
-		clear_flags |= flags & Clear_Stencil ? D3D11_CLEAR_STENCIL	: 0;
-		m_rhi_context->device_context->ClearDepthStencilView(static_cast<ID3D11DepthStencilView*>(depth_stencil), clear_flags, depth, stencil);
-		return true;
-	}
-
-	bool RHI_Device::SetVertexBuffer(const RHI_VertexBuffer* buffer) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (!buffer)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		auto ptr			= static_cast<ID3D11Buffer*>(buffer->GetBuffer());
-		auto stride			= buffer->GetStride();
-		unsigned int offset = 0;
-		m_rhi_context->device_context->IASetVertexBuffers(0, 1, &ptr, &stride, &offset);
-		return true;
-	}
-
-	bool RHI_Device::SetIndexBuffer(const RHI_IndexBuffer* buffer) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (!buffer)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		m_rhi_context->device_context->IASetIndexBuffer
-		(
-			static_cast<ID3D11Buffer*>(buffer->GetBuffer()),
-			buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT,
-			0
-		);
-
-		return true;
-	}
-
-	bool RHI_Device::SetVertexShader(const RHI_Shader* shader) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (!shader)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		const auto ptr = static_cast<ID3D11VertexShader*>(shader->GetVertexShaderBuffer());
-		m_rhi_context->device_context->VSSetShader(ptr, nullptr, 0);
-		return true;
-	}
-
-	bool RHI_Device::SetPixelShader(const RHI_Shader* shader) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (!shader)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		const auto ptr = static_cast<ID3D11PixelShader*>(shader->GetPixelShaderBuffer());
-		m_rhi_context->device_context->PSSetShader(ptr, nullptr, 0);
-		return true;
-	}
-
-	bool RHI_Device::SetConstantBuffers(const unsigned int start_slot, const unsigned int buffer_count, const void* buffer, const RHI_Buffer_Scope scope) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		const auto d3_d11_buffer = static_cast<ID3D11Buffer*const*>(buffer);
-		if (scope == Buffer_VertexShader || scope == Buffer_Global)
-		{
-			m_rhi_context->device_context->VSSetConstantBuffers(start_slot, buffer_count, d3_d11_buffer);
-		}
-
-		if (scope == Buffer_PixelShader || scope == Buffer_Global)
-		{
-			m_rhi_context->device_context->PSSetConstantBuffers(start_slot, buffer_count, d3_d11_buffer);
-		}
-
-		return true;
-	}
-
-	bool RHI_Device::SetSamplers(const unsigned int start_slot, const unsigned int sampler_count, const void* samplers) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		m_rhi_context->device_context->PSSetSamplers(start_slot, sampler_count, static_cast<ID3D11SamplerState* const*>(samplers));
-		return true;
-	}
-
-	bool RHI_Device::SetRenderTargets(const unsigned int render_target_count, const void* render_targets, void* depth_stencil) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		m_rhi_context->device_context->OMSetRenderTargets(render_target_count, static_cast<ID3D11RenderTargetView* const*>(render_targets), static_cast<ID3D11DepthStencilView*>(depth_stencil));
-		return true;
-	}
-
-	bool RHI_Device::SetTextures(const unsigned int start_slot, const unsigned int resource_count, const void* textures) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		m_rhi_context->device_context->PSSetShaderResources(start_slot, resource_count, static_cast<ID3D11ShaderResourceView* const*>(textures));
-		return true;
-	}
-
-	bool RHI_Device::SetViewport(const RHI_Viewport& viewport) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		D3D11_VIEWPORT dx_viewport;
-		dx_viewport.TopLeftX	= viewport.GetX();
-		dx_viewport.TopLeftY	= viewport.GetY();
-		dx_viewport.Width		= viewport.GetWidth();
-		dx_viewport.Height		= viewport.GetHeight();
-		dx_viewport.MinDepth	= viewport.GetMinDepth();
-		dx_viewport.MaxDepth	= viewport.GetMaxDepth();
-		m_rhi_context->device_context->RSSetViewports(1, &dx_viewport);
-
-		return true;
-	}
-
-	bool RHI_Device::SetScissorRectangle(const Math::Rectangle& rectangle) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		const auto left						= rectangle.x;
-		const auto top						= rectangle.y;
-		const auto right					= rectangle.x + rectangle.width;
-		const auto bottom					= rectangle.y + rectangle.height;
-		const D3D11_RECT d3d11_rectangle	= { static_cast<LONG>(left), static_cast<LONG>(top), static_cast<LONG>(right), static_cast<LONG>(bottom) };
-
-		m_rhi_context->device_context->RSSetScissorRects(1, &d3d11_rectangle);
-
-		return true;
-	}
-
-	bool RHI_Device::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		auto ptr = static_cast<ID3D11DepthStencilState*>(depth_stencil_state->GetBuffer());
-		m_rhi_context->device_context->OMSetDepthStencilState(ptr, 1);
-		return true;
-	}
-
-	bool RHI_Device::SetBlendState(const RHI_BlendState* blend_state) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (!blend_state)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		// Set blend state
-		const auto ptr			= static_cast<ID3D11BlendState*>(blend_state->GetBuffer());
-		float blend_fentity[4]	= { 0.0f, 0.0f, 0.0f, 0.0f };
-		m_rhi_context->device_context->OMSetBlendState(ptr, blend_fentity, 0xffffffff);
-
-		return true;
-	}
-
-	bool RHI_Device::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		// Set primitive topology
-		m_rhi_context->device_context->IASetPrimitiveTopology(d3d11_primitive_topology[primitive_topology]);
-		return true;
-	}
-
-	bool RHI_Device::SetInputLayout(const RHI_InputLayout* input_layout) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (!input_layout)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		const auto ptr = static_cast<ID3D11InputLayout*>(input_layout->GetBuffer());
-		m_rhi_context->device_context->IASetInputLayout(ptr);
-		return true;
-	}
-
-	bool RHI_Device::SetRasterizerState(const RHI_RasterizerState* rasterizer_state) const
-	{
-		if (!m_rhi_context->device_context)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return false;
-		}
-
-		if (!rasterizer_state)
-		{
-			LOG_ERROR_INVALID_PARAMETER();
-			return false;
-		}
-
-		const auto ptr = static_cast<ID3D11RasterizerState*>(rasterizer_state->GetBuffer());
-		m_rhi_context->device_context->RSSetState(ptr);
-		return true;
-	}
-
-	void RHI_Device::BeginMarker(const std::string& name)
-	{
-	#ifdef DEBUG
-		m_rhi_context->annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
-	#endif
-	}
-
-	void RHI_Device::EndMarker()
-	{
-	#ifdef DEBUG
-		m_rhi_context->annotation->EndEvent();
-	#endif
 	}
 
 	bool RHI_Device::ProfilingCreateQuery(void** query, const RHI_Query_Type type) const
@@ -643,11 +302,6 @@ namespace Spartan
 			return static_cast<unsigned int>(info.CurrentUsage / 1024 / 1024); // convert to MBs
 		}
 		return 0;
-	}
-
-	void RHI_Device::WaitIdle()
-	{
-		
 	}
 }
 #endif
