@@ -185,118 +185,21 @@ namespace Spartan
 
 	RHI_Device::~RHI_Device()
 	{	
-		if (m_rhi_context->validation_enabled)
+		// Wait for GPU
+		auto result = vkQueueWaitIdle(m_rhi_context->queue_graphics);
+
+		// Release resources
+		if (result == VK_SUCCESS)
 		{
 			Vulkan_Common::debug_callback::destroy(m_rhi_context);
+			vkDestroyInstance(m_rhi_context->instance, nullptr);
+			vkDestroyDevice(m_rhi_context->device, nullptr);
+			safe_delete(m_rhi_context);
 		}
-		vkDestroyInstance(m_rhi_context->instance, nullptr);
-		vkDestroyDevice(m_rhi_context->device, nullptr);
-		safe_delete(m_rhi_context);
-	}
-
-	bool RHI_Device::Draw(unsigned int vertex_count) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::DrawIndexed(const unsigned int index_count, const unsigned int index_offset, const unsigned int vertex_offset) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::ClearRenderTarget(void* render_target, const Vector4& color) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::ClearDepthStencil(void* depth_stencil, const unsigned int flags, const float depth, const unsigned int stencil) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetVertexBuffer(const RHI_VertexBuffer* buffer) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetIndexBuffer(const RHI_IndexBuffer* buffer) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetVertexShader(const RHI_Shader* shader) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetPixelShader(const RHI_Shader* shader) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetConstantBuffers(unsigned int start_slot, unsigned int buffer_count, const void* buffer, RHI_Buffer_Scope scope) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetSamplers(unsigned int start_slot, unsigned int sampler_count, const void* samplers) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetRenderTargets(unsigned int render_target_count, const void* render_targets, void* depth_stencil) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetTextures(unsigned int start_slot, unsigned int resource_count, const void* textures) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetViewport(const RHI_Viewport& viewport) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetScissorRectangle(const Math::Rectangle& rectangle) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetBlendState(const RHI_BlendState* blend_state) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetInputLayout(const RHI_InputLayout* input_layout) const
-	{
-		return true;
-	}
-
-	bool RHI_Device::SetRasterizerState(const RHI_RasterizerState* rasterizer_state) const
-	{
-		return true;
-	}
-
-	void RHI_Device::BeginMarker(const std::string& name)
-	{
-
-	}
-
-	void RHI_Device::EndMarker()
-	{
-
+		else
+		{
+			LOGF_ERROR("Failed to wait idle, %s.", Vulkan_Common::result_to_string(result));
+		}
 	}
 
 	bool RHI_Device::ProfilingCreateQuery(void** query, const RHI_Query_Type type) const
@@ -332,11 +235,6 @@ namespace Spartan
 	unsigned int RHI_Device::ProfilingGetGpuMemoryUsage()
 	{
 		return 0;
-	}
-
-	void RHI_Device::WaitIdle()
-	{
-		vkDeviceWaitIdle(m_rhi_context->device);
 	}
 }
 #endif

@@ -160,6 +160,9 @@ namespace Spartan::Vulkan_Common
 
 		inline void destroy(Spartan::RHI_Context* context)
 		{
+			if (!context->validation_enabled)
+				return;
+
 			if (const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(context->instance, "vkDestroyDebugUtilsMessengerEXT")))
 			{
 				func(context->instance, context->callback_handle, nullptr);

@@ -46,12 +46,12 @@ namespace Spartan
 		
 	}
 
-	bool RHI_RenderTexture::Clear(const Vector4& clear_color)
+	bool RHI_RenderTexture::Clear(shared_ptr<RHI_CommandList>& cmd_list, const Vector4& clear_color)
 	{
 		return false;
 	}
 
-	bool RHI_RenderTexture::Clear(const float red, const float green, const float blue, const float alpha)
+	bool RHI_RenderTexture::Clear(shared_ptr<RHI_CommandList>& cmd_list, const float red, const float green, const float blue, const float alpha)
 	{
 		return false;
 	}

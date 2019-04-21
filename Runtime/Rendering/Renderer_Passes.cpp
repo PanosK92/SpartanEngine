@@ -339,7 +339,7 @@ namespace Spartan
 		}
 		if (!shadow_mapped)
 		{
-			tex_shadows_out->Clear(1, 1, 1, 1);
+			tex_shadows_out->Clear(m_cmd_list, 1, 1, 1, 1);
 		}
 
 		// SSAO + Blur

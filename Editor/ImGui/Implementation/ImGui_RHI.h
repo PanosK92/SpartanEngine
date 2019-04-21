@@ -205,7 +205,7 @@ namespace ImGui::RHI
 				g_rhi_device,
 				static_cast<unsigned int>(width),
 				static_cast<unsigned int>(height),
-				g_rhi_device->GetBackBufferFormat(),
+				Format_R8G8B8A8_UNORM,
 				Present_Immediate,
 				2,
 				g_pipeline.GetRenderPass()

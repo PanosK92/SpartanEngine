@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_RenderTexture.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
+#include "../RHI_CommandList.h"
 //===============================
 
 //= NAMESPACES ================
@@ -201,7 +202,7 @@ namespace Spartan
 		safe_release(static_cast<ID3D11DepthStencilView*>(m_depth_stencil_view));
 	}
 
-	bool RHI_RenderTexture::Clear(const Vector4& clear_color)
+	bool RHI_RenderTexture::Clear(shared_ptr<RHI_CommandList>& cmd_list, const Vector4& clear_color)
 	{
 		if (!m_rhi_device)
 		{
@@ -212,7 +213,7 @@ namespace Spartan
 		// Clear back buffer
 		for (auto& render_target_view : m_buffer_render_target_views)
 		{ 
-			m_rhi_device->ClearRenderTarget(render_target_view, clear_color); 
+			cmd_list->ClearRenderTarget(render_target_view, clear_color); 
 		}
 
 		// Clear depth buffer
@@ -225,15 +226,15 @@ namespace Spartan
 			}
 
 			const auto depth = Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
-			m_rhi_device->ClearDepthStencil(m_depth_stencil_view, Clear_Depth, depth, 0);
+			cmd_list->ClearDepthStencil(m_depth_stencil_view, Clear_Depth, depth, 0);
 		}
 
 		return true;
 	}
 
-	bool RHI_RenderTexture::Clear(const float red, const float green, const float blue, const float alpha)
+	bool RHI_RenderTexture::Clear(shared_ptr<RHI_CommandList>& cmd_list, const float red, const float green, const float blue, const float alpha)
 	{
-		return Clear(Vector4(red, green, blue, alpha));
+		return Clear(cmd_list, Vector4(red, green, blue, alpha));
 	}
 }
 #endif

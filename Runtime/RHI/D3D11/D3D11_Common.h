@@ -122,10 +122,8 @@ namespace Spartan::D3D11_Common
 		}
 
 		// DISPLAY MODES
-		const auto get_display_modes = [device](IDXGIAdapter* adapter)
+		const auto get_display_modes = [device](IDXGIAdapter* adapter, RHI_Format format)
 		{
-			auto backBufferFormat = d3d11_format[device->GetBackBufferFormat()];
-
 			// Enumerate the primary adapter output (monitor).
 			IDXGIOutput* adapter_output;
 			bool result = SUCCEEDED(adapter->EnumOutputs(0, &adapter_output));
@@ -133,13 +131,13 @@ namespace Spartan::D3D11_Common
 			{
 				// Get supported display mode count
 				UINT display_mode_count;
-				result = SUCCEEDED(adapter_output->GetDisplayModeList(backBufferFormat, DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr));
+				result = SUCCEEDED(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr));
 				if (result)
 				{
 					// Get display modes
 					std::vector<DXGI_MODE_DESC> display_modes;
 					display_modes.resize(display_mode_count);
-					result = SUCCEEDED(adapter_output->GetDisplayModeList(backBufferFormat, DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0]));
+					result = SUCCEEDED(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0]));
 					if (result)
 					{
 						// Save all the display modes
@@ -161,7 +159,8 @@ namespace Spartan::D3D11_Common
 			const auto adapter = static_cast<IDXGIAdapter*>(display_adapter.data);
 
 			// Adapters are ordered by memory (descending), so stop on the first success
-			if (get_display_modes(adapter))
+			auto format = Format_R8G8B8A8_UNORM; // TODO: This must come from the swapchain
+			if (get_display_modes(adapter, format))
 			{
 				device->SetPrimaryAdapter(&display_adapter);
 				break;
