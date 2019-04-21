@@ -46,6 +46,7 @@ namespace Spartan
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_Shader> m_shader_vertex;
 		std::shared_ptr<RHI_Shader> m_shader_pixel;
+		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer;
 		std::shared_ptr<RHI_InputLayout> m_input_layout;	
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_state;
 		std::shared_ptr<RHI_BlendState> m_blend_state;

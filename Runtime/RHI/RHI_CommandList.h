@@ -254,7 +254,7 @@ namespace Spartan
 		void* m_cmd_pool				= nullptr;
 		unsigned int m_current_frame	= 0;
 		bool m_is_recording				= false;
-		bool m_is_rendering				= false;
+		bool m_sync_cpu_to_gpu				= false;
 		std::vector<void*> m_cmd_buffers;
 		std::vector<void*> m_semaphores_render_finished;
 		std::vector<void*> m_fences_in_flight;

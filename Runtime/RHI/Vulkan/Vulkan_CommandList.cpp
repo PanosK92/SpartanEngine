@@ -83,6 +83,9 @@ namespace Spartan
 
 	RHI_CommandList::~RHI_CommandList()
 	{
+		// Wait in case the command buffer is still in use by the graphics queue
+		vkQueueWaitIdle(m_rhi_device->GetContext()->queue_graphics);
+
 		auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
 		for (unsigned int i = 0; i < g_max_frames_in_flight; i++)
 		{
@@ -113,12 +116,12 @@ namespace Spartan
 			return;
 
 		// Sync CPU to GPU
-		if (m_is_rendering)
+		if (m_sync_cpu_to_gpu)
 		{
 			Vulkan_Common::fence::wait_reset(m_rhi_device, FENCE_SUBMIT_FINISHED);
 			SPARTAN_ASSERT(vkResetCommandPool(m_rhi_device->GetContext()->device, static_cast<VkCommandPool>(m_cmd_pool), 0) == VK_SUCCESS);
 			m_current_frame = (m_current_frame + 1) % m_swap_chain->GetBufferCount();
-			m_is_rendering	= false;
+			m_sync_cpu_to_gpu = false;
 		}
 
 		// Begin command buffer
@@ -225,8 +228,8 @@ namespace Spartan
 		VkRect2D vk_scissor;
 		vk_scissor.offset.x			= static_cast<int32_t>(scissor_rectangle.x);
 		vk_scissor.offset.y			= static_cast<int32_t>(scissor_rectangle.y);
-		vk_scissor.extent.width		= static_cast<uint32_t>(scissor_rectangle.width * 0.5f);
-		vk_scissor.extent.height	= static_cast<uint32_t>(scissor_rectangle.height * 0.5f);
+		vk_scissor.extent.width		= static_cast<uint32_t>(scissor_rectangle.width);
+		vk_scissor.extent.height	= static_cast<uint32_t>(scissor_rectangle.height);
 		vkCmdSetScissor(CMD_BUFFER_VK, 0, 1, &vk_scissor);
 	}
 
@@ -305,6 +308,7 @@ namespace Spartan
 	{
 		if (!m_is_recording)
 			return;
+
 	}
 
 	void RHI_CommandList::SetSamplers(unsigned int start_slot, const vector<void*>& samplers)
@@ -403,7 +407,7 @@ namespace Spartan
 			LOGF_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::result_to_string(result));
 		}
 		
-		m_is_rendering = true;
+		m_sync_cpu_to_gpu = true;
 		return result == VK_SUCCESS;
 	}
 

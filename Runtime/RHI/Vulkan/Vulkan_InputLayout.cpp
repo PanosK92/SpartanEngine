@@ -43,11 +43,35 @@ namespace Spartan
 
 	RHI_InputLayout::~RHI_InputLayout()
 	{
-
+		safe_delete(m_buffer);
 	}
 
 	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes)
 	{
+		// Binding description
+		VkVertexInputBindingDescription binding_description = {};
+		binding_description.binding							= 0;
+		binding_description.inputRate						= VK_VERTEX_INPUT_RATE_VERTEX;
+		binding_description.stride							= sizeof(float) * 8; // size of the vertex must be known here
+
+		// Vertex attributes description
+		uint32_t vertex_buffer_bind_id = 0;
+		vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
+		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 0, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, 0 });
+		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 1, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 2 });
+		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 2, vertex_buffer_bind_id, VK_FORMAT_R8G8B8A8_UNORM, sizeof(float) * 4 });
+		
+		// Vertex input state
+		auto* vertex_input_state = new VkPipelineVertexInputStateCreateInfo();
+		vertex_input_state->sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertex_input_state->vertexBindingDescriptionCount		= 1;
+		vertex_input_state->pVertexBindingDescriptions			= &binding_description;
+		vertex_input_state->vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attribute_descs.size());
+		vertex_input_state->pVertexAttributeDescriptions		= reinterpret_cast<const VkVertexInputAttributeDescription*>(vertex_attribute_descs.data());
+
+		// Save
+		m_buffer = static_cast<void*>(vertex_input_state);
+		
 		return true;
 	}
 }

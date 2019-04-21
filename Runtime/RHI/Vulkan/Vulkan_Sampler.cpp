@@ -41,19 +41,20 @@ namespace Spartan
 	{	
 		m_rhi_device = rhi_device;
 
-		VkSampler sampler				= nullptr;
-		VkSamplerCreateInfo samplerInfo = {};
-
-		samplerInfo.sType				= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerInfo.magFilter			= VK_FILTER_LINEAR;
-		samplerInfo.minFilter			= VK_FILTER_LINEAR;
-		samplerInfo.mipmapMode			= VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerInfo.addressModeU		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		samplerInfo.addressModeV		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		samplerInfo.addressModeW		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		samplerInfo.borderColor			= VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+		VkSamplerCreateInfo sampler_info	= {};
+		sampler_info.sType					= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		sampler_info.magFilter				= VK_FILTER_LINEAR;					// FIX THIS, as in d3d11 all flags are merged into one
+		sampler_info.minFilter				= VK_FILTER_LINEAR;					// FIX THIS
+		sampler_info.mipmapMode				= VK_SAMPLER_MIPMAP_MODE_LINEAR;	// FIX THIS
+		sampler_info.addressModeU			= vulkan_sampler_address_mode[sampler_address_mode];
+		sampler_info.addressModeV			= vulkan_sampler_address_mode[sampler_address_mode];
+		sampler_info.addressModeW			= vulkan_sampler_address_mode[sampler_address_mode];
+		sampler_info.compareEnable			= comparison_function != Comparison_Never ? VK_TRUE : VK_FALSE;
+		sampler_info.compareOp				= vulkan_compare_operator[comparison_function];
+		sampler_info.borderColor			= VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	
-		if (vkCreateSampler(rhi_device->GetContext()->device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
+		VkSampler sampler = nullptr;
+		if (vkCreateSampler(rhi_device->GetContext()->device, &sampler_info, nullptr, &sampler) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to create sampler");
 		}
