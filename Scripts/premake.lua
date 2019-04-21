@@ -96,7 +96,6 @@ project (RUNTIME_NAME)
 		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
-		links { "dxclib.lib" }
 		links { "dxcompiler.lib" }
 		links { "angelscript_debug" }
 		links { "assimp_debug" }
@@ -111,7 +110,6 @@ project (RUNTIME_NAME)
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
 		debugdir (TARGET_DIR_RELEASE)
-		links { "dxclib.lib" }
 		links { "dxcompiler.lib" }
 		links { "angelscript" }
 		links { "assimp" }

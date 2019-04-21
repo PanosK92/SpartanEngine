@@ -61,7 +61,7 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_SwapChain>		g_swap_chain;	
 	static shared_ptr<RHI_Texture>			g_fontTexture;
 	static shared_ptr<RHI_Sampler>			g_fontSampler;
-	static shared_ptr<RHI_ConstantBuffer>	g_constantBuffer;
+	static shared_ptr<RHI_ConstantBuffer>	g_constant_buffer;
 	static shared_ptr<RHI_VertexBuffer>		g_vertexBuffer;
 	static shared_ptr<RHI_IndexBuffer>		g_indexBuffer;	
 	
@@ -80,7 +80,7 @@ namespace ImGui::RHI
 	
 		g_fontTexture		= make_shared<RHI_Texture>(g_context, false);
 		g_fontSampler		= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
-		g_constantBuffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constantBuffer->Create<Matrix>();
+		g_constant_buffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
 		g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_rhi_device);
 		g_indexBuffer		= make_shared<RHI_IndexBuffer>(g_rhi_device);
 
@@ -181,6 +181,7 @@ namespace ImGui::RHI
 			g_pipeline.m_rhi_device				= g_rhi_device;
 			g_pipeline.m_shader_vertex			= shader;
 			g_pipeline.m_shader_pixel			= shader;
+			g_pipeline.m_constant_buffer		= g_constant_buffer;
 			g_pipeline.m_rasterizer_state		= rasterizer_state;
 			g_pipeline.m_blend_state			= blend_state;
 			g_pipeline.m_depth_stencil_state	= depth_stencil_state;
@@ -302,10 +303,10 @@ namespace ImGui::RHI
 				0.0f,			0.0f,			0.0f,	1.0f
 			);
 
-			if (auto buffer = static_cast<Matrix*>(g_constantBuffer->Map()))
+			if (auto buffer = static_cast<Matrix*>(g_constant_buffer->Map()))
 			{
 				*buffer = mvp;
-				g_constantBuffer->Unmap();
+				g_constant_buffer->Unmap();
 			}
 		}
 
@@ -315,7 +316,7 @@ namespace ImGui::RHI
 		g_cmd_list->SetViewport(viewport);
 		g_cmd_list->SetBufferVertex(g_vertexBuffer);
 		g_cmd_list->SetBufferIndex(g_indexBuffer);
-		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constantBuffer);
+		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constant_buffer);
 		g_cmd_list->SetSampler(0, g_fontSampler);
 
 		// Render command lists
@@ -338,7 +339,7 @@ namespace ImGui::RHI
 					// Apply scissor rectangle
 					auto scissor_rect	 = Rectangle(pcmd->ClipRect.x - pos.x, pcmd->ClipRect.y - pos.y, pcmd->ClipRect.z - pos.x, pcmd->ClipRect.w - pos.y);
 					scissor_rect.width	-= scissor_rect.x;
-					scissor_rect.height	-= scissor_rect.y;
+					scissor_rect.height -= scissor_rect.y;
 					g_cmd_list->SetScissorRectangle(scissor_rect);
 
 					// Bind texture, Draw

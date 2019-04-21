@@ -173,10 +173,11 @@ void Widget_MenuBar::ShowAboutWindow()
 	const auto library = [](const char* name, const string& version, const char* url)
 	{
 		ImGui::BulletText(name);
-		ImGui::SameLine(120); ImGui::Text(("v" + version).c_str());
-		ImGui::SameLine(200); ImGui::PushID(url);  if (ImGui::Button("URL")) { FileSystem::OpenDirectoryWindow(url); } ImGui::PopID();
+		ImGui::SameLine(140); ImGui::Text(("v" + version).c_str());
+		ImGui::SameLine(250); ImGui::PushID(url);  if (ImGui::Button("URL")) { FileSystem::OpenDirectoryWindow(url); } ImGui::PopID();
 	};
 
+	library("Graphics API",	Settings::Get().m_versionGraphicsAPI,	"https://www.khronos.org/vulkan/");
 	library("AngelScript",	Settings::Get().m_versionAngelScript,	"https://www.angelcode.com/angelscript/");
 	library("Assimp",		Settings::Get().m_versionAssimp,		"https://github.com/assimp/assimp");
 	library("Bullet",		Settings::Get().m_versionBullet,		"https://github.com/bulletphysics/bullet3");

@@ -97,6 +97,8 @@ namespace dxilutil {
                                       unsigned startOpIdx,
                                       unsigned numOperands);
   bool SimplifyTrivialPHIs(llvm::BasicBlock *BB);
+  void MigrateDebugValue(llvm::Value *Old, llvm::Value *New);
+  void TryScatterDebugValueToVectorElements(llvm::Value *Val);
   std::unique_ptr<llvm::Module> LoadModuleFromBitcode(llvm::StringRef BC,
     llvm::LLVMContext &Ctx, std::string &DiagStr);
   std::unique_ptr<llvm::Module> LoadModuleFromBitcode(llvm::MemoryBuffer *MB,
@@ -107,7 +109,6 @@ namespace dxilutil {
   bool ContainsHLSLObjectType(llvm::Type *Ty);
   bool IsHLSLResourceType(llvm::Type *Ty);
   bool IsHLSLObjectType(llvm::Type *Ty);
-  bool IsHLSLMatrixType(llvm::Type *Ty);
   bool IsSplat(llvm::ConstantDataVector *cdv);
 }
 

@@ -40,8 +40,8 @@ namespace Spartan
 		auto GetBuffer() const				{ return m_buffer; }
 
 	private:		
-		RHI_Vertex_Attribute_Type m_vertex_attributes	= Vertex_Attribute_None;
-		void* m_buffer									= nullptr;
+		RHI_Vertex_Attribute_Type m_vertex_attributes = Vertex_Attribute_None;
+		void* m_buffer = nullptr;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

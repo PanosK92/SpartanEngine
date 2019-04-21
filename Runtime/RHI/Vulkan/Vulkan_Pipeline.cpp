@@ -48,8 +48,6 @@ namespace Spartan
 {
 	// This entire pipeline is temporary just so I can play with Vulkan a bit.
 
-	static unique_ptr<RHI_ConstantBuffer> g_constant_buffer;
-
 	RHI_Pipeline::~RHI_Pipeline()
 	{	
 		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_graphics_pipeline), nullptr);
@@ -64,7 +62,7 @@ namespace Spartan
 		m_descriptor_pool		= nullptr;	
 	}
 
-	inline void CreateDescriptorSet(void* sampler, void* texture, const VkDevice& device, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
+	inline void CreateDescriptorSet(void* sampler, void* texture, const VkDevice& device, shared_ptr<RHI_ConstantBuffer>& constant_buffer, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
 	{
 		uint32_t fix_this = 100;//static_cast<uint32_t>(swapChainImages.size());
 
@@ -132,9 +130,9 @@ namespace Spartan
 		for (size_t i = 0; i < fix_this; i++) 
 		{
 			VkDescriptorBufferInfo bufferInfo	= {};
-			bufferInfo.buffer					= static_cast<VkBuffer>(g_constant_buffer->GetBufferView());
+			bufferInfo.buffer					= static_cast<VkBuffer>(constant_buffer->GetBufferView());
 			bufferInfo.offset					= 0;
-			bufferInfo.range					= g_constant_buffer->GetSize();
+			bufferInfo.range					= constant_buffer->GetSize();
 
 			VkDescriptorImageInfo image_info	= {};
 			image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -246,10 +244,8 @@ namespace Spartan
 			dynamic_viewport_scissor = true;
 		}
 
-		// Uniform buffer
-		g_constant_buffer = make_unique<RHI_ConstantBuffer>(m_rhi_device);
-		g_constant_buffer->Create<Math::Matrix>();
-		CreateDescriptorSet(m_sampler->GetBufferView(), m_texture->GetBufferView(), m_rhi_device->GetContext()->device, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);
+		// Create descriptor set and render pass
+		CreateDescriptorSet(m_sampler->GetBufferView(), m_texture->GetBufferView(), m_rhi_device->GetContext()->device, m_constant_buffer, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);
 		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
 
 		// Dynamic viewport and scissor states
@@ -306,32 +302,35 @@ namespace Spartan
 		// Shader stages
 		vector<VkPipelineShaderStageCreateInfo> shader_stages = { shader_vertex_stage_info, shader_pixel_stage_info };
 
+		// Vertex input state
+		//auto vertex_input_state = static_cast<VkPipelineVertexInputStateCreateInfo*>(m_shader_vertex->GetInputLayout()->GetBuffer());
+
+		// Binding description
+		VkVertexInputBindingDescription binding_description = {};
+		binding_description.binding = 0;
+		binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+		binding_description.stride = sizeof(float) * 4 + sizeof(uint32_t); // size of the vertex must be known here
+
+		// Vertex attributes description
+		uint32_t vertex_buffer_bind_id = 0;
+		vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
+		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 0, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, 0 });
+		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 1, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 2 });
+		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 2, vertex_buffer_bind_id, VK_FORMAT_R8G8B8A8_UNORM, sizeof(float) * 4 });
+
+		// Vertex input state
+		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
+		vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertex_input_state.vertexBindingDescriptionCount = 1;
+		vertex_input_state.pVertexBindingDescriptions = &binding_description;
+		vertex_input_state.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_descs.size());
+		vertex_input_state.pVertexAttributeDescriptions = vertex_attribute_descs.data();
+
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
 		input_assembly_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		input_assembly_state.topology								= vulkan_primitive_topology[m_primitive_topology];
 		input_assembly_state.primitiveRestartEnable					= VK_FALSE;
-
-		// Binding description
-		VkVertexInputBindingDescription binding_description = {};
-		binding_description.binding							= 0;
-		binding_description.inputRate						= VK_VERTEX_INPUT_RATE_VERTEX;
-		// Vertex attributes description
-		vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
-		uint32_t vertex_buffer_bind_id = 0;
-		//if (vertex_attributes == Vertex_Attributes_Position2dTextureColor8)
-		{
-			vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 0, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, 0 });
-			vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 1, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 2 });
-			vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 2, vertex_buffer_bind_id, VK_FORMAT_R8G8B8A8_UNORM, sizeof(float) * 4 });
-			binding_description.stride = sizeof(float) * 4;
-		}
-		VkPipelineVertexInputStateCreateInfo vertex_input_state	= {};
-		vertex_input_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_state.vertexBindingDescriptionCount		= 1;
-		vertex_input_state.pVertexBindingDescriptions			= &binding_description;
-		vertex_input_state.vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attribute_descs.size());
-		vertex_input_state.pVertexAttributeDescriptions			= vertex_attribute_descs.data();
 
 		// Rasterizer state
 		VkPipelineRasterizationStateCreateInfo rasterizer_state	= {};
@@ -356,7 +355,7 @@ namespace Spartan
 		// Blend state
 		VkPipelineColorBlendAttachmentState blend_state_attachments = {};
 		blend_state_attachments.colorWriteMask						= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		blend_state_attachments.blendEnable							= VK_FALSE;
+		blend_state_attachments.blendEnable							= m_blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
 		blend_state_attachments.srcColorBlendFactor					= vulkan_blend_factor[m_blend_state->GetSourceBlend()];
 		blend_state_attachments.dstColorBlendFactor					= vulkan_blend_factor[m_blend_state->GetDestBlend()];
 		blend_state_attachments.colorBlendOp						= vulkan_blend_operation[m_blend_state->GetBlendOp()];
