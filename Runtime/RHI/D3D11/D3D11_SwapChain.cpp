@@ -45,8 +45,7 @@ namespace Spartan
 		unsigned int width,
 		unsigned int height,
 		const  RHI_Format format		/*= Format_R8G8B8A8_UNORM*/,
-		RHI_Swap_Effect swap_effect		/*= Swap_Discard*/,
-		const unsigned long flags		/*= 0 */,
+		RHI_Present_Mode present_mode	/*= Present_Off */,
 		const unsigned int buffer_count	/*= 1 */,
 		void* render_pass				/*= nullptr */
 	)
@@ -94,19 +93,20 @@ namespace Spartan
 		// Save parameters
 		m_format		= format;
 		m_rhi_device	= device;
-		m_flags			= flags;
 		m_buffer_count	= buffer_count;
 		m_windowed		= true;
 		m_width			= width;
 		m_height		= height;
+		m_present_mode	= present_mode;
+		m_flags			= D3D11_Common::swap_chain::flag_filter(m_rhi_device.get(), SwapChain_Allow_Tearing);
 
 		// Create swap chain
 		{
 			DXGI_SWAP_CHAIN_DESC desc;
 			ZeroMemory(&desc, sizeof(desc));
-			desc.BufferCount					= buffer_count;
-			desc.BufferDesc.Width				= width;
-			desc.BufferDesc.Height				= height;
+			desc.BufferCount					= static_cast<UINT>(buffer_count);
+			desc.BufferDesc.Width				= static_cast<UINT>(width);
+			desc.BufferDesc.Height				= static_cast<UINT>(height);
 			desc.BufferDesc.Format				= d3d11_format[format];
 			desc.BufferUsage					= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 			desc.OutputWindow					= hwnd;
@@ -115,8 +115,8 @@ namespace Spartan
 			desc.Windowed						= m_windowed ? TRUE : FALSE;
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
-			desc.SwapEffect						= D3D11_Common::FilterSwapEffect(m_rhi_device.get(), swap_effect);
-			desc.Flags							= D3D11_Common::FilterSwapChainFlags(m_rhi_device.get(), flags);
+			desc.SwapEffect						= D3D11_Common::swap_chain::swap_effect_filter(m_rhi_device.get(), Swap_Flip_Discard);	// Todo, pick whatever emulates Vulkan more closely
+			desc.Flags							= D3D11_Common::swap_chain::flag_to_d3d11(m_flags);										// Todo, pick whatever emulates Vulkan more closely
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContext()->device, &desc, &swap_chain);
@@ -188,11 +188,11 @@ namespace Spartan
 		// Release previous stuff
 		safe_release(render_target_view);
 
+		// Set this flag to enable an application to switch modes by calling IDXGISwapChain::ResizeTarget.
+		// When switching from windowed to full-screen mode, the display mode (or monitor resolution)
+		// will be changed to match the dimensions of the application window.
 		if (m_flags & SwapChain_Allow_Mode_Switch)
-		{
-			// Set this flag to enable an application to switch modes by calling IDXGISwapChain::ResizeTarget.
-			// When switching from windowed to full-screen mode, the display mode (or monitor resolution)
-			// will be changed to match the dimensions of the application window.
+		{		
 			DisplayMode display_mode;
 			if (!m_rhi_device->GetDidsplayModeFastest(&display_mode))
 			{
@@ -220,7 +220,7 @@ namespace Spartan
 		}
 	
 		// Resize swapchain buffers
-		UINT d3d11_flags = D3D11_Common::FilterSwapChainFlags(m_rhi_device.get(), m_flags);
+		UINT d3d11_flags = D3D11_Common::swap_chain::flag_to_d3d11(D3D11_Common::swap_chain::flag_filter(m_rhi_device.get(), m_flags));
 		auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
 		if (FAILED(result))
 		{
@@ -250,7 +250,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(const RHI_Present_Mode mode, void* semaphore_wait)
+	bool RHI_SwapChain::Present(void* semaphore_wait)
 	{
 		if (!m_swap_chain_view)
 		{
@@ -262,7 +262,7 @@ namespace Spartan
 		UINT flags				= (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 		auto ptr_swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 
-		ptr_swap_chain->Present(static_cast<UINT>(mode), flags);
+		ptr_swap_chain->Present(static_cast<UINT>(m_present_mode), flags);
 		return true;
 	}
 }

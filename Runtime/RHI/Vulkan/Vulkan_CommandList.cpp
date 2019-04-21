@@ -327,6 +327,8 @@ namespace Spartan
 	{
 		if (!m_is_recording)
 			return;
+
+		//vkCmdBindDescriptorSets(CMD_BUFFER_VK, 
 	}
 
 	void RHI_CommandList::SetTexture(unsigned int start_slot, void* texture)

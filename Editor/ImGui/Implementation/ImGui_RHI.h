@@ -206,8 +206,7 @@ namespace ImGui::RHI
 				static_cast<unsigned int>(width),
 				static_cast<unsigned int>(height),
 				g_rhi_device->GetBackBufferFormat(),
-				Swap_Flip_Discard,
-				SwapChain_Allow_Tearing,
+				Present_Immediate,
 				2,
 				g_pipeline.GetRenderPass()
 			);
@@ -354,7 +353,7 @@ namespace ImGui::RHI
 		g_cmd_list->End();
 		if (g_cmd_list->Submit() && is_main_viewport)
 		{
-			g_swap_chain->Present(Present_Off, g_cmd_list->GetSemaphoreRenderFinished());
+			g_swap_chain->Present(g_cmd_list->GetSemaphoreRenderFinished());
 		}
 	}
 
@@ -384,8 +383,7 @@ namespace ImGui::RHI
 			static_cast<unsigned int>(viewport->Size.x),
 			static_cast<unsigned int>(viewport->Size.y),
 			Format_R8G8B8A8_UNORM,
-			Swap_Flip_Discard,
-			SwapChain_Allow_Tearing,
+			Present_Immediate,
 			2,
 			g_pipeline.GetRenderPass()
 		);
@@ -465,7 +463,7 @@ namespace ImGui::RHI
 			return;
 		}
 
-		swap_chain->Present(Present_Off, nullptr);
+		swap_chain->Present(nullptr);
 	}
 
 	inline void InitializePlatformInterface()
