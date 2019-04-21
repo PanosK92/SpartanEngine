@@ -21,42 +21,40 @@ Platform | API | Status | Quality | Binaries | :+1:
 <img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20"/>|<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Vulkan_API_logo.svg/1280px-Vulkan_API_logo.svg.png" width="100"/>|WIP|WIP|WIP|WIP
 
 ## Features (v0.3)
-Category       	| Feature                                  	| Details
-:-              | :-                                        | :-
-Importing       | 10+ font file formats support             | FreeType
-Importing       | 20+ audio file formats support            | FMOD
-Importing       | 30+ image file formats support            | FreeImage
-Importing       | 40+ model file formats support            | Assimp
-Importing       | XML files                                 | -
-Input           | Keyboard                                  | -
-Input           | Mouse                                     | -
-Input           | Xbox controller                           | -
-Rendering       | Bloom                                     | -
-Rendering       | Shadows                                   | Cascaded shadow mapping with smooth, clean and stable shadows.
-Rendering       | Custom mipchain generation                | Higher texture fidelity using Lanczos3 scaling.
-Rendering       | Debug rendering                           | Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
-Rendering       | Deferred rendering                        | -
-Rendering       | DirectX 11 backend                        | -
-Rendering       | Lights                                    | Directional, point and spot lights.
-Rendering       | Font Rendering                            | -
-Rendering       | Frustum culling                           | -
-Rendering       | Per-Pixel motion blur                     | -
-Rendering       | Physically based rendering                | -
-Rendering       | Post-process effects                      | Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic aberration etc.
-Rendering       | SSAO                                      | Screen space ambient occlusion.
-Rendering       | SSR                                       | Screen space reflections.
-Rendering       | TAA                                       | Temporal anti-aliasing based on Uncharted 4.
-Physics         | Constraints                               | -
-Physics         | Rigid bodies                              | -
-Physics         | Colliders                                 | -
-General         | Entity-component system                   | -
-General         | Event system                              | -
-General         | Easy to build                             | Single click project generation which includes editor and runtime.
-General         | Thread pool                               | -
-General         | Engine rendered platform agnostic editor  | -
-General         | Profiling  								| CPU & GPU.
-Scripting       | C/C++                                     | Using AngelScript.
-Support        	| Windows 10 and a modern/dedicated GPU		| This engine targets high-end machines, old setups or mobile devices are not officially supported.
+- 10+ font file formats support (FreeType)
+- 20+ audio file formats support (FMOD)
+- 30+ image file formats support (FreeImage)
+- 40+ model file formats support (Assimp)
+- XML files
+- Keyboard
+- Mouse
+- Xbox controller
+- Bloom
+- Shadows (Cascaded shadow mapping with smooth, clean and stable shadows)
+- Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
+- Debug rendering (Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc)
+- Deferred rendering
+- DirectX 11 backend
+- Lights (Directional, point and spot lights)
+- Font Rendering
+- Frustum culling
+- Per-Pixel motion blur
+- Physically based rendering
+- Post-process effects (Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic aberration etc.)
+- SSAO (Screen space ambient occlusion)
+- SSR (Screen space reflections)
+- TAA (Temporal anti-aliasing based on Uncharted 4)
+- Constraints
+- Rigid bodies
+- Colliders
+- Entity-component system
+- Event system
+- Easy to build (Single click project generation which includes editor and runtime)
+- Thread pool
+- Engine rendered platform agnostic editor
+- Profiling (CPU & GPU)
+- C/C++ (Using AngelScript)
+- Windows 10 and a modern/dedicated GPU (This engine targets high-end machines, old setups or mobile devices are not officially supported)
 
 # Roadmap
 
