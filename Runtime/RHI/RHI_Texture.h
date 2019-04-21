@@ -96,23 +96,22 @@ namespace Spartan
 
 		bool LoadFromForeignFormat(const std::string& file_path);
 		
-		//= DATA =====================================
-		unsigned int m_bpp = 0;
-		unsigned int m_bpc = 8;
-		unsigned int m_width = 0;
-		unsigned int m_height = 0;
+		unsigned int m_bpp		= 0;
+		unsigned int m_bpc		= 8;
+		unsigned int m_width	= 0;
+		unsigned int m_height	= 0;
 		unsigned int m_channels = 0;
-		bool m_is_grayscale = false;
-		bool m_is_transparent = false;
+		bool m_is_grayscale		= false;
+		bool m_is_transparent	= false;
+		bool m_mipmap_support	= true;
 		RHI_Format m_format;
-		std::vector<std::vector<std::byte>> m_mipmaps;
-		bool m_mipmap_support = true;
-		//============================================
-
-		// API
+		std::vector<std::vector<std::byte>> m_mipmaps;	
 		std::shared_ptr<RHI_Device> m_rhi_device;
+
+		// API	
 		void* m_texture_view	= nullptr;
 		void* m_texture			= nullptr;
 		void* m_texture_memory	= nullptr;
+		static std::mutex m_mutex;
 	};
 }

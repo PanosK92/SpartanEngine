@@ -202,9 +202,6 @@ namespace Spartan
 
 	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader, RHI_Vertex_Attribute_Type vertex_attributes /*= Vertex_Attribute_None*/)
 	{
-		// temp
-		LOG_TO_FILE(true);
-
 		// Deduce some things
 		bool is_file		= FileSystem::IsSupportedShaderFile(shader);
 		wstring file_name	= is_file ? FileSystem::StringToWstring(FileSystem::GetFileNameFromFilePath(shader)) : wstring(L"shader");

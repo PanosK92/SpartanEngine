@@ -40,17 +40,16 @@ namespace Spartan
 			const std::shared_ptr<RHI_Device>& rhi_device,
 			unsigned int width,
 			unsigned int height,
-			RHI_Format format			= Format_R8G8B8A8_UNORM,
-			RHI_Swap_Effect swap_effect	= Swap_Discard,
-			unsigned long flags			= 0,
-			unsigned int buffer_count	= 1,
-			void* render_pass			= nullptr
+			RHI_Format format				= Format_R8G8B8A8_UNORM,
+			RHI_Present_Mode present_mode	= Present_Immediate,
+			unsigned int buffer_count		= 1,		
+			void* render_pass				= nullptr
 		);
 		~RHI_SwapChain();
 
 		bool Resize(unsigned int width, unsigned int height);
 		bool AcquireNextImage();
-		bool Present(RHI_Present_Mode mode, void* semaphore_render_finished);
+		bool Present(void* semaphore_render_finished);
 
 		auto GetWidth()								{ return m_width; }
 		auto GetHeight()							{ return m_height; }
@@ -60,18 +59,18 @@ namespace Spartan
 		auto GetBufferCount()						{ return m_buffer_count; }
 		auto& GetFrameBuffer(unsigned int index)	{ return m_frame_buffers[index]; }
 		auto& GetSemaphoreImageAcquired()			{ return m_semaphores_image_acquired[m_image_index]; }
-		auto& GetFenceImageAcquired()				{ return m_fences_image_acquired[m_image_index]; }
 		auto& GetImageIndex()						{ return m_image_index; }
 
 	private:
 		bool m_initialized				= false;
 		bool m_windowed					= false;
-		unsigned long m_flags			= 0;
 		unsigned int m_buffer_count		= 0;		
 		unsigned int m_max_resolution	= 16384;
 		unsigned int m_width			= 0;
 		unsigned int m_height			= 0;
+		unsigned int m_flags			= 0;
 		RHI_Format m_format;
+		RHI_Present_Mode m_present_mode;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// API
@@ -82,7 +81,6 @@ namespace Spartan
 		void* m_window_handle				= nullptr;
 		uint32_t m_image_index				= 0;
 		std::vector<void*> m_semaphores_image_acquired;
-		std::vector<void*> m_fences_image_acquired;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;
 		bool m_first_run = true;

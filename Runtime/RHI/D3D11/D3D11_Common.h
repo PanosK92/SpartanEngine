@@ -206,47 +206,55 @@ namespace Spartan::D3D11_Common
 		return fullscreen_borderless_support && vendor_support;
 	}
 
-	inline UINT FilterSwapChainFlags(RHI_Device* device, unsigned long flags)
+	namespace swap_chain
 	{
-		UINT d3d11_flags = 0;
-
-		// SwapChain_Allow_Mode_Switch
-		d3d11_flags |= flags & SwapChain_Allow_Mode_Switch ? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
-
-		// SwapChain_Allow_Tearing is requested
-		if (flags & SwapChain_Allow_Tearing)
+		inline unsigned int flag_filter(RHI_Device* device, unsigned long flags)
 		{
-			// Check if the adapter supports it (tends to fail with Intel adapters)
-			if (D3D11_Common::CheckTearingSupport(device))
+			// If SwapChain_Allow_Tearing was requested
+			if (flags & SwapChain_Allow_Tearing)
 			{
-				d3d11_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+				// Check if the adapter supports it, if not, disable it (tends to fail with Intel adapters)
+				if (D3D11_Common::CheckTearingSupport(device))
+				{
+					flags &= ~SwapChain_Allow_Tearing;
+				}
+				else
+				{
+					LOG_WARNING("SwapChain_Allow_Tearing was requested but it's not supported by the adapter.");
+				}
 			}
-			else
+
+			return flags;
+		}
+
+		inline UINT flag_to_d3d11(unsigned long flags)
+		{
+			UINT d3d11_flags = 0;
+
+			d3d11_flags |= flags & SwapChain_Allow_Mode_Switch	? DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH : 0;
+			d3d11_flags |= flags & SwapChain_Allow_Tearing		? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+
+			return d3d11_flags;
+		}
+
+		inline DXGI_SWAP_EFFECT swap_effect_filter(RHI_Device* device, RHI_Swap_Effect swap_effect)
+		{
+			#if !defined(_WIN32_WINNT_WIN10)
+			if (swap_effect == Swap_Flip_Discard)
 			{
-				LOG_WARNING("SwapChain_Allow_Tearing was requested but it's not supported by the adapter.");
+				LOG_WARNING("Swap_Flip_Discard was requested but it's only support in Windows 10, using Swap_Discard instead.");
+				swap_effect = Swap_Discard;
 			}
+			#endif
+
+			if (swap_effect == Swap_Flip_Discard && device->GetPrimaryAdapter()->IsIntel())
+			{
+				LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
+				swap_effect = Swap_Discard;
+			}
+
+			return d3d11_swap_effect[swap_effect];
 		}
-
-		return d3d11_flags;
-	}
-
-	inline DXGI_SWAP_EFFECT FilterSwapEffect(RHI_Device* device, RHI_Swap_Effect swap_effect)
-	{
-		#if !defined(_WIN32_WINNT_WIN10)
-		if (swap_effect == Swap_Flip_Discard)
-		{
-			LOG_WARNING("Swap_Flip_Discard was requested but it's only support in Windows 10, using Swap_Discard instead.");
-			swap_effect = Swap_Discard;
-		}
-		#endif
-
-		if (swap_effect == Swap_Flip_Discard && device->GetPrimaryAdapter()->IsIntel())
-		{
-			LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
-			swap_effect = Swap_Discard;
-		}
-
-		return d3d11_swap_effect[swap_effect];
 	}
 }
 

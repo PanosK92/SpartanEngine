@@ -143,7 +143,6 @@ namespace Spartan::Vulkan_Common
 			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? Spartan::Log_Warning : type;
 			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? Spartan::Log_Error : type;
 
-			Spartan::Log::m_log_to_file = true;
 			Spartan::Log::m_caller_name = "Vulkan";
 			Spartan::Log::Write(p_callback_data->pMessage, type);
 			Spartan::Log::m_caller_name = "";
@@ -196,23 +195,32 @@ namespace Spartan::Vulkan_Common
 			return details;
 		}
 
-		inline VkPresentModeKHR choose_present_mode(const std::vector<VkPresentModeKHR>& present_modes)
+		inline VkPresentModeKHR choose_present_mode(VkPresentModeKHR prefered_mode, const std::vector<VkPresentModeKHR>& supported_present_modes)
 		{
-			VkPresentModeKHR best_mode = VK_PRESENT_MODE_FIFO_KHR;
-
-			for (const auto& present_mode : present_modes)
+			// Check if the preferred mode is supported
+			for (const auto& supported_present_mode : supported_present_modes)
 			{
-				if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
+				if (prefered_mode == supported_present_mode)
 				{
-					return present_mode;
-				}
-				else if (present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
-				{
-					best_mode = present_mode;
+					return prefered_mode;
 				}
 			}
 
-			return best_mode;
+			// Select a mode from the supported present modes
+			VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+			for (const auto& supported_present_mode : supported_present_modes)
+			{
+				if (supported_present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
+				{
+					return supported_present_mode;
+				}
+				else if (supported_present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+				{
+					present_mode = supported_present_mode;
+				}
+			}
+
+			return present_mode;
 		}
 
 		inline VkSurfaceFormatKHR choose_format(const VkFormat prefered_format, const std::vector<VkSurfaceFormatKHR>& availableFormats)

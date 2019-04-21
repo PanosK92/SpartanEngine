@@ -244,8 +244,7 @@ namespace Spartan
 			dynamic_viewport_scissor = true;
 		}
 
-		// Create descriptor set and render pass
-		CreateDescriptorSet(m_sampler->GetBufferView(), m_texture->GetBufferView(), m_rhi_device->GetContext()->device, m_constant_buffer, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);
+		// Rrender pass
 		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
 
 		// Dynamic viewport and scissor states
@@ -374,7 +373,8 @@ namespace Spartan
 		color_blend_State.blendConstants[2]						= 0.0f;
 		color_blend_State.blendConstants[3]						= 0.0f;
 
-		// Pipeline layout
+		// Layout
+		CreateDescriptorSet(m_sampler->GetBufferView(), m_texture->GetBufferView(), m_rhi_device->GetContext()->device, m_constant_buffer, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
 		pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipeline_layout_info.pushConstantRangeCount		= 0;

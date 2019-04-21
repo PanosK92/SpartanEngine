@@ -37,6 +37,8 @@ using namespace Spartan::Math::Helper;
 
 namespace Spartan
 {
+	mutex RHI_Texture::m_mutex;
+
 	RHI_Texture::~RHI_Texture()
 	{
 		ClearTextureBytes();
@@ -99,10 +101,17 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool TransitionImageLayout(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkQueue& queue, VkImage& image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) 
+	inline bool TransitionImageLayout(
+		const std::shared_ptr<RHI_Device>& rhi_device,
+		VkCommandPool& command_pool,
+		VkCommandBuffer& cmd_buffer,
+		VkQueue& queue,
+		VkImage& image,
+		VkFormat format,
+		VkImageLayout oldLayout,
+		VkImageLayout newLayout
+	) 
 	{
-		VkCommandBuffer command_buffer = BeginSingleTimeCommands(rhi_device, command_pool);
-
 		VkImageMemoryBarrier barrier			= {};
 		barrier.sType							= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		barrier.oldLayout						= oldLayout;
@@ -141,7 +150,7 @@ namespace Spartan
 
 		vkCmdPipelineBarrier
 		(
-			command_buffer,
+			cmd_buffer,
 			source_stage, destination_stage,
 			0,
 			0, nullptr,
@@ -149,7 +158,6 @@ namespace Spartan
 			1, &barrier
 		);
 
-		EndSingleTimeCommands(rhi_device, command_pool, queue, command_buffer);
 		return true;
 	}
 
@@ -157,14 +165,14 @@ namespace Spartan
 	{
 		auto queue = rhi_device->GetContext()->queue_copy;
 
-		if (!TransitionImageLayout(rhi_device, cmd_pool, queue, image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
+		VkCommandBuffer cmd_buffer = BeginSingleTimeCommands(rhi_device, cmd_pool);
+		if (!cmd_buffer)
 			return false;
 
-		// Copy buffer to texture		
-		auto command_buffer = BeginSingleTimeCommands(rhi_device, cmd_pool);
-		if (!command_buffer)
+		if (!TransitionImageLayout(rhi_device, cmd_pool, cmd_buffer,queue, image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
 			return false;
-
+		
+		// Copy buffer to texture	
 		VkBufferImageCopy region				= {};
 		region.bufferOffset						= 0;
 		region.bufferRowLength					= 0;
@@ -176,12 +184,12 @@ namespace Spartan
 		region.imageOffset						= { 0, 0, 0 };
 		region.imageExtent						= { width, height, 1 };
 
-		vkCmdCopyBufferToImage(command_buffer, staging_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-		if (!EndSingleTimeCommands(rhi_device, cmd_pool, queue, command_buffer))
+		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	
+		if (!TransitionImageLayout(rhi_device, cmd_pool, cmd_buffer, queue, image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
 			return false;
 
-		if (!TransitionImageLayout(rhi_device, cmd_pool, queue, image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+		if (!EndSingleTimeCommands(rhi_device, cmd_pool, queue, cmd_buffer))
 			return false;
 
 		return true;
@@ -230,11 +238,13 @@ namespace Spartan
 		auto cmd_pool = static_cast<VkCommandPool>(cmd_pool_void);
 
 		// Copy buffer to texture
+		m_mutex.lock(); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
 		if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(width), static_cast<uint32_t>(height), vulkan_format[format], image, staging_buffer, cmd_pool))
 		{
 			LOG_ERROR("Failed to copy buffer to image");
 			return false;
 		}
+		m_mutex.unlock();
 
 		// Create image view
 		VkImageView image_view = nullptr;

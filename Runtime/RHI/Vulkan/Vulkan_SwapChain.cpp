@@ -44,14 +44,14 @@ namespace Spartan
 		uint32_t height,
 		uint32_t buffer_count,
 		RHI_Format format,
+		RHI_Present_Mode present_mode,
 		void* window_handle,
 		void* render_pass,
 		void*& surface_out,
 		void*& swap_chain_view_out,
 		vector<void*>& image_views_out,
 		vector<void*>& frame_buffers_out,
-		vector<void*>& semaphores_image_acquired_out,
-		vector<void*>& fences_image_acquired_out
+		vector<void*>& semaphores_image_acquired_out
 	)
 	{
 		auto rhi_context		= rhi_device->GetContext();
@@ -127,7 +127,7 @@ namespace Spartan
 
 			create_info.preTransform	= swap_chain_support.capabilities.currentTransform;
 			create_info.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-			create_info.presentMode		= Vulkan_Common::swap_chain::choose_present_mode(swap_chain_support.present_modes);
+			create_info.presentMode		= Vulkan_Common::swap_chain::choose_present_mode(static_cast<VkPresentModeKHR>(present_mode), swap_chain_support.present_modes);
 			create_info.clipped			= VK_TRUE;
 			create_info.oldSwapchain	= VK_NULL_HANDLE;
 
@@ -194,7 +194,6 @@ namespace Spartan
 		for (unsigned int i = 0; i < buffer_count; i++)
 		{
 			semaphores_image_acquired_out.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
-			fences_image_acquired_out.emplace_back(Vulkan_Common::fence::create(rhi_device));
 		}
 
 		return true;
@@ -206,8 +205,7 @@ namespace Spartan
 		void*& swap_chain_view,
 		vector<void*>& image_views,
 		vector<void*>& frame_buffers,
-		vector<void*>& semaphores_image_acquired,
-		vector<void*>& fences_image_acquired
+		vector<void*>& semaphores_image_acquired
 	)
 	{
 		for (auto& semaphore : semaphores_image_acquired)
@@ -215,12 +213,6 @@ namespace Spartan
 			Vulkan_Common::semaphore::destroy(rhi_device, semaphore);
 		}
 		semaphores_image_acquired.clear();
-
-		for (auto& fence : fences_image_acquired)
-		{
-			Vulkan_Common::fence::destroy(rhi_device, fence);
-		}
-		fences_image_acquired.clear();
 
 		for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_device->GetContext()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
 		frame_buffers.clear();
@@ -247,8 +239,7 @@ namespace Spartan
 		unsigned int width,
 		unsigned int height,
 		const RHI_Format format			/*= Format_R8G8B8A8_UNORM */,
-		RHI_Swap_Effect swap_effect		/*= Swap_Discard */,
-		const unsigned long flags		/*= 0 */,
+		RHI_Present_Mode present_mode	/*= Present_Off */,
 		const unsigned int buffer_count	/*= 1 */,
 		void* render_pass				/*= nullptr */
 	)
@@ -263,12 +254,12 @@ namespace Spartan
 		// Copy parameters
 		m_format		= format;
 		m_rhi_device	= rhi_device;
-		m_flags			= flags;
 		m_buffer_count	= buffer_count;
 		m_width			= width;
 		m_height		= height;
 		m_render_pass	= render_pass;
 		m_window_handle	= window_handle;
+		m_present_mode	= present_mode;
 
 		m_initialized = _Create
 		(
@@ -277,14 +268,14 @@ namespace Spartan
 			m_height,
 			m_buffer_count,
 			m_format,
+			m_present_mode,
 			m_window_handle,
 			m_render_pass,
 			m_surface,
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired,
-			m_fences_image_acquired
+			m_semaphores_image_acquired
 		);
 	}
 
@@ -297,8 +288,7 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired,
-			m_fences_image_acquired
+			m_semaphores_image_acquired
 		);
 	}
 
@@ -320,8 +310,7 @@ namespace Spartan
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired,
-			m_fences_image_acquired
+			m_semaphores_image_acquired
 		);
 
 		// Create the swap chain with the new dimensions
@@ -332,14 +321,14 @@ namespace Spartan
 			m_height,
 			m_buffer_count,
 			m_format,
+			m_present_mode,
 			m_window_handle,
 			m_render_pass,
 			m_surface,
 			m_swap_chain_view,
 			m_image_views,
 			m_frame_buffers,
-			m_semaphores_image_acquired,
-			m_fences_image_acquired
+			m_semaphores_image_acquired
 		);
 
 		return m_initialized;
@@ -358,7 +347,7 @@ namespace Spartan
 			static_cast<VkSwapchainKHR>(m_swap_chain_view),
 			0xFFFFFFFFFFFFFFFF,
 			static_cast<VkSemaphore>(m_semaphores_image_acquired[index]),
-			static_cast<VkFence>(m_fences_image_acquired[index]),
+			VK_NULL_HANDLE,
 			&m_image_index
 		);
 
@@ -372,7 +361,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(const RHI_Present_Mode mode, void* semaphore_render_finished)
+	bool RHI_SwapChain::Present(void* semaphore_render_finished)
 	{	
 		vector<VkSwapchainKHR> swap_chains	= { static_cast<VkSwapchainKHR>(m_swap_chain_view) };
 		vector<VkSemaphore> semaphores_wait	= { static_cast<VkSemaphore>(semaphore_render_finished) };

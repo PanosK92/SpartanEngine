@@ -50,10 +50,14 @@ namespace Spartan
 
 	enum RHI_Present_Mode
 	{
-		Present_Off,
-		Present_VerticalBlank,
-		Present_SecondVerticalBlank
+		Present_Immediate,
+		Present_Mailbox,
+		Present_Fifo,
+		Present_Relaxed,
+		Present_SharedDemandRefresh,
+		Present_SharedDContinuousRefresh
 	};
+
 	enum RHI_Swap_Effect
 	{
 		Swap_Discard,
