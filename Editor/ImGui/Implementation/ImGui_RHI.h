@@ -463,7 +463,7 @@ namespace ImGui::RHI
 			return;
 		}
 
-		swap_chain->Present(nullptr);
+		swap_chain->Present(g_cmd_list->GetSemaphoreRenderFinished());
 	}
 
 	inline void InitializePlatformInterface()
