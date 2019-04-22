@@ -64,7 +64,7 @@ namespace Spartan
 
 	inline void CreateDescriptorSet(void* sampler, void* texture, const VkDevice& device, shared_ptr<RHI_ConstantBuffer>& constant_buffer, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
 	{
-		uint32_t fix_this = 100;//static_cast<uint32_t>(swapChainImages.size());
+		uint32_t fix_this = 2;//static_cast<uint32_t>(swapChainImages.size());
 
 		// Descriptor pool
 		VkDescriptorPoolSize poolSize	= {};

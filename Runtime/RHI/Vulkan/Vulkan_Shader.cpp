@@ -30,9 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
+#include <sstream> 
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
-#include <sstream> 
+#include <spirv_cross/spirv_cross.hpp>
 //======================================
 
 //= NAMESPACES =====
@@ -41,7 +42,6 @@ using namespace std;
 
 namespace Spartan
 {
-
 	RHI_Shader::~RHI_Shader()
 	{
 		auto rhi_context = m_rhi_device->GetContext();
@@ -200,6 +200,19 @@ namespace Spartan
 		return false;
 	}
 
+	inline void Reflect(const uint32_t* ptr, size_t size)
+	{
+		using namespace SPIRV_CROSS_NAMESPACE;
+
+		auto compiler	= Compiler(ptr, size);
+		auto resources	= compiler.get_shader_resources();
+		for (const Resource &resource : resources.sampled_images)
+		{
+			unsigned set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+			unsigned binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
+		}
+	}
+
 	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader, RHI_Vertex_Attribute_Type vertex_attributes /*= Vertex_Attribute_None*/)
 	{
 		// Deduce some things
@@ -301,8 +314,8 @@ namespace Spartan
 				file_name.c_str(),											// file name, for warnings and errors
 				entry_point.c_str(),										// entry point function
 				target_profile.c_str(),										// target profile
-				arguments.data(), static_cast<UINT32>(arguments.size()),	// compilation arguments
-				defines.data(), static_cast<UINT32>(defines.size()),		// shader defines
+				arguments.data(), static_cast<uint32_t>(arguments.size()),	// compilation arguments
+				defines.data(), static_cast<uint32_t>(defines.size()),		// shader defines
 				include_handler,											// handler for #include directives
 				&compilation_result
 			);
@@ -331,6 +344,10 @@ namespace Spartan
 				}	
 				else
 				{
+					// Descriptor set
+					//Reflect(create_info.pCode, create_info.codeSize);
+
+					// Input layout
 					if (!m_input_layout->Create(nullptr, vertex_attributes))
 					{
 						LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());

@@ -6,7 +6,8 @@
 
 <p>The project is at an early development stage and there is a lot experimentation going on, regarding what works best. However a lot of effort is being put into building and maintaining a clean and modern architecture, an architecture that will ensure continuous development over the years. This means that while you shouldn't expect to make games with it yet, you might find it to be a helpful study resource.</p>
 
-<p>Architectual quality is prioritized over development speed.</p>
+<p>For more updates regarding the project's development, you can
+<a href="https://twitter.com/intent/follow?screen_name=panoskarabelas1"><img src="https://img.shields.io/twitter/follow/panoskarabelas1.svg"></a> me on twitter.</p>
 
 <img align="left" width="468" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/screenshot-v0.3_preview4.jpg"/>
 <img align="left" width="365" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
@@ -54,14 +55,14 @@ Platform | API | Status | Quality | Binaries | :+1:
 - Engine rendered platform agnostic editor
 - Profiling (CPU & GPU)
 - C/C++ (Using AngelScript)
-- Windows 10 and a modern/dedicated GPU (This engine targets high-end machines, old setups or mobile devices are not officially supported)
+- Windows 10 and a modern/dedicated GPU (The target is high-end machines, old setups or mobile devices are not officially supported)
 
 # Roadmap
 
 ##### v0.31 (WIP)
 Feature     | Completion    | Notes 
 :-          | :-            | :-
-Vulkan      | 40%           | Will become the default rendering backend.
+Vulkan      | 40%           | Also, re-architect renderer for proper Vulkan usage
 
 ###### v0.32
 - DirectX 12
