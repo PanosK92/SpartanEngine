@@ -97,7 +97,7 @@ project (RUNTIME_NAME)
 		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
-		links { "dxcompiler.lib", "spirv-cross-core_debug" }
+		links { "dxcompiler.lib" }
 		links { "angelscript_debug" }
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
@@ -111,7 +111,7 @@ project (RUNTIME_NAME)
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
 		debugdir (TARGET_DIR_RELEASE)
-		links { "dxcompiler.lib", "spirv-cross-core" }
+		links { "dxcompiler.lib" }
 		links { "angelscript" }
 		links { "assimp" }
 		links { "fmod64_vc" }
