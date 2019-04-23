@@ -120,10 +120,6 @@ namespace Spartan
 		// Line buffer
 		m_vertex_buffer_lines	= make_shared<RHI_VertexBuffer>(m_rhi_device);
 
-#ifdef API_GRAPHICS_VULKAN
-		return true;
-#endif
-
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
 		CreateBlendStates();
