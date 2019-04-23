@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem.h"
 #include <filesystem>
 #include <regex>
+#include <fstream>
+#include <sstream> 
 #include "../Logging/Log.h"
 #include <Windows.h>
 #include <shellapi.h>
@@ -717,6 +719,48 @@ namespace Spartan
 		MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
 		std::wstring result(buf);
 		delete[] buf;
+		return result;
+	}
+
+	string FileSystem::ResolveIncludeDirectives(const string& source, const string& directory)
+	{
+		string directive_exp = "#include \"";
+
+		// Early exit if there is no include directive
+		if (source.find(directive_exp) == string::npos)
+			return source;
+
+		auto load_include_directive = [&directive_exp, &directory](const std::string& include_directive)
+		{
+			string file_name = GetStringBetweenExpressions(include_directive, directive_exp, "\"");
+			ifstream t(directory + file_name);
+			return string((istreambuf_iterator<char>(t)), istreambuf_iterator<char>());
+		};
+
+		// Scan for include directives
+		vector<string> include_directives;
+		istringstream stream(source); string line;
+		while (std::getline(stream, line))
+		{
+			if (line.find(directive_exp) != string::npos)
+				include_directives.emplace_back(line);
+		}
+
+		// Replace include directives with loaded file sources
+		string result = source;
+		for (const auto& include_directive : include_directives)
+		{
+			auto source = load_include_directive(include_directive);
+			result = regex_replace(result, regex(include_directive), source, regex_constants::format_first_only);
+		}
+
+		// If there are still more include directives, resolve them too
+		if (source.find(directive_exp) != string::npos)
+		{
+			result = ResolveIncludeDirectives(result, directory);
+		}
+	
+		// At this point, everything should be resolved
 		return result;
 	}
 }

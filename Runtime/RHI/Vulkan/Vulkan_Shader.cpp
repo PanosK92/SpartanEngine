@@ -226,19 +226,17 @@ namespace Spartan
 		}
 
 		// Arguments
-		auto entry_point	= FileSystem::StringToWstring((type == Shader_Vertex) ? _RHI_Shader::entry_point_vertex : _RHI_Shader::entry_point_pixel);
-		auto target_profile	= FileSystem::StringToWstring((type == Shader_Vertex) ? "vs_" + _RHI_Shader::shader_model : "ps_" + _RHI_Shader::shader_model);
+		auto entry_point		= FileSystem::StringToWstring((type == Shader_Vertex) ? _RHI_Shader::entry_point_vertex : _RHI_Shader::entry_point_pixel);
+		auto target_profile		= FileSystem::StringToWstring((type == Shader_Vertex) ? "vs_" + _RHI_Shader::shader_model : "ps_" + _RHI_Shader::shader_model);
+		auto include_directory	= wstring(L"-I ") + file_directory;
 		vector<LPCWSTR> arguments;
-		{
-			if (is_file) 
-			{
-				arguments.emplace_back(L"-I");
-				arguments.emplace_back(file_directory.c_str());
-			}
-			if (type == Shader_Vertex) arguments.emplace_back(L"-fvk-invert-y"); // Can only be used in VS/DS/GS
-			arguments.emplace_back(L"-fvk-use-dx-layout");
-			arguments.emplace_back(L"-flegacy-macro-expansion");
+		{	
 			arguments.emplace_back(L"-spirv");
+			arguments.emplace_back(L"-fspv-reflect");			
+			arguments.emplace_back(L"-fvk-use-dx-layout");
+			if (is_file) arguments.emplace_back(include_directory.c_str());
+			if (type == Shader_Vertex) arguments.emplace_back(L"-fvk-invert-y"); // Can only be used in VS/DS/GS
+			arguments.emplace_back(L"-flegacy-macro-expansion");
 			#ifdef DEBUG
 			arguments.emplace_back(L"-Zi");
 			#endif
@@ -265,25 +263,25 @@ namespace Spartan
 		}
 
 		// Create compiler instance
-		IDxcCompiler* compiler = nullptr;
+		CComPtr<IDxcCompiler> compiler = nullptr;
 		DxcCreateInstance(CLSID_DxcCompiler, __uuidof(IDxcCompiler), reinterpret_cast<void**>(&compiler));
 
 		// Create library instance
-		IDxcLibrary* library = nullptr;
+		CComPtr<IDxcLibrary> library = nullptr;
 		DxcCreateInstance(CLSID_DxcLibrary, __uuidof(IDxcLibrary), reinterpret_cast<void**>(&library));	
 
 		// Get shader source as a buffer
-		IDxcBlobEncoding* shader_source = nullptr;
+		CComPtr<IDxcBlobEncoding> shader_blob = nullptr;
 		{
 			HRESULT result;
 			if (is_file)
 			{
-				auto file_path = FileSystem::StringToWstring(shader);
-				result = library->CreateBlobFromFile(file_path.c_str(), nullptr, &shader_source);
+				auto file_path = FileSystem::StringToWstring(shader);				
+				result = library->CreateBlobFromFile(file_path.c_str(), nullptr, &shader_blob);
 			}
 			else // Source
 			{
-				result = library->CreateBlobWithEncodingFromPinned(shader.c_str(), static_cast<UINT32>(shader.size()), CP_UTF8, &shader_source);
+				result = library->CreateBlobWithEncodingFromPinned(shader.c_str(), static_cast<UINT32>(shader.size()), CP_UTF8, &shader_blob);
 			}
 
 			if (FAILED(result))
@@ -294,73 +292,66 @@ namespace Spartan
 		}
 
 		// Create include handler
-		IDxcIncludeHandler* include_handler = nullptr;
+		CComPtr<IDxcIncludeHandler> include_handler = nullptr;
+		if (FAILED(library->CreateIncludeHandler(&include_handler)))
 		{
-			if (FAILED(library->CreateIncludeHandler(&include_handler)))
-			{
-				LOG_ERROR("Failed to create include handler.");
-				return nullptr;
-			}
+			LOG_ERROR("Failed to create include handler.");
+			return nullptr;
 		}
-
-		IDxcOperationResult* compilation_result = nullptr;
-		IDxcBlob* shader_compiled				= nullptr;
-		VkShaderModule shader_module			= nullptr;
 
 		// Compile
+		CComPtr<IDxcOperationResult> compilation_result = nullptr;
 		{
-			compiler->Compile(
-				shader_source,												// program text
-				file_name.c_str(),											// file name, for warnings and errors
-				entry_point.c_str(),										// entry point function
-				target_profile.c_str(),										// target profile
-				arguments.data(), static_cast<uint32_t>(arguments.size()),	// compilation arguments
-				defines.data(), static_cast<uint32_t>(defines.size()),		// shader defines
-				include_handler,											// handler for #include directives
-				&compilation_result
-			);
-
-			if (!compilation_result)
+			if (FAILED(compiler->Compile(
+					shader_blob,												// shader blob
+					file_name.c_str(),											// file name (for warnings and errors)
+					entry_point.c_str(),										// entry point function
+					target_profile.c_str(),										// target profile
+					arguments.data(), static_cast<uint32_t>(arguments.size()),	// compilation arguments
+					defines.data(), static_cast<uint32_t>(defines.size()),		// shader defines
+					include_handler,											// handler for #include directives
+					&compilation_result))
+				)
 			{
-				LOG_ERROR("Failed to invoke compiler. The provided source was most likely invalid.");
+				LOGF_ERROR("Failed to compile %s", file_name.c_str());
+				return nullptr;
+			}
+
+			if (!ValidateOperationResult(compilation_result))
+			{
+				LOGF_ERROR("Failed to compile %s", file_name.c_str());
 				return nullptr;
 			}
 		}
-
+		
 		// Create shader module
-		if (ValidateOperationResult(compilation_result))
+		CComPtr<IDxcBlob> shader_compiled	= nullptr;
+		VkShaderModule shader_module		= nullptr;
+		compilation_result->GetResult(&shader_compiled);			
+		if (shader_compiled)
 		{
-			compilation_result->GetResult(&shader_compiled);			
-			if (shader_compiled)
-			{
-				VkShaderModuleCreateInfo create_info = {};
-				create_info.sType		= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-				create_info.codeSize	= static_cast<size_t>(shader_compiled->GetBufferSize());
-				create_info.pCode		= reinterpret_cast<const uint32_t*>(shader_compiled->GetBufferPointer());
+			VkShaderModuleCreateInfo create_info = {};
+			create_info.sType		= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			create_info.codeSize	= static_cast<size_t>(shader_compiled->GetBufferSize());
+			create_info.pCode		= reinterpret_cast<const uint32_t*>(shader_compiled->GetBufferPointer());
 	
-				if (vkCreateShaderModule(m_rhi_device->GetContext()->device, &create_info, nullptr, &shader_module) != VK_SUCCESS)
-				{
-					LOG_ERROR("Failed to create shader module.");
-				}	
-				else
-				{
-					// Descriptor set
-					//Reflect(create_info.pCode, create_info.codeSize);
+			if (vkCreateShaderModule(m_rhi_device->GetContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS)
+			{
+				// Descriptor set
+				//Reflect(create_info.pCode, create_info.codeSize);
 
-					// Input layout
-					if (!m_input_layout->Create(nullptr, vertex_attributes))
-					{
-						LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
-					}
-				}
+				// Input layout
+				if (!m_input_layout->Create(nullptr, vertex_attributes))
+				{
+					LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
+				}				
 			}	
-		}
+			else
+			{
+				LOG_ERROR("Failed to create shader module.");
+			}
+		}	
 
-		safe_release(compilation_result);
-		safe_release(shader_source);
-		safe_release(shader_compiled);
-		safe_release(compiler);
-		safe_release(library);
 		return static_cast<void*>(shader_module);
 	}
 }
