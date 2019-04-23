@@ -31,9 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
 #include <sstream> 
+#include <fstream>
+#include <dxc/Support/Unicode.h>
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
 #include <spirv_cross/spirv_cross.hpp>
+#include <atomic>
 //======================================
 
 //= NAMESPACES =====
@@ -171,35 +174,6 @@ namespace Spartan
 							Verify shader bytecode with root signature
 	*/
 
-	inline bool ValidateOperationResult(IDxcOperationResult* operation_result)
-	{
-		if (!operation_result)
-			return true;
-
-		// Get status
-		HRESULT operation_status;
-		operation_result->GetStatus(&operation_status);
-		if (SUCCEEDED(operation_status))
-			return true;
-
-		// If the status is not successful, log error buffer
-		IDxcBlobEncoding* error_buffer = nullptr;
-		operation_result->GetErrorBuffer(&error_buffer);
-		if (!error_buffer)
-			return true;
-
-		stringstream ss(string(static_cast<char*>(error_buffer->GetBufferPointer()), error_buffer->GetBufferSize()));
-		string line;
-		while (getline(ss, line, '\n'))
-		{
-			const auto is_error = line.find("error") != string::npos;
-			if (is_error) LOG_ERROR(line) else LOG_WARNING(line);
-		}
-
-		safe_release(error_buffer);
-		return false;
-	}
-
 	inline void Reflect(const uint32_t* ptr, size_t size)
 	{
 		using namespace SPIRV_CROSS_NAMESPACE;
@@ -213,28 +187,188 @@ namespace Spartan
 		}
 	}
 
+	namespace DxShaderCompiler
+	{
+		inline bool ValidateOperationResult(IDxcOperationResult* operation_result)
+		{
+			if (!operation_result)
+				return true;
+
+			// Get status
+			HRESULT operation_status;
+			operation_result->GetStatus(&operation_status);
+			if (SUCCEEDED(operation_status))
+				return true;
+
+			// If the status is not successful, log error buffer
+			IDxcBlobEncoding* error_buffer = nullptr;
+			operation_result->GetErrorBuffer(&error_buffer);
+			if (!error_buffer)
+				return true;
+
+			stringstream ss(string(static_cast<char*>(error_buffer->GetBufferPointer()), error_buffer->GetBufferSize()));
+			string line;
+			while (getline(ss, line, '\n'))
+			{
+				const auto is_error = line.find("error") != string::npos;
+				if (is_error) LOG_ERROR(line) else LOG_WARNING(line);
+			}
+
+			safe_release(error_buffer);
+			return false;
+		}
+
+		class Instance
+		{
+		public:
+			Instance()
+			{
+				DxcCreateInstance(CLSID_DxcCompiler, __uuidof(IDxcCompiler), reinterpret_cast<void**>(&compiler));
+				DxcCreateInstance(CLSID_DxcLibrary, __uuidof(IDxcLibrary), reinterpret_cast<void**>(&library));
+			}
+
+			static Instance& Get()
+			{
+				static Instance instance;
+				return instance;
+			}
+
+			CComPtr<IDxcCompiler> compiler = nullptr;
+			CComPtr<IDxcLibrary> library = nullptr;
+		};
+
+		typedef std::vector<uint8_t> Blob;
+		Blob* IncludeDirectiveLoadCallback(const std::string& include_path)
+		{
+			vector<char> ret;
+			ifstream include_file(include_path, ios_base::in);
+			if (include_file)
+			{
+				include_file.seekg(0, ios::end);
+				ret.resize(include_file.tellg());
+				include_file.seekg(0, ios::beg);
+				include_file.read(ret.data(), ret.size());
+				ret.resize(include_file.gcount());
+			}
+			else
+			{
+				throw std::runtime_error(std::string("Failed to load include  ") + include_path + ".");
+			}
+
+			return new Blob(reinterpret_cast<const uint8_t*>(ret.data()), reinterpret_cast<const uint8_t*>(ret.data()) + ret.size());
+		}
+
+		class SpartanIncludeHandler : public IDxcIncludeHandler
+		{
+		public:
+			explicit SpartanIncludeHandler(const string& shader_root_directory)
+			{
+				m_shader_root_directory = shader_root_directory;
+			}
+
+			HRESULT STDMETHODCALLTYPE LoadSource(LPCWSTR file_name, IDxcBlob** include_source) override
+			{
+				if ((file_name[0] == L'.') && (file_name[1] == L'/'))
+				{
+					file_name += 2;
+				}
+				
+				// This is a dodgy workaround as nor character conversion takes place, please fix future self
+				wstring temp(file_name);
+				string file_name_utf8 = string(temp.begin(), temp.end());
+
+				/*if (!Unicode::UTF16ToUTF8String(file_name, &file_name_utf8)) 
+				{
+					return E_FAIL;
+				}*/
+
+				auto blob_deleter = [](Blob* blob) { delete blob; };
+				unique_ptr<Blob, decltype(blob_deleter)> source(nullptr, blob_deleter);
+				try
+				{
+					source.reset(IncludeDirectiveLoadCallback(m_shader_root_directory + file_name_utf8));
+				}
+				catch (std::exception const& e)
+				{
+					LOGF_ERROR(e.what());
+					return E_FAIL;
+				}
+
+				*include_source = nullptr;
+				return Instance::Get().library->CreateBlobWithEncodingOnHeapCopy
+				(
+					static_cast<void*>(source->data()),
+					static_cast<uint32_t>(source->size()),
+					CP_UTF8,
+					reinterpret_cast<IDxcBlobEncoding**>(include_source)
+				);
+			}
+
+			ULONG STDMETHODCALLTYPE AddRef() override
+			{
+				++m_ref;
+				return m_ref;
+			}
+
+			ULONG STDMETHODCALLTYPE Release() override
+			{
+				--m_ref;
+				ULONG result = m_ref;
+				if (result == 0)
+				{
+					delete this;
+				}
+				return result;
+			}
+
+			HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override
+			{
+				if (IsEqualIID(iid, __uuidof(IDxcIncludeHandler)))
+				{
+					*object = dynamic_cast<IDxcIncludeHandler*>(this);
+					this->AddRef();
+					return S_OK;
+				}
+				else if (IsEqualIID(iid, __uuidof(IUnknown)))
+				{
+					*object = dynamic_cast<IUnknown*>(this);
+					this->AddRef();
+					return S_OK;
+				}
+				else
+				{
+					return E_NOINTERFACE;
+				}
+			}
+
+			
+		private:
+			string m_shader_root_directory;
+			atomic<ULONG> m_ref = 0;
+		};
+	}
+	
 	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader, RHI_Vertex_Attribute_Type vertex_attributes /*= Vertex_Attribute_None*/)
 	{
 		// Deduce some things
 		bool is_file		= FileSystem::IsSupportedShaderFile(shader);
 		wstring file_name	= is_file ? FileSystem::StringToWstring(FileSystem::GetFileNameFromFilePath(shader)) : wstring(L"shader");
-		wstring file_directory;
+		string file_directory;
 		if (is_file)
 		{
-			file_directory = FileSystem::StringToWstring(FileSystem::GetDirectoryFromFilePath(shader));
-			file_directory = file_directory.substr(0, file_directory.size()-2); // remove trailing slashes
+			file_directory = FileSystem::GetDirectoryFromFilePath(shader);
 		}
 
 		// Arguments
 		auto entry_point		= FileSystem::StringToWstring((type == Shader_Vertex) ? _RHI_Shader::entry_point_vertex : _RHI_Shader::entry_point_pixel);
 		auto target_profile		= FileSystem::StringToWstring((type == Shader_Vertex) ? "vs_" + _RHI_Shader::shader_model : "ps_" + _RHI_Shader::shader_model);
-		auto include_directory	= wstring(L"-I ") + file_directory;
+		// auto include_directory	= wstring(L"-I ") + file_directory; // Doesn't work
 		vector<LPCWSTR> arguments;
 		{	
 			arguments.emplace_back(L"-spirv");
 			arguments.emplace_back(L"-fspv-reflect");			
 			arguments.emplace_back(L"-fvk-use-dx-layout");
-			if (is_file) arguments.emplace_back(include_directory.c_str());
+			//if (is_file) arguments.emplace_back(include_directory.c_str()); // Doesn't work
 			if (type == Shader_Vertex) arguments.emplace_back(L"-fvk-invert-y"); // Can only be used in VS/DS/GS
 			arguments.emplace_back(L"-flegacy-macro-expansion");
 			#ifdef DEBUG
@@ -262,14 +396,6 @@ namespace Spartan
 			defines.emplace_back(DxcDefine{ define.first.c_str(), define.second.c_str() });
 		}
 
-		// Create compiler instance
-		CComPtr<IDxcCompiler> compiler = nullptr;
-		DxcCreateInstance(CLSID_DxcCompiler, __uuidof(IDxcCompiler), reinterpret_cast<void**>(&compiler));
-
-		// Create library instance
-		CComPtr<IDxcLibrary> library = nullptr;
-		DxcCreateInstance(CLSID_DxcLibrary, __uuidof(IDxcLibrary), reinterpret_cast<void**>(&library));	
-
 		// Get shader source as a buffer
 		CComPtr<IDxcBlobEncoding> shader_blob = nullptr;
 		{
@@ -277,11 +403,11 @@ namespace Spartan
 			if (is_file)
 			{
 				auto file_path = FileSystem::StringToWstring(shader);				
-				result = library->CreateBlobFromFile(file_path.c_str(), nullptr, &shader_blob);
+				result = DxShaderCompiler::Instance::Get().library->CreateBlobFromFile(file_path.c_str(), nullptr, &shader_blob);
 			}
 			else // Source
 			{
-				result = library->CreateBlobWithEncodingFromPinned(shader.c_str(), static_cast<UINT32>(shader.size()), CP_UTF8, &shader_blob);
+				result = DxShaderCompiler::Instance::Get().library->CreateBlobWithEncodingFromPinned(shader.c_str(), static_cast<uint32_t>(shader.size()), CP_UTF8, &shader_blob);
 			}
 
 			if (FAILED(result))
@@ -291,18 +417,11 @@ namespace Spartan
 			}
 		}
 
-		// Create include handler
-		CComPtr<IDxcIncludeHandler> include_handler = nullptr;
-		if (FAILED(library->CreateIncludeHandler(&include_handler)))
-		{
-			LOG_ERROR("Failed to create include handler.");
-			return nullptr;
-		}
-
 		// Compile
+		CComPtr<IDxcIncludeHandler> include_handler = new DxShaderCompiler::SpartanIncludeHandler(file_directory);
 		CComPtr<IDxcOperationResult> compilation_result = nullptr;
 		{
-			if (FAILED(compiler->Compile(
+			if (FAILED(DxShaderCompiler::Instance::Get().compiler->Compile(
 					shader_blob,												// shader blob
 					file_name.c_str(),											// file name (for warnings and errors)
 					entry_point.c_str(),										// entry point function
@@ -317,9 +436,9 @@ namespace Spartan
 				return nullptr;
 			}
 
-			if (!ValidateOperationResult(compilation_result))
+			if (!DxShaderCompiler::ValidateOperationResult(compilation_result))
 			{
-				LOGF_ERROR("Failed to compile %s", file_name.c_str());
+				LOGF_ERROR("Failed to compile %s", shader.c_str());
 				return nullptr;
 			}
 		}
