@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <dxc/Support/Unicode.h>
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
-#include <spirv_cross/spirv_cross.hpp>
 #include <atomic>
 //======================================
 
@@ -174,16 +173,22 @@ namespace Spartan
 							Verify shader bytecode with root signature
 	*/
 
-	inline void Reflect(const uint32_t* ptr, size_t size)
+	inline void Reflect(const uint32_t* ptr, uint32_t size)
 	{
-		using namespace SPIRV_CROSS_NAMESPACE;
+		using namespace spirv_cross;
 
-		auto compiler	= Compiler(ptr, size);
+		// Initialize compiler with SPIR-V data
+		auto compiler = CompilerHLSL(ptr, reinterpret_cast<size_t>(ptr + size));
+
+		// The SPIR-V is now parsed, and we can perform reflection on it
 		auto resources	= compiler.get_shader_resources();
-		for (const Resource &resource : resources.sampled_images)
+
+		// Uniform buffer example/test
+		for (const Resource& resource : resources.uniform_buffers)
 		{
-			unsigned set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
-			unsigned binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
+			auto set		= compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+			auto binding	= compiler.get_decoration(resource.id, spv::DecorationBinding);
+			LOGF_INFO("Found UBO %s at set = %u, binding = %u!\n", resource.name.c_str(), set, binding);
 		}
 	}
 
@@ -456,8 +461,11 @@ namespace Spartan
 	
 			if (vkCreateShaderModule(m_rhi_device->GetContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS)
 			{
-				// Descriptor set
-				//Reflect(create_info.pCode, create_info.codeSize);
+				// Reflect some things that will later allows us to build descriptor sets
+				Reflect(
+					reinterpret_cast<uint32_t*>(shader_compiled->GetBufferPointer()),
+					static_cast<uint32_t>(shader_compiled->GetBufferSize())
+				);
 
 				// Input layout
 				if (!m_input_layout->Create(nullptr, vertex_attributes))
