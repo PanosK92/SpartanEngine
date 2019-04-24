@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <dxc/Support/Unicode.h>
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
+#include <spirv_hlsl.hpp>
 #include <atomic>
 //======================================
 
@@ -178,7 +179,7 @@ namespace Spartan
 		using namespace spirv_cross;
 
 		// Initialize compiler with SPIR-V data
-		auto compiler = CompilerHLSL(ptr, reinterpret_cast<size_t>(ptr + size));
+		auto compiler = CompilerHLSL(ptr, size);
 
 		// The SPIR-V is now parsed, and we can perform reflection on it
 		auto resources	= compiler.get_shader_resources();
@@ -462,10 +463,10 @@ namespace Spartan
 			if (vkCreateShaderModule(m_rhi_device->GetContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS)
 			{
 				// Reflect some things that will later allows us to build descriptor sets
-				Reflect(
+				/*Reflect(
 					reinterpret_cast<uint32_t*>(shader_compiled->GetBufferPointer()),
 					static_cast<uint32_t>(shader_compiled->GetBufferSize())
-				);
+				);*/
 
 				// Input layout
 				if (!m_input_layout->Create(nullptr, vertex_attributes))
