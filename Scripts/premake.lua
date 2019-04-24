@@ -79,7 +79,7 @@ project (RUNTIME_NAME)
 
 	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
-	includedirs { "../ThirdParty/SPIRV-Cross_2019-03-29" }
+	includedirs { "../ThirdParty/SPIRV-Cross-2019-03-29" }
 	includedirs { "../ThirdParty/Vulkan_1.1.106.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
@@ -97,7 +97,7 @@ project (RUNTIME_NAME)
 		targetdir (TARGET_DIR_DEBUG)
 		debugdir (TARGET_DIR_DEBUG)
 		debugformat (DEBUG_FORMAT)
-		links { "dxcompiler.lib" }
+		links { "dxcompiler", "spirv-cross-core_debug", "spirv-cross-hlsl_debug", "spirv-cross-glsl_debug" }
 		links { "angelscript_debug" }
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
@@ -111,7 +111,7 @@ project (RUNTIME_NAME)
 	filter "configurations:Release"
 		targetdir (TARGET_DIR_RELEASE)
 		debugdir (TARGET_DIR_RELEASE)
-		links { "dxcompiler.lib" }
+		links { "dxcompiler", "spirv-cross-core", "spirv-cross-hlsl", "spirv-cross-glsl" }
 		links { "angelscript" }
 		links { "assimp" }
 		links { "fmod64_vc" }
