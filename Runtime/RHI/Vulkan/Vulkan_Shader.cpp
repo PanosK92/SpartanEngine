@@ -32,11 +32,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../FileSystem/FileSystem.h"
 #include <sstream> 
 #include <fstream>
-#include <dxc/Support/Unicode.h>
+#include <atomic>
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
 #include <spirv_hlsl.hpp>
-#include <atomic>
 //======================================
 
 //= NAMESPACES =====
@@ -176,6 +175,7 @@ namespace Spartan
 
 	inline void Reflect(const uint32_t* ptr, uint32_t size)
 	{
+		
 		using namespace spirv_cross;
 
 		// Initialize compiler with SPIR-V data
@@ -184,12 +184,20 @@ namespace Spartan
 		// The SPIR-V is now parsed, and we can perform reflection on it
 		auto resources	= compiler.get_shader_resources();
 
-		// Uniform buffer example/test
-		for (const Resource& resource : resources.uniform_buffers)
+		// EXAMPLE - uniform buffers
+		for (const Resource& buffer : resources.uniform_buffers)
 		{
-			auto set		= compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
-			auto binding	= compiler.get_decoration(resource.id, spv::DecorationBinding);
-			LOGF_INFO("Found UBO %s at set = %u, binding = %u!\n", resource.name.c_str(), set, binding);
+			auto set		= compiler.get_decoration(buffer.id, spv::DecorationDescriptorSet);
+			auto binding	= compiler.get_decoration(buffer.id, spv::DecorationBinding);
+			LOGF_INFO("Found constant buffer %s at set = %u, binding = %u!\n", buffer.name.c_str(), set, binding);
+		}
+
+		// EXAMPLE - images
+		for (const Resource& image : resources.separate_images)
+		{
+			auto set		= compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
+			auto binding	= compiler.get_decoration(image.id, spv::DecorationBinding);
+			LOGF_INFO("Found texture %s at set = %u, binding = %u!\n", image.name.c_str(), set, binding);
 		}
 	}
 
@@ -222,6 +230,50 @@ namespace Spartan
 
 			safe_release(error_buffer);
 			return false;
+		}
+
+		inline string utf16_utf8(wstring source)
+		{
+			string destination;
+			wchar_t symbol;
+			unsigned char code0;
+			unsigned char code1;
+			unsigned char code2;
+
+			for (wstring::iterator it = source.begin(); it != source.end(); it++)
+			{
+				symbol = static_cast<wchar_t>(*it);
+
+				code0 = 0;
+				code1 = 0;
+				code2 = 0;
+
+				if (symbol < 0x00000080) 
+				{
+					code0 = static_cast<char>(*it);
+					destination.push_back(code0);
+				}
+				else if (symbol < 0x00000800) 
+				{
+					code0 = symbol % 0x40;
+					code1 = (symbol - code0) / 0x40;
+
+					destination.push_back(0xc0 | code1);
+					destination.push_back(0x80 | code0);
+				}
+				else 
+				{
+					code0 = symbol % 0x40;
+					code1 = ((symbol - code0) / 0x40) % 0x40;
+					code2 = (symbol - code0 - (0x40 * code1)) / 0x1000;
+
+					destination.push_back(0xe0 | code2);
+					destination.push_back(0x80 | code1);
+					destination.push_back(0x80 | code0);
+				}
+			}
+
+			return destination;
 		}
 
 		class Instance
@@ -279,14 +331,7 @@ namespace Spartan
 					file_name += 2;
 				}
 				
-				// This is a dodgy workaround as nor character conversion takes place, please fix future self
-				wstring temp(file_name);
-				string file_name_utf8 = string(temp.begin(), temp.end());
-
-				/*if (!Unicode::UTF16ToUTF8String(file_name, &file_name_utf8)) 
-				{
-					return E_FAIL;
-				}*/
+				string file_name_utf8 = utf16_utf8(file_name);
 
 				auto blob_deleter = [](Blob* blob) { delete blob; };
 				unique_ptr<Blob, decltype(blob_deleter)> source(nullptr, blob_deleter);
@@ -463,10 +508,11 @@ namespace Spartan
 			if (vkCreateShaderModule(m_rhi_device->GetContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS)
 			{
 				// Reflect some things that will later allows us to build descriptor sets
-				/*Reflect(
+				Reflect
+				(
 					reinterpret_cast<uint32_t*>(shader_compiled->GetBufferPointer()),
-					static_cast<uint32_t>(shader_compiled->GetBufferSize())
-				);*/
+					static_cast<uint32_t>(shader_compiled->GetBufferSize() / 4)
+				);
 
 				// Input layout
 				if (!m_input_layout->Create(nullptr, vertex_attributes))
