@@ -198,4 +198,11 @@ namespace Spartan
 		Blend_Operation_Min,
 		Blend_Operation_Max
 	};
+
+	enum RHI_Descriptor_Type
+	{
+		Descriptor_Sampler,
+		Descriptor_Texture,
+		Descriptor_ConstantBuffer
+	};
 }

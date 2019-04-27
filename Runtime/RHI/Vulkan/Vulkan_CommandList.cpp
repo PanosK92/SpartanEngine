@@ -196,10 +196,10 @@ namespace Spartan
 		(
 			CMD_BUFFER_VK,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			static_cast<VkPipelineLayout>(pipeline->GetPipelineLayout()), 
-			0, 
-			1, 
-			&descriptor_set, 
+			static_cast<VkPipelineLayout>(pipeline->GetPipelineLayout()),
+			0,
+			1,
+			&descriptor_set,
 			0,
 			nullptr
 		);
