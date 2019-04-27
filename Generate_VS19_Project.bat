@@ -22,5 +22,5 @@ xcopy "ThirdParty\mvsc141_x64\dxcompiler.dll" "Binaries\Release\" /E /I /y
 xcopy "ThirdParty\mvsc141_x64\fmod64.dll" "Binaries\Release\" /E /I /y
 echo:
 
-echo 5. Generating Visual Studio 2017 solution...
-Scripts\premake5.exe --file=scripts\premake.lua vs2017
+echo 5. Generating Visual Studio 2019 solution...
+Scripts\premake5.exe --file=scripts\premake.lua vs2019

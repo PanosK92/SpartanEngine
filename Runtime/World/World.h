@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <vector>
 #include <memory>
+#include <string>
 #include "../Core/EngineDefs.h"
 #include "../Core/ISubsystem.h"
 //=============================

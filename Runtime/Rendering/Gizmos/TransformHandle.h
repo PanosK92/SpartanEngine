@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EngineDefs.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
+#include <memory>
 //=================================
 
 namespace Spartan
@@ -95,8 +96,8 @@ namespace Spartan
 	class SPARTAN_CLASS TransformHandle
 	{
 	public:
-		TransformHandle() {}	
-		~TransformHandle() {}
+		TransformHandle() = default;
+		~TransformHandle() = default;
 
 		void Initialize(TransformHandle_Type type, Context* context);
 		bool Update(TransformHandle_Space space, const std::shared_ptr<Entity>& entity, Camera* camera, float handle_size, float handle_speed);
@@ -116,9 +117,9 @@ namespace Spartan
 		Math::Vector3 m_ray_previous;
 		Math::Vector3 m_ray_current;
 		std::unique_ptr<Model> m_model;
-		Context* m_context;
-		Renderer* m_renderer;
-		Input* m_input;
 		TransformHandle_Type m_type;
+		Context* m_context		= nullptr;
+		Renderer* m_renderer	= nullptr;
+		Input* m_input			= nullptr;	
 	};
 }
