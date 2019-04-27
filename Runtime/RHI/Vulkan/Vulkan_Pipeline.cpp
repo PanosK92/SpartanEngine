@@ -51,122 +51,19 @@ namespace Spartan
 	RHI_Pipeline::~RHI_Pipeline()
 	{	
 		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_graphics_pipeline), nullptr);
+		m_graphics_pipeline = nullptr;
+
 		vkDestroyPipelineLayout(m_rhi_device->GetContext()->device, static_cast<VkPipelineLayout>(m_pipeline_layout), nullptr);
+		m_pipeline_layout = nullptr;
+
 		vkDestroyRenderPass(m_rhi_device->GetContext()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
+		m_render_pass = nullptr;
+
 		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+		m_descriptor_pool = nullptr;
+
 		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
-
-		m_graphics_pipeline		= nullptr;
-		m_pipeline_layout		= nullptr;
-		m_render_pass			= nullptr;
-		m_descriptor_pool		= nullptr;	
-	}
-
-	inline void CreateDescriptorSet(void* sampler, void* texture, const VkDevice& device, shared_ptr<RHI_ConstantBuffer>& constant_buffer, void*& descriptor_set_layout_out, void*& descriptor_set_out, void*& descriptor_pool_out)
-	{
-		uint32_t fix_this = 2;//static_cast<uint32_t>(swapChainImages.size());
-
-		// Descriptor pool
-		VkDescriptorPoolSize poolSize	= {};
-		poolSize.type					= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount		= fix_this;
-
-		VkDescriptorPoolCreateInfo pool_create_info = {};
-		pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_create_info.flags						= VK_NULL_HANDLE; //VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-		pool_create_info.poolSizeCount				= 1;
-		pool_create_info.pPoolSizes					= &poolSize;
-		pool_create_info.maxSets					= fix_this;
-
-		VkDescriptorPool descriptor_pool = nullptr;
-		if (vkCreateDescriptorPool(device, &pool_create_info, nullptr, &descriptor_pool) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create descriptor layout");
-			return;
-		}
-		descriptor_pool_out = static_cast<void*>(descriptor_pool);
-
-		// Descriptor set layout - THIS MUST BE AUTOMATED
-		// Create binding and layout for the following, matching contents of shader (this must happen automatically)	
-		//   binding 0 = uniform buffer 
-		//   binding 2 = sampler
-		//   binding 1 = texture2D
-		vector<VkDescriptorSetLayoutBinding> resource_bindings = 
-		{	
-			{ 0,  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	1, VK_SHADER_STAGE_VERTEX_BIT,		nullptr },
-			{ 1,  VK_DESCRIPTOR_TYPE_SAMPLER,			1, VK_SHADER_STAGE_FRAGMENT_BIT,	nullptr },
-			{ 2,  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,		1, VK_SHADER_STAGE_FRAGMENT_BIT,	nullptr }
-		};
-
-		VkDescriptorSetLayoutCreateInfo resource_layout_info = {};
-		resource_layout_info.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		resource_layout_info.pNext			= nullptr;
-		resource_layout_info.bindingCount	= static_cast<uint32_t>(resource_bindings.size());
-		resource_layout_info.pBindings		= resource_bindings.data();
-
-		VkDescriptorSetLayout descriptor_set_layout;
-		if (vkCreateDescriptorSetLayout(device, &resource_layout_info, nullptr, &descriptor_set_layout) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create descriptor layout");
-			return;
-		}
-		descriptor_set_layout_out = static_cast<VkDescriptorSetLayout>(descriptor_set_layout);
-
-		// Descriptor set
-		VkDescriptorSetAllocateInfo allocInfo	= {};
-		allocInfo.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool				= static_cast<VkDescriptorPool>(descriptor_pool);
-		allocInfo.descriptorSetCount			= 1;
-		allocInfo.pSetLayouts					= &descriptor_set_layout;
-
-		VkDescriptorSet descriptor_set = nullptr;
-		if (vkAllocateDescriptorSets(device, &allocInfo, &descriptor_set) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to allocate descriptor set");
-			return;
-		}
-		descriptor_set_out = static_cast<void*>(descriptor_set);
-
-		for (size_t i = 0; i < fix_this; i++) 
-		{
-			VkDescriptorBufferInfo bufferInfo	= {};
-			bufferInfo.buffer					= static_cast<VkBuffer>(constant_buffer->GetBufferView());
-			bufferInfo.offset					= 0;
-			bufferInfo.range					= constant_buffer->GetSize();
-
-			VkDescriptorImageInfo image_info	= {};
-			image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			image_info.imageView				= static_cast<VkImageView>(texture);
-			image_info.sampler					= static_cast<VkSampler>(sampler);
-
-			std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
-
-			descriptorWrites[0].sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet			= descriptor_set;
-			descriptorWrites[0].dstBinding		= 0;
-			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pBufferInfo		= &bufferInfo;
-
-			descriptorWrites[1].sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet			= descriptor_set;
-			descriptorWrites[1].dstBinding		= 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType	= VK_DESCRIPTOR_TYPE_SAMPLER;
-			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo		= &image_info;
-
-			descriptorWrites[2].sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[2].dstSet			= descriptor_set;
-			descriptorWrites[2].dstBinding		= 2;
-			descriptorWrites[2].dstArrayElement = 0;
-			descriptorWrites[2].descriptorType	= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			descriptorWrites[2].descriptorCount = 1;
-			descriptorWrites[2].pImageInfo		= &image_info;
-
-			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-		}
+		m_descriptor_set_layout = nullptr;
 	}
 
 	inline VkRenderPass CreateRenderPass(const VkDevice& device)
@@ -234,6 +131,138 @@ namespace Spartan
 		return render_pass;
 	}
 
+	inline void CreateDescriptorPool(const VkDevice& device, void*& descriptor_pool_out, uint32_t descriptor_count)
+	{
+		// Size
+		VkDescriptorPoolSize pool_size	= {};
+		pool_size.type					= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		pool_size.descriptorCount		= descriptor_count;
+
+		// Create info
+		VkDescriptorPoolCreateInfo pool_create_info = {};
+		pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		pool_create_info.flags						= VK_NULL_HANDLE;
+		pool_create_info.poolSizeCount				= 1;
+		pool_create_info.pPoolSizes					= &pool_size;
+		pool_create_info.maxSets					= descriptor_count;
+
+		// Pool
+		VkDescriptorPool descriptor_pool = nullptr;
+		auto result = vkCreateDescriptorPool(device, &pool_create_info, nullptr, &descriptor_pool);
+		if (result != VK_SUCCESS)
+		{
+			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::result_to_string(result));
+			return;
+		}
+
+		descriptor_pool_out = static_cast<void*>(descriptor_pool);
+	}
+
+	inline void CreateDescriptors
+	(
+		const VkDevice& device,
+		const VkDescriptorPool& descriptor_pool,
+		uint32_t descriptor_count,
+		shared_ptr<RHI_Shader>& shader_vertex,
+		shared_ptr<RHI_Shader>& shader_pixel,
+		void*& descriptor_set_layout_out,
+		void*& descriptor_set_out,
+		RHI_ConstantBuffer* constant_buffer	= nullptr,
+		RHI_Sampler* sampler				= nullptr,
+		void* texture						= nullptr
+	)
+	{
+		// Merge vertex & index shader resources into map (to ensure unique values)
+		map<string, Shader_Resource> shader_resources;
+		while (shader_vertex->GetCompilationState() == Compilation_State::Shader_Compiling || shader_pixel->GetCompilationState() == Compilation_State::Shader_Compiling) { } // wait for shader to finish compilation
+		for (const auto& resource : shader_vertex->GetResources())	shader_resources[resource.name] = resource;
+		for (const auto& resource : shader_pixel->GetResources())	shader_resources[resource.name] = resource;
+
+		// Layout bindings
+		vector<VkDescriptorSetLayoutBinding> layout_bindings;
+		for (const auto& resource : shader_resources)
+		{
+			VkShaderStageFlags stage_flags = (resource.second.shader_type == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+			layout_bindings.push_back
+			({
+				resource.second.slot,							// binding
+				vulkan_descriptor_type[resource.second.type],	// descriptorType
+				1,												// descriptorCount
+				stage_flags,									// stageFlags
+				nullptr											// pImmutableSamplers
+			});
+		}
+
+		// Descriptor set layout create info
+		VkDescriptorSetLayoutCreateInfo resource_layout_info	= {};
+		resource_layout_info.sType								= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		resource_layout_info.pNext								= nullptr;
+		resource_layout_info.bindingCount						= static_cast<uint32_t>(layout_bindings.size());
+		resource_layout_info.pBindings							= layout_bindings.data();
+
+		// Descriptor set layout
+		VkDescriptorSetLayout descriptor_set_layout;
+		auto result = vkCreateDescriptorSetLayout(device, &resource_layout_info, nullptr, &descriptor_set_layout);
+		if (result != VK_SUCCESS)
+		{
+			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::result_to_string(result));
+			return;
+		}
+		descriptor_set_layout_out = static_cast<void*>(descriptor_set_layout);
+
+		// Descriptor set allocate info
+		VkDescriptorSetAllocateInfo allocate_info	= {};
+		allocate_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocate_info.descriptorPool				= static_cast<VkDescriptorPool>(descriptor_pool);
+		allocate_info.descriptorSetCount			= 1;
+		allocate_info.pSetLayouts					= &descriptor_set_layout;
+
+		// Descriptor set
+		VkDescriptorSet descriptor_set;
+		result = vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set);
+		if (result != VK_SUCCESS)
+		{
+			LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::result_to_string(result));
+			return;
+		}
+		descriptor_set_out = static_cast<void*>(descriptor_set);
+
+		VkDescriptorBufferInfo buffer_info	= {};
+		buffer_info.buffer					= constant_buffer ? static_cast<VkBuffer>(constant_buffer->GetBufferView()) : nullptr;
+		buffer_info.offset					= 0;
+		buffer_info.range					= constant_buffer ? constant_buffer->GetSize() : 0;
+
+		VkDescriptorImageInfo image_info	= {};
+		image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		image_info.imageView				= static_cast<VkImageView>(texture);
+		image_info.sampler					= sampler ? static_cast<VkSampler>(sampler->GetBufferView()) : nullptr;
+
+		// Descriptor Sets
+		for (uint32_t i = 0; i < descriptor_count; i++)
+		{
+			vector<VkWriteDescriptorSet> write_descriptor_sets;
+
+			for (const auto& resource : shader_resources)
+			{
+				write_descriptor_sets.push_back
+				({
+					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,			// sType
+					nullptr,										// pNext
+					descriptor_set,									// dstSet
+					resource.second.slot,							// dstBinding
+					0,												// dstArrayElement
+					1,												// descriptorCount
+					vulkan_descriptor_type[resource.second.type],	// descriptorType
+					&image_info,									// pImageInfo 
+					&buffer_info,									// pBufferInfo
+					nullptr											// pTexelBufferView
+				});
+			}
+
+			vkUpdateDescriptorSets(device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
+		}
+	}
+
 	bool RHI_Pipeline::Create()
 	{
 		bool dynamic_viewport_scissor = false;
@@ -244,8 +273,12 @@ namespace Spartan
 			dynamic_viewport_scissor = true;
 		}
 
-		// Rrender pass
+		// Create render pass
 		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
+
+		// Create descriptor pool
+		uint32_t m_descriptor_count = 2; //static_cast<uint32_t>(swapChainImages.size()); // FIX THIS
+		CreateDescriptorPool(m_rhi_device->GetContext()->device, m_descriptor_pool, m_descriptor_count);
 
 		// Dynamic viewport and scissor states
 		vector<VkDynamicState> dynamic_states =
@@ -373,15 +406,30 @@ namespace Spartan
 		color_blend_State.blendConstants[2]						= 0.0f;
 		color_blend_State.blendConstants[3]						= 0.0f;
 
-		// Layout
-		CreateDescriptorSet(m_sampler->GetBufferView(), m_texture->GetBufferView(), m_rhi_device->GetContext()->device, m_constant_buffer, m_descriptor_set_layout, m_descriptor_set, m_descriptor_pool);		
+		// Descriptor set layout
+		CreateDescriptors
+		(
+			m_rhi_device->GetContext()->device,
+			static_cast<VkDescriptorPool>(m_descriptor_pool),
+			m_descriptor_count,
+			m_shader_vertex,
+			m_shader_pixel,
+			m_descriptor_set_layout,
+			m_descriptor_set,
+			m_constant_buffer.get(),
+			m_sampler.get(),
+			m_texture->GetBufferView()
+		);
+
+		// Pipeline layout create info
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
 		pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipeline_layout_info.pushConstantRangeCount		= 0;
 		pipeline_layout_info.setLayoutCount				= 1;
-		auto set_layouts = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
-		pipeline_layout_info.pSetLayouts				= &set_layouts;
+		auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
+		pipeline_layout_info.pSetLayouts				= &vk_descriptor_set_layout;
 
+		// Pipeline layout
 		VkPipelineLayout pipeline_layout;
 		if (vkCreatePipelineLayout(m_rhi_device->GetContext()->device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) 
 		{

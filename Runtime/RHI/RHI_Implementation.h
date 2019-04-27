@@ -236,9 +236,16 @@ static const VkBlendOp vulkan_blend_operation[] =
 	VK_BLEND_OP_MAX
 };
 
+static const VkDescriptorType vulkan_descriptor_type[] =
+{
+	VK_DESCRIPTOR_TYPE_SAMPLER,
+	VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+};
+
 struct SwapChainSupportDetails
 {
-	VkSurfaceCapabilitiesKHR capabilities;
+	VkSurfaceCapabilitiesKHR capabilities = {};
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> present_modes;
 	bool IsCompatible() { return !formats.empty() && !present_modes.empty(); }

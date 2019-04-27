@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
-#include <spirv_hlsl.hpp>
 //======================================
 
 //= NAMESPACES =====
@@ -47,8 +46,18 @@ namespace Spartan
 	RHI_Shader::~RHI_Shader()
 	{
 		auto rhi_context = m_rhi_device->GetContext();
-		if (HasVertexShader())	vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_vertex_shader), nullptr);
-		if (HasPixelShader())	vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_pixel_shader), nullptr);
+
+		if (HasVertexShader())
+		{
+			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_vertex_shader), nullptr);
+			m_vertex_shader = nullptr;
+		}
+
+		if (HasPixelShader())
+		{
+			vkDestroyShaderModule(rhi_context->device, static_cast<VkShaderModule>(m_pixel_shader), nullptr);
+			m_pixel_shader = nullptr;
+		}
 	}
 
 	/*
@@ -172,42 +181,6 @@ namespace Spartan
 	  -verifyrootsignature <file>
 							Verify shader bytecode with root signature
 	*/
-
-	inline void Reflect(const uint32_t* ptr, uint32_t size)
-	{
-		
-		using namespace spirv_cross;
-
-		// Initialize compiler with SPIR-V data
-		auto compiler = CompilerHLSL(ptr, size);
-
-		// The SPIR-V is now parsed, and we can perform reflection on it
-		auto resources	= compiler.get_shader_resources();
-
-		// EXAMPLE - uniform buffers
-		for (const Resource& buffer : resources.uniform_buffers)
-		{
-			auto set		= compiler.get_decoration(buffer.id, spv::DecorationDescriptorSet);
-			auto binding	= compiler.get_decoration(buffer.id, spv::DecorationBinding);
-			LOGF_INFO("Found constant buffer %s at set = %u, binding = %u!\n", buffer.name.c_str(), set, binding);
-		}
-
-		// EXAMPLE - images
-		for (const Resource& image : resources.separate_images)
-		{
-			auto set		= compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
-			auto binding	= compiler.get_decoration(image.id, spv::DecorationBinding);
-			LOGF_INFO("Found texture %s at set = %u, binding = %u!\n", image.name.c_str(), set, binding);
-		}
-
-		// EXAMPLE - samplers
-		for (const Resource& sampler : resources.separate_samplers)
-		{
-			auto set		= compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
-			auto binding	= compiler.get_decoration(sampler.id, spv::DecorationBinding);
-			LOGF_INFO("Found sampler %s at set = %u, binding = %u!\n", sampler.name.c_str(), set, binding);
-		}
-	}
 
 	namespace DxShaderCompiler
 	{
@@ -515,9 +488,10 @@ namespace Spartan
 	
 			if (vkCreateShaderModule(m_rhi_device->GetContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS)
 			{
-				// Reflect some things that will later allows us to build descriptor sets
-				Reflect
+				// Reflect shader resources (so that descriptor sets can be created later)
+				_Reflect
 				(
+					type,
 					reinterpret_cast<uint32_t*>(shader_compiled->GetBufferPointer()),
 					static_cast<uint32_t>(shader_compiled->GetBufferSize() / 4)
 				);
