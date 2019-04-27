@@ -23,11 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <vector>
+#include <string>
 #include "../Core/EngineDefs.h"
 //=============================
 
 //=========================================================
-static const std::string NOT_ASSIGNED		= "N/A";
+static const char* NOT_ASSIGNED				= "N/A";
 static const int NOT_ASSIGNED_HASH			= -1;
 // Metadata extensions
 static const char* METADATA_EXTENSION		= ".xml";

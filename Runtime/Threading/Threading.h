@@ -26,8 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include <mutex>
 #include <queue>
-#include "../Core/ISubsystem.h"
+#include <functional>
 #include "../Logging/Log.h"
+#include "../Core/ISubsystem.h"
 //============================
 
 namespace Spartan

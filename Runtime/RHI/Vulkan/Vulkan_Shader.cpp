@@ -199,6 +199,14 @@ namespace Spartan
 			auto binding	= compiler.get_decoration(image.id, spv::DecorationBinding);
 			LOGF_INFO("Found texture %s at set = %u, binding = %u!\n", image.name.c_str(), set, binding);
 		}
+
+		// EXAMPLE - samplers
+		for (const Resource& sampler : resources.separate_samplers)
+		{
+			auto set		= compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
+			auto binding	= compiler.get_decoration(sampler.id, spv::DecorationBinding);
+			LOGF_INFO("Found sampler %s at set = %u, binding = %u!\n", sampler.name.c_str(), set, binding);
+		}
 	}
 
 	namespace DxShaderCompiler

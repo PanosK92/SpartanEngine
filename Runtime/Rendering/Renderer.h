@@ -365,12 +365,12 @@ namespace Spartan
 		std::shared_ptr<Skybox> m_skybox;
 		//==================================================================
 
-		//= STATS/PROFILING ======
-		Profiler* m_profiler;
-		uint64_t m_frame_num;
-		bool m_is_odd_frame;
+		//= STATS/PROFILING ==============
+		Profiler* m_profiler	= nullptr;
+		uint64_t m_frame_num	= 0;
+		bool m_is_odd_frame		= false;
 		static bool m_is_rendering;
-		//========================
+		//================================
 		
 		// Global buffer (holds what is needed by almost every shader)
 		struct ConstantBufferGlobal

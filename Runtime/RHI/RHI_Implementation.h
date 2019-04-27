@@ -152,7 +152,9 @@ namespace Spartan
 #pragma comment(lib, "VkLayer_utils.lib")
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
+#pragma warning(push, 0) // Hide warnings which belong to Vulkan
 #include <vulkan/vulkan.hpp>
+#pragma warning(pop)
 #include <optional>
 
 static const VkPolygonMode vulkan_polygon_Mode[] =

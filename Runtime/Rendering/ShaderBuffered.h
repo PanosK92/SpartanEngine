@@ -98,8 +98,9 @@ namespace Spartan
 	{
 		Struct_Matrix_Vector3(const Math::Matrix& matrix, const Math::Vector3& vector)
 		{
-			m_matrix = matrix;
-			m_vector = vector;
+			m_matrix	= matrix;
+			m_vector	= vector;
+			m_padding	= 0.0f;
 		}
 
 		Math::Matrix m_matrix;
@@ -111,9 +112,9 @@ namespace Spartan
 	{
 		Struct_Matrix_Vector2(const Math::Matrix& matrix, const Math::Vector2& vector2, const Math::Vector2& padding = Math::Vector2::Zero)
 		{
-			m_matrix = matrix;
-			m_vector2 = vector2;
-			m_padding = padding;
+			m_matrix	= matrix;
+			m_vector2	= vector2;
+			m_padding	= padding;
 		}
 
 		Math::Matrix m_matrix;
@@ -220,11 +221,11 @@ namespace Spartan
 			float value
 		)
 		{
-			m_matrix1 = matrix1;
-			m_matrix2 = matrix2;
-			m_vector = vector;
-			m_value = value;
-			m_padding = 0.0f;
+			m_matrix1	= matrix1;
+			m_matrix2	= matrix2;
+			m_vector	= vector;
+			m_value		= value;
+			m_padding	= 0.0f;
 		}
 
 		Math::Matrix m_matrix1;
@@ -243,9 +244,10 @@ namespace Spartan
 			const Math::Vector3& vector
 		)
 		{
-			m_matrix1 = matrix1;
-			m_matrix2 = matrix2;
-			m_vector = vector;
+			m_matrix1	= matrix1;
+			m_matrix2	= matrix2;
+			m_vector	= vector;
+			m_padding	= 0.0f;
 		}
 
 		Math::Matrix m_matrix1;

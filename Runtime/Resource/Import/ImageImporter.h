@@ -60,6 +60,7 @@ XPM files[reading, writing]
 
 //= INCLUDES ========================
 #include <vector>
+#include <string>
 #include "../../Core/EngineDefs.h"
 #include "../../RHI/RHI_Definition.h"
 //===================================
