@@ -270,7 +270,7 @@ namespace Spartan
 		if (!m_is_recording)
 			return;
 
-		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetBuffer()) };
+		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetResource()) };
 		VkDeviceSize offsets[]		= { 0 };
 		vkCmdBindVertexBuffers(CMD_BUFFER_VK, 0, 1, vertex_buffers, offsets);
 	}
@@ -282,7 +282,7 @@ namespace Spartan
 
 		vkCmdBindIndexBuffer(
 			CMD_BUFFER_VK,
-			static_cast<VkBuffer>(buffer->GetBuffer()),						// buffer
+			static_cast<VkBuffer>(buffer->GetResource()),						// buffer
 			0,																// offset
 			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // index type
 		);
@@ -354,12 +354,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetTexture(uint32_t slot, const shared_ptr<RHI_Texture>& texture)
 	{
-		SetTexture(slot, texture->GetBufferView());
+		SetTexture(slot, texture->GetResource());
 	}
 
 	void RHI_CommandList::SetTexture(uint32_t slot, const shared_ptr<RHI_RenderTexture>& texture)
 	{
-		SetTexture(slot, texture->GetBufferView());
+		SetTexture(slot, texture->GetResource_Texture());
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)

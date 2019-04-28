@@ -86,7 +86,7 @@ namespace Spartan
 
 		void ClearTextureBytes();
 		void GetTextureBytes(std::vector<std::vector<std::byte>>* texture_bytes);
-		auto GetBufferView() const { return m_texture_view; }
+		auto GetResource() const { return m_texture_view; }
 
 	protected:
 		//= NATIVE TEXTURE HANDLING (BINARY) ==========

@@ -62,7 +62,7 @@ namespace Spartan
 		void* Map() const;
 		bool Unmap() const;
 
-		auto GetBuffer()		const { return m_buffer; }
+		auto GetResource()		const { return m_buffer; }
 		auto GetSize()			const { return m_size; }
 		auto GetIndexCount()	const { return m_index_count; }
 		auto Is16Bit()			const { return sizeof(uint16_t) == m_stride; }

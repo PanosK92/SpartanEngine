@@ -62,83 +62,70 @@ namespace Spartan
 	{
 		RHI_Command()
 		{
-			// Render targets
-			render_targets.reserve(10);
-			render_targets.resize(10);
-			// Textures
-			textures.reserve(10);
-			textures.resize(10);
-			// Samplers
-			samplers.reserve(10);
-			samplers.resize(10);
-			// Constant buffers
-			constant_buffers.reserve(10);
-			constant_buffers.resize(10);
-
+			const unsigned int max_count = 10;
+			render_targets.reserve(max_count);
+			render_targets.resize(max_count);
+			textures.reserve(max_count);
+			textures.resize(max_count);
+			samplers.reserve(max_count);
+			samplers.resize(max_count);
+			constant_buffers.reserve(max_count);
+			constant_buffers.resize(max_count);
 			Clear();
 		}
 
 		void Clear()
 		{
-			// Render targets
-			render_target_count = 0;
-			render_targets.clear();
-			// Textures
-			textures_start_slot = 0;
-			texture_count		= 0;
-			textures.clear();
-			// Samplers
-			samplers_start_slot = 0;
-			sampler_count		= 0;
-			samplers.clear();
-			// Constant buffers
-			constant_buffers_start_slot		= 0;
-			constant_buffer_count			= 0;
-			constant_buffers_scope			= Buffer_NotAssigned;
-			constant_buffers.clear();
-			// Depth-stencil
-			RHI_DepthStencilState* depth_stencil_state	= nullptr;
-			depth_stencil								= nullptr;
-			depth_clear									= 0;
-			depth_clear_stencil							= 0;
-			depth_clear_flags							= 0;
-			// Misc
-			pass_name = "N/A";
-			primitive_topology = PrimitiveTopology_NotAssigned;
-			vertex_count = 0;
-			vertex_offset = 0;
-			index_count = 0;
-			index_offset = 0;
-			input_layout = nullptr;
-			rasterizer_state = nullptr;
-			blend_state = nullptr;
-			buffer_index = nullptr;
-			buffer_vertex = nullptr;
-			shader_vertex = nullptr;
-			shader_pixel = nullptr;
+			render_target_count			= 0;
+			textures_start_slot			= 0;
+			texture_count				= 0;
+			samplers_start_slot			= 0;
+			sampler_count				= 0;
+			constant_buffers_start_slot	= 0;
+			constant_buffer_count		= 0;
+			constant_buffers_scope		= Buffer_NotAssigned;
+			depth_stencil_state			= nullptr;
+			depth_stencil				= nullptr;
+			depth_clear					= 0;
+			depth_clear_stencil			= 0;
+			depth_clear_flags			= 0;
+	
+			vertex_count				= 0;
+			vertex_offset				= 0;
+			index_count					= 0;
+			index_offset				= 0;
+			input_layout				= nullptr;
+			rasterizer_state			= nullptr;
+			blend_state					= nullptr;
+			buffer_index				= nullptr;
+			buffer_vertex				= nullptr;
+			shader_vertex				= nullptr;
+			shader_pixel				= nullptr;
+			pass_name					= "N/A";
+			primitive_topology			= PrimitiveTopology_NotAssigned;
 		}
 
 		RHI_Cmd_Type type;
 
 		// Render targets
-		unsigned int render_target_count;
+		unsigned int render_target_count = 0;
 		std::vector<void*> render_targets;
 		void* render_target_clear;
 		Math::Vector4 render_target_clear_color;
 
 		// Texture
-		unsigned int textures_start_slot;
-		unsigned int texture_count;
+		unsigned int textures_start_slot = 0;
+		unsigned int texture_count = 0;
 		std::vector<void*> textures;
 
 		// Samplers
-		unsigned int samplers_start_slot;
-		unsigned int sampler_count;
+		unsigned int samplers_start_slot = 0;
+		unsigned int sampler_count = 0;
 		std::vector<void*> samplers;
 
 		// Constant buffers
-		unsigned int constant_buffers_start_slot;
-		unsigned int constant_buffer_count;
+		unsigned int constant_buffers_start_slot = 0;
+		unsigned int constant_buffer_count = 0;
 		RHI_Buffer_Scope constant_buffers_scope;
 		std::vector<void*> constant_buffers;	
 
@@ -155,9 +142,7 @@ namespace Spartan
 		unsigned int vertex_count							= 0;
 		unsigned int vertex_offset							= 0;
 		unsigned int index_count							= 0;
-		unsigned int index_offset							= 0;	
-		RHI_Viewport viewport;
-		Math::Rectangle scissor_rectangle;
+		unsigned int index_offset							= 0;		
 		const RHI_InputLayout* input_layout					= nullptr;	
 		const RHI_RasterizerState* rasterizer_state			= nullptr;
 		const RHI_BlendState* blend_state					= nullptr;
@@ -165,6 +150,8 @@ namespace Spartan
 		const RHI_VertexBuffer* buffer_vertex				= nullptr;
 		const RHI_Shader* shader_vertex						= nullptr;
 		const RHI_Shader* shader_pixel						= nullptr;
+		RHI_Viewport viewport;
+		Math::Rectangle scissor_rectangle;
 	};
 
 	class SPARTAN_CLASS RHI_CommandList

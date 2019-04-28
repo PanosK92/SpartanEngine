@@ -85,13 +85,13 @@ void IconProvider::Initialize(Context* context)
 void* IconProvider::GetShaderResourceByType(Icon_Type type)
 {
 	auto texture = Thumbnail_Load(NOT_ASSIGNED, type).texture;
-	return texture ? texture->GetBufferView() : nullptr;
+	return texture ? texture->GetResource() : nullptr;
 }
 
 void* IconProvider::GetShaderResourceByFilePath(const std::string& filePath)
 {
 	auto texture = Thumbnail_Load(filePath).texture;
-	return texture ? texture->GetBufferView() : nullptr;
+	return texture ? texture->GetResource() : nullptr;
 }
 
 void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
@@ -103,7 +103,7 @@ void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
 
 		if (thumbnailTemp.texture->GetResourceId() == thumbnail.texture->GetResourceId())
 		{
-			return thumbnailTemp.texture->GetBufferView();
+			return thumbnailTemp.texture->GetResource();
 		}
 	}
 

@@ -42,7 +42,7 @@ namespace Spartan
 		RHI_Texture_Filter GetFilter() const					{ return m_filter; }
 		RHI_Sampler_Address_Mode GetAddressMode() const			{ return m_sampler_address_mode; }
 		RHI_Comparison_Function GetComparisonFunction() const	{ return m_comparison_function; }
-		void* GetBufferView() const								{ return m_buffer_view; }
+		void* GetResource() const								{ return m_buffer_view; }
 
 	private:	
 		RHI_Texture_Filter m_filter;

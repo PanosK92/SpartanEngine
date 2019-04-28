@@ -227,14 +227,14 @@ namespace Spartan
 		descriptor_set_out = static_cast<void*>(descriptor_set);
 
 		VkDescriptorBufferInfo buffer_info	= {};
-		buffer_info.buffer					= constant_buffer ? static_cast<VkBuffer>(constant_buffer->GetBufferView()) : nullptr;
+		buffer_info.buffer					= constant_buffer ? static_cast<VkBuffer>(constant_buffer->GetResource()) : nullptr;
 		buffer_info.offset					= 0;
 		buffer_info.range					= constant_buffer ? constant_buffer->GetSize() : 0;
 
 		VkDescriptorImageInfo image_info	= {};
 		image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		image_info.imageView				= static_cast<VkImageView>(texture);
-		image_info.sampler					= sampler ? static_cast<VkSampler>(sampler->GetBufferView()) : nullptr;
+		image_info.sampler					= sampler ? static_cast<VkSampler>(sampler->GetResource()) : nullptr;
 
 		// Descriptor Sets
 		vector<VkWriteDescriptorSet> write_descriptor_sets;
@@ -317,14 +317,14 @@ namespace Spartan
 		VkPipelineShaderStageCreateInfo shader_vertex_stage_info	= {};
 		shader_vertex_stage_info.sType								= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shader_vertex_stage_info.stage								= VK_SHADER_STAGE_VERTEX_BIT;
-		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_shader_vertex->GetVertexShaderBuffer());
+		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_shader_vertex->GetResource_VertexShader());
 		shader_vertex_stage_info.pName								= m_shader_vertex->GetVertexEntryPoint().c_str();
 
 		// Pixel shader
 		VkPipelineShaderStageCreateInfo shader_pixel_stage_info = {};
 		shader_pixel_stage_info.sType							= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shader_pixel_stage_info.stage							= VK_SHADER_STAGE_FRAGMENT_BIT;
-		shader_pixel_stage_info.module							= static_cast<VkShaderModule>(m_shader_pixel->GetPixelShaderBuffer());
+		shader_pixel_stage_info.module							= static_cast<VkShaderModule>(m_shader_pixel->GetResource_PixelShader());
 		shader_pixel_stage_info.pName							= m_shader_pixel->GetPixelEntryPoint().c_str();
 
 		// Shader stages
@@ -420,7 +420,7 @@ namespace Spartan
 			m_descriptor_set,
 			m_constant_buffer.get(),
 			m_sampler.get(),
-			m_texture->GetBufferView()
+			m_texture->GetResource()
 		);
 
 		// Pipeline layout create info
@@ -497,14 +497,14 @@ namespace Spartan
 		for (const auto& resource : m_shader_pixel->GetResources())		shader_resources[resource.name] = resource;
 
 		VkDescriptorBufferInfo buffer_info = {};
-		buffer_info.buffer = m_constant_buffer ? static_cast<VkBuffer>(m_constant_buffer->GetBufferView()) : nullptr;
+		buffer_info.buffer = m_constant_buffer ? static_cast<VkBuffer>(m_constant_buffer->GetResource()) : nullptr;
 		buffer_info.offset = 0;
 		buffer_info.range = m_constant_buffer ? m_constant_buffer->GetSize() : 0;
 
 		VkDescriptorImageInfo image_info = {};
 		image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		image_info.imageView = static_cast<VkImageView>(texture);
-		image_info.sampler = m_sampler ? static_cast<VkSampler>(m_sampler->GetBufferView()) : nullptr;
+		image_info.sampler = m_sampler ? static_cast<VkSampler>(m_sampler->GetResource()) : nullptr;
 
 		// Descriptor Sets
 		vector<VkWriteDescriptorSet> write_descriptor_sets;

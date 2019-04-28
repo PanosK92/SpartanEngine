@@ -50,8 +50,8 @@ namespace Spartan
 		bool Clear(std::shared_ptr<RHI_CommandList>& cmd_list, const Math::Vector4& clear_color);
 		bool Clear(std::shared_ptr<RHI_CommandList>& cmd_list, float red, float green, float blue, float alpha);
 
-		void* GetBufferRenderTargetView(const unsigned int index = 0)	{ return index < m_buffer_render_target_views.size() ? m_buffer_render_target_views[index] : nullptr; }
-		void* GetBufferView() const										{ return m_texture_view; }
+		void* GetResource_RenderTarget(const unsigned int index = 0)	{ return index < m_buffer_render_target_views.size() ? m_buffer_render_target_views[index] : nullptr; }
+		void* GetResource_Texture() const								{ return m_texture_view; }
 		void* GetDepthStencilView() const								{ return m_depth_stencil_view; }
 		const RHI_Viewport& GetViewport() const							{ return m_viewport; }
 		bool GetDepthEnabled() const									{ return m_depth_enabled; }

@@ -412,7 +412,7 @@ namespace Spartan
 
 	void* Renderer::GetFrameShaderResource() const
 	{
-		return m_render_tex_full_hdr_light2 ? m_render_tex_full_hdr_light2->GetBufferView() : nullptr;
+		return m_render_tex_full_hdr_light2 ? m_render_tex_full_hdr_light2->GetResource_Texture() : nullptr;
 	}
 
 	void Renderer::Tick()

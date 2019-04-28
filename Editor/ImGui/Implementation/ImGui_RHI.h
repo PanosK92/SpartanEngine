@@ -108,7 +108,7 @@ namespace ImGui::RHI
 			// Upload texture to graphics system
 			if (g_fontTexture->ShaderResource_Create2D(width, height, 4, Format_R8G8B8A8_UNORM, data))
 			{
-				io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetBufferView());
+				io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetResource());
 			}
 		}
 

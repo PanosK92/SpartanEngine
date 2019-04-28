@@ -90,8 +90,8 @@ namespace Spartan
 		void CompileAsync(Context* context, const Shader_Type type, const std::string& shader, const RHI_Vertex_Attribute_Type vertex_attributes = Vertex_Attribute_None);
 	
 		// Properties
-		auto GetVertexShaderBuffer() const											{ return m_vertex_shader; }
-		auto GetPixelShaderBuffer() const											{ return m_pixel_shader; }
+		auto GetResource_VertexShader() const										{ return m_vertex_shader; }
+		auto GetResource_PixelShader() const										{ return m_pixel_shader; }
 		auto HasVertexShader() const												{ return m_vertex_shader != nullptr; }
 		auto HasPixelShader() const													{ return m_pixel_shader != nullptr; }
 		const auto& GetVertexEntryPoint() const										{ return _RHI_Shader::entry_point_vertex; }

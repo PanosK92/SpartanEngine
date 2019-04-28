@@ -48,7 +48,7 @@ namespace Spartan
 
 		void* Map() const;
 		bool Unmap() const;
-		auto GetBufferView() const	{ return m_buffer; }
+		auto GetResource() const	{ return m_buffer; }
 		auto GetSize()	const		{ return m_size; }
 
 	private:

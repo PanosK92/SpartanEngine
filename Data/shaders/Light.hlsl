@@ -119,15 +119,19 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     color += emission;
 	//=======================================================
 
-	//= Directional Light ================================================================================================
+	//= Directional Light ===============================================================================================
 	Light directionalLight;
     directionalLight.color      = dirLightColor.rgb; 
     directionalLight.direction  = normalize(-dirLightDirection).xyz;
 	float directional_shadow	= micro_shadow(factor_occlusion, normal, directionalLight.direction, shadow_directional);
 	directionalLight.intensity  = dirLightIntensity.r * directional_shadow;	
+	
 	// Compute illumination
-	color += BRDF(material, directionalLight, normal, camera_to_pixel);
-	//====================================================================================================================
+	if (directionalLight.intensity > 0.0f)
+	{
+		color += BRDF(material, directionalLight, normal, camera_to_pixel);
+	}
+	//===================================================================================================================
 	
 	//= Point lights ====================================================
     Light pointLight;
