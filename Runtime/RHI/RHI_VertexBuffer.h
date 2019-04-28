@@ -63,7 +63,7 @@ namespace Spartan
 		void* Map() const;
 		bool Unmap() const;
 
-		auto GetBuffer() const		{ return m_buffer; }
+		auto GetResource() const		{ return m_buffer; }
 		auto& GetSize() const		{ return m_size; }
 		auto GetStride() const		{ return m_stride; }
 		auto GetVertexCount() const	{ return m_vertex_count; }

@@ -77,13 +77,13 @@ namespace Spartan
 				m_maxDepth	!= 0.0f;
 		}
 
-		float GetX() const				{ return m_x; }
-		float GetY() const				{ return m_y; }
-		float GetWidth() const			{ return m_width; }
-		float GetHeight() const			{ return m_height; }
-		float GetMinDepth() const		{ return m_minDepth; }
-		float GetMaxDepth() const		{ return m_maxDepth; }
-		float GetAspectRatio() const	{ return m_width / m_height; }
+		const float& GetX()				const	{ return m_x; }
+		const float& GetY()				const	{ return m_y; }
+		const float& GetWidth()			const	{ return m_width; }
+		const float& GetHeight()		const	{ return m_height; }
+		const float& GetMinDepth()		const	{ return m_minDepth; }
+		const float& GetMaxDepth()		const	{ return m_maxDepth; }
+		const float& GetAspectRatio()	const	{ return m_width / m_height; }
 
 		void SetPosX(float x)			{ m_x = x; }
 		void SetPosY(float y)			{ m_y = y; }
