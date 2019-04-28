@@ -179,7 +179,7 @@ namespace Spartan
 		void Draw(unsigned int vertex_count);
 		void DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset);
 
-		void SetPipeline(const RHI_Pipeline* pipeline);
+		void SetPipeline(RHI_Pipeline* pipeline);
 
 		void SetViewport(const RHI_Viewport& viewport);
 		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle);
@@ -210,15 +210,15 @@ namespace Spartan
 		void SetShaderPixel(const std::shared_ptr<RHI_Shader>& shader) { SetShaderPixel(shader.get()); }
 
 		void SetConstantBuffers(unsigned int start_slot, RHI_Buffer_Scope scope, const std::vector<void*>& constant_buffers);
-		void SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer);
+		void SetConstantBuffer(unsigned int slot, RHI_Buffer_Scope scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer);
 			
 		void SetSamplers(unsigned int start_slot, const std::vector<void*>& samplers);
-		void SetSampler(unsigned int start_slot, const std::shared_ptr<RHI_Sampler>& sampler);
+		void SetSampler(unsigned int slot, const std::shared_ptr<RHI_Sampler>& sampler);
 		
 		void SetTextures(unsigned int start_slot, const std::vector<void*>& textures);
-		void SetTexture(unsigned int start_slot, void* texture);
-		void SetTexture(unsigned int start_slot, const std::shared_ptr<RHI_Texture>& texture);
-		void SetTexture(unsigned int start_slot, const std::shared_ptr<RHI_RenderTexture>& texture);
+		void SetTexture(uint32_t slot, void* texture);
+		void SetTexture(uint32_t slot, const std::shared_ptr<RHI_Texture>& texture);
+		void SetTexture(uint32_t slot, const std::shared_ptr<RHI_RenderTexture>& texture);
 		void ClearTextures() { SetTextures(0, m_textures_empty); }
 
 		void SetRenderTargets(const std::vector<void*>& render_targets, void* depth_stencil = nullptr);
@@ -251,10 +251,11 @@ namespace Spartan
 
 		// Vulkan
 		RHI_Command m_empty_cmd; // for GetCmd()
+		RHI_Pipeline* m_pipeline		= nullptr;
 		void* m_cmd_pool				= nullptr;
 		unsigned int m_current_frame	= 0;
 		bool m_is_recording				= false;
-		bool m_sync_cpu_to_gpu				= false;
+		bool m_sync_cpu_to_gpu			= false;
 		std::vector<void*> m_cmd_buffers;
 		std::vector<void*> m_semaphores_render_finished;
 		std::vector<void*> m_fences_in_flight;

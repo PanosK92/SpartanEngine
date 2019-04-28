@@ -94,7 +94,7 @@ namespace Spartan
 		cmd.vertex_offset	= vertex_offset;
 	}
 
-	void RHI_CommandList::SetPipeline(const RHI_Pipeline* pipeline)
+	void RHI_CommandList::SetPipeline(RHI_Pipeline* pipeline)
 	{
 		SetViewport(pipeline->m_viewport);
 		SetBlendState(pipeline->m_blend_state);

@@ -184,10 +184,12 @@ namespace Spartan
 		vkCmdDrawIndexed(CMD_BUFFER_VK, index_count, 1, index_offset, vertex_offset, 0);
 	}
 
-	void RHI_CommandList::SetPipeline(const RHI_Pipeline* pipeline)
+	void RHI_CommandList::SetPipeline(RHI_Pipeline* pipeline)
 	{
 		if (!m_is_recording)
 			return;
+
+		m_pipeline = pipeline;
 
 		vkCmdBindPipeline(CMD_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetPipeline()));
 
@@ -304,7 +306,7 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::SetConstantBuffer(unsigned int start_slot, RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
+	void RHI_CommandList::SetConstantBuffer(unsigned int slot, RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
 	{
 		if (!m_is_recording)
 			return;
@@ -317,34 +319,47 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::SetSampler(unsigned int start_slot, const shared_ptr<RHI_Sampler>& sampler)
+	void RHI_CommandList::SetSampler(unsigned int slot, const shared_ptr<RHI_Sampler>& sampler)
 	{
 		if (!m_is_recording)
 			return;
 	}
 
-	void RHI_CommandList::SetTextures(unsigned int start_slot, const vector<void*>& textures)
+	void RHI_CommandList::SetTextures(unsigned int start_Slot, const vector<void*>& textures)
 	{
 		if (!m_is_recording)
 			return;
 
-		//vkCmdBindDescriptorSets(CMD_BUFFER_VK, 
 	}
 
-	void RHI_CommandList::SetTexture(unsigned int start_slot, void* texture)
+	void RHI_CommandList::SetTexture(uint32_t slot, void* texture)
 	{
 		if (!m_is_recording)
 			return;
+		
+		/*m_pipeline->UpdateDescriptorSets(slot, texture);
+		auto descriptor_set = static_cast<VkDescriptorSet>(m_pipeline->GetDescriptorSetImGui());
+		vkCmdBindDescriptorSets
+		(
+			CMD_BUFFER_VK,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()),
+			0,
+			1,
+			&descriptor_set,
+			0,
+			nullptr
+		);*/
 	}
 
-	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_Texture>& texture)
+	void RHI_CommandList::SetTexture(uint32_t slot, const shared_ptr<RHI_Texture>& texture)
 	{
-		SetTexture(start_slot, texture->GetBufferView());
+		SetTexture(slot, texture->GetBufferView());
 	}
 
-	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_RenderTexture>& texture)
+	void RHI_CommandList::SetTexture(uint32_t slot, const shared_ptr<RHI_RenderTexture>& texture)
 	{
-		SetTexture(start_slot, texture->GetBufferView());
+		SetTexture(slot, texture->GetBufferView());
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
@@ -389,19 +404,19 @@ namespace Spartan
 		SPARTAN_ASSERT(m_current_frame == m_swap_chain->GetImageIndex());
 
 		// Prepare semaphores
-		vector<VkSemaphore> wait_semaphores		= { static_cast<VkSemaphore>(m_swap_chain->GetSemaphoreImageAcquired()) };
-		vector<VkSemaphore> signal_semaphores	= { SEMAPHORE_RENDER_FINISHED };
-		VkPipelineStageFlags wait_flags[]		= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		VkSemaphore wait_semaphores[]		= { static_cast<VkSemaphore>(m_swap_chain->GetSemaphoreImageAcquired()) };
+		VkSemaphore signal_semaphores[]		= { SEMAPHORE_RENDER_FINISHED };
+		VkPipelineStageFlags wait_flags[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 		VkSubmitInfo submit_info			= {};
 		submit_info.sType					= VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.waitSemaphoreCount		= static_cast<uint32_t>(wait_semaphores.size());
-		submit_info.pWaitSemaphores			= wait_semaphores.data();
+		submit_info.waitSemaphoreCount		= 1;
+		submit_info.pWaitSemaphores			= wait_semaphores;
 		submit_info.pWaitDstStageMask		= wait_flags;
 		submit_info.commandBufferCount		= 1;
 		submit_info.pCommandBuffers			= &CMD_BUFFER_VK;
-		submit_info.signalSemaphoreCount	= static_cast<uint32_t>(signal_semaphores.size());
-		submit_info.pSignalSemaphores		= signal_semaphores.data();
+		submit_info.signalSemaphoreCount	= 1;
+		submit_info.pSignalSemaphores		= signal_semaphores;
 
 		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, FENCE_SUBMIT_FINISHED_VK);
 		if (result != VK_SUCCESS)
@@ -409,7 +424,9 @@ namespace Spartan
 			LOGF_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::result_to_string(result));
 		}
 		
+		// This will at the next possible begin, we don't have to halt the CPU now
 		m_sync_cpu_to_gpu = true;
+
 		return result == VK_SUCCESS;
 	}
 

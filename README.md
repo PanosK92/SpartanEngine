@@ -62,7 +62,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 ##### v0.31 (WIP)
 Feature     | Completion    | Notes 
 :-          | :-            | :-
-Vulkan      | 40%           | Also, re-architect renderer for proper Vulkan usage
+Vulkan      | 40%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
 - DirectX 12

@@ -49,7 +49,7 @@ namespace Spartan
 	// This entire pipeline is temporary just so I can play with Vulkan a bit.
 
 	RHI_Pipeline::~RHI_Pipeline()
-	{	
+	{
 		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_graphics_pipeline), nullptr);
 		m_graphics_pipeline = nullptr;
 
@@ -68,24 +68,24 @@ namespace Spartan
 
 	inline VkRenderPass CreateRenderPass(const VkDevice& device)
 	{
-		VkAttachmentDescription color_attachment	= {};
-		color_attachment.format						= VkFormat::VK_FORMAT_B8G8R8A8_UNORM; // this has to come from the swapchain
-		color_attachment.samples					= VK_SAMPLE_COUNT_1_BIT;
-		color_attachment.loadOp						= VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment.storeOp					= VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.stencilLoadOp				= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		color_attachment.stencilStoreOp				= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		color_attachment.initialLayout				= VK_IMAGE_LAYOUT_UNDEFINED;
-		color_attachment.finalLayout				= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		VkAttachmentDescription color_attachment = {};
+		color_attachment.format = VkFormat::VK_FORMAT_B8G8R8A8_UNORM; // this has to come from the swapchain
+		color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-		VkAttachmentReference color_attachment_ref	= {};
-		color_attachment_ref.attachment				= 0;
-		color_attachment_ref.layout					= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		VkAttachmentReference color_attachment_ref = {};
+		color_attachment_ref.attachment = 0;
+		color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-		VkSubpassDescription subpass	= {};
-		subpass.pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount	= 1;
-		subpass.pColorAttachments		= &color_attachment_ref;
+		VkSubpassDescription subpass = {};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &color_attachment_ref;
 
 		// Sub-pass dependencies for layout transitions
 		std::vector<VkSubpassDependency> dependencies
@@ -114,13 +114,13 @@ namespace Spartan
 		};
 
 		VkRenderPassCreateInfo render_pass_info = {};
-		render_pass_info.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		render_pass_info.attachmentCount		= 1;
-		render_pass_info.pAttachments			= &color_attachment;
-		render_pass_info.subpassCount			= 1;
-		render_pass_info.pSubpasses				= &subpass;
-		render_pass_info.dependencyCount		= static_cast<uint32_t>(dependencies.size());
-		render_pass_info.pDependencies			= dependencies.data();
+		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		render_pass_info.attachmentCount = 1;
+		render_pass_info.pAttachments = &color_attachment;
+		render_pass_info.subpassCount = 1;
+		render_pass_info.pSubpasses = &subpass;
+		render_pass_info.dependencyCount = static_cast<uint32_t>(dependencies.size());
+		render_pass_info.pDependencies = dependencies.data();
 
 		VkRenderPass render_pass = nullptr;
 		if (vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS)
@@ -133,17 +133,21 @@ namespace Spartan
 
 	inline void CreateDescriptorPool(const VkDevice& device, void*& descriptor_pool_out, uint32_t descriptor_count)
 	{
-		// Size
-		VkDescriptorPoolSize pool_size	= {};
-		pool_size.type					= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		pool_size.descriptorCount		= descriptor_count;
+		// Pool sizes
+		array<VkDescriptorPoolSize, 3> pool_sizes = {};
+		pool_sizes[0].type				= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		pool_sizes[0].descriptorCount	= descriptor_count;
+		pool_sizes[1].type				= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		pool_sizes[1].descriptorCount	= descriptor_count;
+		pool_sizes[2].type				= VK_DESCRIPTOR_TYPE_SAMPLER;
+		pool_sizes[2].descriptorCount	= descriptor_count;
 
 		// Create info
 		VkDescriptorPoolCreateInfo pool_create_info = {};
 		pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		pool_create_info.flags						= VK_NULL_HANDLE;
-		pool_create_info.poolSizeCount				= 1;
-		pool_create_info.pPoolSizes					= &pool_size;
+		pool_create_info.poolSizeCount				= static_cast<uint32_t>(pool_sizes.size());
+		pool_create_info.pPoolSizes					= pool_sizes.data();
 		pool_create_info.maxSets					= descriptor_count;
 
 		// Pool
@@ -158,26 +162,8 @@ namespace Spartan
 		descriptor_pool_out = static_cast<void*>(descriptor_pool);
 	}
 
-	inline void CreateDescriptors
-	(
-		const VkDevice& device,
-		const VkDescriptorPool& descriptor_pool,
-		uint32_t descriptor_count,
-		shared_ptr<RHI_Shader>& shader_vertex,
-		shared_ptr<RHI_Shader>& shader_pixel,
-		void*& descriptor_set_layout_out,
-		void*& descriptor_set_out,
-		RHI_ConstantBuffer* constant_buffer	= nullptr,
-		RHI_Sampler* sampler				= nullptr,
-		void* texture						= nullptr
-	)
+	inline void CreateDescriptorSetLayout(const VkDevice& device, const map<string, Shader_Resource>& shader_resources, void*& descriptor_set_layout_out)
 	{
-		// Merge vertex & index shader resources into map (to ensure unique values)
-		map<string, Shader_Resource> shader_resources;
-		while (shader_vertex->GetCompilationState() == Compilation_State::Shader_Compiling || shader_pixel->GetCompilationState() == Compilation_State::Shader_Compiling) { } // wait for shader to finish compilation
-		for (const auto& resource : shader_vertex->GetResources())	shader_resources[resource.name] = resource;
-		for (const auto& resource : shader_pixel->GetResources())	shader_resources[resource.name] = resource;
-
 		// Layout bindings
 		vector<VkDescriptorSetLayoutBinding> layout_bindings;
 		for (const auto& resource : shader_resources)
@@ -190,7 +176,7 @@ namespace Spartan
 				1,												// descriptorCount
 				stage_flags,									// stageFlags
 				nullptr											// pImmutableSamplers
-			});
+				});
 		}
 
 		// Descriptor set layout create info
@@ -209,17 +195,30 @@ namespace Spartan
 			return;
 		}
 		descriptor_set_layout_out = static_cast<void*>(descriptor_set_layout);
+	}
 
+	inline void CreateDescriptorSets(
+		const VkDevice& device,
+		const VkDescriptorPool& descriptor_pool,
+		const uint32_t descriptor_count,
+		const VkDescriptorSetLayout& descriptor_set_layout,
+		const map<string, Shader_Resource>& shader_resources,
+		void*& descriptor_set_out,
+		RHI_ConstantBuffer* constant_buffer = nullptr,
+		RHI_Sampler* sampler				= nullptr,
+		void* texture						= nullptr
+	)
+	{
 		// Descriptor set allocate info
 		VkDescriptorSetAllocateInfo allocate_info	= {};
 		allocate_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocate_info.descriptorPool				= static_cast<VkDescriptorPool>(descriptor_pool);
+		allocate_info.descriptorPool				= descriptor_pool;
 		allocate_info.descriptorSetCount			= 1;
 		allocate_info.pSetLayouts					= &descriptor_set_layout;
 
 		// Descriptor set
 		VkDescriptorSet descriptor_set;
-		result = vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set);
+		auto result = vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::result_to_string(result));
@@ -238,29 +237,26 @@ namespace Spartan
 		image_info.sampler					= sampler ? static_cast<VkSampler>(sampler->GetBufferView()) : nullptr;
 
 		// Descriptor Sets
-		for (uint32_t i = 0; i < descriptor_count; i++)
+		vector<VkWriteDescriptorSet> write_descriptor_sets;
+
+		for (const auto& resource : shader_resources)
 		{
-			vector<VkWriteDescriptorSet> write_descriptor_sets;
-
-			for (const auto& resource : shader_resources)
-			{
-				write_descriptor_sets.push_back
-				({
-					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,			// sType
-					nullptr,										// pNext
-					descriptor_set,									// dstSet
-					resource.second.slot,							// dstBinding
-					0,												// dstArrayElement
-					1,												// descriptorCount
-					vulkan_descriptor_type[resource.second.type],	// descriptorType
-					&image_info,									// pImageInfo 
-					&buffer_info,									// pBufferInfo
-					nullptr											// pTexelBufferView
+			write_descriptor_sets.push_back
+			({
+				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,			// sType
+				nullptr,										// pNext
+				descriptor_set,									// dstSet
+				resource.second.slot,							// dstBinding
+				0,												// dstArrayElement
+				1,												// descriptorCount
+				vulkan_descriptor_type[resource.second.type],	// descriptorType
+				&image_info,									// pImageInfo 
+				&buffer_info,									// pBufferInfo
+				nullptr											// pTexelBufferView
 				});
-			}
-
-			vkUpdateDescriptorSets(device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 		}
+
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 	}
 
 	bool RHI_Pipeline::Create()
@@ -406,15 +402,21 @@ namespace Spartan
 		color_blend_State.blendConstants[2]						= 0.0f;
 		color_blend_State.blendConstants[3]						= 0.0f;
 
-		// Descriptor set layout
-		CreateDescriptors
+		// Merge vertex & index shader resources into map (to ensure unique values)
+		map<string, Shader_Resource> shader_resources;
+		while (m_shader_vertex->GetCompilationState() == Compilation_State::Shader_Compiling || m_shader_pixel->GetCompilationState() == Compilation_State::Shader_Compiling) {} // wait for shader to finish compilation
+		for (const auto& resource : m_shader_vertex->GetResources())	shader_resources[resource.name] = resource;
+		for (const auto& resource : m_shader_pixel->GetResources())	shader_resources[resource.name] = resource;
+
+		// Descriptor set layout and descriptor sets
+		CreateDescriptorSetLayout(m_rhi_device->GetContext()->device, shader_resources, m_descriptor_set_layout);
+		CreateDescriptorSets
 		(
 			m_rhi_device->GetContext()->device,
 			static_cast<VkDescriptorPool>(m_descriptor_pool),
 			m_descriptor_count,
-			m_shader_vertex,
-			m_shader_pixel,
-			m_descriptor_set_layout,
+			static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout),
+			shader_resources,
 			m_descriptor_set,
 			m_constant_buffer.get(),
 			m_sampler.get(),
@@ -422,11 +424,11 @@ namespace Spartan
 		);
 
 		// Pipeline layout create info
+		auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
 		pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipeline_layout_info.pushConstantRangeCount		= 0;
-		pipeline_layout_info.setLayoutCount				= 1;
-		auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
+		pipeline_layout_info.setLayoutCount				= 1;		
 		pipeline_layout_info.pSetLayouts				= &vk_descriptor_set_layout;
 
 		// Pipeline layout
@@ -464,6 +466,67 @@ namespace Spartan
 		m_graphics_pipeline = static_cast<void*>(graphics_pipeline);
 
 		return true;
+	}
+
+	void RHI_Pipeline::UpdateDescriptorSets(uint32_t slot, void* texture)
+	{
+		// Test to see how I can update a texture descriptor (mainly for ImGui)
+
+		if (!m_descriptor_set_imgui_test)
+		{
+			VkDescriptorSetAllocateInfo allocate_info	= {};
+			allocate_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocate_info.descriptorPool				= static_cast<VkDescriptorPool>(m_descriptor_pool);
+			allocate_info.descriptorSetCount			= 1;
+			auto descriptor_set_layout					= static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
+			allocate_info.pSetLayouts					= &descriptor_set_layout;
+
+			VkDescriptorSet descriptor_set;
+			auto result = vkAllocateDescriptorSets(m_rhi_device->GetContext()->device, &allocate_info, &descriptor_set);
+			if (result != VK_SUCCESS)
+			{
+				LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::result_to_string(result));
+				return;
+			}
+			m_descriptor_set_imgui_test = static_cast<void*>(descriptor_set);
+		}
+
+		// Merge vertex & index shader resources into map (to ensure unique values)
+		map<string, Shader_Resource> shader_resources;
+		for (const auto& resource : m_shader_vertex->GetResources())	shader_resources[resource.name] = resource;
+		for (const auto& resource : m_shader_pixel->GetResources())		shader_resources[resource.name] = resource;
+
+		VkDescriptorBufferInfo buffer_info = {};
+		buffer_info.buffer = m_constant_buffer ? static_cast<VkBuffer>(m_constant_buffer->GetBufferView()) : nullptr;
+		buffer_info.offset = 0;
+		buffer_info.range = m_constant_buffer ? m_constant_buffer->GetSize() : 0;
+
+		VkDescriptorImageInfo image_info = {};
+		image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		image_info.imageView = static_cast<VkImageView>(texture);
+		image_info.sampler = m_sampler ? static_cast<VkSampler>(m_sampler->GetBufferView()) : nullptr;
+
+		// Descriptor Sets
+		vector<VkWriteDescriptorSet> write_descriptor_sets;
+
+		for (const auto& resource : shader_resources)
+		{
+			write_descriptor_sets.push_back
+			({
+				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,			// sType
+				nullptr,										// pNext
+				static_cast<VkDescriptorSet>(m_descriptor_set_imgui_test),									// dstSet
+				resource.second.slot,							// dstBinding
+				0,												// dstArrayElement
+				1,												// descriptorCount
+				vulkan_descriptor_type[resource.second.type],	// descriptorType
+				&image_info,									// pImageInfo 
+				&buffer_info,									// pBufferInfo
+				nullptr											// pTexelBufferView
+				});
+		}
+
+		vkUpdateDescriptorSets(m_rhi_device->GetContext()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 	}
 }
 #endif
