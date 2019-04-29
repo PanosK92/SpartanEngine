@@ -44,10 +44,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
+static const bool DYNAMIC_DESCRIPTOR			= true;
+static uint32_t MAX_CONSTANT_BUFFERS_PER_STAGE	= 2;
+static uint32_t MAX_TEXTURES_PER_STAGE			= 2;
+static uint32_t MAX_SAMPLERS_PER_STAGE			= 2;
+
 namespace Spartan
 {
-	// This entire pipeline is temporary just so I can play with Vulkan a bit.
-
 	RHI_Pipeline::~RHI_Pipeline()
 	{
 		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_graphics_pipeline), nullptr);
@@ -114,13 +117,13 @@ namespace Spartan
 		};
 
 		VkRenderPassCreateInfo render_pass_info = {};
-		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		render_pass_info.attachmentCount = 1;
-		render_pass_info.pAttachments = &color_attachment;
-		render_pass_info.subpassCount = 1;
-		render_pass_info.pSubpasses = &subpass;
-		render_pass_info.dependencyCount = static_cast<uint32_t>(dependencies.size());
-		render_pass_info.pDependencies = dependencies.data();
+		render_pass_info.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		render_pass_info.attachmentCount		= 1;
+		render_pass_info.pAttachments			= &color_attachment;
+		render_pass_info.subpassCount			= 1;
+		render_pass_info.pSubpasses				= &subpass;
+		render_pass_info.dependencyCount		= static_cast<uint32_t>(dependencies.size());
+		render_pass_info.pDependencies			= dependencies.data();
 
 		VkRenderPass render_pass = nullptr;
 		if (vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS)
@@ -134,18 +137,18 @@ namespace Spartan
 	inline void CreateDescriptorPool(const VkDevice& device, void*& descriptor_pool_out, uint32_t descriptor_count)
 	{
 		// Pool sizes
-		array<VkDescriptorPoolSize, 3> pool_sizes = {};
-		pool_sizes[0].type				= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		pool_sizes[0].descriptorCount	= descriptor_count;
-		pool_sizes[1].type				= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		pool_sizes[1].descriptorCount	= descriptor_count;
-		pool_sizes[2].type				= VK_DESCRIPTOR_TYPE_SAMPLER;
-		pool_sizes[2].descriptorCount	= descriptor_count;
+		array<VkDescriptorPoolSize, 3> pool_sizes	= {};
+		pool_sizes[0].type							= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		pool_sizes[0].descriptorCount				= MAX_CONSTANT_BUFFERS_PER_STAGE;
+		pool_sizes[1].type							= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		pool_sizes[1].descriptorCount				= MAX_TEXTURES_PER_STAGE;
+		pool_sizes[2].type							= VK_DESCRIPTOR_TYPE_SAMPLER;
+		pool_sizes[2].descriptorCount				= MAX_SAMPLERS_PER_STAGE;
 
 		// Create info
 		VkDescriptorPoolCreateInfo pool_create_info = {};
 		pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_create_info.flags						= VK_NULL_HANDLE;
+		pool_create_info.flags						= DYNAMIC_DESCRIPTOR ? VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT : 0;
 		pool_create_info.poolSizeCount				= static_cast<uint32_t>(pool_sizes.size());
 		pool_create_info.pPoolSizes					= pool_sizes.data();
 		pool_create_info.maxSets					= descriptor_count;
@@ -169,6 +172,7 @@ namespace Spartan
 		for (const auto& resource : shader_resources)
 		{
 			VkShaderStageFlags stage_flags = (resource.second.shader_type == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+
 			layout_bindings.push_back
 			({
 				resource.second.slot,							// binding
@@ -178,10 +182,11 @@ namespace Spartan
 				nullptr											// pImmutableSamplers
 				});
 		}
-
+		
 		// Descriptor set layout create info
 		VkDescriptorSetLayoutCreateInfo resource_layout_info	= {};
 		resource_layout_info.sType								= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		resource_layout_info.flags								= DYNAMIC_DESCRIPTOR ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT : 0;
 		resource_layout_info.pNext								= nullptr;
 		resource_layout_info.bindingCount						= static_cast<uint32_t>(layout_bindings.size());
 		resource_layout_info.pBindings							= layout_bindings.data();
@@ -468,43 +473,22 @@ namespace Spartan
 		return true;
 	}
 
-	void RHI_Pipeline::UpdateDescriptorSets(uint32_t slot, void* texture)
+	void RHI_Pipeline::ImGuiDescriptorTest(uint32_t slot, void* texture)
 	{
-		// Test to see how I can update a texture descriptor (mainly for ImGui)
-
-		if (!m_descriptor_set_imgui_test)
-		{
-			VkDescriptorSetAllocateInfo allocate_info	= {};
-			allocate_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocate_info.descriptorPool				= static_cast<VkDescriptorPool>(m_descriptor_pool);
-			allocate_info.descriptorSetCount			= 1;
-			auto descriptor_set_layout					= static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
-			allocate_info.pSetLayouts					= &descriptor_set_layout;
-
-			VkDescriptorSet descriptor_set;
-			auto result = vkAllocateDescriptorSets(m_rhi_device->GetContext()->device, &allocate_info, &descriptor_set);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::result_to_string(result));
-				return;
-			}
-			m_descriptor_set_imgui_test = static_cast<void*>(descriptor_set);
-		}
-
 		// Merge vertex & index shader resources into map (to ensure unique values)
 		map<string, Shader_Resource> shader_resources;
 		for (const auto& resource : m_shader_vertex->GetResources())	shader_resources[resource.name] = resource;
 		for (const auto& resource : m_shader_pixel->GetResources())		shader_resources[resource.name] = resource;
 
-		VkDescriptorBufferInfo buffer_info = {};
-		buffer_info.buffer = m_constant_buffer ? static_cast<VkBuffer>(m_constant_buffer->GetResource()) : nullptr;
-		buffer_info.offset = 0;
-		buffer_info.range = m_constant_buffer ? m_constant_buffer->GetSize() : 0;
+		VkDescriptorBufferInfo buffer_info	= {};
+		buffer_info.buffer					= m_constant_buffer ? static_cast<VkBuffer>(m_constant_buffer->GetResource()) : nullptr;
+		buffer_info.offset					= 0;
+		buffer_info.range					= m_constant_buffer ? m_constant_buffer->GetSize() : 0;
 
-		VkDescriptorImageInfo image_info = {};
-		image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		image_info.imageView = static_cast<VkImageView>(texture);
-		image_info.sampler = m_sampler ? static_cast<VkSampler>(m_sampler->GetResource()) : nullptr;
+		VkDescriptorImageInfo image_info	= {};
+		image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		image_info.imageView				= static_cast<VkImageView>(texture);
+		image_info.sampler					= m_sampler ? static_cast<VkSampler>(m_sampler->GetResource()) : nullptr;
 
 		// Descriptor Sets
 		vector<VkWriteDescriptorSet> write_descriptor_sets;
@@ -515,7 +499,7 @@ namespace Spartan
 			({
 				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,			// sType
 				nullptr,										// pNext
-				static_cast<VkDescriptorSet>(m_descriptor_set_imgui_test),									// dstSet
+				static_cast<VkDescriptorSet>(m_descriptor_set),	// dstSet
 				resource.second.slot,							// dstBinding
 				0,												// dstArrayElement
 				1,												// descriptorCount
@@ -523,9 +507,9 @@ namespace Spartan
 				&image_info,									// pImageInfo 
 				&buffer_info,									// pBufferInfo
 				nullptr											// pTexelBufferView
-				});
+			});
 		}
-
+		
 		vkUpdateDescriptorSets(m_rhi_device->GetContext()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 	}
 }

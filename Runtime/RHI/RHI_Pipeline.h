@@ -37,13 +37,12 @@ namespace Spartan
 		~RHI_Pipeline();
 	
 		bool Create();
-		void UpdateDescriptorSets(uint32_t slot, void* texture);
+		void ImGuiDescriptorTest(uint32_t slot, void* texture);
 		
 		void* GetPipeline() const		{ return m_graphics_pipeline; }
 		void* GetPipelineLayout() const	{ return m_pipeline_layout; }
 		void* GetRenderPass() const		{ return m_render_pass; }
 		void* GetDescriptorSet() const	{ return m_descriptor_set; }
-		void* GetDescriptorSetImGui() const { return m_descriptor_set_imgui_test; }
 
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_Shader> m_shader_vertex;
@@ -69,6 +68,5 @@ namespace Spartan
 		uint32_t m_descriptor_count		= 0;
 		void* m_descriptor_set_layout	= nullptr;
 		void* m_descriptor_set			= nullptr;
-		void* m_descriptor_set_imgui_test = nullptr;
 	};
 }

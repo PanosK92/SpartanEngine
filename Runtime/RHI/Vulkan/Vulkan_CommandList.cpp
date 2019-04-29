@@ -337,19 +337,7 @@ namespace Spartan
 		if (!m_is_recording)
 			return;
 		
-		/*m_pipeline->UpdateDescriptorSets(slot, texture);
-		auto descriptor_set = static_cast<VkDescriptorSet>(m_pipeline->GetDescriptorSetImGui());
-		vkCmdBindDescriptorSets
-		(
-			CMD_BUFFER_VK,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()),
-			0,
-			1,
-			&descriptor_set,
-			0,
-			nullptr
-		);*/
+		m_pipeline->ImGuiDescriptorTest(slot, texture);
 	}
 
 	void RHI_CommandList::SetTexture(uint32_t slot, const shared_ptr<RHI_Texture>& texture)
