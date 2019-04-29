@@ -38,7 +38,16 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_RenderTexture::RHI_RenderTexture(const shared_ptr<RHI_Device>& rhi_device, unsigned int width, unsigned int height, RHI_Format texture_format, bool depth, RHI_Format depth_format, unsigned int array_size)
+	RHI_RenderTexture::RHI_RenderTexture(
+		const shared_ptr<RHI_Device>& rhi_device,
+		unsigned int width,
+		unsigned int height,
+		RHI_Format texture_format,
+		bool depth,
+		RHI_Format depth_format,
+		unsigned int array_size,
+		bool is_cubemap
+	)
 	{
 		m_rhi_device	= rhi_device;
 		m_depth_enabled	= depth;
@@ -54,95 +63,103 @@ namespace Spartan
 			return;
 		}
 
-		// RENDER TARGET TEXTURE
+		if (is_cubemap && array_size != 6)
 		{
-			D3D11_TEXTURE2D_DESC texture_desc;
-			ZeroMemory(&texture_desc, sizeof(texture_desc));
-			texture_desc.Width				= static_cast<UINT>(m_viewport.GetWidth());
-			texture_desc.Height				= static_cast<UINT>(m_viewport.GetHeight());
-			texture_desc.MipLevels			= 1;
-			texture_desc.ArraySize			= array_size;
-			texture_desc.Format				= d3d11_format[m_format];
-			texture_desc.SampleDesc.Count	= 1;
-			texture_desc.SampleDesc.Quality	= 0;
-			texture_desc.Usage				= D3D11_USAGE_DEFAULT;
-			texture_desc.BindFlags			= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-			texture_desc.CPUAccessFlags		= 0;
-			texture_desc.MiscFlags			= 0;
-
-			auto ptr = reinterpret_cast<ID3D11Texture2D**>(&m_render_target_view);
-			if (FAILED(m_rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, nullptr, ptr)))
-			{
-				LOG_ERROR("CreateTexture2D() failed.");
-				return;
-			}
+			LOG_WARNING("A cubemap with an array size of %d was requested, which is invalid. Using an array size of 6 instead.", array_size);
+			array_size = 6;
 		}
 
-		// RENDER TARGET VIEW
+		// RENDER TEXTURE
 		{
-			D3D11_RENDER_TARGET_VIEW_DESC view_desc;
-			view_desc.Format	= d3d11_format[m_format];
-			if (array_size == 1)
+			// TEXTURE
 			{
-				view_desc.ViewDimension		= D3D11_RTV_DIMENSION_TEXTURE2D;
-				view_desc.Texture2D.MipSlice = 0;
+				D3D11_TEXTURE2D_DESC texture_desc	= {};
+				texture_desc.Width					= static_cast<UINT>(m_viewport.GetWidth());
+				texture_desc.Height					= static_cast<UINT>(m_viewport.GetHeight());
+				texture_desc.MipLevels				= 1;
+				texture_desc.ArraySize				= array_size;
+				texture_desc.Format					= d3d11_format[m_format];
+				texture_desc.SampleDesc.Count		= 1;
+				texture_desc.SampleDesc.Quality		= 0;
+				texture_desc.Usage					= D3D11_USAGE_DEFAULT;
+				texture_desc.BindFlags				= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+				texture_desc.CPUAccessFlags			= 0;
+				texture_desc.MiscFlags				= is_cubemap ? D3D11_RESOURCE_MISC_TEXTURECUBE : 0;
 
-				auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_buffer_render_target_views.emplace_back(nullptr));
-				if (FAILED(m_rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_view), &view_desc, ptr)))
+				auto ptr = reinterpret_cast<ID3D11Texture2D**>(&m_render_target_view);
+				if (FAILED(m_rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, nullptr, ptr)))
 				{
-					LOG_ERROR("CreateRenderTargetView() failed.");
+					LOG_ERROR("CreateTexture2D() failed.");
 					return;
 				}
 			}
-			else
-			{
-				for (unsigned int i = 0; i < array_size; i++)
-				{
-					view_desc.ViewDimension					= D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-					view_desc.Texture2DArray.MipSlice		= 0;
-					view_desc.Texture2DArray.ArraySize		= 1;
-					view_desc.Texture2DArray.FirstArraySlice = i;
 
-					m_buffer_render_target_views.emplace_back(nullptr);
-					auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_buffer_render_target_views[i]);
+			// RENDER TARGET VIEW
+			{
+				D3D11_RENDER_TARGET_VIEW_DESC view_desc;
+				view_desc.Format = d3d11_format[m_format];
+				if (array_size == 1)
+				{
+					view_desc.ViewDimension = is_cubemap ? D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2D;
+					view_desc.Texture2D.MipSlice = 0;
+
+					auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_buffer_render_target_views.emplace_back(nullptr));
 					if (FAILED(m_rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_view), &view_desc, ptr)))
 					{
 						LOG_ERROR("CreateRenderTargetView() failed.");
 						return;
 					}
 				}
-			}		
-		}
+				else
+				{
+					for (unsigned int i = 0; i < array_size; i++)
+					{
+						view_desc.ViewDimension						= D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+						view_desc.Texture2DArray.MipSlice			= 0;
+						view_desc.Texture2DArray.ArraySize			= 1;
+						view_desc.Texture2DArray.FirstArraySlice	= i;
 
-		// SHADER RESOURCE VIEW
-		{
-			D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc;
-			shader_resource_view_desc.Format = d3d11_format[m_format];
-			if (array_size == 1)
-			{
-				shader_resource_view_desc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
-				shader_resource_view_desc.Texture2D.MostDetailedMip	= 0;
-				shader_resource_view_desc.Texture2D.MipLevels		= 1;
+						m_buffer_render_target_views.emplace_back(nullptr);
+						auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_buffer_render_target_views[i]);
+						if (FAILED(m_rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_view), &view_desc, ptr)))
+						{
+							LOG_ERROR("CreateRenderTargetView() failed.");
+							return;
+						}
+					}
+				}
 			}
-			else
+
+			// SHADER RESOURCE VIEW
 			{
-				shader_resource_view_desc.ViewDimension						= D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-				shader_resource_view_desc.Texture2DArray.FirstArraySlice	= 0;
-				shader_resource_view_desc.Texture2DArray.MostDetailedMip	= 0;
-				shader_resource_view_desc.Texture2DArray.MipLevels			= 1;
-				shader_resource_view_desc.Texture2DArray.ArraySize			= array_size;
-			}
-			
-			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&m_texture_view);
-			if (FAILED(m_rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Texture2D*>(m_render_target_view), &shader_resource_view_desc, ptr)))
-			{
-				safe_release(static_cast<ID3D11Texture2D*>(m_render_target_view));
-				LOG_ERROR("CreateShaderResourceView() failed.");
-				return;
-			}
-			else
-			{
-				safe_release(static_cast<ID3D11Texture2D*>(m_render_target_view));
+				D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc;
+				shader_resource_view_desc.Format = d3d11_format[m_format];
+				if (array_size == 1)
+				{
+					shader_resource_view_desc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
+					shader_resource_view_desc.Texture2D.MostDetailedMip = 0;
+					shader_resource_view_desc.Texture2D.MipLevels		= 1;
+				}
+				else
+				{
+					shader_resource_view_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+					shader_resource_view_desc.Texture2DArray.FirstArraySlice	= 0;
+					shader_resource_view_desc.Texture2DArray.MostDetailedMip	= 0;
+					shader_resource_view_desc.Texture2DArray.MipLevels			= 1;
+					shader_resource_view_desc.Texture2DArray.ArraySize			= array_size;
+				}
+
+				auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&m_texture_view);
+				if (FAILED(m_rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Texture2D*>(m_render_target_view), &shader_resource_view_desc, ptr)))
+				{
+					safe_release(static_cast<ID3D11Texture2D*>(m_render_target_view));
+					LOG_ERROR("CreateShaderResourceView() failed.");
+					return;
+				}
+				else
+				{
+					safe_release(static_cast<ID3D11Texture2D*>(m_render_target_view));
+				}
 			}
 		}
 
@@ -154,8 +171,7 @@ namespace Spartan
 			auto depth_stencil_view					= reinterpret_cast<ID3D11DepthStencilView**>(&m_depth_stencil_view);
 
 			// Depth-stencil buffer
-			D3D11_TEXTURE2D_DESC depth_buffer_desc;
-			ZeroMemory(&depth_buffer_desc, sizeof(depth_buffer_desc));
+			D3D11_TEXTURE2D_DESC depth_buffer_desc	= {};
 			depth_buffer_desc.Width					= static_cast<UINT>(m_viewport.GetWidth());
 			depth_buffer_desc.Height				= static_cast<UINT>(m_viewport.GetHeight());
 			depth_buffer_desc.MipLevels				= 1;

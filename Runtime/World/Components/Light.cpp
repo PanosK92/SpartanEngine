@@ -243,26 +243,28 @@ namespace Spartan
 		if (!force && !m_shadowMap)
 			return;
 
-		m_shadowMap.reset();
-	
-		// Compute array size
-		int arraySize = 0;
+		unsigned int resolution = Settings::Get().GetShadowResolution();
+		auto rhi_device			= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
+		unsigned int array_size = 1;
+		bool is_cubemap			= false;
+
 		if (GetLightType() == LightType_Directional)
 		{
-			arraySize = 3; // cascades
+			array_size = 3; // cascades
+			is_cubemap = false;
 		}
 		else if (GetLightType() == LightType_Point)
 		{
-			arraySize = 6; // points of view
+			array_size = 6;
+			is_cubemap = true;
+			
 		}
 		else if (GetLightType() == LightType_Spot)
 		{
-			arraySize = 1;
+			array_size = 1;
+			is_cubemap = false;
 		}
 
-		// Create the shadow maps
-		unsigned int resolution	= Settings::Get().GetShadowResolution();
-		auto rhiDevice			= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
-		m_shadowMap				= make_unique<RHI_RenderTexture>(rhiDevice, resolution, resolution, Format_R32_FLOAT, true, Format_D32_FLOAT, arraySize); // could use the g-buffers depth which should be same res
+		m_shadowMap = make_unique<RHI_RenderTexture>(rhi_device, resolution, resolution, Format_R32_FLOAT, true, Format_D32_FLOAT, array_size, is_cubemap);
 	}
 }
