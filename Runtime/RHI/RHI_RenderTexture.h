@@ -41,7 +41,8 @@ namespace Spartan
 			RHI_Format texture_format	= Format_R8G8B8A8_UNORM,
 			bool depth					= false,
 			RHI_Format depth_format		= Format_D32_FLOAT,
-			unsigned int array_size		= 1
+			unsigned int array_size		= 1,
+			bool is_cubemap				= false
 		);
 		~RHI_RenderTexture();
 
