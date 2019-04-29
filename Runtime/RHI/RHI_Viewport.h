@@ -83,7 +83,7 @@ namespace Spartan
 		const float& GetHeight()		const	{ return m_height; }
 		const float& GetMinDepth()		const	{ return m_minDepth; }
 		const float& GetMaxDepth()		const	{ return m_maxDepth; }
-		const float& GetAspectRatio()	const	{ return m_width / m_height; }
+		float GetAspectRatio()			const	{ return m_width / m_height; }
 
 		void SetPosX(float x)			{ m_x = x; }
 		void SetPosY(float y)			{ m_y = y; }

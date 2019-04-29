@@ -335,13 +335,13 @@ namespace ImGui::RHI
 				}
 				else
 				{
-					// Apply scissor rectangle
-					auto scissor_rect	 = Rectangle(pcmd->ClipRect.x - pos.x, pcmd->ClipRect.y - pos.y, pcmd->ClipRect.z - pos.x, pcmd->ClipRect.w - pos.y);
+					// Compute scissor rectangle
+					auto scissor_rect	 = Math::Rectangle(pcmd->ClipRect.x - pos.x, pcmd->ClipRect.y - pos.y, pcmd->ClipRect.z - pos.x, pcmd->ClipRect.w - pos.y);
 					scissor_rect.width	-= scissor_rect.x;
 					scissor_rect.height -= scissor_rect.y;
+					
+					// Apply scissor rectangle, bind texture and draw
 					g_cmd_list->SetScissorRectangle(scissor_rect);
-
-					// Bind texture, Draw
 					g_cmd_list->SetTexture(0, pcmd->TextureId);
 					g_cmd_list->DrawIndexed(pcmd->ElemCount, idx_offset, vtx_offset);
 				}

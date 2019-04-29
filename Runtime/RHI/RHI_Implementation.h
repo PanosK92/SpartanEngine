@@ -275,7 +275,7 @@ namespace Spartan
 		std::vector<const char*> extensions_device =
 		{
 			"VK_KHR_swapchain",
-			//"VK_KHR_relaxed_block_layout" // Allows implementations to indicate they can support more variation in block offset decorations. For example, placing a vector of three floats at an offset of 16*N + 4
+			"VK_EXT_descriptor_indexing"
 		};
 		#ifdef DEBUG
 			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_utils" };
