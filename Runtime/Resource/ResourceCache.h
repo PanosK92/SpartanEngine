@@ -154,6 +154,7 @@ namespace Spartan
 		//= I/O ========================================================
 		void GetResourceFilePaths(std::vector<std::string>& file_paths);
 		void SaveResourcesToFiles();
+		void LoadResourcesFromFiles();
 		//==============================================================
 
 		//= MISC ==========================================================

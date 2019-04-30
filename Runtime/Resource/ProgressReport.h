@@ -29,8 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	static int g_progress_ModelImporter = 0;
-	static int g_progress_Scene			= 1;
+	static int g_progress_model_importer	= 0;
+	static int g_progress_world				= 1;
+	static int g_progress_resource_cache	= 2;
 
 	struct Progress
 	{

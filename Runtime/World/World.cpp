@@ -96,7 +96,7 @@ namespace Spartan
 			// Start
 			if (started)
 			{
-				for (const auto& entity : m_entitiesPrimary)
+				for (const auto& entity : m_entities_primary)
 				{
 					entity->Start();
 				}
@@ -104,13 +104,13 @@ namespace Spartan
 			// Stop
 			if (stopped)
 			{
-				for (const auto& entity : m_entitiesPrimary)
+				for (const auto& entity : m_entities_primary)
 				{
 					entity->Stop();
 				}
 			}
 			// Tick
-			for (const auto& entity : m_entitiesPrimary)
+			for (const auto& entity : m_entities_primary)
 			{
 				entity->Tick();
 			}
@@ -120,9 +120,9 @@ namespace Spartan
 
 		if (m_isDirty)
 		{
-			m_entitiesSecondary = m_entitiesPrimary;
+			m_entities_secondary = m_entities_primary;
 			// Submit to the Renderer
-			FIRE_EVENT_DATA(Event_World_Submit, m_entitiesSecondary);
+			FIRE_EVENT_DATA(Event_World_Submit, m_entities_secondary);
 			m_isDirty = false;
 		}
 	}
@@ -131,21 +131,20 @@ namespace Spartan
 	{
 		FIRE_EVENT(Event_World_Unload);
 
-		m_entitiesPrimary.clear();
-		m_entitiesPrimary.shrink_to_fit();
+		m_entities_primary.clear();
+		m_entities_primary.shrink_to_fit();
 
 		m_isDirty = true;
 		
-		// Don't clear secondary m_entitiesSecondary as they might be used by the renderer
+		// Don't clear secondary m_entities_secondary as they might be used by the renderer
 	}
-	//=========================================================================================================
 
-	//= I/O ===================================================================================================
 	bool World::SaveToFile(const string& filePathIn)
 	{
-		ProgressReport::Get().Reset(g_progress_Scene);
-		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
-		ProgressReport::Get().SetStatus(g_progress_Scene, "Saving scene...");
+		// Start progress report and timer
+		ProgressReport::Get().Reset(g_progress_world);
+		ProgressReport::Get().SetIsLoading(g_progress_world, true);
+		ProgressReport::Get().SetStatus(g_progress_world, "Saving world...");
 		Stopwatch timer;
 	
 		// Add scene file extension to the filepath if it's missing
@@ -154,45 +153,46 @@ namespace Spartan
 		{
 			file_path += EXTENSION_WORLD;
 		}
+		m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
 
-		// Save any in-memory changes done to resources while running.
-		m_context->GetSubsystem<ResourceCache>()->SaveResourcesToFiles();
+		// Notify subsystems that need to save data
+		FIRE_EVENT(Event_World_Save);
 
 		// Create a prefab file
 		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
 		if (!file->IsOpen())
 		{
+			LOG_ERROR_GENERIC_FAILURE();
 			return false;
 		}
 
-		// Save currently loaded resource paths
-		vector<string> file_paths;
-		m_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths(file_paths);
-		file->Write(file_paths);
-
-		//= Save entities ============================
 		// Only save root entities as they will also save their descendants
-		auto rootentities = EntitiesGetRoots();
+		auto root_actors = EntityGetRoots();
+		const auto root_entity_count = static_cast<unsigned int>(root_actors.size());
 
-		// 1st - entity count
-		const auto root_entity_count = static_cast<unsigned int>(rootentities.size());
+		ProgressReport::Get().SetJobCount(g_progress_world, root_entity_count);
+
+		// Save root entity count
 		file->Write(root_entity_count);
 
-		// 2nd - entity IDs
-		for (const auto& root : rootentities)
+		// Save root entity IDs
+		for (const auto& root : root_actors)
 		{
 			file->Write(root->GetId());
 		}
 
-		// 3rd - entities
-		for (const auto& root : rootentities)
+		// Save root entities
+		for (const auto& root : root_actors)
 		{
 			root->Serialize(file.get());
+			ProgressReport::Get().IncrementJobsDone(g_progress_world);
 		}
-		//==============================================
 
-		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);
-		LOG_INFO("Saving took " + to_string(static_cast<int>(timer.GetElapsedTimeMs())) + " ms");	
+		// Finish with progress report and timer
+		ProgressReport::Get().SetIsLoading(g_progress_world, false);
+		LOG_INFO("Saving took " + to_string(static_cast<int>(timer.GetElapsedTimeMs())) + " ms");
+
+		// Notify subsystems waiting for us to finish
 		FIRE_EVENT(Event_World_Saved);
 
 		return true;
@@ -209,10 +209,13 @@ namespace Spartan
 		// Thread safety: Wait for scene and the renderer to stop the entities (could do double buffering in the future)
 		while (m_state != Loading || Renderer::IsRendering()) { m_state = Request_Loading; this_thread::sleep_for(chrono::milliseconds(16)); }
 
-		ProgressReport::Get().Reset(g_progress_Scene);
-		ProgressReport::Get().SetIsLoading(g_progress_Scene, true);
-		ProgressReport::Get().SetStatus(g_progress_Scene, "Loading scene...");
-
+		// Start progress report and timing
+		ProgressReport::Get().Reset(g_progress_world);
+		ProgressReport::Get().SetIsLoading(g_progress_world, true);
+		ProgressReport::Get().SetStatus(g_progress_world, "Loading world...");
+		Stopwatch timer;
+		
+		// Unload current entities
 		Unload();
 
 		// Read all the resource file paths
@@ -220,73 +223,42 @@ namespace Spartan
 		if (!file->IsOpen())
 			return false;
 
-		Stopwatch timer;
+		// Notify subsystems that need to load data
+		FIRE_EVENT(Event_World_Load);
 
-		vector<string> resource_paths;
-		file->Read(&resource_paths);
+		// Load root entity count
+		auto root_entity_count = file->ReadAs<unsigned int>();
 
-		ProgressReport::Get().SetJobCount(g_progress_Scene, static_cast<unsigned int>(resource_paths.size()));
+		ProgressReport::Get().SetJobCount(g_progress_world, root_entity_count);
 
-		// Load all the resources
-		auto resource_mng = m_context->GetSubsystem<ResourceCache>();
-		for (const auto& resource_path : resource_paths)
-		{
-			if (FileSystem::IsEngineModelFile(resource_path))
-			{
-				resource_mng->Load<Model>(resource_path);
-			}
-
-			if (FileSystem::IsEngineMaterialFile(resource_path))
-			{
-				resource_mng->Load<Material>(resource_path);
-			}
-
-			if (FileSystem::IsEngineTextureFile(resource_path))
-			{
-				resource_mng->Load<RHI_Texture>(resource_path);
-			}
-
-			ProgressReport::Get().IncrementJobsDone(g_progress_Scene);
-		}
-
-		//= Load entities ============================	
-		// 1st - Root entity count
-		const int root_entity_count = file->ReadAs<unsigned int>();
-
-		// 2nd - Root entity IDs
+		// Load root entity IDs
 		for (auto i = 0; i < root_entity_count; i++)
 		{
 			auto& entity = EntityCreate();
 			entity->SetId(file->ReadAs<unsigned int>());
 		}
 
-		// 3rd - entities
-		// It's important to loop with root_entity_count
-		// as the vector size will increase as we deserialize
-		// entities. This is because a entity will also
-		// deserialize their descendants.
+		// Serialize root entities
 		for (auto i = 0; i < root_entity_count; i++)
 		{
-			m_entitiesPrimary[i]->Deserialize(file.get(), nullptr);
+			m_entities_primary[i]->Deserialize(file.get(), nullptr);
+			ProgressReport::Get().IncrementJobsDone(g_progress_world);
 		}
-		//==============================================
 
 		m_isDirty	= true;
 		m_state		= Ticking;
-		ProgressReport::Get().SetIsLoading(g_progress_Scene, false);	
+		ProgressReport::Get().SetIsLoading(g_progress_world, false);	
 		LOG_INFO("Loading took " + to_string(static_cast<int>(timer.GetElapsedTimeMs())) + " ms");	
 
 		FIRE_EVENT(Event_World_Loaded);
 		return true;
 	}
-	//===================================================================================================
 
-	//= entity HELPER FUNCTIONS  ====================================================================
 	shared_ptr<Entity>& World::EntityCreate()
 	{
 		auto entity = make_shared<Entity>(m_context);
 		entity->Initialize(entity->AddComponent<Transform>().get());
-		return m_entitiesPrimary.emplace_back(entity);
+		return m_entities_primary.emplace_back(entity);
 	}
 
 	shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
@@ -294,7 +266,7 @@ namespace Spartan
 		if (!entity)
 			return m_entity_empty;
 
-		return m_entitiesPrimary.emplace_back(entity);
+		return m_entities_primary.emplace_back(entity);
 	}
 
 	bool World::EntityExists(const shared_ptr<Entity>& entity)
@@ -311,7 +283,7 @@ namespace Spartan
 		if (!entity)
 			return;
 
-		// remove any descendants
+		// Remove any descendants
 		auto children = entity->GetTransform_PtrRaw()->GetChildren();
 		for (const auto& child : children)
 		{
@@ -322,12 +294,12 @@ namespace Spartan
 		auto parent = entity->GetTransform_PtrRaw()->GetParent();
 
 		// Remove this entity
-		for (auto it = m_entitiesPrimary.begin(); it < m_entitiesPrimary.end();)
+		for (auto it = m_entities_primary.begin(); it < m_entities_primary.end();)
 		{
 			const auto temp = *it;
 			if (temp->GetId() == entity->GetId())
 			{
-				it = m_entitiesPrimary.erase(it);
+				it = m_entities_primary.erase(it);
 				break;
 			}
 			++it;
@@ -342,23 +314,23 @@ namespace Spartan
 		m_isDirty = true;
 	}
 
-	vector<shared_ptr<Entity>> World::EntitiesGetRoots()
+	vector<shared_ptr<Entity>> World::EntityGetRoots()
 	{
-		vector<shared_ptr<Entity>> rootEntities;
-		for (const auto& entity : m_entitiesPrimary)
+		vector<shared_ptr<Entity>> root_entities;
+		for (const auto& entity : m_entities_primary)
 		{
 			if (entity->GetTransform_PtrRaw()->IsRoot())
 			{
-				rootEntities.emplace_back(entity);
+				root_entities.emplace_back(entity);
 			}
 		}
 
-		return rootEntities;
+		return root_entities;
 	}
 
 	const shared_ptr<Entity>& World::EntityGetByName(const string& name)
 	{
-		for (const auto& entity : m_entitiesPrimary)
+		for (const auto& entity : m_entities_primary)
 		{
 			if (entity->GetName() == name)
 				return entity;
@@ -369,7 +341,7 @@ namespace Spartan
 
 	const shared_ptr<Entity>& World::EntityGetById(const unsigned int id)
 	{
-		for (const auto& entity : m_entitiesPrimary)
+		for (const auto& entity : m_entities_primary)
 		{
 			if (entity->GetId() == id)
 				return entity;
@@ -377,9 +349,7 @@ namespace Spartan
 
 		return m_entity_empty;
 	}
-	//===================================================================================================
 
-	//= COMMON ENTITY CREATION ========================================================================
 	shared_ptr<Entity>& World::CreateSkybox()
 	{
 		auto& skybox = EntityCreate();
@@ -417,5 +387,4 @@ namespace Spartan
 
 		return light;
 	}
-	//================================================================================================
 }

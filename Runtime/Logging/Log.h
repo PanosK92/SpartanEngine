@@ -40,8 +40,9 @@ namespace Spartan
 	#define LOGF_ERROR(text, ...)	{ Spartan::Log::m_caller_name = __FUNCTION__; Spartan::Log::WriteFError(text, __VA_ARGS__); }
 
 	// Pre-Made
-	#define LOG_ERROR_INVALID_PARAMETER() LOG_ERROR("Invalid parameter.")
-	#define LOG_ERROR_INVALID_INTERNALS() LOG_ERROR("Invalid internals.")
+	#define LOG_ERROR_GENERIC_FAILURE()		LOG_ERROR("Failed.")
+	#define LOG_ERROR_INVALID_PARAMETER()	LOG_ERROR("Invalid parameter.")
+	#define LOG_ERROR_INVALID_INTERNALS()	LOG_ERROR("Invalid internals.")
 
 	// Forward declarations
 	class Entity;

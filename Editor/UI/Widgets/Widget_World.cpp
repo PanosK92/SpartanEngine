@@ -71,9 +71,9 @@ Widget_World::Widget_World(Context* context) : Widget(context)
 void Widget_World::Tick(float delta_time)
 {
 	// If something is being loaded, don't parse the hierarchy
-	auto& progress_report	= ProgressReport::Get();
-	const auto is_loading_model		= progress_report.GetIsLoading(g_progress_ModelImporter);
-	const auto is_loading_scene		= progress_report.GetIsLoading(g_progress_Scene);
+	auto& progress_report			= ProgressReport::Get();
+	const auto is_loading_model		= progress_report.GetIsLoading(g_progress_model_importer);
+	const auto is_loading_scene		= progress_report.GetIsLoading(g_progress_world);
 	const auto is_loading			= is_loading_model || is_loading_scene;
 	if (is_loading)
 		return;
@@ -108,7 +108,7 @@ void Widget_World::TreeShow()
 			}
 		}
 
-		auto rootentities = _Widget_World::g_world->EntitiesGetRoots();
+		auto rootentities = _Widget_World::g_world->EntityGetRoots();
 		for (const auto& entity : rootentities)
 		{
 			TreeAddEntity(entity.get());

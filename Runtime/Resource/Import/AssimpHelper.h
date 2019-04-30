@@ -142,13 +142,13 @@ namespace Spartan::AssimpHelper
 
 			// Start progress tracking
 			auto& progress = ProgressReport::Get();
-			progress.Reset(g_progress_ModelImporter);
-			progress.SetIsLoading(g_progress_ModelImporter, true);
+			progress.Reset(g_progress_model_importer);
+			progress.SetIsLoading(g_progress_model_importer, true);
 		}
 
 		~AssimpProgress()
 		{
-			ProgressReport::Get().SetIsLoading(g_progress_ModelImporter, false);
+			ProgressReport::Get().SetIsLoading(g_progress_model_importer, false);
 		}
 
 		bool Update(float percentage) override { return true; }
@@ -156,17 +156,17 @@ namespace Spartan::AssimpHelper
 		void UpdateFileRead(int current_step, int number_of_steps) override
 		{
 			auto& progress = ProgressReport::Get();
-			progress.SetStatus(g_progress_ModelImporter, "Loading \"" + m_file_name + "\" from disk...");
-			progress.SetJobsDone(g_progress_ModelImporter, current_step);
-			progress.SetJobCount(g_progress_ModelImporter, number_of_steps);
+			progress.SetStatus(g_progress_model_importer, "Loading \"" + m_file_name + "\" from disk...");
+			progress.SetJobsDone(g_progress_model_importer, current_step);
+			progress.SetJobCount(g_progress_model_importer, number_of_steps);
 		}
 
 		void UpdatePostProcess(int current_step, int number_of_steps) override
 		{
 			auto& progress = ProgressReport::Get();
-			progress.SetStatus(g_progress_ModelImporter, "Post-Processing \"" + m_file_name + "\"");
-			progress.SetJobsDone(g_progress_ModelImporter, current_step);
-			progress.SetJobCount(g_progress_ModelImporter, number_of_steps);
+			progress.SetStatus(g_progress_model_importer, "Post-Processing \"" + m_file_name + "\"");
+			progress.SetJobsDone(g_progress_model_importer, current_step);
+			progress.SetJobCount(g_progress_model_importer, number_of_steps);
 		}
 
 	private:
