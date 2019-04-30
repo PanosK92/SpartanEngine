@@ -56,34 +56,32 @@ namespace Spartan
 		//=========================
 		
 		void Unload();
-
-		//= IO ========================================
 		bool SaveToFile(const std::string& filePath);
 		bool LoadFromFile(const std::string& file_path);
-		//=============================================
+		const auto& GetName() { return m_name; }
 
-		//= Entity HELPER FUNCTIONS ===============================================================
+		//= Entities ===============================================================================
 		std::shared_ptr<Entity>& EntityCreate();
 		std::shared_ptr<Entity>& EntityAdd(const std::shared_ptr<Entity>& entity);
 		bool EntityExists(const std::shared_ptr<Entity>& entity);
-		void EntityRemove(const std::shared_ptr<Entity>& entity);
-		const std::vector<std::shared_ptr<Entity>>& Entities_GetAll() { return m_entitiesPrimary; }
-		std::vector<std::shared_ptr<Entity>> EntitiesGetRoots();
+		void EntityRemove(const std::shared_ptr<Entity>& entity);	
+		std::vector<std::shared_ptr<Entity>> EntityGetRoots();
 		const std::shared_ptr<Entity>& EntityGetByName(const std::string& name);
 		const std::shared_ptr<Entity>& EntityGetById(unsigned int id);
-		int Entity_GetCount() { return (int)m_entitiesPrimary.size(); }
-		//=========================================================================================
+		const auto& EntityGetAll()	{ return m_entities_primary; }
+		auto EntityGetCount()		{ return static_cast<unsigned int>(m_entities_primary.size()); }
+		//==========================================================================================
 
 	private:
-		//= COMMON ENTITY CREATION =======================
+		//= COMMON ENTITY CREATION ========================
 		std::shared_ptr<Entity>& CreateSkybox();
 		std::shared_ptr<Entity> CreateCamera();
 		std::shared_ptr<Entity>& CreateDirectionalLight();
-		//===============================================
+		//================================================
 
-		// Double-buffered entities
-		std::vector<std::shared_ptr<Entity>> m_entitiesPrimary;
-		std::vector<std::shared_ptr<Entity>> m_entitiesSecondary;
+		// Double-buffered actors
+		std::vector<std::shared_ptr<Entity>> m_entities_primary;
+		std::vector<std::shared_ptr<Entity>> m_entities_secondary;
 
 		std::shared_ptr<Entity> m_entity_empty;
 		Input* m_input;
@@ -91,5 +89,6 @@ namespace Spartan
 		bool m_wasInEditorMode;
 		bool m_isDirty;
 		Scene_State m_state;
+		std::string m_name;
 	};
 }

@@ -325,7 +325,7 @@ namespace Spartan
 		m_children.clear();
 		m_children.shrink_to_fit();
 
-		auto entities = GetContext()->GetSubsystem<World>()->Entities_GetAll();
+		auto entities = GetContext()->GetSubsystem<World>()->EntityGetAll();
 		for (const auto& entity : entities)
 		{
 			if (!entity)

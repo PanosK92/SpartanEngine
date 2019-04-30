@@ -143,7 +143,7 @@ namespace Spartan
 
 			int job_count;
 			AssimpHelper::compute_node_count(assimp_node, &job_count);
-			ProgressReport::Get().SetJobCount(g_progress_ModelImporter, job_count);
+			ProgressReport::Get().SetJobCount(g_progress_model_importer, job_count);
 		}
 
 		//= GET NODE NAME ==========================================================================================================================
@@ -151,7 +151,7 @@ namespace Spartan
 		// To get a more descriptive name we instead get the name from the file path.
 		const auto name = assimp_node->mParent ? assimp_node->mName.C_Str() : FileSystem::GetFileNameNoExtensionFromFilePath(_ModelImporter::m_model_path);
 		new_entity->SetName(name);
-		ProgressReport::Get().SetStatus(g_progress_ModelImporter, "Creating entity for " + name);
+		ProgressReport::Get().SetStatus(g_progress_model_importer, "Creating entity for " + name);
 		//==========================================================================================================================================
 
 		// Set the transform of parentNode as the parent of the newNode's transform
@@ -190,7 +190,7 @@ namespace Spartan
 			ReadNodeHierarchy(assimp_scene, assimp_node->mChildren[i], model, new_entity, child.get());
 		}
 
-		ProgressReport::Get().IncrementJobsDone(g_progress_ModelImporter);
+		ProgressReport::Get().IncrementJobsDone(g_progress_model_importer);
 	}
 
 	void ModelImporter::ReadAnimations(const aiScene* scene, shared_ptr<Model>& model)

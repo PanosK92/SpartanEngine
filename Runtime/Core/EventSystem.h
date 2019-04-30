@@ -44,7 +44,9 @@ enum Event_Type
 {
 	Event_Frame_Start,			// A frame begins
 	Event_Frame_End,			// A frame ends
+	Event_World_Save,			// The world must be saved to file
 	Event_World_Saved,			// The world finished saving to file
+	Event_World_Load,			// The world must be loaded from file
 	Event_World_Loaded,			// The world finished loading from file
 	Event_World_Unload,			// The world should clear everything
 	Event_World_Resolve,		// The world should resolve

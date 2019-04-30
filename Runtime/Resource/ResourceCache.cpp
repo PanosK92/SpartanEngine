@@ -21,7 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "ResourceCache.h"
+#include "ProgressReport.h"
+#include "../World/World.h"
 #include "../World/Entity.h"
+#include "../IO/FileStream.h"
 #include "../Core/EventSystem.h"
 //==============================
 
@@ -49,7 +52,9 @@ namespace Spartan
 		SetProjectDirectory("Project//");
 
 		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_World_Unload, EVENT_HANDLER(Clear));
+		SUBSCRIBE_TO_EVENT(Event_World_Save,	EVENT_HANDLER(SaveResourcesToFiles));
+		SUBSCRIBE_TO_EVENT(Event_World_Load,	EVENT_HANDLER(LoadResourcesFromFiles));
+		SUBSCRIBE_TO_EVENT(Event_World_Unload,	EVENT_HANDLER(Clear));
 	}
 
 	ResourceCache::~ResourceCache()
@@ -156,6 +161,28 @@ namespace Spartan
 
 	void ResourceCache::SaveResourcesToFiles()
 	{
+		// Start progress report
+		ProgressReport::Get().Reset(g_progress_resource_cache);
+		ProgressReport::Get().SetIsLoading(g_progress_resource_cache, true);
+		ProgressReport::Get().SetStatus(g_progress_resource_cache, "Loading resources...");
+
+		// Create resource list file
+		string file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
+		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
+		if (!file->IsOpen())
+		{
+			LOG_ERROR_GENERIC_FAILURE();
+			return;
+		}
+
+		// Save file paths to all currently used resources
+		vector<string> file_paths;
+		m_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths(file_paths);
+		file->Write(file_paths);
+
+		ProgressReport::Get().SetJobCount(g_progress_resource_cache, static_cast<unsigned int>(file_paths.size()));
+
+		// Save all the currently used resources to disk
 		for (const auto& resource_group : m_resource_groups)
 		{
 			for (const auto& resource : resource_group.second)
@@ -164,6 +191,43 @@ namespace Spartan
 					continue;
 
 				resource->SaveToFile(resource->GetResourceFilePath());
+				ProgressReport::Get().IncrementJobsDone(g_progress_resource_cache);
+			}
+		}
+
+		// Finish with progress report
+		ProgressReport::Get().SetIsLoading(g_progress_resource_cache, false);
+	}
+
+	void ResourceCache::LoadResourcesFromFiles()
+	{
+		// Open resource list file
+		string file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
+		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
+		if (!file->IsOpen())
+			return;
+		
+		// Read file paths of resources that need to be loaded
+		vector<string> resource_paths;
+		file->Read(&resource_paths);
+
+		// Load all the resources
+		auto resource_mng = m_context->GetSubsystem<ResourceCache>();
+		for (const auto& resource_path : resource_paths)
+		{
+			if (FileSystem::IsEngineModelFile(resource_path))
+			{
+				resource_mng->Load<Model>(resource_path);
+			}
+
+			if (FileSystem::IsEngineMaterialFile(resource_path))
+			{
+				resource_mng->Load<Material>(resource_path);
+			}
+
+			if (FileSystem::IsEngineTextureFile(resource_path))
+			{
+				resource_mng->Load<RHI_Texture>(resource_path);
 			}
 		}
 	}

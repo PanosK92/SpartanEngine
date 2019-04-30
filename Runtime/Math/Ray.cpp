@@ -47,7 +47,7 @@ namespace Spartan::Math
 	{
 		// Find all the entities that the ray hits
 		vector<RayHit> hits;
-		const auto& entities = context->GetSubsystem<World>()->Entities_GetAll();
+		const auto& entities = context->GetSubsystem<World>()->EntityGetAll();
 		for (const auto& entity : entities)
 		{
 			// Make sure there entity has a mesh and exclude the SkyBox
