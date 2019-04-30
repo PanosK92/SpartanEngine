@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Skybox.h"
 #include "Audio/AudioClip.h"
 #include "Core/Engine.h"
+#include "RHI/RHI_Texture2D.h"
 //=============================================
 
 //= NAMESPACES ==========
@@ -702,15 +703,15 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 
 	if (ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false))
 	{
-		//= REFLECT ====================================================
-		float roughness = material->GetRoughnessMultiplier();
-		float metallic	= material->GetMetallicMultiplier();
-		float normal	= material->GetNormalMultiplier();
-		float height	= material->GetHeightMultiplier();
-		Vector2 tiling	= material->GetTiling();
-		Vector2 offset	= material->GetOffset();
+		//= REFLECT =================================================
+		auto roughness	= material->GetRoughnessMultiplier();
+		auto metallic	= material->GetMetallicMultiplier();
+		auto normal		= material->GetNormalMultiplier();
+		auto height		= material->GetHeightMultiplier();
+		auto tiling		= material->GetTiling();
+		auto offset		= material->GetOffset();
 		m_colorPicker_material->SetColor(material->GetColorAlbedo());
-		//==============================================================
+		//===========================================================
 
 		static const auto material_text_size = ImVec2(80, 80);
 
@@ -747,12 +748,12 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 				{
 					try
 					{
-						if (const auto tex = _Widget_Properties::resource_cache->Load<RHI_Texture>(get<const char*>(payload->data)))
+						if (const auto tex = _Widget_Properties::resource_cache->Load<RHI_Texture2D>(get<const char*>(payload->data)))
 						{
 							material->SetTextureSlot(textureType, tex);
 						}
 					}
-					catch (const std::bad_variant_access& e) { LOGF_ERROR("Widget_Properties::ShowMaterial: %s", e.what()); }
+					catch (const bad_variant_access& e) { LOGF_ERROR("Widget_Properties::ShowMaterial: %s", e.what()); }
 				}
 
 				// Remove texture button
