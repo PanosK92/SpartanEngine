@@ -69,15 +69,13 @@ namespace Spartan
 		void SetData(const std::vector<std::vector<std::byte>>& data)	{ m_data = data; }
 		std::vector<std::byte>* GetData(unsigned int mipmap_index);
 		auto AddMipmap()												{ return &m_data.emplace_back(std::vector<std::byte>()); }
-		void ClearTextureBytes();
-		void GetTextureBytes(std::vector<std::vector<std::byte>>* texture_bytes);
 		auto GetResource() const { return m_resource; }
 
 	protected:
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
 		bool LoadFromFile_ForeignFormat(const std::string& file_path, bool generate_mipmaps);
 		virtual bool CreateResourceGpu() { return false; }
-		
+
 		unsigned int m_bpp		= 0;
 		unsigned int m_bpc		= 8;
 		unsigned int m_width	= 0;
@@ -95,5 +93,8 @@ namespace Spartan
 		void* m_texture			= nullptr;
 		void* m_texture_memory	= nullptr;
 		static std::mutex m_mutex;
+
+	private:
+		unsigned int GetByteCount();
 	};
 }

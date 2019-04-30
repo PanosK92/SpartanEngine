@@ -49,6 +49,7 @@ namespace Spartan
 		~FileStream();
 
 		bool IsOpen() { return m_isOpen; }
+		void Close();
 
 		//= WRITING ==================================================
 		template <class T, class = typename std::enable_if<
@@ -81,6 +82,7 @@ namespace Spartan
 		void Write(const std::vector<unsigned int>& value);
 		void Write(const std::vector<unsigned char>& value);
 		void Write(const std::vector<std::byte>& value);
+		void Skip(unsigned int n);
 		//===========================================================
 		
 		//= READING ===========================================
