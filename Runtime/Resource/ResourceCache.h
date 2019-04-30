@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ====================
 #include <memory>
 #include <map>
 #include "Import/ModelImporter.h"
 #include "Import/ImageImporter.h"
 #include "Import/FontImporter.h"
 #include "../Core/ISubsystem.h"
-#include "../RHI/RHI_Texture.h"
 #include "../Rendering/Model.h"
-//================================
+#include "../RHI/RHI_Texture.h"
+//===============================
 
 namespace Spartan
 {
@@ -151,20 +151,19 @@ namespace Spartan
 		}
 		//===============================================================================================================
 
-		//= I/O ========================================================
-		void GetResourceFilePaths(std::vector<std::string>& file_paths);
+		//= I/O ======================
 		void SaveResourcesToFiles();
 		void LoadResourcesFromFiles();
-		//==============================================================
+		//============================
 
-		//= MISC ==========================================================
+		//= MISC ============================================================
 		// Memory
 		unsigned int GetMemoryUsage(Resource_Type type = Resource_Unknown);
 		// Unloads all resources
 		void Clear() { m_resource_groups.clear(); }
 		// Returns all resources of a given type
-		unsigned int GetResourceCountByType(Resource_Type type);
-		//=================================================================
+		unsigned int GetResourceCount(Resource_Type type = Resource_Unknown);
+		//===================================================================
 
 		//= DIRECTORIES ===============================================================
 		void AddDataDirectory(Asset_Type type, const std::string& directory);

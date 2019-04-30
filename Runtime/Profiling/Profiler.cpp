@@ -222,9 +222,9 @@ namespace Spartan
 
 	void Profiler::UpdateStringFormatMetrics(const float fps)
 	{
-		const auto texture_count	= m_resource_manager->GetResourceCountByType(Resource_Texture);
-		const auto material_count	= m_resource_manager->GetResourceCountByType(Resource_Material);
-		const auto shader_count		= m_resource_manager->GetResourceCountByType(Resource_Shader);
+		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture);
+		const auto material_count	= m_resource_manager->GetResourceCount(Resource_Material);
+		const auto shader_count		= m_resource_manager->GetResourceCount(Resource_Shader);
 
 		static char buffer[1000]; // real usage is around 700
 		sprintf_s

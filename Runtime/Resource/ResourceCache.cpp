@@ -19,14 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ======================
 #include "ResourceCache.h"
 #include "ProgressReport.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
 #include "../IO/FileStream.h"
 #include "../Core/EventSystem.h"
-//==============================
+#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_TextureCube.h"
+//=================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -148,17 +150,6 @@ namespace Spartan
 		return size;
 	}
 
-	void ResourceCache::GetResourceFilePaths(std::vector<std::string>& file_paths)
-	{
-		for (const auto& resource_group : m_resource_groups)
-		{
-			for (const auto& resource : resource_group.second)
-			{
-				file_paths.emplace_back(resource->GetResourceFilePath());
-			}
-		}
-	}
-
 	void ResourceCache::SaveResourcesToFiles()
 	{
 		// Start progress report
@@ -175,12 +166,11 @@ namespace Spartan
 			return;
 		}
 
-		// Save file paths to all currently used resources
-		vector<string> file_paths;
-		m_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths(file_paths);
-		file->Write(file_paths);
+		auto resource_count = GetResourceCount();
+		ProgressReport::Get().SetJobCount(g_progress_resource_cache, resource_count);
 
-		ProgressReport::Get().SetJobCount(g_progress_resource_cache, static_cast<unsigned int>(file_paths.size()));
+		// Save resource count
+		file->Write(resource_count);
 
 		// Save all the currently used resources to disk
 		for (const auto& resource_group : m_resource_groups)
@@ -190,7 +180,14 @@ namespace Spartan
 				if (!resource->HasFilePath())
 					continue;
 
+				// Save file path
+				file->Write(resource->GetResourceFilePath());
+				// Save type
+				file->Write(static_cast<unsigned int>(resource->GetResourceType()));
+				// Save resource (to a dedicated file)
 				resource->SaveToFile(resource->GetResourceFilePath());
+
+				// Update progress
 				ProgressReport::Get().IncrementJobsDone(g_progress_resource_cache);
 			}
 		}
@@ -202,37 +199,44 @@ namespace Spartan
 	void ResourceCache::LoadResourcesFromFiles()
 	{
 		// Open resource list file
-		string file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
+		auto file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
 		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
 		if (!file->IsOpen())
 			return;
 		
-		// Read file paths of resources that need to be loaded
-		vector<string> resource_paths;
-		file->Read(&resource_paths);
+		// Load resource count
+		auto resource_count = file->ReadAs<unsigned int>();
 
-		// Load all the resources
-		auto resource_mng = m_context->GetSubsystem<ResourceCache>();
-		for (const auto& resource_path : resource_paths)
+		for (unsigned int i = 0; i < resource_count; i++)
 		{
-			if (FileSystem::IsEngineModelFile(resource_path))
-			{
-				resource_mng->Load<Model>(resource_path);
-			}
+			// Load resource file path
+			auto file_path = file->ReadAs<string>();
 
-			if (FileSystem::IsEngineMaterialFile(resource_path))
-			{
-				resource_mng->Load<Material>(resource_path);
-			}
+			// Load resource type
+			auto type = static_cast<Resource_Type>(file->ReadAs<unsigned int>());
 
-			if (FileSystem::IsEngineTextureFile(resource_path))
+			switch (type)
 			{
-				resource_mng->Load<RHI_Texture>(resource_path);
+			case Resource_Model:
+				Load<Model>(file_path);
+				break;
+			case Resource_Material:
+				Load<Material>(file_path);
+				break;
+			case Resource_Texture:
+				Load<RHI_Texture>(file_path);
+				break;
+			case Resource_Texture2d:
+				Load<RHI_Texture2D>(file_path);
+				break;
+			case Resource_TextureCube:
+				Load<RHI_TextureCube>(file_path);
+				break;
 			}
 		}
 	}
 
-	unsigned int ResourceCache::GetResourceCountByType(const Resource_Type type)
+	unsigned int ResourceCache::GetResourceCount(const Resource_Type type)
 	{
 		return static_cast<unsigned int>(GetByType(type).size());
 	}
