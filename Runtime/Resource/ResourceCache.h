@@ -57,7 +57,7 @@ namespace Spartan
 		bool Initialize() override;
 		//=========================
 
-		//= GET BY ==================================================================================
+		//= GET BY ==============================================================================
 		// NAME
 		std::shared_ptr<IResource>& GetByName(const std::string& name, Resource_Type type);
 		template <class T> 
@@ -83,7 +83,7 @@ namespace Spartan
 
 			return m_empty_resource;
 		}
-		//===========================================================================================
+		//=======================================================================================
 	
 		//= LOADING/CACHING =============================================================================================
 		// Caches resource, or replaces with existing cached resource

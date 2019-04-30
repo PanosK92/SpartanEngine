@@ -59,6 +59,11 @@ namespace Spartan
 
 	FileStream::~FileStream()
 	{
+		Close();
+	}
+
+	void FileStream::Close()
+	{
 		if (m_mode == FileStreamMode_Write)
 		{
 			out.flush();
@@ -116,6 +121,12 @@ namespace Spartan
 		auto size = (unsigned int)value.size();
 		Write(size);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(std::byte) * size);
+	}
+
+	void FileStream::Skip(unsigned int n)
+	{
+		// Set the seek cursor to offset n from the beginning of the file
+		out.seekp(n, ios::cur);
 	}
 
 	void FileStream::Read(string* value)

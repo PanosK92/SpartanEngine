@@ -214,7 +214,6 @@ namespace Spartan
 			texture->SetResourceFilePath(model_relative_tex_path);
 			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(model_relative_tex_path));
 			texture->SaveToFile(model_relative_tex_path);		
-			texture->ClearTextureBytes(); // Now that the texture is saved, free up it's memory since we already have a shader resource
 
 			// Set the texture to the provided material
 			m_resource_manager->Cache(texture);
