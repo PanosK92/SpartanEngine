@@ -31,7 +31,7 @@ namespace Spartan
 	{
 	public:
 		// Creates an empty texture intended for deferred loading.
-		RHI_Texture2D(Context* context, bool generate_mipmaps) : RHI_Texture(context) { m_has_mipmaps = generate_mipmaps; }
+		RHI_Texture2D(Context* context, bool generate_mipmaps = true) : RHI_Texture(context) { m_has_mipmaps = generate_mipmaps; }
 
 		// Creates a texture with mimaps. If only the first mipmap is available, the rest will automatically generated.
 		RHI_Texture2D(Context* context, unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::vector<std::byte>>& data) : RHI_Texture(context)

@@ -223,6 +223,8 @@ namespace Spartan
 		if (!file->IsOpen())
 			return false;
 
+		m_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
+
 		// Notify subsystems that need to load data
 		FIRE_EVENT(Event_World_Load);
 
@@ -232,14 +234,14 @@ namespace Spartan
 		ProgressReport::Get().SetJobCount(g_progress_world, root_entity_count);
 
 		// Load root entity IDs
-		for (auto i = 0; i < root_entity_count; i++)
+		for (unsigned int i = 0; i < root_entity_count; i++)
 		{
 			auto& entity = EntityCreate();
 			entity->SetId(file->ReadAs<unsigned int>());
 		}
 
 		// Serialize root entities
-		for (auto i = 0; i < root_entity_count; i++)
+		for (unsigned int i = 0; i < root_entity_count; i++)
 		{
 			m_entities_primary[i]->Deserialize(file.get(), nullptr);
 			ProgressReport::Get().IncrementJobsDone(g_progress_world);
