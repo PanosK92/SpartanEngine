@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_RenderTexture.h"
 #include "../RHI/RHI_ConstantBuffer.h"
-#include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../World/Entity.h"

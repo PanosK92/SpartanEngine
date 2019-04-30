@@ -131,41 +131,6 @@ public:
 		g_input				= context->GetSubsystem<Spartan::Input>().get();
 	}
 
-	std::shared_ptr<Spartan::RHI_Texture> GetOrLoadTexture(const std::string& file_path, const bool async = false)
-	{
-		if (Spartan::FileSystem::IsDirectory(file_path))
-			return nullptr;
-
-		if (!Spartan::FileSystem::IsSupportedImageFile(file_path) && !Spartan::FileSystem::IsEngineTextureFile(file_path))
-			return nullptr;
-
-		// Compute some useful information
-		const auto path = Spartan::FileSystem::GetRelativeFilePath(file_path);
-		const auto name = Spartan::FileSystem::GetFileNameNoExtensionFromFilePath(path);
-
-		// Check if this texture is already cached, if so return the cached one
-		if (auto cached = g_resource_cache->GetByName<Spartan::RHI_Texture>(name))
-			return cached;
-
-		// Since the texture is not cached, load it and returned a cached ref
-		auto texture = std::make_shared<Spartan::RHI_Texture>(g_context);
-		texture->SetResourceName(name);
-		texture->SetResourceFilePath(path);
-		if (!async)
-		{
-			texture->LoadFromFile(path);
-		}
-		else
-		{
-			g_threading->AddTask([texture, file_path]()
-			{
-				texture->LoadFromFile(file_path);
-			});
-		}
-
-		return texture;
-	}
-
 	void LoadModel(const std::string& file_path) const
 	{
 		auto resource_cache = g_resource_cache;

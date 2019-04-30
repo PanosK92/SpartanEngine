@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Source/imgui.h"
 #include "Rendering/Renderer.h"
 #include "RHI/RHI_Sampler.h"
-#include "RHI/RHI_Texture.h"
+#include "RHI/RHI_Texture2D.h"
 #include "RHI/RHI_Device.h"
 #include "RHI/RHI_VertexBuffer.h"
 #include "RHI/RHI_IndexBuffer.h"
@@ -77,8 +77,7 @@ namespace ImGui::RHI
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
-	
-		g_fontTexture		= make_shared<RHI_Texture>(g_context, false);
+
 		g_fontSampler		= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
 		g_constant_buffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
 		g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_rhi_device);
@@ -106,10 +105,8 @@ namespace ImGui::RHI
 			memcpy(&data[0], reinterpret_cast<std::byte*>(pixels), size);
 
 			// Upload texture to graphics system
-			if (g_fontTexture->ShaderResource_Create2D(width, height, 4, Format_R8G8B8A8_UNORM, data))
-			{
-				io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetResource());
-			}
+			g_fontTexture = make_shared<RHI_Texture2D>(g_context, width, height, 4, Format_R8G8B8A8_UNORM, data);
+			io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetResource());
 		}
 
 		// Create pipeline

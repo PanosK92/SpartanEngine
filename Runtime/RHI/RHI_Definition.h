@@ -42,6 +42,8 @@ namespace Spartan
 	class RHI_Viewport;
 	class RHI_RenderTexture;
 	class RHI_Texture;
+	class RHI_Texture2D;
+	class RHI_TextureCube;
 	class RHI_Shader;
 	struct RHI_Vertex_PosUvNorTan;
 	struct RHI_Vertex_PosUvNor;

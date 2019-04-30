@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Font/Glyph.h"
 #include "../../Rendering/Font/Font.h"
 #include "../../RHI/RHI_Texture.h"
+#include "../../RHI/RHI_Texture2D.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -362,13 +363,7 @@ namespace Spartan
 		FT_Done_Face(face);
 
 		// Create a font texture atlas form the provided data
-		auto atlas = make_shared<RHI_Texture>(m_context, false);
-		if (!atlas->ShaderResource_Create2D(atlas_width, atlas_height, 1, Format_R8_UNORM, atlas_buffer))
-		{
-			LOG_ERROR("Failed to create shader resource.");
-			return false;
-		}
-		font->SetAtlas(atlas);
+		font->SetAtlas(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(m_context, atlas_width, atlas_height, 1, Format_R8_UNORM, atlas_buffer))));
 
 		return true;
 	}

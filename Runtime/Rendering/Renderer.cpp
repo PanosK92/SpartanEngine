@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_BlendState.h"
 #include "../RHI/RHI_CommandList.h"
+#include "../RHI/RHI_Texture2D.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
@@ -168,27 +169,29 @@ namespace Spartan
 		// Get standard texture directory
 		const auto dir_texture = g_resource_cache->GetDataDirectory(Asset_Textures);
 
+		bool generate_mipmaps = false;
+
 		// Noise texture (used by SSAO shader)
-		m_tex_noise_normal = make_shared<RHI_Texture>(m_context);
+		m_tex_noise_normal = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_tex_noise_normal->LoadFromFile(dir_texture + "noise.jpg");
 
-		m_tex_white = make_shared<RHI_Texture>(m_context, false);
+		m_tex_white = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_tex_white->LoadFromFile(dir_texture + "white.png");
 
-		m_tex_black = make_shared<RHI_Texture>(m_context, false);
+		m_tex_black = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_tex_black->LoadFromFile(dir_texture + "black.png");
 
-		m_tex_lut_ibl = make_shared<RHI_Texture>(m_context, false);
+		m_tex_lut_ibl = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_tex_lut_ibl->LoadFromFile(dir_texture + "ibl_brdf_lut.png");
 
 		// Gizmo icons
-		m_gizmo_tex_light_directional = make_shared<RHI_Texture>(m_context);
+		m_gizmo_tex_light_directional = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_gizmo_tex_light_directional->LoadFromFile(dir_texture + "sun.png");
 
-		m_gizmo_tex_light_point = make_shared<RHI_Texture>(m_context);
+		m_gizmo_tex_light_point = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_gizmo_tex_light_point->LoadFromFile(dir_texture + "light_bulb.png");
 
-		m_gizmo_tex_light_spot = make_shared<RHI_Texture>(m_context);
+		m_gizmo_tex_light_spot = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_gizmo_tex_light_spot->LoadFromFile(dir_texture + "flashlight.png");
 	}
 
