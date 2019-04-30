@@ -19,10 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============
+//= INCLUDES =================
 #include "IconProvider.h"
 #include "EditorHelper.h"
-//=======================
+#include "RHI/RHI_Texture2D.h"
+//============================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -171,7 +172,8 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type 
 	if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
 	{
 		// Make a cheap texture
-		auto texture = std::make_shared<RHI_Texture>(m_context, false);
+		bool m_generate_mipmaps = false;
+		auto texture = std::make_shared<RHI_Texture2D>(m_context, m_generate_mipmaps);
 		texture->SetWidth(size);
 		texture->SetHeight(size);
 

@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Utilities.h>
 #include "../../Threading/Threading.h"
 #include "../../Core/Settings.h"
-#include "../../RHI/RHI_Texture.h"
 #include "../../Math/MathHelper.h"
+#include "../../RHI/RHI_Texture2D.h"
 //====================================
 
 //= NAMESPACES =====
@@ -84,7 +84,7 @@ namespace Spartan
 		FreeImage_DeInitialise();
 	}
 
-	bool ImageImporter::Load(const string& file_path, RHI_Texture* texture)
+	bool ImageImporter::Load(const string& file_path, RHI_Texture* texture, bool generate_mipmaps /*= true*/)
 	{
 		if (!texture)
 		{
@@ -132,11 +132,11 @@ namespace Spartan
 		const auto image_grayscale			= IsVisuallyGrayscale(bitmap);
 
 		// Fill RGBA vector with the data from the FIBITMAP
-		const auto mip = texture->Data_AddMipLevel();
+		const auto mip = texture->AddMipmap();
 		GetBitsFromFibitmap(mip, bitmap, image_width, image_height, image_channels);
 
 		// If the texture supports mipmaps, generate them
-		if (texture->GetMipmapSupport())
+		if (generate_mipmaps)
 		{
 			GenerateMipmaps(bitmap, texture, image_width, image_height, image_channels);
 		}
@@ -199,7 +199,7 @@ namespace Spartan
 			
 			// Resize the RHI_Texture vector accordingly
 			const auto size = width * height * channels;
-			auto mip		= texture->Data_AddMipLevel();
+			auto mip		= texture->AddMipmap();
 			mip->reserve(size);
 			mip->resize(size);
 		}
@@ -208,7 +208,7 @@ namespace Spartan
 		for (unsigned int i = 0; i < jobs.size(); i++)
 		{
 			// reminder: i + 1 because the 0 mip is the default image size
-			jobs[i].data = texture->Data_GetMipLevel(i + 1);
+			jobs[i].data = texture->GetData(i + 1);
 		}
 
 		// Parallelize mipmap generation using multiple threads (because FreeImage_Rescale() using FILTER_LANCZOS3 is expensive)

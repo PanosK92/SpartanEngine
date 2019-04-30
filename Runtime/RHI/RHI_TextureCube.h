@@ -21,44 +21,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
-#include <memory>
-#include "IComponent.h"
-#include "../../RHI/RHI_Definition.h"
-//===================================
+//= INCLUDES ===========
+#include "RHI_Texture.h"
+//======================
 
 namespace Spartan
 {
-	class Material;
-
-	enum Skybox_Type
-	{
-		Skybox_Array,
-		Skybox_Sphere
-	};
-
-	class SPARTAN_CLASS Skybox : public IComponent
+	class SPARTAN_CLASS RHI_TextureCube : public RHI_Texture
 	{
 	public:
-		Skybox(Context* context, Entity* entity, Transform* transform);
-		~Skybox();
+		// Creates a cubemap. 6 textures containing mip-levels have to be provided
+		RHI_TextureCube(Context* context, unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::vector<std::vector<std::byte>>>& data) : RHI_Texture(context)
+		{
+			m_width			= width;
+			m_height		= height;
+			m_channels		= channels;
+			m_format		= format;
+			m_has_mipmaps	= true;
+			//m_data		= data; // Cubemaps are loaded dynamically but I should still fix this	
+			Create(data);
+		}
 
-		//= IComponent ==============
-		void OnInitialize() override;
-		void OnTick() override;
-		//===========================
-
-		const std::shared_ptr<RHI_Texture>& GetTexture()	{ return m_texture; }
-		std::weak_ptr<Material> GetMaterial()				{ return m_material; }
+		~RHI_TextureCube();
 
 	private:
-
-		void CreateFromArray(const std::vector<std::string>& texturePaths);
-		void CreateFromSphere(const std::string& texturePath);
-
-		std::vector<std::string> m_texture_paths;
-		std::shared_ptr<RHI_Texture> m_texture;
-		std::shared_ptr<Material> m_material;
-		Skybox_Type m_environment_type;
+		bool Create(const std::vector<std::vector<std::vector<std::byte>>>& data);
 	};
 }

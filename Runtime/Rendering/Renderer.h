@@ -309,15 +309,15 @@ namespace Spartan
 		std::shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;
 		//======================================================
 
-		//= STANDARD TEXTURES =====================================
-		std::shared_ptr<RHI_Texture> m_tex_noise_normal;
-		std::shared_ptr<RHI_Texture> m_tex_white;
-		std::shared_ptr<RHI_Texture> m_tex_black;
-		std::shared_ptr<RHI_Texture> m_tex_lut_ibl;
-		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_directional;
-		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_point;
-		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
-		//=========================================================
+		//= STANDARD TEXTURES =======================================
+		std::shared_ptr<RHI_Texture2D> m_tex_noise_normal;
+		std::shared_ptr<RHI_Texture2D> m_tex_white;
+		std::shared_ptr<RHI_Texture2D> m_tex_black;
+		std::shared_ptr<RHI_Texture2D> m_tex_lut_ibl;
+		std::shared_ptr<RHI_Texture2D> m_gizmo_tex_light_directional;
+		std::shared_ptr<RHI_Texture2D> m_gizmo_tex_light_point;
+		std::shared_ptr<RHI_Texture2D> m_gizmo_tex_light_spot;
+		//===========================================================
 
 		//= LINE RENDERING ========================================
 		std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;

@@ -33,26 +33,13 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_Texture : public RHI_Object, public IResource
 	{
 	public:
-		RHI_Texture(Context* context, bool mipmap_support = true);
+		RHI_Texture(Context* context);
 		~RHI_Texture();
 
 		//= IResource ===========================================
 		bool SaveToFile(const std::string& file_path) override;
 		bool LoadFromFile(const std::string& file_path) override;
 		//=======================================================
-
-		//= GRAPHICS API  =================================================================================================================================================================
-		// Generates a shader resource from a mipmaps. If only the first mipmap is available, setting generate_mip_chain to true will auto-generate the rest.
-		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::vector<std::byte>>& data);
-		bool ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::byte>& data)
-		{
-			m_mipmaps.clear();
-			m_mipmaps.emplace_back(data);
-			return ShaderResource_Create2D(width, height, channels, format, m_mipmaps);
-		}
-		// Generates a cube-map shader resource. 6 textures containing mip-levels have to be provided (vector<textures<mip>>).
-		bool ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const std::vector<std::vector<std::vector<std::byte>>>& data);
-		//=================================================================================================================================================================================
 
 		unsigned int GetWidth() const						{ return m_width; }
 		void SetWidth(const unsigned int width)				{ m_width = width; }
@@ -78,23 +65,18 @@ namespace Spartan
 		RHI_Format GetFormat() const						{ return m_format; }
 		void SetFormat(const RHI_Format format)				{ m_format = format; }
 
-		auto GetMipmapSupport()												{ return m_mipmap_support;}
-		const auto& Data_Get() const										{ return m_mipmaps; }
-		void Data_Set(const std::vector<std::vector<std::byte>>& data_rgba)	{ m_mipmaps = data_rgba; }
-		auto Data_AddMipLevel()												{ return &m_mipmaps.emplace_back(std::vector<std::byte>()); }
-		std::vector<std::byte>* Data_GetMipLevel(unsigned int index);
-
+		const auto& GetData() const										{ return m_data; }		
+		void SetData(const std::vector<std::vector<std::byte>>& data)	{ m_data = data; }
+		std::vector<std::byte>* GetData(unsigned int mipmap_index);
+		auto AddMipmap()												{ return &m_data.emplace_back(std::vector<std::byte>()); }
 		void ClearTextureBytes();
 		void GetTextureBytes(std::vector<std::vector<std::byte>>* texture_bytes);
-		auto GetResource() const { return m_texture_view; }
+		auto GetResource() const { return m_resource; }
 
 	protected:
-		//= NATIVE TEXTURE HANDLING (BINARY) ==========
-		bool Serialize(const std::string& file_path);
-		bool Deserialize(const std::string& file_path);
-		//=============================================
-
-		bool LoadFromForeignFormat(const std::string& file_path);
+		bool LoadFromFile_NativeFormat(const std::string& file_path);
+		bool LoadFromFile_ForeignFormat(const std::string& file_path, bool generate_mipmaps);
+		virtual bool CreateResourceGpu() { return false; }
 		
 		unsigned int m_bpp		= 0;
 		unsigned int m_bpc		= 8;
@@ -103,13 +85,13 @@ namespace Spartan
 		unsigned int m_channels = 0;
 		bool m_is_grayscale		= false;
 		bool m_is_transparent	= false;
-		bool m_mipmap_support	= true;
-		RHI_Format m_format;
-		std::vector<std::vector<std::byte>> m_mipmaps;	
+		bool m_has_mipmaps		= false;
+		RHI_Format m_format		= Format_R8G8B8A8_UNORM;
+		std::vector<std::vector<std::byte>> m_data;	
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// API	
-		void* m_texture_view	= nullptr;
+		void* m_resource		= nullptr;
 		void* m_texture			= nullptr;
 		void* m_texture_memory	= nullptr;
 		static std::mutex m_mutex;

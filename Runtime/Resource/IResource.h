@@ -34,6 +34,8 @@ namespace Spartan
 	{
 		Resource_Unknown,
 		Resource_Texture,
+		Resource_Texture2d,
+		Resource_TextureCube,
 		Resource_Audio,
 		Resource_Material,	
 		Resource_Mesh,
@@ -72,8 +74,7 @@ namespace Spartan
 		std::string GetResourceFileName() const					{ return FileSystem::GetFileNameNoExtensionFromFilePath(m_resource_file_path); }
 		std::string GetResourceDirectory() const				{ return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }
 		virtual unsigned int GetMemoryUsage()					{ return static_cast<unsigned int>(sizeof(*this)); }
-		LoadState GetLoadState() const				{ return m_load_state; }
-		void SetLoadState(const LoadState state)	{ m_load_state = state; }
+		LoadState GetLoadState() const							{ return m_load_state; }
 		//======================================================================================================================================
 
 		//= IO =================================================================

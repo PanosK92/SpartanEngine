@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
-#include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_Texture2D.h"
 #include "../Resource/ResourceCache.h"
 //=========================================
 
@@ -196,7 +196,7 @@ namespace Spartan
 
 		// Try to get the texture
 		const auto tex_name = FileSystem::GetFileNameNoExtensionFromFilePath(file_path);
-		auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture>(tex_name);
+		auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
 		if (texture)
 		{
 			material->SetTextureSlot(texture_type, texture);
@@ -205,7 +205,8 @@ namespace Spartan
 		else if (!texture)
 		{
 			// Load texture
-			texture = make_shared<RHI_Texture>(m_context);
+			bool generate_mipmaps = true;
+			texture = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 			texture->LoadFromFile(file_path);
 
 			// Update the texture with Model directory relative file path. Then save it to this directory

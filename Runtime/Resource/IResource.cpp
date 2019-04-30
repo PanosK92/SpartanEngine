@@ -48,6 +48,8 @@ constexpr Resource_Type IResource::TypeToEnum() { return Resource_Unknown; }
 
 // To add a new component to the engine, simply register it here
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture,		Resource_Texture)
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2D,		Resource_Texture2d)
+INSTANTIATE_TO_RESOURCE_TYPE(RHI_TextureCube,	Resource_TextureCube)
 INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,			Resource_Audio)
 INSTANTIATE_TO_RESOURCE_TYPE(Material,			Resource_Material)
 INSTANTIATE_TO_RESOURCE_TYPE(ShaderVariation,	Resource_Shader)

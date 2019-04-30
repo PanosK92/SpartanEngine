@@ -1,4 +1,4 @@
-/*
+  /*
 Copyright(c) 2016-2019 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -65,7 +65,7 @@ namespace Spartan
 
 		if (is_cubemap && array_size != 6)
 		{
-			LOG_WARNING("A cubemap with an array size of %d was requested, which is invalid. Using an array size of 6 instead.", array_size);
+			LOGF_WARNING("A cubemap with an array size of %d was requested, which is invalid. Using an array size of 6 instead.", array_size);
 			array_size = 6;
 		}
 

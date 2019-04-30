@@ -39,10 +39,10 @@ namespace Spartan
 {
 	mutex RHI_Texture::m_mutex;
 
-	RHI_Texture::~RHI_Texture()
+	RHI_Texture2D::~RHI_Texture2D()
 	{
 		ClearTextureBytes();
-		Vulkan_Common::image_view::destroy(m_rhi_device, m_texture_view);
+		Vulkan_Common::image_view::destroy(m_rhi_device, m_resource);
 		Vulkan_Common::image::destroy(m_rhi_device, m_texture);
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}
@@ -195,7 +195,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_Texture::ShaderResource_Create2D(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mipmaps)
+	bool RHI_Texture2D::Create(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mipmaps, bool is_mipmapped)
 	{
 		VkDeviceSize buffer_size = width * height * channels;
 
@@ -257,16 +257,11 @@ namespace Spartan
 		vkDestroyBuffer(m_rhi_device->GetContext()->device, staging_buffer, nullptr);
 		vkFreeMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, nullptr);
 
-		m_texture_view		= static_cast<void*>(image_view);
+		m_resource		= static_cast<void*>(image_view);
 		m_texture			= static_cast<void*>(image);
 		m_texture_memory	= static_cast<void*>(image_memory);
 
 		return true;
-	}
-
-	bool RHI_Texture::ShaderResource_CreateCubemap(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<vector<std::byte>>>& mipmaps)
-	{
-		return false;
 	}
 }
 #endif

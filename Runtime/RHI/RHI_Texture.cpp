@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "RHI_Texture.h"
-#include "RHI_Device.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
@@ -33,17 +32,51 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Texture::RHI_Texture(Context* context, bool mipmap_support /*= true */) : IResource(context, Resource_Texture)
+	RHI_Texture::RHI_Texture(Context* context) : IResource(context, Resource_Texture)
 	{
-		m_format			= Format_R8G8B8A8_UNORM;
-		m_rhi_device		= context->GetSubsystem<Renderer>()->GetRhiDevice();
-		m_mipmap_support	= mipmap_support;
+		m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
 	}
 
-	//= IResource =======================================================================================
+	RHI_Texture::~RHI_Texture()
+	{
+		m_data.clear();
+		m_data.shrink_to_fit();
+	}
+
 	bool RHI_Texture::SaveToFile(const string& file_path)
 	{
-		return Serialize(file_path);
+		// If the texture bits has been cleared, load it again
+		// as we don't want to replaced existing data with nothing.
+		// If the texture bits are not cleared, no loading will take place.
+		// TODO simply skip X bytes before witting, no need to load.
+		GetTextureBytes(&m_data);
+
+		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
+		if (!file->IsOpen())
+			return false;
+
+		// Write texture bits
+		file->Write((unsigned int)m_data.size());
+		for (auto& mip : m_data)
+		{
+			file->Write(mip);
+		}
+
+		// Write properties
+		file->Write(m_bpp);
+		file->Write(m_width);
+		file->Write(m_height);
+		file->Write(m_channels);
+		file->Write(m_has_mipmaps);
+		file->Write(m_is_grayscale);
+		file->Write(m_is_transparent);
+		file->Write(GetResourceId());
+		file->Write(GetResourceName());
+		file->Write(GetResourceFilePath());
+
+		ClearTextureBytes();
+
+		return true;
 	}
 
 	bool RHI_Texture::LoadFromFile(const string& rawFilePath)
@@ -56,81 +89,64 @@ namespace Spartan
 			return false;
 		}
 
-		m_mipmaps.clear();
-		m_mipmaps.shrink_to_fit();
-		SetLoadState(LoadState_Started);
+		m_data.clear();
+		m_data.shrink_to_fit();
+		m_load_state = LoadState_Started;
 
 		// Load from disk
 		bool texture_data_loaded = false;		
 		if (FileSystem::IsEngineTextureFile(filePath)) // engine format (binary)
 		{
-			texture_data_loaded = Deserialize(filePath);
+			texture_data_loaded = LoadFromFile_NativeFormat(filePath);
 		}	
 		else if (FileSystem::IsSupportedImageFile(filePath)) // foreign format (most known image formats)
 		{
-			texture_data_loaded = LoadFromForeignFormat(filePath);
+			texture_data_loaded = LoadFromFile_ForeignFormat(filePath, m_has_mipmaps);
 		}
 
 		if (!texture_data_loaded)
 		{
 			LOGF_ERROR("Failed to load \"%s\".", filePath.c_str());
-			SetLoadState(LoadState_Failed);
+			m_load_state = LoadState_Failed;
 			return false;
 		}
 
-		// Validate loaded data
-		if (m_width == 0 || m_height == 0 || m_channels == 0 || m_mipmaps.empty() || m_mipmaps.front().empty())
+		// Create GPU resource
+		if (!CreateResourceGpu())
 		{
-			LOG_ERROR_INVALID_PARAMETER();
-			SetLoadState(LoadState_Failed);
+			LOGF_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePath().c_str());
+			m_load_state = LoadState_Failed;
 			return false;
 		}
-
-		// Create shader resource
-		bool srvCreated = ShaderResource_Create2D(m_width, m_height, m_channels, m_format, m_mipmaps);
 
 		// Only clear texture bytes if that's an engine texture, if not, it's not serialized yet.
 		if (FileSystem::IsEngineTextureFile(filePath)) { ClearTextureBytes(); }
-
-		if (!srvCreated) 
-		{ 
-			LOGF_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePath().c_str()); 
-			SetLoadState(LoadState_Failed);
-			return false;
-		}
-		
-		SetLoadState(LoadState_Completed);
+		m_load_state = LoadState_Completed;
 		return true;
 	}
-	//===================================================================================================
 
-	vector<std::byte>* RHI_Texture::Data_GetMipLevel(unsigned int index)
+	vector<std::byte>* RHI_Texture::GetData(unsigned int index)
 	{
-		if (index >= m_mipmaps.size())
+		if (index >= m_data.size())
 		{
 			LOG_WARNING("Index out of range");
 			return nullptr;
 		}
 
-		return &m_mipmaps[index];
+		return &m_data[index];
 	}
 
 	void RHI_Texture::ClearTextureBytes()
 	{
-		for (auto& mip : m_mipmaps)
-		{
-			mip.clear();
-			mip.shrink_to_fit();
-		}
-		m_mipmaps.clear();
-		m_mipmaps.shrink_to_fit();
+		m_data.clear();
+		m_data.shrink_to_fit();
 	}
 
 	void RHI_Texture::GetTextureBytes(vector<vector<std::byte>>* texture_bytes)
 	{
-		if (!m_mipmaps.empty())
+		if (!m_data.empty())
 		{
-			texture_bytes = &m_mipmaps;
+			texture_bytes = &m_data;
 			return;
 		}
 
@@ -142,15 +158,15 @@ namespace Spartan
 		for (unsigned int i = 0; i < mipCount; i++)
 		{
 			texture_bytes->emplace_back(vector<std::byte>());
-			file->Read(&m_mipmaps[i]);
+			file->Read(&m_data[i]);
 		}
 	}
 
-	bool RHI_Texture::LoadFromForeignFormat(const string& file_path)
+	bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path, bool generate_mipmaps)
 	{
 		// Load texture
 		ImageImporter* imageImp = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();	
-		if (!imageImp->Load(file_path, this))
+		if (!imageImp->Load(file_path, this, generate_mipmaps))
 			return false;
 
 		// Change texture extension to an engine texture
@@ -160,41 +176,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_Texture::Serialize(const string& file_path)
-	{
-		// If the texture bits has been cleared, load it again
-		// as we don't want to replaced existing data with nothing.
-		// If the texture bits are not cleared, no loading will take place.
-		GetTextureBytes(&m_mipmaps);
-
-		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
-		if (!file->IsOpen())
-			return false;
-
-		// Write texture bits
-		file->Write((unsigned int)m_mipmaps.size());
-		for (auto& mip : m_mipmaps)
-		{
-			file->Write(mip);
-		}
-
-		// Write properties
-		file->Write(m_bpp);
-		file->Write(m_width);
-		file->Write(m_height);
-		file->Write(m_channels);
-		file->Write(m_is_grayscale);
-		file->Write(m_is_transparent);
-		file->Write(GetResourceId());
-		file->Write(GetResourceName());
-		file->Write(GetResourceFilePath());
-
-		ClearTextureBytes();
-
-		return true;
-	}
-
-	bool RHI_Texture::Deserialize(const string& file_path)
+	bool RHI_Texture::LoadFromFile_NativeFormat(const string& file_path)
 	{
 		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
 		if (!file->IsOpen())
@@ -202,8 +184,8 @@ namespace Spartan
 
 		// Read texture bits
 		ClearTextureBytes();
-		m_mipmaps.resize(file->ReadAs<unsigned int>());
-		for (auto& mip : m_mipmaps)
+		m_data.resize(file->ReadAs<unsigned int>());
+		for (auto& mip : m_data)
 		{
 			file->Read(&mip);
 		}
@@ -213,6 +195,7 @@ namespace Spartan
 		file->Read(&m_width);
 		file->Read(&m_height);
 		file->Read(&m_channels);
+		file->Read(&m_has_mipmaps);
 		file->Read(&m_is_grayscale);
 		file->Read(&m_is_transparent);
 		SetResourceID(file->ReadAs<unsigned int>());

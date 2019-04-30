@@ -26,34 +26,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../RHI/RHI_Texture.h"
+#include "../../RHI/RHI_Texture2D.h"
+#include "../../RHI/RHI_TextureCube.h"
 #include "../../Math/MathHelper.h"
 #include "../../Rendering/Material.h"
 #include "../../Threading/Threading.h"
 //=======================================
 
-//= NAMESPACES ========================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
 using namespace Helper;
-//=====================================
+//============================
 
 namespace Spartan
 {
 	Skybox::Skybox(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
-		m_skyboxType		= Skybox_Sphere;
-		m_cubemapTexture	= make_shared<RHI_Texture>(GetContext());
-		m_matSkybox			= make_shared<Material>(GetContext());
-		m_matSkybox->SetCullMode(Cull_Front);
-		m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-		m_matSkybox->SetIsEditable(false);
-		m_matSkybox->SetShadingMode(Material::Shading_Sky);
+		m_environment_type	= Skybox_Sphere;
+		m_material			= make_shared<Material>(GetContext());
+		m_material->SetCullMode(Cull_Front);
+		m_material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		m_material->SetIsEditable(false);
+		m_material->SetShadingMode(Material::Shading_Sky);
 		
 		// Texture paths
 		auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Cubemaps);
-		if (m_skyboxType == Skybox_Array)
+		if (m_environment_type == Skybox_Array)
 		{
-			m_texturePaths =
+			m_texture_paths =
 			{
 				dir_cubemaps + "array/X+.tga",	// right
 				dir_cubemaps + "array/X-.tga",	// left
@@ -63,9 +64,9 @@ namespace Spartan
 				dir_cubemaps + "array/Z+.tga"	// front
 			};
 		}
-		else if (m_skyboxType == Skybox_Sphere)
+		else if (m_environment_type == Skybox_Sphere)
 		{
-			m_texturePaths = { dir_cubemaps + "sphere/syferfontein_0d_clear_4k.hdr" };
+			m_texture_paths = { dir_cubemaps + "sphere/syferfontein_0d_clear_4k.hdr" };
 		}
 	}
 
@@ -78,13 +79,13 @@ namespace Spartan
 	{
 		m_context->GetSubsystem<Threading>()->AddTask([this]
 		{		
-			if (m_skyboxType == Skybox_Array)
+			if (m_environment_type == Skybox_Array)
 			{
-				CreateFromArray(m_texturePaths);
+				CreateFromArray(m_texture_paths);
 			}
-			else if (m_skyboxType == Skybox_Sphere)
+			else if (m_environment_type == Skybox_Sphere)
 			{
-				CreateFromSphere(m_texturePaths.front());
+				CreateFromSphere(m_texture_paths.front());
 			}
 		});
 	}
@@ -103,40 +104,40 @@ namespace Spartan
 		vector<vector<vector<std::byte>>> cubemapData;
 
 		// Load all the cubemap sides
-		auto loaderTex = make_shared<RHI_Texture>(GetContext());
+		auto loaderTex = make_shared<RHI_Texture2D>(GetContext(), true);
 		{
 			loaderTex->LoadFromFile(texturePaths[0]);
-			cubemapData.emplace_back(loaderTex->Data_Get());
+			cubemapData.emplace_back(loaderTex->GetData());
 
 			loaderTex->LoadFromFile(texturePaths[1]);
-			cubemapData.emplace_back(loaderTex->Data_Get());
+			cubemapData.emplace_back(loaderTex->GetData());
 
 			loaderTex->LoadFromFile(texturePaths[2]);
-			cubemapData.emplace_back(loaderTex->Data_Get());
+			cubemapData.emplace_back(loaderTex->GetData());
 
 			loaderTex->LoadFromFile(texturePaths[3]);
-			cubemapData.emplace_back(loaderTex->Data_Get());
+			cubemapData.emplace_back(loaderTex->GetData());
 
 			loaderTex->LoadFromFile(texturePaths[4]);
-			cubemapData.emplace_back(loaderTex->Data_Get());
+			cubemapData.emplace_back(loaderTex->GetData());
 
 			loaderTex->LoadFromFile(texturePaths[5]);
-			cubemapData.emplace_back(loaderTex->Data_Get());
+			cubemapData.emplace_back(loaderTex->GetData());
 		}
 
 		// Cubemap
 		{
-			m_cubemapTexture->ShaderResource_CreateCubemap(loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetChannels(), loaderTex->GetFormat(), cubemapData);
-			m_cubemapTexture->SetResourceName("Cubemap");
-			m_cubemapTexture->SetWidth(loaderTex->GetWidth());
-			m_cubemapTexture->SetHeight(loaderTex->GetHeight());
-			m_cubemapTexture->SetGrayscale(false);
+			m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetChannels(), loaderTex->GetFormat(), cubemapData));
+			m_texture->SetResourceName("Cubemap");
+			m_texture->SetWidth(loaderTex->GetWidth());
+			m_texture->SetHeight(loaderTex->GetHeight());
+			m_texture->SetGrayscale(false);
 		}
 
 		// Material
 		{
-			m_matSkybox->SetResourceName("Standard_Skybox");
-			m_matSkybox->SetTextureSlot(TextureType_Albedo, m_cubemapTexture);
+			m_material->SetResourceName("Standard_Skybox");
+			m_material->SetTextureSlot(TextureType_Albedo, m_texture);
 		}
 
 		// Renderable
@@ -145,28 +146,29 @@ namespace Spartan
 			renderable->GeometrySet(Geometry_Default_Cube);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
-			renderable->MaterialSet(m_matSkybox);
+			renderable->MaterialSet(m_material);
 		}
 
 		// Make the skybox big enough
 		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 	}
 
-	void Skybox::CreateFromSphere(const string& texturePath)
+	void Skybox::CreateFromSphere(const string& texture_path)
 	{
 		LOG_INFO("Creating HDR sky sphere...");
 
 		// Texture
 		{
-			m_cubemapTexture = make_shared<RHI_Texture>(GetContext());
-			m_cubemapTexture->LoadFromFile(texturePath);
-			m_cubemapTexture->SetResourceName("Skysphere");
+			bool m_generate_mipmaps = true;
+			m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(GetContext(), m_generate_mipmaps));
+			m_texture->LoadFromFile(texture_path);
+			m_texture->SetResourceName("SkySphere");
 		}
 
 		// Material
 		{
-			m_matSkybox->SetResourceName("Standard_Skysphere");
-			m_matSkybox->SetTextureSlot(TextureType_Albedo, m_cubemapTexture);
+			m_material->SetResourceName("Standard_SkySphere");
+			m_material->SetTextureSlot(TextureType_Albedo, m_texture);
 		}
 
 		// Renderable
@@ -175,7 +177,7 @@ namespace Spartan
 			renderable->GeometrySet(Geometry_Default_Sphere);
 			renderable->SetCastShadows(false);
 			renderable->SetReceiveShadows(false);
-			renderable->MaterialSet(m_matSkybox);
+			renderable->MaterialSet(m_material);
 		}
 
 		// Make the skybox big enough
