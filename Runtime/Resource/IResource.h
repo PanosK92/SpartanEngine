@@ -64,7 +64,6 @@ namespace Spartan
 		unsigned int GetResourceId() const						{ return m_resource_id; }
 		void SetResourceID(unsigned int id)						{ m_resource_id = id; }
 		Resource_Type GetResourceType() const					{ return m_resource_type; }
-		void SetResourceType(Resource_Type type)				{ m_resource_type = type; }
 		const char* GetResourceTypeCstr() const					{ return typeid(*this).name(); }
 		const std::string& GetResourceName() const				{ return m_resource_name; }
 		void SetResourceName(const std::string& name)			{ m_resource_name = name; }
