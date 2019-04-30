@@ -762,7 +762,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 					ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - size * 2.0f);
 					if (ImGuiEx::ImageButton(texture_name, Icon_Component_Material_RemoveTexture, size))
 					{
-						material->SetTextureSlot(textureType, nullptr);
+						material->SetTextureSlot(textureType, shared_ptr<RHI_Texture>());
 					}
 				}
 			};

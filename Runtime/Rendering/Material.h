@@ -82,15 +82,17 @@ namespace Spartan
 		bool SaveToFile(const std::string& file_path) override;
 		//=======================================================
 
-		//= TEXTURE SLOTS  ================================================================
+		//= TEXTURE SLOTS  ====================================================================	
+		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& texture);
+		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture2D>& texture);
+		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_TextureCube>& texture);
 		const TextureSlot& GetTextureSlotByType(TextureType type);
 		void* GetTextureShaderResourceByType(TextureType type);
-		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& texture);
 		bool HasTexture(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//=================================================================================
+		//=====================================================================================
 
 		//= SHADER ====================================================================
 		void AcquireShader();

@@ -92,7 +92,7 @@ namespace Spartan
 		//================================================
 
 	protected:
-		Resource_Type m_resource_type = Resource_Unknown;
+		Resource_Type m_resource_type	= Resource_Unknown;
 		LoadState m_load_state			= LoadState_Idle;
 		Context* m_context				= nullptr;
 
