@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../IO/XmlDocument.h"
 #include "../RHI/RHI_ConstantBuffer.h"
+#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_TextureCube.h"
 //====================================
 
 //= NAMESPACES ================
@@ -91,11 +93,11 @@ namespace Spartan
 			auto tex_path		= xml->GetAttributeAs<string>(node_name, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
-			auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture>(tex_name);
+			auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
 			// If there is not texture (it's not loaded yet), load it
 			if (!texture)
 			{
-				texture = m_context->GetSubsystem<ResourceCache>()->Load<RHI_Texture>(tex_path);
+				texture = m_context->GetSubsystem<ResourceCache>()->Load<RHI_Texture2D>(tex_path);
 			}
 			SetTextureSlot(tex_type, texture);
 		}
@@ -200,7 +202,7 @@ namespace Spartan
 		{
 			for (auto it = m_texture_slots.begin(); it != m_texture_slots.end();)
 			{
-				if ((*it).type == type) 
+				if ((*it).type == type)
 				{
 					it = m_texture_slots.erase(it);
 				}
@@ -214,6 +216,16 @@ namespace Spartan
 
 		TextureBasedMultiplierAdjustment();
 		AcquireShader();
+	}
+
+	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_Texture2D>& texture)
+	{
+		SetTextureSlot(type, static_pointer_cast<RHI_Texture>(texture));
+	}
+
+	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_TextureCube>& texture)
+	{
+		SetTextureSlot(type, static_pointer_cast<RHI_Texture>(texture));
 	}
 
 	bool Material::HasTexture(const TextureType type)
