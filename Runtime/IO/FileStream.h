@@ -36,19 +36,20 @@ namespace Spartan
 	class Entity;
 	struct RHI_Vertex_PosUvNorTan;
 
-	enum FileStreamMode
+	enum FileStream_Mode : uint32_t
 	{
-		FileStreamMode_Read,
-		FileStreamMode_Write
+		FileStream_Read		= 1 << 0,
+		FileStream_Write	= 1 << 1,
+		FileStream_Append	= 1 << 2,
 	};
 
 	class SPARTAN_CLASS FileStream
 	{
 	public:
-		FileStream(const std::string& path, FileStreamMode mode);
+		FileStream(const std::string& path, uint32_t flags);
 		~FileStream();
 
-		bool IsOpen() { return m_isOpen; }
+		bool IsOpen() { return m_is_open; }
 		void Close();
 
 		//= WRITING ==================================================
@@ -145,7 +146,7 @@ namespace Spartan
 	private:
 		std::ofstream out;
 		std::ifstream in;
-		FileStreamMode m_mode;
-		bool m_isOpen;
+		uint32_t m_flags;
+		bool m_is_open;
 	};
 }

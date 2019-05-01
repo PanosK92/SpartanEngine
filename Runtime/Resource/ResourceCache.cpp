@@ -159,7 +159,7 @@ namespace Spartan
 
 		// Create resource list file
 		string file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
-		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
+		auto file = make_unique<FileStream>(file_path, FileStream_Write);
 		if (!file->IsOpen())
 		{
 			LOG_ERROR_GENERIC_FAILURE();
@@ -200,7 +200,7 @@ namespace Spartan
 	{
 		// Open resource list file
 		auto file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
-		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(file_path, FileStream_Read);
 		if (!file->IsOpen())
 			return;
 		

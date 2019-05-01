@@ -159,7 +159,7 @@ namespace Spartan
 		FIRE_EVENT(Event_World_Save);
 
 		// Create a prefab file
-		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
+		auto file = make_unique<FileStream>(file_path, FileStream_Write);
 		if (!file->IsOpen())
 		{
 			LOG_ERROR_GENERIC_FAILURE();
@@ -219,7 +219,7 @@ namespace Spartan
 		Unload();
 
 		// Read all the resource file paths
-		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(file_path, FileStream_Read);
 		if (!file->IsOpen())
 			return false;
 
