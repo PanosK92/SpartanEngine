@@ -50,7 +50,7 @@ namespace Spartan
 		{
 			if (FileSystem::FileExists(file_path))
 			{
-				auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
+				auto file = make_unique<FileStream>(file_path, FileStream_Read);
 				if (file->IsOpen())
 				{
 					file->Read(&byte_count);
@@ -58,7 +58,8 @@ namespace Spartan
 			}
 		}
 
-		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
+		bool append = true;
+		auto file = make_unique<FileStream>(file_path, FileStream_Write | FileStream_Append);
 		if (!file->IsOpen())
 			return false;
 
@@ -66,7 +67,12 @@ namespace Spartan
 		// hold no data, don't overwrite the file's bytes.
 		if (byte_count != 0 && m_data.empty())
 		{
-			file->Skip(sizeof(byte_count) + byte_count);
+			file->Skip
+			(
+				sizeof(unsigned int) +	// byte count
+				sizeof(unsigned int) +	// mipmap count
+				byte_count				// bytes
+			);
 		}
 		else
 		{
@@ -181,7 +187,7 @@ namespace Spartan
 
 	bool RHI_Texture::LoadFromFile_NativeFormat(const string& file_path)
 	{
-		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(file_path, FileStream_Read);
 		if (!file->IsOpen())
 			return false;
 

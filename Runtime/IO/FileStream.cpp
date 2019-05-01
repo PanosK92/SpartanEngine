@@ -30,23 +30,28 @@ using namespace std;
 
 namespace Spartan
 {
-	FileStream::FileStream(const string& path, FileStreamMode mode)
+	FileStream::FileStream(const string& path, uint32_t flags)
 	{
-		m_isOpen = false;
-		m_mode = mode;
+		m_is_open	= false;
+		m_flags		= flags;
 
-		if (mode == FileStreamMode_Write)
+		int ios_flags	= ios::binary;
+		ios_flags		|= (flags & FileStream_Read)	? ios::in	: 0;
+		ios_flags		|= (flags & FileStream_Write)	? ios::out	: 0;
+		ios_flags		|= (flags & FileStream_Append)	? ios::app	: 0;
+
+		if (m_flags & FileStream_Write)
 		{
-			out.open(path, ios::out | ios::binary);
+			out.open(path, ios_flags);
 			if (out.fail())
 			{
 				LOGF_ERROR("Failed to open \"%s\" for writing", path.c_str());
 				return;
 			}
 		}
-		else if (mode == FileStreamMode_Read)
+		else if (m_flags & FileStream_Read)
 		{
-			in.open(path, ios::in | ios::binary);
+			in.open(path, ios_flags);
 			if(in.fail())
 			{
 				LOGF_ERROR("Failed to open \"%s\" for reading", path.c_str());
@@ -54,7 +59,7 @@ namespace Spartan
 			}
 		}
 
-		m_isOpen = true;
+		m_is_open = true;
 	}
 
 	FileStream::~FileStream()
@@ -64,12 +69,12 @@ namespace Spartan
 
 	void FileStream::Close()
 	{
-		if (m_mode == FileStreamMode_Write)
+		if (m_flags & FileStream_Write)
 		{
 			out.flush();
 			out.close();
 		}
-		else if (m_mode == FileStreamMode_Read)
+		else if (m_flags & FileStream_Read)
 		{
 			in.clear();
 			in.close();
@@ -125,8 +130,15 @@ namespace Spartan
 
 	void FileStream::Skip(unsigned int n)
 	{
-		// Set the seek cursor to offset n from the beginning of the file
-		out.seekp(n, ios::cur);
+		// Set the seek cursor to offset n from the current position
+		if (m_flags & FileStream_Write)
+		{
+			out.seekp(n, ios::cur);
+		}
+		else if (m_flags & FileStream_Read)
+		{
+			in.ignore(n, ios::cur);
+		}
 	}
 
 	void FileStream::Read(string* value)

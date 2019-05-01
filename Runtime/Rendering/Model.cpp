@@ -95,7 +95,7 @@ namespace Spartan
 
 	bool Model::SaveToFile(const string& file_path)
 	{
-		auto file = make_unique<FileStream>(file_path, FileStreamMode_Write);
+		auto file = make_unique<FileStream>(file_path, FileStream_Write);
 		if (!file->IsOpen())
 			return false;
 
@@ -237,7 +237,7 @@ namespace Spartan
 	bool Model::LoadFromEngineFormat(const string& file_path)
 	{
 		// Deserialize
-		auto file = make_unique<FileStream>(file_path, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(file_path, FileStream_Read);
 		if (!file->IsOpen())
 			return false;
 
