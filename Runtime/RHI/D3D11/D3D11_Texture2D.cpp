@@ -60,78 +60,176 @@ namespace Spartan
 				generate_mipmaps = false;
 			}
 		}
+		UINT mip_levels = generate_mipmaps ? 7 : static_cast<UINT>(m_data.size());
 
-		// D3D11_TEXTURE2D_DESC
-		D3D11_TEXTURE2D_DESC texture_desc;
-		texture_desc.Width				= m_width;
-		texture_desc.Height				= m_height;
-		texture_desc.MipLevels			= generate_mipmaps ? 7 : static_cast<UINT>(m_data.size());
-		texture_desc.ArraySize			= 1;
-		texture_desc.Format				= d3d11_format[m_format];
-		texture_desc.SampleDesc.Count	= 1;
-		texture_desc.SampleDesc.Quality	= 0;
-		texture_desc.Usage				= generate_mipmaps ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
-		texture_desc.BindFlags			= generate_mipmaps ? D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET : D3D11_BIND_SHADER_RESOURCE; // D3D11_RESOURCE_MISC_GENERATE_MIPS flag requires D3D11_BIND_RENDER_TARGET
-		texture_desc.MiscFlags			= generate_mipmaps ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
-		texture_desc.CPUAccessFlags		= 0;
-
-		// D3D11_SUBRESOURCE_DATA
-		vector<D3D11_SUBRESOURCE_DATA> vec_subresource_data;
-		auto mip_width	= m_width;
-		auto mip_height	= m_height;
-
-		for (unsigned int i = 0; i < static_cast<unsigned int>(m_data.size()); i++)
-		{
-			if (m_data[i].empty())
-			{
-				LOGF_ERROR("Mipmap %d has invalid data.", i);
-				continue;
-			}
-
-			auto& subresource_data				= vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-			subresource_data.pSysMem			= m_data[i].data();						// Data pointer		
-			subresource_data.SysMemPitch		= mip_width * m_channels * (m_bpc / 8);	// Line width in bytes
-			subresource_data.SysMemSlicePitch	= 0;									// This is only used for 3D textures
-
-			// Compute size of next mip-map
-			mip_width	= Max(mip_width / 2, static_cast<unsigned int>(1));
-			mip_height	= Max(mip_height / 2, static_cast<unsigned int>(1));
-
-			// Compute memory usage (rough estimation)
-			m_size += static_cast<unsigned int>(m_data[i].size()) * (m_bpc / 8);
-		}
-
-		// Describe shader resource view
-		D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_desc;
-		shader_resource_desc.Format						= d3d11_format[m_format];
-		shader_resource_desc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
-		shader_resource_desc.Texture2D.MostDetailedMip	= 0;
-		shader_resource_desc.Texture2D.MipLevels		= texture_desc.MipLevels;
-
-		// Create texture
+		// TEXTURE
 		ID3D11Texture2D* texture = nullptr;
-		if (FAILED(m_rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, generate_mipmaps ? nullptr : vec_subresource_data.data(), &texture)))
 		{
-			LOG_ERROR("Invalid parameters, failed to create ID3D11Texture2D.");
-			return false;
-		}
+			D3D11_TEXTURE2D_DESC texture_desc;
+			texture_desc.Width				= m_width;
+			texture_desc.Height				= m_height;
+			texture_desc.MipLevels			= mip_levels;
+			texture_desc.ArraySize			= static_cast<UINT>(m_array_size);
+			texture_desc.Format				= d3d11_format[m_format];
+			texture_desc.SampleDesc.Count	= 1;
+			texture_desc.SampleDesc.Quality = 0;
+			texture_desc.Usage				= generate_mipmaps ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
+			texture_desc.BindFlags			= generate_mipmaps ? D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET : D3D11_BIND_SHADER_RESOURCE; // D3D11_RESOURCE_MISC_GENERATE_MIPS flag requires D3D11_BIND_RENDER_TARGET
+			texture_desc.MiscFlags			= generate_mipmaps ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
+			texture_desc.CPUAccessFlags		= 0;
 
-		// Create shader resource
-		ID3D11ShaderResourceView* shader_resource_view = nullptr;
-		if (SUCCEEDED(m_rhi_device->GetContext()->device->CreateShaderResourceView(texture, &shader_resource_desc, &shader_resource_view)))
-		{
-			if (generate_mipmaps)
+			// Fill subresource data
+			vector<D3D11_SUBRESOURCE_DATA> vec_subresource_data;
+			auto mip_width	= m_width;
+			auto mip_height = m_height;
+			for (unsigned int i = 0; i < static_cast<unsigned int>(m_data.size()); i++)
 			{
-				m_rhi_device->GetContext()->device_context->UpdateSubresource(texture, 0, nullptr, m_data.front().data(), m_width * m_channels * (m_bpc / 8), 0);
-				m_rhi_device->GetContext()->device_context->GenerateMips(shader_resource_view);
+				if (m_data[i].empty())
+				{
+					LOGF_ERROR("Mipmap %d has invalid data.", i);
+					continue;
+				}
+
+				auto& subresource_data				= vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
+				subresource_data.pSysMem			= m_data[i].data();						// Data pointer		
+				subresource_data.SysMemPitch		= mip_width * m_channels * (m_bpc / 8);	// Line width in bytes
+				subresource_data.SysMemSlicePitch	= 0;									// This is only used for 3D textures
+
+				// Compute size of next mip-map
+				mip_width = Max(mip_width / 2, static_cast<unsigned int>(1));
+				mip_height = Max(mip_height / 2, static_cast<unsigned int>(1));
+
+				// Compute memory usage (rough estimation)
+				m_size += static_cast<unsigned int>(m_data[i].size()) * (m_bpc / 8);
+			}
+
+			// Create
+			if (FAILED(m_rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, generate_mipmaps ? nullptr : vec_subresource_data.data(), &texture)))
+			{
+				LOG_ERROR("Invalid parameters, failed to create ID3D11Texture2D.");
+				return false;
 			}
 		}
-		else
+
+		// SHADER RESOURCE VIEW
 		{
-			LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
+			// Describe
+			D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc	= {};
+			shader_resource_view_desc.Format							= d3d11_format[m_format];
+			if (m_array_size == 1)
+			{
+				shader_resource_view_desc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
+				shader_resource_view_desc.Texture2D.MostDetailedMip = 0;
+				shader_resource_view_desc.Texture2D.MipLevels		= mip_levels;
+			}
+			else
+			{
+				shader_resource_view_desc.ViewDimension						= D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+				shader_resource_view_desc.Texture2DArray.FirstArraySlice	= 0;
+				shader_resource_view_desc.Texture2DArray.MostDetailedMip	= 0;
+				shader_resource_view_desc.Texture2DArray.MipLevels			= mip_levels;
+				shader_resource_view_desc.Texture2DArray.ArraySize			= m_array_size;
+			}
+
+			// Create
+			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&m_resource);
+			if (SUCCEEDED(m_rhi_device->GetContext()->device->CreateShaderResourceView(texture, &shader_resource_view_desc, ptr)))
+			{
+				if (generate_mipmaps)
+				{
+					m_rhi_device->GetContext()->device_context->UpdateSubresource(texture, 0, nullptr, m_data.front().data(), m_width * m_channels * (m_bpc / 8), 0);
+					m_rhi_device->GetContext()->device_context->GenerateMips(*ptr);
+				}
+			}
+			else
+			{
+				safe_release(texture);
+				LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
+				return false;
+			}
+
+			// RENDER TARGET VIEW
+			/*if (m_is_render_target)
+			{
+				D3D11_RENDER_TARGET_VIEW_DESC view_desc = {};
+				view_desc.Format = d3d11_format[m_format];
+				if (m_array_size == 1)
+				{
+					view_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+					view_desc.Texture2D.MipSlice = 0;
+
+					auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_buffer_render_target_views.emplace_back(nullptr));
+					if (FAILED(m_rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_view), &view_desc, ptr)))
+					{
+						LOG_ERROR("CreateRenderTargetView() failed.");
+						return;
+					}
+				}
+				else
+				{
+					for (unsigned int i = 0; i < m_array_size; i++)
+					{
+						view_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+						view_desc.Texture2DArray.MipSlice = 0;
+						view_desc.Texture2DArray.ArraySize = 1;
+						view_desc.Texture2DArray.FirstArraySlice = i;
+
+						m_buffer_render_target_views.emplace_back(nullptr);
+						auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&m_buffer_render_target_views[i]);
+						if (FAILED(m_rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(m_render_target_view), &view_desc, ptr)))
+						{
+							LOG_ERROR("CreateRenderTargetView() failed.");
+							return;
+						}
+					}
+				}
+			}*/
+
+			// DEPTH-STENCIL BUFFER
+			//if (m_is_depth_stencil_buffer)
+			//{
+			//	// DEPTH STENCIL VIEW
+			//	ID3D11Texture2D* depth_stencil_texture = nullptr;
+			//	auto depth_stencil_view = reinterpret_cast<ID3D11DepthStencilView**>(&m_depth_stencil_view);
+
+			//	// Depth-stencil buffer
+			//	D3D11_TEXTURE2D_DESC depth_buffer_desc = {};
+			//	depth_buffer_desc.Width = static_cast<UINT>(m_viewport.GetWidth());
+			//	depth_buffer_desc.Height = static_cast<UINT>(m_viewport.GetHeight());
+			//	depth_buffer_desc.MipLevels = 1;
+			//	depth_buffer_desc.ArraySize = 1;
+			//	depth_buffer_desc.Format = d3d11_format[depth_format];
+			//	depth_buffer_desc.SampleDesc.Count = 1;
+			//	depth_buffer_desc.SampleDesc.Quality = 0;
+			//	depth_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+			//	depth_buffer_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+			//	depth_buffer_desc.CPUAccessFlags = 0;
+			//	depth_buffer_desc.MiscFlags = 0;
+
+			//	auto result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateTexture2D(&depth_buffer_desc, nullptr, &depth_stencil_texture));
+			//	if (!result)
+			//	{
+			//		LOGF_ERROR("Failed to create depth stencil buffer, %s.", D3D11_Common::dxgi_error_to_string(result));
+			//		return;
+			//	}
+
+			//	// Depth-stencil view
+			//	D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc;
+			//	ZeroMemory(&depth_stencil_view_desc, sizeof(depth_stencil_view_desc));
+			//	depth_stencil_view_desc.Format = d3d11_format[depth_format];
+			//	depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+			//	depth_stencil_view_desc.Texture2D.MipSlice = 0;
+
+			//	result = SUCCEEDED(m_rhi_device->GetContext()->device->CreateDepthStencilView(depth_stencil_texture, &depth_stencil_view_desc, depth_stencil_view));
+			//	if (!result)
+			//	{
+			//		LOGF_ERROR("Failed to create depth stencil view, %s.", D3D11_Common::dxgi_error_to_string(result));
+			//	}
+
+			//	safe_release(depth_stencil_texture);
+			//}
 		}
 
-		m_resource = shader_resource_view;
 		safe_release(texture);
 		return true;
 	}
