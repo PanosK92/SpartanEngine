@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture.h"
 #include "../RHI_VertexBuffer.h"
 #include "../RHI_IndexBuffer.h"
-#include "../RHI_RenderTexture.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
@@ -345,11 +344,6 @@ namespace Spartan
 		SetTexture(slot, texture->GetResource_Texture());
 	}
 
-	void RHI_CommandList::SetTexture(uint32_t slot, const shared_ptr<RHI_RenderTexture>& texture)
-	{
-		SetTexture(slot, texture->GetResource_Texture());
-	}
-
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
 	{
 		if (!m_is_recording)
@@ -362,7 +356,7 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& render_target, void* depth_stencil /*= nullptr*/)
+	void RHI_CommandList::SetRenderTarget(const shared_ptr<RHI_Texture>& render_target, void* depth_stencil /*= nullptr*/)
 	{
 		if (!m_is_recording)
 			return;

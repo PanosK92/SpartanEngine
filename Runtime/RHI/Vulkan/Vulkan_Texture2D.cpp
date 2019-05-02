@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "../RHI_Device.h"
-#include "../RHI_Texture.h"
+#include "../RHI_Texture2D.h"
 #include "../../Math/MathHelper.h"
 //================================
 
@@ -41,7 +41,7 @@ namespace Spartan
 
 	RHI_Texture2D::~RHI_Texture2D()
 	{
-		ClearTextureBytes();
+		m_data.clear();
 		Vulkan_Common::image_view::destroy(m_rhi_device, m_resource_texture);
 		Vulkan_Common::image::destroy(m_rhi_device, m_texture);
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
@@ -195,9 +195,9 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_Texture2D::Create(unsigned int width, unsigned int height, unsigned int channels, RHI_Format format, const vector<vector<std::byte>>& mipmaps, bool is_mipmapped)
+	bool RHI_Texture2D::CreateResourceGpu()
 	{
-		VkDeviceSize buffer_size = width * height * channels;
+		VkDeviceSize buffer_size = m_width * m_height * m_channels;
 
 		// Create image memory
 		VkBuffer staging_buffer	= nullptr;
@@ -208,7 +208,7 @@ namespace Spartan
 		// Copy bytes to image memory
 		void* data = nullptr;
 		vkMapMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, 0, buffer_size, 0, &data);
-		memcpy(data, mipmaps.front().data(), static_cast<size_t>(buffer_size));
+		memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
 		vkUnmapMemory(m_rhi_device->GetContext()->device, staging_buffer_memory);
 
 		// Create image
@@ -219,9 +219,9 @@ namespace Spartan
 				m_rhi_device,
 				image,
 				image_memory,
-				width,
-				height,
-				vulkan_format[format],
+				m_width,
+				m_height,
+				vulkan_format[m_format],
 				VK_IMAGE_TILING_LINEAR, // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -239,7 +239,7 @@ namespace Spartan
 
 		// Copy buffer to texture
 		m_mutex.lock(); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
-		if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(width), static_cast<uint32_t>(height), vulkan_format[format], image, staging_buffer, cmd_pool))
+		if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), vulkan_format[m_format], image, staging_buffer, cmd_pool))
 		{
 			LOG_ERROR("Failed to copy buffer to image");
 			return false;
@@ -248,7 +248,7 @@ namespace Spartan
 
 		// Create image view
 		VkImageView image_view = nullptr;
-		if (!Vulkan_Common::image_view::create(m_rhi_device, image, image_view, vulkan_format[format]))
+		if (!Vulkan_Common::image_view::create(m_rhi_device, image, image_view, vulkan_format[m_format]))
 		{
 			LOG_ERROR("Failed to create image view");
 			return false;
@@ -257,7 +257,7 @@ namespace Spartan
 		vkDestroyBuffer(m_rhi_device->GetContext()->device, staging_buffer, nullptr);
 		vkFreeMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, nullptr);
 
-		m_resource_texture		= static_cast<void*>(image_view);
+		m_resource_texture	= static_cast<void*>(image_view);
 		m_texture			= static_cast<void*>(image);
 		m_texture_memory	= static_cast<void*>(image_memory);
 
