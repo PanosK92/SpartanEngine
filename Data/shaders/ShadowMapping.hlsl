@@ -119,15 +119,14 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 	// Compute some useful values
     float2 texCoord     		= input.uv;
     float3 normal       		= texNormal.Sample(samplerLinear_clamp, texCoord).rgb;
-    float2 depthSample  		= texDepth.Sample(samplerLinear_clamp, texCoord).rg;
-    float depth_cs      		= depthSample.g; 
+    float depth  				= texDepth.Sample(samplerLinear_clamp, texCoord).r;
 	float bias					= biases.x;
 	float normalBias			= biases.y;
 	float texel          		= 1.0f / shadowMapResolution;
     float NdotL                 = dot(normal, lightDir);
     float cosAngle              = saturate(1.0f - NdotL);
     float3 scaledNormalOffset   = normal * normalBias * cosAngle * texel;
-	float3 positionWS   		= reconstructPositionWorld(depth_cs, mViewProjectionInverse, texCoord);
+	float3 positionWS   		= get_world_position_from_depth(depth, mViewProjectionInverse, texCoord);
 	float4 worldPos 			= float4(positionWS + scaledNormalOffset, 1.0f);
 	
 	// Compute clip space positions for each cascade

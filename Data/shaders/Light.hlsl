@@ -67,7 +67,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	// Sample from textures
     float4 albedo       		= degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
     float4 normalSample 		= texNormal.Sample(sampler_linear_clamp, texCoord);
-	float3 normal				= normal_Decode(normalSample.xyz);
+	float3 normal				= normal_decode(normalSample.xyz);
 	float4 materialSample   	= texMaterial.Sample(sampler_linear_clamp, texCoord);
     float occlusion_texture 	= normalSample.w;
 	float occlusion_ssao		= texSSAO.Sample(sampler_linear_clamp, texCoord).r; 
@@ -83,8 +83,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	material.roughness_alpha 	= max(0.001f, material.roughness * material.roughness);
 
 	// Compute common values
-    float2 depth  			= texDepth.Sample(sampler_linear_clamp, texCoord).rg;
-    float3 worldPos 		= reconstructPositionWorld(depth.g, mViewProjectionInverse, texCoord);
+    float depth  			= texDepth.Sample(sampler_linear_clamp, texCoord).r;
+    float3 worldPos 		= get_world_position_from_depth(depth, mViewProjectionInverse, texCoord);
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
 	// Sky

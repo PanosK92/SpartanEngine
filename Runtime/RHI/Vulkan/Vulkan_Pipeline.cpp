@@ -425,7 +425,7 @@ namespace Spartan
 			m_descriptor_set,
 			m_constant_buffer.get(),
 			m_sampler.get(),
-			m_texture->GetResource()
+			m_texture->GetResource_Texture()
 		);
 
 		// Pipeline layout create info

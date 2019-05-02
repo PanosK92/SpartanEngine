@@ -211,28 +211,28 @@ namespace Spartan
 		m_quad.CreateBuffers(this);
 
 		// G-Buffer
-		m_g_buffer_albedo	= make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R8G8B8A8_UNORM, false);
-		m_g_buffer_normal	= make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT, false); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
-		m_g_buffer_material = make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R8G8B8A8_UNORM, false);
-		m_g_buffer_velocity = make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16_FLOAT, false);
-		m_g_buffer_depth	= make_shared<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32_FLOAT, true, Format_D32_FLOAT);
+		m_g_buffer_albedo	= make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
+		m_g_buffer_normal	= make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
+		m_g_buffer_material = make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
+		m_g_buffer_velocity = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16_FLOAT);
+		m_g_buffer_depth	= make_shared<RHI_Texture2D>(m_context, width, height, Format_D32_FLOAT);
 
 		// Full res
-		m_render_tex_full_hdr_light		= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32B32A32_FLOAT);
-		m_render_tex_full_hdr_light2	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R32G32B32A32_FLOAT);
-		m_render_tex_full_taa_current	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
-		m_render_tex_full_taa_history	= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
-		m_render_tex_full_spare			= make_unique<RHI_RenderTexture>(m_rhi_device, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_full_hdr_light		= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+		m_render_tex_full_hdr_light2	= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+		m_render_tex_full_taa_current	= make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_full_taa_history	= make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_full_spare			= make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
 
 		// Half res
-		m_render_tex_half_shadows	= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
-		m_render_tex_half_ssao		= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
-		m_render_tex_half_spare		= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R8_UNORM);
-		m_render_tex_half_spare2	= make_unique<RHI_RenderTexture>(m_rhi_device, width / 2, height / 2, Format_R16G16B16A16_FLOAT);
+		m_render_tex_half_shadows	= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);
+		m_render_tex_half_ssao		= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);
+		m_render_tex_half_spare		= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);
+		m_render_tex_half_spare2	= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R16G16B16A16_FLOAT);
 
 		// Quarter res
-		m_render_tex_quarter_blur1 = make_unique<RHI_RenderTexture>(m_rhi_device, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
-		m_render_tex_quarter_blur2 = make_unique<RHI_RenderTexture>(m_rhi_device, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
+		m_render_tex_quarter_blur1 = make_unique<RHI_Texture2D>(m_context, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
+		m_render_tex_quarter_blur2 = make_unique<RHI_Texture2D>(m_context, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
 	}
 
 	void Renderer::CreateShaders()
@@ -280,9 +280,9 @@ namespace Spartan
 		m_vs_gbuffer = make_shared<RHI_Shader>(m_rhi_device);
 		m_vs_gbuffer->CompileAsync(m_context, Shader_Vertex, dir_shaders + "GBuffer.hlsl", Vertex_Attributes_PositionTextureNormalTangent);
 
-		// Depth
-		m_vps_depth = make_shared<RHI_Shader>(m_rhi_device);
-		m_vps_depth->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "ShadowingDepth.hlsl", Vertex_Attribute_Position3d);
+		// Position
+		m_v_depth = make_shared<RHI_Shader>(m_rhi_device);
+		m_v_depth->CompileAsync(m_context, Shader_Vertex, dir_shaders + "Depth.hlsl", Vertex_Attribute_Position3d);
 
 		// Quad
 		m_vs_quad = make_shared<RHI_Shader>(m_rhi_device);
@@ -426,7 +426,7 @@ namespace Spartan
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-			m_render_tex_full_hdr_light2->Clear(m_cmd_list, 0.0f, 0.0f, 0.0f, 1.0f);
+			m_cmd_list->ClearRenderTarget(m_render_tex_full_hdr_light2->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			m_is_rendering = false;
 			return;
 		}
@@ -434,7 +434,7 @@ namespace Spartan
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-			m_render_tex_full_hdr_light2->Clear(m_cmd_list, m_camera->GetClearColor());
+			m_cmd_list->ClearRenderTarget(m_render_tex_full_hdr_light2->GetResource_RenderTarget(), m_camera->GetClearColor());
 			m_is_rendering = false;
 			return;
 		}

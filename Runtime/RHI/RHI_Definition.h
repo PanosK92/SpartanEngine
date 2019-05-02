@@ -40,7 +40,6 @@ namespace Spartan
 	class RHI_ConstantBuffer;
 	class RHI_Sampler;
 	class RHI_Viewport;
-	class RHI_RenderTexture;
 	class RHI_Texture;
 	class RHI_Texture2D;
 	class RHI_TextureCube;
@@ -170,6 +169,7 @@ namespace Spartan
 		Format_R32_UINT,
 		Format_R32_FLOAT,
 		Format_D32_FLOAT,
+		Format_R32_FLOAT_TYPELESS,
 		// RG
 		Format_R8G8_UNORM,
 		Format_R16G16_FLOAT,

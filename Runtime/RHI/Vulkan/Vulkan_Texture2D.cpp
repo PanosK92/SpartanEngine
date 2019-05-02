@@ -42,7 +42,7 @@ namespace Spartan
 	RHI_Texture2D::~RHI_Texture2D()
 	{
 		ClearTextureBytes();
-		Vulkan_Common::image_view::destroy(m_rhi_device, m_resource);
+		Vulkan_Common::image_view::destroy(m_rhi_device, m_resource_texture);
 		Vulkan_Common::image::destroy(m_rhi_device, m_texture);
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}
@@ -257,7 +257,7 @@ namespace Spartan
 		vkDestroyBuffer(m_rhi_device->GetContext()->device, staging_buffer, nullptr);
 		vkFreeMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, nullptr);
 
-		m_resource		= static_cast<void*>(image_view);
+		m_resource_texture		= static_cast<void*>(image_view);
 		m_texture			= static_cast<void*>(image);
 		m_texture_memory	= static_cast<void*>(image_memory);
 

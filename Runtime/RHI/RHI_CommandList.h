@@ -205,12 +205,11 @@ namespace Spartan
 		void SetTextures(unsigned int start_slot, const std::vector<void*>& textures);
 		void SetTexture(uint32_t slot, void* texture);
 		void SetTexture(uint32_t slot, const std::shared_ptr<RHI_Texture>& texture);
-		void SetTexture(uint32_t slot, const std::shared_ptr<RHI_RenderTexture>& texture);
 		void ClearTextures() { SetTextures(0, m_textures_empty); }
 
 		void SetRenderTargets(const std::vector<void*>& render_targets, void* depth_stencil = nullptr);
 		void SetRenderTarget(void* render_target, void* depth_stencil = nullptr);
-		void SetRenderTarget(const std::shared_ptr<RHI_RenderTexture>&, void* depth_stencil = nullptr);
+		void SetRenderTarget(const std::shared_ptr<RHI_Texture>&, void* depth_stencil = nullptr);
 
 		void ClearRenderTarget(void* render_target, const Math::Vector4& color);
 		void ClearRenderTargets(const std::vector<void*>& render_targets, const Math::Vector4& color)

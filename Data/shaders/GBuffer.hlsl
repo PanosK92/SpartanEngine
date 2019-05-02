@@ -55,7 +55,6 @@ struct PixelOutputType
 	float4 normal	: SV_Target1;
 	float4 material	: SV_Target2;
 	float2 velocity	: SV_Target3;
-	float2 depth	: SV_Target4;
 };
 
 PixelInputType mainVS(Vertex_PosUvNorTan input)
@@ -79,8 +78,6 @@ PixelOutputType mainPS(PixelInputType input)
 {
 	PixelOutputType g_buffer;
 
-    float depth_linear  	= input.positionVS.z / g_camera_far;
-    float depth_cs      	= input.positionCS.z / input.positionVS.w;
 	float2 texCoords 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= clamp(materialRoughness, 0.0001f, 1.0f);
@@ -97,7 +94,6 @@ PixelOutputType mainPS(PixelInputType input)
     float2 velocity 			= (position_delta - g_taa_jitterOffset) * float2(0.5f, -0.5f);
 	//=========================================================================================
 
-	//= HEIGHT ==================================================================================
 	#if HEIGHT_MAP
 		// Parallax Mapping
 		float height_scale 	= materialHeight * 0.01f;
@@ -110,7 +106,6 @@ PixelOutputType mainPS(PixelInputType input)
 		}
 	#endif
 	
-	//= MASK ====================================================================================
 	#if MASK_MAP
 		float3 maskSample = texMask.Sample(samplerAniso, texCoords).rgb;
 		float threshold = 0.6f;
@@ -118,22 +113,18 @@ PixelOutputType mainPS(PixelInputType input)
 			discard;
 	#endif
 	
-	//= ALBEDO ==================================================================================
 	#if ALBEDO_MAP
 		albedo *= texAlbedo.Sample(samplerAniso, texCoords);
 	#endif
 	
-	//= ROUGHNESS ===============================================================================
 	#if ROUGHNESS_MAP
 		roughness *= texRoughness.Sample(samplerAniso, texCoords).r;
 	#endif
 	
-	//= METALLIC ================================================================================
 	#if METALLIC_MAP
 		metallic *= texMetallic.Sample(samplerAniso, texCoords).r;
 	#endif
 	
-	//= NORMAL ================================================================================
 	#if NORMAL_MAP
 		// Make TBN
 		float3x3 TBN = makeTBN(input.normal, input.tangent);
@@ -147,24 +138,20 @@ PixelOutputType mainPS(PixelInputType input)
 		// Transform to world space
 		normal = normalize(mul(normalSample, TBN).xyz);
 	#endif
-	//=========================================================================================
-	
-	//= OCCLUSION ================================================================================
+
 	#if OCCLUSION_MAP
 		occlusion = texOcclusion.Sample(samplerAniso, texCoords).r;
 	#endif
 	
-	//= EMISSION ================================================================================
 	#if EMISSION_MAP
 		emission = texEmission.Sample(samplerAniso, texCoords).r;
 	#endif
 
 	// Write to G-Buffer
 	g_buffer.albedo		= albedo;
-	g_buffer.normal 	= float4(normal_Encode(normal), occlusion);
+	g_buffer.normal 	= float4(normal_encode(normal), occlusion);
 	g_buffer.material	= float4(roughness, metallic, emission, materialShadingMode);
 	g_buffer.velocity	= velocity;
-	g_buffer.depth      = float2(depth_linear, depth_cs);
 
     return g_buffer;
 }

@@ -33,16 +33,16 @@ struct Light
 /*------------------------------------------------------------------------------
 							[GAMMA CORRECTION]
 ------------------------------------------------------------------------------*/
-inline float4 degamma(float4 color)	{ return pow(abs(color), g_gamma); }
-inline float3 degamma(float3 color)	{ return pow(abs(color), g_gamma); }
-inline float4 gamma(float4 color)	{ return pow(abs(color), 1.0f / g_gamma); }
-inline float3 gamma(float3 color)	{ return pow(abs(color), 1.0f / g_gamma); }
+float4 degamma(float4 color)	{ return pow(abs(color), g_gamma); }
+float3 degamma(float3 color)	{ return pow(abs(color), g_gamma); }
+float4 gamma(float4 color)		{ return pow(abs(color), 1.0f / g_gamma); }
+float3 gamma(float3 color)		{ return pow(abs(color), 1.0f / g_gamma); }
 
 /*------------------------------------------------------------------------------
 								[PROJECT]
 ------------------------------------------------------------------------------*/
-inline float2 project(float4 value)	{ return (value.xy / value.w) * float2(0.5f, -0.5f) + 0.5f; }
-inline float2 project(float3 position, matrix transform)
+float2 project(float4 value)	{ return (value.xy / value.w) * float2(0.5f, -0.5f) + 0.5f; }
+float2 project(float3 position, matrix transform)
 {
 	float4 projectedCoords 	= mul(float4(position, 1.0f), transform);
 	projectedCoords.xy 		/= projectedCoords.w;
@@ -54,10 +54,10 @@ inline float2 project(float3 position, matrix transform)
 /*------------------------------------------------------------------------------
 								[PACKING]
 ------------------------------------------------------------------------------*/
-inline float3 unpack(float3 value)	{ return value * 2.0f - 1.0f; }
-inline float3 pack(float3 value)	{ return value * 0.5f + 0.5f; }
-inline float2 unpack(float2 value)	{ return value * 2.0f - 1.0f; }
-inline float2 pack(float2 value)	{ return value * 0.5f + 0.5f; }
+float3 unpack(float3 value)	{ return value * 2.0f - 1.0f; }
+float3 pack(float3 value)	{ return value * 0.5f + 0.5f; }
+float2 unpack(float2 value)	{ return value * 2.0f - 1.0f; }
+float2 pack(float2 value)	{ return value * 0.5f + 0.5f; }
 
 /*------------------------------------------------------------------------------
 								[NORMALS]
@@ -68,30 +68,49 @@ inline float3x3 makeTBN(float3 n, float3 t)
 	return float3x3(t, b, n); 
 }
 // No decoding required
-inline float3 normal_Decode(float3 normal)	{ return normalize(normal); }
+float3 normal_decode(float3 normal)	{ return normalize(normal); }
 // No encoding required
-inline float3 normal_Encode(float3 normal)	{ return normalize(normal); }
+float3 normal_encode(float3 normal)	{ return normalize(normal); }
 
 /*------------------------------------------------------------------------------
-						[POSITION RECONSTRUCTION]
+							[DEPTH/POS]
 ------------------------------------------------------------------------------*/
-inline float3 reconstructPositionWorld(float depth, matrix viewProjectionInverse, float2 texCoord)
+float get_depth(Texture2D tex_depth, SamplerState sampler_linear, float2 tex_coord)
+{
+	return tex_depth.SampleLevel(sampler_linear, tex_coord, 0).r;
+}
+
+float get_linear_depth(float z)
+{
+	float z_b = z;
+    float z_n = 2.0f * z_b - 1.0f;
+	return 2.0f * g_camera_far * g_camera_near / (g_camera_near + g_camera_far - z_n * (g_camera_near - g_camera_far));
+}
+
+float get_linear_depth(Texture2D tex_depth, SamplerState sampler_linear, float2 tex_coord)
+{
+	float depth = get_depth(tex_depth, sampler_linear, tex_coord);
+	return get_linear_depth(depth);
+}
+
+float3 get_world_position_from_depth(float z, matrix viewProjectionInverse, float2 tex_coord)
 {	
-	float x 			= texCoord.x * 2.0f - 1.0f;
-	float y 			= (1.0f - texCoord.y) * 2.0f - 1.0f;
-	float z				= depth;
+	float x 			= tex_coord.x * 2.0f - 1.0f;
+	float y 			= (1.0f - tex_coord.y) * 2.0f - 1.0f;
     float4 pos_clip 	= float4(x, y, z, 1.0f);
-	float4 pos_world 	= mul(pos_clip, viewProjectionInverse);
-	
+	float4 pos_world 	= mul(pos_clip, viewProjectionInverse);	
     return pos_world.xyz / pos_world.w;  
 }
 
-/*------------------------------------------------------------------------------
-								[DEPTH]
-------------------------------------------------------------------------------*/
-inline float linerizeDepth(float depth, float near, float far)
+float3 get_world_position_from_depth(Texture2D tex_depth, SamplerState sampler_linear, float2 tex_coord)
 {
-	return (far / (far - near)) * (1.0f - (near / depth));
+	float depth = get_depth(tex_depth, sampler_linear, tex_coord);
+    return get_world_position_from_depth(depth, g_viewProjectionInv, tex_coord);
+}
+
+float3 get_world_position_from_depth(float depth, float2 tex_coord)
+{
+    return get_world_position_from_depth(depth, g_viewProjectionInv, tex_coord);
 }
 
 /*------------------------------------------------------------------------------
@@ -99,12 +118,12 @@ inline float linerizeDepth(float depth, float near, float far)
 ------------------------------------------------------------------------------*/
 static const float3 lumCoeff = float3(0.299f, 0.587f, 0.114f);
 
-inline float luminance(float3 color)
+float luminance(float3 color)
 {
     return max(dot(color, lumCoeff), 0.0001f);
 }
 
-inline float luminance(float4 color)
+float luminance(float4 color)
 {
     return max(dot(color.rgb, lumCoeff), 0.0001f);
 }
@@ -112,7 +131,7 @@ inline float luminance(float4 color)
 /*------------------------------------------------------------------------------
 								[SKY SPHERE]
 ------------------------------------------------------------------------------*/
-inline float2 directionToSphereUV(float3 direction)
+float2 directionToSphereUV(float3 direction)
 {
     float n 	= length(direction.xz);
     float2 uv 	= float2((n > 0.0000001) ? direction.x / n : 0.0, direction.y);
@@ -126,7 +145,7 @@ inline float2 directionToSphereUV(float3 direction)
 /*------------------------------------------------------------------------------
 								[RANDOM]
 ------------------------------------------------------------------------------*/
-inline float randomize(float2 texcoord)
+float randomize(float2 texcoord)
 {
     float seed		= dot(texcoord, float2(12.9898, 78.233));
     float sine		= sin(seed);
@@ -139,11 +158,11 @@ inline float randomize(float2 texcoord)
 								[MISC]
 ------------------------------------------------------------------------------*/
 // The Technical Art of Uncharted 4 - http://advances.realtimerendering.com/other/2016/naughty_dog/index.html
-inline float micro_shadow(float ao, float3 N, float3 L, float shadow)
+float micro_shadow(float ao, float3 N, float3 L, float shadow)
 {
 	float aperture 		= 2.0f * ao * ao;
 	float microShadow 	= saturate(abs(dot(L, N)) + aperture - 1.0f);
 	return shadow * microShadow;
 }
-inline bool is_saturated(float value) 	{ return value == saturate(value); }
-inline bool is_saturated(float2 value) 	{ return is_saturated(value.x) && is_saturated(value.y); }
+bool is_saturated(float value) 	{ return value == saturate(value); }
+bool is_saturated(float2 value) { return is_saturated(value.x) && is_saturated(value.y); }

@@ -38,8 +38,8 @@ namespace Spartan
 {
 	RHI_TextureCube::~RHI_TextureCube()
 	{
-		safe_release(static_cast<ID3D11ShaderResourceView*>(m_resource));
-		m_resource = nullptr;
+		safe_release(static_cast<ID3D11ShaderResourceView*>(m_resource_texture));
+		m_resource_texture = nullptr;
 	}
 
 	bool RHI_TextureCube::Create(const vector<vector<vector<std::byte>>>& data)
@@ -138,7 +138,7 @@ namespace Spartan
 			return false;
 		}
 
-		m_resource = shader_resource_view;
+		m_resource_texture = shader_resource_view;
 		safe_release(texture);
 		return true;
 	}

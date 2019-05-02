@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES ============
 #include "RHI_Texture.h"
-//======================
+#include "RHI_Viewport.h"
+//=======================
 
 namespace Spartan
 {
@@ -43,6 +44,7 @@ namespace Spartan
 			m_resource_type = Resource_Texture2d;
 			m_width			= width;
 			m_height		= height;
+			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_channels		= channels;
 			m_format		= format;		
 			m_has_mipmaps	= true;
@@ -57,6 +59,7 @@ namespace Spartan
 			m_resource_type = Resource_Texture2d;
 			m_width			= width;
 			m_height		= height;
+			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_channels		= channels;
 			m_format		= format;
 			m_has_mipmaps	= false;
@@ -66,15 +69,15 @@ namespace Spartan
 		}
 
 		// Creates a texture without any data, intended for usage as a render target
-		RHI_Texture2D(Context* context, unsigned int width, unsigned int height, RHI_Format format, bool is_render_target, bool is_depth_stencil_buffer, unsigned int array_size = 1) : RHI_Texture(context)
+		RHI_Texture2D(Context* context, unsigned int width, unsigned int height, RHI_Format format, unsigned int array_size = 1) : RHI_Texture(context)
 		{
-			m_resource_type				= Resource_Texture2d;
-			m_width						= width;
-			m_height					= height;
-			m_format					= format;
-			m_is_render_target			= is_render_target;
-			m_is_depth_stencil_buffer	= is_depth_stencil_buffer;
-			m_array_size				= array_size;
+			m_resource_type		= Resource_Texture2d;
+			m_width				= width;
+			m_height			= height;
+			m_viewport			= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+			m_format			= format;
+			m_array_size		= array_size;
+			m_is_render_texture = true;
 
 			CreateResourceGpu();
 		}
@@ -85,8 +88,6 @@ namespace Spartan
 		bool CreateResourceGpu() override;
 
 	private:
-		bool m_is_render_target			= false;
-		bool m_is_depth_stencil_buffer	= false;
-		unsigned int m_array_size		= 1;
+		bool m_is_render_texture = false;
 	};
 }

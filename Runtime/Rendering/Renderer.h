@@ -173,14 +173,15 @@ namespace Spartan
 		const auto& GetCmdList() const		{ return m_cmd_list; }
 		//==========================================================
 
-		//= MISC ===============================================================
+		//= MISC =============================================================================================================================
 		void* GetFrameShaderResource() const;
-		static bool IsRendering()					{ return m_is_rendering; }
-		uint64_t GetFrameNum() const				{ return m_frame_num; }
-		std::shared_ptr<Camera> GetCamera() const	{ return m_camera; }
-		unsigned int GetMaxResolution() const		{ return m_max_resolution; }
-		bool IsInitialized() const					{ return m_initialized; }
-		//======================================================================
+		static auto IsRendering()		{ return m_is_rendering; }
+		auto GetFrameNum() const		{ return m_frame_num; }
+		const auto& GetCamera() const	{ return m_camera; }
+		auto GetMaxResolution() const	{ return m_max_resolution; }
+		auto IsInitialized() const		{ return m_initialized; }
+		auto GetClearDepth()			{ return Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth(); }
+		//====================================================================================================================================
 
 	private:
 		void CreateDepthStencilStates();
@@ -196,67 +197,67 @@ namespace Spartan
 		void RenderablesSort(std::vector<Entity*>* renderables);
 		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
 
-		//= PASSES ===========================================================================================================================================================================
+		//= PASSES =========================================================================================================================================================
 		void Pass_Main();
 		void Pass_DepthDirectionalLight(Light* light_directional);
 		void Pass_GBuffer();
-		void Pass_PreLight(std::shared_ptr<RHI_RenderTexture>& tex_in,				std::shared_ptr<RHI_RenderTexture>& tex_shadows_out,	std::shared_ptr<RHI_RenderTexture>& tex_ssao_out);
-		void Pass_Light(std::shared_ptr<RHI_RenderTexture>& tex_shadows,			std::shared_ptr<RHI_RenderTexture>& tex_ssao,			std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_PostLight(std::shared_ptr<RHI_RenderTexture>& tex_in,				std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_TAA(std::shared_ptr<RHI_RenderTexture>& tex_in,					std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_Transparent(std::shared_ptr<RHI_RenderTexture>& tex_out);
-		bool Pass_DebugBuffer(std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_ToneMapping(std::shared_ptr<RHI_RenderTexture>& tex_in,			std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_GammaCorrection(std::shared_ptr<RHI_RenderTexture>& tex_in,		std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_FXAA(std::shared_ptr<RHI_RenderTexture>& tex_in,					std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_Sharpening(std::shared_ptr<RHI_RenderTexture>& tex_in,			std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_ChromaticAberration(std::shared_ptr<RHI_RenderTexture>& tex_in,	std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_MotionBlur(std::shared_ptr<RHI_RenderTexture>& tex_in,			std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_Dithering(std::shared_ptr<RHI_RenderTexture>& tex_in,				std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_Bloom(std::shared_ptr<RHI_RenderTexture>& tex_in,					std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_BlurBox(std::shared_ptr<RHI_RenderTexture>& tex_in,				std::shared_ptr<RHI_RenderTexture>& tex_out, float sigma);
-		void Pass_BlurGaussian(std::shared_ptr<RHI_RenderTexture>& tex_in,			std::shared_ptr<RHI_RenderTexture>& tex_out, float sigma, float pixel_stride = 1.0f);
-		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_RenderTexture>& tex_in, std::shared_ptr<RHI_RenderTexture>& tex_out, float sigma, float pixel_stride = 1.0f);
-		void Pass_SSAO(std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_ShadowMapping(std::shared_ptr<RHI_RenderTexture>& tex_out, Light* light_directional_in);
-		void Pass_Lines(std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_Gizmos(std::shared_ptr<RHI_RenderTexture>& tex_out);
-		void Pass_PerformanceMetrics(std::shared_ptr<RHI_RenderTexture>& tex_out);
-		//====================================================================================================================================================================================
+		void Pass_PreLight(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_shadows_out,	std::shared_ptr<RHI_Texture>& tex_ssao_out);
+		void Pass_Light(std::shared_ptr<RHI_Texture>& tex_shadows,				std::shared_ptr<RHI_Texture>& tex_ssao,			std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_PostLight(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_TAA(std::shared_ptr<RHI_Texture>& tex_in,						std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Transparent(std::shared_ptr<RHI_Texture>& tex_out);
+		bool Pass_DebugBuffer(std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_ToneMapping(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_GammaCorrection(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_FXAA(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Sharpening(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_ChromaticAberration(std::shared_ptr<RHI_Texture>& tex_in,		std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_MotionBlur(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Dithering(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Bloom(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_BlurBox(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out, float sigma);
+		void Pass_BlurGaussian(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
+		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
+		void Pass_SSAO(std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_ShadowMapping(std::shared_ptr<RHI_Texture>& tex_out, Light* light_directional_in);
+		void Pass_Lines(std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_Gizmos(std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out);
+		//==================================================================================================================================================================
 
-		//= RENDER TEXTURES =============================================
+		//= RENDER TEXTURES =======================================
 		// G-Buffer
-		std::shared_ptr<RHI_RenderTexture> m_g_buffer_albedo;
-		std::shared_ptr<RHI_RenderTexture> m_g_buffer_normal;
-		std::shared_ptr<RHI_RenderTexture> m_g_buffer_material;
-		std::shared_ptr<RHI_RenderTexture> m_g_buffer_velocity;
-		std::shared_ptr<RHI_RenderTexture> m_g_buffer_depth;
+		std::shared_ptr<RHI_Texture> m_g_buffer_albedo;
+		std::shared_ptr<RHI_Texture> m_g_buffer_normal;
+		std::shared_ptr<RHI_Texture> m_g_buffer_material;
+		std::shared_ptr<RHI_Texture> m_g_buffer_velocity;
+		std::shared_ptr<RHI_Texture> m_g_buffer_depth;
 		// 1/1
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_hdr_light;
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_hdr_light2;
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_taa_current;
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_taa_history;
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_full_spare;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_hdr_light;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_hdr_light2;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_taa_current;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_taa_history;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_spare;
 		// 1/2
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_half_shadows;
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_half_ssao;
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_half_spare;
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_half_spare2;
+		std::shared_ptr<RHI_Texture> m_render_tex_half_shadows;
+		std::shared_ptr<RHI_Texture> m_render_tex_half_ssao;
+		std::shared_ptr<RHI_Texture> m_render_tex_half_spare;
+		std::shared_ptr<RHI_Texture> m_render_tex_half_spare2;
 		// 1/4
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_quarter_blur1;
-		std::shared_ptr<RHI_RenderTexture> m_render_tex_quarter_blur2;
-		//===============================================================
+		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur1;
+		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur2;
+		//=========================================================
 		
 		//= SHADERS =================================================
 		std::shared_ptr<RHI_Shader> m_vs_gbuffer;
 		std::shared_ptr<ShaderLight> m_vps_light;		
+		std::shared_ptr<RHI_Shader> m_v_depth;
 		std::shared_ptr<ShaderBuffered> m_vps_color;
 		std::shared_ptr<ShaderBuffered> m_vps_font;
 		std::shared_ptr<ShaderBuffered> m_vps_shadow_mapping;
 		std::shared_ptr<ShaderBuffered> m_vps_ssao;
 		std::shared_ptr<ShaderBuffered> m_vps_gizmo_transform;
-		std::shared_ptr<ShaderBuffered> m_vps_transparent;
-		std::shared_ptr<RHI_Shader> m_vps_depth;
+		std::shared_ptr<ShaderBuffered> m_vps_transparent;	
 		std::shared_ptr<RHI_Shader> m_vs_quad;
 		std::shared_ptr<RHI_Shader> m_ps_texture;
 		std::shared_ptr<RHI_Shader> m_ps_fxaa;
@@ -310,13 +311,13 @@ namespace Spartan
 		//======================================================
 
 		//= STANDARD TEXTURES =======================================
-		std::shared_ptr<RHI_Texture2D> m_tex_noise_normal;
-		std::shared_ptr<RHI_Texture2D> m_tex_white;
-		std::shared_ptr<RHI_Texture2D> m_tex_black;
-		std::shared_ptr<RHI_Texture2D> m_tex_lut_ibl;
-		std::shared_ptr<RHI_Texture2D> m_gizmo_tex_light_directional;
-		std::shared_ptr<RHI_Texture2D> m_gizmo_tex_light_point;
-		std::shared_ptr<RHI_Texture2D> m_gizmo_tex_light_spot;
+		std::shared_ptr<RHI_Texture> m_tex_noise_normal;
+		std::shared_ptr<RHI_Texture> m_tex_white;
+		std::shared_ptr<RHI_Texture> m_tex_black;
+		std::shared_ptr<RHI_Texture> m_tex_lut_ibl;
+		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_directional;
+		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_point;
+		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
 		//===========================================================
 
 		//= LINE RENDERING ========================================
