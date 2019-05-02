@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ========================
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
-#include "../../RHI/RHI_RenderTexture.h"
 #include "../../Core/Context.h"
-//======================================
+#include "../../RHI/RHI_Texture2D.h"
+//===================================
 
 //= NAMESPACES ================
 using namespace Spartan::Math;
@@ -245,26 +245,18 @@ namespace Spartan
 
 		unsigned int resolution = Settings::Get().GetShadowResolution();
 		auto rhi_device			= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
-		unsigned int array_size = 1;
-		bool is_cubemap			= false;
 
 		if (GetLightType() == LightType_Directional)
 		{
-			array_size = 3; // cascades
-			is_cubemap = false;
+			m_shadowMap = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 3);
 		}
 		else if (GetLightType() == LightType_Point)
 		{
-			array_size = 6;
-			is_cubemap = true;
-			
+			//m_shadowMap = make_unique<RHI_TextureCube>(m_context, resolution, resolution, Format_D32_FLOAT, RHI_Texture_DepthStencil, 6);			
 		}
 		else if (GetLightType() == LightType_Spot)
 		{
-			array_size = 1;
-			is_cubemap = false;
+			m_shadowMap = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 1);
 		}
-
-		m_shadowMap = make_unique<RHI_RenderTexture>(rhi_device, resolution, resolution, Format_R32_FLOAT, true, Format_D32_FLOAT, array_size, is_cubemap);
 	}
 }

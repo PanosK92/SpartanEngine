@@ -39,7 +39,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 
 #if DEBUG_DEPTH
-	float logDepth = color.g;
+	float logDepth = color.r;
 	color = float3(logDepth, logDepth, logDepth);
 #endif
 

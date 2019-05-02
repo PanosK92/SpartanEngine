@@ -342,7 +342,7 @@ namespace Spartan
 
 	void RHI_CommandList::SetTexture(uint32_t slot, const shared_ptr<RHI_Texture>& texture)
 	{
-		SetTexture(slot, texture->GetResource());
+		SetTexture(slot, texture->GetResource_Texture());
 	}
 
 	void RHI_CommandList::SetTexture(uint32_t slot, const shared_ptr<RHI_RenderTexture>& texture)

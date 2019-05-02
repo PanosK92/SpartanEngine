@@ -95,7 +95,7 @@ namespace Spartan
 
 		// Shadow maps
 		const Math::Matrix& ShadowMap_GetProjectionMatrix(unsigned int index = 0);	
-		std::shared_ptr<RHI_RenderTexture> GetShadowMap() { return m_shadowMap; }
+		std::shared_ptr<RHI_Texture> GetShadowMap() { return m_shadowMap; }
 
 	private:
 		void ComputeViewMatrix();
@@ -117,7 +117,7 @@ namespace Spartan
 		Math::Vector3 m_lastPosCamera;
 		
 		// Shadow map
-		std::shared_ptr<RHI_RenderTexture> m_shadowMap;
+		std::shared_ptr<RHI_Texture> m_shadowMap;
 		std::vector<Math::Matrix> m_shadowMapsProjectionMatrix;
 		Renderer* m_renderer;
 	};

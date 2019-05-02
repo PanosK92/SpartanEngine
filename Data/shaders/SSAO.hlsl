@@ -86,47 +86,37 @@ static const float radius			= 0.15f;
 static const float intensity    	= 1.0f;
 static const float2 noiseScale  	= float2(g_resolution.x / 128.0f, g_resolution.y / 128.0f);
 
-float3 GetWorldPosition(float2 uv, SamplerState samplerState, out float depth_linear, out float depth_cs)
-{
-	float2 depth	= texDepth.Sample(samplerState, uv).rg;
-    depth_linear  	= depth.r * g_camera_far;
-    depth_cs      	= depth.g;
-    return reconstructPositionWorld(depth_cs, g_viewProjectionInv, uv);
-}
-
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-	float2 texCoord			= input.uv;   
-    float depth_linear  	= 0.0f;
-    float depth_cs      	= 0.0f;
-    float3 center_pos       = GetWorldPosition(texCoord, samplerLinear_clamp, depth_linear, depth_cs);
-    float3 center_normal    = normal_Decode(texNormal.Sample(samplerLinear_clamp, texCoord).xyz);
-	float3 randomVector		= unpack(texNoise.Sample(samplerLinear_wrap, texCoord * noiseScale).xyz);
-	float radius_depth		= depth_linear / (1.0f / radius);
+	float2 tex_coord		= input.uv;  
+    float depth      		= texDepth.Sample(samplerLinear_clamp, tex_coord).r;
+    float3 center_pos       = get_world_position_from_depth(depth, tex_coord);
+    float3 center_normal    = normal_decode(texNormal.Sample(samplerLinear_clamp, tex_coord).xyz);
+	float3 noise			= unpack(texNoise.Sample(samplerLinear_wrap, tex_coord * noiseScale).xyz);	
+	float radius_depth		= get_linear_depth(depth) / (1.0f / radius);
 	float occlusion_acc     = 0.0f;
     float3 color            = float3(0.0f, 0.0f, 0.0f);	
 	
 	// Construct TBN
-	float3 tangent	= normalize(randomVector - center_normal * dot(randomVector, center_normal));
+	float3 tangent	= normalize(noise - center_normal * dot(noise, center_normal));
 	float3x3 TBN	= makeTBN(center_normal, tangent);
 
     // Occlusion
-	[unroll]
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv
-		float3 offset		= mul(sampleKernel[i], TBN);
+		float3 offset 		= mul(sampleKernel[i], TBN);
 		float3 samplePosWS	= center_pos + offset * radius_depth;
 		float2 uv			= project(samplePosWS, g_viewProjection);
-		
+			
 		// Acquire/Compute sample data
-        float3 sample_pos      			= GetWorldPosition(uv, samplerLinear_clamp, depth_linear, depth_cs);
+        float3 sample_pos      			= get_world_position_from_depth(texDepth, samplerLinear_clamp, uv);
         float3 center_to_sample			= sample_pos - center_pos;
 		float center_to_sample_distance	= length(center_to_sample);
 		float3 center_to_sample_dir 	= normalize(center_to_sample);
 		
 		// Accumulate
-		float3 sampled_normal   = normal_Decode(texNormal.Sample(samplerLinear_clamp, uv).xyz);  
+		float3 sampled_normal   = normal_decode(texNormal.Sample(samplerLinear_clamp, uv).xyz);  
 		float occlusion			= dot(center_normal, center_to_sample_dir);
 		float rangeCheck		= center_to_sample_distance <= radius_depth;
 		occlusion_acc 			+= occlusion * rangeCheck * intensity;

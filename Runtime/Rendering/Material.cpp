@@ -165,7 +165,7 @@ namespace Spartan
 		for (const auto& texture_slot : m_texture_slots)
 		{
 			if (texture_slot.type == type)
-				return texture_slot.ptr ? texture_slot.ptr->GetResource() : nullptr;
+				return texture_slot.ptr ? texture_slot.ptr->GetResource_Texture() : nullptr;
 		}
 
 		return nullptr;

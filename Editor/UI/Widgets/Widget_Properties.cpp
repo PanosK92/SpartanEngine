@@ -735,7 +735,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 				// Texture
 				ImGui::Text(texture_name);
 				ImGui::SameLine(ComponentProperty::g_column); ImGui::Image(
-					texture ? texture->GetResource() : nullptr,
+					texture ? texture->GetResource_Texture() : nullptr,
 					material_text_size,
 					ImVec2(0, 0),
 					ImVec2(1, 1),
@@ -775,22 +775,22 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 			// Roughness
 			display_texture_slot(tex_roughness, "Roughness", TextureType_Roughness);
 			roughness = material->GetRoughnessMultiplier();
-			ImGui::SameLine(); ImGui::DragFloat("##matRoughness", &roughness, 0.001f, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matRoughness", &roughness, 0.003f, 0.0f, 1.0f);
 
 			// Metallic
 			display_texture_slot(tex_metallic, "Metallic", TextureType_Metallic);
 			metallic = material->GetMetallicMultiplier();
-			ImGui::SameLine(); ImGui::DragFloat("##matMetallic", &metallic, 0.001f, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matMetallic", &metallic, 0.003f, 0.0f, 1.0f);
 
 			// Normal
 			display_texture_slot(tex_normal, "Normal", TextureType_Normal);
 			normal = material->GetNormalMultiplier();
-			ImGui::SameLine(); ImGui::DragFloat("##matNormal", &normal, 0.001f, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matNormal", &normal, 0.003f, 0.0f, 1.0f);
 
 			// Height
 			display_texture_slot(tex_height, "Height", TextureType_Height);
 			height = material->GetHeightMultiplier();
-			ImGui::SameLine(); ImGui::DragFloat("##matHeight", &height, 0.001f, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matHeight", &height, 0.003f, 0.0f, 1.0f);
 
 			// Occlusion
 			display_texture_slot(tex_occlusion, "Occlusion", TextureType_Occlusion);

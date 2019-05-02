@@ -106,7 +106,7 @@ namespace ImGui::RHI
 
 			// Upload texture to graphics system
 			g_fontTexture = make_shared<RHI_Texture2D>(g_context, width, height, 4, Format_R8G8B8A8_UNORM, data);
-			io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetResource());
+			io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetResource_Texture());
 		}
 
 		// Create pipeline

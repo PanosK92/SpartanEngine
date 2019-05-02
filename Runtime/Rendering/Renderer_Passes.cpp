@@ -33,9 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/IResource.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_RenderTexture.h"
 #include "../RHI/RHI_ConstantBuffer.h"
-#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../World/Entity.h"
@@ -44,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Skybox.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
+#include "../RHI/RHI_Texture2D.h"
 //=========================================
 
 //= NAMESPACES ================
@@ -111,29 +111,25 @@ namespace Spartan
 
 		// Begin command list
 		m_cmd_list->Begin("Pass_DepthDirectionalLight");
+		m_cmd_list->SetShaderPixel(nullptr);
+		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
-		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		m_cmd_list->SetShaderVertex(m_vps_depth);
-		m_cmd_list->SetShaderPixel(m_vps_depth);
-		m_cmd_list->SetInputLayout(m_vps_depth->GetInputLayout());
+		m_cmd_list->SetShaderVertex(m_v_depth);
+		m_cmd_list->SetInputLayout(m_v_depth->GetInputLayout());
 		m_cmd_list->SetViewport(shadow_map->GetViewport());		
-		m_cmd_list->ClearRenderTarget(shadow_map->GetResource_RenderTarget(0), Vector4::Zero);
-		m_cmd_list->ClearRenderTarget(shadow_map->GetResource_RenderTarget(1), Vector4::Zero);
-		m_cmd_list->ClearRenderTarget(shadow_map->GetResource_RenderTarget(2), Vector4::Zero);
-		
+
 		// Variables that help reduce state changes
 		unsigned int currently_bound_geometry = 0;
 
-		auto clear_depth = Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
 		for (unsigned int i = 0; i < light_directional->GetShadowMap()->GetArraySize(); i++)
 		{	
-			unsigned int cascade_index = i;
+			auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(i);
 
-			m_cmd_list->Begin("Cascade_" + to_string(cascade_index + 1));
-			m_cmd_list->SetRenderTarget(shadow_map->GetResource_RenderTarget(i), shadow_map->GetDepthStencilView());
-			m_cmd_list->ClearDepthStencil(shadow_map->GetDepthStencilView(), Clear_Depth, clear_depth);
+			m_cmd_list->Begin("Cascade_" + to_string(i + 1));
+			m_cmd_list->ClearDepthStencil(cascade_depth_stencil, Clear_Depth, GetClearDepth());
+			m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
 
 			for (const auto& entity : entities)
 			{
@@ -170,8 +166,8 @@ namespace Spartan
 
 				// Update constant buffer
 				Transform* transform = entity->GetTransform_PtrRaw();
-				transform->UpdateConstantBufferLight(m_rhi_device, light_directional->GetViewMatrix() * light_directional->ShadowMap_GetProjectionMatrix(cascade_index), cascade_index);
-				m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, transform->GetConstantBufferLight(cascade_index));
+				transform->UpdateConstantBufferLight(m_rhi_device, light_directional->GetViewMatrix() * light_directional->ShadowMap_GetProjectionMatrix(i), i);
+				m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, transform->GetConstantBufferLight(i));
 
 				m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 			}
@@ -188,7 +184,6 @@ namespace Spartan
 
 		m_cmd_list->Begin("Pass_GBuffer");
 
-		const auto depth	= Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth();
 		Vector4 clear_color	= Vector4::Zero;
 		
 		// If there is nothing to render, just clear
@@ -198,7 +193,7 @@ namespace Spartan
 			m_cmd_list->ClearRenderTarget(m_g_buffer_normal->GetResource_RenderTarget(), Vector4::Zero);
 			m_cmd_list->ClearRenderTarget(m_g_buffer_material->GetResource_RenderTarget(), Vector4::Zero); // zeroed material buffer causes sky sphere to render
 			m_cmd_list->ClearRenderTarget(m_g_buffer_velocity->GetResource_RenderTarget(), Vector4::Zero);
-			m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);
+			m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
 			m_cmd_list->End();
 			m_cmd_list->Submit();
 			return;
@@ -212,8 +207,7 @@ namespace Spartan
 			m_g_buffer_albedo->GetResource_RenderTarget(),
 			m_g_buffer_normal->GetResource_RenderTarget(),
 			m_g_buffer_material->GetResource_RenderTarget(),
-			m_g_buffer_velocity->GetResource_RenderTarget(),
-			m_g_buffer_depth->GetResource_RenderTarget(),
+			m_g_buffer_velocity->GetResource_RenderTarget()
 		};
 	
 		// Star command list
@@ -221,10 +215,10 @@ namespace Spartan
 		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
-		m_cmd_list->SetRenderTargets(render_targets, m_g_buffer_depth->GetDepthStencilView());
 		m_cmd_list->SetViewport(m_g_buffer_albedo->GetViewport());
+		m_cmd_list->SetRenderTargets(render_targets, m_g_buffer_depth->GetResource_DepthStencil());
 		m_cmd_list->ClearRenderTargets(render_targets, clear_color);
-		m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetDepthStencilView(), Clear_Depth, depth);		
+		m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
 		m_cmd_list->SetShaderVertex(m_vs_gbuffer);
 		m_cmd_list->SetInputLayout(m_vs_gbuffer->GetInputLayout());
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -314,7 +308,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_PreLight(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_shadows_out, shared_ptr<RHI_RenderTexture>& tex_ssao_out)
+	void Renderer::Pass_PreLight(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_shadows_out, shared_ptr<RHI_Texture>& tex_ssao_out)
 	{
 		m_cmd_list->Begin("Pass_PreLight");
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
@@ -339,7 +333,7 @@ namespace Spartan
 		}
 		if (!shadow_mapped)
 		{
-			tex_shadows_out->Clear(m_cmd_list, 1, 1, 1, 1);
+			m_cmd_list->ClearRenderTarget(tex_shadows_out->GetResource_RenderTarget(), Vector4::One);
 		}
 
 		// SSAO + Blur
@@ -354,7 +348,7 @@ namespace Spartan
 		m_cmd_list->End();
 	}
 
-	void Renderer::Pass_Light(shared_ptr<RHI_RenderTexture>& tex_shadows, shared_ptr<RHI_RenderTexture>& tex_ssao, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_Light(shared_ptr<RHI_Texture>& tex_shadows, shared_ptr<RHI_Texture>& tex_ssao, shared_ptr<RHI_Texture>& tex_out)
 	{
 		if (m_vps_light->GetCompilationState() != Shader_Compiled)
 			return;
@@ -378,15 +372,15 @@ namespace Spartan
 		vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  m_vps_light->GetConstantBuffer()->GetResource() };
 		vector<void*> textures =
 		{
-			m_g_buffer_albedo->GetResource_Texture(),																// Albedo	
-			m_g_buffer_normal->GetResource_Texture(),																// Normal
-			m_g_buffer_depth->GetResource_Texture(),																// Depth
-			m_g_buffer_material->GetResource_Texture(),																// Material
-			tex_shadows->GetResource_Texture(),																		// Shadows
-			Flags_IsSet(Render_PostProcess_SSAO) ? tex_ssao->GetResource_Texture() : m_tex_white->GetResource(),	// SSAO
-			m_render_tex_full_hdr_light2->GetResource_Texture(),													// Previous frame
-			m_skybox ? m_skybox->GetTexture()->GetResource() : m_tex_white->GetResource(),							// Environment
-			m_tex_lut_ibl->GetResource()																			// LutIBL
+			m_g_buffer_albedo->GetResource_Texture(),																		// Albedo	
+			m_g_buffer_normal->GetResource_Texture(),																		// Normal
+			m_g_buffer_depth->GetResource_Texture(),																		// Depth
+			m_g_buffer_material->GetResource_Texture(),																		// Material
+			tex_shadows->GetResource_Texture(),																				// Shadows
+			Flags_IsSet(Render_PostProcess_SSAO) ? tex_ssao->GetResource_Texture() : m_tex_white->GetResource_Texture(),	// SSAO
+			m_render_tex_full_hdr_light2->GetResource_Texture(),															// Previous frame
+			m_skybox ? m_skybox->GetTexture()->GetResource_Texture() : m_tex_white->GetResource_Texture(),					// Environment
+			m_tex_lut_ibl->GetResource_Texture()																			// LutIBL
 		};
 
 		// Setup command list
@@ -409,7 +403,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_Transparent(shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_Transparent(shared_ptr<RHI_Texture>& tex_out)
 	{
 		if (!GetLightDirectional())
 			return;
@@ -419,14 +413,14 @@ namespace Spartan
 			return;
 
 		// Prepare resources
-		vector<void*> textures = { m_g_buffer_depth->GetResource_Texture(), m_skybox ? m_skybox->GetTexture()->GetResource() : nullptr };
+		vector<void*> textures = { m_g_buffer_depth->GetResource_Texture(), m_skybox ? m_skybox->GetTexture()->GetResource_Texture() : nullptr };
 
 		// Begin command list
 		m_cmd_list->Begin("Pass_Transparent");
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetBlendState(m_blend_enabled);	
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
-		m_cmd_list->SetRenderTarget(tex_out, m_g_buffer_depth->GetDepthStencilView());
+		m_cmd_list->SetRenderTarget(tex_out, m_g_buffer_depth->GetResource_DepthStencil());
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
@@ -480,7 +474,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_RenderTexture>& tex_out, Light* light_directional_in)
+	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_Texture>& tex_out, Light* light_directional_in)
 	{
 		if (!light_directional_in || !light_directional_in->GetCastShadows())
 			return;
@@ -508,7 +502,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_PostLight(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_PostLight(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// All post-process passes share the following, so set them once here
 		m_cmd_list->Begin("Pass_PostLight");
@@ -587,12 +581,12 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_SSAO(shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_SSAO(shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_SSAO");
 
 		// Prepare resources
-		vector<void*> textures = { m_g_buffer_normal->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_tex_noise_normal->GetResource() };
+		vector<void*> textures = { m_g_buffer_normal->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_tex_noise_normal->GetResource_Texture() };
 		vector<void*> samplers = { m_sampler_bilinear_clamp->GetResource() /*SSAO (clamp) */, m_sampler_bilinear_wrap->GetResource() /*SSAO noise texture (wrap)*/};
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
@@ -610,7 +604,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_BlurBox(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out, const float sigma)
+	void Renderer::Pass_BlurBox(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma)
 	{
 		m_cmd_list->Begin("Pass_BlurBox");
 
@@ -627,7 +621,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_BlurGaussian(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out, const float sigma, const float pixel_stride)
+	void Renderer::Pass_BlurGaussian(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
 	{
 		if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
 		{
@@ -681,7 +675,7 @@ namespace Spartan
 		tex_in.swap(tex_out);
 	}
 
-	void Renderer::Pass_BlurBilateralGaussian(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out, const float sigma, const float pixel_stride)
+	void Renderer::Pass_BlurBilateralGaussian(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
 	{
 		if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
 		{
@@ -740,7 +734,7 @@ namespace Spartan
 		tex_in.swap(tex_out);
 	}
 
-	void Renderer::Pass_TAA(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_TAA(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_TAA");
 
@@ -781,7 +775,7 @@ namespace Spartan
 		m_render_tex_full_taa_current.swap(m_render_tex_full_taa_history);
 	}
 
-	void Renderer::Pass_Bloom(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_Bloom(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_Bloom");
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
@@ -867,7 +861,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_ToneMapping(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_ToneMapping(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_ToneMapping");
 
@@ -886,7 +880,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_GammaCorrection(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_GammaCorrection(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_GammaCorrection");
 
@@ -905,7 +899,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_FXAA(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_FXAA(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_FXAA");
 
@@ -937,7 +931,7 @@ namespace Spartan
 		tex_in.swap(tex_out);
 	}
 
-	void Renderer::Pass_ChromaticAberration(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_ChromaticAberration(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_ChromaticAberration");
 
@@ -956,7 +950,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_MotionBlur(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_MotionBlur(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_MotionBlur");
 
@@ -976,7 +970,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_Dithering(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_Dithering(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_Dithering");
 
@@ -995,7 +989,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_Sharpening(shared_ptr<RHI_RenderTexture>& tex_in, shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_Sharpening(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		m_cmd_list->Begin("Pass_Sharpening");
 
@@ -1014,7 +1008,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_Lines(shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_Lines(shared_ptr<RHI_Texture>& tex_out)
 	{
 		const bool draw_picking_ray = m_flags & Render_Gizmo_PickingRay;
 		const bool draw_aabb		= m_flags & Render_Gizmo_AABB;
@@ -1071,7 +1065,7 @@ namespace Spartan
 
 		// Draw lines that require depth
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
-		m_cmd_list->SetRenderTarget(tex_out, m_g_buffer_depth->GetDepthStencilView());
+		m_cmd_list->SetRenderTarget(tex_out, m_g_buffer_depth->GetResource_DepthStencil());
 		{
 			// Grid
 			if (draw_grid)
@@ -1145,7 +1139,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_Gizmos(shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_Gizmos(shared_ptr<RHI_Texture>& tex_out)
 	{
 		bool render_lights		= m_flags & Render_Gizmo_Lights;
 		bool render_transform	= m_flags & Render_Gizmo_Transform;
@@ -1265,7 +1259,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_RenderTexture>& tex_out)
+	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_Texture>& tex_out)
 	{
 		const bool draw = m_flags & Render_Gizmo_PerformanceMetrics;
 		if (!draw)
@@ -1298,7 +1292,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	bool Renderer::Pass_DebugBuffer(shared_ptr<RHI_RenderTexture>& tex_out)
+	bool Renderer::Pass_DebugBuffer(shared_ptr<RHI_Texture>& tex_out)
 	{
 		if (m_debug_buffer == RendererDebug_None)
 			return true;

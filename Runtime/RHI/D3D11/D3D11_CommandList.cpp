@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Sampler.h"
 #include "../RHI_Texture.h"
 #include "../RHI_Shader.h"
-#include "../RHI_RenderTexture.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Logging/Log.h"
@@ -240,11 +239,6 @@ namespace Spartan
 
 	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_Texture>& texture)
 	{
-		SetTexture(start_slot, texture->GetResource());
-	}
-
-	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_RenderTexture>& texture)
-	{
 		SetTexture(start_slot, texture->GetResource_Texture());
 	}
 
@@ -266,7 +260,7 @@ namespace Spartan
 		cmd.render_target_count++;
 	}
 
-	void RHI_CommandList::SetRenderTarget(const shared_ptr<RHI_RenderTexture>& render_target, void* depth_stencil /*= nullptr*/)
+	void RHI_CommandList::SetRenderTarget(const shared_ptr<RHI_Texture>& render_target, void* depth_stencil /*= nullptr*/)
 	{
 		SetRenderTarget(render_target->GetResource_RenderTarget(), depth_stencil);
 	}
@@ -281,6 +275,12 @@ namespace Spartan
 
 	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil /*= 0*/)
 	{
+		if (!depth_stencil)
+		{
+			LOG_ERROR("Provided depth stencil is null");
+			return;
+		}
+
 		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_ClearDepthStencil;
 		cmd.depth_stencil		= depth_stencil;
@@ -446,7 +446,7 @@ namespace Spartan
 
 				case RHI_Cmd_SetPixelShader:
 				{
-					const auto ptr = static_cast<ID3D11PixelShader*>(cmd.shader_pixel->GetResource_PixelShader());
+					const auto ptr = static_cast<ID3D11PixelShader*>(cmd.shader_pixel ? cmd.shader_pixel->GetResource_PixelShader() : nullptr);
 					device_context->PSSetShader(ptr, nullptr, 0);
 
 					m_profiler->m_rhi_bindings_pixel_shader++;
@@ -526,7 +526,7 @@ namespace Spartan
 				case RHI_Cmd_ClearDepthStencil:
 				{
 					UINT clear_flags = 0;
-					clear_flags |= cmd.depth_clear_flags & Clear_Depth ? D3D11_CLEAR_DEPTH : 0;
+					clear_flags |= cmd.depth_clear_flags & Clear_Depth	? D3D11_CLEAR_DEPTH : 0;
 					clear_flags |= cmd.depth_clear_flags & Clear_Stencil ? D3D11_CLEAR_STENCIL : 0;
 
 					device_context->ClearDepthStencilView

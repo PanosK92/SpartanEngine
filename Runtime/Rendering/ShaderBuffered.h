@@ -23,10 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "../Core/EngineDefs.h"
-#include "../Math/Matrix.h"
 #include "../World/Components/Light.h"
-#include "../RHI/RHI_RenderTexture.h"
 #include "../RHI/RHI_Shader.h"
+#include "../RHI/RHI_Texture.h"
+#include "../Math/Matrix.h"
+#include "../Math/Vector2.h"
 //====================================
 
 namespace Spartan
