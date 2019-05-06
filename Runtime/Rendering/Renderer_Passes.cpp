@@ -64,7 +64,7 @@ namespace Spartan
 #endif
 		m_cmd_list->Begin("Pass_Main");
 
-		Pass_DepthDirectionalLight(GetLightDirectional());
+		Pass_LightDepth();
 		Pass_GBuffer();
 		Pass_PreLight
 		(
@@ -93,88 +93,108 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_DepthDirectionalLight(Light* light_directional)
+	void Renderer::Pass_LightDepth()
 	{
-		// Validate light
-		if (!light_directional || !light_directional->GetCastShadows())
-			return;
+		unsigned int light_directional_count = 0;
 
-		// Validate light's shadow map
-		auto& shadow_map = light_directional->GetShadowMap();
-		if (!shadow_map)
-			return;
+		auto& light_entities = m_entities[Renderable_Light];
+		for (const auto& light_entity : light_entities)
+		{
+			auto& light = light_entity->GetComponent<Light>();
 
-		// Validate entities
-		auto& entities = m_entities[Renderable_ObjectOpaque];
-		if (entities.empty())
-			return;
+			// Skip if it doesn't need to cast shadows
+			if (!light->GetCastShadows())
+				continue;
 
-		// Begin command list
-		m_cmd_list->Begin("Pass_DepthDirectionalLight");
-		m_cmd_list->SetShaderPixel(nullptr);
-		m_cmd_list->SetBlendState(m_blend_disabled);
-		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
-		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
-		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		m_cmd_list->SetShaderVertex(m_v_depth);
-		m_cmd_list->SetInputLayout(m_v_depth->GetInputLayout());
-		m_cmd_list->SetViewport(shadow_map->GetViewport());		
+			// Acquire light's shadow map
+			auto& shadow_map = light->GetShadowMap();
+			if (!shadow_map)
+				continue;
 
-		// Variables that help reduce state changes
-		unsigned int currently_bound_geometry = 0;
+			// Get opaque renderable entities
+			auto& entities = m_entities[Renderable_ObjectOpaque];
+			if (entities.empty())
+				continue;
 
-		for (unsigned int i = 0; i < light_directional->GetShadowMap()->GetArraySize(); i++)
-		{	
-			auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(i);
+			// Begin command list
+			m_cmd_list->Begin("Pass_LightDepth");
+			m_cmd_list->SetShaderPixel(nullptr);
+			m_cmd_list->SetBlendState(m_blend_disabled);
+			m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
+			m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+			m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+			m_cmd_list->SetShaderVertex(m_v_depth);
+			m_cmd_list->SetInputLayout(m_v_depth->GetInputLayout());
+			m_cmd_list->SetViewport(shadow_map->GetViewport());
 
-			m_cmd_list->Begin("Cascade_" + to_string(i + 1));
-			m_cmd_list->ClearDepthStencil(cascade_depth_stencil, Clear_Depth, GetClearDepth());
-			m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
+			// Tracking
+			unsigned int currently_bound_geometry = 0;
 
-			for (const auto& entity : entities)
+			for (unsigned int i = 0; i < light->GetShadowMap()->GetArraySize(); i++)
 			{
-				// Acquire renderable component
-				auto renderable = entity->GetRenderable_PtrRaw();
-				if (!renderable)
-					continue;
-	
-				// Acquire material
-				auto material = renderable->MaterialPtr();
-				if (!material)
-					continue;
+				auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(i);
 
-				// Acquire geometry
-				auto model = renderable->GeometryModel();
-				if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
-					continue;
+				m_cmd_list->Begin("Array_" + to_string(i + 1));
+				m_cmd_list->ClearDepthStencil(cascade_depth_stencil, Clear_Depth, GetClearDepth());
+				m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
 
-				// Skip meshes that don't cast shadows
-				if (!renderable->GetCastShadows())
-					continue;
+				Matrix light_view_projection = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
 
-				// Skip transparent meshes (for now)
-				if (material->GetColorAlbedo().w < 1.0f)
-					continue;
-
-				// Bind geometry
-				if (currently_bound_geometry != model->GetResourceId())
+				for (const auto& entity : entities)
 				{
-					m_cmd_list->SetBufferIndex(model->GetIndexBuffer());
-					m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
-					currently_bound_geometry = model->GetResourceId();
+					// Acquire renderable component
+					auto renderable = entity->GetRenderable_PtrRaw();
+					if (!renderable)
+						continue;
+
+					// Acquire material
+					auto material = renderable->MaterialPtr();
+					if (!material)
+						continue;
+
+					// Acquire geometry
+					auto model = renderable->GeometryModel();
+					if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+						continue;
+
+					// Skip meshes that don't cast shadows
+					if (!renderable->GetCastShadows())
+						continue;
+
+					// Skip transparent meshes (for now)
+					if (material->GetColorAlbedo().w < 1.0f)
+						continue;
+
+					// Bind geometry
+					if (currently_bound_geometry != model->GetResourceId())
+					{
+						m_cmd_list->SetBufferIndex(model->GetIndexBuffer());
+						m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
+						currently_bound_geometry = model->GetResourceId();
+					}
+
+					// Accumulate directional light direction
+					if (light->GetLightType() == LightType_Directional)
+					{
+						m_directional_light_avg_dir += light->GetDirection();
+						light_directional_count++;
+					}
+
+					// Update constant buffer
+					Transform* transform = entity->GetTransform_PtrRaw();
+					transform->UpdateConstantBufferLight(m_rhi_device, light_view_projection, i);
+					m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, transform->GetConstantBufferLight(i));
+
+					m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 				}
-
-				// Update constant buffer
-				Transform* transform = entity->GetTransform_PtrRaw();
-				transform->UpdateConstantBufferLight(m_rhi_device, light_directional->GetViewMatrix() * light_directional->ShadowMap_GetProjectionMatrix(i), i);
-				m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, transform->GetConstantBufferLight(i));
-
-				m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+				m_cmd_list->End(); // end of cascade
 			}
-			m_cmd_list->End(); // end of cascade
+			m_cmd_list->End();
+			m_cmd_list->Submit();
 		}
-		m_cmd_list->End();
-		m_cmd_list->Submit();
+
+		// Compute average directional light direction
+		m_directional_light_avg_dir /= static_cast<float>(light_directional_count);
 	}
 
 	void Renderer::Pass_GBuffer()
@@ -317,26 +337,28 @@ namespace Spartan
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+		m_cmd_list->ClearRenderTarget(tex_shadows_out->GetResource_RenderTarget(), Vector4::One);
 
-		// Shadow mapping + Blur
+		// SHADOW MAPPING + BLUR
 		auto shadow_mapped = false;
-		if (auto light_dir = GetLightDirectional())
+		auto& lights = m_entities[Renderable_Light];
+		for (unsigned int i = 0; i < lights.size(); i++)
 		{
-			if (light_dir->GetCastShadows())
-			{
-				Pass_ShadowMapping(tex_in, GetLightDirectional());
-				const auto sigma		= 1.0f;
-				const auto pixel_stride	= 1.0f;
-				Pass_BlurBilateralGaussian(tex_in, tex_shadows_out, sigma, pixel_stride);
-				shadow_mapped = true;
-			}
+			auto light = lights[i]->GetComponent<Light>().get();
+
+			// Skip lights that don't cast shadows
+			if (!light->GetCastShadows())
+				continue;
+
+			Pass_ShadowMapping(tex_shadows_out, light);
+			shadow_mapped = true;
 		}
 		if (!shadow_mapped)
 		{
 			m_cmd_list->ClearRenderTarget(tex_shadows_out->GetResource_RenderTarget(), Vector4::One);
 		}
 
-		// SSAO + Blur
+		// SSAO MAPPING + BLUR
 		if (m_flags & Render_PostProcess_SSAO)
 		{
 			Pass_SSAO(tex_in);
@@ -405,9 +427,6 @@ namespace Spartan
 
 	void Renderer::Pass_Transparent(shared_ptr<RHI_Texture>& tex_out)
 	{
-		if (!GetLightDirectional())
-			return;
-
 		auto& entities_transparent = m_entities[Renderable_ObjectTransparent];
 		if (entities_transparent.empty())
 			return;
@@ -459,7 +478,7 @@ namespace Spartan
 				m_projection,
 				material->GetColorAlbedo(),
 				m_camera->GetTransform()->GetPosition(),
-				GetLightDirectional()->GetDirection(),
+				m_directional_light_avg_dir,
 				material->GetRoughnessMultiplier()
 			);
 			m_vps_transparent->UpdateBuffer(&buffer);
@@ -474,26 +493,49 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_Texture>& tex_out, Light* light_directional_in)
+	void Renderer::Pass_ShadowMapping(shared_ptr<RHI_Texture>& tex_out, Light* light)
 	{
-		if (!light_directional_in || !light_directional_in->GetCastShadows())
+		if (!light || !light->GetCastShadows())
 			return;
 
-		m_cmd_list->Begin("Pass_Shadowing");
+		m_cmd_list->Begin("Pass_ShadowMapping");
 
+		// Get appropriate pixel shader
+		shared_ptr<ShaderBuffered> pixel_shader;
+		if (light->GetLightType() == LightType_Directional)
+		{
+			pixel_shader = m_vps_shadow_mapping_directional;
+		}
+		else if (light->GetLightType() == LightType_Point)
+		{
+			pixel_shader = m_ps_shadow_mapping_point;
+		}
+		else if (light->GetLightType() == LightType_Spot)
+		{
+			pixel_shader = m_ps_shadow_mapping_spot;
+		}
+		
 		// Prepare resources
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
-		auto buffer = Struct_ShadowMapping((m_view_projection).Inverted(), light_directional_in, m_camera.get());
-		m_vps_shadow_mapping->UpdateBuffer(&buffer);
-		vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  m_vps_shadow_mapping->GetConstantBuffer()->GetResource() };
-		vector<void*> textures			= { m_g_buffer_normal->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), light_directional_in->GetShadowMap()->GetResource_Texture() };
+		auto buffer = Struct_ShadowMapping((m_view_projection).Inverted(), light);
+		pixel_shader->UpdateBuffer(&buffer);
+		vector<void*> constant_buffers	= { m_buffer_global->GetResource(), pixel_shader->GetConstantBuffer()->GetResource() };
 		vector<void*> samplers			= { m_sampler_compare_depth->GetResource(), m_sampler_bilinear_clamp->GetResource() };
+		vector<void*> textures =
+		{
+			m_g_buffer_normal->GetResource_Texture(),
+			m_g_buffer_depth->GetResource_Texture(),
+			light->GetLightType() == LightType_Directional	? light->GetShadowMap()->GetResource_Texture() : nullptr,
+			light->GetLightType() == LightType_Point		? light->GetShadowMap()->GetResource_Texture() : nullptr,
+			light->GetLightType() == LightType_Spot			? light->GetShadowMap()->GetResource_Texture() : nullptr
+		};
 
 		m_cmd_list->SetRenderTarget(tex_out);
+		m_cmd_list->SetBlendState(m_blend_shadow_maps);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderVertex(m_vps_shadow_mapping);
-		m_cmd_list->SetShaderPixel(m_vps_shadow_mapping);
-		m_cmd_list->SetInputLayout(m_vps_shadow_mapping->GetInputLayout());
+		m_cmd_list->SetShaderVertex(m_vps_shadow_mapping_directional);
+		m_cmd_list->SetInputLayout(m_vps_shadow_mapping_directional->GetInputLayout());
+		m_cmd_list->SetShaderPixel(pixel_shader);
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetSamplers(0, samplers);
 		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
@@ -591,6 +633,7 @@ namespace Spartan
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);	
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderVertex(m_vs_quad);

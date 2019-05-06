@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
-#include <vector>
+//= INCLUDES ========================
+#include <array>
 #include <memory>
 #include "IComponent.h"
 #include "../../Math/Vector4.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
 #include "../../RHI/RHI_Definition.h"
-//====================================
+//===================================
 
 namespace Spartan
 {
@@ -63,62 +63,61 @@ namespace Spartan
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		LightType GetLightType() { return m_lightType; }
+		auto GetLightType() { return m_lightType; }
 		void SetLightType(LightType type);
 
 		void SetColor(float r, float g, float b, float a)	{ m_color = Math::Vector4(r, g, b, a); }
 		void SetColor(const Math::Vector4& color)			{ m_color = color; }
-		const Math::Vector4& GetColor()						{ return m_color; }
+		const auto& GetColor()								{ return m_color; }
 
-		void SetIntensity(float value) { m_intensity = value; }
-		float GetIntensity() { return m_intensity; }
+		void SetIntensity(float value)	{ m_intensity = value; }
+		auto GetIntensity()				{ return m_intensity; }
 
-		bool GetCastShadows() { return m_castShadows; }
+		bool GetCastShadows() { return m_cast_shadows; }
 		void SetCastShadows(bool castShadows);
 
 		void SetRange(float range);
-		float GetRange() { return m_range; }
+		auto GetRange() { return m_range; }
 
 		void SetAngle(float angle);
-		float GetAngle() { return m_angle; }
+		auto GetAngle() { return m_angle_rad; }
 
 		void SetBias(float value)	{ m_bias = value; }
 		float GetBias()				{ return m_bias; }
 
-		void SetNormalBias(float value) { m_normalBias = value; }
-		float GetNormalBias()			{ return m_normalBias; }
+		void SetNormalBias(float value) { m_normal_bias = value; }
+		auto GetNormalBias()			{ return m_normal_bias; }
 
 		Math::Vector3 GetDirection();
 		void ClampRotation();
 
-		const Math::Matrix& GetViewMatrix() { return m_viewMatrix; }
+		const Math::Matrix& GetViewMatrix(unsigned int index = 0);
+		const Math::Matrix& GetProjectionMatrix(unsigned int index = 0);
 
-		// Shadow maps
-		const Math::Matrix& ShadowMap_GetProjectionMatrix(unsigned int index = 0);	
-		std::shared_ptr<RHI_Texture> GetShadowMap() { return m_shadowMap; }
+		const auto& GetShadowMap() { return m_shadow_map; }
 
 	private:
 		void ComputeViewMatrix();
-		bool ShadowMap_ComputeProjectionMatrix(unsigned int index = 0);	
+		bool ComputeProjectionMatrix(unsigned int index = 0);	
 		void ShadowMap_Create(bool force);
 
 		LightType m_lightType	= LightType_Point;
-		bool m_castShadows		= true;
-		float m_range			= 1.0f;
+		bool m_cast_shadows		= true;
+		float m_range			= 10.0f;
 		float m_intensity		= 2.0f;
-		float m_angle			= 0.5f; // about 30 degrees
+		float m_angle_rad		= 0.5f; // about 30 degrees
 		float m_bias			= 0.0008f;
-		float m_normalBias		= 120.0f;	
-		bool m_isDirty			= true;
+		float m_normal_bias		= 120.0f;	
+		bool m_is_dirty			= true;
 		Math::Vector4 m_color;
-		Math::Matrix m_viewMatrix;
+		std::array<Math::Matrix, 6> m_matrix_view;
+		std::array<Math::Matrix, 6> m_matrix_projection;
 		Math::Quaternion m_lastRotLight;
 		Math::Vector3 m_lastPosLight;
 		Math::Vector3 m_lastPosCamera;
 		
 		// Shadow map
-		std::shared_ptr<RHI_Texture> m_shadowMap;
-		std::vector<Math::Matrix> m_shadowMapsProjectionMatrix;
+		std::shared_ptr<RHI_Texture> m_shadow_map;	
 		Renderer* m_renderer;
 	};
 }

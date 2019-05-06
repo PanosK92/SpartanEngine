@@ -380,7 +380,7 @@ namespace Spartan
 	{
 		auto& light = EntityCreate();
 		light->SetName("DirectionalLight");
-		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
+		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
 		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
 		auto light_comp = light->AddComponent<Light>().get();

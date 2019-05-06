@@ -153,7 +153,7 @@ namespace Spartan
 		float m_sharpen_strength		= 1.0f;		// Strength of the sharpening
 		float m_sharpen_clamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
 		// Motion Blur
-		float m_motion_blur_strength	= 3.0f;		// Strength of the motion blur
+		float m_motion_blur_strength	= 2.0f;		// Strength of the motion blur
 		//========================================================================================================================================================================
 
 		//= EDITOR ================================================================================
@@ -163,7 +163,7 @@ namespace Spartan
 		std::shared_ptr<Entity>& SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
 		//=========================================================================================
 		
-		// DEBUG BUFFER ====================================================================
+		// DEBUG ===========================================================================
 		void SetDebugBuffer(const RendererDebug_Buffer buffer)	{ m_debug_buffer = buffer; }
 		RendererDebug_Buffer GetDebugBuffer() const				{ return m_debug_buffer; }
 		//==================================================================================
@@ -173,15 +173,15 @@ namespace Spartan
 		const auto& GetCmdList() const		{ return m_cmd_list; }
 		//==========================================================
 
-		//= MISC =============================================================================================================================
+		//= MISC =======================================================================================================================
 		void* GetFrameShaderResource() const;
 		static auto IsRendering()		{ return m_is_rendering; }
 		auto GetFrameNum() const		{ return m_frame_num; }
 		const auto& GetCamera() const	{ return m_camera; }
 		auto GetMaxResolution() const	{ return m_max_resolution; }
 		auto IsInitialized() const		{ return m_initialized; }
-		auto GetClearDepth()			{ return Settings::Get().GetReverseZ() ? 1.0f - m_viewport.GetMaxDepth() : m_viewport.GetMaxDepth(); }
-		//====================================================================================================================================
+		auto GetClearDepth()			{ return !Settings::Get().GetReverseZ() ? m_viewport.GetMaxDepth() : m_viewport.GetMinDepth(); }
+		//==============================================================================================================================
 
 	private:
 		void CreateDepthStencilStates();
@@ -199,7 +199,7 @@ namespace Spartan
 
 		//= PASSES =========================================================================================================================================================
 		void Pass_Main();
-		void Pass_DepthDirectionalLight(Light* light_directional);
+		void Pass_LightDepth();
 		void Pass_GBuffer();
 		void Pass_PreLight(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_shadows_out,	std::shared_ptr<RHI_Texture>& tex_ssao_out);
 		void Pass_Light(std::shared_ptr<RHI_Texture>& tex_shadows,				std::shared_ptr<RHI_Texture>& tex_ssao,			std::shared_ptr<RHI_Texture>& tex_out);
@@ -248,13 +248,15 @@ namespace Spartan
 		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur2;
 		//=========================================================
 		
-		//= SHADERS =================================================
+		//= SHADERS =====================================================
 		std::shared_ptr<RHI_Shader> m_vs_gbuffer;
 		std::shared_ptr<ShaderLight> m_vps_light;		
 		std::shared_ptr<RHI_Shader> m_v_depth;
 		std::shared_ptr<ShaderBuffered> m_vps_color;
 		std::shared_ptr<ShaderBuffered> m_vps_font;
-		std::shared_ptr<ShaderBuffered> m_vps_shadow_mapping;
+		std::shared_ptr<ShaderBuffered> m_vps_shadow_mapping_directional;
+		std::shared_ptr<ShaderBuffered> m_ps_shadow_mapping_point;
+		std::shared_ptr<ShaderBuffered> m_ps_shadow_mapping_spot;
 		std::shared_ptr<ShaderBuffered> m_vps_ssao;
 		std::shared_ptr<ShaderBuffered> m_vps_gizmo_transform;
 		std::shared_ptr<ShaderBuffered> m_vps_transparent;	
@@ -280,17 +282,18 @@ namespace Spartan
 		std::shared_ptr<RHI_Shader> m_ps_debug_velocity;
 		std::shared_ptr<RHI_Shader> m_ps_debug_depth;
 		std::shared_ptr<RHI_Shader> m_ps_debug_ssao;
-		//===========================================================
+		//===============================================================
 
 		//= DEPTH-STENCIL STATES =======================================
 		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled;
 		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_disabled;
 		//==============================================================
 
-		//= BLEND STATES ================================
+		//= BLEND STATES ===================================
 		std::shared_ptr<RHI_BlendState> m_blend_enabled;
 		std::shared_ptr<RHI_BlendState> m_blend_disabled;
-		//===============================================
+		std::shared_ptr<RHI_BlendState> m_blend_shadow_maps;
+		//==================================================
 
 		//= RASTERIZER STATES =================================================
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid;
@@ -358,12 +361,12 @@ namespace Spartan
 		//=======================================================
 
 		//= ENTITIES/COMPONENTS ============================================
-		Light* GetLightDirectional();
 		std::unordered_map<RenderableType, std::vector<Entity*>> m_entities;
 		float m_near_plane;
 		float m_far_plane;
 		std::shared_ptr<Camera> m_camera;
 		std::shared_ptr<Skybox> m_skybox;
+		Math::Vector3 m_directional_light_avg_dir;
 		//==================================================================
 
 		//= STATS/PROFILING ==============

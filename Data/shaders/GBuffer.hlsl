@@ -80,8 +80,8 @@ PixelOutputType mainPS(PixelInputType input)
 
 	float2 texCoords 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo			= materialAlbedoColor;
-	float roughness 		= clamp(materialRoughness, 0.0001f, 1.0f);
-	float metallic 			= clamp(materialMetallic, 0.0001f, 1.0f);
+	float roughness 		= abs(materialRoughness); // roughness can be negative - little trick that signifies a specular texture
+	float metallic 			= saturate(materialMetallic);
 	float3 normal			= input.normal.xyz;
 	float normalIntensity	= clamp(materialNormalStrength, 0.012f, materialNormalStrength);
 	float emission			= 0.0f;
@@ -118,7 +118,14 @@ PixelOutputType mainPS(PixelInputType input)
 	#endif
 	
 	#if ROUGHNESS_MAP
-		roughness *= texRoughness.Sample(samplerAniso, texCoords).r;
+		if (materialRoughness >= 0.0f)
+		{
+			roughness *= texRoughness.Sample(samplerAniso, texCoords).r;
+		}
+		else
+		{
+			roughness *= 1.0f - texRoughness.Sample(samplerAniso, texCoords).r;
+		}
 	#endif
 	
 	#if METALLIC_MAP
@@ -131,12 +138,9 @@ PixelOutputType mainPS(PixelInputType input)
 	
 		// Get tangent space normal and apply intensity
 		float3 normalSample = normalize(unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
-		normalIntensity		= clamp(normalIntensity, 0.01f, 1.0f);
-		normalSample.x 		*= normalIntensity;
-		normalSample.y 		*= normalIntensity;
-		
-		// Transform to world space
-		normal = normalize(mul(normalSample, TBN).xyz);
+		normalIntensity		= saturate(normalIntensity);
+		normalSample.xy 	*= normalIntensity;
+		normal 				= normalize(mul(normalSample, TBN).xyz); // Transform to world space
 	#endif
 
 	#if OCCLUSION_MAP

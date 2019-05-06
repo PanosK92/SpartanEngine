@@ -260,7 +260,6 @@ namespace Spartan::Math
 			float yScale = CotF(fieldOfView / 2);
 			float xScale = yScale / aspectRatio;
 
-
 			float zn = nearPlaneDistance;
 			float zf = farPlaneDistance;
 

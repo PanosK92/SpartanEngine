@@ -146,9 +146,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 		// Compute light
         pointLight.direction    = normalize(position - worldPos);
         float dist              = length(worldPos - position);
-        float attunation        = clamp(1.0f - dist / range, 0.0f, 1.0f);
-        attunation              *= attunation;
-        pointLight.intensity    *= attunation;
+        float attenuation       = saturate(1.0f - dist / range);
+        attenuation             *= attenuation;
+        pointLight.intensity    *= attenuation;
 
 		// Compute illumination
         if (dist < range)
@@ -175,8 +175,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         float dist          = length(worldPos - position);
         float theta         = dot(direction, spotLight.direction);
         float epsilon       = cutoffAngle - cutoffAngle * 0.9f;
-        float attunation    = clamp((theta - cutoffAngle) / epsilon, 0.0f, 1.0f); // attunate when approaching the outer cone
-        attunation          *= clamp(1.0f - dist / range, 0.0f, 1.0f);
+        float attunation    = saturate((theta - cutoffAngle) / epsilon); // attunate when approaching the outer cone
+        attunation          *= saturate(1.0f - dist / range);
         attunation          *= attunation; // attunate with distance as well
         spotLight.intensity *= attunation;
 

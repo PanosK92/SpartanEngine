@@ -39,10 +39,10 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	PixelOutputType output;
 
 	// Extract useful values out of those samples
-	float depth_expo 	= tex_depth.Sample(samplerLinear, input.uv).g;
-	float3 worldPos 	= ReconstructPositionWorld(depth_expo, mViewProjectionInverse, input.uv);
-    float3 viewDir 		= normalize(cameraPosWS.xyz - worldPos.xyz);
-	float4 color 		= ToLinear(tex_cubemap.Sample(samplerLinear, -viewDir)); 
+	float depth 			= tex_depth.Sample(samplerLinear, input.uv).r;
+	float3 position_world 	= ReconstructPositionWorld(depth, mViewProjectionInverse, input.uv);
+    float3 camera_to_pixel 	= normalize(position_world.xyz - cameraPosWS.xyz);
+	float4 color 			= ToLinear(tex_cubemap.Sample(samplerLinear, camera_to_pixel)); 
 
 	output.albedo = color;
 	return output;

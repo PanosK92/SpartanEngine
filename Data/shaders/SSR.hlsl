@@ -1,6 +1,6 @@
 static const int g_steps 					= 16;
 static const int g_binarySearchSteps 		= 20;
-static const float g_binarySearchThreshold 	= 0.0035f;
+static const float g_binarySearchThreshold 	= 0.01f;
 static const float2 g_failed				= float2(-1.0f, -1.0f);
 
 float2 SSR_BinarySearch(float3 ray_dir, inout float3 ray_pos, Texture2D tex_depth, SamplerState sampler_point_clamp)

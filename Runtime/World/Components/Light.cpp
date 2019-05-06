@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =========================
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../Core/Context.h"
 #include "../../RHI/RHI_Texture2D.h"
-//===================================
+#include "../../RHI/RHI_TextureCube.h"
+//====================================
 
 //= NAMESPACES ================
 using namespace Spartan::Math;
@@ -38,17 +39,17 @@ namespace Spartan
 {
 	Light::Light(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows, bool);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows, bool);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity, float);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_color, Vector4);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias, float);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_normalBias, float);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
-		m_color = Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_renderer = m_context->GetSubsystem<Renderer>().get();
+		m_color		= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+		m_renderer	= m_context->GetSubsystem<Renderer>().get();
 	}
 
 	Light::~Light()
@@ -68,97 +69,97 @@ namespace Spartan
 
 	void Light::OnTick()
 	{
-		if (m_lightType != LightType_Directional)
-			return;
-
-		// DIRTY CHECK
+		// Position and rotation dirty check
 		if (m_lastPosLight != GetTransform()->GetPosition() || m_lastRotLight != GetTransform()->GetRotation())
 		{
 			m_lastPosLight = GetTransform()->GetPosition();
 			m_lastRotLight = GetTransform()->GetRotation();
-			
-			// Used to prevent directional light
-			// from casting shadows form underneath
-			// the scene which can look weird
-			ClampRotation();
-			ComputeViewMatrix();
 
-			m_isDirty = true;
+			m_is_dirty = true;
 		}
 
-		// Acquire camera
-		if (auto camera = m_renderer->GetCamera())
+		// Camera position dirty check
+		if (m_lightType == LightType_Directional)
 		{
-			if (m_lastPosCamera != camera->GetTransform()->GetPosition())
+			if (auto camera = m_renderer->GetCamera())
 			{
-				m_lastPosCamera = camera->GetTransform()->GetPosition();
-
-				// Update shadow map projection matrices
-				m_shadowMapsProjectionMatrix.clear();
-				for (unsigned int i = 0; i < m_shadowMap->GetArraySize(); i++)
+				if (m_lastPosCamera != camera->GetTransform()->GetPosition())
 				{
-					m_shadowMapsProjectionMatrix.emplace_back(Matrix());
-					ShadowMap_ComputeProjectionMatrix(i);
+					m_lastPosCamera = camera->GetTransform()->GetPosition();
+					m_is_dirty = true;
 				}
-
-				m_isDirty = true;
 			}
 		}
 
-		if (!m_isDirty)
+		if (!m_is_dirty)
 			return;
+
+		// Prevent directional light from casting shadows 
+		// from underneath the scene, which can look weird
+		if (m_lightType == LightType_Directional)
+		{
+			ClampRotation();
+		}
+
+		// Update view matrix
+		ComputeViewMatrix();
+
+		// Update projection matrix
+		for (unsigned int i = 0; i < m_shadow_map->GetArraySize(); i++)
+		{
+			ComputeProjectionMatrix(i);
+		}
 	}
 
 	void Light::Serialize(FileStream* stream)
 	{
-		stream->Write(unsigned int(m_lightType));
-		stream->Write(m_castShadows);
+		stream->Write(static_cast<unsigned int>(m_lightType));
+		stream->Write(m_cast_shadows);
 		stream->Write(m_color);
 		stream->Write(m_range);
 		stream->Write(m_intensity);
-		stream->Write(m_angle);
+		stream->Write(m_angle_rad);
 		stream->Write(m_bias);
-		stream->Write(m_normalBias);
+		stream->Write(m_normal_bias);
 	}
 
 	void Light::Deserialize(FileStream* stream)
 	{
-		SetLightType(LightType(stream->ReadAs<unsigned int>()));
-		stream->Read(&m_castShadows);
+		SetLightType(static_cast<LightType>(stream->ReadAs<unsigned int>()));
+		stream->Read(&m_cast_shadows);
 		stream->Read(&m_color);
 		stream->Read(&m_range);
 		stream->Read(&m_intensity);
-		stream->Read(&m_angle);
+		stream->Read(&m_angle_rad);
 		stream->Read(&m_bias);
-		stream->Read(&m_normalBias);
+		stream->Read(&m_normal_bias);
 	}
 
 	void Light::SetLightType(LightType type)
 	{
 		m_lightType = type;
-		m_isDirty = true;
+		m_is_dirty	= true;
 		ShadowMap_Create(true);
 	}
 
 	void Light::SetCastShadows(bool castShadows)
 	{
-		if (m_castShadows = castShadows)
+		if (m_cast_shadows = castShadows)
 			return;
 
-		m_castShadows = castShadows;
+		m_cast_shadows = castShadows;
 		ShadowMap_Create(true);
 	}
 
 	void Light::SetRange(float range)
 	{
 		m_range = Clamp(range, 0.0f, INFINITY);
-		m_isDirty = true;
 	}
 
 	void Light::SetAngle(float angle)
 	{
-		m_angle = Clamp(angle, 0.0f, 1.0f);
-		m_isDirty = true;
+		m_angle_rad = Clamp(angle, 0.0f, 1.0f);
+		m_is_dirty = true;
 	}
 
 	Vector3 Light::GetDirection()
@@ -181,66 +182,123 @@ namespace Spartan
 
 	void Light::ComputeViewMatrix()
 	{
-		Vector3 lightDirection	= GetDirection();
-		Vector3 position		= lightDirection;
-		Vector3 lookAt			= position + lightDirection;
-		Vector3 up				= Vector3::Up;
+		Vector3 position;
+		Vector3 look_at;
+		Vector3 up;
 
-		// Create view matrix
-		m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
+		if (m_lightType == LightType_Directional)
+		{
+			Vector3 direction	= GetDirection();
+			position			= direction;
+			look_at				= position + direction;
+			up					= Vector3::Up;
+			
+			// Compute
+			m_matrix_view[0] = Matrix::CreateLookAtLH(position, look_at, up);
+			m_matrix_view[1] = m_matrix_view[0];
+			m_matrix_view[2] = m_matrix_view[0];
+		}
+		else if (m_lightType == LightType_Spot)
+		{
+			position	= GetTransform()->GetPosition();
+			look_at		= GetTransform()->GetForward();
+			up			= GetTransform()->GetUp();
+
+			// Offset look_at by current position
+			look_at += position;
+
+			// Compute
+			m_matrix_view[0] = Matrix::CreateLookAtLH(position, look_at, up);
+		}
+		else if (m_lightType == LightType_Point)
+		{
+			position = GetTransform()->GetPosition();
+
+			// Compute view for each side of the cube map
+			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,		Vector3::Up);		// x+
+			m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,		Vector3::Up);		// x-
+			m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,			Vector3::Backward);	// y+
+			m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,		Vector3::Forward);	// y-
+			m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,	Vector3::Up);		// z+
+			m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward,	Vector3::Up);		// z-
+		}
 	}
 
-	const Matrix& Light::ShadowMap_GetProjectionMatrix(unsigned int index /*= 0*/)
+	const Matrix& Light::GetViewMatrix(unsigned int index /*= 0*/)
 	{
-		if (index >= (unsigned int)m_shadowMapsProjectionMatrix.size())
+		if (index >= static_cast<unsigned int>(m_matrix_view.size()))
 			return Matrix::Identity;
 
-		return m_shadowMapsProjectionMatrix[index];
+		return m_matrix_view[index];
 	}
 
-	bool Light::ShadowMap_ComputeProjectionMatrix(unsigned int index /*= 0*/)
+	const Matrix& Light::GetProjectionMatrix(unsigned int index /*= 0*/)
 	{
-		if (!m_renderer->GetCamera() || index >= m_shadowMap->GetArraySize())
+		if (index >= static_cast<unsigned int>(m_matrix_projection.size()))
+			return Matrix::Identity;
+
+		return m_matrix_projection[index];
+	}
+
+	bool Light::ComputeProjectionMatrix(unsigned int index /*= 0*/)
+	{
+		if (!m_renderer->GetCamera() || index >= m_shadow_map->GetArraySize())
 			return false;
 
-		float camera_far = m_renderer->GetCamera()->GetFarPlane();
+		const auto& camera = m_renderer->GetCamera();
+		const auto& camera_transform = camera->GetTransform();
 
-		vector<float> extents =
-		{
-			5,
-			20,
-			camera_far * 0.5f
-		};
-		float extent = extents[index];
+		if (m_lightType == LightType_Directional)
+		{		
+			float splits[3] =
+			{
+				camera->GetFarPlane() * 0.01f,
+				camera->GetFarPlane() * 0.05f,
+				camera->GetFarPlane()
+			};
 
-		Vector3 box_center	= m_lastPosCamera * GetViewMatrix();						// Follow the camera
-		Vector3 box_extent	= Vector3(extents[index]) * GetTransform()->GetRotation();	// Rotate towards light direction
-		Vector3 box_min		= box_center - box_extent;
-		Vector3 box_max		= box_center + box_extent;
+			float split		= splits[index];
+			float extent	= split * tan(camera->GetFovHorizontalRad() * 0.5f);
 
-		//= Prevent shadow shimmering  ===================================================
-		// Shadow shimmering remedy based on
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
-		float worldUnitsPerTexel = (extent * 2.0f) / m_shadowMap->GetWidth();
-		box_min /= worldUnitsPerTexel;
-		box_min.Floor();
-		box_min *= worldUnitsPerTexel;
-		box_max /= worldUnitsPerTexel;
-		box_max.Floor();
-		box_max *= worldUnitsPerTexel;
-		//================================================================================
+			Vector3 box_center	= (camera_transform->GetPosition() + camera_transform->GetForward() * split * 0.5f) * GetViewMatrix(); // Transform to light space
+			Vector3 box_extent	= Vector3(extent) * GetTransform()->GetRotation();	// Rotate towards light direction
+			Vector3 box_min		= box_center - box_extent;
+			Vector3 box_max		= box_center + box_extent;
 
-		if (Settings::Get().GetReverseZ())
-			m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_max.z, box_min.z);
+			//= Prevent shadow shimmering  ========================================================
+			// Shadow shimmering remedy based on
+			// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
+			float units_per_texel = (extent * 2.0f) / static_cast<float>(m_shadow_map->GetWidth());
+			box_min /= units_per_texel;
+			box_min.Floor();
+			box_min *= units_per_texel;
+			box_max /= units_per_texel;
+			box_max.Floor();
+			box_max *= units_per_texel;
+			//=====================================================================================
+
+			if (Settings::Get().GetReverseZ())
+				m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_max.z, box_min.z);
+			else
+				m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_min.z, box_max.z);
+		}
 		else
-			m_shadowMapsProjectionMatrix[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_min.z, box_max.z);
+		{
+			const auto width			= static_cast<float>(m_shadow_map->GetWidth());
+			const auto height			= static_cast<float>(m_shadow_map->GetHeight());		
+			const auto aspect_ratio		= width / height;
+			const float fov				= (m_lightType == LightType_Spot) ? m_angle_rad : 1.57079633f; // 1.57079633 = 90 deg
+			const float near_plane		= !Settings::Get().GetReverseZ() ? 0.1f : m_range;
+			const float far_plane		= !Settings::Get().GetReverseZ() ? m_range : 0.1f;
+			m_matrix_projection[index]	= Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
+		}
 
 		return true;
 	}
 
 	void Light::ShadowMap_Create(bool force)
 	{		
-		if (!force && !m_shadowMap)
+		if (!force && !m_shadow_map)
 			return;
 
 		unsigned int resolution = Settings::Get().GetShadowResolution();
@@ -248,15 +306,15 @@ namespace Spartan
 
 		if (GetLightType() == LightType_Directional)
 		{
-			m_shadowMap = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 3);
+			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 3);
 		}
 		else if (GetLightType() == LightType_Point)
 		{
-			//m_shadowMap = make_unique<RHI_TextureCube>(m_context, resolution, resolution, Format_D32_FLOAT, RHI_Texture_DepthStencil, 6);			
+			m_shadow_map = make_unique<RHI_TextureCube>(m_context, resolution, resolution, Format_D32_FLOAT);			
 		}
 		else if (GetLightType() == LightType_Spot)
 		{
-			m_shadowMap = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 1);
+			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 1);
 		}
 	}
-}
+}  

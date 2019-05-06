@@ -244,7 +244,6 @@ void Widget_Toolbar::ShowRendererOptions()
 			}
 			ImGui::EndCombo();
 		}
-
 		m_renderer->SetDebugBuffer(static_cast<RendererDebug_Buffer>(_Widget_Toolbar::gbuffer_selected_texture_index));
 	}
 

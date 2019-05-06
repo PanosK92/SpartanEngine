@@ -221,8 +221,8 @@ namespace Spartan
 		auto look_at		= GetTransform()->GetRotation() * Vector3::Forward;
 		const auto up		= GetTransform()->GetRotation() * Vector3::Up;
 
-		// offset lookAt by current position
-		look_at = position + look_at;
+		// offset look_at by current position
+		look_at += position;
 
 		// calculate view matrix
 		m_mView = Matrix::CreateLookAtLH(position, look_at, up);
@@ -237,16 +237,18 @@ namespace Spartan
 
 	void Camera::ComputeProjection()
 	{
-		const auto& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
+		const auto& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
+		const float near_plane	= !Settings::Get().GetReverseZ() ? m_near_plane : m_far_plane;
+		const float far_plane	= !Settings::Get().GetReverseZ() ? m_far_plane : m_near_plane;
 
 		if (m_projection_type == Projection_Perspective)
 		{
 			const auto vfov_rad = 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.GetAspectRatio(), m_far_plane, m_near_plane);
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.GetAspectRatio(), near_plane, far_plane);
 		}
 		else if (m_projection_type == Projection_Orthographic)
 		{
-			m_mProjection = Matrix::CreateOrthographicLH(viewport.GetWidth(), viewport.GetHeight(), m_far_plane, m_near_plane);
+			m_mProjection = Matrix::CreateOrthographicLH(viewport.GetWidth(), viewport.GetHeight(), near_plane, far_plane);
 		}
 	}
 }

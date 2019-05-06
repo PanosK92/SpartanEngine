@@ -36,7 +36,7 @@ namespace Spartan::Math
 	const Vector3 Vector3::Up(0.0f, 1.0f, 0.0f);
 	const Vector3 Vector3::Down(0.0f, -1.0f, 0.0f);
 	const Vector3 Vector3::Forward(0.0f, 0.0f, 1.0f);
-	const Vector3 Vector3::Back(0.0f, 0.0f, -1.0f);		
+	const Vector3 Vector3::Backward(0.0f, 0.0f, -1.0f);		
 	const Vector3 Vector3::Infinity(numeric_limits<float>::infinity(), numeric_limits<float>::infinity(), numeric_limits<float>::infinity());
 	const Vector3 Vector3::InfinityNeg(-numeric_limits<float>::infinity(), -numeric_limits<float>::infinity(), -numeric_limits<float>::infinity());
 

@@ -62,9 +62,13 @@ float2 pack(float2 value)	{ return value * 0.5f + 0.5f; }
 /*------------------------------------------------------------------------------
 								[NORMALS]
 ------------------------------------------------------------------------------*/
-inline float3x3 makeTBN(float3 n, float3 t)
+float3x3 makeTBN(float3 n, float3 t)
 {
+	// re-orthogonalize T with respect to N
+	t = normalize(t - dot(t, n) * n);
+	// compute bitangent
 	float3 b = cross(n, t);
+	// create matrix
 	return float3x3(t, b, n); 
 }
 // No decoding required
