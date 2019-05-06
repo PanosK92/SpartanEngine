@@ -775,7 +775,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 			// Roughness
 			display_texture_slot(tex_roughness, "Roughness", TextureType_Roughness);
 			roughness = material->GetRoughnessMultiplier();
-			ImGui::SameLine(); ImGui::DragFloat("##matRoughness", &roughness, 0.003f, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matRoughness", &roughness, 0.003f, -1.0f, 1.0f);
 
 			// Metallic
 			display_texture_slot(tex_metallic, "Metallic", TextureType_Metallic);

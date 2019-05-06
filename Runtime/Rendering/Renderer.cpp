@@ -110,16 +110,19 @@ namespace Spartan
 	bool Renderer::Initialize()
 	{
 		// Create/Get required systems		
-		g_resource_cache		= m_context->GetSubsystem<ResourceCache>().get();
-		m_profiler				= m_context->GetSubsystem<Profiler>().get();
+		g_resource_cache	= m_context->GetSubsystem<ResourceCache>().get();
+		m_profiler			= m_context->GetSubsystem<Profiler>().get();
+
 		// Editor specific
-		m_gizmo_grid			= make_unique<Grid>(m_rhi_device);
-		m_gizmo_transform		= make_unique<Transform_Gizmo>(m_context);
+		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
+		m_gizmo_transform	= make_unique<Transform_Gizmo>(m_context);
+
 		// Create a constant buffer that will be used for most shaders
 		m_buffer_global	= make_shared<RHI_ConstantBuffer>(m_rhi_device);
 		m_buffer_global->Create<ConstantBufferGlobal>();
+
 		// Line buffer
-		m_vertex_buffer_lines	= make_shared<RHI_VertexBuffer>(m_rhi_device);
+		m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
 
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
@@ -153,6 +156,7 @@ namespace Spartan
 	{
 		m_blend_enabled		= make_shared<RHI_BlendState>(m_rhi_device, true);
 		m_blend_disabled	= make_shared<RHI_BlendState>(m_rhi_device, false);
+		m_blend_shadow_maps = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_Src_Color, Blend_Src_Color, Blend_Operation_Min);
 	}
 
 	void Renderer::CreateFonts()
@@ -266,10 +270,23 @@ namespace Spartan
 		m_vps_ssao = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_ssao->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSAO.hlsl");
 
-		// Shadow mapping
-		m_vps_shadow_mapping = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_shadow_mapping->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "ShadowMapping.hlsl", Vertex_Attributes_PositionTexture);
-		m_vps_shadow_mapping->AddBuffer<Struct_ShadowMapping>();
+		// Shadow mapping directional
+		m_vps_shadow_mapping_directional = make_shared<ShaderBuffered>(m_rhi_device);
+		m_vps_shadow_mapping_directional->AddDefine("DIRECTIONAL");
+		m_vps_shadow_mapping_directional->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "ShadowMapping.hlsl", Vertex_Attributes_PositionTexture);
+		m_vps_shadow_mapping_directional->AddBuffer<Struct_ShadowMapping>();
+
+		// Shadow mapping point
+		m_ps_shadow_mapping_point = make_shared<ShaderBuffered>(m_rhi_device);
+		m_ps_shadow_mapping_point->AddDefine("POINT");
+		m_ps_shadow_mapping_point->CompileAsync(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl", Vertex_Attributes_PositionTexture);
+		m_ps_shadow_mapping_point->AddBuffer<Struct_ShadowMapping>();
+
+		// Shadow mapping spot
+		m_ps_shadow_mapping_spot = make_shared<ShaderBuffered>(m_rhi_device);
+		m_ps_shadow_mapping_spot->AddDefine("SPOT");
+		m_ps_shadow_mapping_spot->CompileAsync(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl", Vertex_Attributes_PositionTexture);
+		m_ps_shadow_mapping_spot->AddBuffer<Struct_ShadowMapping>();
 
 		// Color
 		m_vps_color = make_shared<ShaderBuffered>(m_rhi_device);
@@ -400,7 +417,7 @@ namespace Spartan
 
 	void Renderer::CreateSamplers()
 	{
-		m_sampler_compare_depth		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Comparison_Bilinear,	Sampler_Address_Clamp,	Comparison_Greater);
+		m_sampler_compare_depth		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Comparison_Bilinear,	Sampler_Address_Clamp,	!Settings::Get().GetReverseZ() ? Comparison_Less : Comparison_Greater);
 		m_sampler_point_clamp		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Point,					Sampler_Address_Clamp,	Comparison_Always);
 		m_sampler_bilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Bilinear,				Sampler_Address_Clamp,	Comparison_Always);
 		m_sampler_bilinear_wrap		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Bilinear,				Sampler_Address_Wrap,	Comparison_Always);
@@ -690,19 +707,5 @@ namespace Spartan
 		if (cull_mode == Cull_None)		return (fill_mode == Fill_Solid) ? m_rasterizer_cull_none_solid		: m_rasterizer_cull_none_wireframe;
 
 		return m_rasterizer_cull_back_solid;
-	}
-
-	Light* Renderer::GetLightDirectional()
-	{
-		auto entities = m_entities[Renderable_Light];
-
-		for (const auto& entity : entities)
-		{
-			auto light = entity->GetComponent<Light>().get();
-			if (light->GetLightType() == LightType_Directional)
-				return light;
-		}
-
-		return nullptr;
 	}
 }

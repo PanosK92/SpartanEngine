@@ -43,7 +43,7 @@ namespace Spartan
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}
 
-	bool RHI_TextureCube::Create(const vector<vector<vector<std::byte>>>& data)
+	bool RHI_TextureCube::CreateResourceGpu()
 	{
 		return true;
 	}

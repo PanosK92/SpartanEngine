@@ -62,21 +62,19 @@ Platform | API | Status | Quality | Binaries | :+1:
 ##### v0.31 (WIP)
 Feature     | Completion    | Notes 
 :-          | :-            | :-
+Shadows 	| 90%          	| Improve shadow mapping performance and enable spot & point light shadows.
 Vulkan      | 40%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
 - DirectX 12
 
 ###### v0.33
-- Enable shadows for spot & point lights.
-
-###### v0.34
 - Skeletal Animation
 
-###### v0.35
+###### v0.34
 - C# scripting (Replace AngelScript)
 
-###### v0.36
+###### v0.35
 - Eye Adaptation
 - Depth-of-field (Based on Doom approach)
 - Subsurface Scattering
