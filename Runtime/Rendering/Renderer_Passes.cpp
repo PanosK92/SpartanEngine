@@ -411,7 +411,7 @@ namespace Spartan
 		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetRenderTarget(tex_out->GetResource_RenderTarget());
+		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetShaderVertex(shader);
 		m_cmd_list->SetShaderPixel(shader);
 		m_cmd_list->SetInputLayout(shader->GetInputLayout());

@@ -82,13 +82,14 @@ namespace Spartan
 	protected:
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
 		bool LoadFromFile_ForeignFormat(const std::string& file_path, bool generate_mipmaps);
+		unsigned int GetChannelCountFromFormat(RHI_Format format);
 		virtual bool CreateResourceGpu() { return false; }
 
 		unsigned int m_bpp			= 0;
 		unsigned int m_bpc			= 8;
 		unsigned int m_width		= 0;
 		unsigned int m_height		= 0;
-		unsigned int m_channels		= 0;
+		unsigned int m_channels		= 4;
 		bool m_is_grayscale			= false;
 		bool m_is_transparent		= false;
 		bool m_has_mipmaps			= false;
@@ -99,9 +100,10 @@ namespace Spartan
 
 		// Dependencies
 		std::shared_ptr<RHI_Device> m_rhi_device;
+
 		// API - High level
-		void* m_resource_texture = nullptr;
-		void* m_resource_render_target;
+		void* m_resource_texture		= nullptr;
+		void* m_resource_render_target	= nullptr;
 		std::vector<void*> m_resource_depth_stencils;
 		unsigned int m_array_size = 1;
 		// API - Low level

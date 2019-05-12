@@ -363,7 +363,7 @@ namespace Spartan
 		FT_Done_Face(face);
 
 		// Create a font texture atlas form the provided data
-		font->SetAtlas(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(m_context, atlas_width, atlas_height, 1, Format_R8_UNORM, atlas_buffer))));
+		font->SetAtlas(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(m_context, atlas_width, atlas_height, Format_R8_UNORM, atlas_buffer))));
 
 		return true;
 	}

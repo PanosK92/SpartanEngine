@@ -127,7 +127,7 @@ namespace Spartan
 
 		// Cubemap
 		{
-			m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetChannels(), loaderTex->GetFormat(), cubemapData));
+			m_texture = static_pointer_cast<RHI_Texture>(make_shared<RHI_TextureCube>(GetContext(), loaderTex->GetWidth(), loaderTex->GetHeight(), loaderTex->GetFormat(), cubemapData));
 			m_texture->SetResourceName("Cubemap");
 			m_texture->SetWidth(loaderTex->GetWidth());
 			m_texture->SetHeight(loaderTex->GetHeight());

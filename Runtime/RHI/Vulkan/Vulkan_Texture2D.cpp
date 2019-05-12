@@ -197,7 +197,13 @@ namespace Spartan
 
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
-		VkDeviceSize buffer_size = m_width * m_height * m_channels;
+		if (m_data.empty())
+		{
+			LOG_WARNING("Texture has no data, which means that this is a render texture that has to be implemented.");
+			return false;
+		}
+
+		VkDeviceSize buffer_size = static_cast<uint64_t>(m_width) * static_cast<uint64_t>(m_height) * static_cast<uint64_t>(m_channels);
 
 		// Create image memory
 		VkBuffer staging_buffer	= nullptr;
@@ -238,13 +244,12 @@ namespace Spartan
 		auto cmd_pool = static_cast<VkCommandPool>(cmd_pool_void);
 
 		// Copy buffer to texture
-		m_mutex.lock(); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
+		lock_guard<mutex> lock(m_mutex); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
 		if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), vulkan_format[m_format], image, staging_buffer, cmd_pool))
 		{
 			LOG_ERROR("Failed to copy buffer to image");
 			return false;
 		}
-		m_mutex.unlock();
 
 		// Create image view
 		VkImageView image_view = nullptr;
