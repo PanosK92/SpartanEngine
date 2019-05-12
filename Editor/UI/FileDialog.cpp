@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "FileDialog.h"
-#include "DragDrop.h"
+#include "ImGui_Extension.h"
 #include "../ImGui/Source/imgui.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../ImGui/Source/imgui_stdlib.h"
@@ -39,7 +39,7 @@ namespace _FileDialog
 	static bool g_is_hovering_item;
 	static string g_hovered_item_path;
 	static bool g_is_hovering_window;
-	static DragDropPayload g_drag_drop_payload;
+	static ImGuiEx::DragDropPayload g_drag_drop_payload;
 	static unsigned int g_context_menu_id;
 }
 
@@ -176,7 +176,7 @@ void FileDialog::ShowMiddle()
 					ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
 					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
-					if (ImGui::ImageButton(item.GetShaderResource(), ImVec2(m_item_size, m_item_size - 23.0f)))
+					if (ImGuiEx::ImageButton(item.GetTexture(), ImVec2(m_item_size, m_item_size - 23.0f)))
 					{
 						// Determine type of click
 						item.Clicked();
@@ -272,19 +272,19 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 
 	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
 	{
-		const auto set_payload = [](const DragPayloadType type, const std::string& path)
+		const auto set_payload = [](const ImGuiEx::DragPayloadType type, const std::string& path)
 		{
 			_FileDialog::g_drag_drop_payload.type = type;
 			_FileDialog::g_drag_drop_payload.data = path.c_str();
-			DragDrop::Get().DragPayload(_FileDialog::g_drag_drop_payload);
+			ImGuiEx::CreateDragPayload(_FileDialog::g_drag_drop_payload);
 		};
 
-		if (FileSystem::IsSupportedModelFile(item->GetPath()))	{ set_payload(DragPayload_Model,	item->GetPath()); }
-		if (FileSystem::IsSupportedImageFile(item->GetPath()))	{ set_payload(DragPayload_Texture,	item->GetPath()); }
-		if (FileSystem::IsSupportedAudioFile(item->GetPath()))	{ set_payload(DragPayload_Audio,	item->GetPath()); }
-		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ set_payload(DragPayload_Script,	item->GetPath()); }
+		if (FileSystem::IsSupportedModelFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Model,	item->GetPath()); }
+		if (FileSystem::IsSupportedImageFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Texture,	item->GetPath()); }
+		if (FileSystem::IsSupportedAudioFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Audio,	item->GetPath()); }
+		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Script,	item->GetPath()); }
 
-		ImGuiEx::Image(item->GetShaderResource(), 50);
+		ImGuiEx::Image(item->GetTexture(), 50);
 		ImGui::EndDragDropSource();
 	}
 }

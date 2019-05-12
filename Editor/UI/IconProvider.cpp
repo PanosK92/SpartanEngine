@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "IconProvider.h"
-#include "EditorHelper.h"
+#include "ImGui_Extension.h"
 #include "RHI/RHI_Texture2D.h"
 //============================
 
@@ -83,19 +83,17 @@ void IconProvider::Initialize(Context* context)
 	Thumbnail_Load(data_dir + "Icons\\font.png",							Thumbnail_File_Font);
 }
 
-void* IconProvider::GetShaderResourceByType(Icon_Type type)
+RHI_Texture* IconProvider::GetTextureByType(Icon_Type type)
 {
-	auto texture = Thumbnail_Load(NOT_ASSIGNED, type).texture;
-	return texture ? texture->GetResource_Texture() : nullptr;
+	return Thumbnail_Load(NOT_ASSIGNED, type).texture.get();
 }
 
-void* IconProvider::GetShaderResourceByFilePath(const std::string& filePath)
+RHI_Texture* IconProvider::GetTextureByFilePath(const std::string& filePath)
 {
-	auto texture = Thumbnail_Load(filePath).texture;
-	return texture ? texture->GetResource_Texture() : nullptr;
+	return Thumbnail_Load(filePath).texture.get();
 }
 
-void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
+RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail)
 {
 	for (const auto& thumbnailTemp : m_thumbnails)
 	{
@@ -104,18 +102,11 @@ void* IconProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
 
 		if (thumbnailTemp.texture->GetResourceId() == thumbnail.texture->GetResourceId())
 		{
-			return thumbnailTemp.texture->GetResource_Texture();
+			return thumbnailTemp.texture.get();
 		}
 	}
 
 	return nullptr;
-}
-
-bool IconProvider::ImageButton_filepath(const std::string& filepath, float size)
-{
-	bool pressed = ImGui::ImageButton(GetShaderResourceByFilePath(filepath), ImVec2(size, size));
-
-	return pressed;
 }
 
 const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type type /*Icon_Custom*/, int size /*100*/)

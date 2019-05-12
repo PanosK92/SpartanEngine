@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================================
 #include "Widget_Properties.h"
 #include "Widget_World.h"
-#include "../DragDrop.h"
+#include "../ImGui_Extension.h"
 #include "../ButtonColorPicker.h"
 #include "../../ImGui/Source/imgui_stdlib.h"
 #include "Rendering/Deferred/ShaderVariation.h"
@@ -638,11 +638,11 @@ void Widget_Properties::ShowConstraint(shared_ptr<Constraint>& constraint) const
 		ImGui::PushID("##OtherBodyName");
 		ImGui::PushItemWidth(200.0f);
 		ImGui::InputText("", &other_body_name, ImGuiInputTextFlags_ReadOnly);
-		if (auto payload = DragDrop::Get().GetPayload(DragPayload_entity))
+		if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_entity))
 		{
 			const auto entity_id	= get<unsigned int>(payload->data);
 			other_body				= _Widget_Properties::scene->EntityGetById(entity_id);
-			other_body_dirty			= true;
+			other_body_dirty		= true;
 		}
 		ImGui::PopItemWidth();
 		ImGui::PopID();
@@ -734,17 +734,17 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 			{
 				// Texture
 				ImGui::Text(texture_name);
-				ImGui::SameLine(ComponentProperty::g_column); ImGui::Image(
-					texture ? texture->GetResource_Texture() : nullptr,
+				ImGui::SameLine(ComponentProperty::g_column); 
+				ImGuiEx::Image
+				(
+					texture,
 					material_text_size,
-					ImVec2(0, 0),
-					ImVec2(1, 1),
 					ImColor(255, 255, 255, 255),
 					ImColor(255, 255, 255, 128)
 				);
 
 				// Drop target
-				if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))
+				if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Texture))
 				{
 					try
 					{
@@ -911,7 +911,7 @@ void Widget_Properties::ShowAudioSource(shared_ptr<AudioSource>& audio_source) c
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::PushItemWidth(250.0f);
 		ImGui::InputText("##audioSourceAudioClip", &audio_clip_name, ImGuiInputTextFlags_ReadOnly);
 		ImGui::PopItemWidth();
-		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Audio))
+		if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Audio))
 		{
 			audio_clip_name			= FileSystem::GetFileNameFromFilePath(get<const char*>(payload->data));
 			const auto audio_clip	= _Widget_Properties::resource_cache->Load<AudioClip>(get<const char*>(payload->data));
@@ -1087,7 +1087,7 @@ void Widget_Properties::ComponentContextMenu_Add() const
 
 void Widget_Properties::Drop_AutoAddComponents() const
 {
-	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
+	if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Script))
 	{
 		if (auto script_component = m_inspected_entity.lock()->AddComponent<Script>())
 		{

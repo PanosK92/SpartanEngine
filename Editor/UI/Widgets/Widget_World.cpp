@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "Widget_World.h"
 #include "Widget_Properties.h"
-#include "../DragDrop.h"
+#include "../ImGui_Extension.h"
 #include "../../ImGui/Source/imgui_stdlib.h"
 #include "Input/Input.h"
 #include "Resource/ProgressReport.h"
@@ -49,7 +49,7 @@ namespace _Widget_World
 	static World* g_world			= nullptr;
 	static Input* g_input			= nullptr;
 	static bool g_popupRenameentity	= false;
-	static DragDropPayload g_payload;
+	static ImGuiEx::DragDropPayload g_payload;
 	// entities in relation to mouse events
 	static Entity* g_entity_copied	= nullptr;
 	static Entity* g_entity_hovered	= nullptr;
@@ -99,7 +99,7 @@ void Widget_World::TreeShow()
 	if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		// Dropping on the scene node should unparent the entity
-		if (auto payload = DragDrop::Get().GetPayload(DragPayload_entity))
+		if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_entity))
 		{
 			const auto entity_id = get<unsigned int>(payload->data);
 			if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
@@ -253,12 +253,12 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
 	if (ImGui::BeginDragDropSource())
 	{
 		_Widget_World::g_payload.data = entity_ptr->GetId();
-		_Widget_World::g_payload.type = DragPayload_entity;
-		DragDrop::Get().DragPayload(_Widget_World::g_payload);
+		_Widget_World::g_payload.type = ImGuiEx::DragPayload_entity;
+		ImGuiEx::CreateDragPayload(_Widget_World::g_payload);
 		ImGui::EndDragDropSource();
 	}
 	// Drop
-	if (auto payload = DragDrop::Get().GetPayload(DragPayload_entity))
+	if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_entity))
 	{
 		const auto entity_id = get<unsigned int>(payload->data);
 		if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))

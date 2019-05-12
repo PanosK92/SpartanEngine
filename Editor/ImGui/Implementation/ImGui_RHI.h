@@ -106,7 +106,7 @@ namespace ImGui::RHI
 
 			// Upload texture to graphics system
 			g_fontTexture = make_shared<RHI_Texture2D>(g_context, width, height, Format_R8G8B8A8_UNORM, data);
-			io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture->GetResource_Texture());
+			io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture.get());
 		}
 
 		// Create pipeline
@@ -339,7 +339,7 @@ namespace ImGui::RHI
 					
 					// Apply scissor rectangle, bind texture and draw
 					g_cmd_list->SetScissorRectangle(scissor_rect);
-					g_cmd_list->SetTexture(0, pcmd->TextureId);
+					g_cmd_list->SetTexture(0, pcmd->TextureId ? static_cast<RHI_Texture*>(pcmd->TextureId) : nullptr);
 					g_cmd_list->DrawIndexed(pcmd->ElemCount, idx_offset, vtx_offset);
 				}
 				idx_offset += pcmd->ElemCount;

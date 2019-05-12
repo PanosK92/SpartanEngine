@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "Widget_World.h"
 #include "Core/Settings.h"
-#include "../DragDrop.h"
+#include "../ImGui_Extension.h"
 //==================================
 
 //= NAMESPACES ==========
@@ -98,11 +98,10 @@ void Widget_Viewport::ShowFrame(const float delta_time)
 	m_timeSinceLastResChange += delta_time;
 
 	// Draw the image after a potential Renderer::SetResolution() call has been made
-	ImGui::Image(
-		_Widget_Viewport::g_renderer->GetFrameShaderResource(),
+	ImGuiEx::Image
+	(
+		_Widget_Viewport::g_renderer->GetFrameTexture(),
 		ImVec2(static_cast<float>(width), static_cast<float>(height)),
-		ImVec2(0, 0),
-		ImVec2(1, 1),
 		ImColor(255, 255, 255, 255),
 		ImColor(50, 127, 166, 255)
 	);
@@ -115,7 +114,7 @@ void Widget_Viewport::ShowFrame(const float delta_time)
 	}
 
 	// Handle model drop
-	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Model))
+	if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Model))
 	{
 		EditorHelper::Get().LoadModel(get<const char*>(payload->data));
 	}

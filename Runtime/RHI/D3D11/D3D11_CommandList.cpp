@@ -219,7 +219,7 @@ namespace Spartan
 		cmd.sampler_count++;
 	}
 
-	void RHI_CommandList::SetTextures(unsigned int start_slot, const vector<void*>& textures)
+	void RHI_CommandList::SetTextures(uint32_t start_slot, const vector<void*>& textures)
 	{
 		RHI_Command& cmd		= GetCmd();
 		cmd.type				= RHI_Cmd_SetTextures;
@@ -228,18 +228,13 @@ namespace Spartan
 		cmd.texture_count		= static_cast<unsigned int>(textures.size());
 	}
 
-	void RHI_CommandList::SetTexture(unsigned int start_slot, void* texture)
+	void RHI_CommandList::SetTexture(uint32_t start_slot, RHI_Texture* texture)
 	{
 		RHI_Command& cmd				= GetCmd();
 		cmd.type						= RHI_Cmd_SetTextures;
 		cmd.textures_start_slot			= start_slot;
-		cmd.textures[cmd.texture_count] = texture;
+		cmd.textures[cmd.texture_count] = texture ? texture->GetResource_Texture() : nullptr;
 		cmd.texture_count++;
-	}
-
-	void RHI_CommandList::SetTexture(unsigned int start_slot, const shared_ptr<RHI_Texture>& texture)
-	{
-		SetTexture(start_slot, texture->GetResource_Texture());
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
@@ -526,8 +521,8 @@ namespace Spartan
 				case RHI_Cmd_ClearDepthStencil:
 				{
 					UINT clear_flags = 0;
-					clear_flags |= cmd.depth_clear_flags & Clear_Depth	? D3D11_CLEAR_DEPTH : 0;
-					clear_flags |= cmd.depth_clear_flags & Clear_Stencil ? D3D11_CLEAR_STENCIL : 0;
+					clear_flags |= (cmd.depth_clear_flags & Clear_Depth)	? D3D11_CLEAR_DEPTH : 0;
+					clear_flags |= (cmd.depth_clear_flags & Clear_Stencil)	? D3D11_CLEAR_STENCIL : 0;
 
 					device_context->ClearDepthStencilView
 					(
