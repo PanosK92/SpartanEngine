@@ -220,6 +220,28 @@ namespace Spartan
 		return true;
 	}
 
+	unsigned int RHI_Texture::GetChannelCountFromFormat(RHI_Format format)
+	{
+		switch (format)
+		{
+			case Spartan::Format_R8_UNORM:				return 1;
+			case Spartan::Format_R16_UINT:				return 1;
+			case Spartan::Format_R16_FLOAT:				return 1;
+			case Spartan::Format_R32_UINT:				return 1;
+			case Spartan::Format_R32_FLOAT:				return 1;
+			case Spartan::Format_D32_FLOAT:				return 1;
+			case Spartan::Format_R32_FLOAT_TYPELESS:	return 1;
+			case Spartan::Format_R8G8_UNORM:			return 2;
+			case Spartan::Format_R16G16_FLOAT:			return 2;
+			case Spartan::Format_R32G32_FLOAT:			return 2;
+			case Spartan::Format_R32G32B32_FLOAT:		return 3;
+			case Spartan::Format_R8G8B8A8_UNORM:		return 4;
+			case Spartan::Format_R16G16B16A16_FLOAT:	return 4;
+			case Spartan::Format_R32G32B32A32_FLOAT:	return 4;
+			default:									return 0;
+		}
+	}
+
 	unsigned int RHI_Texture::GetByteCount()
 	{
 		unsigned int byte_count = 0;

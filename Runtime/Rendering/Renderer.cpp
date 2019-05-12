@@ -437,6 +437,9 @@ namespace Spartan
 
 	void Renderer::Tick()
 	{
+#ifdef API_GRAPHICS_VULKAN
+		return;
+#endif
 		if (!m_rhi_device || !m_rhi_device->IsInitialized())
 			return;
 
