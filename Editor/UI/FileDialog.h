@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include "IconProvider.h"
-#include "EditorHelper.h"
+#include "ImGui_Extension.h"
 #include "FileSystem/FileSystem.h"
 //================================
 
@@ -60,18 +60,18 @@ public:
 		m_label			= Spartan::FileSystem::GetFileNameFromFilePath(path);
 	}
 
-	const std::string& GetPath() const		{ return m_path; }
-	const std::string& GetLabel() const		{ return m_label; }
-	unsigned int GetId() const				{ return m_id; }
-	void* GetShaderResource() const			{ return SHADER_RESOURCE_BY_THUMBNAIL(m_thumbnail); }
-	bool IsDirectory() const				{ return m_isDirectory; }
-	float GetTimeSinceLastClickMs() const	{ return static_cast<float>(m_time_since_last_click.count()); }
+	const auto& GetPath() const				{ return m_path; }
+	const auto& GetLabel() const			{ return m_label; }
+	auto GetId() const						{ return m_id; }
+	auto GetTexture() const					{ return IconProvider::Get().GetTextureByThumbnail(m_thumbnail); }
+	auto IsDirectory() const				{ return m_isDirectory; }
+	auto GetTimeSinceLastClickMs() const	{ return static_cast<float>(m_time_since_last_click.count()); }
 
 	void Clicked()	
 	{
 		const auto now			= std::chrono::high_resolution_clock::now();
 		m_time_since_last_click	= now - m_last_click_time;
-		m_last_click_time			= now;
+		m_last_click_time		= now;
 	}
 	
 private:

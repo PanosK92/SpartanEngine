@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "ButtonColorPicker.h"
-#include "EditorHelper.h"
+#include "ImGui_Extension.h"
 //============================
 
 //= NAMESPACES ================

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "Widget_Toolbar.h"
 #include "../IconProvider.h"
-#include "../EditorHelper.h"
+#include "../ImGui_Extension.h"
 #include "Rendering/Renderer.h"
 #include "Core/Engine.h"
 #include "Widget_Profiler.h"

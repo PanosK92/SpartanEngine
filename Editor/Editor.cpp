@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_win32.h"
 #include "Rendering/Renderer.h"
-#include "UI/EditorHelper.h"
+#include "UI/ImGui_Extension.h"
 #include "UI/IconProvider.h"
 #include "UI/Widgets/Widget_Assets.h"
 #include "UI/Widgets/Widget_Console.h"

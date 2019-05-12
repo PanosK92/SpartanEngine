@@ -53,7 +53,7 @@ namespace Spartan
 	{
 		auto formated_text = !m_caller_name.empty() ? m_caller_name + ": " + std::string(text) : std::string(text);
 
-		const auto log_to_file = true;
+		const auto log_to_file = m_logger.expired() || m_log_to_file;
 		log_to_file ? LogToFile(formated_text.c_str(), type) : LogString(formated_text.c_str(), type);
 		
 		m_caller_name.clear();

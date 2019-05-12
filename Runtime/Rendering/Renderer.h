@@ -174,7 +174,7 @@ namespace Spartan
 		//==========================================================
 
 		//= MISC =======================================================================================================================
-		void* GetFrameShaderResource() const;
+		auto GetFrameTexture()			{ return m_render_tex_full_hdr_light2.get(); }
 		static auto IsRendering()		{ return m_is_rendering; }
 		auto GetFrameNum() const		{ return m_frame_num; }
 		const auto& GetCamera() const	{ return m_camera; }

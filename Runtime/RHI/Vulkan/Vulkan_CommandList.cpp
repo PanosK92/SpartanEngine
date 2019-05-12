@@ -324,24 +324,19 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::SetTextures(unsigned int start_Slot, const vector<void*>& textures)
+	void RHI_CommandList::SetTextures(uint32_t start_Slot, const vector<void*>& textures)
 	{
 		if (!m_is_recording)
 			return;
 
 	}
 
-	void RHI_CommandList::SetTexture(uint32_t slot, void* texture)
+	void RHI_CommandList::SetTexture(uint32_t slot, RHI_Texture* texture)
 	{
 		if (!m_is_recording)
 			return;
 		
 		m_pipeline->ImGuiDescriptorTest(slot, texture);
-	}
-
-	void RHI_CommandList::SetTexture(uint32_t slot, const shared_ptr<RHI_Texture>& texture)
-	{
-		SetTexture(slot, texture->GetResource_Texture());
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)

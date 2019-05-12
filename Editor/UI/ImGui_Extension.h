@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include <string>
+#include <variant>
 #include "../ImGui/Source/imgui.h"
 #include "RHI/RHI_Texture.h"
 #include "World/World.h"
@@ -37,14 +38,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGuiEx
 { 
-	// An icon shader resource pointer by thumbnail
-	#define SHADER_RESOURCE_BY_THUMBNAIL(thumbnail)	IconProvider::Get().GetShaderResourceByThumbnail(thumbnail)
+	// Images & Image buttons
+	inline bool ImageButton(Spartan::RHI_Texture* texture, const ImVec2& size)
+	{
+		return ImGui::ImageButton
+		(
+			static_cast<ImTextureID>(texture),
+			size,
+			ImVec2(0, 0),			// uv0
+			ImVec2(1, 1),			// uv1
+			-1,						// frame padding
+			ImColor(0, 0, 0, 0),	// background
+			ImVec4(1, 1, 1, 1)		// tint
+		);
+	}
 
-	// An thumbnail button by enum
 	inline bool ImageButton(const Icon_Type icon, const float size)
 	{
 		return ImGui::ImageButton(
-			IconProvider::Get().GetShaderResourceByType(icon), 
+			static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
 			ImVec2(size, size),
 			ImVec2(0, 0),			// uv0
 			ImVec2(1, 1),			// uv1
@@ -54,12 +66,11 @@ namespace ImGuiEx
 		);
 	}
 
-	// An thumbnail button by enum, with a specific ID
 	inline bool ImageButton(const char* id, const Icon_Type icon, const float size)
 	{
 		ImGui::PushID(id);
 		const auto pressed = ImGui::ImageButton(
-			IconProvider::Get().GetShaderResourceByType(icon), 
+			static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
 			ImVec2(size, size),
 			ImVec2(0, 0),			// uv0
 			ImVec2(1, 1),			// uv1
@@ -71,11 +82,10 @@ namespace ImGuiEx
 		return pressed;
 	}
 
-	// A thumbnail image
 	inline void Image(const Thumbnail& thumbnail, const float size)
 	{
 		ImGui::Image(
-			IconProvider::Get().GetShaderResourceByThumbnail(thumbnail),
+			static_cast<ImTextureID>(IconProvider::Get().GetTextureByThumbnail(thumbnail)),
 			ImVec2(size, size),
 			ImVec2(0, 0),
 			ImVec2(1, 1),
@@ -84,11 +94,10 @@ namespace ImGuiEx
 		);
 	}
 
-	// A thumbnail image by shader resource
-	inline void Image(void* shader_resource, const float size)
+	inline void Image(Spartan::RHI_Texture* texture, const float size)
 	{
 		ImGui::Image(
-			shader_resource,
+			static_cast<ImTextureID>(texture),
 			ImVec2(size, size),
 			ImVec2(0, 0),
 			ImVec2(1, 1),
@@ -97,17 +106,70 @@ namespace ImGuiEx
 		);
 	}
 
-	// A thumbnail image by enum
+	inline void Image(Spartan::RHI_Texture* texture, const ImVec2& size, const ImColor& tint = ImColor(0, 0, 0, 0), const ImColor& border = ImColor(0, 0, 0, 0))
+	{
+		ImGui::Image(
+			static_cast<ImTextureID>(texture),
+			size,
+			ImVec2(0, 0),
+			ImVec2(1, 1),
+			tint,
+			border
+		);
+	}
+
 	inline void Image(const Icon_Type icon, const float size)
 	{
 		ImGui::Image(
-			IconProvider::Get().GetShaderResourceByType(icon),
+			static_cast<void*>(IconProvider::Get().GetTextureByType(icon)),
 			ImVec2(size, size),
 			ImVec2(0, 0),
 			ImVec2(1, 1),
 			ImColor(0, 0, 0, 0),	// tint
 			ImColor(0, 0, 0, 0)		// border
 		);
+	}
+
+	// Drag & Drop
+	enum DragPayloadType
+	{
+		DragPayload_Unknown,
+		DragPayload_Texture,
+		DragPayload_entity,
+		DragPayload_Model,
+		DragPayload_Audio,
+		DragPayload_Script
+	};
+
+	struct DragDropPayload
+	{
+		typedef std::variant<const char*, unsigned int> dataVariant;
+		DragDropPayload(DragPayloadType type = DragPayload_Unknown, dataVariant data = nullptr)
+		{
+			this->type = type;
+			this->data = data;
+		}
+		DragPayloadType type;
+		dataVariant data;
+	};
+	
+	inline void CreateDragPayload(const DragDropPayload& payload)
+	{
+		ImGui::SetDragDropPayload(reinterpret_cast<const char*>(&payload.type), reinterpret_cast<const void*>(&payload), sizeof(payload), ImGuiCond_Once);
+	}
+
+	inline DragDropPayload* ReceiveDragPayload(DragPayloadType type)
+	{
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload_imgui = ImGui::AcceptDragDropPayload(reinterpret_cast<const char*>(&type)))
+			{
+				return static_cast<DragDropPayload*>(payload_imgui->Data);
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		return nullptr;
 	}
 }
 

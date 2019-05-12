@@ -66,11 +66,11 @@ enum Icon_Type
 	Thumbnail_File_Font
 };
 
-namespace Spartan {class Context;}
+namespace Spartan { class Context; }
 
 struct Thumbnail
 {
-	Thumbnail(){}
+	Thumbnail() = default;
 	Thumbnail(Icon_Type type, std::shared_ptr<Spartan::RHI_Texture> texture, const std::string& filePath)
 	{
 		this->type = type;
@@ -86,30 +86,21 @@ struct Thumbnail
 class IconProvider
 {
 public:
+	static IconProvider& Get()
+	{
+		static IconProvider instance;
+		return instance;
+	}
+
 	IconProvider();
 	~IconProvider();
 
 	void Initialize(Spartan::Context* context);
 
-	//= SHADER RESOURCE ===========================================
-	void* GetShaderResourceByType(Icon_Type type);
-	void* GetShaderResourceByFilePath(const std::string& filePath);
-	void* GetShaderResourceByThumbnail(const Thumbnail& thumbnail);
-	//=============================================================
-
-	//= ImGui::ImageButton ============================================
-	bool ImageButton_filepath(const std::string& filepath, float size);
-	//=================================================================
-
-	//= THUMBNAIL ==================================================================================================
+	Spartan::RHI_Texture* GetTextureByType(Icon_Type type);
+	Spartan::RHI_Texture* GetTextureByFilePath(const std::string& filePath);
+	Spartan::RHI_Texture* GetTextureByThumbnail(const Thumbnail& thumbnail);
 	const Thumbnail& Thumbnail_Load(const std::string& filePath, Icon_Type type = Thumbnail_Custom, int size = 100);
-	//==============================================================================================================
-
-	 static IconProvider& Get()
-     {
-         static IconProvider instance;
-         return instance;
-     }
 
 private:
 	const Thumbnail& GetThumbnailByType(Icon_Type type);

@@ -202,9 +202,9 @@ namespace Spartan
 		void SetSamplers(unsigned int start_slot, const std::vector<void*>& samplers);
 		void SetSampler(unsigned int slot, const std::shared_ptr<RHI_Sampler>& sampler);
 		
-		void SetTextures(unsigned int start_slot, const std::vector<void*>& textures);
-		void SetTexture(uint32_t slot, void* texture);
-		void SetTexture(uint32_t slot, const std::shared_ptr<RHI_Texture>& texture);
+		void SetTextures(uint32_t start_slot, const std::vector<void*>& textures);
+		void SetTexture(uint32_t slot, RHI_Texture* texture);
+		void SetTexture(uint32_t slot, const std::shared_ptr<RHI_Texture>& texture) { SetTexture(slot, texture.get()); }
 		void ClearTextures() { SetTextures(0, m_textures_empty); }
 
 		void SetRenderTargets(const std::vector<void*>& render_targets, void* depth_stencil = nullptr);
