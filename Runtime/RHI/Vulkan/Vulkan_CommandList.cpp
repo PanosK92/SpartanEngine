@@ -45,7 +45,6 @@ using namespace std;
 using namespace Spartan::Math;
 //=============================
 
-static const unsigned int			g_max_frames_in_flight = 2;
 #define CMD_BUFFER_VK				static_cast<VkCommandBuffer>(m_cmd_buffers[m_current_frame])
 #define FENCE_SUBMIT_FINISHED		m_fences_in_flight[m_current_frame]
 #define FENCE_SUBMIT_FINISHED_VK	static_cast<VkFence>(FENCE_SUBMIT_FINISHED)
@@ -64,7 +63,7 @@ namespace Spartan
 			return;
 		}
 
-		for (unsigned int i = 0; i < g_max_frames_in_flight; i++)
+		for (unsigned int i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
 		{
 			VkCommandBuffer cmd_buffer;
 			auto cmd_pool = static_cast<VkCommandPool>(m_cmd_pool);
@@ -86,7 +85,7 @@ namespace Spartan
 		vkQueueWaitIdle(m_rhi_device->GetContext()->queue_graphics);
 
 		auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
-		for (unsigned int i = 0; i < g_max_frames_in_flight; i++)
+		for (unsigned int i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
 		{
 			Vulkan_Common::fence::destroy(m_rhi_device, m_fences_in_flight[i]);
 			Vulkan_Common::semaphore::destroy(m_rhi_device, m_semaphores_render_finished[i]);
@@ -324,7 +323,7 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::SetTextures(uint32_t start_Slot, const vector<void*>& textures)
+	void RHI_CommandList::SetTextures(uint32_t start_slot, const vector<void*>& textures)
 	{
 		if (!m_is_recording)
 			return;
@@ -336,7 +335,13 @@ namespace Spartan
 		if (!m_is_recording)
 			return;
 		
-		m_pipeline->ImGuiDescriptorTest(slot, texture);
+		/*if (!texture->GetResource_DescriptorSet())
+		{
+			texture->CreateDescriptorSet();
+		}
+
+		VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(texture->GetResource_DescriptorSet()) };
+		vkCmdBindDescriptorSets(CMD_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);*/
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)

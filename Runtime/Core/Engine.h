@@ -30,7 +30,7 @@ namespace Spartan
 {
 	class Context;
 
-	enum Engine_Mode : int
+	enum Engine_Mode : unsigned int
 	{
 		Engine_Tick		= 1UL << 0,	// Should the engine tick?
 		Engine_Physics	= 1UL << 1, // Should the physics tick?	

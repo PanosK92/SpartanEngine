@@ -44,11 +44,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-static const bool DYNAMIC_DESCRIPTOR			= true;
-static uint32_t MAX_CONSTANT_BUFFERS_PER_STAGE	= 2;
-static uint32_t MAX_TEXTURES_PER_STAGE			= 2;
-static uint32_t MAX_SAMPLERS_PER_STAGE			= 2;
-
 namespace Spartan
 {
 	RHI_Pipeline::~RHI_Pipeline()
@@ -61,9 +56,6 @@ namespace Spartan
 
 		vkDestroyRenderPass(m_rhi_device->GetContext()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
 		m_render_pass = nullptr;
-
-		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
-		m_descriptor_pool = nullptr;
 
 		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
 		m_descriptor_set_layout = nullptr;
@@ -134,37 +126,6 @@ namespace Spartan
 		return render_pass;
 	}
 
-	inline void CreateDescriptorPool(const VkDevice& device, void*& descriptor_pool_out, uint32_t descriptor_count)
-	{
-		// Pool sizes
-		array<VkDescriptorPoolSize, 3> pool_sizes	= {};
-		pool_sizes[0].type							= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		pool_sizes[0].descriptorCount				= MAX_CONSTANT_BUFFERS_PER_STAGE;
-		pool_sizes[1].type							= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		pool_sizes[1].descriptorCount				= MAX_TEXTURES_PER_STAGE;
-		pool_sizes[2].type							= VK_DESCRIPTOR_TYPE_SAMPLER;
-		pool_sizes[2].descriptorCount				= MAX_SAMPLERS_PER_STAGE;
-
-		// Create info
-		VkDescriptorPoolCreateInfo pool_create_info = {};
-		pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_create_info.flags						= DYNAMIC_DESCRIPTOR ? VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT : 0;
-		pool_create_info.poolSizeCount				= static_cast<uint32_t>(pool_sizes.size());
-		pool_create_info.pPoolSizes					= pool_sizes.data();
-		pool_create_info.maxSets					= descriptor_count;
-
-		// Pool
-		VkDescriptorPool descriptor_pool = nullptr;
-		auto result = vkCreateDescriptorPool(device, &pool_create_info, nullptr, &descriptor_pool);
-		if (result != VK_SUCCESS)
-		{
-			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::result_to_string(result));
-			return;
-		}
-
-		descriptor_pool_out = static_cast<void*>(descriptor_pool);
-	}
-
 	inline void CreateDescriptorSetLayout(const VkDevice& device, const map<string, Shader_Resource>& shader_resources, void*& descriptor_set_layout_out)
 	{
 		// Layout bindings
@@ -186,7 +147,7 @@ namespace Spartan
 		// Descriptor set layout create info
 		VkDescriptorSetLayoutCreateInfo resource_layout_info	= {};
 		resource_layout_info.sType								= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		resource_layout_info.flags								= DYNAMIC_DESCRIPTOR ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT : 0;
+		resource_layout_info.flags								= 0;
 		resource_layout_info.pNext								= nullptr;
 		resource_layout_info.bindingCount						= static_cast<uint32_t>(layout_bindings.size());
 		resource_layout_info.pBindings							= layout_bindings.data();
@@ -203,9 +164,7 @@ namespace Spartan
 	}
 
 	inline void CreateDescriptorSets(
-		const VkDevice& device,
-		const VkDescriptorPool& descriptor_pool,
-		const uint32_t descriptor_count,
+		const RHI_Context* rhi_context,
 		const VkDescriptorSetLayout& descriptor_set_layout,
 		const map<string, Shader_Resource>& shader_resources,
 		void*& descriptor_set_out,
@@ -217,13 +176,13 @@ namespace Spartan
 		// Descriptor set allocate info
 		VkDescriptorSetAllocateInfo allocate_info	= {};
 		allocate_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocate_info.descriptorPool				= descriptor_pool;
+		allocate_info.descriptorPool				= rhi_context->descriptor_pool;
 		allocate_info.descriptorSetCount			= 1;
 		allocate_info.pSetLayouts					= &descriptor_set_layout;
 
 		// Descriptor set
 		VkDescriptorSet descriptor_set;
-		auto result = vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set);
+		auto result = vkAllocateDescriptorSets(rhi_context->device, &allocate_info, &descriptor_set);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::result_to_string(result));
@@ -261,7 +220,7 @@ namespace Spartan
 				});
 		}
 
-		vkUpdateDescriptorSets(device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
+		vkUpdateDescriptorSets(rhi_context->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 	}
 
 	bool RHI_Pipeline::Create()
@@ -276,10 +235,6 @@ namespace Spartan
 
 		// Create render pass
 		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
-
-		// Create descriptor pool
-		uint32_t m_descriptor_count = 2; //static_cast<uint32_t>(swapChainImages.size()); // FIX THIS
-		CreateDescriptorPool(m_rhi_device->GetContext()->device, m_descriptor_pool, m_descriptor_count);
 
 		// Dynamic viewport and scissor states
 		vector<VkDynamicState> dynamic_states =
@@ -410,16 +365,14 @@ namespace Spartan
 		// Merge vertex & index shader resources into map (to ensure unique values)
 		map<string, Shader_Resource> shader_resources;
 		while (m_shader_vertex->GetCompilationState() == Compilation_State::Shader_Compiling || m_shader_pixel->GetCompilationState() == Compilation_State::Shader_Compiling) {} // wait for shader to finish compilation
-		for (const auto& resource : m_shader_vertex->GetResources())	shader_resources[resource.name] = resource;
+		for (const auto& resource : m_shader_vertex->GetResources())shader_resources[resource.name] = resource;
 		for (const auto& resource : m_shader_pixel->GetResources())	shader_resources[resource.name] = resource;
 
 		// Descriptor set layout and descriptor sets
 		CreateDescriptorSetLayout(m_rhi_device->GetContext()->device, shader_resources, m_descriptor_set_layout);
 		CreateDescriptorSets
 		(
-			m_rhi_device->GetContext()->device,
-			static_cast<VkDescriptorPool>(m_descriptor_pool),
-			m_descriptor_count,
+			m_rhi_device->GetContext(),
 			static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout),
 			shader_resources,
 			m_descriptor_set,
@@ -471,46 +424,6 @@ namespace Spartan
 		m_graphics_pipeline = static_cast<void*>(graphics_pipeline);
 
 		return true;
-	}
-
-	void RHI_Pipeline::ImGuiDescriptorTest(uint32_t slot, void* texture)
-	{
-		// Merge vertex & index shader resources into map (to ensure unique values)
-		map<string, Shader_Resource> shader_resources;
-		for (const auto& resource : m_shader_vertex->GetResources())	shader_resources[resource.name] = resource;
-		for (const auto& resource : m_shader_pixel->GetResources())		shader_resources[resource.name] = resource;
-
-		VkDescriptorBufferInfo buffer_info	= {};
-		buffer_info.buffer					= m_constant_buffer ? static_cast<VkBuffer>(m_constant_buffer->GetResource()) : nullptr;
-		buffer_info.offset					= 0;
-		buffer_info.range					= m_constant_buffer ? m_constant_buffer->GetSize() : 0;
-
-		VkDescriptorImageInfo image_info	= {};
-		image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		image_info.imageView				= static_cast<VkImageView>(texture);
-		image_info.sampler					= m_sampler ? static_cast<VkSampler>(m_sampler->GetResource()) : nullptr;
-
-		// Descriptor Sets
-		vector<VkWriteDescriptorSet> write_descriptor_sets;
-
-		for (const auto& resource : shader_resources)
-		{
-			write_descriptor_sets.push_back
-			({
-				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,			// sType
-				nullptr,										// pNext
-				static_cast<VkDescriptorSet>(m_descriptor_set),	// dstSet
-				resource.second.slot,							// dstBinding
-				0,												// dstArrayElement
-				1,												// descriptorCount
-				vulkan_descriptor_type[resource.second.type],	// descriptorType
-				&image_info,									// pImageInfo 
-				&buffer_info,									// pBufferInfo
-				nullptr											// pTexelBufferView
-			});
-		}
-		
-		//vkUpdateDescriptorSets(m_rhi_device->GetContext()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 	}
 }
 #endif

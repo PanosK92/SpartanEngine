@@ -271,14 +271,11 @@ namespace Spartan
 		VkQueue queue_graphics						= nullptr;
 		VkQueue queue_present						= nullptr;
 		VkQueue queue_copy							= nullptr;
+		VkDescriptorPool descriptor_pool			= nullptr;
 		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
 		QueueFamilyIndices indices;
 		std::vector<const char*> validation_layers = { "VK_LAYER_KHRONOS_validation" };
-		std::vector<const char*> extensions_device =
-		{
-			"VK_KHR_swapchain",
-			"VK_EXT_descriptor_indexing"
-		};
+		std::vector<const char*> extensions_device = { "VK_KHR_swapchain" };
 		#ifdef DEBUG
 			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_utils" };
 			bool validation_enabled = true;
@@ -286,6 +283,12 @@ namespace Spartan
 			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface" };
 			bool validation_enabled = false;
 		#endif
+
+		static const uint32_t descriptor_count = 2; //static_cast<uint32_t>(swapChainImages.size()); // FIX THIS
+		static const uint32_t max_frames_in_flight = 2;
+		static const uint32_t pool_max_constant_buffers_per_stage = 2;
+		static const uint32_t pool_max_textures_per_stage = 2;
+		static const uint32_t pool_max_samplers_per_stage = 2;
 	};
 }
 #include "Vulkan/Vulkan_Common.h"
