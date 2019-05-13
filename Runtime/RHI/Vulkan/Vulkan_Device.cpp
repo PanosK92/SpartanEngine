@@ -117,61 +117,95 @@ namespace Spartan
 			}
 		}
 
-		// Queue info
-		vector<VkDeviceQueueCreateInfo> queue_create_infos;
+		// Device
 		{
-			set<uint32_t> unique_queue_families = 
-			{ 
-				m_rhi_context->indices.graphics_family.value(),
-				m_rhi_context->indices.present_family.value(),
-				m_rhi_context->indices.copy_family.value() 
-			};
-			auto queue_priority	= 1.0f;
-			for (auto queue_family : unique_queue_families)
+			// Queue info
+			vector<VkDeviceQueueCreateInfo> queue_create_infos;
 			{
-				VkDeviceQueueCreateInfo queue_create_info	= {};
-				queue_create_info.sType						= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				queue_create_info.queueFamilyIndex			= queue_family;
-				queue_create_info.queueCount				= 1;
-				queue_create_info.pQueuePriorities			= &queue_priority;
-				queue_create_infos.push_back(queue_create_info);
+				set<uint32_t> unique_queue_families =
+				{
+					m_rhi_context->indices.graphics_family.value(),
+					m_rhi_context->indices.present_family.value(),
+					m_rhi_context->indices.copy_family.value()
+				};
+				auto queue_priority = 1.0f;
+				for (auto queue_family : unique_queue_families)
+				{
+					VkDeviceQueueCreateInfo queue_create_info	= {};
+					queue_create_info.sType						= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+					queue_create_info.queueFamilyIndex			= queue_family;
+					queue_create_info.queueCount				= 1;
+					queue_create_info.pQueuePriorities			= &queue_priority;
+					queue_create_infos.push_back(queue_create_info);
+				}
+			}
+
+			// Describe
+			VkPhysicalDeviceFeatures device_features	= {};
+			device_features.samplerAnisotropy			= Settings::Get().GetAnisotropy() != 0;
+
+			VkDeviceCreateInfo create_info	= {};
+			{
+				create_info.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+				create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
+				create_info.pQueueCreateInfos		= queue_create_infos.data();
+				create_info.pEnabledFeatures		= &device_features;
+				create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device.size());
+				create_info.ppEnabledExtensionNames = m_rhi_context->extensions_device.data();
+				if (m_rhi_context->validation_enabled)
+				{
+					create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
+					create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
+				}
+				else
+				{
+					create_info.enabledLayerCount = 0;
+				}
+			}
+
+			// Create
+			auto result = vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device);
+			if (result != VK_SUCCESS)
+			{
+				LOGF_ERROR("Failed to create device, %s.", Vulkan_Common::result_to_string(result));
+				return;
 			}
 		}
 
-		// Device create info
-		VkPhysicalDeviceFeatures device_features	= {};
-		device_features.samplerAnisotropy			= Settings::Get().GetAnisotropy() != 0;
-		VkDeviceCreateInfo create_info				= {};
+		// Queues
 		{
-			create_info.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-			create_info.queueCreateInfoCount	= static_cast<uint32_t>(queue_create_infos.size());
-			create_info.pQueueCreateInfos		= queue_create_infos.data();
-			create_info.pEnabledFeatures		= &device_features;
-			create_info.enabledExtensionCount	= static_cast<uint32_t>(m_rhi_context->extensions_device.size());
-			create_info.ppEnabledExtensionNames = m_rhi_context->extensions_device.data();
-			if (m_rhi_context->validation_enabled)
-			{
-			    create_info.enabledLayerCount	= static_cast<uint32_t>(m_rhi_context->validation_layers.size());
-			    create_info.ppEnabledLayerNames	= m_rhi_context->validation_layers.data();
-			}
-			else 
-			{
-			    create_info.enabledLayerCount = 0;
-			}
+			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_graphics);
+			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->queue_present);
+			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.copy_family.value(), 0, &m_rhi_context->queue_copy);
 		}
 
-		// Create device
-		auto result = vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device);
-		if (result != VK_SUCCESS)
+		// Descriptor pool
 		{
-			LOGF_ERROR("Failed to create device, %s.", Vulkan_Common::result_to_string(result));
-			return;
-		}
+			// Pool sizes
+			array<VkDescriptorPoolSize, 3> pool_sizes	= {};
+			pool_sizes[0].type							= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			pool_sizes[0].descriptorCount				= m_rhi_context->pool_max_constant_buffers_per_stage;
+			pool_sizes[1].type							= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			pool_sizes[1].descriptorCount				= m_rhi_context->pool_max_textures_per_stage;
+			pool_sizes[2].type							= VK_DESCRIPTOR_TYPE_SAMPLER;
+			pool_sizes[2].descriptorCount				= m_rhi_context->pool_max_samplers_per_stage;
 
-		// Create queues
-		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.graphics_family.value(), 0, &m_rhi_context->queue_graphics);
-		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.present_family.value(), 0, &m_rhi_context->queue_present);
-		vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.copy_family.value(), 0, &m_rhi_context->queue_copy);
+			// Create info
+			VkDescriptorPoolCreateInfo pool_create_info = {};
+			pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			pool_create_info.flags						= 0;
+			pool_create_info.poolSizeCount				= static_cast<uint32_t>(pool_sizes.size());
+			pool_create_info.pPoolSizes					= pool_sizes.data();
+			pool_create_info.maxSets					= m_rhi_context->descriptor_count;
+
+			// Pool
+			auto result = vkCreateDescriptorPool(m_rhi_context->device, &pool_create_info, nullptr, &m_rhi_context->descriptor_pool);
+			if (result != VK_SUCCESS)
+			{
+				LOGF_ERROR("Failed to create descriptor pool, %s", Vulkan_Common::result_to_string(result));
+				return;
+			}
+		}
 
 		// Detect and log version
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
@@ -187,6 +221,8 @@ namespace Spartan
 	{	
 		// Wait for GPU
 		auto result = vkQueueWaitIdle(m_rhi_context->queue_graphics);
+
+		vkDestroyDescriptorPool(m_rhi_context->device, m_rhi_context->descriptor_pool, nullptr);
 
 		// Release resources
 		if (result == VK_SUCCESS)
