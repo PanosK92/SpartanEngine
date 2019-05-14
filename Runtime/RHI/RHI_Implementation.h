@@ -284,7 +284,7 @@ namespace Spartan
 			bool validation_enabled = false;
 		#endif
 
-		static const uint32_t descriptor_count = 2; //static_cast<uint32_t>(swapChainImages.size()); // FIX THIS
+		static const uint32_t descriptor_count = 20; // maybe re-create the pool with double size every time the limit is reached ?
 		static const uint32_t max_frames_in_flight = 2;
 		static const uint32_t pool_max_constant_buffers_per_stage = 2;
 		static const uint32_t pool_max_textures_per_stage = 2;

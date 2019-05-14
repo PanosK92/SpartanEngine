@@ -191,18 +191,20 @@ namespace Spartan
 
 		vkCmdBindPipeline(CMD_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetPipeline()));
 
-		auto descriptor_set = static_cast<VkDescriptorSet>(pipeline->GetDescriptorSet());
-		vkCmdBindDescriptorSets
-		(
-			CMD_BUFFER_VK,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			static_cast<VkPipelineLayout>(pipeline->GetPipelineLayout()),
-			0,
-			1,
-			&descriptor_set,
-			0,
-			nullptr
-		);
+		if (auto descriptor_set = static_cast<VkDescriptorSet>(pipeline->GetDescriptorSet()))
+		{
+			vkCmdBindDescriptorSets
+			(
+				CMD_BUFFER_VK,
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				static_cast<VkPipelineLayout>(pipeline->GetPipelineLayout()),
+				0,
+				1,
+				&descriptor_set,
+				0,
+				nullptr
+			);
+		}
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
@@ -335,13 +337,15 @@ namespace Spartan
 		if (!m_is_recording)
 			return;
 		
-		/*if (!texture->GetResource_DescriptorSet())
-		{
-			texture->CreateDescriptorSet();
-		}
+		if (!texture)
+			return;
 
-		VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(texture->GetResource_DescriptorSet()) };
-		vkCmdBindDescriptorSets(CMD_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);*/
+		m_pipeline->UpdateDescriptorSets(texture);
+		if (void* descriptor_set = m_pipeline->GetDescriptorSet(texture->RHI_GetID()))
+		{
+			VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
+			vkCmdBindDescriptorSets(CMD_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
+		}
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)

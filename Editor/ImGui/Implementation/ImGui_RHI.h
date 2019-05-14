@@ -178,20 +178,21 @@ namespace ImGui::RHI
 			g_pipeline.m_rhi_device				= g_rhi_device;
 			g_pipeline.m_shader_vertex			= shader;
 			g_pipeline.m_shader_pixel			= shader;
-			g_pipeline.m_constant_buffer		= g_constant_buffer;
+			g_pipeline.m_constant_buffer		= g_constant_buffer.get();
 			g_pipeline.m_rasterizer_state		= rasterizer_state;
 			g_pipeline.m_blend_state			= blend_state;
 			g_pipeline.m_depth_stencil_state	= depth_stencil_state;
 			g_pipeline.m_input_layout			= shader->GetInputLayout();
 			g_pipeline.m_primitive_topology		= PrimitiveTopology_TriangleList;
-			g_pipeline.m_texture				= g_fontTexture;
-			g_pipeline.m_sampler				= g_fontSampler;
+			g_pipeline.m_sampler				= g_fontSampler.get();
 
 			if (!g_pipeline.Create())
 			{
 				LOG_ERROR("Failed to create pipeline");
 				return false;
 			}
+
+			g_pipeline.UpdateDescriptorSets(g_fontTexture.get());
 		}
 
 		// Create swap chain
