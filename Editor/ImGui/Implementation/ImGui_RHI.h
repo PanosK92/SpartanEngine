@@ -56,7 +56,7 @@ namespace ImGui::RHI
 	RHI_CommandList* g_cmd_list	= nullptr;
 
 	// RHI Data	
-	static RHI_Pipeline						g_pipeline;
+	static shared_ptr<RHI_Pipeline>			g_pipeline;
 	static shared_ptr<RHI_Device>			g_rhi_device;
 	static shared_ptr<RHI_SwapChain>		g_swap_chain;	
 	static shared_ptr<RHI_Texture>			g_fontTexture;
@@ -78,6 +78,7 @@ namespace ImGui::RHI
 			return false;
 		}
 
+		g_pipeline			= make_shared<RHI_Pipeline>(g_rhi_device);
 		g_fontSampler		= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
 		g_constant_buffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
 		g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_rhi_device);
@@ -175,24 +176,23 @@ namespace ImGui::RHI
 			shader->Compile(Shader_VertexPixel, shader_source, Vertex_Attributes_Position2dTextureColor8);
 
 			// Pipeline
-			g_pipeline.m_rhi_device				= g_rhi_device;
-			g_pipeline.m_shader_vertex			= shader;
-			g_pipeline.m_shader_pixel			= shader;
-			g_pipeline.m_constant_buffer		= g_constant_buffer.get();
-			g_pipeline.m_rasterizer_state		= rasterizer_state;
-			g_pipeline.m_blend_state			= blend_state;
-			g_pipeline.m_depth_stencil_state	= depth_stencil_state;
-			g_pipeline.m_input_layout			= shader->GetInputLayout();
-			g_pipeline.m_primitive_topology		= PrimitiveTopology_TriangleList;
-			g_pipeline.m_sampler				= g_fontSampler.get();
+			g_pipeline->m_shader_vertex			= shader;
+			g_pipeline->m_shader_pixel			= shader;
+			g_pipeline->m_constant_buffer		= g_constant_buffer.get();
+			g_pipeline->m_rasterizer_state		= rasterizer_state;
+			g_pipeline->m_blend_state			= blend_state;
+			g_pipeline->m_depth_stencil_state	= depth_stencil_state;
+			g_pipeline->m_input_layout			= shader->GetInputLayout();
+			g_pipeline->m_primitive_topology	= PrimitiveTopology_TriangleList;
+			g_pipeline->m_sampler				= g_fontSampler.get();
 
-			if (!g_pipeline.Create())
+			if (!g_pipeline->Create())
 			{
 				LOG_ERROR("Failed to create pipeline");
 				return false;
 			}
 
-			g_pipeline.UpdateDescriptorSets(g_fontTexture.get());
+			g_pipeline->UpdateDescriptorSets(g_fontTexture.get());
 		}
 
 		// Create swap chain
@@ -206,7 +206,7 @@ namespace ImGui::RHI
 				Format_R8G8B8A8_UNORM,
 				Present_Immediate,
 				2,
-				g_pipeline.GetRenderPass()
+				g_pipeline->GetRenderPass()
 			);
 
 			if (!g_swap_chain->IsInitialized())
@@ -235,7 +235,7 @@ namespace ImGui::RHI
 		bool is_main_viewport	= (swap_chain_other == nullptr);
 		void* _render_target	= is_main_viewport ? g_swap_chain->GetRenderTargetView() : swap_chain_other->GetRenderTargetView();
 
-		g_cmd_list->Begin("Pass_ImGui", g_pipeline.GetRenderPass(), g_swap_chain.get());
+		g_cmd_list->Begin("Pass_ImGui", g_pipeline->GetRenderPass(), g_swap_chain.get());
 		g_cmd_list->SetRenderTarget(_render_target);
 		if (clear) g_cmd_list->ClearRenderTarget(_render_target, Vector4(0, 0, 0, 1));
 
@@ -309,7 +309,7 @@ namespace ImGui::RHI
 
 		auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 
-		g_cmd_list->SetPipeline(&g_pipeline);
+		g_cmd_list->SetPipeline(g_pipeline.get());
 		g_cmd_list->SetViewport(viewport);
 		g_cmd_list->SetBufferVertex(g_vertexBuffer);
 		g_cmd_list->SetBufferIndex(g_indexBuffer);
@@ -383,7 +383,7 @@ namespace ImGui::RHI
 			Format_R8G8B8A8_UNORM,
 			Present_Immediate,
 			2,
-			g_pipeline.GetRenderPass()
+			g_pipeline->GetRenderPass()
 		);
 	}
 

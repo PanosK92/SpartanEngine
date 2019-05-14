@@ -179,34 +179,6 @@ namespace Spartan
 			vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->indices.copy_family.value(), 0, &m_rhi_context->queue_copy);
 		}
 
-		// Descriptor pool
-		{
-			// Pool sizes
-			array<VkDescriptorPoolSize, 3> pool_sizes	= {};
-			pool_sizes[0].type							= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			pool_sizes[0].descriptorCount				= m_rhi_context->pool_max_constant_buffers_per_stage;
-			pool_sizes[1].type							= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			pool_sizes[1].descriptorCount				= m_rhi_context->pool_max_textures_per_stage;
-			pool_sizes[2].type							= VK_DESCRIPTOR_TYPE_SAMPLER;
-			pool_sizes[2].descriptorCount				= m_rhi_context->pool_max_samplers_per_stage;
-
-			// Create info
-			VkDescriptorPoolCreateInfo pool_create_info = {};
-			pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			pool_create_info.flags						= 0;
-			pool_create_info.poolSizeCount				= static_cast<uint32_t>(pool_sizes.size());
-			pool_create_info.pPoolSizes					= pool_sizes.data();
-			pool_create_info.maxSets					= m_rhi_context->descriptor_count;
-
-			// Pool
-			auto result = vkCreateDescriptorPool(m_rhi_context->device, &pool_create_info, nullptr, &m_rhi_context->descriptor_pool);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR("Failed to create descriptor pool, %s", Vulkan_Common::result_to_string(result));
-				return;
-			}
-		}
-
 		// Detect and log version
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
@@ -221,8 +193,6 @@ namespace Spartan
 	{	
 		// Wait for GPU
 		auto result = vkQueueWaitIdle(m_rhi_context->queue_graphics);
-
-		vkDestroyDescriptorPool(m_rhi_context->device, m_rhi_context->descriptor_pool, nullptr);
 
 		// Release resources
 		if (result == VK_SUCCESS)

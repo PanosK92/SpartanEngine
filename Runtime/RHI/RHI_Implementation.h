@@ -271,7 +271,6 @@ namespace Spartan
 		VkQueue queue_graphics						= nullptr;
 		VkQueue queue_present						= nullptr;
 		VkQueue queue_copy							= nullptr;
-		VkDescriptorPool descriptor_pool			= nullptr;
 		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
 		QueueFamilyIndices indices;
 		std::vector<const char*> validation_layers = { "VK_LAYER_KHRONOS_validation" };

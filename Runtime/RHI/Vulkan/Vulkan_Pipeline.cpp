@@ -46,6 +46,15 @@ using namespace std;
 
 namespace Spartan
 {
+	RHI_Pipeline::RHI_Pipeline(const shared_ptr<RHI_Device>& rhi_device)
+	{
+		m_rhi_device				= rhi_device;
+		m_desctiptor_set_capacity	= rhi_device->GetContext()->descriptor_count;
+		m_constant_buffer			= nullptr;
+		m_sampler					= nullptr;
+		m_primitive_topology		= PrimitiveTopology_NotAssigned;
+	}
+
 	RHI_Pipeline::~RHI_Pipeline()
 	{
 		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_graphics_pipeline), nullptr);
@@ -59,6 +68,9 @@ namespace Spartan
 
 		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
 		m_descriptor_set_layout = nullptr;
+
+		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+		m_descriptor_pool = nullptr;
 	}
 
 	inline VkRenderPass CreateRenderPass(const VkDevice& device)
@@ -124,45 +136,6 @@ namespace Spartan
 		}
 
 		return render_pass;
-	}
-
-	inline void CreateDescriptorSetLayout(const VkDevice& device, const map<string, Shader_Resource>& shader_resources, void*& descriptor_set_layout_out)
-	{
-		// Layout bindings
-		vector<VkDescriptorSetLayoutBinding> layout_bindings;
-		{
-			for (const auto& resource : shader_resources)
-			{
-				VkShaderStageFlags stage_flags = (resource.second.shader_type == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
-
-				layout_bindings.push_back
-				({
-					resource.second.slot,							// binding
-					vulkan_descriptor_type[resource.second.type],	// descriptorType
-					1,												// descriptorCount
-					stage_flags,									// stageFlags
-					nullptr											// pImmutableSamplers
-					});
-			}
-		}
-		
-		// Create info
-		VkDescriptorSetLayoutCreateInfo create_info	= {};
-		create_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		create_info.flags							= 0;
-		create_info.pNext							= nullptr;
-		create_info.bindingCount					= static_cast<uint32_t>(layout_bindings.size());
-		create_info.pBindings						= layout_bindings.data();
-
-		// Descriptor set layout
-		VkDescriptorSetLayout descriptor_set_layout;
-		auto result = vkCreateDescriptorSetLayout(device, &create_info, nullptr, &descriptor_set_layout);
-		if (result != VK_SUCCESS)
-		{
-			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::result_to_string(result));
-			return;
-		}
-		descriptor_set_layout_out = static_cast<void*>(descriptor_set_layout);
 	}
 
 	bool RHI_Pipeline::Create()
@@ -232,13 +205,10 @@ namespace Spartan
 		// Shader stages
 		vector<VkPipelineShaderStageCreateInfo> shader_stages = { shader_vertex_stage_info, shader_pixel_stage_info };
 
+		// Create descriptor pool and descriptor set layout
+		CreateDescriptorPool();
 		ReflectShaders();
-
-		// Descriptor set layout and descriptor sets
-		CreateDescriptorSetLayout(m_rhi_device->GetContext()->device, m_shader_resources, m_descriptor_set_layout);
-
-		// Vertex input state
-		//auto vertex_input_state = static_cast<VkPipelineVertexInputStateCreateInfo*>(m_shader_vertex->GetInputLayout()->GetBuffer());
+		CreateDescriptorSetLayout();
 
 		// Binding description
 		VkVertexInputBindingDescription binding_description = {};
@@ -256,10 +226,10 @@ namespace Spartan
 		// Vertex input state
 		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
 		vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_state.vertexBindingDescriptionCount = 1;
-		vertex_input_state.pVertexBindingDescriptions = &binding_description;
-		vertex_input_state.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_descs.size());
-		vertex_input_state.pVertexAttributeDescriptions = vertex_attribute_descs.data();
+		vertex_input_state.vertexBindingDescriptionCount	= 1;
+		vertex_input_state.pVertexBindingDescriptions		= &binding_description;
+		vertex_input_state.vertexAttributeDescriptionCount	= static_cast<uint32_t>(vertex_attribute_descs.size());
+		vertex_input_state.pVertexAttributeDescriptions		= vertex_attribute_descs.data();
 
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
@@ -360,10 +330,15 @@ namespace Spartan
 			return;
 
 		// Early exit if descriptor set already exists
-		if (m_descriptor_sets.count(texture->RHI_GetID()))
+		if (m_descriptor_set_cache.count(texture->RHI_GetID()))
 			return;
 
-		auto descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
+		// Early exit if the descriptor cache is full
+		if (m_descriptor_set_cache.size() == m_desctiptor_set_capacity)
+			return;
+
+		auto descriptor_pool		= static_cast<VkDescriptorPool>(m_descriptor_pool);
+		auto descriptor_set_layout	= static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
 
 		// Allocate descriptor set
 		VkDescriptorSet descriptor_set;
@@ -371,7 +346,7 @@ namespace Spartan
 			// Allocate info
 			VkDescriptorSetAllocateInfo allocate_info	= {};
 			allocate_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocate_info.descriptorPool				= m_rhi_device->GetContext()->descriptor_pool;
+			allocate_info.descriptorPool				= descriptor_pool;
 			allocate_info.descriptorSetCount			= 1;
 			allocate_info.pSetLayouts					= &descriptor_set_layout;
 
@@ -416,7 +391,97 @@ namespace Spartan
 			vkUpdateDescriptorSets(m_rhi_device->GetContext()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 		}
 
-		m_descriptor_sets[texture->RHI_GetID()] = static_cast<void*>(descriptor_set);
+		m_descriptor_set_cache[texture->RHI_GetID()] = static_cast<void*>(descriptor_set);
+	}
+
+	void RHI_Pipeline::OnCommandListConsumed()
+	{
+		// If the descriptor is full, re-allocate with double size
+
+		if (m_descriptor_set_cache.size() < m_desctiptor_set_capacity)
+			return;
+	
+		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
+		m_descriptor_set_layout = nullptr;
+
+		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+		m_descriptor_pool = nullptr;
+
+		m_desctiptor_set_capacity *= 2;
+		CreateDescriptorPool();
+		CreateDescriptorSetLayout();
+	}
+
+	bool RHI_Pipeline::CreateDescriptorPool()
+	{
+		// Pool sizes
+		VkDescriptorPoolSize pool_sizes[3]	= {};
+		pool_sizes[0].type					= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		pool_sizes[0].descriptorCount		= m_rhi_device->GetContext()->pool_max_constant_buffers_per_stage;
+		pool_sizes[1].type					= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		pool_sizes[1].descriptorCount		= m_rhi_device->GetContext()->pool_max_textures_per_stage;
+		pool_sizes[2].type					= VK_DESCRIPTOR_TYPE_SAMPLER;
+		pool_sizes[2].descriptorCount		= m_rhi_device->GetContext()->pool_max_samplers_per_stage;
+		
+		// Create info
+		VkDescriptorPoolCreateInfo pool_create_info = {};
+		pool_create_info.sType						= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		pool_create_info.flags						= 0;
+		pool_create_info.poolSizeCount				= static_cast<uint32_t>((sizeof(pool_sizes) / sizeof(*pool_sizes)));
+		pool_create_info.pPoolSizes					= pool_sizes;
+		pool_create_info.maxSets					= m_desctiptor_set_capacity;
+		
+		// Pool
+		auto descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
+		auto result = vkCreateDescriptorPool(m_rhi_device->GetContext()->device, &pool_create_info, nullptr, descriptor_pool);
+		if (result != VK_SUCCESS)
+		{
+			LOGF_ERROR("Failed to create descriptor pool, %s", Vulkan_Common::result_to_string(result));
+			return false;
+		}
+
+		return true;
+	}
+
+	bool RHI_Pipeline::CreateDescriptorSetLayout()
+	{
+		// Layout bindings
+		vector<VkDescriptorSetLayoutBinding> layout_bindings;
+		{
+			for (const auto& resource : m_shader_resources)
+			{
+				VkShaderStageFlags stage_flags = (resource.second.shader_type == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+
+				layout_bindings.push_back
+				({
+					resource.second.slot,							// binding
+					vulkan_descriptor_type[resource.second.type],	// descriptorType
+					1,												// descriptorCount
+					stage_flags,									// stageFlags
+					nullptr											// pImmutableSamplers
+					});
+			}
+		}
+
+		// Create info
+		VkDescriptorSetLayoutCreateInfo create_info = {};
+		create_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		create_info.flags							= 0;
+		create_info.pNext							= nullptr;
+		create_info.bindingCount					= static_cast<uint32_t>(layout_bindings.size());
+		create_info.pBindings						= layout_bindings.data();
+
+		// Descriptor set layout
+		VkDescriptorSetLayout descriptor_set_layout;
+		auto result = vkCreateDescriptorSetLayout(m_rhi_device->GetContext()->device, &create_info, nullptr, &descriptor_set_layout);
+		if (result != VK_SUCCESS)
+		{
+			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::result_to_string(result));
+			return false;
+		}
+
+		m_descriptor_set_layout = static_cast<void*>(descriptor_set_layout);
+		return true;
 	}
 
 	void RHI_Pipeline::ReflectShaders()
