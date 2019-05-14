@@ -63,7 +63,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 Feature     | Completion    | Notes 
 :-          | :-            | :-
 Shadows 	| 90%          	| Improve shadow mapping performance and enable spot & point light shadows.
-Vulkan      | 40%           | Don't port it, re-architect the engine instead.
+Vulkan      | 50%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
 - DirectX 12

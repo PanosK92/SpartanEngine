@@ -73,7 +73,6 @@ namespace Spartan
 		auto AddMipmap()												{ return &m_data.emplace_back(std::vector<std::byte>()); }
 
 		// GPU resources
-		auto GetResource_DescriptorSet() const								{ return m_descriptor_set; }
 		auto GetResource_Texture() const									{ return m_resource_texture; }
 		auto GetResource_RenderTarget()	const								{ return m_resource_render_target; }
 		auto GetResource_DepthStencil(const unsigned int index = 0) const	{ return index < m_resource_depth_stencils.size() ? m_resource_depth_stencils[index] : nullptr; }
@@ -105,7 +104,6 @@ namespace Spartan
 		// API - High level
 		void* m_resource_texture		= nullptr;
 		void* m_resource_render_target	= nullptr;
-		void* m_descriptor_set			= nullptr;
 		std::vector<void*> m_resource_depth_stencils;
 		unsigned int m_array_size = 1;
 		// API - Low level

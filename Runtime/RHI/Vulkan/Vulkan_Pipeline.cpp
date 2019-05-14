@@ -63,27 +63,27 @@ namespace Spartan
 
 	inline VkRenderPass CreateRenderPass(const VkDevice& device)
 	{
-		VkAttachmentDescription color_attachment = {};
-		color_attachment.format = VkFormat::VK_FORMAT_B8G8R8A8_UNORM; // this has to come from the swapchain
-		color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		VkAttachmentDescription color_attachment	= {};
+		color_attachment.format						= VkFormat::VK_FORMAT_B8G8R8A8_UNORM; // this has to come from the swapchain
+		color_attachment.samples					= VK_SAMPLE_COUNT_1_BIT;
+		color_attachment.loadOp						= VK_ATTACHMENT_LOAD_OP_CLEAR;
+		color_attachment.storeOp					= VK_ATTACHMENT_STORE_OP_STORE;
+		color_attachment.stencilLoadOp				= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		color_attachment.stencilStoreOp				= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		color_attachment.initialLayout				= VK_IMAGE_LAYOUT_UNDEFINED;
+		color_attachment.finalLayout				= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-		VkAttachmentReference color_attachment_ref = {};
-		color_attachment_ref.attachment = 0;
-		color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		VkAttachmentReference color_attachment_ref	= {};
+		color_attachment_ref.attachment				= 0;
+		color_attachment_ref.layout					= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-		VkSubpassDescription subpass = {};
-		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments = &color_attachment_ref;
+		VkSubpassDescription subpass	= {};
+		subpass.pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount	= 1;
+		subpass.pColorAttachments		= &color_attachment_ref;
 
 		// Sub-pass dependencies for layout transitions
-		std::vector<VkSubpassDependency> dependencies
+		vector<VkSubpassDependency> dependencies
 		{
 			VkSubpassDependency
 			{
@@ -130,97 +130,39 @@ namespace Spartan
 	{
 		// Layout bindings
 		vector<VkDescriptorSetLayoutBinding> layout_bindings;
-		for (const auto& resource : shader_resources)
 		{
-			VkShaderStageFlags stage_flags = (resource.second.shader_type == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+			for (const auto& resource : shader_resources)
+			{
+				VkShaderStageFlags stage_flags = (resource.second.shader_type == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
 
-			layout_bindings.push_back
-			({
-				resource.second.slot,							// binding
-				vulkan_descriptor_type[resource.second.type],	// descriptorType
-				1,												// descriptorCount
-				stage_flags,									// stageFlags
-				nullptr											// pImmutableSamplers
-				});
+				layout_bindings.push_back
+				({
+					resource.second.slot,							// binding
+					vulkan_descriptor_type[resource.second.type],	// descriptorType
+					1,												// descriptorCount
+					stage_flags,									// stageFlags
+					nullptr											// pImmutableSamplers
+					});
+			}
 		}
 		
-		// Descriptor set layout create info
-		VkDescriptorSetLayoutCreateInfo resource_layout_info	= {};
-		resource_layout_info.sType								= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		resource_layout_info.flags								= 0;
-		resource_layout_info.pNext								= nullptr;
-		resource_layout_info.bindingCount						= static_cast<uint32_t>(layout_bindings.size());
-		resource_layout_info.pBindings							= layout_bindings.data();
+		// Create info
+		VkDescriptorSetLayoutCreateInfo create_info	= {};
+		create_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		create_info.flags							= 0;
+		create_info.pNext							= nullptr;
+		create_info.bindingCount					= static_cast<uint32_t>(layout_bindings.size());
+		create_info.pBindings						= layout_bindings.data();
 
 		// Descriptor set layout
 		VkDescriptorSetLayout descriptor_set_layout;
-		auto result = vkCreateDescriptorSetLayout(device, &resource_layout_info, nullptr, &descriptor_set_layout);
+		auto result = vkCreateDescriptorSetLayout(device, &create_info, nullptr, &descriptor_set_layout);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::result_to_string(result));
 			return;
 		}
 		descriptor_set_layout_out = static_cast<void*>(descriptor_set_layout);
-	}
-
-	inline void CreateDescriptorSets(
-		const RHI_Context* rhi_context,
-		const VkDescriptorSetLayout& descriptor_set_layout,
-		const map<string, Shader_Resource>& shader_resources,
-		void*& descriptor_set_out,
-		RHI_ConstantBuffer* constant_buffer = nullptr,
-		RHI_Sampler* sampler				= nullptr,
-		void* texture						= nullptr
-	)
-	{
-		// Descriptor set allocate info
-		VkDescriptorSetAllocateInfo allocate_info	= {};
-		allocate_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocate_info.descriptorPool				= rhi_context->descriptor_pool;
-		allocate_info.descriptorSetCount			= 1;
-		allocate_info.pSetLayouts					= &descriptor_set_layout;
-
-		// Descriptor set
-		VkDescriptorSet descriptor_set;
-		auto result = vkAllocateDescriptorSets(rhi_context->device, &allocate_info, &descriptor_set);
-		if (result != VK_SUCCESS)
-		{
-			LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::result_to_string(result));
-			return;
-		}
-		descriptor_set_out = static_cast<void*>(descriptor_set);
-
-		VkDescriptorBufferInfo buffer_info	= {};
-		buffer_info.buffer					= constant_buffer ? static_cast<VkBuffer>(constant_buffer->GetResource()) : nullptr;
-		buffer_info.offset					= 0;
-		buffer_info.range					= constant_buffer ? constant_buffer->GetSize() : 0;
-
-		VkDescriptorImageInfo image_info	= {};
-		image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		image_info.imageView				= static_cast<VkImageView>(texture);
-		image_info.sampler					= sampler ? static_cast<VkSampler>(sampler->GetResource()) : nullptr;
-
-		// Descriptor Sets
-		vector<VkWriteDescriptorSet> write_descriptor_sets;
-
-		for (const auto& resource : shader_resources)
-		{
-			write_descriptor_sets.push_back
-			({
-				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,			// sType
-				nullptr,										// pNext
-				descriptor_set,									// dstSet
-				resource.second.slot,							// dstBinding
-				0,												// dstArrayElement
-				1,												// descriptorCount
-				vulkan_descriptor_type[resource.second.type],	// descriptorType
-				&image_info,									// pImageInfo 
-				&buffer_info,									// pBufferInfo
-				nullptr											// pTexelBufferView
-				});
-		}
-
-		vkUpdateDescriptorSets(rhi_context->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 	}
 
 	bool RHI_Pipeline::Create()
@@ -290,14 +232,19 @@ namespace Spartan
 		// Shader stages
 		vector<VkPipelineShaderStageCreateInfo> shader_stages = { shader_vertex_stage_info, shader_pixel_stage_info };
 
+		ReflectShaders();
+
+		// Descriptor set layout and descriptor sets
+		CreateDescriptorSetLayout(m_rhi_device->GetContext()->device, m_shader_resources, m_descriptor_set_layout);
+
 		// Vertex input state
 		//auto vertex_input_state = static_cast<VkPipelineVertexInputStateCreateInfo*>(m_shader_vertex->GetInputLayout()->GetBuffer());
 
 		// Binding description
 		VkVertexInputBindingDescription binding_description = {};
-		binding_description.binding = 0;
-		binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-		binding_description.stride = sizeof(float) * 4 + sizeof(uint32_t); // size of the vertex must be known here
+		binding_description.binding		= 0;
+		binding_description.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
+		binding_description.stride		= sizeof(float) * 4 + sizeof(uint32_t); // size of the vertex must be known here
 
 		// Vertex attributes description
 		uint32_t vertex_buffer_bind_id = 0;
@@ -362,25 +309,6 @@ namespace Spartan
 		color_blend_State.blendConstants[2]						= 0.0f;
 		color_blend_State.blendConstants[3]						= 0.0f;
 
-		// Merge vertex & index shader resources into map (to ensure unique values)
-		map<string, Shader_Resource> shader_resources;
-		while (m_shader_vertex->GetCompilationState() == Compilation_State::Shader_Compiling || m_shader_pixel->GetCompilationState() == Compilation_State::Shader_Compiling) {} // wait for shader to finish compilation
-		for (const auto& resource : m_shader_vertex->GetResources())shader_resources[resource.name] = resource;
-		for (const auto& resource : m_shader_pixel->GetResources())	shader_resources[resource.name] = resource;
-
-		// Descriptor set layout and descriptor sets
-		CreateDescriptorSetLayout(m_rhi_device->GetContext()->device, shader_resources, m_descriptor_set_layout);
-		CreateDescriptorSets
-		(
-			m_rhi_device->GetContext(),
-			static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout),
-			shader_resources,
-			m_descriptor_set,
-			m_constant_buffer.get(),
-			m_sampler.get(),
-			m_texture->GetResource_Texture()
-		);
-
 		// Pipeline layout create info
 		auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
@@ -424,6 +352,81 @@ namespace Spartan
 		m_graphics_pipeline = static_cast<void*>(graphics_pipeline);
 
 		return true;
+	}
+
+	void RHI_Pipeline::UpdateDescriptorSets(RHI_Texture* texture /*= nullptr*/)
+	{
+		if (!texture || !texture->GetResource_Texture())
+			return;
+
+		// Early exit if descriptor set already exists
+		if (m_descriptor_sets.count(texture->RHI_GetID()))
+			return;
+
+		auto descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
+
+		// Allocate descriptor set
+		VkDescriptorSet descriptor_set;
+		{
+			// Allocate info
+			VkDescriptorSetAllocateInfo allocate_info	= {};
+			allocate_info.sType							= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocate_info.descriptorPool				= m_rhi_device->GetContext()->descriptor_pool;
+			allocate_info.descriptorSetCount			= 1;
+			allocate_info.pSetLayouts					= &descriptor_set_layout;
+
+			// Allocate		
+			auto result = vkAllocateDescriptorSets(m_rhi_device->GetContext()->device, &allocate_info, &descriptor_set);
+			if (result != VK_SUCCESS)
+			{
+				LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::result_to_string(result));
+				return;
+			}
+		}
+
+		// Update descriptor sets
+		{
+			VkDescriptorImageInfo image_info	= {};
+			image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			image_info.imageView				= texture ? static_cast<VkImageView>(texture->GetResource_Texture()) : nullptr;
+			image_info.sampler					= m_sampler ? static_cast<VkSampler>(m_sampler->GetResource()) : nullptr;
+
+			VkDescriptorBufferInfo buffer_info	= {};
+			buffer_info.buffer					= m_constant_buffer ? static_cast<VkBuffer>(m_constant_buffer->GetResource()) : nullptr;
+			buffer_info.offset					= 0;
+			buffer_info.range					= m_constant_buffer ? m_constant_buffer->GetSize() : 0;
+
+			vector<VkWriteDescriptorSet> write_descriptor_sets;
+			for (const auto& resource : m_shader_resources)
+			{
+				write_descriptor_sets.push_back
+				({
+					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,			// sType
+					nullptr,										// pNext
+					descriptor_set,									// dstSet
+					resource.second.slot,							// dstBinding
+					0,												// dstArrayElement
+					1,												// descriptorCount
+					vulkan_descriptor_type[resource.second.type],	// descriptorType
+					&image_info,									// pImageInfo 
+					&buffer_info,									// pBufferInfo
+					nullptr											// pTexelBufferView
+				});
+			}
+			vkUpdateDescriptorSets(m_rhi_device->GetContext()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
+		}
+
+		m_descriptor_sets[texture->RHI_GetID()] = static_cast<void*>(descriptor_set);
+	}
+
+	void RHI_Pipeline::ReflectShaders()
+	{
+		// Wait for shaders to finish compilation
+		while (m_shader_vertex->GetCompilationState() == Compilation_State::Shader_Compiling || m_shader_pixel->GetCompilationState() == Compilation_State::Shader_Compiling) {} 
+
+		// Merge vertex & index shader resources into map (to ensure unique values)
+		for (const auto& resource : m_shader_vertex->GetResources())	m_shader_resources[resource.name] = resource;
+		for (const auto& resource : m_shader_pixel->GetResources())		m_shader_resources[resource.name] = resource;
 	}
 }
 #endif

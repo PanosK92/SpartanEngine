@@ -24,7 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
+#include "RHI_Shader.h"
 #include <memory>
+#include <map>
 #include "../Math/Rectangle.h"
 //============================
 
@@ -37,16 +39,17 @@ namespace Spartan
 		~RHI_Pipeline();
 	
 		bool Create();
+		void UpdateDescriptorSets(RHI_Texture* texture = nullptr);
 
-		auto GetPipeline() const		{ return m_graphics_pipeline; }
-		auto GetPipelineLayout() const	{ return m_pipeline_layout; }
-		auto GetRenderPass() const		{ return m_render_pass; }
-		auto GetDescriptorSet() const	{ return m_descriptor_set; }
+		auto GetPipeline() const			{ return m_graphics_pipeline; }
+		auto GetPipelineLayout() const		{ return m_pipeline_layout; }
+		auto GetRenderPass() const			{ return m_render_pass; }
+		auto GetDescriptorSet(uint32_t id) 	{ return m_descriptor_sets.count(id) ? m_descriptor_sets[id] : nullptr; }
+		auto GetDescriptorSet()				{ return m_descriptor_sets.size() ? m_descriptor_sets.begin()->second : nullptr; }
 
 		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_Shader> m_shader_vertex;
 		std::shared_ptr<RHI_Shader> m_shader_pixel;
-		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer;
 		std::shared_ptr<RHI_InputLayout> m_input_layout;	
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_state;
 		std::shared_ptr<RHI_BlendState> m_blend_state;
@@ -54,16 +57,18 @@ namespace Spartan
 		RHI_Viewport m_viewport;
 		Math::Rectangle m_scissor;
 		RHI_PrimitiveTopology_Mode m_primitive_topology;
-
-		// Temp
-		std::shared_ptr<RHI_Texture> m_texture;
-		std::shared_ptr<RHI_Sampler> m_sampler;
+		RHI_Sampler* m_sampler;
+		RHI_ConstantBuffer* m_constant_buffer;
 
 	private:
+		void ReflectShaders();
+
+		std::map<std::string, Shader_Resource> m_shader_resources;
+
 		void* m_graphics_pipeline		= nullptr;
 		void* m_pipeline_layout			= nullptr;
 		void* m_render_pass				= nullptr;
 		void* m_descriptor_set_layout	= nullptr;
-		void* m_descriptor_set			= nullptr;
+		std::map<uint32_t, void*> m_descriptor_sets;
 	};
 }
