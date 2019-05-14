@@ -45,14 +45,14 @@ using namespace std;
 using namespace Spartan::Math;
 //=============================
 
-#define CMD_BUFFER_VK				static_cast<VkCommandBuffer>(m_cmd_buffers[m_current_frame])
-#define FENCE_SUBMIT_FINISHED		m_fences_in_flight[m_current_frame]
-#define FENCE_SUBMIT_FINISHED_VK	static_cast<VkFence>(FENCE_SUBMIT_FINISHED)
-#define SEMAPHORE_RENDER_FINISHED	static_cast<VkSemaphore>(m_semaphores_render_finished[m_current_frame])
+#define CMD_LIST							static_cast<VkCommandBuffer>(m_cmd_buffers[m_current_frame])
+#define FENCE_CMD_LIST_CONSUMED_VOID_PTR	m_fences_in_flight[m_current_frame]
+#define FENCE_CMD_LIST_CONSUMED				static_cast<VkFence>(m_fences_in_flight[m_current_frame])
+#define SEMAPHORE_CMD_LIST_CONSUMED			static_cast<VkSemaphore>(m_semaphores_render_finished[m_current_frame])
 
 namespace Spartan
 {
-	RHI_CommandList::RHI_CommandList(const std::shared_ptr<RHI_Device>& rhi_device, Profiler* profiler)
+	RHI_CommandList::RHI_CommandList(const shared_ptr<RHI_Device>& rhi_device, Profiler* profiler)
 	{
 		m_rhi_device	= rhi_device;
 		m_profiler		= profiler;
@@ -116,9 +116,8 @@ namespace Spartan
 		// Sync CPU to GPU
 		if (m_sync_cpu_to_gpu)
 		{
-			Vulkan_Common::fence::wait_reset(m_rhi_device, FENCE_SUBMIT_FINISHED);
-			SPARTAN_ASSERT(vkResetCommandPool(m_rhi_device->GetContext()->device, static_cast<VkCommandPool>(m_cmd_pool), 0) == VK_SUCCESS);
-			m_current_frame = (m_current_frame + 1) % m_swap_chain->GetBufferCount();
+			Vulkan_Common::fence::wait_reset(m_rhi_device, FENCE_CMD_LIST_CONSUMED_VOID_PTR);
+			OnCmdListConsumed();
 			m_sync_cpu_to_gpu = false;
 		}
 
@@ -126,7 +125,7 @@ namespace Spartan
 		VkCommandBufferBeginInfo beginInfo	= {};
 		beginInfo.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		auto result = vkBeginCommandBuffer(CMD_BUFFER_VK, &beginInfo);
+		auto result = vkBeginCommandBuffer(CMD_LIST, &beginInfo);
 		if (result != VK_SUCCESS) 
 		{
 			LOGF_ERROR("Failed to begin recording command buffer, %s.", Vulkan_Common::result_to_string(result));
@@ -134,7 +133,7 @@ namespace Spartan
 		}
 
 		// Begin render pass
-		VkClearValue clear_color					= { 1.0f, 0.0f, 0.0f, 1.0f };
+		VkClearValue clear_color					= { 0.0f, 0.0f, 0.0f, 1.0f };
 		VkRenderPassBeginInfo render_pass_info		= {};
 		render_pass_info.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		render_pass_info.renderPass					= static_cast<VkRenderPass>(render_pass);
@@ -144,7 +143,7 @@ namespace Spartan
 		render_pass_info.renderArea.extent.height	= static_cast<uint32_t>(swap_chain->GetHeight());
 		render_pass_info.clearValueCount			= 1;
 		render_pass_info.pClearValues				= &clear_color;
-		vkCmdBeginRenderPass(CMD_BUFFER_VK, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(CMD_LIST, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
 		m_is_recording = true;
 	}
@@ -154,9 +153,9 @@ namespace Spartan
 		if (!m_is_recording)
 			return;
 
-		vkCmdEndRenderPass(CMD_BUFFER_VK);
+		vkCmdEndRenderPass(CMD_LIST);
 
-		auto result = vkEndCommandBuffer(CMD_BUFFER_VK);
+		auto result = vkEndCommandBuffer(CMD_LIST);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to end command buffer, %s.", Vulkan_Common::result_to_string(result));
@@ -171,7 +170,7 @@ namespace Spartan
 		if (!m_is_recording)
 			return;
 
-		vkCmdDraw(CMD_BUFFER_VK, vertex_count, 1, 0, 0);
+		vkCmdDraw(CMD_LIST, vertex_count, 1, 0, 0);
 	}
 
 	void RHI_CommandList::DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset)
@@ -179,7 +178,7 @@ namespace Spartan
 		if (!m_is_recording)
 			return;
 
-		vkCmdDrawIndexed(CMD_BUFFER_VK, index_count, 1, index_offset, vertex_offset, 0);
+		vkCmdDrawIndexed(CMD_LIST, index_count, 1, index_offset, vertex_offset, 0);
 	}
 
 	void RHI_CommandList::SetPipeline(RHI_Pipeline* pipeline)
@@ -188,23 +187,7 @@ namespace Spartan
 			return;
 
 		m_pipeline = pipeline;
-
-		vkCmdBindPipeline(CMD_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetPipeline()));
-
-		if (auto descriptor_set = static_cast<VkDescriptorSet>(pipeline->GetDescriptorSet()))
-		{
-			vkCmdBindDescriptorSets
-			(
-				CMD_BUFFER_VK,
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				static_cast<VkPipelineLayout>(pipeline->GetPipelineLayout()),
-				0,
-				1,
-				&descriptor_set,
-				0,
-				nullptr
-			);
-		}
+		vkCmdBindPipeline(CMD_LIST, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->GetPipeline()));
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
@@ -219,7 +202,7 @@ namespace Spartan
 		vk_viewport.height		= viewport.GetHeight();
 		vk_viewport.minDepth	= viewport.GetMinDepth();
 		vk_viewport.maxDepth	= viewport.GetMaxDepth();
-		vkCmdSetViewport(CMD_BUFFER_VK, 0, 1, &vk_viewport);
+		vkCmdSetViewport(CMD_LIST, 0, 1, &vk_viewport);
 	}
 
 	void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle)
@@ -232,7 +215,7 @@ namespace Spartan
 		vk_scissor.offset.y			= static_cast<int32_t>(scissor_rectangle.y);
 		vk_scissor.extent.width		= static_cast<uint32_t>(scissor_rectangle.width);
 		vk_scissor.extent.height	= static_cast<uint32_t>(scissor_rectangle.height);
-		vkCmdSetScissor(CMD_BUFFER_VK, 0, 1, &vk_scissor);
+		vkCmdSetScissor(CMD_LIST, 0, 1, &vk_scissor);
 	}
 
 	void RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology)
@@ -272,7 +255,7 @@ namespace Spartan
 
 		VkBuffer vertex_buffers[]	= { static_cast<VkBuffer>(buffer->GetResource()) };
 		VkDeviceSize offsets[]		= { 0 };
-		vkCmdBindVertexBuffers(CMD_BUFFER_VK, 0, 1, vertex_buffers, offsets);
+		vkCmdBindVertexBuffers(CMD_LIST, 0, 1, vertex_buffers, offsets);
 	}
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -281,8 +264,8 @@ namespace Spartan
 			return;
 
 		vkCmdBindIndexBuffer(
-			CMD_BUFFER_VK,
-			static_cast<VkBuffer>(buffer->GetResource()),						// buffer
+			CMD_LIST,
+			static_cast<VkBuffer>(buffer->GetResource()),					// buffer
 			0,																// offset
 			buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // index type
 		);
@@ -344,7 +327,7 @@ namespace Spartan
 		if (void* descriptor_set = m_pipeline->GetDescriptorSet(texture->RHI_GetID()))
 		{
 			VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
-			vkCmdBindDescriptorSets(CMD_BUFFER_VK, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
+			vkCmdBindDescriptorSets(CMD_LIST, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
 		}
 	}
 
@@ -391,7 +374,7 @@ namespace Spartan
 
 		// Prepare semaphores
 		VkSemaphore wait_semaphores[]		= { static_cast<VkSemaphore>(m_swap_chain->GetSemaphoreImageAcquired()) };
-		VkSemaphore signal_semaphores[]		= { SEMAPHORE_RENDER_FINISHED };
+		VkSemaphore signal_semaphores[]		= { SEMAPHORE_CMD_LIST_CONSUMED };
 		VkPipelineStageFlags wait_flags[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 		VkSubmitInfo submit_info			= {};
@@ -400,17 +383,17 @@ namespace Spartan
 		submit_info.pWaitSemaphores			= wait_semaphores;
 		submit_info.pWaitDstStageMask		= wait_flags;
 		submit_info.commandBufferCount		= 1;
-		submit_info.pCommandBuffers			= &CMD_BUFFER_VK;
+		submit_info.pCommandBuffers			= &CMD_LIST;
 		submit_info.signalSemaphoreCount	= 1;
 		submit_info.pSignalSemaphores		= signal_semaphores;
 
-		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, FENCE_SUBMIT_FINISHED_VK);
+		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, FENCE_CMD_LIST_CONSUMED);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::result_to_string(result));
 		}
 		
-		// This will at the next possible begin, we don't have to halt the CPU now
+		// Request syncing, don't force wait for fence right now
 		m_sync_cpu_to_gpu = true;
 
 		return result == VK_SUCCESS;
@@ -424,6 +407,13 @@ namespace Spartan
 	void RHI_CommandList::Clear()
 	{
 
+	}
+
+	void RHI_CommandList::OnCmdListConsumed()
+	{
+		SPARTAN_ASSERT(vkResetCommandPool(m_rhi_device->GetContext()->device, static_cast<VkCommandPool>(m_cmd_pool), 0) == VK_SUCCESS);
+		m_pipeline->OnCommandListConsumed();
+		m_current_frame	= (m_current_frame + 1) % m_swap_chain->GetBufferCount();
 	}
 }
 

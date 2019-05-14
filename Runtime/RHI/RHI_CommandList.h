@@ -225,6 +225,7 @@ namespace Spartan
 		const auto& GetSemaphoreRenderFinished() { return !m_semaphores_render_finished.empty() ? m_semaphores_render_finished[m_current_frame] : nullptr; }
 
 	private:
+		void OnCmdListConsumed();
 		void Clear();
 
 		RHI_SwapChain* m_swap_chain = nullptr;
@@ -248,7 +249,7 @@ namespace Spartan
 
 		// Dependencies
 		std::vector<void*> m_textures_empty	= std::vector<void*>(10);
-		Profiler* m_profiler				= nullptr;
+		Profiler* m_profiler = nullptr;
 		std::shared_ptr<RHI_Device> m_rhi_device;		
 	};
 }

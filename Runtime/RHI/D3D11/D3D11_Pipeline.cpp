@@ -30,8 +30,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Pipeline.h"
 //==========================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Spartan
 {
+	RHI_Pipeline::RHI_Pipeline(const shared_ptr<RHI_Device>& rhi_device)
+	{
+		m_rhi_device = rhi_device;
+	}
+
 	RHI_Pipeline::~RHI_Pipeline()
 	{
 
