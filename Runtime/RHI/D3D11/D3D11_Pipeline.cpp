@@ -41,5 +41,10 @@ namespace Spartan
 	{
 		return true;
 	}
+
+	void RHI_Pipeline::UpdateDescriptorSets(RHI_Texture* texture /*= nullptr*/)
+	{
+
+	}
 }
 #endif
