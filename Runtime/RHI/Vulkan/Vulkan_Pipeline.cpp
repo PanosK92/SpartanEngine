@@ -140,13 +140,8 @@ namespace Spartan
 
 	bool RHI_Pipeline::Create()
 	{
-		bool dynamic_viewport_scissor = false;
-
 		// State deduction
-		if (!m_viewport.IsDefined())
-		{
-			dynamic_viewport_scissor = true;
-		}
+		bool dynamic_viewport_scissor = !m_viewport.IsDefined();
 
 		// Create render pass
 		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
@@ -225,11 +220,11 @@ namespace Spartan
 
 		// Vertex input state
 		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
-		vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_state.vertexBindingDescriptionCount	= 1;
-		vertex_input_state.pVertexBindingDescriptions		= &binding_description;
-		vertex_input_state.vertexAttributeDescriptionCount	= static_cast<uint32_t>(vertex_attribute_descs.size());
-		vertex_input_state.pVertexAttributeDescriptions		= vertex_attribute_descs.data();
+		vertex_input_state.sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertex_input_state.vertexBindingDescriptionCount		= 1;
+		vertex_input_state.pVertexBindingDescriptions			= &binding_description;
+		vertex_input_state.vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attribute_descs.size());
+		vertex_input_state.pVertexAttributeDescriptions			= vertex_attribute_descs.data();
 
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
@@ -242,9 +237,9 @@ namespace Spartan
 		rasterizer_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizer_state.depthClampEnable						= VK_FALSE;
 		rasterizer_state.rasterizerDiscardEnable				= VK_FALSE;
-		rasterizer_state.polygonMode							= vulkan_polygon_Mode[m_rasterizer_state->GetFillMode()];
+		rasterizer_state.polygonMode							= vulkan_polygon_mode[m_rasterizer_state->GetFillMode()];
 		rasterizer_state.lineWidth								= 1.0f;
-		rasterizer_state.cullMode								= vulkan_cull_Mode[m_rasterizer_state->GetCullMode()];
+		rasterizer_state.cullMode								= vulkan_cull_mode[m_rasterizer_state->GetCullMode()];
 		rasterizer_state.frontFace								= VK_FRONT_FACE_CLOCKWISE;
 		rasterizer_state.depthBiasEnable						= VK_FALSE;
 		rasterizer_state.depthBiasConstantFactor				= 0.0f;
@@ -459,7 +454,7 @@ namespace Spartan
 					1,												// descriptorCount
 					stage_flags,									// stageFlags
 					nullptr											// pImmutableSamplers
-					});
+				});
 			}
 		}
 

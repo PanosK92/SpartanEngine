@@ -40,7 +40,7 @@ namespace Spartan
 	mutex Log::m_mutex;
 	string Log::m_caller_name;
 	string Log::m_log_file_name	= "log.txt";
-	bool Log::m_log_to_file		= true; // start logging to file (unless changed by the user, e.g. Renderer initialization was succesfull, so logging can happen on screen)
+	bool Log::m_log_to_file		= true; // start logging to file (unless changed by the user, e.g. Renderer initialization was successful, so logging can happen on screen)
 	bool Log::m_first_log		= true;
 
 	void Log::SetLogger(const weak_ptr<ILogger>& logger)
@@ -51,7 +51,7 @@ namespace Spartan
 	// Everything resolves to this
 	void Log::Write(const char* text, const Log_Type type)
 	{
-		auto formated_text = !m_caller_name.empty() ? m_caller_name + ": " + std::string(text) : std::string(text);
+		auto formated_text = !m_caller_name.empty() ? m_caller_name + ": " + string(text) : string(text);
 
 		const auto log_to_file = m_logger.expired() || m_log_to_file;
 		log_to_file ? LogToFile(formated_text.c_str(), type) : LogString(formated_text.c_str(), type);
@@ -132,6 +132,7 @@ namespace Spartan
 		lock_guard<mutex> guard(m_mutex);
 		m_logger.lock()->Log(string(text), type);
 	}
+
 	void Log::LogToFile(const char* text, const Log_Type type)
 	{
 		lock_guard<mutex> guard(m_mutex);
@@ -146,13 +147,16 @@ namespace Spartan
 			m_first_log = false;
 		}
 
-		// Open/Create a log file to write the error message to.
+		// Open/Create a log file to write the error message to
 		m_fout.open(m_log_file_name, ofstream::out | ofstream::app);
 
-		// Write out the error message.
-		m_fout << final_text << endl;
+		if (m_fout.is_open())
+		{
+			// Write out the error message
+			m_fout << final_text << endl;
 
-		// Close the file.
-		m_fout.close();
+			// Close the file
+			m_fout.close();
+		}
 	}
 }
