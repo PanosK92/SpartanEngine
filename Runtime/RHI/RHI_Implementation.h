@@ -158,13 +158,13 @@ namespace Spartan
 #pragma warning(pop)
 #include <optional>
 
-static const VkPolygonMode vulkan_polygon_Mode[] =
+static const VkPolygonMode vulkan_polygon_mode[] =
 {
 	VK_POLYGON_MODE_FILL,
 	VK_POLYGON_MODE_LINE
 };
 
-static const VkCullModeFlags vulkan_cull_Mode[] =
+static const VkCullModeFlags vulkan_cull_mode[] =
 {	
 	VK_CULL_MODE_NONE,
 	VK_CULL_MODE_FRONT_BIT,

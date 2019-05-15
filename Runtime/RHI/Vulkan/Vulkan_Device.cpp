@@ -198,8 +198,8 @@ namespace Spartan
 		if (result == VK_SUCCESS)
 		{
 			Vulkan_Common::debug_callback::destroy(m_rhi_context);
-			vkDestroyInstance(m_rhi_context->instance, nullptr);
 			vkDestroyDevice(m_rhi_context->device, nullptr);
+			vkDestroyInstance(m_rhi_context->instance, nullptr);
 			safe_delete(m_rhi_context);
 		}
 		else

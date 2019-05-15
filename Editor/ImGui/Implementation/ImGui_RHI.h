@@ -340,7 +340,7 @@ namespace ImGui::RHI
 					
 					// Apply scissor rectangle, bind texture and draw
 					g_cmd_list->SetScissorRectangle(scissor_rect);
-					g_cmd_list->SetTexture(0, pcmd->TextureId ? static_cast<RHI_Texture*>(pcmd->TextureId) : nullptr);
+					g_cmd_list->SetTexture(0, static_cast<RHI_Texture*>(pcmd->TextureId));
 					g_cmd_list->DrawIndexed(pcmd->ElemCount, idx_offset, vtx_offset);
 				}
 				idx_offset += pcmd->ElemCount;
@@ -389,26 +389,20 @@ namespace ImGui::RHI
 
 	static void _DestroyWindow(ImGuiViewport* viewport)
 	{
-		if (!viewport || !viewport->RendererUserData)
+		if (!viewport)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
 
 		auto swap_chain = static_cast<RHI_SwapChain*>(viewport->RendererUserData);
-		if (!swap_chain)
-		{
-			LOG_ERROR_INVALID_INTERNALS();
-			return;
-		}
-
 		safe_delete(swap_chain);
 		viewport->RendererUserData = nullptr;
 	}
 
 	static void _SetWindowSize(ImGuiViewport* viewport, const ImVec2 size)
 	{
-		if (!viewport || !viewport->RendererUserData)
+		if (!viewport)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -429,7 +423,7 @@ namespace ImGui::RHI
 
 	static void _RenderWindow(ImGuiViewport* viewport, void*)
 	{
-		if (!viewport || !viewport->RendererUserData)
+		if (!viewport)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -448,7 +442,7 @@ namespace ImGui::RHI
 
 	static void _Present(ImGuiViewport* viewport, void*)
 	{
-		if (!viewport || !viewport->RendererUserData)
+		if (!viewport)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
