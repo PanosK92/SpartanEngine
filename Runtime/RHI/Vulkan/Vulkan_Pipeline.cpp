@@ -391,17 +391,23 @@ namespace Spartan
 
 	void RHI_Pipeline::OnCommandListConsumed()
 	{
-		// If the descriptor is full, re-allocate with double size
+		// If the descriptor pool is full, re-allocate with double size
 
 		if (m_descriptor_set_cache.size() < m_desctiptor_set_capacity)
 			return;
 	
+		// Destroy layout
 		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
 		m_descriptor_set_layout = nullptr;
 
+		// Destroy pool
 		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
 		m_descriptor_pool = nullptr;
 
+		// Clear cache (as it holds sets belonging to the destroyed pool)
+		m_descriptor_set_cache.clear();
+
+		// Re-allocate everything with double size
 		m_desctiptor_set_capacity *= 2;
 		CreateDescriptorPool();
 		CreateDescriptorSetLayout();
