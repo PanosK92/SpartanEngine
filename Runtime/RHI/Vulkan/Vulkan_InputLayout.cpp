@@ -43,35 +43,59 @@ namespace Spartan
 
 	RHI_InputLayout::~RHI_InputLayout()
 	{
-		safe_delete(m_buffer);
+		safe_delete(m_resource);
 	}
 
 	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes)
 	{
-		// Binding description
-		VkVertexInputBindingDescription binding_description = {};
-		binding_description.binding							= 0;
-		binding_description.inputRate						= VK_VERTEX_INPUT_RATE_VERTEX;
-		binding_description.stride							= sizeof(float) * 8; // size of the vertex must be known here
-
-		// Vertex attributes description
+		uint32_t location = 0;
 		uint32_t vertex_buffer_bind_id = 0;
-		vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
-		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 0, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, 0 });
-		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 1, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 2 });
-		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 2, vertex_buffer_bind_id, VK_FORMAT_R8G8B8A8_UNORM, sizeof(float) * 4 });
-		
-		// Vertex input state
-		auto* vertex_input_state = new VkPipelineVertexInputStateCreateInfo();
-		vertex_input_state->sType								= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_state->vertexBindingDescriptionCount		= 1;
-		vertex_input_state->pVertexBindingDescriptions			= &binding_description;
-		vertex_input_state->vertexAttributeDescriptionCount		= static_cast<uint32_t>(vertex_attribute_descs.size());
-		vertex_input_state->pVertexAttributeDescriptions		= reinterpret_cast<const VkVertexInputAttributeDescription*>(vertex_attribute_descs.data());
 
-		// Save
-		m_buffer = static_cast<void*>(vertex_input_state);
-		
+		m_attribute_descs.emplace_back(0, vertex_buffer_bind_id, Format_R32G32_FLOAT,	0);
+		m_attribute_descs.emplace_back(1, vertex_buffer_bind_id, Format_R32G32_FLOAT,	sizeof(float) * 2);
+		m_attribute_descs.emplace_back(2, vertex_buffer_bind_id, Format_R8G8B8A8_UNORM, sizeof(float) * 4);
+
+		// POSITION
+		//{
+		//	if (m_vertex_attributes & Vertex_Attribute_Position2d)
+		//	{
+		//		m_attribute_descs.emplace_back(location, vertex_buffer_bind_id, Format_R32G32_FLOAT, 0);
+		//	}
+		//	else if (m_vertex_attributes & Vertex_Attribute_Position3d)
+		//	{
+		//		m_attribute_descs.emplace_back(location, vertex_buffer_bind_id, Format_R32G32B32_FLOAT, 0);
+		//	}
+		//}
+
+		//// TEXTURE
+		//location = 1;
+		//if (m_vertex_attributes & Vertex_Attribute_Texture)
+		//{
+		//	m_attribute_descs.emplace_back(location, vertex_buffer_bind_id, Format_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0);
+		//}
+
+		//// COLOR
+		//location = 2;
+		//{
+		//	if (m_vertex_attributes & Vertex_Attribute_Color8)
+		//	{
+		//		m_attribute_descs.emplace_back(location, vertex_buffer_bind_id, Format_R8G8B8A8_UNORM, 0);
+		//	}
+
+		//	if (m_vertex_attributes & Vertex_Attribute_Color32)
+		//	{
+		//		m_attribute_descs.emplace_back(location, vertex_buffer_bind_id, Format_R32G32B32A32_FLOAT, 0);
+		//	}
+		//}
+
+		//// NORMAL & TANGENT
+		//location = 3;
+		//if (m_vertex_attributes & Vertex_Attribute_NormalTangent)
+		//{
+		//	m_attribute_descs.emplace_back(location, vertex_buffer_bind_id, Format_R32G32B32A32_FLOAT, 0);
+		//	m_attribute_descs.emplace_back(location, vertex_buffer_bind_id, Format_R32G32B32A32_FLOAT, 0);
+		//}
+			
 		return true;
 	}
 }

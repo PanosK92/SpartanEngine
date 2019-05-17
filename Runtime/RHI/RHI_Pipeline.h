@@ -59,6 +59,7 @@ namespace Spartan
 		RHI_PrimitiveTopology_Mode m_primitive_topology = PrimitiveTopology_NotAssigned;
 		RHI_Sampler* m_sampler							= nullptr;
 		RHI_ConstantBuffer* m_constant_buffer			= nullptr;
+		RHI_VertexBuffer* m_vertex_buffer				= nullptr;
 
 	private:
 		bool CreateDescriptorPool();

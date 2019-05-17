@@ -372,7 +372,7 @@ namespace Spartan
 
 				case RHI_Cmd_SetInputLayout:
 				{
-					device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(cmd.input_layout->GetBuffer()));
+					device_context->IASetInputLayout(static_cast<ID3D11InputLayout*>(cmd.input_layout->GetResource()));
 					break;
 				}
 
