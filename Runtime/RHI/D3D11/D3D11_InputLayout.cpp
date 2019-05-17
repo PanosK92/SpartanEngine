@@ -43,7 +43,7 @@ namespace Spartan
 
 	RHI_InputLayout::~RHI_InputLayout()
 	{
-		safe_release(static_cast<ID3D11InputLayout*>(m_buffer));
+		safe_release(static_cast<ID3D11InputLayout*>(m_resource));
 	}
 
 	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes)
@@ -96,7 +96,7 @@ namespace Spartan
 			static_cast<UINT>(attribute_desc.size()),
 			d3d_blob->GetBufferPointer(),
 			d3d_blob->GetBufferSize(),
-			reinterpret_cast<ID3D11InputLayout**>(&m_buffer)
+			reinterpret_cast<ID3D11InputLayout**>(&m_resource)
 		)))
 		{
 			LOG_ERROR("Failed to create input layout");

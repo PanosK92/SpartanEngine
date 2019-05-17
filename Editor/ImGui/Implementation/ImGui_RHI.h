@@ -81,7 +81,7 @@ namespace ImGui::RHI
 		g_pipeline			= make_shared<RHI_Pipeline>(g_rhi_device);
 		g_fontSampler		= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
 		g_constant_buffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
-		g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_rhi_device);
+		g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_rhi_device, sizeof(ImDrawVert));
 		g_indexBuffer		= make_shared<RHI_IndexBuffer>(g_rhi_device);
 
 		// Setup back-end capabilities flags
@@ -185,6 +185,7 @@ namespace ImGui::RHI
 			g_pipeline->m_input_layout			= shader->GetInputLayout();
 			g_pipeline->m_primitive_topology	= PrimitiveTopology_TriangleList;
 			g_pipeline->m_sampler				= g_fontSampler.get();
+			g_pipeline->m_vertex_buffer			= g_vertexBuffer.get();
 
 			if (!g_pipeline->Create())
 			{

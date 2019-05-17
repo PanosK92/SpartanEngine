@@ -23,12 +23,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <memory>
+#include <vector>
 #include "RHI_Definition.h"
 #include "../Core/EngineDefs.h"
 //=============================
 
 namespace Spartan
 {
+	struct VertexInputAttributeDescription 
+	{
+		VertexInputAttributeDescription(uint32_t location, uint32_t binding, RHI_Format format, uint32_t offset)
+		{
+			this->location		= location;
+			this->binding		= binding;
+			this->format		= format;
+			this->offset		= offset;
+		}
+
+		uint32_t location;
+		uint32_t binding;
+		RHI_Format format;
+		uint32_t offset;
+	};
+
 	class SPARTAN_CLASS RHI_InputLayout
 	{
 	public:
@@ -36,12 +53,16 @@ namespace Spartan
 		~RHI_InputLayout();
 
 		bool Create(void* vertex_shader_blob, RHI_Vertex_Attribute_Type vertex_attributes);
-		auto GetVertexAttributes() const	{ return m_vertex_attributes; }
-		auto GetBuffer() const				{ return m_buffer; }
+		auto GetVertexAttributes() const		{ return m_vertex_attributes; }
+		const auto& GetAttributeDescriptions()	{ return m_attribute_descs; }
+		auto GetResource() const				{ return m_resource; }
 
 	private:		
 		RHI_Vertex_Attribute_Type m_vertex_attributes = Vertex_Attribute_None;
-		void* m_buffer = nullptr;
+
+		// API
+		void* m_resource = nullptr;
 		std::shared_ptr<RHI_Device> m_rhi_device;
+		std::vector<VertexInputAttributeDescription> m_attribute_descs;
 	};
 }

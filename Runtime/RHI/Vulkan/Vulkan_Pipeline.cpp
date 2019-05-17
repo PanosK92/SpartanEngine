@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Matrix.h"
+#include "../RHI_VertexBuffer.h"
 //=================================
 
 //= NAMESPACES =====
@@ -198,7 +199,7 @@ namespace Spartan
 		shader_pixel_stage_info.pName							= m_shader_pixel->GetPixelEntryPoint().c_str();
 
 		// Shader stages
-		vector<VkPipelineShaderStageCreateInfo> shader_stages = { shader_vertex_stage_info, shader_pixel_stage_info };
+		VkPipelineShaderStageCreateInfo shader_stages[2] = { shader_vertex_stage_info, shader_pixel_stage_info };
 
 		// Create descriptor pool and descriptor set layout
 		CreateDescriptorPool();
@@ -209,14 +210,14 @@ namespace Spartan
 		VkVertexInputBindingDescription binding_description = {};
 		binding_description.binding		= 0;
 		binding_description.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
-		binding_description.stride		= sizeof(float) * 4 + sizeof(uint32_t); // size of the vertex must be known here
+		binding_description.stride		= m_vertex_buffer->GetStride();
 
 		// Vertex attributes description
-		uint32_t vertex_buffer_bind_id = 0;
 		vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
-		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 0, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, 0 });
-		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 1, vertex_buffer_bind_id, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 2 });
-		vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ 2, vertex_buffer_bind_id, VK_FORMAT_R8G8B8A8_UNORM, sizeof(float) * 4 });
+		for (const auto& desc : m_input_layout->GetAttributeDescriptions())
+		{	
+			vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ desc.location, desc.binding, vulkan_format[desc.format], desc.offset });
+		}
 
 		// Vertex input state
 		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
@@ -275,7 +276,7 @@ namespace Spartan
 		color_blend_State.blendConstants[3]						= 0.0f;
 
 		// Pipeline layout create info
-		auto vk_descriptor_set_layout = static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
+		auto vk_descriptor_set_layout					= static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout);
 		VkPipelineLayoutCreateInfo pipeline_layout_info	= {};
 		pipeline_layout_info.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipeline_layout_info.pushConstantRangeCount		= 0;
@@ -293,8 +294,8 @@ namespace Spartan
 
 		VkGraphicsPipelineCreateInfo pipeline_info	= {};
 		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipeline_info.stageCount					= static_cast<uint32_t>(shader_stages.size());
-		pipeline_info.pStages						= shader_stages.data();
+		pipeline_info.stageCount					= static_cast<uint32_t>((sizeof(shader_stages) / sizeof(*shader_stages)));
+		pipeline_info.pStages						= shader_stages;
 		pipeline_info.pVertexInputState				= &vertex_input_state;
 		pipeline_info.pInputAssemblyState			= &input_assembly_state;
 		pipeline_info.pDynamicState					= dynamic_viewport_scissor ? &dynamic_state : nullptr;
