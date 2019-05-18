@@ -24,82 +24,66 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_D3D11
 //================================
 
-//= INCLUDES =====================
+//= INCLUDES ==================
 #include "../RHI_InputLayout.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
-//================================
+//=============================
 
-//==================
+//= NAMESPACES =====
 using namespace std;
 //==================
 
 namespace Spartan
 {
-	RHI_InputLayout::RHI_InputLayout(const shared_ptr<RHI_Device>& rhi_device)
-	{
-		m_rhi_device = rhi_device;
-	}
-
 	RHI_InputLayout::~RHI_InputLayout()
 	{
-		safe_release(static_cast<ID3D11InputLayout*>(m_resource));
+		safe_release(reinterpret_cast<ID3D11InputLayout*>(m_resource));
 	}
 
-	bool RHI_InputLayout::Create(void* vertex_shader_blob, const RHI_Vertex_Attribute_Type vertex_attributes)
+	bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob)
 	{
 		if (!vertex_shader_blob)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
-		m_vertex_attributes = vertex_attributes;
-		
-		// Fill in attribute descriptions
-		vector<D3D11_INPUT_ELEMENT_DESC> attribute_desc;
-		if (m_vertex_attributes & Vertex_Attribute_Position2d)
+
+		if (m_vertex_attributes.empty())
 		{
-			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			LOG_ERROR_INVALID_INTERNALS();
+			return false;
 		}
 
-		if (m_vertex_attributes & Vertex_Attribute_Position3d)
+		vector<D3D11_INPUT_ELEMENT_DESC> vertex_attributes;
+		for (const auto& vertex_attribute : m_vertex_attributes)
 		{
-			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
-		}
-
-		if (m_vertex_attributes & Vertex_Attribute_Texture)
-		{
-			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
-		}
-
-		if (m_vertex_attributes & Vertex_Attribute_Color8)
-		{
-			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
-		}
-
-		if (m_vertex_attributes & Vertex_Attribute_Color32)
-		{
-			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
-		}
-
-		if (m_vertex_attributes & Vertex_Attribute_NormalTangent)
-		{
-			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
-			attribute_desc.emplace_back(D3D11_INPUT_ELEMENT_DESC{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+			vertex_attributes.emplace_back(D3D11_INPUT_ELEMENT_DESC
+			{ 
+				vertex_attribute.name.c_str(),			// SemanticName
+				0,										// SemanticIndex
+				d3d11_format[vertex_attribute.format],	// Format
+				0,										// InputSlot
+				vertex_attribute.offset,				// AlignedByteOffset
+				D3D11_INPUT_PER_VERTEX_DATA,			// InputSlotClass
+				0										// InstanceDataStepRate
+			});
 		}
 
 		// Create input layout
 		auto d3d_blob = static_cast<ID3D10Blob*>(vertex_shader_blob);
-		if (FAILED(m_rhi_device->GetContext()->device->CreateInputLayout
+		const auto result = m_rhi_device->GetContext()->device->CreateInputLayout
 		(
-			attribute_desc.data(),
-			static_cast<UINT>(attribute_desc.size()),
+			vertex_attributes.data(),
+			static_cast<UINT>(vertex_attributes.size()),
 			d3d_blob->GetBufferPointer(),
 			d3d_blob->GetBufferSize(),
 			reinterpret_cast<ID3D11InputLayout**>(&m_resource)
-		)))
+		);
+
+		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create input layout");
+			LOGF_ERROR("Failed to create input layout, %s", D3D11_Common::dxgi_error_to_string(result));
 			return false;
 		}
 

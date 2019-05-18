@@ -69,7 +69,7 @@ namespace Spartan
 			const Math::BoundingBox& aabb, 
 			std::shared_ptr<Model>& model
 		);
-		void GeometryGet(std::vector<unsigned int>* indices, std::vector<RHI_Vertex_PosUvNorTan>* vertices) const;
+		void GeometryGet(std::vector<unsigned int>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 		void GeometrySet(Geometry_Type type);
 		unsigned int GeometryIndexOffset() const		{ return m_geometryIndexOffset; }
 		unsigned int GeometryIndexCount() const			{ return m_geometryIndexCount; }		

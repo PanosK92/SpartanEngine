@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Utility::Geometry
 {
-	static void CreateCube(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices)
+	static void CreateCube(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<unsigned int>* indices)
 	{
 		using namespace Math;
 
@@ -93,7 +93,7 @@ namespace Spartan::Utility::Geometry
 		indices->emplace_back(23); indices->emplace_back(21); indices->emplace_back(22);
 	}
 
-	static void CreateQuad(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices)
+	static void CreateQuad(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<unsigned int>* indices)
 	{
 		using namespace Math;
 
@@ -110,7 +110,7 @@ namespace Spartan::Utility::Geometry
 		indices->emplace_back(1);
 	}
 
-	static void CreateSphere(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, int slices = 15, int stacks = 15)
+	static void CreateSphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, int slices = 15, int stacks = 15)
 	{
 		using namespace Math;
 
@@ -175,7 +175,7 @@ namespace Spartan::Utility::Geometry
 		}
 	}
 
-	static void CreateCylinder(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15)
+	static void CreateCylinder(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<unsigned int>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15)
 	{
 		using namespace Math;
 
@@ -282,7 +282,7 @@ namespace Spartan::Utility::Geometry
 		}
 	}
 
-	static void CreateCone(std::vector<RHI_Vertex_PosUvNorTan>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, float height = 2.0f)
+	static void CreateCone(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, float height = 2.0f)
 	{
 		CreateCylinder(vertices, indices, 0.0f, radius, height);
 	}

@@ -40,7 +40,8 @@ namespace Spartan
 		m_input_layout	= make_shared<RHI_InputLayout>(rhi_device);
 	}
 
-	void RHI_Shader::Compile(const Shader_Type type, const string& shader, const RHI_Vertex_Attribute_Type vertex_attributes)
+	template <typename T>
+	void RHI_Shader::Compile(const Shader_Type type, const string& shader)
 	{
 		// Deduce name or file path
 		if (FileSystem::IsDirectory(shader))
@@ -58,7 +59,7 @@ namespace Spartan
 		if (type == Shader_Vertex)
 		{
 			m_compilation_state = Shader_Compiling;
-			m_vertex_shader		= _Compile(type, shader, vertex_attributes);
+			m_vertex_shader		= _Compile<T>(type, shader);
 			m_compilation_state = m_vertex_shader ? Shader_Compiled : Shader_Failed;
 		}
 		else if (type == Shader_Pixel)
@@ -70,13 +71,13 @@ namespace Spartan
 		else if (type == Shader_VertexPixel)
 		{
 			m_compilation_state = Shader_Compiling;
-			m_vertex_shader		= _Compile(Shader_Vertex, shader, vertex_attributes);
+			m_vertex_shader		= _Compile<T>(Shader_Vertex, shader);
 			m_pixel_shader		= _Compile(Shader_Pixel, shader);
 			m_compilation_state = (m_vertex_shader && m_pixel_shader) ? Shader_Compiled : Shader_Failed;
 		}
 
 		// Log compilation result
-		string shader_type = (type == Shader_Vertex) ? "vertex shader" : (type == Shader_Pixel) ? "pixel shader" : "vertex and pixel shader";
+		const string shader_type = (type == Shader_Vertex) ? "vertex shader" : (type == Shader_Pixel) ? "pixel shader" : "vertex and pixel shader";
 		if (m_compilation_state == Shader_Compiled)
 		{
 			LOGF_INFO("Successfully compiled %s from \"%s\"", shader_type.c_str(), shader.c_str());
@@ -87,43 +88,44 @@ namespace Spartan
 		}
 	}
 
-	void RHI_Shader::CompileAsync(Context* context, const Shader_Type type, const string& shader, const RHI_Vertex_Attribute_Type vertex_attributes)
+	template <typename T>
+	void RHI_Shader::CompileAsync(Context* context, const Shader_Type type, const string& shader)
 	{
-		context->GetSubsystem<Threading>()->AddTask([this, type, shader, vertex_attributes]()
+		context->GetSubsystem<Threading>()->AddTask([this, type, shader]()
 		{
-			Compile(type, shader, vertex_attributes);
+			Compile<T>(type, shader);
 		});
 	}
 
-	void RHI_Shader::_Reflect(const Shader_Type type, const uint32_t* ptr, uint32_t size)
+	void RHI_Shader::_Reflect(const Shader_Type type, const uint32_t* ptr, const uint32_t size)
 	{
 		using namespace spirv_cross;
 
 		// Initialize compiler with SPIR-V data
-		auto compiler = CompilerHLSL(ptr, size);
+		const auto compiler = CompilerHLSL(ptr, size);
 
 		// The SPIR-V is now parsed, and we can perform reflection on it
 		auto resources = compiler.get_shader_resources();
 
 		// Get samplers
-		for (const Resource& sampler : resources.separate_samplers)
+		for (const auto& sampler : resources.separate_samplers)
 		{
-			uint32_t slot = compiler.get_decoration(sampler.id, spv::DecorationBinding);
-			m_resources.emplace_back(sampler.name, RHI_Descriptor_Type::Descriptor_Sampler, slot, type);
+			auto slot = compiler.get_decoration(sampler.id, spv::DecorationBinding);
+			m_resources.emplace_back(sampler.name, Descriptor_Sampler, slot, type);
 		}
 
 		// Get textures
-		for (const Resource& image : resources.separate_images)
+		for (const auto& image : resources.separate_images)
 		{
-			uint32_t slot = compiler.get_decoration(image.id, spv::DecorationBinding);
-			m_resources.emplace_back(image.name, RHI_Descriptor_Type::Descriptor_Texture, slot, type);
+			auto slot = compiler.get_decoration(image.id, spv::DecorationBinding);
+			m_resources.emplace_back(image.name, Descriptor_Texture, slot, type);
 		}
 
 		// Get constant buffers
-		for (const Resource& buffer : resources.uniform_buffers)
+		for (const auto& buffer : resources.uniform_buffers)
 		{
-			uint32_t slot = compiler.get_decoration(buffer.id, spv::DecorationBinding);
-			m_resources.emplace_back(buffer.name, RHI_Descriptor_Type::Descriptor_ConstantBuffer, slot, type);
+			auto slot = compiler.get_decoration(buffer.id, spv::DecorationBinding);
+			m_resources.emplace_back(buffer.name, Descriptor_ConstantBuffer, slot, type);
 		}
 	}
 }

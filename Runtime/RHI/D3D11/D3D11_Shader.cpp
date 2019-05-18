@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= IMPLEMENTATION ===============
 #include "../RHI_Implementation.h"
+#include "../RHI_Vertex.h"
 #ifdef API_GRAPHICS_D3D11
 //================================
 
@@ -46,7 +47,8 @@ namespace Spartan
 		safe_release(static_cast<ID3D11PixelShader*>(m_pixel_shader));
 	}
 
-	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader, RHI_Vertex_Attribute_Type vertex_attributes /*= Vertex_Attribute_None*/)
+	template <typename T>
+	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
 	{
 		if (!m_rhi_device)
 		{
@@ -92,7 +94,7 @@ namespace Spartan
 		HRESULT result;
 		if (is_file)
 		{
-			wstring file_path = FileSystem::StringToWstring(shader);
+			auto file_path = FileSystem::StringToWstring(shader);
 			result = D3DCompileFromFile
 			(
 				file_path.c_str(),
@@ -166,9 +168,9 @@ namespace Spartan
 				shader_view = static_cast<void*>(buffer_vertex);
 
 				// Create input layout
-				if (vertex_attributes != Vertex_Attribute_None)
+				if (RHI_Vertex_Type_To_Enum<T>() != RHI_Vertex_Type_Unknown)
 				{
-					if (!m_input_layout->Create(shader_blob, vertex_attributes))
+					if (!m_input_layout->Create<T>(shader_blob))
 					{
 						LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
 					}

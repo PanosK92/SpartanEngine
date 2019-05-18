@@ -196,7 +196,7 @@ namespace Spartan
 
 			// Get geometry
 			vector<unsigned int> indices;
-			vector<RHI_Vertex_PosUvNorTan> vertices;
+			vector<RHI_Vertex_PosTexNorTan> vertices;
 			renderable->GeometryGet(&indices, &vertices);
 
 			if (vertices.empty())
@@ -209,7 +209,7 @@ namespace Spartan
 			m_shape = new btConvexHullShape(
 				(btScalar*)&vertices[0],					// points
 				renderable->GeometryVertexCount(),			// point count
-				(unsigned int)sizeof(RHI_Vertex_PosUvNorTan));	// stride
+				(unsigned int)sizeof(RHI_Vertex_PosTexNorTan));	// stride
 
 			// Scaling has to be done before (potential) optimization
 			m_shape->setLocalScaling(ToBtVector3(worldScale));

@@ -45,7 +45,7 @@ namespace Spartan
 			BoundingBox(const Vector3& min, const Vector3& max);
 
 			// Construct from vertices
-			BoundingBox(const std::vector<RHI_Vertex_PosUvNorTan>& vertices);
+			BoundingBox(const std::vector<RHI_Vertex_PosTexNorTan>& vertices);
 
 			~BoundingBox() {}
 

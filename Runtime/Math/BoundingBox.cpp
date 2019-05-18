@@ -44,7 +44,7 @@ namespace Spartan::Math
 		this->m_max = max;
 	}
 
-	BoundingBox::BoundingBox(const std::vector<RHI_Vertex_PosUvNorTan>& vertices)
+	BoundingBox::BoundingBox(const std::vector<RHI_Vertex_PosTexNorTan>& vertices)
 	{
 		m_min = Vector3::Infinity;
 		m_max = Vector3::InfinityNeg;

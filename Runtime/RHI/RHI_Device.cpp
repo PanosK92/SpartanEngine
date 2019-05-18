@@ -39,7 +39,7 @@ namespace Spartan
 		auto& mode = m_displayModes.emplace_back(width, height, refresh_rate_numerator, refresh_rate_denominator);
 
 		// Try to deduce the maximum frame rate based on how fast the monitor is
-		if (Settings::Get().GetFpsPolicy() == FPS_MonitorMatch)
+		if (Settings::Get().GetFpsPolicy() == Fps_FixedMonitor)
 		{
 			Settings::Get().SetFpsLimit(Helper::Max(Settings::Get().GetFpsLimit(), mode.refreshRate));
 		}

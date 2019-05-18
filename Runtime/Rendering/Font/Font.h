@@ -72,7 +72,7 @@ namespace Spartan
 		auto GetForceAutohint()										{ return m_force_autohint; }
 			
 	private:	
-		bool UpdateBuffers(std::vector<RHI_Vertex_PosUv>& vertices, std::vector<unsigned int>& indices) const;
+		bool UpdateBuffers(std::vector<RHI_Vertex_PosTex>& vertices, std::vector<unsigned int>& indices) const;
 
 		unsigned int m_font_size	= 16;
 		Hinting_Type m_hinting		= Hinting_Normal;
@@ -86,7 +86,7 @@ namespace Spartan
 		std::map<unsigned int, Glyph> m_glyphs;	
 		std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
 		std::shared_ptr<RHI_IndexBuffer> m_index_buffer_;
-		std::vector<RHI_Vertex_PosUv> m_vertices;
+		std::vector<RHI_Vertex_PosTex> m_vertices;
 		std::vector<unsigned int> m_indices;	
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};

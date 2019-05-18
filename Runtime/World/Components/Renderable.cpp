@@ -39,7 +39,7 @@ namespace Spartan
 	inline void build(const Geometry_Type type, Renderable* renderable)
 	{	
 		auto model = make_shared<Model>(renderable->GetContext());
-		vector<RHI_Vertex_PosUvNorTan> vertices;
+		vector<RHI_Vertex_PosTexNorTan> vertices;
 		vector<unsigned int> indices;
 
 		// Construct geometry
@@ -191,7 +191,7 @@ namespace Spartan
 		}
 	}
 
-	void Renderable::GeometryGet(vector<unsigned int>* indices, vector<RHI_Vertex_PosUvNorTan>* vertices) const
+	void Renderable::GeometryGet(vector<unsigned int>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
 	{
 		if (!m_model)
 		{

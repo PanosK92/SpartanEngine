@@ -44,10 +44,11 @@ namespace Spartan
 	class RHI_Texture2D;
 	class RHI_TextureCube;
 	class RHI_Shader;
-	struct RHI_Vertex_PosUvNorTan;
-	struct RHI_Vertex_PosUvNor;
-	struct RHI_Vertex_PosUv;
+	struct RHI_Vertex_Undefined;
+	struct RHI_Vertex_PosTex;
 	struct RHI_Vertex_PosCol;
+	struct RHI_Vertex_PosUvCol;
+	struct RHI_Vertex_PosTexNorTan;
 
 	enum RHI_Present_Mode
 	{
@@ -99,21 +100,6 @@ namespace Spartan
 		PrimitiveTopology_LineList,
 		PrimitiveTopology_NotAssigned
 	};
-
-	enum RHI_Vertex_Attribute_Type : unsigned long
-	{
-		Vertex_Attribute_None			= 0,
-		Vertex_Attribute_Position2d		= 1UL << 0,
-		Vertex_Attribute_Position3d		= 1UL << 1,
-		Vertex_Attribute_Color8			= 1UL << 2,
-		Vertex_Attribute_Color32		= 1UL << 3,
-		Vertex_Attribute_Texture		= 1UL << 4,
-		Vertex_Attribute_NormalTangent	= 1UL << 5
-	};
-	#define Vertex_Attributes_PositionColor					static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3d	| Vertex_Attribute_Color32)
-	#define Vertex_Attributes_PositionTexture				static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3d	| Vertex_Attribute_Texture)
-	#define Vertex_Attributes_PositionTextureNormalTangent	static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position3d	| Vertex_Attribute_Texture | Vertex_Attribute_NormalTangent)
-	#define Vertex_Attributes_Position2dTextureColor8		static_cast<RHI_Vertex_Attribute_Type>(Vertex_Attribute_Position2d	| Vertex_Attribute_Texture | Vertex_Attribute_Color8)
 
 	enum RHI_Cull_Mode
 	{
