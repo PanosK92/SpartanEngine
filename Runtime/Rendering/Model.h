@@ -59,7 +59,7 @@ namespace Spartan
 		//= GEOMTETRY ==================================================
 		void GeometryAppend(
 			std::vector<unsigned int>& indices,
-			std::vector<RHI_Vertex_PosUvNorTan>& vertices,
+			std::vector<RHI_Vertex_PosTexNorTan>& vertices,
 			unsigned int* index_offset = nullptr,
 			unsigned int* vertex_offset = nullptr
 		) const;
@@ -69,7 +69,7 @@ namespace Spartan
 			unsigned int vertex_offset, 
 			unsigned int vertex_count,
 			std::vector<unsigned int>* indices,
-			std::vector<RHI_Vertex_PosUvNorTan>* vertices
+			std::vector<RHI_Vertex_PosTexNorTan>* vertices
 		) const;
 		void GeometryUpdate();
 		const Math::BoundingBox& GeometryAabb() const { return m_aabb; }

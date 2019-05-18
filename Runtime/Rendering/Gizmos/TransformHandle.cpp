@@ -97,7 +97,7 @@ namespace Spartan
 		m_ray_current	= Vector3::Zero;
 
 		// Create position controller
-		vector<RHI_Vertex_PosUvNorTan> vertices;
+		vector<RHI_Vertex_PosTexNorTan> vertices;
 		vector<unsigned int> indices;
 		if (m_type == TransformHandle_Position)
 		{

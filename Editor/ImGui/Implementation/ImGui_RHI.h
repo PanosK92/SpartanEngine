@@ -65,7 +65,7 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_VertexBuffer>		g_vertexBuffer;
 	static shared_ptr<RHI_IndexBuffer>		g_indexBuffer;	
 	
-	inline bool Initialize(Context* context, float width, float height)
+	inline bool Initialize(Context* context, const float width, const float height)
 	{
 		g_context		= context;
 		g_renderer		= context->GetSubsystem<Renderer>().get();
@@ -96,17 +96,17 @@ namespace ImGui::RHI
 		// Font atlas
 		{
 			unsigned char* pixels;
-			int width, height, bpp;
-			io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bpp);
+			int atlas_width, atlas_height, bpp;
+			io.Fonts->GetTexDataAsRGBA32(&pixels, &atlas_width, &atlas_height, &bpp);
 
 			// Copy pixel data
-			const unsigned int size = width * height * bpp;
+			const unsigned int size = atlas_width * atlas_height * bpp;
 			vector<std::byte> data(size);
 			data.reserve(size);
 			memcpy(&data[0], reinterpret_cast<std::byte*>(pixels), size);
 
 			// Upload texture to graphics system
-			g_fontTexture = make_shared<RHI_Texture2D>(g_context, width, height, Format_R8G8B8A8_UNORM, data);
+			g_fontTexture = make_shared<RHI_Texture2D>(g_context, atlas_width, atlas_height, Format_R8G8B8A8_UNORM, data);
 			io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture.get());
 		}
 
@@ -173,7 +173,7 @@ namespace ImGui::RHI
 				"	return input.col * texture0.Sample(sampler0, input.uv);"
 				"}";
 			auto shader = make_shared<RHI_Shader>(g_rhi_device);
-			shader->Compile(Shader_VertexPixel, shader_source, Vertex_Attributes_Position2dTextureColor8);
+			shader->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_VertexPixel, shader_source);
 
 			// Pipeline
 			g_pipeline->m_shader_vertex			= shader;
@@ -271,7 +271,7 @@ namespace ImGui::RHI
 			auto idx_dst = static_cast<ImDrawIdx*>(g_indexBuffer->Map());
 			if (vtx_dst && idx_dst)
 			{
-				for (int i = 0; i < draw_data->CmdListsCount; i++)
+				for (auto i = 0; i < draw_data->CmdListsCount; i++)
 				{
 					const ImDrawList* cmd_list = draw_data->CmdLists[i];
 					memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
@@ -312,6 +312,7 @@ namespace ImGui::RHI
 
 		g_cmd_list->SetPipeline(g_pipeline.get());
 		g_cmd_list->SetViewport(viewport);
+		g_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		g_cmd_list->SetBufferVertex(g_vertexBuffer);
 		g_cmd_list->SetBufferIndex(g_indexBuffer);
 		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constant_buffer);
@@ -321,10 +322,10 @@ namespace ImGui::RHI
 		unsigned int vtx_offset = 0;
 		unsigned int idx_offset = 0;
 		const auto& pos = draw_data->DisplayPos;
-		for (int i = 0; i < draw_data->CmdListsCount; i++)
+		for (auto i = 0; i < draw_data->CmdListsCount; i++)
 		{
 			const ImDrawList* cmd_list = draw_data->CmdLists[i];
-			for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
+			for (auto cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
 			{
 				const auto pcmd = &cmd_list->CmdBuffer[cmd_i];
 				if (pcmd->UserCallback)

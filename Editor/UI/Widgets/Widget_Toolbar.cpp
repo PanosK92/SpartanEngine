@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "Widget_Profiler.h"
 #include "Widget_ResourceCache.h"
+#include "Core/Settings.h"
 //===============================
 
 //= NAMESPACES ==========
@@ -245,6 +246,15 @@ void Widget_Toolbar::ShowRendererOptions()
 			ImGui::EndCombo();
 		}
 		m_renderer->SetDebugBuffer(static_cast<RendererDebug_Buffer>(_Widget_Toolbar::gbuffer_selected_texture_index));
+	}
+
+	if (ImGui::CollapsingHeader("FPS", ImGuiTreeNodeFlags_None))
+	{
+		auto fps_limit = Settings::Get().GetFpsLimit();
+		ImGui::InputFloat("Limit", &fps_limit);
+		Settings::Get().SetFpsLimit(fps_limit);
+		const auto fps_policy = Settings::Get().GetFpsPolicy();
+		ImGui::Text(fps_policy == Fps_FixedMonitor ? "Fixed (Monitor)" : fps_limit == Fps_Unlocked ? "Unlocked" : "Fixed");
 	}
 
 	if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_None))

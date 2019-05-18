@@ -109,7 +109,7 @@ namespace Spartan
 	}
 	//=======================================================
 
-	void Model::GeometryAppend(std::vector<unsigned int>& indices, std::vector<RHI_Vertex_PosUvNorTan>& vertices, unsigned int* index_offset, unsigned int* vertex_offset) const
+	void Model::GeometryAppend(std::vector<unsigned int>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, unsigned int* index_offset, unsigned int* vertex_offset) const
 	{
 		if (indices.empty() || vertices.empty())
 		{
@@ -122,7 +122,7 @@ namespace Spartan
 		m_mesh->Vertices_Append(vertices, vertex_offset);
 	}
 
-	void Model::GeometryGet(const unsigned int index_offset, const unsigned int index_count, const unsigned int vertex_offset, const unsigned int vertex_count, vector<unsigned int>* indices, vector<RHI_Vertex_PosUvNorTan>* vertices) const
+	void Model::GeometryGet(const unsigned int index_offset, const unsigned int index_count, const unsigned int vertex_offset, const unsigned int vertex_count, vector<unsigned int>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
 	{
 		m_mesh->Geometry_Get(index_offset, index_count, vertex_offset, vertex_count, indices, vertices);
 	}

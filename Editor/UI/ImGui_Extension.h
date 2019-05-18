@@ -24,16 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include <string>
 #include <variant>
+#include "IconProvider.h"
 #include "../ImGui/Source/imgui.h"
 #include "RHI/RHI_Texture.h"
-#include "World/World.h"
-#include "World/Components/Camera.h"
 #include "Rendering/Renderer.h"
 #include "Resource/ResourceCache.h"
-#include "FileSystem/FileSystem.h"
 #include "Threading/Threading.h"
 #include "Input/Input.h"
-#include "IconProvider.h"
+#include "World/World.h"
+#include "World/Components/Camera.h"
 //==================================
 
 namespace ImGuiEx
@@ -144,7 +143,7 @@ namespace ImGuiEx
 	struct DragDropPayload
 	{
 		typedef std::variant<const char*, unsigned int> dataVariant;
-		DragDropPayload(DragPayloadType type = DragPayload_Unknown, dataVariant data = nullptr)
+		DragDropPayload(const DragPayloadType type = DragPayload_Unknown, const dataVariant data = nullptr)
 		{
 			this->type = type;
 			this->data = data;
@@ -162,7 +161,7 @@ namespace ImGuiEx
 	{
 		if (ImGui::BeginDragDropTarget())
 		{
-			if (const ImGuiPayload* payload_imgui = ImGui::AcceptDragDropPayload(reinterpret_cast<const char*>(&type)))
+			if (const auto payload_imgui = ImGui::AcceptDragDropPayload(reinterpret_cast<const char*>(&type)))
 			{
 				return static_cast<DragDropPayload*>(payload_imgui->Data);
 			}
@@ -229,7 +228,7 @@ public:
 	void PickEntity()
 	{
 		// Get camera
-		auto camera = g_renderer->GetCamera();
+		const auto& camera = g_renderer->GetCamera();
 		if (!camera)
 			return;
 
@@ -250,12 +249,12 @@ public:
 		g_selected_entity = g_renderer->SnapTransformGizmoTo(entity);
 	}
 
-	Spartan::Context*				g_context;
-	Spartan::ResourceCache*			g_resource_cache;
-	Spartan::World*					g_world;
-	Spartan::Threading*				g_threading;
-	Spartan::Renderer*				g_renderer;
-	Spartan::Input*					g_input;
+	Spartan::Context*				g_context				= nullptr;
+	Spartan::ResourceCache*			g_resource_cache		= nullptr;
+	Spartan::World*					g_world					= nullptr;
+	Spartan::Threading*				g_threading				= nullptr;
+	Spartan::Renderer*				g_renderer				= nullptr;
+	Spartan::Input*					g_input					= nullptr;
 	std::weak_ptr<Spartan::Entity>	g_selected_entity;
-	std::function<void()>			g_on_entity_selected;
+	std::function<void()>			g_on_entity_selected	= nullptr;
 };

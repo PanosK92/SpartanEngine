@@ -380,11 +380,12 @@ namespace Spartan
 		};
 	}
 	
-	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader, RHI_Vertex_Attribute_Type vertex_attributes /*= Vertex_Attribute_None*/)
+	template <typename T>
+	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
 	{
 		// Deduce some things
-		bool is_file		= FileSystem::IsSupportedShaderFile(shader);
-		wstring file_name	= is_file ? FileSystem::StringToWstring(FileSystem::GetFileNameFromFilePath(shader)) : wstring(L"shader");
+		auto is_file	= FileSystem::IsSupportedShaderFile(shader);
+		auto file_name	= is_file ? FileSystem::StringToWstring(FileSystem::GetFileNameFromFilePath(shader)) : wstring(L"shader");
 		string file_directory;
 		if (is_file)
 		{
@@ -496,19 +497,21 @@ namespace Spartan
 					static_cast<uint32_t>(shader_compiled->GetBufferSize() / 4)
 				);
 
-				// Input layout
-				if (!m_input_layout->Create(nullptr, vertex_attributes))
+				// Create input layout
+				if (RHI_Vertex_Type_To_Enum<T>() != RHI_Vertex_Type_Unknown)
 				{
-					LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_file_path).c_str());
-				}				
-			}	
-			else
-			{
-				LOG_ERROR("Failed to create shader module.");
+					if (!m_input_layout->Create<T>(nullptr))
+					{
+						LOGF_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(shader).c_str());
+					}
+				}
 			}
 		}	
-
+		else
+		{
+				LOG_ERROR("Failed to create shader module.");
+		}
 		return static_cast<void*>(shader_module);
-	}
+	}		
 }
 #endif

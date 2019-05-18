@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "../RHI_Device.h"
-#include "../../Math/Vector4.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
 #include <string>
@@ -47,8 +46,8 @@ namespace Spartan
 		VkApplicationInfo app_info = {};
 		{
 			app_info.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
-			app_info.pApplicationName	= ENGINE_VERSION;		
-			app_info.pEngineName		= ENGINE_VERSION;
+			app_info.pApplicationName	= engine_version;		
+			app_info.pEngineName		= engine_version;
 			app_info.engineVersion		= VK_MAKE_VERSION(1, 0, 0);
 			app_info.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
 			app_info.apiVersion			= VK_API_VERSION_1_1;

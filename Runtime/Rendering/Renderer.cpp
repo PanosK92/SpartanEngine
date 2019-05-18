@@ -246,21 +246,21 @@ namespace Spartan
 
 		// Light
 		m_vps_light = make_shared<ShaderLight>(m_rhi_device);
-		m_vps_light->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "Light.hlsl", Vertex_Attributes_PositionTexture);
+		m_vps_light->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "Light.hlsl");
 
 		// Transparent
 		m_vps_transparent = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_transparent->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "Transparent.hlsl", Vertex_Attributes_PositionTextureNormalTangent);
+		m_vps_transparent->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_VertexPixel, dir_shaders + "Transparent.hlsl");
 		m_vps_transparent->AddBuffer<Struct_Transparency>();
 
 		// Font
 		m_vps_font = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_font->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "Font.hlsl", Vertex_Attributes_PositionTexture);
+		m_vps_font->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "Font.hlsl");
 		m_vps_font->AddBuffer<Struct_Matrix_Vector4>();
 
 		// Transform gizmo
 		m_vps_gizmo_transform = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_gizmo_transform->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl", Vertex_Attributes_PositionTextureNormalTangent);
+		m_vps_gizmo_transform->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl");
 		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
 		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
 		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
@@ -273,37 +273,37 @@ namespace Spartan
 		// Shadow mapping directional
 		m_vps_shadow_mapping_directional = make_shared<ShaderBuffered>(m_rhi_device);
 		m_vps_shadow_mapping_directional->AddDefine("DIRECTIONAL");
-		m_vps_shadow_mapping_directional->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "ShadowMapping.hlsl", Vertex_Attributes_PositionTexture);
+		m_vps_shadow_mapping_directional->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "ShadowMapping.hlsl");
 		m_vps_shadow_mapping_directional->AddBuffer<Struct_ShadowMapping>();
 
 		// Shadow mapping point
 		m_ps_shadow_mapping_point = make_shared<ShaderBuffered>(m_rhi_device);
 		m_ps_shadow_mapping_point->AddDefine("POINT");
-		m_ps_shadow_mapping_point->CompileAsync(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl", Vertex_Attributes_PositionTexture);
+		m_ps_shadow_mapping_point->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl");
 		m_ps_shadow_mapping_point->AddBuffer<Struct_ShadowMapping>();
 
 		// Shadow mapping spot
 		m_ps_shadow_mapping_spot = make_shared<ShaderBuffered>(m_rhi_device);
 		m_ps_shadow_mapping_spot->AddDefine("SPOT");
-		m_ps_shadow_mapping_spot->CompileAsync(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl", Vertex_Attributes_PositionTexture);
+		m_ps_shadow_mapping_spot->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl");
 		m_ps_shadow_mapping_spot->AddBuffer<Struct_ShadowMapping>();
 
 		// Color
 		m_vps_color = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_color->CompileAsync(m_context, Shader_VertexPixel, dir_shaders + "Color.hlsl", Vertex_Attributes_PositionColor);
+		m_vps_color->CompileAsync<RHI_Vertex_PosCol>(m_context, Shader_VertexPixel, dir_shaders + "Color.hlsl");
 		m_vps_color->AddBuffer<Struct_Matrix_Matrix>();
 
 		// G-Buffer
 		m_vs_gbuffer = make_shared<RHI_Shader>(m_rhi_device);
-		m_vs_gbuffer->CompileAsync(m_context, Shader_Vertex, dir_shaders + "GBuffer.hlsl", Vertex_Attributes_PositionTextureNormalTangent);
+		m_vs_gbuffer->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_Vertex, dir_shaders + "GBuffer.hlsl");
 
 		// Position
 		m_v_depth = make_shared<RHI_Shader>(m_rhi_device);
-		m_v_depth->CompileAsync(m_context, Shader_Vertex, dir_shaders + "Depth.hlsl", Vertex_Attribute_Position3d);
+		m_v_depth->CompileAsync<RHI_Vertex_Pos>(m_context, Shader_Vertex, dir_shaders + "Depth.hlsl");
 
 		// Quad
 		m_vs_quad = make_shared<RHI_Shader>(m_rhi_device);
-		m_vs_quad->CompileAsync(m_context, Shader_Vertex, dir_shaders + "Quad.hlsl", Vertex_Attributes_PositionTexture);
+		m_vs_quad->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Vertex, dir_shaders + "Quad.hlsl");
 
 		// Texture
 		m_ps_texture = make_shared<RHI_Shader>(m_rhi_device);

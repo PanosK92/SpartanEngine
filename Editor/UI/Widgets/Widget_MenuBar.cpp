@@ -140,7 +140,7 @@ void Widget_MenuBar::ShowAboutWindow()
 {
 	ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
 
-	ImGui::Text("Spartan %s", ENGINE_VERSION);
+	ImGui::Text("Spartan %s", engine_version);
 	ImGui::Text("Author: Panos Karabelas");
 	ImGui::SameLine(600); ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);  if (ImGui::Button("GitHub"))
 	{

@@ -254,7 +254,7 @@ namespace Spartan
 		}
 
 		// Vertices
-		vector<RHI_Vertex_PosUvNorTan> vertices;
+		vector<RHI_Vertex_PosTexNorTan> vertices;
 		{
 			// Pre-allocate for extra performance
 			const auto vertex_count = assimp_mesh->mNumVertices;
@@ -275,18 +275,18 @@ namespace Spartan
 				if (assimp_mesh->mNormals)
 				{
 					const auto& normal = assimp_mesh->mNormals[i];
-					vertex.normal[0] = normal.x;
-					vertex.normal[1] = normal.y;
-					vertex.normal[2] = normal.z;
+					vertex.nor[0] = normal.x;
+					vertex.nor[1] = normal.y;
+					vertex.nor[2] = normal.z;
 				}
 
 				// Tangent
 				if (assimp_mesh->mTangents)
 				{
 					const auto& tangent = assimp_mesh->mTangents[i];
-					vertex.tangent[0] = tangent.x;
-					vertex.tangent[1] = tangent.y;
-					vertex.tangent[2] = tangent.z;
+					vertex.tan[0] = tangent.x;
+					vertex.tan[1] = tangent.y;
+					vertex.tan[2] = tangent.z;
 				}
 
 				// Texture coordinates
@@ -294,8 +294,8 @@ namespace Spartan
 				if (assimp_mesh->HasTextureCoords(uv_channel))
 				{
 					const auto& tex_coords = assimp_mesh->mTextureCoords[uv_channel][i];
-					vertex.uv[0] = tex_coords.x;
-					vertex.uv[1] = tex_coords.y;
+					vertex.tex[0] = tex_coords.x;
+					vertex.tex[1] = tex_coords.y;
 				}
 			}
 		}

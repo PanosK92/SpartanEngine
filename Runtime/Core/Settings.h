@@ -31,9 +31,9 @@ namespace Spartan
 {
 	enum FPS_Policy
 	{
-		FPS_Unlocked,
-		FPS_Locked,
-		FPS_MonitorMatch
+		Fps_Unlocked,
+		Fps_Fixed,
+		Fps_FixedMonitor
 	};
 
 	class SPARTAN_CLASS Settings
@@ -46,6 +46,7 @@ namespace Spartan
 		}
 
 		Settings();
+		~Settings() { Save(); }
 
 		void Initialize();
 
@@ -66,7 +67,7 @@ namespace Spartan
 		void SetFpsLimit(float fps);
 		auto GetFpsLimit() const	{ return m_fps_limit; }
 		auto GetFpsTarget() const	{ return m_fps_target; }
-		auto GetFpsPolicy()			{ return m_fps_policy; }
+		auto GetFpsPolicy() const	{ return m_fps_policy; }
 		//==================================================
 
 		//= MISC ==============================================================
@@ -90,6 +91,9 @@ namespace Spartan
 		std::string m_versionGraphicsAPI;
 
 	private:
+		void Save() const;
+		void Load();
+
 		void* m_draw_handle						= nullptr;
 		void* m_window_handle					= nullptr;
 		void* m_windowInstance					= nullptr;
@@ -99,9 +103,9 @@ namespace Spartan
 		unsigned int m_shadow_map_resolution	= 4096;
 		unsigned int m_anisotropy				= 16;
 		unsigned int m_max_thread_count			= 0;
-		float m_fps_limit						= -1.0f;
+		float m_fps_limit						= 0.0f;
 		float m_fps_target						= 165.0f;
-		FPS_Policy m_fps_policy					= FPS_MonitorMatch;
+		FPS_Policy m_fps_policy					= Fps_FixedMonitor;
 		bool m_reverse_z						= true;
 	};
 }

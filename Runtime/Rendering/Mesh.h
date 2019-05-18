@@ -42,16 +42,16 @@ namespace Spartan
 			unsigned int vertexOffset,
 			unsigned vertexCount,
 			std::vector<unsigned int>* indices,
-			std::vector<RHI_Vertex_PosUvNorTan>* vertices
+			std::vector<RHI_Vertex_PosTexNorTan>* vertices
 		);
 		unsigned int Geometry_MemoryUsage();
 
 		// Vertices
-		void Vertex_Add(const RHI_Vertex_PosUvNorTan& vertex);
-		void Vertices_Append(const std::vector<RHI_Vertex_PosUvNorTan>& vertices, unsigned int* vertexOffset);	
+		void Vertex_Add(const RHI_Vertex_PosTexNorTan& vertex);
+		void Vertices_Append(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, unsigned int* vertexOffset);	
 		unsigned int Vertices_Count() const;
-		std::vector<RHI_Vertex_PosUvNorTan>& Vertices_Get()						{ return m_vertices; }
-		void Vertices_Set(const std::vector<RHI_Vertex_PosUvNorTan>& vertices)	{ m_vertices = vertices; }
+		std::vector<RHI_Vertex_PosTexNorTan>& Vertices_Get()						{ return m_vertices; }
+		void Vertices_Set(const std::vector<RHI_Vertex_PosTexNorTan>& vertices)	{ m_vertices = vertices; }
 
 		// Indices
 		void Index_Add(unsigned int index)							{ m_indices.emplace_back(index); }
@@ -64,7 +64,7 @@ namespace Spartan
 		unsigned int GetTriangleCount() const { return Indices_Count() / 3; }	
 		
 	private:
-		std::vector<RHI_Vertex_PosUvNorTan> m_vertices;
+		std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
 		std::vector<unsigned int> m_indices;
 	};
 }

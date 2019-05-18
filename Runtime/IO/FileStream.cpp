@@ -100,11 +100,11 @@ namespace Spartan
 		}
 	}
 
-	void FileStream::Write(const vector<RHI_Vertex_PosUvNorTan>& value)
+	void FileStream::Write(const vector<RHI_Vertex_PosTexNorTan>& value)
 	{
 		auto length = (unsigned int)value.size();
 		Write(length);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RHI_Vertex_PosUvNorTan) * length);
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RHI_Vertex_PosTexNorTan) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned int>& value)
@@ -169,7 +169,7 @@ namespace Spartan
 		}
 	}
 
-	void FileStream::Read(vector<RHI_Vertex_PosUvNorTan>* vec)
+	void FileStream::Read(vector<RHI_Vertex_PosTexNorTan>* vec)
 	{
 		if (!vec)
 			return;
@@ -182,7 +182,7 @@ namespace Spartan
 		vec->reserve(length);
 		vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(vec->data()), sizeof(RHI_Vertex_PosUvNorTan) * length);
+		in.read(reinterpret_cast<char*>(vec->data()), sizeof(RHI_Vertex_PosTexNorTan) * length);
 	}
 
 	void FileStream::Read(vector<unsigned int>* vec)
