@@ -32,12 +32,12 @@ namespace Spartan
 	{
 	public:
 		RHI_Object()					{ m_id = GENERATE_GUID; }
-		unsigned int RHI_GetID() const	{ return m_id; }
+		uint32_t RHI_GetID() const	{ return m_id; }
 
 	protected:
 		uint64_t m_size = 0;
 
 	private:
-		unsigned int m_id = 0;	
+		uint32_t m_id = 0;	
 	};
 }

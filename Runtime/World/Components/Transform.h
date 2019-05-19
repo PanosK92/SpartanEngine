@@ -87,11 +87,11 @@ namespace Spartan
 		void SetParent(Transform* new_parent);
 		void BecomeOrphan();
 		bool HasChildren() const				{ return GetChildrenCount() > 0 ? true : false; }
-		unsigned int GetChildrenCount() const	{ return static_cast<unsigned int>(m_children.size()); }
+		uint32_t GetChildrenCount() const	{ return static_cast<uint32_t>(m_children.size()); }
 		void AddChild(Transform* child);
 		Transform* GetRoot()			{ return HasParent() ? GetParent()->GetRoot() : this; }
 		Transform* GetParent() const	{ return m_parent; }
-		Transform* GetChildByIndex(unsigned int index);
+		Transform* GetChildByIndex(uint32_t index);
 		Transform* GetChildByName(const std::string& name);
 		const std::vector<Transform*>& GetChildren() const	{ return m_children; }
 	
@@ -107,8 +107,8 @@ namespace Spartan
 		//= CONSTANT BUFFERS ==========================================================================================================================
 		void UpdateConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection);
 		const auto& GetConstantBuffer() { return m_cb_gbuffer_gpu; }
-		void UpdateConstantBufferLight(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection, unsigned int cascade_index);
-		const auto& GetConstantBufferLight(unsigned int cascade_index) { return m_light_cascades[cascade_index].buffer; }
+		void UpdateConstantBufferLight(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection, uint32_t cascade_index);
+		const auto& GetConstantBufferLight(uint32_t cascade_index) { return m_light_cascades[cascade_index].buffer; }
 		//=============================================================================================================================================
 
 	private:

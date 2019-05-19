@@ -33,7 +33,7 @@ namespace Spartan
 		RHI_TextureCube(Context* context) : RHI_Texture(context) { m_resource_type = Resource_TextureCube; }
 
 		// Creates a cubemap. 6 textures containing mip-levels have to be provided
-		RHI_TextureCube(Context* context, unsigned int width, unsigned int height, RHI_Format format, const std::vector<std::vector<std::vector<std::byte>>>& data) : RHI_Texture(context)
+		RHI_TextureCube(Context* context, uint32_t width, uint32_t height, RHI_Format format, const std::vector<std::vector<std::vector<std::byte>>>& data) : RHI_Texture(context)
 		{
 			m_width			= width;
 			m_height		= height;
@@ -48,7 +48,7 @@ namespace Spartan
 		}
 
 		// Creates a cubemap, to be used as a render target
-		RHI_TextureCube(Context* context, unsigned int width, unsigned int height, RHI_Format format) : RHI_Texture(context)
+		RHI_TextureCube(Context* context, uint32_t width, uint32_t height, RHI_Format format) : RHI_Texture(context)
 		{
 			m_width			= width;
 			m_height		= height;

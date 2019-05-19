@@ -78,8 +78,8 @@ namespace Spartan
 		xml->GetAttribute("Material", "Normal_Multiplier",		&m_normal_multiplier);
 		xml->GetAttribute("Material", "Height_Multiplier",		&m_height_multiplier);
 		xml->GetAttribute("Material", "IsEditable",				&m_is_editable);
-		xml->GetAttribute("Material", "Cull_Mode",				(unsigned int*)&m_cull_mode);
-		xml->GetAttribute("Material", "Shading_Mode",			(unsigned int*)&m_shading_mode);
+		xml->GetAttribute("Material", "Cull_Mode",				(uint32_t*)&m_cull_mode);
+		xml->GetAttribute("Material", "Shading_Mode",			(uint32_t*)&m_shading_mode);
 		xml->GetAttribute("Material", "Color",					&m_color_albedo);
 		xml->GetAttribute("Material", "UV_Tiling",				&m_uv_tiling);
 		xml->GetAttribute("Material", "UV_Offset",				&m_uv_offset);
@@ -88,7 +88,7 @@ namespace Spartan
 		for (auto i = 0; i < texture_count; i++)
 		{
 			auto node_name		= "Texture_" + to_string(i);
-			const auto tex_type	= static_cast<TextureType>(xml->GetAttributeAs<unsigned int>(node_name, "Texture_Type"));
+			const auto tex_type	= static_cast<TextureType>(xml->GetAttributeAs<uint32_t>(node_name, "Texture_Type"));
 			auto tex_name		= xml->GetAttributeAs<string>(node_name, "Texture_Name");
 			auto tex_path		= xml->GetAttributeAs<string>(node_name, "Texture_Path");
 
@@ -122,8 +122,8 @@ namespace Spartan
 		xml->AddNode("Material");
 		xml->AddAttribute("Material", "Name",					GetResourceName());
 		xml->AddAttribute("Material", "Path",					GetResourceFilePath());
-		xml->AddAttribute("Material", "Cull_Mode",				unsigned int(m_cull_mode));	
-		xml->AddAttribute("Material", "Shading_Mode",			unsigned int(m_shading_mode));
+		xml->AddAttribute("Material", "Cull_Mode",				uint32_t(m_cull_mode));	
+		xml->AddAttribute("Material", "Shading_Mode",			uint32_t(m_shading_mode));
 		xml->AddAttribute("Material", "Color",					m_color_albedo);
 		xml->AddAttribute("Material", "Roughness_Multiplier",	m_roughness_multiplier);
 		xml->AddAttribute("Material", "Metallic_Multiplier",	m_metallic_multiplier);
@@ -134,13 +134,13 @@ namespace Spartan
 		xml->AddAttribute("Material", "IsEditable",				m_is_editable);
 
 		xml->AddChildNode("Material", "Textures");
-		xml->AddAttribute("Textures", "Count", static_cast<unsigned int>(m_texture_slots.size()));
+		xml->AddAttribute("Textures", "Count", static_cast<uint32_t>(m_texture_slots.size()));
 		auto i = 0;
 		for (const auto& texture_slot : m_texture_slots)
 		{
 			auto tex_node = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", tex_node);
-			xml->AddAttribute(tex_node, "Texture_Type", static_cast<unsigned int>(texture_slot.type));
+			xml->AddAttribute(tex_node, "Texture_Type", static_cast<uint32_t>(texture_slot.type));
 			xml->AddAttribute(tex_node, "Texture_Name", texture_slot.ptr ? texture_slot.ptr->GetResourceName() : NOT_ASSIGNED);
 			xml->AddAttribute(tex_node, "Texture_Path", texture_slot.ptr ? texture_slot.ptr->GetResourceFilePath() : NOT_ASSIGNED);
 			i++;

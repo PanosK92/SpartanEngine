@@ -65,7 +65,7 @@ namespace Spartan
 		return m_world;
 	}
 
-	void Grid::BuildGrid(vector<RHI_Vertex_PosCol>* vertices, vector<unsigned int>* indices)
+	void Grid::BuildGrid(vector<RHI_Vertex_PosCol>* vertices, vector<uint32_t>* indices)
 	{
 		int halfSizeW = int(m_terrainWidth * 0.5f);
 		int halfSizeH = int(m_terrainHeight * 0.5f);
@@ -126,11 +126,11 @@ namespace Spartan
 			}
 		}
 
-		for (unsigned int i = 0; i < vertices->size(); i++)
+		for (uint32_t i = 0; i < vertices->size(); i++)
 		{
 			indices->emplace_back(i);
 		}
-		m_indexCount = (unsigned int)indices->size();
+		m_indexCount = (uint32_t)indices->size();
 	}
 
 	bool Grid::CreateBuffers(vector<RHI_Vertex_PosCol>& vertices, vector<unsigned>& indices, shared_ptr<RHI_Device>& rhi_device)

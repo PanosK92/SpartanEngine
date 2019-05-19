@@ -91,14 +91,14 @@ namespace Spartan
 		Math::Vector3 GetDirection();
 		void ClampRotation();
 
-		const Math::Matrix& GetViewMatrix(unsigned int index = 0);
-		const Math::Matrix& GetProjectionMatrix(unsigned int index = 0);
+		const Math::Matrix& GetViewMatrix(uint32_t index = 0);
+		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0);
 
 		const auto& GetShadowMap() { return m_shadow_map; }
 
 	private:
 		void ComputeViewMatrix();
-		bool ComputeProjectionMatrix(unsigned int index = 0);	
+		bool ComputeProjectionMatrix(uint32_t index = 0);	
 		void ShadowMap_Create(bool force);
 
 		LightType m_lightType	= LightType_Point;

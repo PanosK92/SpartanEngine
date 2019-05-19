@@ -86,7 +86,7 @@ namespace Spartan
 		btCollisionShape* m_shape;
 		Math::Vector3 m_size;
 		Math::Vector3 m_center;
-		unsigned int m_vertexLimit = 100000;
+		uint32_t m_vertexLimit = 100000;
 		bool m_optimize = true;
 	};
 }

@@ -55,7 +55,7 @@ namespace Spartan::Math
 			this->y = (float)y;
 		}
 
-		Vector2(unsigned int x, unsigned int y)
+		Vector2(uint32_t x, uint32_t y)
 		{
 			this->x = (float)x;
 			this->y = (float)y;

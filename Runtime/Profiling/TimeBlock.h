@@ -47,12 +47,12 @@ namespace Spartan
 		const bool IsComplete() const		{ return m_is_complete; }
 		const std::string& GetName() const	{ return m_name; }
 		const TimeBlock* GetParent() const	{ return m_parent; }
-		unsigned int GetTreeDepth()	const	{ return m_tree_depth; }
+		uint32_t GetTreeDepth()	const	{ return m_tree_depth; }
 		float GetDurationCpu() const		{ return m_duration_cpu; }
 		float GetDurationGpu() const		{ return m_duration_gpu; }
 
 	private:	
-		static unsigned int FindTreeDepth(const TimeBlock* time_block, unsigned int depth = 0);
+		static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
 
 		std::string m_name;
 		RHI_Device* m_rhi_device;
@@ -61,7 +61,7 @@ namespace Spartan
 
 		// Hierarchy
 		const TimeBlock* m_parent	= nullptr;
-		unsigned int m_tree_depth	= 0;
+		uint32_t m_tree_depth	= 0;
 
 		// CPU timing
 		bool m_profiling_cpu	= false;

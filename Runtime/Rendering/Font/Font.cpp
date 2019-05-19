@@ -139,7 +139,7 @@ namespace Spartan
 		m_vertices.shrink_to_fit();		
 		
 		m_indices.clear();
-		for (unsigned int i = 0; i < m_vertices.size(); i++)
+		for (uint32_t i = 0; i < m_vertices.size(); i++)
 		{
 			m_indices.emplace_back(i);
 		}
@@ -147,12 +147,12 @@ namespace Spartan
 		UpdateBuffers(m_vertices, m_indices);
 	}
 
-	void Font::SetSize(const unsigned int size)
+	void Font::SetSize(const uint32_t size)
 	{
-		m_font_size = Clamp<unsigned int>(size, 8, 50);
+		m_font_size = Clamp<uint32_t>(size, 8, 50);
 	}
 
-	bool Font::UpdateBuffers(vector<RHI_Vertex_PosTex>& vertices, vector<unsigned int>& indices) const
+	bool Font::UpdateBuffers(vector<RHI_Vertex_PosTex>& vertices, vector<uint32_t>& indices) const
 	{
 		if (!m_context || !m_vertex_buffer || !m_index_buffer_)
 		{
@@ -164,14 +164,14 @@ namespace Spartan
 		if (vertices.size() > m_vertex_buffer->GetVertexCount())
 		{
 			// Vertex buffer
-			if (!m_vertex_buffer->CreateDynamic<RHI_Vertex_PosTex>(static_cast<unsigned int>(vertices.size())))
+			if (!m_vertex_buffer->CreateDynamic<RHI_Vertex_PosTex>(static_cast<uint32_t>(vertices.size())))
 			{
 				LOG_ERROR("Failed to update vertex buffer.");
 				return false;
 			}
 
 			// Index buffer
-			if (!m_index_buffer_->CreateDynamic<unsigned int>(static_cast<unsigned int>(indices.size())))
+			if (!m_index_buffer_->CreateDynamic<uint32_t>(static_cast<uint32_t>(indices.size())))
 			{
 				LOG_ERROR("Failed to update index buffer.");
 				return false;
@@ -182,7 +182,7 @@ namespace Spartan
 		copy(vertices.begin(), vertices.end(), vertex_buffer);
 		const auto vertex = m_vertex_buffer->Unmap();
 
-		const auto index_buffer = static_cast<unsigned int*>(m_index_buffer_->Map());
+		const auto index_buffer = static_cast<uint32_t*>(m_index_buffer_->Map());
 		copy(indices.begin(), indices.end(), index_buffer);
 		const auto index = m_index_buffer_->Unmap();
 

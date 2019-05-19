@@ -102,17 +102,17 @@ namespace Spartan
 
 	void Constraint::Serialize(FileStream* stream)
 	{
-		stream->Write(static_cast<unsigned int>(m_constraintType));
+		stream->Write(static_cast<uint32_t>(m_constraintType));
 		stream->Write(m_position);
 		stream->Write(m_rotation);
 		stream->Write(m_highLimit);
 		stream->Write(m_lowLimit);
-		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetId() : static_cast<unsigned int>(0));
+		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetId() : static_cast<uint32_t>(0));
 	}
 
 	void Constraint::Deserialize(FileStream* stream)
 	{
-		unsigned int constraint_type = 0;
+		uint32_t constraint_type = 0;
 		stream->Read(&constraint_type);
 		m_constraintType = static_cast<ConstraintType>(constraint_type);
 		stream->Read(&m_position);
@@ -120,7 +120,7 @@ namespace Spartan
 		stream->Read(&m_highLimit);
 		stream->Read(&m_lowLimit);
 
-		const auto body_other_id = stream->ReadAs<unsigned int>();
+		const auto body_other_id = stream->ReadAs<uint32_t>();
 		m_bodyOther = GetContext()->GetSubsystem<World>()->EntityGetById(body_other_id);
 
 		Construct();

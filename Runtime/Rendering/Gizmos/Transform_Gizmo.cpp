@@ -107,7 +107,7 @@ namespace Spartan
 		return true;
 	}
 
-	unsigned int Transform_Gizmo::GetIndexCount()
+	uint32_t Transform_Gizmo::GetIndexCount()
 	{
 		if (m_type == TransformHandle_Position)
 		{

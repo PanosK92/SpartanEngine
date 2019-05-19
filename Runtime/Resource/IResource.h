@@ -61,8 +61,8 @@ namespace Spartan
 		virtual ~IResource() = default;
 
 		//= PROPERTIES =========================================================================================================================
-		unsigned int GetResourceId() const						{ return m_resource_id; }
-		void SetResourceID(unsigned int id)						{ m_resource_id = id; }
+		uint32_t GetResourceId() const						{ return m_resource_id; }
+		void SetResourceID(uint32_t id)						{ m_resource_id = id; }
 		Resource_Type GetResourceType() const					{ return m_resource_type; }
 		const char* GetResourceTypeCstr() const					{ return typeid(*this).name(); }
 		const std::string& GetResourceName() const				{ return m_resource_name; }
@@ -72,7 +72,7 @@ namespace Spartan
 		bool HasFilePath() const								{ return m_resource_file_path != NOT_ASSIGNED; }
 		std::string GetResourceFileName() const					{ return FileSystem::GetFileNameNoExtensionFromFilePath(m_resource_file_path); }
 		std::string GetResourceDirectory() const				{ return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }
-		virtual unsigned int GetMemoryUsage()					{ return static_cast<unsigned int>(sizeof(*this)); }
+		virtual uint32_t GetMemoryUsage()					{ return static_cast<uint32_t>(sizeof(*this)); }
 		LoadState GetLoadState() const							{ return m_load_state; }
 		//======================================================================================================================================
 
@@ -96,7 +96,7 @@ namespace Spartan
 		Context* m_context				= nullptr;
 
 	private:
-		unsigned int m_resource_id			= NOT_ASSIGNED_HASH;
+		uint32_t m_resource_id			= NOT_ASSIGNED_HASH;
 		std::string m_resource_name			= NOT_ASSIGNED;
 		std::string m_resource_file_path	= NOT_ASSIGNED;
 	};

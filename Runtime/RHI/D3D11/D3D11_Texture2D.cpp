@@ -48,12 +48,12 @@ namespace Spartan
 
 	inline bool CreateTexture(
 		void*& texture,
-		unsigned int width,
-		unsigned int height,
-		unsigned int channels,
-		unsigned int bpc,
-		unsigned int mip_levels,
-		unsigned int array_size,
+		uint32_t width,
+		uint32_t height,
+		uint32_t channels,
+		uint32_t bpc,
+		uint32_t mip_levels,
+		uint32_t array_size,
 		RHI_Format format,
 		std::vector<std::vector<std::byte>>& data,
 		bool generate_mipmaps,
@@ -80,7 +80,7 @@ namespace Spartan
 		vector<D3D11_SUBRESOURCE_DATA> vec_subresource_data;
 		auto mip_width	= width;
 		auto mip_height = height;
-		for (unsigned int i = 0; i < static_cast<unsigned int>(data.size()); i++)
+		for (uint32_t i = 0; i < static_cast<uint32_t>(data.size()); i++)
 		{
 			if (data[i].empty())
 			{
@@ -94,8 +94,8 @@ namespace Spartan
 			subresource_data.SysMemSlicePitch	= 0;								// This is only used for 3D textures
 
 			// Compute size of next mip-map
-			mip_width	= Max(mip_width / 2, static_cast<unsigned int>(1));
-			mip_height	= Max(mip_height / 2, static_cast<unsigned int>(1));
+			mip_width	= Max(mip_width / 2, static_cast<uint32_t>(1));
+			mip_height	= Max(mip_height / 2, static_cast<uint32_t>(1));
 		}
 
 		// Create
@@ -132,9 +132,9 @@ namespace Spartan
 	inline bool CreateDepthStencilView(
 		void*& shader_resouce_view,
 		vector<void*>& depth_stencil_views,
-		unsigned int width,
-		unsigned int height,
-		unsigned int array_size,
+		uint32_t width,
+		uint32_t height,
+		uint32_t array_size,
 		RHI_Format format, 
 		const shared_ptr<RHI_Device>& rhi_device
 	)
@@ -180,7 +180,7 @@ namespace Spartan
 		dsv_desc.Texture2DArray.ArraySize		= 1;
 		dsv_desc.Texture2DArray.FirstArraySlice	= 0;
 
-		for (unsigned int i = 0; i < array_size; i++)
+		for (uint32_t i = 0; i < array_size; i++)
 		{
 			dsv_desc.Texture2DArray.FirstArraySlice = i;
 			auto ptr = reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil_views.emplace_back(nullptr));
@@ -221,11 +221,11 @@ namespace Spartan
 		void* resource,
 		void*& shader_resource_view,
 		RHI_Format format,
-		unsigned int width,
-		unsigned int channels,
-		unsigned int bpc,
-		unsigned int array_size,
-		unsigned int mip_levels,
+		uint32_t width,
+		uint32_t channels,
+		uint32_t bpc,
+		uint32_t array_size,
+		uint32_t mip_levels,
 		std::vector<std::vector<std::byte>>& data,
 		bool generate_mipmaps,
 		const shared_ptr<RHI_Device>& rhi_device

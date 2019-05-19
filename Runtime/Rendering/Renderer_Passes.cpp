@@ -95,7 +95,7 @@ namespace Spartan
 
 	void Renderer::Pass_LightDepth()
 	{
-		unsigned int light_directional_count = 0;
+		uint32_t light_directional_count = 0;
 
 		auto& light_entities = m_entities[Renderable_Light];
 		for (const auto& light_entity : light_entities)
@@ -128,9 +128,9 @@ namespace Spartan
 			m_cmd_list->SetViewport(shadow_map->GetViewport());
 
 			// Tracking
-			unsigned int currently_bound_geometry = 0;
+			uint32_t currently_bound_geometry = 0;
 
-			for (unsigned int i = 0; i < light->GetShadowMap()->GetArraySize(); i++)
+			for (uint32_t i = 0; i < light->GetShadowMap()->GetArraySize(); i++)
 			{
 				auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(i);
 
@@ -220,7 +220,7 @@ namespace Spartan
 		}
 
 		// Prepare resources
-		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
+		SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y));
 		vector<void*> textures(8);
 		vector<void*> render_targets
 		{
@@ -245,9 +245,9 @@ namespace Spartan
 		m_cmd_list->SetSampler(0, m_sampler_anisotropic_wrap);	
 		
 		// Variables that help reduce state changes
-		unsigned int currently_bound_geometry	= 0;
-		unsigned int currently_bound_shader		= 0;
-		unsigned int currently_bound_material	= 0;
+		uint32_t currently_bound_geometry	= 0;
+		uint32_t currently_bound_shader		= 0;
+		uint32_t currently_bound_material	= 0;
 
 		for (auto entity : m_entities[Renderable_ObjectOpaque])
 		{
@@ -342,7 +342,7 @@ namespace Spartan
 		// SHADOW MAPPING + BLUR
 		auto shadow_mapped = false;
 		auto& lights = m_entities[Renderable_Light];
-		for (unsigned int i = 0; i < lights.size(); i++)
+		for (uint32_t i = 0; i < lights.size(); i++)
 		{
 			auto light = lights[i]->GetComponent<Light>().get();
 
@@ -378,7 +378,7 @@ namespace Spartan
 		m_cmd_list->Begin("Pass_Light");
 
 		// Update constant buffers
-		SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y));
+		SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y));
 		m_vps_light->UpdateConstantBuffer
 		(
 			m_view_projection_orthographic,
@@ -1103,7 +1103,7 @@ namespace Spartan
 		m_cmd_list->SetInputLayout(m_vps_color->GetInputLayout());
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		
-		// unjittered matrix to avoid TAA jitter due to lack of motion vectors (line rendering is anti-aliased by D3D11, decently)
+		// unjittered matrix to avoid TAA jitter due to lack of motion vectors (line rendering is anti-aliased by m_rasterizer_cull_back_wireframe, decently)
 		const auto view_projection_unjittered = m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix();
 
 		// Draw lines that require depth
@@ -1115,8 +1115,8 @@ namespace Spartan
 			{
 				SetDefaultBuffer
 				(
-					static_cast<unsigned int>(m_resolution.x),
-					static_cast<unsigned int>(m_resolution.y),
+					static_cast<uint32_t>(m_resolution.x),
+					static_cast<uint32_t>(m_resolution.y),
 					m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * view_projection_unjittered
 				);
 				m_cmd_list->SetBufferIndex(m_gizmo_grid->GetIndexBuffer());
@@ -1127,7 +1127,7 @@ namespace Spartan
 			}
 
 			// Lines
-			const auto line_vertex_buffer_size = static_cast<unsigned int>(m_lines_list_depth_enabled.size());
+			const auto line_vertex_buffer_size = static_cast<uint32_t>(m_lines_list_depth_enabled.size());
 			if (line_vertex_buffer_size != 0)
 			{
 				// Grow vertex buffer (if needed)
@@ -1141,7 +1141,7 @@ namespace Spartan
 				copy(m_lines_list_depth_enabled.begin(), m_lines_list_depth_enabled.end(), buffer);
 				m_vertex_buffer_lines->Unmap();
 
-				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), view_projection_unjittered);
+				SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y), view_projection_unjittered);
 				m_cmd_list->SetBufferVertex(m_vertex_buffer_lines);
 				m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 				m_cmd_list->Draw(line_vertex_buffer_size);
@@ -1155,7 +1155,7 @@ namespace Spartan
 		m_cmd_list->SetRenderTarget(tex_out);
 		{
 			// Lines
-			const auto line_vertex_buffer_size = static_cast<unsigned int>(m_lines_list_depth_disabled.size());
+			const auto line_vertex_buffer_size = static_cast<uint32_t>(m_lines_list_depth_disabled.size());
 			if (line_vertex_buffer_size != 0)
 			{
 				// Grow vertex buffer (if needed)
@@ -1171,7 +1171,7 @@ namespace Spartan
 
 				// Set pipeline state
 				m_cmd_list->SetBufferVertex(m_vertex_buffer_lines);
-				SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), view_projection_unjittered);
+				SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y), view_projection_unjittered);
 				m_cmd_list->Draw(line_vertex_buffer_size);
 
 				m_lines_list_depth_disabled.clear();
@@ -1237,7 +1237,7 @@ namespace Spartan
 					m_gizmo_light_rect.CreateBuffers(this);
 				}
 
-				SetDefaultBuffer(static_cast<unsigned int>(tex_width), static_cast<unsigned int>(tex_width), m_view_projection_orthographic);
+				SetDefaultBuffer(static_cast<uint32_t>(tex_width), static_cast<uint32_t>(tex_width), m_view_projection_orthographic);
 
 				
 				m_cmd_list->SetShaderVertex(m_vs_quad);
@@ -1259,7 +1259,7 @@ namespace Spartan
 		{
 			m_cmd_list->Begin("Pass_Gizmos_Transform");
 
-			SetDefaultBuffer(static_cast<unsigned int>(m_resolution.x), static_cast<unsigned int>(m_resolution.y), m_view_projection_orthographic);
+			SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y), m_view_projection_orthographic);
 
 			m_cmd_list->SetShaderVertex(m_vps_gizmo_transform);
 			m_cmd_list->SetShaderPixel(m_vps_gizmo_transform);

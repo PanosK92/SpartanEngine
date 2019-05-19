@@ -119,7 +119,7 @@ namespace Spartan
 			}
 
 			// Discard previous frame data
-			for (unsigned int i = 0; i < m_time_block_count; i++)
+			for (uint32_t i = 0; i < m_time_block_count; i++)
 			{
 				TimeBlock& time_block = m_time_blocks[i];
 				if (!time_block.IsComplete())
@@ -159,9 +159,9 @@ namespace Spartan
 	TimeBlock* Profiler::GetNextTimeBlock()
 	{
 		// Grow capacity if needed
-		if (m_time_block_count >= static_cast<unsigned int>(m_time_blocks.size()))
+		if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks.size()))
 		{
-			unsigned int new_size = m_time_block_count + 100;
+			uint32_t new_size = m_time_block_count + 100;
 			m_time_blocks.reserve(new_size);
 			m_time_blocks.resize(new_size);
 			LOGF_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);

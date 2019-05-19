@@ -40,16 +40,16 @@ namespace Spartan
 		m_indices.shrink_to_fit();
 	}
 
-	unsigned int Mesh::Geometry_MemoryUsage()
+	uint32_t Mesh::Geometry_MemoryUsage()
 	{
-		unsigned int size = 0;
-		size += unsigned int(m_vertices.size()	* sizeof(RHI_Vertex_PosTexNorTan));
-		size += unsigned int(m_indices.size()	* sizeof(unsigned int));
+		uint32_t size = 0;
+		size += uint32_t(m_vertices.size()	* sizeof(RHI_Vertex_PosTexNorTan));
+		size += uint32_t(m_indices.size()	* sizeof(uint32_t));
 
 		return size;
 	}
 
-	void Mesh::Geometry_Get(unsigned int indexOffset, unsigned int indexCount, unsigned int vertexOffset, unsigned vertexCount, vector<unsigned int>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
+	void Mesh::Geometry_Get(uint32_t indexOffset, uint32_t indexCount, uint32_t vertexOffset, unsigned vertexCount, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
 	{
 		if (indexOffset == 0 || indexCount == 0 || vertexOffset == 0 || vertexCount == 0 || !vertices || !indices)
 		{
@@ -60,7 +60,7 @@ namespace Spartan
 		// Indices
 		auto indexFirst	= m_indices.begin() + indexOffset;
 		auto indexLast	= m_indices.begin() + indexOffset + indexCount;
-		*indices		= vector<unsigned int>(indexFirst, indexLast);
+		*indices		= vector<uint32_t>(indexFirst, indexLast);
 
 		// Vertices
 		auto vertexFirst	= m_vertices.begin() + vertexOffset;
@@ -68,19 +68,19 @@ namespace Spartan
 		*vertices			= vector<RHI_Vertex_PosTexNorTan>(vertexFirst, vertexLast);
 	}
 
-	void Mesh::Vertices_Append(const vector<RHI_Vertex_PosTexNorTan>& vertices, unsigned int* vertexOffset)
+	void Mesh::Vertices_Append(const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertexOffset)
 	{
 		if (vertexOffset)
 		{
-			*vertexOffset = (unsigned int)m_vertices.size();
+			*vertexOffset = (uint32_t)m_vertices.size();
 		}
 
 		m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
 	}
 
-	unsigned int Mesh::Vertices_Count() const
+	uint32_t Mesh::Vertices_Count() const
 	{
-		return (unsigned int)m_vertices.size();
+		return (uint32_t)m_vertices.size();
 	}
 
 	void Mesh::Vertex_Add(const RHI_Vertex_PosTexNorTan& vertex)
@@ -88,11 +88,11 @@ namespace Spartan
 		m_vertices.emplace_back(vertex);
 	}
 
-	void Mesh::Indices_Append(const vector<unsigned int>& indices, unsigned int* indexOffset)
+	void Mesh::Indices_Append(const vector<uint32_t>& indices, uint32_t* indexOffset)
 	{
 		if (indexOffset)
 		{
-			*indexOffset = (unsigned int)m_indices.size();
+			*indexOffset = (uint32_t)m_indices.size();
 		}
 
 		m_indices.insert(m_indices.end(), indices.begin(), indices.end());

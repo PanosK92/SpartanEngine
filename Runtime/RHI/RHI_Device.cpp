@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	void RHI_Device::AddDisplayMode(unsigned int width, unsigned int height, unsigned int refresh_rate_numerator, unsigned int refresh_rate_denominator)
+	void RHI_Device::AddDisplayMode(uint32_t width, uint32_t height, uint32_t refresh_rate_numerator, uint32_t refresh_rate_denominator)
 	{
 		auto& mode = m_displayModes.emplace_back(width, height, refresh_rate_numerator, refresh_rate_denominator);
 
@@ -62,7 +62,7 @@ namespace Spartan
 		return true;
 	}
 
-	void RHI_Device::AddAdapter(const string& name, unsigned int memory, unsigned int vendor_id, void* adapter)
+	void RHI_Device::AddAdapter(const string& name, uint32_t memory, uint32_t vendor_id, void* adapter)
 	{
 		m_displayAdapters.emplace_back(name, memory, vendor_id, adapter);
 		sort(m_displayAdapters.begin(), m_displayAdapters.end(), [](const DisplayAdapter& adapter1, const DisplayAdapter& adapter2)

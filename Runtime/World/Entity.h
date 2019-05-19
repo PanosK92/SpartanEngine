@@ -56,8 +56,8 @@ namespace Spartan
 		const std::string& GetName() const								{ return m_name; }
 		void SetName(const std::string& name)							{ m_name = name; }
 
-		unsigned int GetId() const										{ return m_id; }
-		void SetId(const unsigned int id)								{ m_id = id; }
+		uint32_t GetId() const										{ return m_id; }
+		void SetId(const uint32_t id)								{ m_id = id; }
 
 		bool IsActive() const											{ return m_is_active; }
 		void SetActive(const bool active)								{ m_is_active = active; }
@@ -188,7 +188,7 @@ namespace Spartan
 			FIRE_EVENT(Event_World_Resolve);
 		}
 
-		void RemoveComponentById(unsigned int id);
+		void RemoveComponentById(uint32_t id);
 		const auto& GetAllComponents() const { return m_components; }
 
 		// Direct access for performance critical usage (not safe)
@@ -197,7 +197,7 @@ namespace Spartan
 		std::shared_ptr<Entity> GetPtrShared()		{ return shared_from_this(); }
 
 	private:
-		unsigned int m_id			= 0;
+		uint32_t m_id			= 0;
 		std::string m_name			= "Entity";
 		bool m_is_active			= true;
 		bool m_hierarchy_visibility	= true;

@@ -63,7 +63,7 @@ namespace Spartan
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, const std::string& value);
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, bool value);
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, int value);
-		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, unsigned int value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, uint32_t value);
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, float value);
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, double value);
 		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector2& value);
@@ -74,7 +74,7 @@ namespace Spartan
 		//= GET ATTRIBUTE ===================================================================================
 		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, std::string* value);
 		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, int* value);
-		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, unsigned int* value);
+		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, uint32_t* value);
 		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, bool* value);
 		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, float* value);
 		bool GetAttribute(const std::string& nodeName, const std::string& attributeName, double* value);

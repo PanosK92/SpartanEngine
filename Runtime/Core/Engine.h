@@ -30,7 +30,7 @@ namespace Spartan
 {
 	class Context;
 
-	enum Engine_Mode : unsigned int
+	enum Engine_Mode : uint32_t
 	{
 		Engine_Tick		= 1UL << 0,	// Should the engine tick?
 		Engine_Physics	= 1UL << 1, // Should the physics tick?	
@@ -49,8 +49,8 @@ namespace Spartan
 		void Tick() const;
 
 		//  Flag helpers
-		static unsigned int EngineMode_GetAll()					{ return m_flags; }
-		static void EngineMode_SetAll(const unsigned int flags)	{ m_flags = flags; }
+		static uint32_t EngineMode_GetAll()					{ return m_flags; }
+		static void EngineMode_SetAll(const uint32_t flags)	{ m_flags = flags; }
 		static void EngineMode_Enable(const Engine_Mode flag)	{ m_flags |= flag; }
 		static void EngineMode_Disable(const Engine_Mode flag)	{ m_flags &= ~flag; }
 		static void EngineMode_Toggle(const Engine_Mode flag)	{ m_flags = !EngineMode_IsSet(flag) ? m_flags | flag : m_flags & ~flag;}
@@ -59,7 +59,7 @@ namespace Spartan
 		Context* GetContext() const { return m_context.get(); }
 
 	private:
-		static unsigned int m_flags;
+		static uint32_t m_flags;
 		std::shared_ptr<Context> m_context;
 	};
 }

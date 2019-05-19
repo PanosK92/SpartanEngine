@@ -168,7 +168,7 @@ namespace Spartan
 
 		// Only save root entities as they will also save their descendants
 		auto root_actors = EntityGetRoots();
-		const auto root_entity_count = static_cast<unsigned int>(root_actors.size());
+		const auto root_entity_count = static_cast<uint32_t>(root_actors.size());
 
 		ProgressReport::Get().SetJobCount(g_progress_world, root_entity_count);
 
@@ -229,19 +229,19 @@ namespace Spartan
 		FIRE_EVENT(Event_World_Load);
 
 		// Load root entity count
-		auto root_entity_count = file->ReadAs<unsigned int>();
+		auto root_entity_count = file->ReadAs<uint32_t>();
 
 		ProgressReport::Get().SetJobCount(g_progress_world, root_entity_count);
 
 		// Load root entity IDs
-		for (unsigned int i = 0; i < root_entity_count; i++)
+		for (uint32_t i = 0; i < root_entity_count; i++)
 		{
 			auto& entity = EntityCreate();
-			entity->SetId(file->ReadAs<unsigned int>());
+			entity->SetId(file->ReadAs<uint32_t>());
 		}
 
 		// Serialize root entities
-		for (unsigned int i = 0; i < root_entity_count; i++)
+		for (uint32_t i = 0; i < root_entity_count; i++)
 		{
 			m_entities_primary[i]->Deserialize(file.get(), nullptr);
 			ProgressReport::Get().IncrementJobsDone(g_progress_world);
@@ -341,7 +341,7 @@ namespace Spartan
 		return m_entity_empty;
 	}
 
-	const shared_ptr<Entity>& World::EntityGetById(const unsigned int id)
+	const shared_ptr<Entity>& World::EntityGetById(const uint32_t id)
 	{
 		for (const auto& entity : m_entities_primary)
 		{

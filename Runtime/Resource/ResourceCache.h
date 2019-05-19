@@ -158,11 +158,11 @@ namespace Spartan
 
 		//= MISC ============================================================
 		// Memory
-		unsigned int GetMemoryUsage(Resource_Type type = Resource_Unknown);
+		uint32_t GetMemoryUsage(Resource_Type type = Resource_Unknown);
 		// Unloads all resources
 		void Clear() { m_resource_groups.clear(); }
 		// Returns all resources of a given type
-		unsigned int GetResourceCount(Resource_Type type = Resource_Unknown);
+		uint32_t GetResourceCount(Resource_Type type = Resource_Unknown);
 		//===================================================================
 
 		//= DIRECTORIES ===============================================================

@@ -42,7 +42,7 @@ namespace Spartan
 		template<typename T>
 		bool Create()
 		{
-			m_size = static_cast<unsigned int>(sizeof(T));
+			m_size = static_cast<uint32_t>(sizeof(T));
 			return _Create();
 		}
 

@@ -43,14 +43,25 @@ namespace Spartan
 		);
 		~RHI_RasterizerState();
 
-		RHI_Cull_Mode GetCullMode() const		{ return m_cull_mode; }
-		RHI_Fill_Mode GetFillMode() const		{ return m_fill_mode; }
-		bool GetDepthClipEnabled() const		{ return m_depth_clip_enabled; }
-		bool GetScissorEnabled() const			{ return m_scissor_enabled; }
-		bool GetMultiSampleEnabled() const		{ return m_multi_sample_enabled; }
-		bool GetAntialisedLineEnabled() const	{ return m_antialised_line_enabled; }
-		bool IsInitialized() const				{ return m_initialized; }
-		void* GetBuffer() const					{ return m_buffer; }
+		auto GetCullMode()				const { return m_cull_mode; }
+		auto GetFillMode()				const { return m_fill_mode; }
+		auto GetDepthClipEnabled()		const { return m_depth_clip_enabled; }
+		auto GetScissorEnabled()		const { return m_scissor_enabled; }
+		auto GetMultiSampleEnabled()	const { return m_multi_sample_enabled; }
+		auto GetAntialisedLineEnabled() const { return m_antialised_line_enabled; }
+		auto IsInitialized()			const { return m_initialized; }
+		auto GetBuffer()				const { return m_buffer; }
+
+		bool operator==(const RHI_RasterizerState& rhs) const
+		{
+			return
+				m_cull_mode == rhs.GetCullMode() &&
+				m_fill_mode == rhs.GetFillMode() &&
+				m_depth_clip_enabled == rhs.GetDepthClipEnabled() &&
+				m_scissor_enabled == rhs.GetScissorEnabled() &&
+				m_multi_sample_enabled == rhs.GetMultiSampleEnabled() &&
+				m_antialised_line_enabled == rhs.GetAntialisedLineEnabled();
+		}
 
 	private:
 		// Properties

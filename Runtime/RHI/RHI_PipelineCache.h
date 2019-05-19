@@ -21,22 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
-#include <string>
-#include "EngineDefs.h"
-//=====================
-
-#define GENERATE_GUID Spartan::GUIDGenerator::Generate()
+//= INCLUDES ============
+#include <map>
+#include "RHI_Pipeline.h"
+//=======================
 
 namespace Spartan
 {
-	class SPARTAN_CLASS GUIDGenerator
+	class RHI_PipelineState
 	{
 	public:
-		static uint32_t Generate();
-		static std::string GenerateAsStr();
-
-		static std::string ToStr(uint32_t guid);
-		static uint32_t ToUnsignedInt(const std::string& guid);
+		std::map<RHI_PipelineState, RHI_Pipeline> m_cache;
 	};
 }

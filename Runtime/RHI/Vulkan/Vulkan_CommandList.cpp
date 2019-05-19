@@ -63,7 +63,7 @@ namespace Spartan
 			return;
 		}
 
-		for (unsigned int i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
+		for (uint32_t i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
 		{
 			VkCommandBuffer cmd_buffer;
 			auto cmd_pool = static_cast<VkCommandPool>(m_cmd_pool);
@@ -85,7 +85,7 @@ namespace Spartan
 		vkQueueWaitIdle(m_rhi_device->GetContext()->queue_graphics);
 
 		auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
-		for (unsigned int i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
+		for (uint32_t i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
 		{
 			Vulkan_Common::fence::destroy(m_rhi_device, m_fences_in_flight[i]);
 			Vulkan_Common::semaphore::destroy(m_rhi_device, m_semaphores_render_finished[i]);
@@ -165,7 +165,7 @@ namespace Spartan
 		m_is_recording = false;
 	}
 
-	void RHI_CommandList::Draw(unsigned int vertex_count)
+	void RHI_CommandList::Draw(uint32_t vertex_count)
 	{
 		if (!m_is_recording)
 			return;
@@ -173,7 +173,7 @@ namespace Spartan
 		vkCmdDraw(CMD_LIST, vertex_count, 1, 0, 0);
 	}
 
-	void RHI_CommandList::DrawIndexed(unsigned int index_count, unsigned int index_offset, unsigned int vertex_offset)
+	void RHI_CommandList::DrawIndexed(uint32_t index_count, uint32_t index_offset, uint32_t vertex_offset)
 	{
 		if (!m_is_recording)
 			return;
@@ -283,26 +283,26 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::SetConstantBuffers(unsigned int start_slot, RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
+	void RHI_CommandList::SetConstantBuffers(uint32_t start_slot, RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
 	{
 		if (!m_is_recording)
 			return;
 	}
 
-	void RHI_CommandList::SetConstantBuffer(unsigned int slot, RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
+	void RHI_CommandList::SetConstantBuffer(uint32_t slot, RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
 	{
 		if (!m_is_recording)
 			return;
 
 	}
 
-	void RHI_CommandList::SetSamplers(unsigned int start_slot, const vector<void*>& samplers)
+	void RHI_CommandList::SetSamplers(uint32_t start_slot, const vector<void*>& samplers)
 	{
 		if (!m_is_recording)
 			return;
 	}
 
-	void RHI_CommandList::SetSampler(unsigned int slot, const shared_ptr<RHI_Sampler>& sampler)
+	void RHI_CommandList::SetSampler(uint32_t slot, const shared_ptr<RHI_Sampler>& sampler)
 	{
 		if (!m_is_recording)
 			return;
@@ -355,7 +355,7 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, unsigned int flags, float depth, unsigned int stencil /*= 0*/)
+	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint32_t stencil /*= 0*/)
 	{
 		if (!m_is_recording)
 			return;

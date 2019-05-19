@@ -44,13 +44,13 @@ namespace Spartan
 		{
 			m_is_dynamic	= false;
 			m_stride		= sizeof(T);
-			m_index_count	= static_cast<unsigned int>(indices.size());
+			m_index_count	= static_cast<uint32_t>(indices.size());
 			m_size			= m_stride * m_index_count;
 			return Create(indices.data());
 		}
 
 		template<typename T>
-		bool CreateDynamic(unsigned int index_count)
+		bool CreateDynamic(uint32_t index_count)
 		{
 			m_is_dynamic	= true;
 			m_stride		= sizeof(T);
@@ -72,8 +72,8 @@ namespace Spartan
 		bool Create(const void* indices);
 
 		bool m_is_dynamic			= false;
-		unsigned int m_stride		= 0;
-		unsigned int m_index_count	= 0;
+		uint32_t m_stride		= 0;
+		uint32_t m_index_count	= 0;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		void* m_buffer			= nullptr;

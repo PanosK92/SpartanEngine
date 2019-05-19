@@ -83,7 +83,7 @@ PixelOutputType mainPS(PixelInputType input)
 	float roughness 		= abs(materialRoughness); // roughness can be negative - little trick that signifies a specular texture
 	float metallic 			= saturate(materialMetallic);
 	float3 normal			= input.normal.xyz;
-	float normalIntensity	= clamp(materialNormalStrength, 0.012f, materialNormalStrength);
+	float normal_intensity	= clamp(materialNormalStrength, 0.012f, materialNormalStrength);
 	float emission			= 0.0f;
 	float occlusion			= 1.0f;	
 	
@@ -137,10 +137,9 @@ PixelOutputType mainPS(PixelInputType input)
 		float3x3 TBN = makeTBN(input.normal, input.tangent);
 	
 		// Get tangent space normal and apply intensity
-		float3 normalSample = normalize(unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
-		normalIntensity		= saturate(normalIntensity);
-		normalSample.xy 	*= normalIntensity;
-		normal 				= normalize(mul(normalSample, TBN).xyz); // Transform to world space
+		float3 tangent_normal 	= normalize(unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
+		tangent_normal.xy 		*= saturate(normal_intensity);
+		normal 					= normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
 	#endif
 
 	#if OCCLUSION_MAP

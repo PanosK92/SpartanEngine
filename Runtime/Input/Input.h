@@ -87,9 +87,9 @@ namespace Spartan
 		//===================
 		
 		// Keys
-		bool GetKey(const KeyCode key)		{ return m_keys[static_cast<unsigned int>(key)]; }							// Returns true while the button identified by KeyCode is held down.
-		bool GetKeyDown(const KeyCode key)	{ return GetKey(key) && !m_keys_previous[static_cast<unsigned int>(key)]; }	// Returns true during the frame the user pressed down the button identified by KeyCode.
-		bool GetKeyUp(const KeyCode key)	{ return !GetKey(key) && m_keys_previous[static_cast<unsigned int>(key)]; }	// Returns true the first frame the user releases the button identified by KeyCode.
+		bool GetKey(const KeyCode key)		{ return m_keys[static_cast<uint32_t>(key)]; }							// Returns true while the button identified by KeyCode is held down.
+		bool GetKeyDown(const KeyCode key)	{ return GetKey(key) && !m_keys_previous[static_cast<uint32_t>(key)]; }	// Returns true during the frame the user pressed down the button identified by KeyCode.
+		bool GetKeyUp(const KeyCode key)	{ return !GetKey(key) && m_keys_previous[static_cast<uint32_t>(key)]; }	// Returns true the first frame the user releases the button identified by KeyCode.
 
 		// Mouse
 		const Math::Vector2& GetMousePosition() const	{ return m_mouse_position; }
@@ -114,8 +114,8 @@ namespace Spartan
 		// Keys
 		std::array<bool, 99> m_keys;
 		std::array<bool, 99> m_keys_previous; // A copy of m_keys, as it was during the previous frame
-		unsigned int start_index_mouse		= 83;
-		unsigned int start_index_gamepad	= 86;
+		uint32_t start_index_mouse		= 83;
+		uint32_t start_index_gamepad	= 86;
 
 		// Mouse
 		Math::Vector2 m_mouse_position	= Math::Vector2::Zero;

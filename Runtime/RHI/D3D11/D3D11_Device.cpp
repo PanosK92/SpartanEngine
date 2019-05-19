@@ -274,7 +274,7 @@ namespace Spartan
 		query->Release();
 	}
 
-	unsigned int RHI_Device::ProfilingGetGpuMemory()
+	uint32_t RHI_Device::ProfilingGetGpuMemory()
 	{
 		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primaryAdapter->data))
 		{
@@ -284,12 +284,12 @@ namespace Spartan
 				LOG_ERROR("Failed to get adapter description");
 				return 0;
 			}
-			return static_cast<unsigned int>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
+			return static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
 		}
 		return 0;
 	}
 
-	unsigned int RHI_Device::ProfilingGetGpuMemoryUsage()
+	uint32_t RHI_Device::ProfilingGetGpuMemoryUsage()
 	{
 		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primaryAdapter->data))
 		{
@@ -299,7 +299,7 @@ namespace Spartan
 				LOG_ERROR("Failed to get adapter memory info");
 				return 0;
 			}
-			return static_cast<unsigned int>(info.CurrentUsage / 1024 / 1024); // convert to MBs
+			return static_cast<uint32_t>(info.CurrentUsage / 1024 / 1024); // convert to MBs
 		}
 		return 0;
 	}

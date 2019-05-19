@@ -46,7 +46,7 @@ namespace Spartan
 	bool RHI_Texture::SaveToFile(const string& file_path)
 	{
 		// Check to see if the file already exists (if so, get the byte count)
-		unsigned int byte_count = 0;
+		uint32_t byte_count = 0;
 		{
 			if (FileSystem::FileExists(file_path))
 			{
@@ -69,8 +69,8 @@ namespace Spartan
 		{
 			file->Skip
 			(
-				sizeof(unsigned int) +	// byte count
-				sizeof(unsigned int) +	// mipmap count
+				sizeof(uint32_t) +	// byte count
+				sizeof(uint32_t) +	// mipmap count
 				byte_count				// bytes
 			);
 		}
@@ -81,7 +81,7 @@ namespace Spartan
 			// Write byte count
 			file->Write(byte_count);
 			// Write mipmap count
-			file->Write(static_cast<unsigned int>(m_data.size()));
+			file->Write(static_cast<uint32_t>(m_data.size()));
 			// Write bytes
 			for (auto& mip : m_data)
 			{
@@ -160,7 +160,7 @@ namespace Spartan
 		return true;
 	}
 
-	vector<std::byte>* RHI_Texture::GetData(unsigned int index)
+	vector<std::byte>* RHI_Texture::GetData(uint32_t index)
 	{
 		if (index >= m_data.size())
 		{
@@ -195,8 +195,8 @@ namespace Spartan
 		m_data.shrink_to_fit();
 
 		// Read byte and mipmap count
-		auto byte_count		= file->ReadAs<unsigned int>();
-		auto mipmap_count	= file->ReadAs<unsigned int>();
+		auto byte_count		= file->ReadAs<uint32_t>();
+		auto mipmap_count	= file->ReadAs<uint32_t>();
 
 		// Read bytes
 		m_data.resize(mipmap_count);
@@ -213,14 +213,14 @@ namespace Spartan
 		file->Read(&m_has_mipmaps);
 		file->Read(&m_is_grayscale);
 		file->Read(&m_is_transparent);
-		SetResourceID(file->ReadAs<unsigned int>());
+		SetResourceID(file->ReadAs<uint32_t>());
 		SetResourceName(file->ReadAs<string>());
 		SetResourceFilePath(file->ReadAs<string>());
 
 		return true;
 	}
 
-	unsigned int RHI_Texture::GetChannelCountFromFormat(RHI_Format format)
+	uint32_t RHI_Texture::GetChannelCountFromFormat(RHI_Format format)
 	{
 		switch (format)
 		{
@@ -242,13 +242,13 @@ namespace Spartan
 		}
 	}
 
-	unsigned int RHI_Texture::GetByteCount()
+	uint32_t RHI_Texture::GetByteCount()
 	{
-		unsigned int byte_count = 0;
+		uint32_t byte_count = 0;
 
 		for (auto& mip : m_data)
 		{
-			byte_count += static_cast<unsigned int>(mip.size());
+			byte_count += static_cast<uint32_t>(mip.size());
 		}
 
 		return byte_count;

@@ -45,7 +45,7 @@ namespace Spartan
 
 		std::shared_ptr<Entity>& SetSelectedEntity(const std::shared_ptr<Entity>& entity);
 		bool Update(Camera* camera, float handle_size, float handle_speed);
-		unsigned int GetIndexCount();
+		uint32_t GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer();
 		const TransformHandle& GetHandle() const;

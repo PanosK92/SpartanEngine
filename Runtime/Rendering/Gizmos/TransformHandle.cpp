@@ -98,7 +98,7 @@ namespace Spartan
 
 		// Create position controller
 		vector<RHI_Vertex_PosTexNorTan> vertices;
-		vector<unsigned int> indices;
+		vector<uint32_t> indices;
 		if (m_type == TransformHandle_Position)
 		{
 			Utility::Geometry::CreateCone(&vertices, &indices);

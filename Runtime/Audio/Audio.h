@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ==================
 #include "../Core/ISubsystem.h"
-//============================
+#include <cstdint>
+//=============================
 
 //= FORWARD DECLARATIONS =
 namespace FMOD
@@ -53,12 +54,12 @@ namespace Spartan
 	private:
 		void LogErrorFmod(int error) const;
 
-		unsigned int m_result_fmod;
-		FMOD::System* m_system_fmod;
-		unsigned int m_max_channels;
-		float m_distance_entity;
-		bool m_initialized;
-		Transform* m_listener;
-		Profiler* m_profiler;
+		uint32_t m_result_fmod		= 0;
+		uint32_t m_max_channels		= 32;
+		float m_distance_entity		= 1.0f;
+		bool m_initialized			= false;
+		Transform* m_listener		= nullptr;
+		Profiler* m_profiler		= nullptr;
+		FMOD::System* m_system_fmod = nullptr;
 	};
 }
