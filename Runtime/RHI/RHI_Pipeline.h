@@ -30,20 +30,19 @@ namespace Spartan
 	class RHI_Pipeline
 	{
 	public:
-		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device);
+		RHI_Pipeline() = default;
+		RHI_Pipeline(const std::shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state);
 		~RHI_Pipeline();
 	
-		bool Create();
 		void UpdateDescriptorSets(RHI_Texture* texture = nullptr);
 		void OnCommandListConsumed();
 
-		auto GetPipeline() const					{ return m_graphics_pipeline; }
+		auto GetPipeline() const					{ return m_pipeline; }
 		auto GetPipelineLayout() const				{ return m_pipeline_layout; }
 		auto GetRenderPass() const					{ return m_render_pass; }
+		auto GetState() const						{ return m_state; }
 		auto GetDescriptorSet(const uint32_t id) 	{ return m_descriptor_set_cache.count(id) ? m_descriptor_set_cache[id] : nullptr; }
 		auto GetDescriptorSet()						{ return !m_descriptor_set_cache.empty() ? m_descriptor_set_cache.begin()->second : nullptr; }
-
-		RHI_PipelineState m_state;
 
 	private:
 		bool CreateDescriptorPool();
@@ -51,13 +50,15 @@ namespace Spartan
 		void ReflectShaders();
 
 		// API
-		void* m_graphics_pipeline			= nullptr;
+		void* m_pipeline					= nullptr;
 		void* m_pipeline_layout				= nullptr;
 		void* m_render_pass					= nullptr;
 		void* m_descriptor_pool				= nullptr;
 		void* m_descriptor_set_layout		= nullptr;
-		uint32_t m_descriptor_set_capacity	= 0;
 		std::map<uint32_t, void*> m_descriptor_set_cache;
+		uint32_t m_descriptor_set_capacity	= 20;
+		const RHI_PipelineState* m_state	= nullptr;
+		std::map<std::string, Shader_Resource> m_shader_resources;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

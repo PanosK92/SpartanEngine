@@ -194,7 +194,7 @@ namespace Spartan
 		if (m_flags & SwapChain_Allow_Mode_Switch)
 		{		
 			DisplayMode display_mode;
-			if (!m_rhi_device->GetDidsplayModeFastest(&display_mode))
+			if (!m_rhi_device->GetDisplayModeFastest(&display_mode))
 			{
 				LOG_ERROR("Failed to get a display mode");
 				return false;

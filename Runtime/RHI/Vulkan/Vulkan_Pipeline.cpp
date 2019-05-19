@@ -44,30 +44,6 @@ using namespace std;
 
 namespace Spartan
 {
-	RHI_Pipeline::RHI_Pipeline(const shared_ptr<RHI_Device>& rhi_device)
-	{
-		m_rhi_device				= rhi_device;
-		m_desctiptor_set_capacity	= rhi_device->GetContext()->descriptor_count;
-	}
-
-	RHI_Pipeline::~RHI_Pipeline()
-	{
-		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_graphics_pipeline), nullptr);
-		m_graphics_pipeline = nullptr;
-
-		vkDestroyPipelineLayout(m_rhi_device->GetContext()->device, static_cast<VkPipelineLayout>(m_pipeline_layout), nullptr);
-		m_pipeline_layout = nullptr;
-
-		vkDestroyRenderPass(m_rhi_device->GetContext()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
-		m_render_pass = nullptr;
-
-		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
-		m_descriptor_set_layout = nullptr;
-
-		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
-		m_descriptor_pool = nullptr;
-	}
-
 	inline VkRenderPass CreateRenderPass(const VkDevice& device)
 	{
 		VkAttachmentDescription color_attachment	= {};
@@ -123,7 +99,7 @@ namespace Spartan
 		render_pass_info.pSubpasses				= &subpass;
 		render_pass_info.dependencyCount		= static_cast<uint32_t>(dependencies.size());
 		render_pass_info.pDependencies			= dependencies.data();
-
+											
 		VkRenderPass render_pass = nullptr;
 		if (vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS)
 		{
@@ -133,10 +109,13 @@ namespace Spartan
 		return render_pass;
 	}
 
-	bool RHI_Pipeline::Create()
+	RHI_Pipeline::RHI_Pipeline(const shared_ptr<RHI_Device>& rhi_device, const RHI_PipelineState& pipeline_state)
 	{
+		m_rhi_device	= rhi_device;
+		m_state			= &pipeline_state;
+
 		// State deduction
-		auto dynamic_viewport_scissor = !m_state.viewport.IsDefined();
+		auto dynamic_viewport_scissor = !m_state->viewport.IsDefined();
 
 		// Create render pass
 		m_render_pass = static_cast<void*>(CreateRenderPass(m_rhi_device->GetContext()->device));
@@ -157,12 +136,12 @@ namespace Spartan
 
 		// Viewport
 		VkViewport vkViewport	= {};
-		vkViewport.x			= m_state.viewport.GetX();
-		vkViewport.y			= m_state.viewport.GetY();
-		vkViewport.width		= m_state.viewport.GetWidth();
-		vkViewport.height		= m_state.viewport.GetHeight();
-		vkViewport.minDepth		= m_state.viewport.GetMinDepth();
-		vkViewport.maxDepth		= m_state.viewport.GetMaxDepth();
+		vkViewport.x			= m_state->viewport.GetX();
+		vkViewport.y			= m_state->viewport.GetY();
+		vkViewport.width		= m_state->viewport.GetWidth();
+		vkViewport.height		= m_state->viewport.GetHeight();
+		vkViewport.minDepth		= m_state->viewport.GetMinDepth();
+		vkViewport.maxDepth		= m_state->viewport.GetMaxDepth();
 
 		// Scissor
 		VkRect2D scissor		= {};
@@ -182,15 +161,15 @@ namespace Spartan
 		VkPipelineShaderStageCreateInfo shader_vertex_stage_info	= {};
 		shader_vertex_stage_info.sType								= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shader_vertex_stage_info.stage								= VK_SHADER_STAGE_VERTEX_BIT;
-		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_state.shader_vertex->GetResource_VertexShader());
-		shader_vertex_stage_info.pName								= m_state.shader_vertex->GetVertexEntryPoint().c_str();
+		shader_vertex_stage_info.module								= static_cast<VkShaderModule>(m_state->shader_vertex->GetResource_VertexShader());
+		shader_vertex_stage_info.pName								= m_state->shader_vertex->GetVertexEntryPoint().c_str();
 
 		// Pixel shader
 		VkPipelineShaderStageCreateInfo shader_pixel_stage_info = {};
 		shader_pixel_stage_info.sType							= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shader_pixel_stage_info.stage							= VK_SHADER_STAGE_FRAGMENT_BIT;
-		shader_pixel_stage_info.module							= static_cast<VkShaderModule>(m_state.shader_pixel->GetResource_PixelShader());
-		shader_pixel_stage_info.pName							= m_state.shader_pixel->GetPixelEntryPoint().c_str();
+		shader_pixel_stage_info.module							= static_cast<VkShaderModule>(m_state->shader_pixel->GetResource_PixelShader());
+		shader_pixel_stage_info.pName							= m_state->shader_pixel->GetPixelEntryPoint().c_str();
 
 		// Shader stages
 		VkPipelineShaderStageCreateInfo shader_stages[2] = { shader_vertex_stage_info, shader_pixel_stage_info };
@@ -204,11 +183,11 @@ namespace Spartan
 		VkVertexInputBindingDescription binding_description = {};
 		binding_description.binding		= 0;
 		binding_description.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;
-		binding_description.stride		= m_state.vertex_buffer->GetStride();
+		binding_description.stride		= m_state->vertex_buffer->GetStride();
 
 		// Vertex attributes description
 		vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
-		for (const auto& desc : m_state.input_layout->GetAttributeDescriptions())
+		for (const auto& desc : m_state->input_layout->GetAttributeDescriptions())
 		{	
 			vertex_attribute_descs.emplace_back(VkVertexInputAttributeDescription{ desc.location, desc.binding, vulkan_format[desc.format], desc.offset });
 		}
@@ -224,7 +203,7 @@ namespace Spartan
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
 		input_assembly_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		input_assembly_state.topology								= vulkan_primitive_topology[m_state.primitive_topology];
+		input_assembly_state.topology								= vulkan_primitive_topology[m_state->primitive_topology];
 		input_assembly_state.primitiveRestartEnable					= VK_FALSE;
 
 		// Rasterizer state
@@ -232,9 +211,9 @@ namespace Spartan
 		rasterizer_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizer_state.depthClampEnable						= VK_FALSE;
 		rasterizer_state.rasterizerDiscardEnable				= VK_FALSE;
-		rasterizer_state.polygonMode							= vulkan_polygon_mode[m_state.rasterizer_state->GetFillMode()];
+		rasterizer_state.polygonMode							= vulkan_polygon_mode[m_state->rasterizer_state->GetFillMode()];
 		rasterizer_state.lineWidth								= 1.0f;
-		rasterizer_state.cullMode								= vulkan_cull_mode[m_state.rasterizer_state->GetCullMode()];
+		rasterizer_state.cullMode								= vulkan_cull_mode[m_state->rasterizer_state->GetCullMode()];
 		rasterizer_state.frontFace								= VK_FRONT_FACE_CLOCKWISE;
 		rasterizer_state.depthBiasEnable						= VK_FALSE;
 		rasterizer_state.depthBiasConstantFactor				= 0.0f;
@@ -244,19 +223,19 @@ namespace Spartan
 		// Mutlisampling
 		VkPipelineMultisampleStateCreateInfo multisampling_state	= {};
 		multisampling_state.sType									= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		multisampling_state.sampleShadingEnable						= m_state.rasterizer_state->GetMultiSampleEnabled() ? VK_TRUE : VK_FALSE;
+		multisampling_state.sampleShadingEnable						= m_state->rasterizer_state->GetMultiSampleEnabled() ? VK_TRUE : VK_FALSE;
 		multisampling_state.rasterizationSamples					= VK_SAMPLE_COUNT_1_BIT;
 
 		// Blend state
 		VkPipelineColorBlendAttachmentState blend_state_attachments = {};
 		blend_state_attachments.colorWriteMask						= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		blend_state_attachments.blendEnable							= m_state.blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
-		blend_state_attachments.srcColorBlendFactor					= vulkan_blend_factor[m_state.blend_state->GetSourceBlend()];
-		blend_state_attachments.dstColorBlendFactor					= vulkan_blend_factor[m_state.blend_state->GetDestBlend()];
-		blend_state_attachments.colorBlendOp						= vulkan_blend_operation[m_state.blend_state->GetBlendOp()];
-		blend_state_attachments.srcAlphaBlendFactor					= vulkan_blend_factor[m_state.blend_state->GetSourceBlendAlpha()];
-		blend_state_attachments.dstAlphaBlendFactor					= vulkan_blend_factor[m_state.blend_state->GetDestBlendAlpha()];
-		blend_state_attachments.alphaBlendOp						= vulkan_blend_operation[m_state.blend_state->GetBlendOpAlpha()];
+		blend_state_attachments.blendEnable							= m_state->blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
+		blend_state_attachments.srcColorBlendFactor					= vulkan_blend_factor[m_state->blend_state->GetSourceBlend()];
+		blend_state_attachments.dstColorBlendFactor					= vulkan_blend_factor[m_state->blend_state->GetDestBlend()];
+		blend_state_attachments.colorBlendOp						= vulkan_blend_operation[m_state->blend_state->GetBlendOp()];
+		blend_state_attachments.srcAlphaBlendFactor					= vulkan_blend_factor[m_state->blend_state->GetSourceBlendAlpha()];
+		blend_state_attachments.dstAlphaBlendFactor					= vulkan_blend_factor[m_state->blend_state->GetDestBlendAlpha()];
+		blend_state_attachments.alphaBlendOp						= vulkan_blend_operation[m_state->blend_state->GetBlendOpAlpha()];
 
 		VkPipelineColorBlendStateCreateInfo color_blend_State	= {};
 		color_blend_State.sType									= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -278,13 +257,12 @@ namespace Spartan
 		pipeline_layout_info.pSetLayouts				= &vk_descriptor_set_layout;
 
 		// Pipeline layout
-		VkPipelineLayout pipeline_layout;
-		if (vkCreatePipelineLayout(m_rhi_device->GetContext()->device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) 
+		auto pipeline_layout = reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout);
+		if (vkCreatePipelineLayout(m_rhi_device->GetContext()->device, &pipeline_layout_info, nullptr, pipeline_layout) != VK_SUCCESS) 
 		{
 			LOG_ERROR("Failed to create pipeline layout");
-			return false;
+			return;
 		}
-		m_pipeline_layout = static_cast<void*>(pipeline_layout);
 
 		VkGraphicsPipelineCreateInfo pipeline_info	= {};
 		pipeline_info.sType							= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -297,21 +275,16 @@ namespace Spartan
 		pipeline_info.pRasterizationState			= &rasterizer_state;
 		pipeline_info.pMultisampleState				= &multisampling_state;
 		pipeline_info.pColorBlendState				= &color_blend_State;
-		pipeline_info.layout						= pipeline_layout;
+		pipeline_info.layout						= *pipeline_layout;
 		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_render_pass);
 		pipeline_info.subpass						= 0;
 		pipeline_info.basePipelineHandle			= nullptr;
 
-		VkPipeline graphics_pipeline = nullptr;
-		if (vkCreateGraphicsPipelines(m_rhi_device->GetContext()->device, nullptr, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) 
+		auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
+		if (vkCreateGraphicsPipelines(m_rhi_device->GetContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) != VK_SUCCESS) 
 		{
 			LOG_ERROR("Failed to create graphics pipeline");
-			return false;
 		}
-
-		m_graphics_pipeline = static_cast<void*>(graphics_pipeline);
-
-		return true;
 	}
 
 	void RHI_Pipeline::UpdateDescriptorSets(RHI_Texture* texture /*= nullptr*/)
@@ -324,7 +297,7 @@ namespace Spartan
 			return;
 
 		// Early exit if the descriptor cache is full
-		if (m_descriptor_set_cache.size() == m_desctiptor_set_capacity)
+		if (m_descriptor_set_cache.size() == m_descriptor_set_capacity)
 			return;
 
 		auto descriptor_pool		= static_cast<VkDescriptorPool>(m_descriptor_pool);
@@ -354,15 +327,15 @@ namespace Spartan
 			VkDescriptorImageInfo image_info	= {};
 			image_info.imageLayout				= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			image_info.imageView				= texture ? static_cast<VkImageView>(texture->GetResource_Texture()) : nullptr;
-			image_info.sampler					= m_state.sampler ? static_cast<VkSampler>(m_state.sampler->GetResource()) : nullptr;
+			image_info.sampler					= m_state->sampler ? static_cast<VkSampler>(m_state->sampler->GetResource()) : nullptr;
 
 			VkDescriptorBufferInfo buffer_info	= {};
-			buffer_info.buffer					= m_state.constant_buffer ? static_cast<VkBuffer>(m_state.constant_buffer->GetResource()) : nullptr;
+			buffer_info.buffer					= m_state->constant_buffer ? static_cast<VkBuffer>(m_state->constant_buffer->GetResource()) : nullptr;
 			buffer_info.offset					= 0;
-			buffer_info.range					= m_state.constant_buffer ? m_state.constant_buffer->GetSize() : 0;
+			buffer_info.range					= m_state->constant_buffer ? m_state->constant_buffer->GetSize() : 0;
 
 			vector<VkWriteDescriptorSet> write_descriptor_sets;
-			for (const auto& resource : m_state.shader_resources)
+			for (const auto& resource : m_shader_resources)
 			{
 				write_descriptor_sets.push_back
 				({
@@ -384,11 +357,29 @@ namespace Spartan
 		m_descriptor_set_cache[texture->RHI_GetID()] = static_cast<void*>(descriptor_set);
 	}
 
+	RHI_Pipeline::~RHI_Pipeline()
+	{
+		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_pipeline), nullptr);
+		m_pipeline = nullptr;
+
+		vkDestroyPipelineLayout(m_rhi_device->GetContext()->device, static_cast<VkPipelineLayout>(m_pipeline_layout), nullptr);
+		m_pipeline_layout = nullptr;
+
+		vkDestroyRenderPass(m_rhi_device->GetContext()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
+		m_render_pass = nullptr;
+
+		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
+		m_descriptor_set_layout = nullptr;
+
+		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+		m_descriptor_pool = nullptr;
+	}
+
 	void RHI_Pipeline::OnCommandListConsumed()
 	{
 		// If the descriptor pool is full, re-allocate with double size
 
-		if (m_descriptor_set_cache.size() < m_desctiptor_set_capacity)
+		if (m_descriptor_set_cache.size() < m_descriptor_set_capacity)
 			return;
 	
 		// Destroy layout
@@ -403,7 +394,7 @@ namespace Spartan
 		m_descriptor_set_cache.clear();
 
 		// Re-allocate everything with double size
-		m_desctiptor_set_capacity *= 2;
+		m_descriptor_set_capacity *= 2;
 		CreateDescriptorPool();
 		CreateDescriptorSetLayout();
 	}
@@ -425,11 +416,11 @@ namespace Spartan
 		pool_create_info.flags						= 0;
 		pool_create_info.poolSizeCount				= static_cast<uint32_t>((sizeof(pool_sizes) / sizeof(*pool_sizes)));
 		pool_create_info.pPoolSizes					= pool_sizes;
-		pool_create_info.maxSets					= m_desctiptor_set_capacity;
+		pool_create_info.maxSets					= m_descriptor_set_capacity;
 		
 		// Pool
-		auto descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
-		auto result = vkCreateDescriptorPool(m_rhi_device->GetContext()->device, &pool_create_info, nullptr, descriptor_pool);
+		const auto descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
+		const auto result = vkCreateDescriptorPool(m_rhi_device->GetContext()->device, &pool_create_info, nullptr, descriptor_pool);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to create descriptor pool, %s", Vulkan_Common::result_to_string(result));
@@ -444,7 +435,7 @@ namespace Spartan
 		// Layout bindings
 		vector<VkDescriptorSetLayoutBinding> layout_bindings;
 		{
-			for (const auto& resource : m_state.shader_resources)
+			for (const auto& resource : m_shader_resources)
 			{
 				const VkShaderStageFlags stage_flags = (resource.second.shader_type == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -468,28 +459,27 @@ namespace Spartan
 		create_info.pBindings						= layout_bindings.data();
 
 		// Descriptor set layout
-		VkDescriptorSetLayout descriptor_set_layout;
-		const auto result = vkCreateDescriptorSetLayout(m_rhi_device->GetContext()->device, &create_info, nullptr, &descriptor_set_layout);
+		auto descriptor_set_layout = reinterpret_cast<VkDescriptorSetLayout*>(&m_descriptor_set_layout);
+		const auto result = vkCreateDescriptorSetLayout(m_rhi_device->GetContext()->device, &create_info, nullptr, descriptor_set_layout);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::result_to_string(result));
 			return false;
 		}
 
-		m_descriptor_set_layout = static_cast<void*>(descriptor_set_layout);
 		return true;
 	}
 
 	void RHI_Pipeline::ReflectShaders()
 	{
-		m_state.shader_resources.clear();
+		m_shader_resources.clear();
 
 		// Wait for shaders to finish compilation
-		while (m_state.shader_vertex->GetCompilationState() == Shader_Compiling || m_state.shader_pixel->GetCompilationState() == Shader_Compiling) {} 
+		while (m_state->shader_vertex->GetCompilationState() == Shader_Compiling || m_state->shader_pixel->GetCompilationState() == Shader_Compiling) {}
 
 		// Merge vertex & index shader resources into map (to ensure unique values)
-		for (const auto& resource : m_state.shader_vertex->GetResources())	m_state.shader_resources[resource.name] = resource;
-		for (const auto& resource : m_state.shader_pixel->GetResources())	m_state.shader_resources[resource.name] = resource;
+		for (const auto& resource : m_state->shader_vertex->GetResources())	m_shader_resources[resource.name] = resource;
+		for (const auto& resource : m_state->shader_pixel->GetResources())	m_shader_resources[resource.name] = resource;
 	}
 }
 #endif

@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <memory>
-#include <map>
 #include "../Math/Rectangle.h"
 #include "RHI_Shader.h"
 #include "RHI_Sampler.h"
@@ -69,7 +67,17 @@ namespace Spartan
 		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;
 		RHI_Viewport viewport;
 		Math::Rectangle scissor;
+	};
+}
 
-		std::map<std::string, Shader_Resource> shader_resources;
+// Hash function so RHI_PipelineState can be used as key
+namespace std
+{
+	template<> struct hash<Spartan::RHI_PipelineState>
+	{
+		size_t operator()(Spartan::RHI_PipelineState const& state) const noexcept
+		{
+			return size_t(state.blend_state->RHI_GetID());
+		}
 	};
 }

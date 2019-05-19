@@ -40,7 +40,7 @@ namespace Spartan
 		const RHI_Comparison_Function comparison_function	/*= Texture_Comparison_Always*/
 	)
 	{	
-		m_buffer_view				= nullptr;
+		m_buffer_view			= nullptr;
 		m_rhi_device			= rhi_device;
 		m_filter				= filter;
 		m_sampler_address_mode	= sampler_address_mode;

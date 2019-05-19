@@ -45,7 +45,7 @@ namespace Spartan
 		}
 	}
 
-	bool RHI_Device::GetDidsplayModeFastest(DisplayMode* display_mode)
+	bool RHI_Device::GetDisplayModeFastest(DisplayMode* display_mode)
 	{
 		if (m_displayModes.empty())
 			return false;

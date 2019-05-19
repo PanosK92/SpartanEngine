@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <optional>
 #include <set>
 #include "../../Logging/Log.h"
-#include "../../Core/Settings.h"
 #include "../../Math/MathHelper.h"
 #include "../RHI_Device.h"
 //================================
@@ -110,7 +109,7 @@ namespace Spartan::Vulkan_Common
 
 	namespace memory
 	{
-		inline uint32_t get_type(VkPhysicalDevice device, VkMemoryPropertyFlags properties, uint32_t type_bits)
+		inline uint32_t get_type(const VkPhysicalDevice device, const VkMemoryPropertyFlags properties, const uint32_t type_bits)
 		{
 			VkPhysicalDeviceMemoryProperties prop;
 			vkGetPhysicalDeviceMemoryProperties(device, &prop);
@@ -139,13 +138,13 @@ namespace Spartan::Vulkan_Common
 			const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
 			void* p_user_data
 		){
-			auto type = Spartan::Log_Info;
-			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? Spartan::Log_Warning : type;
-			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? Spartan::Log_Error : type;
+			auto type = Log_Info;
+			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? Log_Warning : type;
+			type = message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? Log_Error : type;
 
-			Spartan::Log::m_caller_name = "Vulkan";
-			Spartan::Log::Write(p_callback_data->pMessage, type);
-			Spartan::Log::m_caller_name = "";
+			Log::m_caller_name = "Vulkan";
+			Log::Write(p_callback_data->pMessage, type);
+			Log::m_caller_name = "";
 
 			return VK_FALSE;
 		}
@@ -158,7 +157,7 @@ namespace Spartan::Vulkan_Common
 			return VK_ERROR_EXTENSION_NOT_PRESENT;
 		}
 
-		inline void destroy(Spartan::RHI_Context* context)
+		inline void destroy(RHI_Context* context)
 		{
 			if (!context->validation_enabled)
 				return;
@@ -198,7 +197,7 @@ namespace Spartan::Vulkan_Common
 			return details;
 		}
 
-		inline VkPresentModeKHR choose_present_mode(VkPresentModeKHR prefered_mode, const std::vector<VkPresentModeKHR>& supported_present_modes)
+		inline VkPresentModeKHR choose_present_mode(const VkPresentModeKHR prefered_mode, const std::vector<VkPresentModeKHR>& supported_present_modes)
 		{
 			// Check if the preferred mode is supported
 			for (const auto& supported_present_mode : supported_present_modes)
@@ -247,9 +246,9 @@ namespace Spartan::Vulkan_Common
 			return availableFormats[0];
 		}
 
-		inline VkExtent2D choose_extent(const VkSurfaceCapabilitiesKHR& capabilities, uint32_t prefered_width, uint32_t prefered_height)
+		inline VkExtent2D choose_extent(const VkSurfaceCapabilitiesKHR& capabilities, const uint32_t prefered_width, const uint32_t prefered_height)
 		{
-			using namespace Spartan::Math::Helper;
+			using namespace Math::Helper;
 
 			VkExtent2D actual_extent	= { prefered_width, prefered_height };
 			actual_extent.width			= Clamp(prefered_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
@@ -358,7 +357,7 @@ namespace Spartan::Vulkan_Common
 
 	namespace commands
 	{
-		inline bool cmd_buffer(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandBuffer& cmd_buffer, VkCommandPool& cmd_pool, VkCommandBufferLevel level)
+		inline bool cmd_buffer(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandBuffer& cmd_buffer, VkCommandPool& cmd_pool, const VkCommandBufferLevel level)
 		{
 			VkCommandBufferAllocateInfo allocate_info	= {};
 			allocate_info.sType							= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -460,7 +459,7 @@ namespace Spartan::Vulkan_Common
 			SPARTAN_ASSERT(vkResetFences(rhi_device->GetContext()->device, 1, fence_temp) == VK_SUCCESS);
 		}
 
-		inline void wait_reset(const  std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
+		inline void wait_reset(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
 		{
 			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
 			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);

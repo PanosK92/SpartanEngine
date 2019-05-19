@@ -51,7 +51,7 @@ namespace Spartan
 	// Everything resolves to this
 	void Log::Write(const char* text, const Log_Type type)
 	{
-		auto formated_text = !m_caller_name.empty() ? m_caller_name + ": " + string(text) : string(text);
+		const auto formated_text = !m_caller_name.empty() ? m_caller_name + ": " + string(text) : string(text);
 
 		const auto log_to_file = m_logger.expired() || m_log_to_file;
 		log_to_file ? LogToFile(formated_text.c_str(), type) : LogString(formated_text.c_str(), type);

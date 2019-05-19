@@ -22,15 +22,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ============
-#include <map>
+#include <unordered_map>
 #include "RHI_Pipeline.h"
 //=======================
 
 namespace Spartan
 {
-	class RHI_PipelineState
+	class RHI_PipelineCache
 	{
 	public:
-		std::map<RHI_PipelineState, RHI_Pipeline> m_cache;
+		RHI_PipelineCache(const std::shared_ptr<RHI_Device>& rhi_device) { m_rhi_device = rhi_device; }
+
+		RHI_Pipeline* GetPipeline(const RHI_PipelineState& pipeline_state)
+		{
+			// If no pipeline matches the pipeline state, create one
+			if (m_cache.find(pipeline_state) == m_cache.end()) 
+			{
+				m_cache[pipeline_state];
+				m_cache[pipeline_state] = RHI_Pipeline(m_rhi_device, m_cache.find(pipeline_state)->first);
+			}
+
+			return &m_cache[pipeline_state];
+		}
+
+	private:
+		std::unordered_map<RHI_PipelineState, RHI_Pipeline> m_cache;
+		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }
