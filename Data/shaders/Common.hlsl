@@ -149,13 +149,9 @@ float2 directionToSphereUV(float3 direction)
 /*------------------------------------------------------------------------------
 								[RANDOM]
 ------------------------------------------------------------------------------*/
-float randomize(float2 texcoord)
+float randomize(float2 uv)
 {
-    float seed		= dot(texcoord, float2(12.9898, 78.233));
-    float sine		= sin(seed);
-    float noise		= frac(sine * 43758.5453);
-
-    return noise;
+	return frac(sin(dot(uv ,float2(12.9898,78.233))) * 43758.5453);
 }
 
 /*------------------------------------------------------------------------------
