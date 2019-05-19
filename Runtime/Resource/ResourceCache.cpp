@@ -122,9 +122,9 @@ namespace Spartan
 		return resources;
 	}
 
-	unsigned int ResourceCache::GetMemoryUsage(Resource_Type type /*= Resource_Unknown*/)
+	uint32_t ResourceCache::GetMemoryUsage(Resource_Type type /*= Resource_Unknown*/)
 	{
-		unsigned int size = 0;
+		uint32_t size = 0;
 
 		if (type = Resource_Unknown)
 		{
@@ -183,7 +183,7 @@ namespace Spartan
 				// Save file path
 				file->Write(resource->GetResourceFilePath());
 				// Save type
-				file->Write(static_cast<unsigned int>(resource->GetResourceType()));
+				file->Write(static_cast<uint32_t>(resource->GetResourceType()));
 				// Save resource (to a dedicated file)
 				resource->SaveToFile(resource->GetResourceFilePath());
 
@@ -205,15 +205,15 @@ namespace Spartan
 			return;
 		
 		// Load resource count
-		auto resource_count = file->ReadAs<unsigned int>();
+		auto resource_count = file->ReadAs<uint32_t>();
 
-		for (unsigned int i = 0; i < resource_count; i++)
+		for (uint32_t i = 0; i < resource_count; i++)
 		{
 			// Load resource file path
 			auto file_path = file->ReadAs<string>();
 
 			// Load resource type
-			auto type = static_cast<Resource_Type>(file->ReadAs<unsigned int>());
+			auto type = static_cast<Resource_Type>(file->ReadAs<uint32_t>());
 
 			switch (type)
 			{
@@ -236,9 +236,9 @@ namespace Spartan
 		}
 	}
 
-	unsigned int ResourceCache::GetResourceCount(const Resource_Type type)
+	uint32_t ResourceCache::GetResourceCount(const Resource_Type type)
 	{
-		return static_cast<unsigned int>(GetByType(type).size());
+		return static_cast<uint32_t>(GetByType(type).size());
 	}
 
 	void ResourceCache::AddDataDirectory(const Asset_Type type, const string& directory)

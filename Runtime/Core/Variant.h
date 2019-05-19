@@ -42,7 +42,7 @@ namespace Spartan
 	char,											\
 	unsigned char,									\
 	int,											\
-	unsigned int,									\
+	uint32_t,									\
 	bool,											\
 	float,											\
 	double,											\

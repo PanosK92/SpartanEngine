@@ -75,7 +75,7 @@ namespace Spartan
 		stream->Read(&m_rotationLocal);
 		stream->Read(&m_scaleLocal);
 		stream->Read(&m_lookAt);
-		unsigned int parententity_id = 0;
+		uint32_t parententity_id = 0;
 		stream->Read(&parententity_id);
 
 		if (parententity_id != NOT_ASSIGNED_HASH)
@@ -289,7 +289,7 @@ namespace Spartan
 	}
 
 	// Returns a child with the given index
-	Transform* Transform::GetChildByIndex(const unsigned int index)
+	Transform* Transform::GetChildByIndex(const uint32_t index)
 	{
 		if (!HasChildren())
 		{
@@ -407,10 +407,10 @@ namespace Spartan
 		m_wvp_previous = mvp_current;
 	}
 
-	void Transform::UpdateConstantBufferLight(const shared_ptr<RHI_Device>& rhi_device, const Matrix& view_projection, unsigned int cascade_index)
+	void Transform::UpdateConstantBufferLight(const shared_ptr<RHI_Device>& rhi_device, const Matrix& view_projection, uint32_t cascade_index)
 	{
 		// Has to match GBuffer.hlsl
-		if (cascade_index >=  static_cast<unsigned int>(m_light_cascades.size()))
+		if (cascade_index >=  static_cast<uint32_t>(m_light_cascades.size()))
 		{
 			LightCascade cb_light;
 			cb_light.buffer = make_shared<RHI_ConstantBuffer>(rhi_device);

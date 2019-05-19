@@ -36,7 +36,7 @@ namespace Spartan
 
 	}
 
-	bool ShaderBuffered::UpdateBuffer(void* data, unsigned int index) const
+	bool ShaderBuffered::UpdateBuffer(void* data, uint32_t index) const
 	{
 		if (!data)
 		{

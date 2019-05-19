@@ -42,13 +42,13 @@ namespace _ImagImporter
 	// A struct that rescaling threads will work with
 	struct RescaleJob
 	{
-		unsigned int width		= 0;
-		unsigned int height		= 0;
-		unsigned int channels	= 0;
+		uint32_t width		= 0;
+		uint32_t height		= 0;
+		uint32_t channels	= 0;
 		vector<byte>* data		= nullptr;
 		bool done				= false;
 
-		RescaleJob(const unsigned int width, const unsigned int height, const unsigned int channels)
+		RescaleJob(const uint32_t width, const uint32_t height, const uint32_t channels)
 		{
 			this->width		= width;
 			this->height	= height;
@@ -157,7 +157,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool ImageImporter::GetBitsFromFibitmap(vector<byte>* data, FIBITMAP* bitmap, const unsigned int width, const unsigned int height, const unsigned int channels)
+	bool ImageImporter::GetBitsFromFibitmap(vector<byte>* data, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channels)
 	{
 		if (!data || width == 0 || height == 0 || channels == 0)
 		{
@@ -181,7 +181,7 @@ namespace Spartan
 		return true;
 	}
 
-	void ImageImporter::GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, unsigned int width, unsigned int height, unsigned int channels)
+	void ImageImporter::GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels)
 	{
 		if (!texture)
 		{
@@ -193,8 +193,8 @@ namespace Spartan
 		vector<_ImagImporter::RescaleJob> jobs;
 		while (width > 1 && height > 1)
 		{
-			width	= Math::Helper::Max(width / 2, static_cast<unsigned int>(1));
-			height	= Math::Helper::Max(height / 2, static_cast<unsigned int>(1));
+			width	= Math::Helper::Max(width / 2, static_cast<uint32_t>(1));
+			height	= Math::Helper::Max(height / 2, static_cast<uint32_t>(1));
 			jobs.emplace_back(width, height, channels);
 			
 			// Resize the RHI_Texture vector accordingly
@@ -205,7 +205,7 @@ namespace Spartan
 		}
 
 		// Pass data pointers (now that the RHI_Texture mip vector has been constructed)
-		for (unsigned int i = 0; i < jobs.size(); i++)
+		for (uint32_t i = 0; i < jobs.size(); i++)
 		{
 			// reminder: i + 1 because the 0 mip is the default image size
 			jobs[i].data = texture->GetData(i + 1);
@@ -242,7 +242,7 @@ namespace Spartan
 		}
 	}
 
-	unsigned int ImageImporter::ComputeChannelCount(FIBITMAP* bitmap)
+	uint32_t ImageImporter::ComputeChannelCount(FIBITMAP* bitmap)
 	{	
 		if (!bitmap)
 		{
@@ -259,7 +259,7 @@ namespace Spartan
 		return channels;
 	}
 
-	unsigned int ImageImporter::ComputeBitsPerChannel(FIBITMAP* bitmap) const
+	uint32_t ImageImporter::ComputeBitsPerChannel(FIBITMAP* bitmap) const
 	{
 		if (!bitmap)
 		{
@@ -268,7 +268,7 @@ namespace Spartan
 		}
 
 		const auto type		= FreeImage_GetImageType(bitmap);
-		unsigned int size	= 0;
+		uint32_t size	= 0;
 
 		if (type == FIT_BITMAP)
 		{
@@ -286,7 +286,7 @@ namespace Spartan
 		return size * 8;
 	}
 
-	RHI_Format ImageImporter::ComputeTextureFormat(const unsigned int bpp, const unsigned int channels) const
+	RHI_Format ImageImporter::ComputeTextureFormat(const uint32_t bpp, const uint32_t channels) const
 	{
 		if (channels == 3)
 		{
@@ -402,7 +402,7 @@ namespace Spartan
 		return bitmap;
 	}
 
-	FIBITMAP* ImageImporter::_FreeImage_Rescale(FIBITMAP* bitmap, const unsigned int width, const unsigned int height)
+	FIBITMAP* ImageImporter::_FreeImage_Rescale(FIBITMAP* bitmap, const uint32_t width, const uint32_t height)
 	{
 		if (!bitmap || width == 0 || height == 0)
 		{

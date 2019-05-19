@@ -32,10 +32,10 @@ using namespace std;
 
 namespace Spartan
 {
-	unsigned int GUIDGenerator::Generate()
+	uint32_t GUIDGenerator::Generate()
 	{
 		hash<string> hasher;
-		return (unsigned int)hasher(GenerateAsStr());
+		return (uint32_t)hasher(GenerateAsStr());
 	}
 
 	string GUIDGenerator::GenerateAsStr()
@@ -52,7 +52,7 @@ namespace Spartan
 				<< "-" << setw(4) << setfill('0') << guid.Data3
 				<< "-";
 
-			for (unsigned int i = 0; i < sizeof(guid.Data4); ++i)
+			for (uint32_t i = 0; i < sizeof(guid.Data4); ++i)
 			{
 				if (i == 2)
 					stream << "-";
@@ -64,15 +64,15 @@ namespace Spartan
 		return guidString;
 	}
 
-	string GUIDGenerator::ToStr(unsigned int guid)
+	string GUIDGenerator::ToStr(uint32_t guid)
 	{
 		return to_string(guid);
 	}
 
-	unsigned int GUIDGenerator::ToUnsignedInt(const string& guid)
+	uint32_t GUIDGenerator::ToUnsignedInt(const string& guid)
 	{
 		stringstream sstream(guid);
-		unsigned int guidSizeT;
+		uint32_t guidSizeT;
 		sstream >> guidSizeT;
 
 		return guidSizeT;

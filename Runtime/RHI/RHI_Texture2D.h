@@ -39,7 +39,7 @@ namespace Spartan
 		}
 
 		// Creates a texture with mimaps. If only the first mipmap is available, the rest will automatically generated
-		RHI_Texture2D(Context* context, unsigned int width, unsigned int height, RHI_Format format, const std::vector<std::vector<std::byte>>& data) : RHI_Texture(context)
+		RHI_Texture2D(Context* context, uint32_t width, uint32_t height, RHI_Format format, const std::vector<std::vector<std::byte>>& data) : RHI_Texture(context)
 		{
 			m_resource_type = Resource_Texture2d;
 			m_width			= width;
@@ -54,7 +54,7 @@ namespace Spartan
 		}
 
 		// Creates a texture without any mipmaps
-		RHI_Texture2D(Context* context, unsigned int width, unsigned int height, RHI_Format format, const std::vector<std::byte>& data) : RHI_Texture(context)
+		RHI_Texture2D(Context* context, uint32_t width, uint32_t height, RHI_Format format, const std::vector<std::byte>& data) : RHI_Texture(context)
 		{
 			m_resource_type = Resource_Texture2d;
 			m_width			= width;
@@ -69,7 +69,7 @@ namespace Spartan
 		}
 
 		// Creates a texture without any data, intended for usage as a render target
-		RHI_Texture2D(Context* context, unsigned int width, unsigned int height, RHI_Format format, unsigned int array_size = 1) : RHI_Texture(context)
+		RHI_Texture2D(Context* context, uint32_t width, uint32_t height, RHI_Format format, uint32_t array_size = 1) : RHI_Texture(context)
 		{
 			m_resource_type		= Resource_Texture2d;
 			m_width				= width;

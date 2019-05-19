@@ -70,7 +70,7 @@ namespace Spartan::AssimpHelper
 		(*count)++;
 
 		// Process children
-		for (unsigned int i = 0; i < node->mNumChildren; i++)
+		for (uint32_t i = 0; i < node->mNumChildren; i++)
 		{
 			compute_node_count(node->mChildren[i], count);
 		}
@@ -100,8 +100,8 @@ namespace Spartan::AssimpHelper
 	class AssimpLogger : public Assimp::Logger
 	{
 	public:
-		bool attachStream(Assimp::LogStream* pStream, unsigned int severity) override { return true; }
-		bool detatchStream(Assimp::LogStream* pStream, unsigned int severity) override { return true; }
+		bool attachStream(Assimp::LogStream* pStream, uint32_t severity) override { return true; }
+		bool detatchStream(Assimp::LogStream* pStream, uint32_t severity) override { return true; }
 
 	private:
 		void OnDebug(const char* message) override

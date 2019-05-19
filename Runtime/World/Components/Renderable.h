@@ -62,19 +62,19 @@ namespace Spartan
 		//= GEOMETRY =============================================================================================
 		void GeometrySet(
 			const std::string& name,
-			unsigned int index_offset,
-			unsigned int index_count,
-			unsigned int vertex_offset,
-			unsigned int vertex_count,
+			uint32_t index_offset,
+			uint32_t index_count,
+			uint32_t vertex_offset,
+			uint32_t vertex_count,
 			const Math::BoundingBox& aabb, 
 			std::shared_ptr<Model>& model
 		);
-		void GeometryGet(std::vector<unsigned int>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
+		void GeometryGet(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 		void GeometrySet(Geometry_Type type);
-		unsigned int GeometryIndexOffset() const		{ return m_geometryIndexOffset; }
-		unsigned int GeometryIndexCount() const			{ return m_geometryIndexCount; }		
-		unsigned int GeometryVertexOffset() const		{ return m_geometryVertexOffset; }
-		unsigned int GeometryVertexCount() const		{ return m_geometryVertexCount; }
+		uint32_t GeometryIndexOffset() const		{ return m_geometryIndexOffset; }
+		uint32_t GeometryIndexCount() const			{ return m_geometryIndexCount; }		
+		uint32_t GeometryVertexOffset() const		{ return m_geometryVertexOffset; }
+		uint32_t GeometryVertexCount() const		{ return m_geometryVertexCount; }
 		Geometry_Type GeometryType() const				{ return m_geometry_type; }
 		const std::string& GeometryName() const			{ return m_geometryName; }
 		std::shared_ptr<Model> GeometryModel() const	{ return m_model; }
@@ -105,10 +105,10 @@ namespace Spartan
 	private:
 		//= GEOMETRY =======================
 		std::string m_geometryName;
-		unsigned int m_geometryIndexOffset;
-		unsigned int m_geometryIndexCount;
-		unsigned int m_geometryVertexOffset;
-		unsigned int m_geometryVertexCount;
+		uint32_t m_geometryIndexOffset;
+		uint32_t m_geometryIndexCount;
+		uint32_t m_geometryVertexOffset;
+		uint32_t m_geometryVertexCount;
 		Math::BoundingBox m_geometryAABB;
 		std::shared_ptr<Model> m_model;
 		Geometry_Type m_geometry_type;

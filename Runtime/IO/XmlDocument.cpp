@@ -106,7 +106,7 @@ namespace Spartan
 		return AddAttribute(nodeName, attributeName, to_string(value));
 	}
 
-	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, unsigned int value)
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, uint32_t value)
 	{
 		return AddAttribute(nodeName, attributeName, to_string(value));
 	}
@@ -163,7 +163,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool XmlDocument::GetAttribute(const string& nodeName, const string&attributeName, unsigned int* value)
+	bool XmlDocument::GetAttribute(const string& nodeName, const string&attributeName, uint32_t* value)
 	{
 		xml_attribute attribute = GetAttribute(nodeName, attributeName);
 

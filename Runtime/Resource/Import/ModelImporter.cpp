@@ -97,10 +97,10 @@ namespace Spartan
 		// Set tangent smoothing angle
 		importer.SetPropertyFloat(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, _ModelImporter::max_tangent_smoothing_angle);	
 		// Maximum number of triangles in a mesh (before splitting)
-		const unsigned int triangle_limit = 1000000;
+		const uint32_t triangle_limit = 1000000;
 		importer.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, triangle_limit);
 		// Maximum number of vertices in a mesh (before splitting)
-		const unsigned int vertex_limit = 1000000;
+		const uint32_t vertex_limit = 1000000;
 		importer.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, vertex_limit);
 		// Remove points and lines.
 		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);	
@@ -162,7 +162,7 @@ namespace Spartan
 		AssimpHelper::set_entity_transform(assimp_node, new_entity);
 
 		// Process all the node's meshes
-		for (unsigned int i = 0; i < assimp_node->mNumMeshes; i++)
+		for (uint32_t i = 0; i < assimp_node->mNumMeshes; i++)
 		{
 			auto entity				= new_entity; // set the current entity
 			const auto assimp_mesh	= assimp_scene->mMeshes[assimp_node->mMeshes[i]]; // get mesh
@@ -184,7 +184,7 @@ namespace Spartan
 		}
 
 		// Process children
-		for (unsigned int i = 0; i < assimp_node->mNumChildren; i++)
+		for (uint32_t i = 0; i < assimp_node->mNumChildren; i++)
 		{
 			auto child = m_world->EntityCreate();
 			ReadNodeHierarchy(assimp_scene, assimp_node->mChildren[i], model, new_entity, child.get());
@@ -195,7 +195,7 @@ namespace Spartan
 
 	void ModelImporter::ReadAnimations(const aiScene* scene, shared_ptr<Model>& model)
 	{
-		for (unsigned int i = 0; i < scene->mNumAnimations; i++)
+		for (uint32_t i = 0; i < scene->mNumAnimations; i++)
 		{
 			const auto assimp_animation = scene->mAnimations[i];
 			auto animation = make_shared<Animation>(m_context);
@@ -206,7 +206,7 @@ namespace Spartan
 			animation->SetTicksPerSec(assimp_animation->mTicksPerSecond != 0.0f ? assimp_animation->mTicksPerSecond : 25.0f);
 
 			// Animation channels
-			for (unsigned int j = 0; j > assimp_animation->mNumChannels; j++)
+			for (uint32_t j = 0; j > assimp_animation->mNumChannels; j++)
 			{
 				const auto assimp_node_anim = assimp_animation->mChannels[j];
 				AnimationNode animation_node;
@@ -214,7 +214,7 @@ namespace Spartan
 				animation_node.name = assimp_node_anim->mNodeName.C_Str();
 
 				// Position keys
-				for (unsigned int k = 0; k < assimp_node_anim->mNumPositionKeys; k++)
+				for (uint32_t k = 0; k < assimp_node_anim->mNumPositionKeys; k++)
 				{
 					const auto time = assimp_node_anim->mPositionKeys[k].mTime;
 					const auto value = AssimpHelper::to_vector3(assimp_node_anim->mPositionKeys[k].mValue);
@@ -223,7 +223,7 @@ namespace Spartan
 				}
 
 				// Rotation keys
-				for (unsigned int k = 0; k < assimp_node_anim->mNumRotationKeys; k++)
+				for (uint32_t k = 0; k < assimp_node_anim->mNumRotationKeys; k++)
 				{
 					const auto time = assimp_node_anim->mPositionKeys[k].mTime;
 					const auto value = AssimpHelper::to_quaternion(assimp_node_anim->mRotationKeys[k].mValue);
@@ -232,7 +232,7 @@ namespace Spartan
 				}
 
 				// Scaling keys
-				for (unsigned int k = 0; k < assimp_node_anim->mNumScalingKeys; k++)
+				for (uint32_t k = 0; k < assimp_node_anim->mNumScalingKeys; k++)
 				{
 					const auto time = assimp_node_anim->mPositionKeys[k].mTime;
 					const auto value = AssimpHelper::to_vector3(assimp_node_anim->mScalingKeys[k].mValue);
@@ -261,7 +261,7 @@ namespace Spartan
 			vertices.reserve(vertex_count);
 			vertices.resize(vertex_count);
 
-			for (unsigned int i = 0; i < vertex_count; i++)
+			for (uint32_t i = 0; i < vertex_count; i++)
 			{
 				auto& vertex = vertices[i];
 
@@ -290,7 +290,7 @@ namespace Spartan
 				}
 
 				// Texture coordinates
-				const unsigned int uv_channel = 0;
+				const uint32_t uv_channel = 0;
 				if (assimp_mesh->HasTextureCoords(uv_channel))
 				{
 					const auto& tex_coords = assimp_mesh->mTextureCoords[uv_channel][i];
@@ -301,7 +301,7 @@ namespace Spartan
 		}
 
 		// Indices
-		vector<unsigned int> indices;
+		vector<uint32_t> indices;
 		{
 			// Pre-allocate for extra performance
 			const auto index_count = assimp_mesh->mNumFaces * 3;
@@ -309,7 +309,7 @@ namespace Spartan
 			indices.resize(index_count);
 
 			// Get indices by iterating through each face of the mesh.
-			for (unsigned int face_index = 0; face_index < assimp_mesh->mNumFaces; face_index++)
+			for (uint32_t face_index = 0; face_index < assimp_mesh->mNumFaces; face_index++)
 			{
 				// if (aiPrimitiveType_LINE | aiPrimitiveType_POINT) && aiProcess_Triangulate) then (face.mNumIndices == 3)
 				auto& face					= assimp_mesh->mFaces[face_index];
@@ -324,8 +324,8 @@ namespace Spartan
 		const auto aabb = BoundingBox(vertices);
 
 		// Add the mesh to the model
-		unsigned int index_offset;
-		unsigned int vertex_offset;
+		uint32_t index_offset;
+		uint32_t vertex_offset;
 		model->GeometryAppend(move(indices), move(vertices), &index_offset, &vertex_offset);
 
 		// Add a renderable component to this entity
@@ -335,9 +335,9 @@ namespace Spartan
 		renderable->GeometrySet(
 			entity_parent->GetName(),
 			index_offset,
-			static_cast<unsigned int>(indices.size()),
+			static_cast<uint32_t>(indices.size()),
 			vertex_offset,
-			static_cast<unsigned int>(vertices.size()),
+			static_cast<uint32_t>(vertices.size()),
 			aabb,
 			model
 		);
@@ -352,7 +352,7 @@ namespace Spartan
 		}
 
 		// Bones
-		//for (unsigned int boneIndex = 0; boneIndex < assimpMesh->mNumBones; boneIndex++)
+		//for (uint32_t boneIndex = 0; boneIndex < assimpMesh->mNumBones; boneIndex++)
 		//{
 			//aiBone* bone = assimpMesh->mBones[boneIndex];
 		//}
@@ -377,7 +377,7 @@ namespace Spartan
 		// Specifies whether meshes using this material must be rendered 
 		// without back face CullMode. 0 for false, !0 for true.
 		auto is_two_sided	= 0;
-		unsigned int max	= 1;
+		uint32_t max	= 1;
 		if (AI_SUCCESS == aiGetMaterialIntegerArray(assimp_material, AI_MATKEY_TWOSIDED, &is_two_sided, &max))
 		{
 			if (is_two_sided != 0)

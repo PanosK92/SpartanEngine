@@ -37,7 +37,7 @@ namespace Spartan
 	class Context;
 	class FileStream;
 
-	enum ComponentType : unsigned int
+	enum ComponentType : uint32_t
 	{
 		ComponentType_AudioListener,
 		ComponentType_AudioSource,
@@ -99,15 +99,15 @@ namespace Spartan
 
 		Transform* GetTransform() const			{ return m_transform; }
 		Context* GetContext() const				{ return m_context; }
-		unsigned int GetID() const				{ return m_id; }
-		void SetId(const unsigned int id)		{ m_id = id; }
+		uint32_t GetID() const				{ return m_id; }
+		void SetId(const uint32_t id)		{ m_id = id; }
 		constexpr ComponentType GetType() const	{ return m_type; }
 		void SetType(const ComponentType type)	{ m_type = type; }
 
 		const auto& GetAttributes() const { return m_attributes; }
 		void SetAttributes(const std::vector<Attribute>& attributes)
 		{ 
-			for (unsigned int i = 0; i < static_cast<unsigned int>(m_attributes.size()); i++)
+			for (uint32_t i = 0; i < static_cast<uint32_t>(m_attributes.size()); i++)
 			{
 				m_attributes[i].setter(attributes[i].getter());
 			}
@@ -139,7 +139,7 @@ namespace Spartan
 		// The type of the component
 		ComponentType m_type		= ComponentType_Unknown;
 		// The id of the component
-		unsigned int m_id			= 0;
+		uint32_t m_id			= 0;
 		// The state of the component
 		bool m_enabled				= false;
 		// The owner of the component

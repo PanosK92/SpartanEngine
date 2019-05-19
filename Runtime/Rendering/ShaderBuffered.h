@@ -277,8 +277,8 @@ namespace Spartan
 
 		}
 		
-		bool UpdateBuffer(void* data, unsigned int index = 0) const;
-		const auto& GetConstantBuffer(unsigned int index = 0) { return m_buffers[index]; }
+		bool UpdateBuffer(void* data, uint32_t index = 0) const;
+		const auto& GetConstantBuffer(uint32_t index = 0) { return m_buffers[index]; }
 
 	private:
 		std::vector<std::shared_ptr<RHI_ConstantBuffer>> m_buffers;

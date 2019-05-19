@@ -232,12 +232,12 @@ namespace Spartan
 
 	}
 
-	unsigned int RHI_Device::ProfilingGetGpuMemory()
+	uint32_t RHI_Device::ProfilingGetGpuMemory()
 	{
 		return 0;
 	}
 
-	unsigned int RHI_Device::ProfilingGetGpuMemoryUsage()
+	uint32_t RHI_Device::ProfilingGetGpuMemoryUsage()
 	{
 		return 0;
 	}

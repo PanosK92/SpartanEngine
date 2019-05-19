@@ -40,7 +40,7 @@ namespace Spartan
 	{	
 		auto model = make_shared<Model>(renderable->GetContext());
 		vector<RHI_Vertex_PosTexNorTan> vertices;
-		vector<unsigned int> indices;
+		vector<uint32_t> indices;
 
 		// Construct geometry
 		if (type == Geometry_Default_Cube)
@@ -78,9 +78,9 @@ namespace Spartan
 		renderable->GeometrySet(
 			"Default_Geometry",
 			0,
-			static_cast<unsigned int>(indices.size()),
+			static_cast<uint32_t>(indices.size()),
 			0,
-			static_cast<unsigned int>(vertices.size()),
+			static_cast<uint32_t>(vertices.size()),
 			BoundingBox(vertices),
 			model
 		);
@@ -101,10 +101,10 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, shared_ptr<Material>);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_castShadows, bool);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_receiveShadows, bool);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset, unsigned int);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount, unsigned int);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset, unsigned int);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount, unsigned int);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset, uint32_t);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount, uint32_t);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset, uint32_t);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount, uint32_t);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName, string);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_model, shared_ptr<Model>);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryAABB, BoundingBox);
@@ -115,7 +115,7 @@ namespace Spartan
 	void Renderable::Serialize(FileStream* stream)
 	{
 		// Mesh
-		stream->Write(static_cast<unsigned int>(m_geometry_type));
+		stream->Write(static_cast<uint32_t>(m_geometry_type));
 		stream->Write(m_geometryIndexOffset);
 		stream->Write(m_geometryIndexCount);
 		stream->Write(m_geometryVertexOffset);
@@ -136,11 +136,11 @@ namespace Spartan
 	void Renderable::Deserialize(FileStream* stream)
 	{
 		// Geometry
-		m_geometry_type			= static_cast<Geometry_Type>(stream->ReadAs<unsigned int>());
-		m_geometryIndexOffset	= stream->ReadAs<unsigned int>();
-		m_geometryIndexCount	= stream->ReadAs<unsigned int>();
-		m_geometryVertexOffset	= stream->ReadAs<unsigned int>();
-		m_geometryVertexCount	= stream->ReadAs<unsigned int>();
+		m_geometry_type			= static_cast<Geometry_Type>(stream->ReadAs<uint32_t>());
+		m_geometryIndexOffset	= stream->ReadAs<uint32_t>();
+		m_geometryIndexCount	= stream->ReadAs<uint32_t>();
+		m_geometryVertexOffset	= stream->ReadAs<uint32_t>();
+		m_geometryVertexCount	= stream->ReadAs<uint32_t>();
 		stream->Read(&m_geometryAABB);
 		string model_name;
 		stream->Read(&model_name);
@@ -170,7 +170,7 @@ namespace Spartan
 	//==============================================================================
 
 	//= GEOMETRY =====================================================================================
-	void Renderable::GeometrySet(const string& name, const unsigned int index_offset, const unsigned int index_count, const unsigned int vertex_offset, const unsigned int vertex_count, const BoundingBox& aabb, shared_ptr<Model>& model)
+	void Renderable::GeometrySet(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& aabb, shared_ptr<Model>& model)
 	{	
 		m_geometryName			= name;
 		m_geometryIndexOffset	= index_offset;
@@ -191,7 +191,7 @@ namespace Spartan
 		}
 	}
 
-	void Renderable::GeometryGet(vector<unsigned int>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
+	void Renderable::GeometryGet(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
 	{
 		if (!m_model)
 		{

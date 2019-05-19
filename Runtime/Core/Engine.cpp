@@ -40,7 +40,7 @@ using namespace std;
 
 namespace Spartan
 {
-	unsigned int Engine::m_flags = 0;
+	uint32_t Engine::m_flags = 0;
 
 	Engine::Engine(const std::shared_ptr<Context>& context)
 	{

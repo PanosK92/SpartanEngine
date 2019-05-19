@@ -164,10 +164,10 @@ namespace Spartan
 		//===================================
 
 		//= COMPONENTS ================================
-		stream->Write(static_cast<unsigned int>(m_components.size()));
+		stream->Write(static_cast<uint32_t>(m_components.size()));
 		for (const auto& component : m_components)
 		{
-			stream->Write(static_cast<unsigned int>(component->GetType()));
+			stream->Write(static_cast<uint32_t>(component->GetType()));
 			stream->Write(component->GetID());
 		}
 
@@ -181,7 +181,7 @@ namespace Spartan
 		auto children = GetTransform_PtrRaw()->GetChildren();
 
 		// 1st - children count
-		stream->Write(static_cast<unsigned int>(children.size()));
+		stream->Write(static_cast<uint32_t>(children.size()));
 
 		// 2nd - children IDs
 		for (const auto& child : children)
@@ -215,11 +215,11 @@ namespace Spartan
 		//==================================
 
 		//= COMPONENTS ================================
-		const auto component_count = stream->ReadAs<unsigned int>();
-		for (unsigned int i = 0; i < component_count; i++)
+		const auto component_count = stream->ReadAs<uint32_t>();
+		for (uint32_t i = 0; i < component_count; i++)
 		{
-			unsigned int type = ComponentType_Unknown;
-			unsigned int id = 0;
+			uint32_t type = ComponentType_Unknown;
+			uint32_t id = 0;
 
 			stream->Read(&type);	// load component's type
 			stream->Read(&id);		// load component's id
@@ -244,15 +244,15 @@ namespace Spartan
 
 		//= CHILDREN ===================================
 		// 1st - children count
-		const auto children_count = stream->ReadAs<unsigned int>();
+		const auto children_count = stream->ReadAs<uint32_t>();
 
 		// 2nd - children IDs
 		auto scene = m_context->GetSubsystem<World>();
 		vector<std::weak_ptr<Entity>> children;
-		for (unsigned int i = 0; i < children_count; i++)
+		for (uint32_t i = 0; i < children_count; i++)
 		{
 			auto child = scene->EntityCreate();
-			child->SetId(stream->ReadAs<unsigned int>());
+			child->SetId(stream->ReadAs<uint32_t>());
 			children.emplace_back(child);
 		}
 
@@ -300,7 +300,7 @@ namespace Spartan
 		return component;
 	}
 
-	void Entity::RemoveComponentById(const unsigned int id)
+	void Entity::RemoveComponentById(const uint32_t id)
 	{
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{

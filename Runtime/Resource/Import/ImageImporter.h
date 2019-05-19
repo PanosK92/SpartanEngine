@@ -43,16 +43,16 @@ namespace Spartan
 		bool Load(const std::string& file_path, RHI_Texture* texture, bool generate_mipmaps = true);
 
 	private:	
-		bool GetBitsFromFibitmap(std::vector<std::byte>* data, FIBITMAP* bitmap, unsigned int width, unsigned int height, unsigned int channels);
-		void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, unsigned int width, unsigned int height, unsigned int channels);
+		bool GetBitsFromFibitmap(std::vector<std::byte>* data, FIBITMAP* bitmap, uint32_t width, uint32_t height, uint32_t channels);
+		void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels);
 
-		unsigned int ComputeChannelCount(FIBITMAP* bitmap);
-		unsigned int ComputeBitsPerChannel(FIBITMAP* bitmap) const;
-		RHI_Format ComputeTextureFormat(unsigned int bpp, unsigned int channels) const;
+		uint32_t ComputeChannelCount(FIBITMAP* bitmap);
+		uint32_t ComputeBitsPerChannel(FIBITMAP* bitmap) const;
+		RHI_Format ComputeTextureFormat(uint32_t bpp, uint32_t channels) const;
 		bool IsVisuallyGrayscale(FIBITMAP* bitmap) const;
 		FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap);
 		FIBITMAP* _FreeImage_ConvertTo32Bits(FIBITMAP* bitmap);
-		FIBITMAP* _FreeImage_Rescale(FIBITMAP* bitmap, unsigned int width, unsigned int height);
+		FIBITMAP* _FreeImage_Rescale(FIBITMAP* bitmap, uint32_t width, uint32_t height);
 
 		Context* m_context;
 	};

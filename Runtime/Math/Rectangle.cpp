@@ -62,7 +62,7 @@ namespace Spartan::Math
 		};
 
 		// Create indices
-		vector<unsigned int> indices = { 0, 1, 2, 3, 4, 5 };
+		vector<uint32_t> indices = { 0, 1, 2, 3, 4, 5 };
 
 		m_vertexBuffer = make_shared<RHI_VertexBuffer>(renderer->GetRhiDevice());
 		if (!m_vertexBuffer->Create(vertices))

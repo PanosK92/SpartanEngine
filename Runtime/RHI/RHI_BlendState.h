@@ -42,15 +42,26 @@ namespace Spartan
 		);
 		~RHI_BlendState();
 
-		bool GetBlendEnabled() const				{ return m_blend_enabled; }
-		RHI_Blend GetSourceBlend() const			{ return m_source_blend; }
-		RHI_Blend GetDestBlend() const				{ return m_dest_blend; }
-		RHI_Blend_Operation GetBlendOp() const		{ return m_blend_op; }
-		RHI_Blend GetSourceBlendAlpha() const		{ return m_source_blend_alpha; }
-		RHI_Blend GetDestBlendAlpha() const			{ return m_dest_blend_alpha; }
-		RHI_Blend_Operation GetBlendOpAlpha() const { return m_blend_op_alpha; }
+		auto GetBlendEnabled()		const { return m_blend_enabled; }
+		auto GetSourceBlend()		const { return m_source_blend; }
+		auto GetDestBlend()			const { return m_dest_blend; }
+		auto GetBlendOp()			const { return m_blend_op; }
+		auto GetSourceBlendAlpha()	const { return m_source_blend_alpha; }
+		auto GetDestBlendAlpha()	const { return m_dest_blend_alpha; }
+		auto GetBlendOpAlpha()		const { return m_blend_op_alpha; }
+		auto GetBuffer()			const { return m_buffer; }
 
-		void* GetBuffer() const	{ return m_buffer; }
+		bool operator==(const RHI_BlendState& rhs) const
+		{
+			return
+				m_blend_enabled == rhs.GetBlendEnabled() &&
+				m_source_blend == rhs.GetSourceBlend() &&
+				m_dest_blend == rhs.GetDestBlend() &&
+				m_blend_op == rhs.GetBlendOp() &&
+				m_source_blend_alpha == rhs.GetSourceBlendAlpha() &&
+				m_dest_blend_alpha == rhs.GetDestBlendAlpha() &&
+				m_blend_op_alpha == rhs.GetBlendOpAlpha();
+		}
 
 	private:
 		bool m_blend_enabled					= false;

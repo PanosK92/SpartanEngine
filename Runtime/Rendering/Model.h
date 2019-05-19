@@ -58,17 +58,17 @@ namespace Spartan
 		
 		//= GEOMTETRY ==================================================
 		void GeometryAppend(
-			std::vector<unsigned int>& indices,
+			std::vector<uint32_t>& indices,
 			std::vector<RHI_Vertex_PosTexNorTan>& vertices,
-			unsigned int* index_offset = nullptr,
-			unsigned int* vertex_offset = nullptr
+			uint32_t* index_offset = nullptr,
+			uint32_t* vertex_offset = nullptr
 		) const;
 		void GeometryGet(
-			unsigned int index_offset,
-			unsigned int index_count,
-			unsigned int vertex_offset, 
-			unsigned int vertex_count,
-			std::vector<unsigned int>* indices,
+			uint32_t index_offset,
+			uint32_t index_count,
+			uint32_t vertex_offset, 
+			uint32_t vertex_count,
+			std::vector<uint32_t>* indices,
 			std::vector<RHI_Vertex_PosTexNorTan>* vertices
 		) const;
 		void GeometryUpdate();
@@ -96,7 +96,7 @@ namespace Spartan
 		// Geometry
 		bool GeometryCreateBuffers();
 		float GeometryComputeNormalizedScale() const;
-		unsigned int GeometryComputeMemoryUsage() const;
+		uint32_t GeometryComputeMemoryUsage() const;
 
 		// The root entity that represents this model in the scene
 		std::weak_ptr<Entity> m_root_entity;
@@ -106,7 +106,7 @@ namespace Spartan
 		std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
 		std::shared_ptr<Mesh> m_mesh;
 		Math::BoundingBox m_aabb;
-		unsigned int mesh_count;
+		uint32_t mesh_count;
 
 		// Material
 		std::vector<std::shared_ptr<Material>> m_materials;

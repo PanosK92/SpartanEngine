@@ -100,9 +100,9 @@ namespace Spartan
 		Math::Vector2 m_window_size				= Math::Vector2::Zero;
 		bool m_is_fullscreen					= false;
 		bool m_is_mouse_visible					= true;
-		unsigned int m_shadow_map_resolution	= 4096;
-		unsigned int m_anisotropy				= 16;
-		unsigned int m_max_thread_count			= 0;
+		uint32_t m_shadow_map_resolution	= 4096;
+		uint32_t m_anisotropy				= 16;
+		uint32_t m_max_thread_count			= 0;
 		float m_fps_limit						= 0.0f;
 		float m_fps_target						= 165.0f;
 		FPS_Policy m_fps_policy					= Fps_FixedMonitor;

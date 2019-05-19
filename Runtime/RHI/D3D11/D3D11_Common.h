@@ -82,7 +82,7 @@ namespace Spartan::D3D11_Common
 
 		const auto get_available_adapters = [](IDXGIFactory1* factory)
 		{
-			unsigned int i = 0;
+			uint32_t i = 0;
 			IDXGIAdapter* adapter;
 			std::vector<IDXGIAdapter*> adapters;
 			while (factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
@@ -113,7 +113,7 @@ namespace Spartan::D3D11_Common
 				continue;
 			}
 
-			const auto memory_mb = static_cast<unsigned int>(adapter_desc.DedicatedVideoMemory / 1024 / 1024);
+			const auto memory_mb = static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024);
 			char name[128];
 			auto def_char = ' ';
 			WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
@@ -207,7 +207,7 @@ namespace Spartan::D3D11_Common
 
 	namespace swap_chain
 	{
-		inline unsigned int flag_filter(RHI_Device* device, unsigned long flags)
+		inline uint32_t flag_filter(RHI_Device* device, unsigned long flags)
 		{
 			// If SwapChain_Allow_Tearing was requested
 			if (flags & SwapChain_Allow_Tearing)

@@ -201,8 +201,8 @@ namespace Spartan
 
 	void Renderer::CreateRenderTextures()
 	{
-		auto width	= static_cast<unsigned int>(m_resolution.x);
-		auto height	= static_cast<unsigned int>(m_resolution.y);
+		auto width	= static_cast<uint32_t>(m_resolution.x);
+		auto height	= static_cast<uint32_t>(m_resolution.y);
 
 		if ((width / 4) == 0 || (height / 4) == 0)
 		{
@@ -497,7 +497,7 @@ namespace Spartan
 		m_is_rendering = false;
 	}
 
-	void Renderer::SetResolution(unsigned int width, unsigned int height)
+	void Renderer::SetResolution(uint32_t width, uint32_t height)
 	{
 		// Return if resolution is invalid
 		if (width == 0 || width > m_max_resolution || height == 0 || height > m_max_resolution)
@@ -558,7 +558,7 @@ namespace Spartan
 		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
-	void Renderer::SetDefaultBuffer(const unsigned int resolution_width, const unsigned int resolution_height, const Matrix& mMVP) const
+	void Renderer::SetDefaultBuffer(const uint32_t resolution_width, const uint32_t resolution_height, const Matrix& mMVP) const
 	{
 		auto buffer = static_cast<ConstantBufferGlobal*>(m_buffer_global->Map());
 		if (!buffer)

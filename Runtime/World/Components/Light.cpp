@@ -105,7 +105,7 @@ namespace Spartan
 		ComputeViewMatrix();
 
 		// Update projection matrix
-		for (unsigned int i = 0; i < m_shadow_map->GetArraySize(); i++)
+		for (uint32_t i = 0; i < m_shadow_map->GetArraySize(); i++)
 		{
 			ComputeProjectionMatrix(i);
 		}
@@ -113,7 +113,7 @@ namespace Spartan
 
 	void Light::Serialize(FileStream* stream)
 	{
-		stream->Write(static_cast<unsigned int>(m_lightType));
+		stream->Write(static_cast<uint32_t>(m_lightType));
 		stream->Write(m_cast_shadows);
 		stream->Write(m_color);
 		stream->Write(m_range);
@@ -125,7 +125,7 @@ namespace Spartan
 
 	void Light::Deserialize(FileStream* stream)
 	{
-		SetLightType(static_cast<LightType>(stream->ReadAs<unsigned int>()));
+		SetLightType(static_cast<LightType>(stream->ReadAs<uint32_t>()));
 		stream->Read(&m_cast_shadows);
 		stream->Read(&m_color);
 		stream->Read(&m_range);
@@ -224,23 +224,23 @@ namespace Spartan
 		}
 	}
 
-	const Matrix& Light::GetViewMatrix(unsigned int index /*= 0*/)
+	const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/)
 	{
-		if (index >= static_cast<unsigned int>(m_matrix_view.size()))
+		if (index >= static_cast<uint32_t>(m_matrix_view.size()))
 			return Matrix::Identity;
 
 		return m_matrix_view[index];
 	}
 
-	const Matrix& Light::GetProjectionMatrix(unsigned int index /*= 0*/)
+	const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/)
 	{
-		if (index >= static_cast<unsigned int>(m_matrix_projection.size()))
+		if (index >= static_cast<uint32_t>(m_matrix_projection.size()))
 			return Matrix::Identity;
 
 		return m_matrix_projection[index];
 	}
 
-	bool Light::ComputeProjectionMatrix(unsigned int index /*= 0*/)
+	bool Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
 	{
 		if (!m_renderer->GetCamera() || index >= m_shadow_map->GetArraySize())
 			return false;
@@ -301,7 +301,7 @@ namespace Spartan
 		if (!force && !m_shadow_map)
 			return;
 
-		unsigned int resolution = Settings::Get().GetShadowResolution();
+		uint32_t resolution = Settings::Get().GetShadowResolution();
 		auto rhi_device			= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
 
 		if (GetLightType() == LightType_Directional)

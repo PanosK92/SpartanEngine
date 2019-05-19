@@ -30,7 +30,7 @@ namespace Spartan
 {
 	struct VertexWeight
 	{
-		unsigned int vertexID;
+		uint32_t vertexID;
 		float weight;
 	};
 

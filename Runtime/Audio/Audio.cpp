@@ -41,11 +41,7 @@ namespace Spartan
 {
 	Audio::Audio(Context* context) : ISubsystem(context)
 	{
-		m_system_fmod		= nullptr;
-		m_max_channels		= 32;
-		m_distance_entity	= 1.0f;
-		m_listener			= nullptr;
-		m_profiler			= m_context->GetSubsystem<Profiler>().get();
+		m_profiler = m_context->GetSubsystem<Profiler>().get();
 
 		// Create FMOD instance
 		m_result_fmod = System_Create(&m_system_fmod);
@@ -56,7 +52,7 @@ namespace Spartan
 		}
 
 		// Check FMOD version
-		unsigned int version;
+		uint32_t version;
 		m_result_fmod = m_system_fmod->getVersion(&version);
 		if (m_result_fmod != FMOD_OK)
 		{

@@ -109,7 +109,7 @@ namespace Spartan
 	}
 	//=======================================================
 
-	void Model::GeometryAppend(std::vector<unsigned int>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, unsigned int* index_offset, unsigned int* vertex_offset) const
+	void Model::GeometryAppend(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* index_offset, uint32_t* vertex_offset) const
 	{
 		if (indices.empty() || vertices.empty())
 		{
@@ -122,7 +122,7 @@ namespace Spartan
 		m_mesh->Vertices_Append(vertices, vertex_offset);
 	}
 
-	void Model::GeometryGet(const unsigned int index_offset, const unsigned int index_count, const unsigned int vertex_offset, const unsigned int vertex_count, vector<unsigned int>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
+	void Model::GeometryGet(const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
 	{
 		m_mesh->Geometry_Get(index_offset, index_count, vertex_offset, vertex_count, indices, vertices);
 	}
@@ -326,14 +326,14 @@ namespace Spartan
 		return 1.0f / scale_offset;
 	}
 
-	unsigned int Model::GeometryComputeMemoryUsage() const
+	uint32_t Model::GeometryComputeMemoryUsage() const
 	{
 		// Vertices & Indices
 		auto size = !m_mesh ? 0 : m_mesh->Geometry_MemoryUsage();
 
 		// Buffers
-		size += static_cast<unsigned int>(m_vertex_buffer->GetSize());
-		size += static_cast<unsigned int>(m_index_buffer->GetSize());
+		size += static_cast<uint32_t>(m_vertex_buffer->GetSize());
+		size += static_cast<uint32_t>(m_index_buffer->GetSize());
 
 		return size;
 	}

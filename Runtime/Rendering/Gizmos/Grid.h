@@ -44,15 +44,15 @@ namespace Spartan
 		
 		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer()	{ return m_indexBuffer; }
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer()	{ return m_vertexBuffer; }
-		unsigned int GetIndexCount()						{ return m_indexCount; }
+		uint32_t GetIndexCount()						{ return m_indexCount; }
 
 	private:
-		void BuildGrid(std::vector<RHI_Vertex_PosCol>* vertices, std::vector<unsigned int>* indices);
-		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<unsigned int>& indices, std::shared_ptr<RHI_Device>& rhiDevice);
+		void BuildGrid(std::vector<RHI_Vertex_PosCol>* vertices, std::vector<uint32_t>* indices);
+		bool CreateBuffers(std::vector<RHI_Vertex_PosCol>& vertices, std::vector<uint32_t>& indices, std::shared_ptr<RHI_Device>& rhiDevice);
 
-		unsigned int m_indexCount;
-		unsigned int m_terrainHeight;
-		unsigned int m_terrainWidth;
+		uint32_t m_indexCount;
+		uint32_t m_terrainHeight;
+		uint32_t m_terrainWidth;
 		std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
 		Math::Matrix m_world;

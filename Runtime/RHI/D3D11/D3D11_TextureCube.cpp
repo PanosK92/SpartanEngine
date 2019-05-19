@@ -45,11 +45,11 @@ namespace Spartan
 	inline bool CreateFromData
 	(
 		void*& resource_texture,
-		unsigned int width,
-		unsigned int height,
-		unsigned int channels,
-		unsigned int array_size,
-		unsigned int bpc,
+		uint32_t width,
+		uint32_t height,
+		uint32_t channels,
+		uint32_t array_size,
+		uint32_t bpc,
 		RHI_Format format,
 		vector<vector<vector<std::byte>>>& data,
 		const shared_ptr<RHI_Device>& rhi_device
@@ -108,8 +108,8 @@ namespace Spartan
 				subresource_data.SysMemSlicePitch	= 0;			// This is only used for 3D textures
 
 				// Compute size of next mip-map
-				mip_width	= Max(mip_width / 2, static_cast<unsigned int>(1));
-				mip_height	= Max(mip_height / 2, static_cast<unsigned int>(1));
+				mip_width	= Max(mip_width / 2, static_cast<uint32_t>(1));
+				mip_height	= Max(mip_height / 2, static_cast<uint32_t>(1));
 			}
 
 			vec_texture_desc.emplace_back(texture_desc);
@@ -154,9 +154,9 @@ namespace Spartan
 	(
 		void*& resource_texture,
 		vector<void*>& resource_depth_stencils,
-		unsigned int width,
-		unsigned int height,
-		unsigned int array_size,
+		uint32_t width,
+		uint32_t height,
+		uint32_t array_size,
 		RHI_Format format,
 		const shared_ptr<RHI_Device>& rhi_device
 	)
@@ -202,7 +202,7 @@ namespace Spartan
 		dsv_desc.Texture2DArray.ArraySize		= 1;
 		dsv_desc.Texture2DArray.FirstArraySlice = 0;
 
-		for (unsigned int i = 0; i < array_size; i++)
+		for (uint32_t i = 0; i < array_size; i++)
 		{
 			dsv_desc.Texture2DArray.FirstArraySlice = i;
 			auto ptr = reinterpret_cast<ID3D11DepthStencilView**>(&resource_depth_stencils.emplace_back(nullptr));

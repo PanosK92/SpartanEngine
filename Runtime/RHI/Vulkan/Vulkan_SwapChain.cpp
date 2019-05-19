@@ -191,7 +191,7 @@ namespace Spartan
 		image_views_out		= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
 		frame_buffers_out	= vector<void*>(frame_buffers.begin(), frame_buffers.end());
 
-		for (unsigned int i = 0; i < buffer_count; i++)
+		for (uint32_t i = 0; i < buffer_count; i++)
 		{
 			semaphores_image_acquired_out.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
 		}
@@ -236,11 +236,11 @@ namespace Spartan
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
 		const std::shared_ptr<RHI_Device>& rhi_device,
-		unsigned int width,
-		unsigned int height,
+		uint32_t width,
+		uint32_t height,
 		const RHI_Format format			/*= Format_R8G8B8A8_UNORM */,
 		RHI_Present_Mode present_mode	/*= Present_Off */,
-		const unsigned int buffer_count	/*= 1 */,
+		const uint32_t buffer_count	/*= 1 */,
 		void* render_pass				/*= nullptr */
 	)
 	{
@@ -292,7 +292,7 @@ namespace Spartan
 		);
 	}
 
-	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
+	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
 	{	
 		// Only resize if needed
 		if (m_width == width && m_height == height)

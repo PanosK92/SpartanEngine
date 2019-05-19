@@ -81,7 +81,7 @@ namespace Spartan
 		}
 
 	private:
-		unsigned int m_threadCount;
+		uint32_t m_threadCount;
 		std::vector<std::thread> m_threads;
 		std::queue<std::shared_ptr<Task>> m_tasks;
 		std::mutex m_tasksMutex;

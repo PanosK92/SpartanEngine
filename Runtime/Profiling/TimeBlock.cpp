@@ -134,7 +134,7 @@ namespace Spartan
 		m_profiling_gpu = false;
 	}
 
-	unsigned int TimeBlock::FindTreeDepth(const TimeBlock* time_block, unsigned int depth /*= 0*/)
+	uint32_t TimeBlock::FindTreeDepth(const TimeBlock* time_block, uint32_t depth /*= 0*/)
 	{
 		if (time_block->GetParent())
 			depth =	FindTreeDepth(time_block->GetParent(), ++depth);

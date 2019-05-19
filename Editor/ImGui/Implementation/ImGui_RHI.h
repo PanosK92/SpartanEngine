@@ -56,15 +56,19 @@ namespace ImGui::RHI
 	RHI_CommandList* g_cmd_list	= nullptr;
 
 	// RHI Data	
-	static shared_ptr<RHI_Pipeline>			g_pipeline;
-	static shared_ptr<RHI_Device>			g_rhi_device;
-	static shared_ptr<RHI_SwapChain>		g_swap_chain;	
-	static shared_ptr<RHI_Texture>			g_fontTexture;
-	static shared_ptr<RHI_Sampler>			g_fontSampler;
-	static shared_ptr<RHI_ConstantBuffer>	g_constant_buffer;
-	static shared_ptr<RHI_VertexBuffer>		g_vertexBuffer;
-	static shared_ptr<RHI_IndexBuffer>		g_indexBuffer;	
-	
+	static shared_ptr<RHI_Pipeline>				g_pipeline;
+	static shared_ptr<RHI_Device>				g_rhi_device;
+	static shared_ptr<RHI_SwapChain>			g_swap_chain;	
+	static shared_ptr<RHI_Texture>				g_texture;
+	static shared_ptr<RHI_Sampler>				g_sampler;
+	static shared_ptr<RHI_ConstantBuffer>		g_constant_buffer;
+	static shared_ptr<RHI_VertexBuffer>			g_vertex_buffer;
+	static shared_ptr<RHI_IndexBuffer>			g_index_buffer;
+	static shared_ptr<RHI_DepthStencilState>	g_depth_stencil_state;
+	static shared_ptr<RHI_RasterizerState>		g_rasterizer_state;
+	static shared_ptr<RHI_BlendState>			g_blend_state;
+	static shared_ptr<RHI_Shader>				g_shader;
+
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
 		g_context		= context;
@@ -78,11 +82,73 @@ namespace ImGui::RHI
 			return false;
 		}
 
-		g_pipeline			= make_shared<RHI_Pipeline>(g_rhi_device);
-		g_fontSampler		= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
-		g_constant_buffer	= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
-		g_vertexBuffer		= make_shared<RHI_VertexBuffer>(g_rhi_device, sizeof(ImDrawVert));
-		g_indexBuffer		= make_shared<RHI_IndexBuffer>(g_rhi_device);
+		// Create required RHI objects
+		{
+			g_pipeline				= make_shared<RHI_Pipeline>(g_rhi_device);
+			g_sampler				= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
+			g_constant_buffer		= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
+			g_vertex_buffer			= make_shared<RHI_VertexBuffer>(g_rhi_device, sizeof(ImDrawVert));
+			g_index_buffer			= make_shared<RHI_IndexBuffer>(g_rhi_device);
+			g_depth_stencil_state	= make_shared<RHI_DepthStencilState>(g_rhi_device, false);
+
+			g_rasterizer_state = make_shared<RHI_RasterizerState>
+				(
+					g_rhi_device,
+					Cull_None,
+					Fill_Solid,
+					true,	// depth clip
+					true,	// scissor
+					false,	// multi-sample
+					false	// anti-aliased lines
+					);
+
+			g_blend_state = make_shared<RHI_BlendState>
+				(
+					g_rhi_device,
+					true,
+					Blend_Src_Alpha,		// source blend
+					Blend_Inv_Src_Alpha,	// destination blend
+					Blend_Operation_Add,	// blend op
+					Blend_Inv_Src_Alpha,	// source blend alpha
+					Blend_Zero,				// destination blend alpha
+					Blend_Operation_Add		// destination op alpha
+					);
+
+			// Shader
+			static string shader_source =
+				"SamplerState sampler0;"
+				"Texture2D texture0;"
+				"cbuffer vertexBuffer : register(b0)"
+				"{"
+				"	matrix transform;"
+				"};"
+				"struct VS_INPUT"
+				"{"
+				"	float2 pos	: POSITION0;"
+				"	float2 uv	: TEXCOORD0;"
+				"	float4 col	: COLOR0;"
+				"};"
+				"struct PS_INPUT"
+				"{"
+				"	float4 pos : SV_POSITION;"
+				"	float4 col : COLOR;"
+				"	float2 uv  : TEXCOORD;"
+				"};"
+				"PS_INPUT mainVS(VS_INPUT input)"
+				"{"
+				"	PS_INPUT output;"
+				"	output.pos = mul(transform, float4(input.pos.xy, 0.f, 1.f));"
+				"	output.col = input.col;	"
+				"	output.uv  = input.uv;"
+				"	return output;"
+				"}"
+				"float4 mainPS(PS_INPUT input) : SV_Target"
+				"{"
+				"	return input.col * texture0.Sample(sampler0, input.uv);"
+				"}";
+			g_shader = make_shared<RHI_Shader>(g_rhi_device);
+			g_shader->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_VertexPixel, shader_source);
+		}
 
 		// Setup back-end capabilities flags
 		auto& io = GetIO();
@@ -106,86 +172,23 @@ namespace ImGui::RHI
 			memcpy(&data[0], reinterpret_cast<std::byte*>(pixels), size);
 
 			// Upload texture to graphics system
-			g_fontTexture = make_shared<RHI_Texture2D>(g_context, atlas_width, atlas_height, Format_R8G8B8A8_UNORM, data);
-			io.Fonts->TexID = static_cast<ImTextureID>(g_fontTexture.get());
+			g_texture = make_shared<RHI_Texture2D>(g_context, atlas_width, atlas_height, Format_R8G8B8A8_UNORM, data);
+			io.Fonts->TexID = static_cast<ImTextureID>(g_texture.get());
 		}
 
 		// Create pipeline
 		{
-			// Depth-stencil State
-			auto depth_stencil_state = make_shared<RHI_DepthStencilState>(g_rhi_device, false);
-
-			// Rasterizer state
-			auto rasterizer_state = make_shared<RHI_RasterizerState>
-			(
-				g_rhi_device,
-				Cull_None,
-				Fill_Solid,
-				true,	// depth clip
-				true,	// scissor
-				false,	// multi-sample
-				false	// anti-aliased lines
-			);
-
-			// Blend state
-			auto blend_state = make_shared<RHI_BlendState>
-			(
-				g_rhi_device,
-				true,
-				Blend_Src_Alpha,		// source blend
-				Blend_Inv_Src_Alpha,	// destination blend
-				Blend_Operation_Add,	// blend op
-				Blend_Inv_Src_Alpha,	// source blend alpha
-				Blend_Zero,				// destination blend alpha
-				Blend_Operation_Add		// destination op alpha
-			);
-
-			// Shader
-			static string shader_source =
-				"SamplerState sampler0;"
-				"Texture2D texture0;"
-				"cbuffer vertexBuffer : register(b0)"
-				"{"
-				"	matrix transform;"
-				"};"
-				"struct VS_INPUT"
-				"{"
-				"	float2 pos	: POSITION0;"
-				"	float2 uv	: TEXCOORD0;"
-				"	float4 col	: COLOR0;"
-				"};"														
-				"struct PS_INPUT"
-				"{"
-				"	float4 pos : SV_POSITION;"
-				"	float4 col : COLOR;"
-				"	float2 uv  : TEXCOORD;"
-				"};"
-				"PS_INPUT mainVS(VS_INPUT input)"
-				"{"
-				"	PS_INPUT output;"
-				"	output.pos = mul(transform, float4(input.pos.xy, 0.f, 1.f));"
-				"	output.col = input.col;	"
-				"	output.uv  = input.uv;"
-				"	return output;"
-				"}"
-				"float4 mainPS(PS_INPUT input) : SV_Target"
-				"{"
-				"	return input.col * texture0.Sample(sampler0, input.uv);"
-				"}";
-			auto shader = make_shared<RHI_Shader>(g_rhi_device);
-			shader->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_VertexPixel, shader_source);
-
 			// Pipeline
-			g_pipeline->m_shader_vertex			= shader;
-			g_pipeline->m_shader_pixel			= shader;
-			g_pipeline->m_constant_buffer		= g_constant_buffer.get();
-			g_pipeline->m_rasterizer_state		= rasterizer_state;
-			g_pipeline->m_blend_state			= blend_state;
-			g_pipeline->m_depth_stencil_state	= depth_stencil_state;
-			g_pipeline->m_input_layout			= shader->GetInputLayout();
-			g_pipeline->m_primitive_topology	= PrimitiveTopology_TriangleList;
-			g_pipeline->m_sampler				= g_fontSampler.get();
-			g_pipeline->m_vertex_buffer			= g_vertexBuffer.get();
+			g_pipeline->m_state.shader_vertex		= g_shader.get();
+			g_pipeline->m_state.shader_pixel		= g_shader.get();
+			g_pipeline->m_state.input_layout		= g_shader->GetInputLayout().get();
+			g_pipeline->m_state.constant_buffer		= g_constant_buffer.get();
+			g_pipeline->m_state.rasterizer_state	= g_rasterizer_state.get();
+			g_pipeline->m_state.blend_state			= g_blend_state.get();
+			g_pipeline->m_state.depth_stencil_state	= g_depth_stencil_state.get();		
+			g_pipeline->m_state.sampler				= g_sampler.get();
+			g_pipeline->m_state.vertex_buffer		= g_vertex_buffer.get();
+			g_pipeline->m_state.primitive_topology	= PrimitiveTopology_TriangleList;
 
 			if (!g_pipeline->Create())
 			{
@@ -193,7 +196,7 @@ namespace ImGui::RHI
 				return false;
 			}
 
-			g_pipeline->UpdateDescriptorSets(g_fontTexture.get());
+			g_pipeline->UpdateDescriptorSets(g_texture.get());
 		}
 
 		// Create swap chain
@@ -228,13 +231,13 @@ namespace ImGui::RHI
 	inline void RenderDrawData(ImDrawData* draw_data, RHI_SwapChain* swap_chain_other = nullptr, bool clear = true)
 	{
 		// Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-		auto fb_width	= static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-		auto fb_height	= static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
+		const auto fb_width	= static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
+		const auto fb_height	= static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 		if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
 			return;
 
-		bool is_main_viewport	= (swap_chain_other == nullptr);
-		void* _render_target	= is_main_viewport ? g_swap_chain->GetRenderTargetView() : swap_chain_other->GetRenderTargetView();
+		const auto is_main_viewport	= (swap_chain_other == nullptr);
+		const auto _render_target	= is_main_viewport ? g_swap_chain->GetRenderTargetView() : swap_chain_other->GetRenderTargetView();
 
 		g_cmd_list->Begin("Pass_ImGui", g_pipeline->GetRenderPass(), g_swap_chain.get());
 		g_cmd_list->SetRenderTarget(_render_target);
@@ -243,10 +246,10 @@ namespace ImGui::RHI
 		// Updated vertex and index buffers
 		{
 			// Grow vertex buffer as needed
-			if (g_vertexBuffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
+			if (g_vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
 			{
 				const unsigned int new_size = draw_data->TotalVtxCount + 5000;
-				if (!g_vertexBuffer->CreateDynamic<ImDrawVert>(new_size))
+				if (!g_vertex_buffer->CreateDynamic<ImDrawVert>(new_size))
 				{
 					g_cmd_list->End();
 					g_cmd_list->Submit();
@@ -255,10 +258,10 @@ namespace ImGui::RHI
 			}
 
 			// Grow index buffer as needed
-			if (g_indexBuffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
+			if (g_index_buffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
 			{
 				const unsigned int new_size = draw_data->TotalIdxCount + 10000;
-				if (!g_indexBuffer->CreateDynamic<ImDrawIdx>(new_size))
+				if (!g_index_buffer->CreateDynamic<ImDrawIdx>(new_size))
 				{
 					g_cmd_list->End();
 					g_cmd_list->Submit();
@@ -267,8 +270,8 @@ namespace ImGui::RHI
 			}
 
 			// Copy and convert all vertices into a single contiguous buffer		
-			auto vtx_dst = static_cast<ImDrawVert*>(g_vertexBuffer->Map());
-			auto idx_dst = static_cast<ImDrawIdx*>(g_indexBuffer->Map());
+			auto vtx_dst = static_cast<ImDrawVert*>(g_vertex_buffer->Map());
+			auto idx_dst = static_cast<ImDrawIdx*>(g_index_buffer->Map());
 			if (vtx_dst && idx_dst)
 			{
 				for (auto i = 0; i < draw_data->CmdListsCount; i++)
@@ -280,8 +283,8 @@ namespace ImGui::RHI
 					idx_dst += cmd_list->IdxBuffer.Size;
 				}
 
-				g_vertexBuffer->Unmap();
-				g_indexBuffer->Unmap();
+				g_vertex_buffer->Unmap();
+				g_index_buffer->Unmap();
 			}
 		}
 
@@ -301,22 +304,22 @@ namespace ImGui::RHI
 				0.0f,			0.0f,			0.0f,	1.0f
 			);
 
-			if (auto buffer = static_cast<Matrix*>(g_constant_buffer->Map()))
+			if (const auto buffer = static_cast<Matrix*>(g_constant_buffer->Map()))
 			{
 				*buffer = mvp;
 				g_constant_buffer->Unmap();
 			}
 		}
 
-		auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
+		const auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 
 		g_cmd_list->SetPipeline(g_pipeline.get());
 		g_cmd_list->SetViewport(viewport);
 		g_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-		g_cmd_list->SetBufferVertex(g_vertexBuffer);
-		g_cmd_list->SetBufferIndex(g_indexBuffer);
+		g_cmd_list->SetBufferVertex(g_vertex_buffer);
+		g_cmd_list->SetBufferIndex(g_index_buffer);
 		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constant_buffer);
-		g_cmd_list->SetSampler(0, g_fontSampler);
+		g_cmd_list->SetSampler(0, g_sampler);
 
 		// Render command lists
 		unsigned int vtx_offset = 0;

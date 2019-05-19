@@ -42,11 +42,11 @@ namespace Spartan
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
 		const std::shared_ptr<RHI_Device>& device,
-		unsigned int width,
-		unsigned int height,
+		uint32_t width,
+		uint32_t height,
 		const  RHI_Format format		/*= Format_R8G8B8A8_UNORM*/,
 		RHI_Present_Mode present_mode	/*= Present_Off */,
-		const unsigned int buffer_count	/*= 1 */,
+		const uint32_t buffer_count	/*= 1 */,
 		void* render_pass				/*= nullptr */
 	)
 	{
@@ -167,7 +167,7 @@ namespace Spartan
 		safe_release(static_cast<ID3D11RenderTargetView*>(m_render_target_view));
 	}
 
-	bool RHI_SwapChain::Resize(const unsigned int width, const unsigned int height)
+	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
 	{	
 		if (!m_swap_chain_view)
 		{

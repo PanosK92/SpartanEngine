@@ -83,7 +83,7 @@ namespace Spartan
 
 	void FileStream::Write(const string& value)
 	{
-		auto length = (unsigned int)value.length();
+		auto length = (uint32_t)value.length();
 		Write(length);
 
 		out.write(const_cast<char*>(value.c_str()), length);
@@ -91,10 +91,10 @@ namespace Spartan
 
 	void FileStream::Write(const vector<string>& value)
 	{
-		auto size = (unsigned int)value.size();
+		auto size = (uint32_t)value.size();
 		Write(size);
 
-		for (unsigned int i = 0; i < size; i++)
+		for (uint32_t i = 0; i < size; i++)
 		{
 			Write(value[i]);
 		}
@@ -102,33 +102,33 @@ namespace Spartan
 
 	void FileStream::Write(const vector<RHI_Vertex_PosTexNorTan>& value)
 	{
-		auto length = (unsigned int)value.size();
+		auto length = (uint32_t)value.size();
 		Write(length);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RHI_Vertex_PosTexNorTan) * length);
 	}
 
-	void FileStream::Write(const vector<unsigned int>& value)
+	void FileStream::Write(const vector<uint32_t>& value)
 	{
-		auto length = (unsigned int)value.size();
+		auto length = (uint32_t)value.size();
 		Write(length);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned int) * length);
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(uint32_t) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned char>& value)
 	{
-		auto size = (unsigned int)value.size();
+		auto size = (uint32_t)value.size();
 		Write(size);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
 	}
 
 	void FileStream::Write(const vector<std::byte>& value)
 	{
-		auto size = (unsigned int)value.size();
+		auto size = (uint32_t)value.size();
 		Write(size);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(std::byte) * size);
 	}
 
-	void FileStream::Skip(unsigned int n)
+	void FileStream::Skip(uint32_t n)
 	{
 		// Set the seek cursor to offset n from the current position
 		if (m_flags & FileStream_Write)
@@ -143,7 +143,7 @@ namespace Spartan
 
 	void FileStream::Read(string* value)
 	{
-		unsigned int length = 0;
+		uint32_t length = 0;
 		Read(&length);
 
 		value->resize(length);
@@ -158,11 +158,11 @@ namespace Spartan
 		vec->clear();
 		vec->shrink_to_fit();
 
-		unsigned int size = 0;
+		uint32_t size = 0;
 		Read(&size);
 
 		string str;
-		for (unsigned int i = 0; i < size; i++)
+		for (uint32_t i = 0; i < size; i++)
 		{
 			Read(&str);
 			vec->emplace_back(str);
@@ -177,7 +177,7 @@ namespace Spartan
 		vec->clear();
 		vec->shrink_to_fit();
 
-		auto length = ReadAs<unsigned int>();
+		auto length = ReadAs<uint32_t>();
 
 		vec->reserve(length);
 		vec->resize(length);
@@ -185,7 +185,7 @@ namespace Spartan
 		in.read(reinterpret_cast<char*>(vec->data()), sizeof(RHI_Vertex_PosTexNorTan) * length);
 	}
 
-	void FileStream::Read(vector<unsigned int>* vec)
+	void FileStream::Read(vector<uint32_t>* vec)
 	{
 		if (!vec)
 			return;
@@ -193,12 +193,12 @@ namespace Spartan
 		vec->clear();
 		vec->shrink_to_fit();
 
-		auto length = ReadAs<unsigned int>();
+		auto length = ReadAs<uint32_t>();
 
 		vec->reserve(length);
 		vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(vec->data()), sizeof(unsigned int) * length);
+		in.read(reinterpret_cast<char*>(vec->data()), sizeof(uint32_t) * length);
 	}
 
 	void FileStream::Read(vector<unsigned char>* vec)
@@ -209,7 +209,7 @@ namespace Spartan
 		vec->clear();
 		vec->shrink_to_fit();
 
-		auto length = ReadAs<unsigned int>();
+		auto length = ReadAs<uint32_t>();
 
 		vec->reserve(length);
 		vec->resize(length);
@@ -225,7 +225,7 @@ namespace Spartan
 		vec->clear();
 		vec->shrink_to_fit();
 
-		auto length = ReadAs<unsigned int>();
+		auto length = ReadAs<uint32_t>();
 
 		vec->reserve(length);
 		vec->resize(length);

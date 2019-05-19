@@ -42,7 +42,7 @@ namespace Spartan
 	IDirectInputDevice8*	g_keyboard;
 	IDirectInputDevice8*	g_mouse;
 	XINPUT_STATE			g_gamepad;
-	unsigned int			g_gamepad_num;
+	uint32_t			g_gamepad_num;
 	DIMOUSESTATE			g_mouse_state;
 	unsigned char			g_keyboard_state[256];
 
@@ -267,7 +267,7 @@ namespace Spartan
 		}
 		else
 		{
-			for (unsigned int i = 0; i <= 82; i++)
+			for (uint32_t i = 0; i <= 82; i++)
 			{
 				m_keys[i] = false;
 			}

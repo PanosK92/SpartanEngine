@@ -136,7 +136,7 @@ namespace Spartan
 
 		//= RESOLUTION - INTERNAL =========================================
 		const Math::Vector2& GetResolution() const { return m_resolution; }
-		void SetResolution(unsigned int width, unsigned int height);
+		void SetResolution(uint32_t width, uint32_t height);
 		//=================================================================
 
 		//= Graphics Settings ====================================================================================================================================================
@@ -192,7 +192,7 @@ namespace Spartan
 		void CreateShaders();
 		void CreateSamplers();
 		void CreateRenderTextures();
-		void SetDefaultBuffer(unsigned int resolution_width, unsigned int resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity) const;
+		void SetDefaultBuffer(uint32_t resolution_width, uint32_t resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity) const;
 		void RenderablesAcquire(const Variant& renderables);
 		void RenderablesSort(std::vector<Entity*>* renderables);
 		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);
@@ -338,7 +338,7 @@ namespace Spartan
 		//= RESOLUTION & VIEWPORT =======================================
 		Math::Vector2 m_resolution		= Math::Vector2(1920, 1080);
 		RHI_Viewport m_viewport			= RHI_Viewport(0, 0, 1920, 1080);
-		unsigned int m_max_resolution	= 16384;
+		uint32_t m_max_resolution	= 16384;
 		//===============================================================
 
 		//= CORE ================================================

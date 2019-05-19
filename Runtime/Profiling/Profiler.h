@@ -70,8 +70,8 @@ namespace Spartan
 		void SetUpdateInterval(float internval)			{ m_profiling_interval_sec = internval; }
 		bool HasNewData()								{ return m_has_new_data; }
 		const std::string& GpuGetName()					{ return m_gpu_name; }
-		unsigned int GpuGetMemoryAvailable()			{ return m_gpu_memory_available; }
-		unsigned int GpuGetMemoryUsed()					{ return m_gpu_memory_used; }
+		uint32_t GpuGetMemoryAvailable()			{ return m_gpu_memory_available; }
+		uint32_t GpuGetMemoryUsed()					{ return m_gpu_memory_used; }
 		
 		void Reset()
 		{
@@ -88,18 +88,18 @@ namespace Spartan
 		}
 
 		// Metrics - RHI
-		unsigned int m_rhi_draw_calls				= 0;
-		unsigned int m_rhi_bindings_buffer_index	= 0;
-		unsigned int m_rhi_bindings_buffer_vertex	= 0;
-		unsigned int m_rhi_bindings_buffer_constant = 0;
-		unsigned int m_rhi_bindings_sampler			= 0;
-		unsigned int m_rhi_bindings_texture			= 0;
-		unsigned int m_rhi_bindings_vertex_shader	= 0;
-		unsigned int m_rhi_bindings_pixel_shader	= 0;
-		unsigned int m_rhi_bindings_render_target	= 0;
+		uint32_t m_rhi_draw_calls				= 0;
+		uint32_t m_rhi_bindings_buffer_index	= 0;
+		uint32_t m_rhi_bindings_buffer_vertex	= 0;
+		uint32_t m_rhi_bindings_buffer_constant = 0;
+		uint32_t m_rhi_bindings_sampler			= 0;
+		uint32_t m_rhi_bindings_texture			= 0;
+		uint32_t m_rhi_bindings_vertex_shader	= 0;
+		uint32_t m_rhi_bindings_pixel_shader	= 0;
+		uint32_t m_rhi_bindings_render_target	= 0;
 
 		// Metrics - Renderer
-		unsigned int m_renderer_meshes_rendered = 0;
+		uint32_t m_renderer_meshes_rendered = 0;
 
 		// Metrics - Time
 		float m_time_frame_ms	= 0.0f;
@@ -120,19 +120,19 @@ namespace Spartan
 		float m_profiling_last_update_time	= m_profiling_interval_sec;
 
 		// Time blocks
-		unsigned int m_time_block_capacity	= 200;
-		unsigned int m_time_block_count		= 0;
+		uint32_t m_time_block_capacity	= 200;
+		uint32_t m_time_block_count		= 0;
 		std::vector<TimeBlock> m_time_blocks;
 
 		// FPS
 		float m_fps					= 0.0f;
 		float m_time_passed			= 0.0f;
-		unsigned int m_frame_count	= 0;
+		uint32_t m_frame_count	= 0;
 
 		// Hardware - GPU
 		std::string m_gpu_name				= "Unknown";
-		unsigned int m_gpu_memory_available	= 0;
-		unsigned int m_gpu_memory_used		= 0;
+		uint32_t m_gpu_memory_available	= 0;
+		uint32_t m_gpu_memory_used		= 0;
 
 		// Misc
 		std::string m_metrics;

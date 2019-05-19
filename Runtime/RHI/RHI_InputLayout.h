@@ -118,10 +118,15 @@ namespace Spartan
 			return true;
 		}
 
-		const auto& GetAttributeDescriptions() const	{ return m_vertex_attributes; }
-		auto GetResource() const						{ return m_resource; }
+		auto GetVertexType()					const { return m_vertex_type; }
+		const auto& GetAttributeDescriptions()	const { return m_vertex_attributes; }
+		auto GetResource()						const { return m_resource; }
+
+		bool operator==(const RHI_InputLayout& rhs) const { return m_vertex_type == rhs.GetVertexType(); }
 
 	private:
+		RHI_Vertex_Type m_vertex_type;
+
 		// API
 		bool _CreateResource(void* vertex_shader_blob);
 		std::shared_ptr<RHI_Device> m_rhi_device;
