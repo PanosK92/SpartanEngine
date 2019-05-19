@@ -31,7 +31,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_Object
 	{
 	public:
-		RHI_Object()					{ m_id = GENERATE_GUID; }
+		RHI_Object()				{ m_id = GENERATE_GUID; }
 		uint32_t RHI_GetID() const	{ return m_id; }
 
 	protected:

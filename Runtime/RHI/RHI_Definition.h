@@ -29,6 +29,8 @@ namespace Spartan
 	struct RHI_Context;
 	class RHI_Device;
 	class RHI_CommandList;
+	class RHI_PipelineState;
+	class RHI_PipelineCache;
 	class RHI_Pipeline;
 	class RHI_SwapChain;
 	class RHI_RasterizerState;

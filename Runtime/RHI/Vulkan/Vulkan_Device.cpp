@@ -24,12 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_VULKAN 
 //================================
 
-//= INCLUDES ==================
+//= INCLUDES ===================
+#include <string>
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
-#include <string>
-//=============================
+//==============================
 
 //= NAMESPACES ================
 using namespace std;
@@ -40,7 +40,7 @@ namespace Spartan
 {
 	RHI_Device::RHI_Device()
 	{
-		m_rhi_context = new RHI_Context();
+		m_rhi_context = make_shared<RHI_Context>();
 
 		// Create instance
 		VkApplicationInfo app_info = {};
@@ -191,15 +191,14 @@ namespace Spartan
 	RHI_Device::~RHI_Device()
 	{	
 		// Wait for GPU
-		auto result = vkQueueWaitIdle(m_rhi_context->queue_graphics);
+		const auto result = vkQueueWaitIdle(m_rhi_context->queue_graphics);
 
 		// Release resources
 		if (result == VK_SUCCESS)
 		{
-			Vulkan_Common::debug_callback::destroy(m_rhi_context);
+			Vulkan_Common::debug_callback::destroy(m_rhi_context.get());
 			vkDestroyDevice(m_rhi_context->device, nullptr);
 			vkDestroyInstance(m_rhi_context->instance, nullptr);
-			safe_delete(m_rhi_context);
 		}
 		else
 		{

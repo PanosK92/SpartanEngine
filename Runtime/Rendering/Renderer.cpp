@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Renderer.h"
+#include <algorithm>
 #include "ShaderBuffered.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
@@ -29,7 +30,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
 #include "../Resource/ResourceCache.h"
+#include "../World/Entity.h"
+#include "../World/Components/Transform.h"
+#include "../World/Components/Renderable.h"
+#include "../World/Components/Skybox.h"
+#include "../World/Components/Camera.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_PipelineCache.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Sampler.h"
 #include "../RHI/RHI_ConstantBuffer.h"
@@ -38,12 +45,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_BlendState.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Texture2D.h"
-#include "../World/Entity.h"
-#include "../World/Components/Transform.h"
-#include "../World/Components/Renderable.h"
-#include "../World/Components/Skybox.h"
-#include "../World/Components/Camera.h"
-#include <algorithm>
 //=========================================
 
 //= NAMESPACES ================
@@ -83,6 +84,9 @@ namespace Spartan
 			LOG_ERROR("Failed to create device");
 			return;
 		}
+
+		// Create pipeline cache
+		m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
 
 		// Create command list
 		m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device, m_context->GetSubsystem<Profiler>().get());

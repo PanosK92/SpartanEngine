@@ -90,13 +90,14 @@ namespace Spartan
 
 	void RHI_CommandList::SetPipeline(RHI_Pipeline* pipeline)
 	{
-		SetViewport(pipeline->m_state.viewport);
-		SetBlendState(pipeline->m_state.blend_state);
-		SetDepthStencilState(pipeline->m_state.depth_stencil_state);
-		SetRasterizerState(pipeline->m_state.rasterizer_state);
-		SetInputLayout(pipeline->m_state.shader_vertex->GetInputLayout());
-		SetShaderVertex(pipeline->m_state.shader_vertex);
-		SetShaderPixel(pipeline->m_state.shader_pixel);	
+		SetViewport(pipeline->GetState()->viewport);
+		SetBlendState(pipeline->GetState()->blend_state);
+		SetDepthStencilState(pipeline->GetState()->depth_stencil_state);
+		SetRasterizerState(pipeline->GetState()->rasterizer_state);
+		SetInputLayout(pipeline->GetState()->shader_vertex->GetInputLayout());
+		SetShaderVertex(pipeline->GetState()->shader_vertex);
+		SetShaderPixel(pipeline->GetState()->shader_pixel);
+		SetPrimitiveTopology(pipeline->GetState()->primitive_topology);
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)

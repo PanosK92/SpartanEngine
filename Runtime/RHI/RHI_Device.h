@@ -22,10 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "RHI_Definition.h"
-#include "../Core/EngineDefs.h"
 #include <string>
 #include <vector>
+#include <memory>
+#include "RHI_Definition.h"
+#include "../Core/EngineDefs.h"
 //=============================
 
 namespace Spartan
@@ -52,7 +53,7 @@ namespace Spartan
 		uint32_t height					= 0;
 		uint32_t refreshRateNumerator	= 0;
 		uint32_t refreshRateDenominator = 0;
-		float refreshRate					= 0;
+		float refreshRate				= 0;
 	};
 
 	struct DisplayAdapter
@@ -91,22 +92,23 @@ namespace Spartan
 		uint32_t ProfilingGetGpuMemoryUsage();
 		//=========================================================================================
 
-		//= ADAPTERS ============================================================================================================================		
+		//= ADAPTERS ============================================================================================================
 		void AddDisplayMode(uint32_t width, uint32_t height, uint32_t refresh_rate_numerator, uint32_t refresh_rate_denominator);
-		bool GetDidsplayModeFastest(DisplayMode* display_mode);
+		bool GetDisplayModeFastest(DisplayMode* display_mode);
 		void AddAdapter(const std::string& name, uint32_t memory, uint32_t vendor_id, void* adapter);
 		void SetPrimaryAdapter(const DisplayAdapter* primary_adapter);
-		const std::vector<DisplayAdapter>& GetAdapters() const	{ return m_displayAdapters; }
-		const DisplayAdapter* GetPrimaryAdapter()				{ return m_primaryAdapter; }
-		//=======================================================================================================================================
+		const std::vector<DisplayAdapter>& GetAdapters()	const { return m_displayAdapters; }
+		const DisplayAdapter* GetPrimaryAdapter()			const { return m_primaryAdapter; }
+		//=======================================================================================================================
 
-		auto IsInitialized() const	{ return m_initialized; }
-		auto GetContext() const		{ return m_rhi_context; }
+		auto IsInitialized()	const { return m_initialized; }
+		auto GetContext()		const { return m_rhi_context.get(); }
 
-	private:	
-		bool m_initialized						= false;
-		RHI_Context* m_rhi_context				= nullptr;
-		const DisplayAdapter* m_primaryAdapter	= nullptr;
+	private:
+		std::shared_ptr<RHI_Context> m_rhi_context;
+		
+		bool m_initialized = false;
+		const DisplayAdapter* m_primaryAdapter = nullptr;
 		std::vector<DisplayMode> m_displayModes;
 		std::vector<DisplayAdapter> m_displayAdapters;	
 	};

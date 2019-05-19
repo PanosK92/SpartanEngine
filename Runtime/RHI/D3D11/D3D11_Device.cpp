@@ -50,7 +50,7 @@ namespace Spartan
 {
 	RHI_Device::RHI_Device()
 	{
-		m_rhi_context = new RHI_Context();
+		m_rhi_context = make_shared<RHI_Context>();
 		const static auto multithread_protection = false;
 
 		// Detect adapters
@@ -174,7 +174,6 @@ namespace Spartan
 		safe_release(m_rhi_context->device_context);
 		safe_release(m_rhi_context->device);
 		safe_release(m_rhi_context->annotation);
-		safe_delete(m_rhi_context);
 	}
 
 	bool RHI_Device::ProfilingCreateQuery(void** query, const RHI_Query_Type type) const

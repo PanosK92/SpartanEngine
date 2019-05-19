@@ -168,10 +168,11 @@ namespace Spartan
 		RendererDebug_Buffer GetDebugBuffer() const				{ return m_debug_buffer; }
 		//==================================================================================
 
-		//= RHI INTERNALS ==========================================
-		const auto& GetRhiDevice() const	{ return m_rhi_device; }
-		const auto& GetCmdList() const		{ return m_cmd_list; }
-		//==========================================================
+		//= RHI INTERNALS ================================================
+		const auto& GetRhiDevice()		const { return m_rhi_device; }
+		const auto& GetPipelineCache()	const { return m_pipeline_cache; }
+		const auto& GetCmdList()		const { return m_cmd_list; }
+		//================================================================
 
 		//= MISC =======================================================================================================================
 		auto GetFrameTexture()			{ return m_render_tex_full_hdr_light2.get(); }
@@ -335,15 +336,14 @@ namespace Spartan
 		Math::Rectangle m_gizmo_light_rect;
 		//=================================================
 
-		//= RESOLUTION & VIEWPORT =======================================
-		Math::Vector2 m_resolution		= Math::Vector2(1920, 1080);
-		RHI_Viewport m_viewport			= RHI_Viewport(0, 0, 1920, 1080);
+		//= RESOLUTION & VIEWPORT ===================================
+		Math::Vector2 m_resolution	= Math::Vector2(1920, 1080);
+		RHI_Viewport m_viewport		= RHI_Viewport(0, 0, 1920, 1080);
 		uint32_t m_max_resolution	= 16384;
-		//===============================================================
+		//===========================================================
 
 		//= CORE ================================================
 		Math::Rectangle m_quad;
-		std::shared_ptr<RHI_Device> m_rhi_device;
 		std::shared_ptr<RHI_CommandList> m_cmd_list;
 		std::unique_ptr<Font> m_font;	
 		Math::Matrix m_view;
@@ -359,6 +359,11 @@ namespace Spartan
 		unsigned long m_flags = 0;
 		bool m_initialized = false;
 		//=======================================================
+
+		//= RHI ============================================
+		std::shared_ptr<RHI_Device> m_rhi_device;
+		std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
+		//==================================================
 
 		//= ENTITIES/COMPONENTS ============================================
 		std::unordered_map<RenderableType, std::vector<Entity*>> m_entities;

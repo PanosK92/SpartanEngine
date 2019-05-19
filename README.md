@@ -4,7 +4,7 @@
 
 <p>Spartan is a game engine that started as a hobby project and evolved into something bigger. The goal is to target high-end machines and deliver advanced graphical capabilities at high frame rates with minimum input latency. Then wrap all that in a nice editor.</p>
 
-<p>The project is at an early development stage and there is a lot experimentation going on, regarding what works best. However a lot of effort is being put into building and maintaining a clean and modern architecture, an architecture that will ensure continuous development over the years. This means that while you shouldn't expect to make games with it yet, you might find it to be a helpful study resource.</p>
+<p>The project is at an early development stage and there is a lot experimentation going on, regarding what works best. However a lot of effort is being put into building and maintaining a clean, modern and overall high quality architecture, an architecture that will ensure continuous development over the years. This means that while you shouldn't expect to make games with it yet, you might find it to be a helpful study resource.</p>
 
 <p>For more updates regarding the project's development, you can
 <a href="https://twitter.com/intent/follow?screen_name=panoskarabelas1"><img src="https://img.shields.io/twitter/follow/panoskarabelas1.svg"></a> me on twitter.</p>

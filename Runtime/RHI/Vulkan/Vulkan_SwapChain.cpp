@@ -240,7 +240,7 @@ namespace Spartan
 		uint32_t height,
 		const RHI_Format format			/*= Format_R8G8B8A8_UNORM */,
 		RHI_Present_Mode present_mode	/*= Present_Off */,
-		const uint32_t buffer_count	/*= 1 */,
+		const uint32_t buffer_count		/*= 1 */,
 		void* render_pass				/*= nullptr */
 	)
 	{

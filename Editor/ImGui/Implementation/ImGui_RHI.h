@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_SwapChain.h"
 #include "RHI/RHI_CommandList.h"
 #include "RHI/RHI_Pipeline.h"
+#include "RHI/RHI_PipelineCache.h"
 //====================================
 
 namespace ImGui::RHI
@@ -56,7 +57,7 @@ namespace ImGui::RHI
 	RHI_CommandList* g_cmd_list	= nullptr;
 
 	// RHI Data	
-	static shared_ptr<RHI_Pipeline>				g_pipeline;
+	static RHI_Pipeline*						g_pipeline = nullptr;
 	static shared_ptr<RHI_Device>				g_rhi_device;
 	static shared_ptr<RHI_SwapChain>			g_swap_chain;	
 	static shared_ptr<RHI_Texture>				g_texture;
@@ -84,7 +85,6 @@ namespace ImGui::RHI
 
 		// Create required RHI objects
 		{
-			g_pipeline				= make_shared<RHI_Pipeline>(g_rhi_device);
 			g_sampler				= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
 			g_constant_buffer		= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
 			g_vertex_buffer			= make_shared<RHI_VertexBuffer>(g_rhi_device, sizeof(ImDrawVert));
@@ -178,24 +178,19 @@ namespace ImGui::RHI
 
 		// Create pipeline
 		{
-			// Pipeline
-			g_pipeline->m_state.shader_vertex		= g_shader.get();
-			g_pipeline->m_state.shader_pixel		= g_shader.get();
-			g_pipeline->m_state.input_layout		= g_shader->GetInputLayout().get();
-			g_pipeline->m_state.constant_buffer		= g_constant_buffer.get();
-			g_pipeline->m_state.rasterizer_state	= g_rasterizer_state.get();
-			g_pipeline->m_state.blend_state			= g_blend_state.get();
-			g_pipeline->m_state.depth_stencil_state	= g_depth_stencil_state.get();		
-			g_pipeline->m_state.sampler				= g_sampler.get();
-			g_pipeline->m_state.vertex_buffer		= g_vertex_buffer.get();
-			g_pipeline->m_state.primitive_topology	= PrimitiveTopology_TriangleList;
+			RHI_PipelineState state;
+			state.shader_vertex			= g_shader.get();
+			state.shader_pixel			= g_shader.get();
+			state.input_layout			= g_shader->GetInputLayout().get();
+			state.constant_buffer		= g_constant_buffer.get();
+			state.rasterizer_state		= g_rasterizer_state.get();
+			state.blend_state			= g_blend_state.get();
+			state.depth_stencil_state	= g_depth_stencil_state.get();		
+			state.sampler				= g_sampler.get();
+			state.vertex_buffer			= g_vertex_buffer.get();
+			state.primitive_topology	= PrimitiveTopology_TriangleList;
 
-			if (!g_pipeline->Create())
-			{
-				LOG_ERROR("Failed to create pipeline");
-				return false;
-			}
-
+			g_pipeline = g_renderer->GetPipelineCache()->GetPipeline(state);
 			g_pipeline->UpdateDescriptorSets(g_texture.get());
 		}
 
@@ -205,8 +200,8 @@ namespace ImGui::RHI
 			(
 				Settings::Get().GetWindowHandle(),
 				g_rhi_device,
-				static_cast<unsigned int>(width),
-				static_cast<unsigned int>(height),
+				static_cast<uint32_t>(width),
+				static_cast<uint32_t>(height),
 				Format_R8G8B8A8_UNORM,
 				Present_Immediate,
 				2,
@@ -228,20 +223,13 @@ namespace ImGui::RHI
 		DestroyPlatformWindows();
 	}
 
-	inline void RenderDrawData(ImDrawData* draw_data, RHI_SwapChain* swap_chain_other = nullptr, bool clear = true)
+	inline void RenderDrawData(ImDrawData* draw_data, RHI_SwapChain* swap_chain_other = nullptr, const bool clear = true)
 	{
 		// Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-		const auto fb_width	= static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
+		const auto fb_width		= static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
 		const auto fb_height	= static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 		if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
 			return;
-
-		const auto is_main_viewport	= (swap_chain_other == nullptr);
-		const auto _render_target	= is_main_viewport ? g_swap_chain->GetRenderTargetView() : swap_chain_other->GetRenderTargetView();
-
-		g_cmd_list->Begin("Pass_ImGui", g_pipeline->GetRenderPass(), g_swap_chain.get());
-		g_cmd_list->SetRenderTarget(_render_target);
-		if (clear) g_cmd_list->ClearRenderTarget(_render_target, Vector4(0, 0, 0, 1));
 
 		// Updated vertex and index buffers
 		{
@@ -250,11 +238,7 @@ namespace ImGui::RHI
 			{
 				const unsigned int new_size = draw_data->TotalVtxCount + 5000;
 				if (!g_vertex_buffer->CreateDynamic<ImDrawVert>(new_size))
-				{
-					g_cmd_list->End();
-					g_cmd_list->Submit();
 					return;
-				}
 			}
 
 			// Grow index buffer as needed
@@ -262,11 +246,7 @@ namespace ImGui::RHI
 			{
 				const unsigned int new_size = draw_data->TotalIdxCount + 10000;
 				if (!g_index_buffer->CreateDynamic<ImDrawIdx>(new_size))
-				{
-					g_cmd_list->End();
-					g_cmd_list->Submit();
 					return;
-				}
 			}
 
 			// Copy and convert all vertices into a single contiguous buffer		
@@ -313,9 +293,13 @@ namespace ImGui::RHI
 
 		const auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
 
-		g_cmd_list->SetPipeline(g_pipeline.get());
+		const auto is_main_viewport = (swap_chain_other == nullptr);
+		const auto _render_target	= is_main_viewport ? g_swap_chain->GetRenderTargetView() : swap_chain_other->GetRenderTargetView();
+		g_cmd_list->Begin("Pass_ImGui", g_pipeline->GetRenderPass(), g_swap_chain.get());
+		g_cmd_list->SetRenderTarget(_render_target);
+		if (clear) g_cmd_list->ClearRenderTarget(_render_target, Vector4(0, 0, 0, 1));
+		g_cmd_list->SetPipeline(g_pipeline);
 		g_cmd_list->SetViewport(viewport);
-		g_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		g_cmd_list->SetBufferVertex(g_vertex_buffer);
 		g_cmd_list->SetBufferIndex(g_index_buffer);
 		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constant_buffer);

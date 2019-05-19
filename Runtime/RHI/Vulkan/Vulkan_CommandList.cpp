@@ -84,7 +84,7 @@ namespace Spartan
 		// Wait in case the command buffer is still in use by the graphics queue
 		vkQueueWaitIdle(m_rhi_device->GetContext()->queue_graphics);
 
-		auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
+		const auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
 		for (uint32_t i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
 		{
 			Vulkan_Common::fence::destroy(m_rhi_device, m_fences_in_flight[i]);
@@ -218,7 +218,7 @@ namespace Spartan
 		vkCmdSetScissor(CMD_LIST, 0, 1, &vk_scissor);
 	}
 
-	void RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology)
+	void RHI_CommandList::SetPrimitiveTopology(const RHI_PrimitiveTopology_Mode primitive_topology)
 	{
 		if (!m_is_recording)
 			return;
@@ -283,39 +283,39 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::SetConstantBuffers(uint32_t start_slot, RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
+	void RHI_CommandList::SetConstantBuffers(const uint32_t start_slot, const RHI_Buffer_Scope scope, const vector<void*>& constant_buffers)
 	{
 		if (!m_is_recording)
 			return;
 	}
 
-	void RHI_CommandList::SetConstantBuffer(uint32_t slot, RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
-	{
-		if (!m_is_recording)
-			return;
-
-	}
-
-	void RHI_CommandList::SetSamplers(uint32_t start_slot, const vector<void*>& samplers)
-	{
-		if (!m_is_recording)
-			return;
-	}
-
-	void RHI_CommandList::SetSampler(uint32_t slot, const shared_ptr<RHI_Sampler>& sampler)
-	{
-		if (!m_is_recording)
-			return;
-	}
-
-	void RHI_CommandList::SetTextures(uint32_t start_slot, const vector<void*>& textures)
+	void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const RHI_Buffer_Scope scope, const shared_ptr<RHI_ConstantBuffer>& constant_buffer)
 	{
 		if (!m_is_recording)
 			return;
 
 	}
 
-	void RHI_CommandList::SetTexture(uint32_t slot, RHI_Texture* texture)
+	void RHI_CommandList::SetSamplers(const uint32_t start_slot, const vector<void*>& samplers)
+	{
+		if (!m_is_recording)
+			return;
+	}
+
+	void RHI_CommandList::SetSampler(const uint32_t slot, const shared_ptr<RHI_Sampler>& sampler)
+	{
+		if (!m_is_recording)
+			return;
+	}
+
+	void RHI_CommandList::SetTextures(const uint32_t start_slot, const vector<void*>& textures)
+	{
+		if (!m_is_recording)
+			return;
+
+	}
+
+	void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
 	{
 		if (!m_is_recording)
 			return;
@@ -355,7 +355,7 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint32_t stencil /*= 0*/)
+	void RHI_CommandList::ClearDepthStencil(void* depth_stencil, const uint32_t flags, const float depth, const uint32_t stencil /*= 0*/)
 	{
 		if (!m_is_recording)
 			return;
