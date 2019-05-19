@@ -71,12 +71,12 @@ namespace Spartan
 		m_flags			|= Render_PostProcess_SSAO;	
 		m_flags			|= Render_PostProcess_MotionBlur;
 		m_flags			|= Render_PostProcess_TAA;
+		m_flags			|= Render_PostProcess_FXAA;
 		m_flags			|= Render_PostProcess_Sharpening;	
 		m_flags			|= Render_PostProcess_SSR;
 		//m_flags		|= Render_PostProcess_Dithering;			// Diasbled by default: It's only needed in very dark scenes to fix smooth color gradients
 		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect		
-		//m_flags		|= Render_PostProcess_FXAA;					// Disabled by default: TAA is superior
-		
+
 		// Create RHI device
 		m_rhi_device = make_shared<RHI_Device>();
 		if (!m_rhi_device->IsInitialized())

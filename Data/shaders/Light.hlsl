@@ -109,8 +109,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	//= SSR - Screen space reflections ==============================================
 	if (padding2.x != 0.0f)
 	{
-		float4 ssr	= SSR(worldPos, normal, texFrame, texDepth, sampler_point_clamp);
-		color += ssr.xyz * (1.0f - material.roughness) * ambient_light;
+		float3 ssr = SSR(worldPos, normal, texCoord, material.roughness, texFrame, texDepth, sampler_point_clamp);
+		color += ssr * ambient_light;
 	}
 	//===============================================================================
 
