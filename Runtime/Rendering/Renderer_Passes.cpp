@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
 #include "../Resource/IResource.h"
-#include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Texture.h"
@@ -43,7 +42,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Skybox.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
-#include "../RHI/RHI_Texture2D.h"
 //=========================================
 
 //= NAMESPACES ================
@@ -204,7 +202,7 @@ namespace Spartan
 
 		m_cmd_list->Begin("Pass_GBuffer");
 
-		Vector4 clear_color	= Vector4::Zero;
+		const Vector4 clear_color	= Vector4::Zero;
 		
 		// If there is nothing to render, just clear
 		if (m_entities[Renderable_ObjectOpaque].empty())
@@ -222,7 +220,7 @@ namespace Spartan
 		// Prepare resources
 		SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y));
 		vector<void*> textures(8);
-		vector<void*> render_targets
+		const vector<void*> render_targets
 		{
 			m_g_buffer_albedo->GetResource_RenderTarget(),
 			m_g_buffer_normal->GetResource_RenderTarget(),
@@ -252,15 +250,15 @@ namespace Spartan
 		for (auto entity : m_entities[Renderable_ObjectOpaque])
 		{
 			// Get renderable and material
-			auto renderable = entity->GetRenderable_PtrRaw();
-			auto material	= renderable ? renderable->MaterialPtr().get() : nullptr;
+			const auto renderable = entity->GetRenderable_PtrRaw();
+			auto material = renderable ? renderable->MaterialPtr().get() : nullptr;
 
 			if (!renderable || !material)
 				continue;
 
 			// Get shader and geometry
 			auto shader = material->GetShader();
-			auto model	= renderable->GeometryModel();
+			const auto model = renderable->GeometryModel();
 
 			// Validate shader
 			if (!shader || shader->GetCompilationState() != Shader_Compiled)
@@ -314,7 +312,7 @@ namespace Spartan
 			}
 
 			// Bind object buffer
-			Transform* transform = entity->GetTransform_PtrRaw();
+			auto transform = entity->GetTransform_PtrRaw();
 			transform->UpdateConstantBuffer(m_rhi_device, m_view_projection);
 			m_cmd_list->SetConstantBuffer(2, Buffer_VertexShader, transform->GetConstantBuffer());
 

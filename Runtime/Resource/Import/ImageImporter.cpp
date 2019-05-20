@@ -84,7 +84,7 @@ namespace Spartan
 		FreeImage_DeInitialise();
 	}
 
-	bool ImageImporter::Load(const string& file_path, RHI_Texture* texture, bool generate_mipmaps /*= true*/)
+	bool ImageImporter::Load(const string& file_path, RHI_Texture* texture, const bool generate_mipmaps /*= true*/)
 	{
 		if (!texture)
 		{

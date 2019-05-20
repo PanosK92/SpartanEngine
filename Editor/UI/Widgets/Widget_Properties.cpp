@@ -730,7 +730,7 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 
 		if (material->IsEditable())
 		{
-			const auto display_texture_slot = [&material](RHI_Texture* texture, const char* texture_name, TextureType textureType)
+			const auto display_texture_slot = [&material](RHI_Texture* texture, const char* texture_name, const TextureType textureType)
 			{
 				// Texture
 				ImGui::Text(texture_name);

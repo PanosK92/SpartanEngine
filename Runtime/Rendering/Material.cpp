@@ -78,8 +78,8 @@ namespace Spartan
 		xml->GetAttribute("Material", "Normal_Multiplier",		&m_normal_multiplier);
 		xml->GetAttribute("Material", "Height_Multiplier",		&m_height_multiplier);
 		xml->GetAttribute("Material", "IsEditable",				&m_is_editable);
-		xml->GetAttribute("Material", "Cull_Mode",				(uint32_t*)&m_cull_mode);
-		xml->GetAttribute("Material", "Shading_Mode",			(uint32_t*)&m_shading_mode);
+		xml->GetAttribute("Material", "Cull_Mode",				reinterpret_cast<uint32_t*>(&m_cull_mode));
+		xml->GetAttribute("Material", "Shading_Mode",			reinterpret_cast<uint32_t*>(&m_shading_mode));
 		xml->GetAttribute("Material", "Color",					&m_color_albedo);
 		xml->GetAttribute("Material", "UV_Tiling",				&m_uv_tiling);
 		xml->GetAttribute("Material", "UV_Offset",				&m_uv_offset);
@@ -175,11 +175,11 @@ namespace Spartan
 	{
 		if (texture)
 		{
+			// TODO: GetGrayscale() is not detected correctly by the image loader, fix this
 			// Some models (or Assimp) pass a normal map as a height map
 			// and others pass a height map as a normal map, we try to fix that.
-			type =
-				(type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height :
-				(type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : type;
+			//type = (type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height : type;
+			//type = (type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : type;
 
 			// Assign - As a replacement (if there is a previous one)
 			auto replaced = false;
@@ -372,6 +372,7 @@ namespace Spartan
 		update = m_constant_buffer_cpu.mat_roughness_mul	!= GetRoughnessMultiplier() ? true : update;
 		update = m_constant_buffer_cpu.mat_metallic_mul		!= GetMetallicMultiplier()	? true : update;
 		update = m_constant_buffer_cpu.mat_normal_mul		!= GetNormalMultiplier()	? true : update;
+		update = m_constant_buffer_cpu.mat_height_mul		!= GetHeightMultiplier()	? true : update;
 		update = m_constant_buffer_cpu.mat_shading_mode		!= float(GetShadingMode())	? true : update;
 
 		if (!update)
@@ -385,7 +386,7 @@ namespace Spartan
 		buffer->mat_roughness_mul	= m_constant_buffer_cpu.mat_roughness_mul	= GetRoughnessMultiplier();
 		buffer->mat_metallic_mul	= m_constant_buffer_cpu.mat_metallic_mul	= GetMetallicMultiplier();
 		buffer->mat_normal_mul		= m_constant_buffer_cpu.mat_normal_mul		= GetNormalMultiplier();
-		buffer->mat_height_mul		= m_constant_buffer_cpu.mat_normal_mul		= GetHeightMultiplier();
+		buffer->mat_height_mul		= m_constant_buffer_cpu.mat_height_mul		= GetHeightMultiplier();
 		buffer->mat_shading_mode	= m_constant_buffer_cpu.mat_shading_mode	= float(GetShadingMode());
 		buffer->padding				= m_constant_buffer_cpu.padding				= Vector3::Zero;
 
