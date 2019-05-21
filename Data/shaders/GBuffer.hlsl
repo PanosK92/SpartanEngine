@@ -95,12 +95,16 @@ PixelOutputType mainPS(PixelInputType input)
     float2 velocity 			= (position_delta - g_taa_jitterOffset) * float2(0.5f, -0.5f);
 	//=========================================================================================
 
+	// Make TBN
+	float3x3 TBN = makeTBN(input.normal, input.tangent);
+
 	#if HEIGHT_MAP
 		// Parallax Mapping
-		float height_scale 		= materialHeight * 0.1f;
-		float3 pixel_to_camera 	= normalize(g_camera_position - input.positionWS.xyz);
-		//pixel_to_camera 		= mul(float4(pixel_to_camera, 1.0f), g_view).xyz;
-		texCoords 				= ParallaxMapping(texHeight, samplerAniso, texCoords, pixel_to_camera, height_scale);
+		float height_scale 		= materialHeight * 0.015f;
+		float3 camera_to_pixel 	= normalize(g_camera_position - input.positionWS.xyz);
+		float3x3 to_tangent 	= transpose(TBN);
+		camera_to_pixel 		= mul(camera_to_pixel, to_tangent);	
+		texCoords 				= ParallaxMapping(texHeight, samplerAniso, texCoords, camera_to_pixel, height_scale);
 	#endif
 	
 	#if MASK_MAP
@@ -130,9 +134,6 @@ PixelOutputType mainPS(PixelInputType input)
 	#endif
 	
 	#if NORMAL_MAP
-		// Make TBN
-		float3x3 TBN = makeTBN(input.normal, input.tangent);
-	
 		// Get tangent space normal and apply intensity
 		float3 tangent_normal 	= normalize(unpack(texNormal.Sample(samplerAniso, texCoords).rgb));
 		tangent_normal.xy 		*= saturate(normal_intensity);

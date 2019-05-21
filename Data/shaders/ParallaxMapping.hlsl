@@ -1,6 +1,7 @@
 // Based on: https://learnopengl.com/Advanced-Lighting/Parallax-Mapping
-float2 ParallaxMapping(Texture2D depth_tex, SamplerState depth_sampler, float2 texCoords, float3 viewDir, float heightScale)
+float2 ParallaxMapping(Texture2D depth_tex, SamplerState depth_sampler, float2 texCoords, float3 viewDir, float height_scale)
 { 
+	height_scale *= -1.0f;
     // number of depth layers
     const float minLayers = 8;
     const float maxLayers = 32;
@@ -10,7 +11,7 @@ float2 ParallaxMapping(Texture2D depth_tex, SamplerState depth_sampler, float2 t
     // depth of current layer
     float currentLayerDepth = 0.0;
     // the amount to shift the texture coordinates per layer (from vector P)
-    float2 P = viewDir.xy / viewDir.z * heightScale; 
+    float2 P = viewDir.xy / viewDir.z * height_scale; 
     float2 deltaTexCoords = P / numLayers;
   
     // get initial values
