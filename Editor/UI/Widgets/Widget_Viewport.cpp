@@ -87,8 +87,8 @@ void Widget_Viewport::ShowFrame(const float delta_time)
 
 	// Update engine's viewport
 	_Widget_Viewport::g_renderer->viewport_editor_offset = Vector2(ImGui::GetWindowPos()) + _Widget_Viewport::g_window_padding;
-	_Widget_Viewport::m_viewport.width	= width;
-	_Widget_Viewport::m_viewport.height	= height;
+	_Widget_Viewport::m_viewport.width	= static_cast<float>(width);
+	_Widget_Viewport::m_viewport.height	= static_cast<float>(height);
 	_Widget_Viewport::g_renderer->SetViewport(_Widget_Viewport::m_viewport);
 
 	// Update engine's resolution

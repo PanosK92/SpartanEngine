@@ -282,9 +282,14 @@ namespace Spartan
 
 	void RHI_CommandList::SetTexture(const uint32_t start_slot, RHI_Texture* texture)
 	{
-		if (!texture || !texture->GetResource_Texture())
+		// Null textures are allowed, but if a texture is valid, it must have a valid resource
+		if (texture && !texture->GetResource_Texture())
 		{
-			LOG_ERROR_INVALID_PARAMETER();
+			// Don't show error for render targets as they might be filled with data
+			if (!texture->IsRenderTarget())
+			{
+				LOG_ERROR_INVALID_PARAMETER();
+			}
 			return;
 		}
 
