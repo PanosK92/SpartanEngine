@@ -100,11 +100,9 @@ PixelOutputType mainPS(PixelInputType input)
 
 	#if HEIGHT_MAP
 		// Parallax Mapping
-		float height_scale 		= materialHeight * 0.015f;
+		float height_scale 		= materialHeight * 0.04f;
 		float3 camera_to_pixel 	= normalize(g_camera_position - input.positionWS.xyz);
-		float3x3 to_tangent 	= transpose(TBN);
-		camera_to_pixel 		= mul(camera_to_pixel, to_tangent);	
-		texCoords 				= ParallaxMapping(texHeight, samplerAniso, texCoords, camera_to_pixel, height_scale);
+		texCoords 				= ParallaxMapping(texHeight, samplerAniso, texCoords, camera_to_pixel, TBN, height_scale);
 	#endif
 	
 	#if MASK_MAP

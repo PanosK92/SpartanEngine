@@ -235,14 +235,14 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 	}
 	#elif POINT
 	{
-		float3 light_to_pixel_direction	= position_world - light_position;	
+		float3 light_to_pixel_direction	= position_world.xyz - light_position;	
 		float light_to_pixel_distance 	= length(light_to_pixel_direction);
 		
 
 		[branch]
 		if (light_to_pixel_distance < range)
 		{
-			float depth = light_depth_point.Sample(samplerLinear_clamp, light_to_pixel_direction) * g_camera_far;
+			float depth = light_depth_point.Sample(samplerLinear_clamp, light_to_pixel_direction).r * g_camera_far;
 			return depth < light_to_pixel_distance ? 1.0f : 0.0f;
 
 			float compare = 1.0f - light_to_pixel_distance / range * (1.0f - bias); 
