@@ -31,34 +31,34 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_Viewport : public RHI_Object
 	{
 	public:
-		RHI_Viewport(float x = 0.0f, float y = 0.0f, float width = 0.0f, float height = 0.0f, float minDepth = 0.0f, float maxDepth = 1.0f)
+		RHI_Viewport(const float x = 0.0f, const float y = 0.0f, const float width = 0.0f, const float height = 0.0f, const float depth_min = 0.0f, const float depth_max = 1.0f)
 		{
-			m_x			= x;
-			m_y			= y;
-			m_width		= width;
-			m_height	= height;
-			m_minDepth	= minDepth;
-			m_maxDepth	= maxDepth;
+			this->x			= x;
+			this->y			= y;
+			this->width		= width;
+			this->height	= height;
+			this->depth_min	= depth_min;
+			this->depth_max	= depth_max;
 		}
 
 		RHI_Viewport(const RHI_Viewport& viewport)
 		{
-			m_x			= viewport.GetX();
-			m_y			= viewport.GetY();
-			m_width		= viewport.GetWidth();
-			m_height	= viewport.GetHeight();
-			m_minDepth	= viewport.GetMinDepth();
-			m_maxDepth	= viewport.GetMaxDepth();
+			x			= viewport.x;
+			y			= viewport.y;
+			width		= viewport.width;
+			height		= viewport.height;
+			depth_min	= viewport.depth_min;
+			depth_max	= viewport.depth_max;
 		}
 
-		~RHI_Viewport(){}
+		~RHI_Viewport() = default;
 
 		bool operator==(const RHI_Viewport& rhs) const
 		{
 			return 
-				m_x			== rhs.m_x			&& m_y			== rhs.m_y && 
-				m_width		== rhs.m_width		&& m_height		== rhs.m_height && 
-				m_minDepth	== rhs.m_minDepth	&& m_maxDepth	== rhs.m_maxDepth;
+				x			== rhs.x			&& y			== rhs.y && 
+				width		== rhs.width		&& height		== rhs.height && 
+				depth_min	== rhs.depth_min	&& depth_max	== rhs.depth_max;
 		}
 
 		bool operator!=(const RHI_Viewport& rhs) const
@@ -69,33 +69,27 @@ namespace Spartan
 		bool IsDefined() const			
 		{
 			return
-				m_x			!= 0.0f && 
-				m_y			!= 0.0f && 
-				m_width		!= 0.0f && 
-				m_height	!= 0.0f && 
-				m_minDepth	!= 0.0f && 
-				m_maxDepth	!= 0.0f;
+				x			!= 0.0f && 
+				y			!= 0.0f && 
+				width		!= 0.0f && 
+				height		!= 0.0f && 
+				depth_min	!= 0.0f && 
+				depth_max	!= 0.0f;
 		}
 
-		const float& GetX()				const	{ return m_x; }
-		const float& GetY()				const	{ return m_y; }
-		const float& GetWidth()			const	{ return m_width; }
-		const float& GetHeight()		const	{ return m_height; }
-		const float& GetMinDepth()		const	{ return m_minDepth; }
-		const float& GetMaxDepth()		const	{ return m_maxDepth; }
-		float GetAspectRatio()			const	{ return m_width / m_height; }
+		const float& GetX()				const	{ return x; }
+		const float& GetY()				const	{ return y; }
+		const float& GetWidth()			const	{ return width; }
+		const float& GetHeight()		const	{ return height; }
+		const float& GetMinDepth()		const	{ return depth_min; }
+		const float& GetMaxDepth()		const	{ return depth_max; }
+		float GetAspectRatio()			const	{ return width / height; }
 
-		void SetPosX(float x)			{ m_x = x; }
-		void SetPosY(float y)			{ m_y = y; }
-		void SetWidth(float width)		{ m_width	= width; }
-		void SetHeight(float height)	{ m_height	= height; }
-
-	private:
-		float m_x;
-		float m_y;
-		float m_width;
-		float m_height;
-		float m_minDepth;
-		float m_maxDepth;
+		float x			= 0.0f;
+		float y			= 0.0f;
+		float width		= 0.0f;
+		float height	= 0.0f;
+		float depth_min	= 0.0f;
+		float depth_max	= 0.0f;
 	};
 }

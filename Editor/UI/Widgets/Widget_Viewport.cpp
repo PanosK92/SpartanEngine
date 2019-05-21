@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Entity.h"
 #include "World/Components/Camera.h"
 #include "Widget_World.h"
-#include "Core/Settings.h"
 #include "../ImGui_Extension.h"
 //==================================
 
@@ -37,9 +36,10 @@ using namespace Math;
 
 namespace _Widget_Viewport
 {
-	static Renderer* g_renderer	= nullptr;
-	static World* g_world		= nullptr;
-	float g_window_padding		= 4.0f;
+	static Renderer* g_renderer		= nullptr;
+	static World* g_world			= nullptr;
+	static float g_window_padding	= 4.0f;
+	static RHI_Viewport m_viewport;
 }
 
 Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
@@ -87,7 +87,9 @@ void Widget_Viewport::ShowFrame(const float delta_time)
 
 	// Update engine's viewport
 	_Widget_Viewport::g_renderer->viewport_editor_offset = Vector2(ImGui::GetWindowPos()) + _Widget_Viewport::g_window_padding;
-	_Widget_Viewport::g_renderer->SetViewport(RHI_Viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)));
+	_Widget_Viewport::m_viewport.width	= width;
+	_Widget_Viewport::m_viewport.height	= height;
+	_Widget_Viewport::g_renderer->SetViewport(_Widget_Viewport::m_viewport);
 
 	// Update engine's resolution
 	if (m_timeSinceLastResChange >= 0.1f) // Don't stress the GPU too much
