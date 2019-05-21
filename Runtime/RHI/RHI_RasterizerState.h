@@ -50,7 +50,7 @@ namespace Spartan
 		auto GetMultiSampleEnabled()	const { return m_multi_sample_enabled; }
 		auto GetAntialisedLineEnabled() const { return m_antialised_line_enabled; }
 		auto IsInitialized()			const { return m_initialized; }
-		auto GetBuffer()				const { return m_buffer; }
+		auto GetResource()				const { return m_buffer; }
 
 		bool operator==(const RHI_RasterizerState& rhs) const
 		{

@@ -41,7 +41,7 @@ namespace Spartan
 		~RHI_DepthStencilState();
 
 		bool GetDepthEnabled() const	{ return m_depth_enabled; }
-		void* GetBuffer() const			{ return m_buffer; }
+		void* GetResource() const			{ return m_buffer; }
 
 	private:
 		bool m_depth_enabled	= false;
