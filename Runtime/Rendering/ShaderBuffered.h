@@ -35,15 +35,15 @@ namespace Spartan
 {
 	struct Struct_Blur
 	{
-		Struct_Blur(const Math::Vector2& direction, float sigma)
+		Struct_Blur(const Math::Vector2& direction, const float sigma)
 		{
 			m_direction = direction;
 			m_sigma = sigma;
 		};
 
 		Math::Vector2 m_direction;
-		float m_sigma;
-		float m_padding;
+		float m_sigma	= 0.0f;
+		float m_padding	= 0.0f;
 	};
 
 	struct Struct_Matrix

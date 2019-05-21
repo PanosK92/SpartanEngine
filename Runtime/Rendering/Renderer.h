@@ -174,15 +174,15 @@ namespace Spartan
 		const auto& GetCmdList()		const { return m_cmd_list; }
 		//================================================================
 
-		//= MISC =======================================================================================================================
-		auto GetFrameTexture()			{ return m_render_tex_full_hdr_light2.get(); }
+		//= MISC ===============================================================================================================
+		auto GetFrameTexture() const	{ return m_render_tex_full_hdr_light2.get(); }
 		static auto IsRendering()		{ return m_is_rendering; }
 		auto GetFrameNum() const		{ return m_frame_num; }
 		const auto& GetCamera() const	{ return m_camera; }
 		auto GetMaxResolution() const	{ return m_max_resolution; }
 		auto IsInitialized() const		{ return m_initialized; }
-		auto GetClearDepth()			{ return !Settings::Get().GetReverseZ() ? m_viewport.GetMaxDepth() : m_viewport.GetMinDepth(); }
-		//==============================================================================================================================
+		auto GetClearDepth()			{ return !Settings::Get().GetReverseZ() ? m_viewport.depth_max : m_viewport.depth_min; }
+		//======================================================================================================================
 
 	private:
 		void CreateDepthStencilStates();
@@ -223,7 +223,7 @@ namespace Spartan
 		void Pass_ShadowMapping(std::shared_ptr<RHI_Texture>& tex_out, Light* light_directional_in);
 		void Pass_Lines(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Gizmos(std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out);
+		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out) const;
 		//==================================================================================================================================================================
 
 		//= RENDER TEXTURES =======================================

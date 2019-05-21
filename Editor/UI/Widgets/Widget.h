@@ -32,8 +32,8 @@ namespace Spartan	{ class Context; }
 class Widget
 {
 public:
-	Widget(Spartan::Context* context) { m_context	= context; }
-	virtual ~Widget() {}
+	Widget(Spartan::Context* context) { m_context = context; m_window = nullptr; }
+	virtual ~Widget() = default;
 
 	virtual bool Begin()
 	{

@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "RHI_Definition.h"
 #include "RHI_Object.h"
-#include "RHI_Vertex.h"
 #include <vector>
 //=========================
 
@@ -33,7 +32,7 @@ namespace Spartan
 	class RHI_VertexBuffer : public RHI_Object
 	{
 	public:
-		RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, uint32_t stride = 0) 
+		RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride = 0) 
 		{
 			m_rhi_device	= rhi_device;
 			m_stride		= stride;
@@ -42,23 +41,33 @@ namespace Spartan
 		~RHI_VertexBuffer();
 
 		template<typename T>
-		bool Create(const std::vector<T>& vector)
+		bool Create(const std::vector<T>& vertices)
 		{
 			m_is_dynamic	= false;
 			m_stride		= static_cast<uint32_t>(sizeof(T));
-			m_vertex_count	= static_cast<uint32_t>(vector.size());
-			m_size			= m_stride * m_vertex_count;
-			return Create(static_cast<const void*>(vector.data()));
+			m_vertex_count	= static_cast<uint32_t>(vertices.size());
+			m_size			= static_cast<uint64_t>(m_stride * m_vertex_count);
+			return _Create(static_cast<const void*>(vertices.data()));
 		}
 
 		template<typename T>
-		bool CreateDynamic(uint32_t vertex_count)
+		bool Create(const T* vertices, const uint32_t vertex_count)
+		{
+			m_is_dynamic	= false;
+			m_stride		= static_cast<uint32_t>(sizeof(T));
+			m_vertex_count	= vertex_count;
+			m_size			= static_cast<uint64_t>(m_stride * m_vertex_count);
+			return _Create(static_cast<const void*>(vertices));
+		}
+
+		template<typename T>
+		bool CreateDynamic(const uint32_t vertex_count)
 		{
 			m_is_dynamic	= true;		
 			m_stride		= static_cast<uint32_t>(sizeof(T));
 			m_vertex_count	= vertex_count;
-			m_size			= m_stride * vertex_count;
-			return Create(nullptr);
+			m_size			= static_cast<uint64_t>(m_stride * m_vertex_count);
+			return _Create(nullptr);
 		}
 
 		void* Map() const;
@@ -70,7 +79,7 @@ namespace Spartan
 		auto GetVertexCount()	const { return m_vertex_count; }
 
 	private:
-		bool Create(const void* vertices);
+		bool _Create(const void* vertices);
 
 		uint32_t m_stride			= 0;
 		uint32_t m_vertex_count		= 0;

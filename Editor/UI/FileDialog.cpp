@@ -219,7 +219,7 @@ void FileDialog::ShowMiddle()
 
 				// LABEL
 				{
-					ImGui::Text(item.GetLabel().c_str());
+					ImGui::TextUnformatted(item.GetLabel().c_str());
 				}			
 			}
 			ImGui::EndGroup();

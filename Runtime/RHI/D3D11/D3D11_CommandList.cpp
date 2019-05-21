@@ -335,12 +335,12 @@ namespace Spartan
 				case RHI_Cmd_SetViewport:
 				{
 					D3D11_VIEWPORT d3d11_viewport;
-					d3d11_viewport.TopLeftX	= cmd.viewport.GetX();
-					d3d11_viewport.TopLeftY	= cmd.viewport.GetY();
-					d3d11_viewport.Width	= cmd.viewport.GetWidth();
-					d3d11_viewport.Height	= cmd.viewport.GetHeight();
-					d3d11_viewport.MinDepth	= cmd.viewport.GetMinDepth();
-					d3d11_viewport.MaxDepth	= cmd.viewport.GetMaxDepth();
+					d3d11_viewport.TopLeftX	= cmd.viewport.x;
+					d3d11_viewport.TopLeftY	= cmd.viewport.y;
+					d3d11_viewport.Width	= cmd.viewport.width;
+					d3d11_viewport.Height	= cmd.viewport.height;
+					d3d11_viewport.MinDepth	= cmd.viewport.depth_min;
+					d3d11_viewport.MaxDepth	= cmd.viewport.depth_max;
 
 					device_context->RSSetViewports(1, &d3d11_viewport);
 

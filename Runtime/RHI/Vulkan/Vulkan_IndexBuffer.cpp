@@ -42,7 +42,7 @@ namespace Spartan
 		Vulkan_Common::memory::free(m_rhi_device, m_buffer_memory);
 	}
 
-	bool RHI_IndexBuffer::Create(const void* indices)
+	bool RHI_IndexBuffer::_Create(const void* indices)
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
 		{

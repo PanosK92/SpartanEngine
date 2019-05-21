@@ -196,12 +196,12 @@ namespace Spartan
 			return;
 
 		VkViewport vk_viewport	= {};
-		vk_viewport.x			= viewport.GetX();
-		vk_viewport.y			= viewport.GetY();
-		vk_viewport.width		= viewport.GetWidth();
-		vk_viewport.height		= viewport.GetHeight();
-		vk_viewport.minDepth	= viewport.GetMinDepth();
-		vk_viewport.maxDepth	= viewport.GetMaxDepth();
+		vk_viewport.x			= viewport.x;
+		vk_viewport.y			= viewport.y;
+		vk_viewport.width		= viewport.width;
+		vk_viewport.height		= viewport.height;
+		vk_viewport.minDepth	= viewport.depth_min;
+		vk_viewport.maxDepth	= viewport.depth_max;
 		vkCmdSetViewport(CMD_LIST, 0, 1, &vk_viewport);
 	}
 

@@ -136,12 +136,12 @@ namespace Spartan
 
 		// Viewport
 		VkViewport vkViewport	= {};
-		vkViewport.x			= m_state->viewport.GetX();
-		vkViewport.y			= m_state->viewport.GetY();
-		vkViewport.width		= m_state->viewport.GetWidth();
-		vkViewport.height		= m_state->viewport.GetHeight();
-		vkViewport.minDepth		= m_state->viewport.GetMinDepth();
-		vkViewport.maxDepth		= m_state->viewport.GetMaxDepth();
+		vkViewport.x			= m_state->viewport.x;
+		vkViewport.y			= m_state->viewport.y;
+		vkViewport.width		= m_state->viewport.width;
+		vkViewport.height		= m_state->viewport.height;
+		vkViewport.minDepth		= m_state->viewport.depth_min;
+		vkViewport.maxDepth		= m_state->viewport.depth_max;
 
 		// Scissor
 		VkRect2D scissor		= {};
