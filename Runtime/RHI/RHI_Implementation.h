@@ -33,7 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+#pragma warning(push, 0) // Hide warnings which belong DirectX
 #include <d3d11_4.h>
+#pragma warning(pop)
 
 static const DXGI_SWAP_EFFECT d3d11_swap_effect[] =
 {
@@ -152,8 +154,8 @@ namespace Spartan
 #pragma comment(lib, "vulkan-1.lib")
 #pragma comment(lib, "VkLayer_utils.lib")
 #define VK_USE_PLATFORM_WIN32_KHR
-#include <vulkan/vulkan.h>
 #pragma warning(push, 0) // Hide warnings which belong to Vulkan
+#include <vulkan/vulkan.h>
 #include <vulkan/vulkan.hpp>
 #pragma warning(pop)
 #include <optional>

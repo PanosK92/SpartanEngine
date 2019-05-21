@@ -123,6 +123,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetInputLayout(const RHI_InputLayout* input_layout)
 	{
+		if (!input_layout || !input_layout->GetResource())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd			= GetCmd();
 		cmd.type			= RHI_Cmd_SetInputLayout;
 		cmd.input_layout	= input_layout;
@@ -130,6 +136,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetDepthStencilState(const RHI_DepthStencilState* depth_stencil_state)
 	{
+		if (!depth_stencil_state || !depth_stencil_state->GetResource())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd				= GetCmd();
 		cmd.type				= RHI_Cmd_SetDepthStencilState;
 		cmd.depth_stencil_state = depth_stencil_state;
@@ -137,6 +149,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetRasterizerState(const RHI_RasterizerState* rasterizer_state)
 	{
+		if (!rasterizer_state || !rasterizer_state->GetResource())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd				= GetCmd();
 		cmd.type				= RHI_Cmd_SetRasterizerState;
 		cmd.rasterizer_state	= rasterizer_state;
@@ -144,6 +162,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetBlendState(const RHI_BlendState* blend_state)
 	{
+		if (!blend_state || !blend_state->GetResource())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd			= GetCmd();
 		cmd.type			= RHI_Cmd_SetBlendState;
 		cmd.blend_state		= blend_state;
@@ -151,6 +175,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
 	{
+		if (!buffer || !buffer->GetResource())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd			= GetCmd();
 		cmd.type			= RHI_Cmd_SetVertexBuffer;
 		cmd.buffer_vertex	= buffer;
@@ -158,6 +188,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
 	{
+		if (!buffer || !buffer->GetResource())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd			= GetCmd();
 		cmd.type			= RHI_Cmd_SetIndexBuffer;
 		cmd.buffer_index	= buffer;
@@ -165,6 +201,13 @@ namespace Spartan
 
 	void RHI_CommandList::SetShaderVertex(const RHI_Shader* shader)
 	{
+		// Null shaders are allowed, but if a shader is valid, it must have a valid resource
+		if (shader && !shader->GetResource_VertexShader())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd			= GetCmd();
 		cmd.type			= RHI_Cmd_SetVertexShader;
 		cmd.shader_vertex	= shader;
@@ -172,6 +215,13 @@ namespace Spartan
 
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
+		// Null shaders are allowed, but if a shader is valid, it must have a valid resource
+		if (shader && !shader->GetResource_PixelShader())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd			= GetCmd();
 		cmd.type			= RHI_Cmd_SetPixelShader;
 		cmd.shader_pixel	= shader;
@@ -208,6 +258,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetSampler(const uint32_t start_slot, const shared_ptr<RHI_Sampler>& sampler)
 	{
+		if (!sampler || !sampler->GetResource())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd						= GetCmd();
 		cmd.type						= RHI_Cmd_SetSamplers;
 		cmd.samplers_start_slot			= start_slot;
@@ -226,6 +282,12 @@ namespace Spartan
 
 	void RHI_CommandList::SetTexture(const uint32_t start_slot, RHI_Texture* texture)
 	{
+		if (!texture || !texture->GetResource_Texture())
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return;
+		}
+
 		auto& cmd						= GetCmd();
 		cmd.type						= RHI_Cmd_SetTextures;
 		cmd.textures_start_slot			= start_slot;
@@ -375,7 +437,7 @@ namespace Spartan
 				case RHI_Cmd_SetDepthStencilState:
 				{
 					device_context->OMSetDepthStencilState(
-						static_cast<ID3D11DepthStencilState*>(cmd.depth_stencil_state->GetBuffer()), 1
+						static_cast<ID3D11DepthStencilState*>(cmd.depth_stencil_state->GetResource()), 1
 					);
 					break;
 				}
@@ -383,7 +445,7 @@ namespace Spartan
 				case RHI_Cmd_SetRasterizerState:
 				{
 					device_context->RSSetState(
-						static_cast<ID3D11RasterizerState*>(cmd.rasterizer_state->GetBuffer())
+						static_cast<ID3D11RasterizerState*>(cmd.rasterizer_state->GetResource())
 					);
 
 					break;
@@ -394,7 +456,7 @@ namespace Spartan
 					FLOAT blend_factor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
 					device_context->OMSetBlendState(
-						static_cast<ID3D11BlendState*>(cmd.blend_state->GetBuffer()),
+						static_cast<ID3D11BlendState*>(cmd.blend_state->GetResource()),
 						blend_factor,
 						0xffffffff
 					);
