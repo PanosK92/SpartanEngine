@@ -137,7 +137,7 @@ namespace Spartan
 
 	bool Camera::IsInViewFrustrum(Renderable* renderable)
 	{
-		auto box			= renderable->GeometryAabb();
+		const auto box		= renderable->GeometryAabb();
 		const auto center	= box.GetCenter();
 		const auto extents	= box.GetExtents();
 
@@ -157,8 +157,8 @@ namespace Spartan
 		const auto mouse_position_relative	= mouse_position - offset;
 
 		// Ensure the ray is inside the viewport
-		const auto x_outside = (mouse_position.x < offset.x) || (mouse_position.x > offset.x + viewport.GetWidth());
-		const auto y_outside = (mouse_position.y < offset.y) || (mouse_position.y > offset.y + viewport.GetHeight());
+		const auto x_outside = (mouse_position.x < offset.x) || (mouse_position.x > offset.x + viewport.width);
+		const auto y_outside = (mouse_position.y < offset.y) || (mouse_position.y > offset.y + viewport.height);
 		if (x_outside || y_outside)
 			return false;
 
@@ -185,14 +185,14 @@ namespace Spartan
 		const auto& viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 
 		// Convert world space position to clip space position
-		const auto vfov_rad			= 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
-		const auto projection		= Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.GetAspectRatio(), m_near_plane, m_far_plane); // compute non reverse z projection
+		const auto vfov_rad			= 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (viewport.height / viewport.width));
+		const auto projection		= Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.AspectRatio(), m_near_plane, m_far_plane); // compute non reverse z projection
 		const auto position_clip	= position_world * m_mView * projection;
 
 		// Convert clip space position to screen space position
 		Vector2 position_screen;
-		position_screen.x = (position_clip.x / position_clip.z) * (0.5f * viewport.GetWidth()) + (0.5f * viewport.GetWidth());
-		position_screen.y = (position_clip.y / position_clip.z) * -(0.5f * viewport.GetHeight()) + (0.5f * viewport.GetHeight());
+		position_screen.x = (position_clip.x / position_clip.z) * (0.5f * viewport.width) + (0.5f * viewport.width);
+		position_screen.y = (position_clip.y / position_clip.z) * -(0.5f * viewport.height) + (0.5f * viewport.height);
 
 		return position_screen;
 	}
@@ -203,8 +203,8 @@ namespace Spartan
 
 		// Convert screen space position to clip space position
 		Vector3 position_clip;
-		position_clip.x = (position_screen.x / viewport.GetWidth()) * 2.0f - 1.0f;
-		position_clip.y = (position_screen.y / viewport.GetHeight()) * -2.0f + 1.0f;
+		position_clip.x = (position_screen.x / viewport.width) * 2.0f - 1.0f;
+		position_clip.y = (position_screen.y / viewport.height) * -2.0f + 1.0f;
 		position_clip.z = 1.0f;
 
 		// Compute world space position
@@ -238,17 +238,17 @@ namespace Spartan
 	void Camera::ComputeProjection()
 	{
 		const auto& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
-		const float near_plane	= !Settings::Get().GetReverseZ() ? m_near_plane : m_far_plane;
-		const float far_plane	= !Settings::Get().GetReverseZ() ? m_far_plane : m_near_plane;
+		const auto near_plane	= !Settings::Get().GetReverseZ() ? m_near_plane : m_far_plane;
+		const auto far_plane	= !Settings::Get().GetReverseZ() ? m_far_plane : m_near_plane;
 
 		if (m_projection_type == Projection_Perspective)
 		{
-			const auto vfov_rad = 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (viewport.GetHeight() / viewport.GetWidth()));
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.GetAspectRatio(), near_plane, far_plane);
+			const auto vfov_rad = 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (viewport.height / viewport.width));
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.AspectRatio(), near_plane, far_plane);
 		}
 		else if (m_projection_type == Projection_Orthographic)
 		{
-			m_mProjection = Matrix::CreateOrthographicLH(viewport.GetWidth(), viewport.GetHeight(), near_plane, far_plane);
+			m_mProjection = Matrix::CreateOrthographicLH(viewport.width, viewport.height, near_plane, far_plane);
 		}
 	}
 }

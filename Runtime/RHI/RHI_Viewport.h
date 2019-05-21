@@ -77,13 +77,7 @@ namespace Spartan
 				depth_max	!= 0.0f;
 		}
 
-		const float& GetX()				const	{ return x; }
-		const float& GetY()				const	{ return y; }
-		const float& GetWidth()			const	{ return width; }
-		const float& GetHeight()		const	{ return height; }
-		const float& GetMinDepth()		const	{ return depth_min; }
-		const float& GetMaxDepth()		const	{ return depth_max; }
-		float GetAspectRatio()			const	{ return width / height; }
+		float AspectRatio()	const { return width / height; }
 
 		float x			= 0.0f;
 		float y			= 0.0f;

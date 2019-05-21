@@ -1236,8 +1236,7 @@ namespace Spartan
 				}
 
 				SetDefaultBuffer(static_cast<uint32_t>(tex_width), static_cast<uint32_t>(tex_width), m_view_projection_orthographic);
-
-				
+			
 				m_cmd_list->SetShaderVertex(m_vs_quad);
 				m_cmd_list->SetShaderPixel(m_ps_texture);
 				m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
@@ -1300,7 +1299,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_Texture>& tex_out)
+	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_Texture>& tex_out) const
 	{
 		const bool draw = m_flags & Render_Gizmo_PerformanceMetrics;
 		if (!draw)
@@ -1309,7 +1308,7 @@ namespace Spartan
 		m_cmd_list->Begin("Pass_PerformanceMetrics");
 
 		// Updated text
-		const auto text_pos = Vector2(-static_cast<int>(m_viewport.GetWidth()) * 0.5f + 1.0f, static_cast<int>(m_viewport.GetHeight()) * 0.5f);
+		const auto text_pos = Vector2(-static_cast<int>(m_viewport.width) * 0.5f + 1.0f, static_cast<int>(m_viewport.height) * 0.5f);
 		m_font->SetText(m_profiler->GetMetrics(), text_pos);
 		auto buffer = Struct_Matrix_Vector4(m_view_projection_orthographic, m_font->GetColor());
 		m_vps_font->UpdateBuffer(&buffer);

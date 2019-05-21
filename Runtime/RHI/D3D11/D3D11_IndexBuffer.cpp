@@ -42,7 +42,7 @@ namespace Spartan
 		m_buffer = nullptr;
 	}
 
-	bool RHI_IndexBuffer::Create(const void* indices)
+	bool RHI_IndexBuffer::_Create(const void* indices)
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
 		{

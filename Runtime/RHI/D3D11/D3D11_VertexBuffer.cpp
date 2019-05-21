@@ -43,7 +43,7 @@ namespace Spartan
 		m_buffer = nullptr;
 	}
 
-	bool RHI_VertexBuffer::Create(const void* vertices)
+	bool RHI_VertexBuffer::_Create(const void* vertices)
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context)
 		{

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
+#include "../RHI/RHI_Vertex.h"
 #include "../Logging/Log.h"
 //==================================
 
@@ -42,14 +43,14 @@ namespace Spartan::Math
 		}
 
 		// Compute screen coordinates
-		RHI_Viewport viewport	= renderer->GetViewport();
-		float sc_left			= -(viewport.GetWidth() * 0.5f) + x;
-		float sc_right			= sc_left + width;
-		float sc_top			= (viewport.GetHeight() * 0.5f) - y;
-		float sc_bottom			= sc_top - height;
+		const auto viewport		= renderer->GetViewport();
+		const auto sc_left		= -(viewport.width * 0.5f) + x;
+		const auto sc_right		= sc_left + width;
+		const auto sc_top		= (viewport.height * 0.5f) - y;
+		const auto sc_bottom	= sc_top - height;
 
-		// Create vertices
-		vector<RHI_Vertex_PosTex> vertices = 
+		// Create vertex buffer
+		const RHI_Vertex_PosTex vertices[6] = 
 		{
 			// First triangle	
 			RHI_Vertex_PosTex(Vector3(sc_left,	sc_top,		0.0f),	Vector2(0.0f, 0.0f)),	// Top left	
@@ -61,18 +62,18 @@ namespace Spartan::Math
 			RHI_Vertex_PosTex(Vector3(sc_right,	sc_bottom,	0.0f),	Vector2(1.0f, 1.0f))	// Bottom right
 		};
 
-		// Create indices
-		vector<uint32_t> indices = { 0, 1, 2, 3, 4, 5 };
-
 		m_vertexBuffer = make_shared<RHI_VertexBuffer>(renderer->GetRhiDevice());
-		if (!m_vertexBuffer->Create(vertices))
+		if (!m_vertexBuffer->Create(vertices, 6))
 		{
 			LOG_ERROR("Failed to create vertex buffer.");
 			return false;
 		}
 
+		// Create index buffer
+		const uint32_t indices[6] = { 0, 1, 2, 3, 4, 5 };
+
 		m_indexBuffer = make_shared<RHI_IndexBuffer>(renderer->GetRhiDevice());
-		if (!m_indexBuffer->Create(indices))
+		if (!m_indexBuffer->Create(indices, 6))
 		{
 			LOG_ERROR("Failed to create index buffer.");
 			return false;

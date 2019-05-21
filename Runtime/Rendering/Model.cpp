@@ -281,8 +281,8 @@ namespace Spartan
 		auto success = true;
 
 		// Get geometry
-		auto indices	= m_mesh->Indices_Get();
-		auto vertices	= m_mesh->Vertices_Get();
+		const auto indices	= m_mesh->Indices_Get();
+		const auto vertices	= m_mesh->Vertices_Get();
 
 		if (!indices.empty())
 		{

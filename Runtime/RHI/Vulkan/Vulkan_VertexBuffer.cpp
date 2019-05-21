@@ -43,7 +43,7 @@ namespace Spartan
 		Vulkan_Common::memory::free(m_rhi_device, m_buffer_memory);
 	}
 
-	bool RHI_VertexBuffer::Create(const void* vertices)
+	bool RHI_VertexBuffer::_Create(const void* vertices)
 	{
 		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
 		{

@@ -94,8 +94,12 @@ void Widget_Viewport::ShowFrame(const float delta_time)
 	// Update engine's resolution
 	if (m_timeSinceLastResChange >= 0.1f) // Don't stress the GPU too much
 	{
-		_Widget_Viewport::g_renderer->SetResolution(width, height);
-		m_timeSinceLastResChange = 0;
+		const auto& current_resolution = _Widget_Viewport::g_renderer->GetResolution();
+		if (current_resolution.x != width || current_resolution.y != height) // Change only when needed
+		{
+			_Widget_Viewport::g_renderer->SetResolution(width, height);
+			m_timeSinceLastResChange = 0;
+		}
 	}
 	m_timeSinceLastResChange += delta_time;
 

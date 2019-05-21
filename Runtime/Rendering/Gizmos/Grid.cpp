@@ -52,12 +52,12 @@ namespace Spartan
 		// To get the grid to feel infinite, it has to follow the camera,
 		// but only by increments of the grid's spacing size. This gives the illusion 
 		// that the grid never moves and if the grid is large enough, the user can't tell.
-		float gridSpacing = 1.0f;
-		Vector3 translation = Vector3
+		const auto gridSpacing = 1.0f;
+		const auto translation = Vector3
 		(
-			(int)(camera->GetPosition().x / gridSpacing) * gridSpacing, 
+			static_cast<int>(camera->GetPosition().x / gridSpacing) * gridSpacing, 
 			0.0f, 
-			(int)(camera->GetPosition().z / gridSpacing) * gridSpacing
+			static_cast<int>(camera->GetPosition().z / gridSpacing) * gridSpacing
 		);
 	
 		m_world = Matrix::CreateScale(gridSpacing) * Matrix::CreateTranslation(translation);
@@ -67,61 +67,61 @@ namespace Spartan
 
 	void Grid::BuildGrid(vector<RHI_Vertex_PosCol>* vertices, vector<uint32_t>* indices)
 	{
-		int halfSizeW = int(m_terrainWidth * 0.5f);
-		int halfSizeH = int(m_terrainHeight * 0.5f);
+		const auto halfSizeW = int(m_terrainWidth * 0.5f);
+		const auto halfSizeH = int(m_terrainHeight * 0.5f);
 
-		for (int j = -halfSizeH; j < halfSizeH; j++)
+		for (auto j = -halfSizeH; j < halfSizeH; j++)
 		{
-			for (int i = -halfSizeW; i < halfSizeW; i++)
+			for (auto i = -halfSizeW; i < halfSizeW; i++)
 			{
 				// Become more transparent, the further out we go
-				float alphaWidth	= 1.0f - ((float)Abs(j) / (float)halfSizeH);
-				float alphaHeight	= 1.0f - ((float)Abs(i) / (float)halfSizeW);
-				float alpha			= (alphaWidth + alphaHeight) * 0.5f;
+				const auto alphaWidth	= 1.0f - static_cast<float>(Abs(j)) / static_cast<float>(halfSizeH);
+				const auto alphaHeight	= 1.0f - static_cast<float>(Abs(i)) / static_cast<float>(halfSizeW);
+				auto alpha			= (alphaWidth + alphaHeight) * 0.5f;
 				alpha				= Pow(alpha, 10.0f);
 
 				// LINE 1
 				// Upper left.
-				auto positionX = (float)i;
-				auto positionZ = (float)(j + 1);
+				auto positionX = static_cast<float>(i);
+				auto positionZ = static_cast<float>(j + 1);
 				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// Upper right.
-				positionX = (float)(i + 1);
-				positionZ = (float)(j + 1);
+				positionX = static_cast<float>(i + 1);
+				positionZ = static_cast<float>(j + 1);
 				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// LINE 2
 				// Upper right.
-				positionX = (float)(i + 1);
-				positionZ = (float)(j + 1);
+				positionX = static_cast<float>(i + 1);
+				positionZ = static_cast<float>(j + 1);
 				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// Bottom right.
-				positionX = (float)(i + 1);
-				positionZ = (float)j;
+				positionX = static_cast<float>(i + 1);
+				positionZ = static_cast<float>(j);
 				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// LINE 3
 				// Bottom right.
-				positionX = (float)(i + 1);
-				positionZ = (float)j;
+				positionX = static_cast<float>(i + 1);
+				positionZ = static_cast<float>(j);
 				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// Bottom left.
-				positionX = (float)i;
-				positionZ = (float)j;
+				positionX = static_cast<float>(i);
+				positionZ = static_cast<float>(j);
 				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// LINE 4
 				// Bottom left.
-				positionX = (float)i;
-				positionZ = (float)j;
+				positionX = static_cast<float>(i);
+				positionZ = static_cast<float>(j);
 				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
 				// Upper left.
-				positionX = (float)i;
-				positionZ = (float)(j + 1);
+				positionX = static_cast<float>(i);
+				positionZ = static_cast<float>(j + 1);
 				vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 			}
 		}
@@ -130,7 +130,7 @@ namespace Spartan
 		{
 			indices->emplace_back(i);
 		}
-		m_indexCount = (uint32_t)indices->size();
+		m_indexCount = static_cast<uint32_t>(indices->size());
 	}
 
 	bool Grid::CreateBuffers(vector<RHI_Vertex_PosCol>& vertices, vector<unsigned>& indices, shared_ptr<RHI_Device>& rhi_device)
