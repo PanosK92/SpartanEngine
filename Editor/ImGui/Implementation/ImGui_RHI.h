@@ -69,6 +69,7 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_RasterizerState>		g_rasterizer_state;
 	static shared_ptr<RHI_BlendState>			g_blend_state;
 	static shared_ptr<RHI_Shader>				g_shader;
+	static RHI_Viewport							g_viewport;
 
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
@@ -291,7 +292,9 @@ namespace ImGui::RHI
 			}
 		}
 
-		const auto viewport = RHI_Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y);
+		// Compute viewport
+		g_viewport.width	= draw_data->DisplaySize.x;
+		g_viewport.height	= draw_data->DisplaySize.y;
 
 		const auto is_main_viewport = (swap_chain_other == nullptr);
 		const auto _render_target	= is_main_viewport ? g_swap_chain->GetRenderTargetView() : swap_chain_other->GetRenderTargetView();
@@ -299,7 +302,7 @@ namespace ImGui::RHI
 		g_cmd_list->SetRenderTarget(_render_target);
 		if (clear) g_cmd_list->ClearRenderTarget(_render_target, Vector4(0, 0, 0, 1));
 		g_cmd_list->SetPipeline(g_pipeline);
-		g_cmd_list->SetViewport(viewport);
+		g_cmd_list->SetViewport(g_viewport);
 		g_cmd_list->SetBufferVertex(g_vertex_buffer);
 		g_cmd_list->SetBufferIndex(g_index_buffer);
 		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constant_buffer);
