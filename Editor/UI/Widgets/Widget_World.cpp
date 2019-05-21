@@ -173,7 +173,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
 			// If the selected entity is a descendant of the this entity, start expanding (this can happen if the user clicks on something in the 3D scene)
 			if (selected_entity->GetTransform_PtrRaw()->IsDescendantOf(entity->GetTransform_PtrRaw()))
 			{
-				ImGui::SetNextTreeNodeOpen(true);
+				ImGui::SetNextItemOpen(true);
 
 				// Stop expanding when we have reached the selected entity (it's visible to the user)
 				if (is_selectedentity)

@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Settings.h"
 //================================
 
-//= NAMESPAECES ==============
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
 using namespace Helper;
@@ -110,7 +110,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateRenderTargetView(void* resource, void*& resource_render_target, RHI_Format format, unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
+	inline bool CreateRenderTargetView(void* resource, void*& resource_render_target, const RHI_Format format, const unsigned array_size, const shared_ptr<RHI_Device>& rhi_device)
 	{
 		D3D11_RENDER_TARGET_VIEW_DESC view_desc		= {};
 		view_desc.Format							= d3d11_format[format];
@@ -139,9 +139,9 @@ namespace Spartan
 		const shared_ptr<RHI_Device>& rhi_device
 	)
 	{
-		RHI_Format format_buffer	= Format_R32_FLOAT_TYPELESS;
-		RHI_Format format_dsv		= Format_D32_FLOAT;
-		RHI_Format format_srv		= Format_R32_FLOAT;
+		auto format_buffer	= Format_R32_FLOAT_TYPELESS;
+		auto format_dsv		= Format_D32_FLOAT;
+		auto format_srv		= Format_R32_FLOAT;
 
 		if (format == Format_D32_FLOAT)
 		{
@@ -269,17 +269,17 @@ namespace Spartan
 		}
 
 		// Determine if this is a regular, render target and/or depth stencil texture
-		bool is_depth_stencil	= false;
-		bool is_render_target	= false;
-		if (m_is_render_texture)
+		auto is_depth_stencil	= false;
+		auto is_render_target	= false;
+		if (m_is_render_target)
 		{
 			is_depth_stencil = (m_format == Format_D32_FLOAT);
 			is_render_target = !is_depth_stencil;
 		}
 
-		bool result_tex = true;
-		bool result_srv = true;
-		bool result_rt	= true;
+		auto result_tex = true;
+		auto result_srv = true;
+		auto result_rt	= true;
 
 		if (is_depth_stencil)
 		{
@@ -297,7 +297,7 @@ namespace Spartan
 		else // regular and/or render target texture
 		{
 			// Regular texture: needs data to be initialized from
-			if (!m_is_render_texture && m_data.empty())
+			if (!m_is_render_target && m_data.empty())
 			{
 				LOG_ERROR_INVALID_PARAMETER();
 				return false;
@@ -305,10 +305,10 @@ namespace Spartan
 
 			// Regular texture: deduce mipmap requirements
 			UINT mip_levels = 1;
-			bool generate_mipmaps = false;
-			if (!m_is_render_texture)
+			auto generate_mipmaps = false;
+			if (!m_is_render_target)
 			{
-				bool generate_mipmaps = m_has_mipmaps && (m_data.size() == 1);
+				generate_mipmaps = m_has_mipmaps && (m_data.size() == 1);
 				if (generate_mipmaps)
 				{
 					if (m_width < 4 || m_height < 4)
@@ -334,7 +334,7 @@ namespace Spartan
 				m_format,
 				m_data,
 				generate_mipmaps,
-				m_is_render_texture,
+				m_is_render_target,
 				m_rhi_device
 			);
 

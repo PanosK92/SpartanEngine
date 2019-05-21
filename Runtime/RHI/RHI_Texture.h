@@ -42,29 +42,31 @@ namespace Spartan
 		bool LoadFromFile(const std::string& file_path) override;
 		//=======================================================
 
-		auto GetWidth() const							{ return m_width; }
-		void SetWidth(const uint32_t width)			{ m_width = width; }
+		auto GetWidth() const											{ return m_width; }
+		void SetWidth(const uint32_t width)								{ m_width = width; }
 
-		auto GetHeight() const							{ return m_height; }
-		void SetHeight(const uint32_t height)		{ m_height = height; }
+		auto GetHeight() const											{ return m_height; }
+		void SetHeight(const uint32_t height)							{ m_height = height; }
 
-		auto GetGrayscale() const						{ return m_is_grayscale; }
-		void SetGrayscale(const bool is_grayscale)		{ m_is_grayscale = is_grayscale; }
+		auto GetGrayscale() const										{ return m_is_grayscale; }
+		void SetGrayscale(const bool is_grayscale)						{ m_is_grayscale = is_grayscale; }
 
-		auto GetTransparency() const					{ return m_is_transparent; }
-		void SetTransparency(const bool is_transparent)	{ m_is_transparent = is_transparent; }
+		auto GetTransparency() const									{ return m_is_transparent; }
+		void SetTransparency(const bool is_transparent)					{ m_is_transparent = is_transparent; }
 
-		auto GetBpp() const								{ return m_bpp; }
-		void SetBpp(const uint32_t bpp)				{ m_bpp = bpp; }
+		auto GetBpp() const												{ return m_bpp; }
+		void SetBpp(const uint32_t bpp)									{ m_bpp = bpp; }
 
-		auto GetBpc() const								{ return m_bpc; }
-		void SetBpc(const uint32_t bpc)				{ m_bpc = bpc; }
+		auto GetBpc() const												{ return m_bpc; }
+		void SetBpc(const uint32_t bpc)									{ m_bpc = bpc; }
 
-		auto GetChannels() const						{ return m_channels; }
-		void SetChannels(const uint32_t channels)	{ m_channels = channels; }
+		auto GetChannels() const										{ return m_channels; }
+		void SetChannels(const uint32_t channels)						{ m_channels = channels; }
 
-		auto GetFormat() const							{ return m_format; }
-		void SetFormat(const RHI_Format format)			{ m_format = format; }
+		auto GetFormat() const											{ return m_format; }
+		void SetFormat(const RHI_Format format)							{ m_format = format; }
+
+		auto IsRenderTarget() const										{ return m_is_render_target; }
 
 		// Data
 		const auto& GetData() const										{ return m_data; }		
@@ -73,11 +75,11 @@ namespace Spartan
 		auto AddMipmap()												{ return &m_data.emplace_back(std::vector<std::byte>()); }
 
 		// GPU resources
-		auto GetResource_Texture() const									{ return m_resource_texture; }
-		auto GetResource_RenderTarget()	const								{ return m_resource_render_target; }
+		auto GetResource_Texture() const								{ return m_resource_texture; }
+		auto GetResource_RenderTarget()	const							{ return m_resource_render_target; }
 		auto GetResource_DepthStencil(const uint32_t index = 0) const	{ return index < m_resource_depth_stencils.size() ? m_resource_depth_stencils[index] : nullptr; }
-		auto GetArraySize()													{ return m_array_size; }
-		const auto& GetViewport()											{ return m_viewport; }
+		auto GetArraySize() const										{ return m_array_size; }
+		const auto& GetViewport() const									{ return m_viewport; }
 
 	protected:
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
@@ -90,11 +92,11 @@ namespace Spartan
 		uint32_t m_width		= 0;
 		uint32_t m_height		= 0;
 		uint32_t m_channels		= 4;
-		bool m_is_grayscale			= false;
-		bool m_is_transparent		= false;
-		bool m_has_mipmaps			= false;
-		RHI_Format m_format			= Format_R8G8B8A8_UNORM;
-		unsigned long m_flags		= 0;
+		bool m_is_grayscale		= false;
+		bool m_is_transparent	= false;
+		bool m_has_mipmaps		= false;
+		bool m_is_render_target	= false;
+		RHI_Format m_format		= Format_R8G8B8A8_UNORM;
 		RHI_Viewport m_viewport;
 		std::vector<std::vector<std::byte>> m_data;
 
