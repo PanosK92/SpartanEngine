@@ -437,7 +437,7 @@ namespace Spartan
 		{
 			for (const auto& resource : m_shader_resources)
 			{
-				const VkShaderStageFlags stage_flags = (resource.second.shader_type == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+				const VkShaderStageFlags stage_flags = (resource.second.shader_stage == Shader_Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
 
 				layout_bindings.push_back
 				({

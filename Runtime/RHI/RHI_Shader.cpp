@@ -41,7 +41,7 @@ namespace Spartan
 	}
 
 	template <typename T>
-	void RHI_Shader::Compile(const Shader_Type type, const string& shader)
+	void RHI_Shader::Compile(const Shader_Stage type, const string& shader)
 	{
 		// Deduce name or file path
 		if (FileSystem::IsDirectory(shader))
@@ -89,7 +89,7 @@ namespace Spartan
 	}
 
 	template <typename T>
-	void RHI_Shader::CompileAsync(Context* context, const Shader_Type type, const string& shader)
+	void RHI_Shader::CompileAsync(Context* context, const Shader_Stage type, const string& shader)
 	{
 		context->GetSubsystem<Threading>()->AddTask([this, type, shader]()
 		{
@@ -97,7 +97,7 @@ namespace Spartan
 		});
 	}
 
-	void RHI_Shader::_Reflect(const Shader_Type type, const uint32_t* ptr, const uint32_t size)
+	void RHI_Shader::_Reflect(const Shader_Stage type, const uint32_t* ptr, const uint32_t size)
 	{
 		using namespace spirv_cross;
 

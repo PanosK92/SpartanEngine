@@ -215,10 +215,9 @@ namespace Spartan
 
 	void RHI_CommandList::SetShaderPixel(const RHI_Shader* shader)
 	{
-		// Null shaders are allowed, but if a shader is valid, it must have a valid resource
 		if (shader && !shader->GetResource_PixelShader())
 		{
-			LOG_ERROR_INVALID_PARAMETER();
+			LOGF_WARNING("%s hasn't compiled", shader->GetName().c_str());
 			return;
 		}
 
