@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include <memory>
+#include <map>
 #include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
@@ -48,6 +49,12 @@ namespace Spartan
 		TextureType_Mask
 	};
 
+	enum ShadingMode
+	{
+		Shading_Sky,
+		Shading_PBR
+	};
+
 	struct TextureSlot
 	{
 		TextureSlot()
@@ -68,12 +75,6 @@ namespace Spartan
 	class SPARTAN_CLASS Material : public IResource
 	{
 	public:
-		enum ShadingMode
-		{
-			Shading_Sky,
-			Shading_PBR	
-		};
-
 		Material(Context* context);
 		~Material();
 
@@ -99,63 +100,48 @@ namespace Spartan
 		std::shared_ptr<ShaderVariation> GetOrCreateShader(unsigned long shader_flags);
 		const std::shared_ptr<ShaderVariation>& GetShader() const { return m_shader; }
 		bool HasShader() const { return GetShader() != nullptr; }
-		void SetMultiplier(TextureType type, float value);
 		//=============================================================================
 
-		//= PROPERTIES ============================================================================
-		RHI_Cull_Mode GetCullMode() const					{ return m_cull_mode; }
-		void SetCullMode(const RHI_Cull_Mode cull_mode)		{ m_cull_mode = cull_mode; }
+		//= CONSTANT BUFFER ===================================================
+		bool UpdateConstantBuffer();
+		const auto& GetConstantBuffer() const { return m_constant_buffer_gpu; }
+		//=====================================================================
 
-		float& GetRoughnessMultiplier()						{ return m_roughness_multiplier; }
-		void SetRoughnessMultiplier(const float roughness)	{ m_roughness_multiplier = roughness; }
+		//= PROPERTIES ==========================================================================================
+		RHI_Cull_Mode GetCullMode() const									{ return m_cull_mode; }
+		void SetCullMode(const RHI_Cull_Mode cull_mode)						{ m_cull_mode = cull_mode; }
 
-		float GetMetallicMultiplier() const					{ return m_metallic_multiplier; }
-		void SetMetallicMultiplier(const float metallic)	{ m_metallic_multiplier = metallic; }
+		ShadingMode GetShadingMode() const									{ return m_shading_mode; }
+		void SetShadingMode(const ShadingMode shading_mode)					{ m_shading_mode = shading_mode; }
 
-		float GetNormalMultiplier() const					{ return m_normal_multiplier; }
-		void SetNormalMultiplier(const float normal)		{ m_normal_multiplier = normal; }
+		const Math::Vector4& GetColorAlbedo() const							{ return m_color_albedo; }
+		void SetColorAlbedo(const Math::Vector4& color)						{ m_color_albedo = color; }
 
-		float GetHeightMultiplier() const					{ return m_height_multiplier; }
-		void SetHeightMultiplier(const float height)		{ m_height_multiplier = height; }
+		const Math::Vector2& GetTiling() const								{ return m_uv_tiling; }
+		void SetTiling(const Math::Vector2& tiling)							{ m_uv_tiling = tiling; }
 
-		ShadingMode GetShadingMode() const					{ return m_shading_mode; }
-		void SetShadingMode(const ShadingMode shading_mode)	{ m_shading_mode = shading_mode; }
-
-		const Math::Vector4& GetColorAlbedo() const			{ return m_color_albedo; }
-		void SetColorAlbedo(const Math::Vector4& color)		{ m_color_albedo = color; }
-
-		const Math::Vector2& GetTiling() const				{ return m_uv_tiling; }
-		void SetTiling(const Math::Vector2& tiling)			{ m_uv_tiling = tiling; }
-
-		const Math::Vector2& GetOffset() const				{ return m_uv_offset; }
-		void SetOffset(const Math::Vector2& offset)			{ m_uv_offset = offset; }
+		const Math::Vector2& GetOffset() const								{ return m_uv_offset; }
+		void SetOffset(const Math::Vector2& offset)							{ m_uv_offset = offset; }
 
 		bool IsEditable() const { return m_is_editable; }
-		void SetIsEditable(const bool is_editable)			{ m_is_editable = is_editable; }
-		//=========================================================================================
+		void SetIsEditable(const bool is_editable)							{ m_is_editable = is_editable; }
+
+		float& GetMultiplier(const TextureType type)						{ return m_multipliers[type];}
+		void SetMultiplier(const TextureType type, const float multiplier)	{ m_multipliers[type] = multiplier; }
 
 		static TextureType TextureTypeFromString(const std::string& type);
-
-		//= CONSTANT BUFFER =============================================
-		void UpdateConstantBuffer();
-		const auto& GetConstantBuffer() { return m_constant_buffer_gpu; }
-		//===============================================================
+		//=======================================================================================================
 
 	private:
-		void TextureBasedMultiplierAdjustment();	
-
 		RHI_Cull_Mode m_cull_mode;
 		ShadingMode m_shading_mode;
 		Math::Vector4 m_color_albedo;
-		float m_roughness_multiplier;
-		float m_metallic_multiplier;
-		float m_normal_multiplier;
-		float m_height_multiplier;
 		Math::Vector2 m_uv_tiling;
 		Math::Vector2 m_uv_offset;	
 		bool m_is_editable;
-		std::shared_ptr<ShaderVariation> m_shader;
 		std::vector<TextureSlot> m_texture_slots;
+		std::map<TextureType, float> m_multipliers;
+		std::shared_ptr<ShaderVariation> m_shader;	
 		TextureSlot m_empty_texture_slot;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
@@ -165,11 +151,11 @@ namespace Spartan
 			Math::Vector4 mat_albedo;
 			Math::Vector2 mat_tiling_uv;
 			Math::Vector2 mat_offset_uv;
-			float mat_roughness_mul;
-			float mat_metallic_mul;
-			float mat_normal_mul;
-			float mat_height_mul;
-			float mat_shading_mode;
+			float mat_roughness_mul = 0.0f;
+			float mat_metallic_mul = 0.0f;
+			float mat_normal_mul = 0.0f;
+			float mat_height_mul = 0.0f;
+			float mat_shading_mode = 0.0f;
 			Math::Vector3 padding;
 		};
 		ConstantBufferData m_constant_buffer_cpu;

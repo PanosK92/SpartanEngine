@@ -81,7 +81,7 @@ PixelOutputType mainPS(PixelInputType input)
 
 	float2 texCoords 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo			= materialAlbedoColor;
-	float roughness 		= abs(materialRoughness); // roughness can be negative - little trick that signifies a specular texture
+	float roughness 		= materialRoughness;
 	float metallic 			= saturate(materialMetallic);
 	float3 normal			= input.normal.xyz;
 	float normal_intensity	= clamp(materialNormalStrength, 0.012f, materialNormalStrength);

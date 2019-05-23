@@ -6,16 +6,10 @@ float2 ParallaxMapping(Texture2D depth_tex, SamplerState depth_sampler, float2 t
 	height_scale 		*= -1.0f;
 
     // number of depth layers
-    const float minLayers = 8;
-    const float maxLayers = 32;
-    float numLayers = lerp(maxLayers, minLayers, abs(dot(float3(0.0, 0.0, 1.0), view_dir)));  
+    const float minLayers 	= 32;
+    const float maxLayers 	= 64;
+    float numLayers 		= lerp(maxLayers, minLayers, abs(dot(float3(0.0, 0.0, 1.0), view_dir)));  
     
-	// calculate the size of each layer
-    float layerDepth = 1.0 / numLayers;
-
-    // depth of current layer
-    float currentLayerDepth = 0.0;
-
     // the amount to shift the texture coordinates per layer (from vector P)
     float2 P = view_dir.xy / view_dir.z * height_scale; 
     float2 deltaTexCoords = P / numLayers;
@@ -26,8 +20,15 @@ float2 ParallaxMapping(Texture2D depth_tex, SamplerState depth_sampler, float2 t
 	float2 deriv_y = ddy_coarse(currentTexCoords);
     float currentDepthMapValue = depth_tex.SampleGrad(depth_sampler, currentTexCoords, deriv_x, deriv_y).r;
 
+	// depth of current layer
+    float layer_depth_current = 0.0;
+
+	// calculate the step size (size of each layer)
+    float step_size = 1.0 / numLayers;
+
+	int steps = 0;
 	[loop]
-    while(currentLayerDepth < currentDepthMapValue)
+    while(layer_depth_current < currentDepthMapValue && steps < maxLayers)
     {
         // shift texture coordinates along direction of P
         currentTexCoords -= deltaTexCoords;
@@ -36,15 +37,17 @@ float2 ParallaxMapping(Texture2D depth_tex, SamplerState depth_sampler, float2 t
         currentDepthMapValue = depth_tex.SampleGrad(depth_sampler, currentTexCoords, deriv_x, deriv_y).r;
 
         // get depth of next layer
-        currentLayerDepth += layerDepth;  
+        layer_depth_current += step_size;  
+		
+		steps++;
     }
     
     // get texture coordinates before collision (reverse operations)
     float2 prevTexCoords = currentTexCoords + deltaTexCoords;
 
     // get depth after and before collision for linear interpolation
-    float afterDepth  = currentDepthMapValue - currentLayerDepth;
-    float beforeDepth = depth_tex.SampleGrad(depth_sampler, prevTexCoords, deriv_x, deriv_y).r - currentLayerDepth + layerDepth;
+    float afterDepth  = currentDepthMapValue - layer_depth_current;
+    float beforeDepth = depth_tex.SampleGrad(depth_sampler, prevTexCoords, deriv_x, deriv_y).r - layer_depth_current + step_size;
 	
     // interpolation of texture coordinates
     float weight = afterDepth / (afterDepth - beforeDepth);

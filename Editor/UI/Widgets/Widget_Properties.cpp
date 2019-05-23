@@ -704,12 +704,8 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 	if (ComponentProperty::Begin("Material", Icon_Component_Material, nullptr, false))
 	{
 		//= REFLECT =================================================
-		auto roughness	= material->GetRoughnessMultiplier();
-		auto metallic	= material->GetMetallicMultiplier();
-		auto normal		= material->GetNormalMultiplier();
-		auto height		= material->GetHeightMultiplier();
-		auto tiling		= material->GetTiling();
-		auto offset		= material->GetOffset();
+		auto tiling	= material->GetTiling();
+		auto offset	= material->GetOffset();
 		m_colorPicker_material->SetColor(material->GetColorAlbedo());
 		//===========================================================
 
@@ -774,23 +770,19 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 
 			// Roughness
 			display_texture_slot(tex_roughness, "Roughness", TextureType_Roughness);
-			roughness = material->GetRoughnessMultiplier();
-			ImGui::SameLine(); ImGui::DragFloat("##matRoughness", &roughness, 0.003f, -1.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matRoughness", &material->GetMultiplier(TextureType_Roughness), 0.004f, 0.0f, 1.0f);
 
 			// Metallic
 			display_texture_slot(tex_metallic, "Metallic", TextureType_Metallic);
-			metallic = material->GetMetallicMultiplier();
-			ImGui::SameLine(); ImGui::DragFloat("##matMetallic", &metallic, 0.003f, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matMetallic", &material->GetMultiplier(TextureType_Metallic), 0.004f, 0.0f, 1.0f);
 
 			// Normal
 			display_texture_slot(tex_normal, "Normal", TextureType_Normal);
-			normal = material->GetNormalMultiplier();
-			ImGui::SameLine(); ImGui::DragFloat("##matNormal", &normal, 0.003f, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matNormal", &material->GetMultiplier(TextureType_Normal), 0.004f, 0.0f, 1.0f);
 
 			// Height
 			display_texture_slot(tex_height, "Height", TextureType_Height);
-			height = material->GetHeightMultiplier();
-			ImGui::SameLine(); ImGui::DragFloat("##matHeight", &height, 0.003f, 0.0f, 1.0f);
+			ImGui::SameLine(); ImGui::DragFloat("##matHeight", &material->GetMultiplier(TextureType_Height), 0.004f, 0.0f, 1.0f);
 
 			// Occlusion
 			display_texture_slot(tex_occlusion, "Occlusion", TextureType_Occlusion);
@@ -813,10 +805,6 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 		}
 
 		//= MAP =============================================================================================================================
-		if (roughness != material->GetRoughnessMultiplier())					material->SetRoughnessMultiplier(roughness);
-		if (metallic != material->GetMetallicMultiplier())						material->SetMetallicMultiplier(metallic);
-		if (normal != material->GetNormalMultiplier())							material->SetNormalMultiplier(normal);
-		if (height != material->GetHeightMultiplier())							material->SetHeightMultiplier(height);
 		if (tiling != material->GetTiling())									material->SetTiling(tiling);
 		if (offset != material->GetOffset())									material->SetOffset(offset);
 		if (m_colorPicker_material->GetColor() != material->GetColorAlbedo())	material->SetColorAlbedo(m_colorPicker_material->GetColor());
