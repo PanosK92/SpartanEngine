@@ -688,50 +688,39 @@ namespace Spartan
 
 	void Renderer::RenderablesSort(vector<Entity*>* renderables)
 	{
-		if (renderables->size() <= 2)
+		if (!m_camera || renderables->size() <= 2)
 			return;
 
-		// Sort by depth (front to back)
-		if (m_camera)
+		auto concat = [](const float a, const float b) 
 		{
-			sort(renderables->begin(), renderables->end(), [this](Entity* a, Entity* b)
-			{
-				// Get renderable component
-				auto a_renderable = a->GetRenderable_PtrRaw();
-				auto b_renderable = b->GetRenderable_PtrRaw();
-				if (!a_renderable || !b_renderable)
-					return false;
+			float times = 1;
+			while (times <= b)
+				times *= 10;
+			return a * times + b;
+		};
 
-				// Get materials
-				const auto a_material = a_renderable->GetMaterial();
-				const auto b_material = b_renderable->GetMaterial();
-				if (!a_material || !b_material)
-					return false;
-
-				const auto a_depth = (a_renderable->GeometryAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
-				const auto b_depth = (b_renderable->GeometryAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
-
-				return a_depth < b_depth;
-			});
-		}
-
-		// Sort by material
-		sort(renderables->begin(), renderables->end(), [](Entity* a, Entity* b)
+		auto render_hash = [this, &concat](Entity* entity)
 		{
-			// Get renderable component
-			const auto a_renderable = a->GetRenderable_PtrRaw();
-			const auto b_renderable = b->GetRenderable_PtrRaw();
-			if (!a_renderable || !b_renderable)
-				return false;
+			// Get renderable
+			auto renderable = entity->GetRenderable_PtrRaw();
+			if (!renderable)
+				return 0.0f;
 
-			// Get materials
-			const auto a_material = a_renderable->GetMaterial();
-			const auto b_material = b_renderable->GetMaterial();
-			if (!a_material || !b_material)
-				return false;
+			// Get material
+			const auto material = renderable->GetMaterial();
+			if (!material)
+				return 0.0f;
 
-			// Order doesn't matter, as long as they are not mixed
-			return a_material->GetId() < b_material->GetId();
+			const auto num_depth = (renderable->GeometryAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+			const auto num_material = static_cast<float>(material->GetId());
+
+			return concat(num_depth, num_material);
+		};
+
+		// Sort by depth (front to back), then sort by material		
+		sort(renderables->begin(), renderables->end(), [&render_hash](Entity* a, Entity* b)
+		{
+				return render_hash(a) < render_hash(b);
 		});
 	}
 
