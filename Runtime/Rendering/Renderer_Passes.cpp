@@ -93,8 +93,12 @@ namespace Spartan
 
 	void Renderer::Pass_LightDepth()
 	{
-		uint32_t light_directional_count = 0;
+		// Acquire shader
+		const auto& shader_depth = m_shaders[Shader_Depth_V];
+		if (!shader_depth->IsCompiled())
+			return;
 
+		uint32_t light_directional_count = 0;
 		auto& light_entities = m_entities[Renderable_Light];
 		for (const auto& light_entity : light_entities)
 		{
@@ -121,8 +125,8 @@ namespace Spartan
 			m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
 			m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
 			m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-			m_cmd_list->SetShaderVertex(m_v_depth);
-			m_cmd_list->SetInputLayout(m_v_depth->GetInputLayout());
+			m_cmd_list->SetShaderVertex(shader_depth);
+			m_cmd_list->SetInputLayout(shader_depth->GetInputLayout());
 			m_cmd_list->SetViewport(shadow_map->GetViewport());
 
 			// Tracking
@@ -218,7 +222,7 @@ namespace Spartan
 		}
 
 		// Prepare resources
-		SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y));
+		const auto& shader_gbuffer = m_shaders[Shader_Gbuffer_V];
 		vector<void*> textures(8);
 		const vector<void*> render_targets
 		{
@@ -227,6 +231,8 @@ namespace Spartan
 			m_g_buffer_material->GetResource_RenderTarget(),
 			m_g_buffer_velocity->GetResource_RenderTarget()
 		};
+
+		SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y));
 	
 		// Star command list
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -237,8 +243,8 @@ namespace Spartan
 		m_cmd_list->SetRenderTargets(render_targets, m_g_buffer_depth->GetResource_DepthStencil());
 		m_cmd_list->ClearRenderTargets(render_targets, clear_color);
 		m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
-		m_cmd_list->SetShaderVertex(m_vs_gbuffer);
-		m_cmd_list->SetInputLayout(m_vs_gbuffer->GetInputLayout());
+		m_cmd_list->SetShaderVertex(shader_gbuffer);
+		m_cmd_list->SetInputLayout(shader_gbuffer->GetInputLayout());
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->SetSampler(0, m_sampler_anisotropic_wrap);	
 		
@@ -370,14 +376,16 @@ namespace Spartan
 
 	void Renderer::Pass_Light(shared_ptr<RHI_Texture>& tex_shadows, shared_ptr<RHI_Texture>& tex_ssao, shared_ptr<RHI_Texture>& tex_out)
 	{
-		if (m_vps_light->GetCompilationState() != Shader_Compiled)
+		const auto& shader_light = static_pointer_cast<ShaderLight>(m_shaders[Shader_Light_Vp]);
+
+		if (shader_light->GetCompilationState() != Shader_Compiled)
 			return;
 
 		m_cmd_list->Begin("Pass_Light");
 
 		// Update constant buffers
 		SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y));
-		m_vps_light->UpdateConstantBuffer
+		shader_light->UpdateConstantBuffer
 		(
 			m_view_projection_orthographic,
 			m_view,
@@ -387,9 +395,9 @@ namespace Spartan
 		);
 
 		// Prepare resources
-		const auto shader				= static_pointer_cast<RHI_Shader>(m_vps_light);
+		const auto shader				= static_pointer_cast<RHI_Shader>(shader_light);
 		vector<void*> samplers			= { m_sampler_trilinear_clamp->GetResource(), m_sampler_point_clamp->GetResource() };
-		vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  m_vps_light->GetConstantBuffer()->GetResource() };
+		vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  shader_light->GetConstantBuffer()->GetResource() };
 		vector<void*> textures =
 		{
 			m_g_buffer_albedo->GetResource_Texture(),																		// Albedo	
@@ -430,6 +438,7 @@ namespace Spartan
 			return;
 
 		// Prepare resources
+		const auto& shader_transparent = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_GizmoTransform_Vp]);
 		vector<void*> textures = { m_g_buffer_depth->GetResource_Texture(), m_skybox ? m_skybox->GetTexture()->GetResource_Texture() : nullptr };
 
 		// Begin command list
@@ -441,9 +450,9 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-		m_cmd_list->SetShaderVertex(m_vps_transparent);
-		m_cmd_list->SetInputLayout(m_vps_transparent->GetInputLayout());
-		m_cmd_list->SetShaderPixel(m_vps_transparent);
+		m_cmd_list->SetShaderVertex(shader_transparent);
+		m_cmd_list->SetInputLayout(shader_transparent->GetInputLayout());
+		m_cmd_list->SetShaderPixel(shader_transparent);
 
 		for (auto& entity : entities_transparent)
 		{
@@ -479,8 +488,8 @@ namespace Spartan
 				m_directional_light_avg_dir,
 				material->GetMultiplier(TextureType_Roughness)
 			);
-			m_vps_transparent->UpdateBuffer(&buffer);
-			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_transparent->GetConstantBuffer());
+			shader_transparent->UpdateBuffer(&buffer);
+			m_cmd_list->SetConstantBuffer(1, Buffer_Global, shader_transparent->GetConstantBuffer());
 			m_cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
 
 			m_profiler->m_renderer_meshes_rendered++;
@@ -496,22 +505,25 @@ namespace Spartan
 		if (!light || !light->GetCastShadows())
 			return;
 
-		m_cmd_list->Begin("Pass_ShadowMapping");
-
 		// Get appropriate pixel shader
 		shared_ptr<ShaderBuffered> pixel_shader;
 		if (light->GetLightType() == LightType_Directional)
 		{
-			pixel_shader = m_vps_shadow_mapping_directional;
+			pixel_shader = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_ShadowDirectional_Vp]);
 		}
 		else if (light->GetLightType() == LightType_Point)
 		{
-			pixel_shader = m_ps_shadow_mapping_point;
+			pixel_shader = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_ShadowPoint_P]);
 		}
 		else if (light->GetLightType() == LightType_Spot)
 		{
-			pixel_shader = m_ps_shadow_mapping_spot;
+			pixel_shader = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_ShadowSpot_P]);
 		}
+
+		if (!pixel_shader->IsCompiled())
+			return;
+
+		m_cmd_list->Begin("Pass_ShadowMapping");
 		
 		// Prepare resources
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
@@ -528,11 +540,13 @@ namespace Spartan
 			light->GetLightType() == LightType_Spot			? light->GetShadowMap()->GetResource_Texture() : nullptr
 		};
 
+		const auto& shader_vertex = m_shaders[Shader_ShadowDirectional_Vp];
+
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetBlendState(m_blend_shadow_maps);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderVertex(m_vps_shadow_mapping_directional);
-		m_cmd_list->SetInputLayout(m_vps_shadow_mapping_directional->GetInputLayout());
+		m_cmd_list->SetShaderVertex(shader_vertex);
+		m_cmd_list->SetInputLayout(shader_vertex->GetInputLayout());
 		m_cmd_list->SetShaderPixel(pixel_shader);
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetSamplers(0, samplers);
@@ -544,6 +558,11 @@ namespace Spartan
 
 	void Renderer::Pass_PostLight(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shader
+		const auto& shader_quad = m_shaders[Shader_Quad_V];
+		if (!shader_quad->IsCompiled())
+			return;
+
 		// All post-process passes share the following, so set them once here
 		m_cmd_list->Begin("Pass_PostLight");
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
@@ -552,8 +571,8 @@ namespace Spartan
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-		m_cmd_list->SetShaderVertex(m_vs_quad);
-		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+		m_cmd_list->SetShaderVertex(shader_quad);
+		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
 
 		// Render target swapping
 		const auto swap_targets = [this, &tex_in, &tex_out]() { m_cmd_list->Submit(); tex_out.swap(tex_in); };
@@ -623,9 +642,15 @@ namespace Spartan
 
 	void Renderer::Pass_SSAO(shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shaders
+		const auto& shader_quad = m_shaders[Shader_Quad_V];
+		const auto& shader_ssao = m_shaders[Shader_Ssao_P];
+		if (!shader_quad->IsCompiled() || !shader_ssao->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_SSAO");
 
-		// Prepare resources
+		// Prepare resources	
 		vector<void*> textures = { m_g_buffer_normal->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_tex_noise_normal->GetResource_Texture() };
 		vector<void*> samplers = { m_sampler_bilinear_clamp->GetResource() /*SSAO (clamp) */, m_sampler_bilinear_wrap->GetResource() /*SSAO noise texture (wrap)*/};
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
@@ -634,9 +659,9 @@ namespace Spartan
 		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);	
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderVertex(m_vs_quad);
-		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
-		m_cmd_list->SetShaderPixel(m_vps_ssao);
+		m_cmd_list->SetShaderVertex(shader_quad);
+		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
+		m_cmd_list->SetShaderPixel(shader_ssao);
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetSamplers(0, samplers);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -647,13 +672,18 @@ namespace Spartan
 
 	void Renderer::Pass_BlurBox(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma)
 	{
+		// Acquire shader
+		const auto& shader_blurBox = m_shaders[Shader_BlurBox_P];
+		if (!shader_blurBox->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_BlurBox");
 
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderPixel(m_ps_blur_box);
+		m_cmd_list->SetShaderPixel(shader_blurBox);
 		m_cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
 		m_cmd_list->SetSampler(0, m_sampler_trilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -672,39 +702,41 @@ namespace Spartan
 
 		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight());
 
+		auto shader_gaussian = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_BlurGaussian_P]);
+
 		// Start command list
-		m_cmd_list->Begin("Pass_BlurBilateralGaussian");
+		m_cmd_list->Begin("Pass_BlurGaussian");
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderPixel(m_ps_blur_gaussian);
+		m_cmd_list->SetShaderPixel(shader_gaussian);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 
 		// Horizontal Gaussian blur	
-		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Horizontal");
+		m_cmd_list->Begin("Pass_BlurGaussian_Horizontal");
 		{
 			const auto direction	= Vector2(pixel_stride, 0.0f);
 			auto buffer				= Struct_Blur(direction, sigma);
-			m_ps_blur_gaussian->UpdateBuffer(&buffer, 0);
+			shader_gaussian->UpdateBuffer(&buffer, 0);
 
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTexture(0, tex_in);
-			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(0));
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussian->GetConstantBuffer(0));
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
 		// Vertical Gaussian blur
-		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Horizontal");
+		m_cmd_list->Begin("Pass_BlurGaussian_Horizontal");
 		{
 			const auto direction	= Vector2(0.0f, pixel_stride);
 			auto buffer				= Struct_Blur(direction, sigma);
-			m_ps_blur_gaussian->UpdateBuffer(&buffer, 1);
+			shader_gaussian->UpdateBuffer(&buffer, 1);
 
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 			m_cmd_list->SetRenderTarget(tex_in);
 			m_cmd_list->SetTexture(0, tex_out);
-			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(1));
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussian->GetConstantBuffer(1));
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
@@ -724,14 +756,20 @@ namespace Spartan
 			return;
 		}
 
+		// Acquire shaders
+		const auto& shader_quad = m_shaders[Shader_Quad_V];
+		auto shader_gaussianBilateral = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_BlurGaussianBilateral_P]);
+		if (!shader_quad->IsCompiled() || !shader_gaussianBilateral->IsCompiled())
+			return;
+
 		SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight());
 
 		// Start command list
 		m_cmd_list->Begin("Pass_BlurBilateralGaussian");
 		m_cmd_list->SetViewport(tex_out->GetViewport());	
-		m_cmd_list->SetShaderVertex(m_vs_quad);
-		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
-		m_cmd_list->SetShaderPixel(m_ps_blur_gaussian_bilateral);	
+		m_cmd_list->SetShaderVertex(shader_quad);
+		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
+		m_cmd_list->SetShaderPixel(shader_gaussianBilateral);	
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 
@@ -741,13 +779,13 @@ namespace Spartan
 			// Prepare resources
 			const auto direction	= Vector2(pixel_stride, 0.0f);
 			auto buffer				= Struct_Blur(direction, sigma);
-			m_ps_blur_gaussian_bilateral->UpdateBuffer(&buffer, 0);
+			shader_gaussianBilateral->UpdateBuffer(&buffer, 0);
 			vector<void*> textures = { tex_in->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_g_buffer_normal->GetResource_Texture() };
 			
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where render target is also bound as texture (from Pass_PreLight)
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTextures(0, textures);
-			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(0));
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer(0));
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
@@ -758,13 +796,13 @@ namespace Spartan
 			// Prepare resources
 			const auto direction	= Vector2(0.0f, pixel_stride);
 			auto buffer				= Struct_Blur(direction, sigma);
-			m_ps_blur_gaussian_bilateral->UpdateBuffer(&buffer, 1);
+			shader_gaussianBilateral->UpdateBuffer(&buffer, 1);
 			vector<void*> textures = { tex_out->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_g_buffer_normal->GetResource_Texture() };
 
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where render target is also bound as texture (from above pass)
 			m_cmd_list->SetRenderTarget(tex_in);
 			m_cmd_list->SetTextures(0, textures);
-			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(1));
+			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer(1));
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
@@ -777,6 +815,12 @@ namespace Spartan
 
 	void Renderer::Pass_TAA(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shaders
+		const auto& shader_taa = m_shaders[Shader_Taa_P];
+		const auto& shader_texture = m_shaders[Shader_Texture_P];
+		if (!shader_taa->IsCompiled() || !shader_texture->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_TAA");
 
 		// Resolve
@@ -788,7 +832,7 @@ namespace Spartan
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
 			m_cmd_list->SetRenderTarget(m_render_tex_full_taa_current);
 			m_cmd_list->SetViewport(m_render_tex_full_taa_current->GetViewport());
-			m_cmd_list->SetShaderPixel(m_ps_taa);
+			m_cmd_list->SetShaderPixel(shader_taa);
 			m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 			m_cmd_list->SetTextures(0, textures);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -802,7 +846,7 @@ namespace Spartan
 
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
-			m_cmd_list->SetShaderPixel(m_ps_texture);
+			m_cmd_list->SetShaderPixel(shader_texture);
 			m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 			m_cmd_list->SetTexture(0, m_render_tex_full_taa_current);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -818,6 +862,14 @@ namespace Spartan
 
 	void Renderer::Pass_Bloom(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shaders		
+		const auto& shader_bloomBright = m_shaders[Shader_BloomBright_P];
+		const auto& shader_bloomBlend = m_shaders[Shader_BloomBlend_P];
+		const auto& shader_downsampleBox = m_shaders[Shader_DownsampleBox_P];
+		const auto& shader_upsampleBox = m_shaders[Shader_UpsampleBox_P];	
+		if (!shader_downsampleBox->IsCompiled() || !shader_bloomBright->IsCompiled() || !shader_upsampleBox->IsCompiled() || !shader_downsampleBox->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_Bloom");
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 
@@ -828,7 +880,7 @@ namespace Spartan
 
 			m_cmd_list->SetRenderTarget(m_render_tex_quarter_blur1);
 			m_cmd_list->SetViewport(m_render_tex_quarter_blur1->GetViewport());
-			m_cmd_list->SetShaderPixel(m_ps_downsample_box);
+			m_cmd_list->SetShaderPixel(shader_downsampleBox);
 			m_cmd_list->SetTexture(0, tex_in);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -842,7 +894,7 @@ namespace Spartan
 
 			m_cmd_list->SetRenderTarget(m_render_tex_quarter_blur2);
 			m_cmd_list->SetViewport(m_render_tex_quarter_blur2->GetViewport());	
-			m_cmd_list->SetShaderPixel(m_ps_bloom_bright);
+			m_cmd_list->SetShaderPixel(shader_bloomBright);
 			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur1);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -862,7 +914,7 @@ namespace Spartan
 
 			m_cmd_list->SetRenderTarget(m_render_tex_half_spare2);
 			m_cmd_list->SetViewport(m_render_tex_half_spare2->GetViewport());
-			m_cmd_list->SetShaderPixel(m_ps_upsample_box);
+			m_cmd_list->SetShaderPixel(shader_upsampleBox);
 			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur2);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -876,7 +928,7 @@ namespace Spartan
 
 			m_cmd_list->SetRenderTarget(m_render_tex_full_spare);
 			m_cmd_list->SetViewport(m_render_tex_full_spare->GetViewport());
-			m_cmd_list->SetShaderPixel(m_ps_upsample_box);
+			m_cmd_list->SetShaderPixel(shader_upsampleBox);
 			m_cmd_list->SetTexture(0, m_render_tex_half_spare2);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -891,7 +943,7 @@ namespace Spartan
 
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
-			m_cmd_list->SetShaderPixel(m_ps_bloom_blend);
+			m_cmd_list->SetShaderPixel(shader_bloomBlend);
 			m_cmd_list->SetTextures(0, textures);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -904,6 +956,11 @@ namespace Spartan
 
 	void Renderer::Pass_ToneMapping(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shader
+		const auto& shader_toneMapping = m_shaders[Shader_ToneMapping_P];
+		if (!shader_toneMapping->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_ToneMapping");
 
 		// Prepare resources
@@ -912,7 +969,7 @@ namespace Spartan
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderPixel(m_ps_tone_mapping);
+		m_cmd_list->SetShaderPixel(shader_toneMapping);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -923,6 +980,11 @@ namespace Spartan
 
 	void Renderer::Pass_GammaCorrection(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shader
+		const auto& shader_gammaCorrection = m_shaders[Shader_GammaCorrection_P];
+		if (!shader_gammaCorrection->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_GammaCorrection");
 
 		// Prepare resources
@@ -931,7 +993,7 @@ namespace Spartan
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderPixel(m_ps_gamma_correction);
+		m_cmd_list->SetShaderPixel(shader_gammaCorrection);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -942,6 +1004,12 @@ namespace Spartan
 
 	void Renderer::Pass_FXAA(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shaders
+		const auto& shader_luma = m_shaders[Shader_Luma_P];
+		const auto& shader_fxaa = m_shaders[Shader_Fxaa_P];
+		if (!shader_luma->IsCompiled() || !shader_fxaa->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_FXAA");
 
 		// Prepare resources
@@ -955,13 +1023,13 @@ namespace Spartan
 
 		// Luma
 		m_cmd_list->SetRenderTarget(tex_out);	
-		m_cmd_list->SetShaderPixel(m_ps_luma);
+		m_cmd_list->SetShaderPixel(shader_luma);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
 		// FXAA
 		m_cmd_list->SetRenderTarget(tex_in);
-		m_cmd_list->SetShaderPixel(m_ps_fxaa);
+		m_cmd_list->SetShaderPixel(shader_fxaa);
 		m_cmd_list->SetTexture(0, tex_out);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
@@ -974,6 +1042,11 @@ namespace Spartan
 
 	void Renderer::Pass_ChromaticAberration(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shader
+		const auto& shader_chromaticAberration = m_shaders[Shader_ChromaticAberration_P];
+		if (!shader_chromaticAberration->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_ChromaticAberration");
 
 		// Prepare resources
@@ -982,7 +1055,7 @@ namespace Spartan
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderPixel(m_ps_chromatic_aberration);
+		m_cmd_list->SetShaderPixel(shader_chromaticAberration);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -993,6 +1066,11 @@ namespace Spartan
 
 	void Renderer::Pass_MotionBlur(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shader
+		const auto& shader_motionBlur = m_shaders[Shader_MotionBlur_P];
+		if (!shader_motionBlur->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_MotionBlur");
 
 		// Prepare resources
@@ -1002,7 +1080,7 @@ namespace Spartan
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderPixel(m_ps_motion_blur);
+		m_cmd_list->SetShaderPixel(shader_motionBlur);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -1013,6 +1091,11 @@ namespace Spartan
 
 	void Renderer::Pass_Dithering(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shader
+		const auto& shader_dithering = m_shaders[Shader_Dithering_P];
+		if (!shader_dithering->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_Dithering");
 
 		// Prepare resources
@@ -1021,7 +1104,7 @@ namespace Spartan
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderPixel(m_ps_dithering);
+		m_cmd_list->SetShaderPixel(shader_dithering);
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -1032,6 +1115,11 @@ namespace Spartan
 
 	void Renderer::Pass_Sharpening(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
+		// Acquire shader
+		const auto& shader_sharperning = m_shaders[Shader_Sharperning_P];
+		if (!shader_sharperning->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_Sharpening");
 
 		// Prepare resources
@@ -1040,7 +1128,7 @@ namespace Spartan
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());		
-		m_cmd_list->SetShaderPixel(m_ps_sharpening);
+		m_cmd_list->SetShaderPixel(shader_sharperning);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -1091,14 +1179,16 @@ namespace Spartan
 			}
 		}
 
+		const auto& shader_color = m_shaders[Shader_Color_Vp];
+
 		// Begin command list
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_wireframe);
 		m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_LineList);
-		m_cmd_list->SetShaderVertex(m_vps_color);
-		m_cmd_list->SetShaderPixel(m_vps_color);
-		m_cmd_list->SetInputLayout(m_vps_color->GetInputLayout());
+		m_cmd_list->SetShaderVertex(shader_color);
+		m_cmd_list->SetShaderPixel(shader_color);
+		m_cmd_list->SetInputLayout(shader_color->GetInputLayout());
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		
 		// unjittered matrix to avoid TAA jitter due to lack of motion vectors (line rendering is anti-aliased by m_rasterizer_cull_back_wireframe, decently)
@@ -1188,6 +1278,11 @@ namespace Spartan
 		if (!render)
 			return;
 
+		// Acquire shader
+		const auto& shader_quad = m_shaders[Shader_Quad_V];
+		if (!shader_quad->IsCompiled())
+			return;
+
 		m_cmd_list->Begin("Pass_Gizmos");
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -1236,10 +1331,10 @@ namespace Spartan
 				}
 
 				SetDefaultBuffer(static_cast<uint32_t>(tex_width), static_cast<uint32_t>(tex_width), m_view_projection_orthographic);
-			
-				m_cmd_list->SetShaderVertex(m_vs_quad);
-				m_cmd_list->SetShaderPixel(m_ps_texture);
-				m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+
+				m_cmd_list->SetShaderVertex(shader_quad);
+				m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
+				m_cmd_list->SetShaderPixel(m_shaders[Shader_Texture_P]);
 				m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 				m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 				m_cmd_list->SetTexture(0, light_tex);
@@ -1258,37 +1353,39 @@ namespace Spartan
 
 			SetDefaultBuffer(static_cast<uint32_t>(m_resolution.x), static_cast<uint32_t>(m_resolution.y), m_view_projection_orthographic);
 
-			m_cmd_list->SetShaderVertex(m_vps_gizmo_transform);
-			m_cmd_list->SetShaderPixel(m_vps_gizmo_transform);
-			m_cmd_list->SetInputLayout(m_vps_gizmo_transform->GetInputLayout());
+			auto const& shader_gizmoTransform = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_GizmoTransform_Vp]);
+
+			m_cmd_list->SetShaderVertex(shader_gizmoTransform);
+			m_cmd_list->SetShaderPixel(shader_gizmoTransform);
+			m_cmd_list->SetInputLayout(shader_gizmoTransform->GetInputLayout());
 			m_cmd_list->SetBufferIndex(m_gizmo_transform->GetIndexBuffer());
 			m_cmd_list->SetBufferVertex(m_gizmo_transform->GetVertexBuffer());
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 
 			// Axis - X
 			auto buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Right), m_gizmo_transform->GetHandle().GetColor(Vector3::Right));
-			m_vps_gizmo_transform->UpdateBuffer(&buffer, 0);
-			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(0));
+			shader_gizmoTransform->UpdateBuffer(&buffer, 0);
+			m_cmd_list->SetConstantBuffer(1, Buffer_Global, shader_gizmoTransform->GetConstantBuffer(0));
 			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 
 			// Axis - Y
 			buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Up), m_gizmo_transform->GetHandle().GetColor(Vector3::Up));
-			m_vps_gizmo_transform->UpdateBuffer(&buffer, 1);
-			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(1));
+			shader_gizmoTransform->UpdateBuffer(&buffer, 1);
+			m_cmd_list->SetConstantBuffer(1, Buffer_Global, shader_gizmoTransform->GetConstantBuffer(1));
 			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 
 			// Axis - Z
 			buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::Forward), m_gizmo_transform->GetHandle().GetColor(Vector3::Forward));
-			m_vps_gizmo_transform->UpdateBuffer(&buffer, 2);
-			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(2));
+			shader_gizmoTransform->UpdateBuffer(&buffer, 2);
+			m_cmd_list->SetConstantBuffer(1, Buffer_Global, shader_gizmoTransform->GetConstantBuffer(2));
 			m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 
 			// Axes - XYZ
 			if (m_gizmo_transform->DrawXYZ())
 			{
 				buffer = Struct_Matrix_Vector3(m_gizmo_transform->GetHandle().GetTransform(Vector3::One), m_gizmo_transform->GetHandle().GetColor(Vector3::One));
-				m_vps_gizmo_transform->UpdateBuffer(&buffer, 3);
-				m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_gizmo_transform->GetConstantBuffer(3));
+				shader_gizmoTransform->UpdateBuffer(&buffer, 3);
+				m_cmd_list->SetConstantBuffer(1, Buffer_Global, shader_gizmoTransform->GetConstantBuffer(3));
 				m_cmd_list->DrawIndexed(m_gizmo_transform->GetIndexCount(), 0, 0);
 			}
 
@@ -1299,11 +1396,13 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_Texture>& tex_out) const
+	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_Texture>& tex_out)
 	{
 		const bool draw = m_flags & Render_Gizmo_PerformanceMetrics;
 		if (!draw)
 			return;
+
+		const auto& shader_font = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_Font_Vp]);
 
 		m_cmd_list->Begin("Pass_PerformanceMetrics");
 
@@ -1311,7 +1410,7 @@ namespace Spartan
 		const auto text_pos = Vector2(-static_cast<int>(m_viewport.width) * 0.5f + 1.0f, static_cast<int>(m_viewport.height) * 0.5f);
 		m_font->SetText(m_profiler->GetMetrics(), text_pos);
 		auto buffer = Struct_Matrix_Vector4(m_view_projection_orthographic, m_font->GetColor());
-		m_vps_font->UpdateBuffer(&buffer);
+		shader_font->UpdateBuffer(&buffer);
 	
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
@@ -1321,10 +1420,10 @@ namespace Spartan
 		m_cmd_list->SetBlendState(m_blend_enabled);	
 		m_cmd_list->SetTexture(0, m_font->GetAtlas());
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_vps_font->GetConstantBuffer());
-		m_cmd_list->SetShaderVertex(m_vps_font);
-		m_cmd_list->SetShaderPixel(m_vps_font);
-		m_cmd_list->SetInputLayout(m_vps_font->GetInputLayout());	
+		m_cmd_list->SetConstantBuffer(0, Buffer_Global, shader_font->GetConstantBuffer());
+		m_cmd_list->SetShaderVertex(shader_font);
+		m_cmd_list->SetShaderPixel(shader_font);
+		m_cmd_list->SetInputLayout(shader_font->GetInputLayout());	
 		m_cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
 		m_cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
 		m_cmd_list->DrawIndexed(m_font->GetIndexCount(), 0, 0);
@@ -1337,6 +1436,11 @@ namespace Spartan
 		if (m_debug_buffer == RendererDebug_None)
 			return true;
 
+		// Acquire shader
+		const auto& shader_quad = m_shaders[Shader_Quad_V];
+		if (!shader_quad->IsCompiled())
+			return false;
+
 		m_cmd_list->Begin("Pass_DebugBuffer");
 
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight(), m_view_projection_orthographic);
@@ -1345,31 +1449,31 @@ namespace Spartan
 		if (m_debug_buffer == RendererDebug_Albedo)
 		{
 			m_cmd_list->SetTexture(0, m_g_buffer_albedo);
-			m_cmd_list->SetShaderPixel(m_ps_texture);
+			m_cmd_list->SetShaderPixel(m_shaders[Shader_Texture_P]);
 		}
 
 		if (m_debug_buffer == RendererDebug_Normal)
 		{
 			m_cmd_list->SetTexture(0, m_g_buffer_normal);
-			m_cmd_list->SetShaderPixel(m_ps_debug_normal_);
+			m_cmd_list->SetShaderPixel(m_shaders[Shader_DebugNormal_P]);
 		}
 
 		if (m_debug_buffer == RendererDebug_Material)
 		{
 			m_cmd_list->SetTexture(0, m_g_buffer_material);
-			m_cmd_list->SetShaderPixel(m_ps_texture);
+			m_cmd_list->SetShaderPixel(m_shaders[Shader_Texture_P]);
 		}
 
 		if (m_debug_buffer == RendererDebug_Velocity)
 		{
 			m_cmd_list->SetTexture(0, m_g_buffer_velocity);
-			m_cmd_list->SetShaderPixel(m_ps_debug_velocity);
+			m_cmd_list->SetShaderPixel(m_shaders[Shader_DebugVelocity_P]);
 		}
 
 		if (m_debug_buffer == RendererDebug_Depth)
 		{
 			m_cmd_list->SetTexture(0, m_g_buffer_depth);
-			m_cmd_list->SetShaderPixel(m_ps_debug_depth);
+			m_cmd_list->SetShaderPixel(m_shaders[Shader_DebugDepth_P]);
 		}
 
 		if ((m_debug_buffer == RendererDebug_SSAO))
@@ -1382,7 +1486,7 @@ namespace Spartan
 			{
 				m_cmd_list->SetTexture(0, m_tex_white);
 			}
-			m_cmd_list->SetShaderPixel(m_ps_debug_ssao);
+			m_cmd_list->SetShaderPixel(m_shaders[Shader_DebugSsao_P]);
 		}
 
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
@@ -1391,8 +1495,8 @@ namespace Spartan
 		m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());	
-		m_cmd_list->SetShaderVertex(m_vs_quad);
-		m_cmd_list->SetInputLayout(m_vs_quad->GetInputLayout());
+		m_cmd_list->SetShaderVertex(shader_quad);
+		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());

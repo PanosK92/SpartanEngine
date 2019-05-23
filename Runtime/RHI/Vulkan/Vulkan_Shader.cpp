@@ -381,7 +381,7 @@ namespace Spartan
 	}
 	
 	template <typename T>
-	void* RHI_Shader::_Compile(const Shader_Type type, const string& shader)
+	void* RHI_Shader::_Compile(const Shader_Stage type, const string& shader)
 	{
 		// Deduce some things
 		auto is_file	= FileSystem::IsSupportedShaderFile(shader);

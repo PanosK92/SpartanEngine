@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Viewport.h"
+#include <map>
+
 //================================
 
 namespace Spartan
@@ -100,6 +102,43 @@ namespace Spartan
 		Renderable_ObjectTransparent,
 		Renderable_Light,
 		Renderable_Camera
+	};
+
+	enum Shader_Type
+	{
+		Shader_Gbuffer_V,
+		Shader_Depth_V,
+		Shader_Quad_V,
+		Shader_Texture_P,
+		Shader_Fxaa_P,
+		Shader_Luma_P,
+		Shader_Taa_P,
+		Shader_MotionBlur_P,
+		Shader_Sharperning_P,
+		Shader_ChromaticAberration_P,	
+		Shader_BloomBright_P,
+		Shader_BloomBlend_P,
+		Shader_ToneMapping_P,
+		Shader_GammaCorrection_P,
+		Shader_Dithering_P,
+		Shader_DownsampleBox_P,
+		Shader_UpsampleBox_P,
+		Shader_DebugNormal_P,
+		Shader_DebugVelocity_P,
+		Shader_DebugDepth_P,
+		Shader_DebugSsao_P,
+		Shader_Light_Vp,
+		Shader_Color_Vp,
+		Shader_Font_Vp,
+		Shader_ShadowDirectional_Vp,
+		Shader_ShadowPoint_P,
+		Shader_ShadowSpot_P,
+		Shader_Ssao_P,
+		Shader_GizmoTransform_Vp,
+		Shader_Transparent_Vp,
+		Shader_BlurBox_P,
+		Shader_BlurGaussian_P,
+		Shader_BlurGaussianBilateral_P
 	};
 
 	class SPARTAN_CLASS Renderer : public ISubsystem
@@ -223,7 +262,7 @@ namespace Spartan
 		void Pass_ShadowMapping(std::shared_ptr<RHI_Texture>& tex_out, Light* light_directional_in);
 		void Pass_Lines(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Gizmos(std::shared_ptr<RHI_Texture>& tex_out);
-		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out) const;
+		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out);
 		//==================================================================================================================================================================
 
 		//= RENDER TEXTURES =======================================
@@ -249,41 +288,9 @@ namespace Spartan
 		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur2;
 		//=========================================================
 		
-		//= SHADERS =====================================================
-		std::shared_ptr<RHI_Shader> m_vs_gbuffer;
-		std::shared_ptr<ShaderLight> m_vps_light;		
-		std::shared_ptr<RHI_Shader> m_v_depth;
-		std::shared_ptr<ShaderBuffered> m_vps_color;
-		std::shared_ptr<ShaderBuffered> m_vps_font;
-		std::shared_ptr<ShaderBuffered> m_vps_shadow_mapping_directional;
-		std::shared_ptr<ShaderBuffered> m_ps_shadow_mapping_point;
-		std::shared_ptr<ShaderBuffered> m_ps_shadow_mapping_spot;
-		std::shared_ptr<ShaderBuffered> m_vps_ssao;
-		std::shared_ptr<ShaderBuffered> m_vps_gizmo_transform;
-		std::shared_ptr<ShaderBuffered> m_vps_transparent;	
-		std::shared_ptr<RHI_Shader> m_vs_quad;
-		std::shared_ptr<RHI_Shader> m_ps_texture;
-		std::shared_ptr<RHI_Shader> m_ps_fxaa;
-		std::shared_ptr<RHI_Shader> m_ps_luma;	
-		std::shared_ptr<RHI_Shader> m_ps_taa;
-		std::shared_ptr<RHI_Shader> m_ps_motion_blur;
-		std::shared_ptr<RHI_Shader> m_ps_sharpening;
-		std::shared_ptr<RHI_Shader> m_ps_chromatic_aberration;
-		std::shared_ptr<RHI_Shader> m_ps_blur_box;
-		std::shared_ptr<ShaderBuffered> m_ps_blur_gaussian;
-		std::shared_ptr<ShaderBuffered> m_ps_blur_gaussian_bilateral;
-		std::shared_ptr<RHI_Shader> m_ps_bloom_bright;
-		std::shared_ptr<RHI_Shader> m_ps_bloom_blend;
-		std::shared_ptr<RHI_Shader> m_ps_tone_mapping;
-		std::shared_ptr<RHI_Shader> m_ps_gamma_correction;
-		std::shared_ptr<RHI_Shader> m_ps_dithering;
-		std::shared_ptr<RHI_Shader> m_ps_downsample_box;
-		std::shared_ptr<RHI_Shader> m_ps_upsample_box;
-		std::shared_ptr<RHI_Shader> m_ps_debug_normal_;
-		std::shared_ptr<RHI_Shader> m_ps_debug_velocity;
-		std::shared_ptr<RHI_Shader> m_ps_debug_depth;
-		std::shared_ptr<RHI_Shader> m_ps_debug_ssao;
-		//===============================================================
+		//= SHADERS =================================================
+		std::map<Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
+		//===========================================================
 
 		//= DEPTH-STENCIL STATES =======================================
 		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_enabled;

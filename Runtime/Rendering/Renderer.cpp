@@ -91,10 +91,6 @@ namespace Spartan
 		// Create command list
 		m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device, m_context->GetSubsystem<Profiler>().get());
 
-		// Log on-screen as the renderer is ready
-		LOG_TO_FILE(false);
-		m_initialized = true;
-
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(RenderablesAcquire));
 	}
@@ -128,14 +124,21 @@ namespace Spartan
 		// Line buffer
 		m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
 
+		CreateShaders();
 		CreateDepthStencilStates();
 		CreateRasterizerStates();
 		CreateBlendStates();
 		CreateRenderTextures();
-		CreateFonts();
-		CreateShaders();
+		CreateFonts();	
 		CreateSamplers();
 		CreateTextures();
+
+		if (!m_initialized)
+		{
+			// Log on-screen as the renderer is ready
+			LOG_TO_FILE(false);
+			m_initialized = true;
+		}
 
 		return true;
 	}
@@ -249,174 +252,207 @@ namespace Spartan
 		const auto dir_shaders = g_resource_cache->GetDataDirectory(Asset_Shaders);
 
 		// Light
-		m_vps_light = make_shared<ShaderLight>(m_rhi_device);
-		m_vps_light->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "Light.hlsl");
+		auto shader_light = make_shared<ShaderLight>(m_rhi_device);
+		shader_light->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "Light.hlsl");
+		m_shaders[Shader_Light_Vp] = shader_light;
 
 		// Transparent
-		m_vps_transparent = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_transparent->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_VertexPixel, dir_shaders + "Transparent.hlsl");
-		m_vps_transparent->AddBuffer<Struct_Transparency>();
+		auto shader_transparent = make_shared<ShaderBuffered>(m_rhi_device);
+		shader_transparent->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_VertexPixel, dir_shaders + "Transparent.hlsl");
+		shader_transparent->AddBuffer<Struct_Transparency>();
+		m_shaders[Shader_Transparent_Vp] = shader_transparent;
 
 		// Font
-		m_vps_font = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_font->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "Font.hlsl");
-		m_vps_font->AddBuffer<Struct_Matrix_Vector4>();
+		auto font = make_shared<ShaderBuffered>(m_rhi_device);
+		font->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "Font.hlsl");
+		font->AddBuffer<Struct_Matrix_Vector4>();
+		m_shaders[Shader_Font_Vp] = font;
 
 		// Transform gizmo
-		m_vps_gizmo_transform = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_gizmo_transform->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl");
-		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
-		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
-		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
-		m_vps_gizmo_transform->AddBuffer<Struct_Matrix_Vector3>();
+		auto shader_gizmoTransform = make_shared<ShaderBuffered>(m_rhi_device);
+		shader_gizmoTransform->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_VertexPixel, dir_shaders + "TransformGizmo.hlsl");
+		shader_gizmoTransform->AddBuffer<Struct_Matrix_Vector3>();
+		shader_gizmoTransform->AddBuffer<Struct_Matrix_Vector3>();
+		shader_gizmoTransform->AddBuffer<Struct_Matrix_Vector3>();
+		shader_gizmoTransform->AddBuffer<Struct_Matrix_Vector3>();
+		m_shaders[Shader_GizmoTransform_Vp] = shader_gizmoTransform;
 
 		// SSAO
-		m_vps_ssao = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_ssao->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSAO.hlsl");
+		auto shader_ssao = make_shared<ShaderBuffered>(m_rhi_device);
+		shader_ssao->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSAO.hlsl");
+		m_shaders[Shader_Ssao_P] = shader_ssao;
 
 		// Shadow mapping directional
-		m_vps_shadow_mapping_directional = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_shadow_mapping_directional->AddDefine("DIRECTIONAL");
-		m_vps_shadow_mapping_directional->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "ShadowMapping.hlsl");
-		m_vps_shadow_mapping_directional->AddBuffer<Struct_ShadowMapping>();
+		auto shader_shadowDirectional = make_shared<ShaderBuffered>(m_rhi_device);
+		shader_shadowDirectional->AddDefine("DIRECTIONAL");
+		shader_shadowDirectional->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_VertexPixel, dir_shaders + "ShadowMapping.hlsl");
+		shader_shadowDirectional->AddBuffer<Struct_ShadowMapping>();
+		m_shaders[Shader_ShadowDirectional_Vp] = shader_shadowDirectional;
 
 		// Shadow mapping point
-		m_ps_shadow_mapping_point = make_shared<ShaderBuffered>(m_rhi_device);
-		m_ps_shadow_mapping_point->AddDefine("POINT");
-		m_ps_shadow_mapping_point->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl");
-		m_ps_shadow_mapping_point->AddBuffer<Struct_ShadowMapping>();
+		auto shader_shadowPoint = make_shared<ShaderBuffered>(m_rhi_device);
+		shader_shadowPoint->AddDefine("POINT");
+		shader_shadowPoint->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl");
+		shader_shadowPoint->AddBuffer<Struct_ShadowMapping>();
+		m_shaders[Shader_ShadowPoint_P] = shader_shadowPoint;
 
 		// Shadow mapping spot
-		m_ps_shadow_mapping_spot = make_shared<ShaderBuffered>(m_rhi_device);
-		m_ps_shadow_mapping_spot->AddDefine("SPOT");
-		m_ps_shadow_mapping_spot->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl");
-		m_ps_shadow_mapping_spot->AddBuffer<Struct_ShadowMapping>();
+		auto shader_shadowSpot = make_shared<ShaderBuffered>(m_rhi_device);
+		shader_shadowSpot->AddDefine("SPOT");
+		shader_shadowSpot->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "ShadowMapping.hlsl");
+		shader_shadowSpot->AddBuffer<Struct_ShadowMapping>();
+		m_shaders[Shader_ShadowSpot_P] = shader_shadowSpot;
 
 		// Color
-		m_vps_color = make_shared<ShaderBuffered>(m_rhi_device);
-		m_vps_color->CompileAsync<RHI_Vertex_PosCol>(m_context, Shader_VertexPixel, dir_shaders + "Color.hlsl");
-		m_vps_color->AddBuffer<Struct_Matrix_Matrix>();
+		auto shader_color = make_shared<ShaderBuffered>(m_rhi_device);
+		shader_color->CompileAsync<RHI_Vertex_PosCol>(m_context, Shader_VertexPixel, dir_shaders + "Color.hlsl");
+		shader_color->AddBuffer<Struct_Matrix_Matrix>();
+		m_shaders[Shader_Color_Vp] = shader_color;
 
 		// G-Buffer
-		m_vs_gbuffer = make_shared<RHI_Shader>(m_rhi_device);
-		m_vs_gbuffer->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_Vertex, dir_shaders + "GBuffer.hlsl");
+		auto shader_gbuffer = make_shared<RHI_Shader>(m_rhi_device);
+		shader_gbuffer->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_Vertex, dir_shaders + "GBuffer.hlsl");
+		m_shaders[Shader_Gbuffer_V] = shader_gbuffer;
 
-		// Position
-		m_v_depth = make_shared<RHI_Shader>(m_rhi_device);
-		m_v_depth->CompileAsync<RHI_Vertex_Pos>(m_context, Shader_Vertex, dir_shaders + "Depth.hlsl");
+		// Depth
+		auto shader_depth = make_shared<RHI_Shader>(m_rhi_device);
+		shader_depth->CompileAsync<RHI_Vertex_Pos>(m_context, Shader_Vertex, dir_shaders + "Depth.hlsl");
+		m_shaders[Shader_Depth_V] = shader_depth;
 
 		// Quad
-		m_vs_quad = make_shared<RHI_Shader>(m_rhi_device);
-		m_vs_quad->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Vertex, dir_shaders + "Quad.hlsl");
+		auto shader_quad = make_shared<RHI_Shader>(m_rhi_device);
+		shader_quad->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Vertex, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_Quad_V] = shader_quad;
 
 		// Texture
-		m_ps_texture = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_texture->AddDefine("PASS_TEXTURE");
-		m_ps_texture->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_texture = make_shared<RHI_Shader>(m_rhi_device);
+		shader_texture->AddDefine("PASS_TEXTURE");
+		shader_texture->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_Texture_P] = shader_texture;
 
 		// FXAA
-		m_ps_fxaa = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_fxaa->AddDefine("PASS_FXAA");
-		m_ps_fxaa->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_fxaa = make_shared<RHI_Shader>(m_rhi_device);
+		shader_fxaa->AddDefine("PASS_FXAA");
+		shader_fxaa->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_Fxaa_P] = shader_fxaa;
 
 		// Luma
-		m_ps_luma = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_luma->AddDefine("PASS_LUMA");
-		m_ps_luma->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_luma = make_shared<RHI_Shader>(m_rhi_device);
+		shader_luma->AddDefine("PASS_LUMA");
+		shader_luma->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_Luma_P] = shader_luma;
 
 		// Sharpening
-		m_ps_sharpening = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_sharpening->AddDefine("PASS_SHARPENING");
-		m_ps_sharpening->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_sharpening = make_shared<RHI_Shader>(m_rhi_device);
+		shader_sharpening->AddDefine("PASS_SHARPENING");
+		shader_sharpening->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_Sharperning_P] = shader_sharpening;
 
 		// Chromatic aberration
-		m_ps_chromatic_aberration = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_chromatic_aberration->AddDefine("PASS_CHROMATIC_ABERRATION");
-		m_ps_chromatic_aberration->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_chromaticAberration = make_shared<RHI_Shader>(m_rhi_device);
+		shader_chromaticAberration->AddDefine("PASS_CHROMATIC_ABERRATION");
+		shader_chromaticAberration->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_ChromaticAberration_P] = shader_chromaticAberration;
 
 		// Blur Box
-		m_ps_blur_box = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_blur_box->AddDefine("PASS_BLUR_BOX");
-		m_ps_blur_box->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_blurBox = make_shared<RHI_Shader>(m_rhi_device);
+		shader_blurBox->AddDefine("PASS_BLUR_BOX");
+		shader_blurBox->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_BlurBox_P] = shader_blurBox;
 
 		// Blur Gaussian
-		m_ps_blur_gaussian = make_shared<ShaderBuffered>(m_rhi_device);
-		m_ps_blur_gaussian->AddDefine("PASS_BLUR_GAUSSIAN");
-		m_ps_blur_gaussian->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-		m_ps_blur_gaussian->AddBuffer<Struct_Blur>();
-		m_ps_blur_gaussian->AddBuffer<Struct_Blur>();
+		auto shader_blurGaussian = make_shared<ShaderBuffered>(m_rhi_device);
+		shader_blurGaussian->AddDefine("PASS_BLUR_GAUSSIAN");
+		shader_blurGaussian->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		shader_blurGaussian->AddBuffer<Struct_Blur>();
+		shader_blurGaussian->AddBuffer<Struct_Blur>();
+		m_shaders[Shader_BlurGaussian_P] = shader_blurGaussian;
 
 		// Blur Bilateral Gaussian
-		m_ps_blur_gaussian_bilateral = make_shared<ShaderBuffered>(m_rhi_device);
-		m_ps_blur_gaussian_bilateral->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
-		m_ps_blur_gaussian_bilateral->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-		m_ps_blur_gaussian_bilateral->AddBuffer<Struct_Blur>();
-		m_ps_blur_gaussian_bilateral->AddBuffer<Struct_Blur>();
+		auto shader_blurGaussianBilateral = make_shared<ShaderBuffered>(m_rhi_device);
+		shader_blurGaussianBilateral->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
+		shader_blurGaussianBilateral->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		shader_blurGaussianBilateral->AddBuffer<Struct_Blur>();
+		shader_blurGaussianBilateral->AddBuffer<Struct_Blur>();
+		m_shaders[Shader_BlurGaussianBilateral_P] = shader_blurGaussianBilateral;
 
 		// Bloom - bright
-		m_ps_bloom_bright = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_bloom_bright->AddDefine("PASS_BRIGHT");
-		m_ps_bloom_bright->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_bloomBright = make_shared<RHI_Shader>(m_rhi_device);
+		shader_bloomBright->AddDefine("PASS_BRIGHT");
+		shader_bloomBright->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_BloomBright_P] = shader_bloomBright;
 
 		// Bloom - blend
-		m_ps_bloom_blend = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_bloom_blend->AddDefine("PASS_BLEND_ADDITIVE");
-		m_ps_bloom_blend->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_bloomBlend = make_shared<RHI_Shader>(m_rhi_device);
+		shader_bloomBlend->AddDefine("PASS_BLEND_ADDITIVE");
+		shader_bloomBlend->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_BloomBlend_P] = shader_bloomBlend;
 
 		// Tone-mapping
-		m_ps_tone_mapping = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_tone_mapping->AddDefine("PASS_TONEMAPPING");
-		m_ps_tone_mapping->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_toneMapping = make_shared<RHI_Shader>(m_rhi_device);
+		shader_toneMapping->AddDefine("PASS_TONEMAPPING");
+		shader_toneMapping->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_ToneMapping_P] = shader_toneMapping;
 
 		// Gamma correction
-		m_ps_gamma_correction = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_gamma_correction->AddDefine("PASS_GAMMA_CORRECTION");
-		m_ps_gamma_correction->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_gammaCorrection = make_shared<RHI_Shader>(m_rhi_device);
+		shader_gammaCorrection->AddDefine("PASS_GAMMA_CORRECTION");
+		shader_gammaCorrection->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_GammaCorrection_P] = shader_gammaCorrection;
 
 		// TAA
-		m_ps_taa = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_taa->AddDefine("PASS_TAA_RESOLVE");
-		m_ps_taa->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_taa = make_shared<RHI_Shader>(m_rhi_device);
+		shader_taa->AddDefine("PASS_TAA_RESOLVE");
+		shader_taa->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_Taa_P] = shader_taa;
 
 		// Motion Blur
-		m_ps_motion_blur = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_motion_blur->AddDefine("PASS_MOTION_BLUR");
-		m_ps_motion_blur->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_motionBlur = make_shared<RHI_Shader>(m_rhi_device);
+		shader_motionBlur->AddDefine("PASS_MOTION_BLUR");
+		shader_motionBlur->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_MotionBlur_P] = shader_motionBlur;
 
 		// Dithering
-		m_ps_dithering = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_dithering->AddDefine("PASS_DITHERING");
-		m_ps_dithering->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_dithering = make_shared<RHI_Shader>(m_rhi_device);
+		shader_dithering->AddDefine("PASS_DITHERING");
+		shader_dithering->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_Dithering_P] = shader_dithering;
 
 		// Downsample box
-		m_ps_downsample_box = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_downsample_box->AddDefine("PASS_DOWNSAMPLE_BOX");
-		m_ps_downsample_box->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_downsampleBox = make_shared<RHI_Shader>(m_rhi_device);
+		shader_downsampleBox->AddDefine("PASS_DOWNSAMPLE_BOX");
+		shader_downsampleBox->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_DownsampleBox_P] = shader_downsampleBox;
 
 		// Upsample box
-		m_ps_upsample_box = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_upsample_box->AddDefine("PASS_UPSAMPLE_BOX");
-		m_ps_upsample_box->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		auto shader_upsampleBox = make_shared<RHI_Shader>(m_rhi_device);
+		shader_upsampleBox->AddDefine("PASS_UPSAMPLE_BOX");
+		shader_upsampleBox->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_UpsampleBox_P] = shader_upsampleBox;
 
 		// Debug Normal
-		m_ps_debug_normal_ = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_debug_normal_->AddDefine("DEBUG_NORMAL");
-		m_ps_debug_normal_->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Debug.hlsl");
+		auto shader_debugNormal = make_shared<RHI_Shader>(m_rhi_device);
+		shader_debugNormal->AddDefine("DEBUG_NORMAL");
+		shader_debugNormal->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Debug.hlsl");
+		m_shaders[Shader_DebugNormal_P] = shader_debugNormal;
 
 		// Debug velocity
-		m_ps_debug_velocity = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_debug_velocity->AddDefine("DEBUG_VELOCITY");
-		m_ps_debug_velocity->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Debug.hlsl");
+		auto shader_debugVelocity = make_shared<RHI_Shader>(m_rhi_device);
+		shader_debugVelocity->AddDefine("DEBUG_VELOCITY");
+		shader_debugVelocity->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Debug.hlsl");
+		m_shaders[Shader_DebugVelocity_P] = shader_debugVelocity;
 
 		// Debug depth
-		m_ps_debug_depth = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_debug_depth->AddDefine("DEBUG_DEPTH");
-		m_ps_debug_depth->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Debug.hlsl");
+		auto shader_debugDepth = make_shared<RHI_Shader>(m_rhi_device);
+		shader_debugDepth->AddDefine("DEBUG_DEPTH");
+		shader_debugDepth->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Debug.hlsl");
+		m_shaders[Shader_DebugDepth_P] = shader_debugDepth;
 
 		// Debug ssao
-		m_ps_debug_ssao = make_shared<RHI_Shader>(m_rhi_device);
-		m_ps_debug_ssao->AddDefine("DEBUG_SSAO");
-		m_ps_debug_ssao->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Debug.hlsl");
+		auto shader_debugSsao = make_shared<RHI_Shader>(m_rhi_device);
+		shader_debugSsao->AddDefine("DEBUG_SSAO");
+		shader_debugSsao->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Debug.hlsl");
+		m_shaders[Shader_DebugSsao_P] = shader_debugSsao;
 	}
 
 	void Renderer::CreateSamplers()
@@ -446,7 +482,6 @@ namespace Spartan
 		if (!m_camera)
 		{
 			m_cmd_list->ClearRenderTarget(m_render_tex_full_hdr_light2->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-			m_is_rendering = false;
 			return;
 		}
 
@@ -454,11 +489,9 @@ namespace Spartan
 		if (m_entities.empty())
 		{
 			m_cmd_list->ClearRenderTarget(m_render_tex_full_hdr_light2->GetResource_RenderTarget(), m_camera->GetClearColor());
-			m_is_rendering = false;
 			return;
 		}
 
-		m_is_rendering = true;
 		m_frame_num++;
 		m_is_odd_frame = (m_frame_num % 2) == 1;
 		m_profiler->Reset();
@@ -496,8 +529,8 @@ namespace Spartan
 			m_view_projection_orthographic	= m_view_base * m_projection_orthographic;
 		}
 
+		m_is_rendering = true;
 		Pass_Main();
-
 		m_is_rendering = false;
 	}
 
