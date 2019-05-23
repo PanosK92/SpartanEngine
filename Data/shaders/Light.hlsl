@@ -140,7 +140,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 		// Get light data
         pointLight.color        = pointLightColor[i].rgb;
         float3 position         = pointLightPosition[i].xyz;
-        pointLight.intensity    = pointLightIntenRange[i].x;
+        pointLight.intensity    = pointLightIntenRange[i].x * factor_occlusion;
         float range             = pointLightIntenRange[i].y;
         
 		// Compute light
@@ -165,7 +165,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 		// Get light data
         spotLight.color     = spotLightColor[j].rgb;
         float3 position     = spotLightPosition[j].xyz;
-        spotLight.intensity = spotLightIntenRangeAngle[j].x;
+        spotLight.intensity = spotLightIntenRangeAngle[j].x * factor_occlusion;
         spotLight.direction = normalize(-spotLightDirection[j].xyz);
         float range         = spotLightIntenRangeAngle[j].y;
         float cutoffAngle   = 1.0f - spotLightIntenRangeAngle[j].z;

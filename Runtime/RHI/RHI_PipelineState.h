@@ -43,15 +43,15 @@ namespace Spartan
 		bool operator==(const RHI_PipelineState& rhs) const
 		{
 			return 
-				shader_vertex->RHI_GetID()			== rhs.shader_vertex->RHI_GetID()		&&
-				shader_pixel->RHI_GetID()			== rhs.shader_pixel->RHI_GetID()		&&
+				shader_vertex->GetId()			== rhs.shader_vertex->GetId()		&&
+				shader_pixel->GetId()			== rhs.shader_pixel->GetId()		&&
 				input_layout						== rhs.input_layout						&&
 				rasterizer_state					== rhs.rasterizer_state					&&
 				blend_state							== rhs.blend_state						&&
-				depth_stencil_state->RHI_GetID()	== rhs.depth_stencil_state->RHI_GetID()	&&
-				sampler->RHI_GetID()				== rhs.sampler->RHI_GetID()				&&
-				constant_buffer->RHI_GetID()		== rhs.constant_buffer->RHI_GetID()		&&
-				vertex_buffer->RHI_GetID()			== rhs.vertex_buffer->RHI_GetID()		&&
+				depth_stencil_state->GetId()	== rhs.depth_stencil_state->GetId()	&&
+				sampler->GetId()				== rhs.sampler->GetId()				&&
+				constant_buffer->GetId()		== rhs.constant_buffer->GetId()		&&
+				vertex_buffer->GetId()			== rhs.vertex_buffer->GetId()		&&
 				primitive_topology					== rhs.primitive_topology;
 		}
 
@@ -77,7 +77,7 @@ namespace std
 	{
 		size_t operator()(Spartan::RHI_PipelineState const& state) const noexcept
 		{
-			return size_t(state.blend_state->RHI_GetID());
+			return size_t(state.blend_state->GetId());
 		}
 	};
 }

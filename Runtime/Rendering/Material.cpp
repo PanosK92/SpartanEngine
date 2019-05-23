@@ -57,8 +57,7 @@ namespace Spartan
 
 	Material::~Material()
 	{
-		m_texture_slots.clear();
-		m_texture_slots.shrink_to_fit();
+		m_textures.clear();
 	}
 
 	//= IResource ==============================================
@@ -134,41 +133,34 @@ namespace Spartan
 		xml->AddAttribute("Material", "IsEditable",				m_is_editable);
 
 		xml->AddChildNode("Material", "Textures");
-		xml->AddAttribute("Textures", "Count", static_cast<uint32_t>(m_texture_slots.size()));
+		xml->AddAttribute("Textures", "Count", static_cast<uint32_t>(m_textures.size()));
 		auto i = 0;
-		for (const auto& texture_slot : m_texture_slots)
+		for (const auto& texture : m_textures)
 		{
 			auto tex_node = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", tex_node);
-			xml->AddAttribute(tex_node, "Texture_Type", static_cast<uint32_t>(texture_slot.type));
-			xml->AddAttribute(tex_node, "Texture_Name", texture_slot.ptr ? texture_slot.ptr->GetResourceName() : NOT_ASSIGNED);
-			xml->AddAttribute(tex_node, "Texture_Path", texture_slot.ptr ? texture_slot.ptr->GetResourceFilePath() : NOT_ASSIGNED);
+			xml->AddAttribute(tex_node, "Texture_Type", static_cast<uint32_t>(texture.first));
+			xml->AddAttribute(tex_node, "Texture_Name", texture.second ? texture.second->GetResourceName() : NOT_ASSIGNED);
+			xml->AddAttribute(tex_node, "Texture_Path", texture.second ? texture.second->GetResourceFilePath() : NOT_ASSIGNED);
 			i++;
 		}
 
 		return xml->Save(GetResourceFilePath());
 	}
 
-	const TextureSlot& Material::GetTextureSlotByType(const TextureType type)
+	const void* Material::GetResources()
 	{
-		for (const auto& texture_slot : m_texture_slots)
-		{
-			if (texture_slot.type == type)
-				return texture_slot;
-		}
+		// They must match the order with which the GBuffer shader defines them
+		m_resources[0] = HasTexture(TextureType_Albedo)		? m_textures[TextureType_Albedo]->GetResource_Texture() : nullptr;
+		m_resources[1] = HasTexture(TextureType_Roughness)	? m_textures[TextureType_Roughness]->GetResource_Texture(): nullptr;
+		m_resources[2] = HasTexture(TextureType_Metallic)	? m_textures[TextureType_Metallic]->GetResource_Texture(): nullptr;
+		m_resources[3] = HasTexture(TextureType_Normal)		? m_textures[TextureType_Normal]->GetResource_Texture(): nullptr;
+		m_resources[4] = HasTexture(TextureType_Height)		? m_textures[TextureType_Height]->GetResource_Texture(): nullptr;
+		m_resources[5] = HasTexture(TextureType_Occlusion)	? m_textures[TextureType_Occlusion]->GetResource_Texture(): nullptr;
+		m_resources[6] = HasTexture(TextureType_Emission)	? m_textures[TextureType_Emission]->GetResource_Texture(): nullptr;
+		m_resources[7] = HasTexture(TextureType_Mask)		? m_textures[TextureType_Mask]->GetResource_Texture(): nullptr;
 
-		return m_empty_texture_slot;
-	}
-
-	void* Material::GetTextureShaderResourceByType(const TextureType type)
-	{
-		for (const auto& texture_slot : m_texture_slots)
-		{
-			if (texture_slot.type == type)
-				return texture_slot.ptr ? texture_slot.ptr->GetResource_Texture() : nullptr;
-		}
-
-		return nullptr;
+		return m_resources;
 	}
 
 	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_Texture>& texture)
@@ -181,37 +173,11 @@ namespace Spartan
 			//type = (type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height : type;
 			//type = (type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : type;
 
-			// Assign - As a replacement (if there is a previous one)
-			auto replaced = false;
-			for (auto& texture_slot : m_texture_slots)
-			{
-				if (texture_slot.type == type)
-				{
-					texture_slot.ptr = texture;
-					replaced = true;
-					break;
-				}
-			}
-			// Assign - Add a new one (in case it's the first time the slot is assigned)
-			if (!replaced)
-			{
-				m_texture_slots.emplace_back(type, texture);
-			}
+			m_textures[type] = texture;
 		}
 		else
 		{
-			for (auto it = m_texture_slots.begin(); it != m_texture_slots.end();)
-			{
-				if ((*it).type == type)
-				{
-					it = m_texture_slots.erase(it);
-				}
-				else
-				{
-					++it;
-				}
-			}
-
+			m_textures.erase(type);
 		}
 
 		SetMultiplier(TextureType_Roughness, 1.0f);
@@ -221,51 +187,47 @@ namespace Spartan
 		AcquireShader();
 	}
 
-	void Material::SetTextureSlot(const TextureType type, const shared_ptr<RHI_Texture2D>& texture)
+	void Material::SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture2D>& texture)
 	{
 		SetTextureSlot(type, static_pointer_cast<RHI_Texture>(texture));
 	}
 
-	void Material::SetTextureSlot(const TextureType type, const shared_ptr<RHI_TextureCube>& texture)
+	void Material::SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_TextureCube>& texture)
 	{
 		SetTextureSlot(type, static_pointer_cast<RHI_Texture>(texture));
-	}
-
-	bool Material::HasTexture(const TextureType type)
-	{
-		const auto texture_slot = GetTextureSlotByType(type);
-		return texture_slot.ptr != nullptr;
 	}
 
 	bool Material::HasTexture(const string& path)
 	{
-		for (const auto& texture_slot : m_texture_slots)
+		for (const auto& texture : m_textures)
 		{
-			if (!texture_slot.ptr)
+			if (!texture.second)
 				continue;
 
-			if (texture_slot.ptr->GetResourceFilePath() == path)
+			if (texture.second->GetResourceFilePath() == path)
 				return true;
 		}
 
 		return false;
 	}
 
-	string Material::GetTexturePathByType(const TextureType type)
+	const string& Material::GetTexturePathByType(const TextureType type)
 	{
-		const auto texture_slot = GetTextureSlotByType(type);
-		return texture_slot.ptr == nullptr ? NOT_ASSIGNED : texture_slot.ptr->GetResourceFilePath();
+		if (!HasTexture(type))
+			return NOT_ASSIGNED;
+
+		return m_textures[type]->GetResourceFilePath();
 	}
 
 	vector<string> Material::GetTexturePaths()
 	{
 		vector<string> paths;
-		for (const auto& texture_slot : m_texture_slots)
+		for (const auto& texture : m_textures)
 		{
-			if (texture_slot.ptr == nullptr)
+			if (!texture.second)
 				continue;
 
-			paths.emplace_back(texture_slot.ptr->GetResourceFilePath());
+			paths.emplace_back(texture.second->GetResourceFilePath());
 		}
 
 		return paths;
@@ -295,16 +257,17 @@ namespace Spartan
 		m_shader = GetOrCreateShader(shader_flags);
 	}
 
-	shared_ptr<ShaderVariation> Material::GetOrCreateShader(const unsigned long shader_flags)
+	const std::shared_ptr<ShaderVariation>& Material::GetOrCreateShader(const unsigned long shader_flags)
 	{
 		if (!m_context)
 		{
 			LOG_ERROR("Context is null, can't execute function");
-			return nullptr;
+			static shared_ptr<ShaderVariation> empty;
+			return empty;
 		}
 
 		// If an appropriate shader already exists, return it instead
-		if (auto existing_shader = ShaderVariation::GetMatchingShader(shader_flags))
+		if (const auto& existing_shader = ShaderVariation::GetMatchingShader(shader_flags))
 			return existing_shader;
 
 		// Create and compile shader

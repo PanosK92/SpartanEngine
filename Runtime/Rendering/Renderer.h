@@ -180,7 +180,7 @@ namespace Spartan
 
 		//= Graphics Settings ====================================================================================================================================================
 		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;
-		float m_exposure				= 1.0f;
+		float m_exposure				= 1.5f;
 		float m_gamma					= 2.2f;
 		// FXAA
 		float m_fxaa_sub_pixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f

@@ -32,12 +32,11 @@ using namespace std;
 using namespace Spartan;
 //=======================
 
-IResource::IResource(Context* context, const Resource_Type type)
+IResource::IResource(Context* context, const Resource_Type type) : Spartan_Object()
 {
-	m_context			= context;
-	m_resource_type		= type;
-	m_resource_id		= GENERATE_GUID;
-	m_load_state		= LoadState_Idle;
+	m_context		= context;
+	m_resource_type	= type;
+	m_load_state	= LoadState_Idle;
 }
 
 template <typename T>

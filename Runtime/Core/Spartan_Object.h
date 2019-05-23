@@ -21,22 +21,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
-#include <string>
-#include "EngineDefs.h"
-//=====================
-
-#define GENERATE_GUID Spartan::GUIDGenerator::Generate()
+//= INCLUDES ==================
+#include "../Core/EngineDefs.h"
+//=============================
 
 namespace Spartan
 {
-	class SPARTAN_CLASS GUIDGenerator
+	static uint32_t g_id = 0;
+
+	class SPARTAN_CLASS Spartan_Object
 	{
 	public:
-		static uint32_t Generate();
-		static std::string GenerateAsStr();
+		Spartan_Object() { m_id = g_id++; }
 
-		static std::string ToStr(uint32_t guid);
-		static uint32_t ToUnsignedInt(const std::string& guid);
+		uint32_t GetId() const			{ return m_id; }
+		void SetId(const uint32_t id)	{ m_id = id; }
+
+		static auto GenerateId() { return g_id++;}
+
+	protected:
+		uint64_t m_size = 0;
+		uint32_t m_id	= 0;	
 	};
 }

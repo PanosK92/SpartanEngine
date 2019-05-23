@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <vector>
-#include "Components/IComponent.h"
 #include "../Core/EventSystem.h"
+#include "Components/IComponent.h"
 //================================
 
 namespace Spartan
@@ -34,7 +34,7 @@ namespace Spartan
 	class Renderable;
 	#define VALIDATE_COMPONENT_TYPE(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
 
-	class SPARTAN_CLASS Entity : public std::enable_shared_from_this<Entity>
+	class SPARTAN_CLASS Entity : public Spartan_Object, public std::enable_shared_from_this<Entity>
 	{
 	public:
 		Entity(Context* context);
@@ -55,9 +55,6 @@ namespace Spartan
 		//= PROPERTIES ===================================================================================================
 		const std::string& GetName() const								{ return m_name; }
 		void SetName(const std::string& name)							{ m_name = name; }
-
-		uint32_t GetId() const										{ return m_id; }
-		void SetId(const uint32_t id)								{ m_id = id; }
 
 		bool IsActive() const											{ return m_is_active; }
 		void SetActive(const bool active)								{ m_is_active = active; }
@@ -197,7 +194,6 @@ namespace Spartan
 		std::shared_ptr<Entity> GetPtrShared()		{ return shared_from_this(); }
 
 	private:
-		uint32_t m_id			= 0;
 		std::string m_name			= "Entity";
 		bool m_is_active			= true;
 		bool m_hierarchy_visibility	= true;

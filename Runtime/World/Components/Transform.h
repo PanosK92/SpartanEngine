@@ -49,26 +49,26 @@ namespace Spartan
 
 		void UpdateTransform();
 
-		//= POSITION ========================================================================
-		Math::Vector3 GetPosition()						{ return m_matrix.GetTranslation(); }
-		const Math::Vector3& GetPositionLocal() const	{ return m_positionLocal; }
+		//= POSITION ================================================================
+		auto GetPosition()						{ return m_matrix.GetTranslation(); }
+		const auto& GetPositionLocal() const	{ return m_positionLocal; }
 		void SetPosition(const Math::Vector3& position);
 		void SetPositionLocal(const Math::Vector3& position);
-		//===================================================================================
+		//===========================================================================
 
-		//= ROTATION =========================================================================
-		Math::Quaternion GetRotation()						{ return m_matrix.GetRotation(); }
-		const Math::Quaternion& GetRotationLocal() const	{ return m_rotationLocal; }
+		//= ROTATION =============================================================
+		auto GetRotation()						{ return m_matrix.GetRotation(); }
+		const auto& GetRotationLocal() const	{ return m_rotationLocal; }
 		void SetRotation(const Math::Quaternion& rotation);
 		void SetRotationLocal(const Math::Quaternion& rotation);
-		//====================================================================================
+		//========================================================================
 
-		//= SCALE =================================================================
-		Math::Vector3 GetScale()					{ return m_matrix.GetScale(); }
-		const Math::Vector3& GetScaleLocal() const	{ return m_scaleLocal; }
+		//= SCALE =========================================================
+		auto GetScale()						{ return m_matrix.GetScale(); }
+		const auto& GetScaleLocal() const	{ return m_scaleLocal; }
 		void SetScale(const Math::Vector3& scale);
 		void SetScaleLocal(const Math::Vector3& scale);
-		//=========================================================================
+		//=================================================================
 
 		//= TRANSLATION/ROTATION ==================
 		void Translate(const Math::Vector3& delta);
@@ -81,12 +81,12 @@ namespace Spartan
 		Math::Vector3 GetRight() const;
 		//===============================
 
-		//= HIERARCHY ==================================================================================
+		//= HIERARCHY ==========================================================================
 		bool IsRoot() const		{ return !HasParent(); }
 		bool HasParent() const	{ return m_parent; }
 		void SetParent(Transform* new_parent);
 		void BecomeOrphan();
-		bool HasChildren() const				{ return GetChildrenCount() > 0 ? true : false; }
+		bool HasChildren() const			{ return GetChildrenCount() > 0 ? true : false; }
 		uint32_t GetChildrenCount() const	{ return static_cast<uint32_t>(m_children.size()); }
 		void AddChild(Transform* child);
 		Transform* GetRoot()			{ return HasParent() ? GetParent()->GetRoot() : this; }
@@ -98,18 +98,18 @@ namespace Spartan
 		void AcquireChildren();
 		bool IsDescendantOf(Transform* transform) const;
 		void GetDescendants(std::vector<Transform*>* descendants);
-		//==============================================================================================
+		//======================================================================================
 
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
-		Math::Matrix& GetMatrix()			{ return m_matrix; }
-		Math::Matrix& GetLocalMatrix()		{ return m_matrixLocal; }
+		auto& GetMatrix()		{ return m_matrix; }
+		auto& GetLocalMatrix()	{ return m_matrixLocal; }
 
-		//= CONSTANT BUFFERS ==========================================================================================================================
+		//= CONSTANT BUFFERS ======================================================================================================================
 		void UpdateConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection);
-		const auto& GetConstantBuffer() { return m_cb_gbuffer_gpu; }
+		const auto& GetConstantBuffer() const { return m_cb_gbuffer_gpu; }
 		void UpdateConstantBufferLight(const std::shared_ptr<RHI_Device>& rhi_device, const Math::Matrix& view_projection, uint32_t cascade_index);
-		const auto& GetConstantBufferLight(uint32_t cascade_index) { return m_light_cascades[cascade_index].buffer; }
-		//=============================================================================================================================================
+		const auto& GetConstantBufferLight(const uint32_t cascade_index) { return m_light_cascades[cascade_index].buffer; }
+		//=========================================================================================================================================
 
 	private:
 		Math::Matrix GetParentTransformMatrix() const;

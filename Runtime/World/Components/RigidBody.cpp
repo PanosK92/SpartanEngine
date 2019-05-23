@@ -466,8 +466,8 @@ namespace Spartan
 	{
 		for (auto it = m_constraints.begin(); it != m_constraints.end(); )
 		{
-			auto itConstraint = *it;
-			if (constraint->GetID() == itConstraint->GetID())
+			const auto itConstraint = *it;
+			if (constraint->GetId() == itConstraint->GetId())
 			{
 				it = m_constraints.erase(it);
 			}

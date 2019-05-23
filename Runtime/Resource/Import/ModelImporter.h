@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EngineDefs.h"
 #include <memory>
 #include <string>
-#include <vector>
 //================================
 
 struct aiNode;
@@ -47,14 +46,14 @@ namespace Spartan
 		ModelImporter(Context* context);
 		~ModelImporter() = default;
 
-		bool Load(std::shared_ptr<Model> model, const std::string& file_path);
+		bool Load(Model* model, const std::string& file_path);
 
 	private:
 		// PROCESSING
-		void ReadNodeHierarchy(const aiScene* assimp_scene, aiNode* assimp_node, std::shared_ptr<Model>& model, Entity* parent_node = nullptr, Entity* new_entity = nullptr);
-		void ReadAnimations(const aiScene* scene, std::shared_ptr<Model>& model);
-		void LoadMesh(const aiScene* assimp_scene, aiMesh* assimp_mesh, std::shared_ptr<Model>& model, Entity* entity_parent);
-		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimp_material, std::shared_ptr<Model>& model);
+		void ReadNodeHierarchy(const aiScene* assimp_scene, aiNode* assimp_node, Model* model, Entity* parent_node = nullptr, Entity* new_entity = nullptr);
+		void ReadAnimations(const aiScene* scene, Model* model);
+		void LoadMesh(const aiScene* assimp_scene, aiMesh* assimp_mesh, Model* model, Entity* entity_parent);
+		std::shared_ptr<Material> AiMaterialToMaterial(aiMaterial* assimp_material, Model* model);
 
 		Context* m_context;
 		World* m_world;

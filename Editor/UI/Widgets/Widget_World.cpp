@@ -492,7 +492,7 @@ void Widget_World::ActionEntityCreateCube()
 	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
 	renderable->GeometrySet(Geometry_Default_Cube);
-	renderable->MaterialUseDefault();
+	renderable->UseDefaultMaterial();
 	entity->SetName("Cube");
 }
 
@@ -501,7 +501,7 @@ void Widget_World::ActionEntityCreateQuad()
 	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
 	renderable->GeometrySet(Geometry_Default_Quad);
-	renderable->MaterialUseDefault();
+	renderable->UseDefaultMaterial();
 	entity->SetName("Quad");
 }
 
@@ -510,7 +510,7 @@ void Widget_World::ActionEntityCreateSphere()
 	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
 	renderable->GeometrySet(Geometry_Default_Sphere);
-	renderable->MaterialUseDefault();
+	renderable->UseDefaultMaterial();
 	entity->SetName("Sphere");
 }
 
@@ -519,7 +519,7 @@ void Widget_World::ActionEntityCreateCylinder()
 	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
 	renderable->GeometrySet(Geometry_Default_Cylinder);
-	renderable->MaterialUseDefault();
+	renderable->UseDefaultMaterial();
 	entity->SetName("Cylinder");
 }
 
@@ -528,7 +528,7 @@ void Widget_World::ActionEntityCreateCone()
 	auto entity = ActionEntityCreateEmpty();
 	auto renderable = entity->AddComponent<Renderable>();
 	renderable->GeometrySet(Geometry_Default_Cone);
-	renderable->MaterialUseDefault();
+	renderable->UseDefaultMaterial();
 	entity->SetName("Cone");
 }
 

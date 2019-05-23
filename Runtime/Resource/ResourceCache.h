@@ -71,17 +71,17 @@ namespace Spartan
 		std::vector<std::shared_ptr<IResource>> GetByType(Resource_Type type = Resource_Unknown);
 		// PATH
 		template <class T>
-		std::shared_ptr<IResource>& GetByPath(const std::string& path)
+		std::shared_ptr<T>& GetByPath(const std::string& path)
 		{
 			VALIDATE_RESOURCE_TYPE(T);
 
 			for (auto& resource : m_resource_groups[IResource::TypeToEnum<T>()])
 			{
 				if (path == resource->GetResourceFilePath())
-					return resource;
+					return std::static_pointer_cast<T>(resource);
 			}
 
-			return m_empty_resource;
+			return std::static_pointer_cast<T>(m_empty_resource);
 		}
 		//=======================================================================================
 	
@@ -117,7 +117,7 @@ namespace Spartan
 			if (!FileSystem::FileExists(file_path))
 			{
 				LOGF_ERROR("Path \"%s\" is invalid.", file_path.c_str());
-				return false;
+				return nullptr;
 			}
 
 			// Try to make the path relative to the engine (in case it isn't)

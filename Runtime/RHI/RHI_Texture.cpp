@@ -101,7 +101,7 @@ namespace Spartan
 		file->Write(m_has_mipmaps);
 		file->Write(m_is_grayscale);
 		file->Write(m_is_transparent);
-		file->Write(GetResourceId());
+		file->Write(GetId());
 		file->Write(GetResourceName());
 		file->Write(GetResourceFilePath());
 
@@ -213,32 +213,32 @@ namespace Spartan
 		file->Read(&m_has_mipmaps);
 		file->Read(&m_is_grayscale);
 		file->Read(&m_is_transparent);
-		SetResourceID(file->ReadAs<uint32_t>());
+		SetId(file->ReadAs<uint32_t>());
 		SetResourceName(file->ReadAs<string>());
 		SetResourceFilePath(file->ReadAs<string>());
 
 		return true;
 	}
 
-	uint32_t RHI_Texture::GetChannelCountFromFormat(RHI_Format format)
+	uint32_t RHI_Texture::GetChannelCountFromFormat(const RHI_Format format)
 	{
 		switch (format)
 		{
-			case Spartan::Format_R8_UNORM:				return 1;
-			case Spartan::Format_R16_UINT:				return 1;
-			case Spartan::Format_R16_FLOAT:				return 1;
-			case Spartan::Format_R32_UINT:				return 1;
-			case Spartan::Format_R32_FLOAT:				return 1;
-			case Spartan::Format_D32_FLOAT:				return 1;
-			case Spartan::Format_R32_FLOAT_TYPELESS:	return 1;
-			case Spartan::Format_R8G8_UNORM:			return 2;
-			case Spartan::Format_R16G16_FLOAT:			return 2;
-			case Spartan::Format_R32G32_FLOAT:			return 2;
-			case Spartan::Format_R32G32B32_FLOAT:		return 3;
-			case Spartan::Format_R8G8B8A8_UNORM:		return 4;
-			case Spartan::Format_R16G16B16A16_FLOAT:	return 4;
-			case Spartan::Format_R32G32B32A32_FLOAT:	return 4;
-			default:									return 0;
+			case Format_R8_UNORM:			return 1;
+			case Format_R16_UINT:			return 1;
+			case Format_R16_FLOAT:			return 1;
+			case Format_R32_UINT:			return 1;
+			case Format_R32_FLOAT:			return 1;
+			case Format_D32_FLOAT:			return 1;
+			case Format_R32_FLOAT_TYPELESS:	return 1;
+			case Format_R8G8_UNORM:			return 2;
+			case Format_R16G16_FLOAT:		return 2;
+			case Format_R32G32_FLOAT:		return 2;
+			case Format_R32G32B32_FLOAT:	return 3;
+			case Format_R8G8B8A8_UNORM:		return 4;
+			case Format_R16G16B16A16_FLOAT:	return 4;
+			case Format_R32G32B32A32_FLOAT:	return 4;
+			default:						return 0;
 		}
 	}
 

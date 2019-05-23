@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <memory>
-#include "RHI_Object.h"
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
 #include "../Resource/IResource.h"
@@ -31,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_Texture : public RHI_Object, public IResource
+	class SPARTAN_CLASS RHI_Texture : public IResource
 	{
 	public:
 		RHI_Texture(Context* context);
@@ -84,7 +83,7 @@ namespace Spartan
 	protected:
 		bool LoadFromFile_NativeFormat(const std::string& file_path);
 		bool LoadFromFile_ForeignFormat(const std::string& file_path, bool generate_mipmaps);
-		uint32_t GetChannelCountFromFormat(RHI_Format format);
+		static uint32_t GetChannelCountFromFormat(RHI_Format format);
 		virtual bool CreateResourceGpu() { return false; }
 
 		uint32_t m_bpp			= 0;

@@ -324,7 +324,7 @@ namespace Spartan
 			return;
 
 		m_pipeline->UpdateDescriptorSets(texture);
-		if (void* descriptor_set = m_pipeline->GetDescriptorSet(texture->RHI_GetID()))
+		if (void* descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
 		{
 			VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
 			vkCmdBindDescriptorSets(CMD_LIST, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);

@@ -39,13 +39,12 @@ using namespace std;
 
 namespace Spartan
 {
-	IComponent::IComponent(Context* context, Entity* entity, Transform* transform)
+	IComponent::IComponent(Context* context, Entity* entity, Transform* transform) : Spartan_Object()
 	{
-		m_context		= context;
-		m_entity		= entity;
-		m_transform		= transform;
-		m_enabled		= true;
-		m_id			= GENERATE_GUID;
+		m_context	= context;
+		m_entity	= entity;
+		m_transform	= transform;
+		m_enabled	= true;
 	}
 
 	shared_ptr<Entity> IComponent::GetEntity_PtrShared() const

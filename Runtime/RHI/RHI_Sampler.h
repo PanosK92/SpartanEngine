@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include "RHI_Definition.h"
-#include "RHI_Object.h"
+//= INCLUDES ==================
 #include <memory>
-//=========================
+#include "RHI_Definition.h"
+#include "../Core/Spartan_Object.h"
+//=============================
 
 namespace Spartan
 {
-	class RHI_Sampler : public RHI_Object
+	class RHI_Sampler : public Spartan_Object
 	{
 	public:
 		RHI_Sampler(
@@ -39,10 +39,10 @@ namespace Spartan
 			RHI_Comparison_Function comparison_function		= Comparison_Always);
 		~RHI_Sampler();
 
-		RHI_Texture_Filter GetFilter() const					{ return m_filter; }
-		RHI_Sampler_Address_Mode GetAddressMode() const			{ return m_sampler_address_mode; }
-		RHI_Comparison_Function GetComparisonFunction() const	{ return m_comparison_function; }
-		void* GetResource() const								{ return m_buffer_view; }
+		auto GetFilter()				const { return m_filter; }
+		auto GetAddressMode()			const { return m_sampler_address_mode; }
+		auto GetComparisonFunction()	const { return m_comparison_function; }
+		auto GetResource()				const { return m_buffer_view; }
 
 	private:	
 		RHI_Texture_Filter m_filter;

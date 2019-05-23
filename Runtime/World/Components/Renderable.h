@@ -67,18 +67,18 @@ namespace Spartan
 			uint32_t vertex_offset,
 			uint32_t vertex_count,
 			const Math::BoundingBox& aabb, 
-			std::shared_ptr<Model>& model
+			Model* model
 		);
 		void GeometryGet(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 		void GeometrySet(Geometry_Type type);
-		uint32_t GeometryIndexOffset() const		{ return m_geometryIndexOffset; }
-		uint32_t GeometryIndexCount() const			{ return m_geometryIndexCount; }		
-		uint32_t GeometryVertexOffset() const		{ return m_geometryVertexOffset; }
-		uint32_t GeometryVertexCount() const		{ return m_geometryVertexCount; }
-		Geometry_Type GeometryType() const				{ return m_geometry_type; }
-		const std::string& GeometryName() const			{ return m_geometryName; }
-		std::shared_ptr<Model> GeometryModel() const	{ return m_model; }
-		const Math::BoundingBox& GeometryAabb() const	{ return m_geometryAABB; }
+		auto GeometryIndexOffset()	const { return m_geometryIndexOffset; }
+		auto GeometryIndexCount()	const { return m_geometryIndexCount; }		
+		auto GeometryVertexOffset() const { return m_geometryVertexOffset; }
+		auto GeometryVertexCount()	const { return m_geometryVertexCount; }
+		auto GeometryType()			const { return m_geometry_type; }
+		const auto& GeometryName()	const { return m_geometryName; }
+		const auto& GeometryModel() const { return m_model; }
+		const auto& GeometryAabb()	const { return m_geometryAABB; }
 		Math::BoundingBox GeometryAabb();
 		//========================================================================================================
 
@@ -89,21 +89,21 @@ namespace Spartan
 		// Loads a material and the sets it
 		std::shared_ptr<Material> MaterialSet(const std::string& file_path);
 
-		void MaterialUseDefault();
-		const std::string& MaterialName();
-		auto MaterialPtr() const	{ return m_material; }
-		bool MaterialExists() const { return m_material != nullptr; }
+		void UseDefaultMaterial();
+		const std::string& GetMaterialName();
+		const auto& GetMaterial()	const { return m_material; }
+		auto HasMaterial()			const { return m_material != nullptr; }
 		//=======================================================================
 
 		//= PROPERTIES ============================================================================
 		void SetCastShadows(const bool cast_shadows)		{ m_castShadows = cast_shadows; }
-		bool GetCastShadows() const							{ return m_castShadows; }
+		auto GetCastShadows() const							{ return m_castShadows; }
 		void SetReceiveShadows(const bool receive_shadows)	{ m_receiveShadows = receive_shadows; }
-		bool GetReceiveShadows() const						{ return m_receiveShadows; }
+		auto GetReceiveShadows() const						{ return m_receiveShadows; }
 		//=========================================================================================
 
 	private:
-		//= GEOMETRY =======================
+		//= GEOMETRY ====================
 		std::string m_geometryName;
 		uint32_t m_geometryIndexOffset;
 		uint32_t m_geometryIndexCount;
@@ -112,7 +112,7 @@ namespace Spartan
 		Math::BoundingBox m_geometryAABB;
 		std::shared_ptr<Model> m_model;
 		Geometry_Type m_geometry_type;
-		//==================================
+		//===============================
 
 		//= MATERIAL ========================
 		std::shared_ptr<Material> m_material;
