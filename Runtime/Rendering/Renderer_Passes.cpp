@@ -24,13 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Model.h"
 #include "ShaderBuffered.h"
+#include "Font/Font.h"
+#include "../Profiling/Profiler.h"
+#include "../Resource/IResource.h"
 #include "Deferred/ShaderVariation.h"
 #include "Deferred/ShaderLight.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/Transform_Gizmo.h"
-#include "Font/Font.h"
-#include "../Profiling/Profiler.h"
-#include "../Resource/IResource.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_Texture.h"
@@ -130,28 +130,28 @@ namespace Spartan
 
 			for (uint32_t i = 0; i < light->GetShadowMap()->GetArraySize(); i++)
 			{
-				auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(i);
+				const auto cascade_depth_stencil = shadow_map->GetResource_DepthStencil(i);
 
 				m_cmd_list->Begin("Array_" + to_string(i + 1));
 				m_cmd_list->ClearDepthStencil(cascade_depth_stencil, Clear_Depth, GetClearDepth());
 				m_cmd_list->SetRenderTarget(nullptr, cascade_depth_stencil);
 
-				Matrix light_view_projection = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+				auto light_view_projection = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
 
 				for (const auto& entity : entities)
 				{
 					// Acquire renderable component
-					auto renderable = entity->GetRenderable_PtrRaw();
+					const auto renderable = entity->GetRenderable_PtrRaw();
 					if (!renderable)
 						continue;
 
 					// Acquire material
-					auto material = renderable->MaterialPtr();
+					const auto material = renderable->MaterialPtr();
 					if (!material)
 						continue;
 
 					// Acquire geometry
-					auto model = renderable->GeometryModel();
+					const auto model = renderable->GeometryModel();
 					if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
 						continue;
 
@@ -179,7 +179,7 @@ namespace Spartan
 					}
 
 					// Update constant buffer
-					Transform* transform = entity->GetTransform_PtrRaw();
+					auto transform = entity->GetTransform_PtrRaw();
 					transform->UpdateConstantBufferLight(m_rhi_device, light_view_projection, i);
 					m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, transform->GetConstantBufferLight(i));
 
@@ -202,7 +202,7 @@ namespace Spartan
 
 		m_cmd_list->Begin("Pass_GBuffer");
 
-		const Vector4 clear_color	= Vector4::Zero;
+		const auto clear_color	= Vector4::Zero;
 		
 		// If there is nothing to render, just clear
 		if (m_entities[Renderable_ObjectOpaque].empty())
@@ -387,7 +387,7 @@ namespace Spartan
 		);
 
 		// Prepare resources
-		auto shader						= static_pointer_cast<RHI_Shader>(m_vps_light);
+		const auto shader				= static_pointer_cast<RHI_Shader>(m_vps_light);
 		vector<void*> samplers			= { m_sampler_trilinear_clamp->GetResource(), m_sampler_point_clamp->GetResource() };
 		vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  m_vps_light->GetConstantBuffer()->GetResource() };
 		vector<void*> textures =
@@ -418,7 +418,7 @@ namespace Spartan
 		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -448,14 +448,14 @@ namespace Spartan
 		for (auto& entity : entities_transparent)
 		{
 			// Get renderable and material
-			auto renderable	= entity->GetRenderable_PtrRaw();
-			auto material	= renderable ? renderable->MaterialPtr().get() : nullptr;
+			const auto renderable	= entity->GetRenderable_PtrRaw();
+			auto material			= renderable ? renderable->MaterialPtr().get() : nullptr;
 
 			if (!renderable || !material)
 				continue;
 
 			// Get geometry
-			auto model = renderable->GeometryModel();
+			const auto model = renderable->GeometryModel();
 			if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
 				continue;
 
@@ -477,7 +477,7 @@ namespace Spartan
 				material->GetColorAlbedo(),
 				m_camera->GetTransform()->GetPosition(),
 				m_directional_light_avg_dir,
-				material->GetRoughnessMultiplier()
+				material->GetMultiplier(TextureType_Roughness)
 			);
 			m_vps_transparent->UpdateBuffer(&buffer);
 			m_cmd_list->SetConstantBuffer(1, Buffer_Global, m_vps_transparent->GetConstantBuffer());
@@ -537,7 +537,7 @@ namespace Spartan
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetSamplers(0, samplers);
 		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -640,7 +640,7 @@ namespace Spartan
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetSamplers(0, samplers);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -657,7 +657,7 @@ namespace Spartan
 		m_cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
 		m_cmd_list->SetSampler(0, m_sampler_trilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -682,30 +682,30 @@ namespace Spartan
 		// Horizontal Gaussian blur	
 		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Horizontal");
 		{
-			auto direction	= Vector2(pixel_stride, 0.0f);
-			auto buffer		= Struct_Blur(direction, sigma);
+			const auto direction	= Vector2(pixel_stride, 0.0f);
+			auto buffer				= Struct_Blur(direction, sigma);
 			m_ps_blur_gaussian->UpdateBuffer(&buffer, 0);
 
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTexture(0, tex_in);
 			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(0));
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
 		// Vertical Gaussian blur
 		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Horizontal");
 		{
-			auto direction	= Vector2(0.0f, pixel_stride);
-			auto buffer		= Struct_Blur(direction, sigma);
+			const auto direction	= Vector2(0.0f, pixel_stride);
+			auto buffer				= Struct_Blur(direction, sigma);
 			m_ps_blur_gaussian->UpdateBuffer(&buffer, 1);
 
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
 			m_cmd_list->SetRenderTarget(tex_in);
 			m_cmd_list->SetTexture(0, tex_out);
 			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(1));
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
@@ -739,8 +739,8 @@ namespace Spartan
 		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Horizontal");
 		{
 			// Prepare resources
-			auto direction	= Vector2(pixel_stride, 0.0f);
-			auto buffer		= Struct_Blur(direction, sigma);
+			const auto direction	= Vector2(pixel_stride, 0.0f);
+			auto buffer				= Struct_Blur(direction, sigma);
 			m_ps_blur_gaussian_bilateral->UpdateBuffer(&buffer, 0);
 			vector<void*> textures = { tex_in->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_g_buffer_normal->GetResource_Texture() };
 			
@@ -748,7 +748,7 @@ namespace Spartan
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetTextures(0, textures);
 			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(0));
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
@@ -756,8 +756,8 @@ namespace Spartan
 		m_cmd_list->Begin("Pass_BlurBilateralGaussian_Vertical");
 		{
 			// Prepare resources
-			auto direction	= Vector2(0.0f, pixel_stride);
-			auto buffer		= Struct_Blur(direction, sigma);
+			const auto direction	= Vector2(0.0f, pixel_stride);
+			auto buffer				= Struct_Blur(direction, sigma);
 			m_ps_blur_gaussian_bilateral->UpdateBuffer(&buffer, 1);
 			vector<void*> textures = { tex_out->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_g_buffer_normal->GetResource_Texture() };
 
@@ -765,7 +765,7 @@ namespace Spartan
 			m_cmd_list->SetRenderTarget(tex_in);
 			m_cmd_list->SetTextures(0, textures);
 			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, m_ps_blur_gaussian_bilateral->GetConstantBuffer(1));
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
@@ -792,7 +792,7 @@ namespace Spartan
 			m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 			m_cmd_list->SetTextures(0, textures);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 
 		// Output to texOut
@@ -806,7 +806,7 @@ namespace Spartan
 			m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 			m_cmd_list->SetTexture(0, m_render_tex_full_taa_current);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 
 		m_cmd_list->End();
@@ -831,7 +831,7 @@ namespace Spartan
 			m_cmd_list->SetShaderPixel(m_ps_downsample_box);
 			m_cmd_list->SetTexture(0, tex_in);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
@@ -845,7 +845,7 @@ namespace Spartan
 			m_cmd_list->SetShaderPixel(m_ps_bloom_bright);
 			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur1);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
@@ -865,7 +865,7 @@ namespace Spartan
 			m_cmd_list->SetShaderPixel(m_ps_upsample_box);
 			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur2);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
@@ -879,7 +879,7 @@ namespace Spartan
 			m_cmd_list->SetShaderPixel(m_ps_upsample_box);
 			m_cmd_list->SetTexture(0, m_render_tex_half_spare2);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
@@ -894,7 +894,7 @@ namespace Spartan
 			m_cmd_list->SetShaderPixel(m_ps_bloom_blend);
 			m_cmd_list->SetTextures(0, textures);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
@@ -916,7 +916,7 @@ namespace Spartan
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -935,7 +935,7 @@ namespace Spartan
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -957,13 +957,13 @@ namespace Spartan
 		m_cmd_list->SetRenderTarget(tex_out);	
 		m_cmd_list->SetShaderPixel(m_ps_luma);
 		m_cmd_list->SetTexture(0, tex_in);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
 		// FXAA
 		m_cmd_list->SetRenderTarget(tex_in);
 		m_cmd_list->SetShaderPixel(m_ps_fxaa);
 		m_cmd_list->SetTexture(0, tex_out);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
@@ -986,7 +986,7 @@ namespace Spartan
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -1006,7 +1006,7 @@ namespace Spartan
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetTextures(0, textures);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -1025,7 +1025,7 @@ namespace Spartan
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -1044,7 +1044,7 @@ namespace Spartan
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
@@ -1066,7 +1066,7 @@ namespace Spartan
 			// Picking ray
 			if (draw_picking_ray)
 			{
-				const Ray& ray = m_camera->GetPickingRay();
+				const auto& ray = m_camera->GetPickingRay();
 				DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
 			}
 
@@ -1184,7 +1184,7 @@ namespace Spartan
 	{
 		bool render_lights		= m_flags & Render_Gizmo_Lights;
 		bool render_transform	= m_flags & Render_Gizmo_Transform;
-		bool render				= render_lights || render_transform;
+		auto render				= render_lights || render_transform;
 		if (!render)
 			return;
 
@@ -1245,7 +1245,7 @@ namespace Spartan
 				m_cmd_list->SetTexture(0, light_tex);
 				m_cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
 				m_cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
-				m_cmd_list->DrawIndexed(m_gizmo_light_rect.GetIndexCount(), 0, 0);			
+				m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);			
 				m_cmd_list->Submit();
 			}
 			m_cmd_list->End();
@@ -1397,7 +1397,7 @@ namespace Spartan
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-		m_cmd_list->DrawIndexed(m_quad.GetIndexCount(), 0, 0);
+		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 
