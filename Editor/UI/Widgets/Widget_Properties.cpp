@@ -79,7 +79,7 @@ namespace ComponentProperty
 					{
 						if (component)
 						{
-							entity->RemoveComponentById(component->GetID());
+							entity->RemoveComponentById(component->GetId());
 						}
 					}
 				}
@@ -166,7 +166,7 @@ void Widget_Properties::Tick(float delta_time)
 		auto audio_source	= entity_ptr->GetComponent<AudioSource>();
 		auto audio_listener	= entity_ptr->GetComponent<AudioListener>();
 		auto renderable		= entity_ptr->GetComponent<Renderable>();
-		auto material		= renderable ? renderable->MaterialPtr() : nullptr;
+		auto material		= renderable ? renderable->GetMaterial() : nullptr;
 		auto rigid_body		= entity_ptr->GetComponent<RigidBody>();
 		auto collider		= entity_ptr->GetComponent<Collider>();
 		auto constraint		= entity_ptr->GetComponent<Constraint>();
@@ -393,11 +393,11 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable) const
 	if (ComponentProperty::Begin("Renderable", Icon_Component_Renderable, renderable))
 	{
 		//= REFLECT ====================================================================
-		auto mesh_name			= renderable->GeometryName();
-		auto material			= renderable->MaterialPtr();
-		auto material_name		= material ? material->GetResourceName() : NOT_ASSIGNED;
+		auto& mesh_name			= renderable->GeometryName();
+		auto& material			= renderable->GetMaterial();
+		auto& material_name		= material ? material->GetResourceName() : NOT_ASSIGNED;
 		auto cast_shadows		= renderable->GetCastShadows();
-		auto receive_shadows	=	 renderable->GetReceiveShadows();
+		auto receive_shadows	= renderable->GetReceiveShadows();
 		//==============================================================================
 
 		ImGui::Text("Mesh");
@@ -711,14 +711,14 @@ void Widget_Properties::ShowMaterial(shared_ptr<Material>& material) const
 
 		static const auto material_text_size = ImVec2(80, 80);
 
-		const auto tex_albedo		= material->GetTextureSlotByType(TextureType_Albedo).ptr.get();
-		const auto tex_roughness	= material->GetTextureSlotByType(TextureType_Roughness).ptr.get();
-		const auto tex_metallic		= material->GetTextureSlotByType(TextureType_Metallic).ptr.get();
-		const auto tex_normal		= material->GetTextureSlotByType(TextureType_Normal).ptr.get();
-		const auto tex_height		= material->GetTextureSlotByType(TextureType_Height).ptr.get();
-		const auto tex_occlusion	= material->GetTextureSlotByType(TextureType_Occlusion).ptr.get();
-		const auto tex_emission		= material->GetTextureSlotByType(TextureType_Emission).ptr.get();
-		const auto tex_mask			= material->GetTextureSlotByType(TextureType_Mask).ptr.get();
+		const auto tex_albedo		= material->GetTexture(TextureType_Albedo).get();
+		const auto tex_roughness	= material->GetTexture(TextureType_Roughness).get();
+		const auto tex_metallic		= material->GetTexture(TextureType_Metallic).get();
+		const auto tex_normal		= material->GetTexture(TextureType_Normal).get();
+		const auto tex_height		= material->GetTexture(TextureType_Height).get();
+		const auto tex_occlusion	= material->GetTexture(TextureType_Occlusion).get();
+		const auto tex_emission		= material->GetTexture(TextureType_Emission).get();
+		const auto tex_mask			= material->GetTexture(TextureType_Mask).get();
 
 		// Name
 		ImGui::Text("Name");

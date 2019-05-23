@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <memory>
 #include "../Core/Context.h"
+#include "../Core/Spartan_Object.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 //===================================
@@ -54,15 +55,13 @@ namespace Spartan
 		LoadState_Failed
 	};
 
-	class SPARTAN_CLASS IResource : public std::enable_shared_from_this<IResource>
+	class SPARTAN_CLASS IResource : public Spartan_Object
 	{
 	public:
 		IResource(Context* context, Resource_Type type);
 		virtual ~IResource() = default;
 
 		//= PROPERTIES =========================================================================================================================
-		uint32_t GetResourceId() const						{ return m_resource_id; }
-		void SetResourceID(uint32_t id)						{ m_resource_id = id; }
 		Resource_Type GetResourceType() const					{ return m_resource_type; }
 		const char* GetResourceTypeCstr() const					{ return typeid(*this).name(); }
 		const std::string& GetResourceName() const				{ return m_resource_name; }
@@ -72,7 +71,7 @@ namespace Spartan
 		bool HasFilePath() const								{ return m_resource_file_path != NOT_ASSIGNED; }
 		std::string GetResourceFileName() const					{ return FileSystem::GetFileNameNoExtensionFromFilePath(m_resource_file_path); }
 		std::string GetResourceDirectory() const				{ return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }
-		virtual uint32_t GetMemoryUsage()					{ return static_cast<uint32_t>(sizeof(*this)); }
+		virtual uint32_t GetMemoryUsage()						{ return static_cast<uint32_t>(sizeof(*this)); }
 		LoadState GetLoadState() const							{ return m_load_state; }
 		//======================================================================================================================================
 
@@ -86,17 +85,12 @@ namespace Spartan
 		static constexpr Resource_Type TypeToEnum();
 		//==========================================
 
-		//= PTR ==========================================
-		auto GetSharedPtr() { return shared_from_this(); }
-		//================================================
-
 	protected:
 		Resource_Type m_resource_type	= Resource_Unknown;
 		LoadState m_load_state			= LoadState_Idle;
 		Context* m_context				= nullptr;
 
 	private:
-		uint32_t m_resource_id			= NOT_ASSIGNED_HASH;
 		std::string m_resource_name			= NOT_ASSIGNED;
 		std::string m_resource_file_path	= NOT_ASSIGNED;
 	};

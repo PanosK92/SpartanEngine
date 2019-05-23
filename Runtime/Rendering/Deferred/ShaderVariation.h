@@ -61,7 +61,7 @@ namespace Spartan
 		bool HasMaskTexture() const				{ return m_flags & Variation_Mask; }
 
 		// Variation cache
-		static std::shared_ptr<ShaderVariation> GetMatchingShader(unsigned long flags);
+		static const std::shared_ptr<ShaderVariation>& GetMatchingShader(unsigned long flags);
 
 	private:
 		void AddDefinesBasedOnMaterial();

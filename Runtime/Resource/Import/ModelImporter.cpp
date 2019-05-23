@@ -80,7 +80,7 @@ namespace Spartan
 		Settings::Get().m_versionAssimp = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
 	}
 
-	bool ModelImporter::Load(shared_ptr<Model> model, const string& file_path)
+	bool ModelImporter::Load(Model* model, const string& file_path)
 	{
 		if (!m_context)
 		{
@@ -133,7 +133,7 @@ namespace Spartan
 		return result;
 	}
 
-	void ModelImporter::ReadNodeHierarchy(const aiScene* assimp_scene, aiNode* assimp_node, shared_ptr<Model>& model, Entity* parent_node, Entity* new_entity)
+	void ModelImporter::ReadNodeHierarchy(const aiScene* assimp_scene, aiNode* assimp_node, Model* model, Entity* parent_node, Entity* new_entity)
 	{
 		// Is this the root node?
 		if (!assimp_node->mParent || !new_entity)
@@ -193,7 +193,7 @@ namespace Spartan
 		ProgressReport::Get().IncrementJobsDone(g_progress_model_importer);
 	}
 
-	void ModelImporter::ReadAnimations(const aiScene* scene, shared_ptr<Model>& model)
+	void ModelImporter::ReadAnimations(const aiScene* scene, Model* model)
 	{
 		for (uint32_t i = 0; i < scene->mNumAnimations; i++)
 		{
@@ -245,7 +245,7 @@ namespace Spartan
 		}
 	}
 
-	void ModelImporter::LoadMesh(const aiScene* assimp_scene, aiMesh* assimp_mesh, shared_ptr<Model>& model, Entity* entity_parent)
+	void ModelImporter::LoadMesh(const aiScene* assimp_scene, aiMesh* assimp_mesh, Model* model, Entity* entity_parent)
 	{
 		if (!model || !assimp_mesh || !assimp_scene || !entity_parent)
 		{
@@ -358,7 +358,7 @@ namespace Spartan
 		//}
 	}
 
-	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(aiMaterial* assimp_material, shared_ptr<Model>& model)
+	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(aiMaterial* assimp_material, Model* model)
 	{
 		if (!model || !assimp_material)
 		{

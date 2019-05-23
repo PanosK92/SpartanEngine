@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
-#include "RHI_Object.h"
+//= INCLUDES ==================
 #include "RHI_Definition.h"
 #include <memory>
 #include "../Core/Settings.h"
-//===========================
+#include "../Core/Spartan_Object.h"
+//=============================
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_DepthStencilState : public RHI_Object
+	class SPARTAN_CLASS RHI_DepthStencilState : public Spartan_Object
 	{
 	public:
 		RHI_DepthStencilState(
@@ -41,7 +41,7 @@ namespace Spartan
 		~RHI_DepthStencilState();
 
 		bool GetDepthEnabled() const	{ return m_depth_enabled; }
-		void* GetResource() const			{ return m_buffer; }
+		void* GetResource() const		{ return m_buffer; }
 
 	private:
 		bool m_depth_enabled	= false;

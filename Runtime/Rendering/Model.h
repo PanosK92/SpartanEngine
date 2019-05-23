@@ -36,13 +36,9 @@ namespace Spartan
 	class Entity;
 	class Mesh;
 	class Animation;
+	namespace Math{ class BoundingBox; }
 
-	namespace Math
-	{
-		class BoundingBox;
-	}
-
-	class SPARTAN_CLASS Model : public IResource
+	class SPARTAN_CLASS Model : public IResource, public std::enable_shared_from_this<Model>
 	{
 	public:
 		Model(Context* context);
@@ -56,7 +52,7 @@ namespace Spartan
 		// Sets the entity that represents this model in the scene
 		void SetRootentity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 		
-		//= GEOMTETRY ==================================================
+		//= GEOMETRY ======================================
 		void GeometryAppend(
 			std::vector<uint32_t>& indices,
 			std::vector<RHI_Vertex_PosTexNorTan>& vertices,
@@ -72,21 +68,21 @@ namespace Spartan
 			std::vector<RHI_Vertex_PosTexNorTan>* vertices
 		) const;
 		void GeometryUpdate();
-		const Math::BoundingBox& GeometryAabb() const { return m_aabb; }
-		//==============================================================
+		const auto& GeometryAabb() const { return m_aabb; }
+		//=================================================
 
 		// Add resources to the model
 		void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity);
 		void AddAnimation(std::shared_ptr<Animation>& animation);
 		void AddTexture(std::shared_ptr<Material>& material, TextureType texture_type, const std::string& file_path);
 
-		bool IsAnimated() const						{ return m_is_animated; }
+		auto IsAnimated() const						{ return m_is_animated; }
 		void SetAnimated(const bool is_animated)	{ m_is_animated = is_animated; }
+		const auto& GetIndexBuffer() const			{ return m_index_buffer; }
+		const auto& GetVertexBuffer() const			{ return m_vertex_buffer; }
+		auto GetSharedPtr()							{ return shared_from_this(); }
 
 		void SetWorkingDirectory(const std::string& directory);
-
-		std::shared_ptr<RHI_IndexBuffer> GetIndexBuffer() const		{ return m_index_buffer; }
-		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer() const	{ return m_vertex_buffer; }
 
 	private:
 		// Load the model from disk
@@ -106,7 +102,6 @@ namespace Spartan
 		std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
 		std::shared_ptr<Mesh> m_mesh;
 		Math::BoundingBox m_aabb;
-		uint32_t mesh_count;
 
 		// Material
 		std::vector<std::shared_ptr<Material>> m_materials;
@@ -120,8 +115,8 @@ namespace Spartan
 		std::string m_model_directory_textures;
 
 		// Misc
-		float m_normalized_scale;
-		bool m_is_animated;
+		float m_normalized_scale	= 1.0f;
+		bool m_is_animated			= false;
 		ResourceCache* m_resource_manager;
 		std::shared_ptr<RHI_Device> m_rhi_device;	
 	};

@@ -82,7 +82,7 @@ namespace Spartan
 			0,
 			static_cast<uint32_t>(vertices.size()),
 			BoundingBox(vertices),
-			model
+			model.get()
 		);
 	}
 
@@ -158,7 +158,7 @@ namespace Spartan
 		stream->Read(&m_materialDefault);
 		if (m_materialDefault)
 		{
-			MaterialUseDefault();		
+			UseDefaultMaterial();		
 		}
 		else
 		{
@@ -170,7 +170,7 @@ namespace Spartan
 	//==============================================================================
 
 	//= GEOMETRY =====================================================================================
-	void Renderable::GeometrySet(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& aabb, shared_ptr<Model>& model)
+	void Renderable::GeometrySet(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& aabb, Model* model)
 	{	
 		m_geometryName			= name;
 		m_geometryIndexOffset	= index_offset;
@@ -178,7 +178,7 @@ namespace Spartan
 		m_geometryVertexOffset	= vertex_offset;
 		m_geometryVertexCount	= vertex_count;
 		m_geometryAABB			= aabb;
-		m_model					= model;
+		m_model					= model->GetSharedPtr();
 	}
 
 	void Renderable::GeometrySet(const Geometry_Type type)
@@ -237,7 +237,7 @@ namespace Spartan
 		return material;
 	}
 
-	void Renderable::MaterialUseDefault()
+	void Renderable::UseDefaultMaterial()
 	{
 		m_materialDefault = true;
 
@@ -251,7 +251,7 @@ namespace Spartan
 		MaterialSet(materialStandard);
 	}
 
-	const string& Renderable::MaterialName()
+	const string& Renderable::GetMaterialName()
 	{
 		return m_material ? m_material->GetResourceName() : NOT_ASSIGNED;
 	}

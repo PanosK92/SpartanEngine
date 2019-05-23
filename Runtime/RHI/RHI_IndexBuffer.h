@@ -21,15 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include "RHI_Definition.h"
-#include "RHI_Object.h"
+//= INCLUDES ==================
 #include <vector>
-//=========================
+#include "../Core/Spartan_Object.h"
+//=============================
 
 namespace Spartan
 {
-	class RHI_IndexBuffer : public RHI_Object
+	class RHI_IndexBuffer : public Spartan_Object
 	{
 	public:
 		RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device)

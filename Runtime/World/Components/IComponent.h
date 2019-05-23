@@ -21,14 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES =========================
 #include <memory>
 #include <string>
 #include <any>
 #include <vector>
 #include <functional>
 #include "../../Core/EngineDefs.h"
-//================================
+#include "../../Core/Spartan_Object.h"
+//====================================
 
 namespace Spartan
 {
@@ -59,7 +60,7 @@ namespace Spartan
 		std::function<void(std::any)> setter;
 	};
 
-	class SPARTAN_CLASS IComponent
+	class SPARTAN_CLASS IComponent : public Spartan_Object
 	{
 	public:
 		IComponent(Context* context, Entity* entity, Transform* transform);
@@ -92,15 +93,13 @@ namespace Spartan
 		//==========================================
 
 		//= PROPERTIES ==========================================================================
-		Entity*						GetEntity_PtrRaw() const	{ return m_entity; }	
-		std::weak_ptr<Entity>		GetEntity_PtrWeak()			{ return GetEntity_PtrShared(); }
-		std::shared_ptr<Entity>		GetEntity_PtrShared() const;
+		Entity*						GetEntity_PtrRaw()		const{ return m_entity; }	
+		std::weak_ptr<Entity>		GetEntity_PtrWeak()		const { return GetEntity_PtrShared(); }
+		std::shared_ptr<Entity>		GetEntity_PtrShared()	const;
 		const std::string& GetEntityName() const;
 
 		Transform* GetTransform() const			{ return m_transform; }
 		Context* GetContext() const				{ return m_context; }
-		uint32_t GetID() const				{ return m_id; }
-		void SetId(const uint32_t id)		{ m_id = id; }
 		constexpr ComponentType GetType() const	{ return m_type; }
 		void SetType(const ComponentType type)	{ m_type = type; }
 
@@ -137,17 +136,15 @@ namespace Spartan
 		}
 
 		// The type of the component
-		ComponentType m_type		= ComponentType_Unknown;
-		// The id of the component
-		uint32_t m_id			= 0;
+		ComponentType m_type	= ComponentType_Unknown;
 		// The state of the component
-		bool m_enabled				= false;
+		bool m_enabled			= false;
 		// The owner of the component
-		Entity* m_entity			= nullptr;
+		Entity* m_entity		= nullptr;
 		// The transform of the component (always exists)
-		Transform* m_transform		= nullptr;
+		Transform* m_transform	= nullptr;
 		// The context of the engine
-		Context* m_context			= nullptr;
+		Context* m_context		= nullptr;
 
 	private:
 		// The attributes of the component

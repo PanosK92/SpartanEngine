@@ -74,7 +74,7 @@ namespace Spartan
 		m_flags			|= Render_PostProcess_FXAA;
 		m_flags			|= Render_PostProcess_Sharpening;	
 		m_flags			|= Render_PostProcess_SSR;
-		//m_flags		|= Render_PostProcess_Dithering;			// Diasbled by default: It's only needed in very dark scenes to fix smooth color gradients
+		//m_flags		|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients
 		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect		
 
 		// Create RHI device
@@ -656,7 +656,7 @@ namespace Spartan
 
 			if (renderable)
 			{
-				const auto is_transparent = !renderable->MaterialExists() ? false : renderable->MaterialPtr()->GetColorAlbedo().w < 1.0f;
+				const auto is_transparent = !renderable->HasMaterial() ? false : renderable->GetMaterial()->GetColorAlbedo().w < 1.0f;
 				if (!skybox) // Ignore skybox
 				{
 					m_entities[is_transparent ? Renderable_ObjectTransparent : Renderable_ObjectOpaque].emplace_back(entity);
@@ -703,8 +703,8 @@ namespace Spartan
 					return false;
 
 				// Get materials
-				const auto a_material = a_renderable->MaterialPtr();
-				const auto b_material = b_renderable->MaterialPtr();
+				const auto a_material = a_renderable->GetMaterial();
+				const auto b_material = b_renderable->GetMaterial();
 				if (!a_material || !b_material)
 					return false;
 
@@ -725,13 +725,13 @@ namespace Spartan
 				return false;
 
 			// Get materials
-			const auto a_material = a_renderable->MaterialPtr();
-			const auto b_material = b_renderable->MaterialPtr();
+			const auto a_material = a_renderable->GetMaterial();
+			const auto b_material = b_renderable->GetMaterial();
 			if (!a_material || !b_material)
 				return false;
 
 			// Order doesn't matter, as long as they are not mixed
-			return a_material->GetResourceId() < b_material->GetResourceId();
+			return a_material->GetId() < b_material->GetId();
 		});
 	}
 

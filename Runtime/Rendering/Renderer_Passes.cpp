@@ -99,22 +99,22 @@ namespace Spartan
 			return;
 
 		uint32_t light_directional_count = 0;
-		auto& light_entities = m_entities[Renderable_Light];
+		const auto& light_entities = m_entities[Renderable_Light];
 		for (const auto& light_entity : light_entities)
 		{
-			auto& light = light_entity->GetComponent<Light>();
+			const auto& light = light_entity->GetComponent<Light>();
 
 			// Skip if it doesn't need to cast shadows
 			if (!light->GetCastShadows())
 				continue;
 
 			// Acquire light's shadow map
-			auto& shadow_map = light->GetShadowMap();
+			const auto& shadow_map = light->GetShadowMap();
 			if (!shadow_map)
 				continue;
 
 			// Get opaque renderable entities
-			auto& entities = m_entities[Renderable_ObjectOpaque];
+			const auto& entities = m_entities[Renderable_ObjectOpaque];
 			if (entities.empty())
 				continue;
 
@@ -145,17 +145,17 @@ namespace Spartan
 				for (const auto& entity : entities)
 				{
 					// Acquire renderable component
-					const auto renderable = entity->GetRenderable_PtrRaw();
+					const auto& renderable = entity->GetRenderable_PtrRaw();
 					if (!renderable)
 						continue;
 
 					// Acquire material
-					const auto material = renderable->MaterialPtr();
+					const auto& material = renderable->GetMaterial();
 					if (!material)
 						continue;
 
 					// Acquire geometry
-					const auto model = renderable->GeometryModel();
+					const auto& model = renderable->GeometryModel();
 					if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
 						continue;
 
@@ -168,11 +168,11 @@ namespace Spartan
 						continue;
 
 					// Bind geometry
-					if (currently_bound_geometry != model->GetResourceId())
+					if (currently_bound_geometry != model->GetId())
 					{
 						m_cmd_list->SetBufferIndex(model->GetIndexBuffer());
 						m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
-						currently_bound_geometry = model->GetResourceId();
+						currently_bound_geometry = model->GetId();
 					}
 
 					// Accumulate directional light direction
@@ -183,7 +183,7 @@ namespace Spartan
 					}
 
 					// Update constant buffer
-					auto transform = entity->GetTransform_PtrRaw();
+					const auto& transform = entity->GetTransform_PtrRaw();
 					transform->UpdateConstantBufferLight(m_rhi_device, light_view_projection, i);
 					m_cmd_list->SetConstantBuffer(1, Buffer_VertexShader, transform->GetConstantBufferLight(i));
 
@@ -223,7 +223,6 @@ namespace Spartan
 
 		// Prepare resources
 		const auto& shader_gbuffer = m_shaders[Shader_Gbuffer_V];
-		vector<void*> textures(8);
 		const vector<void*> render_targets
 		{
 			m_g_buffer_albedo->GetResource_RenderTarget(),
@@ -253,18 +252,21 @@ namespace Spartan
 		uint32_t currently_bound_shader		= 0;
 		uint32_t currently_bound_material	= 0;
 
-		for (auto entity : m_entities[Renderable_ObjectOpaque])
+		for (const auto& entity : m_entities[Renderable_ObjectOpaque])
 		{
-			// Get renderable and material
-			const auto renderable = entity->GetRenderable_PtrRaw();
-			auto material = renderable ? renderable->MaterialPtr().get() : nullptr;
+			// Get renderable
+			const auto& renderable = entity->GetRenderable_PtrRaw();
+			if (!renderable)
+				continue;
 
-			if (!renderable || !material)
+			// Get material
+			const auto& material = renderable->GetMaterial();
+			if (!material)
 				continue;
 
 			// Get shader and geometry
-			auto shader = material->GetShader();
-			const auto model = renderable->GeometryModel();
+			const auto& shader = material->GetShader();
+			const auto& model = renderable->GeometryModel();
 
 			// Validate shader
 			if (!shader || shader->GetCompilationState() != Shader_Compiled)
@@ -282,43 +284,35 @@ namespace Spartan
 			m_cmd_list->SetRasterizerState(GetRasterizerState(material->GetCullMode(), Fill_Solid));
 
 			// Bind geometry
-			if (currently_bound_geometry != model->GetResourceId())
+			if (currently_bound_geometry != model->GetId())
 			{
 				m_cmd_list->SetBufferIndex(model->GetIndexBuffer());
 				m_cmd_list->SetBufferVertex(model->GetVertexBuffer());
-				currently_bound_geometry = model->GetResourceId();
+				currently_bound_geometry = model->GetId();
 			}
 
 			// Bind shader
-			if (currently_bound_shader != shader->RHI_GetID())
+			if (currently_bound_shader != shader->GetId())
 			{
 				m_cmd_list->SetShaderPixel(static_pointer_cast<RHI_Shader>(shader));
-				currently_bound_shader = shader->RHI_GetID();
+				currently_bound_shader = shader->GetId();
 			}
 
 			// Bind material
-			if (currently_bound_material != material->GetResourceId())
+			if (currently_bound_material != material->GetId())
 			{
-				// Bind material textures
-				textures[0] = material->GetTextureShaderResourceByType(TextureType_Albedo);
-				textures[1] = material->GetTextureShaderResourceByType(TextureType_Roughness);
-				textures[2] = material->GetTextureShaderResourceByType(TextureType_Metallic);
-				textures[3] = material->GetTextureShaderResourceByType(TextureType_Normal);
-				textures[4] = material->GetTextureShaderResourceByType(TextureType_Height);
-				textures[5] = material->GetTextureShaderResourceByType(TextureType_Occlusion);
-				textures[6] = material->GetTextureShaderResourceByType(TextureType_Emission);
-				textures[7] = material->GetTextureShaderResourceByType(TextureType_Mask);
-				m_cmd_list->SetTextures(0, textures);
+				// Bind material textures		
+				m_cmd_list->SetTextures(0, material->GetResources(), 8);
 
 				// Bind material buffer
 				material->UpdateConstantBuffer();
 				m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, material->GetConstantBuffer());
 
-				currently_bound_material = material->GetResourceId();
+				currently_bound_material = material->GetId();
 			}
 
 			// Bind object buffer
-			auto transform = entity->GetTransform_PtrRaw();
+			const auto& transform = entity->GetTransform_PtrRaw();
 			transform->UpdateConstantBuffer(m_rhi_device, m_view_projection);
 			m_cmd_list->SetConstantBuffer(2, Buffer_VertexShader, transform->GetConstantBuffer());
 
@@ -398,7 +392,7 @@ namespace Spartan
 		const auto shader				= static_pointer_cast<RHI_Shader>(shader_light);
 		vector<void*> samplers			= { m_sampler_trilinear_clamp->GetResource(), m_sampler_point_clamp->GetResource() };
 		vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  shader_light->GetConstantBuffer()->GetResource() };
-		vector<void*> textures =
+		void* textures[] =
 		{
 			m_g_buffer_albedo->GetResource_Texture(),																		// Albedo	
 			m_g_buffer_normal->GetResource_Texture(),																		// Normal
@@ -422,7 +416,7 @@ namespace Spartan
 		m_cmd_list->SetShaderPixel(shader);
 		m_cmd_list->SetInputLayout(shader->GetInputLayout());
 		m_cmd_list->SetSamplers(0, samplers);
-		m_cmd_list->SetTextures(0, textures);
+		m_cmd_list->SetTextures(0, textures, 9);
 		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
@@ -439,7 +433,7 @@ namespace Spartan
 
 		// Prepare resources
 		const auto& shader_transparent = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_GizmoTransform_Vp]);
-		vector<void*> textures = { m_g_buffer_depth->GetResource_Texture(), m_skybox ? m_skybox->GetTexture()->GetResource_Texture() : nullptr };
+		void* textures[] = { m_g_buffer_depth->GetResource_Texture(), m_skybox ? m_skybox->GetTexture()->GetResource_Texture() : nullptr };
 
 		// Begin command list
 		m_cmd_list->Begin("Pass_Transparent");
@@ -448,7 +442,7 @@ namespace Spartan
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);
 		m_cmd_list->SetRenderTarget(tex_out, m_g_buffer_depth->GetResource_DepthStencil());
 		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetTextures(0, textures);
+		m_cmd_list->SetTextures(0, textures, 2);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetShaderVertex(shader_transparent);
 		m_cmd_list->SetInputLayout(shader_transparent->GetInputLayout());
@@ -458,7 +452,7 @@ namespace Spartan
 		{
 			// Get renderable and material
 			const auto renderable	= entity->GetRenderable_PtrRaw();
-			auto material			= renderable ? renderable->MaterialPtr().get() : nullptr;
+			auto material			= renderable ? renderable->GetMaterial().get() : nullptr;
 
 			if (!renderable || !material)
 				continue;
@@ -531,7 +525,7 @@ namespace Spartan
 		pixel_shader->UpdateBuffer(&buffer);
 		vector<void*> constant_buffers	= { m_buffer_global->GetResource(), pixel_shader->GetConstantBuffer()->GetResource() };
 		vector<void*> samplers			= { m_sampler_compare_depth->GetResource(), m_sampler_bilinear_clamp->GetResource() };
-		vector<void*> textures =
+		void* textures[] =
 		{
 			m_g_buffer_normal->GetResource_Texture(),
 			m_g_buffer_depth->GetResource_Texture(),
@@ -548,7 +542,7 @@ namespace Spartan
 		m_cmd_list->SetShaderVertex(shader_vertex);
 		m_cmd_list->SetInputLayout(shader_vertex->GetInputLayout());
 		m_cmd_list->SetShaderPixel(pixel_shader);
-		m_cmd_list->SetTextures(0, textures);
+		m_cmd_list->SetTextures(0, textures, 5);
 		m_cmd_list->SetSamplers(0, samplers);
 		m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -651,7 +645,7 @@ namespace Spartan
 		m_cmd_list->Begin("Pass_SSAO");
 
 		// Prepare resources	
-		vector<void*> textures = { m_g_buffer_normal->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_tex_noise_normal->GetResource_Texture() };
+		void* textures[] = { m_g_buffer_normal->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_tex_noise_normal->GetResource_Texture() };
 		vector<void*> samplers = { m_sampler_bilinear_clamp->GetResource() /*SSAO (clamp) */, m_sampler_bilinear_wrap->GetResource() /*SSAO noise texture (wrap)*/};
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
@@ -662,7 +656,7 @@ namespace Spartan
 		m_cmd_list->SetShaderVertex(shader_quad);
 		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
 		m_cmd_list->SetShaderPixel(shader_ssao);
-		m_cmd_list->SetTextures(0, textures);
+		m_cmd_list->SetTextures(0, textures, 3);
 		m_cmd_list->SetSamplers(0, samplers);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -780,11 +774,11 @@ namespace Spartan
 			const auto direction	= Vector2(pixel_stride, 0.0f);
 			auto buffer				= Struct_Blur(direction, sigma);
 			shader_gaussianBilateral->UpdateBuffer(&buffer, 0);
-			vector<void*> textures = { tex_in->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_g_buffer_normal->GetResource_Texture() };
+			void* textures[] = { tex_in->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_g_buffer_normal->GetResource_Texture() };
 			
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where render target is also bound as texture (from Pass_PreLight)
 			m_cmd_list->SetRenderTarget(tex_out);
-			m_cmd_list->SetTextures(0, textures);
+			m_cmd_list->SetTextures(0, textures, 3);
 			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer(0));
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
@@ -797,11 +791,11 @@ namespace Spartan
 			const auto direction	= Vector2(0.0f, pixel_stride);
 			auto buffer				= Struct_Blur(direction, sigma);
 			shader_gaussianBilateral->UpdateBuffer(&buffer, 1);
-			vector<void*> textures = { tex_out->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_g_buffer_normal->GetResource_Texture() };
+			void* textures[] = { tex_out->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_g_buffer_normal->GetResource_Texture() };
 
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where render target is also bound as texture (from above pass)
 			m_cmd_list->SetRenderTarget(tex_in);
-			m_cmd_list->SetTextures(0, textures);
+			m_cmd_list->SetTextures(0, textures, 3);
 			m_cmd_list->SetConstantBuffer(1, Buffer_PixelShader, shader_gaussianBilateral->GetConstantBuffer(1));
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
@@ -827,14 +821,14 @@ namespace Spartan
 		{
 			// Prepare resources
 			SetDefaultBuffer(m_render_tex_full_taa_current->GetWidth(), m_render_tex_full_taa_current->GetHeight());
-			vector<void*> textures = { m_render_tex_full_taa_history->GetResource_Texture(), tex_in->GetResource_Texture(), m_g_buffer_velocity->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture() };
+			void* textures[] = { m_render_tex_full_taa_history->GetResource_Texture(), tex_in->GetResource_Texture(), m_g_buffer_velocity->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture() };
 
 			m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
 			m_cmd_list->SetRenderTarget(m_render_tex_full_taa_current);
 			m_cmd_list->SetViewport(m_render_tex_full_taa_current->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_taa);
 			m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-			m_cmd_list->SetTextures(0, textures);
+			m_cmd_list->SetTextures(0, textures, 3);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
@@ -939,12 +933,12 @@ namespace Spartan
 		{
 			// Prepare resources
 			SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-			vector<void*> textures = { tex_in->GetResource_Texture(), m_render_tex_full_spare->GetResource_Texture() };
+			void* textures[] = { tex_in->GetResource_Texture(), m_render_tex_full_spare->GetResource_Texture() };
 
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_bloomBlend);
-			m_cmd_list->SetTextures(0, textures);
+			m_cmd_list->SetTextures(0, textures, 2);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
@@ -1074,7 +1068,7 @@ namespace Spartan
 		m_cmd_list->Begin("Pass_MotionBlur");
 
 		// Prepare resources
-		vector<void*> textures = { tex_in->GetResource_Texture(), m_g_buffer_velocity->GetResource_Texture() };
+		void* textures[] = { tex_in->GetResource_Texture(), m_g_buffer_velocity->GetResource_Texture() };
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
@@ -1082,7 +1076,7 @@ namespace Spartan
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_motionBlur);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
-		m_cmd_list->SetTextures(0, textures);
+		m_cmd_list->SetTextures(0, textures, 2);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();

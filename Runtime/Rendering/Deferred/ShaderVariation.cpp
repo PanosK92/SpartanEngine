@@ -31,7 +31,7 @@ namespace Spartan
 {
 	vector<shared_ptr<ShaderVariation>> ShaderVariation::m_variations;
 
-	shared_ptr<ShaderVariation> ShaderVariation::GetMatchingShader(const unsigned long flags)
+	const shared_ptr<ShaderVariation>& ShaderVariation::GetMatchingShader(const unsigned long flags)
 	{
 		for (const auto& shader : m_variations)
 		{
@@ -39,7 +39,8 @@ namespace Spartan
 				return shader;
 		}
 
-		return nullptr;
+		static shared_ptr<ShaderVariation> empty;
+		return empty;
 	}
 
 	ShaderVariation::ShaderVariation(const shared_ptr<RHI_Device>& rhi_device, Context* context) : RHI_Shader(rhi_device)

@@ -293,7 +293,7 @@ namespace Spartan
 			return;
 
 		// Early exit if descriptor set already exists
-		if (m_descriptor_set_cache.count(texture->RHI_GetID()))
+		if (m_descriptor_set_cache.count(texture->GetId()))
 			return;
 
 		// Early exit if the descriptor cache is full
@@ -354,7 +354,7 @@ namespace Spartan
 			vkUpdateDescriptorSets(m_rhi_device->GetContext()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 		}
 
-		m_descriptor_set_cache[texture->RHI_GetID()] = static_cast<void*>(descriptor_set);
+		m_descriptor_set_cache[texture->GetId()] = static_cast<void*>(descriptor_set);
 	}
 
 	RHI_Pipeline::~RHI_Pipeline()

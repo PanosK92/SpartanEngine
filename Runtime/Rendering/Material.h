@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <vector>
 #include <memory>
 #include <map>
 #include "../RHI/RHI_Definition.h"
@@ -55,23 +54,6 @@ namespace Spartan
 		Shading_PBR
 	};
 
-	struct TextureSlot
-	{
-		TextureSlot()
-		{
-			type = TextureType_Unknown;
-		}
-
-		TextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture>& ptr)
-		{
-			this->ptr	= ptr;
-			this->type	= type;
-		}
-
-		std::shared_ptr<RHI_Texture> ptr;
-		TextureType type;
-	};
-
 	class SPARTAN_CLASS Material : public IResource
 	{
 	public:
@@ -83,24 +65,24 @@ namespace Spartan
 		bool SaveToFile(const std::string& file_path) override;
 		//=======================================================
 
-		//= TEXTURE SLOTS  ====================================================================	
-		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture>& texture);
-		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_Texture2D>& texture);
-		void SetTextureSlot(TextureType type, const std::shared_ptr<RHI_TextureCube>& texture);
-		const TextureSlot& GetTextureSlotByType(TextureType type);
-		void* GetTextureShaderResourceByType(TextureType type);
-		bool HasTexture(TextureType type);
+		//= TEXTURES  ==================================================================================================
+		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture>& texture);
+		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture2D>& texture);
+		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_TextureCube>& texture);
+		const void* GetResources();	
 		bool HasTexture(const std::string& path);
-		std::string GetTexturePathByType(TextureType type);
+		const std::string& GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//=====================================================================================
+		bool HasTexture(const TextureType type) { return m_textures.find(type) != m_textures.end(); }
+		const auto& GetTexture(const TextureType type) { return HasTexture(type) ? m_textures[type] : m_texture_empty; }
+		//==============================================================================================================
 
-		//= SHADER ====================================================================
+		//= SHADER ===========================================================================
 		void AcquireShader();
-		std::shared_ptr<ShaderVariation> GetOrCreateShader(unsigned long shader_flags);
-		const std::shared_ptr<ShaderVariation>& GetShader() const { return m_shader; }
-		bool HasShader() const { return GetShader() != nullptr; }
-		//=============================================================================
+		const std::shared_ptr<ShaderVariation>& GetOrCreateShader(unsigned long shader_flags);
+		const auto& GetShader() const { return m_shader; }
+		auto HasShader()		const { return GetShader() != nullptr; }
+		//====================================================================================
 
 		//= CONSTANT BUFFER ===================================================
 		bool UpdateConstantBuffer();
@@ -108,25 +90,25 @@ namespace Spartan
 		//=====================================================================
 
 		//= PROPERTIES ==========================================================================================
-		RHI_Cull_Mode GetCullMode() const									{ return m_cull_mode; }
+		auto GetCullMode() const											{ return m_cull_mode; }
 		void SetCullMode(const RHI_Cull_Mode cull_mode)						{ m_cull_mode = cull_mode; }
 
-		ShadingMode GetShadingMode() const									{ return m_shading_mode; }
+		auto GetShadingMode() const											{ return m_shading_mode; }
 		void SetShadingMode(const ShadingMode shading_mode)					{ m_shading_mode = shading_mode; }
 
-		const Math::Vector4& GetColorAlbedo() const							{ return m_color_albedo; }
+		const auto& GetColorAlbedo() const									{ return m_color_albedo; }
 		void SetColorAlbedo(const Math::Vector4& color)						{ m_color_albedo = color; }
-
-		const Math::Vector2& GetTiling() const								{ return m_uv_tiling; }
+		
+		const auto& GetTiling() const										{ return m_uv_tiling; }
 		void SetTiling(const Math::Vector2& tiling)							{ m_uv_tiling = tiling; }
 
-		const Math::Vector2& GetOffset() const								{ return m_uv_offset; }
+		const auto& GetOffset() const										{ return m_uv_offset; }
 		void SetOffset(const Math::Vector2& offset)							{ m_uv_offset = offset; }
 
-		bool IsEditable() const { return m_is_editable; }
+		auto IsEditable() const { return m_is_editable; }
 		void SetIsEditable(const bool is_editable)							{ m_is_editable = is_editable; }
 
-		float& GetMultiplier(const TextureType type)						{ return m_multipliers[type];}
+		auto& GetMultiplier(const TextureType type)							{ return m_multipliers[type];}
 		void SetMultiplier(const TextureType type, const float multiplier)	{ m_multipliers[type] = multiplier; }
 
 		static TextureType TextureTypeFromString(const std::string& type);
@@ -139,10 +121,11 @@ namespace Spartan
 		Math::Vector2 m_uv_tiling;
 		Math::Vector2 m_uv_offset;	
 		bool m_is_editable;
-		std::vector<TextureSlot> m_texture_slots;
+		std::map<TextureType, std::shared_ptr<RHI_Texture>> m_textures;
 		std::map<TextureType, float> m_multipliers;
-		std::shared_ptr<ShaderVariation> m_shader;	
-		TextureSlot m_empty_texture_slot;
+		std::shared_ptr<ShaderVariation> m_shader;
+		const void* m_resources[8] = {};
+		std::shared_ptr<RHI_Texture> m_texture_empty;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// BUFFER

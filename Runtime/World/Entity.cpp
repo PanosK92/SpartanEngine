@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Entity.h"
 #include "World.h"
 #include "../IO/FileStream.h"
-#include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Collider.h"
@@ -44,10 +43,9 @@ using namespace std;
 
 namespace Spartan
 {
-	Entity::Entity(Context* context)
+	Entity::Entity(Context* context) : Spartan_Object()
 	{
 		m_context				= context;
-		m_id					= GENERATE_GUID;
 		m_name					= "Entity";
 		m_is_active				= true;
 		m_hierarchy_visibility	= true;	
@@ -65,7 +63,6 @@ namespace Spartan
 		m_components.clear();
 
 		m_name.clear();
-		m_id					= NOT_ASSIGNED_HASH;
 		m_is_active				= true;
 		m_hierarchy_visibility	= true;
 	}
@@ -85,7 +82,7 @@ namespace Spartan
 		{
 			// Clone the name and the ID
 			auto clone = scene->EntityCreate().get();
-			clone->SetId(GENERATE_GUID);
+			clone->SetId(GenerateId());
 			clone->SetName(entity->GetName());
 			clone->SetActive(entity->IsActive());
 			clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
@@ -159,7 +156,7 @@ namespace Spartan
 		//= BASIC DATA ======================
 		stream->Write(m_is_active);
 		stream->Write(m_hierarchy_visibility);
-		stream->Write(m_id);
+		stream->Write(GetId());
 		stream->Write(m_name);
 		//===================================
 
@@ -168,7 +165,7 @@ namespace Spartan
 		for (const auto& component : m_components)
 		{
 			stream->Write(static_cast<uint32_t>(component->GetType()));
-			stream->Write(component->GetID());
+			stream->Write(component->GetId());
 		}
 
 		for (const auto& component : m_components)
@@ -186,7 +183,7 @@ namespace Spartan
 		// 2nd - children IDs
 		for (const auto& child : children)
 		{
-			stream->Write(child->GetID());
+			stream->Write(child->GetId());
 		}
 
 		// 3rd - children
@@ -207,12 +204,12 @@ namespace Spartan
 
 	void Entity::Deserialize(FileStream* stream, Transform* parent)
 	{
-		//= BASIC DATA =====================
+		//= BASIC DATA =======================
 		stream->Read(&m_is_active);
 		stream->Read(&m_hierarchy_visibility);
 		stream->Read(&m_id);
 		stream->Read(&m_name);
-		//==================================
+		//====================================
 
 		//= COMPONENTS ================================
 		const auto component_count = stream->ReadAs<uint32_t>();
@@ -305,7 +302,7 @@ namespace Spartan
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{
 			auto component = *it;
-			if (id == component->GetID())
+			if (id == component->GetId())
 			{
 				component->OnRemove();
 				component.reset();

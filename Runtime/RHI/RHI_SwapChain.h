@@ -21,18 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include "RHI_Definition.h"
-#include "RHI_Object.h"
+//= INCLUDES ==================
 #include <memory>
 #include <vector>
-//=========================
+#include "RHI_Definition.h"
+#include "../Core/Spartan_Object.h"
+//=============================
 
 namespace Spartan
 {
 	namespace Math { class Vector4; }
 
-	class RHI_SwapChain : public RHI_Object
+	class RHI_SwapChain : public Spartan_Object
 	{
 	public:
 		RHI_SwapChain(

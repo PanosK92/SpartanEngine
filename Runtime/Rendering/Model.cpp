@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
+#include "../Resource/ResourceCache.h"
 #include "../World/Entity.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
@@ -34,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_Texture2D.h"
-#include "../Resource/ResourceCache.h"
 //=========================================
 
 //= NAMESPACES ================
@@ -79,7 +79,7 @@ namespace Spartan
 			}
 			else // abort
 			{
-				LOG_WARNING("Failed to load model. Unable to find supported file in \"" + FileSystem::GetDirectoryFromFilePath(file_path) + "\".");
+				LOGF_WARNING("Failed to load model. Unable to find supported file in \"%s\".", FileSystem::GetDirectoryFromFilePath(file_path).c_str());
 				return false;
 			}
 		}
@@ -87,7 +87,7 @@ namespace Spartan
 		const auto engine_format = FileSystem::GetExtensionFromFilePath(model_file_path) == EXTENSION_MODEL;
 		const auto success = engine_format ? LoadFromEngineFormat(model_file_path) : LoadFromForeignFormat(model_file_path);
 
-		GeometryComputeMemoryUsage();
+		m_size = GeometryComputeMemoryUsage();
 		LOGF_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
 
 		return success;
@@ -205,7 +205,7 @@ namespace Spartan
 		else if (!texture)
 		{
 			// Load texture
-			bool generate_mipmaps = true;
+			auto generate_mipmaps = true;
 			texture = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 			texture->LoadFromFile(file_path);
 
@@ -260,7 +260,7 @@ namespace Spartan
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(file_path)); // Sponza
 
 		// Load the model
-		if (m_resource_manager->GetModelImporter()->Load(std::dynamic_pointer_cast<Model>(GetSharedPtr()), file_path))
+		if (m_resource_manager->GetModelImporter()->Load(this, file_path))
 		{
 			// Set the normalized scale to the root entity's transform
 			m_normalized_scale = GeometryComputeNormalizedScale();

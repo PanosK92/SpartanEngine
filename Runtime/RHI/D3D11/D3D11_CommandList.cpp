@@ -270,33 +270,14 @@ namespace Spartan
 		cmd.sampler_count++;
 	}
 
-	void RHI_CommandList::SetTextures(const uint32_t start_slot, const vector<void*>& textures)
+	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, const uint32_t texture_count, const bool is_array)
 	{
 		auto& cmd				= GetCmd();
 		cmd.type				= RHI_Cmd_SetTextures;
 		cmd.textures_start_slot = start_slot;
 		cmd.textures			= textures;
-		cmd.texture_count		= static_cast<uint32_t>(textures.size());
-	}
-
-	void RHI_CommandList::SetTexture(const uint32_t start_slot, RHI_Texture* texture)
-	{
-		// Null textures are allowed, but if a texture is valid, it must have a valid resource
-		if (texture && !texture->GetResource_Texture())
-		{
-			// Don't show error for render targets as they might be filled with data
-			if (!texture->IsRenderTarget())
-			{
-				LOG_ERROR_INVALID_PARAMETER();
-			}
-			return;
-		}
-
-		auto& cmd						= GetCmd();
-		cmd.type						= RHI_Cmd_SetTextures;
-		cmd.textures_start_slot			= start_slot;
-		cmd.textures[cmd.texture_count] = texture ? texture->GetResource_Texture() : nullptr;
-		cmd.texture_count++;
+		cmd.texture_count		= texture_count;
+		cmd.is_array			= is_array;
 	}
 
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
@@ -385,8 +366,6 @@ namespace Spartan
 
 				case RHI_Cmd_DrawIndexed:
 				{
-					SPARTAN_ASSERT(cmd.index_count != 0);
-
 					device_context->DrawIndexed
 					(
 						static_cast<UINT>(cmd.index_count),
@@ -546,12 +525,25 @@ namespace Spartan
 
 				case RHI_Cmd_SetTextures:
 				{
-					device_context->PSSetShaderResources
-					(
-						static_cast<UINT>(cmd.textures_start_slot),
-						static_cast<UINT>(cmd.texture_count),
-						reinterpret_cast<ID3D11ShaderResourceView* const*>(cmd.textures.data())
-					);
+					if (cmd.is_array)
+					{
+						device_context->PSSetShaderResources
+						(
+							static_cast<UINT>(cmd.textures_start_slot),
+							static_cast<UINT>(cmd.texture_count),
+							reinterpret_cast<ID3D11ShaderResourceView* const*>(cmd.textures)
+						);
+					}
+					else
+					{
+						const void* srv_array[1] = { cmd.textures };
+						device_context->PSSetShaderResources
+						(
+							static_cast<UINT>(cmd.textures_start_slot),
+							static_cast<UINT>(cmd.texture_count),
+							reinterpret_cast<ID3D11ShaderResourceView* const*>(&srv_array)
+						);
+					}
 
 					m_profiler->m_rhi_bindings_texture++;
 					break;

@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include "RHI_Object.h"
+//= INCLUDES ==================
 #include "RHI_Definition.h"
-//=========================
+#include "../Core/Spartan_Object.h"
+//=============================
 
 namespace Spartan
 {
-	class SPARTAN_CLASS RHI_BlendState : public RHI_Object
+	class SPARTAN_CLASS RHI_BlendState : public Spartan_Object
 	{
 	public:
 		RHI_BlendState(const std::shared_ptr<RHI_Device>& device,
