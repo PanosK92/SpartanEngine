@@ -1,6 +1,6 @@
-// Based on "Temporal Antialiasing In Uncharted 4" by Ke XU - Naughty Dog.
-
+//= INCLUDES ===========
 #include "Velocity.hlsl"
+//======================
 
 static const float g_blendMin = 0.05f;
 static const float g_blendMax = 0.8f;
@@ -19,6 +19,29 @@ float4 ReinhardInverse(float4 color)
 	return -color / (color - 1);
 }
 
+float4 clip_aabb(float3 aabb_min, float3 aabb_max, float4 p, float4 q)
+{
+	float4 r = q - p;
+	float3 rmax = aabb_max - p.xyz;
+	float3 rmin = aabb_min - p.xyz;
+	
+	if (r.x > rmax.x + EPSILON)
+		r *= (rmax.x / r.x);
+	if (r.y > rmax.y + EPSILON)
+		r *= (rmax.y / r.y);
+	if (r.z > rmax.z + EPSILON)
+		r *= (rmax.z / r.z);
+	
+	if (r.x < rmin.x - EPSILON)
+		r *= (rmin.x / r.x);
+	if (r.y < rmin.y - EPSILON)
+		r *= (rmin.y / r.y);
+	if (r.z < rmin.z - EPSILON)
+		r *= (rmin.z / r.z);
+	
+	return p + r;
+}
+
 float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, Texture2D tex_depth, SamplerState sampler_bilinear)
 {
 	// Reproject
@@ -27,10 +50,10 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float2 texCoord_history = texCoord - velocity;
 	
 	// Get current and history colors
-	float4 color_current 	= Reinhard(tex_current.Sample(sampler_bilinear, texCoord));
-	float4 color_history 	= Reinhard(tex_history.Sample(sampler_bilinear, texCoord_history));
+	float4 color_current 	= tex_current.Sample(sampler_bilinear, texCoord);
+	float4 color_history 	= tex_history.Sample(sampler_bilinear, texCoord_history);
 
-	//= Clamp out too different history colors (for non-existing and lighting change cases) =========================
+	//= Sample neighbourhood ==============================================================================
 	float2 du = float2(g_texelSize.x, 0.0f);
 	float2 dv = float2(0.0f, g_texelSize.y);
 
@@ -44,25 +67,34 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float4 cbc = tex_current.Sample(sampler_bilinear, texCoord + dv);
 	float4 cbr = tex_current.Sample(sampler_bilinear, texCoord + dv + du);
 	
-	float4 color_min = Reinhard(min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr)))))))));
-	float4 color_max = Reinhard(max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr)))))))));
+	float4 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
+	float4 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
+	float4 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
+	//=====================================================================================================
 	
-	color_history = clamp(color_history, color_min, color_max);
-	//===============================================================================================================
+	// Shrink chroma min-max - Prevents jitter in high contrast areas
+	//float2 chroma_extent = 0.25f * 0.5f * (color_max.r - color_min.r);
+	//float2 chroma_center = color_history.gb;
+	//color_min.yz = chroma_center - chroma_extent;
+	//color_max.yz = chroma_center + chroma_extent;
+	//color_avg.yz = chroma_center;
 	
-	//= Compute blend factor ==========================================================================
-	// Decrease when motion gets sub-pixel
+	// Clip to neighbourhood of current sample
+	color_history = clip_aabb(color_min.xyz, color_max.xyz, clamp(color_avg, color_min, color_max), color_history);
+	
+	// Decrease blend factor when motion gets sub-pixel
 	float factor_subpixel = sin(frac(length(velocity * g_resolution)) * PI); 
-	// Increase when contrast is low
-	float factor_contrast = 1.0f - length(luminance(color_max.rgb) - luminance(color_min.rgb));
+
+	// Compute blend factor (but simple use max blend if the re-projected texcoord is out of screen)
+	float blendfactor = is_saturated(texCoord_history) ? lerp(g_blendMin, g_blendMax, factor_subpixel) : g_blendMax;
 	
-	float blendfactor 	= lerp(g_blendMin, g_blendMax, factor_subpixel * factor_contrast);
-	// Don't resolve when re-projected texcoord is out of screen
-	blendfactor 		= is_saturated(texCoord_history) ? blendfactor : g_blendMax;
-	//=================================================================================================
+	// Tonemap
+	color_history = Reinhard(color_history);
+	color_current = Reinhard(color_history);
 	
-	float4 resolved_tonemapped 	= lerp(color_history, color_current, blendfactor);
-	float4 resolved 			= ReinhardInverse(resolved_tonemapped);
+	// Resolve
+	float4 resolved = lerp(color_history, color_current, blendfactor);
 	
-	return resolved;
+	// Inverse tonemap
+	return ReinhardInverse(resolved);
 }
