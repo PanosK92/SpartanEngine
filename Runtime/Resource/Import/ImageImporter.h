@@ -46,13 +46,13 @@ namespace Spartan
 		bool GetBitsFromFibitmap(std::vector<std::byte>* data, FIBITMAP* bitmap, uint32_t width, uint32_t height, uint32_t channels);
 		void GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels);
 
-		uint32_t ComputeChannelCount(FIBITMAP* bitmap);
+		uint32_t ComputeChannelCount(FIBITMAP* bitmap) const;
 		uint32_t ComputeBitsPerChannel(FIBITMAP* bitmap) const;
 		RHI_Format ComputeTextureFormat(uint32_t bpp, uint32_t channels) const;
-		bool IsVisuallyGrayscale(FIBITMAP* bitmap) const;
-		FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap);
-		FIBITMAP* _FreeImage_ConvertTo32Bits(FIBITMAP* bitmap);
-		FIBITMAP* _FreeImage_Rescale(FIBITMAP* bitmap, uint32_t width, uint32_t height);
+		bool IsGrayscale(FIBITMAP* bitmap) const;
+		FIBITMAP* ApplyBitmapCorrections(FIBITMAP* bitmap) const;
+		FIBITMAP* _FreeImage_ConvertTo32Bits(FIBITMAP* bitmap) const;
+		FIBITMAP* _FreeImage_Rescale(FIBITMAP* bitmap, uint32_t width, uint32_t height) const;
 
 		Context* m_context;
 	};

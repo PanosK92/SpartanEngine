@@ -163,16 +163,10 @@ namespace Spartan
 		return m_resources;
 	}
 
-	void Material::SetTextureSlot(TextureType type, const shared_ptr<RHI_Texture>& texture)
+	void Material::SetTextureSlot(const TextureType type, const shared_ptr<RHI_Texture>& texture)
 	{
 		if (texture)
 		{
-			// TODO: GetGrayscale() is not detected correctly by the image loader, fix this
-			// Some models (or Assimp) pass a normal map as a height map
-			// and others pass a height map as a normal map, we try to fix that.
-			//type = (type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height : type;
-			//type = (type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : type;
-
 			m_textures[type] = texture;
 		}
 		else
