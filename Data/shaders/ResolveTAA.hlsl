@@ -72,13 +72,6 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float4 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
 	//=====================================================================================================
 	
-	// Shrink chroma min-max - Prevents jitter in high contrast areas
-	//float2 chroma_extent = 0.25f * 0.5f * (color_max.r - color_min.r);
-	//float2 chroma_center = color_history.gb;
-	//color_min.yz = chroma_center - chroma_extent;
-	//color_max.yz = chroma_center + chroma_extent;
-	//color_avg.yz = chroma_center;
-	
 	// Clip to neighbourhood of current sample
 	color_history = clip_aabb(color_min.xyz, color_max.xyz, clamp(color_avg, color_min, color_max), color_history);
 	
@@ -90,7 +83,7 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	
 	// Tonemap
 	color_history = Reinhard(color_history);
-	color_current = Reinhard(color_history);
+	color_current = Reinhard(color_current);
 	
 	// Resolve
 	float4 resolved = lerp(color_history, color_current, blendfactor);
