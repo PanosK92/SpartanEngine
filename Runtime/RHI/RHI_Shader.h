@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include <memory>
 #include <string>
 #include <map>
@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include "RHI_Vertex.h"
 #include "../Core/Spartan_Object.h"
-//=============================
+//=================================
 
 namespace Spartan
 {
@@ -109,8 +109,8 @@ namespace Spartan
 		const auto& GetPixelEntryPoint() const										{ return _RHI_Shader::entry_point_pixel; }
 		const auto& GetResources() const											{ return m_resources; }
 		const auto& GetInputLayout() const											{ return m_input_layout; }
-		const auto GetCompilationState() const										{ return m_compilation_state; }
-		bool IsCompiled() const														{ return m_compilation_state == Shader_Compiled; }
+		auto GetCompilationState() const											{ return m_compilation_state; }
+		auto IsCompiled() const														{ return m_compilation_state == Shader_Compiled; }
 		const auto& GetName() const													{ return m_name; }
 		void SetName(const std::string& name)										{ m_name = name; }
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/version.h>
 #include "AssimpHelper.h"
 #include "../ProgressReport.h"
+#include "../../RHI/RHI_Texture.h"
 #include "../../Core/Settings.h"
 #include "../../Rendering/Model.h"
 #include "../../Rendering/Animation.h"
@@ -397,23 +398,39 @@ namespace Spartan
 		material->SetColorAlbedo(Vector4(color_diffuse.r, color_diffuse.g, color_diffuse.b, opacity.r));
 
 		// TEXTURES
-		const auto load_mat_tex = [&model, &assimp_material, &material](const aiTextureType assimp_tex, const TextureType engine_tex)
+		const auto load_mat_tex = [&model, &assimp_material, &material](const aiTextureType type_assimp, const TextureType type_spartan)
 		{
 			aiString texture_path;
-			if (assimp_material->GetTextureCount(assimp_tex) > 0)
+			if (assimp_material->GetTextureCount(type_assimp) > 0)
 			{
-				if (AI_SUCCESS == assimp_material->GetTexture(assimp_tex, 0, &texture_path))
+				if (AI_SUCCESS == assimp_material->GetTexture(type_assimp, 0, &texture_path))
 				{
 					const auto deduced_path = AssimpHelper::texture_validate_path(texture_path.data, _ModelImporter::m_model_path);
 					if (FileSystem::IsSupportedImageFile(deduced_path))
 					{
-						model->AddTexture(material, engine_tex, AssimpHelper::texture_validate_path(texture_path.data, _ModelImporter::m_model_path));
-					}
+						model->AddTexture(material, type_spartan, AssimpHelper::texture_validate_path(texture_path.data, _ModelImporter::m_model_path));
 
-					if (assimp_tex == aiTextureType_DIFFUSE)
-					{
-						// FIX: materials that have a diffuse texture should not be tinted black/gray
-						material->SetColorAlbedo(Vector4::One);
+						if (type_assimp == aiTextureType_DIFFUSE)
+						{
+							// FIX: materials that have a diffuse texture should not be tinted black/gray
+							material->SetColorAlbedo(Vector4::One);
+						}
+
+						// Some models (or Assimp) pass a normal map as a height map
+						// auto textureType others pass a height map as a normal map, we try to fix that.
+						if (type_spartan == TextureType_Normal || type_spartan == TextureType_Height)
+						{
+							const auto texture = material->GetTexture(type_spartan);							
+							auto proper_type = type_spartan;
+							proper_type = (proper_type == TextureType_Normal && texture->GetGrayscale()) ? TextureType_Height : proper_type;
+							proper_type = (proper_type == TextureType_Height && !texture->GetGrayscale()) ? TextureType_Normal : proper_type;
+
+							if (proper_type != type_spartan)
+							{
+								material->SetTextureSlot(type_spartan, shared_ptr<RHI_Texture>());
+								material->SetTextureSlot(proper_type, texture);
+							}
+						}
 					}
 				}
 			}
