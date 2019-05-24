@@ -27,7 +27,7 @@ float2 GetVelocity_Dilate_Depth3X3(float2 texCoord, Texture2D texture_velocity, 
         {
 			float2 offset 	= float2(x, y) * g_texelSize;
 			float depth		= texture_depth.Sample(sampler_bilinear, texCoord + offset).r;
-			if(depth < closestDepth)
+			if(depth > closestDepth) // Reverse-Z
 			{
 				closestDepth	= depth;
 				closestTexCoord	= texCoord + offset;
