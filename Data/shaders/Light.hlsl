@@ -78,7 +78,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     material.albedo     		= albedo.rgb;
     material.roughness  		= materialSample.r;
     material.metallic   		= materialSample.g;
-    material.emission   		= materialSample.b;
+    material.emissive   		= materialSample.b;
 	material.F0 				= lerp(0.04f, material.albedo, material.metallic);
 	material.roughness_alpha 	= max(0.001f, material.roughness * material.roughness);
 
@@ -114,9 +114,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	}
 	//===============================================================================
 
-	//= Emission ============================================
-    float3 emission = material.emission * albedo.rgb * 40.0f;
-    color += emission;
+	//= Emissive ============================================
+    float3 emissive = material.emissive * albedo.rgb * 10.0f;
+    color += emissive;
 	//=======================================================
 
 	//= Directional Light ===============================================================================================

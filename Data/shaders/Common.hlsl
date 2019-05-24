@@ -17,7 +17,7 @@ struct Material
 	float roughness;
 	float metallic;
 	float3 padding;
-	float emission;
+	float emissive;
 	float3 F0;
 	float roughness_alpha;
 };
