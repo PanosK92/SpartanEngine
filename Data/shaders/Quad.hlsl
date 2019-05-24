@@ -85,7 +85,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_DOWNSAMPLE_BOX
-	color = Downsample_BoxAntiFlicker(texCoord, g_texelSize, sourceTexture, samplerState);
+	color = Downsample_Box13Tap(texCoord, g_texelSize, sourceTexture, samplerState);
 #endif
 
 #if PASS_UPSAMPLE_BOX

@@ -857,10 +857,10 @@ namespace Spartan
 	void Renderer::Pass_Bloom(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders		
-		const auto& shader_bloomBright = m_shaders[Shader_BloomBright_P];
-		const auto& shader_bloomBlend = m_shaders[Shader_BloomBlend_P];
-		const auto& shader_downsampleBox = m_shaders[Shader_DownsampleBox_P];
-		const auto& shader_upsampleBox = m_shaders[Shader_UpsampleBox_P];	
+		const auto& shader_bloomBright		= m_shaders[Shader_BloomBright_P];
+		const auto& shader_bloomBlend		= m_shaders[Shader_BloomBlend_P];
+		const auto& shader_downsampleBox	= m_shaders[Shader_DownsampleBox_P];
+		const auto& shader_upsampleBox		= m_shaders[Shader_UpsampleBox_P];	
 		if (!shader_downsampleBox->IsCompiled() || !shader_bloomBright->IsCompiled() || !shader_upsampleBox->IsCompiled() || !shader_downsampleBox->IsCompiled())
 			return;
 
@@ -901,6 +901,7 @@ namespace Spartan
 
 		// Upsampling progressively yields the best results [Kraus2007]
 
+		// 1st upsample
 		m_cmd_list->Begin("Upscale");
 		{
 			// Prepare resources
@@ -909,12 +910,13 @@ namespace Spartan
 			m_cmd_list->SetRenderTarget(m_render_tex_half_spare2);
 			m_cmd_list->SetViewport(m_render_tex_half_spare2->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_upsampleBox);
-			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur2);
+			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur1);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 		m_cmd_list->End();
 
+		// 2nd upsample
 		m_cmd_list->Begin("Upscale");
 		{
 			// Prepare resources
