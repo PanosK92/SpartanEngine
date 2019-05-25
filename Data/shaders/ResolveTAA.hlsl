@@ -2,28 +2,14 @@
 #include "Velocity.hlsl"
 //======================
 
-static const float g_blendMin = 0.05f;
-static const float g_blendMax = 0.8f;
+static const float g_blendMin = 0.01f;
+static const float g_blendMax = 0.2f;
 
-// TODO: This can be improved further by weighting the blend factor from unbiased luminance diff
-
-// Resolving works better with tonemapped input
-float4 Reinhard(float4 color)
+float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 {
-	return color / (1 + color);
-}
-
-// Inverse tonemapping before returning
-float4 ReinhardInverse(float4 color)
-{
-	return -color / (color - 1);
-}
-
-float4 clip_aabb(float3 aabb_min, float3 aabb_max, float4 p, float4 q)
-{
-	float4 r = q - p;
-	float3 rmax = aabb_max - p.xyz;
-	float3 rmin = aabb_min - p.xyz;
+	float3 r = q - p;
+	float3 rmax = aabb_max - p;
+	float3 rmin = aabb_min - p;
 	
 	if (r.x > rmax.x + EPSILON)
 		r *= (rmax.x / r.x);
@@ -50,44 +36,44 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float2 texCoord_history = texCoord - velocity;
 	
 	// Get current and history colors
-	float4 color_current 	= tex_current.Sample(sampler_bilinear, texCoord);
-	float4 color_history 	= tex_history.Sample(sampler_bilinear, texCoord_history);
+	float3 color_current 	= tex_current.Sample(sampler_bilinear, texCoord).rgb;
+	float3 color_history 	= tex_history.Sample(sampler_bilinear, texCoord_history).rgb;
 
 	//= Sample neighbourhood ==============================================================================
 	float2 du = float2(g_texelSize.x, 0.0f);
 	float2 dv = float2(0.0f, g_texelSize.y);
 
-	float4 ctl = tex_current.Sample(sampler_bilinear, texCoord - dv - du);
-	float4 ctc = tex_current.Sample(sampler_bilinear, texCoord - dv);
-	float4 ctr = tex_current.Sample(sampler_bilinear, texCoord - dv + du);
-	float4 cml = tex_current.Sample(sampler_bilinear, texCoord - du);
-	float4 cmc = tex_current.Sample(sampler_bilinear, texCoord);
-	float4 cmr = tex_current.Sample(sampler_bilinear, texCoord + du);
-	float4 cbl = tex_current.Sample(sampler_bilinear, texCoord + dv - du);
-	float4 cbc = tex_current.Sample(sampler_bilinear, texCoord + dv);
-	float4 cbr = tex_current.Sample(sampler_bilinear, texCoord + dv + du);
+	float3 ctl = tex_current.Sample(sampler_bilinear, texCoord - dv - du).rgb;
+	float3 ctc = tex_current.Sample(sampler_bilinear, texCoord - dv).rgb;
+	float3 ctr = tex_current.Sample(sampler_bilinear, texCoord - dv + du).rgb;
+	float3 cml = tex_current.Sample(sampler_bilinear, texCoord - du).rgb;
+	float3 cmc = tex_current.Sample(sampler_bilinear, texCoord).rgb;
+	float3 cmr = tex_current.Sample(sampler_bilinear, texCoord + du).rgb;
+	float3 cbl = tex_current.Sample(sampler_bilinear, texCoord + dv - du).rgb;
+	float3 cbc = tex_current.Sample(sampler_bilinear, texCoord + dv).rgb;
+	float3 cbr = tex_current.Sample(sampler_bilinear, texCoord + dv + du).rgb;
 	
-	float4 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
-	float4 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
-	float4 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
+	float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
+	float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
+	float3 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
 	//=====================================================================================================
 	
 	// Clip to neighbourhood of current sample
-	color_history = clip_aabb(color_min.xyz, color_max.xyz, clamp(color_avg, color_min, color_max), color_history);
-	
-	// Decrease blend factor when motion gets sub-pixel
-	float factor_subpixel = sin(frac(length(velocity * g_resolution)) * PI); 
+	color_history = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
 
+	// Decrease blend factor when motion gets sub-pixel
+	float factor_subpixel = saturate(length(velocity * g_resolution));
+	
 	// Compute blend factor (but simple use max blend if the re-projected texcoord is out of screen)
-	float blendfactor = is_saturated(texCoord_history) ? lerp(g_blendMin, g_blendMax, factor_subpixel) : g_blendMax;
+	float blendfactor = is_saturated(texCoord_history) ? lerp(g_blendMin, g_blendMax, factor_subpixel) : 1.0f;
 	
 	// Tonemap
 	color_history = Reinhard(color_history);
 	color_current = Reinhard(color_current);
 	
 	// Resolve
-	float4 resolved = lerp(color_history, color_current, blendfactor);
+	float3 resolved = lerp(color_history, color_current, blendfactor);
 	
 	// Inverse tonemap
-	return ReinhardInverse(resolved);
+	return float4(ReinhardInverse(resolved), 1.0f);
 }

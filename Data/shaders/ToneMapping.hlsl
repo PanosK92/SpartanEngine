@@ -1,6 +1,11 @@
-float3 ToneMapReinhard(float3 color)
+float3 Reinhard(float3 hdr, float k = 1.0f)
 {
-	return color / (1 + color);
+	return hdr / (hdr + k);
+}
+
+float3 ReinhardInverse(float3 sdr, float k = 1.0)
+{
+	return k * sdr / (k - sdr);
 }
 
 float3 Uncharted2(float3 x)
@@ -60,8 +65,10 @@ float3 ACESFitted(float3 color)
     return color;
 }
 
-float3 ToneMap(float3 color)
+float3 ToneMap(float3 color, float exposure = 1.0f)
 {
+	color *= exp(exposure);
+	
 	[branch]
     if (g_toneMapping == 0) // OFF
     {
@@ -73,7 +80,7 @@ float3 ToneMap(float3 color)
 	}
 	else if (g_toneMapping == 2) // REINHARD
 	{
-		color = ToneMapReinhard(color);
+		color = Reinhard(color);
 	}
 	else if (g_toneMapping == 3) // UNCHARTED 2
 	{

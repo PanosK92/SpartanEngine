@@ -1319,7 +1319,7 @@ namespace Spartan
 				// Construct appropriate rectangle
 				auto tex_width = light_tex->GetWidth() * scale;
 				auto tex_height = light_tex->GetHeight() * scale;
-				auto rectangle = Rectangle(position_light_screen.x - tex_width * 0.5f, position_light_screen.y - tex_height * 0.5f, tex_width, tex_height);
+				auto rectangle = Math::Rectangle(position_light_screen.x - tex_width * 0.5f, position_light_screen.y - tex_height * 0.5f, tex_width, tex_height);
 				if (rectangle != m_gizmo_light_rect)
 				{
 					m_gizmo_light_rect = rectangle;

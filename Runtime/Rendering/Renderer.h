@@ -232,7 +232,7 @@ namespace Spartan
 		void CreateShaders();
 		void CreateSamplers();
 		void CreateRenderTextures();
-		void SetDefaultBuffer(uint32_t resolution_width, uint32_t resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity) const;
+		bool SetDefaultBuffer(uint32_t resolution_width, uint32_t resolution_height, const Math::Matrix& mMVP = Math::Matrix::Identity) const;
 		void RenderablesAcquire(const Variant& renderables);
 		void RenderablesSort(std::vector<Entity*>* renderables);
 		std::shared_ptr<RHI_RasterizerState>& GetRasterizerState(RHI_Cull_Mode cull_mode, RHI_Fill_Mode fill_mode);

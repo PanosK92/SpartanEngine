@@ -180,7 +180,7 @@ namespace Spartan
 		// Get standard texture directory
 		const auto dir_texture = g_resource_cache->GetDataDirectory(Asset_Textures);
 
-		bool generate_mipmaps = false;
+		auto generate_mipmaps = false;
 
 		// Noise texture (used by SSAO shader)
 		m_tex_noise_normal = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
@@ -218,7 +218,7 @@ namespace Spartan
 		}
 
 		// Full-screen quad
-		m_quad = Rectangle(0, 0, m_resolution.x, m_resolution.y);
+		m_quad = Math::Rectangle(0, 0, m_resolution.x, m_resolution.y);
 		m_quad.CreateBuffers(this);
 
 		// G-Buffer
@@ -595,16 +595,16 @@ namespace Spartan
 		DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, depth);
 	}
 
-	void Renderer::SetDefaultBuffer(const uint32_t resolution_width, const uint32_t resolution_height, const Matrix& mMVP) const
+	bool Renderer::SetDefaultBuffer(const uint32_t resolution_width, const uint32_t resolution_height, const Matrix& mvp) const
 	{
 		auto buffer = static_cast<ConstantBufferGlobal*>(m_buffer_global->Map());
 		if (!buffer)
 		{
 			LOGF_ERROR("Failed to map buffer");
-			return;
+			return false;
 		}
 
-		buffer->m_mvp					= mMVP;
+		buffer->m_mvp					= mvp;
 		buffer->m_view					= m_view;
 		buffer->m_projection			= m_projection;
 		buffer->m_projection_ortho		= m_projection_orthographic;
@@ -629,7 +629,7 @@ namespace Spartan
 		buffer->exposure				= m_exposure;
 		buffer->gamma					= m_gamma;
 
-		m_buffer_global->Unmap();
+		return m_buffer_global->Unmap();
 	}
 
 	void Renderer::RenderablesAcquire(const Variant& entities_variant)
