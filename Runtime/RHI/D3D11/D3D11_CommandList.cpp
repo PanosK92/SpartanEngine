@@ -280,6 +280,11 @@ namespace Spartan
 		cmd.is_array			= is_array;
 	}
 
+	void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
+	{
+		SetTextures(slot, texture ? texture->GetResource_Texture() : nullptr, 1, false);
+	}
+
 	void RHI_CommandList::SetRenderTargets(const vector<void*>& render_targets, void* depth_stencil /*= nullptr*/)
 	{
 		auto& cmd				= GetCmd();

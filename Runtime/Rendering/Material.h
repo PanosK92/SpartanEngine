@@ -69,7 +69,7 @@ namespace Spartan
 		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture>& texture);
 		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_Texture2D>& texture);
 		void SetTextureSlot(const TextureType type, const std::shared_ptr<RHI_TextureCube>& texture);
-		const void* GetResources();	
+		auto GetResources() const { return m_resources; }
 		bool HasTexture(const std::string& path);
 		const std::string& GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
@@ -115,31 +115,33 @@ namespace Spartan
 		//=======================================================================================================
 
 	private:
-		RHI_Cull_Mode m_cull_mode;
-		ShadingMode m_shading_mode;
-		Math::Vector4 m_color_albedo;
-		Math::Vector2 m_uv_tiling;
-		Math::Vector2 m_uv_offset;	
-		bool m_is_editable;
+		void UpdateResourceArray();
+
+		RHI_Cull_Mode m_cull_mode		= Cull_Back;
+		ShadingMode m_shading_mode		= Shading_PBR;
+		Math::Vector4 m_color_albedo	= Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+		Math::Vector2 m_uv_tiling		= Math::Vector2(1.0f, 1.0f);
+		Math::Vector2 m_uv_offset		= Math::Vector2(0.0f, 0.0f);
+		bool m_is_editable				= true;
+		const void* m_resources[8]		= {};
 		std::map<TextureType, std::shared_ptr<RHI_Texture>> m_textures;
 		std::map<TextureType, float> m_multipliers;
-		std::shared_ptr<ShaderVariation> m_shader;
-		const void* m_resources[8] = {};
+		std::shared_ptr<ShaderVariation> m_shader;	
 		std::shared_ptr<RHI_Texture> m_texture_empty;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// BUFFER
 		struct ConstantBufferData
 		{
-			Math::Vector4 mat_albedo;
-			Math::Vector2 mat_tiling_uv;
-			Math::Vector2 mat_offset_uv;
-			float mat_roughness_mul = 0.0f;
-			float mat_metallic_mul = 0.0f;
-			float mat_normal_mul = 0.0f;
-			float mat_height_mul = 0.0f;
-			float mat_shading_mode = 0.0f;
-			Math::Vector3 padding;
+			Math::Vector4 mat_albedo	= Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+			Math::Vector2 mat_tiling_uv	= Math::Vector2(1.0f, 1.0f);
+			Math::Vector2 mat_offset_uv	= Math::Vector2(0.0f, 0.0f);
+			float mat_roughness_mul		= 0.0f;
+			float mat_metallic_mul		= 0.0f;
+			float mat_normal_mul		= 0.0f;
+			float mat_height_mul		= 0.0f;
+			float mat_shading_mode		= 0.0f;
+			Math::Vector3 padding		= Math::Vector3::Zero;
 		};
 		ConstantBufferData m_constant_buffer_cpu;
 		std::shared_ptr<RHI_ConstantBuffer> m_constant_buffer_gpu;

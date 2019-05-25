@@ -711,7 +711,7 @@ namespace Spartan
 			if (!material)
 				return 0.0f;
 
-			const auto num_depth = (renderable->GeometryAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+			const auto num_depth = (renderable->GetAabbTransformed().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
 			const auto num_material = static_cast<float>(material->GetId());
 
 			return concat(num_depth, num_material);

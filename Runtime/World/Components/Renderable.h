@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include <vector>
 #include "../../Math/BoundingBox.h"
+#include "../../Math/Matrix.h"
 //===================================
 
 namespace Spartan
@@ -59,7 +60,7 @@ namespace Spartan
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= GEOMETRY =============================================================================================
+		//= GEOMETRY ==========================================================================================
 		void GeometrySet(
 			const std::string& name,
 			uint32_t index_offset,
@@ -78,9 +79,8 @@ namespace Spartan
 		auto GeometryType()			const { return m_geometry_type; }
 		const auto& GeometryName()	const { return m_geometryName; }
 		const auto& GeometryModel() const { return m_model; }
-		const auto& GeometryAabb()	const { return m_geometryAABB; }
-		Math::BoundingBox GeometryAabb();
-		//========================================================================================================
+		const Math::BoundingBox& GetAabbTransformed();
+		//=====================================================================================================
 
 		//= MATERIAL ============================================================
 		// Sets a material from memory (adds it to the resource cache by default)
@@ -103,22 +103,17 @@ namespace Spartan
 		//=========================================================================================
 
 	private:
-		//= GEOMETRY ====================
 		std::string m_geometryName;
 		uint32_t m_geometryIndexOffset;
 		uint32_t m_geometryIndexCount;
 		uint32_t m_geometryVertexOffset;
 		uint32_t m_geometryVertexCount;
-		Math::BoundingBox m_geometryAABB;
 		std::shared_ptr<Model> m_model;
 		Geometry_Type m_geometry_type;
-		//===============================
-
-		//= MATERIAL ========================
+		Math::BoundingBox m_aabb;
+		Math::BoundingBox m_aabb_transformed;
+		Math::Matrix m_last_transform;	
 		std::shared_ptr<Material> m_material;
-		//===================================
-
-		// Misc
 		bool m_castShadows;
 		bool m_receiveShadows;
 		bool m_materialDefault;

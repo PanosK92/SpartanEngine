@@ -125,7 +125,7 @@ namespace Spartan
 		VkCommandBufferBeginInfo beginInfo	= {};
 		beginInfo.sType						= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags						= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		auto result = vkBeginCommandBuffer(CMD_LIST, &beginInfo);
+		const auto result = vkBeginCommandBuffer(CMD_LIST, &beginInfo);
 		if (result != VK_SUCCESS) 
 		{
 			LOGF_ERROR("Failed to begin recording command buffer, %s.", Vulkan_Common::result_to_string(result));
@@ -155,7 +155,7 @@ namespace Spartan
 
 		vkCmdEndRenderPass(CMD_LIST);
 
-		auto result = vkEndCommandBuffer(CMD_LIST);
+		const auto result = vkEndCommandBuffer(CMD_LIST);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to end command buffer, %s.", Vulkan_Common::result_to_string(result));
@@ -165,7 +165,7 @@ namespace Spartan
 		m_is_recording = false;
 	}
 
-	void RHI_CommandList::Draw(uint32_t vertex_count)
+	void RHI_CommandList::Draw(const uint32_t vertex_count)
 	{
 		if (!m_is_recording)
 			return;
@@ -173,7 +173,7 @@ namespace Spartan
 		vkCmdDraw(CMD_LIST, vertex_count, 1, 0, 0);
 	}
 
-	void RHI_CommandList::DrawIndexed(uint32_t index_count, uint32_t index_offset, uint32_t vertex_offset)
+	void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
 	{
 		if (!m_is_recording)
 			return;
@@ -308,23 +308,22 @@ namespace Spartan
 			return;
 	}
 
-	void RHI_CommandList::SetTextures(const uint32_t start_slot, const vector<void*>& textures)
+	void RHI_CommandList::SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count, bool is_array)
 	{
 		if (!m_is_recording)
 			return;
-
 	}
 
 	void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture)
 	{
 		if (!m_is_recording)
 			return;
-		
+
 		if (!texture)
 			return;
 
 		m_pipeline->UpdateDescriptorSets(texture);
-		if (void* descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
+		if (const auto descriptor_set = m_pipeline->GetDescriptorSet(texture->GetId()))
 		{
 			VkDescriptorSet descriptor_sets[1] = { static_cast<VkDescriptorSet>(descriptor_set) };
 			vkCmdBindDescriptorSets(CMD_LIST, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), 0, 1, descriptor_sets, 0, nullptr);
@@ -387,7 +386,7 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= 1;
 		submit_info.pSignalSemaphores		= signal_semaphores;
 
-		auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, FENCE_CMD_LIST_CONSUMED);
+		const auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, FENCE_CMD_LIST_CONSUMED);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::result_to_string(result));

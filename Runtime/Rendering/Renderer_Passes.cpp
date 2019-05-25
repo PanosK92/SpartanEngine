@@ -1161,7 +1161,7 @@ namespace Spartan
 				{
 					if (auto renderable = entity->GetRenderable_PtrRaw())
 					{
-						DrawBox(renderable->GeometryAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						DrawBox(renderable->GetAabbTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 
@@ -1169,7 +1169,7 @@ namespace Spartan
 				{
 					if (auto renderable = entity->GetRenderable_PtrRaw())
 					{
-						DrawBox(renderable->GeometryAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+						DrawBox(renderable->GetAabbTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 					}
 				}
 			}
