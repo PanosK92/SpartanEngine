@@ -83,7 +83,7 @@ namespace Spartan
 
 	void FileStream::Write(const string& value)
 	{
-		auto length = (uint32_t)value.length();
+		const auto length = static_cast<uint32_t>(value.length());
 		Write(length);
 
 		out.write(const_cast<char*>(value.c_str()), length);
@@ -91,7 +91,7 @@ namespace Spartan
 
 	void FileStream::Write(const vector<string>& value)
 	{
-		auto size = (uint32_t)value.size();
+		const auto size = static_cast<uint32_t>(value.size());
 		Write(size);
 
 		for (uint32_t i = 0; i < size; i++)
@@ -102,28 +102,28 @@ namespace Spartan
 
 	void FileStream::Write(const vector<RHI_Vertex_PosTexNorTan>& value)
 	{
-		auto length = (uint32_t)value.size();
+		const auto length = static_cast<uint32_t>(value.size());
 		Write(length);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(RHI_Vertex_PosTexNorTan) * length);
 	}
 
 	void FileStream::Write(const vector<uint32_t>& value)
 	{
-		auto length = (uint32_t)value.size();
+		const auto length = static_cast<uint32_t>(value.size());
 		Write(length);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(uint32_t) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned char>& value)
 	{
-		auto size = (uint32_t)value.size();
+		const auto size = static_cast<uint32_t>(value.size());
 		Write(size);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
 	}
 
 	void FileStream::Write(const vector<std::byte>& value)
 	{
-		auto size = (uint32_t)value.size();
+		const auto size = static_cast<uint32_t>(value.size());
 		Write(size);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(std::byte) * size);
 	}
@@ -225,7 +225,7 @@ namespace Spartan
 		vec->clear();
 		vec->shrink_to_fit();
 
-		auto length = ReadAs<uint32_t>();
+		const auto length = ReadAs<uint32_t>();
 
 		vec->reserve(length);
 		vec->resize(length);

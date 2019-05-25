@@ -310,7 +310,7 @@ namespace Spartan
 						} break;
 
 						case FT_PIXEL_MODE_GRAY: {					
-							atlas_buffer[atlas_pos] = static_cast<byte>(bitmap->buffer[x + y * bitmap->width]);
+							atlas_buffer[atlas_pos] = static_cast<std::byte>(bitmap->buffer[x + y * bitmap->width]);
 						} break;
 
 						case FT_PIXEL_MODE_BGRA: {

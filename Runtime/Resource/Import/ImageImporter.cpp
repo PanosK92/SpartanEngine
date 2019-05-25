@@ -45,7 +45,7 @@ namespace _ImagImporter
 		uint32_t width		= 0;
 		uint32_t height		= 0;
 		uint32_t channels	= 0;
-		vector<byte>* data	= nullptr;
+		vector<std::byte>* data	= nullptr;
 		bool done			= false;
 
 		RescaleJob(const uint32_t width, const uint32_t height, const uint32_t channels)
@@ -157,7 +157,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool ImageImporter::GetBitsFromFibitmap(vector<byte>* data, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channels)
+	bool ImageImporter::GetBitsFromFibitmap(vector<std::byte>* data, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channels)
 	{
 		if (!data || width == 0 || height == 0 || channels == 0)
 		{
