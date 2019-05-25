@@ -137,7 +137,7 @@ namespace Spartan
 
 	bool Camera::IsInViewFrustrum(Renderable* renderable)
 	{
-		const auto box		= renderable->GeometryAabb();
+		const auto box		= renderable->GetAabbTransformed();
 		const auto center	= box.GetCenter();
 		const auto extents	= box.GetExtents();
 

@@ -31,7 +31,20 @@ namespace Spartan
 	class RHI_PipelineCache
 	{
 	public:
-		RHI_PipelineCache(const std::shared_ptr<RHI_Device>& rhi_device) { m_rhi_device = rhi_device; }
+		RHI_PipelineCache(const std::shared_ptr<RHI_Device>& rhi_device)
+		{
+			m_rhi_device = rhi_device;
+		}
+
+		RHI_PipelineState& GetPipelineState()
+		{
+			/*if (m_cache_size >= m_cache.size())
+			{
+				m_cache.insert(RHI_PipelineState(), RHI_Pipeline());
+			}*/
+
+			return RHI_PipelineState();
+		}
 
 		RHI_Pipeline* GetPipeline(const RHI_PipelineState& pipeline_state)
 		{
@@ -47,6 +60,7 @@ namespace Spartan
 
 	private:
 		std::unordered_map<RHI_PipelineState, RHI_Pipeline> m_cache;
+		uint32_t m_cache_size = 0;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

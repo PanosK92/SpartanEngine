@@ -55,7 +55,7 @@ namespace Spartan::Math
 				continue;
 
 			// Get bounding box
-			auto aabb = entity->GetComponent<Renderable>()->GeometryAabb();
+			const auto& aabb = entity->GetComponent<Renderable>()->GetAabbTransformed();
 
 			// Compute hit distance
 			auto hit_distance = HitDistance(aabb);

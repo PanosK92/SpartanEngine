@@ -69,14 +69,16 @@ namespace ImGui::RHI
 	static shared_ptr<RHI_RasterizerState>		g_rasterizer_state;
 	static shared_ptr<RHI_BlendState>			g_blend_state;
 	static shared_ptr<RHI_Shader>				g_shader;
+	static shared_ptr<RHI_PipelineCache>		g_pipeline_cache;
 	static RHI_Viewport							g_viewport;
 
 	inline bool Initialize(Context* context, const float width, const float height)
 	{
-		g_context		= context;
-		g_renderer		= context->GetSubsystem<Renderer>().get();
-		g_cmd_list		= g_renderer->GetCmdList().get();
-		g_rhi_device	= g_renderer->GetRhiDevice();
+		g_context			= context;
+		g_renderer			= context->GetSubsystem<Renderer>().get();
+		g_pipeline_cache	= g_renderer->GetPipelineCache();
+		g_cmd_list			= g_renderer->GetCmdList().get();
+		g_rhi_device		= g_renderer->GetRhiDevice();
 		
 		if (!g_context || !g_rhi_device || !g_rhi_device->IsInitialized())
 		{
@@ -179,7 +181,7 @@ namespace ImGui::RHI
 
 		// Create pipeline
 		{
-			RHI_PipelineState state;
+			auto state					= g_pipeline_cache->GetPipelineState();
 			state.shader_vertex			= g_shader.get();
 			state.shader_pixel			= g_shader.get();
 			state.input_layout			= g_shader->GetInputLayout().get();
@@ -191,7 +193,7 @@ namespace ImGui::RHI
 			state.vertex_buffer			= g_vertex_buffer.get();
 			state.primitive_topology	= PrimitiveTopology_TriangleList;
 
-			g_pipeline = g_renderer->GetPipelineCache()->GetPipeline(state);
+			g_pipeline = g_pipeline_cache->GetPipeline(state);
 			g_pipeline->UpdateDescriptorSets(g_texture.get());
 		}
 

@@ -70,7 +70,7 @@ namespace Spartan
 		if (auto renderable = GetEntity_PtrRaw()->GetRenderable_PtrRaw())
 		{
 			m_center	= Vector3::Zero;
-			m_size		= renderable->GeometryAabb().GetSize();
+			m_size		= renderable->GetAabbTransformed().GetSize();
 		}
 
 		Shape_Update();

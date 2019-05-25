@@ -216,7 +216,7 @@ namespace Spartan
 
 		// Texture
 		void SetTextures(const uint32_t start_slot, const void* textures, uint32_t texture_count, bool is_array = true);
-		void SetTexture(const uint32_t slot, RHI_Texture* texture)							{ SetTextures(slot, texture ? texture->GetResource_Texture() : nullptr, 1, false); }
+		void SetTexture(const uint32_t slot, RHI_Texture* texture);
 		void SetTexture(const uint32_t slot, const std::shared_ptr<RHI_Texture>& texture)	{ SetTextures(slot, texture ? texture->GetResource_Texture() : nullptr, 1, false); }
 		void ClearTextures()																{ SetTextures(0, m_textures_empty.data(), static_cast<uint32_t>(m_textures_empty.size())); }
 
