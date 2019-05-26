@@ -63,32 +63,43 @@ namespace Spartan
 		m_cmd_list->Begin("Pass_Main");
 
 		Pass_LightDepth();
+
 		Pass_GBuffer();
+
 		Pass_PreLight
 		(
-			m_render_tex_half_spare,	// IN:	
+			m_render_tex_half_ssao1,	// IN:	
 			m_render_tex_half_shadows,	// OUT: Shadows
-			m_render_tex_half_ssao		// OUT: DO
+			m_render_tex_half_ssao2		// OUT: SSAO
 		);
+
 		Pass_Light
 		(
 			m_render_tex_half_shadows,	// IN:	Shadows
-			m_render_tex_half_ssao,		// IN:	SSAO
-			m_render_tex_full_hdr_light	// Out: Result
+			m_render_tex_half_ssao2,	// IN:	SSAO
+			m_render_tex_full_light		// Out: Result
 		);
-		Pass_Transparent(m_render_tex_full_hdr_light);
+
+		Pass_Transparent(m_render_tex_full_light);
+
 		Pass_PostLight
 		(
-			m_render_tex_full_hdr_light,	// IN:	Light pass result
-			m_render_tex_full_hdr_light2	// OUT: Result
+			m_render_tex_full_light,	// IN:	Light pass result
+			m_render_tex_full_final		// OUT: Result
 		);
-		Pass_Lines(m_render_tex_full_hdr_light2);
-		Pass_Gizmos(m_render_tex_full_hdr_light2);
-		Pass_DebugBuffer(m_render_tex_full_hdr_light2);
-		Pass_PerformanceMetrics(m_render_tex_full_hdr_light2);
+
+		Pass_Lines(m_render_tex_full_final);
+
+		Pass_Gizmos(m_render_tex_full_final);
+
+		Pass_DebugBuffer(m_render_tex_full_final);
+
+		Pass_PerformanceMetrics(m_render_tex_full_final);
 
 		m_cmd_list->End();
 		m_cmd_list->Submit();
+
+		m_render_tex_full_light.swap(m_render_tex_full_light_previous);
 	}
 
 	void Renderer::Pass_LightDepth()
@@ -337,7 +348,7 @@ namespace Spartan
 		m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
 		m_cmd_list->ClearRenderTarget(tex_shadows_out->GetResource_RenderTarget(), Vector4::One);
 
-		// SHADOW MAPPING + BLUR
+		// shadow mapping + blur
 		auto shadow_mapped = false;
 		auto& lights = m_entities[Renderable_Light];
 		for (uint32_t i = 0; i < lights.size(); i++)
@@ -356,7 +367,7 @@ namespace Spartan
 			m_cmd_list->ClearRenderTarget(tex_shadows_out->GetResource_RenderTarget(), Vector4::One);
 		}
 
-		// SSAO MAPPING + BLUR
+		// ssao + blur
 		if (m_flags & Render_PostProcess_SSAO)
 		{
 			Pass_SSAO(tex_in);
@@ -389,9 +400,9 @@ namespace Spartan
 		);
 
 		// Prepare resources
-		const auto shader				= static_pointer_cast<RHI_Shader>(shader_light);
-		vector<void*> samplers			= { m_sampler_trilinear_clamp->GetResource(), m_sampler_point_clamp->GetResource() };
-		vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  shader_light->GetConstantBuffer()->GetResource() };
+		const auto shader						= static_pointer_cast<RHI_Shader>(shader_light);
+		const vector<void*> samplers			= { m_sampler_trilinear_clamp->GetResource(), m_sampler_point_clamp->GetResource() };
+		const vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  shader_light->GetConstantBuffer()->GetResource() };
 		void* textures[] =
 		{
 			m_g_buffer_albedo->GetResource_Texture(),																		// Albedo	
@@ -400,7 +411,7 @@ namespace Spartan
 			m_g_buffer_material->GetResource_Texture(),																		// Material
 			tex_shadows->GetResource_Texture(),																				// Shadows
 			Flags_IsSet(Render_PostProcess_SSAO) ? tex_ssao->GetResource_Texture() : m_tex_white->GetResource_Texture(),	// SSAO
-			m_render_tex_full_hdr_light2->GetResource_Texture(),															// Previous frame
+			m_render_tex_full_light_previous->GetResource_Texture(),														// Previous frame
 			m_skybox ? m_skybox->GetTexture()->GetResource_Texture() : m_tex_white->GetResource_Texture(),					// Environment
 			m_tex_lut_ibl->GetResource_Texture()																			// LutIBL
 		};
@@ -905,10 +916,10 @@ namespace Spartan
 		m_cmd_list->Begin("Upscale");
 		{
 			// Prepare resources
-			SetDefaultBuffer(m_render_tex_half_spare2->GetWidth(), m_render_tex_half_spare2->GetHeight());
+			SetDefaultBuffer(m_render_tex_half_bloom->GetWidth(), m_render_tex_half_bloom->GetHeight());
 
-			m_cmd_list->SetRenderTarget(m_render_tex_half_spare2);
-			m_cmd_list->SetViewport(m_render_tex_half_spare2->GetViewport());
+			m_cmd_list->SetRenderTarget(m_render_tex_half_bloom);
+			m_cmd_list->SetViewport(m_render_tex_half_bloom->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_upsampleBox);
 			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur1);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -920,12 +931,12 @@ namespace Spartan
 		m_cmd_list->Begin("Upscale");
 		{
 			// Prepare resources
-			SetDefaultBuffer(m_render_tex_full_spare->GetWidth(), m_render_tex_full_spare->GetHeight());
+			SetDefaultBuffer(m_render_tex_full_bloom->GetWidth(), m_render_tex_full_bloom->GetHeight());
 
-			m_cmd_list->SetRenderTarget(m_render_tex_full_spare);
-			m_cmd_list->SetViewport(m_render_tex_full_spare->GetViewport());
+			m_cmd_list->SetRenderTarget(m_render_tex_full_bloom);
+			m_cmd_list->SetViewport(m_render_tex_full_bloom->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_upsampleBox);
-			m_cmd_list->SetTexture(0, m_render_tex_half_spare2);
+			m_cmd_list->SetTexture(0, m_render_tex_half_bloom);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
@@ -935,7 +946,7 @@ namespace Spartan
 		{
 			// Prepare resources
 			SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-			void* textures[] = { tex_in->GetResource_Texture(), m_render_tex_full_spare->GetResource_Texture() };
+			void* textures[] = { tex_in->GetResource_Texture(), m_render_tex_full_bloom->GetResource_Texture() };
 
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
@@ -1476,7 +1487,7 @@ namespace Spartan
 		{
 			if (Flags_IsSet(Render_PostProcess_SSAO))
 			{
-				m_cmd_list->SetTexture(0, m_render_tex_half_ssao);
+				m_cmd_list->SetTexture(0, m_render_tex_half_ssao2);
 			}
 			else
 			{

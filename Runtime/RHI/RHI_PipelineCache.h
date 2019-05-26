@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ============
+#include <memory>
 #include <unordered_map>
 #include "RHI_Pipeline.h"
 //=======================
@@ -36,31 +37,20 @@ namespace Spartan
 			m_rhi_device = rhi_device;
 		}
 
-		RHI_PipelineState& GetPipelineState()
+		auto& GetPipeline(const RHI_PipelineState& pipeline_state)
 		{
-			/*if (m_cache_size >= m_cache.size())
+			// If no pipeline exists for this state, create one
+			if (m_cache.find(pipeline_state) == m_cache.end())
 			{
-				m_cache.insert(RHI_PipelineState(), RHI_Pipeline());
-			}*/
-
-			return RHI_PipelineState();
-		}
-
-		RHI_Pipeline* GetPipeline(const RHI_PipelineState& pipeline_state)
-		{
-			// If no pipeline matches the pipeline state, create one
-			if (m_cache.find(pipeline_state) == m_cache.end()) 
-			{
-				m_cache[pipeline_state];
-				m_cache[pipeline_state] = RHI_Pipeline(m_rhi_device, m_cache.find(pipeline_state)->first);
+				m_cache[pipeline_state]; // Create key first so we can pass a reference to each value
+				m_cache[pipeline_state] = std::make_shared<RHI_Pipeline>(m_rhi_device, m_cache.find(pipeline_state)->first);
 			}
 
-			return &m_cache[pipeline_state];
+			return m_cache[pipeline_state];
 		}
 
 	private:
-		std::unordered_map<RHI_PipelineState, RHI_Pipeline> m_cache;
-		uint32_t m_cache_size = 0;
+		std::unordered_map<RHI_PipelineState, std::shared_ptr<RHI_Pipeline>> m_cache;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 	};
 }

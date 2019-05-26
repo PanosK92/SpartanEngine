@@ -45,14 +45,14 @@ namespace Spartan
 			return 
 				shader_vertex->GetId()			== rhs.shader_vertex->GetId()		&&
 				shader_pixel->GetId()			== rhs.shader_pixel->GetId()		&&
-				input_layout						== rhs.input_layout						&&
-				rasterizer_state					== rhs.rasterizer_state					&&
-				blend_state							== rhs.blend_state						&&
+				input_layout					== rhs.input_layout					&&
+				rasterizer_state				== rhs.rasterizer_state				&&
+				blend_state						== rhs.blend_state					&&
 				depth_stencil_state->GetId()	== rhs.depth_stencil_state->GetId()	&&
 				sampler->GetId()				== rhs.sampler->GetId()				&&
 				constant_buffer->GetId()		== rhs.constant_buffer->GetId()		&&
 				vertex_buffer->GetId()			== rhs.vertex_buffer->GetId()		&&
-				primitive_topology					== rhs.primitive_topology;
+				primitive_topology				== rhs.primitive_topology;
 		}
 
 		RHI_Shader* shader_vertex						= nullptr;

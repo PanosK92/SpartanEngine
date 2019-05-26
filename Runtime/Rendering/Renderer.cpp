@@ -228,22 +228,27 @@ namespace Spartan
 		m_g_buffer_velocity = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16_FLOAT);
 		m_g_buffer_depth	= make_shared<RHI_Texture2D>(m_context, width, height, Format_D32_FLOAT);
 
-		// Full res
-		m_render_tex_full_hdr_light		= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-		m_render_tex_full_hdr_light2	= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-		m_render_tex_full_taa_current	= make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-		m_render_tex_full_taa_history	= make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-		m_render_tex_full_spare			= make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+		// Full res	
+		m_render_tex_full_light				= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+		m_render_tex_full_light_previous	= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+		m_render_tex_full_taa_current		= make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_full_taa_history		= make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_full_final				= make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
 
 		// Half res
 		m_render_tex_half_shadows	= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);
-		m_render_tex_half_ssao		= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);
-		m_render_tex_half_spare		= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);
-		m_render_tex_half_spare2	= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R16G16B16A16_FLOAT);
-
+		
 		// Quarter res
 		m_render_tex_quarter_blur1 = make_unique<RHI_Texture2D>(m_context, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
 		m_render_tex_quarter_blur2 = make_unique<RHI_Texture2D>(m_context, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
+
+		// SSAO	
+		m_render_tex_half_ssao1 = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM); // Raw
+		m_render_tex_half_ssao2 = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM); // Blurred
+
+		// Spare textures for bloom
+		m_render_tex_full_bloom = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_half_bloom = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R16G16B16A16_FLOAT);
 	}
 
 	void Renderer::CreateShaders()
@@ -481,14 +486,14 @@ namespace Spartan
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-			m_cmd_list->ClearRenderTarget(m_render_tex_full_hdr_light2->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+			m_cmd_list->ClearRenderTarget(m_render_tex_full_final->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			return;
 		}
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-			m_cmd_list->ClearRenderTarget(m_render_tex_full_hdr_light2->GetResource_RenderTarget(), m_camera->GetClearColor());
+			m_cmd_list->ClearRenderTarget(m_render_tex_full_final->GetResource_RenderTarget(), m_camera->GetClearColor());
 			return;
 		}
 

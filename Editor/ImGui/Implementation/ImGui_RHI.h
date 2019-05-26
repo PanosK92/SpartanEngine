@@ -181,7 +181,7 @@ namespace ImGui::RHI
 
 		// Create pipeline
 		{
-			auto state					= g_pipeline_cache->GetPipelineState();
+			RHI_PipelineState state		= {};
 			state.shader_vertex			= g_shader.get();
 			state.shader_pixel			= g_shader.get();
 			state.input_layout			= g_shader->GetInputLayout().get();
@@ -193,7 +193,7 @@ namespace ImGui::RHI
 			state.vertex_buffer			= g_vertex_buffer.get();
 			state.primitive_topology	= PrimitiveTopology_TriangleList;
 
-			g_pipeline = g_pipeline_cache->GetPipeline(state);
+			g_pipeline = g_pipeline_cache->GetPipeline(state).get();
 			g_pipeline->UpdateDescriptorSets(g_texture.get());
 		}
 

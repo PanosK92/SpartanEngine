@@ -45,10 +45,11 @@ namespace Spartan
 		auto GetDescriptorSet()						{ return !m_descriptor_set_cache.empty() ? m_descriptor_set_cache.begin()->second : nullptr; }
 
 	private:
+		bool CreateRenderPass();
 		bool CreateDescriptorPool();
 		bool CreateDescriptorSetLayout();
 		void ReflectShaders();
-
+		
 		// API
 		void* m_pipeline					= nullptr;
 		void* m_pipeline_layout				= nullptr;
