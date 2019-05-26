@@ -214,7 +214,7 @@ namespace Spartan
 		//================================================================
 
 		//= MISC ===============================================================================================================
-		auto GetFrameTexture() const	{ return m_render_tex_full_hdr_light2.get(); }
+		auto GetFrameTexture() const	{ return m_render_tex_full_final.get(); }
 		static auto IsRendering()		{ return m_is_rendering; }
 		auto GetFrameNum() const		{ return m_frame_num; }
 		const auto& GetCamera() const	{ return m_camera; }
@@ -265,7 +265,7 @@ namespace Spartan
 		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out);
 		//==================================================================================================================================================================
 
-		//= RENDER TEXTURES =======================================
+		//= RENDER TEXTURES ==========================================
 		// G-Buffer
 		std::shared_ptr<RHI_Texture> m_g_buffer_albedo;
 		std::shared_ptr<RHI_Texture> m_g_buffer_normal;
@@ -273,20 +273,21 @@ namespace Spartan
 		std::shared_ptr<RHI_Texture> m_g_buffer_velocity;
 		std::shared_ptr<RHI_Texture> m_g_buffer_depth;
 		// 1/1
-		std::shared_ptr<RHI_Texture> m_render_tex_full_hdr_light;
-		std::shared_ptr<RHI_Texture> m_render_tex_full_hdr_light2;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_light;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_light_previous;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_final;
 		std::shared_ptr<RHI_Texture> m_render_tex_full_taa_current;
 		std::shared_ptr<RHI_Texture> m_render_tex_full_taa_history;
-		std::shared_ptr<RHI_Texture> m_render_tex_full_spare;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_bloom;
 		// 1/2
 		std::shared_ptr<RHI_Texture> m_render_tex_half_shadows;
-		std::shared_ptr<RHI_Texture> m_render_tex_half_ssao;
-		std::shared_ptr<RHI_Texture> m_render_tex_half_spare;
-		std::shared_ptr<RHI_Texture> m_render_tex_half_spare2;
+		std::shared_ptr<RHI_Texture> m_render_tex_half_ssao2;
+		std::shared_ptr<RHI_Texture> m_render_tex_half_ssao1;
+		std::shared_ptr<RHI_Texture> m_render_tex_half_bloom;
 		// 1/4
 		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur1;
 		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur2;
-		//=========================================================
+		//============================================================
 		
 		//= SHADERS =================================================
 		std::map<Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
