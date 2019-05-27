@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
-#include "../../Core/Settings.h"
 //==============================
 
 //= NAMESPACES ================
@@ -42,12 +41,11 @@ namespace Spartan
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
 		const std::shared_ptr<RHI_Device>& device,
-		uint32_t width,
-		uint32_t height,
-		const  RHI_Format format		/*= Format_R8G8B8A8_UNORM*/,
-		RHI_Present_Mode present_mode	/*= Present_Off */,
-		const uint32_t buffer_count	/*= 1 */,
-		void* render_pass				/*= nullptr */
+		const uint32_t width,
+		const uint32_t height,
+		const  RHI_Format format			/*= Format_R8G8B8A8_UNORM*/,
+		const RHI_Present_Mode present_mode	/*= Present_Off */,
+		const uint32_t buffer_count			/*= 1 */
 	)
 	{
 		const auto hwnd	= static_cast<HWND>(window_handle);
@@ -211,7 +209,7 @@ namespace Spartan
 			dxgi_mode_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 
 			// Resize swapchain target
-			auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
+			const auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("Failed to resize swapchain target, %s.", D3D11_Common::dxgi_error_to_string(result));
@@ -220,7 +218,7 @@ namespace Spartan
 		}
 	
 		// Resize swapchain buffers
-		UINT d3d11_flags = D3D11_Common::swap_chain::flag_to_d3d11(D3D11_Common::swap_chain::flag_filter(m_rhi_device.get(), m_flags));
+		const UINT d3d11_flags = D3D11_Common::swap_chain::flag_to_d3d11(D3D11_Common::swap_chain::flag_filter(m_rhi_device.get(), m_flags));
 		auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
 		if (FAILED(result))
 		{
@@ -250,7 +248,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(void* semaphore_wait)
+	bool RHI_SwapChain::Present(void* semaphore_render_finished) const
 	{
 		if (!m_swap_chain_view)
 		{
@@ -258,9 +256,9 @@ namespace Spartan
 			return false;
 		}
 
-		bool tearing_allowed	= m_flags & SwapChain_Allow_Tearing;
-		UINT flags				= (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
-		auto ptr_swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
+		const bool tearing_allowed	= m_flags & SwapChain_Allow_Tearing;
+		const UINT flags			= (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+		auto ptr_swap_chain			= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 
 		ptr_swap_chain->Present(static_cast<UINT>(m_present_mode), flags);
 		return true;
