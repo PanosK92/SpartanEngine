@@ -57,7 +57,6 @@ namespace ImGui::RHI
 	RHI_CommandList* g_cmd_list	= nullptr;
 
 	// RHI Data	
-	static RHI_Pipeline*						g_pipeline = nullptr;
 	static shared_ptr<RHI_Device>				g_rhi_device;
 	static shared_ptr<RHI_SwapChain>			g_swap_chain;	
 	static shared_ptr<RHI_Texture>				g_texture;
@@ -155,39 +154,21 @@ namespace ImGui::RHI
 			// Create swap chain
 			{
 				g_swap_chain = make_shared<RHI_SwapChain>
-					(
-						Settings::Get().GetWindowHandle(),
-						g_rhi_device,
-						static_cast<uint32_t>(width),
-						static_cast<uint32_t>(height),
-						Format_R8G8B8A8_UNORM,
-						Present_Immediate,
-						2
-						);
+				(
+					Settings::Get().GetWindowHandle(),
+					g_rhi_device,
+					static_cast<uint32_t>(width),
+					static_cast<uint32_t>(height),
+					Format_R8G8B8A8_UNORM,
+					Present_Immediate,
+					2
+				);
 
 				if (!g_swap_chain->IsInitialized())
 				{
 					LOG_ERROR("Failed to create swap chain");
 					return false;
 				}
-			}
-
-			// Create pipeline
-			{
-				RHI_PipelineState state		= {};
-				state.shader_vertex			= g_shader.get();
-				state.shader_pixel			= g_shader.get();
-				state.input_layout			= g_shader->GetInputLayout().get();
-				state.constant_buffer		= g_constant_buffer.get();
-				state.rasterizer_state		= g_rasterizer_state.get();
-				state.blend_state			= g_blend_state.get();
-				state.depth_stencil_state	= g_depth_stencil_state.get();
-				state.sampler				= g_sampler.get();
-				state.vertex_buffer			= g_vertex_buffer.get();
-				state.primitive_topology	= PrimitiveTopology_TriangleList;
-				state.render_pass			= g_swap_chain->GetRenderPass();
-
-				g_pipeline = g_pipeline_cache->GetPipeline(state).get();
 			}
 		}
 
@@ -298,18 +279,34 @@ namespace ImGui::RHI
 		g_viewport.width	= draw_data->DisplaySize.x;
 		g_viewport.height	= draw_data->DisplaySize.y;
 
+		// Deduce swap chain
 		const auto is_main_viewport = (swap_chain_other == nullptr);
-		const auto _render_target	= is_main_viewport ? g_swap_chain->GetRenderTargetView() : swap_chain_other->GetRenderTargetView();
-		g_cmd_list->Begin("Pass_ImGui", g_pipeline->GetState()->render_pass, g_swap_chain.get());
-		g_cmd_list->SetRenderTarget(_render_target);
-		if (clear) g_cmd_list->ClearRenderTarget(_render_target, Vector4(0, 0, 0, 1));
-		g_cmd_list->SetPipeline(g_pipeline);
+		const auto swap_chain		= is_main_viewport ? g_swap_chain.get() : swap_chain_other;
+
+		// Setup pipeline
+		RHI_PipelineState state		= {};
+		state.shader_vertex			= g_shader.get();
+		state.shader_pixel			= g_shader.get();
+		state.input_layout			= g_shader->GetInputLayout().get();
+		state.constant_buffer		= g_constant_buffer.get();
+		state.rasterizer_state		= g_rasterizer_state.get();
+		state.blend_state			= g_blend_state.get();
+		state.depth_stencil_state	= g_depth_stencil_state.get();
+		state.sampler				= g_sampler.get();
+		state.vertex_buffer			= g_vertex_buffer.get();
+		state.primitive_topology	= PrimitiveTopology_TriangleList;
+		state.swap_chain			= swap_chain;
+
+		// Start witting command list
+		g_cmd_list->Begin("Pass_ImGui", g_pipeline_cache->GetPipeline(state).get());
+		g_cmd_list->SetRenderTarget(swap_chain->GetRenderTargetView());
+		if (clear) g_cmd_list->ClearRenderTarget(swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));	
 		g_cmd_list->SetViewport(g_viewport);
 		g_cmd_list->SetBufferVertex(g_vertex_buffer);
 		g_cmd_list->SetBufferIndex(g_index_buffer);
 		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constant_buffer);
 		g_cmd_list->SetSampler(0, g_sampler);
-
+		
 		// Render command lists
 		unsigned int vtx_offset = 0;
 		unsigned int idx_offset = 0;

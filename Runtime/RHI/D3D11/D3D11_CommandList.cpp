@@ -59,8 +59,20 @@ namespace Spartan
 
 	RHI_CommandList::~RHI_CommandList() = default;
 
-	void RHI_CommandList::Begin(const string& pass_name, void* render_pass, RHI_SwapChain* swap_chain)
+	void RHI_CommandList::Begin(const string& pass_name, RHI_Pipeline* pipeline)
 	{
+		if (pipeline)
+		{
+			SetViewport(pipeline->GetState()->viewport);
+			SetBlendState(pipeline->GetState()->blend_state);
+			SetDepthStencilState(pipeline->GetState()->depth_stencil_state);
+			SetRasterizerState(pipeline->GetState()->rasterizer_state);
+			SetInputLayout(pipeline->GetState()->shader_vertex->GetInputLayout());
+			SetShaderVertex(pipeline->GetState()->shader_vertex);
+			SetShaderPixel(pipeline->GetState()->shader_pixel);
+			SetPrimitiveTopology(pipeline->GetState()->primitive_topology);
+		}
+
 		auto& cmd			= GetCmd();
 		cmd.type			= RHI_Cmd_Begin;
 		cmd.pass_name		= pass_name;
@@ -86,18 +98,6 @@ namespace Spartan
 		cmd.index_count		= index_count;
 		cmd.index_offset	= index_offset;
 		cmd.vertex_offset	= vertex_offset;
-	}
-
-	void RHI_CommandList::SetPipeline(RHI_Pipeline* pipeline)
-	{
-		SetViewport(pipeline->GetState()->viewport);
-		SetBlendState(pipeline->GetState()->blend_state);
-		SetDepthStencilState(pipeline->GetState()->depth_stencil_state);
-		SetRasterizerState(pipeline->GetState()->rasterizer_state);
-		SetInputLayout(pipeline->GetState()->shader_vertex->GetInputLayout());
-		SetShaderVertex(pipeline->GetState()->shader_vertex);
-		SetShaderPixel(pipeline->GetState()->shader_pixel);
-		SetPrimitiveTopology(pipeline->GetState()->primitive_topology);
 	}
 
 	void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)

@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "../RHI_Pipeline.h"
 #include "../RHI_Device.h"
+#include "../RHI_SwapChain.h"
 #include "../RHI_Shader.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_RasterizerState.h"
@@ -208,7 +209,7 @@ namespace Spartan
 		pipeline_info.pMultisampleState				= &multisampling_state;
 		pipeline_info.pColorBlendState				= &color_blend_State;
 		pipeline_info.layout						= *pipeline_layout;
-		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->render_pass);
+		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->swap_chain->GetRenderPass());
 		pipeline_info.subpass						= 0;
 		pipeline_info.basePipelineHandle			= nullptr;
 

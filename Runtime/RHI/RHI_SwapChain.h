@@ -50,16 +50,16 @@ namespace Spartan
 		bool AcquireNextImage();
 		bool Present(void* semaphore_render_finished) const;
 
-		auto GetWidth()								const	{ return m_width; }
-		auto GetHeight()							const	{ return m_height; }
-		auto IsInitialized()						const	{ return m_initialized; }
-		auto GetSwapChainView()						const	{ return m_swap_chain_view; }
-		auto GetRenderTargetView()					const	{ return m_render_target_view; }
-		auto GetRenderPass()						const	{ return m_render_pass; }
-		auto GetBufferCount()						const	{ return m_buffer_count; }
-		auto& GetFrameBuffer(const uint32_t index)			{ return m_frame_buffers[index]; }
-		auto& GetSemaphoreImageAcquired()					{ return m_semaphores_image_acquired[m_image_index]; }
-		auto& GetImageIndex()								{ return m_image_index; }
+		auto GetWidth()				const	{ return m_width; }
+		auto GetHeight()			const	{ return m_height; }
+		auto IsInitialized()		const	{ return m_initialized; }
+		auto GetSwapChainView()		const	{ return m_swap_chain_view; }
+		auto GetRenderTargetView()	const	{ return m_render_target_view; }
+		auto GetRenderPass()		const	{ return m_render_pass; }
+		auto GetBufferCount()		const	{ return m_buffer_count; }
+		auto& GetFrameBuffer()				{ return m_frame_buffers[m_image_index]; }
+		auto& GetSemaphoreImageAcquired()	{ return m_semaphores_image_acquired[m_image_index]; }
+		auto& GetImageIndex()				{ return m_image_index; }
 
 	private:
 		bool CreateRenderPass();
@@ -85,6 +85,6 @@ namespace Spartan
 		std::vector<void*> m_semaphores_image_acquired;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;
-		bool m_first_run = true;
+		bool image_acquired = false;
 	};
 }
