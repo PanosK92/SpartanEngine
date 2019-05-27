@@ -52,9 +52,6 @@ namespace Spartan
 		// State deduction
 		auto dynamic_viewport_scissor = !m_state->viewport.IsDefined();
 
-		// Create render pass
-		CreateRenderPass();
-
 		// Dynamic viewport and scissor states
 		vector<VkDynamicState> dynamic_states =
 		{
@@ -211,7 +208,7 @@ namespace Spartan
 		pipeline_info.pMultisampleState				= &multisampling_state;
 		pipeline_info.pColorBlendState				= &color_blend_State;
 		pipeline_info.layout						= *pipeline_layout;
-		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_render_pass);
+		pipeline_info.renderPass					= static_cast<VkRenderPass>(m_state->render_pass);
 		pipeline_info.subpass						= 0;
 		pipeline_info.basePipelineHandle			= nullptr;
 
@@ -229,9 +226,6 @@ namespace Spartan
 
 		vkDestroyPipelineLayout(m_rhi_device->GetContext()->device, static_cast<VkPipelineLayout>(m_pipeline_layout), nullptr);
 		m_pipeline_layout = nullptr;
-
-		vkDestroyRenderPass(m_rhi_device->GetContext()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
-		m_render_pass = nullptr;
 
 		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
 		m_descriptor_set_layout = nullptr;
@@ -332,71 +326,6 @@ namespace Spartan
 		m_descriptor_set_capacity *= 2;
 		CreateDescriptorPool();
 		CreateDescriptorSetLayout();
-	}
-
-	bool RHI_Pipeline::CreateRenderPass()
-	{
-		VkAttachmentDescription color_attachment	= {};
-		color_attachment.format						= VK_FORMAT_B8G8R8A8_UNORM; // this has to come from the swapchain
-		color_attachment.samples					= VK_SAMPLE_COUNT_1_BIT;
-		color_attachment.loadOp						= VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment.storeOp					= VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.stencilLoadOp				= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		color_attachment.stencilStoreOp				= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		color_attachment.initialLayout				= VK_IMAGE_LAYOUT_UNDEFINED;
-		color_attachment.finalLayout				= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-		VkAttachmentReference color_attachment_ref	= {};
-		color_attachment_ref.attachment				= 0;
-		color_attachment_ref.layout					= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDescription subpass	= {};
-		subpass.pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount	= 1;
-		subpass.pColorAttachments		= &color_attachment_ref;
-
-		// Sub-pass dependencies for layout transitions
-		vector<VkSubpassDependency> dependencies
-		{
-			VkSubpassDependency
-			{
-				VK_SUBPASS_EXTERNAL,														// uint32_t srcSubpass;
-				0,																			// uint32_t dstSubpass;
-				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags srcStageMask;
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags dstStageMask;
-				VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags srcAccessMask;
-				VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags dstAccessMask;
-				VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
-			},
-
-			VkSubpassDependency
-			{
-				0,																			// uint32_t srcSubpass;
-				VK_SUBPASS_EXTERNAL,														// uint32_t dstSubpass;
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags srcStageMask;
-				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags dstStageMask;
-				VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags srcAccessMask;
-				VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags dstAccessMask;
-				VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
-			},
-		};
-
-		VkRenderPassCreateInfo render_pass_info = {};
-		render_pass_info.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		render_pass_info.attachmentCount		= 1;
-		render_pass_info.pAttachments			= &color_attachment;
-		render_pass_info.subpassCount			= 1;
-		render_pass_info.pSubpasses				= &subpass;
-		render_pass_info.dependencyCount		= static_cast<uint32_t>(dependencies.size());
-		render_pass_info.pDependencies			= dependencies.data();
-
-		auto render_pass = reinterpret_cast<VkRenderPass*>(&m_render_pass);
-		if (vkCreateRenderPass(m_rhi_device->GetContext()->device, &render_pass_info, nullptr, render_pass) != VK_SUCCESS)
-		{
-			LOG_ERROR("Failed to create render pass");
-			return false;
-		}
-		return true;
 	}
 
 	bool RHI_Pipeline::CreateDescriptorPool()

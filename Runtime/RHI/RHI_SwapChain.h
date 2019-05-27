@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include <memory>
 #include <vector>
 #include "RHI_Definition.h"
 #include "../Core/Spartan_Object.h"
-//=============================
+//=================================
 
 namespace Spartan
 {
@@ -42,38 +42,40 @@ namespace Spartan
 			uint32_t height,
 			RHI_Format format				= Format_R8G8B8A8_UNORM,
 			RHI_Present_Mode present_mode	= Present_Immediate,
-			uint32_t buffer_count			= 1,		
-			void* render_pass				= nullptr
+			uint32_t buffer_count			= 1
 		);
 		~RHI_SwapChain();
 
 		bool Resize(uint32_t width, uint32_t height);
 		bool AcquireNextImage();
-		bool Present(void* semaphore_render_finished);
+		bool Present(void* semaphore_render_finished) const;
 
 		auto GetWidth()								const	{ return m_width; }
 		auto GetHeight()							const	{ return m_height; }
 		auto IsInitialized()						const	{ return m_initialized; }
 		auto GetSwapChainView()						const	{ return m_swap_chain_view; }
 		auto GetRenderTargetView()					const	{ return m_render_target_view; }
+		auto GetRenderPass()						const	{ return m_render_pass; }
 		auto GetBufferCount()						const	{ return m_buffer_count; }
 		auto& GetFrameBuffer(const uint32_t index)			{ return m_frame_buffers[index]; }
 		auto& GetSemaphoreImageAcquired()					{ return m_semaphores_image_acquired[m_image_index]; }
 		auto& GetImageIndex()								{ return m_image_index; }
 
 	private:
-		bool m_initialized			= false;
-		bool m_windowed				= false;
-		uint32_t m_buffer_count		= 0;		
-		uint32_t m_max_resolution	= 16384;
-		uint32_t m_width			= 0;
-		uint32_t m_height			= 0;
-		uint32_t m_flags			= 0;
-		RHI_Format m_format;
-		RHI_Present_Mode m_present_mode;
-		std::shared_ptr<RHI_Device> m_rhi_device;
+		bool CreateRenderPass();
 
+		bool m_initialized					= false;
+		bool m_windowed						= false;
+		uint32_t m_buffer_count				= 0;		
+		uint32_t m_max_resolution			= 16384;
+		uint32_t m_width					= 0;
+		uint32_t m_height					= 0;
+		uint32_t m_flags					= 0;
+		RHI_Format m_format					= Format_R8G8B8A8_UNORM;
+		RHI_Present_Mode m_present_mode		= Present_Immediate;
+		
 		// API
+		std::shared_ptr<RHI_Device> m_rhi_device;
 		void* m_swap_chain_view		= nullptr;
 		void* m_render_target_view	= nullptr;
 		void* m_surface				= nullptr;	

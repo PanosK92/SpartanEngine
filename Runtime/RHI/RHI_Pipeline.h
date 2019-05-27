@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "RHI_PipelineState.h"
+#include "RHI_PipelineCache.h"
 //============================
 
 namespace Spartan
@@ -39,13 +39,11 @@ namespace Spartan
 
 		auto GetPipeline() const					{ return m_pipeline; }
 		auto GetPipelineLayout() const				{ return m_pipeline_layout; }
-		auto GetRenderPass() const					{ return m_render_pass; }
 		auto GetState() const						{ return m_state; }
 		auto GetDescriptorSet(const uint32_t id) 	{ return m_descriptor_set_cache.count(id) ? m_descriptor_set_cache[id] : nullptr; }
 		auto GetDescriptorSet()						{ return !m_descriptor_set_cache.empty() ? m_descriptor_set_cache.begin()->second : nullptr; }
 
 	private:
-		bool CreateRenderPass();
 		bool CreateDescriptorPool();
 		bool CreateDescriptorSetLayout();
 		void ReflectShaders();
@@ -53,7 +51,6 @@ namespace Spartan
 		// API
 		void* m_pipeline					= nullptr;
 		void* m_pipeline_layout				= nullptr;
-		void* m_render_pass					= nullptr;
 		void* m_descriptor_pool				= nullptr;
 		void* m_descriptor_set_layout		= nullptr;
 		std::map<uint32_t, void*> m_descriptor_set_cache;

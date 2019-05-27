@@ -21,11 +21,82 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES =====================
 #include <memory>
 #include <unordered_map>
+#include "../Math/Rectangle.h"
 #include "RHI_Pipeline.h"
-//=======================
+#include "RHI_Shader.h"
+#include "RHI_Sampler.h"
+#include "RHI_Viewport.h"
+#include "RHI_Definition.h"
+#include "RHI_BlendState.h"
+#include "RHI_InputLayout.h"
+#include "RHI_VertexBuffer.h"
+#include "RHI_ConstantBuffer.h"
+#include "RHI_RasterizerState.h"
+#include "RHI_DepthStencilState.h"
+//================================
+
+namespace Spartan
+{
+	class RHI_PipelineState
+	{
+	public:
+		void ComputeHash()
+		{
+			// todo:: input layout, rasterizer state, blend state, render_pass, viewport, scissor
+			char buffer[1000];
+			sprintf_s
+			(
+				buffer,
+				"%d-%d-%d-%d-%d-%d-%d",
+				shader_vertex->GetId(),
+				shader_pixel->GetId(),
+				depth_stencil_state->GetId(),
+				vertex_buffer->GetId(),
+				sampler->GetId(),
+				constant_buffer->GetId(),
+				static_cast<uint32_t>(primitive_topology)
+			);
+
+			const std::hash<std::string> hasher;
+			m_hash = static_cast<uint32_t>(hasher(buffer));
+		}
+
+		auto GetHash() const { return m_hash; }
+		bool operator==(const RHI_PipelineState& rhs) const { return GetHash() == rhs.GetHash(); }
+
+		RHI_Shader* shader_vertex						= nullptr;
+		RHI_Shader* shader_pixel						= nullptr;
+		RHI_InputLayout* input_layout					= nullptr;
+		RHI_RasterizerState* rasterizer_state			= nullptr;
+		RHI_BlendState* blend_state						= nullptr;
+		RHI_DepthStencilState* depth_stencil_state		= nullptr;
+		RHI_Sampler* sampler							= nullptr;
+		RHI_ConstantBuffer* constant_buffer				= nullptr;
+		RHI_VertexBuffer* vertex_buffer					= nullptr;
+		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;
+		void* render_pass								= nullptr;
+		RHI_Viewport viewport;
+		Math::Rectangle scissor;
+
+	private:
+		uint32_t m_hash = 0;
+	};
+}
+
+// Hash function so RHI_PipelineState can be used as key in the unordered map of RHI_PipelineCache
+namespace std
+{
+	template<> struct hash<Spartan::RHI_PipelineState>
+	{
+		size_t operator()(Spartan::RHI_PipelineState const& state) const noexcept
+		{
+			return static_cast<size_t>(state.GetHash());
+		}
+	};
+}
 
 namespace Spartan
 {
@@ -37,8 +108,13 @@ namespace Spartan
 			m_rhi_device = rhi_device;
 		}
 
-		auto& GetPipeline(const RHI_PipelineState& pipeline_state)
+		auto& GetPipeline(RHI_PipelineState& pipeline_state)
 		{
+			if (pipeline_state.GetHash() == 0)
+			{
+				pipeline_state.ComputeHash();
+			}
+
 			// If no pipeline exists for this state, create one
 			if (m_cache.find(pipeline_state) == m_cache.end())
 			{

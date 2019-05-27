@@ -129,7 +129,7 @@ namespace Spartan
 			create_info.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 			create_info.presentMode		= Vulkan_Common::swap_chain::choose_present_mode(static_cast<VkPresentModeKHR>(present_mode), swap_chain_support.present_modes);
 			create_info.clipped			= VK_TRUE;
-			create_info.oldSwapchain	= VK_NULL_HANDLE;
+			create_info.oldSwapchain	= nullptr;
 
 			auto result = vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain);
 			if (result != VK_SUCCESS)
@@ -149,7 +149,7 @@ namespace Spartan
 		}
 
 		// Image views
-		bool swizzle = true;
+		auto swizzle = true;
 		vector<VkImageView> swap_chain_image_views;
 		{
 			swap_chain_image_views.resize(swap_chain_images.size());
@@ -236,12 +236,11 @@ namespace Spartan
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
 		const std::shared_ptr<RHI_Device>& rhi_device,
-		uint32_t width,
-		uint32_t height,
-		const RHI_Format format			/*= Format_R8G8B8A8_UNORM */,
-		RHI_Present_Mode present_mode	/*= Present_Off */,
-		const uint32_t buffer_count		/*= 1 */,
-		void* render_pass				/*= nullptr */
+		const uint32_t width,
+		const uint32_t height,
+		const RHI_Format format				/*= Format_R8G8B8A8_UNORM */,
+		const RHI_Present_Mode present_mode	/*= Present_Off */,
+		const uint32_t buffer_count			/*= 1 */
 	)
 	{
 		const auto hwnd = static_cast<HWND>(window_handle);
@@ -257,9 +256,11 @@ namespace Spartan
 		m_buffer_count	= buffer_count;
 		m_width			= width;
 		m_height		= height;
-		m_render_pass	= render_pass;
 		m_window_handle	= window_handle;
 		m_present_mode	= present_mode;
+
+		if (!CreateRenderPass())
+			return;
 
 		m_initialized = _Create
 		(
@@ -290,6 +291,12 @@ namespace Spartan
 			m_frame_buffers,
 			m_semaphores_image_acquired
 		);
+
+		if (m_render_pass)
+		{
+			vkDestroyRenderPass(m_rhi_device->GetContext()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
+			m_render_pass = nullptr;
+		}
 	}
 
 	bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
@@ -338,16 +345,16 @@ namespace Spartan
 	{
 		// Make index that always matches the m_image_index after vkAcquireNextImageKHR.
 		// This is so getting semaphores and fences can be done by using m_image_index.
-		auto index = m_first_run ? 0 : (m_image_index + 1) % m_buffer_count;
+		const auto index = m_first_run ? 0 : (m_image_index + 1) % m_buffer_count;
 
 		// Acquire next image
-		auto result = vkAcquireNextImageKHR
+		const auto result = vkAcquireNextImageKHR
 		(
 			m_rhi_device->GetContext()->device,
 			static_cast<VkSwapchainKHR>(m_swap_chain_view),
 			0xFFFFFFFFFFFFFFFF,
 			static_cast<VkSemaphore>(m_semaphores_image_acquired[index]),
-			VK_NULL_HANDLE,
+			nullptr,
 			&m_image_index
 		);
 
@@ -361,7 +368,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(void* semaphore_render_finished)
+	bool RHI_SwapChain::Present(void* semaphore_render_finished) const
 	{	
 		vector<VkSwapchainKHR> swap_chains	= { static_cast<VkSwapchainKHR>(m_swap_chain_view) };
 		vector<VkSemaphore> semaphores_wait	= { static_cast<VkSemaphore>(semaphore_render_finished) };
@@ -372,15 +379,80 @@ namespace Spartan
 		present_info.pWaitSemaphores	= semaphores_wait.data();
 		present_info.swapchainCount		= static_cast<uint32_t>(swap_chains.size());
 		present_info.pSwapchains		= swap_chains.data();
-		present_info.pImageIndices		= &m_image_index;		
+		present_info.pImageIndices		= &m_image_index;
 
-		auto result = vkQueuePresentKHR(m_rhi_device->GetContext()->queue_present, &present_info);
+		const auto result = vkQueuePresentKHR(m_rhi_device->GetContext()->queue_present, &present_info);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to present, %s.", Vulkan_Common::result_to_string(result));
 		}
 
 		return result == VK_SUCCESS;
+	}
+
+	bool RHI_SwapChain::CreateRenderPass()
+	{
+		VkAttachmentDescription color_attachment	= {};
+		color_attachment.format						= VK_FORMAT_B8G8R8A8_UNORM; // this has to come from the swapchain
+		color_attachment.samples					= VK_SAMPLE_COUNT_1_BIT;
+		color_attachment.loadOp						= VK_ATTACHMENT_LOAD_OP_CLEAR;
+		color_attachment.storeOp					= VK_ATTACHMENT_STORE_OP_STORE;
+		color_attachment.stencilLoadOp				= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		color_attachment.stencilStoreOp				= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		color_attachment.initialLayout				= VK_IMAGE_LAYOUT_UNDEFINED;
+		color_attachment.finalLayout				= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		VkAttachmentReference color_attachment_ref	= {};
+		color_attachment_ref.attachment				= 0;
+		color_attachment_ref.layout					= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass	= {};
+		subpass.pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount	= 1;
+		subpass.pColorAttachments		= &color_attachment_ref;
+
+		// Sub-pass dependencies for layout transitions
+		vector<VkSubpassDependency> dependencies
+		{
+			VkSubpassDependency
+			{
+				VK_SUBPASS_EXTERNAL,														// uint32_t srcSubpass;
+				0,																			// uint32_t dstSubpass;
+				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags srcStageMask;
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags dstStageMask;
+				VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags srcAccessMask;
+				VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags dstAccessMask;
+				VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
+			},
+
+			VkSubpassDependency
+			{
+				0,																			// uint32_t srcSubpass;
+				VK_SUBPASS_EXTERNAL,														// uint32_t dstSubpass;
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,								// PipelineStageFlags srcStageMask;
+				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,										// PipelineStageFlags dstStageMask;
+				VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,	// AccessFlags srcAccessMask;
+				VK_ACCESS_MEMORY_READ_BIT,													// AccessFlags dstAccessMask;
+				VK_DEPENDENCY_BY_REGION_BIT													// DependencyFlags dependencyFlags;
+			},
+		};
+
+		VkRenderPassCreateInfo render_pass_info = {};
+		render_pass_info.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		render_pass_info.attachmentCount		= 1;
+		render_pass_info.pAttachments			= &color_attachment;
+		render_pass_info.subpassCount			= 1;
+		render_pass_info.pSubpasses				= &subpass;
+		render_pass_info.dependencyCount		= static_cast<uint32_t>(dependencies.size());
+		render_pass_info.pDependencies			= dependencies.data();
+
+		const auto render_pass = reinterpret_cast<VkRenderPass*>(&m_render_pass);
+		if (vkCreateRenderPass(m_rhi_device->GetContext()->device, &render_pass_info, nullptr, render_pass) != VK_SUCCESS)
+		{
+			LOG_ERROR("Failed to create render pass");
+			return false;
+		}
+		return true;
 	}
 }
 #endif
