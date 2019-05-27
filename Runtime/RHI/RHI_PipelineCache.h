@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Shader.h"
 #include "RHI_Sampler.h"
 #include "RHI_Viewport.h"
+#include "RHI_SwapChain.h"
 #include "RHI_Definition.h"
 #include "RHI_BlendState.h"
 #include "RHI_InputLayout.h"
@@ -45,18 +46,19 @@ namespace Spartan
 	public:
 		void ComputeHash()
 		{
-			// todo:: input layout, rasterizer state, blend state, render_pass, viewport, scissor
+			// todo:: input layout, rasterizer state, blend state, swap chain, viewport, scissor
 			char buffer[1000];
 			sprintf_s
 			(
 				buffer,
-				"%d-%d-%d-%d-%d-%d-%d",
+				"%d-%d-%d-%d-%d-%d-%d-%d",
 				shader_vertex->GetId(),
 				shader_pixel->GetId(),
 				depth_stencil_state->GetId(),
 				vertex_buffer->GetId(),
 				sampler->GetId(),
 				constant_buffer->GetId(),
+				swap_chain->GetId(),
 				static_cast<uint32_t>(primitive_topology)
 			);
 
@@ -76,8 +78,8 @@ namespace Spartan
 		RHI_Sampler* sampler							= nullptr;
 		RHI_ConstantBuffer* constant_buffer				= nullptr;
 		RHI_VertexBuffer* vertex_buffer					= nullptr;
+		RHI_SwapChain* swap_chain						= nullptr;
 		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;
-		void* render_pass								= nullptr;
 		RHI_Viewport viewport;
 		Math::Rectangle scissor;
 

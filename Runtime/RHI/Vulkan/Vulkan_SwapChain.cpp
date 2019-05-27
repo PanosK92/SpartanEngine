@@ -345,7 +345,7 @@ namespace Spartan
 	{
 		// Make index that always matches the m_image_index after vkAcquireNextImageKHR.
 		// This is so getting semaphores and fences can be done by using m_image_index.
-		const auto index = m_first_run ? 0 : (m_image_index + 1) % m_buffer_count;
+		const auto index = !image_acquired ? 0 : (m_image_index + 1) % m_buffer_count;
 
 		// Acquire next image
 		const auto result = vkAcquireNextImageKHR
@@ -364,21 +364,23 @@ namespace Spartan
 			return false;
 		}
 
-		m_first_run = false;
+		image_acquired = true;
 		return true;
 	}
 
 	bool RHI_SwapChain::Present(void* semaphore_render_finished) const
 	{	
-		vector<VkSwapchainKHR> swap_chains	= { static_cast<VkSwapchainKHR>(m_swap_chain_view) };
-		vector<VkSemaphore> semaphores_wait	= { static_cast<VkSemaphore>(semaphore_render_finished) };
+		SPARTAN_ASSERT(image_acquired);
+
+		VkSwapchainKHR swap_chains[]	= { static_cast<VkSwapchainKHR>(m_swap_chain_view) };
+		VkSemaphore semaphores_wait[]	= { static_cast<VkSemaphore>(semaphore_render_finished) };
 
 		VkPresentInfoKHR present_info	= {};
 		present_info.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		present_info.waitSemaphoreCount = static_cast<uint32_t>(semaphores_wait.size());
-		present_info.pWaitSemaphores	= semaphores_wait.data();
-		present_info.swapchainCount		= static_cast<uint32_t>(swap_chains.size());
-		present_info.pSwapchains		= swap_chains.data();
+		present_info.waitSemaphoreCount = 1;
+		present_info.pWaitSemaphores	= semaphores_wait;
+		present_info.swapchainCount		= 1;
+		present_info.pSwapchains		= swap_chains;
 		present_info.pImageIndices		= &m_image_index;
 
 		const auto result = vkQueuePresentKHR(m_rhi_device->GetContext()->queue_present, &present_info);

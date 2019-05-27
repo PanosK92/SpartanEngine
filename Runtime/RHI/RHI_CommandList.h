@@ -161,7 +161,7 @@ namespace Spartan
 		~RHI_CommandList();
 
 		// Markers
-		void Begin(const std::string& pass_name, void* render_pass = nullptr, RHI_SwapChain* swap_chain = nullptr);
+		void Begin(const std::string& pass_name, RHI_Pipeline* pipeline = nullptr);
 		void End();
 
 		// Draw
@@ -169,7 +169,6 @@ namespace Spartan
 		void DrawIndexed(uint32_t index_count, uint32_t index_offset, uint32_t vertex_offset);
 
 		// Misc
-		void SetPipeline(RHI_Pipeline* pipeline);
 		void SetViewport(const RHI_Viewport& viewport);
 		void SetScissorRectangle(const Math::Rectangle& scissor_rectangle);
 		void SetPrimitiveTopology(RHI_PrimitiveTopology_Mode primitive_topology);
@@ -235,10 +234,9 @@ namespace Spartan
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint32_t stencil = 0);
 
 		bool Submit();
-		const auto& GetSemaphoreRenderFinished() { return !m_semaphores_render_finished.empty() ? m_semaphores_render_finished[m_current_frame] : nullptr; }
+		const auto& GetSemaphoreRenderFinished() { return !m_semaphores_render_finished.empty() ? m_semaphores_render_finished[m_buffer_index] : nullptr; }
 
 	private:
-		void OnCmdListConsumed();
 		void Clear();
 
 		// Helpers
@@ -247,7 +245,6 @@ namespace Spartan
 		// Dependencies
 		Profiler* m_profiler = nullptr;
 		std::shared_ptr<RHI_Device> m_rhi_device;
-		RHI_SwapChain* m_swap_chain = nullptr;
 #
 		// D3D11
 		RHI_Command& GetCmd();
@@ -258,7 +255,7 @@ namespace Spartan
 		RHI_Command m_empty_cmd; // for GetCmd()
 		RHI_Pipeline* m_pipeline		= nullptr;
 		void* m_cmd_pool				= nullptr;
-		uint32_t m_current_frame		= 0;
+		uint32_t m_buffer_index		= 0;
 		bool m_is_recording				= false;
 		bool m_sync_cpu_to_gpu			= false;
 		std::vector<void*> m_cmd_buffers;
