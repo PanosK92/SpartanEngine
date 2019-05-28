@@ -368,12 +368,12 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(void* semaphore_render_finished) const
+	bool RHI_SwapChain::Present() const
 	{	
 		SPARTAN_ASSERT(image_acquired);
 
 		VkSwapchainKHR swap_chains[]	= { static_cast<VkSwapchainKHR>(m_swap_chain_view) };
-		VkSemaphore semaphores_wait[]	= { static_cast<VkSemaphore>(semaphore_render_finished) };
+		VkSemaphore semaphores_wait[]	= { static_cast<VkSemaphore>(m_semaphore_cmd_list_consumed) };
 
 		VkPresentInfoKHR present_info	= {};
 		present_info.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

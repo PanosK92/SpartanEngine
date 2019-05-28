@@ -357,7 +357,7 @@ namespace Spartan::Vulkan_Common
 
 	namespace commands
 	{
-		inline bool cmd_buffer(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandBuffer& cmd_buffer, VkCommandPool& cmd_pool, const VkCommandBufferLevel level)
+		inline void cmd_buffer(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandBuffer& cmd_buffer, VkCommandPool& cmd_pool, const VkCommandBufferLevel level)
 		{
 			VkCommandBufferAllocateInfo allocate_info	= {};
 			allocate_info.sType							= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -365,16 +365,10 @@ namespace Spartan::Vulkan_Common
 			allocate_info.level							= level;
 			allocate_info.commandBufferCount			= 1;
 
-			auto result = vkAllocateCommandBuffers(rhi_device->GetContext()->device, &allocate_info, &cmd_buffer);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR(result_to_string(result));
-				return false;
-			}
-			return true;
+			SPARTAN_ASSERT(vkAllocateCommandBuffers(rhi_device->GetContext()->device, &allocate_info, &cmd_buffer) == VK_SUCCESS);
 		}
 
-		inline bool cmd_pool(const std::shared_ptr<RHI_Device>& rhi_device, void*& cmd_pool)
+		inline void cmd_pool(const std::shared_ptr<RHI_Device>& rhi_device, void*& cmd_pool)
 		{
 			VkCommandPoolCreateInfo cmd_pool_info	= {};
 			cmd_pool_info.sType						= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -382,13 +376,7 @@ namespace Spartan::Vulkan_Common
 			cmd_pool_info.flags						= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 			auto cmd_pool_temp = reinterpret_cast<VkCommandPool*>(&cmd_pool);
-			auto result = vkCreateCommandPool(rhi_device->GetContext()->device, &cmd_pool_info, nullptr, cmd_pool_temp);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR("Failed to create command pool, %s.", result_to_string(result));
-				return false;
-			}
-			return true;
+			SPARTAN_ASSERT(vkCreateCommandPool(rhi_device->GetContext()->device, &cmd_pool_info, nullptr, cmd_pool_temp) == VK_SUCCESS);
 		}
 	}
 
@@ -396,16 +384,11 @@ namespace Spartan::Vulkan_Common
 	{
 		inline void* create(const std::shared_ptr<RHI_Device>& rhi_device)
 		{
-			VkSemaphoreCreateInfo semaphore_info = {};
-			semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+			VkSemaphoreCreateInfo semaphore_info	= {};
+			semaphore_info.sType					= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
 			VkSemaphore semaphore_out;
-			auto result = vkCreateSemaphore(rhi_device->GetContext()->device, &semaphore_info, nullptr, &semaphore_out);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR("Failed to create semaphore, %s.", result_to_string(result));
-				return nullptr;
-			}
+			SPARTAN_ASSERT(vkCreateSemaphore(rhi_device->GetContext()->device, &semaphore_info, nullptr, &semaphore_out) == VK_SUCCESS);
 
 			return static_cast<void*>(semaphore_out);
 		}
@@ -428,12 +411,7 @@ namespace Spartan::Vulkan_Common
 			fence_info.sType				= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	
 			VkFence fence_out;
-			auto result = vkCreateFence(rhi_device->GetContext()->device, &fence_info, nullptr, &fence_out);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR("Failed to create semaphore, %s", result_to_string(result));
-				return nullptr;
-			}
+			SPARTAN_ASSERT(vkCreateFence(rhi_device->GetContext()->device, &fence_info, nullptr, &fence_out) == VK_SUCCESS);
 
 			return static_cast<void*>(fence_out);
 		}
@@ -450,7 +428,7 @@ namespace Spartan::Vulkan_Common
 		inline void wait(const std::shared_ptr<RHI_Device>&rhi_device, void*& fence_in)
 		{
 			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
-			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);			
+			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);
 		}
 
 		inline void reset(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
@@ -559,12 +537,6 @@ namespace Spartan::Vulkan_Common
 				create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 				create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 				create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-			}
-
-			auto result = vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, &image_view);
-			if (result != VK_SUCCESS)
-			{
-				LOG_ERROR(result_to_string(result));
 			}
 
 			return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, &image_view) == VK_SUCCESS;

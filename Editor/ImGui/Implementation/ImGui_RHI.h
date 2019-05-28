@@ -279,10 +279,6 @@ namespace ImGui::RHI
 		g_viewport.width	= draw_data->DisplaySize.x;
 		g_viewport.height	= draw_data->DisplaySize.y;
 
-		// Deduce swap chain
-		const auto is_main_viewport = (swap_chain_other == nullptr);
-		const auto swap_chain		= is_main_viewport ? g_swap_chain.get() : swap_chain_other;
-
 		// Setup pipeline
 		RHI_PipelineState state		= {};
 		state.shader_vertex			= g_shader.get();
@@ -295,12 +291,13 @@ namespace ImGui::RHI
 		state.sampler				= g_sampler.get();
 		state.vertex_buffer			= g_vertex_buffer.get();
 		state.primitive_topology	= PrimitiveTopology_TriangleList;
-		state.swap_chain			= swap_chain;
+		const auto is_main_viewport = (swap_chain_other == nullptr);
+		state.swap_chain			= is_main_viewport ? g_swap_chain.get() : swap_chain_other;
 
 		// Start witting command list
 		g_cmd_list->Begin("Pass_ImGui", g_pipeline_cache->GetPipeline(state).get());
-		g_cmd_list->SetRenderTarget(swap_chain->GetRenderTargetView());
-		if (clear) g_cmd_list->ClearRenderTarget(swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));	
+		g_cmd_list->SetRenderTarget(state.swap_chain->GetRenderTargetView());
+		if (clear) g_cmd_list->ClearRenderTarget(state.swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
 		g_cmd_list->SetViewport(g_viewport);
 		g_cmd_list->SetBufferVertex(g_vertex_buffer);
 		g_cmd_list->SetBufferIndex(g_index_buffer);
@@ -342,7 +339,7 @@ namespace ImGui::RHI
 		g_cmd_list->End();
 		if (g_cmd_list->Submit() && is_main_viewport)
 		{
-			g_swap_chain->Present(g_cmd_list->GetSemaphoreRenderFinished());
+			g_swap_chain->Present();
 		}
 	}
 
@@ -445,7 +442,7 @@ namespace ImGui::RHI
 			return;
 		}
 
-		swap_chain->Present(g_cmd_list->GetSemaphoreRenderFinished());
+		swap_chain->Present();
 	}
 
 	inline void InitializePlatformInterface()
