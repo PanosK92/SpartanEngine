@@ -234,32 +234,28 @@ namespace Spartan
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint32_t stencil = 0);
 
 		bool Submit();
-		const auto& GetSemaphoreRenderFinished() { return !m_semaphores_render_finished.empty() ? m_semaphores_render_finished[m_buffer_index] : nullptr; }
 
 	private:
 		void Clear();
 
-		// Helpers
-		std::vector<void*> m_textures_empty = std::vector<void*>(10);
-	
 		// Dependencies
 		Profiler* m_profiler = nullptr;
 		std::shared_ptr<RHI_Device> m_rhi_device;
-#
-		// D3D11
+		std::vector<void*> m_textures_empty = std::vector<void*>(10);
+
+		// API
 		RHI_Command& GetCmd();
-		std::vector<RHI_Command> m_commands;
-		uint32_t m_initial_capacity = 6000;
-		uint32_t m_command_count	= 0;
-		// Vulkan
 		RHI_Command m_empty_cmd; // for GetCmd()
-		RHI_Pipeline* m_pipeline		= nullptr;
-		void* m_cmd_pool				= nullptr;
-		uint32_t m_buffer_index		= 0;
-		bool m_is_recording				= false;
-		bool m_sync_cpu_to_gpu			= false;
+		std::vector<RHI_Command> m_commands;
 		std::vector<void*> m_cmd_buffers;
-		std::vector<void*> m_semaphores_render_finished;
+		std::vector<void*> m_semaphores_cmd_list_consumed;
 		std::vector<void*> m_fences_in_flight;
+		uint32_t m_initial_capacity = 6000;
+		uint32_t m_command_count	= 0;	
+		RHI_Pipeline* m_pipeline	= nullptr;
+		void* m_cmd_pool			= nullptr;
+		uint32_t m_buffer_index		= 0;
+		bool m_is_recording			= false;
+		bool m_sync_cpu_to_gpu		= false;
 	};
 }

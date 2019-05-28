@@ -248,7 +248,7 @@ namespace Spartan
 		return true;
 	}
 
-	bool RHI_SwapChain::Present(void* semaphore_render_finished) const
+	bool RHI_SwapChain::Present() const
 	{
 		if (!m_swap_chain_view)
 		{

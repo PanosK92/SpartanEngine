@@ -9,6 +9,8 @@
 <p>For more updates regarding the project's development, you can
 <a href="https://twitter.com/intent/follow?screen_name=panoskarabelas1"><img src="https://img.shields.io/twitter/follow/panoskarabelas1.svg"></a> me on twitter.</p>
 
+<p>License: Please be respectful to the open source ethos and the MIT license, which means that you can copy all the code you want as long as you include the original license.</p>
+
 <img align="left" width="468" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/screenshot-v0.3_preview4.jpg"/>
 <img align="left" width="365" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
 
@@ -63,7 +65,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 Feature     | Completion    | Notes 
 :-          | :-            | :-
 Shadows 	| 90%          	| Improve shadow mapping performance and enable spot & point light shadows.
-Vulkan      | 50%           | Don't port it, re-architect the engine instead.
+Vulkan      | 60%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
 - DirectX 12

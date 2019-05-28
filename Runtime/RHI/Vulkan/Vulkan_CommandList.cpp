@@ -47,7 +47,7 @@ using namespace Spartan::Math;
 #define CMD_LIST_PTR						reinterpret_cast<VkCommandBuffer*>(&m_cmd_buffers[m_buffer_index])
 #define FENCE_CMD_LIST_CONSUMED_VOID_PTR	m_fences_in_flight[m_buffer_index]
 #define FENCE_CMD_LIST_CONSUMED				reinterpret_cast<VkFence>(m_fences_in_flight[m_buffer_index])
-#define SEMAPHORE_CMD_LIST_CONSUMED			reinterpret_cast<VkSemaphore>(m_semaphores_render_finished[m_buffer_index])
+#define SEMAPHORE_CMD_LIST_CONSUMED			reinterpret_cast<VkSemaphore>(m_semaphores_cmd_list_consumed[m_buffer_index])
 
 namespace Spartan
 {
@@ -56,24 +56,16 @@ namespace Spartan
 		m_rhi_device	= rhi_device;
 		m_profiler		= profiler;
 
-		if (!Vulkan_Common::commands::cmd_pool(m_rhi_device, m_cmd_pool))
-		{
-			LOG_ERROR("Failed to create command pool.");
-			return;
-		}
+		Vulkan_Common::commands::cmd_pool(m_rhi_device, m_cmd_pool);
 
 		for (uint32_t i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
 		{
 			VkCommandBuffer cmd_buffer;
 			auto cmd_pool = static_cast<VkCommandPool>(m_cmd_pool);
-			if (!Vulkan_Common::commands::cmd_buffer(rhi_device, cmd_buffer, cmd_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
-			{
-				LOG_ERROR("Failed to create command buffer.");
-				return;
-			}
+			Vulkan_Common::commands::cmd_buffer(rhi_device, cmd_buffer, cmd_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 			m_cmd_buffers.push_back(static_cast<void*>(cmd_buffer));
 
-			m_semaphores_render_finished.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
+			m_semaphores_cmd_list_consumed.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
 			m_fences_in_flight.emplace_back(Vulkan_Common::fence::create(rhi_device));
 		}
 	}
@@ -87,12 +79,12 @@ namespace Spartan
 		for (uint32_t i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
 		{
 			Vulkan_Common::fence::destroy(m_rhi_device, m_fences_in_flight[i]);
-			Vulkan_Common::semaphore::destroy(m_rhi_device, m_semaphores_render_finished[i]);
+			Vulkan_Common::semaphore::destroy(m_rhi_device, m_semaphores_cmd_list_consumed[i]);
 			auto cmd_buffer = static_cast<VkCommandBuffer>(m_cmd_buffers[i]);
 			vkFreeCommandBuffers(m_rhi_device->GetContext()->device, cmd_pool_vk, 1, &cmd_buffer);
 		}
 		m_cmd_buffers.clear();
-		m_semaphores_render_finished.clear();
+		m_semaphores_cmd_list_consumed.clear();
 		m_fences_in_flight.clear();
 
 		vkDestroyCommandPool(m_rhi_device->GetContext()->device, cmd_pool_vk, nullptr);
@@ -111,19 +103,19 @@ namespace Spartan
 			Vulkan_Common::fence::wait_reset(m_rhi_device, FENCE_CMD_LIST_CONSUMED_VOID_PTR);
 			SPARTAN_ASSERT(vkResetCommandPool(m_rhi_device->GetContext()->device, static_cast<VkCommandPool>(m_cmd_pool), 0) == VK_SUCCESS);
 			m_pipeline->OnCommandListConsumed();
-			m_buffer_index = (m_buffer_index + 1) % m_pipeline->GetState()->swap_chain->GetBufferCount();
 			m_sync_cpu_to_gpu = false;
 		}
 
-		// If this is pipeline contains a new swap chain, update the current buffer index
-		auto swap_chain = pipeline->GetState()->swap_chain;
-		if (m_pipeline && m_pipeline->GetState()->swap_chain->GetId() != swap_chain->GetId())
-		{
-			m_buffer_index = swap_chain->GetImageIndex();
-		}
-
-		// Keep pipeline reference
+		// Update pipeline
 		m_pipeline = pipeline;
+		auto swap_chain = m_pipeline->GetState()->swap_chain;
+
+		// Acquire next swap chain image and update buffer index
+		SPARTAN_ASSERT(swap_chain->AcquireNextImage());
+		m_buffer_index = swap_chain->GetImageIndex();
+
+		// Let the swapchain know when the this command list is submited and consumed
+		swap_chain->SetSemaphoreRenderFinished(m_semaphores_cmd_list_consumed[m_buffer_index]);
 
 		// Begin command buffer
 		VkCommandBufferBeginInfo beginInfo	= {};
@@ -338,10 +330,8 @@ namespace Spartan
 
 		// Ensure the command list has stopped recording
 		SPARTAN_ASSERT(!m_is_recording);
-		// Acquire next swap chain image
-		SPARTAN_ASSERT(swap_chain->AcquireNextImage());
 		// Ensure that the swap chain buffer index is what the command list thinks it is
-		SPARTAN_ASSERT(m_buffer_index == swap_chain->GetImageIndex());
+		SPARTAN_ASSERT(m_buffer_index == swap_chain->GetImageIndex() && "The command list's buffer index might not be in sync with the swap chain's image index");
 
 		// Prepare semaphores
 		VkSemaphore wait_semaphores[]		= { static_cast<VkSemaphore>(swap_chain->GetSemaphoreImageAcquired()) };
@@ -364,7 +354,7 @@ namespace Spartan
 			LOGF_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::result_to_string(result));
 		}
 		
-		// Request syncing, don't force wait for fence right now
+		// Wait for fence on the next Begin(), if we force it now, perfomance will not be as good
 		m_sync_cpu_to_gpu = true;
 
 		return result == VK_SUCCESS;

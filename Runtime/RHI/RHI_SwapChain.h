@@ -48,18 +48,19 @@ namespace Spartan
 
 		bool Resize(uint32_t width, uint32_t height);
 		bool AcquireNextImage();
-		bool Present(void* semaphore_render_finished) const;
+		bool Present() const;
 
-		auto GetWidth()				const	{ return m_width; }
-		auto GetHeight()			const	{ return m_height; }
-		auto IsInitialized()		const	{ return m_initialized; }
-		auto GetSwapChainView()		const	{ return m_swap_chain_view; }
-		auto GetRenderTargetView()	const	{ return m_render_target_view; }
-		auto GetRenderPass()		const	{ return m_render_pass; }
-		auto GetBufferCount()		const	{ return m_buffer_count; }
-		auto& GetFrameBuffer()				{ return m_frame_buffers[m_image_index]; }
-		auto& GetSemaphoreImageAcquired()	{ return m_semaphores_image_acquired[m_image_index]; }
-		auto& GetImageIndex()				{ return m_image_index; }
+		auto GetWidth()				const									{ return m_width; }
+		auto GetHeight()			const									{ return m_height; }
+		auto IsInitialized()		const									{ return m_initialized; }
+		auto GetSwapChainView()		const									{ return m_swap_chain_view; }
+		auto GetRenderTargetView()	const									{ return m_render_target_view; }
+		auto GetRenderPass()		const									{ return m_render_pass; }
+		auto GetBufferCount()		const									{ return m_buffer_count; }
+		auto& GetFrameBuffer()												{ return m_frame_buffers[m_image_index]; }
+		auto& GetSemaphoreImageAcquired()									{ return m_semaphores_image_acquired[m_image_index]; }
+		auto& GetImageIndex()												{ return m_image_index; }
+		void SetSemaphoreRenderFinished(void* semaphore_cmd_list_consumed)	{ m_semaphore_cmd_list_consumed = semaphore_cmd_list_consumed; }
 
 	private:
 		bool CreateRenderPass();
@@ -76,12 +77,13 @@ namespace Spartan
 		
 		// API
 		std::shared_ptr<RHI_Device> m_rhi_device;
-		void* m_swap_chain_view		= nullptr;
-		void* m_render_target_view	= nullptr;
-		void* m_surface				= nullptr;	
-		void* m_render_pass			= nullptr;
-		void* m_window_handle		= nullptr;
-		uint32_t m_image_index		= 0;
+		void* m_swap_chain_view				= nullptr;
+		void* m_render_target_view			= nullptr;
+		void* m_surface						= nullptr;	
+		void* m_render_pass					= nullptr;
+		void* m_window_handle				= nullptr;
+		void* m_semaphore_cmd_list_consumed = nullptr;
+		uint32_t m_image_index				= 0;
 		std::vector<void*> m_semaphores_image_acquired;
 		std::vector<void*> m_image_views;
 		std::vector<void*> m_frame_buffers;

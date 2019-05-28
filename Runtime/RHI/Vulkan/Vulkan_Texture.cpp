@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../RHI_Device.h"
 #include "../RHI_Texture2D.h"
+#include "../RHI_TextureCube.h"
 #include "../../Math/MathHelper.h"
 //================================
 
@@ -50,11 +51,7 @@ namespace Spartan
 	VkCommandBuffer BeginSingleTimeCommands(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool) 
 	{
 		VkCommandBuffer command_buffer;
-		if (!Vulkan_Common::commands::cmd_buffer(rhi_device, command_buffer, command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
-		{
-			LOG_ERROR("Failed to create command buffer.");
-			return nullptr;
-		}
+		Vulkan_Common::commands::cmd_buffer(rhi_device, command_buffer, command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 		VkCommandBufferBeginInfo begin_info	= {};
 		begin_info.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -236,11 +233,7 @@ namespace Spartan
 		
 		// Create command pool
 		void* cmd_pool_void;
-		if (!Vulkan_Common::commands::cmd_pool(m_rhi_device, cmd_pool_void))
-		{
-			LOG_ERROR("Failed to create command pool.");
-			return false;
-		}
+		Vulkan_Common::commands::cmd_pool(m_rhi_device, cmd_pool_void);
 		auto cmd_pool = static_cast<VkCommandPool>(cmd_pool_void);
 
 		// Copy buffer to texture
@@ -266,6 +259,21 @@ namespace Spartan
 		m_texture			= static_cast<void*>(image);
 		m_texture_memory	= static_cast<void*>(image_memory);
 
+		return true;
+	}
+
+	// TEXTURE CUBE
+
+	RHI_TextureCube::~RHI_TextureCube()
+	{
+		m_data.clear();
+		Vulkan_Common::image_view::destroy(m_rhi_device, m_resource_texture);
+		Vulkan_Common::image::destroy(m_rhi_device, m_texture);
+		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
+	}
+
+	bool RHI_TextureCube::CreateResourceGpu()
+	{
 		return true;
 	}
 }
