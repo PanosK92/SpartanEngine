@@ -21,36 +21,53 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include <memory>
 #include "RHI_Definition.h"
 #include "../Core/Spartan_Object.h"
-//=============================
+//=================================
 
 namespace Spartan
 {
+	#define SAMPLER_POINT		Filter_Nearest, Filter_Nearest, Sampler_Mipmap_Nearest
+	#define SAMPLER_BILINEAR	Filter_Linear, Filter_Linear, Sampler_Mipmap_Nearest
+	#define SAMPLER_TRILINEAR	Filter_Linear, Filter_Linear, Sampler_Mipmap_Nearest
+
 	class RHI_Sampler : public Spartan_Object
 	{
 	public:
 		RHI_Sampler(
 			const std::shared_ptr<RHI_Device>& rhi_device,
-			RHI_Texture_Filter filter						= Texture_Filter_Anisotropic,
-			RHI_Sampler_Address_Mode sampler_address_mode	= Sampler_Address_Wrap,
-			RHI_Comparison_Function comparison_function		= Comparison_Always);
+			const RHI_Filter filter_min							= Filter_Nearest,
+			const RHI_Filter filter_mag							= Filter_Nearest,
+			const RHI_Sampler_Mipmap_Mode filter_mipmap			= Sampler_Mipmap_Nearest,
+			const RHI_Sampler_Address_Mode sampler_address_mode	= Sampler_Address_Wrap,
+			const RHI_Comparison_Function comparison_function	= Comparison_Always,
+			const bool anisotropy_enabled						= false,
+			const bool comparison_enabled						= false
+			);
 		~RHI_Sampler();
 
-		auto GetFilter()				const { return m_filter; }
+		auto GetFilterMin()				const { return m_filter_min; }
+		auto GetFilterMag()				const { return m_filter_mag; }
+		auto GetFilterMipmap()			const { return m_filter_mipmap; }	
 		auto GetAddressMode()			const { return m_sampler_address_mode; }
 		auto GetComparisonFunction()	const { return m_comparison_function; }
-		auto GetResource()				const { return m_buffer_view; }
+		auto GetAnisotropyEnabled()		const { return m_anisotropy_enabled; }
+		auto GetComparisonEnabled()		const { return m_comparison_enabled; }
+		auto GetResource()				const { return m_resource; }
 
 	private:	
-		RHI_Texture_Filter m_filter;
+		RHI_Filter m_filter_min;
+		RHI_Filter m_filter_mag;
+		RHI_Sampler_Mipmap_Mode m_filter_mipmap;	
 		RHI_Sampler_Address_Mode m_sampler_address_mode;
 		RHI_Comparison_Function m_comparison_function;
+		bool m_anisotropy_enabled;
+		bool m_comparison_enabled;
 		std::shared_ptr<RHI_Device> m_rhi_device;
 
 		// API
-		void* m_buffer_view = nullptr;
+		void* m_resource = nullptr;
 	};
 }
