@@ -116,15 +116,16 @@ namespace Spartan
 		Fill_Wireframe
 	};
 
-	enum RHI_Texture_Filter
+	enum RHI_Filter
 	{
-		Texture_Filter_Comparison_Point,
-		Texture_Filter_Comparison_Bilinear,
-		Texture_Filter_Comparison_Trilinear,
-		Texture_Filter_Point,
-		Texture_Filter_Bilinear,
-		Texture_Filter_Trilinear,
-		Texture_Filter_Anisotropic
+		Filter_Nearest,
+		Filter_Linear,
+	};
+
+	enum RHI_Sampler_Mipmap_Mode
+	{
+		Sampler_Mipmap_Nearest,
+		Sampler_Mipmap_Linear,
 	};
 
 	enum RHI_Sampler_Address_Mode

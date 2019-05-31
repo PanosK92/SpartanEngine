@@ -24,36 +24,63 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_D3D11
 //================================
 
-//= INCLUDES =====================
+//= INCLUDES ===================
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
-//================================
+//==============================
 
 namespace Spartan
 {
+	inline D3D11_FILTER GetFilter(const RHI_Filter filter_min, const RHI_Filter filter_mag, const RHI_Sampler_Mipmap_Mode filter_mipmap, bool anisotropy_enabled, bool comparison_enabled)
+	{
+		if (anisotropy_enabled)
+			return !comparison_enabled ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_COMPARISON_ANISOTROPIC;
+
+		if ((filter_min == Filter_Nearest)			&& (filter_mag == Filter_Nearest)			&& (filter_mipmap == Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_MAG_MIP_POINT					: D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+		if ((filter_min == Filter_Nearest)			&& (filter_mag == Filter_Nearest)			&& (filter_mipmap == Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR			: D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
+		if ((filter_min == Filter_Nearest)			&& (filter_mag == Sampler_Mipmap_Linear)	&& (filter_mipmap == Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT	: D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
+		if ((filter_min == Filter_Nearest)			&& (filter_mag == Sampler_Mipmap_Linear)	&& (filter_mipmap == Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR			: D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
+		if ((filter_min == Sampler_Mipmap_Linear)	&& (filter_mag == Filter_Nearest)			&& (filter_mipmap == Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT			: D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+		if ((filter_min == Sampler_Mipmap_Linear)	&& (filter_mag == Filter_Nearest)			&& (filter_mipmap == Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR	: D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+		if ((filter_min == Sampler_Mipmap_Linear)	&& (filter_mag == Sampler_Mipmap_Linear)	&& (filter_mipmap == Filter_Nearest))			return !comparison_enabled ? D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT			: D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+		if ((filter_min == Sampler_Mipmap_Linear)	&& (filter_mag == Sampler_Mipmap_Linear)	&& (filter_mipmap == Sampler_Mipmap_Linear))	return !comparison_enabled ? D3D11_FILTER_MIN_MAG_MIP_LINEAR				: D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+
+		SPARTAN_ASSERT(false && "D3D11_Sampler filter not supported.");
+		return D3D11_FILTER_MIN_MAG_MIP_POINT;
+	}
+
 	RHI_Sampler::RHI_Sampler(
 		const std::shared_ptr<RHI_Device>& rhi_device,
-		const RHI_Texture_Filter filter						/*= Texture_Sampler_Anisotropic*/,
-		const RHI_Sampler_Address_Mode sampler_address_mode	/*= Texture_Address_Wrap*/,
-		const RHI_Comparison_Function comparison_function	/*= Texture_Comparison_Always*/
-	)
+		const RHI_Filter filter_min,							/*= Filter_Nearest*/
+		const RHI_Filter filter_mag,							/*= Filter_Nearest*/
+		const RHI_Sampler_Mipmap_Mode filter_mipmap,			/*= Sampler_Mipmap_Nearest*/
+		const RHI_Sampler_Address_Mode sampler_address_mode,	/*= Sampler_Address_Wrap*/
+		const RHI_Comparison_Function comparison_function,		/*= Texture_Comparison_Always*/
+		const bool anisotropy_enabled,							/*= false*/
+		const bool comparison_enabled							/*= false*/
+		)
 	{	
-		m_buffer_view			= nullptr;
-		m_rhi_device			= rhi_device;
-		m_filter				= filter;
-		m_sampler_address_mode	= sampler_address_mode;
-		m_comparison_function	= comparison_function;
-
-		if (!rhi_device || !m_rhi_device->GetContext()->device)
+		if (!rhi_device || !rhi_device->GetContext()->device)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
 		}
-		
+
+		// Save properties
+		m_resource				= nullptr;
+		m_rhi_device			= rhi_device;
+		m_filter_min			= filter_min;
+		m_filter_mag			= filter_mag;
+		m_filter_mipmap			= filter_mipmap;	
+		m_sampler_address_mode	= sampler_address_mode;
+		m_comparison_function	= comparison_function;
+		m_anisotropy_enabled	= anisotropy_enabled;
+		m_comparison_enabled	= comparison_enabled;
+
 		D3D11_SAMPLER_DESC sampler_desc;
-		sampler_desc.Filter			= d3d11_filter[filter];
+		sampler_desc.Filter			= GetFilter(filter_min, filter_mag, filter_mipmap, anisotropy_enabled, comparison_enabled);
 		sampler_desc.AddressU		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.AddressV		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.AddressW		= d3d11_sampler_address_mode[sampler_address_mode];
@@ -68,7 +95,7 @@ namespace Spartan
 		sampler_desc.MaxLOD			= FLT_MAX;
 	
 		// Create sampler state.
-		if (FAILED(m_rhi_device->GetContext()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_buffer_view))))
+		if (FAILED(m_rhi_device->GetContext()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_resource))))
 		{
 			LOG_ERROR("Failed to create sampler state");
 		}
@@ -76,8 +103,7 @@ namespace Spartan
 
 	RHI_Sampler::~RHI_Sampler()
 	{
-		safe_release(static_cast<ID3D11SamplerState*>(m_buffer_view));
-		m_buffer_view = nullptr;
+		safe_release(reinterpret_cast<ID3D11SamplerState*>(m_resource));
 	}
 }
 #endif

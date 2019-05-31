@@ -104,12 +104,11 @@ namespace Spartan
 
 		// API - High level
 		void* m_resource_texture		= nullptr;
-		void* m_resource_render_target	= nullptr;
+		void* m_resource_render_target	= nullptr;		
+		void* m_texture					= nullptr;
+		void* m_texture_memory			= nullptr;
+		uint32_t m_array_size			= 1;		
 		std::vector<void*> m_resource_depth_stencils;
-		uint32_t m_array_size = 1;
-		// API - Low level
-		void* m_texture			= nullptr;
-		void* m_texture_memory	= nullptr;
 		static std::mutex m_mutex;
 
 	private:

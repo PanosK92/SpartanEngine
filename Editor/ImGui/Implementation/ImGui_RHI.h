@@ -87,7 +87,7 @@ namespace ImGui::RHI
 
 		// Create required RHI objects
 		{
-			g_sampler				= make_shared<RHI_Sampler>(g_rhi_device, Texture_Filter_Bilinear, Sampler_Address_Wrap, Comparison_Always);
+			g_sampler				= make_shared<RHI_Sampler>(g_rhi_device, SAMPLER_BILINEAR, Sampler_Address_Wrap, Comparison_Always);
 			g_constant_buffer		= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
 			g_vertex_buffer			= make_shared<RHI_VertexBuffer>(g_rhi_device, sizeof(ImDrawVert));
 			g_index_buffer			= make_shared<RHI_IndexBuffer>(g_rhi_device);

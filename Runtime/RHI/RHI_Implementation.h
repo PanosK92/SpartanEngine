@@ -106,17 +106,6 @@ static const D3D11_COMPARISON_FUNC d3d11_compare_operator[] =
 	D3D11_COMPARISON_ALWAYS
 };
 
-static const D3D11_FILTER d3d11_filter[] =
-{
-	D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
-	D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
-	D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR,
-	D3D11_FILTER_MIN_MAG_MIP_POINT,
-	D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,
-	D3D11_FILTER_MIN_MAG_MIP_LINEAR,
-	D3D11_FILTER_ANISOTROPIC
-};
-
 static const D3D11_BLEND d3d11_blend_factor[] =
 {
 	D3D11_BLEND_ZERO,
@@ -238,6 +227,18 @@ static const VkBlendOp vulkan_blend_operation[] =
 	VK_BLEND_OP_REVERSE_SUBTRACT,
 	VK_BLEND_OP_MIN,
 	VK_BLEND_OP_MAX
+};
+
+static const VkFilter vulkan_filter[] =
+{
+	VK_FILTER_NEAREST,
+	VK_FILTER_LINEAR
+};
+
+static const VkSamplerMipmapMode vulkan_mipmap_mode[] =
+{
+	VK_SAMPLER_MIPMAP_MODE_NEAREST,
+	VK_SAMPLER_MIPMAP_MODE_LINEAR
 };
 
 static const VkDescriptorType vulkan_descriptor_type[] =
