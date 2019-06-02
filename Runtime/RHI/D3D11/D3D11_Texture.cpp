@@ -55,28 +55,24 @@ namespace Spartan
 		const uint32_t height,
 		const uint32_t channels,
 		const uint32_t bpc,
-		const uint32_t mip_levels,
 		const uint32_t array_size,
 		const RHI_Format format,
+		const UINT bind_flags,
 		std::vector<std::vector<std::byte>>& data,
-		const bool generate_mipmaps,
-		const bool is_render_target,
 		const shared_ptr<RHI_Device>& rhi_device
 	)
 	{
 		D3D11_TEXTURE2D_DESC texture_desc	= {};
 		texture_desc.Width					= static_cast<UINT>(width);
 		texture_desc.Height					= static_cast<UINT>(height);
-		texture_desc.MipLevels				= static_cast<UINT>(mip_levels);
+		texture_desc.MipLevels				= data.empty() ? 1 : static_cast<UINT>(data.size());
 		texture_desc.ArraySize				= static_cast<UINT>(array_size);
 		texture_desc.Format					= d3d11_format[format];
 		texture_desc.SampleDesc.Count		= 1;
 		texture_desc.SampleDesc.Quality		= 0;
-		texture_desc.Usage					= is_render_target ? D3D11_USAGE_DEFAULT : (generate_mipmaps ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE);
-		texture_desc.BindFlags				= D3D11_BIND_SHADER_RESOURCE;
-		texture_desc.BindFlags				|= generate_mipmaps ? D3D11_BIND_RENDER_TARGET : 0; // D3D11_RESOURCE_MISC_GENERATE_MIPS flag requires D3D11_BIND_RENDER_TARGET
-		texture_desc.BindFlags				|= is_render_target ? D3D11_BIND_RENDER_TARGET : 0;
-		texture_desc.MiscFlags				= generate_mipmaps ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
+		texture_desc.Usage					= (bind_flags & D3D11_BIND_RENDER_TARGET) || (bind_flags & D3D11_BIND_DEPTH_STENCIL) ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
+		texture_desc.BindFlags				= bind_flags;
+		texture_desc.MiscFlags				= 0;
 		texture_desc.CPUAccessFlags			= 0;
 
 		// Fill subresource data
@@ -103,7 +99,7 @@ namespace Spartan
 
 		// Create
 		const auto ptr = reinterpret_cast<ID3D11Texture2D**>(&texture);
-		const auto result = rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, generate_mipmaps ? nullptr : vec_subresource_data.data(), ptr);
+		const auto result = rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, vec_subresource_data.data(), ptr);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Invalid parameters, failed to create ID3D11Texture2D, %s", D3D11_Common::dxgi_error_to_string(result));
@@ -132,52 +128,11 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateDepthStencilView(
-		void*& shader_resouce_view,
-		vector<void*>& depth_stencil_views,
-		uint32_t width,
-		uint32_t height,
-		uint32_t array_size,
-		RHI_Format format, 
-		const shared_ptr<RHI_Device>& rhi_device
-	)
+	inline bool CreateDepthStencilView(void* resource, vector<void*>& depth_stencil_views, const uint32_t array_size, const RHI_Format format, const shared_ptr<RHI_Device>& rhi_device)
 	{
-		auto format_buffer	= Format_R32_FLOAT_TYPELESS;
-		auto format_dsv		= Format_D32_FLOAT;
-		auto format_srv		= Format_R32_FLOAT;
-
-		if (format == Format_D32_FLOAT)
-		{
-			format_buffer	= Format_R32_FLOAT_TYPELESS;
-			format_dsv		= Format_D32_FLOAT;
-			format_srv		= Format_R32_FLOAT;
-		}
-
-		// TEX
-		D3D11_TEXTURE2D_DESC depth_buffer_desc	= {};
-		depth_buffer_desc.Width					= static_cast<UINT>(width);
-		depth_buffer_desc.Height				= static_cast<UINT>(height);
-		depth_buffer_desc.MipLevels				= 1;
-		depth_buffer_desc.ArraySize				= static_cast<UINT>(array_size);
-		depth_buffer_desc.Format				= d3d11_format[format_buffer];
-		depth_buffer_desc.SampleDesc.Count		= 1;
-		depth_buffer_desc.SampleDesc.Quality	= 0;
-		depth_buffer_desc.Usage					= D3D11_USAGE_DEFAULT;
-		depth_buffer_desc.BindFlags				= D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
-		depth_buffer_desc.CPUAccessFlags		= 0;
-		depth_buffer_desc.MiscFlags				= 0;
-
-		ID3D11Texture2D* depth_stencil_texture = nullptr;
-		auto result = rhi_device->GetContext()->device->CreateTexture2D(&depth_buffer_desc, nullptr, &depth_stencil_texture);
-		if (FAILED(result))
-		{
-			LOGF_ERROR("Failed to create depth stencil texture, %s.", D3D11_Common::dxgi_error_to_string(result));
-			return false;
-		}
-
 		// DSV
 		D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc	= {};
-		dsv_desc.Format							= d3d11_format[format_dsv];
+		dsv_desc.Format							= d3d11_format[format];
 		dsv_desc.ViewDimension					= (array_size == 1) ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
 		dsv_desc.Texture2DArray.MipSlice		= 0;
 		dsv_desc.Texture2DArray.ArraySize		= 1;
@@ -186,53 +141,19 @@ namespace Spartan
 		for (uint32_t i = 0; i < array_size; i++)
 		{
 			dsv_desc.Texture2DArray.FirstArraySlice = i;
-			auto ptr = reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil_views.emplace_back(nullptr));
-			result = rhi_device->GetContext()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(depth_stencil_texture), &dsv_desc, ptr);
+			const auto ptr = reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil_views.emplace_back(nullptr));
+			const auto result = rhi_device->GetContext()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(resource), &dsv_desc, ptr);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("CreateDepthStencilView() failed, %s.", D3D11_Common::dxgi_error_to_string(result));
-				safe_release(depth_stencil_texture);
 				return false;
 			}
 		}
 
-		// SRV
-		{
-			D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
-			srv_desc.Format							= d3d11_format[format_srv];
-			srv_desc.ViewDimension					= (array_size == 1) ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-			srv_desc.Texture2DArray.FirstArraySlice = 0;
-			srv_desc.Texture2DArray.MostDetailedMip = 0;
-			srv_desc.Texture2DArray.MipLevels		= 1;
-			srv_desc.Texture2DArray.ArraySize		= array_size;
-
-			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&shader_resouce_view);
-			result = rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(depth_stencil_texture), &srv_desc, ptr);
-			if (FAILED(result))
-			{
-				LOGF_ERROR("CreateShaderResourceView() failed, %s.", D3D11_Common::dxgi_error_to_string(result));
-				safe_release(depth_stencil_texture);
-				return false;
-			}
-		}
-
-		safe_release(depth_stencil_texture);
 		return true;
 	}
 
-	inline bool CreateShaderResourceView(
-		void* resource,
-		void*& shader_resource_view,
-		RHI_Format format,
-		uint32_t width,
-		uint32_t channels,
-		uint32_t bpc,
-		uint32_t array_size,
-		uint32_t mip_levels,
-		std::vector<std::vector<std::byte>>& data,
-		bool generate_mipmaps,
-		const shared_ptr<RHI_Device>& rhi_device
-	)
+	inline bool CreateShaderResourceView(void* resource, void*& shader_resource_view, RHI_Format format, uint32_t array_size, std::vector<std::vector<std::byte>>& data, const shared_ptr<RHI_Device>& rhi_device)
 	{
 		// Describe
 		D3D11_SHADER_RESOURCE_VIEW_DESC shader_resource_view_desc	= {};
@@ -240,21 +161,13 @@ namespace Spartan
 		shader_resource_view_desc.ViewDimension						= (array_size == 1) ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
 		shader_resource_view_desc.Texture2DArray.FirstArraySlice	= 0;
 		shader_resource_view_desc.Texture2DArray.MostDetailedMip	= 0;
-		shader_resource_view_desc.Texture2DArray.MipLevels			= mip_levels;
+		shader_resource_view_desc.Texture2DArray.MipLevels			= data.empty() ? 1 : static_cast<UINT>(data.size());
 		shader_resource_view_desc.Texture2DArray.ArraySize			= array_size;
 
 		// Create
 		auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&shader_resource_view);
 		auto result = rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(resource), &shader_resource_view_desc, ptr);
-		if (SUCCEEDED(result))
-		{
-			if (generate_mipmaps)
-			{
-				rhi_device->GetContext()->device_context->UpdateSubresource(static_cast<ID3D11Resource*>(resource), 0, nullptr, data.front().data(), width * channels * (bpc / 8), 0);
-				rhi_device->GetContext()->device_context->GenerateMips(*ptr);
-			}
-		}
-		else
+		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to create the ID3D11ShaderResourceView, %s", D3D11_Common::dxgi_error_to_string(result));
 			return false;
@@ -270,101 +183,88 @@ namespace Spartan
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
 		}
-
+	
 		auto result_tex = true;
 		auto result_srv = true;
 		auto result_rt	= true;
+		auto result_ds	= true;
 
-		// Depth-stencil
-		if (m_bind_flags & RHI_Texture_DepthStencil)
+		// Resolve bind flags
+		UINT bind_flags = 0;
 		{
-			result_rt = CreateDepthStencilView
+			bind_flags |= (m_bind_flags & RHI_Texture_Sampled)		? D3D11_BIND_SHADER_RESOURCE	: 0;
+			bind_flags |= (m_bind_flags & RHI_Texture_DepthStencil) ? D3D11_BIND_DEPTH_STENCIL		: 0;
+			bind_flags |= (m_bind_flags & RHI_Texture_RenderTarget) ? D3D11_BIND_RENDER_TARGET		: 0;
+		}
+
+		// Resolve formats
+		auto format		= m_format;
+		auto format_dsv	= m_format;
+		auto format_srv	= m_format;
+		if (m_format == Format_D32_FLOAT)
+		{
+			format			= Format_R32_FLOAT_TYPELESS;
+			format_dsv		= Format_D32_FLOAT;
+			format_srv		= Format_R32_FLOAT;
+		}
+
+		// TEXTURE
+		void* texture = nullptr;
+		result_tex = CreateTexture
+		(
+			texture,
+			m_width,
+			m_height,
+			m_channels,
+			m_bpc,
+			m_array_size,
+			format,
+			bind_flags,
+			m_data,
+			m_rhi_device
+		);
+
+		// RENDER TARGET VIEW
+		if (m_bind_flags & RHI_Texture_RenderTarget)
+		{
+			result_rt = CreateRenderTargetView
 			(
-				m_resource_texture,
-				m_resource_depth_stencils,
-				m_width,
-				m_height,
+				texture,
+				m_resource_render_target,
+				format,
 				m_array_size,
-				m_format,
 				m_rhi_device
 			);
 		}
-		else // Sampled and/or render target
+
+		// DEPTH-STENCIL VIEW
+		if (m_bind_flags & RHI_Texture_DepthStencil)
 		{
-			// Sampled: needs data to be initialized from
-			if ((m_bind_flags & RHI_Texture_Sampled) && m_data.empty())
-			{
-				LOG_ERROR_INVALID_PARAMETER();
-				return false;
-			}
-
-			// Sampled: deduce mipmap requirements
-			UINT mip_levels = 1;
-			auto generate_mipmaps = false;
-			if (m_bind_flags & RHI_Texture_Sampled)
-			{
-				generate_mipmaps = m_has_mipmaps && (m_data.size() == 1);
-				if (generate_mipmaps)
-				{
-					if (m_width < 4 || m_height < 4)
-					{
-						LOGF_WARNING("Mipmaps won't be generated as dimension %dx%d is too small", m_width, m_height);
-						generate_mipmaps = false;
-					}
-				}
-				mip_levels = generate_mipmaps ? 7 : static_cast<UINT>(m_data.size());
-			}
-
-			// TEXTURE
-			void* texture = nullptr;
-			result_tex = CreateTexture
+			result_ds = CreateDepthStencilView
 			(
 				texture,
-				m_width,
-				m_height,
-				m_channels,
-				m_bpc,
-				mip_levels,
+				m_resource_depth_stencils,
 				m_array_size,
-				m_format,
-				m_data,
-				generate_mipmaps,
-				m_bind_flags & RHI_Texture_RenderTarget,
+				format_dsv,
 				m_rhi_device
 			);
+		}
 
-			// SHADER RESOURCE VIEW
+		// SHADER RESOURCE VIEW
+		if (m_bind_flags & RHI_Texture_Sampled)
+		{
 			result_srv = CreateShaderResourceView(
 				texture,
 				m_resource_texture,
-				m_format,
-				m_width,
-				m_channels,
-				m_bpc,
+				format_srv,
 				m_array_size,
-				mip_levels,
 				m_data,
-				generate_mipmaps,
 				m_rhi_device
 			);
+		}
 
-			// RENDER TARGET VIEW
-			if (m_bind_flags & RHI_Texture_RenderTarget)
-			{
-				result_rt = CreateRenderTargetView
-				(
-					texture,
-					m_resource_render_target,
-					m_format,
-					m_array_size,
-					m_rhi_device
-				);
-			}
-
-			safe_release(static_cast<ID3D11Texture2D*>(texture));
-		}		
-	
-		return result_tex && result_srv && result_rt;
+		safe_release(reinterpret_cast<ID3D11Texture2D*>(texture));	
+		return result_tex && result_srv && result_rt && result_ds;
 	}
 
 	// TEXTURE CUBE
@@ -375,7 +275,7 @@ namespace Spartan
 		m_resource_texture = nullptr;
 	}
 
-	inline bool CreateFromData
+	inline bool TextureCube_Sampled
 	(
 		void*& resource_texture,
 		uint32_t width,
@@ -483,7 +383,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CreateAsDepthStencil
+	inline bool TextureCube_DepthStencil
 	(
 		void*& resource_texture,
 		vector<void*>& resource_depth_stencils,
@@ -494,9 +394,9 @@ namespace Spartan
 		const shared_ptr<RHI_Device>& rhi_device
 	)
 	{
-		RHI_Format format_buffer	= Format_R32_FLOAT_TYPELESS;
-		RHI_Format format_dsv		= Format_D32_FLOAT;
-		RHI_Format format_srv		= Format_R32_FLOAT;
+		auto format_buffer	= Format_R32_FLOAT_TYPELESS;
+		auto format_dsv		= Format_D32_FLOAT;
+		auto format_srv		= Format_R32_FLOAT;
 
 		if (format == Format_D32_FLOAT)
 		{
@@ -559,7 +459,7 @@ namespace Spartan
 			srv_desc.Texture2DArray.ArraySize		= array_size;
 
 			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&resource_texture);
-			auto result = rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(depth_stencil_texture), &srv_desc, ptr);
+			result = rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(depth_stencil_texture), &srv_desc, ptr);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("CreateShaderResourceView() failed, %s.", D3D11_Common::dxgi_error_to_string(result));
@@ -574,12 +474,11 @@ namespace Spartan
 
 	bool RHI_TextureCube::CreateResourceGpu()
 	{
-		bool is_depth_stencil = (m_format == Format_D32_FLOAT);
+		auto result = true;
 
-		bool result = true;
-		if (is_depth_stencil)
+		if (m_bind_flags & RHI_Texture_DepthStencil)
 		{
-			result = CreateAsDepthStencil
+			result = TextureCube_DepthStencil
 			(
 				m_resource_texture,
 				m_resource_depth_stencils,
@@ -592,7 +491,7 @@ namespace Spartan
 		}
 		else
 		{
-			result = CreateFromData
+			result = TextureCube_Sampled
 			(
 				m_resource_texture,
 				m_width,

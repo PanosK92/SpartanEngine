@@ -69,18 +69,22 @@ Shadows 			| 90%          	| Improve shadow mapping performance and enable spot 
 Vulkan      		| 60%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
-- DirectX 12
+- Ray traced shadows.
+- Ray traced reflections.
 
 ###### v0.33
-- Skeletal Animation
+- DirectX 12.
 
 ###### v0.34
-- C# scripting (Replace AngelScript)
+- Skeletal Animation.
 
 ###### v0.35
-- Eye Adaptation
-- Depth-of-field (Based on Doom approach)
-- Subsurface Scattering
+- C# scripting (Replace AngelScript).
+
+###### v0.36
+- Eye Adaptation.
+- Depth-of-field (Based on Doom approach).
+- Subsurface Scattering.
 
 ###### Future
 - Volumetric Lighting.

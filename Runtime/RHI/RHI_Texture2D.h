@@ -31,15 +31,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_Texture2D : public RHI_Texture
 	{
 	public:
-		// Creates an empty texture intended for deferred loading
-		RHI_Texture2D(Context* context, const bool generate_mipmaps = true) : RHI_Texture(context) 
-		{ 
-			m_resource_type = Resource_Texture2d;
-			m_has_mipmaps	= generate_mipmaps;
-			m_bind_flags	= RHI_Texture_Sampled;
-		}
-
-		// Creates a texture with mimaps. If only the first mipmap is available, the rest will automatically generated
+		// Creates a texture from data
 		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<std::vector<std::byte>>& data) : RHI_Texture(context)
 		{
 			m_resource_type = Resource_Texture2d;
@@ -48,14 +40,13 @@ namespace Spartan
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_channels		= GetChannelCountFromFormat(format);
 			m_format		= format;		
-			m_has_mipmaps	= true;
 			m_data			= data;
 			m_bind_flags	= RHI_Texture_Sampled;
 
 			RHI_Texture2D::CreateResourceGpu();
 		}
 
-		// Creates a texture without any mipmaps
+		// Creates a texture from data
 		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<std::byte>& data) : RHI_Texture(context)
 		{
 			m_resource_type = Resource_Texture2d;
@@ -64,14 +55,21 @@ namespace Spartan
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_channels		= GetChannelCountFromFormat(format);
 			m_format		= format;
-			m_has_mipmaps	= false;
 			m_bind_flags	= RHI_Texture_Sampled;
 			m_data.emplace_back(data);
 
 			RHI_Texture2D::CreateResourceGpu();
 		}
 
-		// Creates a texture without any data, intended for usage as a render target
+		// Creates an empty texture (intended for deferred loading)
+		RHI_Texture2D(Context* context, const bool generate_mipmaps = true) : RHI_Texture(context)
+		{
+			m_resource_type		= Resource_Texture2d;
+			m_bind_flags		= RHI_Texture_Sampled;
+			m_generate_mipmaps_when_loading	= generate_mipmaps;
+		}
+
+		// Creates a texture without any data (intended for usage as a render target)
 		RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_size = 1) : RHI_Texture(context)
 		{
 			m_resource_type		= Resource_Texture2d;
@@ -81,8 +79,7 @@ namespace Spartan
 			m_viewport			= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_format			= format;
 			m_array_size		= array_size;
-			m_bind_flags		= RHI_Texture_Sampled;
-			m_bind_flags		= format == Format_D32_FLOAT ? RHI_Texture_DepthStencil : RHI_Texture_RenderTarget;
+			m_bind_flags		= (format == Format_D32_FLOAT) ? RHI_Texture_DepthStencil | RHI_Texture_Sampled : RHI_Texture_RenderTarget | RHI_Texture_Sampled;
 
 			RHI_Texture2D::CreateResourceGpu();
 		}
