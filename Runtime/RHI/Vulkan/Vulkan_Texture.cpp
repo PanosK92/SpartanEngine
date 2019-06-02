@@ -235,16 +235,20 @@ namespace Spartan
 
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
-		if (m_data.empty())
+		// Resolve usage flags
+		UINT usage_flags = 0;
 		{
-			LOG_WARNING("Texture has no data, which means that this is a render texture that has to be implemented.");
-			return false;
+			usage_flags |= (m_bind_flags & RHI_Texture_Sampled)			? VK_IMAGE_USAGE_SAMPLED_BIT					: 0;
+			usage_flags |= (m_bind_flags & RHI_Texture_DepthStencil)	? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT	: 0;
+			usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget)	? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT			: 0;
 		}
+		usage_flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // specifies that the image can be used as the source of a transfer command.
+		usage_flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // specifies that the image can be used as the destination of a transfer command.
 
-		// Copy data to a buffer
+		// Copy data to a buffer (if there are any)
 		VkBuffer staging_buffer = nullptr;
 		VkDeviceMemory staging_buffer_memory = nullptr;
-		if (!m_is_render_target)
+		if (!m_data.empty())
 		{
 			VkDeviceSize buffer_size = static_cast<uint64_t>(m_width) * static_cast<uint64_t>(m_height) * static_cast<uint64_t>(m_channels);
 
@@ -270,7 +274,7 @@ namespace Spartan
 				m_height,
 				vulkan_format[m_format],
 				VK_IMAGE_TILING_LINEAR, // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
-				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				usage_flags,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 			);
 		if (result != VK_SUCCESS)
@@ -280,7 +284,7 @@ namespace Spartan
 		}
 
 		// Copy buffer to image
-		if (!m_is_render_target)
+		if (staging_buffer)
 		{
 			// Create command pool
 			void* cmd_pool_void;
@@ -304,7 +308,8 @@ namespace Spartan
 			return false;
 		}
 
-		if (!m_is_render_target)
+		// Release staging buffer
+		if (staging_buffer && staging_buffer_memory)
 		{
 			vkDestroyBuffer(m_rhi_device->GetContext()->device, staging_buffer, nullptr);
 			vkFreeMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, nullptr);
