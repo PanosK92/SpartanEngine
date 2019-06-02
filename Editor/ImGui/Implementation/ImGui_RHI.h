@@ -38,7 +38,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Shader.h"
 #include "RHI/RHI_SwapChain.h"
 #include "RHI/RHI_CommandList.h"
-#include "RHI/RHI_Pipeline.h"
 #include "RHI/RHI_PipelineCache.h"
 //====================================
 
@@ -193,6 +192,7 @@ namespace ImGui::RHI
 		// Setup back-end capabilities flags
 		auto& io = GetIO();
 		io.BackendFlags			|= ImGuiBackendFlags_RendererHasViewports;
+		io.BackendFlags			|= ImGuiBackendFlags_RendererHasVtxOffset;
 		io.BackendRendererName	= "RHI";
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
@@ -214,6 +214,8 @@ namespace ImGui::RHI
 		const auto fb_height	= static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 		if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
 			return;
+
+		const auto is_main_viewport = (swap_chain_other == nullptr);
 
 		// Updated vertex and index buffers
 		{
@@ -275,65 +277,67 @@ namespace ImGui::RHI
 			}
 		}
 
-		// Compute viewport
-		g_viewport.width	= draw_data->DisplaySize.x;
-		g_viewport.height	= draw_data->DisplaySize.y;
+		// Set render state
+		{
+			// Compute viewport
+			g_viewport.width	= draw_data->DisplaySize.x;
+			g_viewport.height	= draw_data->DisplaySize.y;
 
-		// Setup pipeline
-		RHI_PipelineState state		= {};
-		state.shader_vertex			= g_shader.get();
-		state.shader_pixel			= g_shader.get();
-		state.input_layout			= g_shader->GetInputLayout().get();
-		state.constant_buffer		= g_constant_buffer.get();
-		state.rasterizer_state		= g_rasterizer_state.get();
-		state.blend_state			= g_blend_state.get();
-		state.depth_stencil_state	= g_depth_stencil_state.get();
-		state.sampler				= g_sampler.get();
-		state.vertex_buffer			= g_vertex_buffer.get();
-		state.primitive_topology	= PrimitiveTopology_TriangleList;
-		const auto is_main_viewport = (swap_chain_other == nullptr);
-		state.swap_chain			= is_main_viewport ? g_swap_chain.get() : swap_chain_other;
+			// Setup pipeline
+			RHI_PipelineState state		= {};
+			state.shader_vertex			= g_shader.get();
+			state.shader_pixel			= g_shader.get();
+			state.input_layout			= g_shader->GetInputLayout().get();
+			state.constant_buffer		= g_constant_buffer.get();
+			state.rasterizer_state		= g_rasterizer_state.get();
+			state.blend_state			= g_blend_state.get();
+			state.depth_stencil_state	= g_depth_stencil_state.get();
+			state.sampler				= g_sampler.get();
+			state.vertex_buffer			= g_vertex_buffer.get();
+			state.primitive_topology	= PrimitiveTopology_TriangleList;
+			state.swap_chain			= is_main_viewport ? g_swap_chain.get() : swap_chain_other;
 
-		// Start witting command list
-		g_cmd_list->Begin("Pass_ImGui", g_pipeline_cache->GetPipeline(state).get());
-		g_cmd_list->SetRenderTarget(state.swap_chain->GetRenderTargetView());
-		if (clear) g_cmd_list->ClearRenderTarget(state.swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
-		g_cmd_list->SetViewport(g_viewport);
-		g_cmd_list->SetBufferVertex(g_vertex_buffer);
-		g_cmd_list->SetBufferIndex(g_index_buffer);
-		g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constant_buffer);
-		g_cmd_list->SetSampler(0, g_sampler);
+			// Start witting command list
+			g_cmd_list->Begin("Pass_ImGui", g_pipeline_cache->GetPipeline(state).get());
+			g_cmd_list->SetRenderTarget(state.swap_chain->GetRenderTargetView());
+			if (clear) g_cmd_list->ClearRenderTarget(state.swap_chain->GetRenderTargetView(), Vector4(0, 0, 0, 1));
+			g_cmd_list->SetViewport(g_viewport);
+			g_cmd_list->SetBufferVertex(g_vertex_buffer);
+			g_cmd_list->SetBufferIndex(g_index_buffer);
+			g_cmd_list->SetConstantBuffer(0, Buffer_VertexShader, g_constant_buffer);
+			g_cmd_list->SetSampler(0, g_sampler);
+		}
 		
 		// Render command lists
-		unsigned int vtx_offset = 0;
-		unsigned int idx_offset = 0;
-		const auto& pos = draw_data->DisplayPos;
+		int global_vtx_offset = 0;
+		int global_idx_offset = 0;
+		const auto& clip_off = draw_data->DisplayPos;
 		for (auto i = 0; i < draw_data->CmdListsCount; i++)
 		{
-			const ImDrawList* cmd_list = draw_data->CmdLists[i];
+			auto cmd_list = draw_data->CmdLists[i];
 			for (auto cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
 			{
-				const auto pcmd = &cmd_list->CmdBuffer[cmd_i];
-				if (pcmd->UserCallback)
+				auto pcmd = &cmd_list->CmdBuffer[cmd_i];
+				if (pcmd->UserCallback != nullptr)
 				{
-					// User callback (registered via ImDrawList::AddCallback)
 					pcmd->UserCallback(cmd_list, pcmd);
 				}
 				else
 				{
 					// Compute scissor rectangle
-					auto scissor_rect	 = Math::Rectangle(pcmd->ClipRect.x - pos.x, pcmd->ClipRect.y - pos.y, pcmd->ClipRect.z - pos.x, pcmd->ClipRect.w - pos.y);
+					auto scissor_rect	 = Math::Rectangle(pcmd->ClipRect.x - clip_off.x, pcmd->ClipRect.y - clip_off.y, pcmd->ClipRect.z - clip_off.x, pcmd->ClipRect.w - clip_off.y);
 					scissor_rect.width	-= scissor_rect.x;
 					scissor_rect.height -= scissor_rect.y;
 					
 					// Apply scissor rectangle, bind texture and draw
 					g_cmd_list->SetScissorRectangle(scissor_rect);
 					g_cmd_list->SetTexture(0, static_cast<RHI_Texture*>(pcmd->TextureId));
-					g_cmd_list->DrawIndexed(pcmd->ElemCount, idx_offset, vtx_offset);
+					g_cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
 				}
-				idx_offset += pcmd->ElemCount;
+				
 			}
-			vtx_offset += cmd_list->VtxBuffer.Size;
+			global_idx_offset += cmd_list->IdxBuffer.Size;
+			global_vtx_offset += cmd_list->VtxBuffer.Size;
 		}
 
 		g_cmd_list->End();

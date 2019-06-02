@@ -718,14 +718,14 @@ bool ImGui::ArrowButton(const char* str_id, ImGuiDir dir)
 }
 
 // Button to close a window
-bool ImGui::CloseButton(ImGuiID id, const ImVec2& pos, float radius)
+bool ImGui::CloseButton(ImGuiID id, const ImVec2& pos)//, float size)
 {
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = g.CurrentWindow;
 
     // We intentionally allow interaction when clipped so that a mechanical Alt,Right,Validate sequence close a window.
     // (this isn't the regular behavior of buttons, but it doesn't affect the user much because navigation tends to keep items visible).
-    const ImRect bb(pos - ImVec2(radius,radius), pos + ImVec2(radius,radius));
+    const ImRect bb(pos, pos + ImVec2(g.FontSize, g.FontSize) + g.Style.FramePadding * 2.0f);
     bool is_clipped = !ItemAdd(bb, id);
 
     bool hovered, held;
@@ -734,11 +734,12 @@ bool ImGui::CloseButton(ImGuiID id, const ImVec2& pos, float radius)
         return pressed;
 
     // Render
+    ImU32 col = GetColorU32(held ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered);
     ImVec2 center = bb.GetCenter();
     if (hovered)
-        window->DrawList->AddCircleFilled(center, ImMax(2.0f, radius), GetColorU32(held ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered), 9);
+        window->DrawList->AddCircleFilled(center, ImMax(2.0f, g.FontSize * 0.5f + 1.0f), col, 12);
 
-    float cross_extent = (radius * 0.7071f) - 1.0f;
+    float cross_extent = g.FontSize * 0.5f * 0.7071f - 1.0f;
     ImU32 cross_col = GetColorU32(ImGuiCol_Text);
     center -= ImVec2(0.5f, 0.5f);
     window->DrawList->AddLine(center + ImVec2(+cross_extent,+cross_extent), center + ImVec2(-cross_extent,-cross_extent), cross_col, 1.0f);
@@ -758,11 +759,13 @@ bool ImGui::CollapseButton(ImGuiID id, const ImVec2& pos, ImGuiDockNode* dock_no
     bool hovered, held;
     bool pressed = ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_None);
 
+    // Render
     //bool is_dock_menu = (window->DockNodeAsHost && !window->Collapsed);
     ImVec2 off = dock_node ? ImVec2((float)(int)(-g.Style.ItemInnerSpacing.x * 0.5f) + 0.5f, 0.0f) : ImVec2(0.0f, 0.0f);
     ImU32 col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+    ImVec2 center = bb.GetCenter();
     if (hovered || held)
-        window->DrawList->AddCircleFilled(bb.GetCenter() + off + ImVec2(0,-0.5f), g.FontSize * 0.5f + 1.0f, col, 9);
+        window->DrawList->AddCircleFilled(center + off + ImVec2(0,-0.5f), g.FontSize * 0.5f + 1.0f, col, 12);
 
     if (dock_node)
         RenderArrowDockMenu(window->DrawList, bb.Min + g.Style.FramePadding, g.FontSize, GetColorU32(ImGuiCol_Text));
@@ -790,7 +793,7 @@ bool ImGui::CollapseButton(ImGuiID id, const ImVec2& pos, ImGuiDockNode* dock_no
         }
         else
         {
-            ImVec2 backup_active_click_offset = g.ActiveIdClickOffset;
+            ImVec2 backup_active_click_offset = g.ActiveIdClickOffset + (pos - window->Pos);
             StartMouseMovingWindow(window);
             g.ActiveIdClickOffset = backup_active_click_offset;
         }
@@ -916,14 +919,14 @@ void ImGui::Scrollbar(ImGuiAxis axis)
     ImRect bb;
     if (axis == ImGuiAxis_X)
     {
-        bb.Min = ImVec2(window->InnerMainRect.Min.x, window->InnerMainRect.Max.y);
-        bb.Max = ImVec2(window->InnerMainRect.Max.x, outer_rect.Max.y - window->WindowBorderSize);
+        bb.Min = ImVec2(window->InnerRect.Min.x, window->InnerRect.Max.y);
+        bb.Max = ImVec2(window->InnerRect.Max.x, outer_rect.Max.y - window->WindowBorderSize);
         rounding_corners |= ImDrawCornerFlags_BotLeft;
     }
     else
     {
-        bb.Min = ImVec2(window->InnerMainRect.Max.x, window->InnerMainRect.Min.y);
-        bb.Max = ImVec2(outer_rect.Max.x - window->WindowBorderSize, window->InnerMainRect.Max.y);
+        bb.Min = ImVec2(window->InnerRect.Max.x, window->InnerRect.Min.y);
+        bb.Max = ImVec2(outer_rect.Max.x - window->WindowBorderSize, window->InnerRect.Max.y);
         rounding_corners |= ((window->Flags & ImGuiWindowFlags_NoTitleBar) && !(window->Flags & ImGuiWindowFlags_MenuBar)) ? ImDrawCornerFlags_TopRight : 0;
     }
     ScrollbarEx(bb, id, axis, &window->Scroll[axis], window->SizeFull[axis] - other_scrollbar_size, window->SizeContents[axis], rounding_corners);
@@ -1180,6 +1183,7 @@ void ImGui::Bullet()
 // - SeparatorEx() [Internal]
 // - Separator()
 // - SplitterBehavior() [Internal]
+// - ShrinkWidths() [Internal]
 //-------------------------------------------------------------------------
 
 void ImGui::Spacing()
@@ -1359,6 +1363,33 @@ bool ImGui::SplitterBehavior(const ImRect& bb, ImGuiID id, ImGuiAxis axis, float
     window->DrawList->AddRectFilled(bb_render.Min, bb_render.Max, col, g.Style.FrameRounding);
 
     return held;
+}
+
+static int IMGUI_CDECL ShrinkWidthItemComparer(const void* lhs, const void* rhs)
+{
+    const ImGuiShrinkWidthItem* a = (const ImGuiShrinkWidthItem*)lhs;
+    const ImGuiShrinkWidthItem* b = (const ImGuiShrinkWidthItem*)rhs;
+    if (int d = (int)(b->Width - a->Width))
+        return d;
+    return (b->Index - a->Index);
+}
+
+// Shrink excess width from a set of item, by removing width from the larger items first.
+void ImGui::ShrinkWidths(ImGuiShrinkWidthItem* items, int count, float width_excess)
+{
+    if (count > 1)
+        ImQsort(items, (size_t)count, sizeof(ImGuiShrinkWidthItem), ShrinkWidthItemComparer);
+    int count_same_width = 1;
+    while (width_excess > 0.0f && count_same_width < count)
+    {
+        while (count_same_width < count && items[0].Width == items[count_same_width].Width)
+            count_same_width++;
+        float width_to_remove_per_item_max = (count_same_width < count) ? (items[0].Width - items[count_same_width].Width) : (items[0].Width - 1.0f);
+        float width_to_remove_per_item = ImMin(width_excess / count_same_width, width_to_remove_per_item_max);
+        for (int item_n = 0; item_n < count_same_width; item_n++)
+            items[item_n].Width -= width_to_remove_per_item;
+        width_excess -= width_to_remove_per_item * count_same_width;
+    }
 }
 
 //-------------------------------------------------------------------------
@@ -2099,15 +2130,22 @@ bool ImGui::DragScalarN(const char* label, ImGuiDataType data_type, void* v, int
     for (int i = 0; i < components; i++)
     {
         PushID(i);
+        if (i > 0)
+            SameLine(0, g.Style.ItemInnerSpacing.x);
         value_changed |= DragScalar("", data_type, v, v_speed, v_min, v_max, format, power);
-        SameLine(0, g.Style.ItemInnerSpacing.x);
         PopID();
         PopItemWidth();
         v = (void*)((char*)v + type_size);
     }
     PopID();
 
-    TextEx(label, FindRenderedTextEnd(label));
+    const char* label_end = FindRenderedTextEnd(label);
+    if (label != label_end)
+    {
+        SameLine(0, g.Style.ItemInnerSpacing.x);
+        TextEx(label, label_end);
+    }
+
     EndGroup();
     return value_changed;
 }
@@ -2547,15 +2585,22 @@ bool ImGui::SliderScalarN(const char* label, ImGuiDataType data_type, void* v, i
     for (int i = 0; i < components; i++)
     {
         PushID(i);
+        if (i > 0)
+            SameLine(0, g.Style.ItemInnerSpacing.x);
         value_changed |= SliderScalar("", data_type, v, v_min, v_max, format, power);
-        SameLine(0, g.Style.ItemInnerSpacing.x);
         PopID();
         PopItemWidth();
         v = (void*)((char*)v + type_size);
     }
     PopID();
 
-    TextEx(label, FindRenderedTextEnd(label));
+    const char* label_end = FindRenderedTextEnd(label);
+    if (label != label_end)
+    {
+        SameLine(0, g.Style.ItemInnerSpacing.x);
+        TextEx(label, label_end);
+    }
+
     EndGroup();
     return value_changed;
 }
@@ -2858,8 +2903,13 @@ bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* data_p
             DataTypeApplyOp(data_type, '+', data_ptr, data_ptr, g.IO.KeyCtrl && step_fast ? step_fast : step);
             value_changed = true;
         }
-        SameLine(0, style.ItemInnerSpacing.x);
-        TextEx(label, FindRenderedTextEnd(label));
+
+        const char* label_end = FindRenderedTextEnd(label);
+        if (label != label_end)
+        {
+            SameLine(0, style.ItemInnerSpacing.x);
+            TextEx(label, label_end);
+        }
         style.FramePadding = backup_frame_padding;
 
         PopID();
@@ -2891,15 +2941,22 @@ bool ImGui::InputScalarN(const char* label, ImGuiDataType data_type, void* v, in
     for (int i = 0; i < components; i++)
     {
         PushID(i);
+        if (i > 0)
+            SameLine(0, g.Style.ItemInnerSpacing.x);
         value_changed |= InputScalar("", data_type, v, step, step_fast, format, flags);
-        SameLine(0, g.Style.ItemInnerSpacing.x);
         PopID();
         PopItemWidth();
         v = (void*)((char*)v + type_size);
     }
     PopID();
 
-    TextEx(label, FindRenderedTextEnd(label));
+    const char* label_end = FindRenderedTextEnd(label);
+    if (label != label_end)
+    {
+        SameLine(0.0f, g.Style.ItemInnerSpacing.x);
+        TextEx(label, label_end);
+    }
+
     EndGroup();
     return value_changed;
 }
@@ -4235,7 +4292,7 @@ bool ImGui::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flag
                 Spacing();
             }
             ImGuiColorEditFlags picker_flags_to_forward = ImGuiColorEditFlags__DataTypeMask | ImGuiColorEditFlags__PickerMask | ImGuiColorEditFlags__InputMask | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar;
-            ImGuiColorEditFlags picker_flags = (flags_untouched & picker_flags_to_forward) | ImGuiColorEditFlags_DisplayHSV | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreviewHalf;
+            ImGuiColorEditFlags picker_flags = (flags_untouched & picker_flags_to_forward) | ImGuiColorEditFlags__DisplayMask | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreviewHalf;
             SetNextItemWidth(square_sz * 12.0f); // Use 256 + bar sizes?
             value_changed |= ColorPicker4("##picker", col, picker_flags, &g.ColorPickerRef.x);
             EndPopup();
@@ -5104,12 +5161,12 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
     // We vertically grow up to current line height up the typical widget height.
     const float text_base_offset_y = ImMax(padding.y, window->DC.CurrLineTextBaseOffset); // Latch before ItemSize changes it
     const float frame_height = ImMax(ImMin(window->DC.CurrLineSize.y, g.FontSize + style.FramePadding.y*2), label_size.y + padding.y*2);
-    ImRect frame_bb = ImRect(window->DC.CursorPos, ImVec2(GetWorkRectMax().x, window->DC.CursorPos.y + frame_height));
+    ImRect frame_bb = ImRect(window->DC.CursorPos, ImVec2(GetContentRegionMaxAbs().x, window->DC.CursorPos.y + frame_height));
     if (display_frame)
     {
         // Framed header expand a little outside the default padding
-        frame_bb.Min.x -= (float)(int)(window->WindowPadding.x*0.5f) - 1;
-        frame_bb.Max.x += (float)(int)(window->WindowPadding.x*0.5f) - 1;
+        frame_bb.Min.x -= (float)(int)(window->WindowPadding.x * 0.5f) - 1;
+        frame_bb.Max.x += (float)(int)(window->WindowPadding.x * 0.5f) - 1;
     }
 
     const float text_offset_x = (g.FontSize + (display_frame ? padding.x*3 : padding.x*2));   // Collapser arrow width + Spacing
@@ -5206,6 +5263,8 @@ bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* l
         RenderFrame(frame_bb.Min, frame_bb.Max, col, true, style.FrameRounding);
         RenderNavHighlight(frame_bb, id, nav_highlight_flags);
         RenderArrow(frame_bb.Min + ImVec2(padding.x, text_base_offset_y), is_open ? ImGuiDir_Down : ImGuiDir_Right, 1.0f);
+        if (flags & ImGuiTreeNodeFlags_ClipLabelForTrailingButton)
+            frame_bb.Max.x -= g.FontSize + style.FramePadding.x;
         if (g.LogEnabled)
         {
             // NB: '##' is normally used to hide text (as a library-wide feature), so we need to specify the text range to make sure the ## aren't stripped out here.
@@ -5332,15 +5391,19 @@ bool ImGui::CollapsingHeader(const char* label, bool* p_open, ImGuiTreeNodeFlags
         return false;
 
     ImGuiID id = window->GetID(label);
-    bool is_open = TreeNodeBehavior(id, flags | ImGuiTreeNodeFlags_CollapsingHeader | (p_open ? ImGuiTreeNodeFlags_AllowItemOverlap : 0), label);
+    flags |= ImGuiTreeNodeFlags_CollapsingHeader | (p_open ? ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_ClipLabelForTrailingButton : 0);
+    bool is_open = TreeNodeBehavior(id, flags, label);
     if (p_open)
     {
-        // Create a small overlapping close button // FIXME: We can evolve this into user accessible helpers to add extra buttons on title bars, headers, etc.
+        // Create a small overlapping close button
+        // FIXME: We can evolve this into user accessible helpers to add extra buttons on title bars, headers, etc.
+        // FIXME: CloseButton can overlap into text, need find a way to clip the text somehow.
         ImGuiContext& g = *GImGui;
         ImGuiItemHoveredDataBackup last_item_backup;
-        float button_radius = g.FontSize * 0.5f;
-        ImVec2 button_center = ImVec2(ImMin(window->DC.LastItemRect.Max.x, window->ClipRect.Max.x) - g.Style.FramePadding.x - button_radius, window->DC.LastItemRect.GetCenter().y);
-        if (CloseButton(window->GetID((void*)((intptr_t)id+1)), button_center, button_radius))
+        float button_size = g.FontSize;
+        float button_x = ImMax(window->DC.LastItemRect.Min.x, window->DC.LastItemRect.Max.x - g.Style.FramePadding.x * 2.0f - button_size);
+        float button_y = window->DC.LastItemRect.Min.y;
+        if (CloseButton(window->GetID((void*)((intptr_t)id + 1)), ImVec2(button_x, button_y)))
             *p_open = false;
         last_item_backup.Restore();
     }
@@ -6231,15 +6294,6 @@ static int IMGUI_CDECL TabItemComparerByVisibleOffset(const void* lhs, const voi
     return (int)(a->Offset - b->Offset);
 }
 
-static int IMGUI_CDECL TabBarSortItemComparer(const void* lhs, const void* rhs)
-{
-    const ImGuiTabBarSortItem* a = (const ImGuiTabBarSortItem*)lhs;
-    const ImGuiTabBarSortItem* b = (const ImGuiTabBarSortItem*)rhs;
-    if (int d = (int)(b->Width - a->Width))
-        return d;
-    return (b->Index - a->Index);
-}
-
 static ImGuiTabBar* GetTabBarFromTabBarRef(const ImGuiTabBarRef& ref)
 {
     ImGuiContext& g = *GImGui;
@@ -6263,7 +6317,7 @@ bool    ImGui::BeginTabBar(const char* str_id, ImGuiTabBarFlags flags)
 
     ImGuiID id = window->GetID(str_id);
     ImGuiTabBar* tab_bar = g.TabBars.GetOrAddByKey(id);
-    ImRect tab_bar_bb = ImRect(window->DC.CursorPos.x, window->DC.CursorPos.y, window->InnerClipRect.Max.x, window->DC.CursorPos.y + g.FontSize + g.Style.FramePadding.y * 2);
+    ImRect tab_bar_bb = ImRect(window->DC.CursorPos.x, window->DC.CursorPos.y, window->WorkRect.Max.x, window->DC.CursorPos.y + g.FontSize + g.Style.FramePadding.y * 2);
     tab_bar->ID = id;
     return BeginTabBarEx(tab_bar, tab_bar_bb, flags | ImGuiTabBarFlags_IsFocused, NULL);
 }
@@ -6420,10 +6474,8 @@ static void ImGui::TabBarLayout(ImGuiTabBar* tab_bar)
         if (ImGuiTabItem* tab_to_select = TabBarTabListPopupButton(tab_bar)) // NB: Will alter BarRect.Max.x!
             scroll_track_selected_tab_id = tab_bar->SelectedTabId = tab_to_select->ID;
 
-    ImVector<ImGuiTabBarSortItem>& width_sort_buffer = g.TabSortByWidthBuffer;
-    width_sort_buffer.resize(tab_bar->Tabs.Size);
-
     // Compute ideal widths
+    g.ShrinkWidthBuffer.resize(tab_bar->Tabs.Size);
     float width_total_contents = 0.0f;
     ImGuiTabItem* most_recently_selected_tab = NULL;
     bool found_selected_tab_id = false;
@@ -6447,8 +6499,8 @@ static void ImGui::TabBarLayout(ImGuiTabBar* tab_bar)
         width_total_contents += (tab_n > 0 ? g.Style.ItemInnerSpacing.x : 0.0f) + tab->WidthContents;
 
         // Store data so we can build an array sorted by width if we need to shrink tabs down
-        width_sort_buffer[tab_n].Index = tab_n;
-        width_sort_buffer[tab_n].Width = tab->WidthContents;
+        g.ShrinkWidthBuffer[tab_n].Index = tab_n;
+        g.ShrinkWidthBuffer[tab_n].Width = tab->WidthContents;
     }
 
     // Compute width
@@ -6457,21 +6509,9 @@ static void ImGui::TabBarLayout(ImGuiTabBar* tab_bar)
     if (width_excess > 0.0f && (tab_bar->Flags & ImGuiTabBarFlags_FittingPolicyResizeDown))
     {
         // If we don't have enough room, resize down the largest tabs first
-        if (tab_bar->Tabs.Size > 1)
-            ImQsort(width_sort_buffer.Data, (size_t)width_sort_buffer.Size, sizeof(ImGuiTabBarSortItem), TabBarSortItemComparer);
-        int tab_count_same_width = 1;
-        while (width_excess > 0.0f && tab_count_same_width < tab_bar->Tabs.Size)
-        {
-            while (tab_count_same_width < tab_bar->Tabs.Size && width_sort_buffer[0].Width == width_sort_buffer[tab_count_same_width].Width)
-                tab_count_same_width++;
-            float width_to_remove_per_tab_max = (tab_count_same_width < tab_bar->Tabs.Size) ? (width_sort_buffer[0].Width - width_sort_buffer[tab_count_same_width].Width) : (width_sort_buffer[0].Width - 1.0f);
-            float width_to_remove_per_tab = ImMin(width_excess / tab_count_same_width, width_to_remove_per_tab_max);
-            for (int tab_n = 0; tab_n < tab_count_same_width; tab_n++)
-                width_sort_buffer[tab_n].Width -= width_to_remove_per_tab;
-            width_excess -= width_to_remove_per_tab * tab_count_same_width;
-        }
+        ShrinkWidths(g.ShrinkWidthBuffer.Data, g.ShrinkWidthBuffer.Size, width_excess);
         for (int tab_n = 0; tab_n < tab_bar->Tabs.Size; tab_n++)
-            tab_bar->Tabs[width_sort_buffer[tab_n].Index].Width = (float)(int)width_sort_buffer[tab_n].Width;
+            tab_bar->Tabs[g.ShrinkWidthBuffer[tab_n].Index].Width = (float)(int)g.ShrinkWidthBuffer[tab_n].Width;
     }
     else
     {
@@ -7151,16 +7191,18 @@ bool ImGui::TabItemLabelAndCloseButton(ImDrawList* draw_list, const ImRect& bb, 
     if (close_button_visible)
     {
         ImGuiItemHoveredDataBackup last_item_backup;
-        const float close_button_sz = g.FontSize * 0.5f;
-        if (CloseButton(close_button_id, ImVec2(bb.Max.x - frame_padding.x - close_button_sz, bb.Min.y + frame_padding.y + close_button_sz), close_button_sz))
+        const float close_button_sz = g.FontSize;
+        PushStyleVar(ImGuiStyleVar_FramePadding, frame_padding);
+        if (CloseButton(close_button_id, ImVec2(bb.Max.x - frame_padding.x * 2.0f - close_button_sz, bb.Min.y)))
             close_button_pressed = true;
+        PopStyleVar();
         last_item_backup.Restore();
 
         // Close with middle mouse button
         if (!(flags & ImGuiTabItemFlags_NoCloseWithMiddleMouseButton) && IsMouseClicked(2))
             close_button_pressed = true;
 
-        text_pixel_clip_bb.Max.x -= close_button_sz * 2.0f;
+        text_pixel_clip_bb.Max.x -= close_button_sz;
     }
 
     // Label with ellipsis

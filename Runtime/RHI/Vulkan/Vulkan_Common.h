@@ -439,81 +439,9 @@ namespace Spartan::Vulkan_Common
 
 		inline void wait_reset(const std::shared_ptr<RHI_Device>& rhi_device, void*& fence_in)
 		{
-			auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
+			const auto fence_temp = reinterpret_cast<VkFence*>(&fence_in);
 			SPARTAN_ASSERT(vkWaitForFences(rhi_device->GetContext()->device, 1, fence_temp, true, 0xFFFFFFFFFFFFFFFF) == VK_SUCCESS);
 			SPARTAN_ASSERT(vkResetFences(rhi_device->GetContext()->device, 1, fence_temp) == VK_SUCCESS);
-		}
-	}
-
-	namespace image
-	{
-		inline bool create
-		(
-			const std::shared_ptr<RHI_Device>& rhi_device,
-			VkImage& _image,
-			VkDeviceMemory& image_memory,
-			uint32_t width, 
-			uint32_t height,
-			VkFormat format,
-			VkImageTiling tiling,
-			VkImageUsageFlags usage,
-			VkMemoryPropertyFlags properties
-		)
-		{
-			VkImageCreateInfo create_info	= {};
-			create_info.sType				= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-			create_info.imageType			= VK_IMAGE_TYPE_2D;
-			create_info.extent.width		= width;
-			create_info.extent.height		= height;
-			create_info.extent.depth		= 1;
-			create_info.mipLevels			= 1;
-			create_info.arrayLayers			= 1;
-			create_info.format				= format;
-			create_info.tiling				= tiling;
-			create_info.initialLayout		= VK_IMAGE_LAYOUT_UNDEFINED;
-			create_info.usage				= usage;
-			create_info.samples				= VK_SAMPLE_COUNT_1_BIT;
-			create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
-
-			auto result = vkCreateImage(rhi_device->GetContext()->device, &create_info, nullptr, &_image);
-			if (result != VK_SUCCESS)
-			{
-				LOG_ERROR(result_to_string(result));
-				return false;
-			}
-
-			VkMemoryRequirements memRequirements;
-			vkGetImageMemoryRequirements(rhi_device->GetContext()->device, _image, &memRequirements);
-
-			VkMemoryAllocateInfo allocate_info	= {};
-			allocate_info.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocate_info.allocationSize		= memRequirements.size;
-			allocate_info.memoryTypeIndex		= memory::get_type(rhi_device->GetContext()->device_physical, properties, memRequirements.memoryTypeBits);
-
-			result = vkAllocateMemory(rhi_device->GetContext()->device, &allocate_info, nullptr, &image_memory);
-			if (result != VK_SUCCESS)
-			{
-				LOG_ERROR(result_to_string(result));
-				return false;
-			}
-
-			result = vkBindImageMemory(rhi_device->GetContext()->device, _image, image_memory, 0);
-			if (result != VK_SUCCESS)
-			{
-				LOG_ERROR(result_to_string(result));
-				return false;
-			}
-
-			return true;
-		}
-
-		inline void destroy(const std::shared_ptr<RHI_Device>& rhi_device, void*& _image)
-		{
-			if (!_image)
-				return;
-
-			vkDestroyImage(rhi_device->GetContext()->device, static_cast<VkImage>(_image), nullptr);
-			_image = nullptr;
 		}
 	}
 

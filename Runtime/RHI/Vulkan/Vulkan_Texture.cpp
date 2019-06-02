@@ -31,10 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/MathHelper.h"
 //================================
 
-//= NAMESPAECES =======================
+//= NAMESPACES =======================
 using namespace std;
 using namespace Spartan::Math::Helper;
-//=====================================
+//====================================
 
 namespace Spartan
 {
@@ -44,11 +44,11 @@ namespace Spartan
 	{
 		m_data.clear();
 		Vulkan_Common::image_view::destroy(m_rhi_device, m_resource_texture);
-		Vulkan_Common::image::destroy(m_rhi_device, m_texture);
+		vkDestroyImage(m_rhi_device->GetContext()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}
 
-	VkCommandBuffer BeginSingleTimeCommands(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool) 
+	inline VkCommandBuffer BeginSingleTimeCommands(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool) 
 	{
 		VkCommandBuffer command_buffer;
 		Vulkan_Common::commands::cmd_buffer(rhi_device, command_buffer, command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -65,7 +65,7 @@ namespace Spartan
 		return command_buffer;
 	}
 
-	bool EndSingleTimeCommands(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkQueue& queue, VkCommandBuffer& command_buffer)
+	inline bool EndSingleTimeCommands(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkQueue& queue, VkCommandBuffer& command_buffer)
 	{
 		auto result = vkEndCommandBuffer(command_buffer);
 		if (result != VK_SUCCESS)
@@ -79,7 +79,7 @@ namespace Spartan
 		submit_info.commandBufferCount	= 1;
 		submit_info.pCommandBuffers		= &command_buffer;
 
-		result = vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE);
+		result = vkQueueSubmit(queue, 1, &submit_info, nullptr);
 		if (result != VK_SUCCESS)
 		{
 			LOG_ERROR(Vulkan_Common::result_to_string(result));
@@ -98,16 +98,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool TransitionImageLayout(
-		const std::shared_ptr<RHI_Device>& rhi_device,
-		VkCommandPool& command_pool,
-		VkCommandBuffer& cmd_buffer,
-		VkQueue& queue,
-		VkImage& image,
-		VkFormat format,
-		VkImageLayout oldLayout,
-		VkImageLayout newLayout
-	) 
+	inline bool TransitionImageLayout(VkCommandBuffer& cmd_buffer, VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout) 
 	{
 		VkImageMemoryBarrier barrier			= {};
 		barrier.sType							= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -158,15 +149,15 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CopyBufferToImage(const std::shared_ptr<RHI_Device>& rhi_device, uint32_t width, uint32_t height, VkFormat format, VkImage& image, VkBuffer& staging_buffer, VkCommandPool& cmd_pool)
+	inline bool CopyBufferToImage(const std::shared_ptr<RHI_Device>& rhi_device, uint32_t width, uint32_t height, VkImage& image, VkBuffer& staging_buffer, VkCommandPool& cmd_pool)
 	{
 		auto queue = rhi_device->GetContext()->queue_copy;
 
-		VkCommandBuffer cmd_buffer = BeginSingleTimeCommands(rhi_device, cmd_pool);
+		auto cmd_buffer = BeginSingleTimeCommands(rhi_device, cmd_pool);
 		if (!cmd_buffer)
 			return false;
 
-		if (!TransitionImageLayout(rhi_device, cmd_pool, cmd_buffer,queue, image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
+		if (!TransitionImageLayout(cmd_buffer, image, VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
 			return false;
 		
 		// Copy buffer to texture	
@@ -183,13 +174,63 @@ namespace Spartan
 
 		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 	
-		if (!TransitionImageLayout(rhi_device, cmd_pool, cmd_buffer, queue, image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+		if (!TransitionImageLayout(cmd_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
 			return false;
 
 		if (!EndSingleTimeCommands(rhi_device, cmd_pool, queue, cmd_buffer))
 			return false;
 
 		return true;
+	}
+
+	inline VkResult Create(
+		const std::shared_ptr<RHI_Device>& rhi_device,
+		VkImage& _image,
+		VkDeviceMemory& image_memory,
+		const uint32_t width,
+		const uint32_t height,
+		const VkFormat format,
+		const VkImageTiling tiling,
+		const VkImageUsageFlags usage,
+		const VkMemoryPropertyFlags properties
+	)
+	{
+		VkImageCreateInfo create_info	= {};
+		create_info.sType				= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		create_info.imageType			= VK_IMAGE_TYPE_2D;
+		create_info.extent.width		= width;
+		create_info.extent.height		= height;
+		create_info.extent.depth		= 1;
+		create_info.mipLevels			= 1;
+		create_info.arrayLayers			= 1;
+		create_info.format				= format;
+		create_info.tiling				= tiling;
+		create_info.initialLayout		= VK_IMAGE_LAYOUT_UNDEFINED;
+		create_info.usage				= usage;
+		create_info.samples				= VK_SAMPLE_COUNT_1_BIT;
+		create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+
+		auto result = vkCreateImage(rhi_device->GetContext()->device, &create_info, nullptr, &_image);
+		if (result != VK_SUCCESS)
+			return result;
+
+		VkMemoryRequirements memRequirements;
+		vkGetImageMemoryRequirements(rhi_device->GetContext()->device, _image, &memRequirements);
+
+		VkMemoryAllocateInfo allocate_info	= {};
+		allocate_info.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocate_info.allocationSize		= memRequirements.size;
+		allocate_info.memoryTypeIndex		= Vulkan_Common::memory::get_type(rhi_device->GetContext()->device_physical, properties, memRequirements.memoryTypeBits);
+
+		result = vkAllocateMemory(rhi_device->GetContext()->device, &allocate_info, nullptr, &image_memory);
+		if (result != VK_SUCCESS)
+			return result;
+
+		result = vkBindImageMemory(rhi_device->GetContext()->device, _image, image_memory, 0);
+		if (result != VK_SUCCESS)
+			return result;
+
+		return result;
 	}
 
 	bool RHI_Texture2D::CreateResourceGpu()
@@ -200,25 +241,28 @@ namespace Spartan
 			return false;
 		}
 
-		VkDeviceSize buffer_size = static_cast<uint64_t>(m_width) * static_cast<uint64_t>(m_height) * static_cast<uint64_t>(m_channels);
-
-		// Create image memory
-		VkBuffer staging_buffer	= nullptr;
+		// Copy data to a buffer
+		VkBuffer staging_buffer = nullptr;
 		VkDeviceMemory staging_buffer_memory = nullptr;
-		if (!Vulkan_Common::buffer::create(m_rhi_device, staging_buffer, staging_buffer_memory, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
-			return false;
+		if (!m_is_render_target)
+		{
+			VkDeviceSize buffer_size = static_cast<uint64_t>(m_width) * static_cast<uint64_t>(m_height) * static_cast<uint64_t>(m_channels);
 
-		// Copy bytes to image memory
-		void* data = nullptr;
-		vkMapMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, 0, buffer_size, 0, &data);
-		memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
-		vkUnmapMemory(m_rhi_device->GetContext()->device, staging_buffer_memory);
+			// Create buffer
+			if (!Vulkan_Common::buffer::create(m_rhi_device, staging_buffer, staging_buffer_memory, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
+				return false;
+
+			// Copy to buffer
+			void* data = nullptr;
+			vkMapMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, 0, buffer_size, 0, &data);
+			memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
+			vkUnmapMemory(m_rhi_device->GetContext()->device, staging_buffer_memory);
+		}
 
 		// Create image
 		VkImage image = nullptr;
 		VkDeviceMemory image_memory = nullptr;
-		if (!Vulkan_Common::image::create
-			(
+		const auto result = Create(
 				m_rhi_device,
 				image,
 				image_memory,
@@ -228,20 +272,28 @@ namespace Spartan
 				VK_IMAGE_TILING_LINEAR, // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-			)
-		) return false;
-		
-		// Create command pool
-		void* cmd_pool_void;
-		Vulkan_Common::commands::cmd_pool(m_rhi_device, cmd_pool_void);
-		auto cmd_pool = static_cast<VkCommandPool>(cmd_pool_void);
-
-		// Copy buffer to texture
-		lock_guard<mutex> lock(m_mutex); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
-		if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), vulkan_format[m_format], image, staging_buffer, cmd_pool))
+			);
+		if (result != VK_SUCCESS)
 		{
-			LOG_ERROR("Failed to copy buffer to image");
+			LOGF_ERROR("Failed to create image, %s", Vulkan_Common::result_to_string(result));
 			return false;
+		}
+
+		// Copy buffer to image
+		if (!m_is_render_target)
+		{
+			// Create command pool
+			void* cmd_pool_void;
+			Vulkan_Common::commands::cmd_pool(m_rhi_device, cmd_pool_void);
+			auto cmd_pool = static_cast<VkCommandPool>(cmd_pool_void);
+
+			// Copy
+			lock_guard<mutex> lock(m_mutex); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
+			if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), image, staging_buffer, cmd_pool))
+			{
+				LOG_ERROR("Failed to copy buffer to image");
+				return false;
+			}
 		}
 
 		// Create image view
@@ -252,8 +304,11 @@ namespace Spartan
 			return false;
 		}
 
-		vkDestroyBuffer(m_rhi_device->GetContext()->device, staging_buffer, nullptr);
-		vkFreeMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, nullptr);
+		if (!m_is_render_target)
+		{
+			vkDestroyBuffer(m_rhi_device->GetContext()->device, staging_buffer, nullptr);
+			vkFreeMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, nullptr);
+		}
 
 		m_resource_texture	= static_cast<void*>(image_view);
 		m_texture			= static_cast<void*>(image);
@@ -268,7 +323,7 @@ namespace Spartan
 	{
 		m_data.clear();
 		Vulkan_Common::image_view::destroy(m_rhi_device, m_resource_texture);
-		Vulkan_Common::image::destroy(m_rhi_device, m_texture);
+		vkDestroyImage(m_rhi_device->GetContext()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}
 
