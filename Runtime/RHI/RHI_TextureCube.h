@@ -40,9 +40,9 @@ namespace Spartan
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_channels		= GetChannelCountFromFormat(format);
 			m_format		= format;
-			m_has_mipmaps	= true;
 			m_data_cube		= data;
 			m_array_size	= 6;
+			m_bind_flags	= RHI_Texture_Sampled;
 
 			RHI_TextureCube::CreateResourceGpu();
 		}
@@ -55,8 +55,8 @@ namespace Spartan
 			m_channels		= GetChannelCountFromFormat(format);
 			m_viewport		= RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
 			m_format		= format;
-			m_has_mipmaps	= true;
 			m_array_size	= 6;
+			m_bind_flags	= RHI_Texture_DepthStencil;
 
 			RHI_TextureCube::CreateResourceGpu();
 		}

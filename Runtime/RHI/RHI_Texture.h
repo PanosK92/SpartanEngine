@@ -98,9 +98,9 @@ namespace Spartan
 		uint32_t m_channels		= 4;
 		bool m_is_grayscale		= false;
 		bool m_is_transparent	= false;
-		bool m_has_mipmaps		= false;
 		RHI_Format m_format		= Format_R8G8B8A8_UNORM;
 		uint16_t m_bind_flags	= 0;
+		bool m_generate_mipmaps_when_loading = false;
 		RHI_Viewport m_viewport;
 		std::vector<std::vector<std::byte>> m_data;
 		
