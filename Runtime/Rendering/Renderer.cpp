@@ -462,12 +462,12 @@ namespace Spartan
 
 	void Renderer::CreateSamplers()
 	{
-		m_sampler_compare_depth		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Comparison_Bilinear,	Sampler_Address_Clamp,	!Settings::Get().GetReverseZ() ? Comparison_Less : Comparison_Greater);
-		m_sampler_point_clamp		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Point,					Sampler_Address_Clamp,	Comparison_Always);
-		m_sampler_bilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Bilinear,				Sampler_Address_Clamp,	Comparison_Always);
-		m_sampler_bilinear_wrap		= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Bilinear,				Sampler_Address_Wrap,	Comparison_Always);
-		m_sampler_trilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Trilinear,				Sampler_Address_Clamp,	Comparison_Always);
-		m_sampler_anisotropic_wrap	= make_shared<RHI_Sampler>(m_rhi_device, Texture_Filter_Anisotropic,			Sampler_Address_Wrap,	Comparison_Always);
+		m_sampler_compare_depth		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Clamp,	!Settings::Get().GetReverseZ() ? Comparison_Less : Comparison_Greater, false, true);
+		m_sampler_point_clamp		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,		Sampler_Address_Clamp,	Comparison_Always, false);
+		m_sampler_bilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Clamp,	Comparison_Always, false);
+		m_sampler_bilinear_wrap		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Wrap,	Comparison_Always, false);
+		m_sampler_trilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR,	Sampler_Address_Clamp,	Comparison_Always, false);
+		m_sampler_anisotropic_wrap	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR,	Sampler_Address_Wrap,	Comparison_Always, true);
 	}
 
 	shared_ptr<Entity>& Renderer::SnapTransformGizmoTo(const shared_ptr<Entity>& entity) const

@@ -22,10 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float4 VolumetricLighting(float2 texCoord, float3 lightPosScreenSpace, float3 color)
 {
 	int NUM_SAMPLES = 40;
-	float density = 0.97f;
-	float weight = 0.5f;
-	float decay = 0.97f;
-	float exposure = 0.25f;
+	float density	= 0.97f;
+	float weight	= 0.5f;
+	float decay 	= 0.97f;
+	float exposure 	= 0.25f;
 	
 	// Calculate vector from pixel to light source in screen space.  
 	float2 deltaTexCoord = (texCoord - lightPosScreenSpace.xy);  
