@@ -30,6 +30,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+	enum RHI_Texture_Bind : uint16_t
+	{
+		RHI_Texture_Sampled			= 1 << 0,
+		RHI_Texture_RenderTarget	= 1 << 1,
+		RHI_Texture_DepthStencil	= 1 << 2,
+	};
+
 	class SPARTAN_CLASS RHI_Texture : public IResource
 	{
 	public:
@@ -65,8 +72,6 @@ namespace Spartan
 		auto GetFormat() const											{ return m_format; }
 		void SetFormat(const RHI_Format format)							{ m_format = format; }
 
-		auto IsRenderTarget() const										{ return m_is_render_target; }
-
 		// Data
 		const auto& GetData() const										{ return m_data; }		
 		void SetData(const std::vector<std::vector<std::byte>>& data)	{ m_data = data; }
@@ -94,11 +99,11 @@ namespace Spartan
 		bool m_is_grayscale		= false;
 		bool m_is_transparent	= false;
 		bool m_has_mipmaps		= false;
-		bool m_is_render_target	= false;
 		RHI_Format m_format		= Format_R8G8B8A8_UNORM;
+		uint16_t m_bind_flags	= 0;
 		RHI_Viewport m_viewport;
 		std::vector<std::vector<std::byte>> m_data;
-
+		
 		// Dependencies
 		std::shared_ptr<RHI_Device> m_rhi_device;
 

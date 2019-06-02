@@ -51,16 +51,16 @@ namespace Spartan
 
 	inline bool CreateTexture(
 		void*& texture,
-		uint32_t width,
-		uint32_t height,
-		uint32_t channels,
-		uint32_t bpc,
-		uint32_t mip_levels,
-		uint32_t array_size,
-		RHI_Format format,
+		const uint32_t width,
+		const uint32_t height,
+		const uint32_t channels,
+		const uint32_t bpc,
+		const uint32_t mip_levels,
+		const uint32_t array_size,
+		const RHI_Format format,
 		std::vector<std::vector<std::byte>>& data,
-		bool generate_mipmaps,
-		bool is_render_target,
+		const bool generate_mipmaps,
+		const bool is_render_target,
 		const shared_ptr<RHI_Device>& rhi_device
 	)
 	{
@@ -102,8 +102,8 @@ namespace Spartan
 		}
 
 		// Create
-		auto ptr = reinterpret_cast<ID3D11Texture2D**>(&texture);
-		auto result = rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, generate_mipmaps ? nullptr : vec_subresource_data.data(), ptr);
+		const auto ptr = reinterpret_cast<ID3D11Texture2D**>(&texture);
+		const auto result = rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, generate_mipmaps ? nullptr : vec_subresource_data.data(), ptr);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Invalid parameters, failed to create ID3D11Texture2D, %s", D3D11_Common::dxgi_error_to_string(result));
@@ -122,7 +122,7 @@ namespace Spartan
 		view_desc.Texture2DArray.ArraySize			= array_size;
 		view_desc.Texture2DArray.FirstArraySlice	= 0;
 
-		auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&resource_render_target);
+		const auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&resource_render_target);
 		if (FAILED(rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(resource), &view_desc, ptr)))
 		{
 			LOG_ERROR("CreateRenderTargetView() failed.");
@@ -207,7 +207,7 @@ namespace Spartan
 			srv_desc.Texture2DArray.ArraySize		= array_size;
 
 			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&shader_resouce_view);
-			auto result = rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(depth_stencil_texture), &srv_desc, ptr);
+			result = rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(depth_stencil_texture), &srv_desc, ptr);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("CreateShaderResourceView() failed, %s.", D3D11_Common::dxgi_error_to_string(result));
@@ -271,20 +271,12 @@ namespace Spartan
 			return false;
 		}
 
-		// Determine if this is a regular, render target and/or depth stencil texture
-		auto is_depth_stencil	= false;
-		auto is_render_target	= false;
-		if (m_is_render_target)
-		{
-			is_depth_stencil = (m_format == Format_D32_FLOAT);
-			is_render_target = !is_depth_stencil;
-		}
-
 		auto result_tex = true;
 		auto result_srv = true;
 		auto result_rt	= true;
 
-		if (is_depth_stencil)
+		// Depth-stencil
+		if (m_bind_flags & RHI_Texture_DepthStencil)
 		{
 			result_rt = CreateDepthStencilView
 			(
@@ -297,19 +289,19 @@ namespace Spartan
 				m_rhi_device
 			);
 		}
-		else // regular and/or render target texture
+		else // Sampled and/or render target
 		{
-			// Regular texture: needs data to be initialized from
-			if (!m_is_render_target && m_data.empty())
+			// Sampled: needs data to be initialized from
+			if ((m_bind_flags & RHI_Texture_Sampled) && m_data.empty())
 			{
 				LOG_ERROR_INVALID_PARAMETER();
 				return false;
 			}
 
-			// Regular texture: deduce mipmap requirements
+			// Sampled: deduce mipmap requirements
 			UINT mip_levels = 1;
 			auto generate_mipmaps = false;
-			if (!m_is_render_target)
+			if (m_bind_flags & RHI_Texture_Sampled)
 			{
 				generate_mipmaps = m_has_mipmaps && (m_data.size() == 1);
 				if (generate_mipmaps)
@@ -337,7 +329,7 @@ namespace Spartan
 				m_format,
 				m_data,
 				generate_mipmaps,
-				m_is_render_target,
+				m_bind_flags & RHI_Texture_RenderTarget,
 				m_rhi_device
 			);
 
@@ -357,7 +349,7 @@ namespace Spartan
 			);
 
 			// RENDER TARGET VIEW
-			if (is_render_target)
+			if (m_bind_flags & RHI_Texture_RenderTarget)
 			{
 				result_rt = CreateRenderTargetView
 				(
@@ -370,8 +362,7 @@ namespace Spartan
 			}
 
 			safe_release(static_cast<ID3D11Texture2D*>(texture));
-		}
-		
+		}		
 	
 		return result_tex && result_srv && result_rt;
 	}
