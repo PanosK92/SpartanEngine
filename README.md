@@ -62,10 +62,11 @@ Platform | API | Status | Quality | Binaries | :+1:
 # Roadmap
 
 ##### v0.31 (WIP)
-Feature     | Completion    | Notes 
-:-          | :-            | :-
-Shadows 	| 90%          	| Improve shadow mapping performance and enable spot & point light shadows.
-Vulkan      | 60%           | Don't port it, re-architect the engine instead.
+Feature     		| Completion    | Notes 
+:-          		| :-            | :-
+Parallax Mapping 	| 100%          | -
+Shadows 			| 90%          	| Improve shadow mapping performance and enable spot & point light shadows.
+Vulkan      		| 60%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
 - DirectX 12
