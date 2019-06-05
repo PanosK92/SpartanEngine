@@ -65,6 +65,7 @@ namespace Spartan
 	private:
 		bool CreateRenderPass();
 
+        // Properties
 		bool m_initialized					= false;
 		bool m_windowed						= false;
 		uint32_t m_buffer_count				= 0;		

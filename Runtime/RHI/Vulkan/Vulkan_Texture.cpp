@@ -40,15 +40,41 @@ namespace Spartan
 {
 	mutex RHI_Texture::m_mutex;
 
-	RHI_Texture2D::~RHI_Texture2D()
-	{
-		m_data.clear();
-		Vulkan_Common::image_view::destroy(m_rhi_device, m_resource_texture);
-		vkDestroyImage(m_rhi_device->GetContext()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
+    RHI_Texture2D::~RHI_Texture2D()
+    {
+        m_data.clear();
+
+        auto vk_device = m_rhi_device->GetContext()->device;
+
+        if (m_resource_texture)
+        {
+            vkDestroyImageView(vk_device, reinterpret_cast<VkImageView>(m_resource_texture), nullptr);
+        }
+
+        if (m_resource_render_target)
+        {
+            vkDestroyImageView(vk_device, reinterpret_cast<VkImageView>(m_resource_render_target), nullptr);
+        }
+
+        for (auto& depth_stencil : m_resource_depth_stencils)
+        {
+            vkDestroyImageView(vk_device, reinterpret_cast<VkImageView>(depth_stencil), nullptr);
+        }
+
+        if (m_frame_buffer)
+        {
+            vkDestroyFramebuffer(vk_device, reinterpret_cast<VkFramebuffer>(m_frame_buffer), nullptr);
+        }
+
+        if (m_texture)
+        {
+            vkDestroyImage(vk_device, reinterpret_cast<VkImage>(m_texture), nullptr);
+        }
+
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}
 
-	inline VkCommandBuffer BeginSingleTimeCommands(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool) 
+	inline VkCommandBuffer BeginSingleTimeCommands(const shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool) 
 	{
 		VkCommandBuffer command_buffer;
 		Vulkan_Common::commands::cmd_buffer(rhi_device, command_buffer, command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -65,7 +91,7 @@ namespace Spartan
 		return command_buffer;
 	}
 
-	inline bool EndSingleTimeCommands(const std::shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkQueue& queue, VkCommandBuffer& command_buffer)
+	inline bool EndSingleTimeCommands(const shared_ptr<RHI_Device>& rhi_device, VkCommandPool& command_pool, VkQueue& queue, VkCommandBuffer& command_buffer)
 	{
 		auto result = vkEndCommandBuffer(command_buffer);
 		if (result != VK_SUCCESS)
@@ -149,7 +175,7 @@ namespace Spartan
 		return true;
 	}
 
-	inline bool CopyBufferToImage(const std::shared_ptr<RHI_Device>& rhi_device, uint32_t width, uint32_t height, VkImage& image, VkBuffer& staging_buffer, VkCommandPool& cmd_pool)
+	inline bool CopyBufferToImage(const shared_ptr<RHI_Device>& rhi_device, uint32_t width, uint32_t height, VkImage& image, VkBuffer& staging_buffer, VkCommandPool& cmd_pool)
 	{
 		auto queue = rhi_device->GetContext()->queue_copy;
 
@@ -183,10 +209,10 @@ namespace Spartan
 		return true;
 	}
 
-	inline VkResult Create(
-		const std::shared_ptr<RHI_Device>& rhi_device,
-		VkImage& _image,
-		VkDeviceMemory& image_memory,
+	inline VkResult CreateImage(
+		const shared_ptr<RHI_Device>& rhi_device,
+		VkImage* _image,
+		VkDeviceMemory* image_memory,
 		const uint32_t width,
 		const uint32_t height,
 		const VkFormat format,
@@ -210,41 +236,113 @@ namespace Spartan
 		create_info.samples				= VK_SAMPLE_COUNT_1_BIT;
 		create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 
-		auto result = vkCreateImage(rhi_device->GetContext()->device, &create_info, nullptr, &_image);
+		auto result = vkCreateImage(rhi_device->GetContext()->device, &create_info, nullptr, _image);
 		if (result != VK_SUCCESS)
 			return result;
 
 		VkMemoryRequirements memRequirements;
-		vkGetImageMemoryRequirements(rhi_device->GetContext()->device, _image, &memRequirements);
+		vkGetImageMemoryRequirements(rhi_device->GetContext()->device, *_image, &memRequirements);
 
 		VkMemoryAllocateInfo allocate_info	= {};
 		allocate_info.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocate_info.allocationSize		= memRequirements.size;
 		allocate_info.memoryTypeIndex		= Vulkan_Common::memory::get_type(rhi_device->GetContext()->device_physical, properties, memRequirements.memoryTypeBits);
 
-		result = vkAllocateMemory(rhi_device->GetContext()->device, &allocate_info, nullptr, &image_memory);
+		result = vkAllocateMemory(rhi_device->GetContext()->device, &allocate_info, nullptr, image_memory);
 		if (result != VK_SUCCESS)
 			return result;
 
-		result = vkBindImageMemory(rhi_device->GetContext()->device, _image, image_memory, 0);
+		result = vkBindImageMemory(rhi_device->GetContext()->device, *_image, *image_memory, 0);
 		if (result != VK_SUCCESS)
 			return result;
 
 		return result;
 	}
 
+    inline VkResult CreateFrameBuffer(
+        const shared_ptr<RHI_Device>& rhi_device,
+        const vector<VkAttachmentDescription> attachment_descriptions,
+        const VkSubpassDescription& subpass_description,
+        const vector<VkSubpassDependency> subpass_dependencies,
+        VkRenderPass& _render_pass,
+        VkFramebuffer& _frame_buffer,
+        const uint32_t width,
+        const uint32_t height)
+    {
+        // Render pass
+        VkRenderPassCreateInfo renderPassInfo   = {};
+        renderPassInfo.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.attachmentCount          = static_cast<uint32_t>(attachment_descriptions.size());
+        renderPassInfo.pAttachments             = attachment_descriptions.data();
+        renderPassInfo.subpassCount             = 1;
+        renderPassInfo.pSubpasses               = &subpass_description;
+        renderPassInfo.dependencyCount          = static_cast<uint32_t>(subpass_dependencies.size());
+        renderPassInfo.pDependencies            = subpass_dependencies.data();
+
+        auto result = vkCreateRenderPass(rhi_device->GetContext()->device, &renderPassInfo, nullptr, &_render_pass);
+        if (result != VK_SUCCESS)
+            return result;
+
+        // Framebuffer
+        VkImageView attachments[2];
+        //attachments[0] = offscreenPass.color.view;
+        //attachments[1] = offscreenPass.depth.view;
+
+        VkFramebufferCreateInfo create_info     = {};
+        create_info.renderPass                  = _render_pass;
+        create_info.attachmentCount             = 2;
+        create_info.pAttachments                = attachments;
+        create_info.width                       = width;
+        create_info.height                      = height;
+        create_info.layers                      = 1;
+
+        result = vkCreateFramebuffer(rhi_device->GetContext()->device, &create_info, nullptr, &_frame_buffer);
+
+        return result;
+    }
+
+    inline VkResult CreateSampledView(const shared_ptr<RHI_Device>& rhi_device, VkImage* image, VkImageView* image_view, VkFormat format, bool swizzle = false)
+    {
+        VkImageViewCreateInfo create_info           = {};
+        create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        create_info.image                           = *image;
+        create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+        create_info.format                          = format;
+        create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        create_info.subresourceRange.baseMipLevel   = 0;
+        create_info.subresourceRange.levelCount     = 1;
+        create_info.subresourceRange.baseArrayLayer = 0;
+        create_info.subresourceRange.layerCount     = 1;
+        if (swizzle)
+        {
+            create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        }
+
+        return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, image_view);
+    }
+
+    inline VkResult CreateDepthView(const shared_ptr<RHI_Device>& rhi_device, VkImage* image, VkImageView* image_view, VkFormat format)
+    {
+        VkImageViewCreateInfo create_info           = {};
+        create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+        create_info.format                          = format;
+        create_info.flags                           = 0;
+        create_info.subresourceRange                = {};
+        create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        create_info.subresourceRange.baseMipLevel   = 0;
+        create_info.subresourceRange.levelCount     = 1;
+        create_info.subresourceRange.baseArrayLayer = 0;
+        create_info.subresourceRange.layerCount     = 1;
+        create_info.image                           = *image;
+
+        return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, image_view);
+    }
+
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
-		// Resolve usage flags
-		UINT usage_flags = 0;
-		{
-			usage_flags |= (m_bind_flags & RHI_Texture_Sampled)			? VK_IMAGE_USAGE_SAMPLED_BIT					: 0;
-			usage_flags |= (m_bind_flags & RHI_Texture_DepthStencil)	? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT	: 0;
-			usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget)	? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT			: 0;
-		}
-		usage_flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // specifies that the image can be used as the source of a transfer command.
-		usage_flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // specifies that the image can be used as the destination of a transfer command.
-
 		// Copy data to a buffer (if there are any)
 		VkBuffer staging_buffer = nullptr;
 		VkDeviceMemory staging_buffer_memory = nullptr;
@@ -263,10 +361,20 @@ namespace Spartan
 			vkUnmapMemory(m_rhi_device->GetContext()->device, staging_buffer_memory);
 		}
 
+        // Resolve usage flags
+        UINT usage_flags = 0;
+        {
+            usage_flags |= (m_bind_flags & RHI_Texture_Sampled) ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_DepthStencil) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
+        }
+        usage_flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // specifies that the image can be used as the source of a transfer command.
+        usage_flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // specifies that the image can be used as the destination of a transfer command.
+
 		// Create image
-		VkImage image = nullptr;
-		VkDeviceMemory image_memory = nullptr;
-		const auto result = Create(
+		auto image = reinterpret_cast<VkImage*>(&m_texture);
+        auto image_memory = reinterpret_cast<VkDeviceMemory*>(&m_texture_memory);
+		const auto result = CreateImage(
 				m_rhi_device,
 				image,
 				image_memory,
@@ -293,20 +401,41 @@ namespace Spartan
 
 			// Copy
 			lock_guard<mutex> lock(m_mutex); // Mutex prevents this error: THREADING ERROR : object of type VkQueue is simultaneously used in thread 0xfe0 and thread 0xe18
-			if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), image, staging_buffer, cmd_pool))
+			if (!CopyBufferToImage(m_rhi_device, static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), *image, staging_buffer, cmd_pool))
 			{
 				LOG_ERROR("Failed to copy buffer to image");
 				return false;
 			}
 		}
 
-		// Create image view
-		VkImageView image_view = nullptr;
-		if (!Vulkan_Common::image_view::create(m_rhi_device, image, image_view, vulkan_format[m_format]))
-		{
-			LOG_ERROR("Failed to create image view");
-			return false;
-		}
+        // COLOR
+        if (m_bind_flags & RHI_Texture_RenderTarget)
+        {
+            
+        }
+
+        // DEPTH-STENCIL
+        if (m_bind_flags & RHI_Texture_DepthStencil)
+        {
+            auto depth_stencil = m_resource_depth_stencils.emplace_back(nullptr);
+            auto result = CreateDepthView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&depth_stencil), vulkan_format[m_format]);
+            if (result != VK_SUCCESS)
+            {
+                LOGF_ERROR("Failed to create depth stnecil view, %s", Vulkan_Common::result_to_string(result));
+                return false;
+            }
+        }
+
+        // SAMPLED
+        if (m_bind_flags & RHI_Texture_Sampled)
+        {
+            auto result = CreateSampledView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_texture), vulkan_format[m_format]);
+            if (result != VK_SUCCESS)
+            {
+                LOGF_ERROR("Failed to create sampled image view, %s", Vulkan_Common::result_to_string(result));
+                return false;
+            }
+        }
 
 		// Release staging buffer
 		if (staging_buffer && staging_buffer_memory)
@@ -314,10 +443,6 @@ namespace Spartan
 			vkDestroyBuffer(m_rhi_device->GetContext()->device, staging_buffer, nullptr);
 			vkFreeMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, nullptr);
 		}
-
-		m_resource_texture	= static_cast<void*>(image_view);
-		m_texture			= static_cast<void*>(image);
-		m_texture_memory	= static_cast<void*>(image_memory);
 
 		return true;
 	}
@@ -327,7 +452,7 @@ namespace Spartan
 	RHI_TextureCube::~RHI_TextureCube()
 	{
 		m_data.clear();
-		Vulkan_Common::image_view::destroy(m_rhi_device, m_resource_texture);
+        vkDestroyImageView(m_rhi_device->GetContext()->device, reinterpret_cast<VkImageView>(m_resource_texture), nullptr);
 		vkDestroyImage(m_rhi_device->GetContext()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}

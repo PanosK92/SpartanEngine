@@ -114,6 +114,8 @@ namespace Spartan
 		void* m_texture_memory			= nullptr;
 		uint32_t m_array_size			= 1;	
 		std::vector<void*> m_resource_depth_stencils;
+        void* m_render_pass     = nullptr;
+        void* m_frame_buffer    = nullptr;
 		static std::mutex m_mutex;
 
 	private:
