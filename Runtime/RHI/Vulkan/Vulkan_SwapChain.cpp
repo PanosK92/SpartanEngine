@@ -148,6 +148,30 @@ namespace Spartan
 			vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swap_chain_images.data());
 		}
 
+        // Create image view lambda
+        auto CreateImageView = [](const std::shared_ptr<RHI_Device>& rhi_device, VkImage& _image, VkImageView& image_view, VkFormat format, bool swizzle = false)
+        {
+            VkImageViewCreateInfo create_info = {};
+            create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            create_info.image = _image;
+            create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            create_info.format = format;
+            create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            create_info.subresourceRange.baseMipLevel = 0;
+            create_info.subresourceRange.levelCount = 1;
+            create_info.subresourceRange.baseArrayLayer = 0;
+            create_info.subresourceRange.layerCount = 1;
+            if (swizzle)
+            {
+                create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            }
+
+            return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, &image_view) == VK_SUCCESS;
+        };
+
 		// Image views
 		auto swizzle = true;
 		vector<VkImageView> swap_chain_image_views;
@@ -155,7 +179,7 @@ namespace Spartan
 			swap_chain_image_views.resize(swap_chain_images.size());
 			for (size_t i = 0; i < swap_chain_image_views.size(); i++)
 			{
-				if (!Vulkan_Common::image_view::create(rhi_device, swap_chain_images[i], swap_chain_image_views[i], format_selection.format, swizzle))
+				if (!CreateImageView(rhi_device, swap_chain_images[i], swap_chain_image_views[i], format_selection.format, swizzle))
 				{
 					LOG_ERROR("Failed to create image view");
 					return false;

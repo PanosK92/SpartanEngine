@@ -90,9 +90,7 @@ Vulkan      		| 60%           | Don't port it, re-architect the engine instead.
 - Volumetric Lighting.
 - Atmospheric Scattering.
 - Dynamic resolution scaling.
-- Real-time ray tracing (experimental).
 - Global Illumination.
-- Draw call batching (static & dynamic).
 - Export on Windows.
 - UI components.
 - Make editor more stylish.
