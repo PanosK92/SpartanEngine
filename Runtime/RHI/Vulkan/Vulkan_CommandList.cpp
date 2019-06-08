@@ -124,7 +124,7 @@ namespace Spartan
 		const auto result = vkBeginCommandBuffer(CMD_LIST, &beginInfo);
 		if (result != VK_SUCCESS) 
 		{
-			LOGF_ERROR("Failed to begin recording command buffer, %s.", Vulkan_Common::result_to_string(result));
+			LOGF_ERROR("Failed to begin recording command buffer, %s.", Vulkan_Common::to_string(result));
 			return;
 		}
 
@@ -156,7 +156,7 @@ namespace Spartan
 		const auto result = vkEndCommandBuffer(CMD_LIST);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to end command buffer, %s.", Vulkan_Common::result_to_string(result));
+			LOGF_ERROR("Failed to end command buffer, %s.", Vulkan_Common::to_string(result));
 			return;
 		}
 
@@ -351,7 +351,7 @@ namespace Spartan
 		const auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, FENCE_CMD_LIST_CONSUMED);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::result_to_string(result));
+			LOGF_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::to_string(result));
 		}
 		
 		// Wait for fence on the next Begin(), if we force it now, perfomance will not be as good

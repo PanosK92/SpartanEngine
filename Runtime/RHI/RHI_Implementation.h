@@ -136,7 +136,7 @@ namespace Spartan
 }
 #include "D3D11/D3D11_Common.h"
 #endif 
-// DIRECTX 11
+// DirectX 11
 
 // VULKAN
 #if defined(API_GRAPHICS_VULKAN) 
@@ -253,7 +253,7 @@ struct SwapChainSupportDetails
 	VkSurfaceCapabilitiesKHR capabilities = {};
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> present_modes;
-	bool IsCompatible() { return !formats.empty() && !present_modes.empty(); }
+	bool IsCompatible() const { return !formats.empty() && !present_modes.empty(); }
 };
 
 struct QueueFamilyIndices
@@ -276,16 +276,17 @@ namespace Spartan
 		VkQueue queue_copy							= nullptr;
 		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
 		QueueFamilyIndices indices;
-		std::vector<const char*> validation_layers = { "VK_LAYER_KHRONOS_validation" };
+		
 		std::vector<const char*> extensions_device = { "VK_KHR_swapchain" };
 		#ifdef DEBUG
+            std::vector<const char*> validation_layers = { "VK_LAYER_KHRONOS_validation" };
 			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_utils" };
 			bool validation_enabled = true;
 		#else
+            std::vector<const char*> validation_layers;
 			std::vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface" };
 			bool validation_enabled = false;
 		#endif
-
 
 		static const uint32_t max_frames_in_flight = 2;
 		static const uint32_t pool_max_constant_buffers_per_stage = 2;

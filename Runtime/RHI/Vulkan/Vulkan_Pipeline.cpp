@@ -265,7 +265,7 @@ namespace Spartan
 			const auto result = vkAllocateDescriptorSets(m_rhi_device->GetContext()->device, &allocate_info, &descriptor_set);
 			if (result != VK_SUCCESS)
 			{
-				LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::result_to_string(result));
+				LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::to_string(result));
 				return;
 			}
 		}
@@ -353,7 +353,7 @@ namespace Spartan
 		const auto result = vkCreateDescriptorPool(m_rhi_device->GetContext()->device, &pool_create_info, nullptr, descriptor_pool);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to create descriptor pool, %s", Vulkan_Common::result_to_string(result));
+			LOGF_ERROR("Failed to create descriptor pool, %s", Vulkan_Common::to_string(result));
 			return false;
 		}
 
@@ -393,7 +393,7 @@ namespace Spartan
 		const auto result = vkCreateDescriptorSetLayout(m_rhi_device->GetContext()->device, &create_info, nullptr, descriptor_set_layout);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::result_to_string(result));
+			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::to_string(result));
 			return false;
 		}
 

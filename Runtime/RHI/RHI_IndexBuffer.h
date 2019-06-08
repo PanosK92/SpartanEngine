@@ -42,9 +42,9 @@ namespace Spartan
 		bool Create(const std::vector<T>& indices)
 		{
 			m_is_dynamic	= false;
-			m_stride		= sizeof(T);
+			m_stride        = sizeof(T);
 			m_index_count	= static_cast<uint32_t>(indices.size());
-			m_size			= static_cast<uint64_t>(m_stride * m_index_count);
+			m_size          = static_cast<uint64_t>(m_stride * m_index_count);
 			return _Create(static_cast<const void*>(indices.data()));
 		}
 
@@ -52,9 +52,9 @@ namespace Spartan
 		bool Create(const T* indices, const uint32_t index_count)
 		{
 			m_is_dynamic	= false;
-			m_stride		= sizeof(T);
+			m_stride        = sizeof(T);
 			m_index_count	= index_count;
-			m_size			= static_cast<uint64_t>(m_stride * m_index_count);
+			m_size          = static_cast<uint64_t>(m_stride * m_index_count);
 			return _Create(static_cast<const void*>(indices));
 		}
 
@@ -62,9 +62,9 @@ namespace Spartan
 		bool CreateDynamic(const uint32_t index_count)
 		{
 			m_is_dynamic	= true;
-			m_stride		= sizeof(T);
+			m_stride        = sizeof(T);
 			m_index_count	= index_count;
-			m_size			= static_cast<uint64_t>(m_stride * m_index_count);
+			m_size          = static_cast<uint64_t>(m_stride * m_index_count);
 			return _Create(nullptr);
 		}
 

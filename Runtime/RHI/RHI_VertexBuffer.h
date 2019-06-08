@@ -43,9 +43,9 @@ namespace Spartan
 		bool Create(const std::vector<T>& vertices)
 		{
 			m_is_dynamic	= false;
-			m_stride		= static_cast<uint32_t>(sizeof(T));
+			m_stride        = static_cast<uint32_t>(sizeof(T));
 			m_vertex_count	= static_cast<uint32_t>(vertices.size());
-			m_size			= static_cast<uint64_t>(m_stride * m_vertex_count);
+			m_size          = static_cast<uint64_t>(m_stride * m_vertex_count);
 			return _Create(static_cast<const void*>(vertices.data()));
 		}
 
@@ -53,29 +53,29 @@ namespace Spartan
 		bool Create(const T* vertices, const uint32_t vertex_count)
 		{
 			m_is_dynamic	= false;
-			m_stride		= static_cast<uint32_t>(sizeof(T));
+			m_stride        = static_cast<uint32_t>(sizeof(T));
 			m_vertex_count	= vertex_count;
-			m_size			= static_cast<uint64_t>(m_stride * m_vertex_count);
+			m_size          = static_cast<uint64_t>(m_stride * m_vertex_count);
 			return _Create(static_cast<const void*>(vertices));
 		}
 
 		template<typename T>
 		bool CreateDynamic(const uint32_t vertex_count)
 		{
-			m_is_dynamic	= true;		
-			m_stride		= static_cast<uint32_t>(sizeof(T));
-			m_vertex_count	= vertex_count;
-			m_size			= static_cast<uint64_t>(m_stride * m_vertex_count);
+			m_is_dynamic    = true;		
+			m_stride        = static_cast<uint32_t>(sizeof(T));
+			m_vertex_count  = vertex_count;
+			m_size          = static_cast<uint64_t>(m_stride * m_vertex_count);
 			return _Create(nullptr);
 		}
 
 		void* Map() const;
 		bool Unmap() const;
 
-		auto GetResource()		const { return m_buffer; }
-		auto& GetSize()			const { return m_size; }
-		auto GetStride()		const { return m_stride; }
-		auto GetVertexCount()	const { return m_vertex_count; }
+		auto GetResource()      const { return m_buffer; }
+		auto& GetSize()         const { return m_size; }
+		auto GetStride()        const { return m_stride; }
+		auto GetVertexCount()   const { return m_vertex_count; }
 
 	private:
 		bool _Create(const void* vertices);
