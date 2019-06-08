@@ -96,7 +96,7 @@ namespace Spartan
 		auto result = vkEndCommandBuffer(command_buffer);
 		if (result != VK_SUCCESS)
 		{
-			LOG_ERROR(Vulkan_Common::result_to_string(result));
+			LOG_ERROR(Vulkan_Common::to_string(result));
 			return false;
 		}
 
@@ -108,14 +108,14 @@ namespace Spartan
 		result = vkQueueSubmit(queue, 1, &submit_info, nullptr);
 		if (result != VK_SUCCESS)
 		{
-			LOG_ERROR(Vulkan_Common::result_to_string(result));
+			LOG_ERROR(Vulkan_Common::to_string(result));
 			return false;
 		}
 
 		result = vkQueueWaitIdle(queue);
 		if (result != VK_SUCCESS)
 		{
-			LOG_ERROR(Vulkan_Common::result_to_string(result));
+			LOG_ERROR(Vulkan_Common::to_string(result));
 			return false;
 		}
 
@@ -209,6 +209,48 @@ namespace Spartan
 		return true;
 	}
 
+    inline VkResult CreateFrameBuffer(
+        const shared_ptr<RHI_Device>& rhi_device,
+        const vector<VkAttachmentDescription>& attachment_descriptions,
+        const VkSubpassDescription& subpass_description,
+        const vector<VkSubpassDependency>& subpass_dependencies,
+        VkRenderPass& _render_pass,
+        VkFramebuffer& _frame_buffer,
+        const uint32_t width,
+        const uint32_t height)
+    {
+        // Render pass
+        VkRenderPassCreateInfo renderPassInfo = {};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.attachmentCount = static_cast<uint32_t>(attachment_descriptions.size());
+        renderPassInfo.pAttachments = attachment_descriptions.data();
+        renderPassInfo.subpassCount = 1;
+        renderPassInfo.pSubpasses = &subpass_description;
+        renderPassInfo.dependencyCount = static_cast<uint32_t>(subpass_dependencies.size());
+        renderPassInfo.pDependencies = subpass_dependencies.data();
+
+        auto result = vkCreateRenderPass(rhi_device->GetContext()->device, &renderPassInfo, nullptr, &_render_pass);
+        if (result != VK_SUCCESS)
+            return result;
+
+        // Framebuffer
+        VkImageView attachments[2];
+        //attachments[0] = offscreenPass.color.view;
+        //attachments[1] = offscreenPass.depth.view;
+
+        VkFramebufferCreateInfo create_info = {};
+        create_info.renderPass = _render_pass;
+        create_info.attachmentCount = 2;
+        create_info.pAttachments = attachments;
+        create_info.width = width;
+        create_info.height = height;
+        create_info.layers = 1;
+
+        result = vkCreateFramebuffer(rhi_device->GetContext()->device, &create_info, nullptr, &_frame_buffer);
+
+        return result;
+    }
+
 	inline VkResult CreateImage(
 		const shared_ptr<RHI_Device>& rhi_device,
 		VkImage* _image,
@@ -259,56 +301,22 @@ namespace Spartan
 		return result;
 	}
 
-    inline VkResult CreateFrameBuffer(
-        const shared_ptr<RHI_Device>& rhi_device,
-        const vector<VkAttachmentDescription> attachment_descriptions,
-        const VkSubpassDescription& subpass_description,
-        const vector<VkSubpassDependency> subpass_dependencies,
-        VkRenderPass& _render_pass,
-        VkFramebuffer& _frame_buffer,
-        const uint32_t width,
-        const uint32_t height)
+    inline VkResult CreateImageView(const shared_ptr<RHI_Device>& rhi_device, VkImage* image, VkImageView* image_view, const VkFormat format, const uint16_t bind_flags, const bool swizzle = false)
     {
-        // Render pass
-        VkRenderPassCreateInfo renderPassInfo   = {};
-        renderPassInfo.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount          = static_cast<uint32_t>(attachment_descriptions.size());
-        renderPassInfo.pAttachments             = attachment_descriptions.data();
-        renderPassInfo.subpassCount             = 1;
-        renderPassInfo.pSubpasses               = &subpass_description;
-        renderPassInfo.dependencyCount          = static_cast<uint32_t>(subpass_dependencies.size());
-        renderPassInfo.pDependencies            = subpass_dependencies.data();
+        // Resolve aspect mask
+        VkImageAspectFlags aspect_mask = 0;
+        {
+            aspect_mask |= (bind_flags & RHI_Texture_Sampled)       ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+            aspect_mask |= (bind_flags & RHI_Texture_RenderTarget)  ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+            aspect_mask |= (bind_flags & RHI_Texture_DepthStencil)  ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT : 0;      
+        }
 
-        auto result = vkCreateRenderPass(rhi_device->GetContext()->device, &renderPassInfo, nullptr, &_render_pass);
-        if (result != VK_SUCCESS)
-            return result;
-
-        // Framebuffer
-        VkImageView attachments[2];
-        //attachments[0] = offscreenPass.color.view;
-        //attachments[1] = offscreenPass.depth.view;
-
-        VkFramebufferCreateInfo create_info     = {};
-        create_info.renderPass                  = _render_pass;
-        create_info.attachmentCount             = 2;
-        create_info.pAttachments                = attachments;
-        create_info.width                       = width;
-        create_info.height                      = height;
-        create_info.layers                      = 1;
-
-        result = vkCreateFramebuffer(rhi_device->GetContext()->device, &create_info, nullptr, &_frame_buffer);
-
-        return result;
-    }
-
-    inline VkResult CreateSampledView(const shared_ptr<RHI_Device>& rhi_device, VkImage* image, VkImageView* image_view, VkFormat format, bool swizzle = false)
-    {
         VkImageViewCreateInfo create_info           = {};
         create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         create_info.image                           = *image;
         create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
         create_info.format                          = format;
-        create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        create_info.subresourceRange.aspectMask     = aspect_mask;
         create_info.subresourceRange.baseMipLevel   = 0;
         create_info.subresourceRange.levelCount     = 1;
         create_info.subresourceRange.baseArrayLayer = 0;
@@ -320,23 +328,6 @@ namespace Spartan
             create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
             create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
         }
-
-        return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, image_view);
-    }
-
-    inline VkResult CreateDepthView(const shared_ptr<RHI_Device>& rhi_device, VkImage* image, VkImageView* image_view, VkFormat format)
-    {
-        VkImageViewCreateInfo create_info           = {};
-        create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-        create_info.format                          = format;
-        create_info.flags                           = 0;
-        create_info.subresourceRange                = {};
-        create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-        create_info.subresourceRange.baseMipLevel   = 0;
-        create_info.subresourceRange.levelCount     = 1;
-        create_info.subresourceRange.baseArrayLayer = 0;
-        create_info.subresourceRange.layerCount     = 1;
-        create_info.image                           = *image;
 
         return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, image_view);
     }
@@ -364,9 +355,9 @@ namespace Spartan
         // Resolve usage flags
         UINT usage_flags = 0;
         {
-            usage_flags |= (m_bind_flags & RHI_Texture_Sampled) ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
-            usage_flags |= (m_bind_flags & RHI_Texture_DepthStencil) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
-            usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_Sampled)         ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_DepthStencil)    ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
+            usage_flags |= (m_bind_flags & RHI_Texture_RenderTarget)    ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
         }
         usage_flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // specifies that the image can be used as the source of a transfer command.
         usage_flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // specifies that the image can be used as the destination of a transfer command.
@@ -374,7 +365,7 @@ namespace Spartan
 		// Create image
 		auto image = reinterpret_cast<VkImage*>(&m_texture);
         auto image_memory = reinterpret_cast<VkDeviceMemory*>(&m_texture_memory);
-		const auto result = CreateImage(
+		auto result = CreateImage(
 				m_rhi_device,
 				image,
 				image_memory,
@@ -387,7 +378,7 @@ namespace Spartan
 			);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to create image, %s", Vulkan_Common::result_to_string(result));
+			LOGF_ERROR("Failed to create image, %s", Vulkan_Common::to_string(result));
 			return false;
 		}
 
@@ -408,20 +399,25 @@ namespace Spartan
 			}
 		}
 
-        // COLOR
+        // RENDER TARGET
         if (m_bind_flags & RHI_Texture_RenderTarget)
         {
-            
+            result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_render_target), vulkan_format[m_format], m_bind_flags);
+            if (result != VK_SUCCESS)
+            {
+                LOGF_ERROR("Failed to create render target view, %s", Vulkan_Common::to_string(result));
+                return false;
+            }
         }
 
         // DEPTH-STENCIL
         if (m_bind_flags & RHI_Texture_DepthStencil)
         {
             auto depth_stencil = m_resource_depth_stencils.emplace_back(nullptr);
-            auto result = CreateDepthView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&depth_stencil), vulkan_format[m_format]);
+            result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&depth_stencil), vulkan_format[m_format], m_bind_flags);
             if (result != VK_SUCCESS)
             {
-                LOGF_ERROR("Failed to create depth stnecil view, %s", Vulkan_Common::result_to_string(result));
+                LOGF_ERROR("Failed to create depth stencil view, %s", Vulkan_Common::to_string(result));
                 return false;
             }
         }
@@ -429,10 +425,10 @@ namespace Spartan
         // SAMPLED
         if (m_bind_flags & RHI_Texture_Sampled)
         {
-            auto result = CreateSampledView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_texture), vulkan_format[m_format]);
+            result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_texture), vulkan_format[m_format], m_bind_flags);
             if (result != VK_SUCCESS)
             {
-                LOGF_ERROR("Failed to create sampled image view, %s", Vulkan_Common::result_to_string(result));
+                LOGF_ERROR("Failed to create sampled image view, %s", Vulkan_Common::to_string(result));
                 return false;
             }
         }

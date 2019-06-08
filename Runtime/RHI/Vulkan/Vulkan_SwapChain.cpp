@@ -37,225 +37,310 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	inline bool _Create
-	(
-		const std::shared_ptr<RHI_Device>& rhi_device,
-		uint32_t width,
-		uint32_t height,
-		uint32_t buffer_count,
-		RHI_Format format,
-		RHI_Present_Mode present_mode,
-		void* window_handle,
-		void* render_pass,
-		void*& surface_out,
-		void*& swap_chain_view_out,
-		vector<void*>& image_views_out,
-		vector<void*>& frame_buffers_out,
-		vector<void*>& semaphores_image_acquired_out
-	)
-	{
-		auto rhi_context		= rhi_device->GetContext();
-		auto device				= rhi_device->GetContext()->device;
-		auto device_physical	= rhi_device->GetContext()->device_physical;
-
-		// Create surface
-		VkSurfaceKHR surface = nullptr;
-		{
-			VkWin32SurfaceCreateInfoKHR create_info = {};
-			create_info.sType						= VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-			create_info.hwnd						= static_cast<HWND>(window_handle);
-			create_info.hinstance					= GetModuleHandle(nullptr);
-
-			auto result = vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR("Failed to create Win32 surface, %s.", Vulkan_Common::result_to_string(result));
-				return false;
-			}
-
-			VkBool32 present_support = false;
-			result = vkGetPhysicalDeviceSurfaceSupportKHR(device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR("Failed to check for surface support by the device, %s.", Vulkan_Common::result_to_string(result));
-				return false;
-			}
-			else if (!present_support)
-			{
-				LOG_ERROR("The device does not support this kind of surface.");
-				return false;
-			}
-		}
-
-		// Ensure device compatibility
-		auto swap_chain_support = Vulkan_Common::swap_chain::check_surface_compatibility(rhi_device.get(), surface);
-		if (!swap_chain_support.IsCompatible())
-		{
-			LOG_ERROR("Device is not surface compatible.");
-			return false;
-		}
-
-		auto extent = Vulkan_Common::swap_chain::choose_extent(swap_chain_support.capabilities, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-		auto format_selection = Vulkan_Common::swap_chain::choose_format(vulkan_format[format], swap_chain_support.formats);
-
-		// Swap chain
-		VkSwapchainKHR swap_chain;
-		{
-			VkSwapchainCreateInfoKHR create_info	= {};
-			create_info.sType						= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-			create_info.surface						= surface;
-			create_info.minImageCount				= buffer_count;
-			create_info.imageFormat					= format_selection.format;
-			create_info.imageColorSpace				= format_selection.colorSpace;
-			create_info.imageExtent					= extent;
-			create_info.imageArrayLayers			= 1;
-			create_info.imageUsage					= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-			uint32_t queueFamilyIndices[] = { rhi_context->indices.graphics_family.value(), rhi_context->indices.present_family.value() };
-			if (rhi_context->indices.graphics_family != rhi_context->indices.present_family)
-			{
-				create_info.imageSharingMode		= VK_SHARING_MODE_CONCURRENT;
-				create_info.queueFamilyIndexCount	= 2;
-				create_info.pQueueFamilyIndices		= queueFamilyIndices;
-			}
-			else
-			{
-				create_info.imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE;
-				create_info.queueFamilyIndexCount	= 0;
-				create_info.pQueueFamilyIndices		= nullptr;
-			}
-
-			create_info.preTransform	= swap_chain_support.capabilities.currentTransform;
-			create_info.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-			create_info.presentMode		= Vulkan_Common::swap_chain::choose_present_mode(static_cast<VkPresentModeKHR>(present_mode), swap_chain_support.present_modes);
-			create_info.clipped			= VK_TRUE;
-			create_info.oldSwapchain	= nullptr;
-
-			auto result = vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR("Failed to create swap chain, %s.", Vulkan_Common::result_to_string(result));
-				return false;
-			}
-		}
-
-		// Images
-		vector<VkImage> swap_chain_images;
-		{
-			uint32_t image_count;
-			vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
-			swap_chain_images.resize(image_count);
-			vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swap_chain_images.data());
-		}
-
-        // Create image view lambda
-        auto CreateImageView = [](const std::shared_ptr<RHI_Device>& rhi_device, VkImage& _image, VkImageView& image_view, VkFormat format, bool swizzle = false)
+    namespace _Vulkan_SwapChain
+    {
+        inline SwapChainSupportDetails check_surface_compatibility(RHI_Device* rhi_device, const VkSurfaceKHR surface)
         {
-            VkImageViewCreateInfo create_info = {};
-            create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            create_info.image = _image;
-            create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            create_info.format = format;
-            create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            create_info.subresourceRange.baseMipLevel = 0;
-            create_info.subresourceRange.levelCount = 1;
-            create_info.subresourceRange.baseArrayLayer = 0;
-            create_info.subresourceRange.layerCount = 1;
-            if (swizzle)
+            SwapChainSupportDetails details;
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(rhi_device->GetContext()->device_physical, surface, &details.capabilities);
+
+            uint32_t format_count;
+            vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContext()->device_physical, surface, &format_count, nullptr);
+
+            if (format_count != 0)
             {
-                create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+                details.formats.resize(format_count);
+                vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContext()->device_physical, surface, &format_count, details.formats.data());
             }
 
-            return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, &image_view) == VK_SUCCESS;
-        };
+            uint32_t present_mode_count;
+            vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContext()->device_physical, surface, &present_mode_count, nullptr);
 
-		// Image views
-		auto swizzle = true;
-		vector<VkImageView> swap_chain_image_views;
-		{
-			swap_chain_image_views.resize(swap_chain_images.size());
-			for (size_t i = 0; i < swap_chain_image_views.size(); i++)
-			{
-				if (!CreateImageView(rhi_device, swap_chain_images[i], swap_chain_image_views[i], format_selection.format, swizzle))
-				{
-					LOG_ERROR("Failed to create image view");
-					return false;
-				}
-			}
-		}
+            if (present_mode_count != 0)
+            {
+                details.present_modes.resize(present_mode_count);
+                vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContext()->device_physical, surface, &present_mode_count, details.present_modes.data());
+            }
 
-		// Frame buffers
-		vector<VkFramebuffer> frame_buffers;
-		frame_buffers.resize(swap_chain_image_views.size());
-		for (auto i = 0; i < swap_chain_image_views.size(); i++)
-		{
-			vector<VkImageView> attachments = { swap_chain_image_views[i] };
-			VkFramebufferCreateInfo framebufferInfo		= {};
-			framebufferInfo.sType						= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass					= static_cast<VkRenderPass>(render_pass);
-			framebufferInfo.attachmentCount				= static_cast<uint32_t>(attachments.size());
-			framebufferInfo.pAttachments				= attachments.data();
-			framebufferInfo.width						= extent.width;
-			framebufferInfo.height						= extent.height;
-			framebufferInfo.layers						= 1;
+            return details;
+        }
 
-			auto result = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frame_buffers[i]);
-			if (result != VK_SUCCESS)
-			{
-				LOGF_ERROR("Failed to create frame buffer(s), %s.", Vulkan_Common::result_to_string(result));
-				return false;
-			}
-		}
-	
-		surface_out			= static_cast<void*>(surface);
-		swap_chain_view_out	= static_cast<void*>(swap_chain);
-		image_views_out		= vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
-		frame_buffers_out	= vector<void*>(frame_buffers.begin(), frame_buffers.end());
+        inline VkPresentModeKHR choose_present_mode(const VkPresentModeKHR prefered_mode, const std::vector<VkPresentModeKHR>& supported_present_modes)
+        {
+            // Check if the preferred mode is supported
+            for (const auto& supported_present_mode : supported_present_modes)
+            {
+                if (prefered_mode == supported_present_mode)
+                {
+                    return prefered_mode;
+                }
+            }
 
-		for (uint32_t i = 0; i < buffer_count; i++)
-		{
-			semaphores_image_acquired_out.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
-		}
+            // Select a mode from the supported present modes
+            VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+            for (const auto& supported_present_mode : supported_present_modes)
+            {
+                if (supported_present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
+                {
+                    return supported_present_mode;
+                }
+                else if (supported_present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+                {
+                    present_mode = supported_present_mode;
+                }
+            }
 
-		return true;
-	}
+            return present_mode;
+        }
 
-	inline void _Destroy(
-		const std::shared_ptr<RHI_Device>& rhi_device,
-		void*& surface,
-		void*& swap_chain_view,
-		vector<void*>& image_views,
-		vector<void*>& frame_buffers,
-		vector<void*>& semaphores_image_acquired
-	)
-	{
-		for (auto& semaphore : semaphores_image_acquired)
-		{
-			Vulkan_Common::semaphore::destroy(rhi_device, semaphore);
-		}
-		semaphores_image_acquired.clear();
+        inline VkSurfaceFormatKHR choose_format(const VkFormat prefered_format, const std::vector<VkSurfaceFormatKHR>& available_formats)
+        {
+            VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
-		for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_device->GetContext()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
-		frame_buffers.clear();
+            if (available_formats.size() == 1 && available_formats[0].format == VK_FORMAT_UNDEFINED)
+            {
+                LOG_ERROR("Failed to find format");
+                return { prefered_format, color_space };
+            }
 
-		for (auto& image_view : image_views) { vkDestroyImageView(rhi_device->GetContext()->device, static_cast<VkImageView>(image_view), nullptr); }
-		image_views.clear();
+            for (const auto& availableFormat : available_formats)
+            {
+                if (availableFormat.format == prefered_format && availableFormat.colorSpace == color_space)
+                {
+                    return availableFormat;
+                }
+            }
 
-		if (swap_chain_view)
-		{
-			vkDestroySwapchainKHR(rhi_device->GetContext()->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
-			swap_chain_view = nullptr;
-		}
+            return available_formats[0];
+        }
 
-		if (surface)
-		{
-			vkDestroySurfaceKHR(rhi_device->GetContext()->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
-			surface = nullptr;	
-		}
-	}
+        inline bool create
+        (
+            const std::shared_ptr<RHI_Device>& rhi_device,
+            uint32_t width,
+            uint32_t height,
+            uint32_t buffer_count,
+            RHI_Format format,
+            RHI_Present_Mode present_mode,
+            void* window_handle,
+            void* render_pass,
+            void*& surface_out,
+            void*& swap_chain_view_out,
+            vector<void*>& image_views_out,
+            vector<void*>& frame_buffers_out,
+            vector<void*>& semaphores_image_acquired_out
+        )
+        {
+            auto rhi_context        = rhi_device->GetContext();
+            auto device             = rhi_device->GetContext()->device;
+            auto device_physical    = rhi_device->GetContext()->device_physical;
+
+            // Create surface
+            VkSurfaceKHR surface = nullptr;
+            {
+                VkWin32SurfaceCreateInfoKHR create_info = {};
+                create_info.sType                       = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+                create_info.hwnd                        = static_cast<HWND>(window_handle);
+                create_info.hinstance                   = GetModuleHandle(nullptr);
+
+                auto result = vkCreateWin32SurfaceKHR(rhi_context->instance, &create_info, nullptr, &surface);
+                if (result != VK_SUCCESS)
+                {
+                    LOGF_ERROR("Failed to create Win32 surface, %s.", Vulkan_Common::to_string(result));
+                    return false;
+                }
+
+                VkBool32 present_support = false;
+                result = vkGetPhysicalDeviceSurfaceSupportKHR(device_physical, rhi_context->indices.graphics_family.value(), surface, &present_support);
+                if (result != VK_SUCCESS)
+                {
+                    LOGF_ERROR("Failed to check for surface support by the device, %s.", Vulkan_Common::to_string(result));
+                    return false;
+                }
+                else if (!present_support)
+                {
+                    LOG_ERROR("The device does not support this kind of surface.");
+                    return false;
+                }
+            }
+
+            // Ensure device compatibility
+            auto surface_support = check_surface_compatibility(rhi_device.get(), surface);
+            if (!surface_support.IsCompatible())
+            {
+                LOG_ERROR("Device is not surface compatible.");
+                return false;
+            }
+
+            // Compute extent
+            VkExtent2D extent =
+            {
+                Spartan::Math::Helper::Clamp(width, surface_support.capabilities.minImageExtent.width, surface_support.capabilities.maxImageExtent.width),
+                Spartan::Math::Helper::Clamp(height, surface_support.capabilities.minImageExtent.height, surface_support.capabilities.maxImageExtent.height)
+            };
+
+            // Choose format
+            auto _format = choose_format(vulkan_format[format], surface_support.formats);
+
+            // Swap chain
+            VkSwapchainKHR swap_chain;
+            {
+                VkSwapchainCreateInfoKHR create_info    = {};
+                create_info.sType                       = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+                create_info.surface                     = surface;
+                create_info.minImageCount               = buffer_count;
+                create_info.imageFormat                 = _format.format;
+                create_info.imageColorSpace             = _format.colorSpace;
+                create_info.imageExtent                 = extent;
+                create_info.imageArrayLayers            = 1;
+                create_info.imageUsage                  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+                uint32_t queueFamilyIndices[] = { rhi_context->indices.graphics_family.value(), rhi_context->indices.present_family.value() };
+                if (rhi_context->indices.graphics_family != rhi_context->indices.present_family)
+                {
+                    create_info.imageSharingMode        = VK_SHARING_MODE_CONCURRENT;
+                    create_info.queueFamilyIndexCount   = 2;
+                    create_info.pQueueFamilyIndices     = queueFamilyIndices;
+                }
+                else
+                {
+                    create_info.imageSharingMode        = VK_SHARING_MODE_EXCLUSIVE;
+                    create_info.queueFamilyIndexCount   = 0;
+                    create_info.pQueueFamilyIndices     = nullptr;
+                }
+
+                create_info.preTransform    = surface_support.capabilities.currentTransform;
+                create_info.compositeAlpha  = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+                create_info.presentMode     = choose_present_mode(static_cast<VkPresentModeKHR>(present_mode), surface_support.present_modes);
+                create_info.clipped         = VK_TRUE;
+                create_info.oldSwapchain    = nullptr;
+
+                auto result = vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain);
+                if (result != VK_SUCCESS)
+                {
+                    LOGF_ERROR("Failed to create swap chain, %s.", Vulkan_Common::to_string(result));
+                    return false;
+                }
+            }
+
+            // Images
+            vector<VkImage> swap_chain_images;
+            {
+                uint32_t image_count;
+                vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
+                swap_chain_images.resize(image_count);
+                vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swap_chain_images.data());
+            }
+
+            // Create image view lambda
+            auto CreateImageView = [](const std::shared_ptr<RHI_Device>& rhi_device, VkImage& _image, VkImageView& image_view, VkFormat format, bool swizzle = false)
+            {
+                VkImageViewCreateInfo create_info           = {};
+                create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                create_info.image                           = _image;
+                create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+                create_info.format                          = format;
+                create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                create_info.subresourceRange.baseMipLevel   = 0;
+                create_info.subresourceRange.levelCount     = 1;
+                create_info.subresourceRange.baseArrayLayer = 0;
+                create_info.subresourceRange.layerCount     = 1;
+                if (swizzle)
+                {
+                    create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+                    create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+                    create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+                    create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+                }
+
+                return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, &image_view) == VK_SUCCESS;
+            };
+
+            // Image views
+            auto swizzle = true;
+            vector<VkImageView> swap_chain_image_views;
+            {
+                swap_chain_image_views.resize(swap_chain_images.size());
+                for (size_t i = 0; i < swap_chain_image_views.size(); i++)
+                {
+                    if (!CreateImageView(rhi_device, swap_chain_images[i], swap_chain_image_views[i], _format.format, swizzle))
+                    {
+                        LOG_ERROR("Failed to create image view");
+                        return false;
+                    }
+                }
+            }
+
+            // Frame buffers
+            vector<VkFramebuffer> frame_buffers(swap_chain_image_views.size());
+            for (auto i = 0; i < swap_chain_image_views.size(); i++)
+            {
+                VkImageView attachments[1] = { swap_chain_image_views[i] };
+
+                VkFramebufferCreateInfo framebufferInfo = {};
+                framebufferInfo.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                framebufferInfo.renderPass              = static_cast<VkRenderPass>(render_pass);
+                framebufferInfo.attachmentCount         = 1;
+                framebufferInfo.pAttachments            = attachments;
+                framebufferInfo.width                   = extent.width;
+                framebufferInfo.height                  = extent.height;
+                framebufferInfo.layers                  = 1;
+
+                auto result = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &frame_buffers[i]);
+                if (result != VK_SUCCESS)
+                {
+                    LOGF_ERROR("Failed to create frame buffer(s), %s.", Vulkan_Common::to_string(result));
+                    return false;
+                }
+            }
+
+            surface_out         = static_cast<void*>(surface);
+            swap_chain_view_out = static_cast<void*>(swap_chain);
+            image_views_out     = vector<void*>(swap_chain_image_views.begin(), swap_chain_image_views.end());
+            frame_buffers_out   = vector<void*>(frame_buffers.begin(), frame_buffers.end());
+
+            for (uint32_t i = 0; i < buffer_count; i++)
+            {
+                semaphores_image_acquired_out.emplace_back(Vulkan_Common::semaphore::create(rhi_device));
+            }
+
+            return true;
+        }
+
+        inline void destroy(
+            const std::shared_ptr<RHI_Device>& rhi_device,
+            void*& surface,
+            void*& swap_chain_view,
+            vector<void*>& image_views,
+            vector<void*>& frame_buffers,
+            vector<void*>& semaphores_image_acquired
+        )
+        {
+            for (auto& semaphore : semaphores_image_acquired)
+            {
+                Vulkan_Common::semaphore::destroy(rhi_device, semaphore);
+            }
+            semaphores_image_acquired.clear();
+
+            for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_device->GetContext()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
+            frame_buffers.clear();
+
+            for (auto& image_view : image_views) { vkDestroyImageView(rhi_device->GetContext()->device, static_cast<VkImageView>(image_view), nullptr); }
+            image_views.clear();
+
+            if (swap_chain_view)
+            {
+                vkDestroySwapchainKHR(rhi_device->GetContext()->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
+                swap_chain_view = nullptr;
+            }
+
+            if (surface)
+            {
+                vkDestroySurfaceKHR(rhi_device->GetContext()->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
+                surface = nullptr;
+            }
+        }
+    }
 
 	RHI_SwapChain::RHI_SwapChain(
 		void* window_handle,
@@ -286,7 +371,7 @@ namespace Spartan
 		if (!CreateRenderPass())
 			return;
 
-		m_initialized = _Create
+		m_initialized = _Vulkan_SwapChain::create
 		(
 			m_rhi_device,
 			m_width,
@@ -306,7 +391,7 @@ namespace Spartan
 
 	RHI_SwapChain::~RHI_SwapChain()
 	{
-		_Destroy
+		_Vulkan_SwapChain::destroy
 		(
 			m_rhi_device,
 			m_surface,
@@ -334,7 +419,7 @@ namespace Spartan
 		m_height	= height;
 
 		// Destroy previous swap chain
-		_Destroy
+		_Vulkan_SwapChain::destroy
 		(
 			m_rhi_device,
 			m_surface,
@@ -345,7 +430,7 @@ namespace Spartan
 		);
 
 		// Create the swap chain with the new dimensions
-		m_initialized = _Create
+		m_initialized = _Vulkan_SwapChain::create
 		(
 			m_rhi_device,
 			m_width,
@@ -384,7 +469,7 @@ namespace Spartan
 
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to acquire next image, %s.", Vulkan_Common::result_to_string(result));
+			LOGF_ERROR("Failed to acquire next image, %s.", Vulkan_Common::to_string(result));
 			return false;
 		}
 
@@ -410,7 +495,7 @@ namespace Spartan
 		const auto result = vkQueuePresentKHR(m_rhi_device->GetContext()->queue_present, &present_info);
 		if (result != VK_SUCCESS)
 		{
-			LOGF_ERROR("Failed to present, %s.", Vulkan_Common::result_to_string(result));
+			LOGF_ERROR("Failed to present, %s.", Vulkan_Common::to_string(result));
 		}
 
 		return result == VK_SUCCESS;
