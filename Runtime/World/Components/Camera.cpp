@@ -21,8 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Camera.h"
+#include <algorithm>
 #include "Transform.h"
 #include "Renderable.h"
+#include "../Entity.h"
 #include "../../Math/RayHit.h"
 #include "../../Core/Context.h"
 #include "../../IO/FileStream.h"
@@ -150,7 +152,7 @@ namespace Spartan
 	}
 
 	//= RAYCASTING =======================================================================
-	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Entity>& entity)
+	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Entity>& picked)
 	{
 		const auto& viewport				= m_context->GetSubsystem<Renderer>()->GetViewport();
 		const auto& offset					= m_context->GetSubsystem<Renderer>()->viewport_editor_offset;
@@ -166,17 +168,55 @@ namespace Spartan
 		m_ray		= Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mouse_position_relative));
 		auto hits	= m_ray.Trace(m_context);
 
-		// Get closest hit that doesn't start inside an entity
+        // Create a struct to hold hit related data
+        struct scored_entity
+        {
+            scored_entity(const shared_ptr<Entity>& entity, float distance_ray, float distance_obb)
+            {
+                this->entity = entity;
+                score = distance_ray * 0.1f + distance_obb * 0.9f;
+            }
+
+            shared_ptr<Entity> entity;
+            float score;
+        };
+        vector<scored_entity> m_scored;
+
+        // Go through all the hits and score them
+        m_scored.reserve(hits.size());
 		for (const auto& hit : hits)
 		{
+            // Filter hits that start inside OBBs
 			if (hit.m_inside)
 				continue;
 
-			entity = hit.m_entity;
-			return true;
+            // Score this hit
+            auto& obb = hit.m_entity->GetComponent<Renderable>()->GetAabbTransformed();
+            float distance_obb = Vector3::DistanceSquared(hit.m_position, obb.GetCenter());
+            m_scored.emplace_back
+            (
+                hit.m_entity,
+                1.0f - hit.m_distance / m_ray.GetLength(),          // normalized ray distance score
+                1.0f - (distance_obb / obb.GetExtents().Length())   // normalized obb center distance score
+            );
 		}
+        m_scored.shrink_to_fit();
 
-		entity = nullptr;
+        // Return entity with highest score
+        picked = nullptr;
+        if (!m_scored.empty())
+        {
+            // ordering descendingly
+            sort(m_scored.begin(), m_scored.end(), [](const scored_entity& a, const scored_entity& b) { return a.score > b.score; });
+
+            picked = m_scored.front().entity;
+            return true;
+        }
+
+        // If no hit was good enough but there are hits, compromise by picking the closest one
+        if (!picked && !hits.empty())
+            picked = hits.front().m_entity;
+
 		return true;
 	}
 

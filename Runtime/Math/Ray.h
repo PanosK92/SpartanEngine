@@ -49,14 +49,16 @@ namespace Spartan
 			// Returns hit distance to a bounding box, or infinity if there is no hit.
 			float HitDistance(const BoundingBox& box) const;
 
-			const Vector3& GetStart() const		{ return m_start; }
-			const Vector3& GetEnd()	const		{ return m_end; }
-			const Vector3& GetDirection() const { return m_direction; }
+			const auto& GetStart()      const { return m_start; }
+			const auto& GetEnd()        const { return m_end; }
+            const auto& GetLength()     const { return m_length; }
+			const auto& GetDirection()  const { return m_direction; }
 
 		private:
 			Vector3 m_start;
 			Vector3 m_end;
 			Vector3 m_direction;
+            float m_length = 0.0f;
 		};
 	}
 }

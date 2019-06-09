@@ -38,9 +38,11 @@ namespace Spartan::Math
 {
 	Ray::Ray(const Vector3& start, const Vector3& end)
 	{
-		m_start		= start;
-		m_end		= end;
-		m_direction = (end - start).Normalized();
+		m_start                 = start;
+		m_end                   = end;
+        Vector3 start_to_end    = (end - start);
+        m_length                = start_to_end.Length();
+		m_direction             = start_to_end.Normalized();
 	}
 
 	vector<RayHit> Ray::Trace(Context* context) const
@@ -54,18 +56,23 @@ namespace Spartan::Math
 			if (!entity->HasComponent<Renderable>() || entity->HasComponent<Skybox>())
 				continue;
 
-			// Get bounding box
+			// Get object oriented bounding box
 			const auto& aabb = entity->GetComponent<Renderable>()->GetAabbTransformed();
 
 			// Compute hit distance
-			auto hit_distance = HitDistance(aabb);
+			auto distance = HitDistance(aabb);
 
 			// Don't store hit data if there was no hit
-			if (hit_distance == INFINITY)
+			if (distance == INFINITY)
 				continue;
 
-			auto inside	= (hit_distance == 0.0f);
-			hits.emplace_back(entity, hit_distance, inside);
+            auto& hit_position = m_start + distance * m_direction;
+			hits.emplace_back(
+                entity,          // Entity
+                hit_position,    // Position
+                distance,        // Distance
+                distance == 0.0f // Inside
+            );
 		}
 
 		// Sort by distance (ascending)
