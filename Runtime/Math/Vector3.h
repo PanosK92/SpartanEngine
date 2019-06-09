@@ -100,10 +100,12 @@ namespace Spartan::Math
 		Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
 		//=================================================================
 
-		//= LENGTH ================================================================
-		float Length() const		{ return Helper::Sqrt(x * x + y * y + z * z); }
-		float LengthSquared() const { return x * x + y * y + z * z; }
-		//=========================================================================
+		//= LENGTH/DISTANCE ===========================================================================   =================
+		float Length() const		                                        { return Helper::Sqrt(x * x + y * y + z * z); }
+		float LengthSquared() const                                         { return x * x + y * y + z * z; }
+        static float Distance(const Vector3& a, const Vector3& b)           { return (b - a).Length(); }
+        static float DistanceSquared(const Vector3& a, const Vector3& b)    { return (b - a).LengthSquared(); }
+		//=================================================================================================================
 
 		//= MISC ===========================================================
 		void Floor()

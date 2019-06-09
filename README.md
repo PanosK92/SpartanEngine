@@ -69,17 +69,17 @@ Shadows 			| 90%          	| Improve shadow mapping performance and enable spot 
 Vulkan      		| 60%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
+- C# scripting (Replace AngelScript).
+
+###### v0.33
 - Ray traced shadows.
 - Ray traced reflections.
 
-###### v0.33
+###### v0.34
 - DirectX 12.
 
-###### v0.34
-- Skeletal Animation.
-
 ###### v0.35
-- C# scripting (Replace AngelScript).
+- Skeletal Animation.
 
 ###### v0.36
 - Eye Adaptation.
