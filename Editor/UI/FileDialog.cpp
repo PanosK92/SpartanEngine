@@ -57,7 +57,7 @@ FileDialog::FileDialog(Context* context, const bool standalone_window, const Fil
 	m_is_window							= standalone_window;
 	m_current_directory					= FileSystem::GetWorkingDirectory();
 	m_item_size							= 100.0f;
-	m_isDirty							= true;
+	m_is_dirty							= true;
 	m_selection_made					= false;
 	m_callback_on_item_clicked			= nullptr;
 	m_callback_on_item_double_clicked	= nullptr;
@@ -73,13 +73,11 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 {
 	if (!(*is_visible))
 	{
-		m_wasVisible	= false;
-		m_isDirty		= true; // set as dirty as things can change till next time
+		m_is_dirty = true; // set as dirty as things can change till next time
 		return false;
 	}
 
 	m_selection_made					= false;
-	m_wasVisible						= true;
 	_FileDialog::g_is_hovering_item		= false;
 	_FileDialog::g_is_hovering_window	= false;
 	
@@ -92,10 +90,10 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 		ImGui::End();
 	}
 
-	if (m_isDirty)
+	if (m_is_dirty)
 	{
 		DialogUpdateFromDirectory(m_current_directory);
-		m_isDirty = false;
+		m_is_dirty = false;
 	}
 
 	if (m_selection_made)
@@ -129,7 +127,7 @@ void FileDialog::ShowTop(bool* is_visible)
 	if (ImGui::Button("<"))
 	{
 		DialogSetCurrentPath(FileSystem::GetParentDirectory(m_current_directory));
-		m_isDirty     = true;
+		m_is_dirty     = true;
 	}
 	ImGui::SameLine();
 	ImGui::Text(m_current_directory.c_str());
@@ -191,7 +189,7 @@ void FileDialog::ShowMiddle()
 						}
 						else // Double Click
 						{
-							m_isDirty		= DialogSetCurrentPath(item.GetPath());
+							m_is_dirty		= DialogSetCurrentPath(item.GetPath());
 							m_selection_made = !item.IsDirectory();
 
 							// Callback
@@ -315,12 +313,12 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
 		if (item->IsDirectory())
 		{
 			FileSystem::DeleteDirectory(item->GetPath());
-			m_isDirty = true;
+			m_is_dirty = true;
 		}
 		else
 		{
 			FileSystem::DeleteFile_(item->GetPath());
-			m_isDirty = true;
+			m_is_dirty = true;
 		}
 	}
 
@@ -403,7 +401,7 @@ void FileDialog::EmptyAreaContextMenu()
 	if (ImGui::MenuItem("Create folder"))
 	{
 		FileSystem::CreateDirectory_(m_current_directory + "New folder");
-		m_isDirty = true;
+		m_is_dirty = true;
 	}
 
 	if (ImGui::MenuItem("Open directory in explorer"))
