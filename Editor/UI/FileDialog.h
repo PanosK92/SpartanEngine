@@ -129,8 +129,7 @@ private:
 	bool m_is_window;
 	float m_item_size;
 	bool m_selection_made;
-	bool m_isDirty;
-	bool m_wasVisible{};
+	bool m_is_dirty;
 	Spartan::Context* m_context;
 
 	// Callbacks
