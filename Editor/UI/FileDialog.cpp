@@ -57,7 +57,7 @@ FileDialog::FileDialog(Context* context, const bool standalone_window, const Fil
 	m_is_window							= standalone_window;
 	m_current_directory					= FileSystem::GetWorkingDirectory();
 	m_item_size							= 100.0f;
-	m_isDirty							= true;
+	m_is_dirty							= true;
 	m_selection_made					= false;
 	m_callback_on_item_clicked			= nullptr;
 	m_callback_on_item_double_clicked	= nullptr;
@@ -73,13 +73,11 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 {
 	if (!(*is_visible))
 	{
-		m_wasVisible	= false;
-		m_isDirty		= true; // set as dirty as things can change till next time
+		m_is_dirty = true; // set as dirty as things can change till next time
 		return false;
 	}
 
 	m_selection_made					= false;
-	m_wasVisible						= true;
 	_FileDialog::g_is_hovering_item		= false;
 	_FileDialog::g_is_hovering_window	= false;
 	
@@ -92,10 +90,10 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 		ImGui::End();
 	}
 
-	if (m_isDirty)
+	if (m_is_dirty)
 	{
 		DialogUpdateFromDirectory(m_current_directory);
-		m_isDirty = false;
+		m_is_dirty = false;
 	}
 
 	if (m_selection_made)
@@ -129,7 +127,7 @@ void FileDialog::ShowTop(bool* is_visible)
 	if (ImGui::Button("<"))
 	{
 		DialogSetCurrentPath(FileSystem::GetParentDirectory(m_current_directory));
-		m_isDirty     = true;
+		m_is_dirty     = true;
 	}
 	ImGui::SameLine();
 	ImGui::Text(m_current_directory.c_str());
@@ -145,92 +143,137 @@ void FileDialog::ShowMiddle()
 {
 	const auto push_style = []()
 	{
-		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);				// Remove border
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.0f, 5.0f));		// Remove item spacing (because it clips the thumbnails)
+		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f); // Remove border
 	};
 
-	const auto pop_style = []() { ImGui::PopStyleVar(2); };
+	const auto pop_style = []() { ImGui::PopStyleVar(); };
 
 	// CONTENT WINDOW START
 	const auto window			= ImGui::GetCurrentWindowRead();
-	const auto content_width	= window->ContentsRegionRect.Max.x - window->ContentsRegionRect.Min.x;
-	const auto content_height	= window->ContentsRegionRect.Max.y - window->ContentsRegionRect.Min.y - (m_type != FileDialog_Type_Browser ? 58.0f : 28.0f);
+	const auto content_width	= ImGui::GetContentRegionAvail().x;
+	const auto content_height	= ImGui::GetContentRegionAvail().y - (m_type != FileDialog_Type_Browser ? 30.0f : 0.0f);
 
 	push_style();
-	ImGui::BeginChild("##ContentRegion", ImVec2(content_width, content_height), true);
+	if (ImGui::BeginChild("##ContentRegion", ImVec2(content_width, content_height), true))
 	{
 		_FileDialog::g_is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : _FileDialog::g_is_hovering_window;
 
-		// A bunch of columns, where is item represents a thumbnail
-		auto index   = 0;
-		auto columns = static_cast<int>(ImGui::GetWindowContentRegionWidth() / m_item_size);
-		columns     = columns < 1 ? 1 : columns;
-		ImGui::Columns(columns, nullptr, false);
-		for (auto& item : m_items)
+        // Go through all the items
+        float pen_x     = 0.0f;
+        bool new_line   = true;
+		for (int i = 0; i < m_items.size(); i++)
 		{
-			ImGui::BeginGroup();
-			{
-				// THUMBNAIL
-				{
-					ImGui::PushID(index);
-					ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
-					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            // Start new line ?
+            if (new_line)
+            {
+                ImGui::BeginGroup();
+                new_line = false;
+            }
 
-					if (ImGuiEx::ImageButton(item.GetTexture(), ImVec2(m_item_size, m_item_size - 23.0f)))
-					{
-						// Determine type of click
-						item.Clicked();
-						const auto is_single_click = item.GetTimeSinceLastClickMs() > 500;
+            ImGui::BeginGroup();
+            {
+                // Get item to be displayed
+                auto& item = m_items[i];
 
-						if (is_single_click)
-						{
-							// Updated input box
-							m_input_box = item.GetLabel();
-							// Callback
-							if (m_callback_on_item_clicked) m_callback_on_item_clicked(item.GetPath());
-						}
-						else // Double Click
-						{
-							m_isDirty		= DialogSetCurrentPath(item.GetPath());
-							m_selection_made = !item.IsDirectory();
+                // THUMBNAIL
+                {
+                    ImGui::PushID(i);
+                    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
 
-							// Callback
-							if (m_callback_on_item_double_clicked) m_callback_on_item_double_clicked(m_current_directory);				
-						}
-					}
+                    if (ImGuiEx::ImageButton(item.GetTexture(), ImVec2(m_item_size, m_item_size - 23.0f)))
+                    {
+                        // Determine type of click
+                        item.Clicked();
+                        const auto is_single_click = item.GetTimeSinceLastClickMs() > 500;
 
-					ImGui::PopStyleColor(2);
-					ImGui::PopID();
-				}
+                        if (is_single_click)
+                        {
+                            // Updated input box
+                            m_input_box = item.GetLabel();
+                            // Callback
+                            if (m_callback_on_item_clicked) m_callback_on_item_clicked(item.GetPath());
+                        }
+                        else // Double Click
+                        {
+                            m_is_dirty = DialogSetCurrentPath(item.GetPath());
+                            m_selection_made = !item.IsDirectory();
 
-				// Item functionality
-				{
-					// Manually detect some useful states
-					if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
-					{
-						_FileDialog::g_is_hovering_item		= true;
-						_FileDialog::g_hovered_item_path	= item.GetPath();
-					}
+                            // Callback
+                            if (m_callback_on_item_double_clicked) m_callback_on_item_double_clicked(m_current_directory);
+                        }
+                    }
 
-					ItemClick(&item);
-					ItemContextMenu(&item);
-					ItemDrag(&item);
-				}
+                    ImGui::PopStyleColor(2);
+                    ImGui::PopID();
+                }
 
-				// LABEL
-				{
-					ImGui::TextUnformatted(item.GetLabel().c_str());
-				}			
-			}
-			ImGui::EndGroup();
+                // Item functionality
+                {
+                    // Manually detect some useful states
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
+                    {
+                        _FileDialog::g_is_hovering_item     = true;
+                        _FileDialog::g_hovered_item_path    = item.GetPath();
+                    }
 
-			// COLUMN END
-			ImGui::NextColumn();
-			index++;
+                    ItemClick(&item);
+                    ItemContextMenu(&item);
+                    ItemDrag(&item);
+                }
+
+                // LABEL
+                {
+                    auto& g = *GImGui;
+                    auto& style = ImGui::GetStyle();
+
+                    const char* label_text  = item.GetLabel().c_str();
+                    const ImVec2 label_size = ImGui::CalcTextSize(label_text, nullptr, true);                 
+                    float label_width       = m_item_size + style.FramePadding.x;
+                    float label_height      = g.FontSize + style.FramePadding.y;
+                    ImRect label_rect       = ImRect
+                    (
+                        ImGui::GetCursorScreenPos().x,
+                        ImGui::GetCursorScreenPos().y - label_height,
+                        ImGui::GetCursorScreenPos().x + label_width + 5.0f, // why a 5.0f here? What style var am I missing? Future self, please fix.
+                        ImGui::GetCursorScreenPos().y - 5.0f                // why a 5.0f here? What style var am I missing? Future self, please fix.
+                    );
+
+                    // Draw text background
+                    ImGui::GetWindowDrawList()->AddRectFilled(label_rect.Min, label_rect.Max, IM_COL32(0.2f * 255, 0.2f * 255, 0.2f * 255, 0.75f * 255)); 
+
+                    // Draw text
+                    ImGui::SetWindowFontScale(m_item_size / 100.0f);
+                    ImGui::SetCursorScreenPos(ImVec2(label_rect.Min.x, label_rect.Min.y));
+       
+                    if (label_size.x <= m_item_size)
+                        ImGui::TextUnformatted(label_text);
+                    else
+                    {
+                        ImGui::RenderTextClipped(label_rect.Min, label_rect.Max, label_text, nullptr, &label_size, ImVec2(0, 0), &label_rect);
+                    }
+                }
+
+                ImGui::EndGroup();
+            }
+
+            // Decide whether we should switch to the next column or switch row
+            pen_x += m_item_size + ImGui::GetStyle().ItemSpacing.x;
+            if (pen_x >= content_width - m_item_size)
+            {
+                ImGui::EndGroup();
+                pen_x = 0;
+                new_line = true;
+            }
+            else
+            {
+                ImGui::SameLine();
+            }
 		}
-		ImGui::Columns(1);
 
-	} // CONTENT WINDOW END
+        if (!new_line)
+            ImGui::EndGroup();
+	}
 	ImGui::EndChild();
 	pop_style();
 }
@@ -315,12 +358,12 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
 		if (item->IsDirectory())
 		{
 			FileSystem::DeleteDirectory(item->GetPath());
-			m_isDirty = true;
+			m_is_dirty = true;
 		}
 		else
 		{
 			FileSystem::DeleteFile_(item->GetPath());
-			m_isDirty = true;
+			m_is_dirty = true;
 		}
 	}
 
@@ -403,7 +446,7 @@ void FileDialog::EmptyAreaContextMenu()
 	if (ImGui::MenuItem("Create folder"))
 	{
 		FileSystem::CreateDirectory_(m_current_directory + "New folder");
-		m_isDirty = true;
+		m_is_dirty = true;
 	}
 
 	if (ImGui::MenuItem("Open directory in explorer"))
