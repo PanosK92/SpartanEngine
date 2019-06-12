@@ -102,15 +102,20 @@ void Widget_MenuBar::Tick(float deltaTime)
 		ImGui::EndMainMenuBar();
 	}
 
-	if (_Widget_MenuBar::imgui_metrics)			{ ImGui::ShowMetricsWindow(); }
-	if (_Widget_MenuBar::imgui_style)			{ ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking); ImGui::ShowStyleEditor(); ImGui::End(); }
-	if (_Widget_MenuBar::imgui_demo)			{ ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo); }
-	if (_Widget_MenuBar::g_fileDialogVisible)	{ ImGui::SetNextWindowFocus(); ShowFileDialog(); }
-	if (_Widget_MenuBar::g_showAboutWindow)		{ ImGui::SetNextWindowFocus(); ShowAboutWindow(); }
+	if (_Widget_MenuBar::imgui_metrics)	{ ImGui::ShowMetricsWindow(); }
+	if (_Widget_MenuBar::imgui_style)	{ ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking); ImGui::ShowStyleEditor(); ImGui::End(); }
+	if (_Widget_MenuBar::imgui_demo)	{ ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo); }
+    ShowFileDialog();
+    ShowAboutWindow();
 }
 
 void Widget_MenuBar::ShowFileDialog()
 {
+    if (_Widget_MenuBar::g_fileDialogVisible)
+    {
+        ImGui::SetNextWindowFocus();
+    }
+
 	if (m_fileDialog->Show(&_Widget_MenuBar::g_fileDialogVisible, nullptr, &_Widget_MenuBar::g_fileDialogSelection))
 	{
 		// LOAD
@@ -138,6 +143,10 @@ void Widget_MenuBar::ShowFileDialog()
 
 void Widget_MenuBar::ShowAboutWindow()
 {
+    if (!_Widget_MenuBar::g_showAboutWindow)
+        return;
+
+    ImGui::SetNextWindowFocus();
 	ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
 
 	ImGui::Text("Spartan %s", engine_version);
