@@ -52,7 +52,7 @@ float4 mainPS(VS_Output input) : SV_TARGET
 #endif
 
 #if DEBUG_VELOCITY
-	color = abs(color) * 10.0f;
+	color = abs(color) * 30.0f;
 #endif
 
 #if DEBUG_SSAO
