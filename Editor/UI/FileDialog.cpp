@@ -27,20 +27,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui_stdlib.h"
 //=========================================
 
-//= NAMESPACES ==========
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan;
-//=======================
+using namespace Spartan::Math;
+//============================
 
 namespace _FileDialog
 {
-	static float g_item_size_min = 50.0f;
-	static float g_item_size_max = 200.0f;
-	static bool g_is_hovering_item;
-	static string g_hovered_item_path;
-	static bool g_is_hovering_window;
-	static ImGuiEx::DragDropPayload g_drag_drop_payload;
-	static unsigned int g_context_menu_id;
+	static float item_size_min = 50.0f;
+	static float item_size_max = 200.0f;
+	static bool is_hovering_item;
+	static string hovered_item_path;
+	static bool is_hovering_window;
+	static ImGuiEx::DragDropPayload drag_drop_payload;
+	static unsigned int context_menu_id;
+
 }
 
 #define OPERATION_NAME	(m_operation == FileDialog_Op_Open)	? "Open"		: (m_operation == FileDialog_Op_Load)	? "Load"		: (m_operation == FileDialog_Op_Save) ? "Save" : "View"
@@ -56,7 +58,7 @@ FileDialog::FileDialog(Context* context, const bool standalone_window, const Fil
 	m_title								= OPERATION_NAME;
 	m_is_window							= standalone_window;
 	m_current_directory					= FileSystem::GetWorkingDirectory();
-	m_item_size							= 100.0f;
+    m_item_size                         = Vector2(100.0f, 130.f);
 	m_is_dirty							= true;
 	m_selection_made					= false;
 	m_callback_on_item_clicked			= nullptr;
@@ -77,9 +79,9 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 		return false;
 	}
 
-	m_selection_made					= false;
-	_FileDialog::g_is_hovering_item		= false;
-	_FileDialog::g_is_hovering_window	= false;
+	m_selection_made				= false;
+	_FileDialog::is_hovering_item	= false;
+	_FileDialog::is_hovering_window	= false;
 	
 	ShowTop(is_visible);	// Top menu	
 	ShowMiddle();			// Contents of the current directory
@@ -133,7 +135,9 @@ void FileDialog::ShowTop(bool* is_visible)
 	ImGui::Text(m_current_directory.c_str());
 	ImGui::SameLine(ImGui::GetWindowContentRegionWidth() * 0.8f);
 	ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth() * 0.207f);
-	ImGui::SliderFloat("##FileDialogSlider", &m_item_size, _FileDialog::g_item_size_min, _FileDialog::g_item_size_max);
+    float previous_width = m_item_size.x;
+	ImGui::SliderFloat("##FileDialogSlider", &m_item_size.x, _FileDialog::item_size_min, _FileDialog::item_size_max);
+    m_item_size.y += m_item_size.x - previous_width;
 	ImGui::PopItemWidth();
 
 	ImGui::Separator();
@@ -141,22 +145,20 @@ void FileDialog::ShowTop(bool* is_visible)
 
 void FileDialog::ShowMiddle()
 {
-	const auto push_style = []()
-	{
-		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f); // Remove border
-	};
+    // Compute some useful stuff
+    const auto window           = ImGui::GetCurrentWindowRead();
+    const auto content_width    = ImGui::GetContentRegionAvail().x;
+    const auto content_height   = ImGui::GetContentRegionAvail().y - (m_type != FileDialog_Type_Browser ? 30.0f : 0.0f);
+    auto& g                     = *GImGui;
+    auto& style                 = ImGui::GetStyle();      
+    const float font_scale      = m_item_size.x / 100.0f;
+    const float label_height    = g.FontSize * font_scale;
+    const float text_offset     = 3.0f;
 
-	const auto pop_style = []() { ImGui::PopStyleVar(); };
-
-	// CONTENT WINDOW START
-	const auto window			= ImGui::GetCurrentWindowRead();
-	const auto content_width	= ImGui::GetContentRegionAvail().x;
-	const auto content_height	= ImGui::GetContentRegionAvail().y - (m_type != FileDialog_Type_Browser ? 30.0f : 0.0f);
-
-	push_style();
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f); // Remove border
 	if (ImGui::BeginChild("##ContentRegion", ImVec2(content_width, content_height), true))
 	{
-		_FileDialog::g_is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : _FileDialog::g_is_hovering_window;
+		_FileDialog::is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : _FileDialog::is_hovering_window;
 
         // Go through all the items
         float pen_x     = 0.0f;
@@ -174,6 +176,8 @@ void FileDialog::ShowMiddle()
             {
                 // Get item to be displayed
                 auto& item = m_items[i];
+                ImVec2 pos_button_min = ImGui::GetCursorScreenPos();
+                ImVec2 pos_button_max = ImVec2(pos_button_min.x + m_item_size.x, pos_button_min.y + m_item_size.y);
 
                 // THUMBNAIL
                 {
@@ -181,7 +185,7 @@ void FileDialog::ShowMiddle()
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
 
-                    if (ImGuiEx::ImageButton(item.GetTexture(), ImVec2(m_item_size, m_item_size - 23.0f)))
+                    if (ImGui::Button("##dummy", m_item_size))
                     {
                         // Determine type of click
                         item.Clicked();
@@ -204,50 +208,53 @@ void FileDialog::ShowMiddle()
                         }
                     }
 
+                    // Item functionality
+                    {
+                        // Manually detect some useful states
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
+                        {
+                            _FileDialog::is_hovering_item = true;
+                            _FileDialog::hovered_item_path = item.GetPath();
+                        }
+
+                        ItemClick(&item);
+                        ItemContextMenu(&item);
+                        ItemDrag(&item);
+                    }
+
+                    ImGui::SetCursorScreenPos(ImVec2(pos_button_min.x + style.FramePadding.x, pos_button_min.y + style.FramePadding.y));
+                    ImGui::Image(item.GetTexture(), ImVec2(
+                        pos_button_max.x - pos_button_min.x - style.FramePadding.x * 2.0f,
+                        pos_button_max.y - pos_button_min.y - style.FramePadding.y - label_height - 5.0f)
+                    );
+
                     ImGui::PopStyleColor(2);
                     ImGui::PopID();
                 }
 
-                // Item functionality
-                {
-                    // Manually detect some useful states
-                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
-                    {
-                        _FileDialog::g_is_hovering_item     = true;
-                        _FileDialog::g_hovered_item_path    = item.GetPath();
-                    }
-
-                    ItemClick(&item);
-                    ItemContextMenu(&item);
-                    ItemDrag(&item);
-                }
-
                 // LABEL
                 {
-                    auto& g = *GImGui;
-                    auto& style = ImGui::GetStyle();
-
                     const char* label_text  = item.GetLabel().c_str();
-                    const ImVec2 label_size = ImGui::CalcTextSize(label_text, nullptr, true);                 
-                    float label_width       = m_item_size + style.FramePadding.x;
-                    float label_height      = g.FontSize + style.FramePadding.y;
-                    ImRect label_rect       = ImRect
+                    const ImVec2 label_size = ImGui::CalcTextSize(label_text, nullptr, true);
+                    ImRect label_rect = ImRect
                     (
-                        ImGui::GetCursorScreenPos().x,
-                        ImGui::GetCursorScreenPos().y - label_height,
-                        ImGui::GetCursorScreenPos().x + label_width + 5.0f, // why a 5.0f here? What style var am I missing? Future self, please fix.
-                        ImGui::GetCursorScreenPos().y - 5.0f                // why a 5.0f here? What style var am I missing? Future self, please fix.
+                        pos_button_min.x,
+                        pos_button_max.y - label_height - style.FramePadding.y,
+                        pos_button_max.x,
+                        pos_button_max.y
                     );
 
                     // Draw text background
                     ImGui::GetWindowDrawList()->AddRectFilled(label_rect.Min, label_rect.Max, IM_COL32(0.2f * 255, 0.2f * 255, 0.2f * 255, 0.75f * 255)); 
+                    //ImGui::GetWindowDrawList()->AddRect(label_rect.Min, label_rect.Max, IM_COL32(1.0f * 255, 0, 0, 255)); // debug
 
                     // Draw text
-                    ImGui::SetWindowFontScale(m_item_size / 100.0f);
-                    ImGui::SetCursorScreenPos(ImVec2(label_rect.Min.x, label_rect.Min.y));
-       
-                    if (label_size.x <= m_item_size)
+                    ImGui::SetWindowFontScale(font_scale);
+                    ImGui::SetCursorScreenPos(ImVec2(label_rect.Min.x, label_rect.Min.y + text_offset));
+                    if (label_size.x <= m_item_size.x)
+                    {
                         ImGui::TextUnformatted(label_text);
+                    }
                     else
                     {
                         ImGui::RenderTextClipped(label_rect.Min, label_rect.Max, label_text, nullptr, &label_size, ImVec2(0, 0), &label_rect);
@@ -258,8 +265,8 @@ void FileDialog::ShowMiddle()
             }
 
             // Decide whether we should switch to the next column or switch row
-            pen_x += m_item_size + ImGui::GetStyle().ItemSpacing.x;
-            if (pen_x >= content_width - m_item_size)
+            pen_x += m_item_size.x + ImGui::GetStyle().ItemSpacing.x;
+            if (pen_x >= content_width - m_item_size.x)
             {
                 ImGui::EndGroup();
                 pen_x = 0;
@@ -275,7 +282,7 @@ void FileDialog::ShowMiddle()
             ImGui::EndGroup();
 	}
 	ImGui::EndChild();
-	pop_style();
+    ImGui::PopStyleVar();
 }
 
 void FileDialog::ShowBottom(bool* is_visible)
@@ -317,9 +324,9 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 	{
 		const auto set_payload = [](const ImGuiEx::DragPayloadType type, const std::string& path)
 		{
-			_FileDialog::g_drag_drop_payload.type = type;
-			_FileDialog::g_drag_drop_payload.data = path.c_str();
-			ImGuiEx::CreateDragPayload(_FileDialog::g_drag_drop_payload);
+			_FileDialog::drag_drop_payload.type = type;
+			_FileDialog::drag_drop_payload.data = path.c_str();
+			ImGuiEx::CreateDragPayload(_FileDialog::drag_drop_payload);
 		};
 
 		if (FileSystem::IsSupportedModelFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Model,	item->GetPath()); }
@@ -334,20 +341,20 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 
 void FileDialog::ItemClick(FileDialogItem* item) const
 {
-	if (!item || !_FileDialog::g_is_hovering_window)
+	if (!item || !_FileDialog::is_hovering_window)
 		return;
 
 	// Context menu on right click
 	if (ImGui::IsItemClicked(1))
 	{
-		_FileDialog::g_context_menu_id = item->GetId();
+		_FileDialog::context_menu_id = item->GetId();
 		ImGui::OpenPopup("##FileDialogContextMenu");
 	}
 }
 
 void FileDialog::ItemContextMenu(FileDialogItem* item)
 {
-	if (_FileDialog::g_context_menu_id != item->GetId())
+	if (_FileDialog::context_menu_id != item->GetId())
 		return;
 
 	if (!ImGui::BeginPopup("##FileDialogContextMenu"))
@@ -400,7 +407,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 	auto child_directories = FileSystem::GetDirectoriesInDirectory(path);
 	for (const auto& child_dir : child_directories)
 	{
-		m_items.emplace_back(child_dir, IconProvider::Get().Thumbnail_Load(child_dir, Thumbnail_Folder, static_cast<int>(m_item_size)));
+		m_items.emplace_back(child_dir, IconProvider::Get().Thumbnail_Load(child_dir, Thumbnail_Folder, static_cast<int>(m_item_size.x)));
 	}
 
 	// Get files (based on filter)
@@ -410,7 +417,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 		child_files = FileSystem::GetFilesInDirectory(path);
 		for (const auto& child_file : child_files)
 		{
-			m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_Custom, static_cast<int>(m_item_size)));
+			m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_Custom, static_cast<int>(m_item_size.x)));
 		}
 	}
 	else if (m_filter == FileDialog_Filter_Scene)
@@ -418,7 +425,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 		child_files = FileSystem::GetSupportedSceneFilesInDirectory(path);
 		for (const auto& child_file : child_files)
 		{
-			m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Scene, static_cast<int>(m_item_size)));
+			m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Scene, static_cast<int>(m_item_size.x)));
 		}
 	}
 	else if (m_filter == FileDialog_Filter_Model)
@@ -426,7 +433,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 		child_files = FileSystem::GetSupportedModelFilesInDirectory(path);
 		for (const auto& child_file : child_files)
 		{
-			m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Model, static_cast<int>(m_item_size)));
+			m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Model, static_cast<int>(m_item_size.x)));
 		}
 	}
 
@@ -435,7 +442,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 
 void FileDialog::EmptyAreaContextMenu()
 {
-	if (ImGui::IsMouseClicked(1) && _FileDialog::g_is_hovering_window && !_FileDialog::g_is_hovering_item)
+	if (ImGui::IsMouseClicked(1) && _FileDialog::is_hovering_window && !_FileDialog::is_hovering_item)
 	{
 		ImGui::OpenPopup("##Content_ContextMenu");
 	}
