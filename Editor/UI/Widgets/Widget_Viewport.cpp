@@ -47,7 +47,7 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
 	m_title						= "Viewport";
 	m_timeSinceLastResChange	= 0.0f;
 
-	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
+	m_window_flags |= ImGuiWindowFlags_NoScrollbar;
 	_Widget_Viewport::g_renderer	= m_context->GetSubsystem<Renderer>().get();
 	_Widget_Viewport::g_world		= m_context->GetSubsystem<World>().get();
 	m_xMin = 400;
@@ -58,7 +58,7 @@ bool Widget_Viewport::Begin()
 {
 	ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(_Widget_Viewport::g_window_padding, _Widget_Viewport::g_window_padding));
-	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
+	ImGui::Begin(m_title.c_str(), &m_isVisible, m_window_flags);
 
 	return true;
 }

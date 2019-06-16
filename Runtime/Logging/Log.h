@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <memory>
 #include <mutex>
+#include <vector>
 #include "../Core/EngineDefs.h"
 //=============================
 
@@ -62,10 +63,24 @@ namespace Spartan
 		Log_Error
 	};
 
+    struct LogCmd
+    {
+        LogCmd(const std::string& text, const Log_Type type)
+        {
+            this->text = text;
+            this->type = type;
+        }
+
+        std::string text;
+        Log_Type type;
+    };
+
 	class SPARTAN_CLASS Log
 	{
 		friend class ILogger;
 	public:
+        Log() = default;
+
 		// Set a logger to be used (if not set, logging will done in a text file.
 		static void SetLogger(const std::weak_ptr<ILogger>& logger);
 
@@ -113,6 +128,7 @@ namespace Spartan
 		static std::string m_caller_name;
 
 	private:
+        static void FlushBuffer();
 		static void LogString(const char* text, Log_Type type);
 		static void LogToFile(const char* text, Log_Type type);
 
@@ -121,5 +137,6 @@ namespace Spartan
 		static std::mutex m_mutex;
 		static std::string m_log_file_name;
 		static bool m_first_log;
+        static std::vector<LogCmd> m_log_buffer;
 	};
 }

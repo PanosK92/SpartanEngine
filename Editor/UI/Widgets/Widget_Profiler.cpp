@@ -34,7 +34,7 @@ using namespace Helper;
 
 Widget_Profiler::Widget_Profiler(Context* context) : Widget(context)
 {
-	m_windowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+	m_window_flags |= ImGuiWindowFlags_AlwaysAutoResize;
 	m_title							= "Profiler";
 	m_isVisible						= false;
 	m_profiler						= m_context->GetSubsystem<Profiler>().get();

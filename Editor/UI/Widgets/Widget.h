@@ -42,7 +42,7 @@ public:
 
 		ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowSizeConstraints(ImVec2(m_xMin, m_yMin), ImVec2(m_xMax, m_yMax));
-		ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
+		ImGui::Begin(m_title.c_str(), &m_isVisible, m_window_flags);
 		m_windowBegun = true;
 
 		return true;
@@ -75,7 +75,7 @@ public:
 protected:
 	bool m_isVisible	= true;
 	bool m_isWindow		= true;	
-	int m_windowFlags	= ImGuiWindowFlags_NoCollapse;
+	int m_window_flags	= ImGuiWindowFlags_NoCollapse;
 	float m_xMin		= 0;
 	float m_xMax		= FLT_MAX;
 	float m_yMin		= 0;
