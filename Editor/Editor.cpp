@@ -272,34 +272,24 @@ void Editor::ApplyStyle() const
 	// Spatial
 	style.WindowBorderSize		= 1.0f;
 	style.FrameBorderSize		= 0.0f;
-	//style.WindowMinSize		= ImVec2(160, 20);
 	style.FramePadding			= ImVec2(5, 5);
 	style.ItemSpacing			= ImVec2(6, 5);
-	//style.ItemInnerSpacing	= ImVec2(6, 4);
 	style.Alpha					= 1.0f;
 	style.WindowRounding		= roundness;
 	style.FrameRounding			= roundness;
 	style.PopupRounding			= roundness;
-	//style.IndentSpacing		= 6.0f;
-	//style.ItemInnerSpacing	= ImVec2(2, 4);
-	//style.ColumnsMinSpacing	= 50.0f;
-	//style.GrabMinSize			= 14.0f;
 	style.GrabRounding			= roundness;
 	style.ScrollbarSize			= 20.0f;
 	style.ScrollbarRounding		= roundness;	
 
 	// Colors
 	style.Colors[ImGuiCol_Text]						= text;
-	//style.Colors[ImGuiCol_TextDisabled]			= ImVec4(0.86f, 0.93f, 0.89f, 0.28f);
 	style.Colors[ImGuiCol_WindowBg]					= background_dark;
-	//style.Colors[ImGuiCol_ChildBg]				= ImVec4(0.20f, 0.22f, 0.27f, 0.58f);
 	style.Colors[ImGuiCol_Border]					= black;
-	//style.Colors[ImGuiCol_BorderShadow]			= ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
 	style.Colors[ImGuiCol_FrameBg]					= bar;
 	style.Colors[ImGuiCol_FrameBgHovered]			= highlight_blue;
 	style.Colors[ImGuiCol_FrameBgActive]			= highlight_blue_hovered;
 	style.Colors[ImGuiCol_TitleBg]					= background_very_dark;
-	//style.Colors[ImGuiCol_TitleBgCollapsed]		= ImVec4(0.20f, 0.22f, 0.27f, 0.75f);
 	style.Colors[ImGuiCol_TitleBgActive]			= bar;
 	style.Colors[ImGuiCol_MenuBarBg]				= background_very_dark;
 	style.Colors[ImGuiCol_ScrollbarBg]				= bar_background;
@@ -316,19 +306,15 @@ void Editor::ApplyStyle() const
 	style.Colors[ImGuiCol_HeaderHovered]			= highlight_blue_hovered; // hovered items (tree, menu bar etc.)
 	style.Colors[ImGuiCol_HeaderActive]				= highlight_blue_active;
 	style.Colors[ImGuiCol_Separator]				= background_light;
-	//style.Colors[ImGuiCol_SeparatorHovered]		= ImVec4(0.92f, 0.18f, 0.29f, 0.78f);
-	//style.Colors[ImGuiCol_SeparatorActive]		= ImVec4(0.92f, 0.18f, 0.29f, 1.00f);
 	style.Colors[ImGuiCol_ResizeGrip]				= background_medium;
 	style.Colors[ImGuiCol_ResizeGripHovered]		= highlight_blue;
 	style.Colors[ImGuiCol_ResizeGripActive]			= highlight_blue_hovered;
 	style.Colors[ImGuiCol_PlotLines]				= ImVec4(0.0f, 0.7f, 0.77f, 1.0f);
-	//style.Colors[ImGuiCol_PlotLinesHovered]		= ImVec4(0.92f, 0.18f, 0.29f, 1.00f);
 	style.Colors[ImGuiCol_PlotHistogram]			= highlight_blue; // Also used for progress bar
 	style.Colors[ImGuiCol_PlotHistogramHovered]		= highlight_blue_hovered;
 	style.Colors[ImGuiCol_TextSelectedBg]			= highlight_blue;
 	style.Colors[ImGuiCol_PopupBg]					= background_dark;
 	style.Colors[ImGuiCol_DragDropTarget]			= background_light;
-	//style.Colors[ImGuiCol_ModalWindowDarkening]	= ImVec4(0.20f, 0.22f, 0.27f, 0.73f);
 
 	auto& io = ImGui::GetIO();
 	string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Fonts);

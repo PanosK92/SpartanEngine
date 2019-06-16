@@ -105,7 +105,8 @@ namespace Spartan
 			auto log_feature_level = [this](const std::string& level)
 			{
 				Settings::Get().m_versionGraphicsAPI = "DirectX " + level;
-				LOG_INFO(Settings::Get().m_versionGraphicsAPI);
+                Log::m_caller_name.clear();
+				Log::Write("Spartan::RHI_Device::" + Settings::Get().m_versionGraphicsAPI, Log_Info);
 			};
 
 			switch (m_rhi_context->device->GetFeatureLevel())

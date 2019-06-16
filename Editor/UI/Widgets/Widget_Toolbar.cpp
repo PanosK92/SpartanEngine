@@ -66,7 +66,7 @@ namespace _Widget_Toolbar
 Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 {
 	m_title = "Toolbar";
-	m_windowFlags = ImGuiWindowFlags_NoCollapse |
+	m_window_flags = ImGuiWindowFlags_NoCollapse |
 		ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoSavedSettings |
@@ -88,7 +88,7 @@ bool Widget_Toolbar::Begin()
 	ImGui::SetNextWindowPos(ImVec2(g.Viewports[0]->Pos.x, g.Viewports[0]->Pos.y + 25.0f));
 	ImGui::SetNextWindowSize(ImVec2(g.Viewports[0]->Size.x, g.NextWindowData.MenuBarOffsetMinVal.y + g.FontBaseSize + g.Style.FramePadding.y + 20.0f));
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 5));
-	ImGui::Begin(m_title.c_str(), &m_isVisible, m_windowFlags);
+	ImGui::Begin(m_title.c_str(), &m_isVisible, m_window_flags);
 
 	return true;
 }

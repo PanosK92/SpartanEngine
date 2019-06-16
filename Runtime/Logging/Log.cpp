@@ -25,25 +25,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <cstdarg>
 #include "../World/Entity.h"
+#include "../Core/EventSystem.h"
 #include "../FileSystem/FileSystem.h"
 //===================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 namespace Spartan
 {
 	weak_ptr<ILogger> Log::m_logger;
 	ofstream Log::m_fout;
 	mutex Log::m_mutex;
+    vector<LogCmd> Log::m_log_buffer;
 	string Log::m_caller_name;
-	string Log::m_log_file_name	= "log.txt";
-	bool Log::m_log_to_file		= true; // start logging to file (unless changed by the user, e.g. Renderer initialization was successful, so logging can happen on screen)
-	bool Log::m_first_log		= true;
-
-	void Log::SetLogger(const weak_ptr<ILogger>& logger)
+	string Log::m_log_file_name	    = "log.txt";
+	bool Log::m_log_to_file		    = true; // start logging to file (unless changed by the user, e.g. Renderer initialization was successful, so logging can happen on screen)
+	bool Log::m_first_log		    = true;
+   
+    void Log::SetLogger(const weak_ptr<ILogger>& logger)
 	{
 		m_logger = logger;
 	}
@@ -51,11 +53,20 @@ namespace Spartan
 	// Everything resolves to this
 	void Log::Write(const char* text, const Log_Type type)
 	{
-		const auto formated_text = !m_caller_name.empty() ? m_caller_name + ": " + string(text) : string(text);
+        const auto log_to_file      = m_logger.expired() || m_log_to_file;
+		const auto formated_text    = !m_caller_name.empty() ? m_caller_name + ": " + string(text) : string(text);
 
-		const auto log_to_file = m_logger.expired() || m_log_to_file;
-		log_to_file ? LogToFile(formated_text.c_str(), type) : LogString(formated_text.c_str(), type);
-		
+        if (log_to_file)
+        {
+            m_log_buffer.emplace_back(formated_text, type);
+            LogToFile(formated_text.c_str(), type);
+        }
+        else
+        {
+            FlushBuffer();
+            LogString(formated_text.c_str(), type);
+        }
+
 		m_caller_name.clear();
 	}
 
@@ -127,8 +138,27 @@ namespace Spartan
 		Write(value.ToString(), type);
 	}
 
-	void Log::LogString(const char* text, const Log_Type type)
+    void Log::FlushBuffer()
+    {
+        if (m_logger.expired() || m_log_buffer.empty())
+            return;
+
+         // Log everything from memory to the logger implementation
+        for (const auto& log : m_log_buffer)
+        {
+            LogString(log.text.c_str(), log.type);
+        }
+        m_log_buffer.clear();
+    }
+
+    void Log::LogString(const char* text, const Log_Type type)
 	{
+        if (!text)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return;
+        }
+
 		lock_guard<mutex> guard(m_mutex);
 		m_logger.lock()->Log(string(text), type);
 	}

@@ -35,7 +35,7 @@ using namespace Spartan;
 Widget_ResourceCache::Widget_ResourceCache(Context* context) : Widget(context)
 {
 	m_title			= "Resource Cache";
-	m_windowFlags	= ImGuiWindowFlags_HorizontalScrollbar;
+	m_window_flags	= ImGuiWindowFlags_HorizontalScrollbar;
 	m_isVisible		= false;
 }
 

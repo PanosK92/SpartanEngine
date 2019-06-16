@@ -62,7 +62,7 @@ Widget_World::Widget_World(Context* context) : Widget(context)
 	_Widget_World::g_world	= m_context->GetSubsystem<World>().get();
 	_Widget_World::g_input	= m_context->GetSubsystem<Input>().get();
 
-	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
+	m_window_flags |= ImGuiWindowFlags_HorizontalScrollbar;
 
 	// Subscribe to entity clicked engine event
 	EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };

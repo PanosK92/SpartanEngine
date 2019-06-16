@@ -42,28 +42,34 @@ Note: Currently, this is a blocking event system
 
 enum Event_Type
 {
-	Event_Frame_Start,			// A frame begins
-	Event_Frame_End,			// A frame ends
-	Event_World_Save,			// The world must be saved to file
-	Event_World_Saved,			// The world finished saving to file
-	Event_World_Load,			// The world must be loaded from file
-	Event_World_Loaded,			// The world finished loading from file
-	Event_World_Unload,			// The world should clear everything
-	Event_World_Resolve,		// The world should resolve
-	Event_World_Submit,			// The world is submitting entities to the renderer
-	Event_World_Stop,			// The world should stop ticking
-	Event_World_Start			// The world should start ticking
+	Event_Frame_Start,		// A frame begins
+	Event_Frame_End,		// A frame ends
+	Event_World_Save,		// The world must be saved to file
+	Event_World_Saved,		// The world finished saving to file
+	Event_World_Load,		// The world must be loaded from file
+	Event_World_Loaded,		// The world finished loading from file
+	Event_World_Unload,		// The world should clear everything
+	Event_World_Resolve,	// The world should resolve
+	Event_World_Submit,		// The world is submitting entities to the renderer
+	Event_World_Stop,		// The world should stop ticking
+	Event_World_Start		// The world should start ticking
 };
 
 //= MACROS ====================================================================================================
-#define EVENT_HANDLER_STATIC(function)				[](const Spartan::Variant& var)		{ function(); }
+#define EVENT_HANDLER_EXPRESSION(expression)		[this](const Spartan::Variant& var)	{ ##expression }
+#define EVENT_HANDLER_EXPRESSION_STATIC(expression)	[](const Spartan::Variant& var)		{ ##expression }
+
 #define EVENT_HANDLER(function)						[this](const Spartan::Variant& var)	{ function(); }
+#define EVENT_HANDLER_STATIC(function)				[](const Spartan::Variant& var)		{ function(); }
+
 #define EVENT_HANDLER_VARIANT(function)				[this](const Spartan::Variant& var)	{ function(var); }
 #define EVENT_HANDLER_VARIANT_STATIC(function)		[](const Spartan::Variant& var)		{ function(var); }
-#define SUBSCRIBE_TO_EVENT(eventID, function)		Spartan::EventSystem::Get().Subscribe(eventID, function);
-#define UNSUBSCRIBE_FROM_EVENT(eventID, function)	Spartan::EventSystem::Get().Unsubscribe(eventID, function);
+
 #define FIRE_EVENT(eventID)							Spartan::EventSystem::Get().Fire(eventID)
 #define FIRE_EVENT_DATA(eventID, data)				Spartan::EventSystem::Get().Fire(eventID, data)
+
+#define SUBSCRIBE_TO_EVENT(eventID, function)		Spartan::EventSystem::Get().Subscribe(eventID, function);
+#define UNSUBSCRIBE_FROM_EVENT(eventID, function)	Spartan::EventSystem::Get().Unsubscribe(eventID, function);
 //=============================================================================================================
 
 namespace Spartan
