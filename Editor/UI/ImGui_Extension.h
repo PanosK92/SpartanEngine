@@ -36,7 +36,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 
 namespace ImGuiEx
-{ 
+{
+    static const ImVec4 default_tint(255, 255, 255, 255);
+
 	// Images & Image buttons
 	inline bool ImageButton(Spartan::RHI_Texture* texture, const ImVec2& size)
 	{
@@ -48,7 +50,7 @@ namespace ImGuiEx
 			ImVec2(1, 1),			// uv1
 			-1,						// frame padding
 			ImColor(0, 0, 0, 0),	// background
-			ImVec4(1, 1, 1, 1)		// tint
+			default_tint		    // tint
 		);
 	}
 
@@ -61,7 +63,7 @@ namespace ImGuiEx
 			ImVec2(1, 1),			// uv1
 			-1,						// frame padding
 			ImColor(0, 0, 0, 0),	// background
-			ImVec4(1, 1, 1, 1)		// tint
+			default_tint		    // tint
 		);
 	}
 
@@ -75,7 +77,7 @@ namespace ImGuiEx
 			ImVec2(1, 1),			// uv1
 			-1,						// frame padding
 			ImColor(0, 0, 0, 0),	// background
-			ImVec4(1, 1, 1, 1)		// tint
+			default_tint		    // tint
 		);
 		ImGui::PopID();
 		return pressed;
@@ -88,7 +90,7 @@ namespace ImGuiEx
 			ImVec2(size, size),
 			ImVec2(0, 0),
 			ImVec2(1, 1),
-			ImColor(0, 0, 0, 0),	// tint
+			default_tint,		    // tint
 			ImColor(0, 0, 0, 0)		// border
 		);
 	}
@@ -100,12 +102,12 @@ namespace ImGuiEx
 			ImVec2(size, size),
 			ImVec2(0, 0),
 			ImVec2(1, 1),
-			ImColor(0, 0, 0, 0),	// tint
+			default_tint,		    // tint
 			ImColor(0, 0, 0, 0)		// border
 		);
 	}
 
-	inline void Image(Spartan::RHI_Texture* texture, const ImVec2& size, const ImColor& tint = ImColor(0, 0, 0, 0), const ImColor& border = ImColor(0, 0, 0, 0))
+	inline void Image(Spartan::RHI_Texture* texture, const ImVec2& size, const ImColor& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0))
 	{
 		ImGui::Image(
 			static_cast<ImTextureID>(texture),
@@ -124,7 +126,7 @@ namespace ImGuiEx
 			ImVec2(size, size),
 			ImVec2(0, 0),
 			ImVec2(1, 1),
-			ImColor(0, 0, 0, 0),	// tint
+			default_tint,		    // tint
 			ImColor(0, 0, 0, 0)		// border
 		);
 	}
