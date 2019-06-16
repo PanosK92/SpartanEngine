@@ -134,7 +134,8 @@ namespace Spartan
 
 		static std::weak_ptr<ILogger> m_logger;
 		static std::ofstream m_fout;
-		static std::mutex m_mutex;
+		static std::mutex m_mutex_log;
+        static std::mutex m_mutex_flush;
 		static std::string m_log_file_name;
 		static bool m_first_log;
         static std::vector<LogCmd> m_log_buffer;
