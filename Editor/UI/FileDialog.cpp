@@ -42,7 +42,6 @@ namespace _FileDialog
 	static bool is_hovering_window;
 	static ImGuiEx::DragDropPayload drag_drop_payload;
 	static unsigned int context_menu_id;
-
 }
 
 #define OPERATION_NAME	(m_operation == FileDialog_Op_Open)	? "Open"		: (m_operation == FileDialog_Op_Load)	? "Load"		: (m_operation == FileDialog_Op_Save) ? "Save" : "View"
@@ -58,7 +57,7 @@ FileDialog::FileDialog(Context* context, const bool standalone_window, const Fil
 	m_title								= OPERATION_NAME;
 	m_is_window							= standalone_window;
 	m_current_directory					= FileSystem::GetWorkingDirectory();
-    m_item_size                         = Vector2(100.0f, 130.f);
+    m_item_size                         = Vector2(100.0f, 100.f);
 	m_is_dirty							= true;
 	m_selection_made					= false;
 	m_callback_on_item_clicked			= nullptr;
@@ -334,7 +333,9 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 		if (FileSystem::IsSupportedAudioFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Audio,	item->GetPath()); }
 		if (FileSystem::IsEngineScriptFile(item->GetPath()))	{ set_payload(ImGuiEx::DragPayload_Script,	item->GetPath()); }
 
+        // Preview
 		ImGuiEx::Image(item->GetTexture(), 50);
+
 		ImGui::EndDragDropSource();
 	}
 }
