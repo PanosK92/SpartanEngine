@@ -65,10 +65,10 @@ namespace Spartan::Math
 		{
 			Matrix mRotation = CreateRotation(rotation);
 
-			m00 = scale.x * mRotation.m00; m01 = scale.x * mRotation.m01; m02 = scale.x * mRotation.m02; m03 = 0.0f;
-			m10 = scale.y * mRotation.m10; m11 = scale.y * mRotation.m11; m12 = scale.y * mRotation.m12; m13 = 0.0f;
-			m20 = scale.z * mRotation.m20; m21 = scale.z * mRotation.m21; m22 = scale.z * mRotation.m22; m23 = 0.0f;
-			m30 = translation.x; m31 = translation.y; m32 = translation.z; m33 = 1.0f;
+			m00 = scale.x * mRotation.m00;  m01 = scale.x * mRotation.m01;  m02 = scale.x * mRotation.m02;  m03 = 0.0f;
+			m10 = scale.y * mRotation.m10;  m11 = scale.y * mRotation.m11;  m12 = scale.y * mRotation.m12;  m13 = 0.0f;
+			m20 = scale.z * mRotation.m20;  m21 = scale.z * mRotation.m21;  m22 = scale.z * mRotation.m22;  m23 = 0.0f;
+			m30 = translation.x;            m31 = translation.y;            m32 = translation.z;            m33 = 1.0f;
 		}
 
 		~Matrix() {}
@@ -76,13 +76,13 @@ namespace Spartan::Math
 		//= TRANSLATION ===========================================
 		Vector3 GetTranslation() { return Vector3(m30, m31, m32); }
 
-		static Matrix CreateTranslation(const Vector3& position)
+		static Matrix CreateTranslation(const Vector3& translation)
 		{
 			return Matrix(
 				1, 0, 0, 0,
 				0, 1, 0, 0,
 				0, 0, 1, 0,
-				position.x, position.y, position.z, 1
+				translation.x, translation.y, translation.z, 1
 			);
 		}
 		//=========================================================

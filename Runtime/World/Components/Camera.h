@@ -100,6 +100,7 @@ namespace Spartan
 		//===============================================================================
 
 	private:
+        void MouseLook();
 		void ComputeViewMatrix();
 		void ComputeBaseView();
 		void ComputeProjection();

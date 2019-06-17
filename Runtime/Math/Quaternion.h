@@ -159,7 +159,7 @@ namespace Spartan::Math
 					axis = Vector3::Up.Cross(normStart);
 				}
 
-				return FromAngleAxis(180.0f, axis);
+				return FromAngleAxis(180.0f *  Helper::DEG_TO_RAD, axis);
 			}
 		}
 
@@ -187,8 +187,8 @@ namespace Spartan::Math
 			return Inverse(start) * end;
 		}
 
-		Quaternion Conjugate() const	{ return Quaternion(w, -x, -y, -z); }
-		float LengthSquared() const		{ return (x * x) + (y * y) + (z * z) + (w * w); }
+		auto Conjugate() const	    { return Quaternion(w, -x, -y, -z); }
+		float LengthSquared() const	{ return (x * x) + (y * y) + (z * z) + (w * w); }
 
 		// Scales the quaternion magnitude to unit length
 		void Normalize()
@@ -231,7 +231,6 @@ namespace Spartan::Math
 			);
 		}
 
-		//= ASSIGNMENT ==============================
 		Quaternion& operator =(const Quaternion& rhs)
 		{
 			w = rhs.w;
@@ -241,41 +240,38 @@ namespace Spartan::Math
 
 			return *this;
 		}
-		//===========================================
 
-		//= MULTIPLICATION ==============================================================================
+        static Quaternion Multiply(const Quaternion& Qa, const Quaternion& Qb)
+        {       
+            float x = Qa.x;
+            float y = Qa.y;
+            float z = Qa.z;
+            float w = Qa.w;
+            float num4 = Qb.x;
+            float num3 = Qb.y;
+            float num2 = Qb.z;
+            float num = Qb.w;
+            float num12 = (y * num2) - (z * num3);
+            float num11 = (z * num4) - (x * num2);
+            float num10 = (x * num3) - (y * num4);
+            float num9 = ((x * num4) + (y * num3)) + (z * num2);
+
+            return Quaternion(
+                ((x * num) + (num4 * w)) + num12,
+                ((y * num) + (num3 * w)) + num11,
+                ((z * num) + (num2 * w)) + num10,
+                (w * num) - num9
+            );
+        }
+
 		Quaternion operator*(const Quaternion& rhs) const
 		{
-			float num4	= rhs.x;
-			float num3	= rhs.y;
-			float num2	= rhs.z;
-			float num	= rhs.w;
-			float num12 = (y * num2) - (z * num3);
-			float num11 = (z * num4) - (x * num2);
-			float num10 = (x * num3) - (y * num4);
-			float num9 = ((x * num4) + (y * num3)) + (z * num2);
-			Quaternion quaternion;
-			quaternion.x = ((x * num) + (num4 * w)) + num12;
-			quaternion.y = ((y * num) + (num3 * w)) + num11;
-			quaternion.z = ((z * num) + (num2 * w)) + num10;
-			quaternion.w = (w * num) - num9;
-			return quaternion;
+			return Multiply(*this, rhs);
 		}
 
 		void operator*=(const Quaternion& rhs)
 		{
-			float num4 = rhs.x;
-			float num3 = rhs.y;
-			float num2 = rhs.z;
-			float num = rhs.w;
-			float num12 = (y * num2) - (z * num3);
-			float num11 = (z * num4) - (x * num2);
-			float num10 = (x * num3) - (y * num4);
-			float num9 = ((x * num4) + (y * num3)) + (z * num2);
-			x	= ((x * num) + (num4 * w)) + num12;
-			y	= ((y * num) + (num3 * w)) + num11;
-			z	= ((z * num) + (num2 * w)) + num10;
-			w	= (w * num) - num9;
+			*this = Multiply(*this, rhs);
 		}
 
 		Vector3 operator*(const Vector3& rhs) const
@@ -298,9 +294,7 @@ namespace Spartan::Math
 		}
 
 		Quaternion operator *(float rhs) const { return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs); }
-		//===============================================================================================
 
-		//= COMPARISON =============================================================================
 		// Test for equality using epsilon
 		bool operator ==(const Quaternion& rhs) const
 		{
@@ -312,12 +306,9 @@ namespace Spartan::Math
 		{ 
 			return !Helper::Equals(w, rhs.w) || !Helper::Equals(x, rhs.x) || !Helper::Equals(y, rhs.y) || !Helper::Equals(z, rhs.z);
 		}
-		//==========================================================================================
 
 		std::string ToString() const;
-
 		float x, y, z, w;
-
 		static const Quaternion Identity;
 	};
 
