@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
+#include "../../Input/Input.h"
 //===================================
 
 //= NAMESPACES ================
@@ -72,6 +73,8 @@ namespace Spartan
 			m_rotation = GetTransform()->GetRotation();
 			m_isDirty = true;
 		}
+
+        //MouseLook();
 
 		if (!m_isDirty)
 			return;
@@ -254,7 +257,25 @@ namespace Spartan
 		return position_world;
 	}
 
-	//= PRIVATE =======================================================================
+    void Camera::MouseLook()
+    {
+        static const float sensitivity = 0.05f;
+        Input* input = m_context->GetSubsystem<Input>().get();
+
+        if (input->GetKey(KeyCode::Click_Right))
+        {
+            // Get mouse delta
+            Vector2 mouse_delta = input->GetMouseDelta() * sensitivity;
+            // Clamp rotation along the x-axis
+            mouse_delta.y = Clamp(mouse_delta.y, -90.0f, 90.0f);
+            // Rotate
+            Quaternion xQuaternion = Quaternion::FromAngleAxis(mouse_delta.x * DEG_TO_RAD, Vector3::Up);
+            Quaternion yQuaternion = Quaternion::FromAngleAxis(mouse_delta.y * DEG_TO_RAD, Vector3::Right);
+            m_transform->Rotate(xQuaternion * yQuaternion);
+        }
+    }
+
+    //= PRIVATE =======================================================================
 	void Camera::ComputeViewMatrix()
 	{
 		const auto position	= GetTransform()->GetPosition();

@@ -39,7 +39,6 @@ namespace Spartan
 	weak_ptr<ILogger> Log::m_logger;
 	ofstream Log::m_fout;
 	mutex Log::m_mutex_log;
-    mutex Log::m_mutex_flush;
     vector<LogCmd> Log::m_log_buffer;
 	string Log::m_caller_name;
 	string Log::m_log_file_name	    = "log.txt";
@@ -54,6 +53,14 @@ namespace Spartan
 	// Everything resolves to this
 	void Log::Write(const char* text, const Log_Type type)
 	{
+        if (!text)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return;
+        }
+
+        lock_guard<mutex> guard(m_mutex_log);
+
         const auto log_to_file      = m_logger.expired() || m_log_to_file;
 		const auto formated_text    = !m_caller_name.empty() ? m_caller_name + ": " + string(text) : string(text);
 
@@ -144,8 +151,6 @@ namespace Spartan
         if (m_logger.expired() || m_log_buffer.empty())
             return;
 
-        lock_guard<mutex> guard(m_mutex_flush);
-
          // Log everything from memory to the logger implementation
         for (const auto& log : m_log_buffer)
         {
@@ -162,7 +167,6 @@ namespace Spartan
             return;
         }
 
-		lock_guard<mutex> guard(m_mutex_log);
 		m_logger.lock()->Log(string(text), type);
 	}
 
@@ -173,8 +177,6 @@ namespace Spartan
             LOG_ERROR_INVALID_PARAMETER();
             return;
         }
-
-		lock_guard<mutex> guard(m_mutex_log);
 
 		const string prefix		= (type == Log_Info) ? "Info:" : (type == Log_Warning) ? "Warning:" : "Error:";
 		const auto final_text	= prefix + " " + text;

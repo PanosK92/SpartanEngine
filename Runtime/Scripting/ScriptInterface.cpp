@@ -256,6 +256,11 @@ namespace Spartan
 		return *self = *self + other;
 	}
 
+    static Vector2 Vector2MulFloat(float value, Vector2* self)
+    {
+        return *self * value;
+    }
+
 	static Vector2& Vector2MulAssignFloat(float value, Vector2* self)
 	{
 		return *self = *self * value;
@@ -271,6 +276,8 @@ namespace Spartan
 		r = m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_DESTRUCT, "void f()",					asFUNCTION(DestructVector2),								asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);	
 		r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 &opAddAssign(const Vector2 &in)",			asFUNCTION(Vector2AddAssignVector2),						asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 &opAssign(const Vector2 &in)",				asMETHODPR(Vector2, operator=, (const Vector2&), Vector2&), asCALL_THISCALL);		SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 opMul(float)",                             asFUNCTION(Vector2MulFloat), asCALL_CDECL_OBJLAST);	        SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 opMul_r(float)",                           asFUNCTION(Vector2MulFloat), asCALL_CDECL_OBJLAST);	        SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterObjectMethod("Vector2", "Vector2 &opMulAssign(float)",						asFUNCTION(Vector2MulAssignFloat),							asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterObjectProperty("Vector2", "float x", asOFFSET(Vector2, x));	SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterObjectProperty("Vector2", "float y", asOFFSET(Vector2, y));	SPARTAN_ASSERT(r >= 0);
@@ -343,23 +350,23 @@ namespace Spartan
 	{
 		auto r = 0;
 
-		// operator overloads http://www.angelcode.com/angelscript/sdk/docs/manual/doc_script_class_ops.html
-		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f()",						asFUNCTION(ConstructorVector3),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(const Vector3 &in)",	asFUNCTION(CopyConstructorVector3),		asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(float, float, float)",	asFUNCTION(ConstructorVector3Floats),	asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_DESTRUCT, "void f()",						asFUNCTION(DestructVector3),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAssign(const Vector3 &in)",				asFUNCTION(Vector3Assignment),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opAdd(const Vector3 &in)",					asFUNCTION(Vector3AddVector3),			asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAddAssign(const Vector3 &in)",				asFUNCTION(Vector3AddAssignVector3),	asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opSubAssign(const Vector3 &in)",				asFUNCTION(Vector3SubAssignVector3),	asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(const Vector3 &in)",				asFUNCTION(Vector3MulAssignVector3),	asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(float)",							asFUNCTION(Vector3MulAssignFloat),		asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(const Vector3 &in)",					asFUNCTION(Vector3MulVector3),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul_r(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float x", asOFFSET(Vector3, x));	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float y", asOFFSET(Vector3, y));	SPARTAN_ASSERT(r >= 0);
-		 r = m_scriptEngine->RegisterObjectProperty("Vector3", "float z", asOFFSET(Vector3, z));	SPARTAN_ASSERT(r >= 0);
+        // operator overloads http://www.angelcode.com/angelscript/sdk/docs/manual/doc_script_class_ops.html
+        r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f()",						asFUNCTION(ConstructorVector3),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(const Vector3 &in)",	    asFUNCTION(CopyConstructorVector3),		asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_CONSTRUCT, "void f(float, float, float)",	asFUNCTION(ConstructorVector3Floats),	asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectBehaviour("Vector3", asBEHAVE_DESTRUCT, "void f()",						asFUNCTION(DestructVector3),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAssign(const Vector3 &in)",				    asFUNCTION(Vector3Assignment),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opAdd(const Vector3 &in)",					    asFUNCTION(Vector3AddVector3),			asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opAddAssign(const Vector3 &in)",				asFUNCTION(Vector3AddAssignVector3),	asCALL_CDECL_OBJLAST); 	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opSubAssign(const Vector3 &in)",				asFUNCTION(Vector3SubAssignVector3),	asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(const Vector3 &in)",				asFUNCTION(Vector3MulAssignVector3),	asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 &opMulAssign(float)",							asFUNCTION(Vector3MulAssignFloat),		asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(const Vector3 &in)",					    asFUNCTION(Vector3MulVector3),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul(float)",								    asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectMethod("Vector3", "Vector3 opMul_r(float)",								asFUNCTION(Vector3MulFloat),			asCALL_CDECL_OBJLAST);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectProperty("Vector3", "float x", asOFFSET(Vector3, x));	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectProperty("Vector3", "float y", asOFFSET(Vector3, y));	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterObjectProperty("Vector3", "float z", asOFFSET(Vector3, z));	SPARTAN_ASSERT(r >= 0);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -397,34 +404,27 @@ namespace Spartan
 
 	void ScriptInterface::RegisterQuaternion()
 	{
-		//= CONSTRUCTORS/DESTRUCTOR ====================================================================================================================================================
-		m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructorQuaternion), asCALL_CDECL_OBJLAST);
-		m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f(const Quaternion &in)", asFUNCTION(CopyConstructorQuaternion), asCALL_CDECL_OBJLAST);
-		m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f(float, float, float, float)", asFUNCTION(ConstructorQuaternionFloats), asCALL_CDECL_OBJLAST);
-		m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestructQuaternion), asCALL_CDECL_OBJLAST);
-		//==============================================================================================================================================================================
+        auto r = 0;
 
-		//= PROPERTIES ===========================================================================
-		m_scriptEngine->RegisterObjectProperty("Quaternion", "float x", asOFFSET(Quaternion, x));
-		m_scriptEngine->RegisterObjectProperty("Quaternion", "float y", asOFFSET(Quaternion, y));
-		m_scriptEngine->RegisterObjectProperty("Quaternion", "float z", asOFFSET(Quaternion, z));
-		m_scriptEngine->RegisterObjectProperty("Quaternion", "float w", asOFFSET(Quaternion, w));
-		//========================================================================================
+		r = m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructorQuaternion), asCALL_CDECL_OBJLAST);                                 SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f(const Quaternion &in)", asFUNCTION(CopyConstructorQuaternion), asCALL_CDECL_OBJLAST);         SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f(float, float, float, float)", asFUNCTION(ConstructorQuaternionFloats), asCALL_CDECL_OBJLAST); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestructQuaternion), asCALL_CDECL_OBJLAST);                                     SPARTAN_ASSERT(r >= 0);
 
-		//= OPERATORS ============================================================================================================================================================================
-		m_scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion &opAssign(const Quaternion &in)", asMETHODPR(Quaternion, operator=, (const Quaternion&), Quaternion&), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion &opMulAssign(const Quaternion &in)", asFUNCTION(QuaternionMulAssignQuaternion), asCALL_CDECL_OBJLAST);
-		m_scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion opMul(const Quaternion &in)", asFUNCTION(QuaternionMulQuaternion), asCALL_CDECL_OBJFIRST);
-		//========================================================================================================================================================================================
+		r = m_scriptEngine->RegisterObjectProperty("Quaternion", "float x", asOFFSET(Quaternion, x)); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectProperty("Quaternion", "float y", asOFFSET(Quaternion, y)); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectProperty("Quaternion", "float z", asOFFSET(Quaternion, z)); SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectProperty("Quaternion", "float w", asOFFSET(Quaternion, w)); SPARTAN_ASSERT(r >= 0);
 
-		//= FUNCTIONS ============================================================================================================================================================================
-		m_scriptEngine->RegisterObjectMethod("Quaternion", "Vector3 ToEulerAngles()", asMETHOD(Quaternion, ToEulerAngles), asCALL_THISCALL);
-		m_scriptEngine->RegisterGlobalFunction("Quaternion FromLookRotation(const Vector3& in, const Vector3& in)", asFUNCTIONPR(Quaternion::FromLookRotation, (const Vector3&, const Vector3&), Quaternion), asCALL_CDECL);
-		//========================================================================================================================================================================================
+		r = m_scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion &opAssign(const Quaternion &in)",    asMETHODPR(Quaternion, operator=, (const Quaternion&), Quaternion&), asCALL_THISCALL);  SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion &opMulAssign(const Quaternion &in)", asFUNCTION(QuaternionMulAssignQuaternion), asCALL_CDECL_OBJLAST);                       SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion opMul(const Quaternion &in)",        asFUNCTION(QuaternionMulQuaternion), asCALL_CDECL_OBJFIRST);                            SPARTAN_ASSERT(r >= 0);
 
-		//= STATIC FUNCTIONS =====================================================================================================================================================================
-		m_scriptEngine->RegisterGlobalFunction("Quaternion Quaternion_FromEulerAngles(const Vector3& in)", asFUNCTIONPR(Quaternion::FromEulerAngles, (const Vector3&), Quaternion), asCALL_CDECL);
-		//========================================================================================================================================================================================
+		r = m_scriptEngine->RegisterObjectMethod("Quaternion", "Vector3 ToEulerAngles()",                               asMETHOD(Quaternion, ToEulerAngles), asCALL_THISCALL);                                                      SPARTAN_ASSERT(r >= 0);
+		r = m_scriptEngine->RegisterGlobalFunction("Quaternion FromLookRotation(const Vector3& in, const Vector3& in)", asFUNCTIONPR(Quaternion::FromLookRotation, (const Vector3&, const Vector3&), Quaternion), asCALL_CDECL);    SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterGlobalFunction("Quaternion FromAngleAxis(float angle, const Vector3& in)",          asFUNCTIONPR(Quaternion::FromAngleAxis, (float, const Vector3&), Quaternion), asCALL_CDECL);                SPARTAN_ASSERT(r >= 0);
+
+		r = m_scriptEngine->RegisterGlobalFunction("Quaternion Quaternion_FromEulerAngles(const Vector3& in)", asFUNCTIONPR(Quaternion::FromEulerAngles, (const Vector3&), Quaternion), asCALL_CDECL);  SPARTAN_ASSERT(r >= 0);
 	}
 
 	/*------------------------------------------------------------------------------
@@ -454,6 +454,7 @@ namespace Spartan
 		r = m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)",					asFUNCTIONPR(Log::Write, (int, Log_Type), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterGlobalFunction("void Log(bool, LogType)",					asFUNCTIONPR(Log::Write, (bool, Log_Type), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)",					asFUNCTIONPR(Log::Write, (float, Log_Type), void),				asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
+        r = m_scriptEngine->RegisterGlobalFunction("void Log(const Vector2& in, LogType)",		asFUNCTIONPR(Log::Write, (const Vector2&, Log_Type), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)",		asFUNCTIONPR(Log::Write, (const Vector3&, Log_Type), void),		asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
 		r = m_scriptEngine->RegisterGlobalFunction("void Log(const Quaternion& in, LogType)",	asFUNCTIONPR(Log::Write, (const Quaternion&, Log_Type), void),	asCALL_CDECL);	SPARTAN_ASSERT(r >= 0);
 	}
