@@ -185,7 +185,7 @@ namespace Spartan::Math
 			return start.Inverse() * end;
 		}
 
-		auto Conjugate() const	    { return Quaternion(w, -x, -y, -z); }
+		auto Conjugate() const	    { return Quaternion(-x, -y, -z, w); }
 		float LengthSquared() const	{ return (x * x) + (y * y) + (z * z) + (w * w); }
 
 		// Normalizes the quaternion
