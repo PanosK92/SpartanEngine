@@ -27,10 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector4.h"
 //=====================
 
-//= NAMESPACES ========================
-using namespace Spartan::Math::Helper;
-//=====================================
-
 namespace Spartan::Math
 {
 	class SPARTAN_CLASS Matrix

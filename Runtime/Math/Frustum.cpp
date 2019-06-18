@@ -24,10 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Plane.h"
 //==================
 
-//= NAMESPACES ========================
-using namespace Spartan::Math::Helper;
-//=====================================
-
 namespace Spartan::Math
 {
 	void Frustum::Construct(const Matrix& mView, const Matrix& mProjection, float screenDepth)

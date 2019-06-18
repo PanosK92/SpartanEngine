@@ -193,8 +193,8 @@ namespace Spartan
 		vector<_ImagImporter::RescaleJob> jobs;
 		while (width > 1 && height > 1)
 		{
-			width	= Math::Helper::Max(width / 2, static_cast<uint32_t>(1));
-			height	= Math::Helper::Max(height / 2, static_cast<uint32_t>(1));
+			width	= Math::Max(width / 2, static_cast<uint32_t>(1));
+			height	= Math::Max(height / 2, static_cast<uint32_t>(1));
 			jobs.emplace_back(width, height, channels);
 			
 			// Resize the RHI_Texture vector accordingly
@@ -311,8 +311,8 @@ namespace Spartan
 		const auto image_width		= static_cast<uint32_t>(FreeImage_GetWidth(bitmap));
 		const auto image_height		= static_cast<uint32_t>(FreeImage_GetHeight(bitmap));
 		const uint32_t min_step		= 1;
-		const auto step_y			= Math::Helper::Clamp(image_height / 100, min_step, image_height);
-		const auto step_x			= Math::Helper::Clamp(image_width / 100, min_step, image_height);	
+		const auto step_y			= Math::Clamp(image_height / 100, min_step, image_height);
+		const auto step_x			= Math::Clamp(image_width / 100, min_step, image_height);	
 		float samples				= 0;
 		float samples_grey			= 0;
 

@@ -205,16 +205,32 @@ namespace Spartan
 		return GetRotationLocal() * Vector3::Up;
 	}
 
+    Vector3 Transform::GetDown() const
+    {
+        return GetRotationLocal() * Vector3::Down;
+    }
+
 	Vector3 Transform::GetForward() const
 	{
 		return GetRotationLocal() * Vector3::Forward;
 	}
 
-	Vector3 Transform::GetRight() const
+    Vector3 Transform::GetBackward() const
+    {
+        return GetRotationLocal() * Vector3::Backward;
+    }
+
+    Vector3 Transform::GetRight() const
 	{
 		return GetRotationLocal() * Vector3::Right;
 	}
-	//================================================================================================
+
+    Vector3 Transform::GetLeft() const
+    {
+        return GetRotationLocal() * Vector3::Left;
+    }
+
+    //================================================================================================
 
 	//= HIERARCHY ====================================================================================
 	// Sets a parent for this transform

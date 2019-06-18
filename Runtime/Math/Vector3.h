@@ -64,31 +64,41 @@ namespace Spartan::Math
 			z = f;
 		}
 
-		//= NORMALIZATION ===================================================
+        // Normalize
+        void Normalize()
+        {
+            auto length_squared = LengthSquared();
+            if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            {
+                auto length_inverted = 1.0f / Sqrt(length_squared);
+                x *= length_inverted;
+                y *= length_inverted;
+                z *= length_inverted;
+            }
+        };
+
+        // Return normalized vector
 		Vector3 Normalized() const
 		{
-			float fentity = Length();
-			fentity = 1.0f / fentity;
-			return Vector3(x * fentity, y * fentity, z * fentity);
+            auto length_squared = LengthSquared();
+            if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            {
+                auto length_inverted = 1.0f / Sqrt(length_squared);
+                return (*this) * length_inverted;
+            }
+            else
+                return *this;
 		}
 
-		void Normalize()
-		{
-			float fentity = Length();
-			fentity = 1.0f / fentity;
-			x *= fentity;
-			y *= fentity;
-			z *= fentity;
-		};
+        // Returns normalized vector
 		static Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
-		//===================================================================
 
-		//= DOT PRODUCT =============================================================================================
+        // Returns the dot product
 		static float Dot(const Vector3& v1, const Vector3& v2)	{ return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
+        // Returns the dot product
 		float Dot(const Vector3& rhs) const						{ return x * rhs.x + y * rhs.y + z * rhs.z; }
-		//===========================================================================================================
 
-		//= CROSS PRODUCT =================================================
+        // Returns the cross product
 		static Vector3 Cross(const Vector3& v1, const Vector3& v2)
 		{
 			float x = v1.y * v2.z - v2.y * v1.z;
@@ -97,28 +107,30 @@ namespace Spartan::Math
 
 			return Vector3(x, y, z);
 		}
+        // Returns the cross product
 		Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
-		//=================================================================
 
-		//= LENGTH/DISTANCE ===========================================================================   =================
-		float Length() const		                                        { return Helper::Sqrt(x * x + y * y + z * z); }
-		float LengthSquared() const                                         { return x * x + y * y + z * z; }
+        // Returns the length
+		float Length() const		{ return Sqrt(x * x + y * y + z * z); }
+        // Returns the squared length
+		float LengthSquared() const { return x * x + y * y + z * z; }
+
+        // Returns the distance between to vectors
         static float Distance(const Vector3& a, const Vector3& b)           { return (b - a).Length(); }
+        // Returns the squared distance between to vectors
         static float DistanceSquared(const Vector3& a, const Vector3& b)    { return (b - a).LengthSquared(); }
-		//=================================================================================================================
 
-		//= MISC ===========================================================
+        // Floor
 		void Floor()
 		{
-			x = floorf(x);
-			y = floorf(y);
-			z = floorf(z);
+            x = floor(x);
+            y = floor(y);
+            z = floor(z);
 		}
-		Vector3 Absolute() const { return Vector3(abs(x), abs(y), abs(z)); }
-		float Volume() const { return x * y * z; }
-		//==================================================================
 
-		//= MULTIPLICATION =======================
+        // Return absolute vector
+		Vector3 Absolute() const { return Vector3(Abs(x), Abs(y), Abs(z)); }
+
 		Vector3 operator*(const Vector3& b) const
 		{
 			return Vector3(
@@ -151,9 +163,6 @@ namespace Spartan::Math
 			z *= value;
 		}
 
-		//========================================
-
-		//= ADDITION ==================================================================================
 		Vector3 operator+(const Vector3& b) const { return Vector3(x + b.x, y + b.y, z + b.z); }
 		Vector3 operator+(const float value) const { return Vector3(x + value, y + value, z + value); }
 
@@ -170,9 +179,7 @@ namespace Spartan::Math
 			y += value;
 			z += value;
 		}
-		//=============================================================================================
 
-		//= SUBTRACTION =========================================================================
 		Vector3 operator-(const Vector3& b) const { return Vector3(x - b.x, y - b.y, z - b.z); }
 		Vector3 operator-(const float value) { return Vector3(x - value, y - value, z - value); }
 
@@ -182,9 +189,7 @@ namespace Spartan::Math
 			y -= rhs.y;
 			z -= rhs.z;
 		}
-		//=======================================================================================
 
-		//= DIVISION ===================================================================================
 		Vector3 operator/(const Vector3& rhs) const { return Vector3(x / rhs.x, y / rhs.y, z / rhs.z); }
 		Vector3 operator/(const float rhs) { return Vector3(x / rhs, y / rhs, z / rhs); }
 
@@ -194,9 +199,7 @@ namespace Spartan::Math
 			y /= rhs.y;
 			z /= rhs.z;
 		}
-		//==============================================================================================
 
-		//= COMPARISON =============================================================================
 		// Test for equality without using epsilon
 		bool operator==(const Vector3& rhs) const
 		{
@@ -208,13 +211,6 @@ namespace Spartan::Math
 		{
 			return !(*this == rhs);
 		}
-
-		// Test for equality using epsilon
-		bool Equals(const Vector3& rhs) const
-		{
-			return Helper::Equals(x, rhs.x) && Helper::Equals(y, rhs.y) && Helper::Equals(z, rhs.z);
-		}
-		//==========================================================================================
 
 		std::string ToString() const;
 		const float* Data() const { return &x; }

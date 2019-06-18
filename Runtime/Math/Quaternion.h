@@ -86,8 +86,8 @@ namespace Spartan::Math
 			);
 		}
 		// Euler angles to quaternion (input in degrees)
-		static Quaternion FromEulerAngles(const Vector3& rotation) { return FromYawPitchRoll(rotation.y * Helper::DEG_TO_RAD, rotation.x * Helper::DEG_TO_RAD, rotation.z * Helper::DEG_TO_RAD); }
-		static Quaternion FromEulerAngles(float rotationX, float rotationY, float rotationZ) { return FromYawPitchRoll(rotationY * Helper::DEG_TO_RAD, rotationX * Helper::DEG_TO_RAD, rotationZ * Helper::DEG_TO_RAD); }
+		static auto FromEulerAngles(const Vector3& rotation)                              { return FromYawPitchRoll(rotation.y * DEG_TO_RAD, rotation.x * DEG_TO_RAD, rotation.z * DEG_TO_RAD); }
+		static auto FromEulerAngles(float rotationX, float rotationY, float rotationZ)    { return FromYawPitchRoll(rotationY * DEG_TO_RAD, rotationX * DEG_TO_RAD, rotationZ * DEG_TO_RAD); }
 
 		// Returns Euler angles in degrees
 		Vector3 ToEulerAngles() const
@@ -102,7 +102,7 @@ namespace Spartan::Math
 				(
 					-90.0f,
 					0.0f,
-					-atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
+					-atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
 				);
 			}
 
@@ -112,26 +112,24 @@ namespace Spartan::Math
 				(
 					90.0f,
 					0.0f,
-					atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
+					atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
 				);
 			}
 
 			return Vector3
 			(
-				asinf(check) * Helper::RAD_TO_DEG,
-				atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * Helper::RAD_TO_DEG,
-				atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * Helper::RAD_TO_DEG
+				asinf(check) * RAD_TO_DEG,
+				atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * RAD_TO_DEG,
+				atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * RAD_TO_DEG
 			);
 		}
 
 		// Returns yaw in degrees
-		float Yaw() const	{ return ToEulerAngles().y; }
-
+		auto Yaw() const    { return ToEulerAngles().y; }
 		// Returns pitch in degrees
-		float Pitch() const { return ToEulerAngles().x; }
-
+        auto Pitch() const  { return ToEulerAngles().x; }
 		// Returns roll in degrees
-		float Roll() const	{ return ToEulerAngles().z; }
+        auto Roll() const   { return ToEulerAngles().z; }
 
 		static Quaternion FromToRotation(const Vector3& start, const Vector3& end)
 		{
@@ -139,7 +137,7 @@ namespace Spartan::Math
 			Vector3 normEnd		= end.Normalized();
 			float d				= normStart.Dot(normEnd);
 
-			if (d > -1.0f + Helper::M_EPSILON)
+			if (d > -1.0f + M_EPSILON)
 			{
 				Vector3 c = normStart.Cross(normEnd);
 				float s = sqrtf((1.0f + d) * 2.0f);
@@ -154,12 +152,12 @@ namespace Spartan::Math
 			else
 			{
 				Vector3 axis = Vector3::Right.Cross(normStart);
-				if (axis.Length() < Helper::M_EPSILON)
+				if (axis.Length() < M_EPSILON)
 				{
 					axis = Vector3::Up.Cross(normStart);
 				}
 
-				return FromAngleAxis(180.0f *  Helper::DEG_TO_RAD, axis);
+				return FromAngleAxis(180.0f * DEG_TO_RAD, axis);
 			}
 		}
 
@@ -169,7 +167,7 @@ namespace Spartan::Math
 			Vector3 forward = direction.Normalized();
 
 			Vector3 v = forward.Cross(upDirection);
-			if (v.LengthSquared() >= Helper::M_EPSILON)
+			if (v.LengthSquared() >= M_EPSILON)
 			{
 				v.Normalize();
 				Vector3 up = v.Cross(forward);
@@ -184,59 +182,57 @@ namespace Spartan::Math
 
 		static Quaternion FromToRotation(const Quaternion& start, const Quaternion& end)
 		{
-			return Inverse(start) * end;
+			return start.Inverse() * end;
 		}
 
 		auto Conjugate() const	    { return Quaternion(w, -x, -y, -z); }
 		float LengthSquared() const	{ return (x * x) + (y * y) + (z * z) + (w * w); }
 
-		// Scales the quaternion magnitude to unit length
+		// Normalizes the quaternion
 		void Normalize()
 		{
-			float inverseLength = 1.0f / (float)Helper::Sqrt(LengthSquared());
-			x *= inverseLength;
-			y *= inverseLength;
-			z *= inverseLength;
-			w *= inverseLength;
+            auto length_squared = LengthSquared();
+            if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            {
+                auto length_inverted = 1.0f / Sqrt(length_squared);
+                x *= length_inverted;
+                y *= length_inverted;
+                z *= length_inverted;
+                w *= length_inverted;
+            }
 		}
 
-		// Scales the quaternion magnitude to unit length
+		// Returns a normalized version of the quaternion
 		Quaternion Normalized() const
 		{	
-			float inverseLength = 1.0f / (float)Helper::Sqrt(LengthSquared());
-			return Quaternion(x * inverseLength, y * inverseLength, z * inverseLength, w * inverseLength);
+            auto length_squared = LengthSquared();
+            if (!Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            {
+                auto length_inverted = 1.0f / Sqrt(length_squared);
+                return (*this) * length_inverted;
+            }
+            else
+                return *this;
 		}
 
-		// Returns the inverse quaternion which represents the opposite rotation
-		static Quaternion Inverse(const Quaternion& q)
-		{
-			float inverseLength = 1.0f / (float)Helper::Sqrt(q.LengthSquared());
-			return Quaternion(
-				-q.x * inverseLength,
-				-q.y * inverseLength,
-				-q.z * inverseLength,
-				q.w * inverseLength
-			);
-		}
-
-		// Returns the inverse quaternion which represents the opposite rotation
+        // Returns the inverse
 		Quaternion Inverse() const 
 		{ 
-			float inverseLength = 1.0f / (float)Helper::Sqrt(LengthSquared());
-			return Quaternion(
-				-x * inverseLength,
-				-y * inverseLength,
-				-z * inverseLength,
-				w * inverseLength
-			);
+            float length_squared = LengthSquared();
+            if (length_squared == 1.0f)
+                return Conjugate();
+            else if (length_squared >= M_EPSILON)
+                return Conjugate() * (1.0f / length_squared);
+            else
+                return Identity;
 		}
 
 		Quaternion& operator =(const Quaternion& rhs)
-		{
-			w = rhs.w;
+		{			
 			x = rhs.x;
 			y = rhs.y;
 			z = rhs.z;
+            w = rhs.w;
 
 			return *this;
 		}
@@ -284,27 +280,27 @@ namespace Spartan::Math
 		}
 
 		Quaternion& operator *=(float rhs)
-		{
-			w *= rhs;
+		{			
 			x *= rhs;
 			y *= rhs;
 			z *= rhs;
+            w *= rhs;
 
 			return *this;
 		}
 
-		Quaternion operator *(float rhs) const { return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs); }
+		Quaternion operator *(float rhs) const { return Quaternion(x * rhs, y * rhs, z * rhs, w * rhs); }
 
 		// Test for equality using epsilon
 		bool operator ==(const Quaternion& rhs) const
 		{
-			return Helper::Equals(w, rhs.w) && Helper::Equals(x, rhs.x) && Helper::Equals(y, rhs.y) && Helper::Equals(z, rhs.z);
+			return Equals(x, rhs.x) && Equals(y, rhs.y) && Equals(z, rhs.z) && Equals(w, rhs.w);
 		}
 
 		// Test for inequality using epsilon
 		bool operator !=(const Quaternion& rhs) const 
 		{ 
-			return !Helper::Equals(w, rhs.w) || !Helper::Equals(x, rhs.x) || !Helper::Equals(y, rhs.y) || !Helper::Equals(z, rhs.z);
+			return !Equals(x, rhs.x) || !Equals(y, rhs.y) || !Equals(z, rhs.z) || !Equals(w, rhs.w);
 		}
 
 		std::string ToString() const;

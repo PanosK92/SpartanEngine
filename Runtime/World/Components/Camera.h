@@ -37,6 +37,7 @@ namespace Spartan
 	class Entity;
 	class Model;
 	class Renderable;
+    class Input;
 
 	enum ProjectionType
 	{
@@ -100,24 +101,27 @@ namespace Spartan
 		//===============================================================================
 
 	private:
-        void MouseLook();
+        void FpsControl();
+
 		void ComputeViewMatrix();
 		void ComputeBaseView();
 		void ComputeProjection();
 
-		float m_fov_horizontal_rad;
-		float m_near_plane;
-		float m_far_plane;
-		Math::Ray m_ray;
-		Math::Frustum m_frustrum;
-		ProjectionType m_projection_type;
-		Math::Vector4 m_clear_color;
-		Math::Matrix m_mView;
-		Math::Matrix m_mProjection;
-		Math::Matrix m_mBaseView;
-		Math::Vector3 m_position;
-		Math::Quaternion m_rotation;
-		bool m_isDirty;
-		RHI_Viewport m_last_known_viewport;
+        float m_fov_horizontal_rad          = Math::DegreesToRadians(90.0f);
+        float m_near_plane                  = 0.3f;
+        float m_far_plane                   = 1000.0f;	
+        ProjectionType m_projection_type    = Projection_Perspective;
+		Math::Vector4 m_clear_color         = Math::Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
+		Math::Matrix m_mView                = Math::Matrix::Identity;
+		Math::Matrix m_mProjection          = Math::Matrix::Identity;
+        Math::Matrix m_mBaseView            = Math::Matrix::Identity;
+		Math::Vector3 m_position            = Math::Vector3::Zero;
+        Math::Quaternion m_rotation         = Math::Quaternion::Identity;
+        bool m_isDirty                      = false;
+        Math::Vector3 m_movement_speed      = Math::Vector3::Zero;
+        Input* m_input                      = nullptr;
+        RHI_Viewport m_last_known_viewport;
+        Math::Ray m_ray;
+        Math::Frustum m_frustrum;
 	};
 }

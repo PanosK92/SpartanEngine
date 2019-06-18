@@ -27,29 +27,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../Math/RayHit.h"
 #include "../../Core/Context.h"
+#include "../../Core/Timer.h"
+#include "../../Input/Input.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
-#include "../../Input/Input.h"
 //===================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace Spartan::Math;
 using namespace std;
-//=============================
+//============================
 
 namespace Spartan
 {
 	Camera::Camera(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
-		m_near_plane			= 0.3f;
-		m_far_plane				= 1000.0f;
-		m_projection_type		= Projection_Perspective;
-		m_clear_color			= Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
-		m_isDirty				= false;
-		m_fov_horizontal_rad	= DegreesToRadians(90.0f);
+        m_input = m_context->GetSubsystem<Input>().get();
 	}
 
-	//= ICOMPONENT ============
 	void Camera::OnInitialize()
 	{
 		ComputeBaseView();
@@ -74,8 +69,8 @@ namespace Spartan
 			m_isDirty = true;
 		}
 
-        //MouseLook();
-
+        //FpsControl();
+       
 		if (!m_isDirty)
 			return;
 
@@ -110,7 +105,6 @@ namespace Spartan
 		ComputeProjection();
 	}
 
-	//= PLANES/PROJECTION =====================================================
 	void Camera::SetNearPlane(const float near_plane)
 	{
 		m_near_plane = Max(0.01f, near_plane);
@@ -154,7 +148,6 @@ namespace Spartan
 		return m_frustrum.CheckCube(center, extents) != Outside;
 	}
 
-	//= RAYCASTING =======================================================================
 	bool Camera::Pick(const Vector2& mouse_position, shared_ptr<Entity>& picked)
 	{
 		const auto& viewport				= m_context->GetSubsystem<Renderer>()->GetViewport();
@@ -257,25 +250,57 @@ namespace Spartan
 		return position_world;
 	}
 
-    void Camera::MouseLook()
+    void Camera::FpsControl()
     {
-        static const float sensitivity = 0.05f;
-        Input* input = m_context->GetSubsystem<Input>().get();
+        static const float mouse_sensetivity        = 0.05f;
+        static const float movement_speed_max       = 10.0f;
+        static const float movement_acceleration    = 0.8f;
+        static const float movement_drag            = 0.08f;
 
-        if (input->GetKey(KeyCode::Click_Right))
+        if (m_input->GetKey(KeyCode::Click_Right))
         {
-            // Get mouse delta
-            Vector2 mouse_delta = input->GetMouseDelta() * sensitivity;
-            // Clamp rotation along the x-axis
-            mouse_delta.y = Clamp(mouse_delta.y, -90.0f, 90.0f);
-            // Rotate
-            Quaternion xQuaternion = Quaternion::FromAngleAxis(mouse_delta.x * DEG_TO_RAD, Vector3::Up);
-            Quaternion yQuaternion = Quaternion::FromAngleAxis(mouse_delta.y * DEG_TO_RAD, Vector3::Right);
-            m_transform->Rotate(xQuaternion * yQuaternion);
+            // Mouse look
+            {
+                // Get mouse delta
+                Vector2 mouse_delta = m_input->GetMouseDelta() * mouse_sensetivity;
+
+                // Clamp rotation along the x-axis
+                mouse_delta.y = Clamp(mouse_delta.y, -90.0f, 90.0f);
+
+                // Compute rotation
+                auto xQuaternion = Quaternion::FromAngleAxis(mouse_delta.x * DEG_TO_RAD, Vector3::Up);
+                auto yQuaternion = Quaternion::FromAngleAxis(mouse_delta.y * DEG_TO_RAD, Vector3::Right);
+
+                // Rotate
+                m_transform->Rotate(xQuaternion * yQuaternion);
+            }
+
+            // Keyboard movement
+            {
+                // Compute direction
+                Vector3 direction = Vector3::Zero;
+                if (m_input->GetKey(KeyCode::W)) direction += m_transform->GetForward();
+                if (m_input->GetKey(KeyCode::S)) direction += m_transform->GetBackward();
+                if (m_input->GetKey(KeyCode::D)) direction += m_transform->GetRight();
+                if (m_input->GetKey(KeyCode::A)) direction += m_transform->GetLeft();
+                direction.Normalize();
+
+                // Compute speed
+                m_movement_speed += direction * movement_acceleration;
+                m_movement_speed.x = Clamp(m_movement_speed.x, -movement_speed_max, movement_speed_max);
+                m_movement_speed.y = Clamp(m_movement_speed.y, -movement_speed_max, movement_speed_max);
+                m_movement_speed.z = Clamp(m_movement_speed.z, -movement_speed_max, movement_speed_max);
+            }
         }
+
+        // Apply movement drag
+        m_movement_speed *= 1.0f - movement_drag;
+
+        // Translate
+        float delta_time = m_context->GetSubsystem<Timer>()->GetDeltaTimeSec();
+        m_transform->Translate(m_movement_speed * delta_time);
     }
 
-    //= PRIVATE =======================================================================
 	void Camera::ComputeViewMatrix()
 	{
 		const auto position	= GetTransform()->GetPosition();

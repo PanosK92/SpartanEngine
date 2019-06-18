@@ -25,12 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Context.h"
 //==========================
 
-//= NAMESPACES ==========
+//= NAMESPACES =========
 using namespace std;
 using namespace Spartan;
 using namespace Math;
-using namespace Helper;
-//=======================
+//======================
 
 Widget_Profiler::Widget_Profiler(Context* context) : Widget(context)
 {

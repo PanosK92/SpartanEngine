@@ -24,10 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Matrix.h"
 //======================
 
-//= NAMESPACES ========================
-using namespace Spartan::Math::Helper;
-//=====================================
-
 namespace Spartan::Math
 {
 	const BoundingBox BoundingBox::Zero(Vector3::Zero, Vector3::Zero);

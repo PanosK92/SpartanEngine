@@ -27,10 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 //=============================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 namespace Spartan
 {
@@ -41,7 +41,7 @@ namespace Spartan
 		// Try to deduce the maximum frame rate based on how fast the monitor is
 		if (Settings::Get().GetFpsPolicy() == Fps_FixedMonitor)
 		{
-			Settings::Get().SetFpsLimit(Helper::Max(Settings::Get().GetFpsLimit(), mode.refreshRate));
+			Settings::Get().SetFpsLimit(Max(Settings::Get().GetFpsLimit(), mode.refreshRate));
 		}
 	}
 
