@@ -38,11 +38,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning(pop)
 //==================================================================
 
-//= NAMESPACES ========================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-using namespace Helper;
-//=====================================
+//============================
 
 namespace Spartan
 {

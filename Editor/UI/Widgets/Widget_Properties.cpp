@@ -43,12 +43,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Texture2D.h"
 //=============================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =========
 using namespace std;
 using namespace Spartan;
 using namespace Math;
-using namespace Helper;
-//=======================
+//======================
 
 weak_ptr<Entity> Widget_Properties::m_inspected_entity;
 weak_ptr<Material> Widget_Properties::m_inspected_material;

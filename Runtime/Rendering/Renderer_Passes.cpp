@@ -44,11 +44,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 //=========================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-using namespace Helper;
-//=============================
+//============================
 
 static const float GIZMO_MAX_SIZE = 5.0f;
 static const float GIZMO_MIN_SIZE = 0.1f;

@@ -28,11 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/EventSystem.h"
 //==================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-using namespace Helper;
-//=============================
+//============================
 
 // TODO: DirectInput is ancient and unsupported, also lacks a couple of features. Must replace with simple Windows input.
 

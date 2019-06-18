@@ -26,11 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceCache.h"
 //=======================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-using namespace Helper;
-//=============================
+//============================
 
 namespace Spartan
 {

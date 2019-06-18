@@ -75,11 +75,14 @@ namespace Spartan
 		void Rotate(const Math::Quaternion& delta);
 		//=========================================
 
-		//= DIRECTIONS ==================
+		//= DIRECTIONS ===================
 		Math::Vector3 GetUp() const;
+        Math::Vector3 GetDown() const;
 		Math::Vector3 GetForward() const;
+        Math::Vector3 GetBackward() const;
 		Math::Vector3 GetRight() const;
-		//===============================
+        Math::Vector3 GetLeft() const;
+		//================================
 
 		//= HIERARCHY ==========================================================================
 		bool IsRoot() const		{ return !HasParent(); }

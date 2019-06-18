@@ -67,10 +67,10 @@ namespace Spartan
 			Vector3 GetExtents() const	{ return (m_max - m_min) * 0.5f; }
 
 			// Test if a point is inside
-			Helper::Intersection IsInside(const Vector3& point) const;
+			Intersection IsInside(const Vector3& point) const;
 
 			// Test if a bounding box is inside
-			Helper::Intersection IsInside (const BoundingBox& box) const;
+			Intersection IsInside (const BoundingBox& box) const;
 
 			// Returns a transformed bounding box
 			BoundingBox Transformed(const Matrix& transform);

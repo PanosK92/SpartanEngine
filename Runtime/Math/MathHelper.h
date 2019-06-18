@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <limits>
 //===============
 
-namespace Spartan::Math::Helper
+namespace Spartan::Math
 {
 	enum Intersection
 	{
