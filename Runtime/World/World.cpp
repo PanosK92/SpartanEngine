@@ -369,8 +369,8 @@ namespace Spartan
 		entity->SetName("Camera");
 		entity->AddComponent<Camera>();
 		entity->AddComponent<AudioListener>();
-		entity->AddComponent<Script>()->SetScript(dir_scripts + "MouseLook.as");
-		entity->AddComponent<Script>()->SetScript(dir_scripts + "FirstPersonController.as");
+		//entity->AddComponent<Script>()->SetScript(dir_scripts + "MouseLook.as");
+		//entity->AddComponent<Script>()->SetScript(dir_scripts + "FirstPersonController.as");
 		entity->GetTransform_PtrRaw()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
 		return entity;
