@@ -77,11 +77,7 @@ void Widget_Profiler::ShowCPU()
 	const auto& time_blocks		= m_profiler->GetTimeBlocks();
 	const auto time_block_count = static_cast<unsigned int>(time_blocks.size());
 	const auto time_cpu			= m_profiler->GetTimeCpu();	
-	const auto height			= ImGui::GetCurrentContext()->FontSize;
-	const auto padding_x		= ImGui::GetStyle().WindowPadding.x;
-	const auto spacing_y		= ImGui::GetStyle().FramePadding.y;
 	const auto& color			= ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
-	auto pos					= ImGui::GetCursorScreenPos();
 
 	// Time blocks	
 	for (unsigned int i = 0; i < time_block_count; i++)
@@ -97,16 +93,11 @@ void Widget_Profiler::ShowCPU()
 		const auto width	= fraction * ImGui::GetWindowContentRegionWidth();
 
 		// Draw
-		ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(pos.x, pos.y), ImVec2(pos.x + width, pos.y + height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
+        ImVec2 pos_min = ImGui::GetCursorScreenPos();
+        float text_height = ImGui::CalcTextSize(name.c_str(), nullptr, true).y;
+		ImGui::GetWindowDrawList()->AddRectFilled(pos_min, ImVec2(pos_min.x + width, pos_min.y + text_height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
 		ImGui::Text("%s - %.2f ms", name.c_str(), duration);
-
-		// New line
-		if (i < time_block_count - 1)
-		{
-			pos.y += height + spacing_y;
-		}
 	}
-	ImGui::SetCursorScreenPos(pos);
 
 	ImGui::Separator();
 	ShowPlot(m_plot_times_cpu, m_metric_cpu, !m_profiler->HasNewData() ? -1.0f : time_cpu);
@@ -118,14 +109,9 @@ void Widget_Profiler::ShowGPU()
 	const auto& time_blocks		= m_profiler->GetTimeBlocks();
 	const auto time_block_count	= static_cast<unsigned int>(time_blocks.size());
 	const auto time_gpu			= m_profiler->GetTimeGpu();
-	const auto time_frame		= m_profiler->GetTimeFrame();
-	const auto height			= ImGui::GetCurrentContext()->FontSize;
-	const auto padding_x		= ImGui::GetStyle().WindowPadding.x;
-	const auto spacing_y		= ImGui::GetStyle().FramePadding.y;
 	const auto& color			= ImGui::GetStyle().Colors[ImGuiCol_FrameBgActive];
-	auto pos					= ImGui::GetCursorScreenPos();
 
-	// Time blocks	
+	// Time blocks
 	for (unsigned int i = 0; i < time_block_count; i++)
 	{
 		auto& time_block = time_blocks[i];
@@ -139,16 +125,11 @@ void Widget_Profiler::ShowGPU()
 		const auto width		= fraction * ImGui::GetWindowContentRegionWidth();
 		
 		// Draw
-		ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(pos.x, pos.y), ImVec2(pos.x + width, pos.y + height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
+        ImVec2 pos_min = ImGui::GetCursorScreenPos();
+        float text_height = ImGui::CalcTextSize(name.c_str(), nullptr, true).y;
+		ImGui::GetWindowDrawList()->AddRectFilled(pos_min, ImVec2(pos_min.x + width, pos_min.y + text_height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
 		ImGui::Text("%s - %.2f ms", name.c_str(), duration);
-
-		// New line
-		if (i < time_block_count - 1)
-		{
-			pos.y += height + spacing_y;
-		}
 	}
-	ImGui::SetCursorScreenPos(pos);
 
 	// Plot
 	ImGui::Separator();
