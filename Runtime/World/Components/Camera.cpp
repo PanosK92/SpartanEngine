@@ -69,7 +69,7 @@ namespace Spartan
 			m_isDirty = true;
 		}
 
-        //FpsControl();
+        FpsControl();
        
 		if (!m_isDirty)
 			return;
@@ -262,7 +262,7 @@ namespace Spartan
             // Mouse look
             {
                 // Get mouse delta
-                Vector2 mouse_delta = m_input->GetMouseDelta() * mouse_sensetivity;
+                mouse_delta += m_input->GetMouseDelta() * mouse_sensetivity;
 
                 // Clamp rotation along the x-axis
                 mouse_delta.y = Clamp(mouse_delta.y, -90.0f, 90.0f);
@@ -272,7 +272,7 @@ namespace Spartan
                 auto yQuaternion = Quaternion::FromAngleAxis(mouse_delta.y * DEG_TO_RAD, Vector3::Right);
 
                 // Rotate
-                m_transform->Rotate(xQuaternion * yQuaternion);
+                m_transform->SetRotationLocal(xQuaternion * yQuaternion);
             }
 
             // Keyboard movement

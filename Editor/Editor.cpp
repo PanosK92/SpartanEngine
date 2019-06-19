@@ -248,12 +248,7 @@ void Editor::DockSpace_End()
 
 void Editor::ApplyStyle() const
 {
-	ImGui::StyleColorsDark();
-	auto& style = ImGui::GetStyle();
-
-	const auto font_size	= 16.0f;
-	const auto roundness	= 2.0f;
-	
+	// Color settings
 	const auto text						= ImVec4(0.76f, 0.77f, 0.8f, 1.0f);
 	const auto white					= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 	const auto black					= ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -262,25 +257,36 @@ void Editor::ApplyStyle() const
 	const auto background_medium		= ImVec4(0.26f, 0.26f, 0.27f, 1.0f);
 	const auto background_light			= ImVec4(0.37f, 0.38f, 0.39f, 1.0f);
 	const auto highlight_blue			= ImVec4(0.172f, 0.239f, 0.341f, 1.0f);	
-	const auto highlight_blue_hovered	= ImVec4(0.202f, 0.269f, 0.391f, 1.0f); 
+	const auto highlight_blue_hovered	= ImVec4(0.29f, 0.42f, 0.65f, 1.0f); 
 	const auto highlight_blue_active	= ImVec4(0.382f, 0.449f, 0.561f, 1.0f);
 	const auto bar_background			= ImVec4(0.078f, 0.082f, 0.09f, 1.0f);
 	const auto bar						= ImVec4(0.164f, 0.180f, 0.231f, 1.0f);
 	const auto bar_hovered				= ImVec4(0.411f, 0.411f, 0.411f, 1.0f);
 	const auto bar_active				= ImVec4(0.337f, 0.337f, 0.368f, 1.0f);
 
+    // Spatial settings
+    const auto font_size    = 24.0f;
+    const auto font_scale   = 0.7f;
+    const auto roundness    = 2.0f;
+
+    // Use default black style as a base
+    ImGui::StyleColorsDark();
+
+    auto& style = ImGui::GetStyle();
+    auto& io    = ImGui::GetIO();
+
 	// Spatial
-	style.WindowBorderSize		= 1.0f;
-	style.FrameBorderSize		= 0.0f;
-	style.FramePadding			= ImVec2(5, 5);
-	style.ItemSpacing			= ImVec2(6, 5);
-	style.Alpha					= 1.0f;
-	style.WindowRounding		= roundness;
-	style.FrameRounding			= roundness;
-	style.PopupRounding			= roundness;
-	style.GrabRounding			= roundness;
-	style.ScrollbarSize			= 20.0f;
-	style.ScrollbarRounding		= roundness;	
+	style.WindowBorderSize	= 1.0f;
+	style.FrameBorderSize	= 0.0f;
+    style.ScrollbarSize     = 20.0f;
+	style.FramePadding		= ImVec2(5, 5);
+	style.ItemSpacing		= ImVec2(6, 5);	
+	style.WindowRounding	= roundness;
+	style.FrameRounding		= roundness;
+	style.PopupRounding		= roundness;
+	style.GrabRounding		= roundness;
+    style.ScrollbarRounding = roundness;
+    style.Alpha             = 1.0f;	
 
 	// Colors
 	style.Colors[ImGuiCol_Text]						= text;
@@ -316,7 +322,8 @@ void Editor::ApplyStyle() const
 	style.Colors[ImGuiCol_PopupBg]					= background_dark;
 	style.Colors[ImGuiCol_DragDropTarget]			= background_light;
 
-	auto& io = ImGui::GetIO();
+    // Font
 	string dir_fonts = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Fonts);
 	io.Fonts->AddFontFromFileTTF((dir_fonts + "CalibriBold.ttf").c_str(), font_size);
+    io.FontGlobalScale = font_scale;
 }
