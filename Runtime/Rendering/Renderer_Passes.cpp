@@ -67,15 +67,15 @@ namespace Spartan
 
 		Pass_PreLight
 		(
-			m_render_tex_half_ssao1,	// IN:	
+			m_render_tex_half_ssao,	    // IN:	
 			m_render_tex_half_shadows,	// OUT: Shadows
-			m_render_tex_half_ssao2		// OUT: SSAO
+			m_render_tex_full_ssao      // OUT: SSAO
 		);
 
 		Pass_Light
 		(
 			m_render_tex_half_shadows,	// IN:	Shadows
-			m_render_tex_half_ssao2,	// IN:	SSAO
+            m_render_tex_full_ssao,	    // IN:	SSAO
 			m_render_tex_full_light		// Out: Result
 		);
 
@@ -336,7 +336,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_PreLight(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_shadows_out, shared_ptr<RHI_Texture>& tex_ssao_out)
+	void Renderer::Pass_PreLight(shared_ptr<RHI_Texture>& tex_ssao, shared_ptr<RHI_Texture>& tex_shadows_out, shared_ptr<RHI_Texture>& tex_ssao_out)
 	{
 		m_cmd_list->Begin("Pass_PreLight");
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
@@ -366,13 +366,19 @@ namespace Spartan
 			m_cmd_list->ClearRenderTarget(tex_shadows_out->GetResource_RenderTarget(), Vector4::One);
 		}
 
-		// ssao + blur
+		// SSAO
 		if (m_flags & Render_PostProcess_SSAO)
 		{
-			Pass_SSAO(tex_in);
+            // Actual ssao
+			Pass_SSAO(tex_ssao);
+
+            // Bilateral blur
 			const auto sigma		= 1.0f;
 			const auto pixel_stride	= 1.0f;
-			Pass_BlurBilateralGaussian(tex_in, tex_ssao_out, sigma, pixel_stride);
+			Pass_BlurBilateralGaussian(tex_ssao, m_render_tex_half_ssao_blurred, sigma, pixel_stride);
+
+            // Upscale to full size
+            Pass_Upscale(m_render_tex_half_ssao_blurred, tex_ssao_out);
 		}
 
 		m_cmd_list->End();
@@ -644,7 +650,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_SSAO(shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_SSAO(shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
 		const auto& shader_quad = m_shaders[Shader_Quad_V];
@@ -673,6 +679,27 @@ namespace Spartan
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
+
+    void Renderer::Pass_Upscale(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    {
+        // Acquire shader
+        const auto& shader_vertex   = m_shaders[Shader_Quad_V];
+        const auto& shader_pixel    = m_shaders[Shader_UpsampleBox_P];
+        if (!shader_vertex->IsCompiled() || !shader_pixel->IsCompiled())
+            return;
+
+        m_cmd_list->Begin("Upscale");
+        SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
+        m_cmd_list->SetRenderTarget(tex_out);
+        m_cmd_list->SetViewport(tex_out->GetViewport());
+        m_cmd_list->SetShaderVertex(shader_vertex);
+        m_cmd_list->SetShaderPixel(shader_pixel);
+        m_cmd_list->SetTexture(0, tex_in);
+        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+        m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+        m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+        m_cmd_list->End();
+    }
 
 	void Renderer::Pass_BlurBox(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma)
 	{
@@ -870,7 +897,7 @@ namespace Spartan
 		const auto& shader_bloomBright		= m_shaders[Shader_BloomBright_P];
 		const auto& shader_bloomBlend		= m_shaders[Shader_BloomBlend_P];
 		const auto& shader_downsampleBox	= m_shaders[Shader_DownsampleBox_P];
-		const auto& shader_upsampleBox		= m_shaders[Shader_UpsampleBox_P];	
+		const auto& shader_upsampleBox		= m_shaders[Shader_UpsampleBox_P];
 		if (!shader_downsampleBox->IsCompiled() || !shader_bloomBright->IsCompiled() || !shader_upsampleBox->IsCompiled() || !shader_downsampleBox->IsCompiled())
 			return;
 
@@ -910,37 +937,9 @@ namespace Spartan
 		Pass_BlurGaussian(m_render_tex_quarter_blur2, m_render_tex_quarter_blur1, sigma);
 
 		// Upsampling progressively yields the best results [Kraus2007]
-
-		// 1st upsample
-		m_cmd_list->Begin("Upscale");
-		{
-			// Prepare resources
-			SetDefaultBuffer(m_render_tex_half_bloom->GetWidth(), m_render_tex_half_bloom->GetHeight());
-
-			m_cmd_list->SetRenderTarget(m_render_tex_half_bloom);
-			m_cmd_list->SetViewport(m_render_tex_half_bloom->GetViewport());
-			m_cmd_list->SetShaderPixel(shader_upsampleBox);
-			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur1);
-			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-		}
-		m_cmd_list->End();
-
-		// 2nd upsample
-		m_cmd_list->Begin("Upscale");
-		{
-			// Prepare resources
-			SetDefaultBuffer(m_render_tex_full_bloom->GetWidth(), m_render_tex_full_bloom->GetHeight());
-
-			m_cmd_list->SetRenderTarget(m_render_tex_full_bloom);
-			m_cmd_list->SetViewport(m_render_tex_full_bloom->GetViewport());
-			m_cmd_list->SetShaderPixel(shader_upsampleBox);
-			m_cmd_list->SetTexture(0, m_render_tex_half_bloom);
-			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-		}
-		m_cmd_list->End();
-
+        Pass_Upscale(m_render_tex_quarter_blur1, m_render_tex_half_bloom);
+        Pass_Upscale(m_render_tex_half_bloom, m_render_tex_full_bloom);
+		
 		m_cmd_list->Begin("Additive_Blending");
 		{
 			// Prepare resources
@@ -1486,7 +1485,7 @@ namespace Spartan
 		{
 			if (Flags_IsSet(Render_PostProcess_SSAO))
 			{
-				m_cmd_list->SetTexture(0, m_render_tex_half_ssao2);
+				m_cmd_list->SetTexture(0, m_render_tex_full_ssao);
 			}
 			else
 			{

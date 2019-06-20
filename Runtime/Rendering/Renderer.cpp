@@ -70,7 +70,7 @@ namespace Spartan
 		m_flags			|= Render_PostProcess_SSAO;	
 		m_flags			|= Render_PostProcess_MotionBlur;
 		m_flags			|= Render_PostProcess_TAA;
-		m_flags			|= Render_PostProcess_FXAA;
+		//m_flags		|= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior
 		m_flags			|= Render_PostProcess_Sharpening;	
 		m_flags			|= Render_PostProcess_SSR;
 		//m_flags		|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients
@@ -242,8 +242,9 @@ namespace Spartan
 		m_render_tex_quarter_blur2 = make_unique<RHI_Texture2D>(m_context, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
 
 		// SSAO	
-		m_render_tex_half_ssao1 = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM); // Raw
-		m_render_tex_half_ssao2 = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM); // Blurred
+		m_render_tex_half_ssao          = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);    // Raw
+		m_render_tex_half_ssao_blurred  = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);    // Blurred
+        m_render_tex_full_ssao          = make_unique<RHI_Texture2D>(m_context, width, height, Format_R8_UNORM);            // Upscaled
 
 		// Spare textures for bloom
 		m_render_tex_full_bloom = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
