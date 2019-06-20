@@ -110,7 +110,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_UPSAMPLE_BOX
-	color = Upsample_Box(texCoord, g_texelSize, sourceTexture, samplerState, 4.0f);
+	color = Upsample_Box(texCoord, g_texelSize, sourceTexture, samplerState, 1.0f);
 #endif
 
 #if PASS_BLUR_BOX

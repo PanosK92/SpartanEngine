@@ -255,6 +255,7 @@ namespace Spartan
 		void Pass_MotionBlur(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Dithering(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Bloom(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Upscale(std::shared_ptr<RHI_Texture>& tex_in,                 std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_BlurBox(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out, float sigma);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
 		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
@@ -279,10 +280,11 @@ namespace Spartan
 		std::shared_ptr<RHI_Texture> m_render_tex_full_taa_current;
 		std::shared_ptr<RHI_Texture> m_render_tex_full_taa_history;
 		std::shared_ptr<RHI_Texture> m_render_tex_full_bloom;
+        std::shared_ptr<RHI_Texture> m_render_tex_full_ssao;
 		// 1/2
 		std::shared_ptr<RHI_Texture> m_render_tex_half_shadows;
-		std::shared_ptr<RHI_Texture> m_render_tex_half_ssao2;
-		std::shared_ptr<RHI_Texture> m_render_tex_half_ssao1;
+        std::shared_ptr<RHI_Texture> m_render_tex_half_ssao;
+		std::shared_ptr<RHI_Texture> m_render_tex_half_ssao_blurred;
 		std::shared_ptr<RHI_Texture> m_render_tex_half_bloom;
 		// 1/4
 		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur1;
