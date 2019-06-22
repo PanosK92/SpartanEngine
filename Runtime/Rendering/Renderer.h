@@ -221,6 +221,7 @@ namespace Spartan
 		auto GetMaxResolution() const	{ return m_max_resolution; }
 		auto IsInitialized() const		{ return m_initialized; }
 		auto GetClearDepth()			{ return !Settings::Get().GetReverseZ() ? m_viewport.depth_max : m_viewport.depth_min; }
+        auto& GetShaders()              { return m_shaders; }
 		//======================================================================================================================
 
 	private:

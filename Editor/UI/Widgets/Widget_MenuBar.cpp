@@ -44,7 +44,7 @@ namespace _Widget_MenuBar
 
 Widget_MenuBar::Widget_MenuBar(Context* context) : Widget(context)
 {
-	m_isWindow				= false;
+	m_is_window				= false;
 	m_fileDialog			= make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
 	_Widget_MenuBar::world	= m_context->GetSubsystem<World>().get();
 }
@@ -153,7 +153,7 @@ void Widget_MenuBar::ShowAboutWindow()
 	ImGui::Text("Author: Panos Karabelas");
 	ImGui::SameLine(600); ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);  if (ImGui::Button("GitHub"))
 	{
-		FileSystem::OpenDirectoryWindow("https://github.com/PanosK92/Directus3D");
+		FileSystem::OpenDirectoryWindow("https://github.com/PanosK92/SpartanEngine");
 	}	
 
 	ImGui::Separator();
@@ -186,7 +186,15 @@ void Widget_MenuBar::ShowAboutWindow()
 		ImGui::SameLine(250); ImGui::PushID(url);  if (ImGui::Button("URL")) { FileSystem::OpenDirectoryWindow(url); } ImGui::PopID();
 	};
 
-	library("Graphics API",	Settings::Get().m_versionGraphicsAPI,	"https://www.khronos.org/vulkan/");
+#ifdef API_GRAPHICS_D3D11
+    const char* api_name = "DirectX";
+    const char* api_link = "https://www.microsoft.com/en-us/download/details.aspx?id=17431";
+#elif API_GRAPHICS_VULKAN
+    const char* api_name = "Vulkan";
+    const char* api_link = "https://www.khronos.org/vulkan/";
+#endif
+
+	library(api_name,	    Settings::Get().m_versionGraphicsAPI,	api_link);
 	library("AngelScript",	Settings::Get().m_versionAngelScript,	"https://www.angelcode.com/angelscript/");
 	library("Assimp",		Settings::Get().m_versionAssimp,		"https://github.com/assimp/assimp");
 	library("Bullet",		Settings::Get().m_versionBullet,		"https://github.com/bulletphysics/bullet3");

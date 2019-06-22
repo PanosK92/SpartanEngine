@@ -57,8 +57,8 @@ namespace Spartan
 		const auto& current_viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 		if (m_last_known_viewport != current_viewport)
 		{
-			m_last_known_viewport = current_viewport;
-			m_isDirty			= true;
+			m_last_known_viewport   = current_viewport;
+			m_isDirty			    = true;
 		}
 
 		// DIRTY CHECK
@@ -252,7 +252,7 @@ namespace Spartan
 
     void Camera::FpsControl()
     {
-        static const float mouse_sensetivity        = 0.05f;
+        static const float mouse_sensetivity        = 0.1f;
         static const float movement_speed_max       = 10.0f;
         static const float movement_acceleration    = 0.8f;
         static const float movement_drag            = 0.08f;
@@ -296,9 +296,12 @@ namespace Spartan
         // Apply movement drag
         m_movement_speed *= 1.0f - movement_drag;
 
-        // Translate
-        float delta_time = m_context->GetSubsystem<Timer>()->GetDeltaTimeSec();
-        m_transform->Translate(m_movement_speed * delta_time);
+        // Translate for as long as there is speed
+        if (m_movement_speed != Vector3::Zero)
+        {
+            float delta_time = m_context->GetSubsystem<Timer>()->GetDeltaTimeSec();
+            m_transform->Translate(m_movement_speed * delta_time);
+        }
     }
 
 	void Camera::ComputeViewMatrix()

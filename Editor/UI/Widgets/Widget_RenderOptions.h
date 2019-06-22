@@ -25,12 +25,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 //=================
 
-class Widget_Viewport : public Widget
+namespace Spartan { class Renderer; }
+
+class Widget_RenderOptions : public Widget
 {
 public:
-	Widget_Viewport(Spartan::Context* context);
-	void Tick(float delta_time) override;
+    Widget_RenderOptions(Spartan::Context* context);
+    void Tick(float delta_time) override;
 
 private:
-	float m_timeSinceLastResChange = 0.0f;
+    Spartan::Renderer* m_renderer;
 };

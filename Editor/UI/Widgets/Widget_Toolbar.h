@@ -21,32 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
+//= INCLUDES ===============
 #include "Widget.h"
-#include <memory>
-//=================
-
-class Widget_Profiler;
-class Widget_ResourceCache;
-namespace Spartan
-{
-	class Renderer;
-}
+#include <map>
+#include "../IconProvider.h"
+//==========================
 
 class Widget_Toolbar : public Widget
 {
 public:
 	Widget_Toolbar(Spartan::Context* context);
-	bool Begin() override;
 	void Tick(float delta_time) override;
 
 private:
-	void ShowRendererOptions();
-	void ShowProfiler(float delta_time);
-	void ShowResourceCache(float delta_time);
-	Spartan::Renderer* m_renderer;
-
-	// Widgets
-	std::unique_ptr<Widget_Profiler> m_profiler;
-	std::unique_ptr<Widget_ResourceCache> m_resourceCache;
+    std::map<Icon_Type, std::unique_ptr<Widget>> m_widgets;
+    float m_button_size = 20.0f;
 };

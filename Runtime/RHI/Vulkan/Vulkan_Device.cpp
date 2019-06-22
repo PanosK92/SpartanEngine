@@ -347,7 +347,7 @@ namespace Spartan
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
 		auto version_path	= to_string(VK_VERSION_PATCH(app_info.apiVersion));
-		Settings::Get().m_versionGraphicsAPI = "Vulkan " + version_major + "." + version_minor + "." + version_path;
+		Settings::Get().m_versionGraphicsAPI = version_major + "." + version_minor + "." + version_path;
 		LOG_INFO(Settings::Get().m_versionGraphicsAPI);
 
 		m_initialized = true;

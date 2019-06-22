@@ -141,14 +141,15 @@ namespace ComponentProperty
 
 Widget_Properties::Widget_Properties(Context* context) : Widget(context)
 {
-	m_title					= "Properties";
+	m_title	    = "Properties";
+    m_size.x    = 500; // min width
+
 	m_colorPicker_light		= make_unique<ButtonColorPicker>("Light Color Picker");
 	m_colorPicker_material	= make_unique<ButtonColorPicker>("Material Color Picker");
 	m_colorPicker_camera	= make_unique<ButtonColorPicker>("Camera Color Picker");
 
 	_Widget_Properties::resource_cache	= m_context->GetSubsystem<ResourceCache>().get();
-	_Widget_Properties::scene			= m_context->GetSubsystem<World>().get();
-	m_xMin								= 500; // min width
+	_Widget_Properties::scene			= m_context->GetSubsystem<World>().get();  
 }
 
 void Widget_Properties::Tick(float delta_time)
@@ -269,7 +270,7 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 		ImGui::SameLine(start_column);	show_float("TraScaX", "X", &scale.x);
 		ImGui::SameLine();				show_float("TraScaY", "Y", &scale.y);
 		ImGui::SameLine();				show_float("TraScaZ", "Z", &scale.z);
-
+        
 		//= MAP ===================================================================
 		if (!is_playing)
 		{

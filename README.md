@@ -65,6 +65,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 Feature     		| Completion    | Notes 
 :-          		| :-            | :-
 Parallax Mapping 	| 100%          | -
+Shader Editor 		| 90%          	| Real-time shader editing tool.
 Shadows 			| 90%          	| Improve shadow mapping performance and enable spot & point light shadows.
 Vulkan      		| 60%           | Don't port it, re-architect the engine instead.
 

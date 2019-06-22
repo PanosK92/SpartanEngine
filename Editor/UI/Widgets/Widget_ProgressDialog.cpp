@@ -24,10 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Resource/ProgressReport.h"
 //==================================
 
-//= NAMESPACES ==========
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan;
-//=======================
+using namespace Spartan::Math;
+//============================
 
 namespace _Widget_ProgressDialog
 {
@@ -36,43 +37,39 @@ namespace _Widget_ProgressDialog
 
 Widget_ProgressDialog::Widget_ProgressDialog(Context* contex) : Widget(contex)
 {
-	m_title			= "Hold on...";
-	m_isVisible		= false;
-	m_progress		= 0.0f;
-	m_xMin			= _Widget_ProgressDialog::width;
-	m_yMin			= 83.0f;
-	m_window_flags	|= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
-}
+	m_title			        = "Hold on...";
+	m_is_visible	        = false;
+	m_progress		        = 0.0f;
+    m_size                  = Vector2(_Widget_ProgressDialog::width, 83.0f);
+	m_flags	                |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
+    m_begin_pre_callback    = [this]()
+    {
+        // Determine if an operation is in progress
+        ProgressReport& progressReport  = ProgressReport::Get();
+        bool is_loading_model           = progressReport.GetIsLoading(g_progress_model_importer);
+        bool is_loading_scene           = progressReport.GetIsLoading(g_progress_world);
+        bool in_progress                = is_loading_model || is_loading_scene;
 
-bool Widget_ProgressDialog::Begin()
-{
-	// Determine if an operation is in progress
-	ProgressReport& progressReport = ProgressReport::Get();
-	bool isLoadingModel				= progressReport.GetIsLoading(g_progress_model_importer);
-	bool isLoadingScene				= progressReport.GetIsLoading(g_progress_world);
-	bool inProgress					= isLoadingModel || isLoadingScene;
+        // Acquire progress
+        if (is_loading_model)
+        {
+            m_progress          = progressReport.GetPercentage(g_progress_model_importer);
+            m_progressStatus    = progressReport.GetStatus(g_progress_model_importer);
+        }
+        else if (is_loading_scene)
+        {
+            m_progress          = progressReport.GetPercentage(g_progress_world);
+            m_progressStatus    = progressReport.GetStatus(g_progress_world);
+        }
 
-	// Acquire progress
-	if (isLoadingModel)
-	{
-		m_progress = progressReport.GetPercentage(g_progress_model_importer);
-		m_progressStatus = progressReport.GetStatus(g_progress_model_importer);
-	}
-	else if (isLoadingScene)
-	{
-		m_progress = progressReport.GetPercentage(g_progress_world);
-		m_progressStatus = progressReport.GetStatus(g_progress_world);
-	}
-
-	// Show only if an operation is in progress
-	m_isVisible = inProgress;
-
-	return Widget::Begin();
+        // Show only if an operation is in progress
+        m_is_visible = in_progress;
+    };
 }
 
 void Widget_ProgressDialog::Tick(float deltaTime)
 {
-	if (!m_isVisible)
+	if (!m_is_visible)
 		return;
 
 	// Show dialog

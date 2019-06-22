@@ -92,12 +92,15 @@ namespace Spartan
 		void Compile(const Shader_Stage type, const std::string& shader)
 		{
 			Compile<RHI_Vertex_Undefined>(type, shader);
+            m_shader_stage = type;
 		}
+
 		template<typename T>
 		void CompileAsync(Context* context, const Shader_Stage type, const std::string& shader);
 		void CompileAsync(Context* context, const Shader_Stage type, const std::string& shader)
 		{
 			CompileAsync<RHI_Vertex_Undefined>(context, type, shader);
+            m_shader_stage = type;
 		}
 	
 		// Properties
@@ -114,6 +117,8 @@ namespace Spartan
 		const auto& GetName() const													{ return m_name; }
 		void SetName(const std::string& name)										{ m_name = name; }
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
+        const auto& GetFilePath() const                                             { return m_file_path; }
+        auto GetShaderStage() const                                                 { return m_shader_stage; }
 
 	protected:
 		std::shared_ptr<RHI_Device> m_rhi_device;
@@ -130,6 +135,7 @@ namespace Spartan
 		std::vector<Shader_Resource> m_resources;
 		std::shared_ptr<RHI_InputLayout> m_input_layout;
 		Compilation_State m_compilation_state = Shader_Uninitialized;
+        Shader_Stage m_shader_stage;
 
 		// API 
 		void* m_vertex_shader	= nullptr;
