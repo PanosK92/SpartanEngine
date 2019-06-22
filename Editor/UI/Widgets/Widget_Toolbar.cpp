@@ -21,284 +21,85 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "Widget_Toolbar.h"
-#include "../IconProvider.h"
-#include "../ImGui_Extension.h"
-#include "Rendering/Renderer.h"
-#include "Core/Engine.h"
 #include "Widget_Profiler.h"
 #include "Widget_ResourceCache.h"
+#include "Widget_ShaderEditor.h"
+#include "Widget_RenderOptions.h"
+#include "Core/Engine.h"
 #include "Core/Settings.h"
+#include "Rendering/Renderer.h"
+#include "../IconProvider.h"
+#include "../ImGui_Extension.h"
 //===============================
 
-//= NAMESPACES ==========
+//= NAMESPACES =========
 using namespace std;
 using namespace Spartan;
 using namespace Math;
-//=======================
-
-namespace _Widget_Toolbar
-{
-	static float g_button_size					= 20.0f;
-	static bool g_rendererer_options_visible	= false;
-	static float g_renderer_options_alpha		= 1.0f;
-	static bool g_gizmo_physics					= true;
-	static bool g_gizmo_aabb					= false;
-	static bool g_gizmo_light					= true;
-	static bool g_gizmo_transform				= true;
-	static bool g_gizmo_picking_ray				= false;
-	static bool g_gizmo_grid					= true;
-	static bool g_gizmo_performance_metrics		= false;
-	static vector<string> gbuffer_textures =
-	{
-		"None",
-		"Albedo",
-		"Normal",
-		"Material",
-		"Velocity",
-		"Depth",
-		"SSAO"
-	};
-	static int gbuffer_selected_texture_index	= 0;
-	static string gbuffer_selected_texture	= gbuffer_textures[0];
-	ResourceCache* g_resourceCache = nullptr;
-}
+//======================
 
 Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
 {
 	m_title = "Toolbar";
-	m_window_flags = ImGuiWindowFlags_NoCollapse |
-		ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoScrollbar |
+    
+	m_flags =
+        ImGuiWindowFlags_NoCollapse         |
+		ImGuiWindowFlags_NoResize           |
+		ImGuiWindowFlags_NoMove             |
+		ImGuiWindowFlags_NoSavedSettings    |
+		ImGuiWindowFlags_NoScrollbar        |
 		ImGuiWindowFlags_NoTitleBar;
 
+    m_begin_pre_callback = [this]()
+    {
+        auto& ctx = *ImGui::GetCurrentContext();
+        ctx.NextWindowData.MenuBarOffsetMinVal = ImVec2( ctx.Style.DisplaySafeAreaPadding.x, Max(ctx.Style.DisplaySafeAreaPadding.y - ctx.Style.FramePadding.y, 0.0f));
+        m_position  = Vector2(ctx.Viewports[0]->Pos.x, ctx.Viewports[0]->Pos.y + 25.0f);
+        m_size      = Vector2(ctx.Viewports[0]->Size.x, ctx.NextWindowData.MenuBarOffsetMinVal.y + ctx.FontBaseSize + ctx.Style.FramePadding.y + 20.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Vector2(0, 5));
+    };
+
+    m_begin_post_callback = [this]()
+    {
+        ImGui::PopStyleVar();
+    };
+
+    m_widgets[Icon_Profiler]            = make_unique<Widget_Profiler>(context);
+    m_widgets[Icon_ResourceCache]       = make_unique<Widget_ResourceCache>(context);
+    m_widgets[Icon_Component_Script]    = make_unique<Widget_ShaderEditor>(context);
+    m_widgets[Icon_Component_Options]   = make_unique<Widget_RenderOptions>(context);
+
 	Engine::EngineMode_Disable(Engine_Game);
-	m_renderer							= context->GetSubsystem<Renderer>().get();
-	_Widget_Toolbar::g_resourceCache	= context->GetSubsystem<ResourceCache>().get();
-
-	m_profiler		= make_unique<Widget_Profiler>(context);
-	m_resourceCache = make_unique<Widget_ResourceCache>(context);
-}
-
-bool Widget_Toolbar::Begin()
-{
-	auto& g = *GImGui;
-	g.NextWindowData.MenuBarOffsetMinVal = ImVec2(g.Style.DisplaySafeAreaPadding.x, ImMax(g.Style.DisplaySafeAreaPadding.y - g.Style.FramePadding.y, 0.0f));
-	ImGui::SetNextWindowPos(ImVec2(g.Viewports[0]->Pos.x, g.Viewports[0]->Pos.y + 25.0f));
-	ImGui::SetNextWindowSize(ImVec2(g.Viewports[0]->Size.x, g.NextWindowData.MenuBarOffsetMinVal.y + g.FontBaseSize + g.Style.FramePadding.y + 20.0f));
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 5));
-	ImGui::Begin(m_title.c_str(), &m_isVisible, m_window_flags);
-
-	return true;
 }
 
 void Widget_Toolbar::Tick(float delta_time)
 {
-	// Play button
-	ImGui::SameLine();
-	ImGui::PushStyleColor(ImGuiCol_Button, Engine::EngineMode_IsSet(Engine_Game) ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (ImGuiEx::ImageButton(Icon_Button_Play, _Widget_Toolbar::g_button_size))
-	{
-		Engine::EngineMode_Toggle(Engine_Game);
-	}
-	ImGui::PopStyleColor();
+    auto show_button = [this](Icon_Type icon_type, function<bool()> get_visibility, function<void()> make_visible)
+    {
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+        if (ImGuiEx::ImageButton(icon_type, m_button_size))
+        {
+            make_visible();
+        }
+        ImGui::PopStyleColor();
+    };
 
-	// Renderer options button
-	ImGui::SameLine();
-	ImGui::PushStyleColor(ImGuiCol_Button, _Widget_Toolbar::g_rendererer_options_visible ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (ImGuiEx::ImageButton(Icon_Component_Options, _Widget_Toolbar::g_button_size))
-	{
-		_Widget_Toolbar::g_rendererer_options_visible = true;
-	}
-	ImGui::PopStyleColor();
+    // Play button	
+    show_button(Icon_Button_Play, []() { return Engine::EngineMode_IsSet(Engine_Game); }, []() { Engine::EngineMode_Toggle(Engine_Game); });
 
-	// Profiler button
-	ImGui::SameLine();
-	ImGui::PushStyleColor(ImGuiCol_Button, m_profiler->GetVisible() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (ImGuiEx::ImageButton(Icon_Profiler, _Widget_Toolbar::g_button_size))
-	{
-		m_profiler->SetVisible(true);
-	}
-	ImGui::PopStyleColor();
+    for (auto& widget_it : m_widgets)
+    {
+        Widget* widget          = widget_it.second.get();
+        Icon_Type widget_icon   = widget_it.first;
 
-	// Resource cache button
-	ImGui::SameLine();
-	ImGui::PushStyleColor(ImGuiCol_Button, m_resourceCache->GetVisible() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-	if (ImGuiEx::ImageButton(Icon_ResourceCache, _Widget_Toolbar::g_button_size))
-	{
-		m_resourceCache->SetVisible(true);
-	}
-	ImGui::PopStyleColor();
+        show_button(widget_icon, [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
 
-	ImGui::PopStyleVar();
-
-	// Visibility
-	if (_Widget_Toolbar::g_rendererer_options_visible)	ShowRendererOptions();
-	if (m_profiler->GetVisible())						ShowProfiler(delta_time);
-	if (m_resourceCache->GetVisible())					ShowResourceCache(delta_time);
-}
-
-void Widget_Toolbar::ShowRendererOptions()
-{
-	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, _Widget_Toolbar::g_renderer_options_alpha);
-	ImGui::Begin("Renderer Options", &_Widget_Toolbar::g_rendererer_options_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
-
-	ImGui::SliderFloat("Opacity", &_Widget_Toolbar::g_renderer_options_alpha, 0.1f, 1.0f, "%.1f");
-
-	if (ImGui::CollapsingHeader("Graphics", ImGuiTreeNodeFlags_DefaultOpen))
-	{	
-		// Read from engine
-		static vector<char*> types	= { "Off", "ACES", "Reinhard", "Uncharted 2" };
-		const char* type_char_ptr	= types[static_cast<unsigned int>(m_renderer->m_tonemapping)];
-
-		auto do_bloom					= m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
-		auto do_fxaa					= m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
-		auto do_ssao					= m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
-		auto do_ssr						= m_renderer->Flags_IsSet(Render_PostProcess_SSR);
-		auto do_taa						= m_renderer->Flags_IsSet(Render_PostProcess_TAA);
-		auto do_motion_blur				= m_renderer->Flags_IsSet(Render_PostProcess_MotionBlur);
-		auto do_sharperning				= m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
-		auto do_chromatic_aberration	= m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
-		auto do_dithering				= m_renderer->Flags_IsSet(Render_PostProcess_Dithering);
-		
-		// Display
-		{
-			const auto tooltip = [](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
-
-			if (ImGui::BeginCombo("Tonemapping", type_char_ptr))
-			{
-				for (unsigned int i = 0; i < static_cast<unsigned int>(types.size()); i++)
-				{
-					const auto is_selected = (type_char_ptr == types[i]);
-					if (ImGui::Selectable(types[i], is_selected))
-					{
-						type_char_ptr = types[i];
-						m_renderer->m_tonemapping = static_cast<ToneMapping_Type>(i);
-					}
-					if (is_selected)
-					{
-						ImGui::SetItemDefaultFocus();
-					}
-				}
-				ImGui::EndCombo();
-			}
-			ImGui::InputFloat("Exposure", &m_renderer->m_exposure, 0.1f);
-			ImGui::InputFloat("Gamma", &m_renderer->m_gamma, 0.1f);
-			ImGui::Checkbox("Bloom", &do_bloom);
-			ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloom_intensity, 0.1f);		
-			ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
-			ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
-			ImGui::Checkbox("Motion Blur", &do_motion_blur);
-			ImGui::InputFloat("Motion Blur Strength", &m_renderer->m_motion_blur_strength, 0.1f);
-			ImGui::Checkbox("Chromatic Aberration", &do_chromatic_aberration);							tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
-			ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
-			ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &do_fxaa);
-			ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaa_sub_pixel, 0.1f);					tooltip("The amount of sub-pixel aliasing removal");
-			ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaa_edge_threshold, 0.1f);			tooltip("The minimum amount of local contrast required to apply algorithm");
-			ImGui::InputFloat("FXAA Edge Threshold Min", &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
-			ImGui::Checkbox("Sharpen", &do_sharperning);
-			ImGui::InputFloat("Sharpen Strength", &m_renderer->m_sharpen_strength, 0.1f);
-			ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpen_clamp, 0.1f);						tooltip("Limits maximum amount of sharpening a pixel receives");
-			ImGui::Checkbox("Dithering", &do_dithering);												tooltip("Reduces color banding");
-		}
-
-		// Filter input
-		m_renderer->m_exposure					= Abs(m_renderer->m_exposure);
-		m_renderer->m_bloom_intensity			= Abs(m_renderer->m_bloom_intensity);
-		m_renderer->m_fxaa_sub_pixel			= Abs(m_renderer->m_fxaa_sub_pixel);
-		m_renderer->m_fxaa_edge_threshold		= Abs(m_renderer->m_fxaa_edge_threshold);
-		m_renderer->m_fxaa_edge_threshold_min	= Abs(m_renderer->m_fxaa_edge_threshold_min);
-		m_renderer->m_sharpen_strength			= Abs(m_renderer->m_sharpen_strength);
-		m_renderer->m_sharpen_clamp				= Abs(m_renderer->m_sharpen_clamp);
-		m_renderer->m_motion_blur_strength		= Abs(m_renderer->m_motion_blur_strength);
-
-		// Map back to engine
-		#define SET_FLAG_IF(flag, value) value	? m_renderer->Flags_Enable(flag) : m_renderer->Flags_Disable(flag)
-		SET_FLAG_IF(Render_PostProcess_Bloom, do_bloom);
-		SET_FLAG_IF(Render_PostProcess_FXAA, do_fxaa);
-		SET_FLAG_IF(Render_PostProcess_SSAO, do_ssao);
-		SET_FLAG_IF(Render_PostProcess_SSR, do_ssr);
-		SET_FLAG_IF(Render_PostProcess_TAA, do_taa);
-		SET_FLAG_IF(Render_PostProcess_MotionBlur, do_motion_blur);
-		SET_FLAG_IF(Render_PostProcess_Sharpening, do_sharperning);
-		SET_FLAG_IF(Render_PostProcess_ChromaticAberration, do_chromatic_aberration);
-		SET_FLAG_IF(Render_PostProcess_Dithering, do_dithering);
-	}
-
-	if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))
-	{
-		if (ImGui::BeginCombo("Buffer", _Widget_Toolbar::gbuffer_selected_texture.c_str()))
-		{
-			for (auto i = 0; i < _Widget_Toolbar::gbuffer_textures.size(); i++)
-			{
-				const auto is_selected = (_Widget_Toolbar::gbuffer_selected_texture == _Widget_Toolbar::gbuffer_textures[i]);
-				if (ImGui::Selectable(_Widget_Toolbar::gbuffer_textures[i].c_str(), is_selected))
-				{
-					_Widget_Toolbar::gbuffer_selected_texture = _Widget_Toolbar::gbuffer_textures[i];
-					_Widget_Toolbar::gbuffer_selected_texture_index = i;
-				}
-				if (is_selected)
-				{
-					ImGui::SetItemDefaultFocus();
-				}
-			}
-			ImGui::EndCombo();
-		}
-		m_renderer->SetDebugBuffer(static_cast<RendererDebug_Buffer>(_Widget_Toolbar::gbuffer_selected_texture_index));
-	}
-
-	if (ImGui::CollapsingHeader("FPS", ImGuiTreeNodeFlags_None))
-	{
-		auto fps_limit = Settings::Get().GetFpsLimit();
-		ImGui::InputFloat("Limit", &fps_limit);
-		Settings::Get().SetFpsLimit(fps_limit);
-		const auto fps_policy = Settings::Get().GetFpsPolicy();
-		ImGui::Text(fps_policy == Fps_FixedMonitor ? "Fixed (Monitor)" : fps_limit == Fps_Unlocked ? "Unlocked" : "Fixed");
-	}
-
-	if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_None))
-	{
-		// Transform
-		ImGui::Checkbox("Transform", &_Widget_Toolbar::g_gizmo_transform); 
-		ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);
-		ImGui::InputFloat("Speed", &m_renderer->m_gizmo_transform_speed, 1.0f);
-		// Physics
-		ImGui::Checkbox("Physics", &_Widget_Toolbar::g_gizmo_physics);
-		// AABB
-		ImGui::Checkbox("AABB", &_Widget_Toolbar::g_gizmo_aabb);
-		// Lights
-		ImGui::Checkbox("Lights", &_Widget_Toolbar::g_gizmo_light);	
-		// Picking Ray
-		ImGui::Checkbox("Picking Ray", &_Widget_Toolbar::g_gizmo_picking_ray);
-		// Grid
-		ImGui::Checkbox("Grid", &_Widget_Toolbar::g_gizmo_grid);
-		// Performance metrics
-		ImGui::Checkbox("Performance Metrics", &_Widget_Toolbar::g_gizmo_performance_metrics);
-
-		_Widget_Toolbar::g_gizmo_transform				? m_renderer->Flags_Enable(Render_Gizmo_Transform)			: m_renderer->Flags_Disable(Render_Gizmo_Transform);
-		_Widget_Toolbar::g_gizmo_physics				? m_renderer->Flags_Enable(Render_Gizmo_Physics)			: m_renderer->Flags_Disable(Render_Gizmo_Physics);
-		_Widget_Toolbar::g_gizmo_aabb					? m_renderer->Flags_Enable(Render_Gizmo_AABB)				: m_renderer->Flags_Disable(Render_Gizmo_AABB);
-		_Widget_Toolbar::g_gizmo_light					? m_renderer->Flags_Enable(Render_Gizmo_Lights)				: m_renderer->Flags_Disable(Render_Gizmo_Lights);
-		_Widget_Toolbar::g_gizmo_picking_ray			? m_renderer->Flags_Enable(Render_Gizmo_PickingRay)			: m_renderer->Flags_Disable(Render_Gizmo_PickingRay);
-		_Widget_Toolbar::g_gizmo_grid					? m_renderer->Flags_Enable(Render_Gizmo_Grid)				: m_renderer->Flags_Disable(Render_Gizmo_Grid);
-		_Widget_Toolbar::g_gizmo_performance_metrics	? m_renderer->Flags_Enable(Render_Gizmo_PerformanceMetrics)	: m_renderer->Flags_Disable(Render_Gizmo_PerformanceMetrics);
-	}
-
-	ImGui::End();
-	ImGui::PopStyleVar();
-}
-
-void Widget_Toolbar::ShowProfiler(float delta_time)
-{
-	m_profiler->Begin();
-	m_profiler->Tick(delta_time);
-	m_profiler->End();
-}
-
-void Widget_Toolbar::ShowResourceCache(float delta_time)
-{
-	m_resourceCache->Begin();
-	m_resourceCache->Tick(delta_time);
-	m_resourceCache->End();
+        if (widget->GetVisible())
+        {
+            widget->Begin();
+            widget->Tick(delta_time);
+            widget->End();
+        }
+    }
 }

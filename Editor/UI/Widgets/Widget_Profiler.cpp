@@ -33,21 +33,19 @@ using namespace Math;
 
 Widget_Profiler::Widget_Profiler(Context* context) : Widget(context)
 {
-	m_window_flags |= ImGuiWindowFlags_AlwaysAutoResize;
-	m_title							= "Profiler";
-	m_isVisible						= false;
-	m_profiler						= m_context->GetSubsystem<Profiler>().get();
-	m_xMin							= 1000;
-	m_yMin							= 715;
-	m_xMax							= FLT_MAX;
-	m_yMax							= FLT_MAX;	
+	m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
+	m_title			= "Profiler";
+	m_is_visible	= false;
+	m_profiler		= m_context->GetSubsystem<Profiler>().get();
+    m_size          = Vector2(1000, 715);
+
 	m_plot_times_cpu.resize(m_plot_size);
 	m_plot_times_gpu.resize(m_plot_size);
 }
 
 void Widget_Profiler::Tick(float delta_time)
 {
-	if (!m_isVisible)
+	if (!m_is_visible)
 		return;
 
 	static int item_type = 1;

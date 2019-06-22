@@ -44,23 +44,13 @@ namespace _Widget_Viewport
 
 Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
 {
-	m_title						= "Viewport";
-	m_timeSinceLastResChange	= 0.0f;
+	m_title     = "Viewport";
+    m_size      = Vector2(400, 250);
+	m_flags     |= ImGuiWindowFlags_NoScrollbar;
+    m_padding   = Vector2(4.0f);
 
-	m_window_flags |= ImGuiWindowFlags_NoScrollbar;
-	_Widget_Viewport::g_renderer	= m_context->GetSubsystem<Renderer>().get();
-	_Widget_Viewport::g_world		= m_context->GetSubsystem<World>().get();
-	m_xMin = 400;
-	m_yMin = 250;
-}
-
-bool Widget_Viewport::Begin()
-{
-	ImGui::SetNextWindowSize(ImVec2(m_xMin, m_yMin), ImGuiCond_FirstUseEver);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(_Widget_Viewport::g_window_padding, _Widget_Viewport::g_window_padding));
-	ImGui::Begin(m_title.c_str(), &m_isVisible, m_window_flags);
-
-	return true;
+    _Widget_Viewport::g_renderer    = m_context->GetSubsystem<Renderer>().get();
+    _Widget_Viewport::g_world       = m_context->GetSubsystem<World>().get();
 }
 
 void Widget_Viewport::Tick(const float delta_time)
@@ -68,12 +58,6 @@ void Widget_Viewport::Tick(const float delta_time)
 	if (!_Widget_Viewport::g_renderer)
 		return;
 	
-	ShowFrame(delta_time);
-	ImGui::PopStyleVar();
-}
-
-void Widget_Viewport::ShowFrame(const float delta_time)
-{
 	// Get current frame window resolution
 	auto width			= static_cast<unsigned int>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
 	auto height			= static_cast<unsigned int>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);

@@ -154,19 +154,13 @@ void Editor::Tick()
 
 void Editor::Widgets_Create()
 {
-	m_widgets.emplace_back(make_unique<Widget_ProgressDialog>(m_context));
-	m_widgets.emplace_back(make_unique<Widget_Assets>(m_context));
-	m_widgets.emplace_back(make_unique<Widget_Viewport>(m_context));
+    m_widgets.emplace_back(make_unique<Widget_MenuBar>(m_context)); _Editor::widget_menu_bar = m_widgets.back().get();
+    m_widgets.emplace_back(make_unique<Widget_Toolbar>(m_context)); _Editor::widget_toolbar = m_widgets.back().get();
+    m_widgets.emplace_back(make_unique<Widget_Viewport>(m_context));	
+	m_widgets.emplace_back(make_unique<Widget_Assets>(m_context));	
 	m_widgets.emplace_back(make_unique<Widget_Properties>(m_context));
-
-	m_widgets.emplace_back(make_unique<Widget_MenuBar>(m_context));
-	_Editor::widget_menu_bar = m_widgets.back().get();
-
-	m_widgets.emplace_back(make_unique<Widget_Toolbar>(m_context));
-	_Editor::widget_toolbar = m_widgets.back().get();
-
-	m_widgets.emplace_back(make_unique<Widget_World>(m_context));
-	_Editor::widget_world = m_widgets.back().get();
+	m_widgets.emplace_back(make_unique<Widget_World>(m_context)); _Editor::widget_world = m_widgets.back().get();
+    m_widgets.emplace_back(make_unique<Widget_ProgressDialog>(m_context));
 }
 
 void Editor::Widgets_Tick()
@@ -199,7 +193,9 @@ void Editor::DockSpace_Begin()
 		ImGuiWindowFlags_NoNavFocus;
 
 	// Size, Pos
-	const auto offset_y = _Editor::widget_menu_bar->GetHeight() + _Editor::widget_toolbar->GetHeight();
+	float offset_y = 0;
+    offset_y += _Editor::widget_menu_bar ? _Editor::widget_menu_bar->GetHeight() : 0;
+    offset_y += _Editor::widget_toolbar ? _Editor::widget_toolbar->GetHeight() : 0;
 	const auto viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
 	ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
