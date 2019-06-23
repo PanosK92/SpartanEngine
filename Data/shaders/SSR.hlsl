@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const int g_steps 					= 16;
-static const int g_binarySearchSteps 		= 16;
+static const int g_binarySearchSteps 		= 8;
 static const float g_binarySearchThreshold 	= 0.01f;
 
 float2 SSR_BinarySearch(float3 ray_dir, inout float3 ray_pos, Texture2D tex_depth, SamplerState sampler_point_clamp)

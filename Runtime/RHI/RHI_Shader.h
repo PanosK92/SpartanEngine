@@ -92,15 +92,13 @@ namespace Spartan
 		void Compile(const Shader_Stage type, const std::string& shader)
 		{
 			Compile<RHI_Vertex_Undefined>(type, shader);
-            m_shader_stage = type;
 		}
 
 		template<typename T>
 		void CompileAsync(Context* context, const Shader_Stage type, const std::string& shader);
 		void CompileAsync(Context* context, const Shader_Stage type, const std::string& shader)
 		{
-			CompileAsync<RHI_Vertex_Undefined>(context, type, shader);
-            m_shader_stage = type;
+			CompileAsync<RHI_Vertex_Undefined>(context, type, shader); 
 		}
 	
 		// Properties

@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
+//= INCLUDES ===========
 #include "Widget.h"
-#include <map>
-//=================
+#include <unordered_map>
+//======================
 
 namespace Spartan { class RHI_Shader; class Renderer; }
 
@@ -39,5 +39,5 @@ private:
 
     Spartan::RHI_Shader* m_shader = nullptr;   
     Spartan::Renderer* m_renderer = nullptr;
-    std::map<std::string, std::string> m_shader_files;
+    std::unordered_map<std::string, std::string> m_shader_files;
 };
