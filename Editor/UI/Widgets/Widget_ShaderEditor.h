@@ -23,7 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======
 #include "Widget.h"
+#include <map>
 //=================
+
+namespace Spartan { class RHI_Shader; class Renderer; }
 
 class Widget_ShaderEditor : public Widget
 {
@@ -32,4 +35,9 @@ public:
     void Tick(float delta_time) override;
 
 private:
+    void GetAllShadersFiles(const std::string& file_path);
+
+    Spartan::RHI_Shader* m_shader = nullptr;   
+    Spartan::Renderer* m_renderer = nullptr;
+    std::map<std::string, std::string> m_shader_files;
 };

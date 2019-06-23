@@ -722,45 +722,54 @@ namespace Spartan
 		return result;
 	}
 
-	string FileSystem::ResolveIncludeDirectives(const string& source, const string& directory)
-	{
-		string directive_exp = "#include \"";
+    vector<string> FileSystem::GetIncludedFiles(const std::string& file_path)
+    {
+        // Read the file
+        ifstream in(file_path);
+        stringstream buffer;
+        buffer << in.rdbuf();
+
+        string source           = buffer.str();
+        string directory        = GetDirectoryFromFilePath(file_path);
+        string directive_exp    = "#include \"";
+        vector<string> file_paths;
 
 		// Early exit if there is no include directive
 		if (source.find(directive_exp) == string::npos)
-			return source;
-
-		auto load_include_directive = [&directive_exp, &directory](const std::string& include_directive)
-		{
-			string file_name = GetStringBetweenExpressions(include_directive, directive_exp, "\"");
-			ifstream t(directory + file_name);
-			return string((istreambuf_iterator<char>(t)), istreambuf_iterator<char>());
-		};
+			return file_paths;
 
 		// Scan for include directives
-		vector<string> include_directives;
-		istringstream stream(source); string line;
-		while (std::getline(stream, line))
+		istringstream stream(source);
+        string include_directive;
+		while (std::getline(stream, include_directive))
 		{
-			if (line.find(directive_exp) != string::npos)
-				include_directives.emplace_back(line);
+			if (include_directive.find(directive_exp) != string::npos)
+            {
+                // Construct file path and save it
+                string file_name = GetStringBetweenExpressions(include_directive, directive_exp, "\"");
+				file_paths.emplace_back(directory + file_name);
+            }
 		}
 
-		// Replace include directives with loaded file sources
-		string result = source;
-		for (const auto& include_directive : include_directives)
-		{
-			auto source = load_include_directive(include_directive);
-			result = regex_replace(result, regex(include_directive), source, regex_constants::format_first_only);
-		}
+		// If any file path contains more file paths inside, start resolving them recursively
+        auto file_paths_copy = file_paths; // copy the file paths to avoid modification while iterating
+        for (const auto& _file_path : file_paths_copy)
+        {
+            // Read the file
+            ifstream _in(_file_path);
+            stringstream _buffer;
+            _buffer << _in.rdbuf();
 
-		// If there are still more include directives, resolve them too
-		if (source.find(directive_exp) != string::npos)
-		{
-			result = ResolveIncludeDirectives(result, directory);
-		}
+            // Check for include directive
+            string source = _buffer.str();
+		    if (source.find(directive_exp) != string::npos)
+		    {
+		    	auto new_includes = GetIncludedFiles(_file_path);
+                file_paths.insert(file_paths.end(), new_includes.begin(), new_includes.end());
+		    }
+        }
 	
 		// At this point, everything should be resolved
-		return result;
+		return file_paths;
 	}
 }
