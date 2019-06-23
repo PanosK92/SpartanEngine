@@ -43,6 +43,8 @@ namespace Spartan
 	template <typename T>
 	void RHI_Shader::Compile(const Shader_Stage type, const string& shader)
 	{
+        m_shader_stage = type;
+
 		// Deduce name and file path
 		if (!FileSystem::IsDirectory(shader))
 		{
