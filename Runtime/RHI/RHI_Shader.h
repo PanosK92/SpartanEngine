@@ -117,6 +117,7 @@ namespace Spartan
 		const auto& GetName() const													{ return m_name; }
 		void SetName(const std::string& name)										{ m_name = name; }
 		void AddDefine(const std::string& define, const std::string& value = "1")	{ m_defines[define] = value; }
+        auto& GetDefines() const                                                    { return m_defines; }
         const auto& GetFilePath() const                                             { return m_file_path; }
         auto GetShaderStage() const                                                 { return m_shader_stage; }
 

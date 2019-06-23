@@ -111,7 +111,7 @@ namespace Spartan
 		static std::string ConvertToUppercase(const std::string& lower);		
 		static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
 		static std::wstring StringToWstring(const std::string& str);
-		static std::string ResolveIncludeDirectives(const std::string& source, const std::string& directory);
+		static std::vector<std::string> GetIncludedFiles(const std::string& file_path);
 		//==============================================================================================================================================
 
 		//= SUPPORTED ASSET FILE FORMATS ===============================================================

@@ -38,6 +38,12 @@ public:
 
 	bool Begin()
 	{
+        // Callback
+        if (m_callback_begin_visibility)
+        {
+            m_callback_begin_visibility();
+        }
+
 		if (!m_is_window || !m_is_visible)
 			return false;
 
@@ -45,9 +51,9 @@ public:
         m_var_pushes = 0;
 
         // Callback
-        if (m_begin_pre_callback)
+        if (m_callback_begin_pre)
         {
-            m_begin_pre_callback();
+            m_callback_begin_pre();
         }
 
         // Position
@@ -86,9 +92,9 @@ public:
 		ImGui::Begin(m_title.c_str(), &m_is_visible, m_flags);
 		m_window_begun = true;
 
-        if (m_begin_post_callback)
+        if (m_callback_begin_post)
         {
-            m_begin_post_callback();
+            m_callback_begin_post();
         }
 
 		return true;
@@ -123,17 +129,18 @@ public:
 	const auto& GetTitle()	           { return m_title; }
 
 protected:
-	bool m_is_visible	                        = true;
-	bool m_is_window                            = true;	
-	int m_flags	                                = ImGuiWindowFlags_NoCollapse;
-	float m_height		                        = 0;
-    float m_alpha                               = -1.0f;
-    Spartan::Math::Vector2 m_position           = Spartan::Math::Vector2(-1.0f);
-    Spartan::Math::Vector2 m_size               = Spartan::Math::Vector2(-1.0f);
-    Spartan::Math::Vector2 m_size_max           = Spartan::Math::Vector2(FLT_MAX, FLT_MAX);
-    Spartan::Math::Vector2 m_padding            = Spartan::Math::Vector2(-1.0f);
-    std::function<void()> m_begin_pre_callback  = nullptr;
-    std::function<void()> m_begin_post_callback = nullptr;
+	bool m_is_visible	                                = true;
+	bool m_is_window                                    = true;	
+	int m_flags	                                        = ImGuiWindowFlags_NoCollapse;
+	float m_height		                                = 0;
+    float m_alpha                                       = -1.0f;
+    Spartan::Math::Vector2 m_position                   = Spartan::Math::Vector2(-1.0f);
+    Spartan::Math::Vector2 m_size                       = Spartan::Math::Vector2(-1.0f);
+    Spartan::Math::Vector2 m_size_max                   = Spartan::Math::Vector2(FLT_MAX, FLT_MAX);
+    Spartan::Math::Vector2 m_padding                    = Spartan::Math::Vector2(-1.0f);
+    std::function<void()> m_callback_begin_visibility   = nullptr;
+    std::function<void()> m_callback_begin_pre          = nullptr;
+    std::function<void()> m_callback_begin_post         = nullptr;
 
 	Spartan::Context* m_context = nullptr;
 	std::string m_title;

@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <sstream>
 #include "../../ImGui/Source/imgui_stdlib.h"
+#include "FileSystem/FileSystem.h"
 //==========================================
 
 //= NAMESPACES =========
@@ -39,55 +40,94 @@ Widget_ShaderEditor::Widget_ShaderEditor(Context* context) : Widget(context)
     m_title         = "Shader Editor";
     m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
     m_is_visible	= false;
+
+    m_renderer = m_context->GetSubsystem<Renderer>().get();
 }
 
 void Widget_ShaderEditor::Tick(float delta_time)
 {
-    Renderer* renderer = m_context->GetSubsystem<Renderer>().get();
-    auto& shaders = renderer->GetShaders();
-    static RHI_Shader* shader_selected;
-    static string source;
+    auto& shaders = m_renderer->GetShaders();
 
-    // Shader list
+    // Left side - Shader list
+    bool shader_dirty = false;
     ImGui::BeginGroup();
     {
         for (const auto& shader_it : shaders)
         {
-            if (ImGui::Button(shader_it.second->GetName().c_str()))
+            // Build name
+            string name = shader_it.second->GetName();
+            for (const auto& define : shader_it.second->GetDefines())
             {
-                shader_selected = shader_it.second.get();
+                name += "[" + define.first +"]";
+            }
+
+            if (ImGui::Button(name.c_str()))
+            {
+                m_shader        = shader_it.second.get();
+                shader_dirty    = true;
             }
         }
     }
     ImGui::EndGroup();
 
-    // Shader text
+    // Right side - Shader source
     ImGui::SameLine();
     ImGui::BeginGroup();
-    {
-        if (shader_selected)
+    {  
+        if (shader_dirty)
         {
-            ifstream in(shader_selected->GetFilePath());
-            stringstream buffer;
-            buffer << in.rdbuf();
-            source = buffer.str();
+           GetAllShadersFiles(m_shader->GetFilePath());
         }
 
-        ImGui::InputTextMultiline("##shader_source", &source, ImVec2(800, ImGui::GetTextLineHeight() * 50), ImGuiInputTextFlags_None);
-
-        if (ImGui::Button("Compile") && shader_selected)
+        // Shader source
+        if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable))
         {
-            ofstream out(shader_selected->GetFilePath());
-            out << source;
-            out.flush();
-            out.close();
+            for (auto& shader : m_shader_files)
+            {
+                if (ImGui::BeginTabItem(FileSystem::GetFileNameFromFilePath(shader.first).c_str()))
+                {
+                    ImGui::InputTextMultiline("##shader_source", &shader.second, ImVec2(800, ImGui::GetTextLineHeight() * 50), ImGuiInputTextFlags_AllowTabInput);
+                    ImGui::EndTabItem();
+                }
+            }
+            ImGui::EndTabBar();
+        }
 
-            shader_selected->CompileAsync(
+        if (ImGui::Button("Compile"))
+        {
+            // Save all files
+            for (auto& shader : m_shader_files)
+            {
+                ofstream out(shader.first);
+                out << shader.second;
+                out.flush();
+                out.close();
+            }
+
+            // Start async compilations
+            m_shader->CompileAsync(
                 m_context,
-                shader_selected->GetShaderStage(),
-                shader_selected->GetFilePath()
+                m_shader->GetShaderStage(),
+                m_shader->GetFilePath()
             );
         }
     }
     ImGui::EndGroup();
+}
+
+void Widget_ShaderEditor::GetAllShadersFiles(const string& file_path)
+{
+    vector<string> include_files = { file_path };
+    auto new_includes = FileSystem::GetIncludedFiles(file_path);
+    include_files.insert(include_files.end(), new_includes.begin(), new_includes.end());
+
+    // Update shader files
+    m_shader_files.clear();
+    for (const auto& file : include_files)
+    {
+        ifstream in(file);
+        stringstream buffer;
+        buffer << in.rdbuf();
+        m_shader_files[file] = buffer.str();
+    }
 }
