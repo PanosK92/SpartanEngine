@@ -62,6 +62,7 @@ Widget_RenderOptions::Widget_RenderOptions(Context* context) : Widget(context)
     m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
     m_is_visible	= false;
     m_renderer      = context->GetSubsystem<Renderer>().get();
+    m_alpha         = 1.0f;
 }
 
 void Widget_RenderOptions::Tick(float delta_time)
@@ -74,15 +75,15 @@ void Widget_RenderOptions::Tick(float delta_time)
         static vector<char*> types = { "Off", "ACES", "Reinhard", "Uncharted 2" };
         const char* type_char_ptr = types[static_cast<unsigned int>(m_renderer->m_tonemapping)];
 
-        auto do_bloom = m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
-        auto do_fxaa = m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
-        auto do_ssao = m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
-        auto do_ssr = m_renderer->Flags_IsSet(Render_PostProcess_SSR);
-        auto do_taa = m_renderer->Flags_IsSet(Render_PostProcess_TAA);
-        auto do_motion_blur = m_renderer->Flags_IsSet(Render_PostProcess_MotionBlur);
-        auto do_sharperning = m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
-        auto do_chromatic_aberration = m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
-        auto do_dithering = m_renderer->Flags_IsSet(Render_PostProcess_Dithering);
+        auto do_bloom                   = m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
+        auto do_fxaa                    = m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
+        auto do_ssao                    = m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
+        auto do_ssr                     = m_renderer->Flags_IsSet(Render_PostProcess_SSR);
+        auto do_taa                     = m_renderer->Flags_IsSet(Render_PostProcess_TAA);
+        auto do_motion_blur             = m_renderer->Flags_IsSet(Render_PostProcess_MotionBlur);
+        auto do_sharperning             = m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
+        auto do_chromatic_aberration    = m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
+        auto do_dithering               = m_renderer->Flags_IsSet(Render_PostProcess_Dithering);
 
         // Display
         {
@@ -198,12 +199,12 @@ void Widget_RenderOptions::Tick(float delta_time)
         // Performance metrics
         ImGui::Checkbox("Performance Metrics", &_RenderOptions::g_gizmo_performance_metrics);
 
-        _RenderOptions::g_gizmo_transform ? m_renderer->Flags_Enable(Render_Gizmo_Transform) : m_renderer->Flags_Disable(Render_Gizmo_Transform);
-        _RenderOptions::g_gizmo_physics ? m_renderer->Flags_Enable(Render_Gizmo_Physics) : m_renderer->Flags_Disable(Render_Gizmo_Physics);
-        _RenderOptions::g_gizmo_aabb ? m_renderer->Flags_Enable(Render_Gizmo_AABB) : m_renderer->Flags_Disable(Render_Gizmo_AABB);
-        _RenderOptions::g_gizmo_light ? m_renderer->Flags_Enable(Render_Gizmo_Lights) : m_renderer->Flags_Disable(Render_Gizmo_Lights);
-        _RenderOptions::g_gizmo_picking_ray ? m_renderer->Flags_Enable(Render_Gizmo_PickingRay) : m_renderer->Flags_Disable(Render_Gizmo_PickingRay);
-        _RenderOptions::g_gizmo_grid ? m_renderer->Flags_Enable(Render_Gizmo_Grid) : m_renderer->Flags_Disable(Render_Gizmo_Grid);
+        _RenderOptions::g_gizmo_transform           ? m_renderer->Flags_Enable(Render_Gizmo_Transform)          : m_renderer->Flags_Disable(Render_Gizmo_Transform);
+        _RenderOptions::g_gizmo_physics             ? m_renderer->Flags_Enable(Render_Gizmo_Physics)            : m_renderer->Flags_Disable(Render_Gizmo_Physics);
+        _RenderOptions::g_gizmo_aabb                ? m_renderer->Flags_Enable(Render_Gizmo_AABB)               : m_renderer->Flags_Disable(Render_Gizmo_AABB);
+        _RenderOptions::g_gizmo_light               ? m_renderer->Flags_Enable(Render_Gizmo_Lights)             : m_renderer->Flags_Disable(Render_Gizmo_Lights);
+        _RenderOptions::g_gizmo_picking_ray         ? m_renderer->Flags_Enable(Render_Gizmo_PickingRay)         : m_renderer->Flags_Disable(Render_Gizmo_PickingRay);
+        _RenderOptions::g_gizmo_grid                ? m_renderer->Flags_Enable(Render_Gizmo_Grid)               : m_renderer->Flags_Disable(Render_Gizmo_Grid);
         _RenderOptions::g_gizmo_performance_metrics ? m_renderer->Flags_Enable(Render_Gizmo_PerformanceMetrics) : m_renderer->Flags_Disable(Render_Gizmo_PerformanceMetrics);
     }
 }

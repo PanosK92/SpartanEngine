@@ -308,9 +308,9 @@ namespace Spartan
         {
             aspect_mask |= (bind_flags & RHI_Texture_Sampled)       ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
             aspect_mask |= (bind_flags & RHI_Texture_RenderTarget)  ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
-            aspect_mask |= (bind_flags & RHI_Texture_DepthStencil)  ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT : 0;      
+            aspect_mask |= (bind_flags & RHI_Texture_DepthStencil)  ? VK_IMAGE_ASPECT_DEPTH_BIT : 0; //| VK_IMAGE_ASPECT_STENCIL_BIT : 0;      
         }
-
+        
         VkImageViewCreateInfo create_info           = {};
         create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         create_info.image                           = *image;
@@ -338,21 +338,18 @@ namespace Spartan
         VkFormat image_format       = vulkan_format[m_format];
         VkImageTiling image_tiling  = VK_IMAGE_TILING_LINEAR; // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
         {
-            VkFormatProperties properties;
-            vkGetPhysicalDeviceFormatProperties(m_rhi_device->GetContext()->device_physical, image_format, &properties);
-
-            if ((m_bind_flags & RHI_Texture_RenderTarget) && !(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))
+            if (m_bind_flags & RHI_Texture_RenderTarget)
             {
+                LOG_WARNING("Format is not supported as a render target, falling back to supported surface format");
                 image_format = m_rhi_device->GetContext()->surface_format.format;
                 image_tiling = VK_IMAGE_TILING_OPTIMAL;
             }
 
-            if ((m_bind_flags & RHI_Texture_DepthStencil) && !(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
+            if (m_bind_flags & RHI_Texture_DepthStencil)
             {
                 LOG_WARNING("Format is not supported as depth-stencil, falling back to supported surface format");
-                image_format = m_rhi_device->GetContext()->surface_format.format;
+                image_format = VK_FORMAT_D32_SFLOAT; // fix that shit
                 image_tiling = VK_IMAGE_TILING_OPTIMAL;
-                return false;
             }
         }
 

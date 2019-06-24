@@ -103,15 +103,15 @@ namespace Spartan
                 return { prefered_format, color_space };
             }
 
-            for (const auto& availableFormat : available_formats)
+            for (const auto& available_format : available_formats)
             {
-                if (availableFormat.format == prefered_format && availableFormat.colorSpace == color_space)
+                if (available_format.format == prefered_format && available_format.colorSpace == color_space)
                 {
-                    return availableFormat;
+                    return available_format;
                 }
             }
 
-            return available_formats[0];
+            return available_formats.front();
         }
 
         inline bool create
