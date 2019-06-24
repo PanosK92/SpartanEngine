@@ -22,13 +22,14 @@ extern "C" {
 #endif
 
 typedef enum {
-  shaderc_target_env_vulkan,  // create SPIR-V under Vulkan semantics
-  shaderc_target_env_opengl,  // create SPIR-V under OpenGL semantics
+  shaderc_target_env_vulkan,  // SPIR-V under Vulkan semantics
+  shaderc_target_env_opengl,  // SPIR-V under OpenGL semantics
   // NOTE: SPIR-V code generation is not supported for shaders under OpenGL
   // compatibility profile.
-  shaderc_target_env_opengl_compat,  // create SPIR-V under OpenGL semantics,
+  shaderc_target_env_opengl_compat,  // SPIR-V under OpenGL semantics,
                                      // including compatibility profile
                                      // functions
+  shaderc_target_env_webgpu,         // SPIR-V under WebGPU semantics
   shaderc_target_env_default = shaderc_target_env_vulkan
 } shaderc_target_env;
 
@@ -42,6 +43,9 @@ typedef enum {
   // See glslang/Standalone/Standalone.cpp
   // TODO(dneto): Glslang doesn't accept a OpenGL client version of 460.
   shaderc_env_version_opengl_4_5 = 450,
+  // Currently WebGPU doesn't have versioning, since it isn't finalized. This
+  // will have to be updated once the spec is finished.
+  shaderc_env_version_webgpu,
 } shaderc_env_version;
 
 #ifdef __cplusplus

@@ -179,7 +179,7 @@ namespace Spartan
 		//=================================================================
 
 		//= Graphics Settings ====================================================================================================================================================
-		ToneMapping_Type m_tonemapping	= ToneMapping_ACES;
+		ToneMapping_Type m_tonemapping	= ToneMapping_Uncharted2;
 		float m_exposure				= 1.5f;
 		float m_gamma					= 2.2f;
 		// FXAA

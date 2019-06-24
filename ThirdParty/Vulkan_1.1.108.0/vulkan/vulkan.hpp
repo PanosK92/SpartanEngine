@@ -56,7 +56,7 @@
 # define VULKAN_HPP_ASSERT   assert
 #endif
 
-static_assert( VK_HEADER_VERSION ==  106 , "Wrong VK_HEADER_VERSION!" );
+static_assert( VK_HEADER_VERSION ==  108 , "Wrong VK_HEADER_VERSION!" );
 
 // 32-bit vulkan is not typesafe for handles, so don't allow copy constructors on this platform by default.
 // To enable this feature on 32-bit platforms please define VULKAN_HPP_TYPESAFE_CONVERSION
@@ -509,6 +509,9 @@ namespace VULKAN_HPP_NAMESPACE
   private:
     using Deleter = typename UniqueHandleTraits<Type,Dispatch>::deleter;
   public:
+
+    using element_type = Type;
+
     explicit UniqueHandle( Type const& value = Type(), Deleter const& deleter = Deleter() )
       : Deleter( deleter)
       , m_value( value )
@@ -1947,6 +1950,11 @@ namespace VULKAN_HPP_NAMESPACE
       return ::vkCreateDisplayPlaneSurfaceKHR( instance, pCreateInfo, pAllocator, pSurface );
     }
 
+    VkResult vkCreateHeadlessSurfaceEXT( VkInstance instance, const VkHeadlessSurfaceCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface ) const
+    {
+      return ::vkCreateHeadlessSurfaceEXT( instance, pCreateInfo, pAllocator, pSurface );
+    }
+
 #ifdef VK_USE_PLATFORM_IOS_MVK
     VkResult vkCreateIOSSurfaceMVK( VkInstance instance, const VkIOSSurfaceCreateInfoMVK* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface ) const
     {
@@ -2302,6 +2310,11 @@ namespace VULKAN_HPP_NAMESPACE
     void vkGetPhysicalDeviceSparseImageFormatProperties2KHR( VkPhysicalDevice physicalDevice, const VkPhysicalDeviceSparseImageFormatInfo2* pFormatInfo, uint32_t* pPropertyCount, VkSparseImageFormatProperties2* pProperties ) const
     {
       return ::vkGetPhysicalDeviceSparseImageFormatProperties2KHR( physicalDevice, pFormatInfo, pPropertyCount, pProperties );
+    }
+
+    VkResult vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV( VkPhysicalDevice physicalDevice, uint32_t* pCombinationCount, VkFramebufferMixedSamplesCombinationNV* pCombinations ) const
+    {
+      return ::vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV( physicalDevice, pCombinationCount, pCombinations );
     }
 
     VkResult vkGetPhysicalDeviceSurfaceCapabilities2EXT( VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSurfaceCapabilities2EXT* pSurfaceCapabilities ) const
@@ -2854,7 +2867,7 @@ namespace VULKAN_HPP_NAMESPACE
     eSrgbNonlinear = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
     eDisplayP3NonlinearEXT = VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT,
     eExtendedSrgbLinearEXT = VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT,
-    eDciP3LinearEXT = VK_COLOR_SPACE_DCI_P3_LINEAR_EXT,
+    eDisplayP3LinearEXT = VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT,
     eDciP3NonlinearEXT = VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT,
     eBt709LinearEXT = VK_COLOR_SPACE_BT709_LINEAR_EXT,
     eBt709NonlinearEXT = VK_COLOR_SPACE_BT709_NONLINEAR_EXT,
@@ -2867,7 +2880,8 @@ namespace VULKAN_HPP_NAMESPACE
     ePassThroughEXT = VK_COLOR_SPACE_PASS_THROUGH_EXT,
     eExtendedSrgbNonlinearEXT = VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT,
     eDisplayNativeAMD = VK_COLOR_SPACE_DISPLAY_NATIVE_AMD,
-    eVkColorspaceSrgbNonlinear = VK_COLORSPACE_SRGB_NONLINEAR_KHR
+    eVkColorspaceSrgbNonlinear = VK_COLORSPACE_SRGB_NONLINEAR_KHR,
+    eDciP3LinearEXT = VK_COLOR_SPACE_DCI_P3_LINEAR_EXT
   };
 
   VULKAN_HPP_INLINE std::string to_string( ColorSpaceKHR value )
@@ -2877,7 +2891,7 @@ namespace VULKAN_HPP_NAMESPACE
       case ColorSpaceKHR::eSrgbNonlinear : return "SrgbNonlinear";
       case ColorSpaceKHR::eDisplayP3NonlinearEXT : return "DisplayP3NonlinearEXT";
       case ColorSpaceKHR::eExtendedSrgbLinearEXT : return "ExtendedSrgbLinearEXT";
-      case ColorSpaceKHR::eDciP3LinearEXT : return "DciP3LinearEXT";
+      case ColorSpaceKHR::eDisplayP3LinearEXT : return "DisplayP3LinearEXT";
       case ColorSpaceKHR::eDciP3NonlinearEXT : return "DciP3NonlinearEXT";
       case ColorSpaceKHR::eBt709LinearEXT : return "Bt709LinearEXT";
       case ColorSpaceKHR::eBt709NonlinearEXT : return "Bt709NonlinearEXT";
@@ -3048,6 +3062,22 @@ namespace VULKAN_HPP_NAMESPACE
       case CoverageModulationModeNV::eRgb : return "Rgb";
       case CoverageModulationModeNV::eAlpha : return "Alpha";
       case CoverageModulationModeNV::eRgba : return "Rgba";
+      default: return "invalid";
+    }
+  }
+
+  enum class CoverageReductionModeNV
+  {
+    eMerge = VK_COVERAGE_REDUCTION_MODE_MERGE_NV,
+    eTruncate = VK_COVERAGE_REDUCTION_MODE_TRUNCATE_NV
+  };
+
+  VULKAN_HPP_INLINE std::string to_string( CoverageReductionModeNV value )
+  {
+    switch ( value )
+    {
+      case CoverageReductionModeNV::eMerge : return "Merge";
+      case CoverageReductionModeNV::eTruncate : return "Truncate";
       default: return "invalid";
     }
   }
@@ -5102,10 +5132,15 @@ namespace VULKAN_HPP_NAMESPACE
     ePhysicalDeviceCooperativeMatrixFeaturesNV = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV,
     eCooperativeMatrixPropertiesNV = VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV,
     ePhysicalDeviceCooperativeMatrixPropertiesNV = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV,
+    ePhysicalDeviceCoverageReductionModeFeaturesNV = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV,
+    ePipelineCoverageReductionStateCreateInfoNV = VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV,
+    eFramebufferMixedSamplesCombinationNV = VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV,
     ePhysicalDeviceYcbcrImageArraysFeaturesEXT = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT,
+    ePhysicalDeviceUniformBufferStandardLayoutFeaturesKHR = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR,
     eSurfaceFullScreenExclusiveInfoEXT = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT,
     eSurfaceCapabilitiesFullScreenExclusiveEXT = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT,
     eSurfaceFullScreenExclusiveWin32InfoEXT = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT,
+    eHeadlessSurfaceCreateInfoEXT = VK_STRUCTURE_TYPE_HEADLESS_SURFACE_CREATE_INFO_EXT,
     ePhysicalDeviceHostQueryResetFeaturesEXT = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT,
     ePhysicalDeviceVariablePointerFeatures = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES,
     ePhysicalDeviceShaderDrawParameterFeatures = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES,
@@ -5506,10 +5541,15 @@ namespace VULKAN_HPP_NAMESPACE
       case StructureType::ePhysicalDeviceCooperativeMatrixFeaturesNV : return "PhysicalDeviceCooperativeMatrixFeaturesNV";
       case StructureType::eCooperativeMatrixPropertiesNV : return "CooperativeMatrixPropertiesNV";
       case StructureType::ePhysicalDeviceCooperativeMatrixPropertiesNV : return "PhysicalDeviceCooperativeMatrixPropertiesNV";
+      case StructureType::ePhysicalDeviceCoverageReductionModeFeaturesNV : return "PhysicalDeviceCoverageReductionModeFeaturesNV";
+      case StructureType::ePipelineCoverageReductionStateCreateInfoNV : return "PipelineCoverageReductionStateCreateInfoNV";
+      case StructureType::eFramebufferMixedSamplesCombinationNV : return "FramebufferMixedSamplesCombinationNV";
       case StructureType::ePhysicalDeviceYcbcrImageArraysFeaturesEXT : return "PhysicalDeviceYcbcrImageArraysFeaturesEXT";
+      case StructureType::ePhysicalDeviceUniformBufferStandardLayoutFeaturesKHR : return "PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR";
       case StructureType::eSurfaceFullScreenExclusiveInfoEXT : return "SurfaceFullScreenExclusiveInfoEXT";
       case StructureType::eSurfaceCapabilitiesFullScreenExclusiveEXT : return "SurfaceCapabilitiesFullScreenExclusiveEXT";
       case StructureType::eSurfaceFullScreenExclusiveWin32InfoEXT : return "SurfaceFullScreenExclusiveWin32InfoEXT";
+      case StructureType::eHeadlessSurfaceCreateInfoEXT : return "HeadlessSurfaceCreateInfoEXT";
       case StructureType::ePhysicalDeviceHostQueryResetFeaturesEXT : return "PhysicalDeviceHostQueryResetFeaturesEXT";
       default: return "invalid";
     }
@@ -7920,6 +7960,21 @@ namespace VULKAN_HPP_NAMESPACE
     return "{ " + result.substr(0, result.size() - 3) + " }";
   }
 
+  enum class HeadlessSurfaceCreateFlagBitsEXT
+  {};
+
+  VULKAN_HPP_INLINE std::string to_string( HeadlessSurfaceCreateFlagBitsEXT )
+  {
+    return "(void)";
+  }
+
+  using HeadlessSurfaceCreateFlagsEXT = Flags<HeadlessSurfaceCreateFlagBitsEXT, VkHeadlessSurfaceCreateFlagsEXT>;
+
+  VULKAN_HPP_INLINE std::string to_string( HeadlessSurfaceCreateFlagsEXT  )
+  {
+    return "{}";
+  }
+
 #ifdef VK_USE_PLATFORM_IOS_MVK
   enum class IOSSurfaceCreateFlagBitsMVK
   {};
@@ -8646,6 +8701,21 @@ namespace VULKAN_HPP_NAMESPACE
   using PipelineCoverageModulationStateCreateFlagsNV = Flags<PipelineCoverageModulationStateCreateFlagBitsNV, VkPipelineCoverageModulationStateCreateFlagsNV>;
 
   VULKAN_HPP_INLINE std::string to_string( PipelineCoverageModulationStateCreateFlagsNV  )
+  {
+    return "{}";
+  }
+
+  enum class PipelineCoverageReductionStateCreateFlagBitsNV
+  {};
+
+  VULKAN_HPP_INLINE std::string to_string( PipelineCoverageReductionStateCreateFlagBitsNV )
+  {
+    return "(void)";
+  }
+
+  using PipelineCoverageReductionStateCreateFlagsNV = Flags<PipelineCoverageReductionStateCreateFlagBitsNV, VkPipelineCoverageReductionStateCreateFlagsNV>;
+
+  VULKAN_HPP_INLINE std::string to_string( PipelineCoverageReductionStateCreateFlagsNV  )
   {
     return "{}";
   }
@@ -10882,12 +10952,14 @@ namespace VULKAN_HPP_NAMESPACE
   struct FormatProperties2;
   using FormatProperties2KHR = FormatProperties2;
   struct FramebufferCreateInfo;
+  struct FramebufferMixedSamplesCombinationNV;
   struct GeometryAABBNV;
   struct GeometryDataNV;
   struct GeometryNV;
   struct GeometryTrianglesNV;
   struct GraphicsPipelineCreateInfo;
   struct HdrMetadataEXT;
+  struct HeadlessSurfaceCreateInfoEXT;
 #ifdef VK_USE_PLATFORM_IOS_MVK
   struct IOSSurfaceCreateInfoMVK;
 #endif /*VK_USE_PLATFORM_IOS_MVK*/
@@ -11006,6 +11078,7 @@ namespace VULKAN_HPP_NAMESPACE
   struct PhysicalDeviceCooperativeMatrixFeaturesNV;
   struct PhysicalDeviceCooperativeMatrixPropertiesNV;
   struct PhysicalDeviceCornerSampledImageFeaturesNV;
+  struct PhysicalDeviceCoverageReductionModeFeaturesNV;
   struct PhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV;
   struct PhysicalDeviceDepthClipEnableFeaturesEXT;
   struct PhysicalDeviceDepthStencilResolvePropertiesKHR;
@@ -11087,6 +11160,7 @@ namespace VULKAN_HPP_NAMESPACE
   struct PhysicalDeviceSurfaceInfo2KHR;
   struct PhysicalDeviceTransformFeedbackFeaturesEXT;
   struct PhysicalDeviceTransformFeedbackPropertiesEXT;
+  struct PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR;
   struct PhysicalDeviceVariablePointersFeatures;
   using PhysicalDeviceVariablePointersFeaturesKHR = PhysicalDeviceVariablePointersFeatures;
   using PhysicalDeviceVariablePointerFeaturesKHR = PhysicalDeviceVariablePointersFeatures;
@@ -11100,6 +11174,7 @@ namespace VULKAN_HPP_NAMESPACE
   struct PipelineColorBlendAttachmentState;
   struct PipelineColorBlendStateCreateInfo;
   struct PipelineCoverageModulationStateCreateInfoNV;
+  struct PipelineCoverageReductionStateCreateInfoNV;
   struct PipelineCoverageToColorStateCreateInfoNV;
   struct PipelineCreationFeedbackCreateInfoEXT;
   struct PipelineCreationFeedbackEXT;
@@ -16058,6 +16133,15 @@ namespace VULKAN_HPP_NAMESPACE
 #endif /*VULKAN_HPP_DISABLE_ENHANCED_MODE*/
 
     template<typename Dispatch = DispatchLoaderStatic>
+    Result getSupportedFramebufferMixedSamplesCombinationsNV( uint32_t* pCombinationCount, FramebufferMixedSamplesCombinationNV* pCombinations, Dispatch const &d = Dispatch() ) const;
+#ifndef VULKAN_HPP_DISABLE_ENHANCED_MODE
+    template<typename Allocator = std::allocator<FramebufferMixedSamplesCombinationNV>, typename Dispatch = DispatchLoaderStatic>
+    typename ResultValueType<std::vector<FramebufferMixedSamplesCombinationNV,Allocator>>::type getSupportedFramebufferMixedSamplesCombinationsNV(Dispatch const &d = Dispatch() ) const;
+    template<typename Allocator = std::allocator<FramebufferMixedSamplesCombinationNV>, typename Dispatch = DispatchLoaderStatic>
+    typename ResultValueType<std::vector<FramebufferMixedSamplesCombinationNV,Allocator>>::type getSupportedFramebufferMixedSamplesCombinationsNV(Allocator const& vectorAllocator, Dispatch const &d ) const;
+#endif /*VULKAN_HPP_DISABLE_ENHANCED_MODE*/
+
+    template<typename Dispatch = DispatchLoaderStatic>
     Result getSurfaceCapabilities2EXT( SurfaceKHR surface, SurfaceCapabilities2EXT* pSurfaceCapabilities, Dispatch const &d = Dispatch() ) const;
 #ifndef VULKAN_HPP_DISABLE_ENHANCED_MODE
     template<typename Dispatch = DispatchLoaderStatic>
@@ -16291,6 +16375,17 @@ namespace VULKAN_HPP_NAMESPACE
 #ifndef VULKAN_HPP_NO_SMART_HANDLE
     template<typename Dispatch = DispatchLoaderStatic>
     typename ResultValueType<UniqueHandle<SurfaceKHR,Dispatch>>::type createDisplayPlaneSurfaceKHRUnique( const DisplaySurfaceCreateInfoKHR & createInfo, Optional<const AllocationCallbacks> allocator = nullptr, Dispatch const &d = Dispatch() ) const;
+#endif /*VULKAN_HPP_NO_SMART_HANDLE*/
+#endif /*VULKAN_HPP_DISABLE_ENHANCED_MODE*/
+
+    template<typename Dispatch = DispatchLoaderStatic>
+    Result createHeadlessSurfaceEXT( const HeadlessSurfaceCreateInfoEXT* pCreateInfo, const AllocationCallbacks* pAllocator, SurfaceKHR* pSurface, Dispatch const &d = Dispatch() ) const;
+#ifndef VULKAN_HPP_DISABLE_ENHANCED_MODE
+    template<typename Dispatch = DispatchLoaderStatic>
+    ResultValueType<SurfaceKHR>::type createHeadlessSurfaceEXT( const HeadlessSurfaceCreateInfoEXT & createInfo, Optional<const AllocationCallbacks> allocator = nullptr, Dispatch const &d = Dispatch() ) const;
+#ifndef VULKAN_HPP_NO_SMART_HANDLE
+    template<typename Dispatch = DispatchLoaderStatic>
+    typename ResultValueType<UniqueHandle<SurfaceKHR,Dispatch>>::type createHeadlessSurfaceEXTUnique( const HeadlessSurfaceCreateInfoEXT & createInfo, Optional<const AllocationCallbacks> allocator = nullptr, Dispatch const &d = Dispatch() ) const;
 #endif /*VULKAN_HPP_NO_SMART_HANDLE*/
 #endif /*VULKAN_HPP_DISABLE_ENHANCED_MODE*/
 
@@ -29303,6 +29398,45 @@ namespace VULKAN_HPP_NAMESPACE
   };
   static_assert( sizeof( FramebufferCreateInfo ) == sizeof( VkFramebufferCreateInfo ), "struct and wrapper have different size!" );
 
+  struct FramebufferMixedSamplesCombinationNV
+  {
+    operator VkFramebufferMixedSamplesCombinationNV const&() const
+    {
+      return *reinterpret_cast<const VkFramebufferMixedSamplesCombinationNV*>( this );
+    }
+
+    operator VkFramebufferMixedSamplesCombinationNV &()
+    {
+      return *reinterpret_cast<VkFramebufferMixedSamplesCombinationNV*>( this );
+    }
+
+    bool operator==( FramebufferMixedSamplesCombinationNV const& rhs ) const
+    {
+      return ( sType == rhs.sType )
+          && ( pNext == rhs.pNext )
+          && ( coverageReductionMode == rhs.coverageReductionMode )
+          && ( rasterizationSamples == rhs.rasterizationSamples )
+          && ( depthStencilSamples == rhs.depthStencilSamples )
+          && ( colorSamples == rhs.colorSamples );
+    }
+
+    bool operator!=( FramebufferMixedSamplesCombinationNV const& rhs ) const
+    {
+      return !operator==( rhs );
+    }
+
+  private:
+    StructureType sType = StructureType::eFramebufferMixedSamplesCombinationNV;
+
+  public:
+    void* pNext = nullptr;
+    CoverageReductionModeNV coverageReductionMode;
+    SampleCountFlagBits rasterizationSamples;
+    SampleCountFlags depthStencilSamples;
+    SampleCountFlags colorSamples;
+  };
+  static_assert( sizeof( FramebufferMixedSamplesCombinationNV ) == sizeof( VkFramebufferMixedSamplesCombinationNV ), "struct and wrapper have different size!" );
+
   struct VertexInputBindingDescription
   {
     VertexInputBindingDescription( uint32_t binding_ = 0,
@@ -31145,6 +31279,66 @@ namespace VULKAN_HPP_NAMESPACE
     float maxFrameAverageLightLevel;
   };
   static_assert( sizeof( HdrMetadataEXT ) == sizeof( VkHdrMetadataEXT ), "struct and wrapper have different size!" );
+
+  struct HeadlessSurfaceCreateInfoEXT
+  {
+    HeadlessSurfaceCreateInfoEXT( HeadlessSurfaceCreateFlagsEXT flags_ = HeadlessSurfaceCreateFlagsEXT() )
+      : flags( flags_ )
+    {}
+
+    HeadlessSurfaceCreateInfoEXT( VkHeadlessSurfaceCreateInfoEXT const & rhs )
+    {
+      memcpy( this, &rhs, sizeof( HeadlessSurfaceCreateInfoEXT ) );
+    }
+
+    HeadlessSurfaceCreateInfoEXT& operator=( VkHeadlessSurfaceCreateInfoEXT const & rhs )
+    {
+      memcpy( this, &rhs, sizeof( HeadlessSurfaceCreateInfoEXT ) );
+      return *this;
+    }
+
+    HeadlessSurfaceCreateInfoEXT & setPNext( const void* pNext_ )
+    {
+      pNext = pNext_;
+      return *this;
+    }
+
+    HeadlessSurfaceCreateInfoEXT & setFlags( HeadlessSurfaceCreateFlagsEXT flags_ )
+    {
+      flags = flags_;
+      return *this;
+    }
+
+    operator VkHeadlessSurfaceCreateInfoEXT const&() const
+    {
+      return *reinterpret_cast<const VkHeadlessSurfaceCreateInfoEXT*>( this );
+    }
+
+    operator VkHeadlessSurfaceCreateInfoEXT &()
+    {
+      return *reinterpret_cast<VkHeadlessSurfaceCreateInfoEXT*>( this );
+    }
+
+    bool operator==( HeadlessSurfaceCreateInfoEXT const& rhs ) const
+    {
+      return ( sType == rhs.sType )
+          && ( pNext == rhs.pNext )
+          && ( flags == rhs.flags );
+    }
+
+    bool operator!=( HeadlessSurfaceCreateInfoEXT const& rhs ) const
+    {
+      return !operator==( rhs );
+    }
+
+  private:
+    StructureType sType = StructureType::eHeadlessSurfaceCreateInfoEXT;
+
+  public:
+    const void* pNext = nullptr;
+    HeadlessSurfaceCreateFlagsEXT flags;
+  };
+  static_assert( sizeof( HeadlessSurfaceCreateInfoEXT ) == sizeof( VkHeadlessSurfaceCreateInfoEXT ), "struct and wrapper have different size!" );
 
 #ifdef VK_USE_PLATFORM_IOS_MVK
   struct IOSSurfaceCreateInfoMVK
@@ -36443,6 +36637,66 @@ namespace VULKAN_HPP_NAMESPACE
   };
   static_assert( sizeof( PhysicalDeviceCornerSampledImageFeaturesNV ) == sizeof( VkPhysicalDeviceCornerSampledImageFeaturesNV ), "struct and wrapper have different size!" );
 
+  struct PhysicalDeviceCoverageReductionModeFeaturesNV
+  {
+    PhysicalDeviceCoverageReductionModeFeaturesNV( Bool32 coverageReductionMode_ = 0 )
+      : coverageReductionMode( coverageReductionMode_ )
+    {}
+
+    PhysicalDeviceCoverageReductionModeFeaturesNV( VkPhysicalDeviceCoverageReductionModeFeaturesNV const & rhs )
+    {
+      memcpy( this, &rhs, sizeof( PhysicalDeviceCoverageReductionModeFeaturesNV ) );
+    }
+
+    PhysicalDeviceCoverageReductionModeFeaturesNV& operator=( VkPhysicalDeviceCoverageReductionModeFeaturesNV const & rhs )
+    {
+      memcpy( this, &rhs, sizeof( PhysicalDeviceCoverageReductionModeFeaturesNV ) );
+      return *this;
+    }
+
+    PhysicalDeviceCoverageReductionModeFeaturesNV & setPNext( void* pNext_ )
+    {
+      pNext = pNext_;
+      return *this;
+    }
+
+    PhysicalDeviceCoverageReductionModeFeaturesNV & setCoverageReductionMode( Bool32 coverageReductionMode_ )
+    {
+      coverageReductionMode = coverageReductionMode_;
+      return *this;
+    }
+
+    operator VkPhysicalDeviceCoverageReductionModeFeaturesNV const&() const
+    {
+      return *reinterpret_cast<const VkPhysicalDeviceCoverageReductionModeFeaturesNV*>( this );
+    }
+
+    operator VkPhysicalDeviceCoverageReductionModeFeaturesNV &()
+    {
+      return *reinterpret_cast<VkPhysicalDeviceCoverageReductionModeFeaturesNV*>( this );
+    }
+
+    bool operator==( PhysicalDeviceCoverageReductionModeFeaturesNV const& rhs ) const
+    {
+      return ( sType == rhs.sType )
+          && ( pNext == rhs.pNext )
+          && ( coverageReductionMode == rhs.coverageReductionMode );
+    }
+
+    bool operator!=( PhysicalDeviceCoverageReductionModeFeaturesNV const& rhs ) const
+    {
+      return !operator==( rhs );
+    }
+
+  private:
+    StructureType sType = StructureType::ePhysicalDeviceCoverageReductionModeFeaturesNV;
+
+  public:
+    void* pNext = nullptr;
+    Bool32 coverageReductionMode;
+  };
+  static_assert( sizeof( PhysicalDeviceCoverageReductionModeFeaturesNV ) == sizeof( VkPhysicalDeviceCoverageReductionModeFeaturesNV ), "struct and wrapper have different size!" );
+
   struct PhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV
   {
     PhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV( Bool32 dedicatedAllocationImageAliasing_ = 0 )
@@ -40174,6 +40428,66 @@ namespace VULKAN_HPP_NAMESPACE
   };
   static_assert( sizeof( PhysicalDeviceTransformFeedbackPropertiesEXT ) == sizeof( VkPhysicalDeviceTransformFeedbackPropertiesEXT ), "struct and wrapper have different size!" );
 
+  struct PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR
+  {
+    PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR( Bool32 uniformBufferStandardLayout_ = 0 )
+      : uniformBufferStandardLayout( uniformBufferStandardLayout_ )
+    {}
+
+    PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR( VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR const & rhs )
+    {
+      memcpy( this, &rhs, sizeof( PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR ) );
+    }
+
+    PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR& operator=( VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR const & rhs )
+    {
+      memcpy( this, &rhs, sizeof( PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR ) );
+      return *this;
+    }
+
+    PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR & setPNext( void* pNext_ )
+    {
+      pNext = pNext_;
+      return *this;
+    }
+
+    PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR & setUniformBufferStandardLayout( Bool32 uniformBufferStandardLayout_ )
+    {
+      uniformBufferStandardLayout = uniformBufferStandardLayout_;
+      return *this;
+    }
+
+    operator VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR const&() const
+    {
+      return *reinterpret_cast<const VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*>( this );
+    }
+
+    operator VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR &()
+    {
+      return *reinterpret_cast<VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*>( this );
+    }
+
+    bool operator==( PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR const& rhs ) const
+    {
+      return ( sType == rhs.sType )
+          && ( pNext == rhs.pNext )
+          && ( uniformBufferStandardLayout == rhs.uniformBufferStandardLayout );
+    }
+
+    bool operator!=( PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR const& rhs ) const
+    {
+      return !operator==( rhs );
+    }
+
+  private:
+    StructureType sType = StructureType::ePhysicalDeviceUniformBufferStandardLayoutFeaturesKHR;
+
+  public:
+    void* pNext = nullptr;
+    Bool32 uniformBufferStandardLayout;
+  };
+  static_assert( sizeof( PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR ) == sizeof( VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR ), "struct and wrapper have different size!" );
+
   struct PhysicalDeviceVariablePointersFeatures
   {
     PhysicalDeviceVariablePointersFeatures( Bool32 variablePointersStorageBuffer_ = 0,
@@ -40746,6 +41060,76 @@ namespace VULKAN_HPP_NAMESPACE
     const float* pCoverageModulationTable;
   };
   static_assert( sizeof( PipelineCoverageModulationStateCreateInfoNV ) == sizeof( VkPipelineCoverageModulationStateCreateInfoNV ), "struct and wrapper have different size!" );
+
+  struct PipelineCoverageReductionStateCreateInfoNV
+  {
+    PipelineCoverageReductionStateCreateInfoNV( PipelineCoverageReductionStateCreateFlagsNV flags_ = PipelineCoverageReductionStateCreateFlagsNV(),
+                                                CoverageReductionModeNV coverageReductionMode_ = CoverageReductionModeNV::eMerge )
+      : flags( flags_ )
+      , coverageReductionMode( coverageReductionMode_ )
+    {}
+
+    PipelineCoverageReductionStateCreateInfoNV( VkPipelineCoverageReductionStateCreateInfoNV const & rhs )
+    {
+      memcpy( this, &rhs, sizeof( PipelineCoverageReductionStateCreateInfoNV ) );
+    }
+
+    PipelineCoverageReductionStateCreateInfoNV& operator=( VkPipelineCoverageReductionStateCreateInfoNV const & rhs )
+    {
+      memcpy( this, &rhs, sizeof( PipelineCoverageReductionStateCreateInfoNV ) );
+      return *this;
+    }
+
+    PipelineCoverageReductionStateCreateInfoNV & setPNext( const void* pNext_ )
+    {
+      pNext = pNext_;
+      return *this;
+    }
+
+    PipelineCoverageReductionStateCreateInfoNV & setFlags( PipelineCoverageReductionStateCreateFlagsNV flags_ )
+    {
+      flags = flags_;
+      return *this;
+    }
+
+    PipelineCoverageReductionStateCreateInfoNV & setCoverageReductionMode( CoverageReductionModeNV coverageReductionMode_ )
+    {
+      coverageReductionMode = coverageReductionMode_;
+      return *this;
+    }
+
+    operator VkPipelineCoverageReductionStateCreateInfoNV const&() const
+    {
+      return *reinterpret_cast<const VkPipelineCoverageReductionStateCreateInfoNV*>( this );
+    }
+
+    operator VkPipelineCoverageReductionStateCreateInfoNV &()
+    {
+      return *reinterpret_cast<VkPipelineCoverageReductionStateCreateInfoNV*>( this );
+    }
+
+    bool operator==( PipelineCoverageReductionStateCreateInfoNV const& rhs ) const
+    {
+      return ( sType == rhs.sType )
+          && ( pNext == rhs.pNext )
+          && ( flags == rhs.flags )
+          && ( coverageReductionMode == rhs.coverageReductionMode );
+    }
+
+    bool operator!=( PipelineCoverageReductionStateCreateInfoNV const& rhs ) const
+    {
+      return !operator==( rhs );
+    }
+
+  private:
+    StructureType sType = StructureType::ePipelineCoverageReductionStateCreateInfoNV;
+
+  public:
+    const void* pNext = nullptr;
+    PipelineCoverageReductionStateCreateFlagsNV flags;
+    CoverageReductionModeNV coverageReductionMode;
+  };
+  static_assert( sizeof( PipelineCoverageReductionStateCreateInfoNV ) == sizeof( VkPipelineCoverageReductionStateCreateInfoNV ), "struct and wrapper have different size!" );
 
   struct PipelineCoverageToColorStateCreateInfoNV
   {
@@ -49590,11 +49974,13 @@ namespace VULKAN_HPP_NAMESPACE
     commandBuffers.reserve( allocateInfo.commandBufferCount );
     CommandBuffer* buffer = reinterpret_cast<CommandBuffer*>( reinterpret_cast<char*>( commandBuffers.data() ) + allocateInfo.commandBufferCount * ( sizeof( UniqueHandle<CommandBuffer, Dispatch> ) - sizeof( CommandBuffer ) ) );
     Result result = static_cast<Result>(d.vkAllocateCommandBuffers( m_device, reinterpret_cast<const VkCommandBufferAllocateInfo*>( &allocateInfo ), reinterpret_cast<VkCommandBuffer*>( buffer ) ) );
-
-    PoolFree<Device,CommandPool,Dispatch> deleter( *this, allocateInfo.commandPool, d );
-    for ( size_t i=0 ; i<allocateInfo.commandBufferCount ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      commandBuffers.push_back( UniqueHandle<CommandBuffer, Dispatch>( buffer[i], deleter ) );
+      PoolFree<Device,CommandPool,Dispatch> deleter( *this, allocateInfo.commandPool, d );
+      for ( size_t i=0 ; i<allocateInfo.commandBufferCount ; i++ )
+      {
+        commandBuffers.push_back( UniqueHandle<CommandBuffer, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, commandBuffers, VULKAN_HPP_NAMESPACE_STRING "::Device::allocateCommandBuffersUnique" );
@@ -49607,11 +49993,13 @@ namespace VULKAN_HPP_NAMESPACE
     commandBuffers.reserve( allocateInfo.commandBufferCount );
     CommandBuffer* buffer = reinterpret_cast<CommandBuffer*>( reinterpret_cast<char*>( commandBuffers.data() ) + allocateInfo.commandBufferCount * ( sizeof( UniqueHandle<CommandBuffer, Dispatch> ) - sizeof( CommandBuffer ) ) );
     Result result = static_cast<Result>(d.vkAllocateCommandBuffers( m_device, reinterpret_cast<const VkCommandBufferAllocateInfo*>( &allocateInfo ), reinterpret_cast<VkCommandBuffer*>( buffer ) ) );
-
-    PoolFree<Device,CommandPool,Dispatch> deleter( *this, allocateInfo.commandPool, d );
-    for ( size_t i=0 ; i<allocateInfo.commandBufferCount ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      commandBuffers.push_back( UniqueHandle<CommandBuffer, Dispatch>( buffer[i], deleter ) );
+      PoolFree<Device,CommandPool,Dispatch> deleter( *this, allocateInfo.commandPool, d );
+      for ( size_t i=0 ; i<allocateInfo.commandBufferCount ; i++ )
+      {
+        commandBuffers.push_back( UniqueHandle<CommandBuffer, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, commandBuffers, VULKAN_HPP_NAMESPACE_STRING "::Device::allocateCommandBuffersUnique" );
@@ -49648,11 +50036,13 @@ namespace VULKAN_HPP_NAMESPACE
     descriptorSets.reserve( allocateInfo.descriptorSetCount );
     DescriptorSet* buffer = reinterpret_cast<DescriptorSet*>( reinterpret_cast<char*>( descriptorSets.data() ) + allocateInfo.descriptorSetCount * ( sizeof( UniqueHandle<DescriptorSet, Dispatch> ) - sizeof( DescriptorSet ) ) );
     Result result = static_cast<Result>(d.vkAllocateDescriptorSets( m_device, reinterpret_cast<const VkDescriptorSetAllocateInfo*>( &allocateInfo ), reinterpret_cast<VkDescriptorSet*>( buffer ) ) );
-
-    PoolFree<Device,DescriptorPool,Dispatch> deleter( *this, allocateInfo.descriptorPool, d );
-    for ( size_t i=0 ; i<allocateInfo.descriptorSetCount ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      descriptorSets.push_back( UniqueHandle<DescriptorSet, Dispatch>( buffer[i], deleter ) );
+      PoolFree<Device,DescriptorPool,Dispatch> deleter( *this, allocateInfo.descriptorPool, d );
+      for ( size_t i=0 ; i<allocateInfo.descriptorSetCount ; i++ )
+      {
+        descriptorSets.push_back( UniqueHandle<DescriptorSet, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, descriptorSets, VULKAN_HPP_NAMESPACE_STRING "::Device::allocateDescriptorSetsUnique" );
@@ -49665,11 +50055,13 @@ namespace VULKAN_HPP_NAMESPACE
     descriptorSets.reserve( allocateInfo.descriptorSetCount );
     DescriptorSet* buffer = reinterpret_cast<DescriptorSet*>( reinterpret_cast<char*>( descriptorSets.data() ) + allocateInfo.descriptorSetCount * ( sizeof( UniqueHandle<DescriptorSet, Dispatch> ) - sizeof( DescriptorSet ) ) );
     Result result = static_cast<Result>(d.vkAllocateDescriptorSets( m_device, reinterpret_cast<const VkDescriptorSetAllocateInfo*>( &allocateInfo ), reinterpret_cast<VkDescriptorSet*>( buffer ) ) );
-
-    PoolFree<Device,DescriptorPool,Dispatch> deleter( *this, allocateInfo.descriptorPool, d );
-    for ( size_t i=0 ; i<allocateInfo.descriptorSetCount ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      descriptorSets.push_back( UniqueHandle<DescriptorSet, Dispatch>( buffer[i], deleter ) );
+      PoolFree<Device,DescriptorPool,Dispatch> deleter( *this, allocateInfo.descriptorPool, d );
+      for ( size_t i=0 ; i<allocateInfo.descriptorSetCount ; i++ )
+      {
+        descriptorSets.push_back( UniqueHandle<DescriptorSet, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, descriptorSets, VULKAN_HPP_NAMESPACE_STRING "::Device::allocateDescriptorSetsUnique" );
@@ -49958,11 +50350,13 @@ namespace VULKAN_HPP_NAMESPACE
     pipelines.reserve( createInfos.size() );
     Pipeline* buffer = reinterpret_cast<Pipeline*>( reinterpret_cast<char*>( pipelines.data() ) + createInfos.size() * ( sizeof( UniqueHandle<Pipeline, Dispatch> ) - sizeof( Pipeline ) ) );
     Result result = static_cast<Result>(d.vkCreateComputePipelines( m_device, static_cast<VkPipelineCache>( pipelineCache ), createInfos.size() , reinterpret_cast<const VkComputePipelineCreateInfo*>( createInfos.data() ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkPipeline*>( buffer ) ) );
-
-    ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
-    for ( size_t i=0 ; i<createInfos.size() ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
+      for ( size_t i=0 ; i<createInfos.size() ; i++ )
+      {
+        pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, pipelines, VULKAN_HPP_NAMESPACE_STRING "::Device::createComputePipelinesUnique" );
@@ -49975,11 +50369,13 @@ namespace VULKAN_HPP_NAMESPACE
     pipelines.reserve( createInfos.size() );
     Pipeline* buffer = reinterpret_cast<Pipeline*>( reinterpret_cast<char*>( pipelines.data() ) + createInfos.size() * ( sizeof( UniqueHandle<Pipeline, Dispatch> ) - sizeof( Pipeline ) ) );
     Result result = static_cast<Result>(d.vkCreateComputePipelines( m_device, static_cast<VkPipelineCache>( pipelineCache ), createInfos.size() , reinterpret_cast<const VkComputePipelineCreateInfo*>( createInfos.data() ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkPipeline*>( buffer ) ) );
-
-    ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
-    for ( size_t i=0 ; i<createInfos.size() ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
+      for ( size_t i=0 ; i<createInfos.size() ; i++ )
+      {
+        pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, pipelines, VULKAN_HPP_NAMESPACE_STRING "::Device::createComputePipelinesUnique" );
@@ -50214,11 +50610,13 @@ namespace VULKAN_HPP_NAMESPACE
     pipelines.reserve( createInfos.size() );
     Pipeline* buffer = reinterpret_cast<Pipeline*>( reinterpret_cast<char*>( pipelines.data() ) + createInfos.size() * ( sizeof( UniqueHandle<Pipeline, Dispatch> ) - sizeof( Pipeline ) ) );
     Result result = static_cast<Result>(d.vkCreateGraphicsPipelines( m_device, static_cast<VkPipelineCache>( pipelineCache ), createInfos.size() , reinterpret_cast<const VkGraphicsPipelineCreateInfo*>( createInfos.data() ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkPipeline*>( buffer ) ) );
-
-    ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
-    for ( size_t i=0 ; i<createInfos.size() ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
+      for ( size_t i=0 ; i<createInfos.size() ; i++ )
+      {
+        pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, pipelines, VULKAN_HPP_NAMESPACE_STRING "::Device::createGraphicsPipelinesUnique" );
@@ -50231,11 +50629,13 @@ namespace VULKAN_HPP_NAMESPACE
     pipelines.reserve( createInfos.size() );
     Pipeline* buffer = reinterpret_cast<Pipeline*>( reinterpret_cast<char*>( pipelines.data() ) + createInfos.size() * ( sizeof( UniqueHandle<Pipeline, Dispatch> ) - sizeof( Pipeline ) ) );
     Result result = static_cast<Result>(d.vkCreateGraphicsPipelines( m_device, static_cast<VkPipelineCache>( pipelineCache ), createInfos.size() , reinterpret_cast<const VkGraphicsPipelineCreateInfo*>( createInfos.data() ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkPipeline*>( buffer ) ) );
-
-    ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
-    for ( size_t i=0 ; i<createInfos.size() ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
+      for ( size_t i=0 ; i<createInfos.size() ; i++ )
+      {
+        pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, pipelines, VULKAN_HPP_NAMESPACE_STRING "::Device::createGraphicsPipelinesUnique" );
@@ -50470,11 +50870,13 @@ namespace VULKAN_HPP_NAMESPACE
     pipelines.reserve( createInfos.size() );
     Pipeline* buffer = reinterpret_cast<Pipeline*>( reinterpret_cast<char*>( pipelines.data() ) + createInfos.size() * ( sizeof( UniqueHandle<Pipeline, Dispatch> ) - sizeof( Pipeline ) ) );
     Result result = static_cast<Result>(d.vkCreateRayTracingPipelinesNV( m_device, static_cast<VkPipelineCache>( pipelineCache ), createInfos.size() , reinterpret_cast<const VkRayTracingPipelineCreateInfoNV*>( createInfos.data() ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkPipeline*>( buffer ) ) );
-
-    ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
-    for ( size_t i=0 ; i<createInfos.size() ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
+      for ( size_t i=0 ; i<createInfos.size() ; i++ )
+      {
+        pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, pipelines, VULKAN_HPP_NAMESPACE_STRING "::Device::createRayTracingPipelinesNVUnique" );
@@ -50487,11 +50889,13 @@ namespace VULKAN_HPP_NAMESPACE
     pipelines.reserve( createInfos.size() );
     Pipeline* buffer = reinterpret_cast<Pipeline*>( reinterpret_cast<char*>( pipelines.data() ) + createInfos.size() * ( sizeof( UniqueHandle<Pipeline, Dispatch> ) - sizeof( Pipeline ) ) );
     Result result = static_cast<Result>(d.vkCreateRayTracingPipelinesNV( m_device, static_cast<VkPipelineCache>( pipelineCache ), createInfos.size() , reinterpret_cast<const VkRayTracingPipelineCreateInfoNV*>( createInfos.data() ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkPipeline*>( buffer ) ) );
-
-    ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
-    for ( size_t i=0 ; i<createInfos.size() ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
+      for ( size_t i=0 ; i<createInfos.size() ; i++ )
+      {
+        pipelines.push_back( UniqueHandle<Pipeline, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, pipelines, VULKAN_HPP_NAMESPACE_STRING "::Device::createRayTracingPipelinesNVUnique" );
@@ -50726,11 +51130,13 @@ namespace VULKAN_HPP_NAMESPACE
     swapchainKHRs.reserve( createInfos.size() );
     SwapchainKHR* buffer = reinterpret_cast<SwapchainKHR*>( reinterpret_cast<char*>( swapchainKHRs.data() ) + createInfos.size() * ( sizeof( UniqueHandle<SwapchainKHR, Dispatch> ) - sizeof( SwapchainKHR ) ) );
     Result result = static_cast<Result>(d.vkCreateSharedSwapchainsKHR( m_device, createInfos.size() , reinterpret_cast<const VkSwapchainCreateInfoKHR*>( createInfos.data() ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkSwapchainKHR*>( buffer ) ) );
-
-    ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
-    for ( size_t i=0 ; i<createInfos.size() ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      swapchainKHRs.push_back( UniqueHandle<SwapchainKHR, Dispatch>( buffer[i], deleter ) );
+      ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
+      for ( size_t i=0 ; i<createInfos.size() ; i++ )
+      {
+        swapchainKHRs.push_back( UniqueHandle<SwapchainKHR, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, swapchainKHRs, VULKAN_HPP_NAMESPACE_STRING "::Device::createSharedSwapchainsKHRUnique" );
@@ -50743,11 +51149,13 @@ namespace VULKAN_HPP_NAMESPACE
     swapchainKHRs.reserve( createInfos.size() );
     SwapchainKHR* buffer = reinterpret_cast<SwapchainKHR*>( reinterpret_cast<char*>( swapchainKHRs.data() ) + createInfos.size() * ( sizeof( UniqueHandle<SwapchainKHR, Dispatch> ) - sizeof( SwapchainKHR ) ) );
     Result result = static_cast<Result>(d.vkCreateSharedSwapchainsKHR( m_device, createInfos.size() , reinterpret_cast<const VkSwapchainCreateInfoKHR*>( createInfos.data() ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkSwapchainKHR*>( buffer ) ) );
-
-    ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
-    for ( size_t i=0 ; i<createInfos.size() ; i++ )
+    if (result == vk::Result::eSuccess)
     {
-      swapchainKHRs.push_back( UniqueHandle<SwapchainKHR, Dispatch>( buffer[i], deleter ) );
+      ObjectDestroy<Device,Dispatch> deleter( *this, allocator, d );
+      for ( size_t i=0 ; i<createInfos.size() ; i++ )
+      {
+        swapchainKHRs.push_back( UniqueHandle<SwapchainKHR, Dispatch>( buffer[i], deleter ) );
+      }
     }
 
     return createResultValue( result, swapchainKHRs, VULKAN_HPP_NAMESPACE_STRING "::Device::createSharedSwapchainsKHRUnique" );
@@ -53301,6 +53709,32 @@ namespace VULKAN_HPP_NAMESPACE
 #endif /*VULKAN_HPP_NO_SMART_HANDLE*/
 #endif /*VULKAN_HPP_DISABLE_ENHANCED_MODE*/
 
+  template<typename Dispatch>
+  VULKAN_HPP_INLINE Result Instance::createHeadlessSurfaceEXT( const HeadlessSurfaceCreateInfoEXT* pCreateInfo, const AllocationCallbacks* pAllocator, SurfaceKHR* pSurface, Dispatch const &d) const
+  {
+    return static_cast<Result>( d.vkCreateHeadlessSurfaceEXT( m_instance, reinterpret_cast<const VkHeadlessSurfaceCreateInfoEXT*>( pCreateInfo ), reinterpret_cast<const VkAllocationCallbacks*>( pAllocator ), reinterpret_cast<VkSurfaceKHR*>( pSurface ) ) );
+  }
+#ifndef VULKAN_HPP_DISABLE_ENHANCED_MODE
+  template<typename Dispatch>
+  VULKAN_HPP_INLINE ResultValueType<SurfaceKHR>::type Instance::createHeadlessSurfaceEXT( const HeadlessSurfaceCreateInfoEXT & createInfo, Optional<const AllocationCallbacks> allocator, Dispatch const &d ) const
+  {
+    SurfaceKHR surface;
+    Result result = static_cast<Result>( d.vkCreateHeadlessSurfaceEXT( m_instance, reinterpret_cast<const VkHeadlessSurfaceCreateInfoEXT*>( &createInfo ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkSurfaceKHR*>( &surface ) ) );
+    return createResultValue( result, surface, VULKAN_HPP_NAMESPACE_STRING"::Instance::createHeadlessSurfaceEXT" );
+  }
+#ifndef VULKAN_HPP_NO_SMART_HANDLE
+  template<typename Dispatch>
+  VULKAN_HPP_INLINE typename ResultValueType<UniqueHandle<SurfaceKHR,Dispatch>>::type Instance::createHeadlessSurfaceEXTUnique( const HeadlessSurfaceCreateInfoEXT & createInfo, Optional<const AllocationCallbacks> allocator, Dispatch const &d ) const
+  {
+    SurfaceKHR surface;
+    Result result = static_cast<Result>( d.vkCreateHeadlessSurfaceEXT( m_instance, reinterpret_cast<const VkHeadlessSurfaceCreateInfoEXT*>( &createInfo ), reinterpret_cast<const VkAllocationCallbacks*>( static_cast<const AllocationCallbacks*>( allocator ) ), reinterpret_cast<VkSurfaceKHR*>( &surface ) ) );
+
+    ObjectDestroy<Instance,Dispatch> deleter( *this, allocator, d );
+    return createResultValue<SurfaceKHR,Dispatch>( result, surface, VULKAN_HPP_NAMESPACE_STRING"::Instance::createHeadlessSurfaceEXTUnique", deleter );
+  }
+#endif /*VULKAN_HPP_NO_SMART_HANDLE*/
+#endif /*VULKAN_HPP_DISABLE_ENHANCED_MODE*/
+
 #ifdef VK_USE_PLATFORM_IOS_MVK
   template<typename Dispatch>
   VULKAN_HPP_INLINE Result Instance::createIOSSurfaceMVK( const IOSSurfaceCreateInfoMVK* pCreateInfo, const AllocationCallbacks* pAllocator, SurfaceKHR* pSurface, Dispatch const &d) const
@@ -55236,6 +55670,58 @@ namespace VULKAN_HPP_NAMESPACE
 #endif /*VULKAN_HPP_DISABLE_ENHANCED_MODE*/
 
   template<typename Dispatch>
+  VULKAN_HPP_INLINE Result PhysicalDevice::getSupportedFramebufferMixedSamplesCombinationsNV( uint32_t* pCombinationCount, FramebufferMixedSamplesCombinationNV* pCombinations, Dispatch const &d) const
+  {
+    return static_cast<Result>( d.vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV( m_physicalDevice, pCombinationCount, reinterpret_cast<VkFramebufferMixedSamplesCombinationNV*>( pCombinations ) ) );
+  }
+#ifndef VULKAN_HPP_DISABLE_ENHANCED_MODE
+  template<typename Allocator, typename Dispatch>
+  VULKAN_HPP_INLINE typename ResultValueType<std::vector<FramebufferMixedSamplesCombinationNV,Allocator>>::type PhysicalDevice::getSupportedFramebufferMixedSamplesCombinationsNV(Dispatch const &d ) const
+  {
+    std::vector<FramebufferMixedSamplesCombinationNV,Allocator> combinations;
+    uint32_t combinationCount;
+    Result result;
+    do
+    {
+      result = static_cast<Result>( d.vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV( m_physicalDevice, &combinationCount, nullptr ) );
+      if ( ( result == Result::eSuccess ) && combinationCount )
+      {
+        combinations.resize( combinationCount );
+        result = static_cast<Result>( d.vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV( m_physicalDevice, &combinationCount, reinterpret_cast<VkFramebufferMixedSamplesCombinationNV*>( combinations.data() ) ) );
+      }
+    } while ( result == Result::eIncomplete );
+    if ( result == Result::eSuccess )
+    {
+      VULKAN_HPP_ASSERT( combinationCount <= combinations.size() );
+      combinations.resize( combinationCount );
+    }
+    return createResultValue( result, combinations, VULKAN_HPP_NAMESPACE_STRING"::PhysicalDevice::getSupportedFramebufferMixedSamplesCombinationsNV" );
+  }
+  template<typename Allocator, typename Dispatch>
+  VULKAN_HPP_INLINE typename ResultValueType<std::vector<FramebufferMixedSamplesCombinationNV,Allocator>>::type PhysicalDevice::getSupportedFramebufferMixedSamplesCombinationsNV(Allocator const& vectorAllocator, Dispatch const &d ) const
+  {
+    std::vector<FramebufferMixedSamplesCombinationNV,Allocator> combinations( vectorAllocator );
+    uint32_t combinationCount;
+    Result result;
+    do
+    {
+      result = static_cast<Result>( d.vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV( m_physicalDevice, &combinationCount, nullptr ) );
+      if ( ( result == Result::eSuccess ) && combinationCount )
+      {
+        combinations.resize( combinationCount );
+        result = static_cast<Result>( d.vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV( m_physicalDevice, &combinationCount, reinterpret_cast<VkFramebufferMixedSamplesCombinationNV*>( combinations.data() ) ) );
+      }
+    } while ( result == Result::eIncomplete );
+    if ( result == Result::eSuccess )
+    {
+      VULKAN_HPP_ASSERT( combinationCount <= combinations.size() );
+      combinations.resize( combinationCount );
+    }
+    return createResultValue( result, combinations, VULKAN_HPP_NAMESPACE_STRING"::PhysicalDevice::getSupportedFramebufferMixedSamplesCombinationsNV" );
+  }
+#endif /*VULKAN_HPP_DISABLE_ENHANCED_MODE*/
+
+  template<typename Dispatch>
   VULKAN_HPP_INLINE Result PhysicalDevice::getSurfaceCapabilities2EXT( SurfaceKHR surface, SurfaceCapabilities2EXT* pSurfaceCapabilities, Dispatch const &d) const
   {
     return static_cast<Result>( d.vkGetPhysicalDeviceSurfaceCapabilities2EXT( m_physicalDevice, static_cast<VkSurfaceKHR>( surface ), reinterpret_cast<VkSurfaceCapabilities2EXT*>( pSurfaceCapabilities ) ) );
@@ -55839,6 +56325,8 @@ namespace VULKAN_HPP_NAMESPACE
   template <> struct isStructureChainValid<PhysicalDeviceProperties2, PhysicalDeviceCooperativeMatrixPropertiesNV>{ enum { value = true }; };
   template <> struct isStructureChainValid<PhysicalDeviceFeatures2, PhysicalDeviceCornerSampledImageFeaturesNV>{ enum { value = true }; };
   template <> struct isStructureChainValid<DeviceCreateInfo, PhysicalDeviceCornerSampledImageFeaturesNV>{ enum { value = true }; };
+  template <> struct isStructureChainValid<PhysicalDeviceFeatures2, PhysicalDeviceCoverageReductionModeFeaturesNV>{ enum { value = true }; };
+  template <> struct isStructureChainValid<DeviceCreateInfo, PhysicalDeviceCoverageReductionModeFeaturesNV>{ enum { value = true }; };
   template <> struct isStructureChainValid<PhysicalDeviceFeatures2, PhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV>{ enum { value = true }; };
   template <> struct isStructureChainValid<DeviceCreateInfo, PhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV>{ enum { value = true }; };
   template <> struct isStructureChainValid<PhysicalDeviceFeatures2, PhysicalDeviceDepthClipEnableFeaturesEXT>{ enum { value = true }; };
@@ -55910,6 +56398,8 @@ namespace VULKAN_HPP_NAMESPACE
   template <> struct isStructureChainValid<PhysicalDeviceFeatures2, PhysicalDeviceTransformFeedbackFeaturesEXT>{ enum { value = true }; };
   template <> struct isStructureChainValid<DeviceCreateInfo, PhysicalDeviceTransformFeedbackFeaturesEXT>{ enum { value = true }; };
   template <> struct isStructureChainValid<PhysicalDeviceProperties2, PhysicalDeviceTransformFeedbackPropertiesEXT>{ enum { value = true }; };
+  template <> struct isStructureChainValid<PhysicalDeviceFeatures2, PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR>{ enum { value = true }; };
+  template <> struct isStructureChainValid<DeviceCreateInfo, PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR>{ enum { value = true }; };
   template <> struct isStructureChainValid<PhysicalDeviceFeatures2, PhysicalDeviceVariablePointersFeatures>{ enum { value = true }; };
   template <> struct isStructureChainValid<DeviceCreateInfo, PhysicalDeviceVariablePointersFeatures>{ enum { value = true }; };
   template <> struct isStructureChainValid<PhysicalDeviceFeatures2, PhysicalDeviceVertexAttributeDivisorFeaturesEXT>{ enum { value = true }; };
@@ -55921,6 +56411,7 @@ namespace VULKAN_HPP_NAMESPACE
   template <> struct isStructureChainValid<DeviceCreateInfo, PhysicalDeviceYcbcrImageArraysFeaturesEXT>{ enum { value = true }; };
   template <> struct isStructureChainValid<PipelineColorBlendStateCreateInfo, PipelineColorBlendAdvancedStateCreateInfoEXT>{ enum { value = true }; };
   template <> struct isStructureChainValid<PipelineMultisampleStateCreateInfo, PipelineCoverageModulationStateCreateInfoNV>{ enum { value = true }; };
+  template <> struct isStructureChainValid<PipelineMultisampleStateCreateInfo, PipelineCoverageReductionStateCreateInfoNV>{ enum { value = true }; };
   template <> struct isStructureChainValid<PipelineMultisampleStateCreateInfo, PipelineCoverageToColorStateCreateInfoNV>{ enum { value = true }; };
   template <> struct isStructureChainValid<GraphicsPipelineCreateInfo, PipelineCreationFeedbackCreateInfoEXT>{ enum { value = true }; };
   template <> struct isStructureChainValid<ComputePipelineCreateInfo, PipelineCreationFeedbackCreateInfoEXT>{ enum { value = true }; };
@@ -56276,6 +56767,7 @@ namespace VULKAN_HPP_NAMESPACE
     PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT = 0;
     PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = 0;
     PFN_vkCreateDisplayPlaneSurfaceKHR vkCreateDisplayPlaneSurfaceKHR = 0;
+    PFN_vkCreateHeadlessSurfaceEXT vkCreateHeadlessSurfaceEXT = 0;
 #ifdef VK_USE_PLATFORM_IOS_MVK
     PFN_vkCreateIOSSurfaceMVK vkCreateIOSSurfaceMVK = 0;
 #endif /*VK_USE_PLATFORM_IOS_MVK*/
@@ -56365,6 +56857,7 @@ namespace VULKAN_HPP_NAMESPACE
     PFN_vkGetPhysicalDeviceSparseImageFormatProperties vkGetPhysicalDeviceSparseImageFormatProperties = 0;
     PFN_vkGetPhysicalDeviceSparseImageFormatProperties2 vkGetPhysicalDeviceSparseImageFormatProperties2 = 0;
     PFN_vkGetPhysicalDeviceSparseImageFormatProperties2KHR vkGetPhysicalDeviceSparseImageFormatProperties2KHR = 0;
+    PFN_vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV = 0;
     PFN_vkGetPhysicalDeviceSurfaceCapabilities2EXT vkGetPhysicalDeviceSurfaceCapabilities2EXT = 0;
     PFN_vkGetPhysicalDeviceSurfaceCapabilities2KHR vkGetPhysicalDeviceSurfaceCapabilities2KHR = 0;
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR = 0;
@@ -56716,6 +57209,7 @@ namespace VULKAN_HPP_NAMESPACE
       vkCreateDebugReportCallbackEXT = PFN_vkCreateDebugReportCallbackEXT( vkGetInstanceProcAddr( instance, "vkCreateDebugReportCallbackEXT" ) );
       vkCreateDebugUtilsMessengerEXT = PFN_vkCreateDebugUtilsMessengerEXT( vkGetInstanceProcAddr( instance, "vkCreateDebugUtilsMessengerEXT" ) );
       vkCreateDisplayPlaneSurfaceKHR = PFN_vkCreateDisplayPlaneSurfaceKHR( vkGetInstanceProcAddr( instance, "vkCreateDisplayPlaneSurfaceKHR" ) );
+      vkCreateHeadlessSurfaceEXT = PFN_vkCreateHeadlessSurfaceEXT( vkGetInstanceProcAddr( instance, "vkCreateHeadlessSurfaceEXT" ) );
 #ifdef VK_USE_PLATFORM_IOS_MVK
       vkCreateIOSSurfaceMVK = PFN_vkCreateIOSSurfaceMVK( vkGetInstanceProcAddr( instance, "vkCreateIOSSurfaceMVK" ) );
 #endif /*VK_USE_PLATFORM_IOS_MVK*/
@@ -56804,6 +57298,7 @@ namespace VULKAN_HPP_NAMESPACE
       vkGetPhysicalDeviceSparseImageFormatProperties = PFN_vkGetPhysicalDeviceSparseImageFormatProperties( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceSparseImageFormatProperties" ) );
       vkGetPhysicalDeviceSparseImageFormatProperties2 = PFN_vkGetPhysicalDeviceSparseImageFormatProperties2( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceSparseImageFormatProperties2" ) );
       vkGetPhysicalDeviceSparseImageFormatProperties2KHR = PFN_vkGetPhysicalDeviceSparseImageFormatProperties2KHR( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceSparseImageFormatProperties2KHR" ) );
+      vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV = PFN_vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV" ) );
       vkGetPhysicalDeviceSurfaceCapabilities2EXT = PFN_vkGetPhysicalDeviceSurfaceCapabilities2EXT( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceSurfaceCapabilities2EXT" ) );
       vkGetPhysicalDeviceSurfaceCapabilities2KHR = PFN_vkGetPhysicalDeviceSurfaceCapabilities2KHR( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceSurfaceCapabilities2KHR" ) );
       vkGetPhysicalDeviceSurfaceCapabilitiesKHR = PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR" ) );

@@ -80,7 +80,7 @@ project (RUNTIME_NAME)
 	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
 	includedirs { "../ThirdParty/SPIRV-Cross-2019-03-29" }
-	includedirs { "../ThirdParty/Vulkan_1.1.106.0" }
+	includedirs { "../ThirdParty/Vulkan_1.1.108.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
 	includedirs { "../ThirdParty/Bullet_2.88" }
