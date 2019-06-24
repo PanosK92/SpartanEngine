@@ -68,7 +68,7 @@ float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir, Texture2D tex_depth, Sampler
 
 float3 SSR(float3 position, float3 normal, float2 uv, float roughness, Texture2D tex_color, Texture2D tex_depth, SamplerState sampler_point_clamp)
 {
-	float noise_scale = 0.5f; // scale the noise down a bit for now as this using jitter needs a blur pass as well (for acceptable results)
+	float noise_scale = 0.1f; // scale the noise down a bit for now as this using jitter needs a blur pass as well (for acceptable results)
 	float3 jitter = float(randomize(uv) * 2.0f - 1.0f) * roughness * noise_scale;
 
 	// Convert everything to view space
