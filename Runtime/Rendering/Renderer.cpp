@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Deferred/ShaderLight.h"
 #include "Utilities/Sampling.h"
 #include "Font/Font.h"
+#include "../Core/Engine.h"
 #include "../Profiling/Profiler.h"
 #include "../Resource/ResourceCache.h"
 #include "../World/Entity.h"
@@ -36,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Skybox.h"
 #include "../World/Components/Camera.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_PipelineCache.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Sampler.h"
@@ -76,13 +78,33 @@ namespace Spartan
 		//m_flags		|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients
 		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect		
 
-		// Create RHI device
-		m_rhi_device = make_shared<RHI_Device>();
+		// Create device
+		m_rhi_device = make_shared<RHI_Device>(m_context);
 		if (!m_rhi_device->IsInitialized())
 		{
 			LOG_ERROR("Failed to create device");
 			return;
 		}
+
+        // Create swap chain
+        {
+            m_swap_chain = make_shared<RHI_SwapChain>
+            (
+                m_context->m_engine->GetWindowHandle(),
+                m_rhi_device,
+                static_cast<uint32_t>(context->m_engine->GetWindowWidth()),
+                static_cast<uint32_t>(context->m_engine->GetWindowHeight()),
+                Format_R8G8B8A8_UNORM,
+                Present_Immediate,
+                2
+            );
+
+            if (!m_swap_chain->IsInitialized())
+            {
+                LOG_ERROR("Failed to create swap chain");
+                return;
+            }
+        }
 
 		// Create pipeline cache
 		m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);

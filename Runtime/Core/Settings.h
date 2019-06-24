@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    class Context;
+
 	enum FPS_Policy
 	{
 		Fps_Unlocked,
@@ -45,22 +47,9 @@ namespace Spartan
 		}
 
 		Settings();
-		~Settings() { Save(); }
+        ~Settings() { Save(); };
 
 		void Initialize();
-
-		//= WINDOW ========================================================================================================================
-		void SetHandles(void* draw_handle, void* window_handle, void* window_instance, const float window_width, const float window_height)
-		{
-			m_draw_handle		= draw_handle;
-			m_window_handle		= window_handle;
-			m_windowInstance	= window_instance;
-			m_window_size.x		= window_width;
-			m_window_size.y		= window_height;
-		}
-		auto GetWindowHandle() const	{ return m_window_handle; }
-		auto GetWindowInstance() const	{ return m_windowInstance; }
-		//=================================================================================================================================
 
 		//= FPS ============================================
 		void SetFpsLimit(float fps);
@@ -89,22 +78,19 @@ namespace Spartan
 		std::string m_versionPugiXML = "1.90";
 		std::string m_versionGraphicsAPI;
 
-	private:
-		void Save() const;
+    private:
+        void Save() const;
 		void Load();
 
-		void* m_draw_handle					= nullptr;
-		void* m_window_handle				= nullptr;
-		void* m_windowInstance				= nullptr;
-		Math::Vector2 m_window_size			= Math::Vector2::Zero;
 		bool m_is_fullscreen				= false;
 		bool m_is_mouse_visible				= true;
 		uint32_t m_shadow_map_resolution	= 4096;
+        Math::Vector2 m_resolution          = Math::Vector2::Zero;
 		uint32_t m_anisotropy				= 16;
 		uint32_t m_max_thread_count			= 0;
 		float m_fps_limit					= 0.0f;
 		float m_fps_target					= 165.0f;
 		FPS_Policy m_fps_policy				= Fps_Unlocked;
-		bool m_reverse_z					= true;
+		bool m_reverse_z					= true;      
 	};
 }

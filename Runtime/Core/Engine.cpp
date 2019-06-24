@@ -40,19 +40,23 @@ using namespace std;
 
 namespace Spartan
 {
-	uint32_t Engine::m_flags = 0;
-
-	Engine::Engine(const std::shared_ptr<Context>& context)
+	Engine::Engine(void* draw_handle, void* window_handle, void* window_instance, float window_width, float window_height)
 	{
-		m_context = context;
+        // Create context
+		m_context = make_shared<Context>();
+        m_context->m_engine = this;
 
+        // Flags
 		m_flags |= Engine_Tick;
 		m_flags |= Engine_Physics;
 		m_flags |= Engine_Game;
 
-		// Initialize global/static subsystems 
-		FileSystem::Initialize();
-		Settings::Get().Initialize();
+        // Window
+        m_draw_handle       = draw_handle;
+        m_window_handle     = window_handle;
+        m_window_instance   = window_instance;
+        m_window_width      = window_width;
+        m_window_height     = window_height;
 
 		// Register subsystems
 		m_context->RegisterSubsystem<Timer>();
@@ -64,7 +68,11 @@ namespace Spartan
 		m_context->RegisterSubsystem<Audio>();		
 		m_context->RegisterSubsystem<Scripting>();
 		m_context->RegisterSubsystem<Physics>();	
-		m_context->RegisterSubsystem<World>();		
+		m_context->RegisterSubsystem<World>();
+
+        // Initialize global/static subsystems
+        FileSystem::Initialize();
+        Settings::Get().Initialize(); // this must become a subsystem
 
 		// Initialize above subsystems
 		m_context->Initialize();
@@ -72,7 +80,7 @@ namespace Spartan
 
 	Engine::~Engine()
 	{
-		EventSystem::Get().Clear();
+		EventSystem::Get().Clear(); // this must become a subsystem
 	}
 
 	void Engine::Tick() const

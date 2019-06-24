@@ -31,10 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/MathHelper.h"
 //================================
 
-//= NAMESPACES =======================
+//= NAMESPACES ===============
 using namespace std;
-using namespace Spartan::Math::Helper;
-//====================================
+using namespace Spartan::Math;
+//============================
 
 namespace Spartan
 {
@@ -220,14 +220,14 @@ namespace Spartan
         const uint32_t height)
     {
         // Render pass
-        VkRenderPassCreateInfo renderPassInfo = {};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = static_cast<uint32_t>(attachment_descriptions.size());
-        renderPassInfo.pAttachments = attachment_descriptions.data();
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass_description;
-        renderPassInfo.dependencyCount = static_cast<uint32_t>(subpass_dependencies.size());
-        renderPassInfo.pDependencies = subpass_dependencies.data();
+        VkRenderPassCreateInfo renderPassInfo   = {};
+        renderPassInfo.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.attachmentCount          = static_cast<uint32_t>(attachment_descriptions.size());
+        renderPassInfo.pAttachments             = attachment_descriptions.data();
+        renderPassInfo.subpassCount             = 1;
+        renderPassInfo.pSubpasses               = &subpass_description;
+        renderPassInfo.dependencyCount          = static_cast<uint32_t>(subpass_dependencies.size());
+        renderPassInfo.pDependencies            = subpass_dependencies.data();
 
         auto result = vkCreateRenderPass(rhi_device->GetContext()->device, &renderPassInfo, nullptr, &_render_pass);
         if (result != VK_SUCCESS)
@@ -239,12 +239,12 @@ namespace Spartan
         //attachments[1] = offscreenPass.depth.view;
 
         VkFramebufferCreateInfo create_info = {};
-        create_info.renderPass = _render_pass;
-        create_info.attachmentCount = 2;
-        create_info.pAttachments = attachments;
-        create_info.width = width;
-        create_info.height = height;
-        create_info.layers = 1;
+        create_info.renderPass              = _render_pass;
+        create_info.attachmentCount         = 2;
+        create_info.pAttachments            = attachments;
+        create_info.width                   = width;
+        create_info.height                  = height;
+        create_info.layers                  = 1;
 
         result = vkCreateFramebuffer(rhi_device->GetContext()->device, &create_info, nullptr, &_frame_buffer);
 
@@ -334,6 +334,28 @@ namespace Spartan
 
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
+        // In case of a render target or a depth-stencil buffer, ensure the requested format is supported by the device
+        VkFormat image_format       = vulkan_format[m_format];
+        VkImageTiling image_tiling  = VK_IMAGE_TILING_LINEAR; // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
+        {
+            VkFormatProperties properties;
+            vkGetPhysicalDeviceFormatProperties(m_rhi_device->GetContext()->device_physical, image_format, &properties);
+
+            if ((m_bind_flags & RHI_Texture_RenderTarget) && !(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))
+            {
+                image_format = m_rhi_device->GetContext()->surface_format.format;
+                image_tiling = VK_IMAGE_TILING_OPTIMAL;
+            }
+
+            if ((m_bind_flags & RHI_Texture_DepthStencil) && !(properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
+            {
+                LOG_WARNING("Format is not supported as depth-stencil, falling back to supported surface format");
+                image_format = m_rhi_device->GetContext()->surface_format.format;
+                image_tiling = VK_IMAGE_TILING_OPTIMAL;
+                return false;
+            }
+        }
+
 		// Copy data to a buffer (if there are any)
 		VkBuffer staging_buffer = nullptr;
 		VkDeviceMemory staging_buffer_memory = nullptr;
@@ -371,8 +393,8 @@ namespace Spartan
 				image_memory,
 				m_width,
 				m_height,
-				vulkan_format[m_format],
-				VK_IMAGE_TILING_LINEAR, // VK_IMAGE_TILING_OPTIMAL is not supported with VK_FORMAT_R32G32B32_SFLOAT
+                image_format,
+                image_tiling,
 				usage_flags,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 			);
@@ -402,7 +424,7 @@ namespace Spartan
         // RENDER TARGET
         if (m_bind_flags & RHI_Texture_RenderTarget)
         {
-            result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_render_target), vulkan_format[m_format], m_bind_flags);
+            result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_render_target), image_format, m_bind_flags);
             if (result != VK_SUCCESS)
             {
                 LOGF_ERROR("Failed to create render target view, %s", Vulkan_Common::to_string(result));
@@ -414,7 +436,7 @@ namespace Spartan
         if (m_bind_flags & RHI_Texture_DepthStencil)
         {
             auto depth_stencil = m_resource_depth_stencils.emplace_back(nullptr);
-            result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&depth_stencil), vulkan_format[m_format], m_bind_flags);
+            result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&depth_stencil), image_format, m_bind_flags);
             if (result != VK_SUCCESS)
             {
                 LOGF_ERROR("Failed to create depth stencil view, %s", Vulkan_Common::to_string(result));
@@ -425,7 +447,7 @@ namespace Spartan
         // SAMPLED
         if (m_bind_flags & RHI_Texture_Sampled)
         {
-            result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_texture), vulkan_format[m_format], m_bind_flags);
+            result = CreateImageView(m_rhi_device, image, reinterpret_cast<VkImageView*>(&m_resource_texture), image_format, m_bind_flags);
             if (result != VK_SUCCESS)
             {
                 LOGF_ERROR("Failed to create sampled image view, %s", Vulkan_Common::to_string(result));

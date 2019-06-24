@@ -58,8 +58,7 @@ Editor::Editor(void* window_handle, void* window_instance, float window_width, f
 	m_widgets.emplace_back(make_unique<Widget_Console>(nullptr));
 
 	// Create engine
-	Settings::Get().SetHandles(window_handle, window_handle, window_instance, window_width, window_height);
-	m_engine = make_unique<Engine>(make_shared<Context>());
+	m_engine = make_unique<Engine>(window_handle, window_handle, window_instance, window_width, window_height);
 	
 	// Acquire useful engine subsystems
 	m_context	= m_engine->GetContext();

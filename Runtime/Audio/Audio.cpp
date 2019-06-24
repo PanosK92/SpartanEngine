@@ -132,7 +132,7 @@ namespace Spartan
 	void Audio::Tick()
 	{
 		// Don't play audio if the engine is not in game mode
-		if (!Engine::EngineMode_IsSet(Engine_Game))
+		if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))
 			return;
 
 		if (!m_initialized)

@@ -276,6 +276,7 @@ namespace Spartan
 		VkQueue queue_copy							= nullptr;
 		VkDebugUtilsMessengerEXT callback_handle	= nullptr;
 		QueueFamilyIndices indices;
+        VkSurfaceFormatKHR surface_format;
 		
 		std::vector<const char*> extensions_device = { "VK_KHR_swapchain" };
 		#ifdef DEBUG

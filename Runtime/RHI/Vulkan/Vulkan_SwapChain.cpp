@@ -30,10 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 //=============================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 namespace Spartan
 {
@@ -175,12 +175,12 @@ namespace Spartan
             // Compute extent
             VkExtent2D extent =
             {
-                Spartan::Math::Helper::Clamp(width, surface_support.capabilities.minImageExtent.width, surface_support.capabilities.maxImageExtent.width),
-                Spartan::Math::Helper::Clamp(height, surface_support.capabilities.minImageExtent.height, surface_support.capabilities.maxImageExtent.height)
+                Clamp(width, surface_support.capabilities.minImageExtent.width, surface_support.capabilities.maxImageExtent.width),
+                Clamp(height, surface_support.capabilities.minImageExtent.height, surface_support.capabilities.maxImageExtent.height)
             };
 
             // Choose format
-            auto _format = choose_format(vulkan_format[format], surface_support.formats);
+            rhi_context->surface_format = choose_format(vulkan_format[format], surface_support.formats);
 
             // Swap chain
             VkSwapchainKHR swap_chain;
@@ -189,8 +189,8 @@ namespace Spartan
                 create_info.sType                       = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
                 create_info.surface                     = surface;
                 create_info.minImageCount               = buffer_count;
-                create_info.imageFormat                 = _format.format;
-                create_info.imageColorSpace             = _format.colorSpace;
+                create_info.imageFormat                 = rhi_context->surface_format.format;
+                create_info.imageColorSpace             = rhi_context->surface_format.colorSpace;
                 create_info.imageExtent                 = extent;
                 create_info.imageArrayLayers            = 1;
                 create_info.imageUsage                  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -263,7 +263,7 @@ namespace Spartan
                 swap_chain_image_views.resize(swap_chain_images.size());
                 for (size_t i = 0; i < swap_chain_image_views.size(); i++)
                 {
-                    if (!CreateImageView(rhi_device, swap_chain_images[i], swap_chain_image_views[i], _format.format, swizzle))
+                    if (!CreateImageView(rhi_device, swap_chain_images[i], swap_chain_image_views[i], rhi_context->surface_format.format, swizzle))
                     {
                         LOG_ERROR("Failed to create image view");
                         return false;

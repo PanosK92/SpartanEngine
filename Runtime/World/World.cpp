@@ -89,9 +89,9 @@ namespace Spartan
 		// Tick entities
 		{
 			// Detect game toggling
-			const auto started	= Engine::EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
-			const auto stopped	= !Engine::EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
-			m_wasInEditorMode	= !Engine::EngineMode_IsSet(Engine_Game);
+			const auto started	= m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
+			const auto stopped	= !m_context->m_engine->EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
+			m_wasInEditorMode	= !m_context->m_engine->EngineMode_IsSet(Engine_Game);
 
 			// Start
 			if (started)

@@ -78,7 +78,7 @@ namespace Spartan
 			Save();
 		}
 
-		LOGF_INFO("Resolution: %dx%d",		static_cast<int>(m_window_size.x), static_cast<int>(m_window_size.y));
+		LOGF_INFO("Resolution: %dx%d",		static_cast<int>(m_resolution.x), static_cast<int>(m_resolution.y));
 		LOGF_INFO("Shadow resolution: %d",	m_shadow_map_resolution);
 		LOGF_INFO("Anisotropy: %d",			m_anisotropy);
 		LOGF_INFO("Max fps: %f",			m_fps_limit);
@@ -109,8 +109,8 @@ namespace Spartan
 		// Write the settings
 		write_setting(SettingsIO::fout, "bFullScreen", m_is_fullscreen);
 		write_setting(SettingsIO::fout, "bIsMouseVisible", m_is_mouse_visible);
-		write_setting(SettingsIO::fout, "fResolutionWidth", m_window_size.x);
-		write_setting(SettingsIO::fout, "fResolutionHeight", m_window_size.y);
+        write_setting(SettingsIO::fout, "fResolutionWidth", m_resolution.x);
+        write_setting(SettingsIO::fout, "fResolutionHeight", m_resolution.y);
 		write_setting(SettingsIO::fout, "iShadowMapResolution", m_shadow_map_resolution);
 		write_setting(SettingsIO::fout, "iAnisotropy", m_anisotropy);
 		write_setting(SettingsIO::fout, "fFPSLimit", m_fps_limit);
@@ -137,8 +137,6 @@ namespace Spartan
 		read_setting(SettingsIO::fin, "iAnisotropy", m_anisotropy);
 		read_setting(SettingsIO::fin, "fFPSLimit", m_fps_limit);
 		read_setting(SettingsIO::fin, "iMaxThreadCount", m_max_thread_count);
-
-		m_window_size = Vector2(resolution_x, resolution_y);
 
 		if (m_fps_limit == 0.0f)
 		{

@@ -57,7 +57,6 @@ namespace ImGui::RHI
 
 	// RHI Data	
 	static shared_ptr<RHI_Device>				g_rhi_device;
-	static shared_ptr<RHI_SwapChain>			g_swap_chain;	
 	static shared_ptr<RHI_Texture>				g_texture;
 	static shared_ptr<RHI_Sampler>				g_sampler;
 	static shared_ptr<RHI_ConstantBuffer>		g_constant_buffer;
@@ -149,26 +148,6 @@ namespace ImGui::RHI
 				"}";
 			g_shader = make_shared<RHI_Shader>(g_rhi_device);
 			g_shader->Compile<RHI_Vertex_Pos2dTexCol8>(Shader_VertexPixel, shader_source);
-
-			// Create swap chain
-			{
-				g_swap_chain = make_shared<RHI_SwapChain>
-				(
-					Settings::Get().GetWindowHandle(),
-					g_rhi_device,
-					static_cast<uint32_t>(width),
-					static_cast<uint32_t>(height),
-					Format_R8G8B8A8_UNORM,
-					Present_Immediate,
-					2
-				);
-
-				if (!g_swap_chain->IsInitialized())
-				{
-					LOG_ERROR("Failed to create swap chain");
-					return false;
-				}
-			}
 		}
 
 		// Font atlas
@@ -295,7 +274,7 @@ namespace ImGui::RHI
 			state.sampler				= g_sampler.get();
 			state.vertex_buffer			= g_vertex_buffer.get();
 			state.primitive_topology	= PrimitiveTopology_TriangleList;
-			state.swap_chain			= is_main_viewport ? g_swap_chain.get() : swap_chain_other;
+			state.swap_chain			= is_main_viewport ? g_renderer->GetSwapChain().get() : swap_chain_other;
 
 			// Start witting command list
 			g_cmd_list->Begin("Pass_ImGui", g_pipeline_cache->GetPipeline(state).get());
@@ -343,7 +322,7 @@ namespace ImGui::RHI
 		g_cmd_list->End();
 		if (g_cmd_list->Submit() && is_main_viewport)
 		{
-			g_swap_chain->Present();
+            g_renderer->GetSwapChain()->Present();
 		}
 	}
 
@@ -352,7 +331,7 @@ namespace ImGui::RHI
 		if (!g_renderer)
 			return;
 
-		g_swap_chain->Resize(width, height);
+        g_renderer->GetSwapChain()->Resize(width, height);
 	}
 
 	//--------------------------------------------

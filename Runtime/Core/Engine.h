@@ -37,29 +37,38 @@ namespace Spartan
 		Engine_Game		= 1UL << 2,	// Is the engine running in game or editor mode?
 	};
 
-	class Timer;
-
 	class SPARTAN_CLASS Engine
 	{
 	public:
-		Engine(const std::shared_ptr<Context>& context);
+		Engine(void* draw_handle, void* window_handle, void* window_instance, float window_width, float window_height);
 		~Engine();
 
 		// Performs a simulation cycle
 		void Tick() const;
 
 		//  Flag helpers
-		static uint32_t EngineMode_GetAll()					{ return m_flags; }
-		static void EngineMode_SetAll(const uint32_t flags)	{ m_flags = flags; }
-		static void EngineMode_Enable(const Engine_Mode flag)	{ m_flags |= flag; }
-		static void EngineMode_Disable(const Engine_Mode flag)	{ m_flags &= ~flag; }
-		static void EngineMode_Toggle(const Engine_Mode flag)	{ m_flags = !EngineMode_IsSet(flag) ? m_flags | flag : m_flags & ~flag;}
-		static bool EngineMode_IsSet(const Engine_Mode flag)	{ return m_flags & flag; }
+		auto EngineMode_GetAll()					        { return m_flags; }
+		void EngineMode_SetAll(const uint32_t flags)	    { m_flags = flags; }
+		void EngineMode_Enable(const Engine_Mode flag)	    { m_flags |= flag; }
+		void EngineMode_Disable(const Engine_Mode flag)	    { m_flags &= ~flag; }
+		void EngineMode_Toggle(const Engine_Mode flag)	    { m_flags = !EngineMode_IsSet(flag) ? m_flags | flag : m_flags & ~flag;}
+		bool EngineMode_IsSet(const Engine_Mode flag) const	{ return m_flags & flag; }
 
-		Context* GetContext() const { return m_context.get(); }
+        // Window
+        const auto& GetWindowHandle()   { return m_window_handle; }
+        const auto& GetWindowInstance() { return m_window_instance; }
+        const auto GetWindowWidth()     { return m_window_width; }
+        const auto GetWindowHeight()    { return m_window_height; }
+
+        auto GetContext() const { return m_context.get(); }
 
 	private:
-		static uint32_t m_flags;
+        void* m_draw_handle         = nullptr;
+        void* m_window_handle       = nullptr;
+        void* m_window_instance     = nullptr;
+        float m_window_width        = 0;
+        float m_window_height       = 0;
+        uint32_t m_flags            = 0;
 		std::shared_ptr<Context> m_context;
 	};
 }

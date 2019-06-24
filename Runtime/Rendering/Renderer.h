@@ -209,6 +209,7 @@ namespace Spartan
 
 		//= RHI INTERNALS ================================================
 		const auto& GetRhiDevice()		const { return m_rhi_device; }
+        const auto& GetSwapChain()      const { return m_swap_chain; }
 		const auto& GetPipelineCache()	const { return m_pipeline_cache; }
 		const auto& GetCmdList()		const { return m_cmd_list; }
 		//================================================================
@@ -373,6 +374,7 @@ namespace Spartan
 
 		//= RHI ============================================
 		std::shared_ptr<RHI_Device> m_rhi_device;
+        std::shared_ptr<RHI_SwapChain> m_swap_chain;
 		std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
 		//==================================================
 

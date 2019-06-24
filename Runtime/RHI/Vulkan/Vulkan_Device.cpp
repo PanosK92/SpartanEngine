@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
+#include "../../Core/Context.h"
+#include "../../Core/Engine.h"
 //==============================
 
 //= NAMESPACES ===============
@@ -203,7 +205,7 @@ namespace Spartan
         }
     }
 
-	RHI_Device::RHI_Device()
+	RHI_Device::RHI_Device(Context* context)
 	{
 		m_rhi_context = make_shared<RHI_Context>();
 
@@ -274,7 +276,7 @@ namespace Spartan
 			std::vector<VkPhysicalDevice> physical_devices(device_count);
 			vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data());
 			
-			if (!_Vulkan_Device::choose_physical_device(this, Settings::Get().GetWindowHandle(), physical_devices)) 
+			if (!_Vulkan_Device::choose_physical_device(this, context->m_engine->GetWindowHandle(), physical_devices))
 			{
 				LOG_ERROR("Failed to find a suitable device.");
 				return;
@@ -348,7 +350,7 @@ namespace Spartan
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
 		auto version_path	= to_string(VK_VERSION_PATCH(app_info.apiVersion));
 		Settings::Get().m_versionGraphicsAPI = version_major + "." + version_minor + "." + version_path;
-		LOG_INFO(Settings::Get().m_versionGraphicsAPI);
+		LOG_INFO("Vulkan " + Settings::Get().m_versionGraphicsAPI);
 
 		m_initialized = true;
 	}

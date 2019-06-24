@@ -41,14 +41,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../FileSystem/FileSystem.h"
 //======================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 namespace Spartan
 {
-	RHI_Device::RHI_Device()
+	RHI_Device::RHI_Device(Context* context)
 	{
 		m_rhi_context = make_shared<RHI_Context>();
 		const static auto multithread_protection = false;
@@ -106,7 +106,7 @@ namespace Spartan
 			{
 				Settings::Get().m_versionGraphicsAPI = level;
                 Log::m_caller_name.clear();
-				Log::Write("Spartan::RHI_Device::" + Settings::Get().m_versionGraphicsAPI, Log_Info);
+				Log::Write("Spartan::RHI_Device:: DirectX " + Settings::Get().m_versionGraphicsAPI, Log_Info);
 			};
 
 			switch (m_rhi_context->device->GetFeatureLevel())

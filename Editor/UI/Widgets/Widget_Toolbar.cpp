@@ -69,7 +69,7 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
     m_widgets[Icon_Component_Script]    = make_unique<Widget_ShaderEditor>(context);
     m_widgets[Icon_Component_Options]   = make_unique<Widget_RenderOptions>(context);
 
-	Engine::EngineMode_Disable(Engine_Game);
+    m_context->m_engine->EngineMode_Disable(Engine_Game);
 }
 
 void Widget_Toolbar::Tick(float delta_time)
@@ -86,7 +86,7 @@ void Widget_Toolbar::Tick(float delta_time)
     };
 
     // Play button	
-    show_button(Icon_Button_Play, []() { return Engine::EngineMode_IsSet(Engine_Game); }, []() { Engine::EngineMode_Toggle(Engine_Game); });
+    show_button(Icon_Button_Play, [this]() { return m_context->m_engine->EngineMode_IsSet(Engine_Game); }, [this]() { m_context->m_engine->EngineMode_Toggle(Engine_Game); });
 
     for (auto& widget_it : m_widgets)
     {
