@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    class Engine;
+
 	#define VALIDATE_SUBSYSTEM_TYPE(T) static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem")
 
 	class SPARTAN_CLASS Context
@@ -85,7 +87,8 @@ namespace Spartan
 			return nullptr;
 		}
 
+        Engine* m_engine = nullptr;
 	private:
-		std::vector<std::shared_ptr<ISubsystem>> m_subsystems;
+		std::vector<std::shared_ptr<ISubsystem>> m_subsystems;      
 	};
 }

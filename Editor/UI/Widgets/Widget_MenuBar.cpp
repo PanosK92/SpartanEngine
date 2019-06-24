@@ -186,10 +186,10 @@ void Widget_MenuBar::ShowAboutWindow()
 		ImGui::SameLine(250); ImGui::PushID(url);  if (ImGui::Button("URL")) { FileSystem::OpenDirectoryWindow(url); } ImGui::PopID();
 	};
 
-#ifdef API_GRAPHICS_D3D11
+#if defined(API_GRAPHICS_D3D11)
     const char* api_name = "DirectX";
     const char* api_link = "https://www.microsoft.com/en-us/download/details.aspx?id=17431";
-#elif API_GRAPHICS_VULKAN
+#elif defined(API_GRAPHICS_VULKAN)
     const char* api_name = "Vulkan";
     const char* api_link = "https://www.khronos.org/vulkan/";
 #endif

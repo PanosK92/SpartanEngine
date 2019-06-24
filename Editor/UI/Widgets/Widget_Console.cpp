@@ -54,9 +54,9 @@ Widget_Console::Widget_Console(Context* context) : Widget(context)
 	// Set the logger implementation for the engine to use
 	Log::SetLogger(m_logger);
 
-	m_show_info		= true;
-	m_show_warnings	= true;
-	m_show_errors	= true;
+	m_visibility[0]	= true; // Info
+    m_visibility[1] = true; // Warning
+    m_visibility[2] = true; // Error
 }
 
 void Widget_Console::Tick(float delta_time)
@@ -64,7 +64,7 @@ void Widget_Console::Tick(float delta_time)
 	// Clear Button
 	if (ImGui::Button("Clear"))	{ Clear();} ImGui::SameLine();
 
-	// Lambda for info, warning, error filter button
+	// Lambda for info, warning, error filter buttons
 	const auto display_button = [](const Icon_Type icon, bool* toggle)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, *toggle ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
@@ -78,9 +78,9 @@ void Widget_Console::Tick(float delta_time)
 	};
 
 	// Log category visibility buttons
-	display_button(Icon_Console_Info, &m_show_info);
-	display_button(Icon_Console_Warning, &m_show_warnings);
-	display_button(Icon_Console_Error, &m_show_errors);
+	display_button(Icon_Console_Info,       &m_visibility[0]);
+	display_button(Icon_Console_Warning,    &m_visibility[1]);
+	display_button(Icon_Console_Error,      &m_visibility[2]);
 
 	// Text filter
 	_Widget_Console::log_filter.Draw("Filter", -100.0f);
@@ -93,7 +93,7 @@ void Widget_Console::Tick(float delta_time)
 		if (!_Widget_Console::log_filter.PassFilter(log.text.c_str()))
 			continue;
 
-		if ((log.error_level == 0 && m_show_info) || (log.error_level == 1 && m_show_warnings) || (log.error_level == 2 && m_show_errors))
+		if (m_visibility[log.error_level])
 		{
 			ImGui::PushStyleColor(ImGuiCol_Text, _Widget_Console::colors[log.error_level]);	// text
 			ImGui::TextUnformatted(log.text.c_str());
@@ -113,12 +113,16 @@ void Widget_Console::Tick(float delta_time)
 void Widget_Console::AddLogPackage(const LogPackage& package)
 {
 	m_logs.push_back(package);
-	if (static_cast<unsigned int>(m_logs.size()) > m_max_log_entries)
+	if (static_cast<uint32_t>(m_logs.size()) > m_max_log_entries)
 	{
 		m_logs.pop_front();
 	}
 
-	_Widget_Console::scroll_to_bottom = true;
+    // If the user is displaying this type of messages, scroll to bottom
+    if (m_visibility[package.error_level])
+    {
+        _Widget_Console::scroll_to_bottom = true;
+    }
 }
 
 void Widget_Console::Clear()

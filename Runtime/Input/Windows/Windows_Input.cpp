@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
 #include "../../Core/EventSystem.h"
+#include "../../Core/Context.h"
+#include "../../Core/Engine.h"
 //==================================
 
 //= NAMESPACES ===============
@@ -41,7 +43,7 @@ namespace Spartan
 	IDirectInputDevice8*	g_keyboard;
 	IDirectInputDevice8*	g_mouse;
 	XINPUT_STATE			g_gamepad;
-	uint32_t			g_gamepad_num;
+	uint32_t			    g_gamepad_num;
 	DIMOUSESTATE			g_mouse_state;
 	unsigned char			g_keyboard_state[256];
 
@@ -49,8 +51,8 @@ namespace Spartan
 	{
 		g_gamepad_num				= 0;
 		auto result					= true;
-		const auto window_handle	= static_cast<HWND>(Settings::Get().GetWindowHandle());
-		const auto window_instance	= static_cast<HINSTANCE>(Settings::Get().GetWindowInstance());
+		const auto window_handle	= static_cast<HWND>(context->m_engine->GetWindowHandle());
+		const auto window_instance	= static_cast<HINSTANCE>(context->m_engine->GetWindowInstance());
 
 		if (!window_handle || !window_instance)
 			return;
@@ -171,7 +173,7 @@ namespace Spartan
 	void Input::Tick()
 	{
 		m_keys_previous				= m_keys;
-		const auto window_handle	= static_cast<HWND>(Settings::Get().GetWindowHandle());
+		const auto window_handle	= static_cast<HWND>(m_context->m_engine->GetWindowHandle());
 
 		if(ReadKeyboard())
 		{

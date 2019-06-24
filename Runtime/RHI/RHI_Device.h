@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    class Context;
 	namespace Math
 	{ 
 		class Vector4;
@@ -79,7 +80,7 @@ namespace Spartan
 	class SPARTAN_CLASS RHI_Device
 	{
 	public:
-		RHI_Device();
+		RHI_Device(Context* context);
 		~RHI_Device();
 
 		//= API ===================================================================================

@@ -229,7 +229,7 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 {
 	if (ComponentProperty::Begin("Transform", Icon_Component_Transform, transform, true, false))
 	{
-		const auto is_playing = Engine::EngineMode_IsSet(Engine_Game);
+		const auto is_playing = m_context->m_engine->EngineMode_IsSet(Engine_Game);
 
 		//= REFLECT ======================================================================================================
 		auto position	= transform->GetPositionLocal();

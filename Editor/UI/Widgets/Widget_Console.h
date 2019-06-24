@@ -71,7 +71,5 @@ private:
 	std::shared_ptr<EngineLogger> m_logger;
 	std::deque<LogPackage> m_logs;
 	unsigned int m_max_log_entries = 500;
-	bool m_show_info;
-	bool m_show_warnings;
-	bool m_show_errors;
+    bool m_visibility[3];
 };
