@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //======================
 
 static const float g_blendMin = 0.01f;
-static const float g_blendMax = 1.0f;
+static const float g_blendMax = 0.8f;
 
 float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 {
@@ -83,7 +83,7 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	color_history = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
 
 	// Decrease blend factor when motion gets sub-pixel
-	float speed_limiter = 1.0f;
+	float speed_limiter = 0.1f;
 	float factor_subpixel = saturate(length(velocity * g_resolution) * speed_limiter);
 	
 	// Compute blend factor (but simple use max blend if the re-projected texcoord is out of screen)
