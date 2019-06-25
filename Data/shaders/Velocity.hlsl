@@ -19,27 +19,27 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Return average velocity
+// Returns average velocity
 float2 GetVelocity_Dilate_Average(float2 texCoord, Texture2D texture_velocity, SamplerState sampler_bilinear)
 {
-	float dx = 2.0f * g_texelSize.x;
-	float dy = 2.0f * g_texelSize.y;
+	float dx = g_texelSize.x;
+	float dy = g_texelSize.y;
 	
 	float2 velocity_tl 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-dx, -dy)).xy;
 	float2 velocity_tr	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(dx, -dy)).xy;
 	float2 velocity_bl	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-dx, dy)).xy;
 	float2 velocity_br 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(dx, dy)).xy;
 	float2 velocity_ce 	= texture_velocity.Sample(sampler_bilinear, texCoord).xy;
-	float2 velocity 	= (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;	
+	float2 velocity_avg = (velocity_tl + velocity_tr + velocity_bl + velocity_br + velocity_ce) / 5.0f;	
 	
-	return velocity;
+	return velocity_avg;
 }
 
-// Returns velocity with closest depth
-float2 GetVelocity_Dilate_Depth3X3(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear, out float closestDepth)
+// Returns velocity with min depth (in a 3x3 neighborhood)
+float2 GetVelocity_Dilate_Min(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear)
 {	
-	closestDepth			= 1.0f;
-	float2 closestTexCoord 	= texCoord;
+	float min_depth	= 0.0f;
+	float2 min_uv 	= texCoord;
 	[unroll]
     for(int y = -1; y <= 1; ++y)
     {
@@ -48,13 +48,37 @@ float2 GetVelocity_Dilate_Depth3X3(float2 texCoord, Texture2D texture_velocity, 
         {
 			float2 offset 	= float2(x, y) * g_texelSize;
 			float depth		= texture_depth.Sample(sampler_bilinear, texCoord + offset).r;
-			if(depth > closestDepth) // Reverse-Z
+			if(depth > min_depth) // Reverse-z, so looking for max to find min depth
 			{
-				closestDepth	= depth;
-				closestTexCoord	= texCoord + offset;
+				min_depth	= depth;
+				min_uv	= texCoord + offset;
 			}
         }
 	}
 
-	return texture_velocity.Sample(sampler_bilinear, closestTexCoord).xy;
+	return texture_velocity.Sample(sampler_bilinear, min_uv).xy;
+}
+
+// Returns velocity with max depth (in a 3x3 neighborhood)
+float2 GetVelocity_Dilate_Max(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear)
+{	
+	float max_depth	= 1.0f;
+	float2 max_uv 	= texCoord;
+	[unroll]
+    for(int y = -1; y <= 1; ++y)
+    {
+		[unroll]
+        for(int x = -1; x <= 1; ++x)
+        {
+			float2 offset 	= float2(x, y) * g_texelSize;
+			float depth		= texture_depth.Sample(sampler_bilinear, texCoord + offset).r;
+			if(depth < max_depth) // Reverse-z, so looking for min to find max depth
+			{
+				max_depth	= depth;
+				max_uv		= texCoord + offset;
+			}
+        }
+	}
+
+	return texture_velocity.Sample(sampler_bilinear, max_uv).xy;
 }

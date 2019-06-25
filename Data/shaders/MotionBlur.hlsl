@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const int MAX_SAMPLES = 16;
 
-float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_velocity, SamplerState sampler_bilinear)
+float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_velocity, Texture2D texture_depth, SamplerState sampler_bilinear)
 {	
 	float4 color 	= texture_color.Sample(sampler_bilinear, texCoord);	
-	float2 velocity = GetVelocity_Dilate_Average(texCoord, texture_velocity, sampler_bilinear);
+	float2 velocity = GetVelocity_Dilate_Max(texCoord, texture_velocity, texture_depth, sampler_bilinear);
 	
 	// Make velocity scale based on user preference instead of frame rate
 	float velocity_scale 	= (g_fps_current / g_fps_target) * g_motionBlur_strength;
