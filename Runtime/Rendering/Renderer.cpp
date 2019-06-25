@@ -718,15 +718,7 @@ namespace Spartan
 		if (!m_camera || renderables->size() <= 2)
 			return;
 
-		auto concat = [](const float a, const float b) 
-		{
-			float times = 1;
-			while (times <= b)
-				times *= 10;
-			return a * times + b;
-		};
-
-		auto render_hash = [this, &concat](Entity* entity)
+		auto render_hash = [this](Entity* entity)
 		{
 			// Get renderable
 			auto renderable = entity->GetRenderable_PtrRaw();
@@ -738,10 +730,10 @@ namespace Spartan
 			if (!material)
 				return 0.0f;
 
-			const auto num_depth = (renderable->GetAabbTransformed().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+			const auto num_depth    = (renderable->GetAabbTransformed().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
 			const auto num_material = static_cast<float>(material->GetId());
 
-			return concat(num_depth, num_material);
+			return stof(to_string(num_depth) + "-" + to_string(num_material));
 		};
 
 		// Sort by depth (front to back), then sort by material		

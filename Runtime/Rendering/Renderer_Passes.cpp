@@ -87,9 +87,9 @@ namespace Spartan
 			m_render_tex_full_final		// OUT: Result
 		);
 
-		Pass_Lines(m_render_tex_full_final);
+        Pass_Lines(m_render_tex_full_final);
 
-		Pass_Gizmos(m_render_tex_full_final);
+        Pass_Gizmos(m_render_tex_full_final);
 
 		Pass_DebugBuffer(m_render_tex_full_final);
 
@@ -216,23 +216,26 @@ namespace Spartan
 
 		m_cmd_list->Begin("Pass_GBuffer");
 
-		const auto clear_color	= Vector4::Zero;
+		const auto& clear_color= Vector4::Zero;
 		
 		// If there is nothing to render, just clear
 		if (m_entities[Renderable_ObjectOpaque].empty())
 		{
-			m_cmd_list->ClearRenderTarget(m_g_buffer_albedo->GetResource_RenderTarget(), Vector4::Zero);
-			m_cmd_list->ClearRenderTarget(m_g_buffer_normal->GetResource_RenderTarget(), Vector4::Zero);
+			m_cmd_list->ClearRenderTarget(m_g_buffer_albedo->GetResource_RenderTarget(), clear_color);
+			m_cmd_list->ClearRenderTarget(m_g_buffer_normal->GetResource_RenderTarget(), clear_color);
 			m_cmd_list->ClearRenderTarget(m_g_buffer_material->GetResource_RenderTarget(), Vector4::Zero); // zeroed material buffer causes sky sphere to render
-			m_cmd_list->ClearRenderTarget(m_g_buffer_velocity->GetResource_RenderTarget(), Vector4::Zero);
+			m_cmd_list->ClearRenderTarget(m_g_buffer_velocity->GetResource_RenderTarget(), clear_color);
 			m_cmd_list->ClearDepthStencil(m_g_buffer_depth->GetResource_DepthStencil(), Clear_Depth, GetClearDepth());
 			m_cmd_list->End();
 			m_cmd_list->Submit();
 			return;
 		}
 
-		// Prepare resources
 		const auto& shader_gbuffer = m_shaders[Shader_Gbuffer_V];
+        if (!shader_gbuffer->IsCompiled())
+            return;
+
+        // Pack render targets
 		const vector<void*> render_targets
 		{
 			m_g_buffer_albedo->GetResource_RenderTarget(),
@@ -1079,7 +1082,7 @@ namespace Spartan
 		m_cmd_list->Begin("Pass_MotionBlur");
 
 		// Prepare resources
-		void* textures[] = { tex_in->GetResource_Texture(), m_g_buffer_velocity->GetResource_Texture() };
+		void* textures[] = { tex_in->GetResource_Texture(), m_g_buffer_velocity->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture() };
 		SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
@@ -1195,9 +1198,9 @@ namespace Spartan
 		m_cmd_list->SetShaderPixel(shader_color);
 		m_cmd_list->SetInputLayout(shader_color->GetInputLayout());
 		m_cmd_list->SetSampler(0, m_sampler_point_clamp);
-		
-		// unjittered matrix to avoid TAA jitter due to lack of motion vectors (line rendering is anti-aliased by m_rasterizer_cull_back_wireframe, decently)
-		const auto view_projection_unjittered = m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix();
+
+        // unjittered matrix to avoid TAA jitter due to lack of motion vectors (line rendering is anti-aliased by m_rasterizer_cull_back_wireframe, decently)
+        const auto view_projection_unjittered = m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix();
 
 		// Draw lines that require depth
 		m_cmd_list->SetDepthStencilState(m_depth_stencil_enabled);

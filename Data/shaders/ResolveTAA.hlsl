@@ -52,8 +52,7 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current, Texture2D tex_velocity, Texture2D tex_depth, SamplerState sampler_bilinear)
 {
 	// Reproject
-	float depth 			= 1.0f;
-	float2 velocity			= GetVelocity_Dilate_Depth3X3(texCoord, tex_velocity, tex_depth, sampler_bilinear, depth);
+	float2 velocity			= GetVelocity_Dilate_Min(texCoord, tex_velocity, tex_depth, sampler_bilinear);
 	float2 texCoord_history = texCoord - velocity;
 	
 	// Get current and history colors

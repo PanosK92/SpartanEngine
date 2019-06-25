@@ -32,12 +32,12 @@ namespace Spartan
 	class SPARTAN_CLASS Spartan_Object
 	{
 	public:
-		Spartan_Object() { m_id = g_id++; }
+		Spartan_Object() { m_id = GenerateId(); }
 
 		uint32_t GetId() const			{ return m_id; }
 		void SetId(const uint32_t id)	{ m_id = id; }
 
-		static auto GenerateId() { return g_id++;}
+		static uint32_t GenerateId() { return ++g_id;}
 
 	protected:
 		uint64_t m_size = 0;
