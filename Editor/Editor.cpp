@@ -54,9 +54,6 @@ namespace _Editor
 
 Editor::Editor(void* window_handle, void* window_instance, float window_width, float window_height)
 {
-	// Add console widget first so it picks up the engine's initialization output
-	m_widgets.emplace_back(make_unique<Widget_Console>(nullptr));
-
 	// Create engine
 	m_engine = make_unique<Engine>(window_handle, window_handle, window_instance, window_width, window_height);
 	
@@ -153,6 +150,7 @@ void Editor::Tick()
 
 void Editor::Widgets_Create()
 {
+    m_widgets.emplace_back(make_unique<Widget_Console>(m_context));
     m_widgets.emplace_back(make_unique<Widget_MenuBar>(m_context)); _Editor::widget_menu_bar = m_widgets.back().get();
     m_widgets.emplace_back(make_unique<Widget_Toolbar>(m_context)); _Editor::widget_toolbar = m_widgets.back().get();
     m_widgets.emplace_back(make_unique<Widget_Viewport>(m_context));	

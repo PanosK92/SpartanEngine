@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include "../../ImGui/Source/imgui.h"
 #include "../../ImGui/Source/imgui_internal.h"
+#include "Profiling/Profiler.h"
+#include "Core/Context.h"
 //============================================
 
 namespace Spartan { class Context; }
@@ -33,7 +35,12 @@ namespace Spartan { class Context; }
 class Widget
 {
 public:
-	Widget(Spartan::Context* context) { m_context = context; m_window = nullptr; }
+	Widget(Spartan::Context* context)
+    {
+        m_context   = context;
+        m_profiler  = m_context->GetSubsystem<Spartan::Profiler>().get();
+        m_window    = nullptr;
+    }
 	virtual ~Widget() = default;
 
 	bool Begin()
@@ -46,6 +53,8 @@ public:
 
 		if (!m_is_window || !m_is_visible)
 			return false;
+
+        TIME_BLOCK_START_CPU_NAMED(m_profiler, m_title.c_str());
 
         // Reset
         m_var_pushes = 0;
@@ -115,6 +124,8 @@ public:
         ImGui::PopStyleVar(m_var_pushes);
 		m_window_begun = false;
 
+        TIME_BLOCK_END(m_profiler);
+
 		return true;
 	}
 
@@ -142,7 +153,8 @@ protected:
     std::function<void()> m_callback_begin_pre          = nullptr;
     std::function<void()> m_callback_begin_post         = nullptr;
 
-	Spartan::Context* m_context = nullptr;
+	Spartan::Context* m_context     = nullptr;
+    Spartan::Profiler* m_profiler   = nullptr;
 	std::string m_title;
 	ImGuiWindow* m_window;
 

@@ -92,19 +92,27 @@ namespace Spartan::Math
 		}
 	}
 
-	BoundingBox BoundingBox::Transformed(const Matrix& transform)
+	BoundingBox BoundingBox::TransformToAabb(const Matrix& transform)
 	{
-		Vector3 newCenter = transform * GetCenter();
-		Vector3 oldEdge = GetSize() * 0.5f;
-		Vector3 newEdge = Vector3
+		Vector3 center_new = transform * GetCenter();
+		Vector3 extent_old = GetSize() * 0.5f;
+		Vector3 extend_new = Vector3
 		(
-			Abs(transform.m00) * oldEdge.x + Abs(transform.m10) * oldEdge.y + Abs(transform.m20) * oldEdge.z,
-			Abs(transform.m01) * oldEdge.x + Abs(transform.m11) * oldEdge.y + Abs(transform.m21) * oldEdge.z,
-			Abs(transform.m02) * oldEdge.x + Abs(transform.m12) * oldEdge.y + Abs(transform.m22) * oldEdge.z
+			Abs(transform.m00) * extent_old.x + Abs(transform.m10) * extent_old.y + Abs(transform.m20) * extent_old.z,
+			Abs(transform.m01) * extent_old.x + Abs(transform.m11) * extent_old.y + Abs(transform.m21) * extent_old.z,
+			Abs(transform.m02) * extent_old.x + Abs(transform.m12) * extent_old.y + Abs(transform.m22) * extent_old.z
 		);
 
-		return BoundingBox(newCenter - newEdge, newCenter + newEdge);
+		return BoundingBox(center_new - extend_new, center_new + extend_new);
 	}
+
+    BoundingBox BoundingBox::TransformToOobb(const Matrix& transform)
+    {
+        Vector3 center_new = transform * GetCenter();
+        Vector3 extent_old = GetSize() * 0.5f;
+ 
+        return BoundingBox(center_new - extent_old, center_new + extent_old);
+    }
 
 	void BoundingBox::Merge(const BoundingBox& box)
 	{

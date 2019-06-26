@@ -95,7 +95,8 @@ namespace Spartan
 	}
 
 	void Profiler::OnFrameStart()
-	{	
+	{
+        TimeBlockStart("Frame", true, true); // measure frame - profiling interval independent
 		m_has_new_data = false;
 		float delta_time_sec = m_timer->GetDeltaTimeSec();
 		ComputeFps(delta_time_sec);
@@ -132,17 +133,15 @@ namespace Spartan
 			m_profiling_last_update_time	= 0.0f;
 			m_should_update					= true;
 			m_time_block_count				= 0;
-		
-			TimeBlockStart("Frame", true, true); // measure frame
 		}
 	}
 
 	void Profiler::OnFrameEnd()
 	{
+        TimeBlockEnd(); // measure frame - profiling interval independent
+
 		if (!m_should_update)
 			return;
-
-		TimeBlockEnd(); // measure frame
 
 		for (auto& time_block : m_time_blocks)
 		{

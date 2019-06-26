@@ -47,7 +47,7 @@ namespace Spartan
 			// Construct from vertices
 			BoundingBox(const std::vector<RHI_Vertex_PosTexNorTan>& vertices);
 
-			~BoundingBox() {}
+            ~BoundingBox() = default;
 
 			// Assign from bounding box
 			BoundingBox& operator =(const BoundingBox& rhs)
@@ -73,13 +73,16 @@ namespace Spartan
 			Intersection IsInside (const BoundingBox& box) const;
 
 			// Returns a transformed bounding box
-			BoundingBox Transformed(const Matrix& transform);
+			BoundingBox TransformToAabb(const Matrix& transform);
+
+            // Returns a transformed bounding box
+            BoundingBox TransformToOobb(const Matrix& transform);
 
 			// Merge with another bounding box
 			void Merge(const BoundingBox& box);
 
-			const Vector3& GetMin() const { return m_min; }
-			const Vector3& GetMax() const { return m_max; }
+			const auto& GetMin() const { return m_min; }
+			const auto& GetMax() const { return m_max; }
 
 			void Undefine()			{ m_min = Vector3::InfinityNeg; m_max = Vector3::Infinity; }
 			bool Defined() const	{ return m_min.x != INFINITY; }

@@ -57,7 +57,7 @@ namespace Spartan::Math
 				continue;
 
 			// Get object oriented bounding box
-			const auto& aabb = entity->GetComponent<Renderable>()->GetAabbTransformed();
+			const auto& aabb = entity->GetComponent<Renderable>()->GetAabb();
 
 			// Compute hit distance
 			auto distance = HitDistance(aabb);

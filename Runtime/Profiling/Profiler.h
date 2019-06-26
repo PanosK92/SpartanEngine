@@ -29,10 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ISubsystem.h"
 //=============================
 
-#define TIME_BLOCK_START_MULTI(profiler)	profiler->TimeBlockStart(__FUNCTION__, true, true);
-#define TIME_BLOCK_START_CPU(profiler)		profiler->TimeBlockStart(__FUNCTION__, true, false);
-#define TIME_BLOCK_START_GPU(profiler)		profiler->TimeBlockStart(__FUNCTION__, false, true);
-#define TIME_BLOCK_END(profiler)			profiler->TimeBlockEnd();
+#define TIME_BLOCK_START_MULTI(profiler)	        profiler->TimeBlockStart(__FUNCTION__, true, true);
+#define TIME_BLOCK_START_CPU_NAMED(profiler, name)  profiler->TimeBlockStart(name, true, false);
+#define TIME_BLOCK_START_CPU(profiler)		        profiler->TimeBlockStart(__FUNCTION__, true, false);
+#define TIME_BLOCK_START_GPU(profiler)		        profiler->TimeBlockStart(__FUNCTION__, false, true);
+#define TIME_BLOCK_END(profiler)			        profiler->TimeBlockEnd();
 
 namespace Spartan
 {
@@ -60,18 +61,18 @@ namespace Spartan
 
 		void SetProfilingEnabledCpu(const bool enabled)	{ m_profile_cpu_enabled = enabled; }
 		void SetProfilingEnabledGpu(const bool enabled)	{ m_profile_gpu_enabled = enabled; }
-		const std::string& GetMetrics() const			{ return m_metrics; }
+		const auto& GetMetrics() const			        { return m_metrics; }
 		const auto& GetTimeBlocks() const				{ return m_time_blocks; }
-		float GetTimeCpu() const						{ return m_time_cpu_ms; }
-		float GetTimeGpu() const						{ return m_time_gpu_ms; }
-		float GetTimeFrame() const						{ return m_time_frame_ms; }
-		float GetFps() const							{ return m_fps; }
-		float GetUpdateInterval()						{ return m_profiling_interval_sec; }
+		auto GetTimeCpu() const						    { return m_time_cpu_ms; }
+		auto GetTimeGpu() const						    { return m_time_gpu_ms; }
+		auto GetTimeFrame() const						{ return m_time_frame_ms; }
+		auto GetFps() const							    { return m_fps; }
+		auto GetUpdateInterval()						{ return m_profiling_interval_sec; }
 		void SetUpdateInterval(float internval)			{ m_profiling_interval_sec = internval; }
-		bool HasNewData()								{ return m_has_new_data; }
-		const std::string& GpuGetName()					{ return m_gpu_name; }
-		uint32_t GpuGetMemoryAvailable()			{ return m_gpu_memory_available; }
-		uint32_t GpuGetMemoryUsed()					{ return m_gpu_memory_used; }
+        auto HasNewData()								{ return m_has_new_data; }
+		const auto& GpuGetName()					    { return m_gpu_name; }
+        auto GpuGetMemoryAvailable()			        { return m_gpu_memory_available; }
+        auto GpuGetMemoryUsed()					        { return m_gpu_memory_used; }
 		
 		void Reset()
 		{
