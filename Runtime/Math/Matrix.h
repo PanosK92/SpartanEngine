@@ -116,7 +116,7 @@ namespace Spartan::Math
 			);
 		}
 
-		Quaternion GetRotation()
+		Quaternion GetRotation() const
 		{
 			Vector3 scale = GetScale();
 
@@ -189,7 +189,7 @@ namespace Spartan::Math
 		//================================================================================================
 
 		//= SCALE ========================================================================================
-		Vector3 GetScale()
+		Vector3 GetScale() const
 		{
 			int xs = (Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
             int ys = (Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;

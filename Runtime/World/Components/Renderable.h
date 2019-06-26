@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ======================
 #include "IComponent.h"
 #include <vector>
 #include "../../Math/BoundingBox.h"
 #include "../../Math/Matrix.h"
-//===================================
+//=================================
 
 namespace Spartan
 {
@@ -79,7 +79,8 @@ namespace Spartan
 		auto GeometryType()			const { return m_geometry_type; }
 		const auto& GeometryName()	const { return m_geometryName; }
 		const auto& GeometryModel() const { return m_model; }
-		const Math::BoundingBox& GetAabbTransformed();
+		const Math::BoundingBox& GetAabb();
+        const Math::BoundingBox& GetOobb();
 		//=====================================================================================================
 
 		//= MATERIAL ============================================================
@@ -110,12 +111,13 @@ namespace Spartan
 		uint32_t m_geometryVertexCount;
 		std::shared_ptr<Model> m_model;
 		Geometry_Type m_geometry_type;
+		Math::BoundingBox m_bounding_box;
 		Math::BoundingBox m_aabb;
-		Math::BoundingBox m_aabb_transformed;
+        Math::BoundingBox m_oobb;
 		Math::Matrix m_last_transform;	
 		std::shared_ptr<Material> m_material;
-		bool m_castShadows;
-		bool m_receiveShadows;
+        bool m_castShadows      = true;
+        bool m_receiveShadows   = true;
 		bool m_materialDefault;
 	};
 }

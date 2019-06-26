@@ -47,7 +47,7 @@ namespace Spartan
 		const bool IsComplete() const		{ return m_is_complete; }
 		const std::string& GetName() const	{ return m_name; }
 		const TimeBlock* GetParent() const	{ return m_parent; }
-		uint32_t GetTreeDepth()	const	{ return m_tree_depth; }
+		uint32_t GetTreeDepth()	const	    { return m_tree_depth; }
 		float GetDurationCpu() const		{ return m_duration_cpu; }
 		float GetDurationGpu() const		{ return m_duration_gpu; }
 

@@ -136,7 +136,7 @@ namespace Spartan
 
 	bool Camera::IsInViewFrustrum(Renderable* renderable)
 	{
-		const auto box		= renderable->GetAabbTransformed();
+		const auto box		= renderable->GetAabb();
 		const auto center	= box.GetCenter();
 		const auto extents	= box.GetExtents();
 
@@ -187,7 +187,7 @@ namespace Spartan
 				continue;
 
             // Score this hit
-            auto& obb = hit.m_entity->GetComponent<Renderable>()->GetAabbTransformed();
+            auto& obb = hit.m_entity->GetComponent<Renderable>()->GetAabb();
             float distance_obb = Vector3::DistanceSquared(hit.m_position, obb.GetCenter());
             m_scored.emplace_back
             (

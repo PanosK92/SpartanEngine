@@ -24,15 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
-#include "../../Rendering/Utilities/Geometry.h"
-#include "../../Rendering/Material.h"
 #include "../../Rendering/Model.h"
+#include "../../Rendering/Material.h"
+#include "../../Rendering/Utilities/Geometry.h"
 //=============================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 namespace Spartan
 {
@@ -107,7 +107,7 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount, uint32_t);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName, string);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_model, shared_ptr<Model>);
-		REGISTER_ATTRIBUTE_VALUE_VALUE(m_aabb, BoundingBox);
+		REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box, BoundingBox);
 		REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet, Geometry_Type);
 	}
 
@@ -120,7 +120,7 @@ namespace Spartan
 		stream->Write(m_geometryIndexCount);
 		stream->Write(m_geometryVertexOffset);
 		stream->Write(m_geometryVertexCount);
-		stream->Write(m_aabb);
+		stream->Write(m_bounding_box);
 		stream->Write(m_model ? m_model->GetResourceName() : NOT_ASSIGNED);
 
 		// Material
@@ -141,7 +141,7 @@ namespace Spartan
 		m_geometryIndexCount	= stream->ReadAs<uint32_t>();
 		m_geometryVertexOffset	= stream->ReadAs<uint32_t>();
 		m_geometryVertexCount	= stream->ReadAs<uint32_t>();
-		stream->Read(&m_aabb);
+		stream->Read(&m_bounding_box);
 		string model_name;
 		stream->Read(&model_name);
 		m_model = m_context->GetSubsystem<ResourceCache>()->GetByName<Model>(model_name);
@@ -170,14 +170,14 @@ namespace Spartan
 	//==============================================================================
 
 	//= GEOMETRY =====================================================================================
-	void Renderable::GeometrySet(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& aabb, Model* model)
+	void Renderable::GeometrySet(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Model* model)
 	{	
 		m_geometryName			= name;
 		m_geometryIndexOffset	= index_offset;
 		m_geometryIndexCount	= index_count;
 		m_geometryVertexOffset	= vertex_offset;
 		m_geometryVertexCount	= vertex_count;
-		m_aabb					= aabb;
+		m_bounding_box			= bounding_box;
 		m_model					= model->GetSharedPtr();
 	}
 
@@ -202,16 +202,27 @@ namespace Spartan
 		m_model->GeometryGet(m_geometryIndexOffset, m_geometryIndexCount, m_geometryVertexOffset, m_geometryVertexCount, indices, vertices);
 	}
 
-	const BoundingBox& Renderable::GetAabbTransformed()
+	const BoundingBox& Renderable::GetAabb()
 	{
 		if (m_last_transform != GetTransform()->GetMatrix())
 		{
-			m_aabb_transformed = m_aabb.Transformed(GetTransform()->GetMatrix());
+			m_aabb = m_bounding_box.TransformToAabb(GetTransform()->GetMatrix());
 		}
 
-		return m_aabb_transformed;
+		return m_aabb;
 	}
-	//==============================================================================
+
+    const BoundingBox& Renderable::GetOobb()
+    {
+        if (m_last_transform != GetTransform()->GetMatrix())
+        {
+            m_oobb = m_bounding_box.TransformToOobb(GetTransform()->GetMatrix());
+        }
+
+        return m_oobb;
+    }
+
+    //==============================================================================
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
