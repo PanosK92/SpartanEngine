@@ -33,7 +33,8 @@ Texture2D texLutIBL			: register(t8);
 
 //= SAMPLERS ======================================
 SamplerState sampler_linear_clamp	: register(s0);
-SamplerState sampler_point_clamp	: register(s1);
+SamplerState sampler_trlinear_clamp	: register(s1);
+SamplerState sampler_point_clamp	: register(s2);
 //=================================================
 
 //= CONSTANT BUFFERS ==========================
@@ -86,13 +87,13 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 color	= float3(0, 0, 0);
 	
 	// Sample from textures
-    float4 albedo       		= degamma(texAlbedo.Sample(sampler_linear_clamp, texCoord));
-    float4 normalSample 		= texNormal.Sample(sampler_linear_clamp, texCoord);
+    float4 albedo       		= degamma(texAlbedo.Sample(sampler_point_clamp, texCoord));
+    float4 normalSample 		= texNormal.Sample(sampler_point_clamp, texCoord);
 	float3 normal				= normal_decode(normalSample.xyz);
-	float4 materialSample   	= texMaterial.Sample(sampler_linear_clamp, texCoord);
+	float4 materialSample   	= texMaterial.Sample(sampler_point_clamp, texCoord);
     float occlusion_texture 	= normalSample.w;
-	float occlusion_ssao		= texSSAO.Sample(sampler_linear_clamp, texCoord).r; 
-	float shadow_directional	= texShadows.Sample(sampler_linear_clamp, texCoord).r;
+	float occlusion_ssao		= texSSAO.Sample(sampler_point_clamp, texCoord).r; 
+	float shadow_directional	= texShadows.Sample(sampler_point_clamp, texCoord).r;
 
 	// Create material
     Material material;
@@ -104,7 +105,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	material.roughness_alpha 	= max(0.001f, material.roughness * material.roughness);
 
 	// Compute common values
-    float depth  			= texDepth.Sample(sampler_linear_clamp, texCoord).r;
+    float depth  			= texDepth.Sample(sampler_point_clamp, texCoord).r;
     float3 worldPos 		= get_world_position_from_depth(depth, mViewProjectionInverse, texCoord);
     float3 camera_to_pixel  = normalize(worldPos.xyz - g_camera_position.xyz);
 
@@ -123,9 +124,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float ambient_light 		= factor_sky_light * factor_occlusion;
 	//==========================================================================================================
 
-	//= IBL - Image-based lighting =================================================================================================
-    color += ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, sampler_linear_clamp) * ambient_light;
-	//==============================================================================================================================
+	//= IBL - Image-based lighting =========================================================================================================================
+    color += ImageBasedLighting(material, normal, camera_to_pixel, texEnvironment, texLutIBL, sampler_linear_clamp, sampler_trlinear_clamp) * ambient_light;
+	//======================================================================================================================================================
 
 	//= SSR - Screen space reflections ==============================================
 	if (padding2.x != 0.0f)
