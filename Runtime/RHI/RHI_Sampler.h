@@ -31,7 +31,7 @@ namespace Spartan
 {
 	#define SAMPLER_POINT		Filter_Nearest, Filter_Nearest, Sampler_Mipmap_Nearest
 	#define SAMPLER_BILINEAR	Filter_Linear, Filter_Linear, Sampler_Mipmap_Nearest
-	#define SAMPLER_TRILINEAR	Filter_Linear, Filter_Linear, Sampler_Mipmap_Nearest
+	#define SAMPLER_TRILINEAR	Filter_Linear, Filter_Linear, Sampler_Mipmap_Linear
 
 	class RHI_Sampler : public Spartan_Object
 	{

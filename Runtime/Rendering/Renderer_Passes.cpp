@@ -409,7 +409,7 @@ namespace Spartan
 
 		// Prepare resources
 		const auto shader						= static_pointer_cast<RHI_Shader>(shader_light);
-		const vector<void*> samplers			= { m_sampler_trilinear_clamp->GetResource(), m_sampler_point_clamp->GetResource() };
+		const vector<void*> samplers			= { m_sampler_bilinear_clamp->GetResource(), m_sampler_trilinear_clamp->GetResource(), m_sampler_point_clamp->GetResource() };
 		const vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  shader_light->GetConstantBuffer()->GetResource() };
 		void* textures[] =
 		{
