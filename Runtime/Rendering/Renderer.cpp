@@ -269,8 +269,12 @@ namespace Spartan
         m_render_tex_full_ssao          = make_unique<RHI_Texture2D>(m_context, width, height, Format_R8_UNORM);            // Upscaled
 
 		// Spare textures for bloom
-		m_render_tex_full_bloom = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-		m_render_tex_half_bloom = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R16G16B16A16_FLOAT);
+		m_render_tex_bloom_1_1          = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+		m_render_tex_bloom_1_2          = make_unique<RHI_Texture2D>(m_context, width / 2.0f, height / 2.0f, Format_R16G16B16A16_FLOAT);
+        m_render_tex_bloom_1_4          = make_unique<RHI_Texture2D>(m_context, width / 4.0f, height / 4.0f, Format_R16G16B16A16_FLOAT);
+        m_render_tex_bloom_1_8          = make_unique<RHI_Texture2D>(m_context, width / 8.0f, height / 8.0f, Format_R16G16B16A16_FLOAT);
+        m_render_tex_bloom_1_16         = make_unique<RHI_Texture2D>(m_context, width / 16.0f, height / 16.0f, Format_R16G16B16A16_FLOAT);
+        m_render_tex_bloom_1_16_blurred = make_unique<RHI_Texture2D>(m_context, width / 16.0f, height / 16.0f, Format_R16G16B16A16_FLOAT);
 	}
 
 	void Renderer::CreateShaders()

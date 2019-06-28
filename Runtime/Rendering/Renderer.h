@@ -187,7 +187,7 @@ namespace Spartan
 		float m_fxaa_edge_threshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
 		float m_fxaa_edge_threshold_min	= 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Algorithm's default: 0.0833f
 		// Bloom
-		float m_bloom_intensity			= 0.5f;		// The intensity of the bloom
+		float m_bloom_intensity			= 0.1f;		// The intensity of the bloom
 		// Sharpening
 		float m_sharpen_strength		= 1.0f;		// Strength of the sharpening
 		float m_sharpen_clamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
@@ -280,17 +280,23 @@ namespace Spartan
 		std::shared_ptr<RHI_Texture> m_render_tex_full_light_previous;
 		std::shared_ptr<RHI_Texture> m_render_tex_full_final;
 		std::shared_ptr<RHI_Texture> m_render_tex_full_taa_current;
-		std::shared_ptr<RHI_Texture> m_render_tex_full_taa_history;
-		std::shared_ptr<RHI_Texture> m_render_tex_full_bloom;
+		std::shared_ptr<RHI_Texture> m_render_tex_full_taa_history;		
         std::shared_ptr<RHI_Texture> m_render_tex_full_ssao;
 		// 1/2
 		std::shared_ptr<RHI_Texture> m_render_tex_half_shadows;
         std::shared_ptr<RHI_Texture> m_render_tex_half_ssao;
 		std::shared_ptr<RHI_Texture> m_render_tex_half_ssao_blurred;
-		std::shared_ptr<RHI_Texture> m_render_tex_half_bloom;
 		// 1/4
 		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur1;
 		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur2;
+
+        // Bloom
+        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_1;
+        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_2;
+        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_4;
+        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_8;
+        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_16;
+        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_16_blurred;
 		//============================================================
 		
 		//= SHADERS =================================================
