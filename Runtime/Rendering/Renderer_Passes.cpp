@@ -907,47 +907,59 @@ namespace Spartan
 		m_cmd_list->Begin("Pass_Bloom");
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 
-		m_cmd_list->Begin("Downsample");
-		{
-			// Prepare resources
-			SetDefaultBuffer(m_render_tex_quarter_blur1->GetWidth(), m_render_tex_quarter_blur1->GetHeight());
+        m_cmd_list->Begin("Luminance");
+        {
+            // Prepare resources
+            SetDefaultBuffer(m_render_tex_quarter_blur1->GetWidth(), m_render_tex_quarter_blur1->GetHeight());
 
-			m_cmd_list->SetRenderTarget(m_render_tex_quarter_blur1);
-			m_cmd_list->SetViewport(m_render_tex_quarter_blur1->GetViewport());
-			m_cmd_list->SetShaderPixel(shader_downsampleBox);
-			m_cmd_list->SetTexture(0, tex_in);
-			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-		}
-		m_cmd_list->End();
+            m_cmd_list->SetRenderTarget(m_render_tex_quarter_blur1);
+            m_cmd_list->SetViewport(m_render_tex_quarter_blur1->GetViewport());
+            m_cmd_list->SetShaderPixel(shader_bloomBright);
+            m_cmd_list->SetTexture(0, tex_in);
+            m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+            m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+        }
+        m_cmd_list->End();
 
-		m_cmd_list->Begin("Luminance");
-		{
-			// Prepare resources
-			SetDefaultBuffer(m_render_tex_quarter_blur2->GetWidth(), m_render_tex_quarter_blur2->GetHeight());
+        auto downsample = [this, &shader_downsampleBox](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+        {
+		    m_cmd_list->Begin("Downsample");
+		    {
+		    	// Prepare resources
+		    	SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
-			m_cmd_list->SetRenderTarget(m_render_tex_quarter_blur2);
-			m_cmd_list->SetViewport(m_render_tex_quarter_blur2->GetViewport());	
-			m_cmd_list->SetShaderPixel(shader_bloomBright);
-			m_cmd_list->SetTexture(0, m_render_tex_quarter_blur1);
-			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
-			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
-		}
-		m_cmd_list->End();
+		    	m_cmd_list->SetRenderTarget(tex_out);
+		    	m_cmd_list->SetViewport(tex_out->GetViewport());
+		    	m_cmd_list->SetShaderPixel(shader_downsampleBox);
+		    	m_cmd_list->SetTexture(0, tex_in);
+		    	m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+		    	m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+		    }
+		    m_cmd_list->End();
+        };
 
-		// Gaussian blur
-		const auto sigma = 2.0f;
-		Pass_BlurGaussian(m_render_tex_quarter_blur2, m_render_tex_quarter_blur1, sigma);
+        // Downsample
+        downsample(tex_in, m_render_tex_bloom_1_2);
+        downsample(m_render_tex_bloom_1_2, m_render_tex_bloom_1_4);
+        downsample(m_render_tex_bloom_1_4, m_render_tex_bloom_1_8);
+        downsample(m_render_tex_bloom_1_8, m_render_tex_bloom_1_16);
 
-		// Upsampling progressively yields the best results [Kraus2007]
-        Pass_Upscale(m_render_tex_quarter_blur1, m_render_tex_half_bloom);
-        Pass_Upscale(m_render_tex_half_bloom, m_render_tex_full_bloom);
+		// Blur
+		const auto sigma = 4.0f;
+        const auto pixel_stride = 2.0f;
+		Pass_BlurGaussian(m_render_tex_bloom_1_16, m_render_tex_bloom_1_16_blurred, sigma, pixel_stride);
+
+		// Upsample
+        Pass_Upscale(m_render_tex_bloom_1_16_blurred, m_render_tex_bloom_1_8);
+        Pass_Upscale(m_render_tex_bloom_1_8, m_render_tex_bloom_1_4);
+        Pass_Upscale(m_render_tex_bloom_1_4, m_render_tex_bloom_1_2);
+        Pass_Upscale(m_render_tex_bloom_1_2, m_render_tex_bloom_1_1);
 		
 		m_cmd_list->Begin("Additive_Blending");
 		{
 			// Prepare resources
 			SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-			void* textures[] = { tex_in->GetResource_Texture(), m_render_tex_full_bloom->GetResource_Texture() };
+			void* textures[] = { tex_in->GetResource_Texture(), m_render_tex_bloom_1_1->GetResource_Texture() };
 
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
