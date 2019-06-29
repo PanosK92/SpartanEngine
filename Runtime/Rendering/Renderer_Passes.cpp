@@ -692,7 +692,7 @@ namespace Spartan
             return;
 
         m_cmd_list->Begin("Upscale");
-        SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
+        SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight()); // upscale wants source texel size, not target
         m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetViewport(tex_out->GetViewport());
         m_cmd_list->SetShaderVertex(shader_vertex);
@@ -910,10 +910,10 @@ namespace Spartan
         m_cmd_list->Begin("Luminance");
         {
             // Prepare resources
-            SetDefaultBuffer(m_render_tex_quarter_blur1->GetWidth(), m_render_tex_quarter_blur1->GetHeight());
+            SetDefaultBuffer(m_render_tex_bloom[0]->GetWidth(), m_render_tex_bloom[0]->GetHeight());
 
-            m_cmd_list->SetRenderTarget(m_render_tex_quarter_blur1);
-            m_cmd_list->SetViewport(m_render_tex_quarter_blur1->GetViewport());
+            m_cmd_list->SetRenderTarget(m_render_tex_bloom[0]);
+            m_cmd_list->SetViewport(m_render_tex_bloom[0]->GetViewport());
             m_cmd_list->SetShaderPixel(shader_bloomBright);
             m_cmd_list->SetTexture(0, tex_in);
             m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
@@ -926,7 +926,7 @@ namespace Spartan
 		    m_cmd_list->Begin("Downsample");
 		    {
 		    	// Prepare resources
-		    	SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
+		    	SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight()); // downsample wants source texel size, not target
 
 		    	m_cmd_list->SetRenderTarget(tex_out);
 		    	m_cmd_list->SetViewport(tex_out->GetViewport());
@@ -939,27 +939,36 @@ namespace Spartan
         };
 
         // Downsample
-        downsample(tex_in, m_render_tex_bloom_1_2);
-        downsample(m_render_tex_bloom_1_2, m_render_tex_bloom_1_4);
-        downsample(m_render_tex_bloom_1_4, m_render_tex_bloom_1_8);
-        downsample(m_render_tex_bloom_1_8, m_render_tex_bloom_1_16);
+        // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
+        for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 2); i++)
+        {
+            downsample(m_render_tex_bloom[i], m_render_tex_bloom[i + 1]);
+        }
 
 		// Blur
 		const auto sigma = 4.0f;
-        const auto pixel_stride = 2.0f;
-		Pass_BlurGaussian(m_render_tex_bloom_1_16, m_render_tex_bloom_1_16_blurred, sigma, pixel_stride);
+        const auto pixel_stride = 1.0f;
+		Pass_BlurGaussian(
+            m_render_tex_bloom[m_render_tex_bloom.size() - 2],
+            m_render_tex_bloom[m_render_tex_bloom.size() - 1],
+            sigma,
+            pixel_stride
+        );
+
+        // Swap the last two textures (fully downsampled unblurred and blurred version) so that the upscaling loop becomes simpler
+        m_render_tex_bloom.back().swap(m_render_tex_bloom[m_render_tex_bloom.size() - 2]);
 
 		// Upsample
-        Pass_Upscale(m_render_tex_bloom_1_16_blurred, m_render_tex_bloom_1_8);
-        Pass_Upscale(m_render_tex_bloom_1_8, m_render_tex_bloom_1_4);
-        Pass_Upscale(m_render_tex_bloom_1_4, m_render_tex_bloom_1_2);
-        Pass_Upscale(m_render_tex_bloom_1_2, m_render_tex_bloom_1_1);
+        for (int i = m_render_tex_bloom.size() - 2; i > 0; i--)
+        {
+            Pass_Upscale(m_render_tex_bloom[i], m_render_tex_bloom[i - 1]);
+        }
 		
 		m_cmd_list->Begin("Additive_Blending");
 		{
 			// Prepare resources
 			SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-			void* textures[] = { tex_in->GetResource_Texture(), m_render_tex_bloom_1_1->GetResource_Texture() };
+			void* textures[] = { tex_in->GetResource_Texture(), m_render_tex_bloom.front()->GetResource_Texture() };
 
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());

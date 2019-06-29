@@ -268,13 +268,27 @@ namespace Spartan
 		m_render_tex_half_ssao_blurred  = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);    // Blurred
         m_render_tex_full_ssao          = make_unique<RHI_Texture2D>(m_context, width, height, Format_R8_UNORM);            // Upscaled
 
-		// Spare textures for bloom
-		m_render_tex_bloom_1_1          = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-		m_render_tex_bloom_1_2          = make_unique<RHI_Texture2D>(m_context, width / 2.0f, height / 2.0f, Format_R16G16B16A16_FLOAT);
-        m_render_tex_bloom_1_4          = make_unique<RHI_Texture2D>(m_context, width / 4.0f, height / 4.0f, Format_R16G16B16A16_FLOAT);
-        m_render_tex_bloom_1_8          = make_unique<RHI_Texture2D>(m_context, width / 8.0f, height / 8.0f, Format_R16G16B16A16_FLOAT);
-        m_render_tex_bloom_1_16         = make_unique<RHI_Texture2D>(m_context, width / 16.0f, height / 16.0f, Format_R16G16B16A16_FLOAT);
-        m_render_tex_bloom_1_16_blurred = make_unique<RHI_Texture2D>(m_context, width / 16.0f, height / 16.0f, Format_R16G16B16A16_FLOAT);
+		// Bloom
+        {
+            // Create as many bloom textures as required to scale down below 20px (in any dimension)
+            m_render_tex_bloom.clear();
+            m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT));
+            while (m_render_tex_bloom.back()->GetWidth() > 32 && m_render_tex_bloom.back()->GetHeight() > 32) 
+            {
+                m_render_tex_bloom.emplace_back(
+                    make_unique<RHI_Texture2D>(
+                        m_context,
+                        m_render_tex_bloom.back()->GetWidth() / 2,
+                        m_render_tex_bloom.back()->GetHeight() / 2,
+                        Format_R16G16B16A16_FLOAT
+                        )
+                );
+            }
+
+            // The last bloom texture is a duplicate as it will be used as the output of the Gaussian blur
+            const auto& last_tex = m_render_tex_bloom.back();
+            m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, last_tex->GetWidth(), last_tex->GetHeight(), Format_R16G16B16A16_FLOAT));
+        }
 	}
 
 	void Renderer::CreateShaders()

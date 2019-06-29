@@ -291,12 +291,7 @@ namespace Spartan
 		std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur2;
 
         // Bloom
-        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_1;
-        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_2;
-        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_4;
-        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_8;
-        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_16;
-        std::shared_ptr<RHI_Texture> m_render_tex_bloom_1_16_blurred;
+        std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
 		//============================================================
 		
 		//= SHADERS =================================================
