@@ -60,8 +60,8 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	float3 color_history 	= tex_history.Sample(sampler_bilinear, texCoord_history).rgb;
 
 	//= Sample neighbourhood ==============================================================================
-	float2 du = float2(g_texelSize.x, 0.0f);
-	float2 dv = float2(0.0f, g_texelSize.y);
+	float2 du = float2(g_texel_size.x, 0.0f);
+	float2 dv = float2(0.0f, g_texel_size.y);
 
 	float3 ctl = tex_current.Sample(sampler_bilinear, texCoord - dv - du).rgb;
 	float3 ctc = tex_current.Sample(sampler_bilinear, texCoord - dv).rgb;

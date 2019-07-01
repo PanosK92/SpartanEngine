@@ -54,4 +54,4 @@ cbuffer GlobalBuffer : register(b0)
 	float3 g_padding;
 };
 
-#define g_texelSize float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
+#define g_texel_size float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
