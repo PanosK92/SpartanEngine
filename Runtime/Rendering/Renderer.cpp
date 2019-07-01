@@ -181,10 +181,11 @@ namespace Spartan
 	}
 
 	void Renderer::CreateBlendStates()
-	{
-		m_blend_enabled		= make_shared<RHI_BlendState>(m_rhi_device, true);
-		m_blend_disabled	= make_shared<RHI_BlendState>(m_rhi_device, false);
-		m_blend_shadow_maps = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_Src_Color, Blend_Src_Color, Blend_Operation_Min);
+	{	
+		m_blend_disabled    = make_shared<RHI_BlendState>(m_rhi_device, false);
+        m_blend_enabled     = make_shared<RHI_BlendState>(m_rhi_device, true);
+        m_blend_color_max   = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_Src_Color, Blend_Src_Color, Blend_Operation_Max);
+		m_blend_color_min   = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_Src_Color, Blend_Src_Color, Blend_Operation_Min);
 	}
 
 	void Renderer::CreateFonts()
@@ -284,10 +285,6 @@ namespace Spartan
                         )
                 );
             }
-
-            // The last bloom texture is a duplicate as it will be used as the output of the Gaussian blur
-            const auto& last_tex = m_render_tex_bloom.back();
-            m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, last_tex->GetWidth(), last_tex->GetHeight(), Format_R16G16B16A16_FLOAT));
         }
 	}
 
@@ -421,15 +418,15 @@ namespace Spartan
 		shader_blurGaussianBilateral->AddBuffer<Struct_Blur>();
 		m_shaders[Shader_BlurGaussianBilateral_P] = shader_blurGaussianBilateral;
 
-		// Bloom - bright
-		auto shader_bloomBright = make_shared<RHI_Shader>(m_rhi_device);
-		shader_bloomBright->AddDefine("PASS_BRIGHT");
-		shader_bloomBright->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-		m_shaders[Shader_BloomBright_P] = shader_bloomBright;
+		// Bloom - luminance
+		auto shader_bloomLuminance = make_shared<RHI_Shader>(m_rhi_device);
+		shader_bloomLuminance->AddDefine("PASS_BLOOM_LUMINANCE");
+		shader_bloomLuminance->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_BloomLuminance_P] = shader_bloomLuminance;
 
 		// Bloom - blend
 		auto shader_bloomBlend = make_shared<RHI_Shader>(m_rhi_device);
-		shader_bloomBlend->AddDefine("PASS_BLEND_ADDITIVE");
+		shader_bloomBlend->AddDefine("PASS_BLOOM_BLEND_ADDITIVE");
 		shader_bloomBlend->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 		m_shaders[Shader_BloomBlend_P] = shader_bloomBlend;
 

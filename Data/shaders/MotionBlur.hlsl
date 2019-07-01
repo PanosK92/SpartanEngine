@@ -35,7 +35,7 @@ float4 MotionBlur(float2 texCoord, Texture2D texture_color, Texture2D texture_ve
 		return color;
 	
 	// Improve performance by adapting sample count to velocity
-	float speed = length(velocity / g_texelSize);
+	float speed = length(velocity / g_texel_size);
 	int samples = clamp(int(speed), 1, MAX_SAMPLES);
 		
 	for (int i = 1; i < samples; ++i) 

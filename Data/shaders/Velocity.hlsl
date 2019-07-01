@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Returns average velocity
 float2 GetVelocity_Dilate_Average(float2 texCoord, Texture2D texture_velocity, SamplerState sampler_bilinear)
 {
-	float dx = g_texelSize.x;
-	float dy = g_texelSize.y;
+	float dx = g_texel_size.x;
+	float dy = g_texel_size.y;
 	
 	float2 velocity_tl 	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(-dx, -dy)).xy;
 	float2 velocity_tr	= texture_velocity.Sample(sampler_bilinear, texCoord + float2(dx, -dy)).xy;
@@ -46,7 +46,7 @@ float2 GetVelocity_Dilate_Min(float2 texCoord, Texture2D texture_velocity, Textu
 		[unroll]
         for(int x = -1; x <= 1; ++x)
         {
-			float2 offset 	= float2(x, y) * g_texelSize;
+			float2 offset 	= float2(x, y) * g_texel_size;
 			float depth		= texture_depth.Sample(sampler_bilinear, texCoord + offset).r;
 			if(depth > min_depth) // Reverse-z, so looking for max to find min depth
 			{
@@ -70,7 +70,7 @@ float2 GetVelocity_Dilate_Max(float2 texCoord, Texture2D texture_velocity, Textu
 		[unroll]
         for(int x = -1; x <= 1; ++x)
         {
-			float2 offset 	= float2(x, y) * g_texelSize;
+			float2 offset 	= float2(x, y) * g_texel_size;
 			float depth		= texture_depth.Sample(sampler_bilinear, texCoord + offset).r;
 			if(depth < max_depth) // Reverse-z, so looking for min to find max depth
 			{

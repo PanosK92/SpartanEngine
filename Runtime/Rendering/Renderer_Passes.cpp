@@ -381,7 +381,7 @@ namespace Spartan
 			Pass_BlurBilateralGaussian(tex_ssao, m_render_tex_half_ssao_blurred, sigma, pixel_stride);
 
             // Upscale to full size
-            Pass_Upscale(m_render_tex_half_ssao_blurred, tex_ssao_out);
+            Pass_Upsample(m_render_tex_half_ssao_blurred, tex_ssao_out);
 		}
 
 		m_cmd_list->End();
@@ -389,8 +389,8 @@ namespace Spartan
 
 	void Renderer::Pass_Light(shared_ptr<RHI_Texture>& tex_shadows, shared_ptr<RHI_Texture>& tex_ssao, shared_ptr<RHI_Texture>& tex_out)
 	{
+        // Acquire shader
 		const auto& shader_light = static_pointer_cast<ShaderLight>(m_shaders[Shader_Light_Vp]);
-
 		if (shader_light->GetCompilationState() != Shader_Compiled)
 			return;
 
@@ -556,7 +556,7 @@ namespace Spartan
 		const auto& shader_vertex = m_shaders[Shader_ShadowDirectional_Vp];
 
 		m_cmd_list->SetRenderTarget(tex_out);
-		m_cmd_list->SetBlendState(m_blend_shadow_maps);
+		m_cmd_list->SetBlendState(m_blend_color_min);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderVertex(shader_vertex);
 		m_cmd_list->SetInputLayout(shader_vertex->GetInputLayout());
@@ -683,7 +683,7 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-    void Renderer::Pass_Upscale(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Upsample(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shader
         const auto& shader_vertex   = m_shaders[Shader_Quad_V];
@@ -692,7 +692,7 @@ namespace Spartan
             return;
 
         m_cmd_list->Begin("Upscale");
-        SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight()); // upscale wants source texel size, not target
+        SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
         m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetViewport(tex_out->GetViewport());
         m_cmd_list->SetShaderVertex(shader_vertex);
@@ -897,7 +897,7 @@ namespace Spartan
 	void Renderer::Pass_Bloom(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders		
-		const auto& shader_bloomBright		= m_shaders[Shader_BloomBright_P];
+		const auto& shader_bloomBright		= m_shaders[Shader_BloomLuminance_P];
 		const auto& shader_bloomBlend		= m_shaders[Shader_BloomBlend_P];
 		const auto& shader_downsampleBox	= m_shaders[Shader_DownsampleBox_P];
 		const auto& shader_upsampleBox		= m_shaders[Shader_UpsampleBox_P];
@@ -926,7 +926,7 @@ namespace Spartan
 		    m_cmd_list->Begin("Downsample");
 		    {
 		    	// Prepare resources
-		    	SetDefaultBuffer(tex_in->GetWidth(), tex_in->GetHeight()); // downsample wants source texel size, not target
+		    	SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight()); 
 
 		    	m_cmd_list->SetRenderTarget(tex_out);
 		    	m_cmd_list->SetViewport(tex_out->GetViewport());
@@ -936,32 +936,38 @@ namespace Spartan
 		    	m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		    }
 		    m_cmd_list->End();
+            m_cmd_list->Submit(); // we have to submit because all downsample passes are using the same buffer
+        };
+
+        auto upsample = [this, &shader_upsampleBox](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+        {
+            m_cmd_list->Begin("Upsample");
+            {
+                SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
+
+                m_cmd_list->SetBlendState(m_blend_color_max);
+                m_cmd_list->SetRenderTarget(tex_out);
+                m_cmd_list->SetViewport(tex_out->GetViewport());
+                m_cmd_list->SetShaderPixel(shader_upsampleBox);
+                m_cmd_list->SetTexture(0, tex_in);
+                m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_buffer_global);
+                m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+            }
+            m_cmd_list->End();
+            m_cmd_list->Submit(); // we have to submit because all upsample passes are using the same buffer
         };
 
         // Downsample
         // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
-        for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 2); i++)
+        for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 1); i++)
         {
             downsample(m_render_tex_bloom[i], m_render_tex_bloom[i + 1]);
         }
 
-		// Blur
-		const auto sigma = 4.0f;
-        const auto pixel_stride = 1.0f;
-		Pass_BlurGaussian(
-            m_render_tex_bloom[m_render_tex_bloom.size() - 2],
-            m_render_tex_bloom[m_render_tex_bloom.size() - 1],
-            sigma,
-            pixel_stride
-        );
-
-        // Swap the last two textures (fully downsampled unblurred and blurred version) so that the upscaling loop becomes simpler
-        m_render_tex_bloom.back().swap(m_render_tex_bloom[m_render_tex_bloom.size() - 2]);
-
-		// Upsample
-        for (int i = m_render_tex_bloom.size() - 2; i > 0; i--)
+		// Upsample + blend
+        for (int i = m_render_tex_bloom.size() - 1; i > 0; i--)
         {
-            Pass_Upscale(m_render_tex_bloom[i], m_render_tex_bloom[i - 1]);
+            upsample(m_render_tex_bloom[i], m_render_tex_bloom[i - 1]);
         }
 		
 		m_cmd_list->Begin("Additive_Blending");
@@ -970,6 +976,7 @@ namespace Spartan
 			SetDefaultBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 			void* textures[] = { tex_in->GetResource_Texture(), m_render_tex_bloom.front()->GetResource_Texture() };
 
+            m_cmd_list->SetBlendState(m_blend_disabled);
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
 			m_cmd_list->SetShaderPixel(shader_bloomBlend);

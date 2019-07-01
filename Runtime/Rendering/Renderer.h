@@ -116,7 +116,7 @@ namespace Spartan
 		Shader_MotionBlur_P,
 		Shader_Sharperning_P,
 		Shader_ChromaticAberration_P,	
-		Shader_BloomBright_P,
+		Shader_BloomLuminance_P,
 		Shader_BloomBlend_P,
 		Shader_ToneMapping_P,
 		Shader_GammaCorrection_P,
@@ -257,7 +257,7 @@ namespace Spartan
 		void Pass_MotionBlur(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Dithering(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Bloom(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Upscale(std::shared_ptr<RHI_Texture>& tex_in,                 std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Upsample(std::shared_ptr<RHI_Texture>& tex_in,                 std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_BlurBox(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out, float sigma);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
 		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
@@ -303,11 +303,12 @@ namespace Spartan
 		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_disabled;
 		//==============================================================
 
-		//= BLEND STATES ===================================
+		//= BLEND STATES =====================================
 		std::shared_ptr<RHI_BlendState> m_blend_enabled;
 		std::shared_ptr<RHI_BlendState> m_blend_disabled;
-		std::shared_ptr<RHI_BlendState> m_blend_shadow_maps;
-		//==================================================
+        std::shared_ptr<RHI_BlendState> m_blend_color_max;
+		std::shared_ptr<RHI_BlendState> m_blend_color_min;
+		//====================================================
 
 		//= RASTERIZER STATES =================================================
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid;

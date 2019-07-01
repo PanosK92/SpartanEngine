@@ -81,7 +81,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #if PASS_FXAA
 	// Requirements: Bilinear sampler
 	FxaaTex tex 				= { samplerState, sourceTexture };
-    float2 fxaaQualityRcpFrame	= g_texelSize;
+    float2 fxaaQualityRcpFrame	= g_texel_size;
   
 	color.rgb = FxaaPixelShader
 	( 
@@ -97,7 +97,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
 #if PASS_CHROMATIC_ABERRATION
 	// Requirements: Bilinear sampler
-	color.rgb = ChromaticAberration(texCoord, g_texelSize, sourceTexture, samplerState);
+	color.rgb = ChromaticAberration(texCoord, g_texel_size, sourceTexture, samplerState);
 #endif
 
 #if PASS_SHARPENING
@@ -106,33 +106,39 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 #endif
 
 #if PASS_DOWNSAMPLE_BOX
-	color = Downsample_Box13Tap(texCoord, g_texelSize, sourceTexture, samplerState);
+	color = Downsample_Box13Tap(texCoord, g_texel_size, sourceTexture, samplerState);
 #endif
 
 #if PASS_UPSAMPLE_BOX
-	color = Upsample_Box(texCoord, g_texelSize, sourceTexture, samplerState, 1.0f);
+	color = Upsample_Box(texCoord, g_texel_size, sourceTexture, samplerState, 1.0f);
 #endif
 
 #if PASS_BLUR_BOX
-	color = Blur_Box(texCoord, g_texelSize, blur_sigma, sourceTexture, samplerState);
+	color = Blur_Box(texCoord, g_texel_size, blur_sigma, sourceTexture, samplerState);
 #endif
 
 #if PASS_BLUR_GAUSSIAN
 	// Requirements: Bilinear sampler
-	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_texelSize, blur_direction, blur_sigma);
+	color = Blur_Gaussian(texCoord, sourceTexture, samplerState, g_texel_size, blur_direction, blur_sigma);
 #endif
 
 #if PASS_BLUR_BILATERAL_GAUSSIAN
 	// Requirements: Bilinear sampler
-	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState, g_texelSize, blur_direction, blur_sigma);
+	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState, g_texel_size, blur_direction, blur_sigma);
 #endif
 
-#if PASS_BRIGHT
+#if PASS_BLOOM_LUMINANCE
 	color 	= sourceTexture.Sample(samplerState, texCoord);
 	color 	= luminance(color.rgb) * color;
 #endif
 
-#if PASS_BLEND_ADDITIVE
+#if PASS_BLOOM_UPSCALE_BLEND
+	color_a = Upsample_Box(texCoord, g_texel_size, sourceTexture, samplerState, 1.0f);
+	color_b	= sourceTexture2.Sample(samplerState, texCoord);
+	color 	= (color_a + color_b) * 0.5f;
+#endif
+
+#if PASS_BLOOM_BLEND_ADDITIVE
 	float4 sourceColor 	= sourceTexture.Sample(samplerState, texCoord);
 	float4 sourceColor2 = sourceTexture2.Sample(samplerState, texCoord);
 	color 				= sourceColor + sourceColor2 * g_bloom_intensity;
