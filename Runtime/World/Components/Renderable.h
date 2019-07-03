@@ -114,10 +114,11 @@ namespace Spartan
 		Math::BoundingBox m_bounding_box;
 		Math::BoundingBox m_aabb;
         Math::BoundingBox m_oobb;
-		Math::Matrix m_last_transform;	
-		std::shared_ptr<Material> m_material;
-        bool m_castShadows      = true;
-        bool m_receiveShadows   = true;
+        Math::Matrix m_last_transform   = Math::Matrix::Identity;
+        bool m_is_dirty                 = true;
+        bool m_castShadows              = true;
+        bool m_receiveShadows           = true;
 		bool m_materialDefault;
+        std::shared_ptr<Material> m_material;
 	};
 }

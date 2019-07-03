@@ -507,12 +507,12 @@ namespace Spartan
 		m_sampler_anisotropic_wrap	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_TRILINEAR,	Sampler_Address_Wrap,	Comparison_Always, true);
 	}
 
-	shared_ptr<Entity>& Renderer::SnapTransformGizmoTo(const shared_ptr<Entity>& entity) const
+	const shared_ptr<Entity>& Renderer::SnapTransformGizmoTo(const shared_ptr<Entity>& entity) const
 	{
 		return m_gizmo_transform->SetSelectedEntity(entity);
 	}
 
-	void Renderer::Tick()
+    void Renderer::Tick()
 	{
 #ifdef API_GRAPHICS_VULKAN
 		return;

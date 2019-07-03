@@ -160,17 +160,17 @@ void Widget_Properties::Tick(float delta_time)
 	{
 		auto entity_ptr = m_inspected_entity.lock().get();
 
-		auto transform		= entity_ptr->GetComponent<Transform>();
-		auto light			= entity_ptr->GetComponent<Light>();
-		auto camera			= entity_ptr->GetComponent<Camera>();
-		auto audio_source	= entity_ptr->GetComponent<AudioSource>();
-		auto audio_listener	= entity_ptr->GetComponent<AudioListener>();
-		auto renderable		= entity_ptr->GetComponent<Renderable>();
-		auto material		= renderable ? renderable->GetMaterial() : nullptr;
-		auto rigid_body		= entity_ptr->GetComponent<RigidBody>();
-		auto collider		= entity_ptr->GetComponent<Collider>();
-		auto constraint		= entity_ptr->GetComponent<Constraint>();
-		auto scripts		= entity_ptr->GetComponents<Script>();
+		auto& transform		    = entity_ptr->GetComponent<Transform>();
+		auto& light			    = entity_ptr->GetComponent<Light>();
+		auto& camera			= entity_ptr->GetComponent<Camera>();
+		auto& audio_source	    = entity_ptr->GetComponent<AudioSource>();
+		auto& audio_listener	= entity_ptr->GetComponent<AudioListener>();
+		auto& renderable		= entity_ptr->GetComponent<Renderable>();
+		auto& material		    = renderable ? renderable->GetMaterial() : shared_ptr<Material>();
+		auto& rigid_body		= entity_ptr->GetComponent<RigidBody>();
+		auto& collider		    = entity_ptr->GetComponent<Collider>();
+		auto& constraint		= entity_ptr->GetComponent<Constraint>();
+		auto& scripts		    = entity_ptr->GetComponents<Script>();
 
 		ShowTransform(transform);
 		ShowLight(light);
@@ -255,21 +255,21 @@ void Widget_Properties::ShowTransform(shared_ptr<Transform>& transform) const
 
 		// Position
 		ImGui::Text("Position");
-		ImGui::SameLine(start_column);	show_float("TraPosX", "X", &position.x);
-		ImGui::SameLine();				show_float("TraPosY", "Y", &position.y);
-		ImGui::SameLine();				show_float("TraPosZ", "Z", &position.z);
+		ImGui::SameLine(start_column);	show_float("##trans_pos_x", "X", &position.x);
+		ImGui::SameLine();				show_float("##trans_pos_y", "Y", &position.y);
+		ImGui::SameLine();				show_float("##trans_pos_z", "Z", &position.z);
 
 		// Rotation
 		ImGui::Text("Rotation");
-		ImGui::SameLine(start_column);	show_float("TraRotX", "X", &rotation.x);
-		ImGui::SameLine();				show_float("TraRotY", "Y", &rotation.y);
-		ImGui::SameLine();				show_float("TraRotZ", "Z", &rotation.z);
+        ImGui::SameLine(start_column);	show_float("##trans_rot_x", "X", &rotation.x);
+        ImGui::SameLine();				show_float("##trans_rot_y", "Y", &rotation.y);
+        ImGui::SameLine();				show_float("##trans_rot_z", "Z", &rotation.z);
 
 		// Scale
 		ImGui::Text("Scale");
-		ImGui::SameLine(start_column);	show_float("TraScaX", "X", &scale.x);
-		ImGui::SameLine();				show_float("TraScaY", "Y", &scale.y);
-		ImGui::SameLine();				show_float("TraScaZ", "Z", &scale.z);
+        ImGui::SameLine(start_column);	show_float("##trans_sca_x", "X", &scale.x);
+        ImGui::SameLine();				show_float("##trans_sca_y", "Y", &scale.y);
+        ImGui::SameLine();				show_float("##trans_sca_z", "Z", &scale.z);
         
 		//= MAP ===================================================================
 		if (!is_playing)

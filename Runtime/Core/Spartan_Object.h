@@ -34,7 +34,7 @@ namespace Spartan
 	public:
 		Spartan_Object() { m_id = GenerateId(); }
 
-		uint32_t GetId() const			{ return m_id; }
+		const uint32_t GetId() const	{ return m_id; }
 		void SetId(const uint32_t id)	{ m_id = id; }
 
 		static uint32_t GenerateId() { return ++g_id;}

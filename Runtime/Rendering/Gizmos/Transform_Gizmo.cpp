@@ -22,16 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Transform_Gizmo.h"
 #include "../Model.h"
+#include "../Renderer.h"
 #include "../../RHI/RHI_IndexBuffer.h"
 #include "../../World/World.h"
 #include "../../World/Entity.h"
 #include "../../Input/Input.h"
 //====================================
 
-//=============================
+//============================
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 namespace Spartan
 {
@@ -50,7 +51,7 @@ namespace Spartan
 		m_handle_scale.Initialize(TransformHandle_Scale, context);
 	}
 
-	shared_ptr<Entity>& Transform_Gizmo::SetSelectedEntity(const shared_ptr<Entity>& entity)
+	const shared_ptr<Entity>& Transform_Gizmo::SetSelectedEntity(const shared_ptr<Entity>& entity)
 	{
 		// Update picked entity only when it's not being edited
 		if (!m_is_editing && !m_just_finished_editing)

@@ -164,8 +164,8 @@ void Widget_World::TreeAddEntity(Entity* entity)
 	// Flag - Is selected?
 	if (const auto selected_entity = EditorHelper::Get().g_selected_entity.lock())
 	{
-		const auto is_selectedentity = selected_entity->GetId() == entity->GetId();
-		node_flags |= is_selectedentity ? ImGuiTreeNodeFlags_Selected : 0;
+		const auto is_selected_entity = selected_entity->GetId() == entity->GetId();
+		node_flags |= is_selected_entity ? ImGuiTreeNodeFlags_Selected : 0;
 
 		// Expand to show entity, if it was clicked during this frame
 		if (m_expand_to_showentity)
@@ -176,7 +176,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
 				ImGui::SetNextItemOpen(true);
 
 				// Stop expanding when we have reached the selected entity (it's visible to the user)
-				if (is_selectedentity)
+				if (is_selected_entity)
 				{
 					m_expand_to_showentity = false;
 				}
