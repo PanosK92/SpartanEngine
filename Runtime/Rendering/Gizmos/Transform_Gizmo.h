@@ -43,7 +43,7 @@ namespace Spartan
 		Transform_Gizmo(Context* context);
 		~Transform_Gizmo() = default;
 
-		std::shared_ptr<Entity>& SetSelectedEntity(const std::shared_ptr<Entity>& entity);
+		const std::shared_ptr<Entity>& SetSelectedEntity(const std::shared_ptr<Entity>& entity); 
 		bool Update(Camera* camera, float handle_size, float handle_speed);
 		uint32_t GetIndexCount();
 		std::shared_ptr<RHI_VertexBuffer> GetVertexBuffer();
@@ -52,8 +52,8 @@ namespace Spartan
 		bool DrawXYZ() const { return m_type == TransformHandle_Scale; }
 		
 	private:
-		bool m_is_editing;
-		bool m_just_finished_editing;
+		bool m_is_editing               = false;
+		bool m_just_finished_editing    = false;
 
 		std::shared_ptr<Entity> m_entity_selected;
 		TransformHandle m_handle_position;

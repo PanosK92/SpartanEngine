@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    class Transform_Gizmo;
 	class Renderer;
 	class Context;
 	class RHI_VertexBuffer;
@@ -43,19 +44,11 @@ namespace Spartan
 
 	struct TransformHandleAxis
 	{
-		TransformHandleAxis(const Math::Vector3& axis)
+        TransformHandleAxis() = default;
+		TransformHandleAxis(const Math::Vector3& axis, Context* context)
 		{
-			this->axis		= axis;
-			transform		= Math::Matrix::Identity;
-			position		= Math::Vector3::Zero;
-			rotation		= Math::Quaternion::Identity;
-			scale			= Math::Vector3::One;
-			box				= Math::BoundingBox::Zero;
-			box_transformed	= Math::BoundingBox::Zero;
-			delta			= 0.0f;
-			isEditing		= false;
-			isHovered		= false;
-			isDisabled		= false;
+			this->axis	= axis;
+            m_context   = context;
 		}
 
 		void UpdateTransform()
@@ -78,25 +71,26 @@ namespace Spartan
 			return axis;
 		}
 
-		Math::Vector3 axis;
-		Math::Matrix transform;
-		Math::Vector3 position;
-		Math::Quaternion rotation;
-		Math::Vector3 scale;
-		Math::BoundingBox box;
-		Math::BoundingBox box_transformed;
-		float delta;
-		bool isEditing;
-		bool isHovered;
-		bool isDisabled;
-		Math::Vector3 m_color_active	= Math::Vector3(1.0f, 1.0f, 0.0f);
-		Math::Vector3 m_color_disabled	= Math::Vector3(0.5f, 0.5f, 0.5f);
+		Math::Vector3 axis                  = Math::Vector3::One;
+		Math::Matrix transform              = Math::Matrix::Identity;
+		Math::Vector3 position              = Math::Vector3::One;
+		Math::Quaternion rotation           = Math::Quaternion::Identity;
+		Math::Vector3 scale                 = Math::Vector3::One;
+		Math::BoundingBox box               = Math::BoundingBox::Zero;
+		Math::BoundingBox box_transformed   = Math::BoundingBox::Zero;
+		float delta                         = 0.0f;
+		bool isEditing                      = false;
+		bool isHovered                      = false;
+		bool isDisabled                     = false;
+		Math::Vector3 m_color_active	    = Math::Vector3(1.0f, 1.0f, 0.0f);
+		Math::Vector3 m_color_disabled	    = Math::Vector3(0.5f, 0.5f, 0.5f);
+        Context* m_context                  = nullptr;
 	};
 
 	class SPARTAN_CLASS TransformHandle
 	{
-	public:
-		TransformHandle() = default;
+    public:
+        TransformHandle() = default;
 		~TransformHandle() = default;
 
 		void Initialize(TransformHandle_Type type, Context* context);
@@ -109,17 +103,16 @@ namespace Spartan
 	private:
 		void SnapToTransform(TransformHandle_Space space, const std::shared_ptr<Entity>& entity, Camera* camera, float handle_size);
 
-		TransformHandleAxis m_handle_x		= TransformHandleAxis(Math::Vector3::Right);
-		TransformHandleAxis m_handle_y		= TransformHandleAxis(Math::Vector3::Up);
-		TransformHandleAxis m_handle_z		= TransformHandleAxis(Math::Vector3::Forward);
-		TransformHandleAxis m_handle_xyz	= TransformHandleAxis(Math::Vector3::One);
-
+        TransformHandleAxis m_handle_x;
+        TransformHandleAxis m_handle_y;
+        TransformHandleAxis m_handle_z;
+        TransformHandleAxis m_handle_xyz;
 		Math::Vector3 m_ray_previous;
 		Math::Vector3 m_ray_current;
 		std::unique_ptr<Model> m_model;
 		TransformHandle_Type m_type;
-		Context* m_context		= nullptr;
-		Renderer* m_renderer	= nullptr;
-		Input* m_input			= nullptr;	
+		Context* m_context		    = nullptr;
+		Renderer* m_renderer	    = nullptr;
+		Input* m_input			    = nullptr;
 	};
 }

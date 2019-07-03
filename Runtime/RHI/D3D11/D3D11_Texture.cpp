@@ -393,6 +393,12 @@ namespace Spartan
 		const shared_ptr<RHI_Device>& rhi_device
 	)
 	{
+        if (!rhi_device->GetContext()->device)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return false;
+        }
+
 		auto format_buffer	= Format_R32_FLOAT_TYPELESS;
 		auto format_dsv		= Format_D32_FLOAT;
 		auto format_srv		= Format_R32_FLOAT;

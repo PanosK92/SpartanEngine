@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "TransformHandle.h"
+#include "Transform_Gizmo.h"
 #include "../Model.h"
 #include "../Renderer.h"
 #include "../Utilities/Geometry.h"
@@ -51,25 +52,25 @@ namespace Spartan
 		// Editing can happen here
 		if (isEditing && input->GetKey(Click_Left))
 		{
-			if (type == TransformHandle_Position)
-			{
-				auto position = transform->GetPosition();
-				position += isEditing ? delta * axis : 0;
-				transform->SetPosition(position);
-			}
-			else if (type == TransformHandle_Scale)
-			{
-				auto scale = transform->GetScale();
-				scale += isEditing ? delta * axis : 0;
-				transform->SetScale(scale);
-			}
-			else if (type == TransformHandle_Rotation)
-			{
-				auto rotation = transform->GetRotation().ToEulerAngles();
-				const auto speed_multiplier = 10.0f;
-				rotation += isEditing ? delta * axis * speed_multiplier : 0;
-				transform->SetRotation(Quaternion::FromEulerAngles(rotation));
-			}
+            if (type == TransformHandle_Position)
+            {
+                auto position = transform->GetPosition();
+                position += isEditing ? delta * axis : 0;
+                transform->SetPosition(position);
+            }
+            else if (type == TransformHandle_Scale)
+            {
+                auto scale = transform->GetScale();
+                scale += isEditing ? delta * axis : 0;
+                transform->SetScale(scale);
+            }
+            else if (type == TransformHandle_Rotation)
+            {
+                auto rotation = transform->GetRotation().ToEulerAngles();
+                const auto speed_multiplier = 10.0f;
+                rotation += isEditing ? delta * axis * speed_multiplier : 0;
+                transform->SetRotation(Quaternion::FromEulerAngles(rotation));
+            }
 		}
 
 		// Last press (on release)
@@ -86,12 +87,17 @@ namespace Spartan
 		renderer->DrawLine(box_transformed.GetCenter(), transform_center, color, color, false);
 	}
 
-	void TransformHandle::Initialize(const TransformHandle_Type type, Context* context)
+    void TransformHandle::Initialize(const TransformHandle_Type type, Context* context)
 	{
 		m_type		= type;
 		m_context	= context;
 		m_renderer	= context->GetSubsystem<Renderer>().get();
 		m_input		= context->GetSubsystem<Input>().get();
+
+        m_handle_x      = TransformHandleAxis(Vector3::Right, m_context);
+        m_handle_y      = TransformHandleAxis(Vector3::Up, m_context);
+        m_handle_z      = TransformHandleAxis(Vector3::Forward, m_context);
+        m_handle_xyz    = TransformHandleAxis(Vector3::One, m_context);
 
 		m_ray_previous	= Vector3::Zero;
 		m_ray_current	= Vector3::Zero;
@@ -131,6 +137,10 @@ namespace Spartan
 			return false;
 		}
 
+        // If the selected entity is the actual viewport camera, ignore the input
+        if (entity->GetId() == camera->GetTransform()->GetEntity_PtrRaw()->GetId())
+            return false;
+
 		// Snap to entity position
 		SnapToTransform(space, entity, camera, handle_size);
 
@@ -168,7 +178,12 @@ namespace Spartan
 			m_ray_previous			= m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // avoid big delta in the first run
 			m_ray_current			= ray_end;
 			auto delta				= m_ray_current - m_ray_previous;
-			const auto delta_xyz	= delta.Length();
+            const auto delta_xyz    = delta.Length();
+
+            // If the delta reached infinity, ignore the input as it will result in NaN position.
+            // This can happen if the transformation is happening extremely close the actual viewport camera.
+            if (isinf(delta_xyz))
+                return true;
 
 			// Updated handles with delta
 			m_handle_x.delta	= delta_xyz * Sign(delta.x) * handle_speed;

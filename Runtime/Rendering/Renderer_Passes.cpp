@@ -965,7 +965,7 @@ namespace Spartan
         }
 
 		// Upsample + blend
-        for (int i = m_render_tex_bloom.size() - 1; i > 0; i--)
+        for (int i = static_cast<int>(m_render_tex_bloom.size() - 1); i > 0; i--)
         {
             upsample(m_render_tex_bloom[i], m_render_tex_bloom[i - 1]);
         }

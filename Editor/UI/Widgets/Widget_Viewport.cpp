@@ -28,19 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui_Extension.h"
 //==================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =========
 using namespace std;
 using namespace Spartan;
 using namespace Math;
-//=======================
-
-namespace _Widget_Viewport
-{
-	static Renderer* g_renderer		= nullptr;
-	static World* g_world			= nullptr;
-	static float g_window_padding	= 4.0f;
-	static RHI_Viewport m_viewport;
-}
+//======================
 
 Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
 {
@@ -48,20 +40,19 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
     m_size      = Vector2(400, 250);
 	m_flags     |= ImGuiWindowFlags_NoScrollbar;
     m_padding   = Vector2(4.0f);
-
-    _Widget_Viewport::g_renderer    = m_context->GetSubsystem<Renderer>().get();
-    _Widget_Viewport::g_world       = m_context->GetSubsystem<World>().get();
+    m_renderer  = m_context->GetSubsystem<Renderer>().get();
+    m_world     = m_context->GetSubsystem<World>().get();
 }
 
 void Widget_Viewport::Tick(const float delta_time)
 {
-	if (!_Widget_Viewport::g_renderer)
+	if (!m_renderer)
 		return;
 	
 	// Get current frame window resolution
 	auto width			= static_cast<unsigned int>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
 	auto height			= static_cast<unsigned int>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
-	const auto max_res	= _Widget_Viewport::g_renderer->GetMaxResolution();
+	const auto max_res	= m_renderer->GetMaxResolution();
 	if (width > max_res || height > max_res)
 		return;
 
@@ -70,18 +61,18 @@ void Widget_Viewport::Tick(const float delta_time)
 	height	-= (height	% 2 != 0) ? 1 : 0;
 
 	// Update engine's viewport
-	_Widget_Viewport::g_renderer->viewport_editor_offset = Vector2(ImGui::GetWindowPos()) + _Widget_Viewport::g_window_padding;
-	_Widget_Viewport::m_viewport.width	= static_cast<float>(width);
-	_Widget_Viewport::m_viewport.height	= static_cast<float>(height);
-	_Widget_Viewport::g_renderer->SetViewport(_Widget_Viewport::m_viewport);
+	m_renderer->viewport_editor_offset = Vector2(ImGui::GetWindowPos()) + m_window_padding;
+	m_viewport.width	= static_cast<float>(width);
+	m_viewport.height	= static_cast<float>(height);
+	m_renderer->SetViewport(m_viewport);
 
 	// Update engine's resolution
 	if (m_timeSinceLastResChange >= 0.1f) // Don't stress the GPU too much
 	{
-		const auto& current_resolution = _Widget_Viewport::g_renderer->GetResolution();
+		const auto& current_resolution = m_renderer->GetResolution();
 		if (current_resolution.x != width || current_resolution.y != height) // Change only when needed
 		{
-			_Widget_Viewport::g_renderer->SetResolution(width, height);
+            m_renderer->SetResolution(width, height);
 			m_timeSinceLastResChange = 0;
 		}
 	}
@@ -90,7 +81,7 @@ void Widget_Viewport::Tick(const float delta_time)
 	// Draw the image after a potential Renderer::SetResolution() call has been made
 	ImGuiEx::Image
 	(
-		_Widget_Viewport::g_renderer->GetFrameTexture(),
+        m_renderer->GetFrameTexture(),
 		ImVec2(static_cast<float>(width), static_cast<float>(height)),
 		ImColor(255, 255, 255, 255),
 		ImColor(50, 127, 166, 255)
