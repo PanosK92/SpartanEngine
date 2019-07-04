@@ -261,7 +261,7 @@ namespace Spartan
 			float extent	= split * tan(camera->GetFovHorizontalRad() * 0.5f);
 
 			Vector3 box_center	= (camera_transform->GetPosition() + camera_transform->GetForward() * split * 0.5f) * GetViewMatrix(); // Transform to light space
-			Vector3 box_extent	= Vector3(extent) * GetTransform()->GetRotation();	// Rotate towards light direction
+			Vector3 box_extent	= Vector3(extent); // don't rotate with light as this will introduce shadow shimmering
 			Vector3 box_min		= box_center - box_extent;
 			Vector3 box_max		= box_center + box_extent;
 
