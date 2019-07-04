@@ -137,10 +137,6 @@ namespace Spartan
 			return false;
 		}
 
-        // If the selected entity is the actual viewport camera, ignore the input
-        if (entity->GetId() == camera->GetTransform()->GetEntity_PtrRaw()->GetId())
-            return false;
-
 		// Snap to entity position
 		SnapToTransform(space, entity, camera, handle_size);
 
