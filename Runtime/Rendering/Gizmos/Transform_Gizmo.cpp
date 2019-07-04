@@ -19,15 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ================================
 #include "Transform_Gizmo.h"
 #include "../Model.h"
 #include "../Renderer.h"
 #include "../../RHI/RHI_IndexBuffer.h"
+#include "../../Input/Input.h"
 #include "../../World/World.h"
 #include "../../World/Entity.h"
-#include "../../Input/Input.h"
-//====================================
+#include "../../World/Components/Camera.h"
+#include "../../World/Components/Transform.h"
+//===========================================
 
 //============================
 using namespace std;
@@ -72,6 +74,13 @@ namespace Spartan
 			m_is_editing = false;
 			return false;
 		}
+
+        // If the selected entity is the actual viewport camera, ignore the input
+        if (m_entity_selected->GetId() == camera->GetTransform()->GetEntity_PtrRaw()->GetId())
+        {
+            m_is_editing = false;
+            return false;
+        }
 
 		// Switch between position, rotation and scale handles, with W, E and R respectively
 		if (m_input->GetKeyDown(W))
