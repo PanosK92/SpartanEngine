@@ -305,10 +305,15 @@ namespace Spartan
     {
         // Resolve aspect mask
         VkImageAspectFlags aspect_mask = 0;
+        if (bind_flags & RHI_Texture_DepthStencil)
+        {
+            // Depth-only image formats can have only the VK_IMAGE_ASPECT_DEPTH_BIT set
+            aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        }
+        else
         {
             aspect_mask |= (bind_flags & RHI_Texture_Sampled)       ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
-            aspect_mask |= (bind_flags & RHI_Texture_RenderTarget)  ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
-            aspect_mask |= (bind_flags & RHI_Texture_DepthStencil)  ? VK_IMAGE_ASPECT_DEPTH_BIT : 0; //| VK_IMAGE_ASPECT_STENCIL_BIT : 0;      
+            aspect_mask |= (bind_flags & RHI_Texture_RenderTarget)  ? VK_IMAGE_ASPECT_COLOR_BIT : 0; 
         }
         
         VkImageViewCreateInfo create_info           = {};

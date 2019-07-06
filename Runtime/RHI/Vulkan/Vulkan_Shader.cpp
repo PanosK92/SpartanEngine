@@ -395,19 +395,17 @@ namespace Spartan
 		// Arguments
 		auto entry_point		= FileSystem::StringToWstring((type == Shader_Vertex) ? _RHI_Shader::entry_point_vertex : _RHI_Shader::entry_point_pixel);
 		auto target_profile		= FileSystem::StringToWstring((type == Shader_Vertex) ? "vs_" + _RHI_Shader::shader_model : "ps_" + _RHI_Shader::shader_model);
-		// auto include_directory	= wstring(L"-I ") + file_directory; // Doesn't work
-		vector<LPCWSTR> arguments;
+		vector<LPCWSTR> arguments = 
 		{	
-			arguments.emplace_back(L"-spirv");
-			arguments.emplace_back(L"-fspv-reflect");			
-			arguments.emplace_back(L"-fvk-use-dx-layout");
-			//if (is_file) arguments.emplace_back(include_directory.c_str()); // Doesn't work
-			if (type == Shader_Vertex) arguments.emplace_back(L"-fvk-invert-y"); // Can only be used in VS/DS/GS
-			arguments.emplace_back(L"-flegacy-macro-expansion");
+            L"-spirv",
+            L"-fspv-reflect",
+            L"-fvk-use-dx-layout",
+            L"-flegacy-macro-expansion",
 			#ifdef DEBUG
-			arguments.emplace_back(L"-Zi");
+			L"-Zi"
 			#endif
-		}
+		};
+        if (type == Shader_Vertex) arguments.emplace_back(L"-fvk-invert-y"); // Can only be used in VS/DS/GS
 
 		// Create standard defines
 		vector<DxcDefine> defines =
@@ -415,6 +413,7 @@ namespace Spartan
 			DxcDefine{ L"COMPILE_VS", type == Shader_Vertex ? L"1" : L"0" },
 			DxcDefine{ L"COMPILE_PS", type == Shader_Pixel ? L"1" : L"0" }
 		};
+
 		// Convert defines to wstring...
 		map<wstring, wstring> defines_wstring;
 		for (const auto& define : m_defines)
@@ -423,6 +422,7 @@ namespace Spartan
 			auto second = FileSystem::StringToWstring(define.second);
 			defines_wstring[first] = second;
 		}
+
 		// ... and add them to our defines
 		for (const auto& define : defines_wstring)
 		{
