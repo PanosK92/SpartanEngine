@@ -61,27 +61,11 @@ namespace Spartan
 		const duration<double, milli> time_sleep	= time_b - time_a;
 		m_delta_time_ms								= (time_work + time_sleep).count();
 
-        // Compute smoothed delta time
-        {
-            // If frame time is too high/slow, clamp it
-            double delta_max        = 1000.0 / m_fps_min;
-            double delta_clamped    = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms;
-            m_delta_times.push_back(delta_clamped);
-
-            if (m_delta_times.size() > m_delta_times_to_smooth)
-            {
-                m_delta_times.pop_front();
-                for (unsigned i = 0; i < m_delta_times.size(); ++i)
-                {
-                    m_delta_time_smoothed_ms += m_delta_times[i];
-                }
-                m_delta_time_smoothed_ms /= m_delta_times.size();
-            }
-            else
-            {
-                m_delta_time_smoothed_ms = m_delta_times.back();
-            }
-        }
+        // Compute smoothed delta time  
+        double delta_max            = 1000.0 / m_fps_min;
+        double delta_clamped        = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms; // If frame time is too high/slow, clamp it
+        double delta_feedback       = 0.2;
+        m_delta_time_smoothed_ms    = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + delta_clamped * delta_feedback;
 	}
 
     void Timer::SetTargetFps(double fps)

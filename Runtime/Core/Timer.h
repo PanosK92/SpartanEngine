@@ -68,8 +68,6 @@ namespace Spartan
 		std::chrono::high_resolution_clock::time_point time_b;
 		double m_delta_time_ms          = 0.0f;
         double m_delta_time_smoothed_ms = 0.0f;
-       size_t m_delta_times_to_smooth   = 2;
-        std::deque<double> m_delta_times;
 
         // FPS
         double m_fps_min                = 25.0;
