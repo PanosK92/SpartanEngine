@@ -85,6 +85,7 @@ void Widget_RenderOptions::Tick()
         auto do_sharperning             = m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
         auto do_chromatic_aberration    = m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
         auto do_dithering               = m_renderer->Flags_IsSet(Render_PostProcess_Dithering);
+        auto resolution_shadow          = static_cast<int>(m_renderer->GetShadowResolution());
 
         // Display
         {
@@ -107,24 +108,43 @@ void Widget_RenderOptions::Tick()
                 }
                 ImGui::EndCombo();
             }
-            ImGui::InputFloat("Exposure", &m_renderer->m_exposure, 0.1f);
-            ImGui::InputFloat("Gamma", &m_renderer->m_gamma, 0.1f);
-            ImGui::Checkbox("Bloom", &do_bloom);
-            ImGui::InputFloat("Bloom Strength", &m_renderer->m_bloom_intensity, 0.1f);
-            ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
-            ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
-            ImGui::Checkbox("Motion Blur", &do_motion_blur);
-            ImGui::InputFloat("Motion Blur Strength", &m_renderer->m_motion_blur_strength, 0.1f);
-            ImGui::Checkbox("Chromatic Aberration", &do_chromatic_aberration);							tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
-            ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
-            ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing", &do_fxaa);
-            ImGui::InputFloat("FXAA Sub-Pixel", &m_renderer->m_fxaa_sub_pixel, 0.1f);					tooltip("The amount of sub-pixel aliasing removal");
-            ImGui::InputFloat("FXAA Edge Threshold", &m_renderer->m_fxaa_edge_threshold, 0.1f);			tooltip("The minimum amount of local contrast required to apply algorithm");
-            ImGui::InputFloat("FXAA Edge Threshold Min", &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
-            ImGui::Checkbox("Sharpen", &do_sharperning);
-            ImGui::InputFloat("Sharpen Strength", &m_renderer->m_sharpen_strength, 0.1f);
-            ImGui::InputFloat("Sharpen Clamp", &m_renderer->m_sharpen_clamp, 0.1f);						tooltip("Limits maximum amount of sharpening a pixel receives");
-            ImGui::Checkbox("Dithering", &do_dithering);												tooltip("Reduces color banding");
+            ImGui::InputFloat("Exposure",                               &m_renderer->m_exposure, 0.1f);
+            ImGui::InputFloat("Gamma",                                  &m_renderer->m_gamma, 0.1f);
+            ImGui::Separator();
+
+            ImGui::Checkbox("Bloom",                                    &do_bloom);
+            ImGui::InputFloat("Bloom Strength",                         &m_renderer->m_bloom_intensity, 0.1f);
+            ImGui::Separator();
+
+            ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion",    &do_ssao);
+            ImGui::Separator();
+
+            ImGui::Checkbox("SSR - Screen Space Reflections",           &do_ssr);
+            ImGui::Separator();
+
+            ImGui::Checkbox("Motion Blur",                              &do_motion_blur);
+            ImGui::InputFloat("Motion Blur Strength",                   &m_renderer->m_motion_blur_strength, 0.1f);
+            ImGui::Separator();
+
+            ImGui::Checkbox("Chromatic Aberration",                     &do_chromatic_aberration);						tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
+            ImGui::Separator();
+
+            ImGui::Checkbox("TAA - Temporal Anti-Aliasing",             &do_taa);
+            ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing",    &do_fxaa);
+            ImGui::InputFloat("FXAA Sub-Pixel",                         &m_renderer->m_fxaa_sub_pixel, 0.1f);			tooltip("The amount of sub-pixel aliasing removal");
+            ImGui::InputFloat("FXAA Edge Threshold",                    &m_renderer->m_fxaa_edge_threshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
+            ImGui::InputFloat("FXAA Edge Threshold Min",                &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
+            ImGui::Separator();
+
+            ImGui::Checkbox("Sharpen",                                  &do_sharperning);
+            ImGui::InputFloat("Sharpen Strength",                       &m_renderer->m_sharpen_strength, 0.1f);
+            ImGui::InputFloat("Sharpen Clamp",                          &m_renderer->m_sharpen_clamp, 0.1f);		    tooltip("Limits maximum amount of sharpening a pixel receives");
+            ImGui::Separator();
+
+            ImGui::InputInt("Shadow Resolution",                        &resolution_shadow, 1);
+            ImGui::Separator();
+
+            ImGui::Checkbox("Dithering",                                &do_dithering);									tooltip("Reduces color banding");
         }
 
         // Filter input
@@ -136,6 +156,7 @@ void Widget_RenderOptions::Tick()
         m_renderer->m_sharpen_strength          = Abs(m_renderer->m_sharpen_strength);
         m_renderer->m_sharpen_clamp             = Abs(m_renderer->m_sharpen_clamp);
         m_renderer->m_motion_blur_strength      = Abs(m_renderer->m_motion_blur_strength);
+        m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
 
         // Map back to engine
 #define SET_FLAG_IF(flag, value) value	? m_renderer->Flags_Enable(flag) : m_renderer->Flags_Disable(flag)
@@ -152,39 +173,41 @@ void Widget_RenderOptions::Tick()
 
     if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))
     {
-        if (ImGui::BeginCombo("Buffer", _RenderOptions::gbuffer_selected_texture.c_str()))
+        // Buffer
         {
-            for (auto i = 0; i < _RenderOptions::gbuffer_textures.size(); i++)
+            if (ImGui::BeginCombo("Buffer", _RenderOptions::gbuffer_selected_texture.c_str()))
             {
-                const auto is_selected = (_RenderOptions::gbuffer_selected_texture == _RenderOptions::gbuffer_textures[i]);
-                if (ImGui::Selectable(_RenderOptions::gbuffer_textures[i].c_str(), is_selected))
+                for (auto i = 0; i < _RenderOptions::gbuffer_textures.size(); i++)
                 {
-                    _RenderOptions::gbuffer_selected_texture = _RenderOptions::gbuffer_textures[i];
-                    _RenderOptions::gbuffer_selected_texture_index = i;
+                    const auto is_selected = (_RenderOptions::gbuffer_selected_texture == _RenderOptions::gbuffer_textures[i]);
+                    if (ImGui::Selectable(_RenderOptions::gbuffer_textures[i].c_str(), is_selected))
+                    {
+                        _RenderOptions::gbuffer_selected_texture = _RenderOptions::gbuffer_textures[i];
+                        _RenderOptions::gbuffer_selected_texture_index = i;
+                    }
+                    if (is_selected)
+                    {
+                        ImGui::SetItemDefaultFocus();
+                    }
                 }
-                if (is_selected)
-                {
-                    ImGui::SetItemDefaultFocus();
-                }
+                ImGui::EndCombo();
             }
-            ImGui::EndCombo();
+            m_renderer->SetDebugBuffer(static_cast<RendererDebug_Buffer>(_RenderOptions::gbuffer_selected_texture_index));
         }
-        m_renderer->SetDebugBuffer(static_cast<RendererDebug_Buffer>(_RenderOptions::gbuffer_selected_texture_index));
-    }
+        ImGui::Separator();
 
-    if (ImGui::CollapsingHeader("FPS", ImGuiTreeNodeFlags_None))
-    {
-        auto& timer     = m_context->GetSubsystem<Timer>();
-        auto fps_target  = timer->GetTargetFps();
+        // FPS
+        {
+            auto& timer = m_context->GetSubsystem<Timer>();
+            auto fps_target = timer->GetTargetFps();
 
-        ImGui::InputDouble("Target", &fps_target);
-        timer->SetTargetFps(fps_target);
-        const auto fps_policy = timer->GetFpsPolicy();
-        ImGui::Text(fps_policy == Fps_FixedMonitor ? "Fixed (Monitor)" : fps_target == Fps_Unlocked ? "Unlocked" : "Fixed");
-    }
+            ImGui::InputDouble("Target FPS", &fps_target);
+            timer->SetTargetFps(fps_target);
+            const auto fps_policy = timer->GetFpsPolicy();
+            ImGui::Text(fps_policy == Fps_FixedMonitor ? "Fixed (Monitor)" : fps_target == Fps_Unlocked ? "Unlocked" : "Fixed");
+        }
+        ImGui::Separator();
 
-    if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_None))
-    {
         // Transform
         ImGui::Checkbox("Transform", &_RenderOptions::g_gizmo_transform);
         ImGui::InputFloat("Size", &m_renderer->m_gizmo_transform_size, 0.0025f);

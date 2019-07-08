@@ -44,7 +44,7 @@ namespace Spartan
 		const bool comparison_enabled							/*= false*/
 	)
 	{
-		if (!rhi_device || !rhi_device->GetContext()->device)
+		if (!rhi_device || !rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -70,12 +70,12 @@ namespace Spartan
 		sampler_info.addressModeV			= vulkan_sampler_address_mode[sampler_address_mode];
 		sampler_info.addressModeW			= vulkan_sampler_address_mode[sampler_address_mode];
 		sampler_info.anisotropyEnable		= anisotropy_enabled;
-		sampler_info.maxAnisotropy			= static_cast<float>(Settings::Get().GetAnisotropy());
+		sampler_info.maxAnisotropy			= static_cast<float>(m_rhi_device->GetContext()->GetSubsystem<Renderer>()->GetAnisotropy());
 		sampler_info.compareEnable			= comparison_enabled ? VK_TRUE : VK_FALSE;
 		sampler_info.compareOp				= vulkan_compare_operator[comparison_function];
 		sampler_info.borderColor			= VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	
-		if (vkCreateSampler(rhi_device->GetContext()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_resource)) != VK_SUCCESS)
+		if (vkCreateSampler(rhi_device->GetContextRhi()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_resource)) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to create sampler");
 		}
@@ -83,7 +83,7 @@ namespace Spartan
 
 	RHI_Sampler::~RHI_Sampler()
 	{
-		vkDestroySampler(m_rhi_device->GetContext()->device, reinterpret_cast<VkSampler>(m_resource), nullptr);
+		vkDestroySampler(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkSampler>(m_resource), nullptr);
 	}
 }
 #endif

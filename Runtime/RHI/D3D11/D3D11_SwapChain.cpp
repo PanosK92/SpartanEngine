@@ -63,7 +63,7 @@ namespace Spartan
 		}
 
 		// Get device
-		if (!device->GetContext()->device)
+		if (!device->GetContextRhi()->device)
 		{
 			LOG_ERROR("Invalid device.");
 			return;
@@ -117,7 +117,7 @@ namespace Spartan
 			desc.Flags							= D3D11_Common::swap_chain::flag_to_d3d11(m_flags);										// Todo, pick whatever emulates Vulkan more closely
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
-			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContext()->device, &desc, &swap_chain);
+			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, &swap_chain);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("%s", D3D11_Common::dxgi_error_to_string(result));
@@ -138,7 +138,7 @@ namespace Spartan
 			}
 
 			auto render_target_view = static_cast<ID3D11RenderTargetView*>(m_render_target_view);
-			result = m_rhi_device->GetContext()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+			result = m_rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
 			backbuffer->Release();
 			if (FAILED(result))
 			{
@@ -236,7 +236,7 @@ namespace Spartan
 		}
 
 		// Create render target view
-		result = m_rhi_device->GetContext()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+		result = m_rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
 		safe_release(backbuffer);
 		if (FAILED(result))
 		{

@@ -24,16 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include <vector>
+#include <map>
 #include <unordered_map>
 #include "../Core/ISubsystem.h"
-#include "../Math/Matrix.h"
-#include "../Math/Vector2.h"
-#include "../Math/Rectangle.h"
 #include "../Core/Settings.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Viewport.h"
-#include <map>
-
+#include "../Math/Matrix.h"
+#include "../Math/Vector2.h"
+#include "../Math/Rectangle.h"
 //================================
 
 namespace Spartan
@@ -50,7 +49,6 @@ namespace Spartan
 	class ShaderLight;
 	class ShaderBuffered;
 	class Profiler;
-
 	namespace Math
 	{
 		class BoundingBox;
@@ -167,36 +165,17 @@ namespace Spartan
 		void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = DebugColor, bool depth = true);
 		//=============================================================================================================================================================================
 
-		//= VIEWPORT - INTERNAL ==================================================
-		const RHI_Viewport& GetViewport() const			{ return m_viewport; }
+		//= VIEWPORT & RESOLUTION ================================================
+		const auto& GetViewport() const			        { return m_viewport; }
 		void SetViewport(const RHI_Viewport& viewport)	{ m_viewport = viewport; }
-		Math::Vector2 viewport_editor_offset;
+		
+        const auto& GetResolution() const { return m_resolution; }
+        void SetResolution(uint32_t width, uint32_t height);
+
+        Math::Vector2 viewport_editor_offset;
 		//========================================================================
 
-		//= RESOLUTION - INTERNAL =========================================
-		const Math::Vector2& GetResolution() const { return m_resolution; }
-		void SetResolution(uint32_t width, uint32_t height);
-		//=================================================================
-
-		//= Graphics Settings ====================================================================================================================================================
-		ToneMapping_Type m_tonemapping	= ToneMapping_Uncharted2;
-		float m_exposure				= 1.5f;
-		float m_gamma					= 2.2f;
-		// FXAA
-		float m_fxaa_sub_pixel			= 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
-		float m_fxaa_edge_threshold		= 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
-		float m_fxaa_edge_threshold_min	= 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Algorithm's default: 0.0833f
-		// Bloom
-		float m_bloom_intensity			= 0.1f;		// The intensity of the bloom
-		// Sharpening
-		float m_sharpen_strength		= 1.0f;		// Strength of the sharpening
-		float m_sharpen_clamp			= 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
-		// Motion Blur
-		float m_motion_blur_strength	= 4.0f;		// Strength of the motion blur
-		//========================================================================================================================================================================
-
 		//= EDITOR ======================================================================================
-		// Transform gizmo
 		float m_gizmo_transform_size = 0.015f;
 		float m_gizmo_transform_speed = 12.0f;
         const std::shared_ptr<Entity>& SnapTransformGizmoTo(const std::shared_ptr<Entity>& entity) const;
@@ -215,15 +194,38 @@ namespace Spartan
 		//================================================================
 
 		//= MISC ===============================================================================================================
-		auto GetFrameTexture() const	{ return m_render_tex_full_final.get(); }
-		static auto IsRendering()		{ return m_is_rendering; }
-		auto GetFrameNum() const		{ return m_frame_num; }
-		const auto& GetCamera() const	{ return m_camera; }
-		auto GetMaxResolution() const	{ return m_max_resolution; }
-		auto IsInitialized() const		{ return m_initialized; }
-		auto GetClearDepth()			{ return !Settings::Get().GetReverseZ() ? m_viewport.depth_max : m_viewport.depth_min; }
-        auto& GetShaders()              { return m_shaders; }
+		auto GetFrameTexture() const	                { return m_render_tex_full_final.get(); }
+		auto GetFrameNum() const		                { return m_frame_num; }
+		const auto& GetCamera() const	                { return m_camera; }
+		auto IsInitialized() const		                { return m_initialized; }	
+        auto& GetShaders()                              { return m_shaders; }    
+        auto GetMaxResolution() const                   { return m_max_resolution; } 
+        static auto IsRendering()                       { return m_is_rendering; }
+        auto GetReverseZ() const                        { return m_reverse_z; }
+        auto GetClearDepth()                            { return m_reverse_z ? m_viewport.depth_min : m_viewport.depth_max; }
+        auto GetComparisonFunction()                    { return m_reverse_z ? Comparison_GreaterEqual : Comparison_LessEqual; }
+        auto GetShadowResolution()                      { return m_resolution_shadow; }
+        void SetShadowResolution(uint32_t resolution);
+        auto GetAnisotropy()                            { return m_anisotropy; }
+        void SetAnisotropy(uint32_t anisotropy);
 		//======================================================================================================================
+
+        //= Graphics Settings ====================================================================================================================================================
+        ToneMapping_Type m_tonemapping  = ToneMapping_Uncharted2;
+        float m_exposure                = 1.5f;
+        float m_gamma                   = 2.2f;
+        // FXAA
+        float m_fxaa_sub_pixel          = 1.25f;	// The amount of sub-pixel aliasing removal														- Algorithm's default: 0.75f
+        float m_fxaa_edge_threshold     = 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
+        float m_fxaa_edge_threshold_min = 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Algorithm's default: 0.0833f
+        // Bloom
+        float m_bloom_intensity         = 0.1f;		// The intensity of the bloom
+        // Sharpening
+        float m_sharpen_strength        = 1.0f;		// Strength of the sharpening
+        float m_sharpen_clamp           = 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
+        // Motion Blur
+        float m_motion_blur_strength    = 4.0f;		// Strength of the motion blur
+        //========================================================================================================================================================================
 
 	private:
 		void CreateDepthStencilStates();
@@ -257,7 +259,7 @@ namespace Spartan
 		void Pass_MotionBlur(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Dithering(std::shared_ptr<RHI_Texture>& tex_in,				std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Bloom(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Upsample(std::shared_ptr<RHI_Texture>& tex_in,                 std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Upsample(std::shared_ptr<RHI_Texture>& tex_in,                std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_BlurBox(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out, float sigma);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
 		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
@@ -372,6 +374,10 @@ namespace Spartan
 		RendererDebug_Buffer m_debug_buffer = RendererDebug_None;
 		unsigned long m_flags = 0;
 		bool m_initialized = false;
+        bool m_reverse_z = true;
+        uint32_t m_resolution_shadow = 4096;
+        uint32_t m_resolution_shadow_min = 128;
+        uint32_t m_anisotropy = 16;
 		//=======================================================
 
 		//= RHI ============================================

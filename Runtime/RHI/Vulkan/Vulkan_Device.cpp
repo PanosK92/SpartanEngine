@@ -61,8 +61,8 @@ namespace Spartan
 
         inline VkResult debug_create(RHI_Device* rhi_device, const VkDebugUtilsMessengerCreateInfoEXT* create_info)
         {
-            if (const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(rhi_device->GetContext()->instance, "vkCreateDebugUtilsMessengerEXT")))
-                return func(rhi_device->GetContext()->instance, create_info, nullptr, &rhi_device->GetContext()->callback_handle);
+            if (const auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(rhi_device->GetContextRhi()->instance, "vkCreateDebugUtilsMessengerEXT")))
+                return func(rhi_device->GetContextRhi()->instance, create_info, nullptr, &rhi_device->GetContextRhi()->callback_handle);
 
             return VK_ERROR_EXTENSION_NOT_PRESENT;
         }
@@ -125,7 +125,7 @@ namespace Spartan
             std::vector<VkExtensionProperties> available_extensions(extensionCount);
             vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, available_extensions.data());
 
-            std::set<std::string> required_extensions(rhi_device->GetContext()->extensions_device.begin(), rhi_device->GetContext()->extensions_device.end());
+            std::set<std::string> required_extensions(rhi_device->GetContextRhi()->extensions_device.begin(), rhi_device->GetContextRhi()->extensions_device.end());
             for (const auto& extension : available_extensions)
             {
                 required_extensions.erase(extension.extensionName);
@@ -144,7 +144,7 @@ namespace Spartan
                 create_info.hwnd                        = static_cast<HWND>(window_handle);
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                auto result = vkCreateWin32SurfaceKHR(rhi_device->GetContext()->instance, &create_info, nullptr, &surface_temp);
+                auto result = vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &surface_temp);
                 if (result != VK_SUCCESS)
                 {
                     LOGF_ERROR("Failed to create Win32 surface, %s.", Vulkan_Common::to_string(result));
@@ -160,14 +160,14 @@ namespace Spartan
                 bool is_suitable = _indices.IsComplete() && extensions_supported;
                 if (is_suitable)
                 {
-                    rhi_device->GetContext()->device_physical   = device;
-                    rhi_device->GetContext()->indices           = _indices;
+                    rhi_device->GetContextRhi()->device_physical   = device;
+                    rhi_device->GetContextRhi()->indices           = _indices;
                     return true;
                 }
             }
 
             // Destroy the surface
-            vkDestroySurfaceKHR(rhi_device->GetContext()->instance, surface_temp, nullptr);
+            vkDestroySurfaceKHR(rhi_device->GetContextRhi()->instance, surface_temp, nullptr);
 
             return false;
         }
@@ -192,7 +192,7 @@ namespace Spartan
             std::vector<VkLayerProperties> available_layers(layer_count);
             vkEnumerateInstanceLayerProperties(&layer_count, available_layers.data());
 
-            for (auto layer_name : rhi_device->GetContext()->validation_layers)
+            for (auto layer_name : rhi_device->GetContextRhi()->validation_layers)
             {
                 for (const auto& layer_properties : available_layers)
                 {

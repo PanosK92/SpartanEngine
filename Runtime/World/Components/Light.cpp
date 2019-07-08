@@ -59,12 +59,12 @@ namespace Spartan
 
 	void Light::OnInitialize()
 	{
-		ShadowMap_Create(true);
+		CreateShadowMap(true);
 	}
 
 	void Light::OnStart()
 	{
-		ShadowMap_Create(false);
+		CreateShadowMap(false);
 	}
 
 	void Light::OnTick(float delta_time)
@@ -139,7 +139,7 @@ namespace Spartan
 	{
 		m_lightType = type;
 		m_is_dirty	= true;
-		ShadowMap_Create(true);
+		CreateShadowMap(true);
 	}
 
 	void Light::SetCastShadows(bool castShadows)
@@ -148,7 +148,7 @@ namespace Spartan
 			return;
 
 		m_cast_shadows = castShadows;
-		ShadowMap_Create(true);
+		CreateShadowMap(true);
 	}
 
 	void Light::SetRange(float range)
@@ -277,7 +277,7 @@ namespace Spartan
 			box_max *= units_per_texel;
 			//=====================================================================================
 
-			if (Settings::Get().GetReverseZ())
+			if (m_renderer->GetReverseZ())
 				m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_max.z, box_min.z);
 			else
 				m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_min.z, box_max.z);
@@ -288,21 +288,21 @@ namespace Spartan
 			const auto height			= static_cast<float>(m_shadow_map->GetHeight());		
 			const auto aspect_ratio		= width / height;
 			const float fov				= (m_lightType == LightType_Spot) ? m_angle_rad : 1.57079633f; // 1.57079633 = 90 deg
-			const float near_plane		= !Settings::Get().GetReverseZ() ? 0.1f : m_range;
-			const float far_plane		= !Settings::Get().GetReverseZ() ? m_range : 0.1f;
+			const float near_plane		= m_renderer->GetReverseZ() ? m_range : 0.1f;
+			const float far_plane		= m_renderer->GetReverseZ() ? 0.1f : m_range;
 			m_matrix_projection[index]	= Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
 		}
 
 		return true;
 	}
 
-	void Light::ShadowMap_Create(bool force)
+	void Light::CreateShadowMap(bool force)
 	{		
 		if (!force && !m_shadow_map)
 			return;
 
-		uint32_t resolution = Settings::Get().GetShadowResolution();
-		auto rhi_device			= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
+ 		uint32_t resolution = m_renderer->GetShadowResolution();
+		auto rhi_device		= m_renderer->GetRhiDevice();
 
 		if (GetLightType() == LightType_Directional)
 		{

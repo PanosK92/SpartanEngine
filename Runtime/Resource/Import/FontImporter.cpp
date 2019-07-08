@@ -220,7 +220,7 @@ namespace Spartan
 		FT_Int minor;
 		FT_Int rev;
 		FT_Library_Version(m_library, &major, &minor, &rev);
-		Settings::Get().m_versionFreeType = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
+        m_context->GetSubsystem<Settings>()->m_versionFreeType = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
 	}
 
 	FontImporter::~FontImporter()

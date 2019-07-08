@@ -69,7 +69,7 @@ Editor::Editor(void* window_handle, void* window_instance, float window_width, f
 
 	// ImGui version validation
 	IMGUI_CHECKVERSION();
-	Settings::Get().m_versionImGui = IMGUI_VERSION;
+    m_context->GetSubsystem<Settings>()->m_versionImGui = IMGUI_VERSION;
 
 	// ImGui context creation
 	ImGui::CreateContext();

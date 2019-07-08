@@ -44,13 +44,9 @@ namespace Spartan
 {
 	Engine::Engine(void* draw_handle, void* window_handle, void* window_instance, float window_width, float window_height)
 	{
-        // Create context
-		m_context = make_shared<Context>();
-        m_context->m_engine = this;
-
         // Flags
-		m_flags |= Engine_Physics;
-		m_flags |= Engine_Game;
+        m_flags |= Engine_Physics;
+        m_flags |= Engine_Game;
 
         // Window
         m_draw_handle       = draw_handle;
@@ -59,9 +55,14 @@ namespace Spartan
         m_window_width      = window_width;
         m_window_height     = window_height;
 
+        // Create context
+		m_context = make_shared<Context>();
+        m_context->m_engine = this;
+
 		// Register subsystems
-        m_context->RegisterSubsystem<Timer>(Tick_Variable); // always first so it computes a recent delta time for the following subsystems
-		m_context->RegisterSubsystem<Profiler>(Tick_Variable);    
+        m_context->RegisterSubsystem<Settings>(Tick_Variable);
+        m_context->RegisterSubsystem<Timer>(Tick_Variable); // everything above this will receive the previous delta time
+		m_context->RegisterSubsystem<Profiler>(Tick_Variable);
 		m_context->RegisterSubsystem<ResourceCache>(Tick_Variable);		
 		m_context->RegisterSubsystem<Threading>(Tick_Variable);			
 		m_context->RegisterSubsystem<Audio>(Tick_Variable);
@@ -70,10 +71,9 @@ namespace Spartan
 		m_context->RegisterSubsystem<Scripting>(Tick_Smoothed);
 		m_context->RegisterSubsystem<World>(Tick_Smoothed);
         m_context->RegisterSubsystem<Renderer>(Tick_Smoothed);
-        	
+             	
         // Initialize global/static subsystems
         FileSystem::Initialize();
-        Settings::Get().Initialize(m_context.get()); // this must become a subsystem
 
 		// Initialize above subsystems
 		m_context->Initialize();
@@ -81,7 +81,6 @@ namespace Spartan
 
 	Engine::~Engine()
 	{
-        Settings::Get().SaveSettings();
 		EventSystem::Get().Clear(); // this must become a subsystem
 	}
 

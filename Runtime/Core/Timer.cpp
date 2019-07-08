@@ -89,6 +89,7 @@ namespace Spartan
             return;
 
         m_fps_target = fps;
+        m_user_selected_fps_target = true;
         LOGF_INFO("FPS limit set to %.2f", m_fps_target);
     }
 
@@ -100,6 +101,13 @@ namespace Spartan
             return;
 
         m_monitor_refresh_rate = refresh_rate;
+
+        // If the user hasn't specified an fps target, try to match the monitor
+        if (!m_user_selected_fps_target)
+        {
+            m_fps_target = m_monitor_refresh_rate;
+        }
+
         LOGF_INFO("Maximum monitor refresh rate set to %.2f hz", m_monitor_refresh_rate);
     }
 }

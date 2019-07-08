@@ -45,7 +45,7 @@ namespace Spartan
 
 	bool RHI_VertexBuffer::_Create(const void* vertices)
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -75,7 +75,7 @@ namespace Spartan
 	void* RHI_VertexBuffer::Map() const
 	{
 		void* ptr	= nullptr;
-		auto result = vkMapMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_size, 0, reinterpret_cast<void**>(&ptr));
+		auto result = vkMapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_size, 0, reinterpret_cast<void**>(&ptr));
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to map memory, %s", Vulkan_Common::to_string(result));
@@ -93,7 +93,7 @@ namespace Spartan
 			return false;
 		}
 
-		vkUnmapMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
+		vkUnmapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
 		return true;
 	}
 }

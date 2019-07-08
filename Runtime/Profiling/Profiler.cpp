@@ -40,7 +40,13 @@ namespace Spartan
 		m_time_blocks.resize(m_time_block_capacity);
 	}
 
-	bool Profiler::Initialize()
+    Profiler::~Profiler()
+    {
+        m_time_blocks.clear();
+        ClearRhiMetrics();
+    }
+
+    bool Profiler::Initialize()
 	{
 		m_resource_manager	= m_context->GetSubsystem<ResourceCache>().get();
 		m_renderer			= m_context->GetSubsystem<Renderer>().get();

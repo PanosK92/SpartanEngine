@@ -194,15 +194,17 @@ void Widget_MenuBar::ShowAboutWindow()
     const char* api_link = "https://www.khronos.org/vulkan/";
 #endif
 
-	library(api_name,	    Settings::Get().m_versionGraphicsAPI,	api_link);
-	library("AngelScript",	Settings::Get().m_versionAngelScript,	"https://www.angelcode.com/angelscript/");
-	library("Assimp",		Settings::Get().m_versionAssimp,		"https://github.com/assimp/assimp");
-	library("Bullet",		Settings::Get().m_versionBullet,		"https://github.com/bulletphysics/bullet3");
-	library("FMOD",			Settings::Get().m_versionFMOD,			"https://www.fmod.com/");
-	library("FreeImage",	Settings::Get().m_versionFreeImage,		"https://sourceforge.net/projects/freeimage/files/Source%20Distribution/");
-	library("FreeType",		Settings::Get().m_versionFreeType,		"https://www.freetype.org/");
-	library("ImGui",		Settings::Get().m_versionImGui,			"https://github.com/ocornut/imgui");
-	library("PugiXML",		Settings::Get().m_versionPugiXML,		"https://github.com/zeux/pugixml");
+    auto& settings = m_context->GetSubsystem<Settings>();
+
+	library(api_name,	    settings->m_versionGraphicsAPI,	api_link);
+	library("AngelScript",	settings->m_versionAngelScript,	"https://www.angelcode.com/angelscript/");
+	library("Assimp",		settings->m_versionAssimp,		"https://github.com/assimp/assimp");
+	library("Bullet",		settings->m_versionBullet,		"https://github.com/bulletphysics/bullet3");
+	library("FMOD",			settings->m_versionFMOD,		"https://www.fmod.com/");
+	library("FreeImage",	settings->m_versionFreeImage,	"https://sourceforge.net/projects/freeimage/files/Source%20Distribution/");
+	library("FreeType",		settings->m_versionFreeType,	"https://www.freetype.org/");
+	library("ImGui",		settings->m_versionImGui,		"https://github.com/ocornut/imgui");
+	library("PugiXML",		settings->m_versionPugiXML,		"https://github.com/zeux/pugixml");
 
 	ImGui::End();
 }

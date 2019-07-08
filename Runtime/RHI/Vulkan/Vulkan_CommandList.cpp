@@ -58,7 +58,7 @@ namespace Spartan
 
 		Vulkan_Common::commands::cmd_pool(m_rhi_device, m_cmd_pool);
 
-		for (uint32_t i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
+		for (uint32_t i = 0; i < m_rhi_device->GetContextRhi()->max_frames_in_flight; i++)
 		{
 			VkCommandBuffer cmd_buffer;
 			auto cmd_pool = static_cast<VkCommandPool>(m_cmd_pool);
@@ -73,21 +73,21 @@ namespace Spartan
 	RHI_CommandList::~RHI_CommandList()
 	{
 		// Wait in case the command buffer is still in use by the graphics queue
-		vkQueueWaitIdle(m_rhi_device->GetContext()->queue_graphics);
+		vkQueueWaitIdle(m_rhi_device->GetContextRhi()->queue_graphics);
 
 		const auto cmd_pool_vk = static_cast<VkCommandPool>(m_cmd_pool);
-		for (uint32_t i = 0; i < m_rhi_device->GetContext()->max_frames_in_flight; i++)
+		for (uint32_t i = 0; i < m_rhi_device->GetContextRhi()->max_frames_in_flight; i++)
 		{
 			Vulkan_Common::fence::destroy(m_rhi_device, m_fences_in_flight[i]);
 			Vulkan_Common::semaphore::destroy(m_rhi_device, m_semaphores_cmd_list_consumed[i]);
 			auto cmd_buffer = static_cast<VkCommandBuffer>(m_cmd_buffers[i]);
-			vkFreeCommandBuffers(m_rhi_device->GetContext()->device, cmd_pool_vk, 1, &cmd_buffer);
+			vkFreeCommandBuffers(m_rhi_device->GetContextRhi()->device, cmd_pool_vk, 1, &cmd_buffer);
 		}
 		m_cmd_buffers.clear();
 		m_semaphores_cmd_list_consumed.clear();
 		m_fences_in_flight.clear();
 
-		vkDestroyCommandPool(m_rhi_device->GetContext()->device, cmd_pool_vk, nullptr);
+		vkDestroyCommandPool(m_rhi_device->GetContextRhi()->device, cmd_pool_vk, nullptr);
 		m_cmd_pool = nullptr;
 	}
 
@@ -101,7 +101,7 @@ namespace Spartan
 		if (m_sync_cpu_to_gpu)
 		{
 			Vulkan_Common::fence::wait_reset(m_rhi_device, FENCE_CMD_LIST_CONSUMED_VOID_PTR);
-			SPARTAN_ASSERT(vkResetCommandPool(m_rhi_device->GetContext()->device, static_cast<VkCommandPool>(m_cmd_pool), 0) == VK_SUCCESS);
+			SPARTAN_ASSERT(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_cmd_pool), 0) == VK_SUCCESS);
 			m_pipeline->OnCommandListConsumed();
 			m_sync_cpu_to_gpu = false;
 		}
@@ -348,7 +348,7 @@ namespace Spartan
 		submit_info.signalSemaphoreCount	= 1;
 		submit_info.pSignalSemaphores		= signal_semaphores;
 
-		const auto result = vkQueueSubmit(m_rhi_device->GetContext()->queue_graphics, 1, &submit_info, FENCE_CMD_LIST_CONSUMED);
+		const auto result = vkQueueSubmit(m_rhi_device->GetContextRhi()->queue_graphics, 1, &submit_info, FENCE_CMD_LIST_CONSUMED);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to submit command buffer, %s.", Vulkan_Common::to_string(result));

@@ -44,7 +44,7 @@ namespace Spartan
 			return;
 		}
 
-		auto d3d11_device = rhi_device->GetContext()->device;
+		auto d3d11_device = rhi_device->GetContextRhi()->device;
 		if (!d3d11_device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();

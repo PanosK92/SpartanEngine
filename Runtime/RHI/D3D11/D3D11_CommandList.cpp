@@ -334,8 +334,8 @@ namespace Spartan
 
 	bool RHI_CommandList::Submit(bool profile /*=true*/)
 	{
-		auto context		= m_rhi_device->GetContext();
-		auto device_context	= m_rhi_device->GetContext()->device_context;
+		auto context		= m_rhi_device->GetContextRhi();
+		auto device_context	= m_rhi_device->GetContextRhi()->device_context;
 
 		for (uint32_t cmd_index = 0; cmd_index < m_command_count; cmd_index++)
 		{

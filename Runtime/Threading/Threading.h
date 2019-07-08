@@ -80,8 +80,12 @@ namespace Spartan
 			m_conditionVar.notify_one();
 		}
 
+        auto GetThreadCount()       { return m_thread_count; }
+        auto GetThreadCountMax()    { return m_thread_max; }
+
 	private:
-		uint32_t m_threadCount;
+		uint32_t m_thread_count = 0;
+        uint32_t m_thread_max   = 0;
 		std::vector<std::thread> m_threads;
 		std::queue<std::shared_ptr<Task>> m_tasks;
 		std::mutex m_tasksMutex;

@@ -77,7 +77,7 @@ namespace Spartan
 		ComputeViewMatrix();
 		ComputeProjection();
 
-		m_frustrum.Construct(GetViewMatrix(), GetProjectionMatrix(), Settings::Get().GetReverseZ() ? GetNearPlane() : GetFarPlane());
+		m_frustrum.Construct(GetViewMatrix(), GetProjectionMatrix(), m_context->GetSubsystem<Renderer>()->GetReverseZ() ? GetNearPlane() : GetFarPlane());
 
 		m_isDirty = false;
 	}
@@ -324,9 +324,10 @@ namespace Spartan
 
 	void Camera::ComputeProjection()
 	{
-		const auto& viewport	= m_context->GetSubsystem<Renderer>()->GetViewport();
-		const auto near_plane	= !Settings::Get().GetReverseZ() ? m_near_plane : m_far_plane;
-		const auto far_plane	= !Settings::Get().GetReverseZ() ? m_far_plane : m_near_plane;
+        auto& renderer = m_context->GetSubsystem<Renderer>();
+		const auto& viewport	= renderer->GetViewport();
+		const auto near_plane	= renderer->GetReverseZ() ? m_far_plane : m_near_plane;
+		const auto far_plane	= renderer->GetReverseZ() ? m_near_plane : m_far_plane;
 
 		if (m_projection_type == Projection_Perspective)
 		{

@@ -45,7 +45,7 @@ namespace Spartan
 {
 	RHI_Shader::~RHI_Shader()
 	{
-		auto rhi_context = m_rhi_device->GetContext();
+		auto rhi_context = m_rhi_device->GetContextRhi();
 
 		if (HasVertexShader())
 		{
@@ -487,7 +487,7 @@ namespace Spartan
 			create_info.codeSize	= static_cast<size_t>(shader_compiled->GetBufferSize());
 			create_info.pCode		= reinterpret_cast<const uint32_t*>(shader_compiled->GetBufferPointer());
 	
-			if (vkCreateShaderModule(m_rhi_device->GetContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS)
+			if (vkCreateShaderModule(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS)
 			{
 				// Reflect shader resources (so that descriptor sets can be created later)
 				_Reflect

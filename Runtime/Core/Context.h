@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
-#include <map>
 #include "EngineDefs.h"
 #include "ISubsystem.h"
 #include "../Logging/Log.h"
@@ -31,7 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     class Engine;
-	#define VALIDATE_SUBSYSTEM_TYPE(T) static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem")
+
+    template<typename T>
+    constexpr void validate_subsystem_type() { static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem"); }
 
     enum Tick_Group
     {
@@ -39,35 +40,53 @@ namespace Spartan
         Tick_Smoothed
     };
 
+    struct _subystem
+    {
+        _subystem(const std::shared_ptr<ISubsystem>& subsystem, Tick_Group tick_group)
+        {
+            ptr = subsystem;
+            this->tick_group = tick_group;
+        }
+
+        std::shared_ptr<ISubsystem> ptr;
+        Tick_Group tick_group;
+    };
+
 	class SPARTAN_CLASS Context
 	{
 	public:
 		Context() = default;
-		~Context() { m_subsystem_groups.clear(); }
+
+		~Context()
+        {
+            for (size_t i = m_subsystems.size() - 1; i >= 0; i--)
+            {
+                m_subsystems[i].ptr.reset();
+            }
+            m_subsystems.clear();
+        }
 
 		// Register a subsystem
 		template <class T>
 		void RegisterSubsystem(Tick_Group tick_group = Tick_Variable)
 		{
-			VALIDATE_SUBSYSTEM_TYPE(T);
-			m_subsystem_groups[tick_group].emplace_back(std::make_shared<T>(this));
+            validate_subsystem_type<T>();
+
+            m_subsystems.emplace_back(std::make_shared<T>(this), tick_group);
 		}
 
 		// Initialize subsystems
 		bool Initialize()
 		{
 			auto result = true;
-			for (const auto& group : m_subsystem_groups)
-			{
-                for (const auto& subsystem : group.second)
+            for (const auto& subsystem : m_subsystems)
+            {
+                if (!subsystem.ptr->Initialize())
                 {
-				    if (!subsystem->Initialize())
-				    {
-				    	LOGF_ERROR("Failed to initialize %s", typeid(*subsystem).name());
-				    	result = false;
-				    }
+                	LOGF_ERROR("Failed to initialize %s", typeid(*subsystem.ptr).name());
+                	result = false;
                 }
-			}
+            }
 
 			return result;
 		}
@@ -75,9 +94,12 @@ namespace Spartan
         // Tick
 		void Tick(Tick_Group tick_group, float delta_time = 0.0f)
 		{
-            for (const auto& subsystem : m_subsystem_groups[tick_group])
+            for (const auto& subsystem : m_subsystems)
             {
-                subsystem->Tick(delta_time);
+                if (subsystem.tick_group != tick_group)
+                    continue;
+
+                subsystem.ptr->Tick(delta_time);
             }
 		}
 
@@ -85,14 +107,12 @@ namespace Spartan
 		template <class T> 
 		std::shared_ptr<T> GetSubsystem()
 		{
-			VALIDATE_SUBSYSTEM_TYPE(T);
-			for (const auto& group : m_subsystem_groups)
+            validate_subsystem_type<T>();
+
+			for (const auto& subsystem : m_subsystems)
 			{
-                for (const auto& subsystem : group.second)
-                {
-				    if (typeid(T) == typeid(*subsystem))
-					    return std::static_pointer_cast<T>(subsystem);
-                }
+                if (typeid(T) == typeid(*subsystem.ptr))
+                    return std::static_pointer_cast<T>(subsystem.ptr);
 			}
 
 			return nullptr;
@@ -101,6 +121,6 @@ namespace Spartan
         Engine* m_engine = nullptr;
 
 	private:
-		std::map<Tick_Group, std::vector<std::shared_ptr<ISubsystem>>> m_subsystem_groups;
+		std::vector<_subystem> m_subsystems;
 	};
 }

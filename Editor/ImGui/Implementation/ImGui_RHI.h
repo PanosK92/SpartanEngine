@@ -89,30 +89,30 @@ namespace ImGui::RHI
 			g_constant_buffer		= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
 			g_vertex_buffer			= make_shared<RHI_VertexBuffer>(g_rhi_device, sizeof(ImDrawVert));
 			g_index_buffer			= make_shared<RHI_IndexBuffer>(g_rhi_device);
-			g_depth_stencil_state	= make_shared<RHI_DepthStencilState>(g_rhi_device, false);
+			g_depth_stencil_state	= make_shared<RHI_DepthStencilState>(g_rhi_device, false, g_renderer->GetComparisonFunction());
 
 			g_rasterizer_state = make_shared<RHI_RasterizerState>
-				(
-					g_rhi_device,
-					Cull_None,
-					Fill_Solid,
-					true,	// depth clip
-					true,	// scissor
-					false,	// multi-sample
-					false	// anti-aliased lines
-					);
+			(
+			    g_rhi_device,
+			    Cull_None,
+			    Fill_Solid,
+			    true,	// depth clip
+			    true,	// scissor
+			    false,	// multi-sample
+			    false	// anti-aliased lines
+			);
 
 			g_blend_state = make_shared<RHI_BlendState>
-				(
-					g_rhi_device,
-					true,
-					Blend_Src_Alpha,		// source blend
-					Blend_Inv_Src_Alpha,	// destination blend
-					Blend_Operation_Add,	// blend op
-					Blend_Inv_Src_Alpha,	// source blend alpha
-					Blend_Zero,				// destination blend alpha
-					Blend_Operation_Add		// destination op alpha
-					);
+			(
+			    g_rhi_device,
+			    true,
+			    Blend_Src_Alpha,		// source blend
+			    Blend_Inv_Src_Alpha,	// destination blend
+			    Blend_Operation_Add,	// blend op
+			    Blend_Inv_Src_Alpha,	// source blend alpha
+			    Blend_Zero,				// destination blend alpha
+			    Blend_Operation_Add		// destination op alpha
+			);
 
 			// Shader
 			static string shader_source =
