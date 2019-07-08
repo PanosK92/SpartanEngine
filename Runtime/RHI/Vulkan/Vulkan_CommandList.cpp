@@ -324,7 +324,7 @@ namespace Spartan
 		SPARTAN_ASSERT(m_is_recording);
 	}
 
-	bool RHI_CommandList::Submit()
+	bool RHI_CommandList::Submit(bool profile/*=true*/)
 	{
 		auto swap_chain = m_pipeline->GetState()->swap_chain;
 
@@ -370,5 +370,4 @@ namespace Spartan
 
 	}
 }
-
 #endif

@@ -24,14 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_VULKAN 
 //================================
 
-//= INCLUDES ===================
+//= INCLUDES ========================
 #include <string>
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
 #include "../../Core/Context.h"
 #include "../../Core/Engine.h"
-//==============================
+#include "../../Rendering/Renderer.h"
+//===================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -207,7 +208,8 @@ namespace Spartan
 
 	RHI_Device::RHI_Device(Context* context)
 	{
-		m_rhi_context = make_shared<RHI_Context>();
+        m_context       = context;
+		m_rhi_context   = make_shared<RHI_Context>();
 
 		// Create instance
 		VkApplicationInfo app_info = {};
@@ -308,7 +310,7 @@ namespace Spartan
 
 			// Describe
 			VkPhysicalDeviceFeatures device_features	= {};
-			device_features.samplerAnisotropy			= Settings::Get().GetAnisotropy() != 0;
+			device_features.samplerAnisotropy			= m_context->GetSubsystem<Renderer>()->GetAnisotropy() != 0;
 
 			VkDeviceCreateInfo create_info	= {};
 			{
@@ -349,8 +351,9 @@ namespace Spartan
 		auto version_major	= to_string(VK_VERSION_MAJOR(app_info.apiVersion));
 		auto version_minor	= to_string(VK_VERSION_MINOR(app_info.apiVersion));
 		auto version_path	= to_string(VK_VERSION_PATCH(app_info.apiVersion));
-		Settings::Get().m_versionGraphicsAPI = version_major + "." + version_minor + "." + version_path;
-		LOG_INFO("Vulkan " + Settings::Get().m_versionGraphicsAPI);
+        auto& settings = m_context->GetSubsystem<Settings>();
+        settings->m_versionGraphicsAPI = version_major + "." + version_minor + "." + version_path;
+		LOG_INFO("Vulkan " + settings->m_versionGraphicsAPI);
 
 		m_initialized = true;
 	}
