@@ -44,7 +44,7 @@ namespace Spartan
 
 	bool RHI_IndexBuffer::_Create(const void* indices)
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -74,7 +74,7 @@ namespace Spartan
 		init_data.SysMemSlicePitch	= 0;
 
 		const auto ptr = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result = m_rhi_device->GetContext()->device->CreateBuffer(&buffer_desc, m_is_dynamic ? nullptr : &init_data, ptr);
+		const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, m_is_dynamic ? nullptr : &init_data, ptr);
 		if FAILED(result)
 		{
 			LOG_ERROR(" Failed to create index buffer");
@@ -86,14 +86,14 @@ namespace Spartan
 
 	void* RHI_IndexBuffer::Map() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
 		}
 
 		D3D11_MAPPED_SUBRESOURCE mapped_resource;
-		const auto result = m_rhi_device->GetContext()->device_context->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+		const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to map index buffer.");
@@ -105,13 +105,13 @@ namespace Spartan
 
 	bool RHI_IndexBuffer::Unmap() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_rhi_device->GetContext()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
+		m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
 		return true;
 	}
 }

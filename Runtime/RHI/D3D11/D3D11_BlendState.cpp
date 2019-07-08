@@ -54,7 +54,7 @@ namespace Spartan
 			return;
 		}
 
-		if (!rhi_device->GetContext()->device)
+		if (!rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return;
@@ -88,7 +88,7 @@ namespace Spartan
 
 		// Create blend state
 		auto blend_state	= static_cast<ID3D11BlendState*>(m_buffer);
-		const auto result	= rhi_device->GetContext()->device->CreateBlendState(&desc, &blend_state);
+		const auto result	= rhi_device->GetContextRhi()->device->CreateBlendState(&desc, &blend_state);
 
 		// Handle result
 		if (SUCCEEDED(result))

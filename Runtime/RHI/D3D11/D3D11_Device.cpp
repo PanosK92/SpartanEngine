@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Core/Settings.h"
+#include "../../Core/Context.h"
 #include "../../Math/Rectangle.h"
 #include "../../FileSystem/FileSystem.h"
 //======================================
@@ -118,9 +119,10 @@ namespace Spartan
 		{
 			auto log_feature_level = [this](const std::string& level)
 			{
-				Settings::Get().m_versionGraphicsAPI = level;
+                auto& settings = m_context->GetSubsystem<Settings>();
+                settings->m_versionGraphicsAPI = level;
                 Log::m_caller_name.clear();
-				Log::Write("Spartan::RHI_Device: DirectX " + Settings::Get().m_versionGraphicsAPI, Log_Info);
+				Log::Write("Spartan::RHI_Device: DirectX " + settings->m_versionGraphicsAPI, Log_Info);
 			};
 
 			switch (m_rhi_context->device->GetFeatureLevel())

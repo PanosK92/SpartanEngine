@@ -76,7 +76,7 @@ namespace Spartan
 		FreeImage_SetOutputMessage(free_image_error_handler);
 
 		// Get version
-		Settings::Get().m_versionFreeImage = FreeImage_GetVersion();
+        m_context->GetSubsystem<Settings>()->m_versionFreeImage = FreeImage_GetVersion();
 	}
 
 	ImageImporter::~ImageImporter()

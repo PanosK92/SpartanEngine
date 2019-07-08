@@ -33,13 +33,14 @@ namespace Spartan
 	Threading::Threading(Context* context) : ISubsystem(context)
 	{
 		m_stopping		= false;
-		m_threadCount	= Settings::Get().GetMaxThreadCount() - 1;
+        m_thread_max    = thread::hardware_concurrency();
+		m_thread_count	= m_thread_max - 1;
 
-		for (uint32_t i = 0; i < m_threadCount; i++)
+		for (uint32_t i = 0; i < m_thread_count; i++)
 		{
 			m_threads.emplace_back(thread(&Threading::Invoke, this));
 		}
-		LOGF_INFO("%d threads have been created", m_threadCount);
+		LOGF_INFO("%d threads have been created", m_thread_count);
 	}
 
 	Threading::~Threading()

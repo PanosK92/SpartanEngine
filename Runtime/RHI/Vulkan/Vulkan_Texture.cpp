@@ -44,7 +44,7 @@ namespace Spartan
     {
         m_data.clear();
 
-        auto vk_device = m_rhi_device->GetContext()->device;
+        auto vk_device = m_rhi_device->GetContextRhi()->device;
 
         if (m_resource_texture)
         {
@@ -119,7 +119,7 @@ namespace Spartan
 			return false;
 		}
 
-		vkFreeCommandBuffers(rhi_device->GetContext()->device, command_pool, 1, &command_buffer);
+		vkFreeCommandBuffers(rhi_device->GetContextRhi()->device, command_pool, 1, &command_buffer);
 
 		return true;
 	}
@@ -177,7 +177,7 @@ namespace Spartan
 
 	inline bool CopyBufferToImage(const shared_ptr<RHI_Device>& rhi_device, uint32_t width, uint32_t height, VkImage& image, VkBuffer& staging_buffer, VkCommandPool& cmd_pool)
 	{
-		auto queue = rhi_device->GetContext()->queue_copy;
+		auto queue = rhi_device->GetContextRhi()->queue_copy;
 
 		auto cmd_buffer = BeginSingleTimeCommands(rhi_device, cmd_pool);
 		if (!cmd_buffer)
@@ -229,7 +229,7 @@ namespace Spartan
         renderPassInfo.dependencyCount          = static_cast<uint32_t>(subpass_dependencies.size());
         renderPassInfo.pDependencies            = subpass_dependencies.data();
 
-        auto result = vkCreateRenderPass(rhi_device->GetContext()->device, &renderPassInfo, nullptr, &_render_pass);
+        auto result = vkCreateRenderPass(rhi_device->GetContextRhi()->device, &renderPassInfo, nullptr, &_render_pass);
         if (result != VK_SUCCESS)
             return result;
 
@@ -246,7 +246,7 @@ namespace Spartan
         create_info.height                  = height;
         create_info.layers                  = 1;
 
-        result = vkCreateFramebuffer(rhi_device->GetContext()->device, &create_info, nullptr, &_frame_buffer);
+        result = vkCreateFramebuffer(rhi_device->GetContextRhi()->device, &create_info, nullptr, &_frame_buffer);
 
         return result;
     }
@@ -278,23 +278,23 @@ namespace Spartan
 		create_info.samples				= VK_SAMPLE_COUNT_1_BIT;
 		create_info.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
 
-		auto result = vkCreateImage(rhi_device->GetContext()->device, &create_info, nullptr, _image);
+		auto result = vkCreateImage(rhi_device->GetContextRhi()->device, &create_info, nullptr, _image);
 		if (result != VK_SUCCESS)
 			return result;
 
 		VkMemoryRequirements memRequirements;
-		vkGetImageMemoryRequirements(rhi_device->GetContext()->device, *_image, &memRequirements);
+		vkGetImageMemoryRequirements(rhi_device->GetContextRhi()->device, *_image, &memRequirements);
 
 		VkMemoryAllocateInfo allocate_info	= {};
 		allocate_info.sType					= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocate_info.allocationSize		= memRequirements.size;
-		allocate_info.memoryTypeIndex		= Vulkan_Common::memory::get_type(rhi_device->GetContext()->device_physical, properties, memRequirements.memoryTypeBits);
+		allocate_info.memoryTypeIndex		= Vulkan_Common::memory::get_type(rhi_device->GetContextRhi()->device_physical, properties, memRequirements.memoryTypeBits);
 
-		result = vkAllocateMemory(rhi_device->GetContext()->device, &allocate_info, nullptr, image_memory);
+		result = vkAllocateMemory(rhi_device->GetContextRhi()->device, &allocate_info, nullptr, image_memory);
 		if (result != VK_SUCCESS)
 			return result;
 
-		result = vkBindImageMemory(rhi_device->GetContext()->device, *_image, *image_memory, 0);
+		result = vkBindImageMemory(rhi_device->GetContextRhi()->device, *_image, *image_memory, 0);
 		if (result != VK_SUCCESS)
 			return result;
 
@@ -334,7 +334,7 @@ namespace Spartan
             create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
         }
 
-        return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, image_view);
+        return vkCreateImageView(rhi_device->GetContextRhi()->device, &create_info, nullptr, image_view);
     }
 
 	bool RHI_Texture2D::CreateResourceGpu()
@@ -346,7 +346,7 @@ namespace Spartan
             if (m_bind_flags & RHI_Texture_RenderTarget)
             {
                 LOG_WARNING("Format is not supported as a render target, falling back to supported surface format");
-                image_format = m_rhi_device->GetContext()->surface_format.format;
+                image_format = m_rhi_device->GetContextRhi()->surface_format.format;
                 image_tiling = VK_IMAGE_TILING_OPTIMAL;
             }
 
@@ -371,13 +371,13 @@ namespace Spartan
 
 			// Copy to buffer
 			void* data = nullptr;
-			vkMapMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, 0, buffer_size, 0, &data);
+			vkMapMemory(m_rhi_device->GetContextRhi()->device, staging_buffer_memory, 0, buffer_size, 0, &data);
 			memcpy(data, m_data.front().data(), static_cast<size_t>(buffer_size));
-			vkUnmapMemory(m_rhi_device->GetContext()->device, staging_buffer_memory);
+			vkUnmapMemory(m_rhi_device->GetContextRhi()->device, staging_buffer_memory);
 		}
 
         // Resolve usage flags
-        UINT usage_flags = 0;
+        VkImageUsageFlags usage_flags = 0;
         {
             usage_flags |= (m_bind_flags & RHI_Texture_Sampled)         ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
             usage_flags |= (m_bind_flags & RHI_Texture_DepthStencil)    ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
@@ -460,8 +460,8 @@ namespace Spartan
 		// Release staging buffer
 		if (staging_buffer && staging_buffer_memory)
 		{
-			vkDestroyBuffer(m_rhi_device->GetContext()->device, staging_buffer, nullptr);
-			vkFreeMemory(m_rhi_device->GetContext()->device, staging_buffer_memory, nullptr);
+			vkDestroyBuffer(m_rhi_device->GetContextRhi()->device, staging_buffer, nullptr);
+			vkFreeMemory(m_rhi_device->GetContextRhi()->device, staging_buffer_memory, nullptr);
 		}
 
 		return true;
@@ -472,8 +472,8 @@ namespace Spartan
 	RHI_TextureCube::~RHI_TextureCube()
 	{
 		m_data.clear();
-        vkDestroyImageView(m_rhi_device->GetContext()->device, reinterpret_cast<VkImageView>(m_resource_texture), nullptr);
-		vkDestroyImage(m_rhi_device->GetContext()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
+        vkDestroyImageView(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImageView>(m_resource_texture), nullptr);
+		vkDestroyImage(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkImage>(m_texture), nullptr);
 		Vulkan_Common::memory::free(m_rhi_device, m_texture_memory);
 	}
 

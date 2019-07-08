@@ -98,7 +98,7 @@ namespace Spartan
 
 		// Create
 		const auto ptr = reinterpret_cast<ID3D11Texture2D**>(&texture);
-		const auto result = rhi_device->GetContext()->device->CreateTexture2D(&texture_desc, vec_subresource_data.data(), ptr);
+		const auto result = rhi_device->GetContextRhi()->device->CreateTexture2D(&texture_desc, vec_subresource_data.data(), ptr);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Invalid parameters, failed to create ID3D11Texture2D, %s", D3D11_Common::dxgi_error_to_string(result));
@@ -118,7 +118,7 @@ namespace Spartan
 		view_desc.Texture2DArray.FirstArraySlice	= 0;
 
 		const auto ptr = reinterpret_cast<ID3D11RenderTargetView**>(&resource_render_target);
-		if (FAILED(rhi_device->GetContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(resource), &view_desc, ptr)))
+		if (FAILED(rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(resource), &view_desc, ptr)))
 		{
 			LOG_ERROR("CreateRenderTargetView() failed.");
 			return false;
@@ -141,7 +141,7 @@ namespace Spartan
 		{
 			dsv_desc.Texture2DArray.FirstArraySlice = i;
 			const auto ptr = reinterpret_cast<ID3D11DepthStencilView**>(&depth_stencil_views.emplace_back(nullptr));
-			const auto result = rhi_device->GetContext()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(resource), &dsv_desc, ptr);
+			const auto result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(resource), &dsv_desc, ptr);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("CreateDepthStencilView() failed, %s.", D3D11_Common::dxgi_error_to_string(result));
@@ -165,7 +165,7 @@ namespace Spartan
 
 		// Create
 		auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&shader_resource_view);
-		auto result = rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(resource), &shader_resource_view_desc, ptr);
+		auto result = rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(resource), &shader_resource_view_desc, ptr);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to create the ID3D11ShaderResourceView, %s", D3D11_Common::dxgi_error_to_string(result));
@@ -177,7 +177,7 @@ namespace Spartan
 
 	bool RHI_Texture2D::CreateResourceGpu()
 	{
-		if (!m_rhi_device->GetContext()->device)
+		if (!m_rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
@@ -355,14 +355,14 @@ namespace Spartan
 		shader_resource_desc.TextureCube.MostDetailedMip	= 0;
 
 		// Validate device before usage
-		if (!rhi_device->GetContext()->device)
+		if (!rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR("Invalid RHI device.");
 			return false;
 		}
 
 		// Create the Texture Resource
-		auto result = rhi_device->GetContext()->device->CreateTexture2D(vec_texture_desc.data(), vec_subresource_data.data(), &texture);
+		auto result = rhi_device->GetContextRhi()->device->CreateTexture2D(vec_texture_desc.data(), vec_subresource_data.data(), &texture);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters, %s", D3D11_Common::dxgi_error_to_string(result));
@@ -371,7 +371,7 @@ namespace Spartan
 
 		// If we have created the texture resource for the six faces we create the Shader Resource View to use in our shaders.
 		auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&resource_texture);
-		result = rhi_device->GetContext()->device->CreateShaderResourceView(texture, &shader_resource_desc, ptr);
+		result = rhi_device->GetContextRhi()->device->CreateShaderResourceView(texture, &shader_resource_desc, ptr);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to create the ID3D11ShaderResourceView, %s", D3D11_Common::dxgi_error_to_string(result));
@@ -393,7 +393,7 @@ namespace Spartan
 		const shared_ptr<RHI_Device>& rhi_device
 	)
 	{
-        if (!rhi_device->GetContext()->device)
+        if (!rhi_device->GetContextRhi()->device)
         {
             LOG_ERROR_INVALID_PARAMETER();
             return false;
@@ -425,7 +425,7 @@ namespace Spartan
 		depth_buffer_desc.CPUAccessFlags		= 0;
 
 		ID3D11Texture2D* depth_stencil_texture = nullptr;
-		auto result = rhi_device->GetContext()->device->CreateTexture2D(&depth_buffer_desc, nullptr, &depth_stencil_texture);
+		auto result = rhi_device->GetContextRhi()->device->CreateTexture2D(&depth_buffer_desc, nullptr, &depth_stencil_texture);
 		if (FAILED(result))
 		{
 			LOGF_ERROR("Failed to create depth stencil texture, %s.", D3D11_Common::dxgi_error_to_string(result));
@@ -444,7 +444,7 @@ namespace Spartan
 		{
 			dsv_desc.Texture2DArray.FirstArraySlice = i;
 			auto ptr = reinterpret_cast<ID3D11DepthStencilView**>(&resource_depth_stencils.emplace_back(nullptr));
-			result = rhi_device->GetContext()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(depth_stencil_texture), &dsv_desc, ptr);
+			result = rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(depth_stencil_texture), &dsv_desc, ptr);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("CreateDepthStencilView() failed, %s.", D3D11_Common::dxgi_error_to_string(result));
@@ -464,7 +464,7 @@ namespace Spartan
 			srv_desc.Texture2DArray.ArraySize		= array_size;
 
 			auto ptr = reinterpret_cast<ID3D11ShaderResourceView**>(&resource_texture);
-			result = rhi_device->GetContext()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(depth_stencil_texture), &srv_desc, ptr);
+			result = rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(depth_stencil_texture), &srv_desc, ptr);
 			if (FAILED(result))
 			{
 				LOGF_ERROR("CreateShaderResourceView() failed, %s.", D3D11_Common::dxgi_error_to_string(result));

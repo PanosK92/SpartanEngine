@@ -45,7 +45,7 @@ namespace Spartan
 
 	bool RHI_VertexBuffer::_Create(const void* vertices)
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -80,7 +80,7 @@ namespace Spartan
 		init_data.SysMemSlicePitch	= 0;
 
 		const auto ptr		= reinterpret_cast<ID3D11Buffer**>(&m_buffer);
-		const auto result	= m_rhi_device->GetContext()->device->CreateBuffer(&buffer_desc, m_is_dynamic ? nullptr : &init_data, ptr);
+		const auto result	= m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, m_is_dynamic ? nullptr : &init_data, ptr);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create vertex buffer");
@@ -92,7 +92,7 @@ namespace Spartan
 
 	void* RHI_VertexBuffer::Map() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
@@ -100,7 +100,7 @@ namespace Spartan
 
 		// Disable GPU access to the vertex buffer data.
 		D3D11_MAPPED_SUBRESOURCE mapped_resource;
-		const auto result = m_rhi_device->GetContext()->device_context->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+		const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to map vertex buffer");
@@ -112,14 +112,14 @@ namespace Spartan
 
 	bool RHI_VertexBuffer::Unmap() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
 		// Re-enable GPU access to the vertex buffer data.
-		m_rhi_device->GetContext()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
+		m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);
 		return true;
 	}
 }

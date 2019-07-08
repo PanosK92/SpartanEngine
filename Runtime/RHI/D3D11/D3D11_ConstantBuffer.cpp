@@ -43,14 +43,14 @@ namespace Spartan
 
 	void* RHI_ConstantBuffer::Map() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
 		}
 
 		D3D11_MAPPED_SUBRESOURCE mapped_resource;
-		const auto result = m_rhi_device->GetContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+		const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Buffer*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to map constant buffer.");
@@ -62,19 +62,19 @@ namespace Spartan
 
 	bool RHI_ConstantBuffer::Unmap() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device_context || !m_buffer)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		m_rhi_device->GetContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_buffer), 0);
+		m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_buffer), 0);
 		return true;
 	}
 
 	bool RHI_ConstantBuffer::_Create()
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
@@ -89,7 +89,7 @@ namespace Spartan
 		buffer_desc.MiscFlags			= 0;
 		buffer_desc.StructureByteStride = 0;
 
-		auto result = m_rhi_device->GetContext()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+		auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_buffer));
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create constant buffer");

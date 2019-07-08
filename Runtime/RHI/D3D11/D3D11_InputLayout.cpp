@@ -72,7 +72,7 @@ namespace Spartan
 
 		// Create input layout
 		auto d3d_blob = static_cast<ID3D10Blob*>(vertex_shader_blob);
-		const auto result = m_rhi_device->GetContext()->device->CreateInputLayout
+		const auto result = m_rhi_device->GetContextRhi()->device->CreateInputLayout
 		(
 			vertex_attributes.data(),
 			static_cast<UINT>(vertex_attributes.size()),

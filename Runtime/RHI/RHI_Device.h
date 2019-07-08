@@ -102,8 +102,9 @@ namespace Spartan
 		const DisplayAdapter* GetPrimaryAdapter()			const { return m_primaryAdapter; }
 		//=======================================================================================================================
 
-		auto IsInitialized()	const { return m_initialized; }
-		auto GetContext()		const { return m_rhi_context.get(); }
+		auto IsInitialized()            const { return m_initialized; }
+        RHI_Context* GetContextRhi()	const { return m_rhi_context.get(); }
+        Context* GetContext()           const { return m_context; }
 
 	private:
 		std::shared_ptr<RHI_Context> m_rhi_context;

@@ -52,7 +52,7 @@ namespace Spartan
 			return;
 		}
 
-		if (!rhi_device->GetContext()->device)
+		if (!rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return;
@@ -81,7 +81,7 @@ namespace Spartan
 
 		// Create rasterizer state
 		auto rasterizer_state	= static_cast<ID3D11RasterizerState*>(m_buffer);
-		const auto result		= rhi_device->GetContext()->device->CreateRasterizerState(&desc, &rasterizer_state);
+		const auto result		= rhi_device->GetContextRhi()->device->CreateRasterizerState(&desc, &rasterizer_state);
 	
 		// Handle result
 		if (SUCCEEDED(result))

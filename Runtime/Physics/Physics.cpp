@@ -67,7 +67,7 @@ namespace Spartan
 		// Get version
 		const auto major = to_string(btGetVersion() / 100);
 		const auto minor = to_string(btGetVersion()).erase(0, 1);
-		Settings::Get().m_versionBullet = major + "." + minor;
+        m_context->GetSubsystem<Settings>()->m_versionBullet = major + "." + minor;
 	}
 
 	Physics::~Physics()

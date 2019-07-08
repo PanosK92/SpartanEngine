@@ -95,12 +95,12 @@ namespace Spartan
 		const Math::Matrix& GetProjectionMatrix(uint32_t index = 0);
 
 		const auto& GetShadowMap() { return m_shadow_map; }
+        void CreateShadowMap(bool force);
 
 	private:
 		void ComputeViewMatrix();
 		bool ComputeProjectionMatrix(uint32_t index = 0);	
-		void ShadowMap_Create(bool force);
-
+		
 		LightType m_lightType	= LightType_Point;
 		bool m_cast_shadows		= true;
 		float m_range			= 10.0f;

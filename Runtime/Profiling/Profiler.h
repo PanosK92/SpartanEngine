@@ -47,6 +47,7 @@ namespace Spartan
 	{
 	public:
 		Profiler(Context* context);
+        ~Profiler();
 
 		//= Subsystem =======================
         bool Initialize() override;

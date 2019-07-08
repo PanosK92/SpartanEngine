@@ -191,7 +191,7 @@ namespace Spartan
 
 		// Pipeline layout
 		auto pipeline_layout = reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout);
-		if (vkCreatePipelineLayout(m_rhi_device->GetContext()->device, &pipeline_layout_info, nullptr, pipeline_layout) != VK_SUCCESS) 
+		if (vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, pipeline_layout) != VK_SUCCESS) 
 		{
 			LOG_ERROR("Failed to create pipeline layout");
 			return;
@@ -214,7 +214,7 @@ namespace Spartan
 		pipeline_info.basePipelineHandle			= nullptr;
 
 		auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
-		if (vkCreateGraphicsPipelines(m_rhi_device->GetContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) != VK_SUCCESS) 
+		if (vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) != VK_SUCCESS) 
 		{
 			LOG_ERROR("Failed to create graphics pipeline");
 		}
@@ -222,16 +222,16 @@ namespace Spartan
 
 	RHI_Pipeline::~RHI_Pipeline()
 	{
-		vkDestroyPipeline(m_rhi_device->GetContext()->device, static_cast<VkPipeline>(m_pipeline), nullptr);
+		vkDestroyPipeline(m_rhi_device->GetContextRhi()->device, static_cast<VkPipeline>(m_pipeline), nullptr);
 		m_pipeline = nullptr;
 
-		vkDestroyPipelineLayout(m_rhi_device->GetContext()->device, static_cast<VkPipelineLayout>(m_pipeline_layout), nullptr);
+		vkDestroyPipelineLayout(m_rhi_device->GetContextRhi()->device, static_cast<VkPipelineLayout>(m_pipeline_layout), nullptr);
 		m_pipeline_layout = nullptr;
 
-		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
+		vkDestroyDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
 		m_descriptor_set_layout = nullptr;
 
-		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+		vkDestroyDescriptorPool(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
 		m_descriptor_pool = nullptr;
 	}
 
@@ -262,7 +262,7 @@ namespace Spartan
 			allocate_info.pSetLayouts					= &descriptor_set_layout;
 
 			// Allocate		
-			const auto result = vkAllocateDescriptorSets(m_rhi_device->GetContext()->device, &allocate_info, &descriptor_set);
+			const auto result = vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, &descriptor_set);
 			if (result != VK_SUCCESS)
 			{
 				LOGF_ERROR("Failed to allocate descriptor set, %s", Vulkan_Common::to_string(result));
@@ -299,7 +299,7 @@ namespace Spartan
 					nullptr											// pTexelBufferView
 				});
 			}
-			vkUpdateDescriptorSets(m_rhi_device->GetContext()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
+			vkUpdateDescriptorSets(m_rhi_device->GetContextRhi()->device, static_cast<uint32_t>(write_descriptor_sets.size()), write_descriptor_sets.data(), 0, nullptr);
 		}
 
 		m_descriptor_set_cache[texture->GetId()] = static_cast<void*>(descriptor_set);
@@ -313,11 +313,11 @@ namespace Spartan
 			return;
 	
 		// Destroy layout
-		vkDestroyDescriptorSetLayout(m_rhi_device->GetContext()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
+		vkDestroyDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorSetLayout>(m_descriptor_set_layout), nullptr);
 		m_descriptor_set_layout = nullptr;
 
 		// Destroy pool
-		vkDestroyDescriptorPool(m_rhi_device->GetContext()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+		vkDestroyDescriptorPool(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
 		m_descriptor_pool = nullptr;
 
 		// Clear cache (as it holds sets belonging to the destroyed pool)
@@ -334,11 +334,11 @@ namespace Spartan
 		// Pool sizes
 		VkDescriptorPoolSize pool_sizes[3]	= {};
 		pool_sizes[0].type					= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		pool_sizes[0].descriptorCount		= m_rhi_device->GetContext()->pool_max_constant_buffers_per_stage;
+		pool_sizes[0].descriptorCount		= m_rhi_device->GetContextRhi()->pool_max_constant_buffers_per_stage;
 		pool_sizes[1].type					= VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		pool_sizes[1].descriptorCount		= m_rhi_device->GetContext()->pool_max_textures_per_stage;
+		pool_sizes[1].descriptorCount		= m_rhi_device->GetContextRhi()->pool_max_textures_per_stage;
 		pool_sizes[2].type					= VK_DESCRIPTOR_TYPE_SAMPLER;
-		pool_sizes[2].descriptorCount		= m_rhi_device->GetContext()->pool_max_samplers_per_stage;
+		pool_sizes[2].descriptorCount		= m_rhi_device->GetContextRhi()->pool_max_samplers_per_stage;
 		
 		// Create info
 		VkDescriptorPoolCreateInfo pool_create_info = {};
@@ -350,7 +350,7 @@ namespace Spartan
 		
 		// Pool
 		const auto descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
-		const auto result = vkCreateDescriptorPool(m_rhi_device->GetContext()->device, &pool_create_info, nullptr, descriptor_pool);
+		const auto result = vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, descriptor_pool);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to create descriptor pool, %s", Vulkan_Common::to_string(result));
@@ -390,7 +390,7 @@ namespace Spartan
 
 		// Descriptor set layout
 		auto descriptor_set_layout = reinterpret_cast<VkDescriptorSetLayout*>(&m_descriptor_set_layout);
-		const auto result = vkCreateDescriptorSetLayout(m_rhi_device->GetContext()->device, &create_info, nullptr, descriptor_set_layout);
+		const auto result = vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, descriptor_set_layout);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to create descriptor layout, %s", Vulkan_Common::to_string(result));

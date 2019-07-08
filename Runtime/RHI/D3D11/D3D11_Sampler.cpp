@@ -24,12 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef API_GRAPHICS_D3D11
 //================================
 
-//= INCLUDES ===================
+//= INCLUDES ========================
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
-//==============================
+#include "../../Core/Context.h"
+#include "../../Rendering/Renderer.h"
+//===================================
 
 namespace Spartan
 {
@@ -62,7 +64,7 @@ namespace Spartan
 		const bool comparison_enabled							/*= false*/
 		)
 	{	
-		if (!rhi_device || !rhi_device->GetContext()->device)
+		if (!rhi_device || !rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return;
@@ -85,7 +87,7 @@ namespace Spartan
 		sampler_desc.AddressV		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.AddressW		= d3d11_sampler_address_mode[sampler_address_mode];
 		sampler_desc.MipLODBias		= 0.0f;
-		sampler_desc.MaxAnisotropy	= Settings::Get().GetAnisotropy();
+        sampler_desc.MaxAnisotropy  = rhi_device->GetContext()->GetSubsystem<Renderer>()->GetAnisotropy();
 		sampler_desc.ComparisonFunc	= d3d11_compare_operator[comparison_function];
 		sampler_desc.BorderColor[0]	= 0;
 		sampler_desc.BorderColor[1]	= 0;
@@ -95,7 +97,7 @@ namespace Spartan
 		sampler_desc.MaxLOD			= FLT_MAX;
 	
 		// Create sampler state.
-		if (FAILED(m_rhi_device->GetContext()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_resource))))
+		if (FAILED(m_rhi_device->GetContextRhi()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_resource))))
 		{
 			LOG_ERROR("Failed to create sampler state");
 		}

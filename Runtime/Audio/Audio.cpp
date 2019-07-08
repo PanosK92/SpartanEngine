@@ -99,7 +99,7 @@ namespace Spartan
 		const auto major	= ss.str().erase(1, 4);
 		const auto minor	= ss.str().erase(0, 1).erase(2, 2);
 		const auto rev		= ss.str().erase(0, 3);
-		Settings::Get().m_versionFMOD = major + "." + minor + "." + rev;
+        m_context->GetSubsystem<Settings>()->m_versionFMOD = major + "." + minor + "." + rev;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Unload, [this](Variant) { m_listener = nullptr; });

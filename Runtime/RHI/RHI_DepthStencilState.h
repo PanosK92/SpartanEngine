@@ -21,27 +21,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include "RHI_Definition.h"
 #include <memory>
 #include "../Core/Settings.h"
 #include "../Core/Spartan_Object.h"
-//=============================
+//=================================
 
 namespace Spartan
 {
 	class SPARTAN_CLASS RHI_DepthStencilState : public Spartan_Object
 	{
 	public:
-		RHI_DepthStencilState(
-			const std::shared_ptr<RHI_Device>& rhi_device,
-			const bool depth_enabled,
-			const RHI_Comparison_Function comparison = Settings::Get().GetReverseZ() ? Comparison_GreaterEqual : Comparison_LessEqual
-		);
+		RHI_DepthStencilState(const std::shared_ptr<RHI_Device>& rhi_device, const bool depth_enabled, const RHI_Comparison_Function comparison);
 		~RHI_DepthStencilState();
 
 		bool GetDepthEnabled() const	{ return m_depth_enabled; }
-		void* GetResource() const		{ return m_buffer; }
+		auto GetResource() const		{ return m_buffer; }
 
 	private:
 		bool m_depth_enabled	= false;

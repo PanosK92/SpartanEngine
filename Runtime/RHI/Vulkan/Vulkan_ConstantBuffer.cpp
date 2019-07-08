@@ -44,14 +44,14 @@ namespace Spartan
 
 	void* RHI_ConstantBuffer::Map() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device || !m_buffer_memory)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return nullptr;
 		}
 
 		void* ptr = nullptr;
-		auto result = vkMapMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_size, 0, reinterpret_cast<void**>(&ptr));
+		auto result = vkMapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory), 0, m_size, 0, reinterpret_cast<void**>(&ptr));
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to map memory, %s", Vulkan_Common::to_string(result));
@@ -63,19 +63,19 @@ namespace Spartan
 
 	bool RHI_ConstantBuffer::Unmap() const
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device || !m_buffer_memory)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device || !m_buffer_memory)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
 		}
 
-		vkUnmapMemory(m_rhi_device->GetContext()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
+		vkUnmapMemory(m_rhi_device->GetContextRhi()->device, static_cast<VkDeviceMemory>(m_buffer_memory));
 		return true;
 	}
 
 	bool RHI_ConstantBuffer::_Create()
 	{
-		if (!m_rhi_device || !m_rhi_device->GetContext()->device)
+		if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;

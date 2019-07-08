@@ -42,24 +42,24 @@ namespace Spartan
         inline SwapChainSupportDetails check_surface_compatibility(RHI_Device* rhi_device, const VkSurfaceKHR surface)
         {
             SwapChainSupportDetails details;
-            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(rhi_device->GetContext()->device_physical, surface, &details.capabilities);
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(rhi_device->GetContextRhi()->device_physical, surface, &details.capabilities);
 
             uint32_t format_count;
-            vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContext()->device_physical, surface, &format_count, nullptr);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContextRhi()->device_physical, surface, &format_count, nullptr);
 
             if (format_count != 0)
             {
                 details.formats.resize(format_count);
-                vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContext()->device_physical, surface, &format_count, details.formats.data());
+                vkGetPhysicalDeviceSurfaceFormatsKHR(rhi_device->GetContextRhi()->device_physical, surface, &format_count, details.formats.data());
             }
 
             uint32_t present_mode_count;
-            vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContext()->device_physical, surface, &present_mode_count, nullptr);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContextRhi()->device_physical, surface, &present_mode_count, nullptr);
 
             if (present_mode_count != 0)
             {
                 details.present_modes.resize(present_mode_count);
-                vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContext()->device_physical, surface, &present_mode_count, details.present_modes.data());
+                vkGetPhysicalDeviceSurfacePresentModesKHR(rhi_device->GetContextRhi()->device_physical, surface, &present_mode_count, details.present_modes.data());
             }
 
             return details;
@@ -131,9 +131,9 @@ namespace Spartan
             vector<void*>& semaphores_image_acquired_out
         )
         {
-            auto rhi_context        = rhi_device->GetContext();
-            auto device             = rhi_device->GetContext()->device;
-            auto device_physical    = rhi_device->GetContext()->device_physical;
+            auto rhi_context        = rhi_device->GetContextRhi();
+            auto device             = rhi_device->GetContextRhi()->device;
+            auto device_physical    = rhi_device->GetContextRhi()->device_physical;
 
             // Create surface
             VkSurfaceKHR surface = nullptr;
@@ -253,7 +253,7 @@ namespace Spartan
                     create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
                 }
 
-                return vkCreateImageView(rhi_device->GetContext()->device, &create_info, nullptr, &image_view) == VK_SUCCESS;
+                return vkCreateImageView(rhi_device->GetContextRhi()->device, &create_info, nullptr, &image_view) == VK_SUCCESS;
             };
 
             // Image views
@@ -322,21 +322,21 @@ namespace Spartan
             }
             semaphores_image_acquired.clear();
 
-            for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_device->GetContext()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
+            for (auto frame_buffer : frame_buffers) { vkDestroyFramebuffer(rhi_device->GetContextRhi()->device, static_cast<VkFramebuffer>(frame_buffer), nullptr); }
             frame_buffers.clear();
 
-            for (auto& image_view : image_views) { vkDestroyImageView(rhi_device->GetContext()->device, static_cast<VkImageView>(image_view), nullptr); }
+            for (auto& image_view : image_views) { vkDestroyImageView(rhi_device->GetContextRhi()->device, static_cast<VkImageView>(image_view), nullptr); }
             image_views.clear();
 
             if (swap_chain_view)
             {
-                vkDestroySwapchainKHR(rhi_device->GetContext()->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
+                vkDestroySwapchainKHR(rhi_device->GetContextRhi()->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
                 swap_chain_view = nullptr;
             }
 
             if (surface)
             {
-                vkDestroySurfaceKHR(rhi_device->GetContext()->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
+                vkDestroySurfaceKHR(rhi_device->GetContextRhi()->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
                 surface = nullptr;
             }
         }
@@ -403,7 +403,7 @@ namespace Spartan
 
 		if (m_render_pass)
 		{
-			vkDestroyRenderPass(m_rhi_device->GetContext()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
+			vkDestroyRenderPass(m_rhi_device->GetContextRhi()->device, static_cast<VkRenderPass>(m_render_pass), nullptr);
 			m_render_pass = nullptr;
 		}
 	}
@@ -459,7 +459,7 @@ namespace Spartan
 		// Acquire next image
 		const auto result = vkAcquireNextImageKHR
 		(
-			m_rhi_device->GetContext()->device,
+			m_rhi_device->GetContextRhi()->device,
 			static_cast<VkSwapchainKHR>(m_swap_chain_view),
 			0xFFFFFFFFFFFFFFFF,
 			static_cast<VkSemaphore>(m_semaphores_image_acquired[index]),
@@ -492,7 +492,7 @@ namespace Spartan
 		present_info.pSwapchains		= swap_chains;
 		present_info.pImageIndices		= &m_image_index;
 
-		const auto result = vkQueuePresentKHR(m_rhi_device->GetContext()->queue_present, &present_info);
+		const auto result = vkQueuePresentKHR(m_rhi_device->GetContextRhi()->queue_present, &present_info);
 		if (result != VK_SUCCESS)
 		{
 			LOGF_ERROR("Failed to present, %s.", Vulkan_Common::to_string(result));
@@ -558,7 +558,7 @@ namespace Spartan
 		render_pass_info.pDependencies			= dependencies.data();
 
 		const auto render_pass = reinterpret_cast<VkRenderPass*>(&m_render_pass);
-		if (vkCreateRenderPass(m_rhi_device->GetContext()->device, &render_pass_info, nullptr, render_pass) != VK_SUCCESS)
+		if (vkCreateRenderPass(m_rhi_device->GetContextRhi()->device, &render_pass_info, nullptr, render_pass) != VK_SUCCESS)
 		{
 			LOG_ERROR("Failed to create render pass");
 			return false;

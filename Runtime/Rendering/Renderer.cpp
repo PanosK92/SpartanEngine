@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Deferred/ShaderLight.h"
 #include "Utilities/Sampling.h"
 #include "Font/Font.h"
+#include "../Math/MathHelper.h"
 #include "../Core/Engine.h"
 #include "../Core/Context.h"
 #include "../Core/Timer.h"
@@ -168,8 +169,8 @@ namespace Spartan
 
 	void Renderer::CreateDepthStencilStates()
 	{
-		m_depth_stencil_enabled		= make_shared<RHI_DepthStencilState>(m_rhi_device, true);
-		m_depth_stencil_disabled	= make_shared<RHI_DepthStencilState>(m_rhi_device, false);
+		m_depth_stencil_enabled		= make_shared<RHI_DepthStencilState>(m_rhi_device, true, GetComparisonFunction());
+		m_depth_stencil_disabled	= make_shared<RHI_DepthStencilState>(m_rhi_device, false, GetComparisonFunction());
 	}
 
 	void Renderer::CreateRasterizerStates()
@@ -501,7 +502,7 @@ namespace Spartan
 
 	void Renderer::CreateSamplers()
 	{
-		m_sampler_compare_depth		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Clamp,	!Settings::Get().GetReverseZ() ? Comparison_Less : Comparison_Greater, false, true);
+		m_sampler_compare_depth		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Clamp,	m_reverse_z ? Comparison_Greater : Comparison_Less, false, true);
 		m_sampler_point_clamp		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_POINT,		Sampler_Address_Clamp,	Comparison_Always, false);
 		m_sampler_bilinear_clamp	= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Clamp,	Comparison_Always, false);
 		m_sampler_bilinear_wrap		= make_shared<RHI_Sampler>(m_rhi_device, SAMPLER_BILINEAR,	Sampler_Address_Wrap,	Comparison_Always, false);
@@ -513,6 +514,33 @@ namespace Spartan
 	{
 		return m_gizmo_transform->SetSelectedEntity(entity);
 	}
+
+    void Renderer::SetShadowResolution(uint32_t resolution)
+    {
+        resolution = Clamp(resolution, m_resolution_shadow_min, m_max_resolution);
+
+        if (resolution == m_resolution_shadow)
+            return;
+
+        m_resolution_shadow = resolution;
+
+        const auto& light_entities = m_entities[Renderable_Light];
+        for (const auto& light_entity : light_entities)
+        {
+            auto& light = light_entity->GetComponent<Light>();
+            if (light->GetCastShadows())
+            {
+                light->CreateShadowMap(true);
+            }
+        }
+    }
+
+    void Renderer::SetAnisotropy(uint32_t anisotropy)
+    {
+        uint32_t min = 0;
+        uint32_t max = 0;
+        m_anisotropy = Math::Clamp(anisotropy, min, max);
+    }
 
     void Renderer::Tick(float delta_time)
 	{
@@ -667,7 +695,7 @@ namespace Spartan
 		buffer->taa_jitter_offset		= m_taa_jitter - m_taa_jitter_previous;
 		buffer->motion_blur_strength	= m_motion_blur_strength;
 		buffer->fps_current				= m_profiler->GetFps();
-		buffer->fps_target				= m_context->GetSubsystem<Timer>()->GetTargetFps();	
+		buffer->fps_target				= static_cast<float>(m_context->GetSubsystem<Timer>()->GetTargetFps());	
 		buffer->tonemapping				= static_cast<float>(m_tonemapping);
 		buffer->exposure				= m_exposure;
 		buffer->gamma					= m_gamma;

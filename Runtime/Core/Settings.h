@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include "EngineDefs.h"
+#include "ISubsystem.h"
 #include "../Math/Vector2.h"
 //==========================
 
@@ -30,29 +30,20 @@ namespace Spartan
 {
     class Context;
 
-	class SPARTAN_CLASS Settings
+	class SPARTAN_CLASS Settings : public ISubsystem
 	{
 	public:
-		static Settings& Get()
-		{
-			static Settings instance;
-			return instance;
-		}
+		Settings(Context* context);
+        ~Settings();
 
-		Settings();
-        ~Settings() = default;
+        //= Subsystem =============
+        bool Initialize() override;
+        //=========================
 
-		void Initialize(Context* context);
-        void SaveSettings();
-
-		//= MISC ==============================================================
-		auto GetIsFullScreen() const		{ return m_is_fullscreen; }
-		auto GetIsMouseVisible() const		{ return m_is_mouse_visible; }
-		auto GetShadowResolution() const	{ return m_shadow_map_resolution; }
-		auto GetAnisotropy() const			{ return m_anisotropy; }
-		auto GetMaxThreadCount() const		{ return m_max_thread_count; }	
-		auto GetReverseZ() const			{ return m_reverse_z; }
-		//=====================================================================
+		//= MISC =====================================================
+		auto GetIsFullScreen() const	{ return m_is_fullscreen; }
+		auto GetIsMouseVisible() const	{ return m_is_mouse_visible; }
+		//============================================================
 
 		// Third party lib versions
 		std::string m_versionAngelScript;
@@ -74,11 +65,10 @@ namespace Spartan
 
 		bool m_is_fullscreen				= false;
 		bool m_is_mouse_visible				= true;
-		uint32_t m_shadow_map_resolution	= 4096;
+		uint32_t m_shadow_map_resolution	= 0;
         Math::Vector2 m_resolution          = Math::Vector2::Zero;
-		uint32_t m_anisotropy				= 16;
+		uint32_t m_anisotropy				= 0;
 		uint32_t m_max_thread_count			= 0;
-		bool m_reverse_z					= true;
         double m_fps_limit                  = 0;
         Context* m_context                  = nullptr;
 	};

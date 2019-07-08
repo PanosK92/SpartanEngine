@@ -78,7 +78,7 @@ namespace Spartan
 		const int major	= aiGetVersionMajor();
 		const int minor	= aiGetVersionMinor();
 		const int rev	= aiGetVersionRevision();
-		Settings::Get().m_versionAssimp = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
+        context->GetSubsystem<Settings>()->m_versionAssimp = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
 	}
 
 	bool ModelImporter::Load(Model* model, const string& file_path)
