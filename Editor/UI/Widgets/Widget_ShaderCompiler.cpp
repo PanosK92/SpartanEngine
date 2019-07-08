@@ -44,7 +44,7 @@ Widget_ShaderEditor::Widget_ShaderEditor(Context* context) : Widget(context)
     m_renderer = m_context->GetSubsystem<Renderer>().get();
 }
 
-void Widget_ShaderEditor::Tick(float delta_time)
+void Widget_ShaderEditor::Tick()
 {
     auto& shaders = m_renderer->GetShaders();
 

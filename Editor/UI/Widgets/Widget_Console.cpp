@@ -59,7 +59,7 @@ Widget_Console::Widget_Console(Context* context) : Widget(context)
     m_visibility[2] = true; // Error
 }
 
-void Widget_Console::Tick(float delta_time)
+void Widget_Console::Tick()
 {
 	// Clear Button
 	if (ImGui::Button("Clear"))	{ Clear();} ImGui::SameLine();

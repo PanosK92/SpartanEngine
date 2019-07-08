@@ -36,7 +36,6 @@ namespace Spartan
 		void RegisterEnumerations();
 		void RegisterTypes();
 		void RegisterInput();
-		void RegisterTime();
 		void RegisterEntity();
 		void RegisterTransform();
 		void RegisterMaterial();

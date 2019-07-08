@@ -46,8 +46,6 @@ static const Vector3 GRAVITY			= Vector3(0.0f, -9.81f, 0.0f);
 
 namespace Spartan
 { 
-	float ISubsystem::m_delta_time_sec;
-
 	Physics::Physics(Context* context) : ISubsystem(context)
 	{
 		m_max_sub_steps	= 1;
@@ -94,7 +92,7 @@ namespace Spartan
 		return true;
 	}
 
-	void Physics::Tick()
+	void Physics::Tick(float delta_time_sec)
 	{
 		if (!m_world)
 			return;
@@ -113,11 +111,11 @@ namespace Spartan
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
 		auto internal_time_step	= 1.0f / INTERNAL_FPS;
-		auto max_substeps		= static_cast<int>(m_delta_time_sec * INTERNAL_FPS) + 1;
+		auto max_substeps		= static_cast<int>(delta_time_sec * INTERNAL_FPS) + 1;
 		if (m_max_sub_steps < 0)
 		{
-			internal_time_step	= m_delta_time_sec;
-			max_substeps			= 1;
+			internal_time_step	= delta_time_sec;
+			max_substeps		= 1;
 		}
 		else if (m_max_sub_steps > 0)
 		{
@@ -126,7 +124,7 @@ namespace Spartan
 
 		// Step the physics world. 
 		m_simulating = true;
-		m_world->stepSimulation(m_delta_time_sec, max_substeps, internal_time_step);
+		m_world->stepSimulation(delta_time_sec, max_substeps, internal_time_step);
 		m_simulating = false;
 
 		TIME_BLOCK_END(m_profiler);

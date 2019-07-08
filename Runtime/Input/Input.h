@@ -82,9 +82,9 @@ namespace Spartan
 		Input(Context* context);
 		~Input();
 
-		//= ISubsystem ======
-		void Tick() override;
-		//===================
+		//= ISubsystem ======================
+		void Tick(float delta_time) override;
+		//===================================
 		
 		// Keys
 		bool GetKey(const KeyCode key)		{ return m_keys[static_cast<uint32_t>(key)]; }							// Returns true while the button identified by KeyCode is held down.

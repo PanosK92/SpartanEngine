@@ -42,10 +42,10 @@ namespace Spartan
 
 		bool Instantiate(const std::string& path, std::weak_ptr<Entity> entity, std::shared_ptr<Scripting> scriptEngine);
 		bool IsInstantiated()		{ return m_isInstantiated; }
-		std::string GetScriptPath() { return m_scriptPath; }
+		const auto& GetScriptPath() { return m_scriptPath; }
 
 		void ExecuteStart();
-		void ExecuteUpdate();
+		void ExecuteUpdate(float delta_time);
 
 	private:
 		bool CreateScriptObject();

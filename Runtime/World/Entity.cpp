@@ -139,7 +139,7 @@ namespace Spartan
 		}
 	}
 
-	void Entity::Tick()
+	void Entity::Tick(float delta_time)
 	{
 		if (!m_is_active)
 			return;
@@ -147,7 +147,7 @@ namespace Spartan
 		// call component Update()
 		for (const auto& component : m_components)
 		{
-			component->OnTick();
+			component->OnTick(delta_time);
 		}
 	}
 

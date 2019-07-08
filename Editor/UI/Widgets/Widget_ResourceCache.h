@@ -29,5 +29,5 @@ class Widget_ResourceCache : public Widget
 {
 public:
 	Widget_ResourceCache(Spartan::Context* context);
-	void Tick(float deltaTime) override;
+	void Tick() override;
 };

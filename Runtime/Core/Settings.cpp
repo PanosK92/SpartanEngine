@@ -24,6 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
+#include "Timer.h"
+#include "Context.h"
+#include "../Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES ================
@@ -31,7 +34,7 @@ using namespace std;
 using namespace Spartan::Math;
 //=============================
 
-namespace SettingsIO
+namespace _Settings
 {
 	ofstream fout;
 	ifstream fin;
@@ -67,11 +70,17 @@ namespace Spartan
 		m_max_thread_count = thread::hardware_concurrency();
 	}
 
-	void Settings::Initialize()
+    void Settings::Initialize(Context* context)
 	{
-		if (FileSystem::FileExists(SettingsIO::file_name))
+        m_context = context;
+
+        // Acquire default settings
+        Reflect();
+        
+		if (FileSystem::FileExists(_Settings::file_name))
 		{
 			Load();
+            Map();
 		}
 		else
 		{
@@ -79,80 +88,67 @@ namespace Spartan
 		}
 
 		LOGF_INFO("Resolution: %dx%d",		static_cast<int>(m_resolution.x), static_cast<int>(m_resolution.y));
+        LOGF_INFO("FPS Limit: %f",	        m_fps_limit);
 		LOGF_INFO("Shadow resolution: %d",	m_shadow_map_resolution);
 		LOGF_INFO("Anisotropy: %d",			m_anisotropy);
-		LOGF_INFO("Max fps: %f",			m_fps_limit);
 		LOGF_INFO("Max threads: %d",		m_max_thread_count);
 	}
 
-	void Settings::SetFpsLimit(float fps)
-	{
-		if (fps < 0.0f)
-			fps = -1.0f;
+    void Settings::SaveSettings()
+    {
+        Reflect();
+        Save();
+    }
 
-		if (fps > 0.0f && fps < 1.0f)
-			fps = 0;
-
-		if (m_fps_limit == fps)
-			return;
-
-		m_fps_limit = fps;
-		m_fps_policy = fps < 0 ? Fps_FixedMonitor : fps == 0 ? Fps_Unlocked : Fps_Fixed;
-		LOGF_INFO("FPS limit set to %f", fps);
-	}
-
-	void Settings::Save() const
+    void Settings::Save() const
 	{
 		// Create a settings file
-		SettingsIO::fout.open(SettingsIO::file_name, ofstream::out);
+		_Settings::fout.open(_Settings::file_name, ofstream::out);
 
 		// Write the settings
-		write_setting(SettingsIO::fout, "bFullScreen", m_is_fullscreen);
-		write_setting(SettingsIO::fout, "bIsMouseVisible", m_is_mouse_visible);
-        write_setting(SettingsIO::fout, "fResolutionWidth", m_resolution.x);
-        write_setting(SettingsIO::fout, "fResolutionHeight", m_resolution.y);
-		write_setting(SettingsIO::fout, "iShadowMapResolution", m_shadow_map_resolution);
-		write_setting(SettingsIO::fout, "iAnisotropy", m_anisotropy);
-		write_setting(SettingsIO::fout, "fFPSLimit", m_fps_limit);
-		write_setting(SettingsIO::fout, "iMaxThreadCount", m_max_thread_count);
+		write_setting(_Settings::fout, "bFullScreen",           m_is_fullscreen);
+		write_setting(_Settings::fout, "bIsMouseVisible",       m_is_mouse_visible);
+        write_setting(_Settings::fout, "fResolutionWidth",      m_resolution.x);
+        write_setting(_Settings::fout, "fResolutionHeight",     m_resolution.y);
+		write_setting(_Settings::fout, "iShadowMapResolution",  m_shadow_map_resolution);
+		write_setting(_Settings::fout, "iAnisotropy",           m_anisotropy);
+		write_setting(_Settings::fout, "fFPSLimit",             m_fps_limit);
+		write_setting(_Settings::fout, "iMaxThreadCount",       m_max_thread_count);
 
 		// Close the file.
-		SettingsIO::fout.close();
+		_Settings::fout.close();
 	}
 
 	void Settings::Load()
 	{
 		// Create a settings file
-		SettingsIO::fin.open(SettingsIO::file_name, ifstream::in);
+		_Settings::fin.open(_Settings::file_name, ifstream::in);
 
 		float resolution_x = 0;
 		float resolution_y = 0;
 
 		// Read the settings
-		read_setting(SettingsIO::fin, "bFullScreen", m_is_fullscreen);
-		read_setting(SettingsIO::fin, "bIsMouseVisible", m_is_mouse_visible);
-		read_setting(SettingsIO::fin, "fResolutionWidth", resolution_x);
-		read_setting(SettingsIO::fin, "fResolutionHeight", resolution_y);
-		read_setting(SettingsIO::fin, "iShadowMapResolution", m_shadow_map_resolution);
-		read_setting(SettingsIO::fin, "iAnisotropy", m_anisotropy);
-		read_setting(SettingsIO::fin, "fFPSLimit", m_fps_limit);
-		read_setting(SettingsIO::fin, "iMaxThreadCount", m_max_thread_count);
-
-		if (m_fps_limit == 0.0f)
-		{
-			m_fps_policy = Fps_Unlocked;
-			m_fps_limit = FLT_MAX;
-		}
-		else if (m_fps_limit > 0.0f)
-		{
-			m_fps_policy = Fps_Fixed;
-		}
-		else
-		{
-			m_fps_policy = Fps_FixedMonitor;
-		}
+		read_setting(_Settings::fin, "bFullScreen",             m_is_fullscreen);
+		read_setting(_Settings::fin, "bIsMouseVisible",         m_is_mouse_visible);
+		read_setting(_Settings::fin, "fResolutionWidth",        resolution_x);
+		read_setting(_Settings::fin, "fResolutionHeight",       resolution_y);
+		read_setting(_Settings::fin, "iShadowMapResolution",    m_shadow_map_resolution);
+		read_setting(_Settings::fin, "iAnisotropy",             m_anisotropy);
+		read_setting(_Settings::fin, "fFPSLimit",               m_fps_limit);
+		read_setting(_Settings::fin, "iMaxThreadCount",         m_max_thread_count);
 
 		// Close the file.
-		SettingsIO::fin.close();
+		_Settings::fin.close();
 	}
+
+    void Settings::Reflect()
+    {
+        m_fps_limit     = m_context->GetSubsystem<Timer>()->GetTargetFps();
+        m_resolution    = m_context->GetSubsystem<Renderer>()->GetResolution();
+    }
+
+    void Settings::Map()
+    {
+        m_context->GetSubsystem<Timer>()->SetTargetFps(m_fps_limit);
+    }
 }

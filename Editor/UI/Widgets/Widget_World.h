@@ -32,7 +32,7 @@ class Widget_World : public Widget
 {
 public:
 	Widget_World(Spartan::Context* context);
-	void Tick(float delta_time) override;
+	void Tick() override;
 
 private:
 	// Tree

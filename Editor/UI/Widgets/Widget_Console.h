@@ -63,7 +63,7 @@ class Widget_Console : public Widget
 {
 public:
 	Widget_Console(Spartan::Context* context);
-	void Tick(float delta_time) override;
+	void Tick() override;
 	void AddLogPackage(const LogPackage& package);
 	void Clear();
 

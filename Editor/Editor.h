@@ -34,7 +34,6 @@ namespace Spartan
 	class Context; 
 	class Engine;
 	class Renderer;
-	class Timer;
 }
 //========================
 
@@ -61,7 +60,6 @@ private:
 	// Engine
 	std::unique_ptr<Spartan::Engine> m_engine;
 	std::shared_ptr<Spartan::RHI_Device> m_rhiDevice;
-	Spartan::Context* m_context	= nullptr;
+	Spartan::Context* m_context	    = nullptr;
 	Spartan::Renderer* m_renderer	= nullptr;	
-	Spartan::Timer* m_timer		= nullptr;
 };

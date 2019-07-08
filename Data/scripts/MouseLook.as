@@ -22,7 +22,7 @@ class MouseLook
 	}
 
 	// Update is called once per frame
-	void Update()
+	void Update(float delta_time)
 	{	
 		if (input.GetKey(Click_Right))
 		{

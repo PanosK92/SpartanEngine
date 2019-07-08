@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Device.h"
 #include "../Core/Context.h"
 #include "../Core/Settings.h"
+#include "../Core/Timer.h"
 #include "../Math/MathHelper.h"
 #include <algorithm>
 //=============================
@@ -37,12 +38,8 @@ namespace Spartan
 	void RHI_Device::AddDisplayMode(uint32_t width, uint32_t height, uint32_t refresh_rate_numerator, uint32_t refresh_rate_denominator)
 	{
 		auto& mode = m_displayModes.emplace_back(width, height, refresh_rate_numerator, refresh_rate_denominator);
-
-		// Try to deduce the maximum frame rate based on how fast the monitor is
-		if (Settings::Get().GetFpsPolicy() == Fps_FixedMonitor)
-		{
-			Settings::Get().SetFpsLimit(Max(Settings::Get().GetFpsLimit(), mode.refreshRate));
-		}
+        // Let the timer know about the refresh rates this monitor is capable of (will result in low latency/smooth ticking)
+		m_context->GetSubsystem<Timer>()->AddMonitorRefreshRate(static_cast<double>(mode.refreshRate));
 	}
 
 	bool RHI_Device::GetDisplayModeFastest(DisplayMode* display_mode)

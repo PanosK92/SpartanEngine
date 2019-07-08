@@ -22,38 +22,38 @@ class FirstPersonController
 	}
 
 	// Update is called once per frame
-	void Update()
+	void Update(float delta_time)
 	{
 		if (input.GetKey(Click_Right))
 		{
-			FPSMovement();
+			FPSMovement(delta_time);
 		}
 		
 		// Apply drag
-		movementSpeed *= drag * (1.0f - time.GetDeltaTime());
+		movementSpeed *= drag * (1.0f - delta_time);
 	}
 	
-	void FPSMovement()
+	void FPSMovement(float delta_time)
 	{
 		// Move forward
 		if (input.GetKey(W))
 		{
-			movementSpeed += acceleration * transform.GetForward() * time.GetDeltaTime();
+			movementSpeed += acceleration * transform.GetForward() * delta_time;
 		}		
 		// Move backward
 		if (input.GetKey(S))
 		{
-			movementSpeed -= acceleration * transform.GetForward() * time.GetDeltaTime();
+			movementSpeed -= acceleration * transform.GetForward() * delta_time;
 		}
 		// Move right
 		if (input.GetKey(D))
 		{
-			movementSpeed += acceleration * transform.GetRight() * time.GetDeltaTime();
+			movementSpeed += acceleration * transform.GetRight() * delta_time;
 		}
 		// Move left
 		if (input.GetKey(A))
 		{
-			movementSpeed -= acceleration * transform.GetRight() * time.GetDeltaTime();
+			movementSpeed -= acceleration * transform.GetRight() * delta_time;
 		}
 		
 		// Update the transform's position

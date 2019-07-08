@@ -68,7 +68,7 @@ Widget_World::Widget_World(Context* context) : Widget(context)
 	EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };
 }
 
-void Widget_World::Tick(float delta_time)
+void Widget_World::Tick()
 {
 	// If something is being loaded, don't parse the hierarchy
 	auto& progress_report			= ProgressReport::Get();

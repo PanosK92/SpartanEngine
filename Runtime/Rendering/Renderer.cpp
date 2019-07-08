@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Utilities/Sampling.h"
 #include "Font/Font.h"
 #include "../Core/Engine.h"
+#include "../Core/Context.h"
+#include "../Core/Timer.h"
 #include "../Profiling/Profiler.h"
 #include "../Resource/ResourceCache.h"
 #include "../World/Entity.h"
@@ -512,7 +514,7 @@ namespace Spartan
 		return m_gizmo_transform->SetSelectedEntity(entity);
 	}
 
-    void Renderer::Tick()
+    void Renderer::Tick(float delta_time)
 	{
 #ifdef API_GRAPHICS_VULKAN
 		return;
@@ -536,7 +538,6 @@ namespace Spartan
 
 		m_frame_num++;
 		m_is_odd_frame = (m_frame_num % 2) == 1;
-		m_profiler->Reset();
 
 		// Get camera matrices
 		{
@@ -666,7 +667,7 @@ namespace Spartan
 		buffer->taa_jitter_offset		= m_taa_jitter - m_taa_jitter_previous;
 		buffer->motion_blur_strength	= m_motion_blur_strength;
 		buffer->fps_current				= m_profiler->GetFps();
-		buffer->fps_target				= Settings::Get().GetFpsTarget();	
+		buffer->fps_target				= m_context->GetSubsystem<Timer>()->GetTargetFps();	
 		buffer->tonemapping				= static_cast<float>(m_tonemapping);
 		buffer->exposure				= m_exposure;
 		buffer->gamma					= m_gamma;

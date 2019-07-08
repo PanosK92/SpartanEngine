@@ -42,7 +42,6 @@ Note: Currently, this is a blocking event system
 
 enum Event_Type
 {
-	Event_Frame_Start,		// A frame begins
 	Event_Frame_End,		// A frame ends
 	Event_World_Save,		// The world must be saved to file
 	Event_World_Saved,		// The world finished saving to file

@@ -89,11 +89,6 @@ namespace Spartan
 		});
 	}
 
-	void Skybox::OnTick()
-	{
-
-	}
-
 	void Skybox::CreateFromArray(const vector<string>& texturePaths)
 	{
 		if (texturePaths.empty())

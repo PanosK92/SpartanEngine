@@ -53,7 +53,7 @@ namespace Spartan
 
 		//= ICOMPONENT ===============================
 		void OnInitialize() override;
-		void OnTick() override;
+		void OnTick(float delta_time) override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================
@@ -101,7 +101,7 @@ namespace Spartan
 		//===============================================================================
 
 	private:
-        void FpsControl();
+        void FpsControl(float delta_time);
 
 		void ComputeViewMatrix();
 		void ComputeBaseView();

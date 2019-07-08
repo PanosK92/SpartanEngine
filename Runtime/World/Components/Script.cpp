@@ -54,7 +54,7 @@ namespace Spartan
 		m_scriptInstance->ExecuteStart();
 	}
 
-	void Script::OnTick()
+	void Script::OnTick(float delta_time)
 	{
 		if (!m_scriptInstance)
 			return;
@@ -62,7 +62,7 @@ namespace Spartan
 		if (!m_scriptInstance->IsInstantiated())
 			return;
 
-		m_scriptInstance->ExecuteUpdate();
+		m_scriptInstance->ExecuteUpdate(delta_time);
 	}
 
 	void Script::Serialize(FileStream* stream)

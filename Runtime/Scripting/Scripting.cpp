@@ -126,12 +126,16 @@ namespace Spartan
 	/*------------------------------------------------------------------------------
 								[CALLS]
 	------------------------------------------------------------------------------*/
-	bool Scripting::ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj)
+	bool Scripting::ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj, float delta_time /*=-1.0f*/)
 	{
 		asIScriptContext* ctx = RequestContext();
 
 		ctx->Prepare(scriptFunc); // prepare the context for calling the method
+
+        // Instance data and function parameters
 		ctx->SetObject(obj); // set the object pointer
+        if (delta_time != -1.0f) ctx->SetArgFloat(0, delta_time);
+
 		int r = ctx->Execute(); // execute the call
 
 		// output any exceptions

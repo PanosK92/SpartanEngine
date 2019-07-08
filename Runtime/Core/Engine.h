@@ -32,9 +32,8 @@ namespace Spartan
 
 	enum Engine_Mode : uint32_t
 	{
-		Engine_Tick		= 1UL << 0,	// Should the engine tick?
-		Engine_Physics	= 1UL << 1, // Should the physics tick?	
-		Engine_Game		= 1UL << 2,	// Is the engine running in game or editor mode?
+		Engine_Physics	= 1UL << 0, // Should the physics tick?	
+		Engine_Game		= 1UL << 1,	// Is the engine running in game or editor mode?
 	};
 
 	class SPARTAN_CLASS Engine
@@ -43,8 +42,8 @@ namespace Spartan
 		Engine(void* draw_handle, void* window_handle, void* window_instance, float window_width, float window_height);
 		~Engine();
 
-		// Performs a simulation cycle
-		void Tick() const;
+		// Performs one or more simulation cycles
+		void Tick();
 
 		//  Flag helpers
 		auto EngineMode_GetAll()					        { return m_flags; }

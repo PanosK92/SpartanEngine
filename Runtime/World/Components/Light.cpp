@@ -67,7 +67,7 @@ namespace Spartan
 		ShadowMap_Create(false);
 	}
 
-	void Light::OnTick()
+	void Light::OnTick(float delta_time)
 	{
 		// Position and rotation dirty check
 		if (m_lastPosLight != GetTransform()->GetPosition() || m_lastRotLight != GetTransform()->GetRotation())

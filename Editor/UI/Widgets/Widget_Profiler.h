@@ -62,7 +62,7 @@ class Widget_Profiler : public Widget
 {
 public:
 	Widget_Profiler(Spartan::Context* context);
-	void Tick(float delta_time) override;
+	void Tick() override;
 
 private:
 	void ShowCPU();

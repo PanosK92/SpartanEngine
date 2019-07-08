@@ -49,7 +49,7 @@ class Widget_Properties : public Widget
 {
 public:
 	Widget_Properties(Spartan::Context* context);
-	void Tick(float delta_time) override;
+	void Tick() override;
 
 	static void Inspect(const std::weak_ptr<Spartan::Entity>& entity);
 	static void Inspect(const std::weak_ptr<Spartan::Material>& material);

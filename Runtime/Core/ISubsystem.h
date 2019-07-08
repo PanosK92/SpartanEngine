@@ -38,10 +38,9 @@ namespace Spartan
 		}
 		virtual ~ISubsystem() = default;
 		virtual bool Initialize() { return true; }
-		virtual void Tick() {}
+		virtual void Tick(float delta_time) {}
 
 	protected:
 		Context* m_context;
-		static float m_delta_time_sec;
 	};
 }

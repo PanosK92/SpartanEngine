@@ -43,11 +43,11 @@ namespace Spartan
 		void Initialize(Transform* transform);
 		void Clone();
 
-		//===========
+		//==========================
 		void Start();
 		void Stop();
-		void Tick();
-		//===========
+		void Tick(float delta_time);
+		//==========================
 
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);

@@ -30,13 +30,6 @@ namespace Spartan
 {
     class Context;
 
-	enum FPS_Policy
-	{
-		Fps_Unlocked,
-		Fps_Fixed,
-		Fps_FixedMonitor
-	};
-
 	class SPARTAN_CLASS Settings
 	{
 	public:
@@ -47,16 +40,10 @@ namespace Spartan
 		}
 
 		Settings();
-        ~Settings() { Save(); };
+        ~Settings() = default;
 
-		void Initialize();
-
-		//= FPS ============================================
-		void SetFpsLimit(float fps);
-		auto GetFpsLimit() const	{ return m_fps_limit; }
-		auto GetFpsTarget() const	{ return m_fps_target; }
-		auto GetFpsPolicy() const	{ return m_fps_policy; }
-		//==================================================
+		void Initialize(Context* context);
+        void SaveSettings();
 
 		//= MISC ==============================================================
 		auto GetIsFullScreen() const		{ return m_is_fullscreen; }
@@ -82,15 +69,17 @@ namespace Spartan
         void Save() const;
 		void Load();
 
+        void Reflect();
+        void Map();
+
 		bool m_is_fullscreen				= false;
 		bool m_is_mouse_visible				= true;
 		uint32_t m_shadow_map_resolution	= 4096;
         Math::Vector2 m_resolution          = Math::Vector2::Zero;
 		uint32_t m_anisotropy				= 16;
 		uint32_t m_max_thread_count			= 0;
-		float m_fps_limit					= 0.0f;
-		float m_fps_target					= 165.0f;
-		FPS_Policy m_fps_policy				= Fps_Unlocked;
-		bool m_reverse_z					= true;      
+		bool m_reverse_z					= true;
+        double m_fps_limit                  = 0;
+        Context* m_context                  = nullptr;
 	};
 }

@@ -24,9 +24,9 @@ class RotateAroundSelf
 	}
 
 	// Update is called once per frame
-	void Update()
+	void Update(float delta_time)
 	{	
-		float speed =  m_speed * time.GetDeltaTime();
+		float speed =  m_speed * delta_time;
 		m_rotation	+= speed;
 		
 		Quaternion newRot = Quaternion_FromEulerAngles(Vector3(m_startingRot.x, m_rotation, m_startingRot.z));	

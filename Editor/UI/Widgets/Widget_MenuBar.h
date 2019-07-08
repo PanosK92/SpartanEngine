@@ -33,7 +33,7 @@ class Widget_MenuBar : public Widget
 {
 public:
 	Widget_MenuBar(Spartan::Context* context);
-	void Tick(float deltaTime) override;
+	void Tick() override;
 
 private:
 	void ShowFileDialog();

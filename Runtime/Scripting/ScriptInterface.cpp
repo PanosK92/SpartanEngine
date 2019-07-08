@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "ScriptInterface.h"
 #include <angelscript.h>
-#include "../Core/Timer.h"
 #include "../Rendering/Material.h"
 #include "../Input/Input.h"
 #include "../World/Entity.h"
@@ -48,7 +47,6 @@ namespace Spartan
 		RegisterTypes();
 		RegisterMath();
 		RegisterInput();
-		RegisterTime();
 		RegisterVector2();
 		RegisterVector3();
 		RegisterQuaternion();
@@ -148,15 +146,6 @@ namespace Spartan
 		m_scriptEngine->RegisterObjectMethod("Input", "bool GetKey(KeyCode key)", asMETHOD(Input, GetKey), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "bool GetKeyDown(KeyCode key)", asMETHOD(Input, GetKeyDown), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("Input", "bool GetKeyUp(KeyCode key)", asMETHOD(Input, GetKeyUp), asCALL_THISCALL);
-	}
-
-	/*------------------------------------------------------------------------------
-										[TIMER]
-	------------------------------------------------------------------------------*/
-	void ScriptInterface::RegisterTime()
-	{
-		m_scriptEngine->RegisterGlobalProperty("Time time", m_context->GetSubsystem<Timer>().get());
-		m_scriptEngine->RegisterObjectMethod("Time", "float GetDeltaTime()", asMETHOD(Timer, GetDeltaTimeSec), asCALL_THISCALL);
 	}
 
 	/*------------------------------------------------------------------------------

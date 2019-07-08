@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/Renderer.h"
 #include "Core/Context.h"
 #include "Math/MathHelper.h"
+#include <Core\Timer.h>
 //===============================
 
 //= NAMESPACES ===============
@@ -65,7 +66,7 @@ Widget_RenderOptions::Widget_RenderOptions(Context* context) : Widget(context)
     m_alpha         = 1.0f;
 }
 
-void Widget_RenderOptions::Tick(float delta_time)
+void Widget_RenderOptions::Tick()
 {
     ImGui::SliderFloat("Opacity", &m_alpha, 0.1f, 1.0f, "%.1f");
 
@@ -173,11 +174,13 @@ void Widget_RenderOptions::Tick(float delta_time)
 
     if (ImGui::CollapsingHeader("FPS", ImGuiTreeNodeFlags_None))
     {
-        auto fps_limit = Settings::Get().GetFpsLimit();
-        ImGui::InputFloat("Limit", &fps_limit);
-        Settings::Get().SetFpsLimit(fps_limit);
-        const auto fps_policy = Settings::Get().GetFpsPolicy();
-        ImGui::Text(fps_policy == Fps_FixedMonitor ? "Fixed (Monitor)" : fps_limit == Fps_Unlocked ? "Unlocked" : "Fixed");
+        auto& timer     = m_context->GetSubsystem<Timer>();
+        auto fps_target  = timer->GetTargetFps();
+
+        ImGui::InputDouble("Target", &fps_target);
+        timer->SetTargetFps(fps_target);
+        const auto fps_policy = timer->GetFpsPolicy();
+        ImGui::Text(fps_policy == Fps_FixedMonitor ? "Fixed (Monitor)" : fps_target == Fps_Unlocked ? "Unlocked" : "Fixed");
     }
 
     if (ImGui::CollapsingHeader("Gizmos", ImGuiTreeNodeFlags_None))

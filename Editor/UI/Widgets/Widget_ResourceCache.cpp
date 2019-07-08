@@ -39,7 +39,7 @@ Widget_ResourceCache::Widget_ResourceCache(Context* context) : Widget(context)
 	m_is_visible	= false;
 }
 
-void Widget_ResourceCache::Tick(float deltaTime)
+void Widget_ResourceCache::Tick()
 {
 	auto resourceCache		= m_context->GetSubsystem<ResourceCache>();
 	auto resources			= resourceCache->GetByType();

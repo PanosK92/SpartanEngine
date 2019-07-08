@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../Math/RayHit.h"
 #include "../../Core/Context.h"
-#include "../../Core/Timer.h"
 #include "../../Input/Input.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
@@ -52,7 +51,7 @@ namespace Spartan
 		ComputeProjection();
 	}
 
-	void Camera::OnTick()
+	void Camera::OnTick(float delta_time)
 	{
 		const auto& current_viewport = m_context->GetSubsystem<Renderer>()->GetViewport();
 		if (m_last_known_viewport != current_viewport)
@@ -69,7 +68,7 @@ namespace Spartan
 			m_isDirty = true;
 		}
 
-        FpsControl();
+        FpsControl(delta_time);
        
 		if (!m_isDirty)
 			return;
@@ -250,7 +249,7 @@ namespace Spartan
 		return position_world;
 	}
 
-    void Camera::FpsControl()
+    void Camera::FpsControl(float delta_time)
     {
         static const float mouse_sensetivity        = 0.1f;
         static const float movement_speed_max       = 10.0f;
@@ -299,7 +298,6 @@ namespace Spartan
         // Translate for as long as there is speed
         if (m_movement_speed != Vector3::Zero)
         {
-            float delta_time = m_context->GetSubsystem<Timer>()->GetDeltaTimeSec();
             m_transform->Translate(m_movement_speed * delta_time);
         }
     }

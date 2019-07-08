@@ -170,7 +170,7 @@ namespace Spartan
 		}
 	}
 
-	void Input::Tick()
+	void Input::Tick(float delta_time)
 	{
 		m_keys_previous				= m_keys;
 		const auto window_handle	= static_cast<HWND>(m_context->m_engine->GetWindowHandle());

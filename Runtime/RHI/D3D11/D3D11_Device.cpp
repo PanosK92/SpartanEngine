@@ -50,7 +50,8 @@ namespace Spartan
 {
 	RHI_Device::RHI_Device(Context* context)
 	{
-		m_rhi_context = make_shared<RHI_Context>();
+        m_context       = context;
+		m_rhi_context   = make_shared<RHI_Context>();      
 		const static auto multithread_protection = false;
 
 		// Detect adapters

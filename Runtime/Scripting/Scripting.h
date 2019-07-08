@@ -54,7 +54,7 @@ namespace Spartan
 		void ReturnContext(asIScriptContext* ctx);
 
 		// Calls
-		bool ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj);
+		bool ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj, float delta_time = -1.0f);
 
 		// Modules
 		void DiscardModule(std::string moduleName);

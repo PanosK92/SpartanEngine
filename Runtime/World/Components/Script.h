@@ -36,7 +36,7 @@ namespace Spartan
 
 		//= ICOMPONENT ===============================
 		void OnStart() override;
-		void OnTick() override;
+		void OnTick(float delta_time) override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================

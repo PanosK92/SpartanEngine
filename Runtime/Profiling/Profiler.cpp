@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Profiler.h"
 #include "../RHI/RHI_Device.h"
-#include "../Core/Timer.h"
 #include "../Core/EventSystem.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
@@ -39,31 +38,101 @@ namespace Spartan
 		m_metrics = NOT_ASSIGNED;
 		m_time_blocks.reserve(m_time_block_capacity);
 		m_time_blocks.resize(m_time_block_capacity);
-
-		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_Frame_Start, EVENT_HANDLER(OnFrameStart));
-		SUBSCRIBE_TO_EVENT(Event_Frame_End, EVENT_HANDLER(OnFrameEnd));
 	}
 
 	bool Profiler::Initialize()
 	{
-		m_timer				= m_context->GetSubsystem<Timer>().get();
 		m_resource_manager	= m_context->GetSubsystem<ResourceCache>().get();
 		m_renderer			= m_context->GetSubsystem<Renderer>().get();
 
 		// Get available memory
 		if (const DisplayAdapter* adapter = m_renderer->GetRhiDevice()->GetPrimaryAdapter())
 		{
-			m_gpu_name					= adapter->name;
-			m_gpu_memory_available		= m_renderer->GetRhiDevice()->ProfilingGetGpuMemory();
+			m_gpu_name				= adapter->name;
+			m_gpu_memory_available	= m_renderer->GetRhiDevice()->ProfilingGetGpuMemory();
 		}
 
 		return true;
 	}
 
-	bool Profiler::TimeBlockStart(const string& func_name, bool profile_cpu /*= true*/, bool profile_gpu /*= false*/)
+    void Profiler::Tick(float delta_time)
+    {
+        // End frame time block
+        if (m_profile)
+        {
+            TimeBlockEnd();
+            OnFrameEnd();
+        }
+
+        // Compute some stuff
+        m_time_cpu_ms   = m_time_blocks[0].GetDurationCpu(); // This assumes that that first time block is the frame time
+        m_time_gpu_ms   = m_time_blocks[0].GetDurationGpu(); // This assumes that that first time block is the frame time
+        m_time_frame_ms = m_time_cpu_ms + m_time_gpu_ms;
+        ComputeFps(delta_time);
+        
+        // Check whether we should profile or not
+        m_profile                   = false;
+        m_time_since_profiling_sec  += delta_time;   
+        if (m_time_since_profiling_sec >= m_profiling_interval_sec)
+        {
+            m_time_since_profiling_sec  = 0.0f;
+            m_profile                   = true;
+        }
+
+        // Updating every m_profiling_interval_sec
+        if (m_profile)
+        {
+            // Get GPU memory usage
+            m_gpu_memory_used = m_renderer->GetRhiDevice()->ProfilingGetGpuMemoryUsage();
+
+            // Create a string version of the rhi metrics
+            if (m_renderer->Flags_IsSet(Render_Gizmo_PerformanceMetrics))
+            {
+                UpdateRhiMetricsString();
+            }
+
+            // Start a new frame
+            OnFrameStart(delta_time);
+
+            // Start frame time block
+            TimeBlockStart("Frame", true, true);
+        }
+
+        ClearRhiMetrics();
+    }
+
+    void Profiler::OnFrameStart(float delta_time)
+    {
+        // Discard previous frame data
+        for (uint32_t i = 0; i < m_time_block_count; i++)
+        {
+            TimeBlock& time_block = m_time_blocks[i];
+            if (!time_block.IsComplete())
+            {
+                LOGF_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName().c_str());
+            }
+            time_block.Clear();
+        }
+
+        m_time_block_count = 0;
+    }
+
+    void Profiler::OnFrameEnd()
+    {
+        for (auto& time_block : m_time_blocks)
+        {
+            if (!time_block.IsProfilingGpu())
+                continue;
+
+            time_block.OnFrameEnd(m_renderer->GetRhiDevice());
+        }
+
+        m_time_blocks_read = m_time_blocks;
+    }
+
+    bool Profiler::TimeBlockStart(const string& func_name, bool profile_cpu /*= true*/, bool profile_gpu /*= false*/)
 	{
-		if (!m_should_update)
+		if (!m_profile)
 			return false;
 
 		bool can_profile_cpu = profile_cpu && m_profile_cpu_enabled;
@@ -83,7 +152,7 @@ namespace Spartan
 
 	bool Profiler::TimeBlockEnd()
 	{
-		if (!m_should_update || m_time_block_count == 0)
+		if (!m_profile || m_time_block_count == 0)
 			return false;
 
 		if (auto time_block = GetLastIncompleteTimeBlock())
@@ -92,67 +161,6 @@ namespace Spartan
 		}
 
 		return true;
-	}
-
-	void Profiler::OnFrameStart()
-	{
-        TimeBlockStart("Frame", true, true); // measure frame - profiling interval independent
-		m_has_new_data = false;
-		float delta_time_sec = m_timer->GetDeltaTimeSec();
-		ComputeFps(delta_time_sec);
-
-		// Below this point, updating every m_profiling_interval_sec
-		m_profiling_last_update_time += delta_time_sec;
-		if (m_profiling_last_update_time >= m_profiling_interval_sec)
-		{
-			// Get memory usage
-			m_gpu_memory_used = m_renderer->GetRhiDevice()->ProfilingGetGpuMemoryUsage();
-
-			// Compute some final timings before discarding
-			m_time_cpu_ms = m_time_blocks[0].GetDurationCpu();
-			m_time_gpu_ms = m_time_blocks[0].GetDurationGpu();
-			m_time_frame_ms = m_time_cpu_ms + m_time_gpu_ms;
-
-			// Create string version of metrics only if needed
-			if (m_renderer->Flags_IsSet(Render_Gizmo_PerformanceMetrics))
-			{
-				UpdateStringFormatMetrics(m_fps);
-			}
-
-			// Discard previous frame data
-			for (uint32_t i = 0; i < m_time_block_count; i++)
-			{
-				TimeBlock& time_block = m_time_blocks[i];
-				if (!time_block.IsComplete())
-				{
-					LOGF_WARNING("Ensure that TimeBlockEnd() is called for %s", time_block.GetName().c_str());
-				}
-				time_block.Clear();
-			}
-
-			m_profiling_last_update_time	= 0.0f;
-			m_should_update					= true;
-			m_time_block_count				= 0;
-		}
-	}
-
-	void Profiler::OnFrameEnd()
-	{
-        TimeBlockEnd(); // measure frame - profiling interval independent
-
-		if (!m_should_update)
-			return;
-
-		for (auto& time_block : m_time_blocks)
-		{
-			if (!time_block.IsProfilingGpu())
-				continue;
-
-			time_block.OnFrameEnd(m_renderer->GetRhiDevice());
-		}
-
-		m_should_update = false;
-		m_has_new_data	= true;
 	}
 
 	TimeBlock* Profiler::GetNextTimeBlock()
@@ -204,22 +212,18 @@ namespace Spartan
 
 	void Profiler::ComputeFps(const float delta_time)
 	{
-		// update counters
 		m_frame_count++;
 		m_time_passed += delta_time;
+        m_fps = static_cast<float>(m_frame_count) / (m_time_passed / 1.0f);
 
 		if (m_time_passed >= 1.0f)
 		{
-			// compute fps
-			m_fps = static_cast<float>(m_frame_count) / (m_time_passed / 1.0f);
-
-			// reset counters
 			m_frame_count = 0;
 			m_time_passed = 0;
 		}
 	}
 
-	void Profiler::UpdateStringFormatMetrics(const float fps)
+	void Profiler::UpdateRhiMetricsString()
 	{
 		const auto texture_count	= m_resource_manager->GetResourceCount(Resource_Texture);
 		const auto material_count	= m_resource_manager->GetResourceCount(Resource_Material);
@@ -255,7 +259,7 @@ namespace Spartan
 			"RHI Render Target bindings:\t\t%d",
 			
 			// Performance
-			fps,
+			m_fps,
 			m_time_frame_ms,
 			m_time_cpu_ms,
 			m_time_gpu_ms,

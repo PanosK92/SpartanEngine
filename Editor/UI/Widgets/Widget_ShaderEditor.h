@@ -32,7 +32,7 @@ class Widget_ShaderEditor : public Widget
 {
 public:
     Widget_ShaderEditor(Spartan::Context* context);
-    void Tick(float delta_time) override;
+    void Tick() override;
 
 private:
     void GetAllShadersFiles(const std::string& file_path);

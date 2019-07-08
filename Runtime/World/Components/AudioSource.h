@@ -42,7 +42,7 @@ namespace Spartan
 		void OnStart() override;
 		void OnStop() override;
 		void OnRemove() override;
-		void OnTick() override;
+		void OnTick(float delta_time) override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================

@@ -32,11 +32,11 @@ class FirstPersonControllerPhysics
 	}
 
 	// Update is called once per frame
-	void Update()
+	void Update(float delta_time)
 	{
 		if (input.GetKey(Click_Right))
 		{
-			FreeLook();
+			FreeLook(delta_time);
 		}	
 			
 		Movement();
@@ -65,14 +65,14 @@ class FirstPersonControllerPhysics
 			rigidbody.ApplyForce(jumpForce * Vector3(0,1,0), Impulse);
 	}
 	
-	void FreeLook()
+	void FreeLook(float delta_time)
 	{
 		// Get raw mouse input
 		Vector2 mouseDelta = Vector2(input.GetMouseDelta().x, input.GetMouseDelta().y);
 	
 		// Scale input against the sensitivity setting and multiply that against the smoothing value.
-		mouseDelta.x *= sensitivity * smoothing * time.GetDeltaTime();
-		mouseDelta.y *= sensitivity * smoothing * time.GetDeltaTime();
+		mouseDelta.x *= sensitivity * smoothing * delta_time;
+		mouseDelta.y *= sensitivity * smoothing * delta_time;
 		
         // Interpolate mouse movement over time to apply smoothing delta.
 		smoothMouse.x = Lerp(smoothMouse.x, mouseDelta.x, 1.0f / smoothing);
