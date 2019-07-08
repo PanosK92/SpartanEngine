@@ -61,16 +61,16 @@ namespace Spartan
 
 		// Register subsystems
         m_context->RegisterSubsystem<Settings>(Tick_Variable);
-        m_context->RegisterSubsystem<Timer>(Tick_Variable); // everything above this will receive the previous delta time
-		m_context->RegisterSubsystem<Profiler>(Tick_Variable);
+        m_context->RegisterSubsystem<Timer>(Tick_Variable); // everything above this will receive the previous delta time		
 		m_context->RegisterSubsystem<ResourceCache>(Tick_Variable);		
 		m_context->RegisterSubsystem<Threading>(Tick_Variable);			
 		m_context->RegisterSubsystem<Audio>(Tick_Variable);
         m_context->RegisterSubsystem<Physics>(Tick_Variable); // integrates internally
         m_context->RegisterSubsystem<Input>(Tick_Smoothed);
 		m_context->RegisterSubsystem<Scripting>(Tick_Smoothed);
-		m_context->RegisterSubsystem<World>(Tick_Smoothed);
         m_context->RegisterSubsystem<Renderer>(Tick_Smoothed);
+		m_context->RegisterSubsystem<World>(Tick_Smoothed);      
+        m_context->RegisterSubsystem<Profiler>(Tick_Variable);
              	
         // Initialize global/static subsystems
         FileSystem::Initialize();

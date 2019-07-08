@@ -42,7 +42,9 @@ namespace Spartan
 
     Profiler::~Profiler()
     {
+        if (m_profile) OnFrameEnd();
         m_time_blocks.clear();
+        m_time_blocks_read.clear();
         ClearRhiMetrics();
     }
 
@@ -63,10 +65,9 @@ namespace Spartan
 
     void Profiler::Tick(float delta_time)
     {
-        // End frame time block
+        // End previous frame
         if (m_profile)
         {
-            TimeBlockEnd();
             OnFrameEnd();
         }
 
@@ -99,9 +100,6 @@ namespace Spartan
 
             // Start a new frame
             OnFrameStart(delta_time);
-
-            // Start frame time block
-            TimeBlockStart("Frame", true, true);
         }
 
         ClearRhiMetrics();
@@ -121,10 +119,15 @@ namespace Spartan
         }
 
         m_time_block_count = 0;
+
+        // Start frame time block
+        TimeBlockStart("Frame", true, true);
     }
 
     void Profiler::OnFrameEnd()
     {
+        TimeBlockEnd();
+
         for (auto& time_block : m_time_blocks)
         {
             if (!time_block.IsProfilingGpu())

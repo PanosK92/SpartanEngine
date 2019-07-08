@@ -200,7 +200,7 @@ namespace Spartan
 		auto IsInitialized() const		                { return m_initialized; }	
         auto& GetShaders()                              { return m_shaders; }    
         auto GetMaxResolution() const                   { return m_max_resolution; } 
-        static auto IsRendering()                       { return m_is_rendering; }
+        auto IsRendering() const                        { return m_is_rendering; }
         auto GetReverseZ() const                        { return m_reverse_z; }
         auto GetClearDepth()                            { return m_reverse_z ? m_viewport.depth_min : m_viewport.depth_max; }
         auto GetComparisonFunction()                    { return m_reverse_z ? Comparison_GreaterEqual : Comparison_LessEqual; }
@@ -372,12 +372,17 @@ namespace Spartan
 		Math::Vector2 m_taa_jitter;
 		Math::Vector2 m_taa_jitter_previous;
 		RendererDebug_Buffer m_debug_buffer = RendererDebug_None;
-		unsigned long m_flags = 0;
-		bool m_initialized = false;
-        bool m_reverse_z = true;
-        uint32_t m_resolution_shadow = 4096;
-        uint32_t m_resolution_shadow_min = 128;
-        uint32_t m_anisotropy = 16;
+		unsigned long m_flags               = 0;
+		bool m_initialized                  = false;
+        bool m_reverse_z                    = true;
+        uint32_t m_resolution_shadow        = 4096;
+        uint32_t m_resolution_shadow_min    = 128;
+        uint32_t m_anisotropy               = 16;
+        float m_near_plane                  = 0.0f;
+        float m_far_plane                   = 0.0f;
+        uint64_t m_frame_num                = 0;
+        bool m_is_odd_frame                 = false;
+        bool m_is_rendering                 = false;
 		//=======================================================
 
 		//= RHI ============================================
@@ -388,19 +393,16 @@ namespace Spartan
 
 		//= ENTITIES/COMPONENTS ============================================
 		std::unordered_map<RenderableType, std::vector<Entity*>> m_entities;
-		float m_near_plane;
-		float m_far_plane;
+       
 		std::shared_ptr<Camera> m_camera;
 		std::shared_ptr<Skybox> m_skybox;
 		Math::Vector3 m_directional_light_avg_dir;
 		//==================================================================
 
-		//= STATS/PROFILING ==============
-		Profiler* m_profiler	= nullptr;
-		uint64_t m_frame_num	= 0;
-		bool m_is_odd_frame		= false;
-		static bool m_is_rendering;
-		//================================
+		//= DEPENDENCIES =========================
+		Profiler* m_profiler	        = nullptr;
+        ResourceCache* m_resource_cache = nullptr;
+		//========================================
 		
 		// Global buffer (holds what is needed by almost every shader)
 		struct ConstantBufferGlobal

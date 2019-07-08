@@ -59,14 +59,8 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	static ResourceCache* g_resource_cache	= nullptr;
-	bool Renderer::m_is_rendering			= false;
-
 	Renderer::Renderer(Context* context) : ISubsystem(context)
 	{	
-		m_near_plane	= 0.0f;
-		m_far_plane		= 0.0f;
-		m_frame_num		= 0;
 		m_flags			|= Render_Gizmo_Transform;
 		m_flags			|= Render_Gizmo_Grid;
 		m_flags			|= Render_Gizmo_Lights;
@@ -80,40 +74,6 @@ namespace Spartan
 		m_flags			|= Render_PostProcess_SSR;
 		//m_flags		|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients
 		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect		
-
-		// Create device
-		m_rhi_device = make_shared<RHI_Device>(m_context);
-		if (!m_rhi_device->IsInitialized())
-		{
-			LOG_ERROR("Failed to create device");
-			return;
-		}
-
-        // Create swap chain
-        {
-            m_swap_chain = make_shared<RHI_SwapChain>
-            (
-                m_context->m_engine->GetWindowHandle(),
-                m_rhi_device,
-                static_cast<uint32_t>(context->m_engine->GetWindowWidth()),
-                static_cast<uint32_t>(context->m_engine->GetWindowHeight()),
-                Format_R8G8B8A8_UNORM,
-                Present_Immediate,
-                2
-            );
-
-            if (!m_swap_chain->IsInitialized())
-            {
-                LOG_ERROR("Failed to create swap chain");
-                return;
-            }
-        }
-
-		// Create pipeline cache
-		m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
-
-		// Create command list
-		m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device, m_context->GetSubsystem<Profiler>().get());
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -133,9 +93,43 @@ namespace Spartan
 
 	bool Renderer::Initialize()
 	{
-		// Create/Get required systems		
-		g_resource_cache	= m_context->GetSubsystem<ResourceCache>().get();
-		m_profiler			= m_context->GetSubsystem<Profiler>().get();
+        // Get required systems		
+        m_resource_cache    = m_context->GetSubsystem<ResourceCache>().get();
+        m_profiler          = m_context->GetSubsystem<Profiler>().get();
+
+        // Create device
+        m_rhi_device = make_shared<RHI_Device>(m_context);
+        if (!m_rhi_device->IsInitialized())
+        {
+            LOG_ERROR("Failed to create device");
+            return false;
+        }
+
+        // Create swap chain
+        {
+            m_swap_chain = make_shared<RHI_SwapChain>
+            (
+                m_context->m_engine->GetWindowHandle(),
+                m_rhi_device,
+                static_cast<uint32_t>(m_context->m_engine->GetWindowWidth()),
+                static_cast<uint32_t>(m_context->m_engine->GetWindowHeight()),
+                Format_R8G8B8A8_UNORM,
+                Present_Immediate,
+                2
+            );
+
+            if (!m_swap_chain->IsInitialized())
+            {
+                LOG_ERROR("Failed to create swap chain");
+                return false;
+            }
+        }
+
+        // Create pipeline cache
+        m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device);
+
+        // Create command list
+        m_cmd_list = make_shared<RHI_CommandList>(m_rhi_device, m_profiler);
 
 		// Editor specific
 		m_gizmo_grid		= make_unique<Grid>(m_rhi_device);
@@ -194,7 +188,7 @@ namespace Spartan
 	void Renderer::CreateFonts()
 	{
 		// Get standard font directory
-		const auto dir_font = g_resource_cache->GetDataDirectory(Asset_Fonts);
+		const auto dir_font = m_resource_cache->GetDataDirectory(Asset_Fonts);
 
 		// Load a font (used for performance metrics)
 		m_font = make_unique<Font>(m_context, dir_font + "CalibriBold.ttf", 14, Vector4(0.7f, 0.7f, 0.7f, 1.0f));
@@ -203,7 +197,7 @@ namespace Spartan
 	void Renderer::CreateTextures()
 	{
 		// Get standard texture directory
-		const auto dir_texture = g_resource_cache->GetDataDirectory(Asset_Textures);
+		const auto dir_texture = m_resource_cache->GetDataDirectory(Asset_Textures);
 
 		auto generate_mipmaps = false;
 
@@ -294,7 +288,7 @@ namespace Spartan
 	void Renderer::CreateShaders()
 	{
 		// Get standard shader directory
-		const auto dir_shaders = g_resource_cache->GetDataDirectory(Asset_Shaders);
+		const auto dir_shaders = m_resource_cache->GetDataDirectory(Asset_Shaders);
 
 		// Light
 		auto shader_light = make_shared<ShaderLight>(m_rhi_device);
@@ -538,7 +532,7 @@ namespace Spartan
     void Renderer::SetAnisotropy(uint32_t anisotropy)
     {
         uint32_t min = 0;
-        uint32_t max = 0;
+        uint32_t max = 16;
         m_anisotropy = Math::Clamp(anisotropy, min, max);
     }
 

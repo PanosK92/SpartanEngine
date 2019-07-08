@@ -207,7 +207,7 @@ namespace Spartan
 		}
 
 		// Thread safety: Wait for scene and the renderer to stop the entities (could do double buffering in the future)
-		while (m_state != Loading || Renderer::IsRendering()) { m_state = Request_Loading; this_thread::sleep_for(chrono::milliseconds(16)); }
+		while (m_state != Loading || m_context->GetSubsystem<Renderer>()->IsRendering()) { m_state = Request_Loading; this_thread::sleep_for(chrono::milliseconds(16)); }
 
 		// Start progress report and timing
 		ProgressReport::Get().Reset(g_progress_world);
