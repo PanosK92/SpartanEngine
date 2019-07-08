@@ -32,7 +32,7 @@ class Widget_Assets : public Widget
 {
 public:
 	Widget_Assets(Spartan::Context* context);
-	void Tick(float delta_time) override;
+	void Tick() override;
 
 private:
 	void OnPathClicked(const std::string& path);

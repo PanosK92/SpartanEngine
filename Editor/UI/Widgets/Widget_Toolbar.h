@@ -31,7 +31,7 @@ class Widget_Toolbar : public Widget
 {
 public:
 	Widget_Toolbar(Spartan::Context* context);
-	void Tick(float delta_time) override;
+	void Tick() override;
 
 private:
     std::map<Icon_Type, std::unique_ptr<Widget>> m_widgets;

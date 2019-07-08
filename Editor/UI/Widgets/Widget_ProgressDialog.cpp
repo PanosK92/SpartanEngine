@@ -67,7 +67,7 @@ Widget_ProgressDialog::Widget_ProgressDialog(Context* contex) : Widget(contex)
     };
 }
 
-void Widget_ProgressDialog::Tick(float deltaTime)
+void Widget_ProgressDialog::Tick()
 {
 	if (!m_is_visible)
 		return;

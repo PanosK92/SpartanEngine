@@ -107,7 +107,8 @@ namespace Spartan
 
 	private:
 		std::shared_ptr<RHI_Context> m_rhi_context;
-		
+		Context* m_context = nullptr;
+
 		bool m_initialized = false;
 		const DisplayAdapter* m_primaryAdapter = nullptr;
 		std::vector<DisplayMode> m_displayModes;

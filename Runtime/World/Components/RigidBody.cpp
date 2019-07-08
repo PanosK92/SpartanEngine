@@ -129,7 +129,7 @@ namespace Spartan
 		Activate();
 	}
 
-	void RigidBody::OnTick()
+	void RigidBody::OnTick(float delta_time)
 	{
 		// When in editor mode, get position from transform (so the user can move the body around)
 		if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))

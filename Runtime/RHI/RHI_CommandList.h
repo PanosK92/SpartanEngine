@@ -88,7 +88,7 @@ namespace Spartan
 			depth_stencil				= nullptr;
 			depth_clear					= 0;
 			depth_clear_stencil			= 0;
-			depth_clear_flags			= 
+			depth_clear_flags			= 0;
 			vertex_count				= 0;
 			vertex_offset				= 0;
 			index_count					= 0;
@@ -99,9 +99,9 @@ namespace Spartan
 			buffer_index				= nullptr;
 			buffer_vertex				= nullptr;
 			shader_vertex				= nullptr;
-			shader_pixel				= nullptr;
-			pass_name					= "N/A";
+			shader_pixel				= nullptr;			
 			primitive_topology			= PrimitiveTopology_NotAssigned;
+            pass_name                   = "N/A";
 		}
 
 		RHI_Cmd_Type type;
@@ -136,8 +136,8 @@ namespace Spartan
 		uint32_t depth_clear_flags							= 0;
 
 		// Misc	
-		bool is_array									= true;
-		std::string pass_name							= "N/A";
+		bool is_array                                   = true;
+		std::string pass_name                           = "N/A";
 		RHI_PrimitiveTopology_Mode primitive_topology	= PrimitiveTopology_NotAssigned;
 		uint32_t vertex_count							= 0;
 		uint32_t vertex_offset							= 0;
@@ -233,7 +233,7 @@ namespace Spartan
 		}
 		void ClearDepthStencil(void* depth_stencil, uint32_t flags, float depth, uint32_t stencil = 0);
 
-		bool Submit();
+		bool Submit(bool profile = true);
 
 	private:
 		void Clear();

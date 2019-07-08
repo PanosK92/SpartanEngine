@@ -109,7 +109,7 @@ public:
 		return true;
 	}
 
-	virtual void Tick(float delta_time = 0.0f) = 0;
+	virtual void Tick() = 0;
 
 	bool End()
 	{
@@ -132,6 +132,7 @@ public:
     template<typename T>
     void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_pushes++; }
 
+    // Properties
 	auto IsWindow()					   { return m_is_window; }
 	auto& GetVisible()				   { return m_is_visible; }
 	void SetVisible(bool is_visible)   { m_is_visible = is_visible; }
@@ -155,8 +156,8 @@ protected:
 
 	Spartan::Context* m_context     = nullptr;
     Spartan::Profiler* m_profiler   = nullptr;
-	std::string m_title;
-	ImGuiWindow* m_window;
+	ImGuiWindow* m_window           = nullptr;
+    std::string m_title;
 
 private:
 	bool m_window_begun     = false;

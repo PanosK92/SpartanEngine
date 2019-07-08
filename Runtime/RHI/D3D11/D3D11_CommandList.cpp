@@ -73,9 +73,9 @@ namespace Spartan
 			SetPrimitiveTopology(pipeline->GetState()->primitive_topology);
 		}
 
-		auto& cmd			= GetCmd();
-		cmd.type			= RHI_Cmd_Begin;
-		cmd.pass_name		= pass_name;
+		auto& cmd		= GetCmd();
+		cmd.type		= RHI_Cmd_Begin;
+		cmd.pass_name	= pass_name;
 	}
 
 	void RHI_CommandList::End()
@@ -332,7 +332,7 @@ namespace Spartan
 		cmd.depth_clear_stencil = stencil;
 	}
 
-	bool RHI_CommandList::Submit()
+	bool RHI_CommandList::Submit(bool profile /*=true*/)
 	{
 		auto context		= m_rhi_device->GetContext();
 		auto device_context	= m_rhi_device->GetContext()->device_context;
@@ -345,7 +345,7 @@ namespace Spartan
 			{
 				case RHI_Cmd_Begin:
 				{
-					m_profiler->TimeBlockStart(cmd.pass_name, true, true);
+                    if (profile) m_profiler->TimeBlockStart(cmd.pass_name, true, true);
 					#ifdef DEBUG
 					context->annotation->BeginEvent(FileSystem::StringToWstring(cmd.pass_name).c_str());
 					#endif
@@ -357,7 +357,7 @@ namespace Spartan
 					#ifdef DEBUG
 					context->annotation->EndEvent();
 					#endif
-					m_profiler->TimeBlockEnd();
+					if (profile) m_profiler->TimeBlockEnd();
 					break;
 				}
 

@@ -53,7 +53,6 @@ namespace Spartan
 		//= ICOMPONENT ===============================
 		void OnInitialize() override;
 		void OnRemove() override;
-		void OnTick() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================

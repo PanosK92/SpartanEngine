@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Widget_Toolbar.h"
 #include "UI/Widgets/Widget_Viewport.h"
 #include "UI/Widgets/Widget_World.h"
-#include "Core/Timer.h"
 //================================================
 
 //= NAMESPACES ==========
@@ -60,7 +59,6 @@ Editor::Editor(void* window_handle, void* window_instance, float window_width, f
 	// Acquire useful engine subsystems
 	m_context	= m_engine->GetContext();
 	m_renderer	= m_context->GetSubsystem<Renderer>().get();
-	m_timer		= m_context->GetSubsystem<Timer>().get();
 	m_rhiDevice = m_renderer->GetRhiDevice();
 
 	if (!m_renderer->IsInitialized())
@@ -167,7 +165,7 @@ void Editor::Widgets_Tick()
 	for (auto& widget : m_widgets)
 	{
 		widget->Begin();
-		widget->Tick(m_timer->GetDeltaTimeSec());
+		widget->Tick();
 		widget->End();
 	}
 

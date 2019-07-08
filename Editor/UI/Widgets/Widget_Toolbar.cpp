@@ -72,7 +72,7 @@ Widget_Toolbar::Widget_Toolbar(Context* context) : Widget(context)
     m_context->m_engine->EngineMode_Disable(Engine_Game);
 }
 
-void Widget_Toolbar::Tick(float delta_time)
+void Widget_Toolbar::Tick()
 {
     auto show_button = [this](Icon_Type icon_type, function<bool()> get_visibility, function<void()> make_visible)
     {
@@ -98,7 +98,7 @@ void Widget_Toolbar::Tick(float delta_time)
         if (widget->GetVisible())
         {
             widget->Begin();
-            widget->Tick(delta_time);
+            widget->Tick();
             widget->End();
         }
     }

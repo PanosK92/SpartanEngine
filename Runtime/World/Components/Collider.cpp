@@ -81,11 +81,6 @@ namespace Spartan
 		Shape_Release();
 	}
 
-	void Collider::OnTick()
-	{
-
-	}
-
 	void Collider::Serialize(FileStream* stream)
 	{
 		stream->Write(uint32_t(m_shapeType));

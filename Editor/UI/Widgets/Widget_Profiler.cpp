@@ -43,7 +43,7 @@ Widget_Profiler::Widget_Profiler(Context* context) : Widget(context)
 	m_plot_times_gpu.resize(m_plot_size);
 }
 
-void Widget_Profiler::Tick(float delta_time)
+void Widget_Profiler::Tick()
 {
 	if (!m_is_visible)
 		return;
@@ -98,7 +98,7 @@ void Widget_Profiler::ShowCPU()
 	}
 
 	ImGui::Separator();
-	ShowPlot(m_plot_times_cpu, m_metric_cpu, !m_profiler->HasNewData() ? -1.0f : time_cpu);
+	ShowPlot(m_plot_times_cpu, m_metric_cpu, time_cpu);
 }
 
 void Widget_Profiler::ShowGPU()
@@ -131,7 +131,7 @@ void Widget_Profiler::ShowGPU()
 
 	// Plot
 	ImGui::Separator();
-	ShowPlot(m_plot_times_gpu, m_metric_gpu, !m_profiler->HasNewData() ? -1.0f : time_gpu );
+	ShowPlot(m_plot_times_gpu, m_metric_gpu, time_gpu );
 
 	// VRAM	
 	ImGui::Separator();

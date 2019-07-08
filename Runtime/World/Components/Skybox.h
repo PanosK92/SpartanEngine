@@ -45,7 +45,6 @@ namespace Spartan
 
 		//= IComponent ==============
 		void OnInitialize() override;
-		void OnTick() override;
 		//===========================
 
 		const std::shared_ptr<RHI_Texture>& GetTexture()	{ return m_texture; }

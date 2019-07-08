@@ -85,7 +85,7 @@ namespace Spartan
 		m_scriptEngine->ExecuteCall(m_startFunction, m_scriptObject);
 	}
 
-	void ScriptInstance::ExecuteUpdate()
+	void ScriptInstance::ExecuteUpdate(float delta_time)
 	{
 		if (!m_scriptEngine)
 		{
@@ -93,7 +93,7 @@ namespace Spartan
 			return;
 		}
 
-		m_scriptEngine->ExecuteCall(m_updateFunction, m_scriptObject);
+		m_scriptEngine->ExecuteCall(m_updateFunction, m_scriptObject, delta_time);
 	}
 
 	bool ScriptInstance::CreateScriptObject()
@@ -118,7 +118,7 @@ namespace Spartan
 
 		// Get functions in the script
 		m_startFunction			= type->GetMethodByDecl("void Start()"); // Get the Start function from the script
-		m_updateFunction		= type->GetMethodByDecl("void Update()"); // Get the Update function from the script
+		m_updateFunction		= type->GetMethodByDecl("void Update(float delta_time)"); // Get the Update function from the script
 		m_constructorFunction	= type->GetFactoryByDecl(m_constructorDeclaration.c_str()); // Get the constructor function from the script
 		if (!m_constructorFunction)
 		{

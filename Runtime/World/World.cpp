@@ -73,7 +73,7 @@ namespace Spartan
 		return true;
 	}
 
-	void World::Tick()
+	void World::Tick(float delta_time)
 	{	
 		if (m_state == Request_Loading)
 		{
@@ -84,8 +84,8 @@ namespace Spartan
 		if (m_state != Ticking)
 			return;
 
-		TIME_BLOCK_START_CPU(m_profiler);
-		
+        TIME_BLOCK_START_CPU(m_profiler);
+
 		// Tick entities
 		{
 			// Detect game toggling
@@ -112,11 +112,11 @@ namespace Spartan
 			// Tick
 			for (const auto& entity : m_entities_primary)
 			{
-				entity->Tick();
+				entity->Tick(delta_time);
 			}
 		}
 
-		TIME_BLOCK_END(m_profiler);
+        TIME_BLOCK_END(m_profiler);
 
 		if (m_isDirty)
 		{

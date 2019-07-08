@@ -152,7 +152,7 @@ Widget_Properties::Widget_Properties(Context* context) : Widget(context)
 	_Widget_Properties::scene			= m_context->GetSubsystem<World>().get();  
 }
 
-void Widget_Properties::Tick(float delta_time)
+void Widget_Properties::Tick()
 {
 	ImGui::PushItemWidth(ComponentProperty::g_max_width);
 

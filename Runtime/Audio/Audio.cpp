@@ -129,7 +129,7 @@ namespace Spartan
 		}
 	}
 
-	void Audio::Tick()
+	void Audio::Tick(float delta_time)
 	{
 		// Don't play audio if the engine is not in game mode
 		if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))

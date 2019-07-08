@@ -35,10 +35,10 @@ namespace Spartan
 		AudioListener(Context* context, Entity* entity, Transform* transform);
 		~AudioListener();
 
-		//= COMPONENT ===============
-		void OnInitialize() override;
-		void OnTick() override;
-		//===========================
+        //= COMPONENT =========================
+        void OnInitialize() override;
+        void OnTick(float delta_time) override;
+        //=====================================
 
 	private:
 		Audio* m_audio;

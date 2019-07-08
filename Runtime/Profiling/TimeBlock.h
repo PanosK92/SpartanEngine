@@ -45,23 +45,23 @@ namespace Spartan
 		const bool IsProfilingCpu() const	{ return m_profiling_cpu; }
 		const bool IsProfilingGpu() const	{ return m_profiling_gpu; }
 		const bool IsComplete() const		{ return m_is_complete; }
-		const std::string& GetName() const	{ return m_name; }
-		const TimeBlock* GetParent() const	{ return m_parent; }
-		uint32_t GetTreeDepth()	const	    { return m_tree_depth; }
-		float GetDurationCpu() const		{ return m_duration_cpu; }
-		float GetDurationGpu() const		{ return m_duration_gpu; }
+		const auto& GetName() const	        { return m_name; }
+		const auto GetParent() const	    { return m_parent; }
+		auto GetTreeDepth()	const	        { return m_tree_depth; }
+		auto GetDurationCpu() const		    { return m_duration_cpu; }
+		auto GetDurationGpu() const		    { return m_duration_gpu; }
 
 	private:	
 		static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
 
 		std::string m_name;
 		RHI_Device* m_rhi_device;
-		bool m_has_started			= false;
-		bool m_is_complete			= false;
+		bool m_has_started	= false;
+		bool m_is_complete	= false;
 
 		// Hierarchy
 		const TimeBlock* m_parent	= nullptr;
-		uint32_t m_tree_depth	= 0;
+		uint32_t m_tree_depth	    = 0;
 
 		// CPU timing
 		bool m_profiling_cpu	= false;

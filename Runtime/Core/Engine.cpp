@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "Engine.h"
-#include "EventSystem.h"
 #include "Timer.h"
+#include "EventSystem.h"
 #include "../Audio/Audio.h"
 #include "../Input/Input.h"
 #include "../Physics/Physics.h"
@@ -32,11 +32,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scripting/Scripting.h"
 #include "../Threading/Threading.h"
 #include "../World/World.h"
+#include "../Math/MathHelper.h"
 //====================================
 
-//= NAMESPACES =====
+//= NAMESPACES ===============
 using namespace std;
-//==================
+using namespace Spartan::Math;
+//============================
 
 namespace Spartan
 {
@@ -47,7 +49,6 @@ namespace Spartan
         m_context->m_engine = this;
 
         // Flags
-		m_flags |= Engine_Tick;
 		m_flags |= Engine_Physics;
 		m_flags |= Engine_Game;
 
@@ -59,20 +60,20 @@ namespace Spartan
         m_window_height     = window_height;
 
 		// Register subsystems
-		m_context->RegisterSubsystem<Timer>();
-		m_context->RegisterSubsystem<Profiler>();
-		m_context->RegisterSubsystem<ResourceCache>();
-		m_context->RegisterSubsystem<Renderer>();	
-		m_context->RegisterSubsystem<Threading>();	
-		m_context->RegisterSubsystem<Input>();
-		m_context->RegisterSubsystem<Audio>();		
-		m_context->RegisterSubsystem<Scripting>();
-		m_context->RegisterSubsystem<Physics>();	
-		m_context->RegisterSubsystem<World>();
-
+        m_context->RegisterSubsystem<Timer>(Tick_Variable); // always first so it computes a recent delta time for the following subsystems
+		m_context->RegisterSubsystem<Profiler>(Tick_Variable);    
+		m_context->RegisterSubsystem<ResourceCache>(Tick_Variable);		
+		m_context->RegisterSubsystem<Threading>(Tick_Variable);			
+		m_context->RegisterSubsystem<Audio>(Tick_Variable);
+        m_context->RegisterSubsystem<Physics>(Tick_Variable); // integrates internally
+        m_context->RegisterSubsystem<Input>(Tick_Smoothed);
+		m_context->RegisterSubsystem<Scripting>(Tick_Smoothed);
+		m_context->RegisterSubsystem<World>(Tick_Smoothed);
+        m_context->RegisterSubsystem<Renderer>(Tick_Smoothed);
+        	
         // Initialize global/static subsystems
         FileSystem::Initialize();
-        Settings::Get().Initialize(); // this must become a subsystem
+        Settings::Get().Initialize(m_context.get()); // this must become a subsystem
 
 		// Initialize above subsystems
 		m_context->Initialize();
@@ -80,18 +81,14 @@ namespace Spartan
 
 	Engine::~Engine()
 	{
+        Settings::Get().SaveSettings();
 		EventSystem::Get().Clear(); // this must become a subsystem
 	}
 
-	void Engine::Tick() const
+	void Engine::Tick()
 	{
-		FIRE_EVENT(Event_Frame_Start);
-
-		if (EngineMode_IsSet(Engine_Tick))
-		{
-			m_context->Tick();
-		}
-
-		FIRE_EVENT(Event_Frame_End);
+        Timer* timer = m_context->GetSubsystem<Timer>().get();
+        m_context->Tick(Tick_Variable, static_cast<float>(timer->GetDeltaTimeSec()));
+        m_context->Tick(Tick_Smoothed, static_cast<float>(timer->GetDeltaTimeSmoothedSec()));
 	}
 }

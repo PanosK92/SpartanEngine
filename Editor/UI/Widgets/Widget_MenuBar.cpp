@@ -49,7 +49,7 @@ Widget_MenuBar::Widget_MenuBar(Context* context) : Widget(context)
 	_Widget_MenuBar::world	= m_context->GetSubsystem<World>().get();
 }
 
-void Widget_MenuBar::Tick(float deltaTime)
+void Widget_MenuBar::Tick()
 {
 	if (ImGui::BeginMainMenuBar())
 	{

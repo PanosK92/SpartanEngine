@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "Widget_World.h"
 #include "../ImGui_Extension.h"
+#include "Core/Timer.h"
 //==================================
 
 //= NAMESPACES =========
@@ -44,7 +45,7 @@ Widget_Viewport::Widget_Viewport(Context* context) : Widget(context)
     m_world     = m_context->GetSubsystem<World>().get();
 }
 
-void Widget_Viewport::Tick(const float delta_time)
+void Widget_Viewport::Tick()
 {
 	if (!m_renderer)
 		return;
@@ -76,7 +77,7 @@ void Widget_Viewport::Tick(const float delta_time)
 			m_timeSinceLastResChange = 0;
 		}
 	}
-	m_timeSinceLastResChange += delta_time;
+	m_timeSinceLastResChange += m_context->GetSubsystem<Timer>()->GetDeltaTimeSec();
 
 	// Draw the image after a potential Renderer::SetResolution() call has been made
 	ImGuiEx::Image

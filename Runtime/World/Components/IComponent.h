@@ -79,7 +79,7 @@ namespace Spartan
 		virtual void OnRemove() {}
 
 		// Runs every frame
-		virtual void OnTick() {}
+		virtual void OnTick(float delta_time) {}
 
 		// Runs when the entity is being saved
 		virtual void Serialize(FileStream* stream) {}

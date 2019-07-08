@@ -38,7 +38,7 @@ class Widget_Viewport : public Widget
 {
 public:
 	Widget_Viewport(Spartan::Context* context);
-	void Tick(float delta_time) override;
+	void Tick() override;
 
 private:
 	float m_timeSinceLastResChange  = 0.0f;

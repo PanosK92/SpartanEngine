@@ -27,7 +27,7 @@ class PingPongAlongX
 	}
 
 	// Update is called once per frame
-	void Update()
+	void Update(float delta_time)
 	{	
 		float speed		= m_speed * time.GetDeltaTime();	
 		m_currentPos	+= transform.GetForward() * speed;	

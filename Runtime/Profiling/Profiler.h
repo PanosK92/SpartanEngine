@@ -41,53 +41,41 @@ namespace Spartan
 	class Timer;
 	class ResourceCache;
 	class Renderer;
+    class Variant;
 
 	class SPARTAN_CLASS Profiler : public ISubsystem
 	{
 	public:
 		Profiler(Context* context);
 
-		//= Subsystem =============
-		bool Initialize() override;
-		//=========================
+		//= Subsystem =======================
+        bool Initialize() override;
+        void Tick(float delta_time) override;
+		//===================================
+
+        // Events
+        void OnFrameStart(float delta_time);
+        void OnFrameEnd();
 
 		// Time block
 		bool TimeBlockStart(const std::string& func_name, bool profile_cpu = true, bool profile_gpu = false);
 		bool TimeBlockEnd();
 
-		// Events
-		void OnFrameStart();
-		void OnFrameEnd();
-
+        // Properties
 		void SetProfilingEnabledCpu(const bool enabled)	{ m_profile_cpu_enabled = enabled; }
 		void SetProfilingEnabledGpu(const bool enabled)	{ m_profile_gpu_enabled = enabled; }
 		const auto& GetMetrics() const			        { return m_metrics; }
-		const auto& GetTimeBlocks() const				{ return m_time_blocks; }
+		const auto& GetTimeBlocks() const				{ return m_time_blocks_read; }
 		auto GetTimeCpu() const						    { return m_time_cpu_ms; }
 		auto GetTimeGpu() const						    { return m_time_gpu_ms; }
 		auto GetTimeFrame() const						{ return m_time_frame_ms; }
 		auto GetFps() const							    { return m_fps; }
 		auto GetUpdateInterval()						{ return m_profiling_interval_sec; }
 		void SetUpdateInterval(float internval)			{ m_profiling_interval_sec = internval; }
-        auto HasNewData()								{ return m_has_new_data; }
 		const auto& GpuGetName()					    { return m_gpu_name; }
         auto GpuGetMemoryAvailable()			        { return m_gpu_memory_available; }
         auto GpuGetMemoryUsed()					        { return m_gpu_memory_used; }
 		
-		void Reset()
-		{
-			m_rhi_draw_calls				= 0;
-			m_renderer_meshes_rendered		= 0;
-			m_rhi_bindings_buffer_index		= 0;
-			m_rhi_bindings_buffer_vertex	= 0;
-			m_rhi_bindings_buffer_constant	= 0;
-			m_rhi_bindings_sampler			= 0;
-			m_rhi_bindings_texture			= 0;
-			m_rhi_bindings_vertex_shader	= 0;
-			m_rhi_bindings_pixel_shader		= 0;
-			m_rhi_bindings_render_target	= 0;
-		}
-
 		// Metrics - RHI
 		uint32_t m_rhi_draw_calls				= 0;
 		uint32_t m_rhi_bindings_buffer_index	= 0;
@@ -108,40 +96,54 @@ namespace Spartan
 		float m_time_gpu_ms		= 0.0f;
 
 	private:
+        void ClearRhiMetrics()
+        {
+            m_rhi_draw_calls                = 0;
+            m_renderer_meshes_rendered      = 0;
+            m_rhi_bindings_buffer_index     = 0;
+            m_rhi_bindings_buffer_vertex    = 0;
+            m_rhi_bindings_buffer_constant  = 0;
+            m_rhi_bindings_sampler          = 0;
+            m_rhi_bindings_texture          = 0;
+            m_rhi_bindings_vertex_shader    = 0;
+            m_rhi_bindings_pixel_shader     = 0;
+            m_rhi_bindings_render_target    = 0;
+        }
+
 		TimeBlock* GetNextTimeBlock();
 		TimeBlock* GetLastIncompleteTimeBlock();
 		TimeBlock* GetSecondLastIncompleteTimeBlock();
 		void ComputeFps(float delta_time);
-		void UpdateStringFormatMetrics(float fps);
+		void UpdateRhiMetricsString();
 
 		// Profiling options
 		bool m_profile_cpu_enabled			= true; // cheap
 		bool m_profile_gpu_enabled			= true; // expensive
 		float m_profiling_interval_sec		= 0.3f;
-		float m_profiling_last_update_time	= m_profiling_interval_sec;
+		float m_time_since_profiling_sec	= m_profiling_interval_sec;
 
 		// Time blocks
 		uint32_t m_time_block_capacity	= 200;
 		uint32_t m_time_block_count		= 0;
 		std::vector<TimeBlock> m_time_blocks;
+        std::vector<TimeBlock> m_time_blocks_read;
 
 		// FPS
-		float m_fps					= 0.0f;
-		float m_time_passed			= 0.0f;
+        float m_delta_time      = 0.0f;
+		float m_fps				= 0.0f;
+		float m_time_passed		= 0.0f;
 		uint32_t m_frame_count	= 0;
 
 		// Hardware - GPU
-		std::string m_gpu_name				= "Unknown";
+		std::string m_gpu_name			= "N/A";
 		uint32_t m_gpu_memory_available	= 0;
 		uint32_t m_gpu_memory_used		= 0;
 
 		// Misc
 		std::string m_metrics;
-		bool m_should_update	= true;
-		bool m_has_new_data		= false;
+		bool m_profile = false;
 	
 		// Dependencies
-		Timer* m_timer						= nullptr;
 		ResourceCache* m_resource_manager	= nullptr;
 		Renderer* m_renderer				= nullptr;
 	};

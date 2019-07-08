@@ -34,14 +34,9 @@ class btDiscreteDynamicsWorld;
 namespace Spartan
 {
 	class Renderer;
-	class Variant;
 	class PhysicsDebugDraw;
 	class Profiler;
-
-	namespace Math
-	{
-		class Vector3;
-	}	
+	namespace Math { class Vector3; }	
 
 	class Physics : public ISubsystem
 	{
@@ -49,10 +44,10 @@ namespace Spartan
 		Physics(Context* context);
 		~Physics();
 
-		//= Subsystem =============
+		//= Subsystem =======================
 		bool Initialize() override;
-		void Tick() override;
-		//=========================
+		void Tick(float delta_time) override;
+		//====================================
 	
 		Math::Vector3 GetGravity() const;
 		btDiscreteDynamicsWorld* GetWorld() const		{ return m_world; }

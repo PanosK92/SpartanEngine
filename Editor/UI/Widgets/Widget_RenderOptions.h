@@ -31,7 +31,7 @@ class Widget_RenderOptions : public Widget
 {
 public:
     Widget_RenderOptions(Spartan::Context* context);
-    void Tick(float delta_time) override;
+    void Tick() override;
 
 private:
     Spartan::Renderer* m_renderer;

@@ -44,9 +44,9 @@ namespace Spartan
 		Audio(Context* context);
 		~Audio();
 
-		//= ISubsystem ======
-		void Tick() override;
-		//===================
+        //= ISubsystem ======================
+        void Tick(float delta_time) override;
+        //===================================
 
 		auto GetSystemFMOD() const { return m_system_fmod; }
 		void SetListenerTransform(Transform* transform);
