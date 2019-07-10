@@ -116,8 +116,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float3 noise			= unpack(texNoise.Sample(samplerLinear_wrap, tex_coord * noiseScale).xyz);	
 	float radius_depth		= get_linear_depth(depth) / (1.0f / radius);
 	float occlusion_acc     = 0.0f;
-    float3 color            = float3(0.0f, 0.0f, 0.0f);	
-	
+    float3 color            = float3(0.0f, 0.0f, 0.0f);
+
 	// Construct TBN
 	float3 tangent	= normalize(noise - center_normal * dot(noise, center_normal));
 	float3x3 TBN	= makeTBN(center_normal, tangent);
