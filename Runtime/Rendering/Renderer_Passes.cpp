@@ -381,8 +381,8 @@ namespace Spartan
 			Pass_SSAO(tex_ssao);
 
             // Bilateral blur
-			const auto sigma		= 1.0f;
-			const auto pixel_stride	= 1.0f;
+			const auto sigma		= 2.0f;
+			const auto pixel_stride	= 2.0f;
 			Pass_BlurBilateralGaussian(tex_ssao, m_render_tex_half_ssao_blurred, sigma, pixel_stride);
 
             // Upscale to full size
