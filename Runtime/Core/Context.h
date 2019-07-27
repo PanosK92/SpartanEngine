@@ -59,14 +59,12 @@ namespace Spartan
 
 		~Context()
         {
-            // Reverse registration order to avoid dependency conflicts
-            std::reverse(m_subsystems.begin(), m_subsystems.end());
-
-            // Clear
-            for (auto& subsystem : m_subsystems)
+            // Loop in reverse registration order to avoid dependency conflicts
+            for (size_t i = m_subsystems.size() - 1; i > 0; i--)
             {
-                subsystem.ptr.reset();
+                m_subsystems[i].ptr.reset();
             }
+
             m_subsystems.clear();
         }
 

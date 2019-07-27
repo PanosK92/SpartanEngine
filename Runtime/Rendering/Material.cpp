@@ -229,7 +229,7 @@ namespace Spartan
 		m_shader = GetOrCreateShader(shader_flags);
 	}
 
-	const std::shared_ptr<ShaderVariation>& Material::GetOrCreateShader(const unsigned long shader_flags)
+	std::shared_ptr<ShaderVariation> Material::GetOrCreateShader(const unsigned long shader_flags)
 	{
 		if (!m_context)
 		{
@@ -246,7 +246,8 @@ namespace Spartan
 		auto shader = make_shared<ShaderVariation>(m_rhi_device, m_context);
 		const auto dir_shaders = m_context->GetSubsystem<ResourceCache>()->GetDataDirectory(Asset_Shaders);
 		shader->Compile(dir_shaders + "GBuffer.hlsl", shader_flags);
-		return move(shader);
+
+		return shader;
 	}
 
 	bool Material::UpdateConstantBuffer()

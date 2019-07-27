@@ -92,7 +92,7 @@ namespace Spartan
 			return;
 		
 		// Debug draw
-		if (m_renderer->Flags_IsSet(Render_Gizmo_Physics))
+		if (m_renderer->GetFlags() & Render_Gizmo_Physics)
 		{
 			m_world->debugDrawWorld();
 		}

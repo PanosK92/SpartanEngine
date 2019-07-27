@@ -77,12 +77,12 @@ namespace Spartan
 		const auto& GetTexture(const TextureType type) { return HasTexture(type) ? m_textures[type] : m_texture_empty; }
 		//==============================================================================================================
 
-		//= SHADER ===========================================================================
+		//= SHADER ====================================================================
 		void AcquireShader();
-		const std::shared_ptr<ShaderVariation>& GetOrCreateShader(unsigned long shader_flags);
+		std::shared_ptr<ShaderVariation> GetOrCreateShader(unsigned long shader_flags);
 		const auto& GetShader() const { return m_shader; }
 		auto HasShader()		const { return GetShader() != nullptr; }
-		//====================================================================================
+		//=============================================================================
 
 		//= CONSTANT BUFFER ===================================================
 		bool UpdateConstantBuffer();

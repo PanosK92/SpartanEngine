@@ -409,7 +409,7 @@ namespace Spartan
 			m_view,
 			m_projection,
 			m_entities[Renderable_Light],
-			Flags_IsSet(Render_PostProcess_SSR)
+			FlagEnabled(Render_PostProcess_SSR)
 		);
 
 		// Prepare resources
@@ -418,15 +418,15 @@ namespace Spartan
 		const vector<void*> constant_buffers	= { m_buffer_global->GetResource(),  shader_light->GetConstantBuffer()->GetResource() };
 		void* textures[] =
 		{
-			m_g_buffer_albedo->GetResource_Texture(),																		// Albedo	
-			m_g_buffer_normal->GetResource_Texture(),																		// Normal
-			m_g_buffer_depth->GetResource_Texture(),																		// Depth
-			m_g_buffer_material->GetResource_Texture(),																		// Material
-			tex_shadows->GetResource_Texture(),																				// Shadows
-			Flags_IsSet(Render_PostProcess_SSAO) ? tex_ssao->GetResource_Texture() : m_tex_white->GetResource_Texture(),	// SSAO
-			m_render_tex_full_light_previous->GetResource_Texture(),														// Previous frame
-			m_skybox ? m_skybox->GetTexture()->GetResource_Texture() : m_tex_white->GetResource_Texture(),					// Environment
-			m_tex_lut_ibl->GetResource_Texture()																			// LutIBL
+            m_g_buffer_albedo->GetResource_Texture(),																	// Albedo	
+            m_g_buffer_normal->GetResource_Texture(),																	// Normal
+            m_g_buffer_depth->GetResource_Texture(),																	// Depth
+            m_g_buffer_material->GetResource_Texture(),																	// Material
+            tex_shadows->GetResource_Texture(),																			// Shadows
+			FlagEnabled(Render_PostProcess_SSAO) ? tex_ssao->GetResource_Texture() : m_tex_white->GetResource_Texture(),	// SSAO
+			m_render_tex_full_light_previous->GetResource_Texture(),													// Previous frame
+			m_skybox ? m_skybox->GetTexture()->GetResource_Texture() : m_tex_white->GetResource_Texture(),				// Environment
+			m_tex_lut_ibl->GetResource_Texture()																		// LutIBL
 		};
 
 		// Setup command list
@@ -596,28 +596,28 @@ namespace Spartan
 		const auto swap_targets = [this, &tex_in, &tex_out]() { m_cmd_list->Submit(); tex_out.swap(tex_in); };
 
 		// TAA	
-		if (Flags_IsSet(Render_PostProcess_TAA))
+		if (FlagEnabled(Render_PostProcess_TAA))
 		{
 			Pass_TAA(tex_in, tex_out);
 			swap_targets();
 		}
 
 		// Bloom
-		if (Flags_IsSet(Render_PostProcess_Bloom))
+		if (FlagEnabled(Render_PostProcess_Bloom))
 		{
 			Pass_Bloom(tex_in, tex_out);
 			swap_targets();
 		}
 
 		// Motion Blur
-		if (Flags_IsSet(Render_PostProcess_MotionBlur))
+		if (FlagEnabled(Render_PostProcess_MotionBlur))
 		{
 			Pass_MotionBlur(tex_in, tex_out);
 			swap_targets();
 		}
 
 		// Dithering
-		if (Flags_IsSet(Render_PostProcess_Dithering))
+		if (FlagEnabled(Render_PostProcess_Dithering))
 		{
 			Pass_Dithering(tex_in, tex_out);
 			swap_targets();
@@ -631,21 +631,21 @@ namespace Spartan
 		}
 
 		// FXAA
-		if (Flags_IsSet(Render_PostProcess_FXAA))
+		if (FlagEnabled(Render_PostProcess_FXAA))
 		{
 			Pass_FXAA(tex_in, tex_out);
 			swap_targets();
 		}
 
 		// Sharpening
-		if (Flags_IsSet(Render_PostProcess_Sharpening))
+		if (FlagEnabled(Render_PostProcess_Sharpening))
 		{
 			Pass_Sharpening(tex_in, tex_out);
 			swap_targets();
 		}
 
 		// Chromatic aberration
-		if (Flags_IsSet(Render_PostProcess_ChromaticAberration))
+		if (FlagEnabled(Render_PostProcess_ChromaticAberration))
 		{
 			Pass_ChromaticAberration(tex_in, tex_out);
 			swap_targets();
@@ -1519,7 +1519,7 @@ namespace Spartan
 
 		if ((m_debug_buffer == RendererDebug_SSAO))
 		{
-			if (Flags_IsSet(Render_PostProcess_SSAO))
+			if (m_flags & Render_PostProcess_SSAO)
 			{
 				m_cmd_list->SetTexture(0, m_render_tex_full_ssao);
 			}

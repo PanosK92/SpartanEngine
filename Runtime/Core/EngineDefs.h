@@ -58,25 +58,15 @@ constexpr auto engine_version = "v0.31 WIP";
 
 namespace Spartan
 {
-	template <typename T>
-	constexpr void safe_delete(T& ptr)
-	{
-		if (ptr)
-		{
-			delete ptr;
-			ptr = nullptr;
-		}
-	}
-
-	template <typename T>
-	constexpr void safe_release(T& ptr)
-	{
-		if (ptr)
-		{
-			ptr->Release();
-			ptr = nullptr;
-		}
-	}
+    template <typename T>
+    constexpr void safe_delete(T*& ptr)
+    {
+        if (ptr)
+        {
+            delete ptr;
+            ptr = nullptr;
+        }
+    }
 
 	template <typename T>
 	constexpr void safe_release(T* ptr)

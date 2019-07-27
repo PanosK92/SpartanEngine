@@ -207,26 +207,23 @@ namespace Spartan::D3D11_Common
 
 	namespace swap_chain
 	{
-		inline uint32_t validate_flags(RHI_Device* device, unsigned long flags)
+		inline uint32_t validate_flags(RHI_Device* device, uint32_t flags)
 		{
 			// If SwapChain_Allow_Tearing was requested
 			if (flags & Present_Immediate)
 			{
 				// Check if the adapter supports it, if not, disable it (tends to fail with Intel adapters)
-				if (D3D11_Common::CheckTearingSupport(device))
+				if (!D3D11_Common::CheckTearingSupport(device))
 				{
 					flags &= ~Present_Immediate;
-				}
-				else
-				{
-					LOG_WARNING("Present_Immediate was requested but it's not supported by the adapter.");
+                    LOG_WARNING("Present_Immediate was requested but it's not supported by the adapter.");
 				}
 			}
 
 			return flags;
 		}
 
-		inline UINT get_flags(unsigned long flags)
+		inline UINT get_flags(uint32_t flags)
 		{
 			UINT d3d11_flags = 0;
 

@@ -46,7 +46,7 @@ namespace Spartan
 		m_query_end		= nullptr;
 	}
 
-	void TimeBlock::Start(const string& name, bool profile_cpu /*= false*/, bool profile_gpu /*= false*/, const TimeBlock* parent /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
+	void TimeBlock::Begin(const string& name, bool profile_cpu /*= false*/, bool profile_gpu /*= false*/, const TimeBlock* parent /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
 	{
 		m_name			= name;
 		m_parent		= parent;

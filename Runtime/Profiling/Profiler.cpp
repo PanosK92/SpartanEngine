@@ -93,7 +93,7 @@ namespace Spartan
             m_gpu_memory_used = m_renderer->GetRhiDevice()->ProfilingGetGpuMemoryUsage();
 
             // Create a string version of the rhi metrics
-            if (m_renderer->Flags_IsSet(Render_Gizmo_PerformanceMetrics))
+            if (m_renderer->GetFlags() & Render_Gizmo_PerformanceMetrics)
             {
                 UpdateRhiMetricsString();
             }
@@ -153,7 +153,7 @@ namespace Spartan
 		if (auto time_block = GetNextTimeBlock())
 		{
 			auto time_block_parent = GetSecondLastIncompleteTimeBlock();
-			time_block->Start(func_name, can_profile_cpu, can_profile_gpu, time_block_parent, m_renderer->GetRhiDevice());
+			time_block->Begin(func_name, can_profile_cpu, can_profile_gpu, time_block_parent, m_renderer->GetRhiDevice());
 		}
 
 		return true;
