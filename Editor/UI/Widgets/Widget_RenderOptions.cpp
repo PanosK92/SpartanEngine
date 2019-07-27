@@ -76,15 +76,15 @@ void Widget_RenderOptions::Tick()
         static vector<char*> types = { "Off", "ACES", "Reinhard", "Uncharted 2" };
         const char* type_char_ptr = types[static_cast<unsigned int>(m_renderer->m_tonemapping)];
 
-        auto do_bloom                   = m_renderer->Flags_IsSet(Render_PostProcess_Bloom);
-        auto do_fxaa                    = m_renderer->Flags_IsSet(Render_PostProcess_FXAA);
-        auto do_ssao                    = m_renderer->Flags_IsSet(Render_PostProcess_SSAO);
-        auto do_ssr                     = m_renderer->Flags_IsSet(Render_PostProcess_SSR);
-        auto do_taa                     = m_renderer->Flags_IsSet(Render_PostProcess_TAA);
-        auto do_motion_blur             = m_renderer->Flags_IsSet(Render_PostProcess_MotionBlur);
-        auto do_sharperning             = m_renderer->Flags_IsSet(Render_PostProcess_Sharpening);
-        auto do_chromatic_aberration    = m_renderer->Flags_IsSet(Render_PostProcess_ChromaticAberration);
-        auto do_dithering               = m_renderer->Flags_IsSet(Render_PostProcess_Dithering);
+        auto do_bloom                   = m_renderer->FlagEnabled(Render_PostProcess_Bloom);
+        auto do_fxaa                    = m_renderer->FlagEnabled(Render_PostProcess_FXAA);
+        auto do_ssao                    = m_renderer->FlagEnabled(Render_PostProcess_SSAO);
+        auto do_ssr                     = m_renderer->FlagEnabled(Render_PostProcess_SSR);
+        auto do_taa                     = m_renderer->FlagEnabled(Render_PostProcess_TAA);
+        auto do_motion_blur             = m_renderer->FlagEnabled(Render_PostProcess_MotionBlur);
+        auto do_sharperning             = m_renderer->FlagEnabled(Render_PostProcess_Sharpening);
+        auto do_chromatic_aberration    = m_renderer->FlagEnabled(Render_PostProcess_ChromaticAberration);
+        auto do_dithering               = m_renderer->FlagEnabled(Render_PostProcess_Dithering);
         auto resolution_shadow          = static_cast<int>(m_renderer->GetShadowResolution());
 
         // Display
@@ -157,18 +157,19 @@ void Widget_RenderOptions::Tick()
         m_renderer->m_sharpen_clamp             = Abs(m_renderer->m_sharpen_clamp);
         m_renderer->m_motion_blur_strength      = Abs(m_renderer->m_motion_blur_strength);
         m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
+       
+        #define set_flag_if(flag, value) value? m_renderer->EnableFlag(flag) : m_renderer->DisableFlag(flag)
 
         // Map back to engine
-#define SET_FLAG_IF(flag, value) value	? m_renderer->Flags_Enable(flag) : m_renderer->Flags_Disable(flag)
-        SET_FLAG_IF(Render_PostProcess_Bloom, do_bloom);
-        SET_FLAG_IF(Render_PostProcess_FXAA, do_fxaa);
-        SET_FLAG_IF(Render_PostProcess_SSAO, do_ssao);
-        SET_FLAG_IF(Render_PostProcess_SSR, do_ssr);
-        SET_FLAG_IF(Render_PostProcess_TAA, do_taa);
-        SET_FLAG_IF(Render_PostProcess_MotionBlur, do_motion_blur);
-        SET_FLAG_IF(Render_PostProcess_Sharpening, do_sharperning);
-        SET_FLAG_IF(Render_PostProcess_ChromaticAberration, do_chromatic_aberration);
-        SET_FLAG_IF(Render_PostProcess_Dithering, do_dithering);
+        set_flag_if(Render_PostProcess_Bloom,               do_bloom);
+        set_flag_if(Render_PostProcess_FXAA,                do_fxaa);
+        set_flag_if(Render_PostProcess_SSAO,                do_ssao);
+        set_flag_if(Render_PostProcess_SSR,                 do_ssr);
+        set_flag_if(Render_PostProcess_TAA,                 do_taa);
+        set_flag_if(Render_PostProcess_MotionBlur,          do_motion_blur);
+        set_flag_if(Render_PostProcess_Sharpening,          do_sharperning);
+        set_flag_if(Render_PostProcess_ChromaticAberration, do_chromatic_aberration);
+        set_flag_if(Render_PostProcess_Dithering,           do_dithering);
     }
 
     if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_None))
@@ -225,12 +226,12 @@ void Widget_RenderOptions::Tick()
         // Performance metrics
         ImGui::Checkbox("Performance Metrics", &_RenderOptions::g_gizmo_performance_metrics);
 
-        _RenderOptions::g_gizmo_transform           ? m_renderer->Flags_Enable(Render_Gizmo_Transform)          : m_renderer->Flags_Disable(Render_Gizmo_Transform);
-        _RenderOptions::g_gizmo_physics             ? m_renderer->Flags_Enable(Render_Gizmo_Physics)            : m_renderer->Flags_Disable(Render_Gizmo_Physics);
-        _RenderOptions::g_gizmo_aabb                ? m_renderer->Flags_Enable(Render_Gizmo_AABB)               : m_renderer->Flags_Disable(Render_Gizmo_AABB);
-        _RenderOptions::g_gizmo_light               ? m_renderer->Flags_Enable(Render_Gizmo_Lights)             : m_renderer->Flags_Disable(Render_Gizmo_Lights);
-        _RenderOptions::g_gizmo_picking_ray         ? m_renderer->Flags_Enable(Render_Gizmo_PickingRay)         : m_renderer->Flags_Disable(Render_Gizmo_PickingRay);
-        _RenderOptions::g_gizmo_grid                ? m_renderer->Flags_Enable(Render_Gizmo_Grid)               : m_renderer->Flags_Disable(Render_Gizmo_Grid);
-        _RenderOptions::g_gizmo_performance_metrics ? m_renderer->Flags_Enable(Render_Gizmo_PerformanceMetrics) : m_renderer->Flags_Disable(Render_Gizmo_PerformanceMetrics);
+        set_flag_if(Render_Gizmo_Transform,             _RenderOptions::g_gizmo_transform);
+        set_flag_if(Render_Gizmo_Physics,               _RenderOptions::g_gizmo_physics); 
+        set_flag_if(Render_Gizmo_AABB,                  _RenderOptions::g_gizmo_aabb);
+        set_flag_if(Render_Gizmo_Lights,                _RenderOptions::g_gizmo_light);
+        set_flag_if(Render_Gizmo_PickingRay,            _RenderOptions::g_gizmo_picking_ray);
+        set_flag_if(Render_Gizmo_Grid,                  _RenderOptions::g_gizmo_grid);
+        set_flag_if(Render_Gizmo_PerformanceMetrics,    _RenderOptions::g_gizmo_performance_metrics);
     }
 }

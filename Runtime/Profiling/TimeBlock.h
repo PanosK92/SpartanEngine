@@ -37,7 +37,7 @@ namespace Spartan
 		TimeBlock() = default;
 		~TimeBlock();
 
-		void Start(const std::string& name, bool profile_cpu = false, bool profile_gpu = false, const TimeBlock* parent = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
+		void Begin(const std::string& name, bool profile_cpu = false, bool profile_gpu = false, const TimeBlock* parent = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
 		void End(const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
 		void OnFrameEnd(const std::shared_ptr<RHI_Device>& rhi_device);
 		void Clear();
@@ -55,9 +55,9 @@ namespace Spartan
 		static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
 
 		std::string m_name;
-		RHI_Device* m_rhi_device;
-		bool m_has_started	= false;
-		bool m_is_complete	= false;
+		RHI_Device* m_rhi_device    = nullptr;
+        bool m_has_started          = false;
+        bool m_is_complete          = false;
 
 		// Hierarchy
 		const TimeBlock* m_parent	= nullptr;

@@ -570,7 +570,7 @@ namespace Spartan
 			m_projection	= m_camera->GetProjectionMatrix();
 
 			// TAA - Generate jitter
-			if (Flags_IsSet(Render_PostProcess_TAA))
+			if (FlagEnabled(Render_PostProcess_TAA))
 			{
 				m_taa_jitter_previous = m_taa_jitter;
 

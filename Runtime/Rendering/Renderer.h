@@ -55,24 +55,24 @@ namespace Spartan
 		class Frustum;
 	}
 
-	enum Renderer_Option : unsigned long
+	enum Renderer_Option : uint32_t
 	{
-		Render_Gizmo_AABB						= 1UL << 0,
-		Render_Gizmo_PickingRay					= 1UL << 1,
-		Render_Gizmo_Grid						= 1UL << 2,
-		Render_Gizmo_Transform					= 1UL << 3,
-		Render_Gizmo_Lights						= 1UL << 4,
-		Render_Gizmo_PerformanceMetrics			= 1UL << 5,
-		Render_Gizmo_Physics					= 1UL << 6,
-		Render_PostProcess_Bloom				= 1UL << 7,
-		Render_PostProcess_FXAA					= 1UL << 8,
-		Render_PostProcess_SSAO					= 1UL << 9,
-		Render_PostProcess_SSR					= 1UL << 10,
-		Render_PostProcess_TAA					= 1UL << 11,
-		Render_PostProcess_MotionBlur			= 1UL << 12,
-		Render_PostProcess_Sharpening			= 1UL << 13,
-		Render_PostProcess_ChromaticAberration	= 1UL << 14,
-		Render_PostProcess_Dithering			= 1UL << 15
+		Render_Gizmo_AABB						= 1 << 0,
+		Render_Gizmo_PickingRay					= 1 << 1,
+		Render_Gizmo_Grid						= 1 << 2,
+		Render_Gizmo_Transform					= 1 << 3,
+		Render_Gizmo_Lights						= 1 << 4,
+		Render_Gizmo_PerformanceMetrics			= 1 << 5,
+		Render_Gizmo_Physics					= 1 << 6,
+		Render_PostProcess_Bloom				= 1 << 7,
+		Render_PostProcess_FXAA					= 1 << 8,
+		Render_PostProcess_SSAO					= 1 << 9,
+		Render_PostProcess_SSR					= 1 << 10,
+		Render_PostProcess_TAA					= 1 << 11,
+		Render_PostProcess_MotionBlur			= 1 << 12,
+		Render_PostProcess_Sharpening			= 1 << 13,
+		Render_PostProcess_ChromaticAberration	= 1 << 14,
+		Render_PostProcess_Dithering			= 1 << 15
 	};
 
 	enum RendererDebug_Buffer
@@ -150,15 +150,6 @@ namespace Spartan
 		void Tick(float delta_time) override;
 		//===================================
 
-		//= RENDER MODE ==============================================================
-		// Enables an render mode flag
-		void Flags_Enable(const Renderer_Option flag)		{ m_flags |= flag; }
-		// Removes an render mode flag
-		void Flags_Disable(const Renderer_Option flag)		{ m_flags &= ~flag; }
-		// Returns whether render mode flag is set
-		bool Flags_IsSet(const Renderer_Option flag) const	{ return m_flags & flag; }
-		//============================================================================
-
 		//= LINE RENDERING ============================================================================================================================================================
 		#define DebugColor Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
 		void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DebugColor, const Math::Vector4& color_to = DebugColor, bool depth = true);
@@ -208,6 +199,10 @@ namespace Spartan
         void SetShadowResolution(uint32_t resolution);
         auto GetAnisotropy()                            { return m_anisotropy; }
         void SetAnisotropy(uint32_t anisotropy);
+        auto GetFlags()                                 { return m_flags; }
+        void EnableFlag(Renderer_Option flag)           { m_flags |= flag; };
+        void DisableFlag(Renderer_Option flag)          { m_flags &= ~flag; };
+        bool FlagEnabled(Renderer_Option flag)          { return m_flags & flag; }
 		//======================================================================================================================
 
         //= Graphics Settings ====================================================================================================================================================
@@ -372,7 +367,7 @@ namespace Spartan
 		Math::Vector2 m_taa_jitter;
 		Math::Vector2 m_taa_jitter_previous;
 		RendererDebug_Buffer m_debug_buffer = RendererDebug_None;
-		unsigned long m_flags               = 0;
+		uint32_t m_flags                    = 0;
 		bool m_initialized                  = false;
         bool m_reverse_z                    = true;
         uint32_t m_resolution_shadow        = 4096;

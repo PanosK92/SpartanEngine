@@ -286,8 +286,7 @@ namespace Spartan
 		if (!query_object)
 			return;
 
-		auto query = static_cast<ID3D11Query*>(query_object);
-		query->Release();
+		safe_release(static_cast<ID3D11Query*>(query_object));
 	}
 
 	uint32_t RHI_Device::ProfilingGetGpuMemory()

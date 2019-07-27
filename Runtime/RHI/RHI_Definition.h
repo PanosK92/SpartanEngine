@@ -52,21 +52,21 @@ namespace Spartan
 	struct RHI_Vertex_PosUvCol;
 	struct RHI_Vertex_PosTexNorTan;
 
-	enum RHI_Present_Mode
+	enum RHI_Present_Mode : uint32_t
 	{
-		Present_Immediate,
-		Present_Mailbox,
-		Present_Fifo,
-		Present_Relaxed,
-		Present_SharedDemandRefresh,
-		Present_SharedDContinuousRefresh,
+		Present_Immediate                   = 1 << 0,
+		Present_Mailbox                     = 1 << 1,
+		Present_Fifo                        = 1 << 2,
+		Present_Relaxed                     = 1 << 3,
+		Present_SharedDemandRefresh         = 1 << 4,
+		Present_SharedDContinuousRefresh    = 1 << 5,
 
         // Find a way to remove those legacy D3D11 only flags
-        Swap_Discard,
-        Swap_Sequential,
-        Swap_Flip_Sequential,
-        Swap_Flip_Discard,
-        SwapChain_Allow_Mode_Switch
+        Swap_Discard                = 1 << 6,
+        Swap_Sequential             = 1 << 7,
+        Swap_Flip_Sequential        = 1 << 8,
+        Swap_Flip_Discard           = 1 << 9,
+        SwapChain_Allow_Mode_Switch = 1 << 10
 	};
 
 	enum RHI_Query_Type
