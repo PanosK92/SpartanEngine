@@ -114,8 +114,8 @@ namespace Spartan
                 static_cast<uint32_t>(m_context->m_engine->GetWindowWidth()),
                 static_cast<uint32_t>(m_context->m_engine->GetWindowHeight()),
                 Format_R8G8B8A8_UNORM,
-                Present_Immediate,
-                2
+                2,
+                Present_Immediate | Swap_Flip_Discard
             );
 
             if (!m_swap_chain->IsInitialized())

@@ -39,71 +39,10 @@ using namespace FMOD;
 
 namespace Spartan
 {
-	Audio::Audio(Context* context) : ISubsystem(context)
-	{
-		m_profiler = m_context->GetSubsystem<Profiler>().get();
+    Audio::Audio(Context* context) : ISubsystem(context)
+    {
 
-		// Create FMOD instance
-		m_result_fmod = System_Create(&m_system_fmod);
-		if (m_result_fmod != FMOD_OK)
-		{
-			LogErrorFmod(m_result_fmod);
-			return;
-		}
-
-		// Check FMOD version
-		uint32_t version;
-		m_result_fmod = m_system_fmod->getVersion(&version);
-		if (m_result_fmod != FMOD_OK)
-		{
-			LogErrorFmod(m_result_fmod);
-			return;
-		}
-
-		if (version < FMOD_VERSION)
-		{
-			LogErrorFmod(m_result_fmod);
-			return;
-		}
-
-		// Make sure there is a sound card devices on the machine
-		auto driver_count = 0;
-		m_result_fmod = m_system_fmod->getNumDrivers(&driver_count);
-		if (m_result_fmod != FMOD_OK)
-		{
-			LogErrorFmod(m_result_fmod);
-			return;
-		}
-
-		// Initialize FMOD
-		m_result_fmod = m_system_fmod->init(m_max_channels, FMOD_INIT_NORMAL, nullptr);
-		if (m_result_fmod != FMOD_OK)
-		{
-			LogErrorFmod(m_result_fmod);
-			return;
-		}
-
-		// Set 3D settings
-		m_result_fmod = m_system_fmod->set3DSettings(1.0, m_distance_entity, 0.0f);
-		if (m_result_fmod != FMOD_OK)
-		{
-			LogErrorFmod(m_result_fmod);
-			return;
-		}
-
-		m_initialized = true;
-
-		// Get version
-		stringstream ss;
-		ss << hex << version;
-		const auto major	= ss.str().erase(1, 4);
-		const auto minor	= ss.str().erase(0, 1).erase(2, 2);
-		const auto rev		= ss.str().erase(0, 3);
-        m_context->GetSubsystem<Settings>()->m_versionFMOD = major + "." + minor + "." + rev;
-
-		// Subscribe to events
-		SUBSCRIBE_TO_EVENT(Event_World_Unload, [this](Variant) { m_listener = nullptr; });
-	}
+    }
 
 	Audio::~Audio()
 	{
@@ -128,6 +67,75 @@ namespace Spartan
 			LogErrorFmod(m_result_fmod);
 		}
 	}
+
+    bool Audio::Initialize()
+    {
+        // Create FMOD instance
+        m_result_fmod = System_Create(&m_system_fmod);
+        if (m_result_fmod != FMOD_OK)
+        {
+            LogErrorFmod(m_result_fmod);
+            return false;
+        }
+
+        // Check FMOD version
+        uint32_t version;
+        m_result_fmod = m_system_fmod->getVersion(&version);
+        if (m_result_fmod != FMOD_OK)
+        {
+            LogErrorFmod(m_result_fmod);
+            return false;
+        }
+
+        if (version < FMOD_VERSION)
+        {
+            LogErrorFmod(m_result_fmod);
+            return false;
+        }
+
+        // Make sure there is a sound card devices on the machine
+        auto driver_count = 0;
+        m_result_fmod = m_system_fmod->getNumDrivers(&driver_count);
+        if (m_result_fmod != FMOD_OK)
+        {
+            LogErrorFmod(m_result_fmod);
+            return false;
+        }
+
+        // Initialize FMOD
+        m_result_fmod = m_system_fmod->init(m_max_channels, FMOD_INIT_NORMAL, nullptr);
+        if (m_result_fmod != FMOD_OK)
+        {
+            LogErrorFmod(m_result_fmod);
+            return false;
+        }
+
+        // Set 3D settings
+        m_result_fmod = m_system_fmod->set3DSettings(1.0, m_distance_entity, 0.0f);
+        if (m_result_fmod != FMOD_OK)
+        {
+            LogErrorFmod(m_result_fmod);
+            return false;
+        }
+
+        m_initialized = true;
+
+        // Get version
+        stringstream ss;
+        ss << hex << version;
+        const auto major = ss.str().erase(1, 4);
+        const auto minor = ss.str().erase(0, 1).erase(2, 2);
+        const auto rev = ss.str().erase(0, 3);
+        m_context->GetSubsystem<Settings>()->m_versionFMOD = major + "." + minor + "." + rev;
+
+        // Get dependencies
+        m_profiler = m_context->GetSubsystem<Profiler>().get();
+
+        // Subscribe to events
+        SUBSCRIBE_TO_EVENT(Event_World_Unload, [this](Variant) { m_listener = nullptr; });
+   
+        return true;
+    }
 
 	void Audio::Tick(float delta_time)
 	{
@@ -175,7 +183,7 @@ namespace Spartan
 		TIME_BLOCK_END(m_profiler);
 	}
 
-	void Audio::SetListenerTransform(Transform* transform)
+    void Audio::SetListenerTransform(Transform* transform)
 	{
 		m_listener = transform;
 	}

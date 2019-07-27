@@ -59,21 +59,14 @@ namespace Spartan
 		Present_Fifo,
 		Present_Relaxed,
 		Present_SharedDemandRefresh,
-		Present_SharedDContinuousRefresh
-	};
+		Present_SharedDContinuousRefresh,
 
-	enum RHI_Swap_Effect
-	{
-		Swap_Discard,
-		Swap_Sequential,
-		Swap_Flip_Sequential,
-		Swap_Flip_Discard
-	};
-
-	enum RHI_SwapChain_Flag
-	{
-		SwapChain_Allow_Mode_Switch,
-		SwapChain_Allow_Tearing
+        // Find a way to remove those legacy D3D11 only flags
+        Swap_Discard,
+        Swap_Sequential,
+        Swap_Flip_Sequential,
+        Swap_Flip_Discard,
+        SwapChain_Allow_Mode_Switch
 	};
 
 	enum RHI_Query_Type

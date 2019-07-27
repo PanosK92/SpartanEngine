@@ -41,10 +41,11 @@ namespace Spartan
 	class Audio : public ISubsystem
 	{
 	public:
-		Audio(Context* context);
+        Audio(Context* context);
 		~Audio();
 
         //= ISubsystem ======================
+        bool Initialize() override;
         void Tick(float delta_time) override;
         //===================================
 

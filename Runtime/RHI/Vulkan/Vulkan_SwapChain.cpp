@@ -121,7 +121,7 @@ namespace Spartan
             uint32_t height,
             uint32_t buffer_count,
             RHI_Format format,
-            RHI_Present_Mode present_mode,
+            uint32_t flags,
             void* window_handle,
             void* render_pass,
             void*& surface_out,
@@ -211,7 +211,7 @@ namespace Spartan
 
                 create_info.preTransform    = surface_support.capabilities.currentTransform;
                 create_info.compositeAlpha  = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-                create_info.presentMode     = choose_present_mode(static_cast<VkPresentModeKHR>(present_mode), surface_support.present_modes);
+                create_info.presentMode     = choose_present_mode(static_cast<VkPresentModeKHR>(flags), surface_support.present_modes);
                 create_info.clipped         = VK_TRUE;
                 create_info.oldSwapchain    = nullptr;
 
@@ -347,9 +347,9 @@ namespace Spartan
 		const std::shared_ptr<RHI_Device>& rhi_device,
 		const uint32_t width,
 		const uint32_t height,
-		const RHI_Format format				/*= Format_R8G8B8A8_UNORM */,
-		const RHI_Present_Mode present_mode	/*= Present_Off */,
-		const uint32_t buffer_count			/*= 1 */
+        const RHI_Format format		/*= Format_R8G8B8A8_UNORM */,
+        const uint32_t buffer_count	/*= 1 */,
+        const uint32_t flags		/*= Present_Immediate */
 	)
 	{
 		const auto hwnd = static_cast<HWND>(window_handle);
@@ -366,7 +366,7 @@ namespace Spartan
 		m_width			= width;
 		m_height		= height;
 		m_window_handle	= window_handle;
-		m_present_mode	= present_mode;
+        m_flags         = flags;
 
 		if (!CreateRenderPass())
 			return;
@@ -378,7 +378,7 @@ namespace Spartan
 			m_height,
 			m_buffer_count,
 			m_format,
-			m_present_mode,
+            m_flags,
 			m_window_handle,
 			m_render_pass,
 			m_surface,
@@ -437,7 +437,7 @@ namespace Spartan
 			m_height,
 			m_buffer_count,
 			m_format,
-			m_present_mode,
+			m_flags,
 			m_window_handle,
 			m_render_pass,
 			m_surface,

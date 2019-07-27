@@ -103,7 +103,7 @@ namespace Spartan
             // Using the D3D11_CREATE_DEVICE_DEBUG flag, requires the SDK to be installed, so try again without it
             if (result == DXGI_ERROR_SDK_COMPONENT_MISSING)
             {
-                LOG_WARNING("Failed to create device with D3D11_CREATE_DEVICE_DEBUG flag. Attempting to create device without a debug flag.");
+                LOGF_WARNING("Failed to create device with D3D11_CREATE_DEVICE_DEBUG flags as it requires the DirectX SDK to be installed. Attempting to create a device without it.");
                 device_flags &= ~D3D11_CREATE_DEVICE_DEBUG;
                 result = create_device();
             }
@@ -294,10 +294,11 @@ namespace Spartan
 	{
 		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primaryAdapter->data))
 		{
-			DXGI_ADAPTER_DESC adapter_desc;
-			if (FAILED(adapter->GetDesc(&adapter_desc)))
+            DXGI_ADAPTER_DESC adapter_desc = {};
+            auto result = adapter->GetDesc(&adapter_desc);
+			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to get adapter description");
+                LOGF_ERROR("Failed to get adapter description, %s", D3D11_Common::dxgi_error_to_string(result));
 				return 0;
 			}
 			return static_cast<uint32_t>(adapter_desc.DedicatedVideoMemory / 1024 / 1024); // convert to MBs
@@ -310,9 +311,10 @@ namespace Spartan
 		if (auto adapter = static_cast<IDXGIAdapter3*>(m_primaryAdapter->data))
 		{
 			DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
-			if (FAILED(adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info)))
+            auto result = adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info);
+			if (FAILED(result))
 			{
-				LOG_ERROR("Failed to get adapter memory info");
+                LOGF_ERROR("Failed to get adapter memory info, %s", D3D11_Common::dxgi_error_to_string(result));
 				return 0;
 			}
 			return static_cast<uint32_t>(info.CurrentUsage / 1024 / 1024); // convert to MBs

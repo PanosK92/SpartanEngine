@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ISubsystem.h"
 //=============================
 
+//= FORWARD DECLARATIONS =
 class asIScriptObject;
 class asIScriptFunction;
 class asIScriptEngine;
@@ -35,6 +36,7 @@ class asIScriptModule;
 class CScriptBuilder;
 struct asSFuncPtr;
 struct asSMessageInfo;
+//========================
 
 namespace Spartan
 {
@@ -45,6 +47,10 @@ namespace Spartan
 	public:
 		Scripting(Context* context);
 		~Scripting();
+
+        //= Subsystem =============
+        bool Initialize() override;
+        //=========================
 
 		void Clear();
 		asIScriptEngine* GetAsIScriptEngine();
@@ -60,7 +66,7 @@ namespace Spartan
 		void DiscardModule(std::string moduleName);
 
 	private:
-		asIScriptEngine* m_scriptEngine;
+        asIScriptEngine* m_scriptEngine = nullptr;
 		std::vector<asIScriptContext*> m_contexts;
 
 		void LogExceptionInfo(asIScriptContext* ctx);

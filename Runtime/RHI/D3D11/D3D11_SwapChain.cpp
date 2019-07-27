@@ -43,9 +43,9 @@ namespace Spartan
 		const std::shared_ptr<RHI_Device>& device,
 		const uint32_t width,
 		const uint32_t height,
-		const  RHI_Format format			/*= Format_R8G8B8A8_UNORM*/,
-		const RHI_Present_Mode present_mode	/*= Present_Off */,
-		const uint32_t buffer_count			/*= 1 */
+		const RHI_Format format	    /*= Format_R8G8B8A8_UNORM*/,	
+		const uint32_t buffer_count	/*= 1 */,
+        const uint32_t flags	    /*= Present_Immediate */
 	)
 	{
 		const auto hwnd	= static_cast<HWND>(window_handle);
@@ -95,8 +95,7 @@ namespace Spartan
 		m_windowed		= true;
 		m_width			= width;
 		m_height		= height;
-		m_present_mode	= present_mode;
-		m_flags			= D3D11_Common::swap_chain::flag_filter(m_rhi_device.get(), SwapChain_Allow_Tearing);
+		m_flags			= D3D11_Common::swap_chain::validate_flags(m_rhi_device.get(), flags);
 
 		// Create swap chain
 		{
@@ -113,8 +112,8 @@ namespace Spartan
 			desc.Windowed						= m_windowed ? TRUE : FALSE;
 			desc.BufferDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 			desc.BufferDesc.Scaling				= DXGI_MODE_SCALING_UNSPECIFIED;
-			desc.SwapEffect						= D3D11_Common::swap_chain::swap_effect_filter(m_rhi_device.get(), Swap_Flip_Discard);	// Todo, pick whatever emulates Vulkan more closely
-			desc.Flags							= D3D11_Common::swap_chain::flag_to_d3d11(m_flags);										// Todo, pick whatever emulates Vulkan more closely
+			desc.SwapEffect						= D3D11_Common::swap_chain::get_swap_effect(m_rhi_device.get(), m_flags);
+			desc.Flags							= D3D11_Common::swap_chain::get_flags(m_flags);
 
 			auto swap_chain		= static_cast<IDXGISwapChain*>(m_swap_chain_view);
 			const auto result	= dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, &swap_chain);
@@ -218,7 +217,7 @@ namespace Spartan
 		}
 	
 		// Resize swapchain buffers
-		const UINT d3d11_flags = D3D11_Common::swap_chain::flag_to_d3d11(D3D11_Common::swap_chain::flag_filter(m_rhi_device.get(), m_flags));
+		const UINT d3d11_flags = D3D11_Common::swap_chain::get_flags(D3D11_Common::swap_chain::validate_flags(m_rhi_device.get(), m_flags));
 		auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
 		if (FAILED(result))
 		{
@@ -256,11 +255,20 @@ namespace Spartan
 			return false;
 		}
 
-		const bool tearing_allowed	= m_flags & SwapChain_Allow_Tearing;
-		const UINT flags			= (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
-		auto ptr_swap_chain			= static_cast<IDXGISwapChain*>(m_swap_chain_view);
+        // Build flags
+		const bool tearing_allowed	= m_flags & Present_Immediate;
+        const UINT sync_interval    = tearing_allowed ? 0 : 1; // sync interval can go up to 4, so this could be improved
+		const UINT flags			= (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;	
 
-		ptr_swap_chain->Present(static_cast<UINT>(m_present_mode), flags);
+        // Present
+        auto ptr_swap_chain = static_cast<IDXGISwapChain*>(m_swap_chain_view);
+		auto result = ptr_swap_chain->Present(sync_interval, flags);
+        if (FAILED(result))
+        {
+            LOGF_ERROR("Failed to present, %s.", D3D11_Common::dxgi_error_to_string(result));
+            return false;
+        }
+
 		return true;
 	}
 }

@@ -40,17 +40,10 @@ using namespace std;
 using namespace Spartan::Math;
 //=============================
 
-static const int MAX_SOLVER_ITERATIONS	= 256;
-static const float INTERNAL_FPS			= 60.0f;
-static const Vector3 GRAVITY			= Vector3(0.0f, -9.81f, 0.0f);
-
 namespace Spartan
 { 
 	Physics::Physics(Context* context) : ISubsystem(context)
 	{
-		m_max_sub_steps	= 1;
-		m_simulating	= false;
-		
 		// Create physics objects
 		m_broadphase				= new btDbvtBroadphase();
 		m_collision_configuration	= new btDefaultCollisionConfiguration();
@@ -59,15 +52,10 @@ namespace Spartan
 		m_world						= new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
 
 		// Setup world
-		m_world->setGravity(ToBtVector3(GRAVITY));
+		m_world->setGravity(ToBtVector3(m_gravity));
 		m_world->getDispatchInfo().m_useContinuous	= true;
 		m_world->getSolverInfo().m_splitImpulse		= false;
-		m_world->getSolverInfo().m_numIterations	= MAX_SOLVER_ITERATIONS;
-		
-		// Get version
-		const auto major = to_string(btGetVersion() / 100);
-		const auto minor = to_string(btGetVersion()).erase(0, 1);
-        m_context->GetSubsystem<Settings>()->m_versionBullet = major + "." + minor;
+		m_world->getSolverInfo().m_numIterations	= m_max_solve_iterations;
 	}
 
 	Physics::~Physics()
@@ -82,8 +70,14 @@ namespace Spartan
 
 	bool Physics::Initialize()
 	{
+        // Get dependencies
 		m_renderer = m_context->GetSubsystem<Renderer>().get();
 		m_profiler = m_context->GetSubsystem<Profiler>().get();
+
+        // Get version
+        const auto major = to_string(btGetVersion() / 100);
+        const auto minor = to_string(btGetVersion()).erase(0, 1);
+        m_context->GetSubsystem<Settings>()->m_versionBullet = major + "." + minor;
 
 		// Enabled debug drawing
 		m_debug_draw = new PhysicsDebugDraw(m_renderer);
@@ -110,8 +104,8 @@ namespace Spartan
 		TIME_BLOCK_START_CPU(m_profiler);
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
-		auto internal_time_step	= 1.0f / INTERNAL_FPS;
-		auto max_substeps		= static_cast<int>(delta_time_sec * INTERNAL_FPS) + 1;
+		auto internal_time_step	= 1.0f / m_internal_fps;
+		auto max_substeps		= static_cast<int>(delta_time_sec * m_internal_fps) + 1;
 		if (m_max_sub_steps < 0)
 		{
 			internal_time_step	= delta_time_sec;

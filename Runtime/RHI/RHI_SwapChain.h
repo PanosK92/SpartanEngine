@@ -40,9 +40,9 @@ namespace Spartan
 			const std::shared_ptr<RHI_Device>& rhi_device,
 			uint32_t width,
 			uint32_t height,
-			RHI_Format format				= Format_R8G8B8A8_UNORM,
-			RHI_Present_Mode present_mode	= Present_Immediate,
-			uint32_t buffer_count			= 1
+			RHI_Format format		= Format_R8G8B8A8_UNORM,       
+			uint32_t buffer_count	= 1,
+            uint32_t flags          = Present_Immediate
 		);
 		~RHI_SwapChain();
 
@@ -66,15 +66,14 @@ namespace Spartan
 		bool CreateRenderPass();
 
         // Properties
-		bool m_initialized					= false;
-		bool m_windowed						= false;
-		uint32_t m_buffer_count				= 0;		
-		uint32_t m_max_resolution			= 16384;
-		uint32_t m_width					= 0;
-		uint32_t m_height					= 0;
-		uint32_t m_flags					= 0;
-		RHI_Format m_format					= Format_R8G8B8A8_UNORM;
-		RHI_Present_Mode m_present_mode		= Present_Immediate;
+		bool m_initialized			= false;
+		bool m_windowed				= false;
+		uint32_t m_buffer_count		= 0;		
+		uint32_t m_max_resolution	= 16384;
+		uint32_t m_width			= 0;
+		uint32_t m_height			= 0;
+		uint32_t m_flags			= 0;
+		RHI_Format m_format			= Format_R8G8B8A8_UNORM;
 		
 		// API
 		std::shared_ptr<RHI_Device> m_rhi_device;

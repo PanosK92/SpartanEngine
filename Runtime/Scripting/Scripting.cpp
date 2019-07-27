@@ -34,31 +34,6 @@ namespace Spartan
 {
 	Scripting::Scripting(Context* context) : ISubsystem(context)
 	{
-		m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-		if (!m_scriptEngine)
-		{
-			LOG_ERROR("Failed to create AngelScript engine");
-			return;
-		}
-
-		// Register the string type
-		RegisterStdString(m_scriptEngine);
-
-		// Register engine script interface
-		auto scriptInterface = make_shared<ScriptInterface>();
-		scriptInterface->Register(m_scriptEngine, m_context);
-
-		// Set the message callback to print the human readable messages that the engine gives in case of errors
-		m_scriptEngine->SetMessageCallback(asMETHOD(Scripting, message_callback), this, asCALL_THISCALL);
-
-		m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
-
-		// Get version
-		string major	= to_string(ANGELSCRIPT_VERSION).erase(1, 4);
-		string minor	= to_string(ANGELSCRIPT_VERSION).erase(0, 1).erase(2, 2);
-		string rev		= to_string(ANGELSCRIPT_VERSION).erase(0, 3);
-        m_context->GetSubsystem<Settings>()->m_versionAngelScript = major + "." + minor + "." + rev;
-
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Unload, EVENT_HANDLER(Clear));
 	}
@@ -74,7 +49,37 @@ namespace Spartan
 		}
 	}
 
-	void Scripting::Clear()
+    bool Scripting::Initialize()
+    {
+        m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+        if (!m_scriptEngine)
+        {
+            LOG_ERROR("Failed to create AngelScript engine");
+            return false;
+        }
+
+        // Register the string type
+        RegisterStdString(m_scriptEngine);
+
+        // Register engine script interface
+        auto scriptInterface = make_shared<ScriptInterface>();
+        scriptInterface->Register(m_scriptEngine, m_context);
+
+        // Set the message callback to print the human readable messages that the engine gives in case of errors
+        m_scriptEngine->SetMessageCallback(asMETHOD(Scripting, message_callback), this, asCALL_THISCALL);
+
+        m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+
+        // Get version
+        string major = to_string(ANGELSCRIPT_VERSION).erase(1, 4);
+        string minor = to_string(ANGELSCRIPT_VERSION).erase(0, 1).erase(2, 2);
+        string rev = to_string(ANGELSCRIPT_VERSION).erase(0, 3);
+        m_context->GetSubsystem<Settings>()->m_versionAngelScript = major + "." + minor + "." + rev;
+
+        return true;
+    }
+
+    void Scripting::Clear()
 	{
 		for (auto& context : m_contexts)
 		{
