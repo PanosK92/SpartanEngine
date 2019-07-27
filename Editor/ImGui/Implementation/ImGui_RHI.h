@@ -352,8 +352,8 @@ namespace ImGui::RHI
 			static_cast<uint32_t>(viewport->Size.x),
 			static_cast<uint32_t>(viewport->Size.y),
 			Format_R8G8B8A8_UNORM,
-			Present_Immediate,
-			2
+			2,
+            Present_Immediate | Swap_Flip_Discard
 		);
 	}
 

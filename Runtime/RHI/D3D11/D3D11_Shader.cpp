@@ -161,9 +161,10 @@ namespace Spartan
 			if (type == Shader_Vertex)
 			{
 				ID3D11VertexShader* buffer_vertex = nullptr;
-				if (FAILED(d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, &buffer_vertex)))
+                result = d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, &buffer_vertex);
+				if (FAILED(result))
 				{
-					LOG_ERROR("Failed to create vertex shader.");
+                    LOGF_ERROR("Failed to create vertex shader, %s", D3D11_Common::dxgi_error_to_string(result));
 				}
 				shader_view = static_cast<void*>(buffer_vertex);
 
@@ -179,9 +180,10 @@ namespace Spartan
 			else if (type == Shader_Pixel)
 			{
 				ID3D11PixelShader* buffer_pixel = nullptr;
-				if (FAILED(d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, &buffer_pixel)))
+                result = d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, &buffer_pixel);
+				if (FAILED(result))
 				{
-					LOG_ERROR("Failed to create pixel shader.");
+					LOGF_ERROR("Failed to create pixel shader, %s", D3D11_Common::dxgi_error_to_string(result));
 				}
 				shader_view = static_cast<void*>(buffer_pixel);
 			}

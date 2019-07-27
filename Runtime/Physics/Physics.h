@@ -21,15 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ==================
 #include "../Core/ISubsystem.h"
-//============================
+#include "../Math/Vector3.h"
+//=============================
 
+//= FORWARD DECLARATIONS =============
 class btBroadphaseInterface;
 class btCollisionDispatcher;
 class btConstraintSolver;
 class btDefaultCollisionConfiguration;
 class btDiscreteDynamicsWorld;
+//====================================
 
 namespace Spartan
 {
@@ -47,27 +50,29 @@ namespace Spartan
 		//= Subsystem =======================
 		bool Initialize() override;
 		void Tick(float delta_time) override;
-		//====================================
+		//===================================
 	
-		Math::Vector3 GetGravity() const;
-		btDiscreteDynamicsWorld* GetWorld() const		{ return m_world; }
-		PhysicsDebugDraw* GetPhysicsDebugDraw() const	{ return m_debug_draw; }
-		bool IsSimulating() const						{ return m_simulating; }
+		Math::Vector3 GetGravity()  const;
+		auto GetWorld()             const { return m_world; }
+        auto GetPhysicsDebugDraw()  const { return m_debug_draw; }
+		bool IsSimulating()         const { return m_simulating; }
 
 	private:
-		btBroadphaseInterface* m_broadphase;
-		btCollisionDispatcher* m_dispatcher;
-		btConstraintSolver* m_constraint_solver;
-		btDefaultCollisionConfiguration* m_collision_configuration;
-		btDiscreteDynamicsWorld* m_world;
-		PhysicsDebugDraw* m_debug_draw;
+		btBroadphaseInterface* m_broadphase                         = nullptr;
+		btCollisionDispatcher* m_dispatcher                         = nullptr;
+		btConstraintSolver* m_constraint_solver                     = nullptr;
+		btDefaultCollisionConfiguration* m_collision_configuration  = nullptr;
+		btDiscreteDynamicsWorld* m_world                            = nullptr;
+		PhysicsDebugDraw* m_debug_draw                              = nullptr;
+        Renderer* m_renderer                                        = nullptr;
+        Profiler* m_profiler                                        = nullptr;
 
-		//= PROPERTIES =====
-		int m_max_sub_steps;
-		bool m_simulating;
-		//==================
-
-		Renderer* m_renderer;
-		Profiler* m_profiler;
+		//= PROPERTIES =================================================
+        int m_max_sub_steps         = 1;
+        int m_max_solve_iterations  = 256;
+        float m_internal_fps        = 60.0f;
+        Math::Vector3 m_gravity     = Math::Vector3(0.0f, -9.81f, 0.0f);
+        bool m_simulating           = false;
+		//==============================================================
 	};
 }
