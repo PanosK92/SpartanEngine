@@ -107,10 +107,12 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	float shadow = 1.0f;
 	if (shadow_enabled)
 	{
-		shadow 	= Shadow_Map(normal, depth_sample, position_world, bias, normal_bias, light);
-		shadow 	= min(shadow, occlusion);
-		light.intensity *= min(shadow, occlusion);
+		shadow = Shadow_Map(normal, depth_sample, position_world, bias, normal_bias, light);	
 	}
+
+	// Mix shadow with ssao and modulate light's intensity
+	shadow = min(shadow, occlusion);
+	light.intensity *= shadow;
 		
 	#if DIRECTIONAL
 		// Save shadows in the diffuse's alpha channel (used to modulate IBL later)
