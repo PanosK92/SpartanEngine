@@ -262,10 +262,13 @@ namespace Spartan
         // Final
 		m_render_tex_final = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
 
-		// Shadows & SSAO
+		// SSAO
 		m_render_tex_half_ssao	        = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);  // Raw
         m_render_tex_half_ssao_blurred	= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);  // Blurred
         m_render_tex_ssao	            = make_unique<RHI_Texture2D>(m_context, width, height, Format_R8_UNORM);          // Upscaled
+
+        // SSR
+        m_render_tex_ssr = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
 
 		// Quarter res
 		m_render_tex_quarter_blur1 = make_unique<RHI_Texture2D>(m_context, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
@@ -352,6 +355,11 @@ namespace Spartan
 		auto shader_ssao = make_shared<ShaderBuffered>(m_rhi_device);
 		shader_ssao->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSAO.hlsl");
 		m_shaders[Shader_Ssao_P] = shader_ssao;
+
+        // SSR
+        auto shader_ssr = make_shared<ShaderBuffered>(m_rhi_device);
+        shader_ssr->CompileAsync(m_context, Shader_Pixel, dir_shaders + "SSR.hlsl");
+        m_shaders[Shader_Ssr_P] = shader_ssr;
 
 		// Color
 		auto shader_color = make_shared<ShaderBuffered>(m_rhi_device);
