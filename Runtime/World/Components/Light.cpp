@@ -49,9 +49,7 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
-		m_color		    = Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_renderer      = m_context->GetSubsystem<Renderer>().get();
-        m_cast_shadows  = GetLightType() == LightType_Directional; // Only directional light shadows work without issues so far
+		m_renderer = m_context->GetSubsystem<Renderer>().get();
 	}
 
 	Light::~Light()
@@ -61,6 +59,8 @@ namespace Spartan
 
 	void Light::OnInitialize()
 	{
+        // Temp tweak because only directional light shadows work without issues so far
+        m_cast_shadows = GetLightType() == LightType_Directional;
 		CreateShadowMap(true);
 	}
 
