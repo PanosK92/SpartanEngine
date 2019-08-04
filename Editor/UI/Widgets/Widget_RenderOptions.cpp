@@ -54,6 +54,7 @@ namespace _RenderOptions
         "Depth",
         "SSAO",
         "SSR",
+        "Bloom",
         "Shadows"
     };
     static int debug_texture_selected_index = 0;

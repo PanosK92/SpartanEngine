@@ -1515,6 +1515,12 @@ namespace Spartan
             shader_type = Shader_DebugChannelRgbGammaCorrect_P;
         }
 
+        if (m_debug_buffer == Renderer_Buffer_Bloom)
+        {
+            texture     = m_render_tex_bloom.front();
+            shader_type = Shader_DebugChannelRgbGammaCorrect_P;
+        }
+
         if (m_debug_buffer == Renderer_Buffer_Shadows)
         {
             texture     = m_render_tex_light_diffuse;

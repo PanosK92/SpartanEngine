@@ -88,6 +88,7 @@ namespace Spartan
 		Renderer_Buffer_Depth,
 		Renderer_Buffer_SSAO,
         Renderer_Buffer_SSR,
+        Renderer_Buffer_Bloom,
         Renderer_Buffer_Shadows
 	};
 
