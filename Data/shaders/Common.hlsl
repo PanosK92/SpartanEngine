@@ -40,15 +40,16 @@ struct Material
 	float3 padding;
 	float emissive;
 	float3 F0;
-	float roughness_alpha;
 };
 
 struct Light
 {
-	float3 color;
-	float intensity;
-	float3 direction;
-	float padding;
+	float3	color;
+	float	intensity;
+	float3	position;
+	float	range;
+	float3	direction;
+    float 	angle;
 };
 
 /*------------------------------------------------------------------------------

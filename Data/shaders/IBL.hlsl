@@ -74,11 +74,12 @@ float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pix
 	kD 			*= 1.0f - material.metallic;	
 
 	// Diffuse
-	float3 irradiance	= tex_environment.SampleLevel(sampler_linear,  directionToSphereUV(normal), 8).rgb;
+	float3 irradiance	= abs(tex_environment.SampleLevel(sampler_linear,  directionToSphereUV(normal), 8).rgb);
 	float3 cDiffuse		= irradiance * material.albedo;
 
 	// Specular
-	float mipLevel 			= material.roughness_alpha * tex_maxMip;
+	float alpha 			= max(0.001f, material.roughness * material.roughness);
+	float mipLevel 			= alpha * tex_maxMip;
 	float3 prefilteredColor	= tex_environment.SampleLevel(sampler_trilinear,  directionToSphereUV(reflection), mipLevel).rgb;
 	float2 envBRDF  		= tex_lutIBL.Sample(sampler_linear, float2(NdV, material.roughness)).xy;
 	float3 cSpecular 		= prefilteredColor * (F * envBRDF.x + envBRDF.y);

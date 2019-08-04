@@ -162,5 +162,33 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	color = MotionBlur(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState);
 #endif
 
+#if DEBUG_NORMAL
+	float3 normal = sourceTexture.Sample(samplerState, texCoord).rgb;
+	normal = pack(normal);
+	color = float4(normal, 1.0f);
+#endif
+
+#if DEBUG_VELOCITY
+	float3 velocity = sourceTexture.Sample(samplerState, texCoord).rgb;
+	velocity = abs(velocity) * 20.0f;
+	color = float4(velocity, 1.0f);
+#endif
+
+#if DEBUG_R_CHANNEL
+	float r = sourceTexture.Sample(samplerState, texCoord).r;
+	color = float4(r, r, r, 1.0f);
+#endif
+
+#if DEBUG_A_CHANNEL
+	float a = sourceTexture.Sample(samplerState, texCoord).a;
+	color = float4(a, a, a, 1.0f);
+#endif
+
+#if DEBUG_RGB_CHANNEL_GAMMA_CORRECT
+	float3 rgb 	= sourceTexture.Sample(samplerState, texCoord).rgb;
+	rgb 		= gamma(rgb);
+	color 		= float4(rgb, 1.0f);
+#endif
+
     return color;
 }

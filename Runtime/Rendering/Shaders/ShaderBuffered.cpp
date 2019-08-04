@@ -19,50 +19,49 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// = INCLUDES ========
-#include "Common.hlsl"
-//====================
+//= INCLUDES ============================
+#include "ShaderBuffered.h"
+#include "../../RHI/RHI_ConstantBuffer.h"
+#include "../../Logging/Log.h"
+//=======================================
 
-Texture2D sourceTexture 	: register(t0);
-SamplerState samplerState 	: register(s0);
+//= NAMESPACES =====
+using namespace std;
+//==================
 
-struct VS_Output
+namespace Spartan
 {
-    float4 position : SV_POSITION;
-    float2 uv 		: TEXCOORD;
-};
+	ShaderBuffered::ShaderBuffered(const shared_ptr<RHI_Device>& rhi_device) : RHI_Shader(rhi_device)
+	{
 
-VS_Output mainVS(Vertex_PosUv input)
-{
-    VS_Output output;
-	
-    input.position.w 	= 1.0f;
-    output.position 	= mul(input.position, g_viewProjectionOrtho);
-    output.uv 			= input.uv;
-	
-    return output;
-}
+	}
 
-float4 mainPS(VS_Output input) : SV_TARGET
-{
-	float3 color = sourceTexture.Sample(samplerState, input.uv).rgb;
-	
-#if DEBUG_NORMAL
-	color = pack(color);
-#endif
+	bool ShaderBuffered::UpdateBuffer(void* data, uint32_t index) const
+	{
+		if (!data)
+		{
+			LOG_ERROR_INVALID_PARAMETER();
+			return false;
+		}
 
-#if DEBUG_VELOCITY
-	color = abs(color) * 20.0f;
-#endif
+		if (!m_buffers[index])
+		{
+			LOG_WARNING("Uninitialized buffer.");
+			return false;
+		}
 
-#if DEBUG_SSAO
-	color = float3(color.r, color.r, color.r);
-#endif
+		// Get a pointer of the buffer
+		auto result = false;
+		if (const auto buffer = m_buffers[index]->Map()) // Get buffer pointer
+		{
+			memcpy(buffer, data, m_buffers[index]->GetSize());	// Copy data
+			result = m_buffers[index]->Unmap();					// Unmap buffer
+		}
 
-#if DEBUG_DEPTH
-	float logDepth = color.r;
-	color = float3(logDepth, logDepth, logDepth);
-#endif
-
-    return float4(color, 1.0f);
+		if (!result)
+		{
+			LOG_ERROR("Failed to map buffer");
+		}
+		return result;
+	}
 }

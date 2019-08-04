@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
-#include "../Core/EngineDefs.h"
-#include "../World/Components/Light.h"
-#include "../World/Components/Transform.h"
-#include "../RHI/RHI_Shader.h"
-#include "../RHI/RHI_Texture.h"
-#include "../Math/Matrix.h"
-#include "../Math/Vector2.h"
-//========================================
+//= INCLUDES ================================
+#include "../../Core/EngineDefs.h"
+#include "../../World/Components/Light.h"
+#include "../../World/Components/Transform.h"
+#include "../../RHI/RHI_Shader.h"
+#include "../../RHI/RHI_Texture.h"
+#include "../../Math/Matrix.h"
+#include "../../Math/Vector2.h"
+//===========================================
 
 namespace Spartan
 {
@@ -154,36 +154,6 @@ namespace Spartan
 		float m_padding;
 		Math::Vector3 m_vector3B;
 		float m_padding2;
-	};
-
-	struct Struct_Transparency
-	{
-		Struct_Transparency(
-			const Math::Matrix& world,
-			const Math::Matrix& view,
-			const Math::Matrix& projection,
-			const Math::Vector4& color,
-			const Math::Vector3& cameraPos,
-			const Math::Vector3& lightDir,
-			float roughness = 0.0f
-		)
-		{
-			m_world = world;
-			m_wvp = world * view * projection;
-			m_color = color;
-			m_cameraPos = cameraPos;
-			m_lightDir = lightDir;
-			m_roughness = roughness;
-			m_padding = 0.0f;
-		}
-
-		Math::Matrix m_world;
-		Math::Matrix m_wvp;
-		Math::Vector4 m_color;
-		Math::Vector3 m_cameraPos;
-		float m_roughness;
-		Math::Vector3 m_lightDir;
-		float m_padding;
 	};
 
 	struct Struct_ShadowMapping

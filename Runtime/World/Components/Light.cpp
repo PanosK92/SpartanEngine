@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ============================
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
@@ -28,7 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
-//====================================
+#include "../../RHI/RHI_ConstantBuffer.h"
+//=======================================
 
 //= NAMESPACES ================
 using namespace Spartan::Math;
@@ -48,8 +49,9 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
-		m_color		= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_renderer	= m_context->GetSubsystem<Renderer>().get();
+		m_color		    = Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+		m_renderer      = m_context->GetSubsystem<Renderer>().get();
+        m_cast_shadows  = GetLightType() == LightType_Directional; // Only directional light shadows work without issues so far
 	}
 
 	Light::~Light()
@@ -261,7 +263,7 @@ namespace Spartan
 			float extent	= split * tan(camera->GetFovHorizontalRad() * 0.5f);
 
 			Vector3 box_center	= (camera_transform->GetPosition() + camera_transform->GetForward() * split * 0.5f) * GetViewMatrix(); // Transform to light space
-			Vector3 box_extent	= Vector3(extent); // don't rotate with light as this will introduce shadow shimmering
+			Vector3 box_extent	= Vector3(extent); // don't rotate with light as it will introduce shadow shimmering
 			Vector3 box_min		= box_center - box_extent;
 			Vector3 box_max		= box_center + box_extent;
 
@@ -317,4 +319,32 @@ namespace Spartan
 			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 1);
 		}
 	}
+
+    void Light::UpdateConstantBuffer()
+    {
+        // Has to match GBuffer.hlsl
+        if (!m_cb_light_gpu)
+        {
+            m_cb_light_gpu = make_shared<RHI_ConstantBuffer>(m_context->GetSubsystem<Renderer>()->GetRhiDevice());
+            m_cb_light_gpu->Create<CB_Light>();
+        }
+
+        // Update buffer
+        auto buffer = static_cast<CB_Light*>(m_cb_light_gpu->Map());
+
+        buffer->view_projection[0]  = GetViewMatrix() * GetProjectionMatrix(0);
+        buffer->view_projection[1]  = GetViewMatrix() * GetProjectionMatrix(1);
+        buffer->view_projection[2]  = GetViewMatrix() * GetProjectionMatrix(2);
+        buffer->color               = Vector3(m_color.x, m_color.y, m_color.z);
+        buffer->intensity           = GetIntensity();
+        buffer->position            = GetTransform()->GetPosition();
+        buffer->range               = GetRange();
+        buffer->direction           = GetDirection();
+        buffer->angle               = GetAngle();
+        buffer->bias                = GetBias();
+        buffer->normal_bias         = GetNormalBias();
+        buffer->shadow_enabled      = GetCastShadows();
+
+        m_cb_light_gpu->Unmap();
+    }
 }  

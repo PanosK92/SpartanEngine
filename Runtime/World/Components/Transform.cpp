@@ -66,7 +66,7 @@ namespace Spartan
 		stream->Write(m_rotationLocal);
 		stream->Write(m_scaleLocal);
 		stream->Write(m_lookAt);
-		stream->Write(m_parent ? m_parent->GetEntity_PtrRaw()->GetId() : NOT_ASSIGNED_HASH);
+		stream->Write(m_parent ? m_parent->GetEntity_PtrRaw()->GetId() : 0);
 	}
 
 	void Transform::Deserialize(FileStream* stream)
@@ -78,7 +78,7 @@ namespace Spartan
 		uint32_t parententity_id = 0;
 		stream->Read(&parententity_id);
 
-		if (parententity_id != NOT_ASSIGNED_HASH)
+		if (parententity_id != 0)
 		{
 			if (const auto parent = GetContext()->GetSubsystem<World>()->EntityGetById(parententity_id))
 			{

@@ -68,7 +68,7 @@ float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir, Texture2D tex_depth, Sampler
 
 float3 SSR(float3 position, float3 normal, float2 uv, float roughness, Texture2D tex_color, Texture2D tex_depth, SamplerState sampler_point_clamp)
 {
-	float noise_scale = 0.1f; // scale the noise down a bit for now as this using jitter needs a blur pass as well (for acceptable results)
+	float noise_scale = 0.01f; // scale the noise down a bit for now as this using jitter needs a blur pass as well (for acceptable results)
 	float3 jitter = float(randomize(uv) * 2.0f - 1.0f) * roughness * noise_scale;
 
 	// Convert everything to view space
@@ -81,5 +81,5 @@ float3 SSR(float3 position, float3 normal, float2 uv, float roughness, Texture2D
 	float2 edgeFactor 		= float2(1, 1) - pow(saturate(abs(reflection_uv - float2(0.5f, 0.5f)) * 2), 8);
 	float screenEdge 		= saturate(min(edgeFactor.x, edgeFactor.y));
 	
-	return tex_color.Sample(sampler_point_clamp, reflection_uv).rgb * screenEdge * (1.0f - roughness);
+	return tex_color.Sample(sampler_point_clamp, reflection_uv).rgb * screenEdge;
 }
