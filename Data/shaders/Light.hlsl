@@ -24,10 +24,9 @@ Texture2D tex_normal 					: register(t0);
 Texture2D tex_material 					: register(t1);
 Texture2D tex_depth 					: register(t2);
 Texture2D tex_ssao 						: register(t3);
-Texture2D tex_frame 					: register(t4);
-Texture2DArray light_depth_directional 	: register(t5);
-TextureCube light_depth_point 			: register(t6);
-Texture2D light_depth_spot 				: register(t7);
+Texture2DArray light_depth_directional 	: register(t4);
+TextureCube light_depth_point 			: register(t5);
+Texture2D light_depth_spot 				: register(t6);
 //=====================================================
 
 //= SAMPLERS ==============================================
@@ -56,8 +55,7 @@ cbuffer LightBuffer : register(b1)
 
 //= INCLUDES ================
 #include "Common.hlsl"       
-#include "BRDF.hlsl"         
-#include "SSR.hlsl"          
+#include "BRDF.hlsl"                 
 #include "ShadowMapping.hlsl"
 //===========================
 
@@ -115,7 +113,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	}
 		
 	#if DIRECTIONAL
-		// Save shadows in the alpha channel (can be used to modulate IBL later)
+		// Save shadows in the diffuse's alpha channel (used to modulate IBL later)
 		light_out.diffuse.a = shadow;
 	#endif
 	
@@ -160,7 +158,6 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	material.F0 				= lerp(0.04f, diffuse_color, material.metallic);
 
 	// Reflectance equation
-	float3 F = 0.0f;
 	if (light.intensity > 0.0f)
 	{
 		// Compute some stuff
@@ -174,6 +171,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		float3 radiance	= light.color * light.intensity * n_dot_l;
 
 		// BRDF components
+		float3 F 			= 0.0f;
 		float3 cDiffuse 	= BRDF_Diffuse(diffuse_color, material, n_dot_v, n_dot_l, v_dot_h);	
 		float3 cSpecular 	= BRDF_Specular(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, F);
 				
@@ -184,14 +182,11 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		
 		light_out.diffuse.rgb	= kD * cDiffuse * radiance;
 		light_out.specular.rgb	= cSpecular * radiance;
+		
+		// Save the amount of reflection in the specular's alpha channel (used to modulate IBL later)
+		light_out.specular.a = 1.0f - luminance(F);
 	}
 	
-	// SSR
-	if (g_ssr_enabled != 0.0f)
-	{
-		light_out.specular.rgb += SSR(position_world, normal, uv, material.roughness, tex_frame, tex_depth, sampler_point_clamp) * F;
-	}
-
 	// Emissive
 	light_out.specular.rgb += material.emissive * 20.0f;
 	

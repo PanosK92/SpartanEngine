@@ -53,6 +53,7 @@ namespace _RenderOptions
         "Velocity",
         "Depth",
         "SSAO",
+        "SSR",
         "Shadows"
     };
     static int debug_texture_selected_index = 0;

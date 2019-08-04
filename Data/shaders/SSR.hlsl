@@ -19,16 +19,33 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= INCLUDES =========
+#include "Common.hlsl"
+//====================
+
+//= TEXTURES ==========================
+Texture2D tex_normal 	: register(t0);
+Texture2D tex_depth  	: register(t1);
+Texture2D tex_material  : register(t2);
+Texture2D tex_frame  	: register(t3);
+//=====================================
+
+//= SAMPLERS ======================================
+SamplerState sampler_point_clamp 	: register(s0);
+SamplerState sampler_linear_clamp 	: register(s1);
+//=================================================
+
+
 static const int g_steps 					= 16;
 static const int g_binarySearchSteps 		= 8;
 static const float g_binarySearchThreshold 	= 0.01f;
 
-float2 SSR_BinarySearch(float3 ray_dir, inout float3 ray_pos, Texture2D tex_depth, SamplerState sampler_point_clamp)
+float2 SSR_BinarySearch(float3 ray_dir, inout float3 ray_pos)
 {
 	for (int i = 0; i < g_binarySearchSteps; i++)
 	{	
 		float2 ray_uv 		= project(ray_pos, g_projection);
-		float depth 		= get_linear_depth(tex_depth, sampler_point_clamp, ray_uv);
+		float depth 		= get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
 		float depth_delta 	= ray_pos.z - depth;
 
 		if (depth_delta <= 0.0f)
@@ -39,13 +56,13 @@ float2 SSR_BinarySearch(float3 ray_dir, inout float3 ray_pos, Texture2D tex_dept
 	}
 
 	float2 ray_uv 		= project(ray_pos, g_projection);
-	float depth_sample 	= get_linear_depth(tex_depth, sampler_point_clamp, ray_uv);
+	float depth_sample 	= get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
 	float depth_delta 	= ray_pos.z - depth_sample;
 
 	return abs(depth_delta) < g_binarySearchThreshold ? project(ray_pos, g_projection) : 0.0f;
 }
 
-float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir, Texture2D tex_depth, SamplerState sampler_point_clamp)
+float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir)
 {
 	for(int i = 0; i < g_steps; i++)
 	{
@@ -55,31 +72,38 @@ float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir, Texture2D tex_depth, Sampler
 
 		// Compute depth
 		float depth_current = ray_pos.z;
-		float depth_sampled = get_linear_depth(tex_depth, sampler_point_clamp, ray_uv);
+		float depth_sampled = get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
 		float depth_delta 	= ray_pos.z - depth_sampled;
 		
 		[branch]
 		if (depth_delta > 0.0f)
-			return SSR_BinarySearch(ray_dir, ray_pos, tex_depth, sampler_point_clamp);
+			return SSR_BinarySearch(ray_dir, ray_pos);
 	}
 
 	return 0.0f;
 }
 
-float3 SSR(float3 position, float3 normal, float2 uv, float roughness, Texture2D tex_color, Texture2D tex_depth, SamplerState sampler_point_clamp)
+float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-	float noise_scale = 0.01f; // scale the noise down a bit for now as this using jitter needs a blur pass as well (for acceptable results)
-	float3 jitter = float(randomize(uv) * 2.0f - 1.0f) * roughness * noise_scale;
+	// Sample textures and compute world position
+    float2 uv				= input.uv;
+	float3 normal 			= normal_decode(tex_normal.Sample(sampler_point_clamp, uv).xyz);	
+	float roughness 		= tex_material.Sample(sampler_point_clamp, uv).r;
+	float depth  			= tex_depth.Sample(sampler_point_clamp, uv).r;
+    float3 position_world 	= get_world_position_from_depth(depth, g_viewProjectionInv, uv);
+
+	float noise_scale 	= 0.01f; // scale the noise down a bit for now as this using jitter needs a blur pass as well (for acceptable results)
+	float3 jitter 		= float(randomize(uv) * 2.0f - 1.0f) * roughness * noise_scale;
 
 	// Convert everything to view space
-	float3 viewPos		= mul(float4(position, 1.0f), g_view).xyz;
+	float3 viewPos		= mul(float4(position_world, 1.0f), g_view).xyz;
 	float3 viewNormal	= normalize(mul(float4(normal, 0.0f), g_view).xyz);
 	float3 viewRayDir 	= normalize(reflect(viewPos, viewNormal) + jitter);
 	
 	float3 ray_pos 			= viewPos;
-	float2 reflection_uv 	= SSR_RayMarch(ray_pos, viewRayDir, tex_depth, sampler_point_clamp);
+	float2 reflection_uv 	= SSR_RayMarch(ray_pos, viewRayDir);
 	float2 edgeFactor 		= float2(1, 1) - pow(saturate(abs(reflection_uv - float2(0.5f, 0.5f)) * 2), 8);
 	float screenEdge 		= saturate(min(edgeFactor.x, edgeFactor.y));
 	
-	return tex_color.Sample(sampler_point_clamp, reflection_uv).rgb * screenEdge;
+	return tex_frame.Sample(sampler_linear_clamp, reflection_uv) * screenEdge;
 }

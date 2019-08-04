@@ -87,6 +87,7 @@ namespace Spartan
 		Renderer_Buffer_Velocity,
 		Renderer_Buffer_Depth,
 		Renderer_Buffer_SSAO,
+        Renderer_Buffer_SSR,
         Renderer_Buffer_Shadows
 	};
 
@@ -140,6 +141,7 @@ namespace Spartan
 		Shader_Color_Vp,
 		Shader_Font_Vp,
 		Shader_Ssao_P,
+        Shader_Ssr_P,
 		Shader_GizmoTransform_Vp,
 		Shader_BlurBox_P,
 		Shader_BlurGaussian_P,
@@ -248,6 +250,7 @@ namespace Spartan
 		void Pass_LightDepth();
 		void Pass_GBuffer();
 		void Pass_Ssao();
+        void Pass_Ssr();
         void Pass_Light();
 		void Pass_Composition(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_PostComposision(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out);
@@ -278,23 +281,28 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_g_buffer_material;
         std::shared_ptr<RHI_Texture> m_g_buffer_velocity;
         std::shared_ptr<RHI_Texture> m_g_buffer_depth;
-        // 1/1
+        // Light
         std::shared_ptr<RHI_Texture> m_render_tex_light_diffuse;
         std::shared_ptr<RHI_Texture> m_render_tex_light_specular;
+        // Composition
         std::shared_ptr<RHI_Texture> m_render_tex_composition;
         std::shared_ptr<RHI_Texture> m_render_tex_composition_previous;
-        std::shared_ptr<RHI_Texture> m_render_tex_final;
+        // TAA
         std::shared_ptr<RHI_Texture> m_render_tex_taa_current;
         std::shared_ptr<RHI_Texture> m_render_tex_taa_history;
-        // Shadows & SSAO
+        // SSAO
         std::shared_ptr<RHI_Texture> m_render_tex_half_ssao;
         std::shared_ptr<RHI_Texture> m_render_tex_half_ssao_blurred;
         std::shared_ptr<RHI_Texture> m_render_tex_ssao;
-        // 1/4
+        // SSR
+        std::shared_ptr<RHI_Texture> m_render_tex_ssr;
+        // Blur
         std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur1;
         std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur2;
         // Bloom
         std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
+        // Final frame
+        std::shared_ptr<RHI_Texture> m_render_tex_final;
         //=============================================================
 
 		//= SHADERS =================================================
