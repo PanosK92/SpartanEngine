@@ -60,7 +60,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float4 albedo				= degamma(sample_albedo);  
 	float3 normal				= normal_decode(sample_normal.xyz);	
 	float directional_shadow 	= sample_diffuse.a;
-	float reflectance = sample_specular.a ;
+	float reflectance 			= sample_specular.a;
 
 	// Create material
     Material material;
@@ -88,7 +88,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     }
 
 	// Compute light contributions
-	sample_specular.rgb += sample_ssr * reflectance * clamp(directional_shadow, light_ambient_min, 1.0f);
+	sample_specular.rgb 		+= sample_ssr * reflectance * clamp(directional_shadow, light_ambient_min, 1.0f);
 	float3 light_sources 		= (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
 	float3 light_image_based 	= ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp) * light_ambient;
 	
