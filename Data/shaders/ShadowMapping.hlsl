@@ -206,7 +206,7 @@ float Shadow_Map(float3 normal, float depth, float3 world_pos, float bias, float
 
 	// Apply micro shadows
 	shadow = min(shadow, self_shadow);
-	shadow *= shadow / 0.1f;
+	shadow *= shadow / 0.02f;
 
 	return shadow;
 }
