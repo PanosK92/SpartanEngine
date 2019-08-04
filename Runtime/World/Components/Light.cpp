@@ -59,8 +59,6 @@ namespace Spartan
 
 	void Light::OnInitialize()
 	{
-        // Temp tweak because only directional light shadows work without issues so far
-        m_cast_shadows = GetLightType() == LightType_Directional;
 		CreateShadowMap(true);
 	}
 
@@ -141,6 +139,10 @@ namespace Spartan
 	{
 		m_lightType = type;
 		m_is_dirty	= true;
+
+        // Temp tweak because only directional light shadows work without issues so far
+        m_cast_shadows = GetLightType() == LightType_Directional;
+
 		CreateShadowMap(true);
 	}
 
