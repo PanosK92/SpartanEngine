@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Material.h"
 #include "Renderer.h"
-#include "Deferred/ShaderVariation.h"
+#include "Shaders/ShaderVariation.h"
 #include "../Resource/ResourceCache.h"
 #include "../IO/XmlDocument.h"
 #include "../RHI/RHI_ConstantBuffer.h"
@@ -135,8 +135,8 @@ namespace Spartan
 			auto tex_node = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", tex_node);
 			xml->AddAttribute(tex_node, "Texture_Type", static_cast<uint32_t>(texture.first));
-			xml->AddAttribute(tex_node, "Texture_Name", texture.second ? texture.second->GetResourceName() : NOT_ASSIGNED);
-			xml->AddAttribute(tex_node, "Texture_Path", texture.second ? texture.second->GetResourceFilePath() : NOT_ASSIGNED);
+			xml->AddAttribute(tex_node, "Texture_Name", texture.second ? texture.second->GetResourceName() : "");
+			xml->AddAttribute(tex_node, "Texture_Path", texture.second ? texture.second->GetResourceFilePath() : "");
 			i++;
 		}
 
@@ -183,10 +183,10 @@ namespace Spartan
 		return false;
 	}
 
-	const string& Material::GetTexturePathByType(const TextureType type)
+	string Material::GetTexturePathByType(const TextureType type)
 	{
 		if (!HasTexture(type))
-			return NOT_ASSIGNED;
+			return "";
 
 		return m_textures[type]->GetResourceFilePath();
 	}

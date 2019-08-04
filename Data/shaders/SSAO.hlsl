@@ -107,7 +107,7 @@ static const float radius			= 0.5f;
 static const float intensity    	= 1.0f;
 static const float2 noiseScale  	= float2(g_resolution.x / 128.0f, g_resolution.y / 128.0f);
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+float mainPS(Pixel_PosUv input) : SV_TARGET
 {
 	float2 tex_coord		= input.uv;  
     float depth      		= texDepth.Sample(samplerLinear_clamp, tex_coord).r;
@@ -144,5 +144,5 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     }
     occlusion_acc /= (float)sample_count;
 
-    return saturate(1.0f - occlusion_acc);
+	return saturate(1.0f - occlusion_acc);
 }

@@ -232,6 +232,6 @@ namespace Spartan::AssimpHelper
 			return full_texture_path;
 
 		// Give up, no valid texture path was found
-		return NOT_ASSIGNED;
+		return "";
 	}
 }

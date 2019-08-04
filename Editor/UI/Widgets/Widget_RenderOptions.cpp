@@ -42,18 +42,21 @@ namespace _RenderOptions
     static bool g_gizmo_picking_ray         = false;
     static bool g_gizmo_grid                = true;
     static bool g_gizmo_performance_metrics = false;
-    static vector<string> gbuffer_textures =
+    static vector<string> debug_textures =
     {
         "None",
         "Albedo",
         "Normal",
         "Material",
+        "Diffuse",
+        "Specular",
         "Velocity",
         "Depth",
-        "SSAO"
+        "SSAO",
+        "Shadows"
     };
-    static int gbuffer_selected_texture_index = 0;
-    static string gbuffer_selected_texture = gbuffer_textures[0];
+    static int debug_texture_selected_index = 0;
+    static string debug_texture_selected = debug_textures[0];
 }
 
 
@@ -176,15 +179,15 @@ void Widget_RenderOptions::Tick()
     {
         // Buffer
         {
-            if (ImGui::BeginCombo("Buffer", _RenderOptions::gbuffer_selected_texture.c_str()))
+            if (ImGui::BeginCombo("Buffer", _RenderOptions::debug_texture_selected.c_str()))
             {
-                for (auto i = 0; i < _RenderOptions::gbuffer_textures.size(); i++)
+                for (auto i = 0; i < _RenderOptions::debug_textures.size(); i++)
                 {
-                    const auto is_selected = (_RenderOptions::gbuffer_selected_texture == _RenderOptions::gbuffer_textures[i]);
-                    if (ImGui::Selectable(_RenderOptions::gbuffer_textures[i].c_str(), is_selected))
+                    const auto is_selected = (_RenderOptions::debug_texture_selected == _RenderOptions::debug_textures[i]);
+                    if (ImGui::Selectable(_RenderOptions::debug_textures[i].c_str(), is_selected))
                     {
-                        _RenderOptions::gbuffer_selected_texture = _RenderOptions::gbuffer_textures[i];
-                        _RenderOptions::gbuffer_selected_texture_index = i;
+                        _RenderOptions::debug_texture_selected = _RenderOptions::debug_textures[i];
+                        _RenderOptions::debug_texture_selected_index = i;
                     }
                     if (is_selected)
                     {
@@ -193,7 +196,7 @@ void Widget_RenderOptions::Tick()
                 }
                 ImGui::EndCombo();
             }
-            m_renderer->SetDebugBuffer(static_cast<RendererDebug_Buffer>(_RenderOptions::gbuffer_selected_texture_index));
+            m_renderer->SetDebugBuffer(static_cast<Renderer_Buffer_Type>(_RenderOptions::debug_texture_selected_index));
         }
         ImGui::Separator();
 

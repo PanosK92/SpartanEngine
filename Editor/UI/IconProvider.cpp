@@ -85,7 +85,7 @@ void IconProvider::Initialize(Context* context)
 
 RHI_Texture* IconProvider::GetTextureByType(Icon_Type type)
 {
-	return Thumbnail_Load(NOT_ASSIGNED, type).texture.get();
+	return Thumbnail_Load("", type).texture.get();
 }
 
 RHI_Texture* IconProvider::GetTextureByFilePath(const std::string& filePath)
@@ -109,7 +109,7 @@ RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail)
 	return nullptr;
 }
 
-const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type type /*Icon_Custom*/, int size /*100*/)
+const Thumbnail& IconProvider::Thumbnail_Load(const string& file_path, Icon_Type type /*Icon_Custom*/, int size /*100*/)
 {
 	// Check if we already have this thumbnail (by type)
 	if (type != Thumbnail_Custom)
@@ -124,7 +124,7 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type 
 	{		
 		for (auto& thumbnail : m_thumbnails)
 		{
-			if (thumbnail.filePath == filePath)
+			if (thumbnail.filePath == file_path)
 				return thumbnail;
 		}
 	}
@@ -132,35 +132,35 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type 
 	// Deduce file path type
 
 	// Directory
-	if (FileSystem::IsDirectory(filePath))							return GetThumbnailByType(Thumbnail_Folder);
+	if (FileSystem::IsDirectory(file_path))							return GetThumbnailByType(Thumbnail_Folder);
 	// Model
-	if (FileSystem::IsSupportedModelFile(filePath))					return GetThumbnailByType(Thumbnail_File_Model);
+	if (FileSystem::IsSupportedModelFile(file_path))				return GetThumbnailByType(Thumbnail_File_Model);
 	// Audio
-	if (FileSystem::IsSupportedAudioFile(filePath))					return GetThumbnailByType(Thumbnail_File_Audio);
+	if (FileSystem::IsSupportedAudioFile(file_path))				return GetThumbnailByType(Thumbnail_File_Audio);
 	// Material
-	if (FileSystem::IsEngineMaterialFile(filePath))					return GetThumbnailByType(Thumbnail_File_Material);
+	if (FileSystem::IsEngineMaterialFile(file_path))				return GetThumbnailByType(Thumbnail_File_Material);
 	// Shader
-	if (FileSystem::IsSupportedShaderFile(filePath))				return GetThumbnailByType(Thumbnail_File_Shader);
+	if (FileSystem::IsSupportedShaderFile(file_path))				return GetThumbnailByType(Thumbnail_File_Shader);
 	// Scene
-	if (FileSystem::IsEngineSceneFile(filePath))					return GetThumbnailByType(Thumbnail_File_Scene);
+	if (FileSystem::IsEngineSceneFile(file_path))					return GetThumbnailByType(Thumbnail_File_Scene);
 	// Script
-	if (FileSystem::IsEngineScriptFile(filePath))					return GetThumbnailByType(Thumbnail_File_Script);
+	if (FileSystem::IsEngineScriptFile(file_path))					return GetThumbnailByType(Thumbnail_File_Script);
 	// Font
-	if (FileSystem::IsSupportedFontFile(filePath))					return GetThumbnailByType(Thumbnail_File_Font);
+	if (FileSystem::IsSupportedFontFile(file_path))					return GetThumbnailByType(Thumbnail_File_Font);
 
 	// Xml
-	if (FileSystem::GetExtensionFromFilePath(filePath) == ".xml")	return GetThumbnailByType(Thumbnail_File_Xml);
+	if (FileSystem::GetExtensionFromFilePath(file_path) == ".xml")	return GetThumbnailByType(Thumbnail_File_Xml);
 	// Dll
-	if (FileSystem::GetExtensionFromFilePath(filePath) == ".dll")	return GetThumbnailByType(Thumbnail_File_Dll);
+	if (FileSystem::GetExtensionFromFilePath(file_path) == ".dll")	return GetThumbnailByType(Thumbnail_File_Dll);
 	// Txt
-	if (FileSystem::GetExtensionFromFilePath(filePath) == ".txt")	return GetThumbnailByType(Thumbnail_File_Txt);
+	if (FileSystem::GetExtensionFromFilePath(file_path) == ".txt")	return GetThumbnailByType(Thumbnail_File_Txt);
 	// Ini
-	if (FileSystem::GetExtensionFromFilePath(filePath) == ".ini")	return GetThumbnailByType(Thumbnail_File_Ini);
+	if (FileSystem::GetExtensionFromFilePath(file_path) == ".ini")	return GetThumbnailByType(Thumbnail_File_Ini);
 	// Exe
-	if (FileSystem::GetExtensionFromFilePath(filePath) == ".exe")	return GetThumbnailByType(Thumbnail_File_Exe);
+	if (FileSystem::GetExtensionFromFilePath(file_path) == ".exe")	return GetThumbnailByType(Thumbnail_File_Exe);
 
 	// Texture
-	if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
+	if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
 	{
 		// Make a cheap texture
 		bool m_generate_mipmaps = false;
@@ -169,12 +169,12 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& filePath, Icon_Type 
 		texture->SetHeight(size);
 
 		// Load it asynchronously
-		m_context->GetSubsystem<Threading>()->AddTask([texture, filePath]()
+		m_context->GetSubsystem<Threading>()->AddTask([texture, file_path]()
 		{
-			texture->LoadFromFile(filePath);
+			texture->LoadFromFile(file_path);
 		});
 
-		m_thumbnails.emplace_back(type, texture, filePath);
+		m_thumbnails.emplace_back(type, texture, file_path);
 		return m_thumbnails.back();
 	}
 

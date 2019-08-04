@@ -20,53 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= DEFINES =============================
-#define CASCADES 3
 #define PCF_SAMPLES 2
 #define PCF_DIM float(PCF_SAMPLES) / 2.0f
 //=======================================
-
-// = INCLUDES ========
-#include "Common.hlsl"
-//====================
-
-Pixel_PosUv mainVS(Vertex_PosUv input)
-{
-    Pixel_PosUv output;
-	
-    input.position.w 	= 1.0f;
-    output.position 	= mul(input.position, g_mvp);
-    output.uv 			= input.uv;
-	
-    return output;
-}
-
-//= TEXTURES ==========================================
-Texture2D tex_normal 					: register(t0);
-Texture2D tex_depth 					: register(t1);
-Texture2DArray light_depth_directional 	: register(t2);
-TextureCube light_depth_point 			: register(t3);
-Texture2D light_depth_spot 				: register(t4);
-//=====================================================
-
-//= SAMPLERS ==============================================
-SamplerComparisonState  sampler_cmp_depth 	: register(s0);
-SamplerState samplerLinear_clamp 			: register(s1);
-//=========================================================
-
-//= CONSTANT BUFFERS =====================
-cbuffer DefaultBuffer : register(b1)
-{
-	matrix m_view;
-    matrix mViewProjectionInverse;
-    matrix mLightViewProjection[CASCADES];
-	float3 light_position;
-	float shadow_map_resolution;
-	float3 light_direction;	
-	float range;
-	float2 biases;
-	float2 padding2;
-};
-//========================================
 
 float DepthTest_Directional(float slice, float2 tex_coords, float compare)
 {
@@ -90,7 +46,7 @@ float random(float2 seed2)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float Technique_Poisson(int cascade, float3 tex_coords, float compareDepth)
+float Technique_Poisson(int cascade, float3 tex_coords, float compare)
 {
 	float packing = 700.0f; // how close together are the samples
 	float2 poissonDisk[8] = 
@@ -113,11 +69,11 @@ float Technique_Poisson(int cascade, float3 tex_coords, float compareDepth)
 		uint index 	= uint(samples * random(tex_coords.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
 
 		#if DIRECTIONAL
-		amountLit 	+= DepthTest_Directional(cascade, tex_coords.xy + (poissonDisk[index] / packing), compareDepth);
+		amountLit 	+= DepthTest_Directional(cascade, tex_coords.xy + (poissonDisk[index] / packing), compare);
 		#elif POINT
-		amountLit 	+= DepthTest_Point(tex_coords, compareDepth);
+		amountLit 	+= DepthTest_Point(tex_coords, compare);
 		#elif SPOT
-		amountLit 	+= DepthTest_Spot(tex_coords.xy + (poissonDisk[index] / packing), compareDepth);
+		amountLit 	+= DepthTest_Spot(tex_coords.xy + (poissonDisk[index] / packing), compare);
 		#endif
 	}	
 
@@ -150,30 +106,7 @@ float Technique_PCF_2d(int cascade, float texel, float2 tex_coords, float compar
 	return amountLit /= count;
 }
 
-float Technique_PCF_3d(float texel, float3 sample_direction, float compare)
-{
-	float amountLit = 0.0f;
-	float count 	= 0.0f;
-	
-	[unroll]
-	for (float x = -PCF_DIM; x <= PCF_DIM; ++x)
-	{
-		[unroll]
-		for (float y = -PCF_DIM; y <= PCF_DIM; ++y)
-		{		
-			[unroll]
-			for (float z = -PCF_DIM; z <= PCF_DIM; ++z)
-			{
-				float3 offset = float3(x, y, z) * texel;
-				amountLit += DepthTest_Point(sample_direction + offset, compare);				
-				count++;
-			}				
-		}
-	}
-	return amountLit /= count;
-}
-
-float ShadowMapping_Directional(int cascade, float4 positionCS, float texel, float bias)
+float ShadowMap_Directional(int cascade, float4 positionCS, float texel, float bias)
 {	
 	// If the cascade is not covering this pixel, don't sample anything
 	if( positionCS.x < -1.0f || positionCS.x > 1.0f || 
@@ -186,7 +119,7 @@ float ShadowMapping_Directional(int cascade, float4 positionCS, float texel, flo
 	return Technique_PCF_2d(cascade, texel, tex_coord, compare_depth);
 }
 
-float ShadowMapping_Spot(float4 positionCS, float texel, float3 sample_direction, float bias)
+float ShadowMap_Spot(float4 positionCS, float texel, float3 sample_direction, float bias)
 {	
 	// If the cascade is not covering this pixel, don't sample anything
 	if( positionCS.x < -1.0f || positionCS.x > 1.0f || 
@@ -194,31 +127,27 @@ float ShadowMapping_Spot(float4 positionCS, float texel, float3 sample_direction
 		positionCS.z < 0.0f || positionCS.z > 1.0f ) return 1.0f;
 		
 	float compare_depth	= positionCS.z + bias;
+	
 	return Technique_PCF_2d(0, texel, sample_direction.xy, compare_depth);
 }
 
-float mainPS(Pixel_PosUv input) : SV_TARGET
+float Shadow_Map(float3 normal, float depth, float3 world_pos, float bias, float normal_bias, Light light)
 {
-	// Compute some useful values
-    float2 tex_coord     		= input.uv;
-    float3 normal       		= tex_normal.Sample(samplerLinear_clamp, tex_coord).rgb;
-    float depth  				= tex_depth.Sample(samplerLinear_clamp, tex_coord).r;
-	float bias					= biases.x;
-	float normal_bias			= biases.y;
-	float texel          		= 1.0f / shadow_map_resolution;
-    float NdotL                 = dot(normal, light_direction);
-    float cos_angle             = saturate(1.0f - NdotL);
-    float3 scaled_normal_offset = normal * normal_bias * cos_angle * texel;
-	float4 position_world   	= float4(get_world_position_from_depth(depth, mViewProjectionInverse, tex_coord) + scaled_normal_offset, 1.0f);
-
+    float n_dot_l               = dot(normal, normalize(-light.direction));
+    float cos_angle             = saturate(1.0f - n_dot_l);
+    float3 scaled_normal_offset = normal * normal_bias * cos_angle * g_shadow_texel_size;
+	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
+	float self_shadow 			= saturate(n_dot_l);
+	float shadow 				= 1.0f;
+	
 	// Determine cascade to use
 	#if DIRECTIONAL
 	{
-		// Compute clip space positions for each cascade
+		// Compute projection positions for each cascade
 		float4 positonCS[3];
-		positonCS[0] = mul(position_world, mLightViewProjection[0]);
-		positonCS[1] = mul(position_world, mLightViewProjection[1]);
-		positonCS[2] = mul(position_world, mLightViewProjection[2]);
+		positonCS[0] = mul(position_world, light_view_projection[0]);
+		positonCS[1] = mul(position_world, light_view_projection[1]);
+		positonCS[2] = mul(position_world, light_view_projection[2]);
 		
 		// Compute position coordinates for each cascade
 		float3 tex_coords[3];
@@ -242,39 +171,42 @@ float mainPS(Pixel_PosUv input) : SV_TARGET
 			float shadows[2] 	= { 1.0f, 1.0f };
 	
 			// Sample the main cascade	
-			shadows[0] = ShadowMapping_Directional(cascades[0], positonCS[cascades[0]], texel, bias);
+			shadows[0] = ShadowMap_Directional(cascades[0], positonCS[cascades[0]], g_shadow_texel_size, bias);
 			
 			[branch]
 			if (cascades[1] <= 2)
 			{
-				shadows[1] = ShadowMapping_Directional(cascades[1], positonCS[cascades[1]], texel, bias);
+				shadows[1] = ShadowMap_Directional(cascades[1], positonCS[cascades[1]], g_shadow_texel_size, bias);
 			}
 	
 			// Blend cascades		
-			return lerp(shadows[0], shadows[1], pow(max(cascadeBlend.x, max(cascadeBlend.y, cascadeBlend.z)), 4));
+			shadow = lerp(shadows[0], shadows[1], pow(max(cascadeBlend.x, max(cascadeBlend.y, cascadeBlend.z)), 4));
 		}
 	}
 	#elif POINT
 	{
-		float3 light_to_pixel_direction	= position_world.xyz - light_position;	
-		float light_to_pixel_distance 	= length(light_to_pixel_direction);
+		float3 light_to_pixel_direction	= position_world.xyz - light.position;
+		float light_to_pixel_distance = length(light_to_pixel_direction) / g_camera_far;
 		
-
 		[branch]
-		if (light_to_pixel_distance < range)
+		if (light_to_pixel_distance < light.range)
 		{
-			float depth = light_depth_point.Sample(samplerLinear_clamp, light_to_pixel_direction).r * g_camera_far;
-			return depth < light_to_pixel_distance ? 1.0f : 0.0f;
+			float depth = light_depth_point.Sample(samplerLinear_clamp, light_to_pixel_direction).r;
+			shadow = depth < light_to_pixel_distance ? 1.0f : 0.0f;
 
-			float compare = 1.0f - light_to_pixel_distance / range * (1.0f - bias); 
-			return light_depth_point.SampleCmpLevelZero(sampler_cmp_depth, light_to_pixel_direction, compare).r;
+			//float compare = 1.0f - light_to_pixel_distance / range * (1.0f - bias); 
+			//return light_depth_point.SampleCmpLevelZero(sampler_cmp_depth, light_to_pixel_direction, compare).r;
 		}
 	}
 	#elif SPOT
 	{
-		return 1.0f;
+		shadow = 1.0f;
 	}
 	#endif
-	
-	return 1.0f;
+
+	// Apply micro shadows
+	shadow = min(shadow, self_shadow);
+	shadow *= shadow / 0.1f;
+
+	return shadow;
 }

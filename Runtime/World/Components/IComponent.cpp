@@ -52,10 +52,10 @@ namespace Spartan
 		return m_entity->GetPtrShared();
 	}
 
-	const string& IComponent::GetEntityName() const
+	string IComponent::GetEntityName() const
 	{
 		if (!m_entity)
-			return NOT_ASSIGNED;
+			return "";
 
 		return m_entity->GetName();
 	}

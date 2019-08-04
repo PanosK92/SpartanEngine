@@ -166,7 +166,7 @@ namespace Spartan
 
 		//= DIRECTORIES =======================================================
 		void AddDataDirectory(Asset_Type type, const std::string& directory);
-		const std::string& GetDataDirectory(Asset_Type type);
+		std::string GetDataDirectory(Asset_Type type);
 		void SetProjectDirectory(const std::string& directory);
 		std::string GetProjectDirectoryAbsolute() const;
 		const auto& GetProjectDirectory() const	{ return m_project_directory; }

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
 #include "../../RHI/RHI_Definition.h"
+#include "../../Math/Vector2.h"
 //===================================
 
 namespace Spartan
@@ -97,6 +98,10 @@ namespace Spartan
 		const auto& GetShadowMap() { return m_shadow_map; }
         void CreateShadowMap(bool force);
 
+        // Constant buffer
+        void UpdateConstantBuffer();
+        const auto& GetConstantBuffer() const { return m_cb_light_gpu; }
+
 	private:
 		void ComputeViewMatrix();
 		bool ComputeProjectionMatrix(uint32_t index = 0);	
@@ -119,5 +124,22 @@ namespace Spartan
 		// Shadow map
 		std::shared_ptr<RHI_Texture> m_shadow_map;	
 		Renderer* m_renderer;
+
+        // Constant buffer
+        struct CB_Light
+        {
+            Math::Matrix view_projection[3];
+            Math::Vector3 color;
+            float intensity;
+            Math::Vector3 position;
+            float range;
+            Math::Vector3 direction;
+            float angle;
+            float bias;
+            float normal_bias;
+            float shadow_enabled;
+            float padding = 0.0f;
+        };
+        std::shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
 	};
 }

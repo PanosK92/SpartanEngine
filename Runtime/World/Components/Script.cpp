@@ -67,17 +67,17 @@ namespace Spartan
 
 	void Script::Serialize(FileStream* stream)
 	{
-		stream->Write(m_scriptInstance ? m_scriptInstance->GetScriptPath() : NOT_ASSIGNED);
+		stream->Write(m_scriptInstance ? m_scriptInstance->GetScriptPath() : "");
 	}
 
 	void Script::Deserialize(FileStream* stream)
 	{
-		string scriptPath = NOT_ASSIGNED;
-		stream->Read(&scriptPath);
+		string script_path;
+		stream->Read(&script_path);
 
-		if (scriptPath != NOT_ASSIGNED)
+		if (!script_path.empty())
 		{
-			SetScript(scriptPath);
+			SetScript(script_path);
 		}
 	}
 	//====================================================================================
@@ -98,11 +98,11 @@ namespace Spartan
 
 	string Script::GetScriptPath()
 	{
-		return m_scriptInstance ? m_scriptInstance->GetScriptPath() : NOT_ASSIGNED;
+		return m_scriptInstance ? m_scriptInstance->GetScriptPath() : "";
 	}
 
 	string Script::GetName()
 	{
-		return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromFilePath(GetScriptPath()) : NOT_ASSIGNED;
+		return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromFilePath(GetScriptPath()) : "";
 	}
 }

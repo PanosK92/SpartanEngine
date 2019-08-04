@@ -35,7 +35,6 @@ namespace Spartan
 {
 	Profiler::Profiler(Context* context) : ISubsystem(context)
 	{
-		m_metrics = NOT_ASSIGNED;
 		m_time_blocks.reserve(m_time_block_capacity);
 		m_time_blocks.resize(m_time_block_capacity);
 	}
