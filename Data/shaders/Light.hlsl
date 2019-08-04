@@ -186,7 +186,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		light_out.specular.rgb	= cSpecular * radiance;
 		
 		// Save the amount of reflection in the specular's alpha channel (used to modulate IBL later)
-		light_out.specular.a = 1.0f - luminance(F);
+		light_out.specular.a = luminance(material.F0);
 	}
 	
 	// Emissive
