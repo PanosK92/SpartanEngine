@@ -178,9 +178,9 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		float3 cSpecular 	= BRDF_Specular(material, n_dot_v, n_dot_l, n_dot_h, v_dot_h, F);
 				
 		// Ensure energy conservation
-		float3 kS = F;			// The energy of light that gets reflected - Equal to Fresnel
-		float3 kD = 1.0f - kS; 	// Remaining energy, light that gets refracted			
-		kD *= 1.0f - material.metallic; // Multiply kD by the inverse metalness such that only non-metals have diffuse lighting		
+		float3 kS 	= F;							// The energy of light that gets reflected - Equal to Fresnel
+		float3 kD 	= 1.0f - kS; 					// Remaining energy, light that gets refracted			
+		kD 			*= 1.0f - material.metallic; 	// Multiply kD by the inverse metalness such that only non-metals have diffuse lighting		
 		
 		light_out.diffuse.rgb	= kD * cDiffuse * radiance;
 		light_out.specular.rgb	= cSpecular * radiance;

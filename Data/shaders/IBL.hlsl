@@ -19,6 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= INCLUDES =======
+#include "BRDF.hlsl"
+//==================
+
 static const float tex_maxMip = 11.0f;
 static const float2 environmentMipSize[12] =
 {
@@ -43,12 +47,6 @@ float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 	return lerp(normal, reflection, lerpFactor);
 }
 
-float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
-{
-	float smoothness = 1.0 - roughness;
-    return F0 + (max(float3(smoothness, smoothness, smoothness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
-} 
-
 // https://www.unrealengine.com/blog/physically-based-shading-on-mobile
 float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
 {
@@ -67,14 +65,14 @@ float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pix
 	reflection	= GetSpecularDominantDir(normal, reflection, material.roughness);
 
 	float NdV 	= saturate(dot(-camera_to_pixel, normal));
-	float3 F 	= FresnelSchlickRoughness(NdV, material.F0, material.roughness);
+	float3 F 	= Fresnel_Schlick_Roughness(NdV, material.F0, material.roughness);
 
 	float3 kS 	= F; 			// The energy of light that gets reflected
 	float3 kD 	= 1.0f - kS;	// Remaining energy, light that gets refracted
 	kD 			*= 1.0f - material.metallic;	
 
 	// Diffuse
-	float3 irradiance	= abs(tex_environment.SampleLevel(sampler_linear,  directionToSphereUV(normal), 8).rgb);
+	float3 irradiance	= abs(tex_environment.SampleLevel(sampler_linear,  directionToSphereUV(normal), 11).rgb);
 	float3 cDiffuse		= irradiance * material.albedo;
 
 	// Specular
