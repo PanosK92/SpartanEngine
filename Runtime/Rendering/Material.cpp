@@ -42,7 +42,7 @@ namespace Spartan
 		m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
 
 		// Initialize properties
-		SetMultiplier(TextureType_Roughness, 1.0f);
+		SetMultiplier(TextureType_Roughness, 0.9f);
 		SetMultiplier(TextureType_Metallic, 0.0f);
 		SetMultiplier(TextureType_Normal, 0.0f);
 		SetMultiplier(TextureType_Height, 0.0f);
