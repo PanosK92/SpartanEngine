@@ -252,7 +252,8 @@ namespace Spartan
         m_render_tex_light_specular    = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
 
         // BRDF Specular Lut
-        m_tex_brdf_specular_lut = make_unique<RHI_Texture2D>(m_context, 400, 400, Format_R8G8_UNORM);
+        m_tex_brdf_specular_lut         = make_unique<RHI_Texture2D>(m_context, 400, 400, Format_R8G8_UNORM);
+        m_brdf_specular_lut_rendered    = false;
 
 		// Composition
 		m_render_tex_composition			= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
