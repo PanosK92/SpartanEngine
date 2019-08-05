@@ -1,4 +1,5 @@
 
+
 This project is open to contributors, so if you feel like you can help with anything, don't hesitate.
 
 I will probaly update and adds things to this page, but for now, here are few simple guidlines that can help give you an idea of how to approach things.
@@ -14,13 +15,13 @@ I will probaly update and adds things to this page, but for now, here are few si
 
 - Use real tabs that equal 4 spaces (which is the project's default), especially when initializing a lot of variables.
     ```
-    m_positionLocal		= Vector3::Zero;
-    m_rotationLocal		= Quaternion(0, 0, 0, 1);
-    m_scaleLocal		= Vector3::One;
-    m_matrix			= Matrix::Identity;
-    m_matrixLocal		= Matrix::Identity;
-    m_wvp_previous		= Matrix::Identity;
-    m_parent			= nullptr;
+    m_positionLocal	= Vector3::Zero;
+    m_rotationLocal	= Quaternion(0, 0, 0, 1);
+    m_scaleLocal	= Vector3::One;
+    m_matrix	= Matrix::Identity;
+    m_matrixLocal	= Matrix::Identity;
+    m_wvp_previous	= Matrix::Identity;
+    m_parent	= nullptr;
     ```
     
 - Always use braces on code blocks, even with the encapsulated code is one line.
