@@ -5,13 +5,13 @@ The engine currently uses DirectX 11 as a rendering backend and some of the late
 ##### DirectX End-User Runtimes: Download by clicking [here](https://www.microsoft.com/en-us/download/details.aspx?id=8109) and install
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DirectX.png)
 
-##### Visual C++ 2019 (x64) runtime package: Download by clicking [here](https://go.microsoft.com/fwlink/?LinkId=746572) and install
+##### Microsoft Visual C++ Redistributable for Visual Studio 2019: Download by clicking [here](https://aka.ms/vs/16/release/VC_redist.x64.exe) and install
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/Visual%20C%2B%2B.png)
 
 ### Compiling the Runtime and the Editor
 At this point we have taken care of all the environment dependencies and we are ready to start building.
 
-##### Generating Visual Studio 2019 project files and building the runtime
+##### Generating Visual Studio 2019 project files and building the runtime and the editor
 1. We click and run **"Generate_VS19_Project.bat"** in order for a Visual Studio solution to be generated.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS.png)
 2. We then open the Visual Studio solution file named **"Spartan.sln"**
