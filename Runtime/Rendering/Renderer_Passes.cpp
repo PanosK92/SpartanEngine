@@ -1560,7 +1560,7 @@ namespace Spartan
 
     void Renderer::Pass_BrdfSpecularLut()
     {
-        if (m_brdf_specular_lut_generated)
+        if (m_brdf_specular_lut_rendered)
             return;
 
         // Acquire shaders
@@ -1587,6 +1587,6 @@ namespace Spartan
         m_cmd_list->End();
         m_cmd_list->Submit();
 
-        m_brdf_specular_lut_generated = true;
+        m_brdf_specular_lut_rendered = true;
     }
 }
