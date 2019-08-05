@@ -24,6 +24,3 @@ echo:
 
 echo 5. Generating Visual Studio 2019 solution...
 Scripts\premake5.exe --file=scripts\premake.lua vs2019
-
-echo:
-pause
