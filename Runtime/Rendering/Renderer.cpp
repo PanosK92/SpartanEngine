@@ -211,8 +211,8 @@ namespace Spartan
 		m_tex_black = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_tex_black->LoadFromFile(dir_texture + "black.png");
 
-		m_tex_lut_ibl = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-		m_tex_lut_ibl->LoadFromFile(dir_texture + "ibl_brdf_lut.png");
+		m_tex_brdf_specular_lut = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+		m_tex_brdf_specular_lut->LoadFromFile(dir_texture + "ibl_brdf_lut.png");
 
 		// Gizmo icons
 		m_gizmo_tex_light_directional = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
@@ -242,7 +242,7 @@ namespace Spartan
 
 		// G-Buffer
 		m_g_buffer_albedo	= make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
-		m_g_buffer_normal	= make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT); // At Texture_Format_R8G8B8A8_UNORM, normals have noticable banding
+		m_g_buffer_normal	= make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
 		m_g_buffer_material = make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
 		m_g_buffer_velocity = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16_FLOAT);
 		m_g_buffer_depth	= make_shared<RHI_Texture2D>(m_context, width, height, Format_D32_FLOAT);
@@ -250,6 +250,9 @@ namespace Spartan
         // Light
         m_render_tex_light_diffuse     = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
         m_render_tex_light_specular    = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+
+        // BRDF Specular Lut
+        m_tex_brdf_specular_lut = make_unique<RHI_Texture2D>(m_context, 400, 400, Format_R8G8_UNORM);
 
 		// Composition
 		m_render_tex_composition			= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
@@ -313,27 +316,32 @@ namespace Spartan
         shader_gbuffer->CompileAsync<RHI_Vertex_PosTexNorTan>(m_context, Shader_Vertex, dir_shaders + "GBuffer.hlsl");
         m_shaders[Shader_Gbuffer_V] = shader_gbuffer;
 
+        // BRDF specular lut
+        auto shader_brdf_specular_lut = make_shared<RHI_Shader>(m_rhi_device);
+        shader_brdf_specular_lut->CompileAsync(m_context, Shader_Pixel, dir_shaders + "BRDF_SpecularLut.hlsl");
+        m_shaders[Shader_BrdfSpecularLut] = shader_brdf_specular_lut;
+
         // Light - Directional
         auto shader_light_directional = make_shared<RHI_Shader>(m_rhi_device);
         shader_light_directional->AddDefine("DIRECTIONAL");
-        shader_light_directional->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "Light.hlsl");
+        shader_light_directional->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Light.hlsl");
         m_shaders[Shader_LightDirectional_P] = shader_light_directional;
 
         // Light - Point
         auto shader_light_point = make_shared<RHI_Shader>(m_rhi_device);
         shader_light_point->AddDefine("POINT"); 
-        shader_light_point->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "Light.hlsl");
+        shader_light_point->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Light.hlsl");
         m_shaders[Shader_LightPoint_P] = shader_light_point;
 
         // Light - Spot
         auto shader_light_spot = make_shared<RHI_Shader>(m_rhi_device);
         shader_light_spot->AddDefine("SPOT");  
-        shader_light_spot->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "Light.hlsl");
+        shader_light_spot->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Light.hlsl");
         m_shaders[Shader_LightSpot_P] = shader_light_spot;
 
 		// Composition
 		auto shader_composition = make_shared<ShaderBuffered>(m_rhi_device);
-		shader_composition->CompileAsync<RHI_Vertex_PosTex>(m_context, Shader_Pixel, dir_shaders + "Composition.hlsl");
+		shader_composition->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Composition.hlsl");
 		m_shaders[Shader_Composition_P] = shader_composition;
 
 		// Font

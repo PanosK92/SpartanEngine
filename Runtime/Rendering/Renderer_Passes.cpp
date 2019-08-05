@@ -65,6 +65,7 @@ namespace Spartan
 #endif
 		m_cmd_list->Begin("Pass_Main");
 
+        Pass_BrdfSpecularLut(); // only happens once
 		Pass_LightDepth();
 		Pass_GBuffer();
 		Pass_Ssao();
@@ -521,7 +522,7 @@ namespace Spartan
             m_render_tex_light_specular->GetResource_Texture(),	// Specular
             m_render_tex_ssr->GetResource_Texture(),            // SSR
 			skybox_texture,	                                    // Environment
-			m_tex_lut_ibl->GetResource_Texture()			    // LutIBL
+			m_tex_brdf_specular_lut->GetResource_Texture()		// LutIBL
 		};
         const vector<void*> samplers =
         {
@@ -1556,4 +1557,36 @@ namespace Spartan
 
 		return true;
 	}
+
+    void Renderer::Pass_BrdfSpecularLut()
+    {
+        if (m_brdf_specular_lut_generated)
+            return;
+
+        // Acquire shaders
+        const auto& shader_quad                 = m_shaders[Shader_Quad_V];
+        const auto& shader_brdf_specular_lut    = m_shaders[Shader_BrdfSpecularLut];
+        if (!shader_quad->IsCompiled() || !shader_brdf_specular_lut->IsCompiled())
+            return;
+
+        m_cmd_list->Begin("Pass_BrdfSpecularLut");
+        UpdateUberBuffer(m_tex_brdf_specular_lut->GetWidth(), m_tex_brdf_specular_lut->GetHeight());
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+        m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+        m_cmd_list->SetBlendState(m_blend_disabled);
+        m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+        m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+        m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+        m_cmd_list->SetRenderTarget(m_tex_brdf_specular_lut);
+        m_cmd_list->SetViewport(m_tex_brdf_specular_lut->GetViewport());
+        m_cmd_list->SetShaderVertex(shader_quad);
+        m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
+        m_cmd_list->SetShaderPixel(shader_brdf_specular_lut);
+        m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
+        m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+        m_cmd_list->End();
+        m_cmd_list->Submit();
+
+        m_brdf_specular_lut_generated = true;
+    }
 }

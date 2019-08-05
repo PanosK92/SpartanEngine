@@ -20,13 +20,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // F - Fresnel
-float3 F_Schlick(float HdV, float3 f0)
+float3 Fresnel_Schlick(float HdV, float3 f0)
 {
 	return f0 + (1.0f - f0) * pow(1.0f - HdV, 5.0f);
 }
 
+float3 Fresnel_Schlick_Roughness(float cosTheta, float3 F0, float roughness)
+{
+	float val = 1.0 - roughness;
+    return F0 + (max(float3(val, val, val), F0) - F0) * pow(1.0f - cosTheta, 5.0f);
+}   
+
 // G - Geometric shadowing
-float G_GeometrySchlickGGX(float NdotV, float roughness)
+float Geometry_Schlick_GGX(float NdotV, float roughness)
 {
     float r = (roughness + 1.0);
     float k = (r*r) / 8.0;
@@ -36,16 +42,17 @@ float G_GeometrySchlickGGX(float NdotV, float roughness)
 	
     return num / denom;
 }
-float G_GeometrySmith(float NdotV, float NdotL, float roughness)
+
+float Geometry_Smith(float NdotV, float NdotL, float roughness)
 {
-    float ggx2  = G_GeometrySchlickGGX(NdotV, roughness);
-    float ggx1  = G_GeometrySchlickGGX(NdotL, roughness);
+    float ggx2  = Geometry_Schlick_GGX(NdotV, roughness);
+    float ggx1  = Geometry_Schlick_GGX(NdotL, roughness);
 	
     return ggx1 * ggx2;
 }
 
 // D - Normal distribution
-float D_GGX(float NdotH, float a)
+float Distribution_GGX(float NdotH, float a)
 {
     float a2     = a * a;
     float NdotH2 = NdotH * NdotH;
@@ -87,9 +94,9 @@ float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV, float
 float3 BRDF_Specular(Material material, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, out float3 F)
 {
 	float alpha 		= max(0.001f, material.roughness * material.roughness);
-	F 					= F_Schlick(v_dot_h, material.F0);
-    float G 			= G_GeometrySmith(n_dot_v, n_dot_l, material.roughness);
-    float D 			= D_GGX(n_dot_h, alpha);
+	F 					= Fresnel_Schlick(v_dot_h, material.F0);
+    float G 			= Geometry_Smith(n_dot_v, n_dot_l, material.roughness);
+    float D 			= Distribution_GGX(n_dot_h, alpha);
 	float3 nominator 	= F * G * D;
 	float denominator 	= 4.0f * n_dot_l * n_dot_v;
 	return nominator / max(0.00001f, denominator);

@@ -135,6 +135,7 @@ namespace Spartan
 		Shader_DebugChannelR_P,
         Shader_DebugChannelA_P,
         Shader_DebugChannelRgbGammaCorrect_P,
+        Shader_BrdfSpecularLut,
         Shader_LightDirectional_P,
         Shader_LightPoint_P,
         Shader_LightSpot_P,
@@ -273,6 +274,7 @@ namespace Spartan
 		void Pass_Lines(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Gizmos(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_BrdfSpecularLut();
 		//=====================================================================================================================================================
 
         //= RENDER TEXTURES ===========================================
@@ -282,6 +284,8 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_g_buffer_material;
         std::shared_ptr<RHI_Texture> m_g_buffer_velocity;
         std::shared_ptr<RHI_Texture> m_g_buffer_depth;
+        // Specular BRDF IBL
+        std::shared_ptr<RHI_Texture> m_tex_brdf_specular_lut;
         // Light
         std::shared_ptr<RHI_Texture> m_render_tex_light_diffuse;
         std::shared_ptr<RHI_Texture> m_render_tex_light_specular;
@@ -345,7 +349,6 @@ namespace Spartan
 		std::shared_ptr<RHI_Texture> m_tex_noise_normal;
 		std::shared_ptr<RHI_Texture> m_tex_white;
 		std::shared_ptr<RHI_Texture> m_tex_black;
-		std::shared_ptr<RHI_Texture> m_tex_lut_ibl;
 		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_directional;
 		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_point;
 		std::shared_ptr<RHI_Texture> m_gizmo_tex_light_spot;
@@ -394,6 +397,7 @@ namespace Spartan
         uint64_t m_frame_num                        = 0;
         bool m_is_odd_frame                         = false;
         bool m_is_rendering                         = false;
+        bool m_brdf_specular_lut_generated          = false;
         std::atomic<bool> m_acquiring_renderables   = false;
 		//=================================================================
 
