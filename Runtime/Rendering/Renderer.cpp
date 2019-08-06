@@ -280,10 +280,10 @@ namespace Spartan
 
 		// Bloom
         {
-            // Create as many bloom textures as required to scale down below 20px (in any dimension)
+            // Create as many bloom textures as required to scale down to or below 16px (in any dimension)
             m_render_tex_bloom.clear();
-            m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT));
-            while (m_render_tex_bloom.back()->GetWidth() > 32 && m_render_tex_bloom.back()->GetHeight() > 32) 
+            m_render_tex_bloom.emplace_back(make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R16G16B16A16_FLOAT));
+            while (m_render_tex_bloom.back()->GetWidth() > 16 && m_render_tex_bloom.back()->GetHeight() > 16) 
             {
                 m_render_tex_bloom.emplace_back(
                     make_unique<RHI_Texture2D>(
@@ -428,13 +428,19 @@ namespace Spartan
 		shader_blurGaussianBilateral->AddBuffer<Struct_Blur>();
 		m_shaders[Shader_BlurGaussianBilateral_P] = shader_blurGaussianBilateral;
 
-		// Bloom - luminance
-		auto shader_bloomLuminance = make_shared<RHI_Shader>(m_rhi_device);
-		shader_bloomLuminance->AddDefine("PASS_BLOOM_LUMINANCE");
-		shader_bloomLuminance->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-		m_shaders[Shader_BloomLuminance_P] = shader_bloomLuminance;
+		// Bloom - downsample luminance
+		auto shader_bloom_downsample_luminance = make_shared<RHI_Shader>(m_rhi_device);
+		shader_bloom_downsample_luminance->AddDefine("PASS_BLOOM_DOWNSAMPLE_LUMINANCE");
+		shader_bloom_downsample_luminance->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_BloomDownsampleLuminance_P] = shader_bloom_downsample_luminance;
 
-		// Bloom - blend
+        // Bloom - Downsample anti-flicker
+        auto shader_bloom_downsample = make_shared<RHI_Shader>(m_rhi_device);
+        shader_bloom_downsample->AddDefine("PASS_BLOOM_DOWNSAMPLE");
+        shader_bloom_downsample->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+        m_shaders[Shader_BloomDownsample_P] = shader_bloom_downsample;
+
+		// Bloom - blend additive
 		auto shader_bloomBlend = make_shared<RHI_Shader>(m_rhi_device);
 		shader_bloomBlend->AddDefine("PASS_BLOOM_BLEND_ADDITIVE");
 		shader_bloomBlend->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
@@ -470,17 +476,11 @@ namespace Spartan
 		shader_dithering->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 		m_shaders[Shader_Dithering_P] = shader_dithering;
 
-		// Downsample box
-		auto shader_downsampleBox = make_shared<RHI_Shader>(m_rhi_device);
-		shader_downsampleBox->AddDefine("PASS_DOWNSAMPLE_BOX");
-		shader_downsampleBox->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-		m_shaders[Shader_DownsampleBox_P] = shader_downsampleBox;
-
 		// Upsample box
 		auto shader_upsampleBox = make_shared<RHI_Shader>(m_rhi_device);
 		shader_upsampleBox->AddDefine("PASS_UPSAMPLE_BOX");
 		shader_upsampleBox->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-		m_shaders[Shader_UpsampleBox_P] = shader_upsampleBox;
+		m_shaders[Shader_Upsample_P] = shader_upsampleBox;
 
 		// Debug Normal
 		auto shader_debugNormal = make_shared<RHI_Shader>(m_rhi_device);
