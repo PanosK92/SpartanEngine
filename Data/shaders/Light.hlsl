@@ -189,8 +189,5 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		light_out.specular.a = luminance(material.F0);
 	}
 	
-	// Emissive
-	light_out.specular.rgb += material.emissive * 20.0f;
-	
 	return light_out;
 }

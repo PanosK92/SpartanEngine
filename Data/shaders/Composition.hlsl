@@ -88,7 +88,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     }
 
 	// Compute light contributions
-	sample_specular.rgb 		+= sample_ssr * reflectance * clamp(directional_shadow, light_ambient_min, 1.0f);
+	sample_specular.rgb 		+= sample_ssr * reflectance * clamp(directional_shadow, light_ambient_min, 1.0f); // SSR	
+	sample_specular.rgb 		+= material.emissive * 10.0f; // Emissive
 	float3 light_sources 		= (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
 	float3 light_image_based 	= ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp) * light_ambient;
 	

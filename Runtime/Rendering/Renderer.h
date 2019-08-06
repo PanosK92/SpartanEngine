@@ -225,7 +225,7 @@ namespace Spartan
         float m_fxaa_edge_threshold     = 0.125f;	// Edge detection threshold. The minimum amount of local contrast required to apply algorithm.  - Algorithm's default: 0.166f
         float m_fxaa_edge_threshold_min = 0.0312f;	// Darkness threshold. Trims the algorithm from processing darks								- Algorithm's default: 0.0833f
         // Bloom
-        float m_bloom_intensity         = 0.1f;		// The intensity of the bloom
+        float m_bloom_intensity         = 0.02f;	// The intensity of the bloom
         // Sharpening
         float m_sharpen_strength        = 1.0f;		// Strength of the sharpening
         float m_sharpen_clamp           = 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
