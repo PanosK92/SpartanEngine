@@ -319,13 +319,12 @@ namespace Spartan
 		std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_disabled;
 		//==============================================================
 
-		//= BLEND STATES =====================================
-		std::shared_ptr<RHI_BlendState> m_blend_enabled;
-		std::shared_ptr<RHI_BlendState> m_blend_disabled;
+        //= BLEND STATES =================================
+        std::shared_ptr<RHI_BlendState> m_blend_enabled;
+        std::shared_ptr<RHI_BlendState> m_blend_disabled;
         std::shared_ptr<RHI_BlendState> m_blend_color_add;
-        std::shared_ptr<RHI_BlendState> m_blend_color_max;
-		std::shared_ptr<RHI_BlendState> m_blend_color_min;
-		//====================================================
+        std::shared_ptr<RHI_BlendState> m_blend_bloom;
+        //================================================
 
 		//= RASTERIZER STATES =================================================
 		std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid;

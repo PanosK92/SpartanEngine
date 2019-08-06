@@ -893,12 +893,12 @@ namespace Spartan
 
 		m_cmd_list->Begin("Pass_Bloom");
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+        m_cmd_list->SetBlendState(m_blend_disabled);
 
         m_cmd_list->Begin("DownscaleLuminance");
         {
-            // Prepare resources
             UpdateUberBuffer(m_render_tex_bloom[0]->GetWidth(), m_render_tex_bloom[0]->GetHeight());
-
             m_cmd_list->SetRenderTarget(m_render_tex_bloom[0]);
             m_cmd_list->SetViewport(m_render_tex_bloom[0]->GetViewport());
             m_cmd_list->SetShaderPixel(shader_bloomBright);
@@ -912,10 +912,7 @@ namespace Spartan
         {
 		    m_cmd_list->Begin("Downsample");
 		    {
-		    	// Prepare resources
 		    	UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight()); 
-
-                m_cmd_list->SetBlendState(m_blend_disabled);
 		    	m_cmd_list->SetRenderTarget(tex_out);
 		    	m_cmd_list->SetViewport(tex_out->GetViewport());
 		    	m_cmd_list->SetShaderPixel(shader_downsample);
@@ -939,8 +936,7 @@ namespace Spartan
             m_cmd_list->Begin("Upsample");
             {
                 UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-
-                m_cmd_list->SetBlendState(m_blend_color_add); // blend with previous
+                m_cmd_list->SetBlendState(m_blend_bloom); // blend with previous
                 m_cmd_list->SetRenderTarget(tex_out);
                 m_cmd_list->SetViewport(tex_out->GetViewport());
                 m_cmd_list->SetShaderPixel(shader_upsample);

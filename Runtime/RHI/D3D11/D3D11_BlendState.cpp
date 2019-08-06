@@ -45,7 +45,8 @@ namespace Spartan
 		const RHI_Blend_Operation blend_op			/*= Blend_Operation_Add*/,
 		const RHI_Blend source_blend_alpha			/*= Blend_One*/,
 		const RHI_Blend dest_blend_alpha			/*= Blend_One*/,
-		const RHI_Blend_Operation blend_op_alpha	/*= Blend_Operation_Add*/
+		const RHI_Blend_Operation blend_op_alpha,	/*= Blend_Operation_Add*/
+        const float blend_factor                    /*= 0.0f*/
 	)
 	{
 		if (!rhi_device)
@@ -68,6 +69,7 @@ namespace Spartan
 		m_source_blend_alpha	= source_blend_alpha;
 		m_dest_blend_alpha		= dest_blend_alpha;
 		m_blend_op_alpha		= blend_op_alpha;
+        m_blend_factor          = blend_factor;
 
 		// Create description
 		D3D11_BLEND_DESC desc;
