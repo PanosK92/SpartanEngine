@@ -441,7 +441,8 @@ namespace Spartan
 
 				case RHI_Cmd_SetBlendState:
 				{
-					FLOAT blend_factor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    float factor = cmd.blend_state->GetBlendFactor();
+					FLOAT blend_factor[4] = { factor, factor, factor, factor };
 
 					device_context->OMSetBlendState(
 						static_cast<ID3D11BlendState*>(cmd.blend_state->GetResource()),

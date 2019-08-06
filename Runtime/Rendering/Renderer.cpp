@@ -181,8 +181,7 @@ namespace Spartan
 		m_blend_disabled    = make_shared<RHI_BlendState>(m_rhi_device, false);
         m_blend_enabled     = make_shared<RHI_BlendState>(m_rhi_device, true);
         m_blend_color_add   = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_One, Blend_One, Blend_Operation_Add);
-        m_blend_color_max   = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_One, Blend_One, Blend_Operation_Max);
-		m_blend_color_min   = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_One, Blend_One, Blend_Operation_Min);
+        m_blend_bloom       = make_shared<RHI_BlendState>(m_rhi_device, true, Blend_One, Blend_One, Blend_Operation_Add, Blend_One, Blend_One, Blend_Operation_Add, 0.5f);
 	}
 
 	void Renderer::CreateFonts()
