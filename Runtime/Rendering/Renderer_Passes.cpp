@@ -673,7 +673,7 @@ namespace Spartan
     {
         // Acquire shader
         const auto& shader_vertex   = m_shaders[Shader_Quad_V];
-        const auto& shader_pixel    = m_shaders[Shader_UpsampleBox_P];
+        const auto& shader_pixel    = m_shaders[Shader_Upsample_P];
         if (!shader_vertex->IsCompiled() || !shader_pixel->IsCompiled())
             return;
 
@@ -884,17 +884,17 @@ namespace Spartan
 	void Renderer::Pass_Bloom(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders		
-		const auto& shader_bloomBright		= m_shaders[Shader_BloomLuminance_P];
-		const auto& shader_bloomBlend		= m_shaders[Shader_BloomBlend_P];
-		const auto& shader_downsampleBox	= m_shaders[Shader_DownsampleBox_P];
-		const auto& shader_upsampleBox		= m_shaders[Shader_UpsampleBox_P];
-		if (!shader_downsampleBox->IsCompiled() || !shader_bloomBright->IsCompiled() || !shader_upsampleBox->IsCompiled() || !shader_downsampleBox->IsCompiled())
+		const auto& shader_bloomBright	= m_shaders[Shader_BloomDownsampleLuminance_P];
+		const auto& shader_bloomBlend	= m_shaders[Shader_BloomBlend_P];
+		const auto& shader_downsample	= m_shaders[Shader_BloomDownsample_P];
+		const auto& shader_upsample		= m_shaders[Shader_Upsample_P];
+		if (!shader_downsample->IsCompiled() || !shader_bloomBright->IsCompiled() || !shader_upsample->IsCompiled() || !shader_downsample->IsCompiled())
 			return;
 
 		m_cmd_list->Begin("Pass_Bloom");
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 
-        m_cmd_list->Begin("Luminance");
+        m_cmd_list->Begin("DownscaleLuminance");
         {
             // Prepare resources
             UpdateUberBuffer(m_render_tex_bloom[0]->GetWidth(), m_render_tex_bloom[0]->GetHeight());
@@ -908,16 +908,17 @@ namespace Spartan
         }
         m_cmd_list->End();
 
-        auto downsample = [this, &shader_downsampleBox](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+        auto downsample = [this, &shader_downsample](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
         {
 		    m_cmd_list->Begin("Downsample");
 		    {
 		    	// Prepare resources
 		    	UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight()); 
 
+                m_cmd_list->SetBlendState(m_blend_disabled);
 		    	m_cmd_list->SetRenderTarget(tex_out);
 		    	m_cmd_list->SetViewport(tex_out->GetViewport());
-		    	m_cmd_list->SetShaderPixel(shader_downsampleBox);
+		    	m_cmd_list->SetShaderPixel(shader_downsample);
 		    	m_cmd_list->SetTexture(0, tex_in);
 		    	m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
 		    	m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -926,16 +927,23 @@ namespace Spartan
             m_cmd_list->Submit(); // we have to submit because all downsample passes are using the same buffer
         };
 
-        auto upsample = [this, &shader_upsampleBox](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+        // Downsample
+        // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
+        for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 1); i++)
+        {
+            downsample(m_render_tex_bloom[i], m_render_tex_bloom[i + 1]);
+        }
+
+        auto upsample = [this, &shader_upsample](shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
         {
             m_cmd_list->Begin("Upsample");
             {
                 UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
-                m_cmd_list->SetBlendState(m_blend_color_max);
+                m_cmd_list->SetBlendState(m_blend_color_add); // blend with previous
                 m_cmd_list->SetRenderTarget(tex_out);
                 m_cmd_list->SetViewport(tex_out->GetViewport());
-                m_cmd_list->SetShaderPixel(shader_upsampleBox);
+                m_cmd_list->SetShaderPixel(shader_upsample);
                 m_cmd_list->SetTexture(0, tex_in);
                 m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
                 m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -943,13 +951,6 @@ namespace Spartan
             m_cmd_list->End();
             m_cmd_list->Submit(); // we have to submit because all upsample passes are using the same buffer
         };
-
-        // Downsample
-        // The last bloom texture is the same size as the previous one (it's used for the Gaussian pass below), so we skip it
-        for (int i = 0; i < static_cast<int>(m_render_tex_bloom.size() - 1); i++)
-        {
-            downsample(m_render_tex_bloom[i], m_render_tex_bloom[i + 1]);
-        }
 
 		// Upsample + blend
         for (int i = static_cast<int>(m_render_tex_bloom.size() - 1); i > 0; i--)

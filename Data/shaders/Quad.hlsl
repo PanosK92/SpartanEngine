@@ -105,10 +105,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	color.rgb = LumaSharpen(texCoord, sourceTexture, samplerState, g_resolution, g_sharpen_strength, g_sharpen_clamp);	
 #endif
 
-#if PASS_DOWNSAMPLE_BOX
-	color = Downsample_BoxAntiFlicker(texCoord, g_texel_size, sourceTexture, samplerState);
-#endif
-
 #if PASS_UPSAMPLE_BOX
 	color = Upsample_Box(texCoord, g_texel_size, sourceTexture, samplerState, 1.0f);
 #endif
@@ -127,31 +123,29 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	color = Blur_GaussianBilateral(texCoord, sourceTexture, sourceTexture2, sourceTexture3, samplerState, g_texel_size, blur_direction, blur_sigma);
 #endif
 
-#if PASS_BLOOM_LUMINANCE
-	color 	= sourceTexture.Sample(samplerState, texCoord);
-	color 	= luminance(color.rgb) * color;
+#if PASS_BLOOM_DOWNSAMPLE
+	color = Downsample_BoxAntiFlicker(texCoord, g_texel_size, sourceTexture, samplerState);
 #endif
 
-#if PASS_BLOOM_UPSCALE_BLEND
-	color_a = Upsample_Box(texCoord, g_texel_size, sourceTexture, samplerState, 1.0f);
-	color_b	= sourceTexture2.Sample(samplerState, texCoord);
-	color 	= (color_a + color_b) * 0.5f;
+#if PASS_BLOOM_DOWNSAMPLE_LUMINANCE
+	color = Downsample_BoxAntiFlicker(texCoord, g_texel_size, sourceTexture, samplerState);
+	color = luminance(color) * color;
 #endif
 
 #if PASS_BLOOM_BLEND_ADDITIVE
 	float4 sourceColor 	= sourceTexture.Sample(samplerState, texCoord);
-	float4 sourceColor2 = sourceTexture2.Sample(samplerState, texCoord);
+	float4 sourceColor2 = Upsample_Box(texCoord, g_texel_size, sourceTexture2, samplerState, 2.0f);
 	color 				= sourceColor + sourceColor2 * g_bloom_intensity;
 #endif
 
 #if PASS_LUMA
-	color 		= sourceTexture.Sample(samplerState, texCoord);
-    color.a 	= luminance(color.rgb);
+	color 	= sourceTexture.Sample(samplerState, texCoord);
+    color.a = luminance(color.rgb);
 #endif
 
 #if PASS_DITHERING
-	color 	= sourceTexture.Sample(samplerState, texCoord);
-    color 	= Dither_Ordered(color, texCoord);
+	color = sourceTexture.Sample(samplerState, texCoord);
+    color = Dither_Ordered(color, texCoord);
 #endif
 
 #if PASS_TAA_RESOLVE
