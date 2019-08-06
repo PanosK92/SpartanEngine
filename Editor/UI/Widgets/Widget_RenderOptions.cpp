@@ -118,7 +118,7 @@ void Widget_RenderOptions::Tick()
             ImGui::Separator();
 
             ImGui::Checkbox("Bloom",                                    &do_bloom);
-            ImGui::InputFloat("Bloom Strength",                         &m_renderer->m_bloom_intensity, 0.1f);
+            ImGui::InputFloat("Bloom Strength",                         &m_renderer->m_bloom_intensity, 0.001f);
             ImGui::Separator();
 
             ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion",    &do_ssao);
