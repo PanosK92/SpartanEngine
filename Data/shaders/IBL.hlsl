@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BRDF.hlsl"
 //==================
 
-static const float tex_maxMip = 11.0f;
+static const float mip_max = 11.0f;
 static const float2 environmentMipSize[12] =
 {
     float2(4096, 2048),
@@ -39,6 +39,11 @@ static const float2 environmentMipSize[12] =
 	float2(4, 2),
 	float2(2, 1),
 };
+
+float GetMipFromRoughness(float roughness)
+    {
+        return (roughness * mip_max - pow(roughness, mip_max / 2) * 1.5);
+    }
 
 float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 {
@@ -72,12 +77,12 @@ float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pix
 	kD 			*= 1.0f - material.metallic;	
 
 	// Diffuse
-	float3 irradiance	= abs(tex_environment.SampleLevel(sampler_linear,  directionToSphereUV(normal), 11).rgb);
+	float3 irradiance	= abs(tex_environment.SampleLevel(sampler_linear,  directionToSphereUV(normal), mip_max).rgb);
 	float3 cDiffuse		= irradiance * material.albedo;
 
 	// Specular
-	float alpha 			= max(0.001f, material.roughness * material.roughness);
-	float mipLevel 			= alpha * tex_maxMip;
+	float alpha 			= max(EPSILON, material.roughness * material.roughness);
+	float mipLevel 			= GetMipFromRoughness(material.roughness);
 	float3 prefilteredColor	= tex_environment.SampleLevel(sampler_trilinear,  directionToSphereUV(reflection), mipLevel).rgb;
 	float2 envBRDF  		= tex_lutIBL.Sample(sampler_linear, float2(NdV, material.roughness)).xy;
 	float3 cSpecular 		= prefilteredColor * (F * envBRDF.x + envBRDF.y);

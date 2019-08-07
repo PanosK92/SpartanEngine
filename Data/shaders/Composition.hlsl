@@ -52,7 +52,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float4 sample_normal 	= tex_normal.Sample(sampler_point_clamp, uv);
 	float4 sample_material  = tex_material.Sample(sampler_point_clamp, uv);
 	float4 sample_diffuse 	= tex_lightDiffuse.Sample(sampler_point_clamp, uv);
-	float4 sample_specular 	= tex_lightSpecular.Sample(sampler_point_clamp, uv);
+	float3 sample_specular 	= tex_lightSpecular.Sample(sampler_point_clamp, uv).rgb;
 	float3 sample_ssr 		= tex_ssr.Sample(sampler_point_clamp, uv).rgb;
 	float sample_depth  	= tex_depth.Sample(sampler_point_clamp, uv).r;
 
@@ -60,7 +60,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float4 albedo				= degamma(sample_albedo);  
 	float3 normal				= normal_decode(sample_normal.xyz);	
 	float directional_shadow 	= sample_diffuse.a;
-	float reflectance 			= sample_specular.a;
+	float light_received 		= sample_diffuse.a;
 
 	// Create material
     Material material;
@@ -77,7 +77,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	// Ambient light
 	float light_ambient_min = 0.002f;
 	float light_ambient		= g_directional_light_intensity * directional_shadow; // uber fake
-	light_ambient			= clamp(light_ambient, 0.02f, 1.0f);
+	light_ambient			= clamp(light_ambient, light_ambient_min, 1.0f);
 	
 	// Sky
     if (sample_material.a == 0.0f)
@@ -87,14 +87,19 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         return float4(color, 1.0f);
     }
 
-	// Compute light contributions
-	sample_specular.rgb 		+= sample_ssr * reflectance * clamp(directional_shadow, light_ambient_min, 1.0f); // SSR	
-	sample_specular.rgb 		+= material.emissive * 10.0f; // Emissive
-	float3 light_sources 		= (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
-	float3 light_image_based 	= ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp) * light_ambient;
-	
+	// IBL
+	float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp) * light_ambient;
+
+	// Emissive
+	sample_specular += material.emissive * 10.0f;
+
 	// Combine
+	float3 light_sources = (sample_diffuse.rgb + sample_specular) * material.albedo;
 	color = light_sources + light_image_based;
+
+	// SSR
+	float smoothness = 1.0f - material.roughness;
+	color += sample_ssr * smoothness * light_received;
 
     return  float4(color, 1.0f);
 }

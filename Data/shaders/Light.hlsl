@@ -69,7 +69,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 {
 	PixelOutputType light_out;
 	light_out.diffuse 		= float4(0.0f, 0.0f, 0.0f, 0.0f);
-	light_out.specular 		= float4(0.0f, 0.0f, 0.0f, 1.0f);
+	light_out.specular 		= float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float2 uv 				= input.uv;
 	
 	// Sample textures
@@ -184,10 +184,10 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		
 		light_out.diffuse.rgb	= kD * cDiffuse * radiance;
 		light_out.specular.rgb	= cSpecular * radiance;
-		
-		// Save the amount of reflection in the specular's alpha channel (used to modulate IBL later)
-		light_out.specular.a = luminance(material.F0);
 	}
-	
+
+	// Accumulate total light amount hitting that pixel (used to modulate ssr later)
+	light_out.diffuse.a = light.intensity;
+
 	return light_out;
 }

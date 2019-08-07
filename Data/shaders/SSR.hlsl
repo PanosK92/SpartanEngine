@@ -40,11 +40,11 @@ static const int g_steps 					= 16;
 static const int g_binarySearchSteps 		= 8;
 static const float g_binarySearchThreshold 	= 0.01f;
 
-float2 SSR_BinarySearch(float3 ray_dir, inout float3 ray_pos)
+bool binary_search(float3 ray_dir, inout float3 ray_pos, inout float2 ray_uv)
 {
 	for (int i = 0; i < g_binarySearchSteps; i++)
 	{	
-		float2 ray_uv 		= project(ray_pos, g_projection);
+		ray_uv 				= project(ray_pos, g_projection);
 		float depth 		= get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
 		float depth_delta 	= ray_pos.z - depth;
 
@@ -55,20 +55,20 @@ float2 SSR_BinarySearch(float3 ray_dir, inout float3 ray_pos)
 		ray_pos -= ray_dir;
 	}
 
-	float2 ray_uv 		= project(ray_pos, g_projection);
+	ray_uv 				= project(ray_pos, g_projection);
 	float depth_sample 	= get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
 	float depth_delta 	= ray_pos.z - depth_sample;
 
-	return abs(depth_delta) < g_binarySearchThreshold ? project(ray_pos, g_projection) : 0.0f;
+	return abs(depth_delta) < g_binarySearchThreshold;
 }
 
-float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir)
+bool ray_march(float3 ray_pos, float3 ray_dir, inout float2 ray_uv)
 {
 	for(int i = 0; i < g_steps; i++)
 	{
 		// Step ray
-		ray_pos 		+= ray_dir;
-		float2 ray_uv 	= project(ray_pos, g_projection);
+		ray_pos += ray_dir;
+		ray_uv 	= project(ray_pos, g_projection);
 
 		// Compute depth
 		float depth_current = ray_pos.z;
@@ -77,10 +77,10 @@ float2 SSR_RayMarch(float3 ray_pos, float3 ray_dir)
 		
 		[branch]
 		if (depth_delta > 0.0f)
-			return SSR_BinarySearch(ray_dir, ray_pos);
+			return binary_search(ray_dir, ray_pos, ray_uv);
 	}
 
-	return 0.0f;
+	return false;
 }
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
@@ -92,18 +92,18 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float depth  			= tex_depth.Sample(sampler_point_clamp, uv).r;
     float3 position_world 	= get_world_position_from_depth(depth, g_viewProjectionInv, uv);
 
-	float noise_scale 	= 0.01f; // scale the noise down a bit for now as this using jitter needs a blur pass as well (for acceptable results)
-	float3 jitter 		= float(randomize(uv) * 2.0f - 1.0f) * roughness * noise_scale;
-
 	// Convert everything to view space
-	float3 viewPos		= mul(float4(position_world, 1.0f), g_view).xyz;
-	float3 viewNormal	= normalize(mul(float4(normal, 0.0f), g_view).xyz);
-	float3 viewRayDir 	= normalize(reflect(viewPos, viewNormal) + jitter);
+	float3 view_pos			= mul(float4(position_world, 1.0f), g_view).xyz;
+	float3 view_normal		= normalize(mul(float4(normal, 0.0f), g_view).xyz);
+	float3 view_reflection 	= normalize(reflect(view_pos, view_normal));
 	
-	float3 ray_pos 			= viewPos;
-	float2 reflection_uv 	= SSR_RayMarch(ray_pos, viewRayDir);
-	float2 edgeFactor 		= float2(1, 1) - pow(saturate(abs(reflection_uv - float2(0.5f, 0.5f)) * 2), 8);
-	float screenEdge 		= saturate(min(edgeFactor.x, edgeFactor.y));
+	float2 ray_hit_uv = 0.0f;
+	if (ray_march(view_pos, view_reflection, ray_hit_uv))
+	{
+		float2 edgeFactor = float2(1, 1) - pow(saturate(abs(ray_hit_uv - float2(0.5f, 0.5f)) * 2), 8);
+		float fade_screen = saturate(min(edgeFactor.x, edgeFactor.y));
+		return tex_frame.Sample(sampler_linear_clamp, ray_hit_uv) * fade_screen;
+	}
 	
-	return tex_frame.Sample(sampler_linear_clamp, reflection_uv) * screenEdge;
+	return 0.0f;
 }
