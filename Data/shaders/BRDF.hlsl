@@ -99,7 +99,7 @@ float3 BRDF_Specular(Material material, float n_dot_v, float n_dot_l, float n_do
     float D 			= Distribution_GGX(n_dot_h, alpha);
 	float3 nominator 	= F * G * D;
 	float denominator 	= 4.0f * n_dot_l * n_dot_v;
-	return nominator / max(0.00001f, denominator);
+	return nominator / max(EPSILON, denominator);
 }
 
 float3 BRDF_Diffuse(float3 diffuse_color, Material material, float n_dot_v, float n_dot_l, float v_dot_h)
