@@ -1418,15 +1418,16 @@ namespace Spartan
 
 	void Renderer::Pass_PerformanceMetrics(shared_ptr<RHI_Texture>& tex_out)
 	{
-		const bool draw = m_flags & Render_Gizmo_PerformanceMetrics;
-		if (!draw)
-			return;
-
-		const auto& shader_font = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_Font_Vp]);
+        // Early exit cases
+        const bool draw         = m_flags & Render_Gizmo_PerformanceMetrics;
+        const bool empty        = m_profiler->GetMetrics().empty();
+        const auto& shader_font = static_pointer_cast<ShaderBuffered>(m_shaders[Shader_Font_Vp]);
+        if (!draw || empty || !shader_font->IsCompiled())
+            return;
 
 		m_cmd_list->Begin("Pass_PerformanceMetrics");
 
-		// Updated text
+		// Update text
 		const auto text_pos = Vector2(-static_cast<int>(m_viewport.width) * 0.5f + 1.0f, static_cast<int>(m_viewport.height) * 0.5f);
 		m_font->SetText(m_profiler->GetMetrics(), text_pos);
 		auto buffer = Struct_Matrix_Vector4(m_view_projection_orthographic, m_font->GetColor());
