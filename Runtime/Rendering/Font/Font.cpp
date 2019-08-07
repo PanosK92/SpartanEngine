@@ -47,7 +47,7 @@ namespace Spartan
 	{
 		m_rhi_device		= m_context->GetSubsystem<Renderer>()->GetRhiDevice();
 		m_vertex_buffer		= make_shared<RHI_VertexBuffer>(m_rhi_device);
-		m_index_buffer_		= make_shared<RHI_IndexBuffer>(m_rhi_device);
+		m_index_buffer		= make_shared<RHI_IndexBuffer>(m_rhi_device);
 		m_char_max_width	= 0;
 		m_char_max_height	= 0;
 		m_fontColor			= color;
@@ -88,7 +88,10 @@ namespace Spartan
 
 	void Font::SetText(const string& text, const Vector2& position)
 	{
-		if (text == m_current_text)
+        bool same_text      = text == m_current_text;
+        bool has_buffers    = (m_vertex_buffer && m_index_buffer);
+
+		if (same_text || !has_buffers)
 			return;
 
 		auto pen = position;
@@ -154,7 +157,7 @@ namespace Spartan
 
 	bool Font::UpdateBuffers(vector<RHI_Vertex_PosTex>& vertices, vector<uint32_t>& indices) const
 	{
-		if (!m_context || !m_vertex_buffer || !m_index_buffer_)
+		if (!m_context || !m_vertex_buffer || !m_index_buffer)
 		{
 			LOG_ERROR_INVALID_INTERNALS();
 			return false;
@@ -171,7 +174,7 @@ namespace Spartan
 			}
 
 			// Index buffer
-			if (!m_index_buffer_->CreateDynamic<uint32_t>(static_cast<uint32_t>(indices.size())))
+			if (!m_index_buffer->CreateDynamic<uint32_t>(static_cast<uint32_t>(indices.size())))
 			{
 				LOG_ERROR("Failed to update index buffer.");
 				return false;
@@ -182,9 +185,9 @@ namespace Spartan
 		copy(vertices.begin(), vertices.end(), vertex_buffer);
 		const auto vertex = m_vertex_buffer->Unmap();
 
-		const auto index_buffer = static_cast<uint32_t*>(m_index_buffer_->Map());
+		const auto index_buffer = static_cast<uint32_t*>(m_index_buffer->Map());
 		copy(indices.begin(), indices.end(), index_buffer);
-		const auto index = m_index_buffer_->Unmap();
+		const auto index = m_index_buffer->Unmap();
 
 		return vertex && index;
 	}
