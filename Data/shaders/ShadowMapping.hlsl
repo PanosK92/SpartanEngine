@@ -167,20 +167,13 @@ float Shadow_Map(float3 normal, float depth, float3 world_pos, float bias, float
 		if (cascade != -1)
 		{
 			float3 cascadeBlend = abs(tex_coords[cascade] * 2 - 1);
-			int2 cascades 		= int2(cascade, cascade + 1);
-			float shadows[2] 	= { 1.0f, 1.0f };
+
+				float a = ShadowMap_Directional(0, positonCS[0], g_shadow_texel_size, bias);
+				float b = ShadowMap_Directional(1, positonCS[1], g_shadow_texel_size, bias);
+				float c = ShadowMap_Directional(2, positonCS[2], g_shadow_texel_size, bias);
 	
-			// Sample the main cascade	
-			shadows[0] = ShadowMap_Directional(cascades[0], positonCS[cascades[0]], g_shadow_texel_size, bias);
-			
-			[branch]
-			if (cascades[1] <= 2)
-			{
-				shadows[1] = ShadowMap_Directional(cascades[1], positonCS[cascades[1]], g_shadow_texel_size, bias);
-			}
-	
-			// Blend cascades		
-			shadow = lerp(shadows[0], shadows[1], pow(max(cascadeBlend.x, max(cascadeBlend.y, cascadeBlend.z)), 4));
+				// Blend cascades		
+				shadow = min(min(a, b),c);
 		}
 	}
 	#elif POINT

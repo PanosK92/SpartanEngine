@@ -249,42 +249,89 @@ namespace Spartan
 		if (!m_renderer->GetCamera() || index >= m_shadow_map->GetArraySize())
 			return false;
 
-		const auto& camera = m_renderer->GetCamera();
-		const auto& camera_transform = camera->GetTransform();
+		Camera* camera = m_renderer->GetCamera().get();
+		Transform* camera_transform = camera->GetTransform();
 
 		if (m_lightType == LightType_Directional)
 		{		
-			float splits[3] =
-			{
-				camera->GetFarPlane() * 0.01f,
-				camera->GetFarPlane() * 0.05f,
-				camera->GetFarPlane()
-			};
+            float camera_near   = camera->GetNearPlane();
+            float camera_far    = camera->GetFarPlane();
+            float clipRange     = camera_far - camera_near;
+            float range         = camera_far - camera_near;
+            float ratio         = camera_far / camera_near;
 
-			float split		= splits[index];
-			float extent	= split * tan(camera->GetFovHorizontalRad() * 0.5f);
+            // Calculate split depths based on view camera frustum
+            // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
+            static const int SHADOW_MAP_CASCADE_COUNT = 3;
+            float cascadeSplitLambda = 0.95f;
+            float splits[SHADOW_MAP_CASCADE_COUNT];
+            for (uint32_t i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++)
+            {
+                float p         = (i + 1) / static_cast<float>(SHADOW_MAP_CASCADE_COUNT);
+                float log       = camera_near * std::pow(ratio, p);
+                float uniform   = camera_near + range * p;
+                float d         = cascadeSplitLambda * (log - uniform) + uniform;
+                splits[i]       = d - camera_near;
+            }
 
-			Vector3 box_center	= (camera_transform->GetPosition() + camera_transform->GetForward() * split * 0.5f) * GetViewMatrix(); // Transform to light space
-			Vector3 box_extent	= Vector3(extent); // don't rotate with light as it will introduce shadow shimmering
-			Vector3 box_min		= box_center - box_extent;
-			Vector3 box_max		= box_center + box_extent;
+            // Compute cascade dimensions
+            float cascade_near  = index == 0 ? camera_near : splits[index - 1];
+			float cascade_far	= splits[index];
+            float tanHalfHFOV   = tan(camera->GetFovHorizontalRad() / 2.0f);
+            float tanHalfVFOV   = tan(camera->GetFovVerticalRad() / 2.0f);
+            float xn            = cascade_near * tanHalfHFOV;
+            float xf            = cascade_far * tanHalfHFOV;
+            float yn            = cascade_near * tanHalfVFOV;
+            float yf            = cascade_far * tanHalfVFOV;
 
-			//= Prevent shadow shimmering  ========================================================
-			// Shadow shimmering remedy based on
+            // Compute cascade's view-space points
+            vector<Vector4> points =
+            {
+                // near face
+                Vector4(xn, yn, cascade_near, 1.0),
+                Vector4(-xn, yn, cascade_near, 1.0),
+                Vector4(xn, -yn, cascade_near, 1.0),
+                Vector4(-xn, -yn, cascade_near, 1.0),
+
+                // far face
+                Vector4(xf, yf, cascade_far, 1.0),
+                Vector4(-xf, yf, cascade_far, 1.0),
+                Vector4(xf, -yf, cascade_far, 1.0),
+                Vector4(-xf, -yf, cascade_far, 1.0)
+            };
+
+            // Compute box
+            auto camera_view_inverse = camera->GetViewMatrix().Inverted();
+            auto min = Vector3::Infinity;
+            auto max = Vector3::InfinityNeg;
+            for (const auto& point_view : points)
+            {
+                auto point_world = camera_view_inverse * point_view;
+                auto point_light = GetViewMatrix() * point_world;
+
+                min.x = Min(min.x, point_light.x);
+                max.x = Max(max.x, point_light.x);
+                min.y = Min(min.y, point_light.y);
+                max.y = Max(max.y, point_light.y);
+                min.z = Min(min.z, point_light.z);
+                max.z = Max(max.z, point_light.z);
+            }
+
+			//= Shadow shimmering remedy ======================================================
 			// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
-			float units_per_texel = (extent * 2.0f) / static_cast<float>(m_shadow_map->GetWidth());
-			box_min /= units_per_texel;
-			box_min.Floor();
-			box_min *= units_per_texel;
-			box_max /= units_per_texel;
-			box_max.Floor();
-			box_max *= units_per_texel;
-			//=====================================================================================
+			float units_per_texel = (xn * 2.0f) / static_cast<float>(m_shadow_map->GetWidth());
+            min /= units_per_texel;
+            min.Floor();
+            min *= units_per_texel;
+            max /= units_per_texel;
+            max.Floor();
+            max *= units_per_texel;
+			//=================================================================================
 
-			if (m_renderer->GetReverseZ())
-				m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_max.z, box_min.z);
-			else
-				m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_min.z, box_max.z);
+            if (m_renderer->GetReverseZ())
+                m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, max.z, min.z);
+            else
+                m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);
 		}
 		else
 		{
