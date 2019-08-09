@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Math
 {
+    class Vector4;
+
 	class SPARTAN_CLASS Vector3
 	{
 	public:
@@ -47,6 +49,9 @@ namespace Spartan::Math
 			y = vector.y;
 			z = vector.z;
 		}
+
+        // Copy-constructor
+        Vector3(const Vector4& vector);
 
 		// Construct from coordinates.
 		Vector3(float x, float y, float z)
@@ -211,6 +216,10 @@ namespace Spartan::Math
 		{
 			return !(*this == rhs);
 		}
+
+        // Return negation.
+        Vector3 operator -() const { return Vector3(-x, -y, -z); }
+
 
 		std::string ToString() const;
 		const float* Data() const { return &x; }
