@@ -300,34 +300,41 @@ namespace Spartan
                 Vector4(-xf, -yf, cascade_far, 1.0)
             };
 
-            // Compute box
+            // Transform points to light space
             auto camera_view_inverse = camera->GetViewMatrix().Inverted();
-            auto min = Vector3::Infinity;
-            auto max = Vector3::InfinityNeg;
             for (const auto& point_view : points)
             {
                 auto point_world = camera_view_inverse * point_view;
                 auto point_light = GetViewMatrix() * point_world;
-
-                min.x = Min(min.x, point_light.x);
-                max.x = Max(max.x, point_light.x);
-                min.y = Min(min.y, point_light.y);
-                max.y = Max(max.y, point_light.y);
-                min.z = Min(min.z, point_light.z);
-                max.z = Max(max.z, point_light.z);
             }
 
-			//= Shadow shimmering remedy ======================================================
-			// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
-			float units_per_texel = (xn * 2.0f) / static_cast<float>(m_shadow_map->GetWidth());
-            min /= units_per_texel;
-            min.Floor();
-            min *= units_per_texel;
-            max /= units_per_texel;
-            max.Floor();
-            max *= units_per_texel;
-			//=================================================================================
+            // Compute bounding sphere which encloses the frustum
+            // Since a sphere is rotational invariant it will keep the size of the orthographic
+            // projection frustum same independent of eye view direction. This will keep the
+            // size of the frustum in light space, the same, hence eliminating shimmering.
+            Vector3 max = Vector3::Zero;
+            Vector3 min = Vector3::Zero;
+            {
+                Vector3 frustum_center = Vector3::Zero;
+                for (uint32_t i = 0; i < 8; i++)
+                {
+                    frustum_center += Vector3(points[i]);
+                }
+                frustum_center /= 8.0f;
 
+                float radius = 0.0f;
+                for (uint32_t i = 0; i < 8; i++)
+                {
+                    float distance = (Vector3(points[i]) - frustum_center).Length();
+                    radius = Max(radius, distance);
+                }
+                radius = Ceil(radius * 16.0f) / 16.0f;
+
+                max = Vector3(radius);
+                min = -max;
+            }
+
+            // Compute projection matrix
             if (m_renderer->GetReverseZ())
                 m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, max.z, min.z);
             else

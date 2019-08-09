@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 #include "Vector3.h"
+#include "Vector4.h"
 //==================
 
 //= NAMESPACES =====
@@ -46,4 +47,11 @@ namespace Spartan::Math
 		sprintf_s(tempBuffer, "X:%f, Y:%f, Z:%f", x, y, z);
 		return string(tempBuffer);
 	}
+
+    Vector3::Vector3(const Vector4& vector)
+    {
+        x = vector.x;
+        y = vector.y;
+        z = vector.z;
+    }
 }
