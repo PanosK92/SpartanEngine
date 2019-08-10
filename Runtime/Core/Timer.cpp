@@ -61,10 +61,11 @@ namespace Spartan
 		const duration<double, milli> time_sleep	= time_b - time_a;
 		m_delta_time_ms								= (time_work + time_sleep).count();
 
-        // Compute smoothed delta time  
+        // Compute smoothed delta time
+        double frames_to_accumulate = 5;
+        double delta_feedback       = 1.0 / frames_to_accumulate;
         double delta_max            = 1000.0 / m_fps_min;
-        double delta_clamped        = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms; // If frame time is too high/slow, clamp it
-        double delta_feedback       = 0.2;
+        double delta_clamped        = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms; // If frame time is too high/slow, clamp it   
         m_delta_time_smoothed_ms    = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + delta_clamped * delta_feedback;
 	}
 
