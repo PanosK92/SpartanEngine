@@ -50,6 +50,14 @@ namespace Spartan
 		LightType_Spot
 	};
 
+    static const int g_cascade_count = 3;
+    struct Cascade
+    {
+        Math::Vector3 min;
+        Math::Vector3 max;
+        Math::Vector3 center;
+    };
+
 	class SPARTAN_CLASS Light : public IComponent
 	{
 	public:
@@ -104,7 +112,8 @@ namespace Spartan
 
 	private:
 		void ComputeViewMatrix();
-		bool ComputeProjectionMatrix(uint32_t index = 0);	
+		bool ComputeProjectionMatrix(uint32_t index = 0);
+        bool ComputeCascadeSplits();
 		
 		LightType m_lightType	= LightType_Directional;
 		bool m_cast_shadows		= true;
@@ -115,12 +124,12 @@ namespace Spartan
 		float m_normal_bias		= 5.0f;	
 		bool m_is_dirty			= true;
 		Math::Vector4 m_color   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-        static const int m_cascade_count = 3;
 		std::array<Math::Matrix, 6> m_matrix_view;
 		std::array<Math::Matrix, 6> m_matrix_projection;
 		Math::Quaternion m_lastRotLight;
 		Math::Vector3 m_lastPosLight;
 		Math::Vector3 m_lastPosCamera;
+        std::vector<Cascade> m_cascades;
 		
 		// Shadow map
 		std::shared_ptr<RHI_Texture> m_shadow_map;	
@@ -129,7 +138,7 @@ namespace Spartan
         // Constant buffer
         struct CB_Light
         {
-            Math::Matrix view_projection[m_cascade_count];
+            Math::Matrix view_projection[g_cascade_count];
             Math::Vector3 color;
             float intensity;
             Math::Vector3 position;
