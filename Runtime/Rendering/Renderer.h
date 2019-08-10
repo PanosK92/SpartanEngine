@@ -270,7 +270,6 @@ namespace Spartan
 		void Pass_BlurBox(std::shared_ptr<RHI_Texture>& tex_in,					std::shared_ptr<RHI_Texture>& tex_out, float sigma);
 		void Pass_BlurGaussian(std::shared_ptr<RHI_Texture>& tex_in,			std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
 		void Pass_BlurBilateralGaussian(std::shared_ptr<RHI_Texture>& tex_in,	std::shared_ptr<RHI_Texture>& tex_out, float sigma, float pixel_stride = 1.0f);
-		void Pass_SSAO(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Lines(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_Gizmos(std::shared_ptr<RHI_Texture>& tex_out);
 		void Pass_PerformanceMetrics(std::shared_ptr<RHI_Texture>& tex_out);

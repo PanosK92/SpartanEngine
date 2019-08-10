@@ -333,14 +333,40 @@ namespace Spartan
 
 	void Renderer::Pass_Ssao()
 	{
+        // Acquire shaders
+        const auto& shader_quad = m_shaders[Shader_Quad_V];
+        const auto& shader_ssao = m_shaders[Shader_Ssao_P];
+        if (!shader_quad->IsCompiled() || !shader_ssao->IsCompiled())
+            return;
+
 		m_cmd_list->Begin("Pass_Ssao");	
 		m_cmd_list->ClearRenderTarget(m_render_tex_half_ssao->GetResource_RenderTarget(), Vector4::One);
         m_cmd_list->ClearRenderTarget(m_render_tex_ssao->GetResource_RenderTarget(), Vector4::One);
 
 		if (m_flags & Render_PostProcess_SSAO)
 		{
-            // SSAO
-			Pass_SSAO(m_render_tex_half_ssao);
+            // Prepare resources	
+            void* textures[] = { m_g_buffer_normal->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_tex_noise_normal->GetResource_Texture() };
+            vector<void*> samplers = { m_sampler_bilinear_clamp->GetResource() /*SSAO (clamp) */, m_sampler_bilinear_wrap->GetResource() /*SSAO noise texture (wrap)*/ };
+            UpdateUberBuffer(m_render_tex_half_ssao->GetWidth(), m_render_tex_half_ssao->GetHeight());
+
+            m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
+            m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+            m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
+            m_cmd_list->SetBlendState(m_blend_disabled);
+            m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
+            m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
+            m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
+            m_cmd_list->SetRenderTarget(m_render_tex_half_ssao);
+            m_cmd_list->SetViewport(m_render_tex_half_ssao->GetViewport());
+            m_cmd_list->SetShaderVertex(shader_quad);
+            m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
+            m_cmd_list->SetShaderPixel(shader_ssao);
+            m_cmd_list->SetTextures(0, textures, 3);
+            m_cmd_list->SetSamplers(0, samplers);
+            m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
+            m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+            m_cmd_list->Submit();
 
             // Bilateral blur
             const auto sigma = 2.0f;
@@ -630,41 +656,6 @@ namespace Spartan
 		// Gamma correction
 		Pass_GammaCorrection(tex_in, tex_out);
 
-		m_cmd_list->End();
-		m_cmd_list->Submit();
-	}
-
-    void Renderer::Pass_SSAO(shared_ptr<RHI_Texture>& tex_out)
-	{
-		// Acquire shaders
-		const auto& shader_quad = m_shaders[Shader_Quad_V];
-		const auto& shader_ssao = m_shaders[Shader_Ssao_P];
-		if (!shader_quad->IsCompiled() || !shader_ssao->IsCompiled())
-			return;
-
-		m_cmd_list->Begin("Pass_SSAO");
-
-		// Prepare resources	
-		void* textures[] = { m_g_buffer_normal->GetResource_Texture(), m_g_buffer_depth->GetResource_Texture(), m_tex_noise_normal->GetResource_Texture() };
-		vector<void*> samplers = { m_sampler_bilinear_clamp->GetResource() /*SSAO (clamp) */, m_sampler_bilinear_wrap->GetResource() /*SSAO noise texture (wrap)*/};
-		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
-
-		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from some previous pass)
-        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
-        m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);
-        m_cmd_list->SetBlendState(m_blend_disabled);
-        m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
-        m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
-        m_cmd_list->SetBufferIndex(m_quad.GetIndexBuffer());
-		m_cmd_list->SetRenderTarget(tex_out);	
-		m_cmd_list->SetViewport(tex_out->GetViewport());
-		m_cmd_list->SetShaderVertex(shader_quad);
-		m_cmd_list->SetInputLayout(shader_quad->GetInputLayout());
-		m_cmd_list->SetShaderPixel(shader_ssao);
-		m_cmd_list->SetTextures(0, textures, 3);
-		m_cmd_list->SetSamplers(0, samplers);
-		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
-		m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		m_cmd_list->End();
 		m_cmd_list->Submit();
 	}
