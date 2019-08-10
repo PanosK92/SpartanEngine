@@ -48,6 +48,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 - Post-process effects (Tone-Mapping, FXAA, Sharpening, Dithering, Chromatic aberration etc.)
 - SSAO (Screen space ambient occlusion)
 - SSR (Screen space reflections)
+- SSS (Screen space shadows)
 - TAA (Temporal anti-aliasing based on Uncharted 4)
 - Constraints
 - Rigid bodies
@@ -64,12 +65,13 @@ Platform | API | Status | Quality | Binaries | :+1:
 # Roadmap
 
 ##### v0.31 (WIP)
-Feature     		| Completion    | Notes 
-:-          		| :-            | :-
-Parallax Mapping 	| 100%          | -
-Shader Editor 		| 100%          | Real-time shader editing tool.
-Shadows 			| 90%          	| Improve shadow mapping performance and enable spot & point light shadows.
-Vulkan      		| 60%           | Don't port it, re-architect the engine instead.
+Feature     			| Completion    | Notes 
+:-          			| :-            | :-
+Parallax Mapping 		| 100%          | -
+Shader Editor 			| 100%          | Real-time shader editing tool.
+Shadows 				| 90%          	| Enable point & spot light shadows.
+Screen space shadows 	| 100%          | -
+Vulkan      			| 60%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
 - C# scripting (Replace AngelScript).

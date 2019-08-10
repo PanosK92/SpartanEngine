@@ -131,11 +131,11 @@ float ShadowMap_Spot(float4 positionCS, float texel, float3 sample_direction, fl
 	return Technique_PCF_2d(0, texel, sample_direction.xy, compare_depth);
 }
 
-float Shadow_Map(float3 normal, float depth, float3 world_pos, float bias, float normal_bias, Light light)
+float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float bias, float normal_bias, Light light)
 {
     float n_dot_l               = dot(normal, normalize(-light.direction));
     float cos_angle             = saturate(1.0f - n_dot_l);
-    float3 scaled_normal_offset = normal * normal_bias * cos_angle * g_shadow_texel_size;
+    float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float self_shadow 			= saturate(n_dot_l);
 	float shadow 				= 1.0f;
@@ -155,25 +155,23 @@ float Shadow_Map(float3 normal, float depth, float3 world_pos, float bias, float
 		tex_coords[1] = positonCS[1].xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;
 		tex_coords[2] = positonCS[2].xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;
 		
-		int cascade = -1;
+		bool within_cascade = false;
 		[unroll]
 		for (int i = 2; i >= 0; i--)
 		{
-			cascade = any(tex_coords[i] - saturate(tex_coords[i])) ? cascade : i;
+			within_cascade = any(tex_coords[i] - saturate(tex_coords[i])) ? within_cascade : true;
 		}
 		
 		// If we are within a cascade, sample shadow maps
 		[branch]
-		if (cascade != -1)
+		if (within_cascade)
 		{
-			float3 cascadeBlend = abs(tex_coords[cascade] * 2 - 1);
-
-				float a = ShadowMap_Directional(0, positonCS[0], g_shadow_texel_size, bias);
-				float b = ShadowMap_Directional(1, positonCS[1], g_shadow_texel_size, bias);
-				float c = ShadowMap_Directional(2, positonCS[2], g_shadow_texel_size, bias);
-	
-				// Blend cascades		
-				shadow = min(min(a, b),c);
+			float a = ShadowMap_Directional(0, positonCS[0], g_shadow_texel_size, bias);
+			float b = ShadowMap_Directional(1, positonCS[1], g_shadow_texel_size, bias);
+			float c = ShadowMap_Directional(2, positonCS[2], g_shadow_texel_size, bias);
+			
+			// Blend cascades		
+			shadow = min(min(a, b),c);
 		}
 	}
 	#elif POINT
@@ -198,8 +196,7 @@ float Shadow_Map(float3 normal, float depth, float3 world_pos, float bias, float
 	#endif
 
 	// Apply micro shadows
-	shadow = min(shadow, self_shadow);
-	shadow *= shadow / 0.02f;
+	shadow = min(shadow, 1.0f - pow(1.0f - self_shadow, 4));
 
 	return shadow;
 }
