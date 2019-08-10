@@ -98,7 +98,7 @@ void Widget_Profiler::ShowCPU()
 	}
 
 	ImGui::Separator();
-	ShowPlot(m_plot_times_cpu, m_metric_cpu, time_cpu);
+	ShowPlot(m_plot_times_cpu, m_metric_cpu, time_cpu, m_profiler->IsCpuStuttering());
 }
 
 void Widget_Profiler::ShowGPU()
@@ -131,7 +131,7 @@ void Widget_Profiler::ShowGPU()
 
 	// Plot
 	ImGui::Separator();
-	ShowPlot(m_plot_times_gpu, m_metric_gpu, time_gpu );
+	ShowPlot(m_plot_times_gpu, m_metric_gpu, time_gpu, m_profiler->IsGpuStuttering());
 
 	// VRAM	
 	ImGui::Separator();
@@ -141,7 +141,7 @@ void Widget_Profiler::ShowGPU()
 	ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());
 }
 
-void Widget_Profiler::ShowPlot(vector<float>& data, Metric& metric, float time_value)
+void Widget_Profiler::ShowPlot(vector<float>& data, Metric& metric, float time_value, bool is_stuttering)
 {
 	if (time_value >= 0.0f)
 	{
@@ -157,8 +157,10 @@ void Widget_Profiler::ShowPlot(vector<float>& data, Metric& metric, float time_v
 	data.erase(data.begin());
 	data.emplace_back(time_value);
 
+    if (ImGui::Button("Clear")) { metric.Clear(); }
+    ImGui::SameLine();  ImGui::Text("Avg:%.2f, Min:%.2f, Max:%.2f", metric.m_avg, metric.m_min, metric.m_max);
+    ImGui::SameLine();  ImGui::TextColored(ImVec4(is_stuttering ? 1.0f : 0.0f, is_stuttering ? 0.0f : 1.0f, 0.0f, 1.0f), is_stuttering ? "Stuttering: Yes" : "Stuttering: No");
+
 	// Plot data
-	if (ImGui::Button("Clear")) { metric.Clear(); }
-	ImGui::SameLine();  ImGui::Text("Avg:%.2f, Min:%.2f, Max:%.2f", metric.m_avg, metric.m_min, metric.m_max);
 	ImGui::PlotLines("", data.data(), static_cast<int>(data.size()), 0, "", metric.m_min, metric.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
 }
