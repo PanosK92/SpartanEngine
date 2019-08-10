@@ -254,57 +254,63 @@ namespace Spartan
 
 		if (m_lightType == LightType_Directional)
 		{		
-            float camera_near   = camera->GetNearPlane();
-            float camera_far    = camera->GetFarPlane();
-            float clipRange     = camera_far - camera_near;
-            float range         = camera_far - camera_near;
-            float ratio         = camera_far / camera_near;
+            float clip_near     = camera->GetNearPlane();
+            float clip_far      = camera->GetFarPlane();
+            float clip_range    = clip_far - clip_near;
+            float min_z         = clip_near;
+            float max_z         = clip_near + clip_range;
+            float range         = max_z - min_z;
+            float ratio         = max_z / min_z;
 
             // Calculate split depths based on view camera frustum
             // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-            float cascadeSplitLambda = 0.95f;
+            float split_lambda = 0.99f;
             float splits[m_cascade_count];
             for (uint32_t i = 0; i < m_cascade_count; i++)
             {
                 float p         = (i + 1) / static_cast<float>(m_cascade_count);
-                float log       = camera_near * std::pow(ratio, p);
-                float uniform   = camera_near + range * p;
-                float d         = cascadeSplitLambda * (log - uniform) + uniform;
-                splits[i]       = d - camera_near;
+                float log       = min_z * std::pow(ratio, p);
+                float uniform   = min_z + range * p;
+                float d         = split_lambda * (log - uniform) + uniform;
+                splits[i]       = (d - clip_near);
             }
 
-            // Compute cascade dimensions
-            float cascade_near  = index == 0 ? camera_near : splits[index - 1];
-			float cascade_far	= splits[index];
-            float tanHalfHFOV   = tan(camera->GetFovHorizontalRad() / 2.0f);
-            float tanHalfVFOV   = tan(camera->GetFovVerticalRad() / 2.0f);
-            float xn            = cascade_near * tanHalfHFOV;
-            float xf            = cascade_far * tanHalfHFOV;
-            float yn            = cascade_near * tanHalfVFOV;
-            float yf            = cascade_far * tanHalfVFOV;
-
-            // Compute cascade's view-space points
-            vector<Vector4> points =
+            // Compute cascade's projection-space points
+            Vector3 points[8] =
             {
-                // near face
-                Vector4(xn, yn, cascade_near, 1.0),
-                Vector4(-xn, yn, cascade_near, 1.0),
-                Vector4(xn, -yn, cascade_near, 1.0),
-                Vector4(-xn, -yn, cascade_near, 1.0),
-
-                // far face
-                Vector4(xf, yf, cascade_far, 1.0),
-                Vector4(-xf, yf, cascade_far, 1.0),
-                Vector4(xf, -yf, cascade_far, 1.0),
-                Vector4(-xf, -yf, cascade_far, 1.0)
+                Vector3(-1.0f,  1.0f,   -1.0f),
+                Vector3(1.0f,   1.0f,   -1.0f),
+                Vector3(1.0f,   -1.0f,  -1.0f),
+                Vector3(-1.0f,  -1.0f,  -1.0f),
+                Vector3(-1.0f,  1.0f,   1.0f),
+                Vector3(1.0f,   1.0f,   1.0f),
+                Vector3(1.0f,   -1.0f,  1.0f),
+                Vector3(-1.0f,  -1.0f,  1.0f),
             };
 
             // Transform points to light space
-            auto camera_view_inverse = camera->GetViewMatrix().Inverted();
-            for (const auto& point_view : points)
+            auto to_world = (camera->GetViewMatrix() * camera->GetProjectionMatrix()).Inverted();
+            for (uint32_t i = 0; i < 8; i++)
             {
-                auto point_world = camera_view_inverse * point_view;
-                auto point_light = GetViewMatrix() * point_world;
+                Vector4 world_point = to_world * Vector4(points[i], 1.0f);
+                points[i] = world_point / world_point.w;
+            }
+
+            // Compute split distance
+            {
+                static float last_split_distance;
+
+                // Reset split distance every time we restart
+                if (index == 0) last_split_distance = 0.0f;
+
+                float split_distance = splits[index];
+                for (uint32_t i = 0; i < 4; i++)
+                {
+                    Vector3 distance = points[i + 4] - points[i];
+                    points[i + 4] = points[i] + (distance * split_distance);
+                    points[i] = points[i] + (distance * last_split_distance);
+                }
+                last_split_distance = splits[index];
             }
 
             // Compute bounding sphere which encloses the frustum
