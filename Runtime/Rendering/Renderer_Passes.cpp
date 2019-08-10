@@ -456,10 +456,10 @@ namespace Spartan
 
         // Begin
         m_cmd_list->Begin("Pass_Light");
-        m_cmd_list->ClearRenderTargets(render_targets, Vector4::Zero);
-        m_cmd_list->SetRenderTargets(render_targets, nullptr);
-        m_cmd_list->SetViewport(m_render_tex_light_diffuse->GetViewport());
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+        m_cmd_list->ClearRenderTargets(render_targets, Vector4::Zero);
+        m_cmd_list->SetRenderTargets(render_targets);
+        m_cmd_list->SetViewport(m_render_tex_light_diffuse->GetViewport());    
         m_cmd_list->SetRasterizerState(m_rasterizer_cull_back_solid);       
         m_cmd_list->SetPrimitiveTopology(PrimitiveTopology_TriangleList);
         m_cmd_list->SetBufferVertex(m_quad.GetVertexBuffer());
@@ -670,6 +670,7 @@ namespace Spartan
 
         m_cmd_list->Begin("Upscale");
         UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetRenderTarget(tex_out);
         m_cmd_list->SetViewport(tex_out->GetViewport());
         m_cmd_list->SetShaderVertex(shader_vertex);
@@ -693,6 +694,7 @@ namespace Spartan
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->SetRenderTarget(tex_out);
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_blurBox);
 		m_cmd_list->SetTexture(0, tex_in); // Shadows are in the alpha channel
@@ -717,6 +719,7 @@ namespace Spartan
 
 		// Start command list
 		m_cmd_list->Begin("Pass_BlurGaussian");
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_gaussian);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
@@ -777,6 +780,7 @@ namespace Spartan
 
 		// Start command list
 		m_cmd_list->Begin("Pass_BlurBilateralGaussian");
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
         m_cmd_list->SetBlendState(m_blend_disabled);
 		m_cmd_list->SetViewport(tex_out->GetViewport());	
 		m_cmd_list->SetShaderVertex(shader_quad);
@@ -834,6 +838,7 @@ namespace Spartan
 			return;
 
 		m_cmd_list->Begin("Pass_TAA");
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 
 		// Resolve
 		{
@@ -978,6 +983,7 @@ namespace Spartan
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_toneMapping);
@@ -1002,6 +1008,7 @@ namespace Spartan
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_gammaCorrection);
@@ -1027,6 +1034,7 @@ namespace Spartan
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
@@ -1064,6 +1072,7 @@ namespace Spartan
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_chromaticAberration);
@@ -1089,6 +1098,7 @@ namespace Spartan
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_motionBlur);
@@ -1113,6 +1123,7 @@ namespace Spartan
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());
 		m_cmd_list->SetShaderPixel(shader_dithering);
@@ -1137,6 +1148,7 @@ namespace Spartan
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 	
 		m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());		
 		m_cmd_list->SetShaderPixel(shader_sharperning);
