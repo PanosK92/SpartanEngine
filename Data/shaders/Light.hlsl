@@ -36,7 +36,7 @@ SamplerState samplerLinear_clamp 			: register(s2);
 //=========================================================
 
 //= BUFFERS ================================
-#define cascade_count 3
+#define cascade_count 4
 cbuffer LightBuffer : register(b1)
 {
 	matrix 	light_view_projection[cascade_count];
