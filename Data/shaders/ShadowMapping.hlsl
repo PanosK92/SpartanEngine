@@ -140,7 +140,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 {
     float n_dot_l               = dot(normal, normalize(-light.direction));
     float cos_angle             = saturate(1.0f - n_dot_l);
-    float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias;
+    float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias * 100;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
 
@@ -163,13 +163,13 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 				float shadow_primary = ShadowMap_Directional(cascade, pos, g_shadow_texel_size, bias);
 
 				// Edge threshold
-				float edge = 0.9f; // 1.0f is where the cascade ends
-				bool is_close_edge = is_saturated(abs(pos.xyz) + (1.0f - edge));
+				float edge = 0.8f; // 1.0f is where the cascade ends
+				bool near_edge = !is_saturated(uv + (1.0f - edge));
 
 				// Sample the secondary cascade
 				float shadow_secondary = 1.0f;
 				[branch]
-				if (is_close_edge && cascade <= 2)
+				if (near_edge && cascade <= 2)
 				{
 					int cacade_secondary = cascade + 1;
 					pos = mul(position_world, light_view_projection[cacade_secondary]);
