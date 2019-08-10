@@ -262,12 +262,11 @@ namespace Spartan
 
             // Calculate split depths based on view camera frustum
             // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-            static const int SHADOW_MAP_CASCADE_COUNT = 3;
             float cascadeSplitLambda = 0.95f;
-            float splits[SHADOW_MAP_CASCADE_COUNT];
-            for (uint32_t i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++)
+            float splits[m_cascade_count];
+            for (uint32_t i = 0; i < m_cascade_count; i++)
             {
-                float p         = (i + 1) / static_cast<float>(SHADOW_MAP_CASCADE_COUNT);
+                float p         = (i + 1) / static_cast<float>(m_cascade_count);
                 float log       = camera_near * std::pow(ratio, p);
                 float uniform   = camera_near + range * p;
                 float d         = cascadeSplitLambda * (log - uniform) + uniform;
@@ -364,7 +363,7 @@ namespace Spartan
 
 		if (GetLightType() == LightType_Directional)
 		{
-			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 3);
+			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, m_cascade_count);
 		}
 		else if (GetLightType() == LightType_Point)
 		{
@@ -388,10 +387,11 @@ namespace Spartan
         // Update buffer
         auto buffer = static_cast<CB_Light*>(m_cb_light_gpu->Map());
 
-        buffer->view_projection[0]  = GetViewMatrix() * GetProjectionMatrix(0);
-        buffer->view_projection[1]  = GetViewMatrix() * GetProjectionMatrix(1);
-        buffer->view_projection[2]  = GetViewMatrix() * GetProjectionMatrix(2);
-        buffer->color               = Vector3(m_color.x, m_color.y, m_color.z);
+        for (int i = 0; i < m_cascade_count; i++)
+        {
+            buffer->view_projection[i] = GetViewMatrix() * GetProjectionMatrix(i);
+        }
+        buffer->color               = m_color;
         buffer->intensity           = GetIntensity();
         buffer->position            = GetTransform()->GetPosition();
         buffer->range               = GetRange();

@@ -20,13 +20,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const uint g_steps 				= 32;
-static const float g_ray_step 			= 0.02f;
+static const float g_ray_step 			= 0.01f;
 static const float g_rejection_depth 	= 0.05f;
 
 float ScreenSpaceShadows(float2 uv, float3 light_dir)
 {
     // Origin view space position
-    float origin_depth 	= tex_depth.Sample(sampler_point_clamp, uv);
+    float origin_depth 	= tex_depth.Sample(sampler_point_clamp, uv).r;
     float3 temp  		= get_world_position_from_depth(origin_depth, g_viewProjectionInv, uv);
     float3 origin_pos	= mul(float4(temp, 1.0f), g_view).xyz;
 
@@ -43,6 +43,9 @@ float ScreenSpaceShadows(float2 uv, float3 light_dir)
         // Step ray
         ray_pos 		+= ray_dir;
 		float2 ray_uv 	= project(ray_pos, g_projection);
+
+		if (!is_saturated(ray_uv))
+			break;
 
 		// Compare depth
 		float depth_sampled = get_linear_depth(tex_depth, sampler_point_clamp, ray_uv);

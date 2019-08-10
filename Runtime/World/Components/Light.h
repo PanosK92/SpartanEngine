@@ -115,6 +115,7 @@ namespace Spartan
 		float m_normal_bias		= 120.0f;	
 		bool m_is_dirty			= true;
 		Math::Vector4 m_color   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+        static const int m_cascade_count = 3;
 		std::array<Math::Matrix, 6> m_matrix_view;
 		std::array<Math::Matrix, 6> m_matrix_projection;
 		Math::Quaternion m_lastRotLight;
@@ -128,7 +129,7 @@ namespace Spartan
         // Constant buffer
         struct CB_Light
         {
-            Math::Matrix view_projection[3];
+            Math::Matrix view_projection[m_cascade_count];
             Math::Vector3 color;
             float intensity;
             Math::Vector3 position;
