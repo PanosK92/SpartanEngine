@@ -57,6 +57,7 @@ cbuffer LightBuffer : register(b1)
 #include "Common.hlsl"       
 #include "BRDF.hlsl"                 
 #include "ShadowMapping.hlsl"
+#include "SSS.hlsl"
 //===========================
 
 struct PixelOutputType
@@ -107,7 +108,9 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	float shadow = 1.0f;
 	if (shadow_enabled)
 	{
-		shadow = Shadow_Map(normal, depth_sample, position_world, bias, normal_bias, light);	
+		float shadow_map 			= Shadow_Map(uv, normal, depth_sample, position_world, bias, normal_bias, light);	
+		float screen_space_shadow 	= ScreenSpaceShadows(uv, light.direction);
+		shadow = min(shadow_map, screen_space_shadow);
 	}
 
 	// Mix shadow with ssao and modulate light's intensity

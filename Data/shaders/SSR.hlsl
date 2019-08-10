@@ -70,8 +70,7 @@ bool ray_march(float3 ray_pos, float3 ray_dir, inout float2 ray_uv)
 		ray_pos += ray_dir;
 		ray_uv 	= project(ray_pos, g_projection);
 
-		// Compute depth
-		float depth_current = ray_pos.z;
+		// Compare depth
 		float depth_sampled = get_linear_depth(tex_depth, sampler_linear_clamp, ray_uv);
 		float depth_delta 	= ray_pos.z - depth_sampled;
 		
