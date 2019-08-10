@@ -24,6 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PCF_DIM float(PCF_SAMPLES) / 2.0f
 //=======================================
 
+//= INCLUDES ============
+#include "Dithering.hlsl"
+#include "SSS.hlsl"
+//=======================
+
 float DepthTest_Directional(float slice, float2 tex_coords, float compare)
 {
 	return light_depth_directional.SampleCmpLevelZero(sampler_cmp_depth, float3(tex_coords, slice), compare).r;
@@ -137,41 +142,49 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
     float cos_angle             = saturate(1.0f - n_dot_l);
     float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
-	float self_shadow 			= saturate(n_dot_l);
 	float shadow 				= 1.0f;
+
+	// Dither bias
+	float dither = Dither_Valve(uv * g_resolution).x * 100;
+	bias *= dither;
 	
-	// Determine cascade to use
 	#if DIRECTIONAL
 	{
-		// Compute projection positions for each cascade
-		float4 positonCS[3];
-		positonCS[0] = mul(position_world, light_view_projection[0]);
-		positonCS[1] = mul(position_world, light_view_projection[1]);
-		positonCS[2] = mul(position_world, light_view_projection[2]);
-		
-		// Compute position coordinates for each cascade
-		float3 tex_coords[3];
-		tex_coords[0] = positonCS[0].xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;
-		tex_coords[1] = positonCS[1].xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;
-		tex_coords[2] = positonCS[2].xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;
-		
-		bool within_cascade = false;
-		[unroll]
-		for (int i = 2; i >= 0; i--)
+		for (int cascade = 0; cascade < cascade_count; cascade++)
 		{
-			within_cascade = any(tex_coords[i] - saturate(tex_coords[i])) ? within_cascade : true;
-		}
-		
-		// If we are within a cascade, sample shadow maps
-		[branch]
-		if (within_cascade)
-		{
-			float a = ShadowMap_Directional(0, positonCS[0], g_shadow_texel_size, bias);
-			float b = ShadowMap_Directional(1, positonCS[1], g_shadow_texel_size, bias);
-			float c = ShadowMap_Directional(2, positonCS[2], g_shadow_texel_size, bias);
+			float4 pos 	= mul(position_world, light_view_projection[cascade]);
+			float3 uv 	= pos.xyz * float3(0.5f, -0.5f, 0.5f) + 0.5f;	
 			
-			// Blend cascades		
-			shadow = min(min(a, b),c);
+			// If a cascade was found, do shadow mapping
+			[branch]
+			if (is_saturated(uv))
+			{	
+				// Sample the primary cascade
+				float shadow_primary = ShadowMap_Directional(cascade, pos, g_shadow_texel_size, bias);
+
+				// Edge threshold
+				float edge = 0.9f; // 1.0f is where the cascade ends
+				bool is_close_edge = is_saturated(abs(pos.xyz) + (1.0f - edge));
+
+				// Sample the secondary cascade
+				float shadow_secondary = 1.0f;
+				[branch]
+				if (is_close_edge && cascade <= 2)
+				{
+					int cacade_secondary = cascade + 1;
+					pos = mul(position_world, light_view_projection[cacade_secondary]);
+					shadow_secondary = ShadowMap_Directional(cacade_secondary, pos, g_shadow_texel_size, bias);
+					
+					// Blend cascades	
+					shadow = min(shadow_primary, shadow_secondary);
+				}
+				else
+				{
+					shadow = shadow_primary;
+				}
+
+				break;
+			}
 		}
 	}
 	#elif POINT
@@ -195,8 +208,13 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	}
 	#endif
 
-	// Apply micro shadows
-	shadow = min(shadow, 1.0f - pow(1.0f - self_shadow, 4));
+	// Screen space shadows
+	float sss = ScreenSpaceShadows(uv, light.direction);
+	shadow = min(shadow, sss);
+
+	// Self shadows
+	float self_shadow = saturate(n_dot_l);
+	shadow = min(shadow, 1.0f - pow(1.0f - self_shadow, 8));
 
 	return shadow;
 }

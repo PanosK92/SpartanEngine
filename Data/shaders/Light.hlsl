@@ -36,10 +36,10 @@ SamplerState samplerLinear_clamp 			: register(s2);
 //=========================================================
 
 //= BUFFERS ================================
-#define CASCADES 3
+#define cascade_count 3
 cbuffer LightBuffer : register(b1)
 {
-	matrix 	light_view_projection[CASCADES];
+	matrix 	light_view_projection[cascade_count];
 	float3	color;
 	float	intensity;
 	float3	position;
@@ -57,7 +57,6 @@ cbuffer LightBuffer : register(b1)
 #include "Common.hlsl"       
 #include "BRDF.hlsl"                 
 #include "ShadowMapping.hlsl"
-#include "SSS.hlsl"
 //===========================
 
 struct PixelOutputType
@@ -108,9 +107,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	float shadow = 1.0f;
 	if (shadow_enabled)
 	{
-		float shadow_map 			= Shadow_Map(uv, normal, depth_sample, position_world, bias, normal_bias, light);	
-		float screen_space_shadow 	= ScreenSpaceShadows(uv, light.direction);
-		shadow = min(shadow_map, screen_space_shadow);
+		shadow = Shadow_Map(uv, normal, depth_sample, position_world, bias, normal_bias, light);
 	}
 
 	// Mix shadow with ssao and modulate light's intensity
