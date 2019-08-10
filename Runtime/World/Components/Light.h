@@ -50,7 +50,7 @@ namespace Spartan
 		LightType_Spot
 	};
 
-    static const int g_cascade_count = 3;
+    static const int g_cascade_count = 4;
     struct Cascade
     {
         Math::Vector3 min;
