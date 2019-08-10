@@ -112,7 +112,7 @@ namespace Spartan
 		float m_intensity		= 2.0f;
 		float m_angle_rad		= 0.5f; // about 30 degrees
 		float m_bias			= 0.0008f;
-		float m_normal_bias		= 120.0f;	
+		float m_normal_bias		= 5.0f;	
 		bool m_is_dirty			= true;
 		Math::Vector4 m_color   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
         static const int m_cascade_count = 3;
