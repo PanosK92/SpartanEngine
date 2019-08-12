@@ -14,17 +14,17 @@
 
 <p>License: Embracing the open source ethos and respecting the MIT license is greatly appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.</p>
 
-<img align="left" width="468" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/screenshot-v0.3_preview4.jpg"/>
-<img align="left" width="365" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
-
-[
-![](https://am3pap002files.storage.live.com/y4poAGclsBHgGt8TpE5F7poEM6GyvQJyd-CIJ5ONV5URhTMQXPtOVMxFIAv2KDpu9NkLKYIw_OlEPIs1wpZr8DDbxI3QXVuQtewtvq8Wbm0sn09PQR2wVUQW8UPKsm-vyi3CeC9hQndUiKeERkATZ5V5qNjR2srbqzz514oJK25tp0CJoS8b6zDtGeU322o4BIS/video_thumbnail.jpg?psid=1&width=1779&height=1001)](https://www.youtube.com/watch?v=RIae1ma_DSo)
-
 ## Download
 Platform | API | Status | Quality | Binaries | :+1:
 :-:|:-:|:-:|:-:|:-:|:-:|
 <img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20"/>|<img src="https://1.bp.blogspot.com/-i3xzHAedbvU/WNjGcL4ujqI/AAAAAAAAADY/M3_8wxw9hVsajXefi65wY_sJKgFC8MPxQCK4B/s1600/directx11-logo.png" width="100"/>|[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)|[![Codacy Badge](https://api.codacy.com/project/badge/Grade/da72b4f208284a30b7673abd86e8d8d3)](https://www.codacy.com/app/PanosK92/Directus3D?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PanosK92/Directus3D&amp;utm_campaign=Badge_Grade)|[Download](https://ci.appveyor.com/api/projects/PanosK92/directus3d/artifacts/Binaries/Release.zip?branch=master)|[![](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSP87Y77VNHPG&source=url)
 <img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20"/>|<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Vulkan_API_logo.svg/1280px-Vulkan_API_logo.svg.png" width="100"/>|WIP|WIP|WIP|WIP
+
+[
+![](https://am3pap002files.storage.live.com/y4poAGclsBHgGt8TpE5F7poEM6GyvQJyd-CIJ5ONV5URhTMQXPtOVMxFIAv2KDpu9NkLKYIw_OlEPIs1wpZr8DDbxI3QXVuQtewtvq8Wbm0sn09PQR2wVUQW8UPKsm-vyi3CeC9hQndUiKeERkATZ5V5qNjR2srbqzz514oJK25tp0CJoS8b6zDtGeU322o4BIS/video_thumbnail.jpg?psid=1&width=1779&height=1001)](https://www.youtube.com/watch?v=RIae1ma_DSo)
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/screenshot-v0.3_preview5.jpg"/>
+
+<img align="center" width="365" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
 
 ## Features (v0.3)
 - 10+ font file formats support (FreeType)
@@ -112,3 +112,5 @@ Vulkan      			| 60%           | Don't port it, re-architect the engine instead.
 
 # License
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/SpartanEngine/blob/master/LICENSE.txt) for details.
+
+
