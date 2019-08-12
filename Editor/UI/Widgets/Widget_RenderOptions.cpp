@@ -55,6 +55,7 @@ namespace _RenderOptions
         "SSAO",
         "SSR",
         "Bloom",
+        "Volumetric Lighting",
         "Shadows"
     };
     static int debug_texture_selected_index = 0;
@@ -82,6 +83,7 @@ void Widget_RenderOptions::Tick()
         const char* type_char_ptr = types[static_cast<unsigned int>(m_renderer->m_tonemapping)];
 
         auto do_bloom                   = m_renderer->FlagEnabled(Render_PostProcess_Bloom);
+        auto do_volumetric_lighting     = m_renderer->FlagEnabled(Render_PostProcess_VolumetricLighting);
         auto do_fxaa                    = m_renderer->FlagEnabled(Render_PostProcess_FXAA);
         auto do_ssao                    = m_renderer->FlagEnabled(Render_PostProcess_SSAO);
         auto do_ssr                     = m_renderer->FlagEnabled(Render_PostProcess_SSR);
@@ -119,6 +121,9 @@ void Widget_RenderOptions::Tick()
 
             ImGui::Checkbox("Bloom",                                    &do_bloom);
             ImGui::InputFloat("Bloom Strength",                         &m_renderer->m_bloom_intensity, 0.001f);
+            ImGui::Separator();
+
+            ImGui::Checkbox("Volumetric lighting",                      &do_volumetric_lighting);
             ImGui::Separator();
 
             ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion",    &do_ssao);
@@ -167,6 +172,7 @@ void Widget_RenderOptions::Tick()
 
         // Map back to engine
         set_flag_if(Render_PostProcess_Bloom,               do_bloom);
+        set_flag_if(Render_PostProcess_VolumetricLighting,  do_volumetric_lighting);
         set_flag_if(Render_PostProcess_FXAA,                do_fxaa);
         set_flag_if(Render_PostProcess_SSAO,                do_ssao);
         set_flag_if(Render_PostProcess_SSR,                 do_ssr);

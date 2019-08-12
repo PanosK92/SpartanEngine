@@ -64,12 +64,13 @@ namespace Spartan
 		m_flags			|= Render_Gizmo_Grid;
 		m_flags			|= Render_Gizmo_Lights;
 		m_flags			|= Render_Gizmo_Physics;
-		m_flags			|= Render_PostProcess_Bloom;	
-		m_flags			|= Render_PostProcess_SSAO;	
+		m_flags			|= Render_PostProcess_Bloom;
+        m_flags         |= Render_PostProcess_VolumetricLighting;
+		m_flags			|= Render_PostProcess_SSAO;
 		m_flags			|= Render_PostProcess_MotionBlur;
 		m_flags			|= Render_PostProcess_TAA;
 		//m_flags		|= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior
-		m_flags			|= Render_PostProcess_Sharpening;	
+		m_flags			|= Render_PostProcess_Sharpening;
 		m_flags			|= Render_PostProcess_SSR;
 		//m_flags		|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients
 		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect		
@@ -210,9 +211,6 @@ namespace Spartan
 		m_tex_black = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_tex_black->LoadFromFile(dir_texture + "black.png");
 
-		m_tex_brdf_specular_lut = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
-		m_tex_brdf_specular_lut->LoadFromFile(dir_texture + "ibl_brdf_lut.png");
-
 		// Gizmo icons
 		m_gizmo_tex_light_directional = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
 		m_gizmo_tex_light_directional->LoadFromFile(dir_texture + "sun.png");
@@ -240,42 +238,40 @@ namespace Spartan
 		m_quad.CreateBuffers(this);
 
 		// G-Buffer
-		m_g_buffer_albedo	= make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
-		m_g_buffer_normal	= make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
-		m_g_buffer_material = make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
-		m_g_buffer_velocity = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16_FLOAT);
-		m_g_buffer_depth	= make_shared<RHI_Texture2D>(m_context, width, height, Format_D32_FLOAT);
+        m_render_targets[RenderTarget_Gbuffer_Albedo]   = make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
+        m_render_targets[RenderTarget_Gbuffer_Normal]   = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT); // At Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding
+        m_render_targets[RenderTarget_Gbuffer_Material] = make_shared<RHI_Texture2D>(m_context, width, height, Format_R8G8B8A8_UNORM);
+        m_render_targets[RenderTarget_Gbuffer_Velocity] = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16_FLOAT);
+        m_render_targets[RenderTarget_Gbuffer_Depth]    = make_shared<RHI_Texture2D>(m_context, width, height, Format_D32_FLOAT);
 
         // Light
-        m_render_tex_light_diffuse     = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-        m_render_tex_light_specular    = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+        m_render_targets[RenderTarget_Light_Diffuse]            = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+        m_render_targets[RenderTarget_Light_Specular]           = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+        m_render_targets[RenderTarget_Light_Volumetric]         = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Light_Volumetric_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
 
         // BRDF Specular Lut
-        m_tex_brdf_specular_lut         = make_unique<RHI_Texture2D>(m_context, 400, 400, Format_R8G8_UNORM);
-        m_brdf_specular_lut_rendered    = false;
+        m_render_targets[RenderTarget_Brdf_Specular_Lut]    = make_unique<RHI_Texture2D>(m_context, 400, 400, Format_R8G8_UNORM);
+        m_brdf_specular_lut_rendered                        = false;
 
 		// Composition
-		m_render_tex_composition			= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-		m_render_tex_composition_previous	= make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+        m_render_targets[RenderTarget_Composition]          = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+        m_render_targets[RenderTarget_Composition_Previous] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
 
         // TAA
-		m_render_tex_taa_current = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-		m_render_tex_taa_history = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Taa_Current] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Taa_History] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
 
         // Final
-		m_render_tex_final = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Final] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
 
 		// SSAO
-		m_render_tex_half_ssao	        = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);  // Raw
-        m_render_tex_half_ssao_blurred	= make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);  // Blurred
-        m_render_tex_ssao	            = make_unique<RHI_Texture2D>(m_context, width, height, Format_R8_UNORM);          // Upscaled
+        m_render_targets[RenderTarget_Ssao_Half]            = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);  // Raw
+        m_render_targets[RenderTarget_Ssao_Half_Blurred]    = make_unique<RHI_Texture2D>(m_context, width / 2, height / 2, Format_R8_UNORM);  // Blurred
+        m_render_targets[RenderTarget_Ssao]                 = make_unique<RHI_Texture2D>(m_context, width, height, Format_R8_UNORM);          // Upscaled
 
         // SSR
-        m_render_tex_ssr = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-
-		// Quarter res
-		m_render_tex_quarter_blur1 = make_unique<RHI_Texture2D>(m_context, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
-		m_render_tex_quarter_blur2 = make_unique<RHI_Texture2D>(m_context, width / 4, height / 4, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Ssr] = make_shared<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
 
 		// Bloom
         {
@@ -416,14 +412,12 @@ namespace Spartan
 		shader_blurGaussian->AddDefine("PASS_BLUR_GAUSSIAN");
 		shader_blurGaussian->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 		shader_blurGaussian->AddBuffer<Struct_Blur>();
-		shader_blurGaussian->AddBuffer<Struct_Blur>();
 		m_shaders[Shader_BlurGaussian_P] = shader_blurGaussian;
 
 		// Blur Bilateral Gaussian
 		auto shader_blurGaussianBilateral = make_shared<ShaderBuffered>(m_rhi_device);
 		shader_blurGaussianBilateral->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
 		shader_blurGaussianBilateral->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-		shader_blurGaussianBilateral->AddBuffer<Struct_Blur>();
 		shader_blurGaussianBilateral->AddBuffer<Struct_Blur>();
 		m_shaders[Shader_BlurGaussianBilateral_P] = shader_blurGaussianBilateral;
 
@@ -565,14 +559,14 @@ namespace Spartan
 		// If there is no camera, do nothing
 		if (!m_camera)
 		{
-			m_cmd_list->ClearRenderTarget(m_render_tex_final->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+			m_cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Final]->GetResource_RenderTarget(), Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			return;
 		}
 
 		// If there is nothing to render clear to camera's color and present
 		if (m_entities.empty())
 		{
-			m_cmd_list->ClearRenderTarget(m_render_tex_final->GetResource_RenderTarget(), m_camera->GetClearColor());
+			m_cmd_list->ClearRenderTarget(m_render_targets[RenderTarget_Final]->GetResource_RenderTarget(), m_camera->GetClearColor());
 			return;
 		}
 

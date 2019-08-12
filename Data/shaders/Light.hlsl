@@ -49,20 +49,22 @@ cbuffer LightBuffer : register(b1)
 	float 	bias;
 	float 	normal_bias;
 	float 	shadow_enabled;	
-	float	padding_2;
+	float	volumetric_lighting_enabled;
 };
 //==========================================
 
-//= INCLUDES ================
+//= INCLUDES =====================
 #include "Common.hlsl"       
-#include "BRDF.hlsl"                 
+#include "BRDF.hlsl"              
 #include "ShadowMapping.hlsl"
-//===========================
+#include "VolumetricLighting.hlsl"
+//================================
 
 struct PixelOutputType
 {
-	float4 diffuse	: SV_Target0;
-	float4 specular	: SV_Target1;
+	float4 diffuse		: SV_Target0;
+	float4 specular		: SV_Target1;
+	float4 volumetric	: SV_Target2;
 };
 
 PixelOutputType mainPS(Pixel_PosUv input)
@@ -70,6 +72,7 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	PixelOutputType light_out;
 	light_out.diffuse 		= float4(0.0f, 0.0f, 0.0f, 0.0f);
 	light_out.specular 		= float4(0.0f, 0.0f, 0.0f, 0.0f);
+	light_out.volumetric 	= float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float2 uv 				= input.uv;
 	
 	// Sample textures
@@ -108,6 +111,10 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	if (shadow_enabled)
 	{
 		shadow = Shadow_Map(uv, normal, depth_sample, position_world, bias, normal_bias, light);
+		if (volumetric_lighting_enabled)
+		{
+			light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
+		}
 	}
 
 	// Mix shadow with ssao and modulate light's intensity
@@ -148,6 +155,9 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		// Erase light if there is no need to compute it
 		light.intensity *= step(theta, cutoffAngle);
 	#endif
+	
+	// Accumulate total light amount hitting that pixel (used to modulate ssr later)
+	light_out.specular.a = light.intensity;
 
 	// Diffuse color for BRDFs which will allow for diffuse and specular light to be multiplied by albedo later
 	float3 diffuse_color = float3(1,1,1);
@@ -185,9 +195,6 @@ PixelOutputType mainPS(Pixel_PosUv input)
 		light_out.diffuse.rgb	= kD * cDiffuse * radiance;
 		light_out.specular.rgb	= cSpecular * radiance;
 	}
-
-	// Accumulate total light amount hitting that pixel (used to modulate ssr later)
-	light_out.diffuse.a = light.intensity;
 
 	return light_out;
 }

@@ -405,7 +405,7 @@ namespace Spartan
 		}
 	}
 
-    void Light::UpdateConstantBuffer()
+    void Light::UpdateConstantBuffer(bool volumetric_lighting)
     {
         // Has to match GBuffer.hlsl
         if (!m_cb_light_gpu)
@@ -430,6 +430,7 @@ namespace Spartan
         buffer->bias                = GetBias();
         buffer->normal_bias         = GetNormalBias();
         buffer->shadow_enabled      = GetCastShadows();
+        buffer->volumetric_lighting = volumetric_lighting;
 
         m_cb_light_gpu->Unmap();
     }
