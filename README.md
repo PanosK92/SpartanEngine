@@ -1,12 +1,14 @@
 
 
 
+
 <img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/logo.png"/>
 
 # Spartan Engine
 
 <p>Spartan is a game engine that started as a hobby project and evolved into something bigger. The goal is to target high-end machines and deliver advanced graphical capabilities at high frame rates with minimum input latency. Then wrap all that in a nice editor.</p>
 
+<img align="right" width="300" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
 <p>The project is at an early development stage and there is a lot experimentation going on, regarding what works best. However a lot of effort is being put into building and maintaining a clean, modern and overall high quality architecture, an architecture that will ensure continuous development over the years. This means that while you shouldn't expect to make games with it yet, you might find it to be a helpful study resource.</p>
 
 <p>For more updates regarding the project's development, you can
@@ -22,9 +24,8 @@ Platform | API | Status | Quality | Binaries | :+1:
 
 [
 ![](https://am3pap002files.storage.live.com/y4poAGclsBHgGt8TpE5F7poEM6GyvQJyd-CIJ5ONV5URhTMQXPtOVMxFIAv2KDpu9NkLKYIw_OlEPIs1wpZr8DDbxI3QXVuQtewtvq8Wbm0sn09PQR2wVUQW8UPKsm-vyi3CeC9hQndUiKeERkATZ5V5qNjR2srbqzz514oJK25tp0CJoS8b6zDtGeU322o4BIS/video_thumbnail.jpg?psid=1&width=1779&height=1001)](https://www.youtube.com/watch?v=RIae1ma_DSo)
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/screenshot-v0.3_preview5.jpg"/>
 
-<img align="center" width="365" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/screenshot-v0.3_preview5.jpg"/>
 
 ## Features (v0.3)
 - 10+ font file formats support (FreeType)
@@ -112,5 +113,3 @@ Vulkan      			| 60%           | Don't port it, re-architect the engine instead.
 
 # License
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/SpartanEngine/blob/master/LICENSE.txt) for details.
-
-
