@@ -83,17 +83,12 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	float depth_sample   	= tex_depth.Sample(sampler_point_clamp, uv).r;
 	float ssao_sample 		= tex_ssao.Sample(sampler_point_clamp, uv).r;
 	
-	// Ignore sky
-    if (material_sample.a == 0.0f)
-    {
-		return light_out;
-    }
-	
 	// Post-proces samples	
 	float3 normal	= normal_decode(normal_sample.xyz);
 	float occlusion = normal_sample.w;
 	occlusion 		= min(occlusion, ssao_sample);
 	float metallic 	= material_sample.g;
+    bool is_sky 	= material_sample.a == 0.0f;
 
 	// Compute camera to pixel vector
     float3 position_world 	= get_world_position_from_depth(depth_sample, g_viewProjectionInv, input.uv);
@@ -118,6 +113,12 @@ PixelOutputType mainPS(Pixel_PosUv input)
 			light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
 		}
 	}
+
+	// Ignore sky (but after we have allowed for the volumetric light to affect it)
+    if (is_sky)
+    {
+		return light_out;
+    }
 
 	// Mix shadow with ssao and modulate light's intensity
 	shadow = min(shadow, occlusion);
