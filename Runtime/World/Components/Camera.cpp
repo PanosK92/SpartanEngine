@@ -261,7 +261,7 @@ namespace Spartan
 
     void Camera::FpsControl(float delta_time)
     {
-        static const float mouse_sensetivity        = 10.0f;
+        static const float mouse_sensetivity        = 15.0f;
         static const float movement_speed_max       = 10.0f;
         static const float movement_acceleration    = 0.8f;
         static const float movement_drag            = 0.08f;
