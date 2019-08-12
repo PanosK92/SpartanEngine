@@ -69,6 +69,7 @@ Feature     			| Completion    | Notes
 :-          			| :-            | :-
 Parallax Mapping 		| 100%          | -
 Shader Editor 			| 100%          | Real-time shader editing tool.
+Volumetric Lighting		| 100%          | -
 Shadows 				| 90%          	| Enable point & spot light shadows.
 Screen space shadows 	| 100%          | -
 Vulkan      			| 60%           | Don't port it, re-architect the engine instead.
@@ -92,7 +93,6 @@ Vulkan      			| 60%           | Don't port it, re-architect the engine instead.
 - Subsurface Scattering.
 
 ###### Future
-- Volumetric Lighting.
 - Atmospheric Scattering.
 - Dynamic resolution scaling.
 - Global Illumination.

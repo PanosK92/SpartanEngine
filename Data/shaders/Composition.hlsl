@@ -19,17 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= TEXTURES ==============================
-Texture2D tex_albedo 		: register(t0);
-Texture2D tex_normal 		: register(t1);
-Texture2D tex_depth 		: register(t2);
-Texture2D tex_material 		: register(t3);
-Texture2D tex_lightDiffuse 	: register(t4);
-Texture2D tex_lightSpecular : register(t5);
-Texture2D tex_ssr 			: register(t6);
-Texture2D tex_environment 	: register(t7);
-Texture2D tex_lutIbl		: register(t8);
-//=========================================
+//= TEXTURES ==================================
+Texture2D tex_albedo 			: register(t0);
+Texture2D tex_normal 			: register(t1);
+Texture2D tex_depth 			: register(t2);
+Texture2D tex_material 			: register(t3);
+Texture2D tex_lightDiffuse 		: register(t4);
+Texture2D tex_lightSpecular 	: register(t5);
+Texture2D tex_lightVolumetric 	: register(t6);
+Texture2D tex_ssr 				: register(t7);
+Texture2D tex_environment 		: register(t8);
+Texture2D tex_lutIbl			: register(t9);
+//=============================================
 
 //= SAMPLERS ======================================
 SamplerState sampler_linear_clamp	: register(s0);
@@ -48,19 +49,20 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 color	= float3(0, 0, 0);
 	
 	// Sample from textures
-	float4 sample_albedo 	= tex_albedo.Sample(sampler_point_clamp, uv);
-	float4 sample_normal 	= tex_normal.Sample(sampler_point_clamp, uv);
-	float4 sample_material  = tex_material.Sample(sampler_point_clamp, uv);
-	float4 sample_diffuse 	= tex_lightDiffuse.Sample(sampler_point_clamp, uv);
-	float3 sample_specular 	= tex_lightSpecular.Sample(sampler_point_clamp, uv).rgb;
-	float3 sample_ssr 		= tex_ssr.Sample(sampler_point_clamp, uv).rgb;
-	float sample_depth  	= tex_depth.Sample(sampler_point_clamp, uv).r;
+	float4 sample_albedo 		= tex_albedo.Sample(sampler_point_clamp, uv);
+	float4 sample_normal 		= tex_normal.Sample(sampler_point_clamp, uv);
+	float4 sample_material  	= tex_material.Sample(sampler_point_clamp, uv);
+	float4 sample_diffuse 		= tex_lightDiffuse.Sample(sampler_point_clamp, uv);
+	float4 sample_specular 		= tex_lightSpecular.Sample(sampler_point_clamp, uv);
+	float3 sample_ssr 			= tex_ssr.Sample(sampler_point_clamp, uv).rgb;
+	float sample_depth  		= tex_depth.Sample(sampler_point_clamp, uv).r;
+	float3 light_volumetric 	= tex_lightVolumetric.Sample(sampler_point_clamp, uv).rgb;
 
 	// Post-process samples
     float4 albedo				= degamma(sample_albedo);  
 	float3 normal				= normal_decode(sample_normal.xyz);	
 	float directional_shadow 	= sample_diffuse.a;
-	float light_received 		= sample_diffuse.a;
+	float light_received 		= sample_specular.a;
 
 	// Create material
     Material material;
@@ -91,15 +93,18 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp) * light_ambient;
 
 	// Emissive
-	sample_specular += material.emissive * 10.0f;
+	sample_specular.rgb += material.emissive * 10.0f;
 
 	// Combine
-	float3 light_sources = (sample_diffuse.rgb + sample_specular) * material.albedo;
+	float3 light_sources = (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
 	color = light_sources + light_image_based;
 
 	// SSR
 	float smoothness = 1.0f - material.roughness;
 	color += sample_ssr * smoothness * light_received;
+
+	// Volumetric lighting
+	color += light_volumetric;
 
     return  float4(color, 1.0f);
 }

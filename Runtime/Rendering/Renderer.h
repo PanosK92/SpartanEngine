@@ -66,14 +66,15 @@ namespace Spartan
 		Render_Gizmo_PerformanceMetrics			= 1 << 5,
 		Render_Gizmo_Physics					= 1 << 6,
 		Render_PostProcess_Bloom				= 1 << 7,
-		Render_PostProcess_FXAA					= 1 << 8,
-		Render_PostProcess_SSAO					= 1 << 9,
-		Render_PostProcess_SSR					= 1 << 10,
-		Render_PostProcess_TAA					= 1 << 11,
-		Render_PostProcess_MotionBlur			= 1 << 12,
-		Render_PostProcess_Sharpening			= 1 << 13,
-		Render_PostProcess_ChromaticAberration	= 1 << 14,
-		Render_PostProcess_Dithering			= 1 << 15
+        Render_PostProcess_VolumetricLighting   = 1 << 8,
+		Render_PostProcess_FXAA					= 1 << 9,
+		Render_PostProcess_SSAO					= 1 << 10,
+		Render_PostProcess_SSR					= 1 << 11,
+		Render_PostProcess_TAA					= 1 << 12,
+		Render_PostProcess_MotionBlur			= 1 << 13,
+		Render_PostProcess_Sharpening			= 1 << 14,
+		Render_PostProcess_ChromaticAberration	= 1 << 15,
+		Render_PostProcess_Dithering			= 1 << 16
 	};
 
 	enum Renderer_Buffer_Type
@@ -89,6 +90,7 @@ namespace Spartan
 		Renderer_Buffer_SSAO,
         Renderer_Buffer_SSR,
         Renderer_Buffer_Bloom,
+        Renderer_Buffer_VolumetricLighting,
         Renderer_Buffer_Shadows
 	};
 
@@ -150,6 +152,37 @@ namespace Spartan
 		Shader_BlurGaussianBilateral_P
 	};
 
+    enum RenderTarget_Type
+    {
+        // G-Buffer
+        RenderTarget_Gbuffer_Albedo,
+        RenderTarget_Gbuffer_Normal,
+        RenderTarget_Gbuffer_Material,
+        RenderTarget_Gbuffer_Velocity,
+        RenderTarget_Gbuffer_Depth,
+        // Specular BRDF IBL
+        RenderTarget_Brdf_Specular_Lut,
+        // Light
+        RenderTarget_Light_Diffuse,
+        RenderTarget_Light_Specular,
+        RenderTarget_Light_Volumetric,
+        RenderTarget_Light_Volumetric_Blurred,
+        // Composition
+        RenderTarget_Composition,
+        RenderTarget_Composition_Previous,
+        // TAA
+        RenderTarget_Taa_Current,
+        RenderTarget_Taa_History,
+        // SSAO
+        RenderTarget_Ssao_Half,
+        RenderTarget_Ssao_Half_Blurred,
+        RenderTarget_Ssao,
+        // SSR
+        RenderTarget_Ssr,
+        // Final frame
+        RenderTarget_Final
+    };
+
 	class SPARTAN_CLASS Renderer : public ISubsystem
 	{
 	public:
@@ -196,7 +229,7 @@ namespace Spartan
 		//================================================================
 
 		//= MISC ===============================================================================================================
-		auto GetFrameTexture() const	                { return m_render_tex_final.get(); }
+		auto& GetFrameTexture() 	                    { return m_render_targets[RenderTarget_Final]; }
 		auto GetFrameNum() const		                { return m_frame_num; }
 		const auto& GetCamera() const	                { return m_camera; }
 		auto IsInitialized() const		                { return m_initialized; }	
@@ -276,38 +309,10 @@ namespace Spartan
         void Pass_BrdfSpecularLut();
 		//=====================================================================================================================================================
 
-        //= RENDER TEXTURES ===========================================
-        // G-Buffer
-        std::shared_ptr<RHI_Texture> m_g_buffer_albedo;
-        std::shared_ptr<RHI_Texture> m_g_buffer_normal;
-        std::shared_ptr<RHI_Texture> m_g_buffer_material;
-        std::shared_ptr<RHI_Texture> m_g_buffer_velocity;
-        std::shared_ptr<RHI_Texture> m_g_buffer_depth;
-        // Specular BRDF IBL
-        std::shared_ptr<RHI_Texture> m_tex_brdf_specular_lut;
-        // Light
-        std::shared_ptr<RHI_Texture> m_render_tex_light_diffuse;
-        std::shared_ptr<RHI_Texture> m_render_tex_light_specular;
-        // Composition
-        std::shared_ptr<RHI_Texture> m_render_tex_composition;
-        std::shared_ptr<RHI_Texture> m_render_tex_composition_previous;
-        // TAA
-        std::shared_ptr<RHI_Texture> m_render_tex_taa_current;
-        std::shared_ptr<RHI_Texture> m_render_tex_taa_history;
-        // SSAO
-        std::shared_ptr<RHI_Texture> m_render_tex_half_ssao;
-        std::shared_ptr<RHI_Texture> m_render_tex_half_ssao_blurred;
-        std::shared_ptr<RHI_Texture> m_render_tex_ssao;
-        // SSR
-        std::shared_ptr<RHI_Texture> m_render_tex_ssr;
-        // Blur
-        std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur1;
-        std::shared_ptr<RHI_Texture> m_render_tex_quarter_blur2;
-        // Bloom
+        //= RENDER TEXTURES =======================================================
+        std::map<RenderTarget_Type, std::shared_ptr<RHI_Texture>> m_render_targets;
         std::vector<std::shared_ptr<RHI_Texture>> m_render_tex_bloom;
-        // Final frame
-        std::shared_ptr<RHI_Texture> m_render_tex_final;
-        //=============================================================
+        //=========================================================================
 
 		//= SHADERS =================================================
 		std::map<Shader_Type, std::shared_ptr<RHI_Shader>> m_shaders;
