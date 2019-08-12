@@ -405,7 +405,7 @@ namespace Spartan
 		}
 	}
 
-    void Light::UpdateConstantBuffer(bool volumetric_lighting)
+    void Light::UpdateConstantBuffer(bool volumetric_lighting, bool screen_space_shadows)
     {
         // Has to match GBuffer.hlsl
         if (!m_cb_light_gpu)
@@ -421,16 +421,17 @@ namespace Spartan
         {
             buffer->view_projection[i] = GetViewMatrix(i) * GetProjectionMatrix(i);
         }
-        buffer->color               = m_color;
-        buffer->intensity           = GetIntensity();
-        buffer->position            = GetTransform()->GetPosition();
-        buffer->range               = GetRange();
-        buffer->direction           = GetDirection();
-        buffer->angle               = GetAngle();
-        buffer->bias                = GetBias();
-        buffer->normal_bias         = GetNormalBias();
-        buffer->shadow_enabled      = GetCastShadows();
-        buffer->volumetric_lighting = volumetric_lighting;
+        buffer->color                   = m_color;
+        buffer->intensity               = GetIntensity();
+        buffer->position                = GetTransform()->GetPosition();
+        buffer->range                   = GetRange();
+        buffer->direction               = GetDirection();
+        buffer->angle                   = GetAngle();
+        buffer->bias                    = GetBias();
+        buffer->normal_bias             = GetNormalBias();
+        buffer->shadow_enabled          = GetCastShadows();
+        buffer->volumetric_lighting     = volumetric_lighting;
+        buffer->screen_space_shadows    = screen_space_shadows;
 
         m_cb_light_gpu->Unmap();
     }

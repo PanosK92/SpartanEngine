@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float g_vl_steps 		= 32;
+static const float g_vl_steps 		= 64;
 static const float g_vl_scattering 	= 0.95f;
 
 // Mie scaterring approximated with Henyey-Greenstein phase function.
@@ -41,7 +41,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float3 ray_pos 					= pos_world;
 
 	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
-	float3 dither_value = Dither_Valve(uv * g_resolution) * 200;
+	float3 dither_value = Dither_Valve(uv * g_resolution) * 400;
 	ray_pos += ray_step * dither_value;
 	
 	static const int cascade = 0;
