@@ -1,5 +1,6 @@
 
 
+
 <img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/logo.png"/>
 
 # Spartan Engine
@@ -17,7 +18,7 @@
 <img align="left" width="365" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/rotating_gun.gif"/>
 
 [
-![](https://i.imgur.com/NRxQhSm.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
+![](https://am3pap002files.storage.live.com/y4poAGclsBHgGt8TpE5F7poEM6GyvQJyd-CIJ5ONV5URhTMQXPtOVMxFIAv2KDpu9NkLKYIw_OlEPIs1wpZr8DDbxI3QXVuQtewtvq8Wbm0sn09PQR2wVUQW8UPKsm-vyi3CeC9hQndUiKeERkATZ5V5qNjR2srbqzz514oJK25tp0CJoS8b6zDtGeU322o4BIS/video_thumbnail.jpg?psid=1&width=1779&height=1001)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 
 ## Download
 Platform | API | Status | Quality | Binaries | :+1:
