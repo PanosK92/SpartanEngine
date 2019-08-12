@@ -209,9 +209,12 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	#endif
 
 	// Screen space shadows
-	float sss = ScreenSpaceShadows(uv, light.direction);
-	shadow = min(shadow, sss);
-
+	if (screen_space_shadows_enabled)
+	{
+		float sss = ScreenSpaceShadows(uv, light.direction);
+		shadow = min(shadow, sss);
+	}
+	
 	// Self shadows
 	float self_shadow_smoothness = 15;
 	float self_shadow = saturate(n_dot_l);

@@ -107,7 +107,7 @@ namespace Spartan
         void CreateShadowMap(bool force);
 
         // Constant buffer
-        void UpdateConstantBuffer(bool volumetric_lighting);
+        void UpdateConstantBuffer(bool volumetric_lighting, bool screen_space_shadows);
         const auto& GetConstantBuffer() const { return m_cb_light_gpu; }
 
 	private:
@@ -149,6 +149,8 @@ namespace Spartan
             float normal_bias;
             float shadow_enabled;
             float volumetric_lighting;
+            float screen_space_shadows;
+            Math::Vector3 padding = Math::Vector3::Zero;
         };
         std::shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
 	};

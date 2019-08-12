@@ -67,6 +67,7 @@ namespace Spartan
 		m_flags			|= Render_PostProcess_Bloom;
         m_flags         |= Render_PostProcess_VolumetricLighting;
 		m_flags			|= Render_PostProcess_SSAO;
+        m_flags         |= Render_PostProcess_SSS;
 		m_flags			|= Render_PostProcess_MotionBlur;
 		m_flags			|= Render_PostProcess_TAA;
 		//m_flags		|= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior
@@ -247,8 +248,8 @@ namespace Spartan
         // Light
         m_render_targets[RenderTarget_Light_Diffuse]            = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
         m_render_targets[RenderTarget_Light_Specular]           = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
-        m_render_targets[RenderTarget_Light_Volumetric]         = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
-        m_render_targets[RenderTarget_Light_Volumetric_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R16G16B16A16_FLOAT);
+        m_render_targets[RenderTarget_Light_Volumetric]         = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
+        m_render_targets[RenderTarget_Light_Volumetric_Blurred] = make_unique<RHI_Texture2D>(m_context, width, height, Format_R32G32B32A32_FLOAT);
 
         // BRDF Specular Lut
         m_render_targets[RenderTarget_Brdf_Specular_Lut]    = make_unique<RHI_Texture2D>(m_context, 400, 400, Format_R8G8_UNORM);

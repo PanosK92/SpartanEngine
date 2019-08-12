@@ -69,12 +69,13 @@ namespace Spartan
         Render_PostProcess_VolumetricLighting   = 1 << 8,
 		Render_PostProcess_FXAA					= 1 << 9,
 		Render_PostProcess_SSAO					= 1 << 10,
-		Render_PostProcess_SSR					= 1 << 11,
-		Render_PostProcess_TAA					= 1 << 12,
-		Render_PostProcess_MotionBlur			= 1 << 13,
-		Render_PostProcess_Sharpening			= 1 << 14,
-		Render_PostProcess_ChromaticAberration	= 1 << 15,
-		Render_PostProcess_Dithering			= 1 << 16
+        Render_PostProcess_SSS                  = 1 << 11,
+		Render_PostProcess_SSR					= 1 << 12,
+		Render_PostProcess_TAA					= 1 << 13,
+		Render_PostProcess_MotionBlur			= 1 << 14,
+		Render_PostProcess_Sharpening			= 1 << 15,
+		Render_PostProcess_ChromaticAberration	= 1 << 16,
+		Render_PostProcess_Dithering			= 1 << 17
 	};
 
 	enum Renderer_Buffer_Type

@@ -50,6 +50,8 @@ cbuffer LightBuffer : register(b1)
 	float 	normal_bias;
 	float 	shadow_enabled;	
 	float	volumetric_lighting_enabled;
+	float 	screen_space_shadows_enabled;
+	float3	padding_2;
 };
 //==========================================
 

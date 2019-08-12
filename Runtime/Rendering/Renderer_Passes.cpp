@@ -522,7 +522,7 @@ namespace Spartan
                 };
 
                 // Update light buffer   
-                light->UpdateConstantBuffer(m_flags & Render_PostProcess_VolumetricLighting);
+                light->UpdateConstantBuffer(m_flags & Render_PostProcess_VolumetricLighting, m_flags & Render_PostProcess_SSS);
                 const vector<void*> constant_buffers = { m_uber_buffer->GetResource(), light->GetConstantBuffer()->GetResource() };
 
                 m_cmd_list->SetConstantBuffers(0, Buffer_Global, constant_buffers);
