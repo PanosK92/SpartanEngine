@@ -63,6 +63,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float3 normal				= normal_decode(sample_normal.xyz);	
 	float directional_shadow 	= sample_diffuse.a;
 	float light_received 		= sample_specular.a;
+	bool is_sky 				= sample_material.a == 0.0f;
 
 	// Create material
     Material material;
@@ -81,30 +82,31 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float light_ambient		= g_directional_light_intensity * directional_shadow; // uber fake
 	light_ambient			= clamp(light_ambient, light_ambient_min, 1.0f);
 	
-	// Sky
-    if (sample_material.a == 0.0f)
-    {
-        color = tex_environment.Sample(sampler_linear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
-        color *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);
-        return float4(color, 1.0f);
-    }
-
-	// IBL
-	float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp) * light_ambient;
-
-	// Emissive
-	sample_specular.rgb += material.emissive * 10.0f;
-
-	// Combine
-	float3 light_sources = (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
-	color = light_sources + light_image_based;
-
-	// SSR
-	float smoothness = 1.0f - material.roughness;
-	color += sample_ssr * smoothness * light_received;
-
 	// Volumetric lighting
 	color += light_volumetric;
 
+	// Sky
+    if (is_sky)
+    {
+        color += tex_environment.Sample(sampler_linear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
+        color *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);
+    }
+	else
+	{
+		// IBL
+		float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp) * light_ambient;
+	
+		// Emissive
+		sample_specular.rgb += material.emissive * 10.0f;
+	
+		// Combine
+		float3 light_sources = (sample_diffuse.rgb + sample_specular.rgb) * material.albedo;
+		color += light_sources + light_image_based;
+	
+		// SSR
+		float smoothness = 1.0f - material.roughness;
+		color += sample_ssr * smoothness * light_received;
+	}
+	
     return  float4(color, 1.0f);
 }
