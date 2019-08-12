@@ -140,7 +140,7 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 {
     float n_dot_l               = dot(normal, normalize(-light.direction));
     float cos_angle             = saturate(1.0f - n_dot_l);
-    float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias * 100;
+    float3 scaled_normal_offset = normal * cos_angle * g_shadow_texel_size * normal_bias * 10;
 	float4 position_world   	= float4(world_pos + scaled_normal_offset, 1.0f);
 	float shadow 				= 1.0f;
 
@@ -213,8 +213,9 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	shadow = min(shadow, sss);
 
 	// Self shadows
+	float self_shadow_smoothness = 15;
 	float self_shadow = saturate(n_dot_l);
-	shadow = min(shadow, 1.0f - pow(1.0f - self_shadow, 8));
+	shadow = min(shadow, 1.0f - pow(1.0f - self_shadow, self_shadow_smoothness));
 
 	return shadow;
 }
