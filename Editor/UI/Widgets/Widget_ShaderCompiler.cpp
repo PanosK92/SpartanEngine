@@ -38,8 +38,9 @@ using namespace Spartan;
 Widget_ShaderEditor::Widget_ShaderEditor(Context* context) : Widget(context)
 {
     m_title         = "Shader Editor";
-    m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
+    m_flags         |= ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize;
     m_is_visible	= false;
+    m_size          = ImVec2(1366, 1000);
 
     m_renderer = m_context->GetSubsystem<Renderer>().get();
 }
@@ -50,66 +51,82 @@ void Widget_ShaderEditor::Tick()
 
     // Left side - Shader list
     bool shader_dirty = false;
+
     ImGui::BeginGroup();
     {
-        for (const auto& shader_it : shaders)
-        {
-            // Build name
-            string name = shader_it.second->GetName();
-            for (const auto& define : shader_it.second->GetDefines())
-            {
-                name += "[" + define.first +"]";
-            }
+        ImGui::Text("Shaders");
 
-            if (ImGui::Button(name.c_str()))
+        if (ImGui::BeginChild("##shader_list", ImVec2(m_size.x * 0.32f, m_size.y), true))
+        {
+            for (const auto& shader_it : shaders)
             {
-                m_shader        = shader_it.second.get();
-                shader_dirty    = true;
+                // Build name
+                string name = shader_it.second->GetName();
+                for (const auto& define : shader_it.second->GetDefines())
+                {
+                    name += "[" + define.first + "]";
+                }
+
+                if (ImGui::Button(name.c_str()))
+                {
+                    m_shader = shader_it.second.get();
+                    shader_dirty = true;
+                    m_shader_name = name;
+                }
             }
+            ImGui::EndChild();
         }
     }
     ImGui::EndGroup();
 
     // Right side - Shader source
-    ImGui::SameLine();
+    ImGui::SameLine();  
     ImGui::BeginGroup();
-    {  
-        if (shader_dirty)
-        {
-           GetAllShadersFiles(m_shader->GetFilePath());
-        }
+    {
+        ImGui::Text(m_shader ? m_shader_name.c_str() : "Select a shader");
 
-        // Shader source
-        if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable))
+        if (ImGui::BeginChild("##shader_source", ImVec2(m_size.x * 0.68f, m_size.y), true))
         {
-            for (auto& shader : m_shader_files)
+            if (shader_dirty)
             {
-                if (ImGui::BeginTabItem(FileSystem::GetFileNameFromFilePath(shader.first).c_str()))
+                GetAllShadersFiles(m_shader->GetFilePath());
+            }
+
+            // Shader source
+            if (ImGui::BeginTabBar("#shader_tab_bar", ImGuiTabBarFlags_Reorderable))
+            {
+                for (auto& shader : m_shader_files)
                 {
-                    ImGui::InputTextMultiline("##shader_source", &shader.second, ImVec2(800, ImGui::GetTextLineHeight() * 50), ImGuiInputTextFlags_AllowTabInput);
-                    ImGui::EndTabItem();
+                    if (ImGui::BeginTabItem(FileSystem::GetFileNameFromFilePath(shader.first).c_str()))
+                    {
+                        ImGui::InputTextMultiline("##shader_source", &shader.second, ImVec2(-1, ImGui::GetTextLineHeight() * 54.8), ImGuiInputTextFlags_AllowTabInput);
+                        ImGui::EndTabItem();
+                    }
                 }
+                ImGui::EndTabBar();
             }
-            ImGui::EndTabBar();
-        }
-
-        if (ImGui::Button("Compile"))
-        {
-            // Save all files
-            for (auto& shader : m_shader_files)
+            
+            if (ImGui::Button("Compile"))
             {
-                ofstream out(shader.first);
-                out << shader.second;
-                out.flush();
-                out.close();
+                // Save all files
+                for (auto& shader : m_shader_files)
+                {
+                    ofstream out(shader.first);
+                    out << shader.second;
+                    out.flush();
+                    out.close();
+                }
+
+                // Start async compilations
+                m_shader->CompileAsync
+                (
+                    m_context,
+                    m_shader->GetShaderStage(),
+                    m_shader->GetFilePath()
+                );
             }
 
-            // Start async compilations
-            m_shader->CompileAsync(
-                m_context,
-                m_shader->GetShaderStage(),
-                m_shader->GetFilePath()
-            );
+            ImGui::EndChild();
         }
     }
     ImGui::EndGroup();

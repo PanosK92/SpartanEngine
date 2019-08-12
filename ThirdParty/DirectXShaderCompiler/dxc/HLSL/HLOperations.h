@@ -296,6 +296,18 @@ const unsigned kGatherCmpStatusArgIndex = 6;
 const unsigned kGatherCmpSampleOffsetArgIndex = 6;
 const unsigned kGatherCmpStatusWithSampleOffsetArgIndex = 9;
 
+// WriteSamplerFeedback.
+const unsigned kWriteSamplerFeedbackSampledArgIndex = 2;
+const unsigned kWriteSamplerFeedbackSamplerArgIndex = 3;
+const unsigned kWriteSamplerFeedbackCoordArgIndex = 4;
+const unsigned kWriteSamplerFeedbackBias_BiasArgIndex = 5;
+const unsigned kWriteSamplerFeedbackLevel_LodArgIndex = 5;
+const unsigned kWriteSamplerFeedbackGrad_DdxArgIndex = 5;
+const unsigned kWriteSamplerFeedbackGrad_DdyArgIndex = 6;
+const unsigned kWriteSamplerFeedback_ClampArgIndex = 5;
+const unsigned kWriteSamplerFeedbackBias_ClampArgIndex = 6;
+const unsigned kWriteSamplerFeedbackGrad_ClampArgIndex = 7;
+
 // StreamAppend.
 const unsigned kStreamAppendStreamOpIndex = 1;
 const unsigned kStreamAppendDataOpIndex = 2;
@@ -333,8 +345,17 @@ const unsigned kCreateHandleIndexOpIdx = 2; // Only for array of cbuffer.
 const unsigned kTraceRayRayDescOpIdx = 7;
 const unsigned kTraceRayPayLoadOpIdx = 8;
 
+// TraceRayInline.
+const unsigned kTraceRayInlineRayDescOpIdx = 5;
+
 // ReportIntersection.
 const unsigned kReportIntersectionAttributeOpIdx = 3;
+
+// DispatchMesh
+const unsigned kDispatchMeshOpThreadX = 1;
+const unsigned kDispatchMeshOpThreadY = 2;
+const unsigned kDispatchMeshOpThreadZ = 3;
+const unsigned kDispatchMeshOpPayload = 4;
 
 } // namespace HLOperandIndex
 

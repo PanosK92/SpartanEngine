@@ -361,7 +361,7 @@ namespace Spartan
                 }
                 cascade.center /= 8.0f;
 
-                // Computer radius
+                // Compute radius
                 float radius = 0.0f;
                 for (uint32_t i = 0; i < 8; i++)
                 {
@@ -369,6 +369,10 @@ namespace Spartan
                     radius = Max(radius, distance);
                 }
                 radius = Ceil(radius * 16.0f) / 16.0f;
+
+                // Move in texel sized increments to prevent shimmering
+                float world_units_per_texel = (radius * 2.0f) / static_cast<float>(m_shadow_map->GetWidth()); // not correct?
+                radius = Floor(radius / world_units_per_texel) * world_units_per_texel;
 
                 // Compute min and max
                 cascade.max = Vector3(radius);
