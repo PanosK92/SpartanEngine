@@ -42,7 +42,7 @@ static const float2 environmentMipSize[12] =
 
 float GetMipFromRoughness(float roughness)
     {
-        return (roughness * mip_max - pow(roughness, mip_max / 2) * 1.5);
+        return (roughness * mip_max - pow(abs(roughness), mip_max / 2) * 1.5);
     }
 
 float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)

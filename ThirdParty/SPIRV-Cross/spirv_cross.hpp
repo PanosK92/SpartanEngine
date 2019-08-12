@@ -117,18 +117,6 @@ struct EntryPoint
 	spv::ExecutionModel execution_model;
 };
 
-enum ExtendedDecorations
-{
-	SPIRVCrossDecorationPacked,
-	SPIRVCrossDecorationPackedType,
-	SPIRVCrossDecorationInterfaceMemberIndex,
-	SPIRVCrossDecorationInterfaceOrigID,
-	SPIRVCrossDecorationResourceIndexPrimary,
-	// Used for decorations like resource indices for samplers when part of combined image samplers.
-	// A variable might need to hold two resource indices in this case.
-	SPIRVCrossDecorationResourceIndexSecondary,
-};
-
 class Compiler
 {
 public:
@@ -258,7 +246,7 @@ public:
 	size_t get_declared_struct_size_runtime_array(const SPIRType &struct_type, size_t array_size) const;
 
 	// Returns the effective size of a buffer block struct member.
-	virtual size_t get_declared_struct_member_size(const SPIRType &struct_type, uint32_t index) const;
+	size_t get_declared_struct_member_size(const SPIRType &struct_type, uint32_t index) const;
 
 	// Returns a set of all global variables which are statically accessed
 	// by the control flow graph from the current entry point.
@@ -826,7 +814,9 @@ protected:
 
 	std::unordered_set<uint32_t> forced_temporaries;
 	std::unordered_set<uint32_t> forwarded_temporaries;
+	std::unordered_set<uint32_t> suppressed_usage_tracking;
 	std::unordered_set<uint32_t> hoisted_temporaries;
+	std::unordered_set<uint32_t> forced_invariant_temporaries;
 
 	Bitset active_input_builtins;
 	Bitset active_output_builtins;
@@ -982,6 +972,8 @@ protected:
 
 	bool reflection_ssbo_instance_name_is_significant() const;
 	std::string get_remapped_declared_block_name(uint32_t id, bool fallback_prefer_instance_name) const;
+
+	bool flush_phi_required(uint32_t from, uint32_t to) const;
 
 private:
 	// Used only to implement the old deprecated get_entry_point() interface.

@@ -246,6 +246,15 @@ class CompileOptions {
     shaderc_compile_options_set_target_env(options_, target, version);
   }
 
+  // Sets the target SPIR-V version.  The generated module will use this version
+  // of SPIR-V.  Each target environment determines what versions of SPIR-V
+  // it can consume.  Defaults to the highest version of SPIR-V 1.0 which is
+  // required to be supported by the target environment.  E.g. Default to SPIR-V
+  // 1.0 for Vulkan 1.0 and SPIR-V 1.3 for Vulkan 1.1.
+  void SetTargetSpirv(shaderc_spirv_version version) {
+    shaderc_compile_options_set_target_spirv(options_, version);
+  }
+
   // Sets the compiler mode to make all warnings into errors. Note the
   // suppress-warnings mode overrides this option, i.e. if both
   // warning-as-errors and suppress-warnings modes are set on, warnings will not
@@ -324,6 +333,19 @@ class CompileOptions {
   // SPV_GOOGLE_hlsl_functionality1.
   void SetHlslFunctionality1(bool enable) {
     shaderc_compile_options_set_hlsl_functionality1(options_, enable);
+  }
+
+  // Sets whether the compiler should invert position.Y output in vertex shader.
+  void SetInvertY(bool enable) {
+    shaderc_compile_options_set_invert_y(options_, enable);
+  }
+
+  // Sets whether the compiler should generates code for max an min which,
+  // if given a NaN operand, will return the other operand. Similarly, the
+  // clamp builtin will favour the non-NaN operands, as if clamp were
+  // implemented as a composition of max and min.
+  void SetNanClamp(bool enable) {
+    shaderc_compile_options_set_nan_clamp(options_, enable);
   }
 
  private:

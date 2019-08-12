@@ -79,6 +79,7 @@ public:
   llvm::Function *GetPatchConstantFunction();
   const llvm::Function *GetPatchConstantFunction() const;
   void SetPatchConstantFunction(llvm::Function *pFunc);
+  bool IsEntryOrPatchConstantFunction(const llvm::Function* pFunc) const;
 
   // Flags.
   unsigned GetGlobalFlags() const;
@@ -118,8 +119,8 @@ public:
   const DxilSignature &GetInputSignature() const;
   DxilSignature &GetOutputSignature();
   const DxilSignature &GetOutputSignature() const;
-  DxilSignature &GetPatchConstantSignature();
-  const DxilSignature &GetPatchConstantSignature() const;
+  DxilSignature &GetPatchConstOrPrimSignature();
+  const DxilSignature &GetPatchConstOrPrimSignature() const;
   const std::vector<uint8_t> &GetSerializedRootSignature() const;
   std::vector<uint8_t> &GetSerializedRootSignature();
 
@@ -224,7 +225,7 @@ public:
   // This funciton must be called after unused resources are removed from DxilModule
   bool ModuleHasMulticomponentUAVLoads();
 
-  // Compute shader.
+  // Compute/Mesh/Amplification shader.
   void SetNumThreads(unsigned x, unsigned y, unsigned z);
   unsigned GetNumThreads(unsigned idx) const;
 
@@ -272,6 +273,16 @@ public:
   void SetTessellatorOutputPrimitive(DXIL::TessellatorOutputPrimitive TessOutputPrimitive);
   float GetMaxTessellationFactor() const;
   void SetMaxTessellationFactor(float MaxTessellationFactor);
+
+  // Mesh shader
+  unsigned GetMaxOutputVertices() const;
+  void SetMaxOutputVertices(unsigned NumOVs);
+  unsigned GetMaxOutputPrimitives() const;
+  void SetMaxOutputPrimitives(unsigned NumOPs);
+  DXIL::MeshOutputTopology GetMeshOutputTopology() const;
+  void SetMeshOutputTopology(DXIL::MeshOutputTopology MeshOutputTopology);
+  unsigned GetPayloadSizeInBytes() const;
+  void SetPayloadSizeInBytes(unsigned Size);
 
   // AutoBindingSpace also enables automatic binding for libraries if set.
   // UINT_MAX == unset

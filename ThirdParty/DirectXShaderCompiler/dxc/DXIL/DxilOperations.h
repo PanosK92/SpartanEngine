@@ -20,6 +20,7 @@ class Function;
 class Constant;
 class Value;
 class Instruction;
+class CallInst;
 }
 #include "llvm/IR/Attributes.h"
 #include "llvm/ADT/StringRef.h"
@@ -89,6 +90,7 @@ public:
   static const char *GetAtomicOpName(DXIL::AtomicBinOpCode OpCode);
   static OpCodeClass GetOpCodeClass(OpCode OpCode);
   static const char *GetOpCodeClassName(OpCode OpCode);
+  static llvm::Attribute::AttrKind GetMemAccessAttr(OpCode opCode);
   static bool IsOverloadLegal(OpCode OpCode, llvm::Type *pType);
   static bool CheckOpCodeTable();
   static bool IsDxilOpFuncName(llvm::StringRef name);
@@ -97,12 +99,16 @@ public:
   static bool IsDxilOpFuncCallInst(const llvm::Instruction *I, OpCode opcode);
   static bool IsDxilOpWave(OpCode C);
   static bool IsDxilOpGradient(OpCode C);
+  static bool IsDxilOpFeedback(OpCode C);
   static bool IsDxilOpTypeName(llvm::StringRef name);
   static bool IsDxilOpType(llvm::StructType *ST);
   static bool IsDupDxilOpType(llvm::StructType *ST);
   static llvm::StructType *GetOriginalDxilOpType(llvm::StructType *ST,
                                                  llvm::Module &M);
   static void GetMinShaderModelAndMask(OpCode C, bool bWithTranslation,
+                                       unsigned &major, unsigned &minor,
+                                       unsigned &mask);
+  static void GetMinShaderModelAndMask(const llvm::CallInst *CI, bool bWithTranslation,
                                        unsigned &major, unsigned &minor,
                                        unsigned &mask);
 
