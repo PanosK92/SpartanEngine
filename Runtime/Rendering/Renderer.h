@@ -416,8 +416,7 @@ namespace Spartan
 		std::unordered_map<Renderer_Object_Type, std::vector<Entity*>> m_entities;
 		std::shared_ptr<Camera> m_camera;                                         
 		std::shared_ptr<Skybox> m_skybox;                                         
-		Math::Vector3 m_directional_light_avg_dir;                                
-        float m_directional_light_avg_intensity = 0.0f;                           
+                       
 		//========================================================================
 
 		//= DEPENDENCIES =========================
