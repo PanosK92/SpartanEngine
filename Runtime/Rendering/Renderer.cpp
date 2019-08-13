@@ -394,7 +394,7 @@ namespace Spartan
 		auto shader_sharpen_luma = make_shared<RHI_Shader>(m_rhi_device);
 		shader_sharpen_luma->AddDefine("PASS_LUMA_SHARPEN");
 		shader_sharpen_luma->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-		m_shaders[Shader_Sharpen_Luma] = shader_sharpen_luma;
+		m_shaders[Shader_Sharpen_Luma_P] = shader_sharpen_luma;
 
         // Sharpening - TAA sharpen
         auto shader_sharpen_taa = make_shared<RHI_Shader>(m_rhi_device);

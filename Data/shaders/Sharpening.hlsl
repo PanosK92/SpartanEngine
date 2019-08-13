@@ -75,6 +75,8 @@ float3 LumaSharpen(float2 texCoord, Texture2D sourceTexture, SamplerState biline
 
 float4 SharpenTaa(float2 uv, Texture2D source_texture, SamplerState sampler_bilinear)
 {
+	float intensity = 0.5f;
+
 	float2 dx = float2(g_texel_size.x, 0.0f);
 	float2 dy = float2(0.0f, g_texel_size.y);
 
@@ -84,5 +86,5 @@ float4 SharpenTaa(float2 uv, Texture2D source_texture, SamplerState sampler_bili
 	float4 right 	= source_texture.Sample(sampler_bilinear, uv + dx);
 	float4 left 	= source_texture.Sample(sampler_bilinear, uv - dx);
 	
-	return saturate(center + 4 * center - up - down - left - right);
+	return saturate(center + (4 * center - up - down - left - right) * intensity);
 }
