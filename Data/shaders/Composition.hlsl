@@ -82,17 +82,18 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	float light_ambient		= g_directional_light_intensity * directional_shadow; // uber fake
 	light_ambient			= clamp(light_ambient, light_ambient_min, 1.0f);
 	
-	// Volumetric lighting
-	color += light_volumetric;
-
 	// Sky
     if (is_sky)
     {
         color += tex_environment.Sample(sampler_linear_clamp, directionToSphereUV(camera_to_pixel)).rgb;
         color *= clamp(g_directional_light_intensity / 5.0f, 0.01f, 1.0f);
+		color += light_volumetric;
     }
 	else
 	{
+		// Volumetric lighting
+		color += light_volumetric;
+
 		// IBL
 		float3 light_image_based = ImageBasedLighting(material, normal, camera_to_pixel, tex_environment, tex_lutIbl, sampler_linear_clamp, sampler_trlinear_clamp) * light_ambient;
 	
