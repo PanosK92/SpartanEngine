@@ -109,6 +109,10 @@ namespace Spartan
 		{
 			const auto& light = light_entity->GetComponent<Light>();
 
+            // Light can be null if it just got removed and our buffer doesn't update till the next frame
+            if (!light)
+                break;
+
 			// Skip if it doesn't need to cast shadows
 			if (!light->GetCastShadows())
 				continue;
@@ -508,6 +512,10 @@ namespace Spartan
             for (const auto& entity : m_entities[type])
             {
                 Light* light = entity->GetComponent<Light>().get();
+
+                // Light can be null if it just got removed and our buffer doesn't update till the next frame
+                if (!light)
+                    break;
 
                 // Pack textures
                 void* textures[] =
@@ -1372,6 +1380,11 @@ namespace Spartan
 
 			for (const auto& entity : lights)
 			{
+                shared_ptr<Light>& light = entity->GetComponent<Light>();
+                // Light can be null if it just got removed and our buffer doesn't update till the next frame
+                if (!light)
+                    break;
+
 				auto position_light_world		= entity->GetTransform_PtrRaw()->GetPosition();
 				auto position_camera_world		= m_camera->GetTransform()->GetPosition();
 				auto direction_camera_to_light	= (position_light_world - position_camera_world).Normalized();
@@ -1389,7 +1402,7 @@ namespace Spartan
 
 				// Choose texture based on light type
 				shared_ptr<RHI_Texture> light_tex = nullptr;
-				auto type = entity->GetComponent<Light>()->GetLightType();
+				auto type = light->GetLightType();
 				if (type == LightType_Directional)	light_tex = m_gizmo_tex_light_directional;
 				else if (type == LightType_Point)	light_tex = m_gizmo_tex_light_point;
 				else if (type == LightType_Spot)	light_tex = m_gizmo_tex_light_spot;

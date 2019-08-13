@@ -613,25 +613,6 @@ namespace Spartan
 			m_view_projection_orthographic	= m_view_base * m_projection_orthographic;
 		}
 
-        // Deduce some light data
-        {
-            uint32_t light_directional_count = 0;
-            m_directional_light_avg_dir = Vector3::Zero;
-            m_directional_light_avg_intensity = 0.0f;
-
-            for (const auto& light_entity : m_entities[Renderer_Object_LightDirectional])
-            {
-                const auto& light = light_entity->GetComponent<Light>();
-                m_directional_light_avg_dir += light->GetDirection();
-                m_directional_light_avg_intensity += light->GetIntensity();
-                light_directional_count++;
-            }
-
-            // Compute average directional light direction and intensity
-            m_directional_light_avg_dir /= static_cast<float>(light_directional_count);
-            m_directional_light_avg_intensity /= static_cast<float>(light_directional_count);
-        }
-
 		m_is_rendering = true;
 		Pass_Main();
 		m_is_rendering = false;
@@ -707,6 +688,15 @@ namespace Spartan
 			return false;
 		}
 
+        float light_directional_intensity = 0.0f;
+        if (Entity* entity = m_entities[Renderer_Object_LightDirectional].front())
+        {
+            if (shared_ptr<Light>& light = entity->GetComponent<Light>())
+            {
+                light_directional_intensity = light->GetIntensity();
+            }
+        }
+
 		buffer->m_mvp					    = mvp;
 		buffer->m_view					    = m_view;
 		buffer->m_projection			    = m_projection;
@@ -731,7 +721,7 @@ namespace Spartan
 		buffer->tonemapping				    = static_cast<float>(m_tonemapping);
 		buffer->exposure				    = m_exposure;
 		buffer->gamma					    = m_gamma;
-        buffer->directional_light_intensity = m_directional_light_avg_intensity;
+        buffer->directional_light_intensity = light_directional_intensity;
         buffer->ssr_enabled                 = FlagEnabled(Render_PostProcess_SSR) ? 1.0f : 0.0f;
         buffer->shadow_resolution           = static_cast<float>(m_resolution_shadow);
 
