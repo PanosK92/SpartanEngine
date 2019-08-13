@@ -100,9 +100,14 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	color.rgb = ChromaticAberration(texCoord, g_texel_size, sourceTexture, samplerState);
 #endif
 
-#if PASS_SHARPENING
+#if PASS_LUMA_SHARPEN
 	// Requirements: Bilinear sampler
 	color.rgb = LumaSharpen(texCoord, sourceTexture, samplerState, g_resolution, g_sharpen_strength, g_sharpen_clamp);	
+#endif
+
+#if PASS_TAA_SHARPEN
+	// Requirements: Bilinear sampler
+	color = SharpenTaa(texCoord, sourceTexture, samplerState);	
 #endif
 
 #if PASS_UPSAMPLE_BOX
