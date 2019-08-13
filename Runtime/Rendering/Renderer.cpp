@@ -60,21 +60,21 @@ namespace Spartan
 {
 	Renderer::Renderer(Context* context) : ISubsystem(context)
 	{	
-		m_flags			|= Render_Gizmo_Transform;
-		m_flags			|= Render_Gizmo_Grid;
-		m_flags			|= Render_Gizmo_Lights;
-		m_flags			|= Render_Gizmo_Physics;
-		m_flags			|= Render_PostProcess_Bloom;
-        m_flags         |= Render_PostProcess_VolumetricLighting;
-		m_flags			|= Render_PostProcess_SSAO;
-        m_flags         |= Render_PostProcess_SSS;
-		m_flags			|= Render_PostProcess_MotionBlur;
-		m_flags			|= Render_PostProcess_TAA;
-		//m_flags		|= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior
-		m_flags			|= Render_PostProcess_Sharpening;
-		m_flags			|= Render_PostProcess_SSR;
-		//m_flags		|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients
-		//m_flags		|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect		
+		m_flags		|= Render_Gizmo_Transform;
+		m_flags		|= Render_Gizmo_Grid;
+		m_flags		|= Render_Gizmo_Lights;
+		m_flags		|= Render_Gizmo_Physics;
+		m_flags		|= Render_PostProcess_Bloom;
+        m_flags     |= Render_PostProcess_VolumetricLighting;
+		m_flags		|= Render_PostProcess_SSAO;
+        m_flags     |= Render_PostProcess_SSS;
+		m_flags		|= Render_PostProcess_MotionBlur;
+		m_flags		|= Render_PostProcess_TAA;
+        m_flags     |= Render_PostProcess_SSR;
+		//m_flags	|= Render_PostProcess_FXAA;                 // Disabled by default: TAA is superior.
+		//m_flags	|= Render_PostProcess_Sharpening;		    // Disabled by default: TAA's blurring is taken core of with an always on sharpen pass specifically for it.
+		//m_flags	|= Render_PostProcess_Dithering;			// Disabled by default: It's only needed in very dark scenes to fix smooth color gradients.
+		//m_flags	|= Render_PostProcess_ChromaticAberration;	// Disabled by default: It doesn't improve the image quality, it's more of a stylistic effect.	
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(Event_World_Submit, EVENT_HANDLER_VARIANT(RenderablesAcquire));
@@ -390,11 +390,17 @@ namespace Spartan
 		shader_luma->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
 		m_shaders[Shader_Luma_P] = shader_luma;
 
-		// Sharpening
-		auto shader_sharpening = make_shared<RHI_Shader>(m_rhi_device);
-		shader_sharpening->AddDefine("PASS_SHARPENING");
-		shader_sharpening->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
-		m_shaders[Shader_Sharperning_P] = shader_sharpening;
+		// Sharpening - Lumasharpen
+		auto shader_sharpen_luma = make_shared<RHI_Shader>(m_rhi_device);
+		shader_sharpen_luma->AddDefine("PASS_LUMA_SHARPEN");
+		shader_sharpen_luma->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+		m_shaders[Shader_Sharpen_Luma] = shader_sharpen_luma;
+
+        // Sharpening - TAA sharpen
+        auto shader_sharpen_taa = make_shared<RHI_Shader>(m_rhi_device);
+        shader_sharpen_taa->AddDefine("PASS_TAA_SHARPEN");
+        shader_sharpen_taa->CompileAsync(m_context, Shader_Pixel, dir_shaders + "Quad.hlsl");
+        m_shaders[Shader_Sharpen_Taa_P] = shader_sharpen_taa;
 
 		// Chromatic aberration
 		auto shader_chromaticAberration = make_shared<RHI_Shader>(m_rhi_device);
