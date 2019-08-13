@@ -868,14 +868,14 @@ namespace Spartan
 	void Renderer::Pass_TAA(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shaders
-		const auto& shader_taa = m_shaders[Shader_Taa_P];
-		const auto& shader_texture = m_shaders[Shader_Texture_P];
-		if (!shader_taa->IsCompiled() || !shader_texture->IsCompiled())
+		const auto& shader_taa      = m_shaders[Shader_Taa_P];
+		const auto& shader_sharpen  = m_shaders[Shader_Sharpen_Taa_P];
+		if (!shader_taa->IsCompiled() || !shader_sharpen->IsCompiled())
 			return;
 
         // Acquire render targets
-        auto& tex_current = m_render_targets[RenderTarget_Taa_Current];
-        auto& tex_history = m_render_targets[RenderTarget_Taa_History];
+        auto& tex_current   = m_render_targets[RenderTarget_Taa_Current];
+        auto& tex_history   = m_render_targets[RenderTarget_Taa_History];
 
 		m_cmd_list->Begin("Pass_TAA");
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
@@ -902,15 +902,15 @@ namespace Spartan
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 
-		// Output to texOut
+		// Sharpen
 		{
 			// Prepare resources
 			UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
-			m_cmd_list->SetShaderPixel(shader_texture);
-			m_cmd_list->SetSampler(0, m_sampler_point_clamp);
+			m_cmd_list->SetShaderPixel(shader_sharpen);
+			m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 			m_cmd_list->SetTexture(0, tex_current);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
@@ -1189,7 +1189,7 @@ namespace Spartan
 	void Renderer::Pass_Sharpening(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shader
-		const auto& shader_sharperning = m_shaders[Shader_Sharperning_P];
+		const auto& shader_sharperning = m_shaders[Shader_Sharpen_Luma];
 		if (!shader_sharperning->IsCompiled())
 			return;
 
