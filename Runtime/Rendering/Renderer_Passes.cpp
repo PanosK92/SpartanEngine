@@ -676,10 +676,17 @@ namespace Spartan
 			swap_targets();
 		}
 
-		// Sharpening
+        // Sharpening - TAA controlled
+        if (FlagEnabled(Render_PostProcess_TAA))
+        {
+            Pass_TaaSharpen(tex_in, tex_out);
+            swap_targets();
+        }
+
+		// Sharpening - User controlled
 		if (FlagEnabled(Render_PostProcess_Sharpening))
 		{
-			Pass_Sharpening(tex_in, tex_out);
+			Pass_LumaSharpen(tex_in, tex_out);
 			swap_targets();
 		}
 
@@ -877,8 +884,8 @@ namespace Spartan
 	{
 		// Acquire shaders
 		const auto& shader_taa      = m_shaders[Shader_Taa_P];
-		const auto& shader_sharpen  = m_shaders[Shader_Sharpen_Taa_P];
-		if (!shader_taa->IsCompiled() || !shader_sharpen->IsCompiled())
+		const auto& shader_texture  = m_shaders[Shader_Texture_P];
+		if (!shader_taa->IsCompiled() || !shader_texture->IsCompiled())
 			return;
 
         // Acquire render targets
@@ -910,14 +917,14 @@ namespace Spartan
 			m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
 		}
 
-		// Sharpen
+		// Copy
 		{
 			// Prepare resources
 			UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
 
 			m_cmd_list->SetRenderTarget(tex_out);
 			m_cmd_list->SetViewport(tex_out->GetViewport());
-			m_cmd_list->SetShaderPixel(shader_sharpen);
+			m_cmd_list->SetShaderPixel(shader_texture);
 			m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 			m_cmd_list->SetTexture(0, tex_current);
 			m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
@@ -1194,14 +1201,39 @@ namespace Spartan
 		m_cmd_list->Submit();
 	}
 
-	void Renderer::Pass_Sharpening(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_TaaSharpen(std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out)
+    {
+        // Acquire shader
+        const auto& shader = m_shaders[Shader_Sharpen_Taa_P];
+        if (!shader->IsCompiled())
+            return;
+
+        m_cmd_list->Begin("Pass_TaaSharpen");
+
+        // Prepare resources
+        UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
+
+        m_cmd_list->ClearTextures(); // avoids d3d11 warning where the render target is already bound as an input texture (from previous pass)
+        m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
+        m_cmd_list->SetRenderTarget(tex_out);
+        m_cmd_list->SetViewport(tex_out->GetViewport());
+        m_cmd_list->SetShaderPixel(shader);
+        m_cmd_list->SetTexture(0, tex_in);
+        m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
+        m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
+        m_cmd_list->DrawIndexed(Rectangle::GetIndexCount(), 0, 0);
+        m_cmd_list->End();
+        m_cmd_list->Submit();
+    }
+
+	void Renderer::Pass_LumaSharpen(shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
 	{
 		// Acquire shader
-		const auto& shader_sharperning = m_shaders[Shader_Sharpen_Luma];
-		if (!shader_sharperning->IsCompiled())
+		const auto& shader = m_shaders[Shader_Sharpen_Luma_P];
+		if (!shader->IsCompiled())
 			return;
 
-		m_cmd_list->Begin("Pass_Sharpening");
+		m_cmd_list->Begin("Pass_LumaSharpen");
 
 		// Prepare resources
 		UpdateUberBuffer(tex_out->GetWidth(), tex_out->GetHeight());
@@ -1210,7 +1242,7 @@ namespace Spartan
         m_cmd_list->SetDepthStencilState(m_depth_stencil_disabled);
 		m_cmd_list->SetRenderTarget(tex_out);
 		m_cmd_list->SetViewport(tex_out->GetViewport());		
-		m_cmd_list->SetShaderPixel(shader_sharperning);
+		m_cmd_list->SetShaderPixel(shader);
 		m_cmd_list->SetTexture(0, tex_in);
 		m_cmd_list->SetSampler(0, m_sampler_bilinear_clamp);
 		m_cmd_list->SetConstantBuffer(0, Buffer_Global, m_uber_buffer);
