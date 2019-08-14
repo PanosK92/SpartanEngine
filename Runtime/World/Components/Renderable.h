@@ -52,6 +52,7 @@ namespace Spartan
 	class SPARTAN_CLASS Renderable : public IComponent
 	{
 	public:
+        Renderable() = default;
 		Renderable(Context* context, Entity* entity, Transform* transform);
 		~Renderable() = default;
 

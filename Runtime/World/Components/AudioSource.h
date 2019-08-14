@@ -34,6 +34,7 @@ namespace Spartan
 	class SPARTAN_CLASS AudioSource : public IComponent
 	{
 	public:
+        AudioSource() = default;
 		AudioSource(Context* context, Entity* entity, Transform* transform);
 		~AudioSource() = default;
 

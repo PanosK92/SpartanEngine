@@ -48,6 +48,7 @@ namespace Spartan
 	class SPARTAN_CLASS Camera : public IComponent
 	{
 	public:
+        Camera() = default;
 		Camera(Context* context, Entity* entity, Transform* transform);
 		~Camera() = default;
 

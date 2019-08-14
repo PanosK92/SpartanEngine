@@ -21,18 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "World.h"
-#include "Entity.h"
-#include "Components/Transform.h"
-#include "Components/Camera.h"
-#include "Components/Light.h"
-#include "Components/Script.h"
-#include "Components/Skybox.h"
-#include "Components/AudioListener.h"
 #include "../Core/Engine.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceCache.h"
 #include "../Resource/ProgressReport.h"
 #include "../IO/FileStream.h"
+#include "Entity.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
@@ -54,6 +48,18 @@ namespace Spartan
 		SUBSCRIBE_TO_EVENT(Event_World_Resolve, [this](Variant) { m_isDirty = true; });
 		SUBSCRIBE_TO_EVENT(Event_World_Stop,	[this](Variant)	{ m_state = Idle; });
 		SUBSCRIBE_TO_EVENT(Event_World_Start,	[this](Variant)	{ m_state = Ticking; });
+
+        m_components_managers[ComponentType_Transform] = std::make_shared<ComponentManager<Transform>>();
+        m_components_managers[ComponentType_AudioListener] = std::make_shared<ComponentManager<AudioListener>>();
+        m_components_managers[ComponentType_AudioSource] = std::make_shared<ComponentManager<AudioSource>>();
+        m_components_managers[ComponentType_Renderable] = std::make_shared<ComponentManager<Renderable>>();
+        m_components_managers[ComponentType_Constraint] = std::make_shared<ComponentManager<Constraint>>();
+        m_components_managers[ComponentType_Collider] = std::make_shared<ComponentManager<Collider>>();
+        m_components_managers[ComponentType_RigidBody] = std::make_shared<ComponentManager<RigidBody>>();
+        m_components_managers[ComponentType_Script] = std::make_shared<ComponentManager<Script>>();
+        m_components_managers[ComponentType_Skybox] = std::make_shared<ComponentManager<Skybox>>();
+        m_components_managers[ComponentType_Camera] = std::make_shared<ComponentManager<Camera>>();
+        m_components_managers[ComponentType_Light] = std::make_shared<ComponentManager<Light>>();
 	}
 
 	World::~World()
@@ -96,24 +102,36 @@ namespace Spartan
 			// Start
 			if (started)
 			{
-				for (const auto& entity : m_entities_primary)
-				{
-					entity->Start();
-				}
+                IterateManagers([&](auto& manager)
+                {
+                     manager->Iterate([&](auto& component)
+                     {
+                             if (component->IsParentEntityActive())
+                                 component->OnStart();
+                     });
+;               });
 			}
 			// Stop
 			if (stopped)
 			{
-				for (const auto& entity : m_entities_primary)
-				{
-					entity->Stop();
-				}
+                IterateManagers([&](auto& manager)
+                {
+                     manager->Iterate([&](auto& component)
+                     {
+                            if (component->IsParentEntityActive())
+                               component->OnStart();
+                     });
+                });
 			}
 			// Tick
-			for (const auto& entity : m_entities_primary)
-			{
-				entity->Tick(delta_time);
-			}
+            IterateManagers([&](auto& manager)
+            {
+                  manager->Iterate([&](auto& component)
+                  {
+                        if (component->IsParentEntityActive())
+                            component->OnTick(delta_time);
+                  });
+            });
 		}
 
         TIME_BLOCK_END(m_profiler);
@@ -383,7 +401,7 @@ namespace Spartan
 		light->GetTransform_PtrRaw()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
 		light->GetTransform_PtrRaw()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
-		auto light_comp = light->AddComponent<Light>().get();
+		auto light_comp = light->AddComponent<Light>();
 		light_comp->SetLightType(LightType_Directional);
 		light_comp->SetIntensity(1.5f);
 

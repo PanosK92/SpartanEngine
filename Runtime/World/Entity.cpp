@@ -269,6 +269,21 @@ namespace Spartan
 		FIRE_EVENT(Event_World_Resolve);
 	}
 
+    void Entity::SetActive(const bool active)
+    {
+        m_is_active = active;
+
+        auto scene = m_context->GetSubsystem<World>();
+        scene->IterateManagers([&](auto& manager)
+        {
+            auto components = manager->GetComponents(GetId());
+            for (auto& component : components)
+            {
+                component->SetIsParentEntityActive(active);
+            }
+        });
+    }
+
 	shared_ptr<IComponent> Entity::AddComponent(const ComponentType type)
 	{
 		// This is the only hardcoded part regarding components. It's 
@@ -313,6 +328,14 @@ namespace Spartan
 				++it;
 			}
 		}
+
+        auto scene = m_context->GetSubsystem<World>();
+
+        scene->IterateManagers([&](auto& manager)
+        {
+             if (manager->m_type == m_id_to_type[id])
+                 manager->RemoveComponentByID(GetId(), id);
+        });
 
 		// Make the scene resolve
 		FIRE_EVENT(Event_World_Resolve);

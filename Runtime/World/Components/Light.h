@@ -52,6 +52,7 @@ namespace Spartan
 	class SPARTAN_CLASS Light : public IComponent
 	{
 	public:
+        Light() = default;
 		Light(Context* context, Entity* entity, Transform* transform);
 		~Light();
 

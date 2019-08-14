@@ -21,33 +21,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
-#include "IComponent.h"
-#include "../../Scripting/ScriptInstance.h"
-//=========================================
+//= INCLUDES =====================
+#include <tuple>
+#include <utility>
+//================================
 
 namespace Spartan
 {
-	class SPARTAN_CLASS Script : public IComponent
-	{
-	public:
-        Script() = default;
-		Script(Context* context, Entity* entity, Transform* transform);
-		~Script();
+    template<std::size_t I = 0, typename FuncT, typename... Tp>
+    inline typename std::enable_if<I == sizeof...(Tp), void>::type
+        for_each(const std::tuple<Tp...>&, FuncT) // Unused arguments are given no names.
+    { }
 
-		//= ICOMPONENT ===============================
-		void OnStart() override;
-		void OnTick(float delta_time) override;
-		void Serialize(FileStream* stream) override;
-		void Deserialize(FileStream* stream) override;
-		//============================================
+    template<std::size_t I = 0, typename FuncT, typename... Tp>
+    inline typename std::enable_if < I < sizeof...(Tp), void>::type
+        for_each(const std::tuple<Tp...>& t, FuncT f)
+    {
+        f(std::get<I>(t));
+        for_each<I + 1, FuncT, Tp...>(t, f);
+    }
 
-		bool SetScript(const std::string& filePath);
-		std::string GetScriptPath();
-		std::string GetName();
+    template<std::size_t I = 0, typename FuncT, typename... Tp>
+    inline typename std::enable_if<I == sizeof...(Tp), void>::type
+        for_each(std::tuple<Tp...>&&, FuncT) // Unused arguments are given no names.
+    { }
 
-	private:
-		std::shared_ptr<ScriptInstance> m_scriptInstance;
-		std::string m_name;
-	};
+    template<std::size_t I = 0, typename FuncT, typename... Tp>
+    inline typename std::enable_if < I < sizeof...(Tp), void>::type
+        for_each(std::tuple<Tp...>&& t, FuncT f)
+    {
+        f(std::get<I>(t));
+        for_each<I + 1, FuncT, Tp...>(std::move(t), f);
+    }
 }

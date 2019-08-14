@@ -26,6 +26,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <string>
 #include "../Core/EngineDefs.h"
+
+#include "Components/Transform.h"
+#include "Components/Camera.h"
+#include "Components/Light.h"
+#include "Components/AudioSource.h"
+#include "Components/Collider.h"
+#include "Components/Constraint.h"
+#include "Components/RigidBody.h"
+#include "Components/Renderable.h"
+#include "Components/Script.h"
+#include "Components/Skybox.h"
+#include "Components/AudioListener.h"
+#include "Component.h"
+#include "Iteration.h"
 #include "../Core/ISubsystem.h"
 //=============================
 
@@ -72,6 +86,14 @@ namespace Spartan
 		auto EntityGetCount()		{ return static_cast<uint32_t>(m_entities_primary.size()); }
 		//==========================================================================================
 
+        //= COMPONENT MANAGERS ========================
+        template <typename T>
+        std::shared_ptr<ComponentManager<T>> GetComponentManager();
+        
+        template <typename Func>
+        void IterateManagers(Func f);
+        //===================================
+
 	private:
 		//= COMMON ENTITY CREATION ========================
 		std::shared_ptr<Entity>& CreateSkybox();
@@ -83,6 +105,8 @@ namespace Spartan
 		std::vector<std::shared_ptr<Entity>> m_entities_primary;
 		std::vector<std::shared_ptr<Entity>> m_entities_secondary;
 
+        std::unordered_map<ComponentType, std::shared_ptr<BaseComponentManager>> m_components_managers;
+
 		std::shared_ptr<Entity> m_entity_empty;
 		Input* m_input;
 		Profiler* m_profiler;
@@ -91,4 +115,26 @@ namespace Spartan
 		Scene_State m_state;
 		std::string m_name;
 	};
+
+    template<typename T>
+    inline std::shared_ptr<ComponentManager<T>> World::GetComponentManager()
+    {
+        ComponentType type = IComponent::TypeToEnum<T>();
+
+        std::shared_ptr<BaseComponentManager> manager = m_components_managers[type];
+
+        return std::static_pointer_cast<ComponentManager<T>>(manager);
+    }
+
+    template<typename Func>
+    inline void World::IterateManagers(Func f)
+    {
+        Spartan::for_each(std::tie(Transform(), AudioSource(), AudioListener(),
+            Constraint(), Collider(), RigidBody(), Light(),
+            Renderable(), Script(), Skybox(), Camera()), [&](auto type)
+        {
+              auto manager = this->GetComponentManager<decltype(type)>();
+              f(manager);
+        });
+    }
 }

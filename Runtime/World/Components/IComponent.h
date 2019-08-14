@@ -63,6 +63,7 @@ namespace Spartan
 	class SPARTAN_CLASS IComponent : public Spartan_Object
 	{
 	public:
+        IComponent() = default;
 		IComponent(Context* context, Entity* entity, Transform* transform);
 		virtual ~IComponent() = default;
 
@@ -113,6 +114,9 @@ namespace Spartan
 		}
 		//=======================================================================================
 
+        bool IsParentEntityActive() { return m_is_parent_active; }
+        void SetIsParentEntityActive(bool active) { m_is_parent_active = active; }
+
 	protected:
 		#define REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(		\
 		[this]()						{ return getter(); },							\
@@ -139,7 +143,8 @@ namespace Spartan
 		ComponentType m_type	= ComponentType_Unknown;
 		// The state of the component
 		bool m_enabled			= false;
-		// The owner of the component
+        bool m_is_parent_active = true;
+        // The owner of the component
 		Entity* m_entity		= nullptr;
 		// The transform of the component (always exists)
 		Transform* m_transform	= nullptr;
