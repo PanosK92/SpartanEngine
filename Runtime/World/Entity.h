@@ -69,7 +69,7 @@ namespace Spartan
 
 		// Adds a component of type T
 		template <class T>
-		std::shared_ptr<T> AddComponent()
+		constexpr std::shared_ptr<T> AddComponent()
 		{
 			VALIDATE_COMPONENT_TYPE(T);
 			const ComponentType type = IComponent::TypeToEnum<T>();
