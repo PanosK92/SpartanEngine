@@ -265,7 +265,7 @@ namespace Spartan
         float m_sharpen_strength        = 1.0f;		// Strength of the sharpening
         float m_sharpen_clamp           = 0.35f;	// Limits maximum amount of sharpening a pixel receives											- Algorithm's default: 0.035f
         // Motion Blur
-        float m_motion_blur_strength    = 4.0f;		// Strength of the motion blur
+        float m_motion_blur_intensity   = 4.0f;		// Strength of the motion blur
         //========================================================================================================================================================================
 
 	private:

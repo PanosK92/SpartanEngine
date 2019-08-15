@@ -715,7 +715,7 @@ namespace Spartan
 		buffer->sharpen_strength		    = m_sharpen_strength;
 		buffer->sharpen_clamp			    = m_sharpen_clamp;
 		buffer->taa_jitter_offset		    = m_taa_jitter - m_taa_jitter_previous;
-		buffer->motion_blur_strength	    = m_motion_blur_strength;
+		buffer->motion_blur_strength	    = m_motion_blur_intensity;
 		buffer->fps_current				    = m_profiler->GetFps();
 		buffer->fps_target				    = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTargetFps());	
 		buffer->tonemapping				    = static_cast<float>(m_tonemapping);

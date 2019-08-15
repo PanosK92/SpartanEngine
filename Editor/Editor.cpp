@@ -263,21 +263,22 @@ void Editor::ApplyStyle() const
     // Use default black style as a base
     ImGui::StyleColorsDark();
 
-    auto& style = ImGui::GetStyle();
-    auto& io    = ImGui::GetIO();
+    ImGuiStyle& style   = ImGui::GetStyle();
+    auto& io            = ImGui::GetIO();
 
 	// Spatial
-	style.WindowBorderSize	= 1.0f;
-	style.FrameBorderSize	= 0.0f;
-    style.ScrollbarSize     = 20.0f;
-	style.FramePadding		= ImVec2(5, 5);
-	style.ItemSpacing		= ImVec2(6, 5);	
-	style.WindowRounding	= roundness;
-	style.FrameRounding		= roundness;
-	style.PopupRounding		= roundness;
-	style.GrabRounding		= roundness;
-    style.ScrollbarRounding = roundness;
-    style.Alpha             = 1.0f;	
+	style.WindowBorderSize	        = 1.0f;
+	style.FrameBorderSize	        = 0.0f;
+    style.ScrollbarSize             = 20.0f;
+	style.FramePadding		        = ImVec2(5, 5);
+	style.ItemSpacing		        = ImVec2(6, 5);
+    style.WindowMenuButtonPosition  = ImGuiDir_Right;
+	style.WindowRounding	        = roundness;
+	style.FrameRounding		        = roundness;
+	style.PopupRounding		        = roundness;
+	style.GrabRounding		        = roundness;
+    style.ScrollbarRounding         = roundness;
+    style.Alpha                     = 1.0f;	
 
 	// Colors
 	style.Colors[ImGuiCol_Text]						= text;

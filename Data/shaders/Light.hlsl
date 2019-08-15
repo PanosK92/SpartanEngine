@@ -94,11 +94,17 @@ PixelOutputType mainPS(Pixel_PosUv input)
     float3 position_world 	= get_world_position_from_depth(depth_sample, g_viewProjectionInv, input.uv);
     float3 camera_to_pixel  = normalize(position_world - g_camera_position.xyz);
 	
-	// Fill in light struct
+	// Fill in light struct with default values
 	Light light;
 	light.color 	= color;
 	light.position 	= position;
+	#if DIRECTIONAL
 	light.direction	= direction;
+	#elif POINT
+	light.direction	= normalize(position_world - light.position);
+	#elif SPOT
+	light.direction	= normalize(position_world - light.position);
+	#endif
 	light.intensity = intensity;
 	light.range 	= range;
 	light.angle 	= angle;
@@ -107,7 +113,11 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	float shadow = 1.0f;
 	if (shadow_enabled)
 	{
-		shadow = Shadow_Map(uv, normal, depth_sample, position_world, bias, normal_bias, light);
+		if (!is_sky)
+		{
+			shadow = Shadow_Map(uv, normal, depth_sample, position_world, bias, normal_bias, light);
+		}
+
 		if (volumetric_lighting_enabled)
 		{
 			light_out.volumetric.rgb = VolumetricLighting(light, position_world, uv);
@@ -130,9 +140,6 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	#endif
 	
 	#if POINT
-		// Compute light direction
-		light.direction = normalize(position_world - light.position);
-	
         // Attunate
         float dist         = length(position_world - light.position);
         float attenuation  = saturate(1.0f - dist / range);
@@ -143,9 +150,6 @@ PixelOutputType mainPS(Pixel_PosUv input)
 	#endif
 	
 	#if SPOT
-		// Compute light direction
-		float3 direction = normalize(position_world - light.position);
-		
 		// Attunate
         float cutoffAngle   = 1.0f - light.angle;      
         float dist          = length(position_world - light.position);
