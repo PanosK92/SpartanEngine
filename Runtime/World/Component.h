@@ -145,7 +145,13 @@ namespace Spartan
 
         if (!inst.empty())
         {
+            ComponentInstance lastComponent = mComponentData.mSize - 1;
+            mComponentData.mData[mEntityMap[entityID].begin()->second] = mComponentData.mData[lastComponent];
+            mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = componentID;
+            mComponentData.mData[lastComponent] = nullptr;
             mEntityMap[entityID].erase(mEntityMap[entityID].begin());
+
+            mComponentData.mSize--;
         }
     }
 
@@ -156,7 +162,13 @@ namespace Spartan
 
         if (inst.count(componentID) > 0)
         {
+            ComponentInstance lastComponent = mComponentData.mSize - 1;
+            mComponentData.mData[inst[componentID]] = mComponentData.mData[lastComponent];
+            mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = componentID;
+            mComponentData.mData[lastComponent] = nullptr;
             mEntityMap[entityID].erase(componentID);
+
+            mComponentData.mSize--;
         }
     }
 		
