@@ -19,8 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float g_vl_steps 		= 64;
-static const float g_vl_scattering 	= 0.97;
+static const float g_vl_steps 		= 32;
+static const float g_vl_scattering 	= 0.995f;
 static const float g_vl_pow			= 0.5f;
 
 // Mie scaterring approximated with Henyey-Greenstein phase function.
@@ -40,6 +40,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 	float step_length 				= pixel_to_cameral_length / g_vl_steps;
 	float3 ray_step 				= ray_dir * step_length;
 	float3 ray_pos 					= pos_world;
+	float ray_dot_light				= dot(ray_dir, light.direction);
 
 	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
 	float3 dither_value = Dither_Valve(uv * g_resolution) * 400;
@@ -61,7 +62,7 @@ float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
 		float depth_delta = light_depth_directional.SampleCmpLevelZero(sampler_cmp_depth, float3(ray_uv, cascade), pos_light.z).r;		
 		if (depth_delta > 0.0f)
 		{
-			fog += ComputeScattering(dot(ray_dir, light.direction));
+			fog += ComputeScattering(ray_dot_light);
 		}
 		
 		ray_pos += ray_step;

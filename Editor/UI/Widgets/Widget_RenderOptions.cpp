@@ -98,7 +98,9 @@ void Widget_RenderOptions::Tick()
         // Display
         {
             const auto tooltip = [](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
+            const auto input_float = [](const char* text, float* value, float step) { ImGui::PushItemWidth(120); ImGui::InputFloat(text, value, step); ImGui::PopItemWidth(); };
 
+            // Tonemapping
             if (ImGui::BeginCombo("Tonemapping", type_char_ptr))
             {
                 for (unsigned int i = 0; i < static_cast<unsigned int>(types.size()); i++)
@@ -116,49 +118,60 @@ void Widget_RenderOptions::Tick()
                 }
                 ImGui::EndCombo();
             }
-            ImGui::InputFloat("Exposure",                               &m_renderer->m_exposure, 0.1f);
-            ImGui::InputFloat("Gamma",                                  &m_renderer->m_gamma, 0.1f);
+            ImGui::SameLine(); input_float("Exposure", &m_renderer->m_exposure, 0.1f); ImGui::SameLine(); input_float("Gamma", &m_renderer->m_gamma, 0.1f);
             ImGui::Separator();
 
-            ImGui::Checkbox("Bloom",                                    &do_bloom);
-            ImGui::InputFloat("Bloom Strength",                         &m_renderer->m_bloom_intensity, 0.001f);
+            // Bloom
+            ImGui::Checkbox("Bloom", &do_bloom); ImGui::SameLine(); input_float("Intensity", &m_renderer->m_bloom_intensity, 0.001f);
             ImGui::Separator();
 
-            ImGui::Checkbox("Volumetric lighting",                      &do_volumetric_lighting);
+            // Volumetric lighting
+            ImGui::Checkbox("Volumetric lighting", &do_volumetric_lighting); tooltip("Requires a light with shadows");
             ImGui::Separator();
 
-            ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion",    &do_ssao);
+            // Screen space shadows
+            ImGui::Checkbox("SSS - Screen Space Shadows", &do_sss); tooltip("Requires a light with shadows");
             ImGui::Separator();
 
-            ImGui::Checkbox("SSS - Screen Space Shadows",               &do_sss);
+            // Screen space ambient occlusion
+            ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
             ImGui::Separator();
 
-            ImGui::Checkbox("SSR - Screen Space Reflections",           &do_ssr);
+            // Screen space reflections
+            ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
             ImGui::Separator();
 
-            ImGui::Checkbox("Motion Blur",                              &do_motion_blur);
-            ImGui::InputFloat("Motion Blur Strength",                   &m_renderer->m_motion_blur_strength, 0.1f);
+            // Motion blur
+            ImGui::Checkbox("Motion Blur", &do_motion_blur); ImGui::SameLine(); input_float("Intensity", &m_renderer->m_motion_blur_intensity, 0.1f);
             ImGui::Separator();
 
-            ImGui::Checkbox("Chromatic Aberration",                     &do_chromatic_aberration);						tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
+            // Chromatic aberration
+            ImGui::Checkbox("Chromatic Aberration", &do_chromatic_aberration); tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
             ImGui::Separator();
 
-            ImGui::Checkbox("TAA - Temporal Anti-Aliasing",             &do_taa);
-            ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing",    &do_fxaa);
-            ImGui::InputFloat("FXAA Sub-Pixel",                         &m_renderer->m_fxaa_sub_pixel, 0.1f);			tooltip("The amount of sub-pixel aliasing removal");
-            ImGui::InputFloat("FXAA Edge Threshold",                    &m_renderer->m_fxaa_edge_threshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
-            ImGui::InputFloat("FXAA Edge Threshold Min",                &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
+            // Temporal anti-aliasing
+            ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
             ImGui::Separator();
 
-            ImGui::Checkbox("Sharpen",                                  &do_sharperning);
-            ImGui::InputFloat("Sharpen Strength",                       &m_renderer->m_sharpen_strength, 0.1f);
-            ImGui::InputFloat("Sharpen Clamp",                          &m_renderer->m_sharpen_clamp, 0.1f);		    tooltip("Limits maximum amount of sharpening a pixel receives");
+            // FXAA
+            ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing",   &do_fxaa);
+            ImGui::SameLine(); input_float("Sub-Pixel",          &m_renderer->m_fxaa_sub_pixel, 0.1f);			tooltip("The amount of sub-pixel aliasing removal");
+            ImGui::SameLine(); input_float("Edge Threshold",     &m_renderer->m_fxaa_edge_threshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
+            ImGui::SameLine(); input_float("Edge Threshold Min", &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
             ImGui::Separator();
 
-            ImGui::InputInt("Shadow Resolution",                        &resolution_shadow, 1);
+            // Sharpen
+            ImGui::Checkbox("Sharpen", &do_sharperning);
+            ImGui::SameLine(); input_float("Strength", &m_renderer->m_sharpen_strength, 0.1f);
+            ImGui::SameLine(); input_float("Clamp", &m_renderer->m_sharpen_clamp, 0.1f); tooltip("Limits maximum amount of sharpening a pixel receives");
             ImGui::Separator();
 
-            ImGui::Checkbox("Dithering",                                &do_dithering);									tooltip("Reduces color banding");
+            // Dithering
+            ImGui::Checkbox("Dithering", &do_dithering); tooltip("Reduces color banding");
+            ImGui::Separator();
+
+            // Shadow resolution
+            ImGui::InputInt("Shadow Resolution", &resolution_shadow, 1);
         }
 
         // Filter input
@@ -169,7 +182,7 @@ void Widget_RenderOptions::Tick()
         m_renderer->m_fxaa_edge_threshold_min   = Abs(m_renderer->m_fxaa_edge_threshold_min);
         m_renderer->m_sharpen_strength          = Abs(m_renderer->m_sharpen_strength);
         m_renderer->m_sharpen_clamp             = Abs(m_renderer->m_sharpen_clamp);
-        m_renderer->m_motion_blur_strength      = Abs(m_renderer->m_motion_blur_strength);
+        m_renderer->m_motion_blur_intensity     = Abs(m_renderer->m_motion_blur_intensity);
         m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
        
         #define set_flag_if(flag, value) value? m_renderer->EnableFlag(flag) : m_renderer->DisableFlag(flag)
