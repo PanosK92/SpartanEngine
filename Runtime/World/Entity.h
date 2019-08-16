@@ -180,7 +180,7 @@ namespace Spartan
 		}
 
 		void RemoveComponentById(uint32_t id);
-        const auto& Entity::GetAllComponents() const
+        const auto Entity::GetAllComponents() const
         {
             auto scene = m_context->GetSubsystem<World>();
             std::vector<std::shared_ptr<IComponent>> components;

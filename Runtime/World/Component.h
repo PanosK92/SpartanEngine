@@ -175,7 +175,7 @@ namespace Spartan
 	template<typename T>
     inline void ComponentManager<T>::Iterate(std::function<void(std::shared_ptr<T>)> func)
 	{
-		for (int i = 1; i < mComponentData.mSize; i++)
+		for (uint32_t i = 1; i < mComponentData.mSize; i++)
 		{
 			func(mComponentData.mData[i]);
 		}
