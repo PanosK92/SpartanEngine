@@ -42,18 +42,24 @@ namespace _RenderOptions
     static bool g_gizmo_picking_ray         = false;
     static bool g_gizmo_grid                = true;
     static bool g_gizmo_performance_metrics = false;
-    static vector<string> gbuffer_textures =
+    static vector<string> debug_textures =
     {
         "None",
         "Albedo",
         "Normal",
         "Material",
+        "Diffuse",
+        "Specular",
         "Velocity",
         "Depth",
-        "SSAO"
+        "SSAO",
+        "SSR",
+        "Bloom",
+        "Volumetric Lighting",
+        "Shadows"
     };
-    static int gbuffer_selected_texture_index = 0;
-    static string gbuffer_selected_texture = gbuffer_textures[0];
+    static int debug_texture_selected_index = 0;
+    static string debug_texture_selected = debug_textures[0];
 }
 
 
@@ -77,8 +83,10 @@ void Widget_RenderOptions::Tick()
         const char* type_char_ptr = types[static_cast<unsigned int>(m_renderer->m_tonemapping)];
 
         auto do_bloom                   = m_renderer->FlagEnabled(Render_PostProcess_Bloom);
+        auto do_volumetric_lighting     = m_renderer->FlagEnabled(Render_PostProcess_VolumetricLighting);
         auto do_fxaa                    = m_renderer->FlagEnabled(Render_PostProcess_FXAA);
         auto do_ssao                    = m_renderer->FlagEnabled(Render_PostProcess_SSAO);
+        auto do_sss                     = m_renderer->FlagEnabled(Render_PostProcess_SSS);
         auto do_ssr                     = m_renderer->FlagEnabled(Render_PostProcess_SSR);
         auto do_taa                     = m_renderer->FlagEnabled(Render_PostProcess_TAA);
         auto do_motion_blur             = m_renderer->FlagEnabled(Render_PostProcess_MotionBlur);
@@ -90,7 +98,9 @@ void Widget_RenderOptions::Tick()
         // Display
         {
             const auto tooltip = [](const char* text) { if (ImGui::IsItemHovered()) { ImGui::BeginTooltip(); ImGui::Text(text); ImGui::EndTooltip(); } };
+            const auto input_float = [](const char* text, float* value, float step) { ImGui::PushItemWidth(120); ImGui::InputFloat(text, value, step); ImGui::PopItemWidth(); };
 
+            // Tonemapping
             if (ImGui::BeginCombo("Tonemapping", type_char_ptr))
             {
                 for (unsigned int i = 0; i < static_cast<unsigned int>(types.size()); i++)
@@ -108,43 +118,60 @@ void Widget_RenderOptions::Tick()
                 }
                 ImGui::EndCombo();
             }
-            ImGui::InputFloat("Exposure",                               &m_renderer->m_exposure, 0.1f);
-            ImGui::InputFloat("Gamma",                                  &m_renderer->m_gamma, 0.1f);
+            ImGui::SameLine(); input_float("Exposure", &m_renderer->m_exposure, 0.1f); ImGui::SameLine(); input_float("Gamma", &m_renderer->m_gamma, 0.1f);
             ImGui::Separator();
 
-            ImGui::Checkbox("Bloom",                                    &do_bloom);
-            ImGui::InputFloat("Bloom Strength",                         &m_renderer->m_bloom_intensity, 0.1f);
+            // Bloom
+            ImGui::Checkbox("Bloom", &do_bloom); ImGui::SameLine(); input_float("Intensity", &m_renderer->m_bloom_intensity, 0.001f);
             ImGui::Separator();
 
-            ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion",    &do_ssao);
+            // Volumetric lighting
+            ImGui::Checkbox("Volumetric lighting", &do_volumetric_lighting); tooltip("Requires a light with shadows");
             ImGui::Separator();
 
-            ImGui::Checkbox("SSR - Screen Space Reflections",           &do_ssr);
+            // Screen space shadows
+            ImGui::Checkbox("SSS - Screen Space Shadows", &do_sss); tooltip("Requires a light with shadows");
             ImGui::Separator();
 
-            ImGui::Checkbox("Motion Blur",                              &do_motion_blur);
-            ImGui::InputFloat("Motion Blur Strength",                   &m_renderer->m_motion_blur_strength, 0.1f);
+            // Screen space ambient occlusion
+            ImGui::Checkbox("SSAO - Screen Space Ambient Occlusion", &do_ssao);
             ImGui::Separator();
 
-            ImGui::Checkbox("Chromatic Aberration",                     &do_chromatic_aberration);						tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
+            // Screen space reflections
+            ImGui::Checkbox("SSR - Screen Space Reflections", &do_ssr);
             ImGui::Separator();
 
-            ImGui::Checkbox("TAA - Temporal Anti-Aliasing",             &do_taa);
-            ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing",    &do_fxaa);
-            ImGui::InputFloat("FXAA Sub-Pixel",                         &m_renderer->m_fxaa_sub_pixel, 0.1f);			tooltip("The amount of sub-pixel aliasing removal");
-            ImGui::InputFloat("FXAA Edge Threshold",                    &m_renderer->m_fxaa_edge_threshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
-            ImGui::InputFloat("FXAA Edge Threshold Min",                &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
+            // Motion blur
+            ImGui::Checkbox("Motion Blur", &do_motion_blur); ImGui::SameLine(); input_float("Intensity", &m_renderer->m_motion_blur_intensity, 0.1f);
             ImGui::Separator();
 
-            ImGui::Checkbox("Sharpen",                                  &do_sharperning);
-            ImGui::InputFloat("Sharpen Strength",                       &m_renderer->m_sharpen_strength, 0.1f);
-            ImGui::InputFloat("Sharpen Clamp",                          &m_renderer->m_sharpen_clamp, 0.1f);		    tooltip("Limits maximum amount of sharpening a pixel receives");
+            // Chromatic aberration
+            ImGui::Checkbox("Chromatic Aberration", &do_chromatic_aberration); tooltip("Emulates the inability of old cameras to focus all colors in the same focal point");
             ImGui::Separator();
 
-            ImGui::InputInt("Shadow Resolution",                        &resolution_shadow, 1);
+            // Temporal anti-aliasing
+            ImGui::Checkbox("TAA - Temporal Anti-Aliasing", &do_taa);
             ImGui::Separator();
 
-            ImGui::Checkbox("Dithering",                                &do_dithering);									tooltip("Reduces color banding");
+            // FXAA
+            ImGui::Checkbox("FXAA - Fast Approximate Anti-Aliasing",   &do_fxaa);
+            ImGui::SameLine(); input_float("Sub-Pixel",          &m_renderer->m_fxaa_sub_pixel, 0.1f);			tooltip("The amount of sub-pixel aliasing removal");
+            ImGui::SameLine(); input_float("Edge Threshold",     &m_renderer->m_fxaa_edge_threshold, 0.1f);		tooltip("The minimum amount of local contrast required to apply algorithm");
+            ImGui::SameLine(); input_float("Edge Threshold Min", &m_renderer->m_fxaa_edge_threshold_min, 0.1f);	tooltip("Trims the algorithm from processing darks");
+            ImGui::Separator();
+
+            // Sharpen
+            ImGui::Checkbox("Sharpen", &do_sharperning);
+            ImGui::SameLine(); input_float("Strength", &m_renderer->m_sharpen_strength, 0.1f);
+            ImGui::SameLine(); input_float("Clamp", &m_renderer->m_sharpen_clamp, 0.1f); tooltip("Limits maximum amount of sharpening a pixel receives");
+            ImGui::Separator();
+
+            // Dithering
+            ImGui::Checkbox("Dithering", &do_dithering); tooltip("Reduces color banding");
+            ImGui::Separator();
+
+            // Shadow resolution
+            ImGui::InputInt("Shadow Resolution", &resolution_shadow, 1);
         }
 
         // Filter input
@@ -155,15 +182,17 @@ void Widget_RenderOptions::Tick()
         m_renderer->m_fxaa_edge_threshold_min   = Abs(m_renderer->m_fxaa_edge_threshold_min);
         m_renderer->m_sharpen_strength          = Abs(m_renderer->m_sharpen_strength);
         m_renderer->m_sharpen_clamp             = Abs(m_renderer->m_sharpen_clamp);
-        m_renderer->m_motion_blur_strength      = Abs(m_renderer->m_motion_blur_strength);
+        m_renderer->m_motion_blur_intensity     = Abs(m_renderer->m_motion_blur_intensity);
         m_renderer->SetShadowResolution(static_cast<uint32_t>(resolution_shadow));
        
         #define set_flag_if(flag, value) value? m_renderer->EnableFlag(flag) : m_renderer->DisableFlag(flag)
 
         // Map back to engine
         set_flag_if(Render_PostProcess_Bloom,               do_bloom);
+        set_flag_if(Render_PostProcess_VolumetricLighting,  do_volumetric_lighting);
         set_flag_if(Render_PostProcess_FXAA,                do_fxaa);
         set_flag_if(Render_PostProcess_SSAO,                do_ssao);
+        set_flag_if(Render_PostProcess_SSS,                 do_sss);
         set_flag_if(Render_PostProcess_SSR,                 do_ssr);
         set_flag_if(Render_PostProcess_TAA,                 do_taa);
         set_flag_if(Render_PostProcess_MotionBlur,          do_motion_blur);
@@ -176,15 +205,15 @@ void Widget_RenderOptions::Tick()
     {
         // Buffer
         {
-            if (ImGui::BeginCombo("Buffer", _RenderOptions::gbuffer_selected_texture.c_str()))
+            if (ImGui::BeginCombo("Buffer", _RenderOptions::debug_texture_selected.c_str()))
             {
-                for (auto i = 0; i < _RenderOptions::gbuffer_textures.size(); i++)
+                for (auto i = 0; i < _RenderOptions::debug_textures.size(); i++)
                 {
-                    const auto is_selected = (_RenderOptions::gbuffer_selected_texture == _RenderOptions::gbuffer_textures[i]);
-                    if (ImGui::Selectable(_RenderOptions::gbuffer_textures[i].c_str(), is_selected))
+                    const auto is_selected = (_RenderOptions::debug_texture_selected == _RenderOptions::debug_textures[i]);
+                    if (ImGui::Selectable(_RenderOptions::debug_textures[i].c_str(), is_selected))
                     {
-                        _RenderOptions::gbuffer_selected_texture = _RenderOptions::gbuffer_textures[i];
-                        _RenderOptions::gbuffer_selected_texture_index = i;
+                        _RenderOptions::debug_texture_selected = _RenderOptions::debug_textures[i];
+                        _RenderOptions::debug_texture_selected_index = i;
                     }
                     if (is_selected)
                     {
@@ -193,7 +222,7 @@ void Widget_RenderOptions::Tick()
                 }
                 ImGui::EndCombo();
             }
-            m_renderer->SetDebugBuffer(static_cast<RendererDebug_Buffer>(_RenderOptions::gbuffer_selected_texture_index));
+            m_renderer->SetDebugBuffer(static_cast<Renderer_Buffer_Type>(_RenderOptions::debug_texture_selected_index));
         }
         ImGui::Separator();
 

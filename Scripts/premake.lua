@@ -17,15 +17,16 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SOLUTION_NAME 			= "Spartan"
-EDITOR_NAME 			= "Editor"
-RUNTIME_NAME 			= "Runtime"
-EDITOR_DIR				= "../" .. EDITOR_NAME
-RUNTIME_DIR				= "../" .. RUNTIME_NAME
-TARGET_DIR_RELEASE 		= "../Binaries/Release"
-TARGET_DIR_DEBUG 		= "../Binaries/Debug"
-INTERMEDIATE_DIR 		= "../Binaries/Intermediate"
-DEBUG_FORMAT			= "c7"
+SOLUTION_NAME 		= "Spartan"
+EDITOR_NAME 		= "Editor"
+RUNTIME_NAME 		= "Runtime"
+EDITOR_DIR			= "../" .. EDITOR_NAME
+RUNTIME_DIR			= "../" .. RUNTIME_NAME
+LIBRARY_DIR 		= "../ThirdParty/libraries"
+DEBUG_FORMAT		= "c7"
+TARGET_DIR_RELEASE 	= "../Binaries/Release"
+TARGET_DIR_DEBUG 	= "../Binaries/Debug"
+INTERMEDIATE_DIR 	= "../Binaries/Intermediate"
 
 -- Solution
 solution (SOLUTION_NAME)
@@ -79,8 +80,8 @@ project (RUNTIME_NAME)
 
 	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler" }
-	includedirs { "../ThirdParty/SPIRV-Cross-2019-06-21" }
-	includedirs { "../ThirdParty/Vulkan_1.1.108.0" }
+	includedirs { "../ThirdParty/SPIRV-Cross" }
+	includedirs { "../ThirdParty/Vulkan_1.1.114.0" }
 	includedirs { "../ThirdParty/AngelScript_2.33.0" }
 	includedirs { "../ThirdParty/Assimp_5.0.0" }
 	includedirs { "../ThirdParty/Bullet_2.88" }
@@ -90,7 +91,7 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/pugixml_1.9" }
 	
 	-- Libraries
-	libdirs { "../ThirdParty/mvsc141_x64" }
+	libdirs (LIBRARY_DIR)
 
 	-- 	"Debug"
 	filter "configurations:Debug"
@@ -145,7 +146,7 @@ project (EDITOR_NAME)
 	includedirs { "../" .. RUNTIME_NAME }
 	
 	-- Libraries
-	libdirs { "../ThirdParty/mvsc141_x64" }
+	libdirs (LIBRARY_DIR)
 
 	-- "Debug"
 	filter "configurations:Debug"

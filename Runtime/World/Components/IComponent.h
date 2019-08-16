@@ -97,7 +97,7 @@ namespace Spartan
 		Entity*						GetEntity_PtrRaw()		const{ return m_entity; }	
 		std::weak_ptr<Entity>		GetEntity_PtrWeak()		const { return GetEntity_PtrShared(); }
 		std::shared_ptr<Entity>		GetEntity_PtrShared()	const;
-		const std::string& GetEntityName() const;
+		std::string GetEntityName() const;
 
 		Transform* GetTransform() const			{ return m_transform; }
 		Context* GetContext() const				{ return m_context; }

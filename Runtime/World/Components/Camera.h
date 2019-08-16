@@ -88,11 +88,13 @@ namespace Spartan
 		ProjectionType GetProjectionType()	{ ComputeProjection();  return m_projection_type; }
 		//====================================================================================
 
-		//= FOV =========================================================
-		auto GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
-		float GetFovHorizontalDeg() const;		
+		//= FOV ==========================================================
+		float GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
+        float GetFovVerticalRad();
+		float GetFovHorizontalDeg() const;    
 		void SetFovHorizontalDeg(float fov);
-		//===============================================================
+        const RHI_Viewport& GetViewport();
+		//================================================================
 
 		//= MISC ========================================================================
 		bool IsInViewFrustrum(Renderable* renderable);

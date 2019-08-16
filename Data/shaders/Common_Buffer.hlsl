@@ -51,7 +51,10 @@ cbuffer GlobalBuffer : register(b0)
 	float g_toneMapping;
 	
 	float g_exposure;
-	float3 g_padding;
+	float g_directional_light_intensity;
+	float g_ssr_enabled;
+	float g_shadow_resolution;
 };
 
 #define g_texel_size float2(1.0f / g_resolution.x, 1.0f / g_resolution.y)
+#define g_shadow_texel_size (1.0f / g_shadow_resolution)

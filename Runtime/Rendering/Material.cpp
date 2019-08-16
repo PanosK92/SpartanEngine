@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Material.h"
 #include "Renderer.h"
-#include "Deferred/ShaderVariation.h"
+#include "Shaders/ShaderVariation.h"
 #include "../Resource/ResourceCache.h"
 #include "../IO/XmlDocument.h"
 #include "../RHI/RHI_ConstantBuffer.h"
@@ -42,7 +42,7 @@ namespace Spartan
 		m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
 
 		// Initialize properties
-		SetMultiplier(TextureType_Roughness, 1.0f);
+		SetMultiplier(TextureType_Roughness, 0.9f);
 		SetMultiplier(TextureType_Metallic, 0.0f);
 		SetMultiplier(TextureType_Normal, 0.0f);
 		SetMultiplier(TextureType_Height, 0.0f);
@@ -135,8 +135,8 @@ namespace Spartan
 			auto tex_node = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", tex_node);
 			xml->AddAttribute(tex_node, "Texture_Type", static_cast<uint32_t>(texture.first));
-			xml->AddAttribute(tex_node, "Texture_Name", texture.second ? texture.second->GetResourceName() : NOT_ASSIGNED);
-			xml->AddAttribute(tex_node, "Texture_Path", texture.second ? texture.second->GetResourceFilePath() : NOT_ASSIGNED);
+			xml->AddAttribute(tex_node, "Texture_Name", texture.second ? texture.second->GetResourceName() : "");
+			xml->AddAttribute(tex_node, "Texture_Path", texture.second ? texture.second->GetResourceFilePath() : "");
 			i++;
 		}
 
@@ -183,10 +183,10 @@ namespace Spartan
 		return false;
 	}
 
-	const string& Material::GetTexturePathByType(const TextureType type)
+	string Material::GetTexturePathByType(const TextureType type)
 	{
 		if (!HasTexture(type))
-			return NOT_ASSIGNED;
+			return "";
 
 		return m_textures[type]->GetResourceFilePath();
 	}

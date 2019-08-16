@@ -35,7 +35,6 @@ namespace Spartan
 {
 	AudioSource::AudioSource(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
 	{
-		m_file_path			= NOT_ASSIGNED;
 		m_mute				= false;
 		m_play_on_start		= true;
 		m_loop				= false;
@@ -121,9 +120,9 @@ namespace Spartan
 		m_audio_clip = audio_clip;
 	}
 
-	const string& AudioSource::GetAudioClipName()
+	string AudioSource::GetAudioClipName()
 	{
-		return m_audio_clip ? m_audio_clip->GetResourceName() : NOT_ASSIGNED;
+		return m_audio_clip ? m_audio_clip->GetResourceName() : "";
 	}
 	
 	bool AudioSource::Play()

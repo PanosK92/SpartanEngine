@@ -63,19 +63,20 @@ namespace Spartan::Math
 
 		~Vector4(){}
 
-		//= COMPARISON ================================================
-		bool operator==(const Vector4& rhs) const
+		bool operator ==(const Vector4& rhs) const
 		{
 			return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w;
 		}
 
-		bool operator!=(const Vector4& rhs) const
+		bool operator !=(const Vector4& rhs) const
 		{
 			return !(*this == rhs);
 		}
-		//=============================================================
 
-		static Vector4 Transform(const Vector3& lhs, const Matrix& rhs);
+        Vector4 operator /(const float rhs)
+        {
+            return Vector4(x / rhs, y / rhs, z / rhs, w / rhs);
+        }
 
 		std::string ToString() const;
 		const float* Data() const { return &x; }

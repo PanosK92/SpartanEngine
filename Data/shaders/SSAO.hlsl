@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "Common.hlsl"
+#include "Dithering.hlsl"
 //====================
 
 //= TEXTURES ======================
@@ -102,21 +103,24 @@ static const float3 sampleKernel[64] =
 	float3(-0.44272, -0.67928, 0.1865)
 };
 
-static const int sample_count		= 32;
+static const int sample_count		= 16;
 static const float radius			= 0.5f;
-static const float intensity    	= 1.0f;
+static const float intensity    	= 2.0f;
 static const float2 noiseScale  	= float2(g_resolution.x / 128.0f, g_resolution.y / 128.0f);
 
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+float mainPS(Pixel_PosUv input) : SV_TARGET
 {
-	float2 tex_coord		= input.uv;  
-    float depth      		= texDepth.Sample(samplerLinear_clamp, tex_coord).r;
-    float3 center_pos       = get_world_position_from_depth(depth, tex_coord);
-    float3 center_normal    = normal_decode(texNormal.Sample(samplerLinear_clamp, tex_coord).xyz);
-	float3 noise			= unpack(texNoise.Sample(samplerLinear_wrap, tex_coord * noiseScale).xyz);	
-	float radius_depth		= get_linear_depth(depth) / (1.0f / radius);
+	float2 uv				= input.uv;  
+    float depth      		= texDepth.Sample(samplerLinear_clamp, uv).r;
+    float3 center_pos       = get_world_position_from_depth(depth, uv);
+    float3 center_normal    = normal_decode(texNormal.Sample(samplerLinear_clamp, uv).xyz);
+	float3 noise			= unpack(texNoise.Sample(samplerLinear_wrap, uv * noiseScale).xyz);		
 	float occlusion_acc     = 0.0f;
     float3 color            = float3(0.0f, 0.0f, 0.0f);
+
+	// Compute range based dithered radius
+	float dither 		= Dither_Valve(uv * g_resolution).x * 1000;
+	float radius_depth	= get_linear_depth(depth) / (1.0f / (radius)) * dither;
 
 	// Construct TBN
 	float3 tangent	= normalize(noise - center_normal * dot(noise, center_normal));
@@ -126,23 +130,23 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     for (int i = 0; i < sample_count; i++)
     {	
 		// Compute sample uv
-		float3 offset 		= mul(sampleKernel[i], TBN);
-		float3 samplePosWS	= center_pos + offset * radius_depth;
-		float2 uv			= project(samplePosWS, g_viewProjection);
-			
+		float3 offset 	= mul(sampleKernel[i], TBN);
+		float3 ray_pos	= center_pos + offset * radius_depth;
+		float2 ray_uv 	= project(ray_pos, g_viewProjection);
+		
 		// Acquire/Compute sample data
-        float3 sample_pos      			= get_world_position_from_depth(texDepth, samplerLinear_clamp, uv);
+        float3 sample_pos      			= get_world_position_from_depth(texDepth, samplerLinear_clamp, ray_uv);
         float3 center_to_sample			= sample_pos - center_pos;
 		float center_to_sample_distance	= length(center_to_sample);
 		float3 center_to_sample_dir 	= normalize(center_to_sample);
 		
 		// Accumulate
-		float3 sampled_normal   = normal_decode(texNormal.Sample(samplerLinear_clamp, uv).xyz);  
+		float3 sampled_normal   = normal_decode(texNormal.Sample(samplerLinear_clamp, ray_uv).xyz);  
 		float occlusion			= dot(center_normal, center_to_sample_dir);
 		float rangeCheck		= center_to_sample_distance <= radius_depth;
 		occlusion_acc 			+= occlusion * rangeCheck * intensity;
     }
     occlusion_acc /= (float)sample_count;
 
-    return saturate(1.0f - occlusion_acc);
+	return saturate(1.0f - occlusion_acc);
 }

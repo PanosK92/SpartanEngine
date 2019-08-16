@@ -32,13 +32,14 @@ namespace Spartan
 	{
 	public:
 		RHI_BlendState(const std::shared_ptr<RHI_Device>& device,
-			bool blend_enabled					= false,
-			RHI_Blend source_blend				= Blend_Src_Alpha,
-			RHI_Blend dest_blend				= Blend_Inv_Src_Alpha,
-			RHI_Blend_Operation blend_op		= Blend_Operation_Add,
-			RHI_Blend source_blend_alpha		= Blend_One,
-			RHI_Blend dest_blend_alpha			= Blend_One,
-			RHI_Blend_Operation blend_op_alpha	= Blend_Operation_Add
+			const bool blend_enabled					= false,
+			const RHI_Blend source_blend				= Blend_Src_Alpha,
+			const RHI_Blend dest_blend				    = Blend_Inv_Src_Alpha,
+			const RHI_Blend_Operation blend_op		    = Blend_Operation_Add,
+			const RHI_Blend source_blend_alpha		    = Blend_One,
+			const RHI_Blend dest_blend_alpha			= Blend_One,
+			const RHI_Blend_Operation blend_op_alpha	= Blend_Operation_Add,
+            const float blend_factor                    = 0.0f
 		);
 		~RHI_BlendState();
 
@@ -50,17 +51,18 @@ namespace Spartan
 		auto GetDestBlendAlpha()	const { return m_dest_blend_alpha; }
 		auto GetBlendOpAlpha()		const { return m_blend_op_alpha; }
 		auto GetResource()			const { return m_buffer; }
+        auto GetBlendFactor()       const { return m_blend_factor; }
 
 		bool operator==(const RHI_BlendState& rhs) const
 		{
 			return
-				m_blend_enabled == rhs.GetBlendEnabled() &&
-				m_source_blend == rhs.GetSourceBlend() &&
-				m_dest_blend == rhs.GetDestBlend() &&
-				m_blend_op == rhs.GetBlendOp() &&
-				m_source_blend_alpha == rhs.GetSourceBlendAlpha() &&
-				m_dest_blend_alpha == rhs.GetDestBlendAlpha() &&
-				m_blend_op_alpha == rhs.GetBlendOpAlpha();
+				m_blend_enabled         == rhs.GetBlendEnabled() &&
+				m_source_blend          == rhs.GetSourceBlend() &&
+				m_dest_blend            == rhs.GetDestBlend() &&
+				m_blend_op              == rhs.GetBlendOp() &&
+				m_source_blend_alpha    == rhs.GetSourceBlendAlpha() &&
+				m_dest_blend_alpha      == rhs.GetDestBlendAlpha() &&
+				m_blend_op_alpha        == rhs.GetBlendOpAlpha();
 		}
 
 	private:
@@ -71,6 +73,7 @@ namespace Spartan
 		RHI_Blend m_source_blend_alpha			= Blend_One;
 		RHI_Blend m_dest_blend_alpha			= Blend_One;
 		RHI_Blend_Operation m_blend_op_alpha	= Blend_Operation_Add;
+        float m_blend_factor                      = 0.0f;
 	
 		void* m_buffer		= nullptr;
 		bool m_initialized	= false;

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ============================
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
@@ -28,7 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
-//====================================
+#include "../../RHI/RHI_ConstantBuffer.h"
+//=======================================
 
 //= NAMESPACES ================
 using namespace Spartan::Math;
@@ -48,8 +49,7 @@ namespace Spartan
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
 		REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
-		m_color		= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_renderer	= m_context->GetSubsystem<Renderer>().get();
+		m_renderer = m_context->GetSubsystem<Renderer>().get();
 	}
 
 	Light::~Light()
@@ -94,6 +94,9 @@ namespace Spartan
 		if (!m_is_dirty)
 			return;
 
+        if (!ComputeCascadeSplits())
+            return;
+
 		// Prevent directional light from casting shadows 
 		// from underneath the scene, which can look weird
 		if (m_lightType == LightType_Directional)
@@ -109,6 +112,8 @@ namespace Spartan
 		{
 			ComputeProjectionMatrix(i);
 		}
+
+        m_is_dirty = false;
 	}
 
 	void Light::Serialize(FileStream* stream)
@@ -139,6 +144,10 @@ namespace Spartan
 	{
 		m_lightType = type;
 		m_is_dirty	= true;
+
+        // Temp tweak because only directional light shadows work without issues so far
+        m_cast_shadows = GetLightType() == LightType_Directional;
+
 		CreateShadowMap(true);
 	}
 
@@ -182,27 +191,20 @@ namespace Spartan
 
 	void Light::ComputeViewMatrix()
 	{
-		Vector3 position;
-		Vector3 look_at;
-		Vector3 up;
-
 		if (m_lightType == LightType_Directional)
 		{
-			Vector3 direction	= GetDirection();
-			position			= direction;
-			look_at				= position + direction;
-			up					= Vector3::Up;
-			
-			// Compute
-			m_matrix_view[0] = Matrix::CreateLookAtLH(position, look_at, up);
-			m_matrix_view[1] = m_matrix_view[0];
-			m_matrix_view[2] = m_matrix_view[0];
+            for (uint32_t i = 0; i < g_cascade_count; i++)
+            {
+                Cascade& cascade = m_cascades[i];
+                Vector3 position = cascade.center - GetDirection() * cascade.min.z;
+                m_matrix_view[i] = Matrix::CreateLookAtLH(position, cascade.center, Vector3::Up);
+            }
 		}
 		else if (m_lightType == LightType_Spot)
 		{
-			position	= GetTransform()->GetPosition();
-			look_at		= GetTransform()->GetForward();
-			up			= GetTransform()->GetUp();
+            Vector3 position    = GetTransform()->GetPosition();
+            Vector3 look_at		= GetTransform()->GetForward();
+            Vector3 up			= GetTransform()->GetUp();
 
 			// Offset look_at by current position
 			look_at += position;
@@ -212,7 +214,7 @@ namespace Spartan
 		}
 		else if (m_lightType == LightType_Point)
 		{
-			position = GetTransform()->GetPosition();
+            Vector3 position = GetTransform()->GetPosition();
 
 			// Compute view for each side of the cube map
 			m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,		Vector3::Up);		// x+
@@ -224,63 +226,20 @@ namespace Spartan
 		}
 	}
 
-	const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/)
-	{
-		if (index >= static_cast<uint32_t>(m_matrix_view.size()))
-			return Matrix::Identity;
-
-		return m_matrix_view[index];
-	}
-
-	const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/)
-	{
-		if (index >= static_cast<uint32_t>(m_matrix_projection.size()))
-			return Matrix::Identity;
-
-		return m_matrix_projection[index];
-	}
-
 	bool Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
 	{
 		if (!m_renderer->GetCamera() || index >= m_shadow_map->GetArraySize())
 			return false;
 
-		const auto& camera = m_renderer->GetCamera();
-		const auto& camera_transform = camera->GetTransform();
-
 		if (m_lightType == LightType_Directional)
-		{		
-			float splits[3] =
-			{
-				camera->GetFarPlane() * 0.01f,
-				camera->GetFarPlane() * 0.05f,
-				camera->GetFarPlane()
-			};
-
-			float split		= splits[index];
-			float extent	= split * tan(camera->GetFovHorizontalRad() * 0.5f);
-
-			Vector3 box_center	= (camera_transform->GetPosition() + camera_transform->GetForward() * split * 0.5f) * GetViewMatrix(); // Transform to light space
-			Vector3 box_extent	= Vector3(extent); // don't rotate with light as this will introduce shadow shimmering
-			Vector3 box_min		= box_center - box_extent;
-			Vector3 box_max		= box_center + box_extent;
-
-			//= Prevent shadow shimmering  ========================================================
-			// Shadow shimmering remedy based on
-			// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
-			float units_per_texel = (extent * 2.0f) / static_cast<float>(m_shadow_map->GetWidth());
-			box_min /= units_per_texel;
-			box_min.Floor();
-			box_min *= units_per_texel;
-			box_max /= units_per_texel;
-			box_max.Floor();
-			box_max *= units_per_texel;
-			//=====================================================================================
-
-			if (m_renderer->GetReverseZ())
-				m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_max.z, box_min.z);
-			else
-				m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(box_min.x, box_max.x, box_min.y, box_max.y, box_min.z, box_max.z);
+		{
+            Cascade& cascade = m_cascades[index];
+            m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH
+            (
+                cascade.min.x, cascade.max.x,               // x
+                cascade.min.y, cascade.max.y,               // y
+                0.0f, Abs(cascade.max.z - cascade.min.z)    // z
+            );
 		}
 		else
 		{
@@ -296,7 +255,135 @@ namespace Spartan
 		return true;
 	}
 
-	void Light::CreateShadowMap(bool force)
+    const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/)
+    {
+        if (index >= static_cast<uint32_t>(m_matrix_view.size()))
+            return Matrix::Identity;
+
+        return m_matrix_view[index];
+    }
+
+    const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/)
+    {
+        if (index >= static_cast<uint32_t>(m_matrix_projection.size()))
+            return Matrix::Identity;
+
+        return m_matrix_projection[index];
+    }
+
+    bool Light::ComputeCascadeSplits()
+    {
+        if (!m_renderer || !m_renderer->GetCamera())
+        {
+            LOG_ERROR_INVALID_INTERNALS();
+            return false;
+        }
+
+        Camera* camera = m_renderer->GetCamera().get();
+
+        if (m_cascades.empty())
+        {
+            m_cascades = vector<Cascade>(g_cascade_count);
+        }
+
+        float clip_near     = camera->GetNearPlane();
+        float clip_far      = camera->GetFarPlane();
+        float clip_range    = clip_far - clip_near;
+        float min_z         = clip_near;
+        float max_z         = clip_near + clip_range;
+        float range         = max_z - min_z;
+        float ratio         = max_z / min_z;
+
+        // Calculate split depths based on view camera frustum
+        // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
+        float split_lambda = 0.95f;
+        float splits[g_cascade_count];
+        for (uint32_t i = 0; i < g_cascade_count; i++)
+        {
+            float p         = (i + 1) / static_cast<float>(g_cascade_count);
+            float log       = min_z * std::pow(ratio, p);
+            float uniform   = min_z + range * p;
+            float d         = split_lambda * (log - uniform) + uniform;
+            splits[i]       = (d - clip_near);
+        }
+
+        for (uint32_t cascade_index = 0; cascade_index < g_cascade_count; cascade_index++)
+        {
+            // Compute cascade's projection-space points
+            Vector3 points[8] =
+            {
+                Vector3(-1.0f,  1.0f,   -1.0f),
+                Vector3(1.0f,   1.0f,   -1.0f),
+                Vector3(1.0f,   -1.0f,  -1.0f),
+                Vector3(-1.0f,  -1.0f,  -1.0f),
+                Vector3(-1.0f,  1.0f,   1.0f),
+                Vector3(1.0f,   1.0f,   1.0f),
+                Vector3(1.0f,   -1.0f,  1.0f),
+                Vector3(-1.0f,  -1.0f,  1.0f),
+            };
+
+            // Transform points to world space
+            auto to_world = (camera->GetViewMatrix() * camera->GetProjectionMatrix()).Inverted();
+            for (uint32_t i = 0; i < 8; i++)
+            {
+                Vector4 world_point = to_world * Vector4(points[i], 1.0f);
+                points[i] = world_point / world_point.w;
+            }
+
+            // Compute split distance
+            {
+                static float last_split_distance;
+
+                // Reset split distance every time we restart
+                if (cascade_index == 0) last_split_distance = 0.0f;
+
+                float split_distance = splits[cascade_index];
+                for (uint32_t i = 0; i < 4; i++)
+                {
+                    Vector3 distance    = points[i + 4] - points[i];
+                    points[i + 4]       = points[i] + (distance * split_distance);
+                    points[i]           = points[i] + (distance * last_split_distance);
+                }
+                last_split_distance = splits[cascade_index];
+            }
+
+            // Compute bounding sphere which encloses the frustum
+            // Since a sphere is rotational invariant it will keep the size of the orthographic
+            // projection frustum same independent of eye view direction. This will keep the
+            // size of the frustum in light space, the same, hence eliminating shimmering.
+            {
+                Cascade& cascade = m_cascades[cascade_index];
+
+                // Compute center
+                for (uint32_t i = 0; i < 8; i++)
+                {
+                    cascade.center += Vector3(points[i]);
+                }
+                cascade.center /= 8.0f;
+
+                // Compute radius
+                float radius = 0.0f;
+                for (uint32_t i = 0; i < 8; i++)
+                {
+                    float distance = (Vector3(points[i]) - cascade.center).Length();
+                    radius = Max(radius, distance);
+                }
+                radius = Ceil(radius * 16.0f) / 16.0f;
+
+                // Move in texel sized increments to prevent shimmering
+                float world_units_per_texel = (radius * 2.0f) / static_cast<float>(m_shadow_map->GetWidth()); // not correct?
+                radius = Floor(radius / world_units_per_texel) * world_units_per_texel;
+
+                // Compute min and max
+                cascade.max = Vector3(radius);
+                cascade.min = -cascade.max;
+            }
+        }
+
+        return true;
+    }
+
+    void Light::CreateShadowMap(bool force)
 	{		
 		if (!force && !m_shadow_map)
 			return;
@@ -306,7 +393,7 @@ namespace Spartan
 
 		if (GetLightType() == LightType_Directional)
 		{
-			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 3);
+			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, g_cascade_count);
 		}
 		else if (GetLightType() == LightType_Point)
 		{
@@ -317,4 +404,35 @@ namespace Spartan
 			m_shadow_map = make_unique<RHI_Texture2D>(m_context, resolution, resolution, Format_D32_FLOAT, 1);
 		}
 	}
+
+    void Light::UpdateConstantBuffer(bool volumetric_lighting, bool screen_space_shadows)
+    {
+        // Has to match GBuffer.hlsl
+        if (!m_cb_light_gpu)
+        {
+            m_cb_light_gpu = make_shared<RHI_ConstantBuffer>(m_context->GetSubsystem<Renderer>()->GetRhiDevice());
+            m_cb_light_gpu->Create<CB_Light>();
+        }
+
+        // Update buffer
+        auto buffer = static_cast<CB_Light*>(m_cb_light_gpu->Map());
+
+        for (int i = 0; i < g_cascade_count; i++)
+        {
+            buffer->view_projection[i] = GetViewMatrix(i) * GetProjectionMatrix(i);
+        }
+        buffer->color                   = m_color;
+        buffer->intensity               = GetIntensity();
+        buffer->position                = GetTransform()->GetPosition();
+        buffer->range                   = GetRange();
+        buffer->direction               = GetDirection();
+        buffer->angle                   = GetAngle();
+        buffer->bias                    = GetBias();
+        buffer->normal_bias             = GetNormalBias();
+        buffer->shadow_enabled          = GetCastShadows();
+        buffer->volumetric_lighting     = volumetric_lighting;
+        buffer->screen_space_shadows    = screen_space_shadows;
+
+        m_cb_light_gpu->Unmap();
+    }
 }  

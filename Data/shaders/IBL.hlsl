@@ -19,22 +19,33 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-static const float tex_maxMip = 11.0f;
-static const float2 environmentMipSize[12] =
+//= INCLUDES =======
+#include "BRDF.hlsl"
+//==================
+
+static const float mip_max = 11.0f;
+
+float3 SampleEnvironment(SamplerState sampler_linear, Texture2D tex_environment, float2 uv, float mip_level)
 {
-    float2(4096, 2048),
-	float2(2048, 1024),
-	float2(1024, 512),
-	float2(512, 256),
-	float2(256, 128),
-	float2(128, 64),
-	float2(64, 32),
-	float2(32, 16),
-	float2(16, 8),
-	float2(8, 4),
-	float2(4, 2),
-	float2(2, 1),
-};
+	// We are currently using a spherical environment map which has a 2:1 ratio, so at the smallest 
+	// mipmap we have to do a bit of blending otherwise we'll get a visible seem in the middle.
+	if (mip_level == mip_max)
+	{
+		float2 mip_size	= float2(2, 1);
+		float dx 		= mip_size.x;
+	
+		float3 tl = tex_environment.SampleLevel(sampler_linear, uv + float2(-dx, 0.5f), mip_level).rgb;
+		float3 tr = tex_environment.SampleLevel(sampler_linear, uv + float2(dx, 0.5f), mip_level).rgb;
+		return (tl + tr) / 2.0f;
+	}
+	
+	return tex_environment.SampleLevel(sampler_linear, uv, mip_level).rgb;
+}
+
+float GetMipFromRoughness(float roughness)
+{
+	return (roughness * mip_max - pow(abs(roughness), mip_max / 2) * 1.5);
+}
 
 float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 {
@@ -42,12 +53,6 @@ float3 GetSpecularDominantDir(float3 normal, float3 reflection, float roughness)
 	const float lerpFactor = smoothness * (sqrt(smoothness) + roughness);
 	return lerp(normal, reflection, lerpFactor);
 }
-
-float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
-{
-	float smoothness = 1.0 - roughness;
-    return F0 + (max(float3(smoothness, smoothness, smoothness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
-} 
 
 // https://www.unrealengine.com/blog/physically-based-shading-on-mobile
 float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
@@ -67,19 +72,20 @@ float3 ImageBasedLighting(Material material, float3 normal, float3 camera_to_pix
 	reflection	= GetSpecularDominantDir(normal, reflection, material.roughness);
 
 	float NdV 	= saturate(dot(-camera_to_pixel, normal));
-	float3 F 	= FresnelSchlickRoughness(NdV, material.F0, material.roughness);
+	float3 F 	= Fresnel_Schlick_Roughness(NdV, material.F0, material.roughness);
 
 	float3 kS 	= F; 			// The energy of light that gets reflected
 	float3 kD 	= 1.0f - kS;	// Remaining energy, light that gets refracted
 	kD 			*= 1.0f - material.metallic;	
 
 	// Diffuse
-	float3 irradiance	= tex_environment.SampleLevel(sampler_linear,  directionToSphereUV(normal), 8).rgb;
+	float3 irradiance	= SampleEnvironment(sampler_linear, tex_environment, directionToSphereUV(normal), mip_max);
 	float3 cDiffuse		= irradiance * material.albedo;
 
 	// Specular
-	float mipLevel 			= material.roughness_alpha * tex_maxMip;
-	float3 prefilteredColor	= tex_environment.SampleLevel(sampler_trilinear,  directionToSphereUV(reflection), mipLevel).rgb;
+	float alpha 			= max(EPSILON, material.roughness * material.roughness);
+	float mipLevel 			= GetMipFromRoughness(material.roughness);
+	float3 prefilteredColor	= SampleEnvironment(sampler_trilinear, tex_environment, directionToSphereUV(reflection), mipLevel);
 	float2 envBRDF  		= tex_lutIBL.Sample(sampler_linear, float2(NdV, material.roughness)).xy;
 	float3 cSpecular 		= prefilteredColor * (F * envBRDF.x + envBRDF.y);
 

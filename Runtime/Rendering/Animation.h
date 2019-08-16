@@ -67,19 +67,19 @@ namespace Spartan
 		Animation(Context* context);
 		~Animation();
 
-		//= RESOURCE INTERFACE ========================
+		//= IResource ==========================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		//=============================================
+		//======================================================
 
-		void SetName(const std::string& name) { m_name = name; }
-		void SetDuration(double duration) { m_duration = duration; }
+		void SetName(const std::string& name)   { m_name = name; }
+		void SetDuration(double duration)       { m_duration = duration; }
 		void SetTicksPerSec(double ticksPerSec) { m_ticksPerSec = ticksPerSec; }
 
 	private:
 		std::string m_name;
-		double m_duration;
-		double m_ticksPerSec;
+		double m_duration       = 0;
+		double m_ticksPerSec    = 0;
 
 		// Each channel controls a single node
 		std::vector<AnimationNode> m_channels;

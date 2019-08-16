@@ -67,7 +67,7 @@ public:
 private:
 	void ShowCPU();
 	void ShowGPU();
-	void ShowPlot(std::vector<float>& data, Metric& metric, float time_value);
+	void ShowPlot(std::vector<float>& data, Metric& metric, float time_value, bool is_stuttering);
 
 	std::vector<float> m_plot_times_cpu;
 	std::vector<float> m_plot_times_gpu;

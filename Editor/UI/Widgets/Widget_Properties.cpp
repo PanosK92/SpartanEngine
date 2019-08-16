@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui_Extension.h"
 #include "../ButtonColorPicker.h"
 #include "../../ImGui/Source/imgui_stdlib.h"
-#include "Rendering/Deferred/ShaderVariation.h"
+#include "Rendering/Shaders/ShaderVariation.h"
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"
@@ -348,7 +348,7 @@ void Widget_Properties::ShowLight(shared_ptr<Light>& light) const
 			// Bias
 			ImGui::Text("Bias");
 			ImGui::SameLine(ComponentProperty::g_column);
-			ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.0001f, 0.0001f, "%.4f"); ImGui::PopItemWidth();
+			ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 0.01f, 0.01f, "%.4f"); ImGui::PopItemWidth();
 
 			// Normal Bias
 			ImGui::Text("Normal Bias");
@@ -392,13 +392,13 @@ void Widget_Properties::ShowRenderable(shared_ptr<Renderable>& renderable) const
 
 	if (ComponentProperty::Begin("Renderable", Icon_Component_Renderable, renderable))
 	{
-		//= REFLECT ====================================================================
+		//= REFLECT =============================================================
 		auto& mesh_name			= renderable->GeometryName();
 		auto& material			= renderable->GetMaterial();
-		auto& material_name		= material ? material->GetResourceName() : NOT_ASSIGNED;
+		auto material_name		= material ? material->GetResourceName() : "N/A";
 		auto cast_shadows		= renderable->GetCastShadows();
 		auto receive_shadows	= renderable->GetReceiveShadows();
-		//==============================================================================
+		//=======================================================================
 
 		ImGui::Text("Mesh");
 		ImGui::SameLine(ComponentProperty::g_column); ImGui::Text(mesh_name.c_str());

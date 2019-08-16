@@ -77,7 +77,7 @@ namespace Spartan
 
 	bool ResourceCache::IsCached(const string& resource_name, const Resource_Type resource_type /*= Resource_Unknown*/)
 	{
-		if (resource_name == NOT_ASSIGNED)
+		if (resource_name.empty())
 		{
 			LOG_ERROR_INVALID_PARAMETER();
 			return false;
@@ -246,7 +246,7 @@ namespace Spartan
 		m_standard_resource_directories[type] = directory;
 	}
 
-	const string& ResourceCache::GetDataDirectory(const Asset_Type type)
+	string ResourceCache::GetDataDirectory(const Asset_Type type)
 	{
 		for (auto& directory : m_standard_resource_directories)
 		{
@@ -254,7 +254,7 @@ namespace Spartan
 				return directory.second;
 		}
 
-		return NOT_ASSIGNED;
+		return "";
 	}
 
 	void ResourceCache::SetProjectDirectory(const string& directory)

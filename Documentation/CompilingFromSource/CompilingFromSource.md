@@ -5,19 +5,19 @@ The engine currently uses DirectX 11 as a rendering backend and some of the late
 ##### DirectX End-User Runtimes: Download by clicking [here](https://www.microsoft.com/en-us/download/details.aspx?id=8109) and install
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DirectX.png)
 
-##### Visual C++ 2017 (x64) runtime package: Download by clicking [here](https://go.microsoft.com/fwlink/?LinkId=746572) and install
+##### Microsoft Visual C++ Redistributable for Visual Studio 2019: Download by clicking [here](https://aka.ms/vs/16/release/VC_redist.x64.exe) and install
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/Visual%20C%2B%2B.png)
 
 ### Compiling the Runtime and the Editor
 At this point we have taken care of all the environment dependencies and we are ready to start building.
 
-##### Generating Visual Studio 2017 project files and building the runtime
-1. We click and run **"Generate_VS17_Project.bat"** in order for a Visual Studio solution to be generated.
+##### Generating Visual Studio 2019 project files and building the runtime and the editor
+1. We click and run **"Generate_VS19_Project.bat"** in order for a Visual Studio solution to be generated.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS.png)
-2. We then open the Visual Studio solution file named **"Directus.sln"**
+2. We then open the Visual Studio solution file named **"Spartan.sln"**
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS2.png)
 3. Next, we switch the solution configuration to **"Release"** and build the entire solution. This will generate **"Editor.exe"** at **"Binaries\Release"**.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS3.png)
 
 ### Note
-- The pre-compiled libraries (**ThirdParty\mvsc141_x64**) are provided for convenience. If you get any linking errors due to version incompatibilities, it is advised that you download and compile the dependency.
+- The pre-compiled libraries (**ThirdParty\libraries**) are provided for convenience. If you get any linking errors due to version incompatibilities, it is advised that you download and compile the dependency.

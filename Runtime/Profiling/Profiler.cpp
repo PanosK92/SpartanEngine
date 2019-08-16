@@ -35,7 +35,6 @@ namespace Spartan
 {
 	Profiler::Profiler(Context* context) : ISubsystem(context)
 	{
-		m_metrics = NOT_ASSIGNED;
 		m_time_blocks.reserve(m_time_block_capacity);
 		m_time_blocks.resize(m_time_block_capacity);
 	}
@@ -137,6 +136,7 @@ namespace Spartan
         }
 
         m_time_blocks_read = m_time_blocks;
+        DetectStutter();
     }
 
     bool Profiler::TimeBlockStart(const string& func_name, bool profile_cpu /*= true*/, bool profile_gpu /*= false*/)
@@ -172,7 +172,19 @@ namespace Spartan
 		return true;
 	}
 
-	TimeBlock* Profiler::GetNextTimeBlock()
+    void Profiler::DetectStutter()
+    {
+        // Detect
+        m_is_stuttering_cpu = m_time_cpu_ms > (m_cpu_avg_ms + m_stutter_delta_ms);
+        m_is_stuttering_gpu = m_time_gpu_ms > (m_gpu_avg_ms + m_stutter_delta_ms);
+
+        // Accumulate
+        double delta_feedback = 1.0 / m_frames_to_accumulate;
+        m_cpu_avg_ms = m_cpu_avg_ms * (1.0 - delta_feedback) + m_time_cpu_ms * delta_feedback;
+        m_gpu_avg_ms = m_gpu_avg_ms * (1.0 - delta_feedback) + m_time_gpu_ms * delta_feedback;
+    }
+
+    TimeBlock* Profiler::GetNextTimeBlock()
 	{
 		// Grow capacity if needed
 		if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks.size()))

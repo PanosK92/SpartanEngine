@@ -126,15 +126,20 @@ PixelOutputType mainPS(PixelInputType input)
 		texCoords 				= ParallaxMapping(texHeight, samplerAniso, texCoords, camera_to_pixel, TBN, height_scale);
 	#endif
 	
+	float mask_threshold = 0.6f;
+	
 	#if MASK_MAP
 		float3 maskSample = texMask.Sample(samplerAniso, texCoords).rgb;
-		float threshold = 0.6f;
-		if (maskSample.r <= threshold && maskSample.g <= threshold && maskSample.b <= threshold)
+		if (maskSample.r <= mask_threshold && maskSample.g <= mask_threshold && maskSample.b <= mask_threshold)
 			discard;
 	#endif
 	
 	#if ALBEDO_MAP
-		albedo *= texAlbedo.Sample(samplerAniso, texCoords);
+		float4 albedo_sample = texAlbedo.Sample(samplerAniso, texCoords);
+		if (albedo_sample.a <= mask_threshold)
+			discard;
+			
+		albedo *= albedo_sample;
 	#endif
 	
 	#if ROUGHNESS_MAP
