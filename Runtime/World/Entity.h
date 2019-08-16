@@ -33,8 +33,7 @@ namespace Spartan
 	class Context;
 	class Transform;
 	class Renderable;
-	#define VALIDATE_COMPONENT_TYPE(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
-
+	
 	class SPARTAN_CLASS Entity : public Spartan_Object, public std::enable_shared_from_this<Entity>
 	{
 	public:
@@ -102,8 +101,8 @@ namespace Spartan
 				m_renderable = static_cast<Renderable*>(new_component.get());
 			}
 
-            auto scene = m_context->GetSubsystem<World>();
-            auto manager = scene->GetComponentManager<T>();
+            auto world = m_context->GetSubsystem<World>();
+            auto manager = world->GetComponentManager<T>();
             manager->AddComponent(this->GetId(), new_component);
 
 			// Make the scene resolve
@@ -119,8 +118,8 @@ namespace Spartan
 			VALIDATE_COMPONENT_TYPE(T);
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
-            auto scene = m_context->GetSubsystem<World>();
-            return scene->GetComponentManager<T>()->GetComponent(GetId());
+            auto world = m_context->GetSubsystem<World>();
+            return world->GetComponentManager<T>()->GetComponent(GetId());
 		}
 
 		// Returns any components of type T (if they exist)
@@ -130,8 +129,8 @@ namespace Spartan
 			VALIDATE_COMPONENT_TYPE(T);
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
-            auto scene = m_context->GetSubsystem<World>();
-            auto components = scene->GetComponentManager<T>()->GetComponents(GetId());
+            auto world = m_context->GetSubsystem<World>();
+            auto components = world->GetComponentManager<T>()->GetComponents(GetId());
 
             return components;
 		}
@@ -211,7 +210,7 @@ namespace Spartan
 		std::vector<std::shared_ptr<IComponent>> m_components;
 		std::shared_ptr<Entity> m_component_empty;
 
-        // Component Managment
+        // Component management
         ComponentMask m_component_mask;
         std::unordered_map<uint32_t, ComponentType> m_id_to_type;
 

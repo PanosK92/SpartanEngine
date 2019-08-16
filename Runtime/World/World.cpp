@@ -49,17 +49,18 @@ namespace Spartan
 		SUBSCRIBE_TO_EVENT(Event_World_Stop,	[this](Variant)	{ m_state = Idle; });
 		SUBSCRIBE_TO_EVENT(Event_World_Start,	[this](Variant)	{ m_state = Ticking; });
 
-        m_components_managers[ComponentType_Transform] = std::make_shared<ComponentManager<Transform>>();
-        m_components_managers[ComponentType_AudioListener] = std::make_shared<ComponentManager<AudioListener>>();
-        m_components_managers[ComponentType_AudioSource] = std::make_shared<ComponentManager<AudioSource>>();
-        m_components_managers[ComponentType_Renderable] = std::make_shared<ComponentManager<Renderable>>();
-        m_components_managers[ComponentType_Constraint] = std::make_shared<ComponentManager<Constraint>>();
-        m_components_managers[ComponentType_Collider] = std::make_shared<ComponentManager<Collider>>();
-        m_components_managers[ComponentType_RigidBody] = std::make_shared<ComponentManager<RigidBody>>();
-        m_components_managers[ComponentType_Script] = std::make_shared<ComponentManager<Script>>();
-        m_components_managers[ComponentType_Skybox] = std::make_shared<ComponentManager<Skybox>>();
-        m_components_managers[ComponentType_Camera] = std::make_shared<ComponentManager<Camera>>();
-        m_components_managers[ComponentType_Light] = std::make_shared<ComponentManager<Light>>();
+        // Hardcoded types make it harder to write new components
+        m_components_managers[ComponentType_Transform]      = std::make_shared<ComponentManager<Transform>>();
+        m_components_managers[ComponentType_AudioListener]  = std::make_shared<ComponentManager<AudioListener>>();
+        m_components_managers[ComponentType_AudioSource]    = std::make_shared<ComponentManager<AudioSource>>();
+        m_components_managers[ComponentType_Renderable]     = std::make_shared<ComponentManager<Renderable>>();
+        m_components_managers[ComponentType_Constraint]     = std::make_shared<ComponentManager<Constraint>>();
+        m_components_managers[ComponentType_Collider]       = std::make_shared<ComponentManager<Collider>>();
+        m_components_managers[ComponentType_RigidBody]      = std::make_shared<ComponentManager<RigidBody>>();
+        m_components_managers[ComponentType_Script]         = std::make_shared<ComponentManager<Script>>();
+        m_components_managers[ComponentType_Skybox]         = std::make_shared<ComponentManager<Skybox>>();
+        m_components_managers[ComponentType_Camera]         = std::make_shared<ComponentManager<Camera>>();
+        m_components_managers[ComponentType_Light]          = std::make_shared<ComponentManager<Light>>();
 	}
 
 	World::~World()
@@ -109,7 +110,7 @@ namespace Spartan
                              if (component->IsParentEntityActive())
                                  component->OnStart();
                      });
-;               });
+                });
 			}
 			// Stop
 			if (stopped)

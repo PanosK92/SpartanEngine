@@ -38,6 +38,8 @@ namespace Spartan
 	class Context;
 	class FileStream;
 
+    #define VALIDATE_COMPONENT_TYPE(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
+
 	enum ComponentType : uint32_t
 	{
 		ComponentType_AudioListener,

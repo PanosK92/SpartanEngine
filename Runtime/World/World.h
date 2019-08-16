@@ -21,12 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ========================
 #include <vector>
 #include <memory>
 #include <string>
 #include "../Core/EngineDefs.h"
-
+#include "../Core/ISubsystem.h"
+#include "Iteration.h"
+#include "Component.h"
 #include "Components/Transform.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
@@ -38,10 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Script.h"
 #include "Components/Skybox.h"
 #include "Components/AudioListener.h"
-#include "Component.h"
-#include "Iteration.h"
-#include "../Core/ISubsystem.h"
-//=============================
+//===================================
 
 namespace Spartan
 {
@@ -74,7 +73,7 @@ namespace Spartan
 		bool LoadFromFile(const std::string& file_path);
 		const auto& GetName() { return m_name; }
 
-		//= Entities ===============================================================================
+		//= Entities ===========================================================================
 		std::shared_ptr<Entity>& EntityCreate();
 		std::shared_ptr<Entity>& EntityAdd(const std::shared_ptr<Entity>& entity);
 		bool EntityExists(const std::shared_ptr<Entity>& entity);
@@ -84,22 +83,22 @@ namespace Spartan
 		const std::shared_ptr<Entity>& EntityGetById(uint32_t id);
 		const auto& EntityGetAll()	{ return m_entities_primary; }
 		auto EntityGetCount()		{ return static_cast<uint32_t>(m_entities_primary.size()); }
-		//==========================================================================================
+		//======================================================================================
 
-        //= COMPONENT MANAGERS ========================
+        //= COMPONENT MANAGERS ====================================
         template <typename T>
         std::shared_ptr<ComponentManager<T>> GetComponentManager();
         
         template <typename Func>
         void IterateManagers(Func f);
-        //===================================
+        //=========================================================
 
 	private:
-		//= COMMON ENTITY CREATION ========================
-		std::shared_ptr<Entity>& CreateSkybox();
-		std::shared_ptr<Entity> CreateCamera();
-		std::shared_ptr<Entity>& CreateDirectionalLight();
-		//================================================
+        //= COMMON ENTITY CREATION =======================
+        std::shared_ptr<Entity>& CreateSkybox();
+        std::shared_ptr<Entity> CreateCamera();
+        std::shared_ptr<Entity>& CreateDirectionalLight();
+        //================================================
 
 		// Double-buffered actors
 		std::vector<std::shared_ptr<Entity>> m_entities_primary;
@@ -119,6 +118,7 @@ namespace Spartan
     template<typename T>
     inline std::shared_ptr<ComponentManager<T>> World::GetComponentManager()
     {
+        VALIDATE_COMPONENT_TYPE(T);
         ComponentType type = IComponent::TypeToEnum<T>();
 
         std::shared_ptr<BaseComponentManager> manager = m_components_managers[type];
@@ -129,6 +129,7 @@ namespace Spartan
     template<typename Func>
     inline void World::IterateManagers(Func f)
     {
+        // Hardcoded types make it harder to write new components
         Spartan::for_each(std::tie(Transform(), AudioSource(), AudioListener(),
             Constraint(), Collider(), RigidBody(), Light(),
             Renderable(), Script(), Skybox(), Camera()), [&](auto type)

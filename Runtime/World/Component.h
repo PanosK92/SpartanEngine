@@ -39,7 +39,7 @@ namespace Spartan
 		std::array<std::shared_ptr<T>, 1024> mData;
     };
 
-	// Simple unsinged int (syntaxical sugar) that refers to the index of a component in the componentData array
+	// Simple unsigned int (syntactical sugar) that refers to the index of a component in the componentData array
 	typedef unsigned int ComponentInstance;
 
 	class BaseComponentManager 
