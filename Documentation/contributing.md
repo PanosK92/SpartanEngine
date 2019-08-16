@@ -28,7 +28,7 @@ I will probaly update and adds things to this page, but for now, here are few si
 	```
 	if (x)
     {
-	function();
+	    function();
 	}
 	```
 - The auto keyword. Some people hate it, others love it, but as with most things in life, the truth lies in balance.
