@@ -34,6 +34,6 @@ I will probaly update and adds things to this page, but for now, here are few si
 - The auto keyword. Some people hate it, others love it, but as with most things in life, the truth lies in balance.
 	```
     /*Good*/    auto position   = Vector3(0, 0, 0);   // The type is deducable by eye, because of the constructor.
-    /*Bad*/     auto data       = GetAllData();       // The type is not  deducable by eye, the definition of the functions has to be looked for.
+    /*Bad*/     auto data       = GetAllData();       // The type is not deducable by eye, the definition of the functions has to be looked for.
 	```
 - Rules are rarely perfect, if you stumble upon some special case, let me know and we'll discuss about what might be best.
