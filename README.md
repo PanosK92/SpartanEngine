@@ -36,7 +36,7 @@ Platform | API | Status | Quality | Binaries | :+1:
 - Keyboard
 - Mouse
 - Xbox controller
-- Bloom (Based on study of Resident Evil 2)
+- Bloom (Based on a study of Resident Evil 2's RE Engine)
 - Shadows (Cascaded shadow mapping with smooth, clean and stable shadows)
 - Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
 - Debug rendering (Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc)
