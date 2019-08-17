@@ -42,13 +42,6 @@ namespace Spartan
 
 		void Initialize(Transform* transform);
 		void Clone();
-
-		//==========================
-		void Start();
-		void Stop();
-		void Tick(float delta_time);
-		//==========================
-
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);
 
@@ -73,8 +66,10 @@ namespace Spartan
 			if (HasComponent(type) && type != ComponentType_Script)
 				return GetComponent<T>();
 
-			// Add component
+            // Add component mask
             m_component_mask |= (1 << (int)type);
+
+			// Create new component
             m_components.emplace_back
 			(	
 				std::make_shared<T>
@@ -133,10 +128,7 @@ namespace Spartan
 		}
 		
 		// Checks if a component of ComponentType exists
-		bool HasComponent(const ComponentType type) 
-		{ 
-            return m_component_mask & (1 << (int)type);
-		}
+		bool HasComponent(const ComponentType type) { return m_component_mask & (1 << (int)type); }
 
 		// Checks if a component of type T exists
 		template <class T>
@@ -163,9 +155,10 @@ namespace Spartan
 				}
 			}
 
-            auto scene = m_context->GetSubsystem<World>();
-            scene->GetComponentManager<T>()->RemoveComponent(GetId());
+            auto world = m_context->GetSubsystem<World>();
+            world->GetComponentManager<T>()->RemoveComponent(GetId());
 
+            // Remove component mask
             m_component_mask &= ~(1 << (int)type);
 
 			// Make the scene resolve
@@ -175,10 +168,10 @@ namespace Spartan
 		void RemoveComponentById(uint32_t id);
         const auto Entity::GetAllComponents() const
         {
-            auto scene = m_context->GetSubsystem<World>();
+            auto world = m_context->GetSubsystem<World>();
             std::vector<std::shared_ptr<IComponent>> components;
 
-            scene->IterateManagers([&](auto& manager)
+            world->IterateManagers([&](auto& manager)
             {
                 auto mcomponents = manager->GetComponents(GetId());
                 components.insert(components.end(), mcomponents.begin(), mcomponents.end());
@@ -204,7 +197,7 @@ namespace Spartan
 		std::vector<std::shared_ptr<IComponent>> m_components;
 		std::shared_ptr<Entity> m_component_empty;
 
-        // Component Managment
+        // Component management
         unsigned int m_component_mask = 0;
         std::unordered_map<uint32_t, ComponentType> m_id_to_type;
 

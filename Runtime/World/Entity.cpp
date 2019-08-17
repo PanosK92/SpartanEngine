@@ -121,36 +121,6 @@ namespace Spartan
 		clone_entity_and_descendants(this);
 	}
 
-	void Entity::Start()
-	{
-		// call component Start()
-		for (auto const& component : m_components)
-		{
-			component->OnStart();
-		}
-	}
-
-	void Entity::Stop()
-	{
-		// call component Stop()
-		for (auto const& component : m_components)
-		{
-			component->OnStop();
-		}
-	}
-
-	void Entity::Tick(float delta_time)
-	{
-		if (!m_is_active)
-			return;
-
-		// call component Update()
-		for (const auto& component : m_components)
-		{
-			component->OnTick(delta_time);
-		}
-	}
-
 	void Entity::Serialize(FileStream* stream)
 	{
 		//= BASIC DATA ======================
@@ -305,9 +275,6 @@ namespace Spartan
 			case ComponentType_Unknown:														break;
 			default:																		break;
 		}
-
-		// Make the scene resolve
-		FIRE_EVENT(Event_World_Resolve);
 
 		return component;
 	}

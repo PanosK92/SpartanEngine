@@ -96,8 +96,8 @@ namespace Spartan
 		// Tick entities
 		{
 			// Detect game toggling
-			const auto started	= m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
-			const auto stopped	= !m_context->m_engine->EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
+			bool started	    = m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
+			bool stopped	    = !m_context->m_engine->EngineMode_IsSet(Engine_Game) && !m_wasInEditorMode;
 			m_wasInEditorMode	= !m_context->m_engine->EngineMode_IsSet(Engine_Game);
 
 			// Start
@@ -112,6 +112,7 @@ namespace Spartan
                      });
                 });
 			}
+
 			// Stop
 			if (stopped)
 			{
@@ -124,6 +125,7 @@ namespace Spartan
                      });
                 });
 			}
+
 			// Tick
             IterateManagers([&](auto& manager)
             {
