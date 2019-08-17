@@ -25,6 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Model.h"
 #include "../Rendering/Font/Font.h"
 #include "../Rendering/Shaders/ShaderVariation.h"
+#include "../Rendering/Animation.h"
+#include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_Texture2D.h"
+#include "../RHI/RHI_TextureCube.h"
 //===============================================
 
 //= NAMESPACES ==========
@@ -40,19 +44,20 @@ IResource::IResource(Context* context, const Resource_Type type) : Spartan_Objec
 }
 
 template <typename T>
-constexpr Resource_Type IResource::TypeToEnum() { return Resource_Unknown; }
+inline constexpr Resource_Type IResource::TypeToEnum() { return Resource_Unknown; }
+
+template<typename T>
+inline constexpr void validate_resource_type() { static_assert(std::is_base_of<IResource, T>::value, "Provided type does not implement IResource"); }
 
 // Explicit template instantiation
-#define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT) template<> SPARTAN_CLASS Resource_Type IResource::TypeToEnum<T>() { return enumT; }
+#define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT) template<> SPARTAN_CLASS Resource_Type IResource::TypeToEnum<T>() { validate_resource_type<T>(); return enumT; }
 
-// To add a new component to the engine, simply register it here
+// To add a new resource to the engine, simply register it here
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture,		Resource_Texture)
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2D,		Resource_Texture2d)
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_TextureCube,	Resource_TextureCube)
 INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,			Resource_Audio)
 INSTANTIATE_TO_RESOURCE_TYPE(Material,			Resource_Material)
-INSTANTIATE_TO_RESOURCE_TYPE(ShaderVariation,	Resource_Shader)
-INSTANTIATE_TO_RESOURCE_TYPE(Mesh,				Resource_Mesh)
 INSTANTIATE_TO_RESOURCE_TYPE(Model,				Resource_Model)
 INSTANTIATE_TO_RESOURCE_TYPE(Animation,			Resource_Animation)
 INSTANTIATE_TO_RESOURCE_TYPE(Font,				Resource_Font)

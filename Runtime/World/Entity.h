@@ -32,8 +32,7 @@ namespace Spartan
 	class Context;
 	class Transform;
 	class Renderable;
-	#define VALIDATE_COMPONENT_TYPE(T) static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent")
-
+	
 	class SPARTAN_CLASS Entity : public Spartan_Object, public std::enable_shared_from_this<Entity>
 	{
 	public:
@@ -63,14 +62,10 @@ namespace Spartan
 		void SetHierarchyVisibility(const bool hierarchy_visibility)	{ m_hierarchy_visibility = hierarchy_visibility; }
 		//================================================================================================================
 
-		// Adds a component of ComponentType 
-		std::shared_ptr<IComponent> AddComponent(ComponentType type);
-
 		// Adds a component of type T
 		template <class T>
-		constexpr std::shared_ptr<T> AddComponent()
+		std::shared_ptr<T> AddComponent()
 		{
-			VALIDATE_COMPONENT_TYPE(T);
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			// Return component in case it already exists while ignoring Script components (they can exist multiple times)
@@ -89,11 +84,11 @@ namespace Spartan
 			);
 
 			auto new_component = std::static_pointer_cast<T>(m_components.back());
-			new_component->SetType(IComponent::TypeToEnum<T>());
+			new_component->SetType(type);
 			new_component->OnInitialize();
 
 			// Caching of rendering performance critical components
-			if constexpr (std::is_same<T, Renderable>::value)
+			if constexpr(std::is_same<T, Renderable>::value)
 			{
 				m_renderable = static_cast<Renderable*>(new_component.get());
 			}
@@ -104,11 +99,13 @@ namespace Spartan
 			return new_component;
 		}
 
+        // Adds a component of ComponentType 
+        std::shared_ptr<IComponent> AddComponent(ComponentType type);
+
 		// Returns a component of type T (if it exists)
 		template <class T>
-		constexpr std::shared_ptr<T> GetComponent()
+		std::shared_ptr<T> GetComponent()
 		{
-			VALIDATE_COMPONENT_TYPE(T);
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			for (const auto& component : m_components)
@@ -122,9 +119,8 @@ namespace Spartan
 
 		// Returns any components of type T (if they exist)
 		template <class T>
-		constexpr std::vector<std::shared_ptr<T>> GetComponents()
+		std::vector<std::shared_ptr<T>> GetComponents()
 		{
-			VALIDATE_COMPONENT_TYPE(T);
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			std::vector<std::shared_ptr<T>> components;
@@ -153,17 +149,12 @@ namespace Spartan
 
 		// Checks if a component of type T exists
 		template <class T>
-		constexpr bool HasComponent() 
-		{ 
-			VALIDATE_COMPONENT_TYPE(T);
-			return HasComponent(IComponent::TypeToEnum<T>()); 
-		}
+		bool HasComponent() { return HasComponent(IComponent::TypeToEnum<T>()); }
 
 		// Removes a component of type T (if it exists)
 		template <class T>
-		constexpr void RemoveComponent()
+		void RemoveComponent()
 		{
-			VALIDATE_COMPONENT_TYPE(T);
 			const ComponentType type = IComponent::TypeToEnum<T>();
 
 			for (auto it = m_components.begin(); it != m_components.end();)

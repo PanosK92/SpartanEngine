@@ -34,9 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    template<typename T>
-    constexpr void validate_resource_type() { static_assert(std::is_base_of<IResource, T>::value, "Provided type does not implement IResource"); }
-
 	enum Asset_Type
 	{
 		Asset_Cubemaps,
@@ -63,8 +60,6 @@ namespace Spartan
 		template <class T> 
 		constexpr std::shared_ptr<T> GetByName(const std::string& name) 
 		{ 
-            validate_resource_type<T>();
-
 			return std::static_pointer_cast<T>(GetByName(name, IResource::TypeToEnum<T>()));
 		}
 
@@ -75,8 +70,6 @@ namespace Spartan
 		template <class T>
 		std::shared_ptr<T>& GetByPath(const std::string& path)
 		{
-            validate_resource_type<T>();
-
 			for (auto& resource : m_resource_groups[IResource::TypeToEnum<T>()])
 			{
 				if (path == resource->GetResourceFilePath())
@@ -90,8 +83,6 @@ namespace Spartan
 		template <class T>
 		void Cache(std::shared_ptr<T>& resource)
 		{
-            validate_resource_type<T>();
-
 			if (!resource)
 				return;
 
@@ -112,8 +103,6 @@ namespace Spartan
 		template <class T>
 		std::shared_ptr<T> Load(const std::string& file_path)
 		{
-            validate_resource_type<T>();
-
 			if (!FileSystem::FileExists(file_path))
 			{
 				LOGF_ERROR("Path \"%s\" is invalid.", file_path.c_str());

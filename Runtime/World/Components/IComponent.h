@@ -92,7 +92,7 @@ namespace Spartan
 		static constexpr ComponentType TypeToEnum();
 		//==========================================
 
-		//= PROPERTIES ==========================================================================
+		//= PROPERTIES ============================================================================
 		Entity*						GetEntity_PtrRaw()		const{ return m_entity; }	
 		std::weak_ptr<Entity>		GetEntity_PtrWeak()		const { return GetEntity_PtrShared(); }
 		std::shared_ptr<Entity>		GetEntity_PtrShared()	const;
@@ -111,7 +111,7 @@ namespace Spartan
 				m_attributes[i].setter(attributes[i].getter());
 			}
 		}
-		//=======================================================================================
+		//=========================================================================================
 
 	protected:
 		#define REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(		\
