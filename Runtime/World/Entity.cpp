@@ -269,34 +269,30 @@ namespace Spartan
 		FIRE_EVENT(Event_World_Resolve);
 	}
 
-	shared_ptr<IComponent> Entity::AddComponent(const ComponentType type)
-	{
-		// This is the only hardcoded part regarding components. It's 
-		// one function but it would be nice if that gets automated too, somehow...
-		shared_ptr<IComponent> component;
-		switch (type)
-		{
-			case ComponentType_AudioListener:	component = AddComponent<AudioListener>();	break;
-			case ComponentType_AudioSource:		component = AddComponent<AudioSource>();	break;
-			case ComponentType_Camera:			component = AddComponent<Camera>();			break;
-			case ComponentType_Collider:		component = AddComponent<Collider>();		break;
-			case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
-			case ComponentType_Light:			component = AddComponent<Light>();			break;
-			case ComponentType_Renderable:		component = AddComponent<Renderable>();		break;
-			case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
-			case ComponentType_Script:			component = AddComponent<Script>();			break;
-			case ComponentType_Skybox:			component = AddComponent<Skybox>();			break;
-			case ComponentType_Transform:		component = AddComponent<Transform>();		break;
-			case ComponentType_Unknown:														break;
-			default:																		break;
-		}
+    shared_ptr<IComponent> Entity::AddComponent(const ComponentType type)
+    {
+        // This is the only hardcoded part regarding components. It's 
+        // one function but it would be nice if that gets automated too, somehow...
+        shared_ptr<IComponent> component;
+        switch (type)
+        {
+            case ComponentType_AudioListener:	component = AddComponent<AudioListener>();	break;
+            case ComponentType_AudioSource:		component = AddComponent<AudioSource>();	break;
+            case ComponentType_Camera:			component = AddComponent<Camera>();			break;
+            case ComponentType_Collider:		component = AddComponent<Collider>();		break;
+            case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
+            case ComponentType_Light:			component = AddComponent<Light>();			break;
+            case ComponentType_Renderable:		component = AddComponent<Renderable>();		break;
+            case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
+            case ComponentType_Script:			component = AddComponent<Script>();			break;
+            case ComponentType_Skybox:			component = AddComponent<Skybox>();			break;
+            case ComponentType_Transform:		component = AddComponent<Transform>();		break;
+            case ComponentType_Unknown:														break;
+            default:																		break;
+        }
 
-		// Make the scene resolve
-		FIRE_EVENT(Event_World_Resolve);
-
-		return component;
-	}
-
+        return component;
+    }
 	void Entity::RemoveComponentById(const uint32_t id)
 	{
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
