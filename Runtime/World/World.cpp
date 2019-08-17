@@ -112,8 +112,7 @@ namespace Spartan
                      });
                 });
 			}
-
-            // Stop
+			// Stop
 			if (stopped)
 			{
                 IterateManagers([&](auto& manager)
@@ -125,8 +124,7 @@ namespace Spartan
                      });
                 });
 			}
-
-            // Tick
+			// Tick
             IterateManagers([&](auto& manager)
             {
                   manager->Iterate([&](auto& component)
