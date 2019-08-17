@@ -119,7 +119,7 @@ namespace Spartan
                      manager->Iterate([&](auto& component)
                      {
                             if (component->IsParentEntityActive())
-                               component->OnStart();
+                               component->OnStop();
                      });
                 });
 			}
