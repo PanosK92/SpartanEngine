@@ -393,6 +393,17 @@ namespace Spartan::Math
 
 			return Vector3(vWorking.x * vWorking.w, vWorking.y * vWorking.w, vWorking.z * vWorking.w);
 		}
+
+        Vector4 operator *(const Vector4& rhs) const
+        {
+            return Vector4
+            (
+                (rhs.x * m00) + (rhs.y * m10) + (rhs.z * m20) + (rhs.w * m30),
+                (rhs.x * m01) + (rhs.y * m11) + (rhs.z * m21) + (rhs.w * m31),
+                (rhs.x * m02) + (rhs.y * m12) + (rhs.z * m22) + (rhs.w * m32),
+                (rhs.x * m03) + (rhs.y * m13) + (rhs.z * m23) + (rhs.w * m33)
+            );
+        }
 		//=================================================================================================================================
 
 		//= COMPARISON =================================================

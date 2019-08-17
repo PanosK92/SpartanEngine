@@ -188,7 +188,7 @@ namespace Spartan
 		}
 
 		// Validate texture file path
-		if (file_path == NOT_ASSIGNED)
+		if (file_path.empty())
 		{
 			LOG_WARNING("Provided texture file path hasn't been provided. Can't execute function");
 			return;

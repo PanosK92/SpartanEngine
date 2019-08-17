@@ -82,10 +82,9 @@ float4 ResolveTAA(float2 texCoord, Texture2D tex_history, Texture2D tex_current,
 	color_history = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
 
 	// Decrease blend factor when motion gets sub-pixel
-	float speed_limiter = 0.1f;
-	float factor_subpixel = saturate(length(velocity * g_resolution) * speed_limiter);
+	float factor_subpixel = saturate(length(velocity * g_resolution));
 	
-	// Compute blend factor (but simple use max blend if the re-projected texcoord is out of screen)
+	// Compute blend factor (but simply use max blend if the re-projected texcoord is out of screen)
 	float blendfactor = is_saturated(texCoord_history) ? lerp(g_blendMin, g_blendMax, factor_subpixel) : 1.0f;
 	
 	// Tonemap

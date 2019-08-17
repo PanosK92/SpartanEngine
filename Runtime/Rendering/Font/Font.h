@@ -63,7 +63,7 @@ namespace Spartan
 		void SetColor(const Math::Vector4& color)					{ m_fontColor = color; }
 		const auto& GetAtlas() const								{ return m_atlas; }
 		void SetAtlas(const std::shared_ptr<RHI_Texture>& atlas)	{ m_atlas = atlas; }
-		const auto& GetIndexBuffer() const							{ return m_index_buffer_; }
+		const auto& GetIndexBuffer() const							{ return m_index_buffer; }
 		const auto& GetVertexBuffer() const							{ return m_vertex_buffer; }
 		auto GetIndexCount() const									{ return static_cast<uint32_t>(m_indices.size()); }
 		auto GetSize()												{ return m_font_size; }
@@ -85,7 +85,7 @@ namespace Spartan
 		std::shared_ptr<RHI_Texture> m_atlas;			
 		std::map<uint32_t, Glyph> m_glyphs;	
 		std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
-		std::shared_ptr<RHI_IndexBuffer> m_index_buffer_;
+		std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
 		std::vector<RHI_Vertex_PosTex> m_vertices;
 		std::vector<uint32_t> m_indices;	
 		std::shared_ptr<RHI_Device> m_rhi_device;

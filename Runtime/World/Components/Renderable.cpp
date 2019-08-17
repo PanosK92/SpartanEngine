@@ -121,7 +121,7 @@ namespace Spartan
 		stream->Write(m_geometryVertexOffset);
 		stream->Write(m_geometryVertexCount);
 		stream->Write(m_bounding_box);
-		stream->Write(m_model ? m_model->GetResourceName() : NOT_ASSIGNED);
+		stream->Write(m_model ? m_model->GetResourceName() : "");
 
 		// Material
 		stream->Write(m_castShadows);
@@ -129,7 +129,7 @@ namespace Spartan
 		stream->Write(m_materialDefault);
 		if (!m_materialDefault)
 		{
-			stream->Write(m_material ? m_material->GetResourceName() : NOT_ASSIGNED);
+			stream->Write(m_material ? m_material->GetResourceName() : "");
 		}
 	}
 
@@ -279,9 +279,9 @@ namespace Spartan
 		MaterialSet(materialStandard);
 	}
 
-	const string& Renderable::GetMaterialName()
+	string Renderable::GetMaterialName()
 	{
-		return m_material ? m_material->GetResourceName() : NOT_ASSIGNED;
+		return m_material ? m_material->GetResourceName() : "";
 	}
 	//==============================================================================
 }

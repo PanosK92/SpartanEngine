@@ -37,7 +37,8 @@ public:
 private:
     void GetAllShadersFiles(const std::string& file_path);
 
-    Spartan::RHI_Shader* m_shader = nullptr;   
-    Spartan::Renderer* m_renderer = nullptr;
+    Spartan::RHI_Shader* m_shader   = nullptr;
+    std::string m_shader_name       = "N/A";
+    Spartan::Renderer* m_renderer   = nullptr;
     std::unordered_map<std::string, std::string> m_shader_files;
 };

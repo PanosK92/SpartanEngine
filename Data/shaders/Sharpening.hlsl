@@ -72,3 +72,19 @@ float3 LumaSharpen(float2 texCoord, Texture2D sourceTexture, SamplerState biline
 	colorInput.rgb = colorInput.rgb + sharp_luma;    // Add the sharpening to the input color.
 	return clamp(colorInput, 0.0f, 1.0f).rgb;
 }
+
+float4 SharpenTaa(float2 uv, Texture2D source_texture, SamplerState sampler_bilinear)
+{
+	float intensity = 0.5f;
+
+	float2 dx = float2(g_texel_size.x, 0.0f);
+	float2 dy = float2(0.0f, g_texel_size.y);
+
+	float4 up 		= source_texture.Sample(sampler_bilinear, uv - dy);
+	float4 down 	= source_texture.Sample(sampler_bilinear, uv + dy);
+	float4 center 	= source_texture.Sample(sampler_bilinear, uv);
+	float4 right 	= source_texture.Sample(sampler_bilinear, uv + dx);
+	float4 left 	= source_texture.Sample(sampler_bilinear, uv - dx);
+	
+	return saturate(center + (4 * center - up - down - left - right) * intensity);
+}

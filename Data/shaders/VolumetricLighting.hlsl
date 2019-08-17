@@ -19,36 +19,55 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-float4 VolumetricLighting(float2 texCoord, float3 lightPosScreenSpace, float3 color)
+static const float g_vl_steps 		= 32;
+static const float g_vl_scattering 	= 0.995f;
+static const float g_vl_pow			= 0.5f;
+
+// Mie scaterring approximated with Henyey-Greenstein phase function.
+float ComputeScattering(float v_dot_l)
 {
-	int NUM_SAMPLES = 40;
-	float density	= 0.97f;
-	float weight	= 0.5f;
-	float decay 	= 0.97f;
-	float exposure 	= 0.25f;
+	float result = 1.0f - g_vl_scattering * g_vl_scattering;
+	float e = abs(1.0f + g_vl_scattering * g_vl_scattering - (2.0f * g_vl_scattering) * v_dot_l);
+	result /= pow(e, g_vl_pow);
+	return result;
+}
+
+float3 VolumetricLighting(Light light, float3 pos_world, float2 uv)
+{
+	float3 pixel_to_camera 			= g_camera_position.xyz - pos_world;
+	float pixel_to_cameral_length 	= length(pixel_to_camera);
+	float3 ray_dir					= pixel_to_camera / pixel_to_cameral_length;
+	float step_length 				= pixel_to_cameral_length / g_vl_steps;
+	float3 ray_step 				= ray_dir * step_length;
+	float3 ray_pos 					= pos_world;
+	float ray_dot_light				= dot(ray_dir, light.direction);
+
+	// Apply dithering as it will allows us to get away with a crazy low sample count ;-)
+	float3 dither_value = Dither_Valve(uv * g_resolution) * 400;
+	ray_pos += ray_step * dither_value;
 	
-	// Calculate vector from pixel to light source in screen space.  
-	float2 deltaTexCoord = (texCoord - lightPosScreenSpace.xy);  
-	 
-	// Divide by number of samples and scale by control factor.  
-	deltaTexCoord *= 1.0f / NUM_SAMPLES * density; 
+	static const int cascade = 0;
 	
-	// Store initial sample.  
-	//float3 color = tex2D(frameSampler, texCoord);
+	float3 fog = 0.0f;
+	for (int i = 0; i < g_vl_steps; i++)
+	{
+		// Compute position in light space
+		float4 pos_light = mul(float4(ray_pos, 1.0f), light_view_projection[cascade]);
+		pos_light /= pos_light.w;	
+		
+		// Compute ray uv
+		float2 ray_uv = pos_light.xy * float2(0.5f, -0.5f) + 0.5f;
+		
+		// Check to see if the light can "see" the pixel
+		float depth_delta = light_depth_directional.SampleCmpLevelZero(sampler_cmp_depth, float3(ray_uv, cascade), pos_light.z).r;		
+		if (depth_delta > 0.0f)
+		{
+			fog += ComputeScattering(ray_dot_light);
+		}
+		
+		ray_pos += ray_step;
+	}
+	fog /= g_vl_steps;
 	
-	// Set up illumination decay factor.  
-	float illuminationDecay = 1.0f;  
-	
-	// Evaluate summation from Equation 3 NUM_SAMPLES iterations.  
-	for (int j = 0; j < NUM_SAMPLES; j++)  
-	{  	
-		texCoord -= deltaTexCoord; // Step sample location along ray.  	
-		float3 sample = ToLinear(albedoTexture.Sample(samplerAniso, texCoord)); // Retrieve sample at new location.  	
-		sample *= illuminationDecay * weight; // Apply sample attenuation scale/decay factors.  
-		color += sample;  // Accumulate combined color.  
-		illuminationDecay *= decay;  // Update exponential decay factor.  
-	}  
-	
-	// Output final color with a further scale control factor.  
-	return float4(color * exposure, 1);  
+	return fog * light.color * light.intensity;
 }

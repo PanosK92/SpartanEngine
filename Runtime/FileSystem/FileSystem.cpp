@@ -183,7 +183,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("FileSystem::CreateDirectory: %s, %s", e.what(), path.c_str());
+			LOGF_ERROR("%s, %s", e.what(), path.c_str());
 			return true;
 		}
 	}
@@ -196,7 +196,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("FileSystem::DeleteDirectory: %s, %s", e.what(), directory.c_str());
+			LOGF_ERROR("s, %s", e.what(), directory.c_str());
 			return true;
 		}
 	}
@@ -209,7 +209,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("FileSystem::DirectoryExists: %s, %s", e.what(), directory.c_str());
+			LOGF_ERROR("%s, %s", e.what(), directory.c_str());
 			return true;
 		}
 	}
@@ -222,7 +222,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("FileSystem::IsDirectory: %s, %s", e.what(), directory.c_str());
+			LOGF_ERROR("%s, %s", e.what(), directory.c_str());
 			return false;
 		}
 	}
@@ -240,7 +240,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("FileSystem::FileExists: %s, %s", e.what(), file_path.c_str());
+			LOGF_ERROR("%s, %s", e.what(), file_path.c_str());
 			return true;
 		}
 	}
@@ -257,7 +257,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e)
 		{
-			LOGF_ERROR("FileSystem::DeleteFile: %s, %s", e.what(), file_path.c_str());
+			LOGF_ERROR("%s, %s", e.what(), file_path.c_str());
 			return true;
 		}
 	}
@@ -279,7 +279,7 @@ namespace Spartan
 		}
 		catch (filesystem_error& e) 
 		{
-			LOG_ERROR("FileSystem: Could not copy \"" + source + "\". " + string(e.what()));
+			LOG_ERROR("Could not copy \"" + source + "\". " + string(e.what()));
 			return true;
 		}
 	}
@@ -319,8 +319,8 @@ namespace Spartan
 
 	string FileSystem::GetExtensionFromFilePath(const string& filePath)
 	{
-		if (filePath.empty() || filePath == NOT_ASSIGNED)
-			return NOT_ASSIGNED;
+		if (filePath.empty())
+			return "";
 
 		auto lastindex = filePath.find_last_of('.');
 		if (string::npos != lastindex)
@@ -329,7 +329,7 @@ namespace Spartan
 			return filePath.substr(lastindex, filePath.length());
 		}
 
-		return NOT_ASSIGNED;
+		return "";
 	}
 
 	vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)

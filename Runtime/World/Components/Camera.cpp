@@ -122,18 +122,28 @@ namespace Spartan
 		m_isDirty = true;
 	}
 
-	float Camera::GetFovHorizontalDeg() const
+    float Camera::GetFovHorizontalDeg() const
 	{
 		return RadiansToDegrees(m_fov_horizontal_rad);
 	}
 
-	void Camera::SetFovHorizontalDeg(const float fov)
+    float Camera::GetFovVerticalRad()
+    {
+        return 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (GetViewport().height / GetViewport().width));
+    }
+
+    void Camera::SetFovHorizontalDeg(const float fov)
 	{
 		m_fov_horizontal_rad = DegreesToRadians(fov);
 		m_isDirty = true;
 	}
 
-	bool Camera::IsInViewFrustrum(Renderable* renderable)
+    const Spartan::RHI_Viewport& Camera::GetViewport()
+    {
+        return m_context->GetSubsystem<Renderer>()->GetViewport();
+    }
+
+    bool Camera::IsInViewFrustrum(Renderable* renderable)
 	{
 		const auto box		= renderable->GetAabb();
 		const auto center	= box.GetCenter();
@@ -251,7 +261,7 @@ namespace Spartan
 
     void Camera::FpsControl(float delta_time)
     {
-        static const float mouse_sensetivity        = 0.1f;
+        static const float mouse_sensetivity        = 15.0f;
         static const float movement_speed_max       = 10.0f;
         static const float movement_acceleration    = 0.8f;
         static const float movement_drag            = 0.08f;
@@ -261,7 +271,7 @@ namespace Spartan
             // Mouse look
             {
                 // Get mouse delta
-                mouse_delta += m_input->GetMouseDelta() * mouse_sensetivity;
+                mouse_delta += m_input->GetMouseDelta() * mouse_sensetivity * delta_time;
 
                 // Clamp rotation along the x-axis
                 mouse_delta.y = Clamp(mouse_delta.y, -90.0f, 90.0f);
@@ -317,7 +327,7 @@ namespace Spartan
 
 	void Camera::ComputeBaseView()
 	{
-		const auto camera_pos	= Vector3(0, 0, -0.3f);
+		const auto camera_pos	= Vector3(0, 0, -m_near_plane);
 		const auto look_at		= (Vector3::Forward * Matrix::Identity).Normalized();
 		m_mBaseView				= Matrix::CreateLookAtLH(camera_pos, look_at, Vector3::Up);
 	}
@@ -325,18 +335,16 @@ namespace Spartan
 	void Camera::ComputeProjection()
 	{
         auto& renderer = m_context->GetSubsystem<Renderer>();
-		const auto& viewport	= renderer->GetViewport();
 		const auto near_plane	= renderer->GetReverseZ() ? m_far_plane : m_near_plane;
 		const auto far_plane	= renderer->GetReverseZ() ? m_near_plane : m_far_plane;
 
 		if (m_projection_type == Projection_Perspective)
 		{
-			const auto vfov_rad = 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (viewport.height / viewport.width));
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfov_rad, viewport.AspectRatio(), near_plane, far_plane);
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetViewport().AspectRatio(), near_plane, far_plane);
 		}
 		else if (m_projection_type == Projection_Orthographic)
 		{
-			m_mProjection = Matrix::CreateOrthographicLH(viewport.width, viewport.height, near_plane, far_plane);
+			m_mProjection = Matrix::CreateOrthographicLH(GetViewport().width, GetViewport().height, near_plane, far_plane);
 		}
 	}
 }

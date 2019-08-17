@@ -82,7 +82,7 @@ void Widget_Viewport::Tick()
 	// Draw the image after a potential Renderer::SetResolution() call has been made
 	ImGuiEx::Image
 	(
-        m_renderer->GetFrameTexture(),
+        m_renderer->GetFrameTexture().get(),
 		ImVec2(static_cast<float>(width), static_cast<float>(height)),
 		ImColor(255, 255, 255, 255),
 		ImColor(50, 127, 166, 255)
