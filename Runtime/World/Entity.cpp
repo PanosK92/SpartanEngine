@@ -191,15 +191,26 @@ namespace Spartan
             const auto component_count = stream->ReadAs<uint32_t>();
             for (uint32_t i = 0; i < component_count; i++)
             {
-                uint32_t type = ComponentType_Unknown;
+                // Type
+                uint32_t type = 0;
+                stream->Read(&type);
+
+                // ID
                 uint32_t id = 0;
+                stream->Read(&id);
 
-                stream->Read(&type);	// load component's type
-                stream->Read(&id);		// load component's id
-
-                auto component = AddComponent(static_cast<ComponentType>(type));
-                component->SetId(id);
+                // Add component
+                if (auto component = AddComponent(static_cast<ComponentType>(type)))
+                {
+                    // Set original ID
+                    component->SetId(id);
+                }
+                else
+                {
+                    LOGF_ERROR("Component with an id of %d and a type of %d failed to load", id, type);
+                }
             }
+
             // Sometimes there are component dependencies, e.g. a collider that needs
             // to set it's shape to a rigibody. So, it's important to first create all 
             // the components (like above) and then deserialize them (like here).

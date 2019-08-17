@@ -292,8 +292,10 @@ namespace Spartan
 
 	shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
 	{
+        static shared_ptr<Entity> empty;
+
 		if (!entity)
-			return m_entity_empty;
+			return empty;
 
 		return m_entities_primary.emplace_back(entity);
 	}
@@ -365,7 +367,8 @@ namespace Spartan
 				return entity;
 		}
 
-		return m_entity_empty;
+        static shared_ptr<Entity> empty;
+		return empty;
 	}
 
 	const shared_ptr<Entity>& World::EntityGetById(const uint32_t id)
@@ -376,7 +379,8 @@ namespace Spartan
 				return entity;
 		}
 
-		return m_entity_empty;
+        static shared_ptr<Entity> empty;
+		return empty;
 	}
 
 	shared_ptr<Entity>& World::CreateSkybox()
