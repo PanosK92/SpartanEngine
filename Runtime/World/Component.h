@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <iostream>
 #include <functional>
+#include "../Logging/Log.h"
 //================================
 
 namespace Spartan
@@ -40,7 +41,7 @@ namespace Spartan
     };
 
 	// Simple unsigned int (syntactical sugar) that refers to the index of a component in the componentData array
-	typedef unsigned int ComponentInstance;
+	typedef uint32_t ComponentIndex;
 
 	class BaseComponentManager 
 	{
@@ -78,14 +79,14 @@ namespace Spartan
 	private:
 		ComponentData<T> mComponentData;
 			
-		std::unordered_map<uint32_t, std::unordered_map<uint32_t, ComponentInstance>> mEntityMap;
-		std::unordered_map<ComponentInstance, uint32_t> mInstanceMap;
+		std::unordered_map<uint32_t, std::unordered_map<uint32_t, ComponentIndex>> mEntityMap;
+		std::unordered_map<ComponentIndex, uint32_t> mInstanceMap;
 	};
 		
 	template<typename T>
 	inline void ComponentManager<T>::AddComponent(uint32_t entityID, std::shared_ptr<T>& component)
 	{
-		ComponentInstance instance = mComponentData.mSize;
+		ComponentIndex instance = mComponentData.mSize;
 		mComponentData.mData[instance] = component;
 			
 		mEntityMap[entityID][component->GetId()] = instance;
@@ -95,26 +96,36 @@ namespace Spartan
 	}
 		
 	template<typename T>
-	inline std::shared_ptr<T> ComponentManager<T>::GetComponent(uint32_t entityID)
+	inline std::shared_ptr<T> ComponentManager<T>::GetComponent(uint32_t entity_id)
 	{
-        std::unordered_map<uint32_t, ComponentInstance> inst = mEntityMap[entityID];
-			
-		if (!inst.empty())
+        if (mEntityMap.find(entity_id) == mEntityMap.end())
+        {
+            LOGF_ERROR("No entity with %d exists", entity_id);
+            return nullptr;
+        }
+
+        std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];		
+		if (!_map.empty())
 		{
-			return mComponentData.mData[inst.begin()->second];
+			return mComponentData.mData[_map.begin()->second];
 		}
 
         return nullptr;
 	}
 
     template<typename T>
-    inline std::shared_ptr<T> ComponentManager<T>::GetComponentByID(uint32_t entityID, uint32_t componentID)
+    inline std::shared_ptr<T> ComponentManager<T>::GetComponentByID(uint32_t entity_id, uint32_t componentID)
     {
-        auto inst = mEntityMap[entityID];
-
-        if (!inst.count(componentID) > 0)
+        if (mEntityMap.find(entity_id) == mEntityMap.end())
         {
-            ComponentInstance i = inst[componentID];
+            LOGF_ERROR("No entity with %d exists", entity_id);
+            return nullptr;
+        }
+
+        auto _map = mEntityMap[entity_id];
+        if (!_map.count(componentID) > 0)
+        {
+            ComponentIndex i = _map[componentID];
             return mComponentData.mData[i];
         }
 
@@ -122,14 +133,19 @@ namespace Spartan
     }
 
     template<typename T>
-    inline std::vector<std::shared_ptr<T>> ComponentManager<T>::GetComponents(uint32_t entityID)
+    inline std::vector<std::shared_ptr<T>> ComponentManager<T>::GetComponents(uint32_t entity_id)
     {
-        auto inst = mEntityMap[entityID];
-
-        std::vector<std::shared_ptr<T>> components;
-        if (!inst.empty())
+        if (mEntityMap.find(entity_id) == mEntityMap.end())
         {
-            for (auto& c : inst)
+            LOGF_ERROR("No entity with %d exists", entity_id);
+            return std::vector<std::shared_ptr<T>>();
+        }
+
+        auto _map = mEntityMap[entity_id];
+        std::vector<std::shared_ptr<T>> components;
+        if (!_map.empty())
+        {
+            for (auto& c : _map)
             {
                 components.push_back(mComponentData.mData[c.second]);
             }
@@ -139,34 +155,44 @@ namespace Spartan
     }
 		
 	template<typename T>
-	inline void ComponentManager<T>::RemoveComponent(uint32_t entityID)
+	inline void ComponentManager<T>::RemoveComponent(uint32_t entity_id)
 	{
-       std::unordered_map<uint32_t, ComponentInstance> inst = mEntityMap[entityID];
-
-        if (!inst.empty())
+        if (mEntityMap.find(entity_id) == mEntityMap.end())
         {
-            ComponentInstance lastComponent = mComponentData.mSize - 1;
-            mComponentData.mData[mEntityMap[entityID].begin()->second] = mComponentData.mData[lastComponent];
+            LOGF_ERROR("No entity with %d exists", entity_id);
+            return;
+        }
+
+        std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];
+        if (!_map.empty())
+        {
+            ComponentIndex lastComponent = mComponentData.mSize - 1;
+            mComponentData.mData[mEntityMap[entity_id].begin()->second] = mComponentData.mData[lastComponent];
             //mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = componentID; // componentID not defined ?
             mComponentData.mData[lastComponent] = nullptr;
-            mEntityMap[entityID].erase(mEntityMap[entityID].begin());
+            mEntityMap[entity_id].erase(mEntityMap[entity_id].begin());
 
             mComponentData.mSize--;
         }
     }
 
     template<typename T>
-    inline void ComponentManager<T>::RemoveComponentByID(uint32_t entityID, uint32_t componentID)
+    inline void ComponentManager<T>::RemoveComponentByID(uint32_t entity_id, uint32_t componentID)
     {
-        std::unordered_map<uint32_t, ComponentInstance> inst = mEntityMap[entityID];
-
-        if (inst.count(componentID) > 0)
+        if (mEntityMap.find(entity_id) == mEntityMap.end())
         {
-            ComponentInstance lastComponent = mComponentData.mSize - 1;
-            mComponentData.mData[inst[componentID]] = mComponentData.mData[lastComponent];
+            LOGF_ERROR("No entity with %d exists", entity_id);
+            return;
+        }
+
+        std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];
+        if (_map.count(componentID) > 0)
+        {
+            ComponentIndex lastComponent = mComponentData.mSize - 1;
+            mComponentData.mData[_map[componentID]] = mComponentData.mData[lastComponent];
             mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = componentID;
             mComponentData.mData[lastComponent] = nullptr;
-            mEntityMap[entityID].erase(componentID);
+            mEntityMap[entity_id].erase(componentID);
 
             mComponentData.mSize--;
         }

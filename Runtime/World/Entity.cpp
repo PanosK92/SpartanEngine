@@ -296,7 +296,7 @@ namespace Spartan
 		return component;
 	}
 
-	void Entity::RemoveComponentById(const uint32_t id)
+	void Entity::RemoveComponent(const uint32_t id)
 	{
         // Remove component mask
         m_component_mask &= ~(1 << static_cast<unsigned int>(m_id_to_type[id]));
@@ -313,4 +313,17 @@ namespace Spartan
 		// Make the scene resolve
 		FIRE_EVENT(Event_World_Resolve);
 	}
+
+    vector<shared_ptr<IComponent>> Entity::GetAllComponents() const
+    {
+        vector<shared_ptr<IComponent>> components;
+
+        m_world->IterateManagers([&](auto& manager)
+        {
+            auto _components = manager->GetComponents(GetId());
+            components.insert(components.end(), _components.begin(), _components.end());
+        });
+
+        return components;
+    }
 }

@@ -117,9 +117,7 @@ namespace Spartan
     template<typename T>
     inline std::shared_ptr<ComponentManager<T>> World::GetComponentManager()
     {
-        ComponentType type = IComponent::TypeToEnum<T>();
-        std::shared_ptr<BaseComponentManager> manager = m_components_managers[type];
-        return std::static_pointer_cast<ComponentManager<T>>(manager);
+        return std::static_pointer_cast<ComponentManager<T>>(m_components_managers[IComponent::TypeToEnum<T>()]);
     }
 
     template<typename Func>

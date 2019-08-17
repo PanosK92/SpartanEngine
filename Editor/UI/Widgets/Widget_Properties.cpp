@@ -78,7 +78,7 @@ namespace ComponentProperty
 					{
 						if (component)
 						{
-							entity->RemoveComponentById(component->GetId());
+							entity->RemoveComponent(component->GetId());
 						}
 					}
 				}

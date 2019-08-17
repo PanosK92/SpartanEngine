@@ -45,18 +45,19 @@ namespace Spartan
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);
 
-		//= PROPERTIES ===================================================================================================
-		const std::string& GetName() const								{ return m_name; }
-		void SetName(const std::string& name)							{ m_name = name; }
+		// Name
+		const std::string& GetName() const      { return m_name; }
+		void SetName(const std::string& name)   { m_name = name; }
 
-		bool IsActive() const											{ return m_is_active; }
+        // Active
+		bool IsActive() const { return m_is_active; }
         void SetActive(const bool active);
 
+        // Hierarchy visibility
 		bool IsVisibleInHierarchy() const								{ return m_hierarchy_visibility; }
 		void SetHierarchyVisibility(const bool hierarchy_visibility)	{ m_hierarchy_visibility = hierarchy_visibility; }
-		//================================================================================================================
 
-		// Adds a component of type T
+		// Adds a component
 		template <class T>
 		std::shared_ptr<T> AddComponent()
 		{
@@ -90,22 +91,16 @@ namespace Spartan
 			return new_component;
 		}
 
-        // Adds a component of ComponentType 
+        // Adds a component 
         std::shared_ptr<IComponent> AddComponent(ComponentType type);
 
-		// Returns a component of type T (if it exists)
+		// Returns a component
 		template <class T>
-		std::shared_ptr<T> GetComponent()
-		{
-            return m_world->GetComponentManager<T>()->GetComponent(GetId());
-		}
+		std::shared_ptr<T> GetComponent() { return m_world->GetComponentManager<T>()->GetComponent(GetId()); }
 
-		// Returns any components of type T (if they exist)
+		// Returns components
 		template <class T>
-		std::vector<std::shared_ptr<T>> GetComponents()
-		{
-            return m_world->GetComponentManager<T>()->GetComponents(GetId());
-		}
+		std::vector<std::shared_ptr<T>> GetComponents() { return m_world->GetComponentManager<T>()->GetComponents(GetId()); }
 		
 		// Checks if a component exists
 		bool HasComponent(const ComponentType type) { return m_component_mask & (1 << static_cast<unsigned int>(type)); }
@@ -114,7 +109,7 @@ namespace Spartan
 		template <class T>
 		bool HasComponent() { return HasComponent(IComponent::TypeToEnum<T>()); }
 
-		// Removes a component of type T (if it exists)
+		// Removes a component
 		template <class T>
 		void RemoveComponent()
 		{
@@ -129,21 +124,11 @@ namespace Spartan
 			FIRE_EVENT(Event_World_Resolve);
 		}
 
-		void RemoveComponentById(uint32_t id);
+        // Removes a component
+		void RemoveComponent(uint32_t id);
 
-        const auto Entity::GetAllComponents() const
-        {
-            std::vector<std::shared_ptr<IComponent>> components;
-            m_world->IterateManagers([&](auto& manager)
-            {
-                auto _components = manager->GetComponents(GetId());
-                components.insert(components.end(), _components.begin(), _components.end());
-            });
-
-            return components;
-        }
-
-		// Direct access for performance critical usage (not safe)
+        // Misc
+        std::vector<std::shared_ptr<IComponent>> GetAllComponents() const;
 		Transform* GetTransform_PtrRaw() const		{ return m_transform; }
 		Renderable* GetRenderable_PtrRaw() const	{ return m_renderable; }
 		std::shared_ptr<Entity> GetPtrShared()		{ return shared_from_this(); }
