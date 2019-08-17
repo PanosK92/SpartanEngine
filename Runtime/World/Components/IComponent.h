@@ -95,7 +95,7 @@ namespace Spartan
 		static constexpr ComponentType TypeToEnum();
 		//==========================================
 
-		//= PROPERTIES ==========================================================================
+		//= PROPERTIES ============================================================================
 		Entity*						GetEntity_PtrRaw()		const{ return m_entity; }	
 		std::weak_ptr<Entity>		GetEntity_PtrWeak()		const { return GetEntity_PtrShared(); }
 		std::shared_ptr<Entity>		GetEntity_PtrShared()	const;
@@ -114,7 +114,7 @@ namespace Spartan
 				m_attributes[i].setter(attributes[i].getter());
 			}
 		}
-		//=======================================================================================
+		//=========================================================================================
 
         bool IsParentEntityActive() { return m_is_parent_active; }
         void SetIsParentEntityActive(bool active) { m_is_parent_active = active; }

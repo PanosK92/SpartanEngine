@@ -87,7 +87,7 @@ namespace ImGui::RHI
 		{
 			g_sampler				= make_shared<RHI_Sampler>(g_rhi_device, SAMPLER_BILINEAR, Sampler_Address_Wrap, Comparison_Always);
 			g_constant_buffer		= make_shared<RHI_ConstantBuffer>(g_rhi_device); g_constant_buffer->Create<Matrix>();
-			g_vertex_buffer			= make_shared<RHI_VertexBuffer>(g_rhi_device, sizeof(ImDrawVert));
+			g_vertex_buffer			= make_shared<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert)));
 			g_index_buffer			= make_shared<RHI_IndexBuffer>(g_rhi_device);
 			g_depth_stencil_state	= make_shared<RHI_DepthStencilState>(g_rhi_device, false, g_renderer->GetComparisonFunction());
 

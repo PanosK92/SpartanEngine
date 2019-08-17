@@ -99,7 +99,7 @@ void Widget_ShaderEditor::Tick()
                 {
                     if (ImGui::BeginTabItem(FileSystem::GetFileNameFromFilePath(shader.first).c_str()))
                     {
-                        ImGui::InputTextMultiline("##shader_source", &shader.second, ImVec2(-1, ImGui::GetTextLineHeight() * 54.8), ImGuiInputTextFlags_AllowTabInput);
+                        ImGui::InputTextMultiline("##shader_source", &shader.second, ImVec2(-1, ImGui::GetTextLineHeight() * 54.8f), ImGuiInputTextFlags_AllowTabInput);
                         ImGui::EndTabItem();
                     }
                 }
