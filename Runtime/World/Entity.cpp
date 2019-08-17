@@ -45,31 +45,25 @@ namespace Spartan
 {
 	Entity::Entity(Context* context) : Spartan_Object()
 	{
-		m_context				= context;
-		m_name					= "Entity";
-		m_is_active				= true;
-		m_hierarchy_visibility	= true;	
+		m_context	= context;
+        m_transform = AddComponent<Transform>().get();
 	}
 
 	Entity::~Entity()
 	{
 		// delete components
-		for (auto it = m_components.begin(); it != m_components.end();)
-		{
-			(*it)->OnRemove();
-			(*it).reset();
-			it = m_components.erase(it);
-		}
-		m_components.clear();
+        m_context->GetSubsystem<World>()->IterateManagers([&](auto& manager)
+        {
+            manager->GetComponent(GetId())->OnRemove();
+            manager->RemoveComponent(GetId());
+        });
+
+        // Reset component mask
+        m_component_mask = 0;
 
 		m_name.clear();
-		m_is_active				= true;
-		m_hierarchy_visibility	= true;
-	}
-
-	void Entity::Initialize(Transform* transform)
-	{
-		m_transform = transform;
+		m_is_active				= false;
+		m_hierarchy_visibility	= false;
 	}
 
 	void Entity::Clone()
@@ -123,22 +117,24 @@ namespace Spartan
 
 	void Entity::Serialize(FileStream* stream)
 	{
-		//= BASIC DATA ======================
+		//= BASIC DATA =======================
 		stream->Write(m_is_active);
 		stream->Write(m_hierarchy_visibility);
 		stream->Write(GetId());
 		stream->Write(m_name);
-		//===================================
+		//====================================
+
+        auto components = GetAllComponents();
 
 		//= COMPONENTS ================================
-		stream->Write(static_cast<uint32_t>(m_components.size()));
-		for (const auto& component : m_components)
+		stream->Write(static_cast<uint32_t>(components.size()));
+		for (const auto& component : components)
 		{
 			stream->Write(static_cast<uint32_t>(component->GetType()));
 			stream->Write(component->GetId());
 		}
 
-		for (const auto& component : m_components)
+		for (const auto& component : components)
 		{
 			component->Serialize(stream);
 		}
@@ -197,7 +193,8 @@ namespace Spartan
 		// Sometimes there are component dependencies, e.g. a collider that needs
 		// to set it's shape to a rigibody. So, it's important to first create all 
 		// the components (like above) and then deserialize them (like here).
-		for (const auto& component : m_components)
+        auto components = GetAllComponents();
+		for (const auto& component : components)
 		{
 			component->Deserialize(stream);
 		}
@@ -243,8 +240,8 @@ namespace Spartan
     {
         m_is_active = active;
 
-        auto scene = m_context->GetSubsystem<World>();
-        scene->IterateManagers([&](auto& manager)
+        auto world = m_context->GetSubsystem<World>();
+        world->IterateManagers([&](auto& manager)
         {
             auto components = manager->GetComponents(GetId());
             for (auto& component : components)
@@ -281,26 +278,12 @@ namespace Spartan
 
 	void Entity::RemoveComponentById(const uint32_t id)
 	{
-		for (auto it = m_components.begin(); it != m_components.end(); ) 
-		{
-			auto component = *it;
-			if (id == component->GetId())
-			{
-				component->OnRemove();
-				component.reset();
-				it = m_components.erase(it);
-			}
-			else
-			{
-				++it;
-			}
-		}
+        // Remove component mask
+        m_component_mask &= ~(1 << static_cast<unsigned int>(m_id_to_type[id]));
 
-        m_component_mask &= ~(1 << (int)m_id_to_type[id]);
-
-        auto scene = m_context->GetSubsystem<World>();
-
-        scene->IterateManagers([&](auto& manager)
+        // Remove component from manager
+        auto world = m_context->GetSubsystem<World>();
+        world->IterateManagers([&](auto& manager)
         {
              if (manager->m_type == m_id_to_type[id])
                  manager->RemoveComponentByID(GetId(), id);

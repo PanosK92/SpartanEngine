@@ -71,7 +71,7 @@ namespace Spartan
         std::vector<std::shared_ptr<T>> GetComponents(uint32_t entityID);
 
 	    void RemoveComponent(uint32_t entityID);
-        void RemoveComponentByID(uint32_t entituID, uint32_t componentID);
+        void RemoveComponentByID(uint32_t entityID, uint32_t componentID);
 
 		void Iterate(std::function<void(std::shared_ptr<T>)> func);
 
@@ -147,7 +147,7 @@ namespace Spartan
         {
             ComponentInstance lastComponent = mComponentData.mSize - 1;
             mComponentData.mData[mEntityMap[entityID].begin()->second] = mComponentData.mData[lastComponent];
-            mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = componentID;
+            //mEntityMap[mInstanceMap[lastComponent]][mComponentData.mData[lastComponent]->GetId()] = componentID; // componentID not defined ?
             mComponentData.mData[lastComponent] = nullptr;
             mEntityMap[entityID].erase(mEntityMap[entityID].begin());
 

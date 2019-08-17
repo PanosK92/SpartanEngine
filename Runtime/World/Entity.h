@@ -40,7 +40,6 @@ namespace Spartan
 		Entity(Context* context);
 		~Entity();
 
-		void Initialize(Transform* transform);
 		void Clone();
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);
@@ -67,20 +66,10 @@ namespace Spartan
 				return GetComponent<T>();
 
             // Add component mask
-            m_component_mask |= (1 << (int)type);
+            m_component_mask |= (1 << static_cast<unsigned int>(type));
 
 			// Create new component
-            m_components.emplace_back
-			(	
-				std::make_shared<T>
-				(
-					m_context,
-					this,
-					GetTransform_PtrRaw()
-				)
-			);
-
-			auto new_component = std::static_pointer_cast<T>(m_components.back());
+            auto new_component = std::make_shared<T>(m_context, this, GetTransform_PtrRaw());
 			new_component->SetType(type);
 			new_component->OnInitialize();
 
@@ -92,6 +81,7 @@ namespace Spartan
 				m_renderable = static_cast<Renderable*>(new_component.get());
 			}
 
+            // Add the component to the component manager
             auto world = m_context->GetSubsystem<World>();
             auto manager = world->GetComponentManager<T>();
             manager->AddComponent(this->GetId(), new_component);
@@ -128,7 +118,7 @@ namespace Spartan
 		}
 		
 		// Checks if a component of ComponentType exists
-		bool HasComponent(const ComponentType type) { return m_component_mask & (1 << (int)type); }
+		bool HasComponent(const ComponentType type) { return m_component_mask & (1 << static_cast<unsigned int>(type)); }
 
 		// Checks if a component of type T exists
 		template <class T>
@@ -138,34 +128,20 @@ namespace Spartan
 		template <class T>
 		void RemoveComponent()
 		{
-			const ComponentType type = IComponent::TypeToEnum<T>();
-
-			for (auto it = m_components.begin(); it != m_components.end();)
-			{
-				auto component = *it;
-				if (component->GetType() == type)
-				{
-					component->OnRemove();
-					component.reset();
-					it = m_components.erase(it);
-				}
-				else
-				{
-					++it;
-				}
-			}
-
+            // Remove from component manager
             auto world = m_context->GetSubsystem<World>();
             world->GetComponentManager<T>()->RemoveComponent(GetId());
 
             // Remove component mask
-            m_component_mask &= ~(1 << (int)type);
+            const ComponentType type = IComponent::TypeToEnum<T>();
+            m_component_mask &= ~(1 << static_cast<unsigned int>(type));
 
 			// Make the scene resolve
 			FIRE_EVENT(Event_World_Resolve);
 		}
 
 		void RemoveComponentById(uint32_t id);
+
         const auto Entity::GetAllComponents() const
         {
             auto world = m_context->GetSubsystem<World>();
@@ -173,8 +149,8 @@ namespace Spartan
 
             world->IterateManagers([&](auto& manager)
             {
-                auto mcomponents = manager->GetComponents(GetId());
-                components.insert(components.end(), mcomponents.begin(), mcomponents.end());
+                auto _components = manager->GetComponents(GetId());
+                components.insert(components.end(), _components.begin(), _components.end());
             });
 
             return components;
@@ -192,10 +168,6 @@ namespace Spartan
 		// Caching of performance critical components
 		Transform* m_transform		= nullptr;
 		Renderable* m_renderable	= nullptr;
-
-		// Components
-		std::vector<std::shared_ptr<IComponent>> m_components;
-		std::shared_ptr<Entity> m_component_empty;
 
         // Component management
         unsigned int m_component_mask = 0;
