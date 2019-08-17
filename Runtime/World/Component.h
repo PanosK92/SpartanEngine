@@ -180,21 +180,4 @@ namespace Spartan
 			func(mComponentData.mData[i]);
 		}
 	}
-
-	class SPARTAN_CLASS ComponentMask 
-	{
-	public:
-		unsigned int mask = 0;
-
-	public:
-		void AddComponent(ComponentType type) 
-		{
-			mask |= (1 << (int)type);
-		}
-
-		void RemoveComponent(ComponentType type) 
-		{
-			mask &= ~(1 << (int)type);
-		}
-	};
 }

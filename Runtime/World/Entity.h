@@ -79,7 +79,7 @@ namespace Spartan
 				return GetComponent<T>();
 
 			// Add component
-            m_component_mask.AddComponent(type);
+            m_component_mask |= (1 << (int)type);
             m_components.emplace_back
 			(	
 				std::make_shared<T>
@@ -139,7 +139,7 @@ namespace Spartan
 		// Checks if a component of ComponentType exists
 		bool HasComponent(const ComponentType type) 
 		{ 
-            return m_component_mask.mask & (1 << (int)type);
+            return m_component_mask & (1 << (int)type);
 		}
 
 		// Checks if a component of type T exists
@@ -174,6 +174,8 @@ namespace Spartan
 
             auto scene = m_context->GetSubsystem<World>();
             scene->GetComponentManager<T>()->RemoveComponent(GetId());
+
+            m_component_mask &= ~(1 << (int)type);
 
 			// Make the scene resolve
 			FIRE_EVENT(Event_World_Resolve);
@@ -212,7 +214,7 @@ namespace Spartan
 		std::shared_ptr<Entity> m_component_empty;
 
         // Component Managment
-        ComponentMask m_component_mask;
+        unsigned int m_component_mask = 0;
         std::unordered_map<uint32_t, ComponentType> m_id_to_type;
 
 		// Misc

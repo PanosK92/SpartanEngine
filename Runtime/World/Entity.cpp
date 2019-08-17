@@ -329,6 +329,8 @@ namespace Spartan
 			}
 		}
 
+        m_component_mask &= ~(1 << (int)m_id_to_type[id]);
+
         auto scene = m_context->GetSubsystem<World>();
 
         scene->IterateManagers([&](auto& manager)
