@@ -65,26 +65,23 @@ namespace Spartan
 			if (HasComponent(type) && type != ComponentType_Script)
 				return GetComponent<T>();
 
-            // Add component mask
-            m_component_mask |= (1 << static_cast<unsigned int>(type));
-
 			// Create new component
             auto new_component = std::make_shared<T>(m_context, this, GetTransform_PtrRaw());
 			new_component->SetType(type);
 			new_component->OnInitialize();
 
-            m_id_to_type[new_component->GetId()] = type;
-
-			// Caching of rendering performance critical components
-			if constexpr(std::is_same<T, Renderable>::value)
-			{
-				m_renderable = static_cast<Renderable*>(new_component.get());
-			}
-
             // Add the component to the component manager
-            auto world = m_context->GetSubsystem<World>();
-            auto manager = world->GetComponentManager<T>();
-            manager->AddComponent(this->GetId(), new_component);
+            m_id_to_type[new_component->GetId()] = type;
+            m_world->GetComponentManager<T>()->AddComponent(GetId(), new_component);
+
+            // Add component mask
+            m_component_mask |= (1 << static_cast<unsigned int>(type));
+
+            // Caching of rendering performance critical components
+            if constexpr (std::is_same<T, Renderable>::value)
+            {
+                m_renderable = static_cast<Renderable*>(new_component.get());
+            }
 
 			// Make the scene resolve
 			FIRE_EVENT(Event_World_Resolve);
@@ -99,28 +96,20 @@ namespace Spartan
 		template <class T>
 		std::shared_ptr<T> GetComponent()
 		{
-			const ComponentType type = IComponent::TypeToEnum<T>();
-
-            auto world = m_context->GetSubsystem<World>();
-            return world->GetComponentManager<T>()->GetComponent(GetId());
+            return m_world->GetComponentManager<T>()->GetComponent(GetId());
 		}
 
 		// Returns any components of type T (if they exist)
 		template <class T>
 		std::vector<std::shared_ptr<T>> GetComponents()
 		{
-			const ComponentType type = IComponent::TypeToEnum<T>();
-
-            auto world = m_context->GetSubsystem<World>();
-            auto components = world->GetComponentManager<T>()->GetComponents(GetId());
-
-            return components;
+            return m_world->GetComponentManager<T>()->GetComponents(GetId());
 		}
 		
-		// Checks if a component of ComponentType exists
+		// Checks if a component exists
 		bool HasComponent(const ComponentType type) { return m_component_mask & (1 << static_cast<unsigned int>(type)); }
 
-		// Checks if a component of type T exists
+		// Checks if a component exists
 		template <class T>
 		bool HasComponent() { return HasComponent(IComponent::TypeToEnum<T>()); }
 
@@ -129,8 +118,7 @@ namespace Spartan
 		void RemoveComponent()
 		{
             // Remove from component manager
-            auto world = m_context->GetSubsystem<World>();
-            world->GetComponentManager<T>()->RemoveComponent(GetId());
+            m_world->GetComponentManager<T>()->RemoveComponent(GetId());
 
             // Remove component mask
             const ComponentType type = IComponent::TypeToEnum<T>();
@@ -144,10 +132,8 @@ namespace Spartan
 
         const auto Entity::GetAllComponents() const
         {
-            auto world = m_context->GetSubsystem<World>();
             std::vector<std::shared_ptr<IComponent>> components;
-
-            world->IterateManagers([&](auto& manager)
+            m_world->IterateManagers([&](auto& manager)
             {
                 auto _components = manager->GetComponents(GetId());
                 components.insert(components.end(), _components.begin(), _components.end());
@@ -165,15 +151,15 @@ namespace Spartan
 		std::string m_name			= "Entity";
 		bool m_is_active			= true;
 		bool m_hierarchy_visibility	= true;
-		// Caching of performance critical components
-		Transform* m_transform		= nullptr;
-		Renderable* m_renderable	= nullptr;
 
         // Component management
         unsigned int m_component_mask = 0;
         std::unordered_map<uint32_t, ComponentType> m_id_to_type;
 
-		// Misc
-		Context* m_context;
+        // Caching of performance critical components
+        Transform* m_transform      = nullptr;
+        Renderable* m_renderable    = nullptr;
+        Context* m_context          = nullptr;
+        World* m_world              = nullptr;
 	};
 }

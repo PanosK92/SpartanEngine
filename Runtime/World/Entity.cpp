@@ -46,13 +46,14 @@ namespace Spartan
 	Entity::Entity(Context* context) : Spartan_Object()
 	{
 		m_context	= context;
-        m_transform = AddComponent<Transform>().get();
+        m_world     = context->GetSubsystem<World>().get();
+        m_transform = AddComponent<Transform>().get();   
 	}
 
 	Entity::~Entity()
 	{
 		// delete components
-        m_context->GetSubsystem<World>()->IterateManagers([&](auto& manager)
+        m_world->IterateManagers([&](auto& manager)
         {
             manager->GetComponent(GetId())->OnRemove();
             manager->RemoveComponent(GetId());
@@ -68,14 +69,13 @@ namespace Spartan
 
 	void Entity::Clone()
 	{
-		auto scene = m_context->GetSubsystem<World>();
 		vector<Entity*> clones;
 
 		// Creation of new entity and copying of a few properties
-		auto clone_entity = [&scene, &clones](Entity* entity)
+		auto clone_entity = [this, &clones](Entity* entity)
 		{
 			// Clone the name and the ID
-			auto clone = scene->EntityCreate().get();
+			auto clone = m_world->EntityCreate().get();
 			clone->SetId(GenerateId());
 			clone->SetName(entity->GetName());
 			clone->SetActive(entity->IsActive());
@@ -115,117 +115,121 @@ namespace Spartan
 		clone_entity_and_descendants(this);
 	}
 
-	void Entity::Serialize(FileStream* stream)
+    void Entity::Serialize(FileStream* stream)
 	{
-		//= BASIC DATA =======================
-		stream->Write(m_is_active);
-		stream->Write(m_hierarchy_visibility);
-		stream->Write(GetId());
-		stream->Write(m_name);
-		//====================================
+		// ENTITY
+        {
+            stream->Write(m_is_active);
+            stream->Write(m_hierarchy_visibility);
+            stream->Write(GetId());
+            stream->Write(m_name);
+        }
 
-        auto components = GetAllComponents();
+		// COMPONENTS
+        {
+            auto components = GetAllComponents();
+            stream->Write(static_cast<uint32_t>(components.size()));
+            for (const auto& component : components)
+            {
+                stream->Write(static_cast<uint32_t>(component->GetType()));
+                stream->Write(component->GetId());
+            }
 
-		//= COMPONENTS ================================
-		stream->Write(static_cast<uint32_t>(components.size()));
-		for (const auto& component : components)
-		{
-			stream->Write(static_cast<uint32_t>(component->GetType()));
-			stream->Write(component->GetId());
-		}
+            for (const auto& component : components)
+            {
+                component->Serialize(stream);
+            }
+        }
 
-		for (const auto& component : components)
-		{
-			component->Serialize(stream);
-		}
-		//=============================================
+		// CHILDREN
+        {
+            auto children = GetTransform_PtrRaw()->GetChildren();
 
-		//= CHILDREN ==================================
-		auto children = GetTransform_PtrRaw()->GetChildren();
+            // 1st - children count
+            stream->Write(static_cast<uint32_t>(children.size()));
 
-		// 1st - children count
-		stream->Write(static_cast<uint32_t>(children.size()));
+            // 2nd - children IDs
+            for (const auto& child : children)
+            {
+                stream->Write(child->GetId());
+            }
 
-		// 2nd - children IDs
-		for (const auto& child : children)
-		{
-			stream->Write(child->GetId());
-		}
-
-		// 3rd - children
-		for (const auto& child : children)
-		{
-			if (child->GetEntity_PtrRaw())
-			{
-				child->GetEntity_PtrRaw()->Serialize(stream);
-			}
-			else
-			{
-				LOG_ERROR("Aborting , child entity is nullptr.");
-				break;
-			}
-		}
-		//=============================================
+            // 3rd - children
+            for (const auto& child : children)
+            {
+                if (child->GetEntity_PtrRaw())
+                {
+                    child->GetEntity_PtrRaw()->Serialize(stream);
+                }
+                else
+                {
+                    LOG_ERROR("Aborting , child entity is nullptr.");
+                    break;
+                }
+            }
+        }
 	}
 
 	void Entity::Deserialize(FileStream* stream, Transform* parent)
 	{
-		//= BASIC DATA =======================
-		stream->Read(&m_is_active);
-		stream->Read(&m_hierarchy_visibility);
-		stream->Read(&m_id);
-		stream->Read(&m_name);
-		//====================================
+        // ENTITY
+        {
+            stream->Read(&m_is_active);
+            stream->Read(&m_hierarchy_visibility);
+            stream->Read(&m_id);
+            stream->Read(&m_name);
+        }
 
-		//= COMPONENTS ================================
-		const auto component_count = stream->ReadAs<uint32_t>();
-		for (uint32_t i = 0; i < component_count; i++)
-		{
-			uint32_t type = ComponentType_Unknown;
-			uint32_t id = 0;
+        // COMPONENTS
+        {
+            const auto component_count = stream->ReadAs<uint32_t>();
+            for (uint32_t i = 0; i < component_count; i++)
+            {
+                uint32_t type = ComponentType_Unknown;
+                uint32_t id = 0;
 
-			stream->Read(&type);	// load component's type
-			stream->Read(&id);		// load component's id
+                stream->Read(&type);	// load component's type
+                stream->Read(&id);		// load component's id
 
-			auto component = AddComponent(static_cast<ComponentType>(type));
-			component->SetId(id);
-		}
-		// Sometimes there are component dependencies, e.g. a collider that needs
-		// to set it's shape to a rigibody. So, it's important to first create all 
-		// the components (like above) and then deserialize them (like here).
-        auto components = GetAllComponents();
-		for (const auto& component : components)
-		{
-			component->Deserialize(stream);
-		}
-		//=============================================
+                auto component = AddComponent(static_cast<ComponentType>(type));
+                component->SetId(id);
+            }
+            // Sometimes there are component dependencies, e.g. a collider that needs
+            // to set it's shape to a rigibody. So, it's important to first create all 
+            // the components (like above) and then deserialize them (like here).
+            auto components = GetAllComponents();
+            for (const auto& component : components)
+            {
+                component->Deserialize(stream);
+            }
+        }
 
-		// Set the transform's parent
-		if (m_transform)
-		{
-			m_transform->SetParent(parent);
-		}
+        // Set the transform's parent
+        if (m_transform)
+        {
+            m_transform->SetParent(parent);
+        }
 
-		//= CHILDREN ===================================
-		// 1st - children count
-		const auto children_count = stream->ReadAs<uint32_t>();
+		// CHILDREN
+        {
+            // 1st - children count
+            const auto children_count = stream->ReadAs<uint32_t>();
 
-		// 2nd - children IDs
-		auto scene = m_context->GetSubsystem<World>();
-		vector<std::weak_ptr<Entity>> children;
-		for (uint32_t i = 0; i < children_count; i++)
-		{
-			auto child = scene->EntityCreate();
-			child->SetId(stream->ReadAs<uint32_t>());
-			children.emplace_back(child);
-		}
+            // 2nd - children IDs
+            vector<std::weak_ptr<Entity>> children;
+            for (uint32_t i = 0; i < children_count; i++)
+            {
+                auto child = m_world->EntityCreate();
+                child->SetId(stream->ReadAs<uint32_t>());
+                children.emplace_back(child);
+            }
 
-		// 3rd - children
-		for (const auto& child : children)
-		{
-			child.lock()->Deserialize(stream, GetTransform_PtrRaw());
-		}
-		//=============================================
+            // 3rd - children
+            for (const auto& child : children)
+            {
+                child.lock()->Deserialize(stream, GetTransform_PtrRaw());
+            }
+        }
 
 		if (m_transform)
 		{
@@ -240,8 +244,7 @@ namespace Spartan
     {
         m_is_active = active;
 
-        auto world = m_context->GetSubsystem<World>();
-        world->IterateManagers([&](auto& manager)
+        m_world->IterateManagers([&](auto& manager)
         {
             auto components = manager->GetComponents(GetId());
             for (auto& component : components)
@@ -282,11 +285,12 @@ namespace Spartan
         m_component_mask &= ~(1 << static_cast<unsigned int>(m_id_to_type[id]));
 
         // Remove component from manager
-        auto world = m_context->GetSubsystem<World>();
-        world->IterateManagers([&](auto& manager)
+        m_world->IterateManagers([&](auto& manager)
         {
-             if (manager->m_type == m_id_to_type[id])
-                 manager->RemoveComponentByID(GetId(), id);
+            if (manager->m_type == m_id_to_type[id])
+            {
+                manager->RemoveComponentByID(GetId(), id);
+            }
         });
 
 		// Make the scene resolve
