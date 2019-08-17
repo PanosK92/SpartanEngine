@@ -34,43 +34,43 @@ namespace Spartan
 	class Transform;
 	class Renderable;
 	
-	class SPARTAN_CLASS Entity : public Spartan_Object, public std::enable_shared_from_this<Entity>
-	{
-	public:
-		Entity(Context* context);
-		~Entity();
+    class SPARTAN_CLASS Entity : public Spartan_Object, public std::enable_shared_from_this<Entity>
+    {
+    public:
+        Entity(Context* context);
+        ~Entity();
 
         void Initialize();
-		void Clone();
-		void Serialize(FileStream* stream);
-		void Deserialize(FileStream* stream, Transform* parent);
+        void Clone();
+        void Serialize(FileStream* stream);
+        void Deserialize(FileStream* stream, Transform* parent);
 
-		// Name
-		const std::string& GetName() const      { return m_name; }
-		void SetName(const std::string& name)   { m_name = name; }
+        // Name
+        const std::string& GetName() const { return m_name; }
+        void SetName(const std::string& name) { m_name = name; }
 
         // Active
-		bool IsActive() const { return m_is_active; }
+        bool IsActive() const { return m_is_active; }
         void SetActive(const bool active);
 
         // Hierarchy visibility
-		bool IsVisibleInHierarchy() const								{ return m_hierarchy_visibility; }
-		void SetHierarchyVisibility(const bool hierarchy_visibility)	{ m_hierarchy_visibility = hierarchy_visibility; }
+        bool IsVisibleInHierarchy() const { return m_hierarchy_visibility; }
+        void SetHierarchyVisibility(const bool hierarchy_visibility) { m_hierarchy_visibility = hierarchy_visibility; }
 
-		// Adds a component
-		template <class T>
-		std::shared_ptr<T> AddComponent()
-		{
-			const ComponentType type = IComponent::TypeToEnum<T>();
+        // Adds a component
+        template <class T>
+        std::shared_ptr<T> AddComponent()
+        {
+            const ComponentType type = IComponent::TypeToEnum<T>();
 
-			// Return component in case it already exists while ignoring Script components (they can exist multiple times)
-			if (HasComponent(type) && type != ComponentType_Script)
-				return GetComponent<T>();
+            // Return component in case it already exists while ignoring Script components (they can exist multiple times)
+            if (HasComponent(type) && type != ComponentType_Script)
+                return GetComponent<T>();
 
-			// Create new component
+            // Create new component
             auto new_component = std::make_shared<T>(m_context, this, GetTransform_PtrRaw());
-			new_component->SetType(type);
-			new_component->OnInitialize();
+            new_component->SetType(type);
+            new_component->OnInitialize();
 
             // Add the component to the component manager
             m_id_to_type[new_component->GetId()] = type;
@@ -85,22 +85,39 @@ namespace Spartan
                 m_renderable = static_cast<Renderable*>(new_component.get());
             }
 
-			// Make the scene resolve
-			FIRE_EVENT(Event_World_Resolve);
+            // Make the scene resolve
+            FIRE_EVENT(Event_World_Resolve);
 
-			return new_component;
-		}
+            return new_component;
+        }
 
         // Adds a component 
         std::shared_ptr<IComponent> AddComponent(ComponentType type);
 
-		// Returns a component
-		template <class T>
-		std::shared_ptr<T> GetComponent() { return m_world->GetComponentManager<T>()->GetComponent(GetId()); }
+        // Returns a component
+        template <class T>
+        inline std::shared_ptr<T>& GetComponent()
+        {
+            if (HasComponent<T>())
+            {
+                return m_world->GetComponentManager<T>()->GetComponent(GetId());
+            }
+
+            static std::shared_ptr<T> empty;
+            return empty;
+        }
 
 		// Returns components
 		template <class T>
-		std::vector<std::shared_ptr<T>> GetComponents() { return m_world->GetComponentManager<T>()->GetComponents(GetId()); }
+        inline std::vector<std::shared_ptr<T>> GetComponents()
+        {
+            if (HasComponent<T>())
+            {
+                return m_world->GetComponentManager<T>()->GetComponents(GetId());
+            }
+
+            return std::vector<std::shared_ptr<T>>();
+        }
 		
 		// Checks if a component exists
 		bool HasComponent(const ComponentType type) { return m_component_mask & (1 << static_cast<unsigned int>(type)); }

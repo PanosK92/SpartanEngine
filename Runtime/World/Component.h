@@ -67,7 +67,7 @@ namespace Spartan
 
 		void AddComponent(uint32_t entityID, std::shared_ptr<T>& component);
 
-        std::shared_ptr<T> GetComponent(uint32_t entityID);
+        std::shared_ptr<T>& GetComponent(uint32_t entityID);
         std::shared_ptr<T> GetComponentByID(uint32_t entityID, uint32_t componentID);
         std::vector<std::shared_ptr<T>> GetComponents(uint32_t entityID);
 
@@ -96,37 +96,34 @@ namespace Spartan
 	}
 		
 	template<typename T>
-	inline std::shared_ptr<T> ComponentManager<T>::GetComponent(uint32_t entity_id)
+	inline std::shared_ptr<T>& ComponentManager<T>::GetComponent(uint32_t entity_id)
 	{
-        if (mEntityMap.find(entity_id) == mEntityMap.end())
-        {
-            LOGF_ERROR("No entity with %d exists", entity_id);
-            return nullptr;
-        }
-
         std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];		
 		if (!_map.empty())
 		{
 			return mComponentData.mData[_map.begin()->second];
 		}
+        else
+        {
+            __debugbreak();
+        }
 
-        return nullptr;
+        static std::shared_ptr<T> empty;
+        return empty;
 	}
 
     template<typename T>
     inline std::shared_ptr<T> ComponentManager<T>::GetComponentByID(uint32_t entity_id, uint32_t componentID)
     {
-        if (mEntityMap.find(entity_id) == mEntityMap.end())
-        {
-            LOGF_ERROR("No entity with %d exists", entity_id);
-            return nullptr;
-        }
-
         auto _map = mEntityMap[entity_id];
         if (!_map.count(componentID) > 0)
         {
             ComponentIndex i = _map[componentID];
             return mComponentData.mData[i];
+        }
+        else
+        {
+            __debugbreak();
         }
 
         return nullptr;
@@ -135,12 +132,6 @@ namespace Spartan
     template<typename T>
     inline std::vector<std::shared_ptr<T>> ComponentManager<T>::GetComponents(uint32_t entity_id)
     {
-        if (mEntityMap.find(entity_id) == mEntityMap.end())
-        {
-            LOGF_ERROR("No entity with %d exists", entity_id);
-            return std::vector<std::shared_ptr<T>>();
-        }
-
         auto _map = mEntityMap[entity_id];
         std::vector<std::shared_ptr<T>> components;
         if (!_map.empty())
@@ -150,6 +141,10 @@ namespace Spartan
                 components.push_back(mComponentData.mData[c.second]);
             }
         }
+        else
+        {
+            __debugbreak();
+        }
 
         return components;
     }
@@ -157,12 +152,6 @@ namespace Spartan
 	template<typename T>
 	inline void ComponentManager<T>::RemoveComponent(uint32_t entity_id)
 	{
-        if (mEntityMap.find(entity_id) == mEntityMap.end())
-        {
-            LOGF_ERROR("No entity with %d exists", entity_id);
-            return;
-        }
-
         std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];
         if (!_map.empty())
         {
@@ -174,17 +163,15 @@ namespace Spartan
 
             mComponentData.mSize--;
         }
+        else
+        {
+            __debugbreak();
+        }
     }
 
     template<typename T>
     inline void ComponentManager<T>::RemoveComponentByID(uint32_t entity_id, uint32_t componentID)
     {
-        if (mEntityMap.find(entity_id) == mEntityMap.end())
-        {
-            LOGF_ERROR("No entity with %d exists", entity_id);
-            return;
-        }
-
         std::unordered_map<uint32_t, ComponentIndex> _map = mEntityMap[entity_id];
         if (_map.count(componentID) > 0)
         {
@@ -195,6 +182,10 @@ namespace Spartan
             mEntityMap[entity_id].erase(componentID);
 
             mComponentData.mSize--;
+        }
+        else
+        {
+            __debugbreak();
         }
     }
 		
