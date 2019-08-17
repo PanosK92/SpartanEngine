@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ===================
 #include <vector>
-#include "../Core/EventSystem.h"
 #include "World.h"
 #include "../Core/Context.h"
-//================================
+#include "../Core/EventSystem.h"
+//==============================
 
 namespace Spartan
 {
@@ -40,6 +40,7 @@ namespace Spartan
 		Entity(Context* context);
 		~Entity();
 
+        void Initialize();
 		void Clone();
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);

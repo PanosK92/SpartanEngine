@@ -47,7 +47,6 @@ namespace Spartan
 	{
 		m_context	= context;
         m_world     = context->GetSubsystem<World>().get();
-        m_transform = AddComponent<Transform>().get();   
 	}
 
 	Entity::~Entity()
@@ -55,7 +54,10 @@ namespace Spartan
 		// delete components
         m_world->IterateManagers([&](auto& manager)
         {
-            manager->GetComponent(GetId())->OnRemove();
+            if (manager->GetComponent(GetId()))
+            {
+                manager->GetComponent(GetId())->OnRemove();
+            }
             manager->RemoveComponent(GetId());
         });
 
@@ -67,6 +69,11 @@ namespace Spartan
 		m_hierarchy_visibility	= false;
 	}
 
+    void Entity::Initialize()
+    {
+        m_transform = AddComponent<Transform>().get();
+    }
+
 	void Entity::Clone()
 	{
 		vector<Entity*> clones;
@@ -75,7 +82,7 @@ namespace Spartan
 		auto clone_entity = [this, &clones](Entity* entity)
 		{
 			// Clone the name and the ID
-			auto clone = m_world->EntityCreate().get();
+            Entity* clone = m_world->EntityCreate().get();
 			clone->SetId(GenerateId());
 			clone->SetName(entity->GetName());
 			clone->SetActive(entity->IsActive());
@@ -83,10 +90,9 @@ namespace Spartan
 
 			// Clone all the components
 			for (const auto& component : entity->GetAllComponents())
-			{
-				const auto& original_comp	= component;
-				auto clone_comp				= clone->AddComponent(component->GetType());
-				clone_comp->SetAttributes(original_comp->GetAttributes());
+            {
+				auto clone_comp = clone->AddComponent(component->GetType());
+				clone_comp->SetAttributes(component->GetAttributes());
 			}
 
 			clones.emplace_back(clone);
@@ -95,7 +101,7 @@ namespace Spartan
 		};
 
 		// Cloning of an entity and it's descendants (this is a recursive lambda)
-		function<Entity*(Entity*)> clone_entity_and_descendants = [&clone_entity_and_descendants, &clone_entity](Entity* original)
+		std::function<Entity*(Entity*)> clone_entity_and_descendants = [&clone_entity_and_descendants, &clone_entity](Entity* original)
 		{
 			// clone self
 			const auto clone_self = clone_entity(original);
@@ -103,7 +109,7 @@ namespace Spartan
 			// clone children make them call this lambda
 			for (const auto& child_transform : original->GetTransform_PtrRaw()->GetChildren())
 			{
-				const auto clone_child = clone_entity_and_descendants(child_transform->GetEntity_PtrRaw());
+                Entity* clone_child = clone_entity_and_descendants(child_transform->GetEntity_PtrRaw());
 				clone_child->GetTransform_PtrRaw()->SetParent(clone_self->GetTransform_PtrRaw());
 			}
 

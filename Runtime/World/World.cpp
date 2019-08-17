@@ -32,10 +32,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 //=====================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
-//=============================
+//============================
 
 namespace Spartan
 {
@@ -93,7 +93,7 @@ namespace Spartan
 
         TIME_BLOCK_START_CPU(m_profiler);
 
-		// Tick entities
+		// Tick components
 		{
 			// Detect game toggling
 			bool started	    = m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_wasInEditorMode;
@@ -105,11 +105,13 @@ namespace Spartan
 			{
                 IterateManagers([&](auto& manager)
                 {
-                     manager->Iterate([&](auto& component)
-                     {
-                             if (component->IsParentEntityActive())
-                                 component->OnStart();
-                     });
+                    manager->Iterate([&](auto& component)
+                    {
+                        if (component->IsParentEntityActive())
+                        {
+                            component->OnStart();
+                        }
+                    });
                 });
 			}
 
@@ -119,9 +121,11 @@ namespace Spartan
                 IterateManagers([&](auto& manager)
                 {
                      manager->Iterate([&](auto& component)
-                     {
-                            if (component->IsParentEntityActive())
-                               component->OnStop();
+                    {
+                        if (component->IsParentEntityActive())
+                        {
+                            component->OnStop();
+                        }
                      });
                 });
 			}
@@ -129,11 +133,13 @@ namespace Spartan
 			// Tick
             IterateManagers([&](auto& manager)
             {
-                  manager->Iterate([&](auto& component)
-                  {
-                        if (component->IsParentEntityActive())
-                            component->OnTick(delta_time);
-                  });
+                manager->Iterate([&](auto& component)
+                {
+                    if (component->IsParentEntityActive())
+                    {
+                        component->OnTick(delta_time);
+                    }
+                });
             });
 		}
 
@@ -279,7 +285,9 @@ namespace Spartan
 
 	shared_ptr<Entity>& World::EntityCreate()
 	{
-		return m_entities_primary.emplace_back(make_shared<Entity>(m_context));
+        auto entity = make_shared<Entity>(m_context);
+        entity->Initialize();
+		return m_entities_primary.emplace_back(entity);
 	}
 
 	shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)

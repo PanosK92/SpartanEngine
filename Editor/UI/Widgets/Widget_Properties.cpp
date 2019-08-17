@@ -160,32 +160,35 @@ void Widget_Properties::Tick()
 	{
 		auto entity_ptr = m_inspected_entity.lock().get();
 
-		auto& transform		    = entity_ptr->GetComponent<Transform>();
-		auto& light			    = entity_ptr->GetComponent<Light>();
-		auto& camera			= entity_ptr->GetComponent<Camera>();
-		auto& audio_source	    = entity_ptr->GetComponent<AudioSource>();
-		auto& audio_listener	= entity_ptr->GetComponent<AudioListener>();
-		auto& renderable		= entity_ptr->GetComponent<Renderable>();
-		auto& material		    = renderable ? renderable->GetMaterial() : shared_ptr<Material>();
-		auto& rigid_body		= entity_ptr->GetComponent<RigidBody>();
-		auto& collider		    = entity_ptr->GetComponent<Collider>();
-		auto& constraint		= entity_ptr->GetComponent<Constraint>();
-		auto& scripts		    = entity_ptr->GetComponents<Script>();
+        #define SHOW_COMPONENT(name)                               \
+        if (auto& component = entity_ptr->GetComponent<name>())    \
+        {                                                          \
+            Show##name(component);                                 \
+        }                                                          \
 
-		ShowTransform(transform);
-		ShowLight(light);
-		ShowCamera(camera);
-		ShowAudioSource(audio_source);
-		ShowAudioListener(audio_listener);
-		ShowRenderable(renderable);
-		ShowMaterial(material);
-		ShowRigidBody(rigid_body);
-		ShowCollider(collider);
-		ShowConstraint(constraint);
-		for (auto& script : scripts)
-		{
-			ShowScript(script);
-		}
+        SHOW_COMPONENT(Transform);
+        SHOW_COMPONENT(Light);
+        SHOW_COMPONENT(Camera);
+        SHOW_COMPONENT(AudioSource);
+        SHOW_COMPONENT(AudioListener);
+        SHOW_COMPONENT(Renderable);
+        SHOW_COMPONENT(RigidBody);
+        SHOW_COMPONENT(Collider);
+        SHOW_COMPONENT(Constraint);
+        SHOW_COMPONENT(Renderable);
+
+        for (auto& script : entity_ptr->GetComponents<Script>())
+        {
+            ShowScript(script);
+        }
+
+        if (auto& renderable = entity_ptr->GetComponent<Renderable>())
+        {
+            if (auto& material = renderable->GetMaterial())
+            {
+                ShowMaterial(material);
+            }
+        }
 
 		ShowAddComponentButton();
 		Drop_AutoAddComponents();

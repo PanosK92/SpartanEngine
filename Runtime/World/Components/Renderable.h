@@ -93,8 +93,8 @@ namespace Spartan
 
 		void UseDefaultMaterial();
 		std::string GetMaterialName();
-		const auto& GetMaterial()	const { return m_material; }
-		auto HasMaterial()			const { return m_material != nullptr; }
+		auto& GetMaterial()         { return m_material; }
+		auto HasMaterial()  const   { return m_material != nullptr; }
 		//=======================================================================
 
 		//= PROPERTIES ============================================================================
