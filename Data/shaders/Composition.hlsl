@@ -106,6 +106,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 	
 		// SSR
 		float smoothness = 1.0f - material.roughness;
+		smoothness *= smoothness;
 		color += sample_ssr * smoothness * light_received;
 	}
 	
