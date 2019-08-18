@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============
 #include "Dithering.hlsl"
-#include "SSS.hlsl"
+#include "SSCS.hlsl"
 //=======================
 
 float DepthTest_Directional(float slice, float2 tex_coords, float compare)
@@ -208,11 +208,11 @@ float Shadow_Map(float2 uv, float3 normal, float depth, float3 world_pos, float 
 	}
 	#endif
 
-	// Screen space shadows
-	if (screen_space_shadows_enabled)
+	// Screen space contact shadows
+	if (screen_space_contact_shadows_enabled)
 	{
-		float sss = ScreenSpaceShadows(uv, light.direction);
-		shadow = min(shadow, sss);
+		float sscs = ScreenSpaceContactShadows(uv, light.direction);
+		shadow = min(shadow, sscs);
 	}
 	
 	// Self shadows

@@ -67,14 +67,14 @@ Platform | API | Status | Quality | Binaries | :+1:
 # Roadmap
 
 ##### v0.31 (WIP)
-Feature     			| Completion    | Notes 
-:-          			| :-            | :-
-Parallax Mapping 		| 100%          | -
-Shader Editor 			| 100%          | Real-time shader editing tool.
-Volumetric Lighting		| 100%          | -
-Shadows 				| 90%          	| Enable point & spot light shadows.
-Screen space shadows 	| 100%          | -
-Vulkan      			| 60%           | Don't port it, re-architect the engine instead.
+Feature     					| Completion    | Notes 
+:-          					| :-            | :-
+Volumetric Lighting				| 100%          | -
+Screen space contact shadows 	| 100%          | -
+Parallax Mapping 				| 100%          | -
+Shader Editor 					| 100%          | Real-time shader editing tool.
+Shadows 						| 90%          	| Enable point & spot light shadows.
+Vulkan      					| 60%           | Don't port it, re-architect the engine instead.
 
 ###### v0.32
 - C# scripting (Replace AngelScript).

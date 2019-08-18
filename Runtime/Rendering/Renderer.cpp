@@ -67,7 +67,7 @@ namespace Spartan
 		m_flags		|= Render_PostProcess_Bloom;
         m_flags     |= Render_PostProcess_VolumetricLighting;
 		m_flags		|= Render_PostProcess_SSAO;
-        m_flags     |= Render_PostProcess_SSS;
+        m_flags     |= Render_PostProcess_SSCS;
 		m_flags		|= Render_PostProcess_MotionBlur;
 		m_flags		|= Render_PostProcess_TAA;
         m_flags     |= Render_PostProcess_SSR;
