@@ -41,7 +41,7 @@ namespace Spartan
 	{
 	public:
         Skybox() = default;
-		Skybox(Context* context, Entity* entity, Transform* transform);
+		Skybox(Context* context, Entity* entity);
 		~Skybox();
 
 		//= IComponent ==============

@@ -74,7 +74,7 @@ namespace Spartan
 		const auto& GetName() { return m_name; }
 
 		//= Entities ===========================================================================
-		std::shared_ptr<Entity>& EntityCreate();
+		std::shared_ptr<Entity>& EntityCreate(uint32_t id = 0, uint32_t transform_id = 0);
 		std::shared_ptr<Entity>& EntityAdd(const std::shared_ptr<Entity>& entity);
 		bool EntityExists(const std::shared_ptr<Entity>& entity);
 		void EntityRemove(const std::shared_ptr<Entity>& entity);	

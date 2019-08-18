@@ -38,7 +38,7 @@ using namespace std;
 
 namespace Spartan
 {
-	Light::Light(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
+	Light::Light(Context* context, Entity* entity) : IComponent(context, entity)
 	{
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows, bool);
 		REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);

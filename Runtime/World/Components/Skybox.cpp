@@ -40,7 +40,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Skybox::Skybox(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
+	Skybox::Skybox(Context* context, Entity* entity) : IComponent(context, entity)
 	{
 		m_environment_type	= Skybox_Sphere;
 		m_material			= make_shared<Material>(GetContext());

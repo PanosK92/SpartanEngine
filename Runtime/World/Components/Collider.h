@@ -48,7 +48,7 @@ namespace Spartan
 	{
 	public:
         Collider() = default;
-		Collider(Context* context, Entity* entity, Transform* transform);
+		Collider(Context* context, Entity* entity);
 		~Collider();
 
 		//= ICOMPONENT ===============================

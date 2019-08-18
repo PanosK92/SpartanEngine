@@ -36,7 +36,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Transform::Transform(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, this)
+	Transform::Transform(Context* context, Entity* entity) : IComponent(context, entity, this)
 	{
 		m_positionLocal		= Vector3::Zero;
 		m_rotationLocal		= Quaternion(0, 0, 0, 1);

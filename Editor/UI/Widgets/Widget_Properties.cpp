@@ -175,7 +175,6 @@ void Widget_Properties::Tick()
         SHOW_COMPONENT(RigidBody);
         SHOW_COMPONENT(Collider);
         SHOW_COMPONENT(Constraint);
-        SHOW_COMPONENT(Renderable);
 
         for (auto& script : entity_ptr->GetComponents<Script>())
         {

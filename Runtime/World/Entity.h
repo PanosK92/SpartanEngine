@@ -37,29 +37,60 @@ namespace Spartan
     class SPARTAN_CLASS Entity : public Spartan_Object, public std::enable_shared_from_this<Entity>
     {
     public:
-        Entity(Context* context);
+        Entity(Context* context, uint32_t id = 0, uint32_t transform_id = 0);
         ~Entity();
 
-        void Initialize();
         void Clone();
         void Serialize(FileStream* stream);
         void Deserialize(FileStream* stream, Transform* parent);
 
         // Name
-        const std::string& GetName() const { return m_name; }
-        void SetName(const std::string& name) { m_name = name; }
+        const std::string& GetName() const      { return m_name; }
+        void SetName(const std::string& name)   { m_name = name; }
 
         // Active
         bool IsActive() const { return m_is_active; }
         void SetActive(const bool active);
 
         // Hierarchy visibility
-        bool IsVisibleInHierarchy() const { return m_hierarchy_visibility; }
-        void SetHierarchyVisibility(const bool hierarchy_visibility) { m_hierarchy_visibility = hierarchy_visibility; }
+        bool IsVisibleInHierarchy() const                               { return m_hierarchy_visibility; }
+        void SetHierarchyVisibility(const bool hierarchy_visibility)    { m_hierarchy_visibility = hierarchy_visibility; }
+
+        // Checks if a component exists
+        inline bool HasComponent(const ComponentType type) { return m_component_mask & (1 << static_cast<unsigned int>(type)); }
+
+        // Checks if a component exists
+        template <class T>
+        inline bool HasComponent() { return HasComponent(IComponent::TypeToEnum<T>()); }
+
+        // Returns a component
+        template <class T>
+        inline std::shared_ptr<T>& GetComponent()
+        {
+            if (HasComponent<T>())
+            {
+                return m_world->GetComponentManager<T>()->GetComponent(GetId());
+            }
+
+            static std::shared_ptr<T> empty;
+            return empty;
+        }
+
+        // Returns components
+        template <class T>
+        inline std::vector<std::shared_ptr<T>> GetComponents()
+        {
+            if (HasComponent<T>())
+            {
+                return m_world->GetComponentManager<T>()->GetComponents(GetId());
+            }
+
+            return std::vector<std::shared_ptr<T>>();
+        }
 
         // Adds a component
         template <class T>
-        std::shared_ptr<T> AddComponent()
+        inline std::shared_ptr<T> AddComponent(uint32_t component_id = 0)
         {
             const ComponentType type = IComponent::TypeToEnum<T>();
 
@@ -68,7 +99,8 @@ namespace Spartan
                 return GetComponent<T>();
 
             // Create new component
-            auto new_component = std::make_shared<T>(m_context, this, GetTransform_PtrRaw());
+            auto new_component = std::make_shared<T>(m_context, this);
+            if (component_id != 0) new_component->SetId(component_id);
             new_component->SetType(type);
             new_component->OnInitialize();
 
@@ -92,44 +124,15 @@ namespace Spartan
         }
 
         // Adds a component 
-        std::shared_ptr<IComponent> AddComponent(ComponentType type);
-
-        // Returns a component
-        template <class T>
-        inline std::shared_ptr<T>& GetComponent()
-        {
-            if (HasComponent<T>())
-            {
-                return m_world->GetComponentManager<T>()->GetComponent(GetId());
-            }
-
-            static std::shared_ptr<T> empty;
-            return empty;
-        }
-
-		// Returns components
-		template <class T>
-        inline std::vector<std::shared_ptr<T>> GetComponents()
-        {
-            if (HasComponent<T>())
-            {
-                return m_world->GetComponentManager<T>()->GetComponents(GetId());
-            }
-
-            return std::vector<std::shared_ptr<T>>();
-        }
-		
-		// Checks if a component exists
-		bool HasComponent(const ComponentType type) { return m_component_mask & (1 << static_cast<unsigned int>(type)); }
-
-		// Checks if a component exists
-		template <class T>
-		bool HasComponent() { return HasComponent(IComponent::TypeToEnum<T>()); }
+        std::shared_ptr<IComponent> AddComponent(ComponentType type, uint32_t id = 0);
 
 		// Removes a component
 		template <class T>
-		void RemoveComponent()
+        inline void RemoveComponent()
 		{
+            if (!HasComponent<T>())
+                return;
+
             // Remove from component manager
             m_world->GetComponentManager<T>()->RemoveComponent(GetId());
 

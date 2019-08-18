@@ -39,7 +39,7 @@ using namespace std;
 
 namespace Spartan
 {
-	Camera::Camera(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
+	Camera::Camera(Context* context, Entity* entity) : IComponent(context, entity)
 	{
         m_input = m_context->GetSubsystem<Input>().get();
 	}

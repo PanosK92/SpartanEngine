@@ -53,7 +53,7 @@ namespace Spartan
 	{
 	public:
         Renderable() = default;
-		Renderable(Context* context, Entity* entity, Transform* transform);
+		Renderable(Context* context, Entity* entity);
 		~Renderable() = default;
 
 		//= ICOMPONENT ===============================

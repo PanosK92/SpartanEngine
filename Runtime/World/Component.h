@@ -68,7 +68,7 @@ namespace Spartan
 		void AddComponent(uint32_t entityID, std::shared_ptr<T>& component);
 
         std::shared_ptr<T>& GetComponent(uint32_t entityID);
-        std::shared_ptr<T> GetComponentByID(uint32_t entityID, uint32_t componentID);
+        std::shared_ptr<T>& GetComponentByID(uint32_t entityID, uint32_t componentID);
         std::vector<std::shared_ptr<T>> GetComponents(uint32_t entityID);
 
 	    void RemoveComponent(uint32_t entityID);
@@ -103,27 +103,19 @@ namespace Spartan
 		{
 			return mComponentData.mData[_map.begin()->second];
 		}
-        else
-        {
-            __debugbreak();
-        }
 
         static std::shared_ptr<T> empty;
         return empty;
 	}
 
     template<typename T>
-    inline std::shared_ptr<T> ComponentManager<T>::GetComponentByID(uint32_t entity_id, uint32_t componentID)
+    inline std::shared_ptr<T>& ComponentManager<T>::GetComponentByID(uint32_t entity_id, uint32_t componentID)
     {
         auto _map = mEntityMap[entity_id];
         if (!_map.count(componentID) > 0)
         {
             ComponentIndex i = _map[componentID];
             return mComponentData.mData[i];
-        }
-        else
-        {
-            __debugbreak();
         }
 
         return nullptr;
@@ -140,10 +132,6 @@ namespace Spartan
             {
                 components.push_back(mComponentData.mData[c.second]);
             }
-        }
-        else
-        {
-            __debugbreak();
         }
 
         return components;
@@ -182,10 +170,6 @@ namespace Spartan
             mEntityMap[entity_id].erase(componentID);
 
             mComponentData.mSize--;
-        }
-        else
-        {
-            __debugbreak();
         }
     }
 		

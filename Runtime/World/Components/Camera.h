@@ -49,7 +49,7 @@ namespace Spartan
 	{
 	public:
         Camera() = default;
-		Camera(Context* context, Entity* entity, Transform* transform);
+		Camera(Context* context, Entity* entity);
 		~Camera() = default;
 
 		//= ICOMPONENT ===============================

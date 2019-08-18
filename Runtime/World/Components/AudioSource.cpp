@@ -33,7 +33,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	AudioSource::AudioSource(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
+	AudioSource::AudioSource(Context* context, Entity* entity) : IComponent(context, entity)
 	{
 		m_mute				= false;
 		m_play_on_start		= true;

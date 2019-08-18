@@ -43,22 +43,23 @@ using namespace std;
 
 namespace Spartan
 {
-	Entity::Entity(Context* context) : Spartan_Object()
-	{
-		m_context	= context;
+    Entity::Entity(Context* context, uint32_t id /*= 0*/, uint32_t transform_id /*= 0*/) : Spartan_Object(id)
+    {
+        m_context   = context;
         m_world     = context->GetSubsystem<World>().get();
-	}
+        m_transform = AddComponent<Transform>(transform_id).get(); // All entities must have a transform
+    }
 
-	Entity::~Entity()
+    Entity::~Entity()
 	{
 		// delete components
         m_world->IterateManagers([&](auto& manager)
         {
-            if (manager->GetComponent(GetId()))
+            if (auto& component = manager->GetComponent(GetId()))
             {
-                manager->GetComponent(GetId())->OnRemove();
+                component->OnRemove();
+                manager->RemoveComponent(GetId());
             }
-            manager->RemoveComponent(GetId());
         });
 
         // Reset component mask
@@ -69,11 +70,6 @@ namespace Spartan
 		m_hierarchy_visibility	= false;
 	}
 
-    void Entity::Initialize()
-    {
-        m_transform = AddComponent<Transform>().get();
-    }
-
 	void Entity::Clone()
 	{
 		vector<Entity*> clones;
@@ -83,7 +79,6 @@ namespace Spartan
 		{
 			// Clone the name and the ID
             Entity* clone = m_world->EntityCreate().get();
-			clone->SetId(GenerateId());
 			clone->SetName(entity->GetName());
 			clone->SetActive(entity->IsActive());
 			clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
@@ -149,7 +144,7 @@ namespace Spartan
 
 		// CHILDREN
         {
-            auto children = GetTransform_PtrRaw()->GetChildren();
+            const vector<Transform*>& children = GetTransform_PtrRaw()->GetChildren();
 
             // 1st - children count
             stream->Write(static_cast<uint32_t>(children.size()));
@@ -158,20 +153,13 @@ namespace Spartan
             for (const auto& child : children)
             {
                 stream->Write(child->GetId());
+                stream->Write(child->GetTransform()->GetId());
             }
 
             // 3rd - children
             for (const auto& child : children)
             {
-                if (child->GetEntity_PtrRaw())
-                {
-                    child->GetEntity_PtrRaw()->Serialize(stream);
-                }
-                else
-                {
-                    LOG_ERROR("Aborting , child entity is nullptr.");
-                    break;
-                }
+                child->GetEntity_PtrRaw()->Serialize(stream);
             }
         }
 	}
@@ -200,12 +188,7 @@ namespace Spartan
                 stream->Read(&id);
 
                 // Add component
-                if (auto component = AddComponent(static_cast<ComponentType>(type)))
-                {
-                    // Set original ID
-                    component->SetId(id);
-                }
-                else
+                if (!AddComponent(static_cast<ComponentType>(type, id)))
                 {
                     LOGF_ERROR("Component with an id of %d and a type of %d failed to load", id, type);
                 }
@@ -233,18 +216,18 @@ namespace Spartan
             const auto children_count = stream->ReadAs<uint32_t>();
 
             // 2nd - children IDs
-            vector<std::weak_ptr<Entity>> children;
+            vector<std::shared_ptr<Entity>> children;
             for (uint32_t i = 0; i < children_count; i++)
             {
-                auto child = m_world->EntityCreate();
-                child->SetId(stream->ReadAs<uint32_t>());
-                children.emplace_back(child);
+                uint32_t id             = stream->ReadAs<uint32_t>();
+                uint32_t transform_id   = stream->ReadAs<uint32_t>();
+                children.emplace_back(m_world->EntityCreate(id, transform_id));
             }
 
             // 3rd - children
             for (const auto& child : children)
             {
-                child.lock()->Deserialize(stream, GetTransform_PtrRaw());
+                child->Deserialize(stream, GetTransform_PtrRaw());
             }
         }
 
@@ -271,32 +254,32 @@ namespace Spartan
         });
     }
 
-	shared_ptr<IComponent> Entity::AddComponent(const ComponentType type)
-	{
-		// This is the only hardcoded part regarding components. It's 
-		// one function but it would be nice if that gets automated too, somehow...
-		shared_ptr<IComponent> component;
-		switch (type)
-		{
-			case ComponentType_AudioListener:	component = AddComponent<AudioListener>();	break;
-			case ComponentType_AudioSource:		component = AddComponent<AudioSource>();	break;
-			case ComponentType_Camera:			component = AddComponent<Camera>();			break;
-			case ComponentType_Collider:		component = AddComponent<Collider>();		break;
-			case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
-			case ComponentType_Light:			component = AddComponent<Light>();			break;
-			case ComponentType_Renderable:		component = AddComponent<Renderable>();		break;
-			case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
-			case ComponentType_Script:			component = AddComponent<Script>();			break;
-			case ComponentType_Skybox:			component = AddComponent<Skybox>();			break;
-			case ComponentType_Transform:		component = AddComponent<Transform>();		break;
-			case ComponentType_Unknown:														break;
-			default:																		break;
-		}
+    shared_ptr<IComponent> Entity::AddComponent(const ComponentType type, uint32_t id /*= 0*/)
+    {
+        // This is the only hardcoded part regarding components. It's 
+        // one function but it would be nice if that gets automated too, somehow...
+        shared_ptr<IComponent> component;
+        switch (type)
+        {
+            case ComponentType_AudioListener:	component = AddComponent<AudioListener>(id);    break;
+            case ComponentType_AudioSource:		component = AddComponent<AudioSource>(id);	    break;
+            case ComponentType_Camera:			component = AddComponent<Camera>(id);		    break;
+            case ComponentType_Collider:		component = AddComponent<Collider>(id);		    break;
+            case ComponentType_Constraint:		component = AddComponent<Constraint>(id);	    break;
+            case ComponentType_Light:			component = AddComponent<Light>(id);		    break;
+            case ComponentType_Renderable:		component = AddComponent<Renderable>(id);	    break;
+            case ComponentType_RigidBody:		component = AddComponent<RigidBody>(id);	    break;
+            case ComponentType_Script:			component = AddComponent<Script>(id);		    break;
+            case ComponentType_Skybox:			component = AddComponent<Skybox>(id);		    break;
+            case ComponentType_Transform:		component = AddComponent<Transform>(id);	    break;
+            case ComponentType_Unknown:														    break;
+            default:																		    break;
+        }
 
-		return component;
-	}
+        return component;
+    }
 
-	void Entity::RemoveComponent(const uint32_t id)
+    void Entity::RemoveComponent(const uint32_t id)
 	{
         // Remove component mask
         m_component_mask &= ~(1 << static_cast<unsigned int>(m_id_to_type[id]));

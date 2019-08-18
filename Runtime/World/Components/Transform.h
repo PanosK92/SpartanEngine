@@ -39,7 +39,7 @@ namespace Spartan
 	{
 	public:
         Transform() = default;
-		Transform(Context* context, Entity* entity, Transform* transform);
+		Transform(Context* context, Entity* entity);
 		~Transform() = default;
 
 		//= ICOMPONENT ===============================

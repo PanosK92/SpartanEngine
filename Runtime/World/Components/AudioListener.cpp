@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	AudioListener::AudioListener(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
+	AudioListener::AudioListener(Context* context, Entity* entity) : IComponent(context, entity)
 	{
-		m_audio = nullptr;
+
 	}
 
 	AudioListener::~AudioListener()

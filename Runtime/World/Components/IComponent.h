@@ -64,7 +64,7 @@ namespace Spartan
 	{
 	public:
         IComponent() = default;
-		IComponent(Context* context, Entity* entity, Transform* transform);
+		IComponent(Context* context, Entity* entity, Transform* transform = nullptr);
 		virtual ~IComponent() = default;
 
 		// Runs when the component gets added

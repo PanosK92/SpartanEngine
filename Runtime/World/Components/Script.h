@@ -32,7 +32,7 @@ namespace Spartan
 	{
 	public:
         Script() = default;
-		Script(Context* context, Entity* entity, Transform* transform);
+		Script(Context* context, Entity* entity);
 		~Script();
 
 		//= ICOMPONENT ===============================

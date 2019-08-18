@@ -62,7 +62,7 @@ namespace Spartan
 	{
 	public:
         Light() = default;
-		Light(Context* context, Entity* entity, Transform* transform);
+		Light(Context* context, Entity* entity);
 		~Light();
 
 		//= COMPONENT ================================

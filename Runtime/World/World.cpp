@@ -206,6 +206,7 @@ namespace Spartan
 		for (const auto& root : root_actors)
 		{
 			file->Write(root->GetId());
+            file->Write(root->GetTransform_PtrRaw()->GetId());
 		}
 
 		// Save root entities
@@ -263,8 +264,9 @@ namespace Spartan
 		// Load root entity IDs
 		for (uint32_t i = 0; i < root_entity_count; i++)
 		{
-			auto& entity = EntityCreate();
-			entity->SetId(file->ReadAs<uint32_t>());
+            uint32_t id = file->ReadAs<uint32_t>();
+            uint32_t transform_id = file->ReadAs<uint32_t>();
+			auto& entity = EntityCreate(id, transform_id);
 		}
 
 		// Serialize root entities
@@ -283,14 +285,12 @@ namespace Spartan
 		return true;
 	}
 
-	shared_ptr<Entity>& World::EntityCreate()
-	{
-        auto entity = make_shared<Entity>(m_context);
-        entity->Initialize();
-		return m_entities_primary.emplace_back(entity);
-	}
+    shared_ptr<Spartan::Entity>& World::EntityCreate(uint32_t id /*= 0*/, uint32_t transform_id /*= 0*/)
+    {
+        return m_entities_primary.emplace_back(make_shared<Entity>(m_context, id, transform_id));
+    }
 
-	shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
+    shared_ptr<Entity>& World::EntityAdd(const shared_ptr<Entity>& entity)
 	{
         static shared_ptr<Entity> empty;
 

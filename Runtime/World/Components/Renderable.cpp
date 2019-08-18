@@ -86,7 +86,7 @@ namespace Spartan
 		);
 	}
 
-	Renderable::Renderable(Context* context, Entity* entity, Transform* transform) : IComponent(context, entity, transform)
+	Renderable::Renderable(Context* context, Entity* entity) : IComponent(context, entity)
 	{
 		m_geometry_type			= Geometry_Custom;	
 		m_geometryIndexOffset	= 0;

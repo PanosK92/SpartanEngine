@@ -27,20 +27,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-	static uint32_t g_id = 0;
+    static uint32_t g_id = 0;
 
 	class SPARTAN_CLASS Spartan_Object
 	{
 	public:
-		Spartan_Object() { m_id = GenerateId(); }
+		Spartan_Object(uint32_t id = 0) { m_id = (id != 0) ? id : GenerateId(); }
 
 		const uint32_t GetId() const	{ return m_id; }
 		void SetId(const uint32_t id)	{ m_id = id; }
 
-		static uint32_t GenerateId() { return ++g_id;}
+        static uint32_t GenerateId() { return ++g_id; }
 
 	protected:
 		uint64_t m_size = 0;
-		uint32_t m_id	= 0;	
+		uint32_t m_id	= 0;
 	};
 }
