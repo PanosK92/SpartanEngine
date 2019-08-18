@@ -106,10 +106,10 @@ namespace Spartan
 
         std::unordered_map<ComponentType, std::shared_ptr<BaseComponentManager>> m_components_managers;
 
-		Input* m_input;
-		Profiler* m_profiler;
-		bool m_wasInEditorMode;
-		bool m_isDirty;
+        Input* m_input          = nullptr;
+		Profiler* m_profiler    = nullptr;
+        bool m_wasInEditorMode  = false;
+		bool m_isDirty          = false;
 		Scene_State m_state;
 		std::string m_name;
 	};

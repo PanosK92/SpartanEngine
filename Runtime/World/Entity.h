@@ -124,7 +124,7 @@ namespace Spartan
         }
 
         // Adds a component 
-        std::shared_ptr<IComponent> AddComponent(ComponentType type, uint32_t id = 0);
+        std::shared_ptr<IComponent> AddComponent(ComponentType type, uint32_t component_id = 0);
 
 		// Removes a component
 		template <class T>

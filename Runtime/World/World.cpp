@@ -264,8 +264,8 @@ namespace Spartan
 		// Load root entity IDs
 		for (uint32_t i = 0; i < root_entity_count; i++)
 		{
-            uint32_t id = file->ReadAs<uint32_t>();
-            uint32_t transform_id = file->ReadAs<uint32_t>();
+            uint32_t id             = file->ReadAs<uint32_t>();
+            uint32_t transform_id   = file->ReadAs<uint32_t>();
 			auto& entity = EntityCreate(id, transform_id);
 		}
 

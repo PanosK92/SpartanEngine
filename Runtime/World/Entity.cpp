@@ -188,7 +188,7 @@ namespace Spartan
                 stream->Read(&id);
 
                 // Add component
-                if (!AddComponent(static_cast<ComponentType>(type, id)))
+                if (!AddComponent(static_cast<ComponentType>(type), id))
                 {
                     LOGF_ERROR("Component with an id of %d and a type of %d failed to load", id, type);
                 }
@@ -254,26 +254,26 @@ namespace Spartan
         });
     }
 
-    shared_ptr<IComponent> Entity::AddComponent(const ComponentType type, uint32_t id /*= 0*/)
+    shared_ptr<IComponent> Entity::AddComponent(const ComponentType type, uint32_t component_id /*= 0*/)
     {
         // This is the only hardcoded part regarding components. It's 
         // one function but it would be nice if that gets automated too, somehow...
         shared_ptr<IComponent> component;
         switch (type)
         {
-            case ComponentType_AudioListener:	component = AddComponent<AudioListener>(id);    break;
-            case ComponentType_AudioSource:		component = AddComponent<AudioSource>(id);	    break;
-            case ComponentType_Camera:			component = AddComponent<Camera>(id);		    break;
-            case ComponentType_Collider:		component = AddComponent<Collider>(id);		    break;
-            case ComponentType_Constraint:		component = AddComponent<Constraint>(id);	    break;
-            case ComponentType_Light:			component = AddComponent<Light>(id);		    break;
-            case ComponentType_Renderable:		component = AddComponent<Renderable>(id);	    break;
-            case ComponentType_RigidBody:		component = AddComponent<RigidBody>(id);	    break;
-            case ComponentType_Script:			component = AddComponent<Script>(id);		    break;
-            case ComponentType_Skybox:			component = AddComponent<Skybox>(id);		    break;
-            case ComponentType_Transform:		component = AddComponent<Transform>(id);	    break;
-            case ComponentType_Unknown:														    break;
-            default:																		    break;
+            case ComponentType_AudioListener:	component = AddComponent<AudioListener>(component_id);  break;
+            case ComponentType_AudioSource:		component = AddComponent<AudioSource>(component_id);	break;
+            case ComponentType_Camera:			component = AddComponent<Camera>(component_id);		    break;
+            case ComponentType_Collider:		component = AddComponent<Collider>(component_id);		break;
+            case ComponentType_Constraint:		component = AddComponent<Constraint>(component_id);	    break;
+            case ComponentType_Light:			component = AddComponent<Light>(component_id);		    break;
+            case ComponentType_Renderable:		component = AddComponent<Renderable>(component_id);	    break;
+            case ComponentType_RigidBody:		component = AddComponent<RigidBody>(component_id);	    break;
+            case ComponentType_Script:			component = AddComponent<Script>(component_id);		    break;
+            case ComponentType_Skybox:			component = AddComponent<Skybox>(component_id);		    break;
+            case ComponentType_Transform:		component = AddComponent<Transform>(component_id);	    break;
+            case ComponentType_Unknown:														            break;
+            default:																		            break;
         }
 
         return component;
