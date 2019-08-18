@@ -117,13 +117,8 @@ void Widget_ShaderEditor::Tick()
                     out.close();
                 }
 
-                // Start async compilations
-                m_shader->CompileAsync
-                (
-                    m_context,
-                    m_shader->GetShaderStage(),
-                    m_shader->GetFilePath()
-                );
+                // Compile
+                m_shader->Compile(m_shader->GetShaderStage(), m_shader->GetFilePath());
             }
 
             ImGui::EndChild();
