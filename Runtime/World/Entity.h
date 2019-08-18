@@ -49,8 +49,8 @@ namespace Spartan
         void SetName(const std::string& name)   { m_name = name; }
 
         // Active
-        bool IsActive() const { return m_is_active; }
-        void SetActive(const bool active);
+        bool IsActive() const               { return m_is_active; }
+        void SetActive(const bool active)   { m_is_active = active; }
 
         // Hierarchy visibility
         bool IsVisibleInHierarchy() const                               { return m_hierarchy_visibility; }
@@ -99,8 +99,7 @@ namespace Spartan
                 return GetComponent<T>();
 
             // Create new component
-            auto new_component = std::make_shared<T>(m_context, this);
-            if (component_id != 0) new_component->SetId(component_id);
+            auto new_component = std::make_shared<T>(m_context, this, component_id);
             new_component->SetType(type);
             new_component->OnInitialize();
 

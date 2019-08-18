@@ -42,7 +42,7 @@ using namespace std;
 
 namespace Spartan
 {
-    IComponent::IComponent(Context* context, Entity* entity, Transform* transform /*= nullptr*/) : Spartan_Object()
+    IComponent::IComponent(Context* context, Entity* entity, uint32_t id /*= 0*/, Transform* transform /*= nullptr*/) : Spartan_Object(id)
     {
         m_context   = context;
         m_entity    = entity;
@@ -63,7 +63,12 @@ namespace Spartan
 		return m_entity->GetName();
 	}
 
-	template <typename T>
+    bool IComponent::IsParentEntityActive()
+    {
+        return m_entity ? m_entity->IsActive() : false;
+    }
+
+    template <typename T>
     inline constexpr ComponentType IComponent::TypeToEnum() { return ComponentType_Unknown; }
 
     template<typename T>

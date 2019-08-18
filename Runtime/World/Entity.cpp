@@ -240,20 +240,6 @@ namespace Spartan
 		FIRE_EVENT(Event_World_Resolve);
 	}
 
-    void Entity::SetActive(const bool active)
-    {
-        m_is_active = active;
-
-        m_world->IterateManagers([&](auto& manager)
-        {
-            auto components = manager->GetComponents(GetId());
-            for (auto& component : components)
-            {
-                component->SetIsParentEntityActive(active);
-            }
-        });
-    }
-
     shared_ptr<IComponent> Entity::AddComponent(const ComponentType type, uint32_t component_id /*= 0*/)
     {
         // This is the only hardcoded part regarding components. It's 

@@ -48,7 +48,7 @@ namespace Spartan
 	{
 	public:
         RigidBody() = default;
-		RigidBody(Context* context, Entity* entity);
+		RigidBody(Context* context, Entity* entity, uint32_t id = 0);
 		~RigidBody();
 
 		//= ICOMPONENT ===============================

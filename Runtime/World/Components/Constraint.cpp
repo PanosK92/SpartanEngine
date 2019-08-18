@@ -45,7 +45,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-	Constraint::Constraint(Context* context, Entity* entity) : IComponent(context, entity)
+	Constraint::Constraint(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
 	{
 		m_constraint				= nullptr;
 		m_enabledEffective			= true;
